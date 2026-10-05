@@ -2631,6 +2631,104 @@
 			"accountPassword": "Kata sandi akun"
 		}
 	},
+	"identityConnections": {
+		"list": {
+			"title": "Koneksi identitas",
+			"description": "Konfigurasikan login Microsoft Entra, tinjau metadata koneksi yang aman, dan kelola pengaturan SCIM terkait.",
+			"add": "Tambahkan koneksi identitas",
+			"unavailable": "Koneksi identitas tidak tersedia",
+			"loadFailed": "Daftar tidak dapat dimuat. Anda mungkin tidak memiliki akses administrator instans.",
+			"retry": "Coba lagi",
+			"loading": "Memuat koneksi identitas",
+			"configured": "Koneksi identitas yang dikonfigurasi",
+			"organisationBound": "Terikat organisasi",
+			"enabled": "Aktif",
+			"disabled": "Nonaktif",
+			"manage": "Kelola pengaturan",
+			"empty": "Belum ada koneksi identitas yang dikonfigurasi."
+		},
+		"editor": {
+			"loading": "Memuat koneksi identitas…",
+			"loadFailed": "Koneksi identitas tidak dapat dimuat.",
+			"factorRequired": "Masukkan faktor autentikasi terkini yang dipilih.",
+			"stepUpFailed": "Verifikasi administrator terkini tidak tersedia atau tidak cocok persis dengan perubahan ini.",
+			"notFound": "Koneksi identitas tidak lagi tersedia.",
+			"stale": "Pengaturan berubah di sesi lain. Muat ulang sebelum mencoba lagi.",
+			"invalid": "Penyedia identitas, target, atau konfigurasi peran tidak valid.",
+			"saveFailed": "Koneksi identitas tidak dapat disimpan. Pengaturan Anda tetap berada di formulir ini.",
+			"created": "Koneksi identitas dibuat",
+			"createdDescription": "Koneksi dinonaktifkan pada versi {{version}}. Aktifkan hanya setelah konfigurasinya siap.",
+			"openSettings": "Buka pengaturan koneksi",
+			"addTitle": "Tambahkan koneksi Entra",
+			"editTitle": "Konfigurasi koneksi",
+			"intro": "Perubahan koneksi memerlukan verifikasi administrator terkini. Kredensial klien dienkripsi saat tersimpan dan tidak akan ditampilkan lagi.",
+			"notSaved": "Koneksi identitas belum disimpan",
+			"saved": "Koneksi identitas disimpan",
+			"savedDescription": "Koneksi tersimpan pada versi {{version}}.",
+			"connectionName": "Nama koneksi",
+			"portal": "Portal",
+			"staffPortal": "Portal staf",
+			"customerPortal": "Portal pelanggan",
+			"organisationId": "ID organisasi",
+			"workspaceId": "ID ruang kerja internal default",
+			"tenantId": "ID tenant Entra",
+			"clientId": "ID klien aplikasi",
+			"clientSecret": "Rahasia klien",
+			"replaceSecret": "Ganti rahasia klien (opsional)",
+			"scopes": "Cakupan OIDC yang diminta (dipisahkan koma atau baris baru)",
+			"domains": "Domain email yang diizinkan (satu per baris)",
+			"jitAccess": "Akses just-in-time",
+			"enableJit": "Aktifkan penyediaan JIT",
+			"defaultRole": "ID peran default (opsional saat JIT nonaktif)",
+			"requiredAppRole": "Peran aplikasi Entra yang diwajibkan",
+			"maxRoleRank": "Peringkat peran maksimum",
+			"enableConnection": "Aktifkan koneksi ini",
+			"confirmChange": "Konfirmasi perubahan ini",
+			"authMethod": "Metode autentikasi terkini",
+			"password": "Kata sandi",
+			"authenticatorCode": "Kode autentikator",
+			"backupCode": "Kode cadangan",
+			"freshAuth": "Autentikasi terkini",
+			"saving": "Menyimpan…",
+			"createDisabled": "Buat koneksi nonaktif",
+			"saveApply": "Simpan dan terapkan pengaturan",
+			"version": "Versi konfigurasi {{version}}"
+		},
+		"events": {
+			"title": "Riwayat penyediaan",
+			"loadFailed": "Riwayat peristiwa tidak tersedia. Pengaturan koneksi identitas Anda tidak berubah.",
+			"loading": "Memuat riwayat penyediaan…",
+			"empty": "Belum ada peristiwa penyediaan yang tercatat untuk koneksi ini.",
+			"listLabel": "Peristiwa penyediaan",
+			"older": "Peristiwa lama",
+			"newest": "Peristiwa terbaru",
+			"unknown": "Peristiwa tidak dikenal",
+			"kinds": {
+				"userCreated": "Pengguna dibuat",
+				"userUpdated": "Pengguna diperbarui",
+				"userDeactivated": "Pengguna dinonaktifkan",
+				"userReactivated": "Pengguna diaktifkan kembali",
+				"groupDirectoryChanged": "Direktori grup diubah",
+				"groupMappingChanged": "Pemetaan grup diubah",
+				"groupMemberAdded": "Anggota grup ditambahkan",
+				"groupMemberRemoved": "Anggota grup dihapus",
+				"requestDenied": "Permintaan ditolak",
+				"authFailed": "Autentikasi gagal",
+				"tokenRotated": "Token diputar",
+				"tokenRevoked": "Token dicabut",
+				"connectionChanged": "Koneksi diubah",
+				"syncFailed": "Sinkronisasi gagal"
+			},
+			"outcomes": {
+				"success": "Berhasil"
+			},
+			"actors": {
+				"person": "Orang",
+				"scim": "SCIM",
+				"oidc": "OIDC"
+			}
+		}
+	},
 	"pendingActions": {
 		"review": "Tinjau",
 		"emailMismatch": "Email saat ini tidak sama persis. Permintaan tetap tertunda.",
@@ -2681,7 +2779,8 @@
 			"origins": {
 				"web": "Web",
 				"api": "API",
-				"mcp": "MCP"
+				"mcp": "MCP",
+				"unknown": "Sumber tidak dikenal"
 			},
 			"states": {
 				"pending": "Tertunda",
@@ -2703,7 +2802,16 @@
 			},
 			"authenticatorCode": "Kode autentikator",
 			"backupCode": "Kode cadangan",
-			"accountPassword": "Kata sandi akun"
+			"accountPassword": "Kata sandi akun",
+			"actions": {
+				"delete": "Hapus",
+				"bulkDelete": "Hapus massal",
+				"purge": "Bersihkan permanen",
+				"mcpDestructive": "Tindakan MCP destruktif",
+				"userDeactivation": "Nonaktifkan orang"
+			},
+			"unknownAction": "Tindakan tidak dikenal",
+			"expires": "Kedaluwarsa"
 		}
 	}
 }

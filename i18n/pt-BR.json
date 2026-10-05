@@ -2645,6 +2645,104 @@
 			"accountPassword": "Senha da conta"
 		}
 	},
+	"identityConnections": {
+		"list": {
+			"title": "Conexões de identidade",
+			"description": "Configure o acesso do Microsoft Entra, consulte metadados seguros da conexão e gerencie as configurações SCIM associadas.",
+			"add": "Adicionar conexão de identidade",
+			"unavailable": "Conexões de identidade indisponíveis",
+			"loadFailed": "Não foi possível carregar a lista. Talvez sua conta não tenha acesso de administrador da instância.",
+			"retry": "Tentar novamente",
+			"loading": "Carregando conexões de identidade",
+			"configured": "Conexões de identidade configuradas",
+			"organisationBound": "Vinculada à organização",
+			"enabled": "Habilitada",
+			"disabled": "Desabilitada",
+			"manage": "Gerenciar configurações",
+			"empty": "Nenhuma conexão de identidade está configurada."
+		},
+		"editor": {
+			"loading": "Carregando conexão de identidade…",
+			"loadFailed": "Não foi possível carregar a conexão de identidade.",
+			"factorRequired": "Informe o fator de autenticação recente selecionado.",
+			"stepUpFailed": "A verificação recente do administrador estava indisponível ou não correspondia exatamente a esta alteração.",
+			"notFound": "A conexão de identidade não está mais disponível.",
+			"stale": "As configurações mudaram em outra sessão. Recarregue antes de tentar novamente.",
+			"invalid": "O provedor de identidade, o destino ou a configuração da função é inválido.",
+			"saveFailed": "Não foi possível salvar a conexão de identidade. Suas configurações permanecem neste formulário.",
+			"created": "Conexão de identidade criada",
+			"createdDescription": "A conexão está desabilitada na versão {{version}}. Habilite-a somente quando a configuração estiver pronta.",
+			"openSettings": "Abrir configurações da conexão",
+			"addTitle": "Adicionar conexão Entra",
+			"editTitle": "Configuração da conexão",
+			"intro": "Alterações na conexão exigem verificação recente do administrador. As credenciais do cliente são criptografadas em repouso e nunca são exibidas novamente.",
+			"notSaved": "Conexão de identidade não salva",
+			"saved": "Conexão de identidade salva",
+			"savedDescription": "A conexão está armazenada na versão {{version}}.",
+			"connectionName": "Nome da conexão",
+			"portal": "Portal",
+			"staffPortal": "Portal da equipe",
+			"customerPortal": "Portal do cliente",
+			"organisationId": "ID da organização",
+			"workspaceId": "ID do espaço de trabalho interno padrão",
+			"tenantId": "ID do locatário Entra",
+			"clientId": "ID do cliente do aplicativo",
+			"clientSecret": "Segredo do cliente",
+			"replaceSecret": "Substituir segredo do cliente (opcional)",
+			"scopes": "Escopos OIDC solicitados (separados por vírgula ou quebra de linha)",
+			"domains": "Domínios de e-mail permitidos (um por linha)",
+			"jitAccess": "Acesso just-in-time",
+			"enableJit": "Habilitar provisionamento JIT",
+			"defaultRole": "ID da função padrão (opcional enquanto o JIT estiver desabilitado)",
+			"requiredAppRole": "Função de aplicativo Entra obrigatória",
+			"maxRoleRank": "Classificação máxima da função",
+			"enableConnection": "Habilitar esta conexão",
+			"confirmChange": "Confirmar esta alteração",
+			"authMethod": "Método de autenticação recente",
+			"password": "Senha",
+			"authenticatorCode": "Código do autenticador",
+			"backupCode": "Código de recuperação",
+			"freshAuth": "Autenticação recente",
+			"saving": "Salvando…",
+			"createDisabled": "Criar conexão desabilitada",
+			"saveApply": "Salvar e aplicar configurações",
+			"version": "Versão da configuração {{version}}"
+		},
+		"events": {
+			"title": "Histórico de provisionamento",
+			"loadFailed": "O histórico de eventos está indisponível. As configurações da conexão de identidade permanecem inalteradas.",
+			"loading": "Carregando histórico de provisionamento…",
+			"empty": "Nenhum evento de provisionamento foi registrado para esta conexão.",
+			"listLabel": "Eventos de provisionamento",
+			"older": "Eventos mais antigos",
+			"newest": "Eventos mais recentes",
+			"unknown": "Evento desconhecido",
+			"kinds": {
+				"userCreated": "Usuário criado",
+				"userUpdated": "Usuário atualizado",
+				"userDeactivated": "Usuário desativado",
+				"userReactivated": "Usuário reativado",
+				"groupDirectoryChanged": "Diretório de grupos alterado",
+				"groupMappingChanged": "Mapeamento de grupos alterado",
+				"groupMemberAdded": "Membro adicionado ao grupo",
+				"groupMemberRemoved": "Membro removido do grupo",
+				"requestDenied": "Solicitação negada",
+				"authFailed": "Falha na autenticação",
+				"tokenRotated": "Token rotacionado",
+				"tokenRevoked": "Token revogado",
+				"connectionChanged": "Conexão alterada",
+				"syncFailed": "Falha na sincronização"
+			},
+			"outcomes": {
+				"success": "Concluído"
+			},
+			"actors": {
+				"person": "Pessoa",
+				"scim": "SCIM",
+				"oidc": "OIDC"
+			}
+		}
+	},
 	"pendingActions": {
 		"review": "Revisar",
 		"emailMismatch": "O e-mail atual exato não corresponde. A solicitação continua pendente.",
@@ -2695,7 +2793,8 @@
 			"origins": {
 				"web": "Web",
 				"api": "API",
-				"mcp": "MCP"
+				"mcp": "MCP",
+				"unknown": "Origem desconhecida"
 			},
 			"states": {
 				"pending": "Pendente",
@@ -2717,7 +2816,16 @@
 			},
 			"authenticatorCode": "Código do autenticador",
 			"backupCode": "Código de recuperação",
-			"accountPassword": "Senha da conta"
+			"accountPassword": "Senha da conta",
+			"actions": {
+				"delete": "Excluir",
+				"bulkDelete": "Excluir em massa",
+				"purge": "Eliminar definitivamente",
+				"mcpDestructive": "Ação MCP destrutiva",
+				"userDeactivation": "Desativar pessoa"
+			},
+			"unknownAction": "Ação desconhecida",
+			"expires": "Expira"
 		}
 	}
 }

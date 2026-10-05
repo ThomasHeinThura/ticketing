@@ -1,6 +1,7 @@
 import { apiFetch } from "@taskdesk/libs";
 import { Alert, AlertDescription, Button } from "@taskdesk/ui";
 import { useEffect, useState } from "react";
+import { useTranslation } from "react-i18next";
 import { getApiUrl } from "@/fetchers/get-api-url";
 
 type EventSummary = {
@@ -24,7 +25,7 @@ async function loadEventPage(connectionId: string, cursor?: string) {
     ),
     { credentials: "include", cache: "no-store" },
   );
-  if (!response.ok) throw new Error("Unable to load identity event history");
+  if (!response.ok) throw new Error("identity event history unavailable");
   return (await response.json()) as EventPage;
 }
 
@@ -37,6 +38,7 @@ export function IdentityConnectionEvents({
   cursor?: string;
   onCursorChange: (cursor?: string) => void;
 }) {
+  const { t, i18n } = useTranslation("identityConnections");
   const [page, setPage] = useState<EventPage | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(false);
@@ -69,13 +71,45 @@ export function IdentityConnectionEvents({
     return { event, key: `${fingerprint}:${duplicate}` };
   });
 
+  const eventLabel = (kind: string) => {
+    const keys: Record<string, string> = {
+      "user.created": "events.kinds.userCreated",
+      "user.updated": "events.kinds.userUpdated",
+      "user.deactivated": "events.kinds.userDeactivated",
+      "user.reactivated": "events.kinds.userReactivated",
+      "group.directory_changed": "events.kinds.groupDirectoryChanged",
+      "group.mapping_changed": "events.kinds.groupMappingChanged",
+      "group.member_added": "events.kinds.groupMemberAdded",
+      "group.member_removed": "events.kinds.groupMemberRemoved",
+      "request.denied": "events.kinds.requestDenied",
+      "auth.failed": "events.kinds.authFailed",
+      "token.rotated": "events.kinds.tokenRotated",
+      "token.revoked": "events.kinds.tokenRevoked",
+      "connection.changed": "events.kinds.connectionChanged",
+      "sync.failed": "events.kinds.syncFailed",
+    };
+    return t(keys[kind] ?? "events.unknown");
+  };
+  const outcomeLabel = (outcome: string) =>
+    t(
+      (
+        {
+          success: "events.outcomes.success",
+          denied: "events.outcomes.denied",
+          failure: "events.outcomes.failure",
+        } as Record<string, string>
+      )[outcome] ?? "events.unknown",
+    );
+  const actorLabel = (actor: EventSummary["actorType"]) =>
+    t(`events.actors.${actor}`);
+
   return (
     <section
       aria-labelledby="identity-event-history-title"
       className="space-y-3"
     >
       <h2 className="text-lg font-semibold" id="identity-event-history-title">
-        Provisioning history
+        {t("events.title")}
       </h2>
       {error ? (
         <Alert variant="error">
@@ -85,19 +119,22 @@ export function IdentityConnectionEvents({
           </AlertDescription>
         </Alert>
       ) : null}
-      {loading ? <p role="status">Loading provisioning history…</p> : null}
+      {loading ? <p role="status">{t("events.loading")}</p> : null}
       {!loading && !error && page?.data.length === 0 ? (
-        <p>No provisioning events have been recorded for this connection.</p>
+        <p>{t("events.empty")}</p>
       ) : null}
       {events.length ? (
-        <ol aria-label="Provisioning events" className="space-y-2">
+        <ol aria-label={t("events.listLabel")} className="space-y-2">
           {events.map(({ event, key }) => (
             <li className="rounded-md border p-3" key={key}>
-              <p className="font-medium">{event.kind}</p>
+              <p className="font-medium">{eventLabel(event.kind)}</p>
               <p className="text-sm text-muted-foreground">
-                {event.outcome} · {event.actorType} ·{" "}
+                {outcomeLabel(event.outcome)} · {actorLabel(event.actorType)} ·{" "}
                 <time dateTime={event.createdAt}>
-                  {new Date(event.createdAt).toLocaleString()}
+                  {new Intl.DateTimeFormat(i18n.language, {
+                    dateStyle: "medium",
+                    timeStyle: "short",
+                  }).format(new Date(event.createdAt))}
                 </time>
               </p>
             </li>

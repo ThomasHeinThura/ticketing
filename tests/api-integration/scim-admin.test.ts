@@ -1,5 +1,5 @@
 import { createRequire } from "node:module";
-import { and, eq, isNotNull, isNull } from "drizzle-orm";
+import { and, eq, isNotNull, isNull, sql } from "drizzle-orm";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import {
   canonicalScimAdminBody,
@@ -352,7 +352,11 @@ describe("SCIM administration API", () => {
         { kind: "administrative" },
       ),
     );
-    expect(changed).toBe(true);
+    expect(changed).toMatchObject({
+      sessionsRevoked: 1,
+      keysRevoked: 1,
+      membershipsEnded: 2,
+    });
     const retired = await db
       .select({
         id: schema.membershipGrantTable.id,
@@ -1194,6 +1198,42 @@ describe("SCIM administration API", () => {
       { method: "DELETE", headers: { authorization: `Bearer ${token}` } },
     );
     expect(deactivated.status).toBe(204);
+    const [deprovisionedIdentity] = await db
+      .select({ personId: schema.externalIdentityTable.personId })
+      .from(schema.externalIdentityTable)
+      .where(eq(schema.externalIdentityTable.id, provisionedResource.id));
+    if (!deprovisionedIdentity)
+      throw new Error("deprovisioned identity fixture missing");
+    const [deprovisionedEvent] = await db
+      .select()
+      .from(schema.outboxTable)
+      .where(
+        and(
+          eq(schema.outboxTable.kind, "identity.deprovisioned"),
+          sql`${schema.outboxTable.payload}->'payload'->>'personId' = ${deprovisionedIdentity.personId}`,
+        ),
+      );
+    expect(deprovisionedEvent?.payload).toMatchObject({
+      scope: {},
+      payload: {
+        source: "scim",
+        identityConnectionId: CONNECTION_ID,
+        personId: deprovisionedIdentity.personId,
+        sessionsRevoked: 1,
+        keysRevoked: 1,
+        membershipsEnded: expect.any(Number),
+      },
+    });
+    const deprovisionedAudit = await db
+      .select()
+      .from(schema.auditLogTable)
+      .where(
+        and(
+          eq(schema.auditLogTable.action, "identity.deprovisioned"),
+          eq(schema.auditLogTable.entityId, deprovisionedIdentity.personId),
+        ),
+      );
+    expect(deprovisionedAudit).toHaveLength(1);
     const deactivatedRow = await db
       .select({ active: schema.personTable.active })
       .from(schema.externalIdentityTable)

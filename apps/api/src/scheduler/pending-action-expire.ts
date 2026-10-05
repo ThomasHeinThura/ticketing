@@ -21,11 +21,10 @@ export type PendingActionExpireOutcome = {
 };
 
 /**
- * Current PA-8 slice: expire due workspace-scoped actions from the supported
- * work-item-delete request flow. The database clock is sampled after each row is
- * locked so timestamptz comparisons stay timezone-safe and lock waits cannot make
- * the decision use stale time. Organisation/instance actions need an event-scope
- * contract before this worker can process their nullable workspace scope.
+ * PA-8 expiry supports workspace actions and the explicitly registered instance
+ * user_deactivation/person action. Other nullable-scope actions remain degraded until
+ * their own scope and event contract is documented. The database clock is sampled
+ * after each row is locked so lock waits cannot make the decision use stale time.
  */
 export async function expirePendingActions(): Promise<PendingActionExpireOutcome> {
   return withJobLease(
@@ -39,6 +38,7 @@ export async function expirePendingActions(): Promise<PendingActionExpireOutcome
           FROM pending_action
           WHERE state = 'pending'
             AND workspace_id IS NULL
+            AND NOT (action = 'user_deactivation' AND target_type = 'person')
             AND expires_at <= clock_timestamp()
         ) AS exists
       `);
@@ -68,7 +68,7 @@ export async function expirePendingActions(): Promise<PendingActionExpireOutcome
             SELECT id, expires_at
             FROM pending_action
             WHERE state = 'pending'
-              AND workspace_id IS NOT NULL
+              AND (workspace_id IS NOT NULL OR (action = 'user_deactivation' AND target_type = 'person'))
               AND expires_at <= clock_timestamp()
               ${afterCursor}
             ORDER BY expires_at, id
@@ -86,10 +86,12 @@ export async function expirePendingActions(): Promise<PendingActionExpireOutcome
               project_id: string | null;
               organisation_id: string | null;
               trace_id: string;
+              action: string;
+              target_type: string;
               decided_at: string;
             }>(sql`
               SELECT pa.id, pa.workspace_id, pa.project_id, pa.organisation_id,
-                     pa.trace_id, clock_timestamp() AS decided_at
+                     pa.trace_id, pa.action, pa.target_type, clock_timestamp() AS decided_at
               FROM pending_action pa
               WHERE pa.id = ${candidate.id} AND pa.state = 'pending'
                 AND pa.expires_at <= clock_timestamp()
@@ -97,7 +99,13 @@ export async function expirePendingActions(): Promise<PendingActionExpireOutcome
             const row = selected.rows[0];
 
             if (!row) continue;
-            if (!row.workspace_id) {
+            const supportedInstanceAction =
+              row.workspace_id === null &&
+              row.action === "user_deactivation" &&
+              row.target_type === "person" &&
+              row.project_id === null &&
+              row.organisation_id === null;
+            if (!row.workspace_id && !supportedInstanceAction) {
               if (!unsupportedLogged) {
                 logTaskDesk({
                   module: "jobs",

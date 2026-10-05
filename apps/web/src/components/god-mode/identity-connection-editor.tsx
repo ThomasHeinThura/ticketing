@@ -14,6 +14,7 @@ import {
   SelectValue,
 } from "@taskdesk/ui";
 import { useEffect, useState } from "react";
+import { useTranslation } from "react-i18next";
 import { getApiUrl } from "@/fetchers/get-api-url";
 import { routes } from "@/lib/routes";
 
@@ -123,6 +124,7 @@ export function IdentityConnectionEditor({
 }: {
   connectionId: string | null;
 }) {
+  const { t } = useTranslation("identityConnections");
   const creating = connectionId === null;
   const [connection, setConnection] = useState<Connection | null>(null);
   const [draft, setDraft] = useState<Draft>(emptyDraft);
@@ -150,7 +152,7 @@ export function IdentityConnectionEditor({
         setError(null);
       })
       .catch(() => {
-        if (active) setError("The identity connection could not be loaded.");
+        if (active) setError(t("editor.loadFailed"));
       })
       .finally(() => {
         if (active) setLoading(false);
@@ -158,7 +160,7 @@ export function IdentityConnectionEditor({
     return () => {
       active = false;
     };
-  }, [connectionId, creating]);
+  }, [connectionId, creating, t]);
 
   function update<K extends keyof Draft>(key: K, value: Draft[K]) {
     setDraft((current) => ({ ...current, [key]: value }));
@@ -225,7 +227,7 @@ export function IdentityConnectionEditor({
     event.preventDefault();
     if (busy || (!creating && !connection)) return;
     if (authMethod === "password" ? !password : !code) {
-      setError("Enter the selected fresh authentication factor.");
+      setError(t("editor.factorRequired"));
       return;
     }
     setBusy(true);
@@ -280,14 +282,14 @@ export function IdentityConnectionEditor({
       const status = cause instanceof RequestFailure ? cause.status : 0;
       setError(
         status === 403
-          ? "Fresh administrator verification was unavailable or did not match this exact change."
+          ? t("editor.stepUpFailed")
           : status === 404
-            ? "The identity connection is no longer available."
+            ? t("editor.notFound")
             : status === 409
-              ? "Settings changed in another session. Reload before retrying."
+              ? t("editor.stale")
               : status === 422
-                ? "The identity provider, target or role configuration is invalid."
-                : "The identity connection could not be saved. Your settings remain in this form.",
+                ? t("editor.invalid")
+                : t("editor.saveFailed"),
       );
       setPassword("");
       setCode("");
@@ -297,7 +299,7 @@ export function IdentityConnectionEditor({
     }
   }
 
-  if (loading) return <p role="status">Loading identity connection…</p>;
+  if (loading) return <p role="status">{t("editor.loading")}</p>;
   if (creating && savedId) {
     return (
       <section
@@ -309,8 +311,9 @@ export function IdentityConnectionEditor({
             Identity connection created
           </AlertTitle>
           <AlertDescription>
-            The connection is disabled at version {connection?.configVersion}.
-            Enable it only after its configuration is ready.
+            {t("editor.createdDescription", {
+              version: connection?.configVersion,
+            })}
           </AlertDescription>
         </Alert>
         <Button
@@ -336,24 +339,23 @@ export function IdentityConnectionEditor({
           className="text-lg font-semibold"
           id="identity-connection-editor-heading"
         >
-          {creating ? "Add Entra connection" : "Connection configuration"}
+          {creating ? t("editor.addTitle") : t("editor.editTitle")}
         </h2>
-        <p className="text-sm text-muted-foreground">
-          Connection changes require fresh administrator verification. Client
-          credentials are encrypted at rest and never shown again.
-        </p>
+        <p className="text-sm text-muted-foreground">{t("editor.intro")}</p>
       </header>
       {error ? (
         <Alert variant="error">
-          <AlertTitle>Identity connection not saved</AlertTitle>
+          <AlertTitle>{t("editor.notSaved")}</AlertTitle>
           <AlertDescription>{error}</AlertDescription>
         </Alert>
       ) : null}
       {savedId ? (
         <Alert>
-          <AlertTitle>Identity connection saved</AlertTitle>
+          <AlertTitle>{t("editor.saved")}</AlertTitle>
           <AlertDescription>
-            The connection is stored at version {connection?.configVersion}.{" "}
+            {t("editor.savedDescription", {
+              version: connection?.configVersion,
+            })}{" "}
             <a href={routes.identityConnectionSettings.build({ id: savedId })}>
               Open its settings
             </a>
@@ -365,7 +367,9 @@ export function IdentityConnectionEditor({
         onSubmit={(event) => void save(event)}
       >
         <div className="grid gap-1 text-sm">
-          <Label htmlFor="identity-connection-name">Connection name</Label>
+          <Label htmlFor="identity-connection-name">
+            {t("editor.connectionName")}
+          </Label>
           <Input
             id="identity-connection-name"
             required
@@ -375,7 +379,9 @@ export function IdentityConnectionEditor({
           />
         </div>
         <div className="grid gap-1 text-sm">
-          <Label htmlFor="identity-connection-portal">Portal</Label>
+          <Label htmlFor="identity-connection-portal">
+            {t("editor.portal")}
+          </Label>
           <Select
             value={draft.portalScope}
             disabled={!creating}
@@ -387,8 +393,10 @@ export function IdentityConnectionEditor({
               <SelectValue />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="agent">Staff portal</SelectItem>
-              <SelectItem value="customer">Customer portal</SelectItem>
+              <SelectItem value="agent">{t("editor.staffPortal")}</SelectItem>
+              <SelectItem value="customer">
+                {t("editor.customerPortal")}
+              </SelectItem>
             </SelectContent>
           </Select>
         </div>
@@ -420,7 +428,9 @@ export function IdentityConnectionEditor({
           </div>
         )}
         <div className="grid gap-1 text-sm">
-          <Label htmlFor="identity-connection-tenant">Entra tenant ID</Label>
+          <Label htmlFor="identity-connection-tenant">
+            {t("editor.tenantId")}
+          </Label>
           <Input
             id="identity-connection-tenant"
             required
@@ -443,8 +453,8 @@ export function IdentityConnectionEditor({
         <div className="grid gap-1 text-sm">
           <Label htmlFor="identity-connection-secret">
             {creating || !connection?.clientSecretConfigured
-              ? "Client secret"
-              : "Replace client secret (optional)"}
+              ? t("editor.clientSecret")
+              : t("editor.replaceSecret")}
           </Label>
           <Input
             id="identity-connection-secret"
@@ -481,7 +491,7 @@ export function IdentityConnectionEditor({
           </legend>
           <div className="flex items-center gap-2 text-sm">
             <Checkbox
-              aria-label="Enable JIT provisioning"
+              aria-label={t("editor.enableJit")}
               checked={draft.jitEnabled}
               onCheckedChange={(checked) =>
                 update("jitEnabled", checked === true)
@@ -532,7 +542,7 @@ export function IdentityConnectionEditor({
         {!creating ? (
           <div className="flex items-center gap-2 text-sm md:col-span-2">
             <Checkbox
-              aria-label="Enable this connection"
+              aria-label={t("editor.enableConnection")}
               checked={draft.enabled}
               onCheckedChange={(checked) => update("enabled", checked === true)}
             />
@@ -554,9 +564,13 @@ export function IdentityConnectionEditor({
               <SelectValue />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="password">Password</SelectItem>
-              <SelectItem value="totp">Authenticator code</SelectItem>
-              <SelectItem value="backup_code">Backup code</SelectItem>
+              <SelectItem value="password">{t("editor.password")}</SelectItem>
+              <SelectItem value="totp">
+                {t("editor.authenticatorCode")}
+              </SelectItem>
+              <SelectItem value="backup_code">
+                {t("editor.backupCode")}
+              </SelectItem>
             </SelectContent>
           </Select>
           <Label htmlFor="identity-connection-auth-value">
@@ -581,14 +595,14 @@ export function IdentityConnectionEditor({
             disabled={busy || loading || (!creating && !connection)}
           >
             {busy
-              ? "Saving…"
+              ? t("editor.saving")
               : creating
-                ? "Create disabled connection"
-                : "Save and apply settings"}
+                ? t("editor.createDisabled")
+                : t("editor.saveApply")}
           </Button>
           {!creating && connection ? (
             <span className="self-center text-sm text-muted-foreground">
-              Configuration version {connection.configVersion}
+              {t("editor.version", { version: connection.configVersion })}
             </span>
           ) : null}
         </div>

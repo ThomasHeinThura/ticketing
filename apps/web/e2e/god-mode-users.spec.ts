@@ -128,6 +128,18 @@ test("God Mode users directory supports filters and audited account actions", as
                   createdAt: "2026-10-05T00:00:00.000Z",
                   expiresAt: "2026-10-05T00:15:00.000Z",
                 },
+                {
+                  id: "pending-future-action",
+                  action: "future_unregistered_action",
+                  origin: "future_source",
+                  targetType: "person",
+                  targetIds: ["person-1"],
+                  summary: {},
+                  confirmation: "click",
+                  state: "pending",
+                  createdAt: "2026-10-05T00:00:00.000Z",
+                  expiresAt: "2026-10-05T00:20:00.000Z",
+                },
               ]
             : [],
         page: { nextCursor: null, hasMore: false },
@@ -304,6 +316,28 @@ test("God Mode users directory supports filters and audited account actions", as
   await expect(
     page.getByRole("heading", { name: "Approve person deactivation" }),
   ).toBeVisible();
+  await page.goto("/agent/settings/profile/pending-actions");
+  await expect(
+    page.getByRole("heading", { name: "My pending actions" }),
+  ).toBeVisible();
+  await expect(
+    page.getByText("Deactivate person · taylor@example.test"),
+  ).toBeVisible();
+  await expect(page.getByText("Unknown action")).toBeVisible();
+  await expect(page.getByText("future_unregistered_action")).toHaveCount(0);
+  await expect(
+    page.getByText("Expires", { exact: false }).first(),
+  ).toBeVisible();
+  await page.screenshot({
+    path: "/Users/heinthura/.codex/taskdesk-evidence/2026-10-05/p4-person-deactivation-b58/screens/pending-actions-list.png",
+    fullPage: true,
+  });
+  await page.goto(
+    "/agent/settings/profile/pending-actions/pending-deactivation-1",
+  );
+  await expect(
+    page.getByRole("heading", { name: "Approve person deactivation" }),
+  ).toBeVisible();
   await page.screenshot({
     path: "/Users/heinthura/.codex/taskdesk-evidence/2026-10-05/p4-person-deactivation-b58/screens/pending-action-deactivation-approval.png",
     fullPage: true,
@@ -331,8 +365,7 @@ test("God Mode users directory supports filters and audited account actions", as
   expect(received).toContain("GET /api/instance/users");
   await page.getByRole("link", { name: "Open Users" }).click();
   await expect(page).toHaveURL(/\/god-mode\/users$/);
-  await page.goBack();
-  await page.goBack();
+  await page.goto("/god-mode/users?user=staff-user-1");
   await expect(page).toHaveURL(/user=staff-user-1/);
   await expect(
     page.getByTestId("instance-user-details").getByText("Inactive", {

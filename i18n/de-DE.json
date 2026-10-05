@@ -2638,6 +2638,104 @@
 			"accountPassword": "Kontopasswort"
 		}
 	},
+	"identityConnections": {
+		"list": {
+			"title": "Identitätsverbindungen",
+			"description": "Konfigurieren Sie die Anmeldung über Microsoft Entra, prüfen Sie sichere Verbindungsmetadaten und verwalten Sie die zugehörigen SCIM-Einstellungen.",
+			"add": "Identitätsverbindung hinzufügen",
+			"unavailable": "Identitätsverbindungen nicht verfügbar",
+			"loadFailed": "Die Liste konnte nicht geladen werden. Möglicherweise haben Sie keinen Instanzadministratorzugriff.",
+			"retry": "Erneut versuchen",
+			"loading": "Identitätsverbindungen werden geladen",
+			"configured": "Konfigurierte Identitätsverbindungen",
+			"organisationBound": "An Organisation gebunden",
+			"enabled": "Aktiviert",
+			"disabled": "Deaktiviert",
+			"manage": "Einstellungen verwalten",
+			"empty": "Es sind keine Identitätsverbindungen konfiguriert."
+		},
+		"editor": {
+			"loading": "Identitätsverbindung wird geladen…",
+			"loadFailed": "Die Identitätsverbindung konnte nicht geladen werden.",
+			"factorRequired": "Geben Sie den ausgewählten aktuellen Authentifizierungsfaktor ein.",
+			"stepUpFailed": "Die aktuelle Administratorprüfung war nicht verfügbar oder entsprach nicht genau dieser Änderung.",
+			"notFound": "Die Identitätsverbindung ist nicht mehr verfügbar.",
+			"stale": "Die Einstellungen wurden in einer anderen Sitzung geändert. Laden Sie die Seite neu, bevor Sie es erneut versuchen.",
+			"invalid": "Der Identitätsanbieter, das Ziel oder die Rollenkonfiguration ist ungültig.",
+			"saveFailed": "Die Identitätsverbindung konnte nicht gespeichert werden. Ihre Einstellungen bleiben in diesem Formular erhalten.",
+			"created": "Identitätsverbindung erstellt",
+			"createdDescription": "Die Verbindung ist mit Version {{version}} deaktiviert. Aktivieren Sie sie erst, wenn die Konfiguration bereit ist.",
+			"openSettings": "Verbindungseinstellungen öffnen",
+			"addTitle": "Entra-Verbindung hinzufügen",
+			"editTitle": "Verbindung konfigurieren",
+			"intro": "Änderungen an der Verbindung erfordern eine aktuelle Administratorprüfung. Clientanmeldedaten werden im Ruhezustand verschlüsselt und nie erneut angezeigt.",
+			"notSaved": "Identitätsverbindung nicht gespeichert",
+			"saved": "Identitätsverbindung gespeichert",
+			"savedDescription": "Die Verbindung ist mit Version {{version}} gespeichert.",
+			"connectionName": "Name der Verbindung",
+			"portal": "Portal",
+			"staffPortal": "Mitarbeiterportal",
+			"customerPortal": "Kundenportal",
+			"organisationId": "Organisations-ID",
+			"workspaceId": "Standard-ID des internen Arbeitsbereichs",
+			"tenantId": "Entra-Mandanten-ID",
+			"clientId": "Anwendungs-Client-ID",
+			"clientSecret": "Clientgeheimnis",
+			"replaceSecret": "Clientgeheimnis ersetzen (optional)",
+			"scopes": "Angeforderte OIDC-Bereiche (durch Komma oder Zeilenumbruch getrennt)",
+			"domains": "Zulässige E-Mail-Domänen (eine pro Zeile)",
+			"jitAccess": "Just-in-time-Zugriff",
+			"enableJit": "JIT-Bereitstellung aktivieren",
+			"defaultRole": "Standardrollen-ID (optional, solange JIT deaktiviert ist)",
+			"requiredAppRole": "Erforderliche Entra-Anwendungsrolle",
+			"maxRoleRank": "Maximaler Rollenrang",
+			"enableConnection": "Diese Verbindung aktivieren",
+			"confirmChange": "Diese Änderung bestätigen",
+			"authMethod": "Aktuelle Authentifizierungsmethode",
+			"password": "Kennwort",
+			"authenticatorCode": "Authentifizierungscode",
+			"backupCode": "Wiederherstellungscode",
+			"freshAuth": "Aktuelle Authentifizierung",
+			"saving": "Wird gespeichert…",
+			"createDisabled": "Deaktivierte Verbindung erstellen",
+			"saveApply": "Einstellungen speichern und anwenden",
+			"version": "Konfigurationsversion {{version}}"
+		},
+		"events": {
+			"title": "Bereitstellungsverlauf",
+			"loadFailed": "Der Ereignisverlauf ist nicht verfügbar. Ihre Einstellungen für die Identitätsverbindung sind unverändert.",
+			"loading": "Bereitstellungsverlauf wird geladen…",
+			"empty": "Für diese Verbindung wurden keine Bereitstellungsereignisse aufgezeichnet.",
+			"listLabel": "Bereitstellungsereignisse",
+			"older": "Ältere Ereignisse",
+			"newest": "Neueste Ereignisse",
+			"unknown": "Unbekanntes Ereignis",
+			"kinds": {
+				"userCreated": "Benutzer erstellt",
+				"userUpdated": "Benutzer aktualisiert",
+				"userDeactivated": "Benutzer deaktiviert",
+				"userReactivated": "Benutzer reaktiviert",
+				"groupDirectoryChanged": "Gruppenverzeichnis geändert",
+				"groupMappingChanged": "Gruppenzuordnung geändert",
+				"groupMemberAdded": "Gruppenmitglied hinzugefügt",
+				"groupMemberRemoved": "Gruppenmitglied entfernt",
+				"requestDenied": "Anfrage abgelehnt",
+				"authFailed": "Authentifizierung fehlgeschlagen",
+				"tokenRotated": "Token erneuert",
+				"tokenRevoked": "Token widerrufen",
+				"connectionChanged": "Verbindung geändert",
+				"syncFailed": "Synchronisierung fehlgeschlagen"
+			},
+			"outcomes": {
+				"success": "Erfolgreich"
+			},
+			"actors": {
+				"person": "Person",
+				"scim": "SCIM",
+				"oidc": "OIDC"
+			}
+		}
+	},
 	"pendingActions": {
 		"review": "Bewertung",
 		"emailMismatch": "Die genaue aktuelle E-Mail-Adresse stimmt nicht überein. Die Anfrage bleibt ausstehend.",
@@ -2688,7 +2786,8 @@
 			"origins": {
 				"web": "Web",
 				"api": "API",
-				"mcp": "MCP"
+				"mcp": "MCP",
+				"unknown": "Unbekannte Quelle"
 			},
 			"states": {
 				"pending": "Ausstehend",
@@ -2710,7 +2809,16 @@
 			},
 			"authenticatorCode": "Authentifizierungscode",
 			"backupCode": "Wiederherstellungscode",
-			"accountPassword": "Kontopasswort"
+			"accountPassword": "Kontopasswort",
+			"actions": {
+				"delete": "Löschen",
+				"bulkDelete": "Mehrere löschen",
+				"purge": "Endgültig löschen",
+				"mcpDestructive": "Destruktive MCP-Aktion",
+				"userDeactivation": "Person deaktivieren"
+			},
+			"unknownAction": "Unbekannte Aktion",
+			"expires": "Läuft ab"
 		}
 	}
 }

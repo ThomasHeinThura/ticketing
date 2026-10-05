@@ -13,6 +13,7 @@ import {
   cancelOwnPendingAction,
   getOwnPendingActions,
 } from "@/fetchers/pending-actions";
+import { pendingActionLabelKey } from "@/lib/pending-action-action-label";
 import { parsePendingActionsSearch, routes } from "@/lib/routes";
 
 export const Route = createFileRoute(
@@ -31,7 +32,7 @@ function PendingActionsRoute() {
 }
 
 function PendingActionsList() {
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
   const search = Route.useSearch();
   const navigate = useNavigate({ from: Route.fullPath });
   const queryClient = useQueryClient();
@@ -97,16 +98,24 @@ function PendingActionsList() {
                           ? t("pendingActions:dynamic.deactivatePerson", {
                               email: email ? ` · ${email}` : "",
                             })
-                          : t("pendingActions:dynamic.genericAction", {
-                              action: item.action.replaceAll("_", " "),
-                              targetType: item.targetType,
-                            })}
+                          : t(pendingActionLabelKey(item.action))}
                       </h2>
-                      <Badge variant="outline">{item.origin}</Badge>
+                      <Badge variant="outline">
+                        {t(
+                          (
+                            {
+                              web: "pendingActions:dynamic.origins.web",
+                              api: "pendingActions:dynamic.origins.api",
+                              mcp: "pendingActions:dynamic.origins.mcp",
+                            } as Record<string, string>
+                          )[item.origin] ??
+                            "pendingActions:dynamic.origins.unknown",
+                        )}
+                      </Badge>
                     </div>
                     <p className="text-sm text-muted-foreground">
-                      Expires{" "}
-                      {new Intl.DateTimeFormat(undefined, {
+                      {t("pendingActions:dynamic.expires")}{" "}
+                      {new Intl.DateTimeFormat(i18n.language, {
                         dateStyle: "medium",
                         timeStyle: "short",
                       }).format(new Date(item.expiresAt))}

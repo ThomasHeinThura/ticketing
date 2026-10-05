@@ -99,6 +99,35 @@ describe("API integration: SLA policy authoring contract", () => {
     const type = await createType(owner.workspace.id);
     const foreignWorkspace = await createWorkspaceMember({ role: "admin" });
     const foreignCalendar = await createCalendar(foreignWorkspace.workspace.id);
+    const [foreignPolicy] = await db
+      .insert(schema.slaPolicyTable)
+      .values({
+        workspaceId: foreignWorkspace.workspace.id,
+        name: "Foreign policy",
+      })
+      .returning();
+    if (!foreignPolicy) throw new Error("foreign SLA policy fixture missing");
+    const project = await createProjectFixture({
+      workspaceId: owner.workspace.id,
+    });
+    await expect(
+      db
+        .update(schema.workspaceTable)
+        .set({ defaultSlaPolicyId: foreignPolicy.id })
+        .where(eq(schema.workspaceTable.id, owner.workspace.id)),
+    ).rejects.toThrow();
+    await expect(
+      db
+        .update(schema.projectTable)
+        .set({ slaPolicyId: foreignPolicy.id })
+        .where(eq(schema.projectTable.id, project.project.id)),
+    ).rejects.toThrow();
+    await expect(
+      db
+        .update(schema.workItemTypeTable)
+        .set({ slaPolicyId: foreignPolicy.id })
+        .where(eq(schema.workItemTypeTable.id, type.id)),
+    ).rejects.toThrow();
     const create = (workspaceId: string, body: Record<string, unknown>) =>
       csrfRequest(
         app,
@@ -443,6 +472,33 @@ describe("API integration: SLA policy authoring contract", () => {
     );
     expect(createItem.status).toBe(200);
     const item = (await createItem.json()) as { id: string; key: string };
+    const foreignWorkspace = await createWorkspaceMember({ role: "admin" });
+    const foreignCalendar = await createCalendar(foreignWorkspace.workspace.id);
+    const [foreignPolicy] = await db
+      .insert(schema.slaPolicyTable)
+      .values({
+        workspaceId: foreignWorkspace.workspace.id,
+        name: "Foreign SLA policy",
+      })
+      .returning();
+    if (!foreignPolicy) throw new Error("foreign SLA policy fixture missing");
+    const [foreignVersion] = await db
+      .insert(schema.slaPolicyVersionTable)
+      .values({
+        workspaceId: foreignWorkspace.workspace.id,
+        policyId: foreignPolicy.id,
+        number: 1,
+        calendarId: foreignCalendar.id,
+        atRiskThresholdPct: 75,
+      })
+      .returning();
+    if (!foreignVersion) throw new Error("foreign SLA version fixture missing");
+    await expect(
+      db
+        .update(schema.workItemTable)
+        .set({ slaPolicyVersionId: foreignVersion.id })
+        .where(eq(schema.workItemTable.id, item.id)),
+    ).rejects.toThrow();
     const startedAt = new Date("2030-01-07T09:00:00.000Z");
     await db
       .update(schema.workItemTable)

@@ -183,53 +183,67 @@ export const twoFactorTable = pgTable(
   ],
 );
 
-export const workspaceTable = pgTable("workspace", {
-  id: text("id")
-    .$defaultFn(() => createId())
-    .primaryKey(),
-  // #192: every workspace is scoped to exactly one organisation -- decision log
-  // 2026-09-22 "#192's tenant-attribution decision: Option A+D". NOT NULL, backfilled by
-  // this migration's own SQL to the single internal organisation the boot seed guarantees
-  // (`apps/api/src/utils/seed-internal-organisation.ts`) -- every workspace this codebase
-  // could have created before this column existed was, in effect, internal (there is no
-  // route today that creates a workspace for any other organisation), so backfilling every
-  // existing row to that one organisation is not a guess, it is what was already true.
-  // `references(() => organisationTable.id)` is a forward reference (organisationTable is
-  // declared later in this file) -- safe because Drizzle only invokes this callback lazily,
-  // after the whole module has finished evaluating.
-  //
-  // `ON DELETE RESTRICT`, not CASCADE: this codebase has no organisation-delete route yet
-  // (organisation.deleted_at/purge_after exist since PR #179 but nothing sets or purges
-  // them -- decision log 2026-09-17 "#187's fix is project-only soft-delete..."), so this
-  // never fires today. RESTRICT is the conservative default until a real purge job (#198)
-  // deliberately decides whether deleting an organisation should cascade through every
-  // workspace it owns (and, transitively, every project/work_item beneath it) -- matching
-  // this schema's general "a referenced entity in active use cannot vanish out from under
-  // its dependents" pattern rather than silently wiring a new mass-cascade path as a side
-  // effect of this migration. `ON UPDATE CASCADE`: `organisation.id` is an immutable
-  // primary key with no update route, the same as every other single-column `*_id ->
-  // *.id` reference in this file that already uses `onUpdate: "cascade"` safely -- #191's
-  // O1 lesson is specifically about a composite FK whose referenced column set includes a
-  // *mutable, non-PK* column, which does not apply here.
-  organisationId: text("organisation_id")
-    .notNull()
-    .references(() => organisationTable.id, {
-      onDelete: "restrict",
-      onUpdate: "cascade",
-    }),
-  name: text("name").notNull(),
-  slug: text("slug").notNull().unique(),
-  logo: text("logo"),
-  metadata: text("metadata"),
-  description: text("description"),
-  deletedAt: timestamp("deleted_at", { mode: "date" }),
-  purgeAfter: timestamp("purge_after", { mode: "date" }),
-  defaultSlaPolicyId: text("default_sla_policy_id").references(
-    (): AnyPgColumn => slaPolicyTable.id,
-    { onDelete: "restrict", onUpdate: "cascade" },
-  ),
-  createdAt: timestamp("created_at", { mode: "date" }).notNull(),
-});
+function slaPolicyWorkspaceColumn(): AnyPgColumn {
+  return slaPolicyTable.workspaceId;
+}
+function slaPolicyIdColumn(): AnyPgColumn {
+  return slaPolicyTable.id;
+}
+
+export const workspaceTable = pgTable(
+  "workspace",
+  {
+    id: text("id")
+      .$defaultFn(() => createId())
+      .primaryKey(),
+    // #192: every workspace is scoped to exactly one organisation -- decision log
+    // 2026-09-22 "#192's tenant-attribution decision: Option A+D". NOT NULL, backfilled by
+    // this migration's own SQL to the single internal organisation the boot seed guarantees
+    // (`apps/api/src/utils/seed-internal-organisation.ts`) -- every workspace this codebase
+    // could have created before this column existed was, in effect, internal (there is no
+    // route today that creates a workspace for any other organisation), so backfilling every
+    // existing row to that one organisation is not a guess, it is what was already true.
+    // `references(() => organisationTable.id)` is a forward reference (organisationTable is
+    // declared later in this file) -- safe because Drizzle only invokes this callback lazily,
+    // after the whole module has finished evaluating.
+    //
+    // `ON DELETE RESTRICT`, not CASCADE: this codebase has no organisation-delete route yet
+    // (organisation.deleted_at/purge_after exist since PR #179 but nothing sets or purges
+    // them -- decision log 2026-09-17 "#187's fix is project-only soft-delete..."), so this
+    // never fires today. RESTRICT is the conservative default until a real purge job (#198)
+    // deliberately decides whether deleting an organisation should cascade through every
+    // workspace it owns (and, transitively, every project/work_item beneath it) -- matching
+    // this schema's general "a referenced entity in active use cannot vanish out from under
+    // its dependents" pattern rather than silently wiring a new mass-cascade path as a side
+    // effect of this migration. `ON UPDATE CASCADE`: `organisation.id` is an immutable
+    // primary key with no update route, the same as every other single-column `*_id ->
+    // *.id` reference in this file that already uses `onUpdate: "cascade"` safely -- #191's
+    // O1 lesson is specifically about a composite FK whose referenced column set includes a
+    // *mutable, non-PK* column, which does not apply here.
+    organisationId: text("organisation_id")
+      .notNull()
+      .references(() => organisationTable.id, {
+        onDelete: "restrict",
+        onUpdate: "cascade",
+      }),
+    name: text("name").notNull(),
+    slug: text("slug").notNull().unique(),
+    logo: text("logo"),
+    metadata: text("metadata"),
+    description: text("description"),
+    deletedAt: timestamp("deleted_at", { mode: "date" }),
+    purgeAfter: timestamp("purge_after", { mode: "date" }),
+    defaultSlaPolicyId: text("default_sla_policy_id"),
+    createdAt: timestamp("created_at", { mode: "date" }).notNull(),
+  },
+  (table) => [
+    foreignKey({
+      name: "workspace_default_sla_policy_workspace_fk",
+      columns: [table.id, table.defaultSlaPolicyId],
+      foreignColumns: [slaPolicyWorkspaceColumn(), slaPolicyIdColumn()],
+    }).onDelete("restrict"),
+  ],
+);
 
 export const workspaceUserTable = pgTable(
   "workspace_member",
@@ -405,10 +419,7 @@ export const projectTable = pgTable(
     icon: text("icon").default("Layout"),
     name: text("name").notNull(),
     description: text("description"),
-    slaPolicyId: text("sla_policy_id").references(
-      (): AnyPgColumn => slaPolicyTable.id,
-      { onDelete: "restrict", onUpdate: "cascade" },
-    ),
+    slaPolicyId: text("sla_policy_id"),
     defaultCommentVisibility: text("default_comment_visibility")
       .$type<"public" | "internal">()
       .notNull()
@@ -429,6 +440,11 @@ export const projectTable = pgTable(
   },
   (table) => [
     unique("project_workspace_id_id_unique").on(table.workspaceId, table.id),
+    foreignKey({
+      name: "project_workspace_sla_policy_fk",
+      columns: [table.workspaceId, table.slaPolicyId],
+      foreignColumns: [slaPolicyWorkspaceColumn(), slaPolicyIdColumn()],
+    }).onDelete("restrict"),
     index("project_organisation_id_idx").on(table.organisationId),
     check(
       "project_default_comment_visibility_allowed",
@@ -2429,10 +2445,7 @@ export const workItemTypeTable = pgTable(
       (): AnyPgColumn => workflowTable.id,
       { onDelete: "restrict", onUpdate: "cascade" },
     ),
-    slaPolicyId: text("sla_policy_id").references(
-      (): AnyPgColumn => slaPolicyTable.id,
-      { onDelete: "restrict", onUpdate: "cascade" },
-    ),
+    slaPolicyId: text("sla_policy_id"),
     isEpic: boolean("is_epic").default(false).notNull(),
     isChange: boolean("is_change").default(false).notNull(),
     createdAt: timestamp("created_at", { mode: "date" }).defaultNow().notNull(),
@@ -2443,6 +2456,11 @@ export const workItemTypeTable = pgTable(
   },
   (table) => [
     index("work_item_type_workspaceId_idx").on(table.workspaceId),
+    foreignKey({
+      name: "work_item_type_workspace_sla_policy_fk",
+      columns: [table.workspaceId, table.slaPolicyId],
+      foreignColumns: [slaPolicyWorkspaceColumn(), slaPolicyIdColumn()],
+    }).onDelete("restrict"),
     // Not explicitly stated as unique in data-model.md's abbreviated column list --
     // inferred from this codebase's existing key-uniqueness convention
     // (`workspace.slug`, PR #179's `role.key` per (scope, workspace_id)). Flagged as a
@@ -3163,10 +3181,7 @@ export const workItemTable = pgTable(
     cycleId: text("cycle_id"),
     moduleId: text("module_id"),
     slaStartedAt: timestamp("sla_started_at", { mode: "date" }),
-    slaPolicyVersionId: text("sla_policy_version_id").references(
-      (): AnyPgColumn => slaPolicyVersionTable.id,
-      { onDelete: "restrict", onUpdate: "no action" },
-    ),
+    slaPolicyVersionId: text("sla_policy_version_id"),
     firstResponseAt: timestamp("first_response_at", { mode: "date" }),
     resolvedAt: timestamp("resolved_at", { mode: "date" }),
     // #186 S1: NOT NULL DEFAULT 'private' -- the safe default, matching
@@ -3191,6 +3206,14 @@ export const workItemTable = pgTable(
       .notNull(),
   },
   (table) => [
+    foreignKey({
+      name: "work_item_workspace_sla_policy_version_fk",
+      columns: [table.workspaceId, table.slaPolicyVersionId],
+      foreignColumns: [
+        slaPolicyVersionTable.workspaceId,
+        slaPolicyVersionTable.id,
+      ],
+    }).onDelete("restrict"),
     // "## Indexing": create index on work_item (project_id, state_id, position);
     index("work_item_projectId_stateId_position_idx").on(
       table.projectId,
@@ -3751,7 +3774,7 @@ export const slaPolicyVersionTable = pgTable(
     foreignKey({
       name: "sla_policy_version_workspace_policy_fk",
       columns: [table.workspaceId, table.policyId],
-      foreignColumns: [slaPolicyTable.workspaceId, slaPolicyTable.id],
+      foreignColumns: [slaPolicyWorkspaceColumn(), slaPolicyIdColumn()],
     }).onDelete("cascade"),
     foreignKey({
       name: "sla_policy_version_workspace_calendar_fk",
@@ -3994,7 +4017,7 @@ export const requestTypeTable = pgTable(
     foreignKey({
       name: "request_type_workspace_sla_policy_fk",
       columns: [table.workspaceId, table.slaPolicyId],
-      foreignColumns: [slaPolicyTable.workspaceId, slaPolicyTable.id],
+      foreignColumns: [slaPolicyWorkspaceColumn(), slaPolicyIdColumn()],
     }).onDelete("restrict"),
     index("request_type_workspace_position_idx").on(
       table.workspaceId,
@@ -4061,7 +4084,7 @@ export const requestTypeVersionTable = pgTable(
     foreignKey({
       name: "request_type_version_workspace_sla_policy_fk",
       columns: [table.workspaceId, table.slaPolicyId],
-      foreignColumns: [slaPolicyTable.workspaceId, slaPolicyTable.id],
+      foreignColumns: [slaPolicyWorkspaceColumn(), slaPolicyIdColumn()],
     }).onDelete("restrict"),
     unique("request_type_version_request_type_number_unique").on(
       table.requestTypeId,

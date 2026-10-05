@@ -2652,6 +2652,104 @@
 			"accountPassword": "Hasło do konta"
 		}
 	},
+	"identityConnections": {
+		"list": {
+			"title": "Połączenia tożsamości",
+			"description": "Skonfiguruj logowanie Microsoft Entra, przeglądaj bezpieczne metadane połączeń i zarządzaj powiązanymi ustawieniami SCIM.",
+			"add": "Dodaj połączenie tożsamości",
+			"unavailable": "Połączenia tożsamości są niedostępne",
+			"loadFailed": "Nie udało się wczytać listy. Możesz nie mieć uprawnień administratora instancji.",
+			"retry": "Ponów próbę",
+			"loading": "Wczytywanie połączeń tożsamości",
+			"configured": "Skonfigurowane połączenia tożsamości",
+			"organisationBound": "Powiązane z organizacją",
+			"enabled": "Włączone",
+			"disabled": "Wyłączone",
+			"manage": "Zarządzaj ustawieniami",
+			"empty": "Nie skonfigurowano żadnych połączeń tożsamości."
+		},
+		"editor": {
+			"loading": "Wczytywanie połączenia tożsamości…",
+			"loadFailed": "Nie udało się wczytać połączenia tożsamości.",
+			"factorRequired": "Wprowadź wybrany, aktualny składnik uwierzytelniania.",
+			"stepUpFailed": "Aktualna weryfikacja administratora była niedostępna lub nie pasowała dokładnie do tej zmiany.",
+			"notFound": "Połączenie tożsamości nie jest już dostępne.",
+			"stale": "Ustawienia zmieniły się w innej sesji. Odśwież stronę przed ponowną próbą.",
+			"invalid": "Dostawca tożsamości, cel lub konfiguracja roli są nieprawidłowe.",
+			"saveFailed": "Nie udało się zapisać połączenia tożsamości. Ustawienia pozostają w tym formularzu.",
+			"created": "Utworzono połączenie tożsamości",
+			"createdDescription": "Połączenie jest wyłączone w wersji {{version}}. Włącz je dopiero po przygotowaniu konfiguracji.",
+			"openSettings": "Otwórz ustawienia połączenia",
+			"addTitle": "Dodaj połączenie Entra",
+			"editTitle": "Konfiguracja połączenia",
+			"intro": "Zmiany połączenia wymagają aktualnej weryfikacji administratora. Dane logowania klienta są szyfrowane w spoczynku i nigdy nie są ponownie wyświetlane.",
+			"notSaved": "Nie zapisano połączenia tożsamości",
+			"saved": "Zapisano połączenie tożsamości",
+			"savedDescription": "Połączenie jest zapisane w wersji {{version}}.",
+			"connectionName": "Nazwa połączenia",
+			"portal": "Portal",
+			"staffPortal": "Portal pracowniczy",
+			"customerPortal": "Portal klienta",
+			"organisationId": "Identyfikator organizacji",
+			"workspaceId": "Domyślny identyfikator wewnętrznego obszaru roboczego",
+			"tenantId": "Identyfikator dzierżawy Entra",
+			"clientId": "Identyfikator klienta aplikacji",
+			"clientSecret": "Klucz tajny klienta",
+			"replaceSecret": "Zastąp klucz tajny klienta (opcjonalnie)",
+			"scopes": "Żądane zakresy OIDC (oddzielone przecinkami lub znakami nowej linii)",
+			"domains": "Dozwolone domeny e-mail (jedna w wierszu)",
+			"jitAccess": "Dostęp just-in-time",
+			"enableJit": "Włącz aprowizację JIT",
+			"defaultRole": "Domyślny identyfikator roli (opcjonalny, gdy JIT jest wyłączone)",
+			"requiredAppRole": "Wymagana rola aplikacji Entra",
+			"maxRoleRank": "Maksymalna ranga roli",
+			"enableConnection": "Włącz to połączenie",
+			"confirmChange": "Potwierdź tę zmianę",
+			"authMethod": "Aktualna metoda uwierzytelniania",
+			"password": "Hasło",
+			"authenticatorCode": "Kod uwierzytelniający",
+			"backupCode": "Kod zapasowy",
+			"freshAuth": "Aktualne uwierzytelnianie",
+			"saving": "Zapisywanie…",
+			"createDisabled": "Utwórz wyłączone połączenie",
+			"saveApply": "Zapisz i zastosuj ustawienia",
+			"version": "Wersja konfiguracji {{version}}"
+		},
+		"events": {
+			"title": "Historia aprowizacji",
+			"loadFailed": "Historia zdarzeń jest niedostępna. Ustawienia połączenia tożsamości nie uległy zmianie.",
+			"loading": "Wczytywanie historii aprowizacji…",
+			"empty": "Nie zapisano zdarzeń aprowizacji dla tego połączenia.",
+			"listLabel": "Zdarzenia aprowizacji",
+			"older": "Starsze zdarzenia",
+			"newest": "Najnowsze zdarzenia",
+			"unknown": "Nieznane zdarzenie",
+			"kinds": {
+				"userCreated": "Utworzono użytkownika",
+				"userUpdated": "Zaktualizowano użytkownika",
+				"userDeactivated": "Dezaktywowano użytkownika",
+				"userReactivated": "Ponownie aktywowano użytkownika",
+				"groupDirectoryChanged": "Zmieniono katalog grup",
+				"groupMappingChanged": "Zmieniono mapowanie grup",
+				"groupMemberAdded": "Dodano członka grupy",
+				"groupMemberRemoved": "Usunięto członka grupy",
+				"requestDenied": "Odrzucono żądanie",
+				"authFailed": "Uwierzytelnianie nie powiodło się",
+				"tokenRotated": "Obrócono token",
+				"tokenRevoked": "Unieważniono token",
+				"connectionChanged": "Zmieniono połączenie",
+				"syncFailed": "Synchronizacja nie powiodła się"
+			},
+			"outcomes": {
+				"success": "Powodzenie"
+			},
+			"actors": {
+				"person": "Osoba",
+				"scim": "SCIM",
+				"oidc": "OIDC"
+			}
+		}
+	},
 	"pendingActions": {
 		"review": "Sprawdź",
 		"emailMismatch": "Dokładny bieżący adres e-mail nie pasuje. Żądanie pozostaje oczekujące.",
@@ -2702,7 +2800,8 @@
 			"origins": {
 				"web": "Sieć",
 				"api": "API",
-				"mcp": "MCP"
+				"mcp": "MCP",
+				"unknown": "Nieznane źródło"
 			},
 			"states": {
 				"pending": "Oczekujące",
@@ -2724,7 +2823,16 @@
 			},
 			"authenticatorCode": "Kod aplikacji uwierzytelniającej",
 			"backupCode": "Kod zapasowy",
-			"accountPassword": "Hasło do konta"
+			"accountPassword": "Hasło do konta",
+			"actions": {
+				"delete": "Usuń",
+				"bulkDelete": "Usuń zbiorczo",
+				"purge": "Usuń trwale",
+				"mcpDestructive": "Niszczące działanie MCP",
+				"userDeactivation": "Dezaktywuj osobę"
+			},
+			"unknownAction": "Nieznane działanie",
+			"expires": "Wygasa"
 		}
 	}
 }

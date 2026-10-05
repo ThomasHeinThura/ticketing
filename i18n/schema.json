@@ -11102,9 +11102,12 @@
 								},
 								"mcp": {
 									"type": "string"
+								},
+								"unknown": {
+									"type": "string"
 								}
 							},
-							"required": ["web", "api", "mcp"]
+							"required": ["web", "api", "mcp", "unknown"]
 						},
 						"states": {
 							"type": "object",
@@ -11186,6 +11189,40 @@
 						},
 						"accountPassword": {
 							"type": "string"
+						},
+						"actions": {
+							"type": "object",
+							"additionalProperties": false,
+							"properties": {
+								"delete": {
+									"type": "string"
+								},
+								"bulkDelete": {
+									"type": "string"
+								},
+								"purge": {
+									"type": "string"
+								},
+								"mcpDestructive": {
+									"type": "string"
+								},
+								"userDeactivation": {
+									"type": "string"
+								}
+							},
+							"required": [
+								"delete",
+								"bulkDelete",
+								"purge",
+								"mcpDestructive",
+								"userDeactivation"
+							]
+						},
+						"unknownAction": {
+							"type": "string"
+						},
+						"expires": {
+							"type": "string"
 						}
 					},
 					"required": [
@@ -11202,7 +11239,10 @@
 						"reasons",
 						"authenticatorCode",
 						"backupCode",
-						"accountPassword"
+						"accountPassword",
+						"actions",
+						"unknownAction",
+						"expires"
 					]
 				}
 			},
@@ -11216,6 +11256,394 @@
 				"copy",
 				"dynamic"
 			]
+		},
+		"identityConnections": {
+			"type": "object",
+			"additionalProperties": false,
+			"properties": {
+				"list": {
+					"type": "object",
+					"additionalProperties": false,
+					"properties": {
+						"title": {
+							"type": "string"
+						},
+						"description": {
+							"type": "string"
+						},
+						"add": {
+							"type": "string"
+						},
+						"unavailable": {
+							"type": "string"
+						},
+						"loadFailed": {
+							"type": "string"
+						},
+						"retry": {
+							"type": "string"
+						},
+						"loading": {
+							"type": "string"
+						},
+						"configured": {
+							"type": "string"
+						},
+						"organisationBound": {
+							"type": "string"
+						},
+						"enabled": {
+							"type": "string"
+						},
+						"disabled": {
+							"type": "string"
+						},
+						"manage": {
+							"type": "string"
+						},
+						"empty": {
+							"type": "string"
+						}
+					},
+					"required": [
+						"title",
+						"description",
+						"add",
+						"unavailable",
+						"loadFailed",
+						"retry",
+						"loading",
+						"configured",
+						"organisationBound",
+						"enabled",
+						"disabled",
+						"manage",
+						"empty"
+					]
+				},
+				"editor": {
+					"type": "object",
+					"additionalProperties": false,
+					"properties": {
+						"loading": {
+							"type": "string"
+						},
+						"loadFailed": {
+							"type": "string"
+						},
+						"factorRequired": {
+							"type": "string"
+						},
+						"stepUpFailed": {
+							"type": "string"
+						},
+						"notFound": {
+							"type": "string"
+						},
+						"stale": {
+							"type": "string"
+						},
+						"invalid": {
+							"type": "string"
+						},
+						"saveFailed": {
+							"type": "string"
+						},
+						"created": {
+							"type": "string"
+						},
+						"createdDescription": {
+							"type": "string"
+						},
+						"openSettings": {
+							"type": "string"
+						},
+						"addTitle": {
+							"type": "string"
+						},
+						"editTitle": {
+							"type": "string"
+						},
+						"intro": {
+							"type": "string"
+						},
+						"notSaved": {
+							"type": "string"
+						},
+						"saved": {
+							"type": "string"
+						},
+						"savedDescription": {
+							"type": "string"
+						},
+						"connectionName": {
+							"type": "string"
+						},
+						"portal": {
+							"type": "string"
+						},
+						"staffPortal": {
+							"type": "string"
+						},
+						"customerPortal": {
+							"type": "string"
+						},
+						"organisationId": {
+							"type": "string"
+						},
+						"workspaceId": {
+							"type": "string"
+						},
+						"tenantId": {
+							"type": "string"
+						},
+						"clientId": {
+							"type": "string"
+						},
+						"clientSecret": {
+							"type": "string"
+						},
+						"replaceSecret": {
+							"type": "string"
+						},
+						"scopes": {
+							"type": "string"
+						},
+						"domains": {
+							"type": "string"
+						},
+						"jitAccess": {
+							"type": "string"
+						},
+						"enableJit": {
+							"type": "string"
+						},
+						"defaultRole": {
+							"type": "string"
+						},
+						"requiredAppRole": {
+							"type": "string"
+						},
+						"maxRoleRank": {
+							"type": "string"
+						},
+						"enableConnection": {
+							"type": "string"
+						},
+						"confirmChange": {
+							"type": "string"
+						},
+						"authMethod": {
+							"type": "string"
+						},
+						"password": {
+							"type": "string"
+						},
+						"authenticatorCode": {
+							"type": "string"
+						},
+						"backupCode": {
+							"type": "string"
+						},
+						"freshAuth": {
+							"type": "string"
+						},
+						"saving": {
+							"type": "string"
+						},
+						"createDisabled": {
+							"type": "string"
+						},
+						"saveApply": {
+							"type": "string"
+						},
+						"version": {
+							"type": "string"
+						}
+					},
+					"required": [
+						"loading",
+						"loadFailed",
+						"factorRequired",
+						"stepUpFailed",
+						"notFound",
+						"stale",
+						"invalid",
+						"saveFailed",
+						"created",
+						"createdDescription",
+						"openSettings",
+						"addTitle",
+						"editTitle",
+						"intro",
+						"notSaved",
+						"saved",
+						"savedDescription",
+						"connectionName",
+						"portal",
+						"staffPortal",
+						"customerPortal",
+						"organisationId",
+						"workspaceId",
+						"tenantId",
+						"clientId",
+						"clientSecret",
+						"replaceSecret",
+						"scopes",
+						"domains",
+						"jitAccess",
+						"enableJit",
+						"defaultRole",
+						"requiredAppRole",
+						"maxRoleRank",
+						"enableConnection",
+						"confirmChange",
+						"authMethod",
+						"password",
+						"authenticatorCode",
+						"backupCode",
+						"freshAuth",
+						"saving",
+						"createDisabled",
+						"saveApply",
+						"version"
+					]
+				},
+				"events": {
+					"type": "object",
+					"additionalProperties": false,
+					"properties": {
+						"title": {
+							"type": "string"
+						},
+						"loadFailed": {
+							"type": "string"
+						},
+						"loading": {
+							"type": "string"
+						},
+						"empty": {
+							"type": "string"
+						},
+						"listLabel": {
+							"type": "string"
+						},
+						"older": {
+							"type": "string"
+						},
+						"newest": {
+							"type": "string"
+						},
+						"unknown": {
+							"type": "string"
+						},
+						"kinds": {
+							"type": "object",
+							"additionalProperties": false,
+							"properties": {
+								"userCreated": {
+									"type": "string"
+								},
+								"userUpdated": {
+									"type": "string"
+								},
+								"userDeactivated": {
+									"type": "string"
+								},
+								"userReactivated": {
+									"type": "string"
+								},
+								"groupDirectoryChanged": {
+									"type": "string"
+								},
+								"groupMappingChanged": {
+									"type": "string"
+								},
+								"groupMemberAdded": {
+									"type": "string"
+								},
+								"groupMemberRemoved": {
+									"type": "string"
+								},
+								"requestDenied": {
+									"type": "string"
+								},
+								"authFailed": {
+									"type": "string"
+								},
+								"tokenRotated": {
+									"type": "string"
+								},
+								"tokenRevoked": {
+									"type": "string"
+								},
+								"connectionChanged": {
+									"type": "string"
+								},
+								"syncFailed": {
+									"type": "string"
+								}
+							},
+							"required": [
+								"userCreated",
+								"userUpdated",
+								"userDeactivated",
+								"userReactivated",
+								"groupDirectoryChanged",
+								"groupMappingChanged",
+								"groupMemberAdded",
+								"groupMemberRemoved",
+								"requestDenied",
+								"authFailed",
+								"tokenRotated",
+								"tokenRevoked",
+								"connectionChanged",
+								"syncFailed"
+							]
+						},
+						"outcomes": {
+							"type": "object",
+							"additionalProperties": false,
+							"properties": {
+								"success": {
+									"type": "string"
+								}
+							},
+							"required": ["success"]
+						},
+						"actors": {
+							"type": "object",
+							"additionalProperties": false,
+							"properties": {
+								"person": {
+									"type": "string"
+								},
+								"scim": {
+									"type": "string"
+								},
+								"oidc": {
+									"type": "string"
+								}
+							},
+							"required": ["person", "scim", "oidc"]
+						}
+					},
+					"required": [
+						"title",
+						"loadFailed",
+						"loading",
+						"empty",
+						"listLabel",
+						"older",
+						"newest",
+						"unknown",
+						"kinds",
+						"outcomes",
+						"actors"
+					]
+				}
+			},
+			"required": ["list", "editor", "events"]
 		}
 	},
 	"required": [
@@ -11235,6 +11663,7 @@
 		"slaPolicies",
 		"serviceCalendars",
 		"instanceUsers",
-		"pendingActions"
+		"pendingActions",
+		"identityConnections"
 	]
 }

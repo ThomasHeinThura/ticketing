@@ -1,5 +1,10 @@
+import { createId } from "@paralleldrive/cuid2";
 import { and, eq } from "drizzle-orm";
+import { appendAuditLog } from "../audit/audit-writer";
 import db, { schema } from "../database";
+import { enqueueOutboxEvent, eventScope } from "../events/outbox";
+import { notifyCurrentInstanceAdminsOfAuditFailure } from "../instance/observability/audit-failure-notifier";
+import { recordAuditWriteFailure } from "../instance/observability/runtime";
 import { retryIdentityGrantClosure } from "./membership-projection";
 import { transitionPersonLifecycleInTransaction } from "./person-lifecycle";
 
@@ -72,5 +77,47 @@ export async function setScimIdentityActiveInTransaction(
     detail: { personId: identity.personId, active, lifecyclePolicy },
     actorType: "scim",
   });
+  if (!active) {
+    const payload = {
+      source: "scim" as const,
+      identityConnectionId: connectionId,
+      personId: identity.personId,
+      sessionsRevoked: changed.sessionsRevoked,
+      keysRevoked: changed.keysRevoked,
+      membershipsEnded: changed.membershipsEnded,
+    };
+    await enqueueOutboxEvent(tx, {
+      id: `evt_${createId()}`,
+      kind: "identity.deprovisioned",
+      occurredAt: now.toISOString(),
+      actor: { type: "system", id: null, name: "TaskDesk SCIM" },
+      scope: eventScope({
+        workspaceId: null,
+        organisationId: null,
+        projectId: null,
+      }),
+      payload,
+      causationId: null,
+      depth: 0,
+      originAutomationId: null,
+    });
+    try {
+      await tx.transaction(async (auditTx) =>
+        appendAuditLog(auditTx, {
+          actorId: null,
+          actorType: "system",
+          action: "identity.deprovisioned",
+          entityType: "person",
+          entityId: identity.personId,
+          workspaceId: null,
+          before: null,
+          after: payload,
+        }),
+      );
+    } catch {
+      recordAuditWriteFailure("mutation");
+      await notifyCurrentInstanceAdminsOfAuditFailure("mutation");
+    }
+  }
   return true;
 }
