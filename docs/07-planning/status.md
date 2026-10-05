@@ -1,3 +1,22 @@
+## Bulk authority/schema clear; complete UI correction remains — 2026-10-05
+
+Three independent ordinary panels reviewed exact `d2092ea94f220e303ef5ff50e43961b593893512`.
+Authority and schema/domain are CLEAR; UI/client is BLOCKED. Original exact-head reports
+are retained unchanged under `security-reviews/p4-d2092ea9-*-luna.md`. UI identifies remaining
+literal identity-list/event-error copy and stale SCIM parent-test mocks that omit the mounted
+mapping-options child's request. One Luna batch fixes both and inventories the entire changed
+admin journey, with structural localization regression rather than another small string patch.
+
+Root combined typecheck passes nine tasks. Full unit verification fails (nine of twelve tasks):
+API92files/675tests pass plus one SSRF timeout; isolated SSRF1file/4tests then passes. Isolated
+web reproduction passes command-palette3tests but reproduces SCIM2failures/one unhandled mock
+response error (two files: four pass/two fail). Original logs remain private; scoped passes do
+not relabel the full run green. Docker's build attempt fails with BuildKit `no such job`; no
+current image or boot acceptance is claimed. Final correct image metadata uses Dockerfile's
+`VERSION`/`GIT_SHA` arguments. Broad checks resume on the complete corrected source, not this
+known-blocked checkpoint. Full independent Sol follows ordinary clearance; no deployment or
+phase-completion claim. Accepted P0 main/DEV and October6 timing remain unchanged.
+
 ## Complete integration correction frozen for bulk review — 2026-10-05
 
 Preservation author `c40fbe3664cc7a512a0e410b9179ae87673e0c96` joins the full
