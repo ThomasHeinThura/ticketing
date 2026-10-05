@@ -1,3 +1,60 @@
+## Complete final board/LCP batch composed; bulk review before publication — 2026-10-05 03:54 UTC
+
+Full source **658e766732d3d285e0c9cb9a705ce1aefcab75ca** is clean/pushed on its author
+branch and normally fast-forward composed locally. Work-route create trigger and board/list
+delete confirmation become lazy modules; localized project heading/capability/create action
+and sortable interactions remain. Board selection/focus use one shallow subscription per
+card. One contrast caller chain follows the actual moved confirmation; thresholds/surfaces
+are unchanged. Tokens/both builds/228pairs, web types, focused2files7tests and scoped
+browser3create/1boardkeyboard-delete-cancel/2geometry-and-drag pass. Fixtures retain500rows,
+1000links,200cards and50writes in the interaction proof; canonical100writes is unchanged.
+Scoped LCP2336ms median (2336,3192,2280) and board280.1ms (278.6,280.8,280.1) pass
+registered strict2500/500budgets. The3192sample records the visible realtime-outage notice
+as LCP; it is retained, not hidden or substituted. These are author results, not a controlled
+causal comparison or new hosted22/22 acceptance.
+
+Root freezes the complete composition with actual prior CI/runtime/date/source comparison
+records for risk-sized bulk delta Luna/Sol review before one PR publication/hosted/image
+cycle.00d hosted20/22 remains the current actual acceptance result. Its ordinary A cleared
+mutation scope, not the subsequent658source. Main8ddb and reviewedDEVb58 remain unchanged.
+P4 full deactivation/PA/person-lifecycle implementation continues in its isolated branch;
+no live schema union, protected acceptance, cutover or stage claim.
+
+## P0 hosted20/22; visual gate cleared; final two-path implementation active — 2026-10-05 03:39 UTC
+
+Frozen/pushed candidate **00d6175a4e0b61bbe149b5c530949bb96f7d0a48** finishes hosted
+full37255729825 with G8/G4/route E2E and PostgreSQL136files1649tests passing.
+G11 **20/22FAIL**: list LCP2600/2500ms and200-card board656.7/500ms remain.
+State180/200, assignment180.4/200, list499.5/500, create153.6/200 and dragp9516.8/20
+pass under unchanged budgets/data/retry rules. Fast37255729958 passes12/13jobs:
+static, web107files433tests/UI60files306tests/12unit tasks and other gates pass;
+only the pending PR-template/security-review record fails. Native-sidebar Linux baseline
+now passes actual hosted G8. No unchanged canonical rerun or protection bypass.
+
+Fresh ordinary Luna A clears00d after14mutationtests; remaining bulk panels/Sol wait
+for the full new board/LCP source correction. Private source-aligned hosted diagnostic
+selects961files with digest90117c0122e2d92aea609d03891955c3c0965009eee402812f835c05fb43cce8,
+recomputed equal over00d. Embedded38e0710 is its hosted merge SHA, not candidateSHA.
+Diagnostic LCP2908/board781ms remain distinct from hosted medians2600/656.7.
+The isolated author is implementing the actual work-route startup and board mount seams;
+no new source checkpoint, acceptance or causal improvement is yet claimed.
+
+Exact00d image/runtime proof passes revision/nonrootUID10001/live-ready/migration prefix,
+auth/CAS/metrics negatives and reconciled129requests/28eligible sources/44rows127occurrences.
+Actual Oct5T03:19:12–19UTC result digestc31e9157bcf526496561130737e10e4cd3c531e6513a782c6c813e7c04a71b97.
+This remains a second partial representative UTC date, not a third/full-day/all-route claim.
+A source-byte comparison with the Oct4 capture finds identical registry routes/
+sources and two unchanged pre-guard hashes. API index hash differs only in the corrected
+static-serving documentation block; all bytes outside that block are exactly equal. Raw
+hashes are not relabeled equal, and this comparison is not independent security clearance.
+Reviewed DEV remainsb58. A live Chrome sign-in attempt is blocked by extension UI before
+successful submission; no authenticated UI walkthrough/screenshot is claimed for that
+attempt. Separately attributed server probes and built browser journeys remain valid.
+P4 isolated Users/deactivation/person-lifecycle/PA integration proceeds in parallel with
+accepted80 and DEV-applied88 prefixes preserved. No suffix is live-applied or stage accepted.
+Live GitHub main is rechecked at8ddb; G11required activation, protected acceptance,
+Oct6 evidence/cutover and additional fresh Sol finalizer remain open.
+
 ## Reviewed P0 deployed; complete performance correction composed — 2026-10-05 02:32 UTC
 
 Reviewed source **b58c965426752f19a25d287bfb9000c678b0dd98** is now running in
@@ -3691,12 +3748,11 @@ cutover and the additional fresh Sol phase finalizer remain required.
 
 ### P0 #10 — hosted performance and protected acceptance
 
-Reviewed b58 is deployed for development. Its actual hosted G11 result is18/22: LCP,
-state, assignment and board fail their unchanged budgets. G8 fails only the missing new
-native-sidebar Linux snapshot. Complete source corrections and that snapshot are now
-composed locally; final source-bound contrast/build/browser verification precedes the
-next publication, bulk delta reviews and hosted acceptance. G4/route E2E/PostgreSQL pass
-at b58. Local scoped passes are author evidence, not hosted acceptance. G11 must pass and
+Reviewed b58 is deployed for development. Current published00d hosted G11 is20/22:
+list LCP2600/2500 and board656.7/500ms fail. State/assignment now pass; the missing
+native-sidebar snapshot is corrected and actual G8 passes. G4/route E2E/PostgreSQL and
+static/unit gates also pass at00d. The full remaining startup/board implementation is
+active on an isolated branch before the next composed bulk review and hosted acceptance. Local scoped passes are author evidence, not hosted acceptance. G11 must pass and
 become a required protected context before acceptance; the ruleset retains17 required
 contexts and zero bypass actors. See the newest dated snapshot for exact heads/counts.
 No phase completion or threshold waiver is claimed.
