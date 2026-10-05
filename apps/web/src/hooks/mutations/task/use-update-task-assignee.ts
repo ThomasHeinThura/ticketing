@@ -3,12 +3,12 @@ import updateTaskAssignee from "@/fetchers/task/update-task-assignee";
 import type Task from "@/types/task";
 import { invalidateTaskFieldQueries } from "./invalidate-task-field-queries";
 import {
-  isCurrentTaskFieldMutationVersion,
-  nextTaskFieldMutationVersion,
+  beginOptimisticTaskFieldMutation,
+  settleOptimisticTaskFieldMutation,
 } from "./optimistic-task-version";
 
 type AssigneeFields = Pick<Task, "userId" | "assigneeId" | "assigneeName">;
-type TaskUpdateContext = { previousAssignee?: AssigneeFields; version: number };
+type TaskUpdateContext = { version: number };
 
 export function useUpdateTaskAssignee() {
   const queryClient = useQueryClient();
@@ -19,27 +19,30 @@ export function useUpdateTaskAssignee() {
     onMutate: (task): TaskUpdateContext | Promise<TaskUpdateContext> => {
       const queryKey = ["task", task.id];
       const applyUpdate = (): TaskUpdateContext => {
-        const version = nextTaskFieldMutationVersion(
+        const assignee = {
+          userId: task.userId,
+          assigneeId: task.assigneeId,
+          assigneeName: task.assigneeName,
+        };
+        const version = beginOptimisticTaskFieldMutation(
           queryClient,
           task.id,
           "assignee",
+          assignee,
+          (current) =>
+            current
+              ? {
+                  userId: current.userId,
+                  assigneeId: current.assigneeId,
+                  assigneeName: current.assigneeName,
+                }
+              : undefined,
+          (current, value) => ({
+            ...current,
+            ...(value as AssigneeFields),
+          }),
         );
-        const previousTask = queryClient.getQueryData<Task>(queryKey);
-        const previousAssignee = previousTask
-          ? {
-              userId: previousTask.userId,
-              assigneeId: previousTask.assigneeId,
-              assigneeName: previousTask.assigneeName,
-            }
-          : undefined;
-        if (previousTask)
-          queryClient.setQueryData<Task>(queryKey, {
-            ...previousTask,
-            userId: task.userId,
-            assigneeId: task.assigneeId,
-            assigneeName: task.assigneeName,
-          });
-        return { previousAssignee, version };
+        return { version };
       };
 
       const fetchStatus = queryClient.getQueryState(queryKey)?.fetchStatus;
@@ -54,23 +57,32 @@ export function useUpdateTaskAssignee() {
       return cancellation.then(() => context);
     },
     onError: (_error, task, context) => {
-      const previousAssignee = context?.previousAssignee;
-      if (
-        !previousAssignee ||
-        context === undefined ||
-        !isCurrentTaskFieldMutationVersion(
-          queryClient,
-          task.id,
-          "assignee",
-          context.version,
-        )
-      )
-        return;
-      queryClient.setQueryData<Task>(["task", task.id], (current) =>
-        current ? { ...current, ...previousAssignee } : current,
+      if (!context) return;
+      settleOptimisticTaskFieldMutation(
+        queryClient,
+        task.id,
+        "assignee",
+        context.version,
+        false,
+        (current, value) => ({
+          ...current,
+          ...(value as AssigneeFields),
+        }),
       );
     },
-    onSuccess: (_, variables) => {
+    onSuccess: (_, variables, context) => {
+      if (context)
+        settleOptimisticTaskFieldMutation(
+          queryClient,
+          variables.id,
+          "assignee",
+          context.version,
+          true,
+          (current, value) => ({
+            ...current,
+            ...(value as AssigneeFields),
+          }),
+        );
       invalidateTaskFieldQueries(queryClient, {
         projectId: variables.projectId,
         taskId: variables.id,

@@ -21,6 +21,10 @@ test("work-list create dialog shell opens, closes, and reopens independently of 
   await trigger.click();
   await expect(dialog).toBeVisible();
   await expect(dialog.getByRole("heading", { name: /create/i })).toBeVisible();
+  await expect(dialog.locator('[data-slot="dialog-title"]')).toHaveCount(1);
+  await expect(dialog.locator('[data-slot="dialog-description"]')).toHaveCount(
+    1,
+  );
   await expect(dialog.getByTestId("create-work-item-title")).toBeVisible();
   await page.screenshot({
     path: testInfo.outputPath("create-work-item-dialog.png"),
@@ -168,7 +172,8 @@ test("a failed dialog intent preload keeps the shell available and reloads for r
   await trigger.focus();
   await failedPreload;
   await page.evaluate(
-    () => new Promise<void>((resolve) => requestAnimationFrame(() => resolve())),
+    () =>
+      new Promise<void>((resolve) => requestAnimationFrame(() => resolve())),
   );
   await trigger.press("Enter");
 

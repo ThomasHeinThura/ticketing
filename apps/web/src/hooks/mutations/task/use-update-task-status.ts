@@ -3,11 +3,11 @@ import updateTaskStatus from "@/fetchers/task/update-task-status";
 import type Task from "@/types/task";
 import { invalidateTaskFieldQueries } from "./invalidate-task-field-queries";
 import {
-  isCurrentTaskFieldMutationVersion,
-  nextTaskFieldMutationVersion,
+  beginOptimisticTaskFieldMutation,
+  settleOptimisticTaskFieldMutation,
 } from "./optimistic-task-version";
 
-type TaskUpdateContext = { previousStatus?: string; version: number };
+type TaskUpdateContext = { version: number };
 
 export function useUpdateTaskStatus() {
   const queryClient = useQueryClient();
@@ -18,19 +18,15 @@ export function useUpdateTaskStatus() {
     onMutate: (task): TaskUpdateContext | Promise<TaskUpdateContext> => {
       const queryKey = ["task", task.id];
       const applyUpdate = (): TaskUpdateContext => {
-        const version = nextTaskFieldMutationVersion(
+        const version = beginOptimisticTaskFieldMutation(
           queryClient,
           task.id,
           "status",
+          task.status,
+          (current) => current?.status,
+          (current, value) => ({ ...current, status: value as string }),
         );
-        const previousTask = queryClient.getQueryData<Task>(queryKey);
-        const previousStatus = previousTask?.status;
-        if (previousTask)
-          queryClient.setQueryData<Task>(queryKey, {
-            ...previousTask,
-            status: task.status,
-          });
-        return { previousStatus, version };
+        return { version };
       };
 
       const fetchStatus = queryClient.getQueryState(queryKey)?.fetchStatus;
@@ -45,23 +41,26 @@ export function useUpdateTaskStatus() {
       return cancellation.then(() => context);
     },
     onError: (_error, task, context) => {
-      const previousStatus = context?.previousStatus;
-      if (
-        previousStatus === undefined ||
-        context === undefined ||
-        !isCurrentTaskFieldMutationVersion(
-          queryClient,
-          task.id,
-          "status",
-          context.version,
-        )
-      )
-        return;
-      queryClient.setQueryData<Task>(["task", task.id], (current) =>
-        current ? { ...current, status: previousStatus } : current,
+      if (!context) return;
+      settleOptimisticTaskFieldMutation(
+        queryClient,
+        task.id,
+        "status",
+        context.version,
+        false,
+        (current, value) => ({ ...current, status: value as string }),
       );
     },
-    onSuccess: (_, variables) => {
+    onSuccess: (_, variables, context) => {
+      if (context)
+        settleOptimisticTaskFieldMutation(
+          queryClient,
+          variables.id,
+          "status",
+          context.version,
+          true,
+          (current, value) => ({ ...current, status: value as string }),
+        );
       invalidateTaskFieldQueries(queryClient, {
         projectId: variables.projectId,
         taskId: variables.id,
