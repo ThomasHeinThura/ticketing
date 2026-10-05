@@ -1,3 +1,28 @@
+## P1–P4 continue during P0 observation wait — 2026-10-05
+
+Thomas explicitly directs continued parallel P1–P4 execution and permits P1/P2 integration
+acceptance alongside P0 when genuine phase criteria clear. The complete integration source
+5e has three ordinary Luna scopes and full independent Sol CLEAR,321files/2446unit tests,
+14files/88permission tests and113migration/nonroot/health image proof. The later fullPG18
+run fails142files(123failed/19passed),1700tests(1082failed/583passed/35reportedskipped).
+No acceptance or protected merge is claimed while these failures remain. Review reports and
+failure history are retained in source-bound security-review checkpoints.
+
+A dedicated Luna lane implements the complete structural fixture/reset/environment correction
+and verifies a capabilities composition regression against acceptedmain3096. A fresh exclusive
+PostgreSQL18 test database is ready; shared DEV remains untouched. Another bounded Luna lane
+checks real P1/P2/P3/P4 exit criteria and identifies the next full implementation deliverables.
+P4 query bucketA is implemented/pushed as9d8faf17d63394603c296c60a73cd99de1296eb3:
+work-item/task/task-relation reads now belong to repositories; API typecheck,75fileBiome and
+4files/13targeted unit tests pass. SQL verification/whole-refactor acceptance remain pending.
+BucketB pauses only for agent capacity and resumes after the bounded phase-gap inventory.
+
+P0 #10 is closed under Thomas's query timing deferral; #580 retains full P4 query work.
+P0 #8 remains for October6actualsource-bound observation, eligible cutover and additional
+fresh Sol finalizer. No P1–P4 phase completion, outbox delivery or real Entra claim is made.
+These control-plane changes accompany the next complete corrected candidate and its required
+current-source review; earlier5e reports do not attest this newer documentation head.
+
 ## Complete identity/SCIM UI batch composed for final bulk delta — 2026-10-05
 
 Complete author `0a75f4adf253d3f5bf9f72cce5d0977cf617d818` is composed as

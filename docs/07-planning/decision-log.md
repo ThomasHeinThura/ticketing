@@ -1,3 +1,16 @@
+### 2026-10-05 · Continue P1–P4 execution and prepare combined phase acceptance
+
+Thomas explicitly instructs the orchestrator to check and continue P1, P2, P3 and P4
+in parallel while P0 awaits its actual October6 observation. P1/P2 integration acceptance
+may be prepared and closed alongside P0 when their own actual exit criteria and additional
+Sol phase-finalizer passes are satisfied. A P0 observation wait does not stop dependency-safe
+implementation or review. This selects execution and acceptance timing, not a waiver of
+phase requirements, protected CI, independent reviews, browser/runtime proof or known defects.
+Complete implementation batches precede bulk review. Human design review remains deferred
+to integrated P4 under Thomas's earlier decision.
+
+**Recorded:** orchestrator, Thomas's explicit instruction in this chat, 2026-10-05.
+
 ### 2026-10-05 · Thomas defers repository refactor and query-gate acceptance from P0 to P4
 
 **Decision:** Thomas explicitly selects “Defer repository refactor and check:queries
