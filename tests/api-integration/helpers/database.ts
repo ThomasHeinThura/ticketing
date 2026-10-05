@@ -101,9 +101,13 @@ async function listPublicTableNames(): Promise<string[]> {
 }
 
 export async function resetTestDatabase() {
-  await ensureTestDatabaseMigrated();
+  await ensureTestDatabaseExists();
+  let tableNames = await listPublicTableNames();
 
-  const tableNames = await listPublicTableNames();
+  if (tableNames.length === 0) {
+    await ensureTestDatabaseMigrated();
+    tableNames = await listPublicTableNames();
+  }
 
   if (tableNames.length === 0) {
     throw new Error(
@@ -127,4 +131,6 @@ export async function resetTestDatabase() {
       sql.raw(`TRUNCATE TABLE ${formattedTableNames} RESTART IDENTITY CASCADE`),
     );
   });
+
+  await ensureTestDatabaseMigrated();
 }
