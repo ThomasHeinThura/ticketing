@@ -1,3 +1,9 @@
+> **Query-gate stage timing (Thomas, 2026-10-05):** the inherited repository refactor
+> and `check:queries` acceptance move from P0 to P4. The complete query ownership gate
+> must be implemented, enabled and accepted before P4 completion; no inherited baseline
+> or permanent exemption is selected. Existing required CI and authorization checks remain
+> unchanged. See the named decision in [decision-log.md](../07-planning/decision-log.md).
+
 # CI/CD
 
 ## Pipelines

@@ -1,3 +1,26 @@
+## Thomas defers query ownership to P4; P0 closure scope reconciled — 2026-10-05
+
+Thomas explicitly chooses to defer the inherited repository refactor and `check:queries`
+acceptance from P0 to P4. The named decision is recorded in decision-log.md and the bootstrap/
+CI stage timing is explicit. Full implementation is tracked in [#580](https://github.com/ThomasHeinThura/ticketing/issues/580),
+required before P4 completion; no permanent baseline or existing protected-check waiver is
+selected. Author typed inventory reports352Drizzle select calls across148API files, with no
+repository.ts layer; the earlier same-line one-call estimate was incomplete. The gap concerns
+query ownership organization; this audit demonstrates no authorization exploit.
+
+The read-only #10 reconciliation checks actual acceptedmain3096, successful corrected fast
+37302827641/full37300050276 and live18-context protection. Originalfast37300050345's stale-body
+failure remains recorded. MCP parity is already future-P4 under Thomas's September28 decision.
+With the newly explicit query timing, #10's applicable P0 CI acceptance can close independently
+of the whole phase; future query work remains tracked. Historical issue criteria/evidence are
+preserved with current acceptance checkpoints. #8 remains open for October6 qualifying
+observation, eligible reviewed cutover and P0 acceptance; fresh additional Sol finalizer remains.
+
+Current P1–P4 integration still has the complete SCIM fixture/localization implementation batch
+in progress. Completed authority/schema ordinary panels remain at exactd209; UI is blocked and
+retained. New source will receive a single bulk delta panel and full independent Sol before
+current CI/image/runtime acceptance and protected merge. Accepted P0 DEV remains unchanged.
+
 ## Bulk authority/schema clear; complete UI correction remains — 2026-10-05
 
 Three independent ordinary panels reviewed exact `d2092ea94f220e303ef5ff50e43961b593893512`.

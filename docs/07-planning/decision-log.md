@@ -1,3 +1,24 @@
+### 2026-10-05 · Thomas defers repository refactor and query-gate acceptance from P0 to P4
+
+**Decision:** Thomas explicitly selects “Defer repository refactor and check:queries
+acceptance to P4 (recommended)” in this chat. This supersedes only the P0 timing of
+repository-bootstrap section 4 step 4/section 5 and #10's `check:queries` acceptance;
+it does not remove the repository-ownership contract or waive any existing protected CI,
+authorization, independent review or phase-finalizer requirement. The complete refactor
+and gate must be accepted in P4 before P4 completion, with ordinary independent review,
+required Sol review and real verification. No legacy baseline or permanent exemption is
+selected. MCP parity retains its separately decided future-capability applicability.
+
+**Reason/evidence:** accepted main3096 has no repository.ts layer. The bounded typed API
+inventory reports352Drizzle select calls across148files; its earlier same-line lexical
+one-call estimate was incomplete and is superseded. This structural refactor is substantial
+and has no demonstrated authorization exploit in this audit. Track full implementation
+as P4 issue #580 while finishing P0's actual-date observation, eligible cutover and additional
+fresh independent Sol finalizer. Existing P0 source and deployment are unchanged.
+
+**Recorded:** orchestrator; explicit Thomas answer on 2026-10-05. This is a named stage-scope
+deferral by Thomas, not an agent-selected gate waiver or permission to claim completed work.
+
 ### 2026-10-05 · Run the final actual P0 observation at the earliest next UTC date
 
 Move the existing `p0-remaining-evidence-dates` heartbeat's remaining run from local
