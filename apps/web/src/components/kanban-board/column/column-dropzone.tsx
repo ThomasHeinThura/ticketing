@@ -17,9 +17,6 @@ type ColumnDropzoneProps = {
   projectColumns: ProjectWithTasks["columns"];
   columnCompletionBySlug: ReadonlyMap<string, boolean>;
   displayPreferences: TaskCardDisplayPreferences;
-  selectedTaskIds: Set<string>;
-  focusedTaskId: string | null;
-  toggleSelection: TaskCardProps["toggleSelection"];
   disableDragDrop?: boolean;
   onIsOverChange?: (isOver: boolean) => void;
   workspaceId?: string;
@@ -35,9 +32,6 @@ export function ColumnDropzone({
   projectColumns,
   columnCompletionBySlug,
   displayPreferences,
-  selectedTaskIds,
-  focusedTaskId,
-  toggleSelection,
   disableDragDrop = false,
   onIsOverChange,
   workspaceId,
@@ -70,9 +64,6 @@ export function ColumnDropzone({
           projectColumns={projectColumns}
           columnCompletionBySlug={columnCompletionBySlug}
           displayPreferences={displayPreferences}
-          selectedTaskIds={selectedTaskIds}
-          focusedTaskId={focusedTaskId}
-          toggleSelection={toggleSelection}
           disableDragDrop={disableDragDrop}
           workspaceId={workspaceId}
           workspaceUsersById={workspaceUsersById}
@@ -91,9 +82,6 @@ const TaskCardList = memo(function TaskCardList({
   projectColumns,
   columnCompletionBySlug,
   displayPreferences,
-  selectedTaskIds,
-  focusedTaskId,
-  toggleSelection,
   disableDragDrop = false,
   workspaceId,
   workspaceUsersById,
@@ -114,9 +102,6 @@ const TaskCardList = memo(function TaskCardList({
               : task.status === "done" || task.status === "archived"
           }
           displayPreferences={displayPreferences}
-          isTaskSelected={selectedTaskIds.has(task.id)}
-          isTaskFocused={focusedTaskId === task.id}
-          toggleSelection={toggleSelection}
           disableDragDrop={disableDragDrop}
           workspaceId={workspaceId}
           assignee={

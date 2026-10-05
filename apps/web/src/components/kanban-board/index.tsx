@@ -79,25 +79,15 @@ function KanbanBoard({
       showTaskItemCounts: state.showTaskItemCounts,
     })),
   ) as TaskCardDisplayPreferences;
-  const {
-    setAvailableTasks,
-    focusNext,
-    focusPrevious,
-    focusedTaskId,
-    selectedTaskIds,
-    toggleSelection,
-    clearFocus,
-  } = useBulkSelectionStore(
-    useShallow((state) => ({
-      setAvailableTasks: state.setAvailableTasks,
-      focusNext: state.focusNext,
-      focusPrevious: state.focusPrevious,
-      focusedTaskId: state.focusedTaskId,
-      selectedTaskIds: state.selectedTaskIds,
-      toggleSelection: state.toggleSelection,
-      clearFocus: state.clearFocus,
-    })),
-  );
+  const { setAvailableTasks, focusNext, focusPrevious, clearFocus } =
+    useBulkSelectionStore(
+      useShallow((state) => ({
+        setAvailableTasks: state.setAvailableTasks,
+        focusNext: state.focusNext,
+        focusPrevious: state.focusPrevious,
+        clearFocus: state.clearFocus,
+      })),
+    );
   const [activeId, setActiveId] = useState<UniqueIdentifier | null>(null);
   const [contextMenuTaskId, setContextMenuTaskId] = useState<string | null>(
     null,
@@ -196,6 +186,7 @@ function KanbanBoard({
         }
       },
       Enter: () => {
+        const focusedTaskId = useBulkSelectionStore.getState().focusedTaskId;
         if (focusedTaskId && project) {
           navigate({
             to: "/dashboard/workspace/$workspaceId/project/$projectId/task/$taskId",
@@ -400,9 +391,6 @@ function KanbanBoard({
                       projectColumns={project.columns}
                       columnCompletionBySlug={columnCompletionBySlug}
                       displayPreferences={displayPreferences}
-                      selectedTaskIds={selectedTaskIds}
-                      focusedTaskId={focusedTaskId}
-                      toggleSelection={toggleSelection}
                       disableDragDrop={disableDragDrop}
                       workspaceId={workspaceId}
                       workspaceUsersById={workspaceUsersById}
@@ -443,9 +431,6 @@ function KanbanBoard({
                   project.columns,
                 )}
                 displayPreferences={displayPreferences}
-                isTaskSelected={selectedTaskIds.has(activeTask.id)}
-                isTaskFocused={focusedTaskId === activeTask.id}
-                toggleSelection={toggleSelection}
                 workspaceId={workspaceId}
                 assignee={
                   activeTask.userId

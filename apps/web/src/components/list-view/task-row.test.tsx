@@ -1,13 +1,9 @@
 import { cleanup, render, screen } from "@testing-library/react";
 import type { TFunction } from "i18next";
 import { afterEach, describe, expect, it, vi } from "vitest";
+import useBulkSelectionStore from "@/store/bulk-selection";
 import type Task from "@/types/task";
 import TaskRow from "./task-row";
-
-vi.mock("@/store/bulk-selection", () => ({
-  default: (selector: (state: { toggleSelection: () => void }) => unknown) =>
-    selector({ toggleSelection: vi.fn() }),
-}));
 
 vi.mock("react-i18next", () => ({
   useTranslation: () => ({ t: (key: string) => key }),
@@ -17,6 +13,10 @@ vi.mock("react-i18next", () => ({
 afterEach(() => {
   cleanup();
   vi.clearAllMocks();
+  useBulkSelectionStore.setState({
+    selectedTaskIds: new Set(),
+    focusedTaskId: null,
+  });
 });
 
 const task: Task = {
@@ -63,8 +63,6 @@ describe("TaskRow", () => {
           showLabels: true,
           showTaskNumbers: true,
         }}
-        focused={false}
-        selected={false}
         onOpenTask={vi.fn()}
         t={((key: string) => key) as unknown as TFunction}
       />,
@@ -78,6 +76,10 @@ describe("TaskRow", () => {
 
   it("keeps focus, selection, and row opening behavior on the memoized row", async () => {
     const onOpenTask = vi.fn();
+    useBulkSelectionStore.setState({
+      selectedTaskIds: new Set([task.id]),
+      focusedTaskId: task.id,
+    });
     render(
       <TaskRow
         task={task}
@@ -90,8 +92,6 @@ describe("TaskRow", () => {
           showLabels: true,
           showTaskNumbers: true,
         }}
-        focused
-        selected
         onOpenTask={onOpenTask}
         t={((key: string) => key) as unknown as TFunction}
       />,

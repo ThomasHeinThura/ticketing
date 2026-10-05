@@ -230,14 +230,15 @@ function ListView({ project, disableDragDrop = false }: ListViewProps) {
     }
     setContextMenuTaskId(taskRow.dataset.taskId ?? null);
   };
-  const {
-    setAvailableTasks,
-    focusNext,
-    focusPrevious,
-    focusedTaskId,
-    selectedTaskIds,
-    clearFocus,
-  } = useBulkSelectionStore();
+  const { setAvailableTasks, focusNext, focusPrevious, clearFocus } =
+    useBulkSelectionStore(
+      useShallow((state) => ({
+        setAvailableTasks: state.setAvailableTasks,
+        focusNext: state.focusNext,
+        focusPrevious: state.focusPrevious,
+        clearFocus: state.clearFocus,
+      })),
+    );
   const { mutate: updateTask } = useUpdateTask();
   const [activeId, setActiveId] = useState<UniqueIdentifier | null>(null);
   const [overColumnId, setOverColumnId] = useState<string | null>(null);
@@ -289,6 +290,7 @@ function ListView({ project, disableDragDrop = false }: ListViewProps) {
         }
       },
       Enter: () => {
+        const focusedTaskId = useBulkSelectionStore.getState().focusedTaskId;
         if (focusedTaskId && project) {
           navigate({
             to: "/dashboard/workspace/$workspaceId/project/$projectId/task/$taskId",
@@ -533,8 +535,6 @@ function ListView({ project, disableDragDrop = false }: ListViewProps) {
                             : undefined
                         }
                         displayPreferences={displayPreferences}
-                        selected={selectedTaskIds.has(task.id)}
-                        focused={focusedTaskId === task.id}
                         onOpenTask={handleOpenTask}
                         t={t}
                       />
