@@ -9,7 +9,6 @@ import { cn } from "../lib/cn";
 import { useIsMobile } from "../lib/use-mobile";
 import { Button } from "./button";
 import { Input } from "./input";
-import { ScrollArea } from "./scroll-area";
 import { Separator } from "./separator";
 import {
   Sheet,
@@ -408,22 +407,57 @@ function SidebarSeparator({
   );
 }
 
-function SidebarContent({ className, ...props }: React.ComponentProps<"div">) {
-  return (
-    <ScrollArea
-      className="**:data-[slot=scroll-area-scrollbar]:hidden"
-      scrollFade
-    >
+const LazySidebarScrollArea = React.lazy(async () => {
+  const module = await import("./scroll-area");
+  return { default: module.ScrollArea };
+});
+
+function SidebarContent({
+  className,
+  nativeScroll = false,
+  ...props
+}: React.ComponentProps<"div"> & { nativeScroll?: boolean }) {
+  const contentClassName = cn(
+    "flex min-h-0 flex-1 flex-col gap-2 overflow-auto group-data-[collapsible=icon]:overflow-hidden",
+    className,
+  );
+
+  if (nativeScroll) {
+    return (
       <div
-        className={cn(
-          "flex min-h-0 flex-1 flex-col gap-2 overflow-auto group-data-[collapsible=icon]:overflow-hidden",
-          className,
-        )}
+        className={cn(contentClassName, "overflow-y-auto")}
         data-sidebar="content"
         data-slot="sidebar-content"
         {...props}
       />
-    </ScrollArea>
+    );
+  }
+
+  return (
+    <React.Suspense
+      fallback={
+        <div className="min-h-0 flex-1">
+          <div
+            className={contentClassName}
+            data-sidebar="content"
+            data-slot="sidebar-content"
+            {...props}
+          />
+        </div>
+      }
+    >
+      <LazySidebarScrollArea
+        className="**:data-[slot=scroll-area-scrollbar]:hidden"
+        scrollFade
+      >
+        <div
+          className={contentClassName}
+          data-sidebar="content"
+          data-slot="sidebar-content"
+          {...props}
+        />
+      </LazySidebarScrollArea>
+    </React.Suspense>
   );
 }
 

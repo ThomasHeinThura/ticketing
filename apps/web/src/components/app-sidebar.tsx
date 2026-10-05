@@ -46,7 +46,7 @@ export function AppSidebar({ ...props }: AppSidebarProps) {
       <SidebarHeader className="pt-1 pb-1.5">
         <WorkspaceSwitcher />
       </SidebarHeader>
-      <SidebarContent className="overflow-hidden gap-1 py-1">
+      <SidebarContent className="overflow-hidden gap-1 py-1" nativeScroll>
         <Search />
         <NavMain />
         <NavProjects />

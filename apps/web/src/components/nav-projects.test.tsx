@@ -192,13 +192,15 @@ describe("NavProjects drag-and-drop setup", () => {
     expect(mocks.sortable).not.toHaveBeenCalled();
   });
 
-  it("keeps the sortable context mounted when project reordering is authorized", () => {
+  it("loads sortable infrastructure when project reordering is authorized", async () => {
     mocks.canReorder = true;
 
     render(<NavProjects />);
 
     expect(screen.getByText("Visible Project")).toBeVisible();
-    expect(screen.getByTestId("project-dnd-context")).toBeInTheDocument();
+    expect(
+      await screen.findByTestId("project-dnd-context"),
+    ).toBeInTheDocument();
     expect(screen.getByTestId("project-sortable-context")).toBeInTheDocument();
     expect(mocks.dndContext).toHaveBeenCalledOnce();
     expect(mocks.sortable).toHaveBeenCalledOnce();
@@ -208,7 +210,7 @@ describe("NavProjects drag-and-drop setup", () => {
     mocks.canReorder = true;
     const { rerender } = render(<NavProjects />);
 
-    screen.getByTestId("start-project-drag").click();
+    (await screen.findByTestId("start-project-drag")).click();
     expect(document.body).toHaveClass("taskdesk-dragging");
 
     mocks.canReorder = false;

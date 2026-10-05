@@ -22,7 +22,6 @@ import { produce } from "immer";
 import { memo, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { useShallow } from "zustand/react/shallow";
-import CreateTaskModal from "@/components/shared/modals/create-task-modal";
 import { useUpdateTask } from "@/hooks/mutations/task/use-update-task";
 import type { useGetActiveWorkspaceUsers } from "@/hooks/queries/workspace-users/use-get-active-workspace-users";
 import { useRegisterShortcuts } from "@/hooks/use-keyboard-shortcuts";
@@ -33,6 +32,7 @@ import { useUserPreferencesStore } from "@/store/user-preferences";
 import type { ProjectWithTasks } from "@/types/project";
 import BulkToolbar from "../bulk-selection/bulk-toolbar";
 import Column from "./column";
+import { BoardCreateTaskDialog } from "./create-task-dialog";
 import type {
   TaskCardDisplayPreferences,
   TaskCardWorkspaceUser,
@@ -138,14 +138,10 @@ function KanbanBoard({
     },
     [],
   );
-  const handleCloseCreateTask = useCallback(() => {
-    setCreateTaskStatus(null);
-    window.requestAnimationFrame(() => {
-      if (createTaskTriggerRef.current?.isConnected) {
-        createTaskTriggerRef.current.focus();
-      }
-    });
-  }, []);
+  const handleCloseCreateTask = useCallback(
+    () => setCreateTaskStatus(null),
+    [],
+  );
   const allTasks = useMemo(
     () => project.columns?.flatMap((column) => column.tasks) ?? [],
     [project.columns],
@@ -466,11 +462,11 @@ function KanbanBoard({
       </DragOverlay>
 
       <BulkToolbar />
-      <CreateTaskModal
-        open={createTaskStatus !== null}
+      <BoardCreateTaskDialog
         onClose={handleCloseCreateTask}
         projectId={project.id}
-        status={createTaskStatus ?? undefined}
+        status={createTaskStatus}
+        trigger={createTaskTriggerRef.current}
       />
       {deleteTaskId ? (
         <TaskCardDeleteConfirmation
