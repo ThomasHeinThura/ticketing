@@ -25,7 +25,14 @@ import type { TFunction } from "i18next";
 import { produce } from "immer";
 import { Archive, ChevronRight, Flag, Plus } from "lucide-react";
 import type { ReactNode } from "react";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import {
+  lazy,
+  Suspense,
+  useCallback,
+  useEffect,
+  useMemo,
+  useState,
+} from "react";
 import { useTranslation } from "react-i18next";
 import { useShallow } from "zustand/react/shallow";
 import { priorityColorsTaskCard } from "@/constants/priority-colors";
@@ -41,14 +48,15 @@ import useProjectStore from "@/store/project";
 import { useUserPreferencesStore } from "@/store/user-preferences";
 import type { ProjectWithTasks } from "@/types/project";
 import BulkToolbar from "../bulk-selection/bulk-toolbar";
-import {
-  TaskCardDeleteConfirmation,
-  type TaskCardWorkspaceUser,
-} from "../kanban-board/task-card";
+import type { TaskCardWorkspaceUser } from "../kanban-board/task-card";
 import TaskCardContextMenuContent from "../kanban-board/task-card-context-menu/task-card-context-menu-content";
 import { ArchiveTasksModal } from "../shared/modals/archive-tasks-modal";
 import CreateTaskModal from "../shared/modals/create-task-modal";
 import TaskRow from "./task-row";
+
+const TaskCardDeleteConfirmation = lazy(
+  () => import("../kanban-board/task-card-delete-confirmation"),
+);
 
 type ListViewProps = {
   project: ProjectWithTasks;
@@ -608,12 +616,20 @@ function ListView({ project, disableDragDrop = false }: ListViewProps) {
 
       <BulkToolbar />
       {deleteTaskId ? (
-        <TaskCardDeleteConfirmation
-          taskId={deleteTaskId}
-          onOpenChange={(open) => {
-            if (!open) setDeleteTaskId(null);
-          }}
-        />
+        <Suspense
+          fallback={
+            <div role="status" aria-live="polite">
+              {t("common:empty.loading")}
+            </div>
+          }
+        >
+          <TaskCardDeleteConfirmation
+            taskId={deleteTaskId}
+            onOpenChange={(open) => {
+              if (!open) setDeleteTaskId(null);
+            }}
+          />
+        </Suspense>
       ) : null}
     </DndContext>
   );

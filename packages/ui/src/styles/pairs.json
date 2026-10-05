@@ -9835,7 +9835,7 @@
         "usage": "packages/ui/src/components/alert-dialog.tsx",
         "category": "body",
         "chain": [
-          "apps/web/src/components/kanban-board/task-card.tsx:TaskCardDeleteConfirmation",
+          "apps/web/src/components/kanban-board/task-card-delete-confirmation.tsx:TaskCardDeleteConfirmation",
           "AlertDialogContent->packages/ui/src/components/alert-dialog.tsx:AlertDialogPopup"
         ],
         "backdropLayers": [],

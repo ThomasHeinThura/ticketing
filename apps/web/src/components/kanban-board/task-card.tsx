@@ -1,18 +1,6 @@
 import { useSortable } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
-import {
-  AlertDialog,
-  AlertDialogClose,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-  Button,
-  HoverCard,
-  HoverCardContent,
-  HoverCardTrigger,
-} from "@taskdesk/ui";
+import { HoverCard, HoverCardContent, HoverCardTrigger } from "@taskdesk/ui";
 import { format } from "date-fns";
 import type { TFunction } from "i18next";
 import {
@@ -24,16 +12,14 @@ import {
   SquareCheck,
 } from "lucide-react";
 import { type CSSProperties, memo, useMemo } from "react";
-import { useTranslation } from "react-i18next";
+import { useShallow } from "zustand/react/shallow";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/avatar";
-import { useDeleteTask } from "@/hooks/mutations/task/use-delete-task";
 import type { useGetActiveWorkspaceUsers } from "@/hooks/queries/workspace-users/use-get-active-workspace-users";
 import { cn } from "@/lib/cn";
 import { dueDateStatusColors, getDueDateStatus } from "@/lib/due-date-status";
 import { getInitials } from "@/lib/get-initials";
 import { getTaskItemStats } from "@/lib/get-task-item-stats";
 import { getPriorityIcon } from "@/lib/priority";
-import { toast } from "@/lib/toast";
 import useBulkSelectionStore from "@/store/bulk-selection";
 import type Task from "@/types/task";
 import { TaskLabels } from "./task-labels";
@@ -81,15 +67,17 @@ function TaskCard({
   onOpenTask,
   t,
 }: TaskCardProps) {
-  const isTaskSelected = useBulkSelectionStore((state) =>
-    state.selectedTaskIds.has(task.id),
-  );
-  const isTaskFocused = useBulkSelectionStore(
-    (state) => state.focusedTaskId === task.id,
-  );
-  const toggleSelection = useBulkSelectionStore(
-    (state) => state.toggleSelection,
-  );
+  // A board can mount hundreds of cards at once. Keep selection/focus in one
+  // shallow-compared subscription per card instead of registering three
+  // independent Zustand listeners for each card.
+  const { isTaskSelected, isTaskFocused, toggleSelection } =
+    useBulkSelectionStore(
+      useShallow((state) => ({
+        isTaskSelected: state.selectedTaskIds.has(task.id),
+        isTaskFocused: state.focusedTaskId === task.id,
+        toggleSelection: state.toggleSelection,
+      })),
+    );
   const {
     attributes,
     listeners,
@@ -410,57 +398,6 @@ function TaskCard({
           })()}
       </div>
     </div>
-  );
-}
-
-export function TaskCardDeleteConfirmation({
-  taskId,
-  onOpenChange,
-}: {
-  taskId: string;
-  onOpenChange: (open: boolean) => void;
-}) {
-  const { t } = useTranslation();
-  const { mutateAsync: deleteTask } = useDeleteTask();
-
-  const handleDeleteTask = async () => {
-    try {
-      await deleteTask(taskId);
-      toast.success(t("tasks:delete.success"));
-    } catch (error) {
-      toast.error(
-        error instanceof Error ? error.message : t("tasks:delete.error"),
-      );
-    }
-  };
-
-  return (
-    <AlertDialog open onOpenChange={onOpenChange}>
-      <AlertDialogContent>
-        <AlertDialogHeader>
-          <AlertDialogTitle>{t("tasks:delete.title")}</AlertDialogTitle>
-          <AlertDialogDescription>
-            {t("tasks:delete.description")}
-          </AlertDialogDescription>
-        </AlertDialogHeader>
-        <AlertDialogFooter>
-          <AlertDialogClose render={<Button variant="outline" size="sm" />}>
-            {t("common:actions.cancel")}
-          </AlertDialogClose>
-          <AlertDialogClose
-            render={
-              <Button
-                variant="destructive"
-                size="sm"
-                onClick={handleDeleteTask}
-              />
-            }
-          >
-            {t("tasks:delete.action")}
-          </AlertDialogClose>
-        </AlertDialogFooter>
-      </AlertDialogContent>
-    </AlertDialog>
   );
 }
 

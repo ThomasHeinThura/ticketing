@@ -19,7 +19,16 @@ import { useQueryClient } from "@tanstack/react-query";
 import { useNavigate } from "@tanstack/react-router";
 import { ContextMenu, ContextMenuTrigger } from "@taskdesk/ui";
 import { produce } from "immer";
-import { memo, useCallback, useEffect, useMemo, useRef, useState } from "react";
+import {
+  lazy,
+  memo,
+  Suspense,
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
 import { useTranslation } from "react-i18next";
 import { useShallow } from "zustand/react/shallow";
 import { useUpdateTask } from "@/hooks/mutations/task/use-update-task";
@@ -37,8 +46,12 @@ import type {
   TaskCardDisplayPreferences,
   TaskCardWorkspaceUser,
 } from "./task-card";
-import TaskCard, { TaskCardDeleteConfirmation } from "./task-card";
+import TaskCard from "./task-card";
 import TaskCardContextMenuContent from "./task-card-context-menu/task-card-context-menu-content";
+
+const TaskCardDeleteConfirmation = lazy(
+  () => import("./task-card-delete-confirmation"),
+);
 
 const boardAnnouncements = {
   ...defaultAnnouncements,
@@ -454,12 +467,20 @@ function KanbanBoard({
         trigger={createTaskTriggerRef.current}
       />
       {deleteTaskId ? (
-        <TaskCardDeleteConfirmation
-          taskId={deleteTaskId}
-          onOpenChange={(open) => {
-            if (!open) setDeleteTaskId(null);
-          }}
-        />
+        <Suspense
+          fallback={
+            <div role="status" aria-live="polite">
+              {t("common:empty.loading")}
+            </div>
+          }
+        >
+          <TaskCardDeleteConfirmation
+            taskId={deleteTaskId}
+            onOpenChange={(open) => {
+              if (!open) setDeleteTaskId(null);
+            }}
+          />
+        </Suspense>
       ) : null}
     </DndContext>
   );

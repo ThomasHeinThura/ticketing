@@ -17,10 +17,12 @@ import useGetProjects from "@/hooks/queries/project/use-get-projects";
 import useGetWorkItems from "@/hooks/queries/work-item/use-get-work-items";
 import useActiveWorkspace from "@/hooks/queries/workspace/use-active-workspace";
 import type { WorkItemRealtimeStatus } from "@/hooks/use-native-work-item-realtime";
-import { useWorkspacePermission } from "@/hooks/use-workspace-permission";
 
 const WorkItemsPanel = lazy(
   () => import("@/components/work-item/work-items-panel"),
+);
+const WorkItemCreateTrigger = lazy(
+  () => import("@/components/work-item/work-item-create-trigger"),
 );
 type CreateWorkItemDialogModule =
   typeof import("@/components/work-item/create-work-item-dialog");
@@ -103,13 +105,6 @@ function WorkItemsRouteComponent() {
       }
     })();
   }, []);
-
-  // Creation is gated on the same server-computed capability the app's other create UI
-  // uses (`useWorkspacePermission`, backed by `GET /api/capabilities`). The v2 canonical
-  // `work_item:create` signal for a UI does not exist yet -- that is #8's runtime wiring
-  // -- so this is the live signal, called as a helper; the server stays the authority,
-  // and a 403 from the create call is handled explicitly inside the dialog.
-  const { canCreateTasks, isCheckingPermissions } = useWorkspacePermission();
 
   const {
     data: workspace,
@@ -206,16 +201,13 @@ function WorkItemsRouteComponent() {
             {project ? project.name : projectKey} ·{" "}
             {t("workItems:list.heading")}
           </h1>
-          {project && !isCheckingPermissions && canCreateTasks() ? (
-            <Button
-              size="sm"
-              onPointerEnter={preloadCreateWorkItemDialog}
-              onFocus={preloadCreateWorkItemDialog}
-              onClick={openCreateDialog}
-              data-testid="create-work-item-trigger"
-            >
-              {t("workItems:create.trigger")}
-            </Button>
+          {project ? (
+            <Suspense fallback={null}>
+              <WorkItemCreateTrigger
+                onPreload={preloadCreateWorkItemDialog}
+                onClick={openCreateDialog}
+              />
+            </Suspense>
           ) : null}
         </div>
         <Suspense fallback={<WorkItemListLoading />}>
