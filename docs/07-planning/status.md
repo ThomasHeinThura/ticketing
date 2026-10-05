@@ -1,3 +1,66 @@
+## P0 full rendering/cache composition verified; final publication next — 2026-10-05 01:22 UTC
+
+Root normally composes complete cache/dialog source0d2127 and complete sidebar/navigation/
+board loading source782f440 at **aa9d065689c5ea730db1ab504201119fffd4fa0d**.
+Only the moved navigation-overlay contrast occurrence needs serial inventory alignment:
+228 declared pairs/434 occurrence groups remain source-bound and all light/dark computed
+thresholds pass. Both production builds and **six scoped browser journeys pass**: board
+create clicked-column/focus and keyboard drag; current complete-task/version mutation;
+create independent loading/lifecycle/reload recovery; all500rows/1000links keyboard reach
+and normal/200% geometry. List baseline/restored table height21552; 200% height43104.
+Agent manifest SHA256f82e099338f4521de2c17d14d921ea5d3bae83c93c064d1c7d20b89e7f348ebc;
+portal06f3b04506b2a1d9fd6e81147e17d275e7317a8d9d4be8a41a1750e548f3a2fe.
+
+The first integrated build stopped on a stale workspace link to an old detached reviewer
+checkout. Frozen offline installation repairs local links without tracked manifest/lockfile
+changes; actual initial failure is retained. No production source defect or gate exemption
+is inferred. Source-only contrast validation initially identifies the actual moved overlay
+record; its one full inventory correction is retained with original output.
+
+Author source782f440 passes web5tests/UI5tests, dependency types9tasks and final agent
+graph proof: sidebar ScrollArea, capability-gated navigation DnD and board create form are
+dynamic imports. Author source0d2127 passes21focused tests plus createbrowser3/3.
+These are implementation proofs, not new G11 acceptance. Published866 remains20/22,
+and its three original blocked ordinary reviews are preserved. One full publication now
+precedes current risk-sized bulk delta/Sol review, hosted checks and exact image/boot.
+Acceptedmain8ddb/reviewedDEVb8 remain unchanged; October4/5 representative partial
+authorization captures supply two dates, with actualOctober6/cutover/finalizer still open.
+No phase completion or protection waiver is claimed.
+
+## P0 complete cache/dialog correction; actual hosted residuals — 2026-10-05 00:52 UTC
+
+Published candidate **866438a6a1c2f3fd422bf1b2ff61911ba4f44621** finishes hosted
+G11 at **20/22**: LCP2608/2500ms and board640.1/500ms fail. List490.3/500,
+create144.7/200, state195.1/200 and assignment168/200 pass. PostgreSQL136files1649tests,
+web105files424tests, G4/G8 and protected-route E2E pass. Static fails on one E2E
+formatter error; the review-template gate remains pending. These are actual results,
+not a claim that runner variation explains the failures.
+
+Three fresh independent Luna reviews at866 identify overlapping failed-write cache
+rollback and duplicate loaded dialog headings. Original blocked reports are preserved in
+security-reviews/579-p0-866438a6-luna-{a,b,c}.md. Complete source correction
+**0d2127c0861cacb495261c70654553d91bb9cad1** is pushed and normally composed locally:
+confirmed-field reconciliation, single route-owned title/description, overlapping-order
+regressions and formatter correction. Focused21tests/types/Biome/token checks,
+both production builds/228contrast pairs and scoped create browser3/3 pass on its source.
+It is not yet independently cleared or hosted performance accepted. The parallel headroom
+batch remains in implementation; final composition precedes bulk delta review.
+
+Exact866 image/runtime proof passes revision, UID10001, live-ready200, immutable80/88
+migration prefix and auth/CAS/metrics negatives. Actual October5T00:35:16–00:35:24UTC
+traffic covers129requests/28eligible sources,44rows127occurrences,0unexplained/uncovered,
+sole verified native-WebSocket delegation and zero cleanup errors. Together with the
+October4 capture this supplies **two partial representative authorization dates**. Registry
+routes/sources and pre-guard/handler hashes match; registry source attribution differs.
+This is not full-day, all-route or issue-free whole-product proof. October6 remains.
+
+P4 complete Users and role-concurrency checkpoint **1210e3b7ca8e43a4b5b3cf6c98df86a128f8930f**
+is clean/pushed: deterministic shared4002→4003 locking and persisted invitation-role
+revalidation pass PostgreSQL2files74tests. Prior Users image proof belongs to5e35, not1210.
+Acceptedmain8ddb and reviewed OrbStackDEVb8 remain unchanged. Current exact reviews/CI,
+protected acceptance, reviewed development refresh, eligible cutover and additional Sol
+phase finalizer remain open. No phase-completion claim or gate waiver.
+
 ## Complete P0 create lifecycle correction; role race regression green — 2026-10-05 00:30 UTC
 
 P0 completed source **e186cbe32b663b257581a249dfd7503c9787289c** is pushed and
