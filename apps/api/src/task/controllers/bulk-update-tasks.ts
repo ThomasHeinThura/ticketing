@@ -1,19 +1,21 @@
-import { and, eq, inArray, isNull, or, sql } from "drizzle-orm";
+import { and, eq, sql } from "drizzle-orm";
 import { HTTPException } from "hono/http-exception";
 import db from "../../database";
-import {
-  columnTable,
-  labelTable,
-  projectTable,
-  taskTable,
-  userTable,
-  workspaceUserTable,
-} from "../../database/schema";
+import { labelTable, taskTable } from "../../database/schema";
 import { publishEvent } from "../../events";
 import { lockWorkspaceLabelNames } from "../../label/label-name-lock";
 import { assertAssignableUserAndLockMembership } from "../../utils/assert-assignable-user";
 import { rejectNulByte } from "../../utils/reject-nul-byte";
 import { lockTaskAndAssertProjectLive } from "../assert-task-project-live";
+import {
+  findAssigneeNameQuery,
+  findBulkLabelByIdQuery,
+  findTaskColumnBySlugQuery,
+  findTaskLabelByNameQuery,
+  findWorkspaceMemberQuery,
+  getProjectWorkspaceQuery,
+  listScopedTaskIdsQuery,
+} from "../repository";
 import {
   assertValidPriority,
   assertValidTaskStatus,
@@ -39,17 +41,13 @@ async function resolveBulkLabel(
   value: string,
   workspaceId: string,
 ) {
-  const scope = and(
-    eq(labelTable.id, value),
-    or(eq(labelTable.workspaceId, workspaceId), isNull(labelTable.workspaceId)),
-  );
-  const label = await tx.query.labelTable.findFirst({ where: scope });
+  const label = await findBulkLabelByIdQuery(tx, value, workspaceId);
   if (!label) throw new HTTPException(404, { message: "Label not found" });
 
   // Join the label-name family before task/project row locks so rename and cascade
   // operations cannot deadlock against this bulk writer.
   await lockWorkspaceLabelNames(tx, workspaceId, [label.name]);
-  const currentLabel = await tx.query.labelTable.findFirst({ where: scope });
+  const currentLabel = await findBulkLabelByIdQuery(tx, value, workspaceId);
   if (!currentLabel) {
     throw new HTTPException(404, { message: "Label not found" });
   }
@@ -84,16 +82,7 @@ async function bulkUpdateTasks({
     });
   }
 
-  const [membership] = await db
-    .select({ id: workspaceUserTable.id })
-    .from(workspaceUserTable)
-    .where(
-      and(
-        eq(workspaceUserTable.userId, userId),
-        eq(workspaceUserTable.workspaceId, workspaceId),
-      ),
-    )
-    .limit(1);
+  const [membership] = await findWorkspaceMemberQuery(db, userId, workspaceId);
   if (!membership) {
     throw new HTTPException(403, {
       message: "You don't have access to this workspace",
@@ -101,18 +90,11 @@ async function bulkUpdateTasks({
   }
 
   const uniqueTaskIds = [...new Set(taskIds)];
-  const scopedRows = await db
-    .select({ id: taskTable.id })
-    .from(taskTable)
-    .innerJoin(projectTable, eq(taskTable.projectId, projectTable.id))
-    .where(
-      and(
-        inArray(taskTable.id, uniqueTaskIds),
-        eq(projectTable.workspaceId, workspaceId),
-        isNull(projectTable.archivedAt),
-        isNull(projectTable.deletedAt),
-      ),
-    );
+  const scopedRows = await listScopedTaskIdsQuery(
+    db,
+    uniqueTaskIds,
+    workspaceId,
+  );
   const scopedIds = new Set(scopedRows.map((task) => task.id));
   if (scopedIds.size === 0) {
     throw new HTTPException(404, { message: "No tasks found" });
@@ -153,11 +135,7 @@ async function bulkUpdateTasks({
         }
 
         const task = await lockTaskAndAssertProjectLive(tx, taskId);
-        const [project] = await tx
-          .select({ workspaceId: projectTable.workspaceId })
-          .from(projectTable)
-          .where(eq(projectTable.id, task.projectId))
-          .limit(1);
+        const [project] = await getProjectWorkspaceQuery(tx, task.projectId);
         if (!project || project.workspaceId !== workspaceId) {
           throw new HTTPException(404, { message: "Task not found" });
         }
@@ -209,12 +187,11 @@ async function bulkUpdateTasks({
           case "updateStatus": {
             const status = value as string;
             await assertValidTaskStatus(status, task.projectId, tx);
-            const column = await tx.query.columnTable.findFirst({
-              where: and(
-                eq(columnTable.projectId, task.projectId),
-                eq(columnTable.slug, status),
-              ),
-            });
+            const column = await findTaskColumnBySlugQuery(
+              tx,
+              task.projectId,
+              status,
+            );
             const [updated] = await tx
               .update(taskTable)
               .set({
@@ -268,13 +245,7 @@ async function bulkUpdateTasks({
               );
             }
             const newAssigneeName = assigneeId
-              ? (
-                  await tx
-                    .select({ name: userTable.name })
-                    .from(userTable)
-                    .where(eq(userTable.id, assigneeId))
-                    .limit(1)
-                )[0]?.name
+              ? (await findAssigneeNameQuery(tx, assigneeId))[0]?.name
               : undefined;
             const [updated] = await tx
               .update(taskTable)
@@ -325,12 +296,11 @@ async function bulkUpdateTasks({
           case "addLabel": {
             if (!label)
               throw new HTTPException(404, { message: "Label not found" });
-            const existing = await tx.query.labelTable.findFirst({
-              where: and(
-                eq(labelTable.name, label.name),
-                eq(labelTable.taskId, taskId),
-              ),
-            });
+            const existing = await findTaskLabelByNameQuery(
+              tx,
+              label.name,
+              taskId,
+            );
             if (existing) return 0;
             const [inserted] = await tx
               .insert(labelTable)

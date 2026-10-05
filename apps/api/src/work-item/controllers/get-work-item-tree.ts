@@ -1,12 +1,11 @@
-import { and, eq } from "drizzle-orm";
 import { HTTPException } from "hono/http-exception";
 import db from "../../database";
-import { workItemTable } from "../../database/schema";
 import {
   findTreeRoot,
   type HierarchyNodeRow,
   loadSubtreeRows,
 } from "../hierarchy";
+import { findWorkItemTreeRootQuery } from "../repository";
 
 export type WorkItemTreeNode = {
   id: string;
@@ -69,16 +68,7 @@ export async function getWorkItemTree(
   key: string,
   workspaceId: string,
 ): Promise<WorkItemTreeResult> {
-  const [item] = await db
-    .select({ id: workItemTable.id })
-    .from(workItemTable)
-    .where(
-      and(
-        eq(workItemTable.key, key),
-        eq(workItemTable.workspaceId, workspaceId),
-      ),
-    )
-    .limit(1);
+  const [item] = await findWorkItemTreeRootQuery(db, key, workspaceId);
 
   if (!item) {
     throw new HTTPException(404, { message: "Work item not found" });

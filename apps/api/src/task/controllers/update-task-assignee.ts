@@ -1,11 +1,12 @@
 import { eq, sql } from "drizzle-orm";
 import { HTTPException } from "hono/http-exception";
 import db from "../../database";
-import { projectTable, taskTable, userTable } from "../../database/schema";
+import { taskTable } from "../../database/schema";
 import { publishEvent } from "../../events";
 import { assertAssignableUserAndLockMembership } from "../../utils/assert-assignable-user";
 import { rejectNulByte } from "../../utils/reject-nul-byte";
 import { lockTaskAndAssertProjectLive } from "../assert-task-project-live";
+import { findAssigneeNameQuery, getProjectWorkspaceQuery } from "../repository";
 
 async function updateTaskAssignee({
   id,
@@ -28,10 +29,10 @@ async function updateTaskAssignee({
       return { existingTask, updatedTask: existingTask };
     }
     if (nextAssigneeId) {
-      const [project] = await tx
-        .select({ workspaceId: projectTable.workspaceId })
-        .from(projectTable)
-        .where(eq(projectTable.id, existingTask.projectId));
+      const [project] = await getProjectWorkspaceQuery(
+        tx,
+        existingTask.projectId,
+      );
       if (!project) throw new HTTPException(404, { message: "Task not found" });
       await assertAssignableUserAndLockMembership(
         nextAssigneeId,
@@ -55,13 +56,7 @@ async function updateTaskAssignee({
   }
 
   const newAssigneeName = nextAssigneeId
-    ? (
-        await db
-          .select({ name: userTable.name })
-          .from(userTable)
-          .where(eq(userTable.id, nextAssigneeId))
-          .limit(1)
-      )[0]?.name
+    ? (await findAssigneeNameQuery(db, nextAssigneeId))[0]?.name
     : undefined;
 
   if (!nextAssigneeId) {

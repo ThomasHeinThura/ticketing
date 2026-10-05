@@ -1,7 +1,6 @@
-import { and, eq } from "drizzle-orm";
 import { HTTPException } from "hono/http-exception";
 import db from "../../database";
-import { columnTable, projectTable, taskTable } from "../../database/schema";
+import { taskTable } from "../../database/schema";
 import { publishEvent } from "../../events";
 import {
   assertAssignableUserAndLockMembership,
@@ -9,6 +8,7 @@ import {
 } from "../../utils/assert-assignable-user";
 import { rejectNulByte } from "../../utils/reject-nul-byte";
 import { lockProjectAndAssertLiveForTaskNumber } from "../assert-task-project-live";
+import { findTaskColumnBySlugQuery, getProjectByIdQuery } from "../repository";
 import {
   coercePriority,
   coerceStatus,
@@ -37,11 +37,7 @@ async function importTasks(
       projectId,
       "Project not found",
     );
-    const [liveProject] = await tx
-      .select()
-      .from(projectTable)
-      .where(eq(projectTable.id, projectId))
-      .limit(1);
+    const [liveProject] = await getProjectByIdQuery(tx, projectId);
 
     if (!liveProject) {
       throw new HTTPException(404, { message: "Project not found" });
@@ -103,12 +99,7 @@ async function importTasks(
       );
       const warnings = [statusWarning, priorityWarning].filter(Boolean);
 
-      const column = await db.query.columnTable.findFirst({
-        where: and(
-          eq(columnTable.projectId, projectId),
-          eq(columnTable.slug, status),
-        ),
-      });
+      const column = await findTaskColumnBySlugQuery(db, projectId, status);
 
       const createdTask = await db.transaction(async (tx) => {
         await lockProjectAndAssertLiveForTaskNumber(
