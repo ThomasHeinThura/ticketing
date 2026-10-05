@@ -1,3 +1,21 @@
+## Complete integration correction frozen for bulk review — 2026-10-05
+
+Preservation author `c40fbe3664cc7a512a0e410b9179ae87673e0c96` joins the full
+six-finding and contrast batches as `cb817f37c3989da9bac08ba17e38003c7b78fede`.
+The full API entry-point comparison also restores accepted asset legacy-shadow observation
+and native WebSocket API-key enabled/owner freshness fields. Remaining entry-point deltas
+are the new router/type integration and membership-provenance boot cutover, not removed
+accepted safeguards. Seed tests isolate deliberate environment fixtures while keeping the
+explicit dotenv-loading test. Author raw logs retain API93files/676tests, scoped2files/10tests
+and four API typecheck projects passing under `2026-10-05/p4-aa68-logging-preservation/`.
+
+All known findings are implemented together before the next ordinary panel. Root freezes
+this complete source plus this checkpoint, runs combined required verification and obtains
+three independent ordinary delta scopes followed by the full independent Sol security pass.
+Older blocked reports remain at their original SHA; no independent clearance, current hosted
+acceptance, deployment, outbox delivery or stage completion is inferred from author results.
+Accepted P0 main/DEV and its October6 observation remain unchanged.
+
 ## Complete contrast correction accepted locally; preservation batch continues — 2026-10-05
 
 Contrast author `b769cbb6ec3100fe912efd2512c5e300a7f03859` is normally composed
