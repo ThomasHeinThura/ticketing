@@ -1,3 +1,28 @@
+## Full integration panels complete; one six-finding correction batch — 2026-10-05 11:52 UTC
+
+Three fresh independent Luna panels reviewed exactd7254c47d3a0bf1c243d3c490ab98eae8a98832c
+against acceptedP0main3096. Authority, schema/domain and UI reports are retained unchanged
+under `security-reviews/p4-d7254c47-*-luna.md`. Verdict REQUEST CHANGES: supported instance
+user-deactivation expiry is excluded by the job; SCIM deactivation lacks its normative
+outboxevent; two canonical-plugin test expectations are stale; snapshot0088 ancestry is
+broken; SLA pointers lack same-workspace compositeFK enforcement; changed authentication
+and pending-action journeys still contain untranslated copy. All six findings are assigned
+as one full implementation batch from this exact base. No review occurs on intermediate
+small fixes. Required delta panels and independent fullSol follow the frozen correction.
+
+Root exactcandidate lint8tasks/typecheck9tasks pass; unit aborts on two plugin expectations
+(6successful/12tasks), which remains a failure. Image builds asd725 with digest237bc918;
+it is not booted or deployed because the candidate remains blocked. Schema reviewer runs
+3domainfiles85tests; other panels run no tests and record inspectedsource/evidence honestly.
+The missing outbox drain/fanout stays an explicit separate delivery residual.
+
+AcceptedP0#579 remains merged, G11required, reviewed-e26 DEV verified. Current nativeChrome
+opens the real sign-in screen without a certificate interstitial; an extension interface
+blocks login input, so authenticated interactive verification remains blocked. Accepted
+main3096 has an isolated clean observation checkout; the existing October6 heartbeat now
+uses it instead of the newer unreviewed P1–P4candidate. Runner preparation is read-only,
+with no newdate capture, Docker execution, cutover or phasecompletion claim.
+
 ## Complete P4 Users UI correction composed against accepted P0 — 2026-10-05
 
 Author `a34d3db51c577a9f4dfe4fa8703653c3ea8f4c12` completes all prior Users/UI
