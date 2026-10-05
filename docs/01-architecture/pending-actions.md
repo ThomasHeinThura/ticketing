@@ -76,6 +76,21 @@ thing that is hashed or executed.
   `pending`, writes `pending_action.requested` to the audit log, and responds **`202
   Accepted`** with `{ pendingActionId, action, summary, confirmation, expiresAt,
   approveUrl }`. **Nothing is deleted at this point**, whatever the client.
+- `PA-2a` God Mode person deactivation is a distinct state-changing action, not a deletion:
+  `action = 'user_deactivation'`, `target_type = 'person'`, one person id, and fixed route
+  `POST /api/instance/users/{id}/deactivate`. The session-only elevated route returns `202`
+  without changing account state. The server resolves the linked account and captures its
+  current email only in the allowlisted summary; the canonical payload binds the exact person
+  id and route. The confirmation is always `typed_name_step_up` and the approval body carries
+  the exact current account email plus the PA-15 token bound to this action. At execution the
+  server locks and re-reads person and account, re-evaluates the registered route policy,
+  requires the same target person to remain active and the supplied email to equal the
+  current account email, and consumes the one-use token in the same transaction as IP-15.
+  A mismatch invalidates the pending action without changing lifecycle state. The executor
+  uses server-selected `end_memberships`; SCIM continues to use its connection-selected
+  lifecycle policy. Success revokes current sessions and existing native personal API keys,
+  retires external and direct grants, recomputes effective memberships, preserves authored
+  history, and never deletes the person or account. No last-administrator guard is added.
 - `PA-3` A **web-UI** request opens the approval dialog immediately in the same browser
   session, rendered from the server's `summary` (never from client state). To the person it
   is a confirm dialog; underneath it is `PA-6`.
@@ -124,6 +139,15 @@ thing that is hashed or executed.
      the affected count, step-up token present and bound to this action where required;
   5. marks the action `approved`, executes **exactly the stored targets**, marks it
      `executed` (or `failed` with the error), and writes the audit rows.
+  The approval route's strict request body is action-specific. For `user_deactivation`, it
+  is `{ "typedEmail": "the exact current account email" }`; the single-use step-up token is
+  supplied in `X-TaskDesk-Step-Up-Token`, never in the URL or audit payload. The email is
+  rechecked under the execution locks, not trusted from the earlier summary. An inactive,
+  missing, newly unlinked, or email-changed target becomes `invalidated` with the existing
+  `version_changed` reason. The PA-15 token must name this pending-action id/hash and the
+  requester's current person/session; it is consumed exactly once in the execution
+  transaction. The requester and target may be the same person only if the current route
+  policy explicitly allows it; this route does not add a separate self-deactivation rule.
 - `PA-7` **Single-use and exact.** An approved action cannot be replayed, cannot be applied
   to another resource, and cannot be applied when the payload, targets or scope differ from
   what was approved — the hash comparison in `PA-6` is the mechanism, not a convention.
@@ -347,6 +371,7 @@ cannot lower it. The dialog always shows the **exact target** and the **action**
 | Project | Affected work items, members, attachments, integrations; recovery and purge behaviour | **Typed project key or exact name + step-up** |
 | Workspace, organisation | Full operational and security impact | **Typed exact name + step-up** |
 | API key, webhook, identity connection / provider | Who and what depends on it; what stops working | **Typed exact name + step-up** |
+| God Mode person deactivation (`user_deactivation`) | Current account email; session/key revocation, grant retirement, membership ending, and preserved history | **Typed exact current email + step-up** (`typed_name_step_up`), `instance:admin` |
 | Hard purge (`PA-13`) | What will be irrecoverably removed; legal-hold and retention check result | **Typed exact name + step-up**, `instance:admin` |
 | MCP destructive that is not a deletion (`PA-14`: `decide_approval`, bulk > 50 items) | The decision or the batch, and the work items it touches | Explicit click |
 | **Any other single deletable record** — role (with its holders reassigned, `RL-8`), custom field (`CF-8`), team, service calendar, automation rule, time entry, shared or team saved view, label, relation | Exact target and its dependants | Explicit click |
@@ -401,6 +426,7 @@ POST    /api/me/step-up/challenges                       authenticated + self, s
 POST    /api/me/step-up                                   authenticated + self, session-only  (PA-15)
 GET     /api/workspaces/{id}/pending-actions              workspace:manage_settings (read-only)
 POST    /api/instance/purge                               instance:admin  E  (PA-13)
+POST    /api/instance/users/{id}/deactivate               instance:admin  E, session-only → `202` `user_deactivation`
 ```
 
 The self list returns only the caller's `pending` actions, ordered by

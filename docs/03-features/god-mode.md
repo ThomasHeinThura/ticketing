@@ -287,6 +287,22 @@ force sign-out, reset MFA (planned; unavailable until a factor adapter exists), 
 (deactivate — people are never hard-deleted), export a person's data, anonymise a person,
 and **impersonate**.
 
+Person deactivation is a separate IP-15 lifecycle transition. It is requested as a server-owned
+pending action (`action = 'user_deactivation'`, `target_type = 'person'`) on
+`POST /api/instance/users/{id}/deactivate`; the request changes no account state. The server
+binds the target person id and route in the pending-action payload and sets
+`typed_name_step_up`. Approval requires the exact current account email and a PA-15 token
+bound to that pending action. In the execution transaction the server re-reads and locks the
+target person/user, confirms the same target id is active and the supplied email exactly
+matches the current email, re-evaluates the route's current `instance:admin` policy, and
+consumes the single-use step-up token. Any stale target, changed email, lost authority, or
+invalid proof fails closed without a lifecycle mutation. A successful action invokes IP-15
+with server-selected `end_memberships`; it revokes current sessions and all existing personal
+API keys, retires external and direct grants, recomputes effective membership, and preserves
+authored history. It never hard-deletes the person or user. SCIM retains its configured
+lifecycle policy; IP-16 reactivation does not restore retired grants. No last-administrator
+guardrail is introduced.
+
 ### Audit
 
 The instance audit log — filter by actor, action, entity, workspace, date. Export to CSV
@@ -316,6 +332,13 @@ Import runs and their history. See [import strategy](../06-data-import/import-st
   the server chooses the confirmation level, and for God Mode targets — organisations,
   identity connections, auth plugins, hard purge — that level is **typed exact name +
   step-up**. The client cannot lower it.
+- `GM-12` God Mode person deactivation uses the dedicated `user_deactivation` pending-action
+  kind (not a deletion). Its fixed target type is `person`, the route is
+  `POST /api/instance/users/{id}/deactivate`, and the one confirmation is
+  `typed_name_step_up`: the requester types the target's exact current account email and
+  supplies the pending-action-bound PA-15 token. The server revalidates current email,
+  active state, instance-admin authority, target id, and proof while executing the action.
+  It selects `end_memberships` for the administrative IP-15 lifecycle transition.
 
 **Impersonation**
 
@@ -426,7 +449,7 @@ POST   /api/instance/users/{id}/unsuspend             instance:admin
 POST   /api/instance/users/{id}/sign-out              instance:admin
 POST   /api/instance/users/{id}/reset-mfa             instance:admin  E  (planned; unavailable until the factor adapter exists)
 POST   /api/instance/users/{id}/grant-admin           instance:admin  E
-POST   /api/instance/users/{id}/deactivate            instance:admin
+POST   /api/instance/users/{id}/deactivate            instance:admin  E (session-only; `user_deactivation` pending action; exact current email + step-up)
 GET    /api/instance/users/{id}/export                instance:admin  E
 POST   /api/instance/users/{id}/anonymise             instance:admin  E
 POST   /api/instance/users/{id}/impersonate           instance:admin  E
