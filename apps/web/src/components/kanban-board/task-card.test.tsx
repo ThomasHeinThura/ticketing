@@ -1,18 +1,28 @@
-import { cleanup, fireEvent, render, screen } from "@testing-library/react";
+import {
+  act,
+  cleanup,
+  fireEvent,
+  render,
+  screen,
+} from "@testing-library/react";
 import type { TFunction } from "i18next";
 import { afterEach, describe, expect, it, vi } from "vitest";
+import useBulkSelectionStore from "@/store/bulk-selection";
 import type Task from "@/types/task";
 import TaskCard from "./task-card";
 
 const mocks = vi.hoisted(() => ({
   openContextMenu: vi.fn(),
   openTask: vi.fn(),
-  toggleSelection: vi.fn(),
 }));
 
 afterEach(() => {
   cleanup();
   vi.clearAllMocks();
+  useBulkSelectionStore.setState({
+    selectedTaskIds: new Set(),
+    focusedTaskId: null,
+  });
 });
 
 vi.mock("@dnd-kit/sortable", () => ({
@@ -51,32 +61,6 @@ vi.mock("@taskdesk/ui", () => {
 
 vi.mock("@/hooks/mutations/task/use-delete-task", () => ({
   useDeleteTask: () => ({ mutateAsync: vi.fn() }),
-}));
-
-vi.mock("@/store/bulk-selection", () => ({
-  default: Object.assign(
-    (
-      selector: (state: {
-        toggleSelection: typeof mocks.toggleSelection;
-        selectedTaskIds: Set<string>;
-        focusedTaskId: string | null;
-      }) => unknown,
-    ) => {
-      const state = {
-        toggleSelection: mocks.toggleSelection,
-        selectedTaskIds: new Set<string>(),
-        focusedTaskId: null,
-      };
-      return selector(state);
-    },
-    {
-      getState: () => ({
-        toggleSelection: mocks.toggleSelection,
-        selectedTaskIds: new Set<string>(),
-        focusedTaskId: null,
-      }),
-    },
-  ),
 }));
 
 vi.mock("@/store/user-preferences", () => ({
@@ -131,9 +115,6 @@ function renderTaskCard() {
       projectSlug="PRJ"
       taskIsCompleted={false}
       displayPreferences={displayPreferences}
-      isTaskSelected={false}
-      isTaskFocused={false}
-      toggleSelection={mocks.toggleSelection}
       onOpenTask={mocks.openTask}
       t={((key: string) => key) as unknown as TFunction}
       workspaceId="workspace-1"
@@ -180,7 +161,7 @@ describe("TaskCard keyboard context menu", () => {
     expect(mocks.openTask).toHaveBeenCalledExactlyOnceWith("task-1");
   });
 
-  it("renders board-owned selection state supplied by the parent", () => {
+  it("subscribes to its own selection and focus state", () => {
     const props = {
       task,
       taskIsCompleted: false,
@@ -188,22 +169,27 @@ describe("TaskCard keyboard context menu", () => {
       assignee: undefined,
       onContextMenuTask: mocks.openContextMenu,
       displayPreferences,
-      isTaskSelected: false,
-      isTaskFocused: false,
-      toggleSelection: mocks.toggleSelection,
       onOpenTask: mocks.openTask,
       t: ((key: string) => key) as unknown as TFunction,
       projectSlug: "PRJ",
     };
-    const { rerender } = render(<TaskCard {...props} />);
+    render(<TaskCard {...props} />);
     expect(
       screen.getByText("Keyboard task").closest('[role="button"]'),
     ).not.toHaveAttribute("data-task-selected", "true");
 
-    rerender(<TaskCard {...props} isTaskSelected />);
+    act(() => {
+      useBulkSelectionStore.setState({
+        selectedTaskIds: new Set(["task-1"]),
+        focusedTaskId: "task-1",
+      });
+    });
     expect(
       screen.getByText("Keyboard task").closest('[role="button"]'),
     ).toHaveAttribute("data-task-selected", "true");
+    expect(
+      screen.getByText("Keyboard task").closest('[role="button"]'),
+    ).toHaveClass("ring-2");
   });
 
   it("keeps the label spacing without an empty wrapper when labels are absent", () => {
@@ -213,9 +199,6 @@ describe("TaskCard keyboard context menu", () => {
         projectSlug="PRJ"
         taskIsCompleted={false}
         displayPreferences={{ ...displayPreferences, showLabels: true }}
-        isTaskSelected={false}
-        isTaskFocused={false}
-        toggleSelection={mocks.toggleSelection}
         onOpenTask={mocks.openTask}
         t={((key: string) => key) as unknown as TFunction}
         workspaceId="workspace-1"

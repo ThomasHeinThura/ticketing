@@ -34,8 +34,6 @@ type TaskRowProps = {
     showLabels: boolean;
     showTaskNumbers: boolean;
   };
-  focused: boolean;
-  selected: boolean;
   onOpenTask: (taskId: string) => void;
   t: TFunction;
 };
@@ -46,8 +44,6 @@ function TaskRow({
   taskIsCompleted,
   assignee,
   displayPreferences,
-  focused,
-  selected,
   onOpenTask,
   t,
 }: TaskRowProps) {
@@ -62,6 +58,12 @@ function TaskRow({
 
   const toggleSelection = useBulkSelectionStore(
     (state) => state.toggleSelection,
+  );
+  const selected = useBulkSelectionStore((state) =>
+    state.selectedTaskIds.has(task.id),
+  );
+  const focused = useBulkSelectionStore(
+    (state) => state.focusedTaskId === task.id,
   );
   const {
     showAssignees,

@@ -34,6 +34,7 @@ import { getInitials } from "@/lib/get-initials";
 import { getTaskItemStats } from "@/lib/get-task-item-stats";
 import { getPriorityIcon } from "@/lib/priority";
 import { toast } from "@/lib/toast";
+import useBulkSelectionStore from "@/store/bulk-selection";
 import type Task from "@/types/task";
 import { TaskLabels } from "./task-labels";
 
@@ -50,9 +51,6 @@ export type TaskCardProps = {
   projectSlug: string;
   taskIsCompleted: boolean;
   displayPreferences: TaskCardDisplayPreferences;
-  isTaskSelected: boolean;
-  isTaskFocused: boolean;
-  toggleSelection: (taskId: string) => void;
   onOpenTask: (taskId: string) => void;
   t: TFunction;
 };
@@ -80,12 +78,18 @@ function TaskCard({
   projectSlug,
   taskIsCompleted,
   displayPreferences,
-  isTaskSelected,
-  isTaskFocused,
-  toggleSelection,
   onOpenTask,
   t,
 }: TaskCardProps) {
+  const isTaskSelected = useBulkSelectionStore((state) =>
+    state.selectedTaskIds.has(task.id),
+  );
+  const isTaskFocused = useBulkSelectionStore(
+    (state) => state.focusedTaskId === task.id,
+  );
+  const toggleSelection = useBulkSelectionStore(
+    (state) => state.toggleSelection,
+  );
   const {
     attributes,
     listeners,
