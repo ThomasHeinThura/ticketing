@@ -31,6 +31,8 @@ const priorEnforcementSetting = vi.hoisted(() => {
     "apps/api/src/audit/policy.ts",
     "apps/api/src/label/policy.ts",
     "apps/api/src/asset/policy.ts",
+    "apps/api/src/service-calendar/policy.ts",
+    "apps/api/src/sla-policy/policy.ts",
     "apps/api/src/attachment/policy.ts",
     "apps/api/src/workflow/policy.ts",
     "apps/api/src/task/policy.ts",

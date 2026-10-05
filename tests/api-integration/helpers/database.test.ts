@@ -5,6 +5,7 @@ import db, { schema } from "../../../apps/api/src/database";
 import { taskReminderSentTable } from "../../../apps/api/src/database/schema";
 import { ensureInternalOrganisation } from "../../../apps/api/src/utils/seed-internal-organisation";
 import { resetTestDatabase } from "./database";
+import { createWorkspaceMember } from "./fixtures";
 
 async function seedTaskReminderSentRow(): Promise<string> {
   const userId = `user-${randomUUID()}`;
@@ -122,5 +123,39 @@ describe("resetTestDatabase", () => {
     } finally {
       await db.execute(sql.raw(`DROP TABLE ${quoted}`));
     }
+  });
+
+  it("clears test fixture memberships before validating the applied grant projection", async () => {
+    const { user, workspace } = await createWorkspaceMember();
+    const [person] = await db
+      .select({ id: schema.personTable.id })
+      .from(schema.personTable)
+      .where(sql`${schema.personTable.userId} = ${user.id}`)
+      .limit(1);
+    if (!person) throw new Error("Fixture person was not created");
+    const [role] = await db
+      .insert(schema.roleTable)
+      .values({
+        scope: "workspace",
+        workspaceId: workspace.id,
+        key: `reset-fixture-${randomUUID()}`,
+        name: "Reset fixture role",
+        rank: 1,
+        capabilities: [],
+      })
+      .returning();
+    if (!role) throw new Error("Fixture role was not created");
+    await db.insert(schema.membershipTable).values({
+      personId: person.id,
+      scope: "workspace",
+      scopeId: workspace.id,
+      roleId: role.id,
+      seesAll: false,
+    });
+
+    await expect(resetTestDatabase()).resolves.toBeUndefined();
+
+    const memberships = await db.select().from(schema.membershipTable);
+    expect(memberships).toHaveLength(0);
   });
 });
