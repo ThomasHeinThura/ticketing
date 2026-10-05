@@ -227,6 +227,43 @@ describe("TaskCard keyboard context menu", () => {
     expect(screen.getByText("Keyboard task")).toBeInTheDocument();
   });
 
+  it("exposes the pull request state in the single pull request action name", () => {
+    const pullRequestTask = {
+      ...task,
+      externalLinks: [
+        {
+          id: "pr-1",
+          externalId: "42",
+          url: "https://github.com/example/project/pull/42",
+          resourceType: "pull_request",
+          metadata: { draft: true },
+          title: "Draft change",
+        },
+      ],
+    } as unknown as Task;
+    render(
+      <TaskCard
+        task={pullRequestTask}
+        projectSlug="PRJ"
+        taskIsCompleted={false}
+        displayPreferences={displayPreferences}
+        isSelected={false}
+        isFocused={false}
+        onOpenTask={mocks.openTask}
+        t={((key: string) => key) as unknown as TFunction}
+        workspaceId="workspace-1"
+        assignee={undefined}
+        onContextMenuTask={mocks.openContextMenu}
+      />,
+    );
+
+    expect(
+      screen.getByRole("button", {
+        name: "tasks:pr.draft pull request #42",
+      }),
+    ).toBeInTheDocument();
+  });
+
   it("preserves the visible no-priority marker when priority display is enabled", () => {
     const { container } = render(
       <TaskCard

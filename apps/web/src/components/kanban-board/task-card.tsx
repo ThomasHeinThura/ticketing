@@ -282,6 +282,7 @@ function TaskCard({
               <HoverCardTrigger asChild>
                 <button
                   type="button"
+                  aria-label={`${getPRInfo(pullRequests[0]).status} pull request #${pullRequests[0].externalId}`}
                   onClick={(e) => {
                     e.stopPropagation();
                     window.open(pullRequests[0].url, "_blank");
