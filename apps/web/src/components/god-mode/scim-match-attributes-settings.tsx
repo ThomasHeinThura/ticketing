@@ -14,6 +14,7 @@ import {
   SelectValue,
 } from "@taskdesk/ui";
 import { useCallback, useEffect, useMemo, useState } from "react";
+import { useTranslation } from "react-i18next";
 import { getApiUrl } from "@/fetchers/get-api-url";
 import { ScimGroupMappingsSettings } from "./scim-group-mappings-settings";
 import { ScimTokenSettings } from "./scim-token-settings";
@@ -79,22 +80,21 @@ async function requestJson<T>(path: string, init?: RequestInit): Promise<T> {
   return (await response.json()) as T;
 }
 
-function errorText(error: unknown, operation: "load" | "save") {
+function errorText(
+  error: unknown,
+  operation: "load" | "save",
+  t: (key: string) => string,
+) {
   if (error instanceof RequestFailure) {
-    if (error.status === 403)
-      return "Your administrator session could not authorize this request. Sign in again or contact an instance administrator.";
-    if (error.status === 404)
-      return "This connection does not have a SCIM configuration yet, or it is no longer available.";
-    if (error.status === 409)
-      return "SCIM settings changed in another session. Your draft is still here; reload the latest version before saving again.";
-    if (error.status === 422)
-      return "The SCIM settings were rejected. Review the selected attributes and try again.";
-    if (error.status === 503)
-      return "Stored SCIM settings are unavailable until the configuration is repaired.";
+    if (error.status === 403) return t("scim.match.errors.forbidden");
+    if (error.status === 404) return t("scim.match.errors.notFound");
+    if (error.status === 409) return t("scim.match.errors.stale");
+    if (error.status === 422) return t("scim.match.errors.invalid");
+    if (error.status === 503) return t("scim.match.errors.unavailable");
   }
   return operation === "load"
-    ? "SCIM settings could not be loaded. Check access and try again."
-    : "SCIM settings could not be saved. Try again.";
+    ? t("scim.match.errors.load")
+    : t("scim.match.errors.save");
 }
 
 function hasChanged(
@@ -112,6 +112,7 @@ export function ScimMatchAttributesSettings({
 }: {
   connectionId: string;
 }) {
+  const { t } = useTranslation("identityConnections");
   const [settings, setSettings] = useState<ScimSettingsResponse | null>(null);
   const [draft, setDraft] = useState<MatchAttribute[]>([]);
   const [groupsAllowed, setGroupsAllowed] = useState(false);
@@ -120,6 +121,7 @@ export function ScimMatchAttributesSettings({
   const [profileDraft, setProfileDraft] = useState<ProfileMapping | null>(null);
   const [loadError, setLoadError] = useState<string | null>(null);
   const [saveError, setSaveError] = useState<string | null>(null);
+  const [canReloadSaveError, setCanReloadSaveError] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
   const [authMethod, setAuthMethod] = useState<
@@ -137,6 +139,7 @@ export function ScimMatchAttributesSettings({
   const refresh = useCallback(async () => {
     setIsLoading(true);
     setLoadError(null);
+    setCanReloadSaveError(false);
     try {
       const response = await requestJson<ScimSettingsResponse>(apiPath);
       setSettings(response);
@@ -146,12 +149,12 @@ export function ScimMatchAttributesSettings({
       setProfileDraft({ ...response.data.attributeMapping });
       setSaveError(null);
     } catch (error) {
-      setLoadError(errorText(error, "load"));
+      setLoadError(errorText(error, "load", t));
       setSettings(null);
     } finally {
       setIsLoading(false);
     }
-  }, [apiPath]);
+  }, [apiPath, t]);
 
   useEffect(() => {
     void refresh();
@@ -190,6 +193,7 @@ export function ScimMatchAttributesSettings({
       return [...REQUIRED_MATCH_ATTRIBUTES, ...optional];
     });
     setSaveError(null);
+    setCanReloadSaveError(false);
   }
 
   async function save(event: React.FormEvent<HTMLFormElement>) {
@@ -216,14 +220,15 @@ export function ScimMatchAttributesSettings({
     if (authMethod === "password" ? !password : !code) {
       setSaveError(
         authMethod === "password"
-          ? "Enter your password to confirm this change."
-          : "Enter a fresh authenticator or backup code to confirm this change.",
+          ? t("scim.common.passwordRequired")
+          : t("scim.common.codeRequired"),
       );
       return;
     }
 
     setIsSaving(true);
     setSaveError(null);
+    setCanReloadSaveError(false);
     try {
       const binding = {
         kind: "operation" as const,
@@ -260,7 +265,10 @@ export function ScimMatchAttributesSettings({
       setPassword("");
       setCode("");
     } catch (error) {
-      setSaveError(errorText(error, "save"));
+      setSaveError(errorText(error, "save", t));
+      setCanReloadSaveError(
+        error instanceof RequestFailure && error.status === 409,
+      );
       setPassword("");
       setCode("");
     } finally {
@@ -279,14 +287,15 @@ export function ScimMatchAttributesSettings({
     if (authMethod === "password" ? !password : !code) {
       setSaveError(
         authMethod === "password"
-          ? "Enter your password to confirm this change."
-          : "Enter a fresh authenticator or backup code to confirm this change.",
+          ? t("scim.common.passwordRequired")
+          : t("scim.common.codeRequired"),
       );
       return;
     }
 
     setIsSaving(true);
     setSaveError(null);
+    setCanReloadSaveError(false);
     try {
       const binding = {
         kind: "operation" as const,
@@ -321,7 +330,10 @@ export function ScimMatchAttributesSettings({
       setPassword("");
       setCode("");
     } catch (error) {
-      setSaveError(errorText(error, "save"));
+      setSaveError(errorText(error, "save", t));
+      setCanReloadSaveError(
+        error instanceof RequestFailure && error.status === 409,
+      );
       setPassword("");
       setCode("");
     } finally {
@@ -330,16 +342,18 @@ export function ScimMatchAttributesSettings({
   }
 
   if (isLoading) {
-    return <p role="status">Loading SCIM settings…</p>;
+    return <p role="status">{t("scim.match.loading")}</p>;
   }
 
   if (loadError) {
     return (
       <Alert variant="error">
-        <AlertTitle>SCIM settings unavailable</AlertTitle>
+        <AlertTitle>{t("scim.match.unavailable")}</AlertTitle>
         <AlertDescription>
           <p>{loadError}</p>
-          <Button onClick={() => void refresh()}>Retry</Button>
+          <Button onClick={() => void refresh()}>
+            {t("scim.match.retry")}
+          </Button>
         </AlertDescription>
       </Alert>
     );
@@ -357,12 +371,10 @@ export function ScimMatchAttributesSettings({
           className="text-lg font-semibold"
           id="scim-match-attributes-heading"
         >
-          SCIM configuration
+          {t("scim.match.title")}
         </h2>
         <p className="text-sm text-muted-foreground">
-          Configure this connection’s available SCIM resources, deactivation
-          behavior, and supported user lookup attributes. These settings do not
-          change identity linking or authority.
+          {t("scim.match.description")}
         </p>
       </header>
 
@@ -374,13 +386,13 @@ export function ScimMatchAttributesSettings({
       />
 
       <fieldset className="space-y-3" disabled={isSaving}>
-        <legend className="font-medium">Provisioned resources</legend>
+        <legend className="font-medium">{t("scim.match.resources")}</legend>
         <div className="flex items-start gap-3">
           <Checkbox checked disabled id="scim-resource-users" />
           <div className="space-y-0.5">
-            <Label htmlFor="scim-resource-users">Users</Label>
+            <Label htmlFor="scim-resource-users">{t("scim.match.users")}</Label>
             <p className="text-sm text-muted-foreground">
-              Required by the SCIM connection.
+              {t("scim.match.requiredByConnection")}
             </p>
           </div>
         </div>
@@ -390,12 +402,14 @@ export function ScimMatchAttributesSettings({
             id="scim-resource-groups"
             onCheckedChange={(checked) => setGroupsAllowed(checked === true)}
           />
-          <Label htmlFor="scim-resource-groups">Groups</Label>
+          <Label htmlFor="scim-resource-groups">{t("scim.match.groups")}</Label>
         </div>
       </fieldset>
 
       <div className="max-w-md space-y-2">
-        <Label htmlFor="scim-lifecycle-policy">User deactivation policy</Label>
+        <Label htmlFor="scim-lifecycle-policy">
+          {t("scim.match.deactivationPolicy")}
+        </Label>
         <Select
           disabled={isSaving}
           onValueChange={(value) => {
@@ -406,34 +420,36 @@ export function ScimMatchAttributesSettings({
           value={lifecycleDraft}
         >
           <SelectTrigger
-            aria-label="User deactivation policy"
+            aria-label={t("scim.match.deactivationPolicy")}
             id="scim-lifecycle-policy"
           >
             <SelectValue />
           </SelectTrigger>
           <SelectContent>
             <SelectItem value="end_memberships">
-              End sourced memberships
+              {t("scim.match.endMemberships")}
             </SelectItem>
             <SelectItem value="keep_memberships">
-              Keep sourced memberships
+              {t("scim.match.keepMemberships")}
             </SelectItem>
           </SelectContent>
         </Select>
         <p className="text-sm text-muted-foreground">
-          This controls future SCIM user deactivation only.
+          {t("scim.match.futureDeactivations")}
         </p>
       </div>
 
       <fieldset className="space-y-3" disabled={isSaving}>
-        <legend className="font-medium">Supported match attributes</legend>
+        <legend className="font-medium">
+          {t("scim.match.supportedAttributes")}
+        </legend>
         {REQUIRED_MATCH_ATTRIBUTES.map((attribute) => (
           <div className="flex items-start gap-3" key={attribute}>
             <Checkbox checked disabled id={`scim-match-${attribute}`} />
             <div className="space-y-0.5">
               <Label htmlFor={`scim-match-${attribute}`}>{attribute}</Label>
               <p className="text-sm text-muted-foreground">
-                Required for every SCIM connection.
+                {t("scim.match.requiredForConnection")}
               </p>
             </div>
           </div>
@@ -453,14 +469,15 @@ export function ScimMatchAttributesSettings({
       </fieldset>
 
       <form className="space-y-4 rounded-md border p-4" onSubmit={save}>
-        <h3 className="font-medium">Confirm with step-up authentication</h3>
+        <h3 className="font-medium">{t("scim.match.stepUpTitle")}</h3>
         <p className="text-sm text-muted-foreground">
-          Saving requires a fresh, session-bound confirmation. The confirmation
-          is bound to these exact settings and their current version.
+          {t("scim.match.stepUpDescription")}
         </p>
         <div className="grid gap-3 sm:grid-cols-2">
           <div className="space-y-2">
-            <Label htmlFor="scim-step-up-method">Verification method</Label>
+            <Label htmlFor="scim-step-up-method">
+              {t("scim.common.verificationMethod")}
+            </Label>
             <Select
               onValueChange={(value) => {
                 if (
@@ -476,25 +493,31 @@ export function ScimMatchAttributesSettings({
               value={authMethod}
             >
               <SelectTrigger
-                aria-label="Verification method"
+                aria-label={t("scim.common.verificationMethod")}
                 id="scim-step-up-method"
               >
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="password">Password</SelectItem>
-                <SelectItem value="totp">Authenticator code</SelectItem>
-                <SelectItem value="backup_code">Backup code</SelectItem>
+                <SelectItem value="password">
+                  {t("scim.common.password")}
+                </SelectItem>
+                <SelectItem value="totp">
+                  {t("scim.common.authenticatorCode")}
+                </SelectItem>
+                <SelectItem value="backup_code">
+                  {t("scim.common.backupCode")}
+                </SelectItem>
               </SelectContent>
             </Select>
           </div>
           <div className="space-y-2">
             <Label htmlFor="scim-step-up-secret">
               {authMethod === "password"
-                ? "Password"
+                ? t("scim.common.password")
                 : authMethod === "totp"
-                  ? "Authenticator code"
-                  : "Backup code"}
+                  ? t("scim.common.authenticatorCode")
+                  : t("scim.common.backupCode")}
             </Label>
             <Input
               autoComplete={
@@ -513,26 +536,26 @@ export function ScimMatchAttributesSettings({
         </div>
         {saveError ? (
           <Alert variant="error">
-            <AlertTitle>SCIM configuration was not saved</AlertTitle>
+            <AlertTitle>{t("scim.match.configurationNotSaved")}</AlertTitle>
             <AlertDescription>{saveError}</AlertDescription>
           </Alert>
         ) : null}
         <div className="flex flex-wrap gap-2">
           <Button disabled={!changed || isSaving} type="submit">
-            {isSaving ? "Saving…" : "Save SCIM settings"}
+            {isSaving ? t("scim.common.saving") : t("scim.match.save")}
           </Button>
-          {saveError?.includes("changed in another session") ? (
+          {canReloadSaveError ? (
             <Button
               disabled={isSaving}
               onClick={() => void refresh()}
               type="button"
               variant="outline"
             >
-              Reload latest settings
+              {t("scim.common.reload")}
             </Button>
           ) : null}
           <span className="self-center text-sm text-muted-foreground">
-            Configuration version {settings.configVersion}
+            {t("scim.match.version", { version: settings.configVersion })}
           </span>
         </div>
       </form>
@@ -545,21 +568,19 @@ export function ScimMatchAttributesSettings({
         >
           <header className="space-y-1">
             <h3 className="font-medium" id="scim-profile-mapping-heading">
-              SCIM profile attribute mapping
+              {t("scim.match.profileTitle")}
             </h3>
             <p className="text-sm text-muted-foreground">
-              Choose fixed SCIM profile fields for TaskDesk profile data.
-              Changes affect future authenticated SCIM user writes only; they do
-              not alter identity matching, account linking, or authority.
+              {t("scim.match.profileDescription")}
             </p>
           </header>
           <div className="grid gap-3 sm:grid-cols-2">
             {(
               [
-                ["name", "Display name source"],
-                ["email", "Contact email source"],
-                ["jobTitle", "Job title source"],
-                ["locale", "Locale source"],
+                ["name", t("scim.match.displayNameSource")],
+                ["email", t("scim.match.contactEmailSource")],
+                ["jobTitle", t("scim.match.jobTitleSource")],
+                ["locale", t("scim.match.localeSource")],
               ] as const
             ).map(([field, label]) => (
               <div className="space-y-2" key={field}>
@@ -597,10 +618,10 @@ export function ScimMatchAttributesSettings({
           </div>
           <div className="flex flex-wrap items-center gap-2">
             <Button disabled={!profileChanged || isSaving} type="submit">
-              {isSaving ? "Saving…" : "Save profile mapping"}
+              {isSaving ? t("scim.common.saving") : t("scim.match.saveProfile")}
             </Button>
             <span className="text-sm text-muted-foreground">
-              No raw SCIM profile data is stored in this mapping.
+              {t("scim.match.noRawData")}
             </span>
           </div>
         </form>

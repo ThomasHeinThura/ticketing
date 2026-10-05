@@ -113,10 +113,7 @@ export function IdentityConnectionEvents({
       </h2>
       {error ? (
         <Alert variant="error">
-          <AlertDescription>
-            Event history is unavailable. Your identity connection settings are
-            unchanged.
-          </AlertDescription>
+          <AlertDescription>{t("events.loadFailed")}</AlertDescription>
         </Alert>
       ) : null}
       {loading ? <p role="status">{t("events.loading")}</p> : null}
@@ -148,7 +145,7 @@ export function IdentityConnectionEvents({
           type="button"
           variant="outline"
         >
-          Older events
+          {t("events.older")}
         </Button>
       ) : null}
       {cursor ? (
@@ -158,7 +155,7 @@ export function IdentityConnectionEvents({
           type="button"
           variant="ghost"
         >
-          Newest events
+          {t("events.newest")}
         </Button>
       ) : null}
     </section>

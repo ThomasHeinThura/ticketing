@@ -11641,9 +11641,503 @@
 						"outcomes",
 						"actors"
 					]
+				},
+				"scim": {
+					"type": "object",
+					"additionalProperties": false,
+					"properties": {
+						"common": {
+							"type": "object",
+							"additionalProperties": false,
+							"properties": {
+								"passwordRequired": {
+									"type": "string"
+								},
+								"codeRequired": {
+									"type": "string"
+								},
+								"password": {
+									"type": "string"
+								},
+								"authenticatorCode": {
+									"type": "string"
+								},
+								"backupCode": {
+									"type": "string"
+								},
+								"verificationMethod": {
+									"type": "string"
+								},
+								"saving": {
+									"type": "string"
+								},
+								"working": {
+									"type": "string"
+								},
+								"reload": {
+									"type": "string"
+								}
+							},
+							"required": [
+								"passwordRequired",
+								"codeRequired",
+								"password",
+								"authenticatorCode",
+								"backupCode",
+								"verificationMethod",
+								"saving",
+								"working",
+								"reload"
+							]
+						},
+						"match": {
+							"type": "object",
+							"additionalProperties": false,
+							"properties": {
+								"loading": {
+									"type": "string"
+								},
+								"unavailable": {
+									"type": "string"
+								},
+								"retry": {
+									"type": "string"
+								},
+								"title": {
+									"type": "string"
+								},
+								"description": {
+									"type": "string"
+								},
+								"resources": {
+									"type": "string"
+								},
+								"users": {
+									"type": "string"
+								},
+								"requiredByConnection": {
+									"type": "string"
+								},
+								"groups": {
+									"type": "string"
+								},
+								"deactivationPolicy": {
+									"type": "string"
+								},
+								"endMemberships": {
+									"type": "string"
+								},
+								"keepMemberships": {
+									"type": "string"
+								},
+								"futureDeactivations": {
+									"type": "string"
+								},
+								"supportedAttributes": {
+									"type": "string"
+								},
+								"requiredForConnection": {
+									"type": "string"
+								},
+								"stepUpTitle": {
+									"type": "string"
+								},
+								"stepUpDescription": {
+									"type": "string"
+								},
+								"configurationNotSaved": {
+									"type": "string"
+								},
+								"save": {
+									"type": "string"
+								},
+								"version": {
+									"type": "string"
+								},
+								"profileTitle": {
+									"type": "string"
+								},
+								"profileDescription": {
+									"type": "string"
+								},
+								"displayNameSource": {
+									"type": "string"
+								},
+								"contactEmailSource": {
+									"type": "string"
+								},
+								"jobTitleSource": {
+									"type": "string"
+								},
+								"localeSource": {
+									"type": "string"
+								},
+								"saveProfile": {
+									"type": "string"
+								},
+								"noRawData": {
+									"type": "string"
+								},
+								"errors": {
+									"type": "object",
+									"additionalProperties": false,
+									"properties": {
+										"forbidden": {
+											"type": "string"
+										},
+										"notFound": {
+											"type": "string"
+										},
+										"stale": {
+											"type": "string"
+										},
+										"invalid": {
+											"type": "string"
+										},
+										"unavailable": {
+											"type": "string"
+										},
+										"load": {
+											"type": "string"
+										},
+										"save": {
+											"type": "string"
+										}
+									},
+									"required": [
+										"forbidden",
+										"notFound",
+										"stale",
+										"invalid",
+										"unavailable",
+										"load",
+										"save"
+									]
+								}
+							},
+							"required": [
+								"loading",
+								"unavailable",
+								"retry",
+								"title",
+								"description",
+								"resources",
+								"users",
+								"requiredByConnection",
+								"groups",
+								"deactivationPolicy",
+								"endMemberships",
+								"keepMemberships",
+								"futureDeactivations",
+								"supportedAttributes",
+								"requiredForConnection",
+								"stepUpTitle",
+								"stepUpDescription",
+								"configurationNotSaved",
+								"save",
+								"version",
+								"profileTitle",
+								"profileDescription",
+								"displayNameSource",
+								"contactEmailSource",
+								"jobTitleSource",
+								"localeSource",
+								"saveProfile",
+								"noRawData",
+								"errors"
+							]
+						},
+						"group": {
+							"type": "object",
+							"additionalProperties": false,
+							"properties": {
+								"title": {
+									"type": "string"
+								},
+								"description": {
+									"type": "string"
+								},
+								"loadFailed": {
+									"type": "string"
+								},
+								"rolesLoadFailed": {
+									"type": "string"
+								},
+								"loadUnavailable": {
+									"type": "string"
+								},
+								"retry": {
+									"type": "string"
+								},
+								"loading": {
+									"type": "string"
+								},
+								"customerUnavailable": {
+									"type": "string"
+								},
+								"listLabel": {
+									"type": "string"
+								},
+								"roleLabel": {
+									"type": "string"
+								},
+								"enabled": {
+									"type": "string"
+								},
+								"disabled": {
+									"type": "string"
+								},
+								"editAction": {
+									"type": "string"
+								},
+								"empty": {
+									"type": "string"
+								},
+								"editTitle": {
+									"type": "string"
+								},
+								"addTitle": {
+									"type": "string"
+								},
+								"externalId": {
+									"type": "string"
+								},
+								"displayName": {
+									"type": "string"
+								},
+								"workspace": {
+									"type": "string"
+								},
+								"chooseWorkspace": {
+									"type": "string"
+								},
+								"customerOrganisation": {
+									"type": "string"
+								},
+								"eligibleRole": {
+									"type": "string"
+								},
+								"loadingRoles": {
+									"type": "string"
+								},
+								"chooseRole": {
+									"type": "string"
+								},
+								"rank": {
+									"type": "string"
+								},
+								"mappingEnabled": {
+									"type": "string"
+								},
+								"notSaved": {
+									"type": "string"
+								},
+								"save": {
+									"type": "string"
+								},
+								"create": {
+									"type": "string"
+								},
+								"cancel": {
+									"type": "string"
+								},
+								"errors": {
+									"type": "object",
+									"additionalProperties": false,
+									"properties": {
+										"targetRequired": {
+											"type": "string"
+										},
+										"externalIdRequired": {
+											"type": "string"
+										},
+										"factorRequired": {
+											"type": "string"
+										},
+										"duplicate": {
+											"type": "string"
+										},
+										"stale": {
+											"type": "string"
+										},
+										"ineligible": {
+											"type": "string"
+										},
+										"saveFailed": {
+											"type": "string"
+										}
+									},
+									"required": [
+										"targetRequired",
+										"externalIdRequired",
+										"factorRequired",
+										"duplicate",
+										"stale",
+										"ineligible",
+										"saveFailed"
+									]
+								}
+							},
+							"required": [
+								"title",
+								"description",
+								"loadFailed",
+								"rolesLoadFailed",
+								"loadUnavailable",
+								"retry",
+								"loading",
+								"customerUnavailable",
+								"listLabel",
+								"roleLabel",
+								"enabled",
+								"disabled",
+								"editAction",
+								"empty",
+								"editTitle",
+								"addTitle",
+								"externalId",
+								"displayName",
+								"workspace",
+								"chooseWorkspace",
+								"customerOrganisation",
+								"eligibleRole",
+								"loadingRoles",
+								"chooseRole",
+								"rank",
+								"mappingEnabled",
+								"notSaved",
+								"save",
+								"create",
+								"cancel",
+								"errors"
+							]
+						},
+						"token": {
+							"type": "object",
+							"additionalProperties": false,
+							"properties": {
+								"title": {
+									"type": "string"
+								},
+								"description": {
+									"type": "string"
+								},
+								"operationPassword": {
+									"type": "string"
+								},
+								"operationCode": {
+									"type": "string"
+								},
+								"operationBackupCode": {
+									"type": "string"
+								},
+								"notSaved": {
+									"type": "string"
+								},
+								"updated": {
+									"type": "string"
+								},
+								"newToken": {
+									"type": "string"
+								},
+								"copied": {
+									"type": "string"
+								},
+								"copy": {
+									"type": "string"
+								},
+								"issueOrRotate": {
+									"type": "string"
+								},
+								"revoke": {
+									"type": "string"
+								},
+								"reenable": {
+									"type": "string"
+								},
+								"rotateSuccess": {
+									"type": "string"
+								},
+								"revokeSuccess": {
+									"type": "string"
+								},
+								"enableSuccess": {
+									"type": "string"
+								},
+								"clipboardFailed": {
+									"type": "string"
+								},
+								"errors": {
+									"type": "object",
+									"additionalProperties": false,
+									"properties": {
+										"forbidden": {
+											"type": "string"
+										},
+										"notFound": {
+											"type": "string"
+										},
+										"stale": {
+											"type": "string"
+										},
+										"revokeInvalid": {
+											"type": "string"
+										},
+										"enableInvalid": {
+											"type": "string"
+										},
+										"unavailable": {
+											"type": "string"
+										},
+										"failed": {
+											"type": "string"
+										},
+										"factorRequiredPassword": {
+											"type": "string"
+										},
+										"factorRequiredCode": {
+											"type": "string"
+										}
+									},
+									"required": [
+										"forbidden",
+										"notFound",
+										"stale",
+										"revokeInvalid",
+										"enableInvalid",
+										"unavailable",
+										"failed",
+										"factorRequiredPassword",
+										"factorRequiredCode"
+									]
+								}
+							},
+							"required": [
+								"title",
+								"description",
+								"operationPassword",
+								"operationCode",
+								"operationBackupCode",
+								"notSaved",
+								"updated",
+								"newToken",
+								"copied",
+								"copy",
+								"issueOrRotate",
+								"revoke",
+								"reenable",
+								"rotateSuccess",
+								"revokeSuccess",
+								"enableSuccess",
+								"clipboardFailed",
+								"errors"
+							]
+						}
+					},
+					"required": ["common", "match", "group", "token"]
 				}
 			},
-			"required": ["list", "editor", "events"]
+			"required": ["list", "editor", "events", "scim"]
 		}
 	},
 	"required": [

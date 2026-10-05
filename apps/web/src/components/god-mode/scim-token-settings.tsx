@@ -13,6 +13,7 @@ import {
   SelectValue,
 } from "@taskdesk/ui";
 import { useState } from "react";
+import { useTranslation } from "react-i18next";
 import { getApiUrl } from "@/fetchers/get-api-url";
 
 type TokenResult =
@@ -40,23 +41,19 @@ async function requestJson<T>(path: string, init: RequestInit): Promise<T> {
 function failureMessage(
   error: unknown,
   action: "rotate" | "revoke" | "enable",
+  t: (key: string) => string,
 ) {
   if (error instanceof RequestFailure) {
-    if (error.status === 403)
-      return "Fresh administrator verification was unavailable or could not be completed.";
-    if (error.status === 404)
-      return "This SCIM connection is no longer available.";
-    if (error.status === 409)
-      return "SCIM configuration changed in another session. Reload the settings before trying again.";
+    if (error.status === 403) return t("scim.token.errors.forbidden");
+    if (error.status === 404) return t("scim.token.errors.notFound");
+    if (error.status === 409) return t("scim.token.errors.stale");
     if (error.status === 422) {
-      if (action === "revoke")
-        return "There is no active bearer token to revoke, or the token operation is unavailable.";
-      if (action === "enable")
-        return "SCIM cannot be enabled until a valid bearer token has been issued.";
-      return "The SCIM token operation is unavailable.";
+      if (action === "revoke") return t("scim.token.errors.revokeInvalid");
+      if (action === "enable") return t("scim.token.errors.enableInvalid");
+      return t("scim.token.errors.unavailable");
     }
   }
-  return "The SCIM token operation failed. Try again.";
+  return t("scim.token.errors.failed");
 }
 
 export function ScimTokenSettings({
@@ -72,6 +69,8 @@ export function ScimTokenSettings({
   onConfigurationChanged: (version: number, enabled: boolean) => void;
   onReload: () => void;
 }) {
+  const { t } = useTranslation("identityConnections");
+  const [canReload, setCanReload] = useState(false);
   const [authMethod, setAuthMethod] = useState<
     "password" | "totp" | "backup_code"
   >("password");
@@ -89,8 +88,8 @@ export function ScimTokenSettings({
     if (authMethod === "password" ? !password : !code) {
       setError(
         authMethod === "password"
-          ? "Enter your password to confirm this token operation."
-          : "Enter a fresh authenticator or backup code to confirm this token operation.",
+          ? t("scim.token.errors.factorRequiredPassword")
+          : t("scim.token.errors.factorRequiredCode"),
       );
       return;
     }
@@ -121,6 +120,7 @@ export function ScimTokenSettings({
         : `instance/identity-connections/${encodeURIComponent(connectionId)}/scim/${action === "rotate" ? "rotate-token" : "revoke-token"}`;
     setBusy(true);
     setError(null);
+    setCanReload(false);
     setStatus(null);
     setIssuedToken(null);
     setCopied(false);
@@ -151,10 +151,10 @@ export function ScimTokenSettings({
       });
       setStatus(
         action === "rotate"
-          ? "The new bearer is shown once below. Update the upstream credential before re-enabling SCIM."
+          ? t("scim.token.rotateSuccess")
           : action === "revoke"
-            ? "The bearer was revoked and the SCIM connection is disabled."
-            : "SCIM is enabled with the current bearer token.",
+            ? t("scim.token.revokeSuccess")
+            : t("scim.token.enableSuccess"),
       );
       if (action === "rotate" && "token" in result)
         setIssuedToken(result.token);
@@ -162,7 +162,8 @@ export function ScimTokenSettings({
       if (action === "revoke") setTokenRevoked(true);
       onConfigurationChanged(result.configVersion, action === "enable");
     } catch (failure) {
-      setError(failureMessage(failure, action));
+      setError(failureMessage(failure, action, t));
+      setCanReload(failure instanceof RequestFailure && failure.status === 409);
     } finally {
       setPassword("");
       setCode("");
@@ -176,9 +177,7 @@ export function ScimTokenSettings({
       await navigator.clipboard.writeText(issuedToken);
       setCopied(true);
     } catch {
-      setError(
-        "Clipboard access was unavailable. Select and copy the token manually.",
-      );
+      setError(t("scim.token.clipboardFailed"));
     }
   }
 
@@ -186,19 +185,18 @@ export function ScimTokenSettings({
     <section aria-labelledby="scim-token-heading" className="space-y-4">
       <header className="space-y-1">
         <h2 className="text-lg font-semibold" id="scim-token-heading">
-          SCIM bearer token
+          {t("scim.token.title")}
         </h2>
         <p className="text-sm text-muted-foreground">
-          Issue or rotate a token, revoke the current token, or re-enable SCIM
-          after you update the upstream credential. A rotated token is displayed
-          once and is never included in settings reads. Token changes disable
-          SCIM until you explicitly re-enable it.
+          {t("scim.token.description")}
         </p>
       </header>
 
       <div className="grid gap-3 sm:grid-cols-2">
         <div className="space-y-2">
-          <Label htmlFor="scim-token-step-up-method">Verification method</Label>
+          <Label htmlFor="scim-token-step-up-method">
+            {t("scim.common.verificationMethod")}
+          </Label>
           <Select
             onValueChange={(value) => {
               if (
@@ -217,19 +215,25 @@ export function ScimTokenSettings({
               <SelectValue />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="password">Password</SelectItem>
-              <SelectItem value="totp">Authenticator code</SelectItem>
-              <SelectItem value="backup_code">Backup code</SelectItem>
+              <SelectItem value="password">
+                {t("scim.common.password")}
+              </SelectItem>
+              <SelectItem value="totp">
+                {t("scim.common.authenticatorCode")}
+              </SelectItem>
+              <SelectItem value="backup_code">
+                {t("scim.common.backupCode")}
+              </SelectItem>
             </SelectContent>
           </Select>
         </div>
         <div className="space-y-2">
           <Label htmlFor="scim-token-step-up-secret">
             {authMethod === "password"
-              ? "Token operation password"
+              ? t("scim.token.operationPassword")
               : authMethod === "totp"
-                ? "Token operation authenticator code"
-                : "Token operation backup code"}
+                ? t("scim.token.operationCode")
+                : t("scim.token.operationBackupCode")}
           </Label>
           <Input
             autoComplete={
@@ -249,12 +253,12 @@ export function ScimTokenSettings({
 
       {error ? (
         <Alert variant="error">
-          <AlertTitle>SCIM token operation failed</AlertTitle>
+          <AlertTitle>{t("scim.token.notSaved")}</AlertTitle>
           <AlertDescription>
             <p>{error}</p>
-            {error.includes("Reload the settings") ? (
+            {canReload ? (
               <Button onClick={onReload} type="button" variant="outline">
-                Reload latest settings
+                {t("scim.common.reload")}
               </Button>
             ) : null}
           </AlertDescription>
@@ -262,13 +266,13 @@ export function ScimTokenSettings({
       ) : null}
       {status ? (
         <Alert variant="success">
-          <AlertTitle>SCIM token updated</AlertTitle>
+          <AlertTitle>{t("scim.token.updated")}</AlertTitle>
           <AlertDescription>{status}</AlertDescription>
         </Alert>
       ) : null}
       {issuedToken ? (
         <div className="space-y-2 rounded-md border p-3">
-          <Label htmlFor="scim-issued-token">New token — copy it now</Label>
+          <Label htmlFor="scim-issued-token">{t("scim.token.newToken")}</Label>
           <div className="flex gap-2">
             <Input
               autoComplete="off"
@@ -282,7 +286,7 @@ export function ScimTokenSettings({
               type="button"
               variant="outline"
             >
-              {copied ? "Copied" : "Copy token"}
+              {copied ? t("scim.token.copied") : t("scim.token.copy")}
             </Button>
           </div>
         </div>
@@ -294,7 +298,7 @@ export function ScimTokenSettings({
           onClick={() => void operate("rotate")}
           type="button"
         >
-          {busy ? "Working…" : "Issue or rotate token"}
+          {busy ? t("scim.common.working") : t("scim.token.issueOrRotate")}
         </Button>
         {!tokenRevoked ? (
           <Button
@@ -303,7 +307,7 @@ export function ScimTokenSettings({
             type="button"
             variant="destructive"
           >
-            Revoke token
+            {t("scim.token.revoke")}
           </Button>
         ) : null}
         {!enabled && !tokenRevoked ? (
@@ -313,7 +317,7 @@ export function ScimTokenSettings({
             type="button"
             variant="outline"
           >
-            Re-enable SCIM
+            {t("scim.token.reenable")}
           </Button>
         ) : null}
       </div>

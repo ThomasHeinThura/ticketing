@@ -1,3 +1,4 @@
+import enUS from "@i18n/en-US.json";
 import {
   cleanup,
   fireEvent,
@@ -9,6 +10,28 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { ScimTokenSettings } from "./scim-token-settings";
 
 const apiFetch = vi.fn();
+vi.mock("react-i18next", () => {
+  const t = (key: string, options?: Record<string, unknown>) => {
+    const [namespace, path] = key.includes(":")
+      ? key.split(":")
+      : ["identityConnections", key];
+    const source = path
+      .split(".")
+      .reduce<unknown>(
+        (current, part) =>
+          (current as Record<string, unknown> | undefined)?.[part],
+        (enUS as Record<string, unknown>)[namespace ?? "identityConnections"],
+      );
+    if (typeof source !== "string") return key;
+    return source.replace(/\{\{(\w+)\}\}/g, (_match, name: string) =>
+      String(options?.[name] ?? `{{${name}}}`),
+    );
+  };
+  return {
+    useTranslation: () => ({ i18n: { language: "en-US" }, t }),
+    initReactI18next: { type: "3rdParty", init: () => {} },
+  };
+});
 vi.mock("@taskdesk/libs", () => ({
   apiFetch: (...args: unknown[]) => apiFetch(...args),
 }));

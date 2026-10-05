@@ -76,7 +76,7 @@ function IdentityConnectionsRoute() {
             {t("list.description")}
           </p>
           <Button render={<a href={routes.identityConnectionCreate.build()} />}>
-            Add identity connection
+            {t("list.add")}
           </Button>
         </header>
 
@@ -129,7 +129,7 @@ function IdentityConnectionsRoute() {
                     }
                     variant="outline"
                   >
-                    Manage settings
+                    {t("list.manage")}
                   </Button>
                 </CardContent>
               </Card>
@@ -138,7 +138,7 @@ function IdentityConnectionsRoute() {
         ) : !error ? (
           <Card>
             <CardContent className="p-4 text-sm text-muted-foreground">
-              No identity connections are configured.
+              {t("list.empty")}
             </CardContent>
           </Card>
         ) : null}
