@@ -17,6 +17,7 @@ import {
   Skeleton,
 } from "@taskdesk/ui";
 import { useEffect, useState } from "react";
+import { useTranslation } from "react-i18next";
 import PageTitle from "@/components/page-title";
 import {
   getCurrentFactorStatus,
@@ -28,6 +29,7 @@ import {
   createPendingActionProof,
   getOwnPendingAction,
 } from "@/fetchers/pending-actions";
+import { instanceUsersKey } from "@/hooks/queries/god-mode/use-instance-users";
 import { HttpError } from "@/lib/http-error";
 import { routes } from "@/lib/routes";
 
@@ -36,6 +38,7 @@ export const Route = createFileRoute(
 )({ component: PendingActionDetailRoute });
 
 function PendingActionDetailRoute() {
+  const { i18n, t } = useTranslation();
   const { id } = Route.useParams();
   const queryClient = useQueryClient();
   const [typedName, setTypedName] = useState("");
@@ -63,6 +66,10 @@ function PendingActionDetailRoute() {
         queryClient.invalidateQueries({
           queryKey: ["me", "pending-action", id],
         }),
+        queryClient.invalidateQueries({
+          queryKey: instanceUsersKey,
+          refetchType: "all",
+        }),
       ]);
     },
   });
@@ -88,12 +95,12 @@ function PendingActionDetailRoute() {
   if (action.isError || !action.data) {
     return (
       <main className="space-y-4 p-5 lg:p-8">
-        <PageTitle title="Pending action" />
+        <PageTitle title={t("pendingActions:copy.a93eb80c8601")} />
         <p role="alert" className="text-sm text-destructive">
-          This pending action could not be loaded or is no longer available.
+          {t("pendingActions:copy.85baf535b480")}
         </p>
         <Link to={routes.pendingActions.path as never}>
-          Back to pending actions
+          {t("pendingActions:copy.c4c695a8da8e")}
         </Link>
       </main>
     );
@@ -128,17 +135,15 @@ function PendingActionDetailRoute() {
       });
       await approve.mutateAsync({ id, typedName, stepUpToken });
       setSecret("");
-      setNotice(
-        "The approved deactivation completed. The user's active session was revoked.",
-      );
+      setNotice(t("pendingActions:dynamic.deactivationApproved"));
     } catch (cause) {
       const status = cause instanceof HttpError ? cause.status : undefined;
       setError(
         status === 400
-          ? "The exact current email did not match. The request remains pending."
+          ? t("pendingActions:emailMismatch")
           : status === 409
-            ? "The account or approval changed. Reload to see its current state."
-            : "Approval could not be completed. Verify your details and try again.",
+            ? t("pendingActions:staleApproval")
+            : t("pendingActions:approvalFailed"),
       );
       setSecret("");
     }
@@ -148,49 +153,63 @@ function PendingActionDetailRoute() {
     setError(null);
     try {
       await cancel.mutateAsync(id);
-      setNotice("The pending action was cancelled.");
+      setNotice(t("pendingActions:dynamic.cancelled"));
     } catch {
-      setError(
-        "This action could not be cancelled. Reload to see its current state.",
-      );
+      setError(t("pendingActions:dynamic.cancelFailed"));
     }
   }
 
   return (
     <main className="flex min-h-full flex-col gap-5 p-5 lg:p-8">
-      <PageTitle title="Pending action" />
+      <PageTitle title={t("pendingActions:copy.a93eb80c8601")} />
       <header>
         <h1 className="text-2xl font-semibold">
           {action.data.action === "user_deactivation"
-            ? "Approve person deactivation"
-            : "Pending action"}
+            ? t("pendingActions:dynamic.approveDeactivation")
+            : t("pendingActions:dynamic.pendingAction")}
         </h1>
         <p className="mt-1 text-sm text-muted-foreground">
-          Requested from {action.data.origin}; expires{" "}
-          {new Date(action.data.expiresAt).toLocaleString()}.
+          {t("pendingActions:dynamic.requestedFrom", {
+            origin: t(`pendingActions:dynamic.origins.${action.data.origin}`),
+          })}{" "}
+          {new Date(action.data.expiresAt).toLocaleString(i18n.language)}.
         </p>
       </header>
       <Card>
         <CardContent className="space-y-4 py-5">
           <dl className="grid gap-2 text-sm sm:grid-cols-[8rem_1fr]">
-            <dt className="text-muted-foreground">Action</dt>
-            <dd>{action.data.action.replaceAll("_", " ")}</dd>
-            <dt className="text-muted-foreground">Target</dt>
+            <dt className="text-muted-foreground">
+              {t("pendingActions:copy.97c89a4d6630")}
+            </dt>
+            <dd>
+              {action.data.action === "user_deactivation"
+                ? t("pendingActions:dynamic.deactivatePerson", { email: "" })
+                : action.data.action.replaceAll("_", " ")}
+            </dd>
+            <dt className="text-muted-foreground">
+              {t("pendingActions:copy.61ad50a9b918")}
+            </dt>
             <dd>{email ?? action.data.targetIds.join(", ")}</dd>
-            <dt className="text-muted-foreground">Status</dt>
-            <dd>{action.data.state.replaceAll("_", " ")}</dd>
+            <dt className="text-muted-foreground">
+              {t("pendingActions:copy.bae7d5be7082")}
+            </dt>
+            <dd>{t(`pendingActions:dynamic.states.${action.data.state}`)}</dd>
             {action.data.invalidationReason && (
               <>
-                <dt className="text-muted-foreground">Reason</dt>
-                <dd>{action.data.invalidationReason.replaceAll("_", " ")}</dd>
+                <dt className="text-muted-foreground">
+                  {t("pendingActions:copy.f219cc0614ae")}
+                </dt>
+                <dd>
+                  {t(
+                    `pendingActions:dynamic.reasons.${action.data.invalidationReason}`,
+                  )}
+                </dd>
               </>
             )}
           </dl>
           {action.data.action === "user_deactivation" && (
             <p className="text-sm text-muted-foreground">
-              Approval deactivates the person, ends memberships, and revokes the
-              account's current sessions and native API keys. This cannot be
-              undone by unsuspending the account.
+              {t("pendingActions:copy.71f269fe7eee")}
             </p>
           )}
           {notice && (
@@ -203,11 +222,24 @@ function PendingActionDetailRoute() {
               {error}
             </p>
           )}
+          {action.data.action === "user_deactivation" && !isPending && (
+            <div className="space-y-2">
+              <p className="text-sm text-muted-foreground">
+                {t("pendingActions:requestFreshDeactivation")}
+              </p>
+              <Button
+                variant="outline"
+                render={<Link to={routes.godModeUsers.path as never} />}
+              >
+                {t("pendingActions:openUsers")}
+              </Button>
+            </div>
+          )}
           {canApprove && (
             <div className="space-y-4 border-t pt-4">
               <div className="space-y-2">
                 <Label htmlFor="confirm-current-email">
-                  Type the exact current email
+                  {t("pendingActions:copy.c65f42061785")}
                 </Label>
                 <Input
                   id="confirm-current-email"
@@ -220,7 +252,7 @@ function PendingActionDetailRoute() {
               {factor.data?.enabled && (
                 <div className="space-y-2">
                   <Label htmlFor="pending-action-step-up-method">
-                    Fresh authentication
+                    {t("pendingActions:copy.3a725803c822")}
                   </Label>
                   <Select
                     value={method}
@@ -234,19 +266,25 @@ function PendingActionDetailRoute() {
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="totp">Authenticator code</SelectItem>
-                      <SelectItem value="backup_code">Backup code</SelectItem>
+                      <SelectItem value="totp">
+                        {t("pendingActions:copy.2908b4e9c428")}
+                      </SelectItem>
+                      <SelectItem value="backup_code">
+                        {t("pendingActions:copy.2a8367498e23")}
+                      </SelectItem>
                     </SelectContent>
                   </Select>
                 </div>
               )}
               <div className="space-y-2">
                 <Label htmlFor="pending-action-step-up-secret">
-                  {effectiveMethod === "password"
-                    ? "Account password"
-                    : effectiveMethod === "totp"
-                      ? "Authenticator code"
-                      : "Backup code"}
+                  {t(
+                    effectiveMethod === "password"
+                      ? "pendingActions:dynamic.accountPassword"
+                      : effectiveMethod === "totp"
+                        ? "pendingActions:dynamic.authenticatorCode"
+                        : "pendingActions:dynamic.backupCode",
+                  )}
                 </Label>
                 <Input
                   id="pending-action-step-up-secret"
@@ -262,10 +300,11 @@ function PendingActionDetailRoute() {
               </div>
               {factorUnavailable && (
                 <Alert variant="error">
-                  <AlertTitle>Fresh authentication unavailable</AlertTitle>
+                  <AlertTitle>
+                    {t("pendingActions:copy.02c7fa45ff1a")}
+                  </AlertTitle>
                   <AlertDescription>
-                    Check your security-factor setup before approving this
-                    action.
+                    {t("pendingActions:copy.8a8c6877113f")}
                   </AlertDescription>
                 </Alert>
               )}
@@ -279,30 +318,29 @@ function PendingActionDetailRoute() {
                   }
                   onClick={() => void approveDeactivation()}
                 >
-                  Approve and deactivate
+                  {t("pendingActions:copy.a2b52d875e8b")}
                 </Button>
                 <Button
                   variant="outline"
                   disabled={cancel.isPending || approve.isPending}
                   onClick={() => void cancelAction()}
                 >
-                  Cancel request
+                  {t("pendingActions:copy.84837a216817")}
                 </Button>
               </div>
             </div>
           )}
           {isPending && !canApprove && (
             <Alert>
-              <AlertTitle>Approval flow unavailable</AlertTitle>
+              <AlertTitle>{t("pendingActions:copy.e76b511b0a44")}</AlertTitle>
               <AlertDescription>
-                This action remains pending. Its registered confirmation flow is
-                not part of this screen.
+                {t("pendingActions:copy.d3d84fb23a45")}
               </AlertDescription>
             </Alert>
           )}
           {!isPending && (
             <Link to={routes.pendingActions.path as never}>
-              Back to pending actions
+              {t("pendingActions:copy.c4c695a8da8e")}
             </Link>
           )}
         </CardContent>

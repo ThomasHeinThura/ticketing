@@ -31,6 +31,7 @@ import {
   TableRow,
 } from "@taskdesk/ui";
 import { useEffect, useMemo, useState } from "react";
+import { useTranslation } from "react-i18next";
 import PageTitle from "@/components/page-title";
 import {
   createUserOperationProof,
@@ -60,6 +61,7 @@ type Action =
   | null;
 
 function InstanceUsersPage() {
+  const { t } = useTranslation();
   const search = Route.useSearch();
   const navigate = useNavigate({ from: Route.fullPath });
   const queryClient = useQueryClient();
@@ -141,12 +143,10 @@ function InstanceUsersPage() {
       } else if (action === "deactivate") {
         const result = await actions.deactivate.mutateAsync(user.id);
         if (!("approveUrl" in result)) {
-          throw new Error("Deactivation approval was not created");
+          throw new Error(t("instanceUsers:dynamic.approvalMissing"));
         }
         setPendingActionUrl(result.approveUrl);
-        setNotice(
-          "A deactivation approval was created. The account is unchanged until approval.",
-        );
+        setNotice(t("instanceUsers:dynamic.deactivationRequested"));
         resetAction();
         return;
       } else if (action === "grant-admin") {
@@ -174,17 +174,17 @@ function InstanceUsersPage() {
       } else {
         return;
       }
-      setNotice(
+      const noticeKey =
         action === "suspend"
-          ? "Account suspended. Existing sessions and personal keys were revoked."
+          ? "suspended"
           : action === "unsuspend"
-            ? "Account suspension cleared. Previously revoked sessions and keys remain revoked."
+            ? "unsuspended"
             : action === "sign-out"
-              ? "All current sessions for this account were signed out."
+              ? "signedOut"
               : action === "grant-admin"
-                ? "Instance administrator access granted."
-                : "The authenticator factor was reset.",
-      );
+                ? "adminGranted"
+                : "mfaReset";
+      setNotice(t(`instanceUsers:dynamic.notices.${noticeKey}`));
       await queryClient.invalidateQueries({
         queryKey: ["god-mode", "instance-users"],
       });
@@ -192,11 +192,13 @@ function InstanceUsersPage() {
     } catch (error) {
       const status = error instanceof HttpError ? error.status : undefined;
       setFormError(
-        status === 409
-          ? "The account changed while you were working. Reload and try again."
-          : status === 503
-            ? "The required notification service is unavailable. No account change was made."
-            : "The action could not be completed. Check the details and try again.",
+        t(
+          status === 409
+            ? "instanceUsers:dynamic.errors.accountChanged"
+            : status === 503
+              ? "instanceUsers:dynamic.errors.notificationUnavailable"
+              : "instanceUsers:dynamic.errors.actionFailed",
+        ),
       );
       setSecret("");
     }
@@ -212,12 +214,14 @@ function InstanceUsersPage() {
 
   return (
     <main className="flex min-h-full flex-col gap-5 p-5 lg:p-8">
-      <PageTitle title="Instance users" />
+      <PageTitle title={t("instanceUsers:copy.d094be66b726")} />
       <header className="flex flex-wrap items-start justify-between gap-3">
         <div>
-          <h1 className="text-2xl font-semibold">Instance users</h1>
+          <h1 className="text-2xl font-semibold">
+            {t("instanceUsers:copy.d094be66b726")}
+          </h1>
           <p className="mt-1 text-sm text-muted-foreground">
-            Search and manage accounts across this instance.
+            {t("instanceUsers:copy.211715f3fe3d")}
           </p>
         </div>
         <Button
@@ -226,7 +230,7 @@ function InstanceUsersPage() {
           onClick={() => void directory.refetch()}
           disabled={directory.isFetching}
         >
-          Refresh
+          {t("instanceUsers:copy.56e3badc4e6c")}
         </Button>
       </header>
 
@@ -235,7 +239,7 @@ function InstanceUsersPage() {
           {notice}{" "}
           {pendingActionUrl && (
             <Link className="underline" to={pendingActionUrl as never}>
-              Review pending approval
+              {t("instanceUsers:copy.ad11be6e92db")}
             </Link>
           )}
         </p>
@@ -244,15 +248,18 @@ function InstanceUsersPage() {
         className="text-sm underline"
         to={"/agent/settings/profile/pending-actions" as never}
       >
-        My pending actions
+        {t("instanceUsers:copy.8008829bb5ed")}
       </Link>
 
-      <section aria-label="User filters" className="flex flex-wrap gap-3">
+      <section
+        aria-label={t("instanceUsers:copy.4f6c2db66053")}
+        className="flex flex-wrap gap-3"
+      >
         <Input
-          aria-label="Search users"
+          aria-label={t("instanceUsers:copy.1bd6226dd199")}
           className="w-full sm:max-w-sm"
           value={search.q ?? ""}
-          placeholder="Search name or email"
+          placeholder={t("instanceUsers:copy.5d12419516ef")}
           onChange={(event) =>
             navigateSearch({ q: event.target.value, cursor: undefined })
           }
@@ -267,13 +274,22 @@ function InstanceUsersPage() {
             })
           }
         >
-          <SelectTrigger aria-label="Filter by account type" className="w-44">
+          <SelectTrigger
+            aria-label={t("instanceUsers:copy.4dc97a606e2f")}
+            className="w-44"
+          >
             <SelectValue />
           </SelectTrigger>
           <SelectContent>
-            <SelectItem value="all">All account types</SelectItem>
-            <SelectItem value="staff">Staff</SelectItem>
-            <SelectItem value="customer">Customer</SelectItem>
+            <SelectItem value="all">
+              {t("instanceUsers:copy.ec137488beec")}
+            </SelectItem>
+            <SelectItem value="staff">
+              {t("instanceUsers:copy.a4730a22cf49")}
+            </SelectItem>
+            <SelectItem value="customer">
+              {t("instanceUsers:copy.0e85749a6f40")}
+            </SelectItem>
           </SelectContent>
         </Select>
         <Select
@@ -285,20 +301,29 @@ function InstanceUsersPage() {
             })
           }
         >
-          <SelectTrigger aria-label="Filter by person status" className="w-44">
+          <SelectTrigger
+            aria-label={t("instanceUsers:copy.dd5947e50ac8")}
+            className="w-44"
+          >
             <SelectValue />
           </SelectTrigger>
           <SelectContent>
-            <SelectItem value="all">All statuses</SelectItem>
-            <SelectItem value="true">Active people</SelectItem>
-            <SelectItem value="false">Inactive people</SelectItem>
+            <SelectItem value="all">
+              {t("instanceUsers:copy.6405179d241b")}
+            </SelectItem>
+            <SelectItem value="true">
+              {t("instanceUsers:copy.274e10cde2d6")}
+            </SelectItem>
+            <SelectItem value="false">
+              {t("instanceUsers:copy.c51407d28beb")}
+            </SelectItem>
           </SelectContent>
         </Select>
         <Input
-          aria-label="Filter by organisation ID"
+          aria-label={t("instanceUsers:copy.b745c3cd8743")}
           className="w-full sm:max-w-64"
           value={search.organisationId ?? ""}
-          placeholder="Organisation ID"
+          placeholder={t("instanceUsers:copy.5f2c539d453e")}
           onChange={(event) =>
             navigateSearch({
               organisationId: event.target.value || undefined,
@@ -309,31 +334,37 @@ function InstanceUsersPage() {
       </section>
 
       {directory.isPending ? (
-        <div role="status" aria-label="Loading users" className="space-y-3">
+        <div
+          role="status"
+          aria-label={t("instanceUsers:copy.352046dda7cf")}
+          className="space-y-3"
+        >
           <Skeleton className="h-10 w-full" />
           <Skeleton className="h-10 w-full" />
           <Skeleton className="h-10 w-full" />
         </div>
       ) : directory.isError ? (
         <Alert variant="error" role="alert">
-          <AlertTitle>Users are unavailable</AlertTitle>
+          <AlertTitle>{t("instanceUsers:copy.a93b05eaba35")}</AlertTitle>
           <AlertDescription>
-            <p>We could not load the instance directory.</p>
+            <p>{t("instanceUsers:copy.5de26f1895d9")}</p>
             <Button
               size="sm"
               variant="outline"
               onClick={() => void directory.refetch()}
             >
-              Retry
+              {t("instanceUsers:copy.9f5cd8a2e880")}
             </Button>
           </AlertDescription>
         </Alert>
       ) : directory.data.data.length === 0 ? (
         <Card>
           <CardContent className="py-10 text-center">
-            <h2 className="font-medium">No users found</h2>
+            <h2 className="font-medium">
+              {t("instanceUsers:copy.612eb3c64c41")}
+            </h2>
             <p className="mt-1 text-sm text-muted-foreground">
-              Change or clear the current filters.
+              {t("instanceUsers:copy.82457330d2e6")}
             </p>
           </CardContent>
         </Card>
@@ -344,10 +375,18 @@ function InstanceUsersPage() {
               <Table>
                 <TableHeader>
                   <TableRow>
-                    <TableHead>User</TableHead>
-                    <TableHead>Type</TableHead>
-                    <TableHead>Organisation</TableHead>
-                    <TableHead>Status</TableHead>
+                    <TableHead>
+                      {t("instanceUsers:copy.9f8a2389a20c")}
+                    </TableHead>
+                    <TableHead>
+                      {t("instanceUsers:copy.3deb74565196")}
+                    </TableHead>
+                    <TableHead>
+                      {t("instanceUsers:copy.6e99c1d3b150")}
+                    </TableHead>
+                    <TableHead>
+                      {t("instanceUsers:copy.bae7d5be7082")}
+                    </TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
@@ -357,27 +396,50 @@ function InstanceUsersPage() {
                       data-state={
                         search.user === user.id ? "selected" : undefined
                       }
-                      className="cursor-pointer"
-                      onClick={() => navigateSearch({ user: user.id })}
                     >
                       <TableCell>
-                        <div className="font-medium">{user.name}</div>
-                        <div className="text-xs text-muted-foreground">
-                          {user.email}
-                        </div>
+                        <Link
+                          className="rounded-sm text-left outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                          to={Route.fullPath}
+                          search={(current: GodModeUsersSearch) => ({
+                            ...current,
+                            user: user.id,
+                          })}
+                          aria-label={t("instanceUsers:selectUser", {
+                            name: user.name,
+                            email: user.email,
+                          })}
+                        >
+                          <span className="block font-medium">{user.name}</span>
+                          <span className="block text-xs text-muted-foreground">
+                            {user.email}
+                          </span>
+                        </Link>
                       </TableCell>
-                      <TableCell>{user.person?.side ?? "Unlinked"}</TableCell>
+                      <TableCell>
+                        {user.person?.side
+                          ? t(`instanceUsers:dynamic.side.${user.person.side}`)
+                          : t("instanceUsers:dynamic.unlinked")}
+                      </TableCell>
                       <TableCell>
                         {user.person?.organisationName ?? "—"}
                       </TableCell>
                       <TableCell>
                         <div className="flex flex-wrap gap-1">
-                          {user.isInstanceAdmin && <Badge>Administrator</Badge>}
+                          {user.isInstanceAdmin && (
+                            <Badge>
+                              {t("instanceUsers:copy.1eda23758be9")}
+                            </Badge>
+                          )}
                           {user.isSuspended && (
-                            <Badge variant="destructive">Suspended</Badge>
+                            <Badge variant="destructive">
+                              {t("instanceUsers:copy.794696a72066")}
+                            </Badge>
                           )}
                           {user.person && !user.person.active && (
-                            <Badge variant="outline">Inactive</Badge>
+                            <Badge variant="outline">
+                              {t("instanceUsers:copy.09af574c7f20")}
+                            </Badge>
                           )}
                         </div>
                       </TableCell>
@@ -387,7 +449,9 @@ function InstanceUsersPage() {
               </Table>
               <div className="flex items-center justify-between border-t px-4 py-3 text-sm">
                 <span className="text-muted-foreground">
-                  {directory.data.data.length} users on this page
+                  {t("instanceUsers:dynamic.usersOnPage", {
+                    count: directory.data.data.length,
+                  })}
                 </span>
                 <Button
                   size="sm"
@@ -401,7 +465,7 @@ function InstanceUsersPage() {
                     })
                   }
                 >
-                  Next page
+                  {t("instanceUsers:copy.4bfc194b68a3")}
                 </Button>
               </div>
             </CardContent>
@@ -458,9 +522,10 @@ function UserDetails({
   onClose: () => void;
   onAction: (action: Action) => void;
 }) {
+  const { t } = useTranslation();
   if (isLoading)
     return (
-      <Card role="status" aria-label="Loading user details">
+      <Card role="status" aria-label={t("instanceUsers:copy.4135684d2d0a")}>
         <CardContent className="space-y-3 p-5">
           <Skeleton className="h-6 w-2/3" />
           <Skeleton className="h-4 w-full" />
@@ -470,9 +535,9 @@ function UserDetails({
   if (isError || !user)
     return (
       <Alert variant="error" role="alert">
-        <AlertTitle>User details unavailable</AlertTitle>
+        <AlertTitle>{t("instanceUsers:copy.2dc7a078a492")}</AlertTitle>
         <AlertDescription>
-          Reload the directory and select the account again.
+          {t("instanceUsers:copy.db0e0e9d496c")}
         </AlertDescription>
       </Alert>
     );
@@ -493,26 +558,48 @@ function UserDetails({
             </p>
           </div>
           <Button size="sm" variant="ghost" onClick={onClose}>
-            Close
+            {t("instanceUsers:copy.bbfa773e5a63")}
           </Button>
         </div>
         <Separator />
         <dl className="grid grid-cols-[auto_1fr] gap-x-3 gap-y-2 text-sm">
-          <dt className="text-muted-foreground">Account</dt>
-          <dd>{user.person?.side ?? "Unlinked"}</dd>
-          <dt className="text-muted-foreground">Organisation</dt>
+          <dt className="text-muted-foreground">
+            {t("instanceUsers:copy.85dfa32c97d8")}
+          </dt>
+          <dd>
+            {user.person?.side
+              ? t(`instanceUsers:dynamic.side.${user.person.side}`)
+              : t("instanceUsers:dynamic.unlinked")}
+          </dd>
+          <dt className="text-muted-foreground">
+            {t("instanceUsers:copy.6e99c1d3b150")}
+          </dt>
           <dd>{user.person?.organisationName ?? "—"}</dd>
-          <dt className="text-muted-foreground">Person status</dt>
+          <dt className="text-muted-foreground">
+            {t("instanceUsers:copy.886f2447688e")}
+          </dt>
           <dd>
             {user.person
-              ? user.person.active
-                ? "Active"
-                : "Inactive"
-              : "No linked person"}
+              ? t(
+                  user.person.active
+                    ? "instanceUsers:dynamic.personActive"
+                    : "instanceUsers:dynamic.personInactive",
+                )
+              : t("instanceUsers:dynamic.noLinkedPerson")}
           </dd>
-          <dt className="text-muted-foreground">Two-factor</dt>
-          <dd>{user.twoFactorEnabled ? "Enabled" : "Not enabled"}</dd>
-          <dt className="text-muted-foreground">Created</dt>
+          <dt className="text-muted-foreground">
+            {t("instanceUsers:copy.fae11b81f599")}
+          </dt>
+          <dd>
+            {t(
+              user.twoFactorEnabled
+                ? "instanceUsers:dynamic.enabled"
+                : "instanceUsers:dynamic.notEnabled",
+            )}
+          </dd>
+          <dt className="text-muted-foreground">
+            {t("instanceUsers:copy.accf40c89baa")}
+          </dt>
           <dd>
             {new Intl.DateTimeFormat(undefined, { dateStyle: "medium" }).format(
               new Date(user.createdAt),
@@ -527,7 +614,7 @@ function UserDetails({
               variant="outline"
               onClick={() => onAction("suspend")}
             >
-              Update suspension
+              {t("instanceUsers:copy.1e1ba090dab9")}
             </Button>
           ) : (
             <Button
@@ -535,7 +622,7 @@ function UserDetails({
               variant="outline"
               onClick={() => onAction("suspend")}
             >
-              Suspend account
+              {t("instanceUsers:copy.6361cbb3f6ca")}
             </Button>
           )}
           {user.isSuspended && (
@@ -544,7 +631,7 @@ function UserDetails({
               variant="outline"
               onClick={() => onAction("unsuspend")}
             >
-              Unsuspend account
+              {t("instanceUsers:copy.c4d18ce42e74")}
             </Button>
           )}
           {user.person?.active && (
@@ -553,7 +640,7 @@ function UserDetails({
               variant="destructive"
               onClick={() => onAction("deactivate")}
             >
-              Deactivate person
+              {t("instanceUsers:copy.eb3c0567a3f7")}
             </Button>
           )}
           <Button
@@ -561,7 +648,7 @@ function UserDetails({
             variant="outline"
             onClick={() => onAction("sign-out")}
           >
-            Sign out all sessions
+            {t("instanceUsers:copy.f70b8a00f6fb")}
           </Button>
           <Button
             size="sm"
@@ -569,7 +656,7 @@ function UserDetails({
             disabled={!user.twoFactorEnabled}
             onClick={() => onAction("reset-mfa")}
           >
-            Reset MFA
+            {t("instanceUsers:copy.0c1fff37e9d6")}
           </Button>
           {!user.isInstanceAdmin && (
             <Button
@@ -577,13 +664,12 @@ function UserDetails({
               disabled={!eligibleForAdmin}
               onClick={() => onAction("grant-admin")}
             >
-              Grant instance admin
+              {t("instanceUsers:copy.d6ac6adb7aa6")}
             </Button>
           )}
           {!eligibleForAdmin && !user.isInstanceAdmin && (
             <p className="text-xs text-muted-foreground">
-              Admin access is available only for an active, linked staff
-              account. The server checks eligibility again before granting.
+              {t("instanceUsers:copy.9b3e95464b4a")}
             </p>
           )}
         </div>
@@ -631,6 +717,7 @@ function UserActionDialog({
   onCancel: () => void;
   onSubmit: () => void;
 }) {
+  const { t } = useTranslation();
   const isStepUp = action === "grant-admin" || action === "reset-mfa";
   const factorBlocked =
     isStepUp && (!factor || (factor.required && !factor.enabled));
@@ -640,12 +727,12 @@ function UserActionDialog({
     (action !== "reset-mfa" || verificationNote.trim().length >= 12) &&
     (action !== "suspend" || Array.from(reason).length <= 500);
   const titles: Record<Exclude<Action, null>, string> = {
-    suspend: "Suspend account",
-    unsuspend: "Unsuspend account",
-    "grant-admin": "Grant instance administrator",
-    "reset-mfa": "Reset authenticator factor",
-    "sign-out": "Sign out all sessions",
-    deactivate: "Request person deactivation",
+    suspend: t("instanceUsers:dynamic.actions.suspend"),
+    unsuspend: t("instanceUsers:dynamic.actions.unsuspend"),
+    "grant-admin": t("instanceUsers:dynamic.actions.grantAdmin"),
+    "reset-mfa": t("instanceUsers:dynamic.actions.resetMfa"),
+    "sign-out": t("instanceUsers:dynamic.actions.signOut"),
+    deactivate: t("instanceUsers:dynamic.actions.deactivate"),
   };
   return (
     <Dialog open={open} onOpenChange={(value) => !value && onCancel()}>
@@ -660,7 +747,9 @@ function UserActionDialog({
           {action === "suspend" && (
             <>
               <div className="space-y-2">
-                <Label htmlFor="suspension-reason">Reason (optional)</Label>
+                <Label htmlFor="suspension-reason">
+                  {t("instanceUsers:copy.f6826f8fc9b4")}
+                </Label>
                 <Input
                   id="suspension-reason"
                   maxLength={500}
@@ -669,7 +758,9 @@ function UserActionDialog({
                 />
               </div>
               <div className="space-y-2">
-                <Label htmlFor="suspension-expiry">Expiry (optional)</Label>
+                <Label htmlFor="suspension-expiry">
+                  {t("instanceUsers:copy.728bac665663")}
+                </Label>
                 <Input
                   id="suspension-expiry"
                   type="datetime-local"
@@ -677,40 +768,27 @@ function UserActionDialog({
                   onChange={(event) => onExpiresAt(event.target.value)}
                 />
                 <p className="text-xs text-muted-foreground">
-                  Leave blank for an indefinite suspension. Existing sessions
-                  and personal keys are revoked.
+                  {t("instanceUsers:copy.5f1d7b5a1d87")}
                 </p>
               </div>
             </>
           )}
           {action === "unsuspend" && (
-            <p className="text-sm">
-              This clears the account suspension. Previously revoked sessions
-              and personal keys are not restored.
-            </p>
+            <p className="text-sm">{t("instanceUsers:copy.711c48ecc613")}</p>
           )}
           {action === "sign-out" && (
-            <p className="text-sm">
-              This revokes every current session for this account, including
-              impersonation sessions. API keys and account status are unchanged.
-            </p>
+            <p className="text-sm">{t("instanceUsers:copy.7648a80e2e1a")}</p>
           )}
           {action === "deactivate" && (
-            <p className="text-sm">
-              This creates a pending action. The account stays active until you
-              confirm the current email and complete fresh authentication.
-            </p>
+            <p className="text-sm">{t("instanceUsers:copy.83cee4a5b3db")}</p>
           )}
           {action === "grant-admin" && (
-            <p className="text-sm">
-              Fresh authentication is required. The server rechecks that this is
-              an eligible active staff account.
-            </p>
+            <p className="text-sm">{t("instanceUsers:copy.d20b1e22f25a")}</p>
           )}
           {action === "reset-mfa" && (
             <div className="space-y-2">
               <Label htmlFor="mfa-verification-note">
-                Identity verification note
+                {t("instanceUsers:copy.e45a0de86960")}
               </Label>
               <Input
                 id="mfa-verification-note"
@@ -720,8 +798,7 @@ function UserActionDialog({
                 onChange={(event) => onVerificationNote(event.target.value)}
               />
               <p className="text-xs text-muted-foreground">
-                This note is bound to the fresh-authentication proof. It is
-                included in the existing reset audit record.
+                {t("instanceUsers:copy.18422bfc5104")}
               </p>
             </div>
           )}
@@ -729,7 +806,9 @@ function UserActionDialog({
             (factor?.enabled ? (
               <>
                 <div className="space-y-2">
-                  <Label htmlFor="step-up-method">Verification method</Label>
+                  <Label htmlFor="step-up-method">
+                    {t("instanceUsers:copy.fc7481906e3b")}
+                  </Label>
                   <Select
                     value={method}
                     onValueChange={(value) =>
@@ -740,14 +819,22 @@ function UserActionDialog({
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="totp">Authenticator code</SelectItem>
-                      <SelectItem value="backup_code">Backup code</SelectItem>
+                      <SelectItem value="totp">
+                        {t("instanceUsers:copy.2908b4e9c428")}
+                      </SelectItem>
+                      <SelectItem value="backup_code">
+                        {t("instanceUsers:copy.2a8367498e23")}
+                      </SelectItem>
                     </SelectContent>
                   </Select>
                 </div>
                 <div className="space-y-2">
                   <Label htmlFor="step-up-code">
-                    {method === "totp" ? "Authenticator code" : "Backup code"}
+                    {t(
+                      method === "totp"
+                        ? "instanceUsers:dynamic.authenticatorCode"
+                        : "instanceUsers:dynamic.backupCode",
+                    )}
                   </Label>
                   <Input
                     id="step-up-code"
@@ -759,7 +846,9 @@ function UserActionDialog({
               </>
             ) : factor && !factor.required ? (
               <div className="space-y-2">
-                <Label htmlFor="step-up-password">Current password</Label>
+                <Label htmlFor="step-up-password">
+                  {t("instanceUsers:copy.19dff4dad0a7")}
+                </Label>
                 <Input
                   id="step-up-password"
                   type="password"
@@ -770,22 +859,22 @@ function UserActionDialog({
               </div>
             ) : (
               <Alert variant="error">
-                <AlertTitle>Fresh authentication unavailable</AlertTitle>
+                <AlertTitle>{t("instanceUsers:copy.02c7fa45ff1a")}</AlertTitle>
                 <AlertDescription>
-                  Complete required authenticator enrollment before this action.
+                  {t("instanceUsers:copy.d5d49ba4b1bf")}
                 </AlertDescription>
               </Alert>
             ))}
           {formError && (
             <Alert variant="error" role="alert">
-              <AlertTitle>Action not completed</AlertTitle>
+              <AlertTitle>{t("instanceUsers:copy.f169620795e0")}</AlertTitle>
               <AlertDescription>{formError}</AlertDescription>
             </Alert>
           )}
         </div>
         <DialogFooter>
           <Button variant="outline" disabled={pending} onClick={onCancel}>
-            Cancel
+            {t("instanceUsers:copy.77dfd2135f4d")}
           </Button>
           <Button
             variant={
@@ -797,9 +886,9 @@ function UserActionDialog({
             onClick={onSubmit}
           >
             {pending
-              ? "Working…"
+              ? t("instanceUsers:dynamic.working")
               : action === "sign-out"
-                ? "Sign out sessions"
+                ? t("instanceUsers:dynamic.signOutSessions")
                 : titles[action]}
           </Button>
         </DialogFooter>

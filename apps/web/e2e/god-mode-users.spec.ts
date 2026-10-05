@@ -238,7 +238,11 @@ test("God Mode users directory supports filters and audited account actions", as
     path: "/Users/heinthura/.codex/taskdesk-evidence/2026-10-05/p4-person-deactivation-b58/screens/instance-users-directory.png",
     fullPage: true,
   });
-  await userRow.click();
+  const userLink = page.getByRole("link", {
+    name: "Open Taylor Staff, taylor@example.test",
+  });
+  await userLink.focus();
+  await userLink.press("Enter");
   await expect(page).toHaveURL(/user=staff-user-1/);
   await expect(page.getByTestId("instance-user-details")).toBeVisible();
   await page.screenshot({
@@ -309,12 +313,35 @@ test("God Mode users directory supports filters and audited account actions", as
   ).toBeVisible();
   await page
     .getByLabel("Type the exact current email")
-    .fill("taylor@example.test");
+    .fill("old@example.test");
   await page.getByLabel("Authenticator code").fill("123456");
+  await expect(
+    page.getByRole("button", { name: "Approve and deactivate" }),
+  ).toBeDisabled();
+  await page
+    .getByLabel("Type the exact current email")
+    .fill("taylor@example.test");
+  const userListReadsBeforeApproval = received.filter(
+    (entry) => entry === "GET /api/instance/users",
+  ).length;
   await page.getByRole("button", { name: "Approve and deactivate" }).click();
   await expect(page.getByRole("status")).toContainText(
     "The approved deactivation completed",
   );
+  expect(received).toContain("GET /api/instance/users");
+  await page.getByRole("link", { name: "Open Users" }).click();
+  await expect(page).toHaveURL(/\/god-mode\/users$/);
+  await page.goBack();
+  await page.goBack();
+  await expect(page).toHaveURL(/user=staff-user-1/);
+  await expect(
+    page.getByTestId("instance-user-details").getByText("Inactive", {
+      exact: true,
+    }),
+  ).toBeVisible();
+  expect(
+    received.filter((entry) => entry === "GET /api/instance/users").length,
+  ).toBeGreaterThan(userListReadsBeforeApproval);
   expect(received).toContain(
     "POST /api/instance/users/staff-user-1/deactivate",
   );
