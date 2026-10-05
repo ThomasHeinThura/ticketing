@@ -1,10 +1,4 @@
-import {
-  act,
-  cleanup,
-  fireEvent,
-  render,
-  screen,
-} from "@testing-library/react";
+import { cleanup, fireEvent, render, screen } from "@testing-library/react";
 import type { TFunction } from "i18next";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import useBulkSelectionStore from "@/store/bulk-selection";
@@ -19,6 +13,7 @@ const mocks = vi.hoisted(() => ({
 afterEach(() => {
   cleanup();
   vi.clearAllMocks();
+  vi.restoreAllMocks();
   useBulkSelectionStore.setState({
     selectedTaskIds: new Set(),
     focusedTaskId: null,
@@ -115,6 +110,8 @@ function renderTaskCard() {
       projectSlug="PRJ"
       taskIsCompleted={false}
       displayPreferences={displayPreferences}
+      isSelected={false}
+      isFocused={false}
       onOpenTask={mocks.openTask}
       t={((key: string) => key) as unknown as TFunction}
       workspaceId="workspace-1"
@@ -161,7 +158,22 @@ describe("TaskCard keyboard context menu", () => {
     expect(mocks.openTask).toHaveBeenCalledExactlyOnceWith("task-1");
   });
 
-  it("subscribes to its own selection and focus state", () => {
+  it("keeps modifier-click selection actions connected to the shared store", () => {
+    const card = renderTaskCard();
+    fireEvent.click(card as HTMLElement, { ctrlKey: true });
+    expect(useBulkSelectionStore.getState().selectedTaskIds.has("task-1")).toBe(
+      true,
+    );
+    expect(mocks.openTask).not.toHaveBeenCalled();
+  });
+
+  it("does not register a global store listener for each mounted card", () => {
+    const subscribe = vi.spyOn(useBulkSelectionStore, "subscribe");
+    renderTaskCard();
+    expect(subscribe).not.toHaveBeenCalled();
+  });
+
+  it("renders projected selection and focus state from the board", () => {
     const props = {
       task,
       taskIsCompleted: false,
@@ -169,21 +181,18 @@ describe("TaskCard keyboard context menu", () => {
       assignee: undefined,
       onContextMenuTask: mocks.openContextMenu,
       displayPreferences,
+      isSelected: false,
+      isFocused: false,
       onOpenTask: mocks.openTask,
       t: ((key: string) => key) as unknown as TFunction,
       projectSlug: "PRJ",
     };
-    render(<TaskCard {...props} />);
+    const view = render(<TaskCard {...props} />);
     expect(
       screen.getByText("Keyboard task").closest('[role="button"]'),
     ).not.toHaveAttribute("data-task-selected", "true");
 
-    act(() => {
-      useBulkSelectionStore.setState({
-        selectedTaskIds: new Set(["task-1"]),
-        focusedTaskId: "task-1",
-      });
-    });
+    view.rerender(<TaskCard {...props} isSelected={true} isFocused={true} />);
     expect(
       screen.getByText("Keyboard task").closest('[role="button"]'),
     ).toHaveAttribute("data-task-selected", "true");
@@ -199,6 +208,8 @@ describe("TaskCard keyboard context menu", () => {
         projectSlug="PRJ"
         taskIsCompleted={false}
         displayPreferences={{ ...displayPreferences, showLabels: true }}
+        isSelected={false}
+        isFocused={false}
         onOpenTask={mocks.openTask}
         t={((key: string) => key) as unknown as TFunction}
         workspaceId="workspace-1"
@@ -210,6 +221,33 @@ describe("TaskCard keyboard context menu", () => {
     expect(
       container.querySelectorAll('.group > [class~="mb-2.5"]'),
     ).toHaveLength(1);
+    expect(
+      container.querySelector('.kanban-board-task-card > [class*="gap-1.5"]'),
+    ).toBeNull();
     expect(screen.getByText("Keyboard task")).toBeInTheDocument();
+  });
+
+  it("preserves the visible no-priority marker when priority display is enabled", () => {
+    const { container } = render(
+      <TaskCard
+        task={task}
+        projectSlug="PRJ"
+        taskIsCompleted={false}
+        displayPreferences={{ ...displayPreferences, showPriority: true }}
+        isSelected={false}
+        isFocused={false}
+        onOpenTask={mocks.openTask}
+        t={((key: string) => key) as unknown as TFunction}
+        workspaceId="workspace-1"
+        assignee={undefined}
+        onContextMenuTask={mocks.openContextMenu}
+      />,
+    );
+
+    const metadataRow = container.querySelector(
+      '.kanban-board-task-card > [class*="gap-1.5"]',
+    );
+    expect(metadataRow).not.toBeNull();
+    expect(metadataRow?.querySelector("svg")).not.toBeNull();
   });
 });
