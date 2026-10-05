@@ -10,8 +10,11 @@ import {
 import type {
   BroadcastAdapter,
   BroadcastMessage,
+  NativeAuthorizationInvalidation,
+  NativeBroadcastMessage,
   UserBroadcast,
 } from "./broadcast-adapter";
+import { logRealtimeFailure } from "./log-realtime-failure";
 
 const CHANNEL_PREFIX = "taskdesk:ws:";
 const CHANNEL_SUFFIX = ":broadcast";
@@ -19,6 +22,8 @@ const CHANNEL_PATTERN = `${CHANNEL_PREFIX}*${CHANNEL_SUFFIX}`;
 
 const USER_CHANNEL_PREFIX = "taskdesk:ws-user:";
 const USER_CHANNEL_PATTERN = `${USER_CHANNEL_PREFIX}*${CHANNEL_SUFFIX}`;
+const NATIVE_CHANNEL = "taskdesk:ws-native:broadcast";
+const CONTROL_CHANNEL = "taskdesk:control";
 
 const broadcastMessageSchema = v.object({
   projectId: v.string(),
@@ -37,10 +42,27 @@ const userBroadcastSchema = v.object({
   message: v.looseObject({ type: v.string() }),
   origin: v.optional(v.string()),
 });
+const nativeBroadcastSchema = v.object({
+  projectId: v.string(),
+  topics: v.array(v.string()),
+  eventId: v.string(),
+  eventType: v.string(),
+  at: v.string(),
+  key: v.string(),
+  customerVisible: v.boolean(),
+});
+const nativeAuthorizationInvalidationSchema = v.strictObject({
+  type: v.literal("identity.invalidate"),
+  userId: v.optional(v.pipe(v.string(), v.minLength(1))),
+  workspaceId: v.optional(v.pipe(v.string(), v.minLength(1))),
+  projectId: v.optional(v.pipe(v.string(), v.minLength(1))),
+});
 
 export class RedisBroadcastAdapter implements BroadcastAdapter {
   private subscribed = false;
   private userSubscribed = false;
+  private nativeSubscribed = false;
+  private controlSubscribed = false;
   private subscriber: RedisClient | null = null;
   private closing = false;
   private forced = false;
@@ -51,6 +73,12 @@ export class RedisBroadcastAdapter implements BroadcastAdapter {
     | null = null;
   private _userPmessageHandler:
     | ((pattern: string, channel: string, data: string) => void)
+    | null = null;
+  private _nativeMessageHandler:
+    | ((channel: string, data: string) => void)
+    | null = null;
+  private _controlMessageHandler:
+    | ((channel: string, data: string) => void)
     | null = null;
 
   async publish(msg: BroadcastMessage): Promise<void> {
@@ -67,6 +95,80 @@ export class RedisBroadcastAdapter implements BroadcastAdapter {
       this.channelForUser(msg.userId),
       JSON.stringify(msg),
     );
+  }
+
+  async publishNative(msg: NativeBroadcastMessage): Promise<void> {
+    if (this.forced) return;
+    await getRedisPub(this.clientFactory).publish(
+      NATIVE_CHANNEL,
+      JSON.stringify(msg),
+    );
+  }
+
+  async publishControl(
+    message: NativeAuthorizationInvalidation,
+  ): Promise<void> {
+    if (this.forced) return;
+    await getRedisPub(this.clientFactory).publish(
+      CONTROL_CHANNEL,
+      JSON.stringify(message),
+    );
+  }
+
+  async subscribeToControl(
+    handler: (message: NativeAuthorizationInvalidation) => void,
+  ): Promise<void> {
+    if (this.controlSubscribed || this.closing) return;
+    this.controlSubscribed = true;
+    const sub = getRedisSub(this.clientFactory);
+    this.subscriber = sub;
+    this._controlMessageHandler = (channel, data) => {
+      if (this.closing || channel !== CONTROL_CHANNEL) return;
+      try {
+        const parsed = v.safeParse(
+          nativeAuthorizationInvalidationSchema,
+          JSON.parse(data),
+        );
+        if (
+          !parsed.success ||
+          (!parsed.output.userId &&
+            !parsed.output.workspaceId &&
+            !parsed.output.projectId)
+        ) {
+          logRealtimeFailure();
+          return;
+        }
+        handler(parsed.output);
+      } catch {
+        logRealtimeFailure();
+      }
+    };
+    (sub as Redis).on("message", this._controlMessageHandler);
+    await sub.subscribe(CONTROL_CHANNEL);
+  }
+
+  async subscribeToNative(
+    handler: (msg: NativeBroadcastMessage) => void,
+  ): Promise<void> {
+    if (this.nativeSubscribed || this.closing) return;
+    this.nativeSubscribed = true;
+    const sub = getRedisSub(this.clientFactory);
+    this.subscriber = sub;
+    this._nativeMessageHandler = (channel, data) => {
+      if (this.closing || channel !== NATIVE_CHANNEL) return;
+      try {
+        const parsed = v.safeParse(nativeBroadcastSchema, JSON.parse(data));
+        if (!parsed.success) {
+          logRealtimeFailure();
+          return;
+        }
+        handler(parsed.output);
+      } catch {
+        logRealtimeFailure();
+      }
+    };
+    (sub as Redis).on("message", this._nativeMessageHandler);
+    await sub.subscribe(NATIVE_CHANNEL);
   }
 
   async subscribe(handler: (msg: BroadcastMessage) => void): Promise<void> {
@@ -86,12 +188,12 @@ export class RedisBroadcastAdapter implements BroadcastAdapter {
       try {
         const parsed = v.safeParse(broadcastMessageSchema, JSON.parse(data));
         if (!parsed.success) {
-          console.error("Invalid broadcast message:", parsed.issues);
+          logRealtimeFailure();
           return;
         }
         handler(parsed.output);
-      } catch (err) {
-        console.error("Failed to parse broadcast message:", err);
+      } catch {
+        logRealtimeFailure();
       }
     };
     (sub as Redis).on("pmessage", this._pmessageHandler);
@@ -113,16 +215,16 @@ export class RedisBroadcastAdapter implements BroadcastAdapter {
       try {
         const parsed = v.safeParse(userBroadcastSchema, JSON.parse(data));
         if (!parsed.success) {
-          console.error("Invalid user broadcast message:", parsed.issues);
+          logRealtimeFailure();
           return;
         }
         if (channel !== this.channelForUser(parsed.output.userId)) {
-          console.error("User broadcast channel and payload disagree");
+          logRealtimeFailure();
           return;
         }
         handler(parsed.output as UserBroadcast);
-      } catch (err) {
-        console.error("Failed to parse user broadcast message:", err);
+      } catch {
+        logRealtimeFailure();
       }
     };
     (sub as Redis).on("pmessage", this._userPmessageHandler);
@@ -150,6 +252,20 @@ export class RedisBroadcastAdapter implements BroadcastAdapter {
         failures.push(error);
       }
     }
+    if (sub && !this.forced && this.nativeSubscribed) {
+      try {
+        await sub.unsubscribe(NATIVE_CHANNEL);
+      } catch (error) {
+        failures.push(error);
+      }
+    }
+    if (sub && !this.forced && this.controlSubscribed) {
+      try {
+        await sub.unsubscribe(CONTROL_CHANNEL);
+      } catch (error) {
+        failures.push(error);
+      }
+    }
     if (!this.forced) {
       try {
         await closeRedis();
@@ -161,6 +277,8 @@ export class RedisBroadcastAdapter implements BroadcastAdapter {
     this.subscriber = null;
     this.subscribed = false;
     this.userSubscribed = false;
+    this.nativeSubscribed = false;
+    this.controlSubscribed = false;
 
     if (failures.length > 0) {
       throw new AggregateError(failures, "WebSocket Redis shutdown failed");
@@ -178,6 +296,14 @@ export class RedisBroadcastAdapter implements BroadcastAdapter {
     if (this._userPmessageHandler) {
       sub?.off("pmessage", this._userPmessageHandler);
       this._userPmessageHandler = null;
+    }
+    if (this._nativeMessageHandler) {
+      (this.subscriber as Redis).off("message", this._nativeMessageHandler);
+      this._nativeMessageHandler = null;
+    }
+    if (this._controlMessageHandler) {
+      (this.subscriber as Redis).off("message", this._controlMessageHandler);
+      this._controlMessageHandler = null;
     }
   }
 

@@ -1,13 +1,20 @@
 import { useQuery } from "@tanstack/react-query";
 import getTask from "@/fetchers/task/get-task";
 
-function useGetTask(taskId: string) {
+type TaskData = Awaited<ReturnType<typeof getTask>>;
+
+function useGetTask<TSelected = TaskData>(
+  taskId: string,
+  select?: (task: TaskData) => TSelected,
+  enabled = true,
+) {
   return useQuery({
     queryKey: ["task", taskId],
-    queryFn: () => getTask(taskId),
-    enabled: Boolean(taskId),
+    queryFn: ({ signal }) => getTask(taskId, signal),
+    enabled: enabled && Boolean(taskId),
     refetchOnMount: "always",
     staleTime: 0,
+    select,
   });
 }
 

@@ -55,7 +55,17 @@ vi.mock("react-i18next", () => ({
   initReactI18next: { type: "3rdParty", init: () => {} },
 }));
 vi.mock("@/hooks/queries/task/use-get-task", () => ({
-  default: (taskId: string) => ({ data: mocks.tasks.get(taskId) }),
+  default: (
+    taskId: string,
+    select?: (task: {
+      id: string;
+      projectId: string;
+      description: string;
+    }) => unknown,
+  ) => {
+    const task = mocks.tasks.get(taskId);
+    return { data: task && select ? select(task) : task };
+  },
 }));
 vi.mock("@/hooks/mutations/task/use-update-task-description", () => ({
   useUpdateTaskDescription: () => ({ mutateAsync: mocks.mutateAsync }),
@@ -72,6 +82,16 @@ vi.mock("@/lib/toast", () => ({
   },
 }));
 vi.mock("@/lib/upload-task-image", () => ({ uploadTaskImage: vi.fn() }));
+vi.mock("@tanstack/react-query", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("@tanstack/react-query")>();
+  return {
+    ...actual,
+    useQueryClient: () => ({
+      getQueryData: (key: readonly unknown[]) =>
+        mocks.tasks.get(String(key[1])),
+    }),
+  };
+});
 vi.mock("@/lib/shiki-highlighter", () => ({
   getSharedShikiHighlighter: () => new Promise(() => {}),
 }));

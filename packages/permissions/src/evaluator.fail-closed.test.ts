@@ -79,6 +79,33 @@ const SELF_WITH_PARAM: Policy = {
 const PORTAL: Policy = { portal: "customer", predicate: "own_request" };
 
 describe("missing security context is never allow", () => {
+  it("requires exact persisted workspace membership for a self-introspection policy", () => {
+    const policy: Policy = {
+      authenticated: true,
+      self: true,
+      personParam: {
+        exempt: "no_person_parameter",
+        reason: "the route reports only the caller's own capability map",
+      },
+      workspaceMembership: true,
+    };
+    const context = { ...base, targetPersonId: NO_PERSON_PARAMETER };
+
+    expectContextRefusal(
+      evaluatePolicy(policy, context as unknown as PolicyContext),
+    );
+    expect(
+      evaluatePolicy(policy, { ...context, workspaceMembership: false }),
+    ).toMatchObject({
+      allowed: false,
+      status: 403,
+      code: "forbidden",
+    });
+    expect(
+      evaluatePolicy(policy, { ...context, workspaceMembership: true }).allowed,
+    ).toBe(true);
+  });
+
   it("never allows a reach-required route whose reach answer was not supplied", () => {
     expectContextRefusal(
       evaluatePolicy(REACH_REQUIRED, { ...base } as unknown as PolicyContext),

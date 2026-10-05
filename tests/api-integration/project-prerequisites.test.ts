@@ -10,6 +10,7 @@ import { resetTestDatabase } from "./helpers/database";
 import {
   createProjectFixture,
   createWorkspaceMember,
+  grantProjectRole,
 } from "./helpers/fixtures";
 
 async function listPrerequisites(projectId: string) {
@@ -90,6 +91,7 @@ describe("API integration: project prerequisites", () => {
     const { project } = await createProjectFixture({
       workspaceId: member.workspace.id,
     });
+    await grantProjectRole(member.user.id, project.id, ["project:read"]);
     mockAuthenticatedSession(member.user);
 
     const createResponse = await createPrerequisite(project.id, {

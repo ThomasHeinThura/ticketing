@@ -15,6 +15,7 @@ import {
   projectNotDeletedClause,
 } from "../assert-work-item-live";
 import { resolveAssigneeEligibility } from "../assignee-eligibility";
+import { publishWorkItemHint, recordWorkItemEvent } from "../native-event";
 
 /**
  * `POST /api/work-items/{key}/assign` (`docs/03-features/assignment.md` § API,
@@ -167,6 +168,9 @@ export async function assignWorkItem(
   // `expectedCurrentAssigneeId` correctly becomes `null` (matching `IS NULL`).
   const previousAssigneeId = input.expectedCurrentAssigneeId ?? null;
 
+  let realtimeEvent:
+    | Awaited<ReturnType<typeof recordWorkItemEvent>>
+    | undefined;
   const assigned = await db.transaction(async (tx) => {
     await assertProjectStillLive(tx, item.projectId);
     const expected = input.expectedCurrentAssigneeId ?? null;
@@ -260,6 +264,23 @@ export async function assignWorkItem(
       after: { assigneeId: input.assigneeId },
     });
 
+    realtimeEvent = await recordWorkItemEvent(tx, {
+      kind: "work_item.assigned",
+      workItemId: item.id,
+      key: updated.key,
+      workspaceId,
+      projectId: item.projectId,
+      actorId,
+      actorType,
+      customerVisible: true,
+      payload: {
+        key: updated.key,
+        url: `/agent/work-items/${encodeURIComponent(updated.key)}`,
+        assigneeId: input.assigneeId,
+        previousAssigneeId,
+      },
+    });
+
     return {
       key: updated.key,
       assigneeId: input.assigneeId,
@@ -282,6 +303,14 @@ export async function assignWorkItem(
     actorId,
     actorType,
   });
+  if (realtimeEvent) {
+    await publishWorkItemHint(realtimeEvent, {
+      kind: "work_item.assigned",
+      key: item.key,
+      projectId: item.projectId,
+      customerVisible: true,
+    });
+  }
 
   return assigned;
 }

@@ -79,6 +79,14 @@ describe("permission matrix — route", () => {
       for (const key of BUILT_IN_ROLE_KEYS) {
         const { inReach, outOfReach } = row[key];
         if (inReach === outOfReach) continue;
+        if (routeKey === "GET /api/capabilities") {
+          // This self endpoint reports only the caller's map. Its explicit policy
+          // requires exact workspace membership, so a nonmember gets the ordinary
+          // workspace-access 403; it does not expose a resource row whose existence
+          // should be masked with 404.
+          expect(outOfReach, `${routeKey} · ${key}`).toBe("403 forbidden");
+          continue;
+        }
         expect(outOfReach, `${routeKey} · ${key}`).toMatch(/^404 /);
       }
     }

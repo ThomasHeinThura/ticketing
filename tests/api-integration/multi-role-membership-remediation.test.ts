@@ -32,6 +32,7 @@ import { beforeEach, describe, expect, it } from "vitest";
 import db, { schema } from "../../apps/api/src/database";
 import { createApp } from "../../apps/api/src/index";
 import { resolveMembershipRole } from "../../apps/api/src/utils/workspace-member-roles";
+import { csrfRequest } from "./helpers/csrf";
 import { resetTestDatabase } from "./helpers/database";
 import {
   plantLegacyMembershipRole,
@@ -42,6 +43,15 @@ import { inviteAndAcceptAsNewMemberNative } from "./helpers/workspace-invitation
 import { createWorkspaceNative } from "./helpers/workspace-write-http";
 
 type App = ReturnType<typeof createApp>["app"];
+
+async function expectAllFalseCapabilityMap(response: Response): Promise<void> {
+  expect(response.status).toBe(200);
+  const capabilities = (await response.json()) as Record<string, unknown>;
+  expect(Object.keys(capabilities)).toHaveLength(16);
+  expect(Object.values(capabilities).every((value) => value === false)).toBe(
+    true,
+  );
+}
 
 /**
  * Consumes the instance-admin slot.
@@ -126,16 +136,21 @@ describe("#82 §1 -- the native evaluator refuses a malformed membership on an O
     );
 
     // Control: as a genuine admin, the member may create a project.
-    const allowed = await app.request("/api/project", {
-      method: "POST",
-      headers: { "content-type": "application/json", cookie: member.cookie },
-      body: JSON.stringify({
-        workspaceId: workspace.id,
-        name: `Project ${randomUUID()}`,
-        slug: `p-${randomUUID().slice(0, 8)}`,
-        icon: "Layout",
-      }),
-    });
+    const allowed = await csrfRequest(
+      app,
+      "/api/project",
+      {
+        method: "POST",
+        headers: { "content-type": "application/json", cookie: member.cookie },
+        body: JSON.stringify({
+          workspaceId: workspace.id,
+          name: `Project ${randomUUID()}`,
+          slug: `p-${randomUUID().slice(0, 8)}`,
+          icon: "Layout",
+        }),
+      },
+      member.cookie,
+    );
     expect([200, 201]).toContain(allowed.status);
 
     // Corrupt the row to a value whose comma-split CONTAINS the very role that just
@@ -163,29 +178,39 @@ describe("#82 §1 -- the native evaluator refuses a malformed membership on an O
       problem: "multi-valued",
     });
 
-    const refused = await app.request("/api/project", {
-      method: "POST",
-      headers: { "content-type": "application/json", cookie: member.cookie },
-      body: JSON.stringify({
-        workspaceId: workspace.id,
-        name: `Project ${randomUUID()}`,
-        slug: `p-${randomUUID().slice(0, 8)}`,
-        icon: "Layout",
-      }),
-    });
+    const refused = await csrfRequest(
+      app,
+      "/api/project",
+      {
+        method: "POST",
+        headers: { "content-type": "application/json", cookie: member.cookie },
+        body: JSON.stringify({
+          workspaceId: workspace.id,
+          name: `Project ${randomUUID()}`,
+          slug: `p-${randomUUID().slice(0, 8)}`,
+          icon: "Layout",
+        }),
+      },
+      member.cookie,
+    );
     expect(refused.status).toBe(403);
 
     // And the owner is untouched -- the refusal is per-membership, not per-workspace.
-    const ownerStillWorks = await app.request("/api/project", {
-      method: "POST",
-      headers: { "content-type": "application/json", cookie: owner.cookie },
-      body: JSON.stringify({
-        workspaceId: workspace.id,
-        name: `Project ${randomUUID()}`,
-        slug: `p-${randomUUID().slice(0, 8)}`,
-        icon: "Layout",
-      }),
-    });
+    const ownerStillWorks = await csrfRequest(
+      app,
+      "/api/project",
+      {
+        method: "POST",
+        headers: { "content-type": "application/json", cookie: owner.cookie },
+        body: JSON.stringify({
+          workspaceId: workspace.id,
+          name: `Project ${randomUUID()}`,
+          slug: `p-${randomUUID().slice(0, 8)}`,
+          icon: "Layout",
+        }),
+      },
+      owner.cookie,
+    );
     expect([200, 201]).toContain(ownerStillWorks.status);
   });
 
@@ -200,12 +225,10 @@ describe("#82 §1 -- the native evaluator refuses a malformed membership on an O
       `/api/capabilities?workspaceId=${workspace.id}`,
       { headers: { cookie: owner.cookie } },
     );
-    expect(response.status).toBe(409);
-    const body = (await response.json()) as { problem: string };
-    expect(body.problem).toBe("multi-valued");
+    await expectAllFalseCapabilityMap(response);
   });
 
-  it("PINS THE ONE DELIBERATE EXCEPTION: an INSTANCE ADMIN with the same corrupt row still gets a 200 capability map, because `hasWorkspacePermission` short-circuits on `isInstanceAdmin` before it reads any membership row. That bypass is Thomas's 2026-09-08 decision and #82 does not re-open it -- an instance admin already holds the authority a corrupt row could confer, so the malformed value adds them no privilege. What #82 DOES require is that `/api/capabilities` and the evaluator make the same call, which they do because both route through `callerMembershipResolution`. The narrower guard that refuses this caller anyway is `requireWorkspaceRoleAuthority` -- see §2", async () => {
+  it("refuses an instance admin whose own workspace membership row is malformed", async () => {
     const { app } = createApp();
     // #18: instance-admin bootstrap now requires a valid setup token, so this owner
     // is deliberately signed up through the real bootstrap flow (`ownerIsInstanceAdmin`)
@@ -222,10 +245,7 @@ describe("#82 §1 -- the native evaluator refuses a malformed membership on an O
       `/api/capabilities?workspaceId=${workspace.id}`,
       { headers: { cookie: owner.cookie } },
     );
-    expect(response.status).toBe(200);
-    expect(
-      ((await response.json()) as { deleteWorkspace: boolean }).deleteWorkspace,
-    ).toBe(true);
+    await expectAllFalseCapabilityMap(response);
   });
 });
 
@@ -241,11 +261,16 @@ describe("#82 §2 -- requireWorkspaceRoleAuthority applies the same rule to an i
       .where(eq(schema.userTable.id, member.user.id));
 
     // Control: as an instance admin with a coherent workspace role, the rename succeeds.
-    const before = await app.request(`/api/workspace/${workspace.id}`, {
-      method: "PATCH",
-      headers: { "content-type": "application/json", cookie: member.cookie },
-      body: JSON.stringify({ name: "Renamed By Instance Admin" }),
-    });
+    const before = await csrfRequest(
+      app,
+      `/api/workspace/${workspace.id}`,
+      {
+        method: "PATCH",
+        headers: { "content-type": "application/json", cookie: member.cookie },
+        body: JSON.stringify({ name: "Renamed By Instance Admin" }),
+      },
+      member.cookie,
+    );
     expect(before.status).toBe(200);
 
     await plantLegacyMembershipRole(
@@ -254,11 +279,16 @@ describe("#82 §2 -- requireWorkspaceRoleAuthority applies the same rule to an i
       "owner,admin",
     );
 
-    const after = await app.request(`/api/workspace/${workspace.id}`, {
-      method: "PATCH",
-      headers: { "content-type": "application/json", cookie: member.cookie },
-      body: JSON.stringify({ name: "Renamed Again" }),
-    });
+    const after = await csrfRequest(
+      app,
+      `/api/workspace/${workspace.id}`,
+      {
+        method: "PATCH",
+        headers: { "content-type": "application/json", cookie: member.cookie },
+        body: JSON.stringify({ name: "Renamed Again" }),
+      },
+      member.cookie,
+    );
     expect(after.status).toBe(403);
 
     const [row] = await db
@@ -398,10 +428,7 @@ describe("#82 §4 -- the recovery strategy: migration 0050's own SQL, against re
       `/api/capabilities?workspaceId=${workspace.id}`,
       { headers: { cookie: owner.cookie } },
     );
-    expect(before.status).toBe(409);
-    expect(((await before.json()) as { problem: string }).problem).toBe(
-      "untrimmed",
-    );
+    await expectAllFalseCapabilityMap(before);
 
     // HISTORICAL, NOT PRODUCTION CODE. The ORIGINAL version of the migration's repair rule
     // grouped by DISTINCT TRIMMED segment, so it collapsed a lone padded piece exactly the
@@ -455,7 +482,7 @@ describe("#82 §4 -- the recovery strategy: migration 0050's own SQL, against re
       `/api/capabilities?workspaceId=${workspace.id}`,
       { headers: { cookie: owner.cookie } },
     );
-    expect(stillNoAuthority.status).toBe(409);
+    await expectAllFalseCapabilityMap(stillNoAuthority);
 
     await restoreRoleConstraint();
   });

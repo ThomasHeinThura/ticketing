@@ -12,14 +12,15 @@ import { useTranslation } from "react-i18next";
 import TaskCrumbSelect from "@/components/common/header/task-crumb-select";
 import Layout from "@/components/common/layout";
 import { shortcuts } from "@/constants/shortcuts";
-import useGetProject from "@/hooks/queries/project/use-get-project";
-import useGetTask from "@/hooks/queries/task/use-get-task";
 import { useProjectWebSocket } from "@/hooks/use-project-websocket";
 
 type TaskLayoutProps = {
   taskId: string;
   projectId: string;
   workspaceId: string;
+  projectName?: string;
+  projectSlug?: string;
+  taskNumber?: number | null;
   headerActions?: ReactNode;
   children: ReactNode;
   rightSidebar?: ReactNode;
@@ -29,20 +30,20 @@ export default function TaskLayout({
   taskId,
   projectId,
   workspaceId,
+  projectName,
+  projectSlug,
+  taskNumber,
   headerActions,
   children,
   rightSidebar,
 }: TaskLayoutProps) {
   const { t } = useTranslation();
   const navigate = useNavigate();
-  const { data: project } = useGetProject({ id: projectId, workspaceId });
-  const { data: task } = useGetTask(taskId);
-
   useProjectWebSocket(projectId);
 
   const taskLabel =
-    project?.slug && task?.number != null
-      ? `${project.slug}-${task.number}`
+    projectSlug && taskNumber != null
+      ? `${projectSlug}-${taskNumber}`
       : t("tasks:common.selectTask");
 
   const handleTaskSwitch = (nextTaskId: string) => {
@@ -62,7 +63,7 @@ export default function TaskLayout({
                 <Tooltip>
                   <TooltipTrigger asChild>
                     <SidebarTrigger
-                      className="-ml-1 h-7 w-7 cursor-pointer text-foreground/85 hover:text-foreground"
+                      className="-ml-1 h-7 w-7 cursor-pointer text-foreground hover:text-foreground"
                       toggleLabel={t("common:a11y.toggleSidebar")}
                     />
                   </TooltipTrigger>
@@ -93,9 +94,9 @@ export default function TaskLayout({
                   }
                   className="max-w-40 truncate text-left text-xs text-foreground hover:underline"
                 >
-                  {project?.name || t("navigation:sidebar.projects")}
+                  {projectName || t("navigation:sidebar.projects")}
                 </button>
-                <span className="text-foreground/70 text-xs">/</span>
+                <span className="text-foreground text-xs">/</span>
                 <TaskCrumbSelect
                   projectId={projectId}
                   taskId={taskId}

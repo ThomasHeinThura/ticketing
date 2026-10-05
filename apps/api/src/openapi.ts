@@ -1,6 +1,7 @@
 import { OpenAPIHono, z } from "@hono/zod-openapi";
 import type { Session, User } from "better-auth/types";
 import { HTTPException } from "hono/http-exception";
+import { installStrictPolicyRegistration } from "./permissions/strict-route-registration";
 
 export { createRoute } from "@hono/zod-openapi";
 export { z };
@@ -23,7 +24,7 @@ export type BaseVariables = {
 // createRoute({ middleware }) registers middleware BEFORE the request
 // validators, so middleware must read the raw request, not c.req.valid().
 export function apiRouter<V extends BaseVariables = BaseVariables>() {
-  return new OpenAPIHono<{ Variables: V }>({
+  const router = new OpenAPIHono<{ Variables: V }>({
     defaultHook: (result) => {
       if (!result.success) {
         const issue = result.error.issues[0];
@@ -36,6 +37,7 @@ export function apiRouter<V extends BaseVariables = BaseVariables>() {
       }
     },
   });
+  return installStrictPolicyRegistration(router);
 }
 
 export const responseTimestamp = z

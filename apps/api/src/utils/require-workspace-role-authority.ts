@@ -15,22 +15,16 @@ import {
 type PermissionMap = Record<string, string[]>;
 
 /**
- * Preserving workspace-role authority against the instance-admin bypass.
+ * Adds a workspace-role check to routes that need it, independently of instance-wide reach.
  *
- * THE FINDING THIS CLOSES. `hasWorkspacePermission`
- * (`apps/api/src/utils/require-workspace-permission.ts`) short-circuits to `true` the moment
- * `isInstanceAdmin(c)` is true, **before it ever reads the caller's actual workspace role**.
- * That function is shared by every authorized route in the product and is not this lane's to
- * redesign (it lives outside the S4 batch's ownership, and issue #66 already tracks a related,
- * separate defect in it). Left alone, mounting `PATCH/DELETE /api/workspace/{id}` on
- * `requireWorkspacePermission` alone would have let an instance admin who is merely a `viewer`
- * member rename or delete a workspace their own workspace role forbids — a real privilege
- * escalation, on a route this batch adds, not a pre-existing one merely inherited.
+ * The canonical model separates global reach from workspace capabilities. Generic legacy
+ * permission checks resolve the caller's actual workspace role; this additional guard remains
+ * for routes whose authority also requires its stricter role-row semantics.
  *
- * **Thomas's decision (2026-09-08): do not bless the bypass.** This middleware is additive,
+ * **Thomas's decision (2026-09-08): do not bless implicit workspace authority.** This middleware is additive,
  * scoped to exactly the two mutation routes that need it, and changes nothing for anyone who
  * is not an instance admin — `requireWorkspacePermission` already resolved their authority
- * correctly, bypass or not.
+ * from the caller's workspace role.
  *
  * **How authority is resolved here, and why it is deliberately NOT the same resolution
  * `hasWorkspacePermission` uses for non-owner roles.** The default `viewer`/`member`/`admin`
@@ -55,8 +49,8 @@ type PermissionMap = Record<string, string[]>;
  */
 export function requireWorkspaceRoleAuthority(permissions: PermissionMap) {
   return async (c: Context, next: Next) => {
-    // Nobody else is affected. An ordinary caller's authority was already resolved correctly
-    // (bypass or not, `isInstanceAdmin` is false for them) by `requireWorkspacePermission`,
+    // Ordinary callers do not need this second check; their authority was already resolved
+    // by `requireWorkspacePermission`,
     // which must already have run for this guard to mean anything.
     let instanceAdmin: boolean;
     try {
@@ -91,7 +85,7 @@ export function requireWorkspaceRoleAuthority(permissions: PermissionMap) {
     // malformed case here is the narrow one `hasWorkspacePermission` deliberately leaves
     // alone: an instance admin who is ALSO a member of this workspace through a corrupt
     // row. Refusing is right and costs nothing -- this middleware exists precisely to stop
-    // the instance-admin bypass from standing in for a workspace role it never read.
+    // global instance reach from standing in for a workspace role it never read.
     const membership = await resolveMembershipRole(db, workspaceId, userId);
     if (!membership.ok) {
       setShadowLegacyAuthorization(c, "denied");

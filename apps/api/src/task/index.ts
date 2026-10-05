@@ -21,6 +21,7 @@ import {
   validateTaskAssetUploadInput,
 } from "../storage";
 import { normalizeApiServerUrl } from "../utils/openapi-spec";
+import { requireWorkspaceMembership } from "../utils/require-workspace-membership";
 import { requireWorkspacePermission } from "../utils/require-workspace-permission";
 import { workspaceAccess } from "../utils/workspace-access-middleware";
 import { lockTaskAndAssertProjectLive } from "./assert-task-project-live";
@@ -87,7 +88,9 @@ const listTasksRoute = createRoute({
   summary: "List tasks",
   description:
     "Get a project's board: its columns, each with the tasks in it, plus the archived and planned buckets. Filter and paginate with the query parameters.",
-  middleware: [workspaceAccess.fromProject("projectId")] as const,
+  middleware: [
+    workspaceAccess.fromProject("projectId", { requireProjectReach: true }),
+  ] as const,
   request: { params: projectIdParam, query: listTasksQuery },
   responses: {
     200: jsonResponse("The project board", boardSchema),
@@ -113,6 +116,7 @@ const bulkUpdateTasksRoute = createRoute({
     "Apply one operation to many tasks at once. Every task must be in the same workspace.",
   middleware: [
     workspaceAccess.fromTasks(),
+    requireWorkspaceMembership,
     requireBulkTaskPermission,
     requireBulkTaskEntitlement,
   ] as const,
@@ -127,10 +131,8 @@ const bulkUpdateTasksRoute = createRoute({
     400: errorResponse(
       "Invalid body, or the tasks span more than one workspace",
     ),
-    // S1 (Opus review of PR #307, delta round): restores `main`'s own membership
-    // check on the resolved workspace, independent of the instance-admin bypass
-    // every other check in this chain has -- an instance admin who isn't a member
-    // of the tasks' workspace gets this same 403, not the permission-only one.
+    // Retain the established membership-specific denial for a caller who can reach a task
+    // workspace but is not a member; global instance reach does not confer workspace roles.
     403: errorResponse(
       "Missing the permission the operation needs, or no access to this workspace",
     ),
@@ -175,7 +177,9 @@ const getTaskRoute = createRoute({
   tags: ["Tasks"],
   summary: "Get task",
   description: "Get a single task by ID, with its assignee's name resolved.",
-  middleware: [workspaceAccess.fromTask()] as const,
+  middleware: [
+    workspaceAccess.fromTask("id", { requireProjectReach: true }),
+  ] as const,
   request: { params: taskParam },
   responses: {
     200: jsonResponse("Task details", taskWithAssigneeSchema),
@@ -384,7 +388,9 @@ const exportTasksRoute = createRoute({
   summary: "Export tasks",
   description:
     "Export a project's tasks, with their labels, as a JSON document.",
-  middleware: [workspaceAccess.fromProject("projectId")] as const,
+  middleware: [
+    workspaceAccess.fromProject("projectId", { requireProjectReach: true }),
+  ] as const,
   request: { params: projectIdParam },
   responses: {
     200: jsonResponse("The exported project and tasks", taskExportSchema),

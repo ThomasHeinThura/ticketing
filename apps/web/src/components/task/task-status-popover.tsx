@@ -6,10 +6,11 @@ import {
   ShortcutNumber,
 } from "@taskdesk/ui";
 import { Check } from "lucide-react";
-import { useCallback, useMemo, useState } from "react";
+import type { RefObject } from "react";
+import { memo, useCallback, useMemo, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { useUpdateTaskStatus } from "@/hooks/mutations/task/use-update-task-status";
-import { useGetColumns } from "@/hooks/queries/column/use-get-columns";
+import type { useGetColumns } from "@/hooks/queries/column/use-get-columns";
 import { useNumberedShortcuts } from "@/hooks/use-numbered-shortcuts";
 import { useWorkspacePermission } from "@/hooks/use-workspace-permission";
 import { getColumnIcon } from "@/lib/column";
@@ -19,16 +20,63 @@ import type Task from "@/types/task";
 
 type TaskStatusPopoverProps = {
   task: Task;
+  columns: NonNullable<ReturnType<typeof useGetColumns>["data"]>;
+  isLoading: boolean;
+  isError: boolean;
+  taskRef?: RefObject<Task | undefined>;
   children: React.ReactNode;
 };
 
+type StatusOption = {
+  value: string;
+  label: string;
+  icon: string | null;
+  isFinal: boolean;
+};
+
+const TaskStatusOption = memo(function TaskStatusOption({
+  status,
+  index,
+  selected,
+  onSelect,
+}: {
+  status: StatusOption;
+  index: number;
+  selected: boolean;
+  onSelect: (status: string) => void;
+}) {
+  return (
+    <Button
+      variant="ghost"
+      size="sm"
+      className="w-full justify-start gap-2 h-8 px-2 rounded-none first:rounded-t-md last:rounded-b-md"
+      onClick={() => onSelect(status.value)}
+    >
+      {getColumnIcon(status.value, status.isFinal, status.icon)}
+      <span className="text-sm">
+        {getStatusDisplayLabel(status.value, status.label)}
+      </span>
+      {selected ? (
+        <Check className="ml-auto h-4 w-4" />
+      ) : (
+        <ShortcutNumber number={index + 1} />
+      )}
+    </Button>
+  );
+});
+
 export default function TaskStatusPopover({
   task,
+  columns,
+  isLoading,
+  isError,
+  taskRef,
   children,
 }: TaskStatusPopoverProps) {
   const { t } = useTranslation();
   const [open, setOpen] = useState(false);
-  const { data: columns, isLoading, isError } = useGetColumns(task.projectId);
+  const latestTaskRef = useRef(task);
+  latestTaskRef.current = task;
   const statusOptions = useMemo(
     () =>
       (columns ?? []).map((col) => ({
@@ -45,13 +93,15 @@ export default function TaskStatusPopover({
 
   const handleStatusChange = useCallback(
     async (newStatus: string) => {
+      setOpen(false);
       try {
+        const currentTask = taskRef?.current ?? latestTaskRef.current;
         await updateTaskStatus({
-          ...task,
+          ...currentTask,
           status: newStatus,
         });
-        setOpen(false);
       } catch (error) {
+        setOpen(true);
         toast.error(
           error instanceof Error
             ? error.message
@@ -59,7 +109,7 @@ export default function TaskStatusPopover({
         );
       }
     },
-    [t, task, updateTaskStatus],
+    [t, taskRef, updateTaskStatus],
   );
 
   const shortcutOptions = useMemo(
@@ -89,23 +139,13 @@ export default function TaskStatusPopover({
             </div>
           ) : (
             statusOptions.map((status, index) => (
-              <Button
+              <TaskStatusOption
                 key={status.value}
-                variant="ghost"
-                size="sm"
-                className="w-full justify-start gap-2 h-8 px-2 rounded-none first:rounded-t-md last:rounded-b-md"
-                onClick={() => handleStatusChange(status.value)}
-              >
-                {getColumnIcon(status.value, status.isFinal, status.icon)}
-                <span className="text-sm">
-                  {getStatusDisplayLabel(status.value, status.label)}
-                </span>
-                {task.status === status.value ? (
-                  <Check className="ml-auto h-4 w-4" />
-                ) : (
-                  <ShortcutNumber number={index + 1} />
-                )}
-              </Button>
+                status={status}
+                index={index}
+                selected={task.status === status.value}
+                onSelect={handleStatusChange}
+              />
             ))
           )}
         </div>

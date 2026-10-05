@@ -26,9 +26,11 @@ import {
   NO_SINGLE_RESOURCE,
   type PolicyContext,
   type PolicyDecision,
+  type ProjectReachFacts,
   projectScopeFromRequest,
   projectScopeFromRow,
   type ResolvedScope,
+  reaches,
   workItemScopeFromRequest,
   workItemScopeFromRow,
   workspaceScopeFromRequest,
@@ -135,6 +137,10 @@ export function buildShadowPolicySide(args: {
   /** Set only on routes whose existing middleware already resolved a work-item row (today:
    *  `requireWorkItemReach`). See `require-work-item-reach.ts`. */
   readonly workItemId?: string | null;
+  /** Exact persisted membership evidence for a membership-constrained self policy. */
+  readonly workspaceMembership?: boolean;
+  /** Independently loaded persisted facts for the target project's reach calculation. */
+  readonly projectReachFacts?: ProjectReachFacts;
 }):
   | { readonly context: PolicyContext; readonly entry: RegistryEntry }
   | UnevaluatedReasonCode {
@@ -143,6 +149,8 @@ export function buildShadowPolicySide(args: {
     identity,
     workspaceId,
     workspaceIdSource,
+    workspaceMembership,
+    projectReachFacts,
     projectId = null,
     projectIdFromRequest = null,
     workItemId = null,
@@ -190,7 +198,12 @@ export function buildShadowPolicySide(args: {
     ) {
       return {
         entry,
-        context: { identity, target: {}, targetPersonId: NO_PERSON_PARAMETER },
+        context: {
+          identity,
+          target: {},
+          targetPersonId: NO_PERSON_PARAMETER,
+          ...(workspaceMembership === undefined ? {} : { workspaceMembership }),
+        },
       };
     }
     return "self_target_unavailable";
@@ -270,13 +283,10 @@ export function buildShadowPolicySide(args: {
     return "scope_source_unavailable";
   }
 
-  // `reach: "required"` makes `context.inReach` mandatory — `evaluatePolicy` denies
-  // (`policy_context_incomplete`) rather than guess when it is absent (defect 5). Slice 2
-  // can only answer this honestly for `workspace` scope, from data already inside the
-  // resolved `identity` (no extra I/O) — see `workspaceInReach` below. `project`/`work_item`
-  // reach may need ancestor-project and team-ownership facts (`reaches()`) not loaded here.
-  // The explicit workspace IDs on `membership_with_workspaces` are positive evidence;
-  // absence from that list is not negative evidence because other memberships may grant reach.
+  // `reach: "required"` makes `context.inReach` mandatory — `evaluatePolicy` refuses when
+  // it is absent. This value must be independent from the native result being compared.
+  // The observer may provide persisted target facts, but its proof that the native predicate
+  // denied the row never becomes policy-side negative reach.
   const reach = policy.reach;
   const reachExempt =
     typeof reach === "object" &&
@@ -296,11 +306,20 @@ export function buildShadowPolicySide(args: {
       inReach = true;
     } else if (
       (policy.scope === "project" || policy.scope === "work_item") &&
-      identity.reach.kind === "membership_with_workspaces" &&
-      identity.reach.workspaceIds.includes(workspaceId as string)
+      projectReachFacts !== undefined &&
+      projectReachFacts.projectId === projectId &&
+      projectReachFacts.workspaceId === workspaceId
     ) {
-      // Mirrors the explicit workspace-reach grant in `reaches()`.
-      inReach = true;
+      // This is a separate policy calculation over persisted scope facts and the resolved
+      // identity. The legacy observer predicate is not an input to reaches().
+      if (
+        policy.scope === "work_item" &&
+        identity.side === "customer" &&
+        projectReachFacts.visibleToPersonIds === undefined
+      ) {
+        return "reach_unavailable";
+      }
+      inReach = reaches(identity, projectReachFacts);
     } else {
       return "reach_unavailable";
     }

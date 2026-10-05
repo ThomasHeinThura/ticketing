@@ -51,7 +51,17 @@ bodies containing custom field values, attachment contents, or arbitrary excepti
 Log level is configurable at runtime in God Mode, per module, so debugging production
 does not require a restart.
 
-## P0 metrics contract (planned; not currently implemented)
+HTTP server lifecycle failures use the fixed `http.lifecycle_failure` message, module
+`http`, level `error` and result `failed`. This covers startup, graceful HTTP close and
+forced connection close failures. The lifecycle helper accepts no error or context argument;
+it emits no request route, duration, identifier, configuration, payload or exception text.
+It does not alter propagation, shutdown deadlines, forced-close decisions or completion.
+Structural and injected-failure regressions must reject raw exception serialization in the
+API server lifecycle; successful startup/shutdown messages may remain finite informational
+text. Realtime failures continue to use `realtime.failure`.
+
+
+## P0 metrics contract (candidate implementation; not accepted runtime)
 
 P0 starts with bounded HTTP request metrics and the audit-write-failure counter below. The
 broader business, job, and infrastructure catalogue remains a target for later producer-by-
@@ -92,11 +102,10 @@ The P0 administrator surface is `GET /api/instance/observability`,
 `POST /api/instance/observability/metrics-token/rotate`. GET returns only safe settings;
 PATCH changes log levels with an optimistic version; rotation returns the token once and
 requires fresh session-only operation-bound step-up. The route registry, OpenAPI schemas,
-permission matrix, and implementation tests must agree. This API seam does not claim the
-P4 God Mode screen is implemented.
+permission matrix, and implementation tests must agree. The candidate includes the `/god-mode/observability` screen for log levels, local-factor policy, and metrics-token rotation; browser evidence and integrated acceptance remain pending.
 
 Per-module levels are a closed document with `default` and `modules` only. Initial module
-keys are `http`, `auth`, `database`, `jobs`, `audit`, and `plugins`; each level is one of
+keys are `http`, `auth`, `database`, `jobs`, `audit`, `plugins`, and `realtime`; each level is one of
 `error`, `warn`, `info`, or `debug`. All modules start at `info`, which keeps production
 debug logging off. Validate on write and when reading persisted settings; invalid persisted
 shape prevents readiness. Serving replicas refresh the complete validated snapshot at most
@@ -104,16 +113,30 @@ every five seconds and apply it atomically. A transient refresh failure keeps th
 non-secret levels, emits one bounded warning per failure interval, and retries. The metrics
 credential is never cached.
 
-The current authentication source does not yet enable `twoFactor` and does not implement a
-fresh Entra `prompt=login` step-up callback. Token rotation therefore remains unusable for
-account classes whose required factor cannot be verified. Such a request fails closed with
-`403 step_up_unavailable`; implementation must not substitute a session-only check, sign-in
-email OTP, or client assertion of successful re-authentication.
+The P0 candidate enables Better Auth `twoFactor` for local TOTP and backup-code verification
+and implements password proof only for the documented account class with no enrolled or
+required second factor. It does not implement a fresh Entra `prompt=login` step-up callback.
+Token rotation therefore remains unusable for account classes whose required factor cannot
+be verified. Such a request fails closed with `403 step_up_unavailable`; implementation must
+not substitute a session-only check, sign-in email OTP, or client assertion of successful
+re-authentication.
 
-**Current status:** the API image does not serve `/metrics`, does not start a listener on
-port 9464, and does not read a metrics bearer token. The metric names below are the target
-instrumentation contract, not live endpoints. Until implementation and verification, use
-the container, database and application logs in the [runbook](../05-operations/runbook.md).
+**Current status:** the accepted runtime has not yet implemented `/metrics`, the port 9464
+listener, or a metrics bearer token. The current P0 candidate implements the schema/API,
+listener lifecycle, local-factor foundations, and bounded HTTP/audit metrics; those candidate
+changes remain under review and are not deployed or accepted as complete until the full runtime,
+image, and browser gates pass. The metric names below are a candidate contract, not evidence
+that the accepted runtime serves them.
+Until implementation and verification, use the container, database and application logs in
+the [runbook](../05-operations/runbook.md).
+
+The finite structured log `msg` values are `http.request`, `http.lifecycle_failure`, `auth.failure`,
+`database.failure`, `jobs.failure`, `audit.write_failure`, `plugins.failure`,
+`realtime.failure`,
+`observability.config_refresh_failure`, and `observability.listener_bind_failure`.
+Callers cannot supply arbitrary message text. The `route` field uses an actual registered
+method-and-template pair; a request that cannot be matched is recorded as the finite `unmatched`
+bucket rather than its raw path.
 
 **HTTP**
 ```
@@ -123,13 +146,19 @@ taskdesk_http_in_flight
 taskdesk_audit_write_failures_total{operation}
 ```
 
-`operation` is a closed label enum: `mutation`, `pending_action_decision`, or
-`pending_action_self_read`. Do not add route, id, actor, exception text, or trace id labels.
+`operation` is a closed label enum: `mutation`, `pending_action_decision`,
+`pending_action_self_read`, or `audit_read`. Do not add route, id, actor, exception text, or
+trace id labels. `audit_read` covers the best-effort AU-13 audit-row append after an audit-log
+read; it is separate from pending-action self-read auditing.
 The counter increment and its safe error-level log line happen outside any rolled-back audit
 savepoint. They do not change AU-14's successful mutation behavior or the separately
 fail-closed pending-action self-read contract. A positive five-minute increase is an urgent,
-page-worthy alert for the affected instance. Until it is implemented, AU-14 reporting and
-administrator notification remain unfinished.
+page-worthy alert for the affected instance. Background pending-action expiry groups the
+administrator notification and safe log by degraded batch while counting every failed append.
+
+The counter and durable administrator notification are implemented in the current candidate;
+the integrated image/runtime and independent review gates are still pending. A positive
+five-minute increase is an urgent, page-worthy alert for the affected instance.
 
 **Business** — instance-wide aggregate targets, never per-tenant or per-resource series
 ```
@@ -265,8 +294,9 @@ the panels depend on instrumentation that is also planned.
 
 ## Alerts
 
-The audit failure alert is part of the P0 contract but is not currently implemented or
-activated. The remaining conditions are candidates for later monitoring work. Every alert
+The audit failure alert is implemented in the current candidate with a durable instance
+notification to currently-authorized administrators; integrated runtime and review gates are
+still pending. The remaining conditions are candidates for later monitoring work. Every alert
 must be actionable; anything that fires and is routinely ignored gets deleted rather than
 muted.
 

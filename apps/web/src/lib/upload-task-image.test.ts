@@ -66,5 +66,9 @@ describe("uploadTaskImage", () => {
     );
     expect(asset.mimeType).toBe("image/png");
     expect(asset.kind).toBe("image");
+    expect(fetch).toHaveBeenCalledWith(
+      "https://storage.example/upload",
+      expect.objectContaining({ credentials: "omit", method: "PUT" }),
+    );
   });
 });

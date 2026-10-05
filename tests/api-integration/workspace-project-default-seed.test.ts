@@ -17,6 +17,7 @@ import { DEFAULT_STATE_TEMPLATES } from "../../apps/api/src/utils/default-state-
 import { DEFAULT_WORK_ITEM_TYPES } from "../../apps/api/src/utils/default-work-item-types";
 import { seedProjectStates } from "../../apps/api/src/utils/seed-project-states";
 import { seedWorkspaceDefaults } from "../../apps/api/src/utils/seed-workspace-defaults";
+import { csrfRequest } from "./helpers/csrf";
 import { resetTestDatabase } from "./helpers/database";
 import { signUpUser } from "./helpers/organization-http";
 import { createWorkspaceNative } from "./helpers/workspace-write-http";
@@ -26,11 +27,16 @@ async function createProjectNative(
   cookie: string,
   body: { workspaceId: string; name: string; icon: string; slug: string },
 ): Promise<Response> {
-  return app.request("/api/project", {
-    method: "POST",
-    headers: { "content-type": "application/json", cookie },
-    body: JSON.stringify(body),
-  });
+  return csrfRequest(
+    app,
+    "/api/project",
+    {
+      method: "POST",
+      headers: { "content-type": "application/json", cookie },
+      body: JSON.stringify(body),
+    },
+    cookie,
+  );
 }
 
 describe("API integration: workspace/project default seeding (#309)", () => {
@@ -128,7 +134,8 @@ describe("API integration: workspace/project default seeding (#309)", () => {
     });
     expect(type).toBeTruthy();
 
-    const workItemResponse = await app.request(
+    const workItemResponse = await csrfRequest(
+      app,
       `/api/projects/${project.id}/work-items`,
       {
         method: "POST",
@@ -138,6 +145,7 @@ describe("API integration: workspace/project default seeding (#309)", () => {
           title: "Printer is on fire",
         }),
       },
+      owner.cookie,
     );
     expect(workItemResponse.status).toBe(200);
     const workItem = (await workItemResponse.json()) as {

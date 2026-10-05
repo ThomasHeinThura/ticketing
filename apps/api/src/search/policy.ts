@@ -16,14 +16,9 @@ import type { PolicyMap } from "@taskdesk/permissions";
  * this route today), and the standalone workspace search additionally filters to
  * `inArray(workspaceTable.id, accessibleWorkspaceIds)`, the caller's own memberships.
  *
- * **The only gate is `workspaceAccess.fromQuery()`** (`apps/api/src/search/index.ts`'s only
- * middleware) — resolving to `validateWorkspaceAccess` (`apps/api/src/utils/
- * validate-workspace-access.ts`), which checks plain membership in the named workspace (or the
- * instance-admin bypass) and nothing more granular: no per-entity-type capability, no
- * project-level reach narrowing beyond "is a member of this workspace at all". `workspace:read`
- * is the target capability — every built-in role from `viewer` up holds it, matching that any
- * member can search, and there is no dedicated `search:*` capability in `docs/01-architecture/
- * rbac.md` to declare instead.
+ * Runtime first resolves workspace reach from the request scope and then enforces
+ * `workspace:read` from the caller's actual workspace role. An instance administrator's
+ * global reach is not a substitute for that capability.
  *
  * This is a collection query, not a single-resource lookup, but it is scoped to exactly one
  * addressed workspace via the request's own `workspaceId` — the same shape

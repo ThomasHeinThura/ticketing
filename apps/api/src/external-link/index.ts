@@ -20,7 +20,9 @@ const getExternalLinksByTaskRoute = createRoute({
   summary: "Get task external links",
   description:
     "Get all links from a task to resources in connected integrations, such as GitHub or Gitea issues.",
-  middleware: [workspaceAccess.fromTaskId("taskId")] as const,
+  middleware: [
+    workspaceAccess.fromTaskId("taskId", { requireProjectReach: true }),
+  ] as const,
   request: { params: taskIdParam },
   responses: {
     200: jsonResponse("External links for the task", externalLinkListSchema),

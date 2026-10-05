@@ -11,6 +11,11 @@ const createTask = vi.fn(async (input: Record<string, unknown>) => ({
   createdAt: "2026-08-05T00:00:00.000Z",
   version: 1,
 }));
+const metadataQueries = vi.hoisted(() => ({
+  labels: vi.fn(),
+  projects: vi.fn(),
+  users: vi.fn(),
+}));
 
 afterEach(() => {
   cleanup();
@@ -43,7 +48,10 @@ vi.mock("@/hooks/mutations/task/use-update-task", () => ({
 }));
 
 vi.mock("@/hooks/queries/label/use-get-labels-by-workspace", () => ({
-  default: () => ({ data: [] }),
+  default: (...args: unknown[]) => {
+    metadataQueries.labels(...args);
+    return { data: [] };
+  },
 }));
 
 vi.mock("@/hooks/queries/workspace/use-active-workspace", () => ({
@@ -53,23 +61,29 @@ vi.mock("@/hooks/queries/workspace/use-active-workspace", () => ({
 vi.mock(
   "@/hooks/queries/workspace-users/use-get-active-workspace-users",
   () => ({
-    useGetActiveWorkspaceUsers: () => ({ data: { members: [] } }),
+    useGetActiveWorkspaceUsers: (...args: unknown[]) => {
+      metadataQueries.users(...args);
+      return { data: { members: [] } };
+    },
   }),
 );
+
+vi.mock("@/hooks/queries/project/use-get-projects", () => ({
+  default: (...args: unknown[]) => {
+    metadataQueries.projects(...args);
+    return {
+      data: [
+        { id: "project-1", name: "Alpha", slug: "alp" },
+        { id: "project-2", name: "Beta", slug: "bet" },
+      ],
+    };
+  },
+}));
 
 vi.mock("@/hooks/use-workspace-permission", () => ({
   useWorkspacePermission: () => ({
     canCreateTasks: () => true,
     canCreateLabels: () => true,
-  }),
-}));
-
-vi.mock("@/hooks/queries/project/use-get-projects", () => ({
-  default: () => ({
-    data: [
-      { id: "project-1", name: "Alpha", slug: "alp" },
-      { id: "project-2", name: "Beta", slug: "bet" },
-    ],
   }),
 }));
 
@@ -87,6 +101,21 @@ vi.mock("react-i18next", () => ({
 }));
 
 describe("CreateTaskModal", () => {
+  it("defers workspace option reads until the modal opens", () => {
+    useLocation.mockReturnValue({
+      pathname: "/dashboard/workspace/workspace-1/project/project-1/board",
+    });
+
+    render(<CreateTaskModal open={false} onClose={vi.fn()} />);
+
+    expect(metadataQueries.users).toHaveBeenCalledWith("workspace-1", false);
+    expect(metadataQueries.labels).toHaveBeenCalledWith("workspace-1", false);
+    expect(metadataQueries.projects).toHaveBeenCalledWith(
+      { workspaceId: "workspace-1" },
+      false,
+    );
+  });
+
   it("keeps unsaved input while discard confirmation is open", async () => {
     useLocation.mockReturnValue({
       pathname: "/dashboard/workspace/workspace-1/project/project-1/board",

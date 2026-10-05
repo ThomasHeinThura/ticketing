@@ -1,5 +1,5 @@
 import { readFileSync } from "node:fs";
-import { eq, sql } from "drizzle-orm";
+import { and, eq, sql } from "drizzle-orm";
 import { beforeEach, describe, expect, it } from "vitest";
 import db, { schema } from "../../apps/api/src/database";
 import { createApp } from "../../apps/api/src/index";
@@ -98,6 +98,56 @@ describe("time entry duration", () => {
     expect(response.status).toBe(200);
     const entry = await response.json();
     expect(entry.duration).toBeNull();
+  });
+
+  it("enforces time_entry:read_any after row reach is resolved", async () => {
+    const admin = await createWorkspaceMember({ role: "admin" });
+    const task = await seedTaskFor(admin.workspace.id);
+
+    mockAuthenticatedSession(admin.user);
+    const adminApp = createApp().app;
+    const createEntry = await adminApp.request("/api/time-entry", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        taskId: task.id,
+        startTime: new Date().toISOString(),
+      }),
+    });
+    expect(createEntry.status).toBe(200);
+    const allowed = await adminApp.request(`/api/time-entry/task/${task.id}`);
+    expect(allowed.status).toBe(200);
+    expect(await allowed.json()).toHaveLength(1);
+
+    const member = await createWorkspaceMember({ role: "member" });
+    const [memberRole] = await db
+      .select({ permission: schema.workspaceRoleTable.permission })
+      .from(schema.workspaceRoleTable)
+      .where(
+        and(
+          eq(schema.workspaceRoleTable.workspaceId, member.workspace.id),
+          eq(schema.workspaceRoleTable.role, "member"),
+        ),
+      )
+      .limit(1);
+    expect(memberRole).toBeDefined();
+    await db.insert(schema.workspaceUserTable).values({
+      workspaceId: admin.workspace.id,
+      userId: member.user.id,
+      role: "member",
+      joinedAt: new Date(),
+    });
+    await db.insert(schema.workspaceRoleTable).values({
+      workspaceId: admin.workspace.id,
+      role: "member",
+      permission: memberRole?.permission ?? "{}",
+      isSystem: true,
+    });
+
+    mockAuthenticatedSession(member.user);
+    const memberApp = createApp().app;
+    const denied = await memberApp.request(`/api/time-entry/task/${task.id}`);
+    expect(denied.status).toBe(403);
   });
 });
 

@@ -21,6 +21,7 @@ import { resetTestDatabase } from "./helpers/database";
 import {
   createProjectFixture,
   createWorkspaceMember,
+  prepareAuthenticatedApiFixture,
   requireRow,
 } from "./helpers/fixtures";
 
@@ -69,6 +70,7 @@ describe("GET /api/instance/audit (AU-11/AU-12/AU-13)", () => {
       updatedAt: new Date(),
     };
     await db.insert(schema.userTable).values(admin);
+    await prepareAuthenticatedApiFixture(admin.id);
     mockAuthenticatedSession(admin);
     const { app } = createApp();
 
@@ -112,6 +114,7 @@ describe("GET /api/instance/audit (AU-11/AU-12/AU-13)", () => {
       updatedAt: new Date(),
     };
     await db.insert(schema.userTable).values(admin);
+    await prepareAuthenticatedApiFixture(admin.id);
     mockAuthenticatedSession(admin);
     const { app } = createApp();
 
@@ -195,6 +198,13 @@ describe("GET /api/workspaces/{workspaceId}/audit — project reach (#344, AU-10
   }
 
   async function addPersonForUser(userId: string): Promise<string> {
+    const [existingPerson] = await db
+      .select({ id: schema.personTable.id })
+      .from(schema.personTable)
+      .where(eq(schema.personTable.userId, userId))
+      .limit(1);
+    if (existingPerson) return existingPerson.id;
+
     const organisation = await ensureInternalOrganisation();
     const now = new Date();
     const person = requireRow(

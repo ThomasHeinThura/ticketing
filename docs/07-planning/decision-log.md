@@ -1,9 +1,618 @@
+### 2026-10-05 · Suppress the historical public TOTP test vector by exact fingerprint
+
+Add only `69e61dd56c18bdbb90149f470d9a6615a9d28272:apps/web/e2e/mfa-csrf-journey.spec.ts:generic-api-key:13` to `.gitleaksignore`. The finding is in an already-pushed historical commit; its value is an `otpauth` test URI whose Base32 secret decodes to the published RFC 6238 test-vector bytes. The current source still contains the same public deterministic test-vector literal at `apps/web/e2e/mfa-csrf-journey.spec.ts:16`; the historical commit records it at line 13. The test uses the RFC timestamp `59000` and asserts the published vector output before it provisions the test app. Preserve history and suppress this finding by its exact fingerprint only; do not ignore the path or rule.
+
+This records a verified public test vector, not a real credential or a general scanner exception. It makes no claim that other secret findings are benign and waives no required check.
+
+### 2026-10-05 · Prepare isolated P4 integration while P0 acceptance remains open
+
+Apply Thomas's explicit parallel full-implementation authorization to a separate P4
+integration branch based on the functionally reviewed P0 foundation. Preserve accepted
+main's first80migration entries and the88migration prefix already applied to development.
+Compose only the unaccepted suffix semantically, using the existing generation workflow;
+never select a whole competing schema/journal/snapshot as the winner. Do not apply that
+union to live development or claim protected/phase acceptance before its required gates.
+
+The bounded next deliverable combines God Mode user deactivation with its necessary
+server-owned pending-action approval/execution path and existing IP15 credential retirement.
+Register any required kind/operation in its canonical contract before implementation;
+revalidate execution-time authority, target, current typed email and session-only PA15,
+with transactional audit/outbox behavior. Existing suspension remains distinct. This is
+implementation sequencing under standing authorization, not a new authority or gate waiver.
+P0 final integration takes priority; afterward the independent P4 lane resumes.
+
+### 2026-10-04 · Select bounded Users suspension input
+
+Under Thomas's standing authorization for recommended routine choices, the P4 suspension
+body may contain an optional trimmed, nonempty reason of at most500 Unicode code points
+and an optional nullable ISO expiry. A supplied expiry must be strictly after server now;
+null or omission means indefinite suspension. Register these rules in the owning God Mode
+contract before implementation. Revoke current native Better Auth apikey/session rows;
+no nonexistent API/MCP extension is claimed covered, and unsuspension restores no revoked
+credential. This selects validation for the authorized Users batch; it does not implement
+that batch in P0, waive review or grant stage acceptance.
+
+### 2026-10-04 · Bound the identity provisioning event-history read
+
+Under Thomas's standing authorization for recommended routine choices, select the missing
+connection-scoped provisioning ledger read as instance-admin-only. Require an existing
+parent connection; absent parents return the same 404. Query limit defaults to 25, maximum
+100. Use an opaque version-1 cursor bound to connection ID and descending created_at/id,
+with existing fail-closed query-validation conventions. Return only kind, outcome,
+actorType and createdAt in data, plus nextCursor/hasMore page metadata. No row IDs, trace
+IDs, stored detail or total-count query are exposed. Register this contract in the owning
+identity-provisioning spec before API/UI implementation; retain URL-state rules for the
+reachable history panel. This selects a bounded safe DTO, not a new authority, gate waiver,
+provider acceptance or stage-completion claim.
+
+### 2026-10-04 · Keep route coverage independent of web build artifacts
+
+The API registers declared static middleware unconditionally. Verify real route descriptors, registration counts, auth-guard ordering and middleware inventory against explicit missing and built roots; do not require a checkout without generated web output or delete output to manufacture a pass. Correct the obsolete build-order instructions and use direct exact-path Playwright/Vitest invocation to prevent accidental broad package-script selection. These related corrections join the complete P0 batch for independent risk-sized review; no route, authority, coverage assertion or required gate is waived.
+
+### 2026-10-04 · Preserve reactive full-task mutation freshness inside narrow display subscriptions
+
+The full task cache is the mutation authority, including version and omitted fields. Narrow display selection must not make a mutation snapshot nonreactive. Subscribe the controls to the shared complete task cache, keep the sidebar display selector narrow, and prove omitted-field/version advancement and identity reset through real-query and built browser regressions. Complete this entire correction before current risk-sized independent review. Preserve original request-changes reports and the earlier local22/22 result at its actual source; use final hosted performance for corrected acceptance rather than repeat local performance for comfort. No budget, data size, retry, permission, dependency or gate waiver changes.
+
+### 2026-10-04 · Complete related render fixes before bulk review and reserve performance capacity
+
+Apply the user's full-implementation-first cadence to the remaining measured state, assignment and board rendering paths together. Keep canonical data sizes, timings, retries, successful-write assertions and keyboard behavior unchanged. Run the completed source checkpoint once in a coordinated quiet local window; preserve any failing result and require actual hosted acceptance. Independent reviewers assess the complete delta at its risk tier, with current-head Sol confirmation for the composed security-scope candidate. The previous reviewed candidate may remain deployed for development under the standing authorization while performance acceptance is open. This selects implementation/verification order, not a gate waiver or an assertion of a CPU cause.
+
+### 2026-10-04 · Bounded follow-ups for the remaining actual P0 evidence dates
+
+Under Thomas's standing instruction to continue work and use three actual issue-free development/UAT observation dates, the orchestrator schedules two quiet thread heartbeat runs (`p0-remaining-evidence-dates`) for the remaining October 5/6 observations at local 21:30. Each must acquire actual source-bound traffic, compare tested policy behavior with the retained October 4 manifest, preserve immutable records, reconcile complete outcomes/events and eligible source coverage, and record explicit normative explanations. Current-day partial coverage is not a full-day or 72-hour claim. Time passing neither clears known failures nor authorizes protected merge, enforcement or stage completion. Required independent review, exact CI and the additional Sol finalizer remain. The follow-ups stay quiet unless there is a meaningful failure, a user-only blocker or completed acceptance; they do not create separate user-owned chats or message others.
+
 # Decision log
 
 Decisions too small for an [ADR](../01-architecture/adr/README.md) but worth recording:
 dependency choices, convention changes, scope calls, gate waivers.
 
 Newest first.
+
+### 2026-10-05 · Record both public RFC 6238 test-vector scanner findings accurately
+
+The current deterministic fixture remains in `apps/web/e2e/mfa-csrf-journey.spec.ts:16`; its
+historical finding is at line 13. A separate quoted copy in public review artifact
+`docs/07-planning/security-reviews/579-p0-146f0584-luna-a.md:28` is a second independently
+verified occurrence, fingerprinted at frozen commit `36959b579075a4463c04bd01ede7c55913abce33`.
+The public review copy now describes the RFC 6238 test vector without embedding its
+credential-shaped URI, with an explicit redaction annotation; its unredacted original is
+preserved in private evidence. Add only the exact historical commit/file/rule/line finding
+to `.gitleaksignore`. Keep both source and public-artifact findings distinct; do not ignore a
+path or rule, rewrite history, or infer that other scanner findings are benign. The deterministic
+test assertion remains unchanged. This documents verified public test data and preserves the
+original review evidence; it waives no required check.
+
+### 2026-10-04 · Require complete source-bound contrast records before utility matching
+
+The G3 occurrence-summary invariant applies to every pair. Both arrays must exist, be nonempty and correctly typed; detailed records must obey the closed schema/context values. A missing or malformed detail array must not fall back to utility-only acceptance. Preserve intentionally repeated detailed contexts and enforce the first-seen ordered distinct summary. Fix the entire absent/malformed class and its regressions in one completed batch, with the risk-sized current-head independent Luna/Sol review rather than per-edit comfort rounds. No pair colors, thresholds, source contexts or runtime behavior change; no gate waiver is introduced.
+
+### 2026-10-04 · Enforce contrast occurrence summaries structurally
+
+The contrast registry summary is the first-seen ordered distinct projection of detailed occurrence IDs; detailed records may repeat an ID for different surface contexts. Correct the eight stale summaries together and enforce this invariant across every pair with missing/extra/order regressions. Preserve pair identity, detailed contexts, colors, ratios and thresholds. Review this completed bounded checker pass/fail change with one strong independent Luna delta pass and the required full independent Sol pass, using earlier genuine UI bulk reviews as history rather than claiming current-head clearance. This applies the standing risk-sized review and complete-batch cadence; it waives no gate.
+
+### 2026-10-04 · Keep reviewed development delivery separate from protected acceptance
+
+**Decision:** apply Thomas's explicit OrbStack development deployment authorization to a
+reviewed implementation candidate with verified image boot, migration, health and real
+PostgreSQL/authentication evidence. Preserve data, runtime secrets, certificates and shadow
+mode; retain encrypted backups and source-bound deployment receipts. A development refresh
+makes implemented features available for UAT and does not certify protected merge, passing
+performance budgets, clean traffic dates, strict cutover or phase completion. Required
+reviews, exact-head checks and the Sol phase finalizer remain acceptance gates. Complete
+related performance/source fixes before one risk-sized bulk delta review; no comfort review
+is added for individual edits. This records the existing development authorization and
+implementation cadence, not a gate waiver.
+
+
+
+
+### 2026-10-04 · Preserve canonical project reach when repairing native project reads
+
+**Decision:** the existing RBAC Reach order remains authoritative. Plain workspace
+membership alone grants no project reach. The three source-bound native-allow/policy-deny
+project read outcomes must be investigated and repaired under that rule; moving their
+registered policies to workspace scope to manufacture agreement is rejected. The shadow
+contract's statement that workspace membership is comparable refers to persisted workspace
+facts, not an additional project grant. Explicit project membership or workspace `sees_all`
+still needs the declared capability, and denied reach remains masked with `404`.
+
+Implement one shared native read-guard conformance batch with actual persisted positive and
+negative fixtures, preserved liveness and independently computed shadow outcomes. Do not add
+automatic membership, implicit reach, invented roles or observer-side grants. This clarifies
+and applies the accepted 2026-09-09 canonical rule under the user's standing routine decision
+authorization; no authority expansion, human review or gate waiver is introduced.
+
+
+### 2026-10-04 · Close the server lifecycle logging defect class structurally
+
+**Decision:** register finite `http.lifecycle_failure` in the observability log contract,
+using the existing HTTP module, fixed error level and failed result. HTTP startup/close/forced
+close errors must use a no-argument helper with no raw exceptions or context. Realtime retains
+its separate finite failure event. Preserve shutdown behavior and prove injected sensitive
+errors cannot escape through lifecycle catches. Add a structural regression rather than
+repeat narrow special-case fixes. This is an autonomous routine remediation under the user's
+complete-batch instruction, not a quality-gate waiver. The required independent Sol pass
+may close narrower instances after the structural correction under the standing review rule.
+
+
+### 2026-10-04 · Complete native realtime invalidation and safe logging in one batch
+
+**Decision:** the documented internal `taskdesk:control` channel is the selected seam for
+native subscription authorization invalidation. Existing domain events alone do not cover
+session, membership, role and project authority changes. The implementation must publish
+only after the relevant mutation commits, refresh authority from current persisted facts,
+retain periodic reauthorization as fallback, and never expose control messages to browsers.
+Use the existing memory/Valkey adapter boundary; exact closed coordination keys, payloads
+and trigger semantics are registered in the owning realtime/auth runtime contract before
+implementation. This does not add an authority grant or a new identity cache.
+
+Add the finite `realtime` log module and `realtime.failure` message to the observability
+allowlists before replacing the native socket's raw exception logging. Error objects and
+arbitrary exception text remain prohibited. Archived projects must deny and revoke native
+subscriptions under the existing resource-live contract. All three independent bulk-review
+findings are implemented together, then verified at the required review tier. These routine
+recommended resolutions use the user's standing autonomous implementation authorization;
+no review, performance threshold or security gate is waived.
+
+
+
+### 2026-10-04 · Keep native-denial evidence independent from shadow reach
+
+**Decision:** for issue #8 observer-only native read evidence, the typed observer result may
+establish the native/legacy denial and the persisted row scope only. It must not force the
+declarative side's `inReach` to false. The declarative side evaluates `reaches()` from the
+resolved identity and independently loaded persisted target facts; direct project membership
+is comparable when those facts are present. If hierarchy, owner-team, customer-private
+visibility, or another required fact is unavailable, the shadow outcome is `unevaluated`.
+Do not infer a policy denial from the native predicate, URL, caller input, or HTTP status.
+This changes diagnostic comparison only: native access remains unchanged and a disagreement
+is retained as a disagreement. Shadow-off continues to perform no observer read. The
+contract is detailed in [RBAC § Shadow evidence for native read denials](../01-architecture/rbac.md#shadow-evidence-for-native-read-denials).
+
+For `/api/capabilities`, the selected self-introspection condition remains one exact active
+persisted workspace membership. Instance-admin global reach is not membership. An unambiguous
+member with a malformed/unknown role receives an all-false capability map, while ordinary
+write routes continue to reject that membership. This is not a new authority grant.
+
+
+### 2026-10-04 · Bound observer-only provenance reads for shadowed native read denials
+
+**Decision:** under the standing authorization to implement recommended P0 resolutions, a
+shadow-enabled native read may perform one additional observer-only lookup when its typed,
+reach-filtered resource lookup returns no row. The lookup is limited to the exact resource
+kind and identifier selected by that route's typed lookup middleware and to a matched,
+registered row-scoped capability policy. It must use persisted containment and the native
+resource's liveness rules. Only a live row whose denial by the same native reach predicate
+is established may supply row scope and an explicit legacy-denied marker. Missing, inactive,
+ambiguous, or unavailable rows remain unknown/error. The result stays in request context,
+never the response, log, or audit. Shadow-off performs no observer query. Mutation routes
+and post-mutation state are excluded. This resolves the #8 evidence gap without changing
+native authority or masked responses; details are in [RBAC § Shadow evidence for native read
+denials](../01-architecture/rbac.md#shadow-evidence-for-native-read-denials).
+
+**Limits:** this observer evidence does not make a missing policy or incomplete identity
+facts evaluable. Project hierarchy, team ownership, private-item visibility, public-route
+placement, and delegated protocol behavior remain governed by their existing contracts.
+Implementation evidence and source-bound traffic are still required; no clean date or
+cutover is established by this decision.
+
+For the same #8 batch, `/api/capabilities` is explicitly self-introspection, not a
+capability-gated read: a session with one unambiguous persisted membership in the requested
+workspace may receive its own boolean map, including all-false results for an unknown role.
+The self policy's `workspaceMembership: true` condition requires that exact membership and
+does not accept instance-admin reach as a substitute. Nonmembers remain denied; no write or
+other capability check is relaxed. See [RBAC § Route policies](../01-architecture/rbac.md#route-policies--the-anti-v1-mechanism).
+
+
+### 2026-10-04 · Pin SLA policy provenance at work-item creation
+
+**Decision:** implement the recommended SLA-1/SLA-3 provenance contract under Thomas's
+standing authorization for recommended decisions. The effective-time instant is
+`work_item.sla_started_at`, as ADR 0009 requires: original accepted submission creation
+time on conversion, otherwise work-item creation time. Reconcile the owning SLA spec's
+ambiguous "creation" wording before code. In the creation/acceptance transaction resolve
+work-item-type override → original accepted request type → project → workspace default,
+then select the published policy version effective at that instant. Register and persist
+`work_item.sla_policy_version_id` in the canonical data model before implementing it, with
+same-workspace integrity. Null means no effective configured version. Never reconstruct a
+missing historical pin from mutable current bindings on reads. Compute state and due time
+from this stored version plus its current live calendar; do not store SLA state/deadline.
+
+Duplicate submissions attach to the existing work item without changing its original SLA
+pin or start time. The accepted/auto-accepted submission that creates the item supplies
+request-type provenance. Existing rows in this unaccepted P2 rollout have no trustworthy
+binding history: leave their pin null and report `none`, without invented historical
+backfill. No P2 SLA evaluation is accepted or deployed by this decision. If separately
+operated SLA data is discovered, stop that data-migration path for an explicit owner data
+policy. Wire the existing `work-item/controllers/create-work-item.ts` transaction and the
+specified SLA read route; absent intake conversion/timer/cache/event writers remain real
+implementation dependencies and are not claimed complete. Stage candidate0088 as the four binding/pin columns for the current direct-create/read
+slice. Add canonical request-type/submission persistence with its complete intake conversion
+feature in a subsequent sequential candidate migration, including integrity constraints;
+the current slice does not claim request-type precedence or acceptance/duplicate writers. Human review remains deferred to integrated P4;
+normal independent review and migration acceptance are still required after the full batch.
+
+
+
+### 2026-10-04 · Serialize P2/P3 schema ownership and unaccepted migration composition
+
+**Decision:** implement the complete CAL-8/SLA read path after P3 explicitly yields the
+shared schema/migration contract. P2 appends candidate migration `0088` after its own
+unaccepted `0087`; it does not skip a journal sequence or import unfinished P3 migrations.
+P3 continues delegated identity/provisioning/UI work during this window and does not edit
+the shared schema/migration contract concurrently. These are branch-local candidate
+numbers, not accepted global migration history. Root composes protected acceptance in
+P0 → P2 → P3 order, resolving only the unaccepted colliding suffix through a normal
+forward commit and checking the actual accepted prefix before each integration. No
+accepted migration is rewritten and no unaccepted migration is applied to persistent
+development. This is implementation coordination under the authorized parallel program,
+not phase acceptance or a migration-gate waiver.
+
+
+
+### 2026-10-04 · Resolve live calendar evaluation with immutable SLA policy versions
+
+**Decision:** under Thomas's standing authorization to implement recommended decisions,
+resolve CAL-8 and SLA's published-version calendar wording as follows: a published
+`sla_policy_version` immutably pins its `calendar_id`, goals and threshold; it does not
+copy the referenced `service_calendar` definition. On every SLA evaluation, resolve that
+pinned calendar ID to the current same-workspace calendar row and pass its current
+timezone, windows and holidays to `packages/domain`'s pure evaluator. A calendar edit
+therefore immediately affects all SLAs whose effective policy version references that
+calendar, without updating any published SLA version. Drafts and published versions
+continue to store only the selected calendar ID. Record this rule in both owning feature
+specifications before implementing the evaluator adapter and its persisted regressions.
+No new table, endpoint, migration or dependency is selected by this resolution. Timer,
+scan, cache-writer and event delivery integration still need their own specified complete
+implementation; this decision and adapter do not claim those mechanisms or P2 complete.
+Human design review remains deferred to integrated P4; independent acceptance remains
+required after the implementation batch.
+
+
+### 2026-10-04 · Implement opt-in per-policy-source strict enforcement for #8
+
+**Decision:** complete the production request-path ALLOW/DENY integration for issue #8 in
+the current P0 implementation batch. Keep the existing hand-written guards in place beside
+strict evaluation until the later removal slice. Strict mode is an explicit bootstrap
+setting, `TASKDESK_POLICY_ENFORCE`, containing a comma-separated set of exact registered
+policy-source paths. It defaults to empty. Unknown, duplicate, whitespace-padded, empty
+members, or a request to enable `apps/api/src/task/policy.ts` before every other registered
+source is enabled fail startup. A source can be added only after the existing shadow evidence
+and the three-issue-free-UTC-date P0 verification rule below have been satisfied against the
+same deployed policy/source behavior; no dates or traffic are synthesized by code. This is
+an operational cutover control, not an automatic finding waiver or authorization to activate
+it now. No persistent development/UAT/production setting is changed by this implementation.
+
+The setting is a narrow temporary bridge because the specified per-scope feature-flag store
+in `plugin-architecture.md` is not implemented and the existing `TASKDESK_POLICY_SHADOW`
+switch cannot express one-router-at-a-time enforcement. It is bootstrap-only, read and
+validated before serving, and must be replaced by the approved feature-flag mechanism when
+that mechanism is delivered. The exact source-path vocabulary is the registry's
+`RegistryEntry.source`; there is no independent alias, per-customer branch, exception list,
+or capability translation.
+
+Every enabled route is evaluated after its route-specific validators and authoritative
+scope loaders but before its terminal handler can mutate state. Missing identity, malformed
+context, unknown scope provenance, unavailable reach/predicate evidence, unsupported required
+step-up binding, or an evaluator error denies before the handler. Persisted-row scopes may
+use only row-derived facts; request hints never substitute for missing row facts. The existing
+session-only, API-key capability ceiling, portal, CSRF, and operation-bound step-up controls
+remain in force. Delegated handlers retain their own protocol authorization. Registry denial
+does not invoke the terminal handler.
+
+For `GET /api/invitation/{id}`, implement the documented 2026-09-28 recommendation already
+present in `invitation/policy.ts`: retain the stable URL as deprecated and permanently
+disabled; its real row-scope `member:invite` and session-only middleware runs, then its handler
+refuses unconditionally. Do not introduce a sixth policy kind or expose invitation data.
+Keep the #392 `task` → `work_item` re-key and persisted backfill; do not contract away the
+legacy key while #398's deployment/rollback prerequisites remain unverified. The task policy
+source stays last in the strict source sequence.
+
+This selects implementation behavior under Thomas's standing authorization to proceed with
+documented recommendations and finish related P0 work. It does not satisfy the real three-date
+observation, authorize a live cutover, approve human H1–H6, waive a gate, or claim P0 complete.
+
+
+### 2026-10-03 · Select the bounded P2 holiday-import profile
+
+**Decision:** complete calendar holiday import in a separate full P2 implementation batch
+under Thomas's standing authorization for recommended decisions. Record the profile and
+API DTO in `service-calendars.md` before implementation. The initial profile accepts UTF-8
+RFC 5545 VCALENDAR version 2.0 containing finite all-day VEVENTs. DTSTART is required with
+`VALUE=DATE`; optional DATE DTEND is exclusive and defaults to the next day. Preserve an
+inclusive stored range after converting that exclusive endpoint. SUMMARY is optional plain
+text, with RFC unfolding/escaping and safe rendering. Require syntactically valid UID and
+DTSTAMP metadata; they confer no authority. This is a holiday-file importer, not scheduling:
+reject timed/TZID values, recurrence/exception properties, DURATION, non-VEVENT/nested
+components and malformed or unsupported properties with an actionable error. Permit only
+the documented safe calendar/event metadata allowlist; never fetch URLs or execute data.
+No partial successful import, silently dropped event or invented recurrence interpretation.
+Reference: [RFC 5545](https://www.rfc-editor.org/rfc/rfc5545.html), sections 3.1, 3.3.4,
+3.3.11 and 3.6.1. The supported subset and resource limits below are product decisions.
+
+Bound decoded input to 256 KiB UTF-8, 1,000 events, 8 KiB per unfolded content line,
+120 characters per holiday name and 366 covered dates per finite event. Reject an empty
+file/event set and out-of-range real dates; reuse canonical calendar date bounds. Preserve
+existing holidays. Deduplicate exact canonical holiday identities (shape/date or range or
+annual tuple plus normalized name); report added and duplicate counts. Different named
+holidays on the same day remain legitimate. Identical retries are no-op imports: do not
+advance version or emit mutation effects for zero additions. A supplied If-Match must still
+be validated under the row lock before reporting a no-op.
+
+Use existing `POST /api/service-calendars/{id}/holidays/import`, `sla_policy:manage` and
+workspace reach, with JSON `{ics: string}` and optional canonical If-Match. Register the
+response `{calendar, importedCount, duplicateCount}` using the existing safe calendar DTO.
+Parse/validate before mutation, then recheck reach/concurrency and append under the existing
+calendar lock, audit-savepoint, durable event and administrator-alert behavior. Reuse the
+registered calendar-update action/event; no new identifier, dependency, migration, external
+service or direct deletion is selected. Finish shared-UI file selection, confirmation/preview,
+error/partial-input refusal, translations, cache refresh and real persisted browser/API
+proof. Keep unavailable impact counts truthful under the existing CAL-13 limitation.
+Country presets and the other documented calendar dependencies remain distinct work.
+This selection is not independent review, protected acceptance or phase completion.
+
+
+### 2026-10-03 · Select the P1 concrete project-state read contract
+
+**Decision:** complete the v2 board's existing `VW-8` requirement in the full P1
+implementation batch under Thomas's standing authorization to proceed with recommended
+solutions. Register authenticated `GET /api/projects/{projectId}/states` in the canonical
+project API spec before code. Require `project:read` plus the existing project reach guard,
+with the established non-disclosing denial behavior. Return the project's active concrete
+states, including states with zero work items, ordered by `position ASC, id ASC`. The bounded
+DTO is `{id, stateTemplateId, name, group, position, isDefault}`; name/group come from the
+mapped workspace state template, position/default from the concrete state. An archived
+template remains referenceable by already-adopted active concrete states; it is not an
+excuse to drop a board column. No new table, migration, capability or environment setting
+is needed. Use existing canonical types/serialization conventions.
+
+The catalogue lists columns, never grants a transition. Cross-column moves use each item's
+server-returned legal offers and the existing transition endpoint; within-column reordering
+uses rank. Preserve `WI-4` default-state creation semantics. Publish the OpenAPI response,
+policy coverage, reach/empty-column/order regression proofs and full URL/keyboard/browser
+journey as one completed batch. This is implementation contract selection, not review,
+acceptance, a gate waiver or a human design approval.
+
+
+### 2026-10-03 · Select serialized P4 bootstrap admission for #231
+
+**Decision:** under Thomas's standing instruction to implement recommended solutions in
+parallel before bulk review, complete #231 in the isolated P4 bootstrap/recovery branch.
+Write the selected contract in its authoritative auth/data-model documents before code.
+The product invariant is one successful local first-user bootstrap admission and exactly
+one pending administrator when valid token and headless-email signups race. A losing signup
+must be refused without leaving another committed ordinary user. Validate authorization
+from trusted server credential handling; never accept a client role/flag or IdP grant.
+Serialize the first-user admission against authoritative database state using the existing
+promotion lock, and make user creation plus administrator grant atomic; an in-memory lock
+or a separately committed before-hook check is insufficient. Recheck stale/expired state
+inside that boundary. If the adapter needs a bounded database guard, document the mechanism
+and identifiers before generating its migration. No dependency is authorized here.
+
+Preserve #229: the setup-completed marker remains unset until actual verified TOTP, pending
+bootstrap requires enrollment even when policy is off, and additional registration is closed.
+Preserve initialized installation/provider behavior and the initialized-only #230 recovery
+CLI. Real concurrent distinct-credential regressions must prove no zero-admin/two-user
+result, including loser rollback; record image/browser and bulk independent acceptance
+honestly. P0 has priority over this lane's heavy test/build work. This selects implementation
+behavior, not a gate waiver, human design approval or phase-completion claim.
+
+### 2026-10-03 · Select the bounded P4 bootstrap-factor contract
+
+**Decision:** the orchestrator selects the recommended #229 contract under Thomas's standing
+instruction to proceed with recommended decisions and full implementation before bulk review.
+Record the canonical contract in the isolated P4 branch before implementation. This changes
+neither the P0 candidate's runtime nor the timing of Thomas's P4 design review.
+
+Keep the setup-completed marker unset until the exact first bootstrap administrator verifies
+its real TOTP enrollment. While that bootstrap remains pending, require enrollment regardless
+of the configured factor-policy mode, restrict that session to the documented authentication
+and enrollment surfaces, and return the existing `mfa_enrollment_required` from protected
+custom APIs. Finalize under the existing promotion lock after rechecking the first admin,
+active staff person and verified factor; clear setup-token fields then and preserve the stored
+policy. Apply the same ordering to headless bootstrap. The initial zero-user creation
+channel is local credential sign-up; enforce it on the server, including OAuth callbacks
+and email-OTP auto-creation, so initial TOTP enrollment has a real local credential and
+identity-provider data never supplies an administrator grant. Existing initialized provider
+behavior remains. Issue setup tokens only while there
+are zero users; refuse additional registrations after the first user exists until setup is
+complete. Never reopen an initialized marker. Do not invent a schema field, new role source,
+identity-provider administrator grant or repair of the separately disclosed #231 race.
+
+Existing credential recovery remains available. A first administrator losing both password
+and email access before enrollment needs a separately documented operator recovery contract;
+prepare that recommendation before implementing a new credential-reset or database-repair
+path. This decision does not claim that recovery scenario complete. The initialized-only
+#230 CLI contract remains intact. Image/TTY proofs, independent bulk reviews and protected
+acceptance remain required; no human approval or gate waiver is recorded here.
+
+
+
+
+### 2026-10-03 · Select complete P2 SLA-policy and P4 recovery implementation contracts
+
+**Decision:** use Thomas's standing instruction to proceed with recommended decisions and
+complete implementation batches. This authorizes the selected contracts in the isolated
+feature branches; it does not mark a human design review approved, waive a gate, or claim
+later phases complete.
+
+P2 policy authoring uses reachable workspace scope in the collection query, one editable
+draft, immutable published versions with their own calendar and threshold snapshots,
+complete metric/priority goal matrices for at least one type at publication, row-locked
+version/CAS semantics and the canonical optional If-Match mismatch response. The selected
+spec/data-model checkpoint is `e198fd12e2823ec062e4ef59c85cb615ef0d04d0`; no project policy FK,
+new domain event or direct deletion route is invented. The sole audit-contract author
+registered the three configuration actions before their writers in `ec400c25`.
+
+P4 recovery uses the existing instance-admin source, exactly one eligible active staff
+identity, service-process attribution plus host operator audit, interactive confirmation
+outside database locks, and revalidation under the shared promotion lock. Grant, audit and
+durable alerts are atomic; post-commit email failure reports the committed state and retains
+alerts. The selected canonical contract is `62710869`. MFA policy remains enforced and no
+IdP data, activation, linking or parallel authority source grants administration. Complete
+implementation still needs actual image/operator/browser proof and bulk independent review.
+Human P4 design acceptance remains outstanding.
+
+### 2026-10-03 · Complete the existing cookie CSRF requirement in the P0 implementation batch
+
+**Decision:** implement security-model.md's existing Origin/Referer **and** double-submit
+requirement for unsafe custom API requests authenticated by an ambient session cookie.
+Session-only authorization is not CSRF protection. Exemption depends on actually resolved
+nonambient credentials, not the presence of an Authorization or API-key header.
+
+The bounded implementation contract is authenticated `GET /api/me/csrf-token`, returning
+`{token, expiresAt}`, with a signed token bound to the current live session and configured
+agent origin, a random nonce and a ten-minute expiry. The HTTP-only host-only cookie is
+`__Host-tdk_csrf` on HTTPS (`Secure`, `SameSite=Strict`, `Path=/`, no `Domain`); explicit HTTP
+development uses the documented signed `tdk_csrf_dev` fallback. Unsafe session requests
+must supply the same token in `X-TaskDesk-CSRF` and a valid same-origin source. Referer may
+substitute only when Origin is absent; a supplied malformed, null or foreign Origin cannot
+be repaired by Referer. No browser-storage token is introduced. The issuer reuses a valid
+token to avoid invalidating another tab; any client retry is limited to a distinct CSRF
+failure rejected before mutation, never a generic permission or step-up denial.
+
+BetterAuth's own public authentication endpoints retain their separate origin protections;
+the disabled P0 portal API remains unavailable. The custom API boundary must not grant a
+new capability or relax any session realm, factor, impersonation or step-up requirement.
+Server enforcement, client transport, fixtures and actual negative/positive journeys form
+one full implementation batch before bulk review. This records implementation direction,
+not independent acceptance or a gate waiver.
+
+**Authorization:** the orchestrator's recommended implementation choices under Thomas's
+standing direction to finish all necessary P0 features and proceed with recommended
+decisions. The authoritative requirement remains in security-model.md.
+
+
+### 2026-10-03 · P0 structured logging and metrics dependencies authorized
+
+**Decision:** Thomas explicitly approved adding Pino and prom-client in this chat on
+2026-10-03. The P0 runtime implementation uses exact pins `pino` 10.4.0 (MIT) and
+`prom-client` 15.1.3 (Apache-2.0), verified against the npm registry and the projects'
+official release records. Node 24 satisfies the metrics client's declared engine range.
+The registry marks prom-client deprecated in favor of its renamed successor
+`@prometheus-io/client`; this entry authorizes the explicitly approved package, and does
+not silently add another dependency. Runtime APIs, singleton configuration, labels, token
+handling and listener boundaries follow observability.md and api-design.md.
+
+**Scope:** these dependencies support the still-missing P0 logging and metrics runtime.
+Installing them alone does not establish instrumentation, a usable metrics listener,
+durable AU-14 administrator alerts, acceptance, deployment or phase completion. The full
+implementation is batched before independent review.
+
+**Decided by:** Thomas, explicit dependency-approval reply; recorded by the orchestrator.
+
+### 2026-10-03 · Native work-item realtime uses one subscribed socket and key-only outbox hints (#570)
+
+**Decision:** P0 work-item subscriptions use `GET /api/ws` on the agent origin and explicit validated `subscribe` / `unsubscribe` frames for `project:{projectId}` and `work_item:{key}`. The separate legacy user socket continues to deliver notifications, and the legacy project socket continues to serve existing Task-model consumers; neither is the native work-item event path. The native server resolves topic resources from persisted project/work-item relationships and applies the same read capabilities and row/project reach as REST. Missing and unreadable topics have the same denial frame. Agent-host session Host/Origin/portal checks remain those in ADR 0004 and `realtime.md`.
+
+CP-19 takes precedence for the customer portal public edge in P0: every portal `/api` request and websocket upgrade is a generic 404 before auth/session/API-key lookup or other handler effects. This includes `/api/ws` and `/api/auth/*`. The separately configured `portalAuth` instance and its host-only cookie binding are not reachable through that edge and do not enable portal login or realtime. P0 tests the binding directly as an internal configuration property while separately proving the public portal edge stays denied. Portal socket availability requires the later reviewed P3 identity boundary and a corresponding CP-19 change.
+
+Every supported native work-item mutation writes one existing canonical event envelope to `outbox` in its mutation transaction. After commit, best-effort socket fan-out sends only `{type, topic, eventId, at, payload:{key}}`; domain payloads and internal-only comments/changes are never sent to customer subscriptions. Fan-out is an at-most-once invalidation hint, not a new replaying outbox consumer; reconnect refetch and 30-second foreground fallback repair missed messages. Existing event keys, outbox schema, capabilities, feature defaults, and polling assertions remain authoritative.
+
+This resolves the route, topic authorization, projection, deduplication, delete timing, and failure/recovery choices needed by #570. It does not close the owning architecture/feature review rows, claim independent review, or claim P0 completion. The reviewed spec and exact-head implementation still require the ordinary bulk panel and GPT-6 Sol security review.
+
+**Authorization and status:** the orchestrator authorized these bounded recommended defaults on 2026-10-03. This entry records implementation choices, not review or acceptance evidence.
+
+**Recorded by:** GPT-6 Luna implementation lane, 2026-10-03.
+
+### 2026-10-01 · Keep the P0 portal origin disabled until portal identity exists
+
+**Decision:** the two-entry P0 server selects the agent or portal app only from a
+validated raw Host matched to the configured public origins. Until the separately reviewed
+P3 identity boundary exists, the portal root serves the localized disabled notice, every
+portal API and websocket request returns a generic 404 before handler effects, and only
+the exact existing GET/HEAD health paths remain available on either configured origin and
+on a syntactically valid unknown Host. This exception preserves the loopback probes used by
+Docker and deploy.sh; malformed, missing, duplicate, or upgraded authorities are rejected.
+Static files come only from the selected output root; missing roots fail closed. The agent
+URLs and behavior stay unchanged. See customer-portal.md `CP-19` and phases.md's P0
+acceptance matrix. G5 metadata and inventory scope follow the existing
+[2026-09-28 gate-scope decision](#2026-09-28--10s-gate-scope-semantics-decided-applicable-now-gates-required-future-stage-gates-activate-with-their-prerequisite):
+all generated and inherited routes remain registered and round-trip checked, while only
+in-progress or complete inventory routes are claimed active; planned URLs remain planned.
+
+**Why:** selecting a portal bundle by Host alone would expose the current agent auth/API/
+websocket surface on the portal origin. ADR 0004 requires two origin-scoped portals, while
+P3 owns the portal auth pair and session boundary. The interim response keeps the portal
+unavailable without inventing a customer session, flag, capability, environment variable,
+database field or permission.
+
+**Recorded by:** orchestrator under the standing approval of recommended implementation
+decisions. This records the interim implementation contract; it does not approve H1–H6 or
+claim P0 completion.
+
+### 2026-10-02 · Implement P0–P3 features before integrated P4 human review
+
+**Decision:** implement the full related P0–P3 feature set first, then conduct its integrated
+bulk review. Early Thomas spec-read, design-review, and H1–H6 approval are not prerequisites
+for P0–P3 implementation. Human review is deferred to the integrated P4 review; record it as
+deferred and never claim H1 approval before it occurs. Approved contracts and documented
+recommendations explicitly authorized by the user are implementation direction now, including
+the documented #573 recommendation. If the written contract does not settle a behavior, do
+not guess; pause only that decision path and record the unresolved point.
+
+For development and UAT P0 policy-shadow verification, use three issue-free UTC calendar-date
+buckets, superseding the earlier approximately seven-day UAT wait for this P0/UAT purpose.
+Require source-bound behavior and router coverage across all three dates; matching existing
+representative evidence may count, and note-only or mechanical changes that do not affect the
+tested behavior do not restart the window. Run performance, unit, integration, and browser
+checks as soon as the batch is ready, without waiting for the shadow window. Elapsed time does
+not clear known failures; synthetic backfill is not evidence. Prioritize necessary P0 work and
+avoid unrelated features.
+
+**Boundary:** this defers human approval; it does not fabricate it, waive automated or
+independent review, weaken exact-head/CI/security/stage-finalizer requirements, or authorize an
+unreviewed merge. P0–P3 technical stage closure may record the human design review as deferred
+to P4 when every other applicable criterion, including automated/browser checks and the
+stage-level GPT-6 Sol finalizer, is satisfied. The three-day UAT/P0 rule is not a production
+cutover requirement. Separate production/go-live criteria apply only to an actual production
+promotion; this decision does not change them.
+
+**Decided by:** Thomas, explicit user instruction, 2026-10-02. See the canonical
+[bulk-review and human-review timing rules](../../AGENTS.md#bulk-implementation-and-review-cadence),
+[SDLC](../../04-engineering/sdlc.md), and [runbook](../05-operations/runbook.md#policy-shadow-summary).
+
+### 2026-10-02 · Development/P0 policy-shadow verification uses three issue-free UTC dates
+
+**Decision:** for development and P0 verification, use three issue-free UTC calendar-date
+buckets for policy-shadow evidence instead of the former approximately seven-day development
+wait. Require actual, source-bound coverage showing the tested behavior and relevant routers
+were exercised across all three dates. Existing representative three-day evidence counts when
+it covers the same source and behavior. Do not automatically restart the window for note-only
+or mechanical changes that do not affect tested behavior.
+
+Run performance, unit, integration, and browser checks as soon as the implementation batch is
+ready; do not wait for the shadow-soak calendar. Known failures do not become passes through
+elapsed time, and synthetic backfill is not evidence. Prioritize necessary remaining P0 work
+and avoid unrelated feature scope.
+
+**Boundary:** this changes development/P0 verification cadence only. The separate
+production/go-live acceptance criteria, including the roughly seven-day UAT shadow requirement
+in the 2026-09-23 runtime policy decision, remain unchanged. A three-date query selects exactly
+three UTC date buckets; it does not by itself prove 72 hours or full-day coverage.
+
+**Decided by:** Thomas, explicit user instruction, 2026-10-02 15:10 UTC. See the
+[development shadow summary](../05-operations/runbook.md#policy-shadow-summary) and canonical
+[agent instruction](../../AGENTS.md).
+
+### 2026-10-02 · Bulk implementation and review cadence
+
+**Decision:** implement related approved slices and known-finding fixes in coherent,
+substantial batches. Do not start a standalone review pass for small or mechanical edits or
+speculative trials. Run meaningful tests while implementation proceeds, freeze the final bulk
+candidate SHA, then perform the applicable independent review panel and required GPT-6 Sol
+security review before protected merge. Fix review findings together and review the resulting
+delta at its required tier; do not add automatic extra rounds for comfort. Tiny urgent fixes
+may join the next batch unless the user explicitly requests isolated delivery.
+
+**Guardrails:** existing risk-based reviewer counts, exact-head discipline, security review,
+required checks, stage finalizers, self-review prohibition, no-waiver rule and main protection
+remain unchanged. This decision does not authorize unreviewed merges or a downgraded review
+tier.
+
+**Recorded:** explicit user direction, 2026-10-02 Asia/Yangon (UTC+06:30).
+Canonical rule: [AGENTS.md § Bulk implementation and review cadence](../../AGENTS.md#bulk-implementation-and-review-cadence);
+workflow and OpenAI operating guide cross-reference it.
 
 ### 2026-10-02 · P0 production advisory floors for ip-address and fast-uri (#557)
 
@@ -137,6 +746,36 @@ The separate image is proposed to use `nginxinc/nginx-unprivileged:1.30.5-alpine
 **Authorization and status:** recorded under Thomas's standing recommended-decisions authorization. This entry does not assert that Thomas read the completed specification, grant H1–H6 approval, waive dependency/review gates, or establish implementation, deployment or stage completion. The proposed dependencies remain uninstalled.
 
 **Recorded by:** docs-site specification author, 2026-10-01.
+### 2026-10-01 · G11 failure evidence avoids timed DOM snapshots and raw network secrets
+
+**Decision:** G11's Playwright run retains failure traces with actions, screencast, source,
+and attachment data, but disables automatic DOM snapshots during timed samples. Playwright
+1.63 also leaves its trace network files empty in this mode. Each benchmark context therefore
+attaches a separate bounded, sanitized network summary containing only method, a closed
+known-safe benchmark route template (or the fixed label `unrecognized`), resource type,
+finite response status, and available finite timing. It may include a boolean request-failure
+flag. Dynamic path values are always replaced by fixed placeholders, independent of their
+contents; unknown path shapes retain no path detail. It retains no raw request or response
+objects, headers, cookies, bodies, full URLs, or query strings, and reports truncation.
+Explicit screenshots taken after measured actions and all functional assertions remain
+required.
+Playwright DOM snapshot serialization was observed
+inside hosted metric windows on exact source `13516958be469aa353d9b5f7e0b113880b31ed17`
+(run `36860954427`). This measurement change removes competing instrumentation without
+changing product budgets, marks, throttles, fixtures, retry policy, row/card counts, or the
+paint-visibility contract. Any resulting timing change requires a new hosted canonical run;
+the separate diagnostic profile is not acceptance evidence. Disabling DOM snapshots reduces
+DOM-state replay detail.
+
+**Why:** hosted source attribution showed Playwright DOM snapshot serialization executing
+inside the timed windows, including recursive document traversal. The separate sanitized
+network summary restores useful request evidence without copying query strings or credentials
+into a HAR. Closed route templates prevent opaque IDs, including all-letter bearer-like values,
+from being retained as path text. This changes how G11 measures rendering and is not evidence
+of an application speedup or a gate pass.
+
+**Recorded by:** task orchestrator under the bounded G11 measurement-repair assignment,
+2026-10-01.
 
 ### 2026-10-01 · P0 observability uses bounded internal metrics and operation-bound rotation
 

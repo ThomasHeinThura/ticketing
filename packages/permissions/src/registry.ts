@@ -26,6 +26,7 @@ import {
   type RouteKey,
   SCOPE_SOURCES,
   SCOPES,
+  type SelfPolicy,
 } from "./policy.js";
 
 /** One feature folder's `policy.ts`. */
@@ -182,6 +183,18 @@ export function validatePolicy(routeKey: string, policy: Policy): string[] {
 
   if (isSelfPolicy(policy)) {
     problems.push(...personParamProblems(at, routeKey, policy.personParam));
+    const membership = (
+      policy as SelfPolicy & { readonly workspaceMembership?: unknown }
+    ).workspaceMembership;
+    if (membership !== undefined && membership !== true) {
+      problems.push(
+        `${at}: self workspaceMembership, when present, must be true`,
+      );
+    }
+  } else if (
+    "workspaceMembership" in (policy as unknown as Record<string, unknown>)
+  ) {
+    problems.push(`${at}: workspaceMembership is only valid on a self policy`);
   }
 
   if (isPortalPolicy(policy)) {

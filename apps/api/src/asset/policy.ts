@@ -38,10 +38,9 @@ import type { PolicyMap } from "@taskdesk/permissions";
  * Attachments group (`docs/01-architecture/rbac.md`) has `attachment:create`,
  * `attachment:delete_own` and `attachment:delete_any` but no `attachment:read` -- there is no
  * capability in the closed list that names "read an attachment" at all. `workspace:read` is
- * not the least-wrong option here so much as an exact match on breadth: it is held by every
- * built-in role from `viewer` up (`docs/01-architecture/rbac.md` § "Built-in roles"),
- * exactly matching `validateWorkspaceAccess`'s own behaviour of granting any workspace
- * member equal read access with no further distinction. Recorded here as a gap for #7 to
+ * every built-in role from `viewer` up (`docs/01-architecture/rbac.md` § "Built-in roles"),
+ * matching the read access this route grants to workspace members after the capability check.
+ * Recorded here as a gap for #7 to
  * resolve (a dedicated `attachment:read` capability would be the precise fix), the same way
  * `invitation/policy.ts` and `workspace/policy.ts` already record their own reuse gaps.
  *

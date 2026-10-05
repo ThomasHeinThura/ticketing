@@ -20,6 +20,7 @@ import WorkItemList from "./work-item-list";
  */
 
 vi.mock("@tanstack/react-router", () => ({
+  useRouter: () => ({ preloadRoute: vi.fn().mockResolvedValue(undefined) }),
   Link: ({
     children,
     ...props
@@ -100,6 +101,7 @@ function Harness({ projectId }: { projectId: string }) {
   return (
     <WorkItemList
       workItems={data?.items}
+      hasPartialFailure={data?.hasPartialFailure ?? false}
       isLoading={isLoading}
       isError={isError}
       sort="key"

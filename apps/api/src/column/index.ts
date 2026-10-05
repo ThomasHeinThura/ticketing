@@ -27,7 +27,9 @@ const getColumnsRoute = createRoute({
   tags: ["Columns"],
   summary: "Get columns",
   description: "Get a project's board columns, ordered by position.",
-  middleware: [workspaceAccess.fromProject("projectId")] as const,
+  middleware: [
+    workspaceAccess.fromProject("projectId", { requireProjectReach: true }),
+  ] as const,
   request: { params: projectIdParam },
   responses: {
     200: jsonResponse("List of columns ordered by position", columnListSchema),

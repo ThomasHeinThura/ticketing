@@ -23,6 +23,23 @@ export type UserBroadcast = {
   origin?: string;
 };
 
+export type NativeBroadcastMessage = {
+  projectId: string;
+  topics: string[];
+  eventId: string;
+  eventType: string;
+  at: string;
+  key: string;
+  customerVisible: boolean;
+};
+
+export type NativeAuthorizationInvalidation = {
+  type: "identity.invalidate";
+  userId?: string;
+  workspaceId?: string;
+  projectId?: string;
+};
+
 export type BroadcastAdapter = {
   /** Publish a message to all instances watching this project */
   publish(msg: BroadcastMessage): Promise<void>;
@@ -33,6 +50,18 @@ export type BroadcastAdapter = {
   subscribe(handler: (msg: BroadcastMessage) => void): Promise<void>;
 
   subscribeToUser(handler: (msg: UserBroadcast) => void): Promise<void>;
+
+  publishNative(msg: NativeBroadcastMessage): Promise<void>;
+
+  subscribeToNative(
+    handler: (msg: NativeBroadcastMessage) => void,
+  ): Promise<void>;
+
+  publishControl(message: NativeAuthorizationInvalidation): Promise<void>;
+
+  subscribeToControl(
+    handler: (message: NativeAuthorizationInvalidation) => void,
+  ): Promise<void>;
 
   /** Cleanup on shutdown */
   shutdown(): Promise<void>;

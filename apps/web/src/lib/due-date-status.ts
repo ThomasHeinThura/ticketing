@@ -20,7 +20,7 @@ export function isTaskCompleted(
 }
 
 export function getDueDateStatus(
-  dueDate: string | null,
+  dueDate: string | Date | null,
   isCompleted = false,
 ): DueDateStatus {
   if (!dueDate) return "no-due-date";
@@ -28,7 +28,7 @@ export function getDueDateStatus(
   if (isCompleted) return "far-future";
 
   const now = new Date();
-  const due = new Date(dueDate);
+  const due = dueDate instanceof Date ? dueDate : new Date(dueDate);
   const diffInDays = Math.ceil(
     (due.getTime() - now.getTime()) / (1000 * 60 * 60 * 24),
   );

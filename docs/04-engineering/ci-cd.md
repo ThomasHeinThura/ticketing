@@ -38,8 +38,11 @@ itself: update the ruleset to require its context and verify the live rule after
 As of 2026-09-23, `domain coverage (90%)` is required alongside the contexts listed in the
 repository's active ruleset. The full-stage `integration - Postgres 18`,
 `e2e - protected-route redirect`, and `a11y - accessibility (G4, axe)` contexts are also
-required; do not infer that a workflow configured to run before merge is enforced unless its
-exact context appears in the ruleset.
+required. The G11 job's exact context is `performance - budgets (G11)` and is intended to be
+required as well; do not infer that a workflow configured to run before merge is enforced
+unless its exact context appears in the ruleset. The complete local implementation run and
+its source-binding limit are recorded in the
+[G11 evidence note](../07-planning/evidence/2026-10-03-g11-7402.md).
 
 ```
 ┌─ Setup ──────────────────────────────────────────┐
@@ -82,11 +85,54 @@ exact context appears in the ruleset.
 │ pnpm test:mcp            tool → route parity     │
 ├─ Build ──────────────────────────────────────────┤
 │ pnpm build               all apps and packages   │
-│ check:bundle-purity      G12 — portal is clean   │
-│ check:bundle-size        G11 — size budgets      │
+│ pnpm check:bundle-purity G12 — portal is clean   │
+│ pnpm check:bundle-size   G11 — size budgets      │
 │ helm lint + helm template   charts/taskdesk      │
 └──────────────────────────────────────────────────┘
 ```
+
+The Build job runs `pnpm build`, `pnpm check:bundle-purity` and `pnpm check:bundle-size`.
+The purity gate walks static and dynamic chunks from the portal entry using bundler-emitted
+module graph metadata and rejects agent or God Mode modules. The size checker reads the
+separate agent and portal manifests, measures the agent entry and direct work-list route
+graph (including its early-preloaded component chunk), and applies the strict 350 KB agent/
+work-list and 200 KB portal gzip limits.
+
+The fast workflow installs the web workspace's pinned Playwright Chromium browser as a
+setup prerequisite before `pnpm check:tokens`; the check builds the stylesheet and measures
+the declared contrast pairs in that browser. The browser install is setup, not an independent
+quality gate: a missing browser makes `check:tokens` fail.
+
+The G3 source inventory covers every colored text occurrence, including semantic color
+utilities and foreground-only utilities. A foreground is measured against its nearest
+opaque surface in the same JSX tree, an imported shared component whose implementation
+establishes that surface, or an explicit occurrence contract that binds the current
+component and caller chain to the measured surface. Repeated identical foreground classes
+remain separate occurrences until their surface contexts are proven; only the resulting
+numeric color pairs may be deduplicated. Each manifest row represents one unique foreground,
+surface, foreground opacity, and theme measurement. Opacity-bearing foreground utilities
+retain their exact class in pair identity, and Chromium's computed foreground alpha is
+composited over the measured surface before contrast is calculated. Unsupported foreground
+color forms fail closed. A translucent ancestor surface is composited over the next painted
+ancestor, continuing through every source-bound translucent layer to the nearest opaque
+surface; state branches are measured separately, and competing backgrounds on one element
+are never treated as nested layers. Unsupported or ambiguous paint chains fail closed. Its
+occurrence list binds every use of that pair to its own
+source path, occurrence identity, and current surface proof; missing, duplicate, or stale
+bindings fail the check. Product components and Storybook stories are inventoried; unit-test
+renderers do not create additional product surface contexts. Generic form, dialog, select
+and sidebar content does not imply one default surface: current callers and component-owned
+surfaces are checked individually. Unsupported or changed caller chains fail closed. The
+page body background is a fallback only when the rendered chain establishes that no painted
+surface intervenes. Storybook stories use the semantic body fallback only when the preview
+imports its stylesheet and that stylesheet paints `#storybook-root` with `var(--background)`;
+nearer JSX or shared-component surfaces take precedence.
+
+The source inventory includes shipped product components and every Storybook story. Files
+ending exactly in `.test.tsx`, `.spec.tsx`, `.test.jsx`, or `.spec.jsx` are excluded from both
+surface inventory and runtime caller discovery; test harness renders cannot establish a
+shipped screen's painted surface. Checker regression tests remain active and verify the
+production/story scope boundary.
 
 `pnpm test:contract` regenerates and checks the committed OpenAPI document, runs Redocly's
 recommended lint rules, then runs `oasdiff breaking --fail-on WARN` against `origin/main`.
@@ -130,18 +176,13 @@ fails" rule. This file is **not** subject to the "closed past a stable `v2.0.0`+
 above — that rule is specific to breaking API changes, and a lint false-positive on an
 already-shipped, intentional design is not one (decision log, 2026-09-28).
 
-**`pnpm test:permissions` must run before `apps/web` is built, against a router that cannot
-see a built `apps/web/dist` (#165).** The Fast stage's ordering above already guarantees this
-— `route-policy` builds nothing and runs in its own job/runner, `Build`'s `pnpm build` is a
-later stage in a separate job — but this is load-bearing, not incidental: `apps/api/src/index.ts`
-registers an extra `app.use("*", ...)` for static serving whenever it finds a built web app on
-disk, and that collides with `DECLARED_ROUTER_MIDDLEWARE`'s exact-count declaration in
-`packages/permissions/src/route-coverage.ts` for the CORS/compress registrations at the same
-key — see `tests/permissions/README.md` for the full mechanism. A future change that runs
-`test:permissions` in the same job/step as (or after) a web build — including anything shaped
-like the Docker image's own `build-web` stage below — must keep `apps/web/dist` out of that
-router's view, or re-derive this constraint; it is not something `route-coverage.ts`'s
-declaration list can absorb without weakening its strict-count design.
+**Route-policy verification must remain independent of generated web output.** Static
+serving is registered unconditionally as declared middleware; missing agent/portal roots
+produce per-host document failures without changing router registration. The permissions
+suite must enumerate the actual router and retain exact middleware counts and auth-guard
+ordering whether web output exists or is absent. Missing-root cases use explicit fixture
+roots rather than assuming the checkout has not been built. Do not remove build artifacts,
+exclude real middleware, or weaken count declarations to make this verification pass.
 
 **Full — required before merge, runs on pull request `opened`, `reopened`, `labeled`,
 `synchronize`, and `ready_for_review` events and on the merge queue, target under 45 minutes,
@@ -165,23 +206,34 @@ sharded four ways:**
 └──────────────────────────────────────────────────┘
 ```
 
+The default Playwright E2E suite and G8 route screenshots serve the built agent
+entry through Vite preview. CI builds both web entries before E2E and a11y runs;
+`pnpm test:visual` builds both entries before starting its route and Storybook suites.
+When running `pnpm test:e2e` locally, build the web entries first with
+`VITE_API_URL="" pnpm build` so browser API requests use the same-origin fixture
+contract.
+
 The Playwright suite includes the logged-out protected-route redirect and G8 visual
 snapshots for every exported `packages/ui` Storybook story and each implemented inventory
 route. G8 uses deterministic in-browser fixtures, in-repository Chromium baselines, and a
 scope check that requires every inventory route marked in progress or complete to be
-registered in the generated route tree and to have a screenshot case and baseline. A
-registered inventory route group with no in-progress or complete row also fails, so adding
-a screen requires its route, status, fixture and baseline together. The current inventory
-has 122 route rows: two are in progress and have G8 cases; the other 120 are not started.
-The old inherited `/dashboard` routes are not counted as TaskDesk v2 inventory routes
-because they do not match the inventory's canonical URLs. The inventory's future-stage
-screens become required as they move to in progress. The current `/auth/sign-in` screen is
-also snapshotted as a documented legacy route while the inventory's `/agent/sign-in` route
-is not started. The `security`,
+registered in generated route metadata and to have a screenshot case and baseline. Every
+generated route is also parsed and built through the route helpers, including inherited
+routes that are outside the active v2 inventory. A registered inventory route group with no
+in-progress or complete row also fails, so adding a screen requires its route, status,
+fixture and baseline together. The current inventory has 138 screen rows, including 123
+route rows: three are in progress and have G8 cases; the other 120 route rows remain
+planned (112 distinct canonical planned URLs after query variants are collapsed). The generated agent and portal trees contain 38 canonical routes; 35 are inherited
+or otherwise outside the active v2 inventory. Future-stage screens become required as they
+move to in progress. The current
+`/auth/sign-in` screen is also snapshotted as a documented legacy route while the inventory's
+`/agent/sign-in` route is not started. The `security`,
 `reduced-motion`, and `mobile-320` project
 commands above document future suites; none are enabled yet. The `e2e - protected-route
 redirect` smoke, G4's `a11y - accessibility (G4, axe)` scan, and G8's `visual regression
-(G8)` are required branch-protection status checks.
+(G8)` are required branch-protection status checks. G11's exact workflow context is
+`performance - budgets (G11)`; its run is verified by the local full-gate manifest and
+workflow reconciliation.
 
 The fast stage exists because a required check that takes an hour gets worked around; the
 full stage exists because the things it checks cannot be made fast. Both block a merge.
@@ -645,8 +697,9 @@ main                    always deployable, protected
 Release versions are supplied explicitly when a maintainer dispatches the Release workflow.
 The workflow validates SemVer, builds and scans the selected `main` SHA, publishes and signs
 its image, then creates the matching `v<version>` tag and GitHub release at that SHA. It does
-not make a version-bump commit or rewrite project version files. The existing semantic-release
-configuration is not invoked by the release workflow.
+not make a version-bump commit or rewrite project version files. The unused inherited
+semantic-release configuration and dependency family are removed; the signed manual Release
+workflow is authoritative.
 
 ## Release notes
 

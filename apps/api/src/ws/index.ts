@@ -6,10 +6,25 @@ import { isRedisConfigured } from "../redis";
 import type {
   BroadcastAdapter,
   BroadcastMessage,
+  NativeAuthorizationInvalidation,
+  NativeBroadcastMessage,
   ProjectBroadcastMessage,
   UserBroadcast,
   UserBroadcastMessage,
 } from "./broadcast-adapter";
+import { logRealtimeFailure } from "./log-realtime-failure";
+import {
+  deliverNativeBroadcast,
+  handleNativeAuthorizationInvalidation,
+} from "./native-work-item-realtime";
+
+export {
+  addNativeConnection,
+  handleNativeFrame,
+  reauthorizeNativeConnection,
+  removeNativeConnection,
+} from "./native-work-item-realtime";
+
 import { InMemoryBroadcastAdapter } from "./in-memory-broadcast-adapter";
 import { RedisBroadcastAdapter } from "./redis-broadcast-adapter";
 
@@ -59,9 +74,7 @@ export function broadcastToUser(userId: string, message: UserBroadcastMessage) {
 
   void adapter
     .publishToUser({ userId, message, origin: INSTANCE_ID })
-    .catch((err) => {
-      console.error("Failed to publish a user broadcast:", err);
-    });
+    .catch(() => logRealtimeFailure());
 }
 
 function deliverToLocalUserConnections(
@@ -134,13 +147,43 @@ export async function initializeWebSocketAdapter(
       }
       deliverToLocalUserConnections(msg.userId, msg.message);
     });
-  } catch (err) {
-    await nextAdapter.shutdown().catch(() => {});
-    throw err;
+    await nextAdapter.subscribeToNative((msg) => deliverNativeBroadcast(msg));
+    await nextAdapter.subscribeToControl((message) => {
+      void handleNativeAuthorizationInvalidation(message).catch(() =>
+        logRealtimeFailure(),
+      );
+    });
+  } catch {
+    logRealtimeFailure();
+    await nextAdapter.shutdown().catch(() => logRealtimeFailure());
+    throw new Error("WebSocket adapter initialization failed");
   }
 
   adapter = nextAdapter;
   console.log(`📡 WebSockets Initialized using: "${adapter.constructor.name}"`);
+}
+
+/** Publish a private control-plane invalidation after its authority write commits. */
+export async function invalidateNativeAuthorization(
+  target: Omit<NativeAuthorizationInvalidation, "type">,
+): Promise<void> {
+  if (!target.userId && !target.workspaceId && !target.projectId) {
+    throw new TypeError("At least one invalidation target is required");
+  }
+  const message: NativeAuthorizationInvalidation = {
+    type: "identity.invalidate",
+    ...target,
+  };
+  if (!adapter) {
+    await handleNativeAuthorizationInvalidation(message);
+    return;
+  }
+  try {
+    await adapter.publishControl(message);
+  } catch {
+    // The 60-second native authorization refresh is the recovery floor.
+    logRealtimeFailure();
+  }
 }
 
 export function shutdownWebSocketAdapter(): Promise<void> {
@@ -245,7 +288,7 @@ export function broadcastToProject(
   excludeInitiatorId?: string,
 ) {
   if (!adapter) {
-    console.warn("broadcastToProject called before adapter initialization");
+    logRealtimeFailure();
     return;
   }
 
@@ -277,16 +320,25 @@ export function broadcastToProject(
           message: msg,
           excludeInitiatorId: exId,
         })
-        .catch((err) => {
-          console.error(
-            `Failed to publish broadcast for project ${projectId}:`,
-            err,
-          );
-        });
+        .catch(() => logRealtimeFailure());
     }
   }, 100);
 
   projectBroadcastTimeouts.set(projectId, timeout);
+}
+
+export async function broadcastNativeWorkItemHint(
+  message: NativeBroadcastMessage,
+) {
+  if (!adapter) {
+    logRealtimeFailure();
+    return;
+  }
+  try {
+    await adapter.publishNative(message);
+  } catch {
+    logRealtimeFailure();
+  }
 }
 
 type TaskEvent = {

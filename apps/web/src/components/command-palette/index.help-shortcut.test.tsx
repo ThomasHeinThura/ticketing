@@ -1,6 +1,6 @@
 import { cleanup, render } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
-import CommandPalette from "./index";
+import CommandPaletteLauncher from "./command-palette-launcher";
 
 /**
  * Issue #294: pressing "?" used to recurse forever. `CommandPalette`
@@ -24,6 +24,7 @@ import CommandPalette from "./index";
 vi.mock("@tanstack/react-router", () => ({
   useNavigate: () => vi.fn(),
   useLocation: () => ({ pathname: "/dashboard/workspace/w1" }),
+  useRouter: () => ({ preloadRoute: vi.fn().mockResolvedValue(undefined) }),
 }));
 
 vi.mock("react-i18next", () => ({
@@ -108,7 +109,7 @@ afterEach(() => {
 
 describe("CommandPalette help shortcut (#294)", () => {
   it("dispatches at most once per '?' keypress, with no recursive dispatchEvent", () => {
-    render(<CommandPalette />);
+    render(<CommandPaletteLauncher />);
 
     const helpHandler = capturedConfig?.shortcuts?.["?"];
 

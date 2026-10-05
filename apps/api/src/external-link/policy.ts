@@ -11,13 +11,8 @@ import type { PolicyMap } from "@taskdesk/permissions";
  * and not `elevated` — `work_item:read` is not in `AUTHORITY_GRANTING`. No `sessionOnly`,
  * same reasoning as every other file in this batch.
  *
- * **No legacy-key mismatch to record, because nothing checks a capability at runtime at
- * all.** `getExternalLinksByTaskRoute`'s only middleware is `workspaceAccess.fromTaskId
- * ("taskId")` — no `requireWorkspacePermission` call anywhere in this router. Same "reach
- * alone, capability declared for the target model anyway" shape as every list/read route in
- * this batch that has no distinct runtime check: every seeded role holds `work_item: ["read"]`
- * (the legacy key for `work_item:read`) unconditionally, so there is no role that reaches the
- * task yet lacks read authority over it.
+ * The read route enforces `work_item:read` after resolving reach from the task row. Global
+ * instance reach does not grant a workspace capability.
  *
  * **Scope: `work_item`**, matching `task-relation/policy.ts`'s reasoning exactly — this route
  * addresses one specific task by `{taskId}`, and `work_item` is the nearest scope-enum tier

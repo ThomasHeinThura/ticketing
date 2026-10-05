@@ -10,6 +10,7 @@ import { resetTestDatabase } from "./helpers/database";
 import {
   createProjectFixture,
   createWorkspaceMember,
+  grantProjectRole,
   requireRow,
 } from "./helpers/fixtures";
 
@@ -122,6 +123,10 @@ describe("API integration: task update concurrency", () => {
     const { project, columns } = await createProjectFixture({
       workspaceId: member.workspace.id,
     });
+    await grantProjectRole(member.user.id, project.id, [
+      "project:read",
+      "work_item:read",
+    ]);
     const task = requireRow(
       await db
         .insert(schema.taskTable)
@@ -232,6 +237,10 @@ describe("API integration: task update concurrency", () => {
     const { project, columns } = await createProjectFixture({
       workspaceId: member.workspace.id,
     });
+    await grantProjectRole(member.user.id, project.id, [
+      "project:read",
+      "work_item:read",
+    ]);
     const task = requireRow(
       await db
         .insert(schema.taskTable)
@@ -311,6 +320,10 @@ describe("API integration: task update concurrency", () => {
     const { project, columns } = await createProjectFixture({
       workspaceId: member.workspace.id,
     });
+    await grantProjectRole(member.user.id, project.id, [
+      "project:read",
+      "work_item:read",
+    ]);
     const task = requireRow(
       await db
         .insert(schema.taskTable)
@@ -395,6 +408,10 @@ describe("API integration: task update concurrency", () => {
     const { project, columns } = await createProjectFixture({
       workspaceId: member.workspace.id,
     });
+    await grantProjectRole(member.user.id, project.id, [
+      "project:read",
+      "work_item:read",
+    ]);
     const task = requireRow(
       await db
         .insert(schema.taskTable)

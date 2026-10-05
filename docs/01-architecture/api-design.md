@@ -33,6 +33,11 @@ claim a version the toolchain cannot produce.
    [security-model.md](security-model.md#sessions-csrf-and-step-up) — this is a citation,
    not a second rule.
 
+   `GET /api/me/csrf-token` issues the current live agent session's same-origin token to the
+   browser with `Cache-Control: no-store`; custom unsafe cookie-session requests must echo it
+   in `X-TaskDesk-CSRF`. Better Auth bootstrap/login endpoints keep their own trusted-origin
+   checks. The detailed token, cookie, fallback and error contract is in the security model.
+
 ## Base paths
 
 | Prefix | Purpose | Policy kind |

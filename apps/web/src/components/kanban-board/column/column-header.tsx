@@ -1,8 +1,7 @@
+import type { TFunction } from "i18next";
 import { produce } from "immer";
 import { Archive, Plus } from "lucide-react";
 import { useState } from "react";
-import { useTranslation } from "react-i18next";
-import CreateTaskModal from "@/components/shared/modals/create-task-modal";
 import { useUpdateTask } from "@/hooks/mutations/task/use-update-task";
 import { useWorkspacePermission } from "@/hooks/use-workspace-permission";
 import { getColumnIcon } from "@/lib/column";
@@ -13,20 +12,21 @@ import { ArchiveTasksModal } from "../../shared/modals/archive-tasks-modal";
 
 type ColumnHeaderProps = {
   column: ProjectWithTasks["columns"][number];
+  t: TFunction;
+  onCreateTask: (status: string, trigger: HTMLButtonElement) => void;
 };
 
-export function ColumnHeader({ column }: ColumnHeaderProps) {
-  const { t } = useTranslation();
-  const { project, setProject } = useProjectStore();
+export function ColumnHeader({ column, t, onCreateTask }: ColumnHeaderProps) {
+  const setProject = useProjectStore((state) => state.setProject);
   const { mutate: updateTask } = useUpdateTask();
   const { canUpdateTasks, canCreateTasks } = useWorkspacePermission();
   const canTask = canUpdateTasks();
   const canCreate = canCreateTasks();
 
   const [isArchiveModalOpen, setIsArchiveModalOpen] = useState(false);
-  const [isTaskModalOpen, setIsTaskModalOpen] = useState(false);
 
   const handleConfirmArchive = () => {
+    const project = useProjectStore.getState().project;
     if (!column.isFinal || !project) return;
 
     const updatedProject = produce(project, (draft) => {
@@ -56,7 +56,7 @@ export function ColumnHeader({ column }: ColumnHeaderProps) {
         <span className="text-muted-foreground">
           {getColumnIcon(column.id, column.isFinal, column.icon)}
         </span>
-        <span className="truncate text-sm font-medium text-foreground/95">
+        <span className="truncate text-sm font-medium text-foreground">
           {column.name}
         </span>
         <span className="rounded-md bg-muted px-1.5 py-0.5 text-xs font-medium text-muted-foreground">
@@ -78,7 +78,7 @@ export function ColumnHeader({ column }: ColumnHeaderProps) {
         {canCreate && (
           <button
             type="button"
-            onClick={() => setIsTaskModalOpen(true)}
+            onClick={(event) => onCreateTask(column.id, event.currentTarget)}
             className="flex items-center rounded-md px-2 py-1 text-left text-muted-foreground transition-colors hover:bg-accent/50"
             title={t("tasks:kanban.addTask")}
           >
@@ -86,13 +86,6 @@ export function ColumnHeader({ column }: ColumnHeaderProps) {
           </button>
         )}
       </div>
-
-      <CreateTaskModal
-        open={isTaskModalOpen}
-        onClose={() => setIsTaskModalOpen(false)}
-        projectId={project?.id}
-        status={column.id}
-      />
 
       <ArchiveTasksModal
         open={isArchiveModalOpen}

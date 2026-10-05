@@ -1,3 +1,4 @@
+import { useQueryClient } from "@tanstack/react-query";
 import { useNavigate } from "@tanstack/react-router";
 import {
   Button,
@@ -12,7 +13,14 @@ import {
   SelectValue,
 } from "@taskdesk/ui";
 import { ArrowRightLeft } from "lucide-react";
-import { useEffect, useMemo, useState, useTransition } from "react";
+import {
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+  useTransition,
+} from "react";
 import { useTranslation } from "react-i18next";
 import { useMoveTask } from "@/hooks/mutations/task/use-move-task";
 import useGetProjects from "@/hooks/queries/project/use-get-projects";
@@ -22,7 +30,7 @@ import { getStatusLabel } from "@/lib/i18n/domain";
 import type Task from "@/types/task";
 
 type TaskMovePopoverProps = {
-  task: Task;
+  task: Pick<Task, "id" | "projectId" | "status">;
   workspaceId: string;
   triggerClassName?: string;
 };
@@ -34,7 +42,10 @@ export default function TaskMovePopover({
 }: TaskMovePopoverProps) {
   const { t } = useTranslation();
   const navigate = useNavigate();
+  const queryClient = useQueryClient();
   const [open, setOpen] = useState(false);
+  const [currentStatus, setCurrentStatus] = useState(task.status);
+  const taskIdentity = useRef({ id: task.id, projectId: task.projectId });
   const [isPending, startTransition] = useTransition();
   const [selectedProjectId, setSelectedProjectId] = useState("");
   const [selectedStatus, setSelectedStatus] = useState("");
@@ -59,11 +70,11 @@ export default function TaskMovePopover({
 
   const destinationColumns = destinationProject?.columns ?? [];
   const canKeepCurrentStatus = destinationColumns.some(
-    (column) => column.id === task.status,
+    (column) => column.id === currentStatus,
   );
   const fallbackStatus = destinationColumns[0]?.id ?? "";
   const effectiveStatus = canKeepCurrentStatus
-    ? task.status
+    ? currentStatus
     : selectedStatus || fallbackStatus;
 
   const selectedStatusLabel = useMemo(() => {
@@ -71,6 +82,45 @@ export default function TaskMovePopover({
     const column = destinationColumns.find((c) => c.id === effectiveStatus);
     return column?.name || getStatusLabel(effectiveStatus) || null;
   }, [destinationColumns, effectiveStatus]);
+
+  const syncCurrentStatus = useCallback(() => {
+    const currentTask = queryClient.getQueryData<Task>(["task", task.id]);
+    setCurrentStatus(currentTask?.status ?? task.status);
+  }, [queryClient, task.id, task.status]);
+
+  useEffect(() => {
+    if (!open) return;
+    syncCurrentStatus();
+    return queryClient.getQueryCache().subscribe((event) => {
+      if (
+        event.type === "updated" &&
+        event.query.queryKey[0] === "task" &&
+        event.query.queryKey[1] === task.id
+      ) {
+        syncCurrentStatus();
+      }
+    });
+  }, [open, queryClient, syncCurrentStatus, task.id]);
+
+  const handleOpenChange = useCallback(
+    (nextOpen: boolean) => {
+      if (nextOpen) syncCurrentStatus();
+      setOpen(nextOpen);
+    },
+    [syncCurrentStatus],
+  );
+
+  useEffect(() => {
+    if (
+      taskIdentity.current.id === task.id &&
+      taskIdentity.current.projectId === task.projectId
+    )
+      return;
+    taskIdentity.current = { id: task.id, projectId: task.projectId };
+    setSelectedProjectId("");
+    setSelectedStatus("");
+    syncCurrentStatus();
+  }, [syncCurrentStatus, task.id, task.projectId]);
 
   useEffect(() => {
     if (!open) {
@@ -86,12 +136,12 @@ export default function TaskMovePopover({
     }
 
     if (canKeepCurrentStatus) {
-      setSelectedStatus(task.status);
+      setSelectedStatus(currentStatus);
       return;
     }
 
     setSelectedStatus(fallbackStatus);
-  }, [canKeepCurrentStatus, fallbackStatus, selectedProjectId, task.status]);
+  }, [canKeepCurrentStatus, currentStatus, fallbackStatus, selectedProjectId]);
 
   const handleMove = async () => {
     if (!selectedProjectId || !effectiveStatus) return;
@@ -124,7 +174,7 @@ export default function TaskMovePopover({
   }
 
   return (
-    <Popover open={open} onOpenChange={setOpen}>
+    <Popover open={open} onOpenChange={handleOpenChange}>
       <PopoverTrigger asChild>
         <Button
           type="button"

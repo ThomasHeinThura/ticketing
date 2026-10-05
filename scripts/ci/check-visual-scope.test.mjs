@@ -60,6 +60,8 @@ function visualSpec(
     shadowedFixtureHelperFor,
     setContentInApiRouteFor,
     computedTaggedSetContentInApiRouteFor,
+    enrollmentReadinessFor,
+    invalidEnrollmentReadinessFor,
     mutationInVisibilityFor,
     locatorScreenshotFor,
     viewportScreenshotFor,
@@ -156,6 +158,12 @@ function visualSpec(
         testName === shadowedSettleHelperFor
           ? "await settleVisuals(page);"
           : "";
+      const enrollmentReadiness =
+        testName === enrollmentReadinessFor
+          ? 'await page.locator("#factor-password").fill("visual-enrollment-password"); await expect(page.getByRole("button", { name: "Set up authenticator" })).toBeEnabled();'
+          : testName === invalidEnrollmentReadinessFor
+            ? 'await page.locator("#other-password").fill("visual-enrollment-password"); await expect(page.getByRole("button", { name: "Set up authenticator" })).toBeEnabled();'
+            : "";
       const beforeNavigation =
         testName === screenshotBeforeNavigationFor
           ? `${screenshotEvidence} `
@@ -166,7 +174,7 @@ function visualSpec(
         testName === disabledFor
           ? 'if (process.env.CI) test.fixme(true, "known issue");'
           : ""
-      } ${testName === computedSkipFor ? 'test["skip"](true, "temporarily disabled");' : ""} ${targetDeclaration} ${documentIntercept} ${setContentInApiRoute} ${computedTaggedSetContentInApiRoute} ${shadowedFixtureHelper} await installAuthenticatedFixture(page); ${shadowedPageBinding} ${beforeNavigation}await page.goto(${JSON.stringify(navigation)}); ${earlyReturn} ${setContent} ${additionalNavigation} ${additionalVisualOperation} ${nestedNavigation} ${helperNavigation} ${mutationInVisibility} ${testName === mutationInVisibilityFor ? "" : 'await expect(page.getByText("screen ready")).toBeVisible();'} ${shadowedSettleHelper} ${useShadowedSettleHelper} ${afterNavigation} });`;
+      } ${testName === computedSkipFor ? 'test["skip"](true, "temporarily disabled");' : ""} ${targetDeclaration} ${documentIntercept} ${setContentInApiRoute} ${computedTaggedSetContentInApiRoute} ${shadowedFixtureHelper} await installAuthenticatedFixture(page); ${shadowedPageBinding} ${beforeNavigation}await page.goto(${JSON.stringify(navigation)}); ${earlyReturn} ${setContent} ${additionalNavigation} ${additionalVisualOperation} ${nestedNavigation} ${helperNavigation} ${enrollmentReadiness} ${mutationInVisibility} ${testName === mutationInVisibilityFor ? "" : 'await expect(page.getByText("screen ready")).toBeVisible();'} ${shadowedSettleHelper} ${useShadowedSettleHelper} ${afterNavigation} });`;
     })
     .join("\n");
   const testImport = fakeTestBinding
@@ -384,7 +392,8 @@ async function runVisualScope({
   );
 
   write(dir, "docs/02-design/screen-inventory.md", inventory);
-  write(dir, "apps/web/src/routeTree.gen.ts", routeTree(routes));
+  write(dir, "apps/web/src/routeTree.agent.gen.ts", routeTree(routes));
+  write(dir, "apps/web/src/routeTree.portal.gen.ts", routeTree(["/"]));
   write(dir, "apps/web/e2e/visual-screens.json", JSON.stringify(screens));
   write(
     dir,
@@ -466,6 +475,19 @@ test("G8 rejects a root visual test script that skips the checker and web tests"
 
 test("G8 rejects a web visual test script that skips Playwright", async () => {
   const result = await runVisualScope({ webVisualScript: "echo skipped" });
+
+  assert.notEqual(result.status, 0);
+  assert.match(
+    result.output,
+    /apps\/web\/package\.json test:visual must run route and Storybook Playwright configs/,
+  );
+});
+
+test("G8 requires both web entries to build before preview screenshots", async () => {
+  const result = await runVisualScope({
+    webVisualScript:
+      "playwright test --config playwright.visual.config.ts --grep @visual && playwright test --config playwright.storybook.config.ts --grep @visual",
+  });
 
   assert.notEqual(result.status, 0);
   assert.match(
@@ -665,6 +687,21 @@ test("G8 rejects an inherited Playwright shard that can select no route cases", 
   );
 });
 
+test("G8 requires the base Playwright config to isolate real-runtime workers", async () => {
+  const original = await readFile(
+    path.join(repoRoot, "apps/web/playwright.config.ts"),
+    "utf8",
+  );
+  const baseConfig = original.replace("workers: 1,", "workers: 2,");
+  const result = await runVisualScope({ baseConfig });
+
+  assert.notEqual(result.status, 0);
+  assert.match(
+    result.output,
+    /playwright\.config\.ts must define the e2e directory/,
+  );
+});
+
 test("G8 rejects a route shard that can select no screenshots", async () => {
   const original = await readFile(
     path.join(repoRoot, "apps/web/playwright.visual.config.ts"),
@@ -725,8 +762,26 @@ test("G8 rejects a fake base app server command", async () => {
     "utf8",
   );
   const baseConfig = original.replace(
-    'command: "pnpm dev --host 127.0.0.1 --port 4178 --strictPort"',
-    'command: "node fake-app.mjs"',
+    'command:\n      "pnpm --filter @taskdesk/web preview --host 127.0.0.1 --port 4178 --strictPort",',
+    'command: "node fake-app.mjs",',
+  );
+  const result = await runVisualScope({ baseConfig });
+
+  assert.notEqual(result.status, 0);
+  assert.match(
+    result.output,
+    /playwright\.config\.ts must define the e2e directory/,
+  );
+});
+
+test("G8 rejects a base preview server with a different environment contract", async () => {
+  const original = await readFile(
+    path.join(repoRoot, "apps/web/playwright.config.ts"),
+    "utf8",
+  );
+  const baseConfig = original.replace(
+    "    reuseExistingServer: false,",
+    '    reuseExistingServer: false,\n    env: { VITE_API_URL: "http://127.0.0.1:4178" },',
   );
   const result = await runVisualScope({ baseConfig });
 
@@ -1725,6 +1780,32 @@ test("G8 rejects replacing the declared route document before capture", async ()
     routes: INVENTORY_ROUTES,
     source: visualSpec(SCREENS, {
       setContentAfterNavigationFor: "work list @visual",
+    }),
+  });
+
+  assert.notEqual(result.status, 0);
+  assert.match(
+    result.output,
+    /work-list visual test must use only API fixture setup before navigation/,
+  );
+});
+
+test("G8 permits the authenticator password readiness interaction", async () => {
+  const result = await runVisualScope({
+    routes: INVENTORY_ROUTES,
+    source: visualSpec(SCREENS, {
+      enrollmentReadinessFor: "work list @visual",
+    }),
+  });
+
+  assert.equal(result.status, 0, result.output);
+});
+
+test("G8 rejects enrollment readiness interactions outside the named password field", async () => {
+  const result = await runVisualScope({
+    routes: INVENTORY_ROUTES,
+    source: visualSpec(SCREENS, {
+      invalidEnrollmentReadinessFor: "work list @visual",
     }),
   });
 

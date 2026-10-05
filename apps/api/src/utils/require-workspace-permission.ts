@@ -6,7 +6,6 @@ import {
   markShadowLegacyAuthorizationUnknown,
   setShadowLegacyAuthorization,
 } from "../permissions/shadow-context";
-import { isInstanceAdmin } from "./is-instance-admin";
 import {
   type MembershipRoleResolution,
   resolveMembershipRole,
@@ -97,10 +96,6 @@ export async function hasWorkspacePermission(
     return false;
   }
 
-  if (await isInstanceAdmin(c)) {
-    return true;
-  }
-
   const userId = c.get("userId");
   if (!userId) return false;
 
@@ -177,16 +172,10 @@ export async function hasWorkspacePermission(
  * it asks this function, which walks the SAME short-circuits, in the SAME order, as the
  * evaluator above.
  *
- * The `null` cases are the short-circuits, and each one means "the evaluator never looked
- * at a role value, so there is no malformed row for the endpoint to report":
+ * A `null` result means there is no workspace or authenticated user in context, so there is
+ * no membership row to classify for the endpoint:
  *
  *  - **no `workspaceId`** — the evaluator returns `false` before reading anything;
- *  - **an instance admin** — the bypass returns `true` without consulting the membership.
- *    That bypass is deliberately NOT re-litigated here: it is `require-workspace-role-
- *    authority.ts`'s subject and Thomas's 2026-09-08 decision, and an instance admin
- *    already holds the authority a corrupt row could confer, so a malformed value adds no
- *    privilege for them. What matters for #82 is that the endpoint and the evaluator make
- *    the same call, and routing both through this function is what guarantees it;
  *  - **no `userId`** — unauthenticated, refused earlier by the route's own middleware.
  */
 export async function callerMembershipResolution(
@@ -200,8 +189,6 @@ export async function callerMembershipResolution(
   // so there is no single answer to short-circuit on. A scoped key calling into a corrupt
   // membership therefore gets the same explicit refusal as a session caller, which is both
   // the fail-closed direction and the honest one.
-  if (await isInstanceAdmin(c)) return null;
-
   const userId = c.get("userId");
   if (!userId) return null;
 
@@ -213,20 +200,10 @@ export async function callerMembershipResolution(
  * a capability you do not hold" check (`roles-and-permissions-ui.md`'s `RL-3`, S7 blueprint
  * Finding F2) tests every requested `(resource, action)` pair against.
  *
- * NO INSTANCE-ADMIN BRANCH, DELIBERATELY. By the time a route calls this, both
- * `requireWorkspacePermission` and `requireWorkspaceRoleAuthority` have already run as that
- * route's own middleware and already forced the caller's OWN resolved workspace role — never
- * the instance-admin bypass — to satisfy whatever `ac:[...]` permission gated the route:
- * `requireWorkspaceRoleAuthority` never takes the `isInstanceAdmin` shortcut, it *resolves*
- * the instance admin's actual membership and refuses if that membership does not itself
- * satisfy the same permissions (see that file). A non-instance-admin never had a bypass to
- * begin with — `hasWorkspacePermission` resolves their real membership unconditionally. So by
- * the time either middleware has let a request through, `resolveMembershipRole` for THIS
- * caller already resolves, and its role's statements already satisfy the route's own gate,
- * for every caller who can legitimately reach this function. Branching on `isInstanceAdmin`
- * here as well would not widen anything (both branches resolve identically once membership is
- * real) but would be a second, divergent copy of the same resolution to keep in sync — the
- * exact defect class (#82, #118) this codebase keeps finding and fixing one table over.
+ * NO INSTANCE-ADMIN BRANCH. Instance-admin global reach does not substitute for a
+ * workspace capability. The route middleware must have required the caller's actual role to
+ * satisfy its legacy permission before this helper is called; this helper resolves that same
+ * role rather than providing an alternate authority path.
  *
  * Returns `null` when no usable statements can be resolved at all (no workspaceId/userId in
  * context, no membership, an ambiguous or malformed membership row, or a missing/ambiguous

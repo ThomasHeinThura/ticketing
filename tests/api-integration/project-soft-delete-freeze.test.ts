@@ -28,6 +28,7 @@ import { resetTestDatabase } from "./helpers/database";
 import {
   createProjectFixture,
   createWorkspaceMember,
+  grantProjectRole,
 } from "./helpers/fixtures";
 
 function jsonRequest(
@@ -104,6 +105,10 @@ async function buildDeletedProjectFixture(): Promise<Fixture> {
   const { project, columns } = await createProjectFixture({
     workspaceId: member.workspace.id,
   });
+  await grantProjectRole(member.user.id, project.id, [
+    "project:read",
+    "work_item:read",
+  ]);
 
   const [task] = await db
     .insert(schema.taskTable)
@@ -713,6 +718,9 @@ describe("API integration: a soft-deleted project is frozen (#202)", () => {
         const fixture = await createProjectFixture({
           workspaceId: member.workspace.id,
         });
+        await grantProjectRole(member.user.id, fixture.project.id, [
+          "project:read",
+        ]);
         mockAuthenticatedSession(member.user);
         return fixture;
       })();

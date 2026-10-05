@@ -122,6 +122,29 @@ async function installAuthenticatedFixture(page: Page) {
         meta: {},
       };
     } else if (path.endsWith("/api/work-items/HELP-7")) body = workItem;
+    else if (path.endsWith("/api/me/security/factors")) {
+      body = { enabled: false, required: false, policyMode: "optional" };
+    } else if (path.endsWith("/api/instance/observability")) {
+      body = {
+        version: 1,
+        logLevels: {
+          default: "info",
+          modules: {
+            http: "info",
+            auth: "warn",
+            database: "error",
+            jobs: "info",
+            audit: "info",
+            plugins: "info",
+            realtime: "info",
+          },
+        },
+        metricsTokenConfigured: false,
+        metricsTokenRotatedAt: null,
+      };
+    } else if (path.endsWith("/api/instance/local-factor-policy")) {
+      body = { policy: { mode: "optional", requiredRoleId: null } };
+    }
 
     await route.fulfill({
       status: 200,
@@ -169,12 +192,29 @@ test("sign-in screen @visual", async ({ page }) => {
   });
 });
 
+test("portal disabled notice @visual", async ({ page }) => {
+  await page.goto("http://127.0.0.1:4179/");
+  await expect(
+    page.getByText("Customer portal unavailable", { exact: true }),
+  ).toBeVisible();
+  await expect(page).toHaveScreenshot("portal-disabled.png", {
+    animations: "disabled",
+    caret: "hide",
+    fullPage: true,
+    scale: "css",
+    maxDiffPixels: 0,
+    threshold: 0,
+    includeAA: true,
+  });
+});
+
 test("work-item list screen @visual", async ({ page }) => {
   await installAuthenticatedFixture(page);
   await page.goto("/agent/projects/help/work?layout=list");
   await expect(
     page.getByText("Customer cannot reset their password"),
   ).toBeVisible();
+  await expect(page.getByTestId("realtime-unavailable")).toBeVisible();
   await expect(page).toHaveScreenshot("work-item-list.png", {
     animations: "disabled",
     caret: "hide",
@@ -193,6 +233,76 @@ test("work-item detail screen @visual", async ({ page }) => {
     page.getByText("Customer cannot reset their password", { exact: true }),
   ).toBeVisible();
   await expect(page).toHaveScreenshot("work-item-detail.png", {
+    animations: "disabled",
+    caret: "hide",
+    fullPage: true,
+    scale: "css",
+    maxDiffPixels: 0,
+    threshold: 0,
+    includeAA: true,
+  });
+});
+
+test("account security enrollment-ready screen @visual", async ({ page }) => {
+  await installAuthenticatedFixture(page);
+  await page.goto("/dashboard/settings/account/security");
+  await expect(
+    page.getByText("Set up an authenticator factor", { exact: true }),
+  ).toBeVisible();
+  await expect(page.locator("#factor-password")).toBeVisible();
+  await page.locator("#factor-password").fill("visual-enrollment-password");
+  await expect(
+    page.getByRole("button", { name: "Set up authenticator" }),
+  ).toBeEnabled();
+  await expect(page).toHaveScreenshot("account-security-setup.png", {
+    animations: "disabled",
+    caret: "hide",
+    fullPage: true,
+    scale: "css",
+    maxDiffPixels: 0,
+    threshold: 0,
+    includeAA: true,
+  });
+});
+
+test("two-factor authenticator challenge screen @visual", async ({ page }) => {
+  await page.route("**/api/**", (route) => {
+    const path = new URL(route.request().url()).pathname;
+    return route.fulfill({
+      status: 200,
+      contentType: "application/json",
+      body: path.endsWith("/api/auth/get-session")
+        ? "null"
+        : JSON.stringify({ disableRegistration: true, hasSmtp: false }),
+    });
+  });
+  await page.goto("/auth/two-factor");
+  await expect(page.getByLabel("Authenticator code")).toBeVisible();
+  await expect(page).toHaveScreenshot("two-factor-authenticator.png", {
+    animations: "disabled",
+    caret: "hide",
+    fullPage: true,
+    scale: "css",
+    maxDiffPixels: 0,
+    threshold: 0,
+    includeAA: true,
+  });
+});
+
+test("observability settings screen @visual", async ({ page }) => {
+  await installAuthenticatedFixture(page);
+  await page.goto("/god-mode/observability");
+  await expect(
+    page.getByRole("heading", { name: "Observability", exact: true }),
+  ).toBeVisible();
+  await expect(
+    page.getByRole("heading", { name: "Local factor policy", exact: true }),
+  ).toBeVisible();
+  await expect(
+    page.getByRole("heading", { name: "Structured log levels", exact: true }),
+  ).toBeVisible();
+  await expect(page.getByText("No token is configured.")).toBeVisible();
+  await expect(page).toHaveScreenshot("observability-settings.png", {
     animations: "disabled",
     caret: "hide",
     fullPage: true,

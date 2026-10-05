@@ -6,6 +6,7 @@ import {
   PopoverTrigger,
 } from "@taskdesk/ui";
 import { X } from "lucide-react";
+import type { RefObject } from "react";
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
 import { useUpdateTaskDueDate } from "@/hooks/mutations/task/use-update-task-due-date";
@@ -16,11 +17,13 @@ import type Task from "@/types/task";
 
 type TaskDueDatePopoverProps = {
   task: Task;
+  taskRef?: RefObject<Task | undefined>;
   children: React.ReactNode;
 };
 
 export default function TaskDueDatePopover({
   task,
+  taskRef,
   children,
 }: TaskDueDatePopoverProps) {
   const { t } = useTranslation();
@@ -32,8 +35,9 @@ export default function TaskDueDatePopover({
 
   const handleDateChange = async (date: Date | undefined) => {
     try {
+      const currentTask = taskRef?.current ?? task;
       await updateTaskDueDate({
-        ...task,
+        ...currentTask,
         dueDate: date?.toISOString() || null,
       });
       toast.success(t("tasks:popover.dueDate.updateSuccess"));

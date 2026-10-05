@@ -1,0 +1,32 @@
+# Independent GPT-6 Sol P0 bulk security review
+
+**Reviewed head:** `94ecb0fe9d6577c2bb4c6d5b540b803be5ccfc98`
+
+- **Comparison base:** previously independently Sol-reviewed `64d3ce895e952879d81c444f4276b730781c312a`; accepted main base `8ddb9de8d4d242a0832f6f91e12872300480a905`. The earlier verdict is historical evidence, not clearance for this head.
+- **Reviewer and independence:** fresh GPT-6 Sol security-review context. I did not materially author, direct, or remediate the candidate. No subagent, external message, source edit, commit, or push was made.
+- **Start/end state:** `/Users/heinthura/.codex/worktrees/p0-bulk-integration/Ticketing.v2` was clean at the exact reviewed HEAD at the start and end. This report is private evidence outside the repository.
+- **Verdict:** **CLEAR for the required current-head security review.** No credible blocking or non-blocking security source finding identified in the inspected P0 shipping changes. This is not the separate P0 phase finalizer or acceptance/merge clearance.
+
+## Source and contract inspection
+
+Read the required agent/CI guides, current RBAC, realtime, observability and security contracts, the previous Sol note, and all three fresh `94ecb0fe` ordinary Luna reports; challenged their project-role/guard conclusions against the current source. Inspected the actual `64d3ce8..94ecb0f` file/diff inventory and the focused `ea13d3d..94ecb0f` authority delta, including:
+
+- `packages/permissions/src/evaluator.ts`, `apps/api/src/permissions/{resolve-identity,shadow-evaluation,shadow-middleware,strict-policy-enforcement,strict-route-registration,enforcement-config}.ts`, the policy registry/changed route policies, `apps/api/src/utils/{has-project-reach,workspace-access-middleware,validate-workspace-access,authenticate-api-request,authorize-asset-access}.ts`, work-item and attachment reach guards, and affected project/task/work-item/resource read registrations. Persisted project role overrides workspace authority for the selected project; `reaches()` supplies a separate reach decision. Plain workspace membership supplies no implicit project reach. Instance-admin reach is separate from non-instance capability authority. Key identities have no loaded canonical capability grants and `can()` refuses missing key subsets. Native key access also retains key validity/workspace and legacy WebSocket permission ceilings. Read guard removals are confined to project-scoped GETs; inspected create/write routes retain their guards. Shadow denial evidence does not set policy-side reach.
+- `apps/api/src/{index,auth}.ts`, WebSocket Origin policy, native topic authorization, adapters/control invalidation, project archive/delete triggers, session/factor invalidation, and finite realtime/HTTP lifecycle failure helpers and allowlists. Agent-host session upgrades require stored agent portal and exact Origin; explicit key handling retains its distinct rule. Native topics re-read live resource, identity and authority, deny archived projects, reauthorize on private control messages and at the periodic fallback, and send key-only hints with customer visibility filtering. Control messages are not browser frames. No raw exception payload is passed into the finite failure log helpers in inspected paths.
+- Local factor/operation proof paths in step-up service/API, metrics-token rotation and MFA reset: session and operation/route/body/version binding, hash-only token lookup, expiry, row lock and single-use consumption, transactional protected mutation, CAS, and bounded audit metadata. The earlier full Sol review covered the foundational auth, portal, CSRF, API-key and audit implementation; subsequent changed call sites were checked here.
+- `apps/api/drizzle/0087_romantic_sway.sql`, schema/observability settings, journal ordering, `.github/workflows/ci-full.yml`, `scripts/ci/check-visual-scope.mjs`, Playwright config, `turbo.json`, and dependency-control diff. The new persisted CHECK constrains the finite log-level module/value shape. The diagnostic CI job is explicitly non-gating; the visual checker still asserts the built-preview route/story command and isolated worker count. No `pnpm-lock.yaml` or root dependency graph change appears in this comparison. The seven-line agent-workflow retention addition changes no gate authority or pass/fail semantics.
+
+## Checks actually run
+
+- `pnpm --filter @taskdesk/api exec vitest run` on resolve-identity, shadow-evaluation, native-work-item-realtime and node-server-safe-logging: **4 files, 100 tests passed, 0 failed**.
+- The same bounded Vitest command on strict-route-registration, enforcement-config, observability logger and settings: **4 files, 23 tests passed, 0 failed**.
+- `node --test scripts/ci/check-visual-scope.test.mjs`: **153 passed, 0 failed, 0 skipped**.
+- Parsed actual Git journal blobs: accepted main's **80 entries exactly match** the current first 80; prior reviewed head's **87 entries exactly match** the current first 87; current journal has **88** ordered entries ending in `0087_romantic_sway`.
+- `git diff --check 64d3ce8..HEAD` reports six trailing-whitespace lines in historical Luna review Markdown only; no security-source whitespace finding. Exact HEAD and clean worktree were rechecked after inspection.
+
+## Findings and limits
+
+- **Blocking security findings:** none.
+- **Non-blocking security findings:** none. The historical review-note trailing whitespace above is outside shipping security code.
+- These reviewer-run tests do not exercise PostgreSQL, the container, browser, hosted Linux, or live traffic. Author evidence is separately attributed: current affected PG 2 files/18 tests; the first local full run was 130/136 files and 1,637/1,648 tests, followed by a separate corrected six-file 133/133 run, not an aggregate full pass; native Darwin G11 22/22 with 100 writes; pinned Linux G8 seven screens/142 stories. Supplied exact-image boot/health/CAS/step-up/log checks passed, but its private fixture failed before traffic because a SQL INSERT omitted an id supplied only by Drizzle's application default. This is a private harness defect, not a proven production authorization defect or clean traffic evidence.
+- Hosted current-head full CI and three genuine clean UTC traffic dates remain acceptance gates. The previous `ea13` G11 run was 18/22. No gate is waived; this report is the mandatory per-PR full Sol security review only, and the later independent Sol P0 finalizer remains required.

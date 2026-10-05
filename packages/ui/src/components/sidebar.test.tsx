@@ -1,4 +1,10 @@
-import { cleanup, fireEvent, render, screen } from "@testing-library/react";
+import {
+  cleanup,
+  fireEvent,
+  render,
+  screen,
+  waitFor,
+} from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { expectNoA11yViolations } from "../test/a11y";
 import {
@@ -52,6 +58,53 @@ describe("useSidebar", () => {
 });
 
 describe("Sidebar", () => {
+  it("supports native scrolling without mounting the enhanced scroll area", () => {
+    render(
+      <SidebarProvider>
+        <Sidebar
+          closeLabel="Close"
+          collapsible="icon"
+          mobileDescription="The app sidebar"
+          mobileTitle="Sidebar"
+        >
+          <SidebarContent nativeScroll>
+            <a href="/work-items">Work items</a>
+          </SidebarContent>
+        </Sidebar>
+      </SidebarProvider>,
+    );
+
+    const content = document.querySelector('[data-slot="sidebar-content"]');
+    expect(content).not.toBeNull();
+    expect(content).toHaveClass("overflow-y-auto");
+    expect(content).toHaveAttribute("data-sidebar", "content");
+    expect(content).toHaveTextContent("Work items");
+    expect(
+      document.querySelector('[data-slot="scroll-area-viewport"]'),
+    ).not.toBeInTheDocument();
+  });
+
+  it("keeps the enhanced scroll area as the default", async () => {
+    render(
+      <SidebarProvider>
+        <Sidebar
+          closeLabel="Close"
+          collapsible="icon"
+          mobileDescription="The app sidebar"
+          mobileTitle="Sidebar"
+        >
+          <SidebarContent>Work items</SidebarContent>
+        </Sidebar>
+      </SidebarProvider>,
+    );
+
+    await waitFor(() => {
+      expect(
+        document.querySelector('[data-slot="scroll-area-viewport"]'),
+      ).toBeInTheDocument();
+    });
+  });
+
   it("starts expanded by default and collapses on trigger click", () => {
     render(
       <SidebarProvider>

@@ -8,7 +8,7 @@ import {
   TooltipTrigger,
 } from "@taskdesk/ui";
 import { ArrowUp, Paperclip } from "lucide-react";
-import { useCallback, useState } from "react";
+import { memo, useCallback, useState } from "react";
 import { useTranslation } from "react-i18next";
 import CommentEditor from "@/components/activity/comment-editor";
 import useCreateComment from "@/hooks/mutations/comment/use-create-comment";
@@ -20,7 +20,7 @@ type CommentInputProps = {
   taskId: string;
 };
 
-export default function CommentInput({ taskId }: CommentInputProps) {
+function CommentInput({ taskId }: CommentInputProps) {
   const { t } = useTranslation();
   const [content, setContent] = useState("");
   const [attachAction, setAttachAction] = useState<(() => void) | null>(null);
@@ -89,12 +89,15 @@ export default function CommentInput({ taskId }: CommentInputProps) {
                   variant="default"
                   onClick={handleSubmit}
                   disabled={isPending || !content.trim()}
+                  aria-busy={isPending}
+                  data-testid="comment-submit"
                   className={cn(
                     isPending ||
                       (!content.trim() && "opacity-50 cursor-not-allowed"),
                     content.trim().length > 0 &&
                       "bg-primary text-primary-foreground",
                   )}
+                  aria-label={t("activity:comment.submitShortcut")}
                 >
                   <ArrowUp className="size-3.5" />
                 </Button>
@@ -112,3 +115,5 @@ export default function CommentInput({ taskId }: CommentInputProps) {
     </div>
   );
 }
+
+export default memo(CommentInput);

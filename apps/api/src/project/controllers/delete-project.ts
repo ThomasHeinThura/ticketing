@@ -2,6 +2,7 @@ import { and, eq, isNull } from "drizzle-orm";
 import { HTTPException } from "hono/http-exception";
 import db from "../../database";
 import { projectTable } from "../../database/schema";
+import { invalidateNativeAuthorization } from "../../ws";
 
 // #187: 30 days, matching `docs/03-features/projects-and-engagements.md` PR-16 and the
 // `project` row's retention entry in `docs/01-architecture/data-model.md`.
@@ -51,6 +52,8 @@ async function deleteProject(id: string, workspaceId: string) {
       message: "Project not found",
     });
   }
+
+  await invalidateNativeAuthorization({ projectId: id });
 
   return deletedProject;
 }

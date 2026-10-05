@@ -1,18 +1,52 @@
-import { useState } from "react";
+import type { TFunction } from "i18next";
+import { memo, useState } from "react";
 import type { ProjectWithTasks } from "@/types/project";
+import type {
+  TaskCardDisplayPreferences,
+  TaskCardProps,
+  TaskCardWorkspaceUser,
+} from "../task-card";
 import { ColumnDropzone } from "./column-dropzone";
 import { ColumnHeader } from "./column-header";
 
 type ColumnProps = {
   column: ProjectWithTasks["columns"][number];
+  projectSlug: string;
+  projectColumns: ProjectWithTasks["columns"];
+  columnCompletionBySlug: ReadonlyMap<string, boolean>;
+  displayPreferences: TaskCardDisplayPreferences;
+  selectedTaskIds: ReadonlySet<string>;
+  focusedTaskId: string | null;
   disableDragDrop?: boolean;
+  workspaceId?: string;
+  workspaceUsersById: ReadonlyMap<string, TaskCardWorkspaceUser>;
+  onContextMenuTask: TaskCardProps["onContextMenuTask"];
+  onOpenTask: TaskCardProps["onOpenTask"];
+  onCreateTask: (status: string, trigger: HTMLButtonElement) => void;
+  t: TFunction;
 };
 
-function Column({ column, disableDragDrop = false }: ColumnProps) {
+function Column({
+  column,
+  projectSlug,
+  projectColumns,
+  columnCompletionBySlug,
+  displayPreferences,
+  selectedTaskIds,
+  focusedTaskId,
+  disableDragDrop = false,
+  workspaceId,
+  workspaceUsersById,
+  onContextMenuTask,
+  onOpenTask,
+  onCreateTask,
+  t,
+}: ColumnProps) {
   const [isDropzoneOver, setIsDropzoneOver] = useState(false);
 
   return (
     <div
+      data-column-id={column.id}
       className={`group relative flex h-full min-h-0 w-full flex-col rounded-xl border transition-colors duration-150 ${
         isDropzoneOver
           ? "border-ring/40 bg-accent/60 shadow-md ring-2 ring-ring/30"
@@ -20,17 +54,28 @@ function Column({ column, disableDragDrop = false }: ColumnProps) {
       }`}
     >
       <div className="shrink-0 border-b border-border/60 px-3 py-2">
-        <ColumnHeader column={column} />
+        <ColumnHeader column={column} onCreateTask={onCreateTask} t={t} />
       </div>
       <div className="min-h-0 flex-1 overflow-y-auto overflow-x-hidden px-2 py-1 [-webkit-overflow-scrolling:touch]">
         <ColumnDropzone
           column={column}
+          projectSlug={projectSlug}
+          projectColumns={projectColumns}
+          columnCompletionBySlug={columnCompletionBySlug}
+          displayPreferences={displayPreferences}
+          selectedTaskIds={selectedTaskIds}
+          focusedTaskId={focusedTaskId}
           disableDragDrop={disableDragDrop}
           onIsOverChange={setIsDropzoneOver}
+          workspaceId={workspaceId}
+          workspaceUsersById={workspaceUsersById}
+          onContextMenuTask={onContextMenuTask}
+          onOpenTask={onOpenTask}
+          t={t}
         />
       </div>
     </div>
   );
 }
 
-export default Column;
+export default memo(Column);

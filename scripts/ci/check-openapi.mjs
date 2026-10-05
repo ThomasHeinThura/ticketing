@@ -63,6 +63,13 @@ function run(command, args) {
       // to say otherwise. Generated, so there is nothing to copy.
       TASKDESK_AUTH_SECRET:
         process.env.TASKDESK_AUTH_SECRET ?? randomBytes(32).toString("hex"),
+      // OpenAPI export constructs the application without an HTTP server. Supply
+      // the same distinct public-origin bootstrap values used by API test setup;
+      // production startup itself remains fail-closed when either value is absent.
+      TASKDESK_AGENT_URL:
+        process.env.TASKDESK_AGENT_URL ?? "http://localhost:5173",
+      TASKDESK_PORTAL_URL:
+        process.env.TASKDESK_PORTAL_URL ?? "http://portal.localhost:5174",
     },
   });
 }

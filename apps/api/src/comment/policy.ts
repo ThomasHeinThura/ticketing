@@ -54,12 +54,8 @@ import type { PolicyMap } from "@taskdesk/permissions";
  * variant should exist as a *different*, not-yet-built route is a product question, not decided
  * here.
  *
- * Comment reads (`GET /api/comment/{taskId}`) require no capability at all beyond workspace
- * membership — `getTaskCommentsRoute`'s only middleware is `workspaceAccess.fromTaskId()`, no
- * `requireWorkspacePermission`. `work_item:read` is the target capability (every built-in role
- * from `viewer` up holds it; `rbac.md`'s Comments group has no dedicated read capability of its
- * own — seeing a work item's comments is implied by being able to see the work item, matching
- * `comment:create`'s own `implies: ["work_item:read"]`).
+ * Comment reads require the declared `work_item:read` capability after task-row reach is
+ * resolved. The capability represents the Comments group's implied work-item visibility.
  *
  * No route here is in `AUTHORITY_GRANTING` (`packages/permissions/src/elevated.ts`) — comments
  * mint no fresh authority — so `elevated` is omitted throughout, and no route declares
@@ -71,11 +67,8 @@ import type { PolicyMap } from "@taskdesk/permissions";
  * shape `policy.ts`'s own `ElevationFlags` doc warns against).
  */
 export const commentPolicies = {
-  // Reads every comment on a task, oldest first. `workspaceAccess.fromTaskId()` is the only
-  // gate — any workspace member may read; no `work_item:*` or `comment:*` permission is
-  // additionally required. `work_item:read` is the closest target capability: rbac.md has no standalone
-  // "read comments" capability, and `comment:create` itself `implies: ["work_item:read"]`,
-  // i.e. seeing a work item's comments is treated as part of seeing the work item.
+  // Reads every comment on a task, oldest first. Requires `work_item:read` after row-derived
+  // reach; there is no separate comment-read capability.
   "GET /api/comment/{taskId}": {
     capability: "work_item:read",
     scope: "work_item",

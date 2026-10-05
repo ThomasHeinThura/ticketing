@@ -1,4 +1,5 @@
-import { Link } from "@tanstack/react-router";
+import { useQueryClient } from "@tanstack/react-query";
+import { useRouter } from "@tanstack/react-router";
 import {
   Alert,
   AlertDescription,
@@ -11,7 +12,6 @@ import {
   EmptyHeader,
   EmptyMedia,
   EmptyTitle,
-  Skeleton,
   Table,
   TableBody,
   TableCell,
@@ -27,6 +27,13 @@ import {
   ListTodo,
   TriangleAlert,
 } from "lucide-react";
+import {
+  type FocusEvent,
+  type MouseEvent,
+  memo,
+  useCallback,
+  useMemo,
+} from "react";
 import { useTranslation } from "react-i18next";
 import { formatDateShort } from "@/lib/format";
 import { getPriorityIcon } from "@/lib/priority";
@@ -37,9 +44,12 @@ import {
   type WorkItemSortField,
 } from "@/lib/routes";
 import type { WorkItemField, WorkItemRow } from "@/types/work-item";
+import WorkItemListLoading from "./work-item-list-loading";
 
 export type WorkItemListProps = {
   workItems: WorkItemRow[] | undefined;
+  /** Precomputed by the validated fetcher so rendering does not rescan every row. */
+  hasPartialFailure: boolean;
   isLoading: boolean;
   isError: boolean;
   sort: WorkItemSortField;
@@ -55,13 +65,6 @@ const SORT_COLUMNS: Array<{ field: WorkItemSortField; labelKey: string }> = [
   { field: "dueDate", labelKey: "workItems:list.columnDueDate" },
 ];
 
-function priorityLabel(t: ReturnType<typeof useTranslation>["t"]) {
-  return (priority: string | null) => {
-    if (!priority) return t("workItems:list.noPriority");
-    return t(`workItems:list.priority.${priority}`, priority);
-  };
-}
-
 /**
  * The Assignee column's three cases (`work-item-list.tsx`'s own file comment has the
  * full rationale for why the middle case is "(inactive)", not the Partial mechanism's
@@ -73,10 +76,10 @@ function priorityLabel(t: ReturnType<typeof useTranslation>["t"]) {
  */
 function assigneeLabel(
   item: Pick<WorkItemRow, "assigneeId" | "assigneeName">,
-  t: ReturnType<typeof useTranslation>["t"],
+  labels: { unassigned: string; inactive: string },
 ): string {
-  if (!item.assigneeId) return t("workItems:list.unassigned");
-  if (!item.assigneeName) return t("workItems:list.assigneeInactive");
+  if (!item.assigneeId) return labels.unassigned;
+  if (!item.assigneeName) return labels.inactive;
   return item.assigneeName;
 }
 
@@ -142,6 +145,7 @@ function UnavailableField({
  */
 function WorkItemList({
   workItems,
+  hasPartialFailure,
   isLoading,
   isError,
   sort,
@@ -149,8 +153,39 @@ function WorkItemList({
   onSortChange,
   onRetry,
 }: WorkItemListProps) {
+  const queryClient = useQueryClient();
+  const router = useRouter();
   const { t } = useTranslation();
-  const getPriorityLabel = priorityLabel(t);
+  const noPriorityLabel = t("workItems:list.noPriority");
+  const noDueDateLabel = t("workItems:list.noDueDate");
+  const assigneeLabels = useMemo(
+    () => ({
+      unassigned: t("workItems:list.unassigned"),
+      inactive: t("workItems:list.assigneeInactive"),
+    }),
+    [t],
+  );
+  const priorityLabels = useMemo(
+    () =>
+      new Map([
+        ["low", t("workItems:list.priority.low", "low")],
+        ["medium", t("workItems:list.priority.medium", "medium")],
+        ["high", t("workItems:list.priority.high", "high")],
+        ["urgent", t("workItems:list.priority.urgent", "urgent")],
+      ]),
+    [t],
+  );
+
+  const getPriorityLabel = useCallback(
+    (priority: string | null) => {
+      if (!priority) return noPriorityLabel;
+      return (
+        priorityLabels.get(priority) ??
+        t(`workItems:list.priority.${priority}`, priority)
+      );
+    },
+    [noPriorityLabel, priorityLabels, t],
+  );
 
   function handleHeaderClick(field: WorkItemSortField) {
     if (field === sort) {
@@ -158,6 +193,88 @@ function WorkItemList({
     } else {
       onSortChange(field, "asc");
     }
+  }
+
+  function prefetchDetail(key: string) {
+    void router
+      .preloadRoute({
+        to: routes.workItemDetail.path,
+        params: { key },
+      })
+      .catch(() => {});
+    void import("@/components/work-item/load-work-item-detail")
+      .then(({ default: loadWorkItemDetail }) => loadWorkItemDetail())
+      .catch(() => {});
+    void queryClient.prefetchQuery({
+      queryKey: ["work-items", "detail", key],
+      queryFn: async () => {
+        const { default: getWorkItem } = await import(
+          "@/fetchers/work-item/get-work-item"
+        );
+        return getWorkItem(key);
+      },
+      staleTime: 5_000,
+    });
+  }
+
+  function navigateToDetail(
+    event: Pick<
+      MouseEvent<Element>,
+      | "defaultPrevented"
+      | "button"
+      | "metaKey"
+      | "ctrlKey"
+      | "shiftKey"
+      | "altKey"
+      | "preventDefault"
+    >,
+    key: string,
+  ) {
+    if (
+      event.defaultPrevented ||
+      event.button !== 0 ||
+      event.metaKey ||
+      event.ctrlKey ||
+      event.shiftKey ||
+      event.altKey
+    ) {
+      return;
+    }
+
+    event.preventDefault();
+    void router.navigate({
+      to: routes.workItemDetail.path,
+      params: { key },
+    });
+  }
+
+  function getDetailLink(target: EventTarget | null) {
+    if (!(target instanceof Element)) return null;
+    return target.closest<HTMLAnchorElement>("a[data-work-item-key]");
+  }
+
+  function handleListMouseOver(event: MouseEvent<HTMLDivElement>) {
+    const anchor = getDetailLink(event.target);
+    if (!anchor) return;
+    if (
+      event.relatedTarget instanceof Node &&
+      anchor.contains(event.relatedTarget)
+    ) {
+      return;
+    }
+    const key = anchor.dataset.workItemKey;
+    if (key) prefetchDetail(key);
+  }
+
+  function handleListFocus(event: FocusEvent<HTMLDivElement>) {
+    const key = getDetailLink(event.target)?.dataset.workItemKey;
+    if (key) prefetchDetail(key);
+  }
+
+  function handleListClick(event: MouseEvent<HTMLDivElement>) {
+    const anchor = getDetailLink(event.target);
+    const key = anchor?.dataset.workItemKey;
+    if (anchor && key) navigateToDetail(event, key);
   }
 
   if (isError) {
@@ -176,22 +293,7 @@ function WorkItemList({
   }
 
   if (isLoading) {
-    return (
-      <div
-        className="flex flex-col gap-2"
-        data-testid="work-item-list-loading"
-        aria-busy="true"
-        aria-live="polite"
-      >
-        <span className="sr-only">{t("workItems:list.loading")}</span>
-        {Array.from({ length: 6 }).map((_, index) => (
-          // Skeleton rows have no identity to key on; the list is static in length and
-          // never reordered while loading.
-          // biome-ignore lint/suspicious/noArrayIndexKey: static skeleton placeholder rows
-          <Skeleton key={index} className="h-10 w-full" />
-        ))}
-      </div>
-    );
+    return <WorkItemListLoading />;
   }
 
   if (!workItems || workItems.length === 0) {
@@ -211,10 +313,6 @@ function WorkItemList({
     );
   }
 
-  const hasPartialFailure = workItems.some(
-    (item) => item.unavailableFields.length > 0,
-  );
-
   return (
     <div className="flex flex-col gap-3">
       {hasPartialFailure && (
@@ -226,7 +324,21 @@ function WorkItemList({
           </AlertDescription>
         </Alert>
       )}
-      <Table data-testid="work-item-list-populated">
+      <Table
+        data-testid="work-item-list-populated"
+        className="table-fixed"
+        onMouseOver={handleListMouseOver}
+        onFocusCapture={handleListFocus}
+        onClickCapture={handleListClick}
+      >
+        <colgroup>
+          <col className="w-[11%]" />
+          <col className="w-[32%]" />
+          <col className="w-[12%]" />
+          <col className="w-[13%]" />
+          <col className="w-[15%]" />
+          <col className="w-[17%]" />
+        </colgroup>
         <TableHeader>
           <TableRow>
             {SORT_COLUMNS.map(({ field, labelKey }) => (
@@ -250,65 +362,74 @@ function WorkItemList({
           </TableRow>
         </TableHeader>
         <TableBody>
-          {workItems.map((item) => (
-            <TableRow key={item.id}>
-              <TableCell>
-                {item.unavailableFields.includes("key") ? (
-                  <UnavailableField field="key" t={t} />
-                ) : (
-                  <Link
-                    to={routes.workItemDetail.path}
-                    params={{ key: item.key }}
-                    className="font-medium text-primary underline-offset-2 hover:underline"
-                  >
-                    {item.key}
-                  </Link>
-                )}
-              </TableCell>
-              <TableCell className="max-w-xs truncate whitespace-nowrap">
-                {item.unavailableFields.includes("title") ? (
-                  <UnavailableField field="title" t={t} />
-                ) : item.unavailableFields.includes("key") ? (
-                  // The key this row's link would navigate to is unavailable -- render
-                  // the (valid) title as plain text rather than a link to nowhere
-                  // trustworthy.
-                  <span title={item.title}>{item.title}</span>
-                ) : (
-                  <Link
-                    to={routes.workItemDetail.path}
-                    params={{ key: item.key }}
-                    className="hover:underline"
-                    title={item.title}
-                  >
-                    {item.title}
-                  </Link>
-                )}
-              </TableCell>
-              <TableCell>
-                {item.unavailableFields.includes("priority") ? (
-                  <UnavailableField field="priority" t={t} />
-                ) : (
-                  <span className="inline-flex items-center gap-1.5">
-                    {getPriorityIcon(item.priority ?? "no-priority")}
-                    {getPriorityLabel(item.priority)}
-                  </span>
-                )}
-              </TableCell>
-              <TableCell>
-                {item.unavailableFields.includes("dueDate") ? (
-                  <UnavailableField field="dueDate" t={t} />
-                ) : item.dueDate ? (
-                  formatDateShort(item.dueDate)
-                ) : (
-                  t("workItems:list.noDueDate")
-                )}
-              </TableCell>
-              <TableCell>
-                <Badge variant="outline">{item.stateName}</Badge>
-              </TableCell>
-              <TableCell>{assigneeLabel(item, t)}</TableCell>
-            </TableRow>
-          ))}
+          {workItems.map((item) => {
+            const detailHref = item.unavailableFields.includes("key")
+              ? undefined
+              : routes.workItemDetail.build({ key: item.key });
+
+            return (
+              <TableRow key={item.id}>
+                <TableCell>
+                  <div className="work-item-list-cell-content">
+                    {item.unavailableFields.includes("key") ? (
+                      <UnavailableField field="key" t={t} />
+                    ) : (
+                      <a
+                        href={detailHref}
+                        data-work-item-key={item.key}
+                        className="font-medium text-primary underline-offset-2 hover:underline"
+                      >
+                        {item.key}
+                      </a>
+                    )}
+                  </div>
+                </TableCell>
+                <TableCell className="max-w-xs truncate whitespace-nowrap">
+                  <div className="work-item-list-cell-content truncate">
+                    {item.unavailableFields.includes("title") ? (
+                      <UnavailableField field="title" t={t} />
+                    ) : item.unavailableFields.includes("key") ? (
+                      <span title={item.title}>{item.title}</span>
+                    ) : (
+                      <a
+                        href={detailHref}
+                        data-work-item-key={item.key}
+                        className="hover:underline"
+                        title={item.title}
+                      >
+                        {item.title}
+                      </a>
+                    )}
+                  </div>
+                </TableCell>
+                <TableCell>
+                  <div className="work-item-list-cell-content">
+                    {item.unavailableFields.includes("priority") ? (
+                      <UnavailableField field="priority" t={t} />
+                    ) : (
+                      <span className="inline-flex items-center gap-1.5">
+                        {getPriorityIcon(item.priority ?? "no-priority")}
+                        {getPriorityLabel(item.priority)}
+                      </span>
+                    )}
+                  </div>
+                </TableCell>
+                <TableCell>
+                  {item.unavailableFields.includes("dueDate") ? (
+                    <UnavailableField field="dueDate" t={t} />
+                  ) : item.dueDate ? (
+                    formatDateShort(item.dueDate)
+                  ) : (
+                    noDueDateLabel
+                  )}
+                </TableCell>
+                <TableCell>
+                  <Badge variant="outline">{item.stateName}</Badge>
+                </TableCell>
+                <TableCell>{assigneeLabel(item, assigneeLabels)}</TableCell>
+              </TableRow>
+            );
+          })}
         </TableBody>
       </Table>
     </div>
@@ -343,4 +464,4 @@ function SortIcon({
   );
 }
 
-export default WorkItemList;
+export default memo(WorkItemList);

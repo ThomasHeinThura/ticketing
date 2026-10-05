@@ -4,16 +4,10 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import type Task from "@/types/task";
 import TaskStatusPopover from "./task-status-popover";
 
-const useGetColumns = vi.fn();
-
 afterEach(() => {
   cleanup();
   document.body.innerHTML = "";
 });
-
-vi.mock("@/hooks/queries/column/use-get-columns", () => ({
-  useGetColumns: (projectId: string) => useGetColumns(projectId),
-}));
 
 vi.mock("@/hooks/mutations/task/use-update-task-status", () => ({
   useUpdateTaskStatus: () => ({ mutateAsync: vi.fn() }),
@@ -50,28 +44,31 @@ const task: Task = {
 };
 
 describe("TaskStatusPopover", () => {
-  it("loads status options for the task project without relying on board state", async () => {
-    useGetColumns.mockReturnValue({
-      data: [
-        {
-          id: "column-1",
-          slug: "to-do",
-          name: "Ready",
-          icon: null,
-          isFinal: false,
-        },
-      ],
-      isLoading: false,
-      isError: false,
-    });
-
+  it("renders the project status options provided by the details owner", async () => {
     render(
-      <TaskStatusPopover task={task}>
+      <TaskStatusPopover
+        task={task}
+        columns={[
+          {
+            id: "column-1",
+            projectId: "project-1",
+            slug: "to-do",
+            name: "Ready",
+            position: 0,
+            icon: null,
+            color: null,
+            isFinal: false,
+            createdAt: "2026-07-17T00:00:00.000Z",
+            updatedAt: "2026-07-17T00:00:00.000Z",
+          },
+        ]}
+        isLoading={false}
+        isError={false}
+      >
         <Button>Status</Button>
       </TaskStatusPopover>,
     );
 
-    expect(useGetColumns).toHaveBeenCalledWith("project-1");
     expect(screen.queryByRole("button", { name: /Ready/ })).toBeNull();
 
     fireEvent.click(screen.getByRole("button", { name: "Status" }));
@@ -80,14 +77,8 @@ describe("TaskStatusPopover", () => {
   });
 
   it("shows loading feedback while status options are loading", async () => {
-    useGetColumns.mockReturnValue({
-      data: undefined,
-      isLoading: true,
-      isError: false,
-    });
-
     render(
-      <TaskStatusPopover task={task}>
+      <TaskStatusPopover task={task} columns={[]} isLoading isError={false}>
         <Button>Status</Button>
       </TaskStatusPopover>,
     );
@@ -98,14 +89,8 @@ describe("TaskStatusPopover", () => {
   });
 
   it("shows error feedback when status options fail to load", async () => {
-    useGetColumns.mockReturnValue({
-      data: undefined,
-      isLoading: false,
-      isError: true,
-    });
-
     render(
-      <TaskStatusPopover task={task}>
+      <TaskStatusPopover task={task} columns={[]} isLoading={false} isError>
         <Button>Status</Button>
       </TaskStatusPopover>,
     );

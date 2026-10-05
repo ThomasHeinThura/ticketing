@@ -1,3 +1,4 @@
+import { apiFetch } from "@taskdesk/libs";
 import { getApiUrl } from "@/fetchers/get-api-url";
 import type { NotificationPreferences } from "./get-notification-preferences";
 
@@ -23,9 +24,8 @@ export type UpdateNotificationPreferencesRequest = {
 async function updateNotificationPreferences(
   json: UpdateNotificationPreferencesRequest,
 ): Promise<NotificationPreferences> {
-  const response = await fetch(getApiUrl("/notification-preferences"), {
+  const response = await apiFetch(getApiUrl("/notification-preferences"), {
     body: JSON.stringify(json),
-    credentials: "include",
     headers: {
       "Content-Type": "application/json",
     },
