@@ -192,33 +192,6 @@
           "manageServiceCalendars"
         ]
       },
-      "MalformedMembershipRole": {
-        "type": "object",
-        "properties": {
-          "error": {
-            "type": "string",
-            "enum": [
-              "MALFORMED_MEMBERSHIP_ROLE"
-            ]
-          },
-          "message": {
-            "type": "string"
-          },
-          "problem": {
-            "type": "string",
-            "enum": [
-              "empty",
-              "multi-valued",
-              "untrimmed"
-            ]
-          }
-        },
-        "required": [
-          "error",
-          "message",
-          "problem"
-        ]
-      },
       "ProjectListItem": {
         "allOf": [
           {
@@ -540,6 +513,41 @@
               "null"
             ]
           },
+          "kind": {
+            "type": "string",
+            "enum": [
+              "project",
+              "managed_service"
+            ]
+          },
+          "health": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "enum": [
+              "red",
+              "amber",
+              "green"
+            ]
+          },
+          "supportLevel": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "enum": [
+              "L1",
+              "L2",
+              "L3"
+            ]
+          },
+          "serviceCalendarId": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
           "createdAt": {
             "type": "string",
             "format": "date-time"
@@ -584,6 +592,10 @@
           "icon",
           "name",
           "description",
+          "kind",
+          "health",
+          "supportLevel",
+          "serviceCalendarId",
           "createdAt",
           "archivedAt",
           "deletedAt",
@@ -5072,16 +5084,6 @@
                 }
               }
             }
-          },
-          "409": {
-            "description": "The caller's membership row does not hold exactly one role, so no capability answer can be computed from it (issue #82)",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/MalformedMembershipRole"
-                }
-              }
-            }
           }
         }
       }
@@ -5178,6 +5180,33 @@
                   },
                   "slug": {
                     "type": "string"
+                  },
+                  "kind": {
+                    "type": "string",
+                    "enum": [
+                      "project",
+                      "managed_service"
+                    ],
+                    "default": "project"
+                  },
+                  "supportLevel": {
+                    "type": [
+                      "string",
+                      "null"
+                    ],
+                    "enum": [
+                      "L1",
+                      "L2",
+                      "L3",
+                      null
+                    ]
+                  },
+                  "serviceCalendarId": {
+                    "type": [
+                      "string",
+                      "null"
+                    ],
+                    "minLength": 1
                   }
                 },
                 "required": [
@@ -5226,6 +5255,16 @@
           },
           "409": {
             "description": "That project slug is already taken",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "PR-9 or same-workspace service calendar validation failed",
             "content": {
               "text/plain": {
                 "schema": {
@@ -5326,6 +5365,32 @@
                   },
                   "description": {
                     "type": "string"
+                  },
+                  "kind": {
+                    "type": "string",
+                    "enum": [
+                      "project",
+                      "managed_service"
+                    ]
+                  },
+                  "supportLevel": {
+                    "type": [
+                      "string",
+                      "null"
+                    ],
+                    "enum": [
+                      "L1",
+                      "L2",
+                      "L3",
+                      null
+                    ]
+                  },
+                  "serviceCalendarId": {
+                    "type": [
+                      "string",
+                      "null"
+                    ],
+                    "minLength": 1
                   }
                 },
                 "required": [
@@ -5391,6 +5456,16 @@
                 }
               }
             }
+          },
+          "422": {
+            "description": "PR-9 or same-workspace service calendar validation failed",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
           }
         }
       },
@@ -5437,6 +5512,183 @@
           },
           "403": {
             "description": "Missing project:delete permission",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Project not found",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/project/{id}/health": {
+      "get": {
+        "operationId": "getProjectHealth",
+        "tags": [
+          "Projects"
+        ],
+        "summary": "Get project health",
+        "parameters": [
+          {
+            "schema": {
+              "type": "string"
+            },
+            "required": true,
+            "name": "id",
+            "in": "path"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Project health",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "health": {
+                      "type": [
+                        "string",
+                        "null"
+                      ],
+                      "enum": [
+                        "red",
+                        "amber",
+                        "green",
+                        null
+                      ]
+                    }
+                  },
+                  "required": [
+                    "health"
+                  ]
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Unknown or unreachable project",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing or invalid credentials"
+          },
+          "404": {
+            "description": "Project not found",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          }
+        }
+      },
+      "patch": {
+        "operationId": "updateProjectHealth",
+        "tags": [
+          "Projects"
+        ],
+        "summary": "Set project health",
+        "parameters": [
+          {
+            "schema": {
+              "type": "string"
+            },
+            "required": true,
+            "name": "id",
+            "in": "path"
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "health": {
+                    "type": [
+                      "string",
+                      "null"
+                    ],
+                    "enum": [
+                      "red",
+                      "amber",
+                      "green",
+                      null
+                    ]
+                  }
+                },
+                "required": [
+                  "health"
+                ]
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Updated project health",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "health": {
+                      "type": [
+                        "string",
+                        "null"
+                      ],
+                      "enum": [
+                        "red",
+                        "amber",
+                        "green",
+                        null
+                      ]
+                    }
+                  },
+                  "required": [
+                    "health"
+                  ]
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid body or unknown project",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing or invalid credentials"
+          },
+          "403": {
+            "description": "Missing project:update permission",
             "content": {
               "text/plain": {
                 "schema": {
@@ -11965,7 +12217,7 @@
               "minLength": 43,
               "maxLength": 43
             },
-            "required": true,
+            "required": false,
             "name": "x-taskdesk-step-up-token",
             "in": "header"
           }
@@ -11982,9 +12234,6 @@
                     "maxLength": 320
                   }
                 },
-                "required": [
-                  "typedName"
-                ],
                 "additionalProperties": false
               }
             }
@@ -11992,7 +12241,7 @@
         },
         "responses": {
           "200": {
-            "description": "Deactivation executed",
+            "description": "Approved pending action executed",
             "content": {
               "application/json": {
                 "schema": {
@@ -14189,6 +14438,106 @@
             }
           }
         }
+      },
+      "delete": {
+        "operationId": "requestServiceCalendarDeletion",
+        "tags": [
+          "Service calendars"
+        ],
+        "summary": "Request service calendar deletion",
+        "description": "Creates a pending action for an unused calendar; approval rechecks its version and all live references.",
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "minLength": 1
+            },
+            "required": true,
+            "name": "id",
+            "in": "path"
+          }
+        ],
+        "responses": {
+          "202": {
+            "description": "Calendar deletion pending action",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "pendingActionId": {
+                      "type": "string"
+                    },
+                    "action": {
+                      "type": "string",
+                      "enum": [
+                        "delete"
+                      ]
+                    },
+                    "summary": {
+                      "type": "object",
+                      "additionalProperties": {}
+                    },
+                    "confirmation": {
+                      "type": "string",
+                      "enum": [
+                        "click"
+                      ]
+                    },
+                    "expiresAt": {
+                      "type": "string",
+                      "format": "date-time"
+                    },
+                    "approveUrl": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "pendingActionId",
+                    "action",
+                    "summary",
+                    "confirmation",
+                    "expiresAt",
+                    "approveUrl"
+                  ]
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing or invalid credentials"
+          },
+          "403": {
+            "description": "Missing sla_policy:manage permission or requester identity",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Service calendar not found",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Calendar is in use or already has a pending deletion",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          }
+        }
       }
     },
     "/service-calendars/{id}/holidays/import": {
@@ -14639,6 +14988,97 @@
                     "weeklyCoverMinutes",
                     "annualCoverMinutes",
                     "hasCover"
+                  ]
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing or invalid credentials"
+          },
+          "403": {
+            "description": "Missing sla_policy:read permission",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Service calendar not found",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/service-calendars/{id}/usage": {
+      "get": {
+        "operationId": "getServiceCalendarUsage",
+        "tags": [
+          "Service calendars"
+        ],
+        "summary": "Get calendar usage",
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "minLength": 1
+            },
+            "required": true,
+            "name": "id",
+            "in": "path"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Live project, SLA version, and work item reference counts",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "calendarId": {
+                      "type": "string"
+                    },
+                    "counts": {
+                      "type": "object",
+                      "properties": {
+                        "projects": {
+                          "type": "integer",
+                          "minimum": 0
+                        },
+                        "slaPolicyVersions": {
+                          "type": "integer",
+                          "minimum": 0
+                        },
+                        "currentSlaPolicies": {
+                          "type": "integer",
+                          "minimum": 0
+                        },
+                        "workItems": {
+                          "type": "integer",
+                          "minimum": 0
+                        }
+                      },
+                      "required": [
+                        "projects",
+                        "slaPolicyVersions",
+                        "currentSlaPolicies",
+                        "workItems"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "calendarId",
+                    "counts"
                   ]
                 }
               }

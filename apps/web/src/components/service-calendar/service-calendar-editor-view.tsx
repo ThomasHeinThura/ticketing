@@ -1,4 +1,5 @@
-import { Link } from "@tanstack/react-router";
+import { useMutation } from "@tanstack/react-query";
+import { Link, useNavigate } from "@tanstack/react-router";
 import {
   Alert,
   AlertDescription,
@@ -11,6 +12,10 @@ import {
   AlertDialogTitle,
   AlertTitle,
   Button,
+  Card,
+  CardContent,
+  CardHeader,
+  CardTitle,
   Skeleton,
 } from "@taskdesk/ui";
 import { ArrowLeft, RefreshCw } from "lucide-react";
@@ -22,6 +27,8 @@ import { CoveragePreviewCard } from "@/components/service-calendar/coverage-prev
 import { HolidayListCard } from "@/components/service-calendar/holiday-list-card";
 import { WeeklyCoverCard } from "@/components/service-calendar/weekly-cover-card";
 import type { ServiceCalendar } from "@/fetchers/service-calendar";
+import { requestServiceCalendarDeletion } from "@/fetchers/service-calendar";
+import { useServiceCalendarUsage } from "@/hooks/queries/service-calendar/use-service-calendar-usage";
 import type {
   CalendarMetadata,
   useServiceCalendarEditor,
@@ -44,7 +51,20 @@ export function ServiceCalendarEditorView({
   onYearChange: (year: number) => void;
 }) {
   const { t } = useTranslation("serviceCalendars");
+  const navigate = useNavigate();
   const { calendar, loading, isCalendarError, refetchCalendar, saving } = state;
+  const usage = useServiceCalendarUsage(isNew ? "" : (calendar?.id ?? ""));
+  const deleteRequest = useMutation({
+    mutationFn: requestServiceCalendarDeletion,
+    onSuccess: async (result) => {
+      await navigate({
+        to: routes.pendingAction.build({ id: result.pendingActionId }) as never,
+      });
+    },
+  });
+  const usedCount = usage.data
+    ? usage.data.counts.projects + usage.data.counts.slaPolicyVersions
+    : null;
 
   if (loading) {
     return (
@@ -126,6 +146,67 @@ export function ServiceCalendarEditorView({
                 : t("editor.save")}
           </Button>
         </div>
+
+        {!isNew && calendar ? (
+          <Card>
+            <CardHeader>
+              <CardTitle>{t("usage.title")}</CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-3">
+              {usage.isLoading ? (
+                <p role="status">{t("usage.loading")}</p>
+              ) : usage.isError || !usage.data ? (
+                <div role="alert" className="space-y-2">
+                  <p>{t("usage.error")}</p>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    onClick={() => void usage.refetch()}
+                  >
+                    {t("editor.retry")}
+                  </Button>
+                </div>
+              ) : (
+                <>
+                  <p>
+                    {t("usage.counts", {
+                      projects: usage.data.counts.projects,
+                      policies: usage.data.counts.currentSlaPolicies,
+                      versions: usage.data.counts.slaPolicyVersions,
+                      workItems: usage.data.counts.workItems,
+                    })}
+                  </p>
+                  {usedCount === 0 ? (
+                    <p className="text-sm text-muted-foreground">
+                      {t("usage.unused")}
+                    </p>
+                  ) : (
+                    <p className="text-sm text-muted-foreground">
+                      {t("usage.inUse")}
+                    </p>
+                  )}
+                  <Button
+                    type="button"
+                    variant="destructive"
+                    disabled={
+                      !state.canManageCalendars ||
+                      usedCount !== 0 ||
+                      deleteRequest.isPending
+                    }
+                    onClick={() => deleteRequest.mutate(calendar.id)}
+                  >
+                    {deleteRequest.isPending
+                      ? t("usage.requesting")
+                      : t("usage.delete")}
+                  </Button>
+                  {deleteRequest.isError ? (
+                    <p role="alert">{t("usage.deleteError")}</p>
+                  ) : null}
+                </>
+              )}
+            </CardContent>
+          </Card>
+        ) : null}
 
         {state.calendarConflict ? (
           <Alert variant="error" role="alert">

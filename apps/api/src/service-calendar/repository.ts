@@ -1,7 +1,7 @@
 import { createId } from "@paralleldrive/cuid2";
 import type { JsonValue } from "@taskdesk/domain";
 import { type Holiday, holidayImportIdentity } from "@taskdesk/domain";
-import { and, asc, desc, eq, sql } from "drizzle-orm";
+import { and, asc, count, desc, eq, sql } from "drizzle-orm";
 import { HTTPException } from "hono/http-exception";
 import {
   type AppendAuditLogInput,
@@ -10,8 +10,12 @@ import {
 import db from "../database";
 import {
   apikeyTable,
+  projectTable,
   serviceCalendarTable,
+  slaPolicyTable,
+  slaPolicyVersionTable,
   userTable,
+  workItemTable,
   workspaceTable,
 } from "../database/schema";
 import { enqueueOutboxEvent } from "../events/outbox";
@@ -25,6 +29,61 @@ type CalendarActor = {
 };
 
 type CalendarTransaction = Parameters<Parameters<typeof db.transaction>[0]>[0];
+
+export async function getCalendarUsage(id: string, workspaceId: string) {
+  const [projectCount] = await db
+    .select({ value: count() })
+    .from(projectTable)
+    .where(
+      and(
+        eq(projectTable.workspaceId, workspaceId),
+        eq(projectTable.serviceCalendarId, id),
+      ),
+    );
+  const versions = await db
+    .select({
+      policyId: slaPolicyTable.id,
+      current: sql<boolean>`${slaPolicyTable.activeVersionId} = ${slaPolicyVersionTable.id}`,
+    })
+    .from(slaPolicyVersionTable)
+    .innerJoin(
+      slaPolicyTable,
+      eq(slaPolicyTable.id, slaPolicyVersionTable.policyId),
+    )
+    .where(
+      and(
+        eq(slaPolicyVersionTable.workspaceId, workspaceId),
+        eq(slaPolicyVersionTable.calendarId, id),
+      ),
+    )
+    .orderBy(asc(slaPolicyTable.id), asc(slaPolicyVersionTable.number));
+  const [workItemCount] = await db
+    .select({ value: count() })
+    .from(workItemTable)
+    .innerJoin(
+      slaPolicyVersionTable,
+      eq(slaPolicyVersionTable.id, workItemTable.slaPolicyVersionId),
+    )
+    .where(
+      and(
+        eq(workItemTable.workspaceId, workspaceId),
+        eq(slaPolicyVersionTable.calendarId, id),
+      ),
+    );
+  return {
+    calendarId: id,
+    counts: {
+      projects: projectCount?.value ?? 0,
+      slaPolicyVersions: versions.length,
+      currentSlaPolicies: new Set(
+        versions
+          .filter((version) => version.current)
+          .map((version) => version.policyId),
+      ).size,
+      workItems: workItemCount?.value ?? 0,
+    },
+  };
+}
 
 async function appendCalendarAudit(
   tx: CalendarTransaction,

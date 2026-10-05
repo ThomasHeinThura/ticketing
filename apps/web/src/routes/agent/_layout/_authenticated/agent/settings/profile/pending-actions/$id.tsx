@@ -67,6 +67,14 @@ function PendingActionDetailRoute() {
           queryKey: ["me", "pending-action", id],
         }),
         queryClient.invalidateQueries({
+          queryKey: ["service-calendars"],
+          refetchType: "all",
+        }),
+        queryClient.invalidateQueries({
+          queryKey: ["service-calendar-usage"],
+          refetchType: "all",
+        }),
+        queryClient.invalidateQueries({
           queryKey: instanceUsersKey,
           refetchType: "all",
         }),
@@ -112,11 +120,21 @@ function PendingActionDetailRoute() {
       ? action.data.summary.email
       : null;
   const isPending = action.data.state === "pending";
-  const canApprove =
+  const canApproveDeactivation =
     action.data.action === "user_deactivation" &&
     action.data.confirmation === "typed_name_step_up" &&
     email !== null &&
     isPending;
+  const canApproveCalendarDeletion =
+    action.data.action === "delete" &&
+    action.data.targetType === "service_calendar" &&
+    action.data.confirmation === "click" &&
+    isPending;
+  const canApprove = canApproveDeactivation || canApproveCalendarDeletion;
+  const calendarName =
+    typeof action.data.summary.name === "string"
+      ? action.data.summary.name
+      : null;
   const factorUnavailable =
     factor.isLoading ||
     factor.isError ||
@@ -146,6 +164,16 @@ function PendingActionDetailRoute() {
             : t("pendingActions:approvalFailed"),
       );
       setSecret("");
+    }
+  }
+
+  async function approveCalendarDeletion() {
+    setError(null);
+    try {
+      await approve.mutateAsync({ id });
+      setNotice(t("pendingActions:dynamic.calendarDeletionApproved"));
+    } catch {
+      setError(t("pendingActions:dynamic.approvalFailed"));
     }
   }
 
@@ -184,12 +212,16 @@ function PendingActionDetailRoute() {
             <dd>
               {action.data.action === "user_deactivation"
                 ? t("pendingActions:dynamic.deactivatePerson", { email: "" })
-                : action.data.action.replaceAll("_", " ")}
+                : action.data.targetType === "service_calendar" && calendarName
+                  ? t("pendingActions:dynamic.deleteServiceCalendar", {
+                      name: calendarName,
+                    })
+                  : action.data.action.replaceAll("_", " ")}
             </dd>
             <dt className="text-muted-foreground">
               {t("pendingActions:copy.61ad50a9b918")}
             </dt>
-            <dd>{email ?? action.data.targetIds.join(", ")}</dd>
+            <dd>{email ?? calendarName ?? action.data.targetIds.join(", ")}</dd>
             <dt className="text-muted-foreground">
               {t("pendingActions:copy.bae7d5be7082")}
             </dt>
@@ -237,97 +269,127 @@ function PendingActionDetailRoute() {
           )}
           {canApprove && (
             <div className="space-y-4 border-t pt-4">
-              <div className="space-y-2">
-                <Label htmlFor="confirm-current-email">
-                  {t("pendingActions:copy.c65f42061785")}
-                </Label>
-                <Input
-                  id="confirm-current-email"
-                  autoComplete="off"
-                  value={typedName}
-                  onChange={(event) => setTypedName(event.target.value)}
-                />
-                <p className="text-xs text-muted-foreground">{email}</p>
-              </div>
-              {factor.data?.enabled && (
-                <div className="space-y-2">
-                  <Label htmlFor="pending-action-step-up-method">
-                    {t("pendingActions:copy.3a725803c822")}
-                  </Label>
-                  <Select
-                    value={method}
-                    onValueChange={(value) =>
-                      setMethod(
-                        value === "backup_code" ? "backup_code" : "totp",
-                      )
-                    }
-                  >
-                    <SelectTrigger id="pending-action-step-up-method">
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="totp">
-                        {t("pendingActions:copy.2908b4e9c428")}
-                      </SelectItem>
-                      <SelectItem value="backup_code">
-                        {t("pendingActions:copy.2a8367498e23")}
-                      </SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-              )}
-              <div className="space-y-2">
-                <Label htmlFor="pending-action-step-up-secret">
-                  {t(
-                    effectiveMethod === "password"
-                      ? "pendingActions:dynamic.accountPassword"
-                      : effectiveMethod === "totp"
-                        ? "pendingActions:dynamic.authenticatorCode"
-                        : "pendingActions:dynamic.backupCode",
+              {canApproveCalendarDeletion ? (
+                <>
+                  <p className="text-sm">
+                    {t("pendingActions:dynamic.approveCalendarDeletion", {
+                      name: calendarName ?? "",
+                    })}
+                  </p>
+                  <div className="flex flex-wrap gap-2">
+                    <Button
+                      disabled={approve.isPending}
+                      onClick={() => void approveCalendarDeletion()}
+                    >
+                      {t("pendingActions:copy.a2b52d875e8b")}
+                    </Button>
+                    <Button
+                      variant="outline"
+                      disabled={cancel.isPending || approve.isPending}
+                      onClick={() => void cancelAction()}
+                    >
+                      {t("pendingActions:copy.84837a216817")}
+                    </Button>
+                  </div>
+                </>
+              ) : null}
+              {canApproveDeactivation ? (
+                <>
+                  <div className="space-y-2">
+                    <Label htmlFor="confirm-current-email">
+                      {t("pendingActions:copy.c65f42061785")}
+                    </Label>
+                    <Input
+                      id="confirm-current-email"
+                      autoComplete="off"
+                      value={typedName}
+                      onChange={(event) => setTypedName(event.target.value)}
+                    />
+                    <p className="text-xs text-muted-foreground">{email}</p>
+                  </div>
+                  {factor.data?.enabled && (
+                    <div className="space-y-2">
+                      <Label htmlFor="pending-action-step-up-method">
+                        {t("pendingActions:copy.3a725803c822")}
+                      </Label>
+                      <Select
+                        value={method}
+                        onValueChange={(value) =>
+                          setMethod(
+                            value === "backup_code" ? "backup_code" : "totp",
+                          )
+                        }
+                      >
+                        <SelectTrigger id="pending-action-step-up-method">
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="totp">
+                            {t("pendingActions:copy.2908b4e9c428")}
+                          </SelectItem>
+                          <SelectItem value="backup_code">
+                            {t("pendingActions:copy.2a8367498e23")}
+                          </SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
                   )}
-                </Label>
-                <Input
-                  id="pending-action-step-up-secret"
-                  type={effectiveMethod === "password" ? "password" : "text"}
-                  autoComplete={
-                    effectiveMethod === "password"
-                      ? "current-password"
-                      : "one-time-code"
-                  }
-                  value={secret}
-                  onChange={(event) => setSecret(event.target.value)}
-                />
-              </div>
-              {factorUnavailable && (
-                <Alert variant="error">
-                  <AlertTitle>
-                    {t("pendingActions:copy.02c7fa45ff1a")}
-                  </AlertTitle>
-                  <AlertDescription>
-                    {t("pendingActions:copy.8a8c6877113f")}
-                  </AlertDescription>
-                </Alert>
-              )}
-              <div className="flex flex-wrap gap-2">
-                <Button
-                  disabled={
-                    approve.isPending ||
-                    factorUnavailable ||
-                    typedName !== email ||
-                    secret.length === 0
-                  }
-                  onClick={() => void approveDeactivation()}
-                >
-                  {t("pendingActions:copy.a2b52d875e8b")}
-                </Button>
-                <Button
-                  variant="outline"
-                  disabled={cancel.isPending || approve.isPending}
-                  onClick={() => void cancelAction()}
-                >
-                  {t("pendingActions:copy.84837a216817")}
-                </Button>
-              </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="pending-action-step-up-secret">
+                      {t(
+                        effectiveMethod === "password"
+                          ? "pendingActions:dynamic.accountPassword"
+                          : effectiveMethod === "totp"
+                            ? "pendingActions:dynamic.authenticatorCode"
+                            : "pendingActions:dynamic.backupCode",
+                      )}
+                    </Label>
+                    <Input
+                      id="pending-action-step-up-secret"
+                      type={
+                        effectiveMethod === "password" ? "password" : "text"
+                      }
+                      autoComplete={
+                        effectiveMethod === "password"
+                          ? "current-password"
+                          : "one-time-code"
+                      }
+                      value={secret}
+                      onChange={(event) => setSecret(event.target.value)}
+                    />
+                  </div>
+                  {factorUnavailable && (
+                    <Alert variant="error">
+                      <AlertTitle>
+                        {t("pendingActions:copy.02c7fa45ff1a")}
+                      </AlertTitle>
+                      <AlertDescription>
+                        {t("pendingActions:copy.8a8c6877113f")}
+                      </AlertDescription>
+                    </Alert>
+                  )}
+                  <div className="flex flex-wrap gap-2">
+                    <Button
+                      disabled={
+                        approve.isPending ||
+                        factorUnavailable ||
+                        typedName !== email ||
+                        secret.length === 0
+                      }
+                      onClick={() => void approveDeactivation()}
+                    >
+                      {t("pendingActions:copy.a2b52d875e8b")}
+                    </Button>
+                    <Button
+                      variant="outline"
+                      disabled={cancel.isPending || approve.isPending}
+                      onClick={() => void cancelAction()}
+                    >
+                      {t("pendingActions:copy.84837a216817")}
+                    </Button>
+                  </div>
+                </>
+              ) : null}
             </div>
           )}
           {isPending && !canApprove && (

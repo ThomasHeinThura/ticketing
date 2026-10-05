@@ -24,6 +24,11 @@ import {
   Popover,
   PopoverContent,
   PopoverTrigger,
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
   Separator,
 } from "@taskdesk/ui";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
@@ -33,8 +38,11 @@ import { z } from "zod";
 import PageTitle from "@/components/page-title";
 import { TasksImportExport } from "@/components/project/tasks-import-export.tsx";
 import icons from "@/constants/project-icons";
+import { updateProjectHealth } from "@/fetchers/project/update-health";
 import useDeleteProject from "@/hooks/mutations/project/use-delete-project";
 import useUpdateProject from "@/hooks/mutations/project/use-update-project";
+import useGetProject from "@/hooks/queries/project/use-get-project";
+import { useServiceCalendars } from "@/hooks/queries/service-calendar/use-service-calendars";
 import { useGetTasks } from "@/hooks/queries/task/use-get-tasks";
 import useActiveWorkspace from "@/hooks/queries/workspace/use-active-workspace";
 import { useWorkspacePermission } from "@/hooks/use-workspace-permission";
@@ -106,10 +114,26 @@ function RouteComponent() {
   const [iconSearch, setIconSearch] = useState("");
 
   const { data: workspace } = useActiveWorkspace();
+  const { data: calendarPage } = useServiceCalendars(workspace?.id ?? "");
   const { projectId: rawProjectId } = useParams({ strict: false });
   const projectId = rawProjectId ?? "";
   const { data: fetchedProject } = useGetTasks(projectId);
+  const { data: projectDetails } = useGetProject({
+    id: projectId,
+    workspaceId: workspace?.id ?? "",
+  });
   const { project, setProject } = useProjectStore();
+  const [engagementKind, setEngagementKind] = useState<
+    "project" | "managed_service"
+  >("project");
+  const [supportLevel, setSupportLevel] = useState<"L1" | "L2" | "L3" | "">("");
+  const [serviceCalendarId, setServiceCalendarId] = useState("");
+  const [health, setHealth] = useState<"red" | "amber" | "green" | "unset">(
+    "unset",
+  );
+  const [engagementError, setEngagementError] = useState<string | null>(null);
+  const [isSavingEngagement, setIsSavingEngagement] = useState(false);
+  const [isSavingHealth, setIsSavingHealth] = useState(false);
 
   useEffect(() => {
     if (fetchedProject) {
@@ -117,12 +141,107 @@ function RouteComponent() {
     }
   }, [fetchedProject, setProject]);
 
+  useEffect(() => {
+    if (!projectDetails) return;
+    setEngagementKind(projectDetails.kind as "project" | "managed_service");
+    setSupportLevel(
+      (projectDetails.supportLevel as "L1" | "L2" | "L3" | "") ?? "",
+    );
+    setServiceCalendarId(projectDetails.serviceCalendarId ?? "");
+    setHealth(
+      (projectDetails.health as "red" | "amber" | "green" | null) ?? "unset",
+    );
+  }, [projectDetails]);
+
   const { mutateAsync: updateProject } = useUpdateProject();
   const { mutateAsync: deleteProject, isPending: isDeleting } =
     useDeleteProject();
   const { canManageProjects, canDeleteProjects } = useWorkspacePermission();
   const canEdit = canManageProjects();
   const canDelete = canDeleteProjects();
+
+  const saveEngagement = useCallback(async () => {
+    if (!project?.id) return;
+    if (
+      engagementKind === "managed_service" &&
+      (!supportLevel || !serviceCalendarId)
+    ) {
+      setEngagementError(t("settings:projectGeneral.engagement.required"));
+      return;
+    }
+    setEngagementError(null);
+    setIsSavingEngagement(true);
+    try {
+      await updateProject({
+        id: project.id,
+        name: project.name,
+        icon: project.icon ?? "Layout",
+        slug: project.slug,
+        description: project.description ?? "",
+        kind: engagementKind,
+        supportLevel: supportLevel || null,
+        serviceCalendarId: serviceCalendarId || null,
+      });
+      await Promise.all([
+        queryClient.invalidateQueries({ queryKey: ["projects"] }),
+        queryClient.invalidateQueries({
+          queryKey: ["projects", workspace?.id],
+        }),
+        queryClient.invalidateQueries({
+          queryKey: ["projects", workspace?.id, project.id],
+        }),
+      ]);
+      toast.success(t("settings:projectGeneral.engagement.saved"));
+    } catch (error) {
+      setEngagementError(
+        error instanceof Error
+          ? error.message
+          : t("settings:projectGeneral.engagement.saveError"),
+      );
+    } finally {
+      setIsSavingEngagement(false);
+    }
+  }, [
+    project,
+    engagementKind,
+    supportLevel,
+    serviceCalendarId,
+    updateProject,
+    queryClient,
+    workspace?.id,
+    t,
+  ]);
+
+  const saveHealth = useCallback(
+    async (value: "red" | "amber" | "green" | "unset") => {
+      if (!project?.id) return;
+      const previousHealth = health;
+      setHealth(value);
+      setIsSavingHealth(true);
+      try {
+        await updateProjectHealth(project.id, value === "unset" ? null : value);
+        await Promise.all([
+          queryClient.invalidateQueries({ queryKey: ["projects"] }),
+          queryClient.invalidateQueries({
+            queryKey: ["projects", workspace?.id],
+          }),
+          queryClient.invalidateQueries({
+            queryKey: ["projects", workspace?.id, project.id],
+          }),
+        ]);
+      } catch (error) {
+        setHealth(previousHealth);
+        setEngagementError(
+          error instanceof Error
+            ? error.message
+            : t("settings:projectGeneral.engagement.saveError"),
+        );
+      } finally {
+        setIsSavingHealth(false);
+      }
+    },
+    [project?.id, health, queryClient, workspace?.id, t],
+  );
 
   const projectForm = useForm<ProjectFormValues>({
     resolver: standardSchemaResolver(projectSchema),
@@ -532,6 +651,184 @@ function RouteComponent() {
                 />
               </form>
             </Form>
+            <Separator />
+            <section
+              className="space-y-4"
+              aria-labelledby="project-engagement-settings"
+            >
+              <div className="space-y-1">
+                <h2
+                  id="project-engagement-settings"
+                  className="text-sm font-medium"
+                >
+                  {t("settings:projectGeneral.engagement.title")}
+                </h2>
+                <p className="text-xs text-muted-foreground">
+                  {t("settings:projectGeneral.engagement.description")}
+                </p>
+              </div>
+              <div className="grid gap-4 sm:grid-cols-2">
+                <div className="space-y-2 text-sm">
+                  <span>{t("settings:projectGeneral.engagement.kind")}</span>
+                  <Select
+                    value={engagementKind}
+                    onValueChange={(value) =>
+                      value &&
+                      setEngagementKind(value as "project" | "managed_service")
+                    }
+                  >
+                    <SelectTrigger
+                      aria-label={t("settings:projectGeneral.engagement.kind")}
+                      className="w-full"
+                      disabled={!canEdit}
+                    >
+                      <SelectValue>
+                        {engagementKind === "managed_service"
+                          ? t(
+                              "settings:projectGeneral.engagement.managedService",
+                            )
+                          : t("settings:projectGeneral.engagement.project")}
+                      </SelectValue>
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="project">
+                        {t("settings:projectGeneral.engagement.project")}
+                      </SelectItem>
+                      <SelectItem value="managed_service">
+                        {t("settings:projectGeneral.engagement.managedService")}
+                      </SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="space-y-2 text-sm">
+                  <span>{t("settings:projectGeneral.engagement.health")}</span>
+                  <Select
+                    value={health}
+                    disabled={!canEdit || isSavingHealth}
+                    onValueChange={(value) =>
+                      value &&
+                      void saveHealth(
+                        value as "red" | "amber" | "green" | "unset",
+                      )
+                    }
+                  >
+                    <SelectTrigger
+                      aria-label={t(
+                        "settings:projectGeneral.engagement.health",
+                      )}
+                      className="w-full"
+                    >
+                      <SelectValue>
+                        {t(`settings:projectGeneral.engagement.${health}`)}
+                      </SelectValue>
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="unset">
+                        {t("settings:projectGeneral.engagement.unset")}
+                      </SelectItem>
+                      <SelectItem value="red">
+                        {t("settings:projectGeneral.engagement.red")}
+                      </SelectItem>
+                      <SelectItem value="amber">
+                        {t("settings:projectGeneral.engagement.amber")}
+                      </SelectItem>
+                      <SelectItem value="green">
+                        {t("settings:projectGeneral.engagement.green")}
+                      </SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="space-y-2 text-sm">
+                  <span>
+                    {t("settings:projectGeneral.engagement.supportLevel")}
+                  </span>
+                  <Select
+                    value={supportLevel || "none"}
+                    disabled={!canEdit}
+                    onValueChange={(value) =>
+                      value &&
+                      setSupportLevel(
+                        value === "none" ? "" : (value as "L1" | "L2" | "L3"),
+                      )
+                    }
+                  >
+                    <SelectTrigger
+                      aria-label={t(
+                        "settings:projectGeneral.engagement.supportLevel",
+                      )}
+                      className="w-full"
+                    >
+                      <SelectValue>
+                        {supportLevel ||
+                          t("settings:projectGeneral.engagement.none")}
+                      </SelectValue>
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="none">
+                        {t("settings:projectGeneral.engagement.none")}
+                      </SelectItem>
+                      <SelectItem value="L1">L1</SelectItem>
+                      <SelectItem value="L2">L2</SelectItem>
+                      <SelectItem value="L3">L3</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="space-y-2 text-sm">
+                  <span>
+                    {t("settings:projectGeneral.engagement.serviceCalendar")}
+                  </span>
+                  <Select
+                    value={serviceCalendarId || "none"}
+                    disabled={!canEdit || !calendarPage}
+                    onValueChange={(value) =>
+                      value &&
+                      setServiceCalendarId(value === "none" ? "" : value)
+                    }
+                  >
+                    <SelectTrigger
+                      aria-label={t(
+                        "settings:projectGeneral.engagement.serviceCalendar",
+                      )}
+                      className="w-full"
+                    >
+                      <SelectValue
+                        placeholder={t(
+                          "settings:projectGeneral.engagement.selectCalendar",
+                        )}
+                      >
+                        {calendarPage?.data.find(
+                          (calendar) => calendar.id === serviceCalendarId,
+                        )?.name ?? t("settings:projectGeneral.engagement.none")}
+                      </SelectValue>
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="none">
+                        {t("settings:projectGeneral.engagement.none")}
+                      </SelectItem>
+                      {calendarPage?.data.map((calendar) => (
+                        <SelectItem key={calendar.id} value={calendar.id}>
+                          {calendar.name}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+              </div>
+              {engagementError ? (
+                <p role="alert" className="text-sm text-destructive">
+                  {engagementError}
+                </p>
+              ) : null}
+              <Button
+                type="button"
+                disabled={!canEdit || isSavingEngagement}
+                onClick={() => void saveEngagement()}
+              >
+                {isSavingEngagement
+                  ? t("settings:projectGeneral.engagement.saving")
+                  : t("settings:projectGeneral.engagement.save")}
+              </Button>
+            </section>
             <Separator />
             <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between sm:gap-4">
               <div className="space-y-0.5">

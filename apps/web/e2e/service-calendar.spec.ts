@@ -337,6 +337,43 @@ async function setupCalendarPage(page: Page): Promise<CalendarPageFixture> {
       return;
     }
 
+    if (request.method() === "GET" && path.endsWith("/usage")) {
+      await route.fulfill({
+        status: 200,
+        contentType: "application/json",
+        body: JSON.stringify({
+          calendarId: path.split("/").at(-2),
+          counts: {
+            projects: 0,
+            slaPolicyVersions: 0,
+            currentSlaPolicies: 0,
+            workItems: 0,
+          },
+        }),
+      });
+      return;
+    }
+
+    if (
+      request.method() === "DELETE" &&
+      path === `/api/service-calendars/${savedCalendar.id}`
+    ) {
+      await route.fulfill({
+        status: 202,
+        contentType: "application/json",
+        body: JSON.stringify({
+          pendingActionId: "pending-calendar-delete-e2e",
+          action: "delete",
+          summary: { calendarId: savedCalendar.id, name: savedCalendar.name },
+          confirmation: "click",
+          expiresAt: "2026-10-05T12:15:00.000Z",
+          approveUrl:
+            "/api/me/pending-actions/pending-calendar-delete-e2e/approve",
+        }),
+      });
+      return;
+    }
+
     if (
       request.method() === "GET" &&
       (path === `/api/service-calendars/${savedCalendar.id}` ||
@@ -549,6 +586,7 @@ test("calendar list and editor preserve URL state and confirm manual changes", a
   const draggableWindow = page.getByRole("button", {
     name: /Move Monday window 1 from 09:00 to 17:00/,
   });
+  await draggableWindow.scrollIntoViewIfNeeded();
   const dragBox = await draggableWindow.boundingBox();
   expect(dragBox).not.toBeNull();
   if (!dragBox) throw new Error("Calendar window drag handle has no bounds");
@@ -582,8 +620,11 @@ test("calendar list and editor preserve URL state and confirm manual changes", a
     name: "Confirm calendar timezone change",
   });
   await expect(timezoneDialog).toBeVisible();
+  await expect(timezoneDialog.getByText(/calendar usage panel/i)).toBeVisible();
   await expect(
-    timezoneDialog.getByText(/affected open-item count is not available yet/i),
+    page.getByText(
+      "0 projects; 0 current policies across 0 versions; 0 work items.",
+    ),
   ).toBeVisible();
   expect(fixture.patchPayload).toBeUndefined();
   await expectNoSeriousAxeViolations(page);
@@ -601,6 +642,20 @@ test("calendar list and editor preserve URL state and confirm manual changes", a
   });
 
   await expectNoSeriousAxeViolations(page);
+});
+
+test("calendar usage gates the pending-action deletion request", async ({
+  page,
+}) => {
+  await setupCalendarPage(page);
+  await page.goto(`/agent/settings/calendars/${calendarId}`);
+  await expect(
+    page.getByText(
+      "0 projects; 0 current policies across 0 versions; 0 work items.",
+    ),
+  ).toBeVisible();
+  await page.getByRole("button", { name: "Request deletion" }).click();
+  await expect(page).toHaveURL(/pending-actions\/pending-calendar-delete-e2e/);
 });
 
 test("calendar creation supports keyboard input and read-only access", async ({
