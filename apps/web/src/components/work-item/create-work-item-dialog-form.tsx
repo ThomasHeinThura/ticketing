@@ -4,10 +4,7 @@ import {
   AlertDescription,
   AlertTitle,
   Button,
-  DialogDescription,
   DialogFooter,
-  DialogHeader,
-  DialogTitle,
   Field,
   FieldDescription,
   FieldLabel,
@@ -156,12 +153,6 @@ function CreateWorkItemDialogForm({
 
   return (
     <>
-      <DialogHeader>
-        <DialogTitle>{t("workItems:create.title")}</DialogTitle>
-        <DialogDescription>
-          {t("workItems:create.description")}
-        </DialogDescription>
-      </DialogHeader>
       <form onSubmit={handleSubmit} className="flex flex-col gap-4" noValidate>
         <Field>
           <FieldLabel htmlFor="create-work-item-type">

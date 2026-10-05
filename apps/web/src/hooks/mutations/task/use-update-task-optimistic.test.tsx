@@ -33,6 +33,16 @@ const task: Task = {
   projectId: "project-1",
 };
 
+function deferred<T>() {
+  let resolve!: (value: T) => void;
+  let reject!: (error: Error) => void;
+  const promise = new Promise<T>((resolvePromise, rejectPromise) => {
+    resolve = resolvePromise;
+    reject = rejectPromise;
+  });
+  return { promise, resolve, reject };
+}
+
 function setup() {
   const queryClient = new QueryClient({
     defaultOptions: {
@@ -153,6 +163,169 @@ describe("optimistic legacy task updates", () => {
     expect(queryClient.getQueryData<Task>(["task", task.id])?.status).toBe(
       "done",
     );
+  });
+
+  it("restores the confirmed status when two overlapping status writes fail", async () => {
+    const first = deferred<Awaited<ReturnType<typeof updateTaskStatus>>>();
+    const second = deferred<Awaited<ReturnType<typeof updateTaskStatus>>>();
+    vi.mocked(updateTaskStatus)
+      .mockImplementationOnce(() => first.promise)
+      .mockImplementationOnce(() => second.promise);
+    const { result, queryClient } = setup();
+
+    let firstRequest!: Promise<unknown>;
+    act(() => {
+      firstRequest = result.current.status.mutateAsync({
+        ...task,
+        status: "in-progress",
+      });
+    });
+    await waitFor(() => expect(updateTaskStatus).toHaveBeenCalledTimes(1));
+
+    let secondRequest!: Promise<unknown>;
+    act(() => {
+      secondRequest = result.current.status.mutateAsync({
+        ...task,
+        status: "done",
+      });
+    });
+    await waitFor(() => expect(updateTaskStatus).toHaveBeenCalledTimes(2));
+    expect(queryClient.getQueryData<Task>(["task", task.id])?.status).toBe(
+      "done",
+    );
+
+    queryClient.setQueryData<Task>(["task", task.id], (current) =>
+      current
+        ? {
+            ...current,
+            title: "Fresh full task",
+            version: 9,
+            userId: "user-3",
+            assigneeId: "user-3",
+            assigneeName: "Third User",
+          }
+        : current,
+    );
+    first.reject(new Error("first status write failed"));
+    await expect(firstRequest).rejects.toThrow("first status write failed");
+    expect(queryClient.getQueryData<Task>(["task", task.id])?.status).toBe(
+      "done",
+    );
+
+    second.reject(new Error("second status write failed"));
+    await expect(secondRequest).rejects.toThrow("second status write failed");
+    expect(queryClient.getQueryData<Task>(["task", task.id])).toEqual({
+      ...task,
+      title: "Fresh full task",
+      version: 9,
+      userId: "user-3",
+      assigneeId: "user-3",
+      assigneeName: "Third User",
+    });
+    expect(queryClient.getQueryState(["task", task.id])?.isInvalidated).toBe(
+      true,
+    );
+    expect(queryClient.getQueryState(["task", task.id])?.fetchStatus).toBe(
+      "idle",
+    );
+  });
+
+  it("keeps the earlier pending status if the newer write fails first", async () => {
+    const first = deferred<Awaited<ReturnType<typeof updateTaskStatus>>>();
+    const second = deferred<Awaited<ReturnType<typeof updateTaskStatus>>>();
+    vi.mocked(updateTaskStatus)
+      .mockImplementationOnce(() => first.promise)
+      .mockImplementationOnce(() => second.promise);
+    const { result, queryClient } = setup();
+
+    const firstRequest = result.current.status.mutateAsync({
+      ...task,
+      status: "in-progress",
+    });
+    await waitFor(() => expect(updateTaskStatus).toHaveBeenCalledTimes(1));
+    const secondRequest = result.current.status.mutateAsync({
+      ...task,
+      status: "done",
+    });
+    await waitFor(() => expect(updateTaskStatus).toHaveBeenCalledTimes(2));
+
+    second.reject(new Error("newer status write failed"));
+    await expect(secondRequest).rejects.toThrow("newer status write failed");
+    expect(queryClient.getQueryData<Task>(["task", task.id])?.status).toBe(
+      "in-progress",
+    );
+
+    first.resolve({} as never);
+    await firstRequest;
+    expect(queryClient.getQueryData<Task>(["task", task.id])?.status).toBe(
+      "in-progress",
+    );
+  });
+
+  it("restores an earlier successful status when the newer write fails", async () => {
+    const first = deferred<Awaited<ReturnType<typeof updateTaskStatus>>>();
+    const second = deferred<Awaited<ReturnType<typeof updateTaskStatus>>>();
+    vi.mocked(updateTaskStatus)
+      .mockImplementationOnce(() => first.promise)
+      .mockImplementationOnce(() => second.promise);
+    const { result, queryClient } = setup();
+
+    const firstRequest = result.current.status.mutateAsync({
+      ...task,
+      status: "in-progress",
+    });
+    await waitFor(() => expect(updateTaskStatus).toHaveBeenCalledTimes(1));
+    const secondRequest = result.current.status.mutateAsync({
+      ...task,
+      status: "done",
+    });
+    await waitFor(() => expect(updateTaskStatus).toHaveBeenCalledTimes(2));
+
+    first.resolve({} as never);
+    await firstRequest;
+    expect(queryClient.getQueryData<Task>(["task", task.id])?.status).toBe(
+      "done",
+    );
+
+    second.reject(new Error("newer status write failed"));
+    await expect(secondRequest).rejects.toThrow("newer status write failed");
+    expect(queryClient.getQueryData<Task>(["task", task.id])?.status).toBe(
+      "in-progress",
+    );
+  });
+
+  it("restores confirmed assignee fields when overlapping assignment writes fail in reverse order", async () => {
+    const first = deferred<Awaited<ReturnType<typeof updateTaskAssignee>>>();
+    const second = deferred<Awaited<ReturnType<typeof updateTaskAssignee>>>();
+    vi.mocked(updateTaskAssignee)
+      .mockImplementationOnce(() => first.promise)
+      .mockImplementationOnce(() => second.promise);
+    const { result, queryClient } = setup();
+
+    const firstRequest = result.current.assignee.mutateAsync({
+      ...task,
+      userId: "user-1",
+      assigneeId: "user-1",
+      assigneeName: "First User",
+    });
+    await waitFor(() => expect(updateTaskAssignee).toHaveBeenCalledTimes(1));
+    const secondRequest = result.current.assignee.mutateAsync({
+      ...task,
+      userId: "user-2",
+      assigneeId: "user-2",
+      assigneeName: "Second User",
+    });
+    await waitFor(() => expect(updateTaskAssignee).toHaveBeenCalledTimes(2));
+
+    second.reject(new Error("newer assignment failed"));
+    await expect(secondRequest).rejects.toThrow("newer assignment failed");
+    expect(queryClient.getQueryData<Task>(["task", task.id])?.userId).toBe(
+      "user-1",
+    );
+
+    first.reject(new Error("older assignment failed"));
+    await expect(firstRequest).rejects.toThrow("older assignment failed");
+    expect(queryClient.getQueryData<Task>(["task", task.id])).toEqual(task);
   });
 
   it("cancels an in-flight detail read before applying an optimistic status", async () => {
