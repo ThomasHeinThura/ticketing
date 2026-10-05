@@ -1,3 +1,20 @@
+### 2026-10-05 · Prepare isolated P4 integration while P0 acceptance remains open
+
+Apply Thomas's explicit parallel full-implementation authorization to a separate P4
+integration branch based on the functionally reviewed P0 foundation. Preserve accepted
+main's first80migration entries and the88migration prefix already applied to development.
+Compose only the unaccepted suffix semantically, using the existing generation workflow;
+never select a whole competing schema/journal/snapshot as the winner. Do not apply that
+union to live development or claim protected/phase acceptance before its required gates.
+
+The bounded next deliverable combines God Mode user deactivation with its necessary
+server-owned pending-action approval/execution path and existing IP15 credential retirement.
+Register any required kind/operation in its canonical contract before implementation;
+revalidate execution-time authority, target, current typed email and session-only PA15,
+with transactional audit/outbox behavior. Existing suspension remains distinct. This is
+implementation sequencing under standing authorization, not a new authority or gate waiver.
+P0 final integration takes priority; afterward the independent P4 lane resumes.
+
 ### 2026-10-04 · Select bounded Users suspension input
 
 Under Thomas's standing authorization for recommended routine choices, the P4 suspension

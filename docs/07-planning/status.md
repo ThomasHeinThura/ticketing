@@ -1,3 +1,51 @@
+## Reviewed P0 deployed; complete performance correction composed — 2026-10-05 02:32 UTC
+
+Reviewed source **b58c965426752f19a25d287bfb9000c678b0dd98** is now running in
+OrbStack through Traefik at ticketing.localhost and portal.localhost. Actual trusted-TLS
+root/live/ready requests, admin sign-in and five authenticated endpoints return200;
+foreign-origin mutation returns403. Image f04a2d773633 runs as UID10001 with88migrations
+and shadow mode preserved. Existing data, secrets and certificates are retained with
+three encrypted backups and a prior-image rollback tag. The first backup attempt failed
+because it tried to execute tar in a stopped container; recovery restored the prior healthy
+image. The successful retry archives the stopped mounted volume through an isolated,
+read-only helper. Both actual attempts and the final authenticated receipt are retained.
+This is development delivery, not protected acceptance or phase completion.
+
+Three fresh independent Luna panels and a further independent full Sol security pass clear
+b58. Actual focused reviewer proofs cover ledger12tests, navigation3/sidebar5tests,
+board-dialog1test, checker49tests and routecoverage17tests. Reviewer C rebuilds both
+entries and verifies228contrast pairs. Original blocked866 reviews remain preserved.
+Published b58 full CI passes PostgreSQL136files1649tests, G4 and route E2E; fast CI
+passes12/13jobs, including web106files429tests/UI60files306tests. Review-template remains
+pending. G11 fails18/22: LCP2572/2500ms, state232.4/200, assignment206.6/200,
+board629/500. G8's sole failure is the missing new native-sidebar Linux baseline.
+These failures are actual acceptance blockers, not attributed to assumed runner variation.
+
+Complete status/assignee source2a5a811d (report31318b75), native-sidebar baseline7007c0d0
+and board/list/LCP source733709d6 are normally composed at1357a920. Status/assignee
+focused4files24tests and scoped timing2/2 pass (76.2/77.7ms); board/list/LCP focused
+5files11tests and scoped browser6/6 pass (board280.7ms/list187.5ms/LCP2324ms plus keyboard,
+geometry and drag). Budgets/data volumes remain unchanged. The native-sidebar snapshot
+is generated with pinned Linux Playwright from reviewed b58; its missing-baseline author
+run exits1 as expected, not a visual-gate pass. Final G3 checkpoint0be0613f completes the named-export lazy mapping and exact source
+occurrence alignment. G3 tests50/50, check:tokens/both production builds/228pairs in both
+themes, web types, task mutation14/14 and scoped browser6/6 pass. The browser set exercises
+full-task/version freshness, status/assignee,200-card create/keyboard drag, lazy-create
+loading/failure recovery and500-row/1000-link zoom geometry. A final formatter-only checker
+normalization is followed by checker/token reruns; product source is unchanged after browser
+proof. Agent manifest620b8c975d1560aad3a81e64fd9841b3216c5ebf390fca34cef2a4c959738cd0;
+portal06f3b04506b2a1d9fd6e81147e17d275e7317a8d9d4be8a41a1750e548f3a2fe. One complete
+publication/current bulk delta review and hosted acceptance follow. These scoped results do not replace G11 or G8.
+
+An actual Oct5 runtime capture at b58 passes image/health/auth/CAS/metrics checks and
+reconciles129requests/28eligible sources/44rows127occurrences with0unexplained/uncovered
+outcomes and0cleanup errors. Together with Oct4 this remains two partial representative
+UTC authorization dates; Oct6 is still required. No all-route/full-day/72-hour claim.
+Acceptedmain8ddb remains unchanged. Protected acceptance/G11 protection, cutover and the
+additional independent Sol phase finalizer remain open. Isolated P4 deactivation and its
+bounded pending-action execution dependency may proceed after the P0 integration window;
+no P4 source or migration union is yet claimed complete.
+
 ## P0 full rendering/cache composition verified; final publication next — 2026-10-05 01:22 UTC
 
 Root normally composes complete cache/dialog source0d2127 and complete sidebar/navigation/
@@ -3635,23 +3683,23 @@ kaneo's inherited routes present and each carrying a policy**, P0 security revie
 
 ### P0 #8 — actual three-date shadow evidence and cutover
 
-The latest dated snapshots supersede the earlier seven-day requirement: Thomas selected
-three actual clean UTC observation dates for development/UAT. October 4 has one partial
-source-bound representative capture, covering 28/28 eligible sources with reconciled
-outcomes. The remaining October 5/6 observations have quiet follow-ups scheduled. No
-backfilled date, full-day, 72-hour or all-route claim is made. Current-head review, eligible
-strict cutover and the additional fresh Sol phase finalizer remain required.
+Thomas selected three actual clean UTC observation dates for development/UAT. Actual
+October4 and October5 source-bound representative captures reconcile outcomes across
+28/28 eligible sources. October6 remains scheduled. These are partial captures, not
+backfilled dates, full-day,72-hour or all-route proof. Current-head review, eligible strict
+cutover and the additional fresh Sol phase finalizer remain required.
 
 ### P0 #10 — hosted performance and protected acceptance
 
-G4/G8 and source-bound G3 pass on the latest published P0 batch in PR #579. Its hosted
-G11 run passes21/22; list, LCP, state and board now pass. Create fails before timing when
-the lazy dialog wrapper does not resolve within the unchanged5000ms visibility check.
-Complete the structural wrapper/direct-click correction before the next current hosted
-run and independent bulk review. Local passes remain source-bound author evidence. G11 must pass and become a required protected context
-before acceptance; the ruleset currently retains 17 required contexts and zero bypass actors.
-See the newest dated snapshot for exact heads, counts and retained evidence. No phase
-completion or performance threshold waiver is claimed.
+Reviewed b58 is deployed for development. Its actual hosted G11 result is18/22: LCP,
+state, assignment and board fail their unchanged budgets. G8 fails only the missing new
+native-sidebar Linux snapshot. Complete source corrections and that snapshot are now
+composed locally; final source-bound contrast/build/browser verification precedes the
+next publication, bulk delta reviews and hosted acceptance. G4/route E2E/PostgreSQL pass
+at b58. Local scoped passes are author evidence, not hosted acceptance. G11 must pass and
+become a required protected context before acceptance; the ruleset retains17 required
+contexts and zero bypass actors. See the newest dated snapshot for exact heads/counts.
+No phase completion or threshold waiver is claimed.
 
 ### P1 #447 — saved-view candidate needs a current base and gates
 
