@@ -1,3 +1,28 @@
+## Complete PostgreSQL correction composed; P1 search implementation active — 2026-10-05
+
+Complete correction author1279f80e350bd66c60f74e9eb4050b7a93ac6f8f is composed into the
+unaccepted integration branch. It restores acceptedP0 capability-map membership/shadow
+semantics, fixes fixture reset/cutover ordering and strict-source-list drift, updates declared
+schema/capability expectations and isolates boot orchestration from preceding fixture residue.
+The earlier full failure and first corrected full run remain retained: first correction passes
+138/142files and1700tests with6failures; focused final correction passes4files/48tests,
+API typecheck andBiome. The one final fullPG18run is active against the owned private test
+resource; no gate or assertion is waived. Current-head ordinary/security review, CI and image
+acceptance remain required for the composed correction, not inherited from5e's old verdict.
+
+A Luna lane now implements P1 structuredwork-item search/#444 through API, parameterized
+repository reads, declared policy, filterdocument/text round-trip, client/worklist URL state
+and dedicated tests. Closed v1 transport/grammar/scope limits are written before source;
+unavailable label/SLA/customfield/report foundations are explicit dependencies, not silently
+ignored or claimed as complete. Its branch is separate from this integration candidate.
+
+The next source-grounded P2 batch completes project calendar bindings/#437 and real calendar
+usage/CAL-9pending-action deletion protection when capacity is free. QuerybucketB remains
+paused for capacity; bucketA source is pushed and awaits SQL/whole-refactor acceptance. P3
+portal integration has real P2 dependencies and real-Entra acceptance remains unexercised.
+P0 actual-date observation does not block these implementations or readiness work; P1/P2
+may reach their own accepted integration alongside P0 when genuine phase gates clear.
+
 ## P1–P4 continue during P0 observation wait — 2026-10-05
 
 Thomas explicitly directs continued parallel P1–P4 execution and permits P1/P2 integration
