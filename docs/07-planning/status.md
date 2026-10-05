@@ -1,3 +1,36 @@
+## P0 protected acceptance completed; phase remains open — 2026-10-05 11:31 UTC
+
+Protected PR #579 merged as `3096cb044bdf6ae98488bfc385f532fa6386343a` after
+all 18 intended checks passed at published `f10f9a8fd383044926136cb0c233888e087d2ef9`.
+Reviewed shipping source is `e26db50e23b2d685c7277c63bc9ee71a8076fcee`; only its
+independent review notes followed. Required Luna panels/control delta and independent Sol
+clearance are committed. The original blocked reports and actual failures remain retained.
+
+Hosted full run [37300050276](https://github.com/ThomasHeinThura/ticketing/actions/runs/37300050276)
+passes all five jobs: G4, G8, route E2E, PostgreSQL and G11 **22/22**. G11 actual medians:
+500-row worklist381.0ms, LCP2452ms, state127.4ms, assignment126.9ms and200-card board475.9ms,
+within unchanged budgets/workloads. PostgreSQL136files1649tests5tasks passes. Corrected
+PR-body fast run37302827641 closes the stale-body check; all required contexts are green.
+Ruleset22365005 now includes `performance - budgets (G11)` as its18th required context,
+with zero bypass actors and all previous settings preserved. Optional GitHub AI review
+fails with an actual monthly-quota error; it produced no completed review and is not a
+substitute for the completed independent model reviews.
+
+Reviewed-e26 DEV is deployed through OrbStack/Traefik on ticketing.localhost and
+portal.localhost. Both HTTPS entry/live/ready answer200; saved-admin login and five
+protected endpoints200, foreign-Origin mutation403, UID10001 and88migrations verified.
+Encrypted consistent backups/rollback and existing data/secrets/TLS/shadow mode preserved.
+Actual private receipt: `2026-10-05/p0-dev-reviewed-e26db50e/deployment-receipt.json`.
+Hosted controlled browser journeys pass; the last native Chrome interactive attempt remains
+blocked by the extension-control conflict and is not relabeled successful.
+
+P0 #10 hosted/protected acceptance is closed by actual results. **P0 phase is not complete:**
+October4/5 representative partial UTC buckets qualify; October6, eligible reviewed strict
+cutover and the additional fresh independent Sol phase finalizer remain. Three dates do
+not prove72hours/full-day/all185route coverage or authorize enforcement by elapsed time.
+P4 full Users/PA15 recovery/localization correction continues on a separate branch;
+root composes its frozen implementation against accepted main before bulk review.
+
 ## Complete public-artifact scanner correction frozen — 2026-10-05 10:51 UTC
 
 Pushed author164f2ee735b3f83417387740f6fe96647de61ef1 corrects the sole369Sol
@@ -3818,17 +3851,13 @@ October4 and October5 source-bound representative captures reconcile outcomes ac
 backfilled dates, full-day,72-hour or all-route proof. Current-head review, eligible strict
 cutover and the additional fresh Sol phase finalizer remain required.
 
-### P0 #10 — hosted performance and protected acceptance
+### P0 #10 — closed: hosted performance and protected acceptance
 
-Reviewed b58 remains deployed for development. Latest published af76 hosted G11 is21/22:
-only board517/500ms fails; list LCP now passes. G8/G4/routeE2E/PostgreSQL pass.
-Complete board source and its source-bound contrast/accessibility correction pass local
-293.3ms scope and228pair checks with independent ordinary clearance. Sol369 finds only
-a new public-review quote scanner finding; complete narrow artifact correction164f is
-pushed and its232commit scanner range passes0findings. Current composed-head ordinary
-delta/Sol review and hosted acceptance remain required. G11 must pass and become a
-required protected context before acceptance; last verified ruleset retains17required
-contexts and zero bypass actors. No phase completion or threshold waiver is claimed.
+Protected PR #579 merged as3096cb04 after all18required checks passed, including hosted
+G11 22/22 and exact-source independent Luna/Sol review. G11 is now required in active
+ruleset22365005 with zero bypass actors; reviewed-e26 DEV is deployed/verified.
+Earlier dated failed runs/reviews remain historical evidence. P0 #8 observation/cutover
+and the additional phase finalizer remain open; no phase completion is claimed.
 
 ### P1 #447 — saved-view candidate needs a current base and gates
 

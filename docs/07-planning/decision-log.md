@@ -1,3 +1,23 @@
+### 2026-10-05 · Activate G11 protection after real hosted acceptance
+
+**Decision:** add the existing exact `performance - budgets (G11)` context to active
+protect-main ruleset22365005 after publishedf10's hosted full run37300050276 passes22/22
+and the corrected PR-body fast run37302827641 passes every required context. Retain all
+17 previous checks, strict policy and zero bypass actors. No gate, review tier or
+performance budget is waived. Protected PR #579 then merges as3096cb04.
+
+**Evidence:** private before/after ruleset and exact-head preflight receipts under
+`2026-10-05/p0-performance-takeover-500c491b/`; committed exact-source Luna/Sol notes in
+`security-reviews/579-p0-e26db50e-*.md`; actual hosted job results. The earlier G11 failure
+history remains retained. DEV delivery is reviewed-e26 with preserved data and rollback.
+
+**Boundary:** operational protection activation follows the standing authorized P0
+acceptance plan. It does not claim phase completion or authorize strict enforcement,
+production deployment, a calendar backfill or bypass. October6 qualifying observation,
+eligible cutover and the additional fresh Sol phase finalizer remain required.
+
+**Recorded:** orchestrator, 2026-10-05 11:31 UTC.
+
 ### 2026-10-05 · Suppress the historical public TOTP test vector by exact fingerprint
 
 Add only `69e61dd56c18bdbb90149f470d9a6615a9d28272:apps/web/e2e/mfa-csrf-journey.spec.ts:generic-api-key:13` to `.gitleaksignore`. The finding is in an already-pushed historical commit; its value is an `otpauth` test URI whose Base32 secret decodes to the published RFC 6238 test-vector bytes. The current source still contains the same public deterministic test-vector literal at `apps/web/e2e/mfa-csrf-journey.spec.ts:16`; the historical commit records it at line 13. The test uses the RFC timestamp `59000` and asserts the published vector output before it provisions the test app. Preserve history and suppress this finding by its exact fingerprint only; do not ignore the path or rule.
