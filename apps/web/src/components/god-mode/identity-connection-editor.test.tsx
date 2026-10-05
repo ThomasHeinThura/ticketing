@@ -1,3 +1,4 @@
+import enUS from "@i18n/en-US.json";
 import { cleanup, fireEvent, render, screen } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
@@ -31,6 +32,20 @@ vi.mock("react-i18next", () => ({
       };
       const fullKey = key.includes(":") ? key : `${namespace}.${key}`;
       let value = values[fullKey] ?? key;
+      if (!values[fullKey]) {
+        const [catalogue, path] =
+          fullKey.split(":").length === 2
+            ? fullKey.split(":")
+            : [namespace, key];
+        const translated = path
+          .split(".")
+          .reduce<unknown>(
+            (current, part) =>
+              (current as Record<string, unknown> | undefined)?.[part],
+            (enUS as Record<string, unknown>)[catalogue],
+          );
+        if (typeof translated === "string") value = translated;
+      }
       for (const [name, replacement] of Object.entries(options ?? {})) {
         value = value.replaceAll(`{{${name}}}`, String(replacement));
       }

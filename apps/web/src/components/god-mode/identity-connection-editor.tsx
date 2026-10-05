@@ -308,7 +308,7 @@ export function IdentityConnectionEditor({
       >
         <Alert>
           <AlertTitle id="identity-connection-created-heading">
-            Identity connection created
+            {t("editor.created")}
           </AlertTitle>
           <AlertDescription>
             {t("editor.createdDescription", {
@@ -323,7 +323,7 @@ export function IdentityConnectionEditor({
             />
           }
         >
-          Open connection settings
+          {t("editor.openSettings")}
         </Button>
       </section>
     );
@@ -357,7 +357,7 @@ export function IdentityConnectionEditor({
               version: connection?.configVersion,
             })}{" "}
             <a href={routes.identityConnectionSettings.build({ id: savedId })}>
-              Open its settings
+              {t("editor.openSettings")}
             </a>
           </AlertDescription>
         </Alert>
@@ -403,7 +403,7 @@ export function IdentityConnectionEditor({
         {draft.portalScope === "customer" ? (
           <div className="grid gap-1 text-sm">
             <Label htmlFor="identity-connection-organisation">
-              Organisation ID
+              {t("editor.organisationId")}
             </Label>
             <Input
               id="identity-connection-organisation"
@@ -416,7 +416,7 @@ export function IdentityConnectionEditor({
         ) : (
           <div className="grid gap-1 text-sm">
             <Label htmlFor="identity-connection-workspace">
-              Default internal workspace ID
+              {t("editor.workspaceId")}
             </Label>
             <Input
               id="identity-connection-workspace"
@@ -441,7 +441,7 @@ export function IdentityConnectionEditor({
         </div>
         <div className="grid gap-1 text-sm">
           <Label htmlFor="identity-connection-client">
-            Application client ID
+            {t("editor.clientId")}
           </Label>
           <Input
             id="identity-connection-client"
@@ -467,7 +467,7 @@ export function IdentityConnectionEditor({
         </div>
         <div className="grid gap-1 text-sm md:col-span-2">
           <Label htmlFor="identity-connection-scopes">
-            Requested OIDC scopes (comma or newline separated)
+            {t("editor.scopes")}
           </Label>
           <Input
             id="identity-connection-scopes"
@@ -477,7 +477,7 @@ export function IdentityConnectionEditor({
         </div>
         <div className="grid gap-1 text-sm md:col-span-2">
           <Label htmlFor="identity-connection-domains">
-            Allowed email domains (one per line)
+            {t("editor.domains")}
           </Label>
           <Input
             id="identity-connection-domains"
@@ -487,7 +487,7 @@ export function IdentityConnectionEditor({
         </div>
         <fieldset className="grid gap-3 rounded-md border p-4 md:col-span-2">
           <legend className="px-1 text-sm font-medium">
-            Just-in-time access
+            {t("editor.jitAccess")}
           </legend>
           <div className="flex items-center gap-2 text-sm">
             <Checkbox
@@ -497,11 +497,11 @@ export function IdentityConnectionEditor({
                 update("jitEnabled", checked === true)
               }
             />
-            Enable JIT provisioning
+            {t("editor.enableJit")}
           </div>
           <div className="grid gap-1 text-sm">
             <Label htmlFor="identity-connection-role">
-              Default role ID (optional while JIT is disabled)
+              {t("editor.defaultRole")}
             </Label>
             <Input
               id="identity-connection-role"
@@ -511,7 +511,7 @@ export function IdentityConnectionEditor({
           </div>
           <div className="grid gap-1 text-sm">
             <Label htmlFor="identity-connection-app-role">
-              Required Entra application role
+              {t("editor.requiredAppRole")}
             </Label>
             <Input
               id="identity-connection-app-role"
@@ -525,7 +525,7 @@ export function IdentityConnectionEditor({
           {draft.portalScope === "agent" ? (
             <div className="grid gap-1 text-sm">
               <Label htmlFor="identity-connection-max-rank">
-                Maximum role rank
+                {t("editor.maxRoleRank")}
               </Label>
               <Input
                 id="identity-connection-max-rank"
@@ -546,15 +546,15 @@ export function IdentityConnectionEditor({
               checked={draft.enabled}
               onCheckedChange={(checked) => update("enabled", checked === true)}
             />
-            Enable this connection
+            {t("editor.enableConnection")}
           </div>
         ) : null}
         <fieldset className="grid gap-3 rounded-md border p-4 md:col-span-2">
           <legend className="px-1 text-sm font-medium">
-            Confirm this change
+            {t("editor.confirmChange")}
           </legend>
           <Label htmlFor="identity-connection-auth-method">
-            Fresh authentication method
+            {t("editor.authMethod")}
           </Label>
           <Select
             value={authMethod}
@@ -574,7 +574,7 @@ export function IdentityConnectionEditor({
             </SelectContent>
           </Select>
           <Label htmlFor="identity-connection-auth-value">
-            Fresh authentication
+            {t("editor.freshAuth")}
           </Label>
           <Input
             id="identity-connection-auth-value"

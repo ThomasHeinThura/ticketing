@@ -52,7 +52,7 @@ function settings(
 
 test("God Mode SCIM settings and token lifecycle use distinct bound step-up operations", async ({
   page,
-}) => {
+}, testInfo) => {
   let savedRequest: Record<string, unknown> | null = null;
   let rotateRequest: Record<string, unknown> | null = null;
   let enableRequest: Record<string, unknown> | null = null;
@@ -191,6 +191,18 @@ test("God Mode SCIM settings and token lifecycle use distinct bound step-up oper
       body: JSON.stringify({ policy: { mode: "off", requiredRoleId: null } }),
     }),
   );
+  await page.route(
+    `**/api/instance/identity-connections/${connectionId}/events**`,
+    (route) =>
+      route.fulfill({
+        status: 200,
+        contentType: "application/json",
+        body: JSON.stringify({
+          data: [],
+          page: { nextCursor: null, hasMore: false },
+        }),
+      }),
+  );
   await page.route("**/api/instance/identity-connections", (route) =>
     route.fulfill({
       status: 200,
@@ -202,9 +214,28 @@ test("God Mode SCIM settings and token lifecycle use distinct bound step-up oper
             providerType: "entra",
             portalScope: "agent",
             organisationId: null,
+            defaultWorkspaceId: null,
             displayName: "Staff Entra",
+            tenantId: "11223344-5566-7788-9900-aabbccddeeff",
+            clientId: "22334455-6677-8899-aabb-ccddeeff0011",
+            clientSecretConfigured: true,
+            redirectUri:
+              "https://portal.example.test/api/auth/oauth2/callback/entra-agent",
+            scopes: ["openid", "profile", "email"],
+            claimMapping: { version: 1, displayName: "name" },
+            claimMappingState: "valid",
+            domainBindings: [],
+            jitPolicy: {
+              enabled: false,
+              default_role_id: null,
+              required_entra_app_role: "TaskDesk.User",
+            },
+            maxRoleRank: 10,
+            mfaUpstreamMode: "off",
             enabled: true,
             configVersion: 1,
+            healthState: "healthy",
+            healthCheckedAt: "2026-10-05T00:00:00.000Z",
           },
         ],
       }),
@@ -359,10 +390,20 @@ test("God Mode SCIM settings and token lifecycle use distinct bound step-up oper
   await expect(
     page.getByRole("heading", { name: "Identity connections" }),
   ).toBeVisible();
-  await page.getByRole("link", { name: "SCIM settings" }).click();
+  await page.getByRole("link", { name: "Manage settings" }).click();
   await expect(
     page.getByRole("heading", { name: "SCIM configuration" }),
   ).toBeVisible();
+  await page.screenshot({
+    path: testInfo.outputPath("scim-configuration.png"),
+    fullPage: true,
+  });
+  await page
+    .getByRole("heading", { name: "SCIM configuration" })
+    .evaluate((heading) => heading.scrollIntoView({ block: "start" }));
+  await page.screenshot({
+    path: testInfo.outputPath("scim-configuration-viewport.png"),
+  });
 
   await page.getByRole("checkbox", { name: "title" }).click();
   await page.getByRole("checkbox", { name: "Groups" }).click();

@@ -14,6 +14,7 @@ import {
   SelectValue,
 } from "@taskdesk/ui";
 import { useEffect, useState } from "react";
+import { useTranslation } from "react-i18next";
 import { getApiUrl } from "@/fetchers/get-api-url";
 
 type Mapping = {
@@ -149,6 +150,7 @@ export function ScimGroupMappingsSettings({
   mappings: Mapping[];
   onReload: () => void;
 }) {
+  const { t } = useTranslation("identityConnections");
   const basePath = `instance/identity-connections/${encodeURIComponent(connectionId)}/scim`;
   const optionsPath = `${basePath}/mapping-options`;
   const [options, setOptions] = useState<MappingOptions | null>(null);
@@ -163,9 +165,21 @@ export function ScimGroupMappingsSettings({
   const [code, setCode] = useState("");
   const [loadError, setLoadError] = useState<string | null>(null);
   const [saveError, setSaveError] = useState<string | null>(null);
+  const [canReloadSaveError, setCanReloadSaveError] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   const [isLoadingRoles, setIsLoadingRoles] = useState(false);
+  const [optionsReloadKey, setOptionsReloadKey] = useState(0);
 
+  function reloadLatest() {
+    setOptions(null);
+    setTargets([]);
+    setLoadError(null);
+    setOptionsReloadKey((current) => current + 1);
+    onReload();
+  }
+
+  // The retry counter intentionally restarts this request after its URL is unchanged.
+  // biome-ignore lint/correctness/useExhaustiveDependencies: retry counter is the fetch trigger
   useEffect(() => {
     let active = true;
     void readTargetOptions(optionsPath)
@@ -176,13 +190,12 @@ export function ScimGroupMappingsSettings({
         setLoadError(null);
       })
       .catch(() => {
-        if (active)
-          setLoadError("Eligible SCIM mapping targets could not be loaded.");
+        if (active) setLoadError(t("scim.group.loadFailed"));
       });
     return () => {
       active = false;
     };
-  }, [optionsPath]);
+  }, [optionsPath, optionsReloadKey, t]);
 
   useEffect(() => {
     if (!draft.scopeId || options?.kind !== "agent_targets") {
@@ -200,9 +213,7 @@ export function ScimGroupMappingsSettings({
       .catch(() => {
         if (active) {
           setRoles([]);
-          setLoadError(
-            "Eligible roles for this workspace could not be loaded.",
-          );
+          setLoadError(t("scim.group.rolesLoadFailed"));
         }
       })
       .finally(() => {
@@ -211,7 +222,7 @@ export function ScimGroupMappingsSettings({
     return () => {
       active = false;
     };
-  }, [draft.scopeId, options?.kind, optionsPath]);
+  }, [draft.scopeId, options?.kind, optionsPath, t]);
 
   const customer = options?.kind === "customer" ? options : null;
   function edit(mapping: Mapping) {
@@ -224,6 +235,7 @@ export function ScimGroupMappingsSettings({
       enabled: mapping.enabled,
     });
     setSaveError(null);
+    setCanReloadSaveError(false);
   }
 
   function resetDraft() {
@@ -232,6 +244,7 @@ export function ScimGroupMappingsSettings({
     setPassword("");
     setCode("");
     setSaveError(null);
+    setCanReloadSaveError(false);
   }
 
   async function save(event: React.FormEvent<HTMLFormElement>) {
@@ -242,11 +255,11 @@ export function ScimGroupMappingsSettings({
     const selectedScope = customer ? "organisation" : "workspace";
     const selectedScopeId = customer?.target?.id ?? draft.scopeId;
     if (!selectedRole || !selectedScopeId) {
-      setSaveError("Choose an eligible target and role before saving.");
+      setSaveError(t("scim.group.errors.targetRequired"));
       return;
     }
     if (!editingId && !draft.externalGroupId.trim()) {
-      setSaveError("Enter the provider's external group identifier.");
+      setSaveError(t("scim.group.errors.externalIdRequired"));
       return;
     }
     const request = editingId
@@ -272,11 +285,12 @@ export function ScimGroupMappingsSettings({
           enabled: draft.enabled,
         };
     if (authMethod === "password" ? !password : !code) {
-      setSaveError("Enter the selected fresh authentication factor.");
+      setSaveError(t("scim.group.errors.factorRequired"));
       return;
     }
     setIsSaving(true);
     setSaveError(null);
+    setCanReloadSaveError(false);
     try {
       const binding = {
         kind: "operation" as const,
@@ -309,20 +323,19 @@ export function ScimGroupMappingsSettings({
       resetDraft();
       onReload();
     } catch (error) {
-      if (error instanceof RequestFailure && error.status === 409)
+      if (error instanceof RequestFailure && error.status === 409) {
         setSaveError(
           error.title.toLowerCase().includes("duplicate")
-            ? "That external group is already mapped for this connection."
-            : "SCIM settings changed in another session. Your draft is preserved; reload before retrying.",
+            ? t("scim.group.errors.duplicate")
+            : t("scim.group.errors.stale"),
         );
-      else if (error instanceof RequestFailure && error.status === 422)
-        setSaveError(
-          "The selected group mapping is no longer eligible. Reload the options and try again.",
-        );
-      else
-        setSaveError(
-          "The group mapping was not saved. Your draft is preserved; verify the latest settings and try again.",
-        );
+        setCanReloadSaveError(true);
+      } else if (error instanceof RequestFailure && error.status === 422) {
+        setSaveError(t("scim.group.errors.ineligible"));
+        setCanReloadSaveError(true);
+      } else {
+        setSaveError(t("scim.group.errors.saveFailed"));
+      }
       setPassword("");
       setCode("");
     } finally {
@@ -337,30 +350,31 @@ export function ScimGroupMappingsSettings({
     >
       <header className="space-y-1">
         <h3 className="font-semibold" id="scim-group-mappings-heading">
-          SCIM group mappings
+          {t("scim.group.title")}
         </h3>
         <p className="text-sm text-muted-foreground">
-          Map a provider group to one existing eligible role. Changes use the
-          connection's current version and are confirmed individually.
+          {t("scim.group.description")}
         </p>
       </header>
       {loadError ? (
         <Alert variant="error">
-          <AlertTitle>Mapping options unavailable</AlertTitle>
-          <AlertDescription>{loadError}</AlertDescription>
+          <AlertTitle>{t("scim.group.loadUnavailable")}</AlertTitle>
+          <AlertDescription>
+            {loadError}
+            <Button onClick={reloadLatest} type="button" variant="outline">
+              {t("scim.group.retry")}
+            </Button>
+          </AlertDescription>
         </Alert>
       ) : null}
       {!loadError && options === null ? (
-        <p role="status">Loading eligible mapping options…</p>
+        <p role="status">{t("scim.group.loading")}</p>
       ) : null}
       {options?.kind === "customer" && (!options.target || !options.role) ? (
-        <p role="status">
-          No eligible customer mapping target and role are available for this
-          connection.
-        </p>
+        <p role="status">{t("scim.group.customerUnavailable")}</p>
       ) : null}
       {mappings.length ? (
-        <ul aria-label="Configured SCIM group mappings" className="space-y-2">
+        <ul aria-label={t("scim.group.listLabel")} className="space-y-2">
           {mappings.map((mapping) => (
             <li
               className="flex flex-wrap items-center justify-between gap-3 rounded-md border p-3"
@@ -371,8 +385,11 @@ export function ScimGroupMappingsSettings({
                   {mapping.externalGroupNameSnapshot || mapping.externalGroupId}
                 </p>
                 <p className="text-sm text-muted-foreground">
-                  {mapping.externalGroupId} · role {mapping.roleId} ·{" "}
-                  {mapping.enabled ? "enabled" : "disabled"}
+                  {mapping.externalGroupId} · {t("scim.group.roleLabel")}{" "}
+                  {mapping.roleId} ·{" "}
+                  {mapping.enabled
+                    ? t("scim.group.enabled")
+                    : t("scim.group.disabled")}
                 </p>
               </div>
               <Button
@@ -381,24 +398,24 @@ export function ScimGroupMappingsSettings({
                 type="button"
                 variant="outline"
               >
-                Edit mapping
+                {t("scim.group.editAction")}
               </Button>
             </li>
           ))}
         </ul>
       ) : options ? (
-        <p>No SCIM group mappings are configured.</p>
+        <p>{t("scim.group.empty")}</p>
       ) : null}
       {options &&
       (options.kind !== "customer" || (options.target && options.role)) ? (
         <form className="space-y-4 rounded-md border p-4" onSubmit={save}>
           <h4 className="font-medium">
-            {editingId ? "Edit group mapping" : "Add group mapping"}
+            {editingId ? t("scim.group.editTitle") : t("scim.group.addTitle")}
           </h4>
           {!editingId ? (
             <div className="space-y-2">
               <Label htmlFor="scim-map-external-id">
-                External group identifier
+                {t("scim.group.externalId")}
               </Label>
               <Input
                 id="scim-map-external-id"
@@ -412,12 +429,12 @@ export function ScimGroupMappingsSettings({
             </div>
           ) : (
             <p className="text-sm">
-              External group identifier: {draft.externalGroupId}
+              {t("scim.group.externalId")}: {draft.externalGroupId}
             </p>
           )}
           <div className="space-y-2">
             <Label htmlFor="scim-map-display-name">
-              Display name (optional)
+              {t("scim.group.displayName")}
             </Label>
             <Input
               id="scim-map-display-name"
@@ -431,7 +448,9 @@ export function ScimGroupMappingsSettings({
           </div>
           {options.kind === "agent_targets" ? (
             <div className="space-y-2">
-              <Label htmlFor="scim-map-target">Internal workspace</Label>
+              <Label htmlFor="scim-map-target">
+                {t("scim.group.workspace")}
+              </Label>
               <Select
                 onValueChange={(value) =>
                   setDraft((v) => ({ ...v, scopeId: value ?? "", roleId: "" }))
@@ -439,7 +458,7 @@ export function ScimGroupMappingsSettings({
                 value={draft.scopeId}
               >
                 <SelectTrigger id="scim-map-target">
-                  <SelectValue placeholder="Choose a workspace" />
+                  <SelectValue placeholder={t("scim.group.chooseWorkspace")} />
                 </SelectTrigger>
                 <SelectContent>
                   {targets.map((target) => (
@@ -452,13 +471,17 @@ export function ScimGroupMappingsSettings({
             </div>
           ) : (
             <p className="text-sm">
-              Customer organisation: {customer?.target?.name}; role:{" "}
-              {customer?.role?.name}
+              {t("scim.group.customerOrganisation", {
+                target: customer?.target?.name,
+                role: customer?.role?.name,
+              })}
             </p>
           )}
           {options.kind === "agent_targets" ? (
             <div className="space-y-2">
-              <Label htmlFor="scim-map-role">Eligible role</Label>
+              <Label htmlFor="scim-map-role">
+                {t("scim.group.eligibleRole")}
+              </Label>
               <Select
                 disabled={!draft.scopeId || isLoadingRoles}
                 onValueChange={(value) =>
@@ -470,15 +493,15 @@ export function ScimGroupMappingsSettings({
                   <SelectValue
                     placeholder={
                       isLoadingRoles
-                        ? "Loading eligible roles"
-                        : "Choose a role"
+                        ? t("scim.group.loadingRoles")
+                        : t("scim.group.chooseRole")
                     }
                   />
                 </SelectTrigger>
                 <SelectContent>
                   {roles.map((role) => (
                     <SelectItem key={role.id} value={role.id}>
-                      {role.name} · rank {role.rank}
+                      {role.name} · {t("scim.group.rank", { rank: role.rank })}
                     </SelectItem>
                   ))}
                 </SelectContent>
@@ -494,11 +517,15 @@ export function ScimGroupMappingsSettings({
                   setDraft((v) => ({ ...v, enabled: checked === true }))
                 }
               />
-              <Label htmlFor="scim-map-enabled">Mapping enabled</Label>
+              <Label htmlFor="scim-map-enabled">
+                {t("scim.group.mappingEnabled")}
+              </Label>
             </div>
           ) : null}
           <div className="space-y-2">
-            <Label htmlFor="scim-map-proof-method">Verification method</Label>
+            <Label htmlFor="scim-map-proof-method">
+              {t("scim.common.verificationMethod")}
+            </Label>
             <Select
               onValueChange={(value) => {
                 if (
@@ -517,17 +544,23 @@ export function ScimGroupMappingsSettings({
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="password">Password</SelectItem>
-                <SelectItem value="totp">Authenticator code</SelectItem>
-                <SelectItem value="backup_code">Backup code</SelectItem>
+                <SelectItem value="password">
+                  {t("scim.common.password")}
+                </SelectItem>
+                <SelectItem value="totp">
+                  {t("scim.common.authenticatorCode")}
+                </SelectItem>
+                <SelectItem value="backup_code">
+                  {t("scim.common.backupCode")}
+                </SelectItem>
               </SelectContent>
             </Select>
             <Label htmlFor="scim-map-proof">
               {authMethod === "password"
-                ? "Password"
+                ? t("scim.common.password")
                 : authMethod === "totp"
-                  ? "Authenticator code"
-                  : "Backup code"}
+                  ? t("scim.common.authenticatorCode")
+                  : t("scim.common.backupCode")}
             </Label>
             <Input
               autoComplete={
@@ -545,19 +578,19 @@ export function ScimGroupMappingsSettings({
           </div>
           {saveError ? (
             <Alert variant="error">
-              <AlertTitle>Mapping was not saved</AlertTitle>
+              <AlertTitle>{t("scim.group.notSaved")}</AlertTitle>
               <AlertDescription>
                 {saveError}
-                {saveError.includes("reload") ? (
+                {canReloadSaveError ? (
                   <Button
                     onClick={() => {
                       resetDraft();
-                      onReload();
+                      reloadLatest();
                     }}
                     type="button"
                     variant="outline"
                   >
-                    Reload latest settings
+                    {t("scim.common.reload")}
                   </Button>
                 ) : null}
               </AlertDescription>
@@ -574,10 +607,10 @@ export function ScimGroupMappingsSettings({
               type="submit"
             >
               {isSaving
-                ? "Saving…"
+                ? t("scim.common.saving")
                 : editingId
-                  ? "Save mapping"
-                  : "Create mapping"}
+                  ? t("scim.group.save")
+                  : t("scim.group.create")}
             </Button>
             {editingId ? (
               <Button
@@ -586,7 +619,7 @@ export function ScimGroupMappingsSettings({
                 type="button"
                 variant="outline"
               >
-                Cancel
+                {t("scim.group.cancel")}
               </Button>
             ) : null}
           </div>
