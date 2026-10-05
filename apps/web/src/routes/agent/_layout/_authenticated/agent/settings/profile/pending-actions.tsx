@@ -7,6 +7,7 @@ import {
   useNavigate,
 } from "@tanstack/react-router";
 import { Badge, Button, Card, CardContent, Skeleton } from "@taskdesk/ui";
+import { useTranslation } from "react-i18next";
 import PageTitle from "@/components/page-title";
 import {
   cancelOwnPendingAction,
@@ -30,6 +31,7 @@ function PendingActionsRoute() {
 }
 
 function PendingActionsList() {
+  const { t } = useTranslation();
   const search = Route.useSearch();
   const navigate = useNavigate({ from: Route.fullPath });
   const queryClient = useQueryClient();
@@ -47,35 +49,39 @@ function PendingActionsList() {
 
   return (
     <main className="flex min-h-full flex-col gap-5 p-5 lg:p-8">
-      <PageTitle title="My pending actions" />
+      <PageTitle title={t("pendingActions:copy.8008829bb5ed")} />
       <header>
-        <h1 className="text-2xl font-semibold">My pending actions</h1>
+        <h1 className="text-2xl font-semibold">
+          {t("pendingActions:copy.8008829bb5ed")}
+        </h1>
         <p className="mt-1 text-sm text-muted-foreground">
-          Review requests made by your account. Each action expires after its
-          listed time.
+          {t("pendingActions:copy.eeab44be9789")}
         </p>
       </header>
       {pendingActions.isLoading ? (
         <div
           className="space-y-3"
           role="status"
-          aria-label="Loading pending actions"
+          aria-label={t("pendingActions:copy.f6f50d54eb36")}
         >
           <Skeleton className="h-24 w-full" />
           <Skeleton className="h-24 w-full" />
         </div>
       ) : pendingActions.isError || !page ? (
         <p role="alert" className="text-sm text-destructive">
-          Pending actions could not be loaded. Refresh the page to try again.
+          {t("pendingActions:copy.3ccd9fbc7f89")}
         </p>
       ) : page.data.length === 0 ? (
         <Card>
           <CardContent className="py-8 text-sm text-muted-foreground">
-            You have no pending actions.
+            {t("pendingActions:copy.68f8856d348a")}
           </CardContent>
         </Card>
       ) : (
-        <section aria-label="Pending actions" className="grid gap-3">
+        <section
+          aria-label={t("pendingActions:copy.bc2597b55c34")}
+          className="grid gap-3"
+        >
           {page.data.map((item) => {
             const email =
               typeof item.summary.email === "string"
@@ -88,8 +94,13 @@ function PendingActionsList() {
                     <div className="flex flex-wrap items-center gap-2">
                       <h2 className="font-medium">
                         {item.action === "user_deactivation"
-                          ? `Deactivate person${email ? ` · ${email}` : ""}`
-                          : `${item.action.replaceAll("_", " ")} · ${item.targetType}`}
+                          ? t("pendingActions:dynamic.deactivatePerson", {
+                              email: email ? ` · ${email}` : "",
+                            })
+                          : t("pendingActions:dynamic.genericAction", {
+                              action: item.action.replaceAll("_", " "),
+                              targetType: item.targetType,
+                            })}
                       </h2>
                       <Badge variant="outline">{item.origin}</Badge>
                     </div>
@@ -102,24 +113,29 @@ function PendingActionsList() {
                     </p>
                     {item.action === "user_deactivation" && (
                       <p className="text-sm text-muted-foreground">
-                        Requires the exact current email and fresh
-                        authentication.
+                        {t("pendingActions:copy.b7bd2b2fc798")}
                       </p>
                     )}
                   </div>
                   <div className="flex gap-2">
-                    <Link
-                      className="inline-flex h-9 items-center rounded-md border px-3 text-sm font-medium"
-                      to={routes.pendingAction.build({ id: item.id }) as never}
+                    <Button
+                      variant="outline"
+                      render={
+                        <Link
+                          to={
+                            routes.pendingAction.build({ id: item.id }) as never
+                          }
+                        />
+                      }
                     >
-                      Review
-                    </Link>
+                      {t("pendingActions:review")}
+                    </Button>
                     <Button
                       variant="outline"
                       disabled={cancel.isPending}
                       onClick={() => cancel.mutate(item.id)}
                     >
-                      Cancel
+                      {t("pendingActions:copy.77dfd2135f4d")}
                     </Button>
                   </div>
                 </CardContent>
@@ -129,7 +145,10 @@ function PendingActionsList() {
         </section>
       )}
       {page?.page.hasMore && page.page.nextCursor && (
-        <nav aria-label="Pending action pages" className="flex justify-end">
+        <nav
+          aria-label={t("pendingActions:copy.8a1657ab9e97")}
+          className="flex justify-end"
+        >
           <Button
             variant="outline"
             onClick={() =>
@@ -138,14 +157,13 @@ function PendingActionsList() {
               })
             }
           >
-            Next page
+            {t("pendingActions:copy.4bfc194b68a3")}
           </Button>
         </nav>
       )}
       {cancel.isError && (
         <p role="alert" className="text-sm text-destructive">
-          This action could not be cancelled. Refresh and check its current
-          state.
+          {t("pendingActions:copy.3b04d7a51cb2")}
         </p>
       )}
     </main>
