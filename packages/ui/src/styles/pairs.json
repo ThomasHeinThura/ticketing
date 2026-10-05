@@ -463,6 +463,7 @@
       "packages/ui/src/components/input.tsx::Input::span[0]::text-foreground#0",
       "packages/ui/src/components/number-field.tsx::NumberFieldGroup::NumberFieldPrimitive.Group[0]::text-foreground#0",
       "packages/ui/src/components/textarea.tsx::Textarea::span[0]::text-foreground#0",
+      "apps/web/src/routes/agent/_layout/_authenticated/god-mode/users.tsx::InstanceUsersPage::main[0]/p[0]::text-foreground#0",
       "packages/ui/src/components/separator.stories.tsx::<module>::div[0]::text-foreground#0",
       "apps/web/src/components/auth/sign-in-form.tsx::SignInForm::Form[0]/form[0]/div[0]/FormField[1]/FormItem[0]/FormControl[0]/div[0]/button[0]::hover:text-foreground#0",
       "apps/web/src/components/auth/sign-up-form.tsx::SignUpForm::Form[0]/form[0]/div[0]/FormField[2]/FormItem[0]/FormControl[0]/div[0]/button[0]::hover:text-foreground#0",
@@ -1134,6 +1135,19 @@
         "surfaceContext": "same-element"
       },
       {
+        "id": "apps/web/src/routes/agent/_layout/_authenticated/god-mode/users.tsx::InstanceUsersPage::main[0]/p[0]::text-foreground#0",
+        "usage": "apps/web/src/routes/agent/_layout/_authenticated/god-mode/users.tsx",
+        "category": "body",
+        "chain": [
+          "apps/web/src/routes/agent/_layout/_authenticated/god-mode/users.tsx:/_layout/_authenticated/god-mode/users",
+          "apps/web/src/routes/agent/_layout/_authenticated.tsx:/_layout/_authenticated",
+          "apps/web/src/routes/agent/_layout.tsx:/_layout",
+          "apps/web/src/index.css:body>@apply bg-background"
+        ],
+        "backdropLayers": [],
+        "surfaceContext": "route-layout-body"
+      },
+      {
         "id": "packages/ui/src/components/separator.stories.tsx::<module>::div[0]::text-foreground#0",
         "usage": "packages/ui/src/components/separator.stories.tsx",
         "category": "body",
@@ -1305,6 +1319,50 @@
         "usage": "packages/ui/src/components/select.tsx",
         "category": "body",
         "chain": [
+          "apps/web/src/components/god-mode/identity-connection-editor.tsx:IdentityConnectionEditor",
+          "Select->packages/ui/src/components/select.tsx:Select"
+        ],
+        "backdropLayers": [],
+        "surfaceContext": "caller-chain"
+      },
+      {
+        "id": "packages/ui/src/components/select.tsx::SelectPopup::SelectPrimitive.Portal[0]/SelectPrimitive.Positioner[0]/SelectPrimitive.Popup[0]::text-foreground#0",
+        "usage": "packages/ui/src/components/select.tsx",
+        "category": "body",
+        "chain": [
+          "apps/web/src/components/god-mode/scim-group-mappings-settings.tsx:ScimGroupMappingsSettings",
+          "Select->packages/ui/src/components/select.tsx:Select"
+        ],
+        "backdropLayers": [],
+        "surfaceContext": "caller-chain"
+      },
+      {
+        "id": "packages/ui/src/components/select.tsx::SelectPopup::SelectPrimitive.Portal[0]/SelectPrimitive.Positioner[0]/SelectPrimitive.Popup[0]::text-foreground#0",
+        "usage": "packages/ui/src/components/select.tsx",
+        "category": "body",
+        "chain": [
+          "apps/web/src/components/god-mode/scim-match-attributes-settings.tsx:ScimMatchAttributesSettings",
+          "Select->packages/ui/src/components/select.tsx:Select"
+        ],
+        "backdropLayers": [],
+        "surfaceContext": "caller-chain"
+      },
+      {
+        "id": "packages/ui/src/components/select.tsx::SelectPopup::SelectPrimitive.Portal[0]/SelectPrimitive.Positioner[0]/SelectPrimitive.Popup[0]::text-foreground#0",
+        "usage": "packages/ui/src/components/select.tsx",
+        "category": "body",
+        "chain": [
+          "apps/web/src/components/god-mode/scim-token-settings.tsx:ScimTokenSettings",
+          "Select->packages/ui/src/components/select.tsx:Select"
+        ],
+        "backdropLayers": [],
+        "surfaceContext": "caller-chain"
+      },
+      {
+        "id": "packages/ui/src/components/select.tsx::SelectPopup::SelectPrimitive.Portal[0]/SelectPrimitive.Positioner[0]/SelectPrimitive.Popup[0]::text-foreground#0",
+        "usage": "packages/ui/src/components/select.tsx",
+        "category": "body",
+        "chain": [
           "apps/web/src/components/project/workflow-editor.tsx:renderRuleSection",
           "Select->packages/ui/src/components/select.tsx:Select"
         ],
@@ -1316,7 +1374,29 @@
         "usage": "packages/ui/src/components/select.tsx",
         "category": "body",
         "chain": [
+          "apps/web/src/components/service-calendar/holiday-fields.tsx:HolidayFields",
+          "Select->packages/ui/src/components/select.tsx:Select"
+        ],
+        "backdropLayers": [],
+        "surfaceContext": "caller-chain"
+      },
+      {
+        "id": "packages/ui/src/components/select.tsx::SelectPopup::SelectPrimitive.Portal[0]/SelectPrimitive.Positioner[0]/SelectPrimitive.Popup[0]::text-foreground#0",
+        "usage": "packages/ui/src/components/select.tsx",
+        "category": "body",
+        "chain": [
           "apps/web/src/components/settings/create-api-key-dialog.tsx:CreateApiKeyDialog",
+          "Select->packages/ui/src/components/select.tsx:Select"
+        ],
+        "backdropLayers": [],
+        "surfaceContext": "caller-chain"
+      },
+      {
+        "id": "packages/ui/src/components/select.tsx::SelectPopup::SelectPrimitive.Portal[0]/SelectPrimitive.Positioner[0]/SelectPrimitive.Popup[0]::text-foreground#0",
+        "usage": "packages/ui/src/components/select.tsx",
+        "category": "body",
+        "chain": [
+          "apps/web/src/components/sla-policy/sla-policy-editor.tsx:SlaPolicyEditor",
           "Select->packages/ui/src/components/select.tsx:Select"
         ],
         "backdropLayers": [],
@@ -1350,6 +1430,17 @@
         "category": "body",
         "chain": [
           "apps/web/src/components/work-item/create-work-item-dialog-form.tsx:CreateWorkItemDialogForm",
+          "Select->packages/ui/src/components/select.tsx:Select"
+        ],
+        "backdropLayers": [],
+        "surfaceContext": "caller-chain"
+      },
+      {
+        "id": "packages/ui/src/components/select.tsx::SelectPopup::SelectPrimitive.Portal[0]/SelectPrimitive.Positioner[0]/SelectPrimitive.Popup[0]::text-foreground#0",
+        "usage": "packages/ui/src/components/select.tsx",
+        "category": "body",
+        "chain": [
+          "apps/web/src/routes/agent/_layout/_authenticated/agent/settings/profile/pending-actions/$id.tsx:PendingActionDetailRoute",
           "Select->packages/ui/src/components/select.tsx:Select"
         ],
         "backdropLayers": [],
@@ -1394,6 +1485,28 @@
         "category": "body",
         "chain": [
           "apps/web/src/routes/agent/_layout/_authenticated/god-mode/observability.tsx:ObservabilitySettings",
+          "Select->packages/ui/src/components/select.tsx:Select"
+        ],
+        "backdropLayers": [],
+        "surfaceContext": "caller-chain"
+      },
+      {
+        "id": "packages/ui/src/components/select.tsx::SelectPopup::SelectPrimitive.Portal[0]/SelectPrimitive.Positioner[0]/SelectPrimitive.Popup[0]::text-foreground#0",
+        "usage": "packages/ui/src/components/select.tsx",
+        "category": "body",
+        "chain": [
+          "apps/web/src/routes/agent/_layout/_authenticated/god-mode/users.tsx:InstanceUsersPage",
+          "Select->packages/ui/src/components/select.tsx:Select"
+        ],
+        "backdropLayers": [],
+        "surfaceContext": "caller-chain"
+      },
+      {
+        "id": "packages/ui/src/components/select.tsx::SelectPopup::SelectPrimitive.Portal[0]/SelectPrimitive.Positioner[0]/SelectPrimitive.Popup[0]::text-foreground#0",
+        "usage": "packages/ui/src/components/select.tsx",
+        "category": "body",
+        "chain": [
+          "apps/web/src/routes/agent/_layout/_authenticated/god-mode/users.tsx:UserActionDialog",
           "Select->packages/ui/src/components/select.tsx:Select"
         ],
         "backdropLayers": [],
@@ -2528,6 +2641,7 @@
       "apps/web/src/components/project/tasks-import-export.tsx::TasksImportExport::div[0]/Dialog[0]/DialogPopup[0]/div[0]/div[1]/div[2]/DialogClose[0]/Button[0]::text-foreground#0",
       "apps/web/src/components/shared/modals/archive-tasks-modal.tsx::ArchiveTasksModal::Dialog[0]/DialogContent[0]/div[0]/div[0]/DialogHeader[0]/DialogTitle[0]::text-foreground#0",
       "apps/web/src/components/shared/modals/archive-tasks-modal.tsx::ArchiveTasksModal::Dialog[0]/DialogContent[0]/div[0]/div[0]/DialogDescription[0]/span[0]::text-foreground#0",
+      "apps/web/src/components/sla-policy/sla-policy-editor.tsx::SlaPolicyEditor::main[0]/form[0]/Card[0]/CardContent[0]/fieldset[0]/legend[0]::text-foreground#0",
       "apps/web/src/components/team/delete-team-member-modal.tsx::DeleteTeamMemberModal::Dialog[0]/DialogPopup[0]/div[0]/div[0]/DialogTitle[0]::text-foreground#0",
       "apps/web/src/components/team/delete-team-member-modal.tsx::DeleteTeamMemberModal::Dialog[0]/DialogPopup[0]/div[0]/div[0]/DialogClose[0]::hover:text-foreground#0",
       "apps/web/src/components/team/delete-team-member-modal.tsx::DeleteTeamMemberModal::Dialog[0]/DialogPopup[0]/div[0]/div[1]/p[0]/span[0]::text-foreground#0",
@@ -2567,7 +2681,8 @@
       "apps/web/src/components/task/task-relations.tsx::TaskRelations::Collapsible[0]/CollapsibleContent[0]/div[0]/div[0]/ContextMenu[0]/ContextMenuTrigger[0]/div[0]/button[0]/span[0]::text-foreground#0",
       "apps/web/src/components/task/task-subtasks.tsx::TaskSubtasks::Collapsible[0]/div[0]/div[0]/CollapsibleTrigger[0]/button[0]::hover:text-foreground#0",
       "apps/web/src/components/task/task-title.tsx::TaskTitle::Form[0]/FormField[0]/input[0]::text-foreground#0",
-      "apps/web/src/components/task/task-title.tsx::TaskTitle::Form[0]/FormField[0]/input[0]::placeholder:text-foreground#0"
+      "apps/web/src/components/task/task-title.tsx::TaskTitle::Form[0]/FormField[0]/input[0]::placeholder:text-foreground#0",
+      "packages/ui/src/components/field.tsx::FieldLabel::FieldPrimitive.Label[0]::text-foreground#0"
     ],
     "surfaceContext": "nearest-opaque-ancestor",
     "occurrences": [
@@ -2681,6 +2796,18 @@
         ],
         "backdropLayers": [],
         "surfaceContext": "nearest-opaque-ancestor"
+      },
+      {
+        "id": "apps/web/src/components/sla-policy/sla-policy-editor.tsx::SlaPolicyEditor::main[0]/form[0]/Card[0]/CardContent[0]/fieldset[0]/legend[0]::text-foreground#0",
+        "usage": "apps/web/src/components/sla-policy/sla-policy-editor.tsx",
+        "category": "body",
+        "chain": [
+          "apps/web/src/components/sla-policy/sla-policy-editor.tsx:SlaPolicyEditor",
+          "jsx:main[0]/form[0]/Card[0]/CardContent[0]/fieldset[0]/legend[0]",
+          "Card->packages/ui/src/components/card.tsx:Card>bg-card"
+        ],
+        "backdropLayers": [],
+        "surfaceContext": "imported-opaque-wrapper"
       },
       {
         "id": "apps/web/src/components/team/delete-team-member-modal.tsx::DeleteTeamMemberModal::Dialog[0]/DialogPopup[0]/div[0]/div[0]/DialogTitle[0]::text-foreground#0",
@@ -3124,6 +3251,17 @@
         ],
         "backdropLayers": [],
         "surfaceContext": "caller-chain"
+      },
+      {
+        "id": "packages/ui/src/components/field.tsx::FieldLabel::FieldPrimitive.Label[0]::text-foreground#0",
+        "usage": "packages/ui/src/components/field.tsx",
+        "category": "body",
+        "chain": [
+          "apps/web/src/components/sla-policy/sla-policy-editor.tsx:SlaPolicyEditor",
+          "Card->packages/ui/src/components/card.tsx:Card"
+        ],
+        "backdropLayers": [],
+        "surfaceContext": "caller-chain"
       }
     ]
   },
@@ -3208,10 +3346,16 @@
       "apps/web/src/routes/agent/invitation/accept.$inviteId.tsx::AcceptInvitation::AuthLayout[0]/div[0]/div[1]/p[0]::text-muted-foreground#3",
       "apps/web/src/routes/agent/invitation/accept.$inviteId.tsx::AcceptInvitation::AuthLayout[0]/div[0]/div[1]/p[1]::text-muted-foreground#0",
       "apps/web/src/routes/agent/invitation/accept.$inviteId.tsx::AcceptInvitation::AuthLayout[0]/div[0]/div[3]/div[0]/p[0]::text-muted-foreground#0",
+      "apps/web/src/routes/agent/_layout/_authenticated/agent/settings/calendars.tsx::ServiceCalendarsRoute::main[0]/div[0]/div[0]/p[0]::text-muted-foreground#0",
+      "apps/web/src/routes/agent/_layout/_authenticated/agent/settings/profile/pending-actions.tsx::PendingActionsList::main[0]/header[0]/p[0]::text-muted-foreground#0",
+      "apps/web/src/routes/agent/_layout/_authenticated/agent/settings/profile/pending-actions/$id.tsx::PendingActionDetailRoute::main[0]/header[0]/p[0]::text-muted-foreground#0",
+      "apps/web/src/routes/agent/_layout/_authenticated/agent/settings/sla-policies.tsx::SlaPoliciesRoute::main[0]/div[0]/div[0]/p[0]::text-muted-foreground#0",
       "apps/web/src/routes/agent/_layout/_authenticated/dashboard/workspace/$workspaceId/project/$projectId/board.tsx::RouteComponent::div[0]/Search[0]::text-muted-foreground#0",
+      "apps/web/src/routes/agent/_layout/_authenticated/god-mode/authentication.tsx::IdentityConnectionsRoute::main[0]/header[0]/p[0]::text-muted-foreground#0",
       "apps/web/src/routes/agent/_layout/_authenticated/god-mode/observability.tsx::ObservabilitySettings::main[0]/header[0]/p[0]::text-muted-foreground#0",
       "apps/web/src/routes/agent/_layout/_authenticated/god-mode/observability.tsx::ObservabilitySettings::main[0]/section[0]/p[0]::text-muted-foreground#0",
       "apps/web/src/routes/agent/_layout/_authenticated/god-mode/observability.tsx::ObservabilitySettings::main[0]/section[2]/p[0]::text-muted-foreground#0",
+      "apps/web/src/routes/agent/_layout/_authenticated/god-mode/users.tsx::InstanceUsersPage::main[0]/header[0]/div[0]/p[0]::text-muted-foreground#0",
       "packages/ui/src/components/context-menu.stories.tsx::<module>::ContextMenu[0]/ContextMenuTrigger[0]::text-muted-foreground#0",
       "packages/ui/src/components/context-menu.stories.tsx::<module>::ContextMenu[0]/ContextMenuTrigger[0]::text-muted-foreground#1",
       "apps/web/src/components/auth/sign-in-form-skeleton.tsx::SignInFormSkeleton::div[0]/div[1]/span[0]::text-muted-foreground#0",
@@ -3968,6 +4112,59 @@
         "surfaceContext": "imported-opaque-wrapper"
       },
       {
+        "id": "apps/web/src/routes/agent/_layout/_authenticated/agent/settings/calendars.tsx::ServiceCalendarsRoute::main[0]/div[0]/div[0]/p[0]::text-muted-foreground#0",
+        "usage": "apps/web/src/routes/agent/_layout/_authenticated/agent/settings/calendars.tsx",
+        "category": "body",
+        "chain": [
+          "apps/web/src/routes/agent/_layout/_authenticated/agent/settings/calendars.tsx:/_layout/_authenticated/agent/settings/calendars",
+          "apps/web/src/routes/agent/_layout/_authenticated.tsx:/_layout/_authenticated",
+          "apps/web/src/routes/agent/_layout.tsx:/_layout",
+          "apps/web/src/index.css:body>@apply bg-background"
+        ],
+        "backdropLayers": [],
+        "surfaceContext": "route-layout-body"
+      },
+      {
+        "id": "apps/web/src/routes/agent/_layout/_authenticated/agent/settings/profile/pending-actions.tsx::PendingActionsList::main[0]/header[0]/p[0]::text-muted-foreground#0",
+        "usage": "apps/web/src/routes/agent/_layout/_authenticated/agent/settings/profile/pending-actions.tsx",
+        "category": "body",
+        "chain": [
+          "apps/web/src/routes/agent/_layout/_authenticated/agent/settings/profile/pending-actions.tsx:/_layout/_authenticated/agent/settings/profile/pending-actions",
+          "apps/web/src/routes/agent/_layout/_authenticated.tsx:/_layout/_authenticated",
+          "apps/web/src/routes/agent/_layout.tsx:/_layout",
+          "apps/web/src/index.css:body>@apply bg-background"
+        ],
+        "backdropLayers": [],
+        "surfaceContext": "route-layout-body"
+      },
+      {
+        "id": "apps/web/src/routes/agent/_layout/_authenticated/agent/settings/profile/pending-actions/$id.tsx::PendingActionDetailRoute::main[0]/header[0]/p[0]::text-muted-foreground#0",
+        "usage": "apps/web/src/routes/agent/_layout/_authenticated/agent/settings/profile/pending-actions/$id.tsx",
+        "category": "body",
+        "chain": [
+          "apps/web/src/routes/agent/_layout/_authenticated/agent/settings/profile/pending-actions/$id.tsx:/_layout/_authenticated/agent/settings/profile/pending-actions/$id",
+          "apps/web/src/routes/agent/_layout/_authenticated/agent/settings/profile/pending-actions.tsx:/_layout/_authenticated/agent/settings/profile/pending-actions",
+          "apps/web/src/routes/agent/_layout/_authenticated.tsx:/_layout/_authenticated",
+          "apps/web/src/routes/agent/_layout.tsx:/_layout",
+          "apps/web/src/index.css:body>@apply bg-background"
+        ],
+        "backdropLayers": [],
+        "surfaceContext": "route-layout-body"
+      },
+      {
+        "id": "apps/web/src/routes/agent/_layout/_authenticated/agent/settings/sla-policies.tsx::SlaPoliciesRoute::main[0]/div[0]/div[0]/p[0]::text-muted-foreground#0",
+        "usage": "apps/web/src/routes/agent/_layout/_authenticated/agent/settings/sla-policies.tsx",
+        "category": "body",
+        "chain": [
+          "apps/web/src/routes/agent/_layout/_authenticated/agent/settings/sla-policies.tsx:/_layout/_authenticated/agent/settings/sla-policies",
+          "apps/web/src/routes/agent/_layout/_authenticated.tsx:/_layout/_authenticated",
+          "apps/web/src/routes/agent/_layout.tsx:/_layout",
+          "apps/web/src/index.css:body>@apply bg-background"
+        ],
+        "backdropLayers": [],
+        "surfaceContext": "route-layout-body"
+      },
+      {
         "id": "apps/web/src/routes/agent/_layout/_authenticated/dashboard/workspace/$workspaceId/project/$projectId/board.tsx::RouteComponent::div[0]/Search[0]::text-muted-foreground#0",
         "usage": "apps/web/src/routes/agent/_layout/_authenticated/dashboard/workspace/$workspaceId/project/$projectId/board.tsx",
         "category": "non-text",
@@ -3975,6 +4172,19 @@
           "apps/web/src/routes/agent/_layout/_authenticated/dashboard/workspace/$workspaceId/project/$projectId/board.tsx:/_layout/_authenticated/dashboard/workspace/$workspaceId/project/$projectId/board",
           "apps/web/src/routes/agent/_layout/_authenticated/dashboard/workspace/$workspaceId.tsx:/_layout/_authenticated/dashboard/workspace/$workspaceId",
           "apps/web/src/routes/agent/_layout/_authenticated/dashboard.tsx:/_layout/_authenticated/dashboard",
+          "apps/web/src/routes/agent/_layout/_authenticated.tsx:/_layout/_authenticated",
+          "apps/web/src/routes/agent/_layout.tsx:/_layout",
+          "apps/web/src/index.css:body>@apply bg-background"
+        ],
+        "backdropLayers": [],
+        "surfaceContext": "route-layout-body"
+      },
+      {
+        "id": "apps/web/src/routes/agent/_layout/_authenticated/god-mode/authentication.tsx::IdentityConnectionsRoute::main[0]/header[0]/p[0]::text-muted-foreground#0",
+        "usage": "apps/web/src/routes/agent/_layout/_authenticated/god-mode/authentication.tsx",
+        "category": "body",
+        "chain": [
+          "apps/web/src/routes/agent/_layout/_authenticated/god-mode/authentication.tsx:/_layout/_authenticated/god-mode/authentication",
           "apps/web/src/routes/agent/_layout/_authenticated.tsx:/_layout/_authenticated",
           "apps/web/src/routes/agent/_layout.tsx:/_layout",
           "apps/web/src/index.css:body>@apply bg-background"
@@ -4014,6 +4224,19 @@
         "category": "body",
         "chain": [
           "apps/web/src/routes/agent/_layout/_authenticated/god-mode/observability.tsx:/_layout/_authenticated/god-mode/observability",
+          "apps/web/src/routes/agent/_layout/_authenticated.tsx:/_layout/_authenticated",
+          "apps/web/src/routes/agent/_layout.tsx:/_layout",
+          "apps/web/src/index.css:body>@apply bg-background"
+        ],
+        "backdropLayers": [],
+        "surfaceContext": "route-layout-body"
+      },
+      {
+        "id": "apps/web/src/routes/agent/_layout/_authenticated/god-mode/users.tsx::InstanceUsersPage::main[0]/header[0]/div[0]/p[0]::text-muted-foreground#0",
+        "usage": "apps/web/src/routes/agent/_layout/_authenticated/god-mode/users.tsx",
+        "category": "body",
+        "chain": [
+          "apps/web/src/routes/agent/_layout/_authenticated/god-mode/users.tsx:/_layout/_authenticated/god-mode/users",
           "apps/web/src/routes/agent/_layout/_authenticated.tsx:/_layout/_authenticated",
           "apps/web/src/routes/agent/_layout.tsx:/_layout",
           "apps/web/src/index.css:body>@apply bg-background"
@@ -4503,6 +4726,50 @@
         "usage": "packages/ui/src/components/select.tsx",
         "category": "body",
         "chain": [
+          "apps/web/src/components/god-mode/identity-connection-editor.tsx:IdentityConnectionEditor",
+          "Select->packages/ui/src/components/select.tsx:Select"
+        ],
+        "backdropLayers": [],
+        "surfaceContext": "caller-chain"
+      },
+      {
+        "id": "packages/ui/src/components/select.tsx::SelectValue::SelectPrimitive.Value[0]::data-placeholder:text-muted-foreground#0",
+        "usage": "packages/ui/src/components/select.tsx",
+        "category": "body",
+        "chain": [
+          "apps/web/src/components/god-mode/scim-group-mappings-settings.tsx:ScimGroupMappingsSettings",
+          "Select->packages/ui/src/components/select.tsx:Select"
+        ],
+        "backdropLayers": [],
+        "surfaceContext": "caller-chain"
+      },
+      {
+        "id": "packages/ui/src/components/select.tsx::SelectValue::SelectPrimitive.Value[0]::data-placeholder:text-muted-foreground#0",
+        "usage": "packages/ui/src/components/select.tsx",
+        "category": "body",
+        "chain": [
+          "apps/web/src/components/god-mode/scim-match-attributes-settings.tsx:ScimMatchAttributesSettings",
+          "Select->packages/ui/src/components/select.tsx:Select"
+        ],
+        "backdropLayers": [],
+        "surfaceContext": "caller-chain"
+      },
+      {
+        "id": "packages/ui/src/components/select.tsx::SelectValue::SelectPrimitive.Value[0]::data-placeholder:text-muted-foreground#0",
+        "usage": "packages/ui/src/components/select.tsx",
+        "category": "body",
+        "chain": [
+          "apps/web/src/components/god-mode/scim-token-settings.tsx:ScimTokenSettings",
+          "Select->packages/ui/src/components/select.tsx:Select"
+        ],
+        "backdropLayers": [],
+        "surfaceContext": "caller-chain"
+      },
+      {
+        "id": "packages/ui/src/components/select.tsx::SelectValue::SelectPrimitive.Value[0]::data-placeholder:text-muted-foreground#0",
+        "usage": "packages/ui/src/components/select.tsx",
+        "category": "body",
+        "chain": [
           "apps/web/src/components/project/workflow-editor.tsx:renderRuleSection",
           "Select->packages/ui/src/components/select.tsx:Select"
         ],
@@ -4514,7 +4781,29 @@
         "usage": "packages/ui/src/components/select.tsx",
         "category": "body",
         "chain": [
+          "apps/web/src/components/service-calendar/holiday-fields.tsx:HolidayFields",
+          "Select->packages/ui/src/components/select.tsx:Select"
+        ],
+        "backdropLayers": [],
+        "surfaceContext": "caller-chain"
+      },
+      {
+        "id": "packages/ui/src/components/select.tsx::SelectValue::SelectPrimitive.Value[0]::data-placeholder:text-muted-foreground#0",
+        "usage": "packages/ui/src/components/select.tsx",
+        "category": "body",
+        "chain": [
           "apps/web/src/components/settings/create-api-key-dialog.tsx:CreateApiKeyDialog",
+          "Select->packages/ui/src/components/select.tsx:Select"
+        ],
+        "backdropLayers": [],
+        "surfaceContext": "caller-chain"
+      },
+      {
+        "id": "packages/ui/src/components/select.tsx::SelectValue::SelectPrimitive.Value[0]::data-placeholder:text-muted-foreground#0",
+        "usage": "packages/ui/src/components/select.tsx",
+        "category": "body",
+        "chain": [
+          "apps/web/src/components/sla-policy/sla-policy-editor.tsx:SlaPolicyEditor",
           "Select->packages/ui/src/components/select.tsx:Select"
         ],
         "backdropLayers": [],
@@ -4558,6 +4847,17 @@
         "usage": "packages/ui/src/components/select.tsx",
         "category": "body",
         "chain": [
+          "apps/web/src/routes/agent/_layout/_authenticated/agent/settings/profile/pending-actions/$id.tsx:PendingActionDetailRoute",
+          "Select->packages/ui/src/components/select.tsx:Select"
+        ],
+        "backdropLayers": [],
+        "surfaceContext": "caller-chain"
+      },
+      {
+        "id": "packages/ui/src/components/select.tsx::SelectValue::SelectPrimitive.Value[0]::data-placeholder:text-muted-foreground#0",
+        "usage": "packages/ui/src/components/select.tsx",
+        "category": "body",
+        "chain": [
           "apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings/account/preferences.tsx:RouteComponent",
           "Select->packages/ui/src/components/select.tsx:Select"
         ],
@@ -4581,6 +4881,28 @@
         "category": "body",
         "chain": [
           "apps/web/src/routes/agent/_layout/_authenticated/god-mode/observability.tsx:ObservabilitySettings",
+          "Select->packages/ui/src/components/select.tsx:Select"
+        ],
+        "backdropLayers": [],
+        "surfaceContext": "caller-chain"
+      },
+      {
+        "id": "packages/ui/src/components/select.tsx::SelectValue::SelectPrimitive.Value[0]::data-placeholder:text-muted-foreground#0",
+        "usage": "packages/ui/src/components/select.tsx",
+        "category": "body",
+        "chain": [
+          "apps/web/src/routes/agent/_layout/_authenticated/god-mode/users.tsx:InstanceUsersPage",
+          "Select->packages/ui/src/components/select.tsx:Select"
+        ],
+        "backdropLayers": [],
+        "surfaceContext": "caller-chain"
+      },
+      {
+        "id": "packages/ui/src/components/select.tsx::SelectValue::SelectPrimitive.Value[0]::data-placeholder:text-muted-foreground#0",
+        "usage": "packages/ui/src/components/select.tsx",
+        "category": "body",
+        "chain": [
+          "apps/web/src/routes/agent/_layout/_authenticated/god-mode/users.tsx:UserActionDialog",
           "Select->packages/ui/src/components/select.tsx:Select"
         ],
         "backdropLayers": [],
@@ -4828,14 +5150,47 @@
       "apps/web/src/components/project/tasks-import-export.tsx::TasksImportExport::div[0]/Dialog[0]/DialogPopup[0]/div[0]/div[1]/p[0]::text-muted-foreground#0",
       "apps/web/src/components/project/tasks-import-export.tsx::TasksImportExport::div[0]/Dialog[0]/DialogPopup[0]/div[0]/div[1]/div[1]/div[0]/Upload[0]::text-muted-foreground#0",
       "apps/web/src/components/project/tasks-import-export.tsx::TasksImportExport::div[0]/Dialog[0]/DialogPopup[0]/div[0]/div[1]/div[1]/div[0]/p[0]::text-muted-foreground#0",
+      "apps/web/src/components/service-calendar/calendar-details-card.tsx::CalendarDetailsCard::Card[0]/CardContent[0]/div[1]/p[0]::text-muted-foreground#0",
+      "apps/web/src/components/service-calendar/calendar-summary-card.tsx::CalendarSummaryCard::Card[0]/CardHeader[0]/div[1]/p[0]::text-muted-foreground#0",
+      "apps/web/src/components/service-calendar/calendar-summary-card.tsx::CalendarSummaryCard::Card[0]/CardContent[0]/p[0]::text-muted-foreground#0",
+      "apps/web/src/components/service-calendar/coverage-preview-card.tsx::CoveragePreviewCard::Card[0]/CardContent[0]/div[0]/p[0]::text-muted-foreground#0",
+      "apps/web/src/components/service-calendar/coverage-preview-card.tsx::CoveragePreviewCard::Card[0]/CardContent[0]/p[0]::text-muted-foreground#0",
+      "apps/web/src/components/service-calendar/holiday-list-card.tsx::HolidayListCard::Card[0]/CardHeader[0]/div[0]/p[0]::text-muted-foreground#0",
+      "apps/web/src/components/service-calendar/holiday-list-card.tsx::HolidayListCard::Card[0]/CardContent[0]/p[0]::text-muted-foreground#0",
+      "apps/web/src/components/service-calendar/weekly-cover-card.tsx::WeeklyCoverCard::Card[0]/CardContent[0]/DndContext[0]/section[0]/div[0]/p[0]::text-muted-foreground#0",
       "apps/web/src/components/shared/modals/archive-tasks-modal.tsx::ArchiveTasksModal::Dialog[0]/DialogContent[0]/div[0]/div[0]/DialogDescription[0]::text-muted-foreground#0",
+      "apps/web/src/components/sla-policy/sla-policy-editor.tsx::SlaPolicyEditor::main[0]/form[0]/Card[0]/CardContent[0]/fieldset[0]/p[0]::text-muted-foreground#0",
+      "apps/web/src/components/sla-policy/sla-policy-editor.tsx::SlaPolicyEditor::main[0]/form[0]/Card[1]/CardContent[0]/p[0]::text-muted-foreground#0",
+      "apps/web/src/components/sla-policy/sla-policy-editor.tsx::SlaPolicyEditor::main[0]/form[0]/Card[1]/CardContent[0]/p[0]::text-muted-foreground#1",
       "apps/web/src/components/team/delete-team-member-modal.tsx::DeleteTeamMemberModal::Dialog[0]/DialogPopup[0]/div[0]/div[0]/DialogClose[0]::text-muted-foreground#0",
       "apps/web/src/components/team/delete-team-member-modal.tsx::DeleteTeamMemberModal::Dialog[0]/DialogPopup[0]/div[0]/div[1]/p[0]::text-muted-foreground#0",
+      "apps/web/src/routes/agent/_layout/_authenticated/agent/settings/profile/pending-actions.tsx::PendingActionsList::main[0]/Card[0]/CardContent[0]::text-muted-foreground#0",
+      "apps/web/src/routes/agent/_layout/_authenticated/agent/settings/profile/pending-actions.tsx::PendingActionsList::main[0]/section[0]/Card[0]/CardContent[0]/div[0]/p[0]::text-muted-foreground#0",
+      "apps/web/src/routes/agent/_layout/_authenticated/agent/settings/profile/pending-actions.tsx::PendingActionsList::main[0]/section[0]/Card[0]/CardContent[0]/div[0]/p[0]::text-muted-foreground#1",
+      "apps/web/src/routes/agent/_layout/_authenticated/agent/settings/profile/pending-actions/$id.tsx::PendingActionDetailRoute::main[0]/Card[0]/CardContent[0]/dl[0]/dt[0]::text-muted-foreground#0",
+      "apps/web/src/routes/agent/_layout/_authenticated/agent/settings/profile/pending-actions/$id.tsx::PendingActionDetailRoute::main[0]/Card[0]/CardContent[0]/dl[0]/dt[1]::text-muted-foreground#0",
+      "apps/web/src/routes/agent/_layout/_authenticated/agent/settings/profile/pending-actions/$id.tsx::PendingActionDetailRoute::main[0]/Card[0]/CardContent[0]/dl[0]/dt[2]::text-muted-foreground#0",
+      "apps/web/src/routes/agent/_layout/_authenticated/agent/settings/profile/pending-actions/$id.tsx::PendingActionDetailRoute::main[0]/Card[0]/CardContent[0]/dl[0]/dt[0]::text-muted-foreground#1",
+      "apps/web/src/routes/agent/_layout/_authenticated/agent/settings/profile/pending-actions/$id.tsx::PendingActionDetailRoute::main[0]/Card[0]/CardContent[0]/p[0]::text-muted-foreground#0",
+      "apps/web/src/routes/agent/_layout/_authenticated/agent/settings/profile/pending-actions/$id.tsx::PendingActionDetailRoute::main[0]/Card[0]/CardContent[0]/div[0]/p[0]::text-muted-foreground#0",
+      "apps/web/src/routes/agent/_layout/_authenticated/agent/settings/profile/pending-actions/$id.tsx::PendingActionDetailRoute::main[0]/Card[0]/CardContent[0]/div[0]/div[0]/p[0]::text-muted-foreground#0",
       "apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings.tsx::SettingsLayout::div[0]/div[0]/div[0]/div[0]/div[0]/ChevronLeft[0]::text-muted-foreground#0",
       "apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings/workspace/labels.tsx::RouteComponent::div[0]/CardFrame[0]/Card[1]/CardPanel[0]/Empty[0]/EmptyHeader[0]/EmptyMedia[0]/Tag[0]::text-muted-foreground#0",
       "apps/web/src/routes/agent/_layout/_authenticated/dashboard/workspace/$workspaceId/project/$projectId/backlog.tsx::RouteComponent::ProjectLayout[0]/div[0]/div[0]/div[0]/div[0]/div[0]/DropdownMenu[0]/DropdownMenuContent[0]/DropdownMenuItem[0]::text-muted-foreground#0",
       "apps/web/src/routes/agent/_layout/_authenticated/dashboard/workspace/$workspaceId/project/$projectId/task/$taskId_.tsx::RouteComponent::TaskLayout[0]/div[0]/p[0]::text-muted-foreground#0",
       "apps/web/src/routes/agent/_layout/_authenticated/dashboard/workspace/create.tsx::RouteComponent::div[0]/div[0]/Card[0]/CardContent[0]/div[0]/p[0]::text-muted-foreground#0",
+      "apps/web/src/routes/agent/_layout/_authenticated/god-mode/authentication.tsx::IdentityConnectionsRoute::main[0]/section[0]/Card[0]/CardContent[0]/div[0]/p[0]::text-muted-foreground#0",
+      "apps/web/src/routes/agent/_layout/_authenticated/god-mode/authentication.tsx::IdentityConnectionsRoute::main[0]/Card[0]/CardContent[0]::text-muted-foreground#0",
+      "apps/web/src/routes/agent/_layout/_authenticated/god-mode/users.tsx::InstanceUsersPage::main[0]/Card[0]/CardContent[0]/p[0]::text-muted-foreground#0",
+      "apps/web/src/routes/agent/_layout/_authenticated/god-mode/users.tsx::InstanceUsersPage::main[0]/div[0]/Card[0]/CardContent[0]/Table[0]/TableBody[0]/TableRow[0]/TableCell[0]/Link[0]/span[1]::text-muted-foreground#0",
+      "apps/web/src/routes/agent/_layout/_authenticated/god-mode/users.tsx::InstanceUsersPage::main[0]/div[0]/Card[0]/CardContent[0]/div[0]/span[0]::text-muted-foreground#0",
+      "apps/web/src/routes/agent/_layout/_authenticated/god-mode/users.tsx::UserDetails::Card[0]/CardContent[0]/div[0]/div[0]/p[0]::text-muted-foreground#0",
+      "apps/web/src/routes/agent/_layout/_authenticated/god-mode/users.tsx::UserDetails::Card[0]/CardContent[0]/dl[0]/dt[0]::text-muted-foreground#0",
+      "apps/web/src/routes/agent/_layout/_authenticated/god-mode/users.tsx::UserDetails::Card[0]/CardContent[0]/dl[0]/dt[1]::text-muted-foreground#0",
+      "apps/web/src/routes/agent/_layout/_authenticated/god-mode/users.tsx::UserDetails::Card[0]/CardContent[0]/dl[0]/dt[2]::text-muted-foreground#0",
+      "apps/web/src/routes/agent/_layout/_authenticated/god-mode/users.tsx::UserDetails::Card[0]/CardContent[0]/dl[0]/dt[3]::text-muted-foreground#0",
+      "apps/web/src/routes/agent/_layout/_authenticated/god-mode/users.tsx::UserDetails::Card[0]/CardContent[0]/dl[0]/dt[4]::text-muted-foreground#0",
+      "apps/web/src/routes/agent/_layout/_authenticated/god-mode/users.tsx::UserDetails::Card[0]/CardContent[0]/div[1]/p[0]::text-muted-foreground#0",
       "apps/web/src/routes/agent/_layout/_authenticated/invitations.tsx::InvitationsPage::div[0]/div[0]/div[0]/div[0]/Table[0]/TableBody[0]/TableRow[0]/TableCell[1]::text-muted-foreground#0",
       "apps/web/src/routes/agent/_layout/_authenticated/invitations.tsx::InvitationsPage::div[0]/div[0]/div[0]/div[0]/Table[0]/TableBody[0]/TableRow[0]/TableCell[2]/span[0]::text-muted-foreground#0",
       "apps/web/src/routes/agent/_layout/_authenticated/invitations.tsx::InvitationsPage::div[0]/div[0]/div[0]/div[0]/Table[0]/TableBody[0]/TableRow[0]/TableCell[3]/div[0]/Button[1]::text-muted-foreground#0",
@@ -4918,6 +5273,10 @@
       "apps/web/src/components/external-links/external-links-accordion.tsx::ExternalLinksAccordion::Collapsible[0]/CollapsibleContent[0]/div[0]/a[0]/span[0]/span[0]::text-muted-foreground#0",
       "apps/web/src/components/list-view/task-row.tsx::TaskRow::div[0]/div[0]/div[0]::text-muted-foreground#0",
       "apps/web/src/components/list-view/task-row.tsx::TaskRow::div[0]/div[0]/div[0]/div[0]/span[0]::text-muted-foreground#0",
+      "apps/web/src/components/service-calendar/holiday-import-panel.tsx::HolidayImportPanel::section[0]/div[0]/p[0]::text-muted-foreground#0",
+      "apps/web/src/components/service-calendar/holiday-import-panel.tsx::HolidayImportPanel::section[0]/div[0]/p[1]::text-muted-foreground#0",
+      "apps/web/src/components/service-calendar/window-fields.tsx::WindowFields::div[0]/div[0]/div[0]::text-muted-foreground#0",
+      "apps/web/src/components/service-calendar/window-fields.tsx::WindowFields::div[0]/div[2]/div[0]::text-muted-foreground#0",
       "apps/web/src/components/settings/api-key-table.tsx::ApiKeyTable::Frame[0]/Table[0]/TableBody[0]/TableRow[0]/TableCell[2]::text-muted-foreground#0",
       "apps/web/src/components/settings/api-key-table.tsx::ApiKeyTable::Frame[0]/Table[0]/TableBody[0]/TableRow[0]/TableCell[3]/span[0]::text-muted-foreground#0",
       "apps/web/src/components/task/subtask-row.tsx::SubtaskRow::motion.div[0]/ContextMenu[0]/ContextMenuTrigger[0]/div[0]/SubtaskStatusPopover[0]/button[0]::[&_svg]:text-muted-foreground#0",
@@ -4945,6 +5304,7 @@
       "apps/web/src/lib/column.tsx::getColumnIcon::Circle[0]::text-muted-foreground#0",
       "apps/web/src/lib/priority.tsx::getPriorityIcon::Minus[0]::text-muted-foreground#0",
       "apps/web/src/lib/priority.tsx::getPriorityIcon::Minus[0]::text-muted-foreground#1",
+      "packages/ui/src/components/alert.tsx::AlertDescription::div[0]::text-muted-foreground#0",
       "packages/ui/src/components/circular-progress.tsx::CircularProgress::svg[0]/circle[0]::text-muted-foreground#0",
       "packages/ui/src/components/dialog.tsx::DialogDescription::DialogPrimitive.Description[0]::text-muted-foreground#0",
       "packages/ui/src/components/empty.tsx::EmptyDescription::div[0]::text-muted-foreground#0",
@@ -5088,6 +5448,102 @@
         "surfaceContext": "nearest-opaque-ancestor"
       },
       {
+        "id": "apps/web/src/components/service-calendar/calendar-details-card.tsx::CalendarDetailsCard::Card[0]/CardContent[0]/div[1]/p[0]::text-muted-foreground#0",
+        "usage": "apps/web/src/components/service-calendar/calendar-details-card.tsx",
+        "category": "body",
+        "chain": [
+          "apps/web/src/components/service-calendar/calendar-details-card.tsx:CalendarDetailsCard",
+          "jsx:Card[0]/CardContent[0]/div[1]/p[0]",
+          "Card->packages/ui/src/components/card.tsx:Card>bg-card"
+        ],
+        "backdropLayers": [],
+        "surfaceContext": "imported-opaque-wrapper"
+      },
+      {
+        "id": "apps/web/src/components/service-calendar/calendar-summary-card.tsx::CalendarSummaryCard::Card[0]/CardHeader[0]/div[1]/p[0]::text-muted-foreground#0",
+        "usage": "apps/web/src/components/service-calendar/calendar-summary-card.tsx",
+        "category": "body",
+        "chain": [
+          "apps/web/src/components/service-calendar/calendar-summary-card.tsx:CalendarSummaryCard",
+          "jsx:Card[0]/CardHeader[0]/div[1]/p[0]",
+          "Card->packages/ui/src/components/card.tsx:Card>bg-card"
+        ],
+        "backdropLayers": [],
+        "surfaceContext": "imported-opaque-wrapper"
+      },
+      {
+        "id": "apps/web/src/components/service-calendar/calendar-summary-card.tsx::CalendarSummaryCard::Card[0]/CardContent[0]/p[0]::text-muted-foreground#0",
+        "usage": "apps/web/src/components/service-calendar/calendar-summary-card.tsx",
+        "category": "body",
+        "chain": [
+          "apps/web/src/components/service-calendar/calendar-summary-card.tsx:CalendarSummaryCard",
+          "jsx:Card[0]/CardContent[0]/p[0]",
+          "Card->packages/ui/src/components/card.tsx:Card>bg-card"
+        ],
+        "backdropLayers": [],
+        "surfaceContext": "imported-opaque-wrapper"
+      },
+      {
+        "id": "apps/web/src/components/service-calendar/coverage-preview-card.tsx::CoveragePreviewCard::Card[0]/CardContent[0]/div[0]/p[0]::text-muted-foreground#0",
+        "usage": "apps/web/src/components/service-calendar/coverage-preview-card.tsx",
+        "category": "body",
+        "chain": [
+          "apps/web/src/components/service-calendar/coverage-preview-card.tsx:CoveragePreviewCard",
+          "jsx:Card[0]/CardContent[0]/div[0]/p[0]",
+          "Card->packages/ui/src/components/card.tsx:Card>bg-card"
+        ],
+        "backdropLayers": [],
+        "surfaceContext": "imported-opaque-wrapper"
+      },
+      {
+        "id": "apps/web/src/components/service-calendar/coverage-preview-card.tsx::CoveragePreviewCard::Card[0]/CardContent[0]/p[0]::text-muted-foreground#0",
+        "usage": "apps/web/src/components/service-calendar/coverage-preview-card.tsx",
+        "category": "body",
+        "chain": [
+          "apps/web/src/components/service-calendar/coverage-preview-card.tsx:CoveragePreviewCard",
+          "jsx:Card[0]/CardContent[0]/p[0]",
+          "Card->packages/ui/src/components/card.tsx:Card>bg-card"
+        ],
+        "backdropLayers": [],
+        "surfaceContext": "imported-opaque-wrapper"
+      },
+      {
+        "id": "apps/web/src/components/service-calendar/holiday-list-card.tsx::HolidayListCard::Card[0]/CardHeader[0]/div[0]/p[0]::text-muted-foreground#0",
+        "usage": "apps/web/src/components/service-calendar/holiday-list-card.tsx",
+        "category": "body",
+        "chain": [
+          "apps/web/src/components/service-calendar/holiday-list-card.tsx:HolidayListCard",
+          "jsx:Card[0]/CardHeader[0]/div[0]/p[0]",
+          "Card->packages/ui/src/components/card.tsx:Card>bg-card"
+        ],
+        "backdropLayers": [],
+        "surfaceContext": "imported-opaque-wrapper"
+      },
+      {
+        "id": "apps/web/src/components/service-calendar/holiday-list-card.tsx::HolidayListCard::Card[0]/CardContent[0]/p[0]::text-muted-foreground#0",
+        "usage": "apps/web/src/components/service-calendar/holiday-list-card.tsx",
+        "category": "body",
+        "chain": [
+          "apps/web/src/components/service-calendar/holiday-list-card.tsx:HolidayListCard",
+          "jsx:Card[0]/CardContent[0]/p[0]",
+          "Card->packages/ui/src/components/card.tsx:Card>bg-card"
+        ],
+        "backdropLayers": [],
+        "surfaceContext": "imported-opaque-wrapper"
+      },
+      {
+        "id": "apps/web/src/components/service-calendar/weekly-cover-card.tsx::WeeklyCoverCard::Card[0]/CardContent[0]/DndContext[0]/section[0]/div[0]/p[0]::text-muted-foreground#0",
+        "usage": "apps/web/src/components/service-calendar/weekly-cover-card.tsx",
+        "category": "body",
+        "chain": [
+          "apps/web/src/components/service-calendar/weekly-cover-card.tsx:WeeklyCoverCard",
+          "jsx:Card[0]/CardContent[0]/DndContext[0]/section[0]/div[0]/p[0]",
+          "Card->packages/ui/src/components/card.tsx:Card>bg-card"
+        ],
+        "backdropLayers": [],
+        "surfaceContext": "imported-opaque-wrapper"
+      },
+      {
         "id": "apps/web/src/components/shared/modals/archive-tasks-modal.tsx::ArchiveTasksModal::Dialog[0]/DialogContent[0]/div[0]/div[0]/DialogDescription[0]::text-muted-foreground#0",
         "usage": "apps/web/src/components/shared/modals/archive-tasks-modal.tsx",
         "category": "body",
@@ -5097,6 +5553,42 @@
         ],
         "backdropLayers": [],
         "surfaceContext": "nearest-opaque-ancestor"
+      },
+      {
+        "id": "apps/web/src/components/sla-policy/sla-policy-editor.tsx::SlaPolicyEditor::main[0]/form[0]/Card[0]/CardContent[0]/fieldset[0]/p[0]::text-muted-foreground#0",
+        "usage": "apps/web/src/components/sla-policy/sla-policy-editor.tsx",
+        "category": "body",
+        "chain": [
+          "apps/web/src/components/sla-policy/sla-policy-editor.tsx:SlaPolicyEditor",
+          "jsx:main[0]/form[0]/Card[0]/CardContent[0]/fieldset[0]/p[0]",
+          "Card->packages/ui/src/components/card.tsx:Card>bg-card"
+        ],
+        "backdropLayers": [],
+        "surfaceContext": "imported-opaque-wrapper"
+      },
+      {
+        "id": "apps/web/src/components/sla-policy/sla-policy-editor.tsx::SlaPolicyEditor::main[0]/form[0]/Card[1]/CardContent[0]/p[0]::text-muted-foreground#0",
+        "usage": "apps/web/src/components/sla-policy/sla-policy-editor.tsx",
+        "category": "body",
+        "chain": [
+          "apps/web/src/components/sla-policy/sla-policy-editor.tsx:SlaPolicyEditor",
+          "jsx:main[0]/form[0]/Card[1]/CardContent[0]/p[0]",
+          "Card->packages/ui/src/components/card.tsx:Card>bg-card"
+        ],
+        "backdropLayers": [],
+        "surfaceContext": "imported-opaque-wrapper"
+      },
+      {
+        "id": "apps/web/src/components/sla-policy/sla-policy-editor.tsx::SlaPolicyEditor::main[0]/form[0]/Card[1]/CardContent[0]/p[0]::text-muted-foreground#1",
+        "usage": "apps/web/src/components/sla-policy/sla-policy-editor.tsx",
+        "category": "body",
+        "chain": [
+          "apps/web/src/components/sla-policy/sla-policy-editor.tsx:SlaPolicyEditor",
+          "jsx:main[0]/form[0]/Card[1]/CardContent[0]/p[0]",
+          "Card->packages/ui/src/components/card.tsx:Card>bg-card"
+        ],
+        "backdropLayers": [],
+        "surfaceContext": "imported-opaque-wrapper"
       },
       {
         "id": "apps/web/src/components/team/delete-team-member-modal.tsx::DeleteTeamMemberModal::Dialog[0]/DialogPopup[0]/div[0]/div[0]/DialogClose[0]::text-muted-foreground#0",
@@ -5119,6 +5611,126 @@
         ],
         "backdropLayers": [],
         "surfaceContext": "nearest-opaque-ancestor"
+      },
+      {
+        "id": "apps/web/src/routes/agent/_layout/_authenticated/agent/settings/profile/pending-actions.tsx::PendingActionsList::main[0]/Card[0]/CardContent[0]::text-muted-foreground#0",
+        "usage": "apps/web/src/routes/agent/_layout/_authenticated/agent/settings/profile/pending-actions.tsx",
+        "category": "body",
+        "chain": [
+          "apps/web/src/routes/agent/_layout/_authenticated/agent/settings/profile/pending-actions.tsx:PendingActionsList",
+          "jsx:main[0]/Card[0]/CardContent[0]",
+          "Card->packages/ui/src/components/card.tsx:Card>bg-card"
+        ],
+        "backdropLayers": [],
+        "surfaceContext": "imported-opaque-wrapper"
+      },
+      {
+        "id": "apps/web/src/routes/agent/_layout/_authenticated/agent/settings/profile/pending-actions.tsx::PendingActionsList::main[0]/section[0]/Card[0]/CardContent[0]/div[0]/p[0]::text-muted-foreground#0",
+        "usage": "apps/web/src/routes/agent/_layout/_authenticated/agent/settings/profile/pending-actions.tsx",
+        "category": "body",
+        "chain": [
+          "apps/web/src/routes/agent/_layout/_authenticated/agent/settings/profile/pending-actions.tsx:PendingActionsList",
+          "jsx:main[0]/section[0]/Card[0]/CardContent[0]/div[0]/p[0]",
+          "Card->packages/ui/src/components/card.tsx:Card>bg-card"
+        ],
+        "backdropLayers": [],
+        "surfaceContext": "imported-opaque-wrapper"
+      },
+      {
+        "id": "apps/web/src/routes/agent/_layout/_authenticated/agent/settings/profile/pending-actions.tsx::PendingActionsList::main[0]/section[0]/Card[0]/CardContent[0]/div[0]/p[0]::text-muted-foreground#1",
+        "usage": "apps/web/src/routes/agent/_layout/_authenticated/agent/settings/profile/pending-actions.tsx",
+        "category": "body",
+        "chain": [
+          "apps/web/src/routes/agent/_layout/_authenticated/agent/settings/profile/pending-actions.tsx:PendingActionsList",
+          "jsx:main[0]/section[0]/Card[0]/CardContent[0]/div[0]/p[0]",
+          "Card->packages/ui/src/components/card.tsx:Card>bg-card"
+        ],
+        "backdropLayers": [],
+        "surfaceContext": "imported-opaque-wrapper"
+      },
+      {
+        "id": "apps/web/src/routes/agent/_layout/_authenticated/agent/settings/profile/pending-actions/$id.tsx::PendingActionDetailRoute::main[0]/Card[0]/CardContent[0]/dl[0]/dt[0]::text-muted-foreground#0",
+        "usage": "apps/web/src/routes/agent/_layout/_authenticated/agent/settings/profile/pending-actions/$id.tsx",
+        "category": "body",
+        "chain": [
+          "apps/web/src/routes/agent/_layout/_authenticated/agent/settings/profile/pending-actions/$id.tsx:PendingActionDetailRoute",
+          "jsx:main[0]/Card[0]/CardContent[0]/dl[0]/dt[0]",
+          "Card->packages/ui/src/components/card.tsx:Card>bg-card"
+        ],
+        "backdropLayers": [],
+        "surfaceContext": "imported-opaque-wrapper"
+      },
+      {
+        "id": "apps/web/src/routes/agent/_layout/_authenticated/agent/settings/profile/pending-actions/$id.tsx::PendingActionDetailRoute::main[0]/Card[0]/CardContent[0]/dl[0]/dt[1]::text-muted-foreground#0",
+        "usage": "apps/web/src/routes/agent/_layout/_authenticated/agent/settings/profile/pending-actions/$id.tsx",
+        "category": "body",
+        "chain": [
+          "apps/web/src/routes/agent/_layout/_authenticated/agent/settings/profile/pending-actions/$id.tsx:PendingActionDetailRoute",
+          "jsx:main[0]/Card[0]/CardContent[0]/dl[0]/dt[1]",
+          "Card->packages/ui/src/components/card.tsx:Card>bg-card"
+        ],
+        "backdropLayers": [],
+        "surfaceContext": "imported-opaque-wrapper"
+      },
+      {
+        "id": "apps/web/src/routes/agent/_layout/_authenticated/agent/settings/profile/pending-actions/$id.tsx::PendingActionDetailRoute::main[0]/Card[0]/CardContent[0]/dl[0]/dt[2]::text-muted-foreground#0",
+        "usage": "apps/web/src/routes/agent/_layout/_authenticated/agent/settings/profile/pending-actions/$id.tsx",
+        "category": "body",
+        "chain": [
+          "apps/web/src/routes/agent/_layout/_authenticated/agent/settings/profile/pending-actions/$id.tsx:PendingActionDetailRoute",
+          "jsx:main[0]/Card[0]/CardContent[0]/dl[0]/dt[2]",
+          "Card->packages/ui/src/components/card.tsx:Card>bg-card"
+        ],
+        "backdropLayers": [],
+        "surfaceContext": "imported-opaque-wrapper"
+      },
+      {
+        "id": "apps/web/src/routes/agent/_layout/_authenticated/agent/settings/profile/pending-actions/$id.tsx::PendingActionDetailRoute::main[0]/Card[0]/CardContent[0]/dl[0]/dt[0]::text-muted-foreground#1",
+        "usage": "apps/web/src/routes/agent/_layout/_authenticated/agent/settings/profile/pending-actions/$id.tsx",
+        "category": "body",
+        "chain": [
+          "apps/web/src/routes/agent/_layout/_authenticated/agent/settings/profile/pending-actions/$id.tsx:PendingActionDetailRoute",
+          "jsx:main[0]/Card[0]/CardContent[0]/dl[0]/dt[0]",
+          "Card->packages/ui/src/components/card.tsx:Card>bg-card"
+        ],
+        "backdropLayers": [],
+        "surfaceContext": "imported-opaque-wrapper"
+      },
+      {
+        "id": "apps/web/src/routes/agent/_layout/_authenticated/agent/settings/profile/pending-actions/$id.tsx::PendingActionDetailRoute::main[0]/Card[0]/CardContent[0]/p[0]::text-muted-foreground#0",
+        "usage": "apps/web/src/routes/agent/_layout/_authenticated/agent/settings/profile/pending-actions/$id.tsx",
+        "category": "body",
+        "chain": [
+          "apps/web/src/routes/agent/_layout/_authenticated/agent/settings/profile/pending-actions/$id.tsx:PendingActionDetailRoute",
+          "jsx:main[0]/Card[0]/CardContent[0]/p[0]",
+          "Card->packages/ui/src/components/card.tsx:Card>bg-card"
+        ],
+        "backdropLayers": [],
+        "surfaceContext": "imported-opaque-wrapper"
+      },
+      {
+        "id": "apps/web/src/routes/agent/_layout/_authenticated/agent/settings/profile/pending-actions/$id.tsx::PendingActionDetailRoute::main[0]/Card[0]/CardContent[0]/div[0]/p[0]::text-muted-foreground#0",
+        "usage": "apps/web/src/routes/agent/_layout/_authenticated/agent/settings/profile/pending-actions/$id.tsx",
+        "category": "body",
+        "chain": [
+          "apps/web/src/routes/agent/_layout/_authenticated/agent/settings/profile/pending-actions/$id.tsx:PendingActionDetailRoute",
+          "jsx:main[0]/Card[0]/CardContent[0]/div[0]/p[0]",
+          "Card->packages/ui/src/components/card.tsx:Card>bg-card"
+        ],
+        "backdropLayers": [],
+        "surfaceContext": "imported-opaque-wrapper"
+      },
+      {
+        "id": "apps/web/src/routes/agent/_layout/_authenticated/agent/settings/profile/pending-actions/$id.tsx::PendingActionDetailRoute::main[0]/Card[0]/CardContent[0]/div[0]/div[0]/p[0]::text-muted-foreground#0",
+        "usage": "apps/web/src/routes/agent/_layout/_authenticated/agent/settings/profile/pending-actions/$id.tsx",
+        "category": "body",
+        "chain": [
+          "apps/web/src/routes/agent/_layout/_authenticated/agent/settings/profile/pending-actions/$id.tsx:PendingActionDetailRoute",
+          "jsx:main[0]/Card[0]/CardContent[0]/div[0]/div[0]/p[0]",
+          "Card->packages/ui/src/components/card.tsx:Card>bg-card"
+        ],
+        "backdropLayers": [],
+        "surfaceContext": "imported-opaque-wrapper"
       },
       {
         "id": "apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings.tsx::SettingsLayout::div[0]/div[0]/div[0]/div[0]/div[0]/ChevronLeft[0]::text-muted-foreground#0",
@@ -5173,6 +5785,150 @@
         "chain": [
           "apps/web/src/routes/agent/_layout/_authenticated/dashboard/workspace/create.tsx:RouteComponent",
           "jsx:div[0]/div[0]/Card[0]/CardContent[0]/div[0]/p[0]",
+          "Card->packages/ui/src/components/card.tsx:Card>bg-card"
+        ],
+        "backdropLayers": [],
+        "surfaceContext": "imported-opaque-wrapper"
+      },
+      {
+        "id": "apps/web/src/routes/agent/_layout/_authenticated/god-mode/authentication.tsx::IdentityConnectionsRoute::main[0]/section[0]/Card[0]/CardContent[0]/div[0]/p[0]::text-muted-foreground#0",
+        "usage": "apps/web/src/routes/agent/_layout/_authenticated/god-mode/authentication.tsx",
+        "category": "body",
+        "chain": [
+          "apps/web/src/routes/agent/_layout/_authenticated/god-mode/authentication.tsx:IdentityConnectionsRoute",
+          "jsx:main[0]/section[0]/Card[0]/CardContent[0]/div[0]/p[0]",
+          "Card->packages/ui/src/components/card.tsx:Card>bg-card"
+        ],
+        "backdropLayers": [],
+        "surfaceContext": "imported-opaque-wrapper"
+      },
+      {
+        "id": "apps/web/src/routes/agent/_layout/_authenticated/god-mode/authentication.tsx::IdentityConnectionsRoute::main[0]/Card[0]/CardContent[0]::text-muted-foreground#0",
+        "usage": "apps/web/src/routes/agent/_layout/_authenticated/god-mode/authentication.tsx",
+        "category": "body",
+        "chain": [
+          "apps/web/src/routes/agent/_layout/_authenticated/god-mode/authentication.tsx:IdentityConnectionsRoute",
+          "jsx:main[0]/Card[0]/CardContent[0]",
+          "Card->packages/ui/src/components/card.tsx:Card>bg-card"
+        ],
+        "backdropLayers": [],
+        "surfaceContext": "imported-opaque-wrapper"
+      },
+      {
+        "id": "apps/web/src/routes/agent/_layout/_authenticated/god-mode/users.tsx::InstanceUsersPage::main[0]/Card[0]/CardContent[0]/p[0]::text-muted-foreground#0",
+        "usage": "apps/web/src/routes/agent/_layout/_authenticated/god-mode/users.tsx",
+        "category": "body",
+        "chain": [
+          "apps/web/src/routes/agent/_layout/_authenticated/god-mode/users.tsx:InstanceUsersPage",
+          "jsx:main[0]/Card[0]/CardContent[0]/p[0]",
+          "Card->packages/ui/src/components/card.tsx:Card>bg-card"
+        ],
+        "backdropLayers": [],
+        "surfaceContext": "imported-opaque-wrapper"
+      },
+      {
+        "id": "apps/web/src/routes/agent/_layout/_authenticated/god-mode/users.tsx::InstanceUsersPage::main[0]/div[0]/Card[0]/CardContent[0]/Table[0]/TableBody[0]/TableRow[0]/TableCell[0]/Link[0]/span[1]::text-muted-foreground#0",
+        "usage": "apps/web/src/routes/agent/_layout/_authenticated/god-mode/users.tsx",
+        "category": "body",
+        "chain": [
+          "apps/web/src/routes/agent/_layout/_authenticated/god-mode/users.tsx:InstanceUsersPage",
+          "jsx:main[0]/div[0]/Card[0]/CardContent[0]/Table[0]/TableBody[0]/TableRow[0]/TableCell[0]/Link[0]/span[1]",
+          "Card->packages/ui/src/components/card.tsx:Card>bg-card"
+        ],
+        "backdropLayers": [],
+        "surfaceContext": "imported-opaque-wrapper"
+      },
+      {
+        "id": "apps/web/src/routes/agent/_layout/_authenticated/god-mode/users.tsx::InstanceUsersPage::main[0]/div[0]/Card[0]/CardContent[0]/div[0]/span[0]::text-muted-foreground#0",
+        "usage": "apps/web/src/routes/agent/_layout/_authenticated/god-mode/users.tsx",
+        "category": "body",
+        "chain": [
+          "apps/web/src/routes/agent/_layout/_authenticated/god-mode/users.tsx:InstanceUsersPage",
+          "jsx:main[0]/div[0]/Card[0]/CardContent[0]/div[0]/span[0]",
+          "Card->packages/ui/src/components/card.tsx:Card>bg-card"
+        ],
+        "backdropLayers": [],
+        "surfaceContext": "imported-opaque-wrapper"
+      },
+      {
+        "id": "apps/web/src/routes/agent/_layout/_authenticated/god-mode/users.tsx::UserDetails::Card[0]/CardContent[0]/div[0]/div[0]/p[0]::text-muted-foreground#0",
+        "usage": "apps/web/src/routes/agent/_layout/_authenticated/god-mode/users.tsx",
+        "category": "body",
+        "chain": [
+          "apps/web/src/routes/agent/_layout/_authenticated/god-mode/users.tsx:UserDetails",
+          "jsx:Card[0]/CardContent[0]/div[0]/div[0]/p[0]",
+          "Card->packages/ui/src/components/card.tsx:Card>bg-card"
+        ],
+        "backdropLayers": [],
+        "surfaceContext": "imported-opaque-wrapper"
+      },
+      {
+        "id": "apps/web/src/routes/agent/_layout/_authenticated/god-mode/users.tsx::UserDetails::Card[0]/CardContent[0]/dl[0]/dt[0]::text-muted-foreground#0",
+        "usage": "apps/web/src/routes/agent/_layout/_authenticated/god-mode/users.tsx",
+        "category": "body",
+        "chain": [
+          "apps/web/src/routes/agent/_layout/_authenticated/god-mode/users.tsx:UserDetails",
+          "jsx:Card[0]/CardContent[0]/dl[0]/dt[0]",
+          "Card->packages/ui/src/components/card.tsx:Card>bg-card"
+        ],
+        "backdropLayers": [],
+        "surfaceContext": "imported-opaque-wrapper"
+      },
+      {
+        "id": "apps/web/src/routes/agent/_layout/_authenticated/god-mode/users.tsx::UserDetails::Card[0]/CardContent[0]/dl[0]/dt[1]::text-muted-foreground#0",
+        "usage": "apps/web/src/routes/agent/_layout/_authenticated/god-mode/users.tsx",
+        "category": "body",
+        "chain": [
+          "apps/web/src/routes/agent/_layout/_authenticated/god-mode/users.tsx:UserDetails",
+          "jsx:Card[0]/CardContent[0]/dl[0]/dt[1]",
+          "Card->packages/ui/src/components/card.tsx:Card>bg-card"
+        ],
+        "backdropLayers": [],
+        "surfaceContext": "imported-opaque-wrapper"
+      },
+      {
+        "id": "apps/web/src/routes/agent/_layout/_authenticated/god-mode/users.tsx::UserDetails::Card[0]/CardContent[0]/dl[0]/dt[2]::text-muted-foreground#0",
+        "usage": "apps/web/src/routes/agent/_layout/_authenticated/god-mode/users.tsx",
+        "category": "body",
+        "chain": [
+          "apps/web/src/routes/agent/_layout/_authenticated/god-mode/users.tsx:UserDetails",
+          "jsx:Card[0]/CardContent[0]/dl[0]/dt[2]",
+          "Card->packages/ui/src/components/card.tsx:Card>bg-card"
+        ],
+        "backdropLayers": [],
+        "surfaceContext": "imported-opaque-wrapper"
+      },
+      {
+        "id": "apps/web/src/routes/agent/_layout/_authenticated/god-mode/users.tsx::UserDetails::Card[0]/CardContent[0]/dl[0]/dt[3]::text-muted-foreground#0",
+        "usage": "apps/web/src/routes/agent/_layout/_authenticated/god-mode/users.tsx",
+        "category": "body",
+        "chain": [
+          "apps/web/src/routes/agent/_layout/_authenticated/god-mode/users.tsx:UserDetails",
+          "jsx:Card[0]/CardContent[0]/dl[0]/dt[3]",
+          "Card->packages/ui/src/components/card.tsx:Card>bg-card"
+        ],
+        "backdropLayers": [],
+        "surfaceContext": "imported-opaque-wrapper"
+      },
+      {
+        "id": "apps/web/src/routes/agent/_layout/_authenticated/god-mode/users.tsx::UserDetails::Card[0]/CardContent[0]/dl[0]/dt[4]::text-muted-foreground#0",
+        "usage": "apps/web/src/routes/agent/_layout/_authenticated/god-mode/users.tsx",
+        "category": "body",
+        "chain": [
+          "apps/web/src/routes/agent/_layout/_authenticated/god-mode/users.tsx:UserDetails",
+          "jsx:Card[0]/CardContent[0]/dl[0]/dt[4]",
+          "Card->packages/ui/src/components/card.tsx:Card>bg-card"
+        ],
+        "backdropLayers": [],
+        "surfaceContext": "imported-opaque-wrapper"
+      },
+      {
+        "id": "apps/web/src/routes/agent/_layout/_authenticated/god-mode/users.tsx::UserDetails::Card[0]/CardContent[0]/div[1]/p[0]::text-muted-foreground#0",
+        "usage": "apps/web/src/routes/agent/_layout/_authenticated/god-mode/users.tsx",
+        "category": "body",
+        "chain": [
+          "apps/web/src/routes/agent/_layout/_authenticated/god-mode/users.tsx:UserDetails",
+          "jsx:Card[0]/CardContent[0]/div[1]/p[0]",
           "Card->packages/ui/src/components/card.tsx:Card>bg-card"
         ],
         "backdropLayers": [],
@@ -6110,6 +6866,50 @@
         "surfaceContext": "caller-chain"
       },
       {
+        "id": "apps/web/src/components/service-calendar/holiday-import-panel.tsx::HolidayImportPanel::section[0]/div[0]/p[0]::text-muted-foreground#0",
+        "usage": "apps/web/src/components/service-calendar/holiday-import-panel.tsx",
+        "category": "body",
+        "chain": [
+          "apps/web/src/components/service-calendar/holiday-list-card.tsx:HolidayListCard",
+          "Card->packages/ui/src/components/card.tsx:Card"
+        ],
+        "backdropLayers": [],
+        "surfaceContext": "caller-chain"
+      },
+      {
+        "id": "apps/web/src/components/service-calendar/holiday-import-panel.tsx::HolidayImportPanel::section[0]/div[0]/p[1]::text-muted-foreground#0",
+        "usage": "apps/web/src/components/service-calendar/holiday-import-panel.tsx",
+        "category": "body",
+        "chain": [
+          "apps/web/src/components/service-calendar/holiday-list-card.tsx:HolidayListCard",
+          "Card->packages/ui/src/components/card.tsx:Card"
+        ],
+        "backdropLayers": [],
+        "surfaceContext": "caller-chain"
+      },
+      {
+        "id": "apps/web/src/components/service-calendar/window-fields.tsx::WindowFields::div[0]/div[0]/div[0]::text-muted-foreground#0",
+        "usage": "apps/web/src/components/service-calendar/window-fields.tsx",
+        "category": "body",
+        "chain": [
+          "apps/web/src/components/service-calendar/weekly-cover-card.tsx:WeeklyCoverCard",
+          "Card->packages/ui/src/components/card.tsx:Card"
+        ],
+        "backdropLayers": [],
+        "surfaceContext": "caller-chain"
+      },
+      {
+        "id": "apps/web/src/components/service-calendar/window-fields.tsx::WindowFields::div[0]/div[2]/div[0]::text-muted-foreground#0",
+        "usage": "apps/web/src/components/service-calendar/window-fields.tsx",
+        "category": "body",
+        "chain": [
+          "apps/web/src/components/service-calendar/weekly-cover-card.tsx:WeeklyCoverCard",
+          "Card->packages/ui/src/components/card.tsx:Card"
+        ],
+        "backdropLayers": [],
+        "surfaceContext": "caller-chain"
+      },
+      {
         "id": "apps/web/src/components/settings/api-key-table.tsx::ApiKeyTable::Frame[0]/Table[0]/TableBody[0]/TableRow[0]/TableCell[2]::text-muted-foreground#0",
         "usage": "apps/web/src/components/settings/api-key-table.tsx",
         "category": "body",
@@ -6407,6 +7207,28 @@
         "surfaceContext": "caller-chain"
       },
       {
+        "id": "packages/ui/src/components/alert.tsx::AlertDescription::div[0]::text-muted-foreground#0",
+        "usage": "packages/ui/src/components/alert.tsx",
+        "category": "body",
+        "chain": [
+          "apps/web/src/components/service-calendar/holiday-list-card.tsx:HolidayListCard",
+          "Card->packages/ui/src/components/card.tsx:Card"
+        ],
+        "backdropLayers": [],
+        "surfaceContext": "caller-chain"
+      },
+      {
+        "id": "packages/ui/src/components/alert.tsx::AlertDescription::div[0]::text-muted-foreground#0",
+        "usage": "packages/ui/src/components/alert.tsx",
+        "category": "body",
+        "chain": [
+          "apps/web/src/routes/agent/_layout/_authenticated/agent/settings/profile/pending-actions/$id.tsx:PendingActionDetailRoute",
+          "Card->packages/ui/src/components/card.tsx:Card"
+        ],
+        "backdropLayers": [],
+        "surfaceContext": "caller-chain"
+      },
+      {
         "id": "packages/ui/src/components/circular-progress.tsx::CircularProgress::svg[0]/circle[0]::text-muted-foreground#0",
         "usage": "packages/ui/src/components/circular-progress.tsx",
         "category": "non-text",
@@ -6466,6 +7288,28 @@
         "usage": "packages/ui/src/components/empty.tsx",
         "category": "body",
         "chain": [
+          "apps/web/src/routes/agent/_layout/_authenticated/agent/settings/calendars.tsx:ServiceCalendarsRoute",
+          "EmptyHeader->packages/ui/src/components/empty.tsx:EmptyHeader"
+        ],
+        "backdropLayers": [],
+        "surfaceContext": "caller-chain"
+      },
+      {
+        "id": "packages/ui/src/components/empty.tsx::EmptyDescription::div[0]::text-muted-foreground#0",
+        "usage": "packages/ui/src/components/empty.tsx",
+        "category": "body",
+        "chain": [
+          "apps/web/src/routes/agent/_layout/_authenticated/agent/settings/sla-policies.tsx:SlaPoliciesRoute",
+          "EmptyHeader->packages/ui/src/components/empty.tsx:EmptyHeader"
+        ],
+        "backdropLayers": [],
+        "surfaceContext": "caller-chain"
+      },
+      {
+        "id": "packages/ui/src/components/empty.tsx::EmptyDescription::div[0]::text-muted-foreground#0",
+        "usage": "packages/ui/src/components/empty.tsx",
+        "category": "body",
+        "chain": [
           "apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings/workspace/labels.tsx:RouteComponent",
           "EmptyHeader->packages/ui/src/components/empty.tsx:EmptyHeader"
         ],
@@ -6500,6 +7344,17 @@
         "category": "body",
         "chain": [
           "apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings/account/developer.tsx:RouteComponent",
+          "Card->packages/ui/src/components/card.tsx:Card"
+        ],
+        "backdropLayers": [],
+        "surfaceContext": "caller-chain"
+      },
+      {
+        "id": "packages/ui/src/components/table.tsx::TableHead::th[0]::text-muted-foreground#0",
+        "usage": "packages/ui/src/components/table.tsx",
+        "category": "body",
+        "chain": [
+          "apps/web/src/routes/agent/_layout/_authenticated/god-mode/users.tsx:InstanceUsersPage",
           "Card->packages/ui/src/components/card.tsx:Card"
         ],
         "backdropLayers": [],
@@ -7113,6 +7968,8 @@
       "apps/web/src/components/common/header/task-crumb-select.tsx::TaskCrumbOptions::DropdownMenuContent[0]/DropdownMenuGroup[1]/DropdownMenuItem[0]/span[0]::text-foreground#0",
       "apps/web/src/components/notification/notification-dropdown.tsx::<module>::DropdownMenu[0]/DropdownMenuContent[0]/div[0]/div[0]/DropdownMenuItem[0]::data-highlighted:text-foreground#0",
       "apps/web/src/components/notification/notification-dropdown.tsx::<module>::DropdownMenu[0]/DropdownMenuContent[0]/div[0]/div[1]/DropdownMenuItem[0]/div[0]/div[0]/span[0]::text-foreground#0",
+      "apps/web/src/components/service-calendar/service-calendar-editor-view.tsx::ServiceCalendarEditorView::main[0]/AlertDialog[0]/AlertDialogPopup[0]/AlertDialogHeader[0]/AlertDialogDescription[0]::text-foreground#0",
+      "apps/web/src/components/service-calendar/service-calendar-editor-view.tsx::ServiceCalendarEditorView::main[0]/AlertDialog[0]/AlertDialogPopup[0]/AlertDialogHeader[0]/p[0]::text-foreground#0",
       "apps/web/src/components/shared/modals/create-project-modal.tsx::CreateProjectModal::Dialog[0]/DialogContent[0]/DialogHeader[0]/Breadcrumb[0]/BreadcrumbList[0]/BreadcrumbItem[1]::text-foreground#0",
       "apps/web/src/components/shared/modals/create-project-modal.tsx::CreateProjectModal::Dialog[0]/DialogContent[0]/form[0]/div[0]/Input[0]::[&_[data-slot=input]]:text-foreground#0",
       "apps/web/src/components/shared/modals/create-task-modal.tsx::CreateTaskModal::Dialog[0]/DialogContent[0]/DialogHeader[0]/DialogTitle[0]/Breadcrumb[0]/BreadcrumbList[0]/BreadcrumbItem[1]::text-foreground#0",
@@ -7255,6 +8112,30 @@
           "apps/web/src/components/notification/notification-dropdown.tsx:<module>",
           "jsx:DropdownMenu[0]/DropdownMenuContent[0]/div[0]/div[1]/DropdownMenuItem[0]/div[0]/div[0]/span[0]",
           "DropdownMenuContent->packages/ui/src/components/menu.tsx:MenuPopup>bg-popover"
+        ],
+        "backdropLayers": [],
+        "surfaceContext": "imported-opaque-wrapper"
+      },
+      {
+        "id": "apps/web/src/components/service-calendar/service-calendar-editor-view.tsx::ServiceCalendarEditorView::main[0]/AlertDialog[0]/AlertDialogPopup[0]/AlertDialogHeader[0]/AlertDialogDescription[0]::text-foreground#0",
+        "usage": "apps/web/src/components/service-calendar/service-calendar-editor-view.tsx",
+        "category": "body",
+        "chain": [
+          "apps/web/src/components/service-calendar/service-calendar-editor-view.tsx:ServiceCalendarEditorView",
+          "jsx:main[0]/AlertDialog[0]/AlertDialogPopup[0]/AlertDialogHeader[0]/AlertDialogDescription[0]",
+          "AlertDialogPopup->packages/ui/src/components/alert-dialog.tsx:AlertDialogPopup>bg-popover"
+        ],
+        "backdropLayers": [],
+        "surfaceContext": "imported-opaque-wrapper"
+      },
+      {
+        "id": "apps/web/src/components/service-calendar/service-calendar-editor-view.tsx::ServiceCalendarEditorView::main[0]/AlertDialog[0]/AlertDialogPopup[0]/AlertDialogHeader[0]/p[0]::text-foreground#0",
+        "usage": "apps/web/src/components/service-calendar/service-calendar-editor-view.tsx",
+        "category": "body",
+        "chain": [
+          "apps/web/src/components/service-calendar/service-calendar-editor-view.tsx:ServiceCalendarEditorView",
+          "jsx:main[0]/AlertDialog[0]/AlertDialogPopup[0]/AlertDialogHeader[0]/p[0]",
+          "AlertDialogPopup->packages/ui/src/components/alert-dialog.tsx:AlertDialogPopup>bg-popover"
         ],
         "backdropLayers": [],
         "surfaceContext": "imported-opaque-wrapper"
@@ -7828,6 +8709,8 @@
       "apps/web/src/components/user-avatar.tsx::UserAvatar::DropdownMenu[0]/DropdownMenuContent[0]/div[0]/div[0]/div[0]/span[0]::text-muted-foreground#0",
       "apps/web/src/routes/agent/_layout/_authenticated/dashboard/workspace/$workspaceId/project/$projectId/backlog.tsx::RouteComponent::ProjectLayout[0]/div[0]/div[0]/div[0]/div[0]/div[0]/DropdownMenu[0]/DropdownMenuContent[0]/DropdownMenuItem[0]::text-muted-foreground#1",
       "apps/web/src/routes/agent/_layout/_authenticated/dashboard/workspace/$workspaceId/project/$projectId/backlog.tsx::RouteComponent::ProjectLayout[0]/div[0]/div[0]/div[0]/div[0]/div[0]/DropdownMenu[0]/DropdownMenuContent[0]/DropdownMenuItem[0]::text-muted-foreground#2",
+      "apps/web/src/routes/agent/_layout/_authenticated/god-mode/users.tsx::UserActionDialog::Dialog[0]/DialogContent[0]/div[0]/div[1]/p[0]::text-muted-foreground#0",
+      "apps/web/src/routes/agent/_layout/_authenticated/god-mode/users.tsx::UserActionDialog::Dialog[0]/DialogContent[0]/div[0]/div[0]/p[0]::text-muted-foreground#0",
       "packages/ui/src/components/toast.tsx::Toasts::Toast.Portal[0]/Toast.Viewport[0]/Toast.Root[0]/Toast.Content[0]/div[0]/div[0]/Toast.Description[0]::text-muted-foreground#0",
       "packages/ui/src/components/toast.tsx::AnchoredToasts::Toast.Portal[0]/Toast.Viewport[0]/Toast.Positioner[0]/Toast.Root[0]/Toast.Content[0]/div[0]/div[0]/Toast.Description[0]::text-muted-foreground#0",
       "apps/web/src/components/kanban-board/task-card.tsx::TaskCard::GitPullRequest[0]::text-muted-foreground#0",
@@ -8905,6 +9788,30 @@
         "surfaceContext": "imported-opaque-wrapper"
       },
       {
+        "id": "apps/web/src/routes/agent/_layout/_authenticated/god-mode/users.tsx::UserActionDialog::Dialog[0]/DialogContent[0]/div[0]/div[1]/p[0]::text-muted-foreground#0",
+        "usage": "apps/web/src/routes/agent/_layout/_authenticated/god-mode/users.tsx",
+        "category": "body",
+        "chain": [
+          "apps/web/src/routes/agent/_layout/_authenticated/god-mode/users.tsx:UserActionDialog",
+          "jsx:Dialog[0]/DialogContent[0]/div[0]/div[1]/p[0]",
+          "DialogContent->packages/ui/src/components/dialog.tsx:DialogPopup>bg-popover"
+        ],
+        "backdropLayers": [],
+        "surfaceContext": "imported-opaque-wrapper"
+      },
+      {
+        "id": "apps/web/src/routes/agent/_layout/_authenticated/god-mode/users.tsx::UserActionDialog::Dialog[0]/DialogContent[0]/div[0]/div[0]/p[0]::text-muted-foreground#0",
+        "usage": "apps/web/src/routes/agent/_layout/_authenticated/god-mode/users.tsx",
+        "category": "body",
+        "chain": [
+          "apps/web/src/routes/agent/_layout/_authenticated/god-mode/users.tsx:UserActionDialog",
+          "jsx:Dialog[0]/DialogContent[0]/div[0]/div[0]/p[0]",
+          "DialogContent->packages/ui/src/components/dialog.tsx:DialogPopup>bg-popover"
+        ],
+        "backdropLayers": [],
+        "surfaceContext": "imported-opaque-wrapper"
+      },
+      {
         "id": "packages/ui/src/components/toast.tsx::Toasts::Toast.Portal[0]/Toast.Viewport[0]/Toast.Root[0]/Toast.Content[0]/div[0]/div[0]/Toast.Description[0]::text-muted-foreground#0",
         "usage": "packages/ui/src/components/toast.tsx",
         "category": "body",
@@ -9868,6 +10775,17 @@
         "usage": "packages/ui/src/components/alert-dialog.tsx",
         "category": "body",
         "chain": [
+          "apps/web/src/components/service-calendar/service-calendar-editor-view.tsx:ServiceCalendarEditorView",
+          "AlertDialogPopup->packages/ui/src/components/alert-dialog.tsx:AlertDialogPopup"
+        ],
+        "backdropLayers": [],
+        "surfaceContext": "caller-chain"
+      },
+      {
+        "id": "packages/ui/src/components/alert-dialog.tsx::AlertDialogDescription::AlertDialogPrimitive.Description[0]::text-muted-foreground#0",
+        "usage": "packages/ui/src/components/alert-dialog.tsx",
+        "category": "body",
+        "chain": [
           "apps/web/src/components/settings/api-key-table.tsx:ApiKeyTable",
           "AlertDialogContent->packages/ui/src/components/alert-dialog.tsx:AlertDialogPopup"
         ],
@@ -10001,6 +10919,17 @@
         "category": "body",
         "chain": [
           "apps/web/src/components/work-item/create-work-item-dialog.tsx:CreateWorkItemDialog",
+          "DialogContent->packages/ui/src/components/dialog.tsx:DialogPopup"
+        ],
+        "backdropLayers": [],
+        "surfaceContext": "caller-chain"
+      },
+      {
+        "id": "packages/ui/src/components/alert.tsx::AlertDescription::div[0]::text-muted-foreground#0",
+        "usage": "packages/ui/src/components/alert.tsx",
+        "category": "body",
+        "chain": [
+          "apps/web/src/routes/agent/_layout/_authenticated/god-mode/users.tsx:UserActionDialog",
           "DialogContent->packages/ui/src/components/dialog.tsx:DialogPopup"
         ],
         "backdropLayers": [],
@@ -10375,6 +11304,17 @@
         "category": "body",
         "chain": [
           "apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings/workspace/labels.tsx:RouteComponent",
+          "DialogContent->packages/ui/src/components/dialog.tsx:DialogPopup"
+        ],
+        "backdropLayers": [],
+        "surfaceContext": "caller-chain"
+      },
+      {
+        "id": "packages/ui/src/components/dialog.tsx::DialogDescription::DialogPrimitive.Description[0]::text-muted-foreground#0",
+        "usage": "packages/ui/src/components/dialog.tsx",
+        "category": "body",
+        "chain": [
+          "apps/web/src/routes/agent/_layout/_authenticated/god-mode/users.tsx:UserActionDialog",
           "DialogContent->packages/ui/src/components/dialog.tsx:DialogPopup"
         ],
         "backdropLayers": [],
@@ -13147,6 +14087,9 @@
     "occurrenceIds": [
       "apps/web/src/routes/agent/_layout/_authenticated/dashboard/invitations.tsx::InvitationsPage::Layout[0]/Layout.Content[0]/div[0]/div[0]/Table[0]/TableBody[0]/TableRow[0]/TableCell[3]/div[0]/Button[1]::hover:text-destructive#0",
       "apps/web/src/routes/agent/_layout/_authenticated/dashboard/workspace/$workspaceId/project/$projectId/calendar.tsx::RouteComponent::ProjectLayout[0]/div[0]/div[0]/p[0]::text-destructive#0",
+      "apps/web/src/routes/agent/_layout/_authenticated/agent/settings/profile/pending-actions.tsx::PendingActionsList::main[0]/p[0]::text-destructive#0",
+      "apps/web/src/routes/agent/_layout/_authenticated/agent/settings/profile/pending-actions.tsx::PendingActionsList::main[0]/p[0]::text-destructive#1",
+      "apps/web/src/routes/agent/_layout/_authenticated/agent/settings/profile/pending-actions/$id.tsx::PendingActionDetailRoute::main[0]/p[0]::text-destructive#0",
       "packages/ui/src/components/form.tsx::FormLabel::Label[0]::text-destructive#0",
       "packages/ui/src/components/form.tsx::FormMessage::p[0]::text-destructive#0"
     ],
@@ -13174,6 +14117,46 @@
         ],
         "backdropLayers": [],
         "surfaceContext": "nearest-opaque-ancestor"
+      },
+      {
+        "id": "apps/web/src/routes/agent/_layout/_authenticated/agent/settings/profile/pending-actions.tsx::PendingActionsList::main[0]/p[0]::text-destructive#0",
+        "usage": "apps/web/src/routes/agent/_layout/_authenticated/agent/settings/profile/pending-actions.tsx",
+        "category": "body",
+        "chain": [
+          "apps/web/src/routes/agent/_layout/_authenticated/agent/settings/profile/pending-actions.tsx:/_layout/_authenticated/agent/settings/profile/pending-actions",
+          "apps/web/src/routes/agent/_layout/_authenticated.tsx:/_layout/_authenticated",
+          "apps/web/src/routes/agent/_layout.tsx:/_layout",
+          "apps/web/src/index.css:body>@apply bg-background"
+        ],
+        "backdropLayers": [],
+        "surfaceContext": "route-layout-body"
+      },
+      {
+        "id": "apps/web/src/routes/agent/_layout/_authenticated/agent/settings/profile/pending-actions.tsx::PendingActionsList::main[0]/p[0]::text-destructive#1",
+        "usage": "apps/web/src/routes/agent/_layout/_authenticated/agent/settings/profile/pending-actions.tsx",
+        "category": "body",
+        "chain": [
+          "apps/web/src/routes/agent/_layout/_authenticated/agent/settings/profile/pending-actions.tsx:/_layout/_authenticated/agent/settings/profile/pending-actions",
+          "apps/web/src/routes/agent/_layout/_authenticated.tsx:/_layout/_authenticated",
+          "apps/web/src/routes/agent/_layout.tsx:/_layout",
+          "apps/web/src/index.css:body>@apply bg-background"
+        ],
+        "backdropLayers": [],
+        "surfaceContext": "route-layout-body"
+      },
+      {
+        "id": "apps/web/src/routes/agent/_layout/_authenticated/agent/settings/profile/pending-actions/$id.tsx::PendingActionDetailRoute::main[0]/p[0]::text-destructive#0",
+        "usage": "apps/web/src/routes/agent/_layout/_authenticated/agent/settings/profile/pending-actions/$id.tsx",
+        "category": "body",
+        "chain": [
+          "apps/web/src/routes/agent/_layout/_authenticated/agent/settings/profile/pending-actions/$id.tsx:/_layout/_authenticated/agent/settings/profile/pending-actions/$id",
+          "apps/web/src/routes/agent/_layout/_authenticated/agent/settings/profile/pending-actions.tsx:/_layout/_authenticated/agent/settings/profile/pending-actions",
+          "apps/web/src/routes/agent/_layout/_authenticated.tsx:/_layout/_authenticated",
+          "apps/web/src/routes/agent/_layout.tsx:/_layout",
+          "apps/web/src/index.css:body>@apply bg-background"
+        ],
+        "backdropLayers": [],
+        "surfaceContext": "route-layout-body"
       },
       {
         "id": "packages/ui/src/components/form.tsx::FormLabel::Label[0]::text-destructive#0",
@@ -13261,6 +14244,12 @@
     },
     "backdropLayers": [],
     "occurrenceIds": [
+      "apps/web/src/components/service-calendar/calendar-details-card.tsx::CalendarDetailsCard::Card[0]/CardContent[0]/div[0]/p[0]::text-destructive#0",
+      "apps/web/src/components/service-calendar/calendar-details-card.tsx::CalendarDetailsCard::Card[0]/CardContent[0]/div[1]/p[0]::text-destructive#0",
+      "apps/web/src/components/service-calendar/coverage-preview-card.tsx::CoveragePreviewCard::Card[0]/CardContent[0]/div[0]/p[0]::text-destructive#0",
+      "apps/web/src/components/service-calendar/weekly-cover-card.tsx::WeeklyCoverCard::Card[0]/CardContent[0]/p[0]::text-destructive#0",
+      "apps/web/src/components/sla-policy/sla-policy-editor.tsx::SlaPolicyEditor::main[0]/form[0]/Card[0]/CardContent[0]/fieldset[0]/p[0]::text-destructive#0",
+      "apps/web/src/routes/agent/_layout/_authenticated/agent/settings/profile/pending-actions/$id.tsx::PendingActionDetailRoute::main[0]/Card[0]/CardContent[0]/p[0]::text-destructive#0",
       "apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings/workspace/labels.tsx::RouteComponent::div[0]/CardFrame[0]/Card[1]/CardPanel[0]/div[0]/div[0]/div[0]/Button[0]::text-destructive#0",
       "apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings/workspace/labels.tsx::RouteComponent::div[0]/CardFrame[0]/Card[1]/CardPanel[0]/div[0]/div[0]/div[0]/Button[0]::hover:text-destructive#0",
       "apps/web/src/routes/agent/_layout/_authenticated/invitations.tsx::InvitationsPage::div[0]/div[0]/div[0]/div[0]/Table[0]/TableBody[0]/TableRow[0]/TableCell[3]/div[0]/Button[1]::hover:text-destructive#0",
@@ -13272,6 +14261,78 @@
     ],
     "surfaceContext": "imported-opaque-wrapper",
     "occurrences": [
+      {
+        "id": "apps/web/src/components/service-calendar/calendar-details-card.tsx::CalendarDetailsCard::Card[0]/CardContent[0]/div[0]/p[0]::text-destructive#0",
+        "usage": "apps/web/src/components/service-calendar/calendar-details-card.tsx",
+        "category": "body",
+        "chain": [
+          "apps/web/src/components/service-calendar/calendar-details-card.tsx:CalendarDetailsCard",
+          "jsx:Card[0]/CardContent[0]/div[0]/p[0]",
+          "Card->packages/ui/src/components/card.tsx:Card>bg-card"
+        ],
+        "backdropLayers": [],
+        "surfaceContext": "imported-opaque-wrapper"
+      },
+      {
+        "id": "apps/web/src/components/service-calendar/calendar-details-card.tsx::CalendarDetailsCard::Card[0]/CardContent[0]/div[1]/p[0]::text-destructive#0",
+        "usage": "apps/web/src/components/service-calendar/calendar-details-card.tsx",
+        "category": "body",
+        "chain": [
+          "apps/web/src/components/service-calendar/calendar-details-card.tsx:CalendarDetailsCard",
+          "jsx:Card[0]/CardContent[0]/div[1]/p[0]",
+          "Card->packages/ui/src/components/card.tsx:Card>bg-card"
+        ],
+        "backdropLayers": [],
+        "surfaceContext": "imported-opaque-wrapper"
+      },
+      {
+        "id": "apps/web/src/components/service-calendar/coverage-preview-card.tsx::CoveragePreviewCard::Card[0]/CardContent[0]/div[0]/p[0]::text-destructive#0",
+        "usage": "apps/web/src/components/service-calendar/coverage-preview-card.tsx",
+        "category": "body",
+        "chain": [
+          "apps/web/src/components/service-calendar/coverage-preview-card.tsx:CoveragePreviewCard",
+          "jsx:Card[0]/CardContent[0]/div[0]/p[0]",
+          "Card->packages/ui/src/components/card.tsx:Card>bg-card"
+        ],
+        "backdropLayers": [],
+        "surfaceContext": "imported-opaque-wrapper"
+      },
+      {
+        "id": "apps/web/src/components/service-calendar/weekly-cover-card.tsx::WeeklyCoverCard::Card[0]/CardContent[0]/p[0]::text-destructive#0",
+        "usage": "apps/web/src/components/service-calendar/weekly-cover-card.tsx",
+        "category": "body",
+        "chain": [
+          "apps/web/src/components/service-calendar/weekly-cover-card.tsx:WeeklyCoverCard",
+          "jsx:Card[0]/CardContent[0]/p[0]",
+          "Card->packages/ui/src/components/card.tsx:Card>bg-card"
+        ],
+        "backdropLayers": [],
+        "surfaceContext": "imported-opaque-wrapper"
+      },
+      {
+        "id": "apps/web/src/components/sla-policy/sla-policy-editor.tsx::SlaPolicyEditor::main[0]/form[0]/Card[0]/CardContent[0]/fieldset[0]/p[0]::text-destructive#0",
+        "usage": "apps/web/src/components/sla-policy/sla-policy-editor.tsx",
+        "category": "body",
+        "chain": [
+          "apps/web/src/components/sla-policy/sla-policy-editor.tsx:SlaPolicyEditor",
+          "jsx:main[0]/form[0]/Card[0]/CardContent[0]/fieldset[0]/p[0]",
+          "Card->packages/ui/src/components/card.tsx:Card>bg-card"
+        ],
+        "backdropLayers": [],
+        "surfaceContext": "imported-opaque-wrapper"
+      },
+      {
+        "id": "apps/web/src/routes/agent/_layout/_authenticated/agent/settings/profile/pending-actions/$id.tsx::PendingActionDetailRoute::main[0]/Card[0]/CardContent[0]/p[0]::text-destructive#0",
+        "usage": "apps/web/src/routes/agent/_layout/_authenticated/agent/settings/profile/pending-actions/$id.tsx",
+        "category": "body",
+        "chain": [
+          "apps/web/src/routes/agent/_layout/_authenticated/agent/settings/profile/pending-actions/$id.tsx:PendingActionDetailRoute",
+          "jsx:main[0]/Card[0]/CardContent[0]/p[0]",
+          "Card->packages/ui/src/components/card.tsx:Card>bg-card"
+        ],
+        "backdropLayers": [],
+        "surfaceContext": "imported-opaque-wrapper"
+      },
       {
         "id": "apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings/workspace/labels.tsx::RouteComponent::div[0]/CardFrame[0]/Card[1]/CardPanel[0]/div[0]/div[0]/div[0]/Button[0]::text-destructive#0",
         "usage": "apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings/workspace/labels.tsx",
@@ -14024,7 +15085,8 @@
     "occurrenceIds": [
       "apps/web/src/routes/agent/_layout/_authenticated/dashboard/workspace/create.tsx::RouteComponent::div[0]/div[0]/Card[0]/CardContent[0]/form[0]/div[0]/div[0]/p[0]::text-destructive-foreground#0",
       "apps/web/src/components/settings/api-key-table.tsx::ApiKeyTable::Frame[0]/Table[0]/TableBody[0]/TableRow[0]/TableCell[0]::text-destructive-foreground#0",
-      "apps/web/src/lib/priority.tsx::getPriorityIcon::CircleAlert[0]::text-destructive-foreground#0"
+      "apps/web/src/lib/priority.tsx::getPriorityIcon::CircleAlert[0]::text-destructive-foreground#0",
+      "packages/ui/src/components/field.tsx::FieldError::FieldPrimitive.Error[0]::text-destructive-foreground#0"
     ],
     "surfaceContext": "imported-opaque-wrapper",
     "occurrences": [
@@ -14058,6 +15120,17 @@
         "chain": [
           "apps/web/src/routes/agent/_layout/_authenticated/dashboard/workspace/$workspaceId/project/$projectId/task/$taskId_.tsx:RouteComponent",
           "TaskLayout->apps/web/src/components/common/task-layout.tsx:default"
+        ],
+        "backdropLayers": [],
+        "surfaceContext": "caller-chain"
+      },
+      {
+        "id": "packages/ui/src/components/field.tsx::FieldError::FieldPrimitive.Error[0]::text-destructive-foreground#0",
+        "usage": "packages/ui/src/components/field.tsx",
+        "category": "body",
+        "chain": [
+          "apps/web/src/components/sla-policy/sla-policy-editor.tsx:SlaPolicyEditor",
+          "Card->packages/ui/src/components/card.tsx:Card"
         ],
         "backdropLayers": [],
         "surfaceContext": "caller-chain"
@@ -16248,7 +17321,8 @@
     ],
     "occurrenceIds": [
       "apps/web/src/components/workspace-switcher.tsx::WorkspaceSwitcher::div[0]/SidebarMenu[0]/SidebarMenuItem[0]/DropdownMenu[0]/DropdownMenuContent[0]/DropdownMenuItem[0]::data-highlighted:text-sidebar-accent-foreground#0",
-      "apps/web/src/components/workspace-switcher.tsx::WorkspaceSwitcher::div[0]/SidebarMenu[0]/SidebarMenuItem[0]/DropdownMenu[0]/DropdownMenuContent[0]/DropdownMenuItem[0]::data-highlighted:text-sidebar-accent-foreground#1"
+      "apps/web/src/components/workspace-switcher.tsx::WorkspaceSwitcher::div[0]/SidebarMenu[0]/SidebarMenuItem[0]/DropdownMenu[0]/DropdownMenuContent[0]/DropdownMenuItem[0]::data-highlighted:text-sidebar-accent-foreground#1",
+      "apps/web/src/components/workspace-switcher.tsx::WorkspaceSwitcher::div[0]/SidebarMenu[0]/SidebarMenuItem[0]/DropdownMenu[0]/DropdownMenuContent[0]/DropdownMenuItem[0]::data-highlighted:text-sidebar-accent-foreground#2"
     ],
     "surfaceContext": "caller-chain",
     "occurrences": [
@@ -16269,6 +17343,21 @@
       },
       {
         "id": "apps/web/src/components/workspace-switcher.tsx::WorkspaceSwitcher::div[0]/SidebarMenu[0]/SidebarMenuItem[0]/DropdownMenu[0]/DropdownMenuContent[0]/DropdownMenuItem[0]::data-highlighted:text-sidebar-accent-foreground#1",
+        "usage": "apps/web/src/components/workspace-switcher.tsx",
+        "category": "body",
+        "chain": [
+          "apps/web/src/components/workspace-switcher.tsx:WorkspaceSwitcher",
+          "jsx:div[0]/SidebarMenu[0]/SidebarMenuItem[0]/DropdownMenu[0]/DropdownMenuContent[0]/DropdownMenuItem[0]>data-highlighted:bg-sidebar-accent",
+          "apps/web/src/components/workspace-switcher.tsx:WorkspaceSwitcher",
+          "DropdownMenuContent->packages/ui/src/components/menu.tsx:MenuPopup"
+        ],
+        "backdropLayers": [
+          "bg-popover"
+        ],
+        "surfaceContext": "caller-chain"
+      },
+      {
+        "id": "apps/web/src/components/workspace-switcher.tsx::WorkspaceSwitcher::div[0]/SidebarMenu[0]/SidebarMenuItem[0]/DropdownMenu[0]/DropdownMenuContent[0]/DropdownMenuItem[0]::data-highlighted:text-sidebar-accent-foreground#2",
         "usage": "apps/web/src/components/workspace-switcher.tsx",
         "category": "body",
         "chain": [
@@ -17321,6 +18410,66 @@
         "chain": [
           "packages/ui/src/components/select.tsx:SelectItem",
           "jsx:SelectPrimitive.Item[0]>data-highlighted:bg-accent",
+          "apps/web/src/components/god-mode/identity-connection-editor.tsx:IdentityConnectionEditor",
+          "SelectContent->packages/ui/src/components/select.tsx:SelectPopup"
+        ],
+        "backdropLayers": [
+          "bg-popover"
+        ],
+        "surfaceContext": "caller-chain"
+      },
+      {
+        "id": "packages/ui/src/components/select.tsx::SelectItem::SelectPrimitive.Item[0]::data-highlighted:text-accent-foreground#0",
+        "usage": "packages/ui/src/components/select.tsx",
+        "category": "body",
+        "chain": [
+          "packages/ui/src/components/select.tsx:SelectItem",
+          "jsx:SelectPrimitive.Item[0]>data-highlighted:bg-accent",
+          "apps/web/src/components/god-mode/scim-group-mappings-settings.tsx:ScimGroupMappingsSettings",
+          "SelectContent->packages/ui/src/components/select.tsx:SelectPopup"
+        ],
+        "backdropLayers": [
+          "bg-popover"
+        ],
+        "surfaceContext": "caller-chain"
+      },
+      {
+        "id": "packages/ui/src/components/select.tsx::SelectItem::SelectPrimitive.Item[0]::data-highlighted:text-accent-foreground#0",
+        "usage": "packages/ui/src/components/select.tsx",
+        "category": "body",
+        "chain": [
+          "packages/ui/src/components/select.tsx:SelectItem",
+          "jsx:SelectPrimitive.Item[0]>data-highlighted:bg-accent",
+          "apps/web/src/components/god-mode/scim-match-attributes-settings.tsx:ScimMatchAttributesSettings",
+          "SelectContent->packages/ui/src/components/select.tsx:SelectPopup"
+        ],
+        "backdropLayers": [
+          "bg-popover"
+        ],
+        "surfaceContext": "caller-chain"
+      },
+      {
+        "id": "packages/ui/src/components/select.tsx::SelectItem::SelectPrimitive.Item[0]::data-highlighted:text-accent-foreground#0",
+        "usage": "packages/ui/src/components/select.tsx",
+        "category": "body",
+        "chain": [
+          "packages/ui/src/components/select.tsx:SelectItem",
+          "jsx:SelectPrimitive.Item[0]>data-highlighted:bg-accent",
+          "apps/web/src/components/god-mode/scim-token-settings.tsx:ScimTokenSettings",
+          "SelectContent->packages/ui/src/components/select.tsx:SelectPopup"
+        ],
+        "backdropLayers": [
+          "bg-popover"
+        ],
+        "surfaceContext": "caller-chain"
+      },
+      {
+        "id": "packages/ui/src/components/select.tsx::SelectItem::SelectPrimitive.Item[0]::data-highlighted:text-accent-foreground#0",
+        "usage": "packages/ui/src/components/select.tsx",
+        "category": "body",
+        "chain": [
+          "packages/ui/src/components/select.tsx:SelectItem",
+          "jsx:SelectPrimitive.Item[0]>data-highlighted:bg-accent",
           "apps/web/src/components/project/workflow-editor.tsx:renderRuleSection",
           "SelectContent->packages/ui/src/components/select.tsx:SelectPopup"
         ],
@@ -17336,7 +18485,37 @@
         "chain": [
           "packages/ui/src/components/select.tsx:SelectItem",
           "jsx:SelectPrimitive.Item[0]>data-highlighted:bg-accent",
+          "apps/web/src/components/service-calendar/holiday-fields.tsx:HolidayFields",
+          "SelectContent->packages/ui/src/components/select.tsx:SelectPopup"
+        ],
+        "backdropLayers": [
+          "bg-popover"
+        ],
+        "surfaceContext": "caller-chain"
+      },
+      {
+        "id": "packages/ui/src/components/select.tsx::SelectItem::SelectPrimitive.Item[0]::data-highlighted:text-accent-foreground#0",
+        "usage": "packages/ui/src/components/select.tsx",
+        "category": "body",
+        "chain": [
+          "packages/ui/src/components/select.tsx:SelectItem",
+          "jsx:SelectPrimitive.Item[0]>data-highlighted:bg-accent",
           "apps/web/src/components/settings/create-api-key-dialog.tsx:CreateApiKeyDialog",
+          "SelectContent->packages/ui/src/components/select.tsx:SelectPopup"
+        ],
+        "backdropLayers": [
+          "bg-popover"
+        ],
+        "surfaceContext": "caller-chain"
+      },
+      {
+        "id": "packages/ui/src/components/select.tsx::SelectItem::SelectPrimitive.Item[0]::data-highlighted:text-accent-foreground#0",
+        "usage": "packages/ui/src/components/select.tsx",
+        "category": "body",
+        "chain": [
+          "packages/ui/src/components/select.tsx:SelectItem",
+          "jsx:SelectPrimitive.Item[0]>data-highlighted:bg-accent",
+          "apps/web/src/components/sla-policy/sla-policy-editor.tsx:SlaPolicyEditor",
           "SelectContent->packages/ui/src/components/select.tsx:SelectPopup"
         ],
         "backdropLayers": [
@@ -17382,6 +18561,21 @@
           "packages/ui/src/components/select.tsx:SelectItem",
           "jsx:SelectPrimitive.Item[0]>data-highlighted:bg-accent",
           "apps/web/src/components/work-item/create-work-item-dialog-form.tsx:CreateWorkItemDialogForm",
+          "SelectContent->packages/ui/src/components/select.tsx:SelectPopup"
+        ],
+        "backdropLayers": [
+          "bg-popover"
+        ],
+        "surfaceContext": "caller-chain"
+      },
+      {
+        "id": "packages/ui/src/components/select.tsx::SelectItem::SelectPrimitive.Item[0]::data-highlighted:text-accent-foreground#0",
+        "usage": "packages/ui/src/components/select.tsx",
+        "category": "body",
+        "chain": [
+          "packages/ui/src/components/select.tsx:SelectItem",
+          "jsx:SelectPrimitive.Item[0]>data-highlighted:bg-accent",
+          "apps/web/src/routes/agent/_layout/_authenticated/agent/settings/profile/pending-actions/$id.tsx:PendingActionDetailRoute",
           "SelectContent->packages/ui/src/components/select.tsx:SelectPopup"
         ],
         "backdropLayers": [
@@ -17442,6 +18636,36 @@
           "packages/ui/src/components/select.tsx:SelectItem",
           "jsx:SelectPrimitive.Item[0]>data-highlighted:bg-accent",
           "apps/web/src/routes/agent/_layout/_authenticated/god-mode/observability.tsx:ObservabilitySettings",
+          "SelectContent->packages/ui/src/components/select.tsx:SelectPopup"
+        ],
+        "backdropLayers": [
+          "bg-popover"
+        ],
+        "surfaceContext": "caller-chain"
+      },
+      {
+        "id": "packages/ui/src/components/select.tsx::SelectItem::SelectPrimitive.Item[0]::data-highlighted:text-accent-foreground#0",
+        "usage": "packages/ui/src/components/select.tsx",
+        "category": "body",
+        "chain": [
+          "packages/ui/src/components/select.tsx:SelectItem",
+          "jsx:SelectPrimitive.Item[0]>data-highlighted:bg-accent",
+          "apps/web/src/routes/agent/_layout/_authenticated/god-mode/users.tsx:InstanceUsersPage",
+          "SelectContent->packages/ui/src/components/select.tsx:SelectPopup"
+        ],
+        "backdropLayers": [
+          "bg-popover"
+        ],
+        "surfaceContext": "caller-chain"
+      },
+      {
+        "id": "packages/ui/src/components/select.tsx::SelectItem::SelectPrimitive.Item[0]::data-highlighted:text-accent-foreground#0",
+        "usage": "packages/ui/src/components/select.tsx",
+        "category": "body",
+        "chain": [
+          "packages/ui/src/components/select.tsx:SelectItem",
+          "jsx:SelectPrimitive.Item[0]>data-highlighted:bg-accent",
+          "apps/web/src/routes/agent/_layout/_authenticated/god-mode/users.tsx:UserActionDialog",
           "SelectContent->packages/ui/src/components/select.tsx:SelectPopup"
         ],
         "backdropLayers": [
@@ -19208,6 +20432,28 @@
         "category": "body",
         "chain": [
           "apps/web/src/components/work-item/work-item-list.tsx:WorkItemList",
+          "EmptyHeader->packages/ui/src/components/empty.tsx:EmptyHeader"
+        ],
+        "backdropLayers": [],
+        "surfaceContext": "caller-chain"
+      },
+      {
+        "id": "packages/ui/src/components/empty.tsx::EmptyDescription::div[0]::[&>a:hover]:text-primary#0",
+        "usage": "packages/ui/src/components/empty.tsx",
+        "category": "body",
+        "chain": [
+          "apps/web/src/routes/agent/_layout/_authenticated/agent/settings/calendars.tsx:ServiceCalendarsRoute",
+          "EmptyHeader->packages/ui/src/components/empty.tsx:EmptyHeader"
+        ],
+        "backdropLayers": [],
+        "surfaceContext": "caller-chain"
+      },
+      {
+        "id": "packages/ui/src/components/empty.tsx::EmptyDescription::div[0]::[&>a:hover]:text-primary#0",
+        "usage": "packages/ui/src/components/empty.tsx",
+        "category": "body",
+        "chain": [
+          "apps/web/src/routes/agent/_layout/_authenticated/agent/settings/sla-policies.tsx:SlaPoliciesRoute",
           "EmptyHeader->packages/ui/src/components/empty.tsx:EmptyHeader"
         ],
         "backdropLayers": [],
@@ -22038,10 +23284,23 @@
     },
     "backdropLayers": [],
     "occurrenceIds": [
+      "apps/web/src/components/service-calendar/coverage-preview-card.tsx::CoveragePreviewCard::Card[0]/CardContent[0]/div[0]/p[0]::text-warning-foreground#0",
       "apps/web/src/lib/priority.tsx::getPriorityIcon::ChevronsUp[0]::text-warning-foreground#0"
     ],
     "surfaceContext": "caller-chain",
     "occurrences": [
+      {
+        "id": "apps/web/src/components/service-calendar/coverage-preview-card.tsx::CoveragePreviewCard::Card[0]/CardContent[0]/div[0]/p[0]::text-warning-foreground#0",
+        "usage": "apps/web/src/components/service-calendar/coverage-preview-card.tsx",
+        "category": "body",
+        "chain": [
+          "apps/web/src/components/service-calendar/coverage-preview-card.tsx:CoveragePreviewCard",
+          "jsx:Card[0]/CardContent[0]/div[0]/p[0]",
+          "Card->packages/ui/src/components/card.tsx:Card>bg-card"
+        ],
+        "backdropLayers": [],
+        "surfaceContext": "imported-opaque-wrapper"
+      },
       {
         "id": "apps/web/src/lib/priority.tsx::getPriorityIcon::ChevronsUp[0]::text-warning-foreground#0",
         "usage": "apps/web/src/lib/priority.tsx",
