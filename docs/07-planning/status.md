@@ -16,7 +16,7 @@ passes; no migration files/prefixes change. Executable outbox-drain is absent an
 fanout/reach filtering remains unverified; that documented integration residual is not
 silently claimed complete. P0 stays priority; main8ddb/DEVb58 and twoactualUTCdates remain.
 
-## Complete P0 board/scanner batch; P4 implementation checkpoint — 2026-10-05 10:24 UTC
+## Complete P0 board/scanner batch; P4 implementation checkpoint — 2026-10-05
 
 Author source a96645539625f87cccce9285dd933675db0e4fd1 is clean/pushed and composed
 with the retained 83bb review records. One board-level selection/focus subscription projects
