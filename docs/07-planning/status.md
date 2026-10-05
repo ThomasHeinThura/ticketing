@@ -1,3 +1,22 @@
+## Complete P4 Users UI correction composed against accepted P0 — 2026-10-05
+
+Author `a34d3db51c577a9f4dfe4fa8703653c3ea8f4c12` completes all prior Users/UI
+findings as one batch: keyboard-selectable URL user links, shared Review Button, approval
+cache invalidation, stale/terminal recovery and complete user-facing localization in all
+19 supported catalogues. Author verifies2862translated values across18non-English locales
+with exact159-key/placeholder parity, i18n/Biome/web types/agent build, route20tests and
+scopedPlaywright1/1. Real fixture journey and threeScreens are retained under the private
+`2026-10-05/p4-person-deactivation-b58/screens/` evidence directory. These are author checks,
+not independent clearance or production/real-Entra proof.
+
+Root composes the frozen full implementation and union112-entry migration journal against
+acceptedmain3096 without conflicts; API index automatically merges. Sharedaccepted0–87
+prefix remains required. Bulk integration ordinary panels, full independent Sol review,
+current CI and source-bound image/boot acceptance follow on the frozen composed SHA.
+Prior migration/authority/UI reviews remain at their actual heads; no partial fix is called
+reviewed. Lifecycle outbox drain/fanout remains absent and unverified; no delivery or stage
+completion is claimed. Root-owned P0 acceptance/status/decision records join this batch.
+
 ## P0 protected acceptance completed; phase remains open — 2026-10-05 11:31 UTC
 
 Protected PR #579 merged as `3096cb044bdf6ae98488bfc385f532fa6386343a` after
