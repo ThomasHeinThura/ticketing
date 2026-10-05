@@ -1,25 +1,3 @@
-import {
-  closestCenter,
-  DndContext,
-  type DragEndEvent,
-  DragOverlay,
-  type DragStartEvent,
-  MouseSensor,
-  TouchSensor,
-  useSensor,
-  useSensors,
-} from "@dnd-kit/core";
-import {
-  restrictToFirstScrollableAncestor,
-  restrictToVerticalAxis,
-} from "@dnd-kit/modifiers";
-import {
-  arrayMove,
-  SortableContext,
-  useSortable,
-  verticalListSortingStrategy,
-} from "@dnd-kit/sortable";
-import { CSS } from "@dnd-kit/utilities";
 import { useQueryClient } from "@tanstack/react-query";
 import { useNavigate, useParams } from "@tanstack/react-router";
 import {
@@ -55,57 +33,20 @@ import {
   Settings,
   Trash2,
 } from "lucide-react";
-import { type CSSProperties, type ReactNode, useEffect, useState } from "react";
-import { createPortal } from "react-dom";
+import { lazy, Suspense, useState } from "react";
 import { useTranslation } from "react-i18next";
+import type getProjects from "@/fetchers/project/get-projects";
 import useDeleteProject from "@/hooks/mutations/project/use-delete-project";
-import useReorderProjects from "@/hooks/mutations/project/use-reorder-projects";
 import useGetProjects from "@/hooks/queries/project/use-get-projects";
 import useActiveWorkspace from "@/hooks/queries/workspace/use-active-workspace";
 import { useWorkspacePermission } from "@/hooks/use-workspace-permission";
 import { toast } from "@/lib/toast";
-import type { ProjectWithTasks } from "@/types/project";
 import CreateProjectModal from "./shared/modals/create-project-modal";
 
-function SortableProjectItem({
-  id,
-  canReorder,
-  children,
-}: {
-  id: string;
-  canReorder: boolean;
-  children: ReactNode;
-}) {
-  const { listeners, setNodeRef, transform, transition, isDragging } =
-    useSortable({
-      id,
-      disabled: !canReorder,
-      // The reorder already moves the row; animating the index change too
-      // replays the same move from a stale offset.
-      animateLayoutChanges: () => false,
-      // dnd-kit defaults to `ease`; this is the app's curve.
-      transition: { duration: 200, easing: "var(--ease-out)" },
-    });
-
-  const style: CSSProperties = {
-    transform: CSS.Transform.toString(transform),
-    transition,
-  };
-
-  return (
-    // `listeners` without `attributes`: the latter puts role="button" and a tab
-    // stop on the row, wrapping the link and the dropdown inside it.
-    <SidebarMenuItem
-      ref={setNodeRef}
-      style={style}
-      data-taskdesk-sortable=""
-      className={isDragging ? "opacity-0" : undefined}
-      {...(canReorder ? listeners : {})}
-    >
-      {children}
-    </SidebarMenuItem>
-  );
-}
+const SortableProjectList = lazy(() => import("./nav-projects-sortable"));
+type ProjectRecord = NonNullable<
+  Awaited<ReturnType<typeof getProjects>>
+>[number];
 
 export function NavProjects() {
   const { t } = useTranslation();
@@ -116,7 +57,6 @@ export function NavProjects() {
   });
   const queryClient = useQueryClient();
   const { mutateAsync: deleteProject } = useDeleteProject();
-  const reorderProjects = useReorderProjects();
   const { canCreateProjects, canDeleteProjects, canUpdateProjects } =
     useWorkspacePermission();
   const canCreate = canCreateProjects();
@@ -137,13 +77,6 @@ export function NavProjects() {
   const [projectToDeleteId, setProjectToDeleteID] = useState<string | null>(
     null,
   );
-  const [draggingProjectId, setDraggingProjectId] = useState<string | null>(
-    null,
-  );
-
-  const draggingProject = projects?.find(
-    (project) => project.id === draggingProjectId,
-  );
 
   const isCurrentProject = (projectId: string) => {
     return (
@@ -151,7 +84,7 @@ export function NavProjects() {
     );
   };
 
-  const handleProjectClick = (project: ProjectWithTasks) => {
+  const handleProjectClick = (project: ProjectRecord) => {
     navigate({
       to: "/dashboard/workspace/$workspaceId/project/$projectId/board",
       params: {
@@ -161,58 +94,7 @@ export function NavProjects() {
     });
   };
 
-  // Below these thresholds the row is still a link and the sidebar still
-  // scrolls; above them the gesture becomes a drag.
-  const sensors = useSensors(
-    useSensor(MouseSensor, {
-      activationConstraint: { distance: 8 },
-    }),
-    useSensor(TouchSensor, {
-      activationConstraint: { delay: 200, tolerance: 8 },
-    }),
-  );
-
-  const handleDragStart = (event: DragStartEvent) => {
-    document.body.classList.add("taskdesk-dragging");
-    setDraggingProjectId(String(event.active.id));
-  };
-
-  const endDrag = () => {
-    document.body.classList.remove("taskdesk-dragging");
-    setDraggingProjectId(null);
-  };
-
-  useEffect(() => {
-    if (canReorder || !draggingProjectId) return;
-    // Losing the server-granted reorder capability unmounts DndContext. That
-    // teardown does not guarantee `onDragCancel`, so clean its global body
-    // state here as the sortable branch is removed.
-    document.body.classList.remove("taskdesk-dragging");
-    setDraggingProjectId(null);
-  }, [canReorder, draggingProjectId]);
-
-  const handleDragEnd = (event: DragEndEvent) => {
-    const { active, over } = event;
-
-    endDrag();
-
-    if (!over || active.id === over.id || !projects || !workspace) return;
-
-    const oldIndex = projects.findIndex((project) => project.id === active.id);
-    const newIndex = projects.findIndex((project) => project.id === over.id);
-
-    if (oldIndex === -1 || newIndex === -1) return;
-
-    const reordered = arrayMove(projects, oldIndex, newIndex);
-
-    reorderProjects(workspace.id, reordered, {
-      onError: () => {
-        toast.error(t("workspace:projects.reorderError"));
-      },
-    });
-  };
-
-  const renderProjectContents = (project: ProjectWithTasks) => (
+  const renderProjectContents = (project: ProjectRecord) => (
     <>
       <SidebarMenuButton
         isActive={isCurrentProject(project.id)}
@@ -311,46 +193,19 @@ export function NavProjects() {
             <SidebarGroupContent>
               <SidebarMenu className="gap-0.5">
                 {canReorder ? (
-                  <DndContext
-                    sensors={sensors}
-                    collisionDetection={closestCenter}
-                    modifiers={[
-                      restrictToVerticalAxis,
-                      restrictToFirstScrollableAncestor,
-                    ]}
-                    onDragStart={handleDragStart}
-                    onDragEnd={handleDragEnd}
-                    onDragCancel={endDrag}
+                  <Suspense
+                    fallback={projects?.map((project) => (
+                      <SidebarMenuItem key={project.id}>
+                        {renderProjectContents(project)}
+                      </SidebarMenuItem>
+                    ))}
                   >
-                    <SortableContext
-                      items={projects?.map((project) => project.id) ?? []}
-                      strategy={verticalListSortingStrategy}
-                    >
-                      {projects?.map((project) => (
-                        <SortableProjectItem
-                          key={project.id}
-                          id={project.id}
-                          canReorder
-                        >
-                          {renderProjectContents(project)}
-                        </SortableProjectItem>
-                      ))}
-                    </SortableContext>
-
-                    {/* Portalled: `SidebarContent` is `overflow-auto` and clips it. */}
-                    {createPortal(
-                      <DragOverlay dropAnimation={null}>
-                        {draggingProject ? (
-                          <div className="flex h-8 w-(--sidebar-width) max-w-64 items-center rounded-lg border bg-sidebar not-dark:bg-clip-padding ps-3.5 pe-2 text-sm text-sidebar-accent-foreground shadow-lg/5">
-                            <span className="truncate">
-                              {draggingProject.name}
-                            </span>
-                          </div>
-                        ) : null}
-                      </DragOverlay>,
-                      document.body,
-                    )}
-                  </DndContext>
+                    <SortableProjectList
+                      projects={projects ?? []}
+                      workspaceId={workspace.id}
+                      renderProjectContents={renderProjectContents}
+                    />
+                  </Suspense>
                 ) : (
                   projects?.map((project) => (
                     <SidebarMenuItem key={project.id}>
