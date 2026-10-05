@@ -1,3 +1,14 @@
+### 2026-10-05 · Run the final actual P0 observation at the earliest next UTC date
+
+Move the existing `p0-remaining-evidence-dates` heartbeat's remaining run from local
+21:30 to October 6 at 06:35 Asia/Yangon (00:05 UTC), superseding only the timing in
+the October 4 scheduling entry. Use the clean accepted `3096cb044bdf6ae98488bfc385f532fa6386343a`
+checkout and recheck source-bound behavior against the retained October 4 manifest.
+The runner is prepared; no October 6 observation has occurred yet. Preserve both actual
+October 4/5 partial observations, complete reconciliation and cleanup. Disable the
+observation schedule after its completed final capture. This advances authorized P0 work;
+it does not backfill a date, activate enforcement, waive a gate or claim phase completion.
+
 ### 2026-10-05 · Activate G11 protection after real hosted acceptance
 
 **Decision:** add the existing exact `performance - budgets (G11)` context to active

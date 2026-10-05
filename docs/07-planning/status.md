@@ -1,3 +1,40 @@
+## Combined unit gate finds accepted-foundation regressions — 2026-10-05 12:29 UTC
+
+Root's full `pnpm test` on composed `aa68f29bdca9487d05592e99d35b0e81476d2c7f`
+fails: nine successful of twelve tasks; API two failed/91 passed files and six failed/670
+passed tests. Four failures confirm the integration reintroduced raw API entry-point error
+logging instead of accepted P0 redacted structured lifecycle logging. Two seed preflight
+failures require diagnosis against accepted source and dotenv isolation. Complete private
+log: `2026-10-05/p4-person-deactivation-b58/aa68-integrated-unit.log`.
+
+One Luna preservation batch restores all accepted logging invariants while retaining the
+new routes and diagnoses both seed failures without weakening assertions. This joins the
+contrast correction before the next bulk review. The deployed reviewed P0 source remains
+unchanged; no blocked integration source is deployed or accepted.
+
+## Six integration findings implemented; final contrast correction — 2026-10-05 12:26 UTC
+
+Complete author batch `436d45ff9794ec9fc08e8e5d92931ce5c490a1bc` is composed as
+`aa68f29bdca9487d05592e99d35b0e81476d2c7f`: supported instance-action expiry,
+transactional SCIM deprovisioning events, canonical plugin assertions, snapshot ancestry,
+same-workspace SLA composite foreign keys and complete administrative localization.
+Author checks pass four database files/27 tests, three browser files/three journeys,
+nine typecheck tasks, fourteen permission files/88 tests, 225 OpenAPI operations,
+eighteen locale checks and the snapshot-chain regression. These are attributed author
+results, not independent clearance. Its private test database and owned volumes are removed.
+
+A separate full contrast inventory batch retains 228 pair identities and records 1,530
+source occurrences. Its only remaining finding is pair 178's body-text use requiring the
+existing normative body/4.5 threshold rather than its non-text/3 declaration. The same
+batch strengthens that requirement before the combined source is frozen. All seven
+findings then receive one integrated delta panel, followed by independent Sol and required
+current CI/image/runtime proof. Original blocked reports remain unchanged. Outbox delivery
+worker absence remains a distinct residual; durable event insertion is not delivery.
+
+P0 accepted main and reviewed DEV remain unchanged. The final actual-date observation is
+scheduled October 6 at 00:05 UTC, with clean accepted-source preparation completed.
+Eligible reviewed cutover and the additional fresh Sol phase finalizer remain; P0 is open.
+
 ## Full integration panels complete; one six-finding correction batch — 2026-10-05 11:52 UTC
 
 Three fresh independent Luna panels reviewed exactd7254c47d3a0bf1c243d3c490ab98eae8a98832c
