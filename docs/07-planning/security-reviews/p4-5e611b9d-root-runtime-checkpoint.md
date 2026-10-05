@@ -24,3 +24,20 @@ Outbox delivery worker and real Entra certification remain unaccepted; noP1–P4
 
 
 This checkpoint records root verification only; it does not substitute for independent review. Canonical status update will be batched with completed PostgreSQL/CI acceptance.
+
+## Full PostgreSQL result — blocker retained
+
+The root combined PostgreSQL18 integration run exits1:142files (123failed/19passed),
+1700tests (1082failed/583passed/35reportedskipped),4/5tasks. The preserved skip count is
+reported by the suite; no test was disabled by this work. A dominant failure is
+`Applied membership cutover has an incomplete grant projection`, cascading through reset
+and subsequent fixtures. Additional distinct errors include strict-task source ordering,
+missing-role cleanup, seed path/environment isolation and a permission response assertion.
+These results supersede the earlier running state and prohibit candidate merge. The private
+full raw log and receipt are retained; the owned Postgres container/volume are removed.
+
+A dedicated Luna implementation lane owns the complete structural integration reset/fixture/
+environment correction batch, with existing assertions and failclosed authority preserved.
+The seven-module query bucketB lane pauses for capacity; exclusive work-item/task/relation
+implementation continues. No current review is relabeled or failure waived. The corrected
+complete source will be composed and verified before its required bulk delta review and CI.
