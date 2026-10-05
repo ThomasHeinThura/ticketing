@@ -444,6 +444,57 @@ describe("G3 contrast inventory and math", () => {
     }
   });
 
+  it("binds the explicitly selected named export in React.lazy and rejects other mappings", async () => {
+    const suffix = `-${process.pid}`;
+    const route = `apps/web/src/.contrast-lazy-named-route${suffix}.tsx`;
+    const component = `apps/web/src/.contrast-lazy-named-component${suffix}.tsx`;
+    const tokenNames = new Set(["background", "muted-foreground"]);
+    try {
+      await Promise.all([
+        writeFile(
+          route,
+          `import { lazy, Suspense } from "react";\nconst Deferred = lazy(() => import("@/.contrast-lazy-named-component${suffix}").then((module) => ({ default: module.NamedLeaf })));\nexport function Route(){ return <main className="bg-background"><Suspense fallback={null}><Deferred /></Suspense></main>; }`,
+        ),
+        writeFile(
+          component,
+          'export function NamedLeaf(){ return <p className="text-muted-foreground">Deferred</p>; }',
+        ),
+      ]);
+      const bound = observeInheritedForegroundSurfaces(
+        [route, component],
+        tokenNames,
+      );
+      assert.ok(
+        bound.pairs.has(
+          "--color-muted-foreground|--color-background|bg-background|light",
+        ),
+        "the named lazy export inherits the caller's actual opaque surface",
+      );
+      assert.equal(bound.unresolved.size, 0);
+
+      await writeFile(
+        route,
+        `import { lazy, Suspense } from "react";\nconst Deferred = lazy(() => import("@/.contrast-lazy-named-component${suffix}").then((module) => ({ default: module.NamedLeaf, extra: module.OtherLeaf })));\nexport function Route(){ return <main className="bg-background"><Suspense fallback={null}><Deferred /></Suspense></main>; }`,
+      );
+      const unsupported = observeInheritedForegroundSurfaces(
+        [route, component],
+        tokenNames,
+      );
+      assert.equal(unsupported.unresolved.size, 1);
+      assert.equal(
+        unsupported.pairs.has(
+          "--color-muted-foreground|--color-background|bg-background|light",
+        ),
+        false,
+        "an unrecognized lazy mapping cannot inherit a caller surface",
+      );
+    } finally {
+      await Promise.all(
+        [route, component].map((file) => rm(file, { force: true })),
+      );
+    }
+  });
+
   it("fails closed for a colored text node without a supported surface context", async () => {
     const fixture = `scripts/ci/.contrast-unresolved-${process.pid}.tsx`;
     await writeFile(fixture, '<p className="text-destructive">Invalid</p>');

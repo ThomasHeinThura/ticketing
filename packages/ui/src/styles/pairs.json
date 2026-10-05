@@ -7874,6 +7874,7 @@
       "apps/web/src/components/task/subtask-row.tsx::SubtaskRow::motion.div[0]/ContextMenu[0]/ContextMenuTrigger[0]/div[0]/SubtaskStatusPopover[0]/button[0]::[&_svg]:text-muted-foreground#0",
       "apps/web/src/components/task/subtask-row.tsx::SubtaskRow::motion.div[0]/ContextMenu[0]/ContextMenuTrigger[0]/div[0]/button[0]/span[0]::text-muted-foreground#0",
       "apps/web/src/components/task/subtask-row.tsx::SubtaskRow::motion.div[0]/ContextMenu[0]/ContextMenuTrigger[0]/div[0]/SubtaskAssigneePopover[0]/button[0]/div[0]/span[0]::text-muted-foreground#0",
+      "apps/web/src/components/task/task-assignee-popover.tsx::UnassignedOption::Button[0]/div[0]/span[0]::text-muted-foreground#0",
       "apps/web/src/components/task/task-details-content.tsx::TaskDetailsContent::div[0]/div[0]/button[0]::text-muted-foreground#0",
       "apps/web/src/components/task/task-details-content.tsx::TaskActivitySection::div[0]/p[0]::text-muted-foreground#0",
       "apps/web/src/components/task/task-relations.tsx::TaskRelations::Collapsible[0]/div[0]/div[0]/CollapsibleTrigger[0]/button[0]::text-muted-foreground#0",
@@ -9412,6 +9413,17 @@
         "surfaceContext": "caller-chain"
       },
       {
+        "id": "apps/web/src/components/task/task-assignee-popover.tsx::UnassignedOption::Button[0]/div[0]/span[0]::text-muted-foreground#0",
+        "usage": "apps/web/src/components/task/task-assignee-popover.tsx",
+        "category": "body",
+        "chain": [
+          "apps/web/src/components/task/task-assignee-popover.tsx:TaskAssigneePopover",
+          "PopoverContent->packages/ui/src/components/popover.tsx:PopoverPopup"
+        ],
+        "backdropLayers": [],
+        "surfaceContext": "caller-chain"
+      },
+      {
         "id": "apps/web/src/components/task/task-details-content.tsx::TaskDetailsContent::div[0]/div[0]/button[0]::text-muted-foreground#0",
         "usage": "apps/web/src/components/task/task-details-content.tsx",
         "category": "body",
@@ -10274,17 +10286,6 @@
         "usage": "packages/ui/src/components/dialog.tsx",
         "category": "body",
         "chain": [
-          "apps/web/src/routes/agent/_layout/_authenticated/agent/projects/$projectKey/work.tsx:WorkItemsRouteComponent",
-          "DialogContent->packages/ui/src/components/dialog.tsx:DialogPopup"
-        ],
-        "backdropLayers": [],
-        "surfaceContext": "caller-chain"
-      },
-      {
-        "id": "packages/ui/src/components/dialog.tsx::DialogDescription::DialogPrimitive.Description[0]::text-muted-foreground#0",
-        "usage": "packages/ui/src/components/dialog.tsx",
-        "category": "body",
-        "chain": [
           "apps/web/src/components/keyboard-shortcuts-help.tsx:KeyboardShortcutsHelp",
           "DialogContent->packages/ui/src/components/dialog.tsx:DialogPopup"
         ],
@@ -10352,6 +10353,17 @@
         "category": "body",
         "chain": [
           "apps/web/src/components/work-item/create-work-item-dialog.tsx:CreateWorkItemDialog",
+          "DialogContent->packages/ui/src/components/dialog.tsx:DialogPopup"
+        ],
+        "backdropLayers": [],
+        "surfaceContext": "caller-chain"
+      },
+      {
+        "id": "packages/ui/src/components/dialog.tsx::DialogDescription::DialogPrimitive.Description[0]::text-muted-foreground#0",
+        "usage": "packages/ui/src/components/dialog.tsx",
+        "category": "body",
+        "chain": [
+          "apps/web/src/routes/agent/_layout/_authenticated/agent/projects/$projectKey/work.tsx:WorkItemsRouteComponent",
           "DialogContent->packages/ui/src/components/dialog.tsx:DialogPopup"
         ],
         "backdropLayers": [],
@@ -11353,7 +11365,6 @@
       "apps/web/src/components/kanban-board/task-card-context-menu/task-card-context-menu-content.tsx::TaskCardContextMenuContent::ContextMenuContent[0]/ContextMenuSub[0]/ContextMenuSubContent[0]/ContextMenuCheckboxItem[0]/div[0]/span[0]::text-muted-foreground#0",
       "apps/web/src/components/shared/modals/create-task-modal.tsx::CreateTaskModal::Dialog[0]/DialogContent[0]/form[0]/div[0]/div[1]/Popover[2]/PopoverContent[0]/div[0]/button[0]/div[0]/span[0]::text-muted-foreground#0",
       "apps/web/src/components/task/subtask-assignee-popover.tsx::SubtaskAssigneePopover::Popover[0]/PopoverContent[0]/div[0]/Button[0]/div[0]/span[0]::text-muted-foreground#0",
-      "apps/web/src/components/task/task-assignee-popover.tsx::TaskAssigneePopover::Popover[0]/PopoverContent[0]/div[0]/Button[0]/div[0]/span[0]::text-muted-foreground#0",
       "packages/ui/src/components/kbd.tsx::Kbd::kbd[0]::text-muted-foreground#0"
     ],
     "surfaceContext": "nearest-opaque-ancestor",
@@ -11390,19 +11401,6 @@
         "category": "body",
         "chain": [
           "apps/web/src/components/task/subtask-assignee-popover.tsx:SubtaskAssigneePopover",
-          "jsx:Popover[0]/PopoverContent[0]/div[0]/Button[0]/div[0]/span[0]>bg-muted"
-        ],
-        "backdropLayers": [
-          "bg-popover"
-        ],
-        "surfaceContext": "nearest-opaque-ancestor"
-      },
-      {
-        "id": "apps/web/src/components/task/task-assignee-popover.tsx::TaskAssigneePopover::Popover[0]/PopoverContent[0]/div[0]/Button[0]/div[0]/span[0]::text-muted-foreground#0",
-        "usage": "apps/web/src/components/task/task-assignee-popover.tsx",
-        "category": "body",
-        "chain": [
-          "apps/web/src/components/task/task-assignee-popover.tsx:TaskAssigneePopover",
           "jsx:Popover[0]/PopoverContent[0]/div[0]/Button[0]/div[0]/span[0]>bg-muted"
         ],
         "backdropLayers": [

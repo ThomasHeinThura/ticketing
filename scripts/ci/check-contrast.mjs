@@ -1348,25 +1348,27 @@ export function observeInheritedForegroundSurfaces(sourcePaths, tokenNames) {
         });
       }
     }
+    function resolveDynamicModule(moduleName) {
+      const relative = moduleName.startsWith("@/")
+        ? path.join("apps/web/src", moduleName.slice(2))
+        : moduleName.startsWith(".")
+          ? path.relative(
+              repoRoot,
+              path.resolve(
+                path.dirname(path.join(repoRoot, sourcePath)),
+                moduleName,
+              ),
+            )
+          : undefined;
+      return relative ? sourceModulePath(relative) : undefined;
+    }
     for (const lazy of source.matchAll(
       /(?:const|let)\s+([A-Za-z_$][\w$]*)\s*=\s*lazy\(\s*(?:([A-Za-z_$][\w$]*)|(?:\(\s*\)\s*=>\s*import\(\s*["']([^"']+)["']\s*\)\s*,?))\s*\)/gu,
     )) {
       let target;
       if (lazy[3]) {
-        const moduleName = lazy[3];
-        const relative = moduleName.startsWith("@/")
-          ? path.join("apps/web/src", moduleName.slice(2))
-          : moduleName.startsWith(".")
-            ? path.relative(
-                repoRoot,
-                path.resolve(
-                  path.dirname(path.join(repoRoot, sourcePath)),
-                  moduleName,
-                ),
-              )
-            : undefined;
-        if (relative)
-          target = { file: sourceModulePath(relative), symbol: "default" };
+        const file = resolveDynamicModule(lazy[3]);
+        if (file) target = { file, symbol: "default" };
       } else if (lazy[2]) {
         const loader = imported.get(lazy[2]);
         if (loader) {
@@ -1395,6 +1397,16 @@ export function observeInheritedForegroundSurfaces(sourcePaths, tokenNames) {
         }
       }
       if (target?.file) imported.set(lazy[1], target);
+    }
+    // React.lazy also accepts a loader that maps a named module export to its
+    // required default component shape. Bind only this explicit mapping; an
+    // arbitrary `.then(...)` transform remains unsupported and therefore
+    // cannot silently acquire a caller surface.
+    for (const lazy of source.matchAll(
+      /(?:const|let)\s+([A-Za-z_$][\w$]*)\s*=\s*lazy\(\s*\(\s*\)\s*=>\s*import\(\s*["']([^"']+)["']\s*\)\s*\.then\(\s*\(\s*([A-Za-z_$][\w$]*)\s*\)\s*=>\s*\(\s*\{\s*default\s*:\s*\3\.([A-Za-z_$][\w$]*)\s*,?\s*\}\s*\)\s*\)\s*,?\s*\)/gu,
+    )) {
+      const file = resolveDynamicModule(lazy[2]);
+      if (file) imported.set(lazy[1], { file, symbol: lazy[4] });
     }
     for (const [localName, target] of imported)
       imported.set(localName, resolveLocalExport(target));
