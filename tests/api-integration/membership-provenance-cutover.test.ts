@@ -1,5 +1,5 @@
 import { randomUUID } from "node:crypto";
-import { mkdtemp, rm, writeFile } from "node:fs/promises";
+import { mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -8,14 +8,16 @@ import { drizzle } from "drizzle-orm/node-postgres";
 import { Client, Pool } from "pg";
 import { afterAll, describe, expect, it } from "vitest";
 import { schema } from "../../apps/api/src/database";
-import { migrateWithMembershipProvenanceCutover } from "../../apps/api/src/database/migrate-membership-provenance";
+import {
+  MEMBERSHIP_PROVENANCE_CUTOVER_TAG,
+  migrateWithMembershipProvenanceCutover,
+} from "../../apps/api/src/database/migrate-membership-provenance";
 import { classifyLegacyMemberships } from "../../apps/api/src/identity/membership-provenance-preflight";
 
 const migrationDirectory = resolve(
   dirname(fileURLToPath(import.meta.url)),
   "../../apps/api/drizzle",
 );
-const cutoverIndex = 89;
 const scratchDatabases: Array<{ adminUrl: string; name: string }> = [];
 
 async function createScratchDatabase(baseUrl: string) {
@@ -70,6 +72,20 @@ describe("membership provenance cutover", () => {
       const migrations = readMigrationFiles({
         migrationsFolder: migrationDirectory,
       });
+      const journal = JSON.parse(
+        await readFile(
+          resolve(migrationDirectory, "meta/_journal.json"),
+          "utf8",
+        ),
+      ) as { entries: Array<{ tag: string; when: number }> };
+      const cutoverIndex = journal.entries.findIndex(
+        (entry) => entry.tag === MEMBERSHIP_PROVENANCE_CUTOVER_TAG,
+      );
+      if (cutoverIndex < 1) {
+        throw new Error(
+          "Membership provenance cutover journal boundary is missing",
+        );
+      }
       await migrationInternals.dialect.migrate(
         migrations.slice(0, cutoverIndex),
         migrationInternals.session,
@@ -114,12 +130,7 @@ describe("membership provenance cutover", () => {
         "select created_at::text from drizzle.__drizzle_migrations order by created_at desc limit 1",
       );
       expect(Number(boundary.rows[0]?.created_at)).toBe(
-        JSON.parse(
-          await (await import("node:fs/promises")).readFile(
-            resolve(migrationDirectory, "meta/_journal.json"),
-            "utf8",
-          ),
-        ).entries[cutoverIndex - 1].when,
+        journal.entries[cutoverIndex - 1]?.when,
       );
 
       const inventory = classifyLegacyMemberships(

@@ -9,7 +9,7 @@ import {
 } from "../identity/membership-provenance-preflight";
 import type { DatabaseInstance } from "./index";
 
-const CUTOVER_TAG = "0090_unique_the_stranger";
+export const MEMBERSHIP_PROVENANCE_CUTOVER_TAG = "0090_unique_the_stranger";
 const CUTOVER_END_TAG = "0093_mature_exodus";
 const MIGRATIONS_SCHEMA = "drizzle";
 const MIGRATIONS_TABLE = "__drizzle_migrations";
@@ -88,7 +88,7 @@ async function executeMigrationsWithMembershipCutover(options: {
     await readFile(join(migrationsFolder, "meta/_journal.json"), "utf8"),
   ) as Journal;
   const cutoverIndex = journal.entries.findIndex(
-    (entry) => entry.tag === CUTOVER_TAG,
+    (entry) => entry.tag === MEMBERSHIP_PROVENANCE_CUTOVER_TAG,
   );
   const cutoverEndIndex = journal.entries.findIndex(
     (entry) => entry.tag === CUTOVER_END_TAG,
