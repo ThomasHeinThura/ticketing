@@ -10274,6 +10274,17 @@
         "usage": "packages/ui/src/components/dialog.tsx",
         "category": "body",
         "chain": [
+          "apps/web/src/routes/agent/_layout/_authenticated/agent/projects/$projectKey/work.tsx:WorkItemsRouteComponent",
+          "DialogContent->packages/ui/src/components/dialog.tsx:DialogPopup"
+        ],
+        "backdropLayers": [],
+        "surfaceContext": "caller-chain"
+      },
+      {
+        "id": "packages/ui/src/components/dialog.tsx::DialogDescription::DialogPrimitive.Description[0]::text-muted-foreground#0",
+        "usage": "packages/ui/src/components/dialog.tsx",
+        "category": "body",
+        "chain": [
           "apps/web/src/components/keyboard-shortcuts-help.tsx:KeyboardShortcutsHelp",
           "DialogContent->packages/ui/src/components/dialog.tsx:DialogPopup"
         ],
