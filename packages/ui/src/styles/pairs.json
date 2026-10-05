@@ -23269,8 +23269,8 @@
   {
     "fg": "--color-warning-foreground",
     "bg": "--color-card",
-    "category": "non-text",
-    "minRatio": 3,
+    "category": "body",
+    "minRatio": 4.5,
     "themes": [
       "light",
       "dark"
