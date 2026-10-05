@@ -274,6 +274,9 @@ Prefer a skill over freehand work — it encodes decisions already made.
 - Long-running context goes in the pull request description, not in the conversation.
 - **The working tree stays uncommitted until Thomas says "commit"** ([AGENTS.md](../../AGENTS.md)
   do-not 16). Finish, write the report, stop. A report is not approval; neither is silence.
+- Public review artifacts should identify public test vectors descriptively rather than
+  embedding credential-shaped fixture URIs. If redaction is needed, label it transparently,
+  preserve the unredacted original in private evidence, and retain the finding's substance.
 
 ---
 

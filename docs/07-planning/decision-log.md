@@ -68,6 +68,20 @@ dependency choices, convention changes, scope calls, gate waivers.
 
 Newest first.
 
+### 2026-10-05 · Record both public RFC 6238 test-vector scanner findings accurately
+
+The current deterministic fixture remains in `apps/web/e2e/mfa-csrf-journey.spec.ts:16`; its
+historical finding is at line 13. A separate quoted copy in public review artifact
+`docs/07-planning/security-reviews/579-p0-146f0584-luna-a.md:28` is a second independently
+verified occurrence, fingerprinted at frozen commit `36959b579075a4463c04bd01ede7c55913abce33`.
+The public review copy now describes the RFC 6238 test vector without embedding its
+credential-shaped URI, with an explicit redaction annotation; its unredacted original is
+preserved in private evidence. Add only the exact historical commit/file/rule/line finding
+to `.gitleaksignore`. Keep both source and public-artifact findings distinct; do not ignore a
+path or rule, rewrite history, or infer that other scanner findings are benign. The deterministic
+test assertion remains unchanged. This documents verified public test data and preserves the
+original review evidence; it waives no required check.
+
 ### 2026-10-04 · Require complete source-bound contrast records before utility matching
 
 The G3 occurrence-summary invariant applies to every pair. Both arrays must exist, be nonempty and correctly typed; detailed records must obey the closed schema/context values. A missing or malformed detail array must not fall back to utility-only acceptance. Preserve intentionally repeated detailed contexts and enforce the first-seen ordered distinct summary. Fix the entire absent/malformed class and its regressions in one completed batch, with the risk-sized current-head independent Luna/Sol review rather than per-edit comfort rounds. No pair colors, thresholds, source contexts or runtime behavior change; no gate waiver is introduced.
