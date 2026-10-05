@@ -1,4 +1,22 @@
-## Complete P0 board/scanner batch; P4 implementation checkpoint — 2026-10-05 04:30 UTC
+## Complete bulk finding correction; final independent delta review — 2026-10-05 10:34 UTC
+
+P0 source4e7d31d3ae5b24de109c9bba45f15c17bcccf241 completes all ordinary146f
+findings together:36source-occurrence inventory entries now match actual card markup,
+all228contrast pairs/thresholds/themes retained; deterministic public TOTP fixture remains
+at currentline16 (historical fingerprintline13); singlePR action exposes its status in its
+accessible name with a regressiontest. Final token/bothbuild contrast gate and card9tests,
+Biome/diff pass. Original blocked146f reports remain retained. Fresh integrated exact-head
+delta review and fullSol confirmation follow; no current hosted acceptance claimed.
+Author push attempts encounter real GitHub connection resets; the clean commit is local
+and composed here, with publication pending network recovery. No unreviewed DEV rollout.
+
+P4 correctioneefce14642dbe85384701d694e1ea4008a292caf is pushed: canonical cutover
+tag now drives the migration boundary regression test. Fresh isolatedTestcontainers1test
+passes; no migration files/prefixes change. Executable outbox-drain is absent and runtime
+fanout/reach filtering remains unverified; that documented integration residual is not
+silently claimed complete. P0 stays priority; main8ddb/DEVb58 and twoactualUTCdates remain.
+
+## Complete P0 board/scanner batch; P4 implementation checkpoint — 2026-10-05 10:24 UTC
 
 Author source a96645539625f87cccce9285dd933675db0e4fd1 is clean/pushed and composed
 with the retained 83bb review records. One board-level selection/focus subscription projects
