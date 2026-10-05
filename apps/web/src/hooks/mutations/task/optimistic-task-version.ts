@@ -6,6 +6,8 @@ type FieldUpdateState = {
   confirmedValue: unknown;
   confirmedVersion: number;
   pendingValues: Map<number, unknown>;
+  readValue: (task: Task | undefined) => unknown;
+  valuesEqual: (current: unknown, next: unknown) => boolean;
 };
 
 const fieldUpdatesByClient = new WeakMap<
@@ -40,6 +42,7 @@ export function beginOptimisticTaskFieldMutation(
   value: unknown,
   readValue: (task: Task | undefined) => unknown,
   writeValue: (task: Task, value: unknown) => Task,
+  valuesEqual: (current: unknown, next: unknown) => boolean = Object.is,
 ) {
   const version = nextTaskFieldMutationVersion(queryClient, taskId, field);
   let fieldUpdates = fieldUpdatesByClient.get(queryClient);
@@ -59,6 +62,8 @@ export function beginOptimisticTaskFieldMutation(
       // the last completed write while retaining the currently cached baseline.
       confirmedVersion: version - 1,
       pendingValues: new Map(),
+      readValue,
+      valuesEqual,
     };
     fieldUpdates.set(key, state);
   }
@@ -79,7 +84,7 @@ export function settleOptimisticTaskFieldMutation(
   const fieldUpdates = fieldUpdatesByClient.get(queryClient);
   const key = fieldUpdateKey(taskId, field);
   const state = fieldUpdates?.get(key);
-  if (!state || !state.pendingValues.has(version)) return;
+  if (!state?.pendingValues.has(version)) return;
 
   const value = state.pendingValues.get(version);
   state.pendingValues.delete(version);
@@ -107,7 +112,13 @@ function writeCurrentField(
     }
   }
 
-  queryClient.setQueryData<Task>(["task", taskId], (current) =>
-    current ? writeValue(current, value) : current,
+  const queryKey = ["task", taskId];
+  const current = queryClient.getQueryData<Task>(queryKey);
+  if (!current || state.valuesEqual(state.readValue(current), value)) return;
+
+  queryClient.setQueryData<Task>(queryKey, (latest) =>
+    latest && !state.valuesEqual(state.readValue(latest), value)
+      ? writeValue(latest, value)
+      : latest,
   );
 }

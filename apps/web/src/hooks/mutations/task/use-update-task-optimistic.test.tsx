@@ -68,6 +68,66 @@ afterEach(() => {
 });
 
 describe("optimistic legacy task updates", () => {
+  it("does not republish a status cache value already shown optimistically", async () => {
+    vi.mocked(updateTaskStatus).mockResolvedValue({} as never);
+    const { result, queryClient } = setup();
+    let taskDataWrites = 0;
+    const unsubscribe = queryClient.getQueryCache().subscribe((event) => {
+      if (
+        event.type === "updated" &&
+        event.query.queryKey[0] === "task" &&
+        event.query.queryKey[1] === task.id &&
+        event.action.type === "success"
+      )
+        taskDataWrites += 1;
+    });
+
+    const request = result.current.status.mutateAsync({
+      ...task,
+      status: "in-progress",
+    });
+    await waitFor(() => expect(updateTaskStatus).toHaveBeenCalledTimes(1));
+    const optimisticTask = queryClient.getQueryData<Task>(["task", task.id]);
+    await request;
+
+    expect(queryClient.getQueryData<Task>(["task", task.id])).toBe(
+      optimisticTask,
+    );
+    expect(taskDataWrites).toBe(1);
+    unsubscribe();
+  });
+
+  it("does not republish confirmed assignee fields already shown optimistically", async () => {
+    vi.mocked(updateTaskAssignee).mockResolvedValue({} as never);
+    const { result, queryClient } = setup();
+    let taskDataWrites = 0;
+    const unsubscribe = queryClient.getQueryCache().subscribe((event) => {
+      if (
+        event.type === "updated" &&
+        event.query.queryKey[0] === "task" &&
+        event.query.queryKey[1] === task.id &&
+        event.action.type === "success"
+      )
+        taskDataWrites += 1;
+    });
+
+    const request = result.current.assignee.mutateAsync({
+      ...task,
+      userId: "user-2",
+      assigneeId: "user-2",
+      assigneeName: "Second User",
+    });
+    await waitFor(() => expect(updateTaskAssignee).toHaveBeenCalledTimes(1));
+    const optimisticTask = queryClient.getQueryData<Task>(["task", task.id]);
+    await request;
+
+    expect(queryClient.getQueryData<Task>(["task", task.id])).toBe(
+      optimisticTask,
+    );
+    expect(taskDataWrites).toBe(1);
+    unsubscribe();
+  });
+
   it("rolls back only status when status fails while assignment succeeds", async () => {
     let rejectStatus!: (error: Error) => void;
     vi.mocked(updateTaskStatus).mockImplementation(

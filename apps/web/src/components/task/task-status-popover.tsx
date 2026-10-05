@@ -7,7 +7,7 @@ import {
 } from "@taskdesk/ui";
 import { Check } from "lucide-react";
 import type { RefObject } from "react";
-import { useCallback, useMemo, useState } from "react";
+import { memo, useCallback, useMemo, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { useUpdateTaskStatus } from "@/hooks/mutations/task/use-update-task-status";
 import type { useGetColumns } from "@/hooks/queries/column/use-get-columns";
@@ -27,6 +27,44 @@ type TaskStatusPopoverProps = {
   children: React.ReactNode;
 };
 
+type StatusOption = {
+  value: string;
+  label: string;
+  icon: string | null;
+  isFinal: boolean;
+};
+
+const TaskStatusOption = memo(function TaskStatusOption({
+  status,
+  index,
+  selected,
+  onSelect,
+}: {
+  status: StatusOption;
+  index: number;
+  selected: boolean;
+  onSelect: (status: string) => void;
+}) {
+  return (
+    <Button
+      variant="ghost"
+      size="sm"
+      className="w-full justify-start gap-2 h-8 px-2 rounded-none first:rounded-t-md last:rounded-b-md"
+      onClick={() => onSelect(status.value)}
+    >
+      {getColumnIcon(status.value, status.isFinal, status.icon)}
+      <span className="text-sm">
+        {getStatusDisplayLabel(status.value, status.label)}
+      </span>
+      {selected ? (
+        <Check className="ml-auto h-4 w-4" />
+      ) : (
+        <ShortcutNumber number={index + 1} />
+      )}
+    </Button>
+  );
+});
+
 export default function TaskStatusPopover({
   task,
   columns,
@@ -37,6 +75,8 @@ export default function TaskStatusPopover({
 }: TaskStatusPopoverProps) {
   const { t } = useTranslation();
   const [open, setOpen] = useState(false);
+  const latestTaskRef = useRef(task);
+  latestTaskRef.current = task;
   const statusOptions = useMemo(
     () =>
       (columns ?? []).map((col) => ({
@@ -55,7 +95,7 @@ export default function TaskStatusPopover({
     async (newStatus: string) => {
       setOpen(false);
       try {
-        const currentTask = taskRef?.current ?? task;
+        const currentTask = taskRef?.current ?? latestTaskRef.current;
         await updateTaskStatus({
           ...currentTask,
           status: newStatus,
@@ -69,7 +109,7 @@ export default function TaskStatusPopover({
         );
       }
     },
-    [t, task, taskRef, updateTaskStatus],
+    [t, taskRef, updateTaskStatus],
   );
 
   const shortcutOptions = useMemo(
@@ -99,23 +139,13 @@ export default function TaskStatusPopover({
             </div>
           ) : (
             statusOptions.map((status, index) => (
-              <Button
+              <TaskStatusOption
                 key={status.value}
-                variant="ghost"
-                size="sm"
-                className="w-full justify-start gap-2 h-8 px-2 rounded-none first:rounded-t-md last:rounded-b-md"
-                onClick={() => handleStatusChange(status.value)}
-              >
-                {getColumnIcon(status.value, status.isFinal, status.icon)}
-                <span className="text-sm">
-                  {getStatusDisplayLabel(status.value, status.label)}
-                </span>
-                {task.status === status.value ? (
-                  <Check className="ml-auto h-4 w-4" />
-                ) : (
-                  <ShortcutNumber number={index + 1} />
-                )}
-              </Button>
+                status={status}
+                index={index}
+                selected={task.status === status.value}
+                onSelect={handleStatusChange}
+              />
             ))
           )}
         </div>
