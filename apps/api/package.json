@@ -22,8 +22,9 @@
     "test:permissions": "vitest run --config vitest.permissions.config.ts",
     "test:watch": "vitest --config vitest.config.ts",
     "db:generate": "drizzle-kit generate",
-    "db:migrate": "drizzle-kit migrate",
+    "db:migrate": "tsx scripts/migrate.ts",
     "db:studio": "drizzle-kit studio",
+    "db:identity-provenance-preflight": "tsx scripts/preflight-membership-provenance.ts",
     "db:seed:user-data": "tsx scripts/seed-user-data.ts",
     "openapi:export": "tsx scripts/export-openapi.ts",
     "audit:reserved-role-names": "tsx scripts/audit-reserved-workspace-role-names.ts"

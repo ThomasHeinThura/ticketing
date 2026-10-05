@@ -68,8 +68,9 @@ watches both.
 `scim_connection`, `external_identity`, `scim_group_mapping`, `oidc_group_mapping`,
 `scim_group_member`, `membership_grant`, effective `membership`, and `provisioning_event`.
 The provenance-ledger/effective-membership contract is proposed in
-[ADR 0015](../01-architecture/adr/0015-membership-grant-provenance.md); Thomas's approval
-is required and has not been granted. These are target contracts, not implemented tables.
+[ADR 0015](../01-architecture/adr/0015-membership-grant-provenance.md). Its recommended
+implementation is authorized for the P3 batch; Thomas's integrated P4 design approval
+has not been granted. These are target contracts, not implemented tables.
 `person.active`, `session`, and `api_key.disabled_at` are the columns de-provisioning writes.
 
 ## Behaviour
@@ -112,6 +113,15 @@ is required and has not been granted. These are target contracts, not implemente
   ineligible until corrected; a later ceiling increase never revives retired grants without
   fresh evidence from their own source. Rank guardrails and elevated-action rules in
   [RBAC](../01-architecture/rbac.md) apply to what a connection is configured to grant.
+  An agent connection's nullable `default_workspace_id` is the sole target for its JIT
+  default grant. When agent JIT is enabled, it must reference an active workspace in the
+  active internal organisation, and `default_role_id` must be scoped to that exact
+  workspace and satisfy the connection's rank/capability ceiling. The server never selects
+  a workspace from IdP data or from an arbitrary first/oldest workspace. Customer
+  connections keep `default_workspace_id` null and use only the canonical Customer
+  organisation role. A valid configured target may remain dormant when JIT is disabled or
+  its role is above a subsequently lowered ceiling; it grants nothing until made eligible
+  by an audited config change.
 - `IP-4` **All scope is resolved from the connection**, never from the request. A SCIM or
   OIDC payload supplying `organisation_id`, `workspace_id`, a role, a capability or a portal
   scope is rejected `400 forbidden_attribute` — it is not ignored, it is refused, and the
@@ -122,20 +132,51 @@ is required and has not been granted. These are target contracts, not implemente
   cross-organisation access. Customer self-service IdP setup is a later feature with its own
   spec, security review, validation workflow and approval model.
 - `IP-6` Creating or changing a connection and rotating or revoking a SCIM token are
-  **elevated, audited** actions. Every OIDC group-mapping create, edit, enable or disable
+  **elevated, audited** actions. Connection creation and configuration use distinct,
+  session-only PA-15 operations: create binds the fixed collection route, initial version
+  `1` and the complete canonical strict body; configuration binds the fixed item route,
+  immutable connection id, current positive `configVersion` and complete canonical strict
+  body. The connection id, provider, portal scope, customer organisation, tenant, issuer and
+  derived redirect URI cannot be changed after creation. Disable is `enabled:false` in the
+  configuration CAS and retires only this connection's external sources and tagged
+  sessions. Create starts disabled. Client-secret plaintext is accepted only on a strict
+  write, encrypted using the existing per-connection AES-GCM helper, and never returned,
+  logged or written to audit/event detail. Connection delete remains the separate typed-name
+  pending action. The superseding operation decision is recorded in
+  [decision-log.md](../07-planning/decision-log.md); it replaces the older api-design sentence
+  that classified connection PATCH as ordinary. Every OIDC group-mapping create, edit, enable or disable
   is also elevated and audited, using the fixed route policies and operation-bound step-up
   in [api-design.md](../01-architecture/api-design.md#oidc-group-mapping-administration).
   Every write through the existing `PATCH /api/instance/identity-connections/{id}/scim`
   administration route is unconditionally `instance:admin`, elevated and `sessionOnly`,
   including settings, lifecycle, mapping, display-only and customer changes. This route-wide
-  policy covers the prior conditional triggers without body-selected elevation. The route is
-  not yet a usable elevated operation: its strict DTO, parent-version CAS and dedicated
-  PA-15 binding are undefined. Issue [#561](https://github.com/ThomasHeinThura/ticketing/issues/561)
-  owns that separate API/proof contract; until completed, any mounted write fails closed
-  with `403 step_up_unavailable` and makes no mutation. OIDC mapping writes remain
-  unconditionally elevated and use their already-defined operation bindings.
+  policy covers the prior conditional triggers without body-selected elevation. The strict
+  DTO, exact permitted settings/mapping writes, shared parent-version CAS and dedicated
+  `scim_admin_update` PA-15 binding are specified in
+  [api-design.md](../01-architecture/api-design.md#scim-administration-patch--issue-561-owner-contract).
+  The same route has one closed `attribute_mapping` replacement variant for profile-only
+  values, as specified in that API contract. Its mounted strict route enforces the
+  registered session-only PA-15 operation and fails closed if proof is unavailable. OIDC
+  mapping writes remain unconditionally elevated with separate operation bindings.
+
+  The same settings variant may replace the closed `matchAttributes` list used by
+  `GET /Users` equality filters. It uses the same parent `configVersion` compare-and-set,
+  elevation and audit path; omission preserves the stored list. The v1 default is
+  `externalId`, `userName` in that order. This setting controls only which profile
+  attributes this connection may query. It never changes identity matching, linking,
+  membership, role, or authorization behavior.
   Mapping to `instance:admin` or `sees_all` is not elevated — it is **impossible**: the
   mapping editor does not offer it and the server refuses it.
+
+  SCIM token rotation and revocation use separate PA-15 operations,
+  `scim_token_rotate` and `scim_token_revoke`, each bound to its exact route, connection id
+  and positive expected parent `configVersion`. Both disable the SCIM child and increment
+  the parent version exactly once; rotation invalidates the previous bearer immediately and
+  returns a new 32-byte bearer once, while revocation returns no secret. Re-enable is a
+  later authenticated settings write after updating the upstream bearer. Stale CAS preserves
+  the proof for retry and changes nothing; raw token material is excluded from audit, events,
+  logs and read DTOs. Full request and response semantics are in
+  [api-design.md](../01-architecture/api-design.md#scim-token-rotation-and-revocation--pa-15-operations).
 
 ### OIDC login
 
@@ -192,7 +233,18 @@ is required and has not been granted. These are target contracts, not implemente
   not JIT is enabled.** Every Entra connection must store one exact, nonempty
   `required_entra_app_role` in its existing `identity_connection.jit_policy` at creation and
   configuration save, and before enable; changing `jit_policy.enabled` cannot remove or
-  bypass this admission setting. Missing or malformed persisted admission configuration
+  bypass this admission setting. The closed `jit_policy` object contains exactly
+  `enabled: boolean`, `default_role_id: string | null` (an existing canonical TaskDesk role
+  id), and `required_entra_app_role: string` (the exact nonempty Entra app-role value).
+  Agent JIT additionally requires the connection's `default_workspace_id` and a role scoped
+  to that workspace; the target is connection configuration, never an IdP selector.
+  Unknown keys and malformed values are refused at save and fail login closed when found in
+  persisted configuration. The required app-role value is preserved byte-for-byte; it is not
+  a TaskDesk role id, wildcard or selector. A customer connection has only its canonical
+  Customer default role. Enabled JIT requires a usable default role under IP-3/IP-10/IP-22;
+  a default role left above a subsequently lowered ceiling is retained as dormant policy
+  and grants nothing until made eligible again. Reserved non-Entra provider types cannot be
+  enabled in this release. Missing or malformed persisted admission configuration
   fails authentication closed and is surfaced as invalid connection health. After the
   protocol floor (`IP-7`) and exact selected-connection `iss`, `tid` and `aud` validation
   (`IP-26`), resolve the immutable `oid` under that connection. Before creating a person or
@@ -225,6 +277,15 @@ is required and has not been granted. These are target contracts, not implemente
   for admission. Generic and other provider JIT remains disabled until its own admission
   rule is approved. The first-release Entra JIT rule rejects guests, including a missing or
   malformed `acct`; it does not create a guest-login or alternate account-linking path.
+
+  The first-release `claim_mapping` is a closed profile-only object:
+  `{ "version": 1, "displayName": "name" }`. A missing/null value means this exact
+  default; malformed non-null data fails login closed and must be repaired through strict
+  connection configuration. The signed `oid` and `tid` remain the fixed subject selectors,
+  and email metadata remains the fixed `email` → `preferred_username` → `upn` precedence
+  above. The profile map cannot select identity, email, tenant, portal, organisation, role,
+  capability or reach; no arbitrary claim path is accepted. A missing/invalid optional name
+  is omitted rather than synthesized from email or username.
 - `IP-29` **The portal login page has a limited domain-specific SSO disclosure.** See
   [ADR 0014](../01-architecture/adr/0014-limited-home-realm-disclosure.md) for the rationale
   and alternatives. It does
@@ -247,9 +308,8 @@ is required and has not been granted. These are target contracts, not implemente
 ### SCIM endpoint
 
 **The SCIM 2.0 server is ours.** better-auth has no SCIM plugin, so the schemas, the
-`PATCH` path expressions, `ListResponse`, the SCIM error bodies and the filter parser —
-hand-written, and only for `eq` on `userName` and `externalId` (`IP-13`) — are our own
-protocol code; only the credential check reuses the platform.
+`PATCH` path expressions, `ListResponse`, the SCIM error bodies and the filter parser are
+hand-written protocol code; only the credential check reuses the platform.
 
 
 - `IP-11` One SCIM 2.0 endpoint family on the agent origin: `/scim/v2/Users`,
@@ -264,20 +324,47 @@ protocol code; only the credential check reuses the platform.
   types and allowed mappings. Raw token values never appear in logs, responses, exports or
   audit detail.
 - `IP-13` Required for Entra interoperability, and the whole first-release surface: `POST
-  /Users`; `GET /Users?filter=userName eq "…"` (and `externalId`, and the configured match
+  /Users`; `GET /Users?filter=userName eq "…"` (and `externalId`, plus configured match
   attributes) returning a correct `ListResponse`; `GET /Users/{id}`; `PATCH /Users/{id}`
   (`active`, profile attributes); `PUT /Users/{id}`; `GET /Users` with `startIndex`/`count`
-  pagination; `ServiceProviderConfig`, `ResourceTypes`, `Schemas`. **`/Bulk` is not
+  pagination; `POST`, `PUT`, `PATCH`, `GET` and `DELETE` for `/Groups` and `/Groups/{id}`;
+  `ServiceProviderConfig`, `ResourceTypes`, `Schemas`. Group writes are full same-connection
+  directory reconciliations; `DELETE` is soft deactivation, and a mapping grants only from
+  a successful authenticated membership reconciliation. **`/Bulk` is not
   implemented** unless Entra interoperability testing proves it necessary. `DELETE /Users/{id}`
   is accepted and treated as `active=false` (`IP-15`) — SCIM de-provisioning is never a
   hard delete.
+- **User filter contract (v1):** `filter` accepts one case-insensitive attribute name,
+  the `eq` operator, and one quoted string value; compound filters and other operators
+  return SCIM `400 invalidFilter`. String equality follows the core SCIM `caseExact`
+  characteristic; all supported v1 User attributes are case-insensitive. Attribute names
+  and the `eq` operator are case-insensitive. `scim_connection.match_attributes` is a closed,
+  connection-configured list with canonical default `externalId`, `userName`; those two
+  are mandatory in every valid stored list. The only additional v1
+  names are `displayName`, `name.formatted`, `title`, and `preferredLanguage`. An
+  additional name must be explicitly present in the connection's list, otherwise the
+  filter returns `400 invalidFilter`.
+
+  Matching remains inside the authenticated connection and `provisioned_via = 'scim'`.
+  `externalId` and `userName` use that connection's external-identity snapshots;
+  `displayName` and `name.formatted` both compare the same `person.display_name` value
+  emitted by the current profile projection; `title` compares `person.job_title`; and
+  `preferredLanguage` compares `person.locale`, which the current projection emits as
+  `preferredLanguage`. The person profile values are the same profile fields already
+  exposed for the matched same-connection SCIM identity; filters do not perform identity
+  lookup or link people across connections. `emails.value` is deliberately unsupported:
+  the bounded stored snapshot contains only the selected primary email, and cannot truthfully
+  implement SCIM's any-email-value match. `locale` is also unsupported because the response
+  profile emits `preferredLanguage`, not `locale`. Unknown, malformed, or unsupported
+  filters fail closed; invalid persisted configuration returns `503` rather than silently
+  reverting to a broader filter set.
 - `IP-14` Schemas are validated **strictly**: unknown attributes, forbidden attributes
   (`IP-4`) and oversized bodies are rejected with SCIM error responses. Requests are
   rate-limited per connection (anonymous-class limits apply to failed authentication).
 - `IP-15` **Deactivation** (`active=false`, or `DELETE`): set `person.active = false`; revoke
   every session — which takes effect on that person's **very next request**, because
   `session.cookieCache` is disabled and every request is validated against the `session`
-  table ([auth-and-identity.md § Sessions](../01-architecture/auth-and-identity.md#sessions)); revoke every personal API key and MCP key; retire every external
+  table ([auth-and-identity.md § Sessions](../01-architecture/auth-and-identity.md#sessions)); revoke every currently issued personal API key; retire every external
   `membership_grant` for the person, including explicitly linked identities on other
   connections. With `lifecycle_policy = end_memberships` (the default), also retire direct
   grants and remove all effective memberships. With `keep_memberships`, retain only direct
@@ -287,14 +374,48 @@ protocol code; only the credential check reuses the platform.
   member; write a provisioning event with source, organisation, external identity, previous
   state and resulting action. Local user deletion and anonymisation remain the separate
   elevated administrative process in [data-protection.md](../05-operations/data-protection.md).
+  The person-wide state/credential/grant transition is one shared IP-22 transaction seam:
+  it takes the person id, the caller's documented direct-membership lifecycle policy and
+  a closed, server-owned caller context; it locks and revalidates the complete
+  person grant closure, marks the person inactive, revokes every session and every current
+  Better Auth personal API-key row, retires all external grants across linked connections,
+  retires direct grants only for `end_memberships`, and reprojects every affected key. It
+  preserves historical rows. SCIM context derives `scim_deactivated` for external grants
+  and `direct_removed` for direct grants; administrative person-wide deactivation derives
+  `person_deactivated` for both. Request fields never choose a retirement reason. A
+  source-specific caller remains responsible for changing only its own identity evidence
+  and writing its own durable event/audit in the same outer
+  transaction; the shared transition does not infer or rewrite another connection's
+  external-identity state. The current P3 runtime has no separate `api_key` extension or
+  `is_mcp` storage table/column; this batch's credential revocation covers all existing
+  Better Auth `apikey` rows. A future extension/MCP credential store must add its person
+  revocation to this same lifecycle seam before it can be enabled as an issued credential.
 - `IP-16` **Reactivation** (`active=true`) reactivates only the existing linked
   `external_identity`'s person; it never creates a duplicate or restores a revoked grant.
   SCIM grants are re-derived only from current verified SCIM groups/mappings; OIDC grants
   wait for a later validated login on that connection. Direct grants retained by
-  `keep_memberships` remain dormant until the person is active.
-- `IP-17` Profile updates (`PATCH`/`PUT`) may change permitted attributes — name, email
-  snapshot, `userName`, job title, locale — and can never alter organisation, portal scope,
-  role, reach or capabilities.
+  `keep_memberships` remain dormant until the person is active. Reactivation uses the same
+  locked person lifecycle seam but performs no credential restoration or grant insertion;
+  the caller updates only its linked external identity and records its own source event.
+- `IP-17` Profile updates (`PATCH`/`PUT`) may change permitted attributes — per-person
+  display name, connection-scoped email snapshot, `userName`, job title and locale — and can
+  never alter organisation, portal scope, role, reach or capabilities. `person.display_name`
+  is the TaskDesk profile display name, independent of the account-wide `user.name`; an
+  unlinked SCIM placeholder can therefore retain its own profile without creating a login.
+  SCIM reads emit stored `displayName` and do not derive a name from `userName` or email.
+  The additive `person.display_name` field is per-person profile data and never changes
+  account-wide `user.name`. Existing rows stay NULL; no backfill guesses from account or
+  connection snapshots. Deactivation/reactivation preserves the value.
+  Existing people without a stored display name remain without one; migration must not guess
+  from account or identity snapshots. Deactivation and reactivation preserve the profile and
+  connection-scoped snapshots. The version-1 `scim_connection.attribute_mapping` grammar,
+  deterministic email selection, mandatory-profile failure, optional-field omission and
+  future-write-only behavior are owned by the
+  [SCIM administration API contract](../01-architecture/api-design.md#scim-administration-patch--issue-561-owner-contract).
+  Identity and authority selectors are fixed and cannot be mapped. A malformed persisted
+  non-null map fails SCIM user writes closed and surfaces configuration health; it does not
+  silently fall back to defaults. An administrator must save a valid map under the same
+  parent version and operation-bound proof before provisioning resumes.
 - `IP-31` **Tolerated Entra deviations.** `IP-14`'s strictness is about *authority*, not
   about spelling, and Entra's provisioning service sends three things a literal-minded
   validator rejects. All three are tolerated, and only these three: `op` values are matched
@@ -341,8 +462,16 @@ protocol code; only the credential check reuses the platform.
   inside the connection's organisation (customer) or a workspace eligible under `IP-3`
   (agent). The instance administrator selects the agent workspace; each create, target
   change, enable and reconciliation revalidates that it is a non-deleted workspace owned
-  by the unique active, non-deleted internal organisation. Unmapped groups are stored as
-  opaque names and grant nothing.
+  by the unique active, non-deleted internal organisation. Provider Groups are stored
+  separately from role mappings in connection-scoped `scim_group` rows keyed by the
+  provider `externalId`; `displayName` is opaque directory metadata. Membership uses
+  `scim_group_directory_member` rows that reference only the same connection's
+  `external_identity` ids, never email. Unmapped groups are stored and grant nothing.
+  A mapping may predate observation, but creating it grants nothing until an authenticated
+  SCIM reconciliation observes the same-connection group membership. Group/member removal
+  and deactivation are soft, retain directory history, and use the IP-22 writer to retire
+  only grants derived from that SCIM mapping with `scim_group_removed`; no resource is
+  hard-deleted. Authorization history remains in the distinct `scim_group_member` table.
 - `IP-21` Customer groups map only to customer roles; agent groups map only to approved
   staff roles at or below `max_role_rank`. No group can grant `instance:admin` or
   `sees_all`; no group can create roles or capabilities; no group can add anyone to another
@@ -360,8 +489,9 @@ protocol code; only the credential check reuses the platform.
 
   For external grants, the locked writer's single `valid_now(grant, locked_rows)` predicate
   requires an active person whose owning organisation is active and not deleted; an
-  enabled, scope-eligible connection; a current matching JIT default or enabled same-source
-  mapping; an existing role on the correct side/scope that is still the configured/mapped
+  enabled, scope-eligible connection; for `scim_group`, an enabled SCIM child with `groups`
+  in `allowed_resources`; a current matching JIT default or enabled same-source mapping;
+  an existing role on the correct side/scope that is still the configured/mapped
   role, has no externally forbidden capability, and (for staff) is within the connection's
   current `max_role_rank`; and a live target. A customer target is its active, non-deleted
   organisation with `portal_access=true`. An agent target is a non-deleted workspace owned
@@ -469,7 +599,8 @@ protocol code; only the credential check reuses the platform.
   authority-cache bound applies. This changes current effective authority after invalidation,
   not the validity of a still-live session. The proposed ledger/projection storage choice is
   in [ADR 0015](../01-architecture/adr/0015-membership-grant-provenance.md); this
-  transition invariant and matrix are owned here, pending Thomas's ADR approval.
+  transition invariant and matrix are owned here. The recommended P3 implementation may
+  proceed under the standing authorization; human ADR approval remains deferred to P4.
 - `IP-23` Nested-group resolution beyond what Entra sends directly is out of scope.
 - `IP-28` **OIDC group grants are re-derived on every validated login through that
   connection.** After `IP-7`/`IP-26` token validation and `IP-27` admission, resolve the
@@ -549,8 +680,12 @@ protocol code; only the credential check reuses the platform.
   `provisioning_event` row; those that change authority, reach or configuration also write
   `audit_log`. Grant changes record bounded source kind, connection/identity/mapping ids,
   affected scope/role ids and reason; never raw claims or tokens. Grant delta, effective
-  projection and these rows commit together. The God Mode identity screens show provisioning
-  status, last sync result and errors **without exposing secrets**.
+  projection and these rows commit together. SCIM group directory create, metadata update or
+  soft deactivation records `group.directory_changed` with only connection, group and changed
+  field identifiers; member additions/removals retain `group.member_added` and
+  `group.member_removed`. Directory-change events never masquerade as membership or mapping
+  changes. The God Mode identity screens show provisioning status, last sync result and errors
+  **without exposing secrets**.
 - `IP-25` `plugin-health` pings each enabled connection's discovery document; a connection
   whose IdP is unreachable is flagged in God Mode → Health.
 
@@ -562,7 +697,7 @@ protocol code; only the credential check reuses the platform.
 | Create, edit, enable, disable, delete a connection | `instance:admin` + elevated; positive `configVersion` CAS on configuration writes |
 | Create, rotate, revoke a SCIM token | `instance:admin` + elevated |
 | Create, edit, enable or disable an OIDC group mapping | `instance:admin`; always elevated, session-only and operation-bound for POST/PATCH under `IP-34`, including customer, display-snapshot-only and non-authority changes |
-| Edit SCIM administration settings or group mappings | `instance:admin`; every PATCH is elevated and session-only; not usable until strict DTO, shared version CAS and dedicated PA-15 proof contract in issue [#561](https://github.com/ThomasHeinThura/ticketing/issues/561) are specified; fail closed with `403 step_up_unavailable` meanwhile (`IP-6`) |
+| Edit SCIM administration settings or group mappings | `instance:admin`; every PATCH is elevated, session-only and bound to the dedicated `scim_admin_update` PA-15 operation, shared parent version and strict DTO in [api-design.md](../01-architecture/api-design.md#scim-administration-patch--issue-561-owner-contract); unavailable proof fails closed (`IP-6`) |
 | Call `/scim/v2/*` | The SCIM bearer token — `delegated: scim`, organisation and portal from the token |
 | Sign in through a connection | Anyone the connection's portal and organisation admit |
 
@@ -572,12 +707,32 @@ protocol code; only the credential check reuses the platform.
 | --- | --- | --- |
 | God Mode → Authentication (identity connections, agent scope) | `/agent/god-mode/authentication` | Existing rows; the list becomes "identity connections" |
 | Connection editor | `/agent/god-mode/authentication/{id}` | OIDC settings, JIT policy, domain bindings, OIDC object-id group mappings (selection/open state in URL), **SCIM panel** (endpoint URL, token create/rotate/revoke, allowed resources and distinct SCIM mappings, last sync), Test OIDC, Test SCIM |
-| God Mode → Organisations → detail → **Identity** | `/agent/god-mode/organisations/{id}/identity` | The customer-organisation connection: enable/disable portal SSO; provider type (Entra first); organisation-bound OIDC settings; SCIM endpoint info; token create/rotate; Test OIDC; Test SCIM; provisioning status and last sync; errors without secrets; attribute mapping; group mapping (selection/open state in URL); audit history; **unmissable organisation-scope and portal-scope warnings** |
+| God Mode → Organisations → detail → **Identity** | `/agent/god-mode/organisations/{id}/identity` | The customer-organisation connection: enable/disable portal SSO; provider type (Entra first); organisation-bound OIDC settings; SCIM endpoint info; token create/rotate; Test OIDC; Test SCIM; provisioning status and last sync; errors without secrets; the closed profile-only attribute-mapping editor; group mapping (selection/open state in URL); audit history; **unmissable organisation-scope and portal-scope warnings** |
 
 ## API
 
+The SCIM group-mapping editor loads selector choices from the connection-bound
+`GET /api/instance/identity-connections/{id}/scim/mapping-options` contract in
+[api-design.md](../01-architecture/api-design.md#scim-group-mapping-selector-options).
+It pages every eligible target and role, and submits the existing `mapping_create` and
+`mapping_update` variants through the shared parent `configVersion` CAS and
+`scim_admin_update` PA-15 operation. It never accepts a role, target, scope, or grant
+outside the exact `validateScimMappingRole` constraints used by those writes.
+
+The connection event ledger is read through
+`GET /api/instance/identity-connections/{id}/events`. It is instance-admin-only and
+requires the connection to exist; absent connections use the same `404` response. The
+query accepts an optional opaque version-1 cursor and `limit` (default 25, maximum 100),
+ordered descending by `(created_at, id)`. The cursor is bound to its connection. The
+response contains only `kind`, `outcome`, `actorType`, and `createdAt`, plus
+`page.nextCursor` and `page.hasMore`; it does not expose event ids, trace ids, event
+`detail`, or a total count. The existing persisted detail remains write-side evidence and
+is not part of this read contract. The UI follows the cursor in its registered route query
+state and renders only this safe projection.
+
 ```
 GET    /api/instance/identity-connections                         instance:admin
+GET    /api/instance/identity-connections/{id}/events             instance:admin      (safe provisioning events, cursor-paged)
 POST   /api/instance/identity-connections                         instance:admin  E
 PATCH  /api/instance/identity-connections/{id}                    instance:admin  E
 DELETE /api/instance/identity-connections/{id}                    instance:admin  E  (pending action — typed name + step-up)
@@ -588,7 +743,7 @@ POST   /api/instance/identity-connections/{id}/test               instance:admin
 POST   /api/instance/identity-connections/{id}/scim               instance:admin  E  (create SCIM connection + first token)
 POST   /api/instance/identity-connections/{id}/scim/rotate-token  instance:admin  E
 POST   /api/instance/identity-connections/{id}/scim/revoke-token  instance:admin  E
-PATCH  /api/instance/identity-connections/{id}/scim               instance:admin  E  (route-wide; not usable until strict DTO/CAS/dedicated PA-15 contract in issue #561; otherwise fail closed)
+PATCH  /api/instance/identity-connections/{id}/scim               instance:admin  E  (route-wide, session-only, dedicated PA-15 operation; design only until implemented)
 POST   /api/instance/identity-connections/{id}/scim/test          instance:admin
 GET    /api/instance/identity-connections/{id}/events             instance:admin      (provisioning events, paged)
 
@@ -738,8 +893,9 @@ reevaluation, grant-provenance, effective-role, SCIM global-deactivation, and co
 assertions above are subcases of these same 25 tests. Migration evidence must prove read-only
 classification of every legacy membership before any DDL, backfill, constraint, or
 projection; null or otherwise ambiguous `derived_from` must stop the whole migration
-without partial change. Prove owner-approved reconciliation, full transaction rollback on
-failure, and successful backfill only after all rows are classified. Duplicate-row migration
+without partial change. Prove per-row owner-approved reconciliation with source evidence
+and row digest, stale-manifest rejection, stable-snapshot cut-over, full transaction rollback
+on failure, and successful backfill only after all rows are classified. Duplicate-row migration
 rejection and provenance backfill evidence are required when the schema is implemented. This
 is planned coverage only; none of these subcases is implemented or claimed as run here.
 
@@ -768,12 +924,22 @@ verifier fail-closed behavior, atomic
 subcases under tests 04, 09, 12, 13, 15, 16, 17 and 23; the 25 test names are unchanged and
 none of this evidence is claimed implemented or run.
 
-After issue #561 specifies the SCIM administration DTO and PA-15 operation, tests 09/12
-also retain planned negatives for API-key/MCP/impersonation `403 session_required`, missing
-or unavailable proof, wrong OIDC/metrics operation, wrong connection, changed canonical
+The issue #561 SCIM administration DTO and PA-15 contract adds planned tests 09/12
+for API-key/MCP/impersonation `403 session_required`, missing
+or unavailable proof, wrong OIDC/MFA/metrics operation, wrong connection, changed canonical
 body, stale parent version, expiry, replay and concurrent edit; failures make no mutation or
-grant change, and stale CAS rolls proof consumption back. No operation key or DTO is defined
-by this proposal.
+grant change, and stale CAS rolls proof consumption back. Cover all four body variants,
+forbidden role/scope, absent `groups`, independent-source preservation, SCIM history
+repair and later same-source re-evidence. The 25 named tests remain planned.
+
+The closed profile attribute-map variant adds subcases to tests 08/09/17/22: only the
+enumerated version-1 paths are accepted; each map is complete and bound to its own
+`scim_admin_update` body/version/proof; API-key and stale/replayed proof fail without
+mutation; malformed persisted maps fail provisioning closed; unique-primary versus
+ambiguous email selection is deterministic; required fields reject atomically; optional
+unmapped fields remain unchanged; a mapping edit changes future SCIM profile writes only
+and cannot alter identity, tenant, role, group grant, audit secrecy or current sessions.
+These remain planned subcases, not new acceptance-test names or passing claims.
 
 The shared IP-22 invariant adds planned subcases to the same named tests: 12 covers JIT
 disable/default-role change and re-enable evidence, stale/expanded lock-set retry (including a

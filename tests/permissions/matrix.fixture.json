@@ -1244,6 +1244,74 @@
 				"outOfReach": "404 not_found"
 			}
 		},
+		"DELETE /scim/v2/Groups/{id}": {
+			"instance_admin": {
+				"inReach": "allow",
+				"outOfReach": "allow"
+			},
+			"owner": {
+				"inReach": "allow",
+				"outOfReach": "allow"
+			},
+			"admin": {
+				"inReach": "allow",
+				"outOfReach": "allow"
+			},
+			"manager": {
+				"inReach": "allow",
+				"outOfReach": "allow"
+			},
+			"lead": {
+				"inReach": "allow",
+				"outOfReach": "allow"
+			},
+			"member": {
+				"inReach": "allow",
+				"outOfReach": "allow"
+			},
+			"viewer": {
+				"inReach": "allow",
+				"outOfReach": "allow"
+			},
+			"customer": {
+				"inReach": "allow",
+				"outOfReach": "allow"
+			}
+		},
+		"DELETE /scim/v2/Users/{id}": {
+			"instance_admin": {
+				"inReach": "allow",
+				"outOfReach": "allow"
+			},
+			"owner": {
+				"inReach": "allow",
+				"outOfReach": "allow"
+			},
+			"admin": {
+				"inReach": "allow",
+				"outOfReach": "allow"
+			},
+			"manager": {
+				"inReach": "allow",
+				"outOfReach": "allow"
+			},
+			"lead": {
+				"inReach": "allow",
+				"outOfReach": "allow"
+			},
+			"member": {
+				"inReach": "allow",
+				"outOfReach": "allow"
+			},
+			"viewer": {
+				"inReach": "allow",
+				"outOfReach": "allow"
+			},
+			"customer": {
+				"inReach": "allow",
+				"outOfReach": "allow"
+			}
+		},
 		"GET /api/activity/{taskId}": {
 			"instance_admin": {
 				"inReach": "403 forbidden",
@@ -1720,6 +1788,142 @@
 				"outOfReach": "403 forbidden"
 			}
 		},
+		"GET /api/instance/identity-connections": {
+			"instance_admin": {
+				"inReach": "allow",
+				"outOfReach": "allow"
+			},
+			"owner": {
+				"inReach": "403 forbidden",
+				"outOfReach": "403 forbidden"
+			},
+			"admin": {
+				"inReach": "403 forbidden",
+				"outOfReach": "403 forbidden"
+			},
+			"manager": {
+				"inReach": "403 forbidden",
+				"outOfReach": "403 forbidden"
+			},
+			"lead": {
+				"inReach": "403 forbidden",
+				"outOfReach": "403 forbidden"
+			},
+			"member": {
+				"inReach": "403 forbidden",
+				"outOfReach": "403 forbidden"
+			},
+			"viewer": {
+				"inReach": "403 forbidden",
+				"outOfReach": "403 forbidden"
+			},
+			"customer": {
+				"inReach": "403 forbidden",
+				"outOfReach": "403 forbidden"
+			}
+		},
+		"GET /api/instance/identity-connections/{id}/events": {
+			"instance_admin": {
+				"inReach": "allow",
+				"outOfReach": "allow"
+			},
+			"owner": {
+				"inReach": "403 forbidden",
+				"outOfReach": "403 forbidden"
+			},
+			"admin": {
+				"inReach": "403 forbidden",
+				"outOfReach": "403 forbidden"
+			},
+			"manager": {
+				"inReach": "403 forbidden",
+				"outOfReach": "403 forbidden"
+			},
+			"lead": {
+				"inReach": "403 forbidden",
+				"outOfReach": "403 forbidden"
+			},
+			"member": {
+				"inReach": "403 forbidden",
+				"outOfReach": "403 forbidden"
+			},
+			"viewer": {
+				"inReach": "403 forbidden",
+				"outOfReach": "403 forbidden"
+			},
+			"customer": {
+				"inReach": "403 forbidden",
+				"outOfReach": "403 forbidden"
+			}
+		},
+		"GET /api/instance/identity-connections/{id}/scim": {
+			"instance_admin": {
+				"inReach": "allow",
+				"outOfReach": "allow"
+			},
+			"owner": {
+				"inReach": "403 forbidden",
+				"outOfReach": "403 forbidden"
+			},
+			"admin": {
+				"inReach": "403 forbidden",
+				"outOfReach": "403 forbidden"
+			},
+			"manager": {
+				"inReach": "403 forbidden",
+				"outOfReach": "403 forbidden"
+			},
+			"lead": {
+				"inReach": "403 forbidden",
+				"outOfReach": "403 forbidden"
+			},
+			"member": {
+				"inReach": "403 forbidden",
+				"outOfReach": "403 forbidden"
+			},
+			"viewer": {
+				"inReach": "403 forbidden",
+				"outOfReach": "403 forbidden"
+			},
+			"customer": {
+				"inReach": "403 forbidden",
+				"outOfReach": "403 forbidden"
+			}
+		},
+		"GET /api/instance/identity-connections/{id}/scim/mapping-options": {
+			"instance_admin": {
+				"inReach": "allow",
+				"outOfReach": "allow"
+			},
+			"owner": {
+				"inReach": "403 forbidden",
+				"outOfReach": "403 forbidden"
+			},
+			"admin": {
+				"inReach": "403 forbidden",
+				"outOfReach": "403 forbidden"
+			},
+			"manager": {
+				"inReach": "403 forbidden",
+				"outOfReach": "403 forbidden"
+			},
+			"lead": {
+				"inReach": "403 forbidden",
+				"outOfReach": "403 forbidden"
+			},
+			"member": {
+				"inReach": "403 forbidden",
+				"outOfReach": "403 forbidden"
+			},
+			"viewer": {
+				"inReach": "403 forbidden",
+				"outOfReach": "403 forbidden"
+			},
+			"customer": {
+				"inReach": "403 forbidden",
+				"outOfReach": "403 forbidden"
+			}
+		},
 		"GET /api/instance/local-factor-policy": {
 			"instance_admin": {
 				"inReach": "allow",
@@ -1788,6 +1992,40 @@
 				"outOfReach": "403 forbidden"
 			}
 		},
+		"GET /api/instance/organisations/{id}/identity": {
+			"instance_admin": {
+				"inReach": "allow",
+				"outOfReach": "allow"
+			},
+			"owner": {
+				"inReach": "403 forbidden",
+				"outOfReach": "403 forbidden"
+			},
+			"admin": {
+				"inReach": "403 forbidden",
+				"outOfReach": "403 forbidden"
+			},
+			"manager": {
+				"inReach": "403 forbidden",
+				"outOfReach": "403 forbidden"
+			},
+			"lead": {
+				"inReach": "403 forbidden",
+				"outOfReach": "403 forbidden"
+			},
+			"member": {
+				"inReach": "403 forbidden",
+				"outOfReach": "403 forbidden"
+			},
+			"viewer": {
+				"inReach": "403 forbidden",
+				"outOfReach": "403 forbidden"
+			},
+			"customer": {
+				"inReach": "403 forbidden",
+				"outOfReach": "403 forbidden"
+			}
+		},
 		"GET /api/instance/status": {
 			"instance_admin": {
 				"inReach": "allow",
@@ -1820,6 +2058,74 @@
 			"customer": {
 				"inReach": "allow",
 				"outOfReach": "allow"
+			}
+		},
+		"GET /api/instance/users": {
+			"instance_admin": {
+				"inReach": "allow",
+				"outOfReach": "allow"
+			},
+			"owner": {
+				"inReach": "403 forbidden",
+				"outOfReach": "403 forbidden"
+			},
+			"admin": {
+				"inReach": "403 forbidden",
+				"outOfReach": "403 forbidden"
+			},
+			"manager": {
+				"inReach": "403 forbidden",
+				"outOfReach": "403 forbidden"
+			},
+			"lead": {
+				"inReach": "403 forbidden",
+				"outOfReach": "403 forbidden"
+			},
+			"member": {
+				"inReach": "403 forbidden",
+				"outOfReach": "403 forbidden"
+			},
+			"viewer": {
+				"inReach": "403 forbidden",
+				"outOfReach": "403 forbidden"
+			},
+			"customer": {
+				"inReach": "403 forbidden",
+				"outOfReach": "403 forbidden"
+			}
+		},
+		"GET /api/instance/users/{id}": {
+			"instance_admin": {
+				"inReach": "allow",
+				"outOfReach": "allow"
+			},
+			"owner": {
+				"inReach": "403 forbidden",
+				"outOfReach": "403 forbidden"
+			},
+			"admin": {
+				"inReach": "403 forbidden",
+				"outOfReach": "403 forbidden"
+			},
+			"manager": {
+				"inReach": "403 forbidden",
+				"outOfReach": "403 forbidden"
+			},
+			"lead": {
+				"inReach": "403 forbidden",
+				"outOfReach": "403 forbidden"
+			},
+			"member": {
+				"inReach": "403 forbidden",
+				"outOfReach": "403 forbidden"
+			},
+			"viewer": {
+				"inReach": "403 forbidden",
+				"outOfReach": "403 forbidden"
+			},
+			"customer": {
+				"inReach": "403 forbidden",
+				"outOfReach": "403 forbidden"
 			}
 		},
 		"GET /api/invitation/{id}": {
@@ -2672,6 +2978,176 @@
 				"outOfReach": "404 not_found"
 			}
 		},
+		"GET /api/service-calendars": {
+			"instance_admin": {
+				"inReach": "403 forbidden",
+				"outOfReach": "404 not_found"
+			},
+			"owner": {
+				"inReach": "allow",
+				"outOfReach": "404 not_found"
+			},
+			"admin": {
+				"inReach": "allow",
+				"outOfReach": "404 not_found"
+			},
+			"manager": {
+				"inReach": "allow",
+				"outOfReach": "404 not_found"
+			},
+			"lead": {
+				"inReach": "allow",
+				"outOfReach": "404 not_found"
+			},
+			"member": {
+				"inReach": "allow",
+				"outOfReach": "404 not_found"
+			},
+			"viewer": {
+				"inReach": "allow",
+				"outOfReach": "404 not_found"
+			},
+			"customer": {
+				"inReach": "403 forbidden",
+				"outOfReach": "404 not_found"
+			}
+		},
+		"GET /api/service-calendars/{id}": {
+			"instance_admin": {
+				"inReach": "403 forbidden",
+				"outOfReach": "404 not_found"
+			},
+			"owner": {
+				"inReach": "allow",
+				"outOfReach": "404 not_found"
+			},
+			"admin": {
+				"inReach": "allow",
+				"outOfReach": "404 not_found"
+			},
+			"manager": {
+				"inReach": "allow",
+				"outOfReach": "404 not_found"
+			},
+			"lead": {
+				"inReach": "allow",
+				"outOfReach": "404 not_found"
+			},
+			"member": {
+				"inReach": "allow",
+				"outOfReach": "404 not_found"
+			},
+			"viewer": {
+				"inReach": "allow",
+				"outOfReach": "404 not_found"
+			},
+			"customer": {
+				"inReach": "403 forbidden",
+				"outOfReach": "404 not_found"
+			}
+		},
+		"GET /api/service-calendars/{id}/preview": {
+			"instance_admin": {
+				"inReach": "403 forbidden",
+				"outOfReach": "404 not_found"
+			},
+			"owner": {
+				"inReach": "allow",
+				"outOfReach": "404 not_found"
+			},
+			"admin": {
+				"inReach": "allow",
+				"outOfReach": "404 not_found"
+			},
+			"manager": {
+				"inReach": "allow",
+				"outOfReach": "404 not_found"
+			},
+			"lead": {
+				"inReach": "allow",
+				"outOfReach": "404 not_found"
+			},
+			"member": {
+				"inReach": "allow",
+				"outOfReach": "404 not_found"
+			},
+			"viewer": {
+				"inReach": "allow",
+				"outOfReach": "404 not_found"
+			},
+			"customer": {
+				"inReach": "403 forbidden",
+				"outOfReach": "404 not_found"
+			}
+		},
+		"GET /api/sla-policies": {
+			"instance_admin": {
+				"inReach": "403 forbidden",
+				"outOfReach": "404 not_found"
+			},
+			"owner": {
+				"inReach": "allow",
+				"outOfReach": "404 not_found"
+			},
+			"admin": {
+				"inReach": "allow",
+				"outOfReach": "404 not_found"
+			},
+			"manager": {
+				"inReach": "allow",
+				"outOfReach": "404 not_found"
+			},
+			"lead": {
+				"inReach": "allow",
+				"outOfReach": "404 not_found"
+			},
+			"member": {
+				"inReach": "allow",
+				"outOfReach": "404 not_found"
+			},
+			"viewer": {
+				"inReach": "allow",
+				"outOfReach": "404 not_found"
+			},
+			"customer": {
+				"inReach": "403 forbidden",
+				"outOfReach": "404 not_found"
+			}
+		},
+		"GET /api/sla-policies/{id}": {
+			"instance_admin": {
+				"inReach": "403 forbidden",
+				"outOfReach": "404 not_found"
+			},
+			"owner": {
+				"inReach": "allow",
+				"outOfReach": "404 not_found"
+			},
+			"admin": {
+				"inReach": "allow",
+				"outOfReach": "404 not_found"
+			},
+			"manager": {
+				"inReach": "allow",
+				"outOfReach": "404 not_found"
+			},
+			"lead": {
+				"inReach": "allow",
+				"outOfReach": "404 not_found"
+			},
+			"member": {
+				"inReach": "allow",
+				"outOfReach": "404 not_found"
+			},
+			"viewer": {
+				"inReach": "allow",
+				"outOfReach": "404 not_found"
+			},
+			"customer": {
+				"inReach": "403 forbidden",
+				"outOfReach": "404 not_found"
+			}
+		},
 		"GET /api/storage/filesystem-download": {
 			"instance_admin": {
 				"inReach": "allow",
@@ -3013,6 +3489,40 @@
 			}
 		},
 		"GET /api/work-items/{key}/attachments": {
+			"instance_admin": {
+				"inReach": "403 forbidden",
+				"outOfReach": "404 not_found"
+			},
+			"owner": {
+				"inReach": "allow",
+				"outOfReach": "404 not_found"
+			},
+			"admin": {
+				"inReach": "allow",
+				"outOfReach": "404 not_found"
+			},
+			"manager": {
+				"inReach": "allow",
+				"outOfReach": "404 not_found"
+			},
+			"lead": {
+				"inReach": "allow",
+				"outOfReach": "404 not_found"
+			},
+			"member": {
+				"inReach": "allow",
+				"outOfReach": "404 not_found"
+			},
+			"viewer": {
+				"inReach": "allow",
+				"outOfReach": "404 not_found"
+			},
+			"customer": {
+				"inReach": "403 forbidden",
+				"outOfReach": "404 not_found"
+			}
+		},
+		"GET /api/work-items/{key}/sla": {
 			"instance_admin": {
 				"inReach": "403 forbidden",
 				"outOfReach": "404 not_found"
@@ -3556,6 +4066,244 @@
 				"outOfReach": "allow"
 			}
 		},
+		"GET /scim/v2/Groups": {
+			"instance_admin": {
+				"inReach": "allow",
+				"outOfReach": "allow"
+			},
+			"owner": {
+				"inReach": "allow",
+				"outOfReach": "allow"
+			},
+			"admin": {
+				"inReach": "allow",
+				"outOfReach": "allow"
+			},
+			"manager": {
+				"inReach": "allow",
+				"outOfReach": "allow"
+			},
+			"lead": {
+				"inReach": "allow",
+				"outOfReach": "allow"
+			},
+			"member": {
+				"inReach": "allow",
+				"outOfReach": "allow"
+			},
+			"viewer": {
+				"inReach": "allow",
+				"outOfReach": "allow"
+			},
+			"customer": {
+				"inReach": "allow",
+				"outOfReach": "allow"
+			}
+		},
+		"GET /scim/v2/Groups/{id}": {
+			"instance_admin": {
+				"inReach": "allow",
+				"outOfReach": "allow"
+			},
+			"owner": {
+				"inReach": "allow",
+				"outOfReach": "allow"
+			},
+			"admin": {
+				"inReach": "allow",
+				"outOfReach": "allow"
+			},
+			"manager": {
+				"inReach": "allow",
+				"outOfReach": "allow"
+			},
+			"lead": {
+				"inReach": "allow",
+				"outOfReach": "allow"
+			},
+			"member": {
+				"inReach": "allow",
+				"outOfReach": "allow"
+			},
+			"viewer": {
+				"inReach": "allow",
+				"outOfReach": "allow"
+			},
+			"customer": {
+				"inReach": "allow",
+				"outOfReach": "allow"
+			}
+		},
+		"GET /scim/v2/ResourceTypes": {
+			"instance_admin": {
+				"inReach": "allow",
+				"outOfReach": "allow"
+			},
+			"owner": {
+				"inReach": "allow",
+				"outOfReach": "allow"
+			},
+			"admin": {
+				"inReach": "allow",
+				"outOfReach": "allow"
+			},
+			"manager": {
+				"inReach": "allow",
+				"outOfReach": "allow"
+			},
+			"lead": {
+				"inReach": "allow",
+				"outOfReach": "allow"
+			},
+			"member": {
+				"inReach": "allow",
+				"outOfReach": "allow"
+			},
+			"viewer": {
+				"inReach": "allow",
+				"outOfReach": "allow"
+			},
+			"customer": {
+				"inReach": "allow",
+				"outOfReach": "allow"
+			}
+		},
+		"GET /scim/v2/Schemas": {
+			"instance_admin": {
+				"inReach": "allow",
+				"outOfReach": "allow"
+			},
+			"owner": {
+				"inReach": "allow",
+				"outOfReach": "allow"
+			},
+			"admin": {
+				"inReach": "allow",
+				"outOfReach": "allow"
+			},
+			"manager": {
+				"inReach": "allow",
+				"outOfReach": "allow"
+			},
+			"lead": {
+				"inReach": "allow",
+				"outOfReach": "allow"
+			},
+			"member": {
+				"inReach": "allow",
+				"outOfReach": "allow"
+			},
+			"viewer": {
+				"inReach": "allow",
+				"outOfReach": "allow"
+			},
+			"customer": {
+				"inReach": "allow",
+				"outOfReach": "allow"
+			}
+		},
+		"GET /scim/v2/ServiceProviderConfig": {
+			"instance_admin": {
+				"inReach": "allow",
+				"outOfReach": "allow"
+			},
+			"owner": {
+				"inReach": "allow",
+				"outOfReach": "allow"
+			},
+			"admin": {
+				"inReach": "allow",
+				"outOfReach": "allow"
+			},
+			"manager": {
+				"inReach": "allow",
+				"outOfReach": "allow"
+			},
+			"lead": {
+				"inReach": "allow",
+				"outOfReach": "allow"
+			},
+			"member": {
+				"inReach": "allow",
+				"outOfReach": "allow"
+			},
+			"viewer": {
+				"inReach": "allow",
+				"outOfReach": "allow"
+			},
+			"customer": {
+				"inReach": "allow",
+				"outOfReach": "allow"
+			}
+		},
+		"GET /scim/v2/Users": {
+			"instance_admin": {
+				"inReach": "allow",
+				"outOfReach": "allow"
+			},
+			"owner": {
+				"inReach": "allow",
+				"outOfReach": "allow"
+			},
+			"admin": {
+				"inReach": "allow",
+				"outOfReach": "allow"
+			},
+			"manager": {
+				"inReach": "allow",
+				"outOfReach": "allow"
+			},
+			"lead": {
+				"inReach": "allow",
+				"outOfReach": "allow"
+			},
+			"member": {
+				"inReach": "allow",
+				"outOfReach": "allow"
+			},
+			"viewer": {
+				"inReach": "allow",
+				"outOfReach": "allow"
+			},
+			"customer": {
+				"inReach": "allow",
+				"outOfReach": "allow"
+			}
+		},
+		"GET /scim/v2/Users/{id}": {
+			"instance_admin": {
+				"inReach": "allow",
+				"outOfReach": "allow"
+			},
+			"owner": {
+				"inReach": "allow",
+				"outOfReach": "allow"
+			},
+			"admin": {
+				"inReach": "allow",
+				"outOfReach": "allow"
+			},
+			"manager": {
+				"inReach": "allow",
+				"outOfReach": "allow"
+			},
+			"lead": {
+				"inReach": "allow",
+				"outOfReach": "allow"
+			},
+			"member": {
+				"inReach": "allow",
+				"outOfReach": "allow"
+			},
+			"viewer": {
+				"inReach": "allow",
+				"outOfReach": "allow"
+			},
+			"customer": {
+				"inReach": "allow",
+				"outOfReach": "allow"
+			}
+		},
 		"PATCH /api/auth/*": {
 			"instance_admin": {
 				"inReach": "allow",
@@ -3656,6 +4404,74 @@
 			"customer": {
 				"inReach": "403 forbidden",
 				"outOfReach": "404 not_found"
+			}
+		},
+		"PATCH /api/instance/identity-connections/{id}": {
+			"instance_admin": {
+				"inReach": "allow (step-up)",
+				"outOfReach": "allow (step-up)"
+			},
+			"owner": {
+				"inReach": "403 forbidden",
+				"outOfReach": "403 forbidden"
+			},
+			"admin": {
+				"inReach": "403 forbidden",
+				"outOfReach": "403 forbidden"
+			},
+			"manager": {
+				"inReach": "403 forbidden",
+				"outOfReach": "403 forbidden"
+			},
+			"lead": {
+				"inReach": "403 forbidden",
+				"outOfReach": "403 forbidden"
+			},
+			"member": {
+				"inReach": "403 forbidden",
+				"outOfReach": "403 forbidden"
+			},
+			"viewer": {
+				"inReach": "403 forbidden",
+				"outOfReach": "403 forbidden"
+			},
+			"customer": {
+				"inReach": "403 forbidden",
+				"outOfReach": "403 forbidden"
+			}
+		},
+		"PATCH /api/instance/identity-connections/{id}/scim": {
+			"instance_admin": {
+				"inReach": "allow (step-up)",
+				"outOfReach": "allow (step-up)"
+			},
+			"owner": {
+				"inReach": "403 forbidden",
+				"outOfReach": "403 forbidden"
+			},
+			"admin": {
+				"inReach": "403 forbidden",
+				"outOfReach": "403 forbidden"
+			},
+			"manager": {
+				"inReach": "403 forbidden",
+				"outOfReach": "403 forbidden"
+			},
+			"lead": {
+				"inReach": "403 forbidden",
+				"outOfReach": "403 forbidden"
+			},
+			"member": {
+				"inReach": "403 forbidden",
+				"outOfReach": "403 forbidden"
+			},
+			"viewer": {
+				"inReach": "403 forbidden",
+				"outOfReach": "403 forbidden"
+			},
+			"customer": {
+				"inReach": "403 forbidden",
+				"outOfReach": "403 forbidden"
 			}
 		},
 		"PATCH /api/instance/local-factor-policy": {
@@ -3896,6 +4712,74 @@
 				"outOfReach": "404 not_found"
 			}
 		},
+		"PATCH /api/service-calendars/{id}": {
+			"instance_admin": {
+				"inReach": "403 forbidden",
+				"outOfReach": "404 not_found"
+			},
+			"owner": {
+				"inReach": "allow",
+				"outOfReach": "404 not_found"
+			},
+			"admin": {
+				"inReach": "allow",
+				"outOfReach": "404 not_found"
+			},
+			"manager": {
+				"inReach": "allow",
+				"outOfReach": "404 not_found"
+			},
+			"lead": {
+				"inReach": "403 forbidden",
+				"outOfReach": "404 not_found"
+			},
+			"member": {
+				"inReach": "403 forbidden",
+				"outOfReach": "404 not_found"
+			},
+			"viewer": {
+				"inReach": "403 forbidden",
+				"outOfReach": "404 not_found"
+			},
+			"customer": {
+				"inReach": "403 forbidden",
+				"outOfReach": "404 not_found"
+			}
+		},
+		"PATCH /api/sla-policies/{id}": {
+			"instance_admin": {
+				"inReach": "403 forbidden",
+				"outOfReach": "404 not_found"
+			},
+			"owner": {
+				"inReach": "allow",
+				"outOfReach": "404 not_found"
+			},
+			"admin": {
+				"inReach": "allow",
+				"outOfReach": "404 not_found"
+			},
+			"manager": {
+				"inReach": "allow",
+				"outOfReach": "404 not_found"
+			},
+			"lead": {
+				"inReach": "403 forbidden",
+				"outOfReach": "404 not_found"
+			},
+			"member": {
+				"inReach": "403 forbidden",
+				"outOfReach": "404 not_found"
+			},
+			"viewer": {
+				"inReach": "403 forbidden",
+				"outOfReach": "404 not_found"
+			},
+			"customer": {
+				"inReach": "403 forbidden",
+				"outOfReach": "404 not_found"
+			}
+		},
 		"PATCH /api/task/bulk": {
 			"instance_admin": {
 				"inReach": "403 forbidden",
@@ -4064,6 +4948,74 @@
 			"customer": {
 				"inReach": "403 forbidden",
 				"outOfReach": "404 not_found"
+			}
+		},
+		"PATCH /scim/v2/Groups/{id}": {
+			"instance_admin": {
+				"inReach": "allow",
+				"outOfReach": "allow"
+			},
+			"owner": {
+				"inReach": "allow",
+				"outOfReach": "allow"
+			},
+			"admin": {
+				"inReach": "allow",
+				"outOfReach": "allow"
+			},
+			"manager": {
+				"inReach": "allow",
+				"outOfReach": "allow"
+			},
+			"lead": {
+				"inReach": "allow",
+				"outOfReach": "allow"
+			},
+			"member": {
+				"inReach": "allow",
+				"outOfReach": "allow"
+			},
+			"viewer": {
+				"inReach": "allow",
+				"outOfReach": "allow"
+			},
+			"customer": {
+				"inReach": "allow",
+				"outOfReach": "allow"
+			}
+		},
+		"PATCH /scim/v2/Users/{id}": {
+			"instance_admin": {
+				"inReach": "allow",
+				"outOfReach": "allow"
+			},
+			"owner": {
+				"inReach": "allow",
+				"outOfReach": "allow"
+			},
+			"admin": {
+				"inReach": "allow",
+				"outOfReach": "allow"
+			},
+			"manager": {
+				"inReach": "allow",
+				"outOfReach": "allow"
+			},
+			"lead": {
+				"inReach": "allow",
+				"outOfReach": "allow"
+			},
+			"member": {
+				"inReach": "allow",
+				"outOfReach": "allow"
+			},
+			"viewer": {
+				"inReach": "allow",
+				"outOfReach": "allow"
+			},
+			"customer": {
+				"inReach": "allow",
+				"outOfReach": "allow"
 			}
 		},
 		"POST /api/activity/comment": {
@@ -4304,7 +5256,177 @@
 				"outOfReach": "404 not_found"
 			}
 		},
+		"POST /api/instance/identity-connections": {
+			"instance_admin": {
+				"inReach": "allow (step-up)",
+				"outOfReach": "allow (step-up)"
+			},
+			"owner": {
+				"inReach": "403 forbidden",
+				"outOfReach": "403 forbidden"
+			},
+			"admin": {
+				"inReach": "403 forbidden",
+				"outOfReach": "403 forbidden"
+			},
+			"manager": {
+				"inReach": "403 forbidden",
+				"outOfReach": "403 forbidden"
+			},
+			"lead": {
+				"inReach": "403 forbidden",
+				"outOfReach": "403 forbidden"
+			},
+			"member": {
+				"inReach": "403 forbidden",
+				"outOfReach": "403 forbidden"
+			},
+			"viewer": {
+				"inReach": "403 forbidden",
+				"outOfReach": "403 forbidden"
+			},
+			"customer": {
+				"inReach": "403 forbidden",
+				"outOfReach": "403 forbidden"
+			}
+		},
+		"POST /api/instance/identity-connections/{id}/scim/revoke-token": {
+			"instance_admin": {
+				"inReach": "allow (step-up)",
+				"outOfReach": "allow (step-up)"
+			},
+			"owner": {
+				"inReach": "403 forbidden",
+				"outOfReach": "403 forbidden"
+			},
+			"admin": {
+				"inReach": "403 forbidden",
+				"outOfReach": "403 forbidden"
+			},
+			"manager": {
+				"inReach": "403 forbidden",
+				"outOfReach": "403 forbidden"
+			},
+			"lead": {
+				"inReach": "403 forbidden",
+				"outOfReach": "403 forbidden"
+			},
+			"member": {
+				"inReach": "403 forbidden",
+				"outOfReach": "403 forbidden"
+			},
+			"viewer": {
+				"inReach": "403 forbidden",
+				"outOfReach": "403 forbidden"
+			},
+			"customer": {
+				"inReach": "403 forbidden",
+				"outOfReach": "403 forbidden"
+			}
+		},
+		"POST /api/instance/identity-connections/{id}/scim/rotate-token": {
+			"instance_admin": {
+				"inReach": "allow (step-up)",
+				"outOfReach": "allow (step-up)"
+			},
+			"owner": {
+				"inReach": "403 forbidden",
+				"outOfReach": "403 forbidden"
+			},
+			"admin": {
+				"inReach": "403 forbidden",
+				"outOfReach": "403 forbidden"
+			},
+			"manager": {
+				"inReach": "403 forbidden",
+				"outOfReach": "403 forbidden"
+			},
+			"lead": {
+				"inReach": "403 forbidden",
+				"outOfReach": "403 forbidden"
+			},
+			"member": {
+				"inReach": "403 forbidden",
+				"outOfReach": "403 forbidden"
+			},
+			"viewer": {
+				"inReach": "403 forbidden",
+				"outOfReach": "403 forbidden"
+			},
+			"customer": {
+				"inReach": "403 forbidden",
+				"outOfReach": "403 forbidden"
+			}
+		},
 		"POST /api/instance/observability/metrics-token/rotate": {
+			"instance_admin": {
+				"inReach": "allow (step-up)",
+				"outOfReach": "allow (step-up)"
+			},
+			"owner": {
+				"inReach": "403 forbidden",
+				"outOfReach": "403 forbidden"
+			},
+			"admin": {
+				"inReach": "403 forbidden",
+				"outOfReach": "403 forbidden"
+			},
+			"manager": {
+				"inReach": "403 forbidden",
+				"outOfReach": "403 forbidden"
+			},
+			"lead": {
+				"inReach": "403 forbidden",
+				"outOfReach": "403 forbidden"
+			},
+			"member": {
+				"inReach": "403 forbidden",
+				"outOfReach": "403 forbidden"
+			},
+			"viewer": {
+				"inReach": "403 forbidden",
+				"outOfReach": "403 forbidden"
+			},
+			"customer": {
+				"inReach": "403 forbidden",
+				"outOfReach": "403 forbidden"
+			}
+		},
+		"POST /api/instance/users/{id}/deactivate": {
+			"instance_admin": {
+				"inReach": "allow",
+				"outOfReach": "allow"
+			},
+			"owner": {
+				"inReach": "403 forbidden",
+				"outOfReach": "403 forbidden"
+			},
+			"admin": {
+				"inReach": "403 forbidden",
+				"outOfReach": "403 forbidden"
+			},
+			"manager": {
+				"inReach": "403 forbidden",
+				"outOfReach": "403 forbidden"
+			},
+			"lead": {
+				"inReach": "403 forbidden",
+				"outOfReach": "403 forbidden"
+			},
+			"member": {
+				"inReach": "403 forbidden",
+				"outOfReach": "403 forbidden"
+			},
+			"viewer": {
+				"inReach": "403 forbidden",
+				"outOfReach": "403 forbidden"
+			},
+			"customer": {
+				"inReach": "403 forbidden",
+				"outOfReach": "403 forbidden"
+			}
+		},
+		"POST /api/instance/users/{id}/grant-admin": {
 			"instance_admin": {
 				"inReach": "allow (step-up)",
 				"outOfReach": "allow (step-up)"
@@ -4342,6 +5464,108 @@
 			"instance_admin": {
 				"inReach": "allow (step-up)",
 				"outOfReach": "allow (step-up)"
+			},
+			"owner": {
+				"inReach": "403 forbidden",
+				"outOfReach": "403 forbidden"
+			},
+			"admin": {
+				"inReach": "403 forbidden",
+				"outOfReach": "403 forbidden"
+			},
+			"manager": {
+				"inReach": "403 forbidden",
+				"outOfReach": "403 forbidden"
+			},
+			"lead": {
+				"inReach": "403 forbidden",
+				"outOfReach": "403 forbidden"
+			},
+			"member": {
+				"inReach": "403 forbidden",
+				"outOfReach": "403 forbidden"
+			},
+			"viewer": {
+				"inReach": "403 forbidden",
+				"outOfReach": "403 forbidden"
+			},
+			"customer": {
+				"inReach": "403 forbidden",
+				"outOfReach": "403 forbidden"
+			}
+		},
+		"POST /api/instance/users/{id}/sign-out": {
+			"instance_admin": {
+				"inReach": "allow",
+				"outOfReach": "allow"
+			},
+			"owner": {
+				"inReach": "403 forbidden",
+				"outOfReach": "403 forbidden"
+			},
+			"admin": {
+				"inReach": "403 forbidden",
+				"outOfReach": "403 forbidden"
+			},
+			"manager": {
+				"inReach": "403 forbidden",
+				"outOfReach": "403 forbidden"
+			},
+			"lead": {
+				"inReach": "403 forbidden",
+				"outOfReach": "403 forbidden"
+			},
+			"member": {
+				"inReach": "403 forbidden",
+				"outOfReach": "403 forbidden"
+			},
+			"viewer": {
+				"inReach": "403 forbidden",
+				"outOfReach": "403 forbidden"
+			},
+			"customer": {
+				"inReach": "403 forbidden",
+				"outOfReach": "403 forbidden"
+			}
+		},
+		"POST /api/instance/users/{id}/suspend": {
+			"instance_admin": {
+				"inReach": "allow",
+				"outOfReach": "allow"
+			},
+			"owner": {
+				"inReach": "403 forbidden",
+				"outOfReach": "403 forbidden"
+			},
+			"admin": {
+				"inReach": "403 forbidden",
+				"outOfReach": "403 forbidden"
+			},
+			"manager": {
+				"inReach": "403 forbidden",
+				"outOfReach": "403 forbidden"
+			},
+			"lead": {
+				"inReach": "403 forbidden",
+				"outOfReach": "403 forbidden"
+			},
+			"member": {
+				"inReach": "403 forbidden",
+				"outOfReach": "403 forbidden"
+			},
+			"viewer": {
+				"inReach": "403 forbidden",
+				"outOfReach": "403 forbidden"
+			},
+			"customer": {
+				"inReach": "403 forbidden",
+				"outOfReach": "403 forbidden"
+			}
+		},
+		"POST /api/instance/users/{id}/unsuspend": {
+			"instance_admin": {
+				"inReach": "allow",
+				"outOfReach": "allow"
 			},
 			"owner": {
 				"inReach": "403 forbidden",
@@ -4472,6 +5696,40 @@
 			"customer": {
 				"inReach": "403 forbidden",
 				"outOfReach": "404 not_found"
+			}
+		},
+		"POST /api/me/pending-actions/{id}/approve": {
+			"instance_admin": {
+				"inReach": "allow (step-up)",
+				"outOfReach": "allow (step-up)"
+			},
+			"owner": {
+				"inReach": "allow (step-up)",
+				"outOfReach": "allow (step-up)"
+			},
+			"admin": {
+				"inReach": "allow (step-up)",
+				"outOfReach": "allow (step-up)"
+			},
+			"manager": {
+				"inReach": "allow (step-up)",
+				"outOfReach": "allow (step-up)"
+			},
+			"lead": {
+				"inReach": "allow (step-up)",
+				"outOfReach": "allow (step-up)"
+			},
+			"member": {
+				"inReach": "allow (step-up)",
+				"outOfReach": "allow (step-up)"
+			},
+			"viewer": {
+				"inReach": "allow (step-up)",
+				"outOfReach": "allow (step-up)"
+			},
+			"customer": {
+				"inReach": "allow (step-up)",
+				"outOfReach": "allow (step-up)"
 			}
 		},
 		"POST /api/me/pending-actions/{id}/cancel": {
@@ -4871,6 +6129,142 @@
 			},
 			"member": {
 				"inReach": "allow",
+				"outOfReach": "404 not_found"
+			},
+			"viewer": {
+				"inReach": "403 forbidden",
+				"outOfReach": "404 not_found"
+			},
+			"customer": {
+				"inReach": "403 forbidden",
+				"outOfReach": "404 not_found"
+			}
+		},
+		"POST /api/service-calendars": {
+			"instance_admin": {
+				"inReach": "403 forbidden",
+				"outOfReach": "404 not_found"
+			},
+			"owner": {
+				"inReach": "allow",
+				"outOfReach": "404 not_found"
+			},
+			"admin": {
+				"inReach": "allow",
+				"outOfReach": "404 not_found"
+			},
+			"manager": {
+				"inReach": "allow",
+				"outOfReach": "404 not_found"
+			},
+			"lead": {
+				"inReach": "403 forbidden",
+				"outOfReach": "404 not_found"
+			},
+			"member": {
+				"inReach": "403 forbidden",
+				"outOfReach": "404 not_found"
+			},
+			"viewer": {
+				"inReach": "403 forbidden",
+				"outOfReach": "404 not_found"
+			},
+			"customer": {
+				"inReach": "403 forbidden",
+				"outOfReach": "404 not_found"
+			}
+		},
+		"POST /api/service-calendars/{id}/holidays/import": {
+			"instance_admin": {
+				"inReach": "403 forbidden",
+				"outOfReach": "404 not_found"
+			},
+			"owner": {
+				"inReach": "allow",
+				"outOfReach": "404 not_found"
+			},
+			"admin": {
+				"inReach": "allow",
+				"outOfReach": "404 not_found"
+			},
+			"manager": {
+				"inReach": "allow",
+				"outOfReach": "404 not_found"
+			},
+			"lead": {
+				"inReach": "403 forbidden",
+				"outOfReach": "404 not_found"
+			},
+			"member": {
+				"inReach": "403 forbidden",
+				"outOfReach": "404 not_found"
+			},
+			"viewer": {
+				"inReach": "403 forbidden",
+				"outOfReach": "404 not_found"
+			},
+			"customer": {
+				"inReach": "403 forbidden",
+				"outOfReach": "404 not_found"
+			}
+		},
+		"POST /api/sla-policies": {
+			"instance_admin": {
+				"inReach": "403 forbidden",
+				"outOfReach": "404 not_found"
+			},
+			"owner": {
+				"inReach": "allow",
+				"outOfReach": "404 not_found"
+			},
+			"admin": {
+				"inReach": "allow",
+				"outOfReach": "404 not_found"
+			},
+			"manager": {
+				"inReach": "allow",
+				"outOfReach": "404 not_found"
+			},
+			"lead": {
+				"inReach": "403 forbidden",
+				"outOfReach": "404 not_found"
+			},
+			"member": {
+				"inReach": "403 forbidden",
+				"outOfReach": "404 not_found"
+			},
+			"viewer": {
+				"inReach": "403 forbidden",
+				"outOfReach": "404 not_found"
+			},
+			"customer": {
+				"inReach": "403 forbidden",
+				"outOfReach": "404 not_found"
+			}
+		},
+		"POST /api/sla-policies/{id}/publish": {
+			"instance_admin": {
+				"inReach": "403 forbidden",
+				"outOfReach": "404 not_found"
+			},
+			"owner": {
+				"inReach": "allow",
+				"outOfReach": "404 not_found"
+			},
+			"admin": {
+				"inReach": "allow",
+				"outOfReach": "404 not_found"
+			},
+			"manager": {
+				"inReach": "allow",
+				"outOfReach": "404 not_found"
+			},
+			"lead": {
+				"inReach": "403 forbidden",
+				"outOfReach": "404 not_found"
+			},
+			"member": {
+				"inReach": "403 forbidden",
 				"outOfReach": "404 not_found"
 			},
 			"viewer": {
@@ -5696,6 +7090,74 @@
 			"customer": {
 				"inReach": "403 forbidden",
 				"outOfReach": "404 not_found"
+			}
+		},
+		"POST /scim/v2/Groups": {
+			"instance_admin": {
+				"inReach": "allow",
+				"outOfReach": "allow"
+			},
+			"owner": {
+				"inReach": "allow",
+				"outOfReach": "allow"
+			},
+			"admin": {
+				"inReach": "allow",
+				"outOfReach": "allow"
+			},
+			"manager": {
+				"inReach": "allow",
+				"outOfReach": "allow"
+			},
+			"lead": {
+				"inReach": "allow",
+				"outOfReach": "allow"
+			},
+			"member": {
+				"inReach": "allow",
+				"outOfReach": "allow"
+			},
+			"viewer": {
+				"inReach": "allow",
+				"outOfReach": "allow"
+			},
+			"customer": {
+				"inReach": "allow",
+				"outOfReach": "allow"
+			}
+		},
+		"POST /scim/v2/Users": {
+			"instance_admin": {
+				"inReach": "allow",
+				"outOfReach": "allow"
+			},
+			"owner": {
+				"inReach": "allow",
+				"outOfReach": "allow"
+			},
+			"admin": {
+				"inReach": "allow",
+				"outOfReach": "allow"
+			},
+			"manager": {
+				"inReach": "allow",
+				"outOfReach": "allow"
+			},
+			"lead": {
+				"inReach": "allow",
+				"outOfReach": "allow"
+			},
+			"member": {
+				"inReach": "allow",
+				"outOfReach": "allow"
+			},
+			"viewer": {
+				"inReach": "allow",
+				"outOfReach": "allow"
+			},
+			"customer": {
+				"inReach": "allow",
+				"outOfReach": "allow"
 			}
 		},
 		"PUT /api/activity/comment": {
@@ -6648,6 +8110,74 @@
 			"customer": {
 				"inReach": "403 forbidden",
 				"outOfReach": "404 not_found"
+			}
+		},
+		"PUT /scim/v2/Groups/{id}": {
+			"instance_admin": {
+				"inReach": "allow",
+				"outOfReach": "allow"
+			},
+			"owner": {
+				"inReach": "allow",
+				"outOfReach": "allow"
+			},
+			"admin": {
+				"inReach": "allow",
+				"outOfReach": "allow"
+			},
+			"manager": {
+				"inReach": "allow",
+				"outOfReach": "allow"
+			},
+			"lead": {
+				"inReach": "allow",
+				"outOfReach": "allow"
+			},
+			"member": {
+				"inReach": "allow",
+				"outOfReach": "allow"
+			},
+			"viewer": {
+				"inReach": "allow",
+				"outOfReach": "allow"
+			},
+			"customer": {
+				"inReach": "allow",
+				"outOfReach": "allow"
+			}
+		},
+		"PUT /scim/v2/Users/{id}": {
+			"instance_admin": {
+				"inReach": "allow",
+				"outOfReach": "allow"
+			},
+			"owner": {
+				"inReach": "allow",
+				"outOfReach": "allow"
+			},
+			"admin": {
+				"inReach": "allow",
+				"outOfReach": "allow"
+			},
+			"manager": {
+				"inReach": "allow",
+				"outOfReach": "allow"
+			},
+			"lead": {
+				"inReach": "allow",
+				"outOfReach": "allow"
+			},
+			"member": {
+				"inReach": "allow",
+				"outOfReach": "allow"
+			},
+			"viewer": {
+				"inReach": "allow",
+				"outOfReach": "allow"
+			},
+			"customer": {
+				"inReach": "allow",
+				"outOfReach": "allow"
 			}
 		}
 	}

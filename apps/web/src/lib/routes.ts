@@ -85,6 +85,77 @@ export type WorkItemListSearch = {
   dir: WorkItemSortDirection;
 };
 
+export type ServiceCalendarListSearch = { cursor?: string };
+export type SlaPolicyListSearch = { cursor?: string };
+export type IdentityConnectionEventsSearch = { eventsCursor?: string };
+export type PendingActionsSearch = { cursor?: string };
+
+export function parsePendingActionsSearch(raw: unknown): PendingActionsSearch {
+  const value = (raw ?? {}) as Record<string, unknown>;
+  const cursor =
+    typeof value.cursor === "string" &&
+    value.cursor.length > 0 &&
+    value.cursor.length <= 2048
+      ? value.cursor
+      : undefined;
+  return { cursor };
+}
+
+export function parseIdentityConnectionEventsSearch(
+  raw: unknown,
+): IdentityConnectionEventsSearch {
+  const candidate = (raw ?? {}) as Record<string, unknown>;
+  const eventsCursor =
+    typeof candidate.eventsCursor === "string" &&
+    candidate.eventsCursor.length > 0 &&
+    candidate.eventsCursor.length <= 512
+      ? candidate.eventsCursor
+      : undefined;
+  return { eventsCursor };
+}
+
+export function parseIdentityConnectionEventsSearchFromQueryString(
+  queryString: string,
+) {
+  const params = new URLSearchParams(queryString);
+  return parseIdentityConnectionEventsSearch({
+    eventsCursor: params.get("eventsCursor"),
+  });
+}
+
+export function parseSlaPolicyListSearch(raw: unknown): SlaPolicyListSearch {
+  const candidate = (raw ?? {}) as Record<string, unknown>;
+  const cursor =
+    typeof candidate.cursor === "string" &&
+    candidate.cursor.length > 0 &&
+    candidate.cursor.length <= 2048
+      ? candidate.cursor
+      : undefined;
+  return { cursor };
+}
+
+export function parseServiceCalendarListSearch(
+  raw: unknown,
+): ServiceCalendarListSearch {
+  const candidate = (raw ?? {}) as Record<string, unknown>;
+  const cursor =
+    typeof candidate.cursor === "string" &&
+    candidate.cursor.length > 0 &&
+    candidate.cursor.length <= 2048
+      ? candidate.cursor
+      : undefined;
+  return { cursor };
+}
+
+export function parseServiceCalendarListSearchFromQueryString(
+  queryString: string,
+) {
+  const params = new URLSearchParams(queryString);
+  return parseServiceCalendarListSearch({
+    cursor: params.get("cursor"),
+  });
+}
+
 export const DEFAULT_WORK_ITEM_LIST_SEARCH: WorkItemListSearch = {
   layout: "list",
   sort: "key",
@@ -148,6 +219,70 @@ export const routes = {
     build: () => "/",
     parse: (pathname: string) => (pathname === "/" ? "/" : undefined),
   },
+  /** `docs/02-design/screen-inventory.md` "Workspace — service calendars". */
+  serviceCalendars: {
+    path: "/agent/settings/calendars" as const,
+    build: (search: ServiceCalendarListSearch = {}) => {
+      const resolved = parseServiceCalendarListSearch(search);
+      const query = new URLSearchParams();
+      if (resolved.cursor) query.set("cursor", resolved.cursor);
+      const suffix = query.toString();
+      return suffix
+        ? `/agent/settings/calendars?${suffix}`
+        : "/agent/settings/calendars";
+    },
+  },
+  /** `docs/02-design/screen-inventory.md` "Service calendar editor". */
+  serviceCalendarEditor: {
+    path: "/agent/settings/calendars/$id" as const,
+    build: (params: { id: string }, year?: number) => {
+      const path = `/agent/settings/calendars/${encodeURIComponent(params.id)}`;
+      return year === undefined ? path : `${path}?year=${year}`;
+    },
+  },
+  /** `docs/02-design/screen-inventory.md` "Workspace — SLA policies". */
+  slaPolicies: {
+    path: "/agent/settings/sla-policies" as const,
+    build: (search: SlaPolicyListSearch = {}) => {
+      const resolved = parseSlaPolicyListSearch(search);
+      const query = new URLSearchParams();
+      if (resolved.cursor) query.set("cursor", resolved.cursor);
+      const suffix = query.toString();
+      return suffix
+        ? `/agent/settings/sla-policies?${suffix}`
+        : "/agent/settings/sla-policies";
+    },
+  },
+  /** `docs/02-design/screen-inventory.md` "SLA policy editor". */
+  slaPolicyEditor: {
+    path: "/agent/settings/sla-policies/$id" as const,
+    build: (params: { id: string }) =>
+      `/agent/settings/sla-policies/${encodeURIComponent(params.id)}`,
+  },
+  /** `docs/03-features/identity-provisioning.md` God Mode connection settings. */
+  identityConnections: {
+    path: "/god-mode/authentication" as const,
+    build: () => "/god-mode/authentication",
+  },
+  identityConnectionCreate: {
+    path: "/god-mode/authentication/new" as const,
+    build: () => "/god-mode/authentication/new",
+  },
+  identityConnectionSettings: {
+    path: "/god-mode/authentication/$id" as const,
+    build: (
+      params: { id: string },
+      search: IdentityConnectionEventsSearch = {},
+    ) => {
+      const pathname = `/god-mode/authentication/${encodeURIComponent(params.id)}`;
+      const resolved = parseIdentityConnectionEventsSearch(search);
+      if (!resolved.eventsCursor) return pathname;
+      const query = new URLSearchParams({
+        eventsCursor: resolved.eventsCursor,
+      });
+      return `${pathname}?${query.toString()}`;
+    },
+  },
   /** `docs/02-design/screen-inventory.md` "Work — list", `/agent/projects/{key}/work`. */
   workItemList: {
     path: "/agent/projects/$projectKey/work" as const,
@@ -176,7 +311,75 @@ export const routes = {
     build: (params: { key: string }) =>
       `/agent/work-items/${encodeURIComponent(params.key)}`,
   },
+  /** God Mode Users directory and its query-string-backed selection/filters. */
+  godModeUsers: {
+    path: "/god-mode/users" as const,
+    build: (search: Partial<GodModeUsersSearch> = {}) => {
+      const resolved = parseGodModeUsersSearch(search);
+      const query = new URLSearchParams();
+      if (resolved.q) query.set("q", resolved.q);
+      if (resolved.side) query.set("side", resolved.side);
+      if (resolved.active) query.set("active", resolved.active);
+      if (resolved.organisationId)
+        query.set("organisationId", resolved.organisationId);
+      if (resolved.cursor) query.set("cursor", resolved.cursor);
+      if (resolved.user) query.set("user", resolved.user);
+      const suffix = query.toString();
+      return suffix ? `/god-mode/users?${suffix}` : "/god-mode/users";
+    },
+  },
+  /** PA-6 requester-owned browser approval list and item. */
+  pendingActions: {
+    path: "/agent/settings/profile/pending-actions" as const,
+    build: (search: PendingActionsSearch = {}) => {
+      const resolved = parsePendingActionsSearch(search);
+      const query = new URLSearchParams();
+      if (resolved.cursor) query.set("cursor", resolved.cursor);
+      const suffix = query.toString();
+      return suffix
+        ? `/agent/settings/profile/pending-actions?${suffix}`
+        : "/agent/settings/profile/pending-actions";
+    },
+  },
+  pendingAction: {
+    path: "/agent/settings/profile/pending-actions/$id" as const,
+    build: (params: { id: string }) =>
+      `/agent/settings/profile/pending-actions/${encodeURIComponent(params.id)}`,
+  },
 };
+
+export type GodModeUsersSearch = {
+  q?: string;
+  side?: "staff" | "customer";
+  active?: "true" | "false";
+  organisationId?: string;
+  cursor?: string;
+  user?: string;
+};
+
+export function parseGodModeUsersSearch(raw: unknown): GodModeUsersSearch {
+  const value = (raw ?? {}) as Record<string, unknown>;
+  return {
+    ...(typeof value.q === "string" && value.q.trim()
+      ? { q: value.q.trim().slice(0, 200) }
+      : {}),
+    ...(value.side === "staff" || value.side === "customer"
+      ? { side: value.side }
+      : {}),
+    ...(value.active === "true" || value.active === "false"
+      ? { active: value.active }
+      : {}),
+    ...(typeof value.organisationId === "string" && value.organisationId
+      ? { organisationId: value.organisationId }
+      : {}),
+    ...(typeof value.cursor === "string" && value.cursor
+      ? { cursor: value.cursor }
+      : {}),
+    ...(typeof value.user === "string" && value.user
+      ? { user: value.user }
+      : {}),
+  };
+}
 
 /** The inverse of `routes.workItemList.build`'s query string, for the round-trip test. */
 export function parseWorkItemListSearchFromQueryString(

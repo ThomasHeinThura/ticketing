@@ -1,9 +1,11 @@
 import { createId } from "@paralleldrive/cuid2";
+import type { JsonValue } from "@taskdesk/domain";
 import { isCapability, type PolicyMap } from "@taskdesk/permissions";
-import { and, desc, eq, inArray, isNull, lt, or, sql } from "drizzle-orm";
+import { and, desc, eq, gt, inArray, isNull, lt, or, sql } from "drizzle-orm";
 import { HTTPException } from "hono/http-exception";
 import { appendAuditLog } from "../audit/audit-writer";
-import db from "../database";
+import { consumePendingActionProof } from "../auth/step-up-service";
+import db, { schema } from "../database";
 import {
   apikeyTable,
   pendingActionTable,
@@ -13,7 +15,8 @@ import {
   workItemTable,
   workspaceTable,
 } from "../database/schema";
-import { enqueueOutboxEvent } from "../events/outbox";
+import { enqueueOutboxEvent, eventScope } from "../events/outbox";
+import { transitionPersonLifecycleInTransaction } from "../identity/person-lifecycle";
 import { notifyCurrentInstanceAdminsOfAuditFailure } from "../instance/observability/audit-failure-notifier";
 import { recordAuditWriteFailure } from "../instance/observability/runtime";
 import { resolveIdentity } from "../permissions/resolve-identity";
@@ -136,11 +139,7 @@ export async function createPendingAction(input: CreatePendingActionInput) {
             id: input.requesterPersonId,
             name: scope.actorName,
           },
-          scope: {
-            workspaceId: scope.workspaceId,
-            organisationId: scope.organisationId,
-            projectId: scope.projectId,
-          },
+          scope: eventScope(scope),
           payload: {
             key: id,
             url: `/agent/settings/profile/pending-actions/${id}`,
@@ -157,28 +156,32 @@ export async function createPendingAction(input: CreatePendingActionInput) {
         });
 
         try {
-          await appendAuditLog(tx, {
-            actorId: input.actorId,
-            actorType: input.actorType,
-            apiKeyId:
-              input.credentialType === "api_key" ? input.credentialId : null,
-            actorIp: input.actorIp,
-            userAgent: input.userAgent,
-            traceId,
-            workspaceId: scope.workspaceId,
-            projectId: scope.projectId,
-            organisationId: scope.organisationId,
-            action: "pending_action.requested",
-            entityType: "pending_action",
-            entityId: id,
-            after: {
-              action: input.action,
-              origin: input.origin,
-              targetType: input.targetType,
-              targetCount: payload.target_ids.length,
-              expiresAt: new Date(now.getTime() + ACTION_TTL_MS).toISOString(),
-            },
-          });
+          await tx.transaction(async (auditTx) =>
+            appendAuditLog(auditTx, {
+              actorId: input.actorId,
+              actorType: input.actorType,
+              apiKeyId:
+                input.credentialType === "api_key" ? input.credentialId : null,
+              actorIp: input.actorIp,
+              userAgent: input.userAgent,
+              traceId,
+              workspaceId: scope.workspaceId,
+              projectId: scope.projectId,
+              organisationId: scope.organisationId,
+              action: "pending_action.requested",
+              entityType: "pending_action",
+              entityId: id,
+              after: {
+                action: input.action,
+                origin: input.origin,
+                targetType: input.targetType,
+                targetCount: payload.target_ids.length,
+                expiresAt: new Date(
+                  now.getTime() + ACTION_TTL_MS,
+                ).toISOString(),
+              },
+            }),
+          );
         } catch {
           requestAuditFailure = true;
         }
@@ -427,7 +430,10 @@ export async function decideOwnPendingAction(input: {
       .innerJoin(userTable, eq(userTable.id, personTable.userId))
       .where(eq(personTable.id, input.requesterPersonId))
       .limit(1);
-    if (!actor?.userId || !row.workspaceId) {
+    if (
+      !actor?.userId ||
+      (!row.workspaceId && row.action !== "user_deactivation")
+    ) {
       throw new HTTPException(403, {
         message: "Pending-action requester is unavailable",
       });
@@ -459,11 +465,7 @@ export async function decideOwnPendingAction(input: {
         id: input.requesterPersonId,
         name: actor.name,
       },
-      scope: {
-        workspaceId: row.workspaceId,
-        ...(row.organisationId ? { organisationId: row.organisationId } : {}),
-        ...(row.projectId ? { projectId: row.projectId } : {}),
-      },
+      scope: eventScope(row),
       payload: {
         key: row.id,
         url: `/agent/settings/profile/pending-actions/${row.id}`,
@@ -476,19 +478,21 @@ export async function decideOwnPendingAction(input: {
     });
     let auditFailure = false;
     try {
-      await appendAuditLog(tx, {
-        actorId: input.requesterPersonId,
-        actorType: "person",
-        traceId: row.traceId,
-        workspaceId: row.workspaceId,
-        projectId: row.projectId,
-        organisationId: row.organisationId,
-        action: "pending_action.decided",
-        entityType: "pending_action",
-        entityId: row.id,
-        before: { state: "pending" },
-        after: { state: outcome },
-      });
+      await tx.transaction(async (auditTx) =>
+        appendAuditLog(auditTx, {
+          actorId: input.requesterPersonId,
+          actorType: "person",
+          traceId: row.traceId,
+          workspaceId: row.workspaceId,
+          projectId: row.projectId,
+          organisationId: row.organisationId,
+          action: "pending_action.decided",
+          entityType: "pending_action",
+          entityId: row.id,
+          before: { state: "pending" },
+          after: { state: outcome },
+        }),
+      );
     } catch {
       auditFailure = true;
     }
@@ -501,6 +505,471 @@ export async function decideOwnPendingAction(input: {
   }
 
   return toPublicPendingAction(result.updated);
+}
+
+export async function approvePersonDeactivation(input: {
+  id: string;
+  requesterPersonId: string;
+  userId: string;
+  sessionId: string;
+  typedName: string;
+  stepUpToken: string;
+  traceId: string;
+}) {
+  const now = new Date();
+  let auditFailure = false;
+  const result = await db.transaction(async (tx) => {
+    const [row] = await tx
+      .select()
+      .from(pendingActionTable)
+      .where(
+        and(
+          eq(pendingActionTable.id, input.id),
+          eq(pendingActionTable.requestedByPersonId, input.requesterPersonId),
+        ),
+      )
+      .for("update")
+      .limit(1);
+    if (!row)
+      throw new HTTPException(404, { message: "Pending action not found" });
+    if (row.state !== "pending")
+      throw new HTTPException(409, { message: "pending_action_not_pending" });
+    if (row.action !== "user_deactivation" || row.targetType !== "person")
+      throw new HTTPException(409, {
+        message: "pending_action_kind_unsupported",
+      });
+    if (row.expiresAt <= now) {
+      const [expiredBy] = await tx
+        .select({ name: userTable.name })
+        .from(personTable)
+        .innerJoin(userTable, eq(userTable.id, personTable.userId))
+        .where(eq(personTable.id, input.requesterPersonId))
+        .limit(1);
+      const [expired] = await tx
+        .update(pendingActionTable)
+        .set({
+          state: "expired",
+          decidedByPersonId: input.requesterPersonId,
+          decisionSessionId: input.sessionId,
+          decidedAt: now,
+        })
+        .where(
+          and(
+            eq(pendingActionTable.id, row.id),
+            eq(pendingActionTable.state, "pending"),
+          ),
+        )
+        .returning();
+      if (!expired)
+        throw new HTTPException(409, { message: "pending_action_not_pending" });
+      await writePersonDeactivationTransition(tx, {
+        row,
+        actorPersonId: input.requesterPersonId,
+        actorName: expiredBy?.name ?? "Unknown user",
+        traceId: input.traceId,
+        state: "expired",
+        occurredAt: now,
+      });
+      return { row: expired, state: "expired" as const, auditFailure: false };
+    }
+    const [actor] = await tx
+      .select({
+        personId: personTable.id,
+        userId: personTable.userId,
+        active: personTable.active,
+        side: personTable.side,
+        role: userTable.role,
+        banned: userTable.banned,
+        name: userTable.name,
+      })
+      .from(personTable)
+      .innerJoin(userTable, eq(userTable.id, personTable.userId))
+      .where(eq(personTable.id, input.requesterPersonId))
+      .for("update")
+      .limit(1);
+    const [session] = await tx
+      .select({ id: schema.sessionTable.id })
+      .from(schema.sessionTable)
+      .where(
+        and(
+          eq(schema.sessionTable.id, input.sessionId),
+          eq(schema.sessionTable.userId, input.userId),
+          eq(schema.sessionTable.portal, "agent"),
+          gt(schema.sessionTable.expiresAt, sql`now()`),
+        ),
+      )
+      .for("update")
+      .limit(1);
+    if (!session) {
+      throw new HTTPException(403, { message: "Forbidden" });
+    }
+    if (
+      !actor?.userId ||
+      actor.userId !== input.userId ||
+      actor.active !== true ||
+      actor.side !== "staff" ||
+      actor.banned ||
+      actor.role !== "admin"
+    ) {
+      const invalidated = await invalidatePersonDeactivation(tx, {
+        row,
+        actorPersonId: input.requesterPersonId,
+        actorName: actor?.name ?? "TaskDesk",
+        traceId: input.traceId,
+        reason: "capability_removed",
+        now,
+        sessionId: input.sessionId,
+      });
+      return {
+        row: invalidated,
+        state: "invalidated" as const,
+        auditFailure: false,
+      };
+    }
+    const route = policyRegistry.get(row.routeKey);
+    if (
+      row.routeKey !== "POST /api/instance/users/{id}/deactivate" ||
+      route?.kind !== "capability" ||
+      !("capability" in route.policy) ||
+      route.policy.scope !== "instance" ||
+      route.policy.capability !== "instance:admin"
+    ) {
+      throw new HTTPException(409, {
+        message: "pending_action_policy_changed",
+      });
+    }
+    let payload: ReturnType<typeof canonicalPendingActionPayload>;
+    try {
+      payload = canonicalPendingActionPayload(
+        row.payload as Parameters<typeof canonicalPendingActionPayload>[0],
+      );
+    } catch {
+      throw new HTTPException(409, {
+        message: "pending_action_payload_invalid",
+      });
+    }
+    if (
+      hashPendingActionPayload(payload) !== row.payloadHash ||
+      payload.action !== "user_deactivation" ||
+      payload.route_key !== row.routeKey ||
+      payload.target_type !== "person" ||
+      payload.target_ids.length !== 1 ||
+      payload.target_ids[0] !== row.targetIds[0] ||
+      payload.confirmation_required !== "typed_name_step_up" ||
+      payload.workspace_id !== null ||
+      payload.project_id !== null ||
+      payload.organisation_id !== null ||
+      row.confirmationRequired !== "typed_name_step_up"
+    ) {
+      throw new HTTPException(409, {
+        message: "pending_action_payload_invalid",
+      });
+    }
+    const personId = payload.target_ids[0];
+    if (!personId)
+      throw new HTTPException(409, {
+        message: "pending_action_target_invalid",
+      });
+    const [target] = await tx
+      .select({
+        id: personTable.id,
+        userId: personTable.userId,
+        active: personTable.active,
+        email: userTable.email,
+        name: userTable.name,
+      })
+      .from(personTable)
+      .innerJoin(userTable, eq(userTable.id, personTable.userId))
+      .where(eq(personTable.id, personId))
+      .for("update")
+      .limit(1);
+    if (!target?.userId || !target.active) {
+      const invalidated = await invalidatePersonDeactivation(tx, {
+        row,
+        actorPersonId: input.requesterPersonId,
+        actorName: actor.name,
+        traceId: input.traceId,
+        reason: "version_changed",
+        now,
+        sessionId: input.sessionId,
+      });
+      return {
+        row: invalidated,
+        state: "invalidated" as const,
+        auditFailure: false,
+      };
+    }
+    const summary = row.payloadSummary as { email?: unknown };
+    if (summary.email !== target.email) {
+      const invalidated = await invalidatePersonDeactivation(tx, {
+        row,
+        actorPersonId: input.requesterPersonId,
+        actorName: actor.name,
+        traceId: input.traceId,
+        reason: "version_changed",
+        now,
+        sessionId: input.sessionId,
+      });
+      return {
+        row: invalidated,
+        state: "invalidated" as const,
+        auditFailure: false,
+      };
+    }
+    if (input.typedName !== target.email)
+      throw new HTTPException(400, { message: "confirmation_mismatch" });
+    const proof = await consumePendingActionProof(tx, {
+      token: input.stepUpToken,
+      personId: input.requesterPersonId,
+      sessionId: input.sessionId,
+      pendingActionId: row.id,
+    });
+    if (!proof) throw new HTTPException(403, { message: "step_up_expired" });
+    const lifecycle = await transitionPersonLifecycleInTransaction(
+      tx,
+      target.id,
+      false,
+      "end_memberships",
+      { kind: "administrative" },
+    );
+    if (!lifecycle)
+      throw new HTTPException(409, {
+        message: "pending_action_target_changed",
+      });
+    const [executed] = await tx
+      .update(pendingActionTable)
+      .set({
+        state: "executed",
+        confirmationSupplied: { typedNameMatched: true, stepUp: true },
+        stepUpTokenId: proof.id,
+        decidedByPersonId: input.requesterPersonId,
+        decisionSessionId: input.sessionId,
+        decidedAt: now,
+        executedAt: now,
+      })
+      .where(
+        and(
+          eq(pendingActionTable.id, row.id),
+          eq(pendingActionTable.state, "pending"),
+        ),
+      )
+      .returning();
+    if (!executed)
+      throw new HTTPException(409, { message: "pending_action_not_pending" });
+    const scope = {};
+    const occurredAt = now.toISOString();
+    for (const [kind, payload] of [
+      [
+        "pending_action.decided",
+        {
+          key: row.id,
+          url: `/agent/settings/profile/pending-actions/${row.id}`,
+          pendingActionId: row.id,
+          outcome: "approved",
+        },
+      ],
+      [
+        "pending_action.executed",
+        {
+          pendingActionId: row.id,
+          action: row.action,
+          targetIds: row.targetIds,
+          outcome: "executed",
+        },
+      ],
+      [
+        "identity.deprovisioned",
+        {
+          source: "god_mode",
+          personId: target.id,
+          sessionsRevoked: lifecycle.sessionsRevoked,
+          keysRevoked: lifecycle.keysRevoked,
+          membershipsEnded: lifecycle.membershipsEnded,
+        },
+      ],
+    ] as const) {
+      await enqueueOutboxEvent(tx, {
+        id: `evt_${createId()}`,
+        kind,
+        occurredAt,
+        actor: {
+          type: "person",
+          id: input.requesterPersonId,
+          name: actor.name,
+        },
+        scope,
+        payload,
+        causationId: null,
+        depth: 0,
+        originAutomationId: null,
+      });
+    }
+    const audits: Array<{
+      action: string;
+      entityType: string;
+      entityId: string;
+      before: JsonValue | null;
+      after: JsonValue;
+    }> = [
+      {
+        action: "pending_action.decided",
+        entityType: "pending_action",
+        entityId: row.id,
+        before: { state: "pending" },
+        after: { outcome: "approved" },
+      },
+      {
+        action: "pending_action.executed",
+        entityType: "pending_action",
+        entityId: row.id,
+        before: null,
+        after: {
+          outcome: "executed",
+          action: row.action,
+          targetCount: row.targetIds.length,
+        },
+      },
+      {
+        action: "identity.deprovisioned",
+        entityType: "person",
+        entityId: target.id,
+        before: null,
+        after: {
+          source: "god_mode",
+          sessionsRevoked: lifecycle.sessionsRevoked,
+          keysRevoked: lifecycle.keysRevoked,
+          membershipsEnded: lifecycle.membershipsEnded,
+        },
+      },
+    ];
+    for (const audit of audits) {
+      try {
+        await tx.transaction(async (auditTx) =>
+          appendAuditLog(auditTx, {
+            actorId: input.requesterPersonId,
+            actorType: "person",
+            traceId: input.traceId,
+            workspaceId: null,
+            action: audit.action,
+            entityType: audit.entityType,
+            entityId: audit.entityId,
+            before: audit.before,
+            after: audit.after,
+          }),
+        );
+      } catch {
+        auditFailure = true;
+      }
+    }
+    return { row: executed, state: "executed" as const, auditFailure };
+  });
+  if (result.state === "invalidated") {
+    throw new HTTPException(409, { message: "pending_action_target_changed" });
+  }
+  if (result.auditFailure) {
+    recordAuditWriteFailure("pending_action_decision");
+    await notifyCurrentInstanceAdminsOfAuditFailure("pending_action_decision");
+  }
+  return toPublicPendingAction(result.row);
+}
+
+async function invalidatePersonDeactivation(
+  tx: PendingActionTransaction,
+  input: {
+    row: typeof pendingActionTable.$inferSelect;
+    actorPersonId: string;
+    actorName: string;
+    traceId: string;
+    reason: "capability_removed" | "version_changed";
+    now: Date;
+    sessionId: string;
+  },
+) {
+  const [updated] = await tx
+    .update(pendingActionTable)
+    .set({
+      state: "invalidated",
+      invalidationReason: input.reason,
+      decidedByPersonId: input.actorPersonId,
+      decisionSessionId: input.sessionId,
+      decidedAt: input.now,
+    })
+    .where(
+      and(
+        eq(pendingActionTable.id, input.row.id),
+        eq(pendingActionTable.state, "pending"),
+      ),
+    )
+    .returning();
+  if (!updated)
+    throw new HTTPException(409, { message: "pending_action_not_pending" });
+  await writePersonDeactivationTransition(tx, {
+    row: input.row,
+    actorPersonId: input.actorPersonId,
+    actorName: input.actorName,
+    traceId: input.traceId,
+    state: "invalidated",
+    invalidationReason: input.reason,
+    occurredAt: input.now,
+  });
+  return updated;
+}
+
+async function writePersonDeactivationTransition(
+  tx: PendingActionTransaction,
+  input: {
+    row: typeof pendingActionTable.$inferSelect;
+    actorPersonId: string;
+    actorName: string;
+    traceId: string;
+    state: "expired" | "invalidated";
+    invalidationReason?: "capability_removed" | "version_changed";
+    occurredAt?: Date;
+  },
+) {
+  const scope = {};
+  await enqueueOutboxEvent(tx, {
+    id: `evt_${createId()}`,
+    kind: "pending_action.decided",
+    occurredAt: (input.occurredAt ?? new Date()).toISOString(),
+    actor: { type: "person", id: input.actorPersonId, name: input.actorName },
+    scope,
+    payload: {
+      key: input.row.id,
+      url: `/agent/settings/profile/pending-actions/${input.row.id}`,
+      pendingActionId: input.row.id,
+      outcome: input.state,
+      ...(input.invalidationReason
+        ? { invalidationReason: input.invalidationReason }
+        : {}),
+    },
+    causationId: null,
+    depth: 0,
+    originAutomationId: null,
+  });
+  try {
+    await tx.transaction(async (auditTx) =>
+      appendAuditLog(auditTx, {
+        actorId: input.actorPersonId,
+        actorType: "person",
+        traceId: input.traceId,
+        workspaceId: null,
+        action: `pending_action.${input.state}`,
+        entityType: "pending_action",
+        entityId: input.row.id,
+        before: { state: "pending" },
+        after: {
+          state: input.state,
+          ...(input.invalidationReason
+            ? { invalidationReason: input.invalidationReason }
+            : {}),
+        },
+      }),
+    );
+  } catch {
+    recordAuditWriteFailure("pending_action_decision");
+    await notifyCurrentInstanceAdminsOfAuditFailure("pending_action_decision");
+  }
 }
 
 async function auditViewed(
@@ -609,9 +1078,9 @@ type PendingActionTransaction = Parameters<
 >[0];
 
 type ResolvedRequestScope = {
-  workspaceId: string;
-  projectId: string;
-  organisationId: string;
+  workspaceId: string | null;
+  projectId: string | null;
+  organisationId: string | null;
   actorName: string;
   summary: Record<string, unknown>;
 };
@@ -626,6 +1095,13 @@ async function resolveRequestScope(
   tx: PendingActionTransaction,
   input: CreatePendingActionInput,
 ): Promise<ResolvedRequestScope> {
+  if (
+    input.action === "user_deactivation" &&
+    input.targetType === "person" &&
+    input.targetIds.length === 1
+  ) {
+    return resolvePersonDeactivationScope(tx, input);
+  }
   if (
     input.targetType !== "work_item" ||
     input.action !== "delete" ||
@@ -789,6 +1265,106 @@ async function resolveRequestScope(
   };
 }
 
+async function resolvePersonDeactivationScope(
+  tx: PendingActionTransaction,
+  input: CreatePendingActionInput,
+): Promise<ResolvedRequestScope> {
+  if (
+    input.credentialType !== "session" ||
+    input.origin !== "web" ||
+    input.routeKey !== "POST /api/instance/users/{id}/deactivate" ||
+    input.actorType !== "person"
+  ) {
+    throw new HTTPException(403, { message: "session_required" });
+  }
+  const targetIds = [...new Set(input.targetIds)];
+  if (targetIds.length !== 1 || targetIds.length !== input.targetIds.length) {
+    throw new TypeError("Person deactivation requires one unique person id");
+  }
+  const [target] = await tx
+    .select({
+      personId: personTable.id,
+      userId: personTable.userId,
+      active: personTable.active,
+      isAnonymous: userTable.isAnonymous,
+      email: userTable.email,
+      name: userTable.name,
+    })
+    .from(personTable)
+    .innerJoin(userTable, eq(userTable.id, personTable.userId))
+    .where(
+      and(eq(personTable.id, targetIds[0] ?? ""), eq(personTable.active, true)),
+    )
+    .for("update")
+    .limit(1);
+  if (!target?.userId || target.isAnonymous) {
+    throw new HTTPException(404, {
+      message: "Pending action target not found",
+    });
+  }
+  if (
+    (input.workspaceId !== undefined && input.workspaceId !== null) ||
+    (input.projectId !== undefined && input.projectId !== null) ||
+    (input.organisationId !== undefined && input.organisationId !== null)
+  ) {
+    throw new HTTPException(404, {
+      message: "Pending action target not found",
+    });
+  }
+  const [requester] = await tx
+    .select({
+      userId: personTable.userId,
+      active: personTable.active,
+      actorName: userTable.name,
+      banned: userTable.banned,
+      role: userTable.role,
+      side: personTable.side,
+    })
+    .from(personTable)
+    .innerJoin(userTable, eq(userTable.id, personTable.userId))
+    .where(eq(personTable.id, input.requesterPersonId))
+    .for("update")
+    .limit(1);
+  if (
+    !requester?.userId ||
+    !requester.active ||
+    requester.banned ||
+    requester.role !== "admin" ||
+    requester.side !== "staff"
+  ) {
+    throw new HTTPException(403, {
+      message: "Pending-action requester is unavailable",
+    });
+  }
+  if (requester.userId !== input.actorId) {
+    throw new HTTPException(403, {
+      message: "Pending-action requester mismatch",
+    });
+  }
+  const route = policyRegistry.get(input.routeKey);
+  if (
+    route?.kind !== "capability" ||
+    !("capability" in route.policy) ||
+    route.policy.scope !== "instance" ||
+    route.policy.capability !== "instance:admin"
+  ) {
+    throw new TypeError(
+      "Person deactivation requires its registered instance-admin route",
+    );
+  }
+  return {
+    workspaceId: null,
+    projectId: null,
+    organisationId: null,
+    actorName: requester.actorName,
+    summary: {
+      personId: target.personId,
+      name: target.name,
+      email: target.email,
+    },
+  };
+}
+
 function toPublicPendingAction(row: typeof pendingActionTable.$inferSelect) {
   return {
     id: row.id,
@@ -818,7 +1394,7 @@ function isUniqueViolation(error: unknown): boolean {
 
 function assertRegisteredRouteKey(
   routeKey: string,
-): asserts routeKey is keyof PolicyMap {
+): asserts routeKey is Extract<keyof PolicyMap, string> {
   if (!policyRegistry.routeKeys.includes(routeKey)) {
     throw new TypeError(`Unknown pending-action route key: ${routeKey}`);
   }
