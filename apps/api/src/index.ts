@@ -53,6 +53,11 @@ import scimProtocol from "./identity/scim-protocol";
 import getInstanceStatus from "./instance/controllers/get-instance-status";
 import localFactorPolicy from "./instance/local-factor-policy";
 import observability from "./instance/observability";
+import {
+  logDatabaseFailure,
+  logHttpLifecycleFailure,
+  logHttpRequestFailure,
+} from "./instance/observability/http-lifecycle";
 import metricsTokenRotation from "./instance/observability/metrics-token-rotation";
 import {
   beginObservedRequest,
@@ -76,6 +81,7 @@ import pendingAction from "./pending-action";
 // all (presence only, always on); `runNextWithPolicyShadow` is the shadow-mode ALLOW/DENY
 // comparison, off by default. See the call sites below and each file's own header comment.
 import { assertRouteIsClassified } from "./permissions/route-classification-guard";
+import { setShadowLegacyAuthorization } from "./permissions/shadow-context";
 import {
   declareCatchAllMiddleware,
   runNextWithPolicyShadow,
@@ -122,6 +128,7 @@ import {
   parseConfiguredOrigins,
   selectOriginFromContext,
 } from "./utils/request-origin";
+import { assertCallerHasCapability } from "./utils/require-workspace-capability";
 import { seedDefaultWorkspaceRoles } from "./utils/seed-default-workspace-roles";
 import { seedInternalOrganisationAndStaffPersons } from "./utils/seed-internal-organisation";
 import { reachableWorkspacePredicate } from "./utils/workspace-access-middleware";
@@ -141,6 +148,7 @@ import {
   removeUserConnection,
   shutdownWebSocketAdapter,
 } from "./ws";
+import { logRealtimeFailure } from "./ws/log-realtime-failure";
 import { checkWebSocketOrigin } from "./ws/origin-policy";
 
 type ApiKey = {
@@ -580,8 +588,8 @@ export function createApp(
     try {
       await getDatabase().execute(sql`SELECT 1`);
       return c.json({ status: "ok" });
-    } catch (error) {
-      console.error("Readiness check failed: database unreachable", error);
+    } catch {
+      logDatabaseFailure();
       return c.json({ status: "error" }, 503);
     }
   });
@@ -704,10 +712,7 @@ export function createApp(
         // forwarding it to the client, so an ENOSPC/EACCES/EDQUOT on the storage volume
         // would have surfaced to nobody. Detailed to the log, generic to the client.
         if (!(error instanceof StoragePathError)) {
-          console.error(
-            "storage/filesystem-upload: unexpected write failure",
-            error,
-          );
+          logHttpRequestFailure();
         }
         throw new HTTPException(400, {
           message:
@@ -785,10 +790,7 @@ export function createApp(
       } catch (error) {
         // Same safe-message/log-detail split as the task-image upload route above.
         if (!(error instanceof StoragePathError)) {
-          console.error(
-            "storage/filesystem-attachment-upload: unexpected write failure",
-            error,
-          );
+          logHttpRequestFailure();
         }
         throw new HTTPException(400, {
           message:
@@ -862,10 +864,7 @@ export function createApp(
         });
       } catch (error) {
         if (!(error instanceof StoragePathError)) {
-          console.error(
-            "storage/filesystem-download: unexpected read failure",
-            error,
-          );
+          logHttpRequestFailure();
         }
         throw new HTTPException(error instanceof StoragePathError ? 400 : 404, {
           message:
@@ -1212,6 +1211,19 @@ export function createApp(
       // cost the same single round trip and 404 identically -- see that
       // function's own comment.
       const asset = await loadReachableAsset(c, id);
+      try {
+        await assertCallerHasCapability(
+          asset.workspaceId,
+          c.get("userId"),
+          "workspace:read",
+        );
+      } catch (error) {
+        if (error instanceof HTTPException && error.status === 403) {
+          setShadowLegacyAuthorization(c, "denied");
+        }
+        throw error;
+      }
+      setShadowLegacyAuthorization(c, "allowed");
 
       try {
         const object = await getPrivateObject(asset.objectKey);
@@ -1239,8 +1251,8 @@ export function createApp(
             "Last-Modified": object.lastModified?.toUTCString() || "",
           },
         });
-      } catch (error) {
-        console.error("Failed to stream asset:", error);
+      } catch {
+        logHttpRequestFailure();
         throw new HTTPException(404, { message: "Asset object not found" });
       }
     },
@@ -1342,6 +1354,8 @@ export function createApp(
         return {
           userId: c.get("userId") as string,
           apiKeyId: apiKey?.id,
+          apiKeyEnabled: apiKey?.enabled,
+          apiKeyOwnerUserId: apiKey?.userId,
           apiKeyPermissions: apiKey?.permissions,
           portal: session?.portal ?? null,
         };
@@ -1804,30 +1818,30 @@ export function createNodeServer(
       clearTimeout(deadline);
       resolveClose(forced ? "forced" : "graceful");
     };
-    const forceResources = (reason: string) => {
+    const forceResources = () => {
       if (forced) return;
       forced = true;
-      console.error(`Forcing API shutdown: ${reason}`);
+      logHttpLifecycleFailure();
       try {
         httpServer.closeAllConnections();
-      } catch (error) {
-        console.error("Failed to close active HTTP connections:", error);
+      } catch {
+        logHttpLifecycleFailure();
       }
       for (const client of websocketServer.clients) {
         try {
           client.terminate();
-        } catch (error) {
-          console.error("Failed to terminate a WebSocket client:", error);
+        } catch {
+          logRealtimeFailure();
         }
       }
       try {
         forceAdapter();
-      } catch (error) {
-        console.error("Failed to force-close WebSocket adapter:", error);
+      } catch {
+        logRealtimeFailure();
       }
     };
     deadline = setTimeout(() => {
-      forceResources("graceful close exceeded the shared deadline");
+      forceResources();
       finish(true);
     }, shutdownTimeoutMs);
 
@@ -1837,17 +1851,17 @@ export function createNodeServer(
         if (error) {
           const errorCode = (error as NodeJS.ErrnoException).code;
           if (errorCode !== "ERR_SERVER_NOT_RUNNING" || server.listening) {
-            console.error("HTTP server close failed:", error);
-            forceResources("HTTP server close failed");
+            logHttpLifecycleFailure();
+            forceResources();
           }
         }
         httpClosed = true;
         finish();
       });
-    } catch (error) {
+    } catch {
       if (server.listening) {
-        console.error("HTTP server close threw:", error);
-        forceResources("HTTP server close threw");
+        logHttpLifecycleFailure();
+        forceResources();
       }
       httpClosed = true;
       finish();
@@ -1856,15 +1870,15 @@ export function createNodeServer(
     try {
       websocketServer.close((error) => {
         if (error) {
-          console.error("WebSocket server close failed:", error);
-          forceResources("WebSocket server close failed");
+          logRealtimeFailure();
+          forceResources();
         }
         websocketClosed = true;
         finish();
       });
-    } catch (error) {
-      console.error("WebSocket server close threw:", error);
-      forceResources("WebSocket server close threw");
+    } catch {
+      logRealtimeFailure();
+      forceResources();
       websocketClosed = true;
       finish();
     }
@@ -1872,9 +1886,9 @@ export function createNodeServer(
     for (const client of websocketServer.clients) {
       try {
         client.close(1001, "Server shutting down");
-      } catch (error) {
-        console.error("Failed to send WebSocket shutdown close:", error);
-        forceResources("WebSocket close frame failed");
+      } catch {
+        logRealtimeFailure();
+        forceResources();
       }
     }
 
@@ -1885,10 +1899,10 @@ export function createNodeServer(
           adapterClosed = true;
           finish();
         },
-        (error: unknown) => {
-          console.error("WebSocket adapter shutdown failed:", error);
+        () => {
+          logRealtimeFailure();
           adapterClosed = true;
-          forceResources("WebSocket adapter shutdown failed");
+          forceResources();
           finish();
         },
       );
@@ -1902,8 +1916,8 @@ export function createNodeServer(
 export async function startServer(port = DEFAULT_PORT) {
   try {
     await runApiBootTasks();
-  } catch (error) {
-    console.error("❌ API boot failed!", error);
+  } catch {
+    logHttpLifecycleFailure();
     process.exit(1);
   }
 
@@ -1927,7 +1941,7 @@ export async function startServer(port = DEFAULT_PORT) {
     if (result === "graceful") {
       console.log("✅ API shutdown completed gracefully");
     } else {
-      console.error("⚠ API shutdown completed after forced resource closure");
+      logHttpLifecycleFailure();
     }
     process.exit(0);
   };
@@ -2005,8 +2019,8 @@ if (isMainModule) {
         console.log("✅ Migration step complete.");
         process.exit(0);
       })
-      .catch((error: unknown) => {
-        console.error("❌ Migration step failed!", error);
+      .catch(() => {
+        logDatabaseFailure();
         process.exit(1);
       });
   } else {
