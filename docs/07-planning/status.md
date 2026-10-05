@@ -1,3 +1,18 @@
+## Complete contrast correction accepted locally; preservation batch continues — 2026-10-05
+
+Contrast author `b769cbb6ec3100fe912efd2512c5e300a7f03859` is normally composed
+as `2a55c66fc9849c3cd69dc2060017259d8bc96ea6`. Root's complete combined
+`pnpm check:tokens` passes all 228 source-grounded pairs in light/dark built CSS,
+including fresh agent and portal production builds. Pair178 now uses the normative
+body-text 4.5:1 minimum; author measures actual 5.05:1 light and 12.22:1 dark.
+IDs, foreground/background values and all 1,530 occurrence records are preserved.
+Private combined raw log: `2026-10-05/p4-person-deactivation-b58/combined-contrast-acceptance.log`.
+
+The accepted-foundation API logging/seed preflight correction remains in the same
+implementation batch. No ordinary/Sol clearance or hosted/image/runtime acceptance is
+claimed for this intermediate head. P0 accepted main/DEV and October6 evidence timing
+remain unchanged.
+
 ## Combined unit gate finds accepted-foundation regressions — 2026-10-05 12:29 UTC
 
 Root's full `pnpm test` on composed `aa68f29bdca9487d05592e99d35b0e81476d2c7f`
