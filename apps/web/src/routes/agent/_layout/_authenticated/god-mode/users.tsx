@@ -1,5 +1,5 @@
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { createFileRoute, useNavigate } from "@tanstack/react-router";
+import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import {
   Alert,
   AlertDescription,
@@ -56,6 +56,7 @@ type Action =
   | "grant-admin"
   | "reset-mfa"
   | "sign-out"
+  | "deactivate"
   | null;
 
 function InstanceUsersPage() {
@@ -94,6 +95,7 @@ function InstanceUsersPage() {
   const [secret, setSecret] = useState("");
   const [formError, setFormError] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
+  const [pendingActionUrl, setPendingActionUrl] = useState<string | null>(null);
   const factor = useQuery({
     queryKey: ["god-mode", "step-up-factor"],
     queryFn: getCurrentFactorStatus,
@@ -136,6 +138,17 @@ function InstanceUsersPage() {
         await actions.unsuspend.mutateAsync(user.id);
       } else if (action === "sign-out") {
         await actions.signOut.mutateAsync(user.id);
+      } else if (action === "deactivate") {
+        const result = await actions.deactivate.mutateAsync(user.id);
+        if (!("approveUrl" in result)) {
+          throw new Error("Deactivation approval was not created");
+        }
+        setPendingActionUrl(result.approveUrl);
+        setNotice(
+          "A deactivation approval was created. The account is unchanged until approval.",
+        );
+        resetAction();
+        return;
       } else if (action === "grant-admin") {
         const token = await createUserOperationProof({
           operation: "instance_admin_grant",
@@ -193,6 +206,7 @@ function InstanceUsersPage() {
     actions.suspend.isPending ||
     actions.unsuspend.isPending ||
     actions.signOut.isPending ||
+    actions.deactivate.isPending ||
     actions.grantAdmin.isPending ||
     actions.resetMfa.isPending;
 
@@ -218,9 +232,20 @@ function InstanceUsersPage() {
 
       {notice && (
         <p className="text-sm text-foreground" role="status">
-          {notice}
+          {notice}{" "}
+          {pendingActionUrl && (
+            <Link className="underline" to={pendingActionUrl as never}>
+              Review pending approval
+            </Link>
+          )}
         </p>
       )}
+      <Link
+        className="text-sm underline"
+        to={"/agent/settings/profile/pending-actions" as never}
+      >
+        My pending actions
+      </Link>
 
       <section aria-label="User filters" className="flex flex-wrap gap-3">
         <Input
@@ -522,6 +547,15 @@ function UserDetails({
               Unsuspend account
             </Button>
           )}
+          {user.person?.active && (
+            <Button
+              size="sm"
+              variant="destructive"
+              onClick={() => onAction("deactivate")}
+            >
+              Deactivate person
+            </Button>
+          )}
           <Button
             size="sm"
             variant="outline"
@@ -588,9 +622,7 @@ function UserActionDialog({
   verificationNote: string;
   method: "password" | "totp" | "backup_code";
   secret: string;
-  factor:
-    | { enabled: boolean; required: boolean; bootstrapRequired: boolean }
-    | undefined;
+  factor: { enabled: boolean; required: boolean } | undefined;
   onReason: (value: string) => void;
   onExpiresAt: (value: string) => void;
   onVerificationNote: (value: string) => void;
@@ -613,6 +645,7 @@ function UserActionDialog({
     "grant-admin": "Grant instance administrator",
     "reset-mfa": "Reset authenticator factor",
     "sign-out": "Sign out all sessions",
+    deactivate: "Request person deactivation",
   };
   return (
     <Dialog open={open} onOpenChange={(value) => !value && onCancel()}>
@@ -660,6 +693,12 @@ function UserActionDialog({
             <p className="text-sm">
               This revokes every current session for this account, including
               impersonation sessions. API keys and account status are unchanged.
+            </p>
+          )}
+          {action === "deactivate" && (
+            <p className="text-sm">
+              This creates a pending action. The account stays active until you
+              confirm the current email and complete fresh authentication.
             </p>
           )}
           {action === "grant-admin" && (

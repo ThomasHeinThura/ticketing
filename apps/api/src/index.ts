@@ -8,7 +8,6 @@ import { OpenAPIHono } from "@hono/zod-openapi";
 import { normaliseRouteKey } from "@taskdesk/permissions";
 import type { Session, User } from "better-auth/types";
 import { and, eq, sql } from "drizzle-orm";
-import { migrate } from "drizzle-orm/node-postgres/migrator";
 import type { Context, Next } from "hono";
 import { Hono } from "hono";
 import { compress } from "hono/compress";
@@ -36,24 +35,24 @@ import db, {
   closeMigrationPool,
   getDatabase,
   getMigrationDatabase,
+  getMigrationDatabasePool,
   schema,
 } from "./database";
 import { assertApplicationRoleIsNotPrivileged } from "./database/assert-application-role-is-not-privileged";
 import { assertNoMigrationUrlInApiProcess } from "./database/assert-no-migration-url-in-api-process";
 import { ensureApplicationRole } from "./database/ensure-application-role";
+import { migrateWithMembershipProvenanceCutover } from "./database/migrate-membership-provenance";
 import { prepareDatabaseStartup } from "./database/prepare-database-startup";
 import { resolveMigrationDatabaseConfig } from "./database/resolve-database-url";
 import { waitForDatabase } from "./database/wait-for-database";
 import { eventContext } from "./events";
 import externalLink from "./external-link";
+import identityConnectionAdmin from "./identity/connection-admin";
+import scimAdmin from "./identity/scim-admin";
+import scimProtocol from "./identity/scim-protocol";
 import getInstanceStatus from "./instance/controllers/get-instance-status";
 import localFactorPolicy from "./instance/local-factor-policy";
 import observability from "./instance/observability";
-import {
-  logDatabaseFailure,
-  logHttpLifecycleFailure,
-  logHttpRequestFailure,
-} from "./instance/observability/http-lifecycle";
 import metricsTokenRotation from "./instance/observability/metrics-token-rotation";
 import {
   beginObservedRequest,
@@ -77,7 +76,6 @@ import pendingAction from "./pending-action";
 // all (presence only, always on); `runNextWithPolicyShadow` is the shadow-mode ALLOW/DENY
 // comparison, off by default. See the call sites below and each file's own header comment.
 import { assertRouteIsClassified } from "./permissions/route-classification-guard";
-import { setShadowLegacyAuthorization } from "./permissions/shadow-context";
 import {
   declareCatchAllMiddleware,
   runNextWithPolicyShadow,
@@ -91,6 +89,8 @@ import { policyRegistry } from "./policy-registry";
 import project from "./project";
 import { initializeScheduler, shutdownScheduler } from "./scheduler";
 import search from "./search";
+import serviceCalendar from "./service-calendar";
+import slaPolicy from "./sla-policy";
 import { getPrivateObject, getStorageDriver } from "./storage";
 import {
   readAttachmentDownloadObject,
@@ -122,7 +122,6 @@ import {
   parseConfiguredOrigins,
   selectOriginFromContext,
 } from "./utils/request-origin";
-import { assertCallerHasCapability } from "./utils/require-workspace-capability";
 import { seedDefaultWorkspaceRoles } from "./utils/seed-default-workspace-roles";
 import { seedInternalOrganisationAndStaffPersons } from "./utils/seed-internal-organisation";
 import { reachableWorkspacePredicate } from "./utils/workspace-access-middleware";
@@ -142,7 +141,6 @@ import {
   removeUserConnection,
   shutdownWebSocketAdapter,
 } from "./ws";
-import { logRealtimeFailure } from "./ws/log-realtime-failure";
 import { checkWebSocketOrigin } from "./ws/origin-policy";
 
 type ApiKey = {
@@ -470,6 +468,7 @@ export function createApp(
       c.req.path === "/api/health" ||
       c.req.path === "/api/public/health/live" ||
       c.req.path === "/api/public/health/ready";
+    const isScimPath = c.req.path.startsWith("/scim/v2/");
     const isHealthRequest =
       isHealthPath && (c.req.method === "GET" || c.req.method === "HEAD");
     const upgrade = c.req.header("upgrade")?.toLowerCase();
@@ -478,6 +477,7 @@ export function createApp(
       upgrade === "websocket" && connection.includes("upgrade");
 
     if (selected === "invalid") return denyByHost(c);
+    if (isScimPath && selected !== "agent") return denyByHost(c);
     if (isWebSocketUpgrade && (selected !== "agent" || isHealthPath))
       return denyByHost(c);
     if (isHealthRequest) {
@@ -555,6 +555,11 @@ export function createApp(
   declareCatchAllMiddleware(compressMiddleware);
   app.use(compressMiddleware);
 
+  // SCIM lives at the protocol's documented agent-origin path, outside `/api` and
+  // therefore outside the session/API-key guard. The host-routing guard above admits
+  // this path only on the agent origin; scimProtocol authenticates its dedicated bearer.
+  const scimProtocolApi = app.route("/scim/v2", scimProtocol);
+
   const api = installStrictPolicyRegistration(new OpenAPIHono<ApiVariables>());
 
   api.get("/health", (c) => {
@@ -577,8 +582,8 @@ export function createApp(
     try {
       await getDatabase().execute(sql`SELECT 1`);
       return c.json({ status: "ok" });
-    } catch {
-      logDatabaseFailure();
+    } catch (error) {
+      console.error("Readiness check failed: database unreachable", error);
       return c.json({ status: "error" }, 503);
     }
   });
@@ -701,7 +706,10 @@ export function createApp(
         // forwarding it to the client, so an ENOSPC/EACCES/EDQUOT on the storage volume
         // would have surfaced to nobody. Detailed to the log, generic to the client.
         if (!(error instanceof StoragePathError)) {
-          logHttpRequestFailure();
+          console.error(
+            "storage/filesystem-upload: unexpected write failure",
+            error,
+          );
         }
         throw new HTTPException(400, {
           message:
@@ -779,7 +787,10 @@ export function createApp(
       } catch (error) {
         // Same safe-message/log-detail split as the task-image upload route above.
         if (!(error instanceof StoragePathError)) {
-          logHttpRequestFailure();
+          console.error(
+            "storage/filesystem-attachment-upload: unexpected write failure",
+            error,
+          );
         }
         throw new HTTPException(400, {
           message:
@@ -853,7 +864,10 @@ export function createApp(
         });
       } catch (error) {
         if (!(error instanceof StoragePathError)) {
-          logHttpRequestFailure();
+          console.error(
+            "storage/filesystem-download: unexpected read failure",
+            error,
+          );
         }
         throw new HTTPException(error instanceof StoragePathError ? 400 : 404, {
           message:
@@ -920,6 +934,11 @@ export function createApp(
     scheme: "bearer",
     description: "API key or session token (Bearer)",
   });
+  api.openAPIRegistry.registerComponent("securitySchemes", "scimBearerAuth", {
+    type: "http",
+    scheme: "bearer",
+    description: "Per-connection SCIM bearer token",
+  });
 
   api.get("/openapi", (c) => {
     const document = api.getOpenAPI31Document({
@@ -943,6 +962,42 @@ export function createApp(
       ],
       security: [{ bearerAuth: [] }],
     });
+
+    const scimDocument = scimProtocol.getOpenAPI31Document({
+      openapi: "3.1.0",
+      info: { title: "TaskDesk SCIM API", version: "1.0.0" },
+    });
+    for (const [path, pathItem] of Object.entries(scimDocument.paths ?? {})) {
+      if (!pathItem) continue;
+      const scimPathItem: Record<string, unknown> = { ...pathItem };
+      for (const method of [
+        "get",
+        "post",
+        "put",
+        "patch",
+        "delete",
+        "options",
+        "head",
+        "trace",
+      ] as const) {
+        const operation = scimPathItem[method];
+        if (operation && typeof operation === "object")
+          scimPathItem[method] = {
+            ...(operation as Record<string, unknown>),
+            security: [{ scimBearerAuth: [] }],
+          };
+      }
+      document.paths ??= {};
+      document.paths[`/scim/v2${path}`] = {
+        ...scimPathItem,
+        servers: [
+          {
+            url: process.env.TASKDESK_AGENT_URL || "http://localhost:5173",
+            description: "SCIM protocol on the agent origin",
+          },
+        ],
+      } as NonNullable<typeof document.paths>[string];
+    }
 
     // Every authenticated route sits behind the same app-wide
     // authenticateApiRequest middleware, so the shared 401 is injected here
@@ -1159,19 +1214,6 @@ export function createApp(
       // cost the same single round trip and 404 identically -- see that
       // function's own comment.
       const asset = await loadReachableAsset(c, id);
-      try {
-        await assertCallerHasCapability(
-          asset.workspaceId,
-          c.get("userId"),
-          "workspace:read",
-        );
-      } catch (error) {
-        if (error instanceof HTTPException && error.status === 403) {
-          setShadowLegacyAuthorization(c, "denied");
-        }
-        throw error;
-      }
-      setShadowLegacyAuthorization(c, "allowed");
 
       try {
         const object = await getPrivateObject(asset.objectKey);
@@ -1199,8 +1241,8 @@ export function createApp(
             "Last-Modified": object.lastModified?.toUTCString() || "",
           },
         });
-      } catch {
-        logHttpRequestFailure();
+      } catch (error) {
+        console.error("Failed to stream asset:", error);
         throw new HTTPException(404, { message: "Asset object not found" });
       }
     },
@@ -1227,6 +1269,8 @@ export function createApp(
   );
   const pendingActionApi = api.route("/me", pendingAction);
   const searchApi = api.route("/search", search);
+  const serviceCalendarApi = api.route("/service-calendars", serviceCalendar);
+  const slaPolicyApi = api.route("/sla-policies", slaPolicy);
   const taskRelationApi = api.route("/task-relation", taskRelation);
   const externalLinkApi = api.route("/external-link", externalLink);
   const workflowRuleApi = api.route("/workflow-rule", workflowRule);
@@ -1248,6 +1292,11 @@ export function createApp(
   const localFactorPolicyApi = api.route("/instance", localFactorPolicy);
   const resetMfaApi = api.route("/instance", resetMfa);
   const usersApi = api.route("/instance", users);
+  const identityConnectionAdminApi = api.route(
+    "/instance",
+    identityConnectionAdmin,
+  );
+  const scimAdminApi = api.route("/instance", scimAdmin);
 
   // User-scoped WebSocket endpoint; MUST be registered before /ws/:projectId
   // so the literal path "user" isn't consumed by the param route.
@@ -1295,8 +1344,6 @@ export function createApp(
         return {
           userId: c.get("userId") as string,
           apiKeyId: apiKey?.id,
-          apiKeyEnabled: apiKey?.enabled,
-          apiKeyOwnerUserId: apiKey?.userId,
           apiKeyPermissions: apiKey?.permissions,
           portal: session?.portal ?? null,
         };
@@ -1539,6 +1586,9 @@ export function createApp(
     localFactorPolicyApi,
     resetMfaApi,
     usersApi,
+    identityConnectionAdminApi,
+    scimAdminApi,
+    scimProtocolApi,
     invitationApi,
     invitationPublicApi,
     oauthApi,
@@ -1548,6 +1598,8 @@ export function createApp(
     pendingActionApi,
     projectApi,
     searchApi,
+    serviceCalendarApi,
+    slaPolicyApi,
     taskApi,
     taskV2Api,
     taskRelationApi,
@@ -1617,7 +1669,9 @@ export async function runMigrationStep(): Promise<void> {
       await migrateSessionColumn(migrationDb);
 
       console.log("🔄 Migrating database...");
-      await migrate(migrationDb, {
+      await migrateWithMembershipProvenanceCutover({
+        database: migrationDb,
+        pool: getMigrationDatabasePool(),
         migrationsFolder: `${currentDir}/../drizzle`,
       });
       console.log("✅ Database migrated successfully!");
@@ -1752,30 +1806,30 @@ export function createNodeServer(
       clearTimeout(deadline);
       resolveClose(forced ? "forced" : "graceful");
     };
-    const forceResources = () => {
+    const forceResources = (reason: string) => {
       if (forced) return;
       forced = true;
-      logHttpLifecycleFailure();
+      console.error(`Forcing API shutdown: ${reason}`);
       try {
         httpServer.closeAllConnections();
-      } catch {
-        logHttpLifecycleFailure();
+      } catch (error) {
+        console.error("Failed to close active HTTP connections:", error);
       }
       for (const client of websocketServer.clients) {
         try {
           client.terminate();
-        } catch {
-          logRealtimeFailure();
+        } catch (error) {
+          console.error("Failed to terminate a WebSocket client:", error);
         }
       }
       try {
         forceAdapter();
-      } catch {
-        logRealtimeFailure();
+      } catch (error) {
+        console.error("Failed to force-close WebSocket adapter:", error);
       }
     };
     deadline = setTimeout(() => {
-      forceResources();
+      forceResources("graceful close exceeded the shared deadline");
       finish(true);
     }, shutdownTimeoutMs);
 
@@ -1785,17 +1839,17 @@ export function createNodeServer(
         if (error) {
           const errorCode = (error as NodeJS.ErrnoException).code;
           if (errorCode !== "ERR_SERVER_NOT_RUNNING" || server.listening) {
-            logHttpLifecycleFailure();
-            forceResources();
+            console.error("HTTP server close failed:", error);
+            forceResources("HTTP server close failed");
           }
         }
         httpClosed = true;
         finish();
       });
-    } catch {
+    } catch (error) {
       if (server.listening) {
-        logHttpLifecycleFailure();
-        forceResources();
+        console.error("HTTP server close threw:", error);
+        forceResources("HTTP server close threw");
       }
       httpClosed = true;
       finish();
@@ -1804,15 +1858,15 @@ export function createNodeServer(
     try {
       websocketServer.close((error) => {
         if (error) {
-          logRealtimeFailure();
-          forceResources();
+          console.error("WebSocket server close failed:", error);
+          forceResources("WebSocket server close failed");
         }
         websocketClosed = true;
         finish();
       });
-    } catch {
-      logRealtimeFailure();
-      forceResources();
+    } catch (error) {
+      console.error("WebSocket server close threw:", error);
+      forceResources("WebSocket server close threw");
       websocketClosed = true;
       finish();
     }
@@ -1820,9 +1874,9 @@ export function createNodeServer(
     for (const client of websocketServer.clients) {
       try {
         client.close(1001, "Server shutting down");
-      } catch {
-        logRealtimeFailure();
-        forceResources();
+      } catch (error) {
+        console.error("Failed to send WebSocket shutdown close:", error);
+        forceResources("WebSocket close frame failed");
       }
     }
 
@@ -1833,10 +1887,10 @@ export function createNodeServer(
           adapterClosed = true;
           finish();
         },
-        () => {
-          logRealtimeFailure();
+        (error: unknown) => {
+          console.error("WebSocket adapter shutdown failed:", error);
           adapterClosed = true;
-          forceResources();
+          forceResources("WebSocket adapter shutdown failed");
           finish();
         },
       );
@@ -1850,8 +1904,8 @@ export function createNodeServer(
 export async function startServer(port = DEFAULT_PORT) {
   try {
     await runApiBootTasks();
-  } catch {
-    logHttpLifecycleFailure();
+  } catch (error) {
+    console.error("❌ API boot failed!", error);
     process.exit(1);
   }
 
@@ -1875,7 +1929,7 @@ export async function startServer(port = DEFAULT_PORT) {
     if (result === "graceful") {
       console.log("✅ API shutdown completed gracefully");
     } else {
-      logHttpLifecycleFailure();
+      console.error("⚠ API shutdown completed after forced resource closure");
     }
     process.exit(0);
   };
@@ -1909,6 +1963,9 @@ const {
   localFactorPolicyApi,
   resetMfaApi,
   usersApi,
+  identityConnectionAdminApi,
+  scimAdminApi,
+  scimProtocolApi,
   invitationApi,
   invitationPublicApi,
   oauthApi,
@@ -1918,6 +1975,8 @@ const {
   pendingActionApi,
   projectApi,
   searchApi,
+  serviceCalendarApi,
+  slaPolicyApi,
   taskApi,
   taskV2Api,
   taskRelationApi,
@@ -1948,8 +2007,8 @@ if (isMainModule) {
         console.log("✅ Migration step complete.");
         process.exit(0);
       })
-      .catch(() => {
-        logDatabaseFailure();
+      .catch((error: unknown) => {
+        console.error("❌ Migration step failed!", error);
         process.exit(1);
       });
   } else {
@@ -1981,6 +2040,8 @@ export type AppType =
   | typeof notificationPreferencesApi
   | typeof pendingActionApi
   | typeof searchApi
+  | typeof serviceCalendarApi
+  | typeof slaPolicyApi
   | typeof taskRelationApi
   | typeof externalLinkApi
   | typeof factorStatusApi
@@ -1991,6 +2052,9 @@ export type AppType =
   | typeof localFactorPolicyApi
   | typeof resetMfaApi
   | typeof usersApi
+  | typeof identityConnectionAdminApi
+  | typeof scimAdminApi
+  | typeof scimProtocolApi
   | typeof workflowApi
   | typeof workflowRuleApi
   | typeof workItemApi

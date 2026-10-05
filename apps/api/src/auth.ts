@@ -20,6 +20,11 @@ import { and, count, eq, ne, sql } from "drizzle-orm";
 import { appendAuditLog } from "./audit/audit-writer";
 import { loadLocalFactorState } from "./auth/local-factor-service";
 import db, { schema } from "./database";
+import {
+  bindTwoFactorOidcSession,
+  identityOidcPlugin,
+  OIDC_PENDING_SESSION_COOKIE,
+} from "./identity/oidc-login";
 import { notifyCurrentInstanceAdminsOfAuditFailure } from "./instance/observability/audit-failure-notifier";
 import {
   logTaskDesk,
@@ -228,6 +233,7 @@ function createAuth(portal: AuthPortal) {
       },
     },
     plugins: [
+      identityOidcPlugin(portal),
       // anonymous() guest sign-in removed in #6. kaneo enabled it BY DEFAULT —
       // it was opt-OUT via DISABLE_GUEST_ACCESS. It minted a real user row, which
       // also let a guest arriving first consume the zero-user first-run window and
@@ -383,6 +389,12 @@ function createAuth(portal: AuthPortal) {
           type: "string",
           required: false,
           input: false,
+        },
+        identityConnectionId: {
+          type: "string",
+          required: false,
+          input: false,
+          returned: false,
         },
       },
     },
@@ -770,6 +782,58 @@ function createAuth(portal: AuthPortal) {
           .update(schema.sessionTable)
           .set({ portal })
           .where(eq(schema.sessionTable.id, newSession.session.id));
+
+        if (factorVerifiedEndpoint) {
+          const factorCookie = ctx.context.createAuthCookie("two_factor");
+          let challengeId: string | null = null;
+          try {
+            const value = await ctx.getSignedCookie(
+              factorCookie.name,
+              ctx.context.secret,
+            );
+            challengeId = typeof value === "string" ? value : null;
+          } catch {
+            challengeId = null;
+          }
+          const sourceCookie = ctx.context.createAuthCookie(
+            OIDC_PENDING_SESSION_COOKIE,
+          );
+          let sourceMarker: string | null = null;
+          try {
+            const value = await ctx.getSignedCookie(
+              sourceCookie.name,
+              ctx.context.secret,
+            );
+            sourceMarker = typeof value === "string" ? value : null;
+          } catch {
+            sourceMarker = null;
+          }
+          const provenance = await bindTwoFactorOidcSession({
+            challengeId,
+            sourceMarker,
+            sessionId: newSession.session.id,
+            userId: newSession.user.id,
+            portal,
+          });
+          if (provenance === "invalid") {
+            await ctx.context.internalAdapter.deleteSession(
+              newSession.session.token,
+            );
+            deleteSessionCookie(ctx, true);
+            ctx.setCookie(sourceCookie.name, "", {
+              ...sourceCookie.attributes,
+              maxAge: 0,
+            });
+            ctx.context.setNewSession(null);
+            return;
+          }
+          if (sourceMarker) {
+            ctx.setCookie(sourceCookie.name, "", {
+              ...sourceCookie.attributes,
+              maxAge: 0,
+            });
+          }
+        }
 
         if (
           ctx.path.startsWith("/sign-up") ||

@@ -4,7 +4,11 @@ import {
   buildGeneratedRouteUrl,
   DEFAULT_WORK_ITEM_LIST_SEARCH,
   parseGeneratedRouteUrl,
-  parseGodModeUsersSearch,
+  parseIdentityConnectionEventsSearch,
+  parseIdentityConnectionEventsSearchFromQueryString,
+  parsePendingActionsSearch,
+  parseServiceCalendarListSearchFromQueryString,
+  parseSlaPolicyListSearch,
   parseWorkItemListSearch,
   parseWorkItemListSearchFromQueryString,
   routes,
@@ -12,6 +16,7 @@ import {
   WORK_ITEM_SORT_DIRECTIONS,
   WORK_ITEM_SORT_FIELDS,
 } from "./routes";
+import { parseCalendarEditorSearch } from "./service-calendar-form";
 
 describe("routes.workItemList", () => {
   it("round-trips every sort field and direction through build -> parse", () => {
@@ -139,6 +144,21 @@ describe("G5 route metadata", () => {
   });
 });
 
+describe("pending action URLs", () => {
+  it("keeps list pagination in the URL and builds the approval path", () => {
+    expect(routes.pendingActions.build({ cursor: "next/page" })).toBe(
+      "/agent/settings/profile/pending-actions?cursor=next%2Fpage",
+    );
+    expect(parsePendingActionsSearch({ cursor: "next/page" })).toEqual({
+      cursor: "next/page",
+    });
+    expect(parsePendingActionsSearch({ cursor: "" })).toEqual({});
+    expect(routes.pendingAction.build({ id: "action/one" })).toBe(
+      "/agent/settings/profile/pending-actions/action%2Fone",
+    );
+  });
+});
+
 describe("routes.workItemDetail", () => {
   it("builds the future detail path with the work item key", () => {
     expect(routes.workItemDetail.build({ key: "PROJ-123" })).toBe(
@@ -153,37 +173,83 @@ describe("routes.workItemDetail", () => {
   });
 });
 
-describe("routes.godModeUsers", () => {
-  it("round-trips filters, cursor and selected account in URL state", () => {
-    const url = routes.godModeUsers.build({
-      q: " Alice Example ",
-      side: "staff",
-      active: "false",
-      organisationId: "org-1",
-      cursor: "eyJ2IjoxfQ",
-      user: "user/2",
-    });
-    const parsed = parseGodModeUsersSearch(
-      Object.fromEntries(new URLSearchParams(url.split("?")[1])),
-    );
-    expect(parsed).toEqual({
-      q: "Alice Example",
-      side: "staff",
-      active: "false",
-      organisationId: "org-1",
-      cursor: "eyJ2IjoxfQ",
-      user: "user/2",
-    });
+describe("routes.serviceCalendars", () => {
+  it("builds the list route named by the screen inventory", () => {
+    expect(routes.serviceCalendars.build()).toBe("/agent/settings/calendars");
   });
 
-  it("drops malformed values and bounds user-controlled search text", () => {
+  it("round-trips one opaque cursor through URL encoding without page history", () => {
+    const search = { cursor: "cursor/a+b?=" };
+    const url = routes.serviceCalendars.build(search);
     expect(
-      parseGodModeUsersSearch({
-        q: ` ${"x".repeat(220)} `,
-        side: "internal",
-        active: "yes",
-        cursor: "",
+      parseServiceCalendarListSearchFromQueryString(url.split("?")[1] ?? ""),
+    ).toEqual(search);
+    expect(url).not.toContain("history=");
+  });
+
+  it("preserves the editor id and preview year in its URL", () => {
+    const url = routes.serviceCalendarEditor.build({ id: "cal/one" }, 2026);
+    expect(url).toBe("/agent/settings/calendars/cal%2Fone?year=2026");
+    expect(
+      parseCalendarEditorSearch({
+        year: new URL(url, "https://taskdesk.invalid").searchParams.get("year"),
       }),
-    ).toEqual({ q: "x".repeat(200) });
+    ).toEqual({ year: 2026 });
+  });
+
+  it("does not add search state when the year is not supplied", () => {
+    expect(routes.serviceCalendarEditor.build({ id: "new" })).toBe(
+      "/agent/settings/calendars/new",
+    );
+  });
+});
+
+describe("routes.slaPolicies", () => {
+  it("round-trips the list cursor and editor id through registered route builders", () => {
+    const url = routes.slaPolicies.build({ cursor: "opaque/a+b" });
+    expect(url).toBe("/agent/settings/sla-policies?cursor=opaque%2Fa%2Bb");
+    expect(
+      parseSlaPolicyListSearch({
+        cursor: new URL(url, "https://taskdesk.invalid").searchParams.get(
+          "cursor",
+        ),
+      }),
+    ).toEqual({ cursor: "opaque/a+b" });
+    expect(routes.slaPolicyEditor.build({ id: "policy/one" })).toBe(
+      "/agent/settings/sla-policies/policy%2Fone",
+    );
+  });
+});
+
+describe("routes.identityConnections", () => {
+  it("keeps the God Mode list, create form and connection editor directly addressable", () => {
+    expect(routes.identityConnections.build()).toBe("/god-mode/authentication");
+    expect(routes.identityConnectionCreate.build()).toBe(
+      "/god-mode/authentication/new",
+    );
+    expect(
+      routes.identityConnectionSettings.build({ id: "connection/a" }),
+    ).toBe("/god-mode/authentication/connection%2Fa");
+    const eventUrl = routes.identityConnectionSettings.build(
+      { id: "connection/a" },
+      { eventsCursor: "opaque/a+b" },
+    );
+    expect(eventUrl).toBe(
+      "/god-mode/authentication/connection%2Fa?eventsCursor=opaque%2Fa%2Bb",
+    );
+    expect(
+      parseIdentityConnectionEventsSearchFromQueryString(
+        eventUrl.split("?")[1] ?? "",
+      ),
+    ).toEqual({ eventsCursor: "opaque/a+b" });
+    expect(
+      parseIdentityConnectionEventsSearch({ eventsCursor: "x".repeat(513) }),
+    ).toEqual({ eventsCursor: undefined });
+    expect(generatedRouteMetadata.agent).toContain(
+      routes.identityConnections.path,
+    );
+    expect(generatedRouteMetadata.agent).toContain(
+      routes.identityConnectionSettings.path,
+    );
   });
 });

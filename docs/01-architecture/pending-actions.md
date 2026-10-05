@@ -76,21 +76,6 @@ thing that is hashed or executed.
   `pending`, writes `pending_action.requested` to the audit log, and responds **`202
   Accepted`** with `{ pendingActionId, action, summary, confirmation, expiresAt,
   approveUrl }`. **Nothing is deleted at this point**, whatever the client.
-- `PA-2a` God Mode person deactivation is a distinct state-changing action, not a deletion:
-  `action = 'user_deactivation'`, `target_type = 'person'`, one person id, and fixed route
-  `POST /api/instance/users/{id}/deactivate`. The session-only elevated route returns `202`
-  without changing account state. The server resolves the linked account and captures its
-  current email only in the allowlisted summary; the canonical payload binds the exact person
-  id and route. The confirmation is always `typed_name_step_up` and the approval body carries
-  the exact current account email plus the PA-15 token bound to this action. At execution the
-  server locks and re-reads person and account, re-evaluates the registered route policy,
-  requires the same target person to remain active and the supplied email to equal the
-  current account email, and consumes the one-use token in the same transaction as IP-15.
-  A mismatch invalidates the pending action without changing lifecycle state. The executor
-  uses server-selected `end_memberships`; SCIM continues to use its connection-selected
-  lifecycle policy. Success revokes current sessions and existing native personal API keys,
-  retires external and direct grants, recomputes effective memberships, preserves authored
-  history, and never deletes the person or account. No last-administrator guard is added.
 - `PA-3` A **web-UI** request opens the approval dialog immediately in the same browser
   session, rendered from the server's `summary` (never from client state). To the person it
   is a confirm dialog; underneath it is `PA-6`.
@@ -139,15 +124,6 @@ thing that is hashed or executed.
      the affected count, step-up token present and bound to this action where required;
   5. marks the action `approved`, executes **exactly the stored targets**, marks it
      `executed` (or `failed` with the error), and writes the audit rows.
-  The approval route's strict request body is action-specific. For `user_deactivation`, it
-  is `{ "typedEmail": "the exact current account email" }`; the single-use step-up token is
-  supplied in `X-TaskDesk-Step-Up-Token`, never in the URL or audit payload. The email is
-  rechecked under the execution locks, not trusted from the earlier summary. An inactive,
-  missing, newly unlinked, or email-changed target becomes `invalidated` with the existing
-  `version_changed` reason. The PA-15 token must name this pending-action id/hash and the
-  requester's current person/session; it is consumed exactly once in the execution
-  transaction. The requester and target may be the same person only if the current route
-  policy explicitly allows it; this route does not add a separate self-deactivation rule.
 - `PA-7` **Single-use and exact.** An approved action cannot be replayed, cannot be applied
   to another resource, and cannot be applied when the payload, targets or scope differ from
   what was approved — the hash comparison in `PA-6` is the mechanism, not a convention.
@@ -196,8 +172,11 @@ thing that is hashed or executed.
   session/person-bound challenge and confirmation. `POST /api/me/step-up/challenges`
   (`authenticated + self`, session-only) creates a five-minute challenge for either the
   current requester's pending action or an explicitly registered operation. The operation
-  allowlist is `metrics_token_rotate`, `oidc_group_mapping_create`,
-  `oidc_group_mapping_update`, and `mfa_reset`. Pending-action binding uses its existing `pending_action.id`
+  allowlist is `metrics_token_rotate`, `identity_connection_create`,
+  `identity_connection_configure`, `oidc_group_mapping_create`,
+  `oidc_group_mapping_update`, `scim_admin_update`, `scim_token_rotate`,
+  `scim_token_revoke`, `mfa_reset`, and `instance_admin_grant`. Pending-action binding
+  uses its existing `pending_action.id`
   and `payload_hash`; operation binding uses the exact fixed route key, operation key,
   expected resource version and server-computed canonical request-binding hash. The client
   cannot choose a route or submit a hash. The response contains an opaque challenge id and a
@@ -229,27 +208,52 @@ thing that is hashed or executed.
   { "kind": "operation", "operation": "metrics_token_rotate", "version": 7 }
   { "kind": "operation", "operation": "mfa_reset", "userId": "...",
     "verificationNote": "..." }
-  { "kind": "operation", "operation": "instance_admin_grant",
-    "targetUserId": "..." }
+  { "kind": "operation", "operation": "identity_connection_create",
+    "request": { "portalScope": "agent", "organisationId": null,
+      "defaultWorkspaceId": null, "displayName": "Support sign-in",
+      "tenantId": "00000000-0000-4000-8000-000000000001",
+      "clientId": "00000000-0000-4000-8000-000000000002",
+      "clientSecret": "<submitted once>", "scopes": [],
+      "claimMapping": { "version": 1, "displayName": "name" },
+      "domainBindings": [],
+      "jitPolicy": { "enabled": false, "default_role_id": null,
+        "required_entra_app_role": "TaskDesk.User" }, "maxRoleRank": 10 } }
+  { "kind": "operation", "operation": "identity_connection_configure",
+    "connectionId": "...", "request": { "configVersion": 7, "enabled": false } }
   { "kind": "operation", "operation": "oidc_group_mapping_create",
     "connectionId": "...", "request": { "configVersion": 7, "externalGroupId": "...", "roleId": "...", "scope": "workspace", "scopeId": "..." } }
   { "kind": "operation", "operation": "oidc_group_mapping_update",
     "connectionId": "...", "mappingId": "...",
     "request": { "configVersion": 7, "enabled": false } }
+  { "kind": "operation", "operation": "scim_admin_update",
+    "connectionId": "...",
+    "request": { "configVersion": 7, "kind": "mapping_update",
+      "mappingId": "...", "enabled": false } }
+  { "kind": "operation", "operation": "scim_token_rotate",
+    "connectionId": "...", "version": 7 }
+  { "kind": "operation", "operation": "scim_token_revoke",
+    "connectionId": "...", "version": 7 }
   ```
+
+  The proof request repeats the exact same validated `request` object for its challenge; the
+  create body above is not abbreviated or replaced with a client-computed digest.
 
   For `metrics_token_rotate`, the server requires current `instance:admin` and a matching
   current `observability_config_version`, then hashes the canonical body bytes defined in
-  [api-design.md](api-design.md#observability-administration-and-step-up). For either OIDC
-  mapping operation, it requires current `instance:admin`, session-only authentication, the
-  exact allowlisted route and a connection/mapping pair that resolves to that route; it
-  checks the current `identity_connection.config_version` against `request.configVersion`
-  (stored as `expected_version`) and validates the strict request against the persisted
-  connection and mapping before issuing a challenge. The canonical request-binding hash
-  covers the fixed route key, the
-  path `connectionId` and (for update) `mappingId`, and the server-canonical serialization
-  of the complete validated request body. The client supplies neither a route key nor a
-  hash. For a pending action, it verifies current requester ownership and pending state and
+  [api-design.md](api-design.md#observability-administration-and-step-up). For identity
+  connection create/configure, either OIDC mapping operation, or SCIM administration, it
+  requires current
+  `instance:admin`, session-only authentication, the exact allowlisted route and a
+  connection with any variant-specific mapping that belongs to it. Connection create uses
+  fixed initial version `1`; connection configure and the other connection operations check
+  the current `identity_connection.config_version` against `request.configVersion` or
+  `version` (stored as `expected_version`) and validate the strict request against the persisted
+  connection and mapping, or SCIM child and selected mapping when the SCIM variant has one,
+  before issuing a challenge. The canonical request-binding hash covers the fixed route key,
+  path `connectionId`, OIDC path `mappingId` where applicable, and the server-canonical
+  serialization of the complete validated request body. The SCIM mapping id is inside that
+  strict body. The client supplies neither a route key nor a hash. For a pending action,
+  it verifies current requester ownership and pending state and
   takes the existing payload hash itself. The no-store response is `{challengeId, challengeNonce, expiresAt,
   reauthenticationMethods}`; the nonce is 32 random bytes as unpadded 43-character
   base64url. The step-up request repeats the binding to prevent completing a different
@@ -262,6 +266,15 @@ thing that is hashed or executed.
   { "kind": "operation", "operation": "oidc_group_mapping_update",
     "connectionId": "...", "mappingId": "...",
     "request": { "configVersion": 7, "enabled": false },
+    "challengeId": "...", "challengeNonce": "...",
+    "proof": { "method": "password", "value": "..." } }
+  { "kind": "operation", "operation": "scim_admin_update",
+    "connectionId": "...",
+    "request": { "configVersion": 7, "kind": "settings", "enabled": false },
+    "challengeId": "...", "challengeNonce": "...",
+    "proof": { "method": "password", "value": "..." } }
+  { "kind": "operation", "operation": "scim_token_rotate",
+    "connectionId": "...", "version": 7,
     "challengeId": "...", "challengeNonce": "...",
     "proof": { "method": "password", "value": "..." } }
   ```
@@ -279,12 +292,33 @@ thing that is hashed or executed.
   | --- | --- | --- |
   | `metrics_token_rotate` | `POST /api/instance/observability/metrics-token/rotate` | `observability_config_version` |
   | `mfa_reset` | `POST /api/instance/users/{id}/reset-mfa` | fixed operation version `1` |
+  | `identity_connection_create` | `POST /api/instance/identity-connections` | fixed initial version `1` |
+  | `identity_connection_configure` | `PATCH /api/instance/identity-connections/{id}` | `identity_connection.config_version` |
   | `oidc_group_mapping_create` | `POST /api/instance/identity-connections/{id}/oidc-group-mappings` | `identity_connection.config_version` |
   | `oidc_group_mapping_update` | `PATCH /api/instance/identity-connections/{id}/oidc-group-mappings/{mappingId}` | `identity_connection.config_version` |
+  | `scim_admin_update` | `PATCH /api/instance/identity-connections/{id}/scim` | `identity_connection.config_version` |
+  | `scim_token_rotate` | `POST /api/instance/identity-connections/{id}/scim/rotate-token` | `identity_connection.config_version` |
+  | `scim_token_revoke` | `POST /api/instance/identity-connections/{id}/scim/revoke-token` | `identity_connection.config_version` |
 
-  OIDC mapping challenge and completion requests carry the exact connection id, mapping id
-  where applicable, and strict operation body; the service re-resolves them and checks that
-  the mapping belongs to the named connection. The step-up request repeats the binding.
+  OIDC mapping and SCIM administration challenge and completion requests carry the exact
+  connection id and strict operation body; the OIDC mapping id is a separate path id, while
+  the SCIM mapping id, when applicable, is inside its validated body. SCIM token operations
+  carry only the connection id and positive expected `version`; their fixed route is part of
+  the server-side binding. The service re-resolves
+  both resources and checks that each mapping belongs to the named connection. The step-up
+  request repeats the binding.
+  For either SCIM token operation, the service requires current `instance:admin`, a current
+  agent session, the exact operation route and connection id, and a strict body containing
+  only the positive safe-integer `version`. It checks that the connection and SCIM child
+  exist and that `identity_connection.config_version` still equals `version` before issuing
+  a challenge. The binding hash covers the fixed route key, connection id and canonical
+  UTF-8 `{"version":<base-10 integer>}`. Rotation and revocation advance the same parent
+  version exactly once. Rotation disables SCIM until the administrator explicitly
+  re-enables it after updating the upstream bearer; revocation also leaves it disabled. Both
+  operations consume proof atomically with the parent CAS and secret-hash mutation. A stale
+  version leaves the proof unused. Rotation returns the random bearer once with no-store;
+  revoke returns only the new safe version. Neither raw tokens nor token prefixes/hashes
+  enter audit, provisioning-event detail, logs or read DTOs.
   Each protected route uses `X-TaskDesk-Step-Up-Token` and recomputes the request-binding
   hash from the loaded path parameters and server-validated canonical body. In one database
   transaction, re-read the current active person and session, re-evaluate the exact
@@ -297,9 +331,11 @@ thing that is hashed or executed.
 
   For metrics rotation, the route/body canonicalization remains as specified in
   [api-design.md](api-design.md#observability-administration-and-step-up). For OIDC mapping
-  writes, the canonical request envelope and field ordering are specified in
-  [api-design.md](api-design.md#oidc-group-mapping-administration). No operation may reuse
-  another operation's proof, and no session-wide freshness window is introduced.
+  and SCIM administration writes, the canonical request envelopes and field ordering are
+  specified in [api-design.md](api-design.md#oidc-group-mapping-administration) and
+  [api-design.md](api-design.md#scim-administration-patch--issue-561-owner-contract).
+  No operation may reuse another operation's proof, and no session-wide freshness window
+  is introduced.
 
   For `mfa_reset`, both challenge and proof repeat the target user id and exact validated
   `verificationNote`. The canonical body hash covers the fixed route, operation, fixed
@@ -359,6 +395,18 @@ thing that is hashed or executed.
   replay. Never record proof, nonce, token/hash, or arbitrary body.
   `pending_action.step_up_token_id` records the consumed confirmation row id, not its secret.
 
+  God Mode person deactivation uses the dedicated `user_deactivation` action on exactly one
+  `person` target. Its server-selected confirmation is `typed_name_step_up`; the typed value
+  is the target account's exact current email, supplied as `typedName` to approval, while the
+  PA-15 token is sent in `X-TaskDesk-Step-Up-Token`. The action payload binds the person id
+  and fixed route `POST /api/instance/users/{id}/deactivate`; the allowlisted summary carries
+  the current email for confirmation. Requesting creates no lifecycle mutation. Approval
+  re-reads and locks the current person/user, requires the same active person and exact
+  unchanged email, re-evaluates current instance-admin authority, and consumes the token
+  bound to this pending-action id in the same transaction as IP-15 `end_memberships`, the
+  terminal action state, audit rows, and outbox event. A target/email/authority mismatch
+  leaves the action unexecuted and requires a fresh request when its stored target is stale.
+
 ## Confirmation levels
 
 The server decides the required confirmation from `target_type` and `action`; the client
@@ -373,8 +421,8 @@ cannot lower it. The dialog always shows the **exact target** and the **action**
 | Project | Affected work items, members, attachments, integrations; recovery and purge behaviour | **Typed project key or exact name + step-up** |
 | Workspace, organisation | Full operational and security impact | **Typed exact name + step-up** |
 | API key, webhook, identity connection / provider | Who and what depends on it; what stops working | **Typed exact name + step-up** |
-| God Mode person deactivation (`user_deactivation`) | Current account email; session/key revocation, grant retirement, membership ending, and preserved history | **Typed exact current email + step-up** (`typed_name_step_up`), `instance:admin` |
 | Hard purge (`PA-13`) | What will be irrecoverably removed; legal-hold and retention check result | **Typed exact name + step-up**, `instance:admin` |
+| God Mode person deactivation | Exact current account email and IP-15 lifecycle impact | **Typed current email + step-up** (`typed_name_step_up`) |
 | MCP destructive that is not a deletion (`PA-14`: `decide_approval`, bulk > 50 items) | The decision or the batch, and the work items it touches | Explicit click |
 | **Any other single deletable record** — role (with its holders reassigned, `RL-8`), custom field (`CF-8`), team, service calendar, automation rule, time entry, shared or team saved view, label, relation | Exact target and its dependants | Explicit click |
 
@@ -428,7 +476,6 @@ POST    /api/me/step-up/challenges                       authenticated + self, s
 POST    /api/me/step-up                                   authenticated + self, session-only  (PA-15)
 GET     /api/workspaces/{id}/pending-actions              workspace:manage_settings (read-only)
 POST    /api/instance/purge                               instance:admin  E  (PA-13)
-POST    /api/instance/users/{id}/deactivate               instance:admin  E, session-only → `202` `user_deactivation`
 ```
 
 The self list returns only the caller's `pending` actions, ordered by

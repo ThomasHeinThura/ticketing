@@ -1,3 +1,8 @@
+import {
+  DEFAULT_IDENTITY_CLAIM_MAPPING,
+  mapIdentityProfile,
+} from "./claim-mapping.js";
+import { validateEntraAdmission } from "./jit-policy.js";
 import type {
   AllowedRole,
   ConnectionValidationResult,
@@ -91,11 +96,27 @@ export function normaliseEntraClaims(
   claims: VerifiedEntraClaims,
   connection: IdentityConnectionContext,
   domainOwners: readonly IdentityDomainOwner[],
+  options: { claimMapping?: unknown; jitPolicy: unknown },
 ): IdentityClaimResult {
+  const profile = mapIdentityProfile(
+    claims,
+    options.claimMapping ?? DEFAULT_IDENTITY_CLAIM_MAPPING,
+  );
+  if (!profile.ok) return { ok: false, reason: "invalid_claim_mapping" };
   if (claims.tid !== connection.tenantId)
     return { ok: false, reason: "tenant_mismatch" };
   if (claims.iss !== connection.issuer)
     return { ok: false, reason: "issuer_mismatch" };
+  const admission = validateEntraAdmission(claims, options.jitPolicy);
+  if (!admission.ok) {
+    return {
+      ok: false,
+      reason:
+        admission.reason === "invalid_policy"
+          ? "invalid_admission_policy"
+          : admission.reason,
+    };
+  }
   if (typeof claims.oid !== "string" || claims.oid.length === 0) {
     return { ok: false, reason: "invalid_subject" };
   }
@@ -174,6 +195,7 @@ export function normaliseEntraClaims(
       address,
       addressUsed,
       groupObjectIds,
+      ...(profile.displayName ? { displayName: profile.displayName } : {}),
     },
   };
 }
@@ -288,10 +310,12 @@ function parseScimUserFields(
     "schemas",
     "externalId",
     "userName",
+    "displayName",
     "name",
     "active",
     "title",
     "preferredLanguage",
+    "locale",
     "emails",
     "urn:ietf:params:scim:schemas:extension:enterprise:2.0:User",
   ]);
@@ -335,10 +359,20 @@ function parseScimUserFields(
       return { ok: false, reason: "invalid_resource" };
     result.title = input.title;
   }
+  if (input.displayName !== undefined) {
+    if (typeof input.displayName !== "string")
+      return { ok: false, reason: "invalid_resource" };
+    result.displayName = input.displayName;
+  }
   if (input.preferredLanguage !== undefined) {
     if (typeof input.preferredLanguage !== "string")
       return { ok: false, reason: "invalid_resource" };
     result.preferredLanguage = input.preferredLanguage;
+  }
+  if (input.locale !== undefined) {
+    if (typeof input.locale !== "string")
+      return { ok: false, reason: "invalid_resource" };
+    result.locale = input.locale;
   }
   if (input.name !== undefined) {
     if (!isRecord(input.name)) return { ok: false, reason: "invalid_resource" };
@@ -374,10 +408,15 @@ function parseScimUserFields(
       )
     )
       return { ok: false, reason: "invalid_resource" };
-    const primaryEmail = input.emails.find(
+    const primaryEmails = input.emails.filter(
       (email) => isRecord(email) && email.primary === true,
     );
-    const selectedEmail = primaryEmail ?? input.emails[0];
+    if (primaryEmails.length > 1) {
+      return { ok: false, reason: "invalid_resource" };
+    }
+    const selectedEmail =
+      primaryEmails[0] ??
+      (input.emails.length === 1 ? input.emails[0] : undefined);
     if (selectedEmail !== undefined) {
       if (!isRecord(selectedEmail) || typeof selectedEmail.value !== "string")
         return { ok: false, reason: "invalid_resource" };

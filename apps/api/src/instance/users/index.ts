@@ -6,6 +6,7 @@ import { loadLocalFactorState } from "../../auth/local-factor-service";
 import { consumeInstanceAdminGrantProof } from "../../auth/step-up-service";
 import db, { schema } from "../../database";
 import { apiRouter, createRoute, jsonResponse, z } from "../../openapi";
+import { createPendingAction } from "../../pending-action/service";
 import { setShadowLegacyAuthorization } from "../../permissions/shadow-context";
 import { normaliseTraceId } from "../../permissions/shadow-middleware";
 import { requireSessionOnly } from "../../utils/require-session-only";
@@ -181,6 +182,37 @@ const signOutRoute = createRoute({
     404: jsonResponse("User not found", errorSchema),
   },
 });
+const deactivateRoute = createRoute({
+  method: "post",
+  operationId: "requestInstanceUserDeactivation",
+  path: "/users/{id}/deactivate",
+  tags: ["Instance"],
+  summary: "Request person deactivation",
+  middleware: [requireSessionOnly()] as const,
+  request: {
+    params: idParams,
+    body: {
+      required: true,
+      content: { "application/json": { schema: emptyBody } },
+    },
+  },
+  responses: {
+    202: jsonResponse(
+      "Person deactivation pending action",
+      z.object({
+        pendingActionId: z.string(),
+        action: z.literal("user_deactivation"),
+        confirmation: z.literal("typed_name_step_up"),
+        summary: z.record(z.string(), z.unknown()),
+        expiresAt: z.string().datetime(),
+        approveUrl: z.string(),
+      }),
+    ),
+    403: jsonResponse("Forbidden", errorSchema),
+    404: jsonResponse("User not found", errorSchema),
+    409: jsonResponse("A matching pending action already exists", errorSchema),
+  },
+});
 const grantAdminRoute = createRoute({
   method: "post",
   operationId: "grantInstanceAdmin",
@@ -203,7 +235,10 @@ const grantAdminRoute = createRoute({
     ),
     403: jsonResponse("Forbidden or step-up unavailable", errorSchema),
     404: jsonResponse("User not found", errorSchema),
-    409: jsonResponse("Target is not eligible", errorSchema),
+    409: jsonResponse(
+      "Instance setup is incomplete or the target is not eligible",
+      errorSchema,
+    ),
   },
 });
 
@@ -508,6 +543,59 @@ const routes = apiRouter()
     });
     setShadowLegacyAuthorization(c, "allowed");
     return c.json({ revokedSessions }, 200);
+  })
+  .openapi(deactivateRoute, async (c) => {
+    await requireGodMode(c);
+    const { id } = c.req.valid("param");
+    c.req.valid("json");
+    const [target] = await db
+      .select({
+        personId: schema.personTable.id,
+        active: schema.personTable.active,
+      })
+      .from(schema.personTable)
+      .where(eq(schema.personTable.userId, id))
+      .limit(1);
+    if (!target?.active)
+      throw new HTTPException(404, { message: "User not found" });
+    const [actor] = await db
+      .select({ id: schema.personTable.id })
+      .from(schema.personTable)
+      .where(
+        and(
+          eq(schema.personTable.userId, c.get("userId")),
+          eq(schema.personTable.active, true),
+          eq(schema.personTable.side, "staff"),
+        ),
+      )
+      .limit(1);
+    if (!actor) throw new HTTPException(403, { message: "Forbidden" });
+    const requested = await createPendingAction({
+      requesterPersonId: actor.id,
+      credentialType: "session",
+      credentialId: null,
+      origin: "web",
+      action: "user_deactivation",
+      routeKey: "POST /api/instance/users/{id}/deactivate",
+      targetType: "person",
+      targetIds: [target.personId],
+      workspaceId: null,
+      projectId: null,
+      organisationId: null,
+      actorId: c.get("userId"),
+      actorType: "person",
+      actorIp: c.req.header("x-forwarded-for") ?? null,
+      userAgent: c.req.header("user-agent") ?? null,
+    });
+    setShadowLegacyAuthorization(c, "allowed");
+    return c.json(
+      {
+        ...requested,
+        action: "user_deactivation" as const,
+        confirmation: "typed_name_step_up" as const,
+      },
+      202,
+    );
   })
   .openapi(grantAdminRoute, async (c) => {
     const session = await requireGodMode(c);

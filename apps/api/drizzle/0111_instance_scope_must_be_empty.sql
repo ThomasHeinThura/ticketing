@@ -1,0 +1,2 @@
+ALTER TABLE "outbox" DROP CONSTRAINT "outbox_scope_check";--> statement-breakpoint
+ALTER TABLE "outbox" ADD CONSTRAINT "outbox_scope_check" CHECK ("outbox"."workspace_id" is not null or ("outbox"."organisation_id" is null and "outbox"."kind" in ('pending_action.requested', 'pending_action.decided', 'pending_action.executed', 'identity.deprovisioned')));

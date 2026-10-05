@@ -9,7 +9,12 @@ export type StepUpOperation =
   | "mfa_reset"
   | "instance_admin_grant"
   | "oidc_group_mapping_create"
-  | "oidc_group_mapping_update";
+  | "oidc_group_mapping_update"
+  | "scim_admin_update"
+  | "scim_token_rotate"
+  | "scim_token_revoke"
+  | "identity_connection_create"
+  | "identity_connection_configure";
 
 export type StepUpAuditAction =
   | "auth.step_up_issued"
@@ -27,6 +32,14 @@ const operationRoutes: Record<StepUpOperation, string> = {
     "POST /api/instance/identity-connections/{id}/oidc-group-mappings",
   oidc_group_mapping_update:
     "PATCH /api/instance/identity-connections/{id}/oidc-group-mappings/{mappingId}",
+  scim_admin_update: "PATCH /api/instance/identity-connections/{id}/scim",
+  scim_token_rotate:
+    "POST /api/instance/identity-connections/{id}/scim/rotate-token",
+  scim_token_revoke:
+    "POST /api/instance/identity-connections/{id}/scim/revoke-token",
+  identity_connection_create: "POST /api/instance/identity-connections",
+  identity_connection_configure:
+    "PATCH /api/instance/identity-connections/{id}",
 };
 
 /**
@@ -57,6 +70,36 @@ export async function appendStepUpAudit(
         bindingKind: "operation",
         operation: input.operation,
         route: operationRoutes[input.operation],
+      },
+    });
+  } catch {
+    recordAuditWriteFailure("mutation");
+    await notifyCurrentInstanceAdminsOfAuditFailure("mutation");
+  }
+}
+
+export async function appendPendingActionStepUpAudit(
+  database: AuditDatabase,
+  input: {
+    action: StepUpAuditAction;
+    actorId: string;
+    personId: string;
+    pendingActionId: string;
+    traceId?: string | null;
+  },
+): Promise<void> {
+  try {
+    await appendAuditLog(database, {
+      action: input.action,
+      actorId: input.actorId,
+      actorType: "person",
+      traceId: normaliseTraceId(input.traceId ?? undefined),
+      workspaceId: null,
+      entityType: "pending_action",
+      entityId: input.pendingActionId,
+      after: {
+        bindingKind: "pending_action",
+        pendingActionId: input.pendingActionId,
       },
     });
   } catch {

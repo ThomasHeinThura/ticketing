@@ -49,6 +49,9 @@ export const AUDIT_ONLY_ACTIONS = new Set<string>([
   "membership.sees_all_granted",
   // `owner_team_id` or `parent_id` changed (rbac.md#reach).
   "project.reach_changed",
+  "sla_policy.created",
+  "sla_policy.updated",
+  "sla_policy.published",
   // Invitations.
   "invitation.sent",
   "invitation.redeemed",

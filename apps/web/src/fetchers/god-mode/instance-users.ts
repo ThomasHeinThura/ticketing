@@ -75,6 +75,18 @@ export async function signOutInstanceUser(id: string) {
   return response.json();
 }
 
+export async function requestInstanceUserDeactivation(id: string) {
+  const response = await detail.deactivate.$post({
+    param: { id },
+    json: {},
+  });
+  await ensureOk(response, "Unable to request person deactivation");
+  return (await response.json()) as InferResponseType<
+    typeof detail.deactivate.$post,
+    202
+  >;
+}
+
 export async function grantInstanceAdmin(input: { id: string; token: string }) {
   const response = await detail["grant-admin"].$post({
     param: { id: input.id },

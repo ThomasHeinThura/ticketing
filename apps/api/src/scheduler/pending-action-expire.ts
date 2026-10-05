@@ -2,7 +2,7 @@ import { createId } from "@paralleldrive/cuid2";
 import { sql } from "drizzle-orm";
 import { appendAuditLog } from "../audit/audit-writer";
 import db from "../database";
-import { enqueueOutboxEvent } from "../events/outbox";
+import { enqueueOutboxEvent, eventScope } from "../events/outbox";
 import { notifyCurrentInstanceAdminsOfAuditFailure } from "../instance/observability/audit-failure-notifier";
 import {
   logTaskDesk,
@@ -125,13 +125,11 @@ export async function expirePendingActions(): Promise<PendingActionExpireOutcome
               kind: "pending_action.decided",
               occurredAt: new Date(row.decided_at).toISOString(),
               actor: { type: "system", id: null, name: "TaskDesk system" },
-              scope: {
+              scope: eventScope({
                 workspaceId: row.workspace_id,
-                ...(row.organisation_id
-                  ? { organisationId: row.organisation_id }
-                  : {}),
-                ...(row.project_id ? { projectId: row.project_id } : {}),
-              },
+                organisationId: row.organisation_id,
+                projectId: row.project_id,
+              }),
               payload: {
                 key: row.id,
                 url: `/agent/settings/profile/pending-actions/${row.id}`,

@@ -26,7 +26,9 @@ interface DomainEvent<K extends EventKey, P> {
   kind: K;                  // one of the keys below
   occurredAt: string;       // ISO 8601, UTC
   actor: { type: 'person' | 'automation' | 'system' | 'api_key'; id: string | null; name: string };
-  scope: { organisationId?: string; workspaceId: string; projectId?: string };
+  scope:
+    | { organisationId?: string; workspaceId: string; projectId?: string }
+    | {};
   payload: P;               // per kind, below; always carries the entity's key and url
   causationId: string | null;   // the event that caused this one, if any
   depth: number;                // automation chain depth — AM-5 caps it at 5
@@ -38,6 +40,12 @@ The webhook envelope in [webhooks-and-api-keys.md](../03-features/webhooks-and-a
 is a projection of this: `id`, `event` (= `kind`), `occurredAt`, `instance`, `actor`,
 `data` (= `payload`). The internal-only fields (`causationId`, `depth`,
 `originAutomationId`) are never sent outward.
+
+Instance-scoped envelopes use an empty `scope`. Only `pending_action.requested`,
+`pending_action.decided`, `pending_action.executed`, and `identity.deprovisioned` may use it;
+all other event keys require a workspace scope. This lets person deactivation and its
+approval lifecycle remain instance-scoped even when the target has no workspace
+memberships. Instance-scoped events are not visible to workspace-scoped consumers.
 
 `actor.type` is the reason [`activity`](data-model.md) and [`audit_log`](data-model.md)
 carry `actor_type`: an automation acting, a scheduled job acting and an API key acting are
@@ -74,6 +82,14 @@ Columns: **A** — available as an automation trigger · **W** — deliverable b
 | `sla.breached` | `sla-scan` finds an **open** goal past due | ✅ | ✅ | ✅ | `metric`, `dueAt`, `breachedByMinutes` |
 | `sla.met` | The **transition into a `completed`-group state** (`WF-17`) finds the goal satisfied before its due time. Not `sla-scan` — an item that has just met its goal has `resolved_at` set and is outside the scan's candidate set | — | ✅ | — | `metric`, `metAt`, `marginMinutes` |
 | `sla.missed` | The same transition finds the goal already past its due time — "closed after target" ([sla.md](../03-features/sla.md)). The `missed` half of the pair `sla.met` completes; without it the sixth SLA state fires nothing | — | ✅ | — | `metric`, `dueAt`, `missedByMinutes` |
+
+### Service calendars
+
+| Key | Emitted when | A | W | N | Payload |
+| --- | --- | :-: | :-: | :-: | --- |
+| `service_calendar.created` | A calendar is created; its event envelope is inserted into `outbox` in the same transaction | — | — | — | `calendarId`, `workspaceId`, `name`, `url` |
+| `service_calendar.updated` | A calendar is updated; its event envelope is inserted into `outbox` in the same transaction | — | — | — | `calendarId`, `workspaceId`, `name`, `changedFields: [name\|timezone\|windows\|holidays]`, `url` |
+| `service_calendar.deleted` | Reserved; not emitted yet. EV-1 outbox support will emit after a service calendar is deleted; no delete route exists yet | — | — | — | `calendarId`, `workspaceId`, `name`, `url` |
 
 ### Approvals
 

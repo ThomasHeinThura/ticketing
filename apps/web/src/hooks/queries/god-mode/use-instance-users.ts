@@ -4,6 +4,7 @@ import {
   getInstanceUsers,
   grantInstanceAdmin,
   type InstanceUserFilters,
+  requestInstanceUserDeactivation,
   resetInstanceUserMfa,
   signOutInstanceUser,
   suspendInstanceUser,
@@ -51,6 +52,10 @@ export function useInstanceUserActions() {
     mutationFn: signOutInstanceUser,
     onSuccess: (_result, id) => refresh(id),
   });
+  const deactivate = useMutation({
+    mutationFn: requestInstanceUserDeactivation,
+    onSuccess: (_result, id) => refresh(id),
+  });
   const grantAdmin = useMutation({
     mutationFn: grantInstanceAdmin,
     onSuccess: (_result, input) => refresh(input.id),
@@ -60,5 +65,5 @@ export function useInstanceUserActions() {
     onSuccess: (_result, input) => refresh(input.id),
   });
 
-  return { suspend, unsuspend, signOut, grantAdmin, resetMfa };
+  return { suspend, unsuspend, signOut, deactivate, grantAdmin, resetMfa };
 }

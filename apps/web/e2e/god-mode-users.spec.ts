@@ -26,6 +26,7 @@ test("God Mode users directory supports filters and audited account actions", as
     },
   };
   const received: string[] = [];
+  let pendingActionState = "pending";
   await page.route("**/api/**", async (route) => {
     const request = route.request();
     const url = new URL(request.url());
@@ -110,6 +111,46 @@ test("God Mode users directory supports filters and audited account actions", as
     if (path === "/api/instance/users/staff-user-1" && method === "GET") {
       return json(user);
     }
+    if (path === "/api/me/pending-actions" && method === "GET") {
+      return json({
+        data:
+          pendingActionState === "pending"
+            ? [
+                {
+                  id: "pending-deactivation-1",
+                  action: "user_deactivation",
+                  origin: "web",
+                  targetType: "person",
+                  targetIds: ["person-1"],
+                  summary: { email: "taylor@example.test" },
+                  confirmation: "typed_name_step_up",
+                  state: "pending",
+                  createdAt: "2026-10-05T00:00:00.000Z",
+                  expiresAt: "2026-10-05T00:15:00.000Z",
+                },
+              ]
+            : [],
+        page: { nextCursor: null, hasMore: false },
+      });
+    }
+    if (
+      path === "/api/me/pending-actions/pending-deactivation-1" &&
+      method === "GET"
+    ) {
+      return json({
+        id: "pending-deactivation-1",
+        action: "user_deactivation",
+        origin: "web",
+        targetType: "person",
+        targetIds: ["person-1"],
+        summary: { email: "taylor@example.test" },
+        confirmation: "typed_name_step_up",
+        state: pendingActionState,
+        createdAt: "2026-10-05T00:00:00.000Z",
+        expiresAt: "2026-10-05T00:15:00.000Z",
+        invalidationReason: null,
+      });
+    }
     if (path === "/api/me/step-up/challenges" && method === "POST") {
       return json({
         challengeId: "challenge-fixture",
@@ -145,6 +186,39 @@ test("God Mode users directory supports filters and audited account actions", as
     if (path.endsWith("/sign-out") && method === "POST") {
       return json({ revokedSessions: 3 });
     }
+    if (path.endsWith("/deactivate") && method === "POST") {
+      return json(
+        {
+          pendingActionId: "pending-deactivation-1",
+          action: "user_deactivation",
+          confirmation: "typed_name_step_up",
+          summary: { personId: "person-1", email: user.email },
+          expiresAt: "2026-10-05T00:15:00.000Z",
+          approveUrl:
+            "/agent/settings/profile/pending-actions/pending-deactivation-1",
+        },
+        202,
+      );
+    }
+    if (
+      path === "/api/me/pending-actions/pending-deactivation-1/approve" &&
+      method === "POST"
+    ) {
+      const body = request.postDataJSON() as { typedName?: string };
+      if (body.typedName !== user.email) {
+        return json({ message: "confirmation_mismatch" }, 400);
+      }
+      pendingActionState = "executed";
+      user.person.active = false;
+      return json({ id: "pending-deactivation-1", state: "executed" });
+    }
+    if (
+      path === "/api/me/pending-actions/pending-deactivation-1/cancel" &&
+      method === "POST"
+    ) {
+      pendingActionState = "cancelled";
+      return json({ id: "pending-deactivation-1", state: "cancelled" });
+    }
     return json({ message: "Unexpected API request in this fixture" }, 500);
   });
 
@@ -160,9 +234,17 @@ test("God Mode users directory supports filters and audited account actions", as
     .getByRole("row")
     .filter({ hasText: "taylor@example.test" });
   await expect(userRow).toBeVisible();
+  await page.screenshot({
+    path: "/Users/heinthura/.codex/taskdesk-evidence/2026-10-05/p4-person-deactivation-b58/screens/instance-users-directory.png",
+    fullPage: true,
+  });
   await userRow.click();
   await expect(page).toHaveURL(/user=staff-user-1/);
   await expect(page.getByTestId("instance-user-details")).toBeVisible();
+  await page.screenshot({
+    path: "/Users/heinthura/.codex/taskdesk-evidence/2026-10-05/p4-person-deactivation-b58/screens/instance-user-details.png",
+    fullPage: true,
+  });
 
   await page.getByRole("button", { name: "Grant instance admin" }).click();
   await page.getByLabel("Authenticator code").fill("123456");
@@ -206,6 +288,41 @@ test("God Mode users directory supports filters and audited account actions", as
   await expect(page.getByTestId("instance-user-details")).toBeVisible();
   await expect(page.getByRole("status")).toContainText(
     "All current sessions for this account were signed out",
+  );
+  await page.getByRole("button", { name: "Deactivate person" }).click();
+  await page
+    .getByRole("button", { name: "Request person deactivation" })
+    .click();
+  await expect(page.getByRole("status")).toContainText(
+    "The account is unchanged until approval",
+  );
+  await page.getByRole("link", { name: "Review pending approval" }).click();
+  await expect(
+    page.getByRole("heading", { name: "Approve person deactivation" }),
+  ).toBeVisible();
+  await page.screenshot({
+    path: "/Users/heinthura/.codex/taskdesk-evidence/2026-10-05/p4-person-deactivation-b58/screens/pending-action-deactivation-approval.png",
+    fullPage: true,
+  });
+  await expect(
+    page.getByRole("definition").filter({ hasText: "taylor@example.test" }),
+  ).toBeVisible();
+  await page
+    .getByLabel("Type the exact current email")
+    .fill("taylor@example.test");
+  await page.getByLabel("Authenticator code").fill("123456");
+  await page.getByRole("button", { name: "Approve and deactivate" }).click();
+  await expect(page.getByRole("status")).toContainText(
+    "The approved deactivation completed",
+  );
+  expect(received).toContain(
+    "POST /api/instance/users/staff-user-1/deactivate",
+  );
+  expect(received).toContain(
+    "GET /api/me/pending-actions/pending-deactivation-1",
+  );
+  expect(received).toContain(
+    "POST /api/me/pending-actions/pending-deactivation-1/approve",
   );
   expect(received).toContain("GET /api/notification");
   expect(received).toContain(

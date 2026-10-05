@@ -1,6 +1,6 @@
 {
-	"id": "9158d1c4-2126-496b-b19d-ca611b06f7fd",
-	"prevId": "6dfb4b99-48e3-4caa-ab3e-75960ba6426f",
+	"id": "11a5625e-343f-4213-b08f-f6600a214714",
+	"prevId": "7a70257d-0005-4444-abc7-a7f0ed7a5f8a",
 	"version": "7",
 	"dialect": "postgresql",
 	"tables": {
@@ -3839,6 +3839,12 @@
 					"primaryKey": false,
 					"notNull": false
 				},
+				"sla_policy_id": {
+					"name": "sla_policy_id",
+					"type": "text",
+					"primaryKey": false,
+					"notNull": false
+				},
 				"default_comment_visibility": {
 					"name": "default_comment_visibility",
 					"type": "text",
@@ -3917,6 +3923,15 @@
 					"columnsFrom": ["workspace_id"],
 					"columnsTo": ["id"],
 					"onDelete": "cascade",
+					"onUpdate": "cascade"
+				},
+				"project_sla_policy_id_sla_policy_id_fk": {
+					"name": "project_sla_policy_id_sla_policy_id_fk",
+					"tableFrom": "project",
+					"tableTo": "sla_policy",
+					"columnsFrom": ["sla_policy_id"],
+					"columnsTo": ["id"],
+					"onDelete": "restrict",
 					"onUpdate": "cascade"
 				}
 			},
@@ -4340,7 +4355,13 @@
 				}
 			},
 			"compositePrimaryKeys": {},
-			"uniqueConstraints": {},
+			"uniqueConstraints": {
+				"service_calendar_workspace_id_id_unique": {
+					"name": "service_calendar_workspace_id_id_unique",
+					"nullsNotDistinct": false,
+					"columns": ["workspace_id", "id"]
+				}
+			},
 			"policies": {},
 			"checkConstraints": {},
 			"isRLSEnabled": false
@@ -4464,6 +4485,321 @@
 				"session_portal_allowed": {
 					"name": "session_portal_allowed",
 					"value": "\"session\".\"portal\" is null or \"session\".\"portal\" in ('agent', 'customer')"
+				}
+			},
+			"isRLSEnabled": false
+		},
+		"public.sla_goal": {
+			"name": "sla_goal",
+			"schema": "",
+			"columns": {
+				"id": {
+					"name": "id",
+					"type": "text",
+					"primaryKey": true,
+					"notNull": true
+				},
+				"workspace_id": {
+					"name": "workspace_id",
+					"type": "text",
+					"primaryKey": false,
+					"notNull": true
+				},
+				"version_id": {
+					"name": "version_id",
+					"type": "text",
+					"primaryKey": false,
+					"notNull": true
+				},
+				"metric": {
+					"name": "metric",
+					"type": "text",
+					"primaryKey": false,
+					"notNull": true
+				},
+				"work_item_type_id": {
+					"name": "work_item_type_id",
+					"type": "text",
+					"primaryKey": false,
+					"notNull": true
+				},
+				"priority": {
+					"name": "priority",
+					"type": "text",
+					"primaryKey": false,
+					"notNull": true
+				},
+				"target_minutes": {
+					"name": "target_minutes",
+					"type": "integer",
+					"primaryKey": false,
+					"notNull": true
+				}
+			},
+			"indexes": {},
+			"foreignKeys": {
+				"sla_goal_workspace_version_fk": {
+					"name": "sla_goal_workspace_version_fk",
+					"tableFrom": "sla_goal",
+					"tableTo": "sla_policy_version",
+					"columnsFrom": ["workspace_id", "version_id"],
+					"columnsTo": ["workspace_id", "id"],
+					"onDelete": "cascade",
+					"onUpdate": "no action"
+				},
+				"sla_goal_workspace_type_fk": {
+					"name": "sla_goal_workspace_type_fk",
+					"tableFrom": "sla_goal",
+					"tableTo": "work_item_type",
+					"columnsFrom": ["workspace_id", "work_item_type_id"],
+					"columnsTo": ["workspace_id", "id"],
+					"onDelete": "restrict",
+					"onUpdate": "no action"
+				}
+			},
+			"compositePrimaryKeys": {},
+			"uniqueConstraints": {
+				"sla_goal_version_metric_type_priority_unique": {
+					"name": "sla_goal_version_metric_type_priority_unique",
+					"nullsNotDistinct": false,
+					"columns": ["version_id", "metric", "work_item_type_id", "priority"]
+				}
+			},
+			"policies": {},
+			"checkConstraints": {
+				"sla_goal_target_minutes_positive": {
+					"name": "sla_goal_target_minutes_positive",
+					"value": "\"sla_goal\".\"target_minutes\" > 0"
+				},
+				"sla_goal_metric_allowed": {
+					"name": "sla_goal_metric_allowed",
+					"value": "\"sla_goal\".\"metric\" in ('first_response', 'resolution')"
+				},
+				"sla_goal_priority_allowed": {
+					"name": "sla_goal_priority_allowed",
+					"value": "\"sla_goal\".\"priority\" in ('low', 'medium', 'high', 'urgent')"
+				}
+			},
+			"isRLSEnabled": false
+		},
+		"public.sla_policy": {
+			"name": "sla_policy",
+			"schema": "",
+			"columns": {
+				"id": {
+					"name": "id",
+					"type": "text",
+					"primaryKey": true,
+					"notNull": true
+				},
+				"workspace_id": {
+					"name": "workspace_id",
+					"type": "text",
+					"primaryKey": false,
+					"notNull": true
+				},
+				"name": {
+					"name": "name",
+					"type": "text",
+					"primaryKey": false,
+					"notNull": true
+				},
+				"description": {
+					"name": "description",
+					"type": "text",
+					"primaryKey": false,
+					"notNull": false
+				},
+				"active_version_id": {
+					"name": "active_version_id",
+					"type": "text",
+					"primaryKey": false,
+					"notNull": false
+				},
+				"version": {
+					"name": "version",
+					"type": "integer",
+					"primaryKey": false,
+					"notNull": true,
+					"default": 1
+				},
+				"created_at": {
+					"name": "created_at",
+					"type": "timestamp with time zone",
+					"primaryKey": false,
+					"notNull": true,
+					"default": "now()"
+				},
+				"updated_at": {
+					"name": "updated_at",
+					"type": "timestamp with time zone",
+					"primaryKey": false,
+					"notNull": true,
+					"default": "now()"
+				}
+			},
+			"indexes": {},
+			"foreignKeys": {
+				"sla_policy_workspace_id_workspace_id_fk": {
+					"name": "sla_policy_workspace_id_workspace_id_fk",
+					"tableFrom": "sla_policy",
+					"tableTo": "workspace",
+					"columnsFrom": ["workspace_id"],
+					"columnsTo": ["id"],
+					"onDelete": "cascade",
+					"onUpdate": "cascade"
+				},
+				"sla_policy_active_version_id_sla_policy_version_id_fk": {
+					"name": "sla_policy_active_version_id_sla_policy_version_id_fk",
+					"tableFrom": "sla_policy",
+					"tableTo": "sla_policy_version",
+					"columnsFrom": ["active_version_id"],
+					"columnsTo": ["id"],
+					"onDelete": "restrict",
+					"onUpdate": "no action"
+				}
+			},
+			"compositePrimaryKeys": {},
+			"uniqueConstraints": {
+				"sla_policy_workspace_id_id_unique": {
+					"name": "sla_policy_workspace_id_id_unique",
+					"nullsNotDistinct": false,
+					"columns": ["workspace_id", "id"]
+				}
+			},
+			"policies": {},
+			"checkConstraints": {
+				"sla_policy_version_positive": {
+					"name": "sla_policy_version_positive",
+					"value": "\"sla_policy\".\"version\" > 0"
+				}
+			},
+			"isRLSEnabled": false
+		},
+		"public.sla_policy_version": {
+			"name": "sla_policy_version",
+			"schema": "",
+			"columns": {
+				"id": {
+					"name": "id",
+					"type": "text",
+					"primaryKey": true,
+					"notNull": true
+				},
+				"workspace_id": {
+					"name": "workspace_id",
+					"type": "text",
+					"primaryKey": false,
+					"notNull": true
+				},
+				"policy_id": {
+					"name": "policy_id",
+					"type": "text",
+					"primaryKey": false,
+					"notNull": true
+				},
+				"number": {
+					"name": "number",
+					"type": "integer",
+					"primaryKey": false,
+					"notNull": true
+				},
+				"calendar_id": {
+					"name": "calendar_id",
+					"type": "text",
+					"primaryKey": false,
+					"notNull": true
+				},
+				"at_risk_threshold_pct": {
+					"name": "at_risk_threshold_pct",
+					"type": "integer",
+					"primaryKey": false,
+					"notNull": true
+				},
+				"effective_from": {
+					"name": "effective_from",
+					"type": "timestamp with time zone",
+					"primaryKey": false,
+					"notNull": false
+				},
+				"created_at": {
+					"name": "created_at",
+					"type": "timestamp with time zone",
+					"primaryKey": false,
+					"notNull": true,
+					"default": "now()"
+				}
+			},
+			"indexes": {
+				"sla_policy_version_one_draft_unique": {
+					"name": "sla_policy_version_one_draft_unique",
+					"columns": [
+						{
+							"expression": "policy_id",
+							"isExpression": false,
+							"asc": true,
+							"nulls": "last"
+						}
+					],
+					"isUnique": true,
+					"where": "\"sla_policy_version\".\"effective_from\" is null",
+					"concurrently": false,
+					"method": "btree",
+					"with": {}
+				}
+			},
+			"foreignKeys": {
+				"sla_policy_version_workspace_policy_fk": {
+					"name": "sla_policy_version_workspace_policy_fk",
+					"tableFrom": "sla_policy_version",
+					"tableTo": "sla_policy",
+					"columnsFrom": ["workspace_id", "policy_id"],
+					"columnsTo": ["workspace_id", "id"],
+					"onDelete": "cascade",
+					"onUpdate": "no action"
+				},
+				"sla_policy_version_workspace_calendar_fk": {
+					"name": "sla_policy_version_workspace_calendar_fk",
+					"tableFrom": "sla_policy_version",
+					"tableTo": "service_calendar",
+					"columnsFrom": ["workspace_id", "calendar_id"],
+					"columnsTo": ["workspace_id", "id"],
+					"onDelete": "restrict",
+					"onUpdate": "no action"
+				}
+			},
+			"compositePrimaryKeys": {},
+			"uniqueConstraints": {
+				"sla_policy_version_workspace_policy_id_unique": {
+					"name": "sla_policy_version_workspace_policy_id_unique",
+					"nullsNotDistinct": false,
+					"columns": ["workspace_id", "policy_id", "id"]
+				},
+				"sla_policy_version_workspace_id_unique": {
+					"name": "sla_policy_version_workspace_id_unique",
+					"nullsNotDistinct": false,
+					"columns": ["workspace_id", "id"]
+				},
+				"sla_policy_version_policy_id_unique": {
+					"name": "sla_policy_version_policy_id_unique",
+					"nullsNotDistinct": false,
+					"columns": ["policy_id", "id"]
+				},
+				"sla_policy_version_policy_number_unique": {
+					"name": "sla_policy_version_policy_number_unique",
+					"nullsNotDistinct": false,
+					"columns": ["policy_id", "number"]
+				}
+			},
+			"policies": {},
+			"checkConstraints": {
+				"sla_policy_version_number_positive": {
+					"name": "sla_policy_version_number_positive",
+					"value": "\"sla_policy_version\".\"number\" > 0"
+				},
+				"sla_policy_version_threshold_allowed": {
+					"name": "sla_policy_version_threshold_allowed",
+					"value": "\"sla_policy_version\".\"at_risk_threshold_pct\" between 1 and 99"
 				}
 			},
 			"isRLSEnabled": false
@@ -5078,7 +5414,7 @@
 				},
 				"step_up_operation_route": {
 					"name": "step_up_operation_route",
-					"value": "\"step_up_confirmation\".\"operation_key\" is null\n        or (\"step_up_confirmation\".\"operation_key\" = 'metrics_token_rotate' and \"step_up_confirmation\".\"route_key\" = 'POST /api/instance/observability/metrics-token/rotate')\n        or (\"step_up_confirmation\".\"operation_key\" = 'oidc_group_mapping_create' and \"step_up_confirmation\".\"route_key\" = 'POST /api/instance/identity-connections/{id}/oidc-group-mappings')\n        or (\"step_up_confirmation\".\"operation_key\" = 'oidc_group_mapping_update' and \"step_up_confirmation\".\"route_key\" = 'PATCH /api/instance/identity-connections/{id}/oidc-group-mappings/{mappingId}')\n        or (\"step_up_confirmation\".\"operation_key\" = 'mfa_reset' and \"step_up_confirmation\".\"route_key\" = 'POST /api/instance/users/{id}/reset-mfa')\n        or (\"step_up_confirmation\".\"operation_key\" = 'instance_admin_grant' and \"step_up_confirmation\".\"route_key\" = 'POST /api/instance/users/{id}/grant-admin')"
+					"value": "\"step_up_confirmation\".\"operation_key\" is null\n        or (\"step_up_confirmation\".\"operation_key\" = 'metrics_token_rotate' and \"step_up_confirmation\".\"route_key\" = 'POST /api/instance/observability/metrics-token/rotate')\n        or (\"step_up_confirmation\".\"operation_key\" = 'oidc_group_mapping_create' and \"step_up_confirmation\".\"route_key\" = 'POST /api/instance/identity-connections/{id}/oidc-group-mappings')\n        or (\"step_up_confirmation\".\"operation_key\" = 'oidc_group_mapping_update' and \"step_up_confirmation\".\"route_key\" = 'PATCH /api/instance/identity-connections/{id}/oidc-group-mappings/{mappingId}')\n        or (\"step_up_confirmation\".\"operation_key\" = 'mfa_reset' and \"step_up_confirmation\".\"route_key\" = 'POST /api/instance/users/{id}/reset-mfa')"
 				},
 				"step_up_state_shape": {
 					"name": "step_up_state_shape",
@@ -7234,6 +7570,12 @@
 					"primaryKey": false,
 					"notNull": false
 				},
+				"sla_policy_version_id": {
+					"name": "sla_policy_version_id",
+					"type": "text",
+					"primaryKey": false,
+					"notNull": false
+				},
 				"first_response_at": {
 					"name": "first_response_at",
 					"type": "timestamp",
@@ -7487,6 +7829,15 @@
 					"onDelete": "restrict",
 					"onUpdate": "cascade"
 				},
+				"work_item_sla_policy_version_id_sla_policy_version_id_fk": {
+					"name": "work_item_sla_policy_version_id_sla_policy_version_id_fk",
+					"tableFrom": "work_item",
+					"tableTo": "sla_policy_version",
+					"columnsFrom": ["sla_policy_version_id"],
+					"columnsTo": ["id"],
+					"onDelete": "restrict",
+					"onUpdate": "no action"
+				},
 				"work_item_project_id_state_id_state_project_id_id_fk": {
 					"name": "work_item_project_id_state_id_state_project_id_id_fk",
 					"tableFrom": "work_item",
@@ -7705,6 +8056,15 @@
 					"tableFrom": "work_item_type",
 					"tableTo": "workflow",
 					"columnsFrom": ["workflow_id"],
+					"columnsTo": ["id"],
+					"onDelete": "restrict",
+					"onUpdate": "cascade"
+				},
+				"work_item_type_sla_policy_id_sla_policy_id_fk": {
+					"name": "work_item_type_sla_policy_id_sla_policy_id_fk",
+					"tableFrom": "work_item_type",
+					"tableTo": "sla_policy",
+					"columnsFrom": ["sla_policy_id"],
 					"columnsTo": ["id"],
 					"onDelete": "restrict",
 					"onUpdate": "cascade"
@@ -8337,6 +8697,12 @@
 					"primaryKey": false,
 					"notNull": false
 				},
+				"default_sla_policy_id": {
+					"name": "default_sla_policy_id",
+					"type": "text",
+					"primaryKey": false,
+					"notNull": false
+				},
 				"created_at": {
 					"name": "created_at",
 					"type": "timestamp",
@@ -8351,6 +8717,15 @@
 					"tableFrom": "workspace",
 					"tableTo": "organisation",
 					"columnsFrom": ["organisation_id"],
+					"columnsTo": ["id"],
+					"onDelete": "restrict",
+					"onUpdate": "cascade"
+				},
+				"workspace_default_sla_policy_id_sla_policy_id_fk": {
+					"name": "workspace_default_sla_policy_id_sla_policy_id_fk",
+					"tableFrom": "workspace",
+					"tableTo": "sla_policy",
+					"columnsFrom": ["default_sla_policy_id"],
 					"columnsTo": ["id"],
 					"onDelete": "restrict",
 					"onUpdate": "cascade"

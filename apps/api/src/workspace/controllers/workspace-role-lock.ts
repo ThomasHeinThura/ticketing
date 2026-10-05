@@ -5,7 +5,9 @@
  * Distinct from the namespaces already in use: `apps/api/src/project/controllers/
  * create-project.ts` / `reorder-projects.ts` use `1524`, `auth.ts`'s migration lock uses
  * `2026`, and `workspace-membership-lock.ts` uses `4_002`
- * (`WORKSPACE_MEMBERSHIP_LOCK_NAMESPACE`).
+ * (`WORKSPACE_MEMBERSHIP_LOCK_NAMESPACE`). Transactions that assign or remove a
+ * `workspace_member.role` reference acquire both namespaces in the fixed membership→role
+ * order in `workspace-role-assignment-lock.ts`.
  *
  * THE RACE THIS CLOSES. `workspace_role` now carries `UNIQUE (workspace_id, role)`
  * (migration `0051_workspace_role_unique.sql`, issue #118), so a duplicate-name INSERT

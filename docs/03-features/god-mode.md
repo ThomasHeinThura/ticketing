@@ -149,15 +149,18 @@ The most important screen. See [auth and identity](../01-architecture/auth-and-i
 - **Provisioning panel** per connection: OIDC group mappings use immutable group object ids
   with display-name snapshots; the separate SCIM panel holds endpoint URL, bearer token
   create / rotate / revoke (shown once; rotation invalidates the old token at once), allowed
-  resources, attribute mapping and SCIM group mappings. Every create/edit/enable validates
+  resources, the closed profile-only attribute-mapping editor and SCIM group mappings. Its
+  grammar and operation-bound writer are specified in the
+  [SCIM administration contract](../01-architecture/api-design.md#scim-administration-patch--issue-561-owner-contract).
+  Every create/edit/enable validates
   the connection portal and persisted organisation, target scope ownership, role side/rank,
   and forbidden capabilities. Every OIDC mapping create/edit/enable/disable is elevated,
   session-only and audited; its separate connection-scoped API uses a five-minute,
   single-use PA-15 operation binding. OIDC mapping selection/open state is represented in
-  the screen URL. Every SCIM administration PATCH is proposed as route-wide elevated and
-  session-only, but is not usable until issue [#561](https://github.com/ThomasHeinThura/ticketing/issues/561)
-  defines its strict DTO, parent-version CAS and dedicated PA-15 binding; a mounted write
-  fails closed with `403 step_up_unavailable` meanwhile. Disabling/changing an
+  the screen URL. Every SCIM administration PATCH is route-wide elevated, session-only and
+  bound to the strict [SCIM administration contract](../01-architecture/api-design.md#scim-administration-patch--issue-561-owner-contract),
+  parent-version CAS and dedicated PA-15 proof. A mounted route without the verifier fails
+  closed with `403 step_up_unavailable`. Disabling/changing an
   OIDC mapping retires only its grants and invalidates authority after
   commit. Re-enabling an OIDC mapping requires a later validated OIDC login through that
   connection with complete matching groups and current admission; SCIM cannot restore OIDC
@@ -251,6 +254,8 @@ inspectable. This is where "SMTP has been down for hours" is visible.
 Instance-wide feature flags, with a **lock** switch that prevents workspaces and projects
 from overriding. This is how editions are sold from one image. The flag list is
 [plugin-architecture.md § Feature toggles](../01-architecture/plugin-architecture.md#feature-toggles).
+The `GET/PATCH /api/instance/features` surface requires `instance:admin` and uses
+version-checked writes with an atomic audit record.
 
 ### Jobs
 
@@ -315,6 +320,10 @@ account; otherwise it contains only `id`, `side`, `organisationId`, `organisatio
 has passed). `GET /api/instance/users/{id}` returns the same allowlisted shape. Responses
 never include credentials, session identifiers, IP or user-agent data, raw auth roles, or
 ban reasons.
+
+Granting `instance:admin` remains available only after first-run setup is complete. A request
+made while setup is incomplete returns `409` with the current workflow reason; the grant
+transaction rechecks setup while holding the instance-admin serialization lock.
 
 Suspension is reversible and distinct from person deactivation. Suspending sets the existing
 `user.banned` fields, records a bounded reason and optional expiry, revokes all current
@@ -478,7 +487,7 @@ POST   /api/instance/identity-connections/{id}/oidc-group-mappings instance:admi
 PATCH  /api/instance/identity-connections/{id}/oidc-group-mappings/{mappingId} instance:admin E (session-only; PA-15 operation-bound step-up)
 POST   /api/instance/identity-connections/{id}/test               instance:admin      (audited even unsaved)
 POST   /api/instance/identity-connections/{id}/scim               instance:admin  E
-PATCH  /api/instance/identity-connections/{id}/scim               instance:admin  E  (route-wide; unusable until strict DTO/CAS/dedicated PA-15 contract in issue #561)
+PATCH  /api/instance/identity-connections/{id}/scim               instance:admin  E  (route-wide, session-only, dedicated PA-15 contract; design only until implemented)
 POST   /api/instance/identity-connections/{id}/scim/rotate-token  instance:admin  E
 POST   /api/instance/identity-connections/{id}/scim/revoke-token  instance:admin  E
 POST   /api/instance/identity-connections/{id}/scim/test          instance:admin
@@ -490,7 +499,7 @@ POST   /api/instance/users/{id}/unsuspend             instance:admin
 POST   /api/instance/users/{id}/sign-out              instance:admin
 POST   /api/instance/users/{id}/reset-mfa             instance:admin  E
 POST   /api/instance/users/{id}/grant-admin           instance:admin  E
-POST   /api/instance/users/{id}/deactivate            instance:admin  E (session-only; `user_deactivation` pending action; exact current email + step-up)
+POST   /api/instance/users/{id}/deactivate            instance:admin  session-only (creates `user_deactivation`; execution requires exact current email + PA-15)
 GET    /api/instance/users/{id}/export                instance:admin  E
 POST   /api/instance/users/{id}/anonymise             instance:admin  E
 POST   /api/instance/users/{id}/impersonate           instance:admin  E
