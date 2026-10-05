@@ -2403,7 +2403,7 @@
       "light",
       "dark"
     ],
-    "usage": "apps/web/src/components/nav-projects.tsx",
+    "usage": "apps/web/src/components/nav-projects-sortable.tsx",
     "backdrop": "--color-sidebar",
     "foregroundClass": "text-sidebar-accent-foreground",
     "backgroundClass": {
@@ -2412,7 +2412,7 @@
     },
     "backdropLayers": [],
     "occurrenceIds": [
-      "apps/web/src/components/nav-projects.tsx::NavProjects::Collapsible[0]/SidebarGroup[0]/CollapsiblePanel[0]/SidebarGroupContent[0]/SidebarMenu[0]/DndContext[0]/DragOverlay[0]/div[0]::text-sidebar-accent-foreground#0",
+      "apps/web/src/components/nav-projects-sortable.tsx::SortableProjectList::DndContext[0]/DragOverlay[0]/div[0]::text-sidebar-accent-foreground#0",
       "apps/web/src/components/nav-main.tsx::NavMain::Collapsible[0]/SidebarGroup[0]/CollapsibleTrigger[0]/SidebarGroupLabel[0]::text-sidebar-accent-foreground#0",
       "apps/web/src/components/nav-projects.tsx::NavProjects::SidebarMenuButton[0]::hover:text-sidebar-accent-foreground#0",
       "apps/web/src/components/nav-projects.tsx::NavProjects::Collapsible[0]/SidebarGroup[0]/CollapsibleTrigger[0]/SidebarGroupLabel[0]::text-sidebar-accent-foreground#0"
@@ -2420,12 +2420,12 @@
     "surfaceContext": "same-element",
     "occurrences": [
       {
-        "id": "apps/web/src/components/nav-projects.tsx::NavProjects::Collapsible[0]/SidebarGroup[0]/CollapsiblePanel[0]/SidebarGroupContent[0]/SidebarMenu[0]/DndContext[0]/DragOverlay[0]/div[0]::text-sidebar-accent-foreground#0",
-        "usage": "apps/web/src/components/nav-projects.tsx",
+        "id": "apps/web/src/components/nav-projects-sortable.tsx::SortableProjectList::DndContext[0]/DragOverlay[0]/div[0]::text-sidebar-accent-foreground#0",
+        "usage": "apps/web/src/components/nav-projects-sortable.tsx",
         "category": "body",
         "chain": [
-          "apps/web/src/components/nav-projects.tsx:NavProjects",
-          "jsx:Collapsible[0]/SidebarGroup[0]/CollapsiblePanel[0]/SidebarGroupContent[0]/SidebarMenu[0]/DndContext[0]/DragOverlay[0]/div[0]>bg-sidebar"
+          "apps/web/src/components/nav-projects-sortable.tsx:SortableProjectList",
+          "jsx:DndContext[0]/DragOverlay[0]/div[0]>bg-sidebar"
         ],
         "backdropLayers": [],
         "surfaceContext": "same-element"
