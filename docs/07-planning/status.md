@@ -1,3 +1,27 @@
+## Complete public-artifact scanner correction frozen — 2026-10-05 10:51 UTC
+
+Pushed author164f2ee735b3f83417387740f6fe96647de61ef1 corrects the sole369Sol
+blocker: public146fA note now references the RFC fixture descriptively with transparent
+redaction; private original remains0600. Only exact immutable369historyfingerprint is
+added, and a durable public-evidence rule prevents credential-shaped fixture quotations.
+Author historicalrange232commits scans0findings; publicreviewartifacts contain0fixtureURIs.
+No product/API/UI/permission/dependency/image-source behavior changes. Current integrated
+exact-head ordinary delta and Sol review follow; prior ordinary369clear and soleblockedSol
+reports/runtime receipts are preserved without relabeling prior verdicts.
+
+Network recovered: correction4e branch publication confirmed. Exact369image retry passes
+all15operator validations, UID10001/live-ready200/prefix80→88/CAS/auth/metrics negatives,
+129requests28sources44rows127occurrences and8resourcesabsent0cleanup errors. ActualOct5
+10:41:36.561678–10:41:43.037278UTC; result e928292edcd10e89887c150fac3ec04e2f914b8ceea4db4b4be4f36e2fedb391.
+FirstTLSmetadata failure remains retained. API/domain/permission/dependency/image-source
+scope matches the retainedEA comparison; still onlyOct4/5partialdates, notOct6 or cutover.
+Main rechecked8ddb; liveDEVb58 remains. Currenthostedacceptance/G11protection/finalizer open.
+
+P4 authority ordinary panel clears scoped Users operations ateefce146 with durableevent
+fanout residual. WholeUI panel requests changes for keyboard rows, untranslatedcopy,
+cache invalidation/sharedprimitive/stale-email recovery; all are assigned as one full
+implementation batch. No P4 complete/review/security/phaseclaim or live suffix application.
+
 ## Complete bulk finding correction; final independent delta review — 2026-10-05 10:34 UTC
 
 P0 source4e7d31d3ae5b24de109c9bba45f15c17bcccf241 completes all ordinary146f
@@ -3796,14 +3820,15 @@ cutover and the additional fresh Sol phase finalizer remain required.
 
 ### P0 #10 — hosted performance and protected acceptance
 
-Reviewed b58 is deployed for development. Current published00d hosted G11 is20/22:
-list LCP2600/2500 and board656.7/500ms fail. State/assignment now pass; the missing
-native-sidebar snapshot is corrected and actual G8 passes. G4/route E2E/PostgreSQL and
-static/unit gates also pass at00d. The full remaining startup/board implementation is
-active on an isolated branch before the next composed bulk review and hosted acceptance. Local scoped passes are author evidence, not hosted acceptance. G11 must pass and
-become a required protected context before acceptance; the ruleset retains17 required
-contexts and zero bypass actors. See the newest dated snapshot for exact heads/counts.
-No phase completion or threshold waiver is claimed.
+Reviewed b58 remains deployed for development. Latest published af76 hosted G11 is21/22:
+only board517/500ms fails; list LCP now passes. G8/G4/routeE2E/PostgreSQL pass.
+Complete board source and its source-bound contrast/accessibility correction pass local
+293.3ms scope and228pair checks with independent ordinary clearance. Sol369 finds only
+a new public-review quote scanner finding; complete narrow artifact correction164f is
+pushed and its232commit scanner range passes0findings. Current composed-head ordinary
+delta/Sol review and hosted acceptance remain required. G11 must pass and become a
+required protected context before acceptance; last verified ruleset retains17required
+contexts and zero bypass actors. No phase completion or threshold waiver is claimed.
 
 ### P1 #447 — saved-view candidate needs a current base and gates
 
