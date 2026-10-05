@@ -1,3 +1,20 @@
+## Complete integration correction passes full PostgreSQL; parallel work continues — 2026-10-05
+
+Complete author1279f80e350bd66c60f74e9eb4050b7a93ac6f8f is composed asb49c441d.
+Root comparison confirms API/packages/scripts/tests/image/dependency source is identical.
+Final privatePG18verification passes142/142files,1706/1706tests,zero skipped in572.41seconds.
+Focused48/48tests,APItypecheck andBiome pass. Originalfailedruns remain retained, including
+firstcorrected138/142files and1700PASS/6FAIL. Root removes the exclusively owned PGcontainer
+and anonymousvolume after checking exact id/ownership; no sharedDB orDEVresource is changed.
+
+The whole correction is ready for required current-source ordinary/security delta review and
+image/CI verification. Earlier5e reports remain historical; they do not attest this new head.
+Root freezes this complete checkpoint before review to avoid small intermediate review loops.
+No protected merge, sharedDEVdeployment orphasecompletion is claimed.
+P1structuredsearch implementation continues on its exclusive branch; nextP2project/calendar
+usage batch is reserved for availablecapacity. P3portal hasrealP2dependencies; P4query/event
+work remains tracked. ActualP0October6observation is not an implementation throttle.
+
 ## Complete PostgreSQL correction composed; P1 search implementation active — 2026-10-05
 
 Complete correction author1279f80e350bd66c60f74e9eb4050b7a93ac6f8f is composed into the
