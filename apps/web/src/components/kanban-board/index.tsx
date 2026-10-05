@@ -92,15 +92,23 @@ function KanbanBoard({
       showTaskItemCounts: state.showTaskItemCounts,
     })),
   ) as TaskCardDisplayPreferences;
-  const { setAvailableTasks, focusNext, focusPrevious, clearFocus } =
-    useBulkSelectionStore(
-      useShallow((state) => ({
-        setAvailableTasks: state.setAvailableTasks,
-        focusNext: state.focusNext,
-        focusPrevious: state.focusPrevious,
-        clearFocus: state.clearFocus,
-      })),
-    );
+  const {
+    selectedTaskIds,
+    focusedTaskId,
+    setAvailableTasks,
+    focusNext,
+    focusPrevious,
+    clearFocus,
+  } = useBulkSelectionStore(
+    useShallow((state) => ({
+      selectedTaskIds: state.selectedTaskIds,
+      focusedTaskId: state.focusedTaskId,
+      setAvailableTasks: state.setAvailableTasks,
+      focusNext: state.focusNext,
+      focusPrevious: state.focusPrevious,
+      clearFocus: state.clearFocus,
+    })),
+  );
   const [activeId, setActiveId] = useState<UniqueIdentifier | null>(null);
   const [contextMenuTaskId, setContextMenuTaskId] = useState<string | null>(
     null,
@@ -404,6 +412,8 @@ function KanbanBoard({
                       projectColumns={project.columns}
                       columnCompletionBySlug={columnCompletionBySlug}
                       displayPreferences={displayPreferences}
+                      selectedTaskIds={selectedTaskIds}
+                      focusedTaskId={focusedTaskId}
                       disableDragDrop={disableDragDrop}
                       workspaceId={workspaceId}
                       workspaceUsersById={workspaceUsersById}
@@ -444,6 +454,8 @@ function KanbanBoard({
                   project.columns,
                 )}
                 displayPreferences={displayPreferences}
+                isSelected={selectedTaskIds.has(activeTask.id)}
+                isFocused={focusedTaskId === activeTask.id}
                 workspaceId={workspaceId}
                 assignee={
                   activeTask.userId

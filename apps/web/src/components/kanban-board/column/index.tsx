@@ -15,6 +15,8 @@ type ColumnProps = {
   projectColumns: ProjectWithTasks["columns"];
   columnCompletionBySlug: ReadonlyMap<string, boolean>;
   displayPreferences: TaskCardDisplayPreferences;
+  selectedTaskIds: ReadonlySet<string>;
+  focusedTaskId: string | null;
   disableDragDrop?: boolean;
   workspaceId?: string;
   workspaceUsersById: ReadonlyMap<string, TaskCardWorkspaceUser>;
@@ -30,6 +32,8 @@ function Column({
   projectColumns,
   columnCompletionBySlug,
   displayPreferences,
+  selectedTaskIds,
+  focusedTaskId,
   disableDragDrop = false,
   workspaceId,
   workspaceUsersById,
@@ -59,6 +63,8 @@ function Column({
           projectColumns={projectColumns}
           columnCompletionBySlug={columnCompletionBySlug}
           displayPreferences={displayPreferences}
+          selectedTaskIds={selectedTaskIds}
+          focusedTaskId={focusedTaskId}
           disableDragDrop={disableDragDrop}
           onIsOverChange={setIsDropzoneOver}
           workspaceId={workspaceId}

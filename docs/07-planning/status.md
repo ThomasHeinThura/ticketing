@@ -1,3 +1,33 @@
+## Complete P0 board/scanner batch; P4 implementation checkpoint — 2026-10-05 04:30 UTC
+
+Author source a96645539625f87cccce9285dd933675db0e4fd1 is clean/pushed and composed
+with the retained 83bb review records. One board-level selection/focus subscription projects
+memoized card props; all200 sortable cards, priority markers, selection and keyboard menu
+behavior remain. Focused9tests, web types, both builds, scoped board293.3ms median
+(329.1/282.0/293.3) and keyboard-menu/delete-cancel browser1/1 pass. Historical TOTP
+public-vector scanner finding is independently verified by the author; only its exact
+commit/file/rule/line fingerprint is ignored. Actual commit-range scan passes0remaining.
+No thresholds, fixture volume or history changes. Bulk independent review and new hosted
+acceptance remain required. Previous af76 hosted G11 passes21/22: only board517/500ms
+fails; routeE2E/G8/G4/Postgres pass. Fast CI scanner and pending template failures remain
+historical blockers until current candidate checks prove their corrections.
+
+Heartbeat source af76 captures actualOct5T04:24:29.535664–04:24:35.947066UTC:
+129requests,28/28eligible sources,44rows127occurrences, reconciled events and all8resources
+absent after cleanup. The retained Oct4 EA manifest contains684files;683 are byte-identical
+and APIindex differs only in its obsolete documentation block, with executable bytes equal.
+No additional scoped API/domain/permission/dependency/image-source changes exist. Native
+WebSocket delegation remains explicit. Still two partial UTC dates, not full-day/all-route
+coverage; Oct6/cutover/additional Sol finalizer remain open.
+
+P4 complete implementation checkpoint2d033dd26b81296964ad436b4773cc4993ecff8f is
+clean/pushed: person deactivation, bound approval/execution, four explicitly registered
+instance-scoped events, and composed migration suffix. Accepted0–79 and deployed0–87
+prefixes remain unchanged. Users/deactivation7tests, role-lock74, outbox4, routes20,
+policy14files88tests, API/web types, OpenAPI225, browser1 and freshPG image boot pass.
+No P4 review clearance, live suffix application or stage acceptance. Main8ddb and liveDEVb58
+remain unchanged; protected merge and P0 completion are not claimed.
+
 ## Complete final board/LCP batch composed; bulk review before publication — 2026-10-05 03:54 UTC
 
 Full source **658e766732d3d285e0c9cb9a705ce1aefcab75ca** is clean/pushed on its author

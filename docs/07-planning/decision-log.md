@@ -1,3 +1,9 @@
+### 2026-10-05 · Suppress the historical public TOTP test vector by exact fingerprint
+
+Add only `69e61dd56c18bdbb90149f470d9a6615a9d28272:apps/web/e2e/mfa-csrf-journey.spec.ts:generic-api-key:13` to `.gitleaksignore`. The finding is in an already-pushed historical commit; its value is an `otpauth` test URI whose Base32 secret decodes to the published RFC 6238 test-vector bytes. The test uses the RFC timestamp `59000` and asserts the published vector output before it provisions the test app. The current source no longer contains the literal. Preserve history and suppress this finding by its exact fingerprint only; do not ignore the path or rule.
+
+This records a verified public test vector, not a real credential or a general scanner exception. It makes no claim that other secret findings are benign and waives no required check.
+
 ### 2026-10-05 · Prepare isolated P4 integration while P0 acceptance remains open
 
 Apply Thomas's explicit parallel full-implementation authorization to a separate P4
