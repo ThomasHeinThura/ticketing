@@ -17,6 +17,7 @@ import {
   WORK_ITEM_SORT_FIELDS,
 } from "./routes";
 import { parseCalendarEditorSearch } from "./service-calendar-form";
+import { parseWorkItemFilterText } from "./work-item-filter";
 
 describe("routes.workItemList", () => {
   it("round-trips every sort field and direction through build -> parse", () => {
@@ -65,6 +66,44 @@ describe("routes.workItemList", () => {
     expect(rebuilt).toBe(url);
   });
 
+  it("round-trips bounded filter text while preserving unrelated URL state", () => {
+    const url = routes.workItemList.build(
+      { projectKey: "PROJ" },
+      {
+        filter: 'state:in(started,completed) OR title:"needs review"',
+        sort: "priority",
+        dir: "desc",
+      },
+    );
+    const [, queryString] = url.split("?");
+    expect(parseWorkItemListSearchFromQueryString(queryString)).toEqual({
+      layout: "list",
+      sort: "priority",
+      dir: "desc",
+      filter: 'state:in(started,completed) OR title:"needs review"',
+    });
+  });
+
+  it("parses nested text filters to the endpoint AST", () => {
+    expect(
+      parseWorkItemFilterText(
+        "state:in(started,completed) OR (assignee:@me AND due:<7d)",
+      ),
+    ).toEqual({
+      op: "or",
+      clauses: [
+        { field: "state.group", op: "in", value: ["started", "completed"] },
+        {
+          op: "and",
+          clauses: [
+            { field: "assignee", op: "eq", value: "@me" },
+            { field: "dueDate", op: "lt", value: "7d" },
+          ],
+        },
+      ],
+    });
+  });
+
   describe("parseWorkItemListSearch", () => {
     it("falls back to the default for missing fields", () => {
       expect(parseWorkItemListSearch({})).toEqual(
@@ -93,6 +132,9 @@ describe("routes.workItemList", () => {
         DEFAULT_WORK_ITEM_LIST_SEARCH,
       );
       expect(parseWorkItemListSearch(null)).toEqual(
+        DEFAULT_WORK_ITEM_LIST_SEARCH,
+      );
+      expect(parseWorkItemListSearch({ filter: "bad\nfilter" })).toEqual(
         DEFAULT_WORK_ITEM_LIST_SEARCH,
       );
     });

@@ -13,6 +13,7 @@ import {
   createRoute,
   errorResponse,
   jsonResponse,
+  z,
 } from "../openapi";
 import {
   assertCallerHasCapability,
@@ -100,6 +101,11 @@ import {
   workItemKeyParam,
   workspaceIdParam,
 } from "./schema";
+import {
+  SEARCH_BODY_MAX_BYTES,
+  validateWorkItemSearchQuery,
+} from "./search/query";
+import { searchWorkItems } from "./search/repository";
 import { workItemSlaSchema } from "./sla-response";
 
 /**
@@ -250,6 +256,83 @@ const listWorkItemsRoute = createRoute({
     // S2): a soft-deleted project's work-item list now 404s, matching every other
     // project-scoped route's convention for a soft-deleted subject.
     404: errorResponse("Project not found"),
+  },
+});
+
+const searchWorkItemsRoute = createRoute({
+  method: "post",
+  operationId: "searchWorkItems",
+  path: "/work-items/search",
+  tags: ["Work items"],
+  summary: "Search work items",
+  description:
+    "Bounded structured work-item filtering. See api-design.md § Work-item search v1.",
+  middleware: [
+    async (c, next) => {
+      const body = await c.req.raw.clone().arrayBuffer();
+      if (body.byteLength > SEARCH_BODY_MAX_BYTES)
+        throw new HTTPException(400, {
+          message: "Request body exceeds 32 KiB",
+        });
+      await next();
+    },
+    async (c, next) => {
+      try {
+        await workspaceAccess.fromBody("workspaceId")(c, next);
+      } catch (error) {
+        if (error instanceof HTTPException && error.status === 403) {
+          throw new HTTPException(404, { message: "Workspace not found" });
+        }
+        throw error;
+      }
+    },
+  ] as const,
+  request: {
+    body: {
+      required: true,
+      content: {
+        "application/json": {
+          schema: z
+            .object({
+              workspaceId: z.string().min(1),
+              query: z
+                .object({
+                  entity: z.string(),
+                  filter: z.unknown().optional(),
+                  sort: z
+                    .array(
+                      z
+                        .object({ field: z.string(), order: z.string() })
+                        .strict(),
+                    )
+                    .max(1)
+                    .optional(),
+                  columns: z.array(z.string()).optional(),
+                  groupBy: z.unknown().optional(),
+                  aggregate: z.unknown().optional(),
+                })
+                .strict(),
+              limit: z.number().int().min(1).max(200).optional(),
+              cursor: z.string().max(4096).nullable().optional(),
+            })
+            .strict(),
+        },
+      },
+    },
+  },
+  responses: {
+    200: jsonResponse(
+      "A page of reachable matching work items",
+      workItemListResponseSchema,
+    ),
+    400: errorResponse(
+      "Malformed or over-limit search document, scope, or cursor",
+    ),
+    403: errorResponse("Missing work_item:read permission"),
+    404: errorResponse("Workspace not found or unreachable"),
+    422: errorResponse(
+      "Unsupported entity, unavailable filter field, or unreadable field",
+    ),
   },
 });
 
@@ -923,6 +1006,24 @@ const workItem = apiRouter<
       c.get("userId"),
       query,
     );
+    return c.json(result, 200);
+  })
+  .openapi(searchWorkItemsRoute, async (c) => {
+    const body = c.req.valid("json");
+    const query = validateWorkItemSearchQuery(body.query);
+    const session = c.get("session") as
+      | { impersonatedBy?: string | null }
+      | null
+      | undefined;
+    const result = await searchWorkItems({
+      userId: c.get("userId"),
+      apiKey: c.get("apiKey"),
+      impersonatedBy: session?.impersonatedBy,
+      workspaceId: c.get("workspaceId"),
+      query,
+      limit: body.limit ?? 50,
+      cursor: body.cursor ?? undefined,
+    });
     return c.json(result, 200);
   })
   .openapi(getWorkItemRoute, async (c) => {

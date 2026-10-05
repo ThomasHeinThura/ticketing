@@ -658,8 +658,113 @@ GET /api/projects/{projectId}/work-items
 ## Query grammar — filters, sort, grouping, aggregation
 
 Complex queries — saved views, queues, tier 2 and tier 3 reports — use one structured
-document, sent as `POST /api/work-items/search` and stored verbatim as
-`saved_view.query`:
+document, stored verbatim as `saved_view.query`. The request scope and pagination controls
+are transport metadata around that document; they are not added to, or removed from, the
+stored query:
+
+```json
+{
+  "workspaceId": "ws_123",
+  "query": {
+    "entity": "work_item",
+    "filter": {
+      "op": "and",
+      "clauses": [
+        { "field": "state.group", "op": "in", "value": ["started"] },
+        { "field": "assignee", "op": "eq", "value": "@me" }
+      ]
+    },
+    "sort": [{ "field": "priority", "order": "desc" }],
+    "columns": ["key", "title", "state", "assignee"]
+  },
+  "limit": 50,
+  "cursor": null
+}
+```
+
+### Work-item search v1 (`POST /api/work-items/search`)
+
+P1 implements only `entity: "work_item"`. The required `workspaceId` is resolved from the
+JSON body by `workspaceAccess.fromBody("workspaceId")` before the route's
+`work_item:read` check. It is never inferred from a `project` filter, a saved-view owner, or
+the currently selected browser workspace. A missing or malformed id returns `400`; an
+unreachable workspace is masked as `404`. The route returns only live work items in that
+workspace and in the actor's project reach. Search predicates are applied after that scope,
+and `meta.total` counts only those same reachable rows.
+
+The `query` object keeps the `{ entity, filter, sort, groupBy, columns, aggregate }`
+envelope. Its `entity` must be `work_item`. P1 accepts `filter`, `sort`, and `columns`;
+`groupBy` and `aggregate` are later-phase query features and receive `422` when supplied.
+Other entities in the wider grammar (`submission`, `time_entry`, `sla_event`) also receive
+`422` on this P1 route. Unknown keys and malformed shapes receive `400`; they are never
+silently dropped. The text editor is a filter editor; switching modes preserves the other
+query-document properties byte-for-byte at the JSON value level.
+
+The P1 filter tree contains only `and` and `or` groups with nonempty `clauses`, or a leaf
+`{ "field", "op", "value" }`. It is bounded to 64 leaves, depth 8, 32 clauses per group,
+and a 32 KiB JSON request body. Values are typed by the field table below. Operators not
+listed for a field, unknown fields, and values of the wrong type return `400`. A recognized
+field that is unavailable in this implementation or whose field-level read requirement is
+not met returns `422` naming that field.
+
+| Structured field | P1 operators and values | Field read capability | SQL source / notes |
+| --- | --- | --- | --- |
+| `state.group` | `eq` string; `in` nonempty string array (1–20). Values: `backlog`, `unstarted`, `started`, `completed`, `cancelled` | `work_item:read` | `state.state_template_id → state_template.group` |
+| `priority` | `eq`, `in` (1–4), `gt`, `gte`, `lt`, `lte`; values `low`, `medium`, `high`, `urgent` in that order | `work_item:read` | `work_item.priority`; comparison uses the declared order, not text collation |
+| `assignee` | `eq` with the literal `@me` | `work_item:read` | Resolved at query time to the authenticated person's `person.id`; no caller-selected person id in v1 |
+| `watcher` | `contains` with the literal `@me` | `work_item:read` | `watcher` rows for the authenticated person with `muted = false` |
+| `dueDate` | `lt`, `lte`, `gt`, `gte`; ISO calendar date or relative day value such as `7d` | `work_item:read` | `work_item.due_date`; `Nd` is a fixed duration of N×24 hours from the request's captured query time, with N from 1–3650; null dates do not match comparisons |
+| `createdAt` | `lt`, `lte`, `gt`, `gte`; ISO calendar date | `work_item:read` | `work_item.created_at`; a date means midnight UTC at the start of that date; null is not applicable |
+| `project` | `eq` slug string | `project:read` | `project.slug`, joined within the resolved workspace |
+| `type` | `eq` key string | `workspace:read` | `work_item_type.key`, joined within the resolved workspace |
+
+P1 deliberately does not expose `sla.state` or `sla.due_at`: the documented
+`work_item_sla_cache` has no current table or loader in this checkout. It does not expose
+`cf.<key>`: the custom-field value store and visibility loader are not implemented. It does
+not expose `label`: the `work_item_label` join table is not implemented. Those known fields
+return `422` with the field named; they are not treated as false predicates. This keeps the
+spec's eventual-consistency, custom-field-visibility, and label contracts intact until their
+own foundations exist.
+
+`filter` may be omitted, which means every live, reachable work item in the required
+workspace. `sort` is an array of zero or one item from `key`, `title`, `priority`, or
+`dueDate`, with `order` `asc` or `desc`; omission defaults to `key asc`. `id asc` is always
+the stable tie-break. `columns` is an optional, duplicate-free subset of `key`, `title`,
+`state`, `assignee`, `priority`, and `dueDate`; omission means all six. It is presentation
+metadata and does not weaken field-read checks or change the response row schema.
+
+The request `limit` defaults to 50 and must be 1–200. `cursor` is either omitted/null or an
+opaque continuation from this route. A continuation is bound to the authenticated actor,
+workspace, normalized query document, and limit; a mismatch or malformed cursor returns
+`400`. The cursor is keyset-based and preserves the declared sort plus the stable id
+tie-break. Response shape is `{ data, page: { nextCursor, hasMore }, meta: { total } }`;
+`meta.total` is an exact count of rows after workspace scope, project reach, live-row
+exclusion, and filter predicates. The page rows use the explicit work-item list response
+schema, never raw Drizzle rows.
+
+The P1 text syntax is a filter-only rendering of the same AST. Adjacent terms are `and`;
+`AND` is explicit conjunction; `OR` is disjunction; parentheses preserve nesting. Field
+aliases in the existing examples are canonical (`state` → `state.group`, `due` → `dueDate`,
+`created` → `createdAt`). Examples include `assignee:@me state:started`,
+`priority:>=high`, `due:<7d`, `project:SUP`, `type:incident`,
+`created:>2026-01-01`, and `watcher:contains(@me)`. `in` uses
+`field:in(value1,value2)`. Whitespace or reserved punctuation in a string value is represented
+with a JSON-quoted string. Comparisons use `<`, `<=`, `>`, `>=`; the parser has no escape
+that can introduce a field, operator, or SQL fragment. Parsing and printing preserve the
+filter tree, values, and clause order; sort and columns stay unchanged in the surrounding
+query document when the user switches modes.
+
+The P1 endpoint compiles only these validated nodes to parameterized Drizzle SQL. Field
+expressions are fixed server-side mappings; values are always bound parameters. The scoped
+workspace and actor's project reach are established before filter compilation and are
+present in both the page and count read chains. A field-level read denial is `422` naming the
+field; it is never converted into an empty result or a different `meta.total`.
+
+The wider, future grammar continues to use the same envelope. It lists all product entities,
+future fields and report clauses; it does not make those later-phase facilities available
+through this P1 endpoint before their owning storage and authorization contracts exist.
+
+The canonical query document, without transport metadata, is:
 
 ```json
 {
@@ -668,8 +773,6 @@ document, sent as `POST /api/work-items/search` and stored verbatim as
     "op": "and",
     "clauses": [
       { "field": "state.group", "op": "in", "value": ["started"] },
-      { "field": "sla.state",   "op": "eq", "value": "at_risk" },
-      { "field": "cf.impact",   "op": "eq", "value": "Everyone" },
       { "op": "or", "clauses": [
         { "field": "assignee", "op": "eq", "value": "@me" },
         { "field": "watcher",  "op": "contains", "value": "@me" }
@@ -677,14 +780,13 @@ document, sent as `POST /api/work-items/search` and stored verbatim as
     ]
   },
   "sort":    [{ "field": "priority", "order": "desc" }],
-  "columns": ["key", "title", "state", "assignee", "sla.due_at"],
-  "groupBy": "assignee",
-  "aggregate": { "fn": "count" }
+  "columns": ["key", "title", "state", "assignee"]
 }
 ```
 
-- `entity` ∈ `work_item | submission | time_entry | sla_event`. A queue over submissions
-  *and* work items is two saved views presented together, not one document.
+- The wider product grammar names `work_item | submission | time_entry | sla_event`. P1's
+  `/api/work-items/search` implementation accepts `work_item` only. A queue over
+  submissions *and* work items is two saved views presented together, not one document.
 - **Fields are whitelisted per entity**; `cf.<key>` addresses a custom field; `organisation`
   resolves through `project.organisation_id`; `state.group` is not a stored column — it
   resolves through the join `state.state_template_id → state_template.group`
@@ -693,13 +795,14 @@ document, sent as `POST /api/work-items/search` and stored verbatim as
   detail endpoint always recomputes, and where they disagree the computed value wins
   ([ADR 0009](adr/0009-lazy-sla-evaluation.md)).
 - `groupBy` and `aggregate` (`count | sum { field } | avg { field } | percentile { field, p }`)
-  are what tier 3 reports add; a plain saved view omits them.
+  are what tier 3 reports add; a plain saved view omits them. They are not accepted by the
+  P1 endpoint until their owning report implementation lands.
 - The grammar compiles to parameterised SQL and can never express arbitrary SQL.
 - **Authorization inside the filter.** Every filterable field carries its own read
-  capability (a customer cannot filter on `assignee` or an internal custom field; the
-  request is 422 naming the field); the filter is evaluated **after** the identity scope is
-  applied; and `meta.total` counts only rows within reach — so search can never become an
-  existence oracle for records the caller may not see.
+  capability; the request is `422` naming any recognized field the caller cannot read. The
+  filter is evaluated **after** the identity scope is applied, and `meta.total` counts only
+  rows within reach — so search can never become an existence oracle for records the caller
+  may not see. The concrete P1 field set and field-level responses are listed above.
 
 A saved view is exactly a stored query document plus a `layout`; there is **one** route
 family for saved views, `/api/views`, defined in

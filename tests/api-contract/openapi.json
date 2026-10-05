@@ -192,33 +192,6 @@
           "manageServiceCalendars"
         ]
       },
-      "MalformedMembershipRole": {
-        "type": "object",
-        "properties": {
-          "error": {
-            "type": "string",
-            "enum": [
-              "MALFORMED_MEMBERSHIP_ROLE"
-            ]
-          },
-          "message": {
-            "type": "string"
-          },
-          "problem": {
-            "type": "string",
-            "enum": [
-              "empty",
-              "multi-valued",
-              "untrimmed"
-            ]
-          }
-        },
-        "required": [
-          "error",
-          "message",
-          "problem"
-        ]
-      },
       "ProjectListItem": {
         "allOf": [
           {
@@ -5069,16 +5042,6 @@
               "text/plain": {
                 "schema": {
                   "type": "string"
-                }
-              }
-            }
-          },
-          "409": {
-            "description": "The caller's membership row does not hold exactly one role, so no capability answer can be computed from it (issue #82)",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/MalformedMembershipRole"
                 }
               }
             }
@@ -19328,6 +19291,145 @@
           },
           "404": {
             "description": "Project not found",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/work-items/search": {
+      "post": {
+        "operationId": "searchWorkItems",
+        "tags": [
+          "Work items"
+        ],
+        "summary": "Search work items",
+        "description": "Bounded structured work-item filtering. See api-design.md § Work-item search v1.",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "workspaceId": {
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  "query": {
+                    "type": "object",
+                    "properties": {
+                      "entity": {
+                        "type": "string"
+                      },
+                      "filter": {},
+                      "sort": {
+                        "type": "array",
+                        "items": {
+                          "type": "object",
+                          "properties": {
+                            "field": {
+                              "type": "string"
+                            },
+                            "order": {
+                              "type": "string"
+                            }
+                          },
+                          "required": [
+                            "field",
+                            "order"
+                          ],
+                          "additionalProperties": false
+                        },
+                        "maxItems": 1
+                      },
+                      "columns": {
+                        "type": "array",
+                        "items": {
+                          "type": "string"
+                        }
+                      },
+                      "groupBy": {},
+                      "aggregate": {}
+                    },
+                    "required": [
+                      "entity"
+                    ],
+                    "additionalProperties": false
+                  },
+                  "limit": {
+                    "type": "integer",
+                    "minimum": 1,
+                    "maximum": 200
+                  },
+                  "cursor": {
+                    "type": [
+                      "string",
+                      "null"
+                    ],
+                    "maxLength": 4096
+                  }
+                },
+                "required": [
+                  "workspaceId",
+                  "query"
+                ],
+                "additionalProperties": false
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "A page of reachable matching work items",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/WorkItemListResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Malformed or over-limit search document, scope, or cursor",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing or invalid credentials"
+          },
+          "403": {
+            "description": "Missing work_item:read permission",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Workspace not found or unreachable",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Unsupported entity, unavailable filter field, or unreadable field",
             "content": {
               "text/plain": {
                 "schema": {
