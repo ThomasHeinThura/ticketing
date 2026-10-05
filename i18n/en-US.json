@@ -2688,7 +2688,8 @@
 			"origins": {
 				"web": "web",
 				"api": "API",
-				"mcp": "MCP"
+				"mcp": "MCP",
+				"unknown": "Unknown source"
 			},
 			"states": {
 				"pending": "Pending",
@@ -2710,7 +2711,114 @@
 			},
 			"authenticatorCode": "Authenticator code",
 			"backupCode": "Backup code",
-			"accountPassword": "Account password"
+			"accountPassword": "Account password",
+			"actions": {
+				"delete": "Delete",
+				"bulkDelete": "Bulk delete",
+				"purge": "Purge",
+				"mcpDestructive": "Destructive MCP action",
+				"userDeactivation": "Deactivate person"
+			},
+			"unknownAction": "Unknown action",
+			"expires": "Expires"
+		}
+	},
+	"identityConnections": {
+		"list": {
+			"title": "Identity connections",
+			"description": "Configure Microsoft Entra sign-in, review safe connection metadata, and manage the associated SCIM settings.",
+			"add": "Add identity connection",
+			"unavailable": "Identity connections unavailable",
+			"loadFailed": "The list could not be loaded. Your session may not have instance administrator access.",
+			"retry": "Retry",
+			"loading": "Loading identity connections",
+			"configured": "Configured identity connections",
+			"organisationBound": "Organisation-bound",
+			"enabled": "Enabled",
+			"disabled": "Disabled",
+			"manage": "Manage settings",
+			"empty": "No identity connections are configured."
+		},
+		"editor": {
+			"loading": "Loading identity connection…",
+			"loadFailed": "The identity connection could not be loaded.",
+			"factorRequired": "Enter the selected fresh authentication factor.",
+			"stepUpFailed": "Fresh administrator verification was unavailable or did not match this exact change.",
+			"notFound": "The identity connection is no longer available.",
+			"stale": "Settings changed in another session. Reload before retrying.",
+			"invalid": "The identity provider, target or role configuration is invalid.",
+			"saveFailed": "The identity connection could not be saved. Your settings remain in this form.",
+			"created": "Identity connection created",
+			"createdDescription": "The connection is disabled at version {{version}}. Enable it only after its configuration is ready.",
+			"openSettings": "Open connection settings",
+			"addTitle": "Add Entra connection",
+			"editTitle": "Connection configuration",
+			"intro": "Connection changes require fresh administrator verification. Client credentials are encrypted at rest and never shown again.",
+			"notSaved": "Identity connection not saved",
+			"saved": "Identity connection saved",
+			"savedDescription": "The connection is stored at version {{version}}.",
+			"connectionName": "Connection name",
+			"portal": "Portal",
+			"staffPortal": "Staff portal",
+			"customerPortal": "Customer portal",
+			"organisationId": "Organisation ID",
+			"workspaceId": "Default internal workspace ID",
+			"tenantId": "Entra tenant ID",
+			"clientId": "Application client ID",
+			"clientSecret": "Client secret",
+			"replaceSecret": "Replace client secret (optional)",
+			"scopes": "Requested OIDC scopes (comma or newline separated)",
+			"domains": "Allowed email domains (one per line)",
+			"jitAccess": "Just-in-time access",
+			"enableJit": "Enable JIT provisioning",
+			"defaultRole": "Default role ID (optional while JIT is disabled)",
+			"requiredAppRole": "Required Entra application role",
+			"maxRoleRank": "Maximum role rank",
+			"enableConnection": "Enable this connection",
+			"confirmChange": "Confirm this change",
+			"authMethod": "Fresh authentication method",
+			"password": "Password",
+			"authenticatorCode": "Authenticator code",
+			"backupCode": "Backup code",
+			"freshAuth": "Fresh authentication",
+			"saving": "Saving…",
+			"createDisabled": "Create disabled connection",
+			"saveApply": "Save and apply settings",
+			"version": "Configuration version {{version}}"
+		},
+		"events": {
+			"title": "Provisioning history",
+			"loadFailed": "Event history is unavailable. Your identity connection settings are unchanged.",
+			"loading": "Loading provisioning history…",
+			"empty": "No provisioning events have been recorded for this connection.",
+			"listLabel": "Provisioning events",
+			"older": "Older events",
+			"newest": "Newest events",
+			"unknown": "Unknown event",
+			"kinds": {
+				"userCreated": "User created",
+				"userUpdated": "User updated",
+				"userDeactivated": "User deactivated",
+				"userReactivated": "User reactivated",
+				"groupDirectoryChanged": "Group directory changed",
+				"groupMappingChanged": "Group mapping changed",
+				"groupMemberAdded": "Group member added",
+				"groupMemberRemoved": "Group member removed",
+				"requestDenied": "Request denied",
+				"authFailed": "Authentication failed",
+				"tokenRotated": "Token rotated",
+				"tokenRevoked": "Token revoked",
+				"connectionChanged": "Connection changed",
+				"syncFailed": "Synchronization failed"
+			},
+			"outcomes": {
+				"success": "Succeeded"
+			},
+			"actors": {
+				"person": "Person",
+				"scim": "SCIM",
+				"oidc": "OIDC"
+			}
 		}
 	}
 }

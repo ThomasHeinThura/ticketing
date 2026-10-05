@@ -10,6 +10,7 @@ import {
   Skeleton,
 } from "@taskdesk/ui";
 import { useCallback, useEffect, useState } from "react";
+import { useTranslation } from "react-i18next";
 import PageTitle from "@/components/page-title";
 import { getApiUrl } from "@/fetchers/get-api-url";
 import { routes } from "@/lib/routes";
@@ -30,6 +31,7 @@ type IdentityConnection = {
 type ConnectionList = { data: IdentityConnection[] };
 
 function IdentityConnectionsRoute() {
+  const { t } = useTranslation("identityConnections");
   const location = useLocation();
   const isDetailRoute = location.pathname.startsWith(
     `${routes.identityConnections.path}/`,
@@ -66,13 +68,12 @@ function IdentityConnectionsRoute() {
 
   return (
     <>
-      <PageTitle title="Identity connections" />
+      <PageTitle title={t("list.title")} />
       <main className="mx-auto flex h-full max-w-5xl flex-col gap-6 overflow-y-auto p-6">
         <header className="space-y-2">
-          <h1 className="text-2xl font-semibold">Identity connections</h1>
+          <h1 className="text-2xl font-semibold">{t("list.title")}</h1>
           <p className="max-w-3xl text-sm text-muted-foreground">
-            Configure Microsoft Entra sign-in, review safe connection metadata,
-            and manage the associated SCIM settings.
+            {t("list.description")}
           </p>
           <Button render={<a href={routes.identityConnectionCreate.build()} />}>
             Add identity connection
@@ -81,11 +82,10 @@ function IdentityConnectionsRoute() {
 
         {error ? (
           <Alert variant="error">
-            <AlertTitle>Identity connections unavailable</AlertTitle>
+            <AlertTitle>{t("list.unavailable")}</AlertTitle>
             <AlertDescription>
-              The list could not be loaded. Your session may not have instance
-              administrator access.
-              <Button onClick={() => void refresh()}>Retry</Button>
+              {t("list.loadFailed")}
+              <Button onClick={() => void refresh()}>{t("list.retry")}</Button>
             </AlertDescription>
           </Alert>
         ) : null}
@@ -94,16 +94,13 @@ function IdentityConnectionsRoute() {
           <div
             className="space-y-3"
             role="status"
-            aria-label="Loading identity connections"
+            aria-label={t("list.loading")}
           >
             <Skeleton className="h-20 w-full" />
             <Skeleton className="h-20 w-full" />
           </div>
         ) : connections.length ? (
-          <section
-            aria-label="Configured identity connections"
-            className="grid gap-3"
-          >
+          <section aria-label={t("list.configured")} className="grid gap-3">
             {connections.map((connection) => (
               <Card key={connection.id}>
                 <CardContent className="flex flex-wrap items-center justify-between gap-4 p-4">
@@ -112,10 +109,14 @@ function IdentityConnectionsRoute() {
                     <p className="text-sm text-muted-foreground">
                       Microsoft Entra ·{" "}
                       {connection.portalScope === "agent"
-                        ? "Staff portal"
-                        : "Customer portal"}
-                      {connection.organisationId ? " · Organisation-bound" : ""}
-                      {connection.enabled ? " · Enabled" : " · Disabled"}
+                        ? t("editor.staffPortal")
+                        : t("editor.customerPortal")}
+                      {connection.organisationId
+                        ? ` · ${t("list.organisationBound")}`
+                        : ""}
+                      {connection.enabled
+                        ? ` · ${t("list.enabled")}`
+                        : ` · ${t("list.disabled")}`}
                     </p>
                   </div>
                   <Button

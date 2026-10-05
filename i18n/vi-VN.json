@@ -2631,6 +2631,104 @@
 			"accountPassword": "Mật khẩu tài khoản"
 		}
 	},
+	"identityConnections": {
+		"list": {
+			"title": "Kết nối danh tính",
+			"description": "Cấu hình đăng nhập Microsoft Entra, xem siêu dữ liệu kết nối an toàn và quản lý các cài đặt SCIM liên quan.",
+			"add": "Thêm kết nối danh tính",
+			"unavailable": "Kết nối danh tính không khả dụng",
+			"loadFailed": "Không thể tải danh sách. Có thể bạn không có quyền quản trị phiên bản.",
+			"retry": "Thử lại",
+			"loading": "Đang tải kết nối danh tính",
+			"configured": "Kết nối danh tính đã cấu hình",
+			"organisationBound": "Liên kết với tổ chức",
+			"enabled": "Đã bật",
+			"disabled": "Đã tắt",
+			"manage": "Quản lý cài đặt",
+			"empty": "Chưa có kết nối danh tính nào được cấu hình."
+		},
+		"editor": {
+			"loading": "Đang tải kết nối danh tính…",
+			"loadFailed": "Không thể tải kết nối danh tính.",
+			"factorRequired": "Nhập yếu tố xác thực mới được chọn.",
+			"stepUpFailed": "Không có xác minh quản trị viên mới hoặc xác minh không khớp chính xác với thay đổi này.",
+			"notFound": "Kết nối danh tính không còn khả dụng.",
+			"stale": "Cài đặt đã thay đổi trong phiên khác. Hãy tải lại trước khi thử lại.",
+			"invalid": "Nhà cung cấp danh tính, mục tiêu hoặc cấu hình vai trò không hợp lệ.",
+			"saveFailed": "Không thể lưu kết nối danh tính. Cài đặt của bạn vẫn nằm trong biểu mẫu này.",
+			"created": "Đã tạo kết nối danh tính",
+			"createdDescription": "Kết nối bị tắt ở phiên bản {{version}}. Chỉ bật khi cấu hình đã sẵn sàng.",
+			"openSettings": "Mở cài đặt kết nối",
+			"addTitle": "Thêm kết nối Entra",
+			"editTitle": "Cấu hình kết nối",
+			"intro": "Thay đổi kết nối cần xác minh quản trị viên mới. Thông tin xác thực máy khách được mã hóa khi lưu trữ và sẽ không hiển thị lại.",
+			"notSaved": "Chưa lưu kết nối danh tính",
+			"saved": "Đã lưu kết nối danh tính",
+			"savedDescription": "Kết nối được lưu ở phiên bản {{version}}.",
+			"connectionName": "Tên kết nối",
+			"portal": "Cổng thông tin",
+			"staffPortal": "Cổng thông tin nhân viên",
+			"customerPortal": "Cổng thông tin khách hàng",
+			"organisationId": "ID tổ chức",
+			"workspaceId": "ID không gian làm việc nội bộ mặc định",
+			"tenantId": "ID đối tượng thuê Entra",
+			"clientId": "ID máy khách ứng dụng",
+			"clientSecret": "Bí mật máy khách",
+			"replaceSecret": "Thay bí mật máy khách (không bắt buộc)",
+			"scopes": "Phạm vi OIDC được yêu cầu (phân tách bằng dấu phẩy hoặc dòng mới)",
+			"domains": "Miền email được phép (mỗi dòng một miền)",
+			"jitAccess": "Quyền truy cập đúng thời điểm",
+			"enableJit": "Bật cấp phát JIT",
+			"defaultRole": "ID vai trò mặc định (không bắt buộc khi JIT tắt)",
+			"requiredAppRole": "Vai trò ứng dụng Entra bắt buộc",
+			"maxRoleRank": "Cấp bậc vai trò tối đa",
+			"enableConnection": "Bật kết nối này",
+			"confirmChange": "Xác nhận thay đổi này",
+			"authMethod": "Phương thức xác thực mới",
+			"password": "Mật khẩu",
+			"authenticatorCode": "Mã ứng dụng xác thực",
+			"backupCode": "Mã dự phòng",
+			"freshAuth": "Xác thực mới",
+			"saving": "Đang lưu…",
+			"createDisabled": "Tạo kết nối đã tắt",
+			"saveApply": "Lưu và áp dụng cài đặt",
+			"version": "Phiên bản cấu hình {{version}}"
+		},
+		"events": {
+			"title": "Lịch sử cấp phát",
+			"loadFailed": "Lịch sử sự kiện không khả dụng. Cài đặt kết nối danh tính không thay đổi.",
+			"loading": "Đang tải lịch sử cấp phát…",
+			"empty": "Chưa ghi nhận sự kiện cấp phát nào cho kết nối này.",
+			"listLabel": "Sự kiện cấp phát",
+			"older": "Sự kiện cũ hơn",
+			"newest": "Sự kiện mới nhất",
+			"unknown": "Sự kiện không xác định",
+			"kinds": {
+				"userCreated": "Đã tạo người dùng",
+				"userUpdated": "Đã cập nhật người dùng",
+				"userDeactivated": "Đã hủy kích hoạt người dùng",
+				"userReactivated": "Đã kích hoạt lại người dùng",
+				"groupDirectoryChanged": "Đã thay đổi thư mục nhóm",
+				"groupMappingChanged": "Đã thay đổi ánh xạ nhóm",
+				"groupMemberAdded": "Đã thêm thành viên nhóm",
+				"groupMemberRemoved": "Đã xóa thành viên nhóm",
+				"requestDenied": "Yêu cầu bị từ chối",
+				"authFailed": "Xác thực thất bại",
+				"tokenRotated": "Đã xoay vòng mã thông báo",
+				"tokenRevoked": "Đã thu hồi mã thông báo",
+				"connectionChanged": "Đã thay đổi kết nối",
+				"syncFailed": "Đồng bộ hóa thất bại"
+			},
+			"outcomes": {
+				"success": "Thành công"
+			},
+			"actors": {
+				"person": "Người",
+				"scim": "SCIM",
+				"oidc": "OIDC"
+			}
+		}
+	},
 	"pendingActions": {
 		"review": "Xem xét",
 		"emailMismatch": "Email hiện tại không khớp chính xác. Yêu cầu vẫn đang chờ.",
@@ -2681,7 +2779,8 @@
 			"origins": {
 				"web": "Web",
 				"api": "API",
-				"mcp": "MCP"
+				"mcp": "MCP",
+				"unknown": "Nguồn không xác định"
 			},
 			"states": {
 				"pending": "Đang chờ",
@@ -2703,7 +2802,16 @@
 			},
 			"authenticatorCode": "Mã ứng dụng xác thực",
 			"backupCode": "Mã dự phòng",
-			"accountPassword": "Mật khẩu tài khoản"
+			"accountPassword": "Mật khẩu tài khoản",
+			"actions": {
+				"delete": "Xóa",
+				"bulkDelete": "Xóa hàng loạt",
+				"purge": "Xóa vĩnh viễn",
+				"mcpDestructive": "Thao tác MCP phá hủy",
+				"userDeactivation": "Hủy kích hoạt người"
+			},
+			"unknownAction": "Thao tác không xác định",
+			"expires": "Hết hạn"
 		}
 	}
 }

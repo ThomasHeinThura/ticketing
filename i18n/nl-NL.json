@@ -2638,6 +2638,104 @@
 			"accountPassword": "Accountwachtwoord"
 		}
 	},
+	"identityConnections": {
+		"list": {
+			"title": "Identiteitsverbindingen",
+			"description": "Configureer aanmelden via Microsoft Entra, bekijk veilige verbindingsmetadata en beheer de bijbehorende SCIM-instellingen.",
+			"add": "Identiteitsverbinding toevoegen",
+			"unavailable": "Identiteitsverbindingen niet beschikbaar",
+			"loadFailed": "De lijst kan niet worden geladen. Mogelijk hebt u geen beheerderstoegang voor de instantie.",
+			"retry": "Opnieuw proberen",
+			"loading": "Identiteitsverbindingen laden",
+			"configured": "Geconfigureerde identiteitsverbindingen",
+			"organisationBound": "Gebonden aan organisatie",
+			"enabled": "Ingeschakeld",
+			"disabled": "Uitgeschakeld",
+			"manage": "Instellingen beheren",
+			"empty": "Er zijn geen identiteitsverbindingen geconfigureerd."
+		},
+		"editor": {
+			"loading": "Identiteitsverbinding laden…",
+			"loadFailed": "De identiteitsverbinding kan niet worden geladen.",
+			"factorRequired": "Voer de geselecteerde recente verificatiefactor in.",
+			"stepUpFailed": "De recente beheerdersverificatie was niet beschikbaar of kwam niet exact overeen met deze wijziging.",
+			"notFound": "De identiteitsverbinding is niet meer beschikbaar.",
+			"stale": "De instellingen zijn in een andere sessie gewijzigd. Laad opnieuw voordat u het nogmaals probeert.",
+			"invalid": "De identiteitsprovider, het doel of de rolconfiguratie is ongeldig.",
+			"saveFailed": "De identiteitsverbinding kan niet worden opgeslagen. Uw instellingen blijven in dit formulier staan.",
+			"created": "Identiteitsverbinding gemaakt",
+			"createdDescription": "De verbinding is uitgeschakeld bij versie {{version}}. Schakel deze pas in wanneer de configuratie gereed is.",
+			"openSettings": "Verbindingsinstellingen openen",
+			"addTitle": "Entra-verbinding toevoegen",
+			"editTitle": "Verbindingsconfiguratie",
+			"intro": "Wijzigingen aan de verbinding vereisen recente beheerdersverificatie. Clientgegevens worden versleuteld opgeslagen en nooit opnieuw getoond.",
+			"notSaved": "Identiteitsverbinding niet opgeslagen",
+			"saved": "Identiteitsverbinding opgeslagen",
+			"savedDescription": "De verbinding is opgeslagen bij versie {{version}}.",
+			"connectionName": "Naam van verbinding",
+			"portal": "Portaal",
+			"staffPortal": "Medewerkersportaal",
+			"customerPortal": "Klantenportaal",
+			"organisationId": "Organisatie-ID",
+			"workspaceId": "Standaard-ID van interne werkruimte",
+			"tenantId": "Entra-tenant-ID",
+			"clientId": "Client-ID van toepassing",
+			"clientSecret": "Clientgeheim",
+			"replaceSecret": "Clientgeheim vervangen (optioneel)",
+			"scopes": "Aangevraagde OIDC-scopes (gescheiden door komma’s of regeleinden)",
+			"domains": "Toegestane e-maildomeinen (één per regel)",
+			"jitAccess": "Just-in-time-toegang",
+			"enableJit": "JIT-provisioning inschakelen",
+			"defaultRole": "Standaardrol-ID (optioneel zolang JIT is uitgeschakeld)",
+			"requiredAppRole": "Vereiste Entra-toepassingsrol",
+			"maxRoleRank": "Maximale rolrang",
+			"enableConnection": "Deze verbinding inschakelen",
+			"confirmChange": "Deze wijziging bevestigen",
+			"authMethod": "Recente verificatiemethode",
+			"password": "Wachtwoord",
+			"authenticatorCode": "Verificatiecode",
+			"backupCode": "Herstelcode",
+			"freshAuth": "Recente verificatie",
+			"saving": "Opslaan…",
+			"createDisabled": "Uitgeschakelde verbinding maken",
+			"saveApply": "Instellingen opslaan en toepassen",
+			"version": "Configuratieversie {{version}}"
+		},
+		"events": {
+			"title": "Provisioninggeschiedenis",
+			"loadFailed": "De gebeurtenisgeschiedenis is niet beschikbaar. De instellingen van uw identiteitsverbinding zijn ongewijzigd.",
+			"loading": "Provisioninggeschiedenis laden…",
+			"empty": "Er zijn geen provisioninggebeurtenissen voor deze verbinding vastgelegd.",
+			"listLabel": "Provisioninggebeurtenissen",
+			"older": "Oudere gebeurtenissen",
+			"newest": "Nieuwste gebeurtenissen",
+			"unknown": "Onbekende gebeurtenis",
+			"kinds": {
+				"userCreated": "Gebruiker gemaakt",
+				"userUpdated": "Gebruiker bijgewerkt",
+				"userDeactivated": "Gebruiker gedeactiveerd",
+				"userReactivated": "Gebruiker opnieuw geactiveerd",
+				"groupDirectoryChanged": "Groepsdirectory gewijzigd",
+				"groupMappingChanged": "Groepstoewijzing gewijzigd",
+				"groupMemberAdded": "Groepslid toegevoegd",
+				"groupMemberRemoved": "Groepslid verwijderd",
+				"requestDenied": "Verzoek geweigerd",
+				"authFailed": "Verificatie mislukt",
+				"tokenRotated": "Token vernieuwd",
+				"tokenRevoked": "Token ingetrokken",
+				"connectionChanged": "Verbinding gewijzigd",
+				"syncFailed": "Synchronisatie mislukt"
+			},
+			"outcomes": {
+				"success": "Geslaagd"
+			},
+			"actors": {
+				"person": "Persoon",
+				"scim": "SCIM",
+				"oidc": "OIDC"
+			}
+		}
+	},
 	"pendingActions": {
 		"review": "Bekijken",
 		"emailMismatch": "Het exacte huidige e-mailadres komt niet overeen. De aanvraag blijft openstaan.",
@@ -2688,7 +2786,8 @@
 			"origins": {
 				"web": "Web",
 				"api": "API",
-				"mcp": "MCP"
+				"mcp": "MCP",
+				"unknown": "Onbekende bron"
 			},
 			"states": {
 				"pending": "In behandeling",
@@ -2710,7 +2809,16 @@
 			},
 			"authenticatorCode": "Authenticatorcode",
 			"backupCode": "Back-upcode",
-			"accountPassword": "Accountwachtwoord"
+			"accountPassword": "Accountwachtwoord",
+			"actions": {
+				"delete": "Verwijderen",
+				"bulkDelete": "Meerdere verwijderen",
+				"purge": "Definitief verwijderen",
+				"mcpDestructive": "Destructieve MCP-actie",
+				"userDeactivation": "Persoon deactiveren"
+			},
+			"unknownAction": "Onbekende actie",
+			"expires": "Verloopt"
 		}
 	}
 }

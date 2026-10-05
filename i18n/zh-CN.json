@@ -2631,6 +2631,104 @@
 			"accountPassword": "账户密码"
 		}
 	},
+	"identityConnections": {
+		"list": {
+			"title": "身份连接",
+			"description": "配置 Microsoft Entra 登录、查看安全的连接元数据并管理相关 SCIM 设置。",
+			"add": "添加身份连接",
+			"unavailable": "身份连接不可用",
+			"loadFailed": "无法加载列表。您可能没有实例管理员访问权限。",
+			"retry": "重试",
+			"loading": "正在加载身份连接",
+			"configured": "已配置的身份连接",
+			"organisationBound": "已绑定组织",
+			"enabled": "已启用",
+			"disabled": "已停用",
+			"manage": "管理设置",
+			"empty": "尚未配置身份连接。"
+		},
+		"editor": {
+			"loading": "正在加载身份连接…",
+			"loadFailed": "无法加载身份连接。",
+			"factorRequired": "请输入所选的最新身份验证因素。",
+			"stepUpFailed": "最新管理员验证不可用，或与此更改不完全匹配。",
+			"notFound": "身份连接已不可用。",
+			"stale": "设置已在另一个会话中更改。请重新加载后再试。",
+			"invalid": "身份提供程序、目标或角色配置无效。",
+			"saveFailed": "无法保存身份连接。您的设置仍保留在此表单中。",
+			"created": "已创建身份连接",
+			"createdDescription": "连接在版本 {{version}} 中处于停用状态。配置准备就绪后再启用。",
+			"openSettings": "打开连接设置",
+			"addTitle": "添加 Entra 连接",
+			"editTitle": "连接配置",
+			"intro": "更改连接需要最新的管理员验证。客户端凭据经过静态加密，且不会再次显示。",
+			"notSaved": "身份连接未保存",
+			"saved": "身份连接已保存",
+			"savedDescription": "连接已存储在版本 {{version}}。",
+			"connectionName": "连接名称",
+			"portal": "门户",
+			"staffPortal": "员工门户",
+			"customerPortal": "客户门户",
+			"organisationId": "组织 ID",
+			"workspaceId": "默认内部工作区 ID",
+			"tenantId": "Entra 租户 ID",
+			"clientId": "应用程序客户端 ID",
+			"clientSecret": "客户端密钥",
+			"replaceSecret": "替换客户端密钥（可选）",
+			"scopes": "请求的 OIDC 范围（用逗号或换行分隔）",
+			"domains": "允许的电子邮件域（每行一个）",
+			"jitAccess": "即时访问",
+			"enableJit": "启用 JIT 预配",
+			"defaultRole": "默认角色 ID（JIT 停用时可选）",
+			"requiredAppRole": "必需的 Entra 应用程序角色",
+			"maxRoleRank": "最高角色等级",
+			"enableConnection": "启用此连接",
+			"confirmChange": "确认此更改",
+			"authMethod": "最新身份验证方法",
+			"password": "密码",
+			"authenticatorCode": "身份验证器代码",
+			"backupCode": "备用代码",
+			"freshAuth": "最新身份验证",
+			"saving": "正在保存…",
+			"createDisabled": "创建停用的连接",
+			"saveApply": "保存并应用设置",
+			"version": "配置版本 {{version}}"
+		},
+		"events": {
+			"title": "预配历史记录",
+			"loadFailed": "事件历史记录不可用。您的身份连接设置未更改。",
+			"loading": "正在加载预配历史记录…",
+			"empty": "此连接没有记录预配事件。",
+			"listLabel": "预配事件",
+			"older": "较早的事件",
+			"newest": "最新事件",
+			"unknown": "未知事件",
+			"kinds": {
+				"userCreated": "用户已创建",
+				"userUpdated": "用户已更新",
+				"userDeactivated": "用户已停用",
+				"userReactivated": "用户已重新启用",
+				"groupDirectoryChanged": "组目录已更改",
+				"groupMappingChanged": "组映射已更改",
+				"groupMemberAdded": "已添加组成员",
+				"groupMemberRemoved": "已移除组成员",
+				"requestDenied": "请求已拒绝",
+				"authFailed": "身份验证失败",
+				"tokenRotated": "令牌已轮换",
+				"tokenRevoked": "令牌已撤销",
+				"connectionChanged": "连接已更改",
+				"syncFailed": "同步失败"
+			},
+			"outcomes": {
+				"success": "成功"
+			},
+			"actors": {
+				"person": "人员",
+				"scim": "SCIM",
+				"oidc": "OIDC"
+			}
+		}
+	},
 	"pendingActions": {
 		"review": "查看",
 		"emailMismatch": "当前邮箱完全不匹配。请求仍处于待处理状态。",
@@ -2681,7 +2779,8 @@
 			"origins": {
 				"web": "网页",
 				"api": "API",
-				"mcp": "MCP"
+				"mcp": "MCP",
+				"unknown": "未知来源"
 			},
 			"states": {
 				"pending": "待处理",
@@ -2703,7 +2802,16 @@
 			},
 			"authenticatorCode": "身份验证器代码",
 			"backupCode": "备用代码",
-			"accountPassword": "账户密码"
+			"accountPassword": "账户密码",
+			"actions": {
+				"delete": "删除",
+				"bulkDelete": "批量删除",
+				"purge": "彻底清除",
+				"mcpDestructive": "破坏性 MCP 操作",
+				"userDeactivation": "停用人员"
+			},
+			"unknownAction": "未知操作",
+			"expires": "到期时间"
 		}
 	}
 }

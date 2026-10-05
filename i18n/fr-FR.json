@@ -2645,6 +2645,104 @@
 			"accountPassword": "Mot de passe du compte"
 		}
 	},
+	"identityConnections": {
+		"list": {
+			"title": "Connexions d’identité",
+			"description": "Configurez la connexion Microsoft Entra, consultez les métadonnées de connexion sécurisées et gérez les paramètres SCIM associés.",
+			"add": "Ajouter une connexion d’identité",
+			"unavailable": "Connexions d’identité indisponibles",
+			"loadFailed": "La liste n’a pas pu être chargée. Votre compte ne dispose peut-être pas de l’accès administrateur à l’instance.",
+			"retry": "Réessayer",
+			"loading": "Chargement des connexions d’identité",
+			"configured": "Connexions d’identité configurées",
+			"organisationBound": "Liée à une organisation",
+			"enabled": "Activée",
+			"disabled": "Désactivée",
+			"manage": "Gérer les paramètres",
+			"empty": "Aucune connexion d’identité n’est configurée."
+		},
+		"editor": {
+			"loading": "Chargement de la connexion d’identité…",
+			"loadFailed": "La connexion d’identité n’a pas pu être chargée.",
+			"factorRequired": "Saisissez le facteur d’authentification récent sélectionné.",
+			"stepUpFailed": "La vérification récente de l’administrateur était indisponible ou ne correspondait pas exactement à cette modification.",
+			"notFound": "La connexion d’identité n’est plus disponible.",
+			"stale": "Les paramètres ont changé dans une autre session. Rechargez la page avant de réessayer.",
+			"invalid": "Le fournisseur d’identité, la cible ou la configuration du rôle n’est pas valide.",
+			"saveFailed": "La connexion d’identité n’a pas pu être enregistrée. Vos paramètres restent dans ce formulaire.",
+			"created": "Connexion d’identité créée",
+			"createdDescription": "La connexion est désactivée à la version {{version}}. Activez-la uniquement lorsque sa configuration est prête.",
+			"openSettings": "Ouvrir les paramètres de connexion",
+			"addTitle": "Ajouter une connexion Entra",
+			"editTitle": "Configuration de la connexion",
+			"intro": "Les modifications de connexion nécessitent une vérification récente de l’administrateur. Les identifiants client sont chiffrés au repos et ne sont jamais affichés à nouveau.",
+			"notSaved": "Connexion d’identité non enregistrée",
+			"saved": "Connexion d’identité enregistrée",
+			"savedDescription": "La connexion est enregistrée à la version {{version}}.",
+			"connectionName": "Nom de la connexion",
+			"portal": "Portail",
+			"staffPortal": "Portail du personnel",
+			"customerPortal": "Portail client",
+			"organisationId": "ID de l’organisation",
+			"workspaceId": "ID de l’espace de travail interne par défaut",
+			"tenantId": "ID du tenant Entra",
+			"clientId": "ID client de l’application",
+			"clientSecret": "Secret client",
+			"replaceSecret": "Remplacer le secret client (facultatif)",
+			"scopes": "Scopes OIDC demandés (séparés par une virgule ou un saut de ligne)",
+			"domains": "Domaines de messagerie autorisés (un par ligne)",
+			"jitAccess": "Accès juste-à-temps",
+			"enableJit": "Activer le provisionnement JIT",
+			"defaultRole": "ID du rôle par défaut (facultatif lorsque le JIT est désactivé)",
+			"requiredAppRole": "Rôle d’application Entra requis",
+			"maxRoleRank": "Rang maximal du rôle",
+			"enableConnection": "Activer cette connexion",
+			"confirmChange": "Confirmer cette modification",
+			"authMethod": "Méthode d’authentification récente",
+			"password": "Mot de passe",
+			"authenticatorCode": "Code d’authentification",
+			"backupCode": "Code de secours",
+			"freshAuth": "Authentification récente",
+			"saving": "Enregistrement…",
+			"createDisabled": "Créer une connexion désactivée",
+			"saveApply": "Enregistrer et appliquer les paramètres",
+			"version": "Version de configuration {{version}}"
+		},
+		"events": {
+			"title": "Historique du provisionnement",
+			"loadFailed": "L’historique des événements est indisponible. Les paramètres de votre connexion d’identité n’ont pas changé.",
+			"loading": "Chargement de l’historique du provisionnement…",
+			"empty": "Aucun événement de provisionnement n’a été enregistré pour cette connexion.",
+			"listLabel": "Événements de provisionnement",
+			"older": "Événements plus anciens",
+			"newest": "Événements les plus récents",
+			"unknown": "Événement inconnu",
+			"kinds": {
+				"userCreated": "Utilisateur créé",
+				"userUpdated": "Utilisateur mis à jour",
+				"userDeactivated": "Utilisateur désactivé",
+				"userReactivated": "Utilisateur réactivé",
+				"groupDirectoryChanged": "Annuaire de groupes modifié",
+				"groupMappingChanged": "Mappage de groupes modifié",
+				"groupMemberAdded": "Membre ajouté au groupe",
+				"groupMemberRemoved": "Membre retiré du groupe",
+				"requestDenied": "Demande refusée",
+				"authFailed": "Échec de l’authentification",
+				"tokenRotated": "Jeton renouvelé",
+				"tokenRevoked": "Jeton révoqué",
+				"connectionChanged": "Connexion modifiée",
+				"syncFailed": "Échec de la synchronisation"
+			},
+			"outcomes": {
+				"success": "Réussie"
+			},
+			"actors": {
+				"person": "Personne",
+				"scim": "SCIM",
+				"oidc": "OIDC"
+			}
+		}
+	},
 	"pendingActions": {
 		"review": "Révision",
 		"emailMismatch": "L'adresse e-mail actuelle exacte ne correspond pas. La demande reste en suspens.",
@@ -2695,7 +2793,8 @@
 			"origins": {
 				"web": "Web",
 				"api": "API",
-				"mcp": "MCP"
+				"mcp": "MCP",
+				"unknown": "Source inconnue"
 			},
 			"states": {
 				"pending": "En attente",
@@ -2717,7 +2816,16 @@
 			},
 			"authenticatorCode": "Code d’authentification",
 			"backupCode": "Code de secours",
-			"accountPassword": "Mot de passe du compte"
+			"accountPassword": "Mot de passe du compte",
+			"actions": {
+				"delete": "Supprimer",
+				"bulkDelete": "Supprimer en masse",
+				"purge": "Purger",
+				"mcpDestructive": "Action MCP destructive",
+				"userDeactivation": "Désactiver la personne"
+			},
+			"unknownAction": "Action inconnue",
+			"expires": "Expire"
 		}
 	}
 }

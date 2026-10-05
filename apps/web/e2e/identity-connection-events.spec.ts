@@ -216,11 +216,11 @@ test("opens and pages the safe connection-scoped provisioning history", async ({
   await expect(
     page.getByRole("heading", { name: "Provisioning history" }),
   ).toBeVisible();
-  await expect(page.getByText("user.updated")).toBeVisible();
-  await expect(page.getByText("success · scim ·")).toBeVisible();
+  await expect(page.getByText("User updated")).toBeVisible();
+  await expect(page.getByText("Succeeded · SCIM ·")).toBeVisible();
   await page.getByRole("button", { name: "Older events" }).click();
   await expect(page).toHaveURL(/eventsCursor=opaque-connection-bound-cursor/u);
-  await expect(page.getByText("user.created")).toBeVisible();
+  await expect(page.getByText("User created")).toBeVisible();
   expect(eventRequests.every((request) => request.limit === "25")).toBe(true);
   expect(new Set(eventRequests.map((request) => request.cursor))).toEqual(
     new Set(["first", "opaque-connection-bound-cursor"]),

@@ -2631,6 +2631,104 @@
 			"accountPassword": "アカウントのパスワード"
 		}
 	},
+	"identityConnections": {
+		"list": {
+			"title": "ID 接続",
+			"description": "Microsoft Entra サインインを構成し、安全な接続メタデータを確認して、関連する SCIM 設定を管理します。",
+			"add": "ID 接続を追加",
+			"unavailable": "ID 接続を利用できません",
+			"loadFailed": "一覧を読み込めませんでした。インスタンス管理者のアクセス権がない可能性があります。",
+			"retry": "再試行",
+			"loading": "ID 接続を読み込み中",
+			"configured": "構成済み ID 接続",
+			"organisationBound": "組織に紐付け済み",
+			"enabled": "有効",
+			"disabled": "無効",
+			"manage": "設定を管理",
+			"empty": "ID 接続は構成されていません。"
+		},
+		"editor": {
+			"loading": "ID 接続を読み込み中…",
+			"loadFailed": "ID 接続を読み込めませんでした。",
+			"factorRequired": "選択した最新の認証要素を入力してください。",
+			"stepUpFailed": "最新の管理者確認を利用できないか、この変更と完全には一致しませんでした。",
+			"notFound": "ID 接続は利用できなくなりました。",
+			"stale": "別のセッションで設定が変更されました。再試行する前に再読み込みしてください。",
+			"invalid": "ID プロバイダー、対象、またはロール構成が無効です。",
+			"saveFailed": "ID 接続を保存できませんでした。設定はこのフォームに保持されます。",
+			"created": "ID 接続を作成しました",
+			"createdDescription": "接続はバージョン {{version}} で無効です。構成の準備ができてから有効にしてください。",
+			"openSettings": "接続設定を開く",
+			"addTitle": "Entra 接続を追加",
+			"editTitle": "接続の構成",
+			"intro": "接続の変更には最新の管理者確認が必要です。クライアント資格情報は保存時に暗号化され、再表示されません。",
+			"notSaved": "ID 接続は未保存です",
+			"saved": "ID 接続を保存しました",
+			"savedDescription": "接続はバージョン {{version}} で保存されています。",
+			"connectionName": "接続名",
+			"portal": "ポータル",
+			"staffPortal": "スタッフポータル",
+			"customerPortal": "顧客ポータル",
+			"organisationId": "組織 ID",
+			"workspaceId": "既定の内部ワークスペース ID",
+			"tenantId": "Entra テナント ID",
+			"clientId": "アプリケーションのクライアント ID",
+			"clientSecret": "クライアントシークレット",
+			"replaceSecret": "クライアントシークレットを置換（任意）",
+			"scopes": "要求する OIDC スコープ（カンマまたは改行で区切る）",
+			"domains": "許可するメールドメイン（1 行に 1 つ）",
+			"jitAccess": "ジャストインタイムアクセス",
+			"enableJit": "JIT プロビジョニングを有効化",
+			"defaultRole": "既定のロール ID（JIT が無効の場合は任意）",
+			"requiredAppRole": "必須の Entra アプリケーションロール",
+			"maxRoleRank": "最大ロールランク",
+			"enableConnection": "この接続を有効化",
+			"confirmChange": "この変更を確認",
+			"authMethod": "最新の認証方法",
+			"password": "パスワード",
+			"authenticatorCode": "認証コード",
+			"backupCode": "バックアップコード",
+			"freshAuth": "最新の認証",
+			"saving": "保存中…",
+			"createDisabled": "無効な接続を作成",
+			"saveApply": "設定を保存して適用",
+			"version": "構成バージョン {{version}}"
+		},
+		"events": {
+			"title": "プロビジョニング履歴",
+			"loadFailed": "イベント履歴を利用できません。ID 接続の設定は変更されていません。",
+			"loading": "プロビジョニング履歴を読み込み中…",
+			"empty": "この接続のプロビジョニングイベントは記録されていません。",
+			"listLabel": "プロビジョニングイベント",
+			"older": "古いイベント",
+			"newest": "新しいイベント",
+			"unknown": "不明なイベント",
+			"kinds": {
+				"userCreated": "ユーザーを作成",
+				"userUpdated": "ユーザーを更新",
+				"userDeactivated": "ユーザーを無効化",
+				"userReactivated": "ユーザーを再有効化",
+				"groupDirectoryChanged": "グループディレクトリを変更",
+				"groupMappingChanged": "グループマッピングを変更",
+				"groupMemberAdded": "グループメンバーを追加",
+				"groupMemberRemoved": "グループメンバーを削除",
+				"requestDenied": "リクエストを拒否",
+				"authFailed": "認証に失敗",
+				"tokenRotated": "トークンをローテーション",
+				"tokenRevoked": "トークンを失効",
+				"connectionChanged": "接続を変更",
+				"syncFailed": "同期に失敗"
+			},
+			"outcomes": {
+				"success": "成功"
+			},
+			"actors": {
+				"person": "ユーザー",
+				"scim": "SCIM",
+				"oidc": "OIDC"
+			}
+		}
+	},
 	"pendingActions": {
 		"review": "確認",
 		"emailMismatch": "現在の正確なメールアドレスが一致しません。リクエストは保留中です。",
@@ -2681,7 +2779,8 @@
 			"origins": {
 				"web": "Web",
 				"api": "API",
-				"mcp": "MCP"
+				"mcp": "MCP",
+				"unknown": "不明なソース"
 			},
 			"states": {
 				"pending": "保留中",
@@ -2703,7 +2802,16 @@
 			},
 			"authenticatorCode": "認証アプリのコード",
 			"backupCode": "バックアップコード",
-			"accountPassword": "アカウントのパスワード"
+			"accountPassword": "アカウントのパスワード",
+			"actions": {
+				"delete": "削除",
+				"bulkDelete": "一括削除",
+				"purge": "完全削除",
+				"mcpDestructive": "破壊的な MCP アクション",
+				"userDeactivation": "ユーザーを無効化"
+			},
+			"unknownAction": "不明なアクション",
+			"expires": "有効期限"
 		}
 	}
 }

@@ -785,6 +785,13 @@
 			"when": 1791176122469,
 			"tag": "0111_instance_scope_must_be_empty",
 			"breakpoints": true
+		},
+		{
+			"idx": 112,
+			"version": "7",
+			"when": 1791201121658,
+			"tag": "0112_sla_policy_workspace_fks",
+			"breakpoints": true
 		}
 	]
 }

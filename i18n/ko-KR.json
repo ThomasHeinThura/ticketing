@@ -2631,6 +2631,104 @@
 			"accountPassword": "계정 암호"
 		}
 	},
+	"identityConnections": {
+		"list": {
+			"title": "ID 연결",
+			"description": "Microsoft Entra 로그인을 구성하고 안전한 연결 메타데이터를 검토하며 관련 SCIM 설정을 관리합니다.",
+			"add": "ID 연결 추가",
+			"unavailable": "ID 연결을 사용할 수 없음",
+			"loadFailed": "목록을 불러오지 못했습니다. 인스턴스 관리자 권한이 없을 수 있습니다.",
+			"retry": "다시 시도",
+			"loading": "ID 연결을 불러오는 중",
+			"configured": "구성된 ID 연결",
+			"organisationBound": "조직에 연결됨",
+			"enabled": "사용",
+			"disabled": "사용 안 함",
+			"manage": "설정 관리",
+			"empty": "구성된 ID 연결이 없습니다."
+		},
+		"editor": {
+			"loading": "ID 연결을 불러오는 중…",
+			"loadFailed": "ID 연결을 불러오지 못했습니다.",
+			"factorRequired": "선택한 최신 인증 요소를 입력하세요.",
+			"stepUpFailed": "최신 관리자 확인을 사용할 수 없거나 이 변경 사항과 정확히 일치하지 않았습니다.",
+			"notFound": "ID 연결을 더 이상 사용할 수 없습니다.",
+			"stale": "다른 세션에서 설정이 변경되었습니다. 다시 시도하기 전에 새로고침하세요.",
+			"invalid": "ID 공급자, 대상 또는 역할 구성이 올바르지 않습니다.",
+			"saveFailed": "ID 연결을 저장하지 못했습니다. 설정은 이 양식에 유지됩니다.",
+			"created": "ID 연결 생성됨",
+			"createdDescription": "연결은 버전 {{version}}에서 비활성화되어 있습니다. 구성이 준비된 후에만 활성화하세요.",
+			"openSettings": "연결 설정 열기",
+			"addTitle": "Entra 연결 추가",
+			"editTitle": "연결 구성",
+			"intro": "연결을 변경하려면 최신 관리자 확인이 필요합니다. 클라이언트 자격 증명은 저장 시 암호화되며 다시 표시되지 않습니다.",
+			"notSaved": "ID 연결이 저장되지 않음",
+			"saved": "ID 연결 저장됨",
+			"savedDescription": "연결이 버전 {{version}}으로 저장되었습니다.",
+			"connectionName": "연결 이름",
+			"portal": "포털",
+			"staffPortal": "직원 포털",
+			"customerPortal": "고객 포털",
+			"organisationId": "조직 ID",
+			"workspaceId": "기본 내부 작업 영역 ID",
+			"tenantId": "Entra 테넌트 ID",
+			"clientId": "애플리케이션 클라이언트 ID",
+			"clientSecret": "클라이언트 암호",
+			"replaceSecret": "클라이언트 암호 교체(선택 사항)",
+			"scopes": "요청된 OIDC 범위(쉼표 또는 줄바꿈으로 구분)",
+			"domains": "허용된 이메일 도메인(한 줄에 하나씩)",
+			"jitAccess": "Just-in-time 액세스",
+			"enableJit": "JIT 프로비저닝 사용",
+			"defaultRole": "기본 역할 ID(JIT가 사용 중지된 경우 선택 사항)",
+			"requiredAppRole": "필수 Entra 애플리케이션 역할",
+			"maxRoleRank": "최대 역할 순위",
+			"enableConnection": "이 연결 사용",
+			"confirmChange": "이 변경 확인",
+			"authMethod": "최신 인증 방법",
+			"password": "암호",
+			"authenticatorCode": "인증 코드",
+			"backupCode": "백업 코드",
+			"freshAuth": "최신 인증",
+			"saving": "저장 중…",
+			"createDisabled": "비활성 연결 만들기",
+			"saveApply": "설정 저장 및 적용",
+			"version": "구성 버전 {{version}}"
+		},
+		"events": {
+			"title": "프로비저닝 기록",
+			"loadFailed": "이벤트 기록을 사용할 수 없습니다. ID 연결 설정은 변경되지 않았습니다.",
+			"loading": "프로비저닝 기록을 불러오는 중…",
+			"empty": "이 연결에 기록된 프로비저닝 이벤트가 없습니다.",
+			"listLabel": "프로비저닝 이벤트",
+			"older": "이전 이벤트",
+			"newest": "최신 이벤트",
+			"unknown": "알 수 없는 이벤트",
+			"kinds": {
+				"userCreated": "사용자 생성",
+				"userUpdated": "사용자 업데이트",
+				"userDeactivated": "사용자 비활성화",
+				"userReactivated": "사용자 재활성화",
+				"groupDirectoryChanged": "그룹 디렉터리 변경",
+				"groupMappingChanged": "그룹 매핑 변경",
+				"groupMemberAdded": "그룹 구성원 추가",
+				"groupMemberRemoved": "그룹 구성원 제거",
+				"requestDenied": "요청 거부",
+				"authFailed": "인증 실패",
+				"tokenRotated": "토큰 교체",
+				"tokenRevoked": "토큰 해지",
+				"connectionChanged": "연결 변경",
+				"syncFailed": "동기화 실패"
+			},
+			"outcomes": {
+				"success": "성공"
+			},
+			"actors": {
+				"person": "사용자",
+				"scim": "SCIM",
+				"oidc": "OIDC"
+			}
+		}
+	},
 	"pendingActions": {
 		"review": "검토",
 		"emailMismatch": "현재 정확한 이메일이 일치하지 않습니다. 요청은 대기 상태로 유지됩니다.",
@@ -2681,7 +2779,8 @@
 			"origins": {
 				"web": "웹",
 				"api": "API",
-				"mcp": "MCP"
+				"mcp": "MCP",
+				"unknown": "알 수 없는 출처"
 			},
 			"states": {
 				"pending": "대기 중",
@@ -2703,7 +2802,16 @@
 			},
 			"authenticatorCode": "인증 앱 코드",
 			"backupCode": "백업 코드",
-			"accountPassword": "계정 암호"
+			"accountPassword": "계정 암호",
+			"actions": {
+				"delete": "삭제",
+				"bulkDelete": "일괄 삭제",
+				"purge": "완전히 제거",
+				"mcpDestructive": "파괴적인 MCP 작업",
+				"userDeactivation": "사용자 비활성화"
+			},
+			"unknownAction": "알 수 없는 작업",
+			"expires": "만료"
 		}
 	}
 }

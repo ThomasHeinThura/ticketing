@@ -2638,6 +2638,104 @@
 			"accountPassword": "Hesap parolası"
 		}
 	},
+	"identityConnections": {
+		"list": {
+			"title": "Kimlik bağlantıları",
+			"description": "Microsoft Entra oturum açmayı yapılandırın, güvenli bağlantı meta verilerini inceleyin ve ilişkili SCIM ayarlarını yönetin.",
+			"add": "Kimlik bağlantısı ekle",
+			"unavailable": "Kimlik bağlantıları kullanılamıyor",
+			"loadFailed": "Liste yüklenemedi. Örnek yöneticisi erişiminiz olmayabilir.",
+			"retry": "Yeniden dene",
+			"loading": "Kimlik bağlantıları yükleniyor",
+			"configured": "Yapılandırılmış kimlik bağlantıları",
+			"organisationBound": "Kuruluşa bağlı",
+			"enabled": "Etkin",
+			"disabled": "Devre dışı",
+			"manage": "Ayarları yönet",
+			"empty": "Yapılandırılmış kimlik bağlantısı yok."
+		},
+		"editor": {
+			"loading": "Kimlik bağlantısı yükleniyor…",
+			"loadFailed": "Kimlik bağlantısı yüklenemedi.",
+			"factorRequired": "Seçilen güncel kimlik doğrulama faktörünü girin.",
+			"stepUpFailed": "Güncel yönetici doğrulaması kullanılamadı veya bu değişiklikle tam olarak eşleşmedi.",
+			"notFound": "Kimlik bağlantısı artık kullanılamıyor.",
+			"stale": "Ayarlar başka bir oturumda değiştirildi. Yeniden denemeden önce sayfayı yenileyin.",
+			"invalid": "Kimlik sağlayıcısı, hedef veya rol yapılandırması geçersiz.",
+			"saveFailed": "Kimlik bağlantısı kaydedilemedi. Ayarlarınız bu formda kalır.",
+			"created": "Kimlik bağlantısı oluşturuldu",
+			"createdDescription": "Bağlantı {{version}} sürümünde devre dışıdır. Yalnızca yapılandırması hazır olduğunda etkinleştirin.",
+			"openSettings": "Bağlantı ayarlarını aç",
+			"addTitle": "Entra bağlantısı ekle",
+			"editTitle": "Bağlantı yapılandırması",
+			"intro": "Bağlantı değişiklikleri güncel yönetici doğrulaması gerektirir. İstemci kimlik bilgileri beklemede şifrelenir ve tekrar gösterilmez.",
+			"notSaved": "Kimlik bağlantısı kaydedilmedi",
+			"saved": "Kimlik bağlantısı kaydedildi",
+			"savedDescription": "Bağlantı {{version}} sürümünde saklanıyor.",
+			"connectionName": "Bağlantı adı",
+			"portal": "Portal",
+			"staffPortal": "Personel portalı",
+			"customerPortal": "Müşteri portalı",
+			"organisationId": "Kuruluş kimliği",
+			"workspaceId": "Varsayılan dahili çalışma alanı kimliği",
+			"tenantId": "Entra kiracı kimliği",
+			"clientId": "Uygulama istemci kimliği",
+			"clientSecret": "İstemci gizli anahtarı",
+			"replaceSecret": "İstemci gizli anahtarını değiştir (isteğe bağlı)",
+			"scopes": "İstenen OIDC kapsamları (virgül veya satır sonuyla ayrılmış)",
+			"domains": "İzin verilen e-posta etki alanları (her satıra bir tane)",
+			"jitAccess": "Tam zamanında erişim",
+			"enableJit": "JIT sağlamayı etkinleştir",
+			"defaultRole": "Varsayılan rol kimliği (JIT devre dışıyken isteğe bağlı)",
+			"requiredAppRole": "Gerekli Entra uygulama rolü",
+			"maxRoleRank": "En yüksek rol sırası",
+			"enableConnection": "Bu bağlantıyı etkinleştir",
+			"confirmChange": "Bu değişikliği onayla",
+			"authMethod": "Güncel kimlik doğrulama yöntemi",
+			"password": "Parola",
+			"authenticatorCode": "Kimlik doğrulama kodu",
+			"backupCode": "Yedek kod",
+			"freshAuth": "Güncel kimlik doğrulama",
+			"saving": "Kaydediliyor…",
+			"createDisabled": "Devre dışı bağlantı oluştur",
+			"saveApply": "Ayarları kaydet ve uygula",
+			"version": "Yapılandırma sürümü {{version}}"
+		},
+		"events": {
+			"title": "Sağlama geçmişi",
+			"loadFailed": "Olay geçmişi kullanılamıyor. Kimlik bağlantısı ayarlarınız değişmedi.",
+			"loading": "Sağlama geçmişi yükleniyor…",
+			"empty": "Bu bağlantı için sağlama olayı kaydedilmedi.",
+			"listLabel": "Sağlama olayları",
+			"older": "Daha eski olaylar",
+			"newest": "En yeni olaylar",
+			"unknown": "Bilinmeyen olay",
+			"kinds": {
+				"userCreated": "Kullanıcı oluşturuldu",
+				"userUpdated": "Kullanıcı güncellendi",
+				"userDeactivated": "Kullanıcı devre dışı bırakıldı",
+				"userReactivated": "Kullanıcı yeniden etkinleştirildi",
+				"groupDirectoryChanged": "Grup dizini değiştirildi",
+				"groupMappingChanged": "Grup eşlemesi değiştirildi",
+				"groupMemberAdded": "Grup üyesi eklendi",
+				"groupMemberRemoved": "Grup üyesi kaldırıldı",
+				"requestDenied": "İstek reddedildi",
+				"authFailed": "Kimlik doğrulama başarısız",
+				"tokenRotated": "Belirteç döndürüldü",
+				"tokenRevoked": "Belirteç iptal edildi",
+				"connectionChanged": "Bağlantı değiştirildi",
+				"syncFailed": "Eşitleme başarısız"
+			},
+			"outcomes": {
+				"success": "Başarılı"
+			},
+			"actors": {
+				"person": "Kişi",
+				"scim": "SCIM",
+				"oidc": "OIDC"
+			}
+		}
+	},
 	"pendingActions": {
 		"review": "İncele",
 		"emailMismatch": "Geçerli e-posta tam olarak eşleşmedi. İstek beklemede kalıyor.",
@@ -2688,7 +2786,8 @@
 			"origins": {
 				"web": "Web",
 				"api": "API",
-				"mcp": "MCP"
+				"mcp": "MCP",
+				"unknown": "Bilinmeyen kaynak"
 			},
 			"states": {
 				"pending": "Beklemede",
@@ -2710,7 +2809,16 @@
 			},
 			"authenticatorCode": "Kimlik doğrulayıcı kodu",
 			"backupCode": "Yedek kod",
-			"accountPassword": "Hesap parolası"
+			"accountPassword": "Hesap parolası",
+			"actions": {
+				"delete": "Sil",
+				"bulkDelete": "Toplu sil",
+				"purge": "Kalıcı olarak sil",
+				"mcpDestructive": "Yıkıcı MCP eylemi",
+				"userDeactivation": "Kişiyi devre dışı bırak"
+			},
+			"unknownAction": "Bilinmeyen eylem",
+			"expires": "Sona erme"
 		}
 	}
 }

@@ -2,6 +2,42 @@ import { cleanup, fireEvent, render, screen } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
 const apiFetch = vi.fn();
+
+vi.mock("react-i18next", () => ({
+  useTranslation: (namespace: string) => ({
+    i18n: { language: "en-US" },
+    t: (key: string, options?: Record<string, unknown>) => {
+      const values: Record<string, string> = {
+        "identityConnections.editor.connectionName": "Connection name",
+        "identityConnections.editor.tenantId": "Entra tenant ID",
+        "identityConnections.editor.clientId": "Application client ID",
+        "identityConnections.editor.clientSecret": "Client secret",
+        "identityConnections.editor.freshAuth": "Fresh authentication",
+        "identityConnections.editor.createDisabled":
+          "Create disabled connection",
+        "identityConnections.editor.created": "Identity connection created",
+        "identityConnections.editor.openSettings": "Open connection settings",
+        "identityConnections.list.title": "Identity connections",
+        "identityConnections.list.description":
+          "Configure Microsoft Entra sign-in, review safe connection metadata, and manage the associated SCIM settings.",
+        "identityConnections.list.add": "Add identity connection",
+        "identityConnections.list.configured":
+          "Configured identity connections",
+        "identityConnections.list.manage": "Manage settings",
+        "identityConnections.list.enabled": "Enabled",
+        "identityConnections.list.disabled": "Disabled",
+        "identityConnections.editor.staffPortal": "Staff portal",
+        "identityConnections.editor.customerPortal": "Customer portal",
+      };
+      const fullKey = key.includes(":") ? key : `${namespace}.${key}`;
+      let value = values[fullKey] ?? key;
+      for (const [name, replacement] of Object.entries(options ?? {})) {
+        value = value.replaceAll(`{{${name}}}`, String(replacement));
+      }
+      return value;
+    },
+  }),
+}));
 vi.mock("@taskdesk/libs", () => ({
   apiFetch: (...args: unknown[]) => apiFetch(...args),
 }));
