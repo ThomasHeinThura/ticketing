@@ -1,3 +1,47 @@
+## Complete identity/SCIM UI batch composed for final bulk delta — 2026-10-05
+
+Complete author `0a75f4adf253d3f5bf9f72cce5d0977cf617d818` is composed as
+`f2c3b210005dfea5e8b1ce729c0d6feedb1ffeee`: all mounted SCIM components and remaining
+identity list/editor/events copy are localized, structural JSX/ARIA/key-reference coverage
+is added, and parent/child SCIM request fixtures preserve exact challenge/proof/PATCH binding.
+Recovery uses explicit stale/ineligible state rather than translated message matching.
+
+Retained author raw evidence under `2026-10-05/p4-person-deactivation-b58/d209-final/`
+records web120files/478tests, web typecheck/lint, all18catalogues107keys each with exact
+placeholders/no English fallback, UI gate, both production builds/all228contrast pairs,
+and scoped real-browser SCIM1/1 passing. Observability → Authentication → Manage settings
+is opened at1280×720 and the screenshot is retained. These are author results, not independent
+clearance. No API/schema/policy source changes accompany this correction.
+
+Root freezes the complete composition with the explicit Thomas P4 query deferral, retained
+#10 closure/#580 tracking and this checkpoint; current ordinary delta scopes/full independent
+Sol and required combined CI/image/runtime proof follow. No feature deployment or stage
+completion is claimed. Verified P0 runtime remains pinned for the October6 observation.
+The separate #580 worker implements the complete work-item/task/task-relation read-ownership
+bucket; its unaccepted source is not part of this UI candidate or P0 runtime.
+
+## Applicable P0 CI issue closed; full future query work retained — 2026-10-05 13:04 UTC
+
+Live [#10](https://github.com/ThomasHeinThura/ticketing/issues/10) is CLOSED for its applicable
+P0 CI scope after the completed accepted-source/hosted/protection reconciliation and Thomas's
+explicit P4 query-gate deferral. The issue's original criteria and earlier checkpoints remain
+preserved with the new disposition. [#580](https://github.com/ThomasHeinThura/ticketing/issues/580)
+is OPEN for the complete P4 repository/query-gate implementation; MCP parity retains its
+separate future applicability. Overall P0 and #8 remain open.
+
+The bounded query lane's refined prototype inventory reports356Drizzle select accesses across
+149of423productionAPI TS files, superseding its earlier lexical/typed estimates; zero existing
+repository.ts files. Four focused prototype regressions pass and the accepted-source scan
+intentionally reports violations. The prototype is not wired into CI, accepted, deployed or
+claimed complete. Full source conversion and exact-candidate gate verification remain #580.
+
+The complete P4 UI batch now includes all three mounted SCIM child components and the expanded
+identity-admin copy inventory. Frozen translation contract has107newSCIMkeys and a structural
+JSX/ARIA/reference regression. Locale translation is running in exclusive Luna file partitions;
+all18non-English catalogues and exact placeholders are required before source freeze. No small
+intermediate review is started. Prior authority/schema clearance and blocked UI panel remain
+recorded at d209; protected current-source review/CI/runtime acceptance still follow.
+
 ## Thomas defers query ownership to P4; P0 closure scope reconciled — 2026-10-05
 
 Thomas explicitly chooses to defer the inherited repository refactor and `check:queries`
