@@ -254,14 +254,14 @@ describe("#1 -- migration applies cleanly and produces the six tables data-model
     ]);
   });
 
-  it("gives work_item exactly the 29 columns schema.ts declares", async () => {
-    // #192 added one column, `workspace_id` -- was 28 before this migration.
+  it("gives work_item exactly the 30 columns schema.ts declares", async () => {
+    // #192 added workspace_id; migration 0054 added first_response_at.
     const result = await db.execute<{ count: string }>(sql`
       SELECT count(*)::text AS count
       FROM information_schema.columns
       WHERE table_schema = 'public' AND table_name = 'work_item'
     `);
-    expect(result.rows[0]?.count).toBe("29");
+    expect(result.rows[0]?.count).toBe("30");
   });
 
   it("leaves taskTable and columnTable completely untouched", async () => {
