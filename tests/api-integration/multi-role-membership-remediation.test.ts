@@ -29,6 +29,7 @@ import { dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { and, eq, sql } from "drizzle-orm";
 import { beforeEach, describe, expect, it } from "vitest";
+import { CAPABILITY_CHECKS } from "../../apps/api/src/capabilities/capability-checks";
 import db, { schema } from "../../apps/api/src/database";
 import { createApp } from "../../apps/api/src/index";
 import { resolveMembershipRole } from "../../apps/api/src/utils/workspace-member-roles";
@@ -47,7 +48,9 @@ type App = ReturnType<typeof createApp>["app"];
 async function expectAllFalseCapabilityMap(response: Response): Promise<void> {
   expect(response.status).toBe(200);
   const capabilities = (await response.json()) as Record<string, unknown>;
-  expect(Object.keys(capabilities)).toHaveLength(16);
+  expect(Object.keys(capabilities)).toHaveLength(
+    Object.keys(CAPABILITY_CHECKS).length + 1,
+  );
   expect(Object.values(capabilities).every((value) => value === false)).toBe(
     true,
   );
