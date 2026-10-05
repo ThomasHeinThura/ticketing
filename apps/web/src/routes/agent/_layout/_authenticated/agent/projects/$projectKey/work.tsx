@@ -1,5 +1,13 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { Button, Skeleton } from "@taskdesk/ui";
+import {
+  Button,
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+  Skeleton,
+} from "@taskdesk/ui";
 import { lazy, Suspense, useCallback, useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 import PageTitle from "@/components/page-title";
@@ -14,9 +22,29 @@ import { useWorkspacePermission } from "@/hooks/use-workspace-permission";
 const WorkItemsPanel = lazy(
   () => import("@/components/work-item/work-items-panel"),
 );
-const CreateWorkItemDialog = lazy(
-  () => import("@/components/work-item/create-work-item-dialog"),
-);
+type CreateWorkItemDialogModule =
+  typeof import("@/components/work-item/create-work-item-dialog");
+
+let createWorkItemDialogModulePromise:
+  | Promise<CreateWorkItemDialogModule>
+  | undefined;
+
+function loadCreateWorkItemDialog(): Promise<CreateWorkItemDialogModule> {
+  if (!createWorkItemDialogModulePromise) {
+    createWorkItemDialogModulePromise = import(
+      "@/components/work-item/create-work-item-dialog"
+    ).catch((error: unknown) => {
+      createWorkItemDialogModulePromise = undefined;
+      throw error;
+    });
+  }
+  return createWorkItemDialogModulePromise;
+}
+
+const CreateWorkItemDialogContent = lazy(async () => {
+  const module = await loadCreateWorkItemDialog();
+  return { default: module.CreateWorkItemDialogContent };
+});
 
 import {
   parseWorkItemListSearch,
@@ -26,9 +54,7 @@ import {
 } from "@/lib/routes";
 
 function preloadCreateWorkItemDialog() {
-  void import("@/components/work-item/create-work-item-dialog").catch(
-    () => undefined,
-  );
+  void loadCreateWorkItemDialog().catch(() => undefined);
 }
 
 /**
@@ -55,12 +81,28 @@ function WorkItemsRouteComponent() {
   const { sort, dir } = Route.useSearch();
   const navigate = Route.useNavigate();
   const [isCreateOpen, setIsCreateOpen] = useState(false);
+  const [isCreateDialogReady, setIsCreateDialogReady] = useState(false);
+  const [isCreateDialogLoadError, setIsCreateDialogLoadError] = useState(false);
   const [realtimeProjectId, setRealtimeProjectId] = useState<string>();
   const [realtimeStatus, setRealtimeStatus] = useState<{
     projectId: string;
     status: WorkItemRealtimeStatus;
   }>();
   const closeCreateDialog = useCallback(() => setIsCreateOpen(false), []);
+  const openCreateDialog = useCallback(() => {
+    setIsCreateOpen(true);
+    setIsCreateDialogReady(false);
+    setIsCreateDialogLoadError(false);
+
+    void (async () => {
+      try {
+        await loadCreateWorkItemDialog();
+        setIsCreateDialogReady(true);
+      } catch {
+        setIsCreateDialogLoadError(true);
+      }
+    })();
+  }, []);
 
   // Creation is gated on the same server-computed capability the app's other create UI
   // uses (`useWorkspacePermission`, backed by `GET /api/capabilities`). The v2 canonical
@@ -169,7 +211,7 @@ function WorkItemsRouteComponent() {
               size="sm"
               onPointerEnter={preloadCreateWorkItemDialog}
               onFocus={preloadCreateWorkItemDialog}
-              onClick={() => setIsCreateOpen(true)}
+              onClick={openCreateDialog}
               data-testid="create-work-item-trigger"
             >
               {t("workItems:create.trigger")}
@@ -192,26 +234,70 @@ function WorkItemsRouteComponent() {
           />
         </Suspense>
         {project && isCreateOpen ? (
-          <Suspense
-            fallback={
-              <div
-                role="status"
-                aria-busy="true"
-                aria-live="polite"
-                data-testid="create-work-item-dialog-loading"
-              >
-                <span className="sr-only">{t("common:empty.loading")}</span>
-                <Skeleton className="h-10 w-full" />
-              </div>
-            }
+          <Dialog
+            open
+            onOpenChange={(next) => {
+              if (!next) closeCreateDialog();
+            }}
           >
-            <CreateWorkItemDialog
-              open
-              onClose={closeCreateDialog}
-              projectId={project.id}
-              workspaceId={workspace?.id}
-            />
-          </Suspense>
+            <DialogContent
+              className="max-w-md"
+              showCloseButton
+              closeLabel={t("workItems:create.close")}
+              data-testid="create-work-item-dialog"
+            >
+              <DialogHeader>
+                <DialogTitle>{t("workItems:create.title")}</DialogTitle>
+                <DialogDescription>
+                  {t("workItems:create.description")}
+                </DialogDescription>
+              </DialogHeader>
+              {isCreateDialogLoadError ? (
+                <div role="alert">
+                  <p>{t("common:error.title")}</p>
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    onClick={() => window.location.reload()}
+                  >
+                    {t("common:actions.tryAgain")}
+                  </Button>
+                </div>
+              ) : !isCreateDialogReady ? (
+                <div
+                  role="status"
+                  aria-busy="true"
+                  aria-live="polite"
+                  data-testid="create-work-item-dialog-loading"
+                >
+                  <span className="sr-only">{t("common:empty.loading")}</span>
+                  <Skeleton className="h-10 w-full" />
+                </div>
+              ) : (
+                <Suspense
+                  fallback={
+                    <div
+                      role="status"
+                      aria-busy="true"
+                      aria-live="polite"
+                      data-testid="create-work-item-dialog-loading"
+                    >
+                      <span className="sr-only">
+                        {t("common:empty.loading")}
+                      </span>
+                      <Skeleton className="h-10 w-full" />
+                    </div>
+                  }
+                >
+                  <CreateWorkItemDialogContent
+                    onClose={closeCreateDialog}
+                    projectId={project.id}
+                    workspaceId={workspace?.id}
+                  />
+                </Suspense>
+              )}
+            </DialogContent>
+          </Dialog>
         ) : null}
       </div>
     </>

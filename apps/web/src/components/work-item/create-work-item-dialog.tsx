@@ -16,6 +16,34 @@ const CreateWorkItemDialogForm = lazy(
 
 type Props = CreateWorkItemDialogProps & { open: boolean };
 
+type ContentProps = CreateWorkItemDialogProps;
+
+export function CreateWorkItemDialogContent({
+  onClose,
+  projectId,
+  workspaceId,
+}: ContentProps) {
+  return (
+    <Suspense
+      fallback={
+        <div className="flex flex-col gap-4" aria-busy="true">
+          <Skeleton className="h-10 w-full" />
+          <Skeleton className="h-10 w-full" />
+          <Skeleton className="h-24 w-full" />
+          <Skeleton className="h-10 w-full" />
+          <Skeleton className="h-9 w-32 self-end" />
+        </div>
+      }
+    >
+      <CreateWorkItemDialogForm
+        onClose={onClose}
+        projectId={projectId}
+        workspaceId={workspaceId}
+      />
+    </Suspense>
+  );
+}
+
 /** Keep the accessible dialog shell available as soon as the route handles intent.
  * The heavier form and its query hooks remain a separate, intent-lazy module. */
 export default function CreateWorkItemDialog({
@@ -39,31 +67,17 @@ export default function CreateWorkItemDialog({
         closeLabel={t("workItems:create.close")}
         data-testid="create-work-item-dialog"
       >
-        <Suspense
-          fallback={
-            <>
-              <DialogHeader>
-                <DialogTitle>{t("workItems:create.title")}</DialogTitle>
-                <DialogDescription>
-                  {t("workItems:create.description")}
-                </DialogDescription>
-              </DialogHeader>
-              <div className="flex flex-col gap-4" aria-busy="true">
-                <Skeleton className="h-10 w-full" />
-                <Skeleton className="h-10 w-full" />
-                <Skeleton className="h-24 w-full" />
-                <Skeleton className="h-10 w-full" />
-                <Skeleton className="h-9 w-32 self-end" />
-              </div>
-            </>
-          }
-        >
-          <CreateWorkItemDialogForm
-            onClose={onClose}
-            projectId={projectId}
-            workspaceId={workspaceId}
-          />
-        </Suspense>
+        <DialogHeader>
+          <DialogTitle>{t("workItems:create.title")}</DialogTitle>
+          <DialogDescription>
+            {t("workItems:create.description")}
+          </DialogDescription>
+        </DialogHeader>
+        <CreateWorkItemDialogContent
+          onClose={onClose}
+          projectId={projectId}
+          workspaceId={workspaceId}
+        />
       </DialogContent>
     </Dialog>
   );

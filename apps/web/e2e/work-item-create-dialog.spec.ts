@@ -55,6 +55,7 @@ test("create dialog opens while the list, wrapper, and form load independently",
 
   let releaseWrapper!: () => void;
   let wrapperRequested!: () => void;
+  let wrapperRequestCount = 0;
   const wrapperRequest = new Promise<void>((resolve) => {
     wrapperRequested = resolve;
   });
@@ -67,6 +68,7 @@ test("create dialog opens while the list, wrapper, and form load independently",
       !url.pathname.includes("-form-") &&
       url.pathname.endsWith(".js"),
     async (route) => {
+      wrapperRequestCount += 1;
       wrapperRequested();
       await wrapperRelease;
       await route.continue();
@@ -96,9 +98,9 @@ test("create dialog opens while the list, wrapper, and form load independently",
     await page.goto(WORK_LIST_PATH);
     const trigger = page.getByTestId("create-work-item-trigger");
     await expect(trigger).toBeVisible();
-    await trigger.hover();
-    await wrapperRequest;
     await trigger.click();
+    await wrapperRequest;
+    expect(wrapperRequestCount).toBe(1);
     await expect(
       page.getByTestId("create-work-item-dialog-loading"),
     ).toBeVisible();
@@ -130,4 +132,59 @@ test("create dialog opens while the list, wrapper, and form load independently",
     releaseForm();
     releaseList();
   }
+});
+
+test("a failed dialog intent preload keeps the shell available and reloads for recovery", async ({
+  page,
+}) => {
+  await page.setViewportSize({ width: 1280, height: 720 });
+  await installPerformanceApiFixture(page);
+
+  let wrapperRequestCount = 0;
+  await page.route(
+    (url) =>
+      url.pathname.includes("create-work-item-dialog-") &&
+      !url.pathname.includes("-form-") &&
+      url.pathname.endsWith(".js"),
+    async (route) => {
+      wrapperRequestCount += 1;
+      if (wrapperRequestCount === 1) {
+        await route.abort("failed");
+        return;
+      }
+      await route.continue();
+    },
+  );
+
+  await page.goto(WORK_LIST_PATH);
+  const trigger = page.getByTestId("create-work-item-trigger");
+  await expect(trigger).toBeVisible();
+  const failedPreload = page.waitForEvent(
+    "requestfailed",
+    (request) =>
+      request.url().includes("create-work-item-dialog-") &&
+      !request.url().includes("-form-"),
+  );
+  await trigger.focus();
+  await failedPreload;
+  await page.evaluate(
+    () => new Promise<void>((resolve) => requestAnimationFrame(() => resolve())),
+  );
+  await trigger.press("Enter");
+
+  const dialog = page.getByRole("dialog");
+  await expect(dialog).toBeVisible();
+  await expect(page.getByRole("alert")).toBeVisible();
+  await page.getByRole("button", { name: /tryAgain/ }).click();
+  await expect(page.getByTestId("create-work-item-trigger")).toBeVisible();
+  await page.getByTestId("create-work-item-trigger").click();
+  await expect(dialog).toBeVisible();
+  await expect(dialog.getByTestId("create-work-item-title")).toBeVisible();
+  expect(wrapperRequestCount).toBe(2);
+  await page.keyboard.press("Escape");
+  await expect(dialog).toBeHidden();
+  await page.getByTestId("create-work-item-trigger").focus();
+  await page.keyboard.press("Enter");
+  await expect(dialog).toBeVisible();
+  await expect(dialog.getByTestId("create-work-item-title")).toBeVisible();
 });
