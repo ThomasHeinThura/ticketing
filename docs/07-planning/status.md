@@ -1,3 +1,55 @@
+## Complete P0 create lifecycle correction; role race regression green — 2026-10-05 00:30 UTC
+
+P0 completed source **e186cbe32b663b257581a249dfd7503c9787289c** is pushed and
+normally composed into root integration. The existing shared Dialog shell mounts on click;
+body/form remain lazy. Aborted module loading offers real page-reload recovery. Types,
+component9/9, check:tokens/both builds/228contrast pairs and createbrowser3/3 pass.
+Changed-source exact create81.0/200ms and LCP2352/2500ms pass once each; no full local
+canonical rerun. Actual source/build hashes and retained failures are recorded in the
+residual author report. Publish the complete checkpoint, then current hosted canonical,
+image/boot and fresh risk-sized bulk reviews; pending checks are not completion claims.
+
+P4 Users source5e35 deployability passes: actual image revision/nonrootUID10001,
+accepted80SQL prefix identical, all89DB hashes match candidate, dedicated app role has no
+superuser/createdb/createrole/bypassrls, live-ready200, cleanup0errors. The next actual
+role/member/invitation race correction is implemented on that isolated lane; focused
+PostgreSQL2files74tests passes24.6s across both serialization orders and stale-invitation
+refusal. First71/74 reflected three wrong expectations for the existing400 assigned-role
+contract, corrected before final pass. Checkpoint pending; no current image or stage claim
+for that subsequent dirty source. No live inherited plugin writer remains: organization
+plugin is unregistered. No P3/P2 schema union or main/DEV refresh.
+
+## P0 hosted21/22; create-wrapper correction and complete Users UI — 2026-10-05 00:06 UTC
+
+Published **61bec716f792dac0409c2d90c3783d3244a926fa**, full37244941030, passes
+G4/G8/E2E and PostgreSQL136files1649tests5tasks,12m4.687s. G11 **21/22FAIL**:
+all prior four residuals now pass (list328.1/500ms,LCP2316/2500,state110.6/200,
+board460.3/500). Create fails before timing: getByRole(dialog) absent5000ms.
+Actual trace/error snapshot shows open-state loading fallback but unresolved lazy wrapper;
+form is not reached. The author is completing the shared wrapper loader/direct-click
+lifecycle correction before another complete source freeze, not a timeout relaxation.
+Raw log/artifact11318354470 retained. Fast37244986978 passes12/13jobs, including
+staticG3 and web105files424tests/wholeunit12tasks; only pending-review template fails.
+Review packet remains deferred for the real source correction; no tiny-review rounds.
+
+Exact61bec image proof passes revision/nonrootUID10001/live-ready200,80/88prefix,
+CAS/auth/metrics negatives. Oct4T23:47:28.090288–23:47:34.485042UTC captures129
+requests/28eligible sources/44rows127occurrences,0unexplained/uncovered,eventreconciled.
+Root verifies three pre-guard hashes and sole nativeWS delegation;8resources absent/0
+cleanup errors. ResultSHA2568aeced7a28b2632d5b643a8eb2d7ada9299ecb38bd64ab69741f36eef59d5b22.
+This remains one partialOct4UTC date; clock rollover adds no observation evidence.
+Acceptedmain8ddb/reviewedDEVb8, current reviews/protection/cutover/finalizer remain open.
+
+P4 Users backend+UI **5e35c9f3bf9583d370b9321bb26577ffb2531702** is clean/pushed:
+reachable /god-mode/users directory/detail, URLquery/filter/selection/cursor, typed
+fetchers/mutations, bound elevated grant/MFA reset, suspend/unsuspend/all-session signout,
+shared confirmations/feedback/navigation, generated routes/inventory and18locales.
+Types/URL15/15/inventory/Biome pass; built fixturebrowser1/1 covers every action.
+First fixture-only CSRFexpiresAt/shellGET errors are retained and corrected against real
+schemas. Backend6/6 remains actual prior evidence without unchanged rerun. Exact image
+build and immutable accepted80migration prefix pass; isolated boot proof is in progress
+following correction of its disposable PG18volume mount. No P4acceptance claim.
+
 ## P0 complete residual batch verified locally — 2026-10-04 23:45 UTC
 
 Completed source **dd6b1ab0670833ed9dc7291fffdf6e002fc270fa**, normally composed by
@@ -3529,11 +3581,11 @@ strict cutover and the additional fresh Sol phase finalizer remain required.
 
 ### P0 #10 — hosted performance and protected acceptance
 
-G4/G8 pass on the latest published P0 batch in PR #579. Its hosted G11 run passes 18/22,
-failing list, LCP, state and board; create and assignment now pass. The complete residual
-rendering/resource batch is composed locally, with source-bound contrast inventory
-integration in progress before one current hosted run and fresh independent bulk review.
-Local passes remain source-bound author evidence. G11 must pass and become a required protected context
+G4/G8 and source-bound G3 pass on the latest published P0 batch in PR #579. Its hosted
+G11 run passes21/22; list, LCP, state and board now pass. Create fails before timing when
+the lazy dialog wrapper does not resolve within the unchanged5000ms visibility check.
+Complete the structural wrapper/direct-click correction before the next current hosted
+run and independent bulk review. Local passes remain source-bound author evidence. G11 must pass and become a required protected context
 before acceptance; the ruleset currently retains 17 required contexts and zero bypass actors.
 See the newest dated snapshot for exact heads, counts and retained evidence. No phase
 completion or performance threshold waiver is claimed.

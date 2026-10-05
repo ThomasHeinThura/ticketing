@@ -23,3 +23,11 @@ Built fixture browsers: create dialog open/title/Escape close/keyboard reopen; i
 ## Limits
 
 Previous published812 hosted18/22 is retained as a failed historical result. Current independent reviews, hosted22/22, current image proof, protected acceptance, development refresh, remaining actual clean dates, strict cutover and the additional Sol phase finalizer are not claimed by this report. No stage completion.
+
+## Complete hosted create-lifecycle correction
+
+Sourcee186cbe32b663b257581a249dfd7503c9787289c follows actual61bec hosted21/22. The trace showed the click succeeded but all dialog markup was gated on an unresolved wrapper import. The route now mounts the existing shared Dialog shell synchronously; body/form remain lazy behind a shared cached loader. Failed module loading exposes an honest reload recovery action, because Chromium retains a rejected module URL for the page lifetime. There is no causal claim based solely on duplicate import paths.
+
+Types and create component1file9tests pass. check:tokens passes including both builds/228contrast pairs; the new actual DialogDescription caller-chain occurrence is registered without altering ordered-distinct occurrence IDs. Built create journeys3/3 include direct opening, independent loading, initial intent-preload abort, explicit-open dialog/error, reload recovery and close/reopen. Changed-source scoped benchmarks each run once: create81.0ms(82.7,64.9,81.0)<200; LCP2352ms(2352,2356,2348)<2500. No full local22-case rerun.
+
+Agent manifestSHA25638ef5c1db721faca9025be7eaaa038cac5428c7da219263baf14e60bfee93210; portal06f3b04506b2a1d9fd6e81147e17d275e7317a8d9d4be8a41a1750e548f3a2fe. Route sourceSHA2565916285da0bc611c746bfae0c75ea200914f363f4ffcb8941c62298b9213cea4; dialoge03ccc594a7c31f8dad8e077b32a0731cc6f740a3a29b965a1737ae48dde95c0; manifest360df81fccf6137bf396799c7b234d936b54802b7b95ddbfdbe5bef6206f0732. Retained private logs: typecheck-final-2.log,component-tests-final.log,token-contrast-final-2.log,create-lifecycle-final-browser.log,create-lifecycle-g11-create.log,create-lifecycle-g11-lcp.log. Failed experiments and original61bec hosted evidence remain retained. Current final hosted canonical/current independent review remain pending.
