@@ -1,4 +1,9 @@
-import { Checkbox, ContextMenu, ContextMenuTrigger } from "@taskdesk/ui";
+import {
+  Button,
+  Checkbox,
+  ContextMenu,
+  ContextMenuTrigger,
+} from "@taskdesk/ui";
 import { motion, useReducedMotion } from "framer-motion";
 import { useTranslation } from "react-i18next";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/avatar";
@@ -75,15 +80,17 @@ export default function SubtaskRow({
             />
 
             <SubtaskStatusPopover tasks={tasks} projectId={projectId}>
-              <button
+              <Button
+                variant="ghost"
                 type="button"
                 className="shrink-0 flex items-center justify-center rounded p-0.5 transition-colors outline-none [&_svg]:text-muted-foreground hover:[&_svg]:text-foreground"
               >
                 {getColumnIcon(task.status, false)}
-              </button>
+              </Button>
             </SubtaskStatusPopover>
 
-            <button
+            <Button
+              variant="ghost"
               type="button"
               className="flex-1 min-w-0 text-left outline-none"
               onClick={onNavigate}
@@ -93,10 +100,11 @@ export default function SubtaskRow({
               >
                 {task.title}
               </span>
-            </button>
+            </Button>
 
             <SubtaskAssigneePopover tasks={tasks} workspaceId={workspaceId}>
-              <button
+              <Button
+                variant="ghost"
                 type="button"
                 className="shrink-0 flex items-center justify-center rounded p-0.5 transition-colors outline-none"
               >
@@ -120,7 +128,7 @@ export default function SubtaskRow({
                     </span>
                   </div>
                 )}
-              </button>
+              </Button>
             </SubtaskAssigneePopover>
           </div>
         </ContextMenuTrigger>

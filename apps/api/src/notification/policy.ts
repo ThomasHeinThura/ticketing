@@ -39,9 +39,8 @@ import type { PolicyMap } from "@taskdesk/permissions";
  * are not a scope in `packages/permissions/src/policy.ts`'s `SCOPES` list at all (they are
  * per-user, not per-tenant), which is exactly what kind 2 exists for.
  *
- * No `elevated`/`AUTHORITY_GRANTING` concern (notifications mint no authority) and no
- * `sessionOnly` (kaneo-native route, no inherited session-only restriction — see
- * `comment/policy.ts`'s file comment for the same reasoning, not repeated per file).
+ * These self writes are session-only under the explicit 2026-10-06 AK-9 decision: a caller's
+ * own row is not by itself an opt-in API-key write capability. Read access stays self-scoped.
  */
 export const notificationPolicies = {
   "GET /api/notification": {
@@ -57,6 +56,7 @@ export const notificationPolicies = {
   "POST /api/notification": {
     authenticated: true,
     self: true,
+    sessionOnly: true,
     personParam: {
       exempt: "no_person_parameter",
       reason:
@@ -67,6 +67,7 @@ export const notificationPolicies = {
   "PATCH /api/notification/{id}/read": {
     authenticated: true,
     self: true,
+    sessionOnly: true,
     personParam: {
       exempt: "no_person_parameter",
       reason:
@@ -77,6 +78,7 @@ export const notificationPolicies = {
   "PATCH /api/notification/read-all": {
     authenticated: true,
     self: true,
+    sessionOnly: true,
     personParam: {
       exempt: "no_person_parameter",
       reason:
@@ -87,6 +89,7 @@ export const notificationPolicies = {
   "DELETE /api/notification/clear-all": {
     authenticated: true,
     self: true,
+    sessionOnly: true,
     personParam: {
       exempt: "no_person_parameter",
       reason:

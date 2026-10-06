@@ -1,6 +1,8 @@
 import { describe, expect, it, vi } from "vitest";
 
-const mocks = vi.hoisted(() => ({ workItemsPanelLoaded: vi.fn() }));
+const mocks = vi.hoisted(() => ({
+  workItemsPanelLoaded: vi.fn(),
+}));
 
 vi.mock("@/components/work-item/work-items-panel", () => {
   mocks.workItemsPanelLoaded();

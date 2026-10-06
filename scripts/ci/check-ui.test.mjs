@@ -7,7 +7,14 @@
 
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
-import { parseKnownRadixTable, radixImportsIn } from "./check-ui.mjs";
+import {
+  baseUiImportsIn,
+  isBaseUiBoundaryViolation,
+  isBaseUiSpecifier,
+  parseKnownRadixTable,
+  radixImportsIn,
+  rawElementsIn,
+} from "./check-ui.mjs";
 
 function table(rows) {
   return [
@@ -181,6 +188,102 @@ describe("check:ui — radixImportsIn", () => {
     // biome-ignore lint/suspicious/noTemplateCurlyInString: the ${pkg} is the FIXTURE text under test (a template substitution check-ui.mjs's parser must not resolve), not a mistaken interpolation in this file's own source.
     const source = "const pkg = 'radix-ui/slot'; import(`${pkg}`);\n";
     assert.deepEqual(radixImportsIn(source), []);
+  });
+});
+
+describe("check:ui — G1a rawElementsIn", () => {
+  it("finds each forbidden raw native element from real JSX AST nodes", () => {
+    const source =
+      "export const Fixture = () => <><button/><input/><select/><textarea/><dialog/></>;";
+    assert.deepEqual(
+      rawElementsIn(source).map(({ tag }) => tag),
+      ["button", "input", "select", "textarea", "dialog"],
+    );
+  });
+
+  it("ignores custom components and tag-like text or comments", () => {
+    const source = [
+      "// <button> in a comment is not JSX.",
+      'const text = "<input>";',
+      "export const Fixture = () => <><Button/><Select/><textareaComponent/></>;",
+    ].join("\n");
+    assert.deepEqual(rawElementsIn(source), []);
+  });
+
+  it("allows one immediately preceding ui-exempt reason for one native element", () => {
+    const source = [
+      "const fixture = (",
+      "  // ui-exempt: this test checks native browser form serialization",
+      "  <button /><input />",
+      ");",
+    ].join("\n");
+    assert.deepEqual(
+      rawElementsIn(source).map(({ tag }) => tag),
+      ["input"],
+    );
+  });
+
+  it("does not accept empty, distant, or non-directive comments as exemptions", () => {
+    const source = [
+      "// ui-exempt:",
+      "const fixture = (",
+      "  // ui-exempt: native input fixture",
+      "  // intervening comment",
+      "  <input />",
+      ");",
+    ].join("\n");
+    assert.deepEqual(
+      rawElementsIn(source).map(({ tag }) => tag),
+      ["input"],
+    );
+  });
+});
+
+describe("check:ui — G1b Base UI package boundary", () => {
+  it("matches the Base UI package root and subpaths", () => {
+    assert.equal(isBaseUiSpecifier("@base-ui/react"), true);
+    assert.equal(isBaseUiSpecifier("@base-ui/react/button"), true);
+  });
+
+  it("does not match similar but unrelated package names", () => {
+    assert.equal(isBaseUiSpecifier("@base-ui/react-extra"), false);
+    assert.equal(isBaseUiSpecifier("@base-ui/reactive"), false);
+  });
+
+  it("finds actual Base UI imports, including package subpaths, through the AST", () => {
+    const source = [
+      'import { Button } from "@base-ui/react/button";',
+      'const lazy = import("@base-ui/react");',
+      'import { NotBaseUI } from "@base-ui/react-extra";',
+    ].join("\n");
+    assert.deepEqual(baseUiImportsIn(source), [
+      "@base-ui/react/button",
+      "@base-ui/react",
+    ]);
+  });
+
+  it("rejects Base UI imports outside packages/ui and permits the package itself", () => {
+    assert.equal(
+      isBaseUiBoundaryViolation(
+        "apps/web/src/example.tsx",
+        "@base-ui/react/button",
+      ),
+      true,
+    );
+    assert.equal(
+      isBaseUiBoundaryViolation(
+        "packages/ui/src/button.tsx",
+        "@base-ui/react/button",
+      ),
+      false,
+    );
+    assert.equal(
+      isBaseUiBoundaryViolation(
+        "packages/ui-extra/src/example.tsx",
+        "@base-ui/react/button",
+      ),
+      true,
+    );
   });
 });
 

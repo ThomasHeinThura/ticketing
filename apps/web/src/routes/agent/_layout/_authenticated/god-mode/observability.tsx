@@ -409,16 +409,27 @@ function ObservabilitySettings() {
               >
                 Fresh factor proof
               </label>
-              <select
-                className="rounded-md border bg-background px-3 py-2"
+              <Select
                 value={codeMethod}
-                onChange={(event) =>
-                  setCodeMethod(event.target.value as "totp" | "backup_code")
+                onValueChange={(value) =>
+                  setCodeMethod(value as "totp" | "backup_code")
                 }
               >
-                <option value="totp">Authenticator code</option>
-                <option value="backup_code">Backup code</option>
-              </select>
+                <SelectTrigger
+                  aria-label="Factor proof type"
+                  className="rounded-md border bg-background px-3 py-2"
+                >
+                  <SelectValue>
+                    {codeMethod === "totp"
+                      ? "Authenticator code"
+                      : "Backup code"}
+                  </SelectValue>
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="totp">Authenticator code</SelectItem>
+                  <SelectItem value="backup_code">Backup code</SelectItem>
+                </SelectContent>
+              </Select>
               <Input
                 id="observability-code"
                 value={code}

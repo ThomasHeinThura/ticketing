@@ -1,5 +1,6 @@
 import { useNavigate } from "@tanstack/react-router";
 import {
+  Button,
   KbdSequence,
   SidebarTrigger,
   Tooltip,
@@ -84,7 +85,8 @@ export default function TaskLayout({
               <div className="h-4 w-px shrink-0 bg-border/80" />
 
               <div className="min-w-0 items-center gap-1.5 flex">
-                <button
+                <Button
+                  variant="ghost"
                   type="button"
                   onClick={() =>
                     navigate({
@@ -95,7 +97,7 @@ export default function TaskLayout({
                   className="max-w-40 truncate text-left text-xs text-foreground hover:underline"
                 >
                   {projectName || t("navigation:sidebar.projects")}
-                </button>
+                </Button>
                 <span className="text-foreground text-xs">/</span>
                 <TaskCrumbSelect
                   projectId={projectId}

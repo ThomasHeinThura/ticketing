@@ -26,7 +26,11 @@ export function CreateWorkItemDialogContent({
   return (
     <Suspense
       fallback={
-        <div className="flex flex-col gap-4" aria-busy="true">
+        <div
+          className="flex flex-col gap-4"
+          aria-busy="true"
+          data-testid="create-work-item-dialog-loading"
+        >
           <Skeleton className="h-10 w-full" />
           <Skeleton className="h-10 w-full" />
           <Skeleton className="h-24 w-full" />

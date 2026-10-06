@@ -1,6 +1,11 @@
 import { useSortable } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
-import { HoverCard, HoverCardContent, HoverCardTrigger } from "@taskdesk/ui";
+import {
+  Button,
+  HoverCard,
+  HoverCardContent,
+  HoverCardTrigger,
+} from "@taskdesk/ui";
 import { format } from "date-fns";
 import type { TFunction } from "i18next";
 import {
@@ -280,7 +285,8 @@ function TaskCard({
           {pullRequests.length === 1 && (
             <HoverCard openDelay={200} closeDelay={100}>
               <HoverCardTrigger asChild>
-                <button
+                <Button
+                  variant="ghost"
                   type="button"
                   aria-label={`${getPRInfo(pullRequests[0]).status} pull request #${pullRequests[0].externalId}`}
                   onClick={(e) => {
@@ -291,7 +297,7 @@ function TaskCard({
                 >
                   {getPRInfo(pullRequests[0]).icon}
                   <span>#{pullRequests[0].externalId}</span>
-                </button>
+                </Button>
               </HoverCardTrigger>
               <HoverCardContent
                 className="w-72 p-3"
@@ -329,7 +335,8 @@ function TaskCard({
               return (
                 <HoverCard openDelay={200} closeDelay={100}>
                   <HoverCardTrigger asChild>
-                    <button
+                    <Button
+                      variant="ghost"
                       type="button"
                       onClick={(e) => e.stopPropagation()}
                       className="inline-flex items-center gap-1.5 rounded border border-border/70 bg-muted/55 px-2 py-1 text-[10px] font-medium text-muted-foreground"
@@ -340,7 +347,7 @@ function TaskCard({
                           count: pullRequests.length,
                         })}
                       </span>
-                    </button>
+                    </Button>
                   </HoverCardTrigger>
                   <HoverCardContent
                     className="w-auto min-w-56 max-w-96 p-1"
@@ -357,7 +364,8 @@ function TaskCard({
                       return (
                         <div key={pr.id}>
                           {index > 0 && <hr className="border-border my-1" />}
-                          <button
+                          <Button
+                            variant="ghost"
                             type="button"
                             onClick={() => window.open(pr.url, "_blank")}
                             className="w-full px-2 py-1.5 text-left hover:bg-muted/50 rounded transition-colors"
@@ -374,7 +382,7 @@ function TaskCard({
                             <span className="text-[10px] text-muted-foreground">
                               {prInfo.status}
                             </span>
-                          </button>
+                          </Button>
                         </div>
                       );
                     })}

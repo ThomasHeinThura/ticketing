@@ -1,3 +1,21 @@
+### 2026-10-06 · Keep self-only personal writes session-only until explicit API-key scopes exist
+
+**Decision:** Thomas explicitly approves “Make self writes session-only (recommended)” for
+the identified API self-write class. API-key and MCP-key credentials cannot create, update,
+read-mark, or delete the caller's notifications; mutate the caller's notification preferences
+or workspace notification rules; or upload/delete the caller's avatar. These mutations require
+a real browser session and use the existing `requireSessionOnly()` guard. Existing session
+behavior is preserved. Read-only self routes remain unchanged. This applies whether the key is
+personal, MCP-flagged, or otherwise; self-row ownership does not bypass AK-9's read-only default.
+
+No notification, notification-preference, or avatar capability is invented. Reopening API-key
+write access requires a separately registered capability and explicit policy/schema contract.
+This resolves the known self-write eligibility class for these endpoints; it does not change
+workspace or instance key scopes, nor claim the #592 legacy-scope remediation is independently
+reviewed or stage-complete.
+
+**Recorded:** orchestrator, Thomas's explicit approval in this task, 2026-10-06.
+
 ### 2026-10-05 · Suppress the historical public TOTP test vector by exact fingerprint
 
 Add only `69e61dd56c18bdbb90149f470d9a6615a9d28272:apps/web/e2e/mfa-csrf-journey.spec.ts:generic-api-key:13` to `.gitleaksignore`. The finding is in an already-pushed historical commit; its value is an `otpauth` test URI whose Base32 secret decodes to the published RFC 6238 test-vector bytes. The current source still contains the same public deterministic test-vector literal at `apps/web/e2e/mfa-csrf-journey.spec.ts:16`; the historical commit records it at line 13. The test uses the RFC timestamp `59000` and asserts the published vector output before it provisions the test app. Preserve history and suppress this finding by its exact fingerprint only; do not ignore the path or rule.

@@ -14,6 +14,7 @@ import {
   BreadcrumbSeparator,
   Button,
   Calendar,
+  Checkbox,
   Dialog,
   DialogContent,
   DialogDescription,
@@ -735,7 +736,8 @@ function CreateTaskModal({
               {!explicitProjectId && (
                 <Popover>
                   <PopoverTrigger asChild>
-                    <button
+                    <Button
+                      variant="ghost"
                       type="button"
                       className={cn(
                         "flex items-center gap-1.5 px-2.5 py-1.5 text-xs font-medium rounded-md transition-colors border border-border hover:bg-accent/50",
@@ -749,12 +751,13 @@ function CreateTaskModal({
                         {resolvedProject?.name ||
                           t("common:modals.createTask.selectProject")}
                       </span>
-                    </button>
+                    </Button>
                   </PopoverTrigger>
                   <PopoverContent className="w-48 p-1" align="start">
                     <div className="space-y-1">
                       {workspaceProjects?.map((workspaceProject) => (
-                        <button
+                        <Button
+                          variant="ghost"
                           key={workspaceProject.id}
                           type="button"
                           className="w-full flex items-center gap-2 px-2 py-1.5 text-sm hover:bg-accent/50 text-left transition-colors h-8"
@@ -768,7 +771,7 @@ function CreateTaskModal({
                           {resolvedProjectId === workspaceProject.id && (
                             <Check className="ml-auto h-4 w-4 shrink-0" />
                           )}
-                        </button>
+                        </Button>
                       ))}
                     </div>
                   </PopoverContent>
@@ -781,7 +784,8 @@ function CreateTaskModal({
 
               <Popover>
                 <PopoverTrigger asChild>
-                  <button
+                  <Button
+                    variant="ghost"
                     type="button"
                     className={cn(
                       "flex items-center gap-1.5 px-2.5 py-1.5 text-xs font-medium rounded-md transition-colors border border-border hover:bg-accent/50",
@@ -796,7 +800,7 @@ function CreateTaskModal({
                         ? formatDateMedium(startDate)
                         : t("common:modals.createTask.startDate")}
                     </span>
-                  </button>
+                  </Button>
                 </PopoverTrigger>
                 <PopoverContent className="p-0" align="start">
                   <Calendar
@@ -824,7 +828,8 @@ function CreateTaskModal({
 
               <Popover>
                 <PopoverTrigger asChild>
-                  <button
+                  <Button
+                    variant="ghost"
                     type="button"
                     className={cn(
                       "flex items-center gap-1.5 px-2.5 py-1.5 text-xs font-medium rounded-md transition-colors border border-border hover:bg-accent/50",
@@ -839,12 +844,13 @@ function CreateTaskModal({
                         ? selectedPriority.label
                         : t("common:modals.createTask.priority")}
                     </span>
-                  </button>
+                  </Button>
                 </PopoverTrigger>
                 <PopoverContent className="w-48 p-1" align="start">
                   <div className="space-y-1">
                     {priorityOptions.map((option) => (
-                      <button
+                      <Button
+                        variant="ghost"
                         key={option.value}
                         type="button"
                         className="w-full flex items-center gap-2 px-2 py-1.5 text-sm hover:bg-accent/50 text-left transition-colors h-8"
@@ -855,7 +861,7 @@ function CreateTaskModal({
                         {priority === option.value && (
                           <Check className="ml-auto h-4 w-4" />
                         )}
-                      </button>
+                      </Button>
                     ))}
                   </div>
                 </PopoverContent>
@@ -863,7 +869,8 @@ function CreateTaskModal({
 
               <Popover>
                 <PopoverTrigger asChild>
-                  <button
+                  <Button
+                    variant="ghost"
                     type="button"
                     className={cn(
                       "flex items-center gap-1.5 px-2.5 py-1.5 text-xs font-medium rounded-md transition-colors border border-border hover:bg-accent/50",
@@ -891,11 +898,12 @@ function CreateTaskModal({
                         <span>{t("common:modals.createTask.assign")}</span>
                       </>
                     )}
-                  </button>
+                  </Button>
                 </PopoverTrigger>
                 <PopoverContent className="w-48 p-1" align="start">
                   <div className="space-y-1">
-                    <button
+                    <Button
+                      variant="ghost"
                       type="button"
                       className="w-full flex items-center gap-2 px-2 py-1.5 text-sm hover:bg-accent/50 text-left transition-colors h-8"
                       onClick={() => setAssigneeId("")}
@@ -914,9 +922,10 @@ function CreateTaskModal({
                         {t("common:modals.createTask.assignUnassigned")}
                       </span>
                       {!assigneeId && <Check className="ml-auto h-4 w-4" />}
-                    </button>
+                    </Button>
                     {workspaceUsers?.members?.map((member) => (
-                      <button
+                      <Button
+                        variant="ghost"
                         key={member.userId}
                         type="button"
                         className="w-full flex items-center gap-2 px-2 py-1.5 text-sm hover:bg-accent/50 text-left transition-colors h-8"
@@ -935,7 +944,7 @@ function CreateTaskModal({
                         {assigneeId === member.userId && (
                           <Check className="ml-auto h-4 w-4" />
                         )}
-                      </button>
+                      </Button>
                     ))}
                   </div>
                 </PopoverContent>
@@ -943,7 +952,8 @@ function CreateTaskModal({
 
               <Popover>
                 <PopoverTrigger asChild>
-                  <button
+                  <Button
+                    variant="ghost"
                     type="button"
                     className={cn(
                       "flex items-center gap-1.5 px-2.5 py-1.5 text-xs font-medium rounded-md transition-colors border border-border hover:bg-accent/50",
@@ -958,7 +968,7 @@ function CreateTaskModal({
                         ? formatDateMedium(dueDate)
                         : t("common:modals.createTask.dueDate")}
                     </span>
-                  </button>
+                  </Button>
                 </PopoverTrigger>
                 <PopoverContent className="p-0" align="start">
                   <Calendar
@@ -986,7 +996,8 @@ function CreateTaskModal({
 
               <Popover open={labelsOpen} onOpenChange={setLabelsOpen}>
                 <PopoverTrigger asChild>
-                  <button
+                  <Button
+                    variant="ghost"
                     type="button"
                     className={cn(
                       "flex items-center gap-1.5 px-2.5 py-1.5 text-xs font-medium rounded-md transition-colors border border-border hover:bg-accent/50",
@@ -997,21 +1008,24 @@ function CreateTaskModal({
                   >
                     <Tag className="w-3.5 h-3.5" />
                     <span>{t("common:modals.createTask.labels")}</span>
-                  </button>
+                  </Button>
                 </PopoverTrigger>
                 <PopoverContent className="p-0" align="start">
                   {labelsStep === "select" && (
                     <div className="w-auto">
                       <div className="flex items-center gap-2 p-2 border-b border-border">
                         <Search className="w-3 h-3 text-muted-foreground" />
-                        <input
+                        <Input
+                          unstyled
+                          nativeInput
                           ref={searchInputRef}
                           value={searchValue}
                           onChange={(e) => setSearchValue(e.target.value)}
                           placeholder={t(
                             "common:modals.createTask.searchLabels",
                           )}
-                          className="w-full bg-transparent border-none text-foreground text-xs focus:outline-none placeholder:text-muted-foreground"
+                          className="relative inline-flex min-w-0 flex-1 w-full"
+                          nativeInputClassName="w-full bg-transparent border-none text-foreground text-xs focus:outline-none placeholder:text-muted-foreground"
                         />
                       </div>
 
@@ -1023,7 +1037,8 @@ function CreateTaskModal({
                             </span>
                           )}
                         {filteredLabels.map((label) => (
-                          <button
+                          <Button
+                            variant="ghost"
                             key={label.id}
                             type="button"
                             className="w-full flex items-center gap-2 px-2 py-1.5 text-xs hover:bg-accent/50 text-left"
@@ -1043,7 +1058,7 @@ function CreateTaskModal({
                             <span className="max-w-20 truncate">
                               {label.name}
                             </span>
-                          </button>
+                          </Button>
                         ))}
 
                         {canCreateLabelCapability &&
@@ -1052,7 +1067,8 @@ function CreateTaskModal({
                             <div className="border-t border-border my-1" />
                           )}
                         {canCreateLabelCapability && isCreatingNewLabel && (
-                          <button
+                          <Button
+                            variant="ghost"
                             type="button"
                             className="w-full flex items-center gap-2 px-2 py-1.5 text-xs hover:bg-accent/50 text-left"
                             onClick={handleCreateNewClick}
@@ -1074,7 +1090,7 @@ function CreateTaskModal({
                                 name: searchValue,
                               })}
                             </span>
-                          </button>
+                          </Button>
                         )}
                       </div>
                     </div>
@@ -1085,18 +1101,20 @@ function CreateTaskModal({
                         <span className="text-xs font-medium">
                           {t("common:modals.createTask.chooseColor")}
                         </span>
-                        <button
+                        <Button
+                          variant="ghost"
                           type="button"
                           onClick={() => setLabelsStep("select")}
                           className="w-4 h-4 flex items-center justify-center hover:bg-accent/50 rounded"
                         >
                           <X className="h-3 w-3" />
-                        </button>
+                        </Button>
                       </div>
 
                       <div className="py-1">
                         {labelColors.map((color) => (
-                          <button
+                          <Button
+                            variant="ghost"
                             key={color.value}
                             type="button"
                             className={cn(
@@ -1115,7 +1133,7 @@ function CreateTaskModal({
                             {selectedColor === color.value && (
                               <Check className="w-3 h-3 ml-auto" />
                             )}
-                          </button>
+                          </Button>
                         ))}
                       </div>
                     </div>
@@ -1127,11 +1145,14 @@ function CreateTaskModal({
 
           <DialogFooter className="flex-shrink-0 border-t border-border bg-background px-6 py-4">
             <div className="flex items-center gap-3 mr-auto">
-              <label className="flex items-center gap-2 text-sm text-muted-foreground cursor-pointer hover:text-foreground transition-colors">
-                <input
-                  type="checkbox"
+              <label
+                htmlFor="create-task-create-more"
+                className="flex items-center gap-2 text-sm text-muted-foreground cursor-pointer hover:text-foreground transition-colors"
+              >
+                <Checkbox
+                  id="create-task-create-more"
                   checked={createMore}
-                  onChange={(e) => setCreateMore(e.target.checked)}
+                  onCheckedChange={(value) => setCreateMore(Boolean(value))}
                   className="rounded border-border bg-background text-primary focus:ring-ring focus:ring-offset-0 focus:ring-2 transition-[border-color,box-shadow]"
                 />
                 {t("common:modals.createTask.createMore")}

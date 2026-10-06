@@ -19,6 +19,8 @@ const mocks = vi.hoisted(() => ({
 
 vi.mock("@taskdesk/ui", async () => {
   const React = await import("react");
+  const { Button } =
+    await vi.importActual<typeof import("@taskdesk/ui")>("@taskdesk/ui");
   const PopoverContext = React.createContext<{
     open: boolean;
     onOpenChange: (open: boolean) => void;
@@ -28,15 +30,15 @@ vi.mock("@taskdesk/ui", async () => {
       children,
       ...props
     }: React.ButtonHTMLAttributes<HTMLButtonElement>) => (
-      <button {...props}>{children}</button>
+      <Button {...props}>{children}</Button>
     ),
     Calendar: ({ onSelect }: { onSelect: (date: Date) => void }) => (
-      <button
+      <Button
         type="button"
         onClick={() => onSelect(new Date("2026-10-12T00:00:00.000Z"))}
       >
         Choose date
-      </button>
+      </Button>
     ),
     Popover: ({
       open,

@@ -1,3 +1,4 @@
+import { Button } from "@taskdesk/ui";
 import { addDays, differenceInCalendarDays, startOfDay } from "date-fns";
 import { useCallback, useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
@@ -294,7 +295,8 @@ export function GanttTaskBar({
         style={{ gridColumn: `${lineStart} / ${lineEnd}` }}
         className="group pointer-events-auto relative mx-1 flex min-h-[44px] min-w-0 items-stretch overflow-hidden rounded-md border border-primary/25 bg-background text-left text-sm font-medium leading-none text-foreground shadow-sm transition-colors hover:border-primary/40 sm:h-11 sm:min-h-0"
       >
-        <button
+        <Button
+          variant="ghost"
           type="button"
           aria-label={t("tasks:gantt.resizeStart")}
           onPointerDown={handleResizeLeftPointerDown}
@@ -304,7 +306,8 @@ export function GanttTaskBar({
             "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-1",
           )}
         />
-        <button
+        <Button
+          variant="ghost"
           type="button"
           aria-label={t("tasks:gantt.taskAriaLabel", { title: task.title })}
           className="relative z-10 min-h-[44px] min-w-0 flex-1 cursor-grab touch-manipulation overflow-hidden px-2 text-left active:cursor-grabbing sm:min-h-0 sm:px-2.5"
@@ -318,8 +321,9 @@ export function GanttTaskBar({
         >
           <div className="absolute inset-0 z-0 bg-primary/12 transition-colors group-hover:bg-primary/18" />
           <span className="relative z-10 block truncate">{task.title}</span>
-        </button>
-        <button
+        </Button>
+        <Button
+          variant="ghost"
           type="button"
           aria-label={t("tasks:gantt.resizeDue")}
           onPointerDown={handleResizeRightPointerDown}

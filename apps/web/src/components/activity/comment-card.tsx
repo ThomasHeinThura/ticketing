@@ -167,7 +167,8 @@ export default function CommentCard({
 
           <Tooltip>
             <TooltipTrigger asChild>
-              <button
+              <Button
+                variant="ghost"
                 type="button"
                 className="cursor-default text-xs text-muted-foreground outline-none focus-visible:ring-2 focus-visible:ring-ring/70 focus-visible:ring-offset-2 focus-visible:ring-offset-background"
                 aria-label={fullTimestamp}
@@ -176,7 +177,7 @@ export default function CommentCard({
                 <time dateTime={createdAt}>
                   {formatRelativeTime(createdAt)}
                 </time>
-              </button>
+              </Button>
             </TooltipTrigger>
             <TooltipContent>
               <p className="text-xs">{fullTimestamp}</p>

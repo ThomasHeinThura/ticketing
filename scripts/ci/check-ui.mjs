@@ -1,10 +1,12 @@
 #!/usr/bin/env node
 /**
- * check:ui — G1b Radix import tracking and G1c empty-directory enforcement.
+ * check:ui — G1b primitive import boundaries and G1c empty-directory enforcement.
+ * `check:ui --raw-elements` additionally enforces G1a's raw JSX element ban.
  *
  * G1c asserts that `apps/web/src/components/ui` is empty after extraction. G1b keeps every
  * live Radix import registered in KNOWN-RADIX.md and rejects new/untracked usage. G1a raw
- * element enforcement remains a separate check; this script does not claim to implement it.
+ * raw element enforcement is enabled explicitly with `--raw-elements` and scans JSX under
+ * apps/web, as required by G1a.
  *
  * The rule this enforces: any file that imports `@radix-ui/*` or the bare `radix-ui`
  * umbrella package must be listed in the fixed-column table at the top level
@@ -75,6 +77,72 @@ function isRadixSpecifier(specifier) {
     specifier.startsWith("radix-ui/") ||
     specifier.startsWith("@radix-ui/")
   );
+}
+
+/** True for the Base UI package root and its published subpaths. */
+export function isBaseUiSpecifier(specifier) {
+  return (
+    specifier === "@base-ui/react" || specifier.startsWith("@base-ui/react/")
+  );
+}
+
+export function isBaseUiBoundaryViolation(relativeFile, specifier) {
+  return (
+    isBaseUiSpecifier(specifier) && !relativeFile.startsWith("packages/ui/")
+  );
+}
+
+const RAW_ELEMENT_TAGS = new Set([
+  "button",
+  "input",
+  "select",
+  "textarea",
+  "dialog",
+]);
+
+/**
+ * Return raw native form/dialog elements in a parsed TSX source file. The only exemption is
+ * a single immediately preceding `// ui-exempt: <reason>` line; consuming the comment once
+ * prevents one marker from excusing multiple raw elements.
+ */
+function rawElementsInSourceFile(sourceFile) {
+  const found = [];
+  const consumedExemptionLines = new Set();
+  const text = sourceFile.text;
+
+  function visit(node) {
+    if (
+      node.kind === ts.SyntaxKind.JsxOpeningElement ||
+      node.kind === ts.SyntaxKind.JsxSelfClosingElement
+    ) {
+      const tag = node.tagName;
+      if (
+        tag?.kind === ts.SyntaxKind.Identifier &&
+        RAW_ELEMENT_TAGS.has(tag.text)
+      ) {
+        const start = node.getStart(sourceFile);
+        const line = sourceFile.getLineAndCharacterOfPosition(start).line;
+        const lineStart = text.lastIndexOf("\n", start - 1) + 1;
+        const previousLineEnd = Math.max(0, lineStart - 1);
+        const previousLineStart =
+          text.lastIndexOf("\n", previousLineEnd - 1) + 1;
+        const previousLine = text.slice(previousLineStart, previousLineEnd);
+        const exemption = /^\s*\/\/\s*ui-exempt:\s*\S.*$/.exec(previousLine);
+        if (exemption && !consumedExemptionLines.has(line - 1)) {
+          consumedExemptionLines.add(line - 1);
+        } else {
+          found.push({
+            tag: tag.text,
+            line: line + 1,
+          });
+        }
+      }
+    }
+    node.forEachChild(visit);
+  }
+
+  visit(sourceFile);
+  return found;
 }
 
 /** The decoded string value of a specifier node, or undefined when it is not a plain
@@ -178,10 +246,10 @@ export function moduleSpecifiersIn(sourceFile) {
  * repository tree. `main()` instead opens every real file in one batch (see below) — one
  * spawned parser process for the whole repo scan, not one per file.
  */
-function parseAdHoc(source) {
+function withAdHocSourceFile(source, extension, inspect) {
   const dir = mkdtempSync(path.join(tmpdir(), "check-ui-scratch-"));
   try {
-    const file = path.join(dir, "fixture.ts");
+    const file = path.join(dir, `fixture.${extension}`);
     writeFileSync(file, source);
     const api = new API({ cwd: dir });
     try {
@@ -192,7 +260,7 @@ function parseAdHoc(source) {
         if (!sourceFile) {
           throw new Error(`could not parse fixture source (${file})`);
         }
-        return moduleSpecifiersIn(sourceFile);
+        return inspect(sourceFile);
       } finally {
         snapshot.dispose();
       }
@@ -204,11 +272,26 @@ function parseAdHoc(source) {
   }
 }
 
+function parseAdHoc(source) {
+  return withAdHocSourceFile(source, "ts", moduleSpecifiersIn);
+}
+
 /** Every Radix/radix-ui module specifier imported anywhere in the given source text. */
 export function radixImportsIn(source) {
   return parseAdHoc(source)
     .map(({ specifier }) => specifier)
     .filter(isRadixSpecifier);
+}
+
+export function baseUiImportsIn(source) {
+  return parseAdHoc(source)
+    .map(({ specifier }) => specifier)
+    .filter(isBaseUiSpecifier);
+}
+
+/** Find forbidden raw JSX elements in a source string using the same TS parser as the gate. */
+export function rawElementsIn(source) {
+  return withAdHocSourceFile(source, "tsx", rawElementsInSourceFile);
 }
 
 /**
@@ -293,6 +376,23 @@ export function parseKnownRadixTable(source) {
 
 async function main() {
   const failures = [];
+  const arguments_ = process.argv.slice(2);
+  const checkRawElements = arguments_.includes("--raw-elements");
+  const unknownArguments = arguments_.filter(
+    (argument) => argument !== "--raw-elements",
+  );
+  if (unknownArguments.length > 0) {
+    finish({
+      name: NAME,
+      failures: [
+        violation(
+          "check:ui",
+          `unknown argument(s): ${unknownArguments.join(", ")}. Supported: --raw-elements.`,
+        ),
+      ],
+    });
+    return;
+  }
   const knownRadixPath = path.join(repoRoot, KNOWN_RADIX_RELATIVE_PATH);
   const legacyUiDirectory = path.join(repoRoot, "apps/web/src/components/ui");
 
@@ -392,6 +492,14 @@ async function main() {
         }
 
         for (const { specifier, line } of moduleSpecifiersIn(sourceFile)) {
+          if (isBaseUiBoundaryViolation(relative, specifier)) {
+            failures.push(
+              violation(
+                relative,
+                `line ${line} imports \`${specifier}\` outside packages/ui. Feature code must import the shared primitive through \`@taskdesk/ui\`.`,
+              ),
+            );
+          }
           if (!isRadixSpecifier(specifier)) continue;
           const key = `${relative}\n${specifier}`;
           if (known.has(key)) {
@@ -408,6 +516,21 @@ async function main() {
                 `${KNOWN_RADIX_RELATIVE_PATH} naming exactly this file, this package, and why.`,
             ),
           );
+        }
+
+        if (
+          checkRawElements &&
+          relative.startsWith("apps/web/") &&
+          /\.(tsx|jsx)$/.test(relative)
+        ) {
+          for (const { tag, line } of rawElementsInSourceFile(sourceFile)) {
+            failures.push(
+              violation(
+                relative,
+                `line ${line} uses raw <${tag}>. Use the shared @taskdesk/ui primitive; an exceptional native element needs an immediately preceding // ui-exempt: <reason> comment.`,
+              ),
+            );
+          }
         }
       }
     } finally {
@@ -432,7 +555,9 @@ async function main() {
   finish({
     name: NAME,
     failures,
-    ok: `legacy UI directory empty; 0 unlisted Radix import(s), ${knownRows.length} tracked row(s), all current.`,
+    ok:
+      `legacy UI directory empty; 0 unlisted Radix import(s), 0 Base UI import(s) outside packages/ui, ${knownRows.length} tracked row(s), all current` +
+      (checkRawElements ? ", 0 raw JSX elements." : "."),
   });
 }
 

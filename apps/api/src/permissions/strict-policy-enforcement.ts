@@ -27,6 +27,10 @@ import { findAssetWorkspaceScope } from "../asset/repository";
 import db, { schema } from "../database";
 import { policyRegistry } from "../policy-registry";
 import { rejectNulByte } from "../utils/reject-nul-byte";
+import {
+  type ApiKeyPermissionScope,
+  apiKeyCapabilitySubset,
+} from "../utils/require-api-key-permission-scope";
 import { enforcedPolicySources } from "./enforcement-config";
 import { resolveIdentity } from "./resolve-identity";
 import { attributedMatchedRoute } from "./shadow-middleware";
@@ -98,7 +102,7 @@ async function identityFor(
   if (!userId) return null;
 
   const apiKey = c.get("apiKey") as
-    | { id: string; userId: string; enabled: boolean }
+    | ({ id: string; userId: string; enabled: boolean } & ApiKeyPermissionScope)
     | undefined;
   const session = c.get("session") as
     | { id?: string; impersonatedBy?: string | null }
@@ -118,6 +122,7 @@ async function identityFor(
           apiKey: {
             enabled: apiKey.enabled,
             ownerUserId: apiKey.userId,
+            capabilities: apiKeyCapabilitySubset(apiKey),
           },
         }
       : {}),

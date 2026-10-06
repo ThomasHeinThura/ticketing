@@ -50,6 +50,7 @@ import db, { schema } from "../../apps/api/src/database";
 import { createApp } from "../../apps/api/src/index";
 import * as storage from "../../apps/api/src/storage";
 import { validateWorkspaceAccess } from "../../apps/api/src/utils/validate-workspace-access";
+import { verifyApiKey } from "../../apps/api/src/utils/verify-api-key";
 import { mockAnonymousSession, mockAuthenticatedSession } from "./helpers/auth";
 import { resetTestDatabase } from "./helpers/database";
 import {
@@ -177,6 +178,7 @@ async function grantProjectReach(
     createdAt: new Date(),
     updatedAt: new Date(),
   });
+  return role;
 }
 
 describe("strict policy runtime enforcement against the production API graph", () => {
@@ -201,7 +203,11 @@ describe("strict policy runtime enforcement against the production API graph", (
     const { project } = await createProjectFixture({
       workspaceId: member.workspace.id,
     });
-    await grantProjectReach(member.user.id, member.workspace.id, project.id);
+    const projectRole = await grantProjectReach(
+      member.user.id,
+      member.workspace.id,
+      project.id,
+    );
     const type = await createWorkItemType(member.workspace.id);
     await createDefaultState(member.workspace.id, project.id);
 
@@ -287,6 +293,82 @@ describe("strict policy runtime enforcement against the production API graph", (
     expect(afterActivities.map((row) => row.id)).toEqual(
       beforeActivities.map((row) => row.id),
     );
+
+    const selfAssignKey = `taskdesk_test_${randomUUID()}`;
+    await db.insert(schema.apikeyTable).values({
+      referenceId: member.user.id,
+      userId: member.user.id,
+      key: hashApiKey(selfAssignKey),
+      name: "strict self-assignment scope test key",
+      start: selfAssignKey.slice(0, 12),
+      prefix: "taskdesk",
+      permissions: JSON.stringify({
+        project: ["read"],
+        work_item: ["read", "update"],
+      }),
+      createdAt: new Date(),
+      updatedAt: new Date(),
+    });
+    const [storedSelfAssignKey] = await db
+      .select({ permissions: schema.apikeyTable.permissions })
+      .from(schema.apikeyTable)
+      .where(eq(schema.apikeyTable.key, hashApiKey(selfAssignKey)))
+      .limit(1);
+    expect(storedSelfAssignKey?.permissions).toBe(
+      JSON.stringify({
+        project: ["read"],
+        work_item: ["read", "update"],
+      }),
+    );
+    const verifiedSelfAssignKey = await verifyApiKey(selfAssignKey);
+    expect(verifiedSelfAssignKey?.key.permissions).toEqual({
+      project: ["read"],
+      work_item: ["read", "update"],
+    });
+    const scopedSelfAssignment = await app.request(
+      `/api/work-items/${key}/assign`,
+      {
+        method: "POST",
+        headers: {
+          authorization: `Bearer ${selfAssignKey}`,
+          "content-type": "application/json",
+        },
+        body: JSON.stringify({ assigneeId: assignee?.id }),
+      },
+    );
+    expect(scopedSelfAssignment.status).toBe(403);
+    const [afterProjectRoleDenial] = await db
+      .select({ assigneeId: schema.workItemTable.assigneeId })
+      .from(schema.workItemTable)
+      .where(eq(schema.workItemTable.key, key));
+    const afterProjectRoleDenialActivities = await db
+      .select({ id: schema.activityTable.id })
+      .from(schema.activityTable)
+      .where(eq(schema.activityTable.workItemId, before?.id ?? ""));
+    expect(afterProjectRoleDenial).toEqual({ assigneeId: before?.assigneeId });
+    expect(afterProjectRoleDenialActivities.map((row) => row.id)).toEqual(
+      beforeActivities.map((row) => row.id),
+    );
+
+    await db
+      .update(schema.roleTable)
+      .set({ capabilities: [...projectRole.capabilities, "work_item:update"] })
+      .where(eq(schema.roleTable.id, projectRole.id));
+    const allowedScopedSelfAssignment = await app.request(
+      `/api/work-items/${key}/assign`,
+      {
+        method: "POST",
+        headers: {
+          authorization: `Bearer ${selfAssignKey}`,
+          "content-type": "application/json",
+        },
+        body: JSON.stringify({ assigneeId: assignee?.id }),
+      },
+    );
+    expect(
+      allowedScopedSelfAssignment.status,
+      await allowedScopedSelfAssignment.clone().text(),
+    ).toBe(200);
 
     mockAuthenticatedSession(member.user);
     const allowed = await app.request(`/api/work-items/${key}/assign`, {

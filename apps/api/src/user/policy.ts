@@ -23,19 +23,15 @@ import type { PolicyMap } from "@taskdesk/permissions";
  * `no_person_parameter` exemption for the same reason: the route names no person id at all --
  * the caller IS the person.
  *
- * No `sessionOnly`: the 2026-09-08 decision (`docs/07-planning/decision-log.md`, "Native
- * organization routes preserve inherited session-only reach") restricts personal-API-key reach
- * specifically to routes that replace a better-auth `organization()` route and touch
- * "workspace, membership, invitation or capability data". Avatar storage is unrelated
- * kaneo-inherited surface, not an organization-plugin replacement, and neither route in
- * `apps/api/src/user/index.ts` calls `requireSessionOnly()` -- declaring it here would be the
- * declared-and-inert shape `packages/permissions/src/policy.ts`'s own doc comment says this
- * registry exists to refuse.
+ * Both writes are session-only under the explicit 2026-10-06 AK-9 decision: self-row
+ * ownership is not an API-key write capability. The route middleware enforces the declaration;
+ * avatar GET behavior is unchanged.
  */
 export const userPolicies = {
   "PUT /api/user/avatar": {
     authenticated: true,
     self: true,
+    sessionOnly: true,
     personParam: {
       exempt: "no_person_parameter",
       reason:
@@ -46,6 +42,7 @@ export const userPolicies = {
   "DELETE /api/user/avatar": {
     authenticated: true,
     self: true,
+    sessionOnly: true,
     personParam: {
       exempt: "no_person_parameter",
       reason:

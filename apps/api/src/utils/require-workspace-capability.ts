@@ -13,6 +13,10 @@ import {
   setShadowLegacyAuthorization,
 } from "../permissions/shadow-context";
 import {
+  type ApiKeyPermissionScope,
+  apiKeyHasCapabilityScope,
+} from "./require-api-key-permission-scope";
+import {
   isGenuineBuiltInRoleGrant,
   isUnambiguousMembership,
   workspaceMemberRoles,
@@ -20,6 +24,13 @@ import {
 
 /** Anything `db` or `db.transaction`'s callback argument can run a `select` through. */
 type DbOrTx = Pick<typeof db, "select">;
+
+function apiKeyHasCapability(
+  apiKey: ApiKeyPermissionScope | undefined,
+  capability: Capability,
+): boolean {
+  return apiKeyHasCapabilityScope(apiKey, capability);
+}
 
 /**
  * Require the caller's OWN, freshly-read workspace role to hold `capability` — evaluated
@@ -89,7 +100,12 @@ export function requireWorkspaceCapability(capability: Capability) {
     }
 
     try {
-      await assertCallerHasCapability(workspaceId, userId, capability);
+      await assertCallerHasCapability(
+        workspaceId,
+        userId,
+        capability,
+        c.get("apiKey") as ApiKeyPermissionScope | undefined,
+      );
     } catch (error) {
       if (error instanceof HTTPException && error.status === 403) {
         setShadowLegacyAuthorization(c, "denied");
@@ -133,19 +149,19 @@ export function requireWorkspaceCapability(capability: Capability) {
  *    query-supplied `workspaceId` would check authority in workspace A and let the
  *    handler write workspace B -- a confused-deputy gap this function cannot detect on
  *    its own.
- * 2. This function, like the middleware above, resolves ONLY the caller's
- *    `workspace_member.role` -- it never reads `c.get("apiKey")` or an API key's own
- *    `permissions` scoping (contrast `requireWorkspacePermission`,
- *    `require-workspace-permission.ts`). Latent today (nothing in this codebase sets
- *    `apikey.permissions` yet), but once scoped API keys land, a request authenticated by
- *    a narrowly-scoped key will pass this check on the strength of the human member's
- *    role alone, ignoring the key's own narrower scope.
+ * 2. The caller's capability is intersected with the authenticated API key's own stored
+ *    resource/action permissions. A role grant cannot widen a missing or narrower key
+ *    scope; a browser session has no API-key scope and follows the role check alone.
  */
 export async function assertCallerHasCapability(
   workspaceId: string,
   userId: string,
   capability: Capability,
+  apiKey?: ApiKeyPermissionScope,
 ): Promise<void> {
+  if (!apiKeyHasCapability(apiKey, capability)) {
+    throw new HTTPException(403, { message: "Insufficient API key scope" });
+  }
   // Fail-closed against duplicate `workspace_member` rows for this pair
   // (`workspace_member` has no unique constraint on
   // `(workspace_id, user_id)` -- `workspaceMemberRoles`'s doc comment):
@@ -202,16 +218,21 @@ export async function assertCallerHasCapabilityOrSelf(
   capability: Capability,
   selfCapability: Capability,
   isSelfTarget: boolean,
+  apiKey?: ApiKeyPermissionScope,
 ): Promise<void> {
   const roles = await workspaceMemberRoles(db, workspaceId, userId);
   if (!isUnambiguousMembership(roles)) {
     throw new HTTPException(403, { message: "Insufficient permissions" });
   }
-  if (await builtInRoleHasCapability(workspaceId, roles[0], capability)) {
+  if (
+    apiKeyHasCapability(apiKey, capability) &&
+    (await builtInRoleHasCapability(workspaceId, roles[0], capability))
+  ) {
     return;
   }
   if (
     isSelfTarget &&
+    apiKeyHasCapability(apiKey, selfCapability) &&
     (await builtInRoleHasCapability(workspaceId, roles[0], selfCapability))
   ) {
     return;

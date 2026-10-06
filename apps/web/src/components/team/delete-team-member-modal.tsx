@@ -56,7 +56,7 @@ function DeleteTeamMemberModal({
             </DialogTitle>
             <DialogClose
               className="text-muted-foreground hover:text-foreground"
-              render={<button type="button" />}
+              render={<Button variant="ghost" type="button" />}
             >
               <X size={20} />
             </DialogClose>

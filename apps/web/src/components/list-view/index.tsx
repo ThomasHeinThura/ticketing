@@ -19,7 +19,7 @@ import {
   verticalListSortingStrategy,
 } from "@dnd-kit/sortable";
 import { useNavigate } from "@tanstack/react-router";
-import { ContextMenu, ContextMenuTrigger } from "@taskdesk/ui";
+import { Button, ContextMenu, ContextMenuTrigger } from "@taskdesk/ui";
 import { AnimatePresence, motion } from "framer-motion";
 import type { TFunction } from "i18next";
 import { produce } from "immer";
@@ -97,7 +97,8 @@ function ListColumnSection({
       )}
     >
       <div className="flex items-center justify-between py-2 px-4 bg-muted/60 border-b border-border/50">
-        <button
+        <Button
+          variant="ghost"
           type="button"
           onClick={onToggle}
           className="flex items-center gap-2 text-sm font-medium text-foreground hover:text-foreground transition-colors"
@@ -117,26 +118,28 @@ function ListColumnSection({
               </span>
             </div>
           </div>
-        </button>
+        </Button>
 
         <div className="flex items-center gap-1">
-          <button
+          <Button
+            variant="ghost"
             type="button"
             onClick={onAddTask}
             className="p-1 hover:bg-accent rounded text-muted-foreground hover:text-foreground transition-colors"
             title={t("tasks:listView.addTask")}
           >
             <Plus className="w-3 h-3" />
-          </button>
+          </Button>
           {column.isFinal && column.tasks.length > 0 && (
-            <button
+            <Button
+              variant="ghost"
               type="button"
               onClick={onArchive}
               className="p-1 hover:bg-accent rounded text-muted-foreground hover:text-foreground transition-colors"
               title={t("tasks:listView.archiveAllTooltip")}
             >
               <Archive className="w-3 h-3" />
-            </button>
+            </Button>
           )}
         </div>
       </div>

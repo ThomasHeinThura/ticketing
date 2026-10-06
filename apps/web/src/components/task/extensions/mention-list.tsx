@@ -1,3 +1,4 @@
+import { Button } from "@taskdesk/ui";
 import { forwardRef, useEffect, useImperativeHandle, useState } from "react";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/avatar";
 import { getInitials } from "@/lib/get-initials";
@@ -53,7 +54,8 @@ const MentionList = forwardRef<MentionListRef, MentionListProps>(
     return (
       <div className="taskdesk-mention-list">
         {items.map((item, index) => (
-          <button
+          <Button
+            variant="ghost"
             type="button"
             key={item.id}
             className={`taskdesk-mention-item${index === selected ? " is-active" : ""}`}
@@ -67,7 +69,7 @@ const MentionList = forwardRef<MentionListRef, MentionListProps>(
               </AvatarFallback>
             </Avatar>
             <span className="truncate">{item.label}</span>
-          </button>
+          </Button>
         ))}
       </div>
     );
