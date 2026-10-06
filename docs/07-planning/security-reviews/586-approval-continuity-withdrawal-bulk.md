@@ -1,5 +1,76 @@
 # P2 approval continuity and withdrawal — source review record
 
+## Complete approval browser test placement correction
+
+**Reviewed head:** `12cac9c19522a47493d3ca6c5727872d70dc2ec1`
+
+Fresh independent ordinary Luna and full bounded Sol are CLEAR on this two-file batch fromb499ad3b. The actual withdrawal interaction journey moves from the visual-only suite into ordinary E2E; API request/response, refresh, withdrawn status, absent button and screenshot assertions remain. The static visual fixture and15cases/14active routes are preserved. Both reviewers verify ordinary test discovery; retained author Chromium1/1 passes, with exact configs/logs/source/build/screenshot hashes retained privately. No reviewer reruns the browser merely for comfort. No runtime/checker/schema/dependency/baseline changes or gate waiver. Current hosted CI, OpenAPI versioning, G11, liveAPI/image and P2 acceptance remain separate.
+
+### Independent ordinary report (verbatim)
+
+# Independent ordinary review: P2 browser test scope correction
+
+- **Reviewer:** GPT-6 Luna, fresh independent context; did not author, direct, or remediate the candidate.
+- **Verdict:** CLEAR — no blocking or non-blocking findings.
+- **Reviewed head:** `12cac9c19522a47493d3ca6c5727872d70dc2ec1`
+- **Base:** `b499ad3b4ff418a074f5fbf7742b1abeecb2b9c7`
+- **Scope:** `apps/web/e2e/visual.spec.ts`, `apps/web/e2e/approval-withdrawal.spec.ts`; P2 approval contract and Playwright/G8 placement.
+
+## Review
+
+The correction is limited to the two stated E2E files. The static G8 helper now returns an empty approval list for the work-item detail screenshot fixture. Its API fixtures remain static; its named screenshot cases, visible-route assertions, viewport/theme cases, and screenshot assertions are preserved. No screenshot baseline, inventory, checker, config, runtime, schema, or dependency changes are present in the candidate diff.
+
+The moved ordinary browser case preserves the prior journey and assertions: install the authenticated API fixture, open `/agent/work-items/HELP-7`, observe the pending approval, click **Withdraw request**, wait for the withdrawal response and assert HTTP 200, assert the withdrawn state, assert the withdrawal button is absent, and retain an output screenshot. The fixture holds mutable approval state and changes it only for the matching POST withdrawal endpoint. It provides the CSRF token and cookie on the CSRF endpoint, within the local `**/api/**` mock. This is mocked-API browser evidence, not live API acceptance.
+
+The default Playwright config points to `./e2e` and ignores only the two visual specs, so the new spec is included in the ordinary suite. It is not a screenshot-only test: it drives the visible button, observes the HTTP response, and checks updated UI state. The captured screenshot agrees with the assertions.
+
+`apps/web/e2e/**` is in the repository’s security-scope path list. This change does not alter authorization, the checker, or the core gate criteria. It does correct which suite owns the test, restoring G8’s constrained static fixture and placing the interaction in ordinary E2E. Apply the bounded scope-correction review tier: one ordinary review and the required independent GPT-6 Sol pass. No core authority or gate-rule redesign was found.
+
+## Checks and evidence inspected
+
+- `pnpm check:visual-scope` — PASS: 15 screenshot cases, 14 active inventory route rows mapped (125 route rows total).
+- `pnpm --filter @taskdesk/web exec playwright test --config playwright.config.ts --list e2e/approval-withdrawal.spec.ts` — PASS: exactly 1 test in 1 file is discovered by the ordinary config.
+- `pnpm exec biome check apps/web/e2e/visual.spec.ts apps/web/e2e/approval-withdrawal.spec.ts` — PASS.
+- `git diff --check b499ad3b4ff418a074f5fbf7742b1abeecb2b9c7 12cac9c19522a47493d3ca6c5727872d70dc2ec1` — PASS.
+- Inspected retained author browser output: Chromium, 1 test passed. Inspected its `approval-withdrawn.png`; the withdrawn approval is visible and no withdrawal control is present. No duplicate browser run was performed.
+- Checkout was clean at the reviewed SHA.
+
+Retained implementation evidence is in `/Users/heinthura/.codex/taskdesk-evidence/2026-10-07/postp0-visual-scope-full-batch/summary.md` and its listed raw logs/artifacts. This review does not claim hosted/live-API acceptance, full CI green, or phase acceptance. The earlier full CI result remains red as reported by the orchestrator; API-version, G11, and other tracked residuals remain separate.
+
+### Independent full security report (verbatim)
+
+# Independent GPT-6 Sol security review: P2 browser test scope correction
+
+- **Reviewer:** GPT-6 Sol, fresh independent context. I did not author, direct, or remediate this candidate.
+- **Exact candidate SHA:** `12cac9c19522a47493d3ca6c5727872d70dc2ec1`
+- **Base:** `b499ad3b4ff418a074f5fbf7742b1abeecb2b9c7`
+- **Verdict:** CLEAR for this bounded security-scope correction. No blocking or non-blocking findings in the reviewed diff.
+- **Risk tier:** `apps/web/e2e/**` is explicitly security scope in `docs/04-engineering/ci-cd.md`. The correction changes which required browser suite owns one existing interaction test, a narrow gate pass/fail case. The ordinary GPT-6 Luna report at this SHA is CLEAR; this is the separate required full GPT-6 Sol pass.
+
+## Scope and reasoning
+
+The candidate changes only `apps/web/e2e/visual.spec.ts` and adds `apps/web/e2e/approval-withdrawal.spec.ts`. I compared the test and fixture to the parent commit. The ordinary case preserves the same route, pending-approval visibility check, visible withdrawal-button click, withdrawal-response HTTP 200 assertion, withdrawn-state check, absent-button check, and output screenshot. The new mutable fixture updates approval state only on a `POST` to the specific withdrawal path; the subsequent approvals GET returns that state, so the UI checks exercise query refresh. The fixture supplies a session and a CSRF token plus cookie for the mock browser flow. These are deterministic intercepted API responses; the test does not establish backend permission, CSRF enforcement, or live API acceptance, and does not claim to.
+
+The visual fixture now always returns an empty approval list for the work-item detail screenshot. No named G8 screenshot case, screenshot assertion, route assertion, viewport/theme case, or baseline was removed or changed. The ordinary Playwright config discovers the new spec and ignores only the two visual specs; the G8 config matches `visual.spec.ts`. There is no `test.skip`, hidden ignored coverage, synthetic HTML in place of the app, policy change, checker change, configuration change, or security-gate bypass in the candidate diff.
+
+## Checks actually performed
+
+- Read `AGENTS.md`, `docs/04-engineering/agent-workflow.md`, `CLAUDE.md`, and the `docs/04-engineering/ci-cd.md` browser/security-scope sections; inspected the ordinary Luna report and retained author evidence.
+- Inspected `git diff` from base to exact head, both Playwright configs, the withdrawal mutation/fetcher, and the resulting browser screenshot. The screenshot shows the withdrawn approval and no withdrawal control.
+- `pnpm check:visual-scope` — PASS: 15 screenshot cases, 14 active inventory route rows mapped, 125 route rows total. Storybook story coverage is checked at runtime by that checker.
+- `pnpm --filter @taskdesk/web exec playwright test --config playwright.config.ts --list e2e/approval-withdrawal.spec.ts` — PASS: exactly one ordinary E2E test in one file discovered.
+- `pnpm exec biome check apps/web/e2e/visual.spec.ts apps/web/e2e/approval-withdrawal.spec.ts` — PASS: two files.
+- `git diff --check b499ad3b4ff418a074f5fbf7742b1abeecb2b9c7 12cac9c19522a47493d3ca6c5727872d70dc2ec1` — PASS; working tree clean at reviewed head.
+- Inspected the author's retained scoped Chromium log: one test passed against a locally built preview, using a temporary port-only Playwright config retained in private evidence. I did not rerun the browser case.
+
+The exact source hashes match the implementation record: `visual.spec.ts` `54955f00c59dd5f824be3d5a92158f79c7e3799f899c2f31fea4e9de90875fc8`; `approval-withdrawal.spec.ts` `a21eb0cc5c1b61d1bf1ddfc7bfe7fbc5040b9f5a133cfa77736d2f546560b827`.
+
+## Limits
+
+This verdict covers only this frozen test-placement diff. It does not clear hosted CI, OpenAPI, G11, the container image/health gate, live API acceptance, or P2 stage acceptance. Those residuals remain independently gated.
+
+---
+
 ## Completed positive-fixture and approved SDK delta
 
 **Reviewed head:** `38f96f3b34ebda03b9314abfb238cd4e829137c3`
