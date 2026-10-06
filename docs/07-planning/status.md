@@ -1,5 +1,58 @@
 ## Status First
 
+Snapshot: 2026-10-06 23:24 UTC (7 October in Yangon). Accepted main remains3096cb04; DEV remains08842235 with shadow enabled and enforcement empty. No protected main merge, DEV refresh, strict cutover or phase completion.
+
+| Phase | Implementation | Integration | Acceptance / operational closure |
+| --- | --- | --- | --- |
+| P0 | Frozen53269374; full offline acquisition/render contract149bb605 independently clear | Sole closure#583; installer operational plan complete offline | HostedG1119/22 red; current strict/installer/rollback proof and finalizer open |
+| P1 | Complete saved views/CSV/shared key identity8c3ca82c | Draft#591 toward single train#589;0118 provisional | Current delta ordinary/full Sol clear; native58/units16; current fast/full CI red; composed/liveAPI acceptance open |
+| P2 | Complete approval withdrawal d5b2842e; notes-only c89c11c0 | Draft#586 toward#589; portal588 merged into feature branch, not main | Source reviews clear; current fast/full CI red; integration/liveAPI acceptance open |
+| P3 | Mapping product5b3a3377 reviewed; notes-only197b19fc. Login productbc03f460 complete; notes-only17c351cb | Draft#595 mapping and stacked draft#596 login; no new migration | Mapping ordinary/full Sol clear; login native7/domain31/contracts2/perms88 pass, bulk ordinary findings corrected; full Sol plus final structural delta clear; Health overage warning/provider acceptance open |
+| P4 | Product8baeb622 complete shared row/event binding and reservation fencing; notes-only359d60bd | Draft#594 toward#589; no migration/dependency/provider activation | Full Sol clears complete mechanism and closes narrower same-class remediation tier; native23/unit46 pass; broad CI/image/composed acceptance open |
+
+### What changed
+
+The complete P0 typed producer/consumer derivative149bb605 preserves failed originals and successfully replays the unchanged real run2 input2695a56d through the canonical full renderer. Fresh strong Luna and independent full Sol each pass83 offline tests,16pins and130-row replay: zero unexplained or uncovered among the27selected sources,6resources/31targets, cleanup9/9. Root also verifies16derivative and3original pins. No runtime rerun or accepted observation is invented; actual ValueError/NameError failures stay preserved. The manifest's date-only created_utc label is local-date metadata, not another UTC observation.
+
+P3 role and P4 complete structural remediation clear fresh full Sol; verbatim verdicts are committed as security-review-only descendants with source equivalence proven. P4 native23/unit46 pass under the corrected isolated invocation; original default-database auth failure remains failed. Luna B became the remediation author and cannot review it; its earlier P4 SHA typo/range failure is preserved and not treated as an exact-head gate.
+
+Complete login batchbc03 implements validated group UUIDs, current admission/role/mapping checks under IP22 locking, source-specific grant retirement/projection, independent-source preservation and postcommit cache/session ordering. Final exact-source native7 passes with teardown. Bulk reviews found history reason defects; shared evidence classification and current locked mapping/provenance now replace timestamp authority. A real display-only mapping PATCH followed by empty claims verifies claim_removed in history/event/audit. Fresh Sol clears finalbc03; notes-only17c preserves source equivalence. Full IP28 still needs the operator-visible Health overage warning; removal event reason alone is not that warning.
+
+Installer20/20 offline tests pass; the complete owned fresh/repeat/upgrade/rollback plan is frozen. Read-only GitHub inventory finds only old v2.0.1 with two SBOM assets, no candidate signed installer bundle. Release workflow requires selected source already reachable from main. Requested sequencing keeps local reviewed-image runtime proof before merge and official signed-prerelease verification after eligible merge, before finalizer; no action or waiver is assumed.
+
+### What is being worked on now
+
+Two separate Luna authors own full P1/P2 CI remediation batches after root retained and inspected exact-head fast/full logs. Confirmed failures include MCP SDK below patched1.31.0, four pending-action user_deactivation OpenAPI compatibility changes, four native API-key read403 expectations, and P1 live contrast occurrence omissions. P1 provisional snapshot0089 ancestry mismatch stays central train work, without blind renumbering or rewriting the gate. Both G11 runs also fail to open the create dialog; no performance rerun is authorized. P1 holds the first exclusive private PG window; P2 proceeds offline until release. A third Luna prepares a complete private local-image installer harness offline from the frozen GateC plan, with signed-release acceptance explicitly separate. P0 product/runner remain frozen; hosted-confirmation and installer-order decisions remain pending.
+
+### Critical path
+
+1. Resolve the actual hostedG11 failure under the explicit no-extra-retry rule.
+2. Complete exact-image upgrade, preservation, idempotency/rollback and installer release ordering without weakening signatures.
+3. Prove eligible current strict behavior and independently adjudicate original Oct4/5/6 partial records.
+4. Resolve public-config substitution and execute eligible reviewed reversible DEV/UAT cutover.
+5. Protected merge with every required exact-head gate, official installer proof in approved order, fresh Sol finalizer and P0 issue reconciliation.
+
+### Misalignment / drift
+
+#583 remains sole P0 closure;#589 sole post-P0 train;#581 superseded;#587 diagnostic only. No speculative#590 merge. Report's old17/22 is superseded by current19/22. #588's merge7c2c9ac5 is an ancestor of currentP2c89, and its product646f3509 is already retained in#589; it is not accepted-main/provider/phase delivery. All migration0088–0118 allocations remain provisional and centralized; no0119.
+
+### Concerns
+
+Official signed candidate installer artifacts cannot currently exist under main-only publication. Keep missing release evidence explicit and signatures intact; the sequencing proposal is pending. Health overage warning is a documented integration residual, not silently satisfied by grant-removal events. Local22/22 never replaces red hosted19/22, and no original partial window becomes full-day/72-hour coverage.
+
+### Decisions needed from Thomas
+
+Existing public-config substitution, one unchanged-source hosted confirmation and P1 current-team lead rule remain unanswered. One new concrete installer sequencing/prerelease question is pending; read-only release inventory and frozen runtime plan support it. No duplicate asks or tool-delivery-as-approval.
+
+### Next merge candidates
+
+#583 after real required P0 gates and approved installer ordering. Then mature P1–P4 slices integrate on accepted P0 through#589, with mapping#595 before login#596, centralized migration allocation and full composed acceptance. No dates promised.
+
+
+---
+
+## Status First
+
 Snapshot: 2026-10-06 23:00 UTC (7 October in Yangon). Accepted main remains3096cb04; DEV remains08842235 with shadow enabled and enforcement empty. No protected main merge, DEV refresh, strict cutover or phase completion.
 
 | Phase | Implementation | Integration | Acceptance / operational closure |
