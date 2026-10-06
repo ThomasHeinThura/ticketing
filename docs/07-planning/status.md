@@ -29,8 +29,15 @@ public-policy/placement proof cannot silently substitute for the mandatory tally
 narrow proposal is pending Thomas; the other sources keep their existing evidence requirements.
 Enforcement remains off. Read-only DEV queries found zero
 roles/API keys containing only the old task permission key; legacy keys were not removed.
-Actual reviewed cutover, runtime verification and a separate fresh Sol P0 phase finalizer
-remain before #8/P0 closure. Three partial captures do not establish full days, 72 hours,
+The additional fresh Sol whole-P0 finalizer verified accepted-main fast CI 13/13 and full
+CI 5/5 at the exact merged PR head, but remains provisionally blocked. It also found the
+explicit P0 `install.sh` bootstrapper absent; issue #582 now tracks its complete implementation
+and acceptance. P7 stable-URL publication/hardening is separate and is not added to P0.
+The installer batch is assigned next to the Luna strict-runner implementation lane.
+Runbook/config prose also overclaims arbitrary non-task order validation; the parser enforces
+exact membership and task-last completeness, and the planned contract correction will state
+that honestly. Actual reviewed cutover/runtime/rollback, the installer and finalizer clearance
+remain before P0 closure; #8 specifically retains operational authorization acceptance. Three partial captures do not establish full days, 72 hours,
 production readiness, protected acceptance or automatic cutover. The completed date-observation
 heartbeat is paused after reconciliation; no duplicate schedule is created.
 

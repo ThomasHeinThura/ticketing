@@ -6126,3 +6126,14 @@ strict source selection contract does not explicitly permit substituting this pr
 and task activation remain blocked. A concrete DEV/UAT-only evidence exception was prepared
 and submitted to Thomas, who retains gate-exception authority. This entry does not approve it.
 The additional fresh P0 Sol phase finalizer remains separate and outstanding.
+
+
+### 2026-10-06 · Implement the missing P0 bootstrapper; retain P7 publication scope
+
+The fresh independent whole-P0 Sol finalizer found accepted main has no root `install.sh`,
+although phases.md P0 and the existing one-line-install specification require it. Issue #582
+tracks the complete existing-contract implementation and acceptance batch, assigned to Luna
+under Thomas's standing direction to finish necessary P0 implementation first. The earlier
+“two gates left” checkpoint was incomplete; elapsed observation dates do not close this gap.
+P7's hardened stable-URL publication remains P7/issue #55, not a new P0 hosting requirement.
+No production release, domain publication, dependency addition or quality-gate waiver is made.
