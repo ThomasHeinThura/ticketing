@@ -12,14 +12,12 @@ const IV_BYTES = 12;
 const TAG_BYTES = 16;
 const HEADER_BYTES = MAGIC.length + KEY_ID_BYTES + IV_BYTES;
 
-function keyFromEnvironment(
-  name: "TASKDESK_ENCRYPTION_KEY" | "TASKDESK_ENCRYPTION_KEY_PREVIOUS",
-) {
-  const value = process.env[name]?.trim();
-  if (value === undefined || value === "") return null;
-  if (!/^[a-f0-9]{64}$/iu.test(value))
+function keyFromValue(value: string | undefined) {
+  const normalized = value?.trim();
+  if (normalized === undefined || normalized === "") return null;
+  if (!/^[a-f0-9]{64}$/iu.test(normalized))
     throw new Error("Configured encryption key is invalid");
-  return Buffer.from(value, "hex");
+  return Buffer.from(normalized, "hex");
 }
 
 function keyId(key: Buffer): Buffer {
@@ -37,7 +35,7 @@ export function encryptIdentityClientSecret(
   connectionId: string,
   secret: string,
 ): Buffer {
-  const key = keyFromEnvironment("TASKDESK_ENCRYPTION_KEY");
+  const key = keyFromValue(process.env.TASKDESK_ENCRYPTION_KEY);
   if (!key) throw new Error("TASKDESK_ENCRYPTION_KEY is required");
   if (typeof secret !== "string")
     throw new Error("Identity client secret is invalid");
@@ -72,8 +70,8 @@ export function decryptIdentityClientSecret(
     MAGIC.length,
     MAGIC.length + KEY_ID_BYTES,
   );
-  const current = keyFromEnvironment("TASKDESK_ENCRYPTION_KEY");
-  const previous = keyFromEnvironment("TASKDESK_ENCRYPTION_KEY_PREVIOUS");
+  const current = keyFromValue(process.env.TASKDESK_ENCRYPTION_KEY);
+  const previous = keyFromValue(process.env.TASKDESK_ENCRYPTION_KEY_PREVIOUS);
   const key = [current, previous].find(
     (candidate) =>
       candidate !== null && timingSafeEqual(keyId(candidate), encodedKeyId),

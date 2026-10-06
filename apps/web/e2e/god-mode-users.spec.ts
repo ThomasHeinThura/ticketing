@@ -4,7 +4,7 @@ test.use({ trace: "off", video: "off", screenshot: "off" });
 
 test("God Mode users directory supports filters and audited account actions", async ({
   page,
-}) => {
+}, testInfo) => {
   const user = {
     id: "staff-user-1",
     name: "Taylor Staff",
@@ -247,7 +247,7 @@ test("God Mode users directory supports filters and audited account actions", as
     .filter({ hasText: "taylor@example.test" });
   await expect(userRow).toBeVisible();
   await page.screenshot({
-    path: "/Users/heinthura/.codex/taskdesk-evidence/2026-10-05/p4-person-deactivation-b58/screens/instance-users-directory.png",
+    path: testInfo.outputPath("instance-users-directory.png"),
     fullPage: true,
   });
   const userLink = page.getByRole("link", {
@@ -258,7 +258,7 @@ test("God Mode users directory supports filters and audited account actions", as
   await expect(page).toHaveURL(/user=staff-user-1/);
   await expect(page.getByTestId("instance-user-details")).toBeVisible();
   await page.screenshot({
-    path: "/Users/heinthura/.codex/taskdesk-evidence/2026-10-05/p4-person-deactivation-b58/screens/instance-user-details.png",
+    path: testInfo.outputPath("instance-user-details.png"),
     fullPage: true,
   });
 
