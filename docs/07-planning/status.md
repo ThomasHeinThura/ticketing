@@ -1,3 +1,44 @@
+## October 6 reviewed OrbStack DEV refresh and full implementation composition — 12:35 UTC
+
+- **DEV refreshed:** root deployed reviewed P0 product `08842235047a3ab2714427edce80331b94558150`
+  to the existing OrbStack app service only. Exact image is
+  `sha256:75b153d7d9583993127e1be8c06453159e4fe7319abfcd8431f093c9ca002bcf`.
+  Before changing the image, root stopped the app and captured encrypted PostgreSQL,
+  attachment and runtime-configuration backups. Decrypted PostgreSQL passes `pg_restore --list`;
+  attachment/configuration tar streams validate. Backup key custody is separate from the
+  encrypted archives. Existing PostgreSQL, Valkey, Traefik and loopback proxy container IDs
+  are unchanged; the app data volume, runtime secrets, certificates and shadow-on/empty
+  enforcement are preserved. Migration journal remains88 and runtime UID is10001.
+- **Actual public checks:** certificate-verified HTTPS live/ready and static shells return200
+  for `ticketing.localhost` and `portal.localhost`. Legacy `ticket.localhost` health endpoints
+  return200 and its unconfigured static origin remains404. The source-bound private deployment
+  receipt records all9 probes and the exact app/image identity. Chrome opens the agent sign-in
+  screen, but an extension popup blocks further browser control; the already requested popup
+  dismissal is pending. Signed-in UI acceptance remains blocked, not passed.
+- **P0 diagnostics #587:** the complete native chunk/source-map repair atd6c7 clears bounds,
+  privacy and unmapped-map handling but independent Luna finds a separate real clock blocker:
+  sample deltas need the initial Profile timestamp and cumulative cross-chunk timing. The
+  structural correction is pushed at `f8414b98de6aa455333005ed1e2b751821972576`, with3 focused
+  files/22 tests, web typecheck, Biome and whitespace checks passing. Independent current-head
+  review and full Sol confirmation remain required; no usable profile or optimization claim.
+- **P2/P3/P4 bulk implementation:** P2's integration repair is pushed at
+  `ef1532bbfe3306abcc41057c20998dbab9baee62`; P3's complete defined identity/configuration and
+  migration-snapshot batch is pushed at `646f3509e43965988252682d0db5b0ca9334347d`.
+  P3's actual full PostgreSQL CI passes146/148 files and1721/1724 tests; three failures remain
+  across real WebSocket/portal boundaries and strict assignment. Its registers gate finds
+  stale generated route metadata. These are retained and assigned to the full composition
+  batch alongside current P0, P4 query ownership and outbox/P2 source. New P0/P3 reads must
+  also relocate into repositories for mandatory P4 `check:queries` acceptance. Composition
+  proceeds before one risk-sized bulk review; unreviewed P3 source is not deployed.
+- **P0 remaining:** the private runner lane is completing one canonical full traffic executor
+  for both off/shadow and strict captures before its frozen operational review and next run.
+  The previous48-request partial failure and complete resource-absence verification remain
+  unchanged. Compatible source-bound runtime evidence, actual passing G11, exact required
+  review/CI, config/task prerequisites and the fresh additional Sol phase finalizer are still
+  open. This reviewed DEV refresh uses the existing October4 development-delivery authorization;
+  it does not waive a gate, activate enforcement, carry observation dates, merge or close P0.
+  Accepted main remains3096cb0.
+
 ## October 6 actual disposable run and continued bulk repair — 12:04 UTC
 
 - **P0 image/runtime:** root issued a separately pinned reversible runtime release only
@@ -8,7 +49,7 @@
   status matrix. Persistent OrbStack DEV is unchanged.
 - **Actual failure, not acceptance:** the process exits1 before the27-source strict
   representative stage. Its explicitly empty-enforcement/shadow-on traffic runs from
-  11:57:51.707819 to11:57:52.042779UTC:48 planned requests, zero actual status mismatches,
+  11:57:51.707819 to11:57:52.042779UTC:48 planned requests, zero mismatches among the31 specified expectations,
   zero unexplained tally rows and complete48 actor/route coverage. However17 planned
   expectations are unspecified, and global coverage counts the intentionally ineligible
   public-config source as uncovered. The fixture rejects these conditions. This subset

@@ -1,0 +1,21 @@
+{
+  "candidate_sha": "08842235047a3ab2714427edce80331b94558150",
+  "records": [
+    {
+      "file": "luna-a.md",
+      "sha256": "da2d99c20acc7d93a58389b715f739e7f80fd33a3c34b92688396ff0c3389fe4",
+      "origin": "/Users/heinthura/.codex/taskdesk-evidence/2026-10-06/p0-strict-cutover-prep/shadow-asset-mask-correction/luna-a-08842235-review.md"
+    },
+    {
+      "file": "luna-b-product-and-private-runner.md",
+      "sha256": "86577b7af8ca96d0745270359d046245adb2379c11177abbef89e4615e86a907",
+      "origin": "/Users/heinthura/.codex/taskdesk-evidence/2026-10-06/p0-strict-cutover-prep/bulk-luna-b-review/bulk-luna-b-review.md"
+    },
+    {
+      "file": "sol-product.md",
+      "sha256": "1d2a61e1acb59b7556d9087342c38e4f7a858b43f40934c2190a1830140f5a7b",
+      "origin": "/Users/heinthura/.codex/taskdesk-evidence/2026-10-06/p0-strict-cutover-prep/088-full-sol-security-review.md"
+    }
+  ],
+  "note": "Original bytes preserved. Luna B overall BLOCK concerns private runner; product delta clear. No operational or phase acceptance inferred."
+}
