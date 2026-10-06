@@ -6164,3 +6164,52 @@ Gate waivers, recorded per [UX quality gates](../02-design/ux-quality-gates.md).
 ## Related
 
 - [ADR index](../01-architecture/adr/README.md) · [Risks](risks.md) · [Status](status.md)
+
+
+### 2026-10-06 · Completed date observation schedule and continued execution
+
+The actual October 6 partial representative observation was acquired and deterministically
+reconciled with the retained October 4 and 5 records. Pause the completed observation heartbeat
+as its existing prompt requires; continue independent operational cutover assessment and the
+additional Sol phase finalizer, without claiming closure from elapsed time. The absent historical
+schema-80 image was rebuilt from exact old source and its new digest is explicitly recorded;
+source/user/journal/hash guards stay enforced and original failure records stay intact.
+
+Thomas's standing parallel and bulk-implementation instructions continue to apply. P1/P2
+completed slices proceed toward one composed acceptance batch; P4 repository conversion resumes
+on the next bounded bucket while P0 operational acceptance runs. No new waiver, dependency,
+production deployment, human design approval or relaxed performance budget is authorized here.
+
+
+### 2026-10-06 · Operational review distinguishes observations from config/task activation
+
+The independent Sol operational reviewer cleared the three actual representative UTC date
+records for 28 shadow-observable sources and proposed staged consideration of 27 non-task
+sources. Public `GET /api/config` has original 200 request records on all three dates and
+immutable same-source proof, but its pre-guard placement produces no shadow tally. The existing
+strict source selection contract does not explicitly permit substituting this proof, so config
+and task activation remain blocked. A concrete DEV/UAT-only evidence exception was prepared
+and submitted to Thomas, who retains gate-exception authority. This entry does not approve it.
+The additional fresh P0 Sol phase finalizer remains separate and outstanding.
+
+
+### 2026-10-06 · Implement the missing P0 bootstrapper; retain P7 publication scope
+
+The fresh independent whole-P0 Sol finalizer found accepted main has no root `install.sh`,
+although phases.md P0 and the existing one-line-install specification require it. Issue #582
+tracks the complete existing-contract implementation and acceptance batch, assigned to Luna
+under Thomas's standing direction to finish necessary P0 implementation first. The earlier
+“two gates left” checkpoint was incomplete; elapsed observation dates do not close this gap.
+P7's hardened stable-URL publication remains P7/issue #55, not a new P0 hosting requirement.
+No production release, domain publication, dependency addition or quality-gate waiver is made.
+
+
+### 2026-10-06 · Describe actual strict source-order validation accurately
+
+Correct the runbook and configuration reference to match the accepted parser: unknown,
+duplicate, empty, whitespace-padded and malformed members are rejected; task requires the
+complete other-source set and must be last. Arbitrary non-task permutations are not rejected
+by startup, although operators use registry order for staged rollout. This changes the claimed
+control to describe existing behavior; no parser, source set, authorization or pass/fail result
+is relaxed. The corrected documentation joins the complete P0 acceptance batch for required
+review; the config evidence exception remains independently pending Thomas.
