@@ -361,6 +361,30 @@ async function loadAuthoritativeEvidence(
   }
 
   let evidence = initial;
+  if (policy.scope === "workspace" && policy.scopeSource === "row") {
+    if (!evidence.workspaceId) refuse(500);
+    if (evidence.workspaceIdSource === "request") {
+      // A path/query/body id is not row evidence by itself. The workspace
+      // access middleware has already applied the route's native reach check;
+      // load the exact addressed workspace before the strict terminal boundary
+      // so the evaluator can use the policy's declared row provenance. This
+      // also preserves the compound detail route's existing 404 for a missing
+      // workspace without allowing a request id to masquerade as a loaded row.
+      const [workspace] = await db
+        .select({ id: schema.workspaceTable.id })
+        .from(schema.workspaceTable)
+        .where(eq(schema.workspaceTable.id, evidence.workspaceId))
+        .limit(1);
+      if (!workspace) refuse(404);
+      evidence = {
+        ...evidence,
+        workspaceId: workspace.id,
+        workspaceIdSource: "row",
+      };
+    } else if (evidence.workspaceIdSource !== "row") {
+      refuse(500);
+    }
+  }
   if (policy.scope === "work_item") {
     if (
       policy.scopeSource !== "row" ||
