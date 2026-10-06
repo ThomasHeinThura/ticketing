@@ -1,5 +1,53 @@
 ## Status First
 
+Snapshot: 2026-10-06 22:41 UTC (7 October in Yangon). Accepted main remains3096cb044bdf6ae98488bfc385f532fa6386343a; reviewed DEV remains08842235, shadow on and enforcement off. No merge, DEV refresh, strict activation or phase completion.
+
+| Phase | Implementation | Integration | Acceptance / operational closure |
+| --- | --- | --- | --- |
+| P0 | Frozen53269374, product reviews clear, exact imagef44 built | Sole closure#583; complete captured off/shadow evidence awaits structural offline rendering repair | Hosted PG137 files/1659 tests, E2E27, G4/G8 pass; hostedG1119/22 red; strict, installer/rollback and finalizer open |
+| P1 | Complete saved views/CSV/shared key identity8c3ca82c | Published isolated draft#591 toward#589;0118 provisional | Fresh ordinary delta and full Sol clear; native3files58 and units16 pass; composed/liveAPI acceptance open |
+| P2 | Complete approval continuity/withdrawal d5b2842e; notes-only c89c11c0 | Published isolated draft#586 toward#589 | Source/delta reviews clear; real lifecycle/domain tests pass; inherited integration residuals and liveAPI browser acceptance open |
+| P3 | Mapping role failclosed correction5b3a3377 complete; documented login reconciliation starting separately | Mapping source frozen for current remediation review; no new migration | Native9, identity31, roles23, permissions88 pass; current delta review and real provider acceptance open |
+| P4 | Complete delivery fencing and canonical resource-binding44b1621e | Draft#594 toward#589; old producer/drain history preserved | Native21 and eligibility units21 pass; current full structural delta review and composed runtime acceptance open |
+
+### What changed
+
+Both authorized P0 disposable acquisitions preserve original failures. First20261006T221158Z matched130/130 status expectations, then failed on undefined canonical runner names. The complete derivative passed fresh ordinary/Sol review and78 offline tests. Second20261006T222626Z completed all runtime assertions and persisted full raw traffic, fixture bindings, source/protocol proofs and reconciliation, then failed at deterministic offline report rendering. Both cleanup receipts pass9/9; root independently verifies all owned resources absent. No failed acquisition is relabeled accepted. Producer/renderer drift includes an omitted nonactivation field and a missing legacy out-of-reach boolean despite actual documented project404 responses. Repair now targets one shared typed contract and the complete immutable real payload, rather than another field special case or network acquisition.
+
+P1's structural authenticated identity repair8c clears fresh ordinary and full independent Sol review; reviewer A independently passes native58. Reviewer B's local database setup failed before assertions, so its source-only verdict is not additional test success. P1 and P2 complete checkpoints are published to their existing draft PRs by fast-forward, preserving history. P3's full Sol found unsafe customer-role capability JSON validation; shared failclosed correction5b covers create/edit/enable/read and proof/grant/version/event non-mutation. P4's full-feature panels found event/resource mismatch and unfenced suppress/defer writes; complete44 correction serializes delivery before reservation and fences all relevant mutations. Meaningful native/unit tests pass before the combined remediation review.
+
+### What is being worked on now
+
+P0 Luna lane: offline structural acquisition/render contract repair with full actual payload replay and adversarial negatives; no further runtime acquisition for a report-only repair. P3 Luna lane: complete IP22/IP28 validated-login group/JIT grant reconciliation in a separate worktree from frozen5b, within existing documented behavior. Independent Luna panel starts combined P3/P4 structural delta review. Current P1/P2 integration remains isolated from P0. No performance or PostgreSQL acquisition currently overlaps another resource-heavy window.
+
+### Critical path
+
+1. Resolve current hostedG11 red; the asked unchanged-source confirmation remains unapproved under the explicit no-extra-retry directive.
+2. Complete independently reviewed offline evidence rendering and remaining exact-source runtime/installer/rollback proof.
+3. Exercise eligible strict behavior and independently adjudicate actual October4/5/6 source compatibility; never infer full-day or72-hour coverage.
+4. Resolve public-config substitution and perform only eligible reviewed DEV/UAT cutover and reversible rollback.
+5. Protected merge with all exact-head gates, fresh independent Sol phase finalizer on accepted main, then reconcile P0 issues.
+
+### Misalignment / drift
+
+#583 sole P0 closure;#589 sole post-P0 integration train;#581 preserved and superseded without merge;#587 diagnostic only. No speculative#590 cherry-pick. Current hosted19/22 supersedes pasted17/22; local22/22 and older hosted22/22 do not replace the current gate. Main/DEV do not contain these later implementation checkpoints. Migration0088–0117 and saved-view0118 remain provisional; no0119 allocated. P4 query ownership actually passes, so the old352-read count is historical.
+
+### Concerns
+
+Report contract tests previously did not replay the entire persisted real payload; the structural batch must do so before freeze. Current local performance differs from hosted hardware and cannot establish an exclusively worker-caused regression. OIDC mappings without login consumption do not satisfy IP28; the new complete batch addresses that specific integration seam. No real provider acceptance or liveAPI browser acceptance is claimed from mocked evidence.
+
+### Decisions needed from Thomas
+
+Previously asked public-config source-bound substitution, one unchanged-source hosted confirmation, and separate P1 current-team lead plus saved_view:create rule remain unanswered. No duplicate request or elapsed-time approval. P1 behavior does not block P0.
+
+### Next merge candidates
+
+#583 only after all real exact-head P0 gates. Mature P1–P4 slices then integrate on accepted P0 in dependency order through#589 with centralized migration allocation and bulk acceptance. No dates promised.
+
+---
+
+## Status First
+
 Snapshot: 2026-10-06 22:08 UTC (7 October in Yangon). Accepted main remains3096cb04; DEV remains08842235 with shadow on and enforcement off. No merge, DEV refresh, strict activation or phase completion.
 
 Update22:15 UTC: the authorized exact532 disposable off/shadow acquisition20261006T221158Z-53269374 failed at private runner assessment with undefined canonical CONFIG/TASK names. All130 acquired status expectations matched; actual image boot/revision/UID10001, live/ready200, migration80→88, settings CAS/step-up/metrics token checks passed. Original artifacts are retained, with no result or acceptance. Cleanup receipt passes9/9 and root independently verifies all9absent. Offline completion inspection also identifies an actual authenticated WS101 row classifiedother instead ofallow; both completion classes enter one structural private runner batch with protocol-bound negative tests. No old traffic is rewritten, no runtime outcome synthesized, no performance retry/DEV mutation/strict activation. P1's private PG resource window is released. P4's full fresh Sol clears the reviewed four-file cleanup delta; draft#594 publishes the larger isolated send-time/cleanup slice toward#589, explicitly retaining full composed review/CI/runtime as pending. Original#585 producer/drain history remains preserved.
