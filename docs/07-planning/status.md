@@ -1,5 +1,57 @@
 ## Status First
 
+Snapshot: 2026-10-06 21:22 UTC (7 October in Yangon). Accepted main remains `3096cb044bdf6ae98488bfc385f532fa6386343a`. OrbStack DEV remains reviewed `08842235047a3ab2714427edce80331b94558150`, shadow on and enforcement off.
+
+| Phase | Implementation | Integration | Acceptance / operational closure |
+| --- | --- | --- | --- |
+| P0 | Reviewed product/test source307eeea2; pushed review-only descendant5326937460b195d8e69584c0cb99305348330a95 | Sole closure#583; no later features included | Exact hosted PG137 files/1659 tests, E2E27, G4/G8 pass; G11 19/22 fails; runtime, strict/rollback and finalizer open |
+| P1 | Saved views7163ad86, PG17/17 | Isolated;0118 provisional | Lead schema seam and integrated acceptance open |
+| P2 | Complete withdrawal source d5b2842e; review-only checkpoint c89c11c0 | Three ordinary source reviews plus strong Luna/full Sol terminal-conflict delta clear | Real PG lifecycle/domain79 pass; mock-browser limitation and integration residuals retained; not phase accepted |
+| P3 | Mapping0796bb30, PG8/8, native WS1/1 | Cache contract audit complete without source changes | Real provider acceptance and cache invalidation/fencing contract open |
+| P4 | Worker8eb0475e, unit10/10, PG11/11 | Current eligibility wired; actual check:queries passes | Quiet-hour/destination contracts, provider activation and integrated acceptance open |
+
+### What changed
+
+The complete three-test-file P0 repair preserves canonical project404 denials, MFA-authenticated CSRF negatives and normal-pointer observability writes. Fresh strong Luna and full Sol reviews clear307eeea2. Ten unchanged review records/index additions produce53269374 with proven executable/test equivalence. Current full hosted run37532156298 passes native137/1659, E2E27/27, G4 and G8. G11 fails19/22: LCP2608ms, state248.7ms, board669.8ms. Earlier8f6 hosted22/22 remains historical evidence, not current acceptance. No web product change explains this difference yet.
+
+Exact532 image sha256:f44a83237dd3d8f8150234ccf1bb857e2957ec7adc727b8de4f5bfe3e4af39fe built with actual UTC metadata and matching OCI revision; boot/UID/migration/auth/installer proof is not yet claimed. Private final runner is source-bound to532 with manifest15287e3061823460cc429cb6d82623e16c5c5f0a70c6b85c8b8d75e012c65c72, offline72/72 and immutable predecessors retained. Independent operational review is underway before any execution.
+
+P2's full withdrawal batch corrected an actual security-review blocker: authorized terminal retries now409, unauthorized actors403, with the same shared decision governing the UI affordance. Strong ordinary delta and full independent Sol delta clear d5b2842e; c89c11c0 adds only genuine review records. P3 cache audit identifies missing fact-boundary/invalidation/fencing contracts rather than claiming a cache implementation. P4 query ownership checker actually passes; the old352-read backlog must not be relabeled current in this checkpoint.
+
+### What is being worked on now
+
+#583: bounded read-only comparison of current failed G11 with source-equivalent passing8f6, using retained traces/diagnostics; no retry or speculative source change. Ordinary review of the completed private runner precedes full Sol operational review. A separate Sol scope check examines the registers failure caused by naming the later webhook/API-key feature spec while its owning review section is nonempty. The intentionally pending PR gates remain red until real acceptance evidence exists.
+
+Later lanes remain isolated: P1's lead/schema integration seam; completed P2 withdrawal checkpoint; P3 real-provider and cache-contract boundary; P4 send-time worker with unresolved timing/destination held pending.
+
+### Critical path
+
+1. Explain and structurally resolve the current G11 failure and genuine review-register scope without weakening gates.
+2. Clear exact-source required CI and independent private operational runner reviews.
+3. Complete reviewed image boot/auth/installer and off/shadow/key/session evidence, then independently adjudicate October4/5/6 compatibility.
+4. Resolve the pending public-config evidence substitution; execute eligible reviewed DEV/UAT strict/rollback with task last.
+5. Protected acceptance, fresh independent Sol phase finalizer on accepted main, and P0 issue reconciliation.
+
+### Misalignment / drift
+
+#583 remains sole P0 closure;#589 canonical post-P0 train;#581 preserved and superseded without merge;#587 diagnostic only. Migration0088–0117 and saved-view0118 are provisional; no0119 allocated. Product source was frozen after actual hosted22/22; only documented required test repairs and genuine review-note publication followed. Current G11 failed despite source equivalence, so historical green is not carried as current green. Older reports, PR heads and pending query counts remain historical.
+
+### Concerns
+
+G11 has narrow margins and current failures; retained measurements need causal investigation before another fix. The private runner remains unexecuted pending its own independent clearance. Original failed observations, blocked runner review and overwritten-author-packet integrity incident remain disclosed. Three partial UTC observations never imply full-day/72-hour coverage. DEV is unchanged, and no enforcement, production promotion or phase completion is claimed.
+
+### Decisions needed from Thomas
+
+The existing public-config substitution question remains unanswered: source-bound public200 responses and unchanged pre-guard behavior instead of impossible shadow tallies. Other current P0 work proceeds. Later cache, timing/destination and provider contract questions remain separate from P0.
+
+### Next merge candidates
+
+#583 only after every real required gate is green. Then one canonical post-P0 integration base, with mature P1/P2/P3/P4 slices in dependency order and centralized migrations. No dates promised.
+
+---
+
+## Status First
+
 Implementation snapshot: 2026-10-06 20:43 UTC (7 October in Yangon). Accepted main remains `3096cb044bdf6ae98488bfc385f532fa6386343a`. Reviewed OrbStack DEV remains `08842235047a3ab2714427edce80331b94558150`, shadow on and enforcement off.
 
 | Phase | Implementation | Integration | Acceptance / operational closure |
