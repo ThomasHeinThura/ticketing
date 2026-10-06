@@ -1,5 +1,9 @@
 import { createId } from "@paralleldrive/cuid2";
-import { isCapability } from "@taskdesk/permissions";
+import {
+  isCapability,
+  type RoleScope,
+  roleCompositionProblems,
+} from "@taskdesk/permissions";
 import {
   and,
   asc,
@@ -847,6 +851,7 @@ export async function validateOidcMappingRole(
     .where(eq(schema.roleTable.id, input.roleId))
     .limit(1);
   if (!role || role.scope !== input.scope || role.rank < 0) return false;
+  if (!hasSafeOidcRoleCapabilities(role.scope, role.capabilities)) return false;
   if (input.portalScope === "customer")
     return role.workspaceId === null && role.key === "customer";
   if (
@@ -854,17 +859,25 @@ export async function validateOidcMappingRole(
     role.rank > input.maxRoleRank ||
     role.workspaceId !== input.scopeId ||
     role.key === "admin" ||
-    role.key === "owner" ||
-    !Array.isArray(role.capabilities)
+    role.key === "owner"
   )
     return false;
-  return role.capabilities.every(
-    (capability) =>
-      typeof capability === "string" &&
-      capability !== "sees_all" &&
-      !capability.startsWith("instance:") &&
-      isCapability(capability),
-  );
+  return true;
+}
+
+function hasSafeOidcRoleCapabilities(scope: string, value: unknown): boolean {
+  if (scope !== "organisation" && scope !== "workspace") return false;
+  if (
+    !Array.isArray(value) ||
+    !value.every(
+      (capability): capability is string =>
+        typeof capability === "string" &&
+        capability !== "sees_all" &&
+        isCapability(capability),
+    )
+  )
+    return false;
+  return roleCompositionProblems(scope as RoleScope, value).length === 0;
 }
 
 export async function retireOidcGroupGrants(
