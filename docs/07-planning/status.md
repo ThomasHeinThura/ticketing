@@ -1,3 +1,44 @@
+## October 6 complete approval batch and exact asset correction — 09:08 UTC
+
+- **P0 #583:** current product head `08842235047a3ab2714427edce80331b94558150`
+  resolves strict asset row context while preserving project-workspace reach and
+  asset-workspace capability scope. Two independent ordinary reviews clear this source;
+  reviewer B ran the exact-head focused SQL suite (1 file / 8 tests, all passed) and verified
+  its owned container and volume absent. Prior 517 mismatch-oracle failure remains retained.
+  One non-blocking scope-discriminating test gap and one stale comment are recorded; no
+  additional comfort review or untested semantic change is introduced. Full independent
+  Sol product review is active.
+- **Image:** exact 088 image builds successfully as
+  `sha256:75b153d7d9583993127e1be8c06453159e4fe7319abfcd8431f093c9ca002bcf`,
+  OCI revision 088, configured user taskdesk. It has not yet booted or replaced persistent DEV.
+- **Private evidence runner:** separated off/shadow and strict stages, mode-bound receipts,
+  fail-closed acceptance and diagnostic retention pass 34 offline tests independently.
+  Ordinary B found a real cleanup blocker: the PG image creates an unlabeled anonymous
+  volume, which the ownership check correctly refuses to delete. A full correction batch
+  is active to acquire explicit labeled owned volumes and retain exact cleanup evidence.
+  The private release remains unexecuted and unauthorized; original runtime failures and
+  all three actual partial UTC observation dates remain unchanged.
+- **Current hosted CI:** 088 full run37439473423 passes protected-route browser smoke,
+  G4 and G8. PostgreSQL remains in progress. G11 fails17/22: list505.9ms, LCP2632ms,
+  state276.3ms, assignment208.3ms and board703.3ms exceed unchanged budgets. Its source-bound
+  diagnostic artifact is retained with the actual GitHub merge-ref source `b59cb4e3399a411bec91c4c21cbc7a647adb3ed1`;
+  timing variance is not proof that the asset API fix changed UI performance. Fast implementation
+  checks pass; review/template evidence remains red. No retry or budget waiver is claimed.
+- **P2 #586:** complete defined approvals batch is pushed at
+  `43620d29103381e1f741e4a485e2fde9e4da6ba3`, based on notification candidate5a.
+  Thomas's explicit feature-disable continuity approval is recorded in its decision log/spec:
+  block new requests, preserve existing list/read/decide/withdraw/reminders under current
+  permissions/reach, and enforce workflow requirements. Staff/customer decision UI, lifecycle,
+  reminder/outbox and workflow seams are included. Domain19 files/657 tests, web4/38,
+  permissions14/88, API types, portal build, inventory and route-policy checks pass.
+  Exclusive isolated SQL verification is now granted following P0 review cleanup.
+  The approver-picker decision and actual portal sign-in/session flow remain open; no email
+  delivery, SQL result, browser use, Docker boot or P2 completion is claimed.
+- **Program:** P1–P4 remain concurrent dependency-safe work. P0 is blocked by actual runtime
+  acceptance, performance, config/task prerequisites, required exact-head gates and its
+  additional independent Sol phase finalizer. No calendar wait, protected merge, phase
+  completion, persistent deployment or enforcement activation is claimed.
+
 ## October 6 corrected enforcement interpretation and full repair batches — 08:28 UTC
 
 - **Correction to the08:08 snapshot:** independent Sol confirms the129 representative
