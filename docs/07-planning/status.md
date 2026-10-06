@@ -1,5 +1,57 @@
 ## Status First
 
+Latest realignment implementation snapshot: 2026-10-06 17:06 UTC. Accepted main remains `3096cb044bdf6ae98488bfc385f532fa6386343a`.
+
+| Phase | Implementation | Integration | Acceptance / operational closure |
+| --- | --- | --- | --- |
+| P0 | Minimal auth/UI fixes and existing G1 primitive/checker obligation underway | Sole closure vehicle583; bulk589 excluded | Open: current performance, strict native/resolver and denial evidence, exact-head reviews/CI, compatibility and finalizer |
+| P1 | Saved-view approval/cancellation fixed and pushed59e2 | Independent checkpoint; provisional0118 | Native15/15 and mocked browser journey pass; inherited authorization dependency/lead decision remain, no phase claim |
+| P2 | Retained SLA/calendar/approvals source | Post-P0 train | Open |
+| P3 | Retained identity/plugin configuration source | Post-P0 train | Open |
+| P4 | Retained query/outbox/flags/expiry source | Post-P0 train; centralized migration ledger | Open |
+
+### What changed
+
+The ownership map is complete and recorded below. Duplicate integration vehicle581 is closed without merge; its exact source is retained in589. P0 auth work is preserved on589f478, then minimally ported to583; later source does not become a P0 dependency.
+
+P1 saved-view source `59e2bfdcf61bff295937a19fa86383b091157ac9` fixes real pending-approval409 and idempotent person fixture setup. Full PG18 saved-view file passes15/15; browser covers request, approval, cancellation with mocked API responses. Root inspects list/pending/cancelled original screenshots. Real persistence is proven separately by PG18, not by the mocked browser. No deployment/phase acceptance. Migration0118 remains provisional.
+
+The current uncommitted P0 port passes typecheck, build, route-policy14/88, OpenAPI173, contrast434, Biome and8 scope unit tests. Full PG18 completes136 passed files/1 failed,1653 passed tests/1 failed; owned test container is cleaned. The scoped self-assignment positive path fails403 at strict evaluation: stored key permissions are not supplied to the canonical identity subset. Luna is fixing that shared evaluator/handler invariant fail-closed, without relaxing the role or scope ceiling.
+
+### What is being worked on now
+
+P0 author owns the complete auth/resolver/native fixture batch, bounded performance work, dialog lifecycle and designated hot-path UI files. Separate Luna owns the documented G1 checker and remaining disjoint primitive conversions. Exact088 AST census finds101 forbidden raw production tags in35 files (93button/7input/1select), plus18 test tags in11 files, no recorded exemptions. No forbidden Base UI import currently exists, but its written gate is missing. Preserve census; implement the entire inherited class using shared UI and structural AST enforcement in one batch. No blanket exemption, dependency or new feature behavior.
+
+### Critical path
+
+1. Finish combined minimal P0 authority, measured performance and existing G1 implementation.
+2. Freeze exact source; clear original G11 budgets and all required source/image/browser/native checks.
+3. Complete risk-sized bulk ordinary review and independent exact-head Sol security review.
+4. Resolve normative denial/config/task acceptance scope; acquire reconciled strict/rollback proof and independent date compatibility.
+5. Protected integration, separate fresh Sol finalizer, then administrative phase/issue closure.
+
+### Misalignment / drift
+
+[Source-bound Sol correction](reviews/2026-10-06/realignment/p0-acceptance-obligation-map-addendum-088.md) shows old missing-installer/#560/#403 implementation findings were stale:583 already includes installer and20 probes; main3096 already includes Origin/stored-portal guards, zero old UI-folder files and density/contrast checkers. Do not reimplement them. The narrower G1 raw-element/BaseUI checker discrepancy is real. Original acceptance map is preserved unchanged and must be read with its correction. Actual old source G11 and operational records remain source-bound, not current-head clearance.
+
+### Concerns
+
+- Valid scoped keys fail strict identity construction: finish one authoritative mapping and native positive/negative matrix.
+- Raw primitives bypass the documented shared design rule: complete disjoint bulk conversion and true checker probes; do not hide existing violations.
+- Existing13 denial mismatches remain unresolved: retain originals and settle canonical authority before oracle changes.
+- UI performance still lacks a current full pass: one coordinated capture, necessary hot-path fixes together, unchanged budgets.
+- Old integration and migration checkpoints remain provisional: preserve unique intent, serialize final allocation, never import their full source toP0.
+
+### Decisions needed from Thomas
+
+Existing unanswered denial-contract compatibility and public-config/task strict acceptance choices remain held. Later saved-view lead, pending-action API evolution, approver-picker and quiet-hour/digest choices are not promoted toP0 dependencies. No repeated question is sent; authorized implementation continues.
+
+### Next merge candidates
+
+Only583 after its complete minimal batch clears all exact-head gates. The G1 lane is a patch supplier, not another P0 closure vehicle. No current candidate is merge-ready.589 is the canonical post-P0 train, and reviewed088 remains the DEV deployment.
+
+## Status First
+
 Snapshot: 6 October 2026; accepted main `3096cb044bdf6ae98488bfc385f532fa6386343a`.
 
 | Phase | Implementation | Integration | Acceptance / operational closure |
