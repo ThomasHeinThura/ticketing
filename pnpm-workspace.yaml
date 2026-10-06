@@ -51,7 +51,7 @@ overrides:
   path-to-regexp: '>=8.4.0'
   picomatch: '>=4.0.4'
   prosemirror-view: '>=1.42.3 <2' # GHSA-c8x8-7fp4-3x9w; maintained 1.x floor
-  proxy-addr: '>=2.0.8 <3'       # GHSA-3xhf-7m6c-5wqj; maintained 2.x floor
+  proxy-addr: '>=2.0.8 <3'       # GHSA-jqcg-44mw-7w3h / CVE-2026-90711; patched 2.0.8
   source-map-js: '>=1.2.2 <2'    # GHSA-68fv-2mgg-jv7q; maintained 1.x floor
 
   # ── entries #19 raises above the inherited floor, reconciled explicitly ──

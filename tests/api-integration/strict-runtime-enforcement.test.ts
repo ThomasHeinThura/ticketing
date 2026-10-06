@@ -40,11 +40,13 @@ const priorEnforcementSetting = vi.hoisted(() => {
 
 import db, { schema } from "../../apps/api/src/database";
 import { createApp } from "../../apps/api/src/index";
+import { validateWorkspaceAccess } from "../../apps/api/src/utils/validate-workspace-access";
 import { mockAuthenticatedSession } from "./helpers/auth";
 import { resetTestDatabase } from "./helpers/database";
 import {
   createProjectFixture,
   createWorkspaceMember,
+  prepareAuthenticatedApiFixture,
   requireRow,
 } from "./helpers/fixtures";
 
@@ -505,5 +507,78 @@ describe("strict policy runtime enforcement against the production API graph", (
     // customer portal journey. Participant/nonparticipant reach is tested in the shared
     // evaluator against the documented customer identity contract.
     expect(participant.person.organisationId).toBe(organisation.id);
+  });
+
+  describe("strict workspace row provenance", () => {
+    it("uses the addressed persisted workspace row for every row-scoped workspace route", async () => {
+      const owner = await createWorkspaceMember({ role: "owner" });
+      mockAuthenticatedSession(owner.user);
+      const { app } = createApp();
+      const base = `/api/workspace/${owner.workspace.id}`;
+
+      const detail = await app.request(base);
+      expect(detail.status, await detail.clone().text()).toBe(200);
+      expect((await detail.json()).workspace.id).toBe(owner.workspace.id);
+
+      const members = await app.request(`${base}/members`);
+      expect(members.status, await members.clone().text()).toBe(200);
+
+      const invitations = await app.request(`${base}/invitations`);
+      expect(invitations.status, await invitations.clone().text()).toBe(200);
+
+      const updated = await app.request(base, {
+        method: "PATCH",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ name: "Strict row scope workspace" }),
+      });
+      expect(updated.status, await updated.clone().text()).toBe(200);
+
+      const deleted = await app.request(base, { method: "DELETE" });
+      expect(deleted.status, await deleted.clone().text()).toBe(200);
+    });
+
+    it("keeps the native admin bypass distinct from strict capability denial and preserves missing-row masking", async () => {
+      const owner = await createWorkspaceMember({ role: "owner" });
+      const admin = {
+        id: `user-${randomUUID()}`,
+        email: `strict-admin-${randomUUID()}@example.com`,
+        emailVerified: true,
+        name: "Strict nonmember instance admin",
+        role: "admin",
+        createdAt: new Date(),
+        updatedAt: new Date(),
+      };
+      await db.insert(schema.userTable).values(admin);
+      await prepareAuthenticatedApiFixture(admin.id);
+
+      // The native reach middleware allows an instance administrator to address this
+      // existing workspace. Strict evaluation then independently denies the missing
+      // workspace:read capability instead of failing with missing row provenance.
+      await expect(
+        validateWorkspaceAccess(admin.id, owner.workspace.id),
+      ).resolves.toBeUndefined();
+      mockAuthenticatedSession(admin);
+      const { app } = createApp();
+      const denied = await app.request(`/api/workspace/${owner.workspace.id}`);
+      expect(denied.status, await denied.clone().text()).toBe(403);
+
+      const missingWorkspaceId = `workspace-${randomUUID()}`;
+      const missingAsAdmin = await app.request(
+        `/api/workspace/${missingWorkspaceId}`,
+      );
+      expect(missingAsAdmin.status, await missingAsAdmin.clone().text()).toBe(
+        404,
+      );
+
+      const ordinary = await createWorkspaceMember({ role: "member" });
+      mockAuthenticatedSession(ordinary.user);
+      const missingAsNonmember = await app.request(
+        `/api/workspace/${missingWorkspaceId}`,
+      );
+      expect(
+        missingAsNonmember.status,
+        await missingAsNonmember.clone().text(),
+      ).toBe(403);
+    });
   });
 });
