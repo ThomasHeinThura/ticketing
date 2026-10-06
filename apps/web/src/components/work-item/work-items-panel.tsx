@@ -1,5 +1,5 @@
 import { Alert, AlertDescription } from "@taskdesk/ui";
-import { lazy, memo, Suspense } from "react";
+import { lazy, memo, Suspense, useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 import WorkItemListLoading from "@/components/work-item/work-item-list-loading";
 import type { WorkItemsResult } from "@/fetchers/work-item/get-work-items";
@@ -47,21 +47,67 @@ function WorkItemsPanel({
 }: WorkItemsPanelProps) {
   const { t } = useTranslation();
   const workItems = workItemsResult?.items;
+  const [realtimeReadyProjectId, setRealtimeReadyProjectId] =
+    useState<string>();
+
+  useEffect(() => {
+    if (isLoading || !project?.id) {
+      setRealtimeReadyProjectId(undefined);
+      return;
+    }
+
+    // Keep socket setup and status updates out of the list's first content paint.
+    // The hook invalidates the work-item query when the socket opens, so changes
+    // during this short delay are fetched before the connection is used.
+    const listContentReady = () =>
+      document.querySelector(
+        '[data-testid="work-item-list-populated"], [data-testid="work-item-list-empty"], [data-testid="work-item-list-error"]',
+      ) !== null;
+    let firstFrame: number | undefined;
+    let secondFrame: number | undefined;
+    const startAfterPaint = () => {
+      if (firstFrame !== undefined || secondFrame !== undefined) return;
+      firstFrame = requestAnimationFrame(() => {
+        secondFrame = requestAnimationFrame(() =>
+          setRealtimeReadyProjectId(project.id),
+        );
+      });
+    };
+    let observer: MutationObserver | undefined;
+    if (listContentReady()) {
+      startAfterPaint();
+    } else {
+      observer = new MutationObserver(() => {
+        if (!listContentReady()) return;
+        observer?.disconnect();
+        startAfterPaint();
+      });
+      observer.observe(document.body, { childList: true, subtree: true });
+    }
+
+    return () => {
+      observer?.disconnect();
+      if (firstFrame !== undefined) cancelAnimationFrame(firstFrame);
+      if (secondFrame !== undefined) cancelAnimationFrame(secondFrame);
+    };
+  }, [isLoading, project?.id]);
 
   return (
     <>
       {project &&
       realtimeStatus?.projectId === project.id &&
       realtimeStatus?.status === "unavailable" ? (
-        <Alert
-          variant="warning"
-          role="status"
-          data-testid="realtime-unavailable"
-        >
-          <AlertDescription>
-            {t("workItems:detail.realtimeUnavailable")}
-          </AlertDescription>
-        </Alert>
+        <div className="bg-background">
+          <Alert
+            variant="warning"
+            role="status"
+            data-testid="realtime-unavailable"
+          >
+            <AlertDescription>
+              {t("workItems:detail.realtimeUnavailable")}
+            </AlertDescription>
+          </Alert>
+        </div>
       ) : null}
       <Suspense fallback={<WorkItemListLoading />}>
         <WorkItemList
@@ -75,7 +121,9 @@ function WorkItemsPanel({
           onRetry={onRetry}
         />
       </Suspense>
-      {project && realtimeProjectId === project.id ? (
+      {project &&
+      realtimeReadyProjectId === project.id &&
+      realtimeProjectId === project.id ? (
         <Suspense fallback={null}>
           <WorkItemListRealtime
             key={project.id}

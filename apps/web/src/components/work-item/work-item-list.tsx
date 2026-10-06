@@ -279,16 +279,18 @@ function WorkItemList({
 
   if (isError) {
     return (
-      <Alert variant="error" data-testid="work-item-list-error">
-        <TriangleAlert />
-        <AlertTitle>{t("workItems:list.errorTitle")}</AlertTitle>
-        <AlertDescription>
-          <p>{t("workItems:list.errorDescription")}</p>
-          <Button variant="outline" size="sm" onClick={onRetry}>
-            {t("workItems:list.retry")}
-          </Button>
-        </AlertDescription>
-      </Alert>
+      <div className="bg-background">
+        <Alert variant="error" data-testid="work-item-list-error">
+          <TriangleAlert />
+          <AlertTitle>{t("workItems:list.errorTitle")}</AlertTitle>
+          <AlertDescription>
+            <p>{t("workItems:list.errorDescription")}</p>
+            <Button variant="outline" size="sm" onClick={onRetry}>
+              {t("workItems:list.retry")}
+            </Button>
+          </AlertDescription>
+        </Alert>
+      </div>
     );
   }
 
@@ -316,17 +318,19 @@ function WorkItemList({
   return (
     <div className="flex flex-col gap-3">
       {hasPartialFailure && (
-        <Alert variant="warning" data-testid="work-item-list-partial-notice">
-          <Info />
-          <AlertTitle>{t("workItems:list.partialNoticeTitle")}</AlertTitle>
-          <AlertDescription>
-            <p>{t("workItems:list.partialNoticeDescription")}</p>
-          </AlertDescription>
-        </Alert>
+        <div className="bg-background">
+          <Alert variant="warning" data-testid="work-item-list-partial-notice">
+            <Info />
+            <AlertTitle>{t("workItems:list.partialNoticeTitle")}</AlertTitle>
+            <AlertDescription>
+              <p>{t("workItems:list.partialNoticeDescription")}</p>
+            </AlertDescription>
+          </Alert>
+        </div>
       )}
       <Table
         data-testid="work-item-list-populated"
-        className="table-fixed"
+        className="table-fixed bg-background"
         onMouseOver={handleListMouseOver}
         onFocusCapture={handleListFocus}
         onClickCapture={handleListClick}

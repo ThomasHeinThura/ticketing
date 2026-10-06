@@ -136,10 +136,22 @@ cosign verify-blob --bundle "$archive.sha256.sigstore.json" --certificate-oidc-i
 sha256sum -c "$archive.sha256"
 ```
 
-After transferring all four verified files, run the same installer with the pinned version or
-extract the archive under its versioned directory and follow [Deployment](deployment.md).
-The signed offline archive contains deployment assets and `scripts/deploy.sh`; it does not
-contain application source or secrets.
+The installer cannot be used on the air-gapped host because it fetches its release assets
+from GitHub. After transferring the four verified files, extract the archive and deploy from
+the versioned directory:
+
+```bash
+tar -xzf "$archive"
+cd "taskdesk-${version}"
+cp deploy/.env.example .env
+$EDITOR .env
+scripts/deploy.sh local
+```
+
+For production, configure the required host and secrets in `.env` and run
+`scripts/deploy.sh production` instead. The signed archive contains deployment assets and
+`scripts/deploy.sh`; it does not contain application source or secrets. See
+[Deployment](deployment.md) for the manual setup details.
 
 ## Hosting boundary
 
