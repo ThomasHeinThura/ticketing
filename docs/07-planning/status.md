@@ -4,15 +4,21 @@
   no additional calendar wait. The public-config pre-guard exception remains pending Thomas,
   and task selection remains dependent on accepted config runtime and fresh re-key evidence.
   The isolated platform/27-source test has an accurately attributed delegated application
-  record; no Thomas personal digest approval is claimed. The private adapter's raw-file vs
-  canonical-JSON hash correction passes 23 offline tests and current ordinary review. Its
-  new exact-hash Sol review and real disposable runtime/rollback/cleanup remain pending.
+  record; no Thomas personal digest approval is claimed. The private adapter's canonical
+  registry-order correction passes 24 offline tests and fresh ordinary/Sol review. Two real
+  disposable attempts remain failed evidence: the first stopped at registry compilation;
+  the second built the exact candidate but rejected baseline metadata before containers.
+  The schema-80 image has source `b80ff7c3`, distinct from target `3096cb04`; the adapter
+  incorrectly conflated those revisions. A structural source-binding correction is active.
+  Both attempts report zero cleanup errors. Runtime/rollback acceptance remains pending.
   Persistent DEV enforcement is unchanged; the earlier whole-P0 finalizer is provisional.
 - **P0 installer #583:** the complete installer has actual full-path regressions for both
   discovered deployment defects: Bash top-level `local` and stale digest across version
-  change. Source `ff491728ba2bfd600c6474ba8b45cd91b6660ef8` is pushed with 25/25 tests.
-  Further compatible MFA/performance implementation is active before another bulk acceptance
-  freeze. The preceding `a81c307a` hosted PG passed 136 files/1649 tests, G8/G4 passed,
+  change, including atomic tag/digest selection and interrupted-write recovery. Exact source
+  `a4418d50e3bfc139faad08f6469db040983ad067` passes 26/26 full-path tests and fresh
+  ordinary/Sol review. Its hosted E2E/G8/G4 pass; PG/G11 are still running. Static contrast
+  ownership fails and is included in the integration correction batch. The preceding
+  `a81c307a` hosted PG passed 136 files/1649 tests, G8/G4 passed,
   MFA E2E timed out (23 passed/1 failed), and G11 remained 20/22. None is silently retried,
   waived or represented as the new source's acceptance. Installer runtime and current Sol
   clearance remain required before protected acceptance or P0 completion.
@@ -22,14 +28,16 @@
   unchanged budgets (LCP median2440ms, board median464.9ms). G8/G4/E2E pass. Its synthetic
   merge `03d0c709a024dfbbb38867858a5d65705ff08a3a` has the identical candidate tree.
   Required static contrast ownership and five OpenAPI compatibility findings remain red;
-  template/evidence acceptance is pending, and PG is still running at this checkpoint.
+  template/evidence acceptance is pending. PG passes 145 files/1717 tests; all five full
+  hosted jobs pass. The contrast/API compatibility corrections form one implementation batch.
   The reviewed source builds image `sha256:2236fff37477bd148a8de805653091eafb602421b86c4ee64d9fbd2cc18aaac8`
   with OCI0f and usertaskdesk; boot/health has not run. No feature deployment or merge.
 - **P4 repository ownership #580:** composition `fa0afbf5` passed 79 files/1125 SQL tests,
   nine-package typecheck and scoped static checks. The failed first SQL run remains an
   infrastructure incident; the successful rerun acquired and removed its exact owned PG ID.
   Remaining module conversions and the genuinely missing query-gate implementation are now
-  one complete implementation batch. The new gate stays red while reads are relocated;
+  one complete implementation batch. Executable misplaced-read inventory has fallen from
+  321 to 169 during that batch. The new gate stays red while reads are relocated;
   there is no grandfathered baseline or exemption. Full P4 acceptance remains mandatory.
 - **Program:** real Entra certification and executable outbox delivery remain unclaimed.
   P0–P7 remain open; independent reviews and actual tests are evidence, not phase claims.
