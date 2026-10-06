@@ -190,7 +190,8 @@ export async function evaluateCurrentNotificationReachAndPreference(
   )
     return { kind: "quiet_hours_unresolved" };
 
-  if (!resource.staffUrl) return { kind: "destination_unresolved" };
+  if (identity.side !== "staff" || !resource.staffUrl)
+    return { kind: "destination_unresolved" };
 
   // The inbox projection was created for this recipient in the originating
   // transaction. Return it only after rechecking current resource visibility.
