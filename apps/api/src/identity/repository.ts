@@ -976,6 +976,8 @@ export async function lockScimGrantClosure(
     connectionId: string;
     sourceKinds?: readonly ("jit_default" | "oidc_group" | "scim_group")[];
     actorPersonId?: string;
+    additionalPersonIds?: readonly string[];
+    additionalIdentityIds?: readonly string[];
     proposedRoleId?: string;
     proposedScope?: string;
     proposedScopeId?: string;
@@ -1081,6 +1083,8 @@ export async function lockScimGrantClosure(
   const oidcMappings = await tx
     .select({
       id: schema.oidcGroupMappingTable.id,
+      externalGroupId: schema.oidcGroupMappingTable.externalGroupId,
+      enabled: schema.oidcGroupMappingTable.enabled,
       roleId: schema.oidcGroupMappingTable.roleId,
       scope: schema.oidcGroupMappingTable.scope,
       scopeId: schema.oidcGroupMappingTable.scopeId,
@@ -1096,6 +1100,7 @@ export async function lockScimGrantClosure(
     ...new Set([
       ...discovered.map((grant) => grant.personId),
       ...(input.additionalProjectionKeys ?? []).map((grant) => grant.personId),
+      ...(input.additionalPersonIds ?? []),
       ...(input.actorPersonId ? [input.actorPersonId] : []),
     ]),
   ].sort();
@@ -1108,9 +1113,35 @@ export async function lockScimGrantClosure(
         .from(schema.personTable)
         .where(inArray(schema.personTable.id, personIds))
     : [];
+  const workspaceIds = [
+    ...new Set([
+      ...projectionGrants
+        .filter((grant) => grant.scope === "workspace")
+        .map((grant) => grant.scopeId),
+      ...projectionKeys
+        .filter((key) => key.scope === "workspace")
+        .map((key) => key.scopeId),
+      ...mappings
+        .filter((mapping) => mapping.scope === "workspace")
+        .map((mapping) => mapping.scopeId),
+      ...oidcMappings
+        .filter((mapping) => mapping.scope === "workspace")
+        .map((mapping) => mapping.scopeId),
+      ...(proposedScope === "workspace" && input.proposedScopeId
+        ? [input.proposedScopeId]
+        : []),
+    ]),
+  ].sort();
+  const workspaceOwners = workspaceIds.length
+    ? await tx
+        .select({ organisationId: schema.workspaceTable.organisationId })
+        .from(schema.workspaceTable)
+        .where(inArray(schema.workspaceTable.id, workspaceIds))
+    : [];
   const organisationIds = [
     ...new Set([
       ...people.map((person) => person.organisationId),
+      ...workspaceOwners.map((workspace) => workspace.organisationId),
       ...connections.flatMap((row) =>
         row.organisationId ? [row.organisationId] : [],
       ),
@@ -1134,25 +1165,6 @@ export async function lockScimGrantClosure(
       .orderBy(schema.organisationTable.id)
       .for("update");
   }
-  const workspaceIds = [
-    ...new Set([
-      ...projectionGrants
-        .filter((grant) => grant.scope === "workspace")
-        .map((grant) => grant.scopeId),
-      ...projectionKeys
-        .filter((key) => key.scope === "workspace")
-        .map((key) => key.scopeId),
-      ...mappings
-        .filter((mapping) => mapping.scope === "workspace")
-        .map((mapping) => mapping.scopeId),
-      ...oidcMappings
-        .filter((mapping) => mapping.scope === "workspace")
-        .map((mapping) => mapping.scopeId),
-      ...(proposedScope === "workspace" && input.proposedScopeId
-        ? [input.proposedScopeId]
-        : []),
-    ]),
-  ].sort();
   if (workspaceIds.length) {
     await tx
       .select({ id: schema.workspaceTable.id })
@@ -1275,6 +1287,8 @@ export async function lockScimGrantClosure(
   const currentOidcMappings = await tx
     .select({
       id: schema.oidcGroupMappingTable.id,
+      externalGroupId: schema.oidcGroupMappingTable.externalGroupId,
+      enabled: schema.oidcGroupMappingTable.enabled,
       roleId: schema.oidcGroupMappingTable.roleId,
       scope: schema.oidcGroupMappingTable.scope,
       scopeId: schema.oidcGroupMappingTable.scopeId,
@@ -1285,7 +1299,14 @@ export async function lockScimGrantClosure(
     )
     .orderBy(schema.oidcGroupMappingTable.id);
   const oidcMappingKey = (mapping: (typeof oidcMappings)[number]) =>
-    [mapping.id, mapping.roleId, mapping.scope, mapping.scopeId].join("\0");
+    [
+      mapping.id,
+      mapping.externalGroupId,
+      mapping.enabled,
+      mapping.roleId,
+      mapping.scope,
+      mapping.scopeId,
+    ].join("\0");
   const discoveredOidcMappingKeys = oidcMappings.map(oidcMappingKey).sort();
   const currentOidcMappingKeys = currentOidcMappings.map(oidcMappingKey).sort();
   if (
@@ -1303,6 +1324,7 @@ export async function lockScimGrantClosure(
       ...(input.additionalProjectionKeys ?? []).map(
         (grant) => grant.externalIdentityId,
       ),
+      ...(input.additionalIdentityIds ?? []),
     ]),
   ].sort();
   if (identityIds.length) {

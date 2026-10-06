@@ -1,23 +1,26 @@
 import { createHash, randomBytes, timingSafeEqual } from "node:crypto";
 import { createId } from "@paralleldrive/cuid2";
 import type {
-  IdentityJitPolicy,
   NormalisedEntraIdentity,
   VerifiedEntraClaims,
 } from "@taskdesk/domain";
 import {
+  canonicalEntraGroupObjectId,
   normaliseEntraClaims,
   parseIdentityClaimMapping,
   parseIdentityJitPolicy,
+  validateEntraAdmission,
 } from "@taskdesk/domain";
 import type { BetterAuthPlugin, GenericEndpointContext } from "better-auth";
 import { APIError, createAuthEndpoint } from "better-auth/api";
 import { setSessionCookie } from "better-auth/cookies";
-import { and, eq, gt, isNull, sql } from "drizzle-orm";
+import { and, eq, gt, inArray, isNull, sql } from "drizzle-orm";
 import { z } from "zod";
+import { appendAuditLog } from "../audit/audit-writer";
 import db, { schema } from "../database";
 import { logTaskDesk } from "../instance/observability/runtime";
 import { ensureInternalOrganisation } from "../utils/seed-internal-organisation";
+import { invalidateNativeAuthorization } from "../ws";
 import { decryptIdentityClientSecret } from "./client-secret";
 import { projectMembershipKeys } from "./membership-projection";
 import {
@@ -32,13 +35,18 @@ import {
   getOidcConnectionForStart,
   getOidcIdentityForSignIn,
   getOidcUserFactorState,
+  IdentityGrantClosureChangedError,
   listEnabledOidcDomainOwners,
+  lockIdentityConnection,
   lockOidcConnection,
   lockOidcDefaultRole,
   lockOidcDefaultWorkspace,
   lockOidcExternalIdentity,
   lockOidcPerson,
   lockOidcVerification,
+  lockScimGrantClosure,
+  retryIdentityGrantClosure,
+  validateOidcMappingRole,
 } from "./repository";
 
 const FLOW_TTL_MS = 5 * 60_000;
@@ -399,6 +407,7 @@ export function identityOidcPlugin(
           {
             claimMapping: connection.claimMapping,
             jitPolicy: connection.jitPolicy,
+            enforceAdmission: false,
           },
         );
         if (!normalized.ok) return safeFailure(ctx);
@@ -407,8 +416,9 @@ export function identityOidcPlugin(
           portal,
           connection,
           identity: normalized.identity,
-          jitPolicy: jitPolicy.value,
+          claims: verified.claims as VerifiedEntraClaims,
         });
+        if (signedIn.kind === "denied") return safeFailure(ctx);
         if (signedIn.kind === "two_factor")
           return ctx.redirect("/auth/two-factor");
         await setSessionCookie(ctx, {
@@ -439,187 +449,718 @@ async function signInAdmittedIdentity(input: {
   portal: "agent" | "customer";
   connection: typeof schema.identityConnectionTable.$inferSelect;
   identity: NormalisedEntraIdentity;
-  jitPolicy: IdentityJitPolicy;
+  claims: VerifiedEntraClaims;
 }) {
-  const { ctx, portal, connection, identity, jitPolicy } = input;
+  const { ctx, portal, connection, identity, claims } = input;
   const now = new Date();
   const subject = identity.subject.oid;
-  const result = await db.transaction(async (tx) => {
-    const [existing] = await getOidcIdentityForSignIn(tx, {
-      connectionId: connection.id,
-      issuer: connection.issuer,
-      subject,
-    });
-
-    let personId = existing?.personId;
-    let userId = existing?.userId ?? existing?.personUserId ?? null;
-    let externalIdentityId = existing?.id;
-    if (existing) {
+  const result = await retryIdentityGrantClosure(() =>
+    db.transaction(async (tx) => {
+      const [observedConnection] = await tx
+        .select()
+        .from(schema.identityConnectionTable)
+        .where(eq(schema.identityConnectionTable.id, connection.id))
+        .limit(1);
       if (
-        !existing.active ||
-        !existing.personActive ||
-        existing.side !== (portal === "agent" ? "staff" : "customer") ||
-        (portal === "customer" &&
-          existing.organisationId !== connection.organisationId) ||
-        (existing.userId &&
-          existing.personUserId &&
-          existing.userId !== existing.personUserId)
+        !observedConnection ||
+        !observedConnection.enabled ||
+        observedConnection.providerType !== "entra" ||
+        observedConnection.portalScope !== portal ||
+        observedConnection.issuer !== connection.issuer ||
+        observedConnection.tenantId !== connection.tenantId ||
+        observedConnection.clientId !== connection.clientId
       )
         throw new APIError("UNAUTHORIZED", {
           message: "Identity sign-in failed",
         });
-    } else {
-      if (!jitPolicy.enabled)
+      const [observedIdentity] = await tx
+        .select({
+          id: schema.externalIdentityTable.id,
+          personId: schema.externalIdentityTable.personId,
+        })
+        .from(schema.externalIdentityTable)
+        .where(
+          and(
+            eq(
+              schema.externalIdentityTable.identityConnectionId,
+              connection.id,
+            ),
+            eq(schema.externalIdentityTable.issuer, connection.issuer),
+            eq(schema.externalIdentityTable.subject, subject),
+          ),
+        )
+        .limit(1);
+      const observedJit = parseIdentityJitPolicy(observedConnection.jitPolicy);
+      if (!observedJit.ok)
         throw new APIError("UNAUTHORIZED", {
           message: "Identity sign-in failed",
         });
-      const [emailOwner] = await findOidcEmailOwner(tx, identity.address);
-      if (emailOwner)
-        throw new APIError("UNAUTHORIZED", {
-          message: "Identity sign-in failed",
-        });
-      const [role] = await lockOidcDefaultRole(
+      await lockScimGrantClosure(tx, {
+        connectionId: connection.id,
+        sourceKinds: ["jit_default", "oidc_group"],
+        ...(observedIdentity
+          ? {
+              additionalIdentityIds: [observedIdentity.id],
+              additionalPersonIds: [observedIdentity.personId],
+            }
+          : {}),
+        proposedRoleId: observedJit.value.default_role_id ?? undefined,
+        proposedScope: portal === "agent" ? "workspace" : "organisation",
+        proposedScopeId:
+          portal === "agent"
+            ? (observedConnection.defaultWorkspaceId ?? undefined)
+            : (observedConnection.organisationId ?? undefined),
+        proposedOrganisationId: observedConnection.organisationId ?? undefined,
+      });
+      const [currentConnection] = await lockIdentityConnection(
         tx,
-        jitPolicy.default_role_id ?? "",
+        connection.id,
       );
-      const roleScope = portal === "agent" ? "workspace" : "organisation";
       if (
-        !role ||
-        role.scope !== roleScope ||
-        role.rank < 0 ||
-        (portal === "agent" &&
-          (connection.maxRoleRank === null ||
-            role.rank > connection.maxRoleRank ||
-            !connection.defaultWorkspaceId ||
-            role.workspaceId !== connection.defaultWorkspaceId ||
-            role.key === "admin" ||
-            role.key === "owner" ||
-            !hasSafeRoleCapabilities(role.capabilities))) ||
-        (portal === "customer" &&
-          (role.key !== "customer" || role.workspaceId !== null))
+        !currentConnection ||
+        !currentConnection.enabled ||
+        currentConnection.providerType !== "entra" ||
+        currentConnection.portalScope !== portal ||
+        currentConnection.issuer !== connection.issuer ||
+        currentConnection.tenantId !== connection.tenantId ||
+        currentConnection.clientId !== connection.clientId ||
+        currentConnection.configVersion !== observedConnection.configVersion
       )
+        throw new IdentityGrantClosureChangedError();
+      const currentJit = parseIdentityJitPolicy(currentConnection.jitPolicy);
+      if (!currentJit.ok)
         throw new APIError("UNAUTHORIZED", {
           message: "Identity sign-in failed",
         });
-      const internal =
-        portal === "agent" ? await ensureInternalOrganisation(tx) : null;
-      const organisationId =
-        portal === "agent" ? internal?.id : connection.organisationId;
-      if (!organisationId)
-        throw new APIError("UNAUTHORIZED", {
-          message: "Identity sign-in failed",
-        });
-      const scopeId =
-        roleScope === "workspace"
-          ? connection.defaultWorkspaceId
-          : organisationId;
-      if (!scopeId)
-        throw new APIError("UNAUTHORIZED", {
-          message: "Identity sign-in failed",
-        });
-      if (roleScope === "workspace") {
-        const [target] = await lockOidcDefaultWorkspace(tx, scopeId);
-        if (!target)
+      const jitPolicy = currentJit.value;
+      const [existing] = await getOidcIdentityForSignIn(tx, {
+        connectionId: connection.id,
+        issuer: connection.issuer,
+        subject,
+      });
+      if (
+        observedIdentity &&
+        (!existing ||
+          existing.id !== observedIdentity.id ||
+          existing.personId !== observedIdentity.personId)
+      )
+        throw new IdentityGrantClosureChangedError();
+      const admission = validateEntraAdmission(
+        claims,
+        currentConnection.jitPolicy,
+      );
+      if (!admission.ok) {
+        if (
+          admission.reason !== "missing_app_role" &&
+          admission.reason !== "guest_account"
+        )
           throw new APIError("UNAUTHORIZED", {
             message: "Identity sign-in failed",
           });
+        const denialKeys: Array<{
+          personId: string;
+          scope: "workspace" | "organisation";
+          scopeId: string;
+        }> = [];
+        if (existing) {
+          const removed = await tx
+            .select({
+              id: schema.membershipGrantTable.id,
+              scope: schema.membershipGrantTable.scope,
+              scopeId: schema.membershipGrantTable.scopeId,
+              sourceKind: schema.membershipGrantTable.sourceKind,
+            })
+            .from(schema.membershipGrantTable)
+            .where(
+              and(
+                eq(schema.membershipGrantTable.personId, existing.personId),
+                eq(schema.membershipGrantTable.externalIdentityId, existing.id),
+                eq(
+                  schema.membershipGrantTable.identityConnectionId,
+                  connection.id,
+                ),
+                inArray(schema.membershipGrantTable.sourceKind, [
+                  "jit_default",
+                  "oidc_group",
+                ]),
+                isNull(schema.membershipGrantTable.revokedAt),
+              ),
+            )
+            .orderBy(schema.membershipGrantTable.id)
+            .for("update");
+          for (const grant of removed) {
+            await tx
+              .update(schema.membershipGrantTable)
+              .set({
+                revokedAt: now,
+                revocationReason: "admission_failed",
+                updatedAt: now,
+                membershipId: null,
+              })
+              .where(eq(schema.membershipGrantTable.id, grant.id));
+            denialKeys.push({
+              personId: existing.personId,
+              scope: grant.scope as "workspace" | "organisation",
+              scopeId: grant.scopeId,
+            });
+            await tx.insert(schema.provisioningEventTable).values({
+              identityConnectionId: connection.id,
+              externalIdentityId: existing.id,
+              kind: "group.member_removed",
+              outcome: "success",
+              detail: {
+                source: grant.sourceKind,
+                reason: "admission_failed",
+                scope: grant.scope,
+                scopeId: grant.scopeId,
+              },
+              actorType: "oidc",
+              createdAt: now,
+            });
+          }
+        }
+        await projectMembershipKeys(tx, denialKeys);
+        await tx.insert(schema.provisioningEventTable).values({
+          identityConnectionId: connection.id,
+          ...(existing ? { externalIdentityId: existing.id } : {}),
+          kind: "auth.failed",
+          outcome: "failed",
+          detail: { reason: "admission_failed" },
+          actorType: "oidc",
+          createdAt: now,
+        });
+        if (denialKeys.length && existing) {
+          try {
+            await tx.transaction(async (auditTx) =>
+              appendAuditLog(auditTx, {
+                action: "membership.changed",
+                actorId: null,
+                actorType: "system",
+                organisationId: existing.organisationId,
+                workspaceId: null,
+                entityType: "membership",
+                entityId: existing.personId,
+                after: {
+                  source: "oidc",
+                  reason: "admission_failed",
+                  grantChanges: denialKeys.length,
+                  scopes: [
+                    ...new Set(
+                      denialKeys.map((key) => `${key.scope}:${key.scopeId}`),
+                    ),
+                  ],
+                },
+              }),
+            );
+          } catch {
+            logTaskDesk({
+              module: "auth",
+              message: "auth.failure",
+              level: "warn",
+              result: "failed",
+            });
+          }
+        }
+        return {
+          denied: true as const,
+          userId: existing?.userId ?? existing?.personUserId ?? undefined,
+          changed: denialKeys.length > 0,
+          workspaceIds: [
+            ...new Set(
+              denialKeys
+                .filter((key) => key.scope === "workspace")
+                .map((key) => key.scopeId),
+            ),
+          ],
+        };
       }
-      const user = {
-        id: createId(),
-        name: identity.displayName ?? identity.address,
-        email: identity.address,
-        emailVerified: false,
-        createdAt: now,
-        updatedAt: now,
+      if (!observedIdentity && existing)
+        throw new IdentityGrantClosureChangedError();
+
+      let personId = existing?.personId;
+      let userId = existing?.userId ?? existing?.personUserId ?? null;
+      let externalIdentityId = existing?.id;
+      if (existing) {
+        if (
+          !existing.active ||
+          !existing.personActive ||
+          existing.side !== (portal === "agent" ? "staff" : "customer") ||
+          (portal === "customer" &&
+            existing.organisationId !== currentConnection.organisationId) ||
+          (existing.userId &&
+            existing.personUserId &&
+            existing.userId !== existing.personUserId)
+        )
+          throw new APIError("UNAUTHORIZED", {
+            message: "Identity sign-in failed",
+          });
+      } else {
+        if (!jitPolicy.enabled)
+          throw new APIError("UNAUTHORIZED", {
+            message: "Identity sign-in failed",
+          });
+        const [emailOwner] = await findOidcEmailOwner(tx, identity.address);
+        if (emailOwner)
+          throw new APIError("UNAUTHORIZED", {
+            message: "Identity sign-in failed",
+          });
+        const [role] = await lockOidcDefaultRole(
+          tx,
+          jitPolicy.default_role_id ?? "",
+        );
+        const roleScope = portal === "agent" ? "workspace" : "organisation";
+        if (
+          !role ||
+          role.scope !== roleScope ||
+          role.rank < 0 ||
+          (portal === "agent" &&
+            (currentConnection.maxRoleRank === null ||
+              role.rank > currentConnection.maxRoleRank ||
+              !currentConnection.defaultWorkspaceId ||
+              role.workspaceId !== currentConnection.defaultWorkspaceId ||
+              role.key === "admin" ||
+              role.key === "owner" ||
+              !Array.isArray(role.capabilities))) ||
+          (portal === "customer" &&
+            (role.key !== "customer" || role.workspaceId !== null))
+        )
+          throw new APIError("UNAUTHORIZED", {
+            message: "Identity sign-in failed",
+          });
+        const internal =
+          portal === "agent" ? await ensureInternalOrganisation(tx) : null;
+        const organisationId =
+          portal === "agent" ? internal?.id : currentConnection.organisationId;
+        if (!organisationId)
+          throw new APIError("UNAUTHORIZED", {
+            message: "Identity sign-in failed",
+          });
+        const scopeId =
+          roleScope === "workspace"
+            ? currentConnection.defaultWorkspaceId
+            : organisationId;
+        if (!scopeId)
+          throw new APIError("UNAUTHORIZED", {
+            message: "Identity sign-in failed",
+          });
+        if (
+          !(await validateOidcMappingRole(tx, {
+            providerType: currentConnection.providerType,
+            portalScope: portal,
+            organisationId,
+            maxRoleRank: currentConnection.maxRoleRank,
+            scope: roleScope,
+            scopeId,
+            roleId: role.id,
+          }))
+        )
+          throw new APIError("UNAUTHORIZED", {
+            message: "Identity sign-in failed",
+          });
+        if (roleScope === "workspace") {
+          const [target] = await lockOidcDefaultWorkspace(tx, scopeId);
+          if (!target)
+            throw new APIError("UNAUTHORIZED", {
+              message: "Identity sign-in failed",
+            });
+        }
+        const user = {
+          id: createId(),
+          name: identity.displayName ?? identity.address,
+          email: identity.address,
+          emailVerified: false,
+          createdAt: now,
+          updatedAt: now,
+        };
+        await tx.insert(schema.userTable).values(user);
+        personId = createId();
+        externalIdentityId = createId();
+        userId = user.id;
+        await tx.insert(schema.personTable).values({
+          id: personId,
+          userId,
+          organisationId,
+          side: portal === "agent" ? "staff" : "customer",
+          displayName: identity.displayName ?? null,
+          active: true,
+          isPlaceholder: false,
+          createdAt: now,
+          updatedAt: now,
+        });
+        await tx.insert(schema.accountTable).values({
+          id: createId(),
+          accountId: `${connection.issuer}\0${subject}`,
+          providerId: `${IDENTITY_PROVIDER_PREFIX}${connection.id}`,
+          userId,
+          createdAt: now,
+          updatedAt: now,
+        });
+        await tx.insert(schema.externalIdentityTable).values({
+          id: externalIdentityId,
+          identityConnectionId: connection.id,
+          personId,
+          userId,
+          issuer: connection.issuer,
+          subject,
+          userNameSnapshot: identity.address,
+          emailSnapshot: identity.address,
+          active: true,
+          provisionedVia: "jit",
+          firstSeenAt: now,
+          lastLoginAt: now,
+        });
+        await tx.insert(schema.provisioningEventTable).values({
+          identityConnectionId: connection.id,
+          externalIdentityId,
+          kind: "user.created",
+          outcome: "success",
+          detail: { source: "jit", portal },
+          actorType: "oidc",
+          createdAt: now,
+        });
+      }
+      if (!personId || !userId || !externalIdentityId)
+        throw new APIError("UNAUTHORIZED", {
+          message: "Identity sign-in failed",
+        });
+      const [person] = await lockOidcPerson(tx, personId);
+      if (!person)
+        throw new APIError("UNAUTHORIZED", {
+          message: "Identity sign-in failed",
+        });
+      if (!person.userId)
+        await tx
+          .update(schema.personTable)
+          .set({ userId, updatedAt: now })
+          .where(eq(schema.personTable.id, personId));
+      await tx
+        .update(schema.externalIdentityTable)
+        .set({ userId, lastLoginAt: now })
+        .where(eq(schema.externalIdentityTable.id, externalIdentityId));
+      if (identity.displayName)
+        await tx
+          .update(schema.personTable)
+          .set({ displayName: identity.displayName, updatedAt: now })
+          .where(eq(schema.personTable.id, personId));
+      const [currentPerson] = await tx
+        .select()
+        .from(schema.personTable)
+        .where(eq(schema.personTable.id, personId))
+        .limit(1);
+      if (
+        !currentPerson ||
+        !currentPerson.active ||
+        currentPerson.side !== (portal === "agent" ? "staff" : "customer") ||
+        (portal === "customer" &&
+          currentPerson.organisationId !== currentConnection.organisationId)
+      )
+        throw new APIError("UNAUTHORIZED", {
+          message: "Identity sign-in failed",
+        });
+
+      const roleScope = portal === "agent" ? "workspace" : "organisation";
+      const roleScopeId =
+        portal === "agent"
+          ? currentConnection.defaultWorkspaceId
+          : currentConnection.organisationId;
+      const projectionKeys: Array<{
+        personId: string;
+        scope: "workspace" | "organisation";
+        scopeId: string;
+      }> = [];
+      const activeSources = await tx
+        .select({
+          id: schema.membershipGrantTable.id,
+          roleId: schema.membershipGrantTable.roleId,
+          scope: schema.membershipGrantTable.scope,
+          scopeId: schema.membershipGrantTable.scopeId,
+          sourceKind: schema.membershipGrantTable.sourceKind,
+          oidcGroupMappingId: schema.membershipGrantTable.oidcGroupMappingId,
+        })
+        .from(schema.membershipGrantTable)
+        .where(
+          and(
+            eq(schema.membershipGrantTable.personId, personId),
+            eq(schema.membershipGrantTable.identityConnectionId, connection.id),
+            eq(
+              schema.membershipGrantTable.externalIdentityId,
+              externalIdentityId,
+            ),
+            inArray(schema.membershipGrantTable.sourceKind, [
+              "jit_default",
+              "oidc_group",
+            ]),
+            isNull(schema.membershipGrantTable.revokedAt),
+          ),
+        )
+        .orderBy(schema.membershipGrantTable.id)
+        .for("update");
+
+      const mappings = await tx
+        .select()
+        .from(schema.oidcGroupMappingTable)
+        .where(
+          eq(schema.oidcGroupMappingTable.identityConnectionId, connection.id),
+        )
+        .orderBy(schema.oidcGroupMappingTable.id);
+      const validMappings = [] as typeof mappings;
+      if (Array.isArray(identity.groupObjectIds)) {
+        const groupIds = new Set(identity.groupObjectIds);
+        for (const mapping of mappings) {
+          const mappingGroupId = canonicalEntraGroupObjectId(
+            mapping.externalGroupId,
+          );
+          if (
+            !mapping.enabled ||
+            !mappingGroupId ||
+            !groupIds.has(mappingGroupId) ||
+            (mapping.scope !== "workspace" && mapping.scope !== "organisation")
+          )
+            continue;
+          const valid = await validateOidcMappingRole(tx, {
+            providerType: currentConnection.providerType,
+            portalScope: currentConnection.portalScope,
+            organisationId: currentConnection.organisationId,
+            maxRoleRank: currentConnection.maxRoleRank,
+            scope: mapping.scope,
+            scopeId: mapping.scopeId,
+            roleId: mapping.roleId,
+          });
+          if (valid) validMappings.push(mapping);
+        }
+      }
+      const allowedMappingIds = new Set(
+        validMappings.map((mapping) => mapping.id),
+      );
+      const wantedJit = currentJit.value.enabled && Boolean(roleScopeId);
+      const [jitRole] = wantedJit
+        ? await tx
+            .select()
+            .from(schema.roleTable)
+            .where(
+              eq(schema.roleTable.id, currentJit.value.default_role_id ?? ""),
+            )
+            .limit(1)
+        : [];
+      const validJit = Boolean(
+        jitRole &&
+          roleScopeId &&
+          (await validateOidcMappingRole(tx, {
+            providerType: currentConnection.providerType,
+            portalScope: currentConnection.portalScope,
+            organisationId: currentConnection.organisationId,
+            maxRoleRank: currentConnection.maxRoleRank,
+            scope: roleScope,
+            scopeId: roleScopeId,
+            roleId: jitRole.id,
+          })),
+      );
+      const keptMappingIds = new Set<string>();
+      let keptJit = false;
+      const staleGrantReason =
+        identity.groupObjectIds === "overage"
+          ? "claim_overage"
+          : Array.isArray(identity.groupObjectIds)
+            ? "mapping_changed"
+            : "claim_missing";
+      for (const grant of activeSources) {
+        const matchedMapping = grant.oidcGroupMappingId
+          ? validMappings.find(
+              (mapping) => mapping.id === grant.oidcGroupMappingId,
+            )
+          : undefined;
+        const keep =
+          grant.sourceKind === "jit_default"
+            ? validJit &&
+              !keptJit &&
+              jitRole?.id === grant.roleId &&
+              grant.scope === roleScope &&
+              grant.scopeId === roleScopeId
+            : Boolean(
+                matchedMapping &&
+                  matchedMapping.roleId === grant.roleId &&
+                  matchedMapping.scope === grant.scope &&
+                  matchedMapping.scopeId === grant.scopeId &&
+                  allowedMappingIds.has(matchedMapping.id) &&
+                  !keptMappingIds.has(matchedMapping.id),
+              );
+        if (keep) {
+          await tx
+            .update(schema.membershipGrantTable)
+            .set({
+              updatedAt: now,
+              lastConfirmedAt: now,
+            })
+            .where(eq(schema.membershipGrantTable.id, grant.id));
+          if (grant.sourceKind === "jit_default") keptJit = true;
+          else if (grant.oidcGroupMappingId)
+            keptMappingIds.add(grant.oidcGroupMappingId);
+          continue;
+        }
+        await tx
+          .update(schema.membershipGrantTable)
+          .set({
+            revokedAt: now,
+            revocationReason:
+              grant.sourceKind === "jit_default"
+                ? "mapping_changed"
+                : staleGrantReason,
+            updatedAt: now,
+            membershipId: null,
+          })
+          .where(eq(schema.membershipGrantTable.id, grant.id));
+        projectionKeys.push({
+          personId,
+          scope: grant.scope as "workspace" | "organisation",
+          scopeId: grant.scopeId,
+        });
+        await tx.insert(schema.provisioningEventTable).values({
+          identityConnectionId: connection.id,
+          externalIdentityId,
+          kind: "group.member_removed",
+          outcome: "success",
+          detail: {
+            source: grant.sourceKind,
+            reason:
+              grant.sourceKind === "jit_default"
+                ? "mapping_changed"
+                : staleGrantReason,
+            scope: grant.scope,
+            scopeId: grant.scopeId,
+          },
+          actorType: "oidc",
+          createdAt: now,
+        });
+      }
+      if (validJit && !keptJit && jitRole && roleScopeId) {
+        await tx.insert(schema.membershipGrantTable).values({
+          personId,
+          scope: roleScope,
+          scopeId: roleScopeId,
+          roleId: jitRole.id,
+          sourceKind: "jit_default",
+          externalIdentityId,
+          identityConnectionId: connection.id,
+          seesAll: false,
+          createdAt: now,
+          updatedAt: now,
+          lastConfirmedAt: now,
+        });
+        projectionKeys.push({
+          personId,
+          scope: roleScope,
+          scopeId: roleScopeId,
+        });
+        await tx.insert(schema.provisioningEventTable).values({
+          identityConnectionId: connection.id,
+          externalIdentityId,
+          kind: "group.member_added",
+          outcome: "success",
+          detail: {
+            source: "jit_default",
+            scope: roleScope,
+            scopeId: roleScopeId,
+          },
+          actorType: "oidc",
+          createdAt: now,
+        });
+      }
+      for (const mapping of validMappings) {
+        if (keptMappingIds.has(mapping.id)) continue;
+        await tx.insert(schema.membershipGrantTable).values({
+          personId,
+          scope: mapping.scope,
+          scopeId: mapping.scopeId,
+          roleId: mapping.roleId,
+          sourceKind: "oidc_group",
+          externalIdentityId,
+          identityConnectionId: connection.id,
+          oidcGroupMappingId: mapping.id,
+          seesAll: false,
+          createdAt: now,
+          updatedAt: now,
+          lastConfirmedAt: now,
+        });
+        projectionKeys.push({
+          personId,
+          scope: mapping.scope as "workspace" | "organisation",
+          scopeId: mapping.scopeId,
+        });
+        await tx.insert(schema.provisioningEventTable).values({
+          identityConnectionId: connection.id,
+          externalIdentityId,
+          kind: "group.member_added",
+          outcome: "success",
+          detail: {
+            source: "oidc_group",
+            mappingId: mapping.id,
+            scope: mapping.scope,
+            scopeId: mapping.scopeId,
+          },
+          actorType: "oidc",
+          createdAt: now,
+        });
+      }
+      await projectMembershipKeys(tx, projectionKeys);
+      if (projectionKeys.length) {
+        try {
+          await tx.transaction(async (auditTx) =>
+            appendAuditLog(auditTx, {
+              action: "membership.changed",
+              actorId: null,
+              actorType: "system",
+              organisationId: currentPerson.organisationId,
+              workspaceId: null,
+              entityType: "membership",
+              entityId: personId,
+              after: {
+                source: "oidc",
+                grantChanges: projectionKeys.length,
+                scopes: [
+                  ...new Set(
+                    projectionKeys.map((key) => `${key.scope}:${key.scopeId}`),
+                  ),
+                ],
+              },
+            }),
+          );
+        } catch {
+          logTaskDesk({
+            module: "auth",
+            message: "auth.failure",
+            level: "warn",
+            result: "failed",
+          });
+        }
+      }
+      return {
+        denied: false as const,
+        userId,
+        changed: projectionKeys.length > 0,
+        workspaceIds: [
+          ...new Set(
+            projectionKeys
+              .filter((key) => key.scope === "workspace")
+              .map((key) => key.scopeId),
+          ),
+        ],
       };
-      await tx.insert(schema.userTable).values(user);
-      personId = createId();
-      externalIdentityId = createId();
-      userId = user.id;
-      await tx.insert(schema.personTable).values({
-        id: personId,
-        userId,
-        organisationId,
-        side: portal === "agent" ? "staff" : "customer",
-        displayName: identity.displayName ?? null,
-        active: true,
-        isPlaceholder: false,
-        createdAt: now,
-        updatedAt: now,
-      });
-      await tx.insert(schema.accountTable).values({
-        id: createId(),
-        accountId: `${connection.issuer}\0${subject}`,
-        providerId: `${IDENTITY_PROVIDER_PREFIX}${connection.id}`,
-        userId,
-        createdAt: now,
-        updatedAt: now,
-      });
-      await tx.insert(schema.externalIdentityTable).values({
-        id: externalIdentityId,
-        identityConnectionId: connection.id,
-        personId,
-        userId,
-        issuer: connection.issuer,
-        subject,
-        userNameSnapshot: identity.address,
-        emailSnapshot: identity.address,
-        active: true,
-        provisionedVia: "jit",
-        firstSeenAt: now,
-        lastLoginAt: now,
-      });
-      await tx.insert(schema.membershipGrantTable).values({
-        personId,
-        scope: roleScope,
-        scopeId,
-        roleId: role.id,
-        sourceKind: "jit_default",
-        externalIdentityId,
-        identityConnectionId: connection.id,
-        seesAll: false,
-        createdAt: now,
-        updatedAt: now,
-        lastConfirmedAt: now,
-      });
-      await tx.insert(schema.provisioningEventTable).values({
-        identityConnectionId: connection.id,
-        externalIdentityId,
-        kind: "user.created",
-        outcome: "success",
-        detail: { source: "jit", portal },
-        actorType: "oidc",
-        createdAt: now,
-      });
-      await projectMembershipKeys(tx, [
-        { personId, scope: roleScope, scopeId },
-      ]);
+    }),
+  );
+  if (result.denied) {
+    if (result.changed) {
+      if (result.userId)
+        await invalidateNativeAuthorization({ userId: result.userId });
+      for (const workspaceId of result.workspaceIds)
+        await invalidateNativeAuthorization({ workspaceId });
     }
-    if (!personId || !userId || !externalIdentityId)
-      throw new APIError("UNAUTHORIZED", {
-        message: "Identity sign-in failed",
-      });
-    const [person] = await lockOidcPerson(tx, personId);
-    if (!person)
-      throw new APIError("UNAUTHORIZED", {
-        message: "Identity sign-in failed",
-      });
-    if (!person.userId)
-      await tx
-        .update(schema.personTable)
-        .set({ userId, updatedAt: now })
-        .where(eq(schema.personTable.id, personId));
-    await tx
-      .update(schema.externalIdentityTable)
-      .set({ userId, lastLoginAt: now })
-      .where(eq(schema.externalIdentityTable.id, externalIdentityId));
-    if (identity.displayName)
-      await tx
-        .update(schema.personTable)
-        .set({ displayName: identity.displayName, updatedAt: now })
-        .where(eq(schema.personTable.id, personId));
-    return { userId };
-  });
+    return { kind: "denied" as const };
+  }
+  if (result.changed) {
+    await invalidateNativeAuthorization({ userId: result.userId });
+    for (const workspaceId of result.workspaceIds)
+      await invalidateNativeAuthorization({ workspaceId });
+  }
   const user = await ctx.context.internalAdapter.findUserById(result.userId);
   if (!user)
     throw new APIError("UNAUTHORIZED", { message: "Identity sign-in failed" });
@@ -684,11 +1225,4 @@ async function signInAdmittedIdentity(input: {
     return safeFailure(ctx);
   }
   return { kind: "session" as const, session, user };
-}
-
-function hasSafeRoleCapabilities(value: unknown) {
-  return (
-    Array.isArray(value) &&
-    value.every((item) => item !== "instance:admin" && item !== "sees_all")
-  );
 }
