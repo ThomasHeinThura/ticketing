@@ -52,7 +52,12 @@ async function makeEventAndDelivery(
   createdEvents.push(eventId);
   await db.execute(sql`
     INSERT INTO outbox (event_id, kind, payload, workspace_id, organisation_id)
-    VALUES (${eventId}, ${eventKind}, ${JSON.stringify({ id: eventId, kind: eventKind, payload: mapping.payload ?? {} })}::jsonb,
+    VALUES (${eventId}, ${eventKind}, ${JSON.stringify({
+      id: eventId,
+      kind: eventKind,
+      scope: { workspaceId: ids.workspace, organisationId: ids.organisation },
+      payload: mapping.payload ?? {},
+    })}::jsonb,
       ${ids.workspace}, ${ids.organisation})
   `);
   await db.execute(sql`
@@ -284,17 +289,23 @@ describe("outbox notification direct-delivery persistence", () => {
 
   it("fails retryably after repeated cleanup races without claiming a lease or consuming an attempt", async () => {
     const fixture = await makeEventAndDelivery();
-    let inserts = 0;
+    let reservationOperations = 0;
+    let firstCall = true;
     await expect(
       db.transaction(async (tx) => {
         const interleavedExecutor = {
           execute: async (query: Parameters<typeof tx.execute>[0]) => {
             const result = await tx.execute(query);
+            if (firstCall) {
+              firstCall = false;
+              return result;
+            }
             // Each acquire cycle begins with INSERT followed by SELECT. Remove the
             // just-inserted epoch lease inside this transaction to inject a repeated
             // insert/lock-gap loss deterministically; the separate-connection cleanup race
-            // is covered by the preceding integration case.
-            if (inserts % 2 === 0) {
+            // is covered by the preceding integration case. The first call is the delivery
+            // row serialization lock added before reservation acquisition.
+            if (reservationOperations % 2 === 0) {
               const removed = await tx.execute(sql`
                 DELETE FROM outbox_dedupe_reservation
                  WHERE reservation_key = ${notificationReservationKey({
@@ -306,7 +317,7 @@ describe("outbox notification direct-delivery persistence", () => {
               `);
               expect(removed.rowCount).toBe(1);
             }
-            inserts += 1;
+            reservationOperations += 1;
             return result;
           },
         } as unknown as Parameters<typeof acquireNotificationReservation>[0];
@@ -318,7 +329,7 @@ describe("outbox notification direct-delivery persistence", () => {
         });
       }),
     ).rejects.toBeInstanceOf(NotificationReservationContentionError);
-    expect(inserts).toBe(12);
+    expect(reservationOperations).toBe(12);
     const row = await db.execute<{ attempts: number }>(sql`
       SELECT attempts FROM notification_delivery WHERE id = ${fixture.deliveryId}
     `);
@@ -425,6 +436,195 @@ describe("outbox notification direct-delivery persistence", () => {
     `);
     expect(row.rows[0]).toEqual({ attempts: 1, state: "delivered" });
   });
+
+  it.each([
+    {
+      name: "suppression",
+      outcome: { kind: "suppress" as const, reason: "reach_lost" },
+    },
+    {
+      name: "deferral",
+      outcome: {
+        kind: "defer" as const,
+        until: new Date(Date.now() + 60_000),
+        reason: "quiet_hours",
+      },
+    },
+  ])(
+    "does not apply a second worker's $name while this child owns an in-flight provider fence",
+    async ({ outcome }) => {
+      const fixture = await makeEventAndDelivery(true, {
+        payload: { workItemId: ids.item },
+      });
+      let checks = 0;
+      let enterProvider!: () => void;
+      let finishProvider!: () => void;
+      const providerEntered = new Promise<void>((resolve) => {
+        enterProvider = resolve;
+      });
+      const providerGate = new Promise<void>((resolve) => {
+        finishProvider = resolve;
+      });
+      const runtime: NotificationOutboxRuntime = {
+        evaluateCurrentEligibility: async () => {
+          checks += 1;
+          return checks <= 2
+            ? {
+                kind: "eligible",
+                projection: {
+                  title: "Assigned",
+                  body: "Safe",
+                  url: "/agent/work-items/item-1",
+                },
+              }
+            : outcome;
+        },
+        send: async () => {
+          enterProvider();
+          await providerGate;
+        },
+      };
+
+      const firstWorker = processNextNotificationDelivery(runtime);
+      await providerEntered;
+      await expect(processNextNotificationDelivery(runtime)).resolves.toEqual({
+        kind: "deferred",
+        reason: "delivery_fence",
+      });
+      const duringProvider = await db.execute<{
+        attempts: number;
+        state: string;
+        deliveredAt: Date | null;
+      }>(sql`
+      SELECT attempts, state, delivered_at AS "deliveredAt"
+        FROM notification_delivery WHERE id = ${fixture.deliveryId}
+    `);
+      expect(duringProvider.rows[0]).toEqual({
+        attempts: 1,
+        state: "pending",
+        deliveredAt: null,
+      });
+
+      finishProvider();
+      await expect(firstWorker).resolves.toEqual({ kind: "delivered" });
+      const completed = await db.execute<{
+        attempts: number;
+        state: string;
+        deliveredAt: Date | null;
+      }>(sql`
+      SELECT attempts, state, delivered_at AS "deliveredAt"
+        FROM notification_delivery WHERE id = ${fixture.deliveryId}
+    `);
+      expect(completed.rows[0]?.attempts).toBe(1);
+      expect(completed.rows[0]?.state).toBe("delivered");
+      expect(completed.rows[0]?.deliveredAt).not.toBeNull();
+    },
+  );
+
+  it("fails closed when the event envelope workspace does not match its delivery", async () => {
+    const fixture = await makeEventAndDelivery(true, {
+      eventKind: "work_item.assigned",
+      resourceType: "work_item",
+      resourceId: ids.item,
+      payload: { workItemId: ids.item },
+    });
+    await db.execute(sql`
+      UPDATE outbox SET payload = jsonb_set(payload, '{scope,workspaceId}', '"foreign-workspace"')
+       WHERE event_id = ${fixture.eventId}
+    `);
+    let sent = 0;
+    await expect(
+      processNextNotificationDelivery(
+        currentEligibilityRuntime(async () => {
+          sent += 1;
+        }),
+      ),
+    ).resolves.toEqual({
+      kind: "suppressed",
+      reason: "resource_mapping_mismatch",
+    });
+    expect(sent).toBe(0);
+  });
+
+  it("accepts a work-item notification mapped by the canonical work-item key", async () => {
+    const key = `NOT-${suffix.slice(0, 8)}-1`;
+    const fixture = await makeEventAndDelivery(true, {
+      eventKind: "work_item.unblocked",
+      resourceType: "work_item",
+      resourceId: key,
+      payload: { key, formerBlockerId: "blocker-1" },
+    });
+    await db.execute(sql`INSERT INTO notification_preference
+      (person_id, scope, scope_id, channel, event_kind, enabled, digest)
+      VALUES (${ids.person}, 'global', NULL, ${channel}, 'work_item.unblocked', true, 'off')`);
+    let sent = 0;
+    await expect(
+      processNextNotificationDelivery(
+        currentEligibilityRuntime(async () => {
+          sent += 1;
+        }),
+      ),
+    ).resolves.toEqual({ kind: "delivered" });
+    expect(sent).toBe(1);
+    const row = await db.execute<{ attempts: number; state: string }>(sql`
+      SELECT attempts, state FROM notification_delivery WHERE id = ${fixture.deliveryId}
+    `);
+    expect(row.rows[0]).toEqual({ attempts: 1, state: "delivered" });
+  });
+
+  it("fails closed for an unregistered resource mapping", async () => {
+    const fixture = await makeEventAndDelivery(true, {
+      eventKind: "work_item.assigned",
+      resourceType: "unregistered_resource",
+      resourceId: ids.item,
+      payload: { workItemId: ids.item },
+    });
+    let sent = 0;
+    await expect(
+      processNextNotificationDelivery(
+        currentEligibilityRuntime(async () => {
+          sent += 1;
+        }),
+      ),
+    ).resolves.toEqual({ kind: "suppressed", reason: "resource_unavailable" });
+    expect(sent).toBe(0);
+    const row = await db.execute<{ attempts: number; state: string }>(sql`
+      SELECT attempts, state FROM notification_delivery WHERE id = ${fixture.deliveryId}
+    `);
+    expect(row.rows[0]).toEqual({ attempts: 0, state: "suppressed" });
+  });
+
+  it.each([
+    ["work_item.assigned", { workItemId: "another-item" }],
+    ["work_item.unblocked", { key: "OTHER-1", formerBlockerId: "blocker-1" }],
+    ["work_item.mentioned", { commentId: "comment-1" }],
+  ])(
+    "fails closed for mismatched work-item mapping on %s",
+    async (eventKind, payload) => {
+      const fixture = await makeEventAndDelivery(true, {
+        eventKind,
+        resourceType: "work_item",
+        resourceId: ids.item,
+        payload,
+      });
+      let sent = 0;
+      await expect(
+        processNextNotificationDelivery(
+          currentEligibilityRuntime(async () => {
+            sent += 1;
+          }),
+        ),
+      ).resolves.toEqual({
+        kind: "suppressed",
+        reason: "resource_mapping_mismatch",
+      });
+      expect(sent).toBe(0);
+      const row = await db.execute<{ attempts: number; state: string }>(sql`
+      SELECT attempts, state FROM notification_delivery WHERE id = ${fixture.deliveryId}
+    `);
+      expect(row.rows[0]).toEqual({ attempts: 0, state: "suppressed" });
+    },
+  );
 
   it("suppresses after send-time reach denial without calling the adapter or consuming an attempt", async () => {
     const fixture = await makeEventAndDelivery(true);

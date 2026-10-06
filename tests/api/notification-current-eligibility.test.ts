@@ -40,7 +40,12 @@ const delivery = {
   dedupeKey: "dedupe-1",
   attempts: 0,
   eventKind: "work_item.assigned",
-  payload: { payload: {} },
+  payload: {
+    id: "event-1",
+    kind: "work_item.assigned",
+    scope: { workspaceId: "workspace-1" },
+    payload: { workItemId: "item-1" },
+  },
   title: "Assigned",
   body: "A safe summary",
   resourceType: "work_item",
@@ -105,6 +110,122 @@ describe("current notification reach and preference", () => {
     });
   });
 
+  it.each([
+    ["work_item id", "work_item.assigned", { workItemId: "item-1" }],
+    [
+      "canonical key",
+      "work_item.unblocked",
+      { key: "item-1", formerBlockerId: "blocker-1" },
+    ],
+  ])(
+    "accepts a matching %s for the event kind",
+    async (_label, eventKind, payload) => {
+      const result = await evaluateCurrentNotificationReachAndPreference(tx, {
+        ...delivery,
+        eventKind,
+        payload: {
+          id: delivery.eventId,
+          kind: eventKind,
+          scope: { workspaceId: delivery.workspaceId },
+          payload,
+        },
+      });
+      expect(result.kind).toBe("eligible");
+    },
+  );
+
+  it.each([
+    ["missing mapping", "work_item.assigned", {}],
+    [
+      "different work-item id",
+      "work_item.assigned",
+      { workItemId: "other-item" },
+    ],
+    [
+      "different work-item key",
+      "work_item.unblocked",
+      { key: "OTHER-1", formerBlockerId: "blocker-1" },
+    ],
+    [
+      "comment mention mapped to a work item",
+      "work_item.mentioned",
+      { commentId: "comment-1" },
+    ],
+  ])(
+    "rejects %s before recipient evaluation",
+    async (_label, eventKind, payload) => {
+      await expect(
+        evaluateCurrentNotificationReachAndPreference(tx, {
+          ...delivery,
+          eventKind,
+          payload: {
+            id: delivery.eventId,
+            kind: eventKind,
+            scope: { workspaceId: delivery.workspaceId },
+            payload,
+          },
+        }),
+      ).resolves.toEqual({
+        kind: "suppress",
+        reason: "resource_mapping_mismatch",
+      });
+      expect(mocks.findNotificationPerson).not.toHaveBeenCalled();
+    },
+  );
+
+  it.each([
+    ["missing", undefined],
+    ["wrong", "other-event"],
+  ])("rejects an envelope with %s event identity", async (_label, eventId) => {
+    await expect(
+      evaluateCurrentNotificationReachAndPreference(tx, {
+        ...delivery,
+        payload: {
+          id: eventId,
+          kind: delivery.eventKind,
+          scope: { workspaceId: delivery.workspaceId },
+          payload: { workItemId: "item-1" },
+        },
+      }),
+    ).resolves.toEqual({
+      kind: "suppress",
+      reason: "resource_mapping_mismatch",
+    });
+  });
+
+  it("rejects an envelope whose workspace differs from the delivery scope", async () => {
+    await expect(
+      evaluateCurrentNotificationReachAndPreference(tx, {
+        ...delivery,
+        payload: {
+          id: delivery.eventId,
+          kind: delivery.eventKind,
+          scope: { workspaceId: "foreign-workspace" },
+          payload: { workItemId: "item-1" },
+        },
+      }),
+    ).resolves.toEqual({
+      kind: "suppress",
+      reason: "resource_mapping_mismatch",
+    });
+  });
+
+  it("rejects an event envelope with no workspace scope", async () => {
+    await expect(
+      evaluateCurrentNotificationReachAndPreference(tx, {
+        ...delivery,
+        payload: {
+          id: delivery.eventId,
+          kind: delivery.eventKind,
+          payload: { workItemId: "item-1" },
+        },
+      }),
+    ).resolves.toEqual({
+      kind: "suppress",
+      reason: "resource_mapping_mismatch",
+    });
+  });
+
   it("passes the current private requester/participant allowlist to canonical reach", async () => {
     mocks.findCurrentNotificationResource.mockResolvedValue({
       ...resource,
@@ -132,7 +253,12 @@ describe("current notification reach and preference", () => {
       evaluateCurrentNotificationReachAndPreference(tx, {
         ...delivery,
         eventKind: "work_item.commented",
-        payload: { payload: { commentId: "comment-1" } },
+        payload: {
+          id: delivery.eventId,
+          kind: "work_item.commented",
+          scope: { workspaceId: delivery.workspaceId },
+          payload: { commentId: "comment-1" },
+        },
         resourceType: "comment",
         resourceId: "comment-1",
       }),
@@ -141,6 +267,33 @@ describe("current notification reach and preference", () => {
       reason: "resource_not_customer_visible",
     });
     expect(mocks.resolveNotificationPreference).not.toHaveBeenCalled();
+  });
+
+  it("binds a comment mention to its exact comment resource", async () => {
+    const mapped = {
+      ...delivery,
+      eventKind: "work_item.mentioned",
+      payload: {
+        id: delivery.eventId,
+        kind: "work_item.mentioned",
+        scope: { workspaceId: delivery.workspaceId },
+        payload: { commentId: "comment-1" },
+      },
+      resourceType: "comment",
+      resourceId: "comment-1",
+    };
+    await expect(
+      evaluateCurrentNotificationReachAndPreference(tx, mapped),
+    ).resolves.toMatchObject({ kind: "eligible" });
+    await expect(
+      evaluateCurrentNotificationReachAndPreference(tx, {
+        ...mapped,
+        resourceId: "another-comment",
+      }),
+    ).resolves.toEqual({
+      kind: "suppress",
+      reason: "resource_mapping_mismatch",
+    });
   });
 
   it("does not give a customer a staff work-item destination", async () => {
@@ -166,7 +319,12 @@ describe("current notification reach and preference", () => {
       evaluateCurrentNotificationReachAndPreference(tx, {
         ...delivery,
         eventKind: "approval.requested",
-        payload: { payload: { approvalId: "approval-1" } },
+        payload: {
+          id: delivery.eventId,
+          kind: "approval.requested",
+          scope: { workspaceId: delivery.workspaceId },
+          payload: { approvalId: "approval-1" },
+        },
         resourceType: "approval",
         resourceId: "approval-1",
       }),
@@ -205,7 +363,12 @@ describe("current notification reach and preference", () => {
       evaluateCurrentNotificationReachAndPreference(tx, {
         ...delivery,
         eventKind: "approval.expired",
-        payload: { payload: { approvalId: "approval-1" } },
+        payload: {
+          id: delivery.eventId,
+          kind: "approval.expired",
+          scope: { workspaceId: delivery.workspaceId },
+          payload: { approvalId: "approval-1" },
+        },
         resourceType: "approval",
         resourceId: "approval-1",
       }),
