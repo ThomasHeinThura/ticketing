@@ -280,6 +280,31 @@ describe("strict policy runtime enforcement against the production API graph", (
       beforeActivities.map((row) => row.id),
     );
 
+    const selfAssignKey = `taskdesk_test_${randomUUID()}`;
+    await db.insert(schema.apikeyTable).values({
+      referenceId: member.user.id,
+      userId: member.user.id,
+      key: hashApiKey(selfAssignKey),
+      name: "strict self-assignment scope test key",
+      start: selfAssignKey.slice(0, 12),
+      prefix: "taskdesk",
+      permissions: JSON.stringify({ work_item: ["update"] }),
+      createdAt: new Date(),
+      updatedAt: new Date(),
+    });
+    const scopedSelfAssignment = await app.request(
+      `/api/work-items/${key}/assign`,
+      {
+        method: "POST",
+        headers: {
+          authorization: `Bearer ${selfAssignKey}`,
+          "content-type": "application/json",
+        },
+        body: JSON.stringify({ assigneeId: assignee?.id }),
+      },
+    );
+    expect(scopedSelfAssignment.status).toBe(200);
+
     mockAuthenticatedSession(member.user);
     const allowed = await app.request(`/api/work-items/${key}/assign`, {
       method: "POST",

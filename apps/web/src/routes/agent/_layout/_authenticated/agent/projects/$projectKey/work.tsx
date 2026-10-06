@@ -5,6 +5,7 @@ import {
   Suspense,
   useCallback,
   useEffect,
+  useLayoutEffect,
   useRef,
   useState,
 } from "react";
@@ -94,36 +95,27 @@ export const Route = createFileRoute(
 });
 
 function WorkItemsRouteComponent() {
-  const { t } = useTranslation();
   const { projectKey } = Route.useParams();
+  return <ProjectWorkItemsRoute key={projectKey} projectKey={projectKey} />;
+}
+
+function ProjectWorkItemsRoute({ projectKey }: { projectKey: string }) {
+  const { t } = useTranslation();
   const { sort, dir, filter } = Route.useSearch();
   const navigate = Route.useNavigate();
   const [isCreateOpen, setIsCreateOpen] = useState(false);
   const [filterDraft, setFilterDraft] = useState(filter ?? "");
   const [isCreateDialogReady, setIsCreateDialogReady] = useState(false);
   const [isCreateDialogLoadError, setIsCreateDialogLoadError] = useState(false);
+  const [createIntentProjectContext, setCreateIntentProjectContext] =
+    useState<string>();
   const createTriggerRef = useRef<HTMLButtonElement>(null);
+  const createIntentGenerationRef = useRef(0);
   const [realtimeProjectId, setRealtimeProjectId] = useState<string>();
   const [realtimeStatus, setRealtimeStatus] = useState<{
     projectId: string;
     status: WorkItemRealtimeStatus;
   }>();
-  const closeCreateDialog = useCallback(() => setIsCreateOpen(false), []);
-  const openCreateDialog = useCallback(() => {
-    setIsCreateOpen(true);
-    setIsCreateDialogReady(false);
-    setIsCreateDialogLoadError(false);
-
-    void (async () => {
-      try {
-        await loadCreateWorkItemDialog();
-        setIsCreateDialogReady(true);
-      } catch {
-        setIsCreateDialogLoadError(true);
-      }
-    })();
-  }, []);
-
   const {
     data: workspace,
     isLoading: isWorkspaceLoading,
@@ -140,6 +132,65 @@ function WorkItemsRouteComponent() {
   const project = projects?.find((candidate) => candidate.slug === projectKey);
   const projectNotFound =
     !isWorkspaceLoading && !isProjectsLoading && !!projects && !project;
+  const projectContext =
+    workspace?.id && project?.id ? `${workspace.id}:${project.id}` : undefined;
+  const projectContextRef = useRef(projectContext);
+  const isCreateOpenForProject =
+    isCreateOpen && createIntentProjectContext === projectContext;
+
+  useLayoutEffect(() => {
+    if (projectContextRef.current === projectContext) return;
+    projectContextRef.current = projectContext;
+    createIntentGenerationRef.current += 1;
+    setIsCreateOpen(false);
+    setIsCreateDialogReady(false);
+    setIsCreateDialogLoadError(false);
+    setCreateIntentProjectContext(undefined);
+  }, [projectContext]);
+
+  useLayoutEffect(
+    () => () => {
+      createIntentGenerationRef.current += 1;
+    },
+    [],
+  );
+
+  const closeCreateDialog = useCallback(() => {
+    createIntentGenerationRef.current += 1;
+    setIsCreateOpen(false);
+    setIsCreateDialogReady(false);
+    setIsCreateDialogLoadError(false);
+    setCreateIntentProjectContext(undefined);
+  }, []);
+  const openCreateDialog = useCallback(() => {
+    if (!projectContext) return;
+    const intentGeneration = ++createIntentGenerationRef.current;
+    setIsCreateOpen(true);
+    setIsCreateDialogReady(false);
+    setIsCreateDialogLoadError(false);
+    setCreateIntentProjectContext(projectContext);
+
+    void (async () => {
+      try {
+        await loadCreateWorkItemDialog();
+        if (
+          createIntentGenerationRef.current !== intentGeneration ||
+          projectContextRef.current !== projectContext
+        ) {
+          return;
+        }
+        setIsCreateDialogReady(true);
+      } catch {
+        if (
+          createIntentGenerationRef.current !== intentGeneration ||
+          projectContextRef.current !== projectContext
+        ) {
+          return;
+        }
+        setIsCreateDialogLoadError(true);
+      }
+    })();
+  }, [projectContext]);
 
   const {
     data: workItemsResult,
@@ -174,7 +225,12 @@ function WorkItemsRouteComponent() {
   }, [project?.id]);
 
   useEffect(() => {
-    if (!isCreateOpen || isCreateDialogReady || isCreateDialogLoadError) return;
+    if (
+      !isCreateOpenForProject ||
+      isCreateDialogReady ||
+      isCreateDialogLoadError
+    )
+      return;
 
     const cancelPendingOpen = (event: KeyboardEvent) => {
       if (event.key !== "Escape") return;
@@ -185,7 +241,7 @@ function WorkItemsRouteComponent() {
 
     window.addEventListener("keydown", cancelPendingOpen);
     return () => window.removeEventListener("keydown", cancelPendingOpen);
-  }, [isCreateDialogLoadError, isCreateDialogReady, isCreateOpen]);
+  }, [isCreateDialogLoadError, isCreateDialogReady, isCreateOpenForProject]);
 
   const handleRealtimeAvailabilityChange = useCallback(
     (projectId: string, status: WorkItemRealtimeStatus) => {
@@ -248,7 +304,7 @@ function WorkItemsRouteComponent() {
             </Suspense>
           ) : null}
         </div>
-        {project && isCreateOpen && isCreateDialogLoadError ? (
+        {project && isCreateOpenForProject && isCreateDialogLoadError ? (
           <div role="alert">
             <p>{t("common:error.title")}</p>
             <Button
@@ -301,7 +357,7 @@ function WorkItemsRouteComponent() {
             onRetry={handleRetry}
           />
         </Suspense>
-        {project && isCreateOpen && !isCreateDialogLoadError ? (
+        {project && isCreateOpenForProject && !isCreateDialogLoadError ? (
           <Suspense
             fallback={
               <div
