@@ -8,9 +8,11 @@ import {
   completeNotificationDelivery,
   hasRecentNotificationSuccess,
 } from "../../apps/api/src/database/repositories/notification-delivery.repository";
+import { evaluateCurrentNotificationReachAndPreference } from "../../apps/api/src/notification/current-eligibility";
 import { notificationReservationKey } from "../../apps/api/src/notification/delivery-primitives";
 import type { NotificationOutboxRuntime } from "../../apps/api/src/notification/outbox-drain";
 import { processNextNotificationDelivery } from "../../apps/api/src/notification/outbox-drain";
+import { seedDefaultWorkspaceRoles } from "../../apps/api/src/utils/seed-default-workspace-roles";
 import { ensureTestDatabaseMigrated } from "./helpers/database";
 
 const suffix = randomUUID().replaceAll("-", "");
@@ -24,14 +26,23 @@ const createdEvents: string[] = [];
 const channel = "notify.email";
 const dedupeKey = "notification:v1:integration-test";
 
-async function makeEventAndDelivery(withInbox = false) {
+async function makeEventAndDelivery(
+  withInbox = false,
+  mapping: {
+    eventKind?: string;
+    resourceType?: string;
+    resourceId?: string;
+    payload?: Record<string, unknown>;
+  } = {},
+) {
   const itemSuffix = randomUUID().replaceAll("-", "");
   const eventId = `notification-test-event-${itemSuffix}`;
   const deliveryId = `notification-test-delivery-${itemSuffix}`;
+  const eventKind = mapping.eventKind ?? "work_item.assigned";
   createdEvents.push(eventId);
   await db.execute(sql`
     INSERT INTO outbox (event_id, kind, payload, workspace_id, organisation_id)
-    VALUES (${eventId}, 'work_item.assigned', ${JSON.stringify({ id: eventId, kind: "work_item.assigned", payload: {} })}::jsonb,
+    VALUES (${eventId}, ${eventKind}, ${JSON.stringify({ id: eventId, kind: eventKind, payload: mapping.payload ?? {} })}::jsonb,
       ${ids.workspace}, ${ids.organisation})
   `);
   await db.execute(sql`
@@ -44,7 +55,8 @@ async function makeEventAndDelivery(withInbox = false) {
       INSERT INTO notification (id, user_id, person_id, event_id, kind, title, body,
                                resource_type, resource_id)
       VALUES (${`notification-${eventId}`}, ${ids.user}, ${ids.person}, ${eventId},
-              'work_item.assigned', 'Assigned', 'A safe summary', 'work_item', 'item-1')
+              ${eventKind}, 'Assigned', 'A safe summary', ${mapping.resourceType ?? "work_item"},
+              ${mapping.resourceId ?? "item-1"})
     `);
   }
   return { eventId, deliveryId };
@@ -69,12 +81,23 @@ describe("outbox notification direct-delivery persistence", () => {
     );
     await db.execute(sql`INSERT INTO person (id, user_id, organisation_id, side)
       VALUES (${ids.person}, ${ids.user}, ${ids.organisation}, 'staff')`);
+    await seedDefaultWorkspaceRoles();
+    await db.execute(sql`INSERT INTO workspace_member (id, workspace_id, user_id, role, joined_at)
+      VALUES (${`notification-test-member-${suffix}`}, ${ids.workspace}, ${ids.user}, 'admin', clock_timestamp())`);
   });
 
   afterEach(async () => {
     for (const eventId of createdEvents.splice(0)) {
       await db.execute(sql`DELETE FROM outbox WHERE event_id = ${eventId}`);
     }
+    await db.execute(
+      sql`DELETE FROM notification_preference WHERE person_id = ${ids.person}`,
+    );
+    await db.execute(
+      sql`UPDATE workspace SET deleted_at = NULL WHERE id = ${ids.workspace}`,
+    );
+    await db.execute(sql`UPDATE person SET quiet_hours_start = NULL, quiet_hours_end = NULL,
+      quiet_hours_timezone = NULL WHERE id = ${ids.person}`);
   });
 
   afterAll(async () => {
@@ -260,6 +283,126 @@ describe("outbox notification direct-delivery persistence", () => {
       SELECT attempts, state FROM notification_delivery WHERE id = ${fixture.deliveryId}
     `);
     expect(row.rows[0]).toEqual({ attempts: 0, state: "suppressed" });
+  });
+
+  it("suppresses a resource deleted after enqueue before provider authorization", async () => {
+    const fixture = await makeEventAndDelivery(true, {
+      eventKind: "workspace.created",
+      resourceType: "workspace",
+      resourceId: ids.workspace,
+      payload: { workspaceId: ids.workspace, ownerId: ids.user },
+    });
+    await db.execute(
+      sql`UPDATE workspace SET deleted_at = clock_timestamp() WHERE id = ${ids.workspace}`,
+    );
+    let sent = 0;
+    const runtime: NotificationOutboxRuntime = {
+      evaluateCurrentEligibility: async (tx, delivery) => {
+        const current = await evaluateCurrentNotificationReachAndPreference(
+          tx,
+          delivery,
+        );
+        if (current.kind === "quiet_hours_unresolved")
+          throw new Error("Quiet-hours contract is unresolved");
+        if (current.kind === "destination_unresolved")
+          throw new Error("Resource destination contract is unresolved");
+        return current;
+      },
+      send: async () => {
+        sent += 1;
+      },
+    };
+
+    await expect(processNextNotificationDelivery(runtime)).resolves.toEqual({
+      kind: "suppressed",
+      reason: "resource_unavailable",
+    });
+    expect(sent).toBe(0);
+    const row = await db.execute<{ attempts: number; state: string }>(sql`
+      SELECT attempts, state FROM notification_delivery WHERE id = ${fixture.deliveryId}
+    `);
+    expect(row.rows[0]).toEqual({ attempts: 0, state: "suppressed" });
+  });
+
+  it("uses the channel preference changed after enqueue and spends no provider attempt", async () => {
+    const fixture = await makeEventAndDelivery(true, {
+      eventKind: "workspace.created",
+      resourceType: "workspace",
+      resourceId: ids.workspace,
+      payload: { workspaceId: ids.workspace, ownerId: ids.user },
+    });
+    await db.execute(sql`INSERT INTO notification_preference
+      (person_id, scope, scope_id, channel, event_kind, enabled, digest)
+      VALUES (${ids.person}, 'global', NULL, ${channel}, 'workspace.created', false, 'off')`);
+
+    let sent = 0;
+    const runtime: NotificationOutboxRuntime = {
+      evaluateCurrentEligibility: async (tx, delivery) => {
+        const current = await evaluateCurrentNotificationReachAndPreference(
+          tx,
+          delivery,
+        );
+        if (current.kind === "quiet_hours_unresolved")
+          throw new Error("Quiet-hours contract is unresolved");
+        if (current.kind === "destination_unresolved")
+          throw new Error("Resource destination contract is unresolved");
+        return current;
+      },
+      send: async () => {
+        sent += 1;
+      },
+    };
+
+    await expect(processNextNotificationDelivery(runtime)).resolves.toEqual({
+      kind: "suppressed",
+      reason: "channel_disabled",
+    });
+    expect(sent).toBe(0);
+    const row = await db.execute<{ attempts: number; state: string }>(sql`
+      SELECT attempts, state FROM notification_delivery WHERE id = ${fixture.deliveryId}
+    `);
+    expect(row.rows[0]).toEqual({ attempts: 0, state: "suppressed" });
+  });
+
+  it("leaves a child pending without provider authorization when quiet hours are configured but unresolved", async () => {
+    const fixture = await makeEventAndDelivery(true, {
+      eventKind: "workspace.created",
+      resourceType: "workspace",
+      resourceId: ids.workspace,
+      payload: { workspaceId: ids.workspace, ownerId: ids.user },
+    });
+    await db.execute(sql`INSERT INTO notification_preference
+      (person_id, scope, scope_id, channel, event_kind, enabled, digest)
+      VALUES (${ids.person}, 'global', NULL, ${channel}, 'workspace.created', true, 'off')`);
+    await db.execute(sql`UPDATE person SET quiet_hours_start = '22:00', quiet_hours_end = '07:00',
+      quiet_hours_timezone = 'Europe/London' WHERE id = ${ids.person}`);
+
+    let sent = 0;
+    const runtime: NotificationOutboxRuntime = {
+      evaluateCurrentEligibility: async (tx, delivery) => {
+        const current = await evaluateCurrentNotificationReachAndPreference(
+          tx,
+          delivery,
+        );
+        if (current.kind === "quiet_hours_unresolved")
+          throw new Error("Quiet-hours contract is unresolved");
+        if (current.kind === "destination_unresolved")
+          throw new Error("Resource destination contract is unresolved");
+        return current;
+      },
+      send: async () => {
+        sent += 1;
+      },
+    };
+
+    await expect(processNextNotificationDelivery(runtime)).rejects.toThrow(
+      "Quiet-hours contract is unresolved",
+    );
+    expect(sent).toBe(0);
+    const row = await db.execute<{ attempts: number; state: string }>(sql`
+      SELECT attempts, state FROM notification_delivery WHERE id = ${fixture.deliveryId}
+    `);
+    expect(row.rows[0]).toEqual({ attempts: 0, state: "pending" });
   });
 
   it("rejects a mismatched reservation tuple even if its digest key collides", async () => {
