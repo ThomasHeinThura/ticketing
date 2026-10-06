@@ -110,11 +110,12 @@ to live in a repository. Runtime database identity comes from the default import
 `database` module; named schema imports and imports from `database/schema` are not database
 executors. Transaction callback types are recognized from `DatabaseInstance` imported from
 that module, `DbTransaction` imported from `events/outbox`, and local aliases structurally
-derived from a known database transaction method. A type name is not treated as a database
-transaction merely because it ends in `Transaction`. The checker resolves statically known
-database bindings, lexical aliases, transaction callbacks and these registered transaction
-types. It recognizes static computed method names and ignores unrelated receivers, shadowed
-bindings and type-only references.
+derived from a known database transaction method. It follows lexical aliases and simple
+generic identity aliases with cycle detection; it does not infer arbitrary TypeScript type
+semantics. A type name is not treated as a database transaction merely because it ends in
+`Transaction`. The checker resolves statically known database bindings, lexical aliases,
+transaction callbacks and these registered transaction types. It recognizes static computed
+method names and ignores unrelated receivers, shadowed bindings and type-only references.
 Dynamic computed method names are outside this bounded gate. Raw SQL sent through `execute()`
 or a database driver's `query()` is also outside the gate's scope; the checker does not claim
 to enforce ownership for those calls.

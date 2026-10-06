@@ -240,6 +240,49 @@ test("check:queries binds only registered database transaction callback types", 
       ].join("\n"),
       methods: ["findFirst"],
     },
+    {
+      name: "one and chained aliases of the registered transaction type",
+      source: [
+        'import type { DbTransaction } from "../events/outbox";',
+        "type First = DbTransaction;",
+        "type Second = First;",
+        "function read(tx: Second) { return tx.select(); }",
+      ].join("\n"),
+      methods: ["select"],
+    },
+    {
+      name: "generic identity alias of a registered transaction type",
+      source: [
+        'import type { DbTransaction } from "../events/outbox";',
+        "type Identity<T> = T;",
+        "type LocalTransaction = Identity<DbTransaction>;",
+        "type DefaultIdentity<T = DbTransaction> = T;",
+        "type DefaultTransaction = DefaultIdentity;",
+        "function read(tx: LocalTransaction) { return tx.select(); }",
+        "function readDefault(tx: DefaultTransaction) { return tx.select(); }",
+      ].join("\n"),
+      methods: ["select", "select"],
+    },
+    {
+      name: "alias chains from DatabaseInstance remain database executors",
+      source: [
+        'import type { DatabaseInstance } from "../database";',
+        "type PrimaryDatabase = DatabaseInstance;",
+        "type LocalDatabase = PrimaryDatabase;",
+        "function read(db: LocalDatabase) { return db.select(); }",
+      ].join("\n"),
+      methods: ["select"],
+    },
+    {
+      name: "transaction aliases retain identity through a rooted cycle",
+      source: [
+        'import type { DbTransaction } from "../events/outbox";',
+        "type First = Second | DbTransaction;",
+        "type Second = First;",
+        "function read(tx: First) { return tx.select(); }",
+      ].join("\n"),
+      methods: ["select"],
+    },
   ];
 
   for (const { name, source, methods } of positiveCases) {
@@ -256,11 +299,25 @@ test("check:queries binds only registered database transaction callback types", 
     'import { schema } from "../database"; schema.select();',
     'import type { schema } from "../database"; schema.select();',
     'import schema from "../database/schema"; schema.select();',
+    'import database from "other/database"; database.select();',
+    'import type { DbTransaction } from "unrelated/events/outbox"; function read(tx: DbTransaction) { tx.select(); }',
+    'import db from "../database"; type TransactionMethod = typeof db.transaction; function read(tx: TransactionMethod) { tx.select(); }',
+    'import db from "../database"; type TransactionCallback = Parameters<typeof db.transaction>[0]; function read(tx: TransactionCallback) { tx.select(); }',
     "type BusinessTransaction = { query: { person: { findMany(): void } } }; function read(tx: BusinessTransaction) { tx.query.person.findMany(); }",
     "type DatabaseInstance = { select(): void }; function read(db: DatabaseInstance) { db.select(); }",
     "function run(db: CustomerRecord) { type LocalTransaction = Parameters<Parameters<typeof db.transaction>[0]>[0]; function read(tx: LocalTransaction) { tx.select(); } }",
     "type Select = typeof db.select;",
     "function read(db: CustomerRecord) { db.select(); }",
+    "type First = Second; type Second = First; function read(tx: First) { tx.select(); }",
+    [
+      'import type { DbTransaction } from "../events/outbox";',
+      "function run() { type Local = { select(): void }; function read(tx: Local) { tx.select(); } }",
+    ].join("\n"),
+    [
+      'import type { DbTransaction } from "../events/outbox";',
+      "type Local = DbTransaction;",
+      "function run() { type Local = BusinessTransaction; function read(tx: Local) { tx.select(); } }",
+    ].join("\n"),
   ];
 
   for (const source of negativeCases) {
@@ -290,6 +347,18 @@ test("check:queries flags known transaction methods that escape the direct callb
       source,
     );
   }
+});
+
+test("check:queries permits a parenthesized direct transaction callback", () => {
+  const source =
+    'import db from "../database"; (db.transaction)((tx) => tx.select());';
+
+  assert.deepEqual(
+    queryReadViolations(source, "apps/api/src/example.ts").map(
+      ({ method }) => method,
+    ),
+    ["select"],
+  );
 });
 
 test("check:queries parses dotted, computed, escaped, and forwarded references uniformly", () => {

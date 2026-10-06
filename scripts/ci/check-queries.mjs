@@ -54,40 +54,17 @@ function staticStringValue(input) {
 
 function isDatabaseModule(source) {
   return (
-    typeof source === "string" && /(?:^|\/)database(?:\/index)?$/u.test(source)
+    typeof source === "string" &&
+    source.startsWith(".") &&
+    /(?:^|\/)database(?:\/index)?$/u.test(source)
   );
 }
 
-function hasDatabaseTypeAnnotation(
-  input,
-  databaseTypeNames,
-  databaseTransactionTypes,
-) {
-  const node = unwrap(
-    input?.type === "TSTypeAnnotation" ? input.typeAnnotation : input,
-  );
-  if (!node) return false;
-  if (node.type === "TSUnionType" || node.type === "TSIntersectionType") {
-    return node.types.some((member) =>
-      hasDatabaseTypeAnnotation(
-        member,
-        databaseTypeNames,
-        databaseTransactionTypes,
-      ),
-    );
-  }
-  if (node.type === "TSParenthesizedType")
-    return hasDatabaseTypeAnnotation(
-      node.typeAnnotation,
-      databaseTypeNames,
-      databaseTransactionTypes,
-    );
-  if (node.type !== "TSTypeReference") return false;
-  const typeName = unwrap(node.typeName);
-  if (typeName?.type !== "Identifier") return false;
+function isOutboxModule(source) {
   return (
-    databaseTypeNames.has(typeName.name) ||
-    databaseTransactionTypes.has(typeName.name)
+    typeof source === "string" &&
+    source.startsWith(".") &&
+    /(?:^|\/)events\/outbox$/u.test(source)
   );
 }
 
@@ -105,111 +82,256 @@ function visit(value, callback) {
   }
 }
 
-function isDatabaseTransactionType(input, databaseBindings, databaseTypeNames) {
-  let found = false;
-  visit(input, (node) => {
-    if (node.type === "TSTypeQuery") {
-      const expression = unwrap(node.exprName);
-      const object =
-        expression?.type === "TSQualifiedName"
-          ? unwrap(expression.left)
-          : unwrap(expression?.object);
-      if (
-        ((memberTypes.has(expression?.type) &&
-          propertyName(expression) === "transaction") ||
-          (expression?.type === "TSQualifiedName" &&
-            expression.right?.name === "transaction")) &&
-        object?.type === "Identifier" &&
-        databaseBindings.has(object.name)
-      ) {
-        found = true;
-      }
-      return;
+function directCallForCallee(expression, parents) {
+  let current = expression;
+  let parent = parents.get(current);
+  while (
+    parent &&
+    [
+      "ParenthesizedExpression",
+      "TSAsExpression",
+      "TSTypeAssertion",
+      "TSNonNullExpression",
+      "TSSatisfiesExpression",
+      "TSInstantiationExpression",
+      "TypeCastExpression",
+    ].includes(parent.type)
+  ) {
+    current = parent;
+    parent = parents.get(current);
+  }
+  if (callTypes.has(parent?.type) && unwrap(parent.callee) === expression) {
+    return parent;
+  }
+  return null;
+}
+
+function typeNameParts(input) {
+  const node = unwrap(input);
+  if (node?.type === "Identifier") return [node.name];
+  if (node?.type === "TSQualifiedName")
+    return [...typeNameParts(node.left), node.right.name];
+  return [];
+}
+
+// Follow only registered roots and transparent aliases needed by this gate.
+function resolveDatabaseType(
+  input,
+  scope,
+  bindings,
+  seenAliases = new Set(),
+  substitutions = new Map(),
+) {
+  const node = unwrap(
+    input?.type === "TSTypeAnnotation" ? input.typeAnnotation : input,
+  );
+  if (!node) return null;
+
+  if (node.type === "TSUnionType" || node.type === "TSIntersectionType") {
+    for (const member of node.types) {
+      const kind = resolveDatabaseType(
+        member,
+        scope,
+        bindings,
+        seenAliases,
+        substitutions,
+      );
+      if (kind) return kind;
     }
-    if (node.type === "TSIndexedAccessType") {
-      const objectType = unwrap(node.objectType);
-      const typeName = unwrap(objectType?.typeName);
-      const indexType = unwrap(node.indexType);
-      if (
-        staticStringValue(indexType?.literal ?? indexType) === "transaction" &&
-        objectType?.type === "TSTypeReference" &&
-        typeName?.type === "Identifier" &&
-        databaseTypeNames.has(typeName.name)
-      ) {
-        found = true;
+    return null;
+  }
+  if (node.type === "TSParenthesizedType")
+    return resolveDatabaseType(
+      node.typeAnnotation,
+      scope,
+      bindings,
+      seenAliases,
+      substitutions,
+    );
+
+  if (node.type === "TSTypeQuery") {
+    const parts = typeNameParts(node.exprName);
+    if (parts.length === 1) {
+      const value = resolveStaticValue(
+        { type: "Identifier", name: parts[0] },
+        scope,
+        bindings,
+      );
+      return value?.kind === "database" ? "database" : null;
+    }
+    if (parts.length === 2 && parts[1] === "transaction") {
+      const value = resolveStaticValue(
+        { type: "Identifier", name: parts[0] },
+        scope,
+        bindings,
+      );
+      return value?.kind === "database" ? "transactionMethod" : null;
+    }
+    return null;
+  }
+
+  if (node.type === "TSIndexedAccessType") {
+    const index = unwrap(node.indexType);
+    const property = staticStringValue(index?.literal ?? index);
+    if (
+      property === "transaction" &&
+      resolveDatabaseType(
+        node.objectType,
+        scope,
+        bindings,
+        seenAliases,
+        substitutions,
+      ) === "database"
+    ) {
+      return "transactionMethod";
+    }
+    const objectType = unwrap(node.objectType);
+    const objectName = unwrap(objectType?.typeName);
+    if (
+      index?.type === "TSLiteralType" &&
+      index.literal?.type === "NumericLiteral" &&
+      objectType?.type === "TSTypeReference" &&
+      objectName?.type === "Identifier" &&
+      objectName.name === "Parameters"
+    ) {
+      const parametersKind = resolveDatabaseType(
+        objectType,
+        scope,
+        bindings,
+        seenAliases,
+        substitutions,
+      );
+      if (parametersKind === "transactionMethodParameters")
+        return "transactionCallback";
+      if (parametersKind === "transactionCallbackParameters")
+        return "transaction";
+    }
+    return null;
+  }
+
+  if (node.type !== "TSTypeReference") return null;
+  const nameNode = unwrap(node.typeName);
+  if (nameNode?.type !== "Identifier") return null;
+
+  const substitution = substitutions.get(nameNode.name);
+  if (substitution) {
+    return resolveDatabaseType(
+      substitution.input,
+      substitution.scope,
+      bindings,
+      seenAliases,
+      substitutions,
+    );
+  }
+
+  let typeScope = scope;
+  let typeBinding;
+  while (typeScope) {
+    typeBinding = typeScope.typeBindings.get(nameNode.name);
+    if (typeBinding?.kind === "databaseTypeRoot") return "database";
+    if (typeBinding?.kind === "transactionTypeRoot") return "transaction";
+    if (typeBinding?.kind === "typeAlias") break;
+    typeBinding = undefined;
+    typeScope = typeScope.parent;
+  }
+  if (typeBinding) {
+    if (seenAliases.has(typeBinding)) return null;
+    const nextSeen = new Set(seenAliases);
+    nextSeen.add(typeBinding);
+    const nextSubstitutions = new Map(substitutions);
+    const parameters = typeBinding.typeParameters?.params ?? [];
+    const arguments_ = node.typeParameters?.params ?? [];
+    for (let index = 0; index < parameters.length; index += 1) {
+      const parameter = parameters[index];
+      if (typeof parameter.name !== "string") continue;
+      const argument = arguments_[index];
+      if (argument) {
+        nextSubstitutions.set(parameter.name, {
+          input: argument,
+          scope,
+        });
+      } else if (parameter.default) {
+        nextSubstitutions.set(parameter.name, {
+          input: parameter.default,
+          scope: typeBinding.scope,
+        });
       }
     }
-  });
-  return found;
+    return resolveDatabaseType(
+      typeBinding.typeAnnotation,
+      typeBinding.scope,
+      bindings,
+      nextSeen,
+      nextSubstitutions,
+    );
+  }
+
+  if (nameNode.name === "Parameters") {
+    const parameter = node.typeParameters?.params?.[0];
+    const kind = resolveDatabaseType(
+      parameter,
+      scope,
+      bindings,
+      seenAliases,
+      substitutions,
+    );
+    if (kind === "transactionMethod") return "transactionMethodParameters";
+    if (kind === "transactionCallback") return "transactionCallbackParameters";
+    return null;
+  }
+
+  // These standard wrappers preserve the underlying executor identity.
+  if (
+    ["ReturnType", "Pick", "Omit", "Partial", "Required", "Readonly"].includes(
+      nameNode.name,
+    )
+  ) {
+    for (const parameter of node.typeParameters?.params ?? []) {
+      const kind = resolveDatabaseType(
+        parameter,
+        scope,
+        bindings,
+        seenAliases,
+        substitutions,
+      );
+      if (kind) return kind;
+    }
+  }
+  return null;
 }
 
 function collectStaticBindings(ast) {
   const nodeScopes = new WeakMap();
   const parents = new WeakMap();
-  const databaseBindings = new Set();
-  const databaseTypeNames = new Set();
-  const databaseTransactionTypes = new Set();
-  visit(ast, (node) => {
-    if (
-      node.type !== "ImportDeclaration" ||
-      !isDatabaseModule(node.source?.value)
-    )
-      return;
-    for (const specifier of node.specifiers) {
-      if (specifier.type === "ImportDefaultSpecifier") {
-        databaseBindings.add(specifier.local.name);
-      }
-      if (specifier.type === "ImportSpecifier") {
-        const importedName =
-          specifier.imported?.name ?? specifier.imported?.value;
-        if (importedName === "DatabaseInstance")
-          databaseTypeNames.add(specifier.local.name);
-      }
-    }
-  });
-  visit(ast, (node) => {
-    if (
-      node.type !== "ImportDeclaration" ||
-      !/(?:^|\/)events\/outbox$/u.test(node.source?.value ?? "")
-    ) {
-      return;
-    }
-    for (const specifier of node.specifiers) {
-      if (specifier.type !== "ImportSpecifier") continue;
-      const importedName =
-        specifier.imported?.name ?? specifier.imported?.value;
-      if (importedName === "DbTransaction")
-        databaseTransactionTypes.add(specifier.local.name);
-    }
-  });
-  visit(ast, (node) => {
-    if (
-      node.type === "TSTypeAliasDeclaration" &&
-      isDatabaseTransactionType(
-        node.typeAnnotation,
-        databaseBindings,
-        databaseTypeNames,
-      )
-    ) {
-      databaseTransactionTypes.add(node.id.name);
-    }
-  });
-  const rootScope = { parent: null, bindings: new Map(), functionScope: null };
+  const rootScope = {
+    parent: null,
+    bindings: new Map(),
+    typeBindings: new Map(),
+    functionScope: null,
+  };
   rootScope.functionScope = rootScope;
+  const scopes = [rootScope];
 
   function childScope(parent, isFunction = false) {
     const scope = {
       parent,
       bindings: new Map(),
+      typeBindings: new Map(),
       functionScope: null,
     };
     scope.functionScope = isFunction ? scope : parent.functionScope;
+    scopes.push(scope);
     return scope;
   }
 
   function addBinding(scope, name, binding) {
     if (!name) return;
     scope.bindings.set(name, { ...binding, name, scope });
+  }
+
+  function addTypeBinding(scope, name, binding) {
+    if (!name) return;
+    scope.typeBindings.set(name, { ...binding, name, scope });
   }
 
   function addPattern(
@@ -297,11 +419,8 @@ function collectStaticBindings(ast) {
       for (const parameter of node.params ?? []) {
         addPattern(functionScope, parameter, {
           kind: "parameter",
-          database: hasDatabaseTypeAnnotation(
-            parameter.typeAnnotation,
-            databaseTypeNames,
-            databaseTransactionTypes,
-          ),
+          database: false,
+          typeAnnotation: parameter.typeAnnotation,
         });
         walk(parameter, functionScope);
       }
@@ -349,15 +468,42 @@ function collectStaticBindings(ast) {
       }
     } else if (node.type === "ImportDeclaration") {
       for (const specifier of node.specifiers) {
+        const source = node.source?.value;
+        const isDatabase = isDatabaseModule(source);
+        const isOutbox = isOutboxModule(source);
         addBinding(activeScope, specifier.local.name, {
           kind: "import",
           database:
             specifier.type === "ImportDefaultSpecifier" &&
             node.importKind !== "type" &&
             specifier.importKind !== "type" &&
-            isDatabaseModule(node.source?.value),
+            isDatabase,
         });
+        if (isDatabase && specifier.type === "ImportSpecifier") {
+          const importedName =
+            specifier.imported?.name ?? specifier.imported?.value;
+          if (importedName === "DatabaseInstance") {
+            addTypeBinding(activeScope, specifier.local.name, {
+              kind: "databaseTypeRoot",
+            });
+          }
+        }
+        if (isOutbox && specifier.type === "ImportSpecifier") {
+          const importedName =
+            specifier.imported?.name ?? specifier.imported?.value;
+          if (importedName === "DbTransaction") {
+            addTypeBinding(activeScope, specifier.local.name, {
+              kind: "transactionTypeRoot",
+            });
+          }
+        }
       }
+    } else if (node.type === "TSTypeAliasDeclaration") {
+      addTypeBinding(activeScope, node.id?.name, {
+        kind: "typeAlias",
+        typeAnnotation: node.typeAnnotation,
+        typeParameters: node.typeParameters,
+      });
     }
 
     for (const [key, value] of Object.entries(node)) {
@@ -369,6 +515,14 @@ function collectStaticBindings(ast) {
 
   walk(ast, rootScope);
   const bindings = { nodeScopes, parents, rootScope };
+  for (const scope of scopes) {
+    for (const binding of scope.bindings.values()) {
+      if (binding.kind !== "parameter" || !binding.typeAnnotation) continue;
+      binding.database = ["database", "transaction"].includes(
+        resolveDatabaseType(binding.typeAnnotation, scope, bindings),
+      );
+    }
+  }
   visit(ast, (node) => {
     if (!callTypes.has(node.type)) return;
     const callee = unwrap(node.callee);
@@ -547,11 +701,10 @@ export function queryReadViolations(source, file) {
       if (value?.kind === "queryRead") {
         add(value.method, value.origin?.start ?? node.property.start);
       } else if (value?.kind === "transactionMethod") {
-        const parent = bindings.parents.get(node);
-        const callback = unwrap(parent?.arguments?.[0]);
+        const directCall = directCallForCallee(node, bindings.parents);
+        const callback = unwrap(directCall?.arguments?.[0]);
         const isDirectInlineTransactionCall =
-          callTypes.has(parent?.type) &&
-          unwrap(parent.callee) === node &&
+          directCall !== null &&
           ["FunctionExpression", "ArrowFunctionExpression"].includes(
             callback?.type,
           );
