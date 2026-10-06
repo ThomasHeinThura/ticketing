@@ -1,5 +1,51 @@
 ## Status First
 
+Implementation snapshot: 2026-10-06 20:06 UTC (7 October in Yangon). Accepted main remains `3096cb044bdf6ae98488bfc385f532fa6386343a`; reviewed OrbStack DEV remains source `08842235047a3ab2714427edce80331b94558150` in shadow mode.
+
+| Phase | Implementation | Integration | Acceptance / operational closure |
+| --- | --- | --- | --- |
+| P0 | Complete auth/UI/CI batch; canonical project-denial repair pushed at `8f6ca5375171eb0740fae7d4eecfe56deaef2c0b` | Sole closure #583; later features excluded | Current-head CI/review pending; prior hosted G11 18/22; strict/rollback, observation compatibility and finalizer open |
+| P1 | Saved-view checkpoint `7163ad86cb558684c72855232041270b20254d03`; PG17/17 | Isolated; migration0118 provisional | Lead contract and integrated acceptance open |
+| P2 | Approval continuity/key-ceiling checkpoint `54858055d2a623038478756e76a570b8c92e91c5`; lifecycle1/1 | Isolated post-P0 checkpoint | Review/integration open |
+| P3 | Mounted OIDC mapping checkpoint `2b2e72f18c89db2c0a7cef4650f1fabea2fed2d9`; PG6/6, policy88, OpenAPI233 | Isolated post-P0 checkpoint | Authority-cache publication and provider acceptance open |
+| P4 | Notification eligibility checkpoint `7ef71d6b73035e1b013b8e573adb3b0f9c5035e5`; unit10/10, PG8/8 | Predicate isolated; worker activation unwired | Timing/destination contracts and integrated acceptance open |
+
+### What changed
+
+The complete auth/UI/CI source has three independent Luna bulk clearances at `1cf9dcc9a163ce48c0a0c19695774e725da90606`, an independent Luna delta clearance for the subsequent native-input PNG, and a further independent full Sol security clearance at `d479a72a3dd3f4f48473e62d5d933ad83c94fa2c`. These are source reviews, not operational or phase acceptance. Hosted d479 G8 passes all seven screens and144 stories. Its G11 fails18/22: LCP2608/2500ms, state340.3/200ms, assignment253.4/200ms and board707.7/500ms. List495.3/500ms passes. The earlier6b7 result21/22 remains historical; the PNG-only descendants change no runtime source, so timing variation is not evidence of remediation.
+
+Existing October4 authority resolves valid missing/foreign project GET masking as404. No new Thomas decision is required. The bounded eight-file repair is pushed at8f6ca537: eleven route declarations/snapshot and shared denial handling, with no grant, reach predicate, policy, UI, migration or dependency changes. Malformed/NUL400, reached capability denial403 and mutation behavior remain. Author proof passes focused PG18 one file/one comprehensive test, route-policy14 files/88 tests, OpenAPI173 operations and typecheck9 packages. Fresh delta review is underway; d479 clearance does not clear8f6.
+
+### What is being worked on now
+
+#583 has one strong independent Luna reviewing the bounded denial delta; current-head Sol follows ordinary clearance. A separate lane completes the affected-screen browser evidence matrix against pinned unchanged UI source, with mocked data explicitly disclosed. The operational runner author validates the complete private batch offline: route-specific workspace/time-entry expectations, all eleven project404 expectations, and separate key/session proofs in an enforcement-off/shadow-only path. Original failed runs are preserved. Candidate pinning and runtime execution wait for reviews. Performance profiler expansion has stopped; incomplete captures remain diagnostic, with no source fix or acceptance claimed.
+
+### Critical path
+
+1. Restore the existing hosted G11 contract to22/22 with an evidence-supported bounded product correction; freeze source.
+2. Clear the current denial delta, operational runner reviews and all exact-head required CI checks; record genuine review evidence.
+3. Build/boot the reviewed image and complete real auth, installer, affected-screen and off/shadow/strict/rollback proof.
+4. Settle public-config evidence substitution and independently adjudicate the actual October4/5/6 partial observations against final source.
+5. Protected integration, conditionally authorized reviewed DEV/UAT cutover/rollback, fresh independent Sol phase finalizer and administrative closure.
+
+### Misalignment / drift
+
+#583 is the sole P0 closure vehicle. #589 is the canonical post-P0 train; #581 is preserved and superseded without merge. No later feature or migration is added to P0. #587 remains diagnostic only. Migration0088–0117 and saved-view0118 remain provisional; no0119 is allocated. Earlier status paragraphs and PR bodies are historical where their head/results differ. No repeated full review panel is queued for the bounded denial delta.
+
+### Concerns
+
+Four hosted performance checks are currently red; the source-equivalent21/22 run cannot close them. Do not change thresholds, fixtures or retries, or continue open-ended profiling. The repaired operational runner still needs independent review and real execution; the original130-pair failure stays failed. Cookie-session provenance supports the original observation actors, while API-key behavior requires separate current proof. Missing private-runner byte hashes alone do not create a new gate or observation restart. P3 cache publication and P4 unresolved delivery outcomes remain later-phase residuals.
+
+### Decisions needed from Thomas
+
+The public-config evidence substitution remains held: explicit source-bound three-date public200/pre-guard evidence in place of impossible shadow tally eligibility. The project-denial question is resolved by existing October4 authority. Later lead, versioned pending-action route, approver-picker, quiet-hours and digest timing questions remain in their owning lanes. No repeat DEV/UAT cutover approval is requested; the adopted directive already authorizes it conditionally after clean reviewed proof.
+
+### Next merge candidates
+
+Only #583 after all required gates genuinely clear. Post-P0 #589 and isolated P1–P4 checkpoints follow dependency-safe integration. No candidate is currently merge-ready, no new source is deployed, and no phase is claimed complete.
+
+## Status First
+
 Implementation snapshot: 2026-10-06 19:33 UTC (7 October in Yangon). Accepted main remains `3096cb044bdf6ae98488bfc385f532fa6386343a`.
 
 | Phase | Implementation | Integration | Acceptance / operational closure |
