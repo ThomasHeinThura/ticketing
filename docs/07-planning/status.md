@@ -1,3 +1,55 @@
+## October 6 bulk implementation and actual remaining failures — 11:48 UTC
+
+- **P0 #583:** exact product `08842235047a3ab2714427edce80331b94558150`
+  clears two independent ordinary contexts and the full independent GPT-6 Sol security
+  pass. Its exact image builds. Hosted PostgreSQL passes136 files/1652 tests; browser
+  smoke, G4 and G8 pass. Hosted G11 remains17/22, with unchanged list, LCP, state,
+  assignment and board budgets failing. No budget change, retry-until-green or performance
+  improvement is claimed. The source-bound GitHub merge-ref has the same Git tree as088.
+- **P0 runtime acquisition:** the complete private runner now separates real off/shadow
+  and strict windows, captures full owned resource identities before fallible operations,
+  uses an explicit labeled PostgreSQL volume, and requires a durable successful cleanup
+  receipt before success. Successive independent operational passes caught real defects,
+  rather than clearing the runner based on its offline tests. Final47 passes47 offline
+  tests but remains blocked: nested cleanup uses the wrong local scope for proxy identity,
+  so normal proxy cleanup cannot pass. A structural helper and real in-process server/thread
+  cleanup regression batch is active. Final47 is preserved before correction. No new runtime
+  release or acquisition has executed, and original failed records remain unchanged.
+- **Evidence integrity:** the46-test source revision was not separately retained.
+  The available earlier immutable sibling is the39-test revision, not46; the46 blocker
+  report and operator records remain records, not reconstructed source backups. The
+  current packet and audit explicitly record this gap. No historical source is backfilled.
+- **P0 #587:** exact `d8cd2704dbefad28d599667afefd1c34944699df`
+  implements parent-edge CPU profile attribution without changing canonical measurements
+  or budgets. Independent ordinary review found that profile nodes, samples and profile
+  keys can accumulate without bounds before post-capture truncation. A complete ingestion
+  bound and omission regression batch is active before its security pass or new capture.
+  Its focused9 tests and web typecheck passing do not clear that known defect.
+- **P2 #586:** exact `2120278369e549d39e07bc7f926f51946f4a27b1`
+  completes the defined approval lifecycle and feature-disable continuity implementation.
+  Two real PostgreSQL journeys pass, including current-reach decisions, withdrawal,
+  feature-off continuity, workflow gates, expiry and reminders. The owned test container,
+  volume and network are independently verified absent. Full hosted CI remains red:
+  PostgreSQL passes146/148 files and1718 tests, with an omitted new policy source in the
+  strict test fixture and an unordered SLA audit assertion failing. Schema/migration
+  no-op drift, stale generated route metadata, my-work visual inventory scope, contrast
+  contracts, a concurrent checker-copy fixture race and OpenAPI drift also remain.
+  These are queued as one complete integration repair batch, not considered satisfied by
+  the two focused approval journeys. The already asked approver-picker contract remains
+  pending; no browser, image boot, provider delivery or P2 completion is claimed.
+- **P3:** a separate Luna implementation lane is completing customer host/stored-session
+  boundaries, provider separation, portal sign-in UI and the authoritative runtime auth
+  configuration storage/read/reload seam. It reserves migration0117 only because the
+  specified instance_plugin_config table is genuinely absent. Undefined invitation and
+  email-discovery contracts remain narrow fail-closed paths; no invented authority or
+  customer authentication fallback is introduced. P2 and P3 edit partitions are separate.
+- **Program:** accepted main remains3096cb0; persistent OrbStack DEV remains the prior
+  reviewed deployment. P4 query ownership and notification work remain in their prepared
+  branches. P0 still needs actual compatible runtime evidence, current performance and
+  required exact-head gates, remaining config/task prerequisites and the additional fresh
+  Sol phase finalizer. No calendar wait, protected merge, date carry-forward, persistent
+  deployment, production or phase completion is claimed.
+
 ## October 6 complete approval batch and exact asset correction — 09:08 UTC
 
 - **P0 #583:** current product head `08842235047a3ab2714427edce80331b94558150`
