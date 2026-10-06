@@ -1261,7 +1261,6 @@ describe("P0 #557: real Node HTTP and WebSocket adapter", () => {
 
   it("rejects session upgrades before 101 for missing, foreign, wrong-host, or wrong-portal boundaries", async () => {
     const member = await createWorkspaceMember();
-    mockAuthenticatedSession(member.user);
     const { app } = createApp();
     const node = createNodeServer(app);
     closeServer = node.close;
@@ -1269,10 +1268,11 @@ describe("P0 #557: real Node HTTP and WebSocket adapter", () => {
     const url = websocketUrl(node.server, "/api/ws");
     const cookie = "__Host-tdk_agent_session=integration-session";
 
-    // The session mock is not consulted for an upgrade without a browser Origin:
-    // authentication fails closed before the later Origin/session binding check.
-    // The pure origin-policy tests cover the authenticated missing-Origin case.
+    // Keep this first request truly unauthenticated: the session mock below returns a
+    // persisted-session shape even when this Node-socket fixture omits a cookie. The pure
+    // origin-policy tests cover the separately authenticated missing-Origin case.
     expect(await rejectHandshake(url, { host: "localhost:1337" })).toBe(401);
+    mockAuthenticatedSession(member.user);
     expect(
       await rejectHandshake(url, {
         host: "localhost:1337",
@@ -1288,6 +1288,8 @@ describe("P0 #557: real Node HTTP and WebSocket adapter", () => {
       }),
     ).toBe(404);
 
+    // Request authentication invalidates a session bound to the other portal as 401 before
+    // the later WebSocket origin policy can return its authenticated wrong-portal 403.
     mockAuthenticatedSession(member.user, { portal: "customer" });
     expect(
       await rejectHandshake(url, {
@@ -1295,7 +1297,7 @@ describe("P0 #557: real Node HTTP and WebSocket adapter", () => {
         origin: "http://localhost:1337",
         cookie,
       }),
-    ).toBe(403);
+    ).toBe(401);
 
     expect(
       await rejectHandshake(url, {
@@ -1496,13 +1498,15 @@ describe("P0 #557: real Node HTTP and WebSocket adapter", () => {
       .update(schema.sessionTable)
       .set({ portal: null })
       .where(eq(schema.sessionTable.id, agentSession.id));
+    // Unbound legacy sessions fail closed at authenticated request resolution (401), as
+    // specified by auth-and-identity.md; the WebSocket handler never sees them as valid.
     expect(
       await rejectHandshake(url, {
         host: "localhost:1337",
         origin: "http://localhost:1337",
         cookie: firstCookie,
       }),
-    ).toBe(403);
+    ).toBe(401);
     const unboundSession = await rawGetToHost(
       address.port,
       "/api/auth/get-session",
@@ -1510,7 +1514,7 @@ describe("P0 #557: real Node HTTP and WebSocket adapter", () => {
       "http://localhost:1337",
       { cookie: firstCookie },
     );
-    expect(unboundSession.status).toBe(403);
+    expect(unboundSession.status).toBe(401);
 
     await db
       .update(schema.sessionTable)

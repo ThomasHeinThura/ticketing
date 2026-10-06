@@ -1061,6 +1061,7 @@ const workItem = apiRouter<
         workspaceId,
         c.get("userId"),
         "work_item:set_priority",
+        c.get("apiKey"),
       );
     }
 
@@ -1172,6 +1173,7 @@ const workItem = apiRouter<
       "work_item:assign",
       "work_item:update",
       callerPerson !== undefined && callerPerson.id === assigneeId,
+      c.get("apiKey"),
     );
 
     const { actorId, actorType } = resolveActor(
@@ -1305,6 +1307,7 @@ const workItem = apiRouter<
       workspaceId,
       userId,
       operation === "delete" ? "work_item:delete" : "work_item:assign",
+      c.get("apiKey"),
     );
 
     const { actorId, actorType } = resolveActor(
@@ -1366,6 +1369,7 @@ const workItem = apiRouter<
       callerPerson !== undefined &&
         current.assigneeId !== null &&
         callerPerson.id === current.assigneeId,
+      c.get("apiKey"),
     );
 
     const { actorId, actorType } = resolveActor(

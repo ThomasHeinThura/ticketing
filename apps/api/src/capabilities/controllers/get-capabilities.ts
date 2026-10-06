@@ -44,7 +44,12 @@ async function hasServiceCalendarManageCapability(
     // This separate exact check mirrors the canonical guard used by the
     // service-calendar write routes. It intentionally does not infer
     // sla_policy:manage from a legacy workspace-management permission.
-    await assertCallerHasCapability(workspaceId, userId, "sla_policy:manage");
+    await assertCallerHasCapability(
+      workspaceId,
+      userId,
+      "sla_policy:manage",
+      c.get("apiKey"),
+    );
     return true;
   } catch (error) {
     if (error instanceof HTTPException && error.status === 403) return false;

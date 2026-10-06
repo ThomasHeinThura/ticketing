@@ -1275,6 +1275,7 @@ export function createApp(
           asset.workspaceId,
           c.get("userId"),
           "workspace:read",
+          c.get("apiKey"),
         );
       } catch (error) {
         if (error instanceof HTTPException && error.status === 403) {
