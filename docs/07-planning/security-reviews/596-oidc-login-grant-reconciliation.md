@@ -1,5 +1,84 @@
 # PR596 — complete login grant reconciliation and structural provenance repair
 
+## Completed repository-read relocation delta
+
+**Reviewed head:** `b78a0ff467ada896ae7e7586aeae62575692ba13`
+
+Fresh independent Luna ordinary review and lightweight Sol confirmation are CLEAR on the complete three-file relocation delta from17c351cb. All nine reads retain their executor, query shape, lock and caller timing. No authority or gate pass/fail semantics changed. Author actual native acquisition passes2files16tests; each independent reviewer instead ran query gate, API four-project typecheck and diff checks, without claiming the author's PostgreSQL execution as their own. This source delta does not clear inherited hosted/integration, provider or phase gates.
+
+### Independent ordinary report (verbatim)
+
+# P3 OIDC query relocation review — GPT-6 Luna
+
+- **Candidate:** `b78a0ff467ada896ae7e7586aeae62575692ba13`
+- **Base:** `17c351cb52f2b092b6a4ebc24e6d26bd9f3920ed`
+- **Independence:** Fresh reviewer context; did not author, direct, or remediate this candidate.
+- **Scope:** Exact three-file delta in `apps/api/src/identity/repository.ts`, `oidc-login.ts`, and `oidc-group-mapping-admin.ts`; specifically the nine Drizzle reads moved into repository helpers and their immediate transaction/locking call sites. This is a bounded relocation review, not a re-review of the unchanged OIDC feature.
+- **Risk classification:** Security-scope identity paths. The reviewed delta only moves existing query expressions behind repository functions and does not alter authority decisions or gate semantics. Per the repository's lightest security-scope tier, one fresh ordinary Luna review plus an independent lightweight Sol confirmation is required.
+
+## Verdict
+
+**CLEAR — no blocking or non-blocking findings.** The nine moved reads preserve their filters, joins/projections, ordering, limits, row-lock clauses and execution context. The closure discovery → ordered lock → re-read path remains in the caller and unchanged. The post-commit cache invalidation/session issuance boundary is outside the changed query expressions and remains unchanged.
+
+## Review details
+
+Compared the baseline query expressions at the exact base SHA against the repository helpers and their call sites:
+
+1. `getOidcConnectionSnapshot`: `tx`, all connection columns, id predicate, limit one.
+2. `findOidcIdentityForClosure`: `tx`, same connection/issuer/subject predicates, same `{id, personId}` projection and limit one.
+3. `listAdmissionFailedOidcGrants`: `tx`, same person/external-identity/connection/source/revocation filters, projection, id ordering and `FOR UPDATE`.
+4. `getOidcPersonForSignIn`: `tx`, full person row, id predicate, limit one.
+5. `listActiveOidcGrantsForSignIn`: `tx`, same person/connection/external-identity/source/revocation filters, selected grant fields, id ordering and `FOR UPDATE`.
+6. `listOidcMappingsForReconciliation`: `tx`, same connection filter, full mapping rows and id ordering.
+7. `getOidcRoleForReconciliation`: `tx`, full role row, id predicate, limit one.
+8. `getOidcGroupMappingSnapshot`: global `db`, same connection+mapping predicates, full row and limit one. This matches the prior callback's global `db.select` executor; it was not changed to the transaction executor.
+9. `listOidcMappingAffectedUserIds`: `tx`, person `userId` projection and `inArray(person.id, personIds)`. Copying the readonly id list to a mutable array for Drizzle typing preserves the input values and SQL semantics.
+
+Login still performs non-authoritative connection/identity discovery before `lockScimGrantClosure`, then locks/revalidates the connection and identity before reconciliation. The mapping PATCH still uses its pre-existing global-db mapping/connection snapshots for closure discovery, then locks and re-reads through `tx`; no relocated helper acquires a new lock or changes that order. Group/admin invalidation remains after the transaction. No changed line touches session issuance.
+
+## Checks actually run
+
+- `pnpm check:queries` — passed: all recognized Drizzle read-method calls remain owned by `repository.ts` files.
+- `pnpm --filter @taskdesk/api typecheck` — passed (all four configured API TypeScript projects).
+- `git diff --check 17c351cb52f2b092b6a4ebc24e6d26bd9f3920ed..HEAD` — passed.
+- PostgreSQL/integration was not rerun: this delta is query relocation only, and direct source comparison establishes executor and query-shape equivalence. No database or Docker work was performed.
+
+No files in the candidate worktree were modified.
+
+### Independent security confirmation (verbatim)
+
+# P3 OIDC query relocation — independent GPT-6 Sol security confirmation
+
+**Reviewed head:** b78a0ff467ada896ae7e7586aeae62575692ba13
+
+- Comparison base: `17c351cb52f2b092b6a4ebc24e6d26bd9f3920ed`; candidate worktree HEAD was verified equal to the reviewed head and clean.
+- Independence: fresh GPT-6 Sol reviewer context; I did not author, direct, or remediate the candidate.
+- Ordinary review: fresh GPT-6 Luna `p3-query-relocation-luna-b78a0ff4.md`, CLEAR on the same SHA.
+- Classification: identity security-scope path, but this exact three-file delta only relocates nine reads to `identity/repository.ts`. It makes no authority or gate pass/fail change, so the lightweight Sol confirmation tier applies.
+
+## Verdict
+
+**CLEAR — no blocking or non-blocking findings in this bounded delta.** The nine helper calls use the same executors, selected fields, predicates, order, limit, and row-lock clauses as their inline predecessors. The closure-discovery, ordered-lock, re-read, and post-transaction invalidation/session-issuance ordering remains at the same caller positions.
+
+## Source checked
+
+I compared the exact base-to-head diff of `apps/api/src/identity/repository.ts`, `oidc-login.ts`, and `oidc-group-mapping-admin.ts`. In login, the connection and identity observations still use the transaction before `lockScimGrantClosure`, then the locked connection/identity are re-read before admission and grant changes. Both grant queries retain `personId`, connection, external identity, the two source kinds, non-revocation, `ORDER BY id`, and `FOR UPDATE`. Person, mappings, and JIT role reads remain in the transaction and keep their predicates/limits. The mapping PATCH discovery read still uses global `db` (as it did at base), followed by the same transaction closure lock and locked re-read. Affected-user lookup retains the transaction and person-id filter; copying the readonly input array preserves its values. No changed line moves a write, proof consumption, audit event, cache invalidation, or session issuance.
+
+Relevant authority sources checked: `AGENTS.md`, `CLAUDE.md`, `docs/04-engineering/agent-workflow.md`, identity decision log, and `docs/01-architecture/rbac.md` identity-grant/connection rules. This confirms relocation equivalence only; it is not acceptance of the unchanged OIDC feature.
+
+## Checks actually run
+
+- `git diff --check 17c351cb..b78a0ff4`: passed.
+- `pnpm check:queries`: passed; recognized Drizzle reads are owned by repository files.
+- `pnpm --filter @taskdesk/api typecheck`: passed all four configured TypeScript projects.
+- I did not run PostgreSQL integration, Docker, browser, or deployment checks. The author's reported native/domain/permissions tests are separate evidence and were not re-run or counted as my checks.
+
+## Residual / merge boundary
+
+This verdict is bound to the source SHA above. It does not clear the inherited OpenAPI, G8/G11, browser, deployment, full PR CI, or phase-finalizer obligations. A changed candidate head needs delta review at its actual risk tier; only the top-level orchestrator may assess merge gates.
+
+---
+
 **Reviewed head:** `bc03f460c9e52ca6ba8dc11b7fdcfe10c6dcd049`
 
 This records the independent full review atb7 and the fresh independent current-head
