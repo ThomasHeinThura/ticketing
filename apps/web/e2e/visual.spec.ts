@@ -206,6 +206,16 @@ async function installAuthenticatedFixture(page: Page) {
         page: { previousCursor: null, nextCursor: null, hasMore: false },
         meta: { total: 1 },
       };
+    } else if (path.endsWith("/api/service-calendars/visual-calendar/usage")) {
+      body = {
+        calendarId: visualCalendar.id,
+        counts: {
+          projects: 0,
+          slaPolicyVersions: 1,
+          currentSlaPolicies: 1,
+          workItems: 0,
+        },
+      };
     } else if (
       path.endsWith("/api/service-calendars/visual-calendar/preview")
     ) {
@@ -556,7 +566,11 @@ test("service calendar editor screen @visual", async ({ page }) => {
   await expect(
     page.getByRole("heading", { name: "Support coverage" }),
   ).toBeVisible();
-  await expect(page.getByText("40 hours of cover per week")).toBeVisible();
+  await expect(
+    page.getByText(
+      "0 projects; 1 current policies across 1 versions; 0 work items.",
+    ),
+  ).toBeVisible();
   await expect(page).toHaveScreenshot("service-calendar-editor.png", {
     animations: "disabled",
     caret: "hide",
