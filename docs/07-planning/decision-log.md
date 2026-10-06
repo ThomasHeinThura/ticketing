@@ -1,3 +1,43 @@
+### 2026-10-06 · Apply standing disposable verification to the reviewed 088 asset correction
+
+**Orchestrator decision under Thomas's standing authorization:** prepare the next reversible
+isolated verification for exact product `08842235047a3ab2714427edce80331b94558150`.
+The earlier 3096 and C468 applications, immutable failed observations and pinned files remain
+historical records. This is a new application of the October 2 three actual UTC dates rule
+and October 4 opt-in per-policy-source strict verification decision, not Thomas's personal
+approval of a new source digest, a gate waiver or an automatic carry-forward of earlier dates.
+
+Two independent ordinary reviewers and the fresh full independent GPT-6 Sol security pass
+clear the product correction. Reviewer B's exact-source asset integration passed 8 tests and
+its acquired PostgreSQL container and volume are verified absent. Product reach uses the
+persisted project's workspace; capability scope uses the persisted asset's workspace.
+The exact product image build succeeds, but a successful build is not boot/runtime acceptance.
+Hosted G11 remains red, with five failed budgets; review evidence and all required current
+checks remain necessary for protected merge. No hosted performance result is waived.
+
+The next private runner must receive independent review on frozen bytes after correcting its
+real anonymous database-volume leak. Acquire explicit run-owned labeled volumes, validate
+ownership before use, capture exact container and mount identities before teardown, and
+remove only unused owned resources. It must acquire separate explicitly mode-bound off/shadow
+and strict windows, fail acceptance on unsupported statuses or unexplained comparisons,
+preserve diagnostic logs before restart/rollback, reconcile events and tally coverage, and
+verify complete cleanup. Original C468 strict requests must never be relabelled shadow.
+
+The standing bounds remain platform-only followed by the registry-ordered 27 directly observed
+non-task sources. Preserve the schema-80 baseline source
+`b80ff7c3ef723a280bb35cfadec0a71b1ad14ae3` and image
+`sha256:6a6315c2890b5677f9afb858c3f81aa86c181e7d3270fa7164d889111e214628`.
+Only root may issue the final independently pinned application, delegated authorization,
+resource-window and runtime-release records after genuine ordinary/Sol operational clearance
+and exclusive resource release. This entry prepares the scope and records no execution.
+
+No config/task selection, pending public-config exception, persistent DEV mutation, production,
+protected merge, enforcement activation or phase completion is authorized by this test.
+Actual source-compatible like-mode evidence is required before any date carry-forward.
+The previous pinned decision-log checkout is preserved; this new application has its own path.
+
+**Recorded:** top-level orchestrator, 2026-10-06, applying existing session authorization.
+
 ### 2026-10-06 · Bound approval reach-loss and storage alignment
 
 Under Thomas's standing instruction to implement P0–P4 in parallel, take recommended
