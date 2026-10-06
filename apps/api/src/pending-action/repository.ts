@@ -1215,13 +1215,16 @@ export async function approveSavedViewDeletion(input: {
         .set({ value: pinnedIds.filter((id) => id !== targetId) })
         .where(eq(userPreferenceTable.id, preference.id));
     }
+    // `view` was re-read FOR UPDATE and its asserted version checked above. Holding that
+    // row lock through this transaction makes a second timestamp equality redundant; in
+    // particular, `updated_at` is a timestamp-without-time-zone column, so binding a JS
+    // Date back into SQL can compare differently across database/session time zones.
     const [deleted] = await tx
       .delete(savedViewTable)
       .where(
         and(
           eq(savedViewTable.id, targetId),
           eq(savedViewTable.workspaceId, view.workspaceId),
-          eq(savedViewTable.updatedAt, view.updatedAt),
         ),
       )
       .returning({ id: savedViewTable.id });

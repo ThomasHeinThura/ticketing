@@ -174,4 +174,7 @@ test("saved view deletion requests enter the pending-action review flow", async 
   await expect(
     page.getByText("The pending action was cancelled."),
   ).toBeVisible();
+  await page.screenshot({
+    path: testInfo.outputPath("saved-view-cancelled.png"),
+  });
 });

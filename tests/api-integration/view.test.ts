@@ -12,10 +12,12 @@ import { mockAnonymousSession, mockAuthenticatedSession } from "./helpers/auth";
 import { resetTestDatabase } from "./helpers/database";
 import { createWorkspaceMember, requireRow } from "./helpers/fixtures";
 
-/** `saved_view.created_by`/`user_preference.person_id` need a real `person` row for the
- * member's own `user_id` -- `createWorkspaceMember` seeds `workspace_member`, not
- * `person`. */
+/** Return the provisioned `person` row or create one for helpers that only seed users. */
 async function addPerson(userId: string) {
+  const existing = await db.query.personTable.findFirst({
+    where: eq(schema.personTable.userId, userId),
+  });
+  if (existing) return existing;
   const organisation = await ensureInternalOrganisation();
   return requireRow(
     await db
@@ -441,6 +443,16 @@ describe("API integration: saved views", () => {
     });
     expect(pinnedBeforeApproval?.value).toEqual([created.id]);
 
+    const assertedVersion = Number(
+      (pendingRow?.targetVersions as Record<string, unknown> | undefined)?.[
+        created.id
+      ],
+    );
+    const viewBeforeApproval = await db.query.savedViewTable.findFirst({
+      where: eq(schema.savedViewTable.id, created.id),
+    });
+    expect(viewBeforeApproval?.updatedAt.getTime()).toBe(assertedVersion);
+
     const approval = await app.request(
       `/api/me/pending-actions/${pending.pendingActionId}/approve`,
       {
@@ -449,7 +461,11 @@ describe("API integration: saved views", () => {
         body: "{}",
       },
     );
-    expect(approval.status, await approval.clone().text()).toBe(200);
+    const approvalFailure =
+      approval.status === 200
+        ? ""
+        : `${await approval.clone().text()}; pending=${JSON.stringify(await db.query.pendingActionTable.findFirst({ where: eq(schema.pendingActionTable.id, pending.pendingActionId) }))}; view=${JSON.stringify(await db.query.savedViewTable.findFirst({ where: eq(schema.savedViewTable.id, created.id) }))}`;
+    expect(approval.status, approvalFailure).toBe(200);
     await expect(approval.json()).resolves.toMatchObject({
       id: pending.pendingActionId,
       state: "executed",
@@ -549,6 +565,88 @@ describe("API integration: saved views", () => {
       where: eq(schema.savedViewTable.id, created.id),
     });
     expect(remaining?.name).toBe("Changed after request");
+  });
+
+  it("cancels a saved-view deletion without removing its view or pin and permits a fresh request", async () => {
+    const member = await createWorkspaceMember();
+    const person = await addPerson(member.user.id);
+    mockAuthenticatedSession(member.user);
+    const { app } = createApp();
+    const now = new Date();
+    await db.insert(schema.sessionTable).values({
+      id: `session-${member.user.id}`,
+      token: `token-${member.user.id}`,
+      userId: member.user.id,
+      portal: "agent",
+      expiresAt: new Date(now.getTime() + 60 * 60 * 1000),
+      createdAt: now,
+      updatedAt: now,
+    });
+    const createResponse = await app.request("/api/views", {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({
+        workspaceId: member.workspace.id,
+        name: "Keep after cancelling",
+        scope: "workspace",
+        scopeId: member.workspace.id,
+        layout: "list",
+        query: { entity: "work_item" },
+      }),
+    });
+    expect(createResponse.status).toBe(200);
+    const view = (await createResponse.json()) as { id: string };
+    const pinResponse = await app.request(`/api/views/${view.id}/pin`, {
+      method: "POST",
+    });
+    expect(pinResponse.status).toBe(200);
+
+    const deleteResponse = await app.request(`/api/views/${view.id}`, {
+      method: "DELETE",
+    });
+    expect(deleteResponse.status).toBe(202);
+    const pending = (await deleteResponse.json()) as {
+      pendingActionId: string;
+    };
+    const cancelResponse = await app.request(
+      `/api/me/pending-actions/${pending.pendingActionId}/cancel`,
+      { method: "POST" },
+    );
+    expect(cancelResponse.status, await cancelResponse.clone().text()).toBe(
+      200,
+    );
+    await expect(cancelResponse.json()).resolves.toMatchObject({
+      id: pending.pendingActionId,
+      state: "cancelled",
+    });
+    expect(
+      await db.query.savedViewTable.findFirst({
+        where: eq(schema.savedViewTable.id, view.id),
+      }),
+    ).toBeDefined();
+    const preference = await db.query.userPreferenceTable.findFirst({
+      where: and(
+        eq(schema.userPreferenceTable.personId, person.id),
+        eq(schema.userPreferenceTable.key, "pinned_view_ids"),
+      ),
+    });
+    expect(preference?.value).toEqual([view.id]);
+
+    const freshDelete = await app.request(`/api/views/${view.id}`, {
+      method: "DELETE",
+    });
+    expect(freshDelete.status).toBe(202);
+    const freshPending = (await freshDelete.json()) as {
+      pendingActionId: string;
+    };
+    expect(freshPending.pendingActionId).not.toBe(pending.pendingActionId);
+    const deletedEvents = await db.query.outboxTable.findMany({
+      where: and(
+        eq(schema.outboxTable.kind, "saved_view.deleted"),
+        eq(schema.outboxTable.workspaceId, member.workspace.id),
+      ),
+    });
+    expect(deletedEvents).toHaveLength(0);
   });
 
   it("toggles a view's pin state, persisted per person per workspace", async () => {
