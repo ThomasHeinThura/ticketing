@@ -2,14 +2,23 @@
 
 - **P0:** the three actual representative UTC observation dates are reconciled. Runtime
   enforcement and rollback acceptance remain incomplete; the private strict adapter is under
-  one structural provenance-repair batch after independent Sol findings. Public-config tally
+  one structural provenance-repair batch after independent Sol findings. The latest exact
+  private candidate remains blocked: a real probe executes a mutated helper before its byte
+  verification, and the migration-baseline image pin is overrideable. Both invariants are
+  being repaired together before another current-hash Sol pass. Public-config tally
   substitution remains a concrete DEV/UAT-only exception pending Thomas, not an inferred waiver.
   The previously missing installer is implemented and pushed as draft #583 at `b7d4a360`;
-  22 offline adversarial tests pass, but independent review, required CI and applicable runtime
-  acceptance are pending. The additional whole-P0 Sol finalizer is provisional, not CLEAR.
+  22 offline adversarial tests pass. The complete three-context ordinary panel found one
+  installer blocker: unsafe Arch package database refresh without a full upgrade. Its whole
+  correction batch also addresses actual static failures. Installer hosted G8/G4/E2E/PG pass;
+  its accepted-main rendering baseline is 20/22 in G11 (LCP 2600 ms, board 633.2 ms), and
+  new transitive advisories fail the audit. Bounded compatible fixes are active; no unchanged
+  rerun or budget exception is claimed. Independent Sol and runtime acceptance remain pending.
+  The additional whole-P0 Sol finalizer is provisional, not CLEAR.
 - **P1–P4:** complete implementation slices continue in parallel. Fresh ordinary review A
   and B clear their assigned API/domain/identity/migration scopes at exact source `326203ba`;
-  the UI-only rendering delta is composed locally at `4d80d9cb`. Full current-source review,
+  the UI-only rendering delta is composed locally at `4d80d9cb`. Hosted PostgreSQL at
+  `326203ba` passed 145 files / 1717 tests; G4 accessibility passed. Full current-source review,
   independent Sol, hosted AMD64 visuals/performance and required CI remain before acceptance.
   Actual hosted failures include contract lint, token scanning, visual baselines and new
   transitive dependency advisories; one complete source correction batch is active.
