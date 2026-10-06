@@ -1,5 +1,51 @@
 ## Status First
 
+Implementation snapshot: 2026-10-06 18:12 UTC. Accepted main remains `3096cb044bdf6ae98488bfc385f532fa6386343a`.
+
+| Phase | Implementation | Integration | Acceptance / operational closure |
+| --- | --- | --- | --- |
+| P0 | Combined inherited auth/UI batch passes full native137 files/1654 tests; actual contrast coverage still being reconciled | Sole #583; combined source not frozen | Open: current G11, exact-head source/image/browser/CI/reviews, strict/rollback and observation compatibility, finalizer |
+| P1 | Saved-view batch pushed7163, focused native17/17 | Separate checkpoint;0118 provisional | Open; lead contract held |
+| P2 | Approvals create/decide/withdraw key ceiling and disabled-flag continuity batch pushed54858055 | Separate post-P0 checkpoint | API types and full focused lifecycle file1/1 pass; independent review/integration outstanding |
+| P3 | OIDC mapping route/policy/PA-15 source implemented; regression matrix underway | Isolated post-P0 lane; canonical mount held for exclusive ownership | Unverified source; authority-cache publication seam retained as residual |
+| P4 | Send-time reach/preference predicate implemented; regression matrix underway | Isolated post-P0 lane; worker activation unwired | Unverified source; configured quiet-hours returns explicit unresolved predicate outcome, not a sendable worker decision |
+
+### What changed
+
+P2 batch `54858055d2a623038478756e76a570b8c92e91c5` is clean, committed and pushed. It maps current stored key scope into canonical approval capability evaluation and prevents reach-all from bypassing the withdrawal key ceiling, while preserving the session-admin exception. Matching/wrong scopes cover create, decide and withdraw; the same complete lifecycle test retains flag-off continuity and workflow gates. Frozen install, required local workspace builds, API types, Biome, diff and full focused PostgreSQL18 lifecycle file1/1 pass. Original interrupted broad invocation and corrected test fixture scopes/count snapshots are retained in its author packet; cleanup is verified. No phase acceptance is implied.
+
+The P0 contrast measurement of434 rows cannot yet count as full coverage: a local icon helper consumed inside a popup is not traversed correctly. Its old card-selected backdrop appears inconsistent with the actual portal surface. The source-grounded fix must bind the actual helper consumer and portal boundary rather than preserve a false backdrop or omit an occurrence. Original inventories remain evidence.
+
+### What is being worked on now
+
+P0 completes that structural contrast coverage fix before another coordinated measurement/build/G11 window. P3 completes IP-34 mapping regression tests and privately prepares canonical mounting; no concurrent P0 shared-file edits. P4 completes persisted reach/channel-preference tests, including private request and internal-comment boundaries. Both later lanes remain source-only while runtime is reserved as needed for P0.
+
+### Critical path
+
+1. Complete actual P0 contrast coverage and current unchanged-budget performance proof.
+2. Freeze/push sole #583 source and clear appropriate bulk independent review plus Sol security review.
+3. Clear exact-head CI, shipping image/boot and touched-screen evidence.
+4. Settle actual held contracts and prove matching strict/rollback plus independent actual-date compatibility.
+5. Protected integration, fresh separate Sol finalizer, administrative closure.
+
+### Misalignment / drift
+
+Later features remain excluded from P0. #581 is superseded without merge after source/evidence preservation; #589 is canonical post-P0. No additional ordinary review has started on unfinished source. Historical performance and failed130-pair operational evidence are not current clearance. Migration0118 stays provisional and no new suffix is allocated.
+
+### Concerns
+
+Contrast helper/portal state coverage must be demonstrated, not inferred from the row count. P3's cache publication seam is not supplied by P0 frontend invalidation. P4 configured quiet hours cannot authorize send or silently discard delivery while its timing contract is unresolved. Keep these later integration residuals out of P0.
+
+### Decisions needed from Thomas
+
+Previously pending public-config evidence substitution and genuine denial-contract ambiguities remain held, along with the recorded later feature questions. The latest adopted directive already conditionally authorizes reviewed DEV/UAT strict cutover and rollback after clean evidence; no repeat cutover-scope approval is required. No production authorization is inferred.
+
+### Next merge candidates
+
+Only #583 after all exact-head gates clear. #589 and later implementation checkpoints integrate after accepted P0. No current candidate is merge-ready. Reviewed088 remains the OrbStack/Traefik DEV image; no unreviewed source deployment or phase completion is claimed.
+
+## Status First
+
 Latest implementation snapshot: 2026-10-06 17:54 UTC (7 October in Yangon). Accepted main remains `3096cb044bdf6ae98488bfc385f532fa6386343a`.
 
 | Phase | Implementation | Integration | Acceptance / operational closure |
