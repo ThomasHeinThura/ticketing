@@ -1,6 +1,57 @@
 ## Status First
 
+Latest implementation snapshot: 2026-10-06 17:54 UTC (7 October in Yangon). Accepted main remains `3096cb044bdf6ae98488bfc385f532fa6386343a`.
+
+| Phase | Implementation | Integration | Acceptance / operational closure |
+| --- | --- | --- | --- |
+| P0 | Complete inherited key-scope and shared-primitive batch assembled; source-faithful contrast checker remediation underway | Sole closure vehicle #583; combined working source not frozen | Open: current performance, exact-head review/CI/image/browser, strict/rollback contracts, date compatibility and separate Sol finalizer |
+| P1 | Saved-view CRUD/pins/deletion approval continuity and key-scope follow-up pushed at `7163ad86cb558684c72855232041270b20254d03` | Separate checkpoint; migration0118 remains provisional | Final focused PG18 file17/17; lead decision and integrated acceptance remain open |
+| P2 | Retained SLA/calendar/approvals; bounded approved flag-continuity and key-scope completion lane resumed | Canonical post-P0 train #589 | Open |
+| P3 | Retained identity/plugin configuration source | Post-P0 train | Open |
+| P4 | Retained query/outbox/flags/expiry source | Post-P0 train; single migration ledger | Open; query acceptance deferred here by Thomas |
+
+### What changed
+
+The combined P0 working source passes the full owned PostgreSQL18 run:137 files/1,654 tests. The original lone positive failure was a fixture authority mismatch: project reader correctly overrode workspace admin. Explicit project update restores the intended allowed fixture while retaining the key ceiling. That correction supersedes the earlier resolver diagnosis; the separately implemented stored-key subset mapping is not claimed as the cause of that fixture failure. Author proofs do not establish final-SHA acceptance.
+
+The G1 supplier `a709daee4746b117aba0bc618d70dbd56a65c01e` is composed into sole #583. Combined AST checks report zero forbidden raw production tags and zero forbidden Base UI imports. Shared-input tests/stories and real rendered screen evidence are retained. Priority icons now use an actual component binding so the existing contrast gate can resolve callers without adding fabricated backgrounds. One search-row explicit background/state resolution discrepancy remains in the checker; it is not a measured contrast failure.
+
+P1 checkpoint7163 normally composes preserved #589 auth sourcef478. Current key scopes now reach secondary saved-view authorization checks and approval revalidation. Invalidated requests use the registered pending-action audit action with an invalidated outcome. Final author proof: API types,8 scope unit tests and17/17 saved-view PostgreSQL tests pass; owned runtime is cleaned. Earlier mocked approval/cancellation browser evidence remains separately bound to its original checkpoint.
+
+### What is being worked on now
+
+One P0 author completes the generic contrast surface resolver, real positive/negative probes, source occurrence inventory and combined build. The resolver must honor explicit shared-Button backgrounds and actual translucent-state backdrops, fail closed when ambiguous, and preserve the search-row design. After that batch is ready, reserve one quiet coordinated performance capture and implement any remaining measured hot paths together. A separate Luna continues the already approved P2 approvals flag-continuity and key-scope seam; pending picker decisions and new migrations are excluded. Read-only Sol preparation reconciles acceptance inputs without granting review clearance.
+
+### Critical path
+
+1. Finish combined P0 checker/source batch and acquire current unchanged-budget performance proof.
+2. Freeze and push exact #583 source; clear risk-sized bulk independent reviews and full Sol security review.
+3. Clear required CI, shipping image boot, and actual touched-screen verification.
+4. Resolve held normative contracts, prove matching strict/rollback behavior, and independently adjudicate actual Oct4/5/6 observations against frozen source.
+5. Protected integration, separate fresh Sol finalizer, then administrative issue/phase closure.
+
+### Misalignment / drift
+
+#589 is post-P0 integration, never a P0 acceptance dependency. Its current f478 hosted performance is15/22, not historical9ab21/22. Its hosted native failures are retained separately; minimal P0's corrected working-source full native pass does not retroactively clear f478. Old missing-installer/Origin/legacy-UI findings were source-stale and are corrected by the retained source-bound Sol addendum. The original failed130-pair operational capture still has13 denial-contract mismatches and is not strict acceptance. Three actual partial UTC captures are not full-day or72-hour coverage.
+
+### Concerns
+
+Current P0 source is unfinished and cannot yet be reviewed, merged or deployed. Contrast occurrence reconciliation must preserve source coverage, including shared primitives and state backdrops. Performance needs actual current evidence. Original denial/config/task acceptance questions remain held. Later migration numbers and old feature checkpoints remain provisional; preserve their unique intent and serialize final allocation.
+
+### Decisions needed from Thomas
+
+Existing unanswered denial compatibility, public-config observation exception and task/acceptance choices remain pending. Later saved-view lead, pending-action API evolution, approver-picker and quiet-hour/digest questions remain held in their own lanes. No repeat question or new human review checkpoint is introduced.
+
+### Next merge candidates
+
+Only #583 after the complete exact candidate clears all gates. Neither #583's unchanged published088 head nor its dirty working batch is currently merge-ready. #589 remains pushed at `f4789aefd3c3d08595642414dda63770d8973f64`; saved-view7163 is a preserved separate implementation checkpoint. Reviewed088 remains the OrbStack/Traefik DEV deployment. No new deployment, enforcement activation or phase completion is claimed.
+
+## Status First
+
 Latest realignment implementation snapshot: 2026-10-06 17:06 UTC. Accepted main remains `3096cb044bdf6ae98488bfc385f532fa6386343a`.
+
+**Correction 17:14 UTC:** the lone strict positive failure was a fixture authority mismatch, not an established resolver defect. Its project-scoped role lacked update and correctly overrode the workspace-admin role. Explicit project update fixes the positive test while the key ceiling is preserved. Focused native result1/1; seven non-target tests were excluded by the selector, not acceptance. Diagnostics are removed; final full auth native proof remains pending. The earlier resolver diagnosis below is superseded.
+
 
 | Phase | Implementation | Integration | Acceptance / operational closure |
 | --- | --- | --- | --- |
