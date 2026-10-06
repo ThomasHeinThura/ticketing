@@ -302,12 +302,21 @@ stale or expired token cannot authorize a provider call, commit success or relea
 owner's lease. A provider-accepted but uncommitted request may be sent again after retry;
 delivery remains at-least-once, not exactly-once.
 
-This is a target contract. Runtime fan-out, reservations, lock-delayed wall-clock sampling,
-digest grouping/sealing, deadlines, durable attempt authorization, send-time reach checks
-and child/group retention are not implemented. Acceptance cases are specified in
-notifications.md#delivery. The existing
-database clock helper uses transaction-start time and is insufficient for this protocol; it
-must be changed or bypassed.
+The first bounded runtime slice is in `apps/api/src/notification/outbox-drain.ts` and its
+canonical database repository. It implements immediate-child claiming, durable fenced
+attempt authorization, recipient/channel/key reservation acquire/renew/release, the separate
+post-lock and recent-success wall-clock samples, six-attempt backoff/dead-lettering, and
+provider calls outside transactions behind an injected adapter/evaluator seam. Real PostgreSQL
+integration coverage exercises contention, lock-delayed expiry takeover, the six-attempt cap,
+injected success, reach suppression, and digest-key collision rejection.
+
+This is not the complete notifications runtime. `apps/api/src/notification/fanout.ts` provides
+the transactional producer seam, but event-specific recipient/reach resolvers are not wired
+to mutation producers. Digest membership/window calculation and group delivery, scheduler
+registration, concrete `notify.*` adapter registry, and concrete send-time reach/preference/
+quiet-hours evaluator remain integration work. The adapter seam deliberately has no
+default-success implementation.
+Acceptance cases are specified in [notifications.md#delivery](../03-features/notifications.md#delivery).
 
 ## Metrics snapshots
 

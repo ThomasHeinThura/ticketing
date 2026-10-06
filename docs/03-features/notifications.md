@@ -561,7 +561,14 @@ that GET makes no change, then authenticating and explicitly saving the selected
 ## Open questions
 
 None. The prior draft's `work_item.unblocked` recipient gap is resolved by `RH-18`: it targets
-the assignee of the formerly blocked work item. Runtime delivery remains unimplemented.
+the assignee of the formerly blocked work item. The initial direct-child outbox worker now
+implements reservation fencing, retries, deadlines, and attempt limits behind injected
+eligibility and provider seams. A transactional fan-out producer seam exists, but canonical
+event-specific recipient/reach resolution is not wired to mutation producers. This does not
+complete Notifications: digest grouping/delivery, scheduler registration, the concrete
+`notify.*` adapter registry, and concrete reach/preference/quiet-hours evaluation remain pending. See
+[background jobs](../01-architecture/background-jobs.md#outbox-delivery) for the implemented
+worker boundary. Browser acceptance remains pending.
 
 ## Related
 
