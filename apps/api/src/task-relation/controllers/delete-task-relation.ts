@@ -7,16 +7,10 @@ import {
   lockLegacyTaskRow,
   lockProjectsAndAssertLive,
 } from "../../task/assert-task-project-live";
+import { findRelationEndpoints } from "../repository";
 
 async function deleteTaskRelation(id: string, userId: string) {
-  const [rel] = await db
-    .select({
-      sourceTaskId: taskRelationTable.sourceTaskId,
-      targetTaskId: taskRelationTable.targetTaskId,
-    })
-    .from(taskRelationTable)
-    .where(eq(taskRelationTable.id, id))
-    .limit(1);
+  const [rel] = await findRelationEndpoints(db, id);
 
   if (!rel) {
     throw new HTTPException(404, {

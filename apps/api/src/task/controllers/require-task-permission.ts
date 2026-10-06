@@ -1,10 +1,9 @@
-import { eq } from "drizzle-orm";
 import type { Context, Next } from "hono";
 import { HTTPException } from "hono/http-exception";
 import db from "../../database";
-import { taskTable } from "../../database/schema";
 import { rejectNulByte } from "../../utils/reject-nul-byte";
 import { requireWorkspacePermission } from "../../utils/require-workspace-permission";
+import { findExistingAssigneeQuery } from "../repository";
 
 type BulkTaskOperation =
   | "updateStatus"
@@ -89,11 +88,7 @@ export async function requireTaskAssigneePermission(c: Context, next: Next) {
   const { userId } = await readJsonBody(c);
   const nextAssignee = typeof userId === "string" ? userId : null;
 
-  const [existingTask] = await db
-    .select({ userId: taskTable.userId })
-    .from(taskTable)
-    .where(eq(taskTable.id, id ?? ""))
-    .limit(1);
+  const [existingTask] = await findExistingAssigneeQuery(db, id ?? "");
 
   if (existingTask && existingTask.userId !== nextAssignee) {
     return requireWorkspacePermission({ work_item: ["assign"] })(c, next);

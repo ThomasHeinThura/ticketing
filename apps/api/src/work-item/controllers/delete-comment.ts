@@ -1,7 +1,7 @@
-import { and, eq } from "drizzle-orm";
+import { eq } from "drizzle-orm";
 import { HTTPException } from "hono/http-exception";
 import db from "../../database";
-import { commentTable, workItemTable } from "../../database/schema";
+import { commentTable } from "../../database/schema";
 import { builtInRoleHasCapability } from "../../utils/require-workspace-capability";
 import {
   isUnambiguousMembership,
@@ -11,6 +11,10 @@ import {
   assertProjectStillLive,
   assertWorkItemStillLive,
 } from "../assert-work-item-live";
+import {
+  lockCommentForMutationQuery,
+  lockWorkItemForCommentMutationQuery,
+} from "../repository";
 
 /**
  * `DELETE /api/comments/{id}`. `comment:delete_any` is an unconditional override;
@@ -29,16 +33,11 @@ export async function deleteComment(
   actorId: string,
 ) {
   return db.transaction(async (tx) => {
-    const [locked] = await tx
-      .select()
-      .from(commentTable)
-      .where(
-        and(
-          eq(commentTable.id, commentId),
-          eq(commentTable.workspaceId, workspaceId),
-        ),
-      )
-      .for("update");
+    const [locked] = await lockCommentForMutationQuery(
+      tx,
+      commentId,
+      workspaceId,
+    );
 
     if (!locked) {
       throw new HTTPException(404, { message: "Comment not found" });
@@ -81,21 +80,11 @@ export async function deleteComment(
       return locked;
     }
 
-    const [workItem] = await tx
-      .select({
-        id: workItemTable.id,
-        projectId: workItemTable.projectId,
-        deletedAt: workItemTable.deletedAt,
-        archivedAt: workItemTable.archivedAt,
-      })
-      .from(workItemTable)
-      .where(
-        and(
-          eq(workItemTable.id, locked.workItemId),
-          eq(workItemTable.workspaceId, workspaceId),
-        ),
-      )
-      .for("share");
+    const [workItem] = await lockWorkItemForCommentMutationQuery(
+      tx,
+      locked.workItemId,
+      workspaceId,
+    );
     assertWorkItemStillLive(workItem);
     await assertProjectStillLive(tx, workItem.projectId);
 

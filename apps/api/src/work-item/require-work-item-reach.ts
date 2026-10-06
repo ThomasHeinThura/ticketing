@@ -1,7 +1,6 @@
-import { and, eq, isNull } from "drizzle-orm";
 import type { Context, Next } from "hono";
 import { HTTPException } from "hono/http-exception";
-import db, { schema } from "../database";
+import db from "../database";
 import { policyShadowEnabled } from "../permissions/shadow-config";
 import {
   markShadowLegacyAuthorizationUnknown,
@@ -9,6 +8,7 @@ import {
 } from "../permissions/shadow-context";
 import { projectReadDecision } from "../utils/has-project-reach";
 import { validateWorkspaceAccess } from "../utils/validate-workspace-access";
+import { findWorkItemReachQuery } from "./repository";
 
 /**
  * `GET /api/work-items/{key}` middleware: resolves the caller's workspace reach from the
@@ -107,45 +107,11 @@ export function requireWorkItemReach(
     // see a genuine, already-loaded work-item/project scope for this route. Read only by
     // `apps/api/src/permissions/shadow-middleware.ts`; the legacy check below still reads
     // `workItem.workspaceId` alone, unchanged.
-    const workItemQuery =
-      policyShadowEnabled || options.requireProjectReach
-        ? db
-            .select({
-              id: schema.workItemTable.id,
-              projectId: schema.workItemTable.projectId,
-              workspaceId: schema.workItemTable.workspaceId,
-              organisationId: schema.workspaceTable.organisationId,
-            })
-            .from(schema.workItemTable)
-            .innerJoin(
-              schema.projectTable,
-              eq(schema.workItemTable.projectId, schema.projectTable.id),
-            )
-            .innerJoin(
-              schema.workspaceTable,
-              eq(schema.workspaceTable.id, schema.workItemTable.workspaceId),
-            )
-        : db
-            .select({
-              id: schema.workItemTable.id,
-              projectId: schema.workItemTable.projectId,
-              workspaceId: schema.workItemTable.workspaceId,
-            })
-            .from(schema.workItemTable)
-            .innerJoin(
-              schema.projectTable,
-              eq(schema.workItemTable.projectId, schema.projectTable.id),
-            );
-    const [workItem] = await workItemQuery
-      .where(
-        and(
-          eq(schema.workItemTable.key, key),
-          isNull(schema.workItemTable.deletedAt),
-          isNull(schema.workItemTable.archivedAt),
-          isNull(schema.projectTable.deletedAt),
-        ),
-      )
-      .limit(1);
+    const [workItem] = await findWorkItemReachQuery(
+      db,
+      key,
+      policyShadowEnabled || options.requireProjectReach || false,
+    );
 
     if (!workItem) {
       throw new HTTPException(404, { message: "Work item not found" });

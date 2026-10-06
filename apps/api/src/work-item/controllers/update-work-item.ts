@@ -1,4 +1,4 @@
-import { and, eq, isNull, sql } from "drizzle-orm";
+import { and, eq, sql } from "drizzle-orm";
 import { HTTPException } from "hono/http-exception";
 import db from "../../database";
 import { workItemTable } from "../../database/schema";
@@ -16,6 +16,7 @@ import {
   projectNotDeletedClause,
 } from "../assert-work-item-live";
 import { publishWorkItemHint, recordWorkItemEvent } from "../native-event";
+import { lockLiveWorkItemByKeyQuery } from "../repository";
 
 export type UpdateWorkItemInput = {
   title?: string;
@@ -137,22 +138,7 @@ export async function updateWorkItem(
 
   const { updated, activityRows, realtimeEvent } = await db.transaction(
     async (tx) => {
-      const [locked] = await tx
-        .select()
-        .from(workItemTable)
-        .where(
-          and(
-            eq(workItemTable.key, key),
-            eq(workItemTable.workspaceId, workspaceId),
-            // Issue #276: same guard `requireWorkItemReach()` applies before this
-            // transaction starts, re-checked here to close the reach-check-to-lock race --
-            // see this function's own doc comment above for why one check suffices for
-            // these two columns.
-            isNull(workItemTable.deletedAt),
-            isNull(workItemTable.archivedAt),
-          ),
-        )
-        .for("update");
+      const [locked] = await lockLiveWorkItemByKeyQuery(tx, key, workspaceId);
 
       if (!locked) {
         // Genuinely gone -- deleted, archived, or moved out of this workspace -- since the

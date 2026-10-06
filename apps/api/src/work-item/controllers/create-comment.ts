@@ -1,7 +1,6 @@
-import { eq } from "drizzle-orm";
 import { HTTPException } from "hono/http-exception";
 import db from "../../database";
-import { commentTable, workItemTable } from "../../database/schema";
+import { commentTable } from "../../database/schema";
 import { publishEvent } from "../../events";
 import { builtInRoleHasCapability } from "../../utils/require-workspace-capability";
 import {
@@ -14,6 +13,7 @@ import {
   assertWorkItemStillLive,
 } from "../assert-work-item-live";
 import { publishWorkItemHint, recordWorkItemEvent } from "../native-event";
+import { lockWorkItemForCommentQuery } from "../repository";
 
 export type CreateCommentInput = {
   body: unknown;
@@ -65,16 +65,7 @@ export async function createComment(
   // shared lock is enough.
   const { created, realtimeEvent, projectId, key } = await db.transaction(
     async (tx) => {
-      const [locked] = await tx
-        .select({
-          projectId: workItemTable.projectId,
-          key: workItemTable.key,
-          deletedAt: workItemTable.deletedAt,
-          archivedAt: workItemTable.archivedAt,
-        })
-        .from(workItemTable)
-        .where(eq(workItemTable.id, workItemId))
-        .for("share");
+      const [locked] = await lockWorkItemForCommentQuery(tx, workItemId);
       assertWorkItemStillLive(locked);
       await assertProjectStillLive(tx, locked.projectId);
 
