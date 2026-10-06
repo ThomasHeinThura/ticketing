@@ -1,5 +1,5 @@
 import { createId } from "@paralleldrive/cuid2";
-import { and, eq } from "drizzle-orm";
+import { and, eq, inArray } from "drizzle-orm";
 import { HTTPException } from "hono/http-exception";
 import { appendAuditLog } from "../audit/audit-writer";
 import { appendStepUpAudit } from "../auth/step-up-audit";
@@ -15,6 +15,7 @@ import { apiRouter, createRoute, jsonResponse, z } from "../openapi";
 import { setShadowLegacyAuthorization } from "../permissions/shadow-context";
 import { normaliseTraceId } from "../permissions/shadow-middleware";
 import { requireSessionOnly } from "../utils/require-session-only";
+import { invalidateNativeAuthorization } from "../ws";
 import {
   lockScimGrantClosure,
   retryIdentityGrantClosure,
@@ -527,7 +528,24 @@ const routes = apiRouter()
           changedFields.includes("roleId") ||
           changedFields.includes("scopeId") ||
           changedFields.includes("enabled");
-        if (authorityChanged) await retireOidcGroupGrants(tx, mappingId);
+        const retiredGrants = authorityChanged
+          ? await retireOidcGroupGrants(tx, mappingId)
+          : [];
+        const personIds = [
+          ...new Set(retiredGrants.map(({ personId }) => personId)),
+        ];
+        const affectedUserIds = personIds.length
+          ? [
+              ...new Set(
+                (
+                  await tx
+                    .select({ userId: schema.personTable.userId })
+                    .from(schema.personTable)
+                    .where(inArray(schema.personTable.id, personIds))
+                ).flatMap(({ userId }) => (userId ? [userId] : [])),
+              ),
+            ]
+          : [];
         const nextVersion = request.configVersion + 1;
         const [versionRow] = await tx
           .update(schema.identityConnectionTable)
@@ -570,9 +588,15 @@ const routes = apiRouter()
           mapping: updated,
           connection,
           nextVersion,
+          affectedUserIds,
         };
       }),
     );
+    if (result.kind === "updated") {
+      for (const affectedUserId of result.affectedUserIds) {
+        await invalidateNativeAuthorization({ userId: affectedUserId });
+      }
+    }
     if (auditFailed) await reportAuditFailure();
     if (result.kind === "not_found")
       return c.json(problem(404, "Not found"), 404);
