@@ -1443,7 +1443,7 @@ export default function CommentEditor({
       onDrop={handleShellDrop}
     >
       {!readOnly && !disabled && (
-        <input
+        <Input
           ref={imageInputRef}
           type="file"
           className="sr-only"
@@ -1472,7 +1472,8 @@ export default function CommentEditor({
             position: slashMenuPosition,
           }}
         >
-          <button
+          <Button
+            variant="ghost"
             type="button"
             className="taskdesk-codeblock-language-trigger taskdesk-codeblock-copy-trigger"
             aria-label={
@@ -1497,20 +1498,21 @@ export default function CommentEditor({
                 ? t("activity:comment.editor.copied")
                 : t("activity:comment.editor.copy")}
             </span>
-          </button>
+          </Button>
           {!readOnly && (
             <DropdownMenu
               open={isCodeLanguageMenuOpen}
               onOpenChange={setIsCodeLanguageMenuOpen}
             >
               <DropdownMenuTrigger asChild>
-                <button
+                <Button
+                  variant="ghost"
                   type="button"
                   className="taskdesk-codeblock-language-trigger"
                 >
                   <span className="truncate">{activeCodeLanguageLabel}</span>
                   <ChevronDown className="size-3.5 opacity-70" />
-                </button>
+                </Button>
               </DropdownMenuTrigger>
               <DropdownMenuContent
                 align="end"
@@ -1774,7 +1776,8 @@ export default function CommentEditor({
                       (candidate) => candidate.id === command.id,
                     );
                     return (
-                      <button
+                      <Button
+                        variant="ghost"
                         key={command.id}
                         type="button"
                         className={cn(
@@ -1806,7 +1809,7 @@ export default function CommentEditor({
                             {command.shortcut}
                           </span>
                         )}
-                      </button>
+                      </Button>
                     );
                   })}
                 </div>
@@ -1830,7 +1833,8 @@ export default function CommentEditor({
         >
           {embedComposer.mode === "choice" ? (
             <div className="taskdesk-embed-choice-menu">
-              <button
+              <Button
+                variant="ghost"
                 type="button"
                 className="taskdesk-embed-choice-item is-primary"
                 onMouseDown={(event) => {
@@ -1842,8 +1846,9 @@ export default function CommentEditor({
                 <span className="taskdesk-embed-choice-hint">
                   {t("activity:comment.editor.hintTab")}
                 </span>
-              </button>
-              <button
+              </Button>
+              <Button
+                variant="ghost"
                 type="button"
                 className="taskdesk-embed-choice-item"
                 onMouseDown={(event) => {
@@ -1856,7 +1861,7 @@ export default function CommentEditor({
                 <span className="taskdesk-embed-choice-hint">
                   {t("activity:comment.editor.hintEsc")}
                 </span>
-              </button>
+              </Button>
             </div>
           ) : (
             <form
@@ -1918,7 +1923,8 @@ export default function CommentEditor({
         onMouseLeave={handleEditorMouseLeave}
       />
       {!readOnly && !disabled && showQuickAttachButton && (
-        <button
+        <Button
+          variant="ghost"
           type="button"
           className="taskdesk-editor-quick-attach"
           onMouseDown={(event) => {
@@ -1928,7 +1934,7 @@ export default function CommentEditor({
           aria-label={t("activity:comment.attachFile")}
         >
           <Paperclip className="size-3.5" />
-        </button>
+        </Button>
       )}
       {isDragActive && (
         <div className="taskdesk-editor-drop-indicator">

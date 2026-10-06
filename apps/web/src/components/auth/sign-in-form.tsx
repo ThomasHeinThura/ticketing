@@ -124,7 +124,8 @@ export function SignInForm({ onSuccess, defaultEmail }: SignInFormProps) {
                       autoComplete="current-password"
                       {...field}
                     />
-                    <button
+                    <Button
+                      variant="ghost"
                       type="button"
                       onClick={() => setShowPassword(!showPassword)}
                       className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
@@ -136,7 +137,7 @@ export function SignInForm({ onSuccess, defaultEmail }: SignInFormProps) {
                       aria-pressed={showPassword}
                     >
                       {showPassword ? <EyeOff size={16} /> : <Eye size={16} />}
-                    </button>
+                    </Button>
                   </div>
                 </FormControl>
                 <FormMessage />

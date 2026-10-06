@@ -1,5 +1,5 @@
 import { useQueryClient } from "@tanstack/react-query";
-import { Form, FormField } from "@taskdesk/ui";
+import { Form, FormField, Input } from "@taskdesk/ui";
 import { memo, useCallback, useEffect, useRef } from "react";
 import { useForm } from "react-hook-form";
 import { useTranslation } from "react-i18next";
@@ -92,12 +92,15 @@ function TaskTitle({ taskId, task }: TaskTitleProps) {
         control={form.control}
         name="title"
         render={({ field }) => (
-          <input
+          <Input
             {...field}
+            className="contents"
+            nativeInput
+            nativeInputClassName="block h-auto w-full appearance-none border-0 bg-transparent p-0 font-heading text-[2rem] leading-[1.15] font-semibold tracking-[-0.02em] text-foreground outline-none placeholder:text-foreground"
+            unstyled
             type="text"
             placeholder={t("tasks:detail.titlePlaceholder")}
             readOnly={!canEdit}
-            className="block h-auto w-full appearance-none border-0 bg-transparent p-0 font-heading text-[2rem] leading-[1.15] font-semibold tracking-[-0.02em] text-foreground outline-none placeholder:text-foreground"
             onChange={(e) => {
               field.onChange(e);
               handleTitleChange(e.target.value);

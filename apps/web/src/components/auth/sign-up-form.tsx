@@ -168,7 +168,8 @@ export function SignUpForm({
                       autoComplete="new-password"
                       {...field}
                     />
-                    <button
+                    <Button
+                      variant="ghost"
                       type="button"
                       onClick={() => setShowPassword(!showPassword)}
                       className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
@@ -180,7 +181,7 @@ export function SignUpForm({
                       aria-pressed={showPassword}
                     >
                       {showPassword ? <EyeOff size={16} /> : <Eye size={16} />}
-                    </button>
+                    </Button>
                   </div>
                 </FormControl>
                 <FormMessage>{fieldState.error?.message}</FormMessage>
