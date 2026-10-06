@@ -1,3 +1,39 @@
+### 2026-10-06 · Apply standing disposable verification to the reviewed C468 correction
+
+**Orchestrator decision under Thomas's standing authorization:** apply the existing
+October 2 three-date development/P0 rule and October 4 opt-in per-policy-source strict
+verification to corrected candidate `c46825e938019c354c615be03200cefeab7d710d`, in a new
+disposable test. This supersedes only the October 6 delegated application's3096 target
+for this next attempt; original decisions, failed attempts and pinned files remain intact.
+The prior record is historical, not Thomas's personal approval of this new digest.
+
+The independently reviewed candidate resolves the actual persisted workspace row before
+strict policy evaluation and preserves native reach. Three ordinary scopes and the fresh
+full Sol source review clear the current composition; its private copied runner's complete
+pin audit and28 offline tests also pass independent Sol inspection. This does not assert
+runtime compatibility, previous-date carry-forward, full CI acceptance or successful strict
+traffic. Original7f G11 remains19/22, with LCP/state/board failures; a separate full
+performance implementation lane continues. API/browser/static parent results retain their
+exact source, and current C468 CI remains separately required for protected acceptance.
+
+Use only platform-only and the27 directly observed non-task policy sources in registry
+order, with exact owned resource IDs, original schema80 baseline source
+`b80ff7c3ef723a280bb35cfadec0a71b1ad14ae3` and image
+`sha256:6a6315c2890b5677f9afb858c3f81aa86c181e7d3270fa7164d889111e214628`.
+Candidate image/source are separate artifacts. Reserve the local test window; capture
+owned mounts while their containers exist and clean only acquired resources, never unrelated
+containers or volumes. Preserve strict failure logs before rollback and complete cleanup.
+
+No config/task selection, pending public-config exception, persistent DEV setting/image,
+production, protected merge, enforcement activation or phase acceptance is authorized.
+Source/evidence compatibility and the eligible full cutover still require actual proof;
+time and this operational choice waive no gate. Root must issue exact standalone application,
+authorization and window records, and obtain the independent Sol operational release before
+execution. This entry itself records no execution or passed runtime test.
+
+**Recorded:** top-level orchestrator, 2026-10-06T07:55:58.655802+00:00, under the existing user instruction to
+continue P0 and test the corrected implementation.
+
 ### 2026-10-06 · Orchestrator applies standing P0 authorization to disposable strict testing
 
 **Decision by the orchestrator, under Thomas's standing instruction to continue P0,
