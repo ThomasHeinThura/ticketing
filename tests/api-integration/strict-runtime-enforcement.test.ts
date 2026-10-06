@@ -46,6 +46,7 @@ import { resetTestDatabase } from "./helpers/database";
 import {
   createProjectFixture,
   createWorkspaceMember,
+  prepareAuthenticatedApiFixture,
   requireRow,
 } from "./helpers/fixtures";
 
