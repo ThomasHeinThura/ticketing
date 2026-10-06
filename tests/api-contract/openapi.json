@@ -23721,6 +23721,152 @@
                       "operation": {
                         "type": "string",
                         "enum": [
+                          "oidc_group_mapping_create"
+                        ]
+                      },
+                      "connectionId": {
+                        "type": "string",
+                        "minLength": 1,
+                        "maxLength": 128
+                      },
+                      "request": {
+                        "type": "object",
+                        "properties": {
+                          "configVersion": {
+                            "type": "integer",
+                            "exclusiveMinimum": 0
+                          },
+                          "externalGroupId": {
+                            "type": "string",
+                            "pattern": "^[0-9a-f]{8}(?:-[0-9a-f]{4}){3}-[0-9a-f]{12}$/u"
+                          },
+                          "externalGroupNameSnapshot": {
+                            "type": [
+                              "string",
+                              "null"
+                            ],
+                            "maxLength": 255,
+                            "default": null
+                          },
+                          "roleId": {
+                            "type": "string",
+                            "minLength": 1,
+                            "maxLength": 128
+                          },
+                          "scope": {
+                            "type": "string",
+                            "enum": [
+                              "organisation",
+                              "workspace"
+                            ]
+                          },
+                          "scopeId": {
+                            "type": "string",
+                            "minLength": 1,
+                            "maxLength": 128
+                          },
+                          "enabled": {
+                            "type": "boolean",
+                            "default": true
+                          }
+                        },
+                        "required": [
+                          "configVersion",
+                          "externalGroupId",
+                          "roleId",
+                          "scope"
+                        ],
+                        "additionalProperties": false
+                      }
+                    },
+                    "required": [
+                      "kind",
+                      "operation",
+                      "connectionId",
+                      "request"
+                    ],
+                    "additionalProperties": false
+                  },
+                  {
+                    "type": "object",
+                    "properties": {
+                      "kind": {
+                        "type": "string",
+                        "enum": [
+                          "operation"
+                        ]
+                      },
+                      "operation": {
+                        "type": "string",
+                        "enum": [
+                          "oidc_group_mapping_update"
+                        ]
+                      },
+                      "connectionId": {
+                        "type": "string",
+                        "minLength": 1,
+                        "maxLength": 128
+                      },
+                      "mappingId": {
+                        "type": "string",
+                        "minLength": 1,
+                        "maxLength": 128
+                      },
+                      "request": {
+                        "type": "object",
+                        "properties": {
+                          "configVersion": {
+                            "type": "integer",
+                            "exclusiveMinimum": 0
+                          },
+                          "externalGroupNameSnapshot": {
+                            "type": [
+                              "string",
+                              "null"
+                            ],
+                            "maxLength": 255
+                          },
+                          "roleId": {
+                            "type": "string",
+                            "minLength": 1,
+                            "maxLength": 128
+                          },
+                          "scopeId": {
+                            "type": "string",
+                            "minLength": 1,
+                            "maxLength": 128
+                          },
+                          "enabled": {
+                            "type": "boolean"
+                          }
+                        },
+                        "required": [
+                          "configVersion"
+                        ],
+                        "additionalProperties": false
+                      }
+                    },
+                    "required": [
+                      "kind",
+                      "operation",
+                      "connectionId",
+                      "mappingId",
+                      "request"
+                    ],
+                    "additionalProperties": false
+                  },
+                  {
+                    "type": "object",
+                    "properties": {
+                      "kind": {
+                        "type": "string",
+                        "enum": [
+                          "operation"
+                        ]
+                      },
+                      "operation": {
+                        "type": "string",
+                        "enum": [
                           "scim_token_rotate"
                         ]
                       },
@@ -24719,6 +24865,580 @@
                       "kind",
                       "operation",
                       "connectionId",
+                      "request",
+                      "challengeId",
+                      "nonce",
+                      "method",
+                      "code"
+                    ],
+                    "additionalProperties": false
+                  },
+                  {
+                    "type": "object",
+                    "properties": {
+                      "kind": {
+                        "type": "string",
+                        "enum": [
+                          "operation"
+                        ]
+                      },
+                      "operation": {
+                        "type": "string",
+                        "enum": [
+                          "oidc_group_mapping_create"
+                        ]
+                      },
+                      "connectionId": {
+                        "type": "string",
+                        "minLength": 1,
+                        "maxLength": 128
+                      },
+                      "request": {
+                        "type": "object",
+                        "properties": {
+                          "configVersion": {
+                            "type": "integer",
+                            "exclusiveMinimum": 0
+                          },
+                          "externalGroupId": {
+                            "type": "string",
+                            "pattern": "^[0-9a-f]{8}(?:-[0-9a-f]{4}){3}-[0-9a-f]{12}$/u"
+                          },
+                          "externalGroupNameSnapshot": {
+                            "type": [
+                              "string",
+                              "null"
+                            ],
+                            "maxLength": 255,
+                            "default": null
+                          },
+                          "roleId": {
+                            "type": "string",
+                            "minLength": 1,
+                            "maxLength": 128
+                          },
+                          "scope": {
+                            "type": "string",
+                            "enum": [
+                              "organisation",
+                              "workspace"
+                            ]
+                          },
+                          "scopeId": {
+                            "type": "string",
+                            "minLength": 1,
+                            "maxLength": 128
+                          },
+                          "enabled": {
+                            "type": "boolean",
+                            "default": true
+                          }
+                        },
+                        "required": [
+                          "configVersion",
+                          "externalGroupId",
+                          "roleId",
+                          "scope"
+                        ],
+                        "additionalProperties": false
+                      },
+                      "challengeId": {
+                        "type": "string"
+                      },
+                      "nonce": {
+                        "type": "string",
+                        "minLength": 43,
+                        "maxLength": 43
+                      },
+                      "method": {
+                        "type": "string",
+                        "enum": [
+                          "password"
+                        ]
+                      },
+                      "password": {
+                        "type": "string",
+                        "minLength": 1,
+                        "maxLength": 1024
+                      }
+                    },
+                    "required": [
+                      "kind",
+                      "operation",
+                      "connectionId",
+                      "request",
+                      "challengeId",
+                      "nonce",
+                      "method",
+                      "password"
+                    ],
+                    "additionalProperties": false
+                  },
+                  {
+                    "type": "object",
+                    "properties": {
+                      "kind": {
+                        "type": "string",
+                        "enum": [
+                          "operation"
+                        ]
+                      },
+                      "operation": {
+                        "type": "string",
+                        "enum": [
+                          "oidc_group_mapping_create"
+                        ]
+                      },
+                      "connectionId": {
+                        "type": "string",
+                        "minLength": 1,
+                        "maxLength": 128
+                      },
+                      "request": {
+                        "type": "object",
+                        "properties": {
+                          "configVersion": {
+                            "type": "integer",
+                            "exclusiveMinimum": 0
+                          },
+                          "externalGroupId": {
+                            "type": "string",
+                            "pattern": "^[0-9a-f]{8}(?:-[0-9a-f]{4}){3}-[0-9a-f]{12}$/u"
+                          },
+                          "externalGroupNameSnapshot": {
+                            "type": [
+                              "string",
+                              "null"
+                            ],
+                            "maxLength": 255,
+                            "default": null
+                          },
+                          "roleId": {
+                            "type": "string",
+                            "minLength": 1,
+                            "maxLength": 128
+                          },
+                          "scope": {
+                            "type": "string",
+                            "enum": [
+                              "organisation",
+                              "workspace"
+                            ]
+                          },
+                          "scopeId": {
+                            "type": "string",
+                            "minLength": 1,
+                            "maxLength": 128
+                          },
+                          "enabled": {
+                            "type": "boolean",
+                            "default": true
+                          }
+                        },
+                        "required": [
+                          "configVersion",
+                          "externalGroupId",
+                          "roleId",
+                          "scope"
+                        ],
+                        "additionalProperties": false
+                      },
+                      "challengeId": {
+                        "type": "string"
+                      },
+                      "nonce": {
+                        "type": "string",
+                        "minLength": 43,
+                        "maxLength": 43
+                      },
+                      "method": {
+                        "type": "string",
+                        "enum": [
+                          "totp"
+                        ]
+                      },
+                      "code": {
+                        "type": "string",
+                        "pattern": "^\\d{6}$/u"
+                      }
+                    },
+                    "required": [
+                      "kind",
+                      "operation",
+                      "connectionId",
+                      "request",
+                      "challengeId",
+                      "nonce",
+                      "method",
+                      "code"
+                    ],
+                    "additionalProperties": false
+                  },
+                  {
+                    "type": "object",
+                    "properties": {
+                      "kind": {
+                        "type": "string",
+                        "enum": [
+                          "operation"
+                        ]
+                      },
+                      "operation": {
+                        "type": "string",
+                        "enum": [
+                          "oidc_group_mapping_create"
+                        ]
+                      },
+                      "connectionId": {
+                        "type": "string",
+                        "minLength": 1,
+                        "maxLength": 128
+                      },
+                      "request": {
+                        "type": "object",
+                        "properties": {
+                          "configVersion": {
+                            "type": "integer",
+                            "exclusiveMinimum": 0
+                          },
+                          "externalGroupId": {
+                            "type": "string",
+                            "pattern": "^[0-9a-f]{8}(?:-[0-9a-f]{4}){3}-[0-9a-f]{12}$/u"
+                          },
+                          "externalGroupNameSnapshot": {
+                            "type": [
+                              "string",
+                              "null"
+                            ],
+                            "maxLength": 255,
+                            "default": null
+                          },
+                          "roleId": {
+                            "type": "string",
+                            "minLength": 1,
+                            "maxLength": 128
+                          },
+                          "scope": {
+                            "type": "string",
+                            "enum": [
+                              "organisation",
+                              "workspace"
+                            ]
+                          },
+                          "scopeId": {
+                            "type": "string",
+                            "minLength": 1,
+                            "maxLength": 128
+                          },
+                          "enabled": {
+                            "type": "boolean",
+                            "default": true
+                          }
+                        },
+                        "required": [
+                          "configVersion",
+                          "externalGroupId",
+                          "roleId",
+                          "scope"
+                        ],
+                        "additionalProperties": false
+                      },
+                      "challengeId": {
+                        "type": "string"
+                      },
+                      "nonce": {
+                        "type": "string",
+                        "minLength": 43,
+                        "maxLength": 43
+                      },
+                      "method": {
+                        "type": "string",
+                        "enum": [
+                          "backup_code"
+                        ]
+                      },
+                      "code": {
+                        "type": "string",
+                        "minLength": 1,
+                        "maxLength": 64
+                      }
+                    },
+                    "required": [
+                      "kind",
+                      "operation",
+                      "connectionId",
+                      "request",
+                      "challengeId",
+                      "nonce",
+                      "method",
+                      "code"
+                    ],
+                    "additionalProperties": false
+                  },
+                  {
+                    "type": "object",
+                    "properties": {
+                      "kind": {
+                        "type": "string",
+                        "enum": [
+                          "operation"
+                        ]
+                      },
+                      "operation": {
+                        "type": "string",
+                        "enum": [
+                          "oidc_group_mapping_update"
+                        ]
+                      },
+                      "connectionId": {
+                        "type": "string",
+                        "minLength": 1,
+                        "maxLength": 128
+                      },
+                      "mappingId": {
+                        "type": "string",
+                        "minLength": 1,
+                        "maxLength": 128
+                      },
+                      "request": {
+                        "type": "object",
+                        "properties": {
+                          "configVersion": {
+                            "type": "integer",
+                            "exclusiveMinimum": 0
+                          },
+                          "externalGroupNameSnapshot": {
+                            "type": [
+                              "string",
+                              "null"
+                            ],
+                            "maxLength": 255
+                          },
+                          "roleId": {
+                            "type": "string",
+                            "minLength": 1,
+                            "maxLength": 128
+                          },
+                          "scopeId": {
+                            "type": "string",
+                            "minLength": 1,
+                            "maxLength": 128
+                          },
+                          "enabled": {
+                            "type": "boolean"
+                          }
+                        },
+                        "required": [
+                          "configVersion"
+                        ],
+                        "additionalProperties": false
+                      },
+                      "challengeId": {
+                        "type": "string"
+                      },
+                      "nonce": {
+                        "type": "string",
+                        "minLength": 43,
+                        "maxLength": 43
+                      },
+                      "method": {
+                        "type": "string",
+                        "enum": [
+                          "password"
+                        ]
+                      },
+                      "password": {
+                        "type": "string",
+                        "minLength": 1,
+                        "maxLength": 1024
+                      }
+                    },
+                    "required": [
+                      "kind",
+                      "operation",
+                      "connectionId",
+                      "mappingId",
+                      "request",
+                      "challengeId",
+                      "nonce",
+                      "method",
+                      "password"
+                    ],
+                    "additionalProperties": false
+                  },
+                  {
+                    "type": "object",
+                    "properties": {
+                      "kind": {
+                        "type": "string",
+                        "enum": [
+                          "operation"
+                        ]
+                      },
+                      "operation": {
+                        "type": "string",
+                        "enum": [
+                          "oidc_group_mapping_update"
+                        ]
+                      },
+                      "connectionId": {
+                        "type": "string",
+                        "minLength": 1,
+                        "maxLength": 128
+                      },
+                      "mappingId": {
+                        "type": "string",
+                        "minLength": 1,
+                        "maxLength": 128
+                      },
+                      "request": {
+                        "type": "object",
+                        "properties": {
+                          "configVersion": {
+                            "type": "integer",
+                            "exclusiveMinimum": 0
+                          },
+                          "externalGroupNameSnapshot": {
+                            "type": [
+                              "string",
+                              "null"
+                            ],
+                            "maxLength": 255
+                          },
+                          "roleId": {
+                            "type": "string",
+                            "minLength": 1,
+                            "maxLength": 128
+                          },
+                          "scopeId": {
+                            "type": "string",
+                            "minLength": 1,
+                            "maxLength": 128
+                          },
+                          "enabled": {
+                            "type": "boolean"
+                          }
+                        },
+                        "required": [
+                          "configVersion"
+                        ],
+                        "additionalProperties": false
+                      },
+                      "challengeId": {
+                        "type": "string"
+                      },
+                      "nonce": {
+                        "type": "string",
+                        "minLength": 43,
+                        "maxLength": 43
+                      },
+                      "method": {
+                        "type": "string",
+                        "enum": [
+                          "totp"
+                        ]
+                      },
+                      "code": {
+                        "type": "string",
+                        "pattern": "^\\d{6}$/u"
+                      }
+                    },
+                    "required": [
+                      "kind",
+                      "operation",
+                      "connectionId",
+                      "mappingId",
+                      "request",
+                      "challengeId",
+                      "nonce",
+                      "method",
+                      "code"
+                    ],
+                    "additionalProperties": false
+                  },
+                  {
+                    "type": "object",
+                    "properties": {
+                      "kind": {
+                        "type": "string",
+                        "enum": [
+                          "operation"
+                        ]
+                      },
+                      "operation": {
+                        "type": "string",
+                        "enum": [
+                          "oidc_group_mapping_update"
+                        ]
+                      },
+                      "connectionId": {
+                        "type": "string",
+                        "minLength": 1,
+                        "maxLength": 128
+                      },
+                      "mappingId": {
+                        "type": "string",
+                        "minLength": 1,
+                        "maxLength": 128
+                      },
+                      "request": {
+                        "type": "object",
+                        "properties": {
+                          "configVersion": {
+                            "type": "integer",
+                            "exclusiveMinimum": 0
+                          },
+                          "externalGroupNameSnapshot": {
+                            "type": [
+                              "string",
+                              "null"
+                            ],
+                            "maxLength": 255
+                          },
+                          "roleId": {
+                            "type": "string",
+                            "minLength": 1,
+                            "maxLength": 128
+                          },
+                          "scopeId": {
+                            "type": "string",
+                            "minLength": 1,
+                            "maxLength": 128
+                          },
+                          "enabled": {
+                            "type": "boolean"
+                          }
+                        },
+                        "required": [
+                          "configVersion"
+                        ],
+                        "additionalProperties": false
+                      },
+                      "challengeId": {
+                        "type": "string"
+                      },
+                      "nonce": {
+                        "type": "string",
+                        "minLength": 43,
+                        "maxLength": 43
+                      },
+                      "method": {
+                        "type": "string",
+                        "enum": [
+                          "backup_code"
+                        ]
+                      },
+                      "code": {
+                        "type": "string",
+                        "minLength": 1,
+                        "maxLength": 64
+                      }
+                    },
+                    "required": [
+                      "kind",
+                      "operation",
+                      "connectionId",
+                      "mappingId",
                       "request",
                       "challengeId",
                       "nonce",
@@ -30004,6 +30724,695 @@
                   },
                   "required": [
                     "message"
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/instance/identity-connections/{id}/oidc-group-mappings": {
+      "get": {
+        "operationId": "getOidcGroupMappings",
+        "tags": [
+          "Instance"
+        ],
+        "summary": "List safe OIDC group mappings for a connection",
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 128
+            },
+            "required": true,
+            "name": "id",
+            "in": "path"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Safe OIDC group mapping configuration",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "id": {
+                            "type": "string"
+                          },
+                          "externalGroupId": {
+                            "type": "string"
+                          },
+                          "externalGroupNameSnapshot": {
+                            "type": [
+                              "string",
+                              "null"
+                            ]
+                          },
+                          "roleId": {
+                            "type": "string"
+                          },
+                          "scope": {
+                            "type": "string",
+                            "enum": [
+                              "organisation",
+                              "workspace"
+                            ]
+                          },
+                          "scopeId": {
+                            "type": "string"
+                          },
+                          "enabled": {
+                            "type": "boolean"
+                          },
+                          "createdAt": {
+                            "type": "string",
+                            "format": "date-time"
+                          },
+                          "updatedAt": {
+                            "type": "string",
+                            "format": "date-time"
+                          }
+                        },
+                        "required": [
+                          "id",
+                          "externalGroupId",
+                          "externalGroupNameSnapshot",
+                          "roleId",
+                          "scope",
+                          "scopeId",
+                          "enabled",
+                          "createdAt",
+                          "updatedAt"
+                        ]
+                      }
+                    },
+                    "configVersion": {
+                      "type": "integer",
+                      "exclusiveMinimum": 0
+                    }
+                  },
+                  "required": [
+                    "data",
+                    "configVersion"
+                  ]
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing or invalid credentials"
+          },
+          "404": {
+            "description": "Connection unavailable",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "type": {
+                      "type": "string"
+                    },
+                    "title": {
+                      "type": "string"
+                    },
+                    "status": {
+                      "type": "number"
+                    }
+                  },
+                  "required": [
+                    "type",
+                    "title",
+                    "status"
+                  ]
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Stored mapping configuration is invalid",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "type": {
+                      "type": "string"
+                    },
+                    "title": {
+                      "type": "string"
+                    },
+                    "status": {
+                      "type": "number"
+                    }
+                  },
+                  "required": [
+                    "type",
+                    "title",
+                    "status"
+                  ]
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "operationId": "createOidcGroupMapping",
+        "tags": [
+          "Instance"
+        ],
+        "summary": "Create an OIDC group mapping",
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 128
+            },
+            "required": true,
+            "name": "id",
+            "in": "path"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 128
+            },
+            "required": true,
+            "name": "x-taskdesk-step-up-token",
+            "in": "header"
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "configVersion": {
+                    "type": "integer",
+                    "exclusiveMinimum": 0
+                  },
+                  "externalGroupId": {
+                    "type": "string",
+                    "pattern": "^[0-9a-f]{8}(?:-[0-9a-f]{4}){3}-[0-9a-f]{12}$/u"
+                  },
+                  "externalGroupNameSnapshot": {
+                    "type": [
+                      "string",
+                      "null"
+                    ],
+                    "maxLength": 255,
+                    "default": null
+                  },
+                  "roleId": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 128
+                  },
+                  "scope": {
+                    "type": "string",
+                    "enum": [
+                      "organisation",
+                      "workspace"
+                    ]
+                  },
+                  "scopeId": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 128
+                  },
+                  "enabled": {
+                    "type": "boolean",
+                    "default": true
+                  }
+                },
+                "required": [
+                  "configVersion",
+                  "externalGroupId",
+                  "roleId",
+                  "scope"
+                ],
+                "additionalProperties": false
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Created OIDC group mapping",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "id": {
+                          "type": "string"
+                        },
+                        "externalGroupId": {
+                          "type": "string"
+                        },
+                        "externalGroupNameSnapshot": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "roleId": {
+                          "type": "string"
+                        },
+                        "scope": {
+                          "type": "string",
+                          "enum": [
+                            "organisation",
+                            "workspace"
+                          ]
+                        },
+                        "scopeId": {
+                          "type": "string"
+                        },
+                        "enabled": {
+                          "type": "boolean"
+                        },
+                        "createdAt": {
+                          "type": "string",
+                          "format": "date-time"
+                        },
+                        "updatedAt": {
+                          "type": "string",
+                          "format": "date-time"
+                        }
+                      },
+                      "required": [
+                        "id",
+                        "externalGroupId",
+                        "externalGroupNameSnapshot",
+                        "roleId",
+                        "scope",
+                        "scopeId",
+                        "enabled",
+                        "createdAt",
+                        "updatedAt"
+                      ]
+                    },
+                    "configVersion": {
+                      "type": "integer",
+                      "exclusiveMinimum": 0
+                    }
+                  },
+                  "required": [
+                    "data",
+                    "configVersion"
+                  ]
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing or invalid credentials"
+          },
+          "403": {
+            "description": "Step-up unavailable",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "type": {
+                      "type": "string"
+                    },
+                    "title": {
+                      "type": "string"
+                    },
+                    "status": {
+                      "type": "number"
+                    }
+                  },
+                  "required": [
+                    "type",
+                    "title",
+                    "status"
+                  ]
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Connection unavailable",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "type": {
+                      "type": "string"
+                    },
+                    "title": {
+                      "type": "string"
+                    },
+                    "status": {
+                      "type": "number"
+                    }
+                  },
+                  "required": [
+                    "type",
+                    "title",
+                    "status"
+                  ]
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Mapping or version conflict",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "type": {
+                      "type": "string"
+                    },
+                    "title": {
+                      "type": "string"
+                    },
+                    "status": {
+                      "type": "number"
+                    },
+                    "currentVersion": {
+                      "type": "integer",
+                      "exclusiveMinimum": 0
+                    }
+                  },
+                  "required": [
+                    "type",
+                    "title",
+                    "status"
+                  ]
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Invalid mapping",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "type": {
+                      "type": "string"
+                    },
+                    "title": {
+                      "type": "string"
+                    },
+                    "status": {
+                      "type": "number"
+                    }
+                  },
+                  "required": [
+                    "type",
+                    "title",
+                    "status"
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/instance/identity-connections/{id}/oidc-group-mappings/{mappingId}": {
+      "patch": {
+        "operationId": "updateOidcGroupMapping",
+        "tags": [
+          "Instance"
+        ],
+        "summary": "Update an OIDC group mapping",
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 128
+            },
+            "required": true,
+            "name": "id",
+            "in": "path"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 128
+            },
+            "required": true,
+            "name": "mappingId",
+            "in": "path"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 128
+            },
+            "required": true,
+            "name": "x-taskdesk-step-up-token",
+            "in": "header"
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "configVersion": {
+                    "type": "integer",
+                    "exclusiveMinimum": 0
+                  },
+                  "externalGroupNameSnapshot": {
+                    "type": [
+                      "string",
+                      "null"
+                    ],
+                    "maxLength": 255
+                  },
+                  "roleId": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 128
+                  },
+                  "scopeId": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 128
+                  },
+                  "enabled": {
+                    "type": "boolean"
+                  }
+                },
+                "required": [
+                  "configVersion"
+                ],
+                "additionalProperties": false
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Updated OIDC group mapping",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "id": {
+                          "type": "string"
+                        },
+                        "externalGroupId": {
+                          "type": "string"
+                        },
+                        "externalGroupNameSnapshot": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "roleId": {
+                          "type": "string"
+                        },
+                        "scope": {
+                          "type": "string",
+                          "enum": [
+                            "organisation",
+                            "workspace"
+                          ]
+                        },
+                        "scopeId": {
+                          "type": "string"
+                        },
+                        "enabled": {
+                          "type": "boolean"
+                        },
+                        "createdAt": {
+                          "type": "string",
+                          "format": "date-time"
+                        },
+                        "updatedAt": {
+                          "type": "string",
+                          "format": "date-time"
+                        }
+                      },
+                      "required": [
+                        "id",
+                        "externalGroupId",
+                        "externalGroupNameSnapshot",
+                        "roleId",
+                        "scope",
+                        "scopeId",
+                        "enabled",
+                        "createdAt",
+                        "updatedAt"
+                      ]
+                    },
+                    "configVersion": {
+                      "type": "integer",
+                      "exclusiveMinimum": 0
+                    }
+                  },
+                  "required": [
+                    "data",
+                    "configVersion"
+                  ]
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing or invalid credentials"
+          },
+          "403": {
+            "description": "Step-up unavailable",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "type": {
+                      "type": "string"
+                    },
+                    "title": {
+                      "type": "string"
+                    },
+                    "status": {
+                      "type": "number"
+                    }
+                  },
+                  "required": [
+                    "type",
+                    "title",
+                    "status"
+                  ]
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Mapping unavailable",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "type": {
+                      "type": "string"
+                    },
+                    "title": {
+                      "type": "string"
+                    },
+                    "status": {
+                      "type": "number"
+                    }
+                  },
+                  "required": [
+                    "type",
+                    "title",
+                    "status"
+                  ]
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Version conflict",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "type": {
+                      "type": "string"
+                    },
+                    "title": {
+                      "type": "string"
+                    },
+                    "status": {
+                      "type": "number"
+                    },
+                    "currentVersion": {
+                      "type": "integer",
+                      "exclusiveMinimum": 0
+                    }
+                  },
+                  "required": [
+                    "type",
+                    "title",
+                    "status"
+                  ]
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Invalid mapping",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "type": {
+                      "type": "string"
+                    },
+                    "title": {
+                      "type": "string"
+                    },
+                    "status": {
+                      "type": "number"
+                    }
+                  },
+                  "required": [
+                    "type",
+                    "title",
+                    "status"
                   ]
                 }
               }

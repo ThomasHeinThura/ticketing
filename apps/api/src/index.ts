@@ -53,6 +53,7 @@ import { waitForDatabase } from "./database/wait-for-database";
 import { eventContext } from "./events";
 import externalLink from "./external-link";
 import identityConnectionAdmin from "./identity/connection-admin";
+import { oidcGroupMappingAdminRouter } from "./identity/oidc-group-mapping-admin";
 import scimAdmin from "./identity/scim-admin";
 import scimProtocol from "./identity/scim-protocol";
 import getInstanceStatus from "./instance/controllers/get-instance-status";
@@ -1367,6 +1368,10 @@ export function createApp(
     "/instance",
     identityConnectionAdmin,
   );
+  const oidcGroupMappingAdminApi = api.route(
+    "/instance",
+    oidcGroupMappingAdminRouter,
+  );
   const scimAdminApi = api.route("/instance", scimAdmin);
 
   // User-scoped WebSocket endpoint; MUST be registered before /ws/:projectId
@@ -1656,6 +1661,7 @@ export function createApp(
     resetMfaApi,
     usersApi,
     identityConnectionAdminApi,
+    oidcGroupMappingAdminApi,
     scimAdminApi,
     scimProtocolApi,
     invitationApi,
@@ -2036,6 +2042,7 @@ const {
   resetMfaApi,
   usersApi,
   identityConnectionAdminApi,
+  oidcGroupMappingAdminApi,
   scimAdminApi,
   scimProtocolApi,
   invitationApi,
@@ -2126,6 +2133,7 @@ export type AppType =
   | typeof resetMfaApi
   | typeof usersApi
   | typeof identityConnectionAdminApi
+  | typeof oidcGroupMappingAdminApi
   | typeof scimAdminApi
   | typeof scimProtocolApi
   | typeof workflowApi
