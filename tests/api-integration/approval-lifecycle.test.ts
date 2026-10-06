@@ -726,6 +726,79 @@ describe("API integration: approval lifecycle", () => {
         .where(eq(schema.outboxTable.kind, "approval.expired")),
     ).toHaveLength(1);
 
+    const terminalApprovals = [
+      { id: approval.id, state: "approved" },
+      { id: rejectedApproval.id, state: "rejected" },
+      { id: expiredApproval.id, state: "expired" },
+      { id: withdrawnApproval.id, state: "withdrawn" },
+    ];
+    const terminalWithdrawalEffects =
+      await approvalEffectCounts("approval.withdrawn");
+    const narrowRequesterKey = await createApprovalApiKey(requester.user.id, {
+      approval: ["decide"],
+    });
+    const scopedAdminKey = await createApprovalApiKey(instanceAdmin.user.id, {
+      approval: ["request"],
+    });
+    for (const terminal of terminalApprovals) {
+      mockAuthenticatedSession(requester.user);
+      const terminalView = await app.request(requestUrl);
+      expect(terminalView.status, await terminalView.clone().text()).toBe(200);
+      const terminalViewBody = (await terminalView.json()) as {
+        approvals: { id: string; state: string; canWithdraw: boolean }[];
+      };
+      expect(terminalViewBody.approvals).toContainEqual(
+        expect.objectContaining({
+          id: terminal.id,
+          state: terminal.state,
+          canWithdraw: false,
+        }),
+      );
+
+      const requesterRetry = await app.request(
+        `/api/approvals/${terminal.id}/withdraw`,
+        { method: "POST" },
+      );
+      expect(requesterRetry.status).toBe(409);
+
+      mockAuthenticatedSession({ ...instanceAdmin.user, role: "admin" });
+      const sessionAdminRetry = await app.request(
+        `/api/approvals/${terminal.id}/withdraw`,
+        { method: "POST" },
+      );
+      expect(sessionAdminRetry.status).toBe(409);
+
+      const adminKeyRetry = await app.request(
+        `/api/approvals/${terminal.id}/withdraw`,
+        { method: "POST", headers: { "x-api-key": scopedAdminKey } },
+      );
+      expect(adminKeyRetry.status).toBe(409);
+
+      mockAuthenticatedSession(approver.user);
+      const unauthorizedRetry = await app.request(
+        `/api/approvals/${terminal.id}/withdraw`,
+        { method: "POST" },
+      );
+      expect(unauthorizedRetry.status).toBe(403);
+      const unauthorizedBody = await unauthorizedRetry.text();
+      expect(unauthorizedBody).not.toContain(terminal.state);
+
+      const narrowKeyRetry = await app.request(
+        `/api/approvals/${terminal.id}/withdraw`,
+        { method: "POST", headers: { "x-api-key": narrowRequesterKey } },
+      );
+      expect(narrowKeyRetry.status).toBe(403);
+      expect(await narrowKeyRetry.text()).not.toContain(terminal.state);
+      const [unchangedTerminal] = await db
+        .select({ state: schema.approvalTable.state })
+        .from(schema.approvalTable)
+        .where(eq(schema.approvalTable.id, terminal.id));
+      expect(unchangedTerminal?.state).toBe(terminal.state);
+    }
+    expect(await approvalEffectCounts("approval.withdrawn")).toEqual(
+      terminalWithdrawalEffects,
+    );
+
     const reminderApproval = await createAdditionalApproval();
     const reminderNow = Date.now();
     await db

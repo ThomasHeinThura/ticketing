@@ -1,4 +1,7 @@
-import { type Approval, evaluateApprovalWithdrawal } from "@taskdesk/domain";
+import {
+  type Approval,
+  evaluateApprovalWithdrawalDecision,
+} from "@taskdesk/domain";
 import {
   CAPABILITY_NAMES,
   can,
@@ -604,9 +607,9 @@ export async function canWithdrawApproval(
   },
   identity: Awaited<ReturnType<typeof resolveApprovalIdentity>>,
   target: ApprovalTarget,
-): Promise<boolean> {
+): Promise<{ authorized: boolean; actionable: boolean }> {
   const isInstanceAdmin = identity.reach.kind === "all";
-  const withdrawal = evaluateApprovalWithdrawal({
+  const withdrawal = evaluateApprovalWithdrawalDecision({
     approval: {
       id: row.id,
       transitionId: row.transitionId,
@@ -622,17 +625,20 @@ export async function canWithdrawApproval(
     actingPersonId: identity.personId,
     isInstanceAdmin,
   });
-  if (!withdrawal.ok) {
-    return false;
-  }
+  if (!withdrawal.authorized) return withdrawal;
 
   if (
     isKeyCredential(identity.credential) &&
     !expandCapabilities(identity.keyCapabilities ?? []).has("approval:request")
   ) {
-    return false;
+    return { authorized: false, actionable: false };
   }
-  if (isInstanceAdmin) return true;
-  if (!(await hasWorkItemReach(identity, target))) return false;
-  return hasApprovalCapability(identity, "approval:request", target);
+  if (isInstanceAdmin) return withdrawal;
+  if (!(await hasWorkItemReach(identity, target))) {
+    return { authorized: false, actionable: false };
+  }
+  if (!hasApprovalCapability(identity, "approval:request", target)) {
+    return { authorized: false, actionable: false };
+  }
+  return withdrawal;
 }
