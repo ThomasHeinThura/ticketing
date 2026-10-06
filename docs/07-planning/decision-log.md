@@ -1,3 +1,37 @@
+### 2026-10-06 · Orchestrator applies standing P0 authorization to disposable strict testing
+
+**Decision by the orchestrator, under Thomas's standing instruction to continue P0,
+test it, and take recommended routine decisions:** prepare and execute a reversible,
+disposable isolated strict-on/strict-off test of only the platform source and the
+27 directly observed non-task policy sources, in registry order. Candidate source is
+`3096cb044bdf6ae98488bfc385f532fa6386343a`; the source-bound schema-80 migration baseline
+is `sha256:6a6315c2890b5677f9afb858c3f81aa86c181e7d3270fa7164d889111e214628`.
+The newly built candidate image is a separate artifact and must retain its actual identity.
+
+**Authority and conditions:** this applies the October 2 decision “Development/P0
+policy-shadow verification uses three issue-free UTC dates” and the October 4 decision
+“Implement opt-in per-policy-source strict enforcement for #8”. The independent October 6
+`cutover-acceptance-sol.md` clears the three actual representative date records and permits
+the observed 27-source staged proposal. This entry is an accurately attributed delegated
+operational choice, not Thomas's personal approval of an exact digest or a gate exception.
+The repaired adapter must receive independent review at its actual controlled hashes,
+and the source, immutable evidence, operational record and resource window must be pinned
+before execution. No unavailable or self-described authority record may substitute.
+
+**Bounds:** acquire only disposable resources with exact acquisition/ownership receipts;
+retain hand-written guards and shadow observation, exercise allowed/denied/reach/mutation
+paths, verify live/ready and strict-off rollback, and reconcile events and complete cleanup.
+No persistent DEV database/image/setting, config-source selection, task-source selection,
+production system, protected branch or performance budget is changed by this authorization.
+Config still requires Thomas's pending explicit public pre-guard exception decision; task
+still requires accepted config runtime and fresh re-key evidence. The legacy key remains.
+A failure stays open and the exact acquired resources alone may be cleaned up.
+
+**State:** preparation and reviewed runtime release are required; this entry records no
+execution, strict activation, passed runtime test, protected acceptance or P0 completion.
+
+**Recorded:** top-level orchestrator, 2026-10-06, applying existing session authorization.
+
 ### 2026-10-05 · Suppress the historical public TOTP test vector by exact fingerprint
 
 Add only `69e61dd56c18bdbb90149f470d9a6615a9d28272:apps/web/e2e/mfa-csrf-journey.spec.ts:generic-api-key:13` to `.gitleaksignore`. The finding is in an already-pushed historical commit; its value is an `otpauth` test URI whose Base32 secret decodes to the published RFC 6238 test-vector bytes. The current source still contains the same public deterministic test-vector literal at `apps/web/e2e/mfa-csrf-journey.spec.ts:16`; the historical commit records it at line 13. The test uses the RFC timestamp `59000` and asserts the published vector output before it provisions the test app. Preserve history and suppress this finding by its exact fingerprint only; do not ignore the path or rule.
