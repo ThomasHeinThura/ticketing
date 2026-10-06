@@ -2,8 +2,8 @@
 
 # Independent GPT-6 Sol security review — PR #584, exact C9 head
 
-**Reviewer:** fresh GPT-6 Sol context; no authorship, direction, remediation, operational authorization, or merge of this candidate.  
-**Candidate:** `c9a7f26ca16eac524847be80d23a9729789bbef5` on PR #584, base `3096cb044bdf6ae98488bfc385f532fa6386343a`. GitHub head and local clean checkout matched at review.  
+**Reviewer:** fresh GPT-6 Sol context; no authorship, direction, remediation, operational authorization, or merge of this candidate.
+**Candidate:** `c9a7f26ca16eac524847be80d23a9729789bbef5` on PR #584, base `3096cb044bdf6ae98488bfc385f532fa6386343a`. GitHub head and local clean checkout matched at review.
 **Scope:** full product authorization change from base, three dependency floors added at C9, and the private C9 strict-runner draft. This is the per-PR security review, not the P0 phase finalizer or a runtime release record.
 
 ## Verdict

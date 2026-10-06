@@ -138,21 +138,61 @@ sha256sum -c "$archive.sha256"
 
 The installer cannot be used on the air-gapped host because it fetches its release assets
 from GitHub. After transferring the four verified files, extract the archive and deploy from
-the versioned directory. These commands create a fresh installation. If `.env` already exists,
-keep it: it contains deployment secrets, including the encryption key for stored plugin
-credentials. Do not replace it with the example file when upgrading an existing installation.
+the versioned directory. The example below distinguishes a new installation from an upgrade.
+An upgrade must carry the previous installation's `.env` into the new version directory
+before running the deploy script. It contains database, authentication, and encryption keys;
+in particular, replacing `TASKDESK_ENCRYPTION_KEY` makes stored encrypted plugin credentials
+unreadable. Transfer the file securely, keep its values unchanged, and restrict the new copy
+to the installing user. If the previous `.env` is unavailable, stop and recover it from the
+installation's protected backup; do not create a replacement and continue.
 
 ```bash
+set -eu
 tar -xzf "$archive"
 cd "taskdesk-${version}"
+# Choose exactly one. For an upgrade, point this at the previous version directory.
+install_kind=upgrade
+prior_dir=/srv/taskdesk-v2.21.0
+
 if [ -e .env ]; then
-  printf '%s\n' 'Keeping existing .env; review it and preserve its secrets.'
-else
-  cp deploy/.env.example .env
+  printf '%s\n' 'Refusing to overwrite .env in the extracted directory.' >&2
+  exit 1
 fi
-$EDITOR .env
+case "$install_kind" in
+  upgrade)
+    if [ ! -d "$prior_dir" ] || [ ! -f "$prior_dir/.env" ] || [ -L "$prior_dir/.env" ]; then
+      printf '%s\n' 'Upgrade requires the prior version directory and its regular .env file.' >&2
+      exit 1
+    fi
+    transfer_file=".env.transfer.$$"
+    trap 'rm -f "$transfer_file"' EXIT
+    (umask 077; cp "$prior_dir/.env" "$transfer_file")
+    chmod 600 "$transfer_file"
+    if ! cmp -s "$prior_dir/.env" "$transfer_file"; then
+      printf '%s\n' 'The copied .env does not match the prior file; refusing to deploy.' >&2
+      exit 1
+    fi
+    mv "$transfer_file" .env
+    trap - EXIT
+    ;;
+  fresh)
+    cp deploy/.env.example .env
+    chmod 600 .env
+    ;;
+  *)
+    printf '%s\n' 'Set install_kind to upgrade or fresh.' >&2
+    exit 1
+    ;;
+esac
+${EDITOR:-vi} .env
 scripts/deploy.sh local
 ```
+
+For a fresh installation, set `install_kind=fresh`; this is the only path that copies the
+example file. For an upgrade, retain the old version directory and its `.env` until the new
+version is verified and backed up. The guarded copy fails before deployment if the prior file
+is missing, a symlink, or differs after copying. Do not proceed by switching a failed upgrade
+to `fresh`.
 
 For production, configure the required host and secrets in `.env` and run
 `scripts/deploy.sh production` instead. The signed archive contains deployment assets and
