@@ -43,7 +43,7 @@ const delivery = {
   payload: {
     id: "event-1",
     kind: "work_item.assigned",
-    scope: { workspaceId: "workspace-1" },
+    scope: { workspaceId: "workspace-1", organisationId: "org-1" },
     payload: { workItemId: "item-1" },
   },
   title: "Assigned",
@@ -126,7 +126,10 @@ describe("current notification reach and preference", () => {
         payload: {
           id: delivery.eventId,
           kind: eventKind,
-          scope: { workspaceId: delivery.workspaceId },
+          scope: {
+            workspaceId: delivery.workspaceId,
+            organisationId: delivery.organisationId,
+          },
           payload,
         },
       });
@@ -161,7 +164,10 @@ describe("current notification reach and preference", () => {
           payload: {
             id: delivery.eventId,
             kind: eventKind,
-            scope: { workspaceId: delivery.workspaceId },
+            scope: {
+              workspaceId: delivery.workspaceId,
+              organisationId: delivery.organisationId,
+            },
             payload,
           },
         }),
@@ -183,7 +189,10 @@ describe("current notification reach and preference", () => {
         payload: {
           id: eventId,
           kind: delivery.eventKind,
-          scope: { workspaceId: delivery.workspaceId },
+          scope: {
+            workspaceId: delivery.workspaceId,
+            organisationId: delivery.organisationId,
+          },
           payload: { workItemId: "item-1" },
         },
       }),
@@ -209,6 +218,191 @@ describe("current notification reach and preference", () => {
       reason: "resource_mapping_mismatch",
     });
   });
+
+  it("rejects an envelope whose organisation differs from the delivery scope", async () => {
+    await expect(
+      evaluateCurrentNotificationReachAndPreference(tx, {
+        ...delivery,
+        payload: {
+          id: delivery.eventId,
+          kind: delivery.eventKind,
+          scope: {
+            workspaceId: delivery.workspaceId,
+            organisationId: "foreign-org",
+          },
+          payload: { workItemId: "item-1" },
+        },
+      }),
+    ).resolves.toEqual({
+      kind: "suppress",
+      reason: "resource_mapping_mismatch",
+    });
+    expect(mocks.findNotificationPerson).not.toHaveBeenCalled();
+  });
+
+  it("treats an omitted event organisation as null when the delivery is unbound", async () => {
+    mocks.findCurrentNotificationResource.mockResolvedValue({
+      ...resource,
+      organisationId: null,
+    });
+    await expect(
+      evaluateCurrentNotificationReachAndPreference(tx, {
+        ...delivery,
+        organisationId: null,
+        payload: {
+          id: delivery.eventId,
+          kind: delivery.eventKind,
+          scope: { workspaceId: delivery.workspaceId },
+          payload: { workItemId: "item-1" },
+        },
+      }),
+    ).resolves.toMatchObject({ kind: "eligible" });
+  });
+
+  it("rejects an envelope project that differs from the resolved resource", async () => {
+    await expect(
+      evaluateCurrentNotificationReachAndPreference(tx, {
+        ...delivery,
+        payload: {
+          id: delivery.eventId,
+          kind: delivery.eventKind,
+          scope: {
+            workspaceId: delivery.workspaceId,
+            organisationId: delivery.organisationId,
+            projectId: "foreign-project",
+          },
+          payload: { workItemId: "item-1" },
+        },
+      }),
+    ).resolves.toEqual({ kind: "suppress", reason: "resource_scope_changed" });
+  });
+
+  it("passes every supplied work-item identity to the canonical row resolver", async () => {
+    const mapped = {
+      ...delivery,
+      payload: {
+        id: delivery.eventId,
+        kind: delivery.eventKind,
+        scope: {
+          workspaceId: delivery.workspaceId,
+          organisationId: delivery.organisationId,
+        },
+        payload: { workItemId: "item-1", key: "OTHER-1" },
+      },
+    };
+    await evaluateCurrentNotificationReachAndPreference(tx, mapped);
+    expect(mocks.findCurrentNotificationResource).toHaveBeenCalledWith(
+      tx,
+      expect.objectContaining({
+        canonicalWorkItem: { id: "item-1", key: "OTHER-1" },
+      }),
+    );
+  });
+
+  it.each([
+    ["work_item", "approval.requested", { approvalId: "item-1" }],
+    ["approval", "work_item.assigned", { workItemId: "item-1" }],
+    ["workspace", "work_item.assigned", { workItemId: "item-1" }],
+  ])(
+    "rejects unsupported resource/event pairing %s / %s",
+    async (resourceType, eventKind, payload) => {
+      await expect(
+        evaluateCurrentNotificationReachAndPreference(tx, {
+          ...delivery,
+          resourceType,
+          eventKind,
+          payload: {
+            id: delivery.eventId,
+            kind: eventKind,
+            scope: {
+              workspaceId: delivery.workspaceId,
+              organisationId: delivery.organisationId,
+            },
+            payload,
+          },
+        }),
+      ).resolves.toEqual({
+        kind: "suppress",
+        reason: "resource_mapping_mismatch",
+      });
+      expect(mocks.findNotificationPerson).not.toHaveBeenCalled();
+    },
+  );
+
+  it.each([
+    ...[
+      "work_item.assigned",
+      "work_item.unassigned",
+      "work_item.mentioned",
+      "work_item.transitioned",
+      "work_item.escalated",
+      "work_item.due_soon",
+      "work_item.overdue",
+      "work_item.unblocked",
+      "sla.at_risk",
+      "sla.breached",
+    ].map(
+      (eventKind) =>
+        ["work_item", eventKind, "item-1", { workItemId: "item-1" }] as const,
+    ),
+    ...["work_item.commented", "work_item.mentioned"].map(
+      (eventKind) =>
+        [
+          "comment",
+          eventKind,
+          "comment-1",
+          { commentId: "comment-1" },
+        ] as const,
+    ),
+    ...[
+      "approval.requested",
+      "approval.decided",
+      "approval.expiring",
+      "approval.expired",
+      "approval.withdrawn",
+    ].map(
+      (eventKind) =>
+        [
+          "approval",
+          eventKind,
+          "approval-1",
+          { approvalId: "approval-1" },
+        ] as const,
+    ),
+    [
+      "workspace",
+      "workspace.created",
+      "workspace-1",
+      { workspaceId: "workspace-1" },
+    ] as const,
+  ])(
+    "accepts canonical %s event binding for %s",
+    async (resourceType, eventKind, resourceId, payload) => {
+      mocks.findCurrentNotificationResource.mockResolvedValue({
+        ...resource,
+        ...(resourceType === "workspace" ? { projectId: null } : {}),
+      });
+      await evaluateCurrentNotificationReachAndPreference(tx, {
+        ...delivery,
+        eventKind,
+        resourceType,
+        resourceId,
+        payload: {
+          id: delivery.eventId,
+          kind: eventKind,
+          scope: {
+            workspaceId: delivery.workspaceId,
+            organisationId: delivery.organisationId,
+          },
+          payload,
+        },
+      });
+      expect(mocks.findCurrentNotificationResource).toHaveBeenCalledWith(
+        tx,
+        expect.objectContaining({ resourceType, resourceId, eventKind }),
+      );
+    },
+  );
 
   it("rejects an event envelope with no workspace scope", async () => {
     await expect(
@@ -256,7 +450,10 @@ describe("current notification reach and preference", () => {
         payload: {
           id: delivery.eventId,
           kind: "work_item.commented",
-          scope: { workspaceId: delivery.workspaceId },
+          scope: {
+            workspaceId: delivery.workspaceId,
+            organisationId: delivery.organisationId,
+          },
           payload: { commentId: "comment-1" },
         },
         resourceType: "comment",
@@ -276,7 +473,10 @@ describe("current notification reach and preference", () => {
       payload: {
         id: delivery.eventId,
         kind: "work_item.mentioned",
-        scope: { workspaceId: delivery.workspaceId },
+        scope: {
+          workspaceId: delivery.workspaceId,
+          organisationId: delivery.organisationId,
+        },
         payload: { commentId: "comment-1" },
       },
       resourceType: "comment",
@@ -322,7 +522,10 @@ describe("current notification reach and preference", () => {
         payload: {
           id: delivery.eventId,
           kind: "approval.requested",
-          scope: { workspaceId: delivery.workspaceId },
+          scope: {
+            workspaceId: delivery.workspaceId,
+            organisationId: delivery.organisationId,
+          },
           payload: { approvalId: "approval-1" },
         },
         resourceType: "approval",
@@ -366,7 +569,10 @@ describe("current notification reach and preference", () => {
         payload: {
           id: delivery.eventId,
           kind: "approval.expired",
-          scope: { workspaceId: delivery.workspaceId },
+          scope: {
+            workspaceId: delivery.workspaceId,
+            organisationId: delivery.organisationId,
+          },
           payload: { approvalId: "approval-1" },
         },
         resourceType: "approval",

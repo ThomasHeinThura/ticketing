@@ -8,6 +8,7 @@ import {
   workspaceTable,
 } from "../database/schema";
 import type { DbTransaction } from "../events/outbox";
+import { isSupportedNotificationResourceEvent } from "./resource-contract";
 
 export type CurrentNotificationResource = {
   workspaceId: string;
@@ -28,27 +29,6 @@ type ResourceRow = {
   customerVisibility: string | null;
 };
 
-const WORK_ITEM_EVENTS = new Set([
-  "work_item.assigned",
-  "work_item.unassigned",
-  "work_item.mentioned",
-  "work_item.transitioned",
-  "work_item.escalated",
-  "work_item.due_soon",
-  "work_item.overdue",
-  "work_item.unblocked",
-  "sla.at_risk",
-  "sla.breached",
-]);
-const COMMENT_EVENTS = new Set(["work_item.commented", "work_item.mentioned"]);
-const APPROVAL_EVENTS = new Set([
-  "approval.requested",
-  "approval.decided",
-  "approval.expiring",
-  "approval.expired",
-  "approval.withdrawn",
-]);
-
 function rows<T>(result: { rows: unknown[] }): T[] {
   return result.rows as T[];
 }
@@ -66,6 +46,7 @@ function visiblePeople(
 async function findWorkItemResource(
   tx: DbTransaction,
   workItemId: string,
+  canonicalWorkItem?: { id?: string; key?: string },
 ): Promise<CurrentNotificationResource | null> {
   const result = await tx.execute(sql`
     SELECT wi.id, wi.key, wi.workspace_id AS "workspaceId", wi.project_id AS "projectId",
@@ -75,6 +56,8 @@ async function findWorkItemResource(
       JOIN project p ON p.id = wi.project_id
       JOIN workspace w ON w.id = wi.workspace_id
      WHERE (wi.id = ${workItemId} OR wi.key = ${workItemId})
+       AND (${canonicalWorkItem?.id ?? null}::text IS NULL OR wi.id = ${canonicalWorkItem?.id ?? null})
+       AND (${canonicalWorkItem?.key ?? null}::text IS NULL OR wi.key = ${canonicalWorkItem?.key ?? null})
        AND wi.deleted_at IS NULL AND wi.archived_at IS NULL
        AND p.deleted_at IS NULL
        AND w.deleted_at IS NULL
@@ -113,22 +96,29 @@ export async function findCurrentNotificationResource(
     resourceType: string | null;
     resourceId: string | null;
     eventKind: string;
+    canonicalWorkItem?: { id?: string; key?: string };
   },
 ): Promise<CurrentNotificationResource | null> {
   if (!input.resourceType || !input.resourceId) return null;
 
   if (
     input.resourceType === "work_item" &&
-    WORK_ITEM_EVENTS.has(input.eventKind)
+    isSupportedNotificationResourceEvent(input.resourceType, input.eventKind)
   )
-    return findWorkItemResource(tx, input.resourceId);
+    return findWorkItemResource(tx, input.resourceId, input.canonicalWorkItem);
 
-  if (input.resourceType === "comment" && COMMENT_EVENTS.has(input.eventKind)) {
+  if (
+    input.resourceType === "comment" &&
+    isSupportedNotificationResourceEvent(input.resourceType, input.eventKind)
+  ) {
     const result = await tx.execute(sql`
       SELECT c.work_item_id AS "workItemId", c.visibility
         FROM comment c
+        JOIN work_item wi ON wi.id = c.work_item_id
        WHERE c.id = ${input.resourceId}
          AND c.body IS NOT NULL
+         AND (${input.canonicalWorkItem?.id ?? null}::text IS NULL OR wi.id = ${input.canonicalWorkItem?.id ?? null})
+         AND (${input.canonicalWorkItem?.key ?? null}::text IS NULL OR wi.key = ${input.canonicalWorkItem?.key ?? null})
        LIMIT 1
     `);
     const row = rows<{ workItemId: string; visibility: string }>(result)[0];
@@ -145,7 +135,7 @@ export async function findCurrentNotificationResource(
 
   if (
     input.resourceType === "approval" &&
-    APPROVAL_EVENTS.has(input.eventKind)
+    isSupportedNotificationResourceEvent(input.resourceType, input.eventKind)
   ) {
     const context = await findApprovalNotificationContext(tx, input.resourceId);
     if (!context) return null;
@@ -169,7 +159,7 @@ export async function findCurrentNotificationResource(
 
   if (
     input.resourceType === "workspace" &&
-    input.eventKind === "workspace.created"
+    isSupportedNotificationResourceEvent(input.resourceType, input.eventKind)
   ) {
     const workspace = await findNotificationWorkspace(tx, input.resourceId);
     if (!workspace) return null;
