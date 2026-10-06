@@ -89,7 +89,7 @@ Columns: **A** — available as an automation trigger · **W** — deliverable b
 | --- | --- | :-: | :-: | :-: | --- |
 | `service_calendar.created` | A calendar is created; its event envelope is inserted into `outbox` in the same transaction | — | — | — | `calendarId`, `workspaceId`, `name`, `url` |
 | `service_calendar.updated` | A calendar is updated; its event envelope is inserted into `outbox` in the same transaction | — | — | — | `calendarId`, `workspaceId`, `name`, `changedFields: [name\|timezone\|windows\|holidays]`, `url` |
-| `service_calendar.deleted` | Reserved; not emitted yet. EV-1 outbox support will emit after a service calendar is deleted; no delete route exists yet | — | — | — | `calendarId`, `workspaceId`, `name`, `url` |
+| `service_calendar.deleted` | A service calendar is deleted after its pending-action approval rechecks that no project, SLA version, or work item references it; the event envelope is inserted into `outbox` in the same transaction | — | — | — | `calendarId`, `workspaceId`, `name`, `url` |
 
 ### Approvals
 

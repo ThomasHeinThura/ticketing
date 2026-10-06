@@ -11,6 +11,8 @@ import {
   pendingActionTable,
   personTable,
   projectTable,
+  serviceCalendarTable,
+  slaPolicyVersionTable,
   userTable,
   workItemTable,
   workspaceTable,
@@ -113,7 +115,7 @@ export async function createPendingAction(input: CreatePendingActionInput) {
             action: input.action,
             targetType: input.targetType,
             targetIds: payload.target_ids,
-            targetVersions: null,
+            targetVersions: scope.targetVersions ?? null,
             payload,
             routeKey: input.routeKey,
             payloadHash,
@@ -505,6 +507,416 @@ export async function decideOwnPendingAction(input: {
   }
 
   return toPublicPendingAction(result.updated);
+}
+
+export async function approveServiceCalendarDeletion(input: {
+  id: string;
+  requesterPersonId: string;
+  userId: string;
+  sessionId: string;
+  traceId: string;
+}) {
+  const now = new Date();
+  let auditFailure = false;
+  const result = await db.transaction(async (tx) => {
+    const [row] = await tx
+      .select()
+      .from(pendingActionTable)
+      .where(
+        and(
+          eq(pendingActionTable.id, input.id),
+          eq(pendingActionTable.requestedByPersonId, input.requesterPersonId),
+        ),
+      )
+      .for("update")
+      .limit(1);
+    if (!row)
+      throw new HTTPException(404, { message: "Pending action not found" });
+    if (row.state !== "pending")
+      throw new HTTPException(409, { message: "pending_action_not_pending" });
+    if (
+      row.action !== "delete" ||
+      row.targetType !== "service_calendar" ||
+      row.confirmationRequired !== "click"
+    ) {
+      throw new HTTPException(409, {
+        message: "pending_action_kind_unsupported",
+      });
+    }
+    const [actor] = await tx
+      .select({
+        userId: personTable.userId,
+        active: personTable.active,
+        side: personTable.side,
+        name: userTable.name,
+        banned: userTable.banned,
+      })
+      .from(personTable)
+      .innerJoin(userTable, eq(userTable.id, personTable.userId))
+      .where(eq(personTable.id, input.requesterPersonId))
+      .for("update")
+      .limit(1);
+    const [session] = await tx
+      .select({ id: schema.sessionTable.id })
+      .from(schema.sessionTable)
+      .where(
+        and(
+          eq(schema.sessionTable.id, input.sessionId),
+          eq(schema.sessionTable.userId, input.userId),
+          eq(schema.sessionTable.portal, "agent"),
+          gt(schema.sessionTable.expiresAt, sql`now()`),
+        ),
+      )
+      .for("update")
+      .limit(1);
+    if (
+      !session ||
+      !actor?.userId ||
+      actor.userId !== input.userId ||
+      !actor.active ||
+      actor.side !== "staff" ||
+      actor.banned
+    ) {
+      throw new HTTPException(403, { message: "Forbidden" });
+    }
+    if (row.expiresAt <= now) {
+      const [expired] = await tx
+        .update(pendingActionTable)
+        .set({
+          state: "expired",
+          decidedByPersonId: input.requesterPersonId,
+          decisionSessionId: input.sessionId,
+          decidedAt: now,
+        })
+        .where(
+          and(
+            eq(pendingActionTable.id, row.id),
+            eq(pendingActionTable.state, "pending"),
+          ),
+        )
+        .returning();
+      if (!expired)
+        throw new HTTPException(409, { message: "pending_action_not_pending" });
+      await enqueueOutboxEvent(tx, {
+        id: `evt_${createId()}`,
+        kind: "pending_action.decided",
+        occurredAt: now.toISOString(),
+        actor: {
+          type: "person",
+          id: input.requesterPersonId,
+          name: actor.name,
+        },
+        scope: eventScope(row),
+        payload: {
+          key: row.id,
+          url: `/agent/settings/profile/pending-actions/${row.id}`,
+          pendingActionId: row.id,
+          outcome: "expired",
+        },
+        causationId: null,
+        depth: 0,
+        originAutomationId: null,
+      });
+      let expiryAuditFailure = false;
+      try {
+        await tx.transaction(async (auditTx) =>
+          appendAuditLog(auditTx, {
+            actorId: input.requesterPersonId,
+            actorType: "person",
+            traceId: input.traceId,
+            workspaceId: row.workspaceId,
+            action: "pending_action.expired",
+            entityType: "pending_action",
+            entityId: row.id,
+            before: { state: "pending" },
+            after: { state: "expired" },
+          }),
+        );
+      } catch {
+        expiryAuditFailure = true;
+      }
+      return {
+        row: expired,
+        state: "expired" as const,
+        auditFailure: expiryAuditFailure,
+      };
+    }
+    const route = policyRegistry.get(row.routeKey);
+    if (
+      row.routeKey !== "DELETE /api/service-calendars/{id}" ||
+      route?.kind !== "capability" ||
+      !("capability" in route.policy) ||
+      route.policy.scope !== "workspace" ||
+      route.policy.capability !== "sla_policy:manage"
+    ) {
+      throw new HTTPException(409, {
+        message: "pending_action_policy_changed",
+      });
+    }
+    let payload: ReturnType<typeof canonicalPendingActionPayload>;
+    try {
+      payload = canonicalPendingActionPayload(
+        row.payload as Parameters<typeof canonicalPendingActionPayload>[0],
+      );
+    } catch {
+      throw new HTTPException(409, {
+        message: "pending_action_payload_invalid",
+      });
+    }
+    const targetId = row.targetIds.length === 1 ? row.targetIds[0] : undefined;
+    if (
+      !targetId ||
+      hashPendingActionPayload(payload) !== row.payloadHash ||
+      payload.action !== "delete" ||
+      payload.target_type !== "service_calendar" ||
+      payload.target_ids.length !== 1 ||
+      payload.target_ids[0] !== targetId ||
+      payload.route_key !== row.routeKey ||
+      payload.workspace_id !== row.workspaceId ||
+      payload.project_id !== null ||
+      payload.organisation_id !== null ||
+      payload.confirmation_required !== "click" ||
+      row.confirmationRequired !== "click"
+    ) {
+      throw new HTTPException(409, {
+        message: "pending_action_payload_invalid",
+      });
+    }
+    const [calendar] = await tx
+      .select({
+        id: serviceCalendarTable.id,
+        workspaceId: serviceCalendarTable.workspaceId,
+        name: serviceCalendarTable.name,
+        version: serviceCalendarTable.version,
+      })
+      .from(serviceCalendarTable)
+      .where(eq(serviceCalendarTable.id, targetId))
+      .for("update")
+      .limit(1);
+    if (!calendar || calendar.workspaceId !== row.workspaceId)
+      throw new HTTPException(404, { message: "Service calendar not found" });
+    const targetVersions = row.targetVersions as Record<string, unknown> | null;
+    if (!targetVersions || targetVersions[targetId] !== calendar.version) {
+      const invalidated = await invalidateServiceCalendarDeletion(tx, {
+        row,
+        actorPersonId: input.requesterPersonId,
+        actorName: actor.name,
+        sessionId: input.sessionId,
+        traceId: input.traceId,
+        reason: "version_changed",
+        now,
+      });
+      return {
+        row: invalidated.row,
+        state: "invalidated" as const,
+        auditFailure: invalidated.auditFailure,
+      };
+    }
+    await validateWorkspaceAccess(input.userId, calendar.workspaceId);
+    await assertCallerHasCapability(
+      calendar.workspaceId,
+      input.userId,
+      "sla_policy:manage",
+    );
+    await assertCalendarUnused(tx, calendar.workspaceId, calendar.id);
+    const [deleted] = await tx
+      .delete(serviceCalendarTable)
+      .where(
+        and(
+          eq(serviceCalendarTable.id, targetId),
+          eq(serviceCalendarTable.workspaceId, calendar.workspaceId),
+          eq(serviceCalendarTable.version, calendar.version),
+        ),
+      )
+      .returning({ id: serviceCalendarTable.id });
+    if (!deleted)
+      throw new HTTPException(409, {
+        message: "pending_action_target_changed",
+      });
+    const [executed] = await tx
+      .update(pendingActionTable)
+      .set({
+        state: "executed",
+        confirmationSupplied: { click: true },
+        decidedByPersonId: input.requesterPersonId,
+        decisionSessionId: input.sessionId,
+        decidedAt: now,
+        executedAt: now,
+      })
+      .where(
+        and(
+          eq(pendingActionTable.id, row.id),
+          eq(pendingActionTable.state, "pending"),
+        ),
+      )
+      .returning();
+    if (!executed)
+      throw new HTTPException(409, { message: "pending_action_not_pending" });
+    const occurredAt = now.toISOString();
+    for (const [kind, eventPayload] of [
+      [
+        "pending_action.decided",
+        {
+          key: row.id,
+          url: `/agent/settings/profile/pending-actions/${row.id}`,
+          pendingActionId: row.id,
+          outcome: "approved",
+        },
+      ],
+      [
+        "pending_action.executed",
+        {
+          pendingActionId: row.id,
+          action: row.action,
+          targetIds: row.targetIds,
+          outcome: "executed",
+        },
+      ],
+      [
+        "service_calendar.deleted",
+        {
+          calendarId: calendar.id,
+          workspaceId: calendar.workspaceId,
+          name: calendar.name,
+          url: "/agent/settings/calendars",
+        },
+      ],
+    ] as const) {
+      await enqueueOutboxEvent(tx, {
+        id: `evt_${createId()}`,
+        kind,
+        occurredAt,
+        actor: {
+          type: "person",
+          id: input.requesterPersonId,
+          name: actor.name,
+        },
+        scope: eventScope(row),
+        payload: eventPayload,
+        causationId: null,
+        depth: 0,
+        originAutomationId: null,
+      });
+    }
+    for (const audit of [
+      {
+        action: "pending_action.decided",
+        entityType: "pending_action",
+        entityId: row.id,
+        before: { state: "pending" },
+        after: { outcome: "approved" },
+      },
+      {
+        action: "service_calendar.deleted",
+        entityType: "service_calendar",
+        entityId: calendar.id,
+        before: { name: calendar.name },
+        after: null,
+      },
+      {
+        action: "pending_action.executed",
+        entityType: "pending_action",
+        entityId: row.id,
+        before: null,
+        after: { outcome: "executed", action: row.action, targetCount: 1 },
+      },
+    ]) {
+      try {
+        await tx.transaction(async (auditTx) =>
+          appendAuditLog(auditTx, {
+            actorId: input.requesterPersonId,
+            actorType: "person",
+            traceId: input.traceId,
+            workspaceId: row.workspaceId,
+            action: audit.action,
+            entityType: audit.entityType,
+            entityId: audit.entityId,
+            before: audit.before as JsonValue | null,
+            after: audit.after as JsonValue | null,
+          }),
+        );
+      } catch {
+        auditFailure = true;
+      }
+    }
+    return { row: executed, state: "executed" as const, auditFailure };
+  });
+  if (result.auditFailure) {
+    recordAuditWriteFailure("pending_action_decision");
+    await notifyCurrentInstanceAdminsOfAuditFailure("pending_action_decision");
+  }
+  if (result.state === "invalidated") {
+    throw new HTTPException(409, { message: "pending_action_target_changed" });
+  }
+  return toPublicPendingAction(result.row);
+}
+
+async function invalidateServiceCalendarDeletion(
+  tx: PendingActionTransaction,
+  input: {
+    row: typeof pendingActionTable.$inferSelect;
+    actorPersonId: string;
+    actorName: string;
+    sessionId: string;
+    traceId: string;
+    reason: "version_changed" | "scope_changed";
+    now: Date;
+  },
+) {
+  const [invalidated] = await tx
+    .update(pendingActionTable)
+    .set({
+      state: "invalidated",
+      invalidationReason: input.reason,
+      decidedByPersonId: input.actorPersonId,
+      decisionSessionId: input.sessionId,
+      decidedAt: input.now,
+    })
+    .where(
+      and(
+        eq(pendingActionTable.id, input.row.id),
+        eq(pendingActionTable.state, "pending"),
+      ),
+    )
+    .returning();
+  if (!invalidated)
+    throw new HTTPException(409, { message: "pending_action_not_pending" });
+  await enqueueOutboxEvent(tx, {
+    id: `evt_${createId()}`,
+    kind: "pending_action.decided",
+    occurredAt: input.now.toISOString(),
+    actor: { type: "person", id: input.actorPersonId, name: input.actorName },
+    scope: eventScope(input.row),
+    payload: {
+      key: input.row.id,
+      url: `/agent/settings/profile/pending-actions/${input.row.id}`,
+      pendingActionId: input.row.id,
+      outcome: "invalidated",
+      invalidationReason: input.reason,
+    },
+    causationId: null,
+    depth: 0,
+    originAutomationId: null,
+  });
+  let auditFailure = false;
+  try {
+    await tx.transaction(async (auditTx) =>
+      appendAuditLog(auditTx, {
+        actorId: input.actorPersonId,
+        actorType: "person",
+        traceId: input.traceId,
+        workspaceId: input.row.workspaceId,
+        action: "pending_action.invalidated",
+        entityType: "pending_action",
+        entityId: input.row.id,
+        before: { state: "pending" },
+        after: { state: "invalidated", invalidationReason: input.reason },
+      }),
+    );
+  } catch {
+    auditFailure = true;
+  }
+  return { row: invalidated, auditFailure };
 }
 
 export async function approvePersonDeactivation(input: {
@@ -1083,6 +1495,7 @@ type ResolvedRequestScope = {
   organisationId: string | null;
   actorName: string;
   summary: Record<string, unknown>;
+  targetVersions?: Record<string, number>;
 };
 
 /**
@@ -1101,6 +1514,9 @@ async function resolveRequestScope(
     input.targetIds.length === 1
   ) {
     return resolvePersonDeactivationScope(tx, input);
+  }
+  if (input.action === "delete" && input.targetType === "service_calendar") {
+    return resolveServiceCalendarScope(tx, input);
   }
   if (
     input.targetType !== "work_item" ||
@@ -1263,6 +1679,156 @@ async function resolveRequestScope(
       requesterName: requester.actorName,
     },
   };
+}
+
+async function resolveServiceCalendarScope(
+  tx: PendingActionTransaction,
+  input: CreatePendingActionInput,
+): Promise<ResolvedRequestScope> {
+  const ids = [...new Set(input.targetIds)];
+  if (ids.length !== 1 || ids.length !== input.targetIds.length) {
+    throw new HTTPException(400, {
+      message: "service_calendar_delete_requires_one_target",
+    });
+  }
+  if (
+    !(
+      (input.origin === "web" && input.credentialType === "session") ||
+      (input.origin === "api" && input.credentialType === "api_key")
+    )
+  ) {
+    throw new HTTPException(403, {
+      message: "pending_action_credential_unsupported",
+    });
+  }
+  const route = policyRegistry.get(input.routeKey);
+  if (
+    input.routeKey !== "DELETE /api/service-calendars/{id}" ||
+    route?.kind !== "capability" ||
+    !("capability" in route.policy) ||
+    route.policy.scope !== "workspace" ||
+    route.policy.capability !== "sla_policy:manage"
+  ) {
+    throw new HTTPException(403, { message: "pending_action_policy_changed" });
+  }
+  const [target] = await tx
+    .select({
+      id: serviceCalendarTable.id,
+      workspaceId: serviceCalendarTable.workspaceId,
+      name: serviceCalendarTable.name,
+      version: serviceCalendarTable.version,
+    })
+    .from(serviceCalendarTable)
+    .where(eq(serviceCalendarTable.id, ids[0] ?? ""))
+    .for("update")
+    .limit(1);
+  if (!target)
+    throw new HTTPException(404, { message: "Service calendar not found" });
+  if (input.workspaceId != null && input.workspaceId !== target.workspaceId) {
+    throw new HTTPException(404, { message: "Service calendar not found" });
+  }
+  const [requester] = await tx
+    .select({
+      userId: personTable.userId,
+      active: personTable.active,
+      actorName: userTable.name,
+      banned: userTable.banned,
+    })
+    .from(personTable)
+    .innerJoin(userTable, eq(userTable.id, personTable.userId))
+    .where(eq(personTable.id, input.requesterPersonId))
+    .for("update")
+    .limit(1);
+  if (
+    !requester?.userId ||
+    !requester.active ||
+    requester.banned ||
+    requester.userId !== input.actorId
+  ) {
+    throw new HTTPException(403, {
+      message: "Pending-action requester is unavailable",
+    });
+  }
+  if (input.credentialType === "api_key") {
+    const [key] = await tx
+      .select({ id: apikeyTable.id })
+      .from(apikeyTable)
+      .where(
+        and(
+          eq(apikeyTable.id, input.credentialId ?? ""),
+          or(
+            eq(apikeyTable.referenceId, requester.userId),
+            eq(apikeyTable.userId, requester.userId),
+          ),
+          eq(apikeyTable.enabled, true),
+        ),
+      )
+      .for("update")
+      .limit(1);
+    if (!key || input.actorType !== "api_key")
+      throw new HTTPException(403, {
+        message: "Pending-action requester is unavailable",
+      });
+  } else if (input.actorType !== "person") {
+    throw new HTTPException(403, {
+      message: "Pending-action requester is unavailable",
+    });
+  }
+  await validateWorkspaceAccess(
+    requester.userId,
+    target.workspaceId,
+    input.credentialType === "api_key"
+      ? (input.credentialId ?? undefined)
+      : undefined,
+  );
+  await assertCallerHasCapability(
+    target.workspaceId,
+    requester.userId,
+    "sla_policy:manage",
+  );
+  await assertCalendarUnused(tx, target.workspaceId, target.id);
+  return {
+    workspaceId: target.workspaceId,
+    projectId: null,
+    organisationId: null,
+    actorName: requester.actorName,
+    summary: {
+      name: target.name,
+      calendarId: target.id,
+      version: target.version,
+    },
+    targetVersions: { [target.id]: target.version },
+  };
+}
+
+async function assertCalendarUnused(
+  tx: PendingActionTransaction,
+  workspaceId: string,
+  calendarId: string,
+) {
+  const [projectReference] = await tx
+    .select({ id: projectTable.id })
+    .from(projectTable)
+    .where(
+      and(
+        eq(projectTable.workspaceId, workspaceId),
+        eq(projectTable.serviceCalendarId, calendarId),
+      ),
+    )
+    .limit(1);
+  const [policyReference] = await tx
+    .select({ id: slaPolicyVersionTable.id })
+    .from(slaPolicyVersionTable)
+    .where(
+      and(
+        eq(slaPolicyVersionTable.workspaceId, workspaceId),
+        eq(slaPolicyVersionTable.calendarId, calendarId),
+      ),
+    )
+    .limit(1);
+  if (projectReference || policyReference) {
+    throw new HTTPException(409, { message: "service_calendar_in_use" });
+  }
 }
 
 async function resolvePersonDeactivationScope(

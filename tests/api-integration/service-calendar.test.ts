@@ -473,7 +473,8 @@ describe("API integration: service calendars (CAL-1–CAL-16)", () => {
         method: "DELETE",
       },
     );
-    expect(deletion.status).toBe(404);
+    expect(deletion.status).toBe(202);
+    expect(await db.select().from(schema.pendingActionTable)).toHaveLength(1);
     expect(
       await db
         .select()
@@ -855,7 +856,7 @@ describe("API integration: service calendars (CAL-1–CAL-16)", () => {
     ).not.toContain("injected audit insert failure");
   });
 
-  it("CAL-14: keeps calendar writes when audit inserts fail and withholds deletion", async () => {
+  it("CAL-14: keeps calendar writes when audit inserts fail and requests deletion for approval", async () => {
     const creator = await createWorkspaceMember({ role: "admin" });
     await db
       .update(schema.userTable)
@@ -954,7 +955,8 @@ describe("API integration: service calendars (CAL-1–CAL-16)", () => {
         method: "DELETE",
       },
     );
-    expect(deletion.status).toBe(404);
+    expect(deletion.status).toBe(202);
+    expect(await db.select().from(schema.pendingActionTable)).toHaveLength(1);
     expect(
       await db
         .select()

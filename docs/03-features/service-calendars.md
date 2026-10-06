@@ -83,13 +83,14 @@ repeats every year (`CAL-12`).
   calendar ID and its own goals/threshold; evaluation resolves that ID to the calendar's
   current definition. Editing a calendar never rewrites a published policy version or
   captures a private copy of calendar windows/holidays/timezone. Changing its timezone
-  requires explicit confirmation before save. The editor shows how many open work items
-  are affected when usage data is available; this count remains outstanding until `/usage`
-  can be implemented after project calendar references (#437) and the `sla_policy` table
-  exist.
+  requires explicit confirmation before save. The usage endpoint returns live project,
+  policy-version, current-policy, and work-item references. The count is informational and
+  does not replace the explicit timezone confirmation.
 - `CAL-9` A calendar in use cannot be deleted. It must be replaced on every policy and
-  project referencing it first, and the UI lists them (`GET
-  /api/service-calendars/{id}/usage`, below).
+  project referencing it first. The usage screen reports aggregate references without
+  exposing project or work-item names to a calendar reader (`GET
+  /api/service-calendars/{id}/usage`, below). Deletion requires the existing pending-action
+  request and browser approval; both request and approval recheck references.
 
 ## Holiday management
 
@@ -160,12 +161,11 @@ repeats every year (`CAL-12`).
 - A `service_calendar.*` event must be recorded in the durable outbox in the same
   transaction as its calendar mutation (`EV-1`). Create and update now write their
   catalogue event envelopes transactionally. They do not use the post-commit in-memory
-  `publishEvent` emitter as a substitute. Deletion remains unavailable, so no delete event
-  is written.
-- Calendar deletion is unavailable until the server-enforced pending-action mechanism is
-  implemented. When available, `DELETE /api/service-calendars/{id}` must create a pending
-  action and return `202` per `pending-actions.md` (`PA-1`–`PA-15`); it must not delete the
-  calendar directly.
+  `publishEvent` emitter as a substitute. Approved deletion writes its audit and
+  `service_calendar.deleted` event in the same transaction.
+- `DELETE /api/service-calendars/{id}` creates a pending action and returns `202` per
+  `pending-actions.md` (`PA-1`–`PA-15`); it never deletes the calendar directly. Approval
+  rechecks the calendar version and all live project/SLA-version references under lock.
 
 ## Permissions
 
@@ -207,7 +207,8 @@ PATCH  /api/service-calendars/{id}            sla_policy:manage
 POST   /api/service-calendars/{id}/holidays/import   sla_policy:manage
 POST   /api/service-calendars/{id}/holidays/preset?country={cc}&year={yyyy} sla_policy:manage
 GET    /api/service-calendars/{id}/preview?year=2026 sla_policy:read
-GET    /api/service-calendars/{id}/usage             sla_policy:read
+GET    /api/service-calendars/{id}/usage             sla_policy:read (aggregate counts only)
+DELETE /api/service-calendars/{id}                   sla_policy:manage (pending action; no direct deletion)
 ```
 
 The list response follows the generic collection envelope with calendar navigation edges:
@@ -236,19 +237,19 @@ and update write audit records and durable event envelopes in their mutation tra
 an audit insert failure is isolated to its savepoint, records the `mutation` failure metric,
 and notifies active instance administrators after commit while the mutation and outbox event
 commit. The preview uses the shared `packages/domain/src/calendar/`
-calculations. The usage and country preset routes are not implemented in this slice:
+calculations. The usage route is implemented. Country preset routes are not implemented in
+this slice:
 
 This slice also does not seed workspace calendars with named presets or implement calendar
 cloning. The calendar list/editor UI covers manual calendar creation, editing, saved-settings
-coverage preview and bounded file import with confirmation. Issue #33 remains open: reference counts, safe deletion,
-presets, cloning, country holidays, and the remaining CAL behavior and acceptance tests
-have not been completed. No Follow the sun window pattern is defined or
-inferred here.
+coverage preview and bounded file import with confirmation. Issue #33 remains open for
+presets, cloning, country holidays, and remaining CAL behavior and acceptance tests. No
+Follow the sun window pattern is defined or inferred here.
 
-- `/usage` waits on project calendar references (tracked by #437). The selected
-  SLA-authoring slice does not add project or work-item policy binding, so this screen does
-  not claim an affected-work-item count. Usage must report real references before CAL-9
-  deletion protection can be enforced.
+- `/usage` returns aggregate counts for current project/calendar bindings, every retained
+  SLA policy version, the current-version marker, and work items bound to a version, without
+  exposing their names or titles. Deletion approval locks the
+  calendar, rechecks these references and its version, and only then performs the delete.
 - Country presets wait on an authoritative bundled dataset specification naming supported
   country codes, dataset provenance/version and refresh process. No jurisdiction list or
   source is inferred here.

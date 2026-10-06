@@ -82,7 +82,16 @@ table further down.
   project-scoped `membership` can therefore never hold the `customer` role, and there is
   nothing for this rule to warn about or block.
 - `PR-9` **(blocking)** A managed service must have a support level and a service
-  calendar.
+  calendar. The persisted project row uses `kind = managed_service`; `support_level` is
+  the canonical `L1 | L2 | L3` vocabulary from the glossary, and `service_calendar_id`
+  must identify a calendar in the same workspace. Create and update reject an incomplete
+  managed-service configuration with `422` naming PR-9; PostgreSQL also enforces the
+  required fields and workspace binding.
+
+Project configuration and health are available at the existing project detail/update
+routes. Health is nullable RAG (`red | amber | green`) and can be read or changed at
+`GET /api/project/{id}/health` and `PATCH /api/project/{id}/health`; it is set by a person,
+not computed. Project create/update accept `kind`, `supportLevel`, and `serviceCalendarId`.
 - `PR-10` **(warning)** A project must have a start date; an end date is optional.
 
 Rule violations appear as a persistent banner on the project overview rather than blocking

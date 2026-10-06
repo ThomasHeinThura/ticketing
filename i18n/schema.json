@@ -3371,6 +3371,90 @@
 						},
 						"importExportTasksDescription": {
 							"type": "string"
+						},
+						"engagement": {
+							"type": "object",
+							"additionalProperties": false,
+							"properties": {
+								"title": {
+									"type": "string"
+								},
+								"description": {
+									"type": "string"
+								},
+								"kind": {
+									"type": "string"
+								},
+								"project": {
+									"type": "string"
+								},
+								"managedService": {
+									"type": "string"
+								},
+								"health": {
+									"type": "string"
+								},
+								"unset": {
+									"type": "string"
+								},
+								"red": {
+									"type": "string"
+								},
+								"amber": {
+									"type": "string"
+								},
+								"green": {
+									"type": "string"
+								},
+								"supportLevel": {
+									"type": "string"
+								},
+								"serviceCalendar": {
+									"type": "string"
+								},
+								"selectCalendar": {
+									"type": "string"
+								},
+								"none": {
+									"type": "string"
+								},
+								"required": {
+									"type": "string"
+								},
+								"saved": {
+									"type": "string"
+								},
+								"saveError": {
+									"type": "string"
+								},
+								"saving": {
+									"type": "string"
+								},
+								"save": {
+									"type": "string"
+								}
+							},
+							"required": [
+								"title",
+								"description",
+								"kind",
+								"project",
+								"managedService",
+								"health",
+								"unset",
+								"red",
+								"amber",
+								"green",
+								"supportLevel",
+								"serviceCalendar",
+								"selectCalendar",
+								"none",
+								"required",
+								"saved",
+								"saveError",
+								"saving",
+								"save"
+							]
 						}
 					},
 					"required": [
@@ -3405,7 +3489,8 @@
 						"toastDeleteError",
 						"validation",
 						"importExportTasks",
-						"importExportTasksDescription"
+						"importExportTasksDescription",
+						"engagement"
 					]
 				},
 				"projectIntegrations": {
@@ -10446,6 +10531,50 @@
 						"tooMany",
 						"noEvents"
 					]
+				},
+				"usage": {
+					"type": "object",
+					"additionalProperties": false,
+					"properties": {
+						"title": {
+							"type": "string"
+						},
+						"loading": {
+							"type": "string"
+						},
+						"error": {
+							"type": "string"
+						},
+						"counts": {
+							"type": "string"
+						},
+						"unused": {
+							"type": "string"
+						},
+						"inUse": {
+							"type": "string"
+						},
+						"delete": {
+							"type": "string"
+						},
+						"requesting": {
+							"type": "string"
+						},
+						"deleteError": {
+							"type": "string"
+						}
+					},
+					"required": [
+						"title",
+						"loading",
+						"error",
+						"counts",
+						"unused",
+						"inUse",
+						"delete",
+						"requesting",
+						"deleteError"
+					]
 				}
 			},
 			"required": [
@@ -10457,7 +10586,8 @@
 				"weekly",
 				"window",
 				"holidays",
-				"import"
+				"import",
+				"usage"
 			]
 		},
 		"instanceUsers": {
@@ -11223,6 +11353,15 @@
 						},
 						"expires": {
 							"type": "string"
+						},
+						"calendarDeletionApproved": {
+							"type": "string"
+						},
+						"approveCalendarDeletion": {
+							"type": "string"
+						},
+						"deleteServiceCalendar": {
+							"type": "string"
 						}
 					},
 					"required": [
@@ -11242,7 +11381,10 @@
 						"accountPassword",
 						"actions",
 						"unknownAction",
-						"expires"
+						"expires",
+						"calendarDeletionApproved",
+						"approveCalendarDeletion",
+						"deleteServiceCalendar"
 					]
 				}
 			},

@@ -91,8 +91,19 @@ thing that is hashed or executed.
     second *pending* action for the same targets impossible. So a retry of the same request
     while one is pending returns **`409 pending_approval` with the id and creates nothing
     new** — with or without an idempotency key. There is no path that produces two pending
-    actions for the same targets, and `target_ids` (not the rendered summary) is what
-    establishes identity.
+  actions for the same targets, and `target_ids` (not the rendered summary) is what
+  establishes identity.
+- **Service calendar deletion** uses only the existing canonical `delete` action and
+  `service_calendar` target type. `DELETE /api/service-calendars/{id}` requires the
+  workspace-scoped `sla_policy:manage` capability and either a session or an approver-owning
+  API key; it creates no direct mutation. Its server summary binds calendar id, name, and
+  resource version. Confirmation is an explicit click. Approval is session-only and checks
+  the current staff person, workspace reach/capability, canonical route and payload hash,
+  calendar scope/version, and project plus every SLA-version reference again while locking
+  the calendar row. Only an unused, unchanged calendar is deleted; its audit records,
+  `service_calendar.deleted` outbox event, pending-action decision/execution records and
+  terminal state are committed atomically. Work-item references are represented through
+  their retained SLA policy versions and are also protected by the database foreign key.
 - `PA-5` **Two credential classes, two answers.** Deleting a **workspace, organisation,
   project, API key, webhook, identity connection or `auth.*` plugin** is on the elevated list
   and carries `sessionOnly: true` ([rbac.md](rbac.md#session-only-routes)). The credential
