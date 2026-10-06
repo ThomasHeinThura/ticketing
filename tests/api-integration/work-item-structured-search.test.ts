@@ -15,10 +15,14 @@ describe("POST /api/work-items/search", () => {
 
   it("uses the explicit workspace scope and applies the bounded filter before counting", async () => {
     const member = await createWorkspaceMember({ role: "member" });
+    const foreign = await createWorkspaceMember({ role: "member" });
     const { project } = await createProjectFixture({
       workspaceId: member.workspace.id,
     });
-    await grantProjectRole(member.user.id, project.id, ["work_item:read"]);
+    await grantProjectRole(member.user.id, project.id, [
+      "work_item:read",
+      "project:read",
+    ]);
     const now = new Date();
     const [type] = await db
       .insert(schema.workItemTypeTable)
@@ -84,6 +88,19 @@ describe("POST /api/work-items/search", () => {
       },
     );
     expect(secondCreated.status).toBe(200);
+    const lowCreated = await app.request(
+      `/api/projects/${project.id}/work-items`,
+      {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({
+          typeId: type.id,
+          title: "Low priority target",
+          priority: "low",
+        }),
+      },
+    );
+    expect(lowCreated.status).toBe(200);
     const hiddenProject = await createProjectFixture({
       workspaceId: member.workspace.id,
     });
@@ -157,6 +174,53 @@ describe("POST /api/work-items/search", () => {
     };
     expect(nextBody.data[0]?.id).not.toBe(body.data[0]?.id);
     expect(nextBody.meta.total).toBe(2);
+    const changedLimit = await app.request("/api/work-items/search", {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({
+        workspaceId: member.workspace.id,
+        query: {
+          entity: "work_item",
+          filter: { field: "priority", op: "eq", value: "high" },
+        },
+        limit: 2,
+        cursor: body.page.nextCursor,
+      }),
+    });
+    expect(changedLimit.status).toBe(400);
+    const malformedCursor = await app.request("/api/work-items/search", {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({
+        workspaceId: member.workspace.id,
+        query: { entity: "work_item" },
+        cursor: "not-a-cursor",
+      }),
+    });
+    expect(malformedCursor.status).toBe(400);
+    await db.insert(schema.workspaceUserTable).values({
+      workspaceId: member.workspace.id,
+      userId: foreign.user.id,
+      role: "member",
+      joinedAt: new Date(),
+    });
+    await grantProjectRole(foreign.user.id, project.id, ["work_item:read"]);
+    mockAuthenticatedSession(foreign.user);
+    const otherActorCursor = await app.request("/api/work-items/search", {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({
+        workspaceId: member.workspace.id,
+        query: {
+          entity: "work_item",
+          filter: { field: "priority", op: "eq", value: "high" },
+        },
+        limit: 1,
+        cursor: body.page.nextCursor,
+      }),
+    });
+    expect(otherActorCursor.status).toBe(400);
+    mockAuthenticatedSession(member.user);
     const mismatchedCursor = await app.request("/api/work-items/search", {
       method: "POST",
       headers: { "content-type": "application/json" },
@@ -182,7 +246,46 @@ describe("POST /api/work-items/search", () => {
         },
       }),
     });
-    expect(projectFieldResponse.status).toBe(422);
+    expect(projectFieldResponse.status).toBe(200);
+    const projectFieldBody = (await projectFieldResponse.json()) as {
+      meta: { total: number };
+    };
+    expect(projectFieldBody.meta.total).toBe(3);
+
+    const nestedAst = await app.request("/api/work-items/search", {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({
+        workspaceId: member.workspace.id,
+        query: {
+          entity: "work_item",
+          filter: {
+            op: "or",
+            clauses: [
+              {
+                op: "and",
+                clauses: [
+                  { field: "priority", op: "eq", value: "high" },
+                  { field: "project", op: "eq", value: project.slug },
+                ],
+              },
+              { field: "priority", op: "eq", value: "low" },
+            ],
+          },
+        },
+      }),
+    });
+    expect(nestedAst.status).toBe(200);
+    const nestedBody = (await nestedAst.json()) as {
+      data: { id: string; priority: string | null }[];
+      meta: { total: number };
+    };
+    expect(nestedBody.meta.total).toBe(3);
+    expect(nestedBody.data.map((row) => row.priority).sort()).toEqual([
+      "high",
+      "high",
+      "low",
+    ]);
   });
 
   it("rejects unknown and unavailable fields and report clauses rather than ignoring them", async () => {
@@ -212,6 +315,14 @@ describe("POST /api/work-items/search", () => {
         await send({
           entity: "work_item",
           filter: { field: "label", op: "eq", value: "urgent" },
+        })
+      ).status,
+    ).toBe(422);
+    expect(
+      (
+        await send({
+          entity: "work_item",
+          filter: { field: "project", op: "eq", value: "OUT-OF-SCOPE" },
         })
       ).status,
     ).toBe(422);
@@ -258,6 +369,20 @@ describe("POST /api/work-items/search", () => {
         await send({
           entity: "work_item",
           filter: { field: "priority", op: "contains", value: "high" },
+        })
+      ).status,
+    ).toBe(400);
+    expect(
+      (
+        await send({
+          entity: "work_item",
+          filter: {
+            op: "or",
+            clauses: [
+              { field: "priority", op: "eq", value: "high' OR TRUE --" },
+              { field: "priority", op: "eq", value: "low" },
+            ],
+          },
         })
       ).status,
     ).toBe(400);

@@ -1,4 +1,5 @@
 import { expect, test } from "@playwright/test";
+import { withMfaCsrfApp } from "../../../tests/e2e/helpers/mfa-csrf-app-fixture";
 import {
   installPerformanceApiFixture,
   WORK_LIST_PATH,
@@ -119,4 +120,98 @@ test("invalid structured filter shows the worklist error state", async ({
   await page.getByRole("button", { name: "Filter", exact: true }).click();
   await expect(page).toHaveURL(/filter=priority%3Abad/u);
   await expect(page.getByTestId("work-item-list-error")).toBeVisible();
+});
+
+test("fixture-backed structured search renders real scoped work items", async ({
+  page,
+}, testInfo) => {
+  test.setTimeout(120_000);
+  page.setDefaultTimeout(12_000);
+  await withMfaCsrfApp(async ({ origin, email, password }) => {
+    await page.goto(new URL("/auth/sign-up", origin).toString());
+    await page.getByLabel("Full name").fill("Disposable Search Admin");
+    await page.getByLabel("Email").fill(email);
+    await page.locator('input[autocomplete="new-password"]').fill(password);
+    await page.getByRole("button", { name: "Create account" }).click();
+    await expect(page).toHaveURL(/\/onboarding(?:\?|$)/u);
+    await page.getByLabel("Workspace name").fill("Structured Search Workspace");
+    await page.getByRole("button", { name: "Create workspace" }).click();
+    await expect(page).toHaveURL(/\/dashboard\/workspace\//u);
+    const workspaceId = new URL(page.url()).pathname
+      .split("/")
+      .filter(Boolean)
+      .at(-1);
+    expect(workspaceId).toBeTruthy();
+
+    const csrfResponse = await page.request.get(
+      new URL("/api/me/csrf-token", origin).toString(),
+      { headers: { Origin: origin } },
+    );
+    expect(csrfResponse.status()).toBe(200);
+    const { token } = (await csrfResponse.json()) as { token: string };
+    const headers = { Origin: origin, "X-TaskDesk-CSRF": token };
+    const projectResponse = await page.request.post(
+      new URL("/api/project", origin).toString(),
+      {
+        headers,
+        data: {
+          workspaceId,
+          name: "Structured Search Fixture",
+          icon: "Folder",
+          slug: "SSEA",
+        },
+      },
+    );
+    expect(projectResponse.status()).toBe(200);
+    const project = (await projectResponse.json()) as {
+      id: string;
+      slug: string;
+    };
+    const typesResponse = await page.request.get(
+      new URL(
+        `/api/workspace/${workspaceId}/work-item-types`,
+        origin,
+      ).toString(),
+      { headers: { Origin: origin } },
+    );
+    expect(typesResponse.status()).toBe(200);
+    const types = (await typesResponse.json()) as Array<{ id: string }>;
+    const type = types[0];
+    expect(type).toBeDefined();
+    for (const item of [
+      { title: "Fixture high priority result", priority: "high" },
+      { title: "Fixture low priority excluded", priority: "low" },
+    ]) {
+      const response = await page.request.post(
+        new URL(`/api/projects/${project.id}/work-items`, origin).toString(),
+        { headers, data: { typeId: type?.id, ...item } },
+      );
+      expect(response.status()).toBe(200);
+    }
+
+    await page.goto(
+      new URL(
+        `/agent/projects/${project.slug}/work?layout=list`,
+        origin,
+      ).toString(),
+    );
+    await expect(
+      page.getByRole("heading", { name: "Structured Search Fixture" }),
+    ).toBeVisible();
+    const filter = page.getByRole("textbox", { name: "Filter work items" });
+    await filter.fill("priority:high");
+    await page.getByRole("button", { name: "Filter", exact: true }).click();
+    await expect(page).toHaveURL(/filter=priority%3Ahigh/u);
+    await expect(page.getByText("Fixture high priority result")).toBeVisible();
+    await expect(page.getByText("Fixture low priority excluded")).toHaveCount(
+      0,
+    );
+    await page.reload();
+    await expect(filter).toHaveValue("priority:high");
+    await expect(page.getByText("Fixture high priority result")).toBeVisible();
+    await page.screenshot({
+      path: testInfo.outputPath("fixture-backed-structured-search.png"),
+      fullPage: true,
+    });
+  });
 });
