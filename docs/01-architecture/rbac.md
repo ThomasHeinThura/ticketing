@@ -657,9 +657,13 @@ document contradicted itself in each place:
 header (or `?workspace=`), validated against the identity's memberships **before** the
 policy check; absent ⇒ `400`. Defined once in [api-design.md](api-design.md). The scope
 object is therefore resolved from the route's declared **scope source** — a path parameter,
-that header/query parameter, or (for `POST /api/work-items/search`) the filter body — and
-`idor-fuzz.test.ts` substitutes an id from the other seeded tenant at **every** source, not
-only in the path.
+that header/query parameter, or, for `POST /api/work-items/search`, the explicit
+`workspaceId` property in the JSON request body (outside its `query` document). The search
+route loads and validates that workspace before its `work_item:read` policy check; its
+repository then evaluates each candidate work item's project reach before applying query
+filters or counting rows. A `project` filter only narrows results within that validated
+workspace; it never supplies or widens authority. `idor-fuzz.test.ts` substitutes an id from
+the other seeded tenant at **every** source, not only in the path.
 
 **Scope evidence is mandatory, with no fallback.** `evaluatePolicy` does not select a capability
 policy's scope id off the flat request/row bag it is handed — it demands a `ResolvedScope`,

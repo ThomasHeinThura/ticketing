@@ -51,16 +51,33 @@ The filter grammar from [API design](../01-architecture/api-design.md). Availabl
 visual builder and, for people who prefer it, a text syntax:
 
 ```
-assignee:@me state:started sla:at_risk due:<7d label:urgent
-project:SUP type:incident priority:>=high created:>2026-01-01
+assignee:@me state:started due:<7d project:SUP type:incident
+priority:>=high created:>2026-01-01 watcher:contains(@me)
 ```
 
-- `SV-11` The text syntax and the visual builder are two renderings of one document.
-  Switching between them is lossless.
-- `SV-12` Field names are whitelisted. The grammar compiles to parameterised SQL and can
-  never express arbitrary SQL.
+- `SV-11` The text syntax and visual builder are two lossless renderings of the filter AST.
+  Parentheses preserve nested `and`/`or`; adjacent text terms mean `and`; explicit `AND`
+  and `OR` are supported. Sort and columns remain in the surrounding query document when
+  the user switches filter-editing modes.
+- `SV-12` Field names and operators are whitelisted. The P1 work-item set, value types,
+  bounds, parser, scope wrapper, pagination and response contract are defined in
+  [API design](../01-architecture/api-design.md#work-item-search-v1-post-api-work-itemssearch).
+  The grammar compiles to parameterised SQL and can never express arbitrary SQL. A
+  recognized field that is unavailable in P1 or not readable by the caller returns `422`
+  naming that field; invalid shapes and values return `400`.
 - `SV-13` `@me` is resolved at query time, so a saved view using it is personal to whoever
   runs it.
+
+P1 implements `work_item` filters only. `sla.state`/`sla.due_at` require the documented
+`work_item_sla_cache` table and loader; `cf.<key>` requires the custom-field value store and
+visibility loader; `label` requires the `work_item_label` join table. These fields receive
+an explicit `422` until those foundations exist. P1 also rejects non-work-item entities and
+`groupBy`/`aggregate` with `422`; it does not silently return unfiltered or partial results.
+The work-item list carries the text filter in its existing route's `filter` query parameter,
+alongside its `layout`, `sort`, and `dir` state, so reloading or sharing the URL reproduces
+the same query. This slice implements the text editor on that list; the visual filter builder,
+global search, saved-view persistence/sharing, and saved-view screens remain outside this
+core work-item search slice, so the feature status above remains incomplete.
 
 ## Saved views
 
@@ -134,7 +151,7 @@ GET  /api/views/{id}/count                     saved_view:read (cached 30 s)
 | View references a deleted label or state | The chip renders "(deleted)" and can be removed. The view still runs |
 | Shared view whose owner leaves | Ownership transfers to a team lead (`team_member.is_lead`), or to the workspace if the team has none — this is the same deactivation behaviour [teams.md](teams.md)'s `TM-8` already states for a team's shared views ("ownership of their shared views transfers to a lead, else to the workspace"), not a separate mechanism for this spec to define |
 | View returns out-of-reach items for a different viewer | Filtered per viewer. Two people running one view legitimately see different results |
-| 50,000 matches | Cursor pagination; the count is an estimate above 10,000 and says so |
+| 50,000 matches | Cursor pagination; `meta.total` is an exact count after workspace and project reach |
 | Search query with only stop words | Returns recent items with an explanation rather than nothing |
 | Non-Latin script query | Handled by the Postgres configuration; tested with CJK and Cyrillic |
 

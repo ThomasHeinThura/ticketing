@@ -6,6 +6,7 @@ import {
   DialogDescription,
   DialogHeader,
   DialogTitle,
+  Input,
   Skeleton,
 } from "@taskdesk/ui";
 import { lazy, Suspense, useCallback, useEffect, useState } from "react";
@@ -80,9 +81,10 @@ export const Route = createFileRoute(
 function WorkItemsRouteComponent() {
   const { t } = useTranslation();
   const { projectKey } = Route.useParams();
-  const { sort, dir } = Route.useSearch();
+  const { sort, dir, filter } = Route.useSearch();
   const navigate = Route.useNavigate();
   const [isCreateOpen, setIsCreateOpen] = useState(false);
+  const [filterDraft, setFilterDraft] = useState(filter ?? "");
   const [isCreateDialogReady, setIsCreateDialogReady] = useState(false);
   const [isCreateDialogLoadError, setIsCreateDialogLoadError] = useState(false);
   const [realtimeProjectId, setRealtimeProjectId] = useState<string>();
@@ -130,6 +132,9 @@ function WorkItemsRouteComponent() {
     refetch: refetchWorkItems,
   } = useGetWorkItems({
     projectId: project?.id,
+    projectSlug: project?.slug,
+    workspaceId: workspace?.id,
+    filter,
     sort,
     dir,
     realtimeStatus:
@@ -137,6 +142,8 @@ function WorkItemsRouteComponent() {
         ? realtimeStatus.status
         : "connecting",
   });
+
+  useEffect(() => setFilterDraft(filter ?? ""), [filter]);
   const isLoading =
     isWorkspaceLoading ||
     isProjectsLoading ||
@@ -210,6 +217,32 @@ function WorkItemsRouteComponent() {
             </Suspense>
           ) : null}
         </div>
+        <form
+          className="flex gap-2"
+          onSubmit={(event) => {
+            event.preventDefault();
+            navigate({
+              search: (prev: WorkItemListSearch) => ({
+                ...prev,
+                ...(filterDraft.trim()
+                  ? { filter: filterDraft.trim() }
+                  : { filter: undefined }),
+              }),
+              replace: true,
+            });
+          }}
+        >
+          <Input
+            aria-label={t("workItems:list.searchLabel", "Filter work items")}
+            placeholder="assignee:@me state:started OR priority:>=high"
+            value={filterDraft}
+            maxLength={8192}
+            onChange={(event) => setFilterDraft(event.target.value)}
+          />
+          <Button type="submit" size="sm" variant="outline">
+            {t("workItems:list.searchAction", "Filter")}
+          </Button>
+        </form>
         <Suspense fallback={<WorkItemListLoading />}>
           <WorkItemsPanel
             project={project}

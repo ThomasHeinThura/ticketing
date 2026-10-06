@@ -83,7 +83,10 @@ export type WorkItemListSearch = {
   layout: WorkItemListLayout;
   sort: WorkItemSortField;
   dir: WorkItemSortDirection;
+  filter?: string;
 };
+
+export const WORK_ITEM_FILTER_URL_MAX_LENGTH = 8192;
 
 export type ServiceCalendarListSearch = { cursor?: string };
 export type SlaPolicyListSearch = { cursor?: string };
@@ -202,6 +205,15 @@ export function parseWorkItemListSearch(raw: unknown): WorkItemListSearch {
     dir: isWorkItemSortDirection(candidate.dir)
       ? candidate.dir
       : DEFAULT_WORK_ITEM_LIST_SEARCH.dir,
+    ...(typeof candidate.filter === "string" &&
+    candidate.filter.length > 0 &&
+    candidate.filter.length <= WORK_ITEM_FILTER_URL_MAX_LENGTH &&
+    ![...candidate.filter].some((character) => {
+      const code = character.charCodeAt(0);
+      return code < 32 || code === 127;
+    })
+      ? { filter: candidate.filter }
+      : {}),
   };
 }
 
@@ -296,6 +308,7 @@ export const routes = {
         sort: resolved.sort,
         dir: resolved.dir,
       });
+      if (resolved.filter) query.set("filter", resolved.filter);
       return `/agent/projects/${encodeURIComponent(params.projectKey)}/work?${query.toString()}`;
     },
   },
@@ -390,5 +403,6 @@ export function parseWorkItemListSearchFromQueryString(
     layout: params.get("layout") ?? undefined,
     sort: params.get("sort") ?? undefined,
     dir: params.get("dir") ?? undefined,
+    filter: params.get("filter") ?? undefined,
   });
 }
