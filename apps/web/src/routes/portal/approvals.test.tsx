@@ -22,6 +22,7 @@ const mocks = vi.hoisted(() => ({
           decidedAt: null,
           decisionNote: null,
           approverReachLost: false,
+          canWithdraw: false,
         },
       ],
     },

@@ -1,6 +1,9 @@
+import { type Approval, evaluateApprovalWithdrawal } from "@taskdesk/domain";
 import {
   CAPABILITY_NAMES,
   can,
+  expandCapabilities,
+  isKeyCredential,
   type ProjectReachFacts,
   reaches,
   resolveFeatureFlag,
@@ -292,6 +295,8 @@ export async function listApprovalRows(workItemId: string) {
       state: schema.approvalTable.state,
       createdAt: schema.approvalTable.createdAt,
       expiresAt: schema.approvalTable.expiresAt,
+      reminder50SentAt: schema.approvalTable.reminder50SentAt,
+      reminder90SentAt: schema.approvalTable.reminder90SentAt,
       decidedAt: schema.approvalTable.decidedAt,
       decisionNote: schema.approvalTable.decisionNote,
       requesterId: schema.approvalTable.requestedBy,
@@ -401,6 +406,8 @@ export async function listApprovalsForPerson(
       state: schema.approvalTable.state,
       createdAt: schema.approvalTable.createdAt,
       expiresAt: schema.approvalTable.expiresAt,
+      reminder50SentAt: schema.approvalTable.reminder50SentAt,
+      reminder90SentAt: schema.approvalTable.reminder90SentAt,
       decidedAt: schema.approvalTable.decidedAt,
       decisionNote: schema.approvalTable.decisionNote,
       requesterId: schema.approvalTable.requestedBy,
@@ -580,4 +587,52 @@ export function hasApprovalCapability(
     workspaceId: target.workspaceId,
     organisationId: target.organisationId,
   });
+}
+
+export async function canWithdrawApproval(
+  row: {
+    id: string;
+    transitionId: string;
+    kind: string;
+    requesterId: string;
+    approverId: string;
+    state: string;
+    createdAt: Date;
+    expiresAt: Date;
+    reminder50SentAt: Date | null;
+    reminder90SentAt: Date | null;
+  },
+  identity: Awaited<ReturnType<typeof resolveApprovalIdentity>>,
+  target: ApprovalTarget,
+): Promise<boolean> {
+  const isInstanceAdmin = identity.reach.kind === "all";
+  const withdrawal = evaluateApprovalWithdrawal({
+    approval: {
+      id: row.id,
+      transitionId: row.transitionId,
+      kind: row.kind as Approval["kind"],
+      requestedBy: row.requesterId,
+      approverId: row.approverId,
+      state: row.state as Approval["state"],
+      createdAt: row.createdAt,
+      expiresAt: row.expiresAt,
+      reminder50SentAt: row.reminder50SentAt,
+      reminder90SentAt: row.reminder90SentAt,
+    },
+    actingPersonId: identity.personId,
+    isInstanceAdmin,
+  });
+  if (!withdrawal.ok) {
+    return false;
+  }
+
+  if (
+    isKeyCredential(identity.credential) &&
+    !expandCapabilities(identity.keyCapabilities ?? []).has("approval:request")
+  ) {
+    return false;
+  }
+  if (isInstanceAdmin) return true;
+  if (!(await hasWorkItemReach(identity, target))) return false;
+  return hasApprovalCapability(identity, "approval:request", target);
 }

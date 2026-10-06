@@ -30,6 +30,7 @@ export const approvalResponseSchema = z.object({
   decidedAt: z.string().datetime().nullable(),
   decisionNote: z.string().nullable(),
   approverReachLost: z.boolean(),
+  canWithdraw: z.boolean(),
 });
 
 export const approvalListResponseSchema = z.object({

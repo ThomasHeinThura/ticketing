@@ -142,6 +142,13 @@ not have to learn the product first.
 
 ## API
 
+Approval responses include `canWithdraw`, computed for the current caller from AP-6/AP-7,
+the current work-item reach and authority rules, and the effective `approval:request` scope
+(including an API key's frozen capability ceiling). It is an affordance only; the withdraw
+route rechecks the same rule when called. Requester withdrawal is surfaced on work-item
+detail (AP-20); the `/api/me/approvals` and `/api/portal/approvals` lists are addressed-approver
+lists (Permissions) and do not list requester-owned approvals.
+
 ```
 GET    /api/work-items/{key}/approvals        work_item:read
 POST   /api/work-items/{key}/approvals        approval:request  (approval:request_cab for kind = cab)
