@@ -1,3 +1,43 @@
+## October 6 bulk continuation — actual failures remain open
+
+- **P0 strict runtime:** all three representative partial UTC date buckets are reconciled;
+  calendar waiting is finished. Actual disposable attempt `20261006T054501Z-3096cb04`
+  passed schema-80→88 migration, health, UID, settings CAS, step-up and metrics protocol
+  checks, then failed representative traffic: the bootstrap instance admin without workspace
+  membership received HTTP500 instead of the required403 on `GET /api/workspace/{workspaceId}`.
+  All six acquired resources are verified absent, with zero cleanup errors. Source inspection
+  identifies a row-scoped policy whose pre-handler middleware supplies request-scoped evidence;
+  strict evaluation runs before the handler's row lookup. This is a real source defect, not a
+  reason to weaken the denial expectation. A bounded product correction and failing-stage
+  log capture correction are assigned together. Original failed records remain intact.
+  The earlier fixture-order attempt's403 was correct and has a separately reviewed runner
+  correction. Public-config exception, applicable re-key/cutover and finalizer remain open;
+  persistent DEV enforcement is unchanged. No P0 closure is claimed.
+- **P0 installer #583:** complete source delta `66b93417886e77406d952a5c6ee5a8e804ce4f83`
+  is pushed clean. Exact-tree contrast inventory, opaque list surfaces, deferred realtime
+  first paint and corrected offline deployment documentation pass local tokens/types and
+  15 focused tests. Hosted fast CI passes all implementation jobs; only the PR template/
+  current security-evidence job is red. Full hosted CI and fresh independent delta review
+  are underway. Earlier source a441's G11 result is18/22, not acceptance for this delta.
+  Actual installer/image/browser acceptance remains required.
+- **P4 #580:** full read-relocation candidate `0d694754d7410ae633de6ca240cee35947917547`
+  has zero misplaced Drizzle reads locally and passed the entire PostgreSQL suite:
+  145 files,1717 tests, zero failures. Exact acquired PostgreSQL and Ryuk IDs were verified
+  absent after cleanup. Ordinary auth/identity and resource reviews clear; gate review
+  blocks optional/computed read calls missed by the scanner. A single structural parser/
+  regression/CI-wiring remediation batch is assigned. Local zero inventory and SQL success
+  do not close the required gate or P4. The transaction-executor residual remains recorded
+  for full independent Sol assessment.
+- **Parallel integration #581:** source0f retains its three ordinary reviews, full Sol
+  clearance, full hosted145-file/1717-test and22/22 performance result. Its actual image
+  boot returned live/ready/agent/portal200, UID10001 and restricted database role. The original
+  boot receipt failed a stale113-migration harness assertion; exact source has114 journal
+  entries. Original receipt and separate factual assessment are retained, without an
+  unchanged rerun or fabricated PASS. All four owned runtime resources were removed.
+  Source4736's complete contrast/OpenAPI union correction is pushed separately; four pending-
+  action enum compatibility findings require a written versioning decision before integration.
+  No new feature deployment, protected merge or P0–P7 completion is claimed.
+
 ## October 6 continuation checkpoint — implementation first, bulk acceptance pending
 
 - **P0 priority:** the three actual partial UTC observation dates are reconciled; there is
