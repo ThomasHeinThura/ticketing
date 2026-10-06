@@ -92,13 +92,77 @@ describe("bounded CPU profile chunk capture", () => {
       tid: chunkEvent.tid,
     });
 
+    const status = finalizeCpuProfileCapture(capture);
     expect(registry.timestamps.size).toBe(1);
     expect(capture.profiles.get("native-profile")?.samples).toEqual([
       { nodeId: 1, start: 1_000, duration: 25 },
     ]);
-    expect(
-      finalizeCpuProfileCapture(capture).omissions["malformed-chunk"],
-    ).toBe(0);
+    expect(status.omissions["malformed-chunk"]).toBe(0);
+  });
+
+  it("reconstructs native V8 sample times before deriving ordered intervals", () => {
+    const registry = createCpuProfileStartRegistry();
+    const start = {
+      id: "native-order",
+      source: "Inspector",
+      pid: 41,
+    };
+    recordCpuProfileStart(registry, start, 1_000);
+    const capture = createCpuProfileAccumulator();
+    const key = "41:73:Inspector:native-order";
+    const nativeChunk = (
+      cpuProfile: { nodes?: unknown[]; samples: number[] },
+      timeDeltas: number[],
+    ) => ({ cpuProfile, timeDeltas });
+    const first = normalizeCpuProfileChunkData(
+      nativeChunk(
+        { nodes: [1, 2, 3, 4, 5].map(node), samples: [1, 2] },
+        [100, 100],
+      ),
+    );
+    const outOfOrder = normalizeCpuProfileChunkData(
+      nativeChunk({ samples: [3, 4, 5] }, [25, -46, 75]),
+    );
+
+    for (const normalized of [first, outOfOrder])
+      accumulateCpuProfileChunk(capture, {
+        ...chunk(key),
+        ...normalized,
+        id: start.id,
+        source: start.source,
+        pid: start.pid,
+        tid: 73,
+        profileStartTimestamp: cpuProfileStartTimestamp(registry, start),
+      });
+
+    const status = finalizeCpuProfileCapture(capture);
+    const samples = capture.profiles.get(key)?.samples;
+    expect(samples).toEqual([
+      { nodeId: 1, start: 1_000, duration: 100 },
+      { nodeId: 4, start: 1_100, duration: 79 },
+      { nodeId: 2, start: 1_179, duration: 21 },
+      { nodeId: 3, start: 1_200, duration: 25 },
+      { nodeId: 5, start: 1_225, duration: 29 },
+    ]);
+    expect(samples?.every((sample) => sample.duration >= 0)).toBe(true);
+    expect(samples?.reduce((total, sample) => total + sample.duration, 0)).toBe(
+      254,
+    );
+    expect(status).toMatchObject({
+      retainedProfiles: 1,
+      completeProfiles: 1,
+      omittedProfiles: 0,
+      omissions: { "malformed-chunk": 0 },
+      deltaOrderingDiagnostics: {
+        negativeCount: 1,
+        minimumNegativeMicroseconds: -46,
+        maximumNegativeMicroseconds: -46,
+        firstPosition: "middle",
+        hasPositivePredecessor: true,
+        hasPositiveSuccessor: true,
+        netChunkDeltaMicroseconds: 54,
+      },
+    });
   });
 
   it("caps retained profile start identities at the profile limit", () => {
@@ -143,6 +207,7 @@ describe("bounded CPU profile chunk capture", () => {
       }),
     );
 
+    const status = finalizeCpuProfileCapture(capture);
     const samples = capture.profiles.get("delayed")?.samples;
     expect(samples).toEqual([
       { nodeId: 1, start: 1_000, duration: 100 },
@@ -159,6 +224,7 @@ describe("bounded CPU profile chunk capture", () => {
         1_200,
       ),
     ).toMatchObject({ unionCoverage: 100, uncoveredPrefix: 0 });
+    expect(status.completeProfiles).toBe(1);
   });
 
   it("omits a profile when its initial Profile timestamp is missing", () => {
@@ -172,6 +238,22 @@ describe("bounded CPU profile chunk capture", () => {
       retainedProfiles: 0,
       omittedProfiles: 1,
       omissions: { "malformed-chunk": 1 },
+      malformedReasons: { missingStartTimestamp: 1 },
+    });
+  });
+
+  it("rejects fractional native clock deltas without retaining a profile", () => {
+    const capture = createCpuProfileAccumulator();
+    accumulateCpuProfileChunk(
+      capture,
+      chunk("fractional-delta", { timeDeltas: [0.5] }),
+    );
+
+    expect(finalizeCpuProfileCapture(capture)).toMatchObject({
+      retainedProfiles: 0,
+      omittedProfiles: 1,
+      omissions: { "malformed-chunk": 1 },
+      malformedReasons: { invalidDelta: 1, nonSafeIntegerDelta: 1 },
     });
   });
 

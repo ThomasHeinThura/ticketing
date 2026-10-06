@@ -378,7 +378,7 @@ Against a seeded dataset, asserting the budgets in
 [UX quality gates](../02-design/ux-quality-gates.md).
 
 The separate G11 initial-page diagnostic writes a private `initial-page-profile.json` artifact
-with schema version 6. Its `cpuProfiles` preserve bounded V8 node/sample data, including parent
+with schema version 7. Its `cpuProfiles` preserve bounded V8 node/sample data, including parent
 node ids; `topCpuFrames` adds a unique acyclic caller chain (maximum eight frames) for the top
 60 sampled nodes. Profiles above 5,000 nodes or 100,000 samples are omitted rather than
 truncated into potentially false ancestry. The diagnostic records the emitted JavaScript
@@ -394,8 +394,14 @@ or function labels. Numeric map indexes let an offline reader resolve module/fun
 against the exact map digest. These fields identify candidate call paths for source inspection;
 they do not establish causal savings or alter canonical G11 timing/budgets. CPU sample intervals
 start at the initial V8 `Profile` event's CDP trace timestamp. The marker is joined to `ProfileChunk`
-events by process, source and profile ID because their trace thread IDs can differ; `timeDeltas`
-accumulate in stream order across chunks. Intervals are clipped to the calibrated CDP trace-clock
+events by process, source and profile ID because their trace thread IDs can differ. Signed integer
+`timeDeltas` accumulate in stream order across chunks to reconstruct sample timestamps; native
+sampling can produce out-of-time-order samples, so timestamps are sorted before nonnegative
+intervals are derived. Non-safe-integer deltas or reconstructed timestamps are rejected. The
+diagnostic records only fixed rejection-reason counts and bounded numeric delta-order summaries.
+This follows the native producer's timestamp-difference serialization and trace-clock guidance
+in [V8's profile generator](https://chromium.googlesource.com/v8/v8.git/+/main/src/profiler/profile-generator.cc).
+Intervals are clipped to the calibrated CDP trace-clock
 recorder span, and coverage explicitly reports uncovered prefixes/suffixes rather than filling gaps.
 Profile chunks are bounded during ingestion as well as in the emitted packet: at most 32
 profile keys, 5,000 nodes and 100,000 samples per profile, and 20,000 nodes / 200,000 samples

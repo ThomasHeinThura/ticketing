@@ -1379,7 +1379,7 @@ test("diagnostic: source-bound G11 failure-path CPU profiles", async ({
   });
   const initial = captures[0];
   const result = {
-    schemaVersion: 6,
+    schemaVersion: 7,
     diagnosticOnly: true,
     fixture:
       "canonical G11 installPerformanceApiFixture (500 work items, 200 board cards)",

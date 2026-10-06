@@ -23,7 +23,13 @@ export type CpuProfile = {
   pid: number;
   tid: number;
   nodes: Map<number, CpuProfileNode>;
-  samples: Array<{ nodeId: number; start: number; duration: number }>;
+  samples: Array<{
+    nodeId: number;
+    start: number;
+    duration: number;
+    timestamp?: number;
+  }>;
+  profileStartTimestamp: number;
   nextSampleTimestamp?: number;
   omissionReason?: CpuProfileOmissionReason;
 };
@@ -41,6 +47,28 @@ export type CpuProfileCaptureStatus = {
   completeProfiles: number;
   omittedProfiles: number;
   omissions: Record<CpuProfileOmissionReason, number>;
+  malformedReasons: {
+    chunkFlag: number;
+    sampleCountMismatch: number;
+    missingStartTimestamp: number;
+    invalidDelta: number;
+    nonNumericDelta: number;
+    nonFiniteDelta: number;
+    nonSafeIntegerDelta: number;
+    invalidSampleId: number;
+    invalidNode: number;
+    timestampOverflow: number;
+  };
+  deltaOrderingDiagnostics: {
+    negativeCount: number;
+    minimumNegativeMicroseconds: number | null;
+    maximumNegativeMicroseconds: number | null;
+    firstPosition: "first" | "middle" | "last" | null;
+    hasPositivePredecessor: boolean;
+    hasPositiveSuccessor: boolean;
+    netChunkDeltaMicroseconds: number | null;
+    minimumPrefixDeltaMicroseconds: number | null;
+  };
   chunks: {
     metadataOnly: number;
     nodesOnly: number;
@@ -164,6 +192,28 @@ export function createCpuProfileAccumulator(): CpuProfileAccumulator {
         "sample-limit": 0,
         "malformed-chunk": 0,
         "no-samples": 0,
+      },
+      malformedReasons: {
+        chunkFlag: 0,
+        sampleCountMismatch: 0,
+        missingStartTimestamp: 0,
+        invalidDelta: 0,
+        nonNumericDelta: 0,
+        nonFiniteDelta: 0,
+        nonSafeIntegerDelta: 0,
+        invalidSampleId: 0,
+        invalidNode: 0,
+        timestampOverflow: 0,
+      },
+      deltaOrderingDiagnostics: {
+        negativeCount: 0,
+        minimumNegativeMicroseconds: null,
+        maximumNegativeMicroseconds: null,
+        firstPosition: null,
+        hasPositivePredecessor: false,
+        hasPositiveSuccessor: false,
+        netChunkDeltaMicroseconds: null,
+        minimumPrefixDeltaMicroseconds: null,
       },
       chunks: { metadataOnly: 0, nodesOnly: 0, sampled: 0, malformed: 0 },
     },
@@ -340,6 +390,7 @@ export function accumulateCpuProfileChunk(
       tid: input.tid,
       nodes: new Map(),
       samples: [],
+      profileStartTimestamp: input.profileStartTimestamp ?? 0,
     };
     accumulator.profiles.set(input.key, profile);
   }
@@ -352,6 +403,14 @@ export function accumulateCpuProfileChunk(
       (input.profileStartTimestamp === undefined ||
         !Number.isFinite(input.profileStartTimestamp)))
   ) {
+    const reason = input.malformed
+      ? "chunkFlag"
+      : input.sampleIds.length !== input.timeDeltas.length
+        ? "sampleCountMismatch"
+        : "missingStartTimestamp";
+    accumulator.status.malformedReasons[reason] = increment(
+      accumulator.status.malformedReasons[reason],
+    );
     dropProfile(accumulator, profile, "malformed-chunk");
     return;
   }
@@ -378,8 +437,7 @@ export function accumulateCpuProfileChunk(
   }
   if (
     input.timeDeltas.some(
-      (delta) =>
-        typeof delta !== "number" || !Number.isFinite(delta) || delta < 0,
+      (delta) => typeof delta !== "number" || !Number.isSafeInteger(delta),
     ) ||
     input.sampleIds.some(
       (nodeId) =>
@@ -388,8 +446,71 @@ export function accumulateCpuProfileChunk(
         nodeId < 0,
     )
   ) {
+    const malformedDeltaIndex = input.timeDeltas.findIndex(
+      (delta) => typeof delta !== "number" || !Number.isSafeInteger(delta),
+    );
+    if (malformedDeltaIndex >= 0) {
+      const malformedDelta = input.timeDeltas[malformedDeltaIndex];
+      const reason =
+        typeof malformedDelta !== "number"
+          ? "nonNumericDelta"
+          : !Number.isFinite(malformedDelta)
+            ? "nonFiniteDelta"
+            : "nonSafeIntegerDelta";
+      accumulator.status.malformedReasons.invalidDelta = increment(
+        accumulator.status.malformedReasons.invalidDelta,
+      );
+      accumulator.status.malformedReasons[reason] = increment(
+        accumulator.status.malformedReasons[reason],
+      );
+    } else {
+      accumulator.status.malformedReasons.invalidSampleId = increment(
+        accumulator.status.malformedReasons.invalidSampleId,
+      );
+    }
     dropProfile(accumulator, profile, "malformed-chunk");
     return;
+  }
+
+  const negativeDeltas = timeDeltas.filter((delta) => delta < 0);
+  if (negativeDeltas.length > 0) {
+    let prefix = 0;
+    let minimumPrefix = 0;
+    let prefixOverflow = false;
+    let minimumNegative = Number.POSITIVE_INFINITY;
+    let maximumNegative = Number.NEGATIVE_INFINITY;
+    for (const delta of timeDeltas) {
+      prefix += delta;
+      if (!Number.isSafeInteger(prefix)) {
+        prefixOverflow = true;
+        break;
+      }
+      minimumPrefix = Math.min(minimumPrefix, prefix);
+      if (delta < 0) {
+        minimumNegative = Math.min(minimumNegative, delta);
+        maximumNegative = Math.max(maximumNegative, delta);
+      }
+    }
+    const firstNegativeIndex = timeDeltas.findIndex((delta) => delta < 0);
+    const diagnostics = accumulator.status.deltaOrderingDiagnostics;
+    diagnostics.negativeCount = negativeDeltas.length;
+    diagnostics.minimumNegativeMicroseconds = minimumNegative;
+    diagnostics.maximumNegativeMicroseconds = maximumNegative;
+    diagnostics.firstPosition =
+      firstNegativeIndex === 0
+        ? "first"
+        : firstNegativeIndex === timeDeltas.length - 1
+          ? "last"
+          : "middle";
+    diagnostics.hasPositivePredecessor =
+      firstNegativeIndex > 0 && (timeDeltas[firstNegativeIndex - 1] ?? 0) > 0;
+    diagnostics.hasPositiveSuccessor =
+      firstNegativeIndex < timeDeltas.length - 1 &&
+      (timeDeltas[firstNegativeIndex + 1] ?? 0) > 0;
+    diagnostics.netChunkDeltaMicroseconds = prefixOverflow ? null : prefix;
+    diagnostics.minimumPrefixDeltaMicroseconds = prefixOverflow
+      ? null
+      : minimumPrefix;
   }
 
   const safeNodes: CpuProfileNode[] = [];
@@ -397,6 +518,9 @@ export function accumulateCpuProfileChunk(
   for (const node of input.nodes) {
     const safe = safeNode(node);
     if (!safe) {
+      accumulator.status.malformedReasons.invalidNode = increment(
+        accumulator.status.malformedReasons.invalidNode,
+      );
       dropProfile(accumulator, profile, "malformed-chunk");
       return;
     }
@@ -404,28 +528,41 @@ export function accumulateCpuProfileChunk(
       safeNodes.push(safe);
     chunkNodeIds.add(safe.id);
   }
-  let totalDelta = 0;
-  for (const delta of timeDeltas) totalDelta += delta;
-  if (!Number.isFinite(totalDelta)) {
+  const initialSampleTime =
+    profile.nextSampleTimestamp ?? input.profileStartTimestamp;
+  if (
+    typeof initialSampleTime !== "number" ||
+    !Number.isSafeInteger(initialSampleTime)
+  ) {
+    accumulator.status.malformedReasons.timestampOverflow = increment(
+      accumulator.status.malformedReasons.timestampOverflow,
+    );
     dropProfile(accumulator, profile, "malformed-chunk");
     return;
   }
-
+  let sampleTime = initialSampleTime;
+  const sampleTimestamps: number[] = [];
+  for (const index of sampleIds.keys()) {
+    const duration = timeDeltas[index] ?? 0;
+    sampleTime += duration;
+    if (!Number.isSafeInteger(sampleTime)) {
+      accumulator.status.malformedReasons.timestampOverflow = increment(
+        accumulator.status.malformedReasons.timestampOverflow,
+      );
+      dropProfile(accumulator, profile, "malformed-chunk");
+      return;
+    }
+    sampleTimestamps.push(sampleTime);
+  }
   for (const node of safeNodes) profile.nodes.set(node.id, node);
   accumulator.retainedNodes += safeNodes.length;
-  let sampleTime = profile.nextSampleTimestamp ?? input.profileStartTimestamp;
-  if (
-    typeof sampleTime !== "number" ||
-    !Number.isFinite(sampleTime) ||
-    !Number.isFinite(sampleTime + totalDelta)
-  ) {
-    dropProfile(accumulator, profile, "malformed-chunk");
-    return;
-  }
   for (const [index, nodeId] of sampleIds.entries()) {
-    const duration = timeDeltas[index] ?? 0;
-    profile.samples.push({ nodeId, start: sampleTime, duration });
-    sampleTime += duration;
+    profile.samples.push({
+      nodeId,
+      start: 0,
+      duration: 0,
+      timestamp: sampleTimestamps[index] ?? sampleTime,
+    });
   }
   profile.nextSampleTimestamp = sampleTime;
   accumulator.retainedSamples += sampleIds.length;
@@ -439,6 +576,20 @@ export function finalizeCpuProfileCapture(
     for (const profile of accumulator.profiles.values()) {
       if (profile.omissionReason || profile.samples.length > 0) continue;
       dropProfile(accumulator, profile, "no-samples");
+    }
+    for (const profile of accumulator.profiles.values()) {
+      if (profile.omissionReason) continue;
+      profile.samples.sort(
+        (left, right) => (left.timestamp ?? 0) - (right.timestamp ?? 0),
+      );
+      let previousTimestamp = profile.profileStartTimestamp;
+      for (const sample of profile.samples) {
+        const timestamp = sample.timestamp ?? previousTimestamp;
+        sample.start = previousTimestamp;
+        sample.duration = Math.max(0, timestamp - previousTimestamp);
+        previousTimestamp = Math.max(previousTimestamp, timestamp);
+        delete sample.timestamp;
+      }
     }
     accumulator.status.retainedProfiles = [
       ...accumulator.profiles.values(),
