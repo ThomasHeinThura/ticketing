@@ -9,6 +9,7 @@ import {
   normalizeCpuProfileChunkData,
   normalizeCpuProfileSource,
 } from "./performance-cpu-profile-capture";
+import { summarizeProfileCoverage } from "./performance-profile-intervals";
 
 function node(id: number): CpuProfileNode {
   return {
@@ -32,7 +33,7 @@ function chunk(
     source: "sampling",
     pid: 1,
     tid: 2,
-    timestamp: 20,
+    profileStartTimestamp: 0,
     nodes: [node(1)],
     sampleIds: [1],
     timeDeltas: [1],
@@ -41,6 +42,56 @@ function chunk(
 }
 
 describe("bounded CPU profile chunk capture", () => {
+  it("anchors ordered sample deltas at Profile across delayed chunks and recorder edges", () => {
+    const capture = createCpuProfileAccumulator();
+    accumulateCpuProfileChunk(
+      capture,
+      chunk("delayed", {
+        profileStartTimestamp: 1_000,
+        sampleIds: [1, 1],
+        timeDeltas: [100, 50],
+      }),
+    );
+    accumulateCpuProfileChunk(
+      capture,
+      chunk("delayed", {
+        sampleIds: [1],
+        timeDeltas: [50],
+      }),
+    );
+
+    const samples = capture.profiles.get("delayed")?.samples;
+    expect(samples).toEqual([
+      { nodeId: 1, start: 1_000, duration: 100 },
+      { nodeId: 1, start: 1_100, duration: 50 },
+      { nodeId: 1, start: 1_150, duration: 50 },
+    ]);
+    expect(
+      summarizeProfileCoverage(
+        samples?.map(({ start, duration }) => ({
+          start,
+          end: start + duration,
+        })) ?? [],
+        1_100,
+        1_200,
+      ),
+    ).toMatchObject({ unionCoverage: 100, uncoveredPrefix: 0 });
+  });
+
+  it("omits a profile when its initial Profile timestamp is missing", () => {
+    const capture = createCpuProfileAccumulator();
+    accumulateCpuProfileChunk(
+      capture,
+      chunk("missing-anchor", { profileStartTimestamp: undefined }),
+    );
+
+    expect(finalizeCpuProfileCapture(capture)).toMatchObject({
+      retainedProfiles: 0,
+      omittedProfiles: 1,
+      omissions: { "malformed-chunk": 1 },
+    });
+  });
+
   it("uses fixed native source labels and never retains arbitrary source text", () => {
     expect(normalizeCpuProfileSource(undefined)).toBe("sampling");
     expect(normalizeCpuProfileSource("Internal")).toBe("Internal");

@@ -779,13 +779,13 @@ async function withDiagnosticProfile(
   let cpuProfiles: CpuProfile[] = [];
   const timelineEvents: BrowserTimelineEvent[] = [];
   const cpuProfileAccumulator = createCpuProfileAccumulator();
+  const profileStartTimestamps = new Map<string, number>();
   let clockMarks: DiagnosticCapture["clockMarks"] = [];
   let timelineOverflow = false;
   cdp.on("Tracing.dataCollected", ({ value }) => {
     for (const event of value ?? []) {
-      if (event.name === "ProfileChunk") {
+      if (event.name === "Profile" || event.name === "ProfileChunk") {
         const data = (event.args as { data?: unknown } | undefined)?.data;
-        const normalizedChunk = normalizeCpuProfileChunkData(data);
         const dataFields =
           data && typeof data === "object" && !Array.isArray(data)
             ? (data as Record<string, unknown>)
@@ -803,6 +803,20 @@ async function withDiagnosticProfile(
             ? String(rawId)
             : "invalid-id";
         const key = `${pid}:${tid}:${source}:${id}`;
+        const validIdentity =
+          source !== "unknown-source" && id !== "invalid-id";
+        if (event.name === "Profile") {
+          const profileStart = Number(event.ts);
+          if (
+            validIdentity &&
+            Number.isFinite(profileStart) &&
+            (profileStartTimestamps.has(key) ||
+              profileStartTimestamps.size < 32)
+          )
+            profileStartTimestamps.set(key, profileStart);
+          continue;
+        }
+        const normalizedChunk = normalizeCpuProfileChunkData(data);
         accumulateCpuProfileChunk(cpuProfileAccumulator, {
           key:
             source === "unknown-source" || id === "invalid-id"
@@ -812,7 +826,7 @@ async function withDiagnosticProfile(
           source,
           pid,
           tid,
-          timestamp: Number(event.ts),
+          profileStartTimestamp: profileStartTimestamps.get(key),
           nodes: normalizedChunk.nodes,
           sampleIds: normalizedChunk.sampleIds,
           timeDeltas: normalizedChunk.timeDeltas,

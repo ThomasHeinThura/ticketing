@@ -24,6 +24,7 @@ export type CpuProfile = {
   tid: number;
   nodes: Map<number, CpuProfileNode>;
   samples: Array<{ nodeId: number; start: number; duration: number }>;
+  nextSampleTimestamp?: number;
   omissionReason?: CpuProfileOmissionReason;
 };
 
@@ -68,7 +69,7 @@ export type CpuProfileChunkInput = {
   source: string;
   pid: number;
   tid: number;
-  timestamp: number;
+  profileStartTimestamp?: number;
   nodes: readonly unknown[];
   sampleIds: readonly unknown[];
   timeDeltas: readonly unknown[];
@@ -296,7 +297,9 @@ export function accumulateCpuProfileChunk(
   if (
     input.malformed ||
     input.sampleIds.length !== input.timeDeltas.length ||
-    !Number.isFinite(input.timestamp)
+    (profile.nextSampleTimestamp === undefined &&
+      (input.profileStartTimestamp === undefined ||
+        !Number.isFinite(input.profileStartTimestamp)))
   ) {
     dropProfile(accumulator, profile, "malformed-chunk");
     return;
@@ -359,8 +362,12 @@ export function accumulateCpuProfileChunk(
 
   for (const node of safeNodes) profile.nodes.set(node.id, node);
   accumulator.retainedNodes += safeNodes.length;
-  let sampleTime = input.timestamp - totalDelta;
-  if (!Number.isFinite(sampleTime)) {
+  let sampleTime = profile.nextSampleTimestamp ?? input.profileStartTimestamp;
+  if (
+    typeof sampleTime !== "number" ||
+    !Number.isFinite(sampleTime) ||
+    !Number.isFinite(sampleTime + totalDelta)
+  ) {
     dropProfile(accumulator, profile, "malformed-chunk");
     return;
   }
@@ -369,6 +376,7 @@ export function accumulateCpuProfileChunk(
     profile.samples.push({ nodeId, start: sampleTime, duration });
     sampleTime += duration;
   }
+  profile.nextSampleTimestamp = sampleTime;
   accumulator.retainedSamples += sampleIds.length;
 }
 
