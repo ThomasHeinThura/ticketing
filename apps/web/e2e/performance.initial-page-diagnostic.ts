@@ -5,6 +5,14 @@ import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { expect, type Page, test } from "@playwright/test";
 import {
+  accumulateCpuProfileChunk,
+  type CpuProfile,
+  type CpuProfileCaptureStatus,
+  type CpuProfileNode,
+  createCpuProfileAccumulator,
+  finalizeCpuProfileCapture,
+} from "../src/lib/performance-cpu-profile-capture";
+import {
   type BoundProfileSourceMap,
   type ProfiledAssetIdentity,
   parseProfileSourceMap,
@@ -30,26 +38,6 @@ const RESULT_DIR = path.join(
   ROOT,
   "apps/web/test-results/g11-initial-page-diagnostic",
 );
-
-type CpuProfileNode = {
-  id: number;
-  parent?: number;
-  callFrame: {
-    functionName: string;
-    url: string;
-    lineNumber: number;
-    columnNumber: number;
-  };
-};
-
-type CpuProfile = {
-  id: string;
-  source: string;
-  pid: number;
-  tid: number;
-  nodes: Map<number, CpuProfileNode>;
-  samples: Array<{ nodeId: number; start: number; duration: number }>;
-};
 
 type DiagnosticBuildIdentity = {
   sourceCommitSha: string;
@@ -748,6 +736,7 @@ type DiagnosticCapture = {
     timelineEvents: BrowserTimelineEvent[];
   };
   cpuProfiles: CpuProfile[];
+  cpuProfileCaptureStatus: CpuProfileCaptureStatus;
   clockMarks: Array<{
     name: string;
     documentId: string;
@@ -788,7 +777,7 @@ async function withDiagnosticProfile(
   let browserPerformance: DiagnosticCapture["browserPerformance"] | undefined;
   let cpuProfiles: CpuProfile[] = [];
   const timelineEvents: BrowserTimelineEvent[] = [];
-  const cpuProfilesByThread = new Map<string, CpuProfile>();
+  const cpuProfileAccumulator = createCpuProfileAccumulator();
   let clockMarks: DiagnosticCapture["clockMarks"] = [];
   let timelineOverflow = false;
   cdp.on("Tracing.dataCollected", ({ value }) => {
@@ -801,40 +790,51 @@ async function withDiagnosticProfile(
           | { nodes?: CpuProfileNode[]; samples?: number[] }
           | undefined;
         const timeDeltas = data?.timeDeltas as number[] | undefined;
-        const source = String(data?.source ?? "unknown");
-        const pid = Number(event.pid) || 0;
-        const tid = Number(event.tid) || 0;
-        const id = String(event.id ?? "profile");
+        const rawSource = data?.source;
+        const source =
+          typeof rawSource === "string" &&
+          rawSource.length <= 64 &&
+          /^[A-Za-z0-9_.:-]+$/.test(rawSource)
+            ? rawSource
+            : "invalid-source";
+        const rawPid = Number(event.pid);
+        const rawTid = Number(event.tid);
+        const pid = Number.isSafeInteger(rawPid) && rawPid >= 0 ? rawPid : 0;
+        const tid = Number.isSafeInteger(rawTid) && rawTid >= 0 ? rawTid : 0;
+        const rawId = event.id ?? "profile";
+        const id =
+          (typeof rawId === "string" || typeof rawId === "number") &&
+          String(rawId).length <= 64 &&
+          /^[A-Za-z0-9_.:-]+$/.test(String(rawId))
+            ? String(rawId)
+            : "invalid-id";
         const key = `${pid}:${tid}:${source}:${id}`;
-        let cpuProfile = cpuProfilesByThread.get(key);
-        if (!cpuProfile) {
-          cpuProfile = {
-            id,
-            source,
-            pid,
-            tid,
-            nodes: new Map(),
-            samples: [],
-          };
-          cpuProfilesByThread.set(key, cpuProfile);
-        }
-        for (const node of profileChunk?.nodes ?? [])
-          cpuProfile.nodes.set(node.id, node);
-        const sampleIds = profileChunk?.samples ?? [];
-        if (
-          Array.isArray(timeDeltas) &&
-          sampleIds.length === timeDeltas.length &&
-          Number.isFinite(event.ts)
-        ) {
-          let sampleTime =
-            (event.ts as number) -
-            timeDeltas.reduce((total, delta) => total + delta, 0);
-          for (const [index, nodeId] of sampleIds.entries()) {
-            const duration = timeDeltas[index] ?? 0;
-            cpuProfile.samples.push({ nodeId, start: sampleTime, duration });
-            sampleTime += duration;
-          }
-        }
+        const nodes = Array.isArray(profileChunk?.nodes)
+          ? profileChunk.nodes
+          : [];
+        const sampleIds = Array.isArray(profileChunk?.samples)
+          ? profileChunk.samples
+          : [];
+        const deltas = Array.isArray(timeDeltas) ? timeDeltas : [];
+        accumulateCpuProfileChunk(cpuProfileAccumulator, {
+          key:
+            source === "invalid-source" || id === "invalid-id"
+              ? `invalid profile key ${pid}:${tid}`
+              : key,
+          id,
+          source,
+          pid,
+          tid,
+          timestamp: Number(event.ts),
+          nodes,
+          sampleIds,
+          timeDeltas: deltas,
+          malformed:
+            !profileChunk ||
+            !Array.isArray(profileChunk.nodes) ||
+            !Array.isArray(profileChunk.samples) ||
+            !Array.isArray(timeDeltas),
+        });
       }
       const sanitized = sanitizeTimelineEvent(event);
       if (!sanitized) continue;
@@ -989,7 +989,10 @@ async function withDiagnosticProfile(
     );
     await cdp.send("Tracing.end");
     await tracingComplete;
-    cpuProfiles = [...cpuProfilesByThread.values()];
+    finalizeCpuProfileCapture(cpuProfileAccumulator);
+    cpuProfiles = [...cpuProfileAccumulator.profiles.values()].filter(
+      (profile) => !profile.omissionReason,
+    );
     if (timelineOverflow)
       throw new Error(`The ${name} browser timeline exceeded its event bound.`);
     browserPerformance = {
@@ -1017,6 +1020,7 @@ async function withDiagnosticProfile(
     network: JSON.parse(networkCapture.finish()),
     browserPerformance,
     cpuProfiles,
+    cpuProfileCaptureStatus: finalizeCpuProfileCapture(cpuProfileAccumulator),
     clockMarks,
     boundary,
   };
@@ -1292,6 +1296,7 @@ test("diagnostic: source-bound G11 failure-path CPU profiles", async ({
     if (!alignment)
       return {
         name,
+        cpuProfileCaptureStatus: capture.cpuProfileCaptureStatus,
         scope: "supplementary full-window context; no canonical G11 metric",
         recorderBoundary: null,
         clockAlignment: null,
@@ -1338,6 +1343,7 @@ test("diagnostic: source-bound G11 failure-path CPU profiles", async ({
     );
     return {
       name,
+      cpuProfileCaptureStatus: capture.cpuProfileCaptureStatus,
       documentId: alignment.documentId,
       scope: "canonical recorder boundary",
       recorderBoundary: alignment.boundary,
@@ -1371,7 +1377,7 @@ test("diagnostic: source-bound G11 failure-path CPU profiles", async ({
   });
   const initial = captures[0];
   const result = {
-    schemaVersion: 4,
+    schemaVersion: 5,
     diagnosticOnly: true,
     fixture:
       "canonical G11 installPerformanceApiFixture (500 work items, 200 board cards)",

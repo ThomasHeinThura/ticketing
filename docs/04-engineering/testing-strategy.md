@@ -378,7 +378,7 @@ Against a seeded dataset, asserting the budgets in
 [UX quality gates](../02-design/ux-quality-gates.md).
 
 The separate G11 initial-page diagnostic writes a private `initial-page-profile.json` artifact
-with schema version 4. Its `cpuProfiles` preserve bounded V8 node/sample data, including parent
+with schema version 5. Its `cpuProfiles` preserve bounded V8 node/sample data, including parent
 node ids; `topCpuFrames` adds a unique acyclic caller chain (maximum eight frames) for the top
 60 sampled nodes. Profiles above 5,000 nodes or 100,000 samples are omitted rather than
 truncated into potentially false ancestry. The diagnostic records the emitted JavaScript
@@ -392,6 +392,13 @@ against the exact map digest. These fields identify candidate call paths for sou
 they do not establish causal savings or alter canonical G11 timing/budgets. CPU samples remain
 clipped from each V8 trace chunk's timestamp/deltas to the calibrated CDP trace-clock recorder
 span, and coverage explicitly reports uncovered prefixes/suffixes rather than filling gaps.
+Profile chunks are bounded during ingestion as well as in the emitted packet: at most 32
+profile keys, 5,000 nodes and 100,000 samples per profile, and 20,000 nodes / 200,000 samples
+across a capture. An over-limit or malformed profile is dropped immediately and later chunks
+for its key are ignored. Each profile window records fixed omission counts and retained/complete
+profile counts without serializing profile keys; zero-sample profiles are reported as omitted.
+Omission counts for retained keys count profiles; invalid and over-limit keys count rejected
+chunks because their identifiers are deliberately not retained to deduplicate them.
 
 ### Design-system conformance
 
