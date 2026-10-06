@@ -18,6 +18,7 @@ import {
   dueReminder,
   evaluateApprovalDecision,
   evaluateApprovalWithdrawal,
+  evaluateApprovalWithdrawalDecision,
   isApprovalOverdue,
   isCabMember,
   isGateSatisfied,
@@ -512,6 +513,23 @@ describe("evaluateApprovalDecision", () => {
 // ---------------------------------------------------------------------------
 
 describe("evaluateApprovalWithdrawal", () => {
+  it("AP-6: separates actor authority from terminal-state actionability", () => {
+    expect(
+      evaluateApprovalWithdrawalDecision({
+        approval: approval({ requestedBy: "requester", state: "approved" }),
+        actingPersonId: "requester",
+        isInstanceAdmin: false,
+      }),
+    ).toEqual({ authorized: true, actionable: false });
+    expect(
+      evaluateApprovalWithdrawalDecision({
+        approval: approval({ requestedBy: "requester", state: "approved" }),
+        actingPersonId: "bystander",
+        isInstanceAdmin: false,
+      }),
+    ).toEqual({ authorized: false, actionable: false });
+  });
+
   it("the requester may withdraw a pending approval", () => {
     const result = evaluateApprovalWithdrawal({
       approval: approval({ requestedBy: "requester" }),

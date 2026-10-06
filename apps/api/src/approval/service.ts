@@ -3,7 +3,7 @@ import {
   type Approval,
   type ApprovalKind,
   evaluateApprovalDecision,
-  evaluateApprovalWithdrawal,
+  evaluateApprovalWithdrawalDecision,
   validateApprovalRequest,
 } from "@taskdesk/domain";
 import type { ResolvedIdentity } from "@taskdesk/permissions";
@@ -343,15 +343,19 @@ export async function withdrawApproval(input: {
       input.target.workItemId,
     );
     if (!row) throw new HTTPException(404, { message: "Approval not found" });
-    const withdrawal = evaluateApprovalWithdrawal({
+    const withdrawal = evaluateApprovalWithdrawalDecision({
       approval: toDomainApproval(row),
       actingPersonId: input.identity.personId,
       isInstanceAdmin,
     });
-    if (!withdrawal.ok) {
-      const status = withdrawal.reasons.includes("not_pending") ? 409 : 403;
-      throw new HTTPException(status, {
-        message: `Approval withdrawal refused: ${withdrawal.reasons.join(", ")}`,
+    if (!withdrawal.authorized) {
+      throw new HTTPException(403, {
+        message: "Insufficient permissions to withdraw approval",
+      });
+    }
+    if (!withdrawal.actionable) {
+      throw new HTTPException(409, {
+        message: "Approval is no longer pending",
       });
     }
     const now = new Date();

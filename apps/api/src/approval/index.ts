@@ -91,8 +91,12 @@ async function formatApproval(
   const approverReachLost =
     row.state === "pending" &&
     (!approverIdentity || !(await hasWorkItemReach(approverIdentity, target)));
-  const canWithdraw = await canWithdrawApproval(row, viewer, target);
-  return responseRow({ ...row, approverReachLost, canWithdraw });
+  const withdrawal = await canWithdrawApproval(row, viewer, target);
+  return responseRow({
+    ...row,
+    approverReachLost,
+    canWithdraw: withdrawal.actionable,
+  });
 }
 
 const listWorkItemApprovalsRoute = createRoute({
@@ -380,7 +384,8 @@ function approvalRouter() {
         (item) => item.id === id,
       );
       if (!row) throw new HTTPException(404, { message: "Approval not found" });
-      if (!(await canWithdrawApproval(row, identity, target))) {
+      const withdrawal = await canWithdrawApproval(row, identity, target);
+      if (!withdrawal.authorized) {
         throw new HTTPException(403, { message: "Insufficient permissions" });
       }
       const updated = await withdrawApproval({
