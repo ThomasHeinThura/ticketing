@@ -6137,3 +6137,14 @@ under Thomas's standing direction to finish necessary P0 implementation first. T
 “two gates left” checkpoint was incomplete; elapsed observation dates do not close this gap.
 P7's hardened stable-URL publication remains P7/issue #55, not a new P0 hosting requirement.
 No production release, domain publication, dependency addition or quality-gate waiver is made.
+
+
+### 2026-10-06 · Describe actual strict source-order validation accurately
+
+Correct the runbook and configuration reference to match the accepted parser: unknown,
+duplicate, empty, whitespace-padded and malformed members are rejected; task requires the
+complete other-source set and must be last. Arbitrary non-task permutations are not rejected
+by startup, although operators use registry order for staged rollout. This changes the claimed
+control to describe existing behavior; no parser, source set, authorization or pass/fail result
+is relaxed. The corrected documentation joins the complete P0 acceptance batch for required
+review; the config evidence exception remains independently pending Thomas.

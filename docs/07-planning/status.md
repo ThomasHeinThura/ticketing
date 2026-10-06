@@ -34,9 +34,9 @@ CI 5/5 at the exact merged PR head, but remains provisionally blocked. It also f
 explicit P0 `install.sh` bootstrapper absent; issue #582 now tracks its complete implementation
 and acceptance. P7 stable-URL publication/hardening is separate and is not added to P0.
 The installer batch is assigned next to the Luna strict-runner implementation lane.
-Runbook/config prose also overclaims arbitrary non-task order validation; the parser enforces
-exact membership and task-last completeness, and the planned contract correction will state
-that honestly. Actual reviewed cutover/runtime/rollback, the installer and finalizer clearance
+The runbook/config order-validation correction is prepared on the unaccepted checkpoint
+branch: it states exact membership and task-last completeness, while registry order is an
+operational rule. No parser behavior or gate outcome was changed by that prose correction. Actual reviewed cutover/runtime/rollback, the installer and finalizer clearance
 remain before P0 closure; #8 specifically retains operational authorization acceptance. Three partial captures do not establish full days, 72 hours,
 production readiness, protected acceptance or automatic cutover. The completed date-observation
 heartbeat is paused after reconciliation; no duplicate schedule is created.

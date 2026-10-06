@@ -325,8 +325,10 @@ exact registered policy-source paths. The default is empty, so no source is enfo
 source is evaluated after that route's existing middleware and request validation, immediately
 before its terminal handler. Existing authorization checks continue to run; a registry denial
 prevents the handler from starting. The setting is read and validated during API module startup.
-An unknown, duplicate, blank, reordered, or malformed source refuses startup rather than
-silently selecting a weaker policy set.
+An unknown, duplicate, blank, whitespace-padded, or malformed source refuses startup.
+The parser requires every other registered source before task and requires task last; it does
+not reject arbitrary permutations of non-task sources. Operators use the registry-owned path
+order for the staged rollout described below.
 
 For a development or UAT rollout, first establish the documented three real, issue-free UTC
 date buckets for the exact source and representative behaviors being considered (see **Policy
