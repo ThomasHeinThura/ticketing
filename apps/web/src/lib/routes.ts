@@ -92,6 +92,7 @@ export type ServiceCalendarListSearch = { cursor?: string };
 export type SlaPolicyListSearch = { cursor?: string };
 export type IdentityConnectionEventsSearch = { eventsCursor?: string };
 export type PendingActionsSearch = { cursor?: string };
+export type SavedViewsSearch = { query?: string };
 export type MyWorkSearch = { lens: "approvals" };
 
 export function parseMyWorkSearch(raw: unknown): MyWorkSearch {
@@ -108,6 +109,15 @@ export function parsePendingActionsSearch(raw: unknown): PendingActionsSearch {
       ? value.cursor
       : undefined;
   return { cursor };
+}
+
+export function parseSavedViewsSearch(raw: unknown): SavedViewsSearch {
+  const value = (raw ?? {}) as Record<string, unknown>;
+  return {
+    ...(typeof value.query === "string" && value.query.trim()
+      ? { query: value.query.trim().slice(0, 200) }
+      : {}),
+  };
 }
 
 export function parseIdentityConnectionEventsSearch(
@@ -373,6 +383,16 @@ export const routes = {
       return suffix
         ? `/agent/settings/profile/pending-actions?${suffix}`
         : "/agent/settings/profile/pending-actions";
+    },
+  },
+  savedViews: {
+    path: "/agent/views" as const,
+    build: (search: SavedViewsSearch = {}) => {
+      const resolved = parseSavedViewsSearch(search);
+      const query = new URLSearchParams();
+      if (resolved.query) query.set("query", resolved.query);
+      const suffix = query.toString();
+      return suffix ? `/agent/views?${suffix}` : "/agent/views";
     },
   },
   pendingAction: {

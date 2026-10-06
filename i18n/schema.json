@@ -5461,6 +5461,9 @@
 						"members": {
 							"type": "string"
 						},
+						"savedViews": {
+							"type": "string"
+						},
 						"invitations": {
 							"type": "string"
 						},
@@ -5475,6 +5478,7 @@
 						"overview",
 						"projects",
 						"members",
+						"savedViews",
 						"invitations",
 						"more",
 						"backToBoard"
@@ -11357,6 +11361,12 @@
 						"calendarDeletionApproved": {
 							"type": "string"
 						},
+						"savedViewDeletionApproved": {
+							"type": "string"
+						},
+						"approveAction": {
+							"type": "string"
+						},
 						"approveCalendarDeletion": {
 							"type": "string"
 						},
@@ -11383,6 +11393,8 @@
 						"unknownAction",
 						"expires",
 						"calendarDeletionApproved",
+						"savedViewDeletionApproved",
+						"approveAction",
 						"approveCalendarDeletion",
 						"deleteServiceCalendar"
 					]
@@ -11397,6 +11409,66 @@
 				"openUsers",
 				"copy",
 				"dynamic"
+			]
+		},
+		"savedViews": {
+			"type": "object",
+			"additionalProperties": false,
+			"properties": {
+				"title": {
+					"type": "string"
+				},
+				"description": {
+					"type": "string"
+				},
+				"search": {
+					"type": "string"
+				},
+				"empty": {
+					"type": "string"
+				},
+				"requestDelete": {
+					"type": "string"
+				},
+				"requesting": {
+					"type": "string"
+				},
+				"loadError": {
+					"type": "string"
+				},
+				"deleteError": {
+					"type": "string"
+				},
+				"requestCreated": {
+					"type": "string"
+				},
+				"pinned": {
+					"type": "string"
+				},
+				"visibility": {
+					"type": "string"
+				},
+				"deleteNamed": {
+					"type": "string"
+				},
+				"approveDelete": {
+					"type": "string"
+				}
+			},
+			"required": [
+				"title",
+				"description",
+				"search",
+				"empty",
+				"requestDelete",
+				"requesting",
+				"loadError",
+				"deleteError",
+				"requestCreated",
+				"pinned",
+				"visibility",
+				"deleteNamed",
+				"approveDelete"
 			]
 		},
 		"identityConnections": {
@@ -12300,6 +12372,7 @@
 		"serviceCalendars",
 		"instanceUsers",
 		"pendingActions",
+		"savedViews",
 		"identityConnections"
 	]
 }

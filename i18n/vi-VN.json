@@ -1354,7 +1354,8 @@
 			"members": "Thành viên",
 			"invitations": "Lời mời",
 			"more": "Thêm",
-			"backToBoard": "Quay lại bảng"
+			"backToBoard": "Quay lại bảng",
+			"savedViews": "Saved views"
 		},
 		"projectList": {
 			"viewProject": "Xem dự án",
@@ -2969,7 +2970,24 @@
 			"expires": "Hết hạn",
 			"calendarDeletionApproved": "Calendar deletion approved. The calendar and its audit record were removed.",
 			"approveCalendarDeletion": "Approve deletion of {{name}}? This cannot be undone.",
-			"deleteServiceCalendar": "Delete service calendar {{name}}"
+			"deleteServiceCalendar": "Delete service calendar {{name}}",
+			"savedViewDeletionApproved": "Saved view deletion approved.",
+			"approveAction": "Approve and execute"
 		}
+	},
+	"savedViews": {
+		"approveDelete": "Approve deletion of {{name}}? This permanently removes the saved view and clears its pins.",
+		"deleteError": "A deletion request could not be created.",
+		"deleteNamed": "Delete saved view: {{name}}",
+		"description": "Views available to you in this workspace.",
+		"empty": "No saved views are available.",
+		"loadError": "Saved views could not be loaded. Try again.",
+		"pinned": "Pinned",
+		"requestCreated": "Deletion request created. Review it in pending actions.",
+		"requestDelete": "Request deletion",
+		"requesting": "Requesting…",
+		"search": "Filter saved views",
+		"title": "Saved views",
+		"visibility": "Visibility: {{visibility}}"
 	}
 }

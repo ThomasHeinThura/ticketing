@@ -30,7 +30,7 @@ prerequisite-based scope follows the [2026-09-28 gate-scope decision](../07-plan
 | My work | `/agent/my-work` | route | P1 | 🟡 |
 | Triage | `/agent/triage` | route | P2 | ⬜ |
 | Command palette | — | overlay | P1 | ⬜ |
-| Pending action approval (every deletion — [pending-actions.md](../01-architecture/pending-actions.md)) | — | dialog | P1 | ⬜ |
+| Pending action approval (every deletion — [pending-actions.md](../01-architecture/pending-actions.md)) | — | dialog | P1 | 🟡 |
 | Global search results | `/agent/search` | route | P1 | ⬜ |
 | Not found (agent origin) | `*` | route | P0 | ⬜ |
 | Error boundary | — | overlay | P0 | ⬜ |
@@ -94,7 +94,7 @@ prerequisite-based scope follows the [2026-09-28 gate-scope decision](../07-plan
 | Dashboard | `/agent/dashboard` | route | P5 | ⬜ |
 | Dashboard editor | `/agent/dashboard/edit` | route | P5 | ⬜ |
 | Timesheet | `/agent/timesheet` | route | P5 | ⬜ |
-| Saved views index | `/agent/views` | route | P1 | ⬜ |
+| Saved views index | `/agent/views` | route | P1 | 🟡 |
 | Saved view | `/agent/views/{id}` | route | P1 | ⬜ |
 
 ## Agent — settings

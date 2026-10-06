@@ -24,7 +24,7 @@ import {
   type StepUpMethod,
 } from "@/fetchers/god-mode/instance-users";
 import {
-  approveOwnDeactivation,
+  approveOwnPendingAction,
   cancelOwnPendingAction,
   createPendingActionProof,
   getOwnPendingAction,
@@ -59,7 +59,7 @@ function PendingActionDetailRoute() {
     if (factor.data) setMethod(factor.data.enabled ? "totp" : "password");
   }, [factor.data]);
   const approve = useMutation({
-    mutationFn: approveOwnDeactivation,
+    mutationFn: approveOwnPendingAction,
     onSuccess: async () => {
       await Promise.all([
         queryClient.invalidateQueries({ queryKey: ["me", "pending-actions"] }),
@@ -72,6 +72,10 @@ function PendingActionDetailRoute() {
         }),
         queryClient.invalidateQueries({
           queryKey: ["service-calendar-usage"],
+          refetchType: "all",
+        }),
+        queryClient.invalidateQueries({
+          queryKey: ["saved-views"],
           refetchType: "all",
         }),
         queryClient.invalidateQueries({
@@ -130,8 +134,16 @@ function PendingActionDetailRoute() {
     action.data.targetType === "service_calendar" &&
     action.data.confirmation === "click" &&
     isPending;
-  const canApprove = canApproveDeactivation || canApproveCalendarDeletion;
-  const calendarName =
+  const canApproveSavedViewDeletion =
+    action.data.action === "delete" &&
+    action.data.targetType === "saved_view" &&
+    action.data.confirmation === "click" &&
+    isPending;
+  const canApprove =
+    canApproveDeactivation ||
+    canApproveCalendarDeletion ||
+    canApproveSavedViewDeletion;
+  const targetName =
     typeof action.data.summary.name === "string"
       ? action.data.summary.name
       : null;
@@ -167,11 +179,17 @@ function PendingActionDetailRoute() {
     }
   }
 
-  async function approveCalendarDeletion() {
+  async function approveClickDeletion() {
     setError(null);
     try {
       await approve.mutateAsync({ id });
-      setNotice(t("pendingActions:dynamic.calendarDeletionApproved"));
+      setNotice(
+        t(
+          canApproveSavedViewDeletion
+            ? "pendingActions:dynamic.savedViewDeletionApproved"
+            : "pendingActions:dynamic.calendarDeletionApproved",
+        ),
+      );
     } catch {
       setError(t("pendingActions:dynamic.approvalFailed"));
     }
@@ -212,16 +230,18 @@ function PendingActionDetailRoute() {
             <dd>
               {action.data.action === "user_deactivation"
                 ? t("pendingActions:dynamic.deactivatePerson", { email: "" })
-                : action.data.targetType === "service_calendar" && calendarName
+                : action.data.targetType === "service_calendar" && targetName
                   ? t("pendingActions:dynamic.deleteServiceCalendar", {
-                      name: calendarName,
+                      name: targetName,
                     })
-                  : action.data.action.replaceAll("_", " ")}
+                  : action.data.targetType === "saved_view" && targetName
+                    ? t("savedViews:deleteNamed", { name: targetName })
+                    : action.data.action.replaceAll("_", " ")}
             </dd>
             <dt className="text-muted-foreground">
               {t("pendingActions:copy.61ad50a9b918")}
             </dt>
-            <dd>{email ?? calendarName ?? action.data.targetIds.join(", ")}</dd>
+            <dd>{email ?? targetName ?? action.data.targetIds.join(", ")}</dd>
             <dt className="text-muted-foreground">
               {t("pendingActions:copy.bae7d5be7082")}
             </dt>
@@ -269,19 +289,23 @@ function PendingActionDetailRoute() {
           )}
           {canApprove && (
             <div className="space-y-4 border-t pt-4">
-              {canApproveCalendarDeletion ? (
+              {canApproveCalendarDeletion || canApproveSavedViewDeletion ? (
                 <>
                   <p className="text-sm">
-                    {t("pendingActions:dynamic.approveCalendarDeletion", {
-                      name: calendarName ?? "",
-                    })}
+                    {canApproveSavedViewDeletion
+                      ? t("savedViews:approveDelete", {
+                          name: targetName ?? "",
+                        })
+                      : t("pendingActions:dynamic.approveCalendarDeletion", {
+                          name: targetName ?? "",
+                        })}
                   </p>
                   <div className="flex flex-wrap gap-2">
                     <Button
                       disabled={approve.isPending}
-                      onClick={() => void approveCalendarDeletion()}
+                      onClick={() => void approveClickDeletion()}
                     >
-                      {t("pendingActions:copy.a2b52d875e8b")}
+                      {t("pendingActions:dynamic.approveAction")}
                     </Button>
                     <Button
                       variant="outline"

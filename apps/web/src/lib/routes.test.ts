@@ -8,6 +8,7 @@ import {
   parseIdentityConnectionEventsSearchFromQueryString,
   parseMyWorkSearch,
   parsePendingActionsSearch,
+  parseSavedViewsSearch,
   parseServiceCalendarListSearchFromQueryString,
   parseSlaPolicyListSearch,
   parseWorkItemListSearch,
@@ -267,6 +268,24 @@ describe("routes.serviceCalendars", () => {
     expect(routes.serviceCalendarEditor.build({ id: "new" })).toBe(
       "/agent/settings/calendars/new",
     );
+  });
+});
+
+describe("routes.savedViews", () => {
+  it("round-trips view filtering in the URL and bounds untrusted query text", () => {
+    const url = routes.savedViews.build({ query: "  my / view  " });
+    expect(url).toBe("/agent/views?query=my+%2F+view");
+    expect(
+      parseSavedViewsSearch({
+        query: new URL(url, "https://taskdesk.invalid").searchParams.get(
+          "query",
+        ),
+      }),
+    ).toEqual({ query: "my / view" });
+    expect(
+      parseSavedViewsSearch({ query: "x".repeat(201) }).query,
+    ).toHaveLength(200);
+    expect(generatedRouteMetadata.agent).toContain(routes.savedViews.path);
   });
 });
 

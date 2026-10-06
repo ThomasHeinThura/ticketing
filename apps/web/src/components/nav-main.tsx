@@ -14,6 +14,7 @@ import { ChevronRight } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { usePendingInvitations } from "@/hooks/queries/invitation/use-pending-invitations";
 import useActiveWorkspace from "@/hooks/queries/workspace/use-active-workspace";
+import { routes } from "@/lib/routes";
 
 export function NavMain() {
   const { t } = useTranslation();
@@ -39,6 +40,12 @@ export function NavMain() {
       isActive:
         window.location.pathname ===
         `/dashboard/workspace/${workspace.id}/members`,
+      badge: null,
+    },
+    {
+      title: t("navigation:sidebar.savedViews"),
+      url: routes.savedViews.path,
+      isActive: window.location.pathname === routes.savedViews.path,
       badge: null,
     },
     {

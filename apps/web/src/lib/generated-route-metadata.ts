@@ -11,6 +11,7 @@ export const generatedRouteMetadata = {
     "/agent/settings/profile/pending-actions/$id",
     "/agent/settings/sla-policies",
     "/agent/settings/sla-policies/$id",
+    "/agent/views",
     "/agent/work-items/$key",
     "/auth",
     "/auth/check-email",

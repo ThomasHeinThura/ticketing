@@ -1353,6 +1353,7 @@
 			"overview": "Overview",
 			"projects": "Projects",
 			"members": "Members",
+			"savedViews": "Saved views",
 			"invitations": "Invitations",
 			"more": "More",
 			"backToBoard": "Back to board"
@@ -2754,9 +2755,26 @@
 			"unknownAction": "Unknown action",
 			"expires": "Expires",
 			"calendarDeletionApproved": "Calendar deletion approved. The calendar and its audit record were removed.",
+			"savedViewDeletionApproved": "Saved view deletion approved.",
+			"approveAction": "Approve and execute",
 			"approveCalendarDeletion": "Approve deletion of {{name}}? This cannot be undone.",
 			"deleteServiceCalendar": "Delete service calendar {{name}}"
 		}
+	},
+	"savedViews": {
+		"title": "Saved views",
+		"description": "Views available to you in this workspace.",
+		"search": "Filter saved views",
+		"empty": "No saved views are available.",
+		"requestDelete": "Request deletion",
+		"requesting": "Requesting…",
+		"loadError": "Saved views could not be loaded. Try again.",
+		"deleteError": "A deletion request could not be created.",
+		"requestCreated": "Deletion request created. Review it in pending actions.",
+		"pinned": "Pinned",
+		"visibility": "Visibility: {{visibility}}",
+		"deleteNamed": "Delete saved view: {{name}}",
+		"approveDelete": "Approve deletion of {{name}}? This permanently removes the saved view and clears its pins."
 	},
 	"identityConnections": {
 		"list": {

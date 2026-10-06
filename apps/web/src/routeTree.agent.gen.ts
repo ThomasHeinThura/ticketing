@@ -25,6 +25,7 @@ import { Route as LayoutAuthenticatedOnboardingRouteImport } from './routes/agen
 import { Route as LayoutAuthenticatedProfileSetupRouteImport } from './routes/agent/_layout/_authenticated/profile-setup'
 import { Route as InvitationAcceptInviteIdRouteImport } from './routes/agent/invitation/accept.$inviteId'
 import { Route as LayoutAuthenticatedAgentMyWorkRouteImport } from './routes/agent/_layout/_authenticated/agent/my-work'
+import { Route as LayoutAuthenticatedAgentViewsRouteImport } from './routes/agent/_layout/_authenticated/agent/views'
 import { Route as LayoutAuthenticatedDashboardIndexRouteImport } from './routes/agent/_layout/_authenticated/dashboard/index'
 import { Route as LayoutAuthenticatedDashboardInvitationsRouteImport } from './routes/agent/_layout/_authenticated/dashboard/invitations'
 import { Route as LayoutAuthenticatedDashboardSettingsRouteImport } from './routes/agent/_layout/_authenticated/dashboard/settings'
@@ -147,6 +148,12 @@ const LayoutAuthenticatedAgentMyWorkRoute =
   LayoutAuthenticatedAgentMyWorkRouteImport.update({
     id: '/agent/my-work',
     path: '/agent/my-work',
+    getParentRoute: () => LayoutAuthenticatedRoute,
+  } as any)
+const LayoutAuthenticatedAgentViewsRoute =
+  LayoutAuthenticatedAgentViewsRouteImport.update({
+    id: '/agent/views',
+    path: '/agent/views',
     getParentRoute: () => LayoutAuthenticatedRoute,
   } as any)
 const LayoutAuthenticatedDashboardIndexRoute =
@@ -422,6 +429,7 @@ export interface FileRoutesByFullPath {
   '/profile-setup': typeof LayoutAuthenticatedProfileSetupRoute
   '/invitation/accept/$inviteId': typeof InvitationAcceptInviteIdRoute
   '/agent/my-work': typeof LayoutAuthenticatedAgentMyWorkRoute
+  '/agent/views': typeof LayoutAuthenticatedAgentViewsRoute
   '/dashboard/invitations': typeof LayoutAuthenticatedDashboardInvitationsRoute
   '/dashboard/settings': typeof LayoutAuthenticatedDashboardSettingsRouteWithChildren
   '/god-mode/authentication': typeof LayoutAuthenticatedGodModeAuthenticationRouteWithChildren
@@ -476,6 +484,7 @@ export interface FileRoutesByTo {
   '/profile-setup': typeof LayoutAuthenticatedProfileSetupRoute
   '/invitation/accept/$inviteId': typeof InvitationAcceptInviteIdRoute
   '/agent/my-work': typeof LayoutAuthenticatedAgentMyWorkRoute
+  '/agent/views': typeof LayoutAuthenticatedAgentViewsRoute
   '/dashboard/invitations': typeof LayoutAuthenticatedDashboardInvitationsRoute
   '/dashboard/settings': typeof LayoutAuthenticatedDashboardSettingsRouteWithChildren
   '/god-mode/authentication': typeof LayoutAuthenticatedGodModeAuthenticationRouteWithChildren
@@ -533,6 +542,7 @@ export interface FileRoutesById {
   '/_layout/_authenticated/profile-setup': typeof LayoutAuthenticatedProfileSetupRoute
   '/invitation/accept/$inviteId': typeof InvitationAcceptInviteIdRoute
   '/_layout/_authenticated/agent/my-work': typeof LayoutAuthenticatedAgentMyWorkRoute
+  '/_layout/_authenticated/agent/views': typeof LayoutAuthenticatedAgentViewsRoute
   '/_layout/_authenticated/dashboard/invitations': typeof LayoutAuthenticatedDashboardInvitationsRoute
   '/_layout/_authenticated/dashboard/settings': typeof LayoutAuthenticatedDashboardSettingsRouteWithChildren
   '/_layout/_authenticated/god-mode/authentication': typeof LayoutAuthenticatedGodModeAuthenticationRouteWithChildren
@@ -590,6 +600,7 @@ export interface FileRouteTypes {
     | '/profile-setup'
     | '/invitation/accept/$inviteId'
     | '/agent/my-work'
+    | '/agent/views'
     | '/dashboard/invitations'
     | '/dashboard/settings'
     | '/god-mode/authentication'
@@ -644,6 +655,7 @@ export interface FileRouteTypes {
     | '/profile-setup'
     | '/invitation/accept/$inviteId'
     | '/agent/my-work'
+    | '/agent/views'
     | '/dashboard/invitations'
     | '/dashboard/settings'
     | '/god-mode/authentication'
@@ -700,6 +712,7 @@ export interface FileRouteTypes {
     | '/_layout/_authenticated/profile-setup'
     | '/invitation/accept/$inviteId'
     | '/_layout/_authenticated/agent/my-work'
+    | '/_layout/_authenticated/agent/views'
     | '/_layout/_authenticated/dashboard/invitations'
     | '/_layout/_authenticated/dashboard/settings'
     | '/_layout/_authenticated/god-mode/authentication'
@@ -861,6 +874,13 @@ declare module '@tanstack/react-router' {
       path: '/agent/my-work'
       fullPath: '/agent/my-work'
       preLoaderRoute: typeof LayoutAuthenticatedAgentMyWorkRouteImport
+      parentRoute: typeof LayoutAuthenticatedRoute
+    }
+    '/_layout/_authenticated/agent/views': {
+      id: '/_layout/_authenticated/agent/views'
+      path: '/agent/views'
+      fullPath: '/agent/views'
+      preLoaderRoute: typeof LayoutAuthenticatedAgentViewsRouteImport
       parentRoute: typeof LayoutAuthenticatedRoute
     }
     '/_layout/_authenticated/dashboard/': {
@@ -1358,6 +1378,7 @@ interface LayoutAuthenticatedRouteChildren {
   LayoutAuthenticatedOnboardingRoute: typeof LayoutAuthenticatedOnboardingRoute
   LayoutAuthenticatedProfileSetupRoute: typeof LayoutAuthenticatedProfileSetupRoute
   LayoutAuthenticatedAgentMyWorkRoute: typeof LayoutAuthenticatedAgentMyWorkRoute
+  LayoutAuthenticatedAgentViewsRoute: typeof LayoutAuthenticatedAgentViewsRoute
   LayoutAuthenticatedGodModeAuthenticationRoute: typeof LayoutAuthenticatedGodModeAuthenticationRouteWithChildren
   LayoutAuthenticatedGodModeObservabilityRoute: typeof LayoutAuthenticatedGodModeObservabilityRoute
   LayoutAuthenticatedGodModeUsersRoute: typeof LayoutAuthenticatedGodModeUsersRoute
@@ -1375,6 +1396,7 @@ const LayoutAuthenticatedRouteChildren: LayoutAuthenticatedRouteChildren = {
   LayoutAuthenticatedOnboardingRoute: LayoutAuthenticatedOnboardingRoute,
   LayoutAuthenticatedProfileSetupRoute: LayoutAuthenticatedProfileSetupRoute,
   LayoutAuthenticatedAgentMyWorkRoute: LayoutAuthenticatedAgentMyWorkRoute,
+  LayoutAuthenticatedAgentViewsRoute: LayoutAuthenticatedAgentViewsRoute,
   LayoutAuthenticatedGodModeAuthenticationRoute:
     LayoutAuthenticatedGodModeAuthenticationRouteWithChildren,
   LayoutAuthenticatedGodModeObservabilityRoute:
