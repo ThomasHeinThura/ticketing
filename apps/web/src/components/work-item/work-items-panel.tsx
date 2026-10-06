@@ -51,23 +51,44 @@ function WorkItemsPanel({
     useState<string>();
 
   useEffect(() => {
-    if (isLoading) {
+    if (isLoading || !project?.id) {
       setRealtimeReadyProjectId(undefined);
       return;
     }
 
-    // Keep the socket and its status updates out of the list's first content
-    // paint. The page already renders the primary rows and reports transport
-    // status when the connection starts on the next two frames.
+    // The list itself is lazy-loaded after this panel. Wait for its real
+    // populated, empty, or error state to commit before starting transport work.
+    // That keeps socket setup and its status updates out of the primary list paint.
+    // On socket open, the realtime hook invalidates the work-item query, so any
+    // changes made during this short deferred window are fetched before use.
+    const listContentReady = () =>
+      document.querySelector(
+        '[data-testid="work-item-list-populated"], [data-testid="work-item-list-empty"], [data-testid="work-item-list-error"]',
+      ) !== null;
     let firstFrame: number | undefined;
     let secondFrame: number | undefined;
-    firstFrame = requestAnimationFrame(() => {
-      secondFrame = requestAnimationFrame(() =>
-        setRealtimeReadyProjectId(project?.id),
-      );
-    });
+    const startAfterPaint = () => {
+      if (firstFrame !== undefined || secondFrame !== undefined) return;
+      firstFrame = requestAnimationFrame(() => {
+        secondFrame = requestAnimationFrame(() =>
+          setRealtimeReadyProjectId(project.id),
+        );
+      });
+    };
+    let observer: MutationObserver | undefined;
+    if (listContentReady()) {
+      startAfterPaint();
+    } else {
+      observer = new MutationObserver(() => {
+        if (!listContentReady()) return;
+        observer?.disconnect();
+        startAfterPaint();
+      });
+      observer.observe(document.body, { childList: true, subtree: true });
+    }
 
     return () => {
+      observer?.disconnect();
       if (firstFrame !== undefined) cancelAnimationFrame(firstFrame);
       if (secondFrame !== undefined) cancelAnimationFrame(secondFrame);
     };
