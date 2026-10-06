@@ -1,13 +1,13 @@
 ## Status First
 
-Implementation snapshot: 2026-10-06 19:10 UTC (7 October in Yangon). Accepted main remains `3096cb044bdf6ae98488bfc385f532fa6386343a`.
+Implementation snapshot: 2026-10-06 19:33 UTC (7 October in Yangon). Accepted main remains `3096cb044bdf6ae98488bfc385f532fa6386343a`.
 
 | Phase | Implementation | Integration | Acceptance / operational closure |
 | --- | --- | --- | --- |
-| P0 | Auth/CI/sign-in remediation pushed `6b7c094bcb1ffd5397fde9eefdcc6776253f9087`; measured performance batch still open | Sole closure #583; no later-phase dependency | Current CI running; ordinary/Sol review, hosted G11, strict/rollback, date compatibility and finalizer open |
+| P0 | Auth/CI remediation pushed `6b7c094bcb1ffd5397fde9eefdcc6776253f9087`; hosted native137/1659 and G11 21/22 | Sole closure #583; no later-phase dependency | Board527.5/500, architecture-correct sign-in replay, reviews, strict/rollback, compatibility and finalizer open |
 | P1 | Saved-view checkpoint `7163ad86cb558684c72855232041270b20254d03`; PG17/17 | Isolated checkpoint;0118 provisional | Lead contract and integrated acceptance open |
 | P2 | Approval continuity/key-ceiling checkpoint `54858055d2a623038478756e76a570b8c92e91c5`; focused lifecycle file1/1 | Isolated post-P0 checkpoint | Independent review/integration open |
-| P3 | OIDC mapping checkpoint `7e1c1d4e267a6c62af6d8a80616a3ef6479f10e1`; API types and PG6/6 | Canonical API mount/type completion underway in exclusive isolated worktree | Cache publication seam and actual provider acceptance open |
+| P3 | Mounted OIDC mapping checkpoint `2b2e72f18c89db2c0a7cef4650f1fabea2fed2d9`; types, PG6/6, route-policy88 and OpenAPI233 pass | Isolated complete API mount/type/contract checkpoint | Cache publication seam and actual provider acceptance open |
 | P4 | Send-time notification eligibility checkpoint `7ef71d6b73035e1b013b8e573adb3b0f9c5035e5`; unit10/10, PG8/8 | Isolated predicate; worker activation unwired | Quiet-hours/destination contracts and integrated acceptance open |
 
 ### What changed
@@ -18,11 +18,13 @@ Only the touched sign-in Linux visual baseline was regenerated after inspection 
 
 Historical294 hosted native137 files/1654 tests passes, but G11 remains17/22: list533.8/500ms, LCP2704/2500ms, state346.4/200ms, assignment277.9/200ms, board709.8/500ms. Its local22/22 is diagnostic only. Independent294 auth review blocked the now-remediated pending-action omission; independent294 UI review passed its scope. Neither clears6b7 or the unfinished performance batch. The priority helper remains byte-identical to accepted main; the earlier component-migration description was stale. Actual generic-helper/portal coverage is420 unique pairs/788 occurrences with52 probes, not an invented component conversion.
 
-P3 and P4 checkpoints now have completed focused author proofs and are pushed. P3 covers strict mapping DTOs, step-up/CAS/replay, session-only admission, locked administrator revalidation and exact grant reprojection. P4 covers current recipient reach/preferences and private/internal-comment boundaries; unresolved timing/destination outcomes cannot authorize worker delivery. Neither claims feature or phase acceptance.
+Current6b7 hosted fast jobs all pass except honest pending template/security review; full native137 files/1659 tests, G4 and protected-route E2E pass. G11 now21/22, with only200-card board527.5/500ms failing. List399.3ms, LCP2484ms, state155.9ms and assignment156.7ms pass. No performance-source change proves the reason for these improved timings. Hosted G8 has20 differing pixels confined to rounded input corners; source/CSS/font hashes match, and ARM64 local versus AMD64 hosted rasterization is the supported inference. A single source-faithful AMD64 sign-in baseline correction is prepared, unpublished, for strict final-head replay; no UI code or threshold changes.
+
+P3 and P4 checkpoints now have completed focused author proofs and are pushed. P3 covers strict mapping DTOs, step-up/CAS/replay, session-only admission, locked administrator revalidation and exact grant reprojection; its canonical router mount, aggregate type, matrix fixture and OpenAPI233 operations are now complete. Typechecks, route-policy14 files/88 tests and exact PG mapping1 file/6 tests pass. The original missing-three-route fixture failure is preserved and the documented matrix regeneration passes. P4 covers current recipient reach/preferences and private/internal-comment boundaries; unresolved timing/destination outcomes cannot authorize worker delivery. Neither claims feature or phase acceptance.
 
 ### What is being worked on now
 
-One bounded private Linux diagnostic attributes the five actual hosted performance failures before further product edits. It preserves500 list rows,200 board cards, throttling and budgets; no repository profiler expansion. The nested list import removes a measured chunk waterfall but does not explain the earlier h1 LCP. Backend-owned resources are cleaned and the diagnostic has exclusive runtime. P3 prepares its canonical API mount/types in an isolated worktree, with build/export/tests waiting for that runtime window to end. A read-only audit maps retained denial mismatches to authoritative contracts rather than rewriting expectations to force a pass.
+Only the current failing board measurement remains in the performance lane. The unneeded list-only trial is preserved outside the worktree, not composed into P0. Two detailed captures exposed the existing timeline cap before useful CPU attribution; original failures and the explicitly incomplete prefix are preserved without raising that cap. The next bounded approach collects CPU samples only for the existing200-card interval, not another whole-suite diagnostic or repository profiler expansion. P3 resources are cleaned. The runtime audit retains eleven genuine project-contract conflicts and distinguishes two route-specific incorrect expectations; no oracle has been silently normalized.
 
 ### Critical path
 
@@ -38,7 +40,7 @@ One bounded private Linux diagnostic attributes the five actual hosted performan
 
 ### Concerns
 
-Only the list-code waterfall currently has an attributable source correction; other performance changes must follow actual evidence. Eleven project denials expose a documented404 contract versus deliberately retained native400 behavior; do not silently change the oracle. Workspace/time-entry expectations have route-specific source evidence, but a corrected runner still requires real validation. Existing public pre-auth config policy does not itself authorize substituting public evidence for shadow coverage. P3 cache publication and P4 unresolved timing/destinations remain bounded later-phase residuals.
+The current board failure requires a bounded fix and actual hosted proof; no passing path should accumulate speculative changes. Eleven project denials expose a documented404 contract versus deliberately retained native400 behavior; do not silently change the oracle. Workspace/time-entry expectations have route-specific source evidence, but a corrected runner still requires real validation. Existing public pre-auth config policy does not itself authorize substituting public evidence for shadow coverage. Original actor provisioning strongly supports cookie sessions; missing private-runner hashes alone do not invalidate dates. Fresh source-bound replay and independent compatibility verdict remain necessary, not an automatic new observation wait. P3 cache publication and P4 unresolved timing/destinations remain bounded later-phase residuals.
 
 ### Decisions needed from Thomas
 
