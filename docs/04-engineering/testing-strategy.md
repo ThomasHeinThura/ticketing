@@ -377,6 +377,22 @@ stage ([ci-cd.md](ci-cd.md)) — one shape in both documents.
 Against a seeded dataset, asserting the budgets in
 [UX quality gates](../02-design/ux-quality-gates.md).
 
+The separate G11 initial-page diagnostic writes a private `initial-page-profile.json` artifact
+with schema version 4. Its `cpuProfiles` preserve bounded V8 node/sample data, including parent
+node ids; `topCpuFrames` adds a unique acyclic caller chain (maximum eight frames) for the top
+60 sampled nodes. Profiles above 5,000 nodes or 100,000 samples are omitted rather than
+truncated into potentially false ancestry. The diagnostic records the emitted JavaScript
+SHA-256 and adjacent source-map SHA-256 for each profiled manifest asset. Source maps are used
+only when they parse as version 3 and their optional `file` basename matches that asset; a
+missing, invalid or mismatched map has a fixed status and cannot contribute mapped coordinates.
+Mapped coordinates are numeric source/name indexes plus original line/column, always bound to
+the map digest; artifacts never include source paths, `sourcesContent`, map names, full URLs,
+or function labels. Numeric map indexes let an offline reader resolve module/function names only
+against the exact map digest. These fields identify candidate call paths for source inspection;
+they do not establish causal savings or alter canonical G11 timing/budgets. CPU samples remain
+clipped from each V8 trace chunk's timestamp/deltas to the calibrated CDP trace-clock recorder
+span, and coverage explicitly reports uncovered prefixes/suffixes rather than filling gaps.
+
 ### Design-system conformance
 
 Static, in the fast CI stage: `check:ui` fails on any import of `@radix-ui/*`, the `radix-ui` umbrella package, or

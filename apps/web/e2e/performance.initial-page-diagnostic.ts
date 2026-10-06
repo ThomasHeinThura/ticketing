@@ -1,9 +1,15 @@
 import { execFileSync } from "node:child_process";
 import { createHash } from "node:crypto";
-import { mkdir, readFile, writeFile } from "node:fs/promises";
+import { mkdir, readFile, stat, writeFile } from "node:fs/promises";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { expect, type Page, test } from "@playwright/test";
+import {
+  type BoundProfileSourceMap,
+  type ProfiledAssetIdentity,
+  parseProfileSourceMap,
+  sampleProfileCallers,
+} from "../src/lib/performance-profile-attribution";
 import { summarizeProfileCoverage } from "../src/lib/performance-profile-intervals";
 import {
   installPerformanceApiFixture,
@@ -25,9 +31,9 @@ const RESULT_DIR = path.join(
   "apps/web/test-results/g11-initial-page-diagnostic",
 );
 
-type TraceCpuNode = {
+type CpuProfileNode = {
   id: number;
-  children?: number[];
+  parent?: number;
   callFrame: {
     functionName: string;
     url: string;
@@ -36,13 +42,29 @@ type TraceCpuNode = {
   };
 };
 
-type TraceCpuProfile = {
+type CpuProfile = {
   id: string;
   source: string;
   pid: number;
   tid: number;
-  nodes: Map<number, TraceCpuNode>;
+  nodes: Map<number, CpuProfileNode>;
   samples: Array<{ nodeId: number; start: number; duration: number }>;
+};
+
+type DiagnosticBuildIdentity = {
+  sourceCommitSha: string;
+  sourceTreeSha256: string;
+  sourceTreeFileCount: number;
+  workingTreeChanges: string[];
+  manifestSha256: string;
+  canonicalFixtureSha256: string;
+  initialAssets: Array<{ file: string; sha256: string }>;
+  profiledAssets: Array<{
+    file: string;
+    sha256: string;
+    sourceMapSha256?: string;
+    sourceMapStatus: "matched" | "missing" | "invalid" | "asset-mismatch";
+  }>;
 };
 
 type InitialDocumentMetrics = {
@@ -77,8 +99,8 @@ type BrowserTimelineEvent = {
   durationMicroseconds?: number;
   mark?: string;
   markDocumentId?: string;
+  source?: { asset: string; line: number };
   stack?: Array<{
-    functionName: string;
     asset: string;
     line: number;
     column: number;
@@ -145,8 +167,11 @@ const CLOCK_MARKS = new Set([
 function safeTimelineAsset(value: string) {
   try {
     const parsed = new URL(value, ORIGIN);
-    return parsed.origin === ORIGIN && parsed.pathname.startsWith("/assets/")
-      ? path.posix.basename(parsed.pathname)
+    const basename = path.posix.basename(parsed.pathname);
+    return parsed.origin === ORIGIN &&
+      parsed.pathname.startsWith("/assets/") &&
+      /^[A-Za-z0-9_.-]{1,128}\.js$/.test(basename)
+      ? basename
       : "non-asset";
   } catch {
     return "non-asset";
@@ -170,7 +195,6 @@ function sanitizeTimelineEvent(
   const callFrames = data?.stackTrace?.callFrames;
   const stack = Array.isArray(callFrames)
     ? callFrames.slice(0, 12).map((frame) => ({
-        functionName: String(frame.functionName ?? "(anonymous)").slice(0, 120),
         asset: safeTimelineAsset(String(frame.url ?? "")),
         line: Number.isFinite(frame.lineNumber) ? frame.lineNumber + 1 : 0,
         column: Number.isFinite(frame.columnNumber)
@@ -180,23 +204,27 @@ function sanitizeTimelineEvent(
     : undefined;
   return {
     name: event.name,
-    category: String(event.cat ?? "").slice(0, 120),
-    phase: String(event.ph ?? ""),
+    category: /^[A-Za-z0-9._-]{0,80}$/.test(String(event.cat ?? ""))
+      ? String(event.cat ?? "")
+      : "unknown",
+    phase: /^[A-Za-z]$/.test(String(event.ph ?? ""))
+      ? String(event.ph ?? "")
+      : "?",
     startMicroseconds: Number(event.ts) || 0,
     ...(Number.isFinite(event.dur) ? { durationMicroseconds: event.dur } : {}),
     ...(mark ? { mark } : {}),
     ...(markDocumentId ? { markDocumentId } : {}),
-    ...(stack?.length ? { stack } : {}),
     ...(data?.url || data?.scriptName
       ? {
           source: {
             asset: safeTimelineAsset(data.url ?? data.scriptName ?? ""),
             line: Number.isFinite(data.lineNumber)
-              ? (data.lineNumber ?? 0) + 1
+              ? Number(data.lineNumber) + 1
               : 0,
           },
         }
       : {}),
+    ...(stack?.length ? { stack } : {}),
   };
 }
 
@@ -261,48 +289,6 @@ function safeAssetName(value: string) {
   } catch {
     return "unrecognized";
   }
-}
-
-function sampledTraceFrames(
-  profiles: ReturnType<typeof sanitizeTraceCpuProfile>[],
-  modulesByAsset: Record<string, string[]>,
-) {
-  const totals = new Map<
-    string,
-    {
-      asset: string;
-      functionName: string;
-      line: number;
-      column: number;
-      sampledMicroseconds: number;
-    }
-  >();
-  for (const profile of profiles) {
-    if (!profile) continue;
-    const nodes = new Map(profile.nodes.map((node) => [node.id, node]));
-    for (const sample of profile.samples) {
-      const frame = nodes.get(sample.nodeId);
-      if (!frame || frame.asset === "runtime" || frame.asset === "non-asset")
-        continue;
-      const key = `${frame.asset}:${frame.functionName}:${frame.line}:${frame.column}`;
-      const total = totals.get(key) ?? {
-        asset: frame.asset,
-        functionName: frame.functionName,
-        line: frame.line,
-        column: frame.column,
-        sampledMicroseconds: 0,
-      };
-      total.sampledMicroseconds += sample.durationMicroseconds;
-      totals.set(key, total);
-    }
-  }
-  return [...totals.values()]
-    .map((frame) => ({
-      ...frame,
-      sourceModuleCount: modulesByAsset[frame.asset]?.length ?? 0,
-    }))
-    .sort((left, right) => right.sampledMicroseconds - left.sampledMicroseconds)
-    .slice(0, 60);
 }
 
 function alignBoundaryToTrace(capture: DiagnosticCapture) {
@@ -472,11 +458,13 @@ function clipTimelineEvents(
   });
 }
 
-function sanitizeTraceCpuProfile(
-  profile: TraceCpuProfile,
+function sanitizeCpuProfile(
+  profile: CpuProfile,
   startMicroseconds?: number,
   endMicroseconds?: number,
 ) {
+  if (profile.nodes.size > 5_000 || profile.samples.length > 100_000)
+    return undefined;
   const samples = profile.samples.flatMap((sample) => {
     const start = startMicroseconds ?? Number.NEGATIVE_INFINITY;
     const end = endMicroseconds ?? Number.POSITIVE_INFINITY;
@@ -493,30 +481,32 @@ function sanitizeTraceCpuProfile(
       : [];
   });
   if (samples.length === 0) return undefined;
+  const nodes = [...profile.nodes.values()].map((node) => {
+    let asset = "runtime";
+    try {
+      const frameUrl = new URL(node.callFrame?.url ?? "", ORIGIN);
+      const basename = path.posix.basename(frameUrl.pathname);
+      asset =
+        frameUrl.origin === ORIGIN &&
+        frameUrl.pathname.startsWith("/assets/") &&
+        /^[A-Za-z0-9_.-]{1,128}\.js$/.test(basename)
+          ? basename
+          : "non-asset";
+    } catch {
+      asset = "non-asset";
+    }
+    return {
+      id: node.id,
+      ...(Number.isSafeInteger(node.parent) && (node.parent ?? -1) >= 0
+        ? { parentId: node.parent }
+        : {}),
+      asset,
+      line: (node.callFrame?.lineNumber ?? -1) + 1,
+      column: (node.callFrame?.columnNumber ?? -1) + 1,
+    };
+  });
   return {
-    nodes: [...profile.nodes.values()].map((node) => {
-      let asset = "runtime";
-      try {
-        const frameUrl = new URL(node.callFrame?.url ?? "", ORIGIN);
-        asset =
-          frameUrl.origin === ORIGIN && frameUrl.pathname.startsWith("/assets/")
-            ? path.posix.basename(frameUrl.pathname)
-            : "non-asset";
-      } catch {
-        asset = "non-asset";
-      }
-      return {
-        id: node.id,
-        children: node.children ?? [],
-        functionName: (node.callFrame?.functionName ?? "(unknown)").slice(
-          0,
-          160,
-        ),
-        asset,
-        line: (node.callFrame?.lineNumber ?? -1) + 1,
-        column: (node.callFrame?.columnNumber ?? -1) + 1,
-      };
-    }),
+    nodes,
     samples,
   };
 }
@@ -573,29 +563,72 @@ async function getBuildIdentity(profileAssetNames: Set<string>) {
       ];
     }),
   );
-  const maps = await Promise.all(
-    [...relevantFiles].map(async (file) => {
-      if (!file.endsWith(".js"))
-        return [path.posix.basename(file), []] as const;
-      try {
-        const map = JSON.parse(
-          await readFile(
-            path.join(ROOT, "apps/web/dist/agent", `${file}.map`),
-            "utf8",
-          ),
-        ) as { sources?: string[] };
-        return [path.posix.basename(file), map.sources ?? []] as const;
-      } catch {
-        return [path.posix.basename(file), []] as const;
+  const sourceMaps = new Map<string, BoundProfileSourceMap>();
+  const profiledAssets: DiagnosticBuildIdentity["profiledAssets"] = [];
+  const identitiesByAsset = new Map<string, ProfiledAssetIdentity>();
+  for (const asset of assets.filter((entry) => profileFiles.has(entry.file))) {
+    const basename = path.posix.basename(asset.file);
+    if (!asset.file.endsWith(".js")) {
+      profiledAssets.push({ ...asset, sourceMapStatus: "missing" });
+      continue;
+    }
+    let mapBytes: Buffer;
+    try {
+      const mapPath = path.join(
+        ROOT,
+        "apps/web/dist/agent",
+        `${asset.file}.map`,
+      );
+      const mapStats = await stat(mapPath);
+      if (mapStats.size > 5 * 1024 * 1024) {
+        profiledAssets.push({ ...asset, sourceMapStatus: "invalid" });
+        continue;
       }
-    }),
-  );
-  const moduleMapSources = Object.fromEntries(maps);
-  const unmappedJavaScriptAssets = [...relevantFiles]
-    .filter((file) => file.endsWith(".js"))
-    .filter((file) => moduleMapSources[path.posix.basename(file)]?.length === 0)
-    .map((file) => path.posix.basename(file))
-    .sort();
+      mapBytes = await readFile(mapPath);
+    } catch {
+      profiledAssets.push({ ...asset, sourceMapStatus: "missing" });
+      continue;
+    }
+    const sourceMapSha256 = digest(mapBytes);
+    const mapText = mapBytes.toString("utf8");
+    let mapFile: string | undefined;
+    try {
+      const parsed = JSON.parse(mapText) as { file?: unknown };
+      if (typeof parsed.file === "string") mapFile = parsed.file;
+    } catch {
+      // The parser below rejects malformed maps; retain only its fixed status.
+    }
+    if (mapFile !== undefined && mapFile !== basename) {
+      profiledAssets.push({
+        ...asset,
+        sourceMapSha256,
+        sourceMapStatus: "asset-mismatch",
+      });
+      continue;
+    }
+    const sourceMap = parseProfileSourceMap(mapText, basename);
+    if (!sourceMap) {
+      profiledAssets.push({
+        ...asset,
+        sourceMapSha256,
+        sourceMapStatus: "invalid",
+      });
+      continue;
+    }
+    profiledAssets.push({
+      ...asset,
+      sourceMapSha256,
+      sourceMapStatus: "matched",
+    });
+    sourceMaps.set(basename, {
+      sha256: sourceMapSha256,
+      parsed: sourceMap,
+    });
+    identitiesByAsset.set(basename, {
+      ...asset,
+      sourceMapSha256,
+    });
+  }
   const sourcePaths = execFileSync(
     "git",
     [
@@ -640,7 +673,7 @@ async function getBuildIdentity(profileAssetNames: Set<string>) {
   )
     .split("\n")
     .filter(Boolean);
-  return {
+  const identity: DiagnosticBuildIdentity = {
     sourceCommitSha: execFileSync("git", ["rev-parse", "HEAD"], {
       cwd: ROOT,
       encoding: "utf8",
@@ -655,18 +688,9 @@ async function getBuildIdentity(profileAssetNames: Set<string>) {
       ),
     ),
     initialAssets: assets.filter((asset) => initialFiles.has(asset.file)),
-    profiledAssets: assets.filter((asset) => profileFiles.has(asset.file)),
-    modulesByAsset: moduleMapSources,
-    moduleMapCoverage: {
-      mappedJavaScriptAssets:
-        [...relevantFiles].filter((file) => file.endsWith(".js")).length -
-        unmappedJavaScriptAssets.length,
-      javascriptAssets: [...relevantFiles].filter((file) =>
-        file.endsWith(".js"),
-      ).length,
-      unmappedJavaScriptAssets,
-    },
+    profiledAssets,
   };
+  return { identity, identitiesByAsset, sourceMaps };
 }
 
 async function collectDocumentMetrics(
@@ -723,7 +747,7 @@ type DiagnosticCapture = {
     metrics: Record<string, number>;
     timelineEvents: BrowserTimelineEvent[];
   };
-  traceCpuProfiles: TraceCpuProfile[];
+  cpuProfiles: CpuProfile[];
   clockMarks: Array<{
     name: string;
     documentId: string;
@@ -762,8 +786,9 @@ async function withDiagnosticProfile(
   let boundary: DiagnosticBoundary | undefined;
   let metrics: InitialDocumentMetrics | undefined;
   let browserPerformance: DiagnosticCapture["browserPerformance"] | undefined;
+  let cpuProfiles: CpuProfile[] = [];
   const timelineEvents: BrowserTimelineEvent[] = [];
-  const traceCpuProfilesByThread = new Map<string, TraceCpuProfile>();
+  const cpuProfilesByThread = new Map<string, CpuProfile>();
   let clockMarks: DiagnosticCapture["clockMarks"] = [];
   let timelineOverflow = false;
   cdp.on("Tracing.dataCollected", ({ value }) => {
@@ -772,8 +797,8 @@ async function withDiagnosticProfile(
         const data = (
           event.args as { data?: Record<string, unknown> } | undefined
         )?.data;
-        const cpuProfile = data?.cpuProfile as
-          | { nodes?: TraceCpuNode[]; samples?: number[] }
+        const profileChunk = data?.cpuProfile as
+          | { nodes?: CpuProfileNode[]; samples?: number[] }
           | undefined;
         const timeDeltas = data?.timeDeltas as number[] | undefined;
         const source = String(data?.source ?? "unknown");
@@ -781,9 +806,9 @@ async function withDiagnosticProfile(
         const tid = Number(event.tid) || 0;
         const id = String(event.id ?? "profile");
         const key = `${pid}:${tid}:${source}:${id}`;
-        let traceProfile = traceCpuProfilesByThread.get(key);
-        if (!traceProfile) {
-          traceProfile = {
+        let cpuProfile = cpuProfilesByThread.get(key);
+        if (!cpuProfile) {
+          cpuProfile = {
             id,
             source,
             pid,
@@ -791,21 +816,22 @@ async function withDiagnosticProfile(
             nodes: new Map(),
             samples: [],
           };
-          traceCpuProfilesByThread.set(key, traceProfile);
+          cpuProfilesByThread.set(key, cpuProfile);
         }
-        for (const node of cpuProfile?.nodes ?? [])
-          traceProfile.nodes.set(node.id, node);
-        const samples = cpuProfile?.samples ?? [];
+        for (const node of profileChunk?.nodes ?? [])
+          cpuProfile.nodes.set(node.id, node);
+        const sampleIds = profileChunk?.samples ?? [];
         if (
           Array.isArray(timeDeltas) &&
-          samples.length === timeDeltas.length &&
+          sampleIds.length === timeDeltas.length &&
           Number.isFinite(event.ts)
         ) {
           let sampleTime =
-            (event.ts as number) - timeDeltas.reduce((a, b) => a + b, 0);
-          for (const [index, nodeId] of samples.entries()) {
+            (event.ts as number) -
+            timeDeltas.reduce((total, delta) => total + delta, 0);
+          for (const [index, nodeId] of sampleIds.entries()) {
             const duration = timeDeltas[index] ?? 0;
-            traceProfile.samples.push({ nodeId, start: sampleTime, duration });
+            cpuProfile.samples.push({ nodeId, start: sampleTime, duration });
             sampleTime += duration;
           }
         }
@@ -963,6 +989,7 @@ async function withDiagnosticProfile(
     );
     await cdp.send("Tracing.end");
     await tracingComplete;
+    cpuProfiles = [...cpuProfilesByThread.values()];
     if (timelineOverflow)
       throw new Error(`The ${name} browser timeline exceeded its event bound.`);
     browserPerformance = {
@@ -989,7 +1016,7 @@ async function withDiagnosticProfile(
     metrics,
     network: JSON.parse(networkCapture.finish()),
     browserPerformance,
-    traceCpuProfiles: [...traceCpuProfilesByThread.values()],
+    cpuProfiles,
     clockMarks,
     boundary,
   };
@@ -1229,9 +1256,9 @@ test("diagnostic: source-bound G11 failure-path CPU profiles", async ({
     ),
   ];
   const profileAssetNames = new Set(
-    captures.flatMap(({ traceCpuProfiles }) => [
-      ...traceCpuProfiles.flatMap((traceProfile) =>
-        [...traceProfile.nodes.values()]
+    captures.flatMap(({ cpuProfiles }) => [
+      ...cpuProfiles.flatMap((cpuProfile) =>
+        [...cpuProfile.nodes.values()]
           .map((node) => node.callFrame?.url)
           .filter(
             (url): url is string =>
@@ -1242,6 +1269,23 @@ test("diagnostic: source-bound G11 failure-path CPU profiles", async ({
     ]),
   );
   const build = await getBuildIdentity(profileAssetNames);
+  const sampledAttributions = (
+    profiles: ReturnType<typeof sanitizeCpuProfile>[],
+  ) =>
+    profiles
+      .filter((profile) => profile !== undefined)
+      .flatMap((profile) =>
+        sampleProfileCallers(
+          profile.nodes,
+          profile.samples,
+          build.identitiesByAsset,
+          build.sourceMaps,
+        ),
+      )
+      .sort(
+        (left, right) => right.sampledMicroseconds - left.sampledMicroseconds,
+      )
+      .slice(0, 60);
   const profileWindows = captures.map((capture) => {
     const { name, browserPerformance } = capture;
     const alignment = alignBoundaryToTrace(capture);
@@ -1251,14 +1295,13 @@ test("diagnostic: source-bound G11 failure-path CPU profiles", async ({
         scope: "supplementary full-window context; no canonical G11 metric",
         recorderBoundary: null,
         clockAlignment: null,
-        topCpuFrames: sampledTraceFrames(
-          capture.traceCpuProfiles
-            .map((traceProfile) => sanitizeTraceCpuProfile(traceProfile))
+        topCpuFrames: sampledAttributions(
+          capture.cpuProfiles
+            .map((cpuProfile) => sanitizeCpuProfile(cpuProfile))
             .filter((value) => value !== undefined),
-          build.modulesByAsset,
         ),
-        traceCpuProfiles: capture.traceCpuProfiles
-          .map((traceProfile) => sanitizeTraceCpuProfile(traceProfile))
+        cpuProfiles: capture.cpuProfiles
+          .map((cpuProfile) => sanitizeCpuProfile(cpuProfile))
           .filter((value) => value !== undefined),
         timelineEvents: browserPerformance.timelineEvents,
         wholeWindowPerformanceMetrics: {
@@ -1268,10 +1311,10 @@ test("diagnostic: source-bound G11 failure-path CPU profiles", async ({
         },
       };
 
-    const clippedTraceCpuProfiles = capture.traceCpuProfiles
-      .map((traceProfile) =>
-        sanitizeTraceCpuProfile(
-          traceProfile,
+    const clippedCpuProfiles = capture.cpuProfiles
+      .map((cpuProfile) =>
+        sanitizeCpuProfile(
+          cpuProfile,
           alignment.startTraceMicroseconds,
           alignment.endTraceMicroseconds,
         ),
@@ -1282,8 +1325,8 @@ test("diagnostic: source-bound G11 failure-path CPU profiles", async ({
       alignment.startTraceMicroseconds,
       alignment.endTraceMicroseconds,
     );
-    const clippedSamples = clippedTraceCpuProfiles.flatMap((traceProfile) =>
-      traceProfile.samples.map((sample) => ({
+    const clippedSamples = clippedCpuProfiles.flatMap((cpuProfile) =>
+      cpuProfile.samples.map((sample) => ({
         start: sample.startMicroseconds,
         end: sample.startMicroseconds + sample.durationMicroseconds,
       })),
@@ -1302,11 +1345,11 @@ test("diagnostic: source-bound G11 failure-path CPU profiles", async ({
         ...alignment.transform,
         calibratedStartTraceMicroseconds: alignment.startTraceMicroseconds,
         calibratedEndTraceMicroseconds: alignment.endTraceMicroseconds,
-        v8TraceProfileCount: capture.traceCpuProfiles.length,
+        v8TraceProfileCount: capture.cpuProfiles.length,
       },
       cpuSampleCoverage: {
         scope:
-          "observed trace ProfileChunk samples; not a completeness guarantee",
+          "observed V8 trace ProfileChunk samples; not a completeness guarantee",
         intervalStartMicroseconds: alignment.startTraceMicroseconds,
         intervalEndMicroseconds: alignment.endTraceMicroseconds,
         observedStartMicroseconds: cpuCoverage.observedStart,
@@ -1317,11 +1360,8 @@ test("diagnostic: source-bound G11 failure-path CPU profiles", async ({
         clockAlignmentUncertaintyMicroseconds:
           alignment.transform.uncertaintyMicroseconds,
       },
-      topCpuFrames: sampledTraceFrames(
-        clippedTraceCpuProfiles,
-        build.modulesByAsset,
-      ),
-      traceCpuProfiles: clippedTraceCpuProfiles,
+      topCpuFrames: sampledAttributions(clippedCpuProfiles),
+      cpuProfiles: clippedCpuProfiles,
       timelineEvents: clippedTimeline,
       wholeWindowPerformanceMetrics: {
         scope: "context-only cumulative deltas; not a click-to-paint interval",
@@ -1331,11 +1371,11 @@ test("diagnostic: source-bound G11 failure-path CPU profiles", async ({
   });
   const initial = captures[0];
   const result = {
-    schemaVersion: 3,
+    schemaVersion: 4,
     diagnosticOnly: true,
     fixture:
       "canonical G11 installPerformanceApiFixture (500 work items, 200 board cards)",
-    sourceAndBuild: build,
+    sourceAndBuild: build.identity,
     profileModes: {
       lcpStateAssignment: "150ms latency, 200KB/s down, 93.75KB/s up, 4x CPU",
       boardRender:
@@ -1347,11 +1387,15 @@ test("diagnostic: source-bound G11 failure-path CPU profiles", async ({
       transform:
         "Two diagnostic CDP TimeStamp markers on the same document, measured around window.performance.now(); affine scale and offset map canonical recorder values to trace time. Uncertainty includes marker-call brackets plus measured slope uncertainty propagated across extrapolated distance.",
       cpuProfileClock:
-        "Sanitized V8 ProfileChunk sample intervals are derived from each chunk's CDP trace timestamp and timeDeltas, then clipped to the aligned recorder span. Coverage reports observed sample bounds and uncovered prefixes/suffixes.",
+        "V8 trace ProfileChunk sample intervals use each chunk's CDP trace timestamp and timeDeltas, then are clipped to the calibrated recorder span. Coverage reports observed sample bounds and uncovered prefixes/suffixes; gaps remain gaps.",
+      sourceMapBinding:
+        "A source-map index is used only when its adjacent map parses as version 3, its optional file name matches the profiled asset basename, and the JavaScript asset is present in the emitted Vite manifest. The artifact stores exact JavaScript and map SHA-256 plus numeric source/name indexes and original coordinates; it never stores source paths, source contents, or source-map names.",
+      callerAttribution:
+        "V8 trace ProfileChunk parent node ids are reduced to a unique acyclic caller chain of at most eight frames. The output is limited to the top 60 sampled frames and 5,000 nodes / 100,000 samples per profile. Cyclic, missing, or unbound caller/source-map edges are omitted.",
       contextMetrics:
         "Performance.getMetrics is cumulative over each entire profiler window and is reported as context only; it is not clipped or described as interval data.",
       sensitiveData:
-        "Only fixed diagnostic marker labels, function names, generated asset basenames, line/column, event names, and timestamps are retained. Raw trace args, DOM, network payloads, and auth values are excluded.",
+        "Only fixed diagnostic marker labels, generated asset basenames, bounded node ids, numeric source-map indexes/coordinates bound to recorded map digests, event names, and timestamps are retained. Function labels and raw trace args, DOM, network payloads, source-map strings/contents, local paths, URLs, and auth values are excluded.",
     },
     route: WORK_LIST_PATH,
     profileWindows,
