@@ -87,17 +87,24 @@ describe("promoteDisjointAnyOf", () => {
 
     const result = retainStepUpChallengeOneOf(document);
     const paths = result.paths as Record<string, JsonSchema>;
-    const challenge = paths["/me/step-up/challenges"]!.post as JsonSchema;
-    const stepUp = paths["/me/step-up"]!.post as JsonSchema;
-    const challengeSchema = (
+    const challenge = paths["/me/step-up/challenges"]?.post as
+      | JsonSchema
+      | undefined;
+    const stepUp = paths["/me/step-up"]?.post as JsonSchema | undefined;
+    if (!challenge || !stepUp) throw new Error("Expected both step-up routes.");
+    const challengeJson = (
       (challenge.requestBody as JsonSchema).content as Record<
         string,
         JsonSchema
       >
-    )["application/json"]!.schema as JsonSchema;
-    const stepUpSchema = (
+    )["application/json"];
+    const stepUpJson = (
       (stepUp.requestBody as JsonSchema).content as Record<string, JsonSchema>
-    )["application/json"]!.schema as JsonSchema;
+    )["application/json"];
+    if (!challengeJson?.schema || !stepUpJson?.schema)
+      throw new Error("Expected JSON request schemas for both routes.");
+    const challengeSchema = challengeJson.schema as JsonSchema;
+    const stepUpSchema = stepUpJson.schema as JsonSchema;
     expect(challengeSchema.oneOf).toHaveLength(2);
     expect(challengeSchema.anyOf).toBeUndefined();
     expect(stepUpSchema.anyOf).toHaveLength(2);
