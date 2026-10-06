@@ -1,15 +1,10 @@
 import { sendWorkspaceInvitationEmail } from "@taskdesk/email";
-import { eq } from "drizzle-orm";
-import db, { schema } from "../database";
 import { getInvitationEmailSubject } from "./get-invitation-email-subject";
 import { getWorkspaceInvitationEmailCopy } from "./get-workspace-invitation-email-copy";
+import { getUserLocaleByEmail } from "./repository";
 
 async function getUserLocale(email: string): Promise<string | null> {
-  const [user] = await db
-    .select({ locale: schema.userTable.locale })
-    .from(schema.userTable)
-    .where(eq(schema.userTable.email, email))
-    .limit(1);
+  const [user] = await getUserLocaleByEmail(email);
 
   return user?.locale ?? null;
 }

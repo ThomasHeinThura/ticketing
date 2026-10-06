@@ -1,9 +1,8 @@
-import { eq } from "drizzle-orm";
 import { HTTPException } from "hono/http-exception";
 import { appendAuditLog } from "../../audit/audit-writer";
 import db from "../../database";
-import { attachmentTable, workItemTable } from "../../database/schema";
 import { createAttachmentDownloadUrl } from "../../storage";
+import { getAttachment, getWorkItemProjectId } from "../repository";
 
 export type DownloadAttachmentInput = {
   attachmentId: string;
@@ -32,11 +31,7 @@ export async function downloadAttachment(input: DownloadAttachmentInput) {
     apiBaseUrl,
   } = input;
 
-  const [attachment] = await db
-    .select()
-    .from(attachmentTable)
-    .where(eq(attachmentTable.id, attachmentId))
-    .limit(1);
+  const [attachment] = await getAttachment(db, attachmentId);
 
   // AT-5: "the download path serves only `state = 'ready'` rows, never by raw key" --
   // a `pending` or `deleted` row 404s exactly like a nonexistent one.
@@ -49,11 +44,7 @@ export async function downloadAttachment(input: DownloadAttachmentInput) {
     throw new HTTPException(404, { message: "Attachment not found" });
   }
 
-  const [workItem] = await db
-    .select({ projectId: workItemTable.projectId })
-    .from(workItemTable)
-    .where(eq(workItemTable.id, workItemId))
-    .limit(1);
+  const [workItem] = await getWorkItemProjectId(db, workItemId);
 
   const downloadUrl = await createAttachmentDownloadUrl(
     attachment.objectKey,

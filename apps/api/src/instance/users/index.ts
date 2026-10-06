@@ -1,4 +1,4 @@
-import { and, desc, eq, gt, ilike, lt, or, sql } from "drizzle-orm";
+import { and, eq, ilike, lt, or, sql } from "drizzle-orm";
 import type { Context } from "hono";
 import { HTTPException } from "hono/http-exception";
 import { appendAuditLog } from "../../audit/audit-writer";
@@ -19,6 +19,21 @@ import {
   normalizeUserDirectoryFilters,
   type UserDirectoryFilters,
 } from "./directory";
+import {
+  getActiveStaffPerson,
+  getDirectoryUser,
+  getPersonStatus,
+  listAdminIds,
+  listDirectoryUsers,
+  lockActiveAgentSession,
+  lockActiveStaffPerson,
+  lockAdminUser,
+  lockGrantTarget,
+  lockGrantTargetPeople,
+  lockSetupCompletion,
+  lockUserForMutation,
+  lockUserId,
+} from "./repository";
 
 const limitSchema = z.coerce.number().int().min(1).max(200).default(50);
 const querySchema = z
@@ -306,25 +321,6 @@ function safeUser(
   };
 }
 
-const projection = {
-  id: schema.userTable.id,
-  name: schema.userTable.name,
-  email: schema.userTable.email,
-  emailVerified: schema.userTable.emailVerified,
-  createdAt: schema.userTable.createdAt,
-  locale: schema.userTable.locale,
-  role: schema.userTable.role,
-  banned: schema.userTable.banned,
-  banExpires: schema.userTable.banExpires,
-  twoFactorEnabled: schema.userTable.twoFactorEnabled,
-  personId: schema.personTable.id,
-  side: schema.personTable.side,
-  organisationId: schema.personTable.organisationId,
-  organisationName: schema.organisationTable.name,
-  personActive: schema.personTable.active,
-  isPlaceholder: schema.personTable.isPlaceholder,
-};
-
 const routes = apiRouter()
   .openapi(usersListRoute, async (c) => {
     await requireGodMode(c);
@@ -367,20 +363,7 @@ const routes = apiRouter()
       );
       if (cursorPredicate) predicates.push(cursorPredicate);
     }
-    const rows = await db
-      .select(projection)
-      .from(schema.userTable)
-      .leftJoin(
-        schema.personTable,
-        eq(schema.personTable.userId, schema.userTable.id),
-      )
-      .leftJoin(
-        schema.organisationTable,
-        eq(schema.organisationTable.id, schema.personTable.organisationId),
-      )
-      .where(predicates.length ? and(...predicates) : undefined)
-      .orderBy(desc(schema.userTable.createdAt), desc(schema.userTable.id))
-      .limit(query.limit + 1);
+    const rows = await listDirectoryUsers(predicates, query.limit + 1);
     const hasMore = rows.length > query.limit;
     const selected = rows.slice(0, query.limit);
     const last = selected.at(-1);
@@ -404,19 +387,7 @@ const routes = apiRouter()
   .openapi(userDetailRoute, async (c) => {
     await requireGodMode(c);
     const { id } = c.req.valid("param");
-    const [row] = await db
-      .select(projection)
-      .from(schema.userTable)
-      .leftJoin(
-        schema.personTable,
-        eq(schema.personTable.userId, schema.userTable.id),
-      )
-      .leftJoin(
-        schema.organisationTable,
-        eq(schema.organisationTable.id, schema.personTable.organisationId),
-      )
-      .where(eq(schema.userTable.id, id))
-      .limit(1);
+    const [row] = await getDirectoryUser(id);
     if (!row) throw new HTTPException(404, { message: "User not found" });
     setShadowLegacyAuthorization(c, "allowed");
     return c.json(safeUser(row, new Date()), 200);
@@ -429,12 +400,7 @@ const routes = apiRouter()
     if (expiresAt && expiresAt <= new Date())
       throw new HTTPException(400, { message: "Invalid expiry" });
     await db.transaction(async (tx) => {
-      const [target] = await tx
-        .select({ id: schema.userTable.id, banned: schema.userTable.banned })
-        .from(schema.userTable)
-        .where(eq(schema.userTable.id, id))
-        .for("update")
-        .limit(1);
+      const [target] = await lockUserForMutation(tx, id);
       if (!target) throw new HTTPException(404, { message: "User not found" });
       if (expiresAt) {
         const expiryCheck = await tx.execute<{ future: boolean }>(
@@ -486,12 +452,7 @@ const routes = apiRouter()
     const { id } = c.req.valid("param");
     c.req.valid("json");
     await db.transaction(async (tx) => {
-      const [target] = await tx
-        .select({ id: schema.userTable.id, banned: schema.userTable.banned })
-        .from(schema.userTable)
-        .where(eq(schema.userTable.id, id))
-        .for("update")
-        .limit(1);
+      const [target] = await lockUserForMutation(tx, id);
       if (!target) throw new HTTPException(404, { message: "User not found" });
       await tx
         .update(schema.userTable)
@@ -517,12 +478,7 @@ const routes = apiRouter()
     const { id } = c.req.valid("param");
     c.req.valid("json");
     const revokedSessions = await db.transaction(async (tx) => {
-      const [target] = await tx
-        .select({ id: schema.userTable.id })
-        .from(schema.userTable)
-        .where(eq(schema.userTable.id, id))
-        .for("update")
-        .limit(1);
+      const [target] = await lockUserId(tx, id);
       if (!target) throw new HTTPException(404, { message: "User not found" });
       const sessions = await tx
         .delete(schema.sessionTable)
@@ -548,27 +504,10 @@ const routes = apiRouter()
     await requireGodMode(c);
     const { id } = c.req.valid("param");
     c.req.valid("json");
-    const [target] = await db
-      .select({
-        personId: schema.personTable.id,
-        active: schema.personTable.active,
-      })
-      .from(schema.personTable)
-      .where(eq(schema.personTable.userId, id))
-      .limit(1);
+    const [target] = await getPersonStatus(id);
     if (!target?.active)
       throw new HTTPException(404, { message: "User not found" });
-    const [actor] = await db
-      .select({ id: schema.personTable.id })
-      .from(schema.personTable)
-      .where(
-        and(
-          eq(schema.personTable.userId, c.get("userId")),
-          eq(schema.personTable.active, true),
-          eq(schema.personTable.side, "staff"),
-        ),
-      )
-      .limit(1);
+    const [actor] = await getActiveStaffPerson(c.get("userId"));
     if (!actor) throw new HTTPException(403, { message: "Forbidden" });
     const requested = await createPendingAction({
       requesterPersonId: actor.id,
@@ -604,37 +543,14 @@ const routes = apiRouter()
     const factor = await loadLocalFactorState(c.get("userId"));
     const outcome = await db.transaction(async (tx) => {
       await tx.execute(sql`SELECT pg_advisory_xact_lock(2026)`);
-      const [setup] = await tx
-        .select({ completedAt: schema.instanceSettingTable.setupCompletedAt })
-        .from(schema.instanceSettingTable)
-        .where(eq(schema.instanceSettingTable.id, "singleton"))
-        .for("update")
-        .limit(1);
+      const [setup] = await lockSetupCompletion(tx);
       if (!setup?.completedAt)
         throw new HTTPException(409, {
           message: "Instance setup is incomplete",
         });
-      const [target] = await tx
-        .select({
-          id: schema.userTable.id,
-          role: schema.userTable.role,
-          banned: schema.userTable.banned,
-          anonymous: schema.userTable.isAnonymous,
-        })
-        .from(schema.userTable)
-        .where(eq(schema.userTable.id, id))
-        .for("update")
-        .limit(1);
+      const [target] = await lockGrantTarget(tx, id);
       if (!target) throw new HTTPException(404, { message: "User not found" });
-      const people = await tx
-        .select({
-          id: schema.personTable.id,
-          side: schema.personTable.side,
-          active: schema.personTable.active,
-        })
-        .from(schema.personTable)
-        .where(eq(schema.personTable.userId, id))
-        .for("update");
+      const people = await lockGrantTargetPeople(tx, id);
       if (
         target.anonymous ||
         target.banned ||
@@ -644,46 +560,12 @@ const routes = apiRouter()
       ) {
         throw new HTTPException(409, { message: "Target is not eligible" });
       }
-      const [actor] = await tx
-        .select({ id: schema.userTable.id })
-        .from(schema.userTable)
-        .where(
-          and(
-            eq(schema.userTable.id, c.get("userId")),
-            eq(schema.userTable.role, "admin"),
-          ),
-        )
-        .for("update")
-        .limit(1);
+      const [actor] = await lockAdminUser(tx, c.get("userId"));
       const actorPerson = actor
-        ? await tx
-            .select({ id: schema.personTable.id })
-            .from(schema.personTable)
-            .where(
-              and(
-                eq(schema.personTable.id, factor.personId),
-                eq(schema.personTable.userId, actor.id),
-                eq(schema.personTable.side, "staff"),
-                eq(schema.personTable.active, true),
-              ),
-            )
-            .for("update")
-            .limit(1)
+        ? await lockActiveStaffPerson(tx, factor.personId, actor.id)
         : [];
       const activeSession = actor
-        ? await tx
-            .select({ id: schema.sessionTable.id })
-            .from(schema.sessionTable)
-            .where(
-              and(
-                eq(schema.sessionTable.id, session.id),
-                eq(schema.sessionTable.userId, actor.id),
-                eq(schema.sessionTable.portal, "agent"),
-                gt(schema.sessionTable.expiresAt, sql`now()`),
-              ),
-            )
-            .for("update")
-            .limit(1)
+        ? await lockActiveAgentSession(tx, session.id, actor.id)
         : [];
       if (!actor || actorPerson.length !== 1 || activeSession.length !== 1)
         throw new HTTPException(403, { message: "Forbidden" });
@@ -711,10 +593,7 @@ const routes = apiRouter()
           .update(schema.userTable)
           .set({ role: "admin" })
           .where(eq(schema.userTable.id, id));
-      const admins = await tx
-        .select({ id: schema.userTable.id })
-        .from(schema.userTable)
-        .where(eq(schema.userTable.role, "admin"));
+      const admins = await listAdminIds(tx);
       const recipients = [...new Set([...admins.map((row) => row.id), id])];
       await tx.insert(schema.notificationTable).values(
         recipients.map((userId) => ({

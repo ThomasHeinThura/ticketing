@@ -26,6 +26,20 @@ import {
   loadEntraJwks,
 } from "./oidc-provider";
 import { validateEntraIdToken } from "./oidc-token";
+import {
+  findOidcEmailOwner,
+  getOidcConnectionForCallback,
+  getOidcConnectionForStart,
+  getOidcIdentityForSignIn,
+  getOidcUserFactorState,
+  listEnabledOidcDomainOwners,
+  lockOidcConnection,
+  lockOidcDefaultRole,
+  lockOidcDefaultWorkspace,
+  lockOidcExternalIdentity,
+  lockOidcPerson,
+  lockOidcVerification,
+} from "./repository";
 
 const FLOW_TTL_MS = 5 * 60_000;
 const STATE_COOKIE = "__Host-tdk_oidc_state";
@@ -104,34 +118,15 @@ export async function bindOidcSessionProvenance(input: {
   portal: "agent" | "customer";
 }) {
   return db.transaction(async (tx) => {
-    const [connection] = await tx
-      .select({
-        id: schema.identityConnectionTable.id,
-        enabled: schema.identityConnectionTable.enabled,
-        portalScope: schema.identityConnectionTable.portalScope,
-      })
-      .from(schema.identityConnectionTable)
-      .where(eq(schema.identityConnectionTable.id, input.connectionId))
-      .for("update")
-      .limit(1);
+    const [connection] = await lockOidcConnection(tx, input.connectionId);
     if (!connection?.enabled || connection.portalScope !== input.portal)
       return false;
 
-    const [identity] = await tx
-      .select({ id: schema.externalIdentityTable.id })
-      .from(schema.externalIdentityTable)
-      .where(
-        and(
-          eq(
-            schema.externalIdentityTable.identityConnectionId,
-            input.connectionId,
-          ),
-          eq(schema.externalIdentityTable.userId, input.userId),
-          eq(schema.externalIdentityTable.active, true),
-        ),
-      )
-      .for("update")
-      .limit(1);
+    const [identity] = await lockOidcExternalIdentity(
+      tx,
+      input.connectionId,
+      input.userId,
+    );
     if (!identity) return false;
 
     const [session] = await tx
@@ -169,12 +164,7 @@ export async function bindTwoFactorOidcSession(input: {
     return "invalid";
   const identifier = `${OIDC_SESSION_SOURCE_PREFIX}${digest(input.challengeId)}`;
   return db.transaction(async (tx) => {
-    const [row] = await tx
-      .select()
-      .from(schema.verificationTable)
-      .where(eq(schema.verificationTable.identifier, identifier))
-      .for("update")
-      .limit(1);
+    const [row] = await lockOidcVerification(tx, identifier);
     if (!row) return input.sourceMarker ? "invalid" : "not_oidc";
     await tx
       .delete(schema.verificationTable)
@@ -198,33 +188,14 @@ export async function bindTwoFactorOidcSession(input: {
       source.userId !== input.userId
     )
       return "invalid";
-    const [connection] = await tx
-      .select({
-        id: schema.identityConnectionTable.id,
-        enabled: schema.identityConnectionTable.enabled,
-        portalScope: schema.identityConnectionTable.portalScope,
-      })
-      .from(schema.identityConnectionTable)
-      .where(eq(schema.identityConnectionTable.id, source.connectionId))
-      .for("update")
-      .limit(1);
+    const [connection] = await lockOidcConnection(tx, source.connectionId);
     if (!connection?.enabled || connection.portalScope !== input.portal)
       return "invalid";
-    const [identity] = await tx
-      .select({ id: schema.externalIdentityTable.id })
-      .from(schema.externalIdentityTable)
-      .where(
-        and(
-          eq(
-            schema.externalIdentityTable.identityConnectionId,
-            source.connectionId,
-          ),
-          eq(schema.externalIdentityTable.userId, input.userId),
-          eq(schema.externalIdentityTable.active, true),
-        ),
-      )
-      .for("update")
-      .limit(1);
+    const [identity] = await lockOidcExternalIdentity(
+      tx,
+      source.connectionId,
+      input.userId,
+    );
     if (!identity) return "invalid";
     const [session] = await tx
       .update(schema.sessionTable)
@@ -255,23 +226,7 @@ export function identityOidcPlugin(
     async (ctx: GenericEndpointContext) => {
       const connectionId = ctx.params?.connectionId;
       if (!connectionId) return safeFailure(ctx);
-      const [connection] = await db
-        .select({
-          id: schema.identityConnectionTable.id,
-          portalScope: schema.identityConnectionTable.portalScope,
-          enabled: schema.identityConnectionTable.enabled,
-          tenantId: schema.identityConnectionTable.tenantId,
-          defaultWorkspaceId: schema.identityConnectionTable.defaultWorkspaceId,
-          issuer: schema.identityConnectionTable.issuer,
-          clientId: schema.identityConnectionTable.clientId,
-          redirectUri: schema.identityConnectionTable.redirectUri,
-          scopes: schema.identityConnectionTable.scopes,
-          claimMapping: schema.identityConnectionTable.claimMapping,
-          jitPolicy: schema.identityConnectionTable.jitPolicy,
-        })
-        .from(schema.identityConnectionTable)
-        .where(eq(schema.identityConnectionTable.id, connectionId))
-        .limit(1);
+      const [connection] = await getOidcConnectionForStart(connectionId);
       const startJit = connection
         ? parseIdentityJitPolicy(connection.jitPolicy)
         : null;
@@ -380,12 +335,7 @@ export function identityOidcPlugin(
 
       const identifier = `oidc-state:${digest(state)}`;
       const consumed = await db.transaction(async (tx) => {
-        const [row] = await tx
-          .select()
-          .from(schema.verificationTable)
-          .where(eq(schema.verificationTable.identifier, identifier))
-          .for("update")
-          .limit(1);
+        const [row] = await lockOidcVerification(tx, identifier);
         if (!row || row.expiresAt <= new Date()) return null;
         await tx
           .delete(schema.verificationTable)
@@ -401,11 +351,7 @@ export function identityOidcPlugin(
       )
         return safeFailure(ctx);
 
-      const [connection] = await db
-        .select()
-        .from(schema.identityConnectionTable)
-        .where(eq(schema.identityConnectionTable.id, connectionId))
-        .limit(1);
+      const [connection] = await getOidcConnectionForCallback(connectionId);
       if (
         !connection?.enabled ||
         connection.portalScope !== portal ||
@@ -441,13 +387,7 @@ export function identityOidcPlugin(
           nonce: consumed.nonce,
         });
         if (!verified.ok) return safeFailure(ctx);
-        const domainOwners = await db
-          .select({
-            domain: sql<string>`unnest(${schema.identityConnectionTable.domainBindings})`,
-            identityConnectionId: schema.identityConnectionTable.id,
-          })
-          .from(schema.identityConnectionTable)
-          .where(eq(schema.identityConnectionTable.enabled, true));
+        const domainOwners = await listEnabledOidcDomainOwners();
         const normalized = normaliseEntraClaims(
           verified.claims as VerifiedEntraClaims,
           {
@@ -505,31 +445,11 @@ async function signInAdmittedIdentity(input: {
   const now = new Date();
   const subject = identity.subject.oid;
   const result = await db.transaction(async (tx) => {
-    const [existing] = await tx
-      .select({
-        id: schema.externalIdentityTable.id,
-        personId: schema.externalIdentityTable.personId,
-        userId: schema.externalIdentityTable.userId,
-        active: schema.externalIdentityTable.active,
-        personActive: schema.personTable.active,
-        side: schema.personTable.side,
-        organisationId: schema.personTable.organisationId,
-        personUserId: schema.personTable.userId,
-      })
-      .from(schema.externalIdentityTable)
-      .innerJoin(
-        schema.personTable,
-        eq(schema.personTable.id, schema.externalIdentityTable.personId),
-      )
-      .where(
-        and(
-          eq(schema.externalIdentityTable.identityConnectionId, connection.id),
-          eq(schema.externalIdentityTable.issuer, connection.issuer),
-          eq(schema.externalIdentityTable.subject, subject),
-        ),
-      )
-      .for("update", { of: schema.externalIdentityTable })
-      .limit(1);
+    const [existing] = await getOidcIdentityForSignIn(tx, {
+      connectionId: connection.id,
+      issuer: connection.issuer,
+      subject,
+    });
 
     let personId = existing?.personId;
     let userId = existing?.userId ?? existing?.personUserId ?? null;
@@ -553,28 +473,15 @@ async function signInAdmittedIdentity(input: {
         throw new APIError("UNAUTHORIZED", {
           message: "Identity sign-in failed",
         });
-      const [emailOwner] = await tx
-        .select({ id: schema.userTable.id })
-        .from(schema.userTable)
-        .where(eq(schema.userTable.email, identity.address))
-        .limit(1);
+      const [emailOwner] = await findOidcEmailOwner(tx, identity.address);
       if (emailOwner)
         throw new APIError("UNAUTHORIZED", {
           message: "Identity sign-in failed",
         });
-      const [role] = await tx
-        .select({
-          id: schema.roleTable.id,
-          scope: schema.roleTable.scope,
-          rank: schema.roleTable.rank,
-          key: schema.roleTable.key,
-          workspaceId: schema.roleTable.workspaceId,
-          capabilities: schema.roleTable.capabilities,
-        })
-        .from(schema.roleTable)
-        .where(eq(schema.roleTable.id, jitPolicy.default_role_id ?? ""))
-        .for("update")
-        .limit(1);
+      const [role] = await lockOidcDefaultRole(
+        tx,
+        jitPolicy.default_role_id ?? "",
+      );
       const roleScope = portal === "agent" ? "workspace" : "organisation";
       if (
         !role ||
@@ -611,26 +518,7 @@ async function signInAdmittedIdentity(input: {
           message: "Identity sign-in failed",
         });
       if (roleScope === "workspace") {
-        const [target] = await tx
-          .select({ id: schema.workspaceTable.id })
-          .from(schema.workspaceTable)
-          .innerJoin(
-            schema.organisationTable,
-            eq(
-              schema.organisationTable.id,
-              schema.workspaceTable.organisationId,
-            ),
-          )
-          .where(
-            and(
-              eq(schema.workspaceTable.id, scopeId),
-              isNull(schema.workspaceTable.deletedAt),
-              eq(schema.organisationTable.isInternal, true),
-              isNull(schema.organisationTable.deletedAt),
-            ),
-          )
-          .for("update", { of: schema.workspaceTable })
-          .limit(1);
+        const [target] = await lockOidcDefaultWorkspace(tx, scopeId);
         if (!target)
           throw new APIError("UNAUTHORIZED", {
             message: "Identity sign-in failed",
@@ -711,12 +599,7 @@ async function signInAdmittedIdentity(input: {
       throw new APIError("UNAUTHORIZED", {
         message: "Identity sign-in failed",
       });
-    const [person] = await tx
-      .select({ id: schema.personTable.id, userId: schema.personTable.userId })
-      .from(schema.personTable)
-      .where(eq(schema.personTable.id, personId))
-      .for("update")
-      .limit(1);
+    const [person] = await lockOidcPerson(tx, personId);
     if (!person)
       throw new APIError("UNAUTHORIZED", {
         message: "Identity sign-in failed",
@@ -740,11 +623,7 @@ async function signInAdmittedIdentity(input: {
   const user = await ctx.context.internalAdapter.findUserById(result.userId);
   if (!user)
     throw new APIError("UNAUTHORIZED", { message: "Identity sign-in failed" });
-  const [factorState] = await db
-    .select({ enabled: schema.userTable.twoFactorEnabled })
-    .from(schema.userTable)
-    .where(eq(schema.userTable.id, user.id))
-    .limit(1);
+  const [factorState] = await getOidcUserFactorState(user.id);
   if (factorState?.enabled) {
     const maxAge = 600;
     const cookie = ctx.context.createAuthCookie("two_factor", { maxAge });

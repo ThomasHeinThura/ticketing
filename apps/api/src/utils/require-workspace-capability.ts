@@ -4,14 +4,14 @@ import {
   type Capability,
   expandCapabilities,
 } from "@taskdesk/permissions";
-import { and, eq } from "drizzle-orm";
 import type { Context, Next } from "hono";
 import { HTTPException } from "hono/http-exception";
-import db, { schema } from "../database";
+import db from "../database";
 import {
   markShadowLegacyAuthorizationUnknown,
   setShadowLegacyAuthorization,
 } from "../permissions/shadow-context";
+import { getWorkspaceRoleSystemFlag } from "./repository";
 import {
   isGenuineBuiltInRoleGrant,
   isUnambiguousMembership,
@@ -288,16 +288,7 @@ async function isGenuineBuiltInRoleAssignment(
 ): Promise<boolean> {
   if (role === "owner") return true;
 
-  const [row] = await executor
-    .select({ isSystem: schema.workspaceRoleTable.isSystem })
-    .from(schema.workspaceRoleTable)
-    .where(
-      and(
-        eq(schema.workspaceRoleTable.workspaceId, workspaceId),
-        eq(schema.workspaceRoleTable.role, role),
-      ),
-    )
-    .limit(1);
+  const [row] = await getWorkspaceRoleSystemFlag(executor, workspaceId, role);
 
   return isGenuineBuiltInRoleGrant(role, row?.isSystem === true);
 }

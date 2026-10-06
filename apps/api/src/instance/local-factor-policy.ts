@@ -8,6 +8,11 @@ import { setShadowLegacyAuthorization } from "../permissions/shadow-context";
 import { normaliseTraceId } from "../permissions/shadow-middleware";
 import { notifyCurrentInstanceAdminsOfAuditFailure } from "./observability/audit-failure-notifier";
 import { recordAuditWriteFailure } from "./observability/runtime";
+import {
+  getLocalFactorPolicy,
+  lockLocalFactorPolicy,
+  lockLocalFactorRole,
+} from "./repository";
 import { requireCurrentInstanceAdmin } from "./require-instance-admin";
 
 const policySchema = z
@@ -86,11 +91,7 @@ const routes = apiRouter()
     );
     setShadowLegacyAuthorization(c, "allowed");
     c.header("Cache-Control", "no-store");
-    const [row] = await db
-      .select({ policy: schema.instanceSettingTable.localFactorPolicy })
-      .from(schema.instanceSettingTable)
-      .where(eq(schema.instanceSettingTable.id, "singleton"))
-      .limit(1);
+    const [row] = await getLocalFactorPolicy();
     if (!row) throw new HTTPException(503, { message: "Policy unavailable" });
     try {
       return c.json({ policy: parseLocalFactorPolicy(row.policy) }, 200);
@@ -110,20 +111,12 @@ const routes = apiRouter()
       // Match PostgreSQL DELETE's unavoidable role-row → singleton ordering. The
       // database trigger remains the final invariant for every deletion path.
       if (requested.mode === "required_role") {
-        const [role] = await tx
-          .select({ id: schema.roleTable.id })
-          .from(schema.roleTable)
-          .where(eq(schema.roleTable.id, requested.requiredRoleId!))
-          .for("key share")
-          .limit(1);
+        const roleId = requested.requiredRoleId;
+        if (!roleId) return { previous: null, updated: false };
+        const [role] = await lockLocalFactorRole(tx, roleId);
         if (!role) return { previous: null, updated: false };
       }
-      const [row] = await tx
-        .select({ policy: schema.instanceSettingTable.localFactorPolicy })
-        .from(schema.instanceSettingTable)
-        .where(eq(schema.instanceSettingTable.id, "singleton"))
-        .for("update")
-        .limit(1);
+      const [row] = await lockLocalFactorPolicy(tx);
       if (!row) throw new HTTPException(503, { message: "Policy unavailable" });
       const current = parseLocalFactorPolicy(row.policy);
       if (JSON.stringify(current) === JSON.stringify(requested))

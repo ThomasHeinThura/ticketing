@@ -1,6 +1,5 @@
 import { createHash } from "node:crypto";
-import { and, eq, gt, isNull, or } from "drizzle-orm";
-import db, { schema } from "../database";
+import { getEnabledApiKeyByHash } from "./repository";
 
 async function hashApiKey(key: string): Promise<string> {
   const hash = createHash("sha256").update(key).digest();
@@ -39,20 +38,7 @@ function parsePermissions(raw: string | null): Record<string, string[]> | null {
 export async function verifyApiKey(key: string) {
   const hashedKey = await hashApiKey(key);
 
-  const [apiKey] = await db
-    .select()
-    .from(schema.apikeyTable)
-    .where(
-      and(
-        eq(schema.apikeyTable.key, hashedKey),
-        eq(schema.apikeyTable.enabled, true),
-        or(
-          isNull(schema.apikeyTable.expiresAt),
-          gt(schema.apikeyTable.expiresAt, new Date()),
-        ),
-      ),
-    )
-    .limit(1);
+  const [apiKey] = await getEnabledApiKeyByHash(hashedKey, new Date());
 
   if (!apiKey) {
     return null;

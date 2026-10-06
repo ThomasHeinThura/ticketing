@@ -15,6 +15,7 @@ import {
   isCurrentInstanceAdmin,
   notifyCurrentInstanceAdminsOfAuditFailure,
 } from "./audit-failure-notifier";
+import { getObservabilityVersion } from "./repository";
 import { recordAuditWriteFailure } from "./runtime";
 
 const requestSchema = z
@@ -67,7 +68,7 @@ const routes = apiRouter().openapi(rotateRoute, async (c) => {
     portal?: unknown;
     impersonatedBy?: string | null;
   } | null;
-  if (!session || session.portal !== "agent" || session.impersonatedBy) {
+  if (session?.portal !== "agent" || session.impersonatedBy) {
     setShadowLegacyAuthorization(c, "denied");
     throw new HTTPException(403, { message: "session_required" });
   }
@@ -132,13 +133,7 @@ const routes = apiRouter().openapi(rotateRoute, async (c) => {
           rotatedAt: schema.instanceSettingTable.metricsTokenRotatedAt,
         });
       if (!updated[0]) {
-        const [current] = await tx
-          .select({
-            version: schema.instanceSettingTable.observabilityConfigVersion,
-          })
-          .from(schema.instanceSettingTable)
-          .where(eq(schema.instanceSettingTable.id, "singleton"))
-          .limit(1);
+        const [current] = await getObservabilityVersion(tx);
         throw new VersionConflict(current?.version ?? input.version);
       }
       await appendStepUpAudit(tx, {

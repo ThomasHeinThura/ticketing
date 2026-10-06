@@ -1,6 +1,5 @@
-import { and, eq, isNull, ne } from "drizzle-orm";
 import db from "../../database";
-import { attachmentTable } from "../../database/schema";
+import { listAttachmentsForWorkItem } from "../repository";
 
 /**
  * `GET /api/work-items/{key}/attachments`. Excludes soft-deleted rows -- a deleted
@@ -9,17 +8,7 @@ import { attachmentTable } from "../../database/schema";
  * purged.
  */
 export async function listWorkItemAttachments(workItemId: string) {
-  return db
-    .select()
-    .from(attachmentTable)
-    .where(
-      and(
-        eq(attachmentTable.workItemId, workItemId),
-        ne(attachmentTable.state, "deleted"),
-        isNull(attachmentTable.deletedAt),
-      ),
-    )
-    .orderBy(attachmentTable.createdAt);
+  return listAttachmentsForWorkItem(db, workItemId);
 }
 
 export default listWorkItemAttachments;

@@ -50,10 +50,12 @@ import {
   normaliseRouteKey,
   type ProjectReachFacts,
 } from "@taskdesk/permissions";
-import { and, eq } from "drizzle-orm";
 import type { Context, Next } from "hono";
-import db, { schema } from "../database";
 import { policyRegistry } from "../policy-registry";
+import {
+  getWorkspaceById,
+  listWorkspaceMembershipsForShadow,
+} from "./repository";
 import { resolveIdentity } from "./resolve-identity";
 import { policyShadowEnabled } from "./shadow-config";
 import {
@@ -350,11 +352,7 @@ async function runShadowEvaluation(
     // the `scopeSource: "row"`-only check #381 shipped). A missing row stays unverified;
     // nothing here ever substitutes "some legacy path allowed it" for this check.
     if (workspaceId !== null && workspaceIdSource === "request") {
-      const [workspace] = await db
-        .select({ id: schema.workspaceTable.id })
-        .from(schema.workspaceTable)
-        .where(eq(schema.workspaceTable.id, workspaceId))
-        .limit(1);
+      const [workspace] = await getWorkspaceById(workspaceId);
       if (workspace) {
         workspaceIdVerified = true;
         // Only promote the POLICY-side source when the route's own policy declares row
@@ -389,20 +387,10 @@ async function runShadowEvaluation(
       isSelfPolicy(entry.policy) &&
       entry.policy.workspaceMembership === true
     ) {
-      const memberships = await db
-        .select({ userId: schema.workspaceUserTable.userId })
-        .from(schema.workspaceUserTable)
-        .innerJoin(
-          schema.workspaceTable,
-          eq(schema.workspaceTable.id, schema.workspaceUserTable.workspaceId),
-        )
-        .where(
-          and(
-            eq(schema.workspaceUserTable.userId, userId),
-            eq(schema.workspaceUserTable.workspaceId, workspaceId),
-          ),
-        )
-        .limit(2);
+      const memberships = await listWorkspaceMembershipsForShadow(
+        userId,
+        workspaceId,
+      );
       // Membership is an active row in an existing workspace. Duplicate rows are
       // ambiguous and do not satisfy this self-policy condition.
       workspaceMembership = memberships.length === 1;

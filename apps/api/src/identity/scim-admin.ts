@@ -4,8 +4,7 @@ import {
   effectiveScimMatchAttributes,
   validateScimAdminRequest,
 } from "@taskdesk/domain";
-import { isCapability } from "@taskdesk/permissions";
-import { and, asc, eq, gt, isNull, or, sql } from "drizzle-orm";
+import { and, eq, sql } from "drizzle-orm";
 import type { Context } from "hono";
 import { HTTPException } from "hono/http-exception";
 import { appendAuditLog } from "../audit/audit-writer";
@@ -33,6 +32,19 @@ import {
   retireScimGroupGrants,
   retryIdentityGrantClosure,
 } from "./membership-projection";
+import {
+  findScimGroupMapping,
+  getIdentityPersonForUser,
+  getIdentityPersonForUserInTransaction,
+  getScimConnectionVersion,
+  getScimSettingsRow,
+  listScimGroupMappings,
+  lockFullIdentityConnection,
+  lockFullScimConnection,
+  lockScimGroupMappingById,
+  readScimMappingOptions,
+  validateScimMappingRole,
+} from "./repository";
 
 const versionSchema = z.number().int().positive().safe();
 const matchAttributeSchema = z.enum([
@@ -193,28 +205,7 @@ function error(status: number, message: string) {
 }
 
 async function readSafeSettings(connectionId: string) {
-  const [row] = await db
-    .select({
-      id: schema.identityConnectionTable.id,
-      portalScope: schema.identityConnectionTable.portalScope,
-      organisationId: schema.identityConnectionTable.organisationId,
-      configVersion: schema.identityConnectionTable.configVersion,
-      enabled: schema.scimConnectionTable.enabled,
-      allowedResources: schema.scimConnectionTable.allowedResources,
-      lifecyclePolicy: schema.scimConnectionTable.lifecyclePolicy,
-      attributeMapping: schema.scimConnectionTable.attributeMapping,
-      matchAttributes: schema.scimConnectionTable.matchAttributes,
-    })
-    .from(schema.identityConnectionTable)
-    .innerJoin(
-      schema.scimConnectionTable,
-      eq(
-        schema.scimConnectionTable.identityConnectionId,
-        schema.identityConnectionTable.id,
-      ),
-    )
-    .where(eq(schema.identityConnectionTable.id, connectionId))
-    .limit(1);
+  const [row] = await getScimSettingsRow(connectionId);
   if (!row) return null;
   const allowedResources = canonicalAllowedResources(row.allowedResources);
   if (!allowedResources)
@@ -226,23 +217,7 @@ async function readSafeSettings(connectionId: string) {
     throw new HTTPException(503, {
       message: "SCIM configuration unavailable",
     });
-  const mappings = await db
-    .select({
-      id: schema.scimGroupMappingTable.id,
-      externalGroupId: schema.scimGroupMappingTable.externalGroupId,
-      externalGroupNameSnapshot:
-        schema.scimGroupMappingTable.externalGroupNameSnapshot,
-      roleId: schema.scimGroupMappingTable.roleId,
-      scope: schema.scimGroupMappingTable.scope,
-      scopeId: schema.scimGroupMappingTable.scopeId,
-      enabled: schema.scimGroupMappingTable.enabled,
-    })
-    .from(schema.scimGroupMappingTable)
-    .where(eq(schema.scimGroupMappingTable.scimConnectionId, connectionId))
-    .orderBy(
-      schema.scimGroupMappingTable.externalGroupId,
-      schema.scimGroupMappingTable.id,
-    );
+  const mappings = await listScimGroupMappings(connectionId);
   const resolvedMappings = mappings.map((mapping) => ({
     ...mapping,
     scopeId:
@@ -263,356 +238,7 @@ async function readSafeSettings(connectionId: string) {
   });
 }
 
-export async function validateScimMappingRole(
-  tx: Parameters<Parameters<typeof db.transaction>[0]>[0],
-  input: {
-    portalScope: string;
-    organisationId: string | null;
-    maxRoleRank: number | null;
-    scope: "organisation" | "workspace";
-    scopeId?: string;
-    roleId: string;
-  },
-) {
-  if (input.portalScope === "customer") {
-    if (input.scope !== "organisation" || !input.organisationId) return false;
-    const [org] = await tx
-      .select({ id: schema.organisationTable.id })
-      .from(schema.organisationTable)
-      .where(
-        and(
-          eq(schema.organisationTable.id, input.organisationId),
-          eq(schema.organisationTable.active, true),
-          eq(schema.organisationTable.portalAccess, true),
-          eq(schema.organisationTable.isInternal, false),
-          sql`${schema.organisationTable.deletedAt} is null`,
-        ),
-      )
-      .limit(1);
-    if (!org) return false;
-  } else if (input.portalScope === "agent") {
-    if (
-      input.scope !== "workspace" ||
-      !input.scopeId ||
-      input.maxRoleRank === null
-    )
-      return false;
-    const [workspace] = await tx
-      .select({ id: schema.workspaceTable.id })
-      .from(schema.workspaceTable)
-      .innerJoin(
-        schema.organisationTable,
-        eq(schema.organisationTable.id, schema.workspaceTable.organisationId),
-      )
-      .where(
-        and(
-          eq(schema.workspaceTable.id, input.scopeId),
-          sql`${schema.workspaceTable.deletedAt} is null`,
-          eq(schema.organisationTable.isInternal, true),
-          eq(schema.organisationTable.active, true),
-          sql`${schema.organisationTable.deletedAt} is null`,
-        ),
-      )
-      .limit(1);
-    if (!workspace) return false;
-  } else return false;
-
-  const [role] = await tx
-    .select({
-      scope: schema.roleTable.scope,
-      roleKey: schema.roleTable.key,
-      rank: schema.roleTable.rank,
-      capabilities: schema.roleTable.capabilities,
-      workspaceId: schema.roleTable.workspaceId,
-    })
-    .from(schema.roleTable)
-    .where(eq(schema.roleTable.id, input.roleId))
-    .limit(1);
-  if (!role || role.scope !== input.scope) return false;
-  if (input.portalScope === "customer") return role.roleKey === "customer";
-  if (input.maxRoleRank === null || role.rank > input.maxRoleRank) return false;
-  if (role.workspaceId !== null && role.workspaceId !== input.scopeId)
-    return false;
-  if (
-    !Array.isArray(role.capabilities) ||
-    !role.capabilities.every(
-      (capability): capability is string =>
-        typeof capability === "string" && isCapability(capability),
-    )
-  )
-    return false;
-  const capabilities = role.capabilities;
-  return !capabilities.some(
-    (capability) =>
-      typeof capability === "string" &&
-      (capability === "instance:admin" || capability.startsWith("instance:")),
-  );
-}
-
-type MappingOptionsCursor = {
-  v: 1;
-  connectionId: string;
-  kind: "agent_targets" | "agent_roles";
-  workspaceId: string | null;
-  afterId: string;
-};
-
-function encodeMappingOptionsCursor(value: MappingOptionsCursor) {
-  return Buffer.from(JSON.stringify(value)).toString("base64url");
-}
-
-function decodeMappingOptionsCursor(
-  value: string | undefined,
-  expected: Omit<MappingOptionsCursor, "afterId">,
-): string | null | false {
-  if (value === undefined) return null;
-  try {
-    const decoded = Buffer.from(value, "base64url").toString("utf8");
-    const parsed: unknown = JSON.parse(decoded);
-    if (
-      !parsed ||
-      typeof parsed !== "object" ||
-      Array.isArray(parsed) ||
-      Object.keys(parsed).sort().join(",") !==
-        "afterId,connectionId,kind,v,workspaceId"
-    )
-      return false;
-    const cursor = parsed as MappingOptionsCursor;
-    if (
-      cursor.v !== 1 ||
-      cursor.connectionId !== expected.connectionId ||
-      cursor.kind !== expected.kind ||
-      cursor.workspaceId !== expected.workspaceId ||
-      typeof cursor.afterId !== "string" ||
-      cursor.afterId.length < 1 ||
-      cursor.afterId.length > 128 ||
-      encodeMappingOptionsCursor(cursor) !== value
-    )
-      return false;
-    return cursor.afterId;
-  } catch {
-    return false;
-  }
-}
-
-async function readScimMappingOptions(input: {
-  connectionId: string;
-  workspaceId?: string;
-  cursor?: string;
-  limit: number;
-}) {
-  const [connection] = await db
-    .select({
-      id: schema.identityConnectionTable.id,
-      portalScope: schema.identityConnectionTable.portalScope,
-      organisationId: schema.identityConnectionTable.organisationId,
-      maxRoleRank: schema.identityConnectionTable.maxRoleRank,
-    })
-    .from(schema.identityConnectionTable)
-    .innerJoin(
-      schema.scimConnectionTable,
-      eq(
-        schema.scimConnectionTable.identityConnectionId,
-        schema.identityConnectionTable.id,
-      ),
-    )
-    .where(eq(schema.identityConnectionTable.id, input.connectionId))
-    .limit(1);
-  if (!connection) return null;
-
-  if (connection.portalScope === "customer") {
-    if (input.workspaceId || input.cursor) return false;
-    if (!connection.organisationId)
-      return {
-        kind: "customer" as const,
-        target: null,
-        role: null,
-        nextCursor: null,
-      };
-    const [target] = await db
-      .select({
-        id: schema.organisationTable.id,
-        name: schema.organisationTable.name,
-      })
-      .from(schema.organisationTable)
-      .where(
-        and(
-          eq(schema.organisationTable.id, connection.organisationId),
-          eq(schema.organisationTable.active, true),
-          eq(schema.organisationTable.portalAccess, true),
-          eq(schema.organisationTable.isInternal, false),
-          isNull(schema.organisationTable.deletedAt),
-        ),
-      )
-      .limit(1);
-    if (!target)
-      return {
-        kind: "customer" as const,
-        target: null,
-        role: null,
-        nextCursor: null,
-      };
-    const [role] = await db
-      .select({
-        id: schema.roleTable.id,
-        name: schema.roleTable.name,
-        rank: schema.roleTable.rank,
-      })
-      .from(schema.roleTable)
-      .where(
-        and(
-          eq(schema.roleTable.scope, "organisation"),
-          eq(schema.roleTable.key, "customer"),
-          isNull(schema.roleTable.workspaceId),
-        ),
-      )
-      .limit(1);
-    if (
-      !role ||
-      !(await db.transaction((tx) =>
-        validateScimMappingRole(tx, {
-          portalScope: connection.portalScope,
-          organisationId: connection.organisationId,
-          maxRoleRank: connection.maxRoleRank,
-          scope: "organisation",
-          scopeId: connection.organisationId ?? undefined,
-          roleId: role.id,
-        }),
-      ))
-    )
-      return {
-        kind: "customer" as const,
-        target: null,
-        role: null,
-        nextCursor: null,
-      };
-    return { kind: "customer" as const, target, role, nextCursor: null };
-  }
-
-  if (connection.portalScope !== "agent") return null;
-  if (!input.workspaceId) {
-    const expected = {
-      v: 1 as const,
-      connectionId: input.connectionId,
-      kind: "agent_targets" as const,
-      workspaceId: null,
-    };
-    const afterId = decodeMappingOptionsCursor(input.cursor, expected);
-    if (afterId === false) return false;
-    const rows = await db
-      .select({
-        id: schema.workspaceTable.id,
-        name: schema.workspaceTable.name,
-      })
-      .from(schema.workspaceTable)
-      .innerJoin(
-        schema.organisationTable,
-        eq(schema.organisationTable.id, schema.workspaceTable.organisationId),
-      )
-      .where(
-        and(
-          eq(schema.organisationTable.isInternal, true),
-          eq(schema.organisationTable.active, true),
-          isNull(schema.organisationTable.deletedAt),
-          isNull(schema.workspaceTable.deletedAt),
-          ...(afterId ? [gt(schema.workspaceTable.id, afterId)] : []),
-        ),
-      )
-      .orderBy(asc(schema.workspaceTable.id))
-      .limit(input.limit + 1);
-    const page = rows.slice(0, input.limit);
-    const lastTarget = page[page.length - 1];
-    const nextCursor =
-      rows.length > input.limit && lastTarget
-        ? encodeMappingOptionsCursor({
-            ...expected,
-            afterId: lastTarget.id,
-          })
-        : null;
-    return { kind: "agent_targets" as const, data: page, nextCursor };
-  }
-
-  const expected = {
-    v: 1 as const,
-    connectionId: input.connectionId,
-    kind: "agent_roles" as const,
-    workspaceId: input.workspaceId,
-  };
-  const afterId = decodeMappingOptionsCursor(input.cursor, expected);
-  if (afterId === false) return false;
-  const [target] = await db
-    .select({ id: schema.workspaceTable.id, name: schema.workspaceTable.name })
-    .from(schema.workspaceTable)
-    .innerJoin(
-      schema.organisationTable,
-      eq(schema.organisationTable.id, schema.workspaceTable.organisationId),
-    )
-    .where(
-      and(
-        eq(schema.workspaceTable.id, input.workspaceId),
-        eq(schema.organisationTable.isInternal, true),
-        eq(schema.organisationTable.active, true),
-        isNull(schema.organisationTable.deletedAt),
-        isNull(schema.workspaceTable.deletedAt),
-      ),
-    )
-    .limit(1);
-  if (!target) return null;
-  const candidateRoles =
-    connection.maxRoleRank === null
-      ? []
-      : await db
-          .select({
-            id: schema.roleTable.id,
-            name: schema.roleTable.name,
-            rank: schema.roleTable.rank,
-          })
-          .from(schema.roleTable)
-          .where(
-            and(
-              eq(schema.roleTable.scope, "workspace"),
-              sql`${schema.roleTable.rank} <= ${connection.maxRoleRank}`,
-              or(
-                eq(schema.roleTable.workspaceId, input.workspaceId),
-                isNull(schema.roleTable.workspaceId),
-              ),
-              ...(afterId ? [gt(schema.roleTable.id, afterId)] : []),
-            ),
-          )
-          .orderBy(asc(schema.roleTable.id))
-          .limit(input.limit + 1);
-  const candidates = candidateRoles.slice(0, input.limit);
-  const lastCandidate = candidates[candidates.length - 1];
-  const eligibleRoles = [];
-  for (const role of candidates) {
-    if (
-      await db.transaction((tx) =>
-        validateScimMappingRole(tx, {
-          portalScope: connection.portalScope,
-          organisationId: connection.organisationId,
-          maxRoleRank: connection.maxRoleRank,
-          scope: "workspace",
-          scopeId: input.workspaceId,
-          roleId: role.id,
-        }),
-      )
-    )
-      eligibleRoles.push(role);
-  }
-  const nextCursor =
-    candidateRoles.length > input.limit && lastCandidate
-      ? encodeMappingOptionsCursor({
-          ...expected,
-          afterId: lastCandidate.id,
-        })
-      : null;
-  return {
-    kind: "agent_roles" as const,
-    target,
-    data: eligibleRoles,
-    nextCursor,
-  };
-}
+export { readScimMappingOptions, validateScimMappingRole };
 
 const getRoute = createRoute({
   method: "get",
@@ -808,11 +434,7 @@ const routes = apiRouter()
     const session = c.get("session") as { id: string } | null;
     if (!session) throw new HTTPException(403, { message: "Session required" });
     const traceId = normaliseTraceId(c.req.header("x-request-id"));
-    const [actor] = await db
-      .select({ id: schema.personTable.id })
-      .from(schema.personTable)
-      .where(eq(schema.personTable.userId, userId))
-      .limit(1);
+    const [actor] = await getIdentityPersonForUser(userId);
     if (!actor) throw new HTTPException(403, { message: "Forbidden" });
     let auditFailed = false;
     const result = await retryIdentityGrantClosure(() =>
@@ -841,18 +463,8 @@ const routes = apiRouter()
                 }
               : {}),
         });
-        const [connection] = await tx
-          .select()
-          .from(schema.identityConnectionTable)
-          .where(eq(schema.identityConnectionTable.id, id))
-          .for("update")
-          .limit(1);
-        const [scim] = await tx
-          .select()
-          .from(schema.scimConnectionTable)
-          .where(eq(schema.scimConnectionTable.identityConnectionId, id))
-          .for("update")
-          .limit(1);
+        const [connection] = await lockFullIdentityConnection(tx, id);
+        const [scim] = await lockFullScimConnection(tx, id);
         if (!connection || !scim) return { kind: "not_found" as const };
         if (connection.configVersion !== validated.value.configVersion)
           return {
@@ -970,19 +582,11 @@ const routes = apiRouter()
               kind: "invalid" as const,
               message: "Invalid mapping target or role",
             };
-          const duplicate = await tx
-            .select({ id: schema.scimGroupMappingTable.id })
-            .from(schema.scimGroupMappingTable)
-            .where(
-              and(
-                eq(schema.scimGroupMappingTable.scimConnectionId, id),
-                eq(
-                  schema.scimGroupMappingTable.externalGroupId,
-                  map.externalGroupId,
-                ),
-              ),
-            )
-            .limit(1);
+          const duplicate = await findScimGroupMapping(
+            tx,
+            id,
+            map.externalGroupId,
+          );
           if (duplicate.length) return { kind: "duplicate" as const };
           await tx.insert(schema.scimGroupMappingTable).values({
             scimConnectionId: id,
@@ -993,13 +597,8 @@ const routes = apiRouter()
             scopeId: scopeId ?? "",
             enabled: map.enabled,
             createdBy:
-              (
-                await tx
-                  .select({ id: schema.personTable.id })
-                  .from(schema.personTable)
-                  .where(eq(schema.personTable.userId, userId))
-                  .limit(1)
-              )[0]?.id ?? null,
+              (await getIdentityPersonForUserInTransaction(tx, userId))[0]
+                ?.id ?? null,
           });
           mappingEventDetail = {
             externalGroupId: map.externalGroupId,
@@ -1010,17 +609,11 @@ const routes = apiRouter()
           changedKeys.push("groupMapping");
         } else {
           const map = validated.value;
-          const [existing] = await tx
-            .select()
-            .from(schema.scimGroupMappingTable)
-            .where(
-              and(
-                eq(schema.scimGroupMappingTable.id, map.mappingId),
-                eq(schema.scimGroupMappingTable.scimConnectionId, id),
-              ),
-            )
-            .for("update")
-            .limit(1);
+          const [existing] = await lockScimGroupMappingById(
+            tx,
+            id,
+            map.mappingId,
+          );
           if (!existing) return { kind: "not_found" as const };
           const roleId = map.roleId ?? existing.roleId;
           if (
@@ -1116,13 +709,8 @@ const routes = apiRouter()
             configVersion: sql`${schema.identityConnectionTable.configVersion} + 1`,
             updatedAt: new Date(),
             updatedBy:
-              (
-                await tx
-                  .select({ id: schema.personTable.id })
-                  .from(schema.personTable)
-                  .where(eq(schema.personTable.userId, userId))
-                  .limit(1)
-              )[0]?.id ?? null,
+              (await getIdentityPersonForUserInTransaction(tx, userId))[0]
+                ?.id ?? null,
           })
           .where(
             and(
@@ -1133,11 +721,7 @@ const routes = apiRouter()
               ),
             ),
           );
-        const [updated] = await tx
-          .select({ version: schema.identityConnectionTable.configVersion })
-          .from(schema.identityConnectionTable)
-          .where(eq(schema.identityConnectionTable.id, id))
-          .limit(1);
+        const [updated] = await getScimConnectionVersion(tx, id);
         if (!updated) return { kind: "not_found" as const };
         try {
           await tx.transaction(async (auditTx) => {
@@ -1173,13 +757,8 @@ const routes = apiRouter()
         const proof = await consumeScimAdminProof(tx, {
           token: c.req.valid("header")["x-taskdesk-step-up-token"],
           personId:
-            (
-              await tx
-                .select({ id: schema.personTable.id })
-                .from(schema.personTable)
-                .where(eq(schema.personTable.userId, userId))
-                .limit(1)
-            )[0]?.id ?? "",
+            (await getIdentityPersonForUserInTransaction(tx, userId))[0]?.id ??
+            "",
           sessionId: session.id,
           connectionId: id,
           request: validated.value,
@@ -1190,13 +769,8 @@ const routes = apiRouter()
           action: "auth.step_up_consumed",
           actorId: userId,
           personId:
-            (
-              await tx
-                .select({ id: schema.personTable.id })
-                .from(schema.personTable)
-                .where(eq(schema.personTable.userId, userId))
-                .limit(1)
-            )[0]?.id ?? "",
+            (await getIdentityPersonForUserInTransaction(tx, userId))[0]?.id ??
+            "",
           operation: "scim_admin_update",
           traceId,
         });
@@ -1318,28 +892,14 @@ async function mutateScimToken(
       : null;
   let auditFailed = false;
   const result = await db.transaction(async (tx) => {
-    const [connection] = await tx
-      .select()
-      .from(schema.identityConnectionTable)
-      .where(eq(schema.identityConnectionTable.id, id))
-      .for("update")
-      .limit(1);
-    const [scim] = await tx
-      .select()
-      .from(schema.scimConnectionTable)
-      .where(eq(schema.scimConnectionTable.identityConnectionId, id))
-      .for("update")
-      .limit(1);
+    const [connection] = await lockFullIdentityConnection(tx, id);
+    const [scim] = await lockFullScimConnection(tx, id);
     if (!connection || !scim) return { kind: "not_found" as const };
     if (connection.configVersion !== version)
       return { kind: "conflict" as const, version: connection.configVersion };
     if (operation === SCIM_TOKEN_REVOKE_OPERATION && !scim.tokenHash)
       return { kind: "invalid" as const };
-    const [person] = await tx
-      .select({ id: schema.personTable.id })
-      .from(schema.personTable)
-      .where(eq(schema.personTable.userId, userId))
-      .limit(1);
+    const [person] = await getIdentityPersonForUserInTransaction(tx, userId);
     if (!person)
       throw new HTTPException(403, { message: "step_up_unavailable" });
     const proof = await consumeScimTokenProof(tx, {

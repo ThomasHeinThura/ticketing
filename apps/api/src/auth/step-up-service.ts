@@ -2,8 +2,19 @@ import { createHash, randomBytes, timingSafeEqual } from "node:crypto";
 import { createId } from "@paralleldrive/cuid2";
 import type { ScimAdminRequest } from "@taskdesk/domain";
 import { canonicalScimAdminRequest } from "@taskdesk/domain";
-import { and, count, eq, gt, sql } from "drizzle-orm";
+import { and, eq, gt, sql } from "drizzle-orm";
 import db, { schema } from "../database";
+import {
+  countRecentOperationChallenges,
+  countRecentPendingActionChallenges,
+  lockActiveStepUpSession,
+  lockOperationChallenge,
+  lockOperationProof,
+  lockPendingActionById,
+  lockPendingActionChallenge,
+  lockPendingActionForChallenge,
+  lockPendingActionProof,
+} from "./repository";
 
 export const STEP_UP_OPERATION = "metrics_token_rotate" as const;
 export const STEP_UP_ROUTE =
@@ -234,44 +245,21 @@ export async function createPendingActionChallenge(input: {
   const id = createId();
   const nonce = randomBytes(32);
   const challengeExpiresAt = await db.transaction(async (tx) => {
-    const [action] = await tx
-      .select({
-        id: schema.pendingActionTable.id,
-        confirmation: schema.pendingActionTable.confirmationRequired,
-      })
-      .from(schema.pendingActionTable)
-      .where(
-        and(
-          eq(schema.pendingActionTable.id, input.pendingActionId),
-          eq(schema.pendingActionTable.requestedByPersonId, input.personId),
-          eq(schema.pendingActionTable.state, "pending"),
-          gt(schema.pendingActionTable.expiresAt, sql`now()`),
-        ),
-      )
-      .for("update")
-      .limit(1);
+    const [action] = await lockPendingActionForChallenge(
+      tx,
+      input.pendingActionId,
+      input.personId,
+    );
     if (!action?.confirmation.endsWith("_step_up")) return null;
     await tx.execute(
       sql`SELECT pg_advisory_xact_lock(hashtext(${input.sessionId}), hashtext(${input.pendingActionId}))`,
     );
-    const [recent] = await tx
-      .select({ value: count() })
-      .from(schema.stepUpConfirmationTable)
-      .where(
-        and(
-          eq(schema.stepUpConfirmationTable.personId, input.personId),
-          eq(schema.stepUpConfirmationTable.sessionId, input.sessionId),
-          eq(schema.stepUpConfirmationTable.bindingKind, "pending_action"),
-          eq(
-            schema.stepUpConfirmationTable.pendingActionId,
-            input.pendingActionId,
-          ),
-          gt(
-            schema.stepUpConfirmationTable.createdAt,
-            sql`now() - interval '15 minutes'`,
-          ),
-        ),
-      );
+    const [recent] = await countRecentPendingActionChallenges(
+      tx,
+      input.personId,
+      input.sessionId,
+      input.pendingActionId,
+    );
     if ((recent?.value ?? 0) >= STEP_UP_CHALLENGE_LIMIT)
       throw new StepUpAttemptLimitError();
     await tx
@@ -358,21 +346,12 @@ async function createOperationChallenge(input: {
     await tx.execute(
       sql`SELECT pg_advisory_xact_lock(hashtext(${input.sessionId}), hashtext(${input.operation}))`,
     );
-    const [recent] = await tx
-      .select({ value: count() })
-      .from(schema.stepUpConfirmationTable)
-      .where(
-        and(
-          eq(schema.stepUpConfirmationTable.personId, input.personId),
-          eq(schema.stepUpConfirmationTable.sessionId, input.sessionId),
-          eq(schema.stepUpConfirmationTable.bindingKind, "operation"),
-          eq(schema.stepUpConfirmationTable.operationKey, input.operation),
-          gt(
-            schema.stepUpConfirmationTable.createdAt,
-            sql`now() - interval '15 minutes'`,
-          ),
-        ),
-      );
+    const [recent] = await countRecentOperationChallenges(
+      tx,
+      input.personId,
+      input.sessionId,
+      input.operation,
+    );
     if ((recent?.value ?? 0) >= STEP_UP_CHALLENGE_LIMIT)
       throw new StepUpAttemptLimitError();
     await tx
@@ -489,25 +468,12 @@ export async function consumePendingActionProof(
   if (raw.length !== 32 || raw.toString("base64url") !== input.token)
     return null;
   const tokenHash = sha256(raw);
-  const [proof] = await tx
-    .select({ id: schema.stepUpConfirmationTable.id })
-    .from(schema.stepUpConfirmationTable)
-    .where(
-      and(
-        eq(schema.stepUpConfirmationTable.tokenHash, tokenHash),
-        eq(schema.stepUpConfirmationTable.personId, input.personId),
-        eq(schema.stepUpConfirmationTable.sessionId, input.sessionId),
-        eq(schema.stepUpConfirmationTable.bindingKind, "pending_action"),
-        eq(
-          schema.stepUpConfirmationTable.pendingActionId,
-          input.pendingActionId,
-        ),
-        eq(schema.stepUpConfirmationTable.state, "issued"),
-        gt(schema.stepUpConfirmationTable.tokenExpiresAt, sql`now()`),
-      ),
-    )
-    .for("update")
-    .limit(1);
+  const [proof] = await lockPendingActionProof(tx, {
+    tokenHash,
+    personId: input.personId,
+    sessionId: input.sessionId,
+    pendingActionId: input.pendingActionId,
+  });
   if (!proof) return null;
   const consumed = await tx
     .update(schema.stepUpConfirmationTable)
@@ -614,24 +580,14 @@ async function consumeOperationProof(
     return null;
   const tokenHash = sha256(raw);
   const bodyHash = sha256(input.body);
-  const [proof] = await tx
-    .select()
-    .from(schema.stepUpConfirmationTable)
-    .where(
-      and(
-        eq(schema.stepUpConfirmationTable.tokenHash, tokenHash),
-        eq(schema.stepUpConfirmationTable.personId, input.personId),
-        eq(schema.stepUpConfirmationTable.sessionId, input.sessionId),
-        eq(schema.stepUpConfirmationTable.bindingKind, "operation"),
-        eq(schema.stepUpConfirmationTable.operationKey, input.operation),
-        eq(schema.stepUpConfirmationTable.routeKey, input.route),
-        eq(schema.stepUpConfirmationTable.expectedVersion, input.version),
-        eq(schema.stepUpConfirmationTable.state, "issued"),
-        gt(schema.stepUpConfirmationTable.tokenExpiresAt, sql`now()`),
-      ),
-    )
-    .for("update")
-    .limit(1);
+  const [proof] = await lockOperationProof(tx, {
+    tokenHash,
+    personId: input.personId,
+    sessionId: input.sessionId,
+    operation: input.operation,
+    route: input.route,
+    version: input.version,
+  });
   if (!proof?.bodyHash || !proof.authMethod) return null;
   if (!timingSafeEqual(proof.bodyHash, bodyHash)) return null;
   const consumed = await tx
@@ -755,53 +711,19 @@ export async function issuePendingActionToken(
     await tx.execute(
       sql`SELECT pg_advisory_xact_lock(hashtext(${input.sessionId}), hashtext(${input.pendingActionId}))`,
     );
-    const [activeSession] = await tx
-      .select({ id: schema.sessionTable.id })
-      .from(schema.sessionTable)
-      .where(
-        and(
-          eq(schema.sessionTable.id, input.sessionId),
-          eq(schema.sessionTable.userId, input.userId),
-          eq(schema.sessionTable.portal, "agent"),
-          gt(schema.sessionTable.expiresAt, sql`now()`),
-        ),
-      )
-      .for("update")
-      .limit(1);
+    const [activeSession] = await lockActiveStepUpSession(
+      tx,
+      input.sessionId,
+      input.userId,
+    );
     if (!activeSession) return null;
-    const [action] = await tx
-      .select({ id: schema.pendingActionTable.id })
-      .from(schema.pendingActionTable)
-      .where(
-        and(
-          eq(schema.pendingActionTable.id, input.pendingActionId),
-          eq(schema.pendingActionTable.requestedByPersonId, input.personId),
-          eq(schema.pendingActionTable.state, "pending"),
-          gt(schema.pendingActionTable.expiresAt, sql`now()`),
-        ),
-      )
-      .for("update")
-      .limit(1);
+    const [action] = await lockPendingActionById(
+      tx,
+      input.pendingActionId,
+      input.personId,
+    );
     if (!action) return null;
-    const [challenge] = await tx
-      .select()
-      .from(schema.stepUpConfirmationTable)
-      .where(
-        and(
-          eq(schema.stepUpConfirmationTable.id, input.id),
-          eq(schema.stepUpConfirmationTable.personId, input.personId),
-          eq(schema.stepUpConfirmationTable.sessionId, input.sessionId),
-          eq(schema.stepUpConfirmationTable.bindingKind, "pending_action"),
-          eq(
-            schema.stepUpConfirmationTable.pendingActionId,
-            input.pendingActionId,
-          ),
-          eq(schema.stepUpConfirmationTable.state, "challenge"),
-          gt(schema.stepUpConfirmationTable.challengeExpiresAt, sql`now()`),
-        ),
-      )
-      .for("update")
-      .limit(1);
+    const [challenge] = await lockPendingActionChallenge(tx, input);
     if (!challenge) return null;
     const nonceHash = sha256(nonce);
     if (!timingSafeEqual(challenge.challengeNonceHash, nonceHash)) {
@@ -988,38 +910,13 @@ async function issueOperationToken(
     await tx.execute(
       sql`SELECT pg_advisory_xact_lock(hashtext(${input.sessionId}), hashtext(${input.operation}))`,
     );
-    const [activeSession] = await tx
-      .select({ id: schema.sessionTable.id })
-      .from(schema.sessionTable)
-      .where(
-        and(
-          eq(schema.sessionTable.id, input.sessionId),
-          eq(schema.sessionTable.userId, input.userId),
-          eq(schema.sessionTable.portal, "agent"),
-          gt(schema.sessionTable.expiresAt, sql`now()`),
-        ),
-      )
-      .for("update")
-      .limit(1);
+    const [activeSession] = await lockActiveStepUpSession(
+      tx,
+      input.sessionId,
+      input.userId,
+    );
     if (!activeSession) return null;
-    const [challenge] = await tx
-      .select()
-      .from(schema.stepUpConfirmationTable)
-      .where(
-        and(
-          eq(schema.stepUpConfirmationTable.id, input.id),
-          eq(schema.stepUpConfirmationTable.personId, input.personId),
-          eq(schema.stepUpConfirmationTable.sessionId, input.sessionId),
-          eq(schema.stepUpConfirmationTable.bindingKind, "operation"),
-          eq(schema.stepUpConfirmationTable.operationKey, input.operation),
-          eq(schema.stepUpConfirmationTable.routeKey, input.route),
-          eq(schema.stepUpConfirmationTable.expectedVersion, input.version),
-          eq(schema.stepUpConfirmationTable.state, "challenge"),
-          gt(schema.stepUpConfirmationTable.challengeExpiresAt, sql`now()`),
-        ),
-      )
-      .for("update")
-      .limit(1);
+    const [challenge] = await lockOperationChallenge(tx, input);
     if (!challenge?.bodyHash || !challenge.challengeNonceHash) return null;
     if (!timingSafeEqual(challenge.bodyHash, bodyHash)) return null;
     const nonceHash = sha256(nonce);

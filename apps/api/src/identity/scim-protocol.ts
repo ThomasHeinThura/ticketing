@@ -9,7 +9,7 @@ import {
   parseScimUserFilter,
   validateScimPutExternalId,
 } from "@taskdesk/domain";
-import { and, eq, isNull, sql, count as sqlCount } from "drizzle-orm";
+import { and, eq, sql } from "drizzle-orm";
 import { HTTPException } from "hono/http-exception";
 import db, { schema } from "../database";
 import type { BaseVariables } from "../openapi";
@@ -18,6 +18,26 @@ import {
   IdentityGrantClosureChangedError,
   retryIdentityGrantClosure,
 } from "./membership-projection";
+import {
+  countScimGroups,
+  countScimUsers,
+  findActiveInternalOrganisation,
+  findScimCreateEmailConflict,
+  findScimCreateIdentityConflict,
+  findScimReplaceEmailConflict,
+  getScimCurrentUserForPatch,
+  getScimCurrentUserForReplace,
+  getScimGroupForProtocol,
+  getScimLifecyclePolicyInTransaction,
+  getScimMatchAttributes,
+  getScimProfileMapping,
+  getScimUser,
+  listActiveScimGroupMembers,
+  listScimGroupIds,
+  listScimUsers,
+  lockScimProfileOrganisation,
+  lockScimProfilePerson as lockScimProfilePersonRow,
+} from "./repository";
 import {
   lockAndVerifyScimMutation,
   resolveScimBearer,
@@ -87,11 +107,7 @@ const SCIM_USER_SCHEMA = "urn:ietf:params:scim:schemas:core:2.0:User";
 const SCIM_LIST_SCHEMA = "urn:ietf:params:scim:api:messages:2.0:ListResponse";
 
 async function readScimMatchAttributes(connectionId: string) {
-  const [row] = await db
-    .select({ matchAttributes: schema.scimConnectionTable.matchAttributes })
-    .from(schema.scimConnectionTable)
-    .where(eq(schema.scimConnectionTable.identityConnectionId, connectionId))
-    .limit(1);
+  const [row] = await getScimMatchAttributes(connectionId);
   if (!row) return null;
   const parsed = effectiveScimMatchAttributes(row.matchAttributes);
   return parsed.ok ? parsed.value : null;
@@ -121,19 +137,6 @@ function userFilterPredicate(
       return sql`lower(${schema.personTable.locale}) = lower(${value}) and ${schema.personTable.locale} <> ''`;
   }
 }
-
-const userProjection = {
-  id: schema.externalIdentityTable.id,
-  externalId: schema.externalIdentityTable.scimExternalId,
-  userName: schema.externalIdentityTable.userNameSnapshot,
-  email: schema.externalIdentityTable.emailSnapshot,
-  active: schema.personTable.active,
-  displayName: schema.personTable.displayName,
-  title: schema.personTable.jobTitle,
-  locale: schema.personTable.locale,
-  createdAt: schema.externalIdentityTable.firstSeenAt,
-  updatedAt: schema.personTable.updatedAt,
-} as const;
 
 function scimUserPredicates(authority: ScimRequestAuthority) {
   return [
@@ -423,13 +426,10 @@ async function applyScimActiveState(
 ) {
   return retryIdentityGrantClosure(async () =>
     db.transaction(async (tx) => {
-      const [scimConnection] = await tx
-        .select({ lifecyclePolicy: schema.scimConnectionTable.lifecyclePolicy })
-        .from(schema.scimConnectionTable)
-        .where(
-          eq(schema.scimConnectionTable.identityConnectionId, connectionId),
-        )
-        .limit(1);
+      const [scimConnection] = await getScimLifecyclePolicyInTransaction(
+        tx,
+        connectionId,
+      );
       if (
         !scimConnection ||
         (scimConnection.lifecyclePolicy !== "end_memberships" &&
@@ -459,11 +459,10 @@ async function applyScimActiveStateInTransaction(
   identityId: string,
   active: boolean,
 ) {
-  const [scimConnection] = await tx
-    .select({ lifecyclePolicy: schema.scimConnectionTable.lifecyclePolicy })
-    .from(schema.scimConnectionTable)
-    .where(eq(schema.scimConnectionTable.identityConnectionId, connectionId))
-    .limit(1);
+  const [scimConnection] = await getScimLifecyclePolicyInTransaction(
+    tx,
+    connectionId,
+  );
   if (
     !scimConnection ||
     (scimConnection.lifecyclePolicy !== "end_memberships" &&
@@ -489,64 +488,15 @@ async function lockScimProfilePerson(
   personId: string,
   expectedOrganisationId: string,
 ) {
-  await tx
-    .select({ id: schema.organisationTable.id })
-    .from(schema.organisationTable)
-    .where(eq(schema.organisationTable.id, expectedOrganisationId))
-    .for("update");
-  const [person] = await tx
-    .select({ organisationId: schema.personTable.organisationId })
-    .from(schema.personTable)
-    .where(eq(schema.personTable.id, personId))
-    .for("update");
+  await lockScimProfileOrganisation(tx, expectedOrganisationId);
+  const [person] = await lockScimProfilePersonRow(tx, personId);
   return person?.organisationId === expectedOrganisationId;
 }
 
 async function readScimGroup(connectionId: string, groupId: string) {
-  const [group] = await db
-    .select({
-      id: schema.scimGroupTable.id,
-      externalId: schema.scimGroupTable.externalId,
-      displayName: schema.scimGroupTable.displayName,
-      active: schema.scimGroupTable.active,
-      createdAt: schema.scimGroupTable.createdAt,
-      updatedAt: schema.scimGroupTable.updatedAt,
-    })
-    .from(schema.scimGroupTable)
-    .where(
-      and(
-        eq(schema.scimGroupTable.scimConnectionId, connectionId),
-        eq(schema.scimGroupTable.id, groupId),
-      ),
-    )
-    .limit(1);
+  const [group] = await getScimGroupForProtocol(connectionId, groupId);
   if (!group) return null;
-  const members = await db
-    .select({
-      value: schema.externalIdentityTable.id,
-      display: schema.personTable.displayName,
-    })
-    .from(schema.scimGroupDirectoryMemberTable)
-    .innerJoin(
-      schema.externalIdentityTable,
-      eq(
-        schema.externalIdentityTable.id,
-        schema.scimGroupDirectoryMemberTable.externalIdentityId,
-      ),
-    )
-    .innerJoin(
-      schema.personTable,
-      eq(schema.personTable.id, schema.externalIdentityTable.personId),
-    )
-    .where(
-      and(
-        eq(schema.scimGroupDirectoryMemberTable.scimConnectionId, connectionId),
-        eq(schema.scimGroupDirectoryMemberTable.scimGroupId, group.id),
-        eq(schema.scimGroupDirectoryMemberTable.active, true),
-        eq(schema.externalIdentityTable.active, true),
-      ),
-    )
-    .orderBy(schema.externalIdentityTable.id);
+  const members = await listActiveScimGroupMembers(connectionId, group.id);
   return {
     schemas: ["urn:ietf:params:scim:schemas:core:2.0:Group"],
     id: group.id,
@@ -749,11 +699,7 @@ const schemasRoute = createRoute({
 });
 
 async function readScimProfileMapping(connectionId: string) {
-  const [row] = await db
-    .select({ mapping: schema.scimConnectionTable.attributeMapping })
-    .from(schema.scimConnectionTable)
-    .where(eq(schema.scimConnectionTable.identityConnectionId, connectionId))
-    .limit(1);
+  const [row] = await getScimProfileMapping(connectionId);
   if (!row) return null;
   const raw: unknown = row.mapping ?? DEFAULT_SCIM_PROFILE_MAPPING;
   const parsed = parseScimProfileAttributeMapping(raw);
@@ -798,25 +744,8 @@ export default scim
     const startIndex = query.startIndex ?? 1;
     const pageCount = query.count ?? 100;
     const where = and(...predicates);
-    const [total] = await db
-      .select({ totalResults: sqlCount() })
-      .from(schema.externalIdentityTable)
-      .innerJoin(
-        schema.personTable,
-        eq(schema.personTable.id, schema.externalIdentityTable.personId),
-      )
-      .where(where);
-    const rows = await db
-      .select(userProjection)
-      .from(schema.externalIdentityTable)
-      .innerJoin(
-        schema.personTable,
-        eq(schema.personTable.id, schema.externalIdentityTable.personId),
-      )
-      .where(where)
-      .orderBy(schema.externalIdentityTable.id)
-      .limit(pageCount)
-      .offset(startIndex - 1);
+    const [total] = await countScimUsers(where);
+    const rows = await listScimUsers(where, pageCount, startIndex - 1);
     const resources = rows.map(toScimUser);
     return scimResponse(
       c.json(
@@ -841,20 +770,12 @@ export default scim
         ),
       );
     const id = c.req.valid("param").id;
-    const [row] = await db
-      .select(userProjection)
-      .from(schema.externalIdentityTable)
-      .innerJoin(
-        schema.personTable,
-        eq(schema.personTable.id, schema.externalIdentityTable.personId),
-      )
-      .where(
-        and(
-          ...scimUserPredicates(authority),
-          eq(schema.externalIdentityTable.id, id),
-        ),
-      )
-      .limit(1);
+    const [row] = await getScimUser(
+      and(
+        ...scimUserPredicates(authority),
+        eq(schema.externalIdentityTable.id, id),
+      ),
+    );
     return row
       ? scimResponse(c.json(toScimUser(row) as never, 200))
       : scimResponse(c.json(scimErrorBody(404, "Resource not found"), 404));
@@ -911,49 +832,21 @@ export default scim
           await tx.execute(
             sql`SELECT pg_advisory_xact_lock(hashtextextended(${lockKey}, 0))`,
           );
-        const [sameConnection] = await tx
-          .select({ id: schema.externalIdentityTable.id })
-          .from(schema.externalIdentityTable)
-          .where(
-            and(
-              eq(
-                schema.externalIdentityTable.identityConnectionId,
-                authority.connectionId,
-              ),
-              sql`(${schema.externalIdentityTable.scimExternalId} = ${parsedExternalId} or lower(${schema.externalIdentityTable.userNameSnapshot}) = ${userName.toLowerCase()})`,
-            ),
-          )
-          .limit(1);
+        const [sameConnection] = await findScimCreateIdentityConflict(
+          tx,
+          authority.connectionId,
+          parsedExternalId,
+          userName,
+        );
         if (sameConnection) return { conflict: true as const };
-        const [emailConflict] = await tx
-          .select({ id: schema.externalIdentityTable.id })
-          .from(schema.externalIdentityTable)
-          .innerJoin(
-            schema.personTable,
-            eq(schema.personTable.id, schema.externalIdentityTable.personId),
-          )
-          .leftJoin(
-            schema.userTable,
-            eq(schema.userTable.id, schema.personTable.userId),
-          )
-          .where(
-            sql`lower(${schema.externalIdentityTable.emailSnapshot}) = lower(${profile.value.email}) or lower(${schema.userTable.email}) = lower(${profile.value.email})`,
-          )
-          .limit(1);
+        const [emailConflict] = await findScimCreateEmailConflict(
+          tx,
+          profile.value.email,
+        );
         if (emailConflict) return { conflict: true as const };
         let organisationId = connection.organisationId;
         if (connection.portalScope === "agent") {
-          const [internal] = await tx
-            .select({ id: schema.organisationTable.id })
-            .from(schema.organisationTable)
-            .where(
-              and(
-                eq(schema.organisationTable.isInternal, true),
-                eq(schema.organisationTable.active, true),
-                isNull(schema.organisationTable.deletedAt),
-              ),
-            )
-            .limit(1);
+          const [internal] = await findActiveInternalOrganisation(tx);
           organisationId = internal?.id ?? null;
         }
         if (!organisationId) return { unavailable: true as const };
@@ -1013,23 +906,15 @@ export default scim
         return scimResponse(
           c.json(scimErrorBody(400, "Invalid SCIM user resource"), 400),
         );
-      const [row] = await db
-        .select(userProjection)
-        .from(schema.externalIdentityTable)
-        .innerJoin(
-          schema.personTable,
-          eq(schema.personTable.id, schema.externalIdentityTable.personId),
-        )
-        .where(
-          and(
-            eq(schema.externalIdentityTable.id, identityId),
-            eq(
-              schema.externalIdentityTable.identityConnectionId,
-              authority.connectionId,
-            ),
+      const [row] = await getScimUser(
+        and(
+          eq(schema.externalIdentityTable.id, identityId),
+          eq(
+            schema.externalIdentityTable.identityConnectionId,
+            authority.connectionId,
           ),
-        )
-        .limit(1);
+        ),
+      );
       return scimResponse(c.json(toScimUser(row as ScimUserRow) as never, 201));
     } catch (error) {
       if (!isUniqueViolation(error)) throw error;
@@ -1067,31 +952,12 @@ export default scim
       return scimResponse(
         c.json(scimErrorBody(400, "Invalid SCIM user resource"), 400),
       );
-    const [current] = await db
-      .select({
-        id: schema.externalIdentityTable.id,
-        externalId: schema.externalIdentityTable.scimExternalId,
-        personId: schema.externalIdentityTable.personId,
-        organisationId: schema.personTable.organisationId,
-        userName: schema.externalIdentityTable.userNameSnapshot,
-        email: schema.externalIdentityTable.emailSnapshot,
-        active: schema.personTable.active,
-        displayName: schema.personTable.displayName,
-        title: schema.personTable.jobTitle,
-        locale: schema.personTable.locale,
-      })
-      .from(schema.externalIdentityTable)
-      .innerJoin(
-        schema.personTable,
-        eq(schema.personTable.id, schema.externalIdentityTable.personId),
-      )
-      .where(
-        and(
-          ...scimUserPredicates(authority),
-          eq(schema.externalIdentityTable.id, id),
-        ),
-      )
-      .limit(1);
+    const [current] = await getScimCurrentUserForReplace(
+      and(
+        ...scimUserPredicates(authority),
+        eq(schema.externalIdentityTable.id, id),
+      ),
+    );
     if (!current)
       return scimResponse(
         c.json(scimErrorBody(404, "Resource not found"), 404),
@@ -1105,23 +971,11 @@ export default scim
         c.json(scimErrorBody(400, "Invalid SCIM user resource"), 400),
       );
     const nextActive = parsed.value.active ?? true;
-    const [emailConflict] = await db
-      .select({ id: schema.externalIdentityTable.id })
-      .from(schema.externalIdentityTable)
-      .innerJoin(
-        schema.personTable,
-        eq(schema.personTable.id, schema.externalIdentityTable.personId),
-      )
-      .leftJoin(
-        schema.userTable,
-        eq(schema.userTable.id, schema.personTable.userId),
-      )
-      .where(
-        and(
-          sql`(lower(${schema.externalIdentityTable.emailSnapshot}) = lower(${profile.value.email}) and ${schema.externalIdentityTable.id} <> ${id}) or (lower(${schema.userTable.email}) = lower(${profile.value.email}) and ${schema.personTable.id} <> ${current.personId})`,
-        ),
-      )
-      .limit(1);
+    const [emailConflict] = await findScimReplaceEmailConflict(
+      profile.value.email,
+      id,
+      current.personId,
+    );
     if (emailConflict)
       return scimResponse(
         c.json(
@@ -1195,20 +1049,12 @@ export default scim
       return scimResponse(
         c.json(scimErrorBody(503, "Lifecycle operation unavailable"), 503),
       );
-    const [row] = await db
-      .select(userProjection)
-      .from(schema.externalIdentityTable)
-      .innerJoin(
-        schema.personTable,
-        eq(schema.personTable.id, schema.externalIdentityTable.personId),
-      )
-      .where(
-        and(
-          ...scimUserPredicates(authority),
-          eq(schema.externalIdentityTable.id, id),
-        ),
-      )
-      .limit(1);
+    const [row] = await getScimUser(
+      and(
+        ...scimUserPredicates(authority),
+        eq(schema.externalIdentityTable.id, id),
+      ),
+    );
     return scimResponse(c.json(toScimUser(row as ScimUserRow) as never, 200));
   })
   .openapi(userPatchRoute, async (c) => {
@@ -1237,30 +1083,12 @@ export default scim
         Operations: Array<{ op: string; path?: string; value: unknown }>;
       }
     ).Operations;
-    const [current] = await db
-      .select({
-        id: schema.externalIdentityTable.id,
-        personId: schema.externalIdentityTable.personId,
-        organisationId: schema.personTable.organisationId,
-        userName: schema.externalIdentityTable.userNameSnapshot,
-        email: schema.externalIdentityTable.emailSnapshot,
-        active: schema.personTable.active,
-        displayName: schema.personTable.displayName,
-        title: schema.personTable.jobTitle,
-        locale: schema.personTable.locale,
-      })
-      .from(schema.externalIdentityTable)
-      .innerJoin(
-        schema.personTable,
-        eq(schema.personTable.id, schema.externalIdentityTable.personId),
-      )
-      .where(
-        and(
-          ...scimUserPredicates(authority),
-          eq(schema.externalIdentityTable.id, id),
-        ),
-      )
-      .limit(1);
+    const [current] = await getScimCurrentUserForPatch(
+      and(
+        ...scimUserPredicates(authority),
+        eq(schema.externalIdentityTable.id, id),
+      ),
+    );
     if (!current)
       return scimResponse(
         c.json(scimErrorBody(404, "Resource not found"), 404),
@@ -1364,20 +1192,12 @@ export default scim
       return scimResponse(
         c.json(scimErrorBody(503, "Lifecycle operation unavailable"), 503),
       );
-    const [row] = await db
-      .select(userProjection)
-      .from(schema.externalIdentityTable)
-      .innerJoin(
-        schema.personTable,
-        eq(schema.personTable.id, schema.externalIdentityTable.personId),
-      )
-      .where(
-        and(
-          ...scimUserPredicates(authority),
-          eq(schema.externalIdentityTable.id, id),
-        ),
-      )
-      .limit(1);
+    const [row] = await getScimUser(
+      and(
+        ...scimUserPredicates(authority),
+        eq(schema.externalIdentityTable.id, id),
+      ),
+    );
     return scimResponse(c.json(toScimUser(row as ScimUserRow) as never, 200));
   })
   .openapi(userDeleteRoute, async (c) => {
@@ -1414,21 +1234,12 @@ export default scim
     const query = c.req.valid("query");
     const startIndex = query.startIndex ?? 1;
     const pageCount = query.count ?? 100;
-    const where = eq(
-      schema.scimGroupTable.scimConnectionId,
+    const [total] = await countScimGroups(authority.connectionId);
+    const groups = await listScimGroupIds(
       authority.connectionId,
+      pageCount,
+      startIndex - 1,
     );
-    const [total] = await db
-      .select({ totalResults: sqlCount() })
-      .from(schema.scimGroupTable)
-      .where(where);
-    const groups = await db
-      .select({ id: schema.scimGroupTable.id })
-      .from(schema.scimGroupTable)
-      .where(where)
-      .orderBy(schema.scimGroupTable.id)
-      .limit(pageCount)
-      .offset(startIndex - 1);
     const resources = await Promise.all(
       groups.map((group) => readScimGroup(authority.connectionId, group.id)),
     );

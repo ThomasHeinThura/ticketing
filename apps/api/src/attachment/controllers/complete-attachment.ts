@@ -1,11 +1,7 @@
 import { and, eq } from "drizzle-orm";
 import { HTTPException } from "hono/http-exception";
 import db from "../../database";
-import {
-  attachmentTable,
-  instanceSettingTable,
-  workItemTable,
-} from "../../database/schema";
+import { attachmentTable } from "../../database/schema";
 import {
   deleteStorageObject,
   finalizeStorageObject,
@@ -18,6 +14,12 @@ import {
   assertWorkItemStillLive,
 } from "../../work-item/assert-work-item-live";
 import { magicBytesMatchDeclaredMime } from "../magic-bytes";
+import {
+  getAttachment,
+  getAttachmentMaxBytes,
+  lockWorkItemForAttachmentCompletion,
+  lockWorkItemForShare,
+} from "../repository";
 
 const SNIFF_BYTES = 512;
 
@@ -31,20 +33,11 @@ async function deleteRejectedPendingAttachmentRow(input: {
   workItemId: string;
 }) {
   return db.transaction(async (tx) => {
-    const [locked] = await tx
-      .select({
-        projectId: workItemTable.projectId,
-        deletedAt: workItemTable.deletedAt,
-        archivedAt: workItemTable.archivedAt,
-      })
-      .from(workItemTable)
-      .where(
-        and(
-          eq(workItemTable.id, input.workItemId),
-          eq(workItemTable.workspaceId, input.workspaceId),
-        ),
-      )
-      .for("share");
+    const [locked] = await lockWorkItemForShare(
+      tx,
+      input.workItemId,
+      input.workspaceId,
+    );
     assertWorkItemStillLive(locked);
     await assertProjectStillLive(tx, locked.projectId);
 
@@ -80,11 +73,7 @@ export type CompleteAttachmentInput = {
 export async function completeAttachment(input: CompleteAttachmentInput) {
   const { attachmentId, workspaceId, workItemId, actorId, actorType } = input;
 
-  const [attachment] = await db
-    .select()
-    .from(attachmentTable)
-    .where(eq(attachmentTable.id, attachmentId))
-    .limit(1);
+  const [attachment] = await getAttachment(db, attachmentId);
 
   if (
     !attachment ||
@@ -104,10 +93,7 @@ export async function completeAttachment(input: CompleteAttachmentInput) {
   // only bounds the CLAIMED size, and the S3 driver's presigned PUT has no
   // `content-length-range` condition (`storage/s3.ts`'s own comment), so a caller could
   // otherwise upload an arbitrarily large object and have it recorded as "ready".
-  const [settings] = await db
-    .select({ maxBytes: instanceSettingTable.attachmentMaxBytes })
-    .from(instanceSettingTable)
-    .limit(1);
+  const [settings] = await getAttachmentMaxBytes(db);
   const maxBytes = settings?.maxBytes ?? FALLBACK_MAX_BYTES;
 
   const NOT_FOUND_MESSAGE =
@@ -202,15 +188,10 @@ export async function completeAttachment(input: CompleteAttachmentInput) {
       // activity row) on a dead item. `.for("share")` locks the row so a concurrent
       // soft-delete blocks until this transaction finishes; read-only here, so a shared
       // lock is enough.
-      const [locked] = await tx
-        .select({
-          projectId: workItemTable.projectId,
-          deletedAt: workItemTable.deletedAt,
-          archivedAt: workItemTable.archivedAt,
-        })
-        .from(workItemTable)
-        .where(eq(workItemTable.id, workItemId))
-        .for("share");
+      const [locked] = await lockWorkItemForAttachmentCompletion(
+        tx,
+        workItemId,
+      );
       assertWorkItemStillLive(locked);
       await assertProjectStillLive(tx, locked.projectId);
 

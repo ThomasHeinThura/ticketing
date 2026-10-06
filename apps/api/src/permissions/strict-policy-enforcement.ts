@@ -20,12 +20,20 @@ import {
   workspaceScopeFromRequest,
   workspaceScopeFromRow,
 } from "@taskdesk/permissions";
-import { and, eq } from "drizzle-orm";
 import type { Context, Next } from "hono";
 import { HTTPException } from "hono/http-exception";
-import db, { schema } from "../database";
 import { policyRegistry } from "../policy-registry";
 import { enforcedPolicySources } from "./enforcement-config";
+import {
+  getCommentOwnerEvidence,
+  getModernWorkItemVisibilityEvidence,
+  getProjectReadEvidence,
+  getTaskAuthorityEvidence,
+  getTaskPolicyEvidence,
+  getWorkItemAuthorityEvidence,
+  listWorkItemWatcherPersonIds,
+  listWorkspaceMembershipEvidence,
+} from "./repository";
 import { resolveIdentity } from "./resolve-identity";
 import { attributedMatchedRoute } from "./shadow-middleware";
 
@@ -252,19 +260,7 @@ async function projectReach(
       : evidence.projectId;
   if (!projectId || !evidence.workspaceId) refuse(500);
 
-  const [project] = await db
-    .select({
-      id: schema.projectTable.id,
-      workspaceId: schema.projectTable.workspaceId,
-      organisationId: schema.workspaceTable.organisationId,
-    })
-    .from(schema.projectTable)
-    .innerJoin(
-      schema.workspaceTable,
-      eq(schema.workspaceTable.id, schema.projectTable.workspaceId),
-    )
-    .where(eq(schema.projectTable.id, projectId))
-    .limit(1);
+  const [project] = await getProjectReadEvidence(projectId);
   if (!project) refuse(404);
   if (
     project.workspaceId !== evidence.workspaceId ||
@@ -279,27 +275,12 @@ async function projectReach(
   if (policyScope === "work_item") {
     if (!evidence.workItemId) refuse(500);
     if (evidence.resource === "task") {
-      const [task] = await db
-        .select({
-          id: schema.taskTable.id,
-          projectId: schema.taskTable.projectId,
-        })
-        .from(schema.taskTable)
-        .where(eq(schema.taskTable.id, evidence.workItemId))
-        .limit(1);
+      const [task] = await getTaskPolicyEvidence(evidence.workItemId);
       if (!task || task.projectId !== project.id) refuse(500);
     } else if (isModernWorkItemResource(evidence.resource)) {
-      const [workItem] = await db
-        .select({
-          id: schema.workItemTable.id,
-          projectId: schema.workItemTable.projectId,
-          workspaceId: schema.workItemTable.workspaceId,
-          requesterId: schema.workItemTable.requesterId,
-          customerVisibility: schema.workItemTable.customerVisibility,
-        })
-        .from(schema.workItemTable)
-        .where(eq(schema.workItemTable.id, evidence.workItemId))
-        .limit(1);
+      const [workItem] = await getModernWorkItemVisibilityEvidence(
+        evidence.workItemId,
+      );
       if (!workItem) refuse(404);
       if (
         workItem.projectId !== project.id ||
@@ -320,10 +301,7 @@ async function projectReach(
         identity.side === "customer" &&
         workItem.customerVisibility === "private"
       ) {
-        const watchers = await db
-          .select({ personId: schema.watcherTable.personId })
-          .from(schema.watcherTable)
-          .where(eq(schema.watcherTable.workItemId, workItem.id));
+        const watchers = await listWorkItemWatcherPersonIds(workItem.id);
         visibleToPersonIds = [
           ...new Set([
             ...(workItem.requesterId ? [workItem.requesterId] : []),
@@ -371,20 +349,7 @@ async function loadAuthoritativeEvidence(
       refuse(500);
     }
     if (evidence.resource === "task") {
-      const [task] = await db
-        .select({
-          id: schema.taskTable.id,
-          projectId: schema.taskTable.projectId,
-          workspaceId: schema.projectTable.workspaceId,
-          assigneeId: schema.taskTable.userId,
-        })
-        .from(schema.taskTable)
-        .innerJoin(
-          schema.projectTable,
-          eq(schema.projectTable.id, schema.taskTable.projectId),
-        )
-        .where(eq(schema.taskTable.id, evidence.workItemId))
-        .limit(1);
+      const [task] = await getTaskAuthorityEvidence(evidence.workItemId);
       if (!task || task.workspaceId !== evidence.workspaceId) refuse(500);
       evidence = {
         ...evidence,
@@ -395,17 +360,9 @@ async function loadAuthoritativeEvidence(
         },
       };
     } else if (isModernWorkItemResource(evidence.resource)) {
-      const [workItem] = await db
-        .select({
-          id: schema.workItemTable.id,
-          projectId: schema.workItemTable.projectId,
-          workspaceId: schema.workItemTable.workspaceId,
-          assigneeId: schema.workItemTable.assigneeId,
-          requesterId: schema.workItemTable.requesterId,
-        })
-        .from(schema.workItemTable)
-        .where(eq(schema.workItemTable.id, evidence.workItemId))
-        .limit(1);
+      const [workItem] = await getWorkItemAuthorityEvidence(
+        evidence.workItemId,
+      );
       if (
         !workItem ||
         workItem.workspaceId !== evidence.workspaceId ||
@@ -431,16 +388,7 @@ async function loadAuthoritativeEvidence(
     if (policy.orOwner.predicate === "row.person_id === identity.personId") {
       const commentId = c.req.param("id");
       if (!commentId) refuse(500);
-      const [comment] = await db
-        .select({
-          id: schema.commentTable.id,
-          personId: schema.commentTable.authorId,
-          workspaceId: schema.commentTable.workspaceId,
-          workItemId: schema.commentTable.workItemId,
-        })
-        .from(schema.commentTable)
-        .where(eq(schema.commentTable.id, commentId))
-        .limit(1);
+      const [comment] = await getCommentOwnerEvidence(commentId);
       if (
         !comment ||
         comment.workspaceId !== evidence.workspaceId ||
@@ -476,20 +424,10 @@ async function buildContext(
     let workspaceMembership: boolean | undefined;
     if (policy.workspaceMembership === true) {
       if (!evidence.workspaceId) refuse(500);
-      const rows = await db
-        .select({ userId: schema.workspaceUserTable.userId })
-        .from(schema.workspaceUserTable)
-        .innerJoin(
-          schema.workspaceTable,
-          eq(schema.workspaceTable.id, schema.workspaceUserTable.workspaceId),
-        )
-        .where(
-          and(
-            eq(schema.workspaceUserTable.userId, c.get("userId") as string),
-            eq(schema.workspaceUserTable.workspaceId, evidence.workspaceId),
-          ),
-        )
-        .limit(2);
+      const rows = await listWorkspaceMembershipEvidence(
+        c.get("userId") as string,
+        evidence.workspaceId,
+      );
       workspaceMembership = rows.length === 1;
     }
     return {

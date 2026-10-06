@@ -4,7 +4,7 @@ import {
   parseIdentityClaimMapping,
   parseIdentityJitPolicy,
 } from "@taskdesk/domain";
-import { and, desc, eq, isNull, lt, or, sql } from "drizzle-orm";
+import { and, eq, lt, or, sql } from "drizzle-orm";
 import { HTTPException } from "hono/http-exception";
 import { appendAuditLog } from "../audit/audit-writer";
 import { appendStepUpAudit } from "../auth/step-up-audit";
@@ -36,6 +36,23 @@ import {
   retryIdentityGrantClosure,
 } from "./membership-projection";
 import { loadEntraDiscovery } from "./oidc-provider";
+import {
+  findIdentityConnectionForOrganisation,
+  getIdentityConnection,
+  getIdentityConnectionConfiguration,
+  getIdentityConnectionIdForOrganisation,
+  getIdentityConnectionPresence,
+  getIdentityPersonForUser,
+  getOrganisationPresence,
+  getWorkspaceOrganisation,
+  listIdentityConnectionEvents,
+  listIdentityConnections,
+  listIdentityDomainBindings,
+  lockActiveInternalWorkspace,
+  lockCustomerOrganisation,
+  lockIdentityConnection,
+  lockIdentityDefaultRole,
+} from "./repository";
 
 const connectionShape = z.object({
   id: z.string(),
@@ -389,30 +406,6 @@ function toSafeConnection(row: ConnectionProjection) {
   });
 }
 
-const connectionProjection = {
-  id: schema.identityConnectionTable.id,
-  providerType: schema.identityConnectionTable.providerType,
-  portalScope: schema.identityConnectionTable.portalScope,
-  organisationId: schema.identityConnectionTable.organisationId,
-  defaultWorkspaceId: schema.identityConnectionTable.defaultWorkspaceId,
-  displayName: schema.identityConnectionTable.displayName,
-  issuer: schema.identityConnectionTable.issuer,
-  tenantId: schema.identityConnectionTable.tenantId,
-  clientId: schema.identityConnectionTable.clientId,
-  clientSecret: schema.identityConnectionTable.clientSecret,
-  redirectUri: schema.identityConnectionTable.redirectUri,
-  scopes: schema.identityConnectionTable.scopes,
-  claimMapping: schema.identityConnectionTable.claimMapping,
-  domainBindings: schema.identityConnectionTable.domainBindings,
-  jitPolicy: schema.identityConnectionTable.jitPolicy,
-  maxRoleRank: schema.identityConnectionTable.maxRoleRank,
-  mfaUpstreamMode: schema.identityConnectionTable.mfaUpstreamMode,
-  enabled: schema.identityConnectionTable.enabled,
-  configVersion: schema.identityConnectionTable.configVersion,
-  healthState: schema.identityConnectionTable.healthState,
-  healthCheckedAt: schema.identityConnectionTable.healthCheckedAt,
-} as const;
-
 type ConnectionTransaction = Parameters<
   Parameters<typeof db.transaction>[0]
 >[0];
@@ -428,12 +421,7 @@ async function domainBindingsAreUnique(
   domains: readonly string[],
   exceptConnectionId?: string,
 ) {
-  const existing = await tx
-    .select({
-      id: schema.identityConnectionTable.id,
-      domains: schema.identityConnectionTable.domainBindings,
-    })
-    .from(schema.identityConnectionTable);
+  const existing = await listIdentityDomainBindings(tx);
   const requested = new Set(domains.map((domain) => domain.toLowerCase()));
   return existing.every(
     (row) =>
@@ -474,56 +462,24 @@ async function validateConnectionReferences(
     return false;
   if (value.portalScope === "customer") {
     if (!value.organisationId) return false;
-    const [organisation] = await tx
-      .select({ id: schema.organisationTable.id })
-      .from(schema.organisationTable)
-      .where(
-        and(
-          eq(schema.organisationTable.id, value.organisationId),
-          eq(schema.organisationTable.active, true),
-          eq(schema.organisationTable.isInternal, false),
-          isNull(schema.organisationTable.deletedAt),
-        ),
-      )
-      .for("update")
-      .limit(1);
+    const [organisation] = await lockCustomerOrganisation(
+      tx,
+      value.organisationId,
+    );
     if (!organisation) return false;
   }
   if (value.defaultWorkspaceId) {
-    const [workspace] = await tx
-      .select({ id: schema.workspaceTable.id })
-      .from(schema.workspaceTable)
-      .innerJoin(
-        schema.organisationTable,
-        eq(schema.organisationTable.id, schema.workspaceTable.organisationId),
-      )
-      .where(
-        and(
-          eq(schema.workspaceTable.id, value.defaultWorkspaceId),
-          eq(schema.organisationTable.active, true),
-          eq(schema.organisationTable.isInternal, true),
-          isNull(schema.organisationTable.deletedAt),
-          isNull(schema.workspaceTable.deletedAt),
-        ),
-      )
-      .for("update")
-      .limit(1);
+    const [workspace] = await lockActiveInternalWorkspace(
+      tx,
+      value.defaultWorkspaceId,
+    );
     if (!workspace || value.portalScope !== "agent") return false;
   }
   if (!jit.value.enabled) return true;
-  const [role] = await tx
-    .select({
-      id: schema.roleTable.id,
-      scope: schema.roleTable.scope,
-      workspaceId: schema.roleTable.workspaceId,
-      key: schema.roleTable.key,
-      rank: schema.roleTable.rank,
-      capabilities: schema.roleTable.capabilities,
-    })
-    .from(schema.roleTable)
-    .where(eq(schema.roleTable.id, jit.value.default_role_id ?? ""))
-    .for("update")
-    .limit(1);
+  const [role] = await lockIdentityDefaultRole(
+    tx,
+    jit.value.default_role_id ?? "",
+  );
   if (!role) return false;
   if (value.portalScope === "agent")
     return Boolean(
@@ -592,13 +548,7 @@ router.openapi(connectionListRoute, async (c) => {
     "GET",
     "/api/instance/identity-connections",
   );
-  const rows = await db
-    .select(connectionProjection)
-    .from(schema.identityConnectionTable)
-    .orderBy(
-      schema.identityConnectionTable.portalScope,
-      schema.identityConnectionTable.id,
-    );
+  const rows = await listIdentityConnections();
   return c.json({ data: rows.map((row) => toSafeConnection(row)) }, 200);
 });
 
@@ -611,11 +561,7 @@ router.openapi(eventHistoryRoute, async (c) => {
   );
   const { id: connectionId } = c.req.valid("param");
   const { cursor: cursorValue, limit } = c.req.valid("query");
-  const [connection] = await db
-    .select({ id: schema.identityConnectionTable.id })
-    .from(schema.identityConnectionTable)
-    .where(eq(schema.identityConnectionTable.id, connectionId))
-    .limit(1);
+  const [connection] = await getIdentityConnectionPresence(connectionId);
   if (!connection) return c.json({ message: "Connection unavailable" }, 404);
 
   const cursor = decodeEventHistoryCursor(cursorValue, connectionId);
@@ -636,29 +582,7 @@ router.openapi(eventHistoryRoute, async (c) => {
         ),
       )
     : undefined;
-  const conditions = [
-    eq(schema.provisioningEventTable.identityConnectionId, connectionId),
-  ];
-  if (after) conditions.push(after);
-  const rows = await db
-    .select({
-      id: schema.provisioningEventTable.id,
-      cursorCreatedAt: sql<string>`to_char(
-        ${schema.provisioningEventTable.createdAt} at time zone 'UTC',
-        'YYYY-MM-DD"T"HH24:MI:SS.US"Z"'
-      )`,
-      kind: schema.provisioningEventTable.kind,
-      outcome: schema.provisioningEventTable.outcome,
-      actorType: schema.provisioningEventTable.actorType,
-      createdAt: schema.provisioningEventTable.createdAt,
-    })
-    .from(schema.provisioningEventTable)
-    .where(and(...conditions))
-    .orderBy(
-      desc(schema.provisioningEventTable.createdAt),
-      desc(schema.provisioningEventTable.id),
-    )
-    .limit(limit + 1);
+  const rows = await listIdentityConnectionEvents(connectionId, after, limit);
   const hasMore = rows.length > limit;
   const pageRows = hasMore ? rows.slice(0, limit) : rows;
   const last = pageRows.at(-1);
@@ -694,17 +618,9 @@ router.openapi(organisationIdentityRoute, async (c) => {
     "/api/instance/organisations/{id}/identity",
   );
   const { id } = c.req.valid("param");
-  const [organisation] = await db
-    .select({ id: schema.organisationTable.id })
-    .from(schema.organisationTable)
-    .where(eq(schema.organisationTable.id, id))
-    .limit(1);
+  const [organisation] = await getOrganisationPresence(id);
   if (!organisation) return c.json({ message: "Not found" }, 404);
-  const [row] = await db
-    .select(connectionProjection)
-    .from(schema.identityConnectionTable)
-    .where(eq(schema.identityConnectionTable.organisationId, id))
-    .limit(1);
+  const [row] = await getIdentityConnectionIdForOrganisation(id);
   return c.json({ data: row ? toSafeConnection(row) : null }, 200);
 });
 
@@ -735,11 +651,7 @@ router.openapi(createConnectionRoute, async (c) => {
       message: "Identity provider configuration is invalid",
     });
   }
-  const [actor] = await db
-    .select({ id: schema.personTable.id })
-    .from(schema.personTable)
-    .where(eq(schema.personTable.userId, userId))
-    .limit(1);
+  const [actor] = await getIdentityPersonForUser(userId);
   if (!actor) throw new HTTPException(403, { message: "Forbidden" });
   const connectionId = createId();
   const redirectOrigin =
@@ -753,26 +665,15 @@ router.openapi(createConnectionRoute, async (c) => {
   const result = await db.transaction(async (tx) => {
     await lockIdentityDomainBindings(tx);
     if (request.organisationId) {
-      const [existing] = await tx
-        .select({ id: schema.identityConnectionTable.id })
-        .from(schema.identityConnectionTable)
-        .where(
-          eq(
-            schema.identityConnectionTable.organisationId,
-            request.organisationId,
-          ),
-        )
-        .limit(1);
+      const [existing] = await findIdentityConnectionForOrganisation(
+        request.organisationId,
+      );
       if (existing) return { kind: "duplicate" as const };
     }
     if (!(await domainBindingsAreUnique(tx, request.domainBindings)))
       return { kind: "invalid" as const };
     const [targetWorkspace] = request.defaultWorkspaceId
-      ? await tx
-          .select({ organisationId: schema.workspaceTable.organisationId })
-          .from(schema.workspaceTable)
-          .where(eq(schema.workspaceTable.id, request.defaultWorkspaceId))
-          .limit(1)
+      ? await getWorkspaceOrganisation(request.defaultWorkspaceId)
       : [];
     await lockScimGrantClosure(tx, {
       connectionId,
@@ -874,11 +775,7 @@ router.openapi(createConnectionRoute, async (c) => {
     });
   if (!result.auditOk) await reportAuditFailure();
   setShadowLegacyAuthorization(c, "allowed");
-  const [created] = await db
-    .select(connectionProjection)
-    .from(schema.identityConnectionTable)
-    .where(eq(schema.identityConnectionTable.id, connectionId))
-    .limit(1);
+  const [created] = await getIdentityConnection(connectionId);
   if (!created)
     throw new HTTPException(500, {
       message: "Identity configuration unavailable",
@@ -907,24 +804,9 @@ router.openapi(configureConnectionRoute, async (c) => {
     throw new HTTPException(403, { message: "Forbidden" });
   const request = c.req.valid("json") as IdentityConnectionConfigureRequest;
   const token = c.req.valid("header")["x-taskdesk-step-up-token"];
-  const [actor] = await db
-    .select({ id: schema.personTable.id })
-    .from(schema.personTable)
-    .where(eq(schema.personTable.userId, userId))
-    .limit(1);
+  const [actor] = await getIdentityPersonForUser(userId);
   if (!actor) throw new HTTPException(403, { message: "Forbidden" });
-  const [before] = await db
-    .select({
-      tenantId: schema.identityConnectionTable.tenantId,
-      portalScope: schema.identityConnectionTable.portalScope,
-      organisationId: schema.identityConnectionTable.organisationId,
-      defaultWorkspaceId: schema.identityConnectionTable.defaultWorkspaceId,
-      jitPolicy: schema.identityConnectionTable.jitPolicy,
-      configVersion: schema.identityConnectionTable.configVersion,
-    })
-    .from(schema.identityConnectionTable)
-    .where(eq(schema.identityConnectionTable.id, id))
-    .limit(1);
+  const [before] = await getIdentityConnectionConfiguration(id);
   let discovery: Awaited<ReturnType<typeof loadEntraDiscovery>> | null = null;
   if (request.enabled === true) {
     if (!before?.tenantId)
@@ -945,11 +827,7 @@ router.openapi(configureConnectionRoute, async (c) => {
           ? before?.defaultWorkspaceId
           : request.defaultWorkspaceId;
       const [targetWorkspace] = candidateWorkspaceId
-        ? await tx
-            .select({ organisationId: schema.workspaceTable.organisationId })
-            .from(schema.workspaceTable)
-            .where(eq(schema.workspaceTable.id, candidateWorkspaceId))
-            .limit(1)
+        ? await getWorkspaceOrganisation(candidateWorkspaceId)
         : [];
       const currentJit = parseIdentityJitPolicy(before?.jitPolicy);
       const candidateJit =
@@ -975,12 +853,7 @@ router.openapi(configureConnectionRoute, async (c) => {
             ? targetWorkspace?.organisationId
             : (before?.organisationId ?? undefined),
       });
-      const [current] = await tx
-        .select(connectionProjection)
-        .from(schema.identityConnectionTable)
-        .where(eq(schema.identityConnectionTable.id, id))
-        .for("update")
-        .limit(1);
+      const [current] = await lockIdentityConnection(tx, id);
       if (!current) return { kind: "not_found" as const };
       if (current.configVersion !== request.configVersion)
         return { kind: "conflict" as const, version: current.configVersion };
@@ -1118,11 +991,7 @@ router.openapi(configureConnectionRoute, async (c) => {
   }
   if (!result.auditOk) await reportAuditFailure();
   setShadowLegacyAuthorization(c, "allowed");
-  const [updated] = await db
-    .select(connectionProjection)
-    .from(schema.identityConnectionTable)
-    .where(eq(schema.identityConnectionTable.id, id))
-    .limit(1);
+  const [updated] = await getIdentityConnection(id);
   if (!updated)
     throw new HTTPException(404, { message: "Connection unavailable" });
   return c.json({ data: toSafeConnection(updated) }, 200);

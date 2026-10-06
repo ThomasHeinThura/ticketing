@@ -7,6 +7,7 @@ import { setShadowLegacyAuthorization } from "../../permissions/shadow-context";
 import { normaliseTraceId } from "../../permissions/shadow-middleware";
 import { requireCurrentInstanceAdmin } from "../require-instance-admin";
 import { notifyCurrentInstanceAdminsOfAuditFailure } from "./audit-failure-notifier";
+import { getObservabilitySettings } from "./repository";
 import { applyRuntimeLogLevels, recordAuditWriteFailure } from "./runtime";
 import type { LogLevels } from "./settings";
 import { isLogLevelsEqual, logLevelsSchema, parseLogLevels } from "./settings";
@@ -20,16 +21,7 @@ const currentSettingsSchema = z.object({
 });
 
 async function readSettings() {
-  const [row] = await db
-    .select({
-      version: schema.instanceSettingTable.observabilityConfigVersion,
-      levels: schema.instanceSettingTable.observabilityLogLevels,
-      tokenHash: schema.instanceSettingTable.metricsTokenHash,
-      rotatedAt: schema.instanceSettingTable.metricsTokenRotatedAt,
-    })
-    .from(schema.instanceSettingTable)
-    .where(eq(schema.instanceSettingTable.id, "singleton"))
-    .limit(1);
+  const [row] = await getObservabilitySettings();
   if (!row)
     throw new HTTPException(503, {
       message: "Observability settings unavailable",

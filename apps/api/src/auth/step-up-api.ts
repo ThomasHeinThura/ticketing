@@ -3,11 +3,10 @@ import {
   validateScimAdminRequest,
 } from "@taskdesk/domain";
 import bcrypt from "bcryptjs";
-import { and, eq, gt } from "drizzle-orm";
 import type { Context } from "hono";
 import { HTTPException } from "hono/http-exception";
 import { auth } from "../auth";
-import db, { schema } from "../database";
+import db from "../database";
 import {
   type IdentityConnectionConfigureRequest,
   type IdentityConnectionCreateRequest,
@@ -16,6 +15,7 @@ import {
 } from "../identity/connection-contract";
 import { loadEntraDiscovery } from "../identity/oidc-provider";
 import { isCurrentInstanceAdmin } from "../instance/observability/audit-failure-notifier";
+import { getObservabilityVersion } from "../instance/observability/repository";
 import { apiRouter, createRoute, jsonResponse, z } from "../openapi";
 import { setShadowLegacyAuthorization } from "../permissions/shadow-context";
 import { requireSessionOnly } from "../utils/require-session-only";
@@ -23,6 +23,16 @@ import {
   type LocalFactorState,
   loadLocalFactorState,
 } from "./local-factor-service";
+import {
+  getActiveSessionForStepUp,
+  getIdentityConfigVersion,
+  getPasswordCredential,
+  getPendingActionForStepUp,
+  getScimConfigVersion,
+  getScimConnectionDetails,
+  getUserFactorEnabled,
+  getUserId,
+} from "./repository";
 import {
   appendPendingActionStepUpAudit,
   appendStepUpAudit,
@@ -84,18 +94,11 @@ async function requireCurrentAgentSession(c: Context) {
   if (session.portal !== "agent") {
     throw new HTTPException(403, { message: "Forbidden" });
   }
-  const [activeSession] = await db
-    .select({ id: schema.sessionTable.id })
-    .from(schema.sessionTable)
-    .where(
-      and(
-        eq(schema.sessionTable.id, session.id),
-        eq(schema.sessionTable.userId, c.get("userId")),
-        eq(schema.sessionTable.portal, "agent"),
-        gt(schema.sessionTable.expiresAt, new Date()),
-      ),
-    )
-    .limit(1);
+  const [activeSession] = await getActiveSessionForStepUp(
+    session.id,
+    c.get("userId"),
+    new Date(),
+  );
   if (!activeSession) throw new HTTPException(401, { message: "Unauthorized" });
   let factor: LocalFactorState;
   try {
@@ -497,25 +500,11 @@ const routes = apiRouter()
     const actor = await requireCurrentAgentSession(c);
     const input = c.req.valid("json");
     if (input.kind === "pending_action") {
-      const [action] = await db
-        .select({
-          action: schema.pendingActionTable.action,
-          confirmation: schema.pendingActionTable.confirmationRequired,
-          routeKey: schema.pendingActionTable.routeKey,
-        })
-        .from(schema.pendingActionTable)
-        .where(
-          and(
-            eq(schema.pendingActionTable.id, input.pendingActionId),
-            eq(
-              schema.pendingActionTable.requestedByPersonId,
-              actor.factor.personId,
-            ),
-            eq(schema.pendingActionTable.state, "pending"),
-            gt(schema.pendingActionTable.expiresAt, new Date()),
-          ),
-        )
-        .limit(1);
+      const [action] = await getPendingActionForStepUp(
+        input.pendingActionId,
+        actor.factor.personId,
+        new Date(),
+      );
       if (
         action?.action !== "user_deactivation" ||
         action.confirmation !== "typed_name_step_up" ||
@@ -579,11 +568,7 @@ const routes = apiRouter()
       throw new HTTPException(403, { message: "Forbidden" });
     }
     if (input.operation === "mfa_reset") {
-      const [target] = await db
-        .select({ enabled: schema.userTable.twoFactorEnabled })
-        .from(schema.userTable)
-        .where(eq(schema.userTable.id, input.userId))
-        .limit(1);
+      const [target] = await getUserFactorEnabled(input.userId);
       if (!target?.enabled) {
         await appendStepUpAudit(db, {
           action: "auth.step_up_denied",
@@ -633,11 +618,7 @@ const routes = apiRouter()
       );
     }
     if (input.operation === "instance_admin_grant") {
-      const [target] = await db
-        .select({ id: schema.userTable.id })
-        .from(schema.userTable)
-        .where(eq(schema.userTable.id, input.targetUserId))
-        .limit(1);
+      const [target] = await getUserId(input.targetUserId);
       if (!target) throw new HTTPException(404, { message: "User not found" });
       let challenge: Awaited<
         ReturnType<typeof createInstanceAdminGrantChallenge>
@@ -684,21 +665,7 @@ const routes = apiRouter()
         throw new HTTPException(422, {
           message: "Invalid SCIM administration request",
         });
-      const [connection] = await db
-        .select({
-          version: schema.identityConnectionTable.configVersion,
-          childId: schema.scimConnectionTable.identityConnectionId,
-        })
-        .from(schema.identityConnectionTable)
-        .innerJoin(
-          schema.scimConnectionTable,
-          eq(
-            schema.scimConnectionTable.identityConnectionId,
-            schema.identityConnectionTable.id,
-          ),
-        )
-        .where(eq(schema.identityConnectionTable.id, input.connectionId))
-        .limit(1);
+      const [connection] = await getScimConnectionDetails(input.connectionId);
       if (!connection)
         throw new HTTPException(404, { message: "SCIM connection not found" });
       if (connection.version !== validated.value.configVersion)
@@ -755,18 +722,7 @@ const routes = apiRouter()
       input.operation === "scim_token_rotate" ||
       input.operation === "scim_token_revoke"
     ) {
-      const [connection] = await db
-        .select({ version: schema.identityConnectionTable.configVersion })
-        .from(schema.identityConnectionTable)
-        .innerJoin(
-          schema.scimConnectionTable,
-          eq(
-            schema.scimConnectionTable.identityConnectionId,
-            schema.identityConnectionTable.id,
-          ),
-        )
-        .where(eq(schema.identityConnectionTable.id, input.connectionId))
-        .limit(1);
+      const [connection] = await getScimConfigVersion(input.connectionId);
       if (!connection)
         throw new HTTPException(404, { message: "SCIM connection not found" });
       if (connection.version !== input.version)
@@ -849,16 +805,9 @@ const routes = apiRouter()
           });
         }
       } else {
-        const [connection] = await db
-          .select({ version: schema.identityConnectionTable.configVersion })
-          .from(schema.identityConnectionTable)
-          .where(
-            eq(
-              schema.identityConnectionTable.id,
-              (input as typeof input & { connectionId: string }).connectionId,
-            ),
-          )
-          .limit(1);
+        const [connection] = await getIdentityConfigVersion(
+          (input as typeof input & { connectionId: string }).connectionId,
+        );
         if (!connection)
           throw new HTTPException(404, { message: "Connection unavailable" });
         if (
@@ -927,13 +876,7 @@ const routes = apiRouter()
         200,
       );
     }
-    const [setting] = await db
-      .select({
-        version: schema.instanceSettingTable.observabilityConfigVersion,
-      })
-      .from(schema.instanceSettingTable)
-      .where(eq(schema.instanceSettingTable.id, "singleton"))
-      .limit(1);
+    const [setting] = await getObservabilityVersion();
     if (!setting)
       throw new HTTPException(503, { message: "Step-up unavailable" });
     if (setting.version !== input.version) {
@@ -1025,16 +968,9 @@ const routes = apiRouter()
           });
         }
       } else {
-        const [connection] = await db
-          .select({ version: schema.identityConnectionTable.configVersion })
-          .from(schema.identityConnectionTable)
-          .where(
-            eq(
-              schema.identityConnectionTable.id,
-              operationInput.connectionId as string,
-            ),
-          )
-          .limit(1);
+        const [connection] = await getIdentityConfigVersion(
+          operationInput.connectionId as string,
+        );
         if (!connection)
           throw new HTTPException(404, { message: "Connection unavailable" });
         if (
@@ -1058,20 +994,9 @@ const routes = apiRouter()
         throw new HTTPException(422, {
           message: "Invalid SCIM administration request",
         });
-      const [connection] = await db
-        .select({ version: schema.identityConnectionTable.configVersion })
-        .from(schema.identityConnectionTable)
-        .innerJoin(
-          schema.scimConnectionTable,
-          eq(
-            schema.scimConnectionTable.identityConnectionId,
-            schema.identityConnectionTable.id,
-          ),
-        )
-        .where(
-          eq(schema.identityConnectionTable.id, operationInput.connectionId),
-        )
-        .limit(1);
+      const [connection] = await getScimConfigVersion(
+        operationInput.connectionId,
+      );
       if (!connection)
         throw new HTTPException(404, { message: "SCIM connection not found" });
       if (connection.version !== validated.value.configVersion)
@@ -1085,20 +1010,9 @@ const routes = apiRouter()
       operationInput.operation === "scim_token_rotate" ||
       operationInput.operation === "scim_token_revoke"
     ) {
-      const [connection] = await db
-        .select({ version: schema.identityConnectionTable.configVersion })
-        .from(schema.identityConnectionTable)
-        .innerJoin(
-          schema.scimConnectionTable,
-          eq(
-            schema.scimConnectionTable.identityConnectionId,
-            schema.identityConnectionTable.id,
-          ),
-        )
-        .where(
-          eq(schema.identityConnectionTable.id, operationInput.connectionId),
-        )
-        .limit(1);
+      const [connection] = await getScimConfigVersion(
+        operationInput.connectionId,
+      );
       if (!connection)
         throw new HTTPException(404, { message: "Connection unavailable" });
       if (connection.version !== operationInput.version)
@@ -1118,16 +1032,7 @@ const routes = apiRouter()
       authenticatedPersonId = currentFactor.personId;
       if (proofInput.method === "password") {
         if (currentFactor.required || currentFactor.enabled) return null;
-        const [credential] = await db
-          .select({ password: schema.accountTable.password })
-          .from(schema.accountTable)
-          .where(
-            and(
-              eq(schema.accountTable.userId, c.get("userId")),
-              eq(schema.accountTable.providerId, "credential"),
-            ),
-          )
-          .limit(1);
+        const [credential] = await getPasswordCredential(c.get("userId"));
         if (!credential?.password) return null;
         return (await bcrypt.compare(
           proofInput.password ?? "",
@@ -1161,25 +1066,11 @@ const routes = apiRouter()
       }
     };
     if (input.kind === "pending_action") {
-      const [action] = await db
-        .select({
-          action: schema.pendingActionTable.action,
-          confirmation: schema.pendingActionTable.confirmationRequired,
-          routeKey: schema.pendingActionTable.routeKey,
-        })
-        .from(schema.pendingActionTable)
-        .where(
-          and(
-            eq(schema.pendingActionTable.id, input.pendingActionId),
-            eq(
-              schema.pendingActionTable.requestedByPersonId,
-              actor.factor.personId,
-            ),
-            eq(schema.pendingActionTable.state, "pending"),
-            gt(schema.pendingActionTable.expiresAt, new Date()),
-          ),
-        )
-        .limit(1);
+      const [action] = await getPendingActionForStepUp(
+        input.pendingActionId,
+        actor.factor.personId,
+        new Date(),
+      );
       if (
         action?.action !== "user_deactivation" ||
         action.confirmation !== "typed_name_step_up" ||

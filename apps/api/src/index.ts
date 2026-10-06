@@ -7,7 +7,7 @@ import { serveStatic } from "@hono/node-server/serve-static";
 import { OpenAPIHono } from "@hono/zod-openapi";
 import { normaliseRouteKey } from "@taskdesk/permissions";
 import type { Session, User } from "better-auth/types";
-import { and, eq, sql } from "drizzle-orm";
+import { sql } from "drizzle-orm";
 import type { Context, Next } from "hono";
 import { Hono } from "hono";
 import { compress } from "hono/compress";
@@ -93,6 +93,7 @@ import { initializePlugins } from "./plugins";
 // the bundler drops it and the check silently stops running.
 import { policyRegistry } from "./policy-registry";
 import project from "./project";
+import { findProjectWorkspaceUnderReach } from "./project/repository";
 import { initializeScheduler, shutdownScheduler } from "./scheduler";
 import search from "./search";
 import serviceCalendar from "./service-calendar";
@@ -1514,20 +1515,15 @@ export function createApp(
         // query distinguishing "out of reach" (403, remapped) from "unknown"
         // (401).
         const apiKeyId = c.get("apiKey")?.id;
-        const [project] = await db
-          .select({ workspaceId: schema.projectTable.workspaceId })
-          .from(schema.projectTable)
-          .where(
-            and(
-              eq(schema.projectTable.id, projectId),
-              reachableWorkspacePredicate(
-                schema.projectTable.workspaceId,
-                userId,
-                apiKeyId,
-              ),
-            ),
-          )
-          .limit(1);
+        const [project] = await findProjectWorkspaceUnderReach(
+          db,
+          projectId,
+          reachableWorkspacePredicate(
+            schema.projectTable.workspaceId,
+            userId,
+            apiKeyId,
+          ),
+        );
 
         if (!project) {
           throw new HTTPException(401, { message: "Unauthorized" });

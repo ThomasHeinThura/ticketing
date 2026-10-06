@@ -33,6 +33,72 @@ type Transaction = Parameters<Parameters<typeof db.transaction>[0]>[0];
 type PolicyRow = typeof slaPolicyTable.$inferSelect;
 type PolicyVersionRow = typeof slaPolicyVersionTable.$inferSelect;
 type PolicyGoalRow = typeof slaGoalTable.$inferSelect;
+
+export function getPinnedVersionForEvaluation(
+  policyVersionId: string,
+  workspaceId: string,
+) {
+  return db
+    .select({
+      id: slaPolicyVersionTable.id,
+      calendarId: slaPolicyVersionTable.calendarId,
+      atRiskThresholdPct: slaPolicyVersionTable.atRiskThresholdPct,
+      effectiveFrom: slaPolicyVersionTable.effectiveFrom,
+    })
+    .from(slaPolicyVersionTable)
+    .where(
+      and(
+        eq(slaPolicyVersionTable.id, policyVersionId),
+        eq(slaPolicyVersionTable.workspaceId, workspaceId),
+      ),
+    )
+    .limit(1);
+}
+
+export function getCalendarForEvaluation(
+  calendarId: string,
+  workspaceId: string,
+) {
+  return db
+    .select({
+      timezone: serviceCalendarTable.timezone,
+      windows: serviceCalendarTable.windows,
+      holidays: serviceCalendarTable.holidays,
+    })
+    .from(serviceCalendarTable)
+    .where(
+      and(
+        eq(serviceCalendarTable.id, calendarId),
+        eq(serviceCalendarTable.workspaceId, workspaceId),
+      ),
+    )
+    .limit(1);
+}
+
+export function listGoalsForEvaluation(workspaceId: string, versionId: string) {
+  return db
+    .select({
+      metric: slaGoalTable.metric,
+      workItemTypeId: slaGoalTable.workItemTypeId,
+      priority: slaGoalTable.priority,
+      targetMinutes: slaGoalTable.targetMinutes,
+    })
+    .from(slaGoalTable)
+    .where(
+      and(
+        eq(slaGoalTable.workspaceId, workspaceId),
+        eq(slaGoalTable.versionId, versionId),
+      ),
+    );
+}
+
+export function getPolicyWorkspace(id: string) {
+  return db
+    .select({ workspaceId: slaPolicyTable.workspaceId })
+    .from(slaPolicyTable)
+    .where(eq(slaPolicyTable.id, id))
+    .limit(1);
+}
 type PolicyResult = {
   id: string;
   workspaceId: string;

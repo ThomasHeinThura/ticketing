@@ -1,7 +1,6 @@
-import { and, eq, isNull } from "drizzle-orm";
 import type { Context, Next } from "hono";
 import { HTTPException } from "hono/http-exception";
-import db, { schema } from "../database";
+import db from "../database";
 import { policyShadowEnabled } from "../permissions/shadow-config";
 import {
   markShadowLegacyAuthorizationUnknown,
@@ -9,6 +8,7 @@ import {
 } from "../permissions/shadow-context";
 import { projectReadDecision } from "../utils/has-project-reach";
 import { validateWorkspaceAccess } from "../utils/validate-workspace-access";
+import { findAttachmentReach } from "./repository";
 
 /**
  * `GET /api/attachments/{id}` and `DELETE /api/attachments/{id}` middleware: resolves the
@@ -54,36 +54,7 @@ export function requireAttachmentReach(
     // only its project's -- same gap `require-work-item-reach.ts` closed for #276, here
     // for the attachment-reach path, which has its own local lookup rather than going
     // through that middleware.
-    const [row] = await db
-      .select({
-        id: schema.attachmentTable.id,
-        workItemId: schema.attachmentTable.workItemId,
-        workspaceId: schema.attachmentTable.workspaceId,
-        projectId: schema.workItemTable.projectId,
-        organisationId: schema.workspaceTable.organisationId,
-      })
-      .from(schema.attachmentTable)
-      .innerJoin(
-        schema.workItemTable,
-        eq(schema.attachmentTable.workItemId, schema.workItemTable.id),
-      )
-      .innerJoin(
-        schema.projectTable,
-        eq(schema.workItemTable.projectId, schema.projectTable.id),
-      )
-      .innerJoin(
-        schema.workspaceTable,
-        eq(schema.workspaceTable.id, schema.projectTable.workspaceId),
-      )
-      .where(
-        and(
-          eq(schema.attachmentTable.id, id),
-          isNull(schema.workItemTable.deletedAt),
-          isNull(schema.workItemTable.archivedAt),
-          isNull(schema.projectTable.deletedAt),
-        ),
-      )
-      .limit(1);
+    const [row] = await findAttachmentReach(db, id);
 
     if (!row) {
       throw new HTTPException(404, { message: "Attachment not found" });

@@ -1,6 +1,7 @@
 import { DEFAULT_ROLE_NAMES, defaultRolePayloads } from "@taskdesk/permissions";
 import { and, eq, inArray, sql } from "drizzle-orm";
 import db, { schema } from "../database";
+import { listAllWorkspaceIds, listWorkspaceRoleKeys } from "./repository";
 
 /**
  * Backfill the editable default roles (viewer/member/admin) for every
@@ -77,9 +78,7 @@ export async function seedDefaultWorkspaceRoles() {
       );
     }
 
-    const workspaces = await db
-      .select({ id: schema.workspaceTable.id })
-      .from(schema.workspaceTable);
+    const workspaces = await listAllWorkspaceIds();
 
     if (workspaces.length === 0) {
       return;
@@ -87,21 +86,10 @@ export async function seedDefaultWorkspaceRoles() {
 
     const workspaceIds = workspaces.map((w) => w.id);
 
-    const existingRows = await db
-      .select({
-        workspaceId: schema.workspaceRoleTable.workspaceId,
-        role: schema.workspaceRoleTable.role,
-      })
-      .from(schema.workspaceRoleTable)
-      .where(
-        and(
-          inArray(schema.workspaceRoleTable.workspaceId, workspaceIds),
-          inArray(
-            schema.workspaceRoleTable.role,
-            DEFAULT_ROLE_NAMES as unknown as string[],
-          ),
-        ),
-      );
+    const existingRows = await listWorkspaceRoleKeys(
+      workspaceIds,
+      DEFAULT_ROLE_NAMES as unknown as string[],
+    );
 
     const present = new Set(
       existingRows.map((r) => `${r.workspaceId}:${r.role}`),

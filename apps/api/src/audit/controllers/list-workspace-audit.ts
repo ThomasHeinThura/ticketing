@@ -1,11 +1,13 @@
-import { and, desc, eq, inArray, isNull, or, type SQL } from "drizzle-orm";
+import { eq, inArray, isNull, or, type SQL } from "drizzle-orm";
 import type { Context } from "hono";
 import db from "../../database";
+import { auditLogTable } from "../../database/schema";
 import {
-  auditLogTable,
-  membershipTable,
-  personTable,
-} from "../../database/schema";
+  getPersonByUserId,
+  getWorkspaceSeesAllMembership,
+  listAuditRows,
+  listProjectMembershipScopeIds,
+} from "../repository";
 import {
   type AuditQuery,
   auditListFilters,
@@ -56,18 +58,15 @@ export async function listWorkspaceAudit(
   query: AuditQuery,
 ) {
   const reachFilter = await projectReachFilter(c, workspaceId);
-  const rows = await db
-    .select()
-    .from(auditLogTable)
-    .where(
-      combineFilters([
-        eq(auditLogTable.workspaceId, workspaceId),
-        reachFilter,
-        ...auditListFilters(query),
-      ]),
-    )
-    .orderBy(desc(auditLogTable.seq))
-    .limit(query.limit);
+  const rows = await listAuditRows(
+    db,
+    combineFilters([
+      eq(auditLogTable.workspaceId, workspaceId),
+      reachFilter,
+      ...auditListFilters(query),
+    ]),
+    query.limit,
+  );
 
   await writeAuditRead(c, { workspaceId });
   return rows;
@@ -98,44 +97,25 @@ async function projectReachFilter(
     return isNull(auditLogTable.projectId);
   }
 
-  const [person] = await db
-    .select({ id: personTable.id })
-    .from(personTable)
-    .where(eq(personTable.userId, userId))
-    .limit(1);
+  const [person] = await getPersonByUserId(db, userId);
 
   if (person === undefined) {
     return isNull(auditLogTable.projectId);
   }
 
-  const [seesAll] = await db
-    .select({ personId: membershipTable.personId })
-    .from(membershipTable)
-    .where(
-      and(
-        eq(membershipTable.personId, person.id),
-        eq(membershipTable.scope, "workspace"),
-        eq(membershipTable.scopeId, workspaceId),
-        eq(membershipTable.seesAll, true),
-      ),
-    )
-    .limit(1);
+  const [seesAll] = await getWorkspaceSeesAllMembership(
+    db,
+    person.id,
+    workspaceId,
+  );
 
   if (seesAll !== undefined) {
     return undefined;
   }
 
-  const reachable = (
-    await db
-      .select({ projectId: membershipTable.scopeId })
-      .from(membershipTable)
-      .where(
-        and(
-          eq(membershipTable.personId, person.id),
-          eq(membershipTable.scope, "project"),
-        ),
-      )
-  ).map((row) => row.projectId);
+  const reachable = (await listProjectMembershipScopeIds(db, person.id)).map(
+    (row) => row.projectId,
+  );
 
   return reachable.length === 0
     ? isNull(auditLogTable.projectId)

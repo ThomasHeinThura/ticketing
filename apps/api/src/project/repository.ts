@@ -8,6 +8,7 @@ import {
   max,
   min,
   ne,
+  type SQL,
   sql,
 } from "drizzle-orm";
 import db from "../database";
@@ -26,6 +27,18 @@ import {
 
 type Tx = Parameters<Parameters<typeof db.transaction>[0]>[0];
 type Executor = typeof db | Tx;
+
+export function findProjectWorkspaceUnderReach(
+  executor: Executor,
+  projectId: string,
+  reachablePredicate: SQL,
+) {
+  return executor
+    .select({ workspaceId: projectTable.workspaceId })
+    .from(projectTable)
+    .where(and(eq(projectTable.id, projectId), reachablePredicate))
+    .limit(1);
+}
 
 export const getProjectQuery = (id: string, workspaceId: string) =>
   db.query.projectTable.findFirst({
