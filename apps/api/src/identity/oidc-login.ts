@@ -1,6 +1,7 @@
 import { createHash, randomBytes, timingSafeEqual } from "node:crypto";
 import { createId } from "@paralleldrive/cuid2";
 import type {
+  EntraGroupClaimEvidence,
   NormalisedEntraIdentity,
   VerifiedEntraClaims,
 } from "@taskdesk/domain";
@@ -53,6 +54,44 @@ const FLOW_TTL_MS = 5 * 60_000;
 const STATE_COOKIE = "__Host-tdk_oidc_state";
 const DEV_STATE_COOKIE = "tdk_oidc_state";
 const IDENTITY_PROVIDER_PREFIX = "taskdesk-entra:";
+
+type OidcGrantRetirementReason =
+  | "claim_missing"
+  | "claim_removed"
+  | "claim_overage"
+  | "mapping_changed";
+
+function classifyOidcGrantRetirementReason(input: {
+  evidence: EntraGroupClaimEvidence;
+  grant: {
+    roleId: string;
+    scope: string;
+    scopeId: string;
+    lastConfirmedAt: Date | null;
+    oidcGroupMappingId: string | null;
+  };
+  mapping: typeof schema.oidcGroupMappingTable.$inferSelect | undefined;
+  eligibleMappingIds: ReadonlySet<string>;
+}): OidcGrantRetirementReason {
+  const { evidence, grant, mapping, eligibleMappingIds } = input;
+  if (evidence.kind === "overage") return "claim_overage";
+  if (evidence.kind === "missing" || evidence.kind === "malformed")
+    return "claim_missing";
+  if (
+    !mapping ||
+    !grant.oidcGroupMappingId ||
+    mapping.id !== grant.oidcGroupMappingId ||
+    !eligibleMappingIds.has(mapping.id) ||
+    mapping.roleId !== grant.roleId ||
+    mapping.scope !== grant.scope ||
+    mapping.scopeId !== grant.scopeId ||
+    !grant.lastConfirmedAt ||
+    mapping.updatedAt > grant.lastConfirmedAt
+  ) {
+    return "mapping_changed";
+  }
+  return "claim_removed";
+}
 
 function digest(value: string) {
   return createHash("sha256").update(value, "utf8").digest("hex");
@@ -874,6 +913,7 @@ async function signInAdmittedIdentity(input: {
           roleId: schema.membershipGrantTable.roleId,
           scope: schema.membershipGrantTable.scope,
           scopeId: schema.membershipGrantTable.scopeId,
+          lastConfirmedAt: schema.membershipGrantTable.lastConfirmedAt,
           sourceKind: schema.membershipGrantTable.sourceKind,
           oidcGroupMappingId: schema.membershipGrantTable.oidcGroupMappingId,
         })
@@ -904,33 +944,41 @@ async function signInAdmittedIdentity(input: {
         )
         .orderBy(schema.oidcGroupMappingTable.id);
       const validMappings = [] as typeof mappings;
-      if (Array.isArray(identity.groupObjectIds)) {
-        const groupIds = new Set(identity.groupObjectIds);
-        for (const mapping of mappings) {
-          const mappingGroupId = canonicalEntraGroupObjectId(
-            mapping.externalGroupId,
-          );
-          if (
-            !mapping.enabled ||
-            !mappingGroupId ||
-            !groupIds.has(mappingGroupId) ||
-            (mapping.scope !== "workspace" && mapping.scope !== "organisation")
-          )
-            continue;
-          const valid = await validateOidcMappingRole(tx, {
-            providerType: currentConnection.providerType,
-            portalScope: currentConnection.portalScope,
-            organisationId: currentConnection.organisationId,
-            maxRoleRank: currentConnection.maxRoleRank,
-            scope: mapping.scope,
-            scopeId: mapping.scopeId,
-            roleId: mapping.roleId,
-          });
-          if (valid) validMappings.push(mapping);
-        }
+      const eligibleMappings = [] as typeof mappings;
+      const groupIds = new Set(
+        identity.groupObjectIds.kind === "complete"
+          ? identity.groupObjectIds.objectIds
+          : [],
+      );
+      for (const mapping of mappings) {
+        if (
+          !mapping.enabled ||
+          !canonicalEntraGroupObjectId(mapping.externalGroupId) ||
+          (mapping.scope !== "workspace" && mapping.scope !== "organisation")
+        )
+          continue;
+        const valid = await validateOidcMappingRole(tx, {
+          providerType: currentConnection.providerType,
+          portalScope: currentConnection.portalScope,
+          organisationId: currentConnection.organisationId,
+          maxRoleRank: currentConnection.maxRoleRank,
+          scope: mapping.scope,
+          scopeId: mapping.scopeId,
+          roleId: mapping.roleId,
+        });
+        if (!valid) continue;
+        eligibleMappings.push(mapping);
+        const mappingGroupId = canonicalEntraGroupObjectId(
+          mapping.externalGroupId,
+        );
+        if (mappingGroupId && groupIds.has(mappingGroupId))
+          validMappings.push(mapping);
       }
       const allowedMappingIds = new Set(
         validMappings.map((mapping) => mapping.id),
+      );
+      const eligibleMappingIds = new Set(
+        eligibleMappings.map((mapping) => mapping.id),
       );
       const wantedJit = currentJit.value.enabled && Boolean(roleScopeId);
       const [jitRole] = wantedJit
@@ -957,12 +1005,9 @@ async function signInAdmittedIdentity(input: {
       );
       const keptMappingIds = new Set<string>();
       let keptJit = false;
-      const staleGrantReason =
-        identity.groupObjectIds === "overage"
-          ? "claim_overage"
-          : Array.isArray(identity.groupObjectIds)
-            ? "mapping_changed"
-            : "claim_missing";
+      const retirementReasons: Partial<
+        Record<OidcGrantRetirementReason, number>
+      > = {};
       for (const grant of activeSources) {
         const matchedMapping = grant.oidcGroupMappingId
           ? validMappings.find(
@@ -997,14 +1042,24 @@ async function signInAdmittedIdentity(input: {
             keptMappingIds.add(grant.oidcGroupMappingId);
           continue;
         }
+        const retirementReason =
+          grant.sourceKind === "jit_default"
+            ? "mapping_changed"
+            : classifyOidcGrantRetirementReason({
+                evidence: identity.groupObjectIds,
+                grant,
+                mapping: mappings.find(
+                  (candidate) => candidate.id === grant.oidcGroupMappingId,
+                ),
+                eligibleMappingIds,
+              });
+        retirementReasons[retirementReason] =
+          (retirementReasons[retirementReason] ?? 0) + 1;
         await tx
           .update(schema.membershipGrantTable)
           .set({
             revokedAt: now,
-            revocationReason:
-              grant.sourceKind === "jit_default"
-                ? "mapping_changed"
-                : staleGrantReason,
+            revocationReason: retirementReason,
             updatedAt: now,
             membershipId: null,
           })
@@ -1021,10 +1076,7 @@ async function signInAdmittedIdentity(input: {
           outcome: "success",
           detail: {
             source: grant.sourceKind,
-            reason:
-              grant.sourceKind === "jit_default"
-                ? "mapping_changed"
-                : staleGrantReason,
+            reason: retirementReason,
             scope: grant.scope,
             scopeId: grant.scopeId,
           },
@@ -1116,6 +1168,7 @@ async function signInAdmittedIdentity(input: {
               after: {
                 source: "oidc",
                 grantChanges: projectionKeys.length,
+                revocationReasons: retirementReasons,
                 scopes: [
                   ...new Set(
                     projectionKeys.map((key) => `${key.scope}:${key.scopeId}`),
