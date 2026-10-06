@@ -1,5 +1,57 @@
 ## Status First
 
+Snapshot: 2026-10-06 21:35 UTC (7 October in Yangon). Accepted main3096cb04; reviewed DEV08842235 remains shadow-on/enforcement-off. No merge, DEV refresh, strict activation or phase completion occurred.
+
+| Phase | Implementation | Integration | Acceptance / operational closure |
+| --- | --- | --- | --- |
+| P0 | Exact53269374 product/test source independently clear; imagef44 built | Sole closure#583; final private report-contract correction complete | Native137/1659, E2E27, G4/G8 pass; G1119/22 fails; operational proof/finalizer open |
+| P1 | Saved views plus complete CSV export checkpoint2ef7d088 | No new migrations/dependencies; export scoped to current filters/reach/columns with audit | UnitCSV7, policy88, API/web types, OpenAPI237 pass; real PG/browser proof pending; SV17 schema/permission seam held |
+| P2 | Reviewed withdrawal source d5b2842e; notes-only c89c11c0 | Isolated mature checkpoint | Native lifecycle/domain79 and independent source/delta reviews pass; integration and real-browser acceptance open |
+| P3 | Mapping0796bb30; after-commit invalidation tests pass | Independent cache-contract audit complete | Real provider/cache semantics and integrated acceptance open |
+| P4 | Send-time worker8eb0475e; unit10/PG11 pass | Actual query-ownership checker passes | Timing/destination/provider and bulk integrated acceptance open |
+
+### What changed
+
+P1 VW23 now has complete API/UI CSV export: current validated search and reached records, complete cursor traversal, selected/default columns, quoting/formula protection, registered capability and audit, and the work-list action. Checkpoint2ef7d088 is clean/pushed. Original local PostgreSQL password-authentication failure occurred before assertions and is not test success; an owned CI Testcontainers acquisition is now scheduled before performance measurement. No lead/schema behavior was invented and migration0118 is unchanged.
+
+The final532 private runner's independent Sol review found P0-R2: successful off/shadow completion read a strict-only acquisition filename. New derivative final-532-g11-report-contract-20261007 selects and validates the correct mode/source/artifact and preserves cleanup gating. Offline74/74 and hash/pin checks pass; manifest833c32f24c6b021b38b612a89d54739e59d8fe87884864c04b255e8cf635a065. Fresh strong ordinary operational review precedes full Sol review; no runtime execution. Both blocked predecessors remain immutable.
+
+Sol's scope adjudication separates inherited-key P0/RBAC authorization repairs from P4 key/webhook management. The PR Spec field now names its actual P0 contracts and keeps AK3/AK9 as supporting context. Governance section7 stays open. The exact532 registers gate now passes; the intentionally pending template and real G11 failure remain red.
+
+### What is being worked on now
+
+#583 current G11 failure has no proven product-source cause: web/build/fixture/lock sources match the prior8f6 green, while hosted workers/regions differ. One controlled local diagnostic uses unchanged built app and a declared private port-only benchmark override; it is not hosted acceptance or a green rerun. The unrelated4178 listener remains untouched. Actual measurement waits for P1's focused PG test cleanup. Product changes require concrete cost evidence and a complete bounded batch.
+
+Independent date preparation holds final compatibility: two old nonmember project GET400 records differ from intended current404. Original partial dates remain historical, never rewritten or counted as full days. The same actor/resource current replay and final independent Gate D disposition remain required; no automatic date carry or automatic hash-only restart is asserted.
+
+### Critical path
+
+1. Resolve the current G11 failure through one controlled acquisition and an evidenced bounded correction if needed.
+2. Clear the complete private operational report contract and every exact-source required gate.
+3. Complete reviewed image/auth/installer and off/shadow/key/session/strict compatibility proof.
+4. Obtain pending public-config substitution and execute eligible reviewed DEV/UAT strict/rollback, task last.
+5. Protected integration, fresh independent Sol finalizer on accepted main and P0 issue reconciliation.
+
+### Misalignment / drift
+
+#583 sole P0 closure;#589 sole post-P0 train;#581 superseded with history preserved;#587 diagnostic only. Later export/withdrawal/mapping/worker changes stay outside P0.0088–0117 and saved-view0118 remain provisional; no0119 allocated. The inherited352-query count is not current in the passing P4 checkpoint. The prior22/22 and former failed native/browser runs remain historical, not relabeled.
+
+### Concerns
+
+Current G11 margins and failures require evidence; environment-only attribution is unproven. Private runner offline success does not imply runtime completion. P1 real PostgreSQL/browser verification remains pending; mock P2 browser evidence remains explicitly limited. Resource-heavy tests and local measurements are sequenced, with every unowned process preserved.
+
+### Decisions needed from Thomas
+
+Existing public-config substitution is unanswered. P1 separately asks approval for current-team lead editing conjunctive with saved_view:create; canonical team_member.person_id/is_lead schema does not exist here, so no migration allocation or guessed role mapping is made. Neither later-phase decision expands P0.
+
+### Next merge candidates
+
+#583 after all real required gates. Then mature slices enter the single post-P0 integration base in dependency order, with centralized migration allocation and completed bulk acceptance. No dates promised.
+
+---
+
+## Status First
+
 Snapshot: 2026-10-06 21:22 UTC (7 October in Yangon). Accepted main remains `3096cb044bdf6ae98488bfc385f532fa6386343a`. OrbStack DEV remains reviewed `08842235047a3ab2714427edce80331b94558150`, shadow on and enforcement off.
 
 | Phase | Implementation | Integration | Acceptance / operational closure |
