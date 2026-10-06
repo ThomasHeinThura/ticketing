@@ -5,6 +5,15 @@ import { canonicalScimAdminRequest } from "@taskdesk/domain";
 import { and, eq, gt, sql } from "drizzle-orm";
 import db, { schema } from "../database";
 import {
+  canonicalOidcGroupMappingBody,
+  OIDC_GROUP_MAPPING_CREATE_OPERATION,
+  OIDC_GROUP_MAPPING_CREATE_ROUTE,
+  type OIDC_GROUP_MAPPING_UPDATE_OPERATION,
+  OIDC_GROUP_MAPPING_UPDATE_ROUTE,
+  type OidcGroupMappingCreateRequest,
+  type OidcGroupMappingUpdateRequest,
+} from "../identity/oidc-group-mapping-contract";
+import {
   countRecentOperationChallenges,
   countRecentPendingActionChallenges,
   lockActiveStepUpSession,
@@ -151,6 +160,29 @@ export function createScimAdminChallenge(input: {
     route: SCIM_ADMIN_ROUTE,
     version: input.request.configVersion,
     body: canonicalScimAdminBody(input.connectionId, input.request),
+  });
+}
+
+export function createOidcGroupMappingChallenge(input: {
+  personId: string;
+  sessionId: string;
+  connectionId: string;
+  mappingId?: string;
+  request: OidcGroupMappingCreateRequest | OidcGroupMappingUpdateRequest;
+  operation:
+    | typeof OIDC_GROUP_MAPPING_CREATE_OPERATION
+    | typeof OIDC_GROUP_MAPPING_UPDATE_OPERATION;
+}) {
+  const creating = input.operation === OIDC_GROUP_MAPPING_CREATE_OPERATION;
+  return createOperationChallenge({
+    personId: input.personId,
+    sessionId: input.sessionId,
+    operation: input.operation,
+    route: creating
+      ? OIDC_GROUP_MAPPING_CREATE_ROUTE
+      : OIDC_GROUP_MAPPING_UPDATE_ROUTE,
+    version: input.request.configVersion,
+    body: canonicalOidcGroupMappingBody(input),
   });
 }
 
@@ -508,6 +540,31 @@ export async function consumeScimAdminProof(
   });
 }
 
+export async function consumeOidcGroupMappingProof(
+  tx: StepUpTransaction,
+  input: {
+    token: string;
+    personId: string;
+    sessionId: string;
+    connectionId: string;
+    mappingId?: string;
+    request: OidcGroupMappingCreateRequest | OidcGroupMappingUpdateRequest;
+    operation:
+      | typeof OIDC_GROUP_MAPPING_CREATE_OPERATION
+      | typeof OIDC_GROUP_MAPPING_UPDATE_OPERATION;
+  },
+) {
+  const creating = input.operation === OIDC_GROUP_MAPPING_CREATE_OPERATION;
+  return consumeOperationProof(tx, {
+    ...input,
+    version: input.request.configVersion,
+    route: creating
+      ? OIDC_GROUP_MAPPING_CREATE_ROUTE
+      : OIDC_GROUP_MAPPING_UPDATE_ROUTE,
+    body: canonicalOidcGroupMappingBody(input),
+  });
+}
+
 export async function consumeIdentityConnectionProof(
   tx: StepUpTransaction,
   input: {
@@ -811,6 +868,38 @@ export async function issueScimAdminToken(
       operation: SCIM_ADMIN_OPERATION,
       route: SCIM_ADMIN_ROUTE,
       body: canonicalScimAdminBody(input.connectionId, input.request),
+    },
+    verifyAuthentication,
+  );
+}
+
+export async function issueOidcGroupMappingToken(
+  input: {
+    id: string;
+    nonce: string;
+    personId: string;
+    sessionId: string;
+    userId: string;
+    connectionId: string;
+    mappingId?: string;
+    request: OidcGroupMappingCreateRequest | OidcGroupMappingUpdateRequest;
+    operation:
+      | typeof OIDC_GROUP_MAPPING_CREATE_OPERATION
+      | typeof OIDC_GROUP_MAPPING_UPDATE_OPERATION;
+  },
+  verifyAuthentication: () => Promise<
+    "password" | "totp" | "backup_code" | null
+  >,
+) {
+  const creating = input.operation === OIDC_GROUP_MAPPING_CREATE_OPERATION;
+  return issueOperationToken(
+    {
+      ...input,
+      version: input.request.configVersion,
+      route: creating
+        ? OIDC_GROUP_MAPPING_CREATE_ROUTE
+        : OIDC_GROUP_MAPPING_UPDATE_ROUTE,
+      body: canonicalOidcGroupMappingBody(input),
     },
     verifyAuthentication,
   );
