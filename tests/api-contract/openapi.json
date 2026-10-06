@@ -30122,13 +30122,7 @@
             "scimBearerAuth": []
           }
         ]
-      },
-      "servers": [
-        {
-          "url": "http://localhost:5173",
-          "description": "SCIM protocol on the agent origin"
-        }
-      ]
+      }
     },
     "/scim/v2/Users/{id}": {
       "get": {
@@ -30456,13 +30450,7 @@
             "scimBearerAuth": []
           }
         ]
-      },
-      "servers": [
-        {
-          "url": "http://localhost:5173",
-          "description": "SCIM protocol on the agent origin"
-        }
-      ]
+      }
     },
     "/scim/v2/Groups": {
       "get": {
@@ -30607,13 +30595,7 @@
             "scimBearerAuth": []
           }
         ]
-      },
-      "servers": [
-        {
-          "url": "http://localhost:5173",
-          "description": "SCIM protocol on the agent origin"
-        }
-      ]
+      }
     },
     "/scim/v2/Groups/{id}": {
       "get": {
@@ -30930,13 +30912,7 @@
             "scimBearerAuth": []
           }
         ]
-      },
-      "servers": [
-        {
-          "url": "http://localhost:5173",
-          "description": "SCIM protocol on the agent origin"
-        }
-      ]
+      }
     },
     "/scim/v2/ServiceProviderConfig": {
       "get": {
@@ -31096,13 +31072,7 @@
             "scimBearerAuth": []
           }
         ]
-      },
-      "servers": [
-        {
-          "url": "http://localhost:5173",
-          "description": "SCIM protocol on the agent origin"
-        }
-      ]
+      }
     },
     "/scim/v2/ResourceTypes": {
       "get": {
@@ -31199,13 +31169,7 @@
             "scimBearerAuth": []
           }
         ]
-      },
-      "servers": [
-        {
-          "url": "http://localhost:5173",
-          "description": "SCIM protocol on the agent origin"
-        }
-      ]
+      }
     },
     "/scim/v2/Schemas": {
       "get": {
@@ -31265,13 +31229,7 @@
             "scimBearerAuth": []
           }
         ]
-      },
-      "servers": [
-        {
-          "url": "http://localhost:5173",
-          "description": "SCIM protocol on the agent origin"
-        }
-      ]
+      }
     }
   },
   "webhooks": {}

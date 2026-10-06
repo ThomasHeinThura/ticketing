@@ -93,15 +93,15 @@ test.describe("P0 MFA and CSRF browser journey", () => {
       expect(factorStatus.required).toBe(false);
 
       const signOut = async () => {
-        const status = await page.evaluate(async () => {
-          const response = await fetch("/api/auth/sign-out", {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: "{}",
-          });
-          return response.status;
-        });
-        expect(status).toBe(200);
+        // Sign out while the dashboard is detached. Otherwise its session
+        // subscription can start an auth redirect at the same time as the
+        // next explicit sign-in navigation, aborting that navigation.
+        await page.goto("about:blank");
+        const response = await page.request.post(
+          new URL("/api/auth/sign-out", origin).toString(),
+          { headers: { Origin: origin }, data: {} },
+        );
+        expect(response.status()).toBe(200);
       };
       const signInAndCompleteChallenge = async (factor: "totp" | "backup") => {
         await page.goto(new URL("/auth/sign-in", origin).toString());

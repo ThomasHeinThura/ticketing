@@ -987,12 +987,6 @@ export function createApp(
       document.paths ??= {};
       document.paths[`/scim/v2${path}`] = {
         ...scimPathItem,
-        servers: [
-          {
-            url: process.env.TASKDESK_AGENT_URL || "http://localhost:5173",
-            description: "SCIM protocol on the agent origin",
-          },
-        ],
       } as NonNullable<typeof document.paths>[string];
     }
 
