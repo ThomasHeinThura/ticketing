@@ -76,7 +76,8 @@ const RESOURCE_NOT_FOUND_MESSAGE: Record<
   | "column"
   | "workflowRule"
   | "workflow"
-  | "workflowVersion",
+  | "workflowVersion"
+  | "savedView",
   string
 > = {
   task: "Task not found",
@@ -86,6 +87,7 @@ const RESOURCE_NOT_FOUND_MESSAGE: Record<
   comment: "Comment not found",
   column: "Column not found",
   workflowRule: "Workflow rule not found",
+  savedView: "Saved view not found",
   // #31 -- workflow persistence (see `workflow/policy.ts` for the routes these back).
   workflow: "Workflow not found",
   workflowVersion: "Workflow version not found",
@@ -107,7 +109,8 @@ type WorkspaceIdSource =
         | "column"
         | "workflowRule"
         | "workflow"
-        | "workflowVersion";
+        | "workflowVersion"
+        | "savedView";
       idKey: string;
     }
   | {
@@ -137,7 +140,8 @@ type PolicyScopeResource =
   | "column"
   | "workflowRule"
   | "workflow"
-  | "workflowVersion";
+  | "workflowVersion"
+  | "savedView";
 
 type WorkspaceRowScope = {
   workspaceId: string;
@@ -528,7 +532,8 @@ async function lookupWorkspaceId(
     | "column"
     | "workflowRule"
     | "workflow"
-    | "workflowVersion",
+    | "workflowVersion"
+    | "savedView",
   id: string,
   userId: string,
   apiKeyId?: string,
@@ -703,5 +708,10 @@ export const workspaceAccess = {
   fromWorkflowVersion: (idKey = "id") =>
     workspaceAccessMiddleware({
       sources: [{ type: "lookup", resource: "workflowVersion", idKey }],
+    }),
+
+  fromSavedView: (idKey = "id") =>
+    workspaceAccessMiddleware({
+      sources: [{ type: "lookup", resource: "savedView", idKey }],
     }),
 };

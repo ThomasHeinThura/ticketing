@@ -23,10 +23,12 @@ import {
 } from "./schema";
 import {
   approvePersonDeactivation,
+  approveSavedViewDeletion,
   approveServiceCalendarDeletion,
   decideOwnPendingAction,
   getOwnPendingAction,
   getOwnPendingActions,
+  getPendingActionExecutionTarget,
   requirePendingActionRequesterIdentity,
 } from "./service";
 
@@ -206,8 +208,12 @@ const pendingAction = apiRouter()
     const typedName = c.req.valid("json").typedName;
     const token = c.req.valid("header")["x-taskdesk-step-up-token"];
     const traceId = normaliseTraceId(c.req.header("x-request-id"));
+    const target = await getPendingActionExecutionTarget({
+      id,
+      requesterPersonId,
+    });
     const result =
-      typedName === undefined
+      target.targetType === "service_calendar"
         ? await approveServiceCalendarDeletion({
             id,
             requesterPersonId,
@@ -215,19 +221,33 @@ const pendingAction = apiRouter()
             sessionId: session.id,
             traceId,
           })
-        : token === undefined
-          ? (() => {
-              throw new HTTPException(403, { message: "step_up_expired" });
-            })()
-          : await approvePersonDeactivation({
+        : target.targetType === "saved_view"
+          ? await approveSavedViewDeletion({
               id,
               requesterPersonId,
               userId: c.get("userId"),
               sessionId: session.id,
-              typedName,
-              stepUpToken: token,
               traceId,
-            });
+            })
+          : target.targetType === "person" && typedName !== undefined
+            ? token === undefined
+              ? (() => {
+                  throw new HTTPException(403, { message: "step_up_expired" });
+                })()
+              : await approvePersonDeactivation({
+                  id,
+                  requesterPersonId,
+                  userId: c.get("userId"),
+                  sessionId: session.id,
+                  typedName,
+                  stepUpToken: token,
+                  traceId,
+                })
+            : (() => {
+                throw new HTTPException(409, {
+                  message: "pending_action_kind_unsupported",
+                });
+              })();
     setShadowLegacyAuthorization(c, "allowed");
     return c.json(
       { id: result.id, state: result.state as "executed" | "expired" },

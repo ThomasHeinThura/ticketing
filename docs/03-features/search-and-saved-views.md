@@ -14,7 +14,7 @@ search plus a presentation choice.
 
 ## Data
 
-`saved_view` (`owner_id`, `scope`/`scope_id` — the query's own context, a workspace or a
+`saved_view` (`workspace_id`, `created_by`, `scope`/`scope_id` — the query's own context, a workspace or a
 project — `visibility`, `shared_with_team_id`, `name`, `query`, `layout`), `user_preference`
 (kind 2 — pinned views, `SV-20`). See [data model](../01-architecture/data-model.md).
 
@@ -115,7 +115,7 @@ triage. See [intake queue](intake-queue.md).
 | --- | --- |
 | Search | Any authenticated session; scoped to reach |
 | Create a private view | Any authenticated session |
-| Create a team view | Team membership |
+| Create or publish a team view | `saved_view:share` **and** membership in the target team |
 | Create a workspace view | `workspace:manage_settings` |
 | Edit a shared view | Owner, or `workspace:manage_settings` |
 
@@ -135,7 +135,7 @@ Routes and status in the [screen inventory](../02-design/screen-inventory.md).
 ```
 POST /api/work-items/search                    work_item:read
 GET  /api/search?q=…&kinds=…                   work_item:read (scope workspace via `X-Workspace-Id`; results reach-filtered)
-GET  /api/views                                saved_view:read (scope workspace)
+GET  /api/views                                saved_view:read (scope workspace; each reachable view includes the caller's `isPinned` state, pinned views first)
 POST /api/views                                saved_view:create (scope workspace)
 GET  /api/views/{id}                           saved_view:read — the view's own workspace; shared-with is part of reach
 PATCH /api/views/{id}                          workspace:manage_settings · orOwner(created_by, saved_view:create)
