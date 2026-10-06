@@ -59,6 +59,7 @@ test("create dialog opens while the list, wrapper, and form load independently",
 
   let releaseWrapper!: () => void;
   let wrapperRequested!: () => void;
+  let wrapperContinued!: () => void;
   let wrapperRequestCount = 0;
   const wrapperRequest = new Promise<void>((resolve) => {
     wrapperRequested = resolve;
@@ -66,9 +67,12 @@ test("create dialog opens while the list, wrapper, and form load independently",
   const wrapperRelease = new Promise<void>((resolve) => {
     releaseWrapper = resolve;
   });
+  const wrapperFinished = new Promise<void>((resolve) => {
+    wrapperContinued = resolve;
+  });
   await page.route(
     (url) =>
-      url.pathname.includes("create-work-item-dialog-") &&
+      url.pathname.includes("work-item-create-dialog-shell-") &&
       !url.pathname.includes("-form-") &&
       url.pathname.endsWith(".js"),
     async (route) => {
@@ -76,6 +80,7 @@ test("create dialog opens while the list, wrapper, and form load independently",
       wrapperRequested();
       await wrapperRelease;
       await route.continue();
+      wrapperContinued();
     },
   );
 
@@ -108,7 +113,26 @@ test("create dialog opens while the list, wrapper, and form load independently",
     await expect(
       page.getByTestId("create-work-item-dialog-loading"),
     ).toBeVisible();
+    await page.keyboard.press("Escape");
+    await expect(page.getByRole("dialog")).toHaveCount(0);
+    await expect(
+      page.getByTestId("create-work-item-dialog-loading"),
+    ).toHaveCount(0);
+    await expect(trigger).toBeFocused();
     releaseWrapper();
+    await wrapperFinished;
+    await page.evaluate(
+      () =>
+        new Promise<void>((resolve) =>
+          requestAnimationFrame(() => requestAnimationFrame(() => resolve())),
+        ),
+    );
+    await expect(page.getByRole("dialog")).toHaveCount(0);
+    await expect(
+      page.getByTestId("create-work-item-dialog-loading"),
+    ).toHaveCount(0);
+
+    await trigger.click();
 
     const dialog = page.getByRole("dialog");
     await expect(dialog).toBeVisible();
@@ -138,16 +162,16 @@ test("create dialog opens while the list, wrapper, and form load independently",
   }
 });
 
-test("a failed dialog intent preload keeps the shell available and reloads for recovery", async ({
+test("a failed dialog shell load shows a retry state and recovers after reload", async ({
   page,
-}) => {
+}, testInfo) => {
   await page.setViewportSize({ width: 1280, height: 720 });
   await installPerformanceApiFixture(page);
 
   let wrapperRequestCount = 0;
   await page.route(
     (url) =>
-      url.pathname.includes("create-work-item-dialog-") &&
+      url.pathname.includes("work-item-create-dialog-shell-") &&
       !url.pathname.includes("-form-") &&
       url.pathname.endsWith(".js"),
     async (route) => {
@@ -163,29 +187,20 @@ test("a failed dialog intent preload keeps the shell available and reloads for r
   await page.goto(WORK_LIST_PATH);
   const trigger = page.getByTestId("create-work-item-trigger");
   await expect(trigger).toBeVisible();
-  const failedPreload = page.waitForEvent(
-    "requestfailed",
-    (request) =>
-      request.url().includes("create-work-item-dialog-") &&
-      !request.url().includes("-form-"),
-  );
-  await trigger.focus();
-  await failedPreload;
-  await page.evaluate(
-    () =>
-      new Promise<void>((resolve) => requestAnimationFrame(() => resolve())),
-  );
-  await trigger.press("Enter");
+  await trigger.click();
 
   const dialog = page.getByRole("dialog");
-  await expect(dialog).toBeVisible();
+  await expect(dialog).toHaveCount(0);
   await expect(page.getByRole("alert")).toBeVisible();
-  await page.getByRole("button", { name: /tryAgain/ }).click();
+  await page.screenshot({
+    path: testInfo.outputPath("create-dialog-load-error.png"),
+  });
+  await page.getByRole("button", { name: /try again/i }).click();
   await expect(page.getByTestId("create-work-item-trigger")).toBeVisible();
   await page.getByTestId("create-work-item-trigger").click();
   await expect(dialog).toBeVisible();
   await expect(dialog.getByTestId("create-work-item-title")).toBeVisible();
-  expect(wrapperRequestCount).toBe(2);
+  expect(wrapperRequestCount).toBeGreaterThanOrEqual(2);
   await page.keyboard.press("Escape");
   await expect(dialog).toBeHidden();
   await page.getByTestId("create-work-item-trigger").focus();

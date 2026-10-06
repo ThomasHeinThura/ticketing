@@ -329,6 +329,59 @@ test("check:queries binds only registered database transaction callback types", 
   }
 });
 
+test("check:queries resolves generic aliases by lexical type-parameter identity", () => {
+  const positives = [
+    [
+      'import type { DbTransaction } from "../events/outbox";',
+      "type Id<T> = T;",
+      "type Wrap<T> = Id<Id<T>>;",
+      "type Nested<T> = Wrap<T>;",
+      "function read(tx: Nested<DbTransaction>) { tx.select(); }",
+    ].join("\n"),
+    [
+      'import type { DbTransaction } from "../events/outbox";',
+      "type Defaulted<T, U = T> = U;",
+      "type Root<T = DbTransaction> = Defaulted<T>;",
+      "function read(tx: Root) { tx.select(); }",
+    ].join("\n"),
+    [
+      'import type { DbTransaction } from "../events/outbox";',
+      "type Id<T> = T;",
+      "type Outer<T> = Id<Id<T>>;",
+      "function read(tx: Outer<DbTransaction>) { tx.query.person.findMany(); }",
+    ].join("\n"),
+  ];
+  for (const source of positives) {
+    assert.deepEqual(
+      queryReadViolations(source, "apps/api/src/example.ts").map(
+        ({ method }) => method,
+      ),
+      [source.includes("findMany") ? "findMany" : "select"],
+      source,
+    );
+  }
+
+  const negatives = [
+    [
+      'import type { DbTransaction } from "../events/outbox";',
+      "function read<DbTransaction>(tx: DbTransaction) { tx.select(); }",
+    ].join("\n"),
+    [
+      'import type { DatabaseInstance } from "../database";',
+      "function read<DatabaseInstance>(db: DatabaseInstance) { db.select(); }",
+    ].join("\n"),
+    "type Loop<T = T> = T; function read(tx: Loop) { tx.select(); }",
+    "type First<T> = Second<T>; type Second<U> = First<U>; function read(tx: First<string>) { tx.select(); }",
+  ];
+  for (const source of negatives) {
+    assert.deepEqual(
+      queryReadViolations(source, "apps/api/src/example.ts"),
+      [],
+      source,
+    );
+  }
+});
+
 test("check:queries flags known transaction methods that escape the direct callback boundary", () => {
   const cases = [
     'import db from "../database"; db.transaction.call(db, (tx) => tx.select());',

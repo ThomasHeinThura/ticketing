@@ -121,6 +121,7 @@ function resolveDatabaseType(
   bindings,
   seenAliases = new Set(),
   substitutions = new Map(),
+  seenSubstitutions = new Set(),
 ) {
   const node = unwrap(
     input?.type === "TSTypeAnnotation" ? input.typeAnnotation : input,
@@ -135,6 +136,7 @@ function resolveDatabaseType(
         bindings,
         seenAliases,
         substitutions,
+        seenSubstitutions,
       );
       if (kind) return kind;
     }
@@ -147,6 +149,7 @@ function resolveDatabaseType(
       bindings,
       seenAliases,
       substitutions,
+      seenSubstitutions,
     );
 
   if (node.type === "TSTypeQuery") {
@@ -181,6 +184,7 @@ function resolveDatabaseType(
         bindings,
         seenAliases,
         substitutions,
+        seenSubstitutions,
       ) === "database"
     ) {
       return "transactionMethod";
@@ -200,6 +204,7 @@ function resolveDatabaseType(
         bindings,
         seenAliases,
         substitutions,
+        seenSubstitutions,
       );
       if (parametersKind === "transactionMethodParameters")
         return "transactionCallback";
@@ -213,47 +218,51 @@ function resolveDatabaseType(
   const nameNode = unwrap(node.typeName);
   if (nameNode?.type !== "Identifier") return null;
 
-  const substitution = substitutions.get(nameNode.name);
-  if (substitution) {
+  let typeScope = scope;
+  let typeBinding;
+  while (typeScope) {
+    typeBinding = typeScope.typeBindings.get(nameNode.name);
+    if (typeBinding) break;
+    typeScope = typeScope.parent;
+  }
+  if (typeBinding?.kind === "typeParameter") {
+    const substitution = substitutions.get(typeBinding);
+    if (!substitution || seenSubstitutions.has(typeBinding)) return null;
+    const nextSeen = new Set(seenSubstitutions);
+    nextSeen.add(typeBinding);
     return resolveDatabaseType(
       substitution.input,
       substitution.scope,
       bindings,
       seenAliases,
       substitutions,
+      nextSeen,
     );
   }
-
-  let typeScope = scope;
-  let typeBinding;
-  while (typeScope) {
-    typeBinding = typeScope.typeBindings.get(nameNode.name);
-    if (typeBinding?.kind === "databaseTypeRoot") return "database";
-    if (typeBinding?.kind === "transactionTypeRoot") return "transaction";
-    if (typeBinding?.kind === "typeAlias") break;
-    typeBinding = undefined;
-    typeScope = typeScope.parent;
-  }
+  if (typeBinding?.kind === "databaseTypeRoot") return "database";
+  if (typeBinding?.kind === "transactionTypeRoot") return "transaction";
   if (typeBinding) {
-    if (seenAliases.has(typeBinding)) return null;
+    if (typeBinding.kind !== "typeAlias") return null;
+    // A nested instantiation may use the same alias more than once (Id<Id<T>>).
+    // Stop only when expansion revisits the same source reference in a cycle.
+    if (seenAliases.has(node)) return null;
     const nextSeen = new Set(seenAliases);
-    nextSeen.add(typeBinding);
+    nextSeen.add(node);
     const nextSubstitutions = new Map(substitutions);
-    const parameters = typeBinding.typeParameters?.params ?? [];
+    const parameters = typeBinding.typeParameterBindings ?? [];
     const arguments_ = node.typeParameters?.params ?? [];
     for (let index = 0; index < parameters.length; index += 1) {
       const parameter = parameters[index];
-      if (typeof parameter.name !== "string") continue;
       const argument = arguments_[index];
       if (argument) {
-        nextSubstitutions.set(parameter.name, {
+        nextSubstitutions.set(parameter, {
           input: argument,
           scope,
         });
-      } else if (parameter.default) {
-        nextSubstitutions.set(parameter.name, {
-          input: parameter.default,
-          scope: typeBinding.scope,
+      } else if (parameter.node.default) {
+        nextSubstitutions.set(parameter, {
+          input: parameter.node.default,
+          scope: typeBinding.typeParameterScope,
         });
       }
     }
@@ -263,6 +272,7 @@ function resolveDatabaseType(
       bindings,
       nextSeen,
       nextSubstitutions,
+      new Set(),
     );
   }
 
@@ -274,6 +284,7 @@ function resolveDatabaseType(
       bindings,
       seenAliases,
       substitutions,
+      seenSubstitutions,
     );
     if (kind === "transactionMethod") return "transactionMethodParameters";
     if (kind === "transactionCallback") return "transactionCallbackParameters";
@@ -293,6 +304,7 @@ function resolveDatabaseType(
         bindings,
         seenAliases,
         substitutions,
+        seenSubstitutions,
       );
       if (kind) return kind;
     }
@@ -331,7 +343,25 @@ function collectStaticBindings(ast) {
 
   function addTypeBinding(scope, name, binding) {
     if (!name) return;
-    scope.typeBindings.set(name, { ...binding, name, scope });
+    const resolved = { ...binding, name, scope };
+    scope.typeBindings.set(name, resolved);
+    return resolved;
+  }
+
+  function addTypeParameters(scope, declaration) {
+    const bindings = [];
+    for (const parameter of declaration?.params ?? []) {
+      if (parameter.type !== "TSTypeParameter" || !parameter.name) continue;
+      const binding = {
+        kind: "typeParameter",
+        name: parameter.name,
+        scope,
+        node: parameter,
+      };
+      scope.typeBindings.set(parameter.name, binding);
+      bindings.push(binding);
+    }
+    return bindings;
   }
 
   function addPattern(
@@ -409,6 +439,7 @@ function collectStaticBindings(ast) {
         addBinding(scope, node.id.name, { kind: "declaration" });
       }
       const functionScope = childScope(scope, true);
+      addTypeParameters(functionScope, node.typeParameters);
       if (node.id) {
         nodeScopes.set(node.id, functionScope);
         if (node.type !== "FunctionDeclaration") {
@@ -450,6 +481,7 @@ function collectStaticBindings(ast) {
         addBinding(scope, node.id.name, { kind: "declaration" });
       }
       activeScope = childScope(scope);
+      addTypeParameters(activeScope, node.typeParameters);
       if (node.id && node.type === "ClassExpression") {
         addBinding(activeScope, node.id.name, { kind: "declaration" });
       }
@@ -499,11 +531,19 @@ function collectStaticBindings(ast) {
         }
       }
     } else if (node.type === "TSTypeAliasDeclaration") {
-      addTypeBinding(activeScope, node.id?.name, {
+      const alias = addTypeBinding(activeScope, node.id?.name, {
         kind: "typeAlias",
         typeAnnotation: node.typeAnnotation,
         typeParameters: node.typeParameters,
       });
+      const typeParameterScope = childScope(activeScope);
+      alias.scope = typeParameterScope;
+      alias.typeParameterScope = typeParameterScope;
+      alias.typeParameterBindings = addTypeParameters(
+        typeParameterScope,
+        node.typeParameters,
+      );
+      activeScope = typeParameterScope;
     }
 
     for (const [key, value] of Object.entries(node)) {

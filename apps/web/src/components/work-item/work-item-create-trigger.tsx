@@ -1,13 +1,16 @@
 import { Button } from "@taskdesk/ui";
+import type { Ref } from "react";
 import { useTranslation } from "react-i18next";
 import { useWorkspacePermission } from "@/hooks/use-workspace-permission";
 
 export default function WorkItemCreateTrigger({
   onPreload,
   onClick,
+  buttonRef,
 }: {
   onPreload: () => void;
   onClick: () => void;
+  buttonRef?: Ref<HTMLButtonElement>;
 }) {
   const { t } = useTranslation();
   const { canCreateTasks, isCheckingPermissions } = useWorkspacePermission();
@@ -16,6 +19,7 @@ export default function WorkItemCreateTrigger({
 
   return (
     <Button
+      ref={buttonRef}
       size="sm"
       onPointerEnter={onPreload}
       onFocus={onPreload}
