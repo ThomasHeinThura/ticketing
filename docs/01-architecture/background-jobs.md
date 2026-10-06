@@ -311,8 +311,9 @@ integration coverage exercises contention, lock-delayed expiry takeover, the six
 injected success, reach suppression, and digest-key collision rejection.
 
 This is not the complete notifications runtime. `apps/api/src/notification/fanout.ts` provides
-the transactional producer seam, but event-specific recipient/reach resolvers are not wired
-to mutation producers. Digest membership/window calculation and group delivery, scheduler
+the transactional producer seam, and a `workspace.created` owner resolver. Neither the
+resolver nor any event-specific recipient/reach logic is wired to mutation producers. Digest
+membership/window calculation and group delivery, scheduler
 registration, concrete `notify.*` adapter registry, and concrete send-time reach/preference/
 quiet-hours evaluator remain integration work. The adapter seam deliberately has no
 default-success implementation.
