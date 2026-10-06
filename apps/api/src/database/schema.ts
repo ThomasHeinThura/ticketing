@@ -495,6 +495,68 @@ export const projectTable = pgTable(
   ],
 );
 
+export const instancePluginConfigTable = pgTable(
+  "instance_plugin_config",
+  {
+    id: text("id").primaryKey(),
+    pluginId: text("plugin_id").notNull(),
+    instanceKey: text("instance_key").notNull(),
+    displayName: text("display_name").notNull(),
+    enabled: boolean("enabled").notNull(),
+    config: jsonb("config").notNull(),
+    secrets: bytea("secrets"),
+    scope: text("scope").notNull(),
+    workspaceId: text("workspace_id").references(() => workspaceTable.id, {
+      onDelete: "cascade",
+    }),
+    portalScope: text("portal_scope"),
+    configVersion: integer("config_version").notNull(),
+    createdAt: timestamp("created_at", { mode: "date", withTimezone: true })
+      .defaultNow()
+      .notNull(),
+    updatedAt: timestamp("updated_at", { mode: "date", withTimezone: true })
+      .defaultNow()
+      .notNull(),
+    updatedBy: text("updated_by").references(() => personTable.id, {
+      onDelete: "set null",
+      onUpdate: "cascade",
+    }),
+  },
+  (table) => [
+    unique("instance_plugin_config_instance_unique").on(
+      table.pluginId,
+      table.instanceKey,
+    ),
+    check(
+      "instance_plugin_config_scope_check",
+      sql`${table.scope} in ('instance', 'workspace')`,
+    ),
+    check(
+      "instance_plugin_config_workspace_scope_check",
+      sql`(${table.scope} = 'instance' and ${table.workspaceId} is null) or (${table.scope} = 'workspace' and ${table.workspaceId} is not null)`,
+    ),
+    check(
+      "instance_plugin_config_portal_scope_check",
+      sql`${table.portalScope} is null or ${table.portalScope} in ('agent', 'customer', 'both')`,
+    ),
+    check(
+      "instance_plugin_config_auth_portal_scope_required",
+      sql`${table.pluginId} not like 'auth.%' or ${table.portalScope} is not null`,
+    ),
+    check(
+      "instance_plugin_config_non_auth_portal_scope_null",
+      sql`${table.pluginId} like 'auth.%' or ${table.portalScope} is null`,
+    ),
+    check(
+      "instance_plugin_config_version_positive",
+      sql`${table.configVersion} > 0`,
+    ),
+    index("instance_plugin_config_auth_version_idx")
+      .on(table.configVersion)
+      .where(sql`${table.pluginId} like 'auth.%'`),
+  ],
+);
+
 // Feature flags are persisted at each inheritance level. The closed key set and
 // built-in defaults live in packages/permissions/src/features.ts; SQL checks repeat
 // that same closed enum so invalid stored values fail at the database boundary.

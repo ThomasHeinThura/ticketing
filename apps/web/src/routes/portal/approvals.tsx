@@ -1,4 +1,4 @@
-import { createFileRoute } from "@tanstack/react-router";
+import { createFileRoute, Link } from "@tanstack/react-router";
 import {
   Alert,
   AlertDescription,
@@ -50,8 +50,10 @@ export function PortalApprovalsPage() {
           <AlertDescription>
             {portalSessionRequired ? (
               <p>
-                Sign in through your customer portal to view approvals. The
-                portal sign-in screen is not available in this build.
+                Sign in through your customer portal to view approvals.{" "}
+                <Link className="underline" to="/sign-in">
+                  Sign in
+                </Link>
               </p>
             ) : (
               <>

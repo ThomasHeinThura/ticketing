@@ -1,4 +1,5 @@
 import { cleanup, fireEvent, render, screen } from "@testing-library/react";
+import type { ReactNode } from "react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { HttpError } from "@/lib/http-error";
 import { PortalApprovalsPage } from "./approvals";
@@ -33,6 +34,9 @@ const mocks = vi.hoisted(() => ({
 
 vi.mock("@tanstack/react-router", () => ({
   createFileRoute: () => (options: unknown) => options,
+  Link: ({ children, to }: { children: ReactNode; to: string }) => (
+    <a href={to}>{children}</a>
+  ),
 }));
 
 vi.mock("@/hooks/queries/approval/use-get-portal-approvals", () => ({
@@ -72,9 +76,9 @@ describe("PortalApprovalsPage", () => {
     expect(
       screen.getByText("Customer portal sign-in required"),
     ).toBeInTheDocument();
-    expect(
-      screen.getByText(/sign-in screen is not available in this build/i),
-    ).toBeInTheDocument();
-    expect(screen.queryByRole("link")).toBeNull();
+    expect(screen.getByRole("link", { name: "Sign in" })).toHaveAttribute(
+      "href",
+      "/sign-in",
+    );
   });
 });
