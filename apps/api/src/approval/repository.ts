@@ -1,4 +1,5 @@
 import {
+  CAPABILITY_NAMES,
   can,
   type ProjectReachFacts,
   reaches,
@@ -10,6 +11,7 @@ import { HTTPException } from "hono/http-exception";
 import db, { schema } from "../database";
 import type { ApiKey } from "../openapi";
 import { resolveIdentity } from "../permissions/resolve-identity";
+import { apiKeyHasCapabilityScope } from "../utils/require-api-key-permission-scope";
 
 const approverPerson = alias(schema.personTable, "approver_person");
 type Transaction = Parameters<Parameters<typeof db.transaction>[0]>[0];
@@ -129,7 +131,17 @@ export async function resolveApprovalIdentityIfActive(
     userId,
     credential: apiKey ? "api_key" : "session",
     apiKey: apiKey
-      ? { enabled: apiKey.enabled, ownerUserId: apiKey.userId }
+      ? {
+          enabled: apiKey.enabled,
+          ownerUserId: apiKey.userId,
+          // Better Auth stores key scopes as resource/action statements; project those
+          // statements onto the registered capability vocabulary before the canonical
+          // evaluator intersects them with the owner's current roles. Keep this mapping
+          // in the shared, validated scope helper instead of parsing it locally.
+          capabilities: CAPABILITY_NAMES.filter((capability) =>
+            apiKeyHasCapabilityScope(apiKey, capability),
+          ),
+        }
       : undefined,
   });
 }

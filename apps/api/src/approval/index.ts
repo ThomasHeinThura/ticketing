@@ -1,4 +1,4 @@
-import type { Capability } from "@taskdesk/permissions";
+import { type Capability, expandCapabilities } from "@taskdesk/permissions";
 import { HTTPException } from "hono/http-exception";
 import {
   apiRouter,
@@ -372,6 +372,22 @@ function approvalRouter() {
       const target = await loadApprovalTargetByApprovalId(id);
       if (!target)
         throw new HTTPException(404, { message: "Approval not found" });
+      const apiKey = c.get("apiKey");
+      // AP-7's instance-admin withdrawal exception does not remove the API key's
+      // capability ceiling. The normal requester branch is checked against the owner's
+      // current authority and the projected key subset by `hasApprovalCapability` below;
+      // the admin exception still requires the route's registered `approval:request`
+      // key scope.
+      if (
+        apiKey &&
+        !expandCapabilities(identity.keyCapabilities ?? []).has(
+          "approval:request" as Capability,
+        )
+      ) {
+        throw new HTTPException(403, {
+          message: "Insufficient API key scope",
+        });
+      }
       if (
         identity.reach.kind !== "all" &&
         !hasApprovalCapability(
