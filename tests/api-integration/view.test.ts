@@ -1,4 +1,4 @@
-import { randomUUID } from "node:crypto";
+import { createHash, randomUUID } from "node:crypto";
 import { defaultRolePayloads } from "@taskdesk/permissions";
 import { and, eq } from "drizzle-orm";
 import { beforeEach, describe, expect, it, vi } from "vitest";
@@ -11,6 +11,41 @@ import { ensureInternalOrganisation } from "../../apps/api/src/utils/seed-intern
 import { mockAnonymousSession, mockAuthenticatedSession } from "./helpers/auth";
 import { resetTestDatabase } from "./helpers/database";
 import { createWorkspaceMember, requireRow } from "./helpers/fixtures";
+
+function hashApiKey(rawKey: string): string {
+  return createHash("sha256")
+    .update(rawKey)
+    .digest()
+    .toString("base64")
+    .replace(/\+/g, "-")
+    .replace(/\//g, "_")
+    .replace(/=+$/, "");
+}
+
+async function createViewApiKey(
+  userId: string,
+  permissions: Record<string, string[]>,
+) {
+  const rawKey = `taskdesk_test_${randomUUID()}`;
+  const now = new Date();
+  const [key] = await db
+    .insert(schema.apikeyTable)
+    .values({
+      referenceId: userId,
+      userId,
+      key: hashApiKey(rawKey),
+      name: "saved view scope test key",
+      start: rawKey.slice(0, 12),
+      prefix: "taskdesk",
+      permissions: JSON.stringify(permissions),
+      createdAt: now,
+      updatedAt: now,
+    })
+    .returning({ id: schema.apikeyTable.id });
+  if (!key)
+    throw new Error("Saved-view API-key fixture insert returned no row");
+  return { id: key.id, rawKey };
+}
 
 /** Return the provisioned `person` row or create one for helpers that only seed users. */
 async function addPerson(userId: string) {
@@ -225,6 +260,98 @@ describe("API integration: saved views", () => {
       visibility: "private",
       sharedWithTeamId: null,
     });
+  });
+
+  it("keeps API-key ceilings on view share and workspace-visibility checks", async () => {
+    const member = await createWorkspaceMember({ role: "owner" });
+    await addPerson(member.user.id);
+    const teamId = `team-view-key-scope-${randomUUID()}`;
+    await db.insert(schema.teamTable).values({
+      id: teamId,
+      name: "Key scope team",
+      workspaceId: member.workspace.id,
+      createdAt: new Date(),
+    });
+    await db.insert(schema.teamMemberTable).values({
+      id: `team-member-view-key-scope-${randomUUID()}`,
+      teamId,
+      userId: member.user.id,
+      createdAt: new Date(),
+    });
+
+    mockAuthenticatedSession(member.user);
+    const { app } = createApp();
+    const privateViewResponse = await app.request("/api/views", {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({
+        workspaceId: member.workspace.id,
+        name: "Private view for key-scope check",
+        scope: "workspace",
+        scopeId: member.workspace.id,
+        layout: "list",
+        query: { entity: "work_item" },
+      }),
+    });
+    expect(privateViewResponse.status).toBe(200);
+    const privateView = (await privateViewResponse.json()) as { id: string };
+    const key = await createViewApiKey(member.user.id, {
+      saved_view: ["create"],
+    });
+    const keyHeaders = {
+      authorization: `Bearer ${key.rawKey}`,
+      "content-type": "application/json",
+    };
+
+    const teamCreate = await app.request("/api/views", {
+      method: "POST",
+      headers: keyHeaders,
+      body: JSON.stringify({
+        workspaceId: member.workspace.id,
+        name: "Must not publish without key scope",
+        scope: "workspace",
+        scopeId: member.workspace.id,
+        visibility: "team",
+        sharedWithTeamId: teamId,
+        layout: "list",
+        query: { entity: "work_item" },
+      }),
+    });
+    expect(teamCreate.status).toBe(403);
+
+    const workspaceCreate = await app.request("/api/views", {
+      method: "POST",
+      headers: keyHeaders,
+      body: JSON.stringify({
+        workspaceId: member.workspace.id,
+        name: "Must not publish workspace-wide without key scope",
+        scope: "workspace",
+        scopeId: member.workspace.id,
+        visibility: "workspace",
+        layout: "list",
+        query: { entity: "work_item" },
+      }),
+    });
+    expect(workspaceCreate.status).toBe(403);
+
+    const teamUpdate = await app.request(`/api/views/${privateView.id}`, {
+      method: "PATCH",
+      headers: keyHeaders,
+      body: JSON.stringify({ visibility: "team", sharedWithTeamId: teamId }),
+    });
+    expect(teamUpdate.status).toBe(403);
+
+    const workspaceUpdate = await app.request(`/api/views/${privateView.id}`, {
+      method: "PATCH",
+      headers: keyHeaders,
+      body: JSON.stringify({ visibility: "workspace" }),
+    });
+    expect(workspaceUpdate.status).toBe(403);
+    expect(
+      await db.query.savedViewTable.findFirst({
+        where: eq(schema.savedViewTable.id, privateView.id),
+      }),
+    ).toMatchObject({ visibility: "private", sharedWithTeamId: null });
   });
 
   it("rejects a scopeId naming a project outside the workspace", async () => {
@@ -496,6 +623,102 @@ describe("API integration: saved views", () => {
           eq(schema.auditLogTable.action, "saved_view.deleted"),
           eq(schema.auditLogTable.entityId, created.id),
         ),
+      }),
+    ).toBeDefined();
+  });
+
+  it("invalidates a key-originated saved-view deletion when its key scope is narrowed", async () => {
+    const member = await createWorkspaceMember();
+    const person = await addPerson(member.user.id);
+    mockAuthenticatedSession(member.user);
+    const { app } = createApp();
+    const now = new Date();
+    await db.insert(schema.sessionTable).values({
+      id: `session-${member.user.id}`,
+      token: `token-${member.user.id}`,
+      userId: member.user.id,
+      portal: "agent",
+      expiresAt: new Date(now.getTime() + 60 * 60 * 1000),
+      createdAt: now,
+      updatedAt: now,
+    });
+
+    const createResponse = await app.request("/api/views", {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({
+        workspaceId: member.workspace.id,
+        name: "Key request with revocable scope",
+        scope: "workspace",
+        scopeId: member.workspace.id,
+        layout: "list",
+        query: { entity: "work_item" },
+      }),
+    });
+    expect(createResponse.status).toBe(200);
+    const view = (await createResponse.json()) as { id: string };
+    const key = await createViewApiKey(member.user.id, {
+      saved_view: ["create"],
+    });
+    const deletion = await app.request(`/api/views/${view.id}`, {
+      method: "DELETE",
+      headers: { authorization: `Bearer ${key.rawKey}` },
+    });
+    expect(deletion.status).toBe(202);
+    const pending = (await deletion.json()) as { pendingActionId: string };
+
+    await db
+      .update(schema.apikeyTable)
+      .set({ permissions: JSON.stringify({ saved_view: ["read"] }) })
+      .where(eq(schema.apikeyTable.id, key.id));
+
+    const approval = await app.request(
+      `/api/me/pending-actions/${pending.pendingActionId}/approve`,
+      {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: "{}",
+      },
+    );
+    expect(approval.status).toBe(409);
+    expect(
+      await db.query.pendingActionTable.findFirst({
+        where: eq(schema.pendingActionTable.id, pending.pendingActionId),
+      }),
+    ).toMatchObject({
+      requestedByPersonId: person.id,
+      state: "invalidated",
+      invalidationReason: "capability_removed",
+    });
+    expect(
+      await db.query.outboxTable.findFirst({
+        where: eq(schema.outboxTable.kind, "pending_action.decided"),
+      }),
+    ).toMatchObject({
+      payload: {
+        payload: {
+          outcome: "invalidated",
+          invalidationReason: "capability_removed",
+        },
+      },
+    });
+    expect(
+      await db.query.auditLogTable.findFirst({
+        where: and(
+          eq(schema.auditLogTable.action, "pending_action.decided"),
+          eq(schema.auditLogTable.entityId, pending.pendingActionId),
+        ),
+      }),
+    ).toMatchObject({
+      action: "pending_action.decided",
+      after: {
+        state: "invalidated",
+        invalidationReason: "capability_removed",
+      },
+    });
+    expect(
+      await db.query.savedViewTable.findFirst({
+        where: eq(schema.savedViewTable.id, view.id),
       }),
     ).toBeDefined();
   });

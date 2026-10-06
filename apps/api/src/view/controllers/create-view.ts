@@ -2,6 +2,7 @@ import { HTTPException } from "hono/http-exception";
 import { publishEvent } from "../../events";
 import type { z } from "../../openapi";
 import { rejectNulByte } from "../../utils/reject-nul-byte";
+import type { ApiKeyPermissionScope } from "../../utils/require-api-key-permission-scope";
 import { assertCallerHasCapability } from "../../utils/require-workspace-capability";
 import { assertCanShareView } from "../assert-can-share-view";
 import {
@@ -51,6 +52,7 @@ async function createView(
   personId: string,
   userId: string,
   auditActor: SavedViewAuditActor,
+  apiKey?: ApiKeyPermissionScope,
 ) {
   const { workspaceId, scope, scopeId, visibility, sharedWithTeamId } = input;
 
@@ -65,7 +67,7 @@ async function createView(
     }
     rejectNulByte(sharedWithTeamId, "sharedWithTeamId");
     // `saved_view:share` (rbac.md) and membership in THIS team are separate gates.
-    await assertCanShareView(workspaceId, userId);
+    await assertCanShareView(workspaceId, userId, apiKey);
     const membershipExists = await teamMemberInWorkspace(
       sharedWithTeamId,
       userId,
@@ -88,6 +90,7 @@ async function createView(
       workspaceId,
       userId,
       "workspace:manage_settings",
+      apiKey,
     );
   }
 

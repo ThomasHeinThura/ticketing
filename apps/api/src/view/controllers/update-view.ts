@@ -2,6 +2,7 @@ import { HTTPException } from "hono/http-exception";
 import { publishEvent } from "../../events";
 import type { z } from "../../openapi";
 import { rejectNulByte } from "../../utils/reject-nul-byte";
+import type { ApiKeyPermissionScope } from "../../utils/require-api-key-permission-scope";
 import { assertCallerHasCapability } from "../../utils/require-workspace-capability";
 import { assertCanEditView } from "../assert-can-edit-view";
 import { assertCanShareView } from "../assert-can-share-view";
@@ -26,6 +27,7 @@ async function updateView(
   personId: string,
   userId: string,
   auditActor: SavedViewAuditActor,
+  apiKey?: ApiKeyPermissionScope,
 ) {
   const { updated, before } = await withSavedViewTransaction(async (tx) => {
     const view = await findSavedViewByIdInTransaction(tx, id);
@@ -34,7 +36,7 @@ async function updateView(
       throw new HTTPException(404, { message: "Saved view not found" });
     }
 
-    await assertCanEditView(view, personId, userId);
+    await assertCanEditView(view, personId, userId, apiKey);
 
     const nextVisibility = input.visibility ?? view.visibility;
     const nextSharedWithTeamId =
@@ -53,7 +55,7 @@ async function updateView(
         view.visibility !== "team" ||
         nextSharedWithTeamId !== view.sharedWithTeamId;
       if (teamAudienceChanged) {
-        await assertCanShareView(view.workspaceId, userId);
+        await assertCanShareView(view.workspaceId, userId, apiKey);
       }
       // Same check as create-view.ts's `assertScopeBelongsToWorkspace`-adjacent team
       // membership check: membership in the team alone is not enough -- the team must
@@ -81,6 +83,7 @@ async function updateView(
         view.workspaceId,
         userId,
         "workspace:manage_settings",
+        apiKey,
       );
     }
 

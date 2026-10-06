@@ -26,6 +26,8 @@ import { recordAuditWriteFailure } from "../instance/observability/runtime";
 import type { ApiKey } from "../openapi";
 import { resolveIdentity } from "../permissions/resolve-identity";
 import { policyRegistry } from "../policy-registry";
+import type { ApiKeyPermissionScope } from "../utils/require-api-key-permission-scope";
+import { parseApiKeyPermissionScope } from "../utils/require-api-key-permission-scope";
 import { assertCallerHasCapability } from "../utils/require-workspace-capability";
 import { validateWorkspaceAccess } from "../utils/validate-workspace-access";
 import {
@@ -1078,9 +1080,10 @@ export async function approveSavedViewDeletion(input: {
         message: "pending_action_payload_invalid",
       });
     }
+    let apiKeyScope: ApiKeyPermissionScope | undefined;
     if (row.credentialType === "api_key") {
       const [key] = await tx
-        .select({ id: apikeyTable.id })
+        .select({ id: apikeyTable.id, permissions: apikeyTable.permissions })
         .from(apikeyTable)
         .where(
           and(
@@ -1107,6 +1110,10 @@ export async function approveSavedViewDeletion(input: {
         auditFailure ||= invalidated.auditFailure;
         return { row: invalidated.row, state: "invalidated" as const };
       }
+      // PA-6 re-runs the request route's current authority. A key-originated request
+      // remains bounded by that key's current stored scope when the requester approves
+      // from their browser session; the browser session cannot widen the original request.
+      apiKeyScope = parseApiKeyPermissionScope(key.permissions);
     }
     const [view] = await tx
       .select()
@@ -1163,17 +1170,28 @@ export async function approveSavedViewDeletion(input: {
       throw error;
     }
     try {
+      // Re-run the DELETE route's base capability before its owner/manager branch.
+      // Both checks use the original key's current ceiling, matching request-time
+      // middleware and resolveSavedViewScope.
+      await assertCallerHasCapability(
+        view.workspaceId,
+        input.userId,
+        "saved_view:create",
+        apiKeyScope,
+      );
       if (view.createdBy === input.requesterPersonId) {
         await assertCallerHasCapability(
           view.workspaceId,
           input.userId,
           "saved_view:create",
+          apiKeyScope,
         );
       } else {
         await assertCallerHasCapability(
           view.workspaceId,
           input.userId,
           "workspace:manage_settings",
+          apiKeyScope,
         );
       }
     } catch (error) {
@@ -1418,7 +1436,7 @@ async function invalidateSavedViewDeletion(
         workspaceId: input.row.workspaceId,
         projectId: input.row.projectId,
         organisationId: input.row.organisationId,
-        action: "pending_action.invalidated",
+        action: "pending_action.decided",
         entityType: "pending_action",
         entityId: input.row.id,
         before: { state: "pending" },

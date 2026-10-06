@@ -10,6 +10,7 @@ import {
   createPendingAction,
   requirePendingActionRequesterIdentity,
 } from "../pending-action/service";
+import type { ApiKeyPermissionScope } from "../utils/require-api-key-permission-scope";
 import { requireWorkspaceCapability } from "../utils/require-workspace-capability";
 import { workspaceAccess } from "../utils/workspace-access-middleware";
 import type { SavedViewAuditActor } from "./audit";
@@ -213,7 +214,16 @@ const view = apiRouter()
     const userId = c.get("userId") as string;
     const personId = await resolveCallerPersonId(userId);
     const actor = savedViewAuditActor(userId, c.get("apiKey")?.id);
-    return c.json(await createView(body, personId, userId, actor), 200);
+    return c.json(
+      await createView(
+        body,
+        personId,
+        userId,
+        actor,
+        c.get("apiKey") as ApiKeyPermissionScope | undefined,
+      ),
+      200,
+    );
   })
   .openapi(getViewRoute, async (c) => {
     const { id } = c.req.valid("param");
@@ -227,7 +237,17 @@ const view = apiRouter()
     const userId = c.get("userId");
     const personId = await resolveCallerPersonId(userId);
     const actor = savedViewAuditActor(userId, c.get("apiKey")?.id);
-    return c.json(await updateView(id, body, personId, userId, actor), 200);
+    return c.json(
+      await updateView(
+        id,
+        body,
+        personId,
+        userId,
+        actor,
+        c.get("apiKey") as ApiKeyPermissionScope | undefined,
+      ),
+      200,
+    );
   })
   .openapi(pinViewRoute, async (c) => {
     const { id } = c.req.valid("param");

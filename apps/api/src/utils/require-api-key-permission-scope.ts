@@ -9,6 +9,35 @@ export type ApiKeyPermissionScope = {
   permissions?: Record<string, string[]> | null;
 };
 
+/** Parse the persisted Better Auth permission JSON with the same fail-closed shape as a request key. */
+export function parseApiKeyPermissionScope(
+  raw: string | null,
+): ApiKeyPermissionScope {
+  if (raw === null) return { permissions: null };
+
+  let value: unknown;
+  try {
+    value = JSON.parse(raw);
+  } catch {
+    return { permissions: {} };
+  }
+  if (!value || typeof value !== "object" || Array.isArray(value)) {
+    return { permissions: {} };
+  }
+
+  const permissions: Record<string, string[]> = {};
+  for (const [resource, actions] of Object.entries(value)) {
+    if (
+      !Array.isArray(actions) ||
+      actions.some((action) => typeof action !== "string")
+    ) {
+      return { permissions: {} };
+    }
+    permissions[resource] = actions;
+  }
+  return { permissions };
+}
+
 /**
  * The one API-key narrowing predicate shared by legacy permissions, canonical
  * capabilities, and routes that explicitly declare an API-key scope. A missing

@@ -1,3 +1,4 @@
+import type { ApiKeyPermissionScope } from "../utils/require-api-key-permission-scope";
 import { assertCallerHasCapability } from "../utils/require-workspace-capability";
 
 /**
@@ -10,6 +11,12 @@ import { assertCallerHasCapability } from "../utils/require-workspace-capability
 export async function assertCanShareView(
   workspaceId: string,
   userId: string,
+  apiKey?: ApiKeyPermissionScope,
 ): Promise<void> {
-  await assertCallerHasCapability(workspaceId, userId, "saved_view:share");
+  await assertCallerHasCapability(
+    workspaceId,
+    userId,
+    "saved_view:share",
+    apiKey,
+  );
 }

@@ -1,4 +1,5 @@
 import { HTTPException } from "hono/http-exception";
+import type { ApiKeyPermissionScope } from "../utils/require-api-key-permission-scope";
 import { assertCallerHasCapability } from "../utils/require-workspace-capability";
 
 /**
@@ -19,6 +20,7 @@ export async function assertCanEditView(
   view: { workspaceId: string; createdBy: string },
   personId: string,
   userId: string,
+  apiKey?: ApiKeyPermissionScope,
 ): Promise<void> {
   if (view.createdBy === personId) {
     return;
@@ -28,6 +30,7 @@ export async function assertCanEditView(
       view.workspaceId,
       userId,
       "workspace:manage_settings",
+      apiKey,
     );
   } catch (error) {
     if (error instanceof HTTPException && error.status === 403) {
