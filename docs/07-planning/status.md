@@ -1,3 +1,55 @@
+## October 6 usable CPU attribution and continued complete remediation — 13:53 UTC
+
+- **P0 profiler source:** PR #587 is pushed at
+  `75d2c97b6670e31cba41a82671e8cc7881cfc987`. Native V8 serializes signed sample-time
+  differences; safe signed accumulation followed by timestamp sorting now retains the
+  correct sample identities and bounded nonnegative intervals. No caps or G11 budget changed.
+  A real local capture completes1 profile with2,058 nodes,5,698 samples and45 app frames.
+  Fresh independent full Sol clears the complete six-file diagnostic delta after3 files/26
+  tests, web typecheck and Biome. That local capture is not a hosted budget pass.
+- **Actual hosted P0:** current75 source has18/22 canonical budgets passing; LCP2608ms,
+  state231.9ms, assignment245.8ms and board622.8ms remain red. Hosted state and assignment
+  profiles complete and identify positioning/React work; the board profile is explicitly
+  omitted at the unchanged node limit. The synthetic merge-checkout source is retained
+  separately from the PR head. The isolated performance implementation lane is finishing
+  one source-grounded create-dialog intent-loading batch, with production build and pure
+  checks passing and actual lifecycle browser verification now authorized. It does not
+  speculate on drag/virtualization or claim other budget improvements.
+- **Actual private runner:** final57 run `20261006T132623Z-08842235` fails with
+  `UnboundLocalError`, masking the original fixture error; original cleanup passes9/9,
+  including the new persistent API data volume. Root separately verifies all8 Docker
+  resources absent. Final59 run `20261006T133957Z-08842235` preserves the original
+  `ValueError` and source location at `proof_helpers.py:1044`; its custom byte-readback
+  diagnostic incorrectly supplied a status-expectation field permitted only for HTTP
+  status rows. Cleanup again passes9/9. Neither failed run establishes full traffic,
+  compatibility, dates or strict-stage acceptance. These original records remain unchanged.
+- **Private final61:** source, helper and actual recorder now share a strict complete-row
+  invariant. Positive native PNG/header readback and404/byte/MIME/length failure cases are
+  exercised through the real recorder/persistence path; the original finite-ledger guard
+  remains intact. Author61 tests, compilation and pinned launcher checks pass. The current
+  full independent Sol review precedes fresh root records and any next execution. Root
+  does not retrospectively assign the final59 cause to the earlier masked failure.
+- **Complete integration:** PR #589 is pushed at
+  `bda2970d24774fc77a9acc6a3ee1aa99b754d3eb`. The provider reload and SLA pause blockers
+  are resolved under independent current-delta reviews. The real Linux approvals baseline
+  captures and strictly replays on the CI-pinned AMD64 image; hostedf87 passes it and14/15
+  visual cases. The remaining work-item detail failure was a mock returning `[]` instead
+  of the actual approval list DTO `{ approvals: [] }`; the exact fixture is corrected
+  without weakening assertions or replacing the screenshot with an error page.
+- **Query-control review:** full Sol atf87 andbda finds narrower statically known nested
+  forwarding escapes. The lane is replacing invocation special cases with repository
+  ownership of known runtime read-method references, so forwarding cannot relocate the
+  read construction outside its repository. New regression and full Sol clearance remain
+  required; no checker acceptance is claimed. Original reports are copied byte-for-byte
+  with hashes under the current-bulk-and-p0 review directory. Historical report whitespace
+  is retained rather than normalized into false reviewer evidence.
+- **Remaining acceptance:** pending-action API evolution and config/task prerequisites
+  retain the previously requested explicit decisions. Actual passing G11, full compatible
+  runtime evidence, exact required CI/reviews, authenticated DEV screen evidence and the
+  additional fresh Sol phase finalizer remain open. Reviewed088 DEV is still available
+  through OrbStack/Traefik with preserved data and shadow-only settings. Main remains3096cb0.
+  No additional calendar wait, protected merge, production, enforcement or phase completion.
+
 ## October 6 actual final56 runtime outcome — 13:15 UTC
 
 - **Original timestamp correction:** the preceding13:15 snapshot was written at13:12UTC;
