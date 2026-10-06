@@ -139,7 +139,25 @@
       "original_private_path": "/Users/heinthura/.codex/taskdesk-evidence/2026-10-06/p0-budget-complete/mfa-observability-timeout-investigation.md",
       "sha256": "a09c9027a59fb3814928b0889b3f1a0498145f74849182c31f9f96389d5912f6",
       "original_bytes_preserved": true
+    },
+    {
+      "file": "sol-c993b525.md",
+      "original_private_path": "/Users/heinthura/.codex/taskdesk-evidence/2026-10-06/bulk-integration/sol-c993b525.md",
+      "sha256": "b828045efe6a362b237a042770fb95c5e735e0c2f4e15e5afd81df1385198e5f",
+      "original_bytes_preserved": true
+    },
+    {
+      "file": "pr590-sol-80ad.md",
+      "original_private_path": "/Users/heinthura/.codex/taskdesk-evidence/2026-10-06/p0-budget-complete/pr590-sol-80ad.md",
+      "sha256": "123fd41187c44749e56b2a8bb46728f825802e6f57d548b29d64526a6f031475",
+      "original_bytes_preserved": true
+    },
+    {
+      "file": "denial-contract-audit-08842235.md",
+      "original_private_path": "/Users/heinthura/.codex/taskdesk-evidence/2026-10-06/p0-strict-cutover-prep/denial-contract-audit-08842235.md",
+      "sha256": "244b8ef234f69aadb904b5ed7f69f92fd354998ce3e28e01d8dcf9f29670747e",
+      "original_bytes_preserved": true
     }
   ],
-  "latest_copy_utc": "2026-10-06T15:10:59.914850+00:00"
+  "latest_copy_utc": "2026-10-06T15:18:27.472052+00:00"
 }
