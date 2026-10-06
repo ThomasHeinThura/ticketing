@@ -1,4 +1,4 @@
-import { expect, test } from "@playwright/test";
+import { expect, type Locator, type Page, test } from "@playwright/test";
 import {
   totpForUri,
   withMfaCsrfApp,
@@ -6,8 +6,56 @@ import {
 
 test.use({ trace: "off", video: "off", screenshot: "off" });
 
+async function createAdminWorkspace(
+  page: Page,
+  origin: string,
+  email: string,
+  password: string,
+) {
+  const signUp = new URL("/auth/sign-up", origin).toString();
+  await page.goto(signUp);
+  await page.getByLabel("Full name").fill("Disposable MFA Admin");
+  await page.getByLabel("Email").fill(email);
+  await page.locator('input[autocomplete="new-password"]').fill(password);
+  const signUpResponsePromise = page.waitForResponse(
+    (response) =>
+      new URL(response.url()).pathname === "/api/auth/sign-up/email" &&
+      response.request().method() === "POST",
+  );
+  await page.getByRole("button", { name: "Create account" }).click();
+  const signUpResponse = await signUpResponsePromise;
+  expect(signUpResponse.status()).toBe(200);
+  await expect(page).toHaveURL(/\/onboarding(?:\?|$)/);
+  await page.getByLabel("Workspace name").fill("Disposable MFA Workspace");
+  await page.getByRole("button", { name: "Create workspace" }).click();
+  await expect(page).toHaveURL(/\/dashboard\/workspace\//);
+}
+
+async function selectOptionThroughControlledPopup(
+  page: Page,
+  trigger: Locator,
+  value: string,
+  openStep: string,
+  selectStep: string,
+) {
+  await test.step(openStep, () => trigger.click());
+  await expect(trigger).toHaveAttribute("aria-expanded", "true");
+  await expect.poll(() => trigger.getAttribute("aria-controls")).toBeTruthy();
+  const listboxId = await trigger.getAttribute("aria-controls");
+  expect(listboxId).toBeTruthy();
+  const listbox = page.locator(`[id="${listboxId}"]`);
+  await expect(listbox).toHaveRole("listbox");
+  await expect(listbox).toBeVisible();
+  const option = listbox.getByRole("option", { name: value, exact: true });
+  await expect(option).toHaveCount(1);
+  await test.step(selectStep, () => option.click());
+  await expect(trigger).toHaveText(value);
+  await expect(trigger).toHaveAttribute("aria-expanded", "false");
+  await expect(listbox).toBeHidden();
+}
+
 test.describe("P0 MFA and CSRF browser journey", () => {
-  test("enrolls and completes authenticator and backup-code challenges", async ({
+  test("enrolls and completes authenticator and backup-code challenges, then rejects invalid CSRF updates", async ({
     page,
   }) => {
     test.setTimeout(240_000);
@@ -18,24 +66,8 @@ test.describe("P0 MFA and CSRF browser journey", () => {
       ),
     ).toBe("287082");
     await withMfaCsrfApp(async ({ origin, email, password }) => {
-      const signUp = new URL("/auth/sign-up", origin).toString();
-      await page.goto(signUp);
-      await page.getByLabel("Full name").fill("Disposable MFA Admin");
-      await page.getByLabel("Email").fill(email);
-      await page.locator('input[autocomplete="new-password"]').fill(password);
-      const signUpResponsePromise = page.waitForResponse(
-        (response) =>
-          new URL(response.url()).pathname === "/api/auth/sign-up/email" &&
-          response.request().method() === "POST",
-      );
-      await page.getByRole("button", { name: "Create account" }).click();
-      const signUpResponse = await signUpResponsePromise;
-      expect(signUpResponse.status()).toBe(200);
-      await expect(page).toHaveURL(/\/onboarding(?:\?|$)/);
-      await page.getByLabel("Workspace name").fill("Disposable MFA Workspace");
-      await page.getByRole("button", { name: "Create workspace" }).click();
-      await expect(page).toHaveURL(/\/dashboard\/workspace\//);
-
+      await test.step("MFA: create disposable admin workspace", () =>
+        createAdminWorkspace(page, origin, email, password));
       const securityPage = new URL(
         "/dashboard/settings/account/security",
         origin,
@@ -162,98 +194,12 @@ test.describe("P0 MFA and CSRF browser journey", () => {
           version: body.version,
         };
       };
-      const initialSettings = await test.step(
-        "observability: read initial settings",
+      const restoredSettings = await test.step(
+        "CSRF: snapshot protected observability settings",
         readSettings,
       );
       const changedDefault =
-        initialSettings.logLevels.default === "error" ? "warn" : "error";
-      const initialRealtime =
-        initialSettings.logLevels.modules.realtime ??
-        initialSettings.logLevels.default;
-      const changedRealtime = initialRealtime === "debug" ? "info" : "debug";
-
-      await test.step("observability: open God Mode settings", () =>
-        page.goto(new URL("/god-mode/observability", origin).toString()));
-      const defaultLevel = page.getByLabel("Default level");
-      const saveLogLevels = async (label: string) => {
-        await test.step(label, async () => {
-          const responsePromise = page.waitForResponse(
-            (response) =>
-              new URL(response.url()).pathname ===
-                "/api/instance/observability" &&
-              response.request().method() === "PATCH",
-          );
-          await page.getByRole("button", { name: "Save log levels" }).click();
-          const response = await responsePromise;
-          expect(response.status()).toBe(200);
-        });
-      };
-      await test.step("observability: open default log-level options", () =>
-        defaultLevel.click());
-      await test.step("observability: select changed default log level", () =>
-        page
-          .getByRole("option", { name: changedDefault, exact: true })
-          .click());
-      await saveLogLevels("observability: save changed default log level");
-      const changedSettings = await test.step(
-        "observability: read changed default setting",
-        readSettings,
-      );
-      expect(changedSettings.logLevels.default).toBe(changedDefault);
-      expect(changedSettings.version > initialSettings.version).toBe(true);
-
-      const realtimeLevel = page.getByLabel("realtime");
-      await test.step("observability: open realtime log-level options", () =>
-        realtimeLevel.click());
-      await test.step("observability: select changed realtime log level", () =>
-        page
-          .getByRole("option", { name: changedRealtime, exact: true })
-          .click());
-      await test.step("observability: dismiss realtime log-level options", () =>
-        realtimeLevel.press("Escape"));
-      await saveLogLevels("observability: save changed realtime log level");
-      const changedRealtimeSettings = await test.step(
-        "observability: read changed realtime setting",
-        readSettings,
-      );
-      expect(changedRealtimeSettings.logLevels.modules.realtime).toBe(
-        changedRealtime,
-      );
-      expect(changedRealtimeSettings.version > changedSettings.version).toBe(
-        true,
-      );
-
-      await test.step("observability: reopen default log-level options", () =>
-        defaultLevel.click());
-      await test.step("observability: select original default log level", () =>
-        page
-          .getByRole("option", {
-            name: initialSettings.logLevels.default,
-            exact: true,
-          })
-          .click());
-      await saveLogLevels("observability: save restored default log level");
-      await test.step("observability: reopen realtime log-level options", () =>
-        realtimeLevel.click());
-      await test.step("observability: select original realtime log level", () =>
-        page
-          .getByRole("option", { name: initialRealtime, exact: true })
-          .click());
-      await test.step("observability: dismiss restored realtime options", () =>
-        realtimeLevel.press("Escape"));
-      await saveLogLevels("observability: save restored realtime log level");
-      const restoredSettings = await test.step(
-        "observability: verify restored settings",
-        readSettings,
-      );
-      expect(restoredSettings.logLevels.default).toBe(
-        initialSettings.logLevels.default,
-      );
-      expect(restoredSettings.logLevels.modules.realtime).toBe(initialRealtime);
-      expect(restoredSettings.version > changedRealtimeSettings.version).toBe(
-        true,
-      );
+        restoredSettings.logLevels.default === "error" ? "warn" : "error";
 
       const csrfResponse =
         await test.step("CSRF: retrieve token for rejection checks", () =>
@@ -302,6 +248,144 @@ test.describe("P0 MFA and CSRF browser journey", () => {
           "X-TaskDesk-CSRF": csrfToken,
         },
         "csrf_origin_invalid",
+      );
+    });
+  });
+
+  test("changes and restores observability settings", async ({ page }) => {
+    test.setTimeout(240_000);
+    await withMfaCsrfApp(async ({ origin, email, password }) => {
+      await test.step("observability: create disposable admin workspace", () =>
+        createAdminWorkspace(page, origin, email, password));
+      type LogLevel = "error" | "warn" | "info" | "debug";
+      type ObservabilitySnapshot = {
+        logLevels: {
+          default: LogLevel;
+          modules: Partial<
+            Record<
+              | "http"
+              | "auth"
+              | "database"
+              | "jobs"
+              | "audit"
+              | "plugins"
+              | "realtime",
+              LogLevel
+            >
+          >;
+        };
+        version: number;
+      };
+      const observabilityUrl = new URL(
+        "/api/instance/observability",
+        origin,
+      ).toString();
+      const readSettings = async (): Promise<ObservabilitySnapshot> => {
+        const response = await page.request.get(observabilityUrl, {
+          headers: { Origin: origin },
+        });
+        expect(response.status()).toBe(200);
+        const body = (await response.json()) as ObservabilitySnapshot;
+        return {
+          logLevels: body.logLevels,
+          version: body.version,
+        };
+      };
+      const initialSettings = await test.step(
+        "observability: read initial settings",
+        readSettings,
+      );
+      const changedDefault =
+        initialSettings.logLevels.default === "error" ? "warn" : "error";
+      const initialRealtime =
+        initialSettings.logLevels.modules.realtime ??
+        initialSettings.logLevels.default;
+      const changedRealtime = initialRealtime === "debug" ? "info" : "debug";
+
+      await test.step("observability: open God Mode settings", () =>
+        page.goto(new URL("/god-mode/observability", origin).toString()));
+      const defaultLevel = page.getByLabel("Default level");
+      const saveLogLevels = async (label: string) => {
+        await test.step(label, async () => {
+          const responsePromise = page.waitForResponse(
+            (response) =>
+              new URL(response.url()).pathname ===
+                "/api/instance/observability" &&
+              response.request().method() === "PATCH",
+          );
+          await page.getByRole("button", { name: "Save log levels" }).click();
+          const response = await responsePromise;
+          expect(response.status()).toBe(200);
+          await expect(
+            page.getByRole("button", { name: "Save log levels" }),
+          ).toBeEnabled();
+        });
+      };
+      await selectOptionThroughControlledPopup(
+        page,
+        defaultLevel,
+        changedDefault,
+        "observability: open default log-level options",
+        "observability: select changed default log level",
+      );
+      await saveLogLevels("observability: save changed default log level");
+      const changedSettings = await test.step(
+        "observability: read changed default setting",
+        readSettings,
+      );
+      expect(changedSettings.logLevels.default).toBe(changedDefault);
+      expect(changedSettings.version > initialSettings.version).toBe(true);
+
+      const realtimeLevel = page.getByLabel("realtime");
+      await selectOptionThroughControlledPopup(
+        page,
+        realtimeLevel,
+        changedRealtime,
+        "observability: open realtime log-level options",
+        "observability: select changed realtime log level",
+      );
+      await test.step("observability: dismiss realtime log-level options", () =>
+        realtimeLevel.press("Escape"));
+      await saveLogLevels("observability: save changed realtime log level");
+      const changedRealtimeSettings = await test.step(
+        "observability: read changed realtime setting",
+        readSettings,
+      );
+      expect(changedRealtimeSettings.logLevels.modules.realtime).toBe(
+        changedRealtime,
+      );
+      expect(changedRealtimeSettings.version > changedSettings.version).toBe(
+        true,
+      );
+
+      await selectOptionThroughControlledPopup(
+        page,
+        defaultLevel,
+        initialSettings.logLevels.default,
+        "observability: reopen default log-level options",
+        "observability: select original default log level",
+      );
+      await saveLogLevels("observability: save restored default log level");
+      await selectOptionThroughControlledPopup(
+        page,
+        realtimeLevel,
+        initialRealtime,
+        "observability: reopen realtime log-level options",
+        "observability: select original realtime log level",
+      );
+      await test.step("observability: dismiss restored realtime options", () =>
+        realtimeLevel.press("Escape"));
+      await saveLogLevels("observability: save restored realtime log level");
+      const restoredSettings = await test.step(
+        "observability: verify restored settings",
+        readSettings,
+      );
+      expect(restoredSettings.logLevels.default).toBe(
+        initialSettings.logLevels.default,
+      );
+      expect(restoredSettings.logLevels.modules.realtime).toBe(initialRealtime);
+      expect(restoredSettings.version > changedRealtimeSettings.version).toBe(
+        true,
       );
     });
   });
