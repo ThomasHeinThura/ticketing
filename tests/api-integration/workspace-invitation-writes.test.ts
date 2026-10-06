@@ -16,6 +16,7 @@ import { beforeEach, describe, expect, it } from "vitest";
 import db, { schema } from "../../apps/api/src/database";
 import { createApp } from "../../apps/api/src/index";
 import { MAX_PENDING_INVITATIONS_PER_WORKSPACE } from "../../apps/api/src/utils/workspace-invitation-limits";
+import { csrfRequest } from "./helpers/csrf";
 import { resetTestDatabase } from "./helpers/database";
 import { signUpUser } from "./helpers/organization-http";
 import {
@@ -822,9 +823,11 @@ describe("S6a cancel (DELETE /api/invitation/{id})", () => {
     const { app } = createApp();
     const caller = await signUpUser(app);
 
-    const response = await app.request(
+    const response = await csrfRequest(
+      app,
       `/api/invitation/${encodeURIComponent("\u0000x")}`,
       { method: "DELETE", headers: { cookie: caller.cookie } },
+      caller.cookie,
     );
 
     expect(response.status).toBe(400);

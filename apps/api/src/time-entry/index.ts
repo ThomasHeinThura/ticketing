@@ -4,6 +4,7 @@ import {
   errorResponse,
   jsonResponse,
 } from "../openapi";
+import { requireWorkspaceCapability } from "../utils/require-workspace-capability";
 import { requireWorkspacePermission } from "../utils/require-workspace-permission";
 import { workspaceAccess } from "../utils/workspace-access-middleware";
 import createTimeEntry from "./controllers/create-time-entry";
@@ -25,7 +26,10 @@ const getTaskTimeEntriesRoute = createRoute({
   tags: ["Time Entries"],
   summary: "Get task time entries",
   description: "Get every time entry logged against a task.",
-  middleware: [workspaceAccess.fromTaskId()] as const,
+  middleware: [
+    workspaceAccess.fromTaskId(),
+    requireWorkspaceCapability("time_entry:read_any"),
+  ] as const,
   request: { params: taskIdParam },
   responses: {
     200: jsonResponse("List of time entries for the task", timeEntryListSchema),
@@ -43,7 +47,10 @@ const getTimeEntryRoute = createRoute({
   tags: ["Time Entries"],
   summary: "Get time entry",
   description: "Get a single time entry by ID.",
-  middleware: [workspaceAccess.fromTimeEntry()] as const,
+  middleware: [
+    workspaceAccess.fromTimeEntry(),
+    requireWorkspaceCapability("time_entry:read_any"),
+  ] as const,
   request: { params: timeEntryParam },
   responses: {
     200: jsonResponse("Time entry details", timeEntrySchema),

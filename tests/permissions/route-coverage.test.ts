@@ -1,7 +1,10 @@
-import { readFileSync } from "node:fs";
+import { mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
 import { fileURLToPath } from "node:url";
 import {
   type CoverageBaseline,
+  collectMiddleware,
   collectRoutes,
   computeRouteCoverage,
   createPolicyRegistry,
@@ -65,14 +68,37 @@ describe("route coverage", () => {
     expect(routeCount).toBeGreaterThan(0);
   });
 
-  it("runs against a router with no built web app to serve (#165, #236)", async () => {
-    // registerStaticServing only adds its catch-all app.use("*", ...) when a build is on
-    // disk, which silently voids DECLARED_ROUTER_MIDDLEWARE's exact-count declaration for
-    // the unrelated CORS/compress registrations at the same key -- see
-    // tests/permissions/README.md. Asserted first and explicitly so that misconfiguration
-    // fails here, at its actual cause, rather than as three oblique downstream failures
-    // with nothing in their messages naming static serving or this constraint.
-    await expect(loadResolvedStaticRoot()).resolves.toBeUndefined();
+  it("keeps route enumeration stable across built and missing static roots", async () => {
+    const builtRoot = mkdtempSync(
+      join(tmpdir(), "taskdesk-route-coverage-built-"),
+    );
+    writeFileSync(join(builtRoot, "index.html"), "fixture shell");
+
+    try {
+      await expect(
+        loadResolvedStaticRoot([join(builtRoot, "index.html")]),
+      ).resolves.toBeUndefined();
+      await expect(loadResolvedStaticRoot([builtRoot])).resolves.toBe(
+        builtRoot,
+      );
+
+      const [missingRootApp, builtRootApp] = await Promise.all([
+        loadApiApp(),
+        loadApiApp({
+          staticRoot: builtRoot,
+          portalStaticRoot: builtRoot,
+        }),
+      ]);
+      const missingRoutes = collectRoutes(missingRootApp);
+      const builtRoutes = collectRoutes(builtRootApp);
+      expect(builtRoutes).toEqual(missingRoutes);
+      expect(builtRootApp.routes).toHaveLength(missingRootApp.routes.length);
+      expect(collectMiddleware(builtRootApp)).toEqual(
+        collectMiddleware(missingRootApp),
+      );
+    } finally {
+      rmSync(builtRoot, { force: true, recursive: true });
+    }
   });
 
   it("finds the auth guard's own registration index in the real router", () => {
@@ -226,9 +252,8 @@ describe("route coverage", () => {
 
   it("counts middleware as middleware, not as routes", async () => {
     const middleware = await loadRouterMiddleware();
-    // kaneo registers `app.use("*")` for CORS and compression and `api.use("*")` for the
-    // authentication guard. They are chain entries, not endpoints — exactly two distinct
-    // `METHOD path` keys (cors and compress share "ALL /*"), never inferred from arity.
+    // The four origin/CORS/compress/static global middlewares and the API auth guard are
+    // chain entries, not endpoints; their exact keys remain closed and reviewed.
     expect(middleware).toEqual(["ALL /*", "ALL /api/*"]);
   });
 

@@ -24,6 +24,7 @@ import {
   Popover,
   PopoverContent,
   PopoverTrigger,
+  Skeleton,
 } from "@taskdesk/ui";
 import { produce } from "immer";
 import {
@@ -36,10 +37,17 @@ import {
   UserIcon,
   X,
 } from "lucide-react";
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import {
+  lazy,
+  Suspense,
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
 import { useTranslation } from "react-i18next";
-import TaskDescriptionEditor from "@/components/task/task-description-editor";
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/avatar";
 import useCreateLabel from "@/hooks/mutations/label/use-create-label";
 import useCreateTask from "@/hooks/mutations/task/use-create-task";
 import { useDeleteTask } from "@/hooks/mutations/task/use-delete-task";
@@ -54,10 +62,15 @@ import { formatDateMedium } from "@/lib/format";
 import { getInitials } from "@/lib/get-initials";
 import { resolveLabelColor } from "@/lib/label-color";
 import { getPriorityIcon } from "@/lib/priority";
+import { TaskUpdateError } from "@/lib/task-update-error";
 import { toast } from "@/lib/toast";
 import useProjectStore from "@/store/project";
 import { useUserPreferencesStore } from "@/store/user-preferences";
 import type Task from "@/types/task";
+
+const TaskDescriptionEditor = lazy(
+  () => import("@/components/task/task-description-editor"),
+);
 
 type CreateTaskModalProps = {
   open: boolean;
@@ -92,7 +105,10 @@ type PopoverStep = "select" | "color";
 
 function normalizeTask(
   task: Partial<Task> &
-    Pick<Task, "id" | "title" | "status" | "projectId" | "createdAt">,
+    Pick<
+      Task,
+      "id" | "title" | "status" | "projectId" | "createdAt" | "version"
+    >,
 ): Task {
   return {
     ...task,
@@ -179,10 +195,12 @@ function CreateTaskModal({
   const { data: workspace } = useActiveWorkspace();
   const { data: workspaceUsers } = useGetActiveWorkspaceUsers(
     workspace?.id || "",
+    open,
   );
   const { mutateAsync: createLabel } = useCreateLabel();
   const { data: workspaceLabels = [] } = useGetLabelsByWorkspace(
     workspace?.id || "",
+    open,
   );
   const { canCreateTasks, canCreateLabels } = useWorkspacePermission();
   const canCreateTaskCapability = canCreateTasks();
@@ -211,9 +229,10 @@ function CreateTaskModal({
   const [selectedProjectId, setSelectedProjectId] = useState("");
   const resolvedProjectId =
     explicitProjectId || selectedProjectId || project?.id || "";
-  const { data: workspaceProjects } = useGetProjects({
-    workspaceId: workspace?.id || "",
-  });
+  const { data: workspaceProjects } = useGetProjects(
+    { workspaceId: workspace?.id || "" },
+    open,
+  );
   const resolvedProject = explicitProjectId
     ? project
     : (workspaceProjects?.find((p) => p.id === resolvedProjectId) ?? null);
@@ -487,11 +506,13 @@ function CreateTaskModal({
       }
     } catch (error) {
       didSubmitRef.current = false;
-      toast.error(
-        error instanceof Error
-          ? error.message
-          : t("common:modals.createTask.createError"),
-      );
+      if (!(error instanceof TaskUpdateError)) {
+        toast.error(
+          error instanceof Error
+            ? error.message
+            : t("common:modals.createTask.createError"),
+        );
+      }
     }
   };
 
@@ -671,15 +692,21 @@ function CreateTaskModal({
             />
 
             <div className="min-h-[200px]">
-              <TaskDescriptionEditor
-                value={description}
-                onChange={setDescription}
-                placeholder={t(
-                  "common:modals.createTask.descriptionPlaceholder",
-                )}
-                taskId={draftTask?.id}
-                ensureTaskId={ensureDraftTask}
-              />
+              <Suspense
+                fallback={
+                  <Skeleton className="min-h-44 w-full" aria-hidden="true" />
+                }
+              >
+                <TaskDescriptionEditor
+                  value={description}
+                  onChange={setDescription}
+                  placeholder={t(
+                    "common:modals.createTask.descriptionPlaceholder",
+                  )}
+                  taskId={draftTask?.id}
+                  ensureTaskId={ensureDraftTask}
+                />
+              </Suspense>
             </div>
 
             {labels.length > 0 && (

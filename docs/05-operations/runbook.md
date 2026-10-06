@@ -12,11 +12,39 @@ dc() { docker compose -f compose.yml -f deploy/compose.prod.yml "$@"; }
 For local development, use `dc() { docker compose -f compose.yml -f deploy/compose.local.yml -f deploy/compose.traefik.yml "$@"; }`.
 The first-run `scripts/deploy.sh local` command sets up the local certificate and secrets.
 
-**Metrics endpoint status:** the architecture describes the intended Prometheus endpoint,
-but the current API image does not start a listener on port `9464` and does not serve
-`/metrics`. The metrics bearer-token setting is not usable yet. Use the container, database,
-and application logs below; do not export a `METRICS_TOKEN` or rely on the metrics commands
-until the endpoint is implemented and verified.
+**Metrics endpoint:** the serving API role starts a dedicated listener on port `9464` at
+`GET /metrics`. Scrapes require the current bearer token; the listener reads its SHA-256
+digest from PostgreSQL for each request. Rotate the token in God Mode → Observability and
+store the one-time response directly in the monitoring system's secret store. Never put the
+token in a command argument, log, ticket, or incident record. A missing or incorrect token
+returns `401`; a database credential-read failure returns `503`. The listener bind failure
+prevents API readiness. Migration and job roles do not start this listener.
+
+## Audit-write failure alert (after instrumentation is deployed)
+
+The target urgent alert is `increase(taskdesk_audit_write_failures_total[5m]) > 0`, grouped
+by the closed `operation` label. It is not active in the current image. When an alert fires,
+preserve the alert timestamp and instance identity, then inspect that instance's application
+logs for the matching safe error-level record and `traceId`:
+
+```bash
+dc logs --since=15m taskdesk
+```
+
+Use `operation` to distinguish a mutation audit append, a pending-action decision append, or
+a pending-action self-read append. Confirm the operation's user-visible result and backing
+row before asking a caller to retry: AU-14 mutations and pending-action decisions may have
+committed even though their audit append failed; the pending-action self-read instead fails
+closed. Treat the result as a known audit gap, not as evidence that the append-only hash chain
+was altered. Record the affected time window and trace ids in the incident record without
+copying credentials or request bodies.
+
+AU-14 also writes an in-app notification for each current active instance administrator.
+The notification contains only the finite operation name and occurrence time. The notifier
+makes one bounded retry in a separate transaction after the audit savepoint has rolled back.
+If both writes fail, the counter and safe error log remain the operator signals. Check the
+administrators' in-app notifications alongside the matching metric and log record; neither
+signal means the underlying mutation was rolled back.
 
 ## Triage
 
@@ -87,7 +115,7 @@ dc exec -T postgres psql -U "${POSTGRES_USER:-taskdesk}" -d "${POSTGRES_DB:-task
 | Provider certificate expired | The test reports it |
 | Session secret rotated | Everyone signed out at once — expected, communicate it |
 | Account suspended | God Mode → Users |
-| MFA required, not enrolled | The user is routed to enrolment; confirm they see it |
+| MFA required, not enrolled | **Planned behavior:** after MFA enforcement is implemented, route the user to enrollment before protected use. Current API source has no factor enrollment/verifier; a required policy must fail closed until that support exists. |
 | Portal boundary | A customer on the agent origin — this is correct behaviour |
 | **All administrators locked out** | See break-glass below |
 
@@ -284,31 +312,78 @@ God Mode and should be recorded as one.
 Issue #8, Slice 2's request-path shadow middleware records every request it evaluates to
 `policy_shadow_tally` and, for a disagreement, `policy_shadow_event`
 ([data-model.md § Policy shadow evidence](../01-architecture/data-model.md#policy-shadow-evidence-issue-8-slice-2)).
-This is the per-router summary a cut-over PR cites as its "about 7 clean days" evidence —
-run against the deployment's own database, not exposed as an HTTP endpoint.
+For development/P0 and UAT verification, this per-router summary reports the user-authorized
+three UTC calendar-date window — run against the deployment's own database, not exposed as an
+HTTP endpoint. It does not establish production readiness or authorize production promotion;
+production-specific go-live criteria apply only when promoting an actual production release.
 
-**Per-router summary for the last 7 days** (agree / disagree / unevaluated counts, by
-router group and outcome):
+## Strict policy router cutover
+
+`TASKDESK_POLICY_ENFORCE` is a temporary bootstrap control for strict request-path evaluation
+(`apps/api/src/permissions/strict-policy-enforcement.ts`). It accepts a comma-separated list of
+exact registered policy-source paths. The default is empty, so no source is enforced. A listed
+source is evaluated after that route's existing middleware and request validation, immediately
+before its terminal handler. Existing authorization checks continue to run; a registry denial
+prevents the handler from starting. The setting is read and validated during API module startup.
+An unknown, duplicate, blank, reordered, or malformed source refuses startup rather than
+silently selecting a weaker policy set.
+
+For a development or UAT rollout, first establish the documented three real, issue-free UTC
+date buckets for the exact source and representative behaviors being considered (see **Policy
+shadow summary** above). Record the source/build identity, selected UTC dates, route coverage,
+complete summary output, and any explained outcomes with the deployment evidence. Do not
+backfill missing observations or count a partial current day as a complete date. Only after
+that evidence is accepted should the deployment's operator set the approved exact source list
+and restart the API. Add eligible non-task sources in registry-owned path order; the complete
+registered set must precede `apps/api/src/task/policy.ts`, which is required to be last. Do not
+enable the task router until the role re-key prerequisite is verified and every preceding
+source is already enforced. This staged setting does not authorize production promotion.
+
+**Rollback:** remove the affected exact source path from the setting and restart the API. If
+the task path is selected, remove it first before removing any preceding source. Setting the
+value to empty and restarting returns all routes to their existing authorization plus shadow
+mode. Confirm the running deployment's environment through the deployment's protected
+configuration interface; never print environment values into a shell transcript or logs. Record
+the rollback source/build and reason. A malformed setting intentionally prevents boot, so use
+the last known-valid configuration when correcting a startup refusal.
+
+**Per-router, per-date development summary for three UTC dates** (UTC today and the preceding
+two dates; agree / disagree / unevaluated counts, by router group and outcome):
 
 ```sql
 select
+  day as utc_day,
   router_group,
   outcome,
   reason_code,
   sum(count) as total,
   max(last_seen_at) as last_seen_at
 from policy_shadow_tally
-where day >= (current_date - interval '7 days')
-group by router_group, outcome, reason_code
-order by router_group, outcome, total desc;
+where day >= ((now() at time zone 'UTC')::date - 2)
+group by day, router_group, outcome, reason_code
+order by day, router_group, outcome, total desc;
 ```
+
+The inclusive predicate selects exactly three UTC date buckets. Record the selected date
+values, source/build identity, and actual source-bound UTC coverage interval with the result.
+The current UTC date may be partial: the date buckets alone do not prove three complete days
+or 72 hours. Claim three issue-free days only when actual traffic and exercised router/behavior
+coverage support all three dates; do not synthesize or backfill missing observations. Existing
+representative evidence may count if it covers the same source and behavior.
 
 **"Clean" means zero *unexplained* disagreements** — every `legacy_allow_policy_deny`,
 `legacy_deny_policy_allow`, `unevaluated` and `evaluator_error` row above for a router group
-must either be fixed or have its `reason_code` explained in the cut-over PR. Every cut-over PR
-must also **paste the summary output as it stood at decision time**, so the evidence a
-decision cited cannot change underneath it once the tables keep receiving writes (the Opus
-review of #323, S7). **`shadow_saturated` is named as never explainable row-by-row**: a router with any such row in the window is not clean, because it means part of that router's traffic was never evaluated at all (the Opus delta of #323, D1).
+must either be fixed or have its `reason_code` explained in the evidence for the window being
+assessed. Record each summary output as it stood at decision time so later writes cannot
+change the evidence underneath it (the Opus review of #323, S7). Any decision citing this query
+must paste the complete output and identify its environment and window; a P0/UAT summary is
+not production evidence. **`shadow_saturated` is never explainable row-by-row**: a router with
+any such row in the window is not clean, because part of its traffic was never evaluated (the
+Opus delta of #323, D1).
+
+The three-day window applies to P0 development and UAT verification; it is not a seven-day UAT
+cutover prerequisite. Actual production promotion remains subject to its production-specific
+go-live criteria, which this development query does not satisfy or change.
 
 An event cap can omit details after 50 matching events in a bucket. A non-agree tally bucket
 whose count exceeds its event-row count is therefore not explained row by row and cannot be
@@ -323,7 +398,7 @@ left join policy_shadow_event e
  and e.route_key = t.route_key
  and e.outcome = t.outcome
  and e.reason_code is not distinct from t.reason_code
-where t.day >= (current_date - interval '7 days')
+where t.day >= ((now() at time zone 'UTC')::date - 2)
   and t.outcome <> 'agree'
 group by t.day, t.route_key, t.outcome, t.reason_code, t.count
 having t.count > count(e.id)
@@ -341,15 +416,16 @@ order by created_at desc
 limit 50;
 ```
 
-**Coverage check** — a router with zero rows in the last 7 days was never actually
-exercised, which the addendum treats the same as "not clean":
+**Coverage check** — this reports observed requests per router and UTC date. Compare each
+required router group against all three selected dates; a missing date means coverage for that
+router is not established and the window is not clean:
 
 ```sql
-select router_group, sum(count) as requests_evaluated
+select day as utc_day, router_group, sum(count) as requests_evaluated
 from policy_shadow_tally
-where day >= (current_date - interval '7 days')
-group by router_group
-order by requests_evaluated asc;
+where day >= ((now() at time zone 'UTC')::date - 2)
+group by day, router_group
+order by day, requests_evaluated asc;
 ```
 
 **Coverage share, before vs after a cutover** (issue #324 acceptance criterion 6) — per

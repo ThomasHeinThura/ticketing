@@ -23,8 +23,16 @@ Three checks wearing one number — they need three implementations, so they are
   package or `@base-ui/react` outside `packages/ui`, and inside `packages/ui` on any Radix
   import not listed in `packages/ui/KNOWN-RADIX.md` ([ui-extraction-plan.md](ui-extraction-plan.md)).
   This is `check:ui` proper.
-- **G1c — the old directory stays empty.** Fails if anything lands in
-  `apps/web/src/components/ui` after extraction.
+- **G1c — the old directory stays empty.** `scripts/ci/check-ui.mjs` fails if
+  `apps/web/src/components/ui` contains any entry after extraction, including ignored and
+  untracked files. App-specific compositions live under `apps/web/src/components/`; shared
+  primitives live under `packages/ui`. The five former app files are not exceptions: the
+  API-aware avatar adapter is `apps/web/src/components/avatar/`, error display/fallback are
+  `apps/web/src/components/errors/`, the session-loading shell is
+  `apps/web/src/components/app-shell/`, and the error-test harness is the route-local
+  `/test-error` module. The route and imported composition remain functional at those
+  locations. This is the selected disposition for #403's five-file residue; it does not
+  approve app-owned primitives inside `packages/ui` or a non-empty legacy directory.
 
 **Why:** v1 hand-wrote every primitive and got inconsistency, missing icons and ad-hoc
 accessibility. See [ADR 0008](../01-architecture/adr/0008-single-design-system.md).
@@ -32,33 +40,54 @@ accessibility. See [ADR 0008](../01-architecture/adr/0008-single-design-system.m
 **Escape hatch:** an inline `// ui-exempt: <reason>` comment. Reviewed; rarely justified.
 
 
-### G2 · Tokens only
+### G2 · Tokens and density slots
 
-**Fails on:** a hex colour, `rgb()`, `hsl()`, `oklch()`, or an arbitrary Tailwind value
-for colour, spacing, radius or z-index, outside `packages/ui/src/styles/`.
+**Scope:** G2 enforces semantic color/token use and the registered density slots. It is not a
+repository-wide ban on Tailwind's arbitrary-value syntax, radius or z-index utilities. The
+existing design decision uses Tailwind's built-in spacing, type, shadow and z-index scales
+directly; only repeated rows, shared form fields and `CardPanel` have a density contract.
+This bounded scope is intentional and does not claim arbitrary spacing elsewhere has been
+normalized.
 
-Run by `scripts/check-tokens.mjs`, inherited from v1 — one of the few things it got right.
+**Fails on:** a hard-coded colour outside `packages/ui/src/styles/`, and on fixed vertical
+padding/gap utilities placed directly on a registered density slot. The shared classes
+`td-density-row`, `td-density-field`, and `td-density-card` are the only density controls.
+Comfortable is the default; the existing root `compact-mode` preference applies the compact
+values. The currently checked slots are shared table rows, input controls, and `CardPanel` in
+`packages/ui`; they use the classes from `packages/ui/src/styles/density.css`. Ordinary
+layout spacing outside those named slots continues to use Tailwind's built-in scale.
 
-**Known gap, not yet closeable:** this does not catch a hard-coded density utility (`py-3`
-on a table row) that defeats the comfortable/compact preference — only an *arbitrary*
-value (`p-[13px]`) fails today. [design-tokens.md](design-tokens.md#spacing-z-index-type-scale-shadow-layout--deleted)
-states why: TaskDesk deliberately deleted its own `--space-*` token layer and left the
-density mechanism itself (a semantic spacing token set, or a density utility class) as an
-open follow-up, "recorded here once decided" rather than guessed at now. `G2` gains this
-check once that mechanism is chosen; until then `H5`, a human gate, is the only backstop —
-which is the gap this finding is naming, not a defect in this gate's own logic.
+`scripts/ci/check-tokens.mjs` checks registered rows, fields, and `CardPanel` density markup,
+rejects direct fixed padding/gap utilities there, and uses positive/negative probes. It does
+not claim to enforce arbitrary spacing, radius, or z-index utilities elsewhere. `design-tokens.md`
+owns the class values and the slot inventory.
 
 ### G3 · Contrast
 
-**Fails on:** any declared foreground/background pair below WCAG AA, in either theme.
-
-The declared pairs and the token values this checks are real inputs, not a hypothetical:
-[design-tokens.md](design-tokens.md)'s "Semantic assignments", "Status colours" and
-"Priority and SLA colour tokens" sections give every token a value in both themes, and its
-["Contrast (G3)"](design-tokens.md#contrast-g3) section defines the `pairs.json` schema —
-one entry per declared foreground/background combination, `minRatio` 4.5 for body text and
-3 for large text and non-text indicators. `check-tokens.mjs` composites translucent tokens
-over their effective backdrop before measuring, per that section.
+**Fails on:** any declared, actually used foreground/background pair below WCAG AA in either
+theme, any used pair missing from the manifest, a stale manifest entry with no observed
+source use, or a used foreground occurrence whose painted surface is not proven. The source
+inventory covers every shipped TSX/JSX product component and Storybook story under
+`apps/web/src` and `packages/ui/src`; unit-test and spec renderers are excluded because they
+do not establish shipped surface contexts. It follows actual component/caller surfaces,
+including aliases, nested render helpers, state branches and translucent ancestors. Each
+repeated occurrence is bound independently before equivalent numeric pairs are deduplicated.
+No Button/Badge/Input-only limitation remains.
+`packages/ui/src/styles/pairs.json` records token roles, category/threshold, theme coverage,
+usage owner, actual background class by theme, and effective opaque backdrop. The checker
+scans styled TSX/JSX sources under `packages/ui/src` and `apps/web/src`, so an unlisted used
+pair fails the gate. `pnpm check:tokens` runs the token/density checks and builds the web stylesheet, then loads that
+stylesheet in Chromium, reads computed colours, composites transparent layers over the
+declared effective backdrop, and checks 4.5:1 body text or 3:1 large text/non-text
+indicators in light and dark themes. It activates hover and pressed attributes on the probe;
+for autofill, it rewrites only the built `:has(:autofill)` state selector to an equivalent
+probe attribute because headless Chromium cannot synthesize autofill. The production class
+selector, declaration, variable values, and cascade remain from the built stylesheet.
+Coverage and failure probes exercise unknown pairs, stale declarations, threshold failures,
+and translucent surfaces. `design-tokens.md` owns the schema and
+`packages/ui/src/styles/theme.css` is the value source. This numerical gate does not approve
+provisional authored colors visually; H1–H6 design review is deferred to P4 under the
+current user decision.
 
 ### G4 · Accessibility
 
@@ -67,13 +96,19 @@ suite, and on any Storybook story.
 
 ### G5 · Every screen has a URL
 
-**Fails on:** a route present in the generated route trees (`routeTree.agent.gen.ts`,
-`routeTree.portal.gen.ts`) but missing from `lib/routes.ts` — which is **generated from
-those trees, never hand-maintained** — or a declared route that fails the build/parse
-round-trip test. `check:inventory` compares the screen inventory's canonical routes (query
-strings stripped) against the same generated list, so there is one source of truth.
+**Fails on:** a route present in either generated tree (`routeTree.agent.gen.ts`,
+`routeTree.portal.gen.ts`) but missing from `generatedRouteMetadata`, re-exported by
+`lib/routes.ts` and generated from those trees, or a generated route template that fails
+the build/parse round-trip test. `check:inventory` compares canonical URLs for inventory
+routes marked in progress or complete with the generated trees. Not-started inventory URLs
+remain planned; the checker reports their count without treating them as working routes.
+Generated inherited and documented legacy routes stay in the registry and round-trip tests,
+but do not become TaskDesk v2 inventory screens. This active-prerequisite scope follows the
+[2026-09-28 applicable-now gate decision](../07-planning/decision-log.md#2026-09-28--10s-gate-scope-semantics-decided-applicable-now-gates-required-future-stage-gates-activate-with-their-prerequisite)
+and the [G8 route-activation decision](../07-planning/decision-log.md#2026-10-01--g8-requires-implemented-screens-now-and-activates-future-routes-with-implementation).
 
-**Also fails on:** for every list surface (a `route`-kind screen with filters, a layout
+**Also fails on:** for every implemented list surface (a `route`-kind screen marked in
+progress or complete with filters, a layout
 switch or a saved-view lens — the `Work`, `Backlog`, `Triage`, `Views` and `My work`
 inventory rows), an E2E assertion that applying a filter changes the URL to encode it, and
 that reloading that exact URL restores the same filter and layout state. Route registration
@@ -110,9 +145,13 @@ this gate does not claim it.
 **Fails on:** an unapproved pixel change to any Storybook story or to any key screen
 snapshot.
 
-**Key screens** are every `route`-kind row of the [screen inventory](screen-inventory.md) —
-that document is the single source, so a screen added there gets its G8 baseline in the
-same pull request rather than a second, separately-maintained list drifting from it.
+**Key screens required today** are the `route`-kind rows marked in progress or complete in
+the [screen inventory](screen-inventory.md), plus every exported Storybook story. When a
+route moves into progress, its route registration, deterministic browser fixture, and G8
+baseline are required in that same change. Rows still marked not started remain planned
+work; they do not need a route or baseline before implementation begins. As implementation
+advances, every inventory route becomes a required key screen in the same change that moves
+it into progress.
 
 Approving a diff is an explicit action in the pull request, which puts intentional visual
 change in front of a reviewer and catches unintentional change immediately rather than
@@ -155,20 +194,45 @@ Measured against a seeded dataset in CI.
 | Board drag, a scripted 2 s drag | p95 frame time < 20 ms, median of three runs |
 
 A budget regression fails the build. Raising a budget requires a decision log entry. Bundle
-sizes are measured by `size-limit` on the two entry bundles; field INP is observed in
-production ([observability.md](../01-architecture/observability.md)), not gated in CI — a
-shared runner cannot measure it.
+sizes use Node's built-in gzip measurement over each Vite manifest entry's static JavaScript
+imports and CSS. For the direct `Work — list` URL, the early-preloaded route component and its
+static imports are also counted as the initial route graph; its preload hint is conditional on
+`/agent/projects/{key}/work`, and uses the hashed assets resolved from the build bundle. Other
+dynamic imports remain excluded, except that this graph includes the largest supported locale
+chunk because the route hint preloads the browser-resolved locale. Until the agent/portal build
+split exists, the single app entry and the direct work-list graph are both measured against the
+agent's 350 KB budget. The
+portal entry is measured against its 200 KB budget as soon as the split emits it. Field INP
+is observed in production ([observability.md](../01-architecture/observability.md)), not
+gated in CI — a shared runner cannot measure it.
 
-**Measurement, per metric** (the harness this gate needs, not yet built):
+The synthetic interaction proxy is required for every `G10` core journey whose owning
+screen is implemented (screen-inventory status `in progress` or `complete`). The journey
+list is the authority; a test may not silently omit an implemented journey. Per the
+2026-09-28 decision-log entry on capability activation, a journey whose screen is not yet
+implemented is not mocked or counted as passed; its test becomes required in the PR or
+workstream that introduces that screen. G11 is not claimed complete while a named G10
+journey lacks either an implemented measurement or an explicit not-yet-implemented
+dependency.
+
+For the keyboard Projects journey, the Playwright driver reads the existing in-page
+`paletteNavigationPaint` mark immediately after pressing Enter, before its destination URL,
+full-content and screenshot checks. Those functional checks still run unchanged afterward and
+remain required; only their ordering relative to the Node-side mark read is specified here.
+The in-page Enter start, visible pending-route predicate, and two-frame end mark do not move.
+
+**Enabled measurement harness, per metric:**
 
 | Metric | Tool | Throttling | Target route | Sample / flake policy |
 | --- | --- | --- | --- | --- |
-| LCP, CLS, route transition | Playwright, `PerformanceObserver` marks read via CDP | Network: Lighthouse's "Fast 4G" profile (1.6 Mbps down / 750 Kbps up / 150 ms RTT) via `Network.emulateNetworkConditions`; CPU: 4× slowdown via `Emulation.setCPUThrottlingRate` | `Work — list` (seeded, P1's canonical list surface) → `Work item — full page` for the transition row | Median of three runs; one automatic re-run on a failing sample before the build fails, per metric |
-| Interaction latency (INP proxy) | Playwright, timestamped click-to-paint on the named core journeys (`G10`'s list) | Same profile as above | The journey's own screen | Median of three runs, same re-run policy |
-| Board render (200 items) | Playwright, time from navigation to last row painted | Unthrottled — measures the app's own render cost, not the network | `Work — board`, seeded | Median of three runs |
-| List render (500 rows) | Same method | Unthrottled | `Work — list`, seeded | Median of three runs |
+| LCP, CLS, route transition | Playwright, `PerformanceObserver` marks read via CDP | Network: Lighthouse's "Fast 4G" profile (1.6 Mbps down / 750 Kbps up / 150 ms RTT) via `Network.emulateNetworkConditions`; CPU: 4× slowdown via `Emulation.setCPUThrottlingRate` | `Work — list` (seeded, P1's canonical list surface) → first visible detail loading skeleton or detail content after the row click; the harness separately waits for actual detail data | Median of three runs; one automatic re-run on a failing sample before the build fails, per metric |
+| Interaction latency (INP proxy) | Playwright, timestamped click-to-paint on the named core journeys (`G10`'s list) | Same profile as above | The journey's own screen; create measures the visible submitting state after the submit click, then separately waits for the created row | Median of three runs, same re-run policy |
+| Board render (200 items) | Playwright, time from document start until the last seeded card is painted | Unthrottled — measures the app's own render cost, not the network | Current legacy project board (`/dashboard/workspace/{workspaceId}/project/{projectId}/board`) until P1's canonical board exists | Median of three runs |
+| List render (500 rows) | Playwright, time from document start until all 500 seeded rows are painted | Unthrottled | `Work — list` (`/agent/projects/{key}/work?layout=list`) | Median of three runs |
 | Board drag (p95 frame time) | Already specified above — a scripted 2 s drag, median of three runs | Unthrottled | `Work — board` | As stated in the table row |
-| Agent / portal bundle size | `size-limit` | n/a | n/a | Single measurement; a regression fails immediately, no re-run (deterministic) |
+| Agent / portal bundle size | `pnpm check:bundle-size`, Node gzip over the Vite manifest's static-import graph and CSS | n/a | n/a | Single measurement; a regression fails immediately, no re-run (deterministic) |
+
+G11's timed samples retain failure traces with actions, screencast, source, and attachment data, while automatic DOM snapshots are disabled. Because Playwright 1.63 then leaves trace network files empty, each benchmark context separately attaches a bounded, sanitized network summary containing only the method, a closed known-safe benchmark route template (or the fixed label `unrecognized`), resource type, finite status, available finite timing, and an optional failure flag. Dynamic path values are always replaced by fixed placeholders, independent of their contents; unknown path shapes retain no path detail. It retains no raw request or response objects, headers, cookies, bodies, full URLs, or query strings, and reports truncation. Explicit screenshots taken after measured actions and all functional assertions remain required.
 
 CPU/network throttling applies only to the metrics a real user's device and connection
 would affect (LCP, INP, CLS, route transition); render-time and bundle-size rows measure
@@ -182,7 +246,7 @@ portal bundle's module graph (walked from the bundler's own metadata).
 
 Achievable only with **two router trees**: two `tanstackRouter()` plugin instances
 (`routes/agent`, `routes/portal`) generating two route trees, two Rollup inputs
-(`entry.agent.tsx`, `entry.portal.tsx`) and two HTML files. kaneo's single generated
+(`src/main.tsx`, `src/main.portal.tsx`) and two HTML roots. kaneo's single generated
 `routeTree.gen.ts` (49 static route imports) cannot satisfy this; the split is P0 work
 ([ui-extraction-plan.md](ui-extraction-plan.md)).
 
@@ -214,6 +278,12 @@ makes for the terminology overlay — previously an ADR promise with no gate beh
 
 ## Human — at pull request review
 
+For P0–P3, human H1–H6 review is deferred until the integrated P4 review; it is not an
+early implementation or pull-request prerequisite. Record the status as deferred, never as
+approved. The questions below remain the review criteria when that integrated human review
+occurs. Automated accessibility, behavioral, and browser checks continue on the normal
+implementation schedule.
+
 ### H1 · Does it look like kaneo?
 
 The comparison has an artefact: a **kaneo reference screenshot set** captured at P0 (the same
@@ -226,7 +296,7 @@ a memory test.
 
 Open kaneo. Open this. Would they sit next to each other without one looking wrong?
 
-This is the primary question and it is asked every time.
+This is the primary question for the integrated human review at P4.
 
 ### H2 · Progressive disclosure
 

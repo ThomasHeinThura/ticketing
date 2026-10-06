@@ -1,0 +1,33 @@
+# Independent GPT-6 Sol security review — complete P0 candidate
+
+**Reviewed head:** `8c8007f7d2dbb434b15f6560f8c76a08fd7315cc`
+
+- **Model and independence:** fresh GPT-6 Sol security-review context. I did not materially author, direct, or remediate this candidate or its previous findings. I made no repository source edit, commit, push, merge, deployment, or external message. This is the required full per-candidate Sol pass for a bounded CI gate pass/fail change, not the additional P0 phase finalizer.
+- **Comparison:** independently cleared shipping baseline `94ecb0fe9d6577c2bb4c6d5b540b803be5ccfc98` through the complete UI, metadata, checker, test, and evidence delta to this head; focused remedy comparison `9d4d6cc2d198833b5fc6be919b4890f62a2d9da4..HEAD`.
+- **Start/end state:** worktree `/Users/heinthura/.codex/worktrees/p0-bulk-integration/Ticketing.v2` was clean at start and end; HEAD matched the reviewed full SHA at both checks.
+- **Verdict:** **REQUEST CHANGES.** One blocking G3 checker bypass remains. The current head must not be represented as Sol-cleared or merged on this review.
+
+## Scope and evidence inspected
+
+I read the repository agent workflow and operating guide, current status and newest decision, G3 contrast/CI contracts, the baseline's three Luna and full Sol records, the two `9d4d6cc2` Luna records, and the genuine current-head Luna remedy verification. I inspected the complete `94ecb0fe..HEAD` path inventory and the application UI diff (breadcrumb picker, board/card, labels, relations, work-item list), then the complete `9d4d6cc2..HEAD` remedy diff and relevant `validatePairManifest` source/tests. The complete baseline-to-head diff changes 28 paths. The remedy diff changes `pairs.json`, `check-contrast.mjs`, `check-contrast.test.mjs`, and dated planning/review artifacts; it changes no application UI, API, authority, domain, policy, contract, migration, dependency/lockfile, image recipe, or deployment source. The baseline-to-head comparison likewise contains no API, domain, permissions, contract, lockfile, or image-source path. The current application source is the previously reviewed `9d4d6cc2` UI source. This path and diff verification supports continuity of the earlier baseline security assessment; it is not a rerun of that assessment's PostgreSQL or runtime checks.
+
+Read-only structural comparison of the two 422-entry pair registries confirms only entries **15, 16, 35–38, 69, 70** differ, and only in `occurrenceIds`. Each current summary matches the first-seen ordered distinct projection of its own detail IDs. All **2,698** detailed occurrence records and all other pair fields are retained. **82** entries intentionally have repeated detail IDs, which the projection preserves as separate detail contexts. The new regression rejects missing, extra, and reordered members of a present array and accepts repeated detail contexts. Existing `occurrenceBound` and `occurrenceCoverage` checks still compare present detail records with observed source contexts; this finding does not allege that the eight current summaries are stale or that the bound detail records were weakened by the remedy.
+
+The retained review/runtime records distinguish author/operator evidence from independent review. The exact-clean `9d4d6cc2` private image/traffic result is one partial October 4 date, not three dates or current-head review. The local dirty-snapshot G11 22/22 is not exact clean hosted acceptance. The latest retained hosted `3b6fa114` G11 is **18/22** with the 500-row list, state change, assignment, and 200-card board over budget. I did not inspect credentials or raw logs. These are source-recorded claims and limits, not independently rerun hosted results.
+
+## Blocking finding — missing or malformed manifest arrays bypass the new invariant
+
+**Location:** `scripts/ci/check-contrast.mjs:408–425`, together with the later optional `occurrenceBound`/source-utility fallback at lines 574–670.
+
+The new first-seen summary check runs only under `Array.isArray(pair.occurrenceIds) && Array.isArray(pair.occurrences)`. A valid, source-observed pair with one detailed occurrence returns zero `validatePairManifest` failures if `occurrenceIds` is deleted or replaced by a string. The same valid fixture also returns zero failures if `occurrences` is deleted or replaced by a string, or both arrays are deleted. `occurrenceBound` becomes false in the latter cases, while the existing direct class/source-use fallback accepts the pair. Thus a manifest row can drop the index or its detailed source proof and still pass the checker. The new decision log explicitly requires the summary to be the first-seen ordered distinct projection of detailed IDs **across every pair**, and the G3 contract requires each used occurrence to retain a current source-bound proof. This shape bypass defeats that pass/fail invariant, even though the committed 422 entries currently have both arrays. It is a CI gate integrity defect, not a demonstrated runtime authorization escalation.
+
+**Read-only reproduction:** I imported `validatePairManifest` from the exact head, constructed one valid light-theme `text-foreground`/`bg-background` row and a matching observed occurrence, then called the validator after changing only manifest shape. Results: valid `0` failures; missing summary `0`; string summary `0`; missing details `0`; string details `0`; both missing `0`; empty detail array `2` failures. A present empty summary produces the new expected failure. The existing 41-test suite covers wrong *contents* of present arrays but not these absent/wrong-type cases.
+
+## Checks actually run and remaining limits
+
+- `node --test scripts/ci/check-contrast.test.mjs`: **41 passed, 0 failed, 0 skipped**. The passing suite does not exercise the shape bypass above.
+- `pnpm check:tokens`: static token check and both agent/portal builds succeeded; built-CSS G3 reported **422 declared source-grounded pairs** passing. This validates the current manifest contents, not malformed-shape rejection.
+- Read-only 422-pair JSON comparison: eight summary-only changes, 2,698 unchanged details, 82 pairs with repeated detailed IDs, and exact current projections for all 422.
+- `git diff --check 9d4d6cc2..HEAD`: passed. Start/end `git status --short` empty; `git rev-parse HEAD` exact reviewed SHA.
+
+**Non-blocking source findings:** none identified beyond the single blocking shape-bypass class above. I did not run PostgreSQL, browser interaction, Docker/runtime, hosted G11, full CI, or traffic acquisition. Required current-head hosted performance/CI and three actual issue-free UTC source-bound dates remain separate acceptance obligations; no gate is waived or converted to a pass by this review.

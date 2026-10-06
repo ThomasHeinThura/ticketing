@@ -3,13 +3,30 @@
 > **Design goal:** works out of the box with zero configuration, and scales to any
 > enterprise identity setup without a code change.
 
+## Current source status
+
+This table describes current API support separately from the target behavior specified
+below. Current source enables the Better Auth `twoFactor` plugin; it does not enable the passkey plugin.
+
+| Capability | Current API source | Target status and required behavior |
+| --- | --- | --- |
+| TOTP and backup codes | Better Auth `twoFactor` plugin enabled; policy gate and enrollment/status surface are implemented in this P0 batch; operation-bound step-up verification is being integrated | P0; only the installed Better Auth TOTP and one-use backup-code verifiers may satisfy policy |
+| Passkeys | No enabled plugin or verifier; unavailable | Planned after P0 |
+| Upstream MFA | No verifier for signed `amr` / `acr` or fresh SSO context; static setting is not proof | Verify mapped, signed per-login claims; fail closed when a required method cannot be verified |
+| Enrollment and factor recovery | No current MFA enrollment or reset flow | P0 implementation in progress; required users must enroll before protected use, and unsupported enrollment/verification must fail closed |
+
+Everything else in this document describes the target architecture unless it explicitly
+states current API source status. A configured setting or target UI is not evidence that the
+corresponding control is available.
+
 ## Layers
 
 ```
 ┌───────────────────────────────────────────────────────────────┐
 │ 1. AUTHENTICATION — "who is this?"                            │
 │    better-auth. Sessions, MFA, providers.                      │
-│    Pluggable: password · magic link · OTP · TOTP · passkey ·   │
+│    Pluggable: password · magic link · OTP · TOTP (planned) ·   │
+│    passkey (planned) ·                                         │
 │    any number of OIDC providers · social.                      │
 └───────────────────────────────────────────────────────────────┘
                               ↓ userId
@@ -35,10 +52,10 @@ layer never knows or cares how someone logged in.
 | --- | --- |
 | Works with zero config | ✅ email + password out of the box |
 | Multi-organisation | **Not used.** better-auth's organisation plugin is removed at the fork — our own `organisation` / `membership` / `team` / `invitation` tables are the directory, because identity is always resolved from *our* database. better-auth does authentication only |
-| MFA | ✅ two-factor plugin — TOTP, backup codes. **Added by us**; kaneo does not enable it |
+| MFA | better-auth provides the two-factor plugin; the current P0 candidate enables it and adds policy/status/enrollment screens, but acceptance still depends on integrated verification of login, session invalidation, and required-policy enforcement |
 | Magic link | ✅ inherited |
 | Email OTP | ✅ inherited |
-| Passkeys | ✅ passkey plugin. **Added by us**, after P0 |
+| Passkeys | **Planned after P0; not enabled in current API source**; integration and verification remain future work |
 | Arbitrary OIDC | ✅ genericOAuth — **configurable at runtime** |
 | API keys | ✅ apiKey plugin |
 | Impersonation | ✅ admin plugin — kept **only as a session primitive**; the authority check is ours (see the plugin table) |
@@ -65,15 +82,15 @@ registered in [inherited-features.md](inherited-features.md).
 | `emailOTP` | inherited — kept | `auth.email-otp` |
 | `genericOAuth` | inherited — kept | the protocol implementation every `auth.oidc` connection is built on |
 | `apiKey` | inherited — kept | the credential only; our `api_key` table owns everything else |
-| `admin` | inherited — kept **as a session primitive only** | its HTTP routes are **not mounted**, `user.role` is **never read**, and `POST /api/instance/users/{id}/impersonate` ([rbac.md](rbac.md)) does the authority check and sets `impersonatedBy`. Using the plugin's own endpoints would reintroduce the second authority source the identity-resolution rule forbids |
+| `admin` | inherited — kept **as a session primitive only** | its HTTP routes are **not mounted**. The application's identity resolver reads the stored `user.role = 'admin'` field as the current source for the instance-scope `instance_admin` grant; authority does not come from a plugin endpoint. `POST /api/instance/users/{id}/impersonate` ([rbac.md](rbac.md)) does the authority check and sets `impersonatedBy` |
 | `openAPI` | **removed at fork** | listed here as *"kept — development only"* until 2026-09-07. It mounts an unauthenticated `/api/auth/reference` that pulls an **unpinned** `cdn.jsdelivr.net/npm/@scalar/api-reference` bundle into the API's own cookie origin — **H19** of the [#13 security review](../07-planning/security-reviews/13-kaneo-import.md), which put it on issue #6's removal list. Removed in #6's inherited-defaults slice. The API's **own** OpenAPI document is `@hono/zod-openapi` at `GET /api/openapi` and is untouched by this |
 | `lastLoginMethod` | inherited — kept | |
 | `anonymous` | **removed at fork** | guest sign-in, on by default in kaneo. An ephemeral-identity surface does not ship dormant |
 | `deviceAuthorization` | **removed at fork** | a device-code grant no v2 spec asks for |
 | `bearer` | **removed at fork** | a second token-bearing authentication surface |
 | `organization` | **removed at fork — P0 step 1b** | see below |
-| `twoFactor` | **added — P0** | TOTP and backup codes |
-| `passkey` | **added — later stage** | |
+| `twoFactor` | **candidate P0 integration** | TOTP and backup codes use Better Auth's verifier; candidate login/session/policy wiring is not accepted until the full runtime and browser evidence passes |
+| `passkey` | **planned later; not enabled in current API source** | Integration and verification remain future work |
 
 **The organization plugin is kaneo's workspace model, not a dormant feature.** In kaneo it
 maps `organizationId → workspaceId` and owns `workspace`, `workspace_member`, `invitation`,
@@ -118,6 +135,10 @@ the most delicate code in the system; it is not left to a paragraph.
 
 ### The God Mode flow
 
+The flow below is a target design example, not evidence that these screens or authentication
+controls are available. In particular, the upstream-MFA choices are not wired to a current
+runtime verifier.
+
 ```
 God Mode → Authentication → [ Add connection ]          (agent connections)
 God Mode → Organisations → Contoso → Identity → [ Add connection ]   (customer — same form)
@@ -142,14 +163,15 @@ God Mode → Organisations → Contoso → Identity → [ Add connection ]   (cu
     Scopes                openid profile email
     Claim mapping         identifier: oid + tid (fixed) · email: email → preferred_username
                           → upn · name → name · groups → groups          (IP-27)
-    Auto-provision (JIT)  [x] create a person on first login
-      → role              Viewer ▾   (≤ this connection's max role rank; customer
+    Auto-provision (JIT)  [x] create a person on first login (Entra admission role required)
+      → admission role     [configured Entra app-role value; not a TaskDesk role]
+      → default role       Viewer ▾   (≤ this connection's max role rank; customer
                                       connections have exactly one choice: Customer)
     Max role rank         50 (Lead) ▾                     ← agent connections only
     Group → role mapping  1f9a…-c3d2 "TaskDesk-Leads" → Lead   [+ add rule]
                           ← keyed on the group OBJECT ID; the name is a snapshot (IP-28)
     Domain bindings       contoso.com                     ← each domain bound to one connection
-    MFA upstream          (•) honour amr/acr claim  ( ) static  ( ) off
+    MFA upstream          (planned target setting; not currently enforced)
     SCIM provisioning     [ ] enable → token, resources, mappings (IP-11…IP-23)
     Enabled               [x]
 
@@ -160,8 +182,10 @@ God Mode → Organisations → Contoso → Identity → [ Add connection ]   (cu
 
 Two things the form deliberately **cannot** express, because `IP-4` forbids them: **side**
 is never chosen — it follows the connection's portal (`agent` ⇒ staff, `customer` ⇒
-customer); **organisation** is never derived from a claim or an email domain — a customer
-connection is bound to one organisation at creation, an agent connection to the instance.
+customer); after authenticated admission, **organisation scope** comes only from the selected
+connection's persisted `organisation_id` — never directly from a claim or typed email domain.
+A customer connection is bound to one organisation at creation; an agent connection is
+instance-scoped.
 The same form serves both places it appears: God Mode → Authentication → *Add connection*
 (agent) and God Mode → Organisations → *org* → Identity → *Add connection* (customer, with
 the organisation pre-filled and locked).
@@ -179,15 +203,20 @@ auth reconfiguration suite asserts each of them against a mock IdP:
 
 - **PKCE with `S256`** on every authorization-code flow, including confidential clients.
 - A **`state`** value that is single-use, CSPRNG-generated, bound to the initiating
-  session *and* to the portal it was started from, and expired after ten minutes.
+  session and portal, and expired after ten minutes. Its server-side context for customer
+  home-realm routing records the selected identity-connection id and its persisted
+  `organisation_id`; the callback consumes this context and cannot reselect these values
+  (`IP-7`, `IP-9`).
 - A **`nonce`** in the request, validated in the ID token; the ID token's `iss`, `aud`,
   `exp` and signature (via the discovered JWKS, cached, with key rotation honoured) are
   validated before any claim is read.
 - Redirect URIs are exact-match, per portal, and never taken from the request.
 - The issuer is the connection's **resolved, tenant-specific** issuer, and — for Entra —
   the token's `tid` must equal the connection's tenant as well as its `iss` (`IP-26`).
-- The domain mapping and the account-linking rules below apply **after** the token is
-  validated, never to raw claims.
+- Customer login initiation may use the visitor's typed email domain for connection
+  routing. Callback-claim collision checks and account-linking rules apply only after the
+  token is validated; the callback cannot change the connection or scope bound in state
+  (`IP-9`).
 
 ### What Microsoft Entra actually sends — the claim rules
 
@@ -200,17 +229,26 @@ they exist.
 - **The issuer must be a specific tenant** — `IP-26`. `/common` and `/organizations` are
   refused at save; the connection stores the resolved tenant-specific issuer; every ID token
   must match both `iss` and `tid`. `05-no-user-controlled-tenant-selection.test.ts`.
-- **The identifier is `oid` + `tid`, and there may be no `email` claim** — `IP-27`. Address
-  precedence `email` → `preferred_username` → `upn`; no `email_verified` claim exists at
-  all; JIT fails closed rather than inventing an address.
+- **Entra subject admission is separate from JIT creation and profile metadata** — `IP-27`.
+  Every Entra connection requires an exact configured app role and signed `acct=0` after
+  exact token validation, for every login including existing invite/SCIM identities when
+  JIT is disabled. JIT controls only creation/default-grant behavior. A valid negative
+  admission retires only that identity's OIDC/JIT grants and denies a new session; an
+  invalid/unverified token or invalid server configuration mutates no grants. The durable
+  identifier is `oid` + `tid`; `email` → `preferred_username` →
+  `upn` supplies contact/display metadata only. An absent usable address may fail a profile
+  data requirement, never the admission decision by proving or disproving domain ownership.
 - **The `groups` claim carries object ids, and can go missing** — `IP-28`. Mapping is keyed
-  on the group object id with a name snapshot; on overage the claim is ignored, the JIT
-  default role is provisioned, and a `provisioning_event` and Health warning are raised. No
-  Graph call in the first release.
+  on the group object id with a name snapshot. On a valid login with absent, malformed, or
+  overage groups, retire only this external identity's prior OIDC group grants; keep only a
+  currently permitted JIT-default grant and independent direct, SCIM, or other-connection
+  grants. Emit the existing `provisioning_event` and Health warning for overage. Do not
+  query Graph in the first release. Invalid or unverified tokens do not mutate grants.
 
-A domain binding **refuses** a token whose email domain belongs to another connection. It
-never *selects* the organisation — that is `identity_connection.organisation_id`, resolved
-from the connection ([multi-tenancy.md](multi-tenancy.md)).
+Home-realm routing, connection-bound callback scope and deny-only post-validation domain
+collision checks follow the single boundary in `IP-9`; `identity_connection.organisation_id`
+is persisted on the selected connection and is the only customer-organisation scope source
+([multi-tenancy.md](multi-tenancy.md)).
 
 ### Per-portal binding
 
@@ -229,11 +267,20 @@ plugins may be `both` ([ADR 0003](adr/0003-better-auth-primary.md),
 
 **The agent login screen renders the providers scoped to `agent`** — there are few of them,
 they belong to the instance, and naming them discloses nothing. **The portal login screen
-renders no connection list at all.** Customer connections are per-organisation, so a list
-would name every customer organisation to every anonymous visitor. The portal asks for an
-email address and resolves the connection server-side from `domain_bindings`
-([customer-portal.md](../03-features/customer-portal.md) `CP-18`,
-[identity-provisioning.md](../03-features/identity-provisioning.md) `IP-29`).
+renders no connection list at all.** Customer connections are per-organisation; the portal
+may use the typed email domain to route login initiation to a configured connection, with an
+unbound domain falling through to non-SSO methods. The limited, domain-specific disclosure
+in the complete unauthenticated flow is defined in `IP-29`; no organisation/connection list
+is published. The authoritative routing/admission and state-scope boundary is `IP-9`/`IP-29`
+and `CP-18`.
+
+New-person JIT admission follows the single authoritative rule in `IP-9` and `IP-27`
+after OIDC validation; no provider-specific exception is inferred here. For customer sign-in,
+state-bound connection and scope follow `IP-7`/`IP-9`. Callback email-like claims are
+metadata only; any cross-connection domain collision can deny after validation, never admit
+or switch scope. Upstream app-role deassignment alone does not promise immediate revocation
+of an existing TaskDesk session. The first-release rule does not define a guest-login or
+alternate account-linking path.
 
 ## Identity architecture — the authoritative model
 
@@ -320,9 +367,12 @@ code; only the credential check reuses the platform. Budget it as such.
   with `__Host-` and with `SameSite=Lax`, and the API is served on each portal's own origin,
   which `/api/portal/*` already implies
   ([decision-log.md](../07-planning/decision-log.md) — environment surface).
-- Every `session` row carries `portal` (`agent` | `customer`), set at issue time. The
-  portal-boundary middleware compares `session.portal` to the request host — that column
-  is the data the check runs on.
+- New `session` rows carry `portal` (`agent` | `customer`), set by the host-selected
+  Better Auth instance at issue time. The additive migration leaves existing rows unbound
+  (`NULL`) rather than infer their origin from identity-side data; those sessions fail
+  closed during authenticated request resolution and at the realtime boundary, requiring
+  a fresh sign-in. The selected host's portal must match `session.portal` even if a cookie
+  value is copied into the other portal's cookie name.
 - **Server-side sessions in Postgres, and this is the honest revocation SLA.**
   better-auth's `session.cookieCache` is **disabled** at the fork — kaneo enables it for
   five minutes, which serves a session from a signed cookie with no database read. Every
@@ -365,8 +415,10 @@ Everything about *what a person is allowed to do* comes from the database, keyed
 id, on every request. Consequences:
 
 - Revoking access takes effect on the next request, not when a token expires.
-- An IdP compromise cannot mint privilege — group claims are only ever inputs to a
-  *provisioning* decision, and only at the moment of provisioning.
+- A validated OIDC groups claim is an input to a transactional, source-isolated grant
+  reconciliation on every login. Stored `membership_grant` provenance and the single
+  effective membership projection—not claims—authorize requests. Overage or absent/malformed
+  groups retire that identity's stale OIDC group grants; invalid tokens do not mutate grants.
 - RBAC changes are safe to deploy; there are no in-flight tokens carrying stale rules.
 
 Resolution is cached in Valkey for **30 seconds** (the revocation-latency budget, stated
@@ -375,6 +427,21 @@ invalidated explicitly on every membership, role, deactivation and connection ch
 practice an authority change is immediate and 30 s is only the worst case when the
 invalidation message is lost. This is the *authority* cache; the *session* SLA is the one
 stated under [Sessions](#sessions), and they are different budgets.
+
+The proposed provenance ledger and effective-membership projection are specified in
+[data-model.md](data-model.md) §2 and [RBAC](rbac.md). They require
+[ADR 0015](adr/0015-membership-grant-provenance.md), which remains Proposed pending Thomas's
+approval. In the target, each source adds/retires only its own grants; the projection chooses
+one role without capability union. Every connection/mapping/JIT/role-policy write must also
+preserve the shared IP-22 current-source validity and projection invariant, including
+role-priority changes with no grant retirement; see
+[identity-provisioning.md](../03-features/identity-provisioning.md) `IP-22`. OIDC reevaluation
+on connection A is not evidence about
+an explicitly linked connection B, so upstream removal on B is observed only at B's next
+validated login, SCIM update, or administrative disable/change. Global SCIM deactivation is
+the defined exception: all external grants for that inactive person retire. The 30-second
+authority-cache bound applies after committed grant/projection changes; no upstream
+instantaneous-revocation guarantee is implied.
 
 **Accounts are never linked automatically.** kaneo ships better-auth with
 `account.accountLinking: { enabled: true, trustedProviders: ["github","google","discord",
@@ -401,20 +468,56 @@ no account.
 
 ## Multi-factor authentication
 
-- TOTP and backup codes via better-auth's two-factor plugin. Passkeys as a second option.
-- Configurable in God Mode: **optional**, **required for staff**, **required for a
-  specific role**, or **required for everyone**.
-- When an external IdP already enforces MFA, TaskDesk prefers the token's `amr` / `acr`
-  claim **per login** and challenges locally when it is absent. A static "MFA satisfied
-  upstream" flag exists only for providers that emit neither claim; setting it is an
-  elevated, audited change and is shown in the God Mode Health security-posture panel.
-- **Resetting someone's second factor** (`POST /api/instance/users/{id}/reset-mfa`) is the
-  most socially-engineered path into an MFA-protected account. The screen requires the
-  administrator to record *how the requester's identity was verified* (a free-text reason
-  is mandatory, stored in the audit row); the affected person is emailed on every address
-  on file; and the reset revokes all of their sessions and API keys.
-- Enrolment is enforced at login: a user who must have MFA and does not is routed to
-  enrolment before anything else.
+- **Local factors:** P0 supports TOTP and one-use backup codes through Better Auth's
+  `twoFactor` plugin. The plugin owns encrypted factor material and verification; TaskDesk
+  owns the policy gate, enrollment confirmation, session consequences and audit records.
+  Passkeys remain planned for a later stage. An enabled plugin alone is not evidence that a
+  required policy is enforced.
+- **Runtime policy:** the singleton `instance_setting.local_factor_policy` is the sole
+  authority, with the closed shape `{ mode, requiredRoleId }`. `mode` is `off`, `optional`,
+  `required_staff`, `required_role`, or `required_everyone`. `requiredRoleId` is null except
+  for `required_role`, when it is the id of an existing role row; role rows have no inactive state, and deletion is blocked while one is the configured target. That policy applies to a
+  person with an active membership holding that role at any supported scope. Deleted or
+  inactive roles make the persisted policy invalid and readiness fails closed. The policy
+  is read at request/login authorization time, never cached beyond the documented runtime
+  refresh interval, and is not customer- or environment-specific.
+  Instance administrators read and update it through
+  `GET/PATCH /api/instance/local-factor-policy`; writes validate the required role before
+  committing and write an `instance.local_factor_policy_changed` audit action.
+- **Enforcement:** `off` does not require enrollment and disables self-service enrollment; `optional` permits
+  self-service enrollment and password-only login for unenrolled accounts. In either mode,
+  an already-enrolled account must complete its factor challenge;
+  each `required_*` mode requires a verified enrolled TOTP or valid backup code before an
+  authenticated session may be used. An unenrolled required user receives only the
+  enrollment/challenge surface, not a usable API session. Customer-portal authentication
+  remains disabled by the P0 CP-19 boundary. Unsupported upstream SSO MFA cannot satisfy a
+  required local-factor policy; it fails closed. Sign-in email OTP, remembered-device state,
+  and client assertions are never second-factor proof.
+- **Enrollment and recovery:** enrollment starts from a real session, returns the setup
+  secret only to that session once, and does not mark the factor enabled until a TOTP is
+  verified. Backup codes are shown once and are server-generated by Better Auth. Successful
+  enrollment invalidates other sessions and requires a fresh sign-in with the new factor.
+  Failed or expired enrollment leaves the account unenrolled. A backup code is consumed
+  once under concurrent requests. Factor disable requires a fresh factor proof and is not
+  available to an unenrolled/required account as a bypass.
+- **Target upstream contract:** a configured IdP's signed, verified `amr` / `acr` evidence
+  may satisfy login MFA only when it meets that connection's mapping. A static "MFA satisfied
+  upstream" setting is not proof that a particular login used MFA and never establishes
+  fresh step-up proof. Current source has no SSO MFA verifier; unsupported upstream-MFA
+  policy therefore cannot be treated as satisfied.
+- **Second-factor reset** (`POST /api/instance/users/{id}/reset-mfa`) is implemented in the
+  P0 candidate as an elevated browser-session-only instance-admin route. It requires a
+  12–1000 character note describing how the administrator verified the person's identity,
+  deletes the factor, invalidates all of that person's sessions and API keys, writes
+  `auth.mfa_reset`, and inserts a private `security_alert` notification before attempting
+  email delivery. The identity model currently has one canonical `user.email` address; the
+  email attempt targets that address. The response reports whether SMTP delivery succeeded;
+  the in-app notice remains durable if SMTP fails after the reset. SMTP must be configured
+  before the mutation starts. Required-factor policy still blocks protected use until the
+  person enrolls and verifies a new factor. The current runtime does not maintain multiple
+  verified addresses on one user record. Audit write failure follows AU-14 and does not undo
+  the reset. `#231` zero-admin bootstrap race remains open; this route does not claim to fix
+  bootstrap ownership.
 
 ## API keys and machine access
 
@@ -451,10 +554,14 @@ Invitations never grant instance-admin. That is deliberate and hard-coded.
 
 ## Break-glass
 
-**First run needs no environment variable.** On an empty database the application serves a
-one-time **setup page** at the agent origin, unlocked by a 32-byte token printed once in
-the container log (the pattern Jenkins and Portainer use). It creates the first instance
-administrator, enrols MFA, and records completion in `instance_setting.setup_completed_at`
+**Target first-run flow** needs no environment variable. On an empty database the application
+serves a one-time **setup page** at the agent origin, unlocked by a 32-byte token printed
+once in the container log (the pattern Jenkins and Portainer use). The target flow creates
+the first instance administrator and requires verified MFA enrollment before recording
+completion in `instance_setting.setup_completed_at`. The P0 candidate implements
+factor enrollment but has not changed the existing bootstrap marker sequence to wait for
+verified enrollment; bootstrap MFA completion is still residual and must not be claimed.
+The zero-admin bootstrap race (#231) also remains open.
 — a durable marker, so the page can never be re-opened by deleting user rows. The setup
 token expires after one hour or one use, and **while `setup_completed_at` is null every
 container start prints a fresh token and invalidates the previous one** — so an operator who

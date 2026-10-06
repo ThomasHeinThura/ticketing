@@ -207,6 +207,94 @@ role: it grants only what it itself declares, never the built-in's set.
 
 Detail and screens: [Roles and permissions UI](../03-features/roles-and-permissions-ui.md).
 
+## Shadow evidence for native read denials
+
+Issue #8 shadow evidence compares the declarative policy with an explicit decision made by
+the native authorization path. It never derives a legacy allow or denial from HTTP status.
+When shadow mode is enabled, a native **read** route whose typed resource lookup folds
+existence and reach into one query may perform one additional read-only observer lookup after
+that query returns no row. The observer lookup is permitted only for the resource kind and id
+already selected by that route's typed lookup middleware, and only when the exact matched
+route has a registered row-scoped capability policy. It uses the route's authoritative
+containment joins and excludes resources the native path considers deleted, archived, or
+otherwise inactive. It does not inspect raw paths to infer a table or id.
+
+If this lookup proves that the same live persisted row exists but the native reach predicate
+excluded it, the middleware may expose that row's scope to the shadow evaluator and record the
+native result as denied. A missing row, inactive row, unavailable lookup, or ambiguous
+containment remains unknown (or an evaluator error); none is converted to an authorization
+denial. Observer facts stay request-local and are never returned, logged, or audited. The
+extra lookup is disabled with shadow mode, and is never run for mutation routes or after a
+mutation may have changed or removed the row. The native response, handler reachability, and
+authorization decision are unchanged.
+
+The observer's native denial is evidence for the **legacy** side only. It must never set the
+declarative policy's `inReach` value to `false`: that would make the two sides share the very
+predicate the comparison is intended to test. The policy side independently evaluates
+`reaches()` from the resolved identity and typed, persisted target facts. Where those facts
+cannot be loaded completely, the result is `reach_unavailable`, not a guessed allow or deny.
+In the current schema, direct project membership, workspace membership, and organisation
+reach can be compared from their persisted rows. Workspace membership is evidence for a
+workspace-scoped decision; it does not add a project-reach grant. Project-scoped reads still
+require one of the canonical Reach steps 1–6, independently of their exact required
+capability. A native project read that accepts an ordinary workspace member without project
+reach is an authorization discrepancy to repair, not a reason to downgrade the registered
+policy scope or supply the native predicate as policy reach. Native reach rejection masks the
+project with `404`; existing capability checks and resource liveness remain required.
+Observer bookkeeping stays read-only. Native guard repairs follow the protected change flow
+and do not authorize automatic project memberships, implicit `sees_all`, or new role grants. Project ancestors and owner-team relations
+are not represented in the current project schema; they remain unavailable until their own
+schema and loader exist. A future typed loader may supply those facts, but the observer may
+not infer them from a legacy denial, route URL, or caller input.
+
+For matched native routes that do not use a separate reach middleware, the route handler may
+record explicit shadow evidence only at the point where its existing authorization/read
+predicate has actually completed: a failed native guard records `denied`, and a successful
+owner-scoped or capability-guarded read records `allowed` after its persisted query succeeds.
+This is a marker from the handler's real predicate, not a conclusion drawn from the response
+status. Public, delegated, authentication-guard short-circuits, malformed requests, and
+failed or incomplete reads remain unknown unless their own documented handler explicitly
+provides comparable evidence. Shadow-off follows the existing query path without observer
+lookups or additional database reads.
+
+This evidence is diagnostic only. The shadow evaluator still applies the registered policy
+to a row scope built from persisted facts and does not grant authority to the legacy caller.
+Where the existing identity adapter lacks a required hierarchy/team/private-item fact, the
+comparison remains unevaluated until that fact can be loaded from authoritative data.
+
+### Target membership projection from provenance grants — Proposed ADR 0015
+
+The target `membership` row remains the one effective role for a person and scope. The
+proposed `membership_grant` ledger records independent direct, JIT-default, OIDC-group and
+SCIM-group sources; it is provenance, not a list of roles to authorize. This contract is
+proposed in [ADR 0015](adr/0015-membership-grant-provenance.md), pending Thomas's approval,
+and is not implemented.
+
+Projection reads only active grants whose person, role, scope, owning organisation, source
+connection, mapping, portal/side and current rank ceiling still validate. Person, organisation
+and (for agent targets) workspace are protected validity parents; every writer that changes
+their eligibility joins IP-22's parent-first lock order, closure reread and atomic
+retire/reproject transaction. Closing customer `portal_access` retires affected external
+grants with existing `mapping_changed`, retains direct provenance independently, denies portal
+access and revokes sessions; reopening alone does not restore external grants. An active direct
+grant alone selects the role when one exists. Otherwise the valid external grant with the
+highest role rank selects the effective role. Equal-rank source precedence is
+`scim_group > oidc_group > jit_default` only if the tied grants name the **same** `role_id`.
+Different role ids tied at the greatest rank suppress the external effective membership and
+raise an operator-visible conflict; an id sort or capability union cannot resolve it. The
+projection never unions capabilities. `sees_all` is true only if the selected direct grant
+explicitly carries it; external grants cannot set or inherit it.
+
+Each source writer locks the affected external identity and person/scope key, commits grant
+deltas, the one effective membership projection, and provisioning/audit rows atomically, then
+publishes authority-cache invalidation after commit. OIDC login on one connection only
+reconciles that identity's OIDC grants; SCIM group removal only retires its matching SCIM
+grant. Neither deletes another source's grant or an effective row still justified by another
+valid grant. If the final grant is retired, the internal projection writer removes the
+membership and preserves provenance history; this is not a user-requested DELETE/pending
+action. Global SCIM deactivation is the explicit lifecycle exception and retires all
+external grants for the inactive person.
+
 ### One membership = exactly one role
 
 **Canonical rule (Thomas, 2026-09-09; issue #82).** A workspace membership holds **exactly
@@ -232,21 +320,28 @@ divergence it guarded against cannot occur through a route that no longer exists
 
 | Where | What it does |
 | --- | --- |
-| `require-workspace-permission.ts`, `require-workspace-role-authority.ts` | refuse the read, by name, through one shared resolution; `GET /api/capabilities` reports it as a distinguishable **409** |
+| `require-workspace-permission.ts`, `require-workspace-role-authority.ts` | refuse authorization through one shared resolution; writes never gain a capability from a malformed value |
 | migration `0050` | repairs rows that have only one meaning, refuses to guess at genuine unions, and adds a `CHECK` constraint |
+
+`GET /api/capabilities` is the narrow introspection exception: an authenticated member with
+one membership row may inspect their own map even when that row's role value is malformed.
+Every entry is false because malformed membership grants nothing. This endpoint does not
+authorize any other read or write. Duplicate membership rows and missing membership remain
+403. Its `workspaceMembership: true` self-policy condition requires that exact persisted
+membership; instance-admin reach alone does not satisfy it.
 
 The `CHECK` constraint is the durable backstop: it makes a NEW comma-joined write
 unreachable regardless of which route attempts it, native or otherwise, so this invariant
 does not depend on enumerating every write path the way the deleted guard had to.
 
-**The 409 above is scoped to the workspace named in the request, not to the caller globally
+**The membership decision is scoped to the workspace named in the request, not to the caller globally
 — corrected here at S10.** Before the plugin unmounted, `organizationPluginRoleGuard`'s read
 half additionally refused every non-exempt `/organization/*` action from a caller holding a
 malformed row in *any* workspace, even one naming a different, healthy workspace — a
 cross-workspace scope that guard alone provided, keyed on `user_id` rather than on the
 request's own `workspaceId`. That guard is deleted along with the plugin routes it policed.
 What remains — `require-workspace-permission.ts` / `require-workspace-role-authority.ts`,
-and `GET /api/capabilities`'s **409** — resolves the caller's role **for the workspace named
+and `GET /api/capabilities`'s membership-scoped introspection — resolves the caller's role **for the workspace named
 in the request** (`resolveMembershipRole(workspaceId, userId)`) and refuses only when that
 one resolution is malformed. A caller with a malformed row in workspace A is refused there,
 but a request naming a different, healthy workspace B is decided on B's own row, not
@@ -314,7 +409,18 @@ Self-assignment by a `member` is `work_item:update` on an item where the new ass
 the actor — the `orSelfTarget` body predicate below, not `work_item:assign`
 ([assignment.md](../03-features/assignment.md)).
 
-Instance scope has one system role: `instance_admin`, holding `instance:*`.
+Instance scope has one system role: `instance_admin`, holding `instance:*`. In the current
+runtime, the existing Better Auth `user.role = 'admin'` field is the sole instance-admin
+authority source; identity resolution projects it to this instance-scope grant. The Better
+Auth admin plugin's HTTP endpoints are not mounted and are not a second grant path.
+
+`instance_admin`'s global reach is **not** an implicit grant of workspace capabilities. A
+workspace-scoped route still requires the capability declared by its route policy from the
+caller's actual workspace role. In particular, `instance_admin` holding `instance:*` does not
+by itself grant `workspace:read`, `project:read`, or a workspace mutation capability. A route
+that currently checks only reach must add its declared capability check; the legacy
+`isInstanceAdmin` shortcut must not silently turn reach into workspace authority. An instance
+administrator who is also a workspace member is evaluated using that membership's role.
 
 ## The customer role is special
 
@@ -410,7 +516,7 @@ kinds — the specs may use no other form, and the route-coverage test rejects a
 type Policy =
   | ({ capability: Capability; scope: Scope; scopeSource: ScopeSource;     // 1. capability, optionally satisfied by an owner or self-target branch
       reach: ReachRequirement; orOwner?: OwnerBranch; orSelfTarget?: SelfTargetBranch } & Flags)
-  | ({ authenticated: true; self: true; personParam: PersonParam } & Flags) // 2. the caller's own records only (/api/me/*)
+  | ({ authenticated: true; self: true; personParam: PersonParam; workspaceMembership?: true } & Flags) // 2. the caller's own records only (/api/me/*)
   | ({ portal: 'customer'; predicate: PortalPredicate } & Flags)           // 3. a customer session on /api/portal/*, scoped by predicate
   | ({ public: true; reason: string } & PublicFlags)                       // 4. unauthenticated, with a stated reason
   | ({ delegated: 'better-auth' | 'websocket' | 'metrics' | 'scim'; reason: string } & Flags); // 5. mounts outside the session model
@@ -437,6 +543,9 @@ type PublicFlags =
 // say "not applicable", and it has to be said out loud, with a reason.
 type ReachRequirement = 'required' | { exempt: 'no_single_resource'; reason: string };
 type PersonParam = string | { exempt: 'no_person_parameter'; reason: string };
+// `workspaceMembership: true` is a self-policy condition: the caller must have one
+// unambiguous persisted membership in the active workspace named by this route. It is not
+// satisfied by instance-admin reach, a role-name hint, or another workspace membership.
 
 type Scope = 'instance' | 'workspace' | 'project' | 'work_item' | 'organisation';
 // Where the scope id must legitimately come from. "row" — a route addressing one resource by
@@ -454,6 +563,15 @@ type OwnerPredicate = 'row.person_id === identity.personId' | 'row.created_by ==
 type BodyPredicate = 'body.assigneeId === identity.personId';
 type PortalPredicate = 'own_request' | 'own_organisation' | 'addressed_approval' | 'own_submission' | 'self';
 ```
+
+`GET /api/capabilities` is a self-introspection route. Its caller may read the boolean map
+for a workspace where they have one unambiguous persisted membership; the endpoint does not
+require any individual capability merely to report which capabilities are false. This keeps
+the response useful when a stored role is unknown or malformed, without granting that role
+any capability. Its self policy declares `workspaceMembership: true`; the native route also
+checks membership, so instance-admin global reach without a workspace membership is not
+enough. The strict shadow evaluator requires verified membership evidence from the exact
+requested workspace. Writes and all other routes keep their normal capability checks.
 
 Three fields in that block were tightened while the registry was built (#7, #21), because the
 document contradicted itself in each place:
@@ -503,10 +621,11 @@ document contradicted itself in each place:
   counterpart of kind 2's `(self)`, needed because kind 2 is defined for `/api/me/*` on the
   agent origin only).
 - **Kind 4** requires a `reason`, so "public" is a deliberate, reviewable act.
-- **Kind 5** exists because the route-coverage test enumerates **Hono's router**
-  (`app.routes`), not the OpenAPI document — the OpenAPI document does not know about
-  `/auth/*`, `/ws` or `/metrics`, and those are precisely the surfaces v1 leaked through.
-  The `delegated` union is **closed**: adding a member is a decision-log entry, not an edit.
+- **Kind 5** exists because the route-coverage test must enumerate actual runtime surfaces,
+  not only the OpenAPI document. For Hono, it enumerates `app.routes`; `/metrics` is a
+  separate Node listener and is absent from that list. The OpenAPI document also cannot
+  describe all delegated `/auth/*` and websocket behavior. The `delegated` union is
+  **closed**: adding a member is a decision-log entry, not an edit.
 
   A delegated mount is **explicitly allowlisted, with the surface behind it unenumerated** —
   not "covered". `/auth/*` is one mounted handler whose endpoint set is defined by the
@@ -517,6 +636,16 @@ document contradicted itself in each place:
   approved list** — no `anonymous`, no `deviceAuthorization`, no `bearer`
   ([decision log](../07-planning/decision-log.md), fork-time removal list) — and the same
   assertion re-runs on every runtime rebuild, logging and alerting on a diff.
+
+  For every non-Hono HTTP listener, route coverage also enumerates a manifest exported by
+  the runtime constructor that starts that listener and compares the manifest with the
+  constructed listener. `/metrics` is the first planned example: exact method, path, port,
+  and delegated policy key `GET /metrics` are registered together. Coverage must fail for a
+  listener route absent from its manifest, a changed/extra method or path, a missing policy,
+  or an orphaned delegated policy. OpenAPI alone proves none of this. The current Hono
+  `/metrics` route entry and synthetic test fixture are placeholders, not evidence that the
+  separate Node listener or its manifest exists. See
+  [api-design.md](api-design.md#metrics-listener-and-permission-coverage).
 
   kaneo's inherited `mcp` and `oauth` routers are **deleted at fork**, not retrofitted: v2's
   MCP is a separate `apps/mcp/` process with no HTTP API of its own, and better-auth is the
@@ -589,8 +718,13 @@ takes its number from there.
 
 Three CI tests make this load-bearing:
 
-1. **Route coverage test** — enumerates every route in Hono's router and fails if any
-   lacks an entry in a policy map, or has an entry of an unknown shape.
+1. **Route coverage test** — enumerates every Hono route in `app.routes` and every
+   non-Hono HTTP listener manifest exported by its runtime constructor. For `/metrics`,
+   the manifest is compared with the constructed Node listener and its delegated policy.
+   The test fails for an unclassified listener route, an orphaned policy, or a changed/extra
+   method/path; OpenAPI alone proves none of these. Until the metrics listener is built,
+   its manifest and policy are planned, not current coverage. Any route without a policy
+   entry or with an unknown policy shape fails.
 2. **Permission matrix test** — for every built-in role × every route, asserts the
    expected allow/deny, twice: once for **capability** and once for **reach** (does the
    same call 404 when the resource is outside the identity's memberships). The fixture is
@@ -622,7 +756,6 @@ answer. See [Security model](security-model.md).
 | Out of reach | **404** — the resource does not exist, as far as you are concerned |
 | In reach, insufficient capability | **403** — with the missing capability named |
 | Capability held, but the workflow has no legal transition for this actor | **409** — illegal transition, with the reason |
-| The caller's own membership row is malformed, so no authority can be read from it | **409** — `MALFORMED_MEMBERSHIP_ROLE`, with the `problem` (issue #82) |
 | Not authenticated | **401** |
 
 Returning `403` for out-of-reach would confirm that a record exists, which is a tenant
@@ -632,13 +765,14 @@ information leak.
 
 Some actions require a fresh authentication regardless of capability — **the second
 factor when the account has one** (never "password *or* MFA"), an IdP re-authentication
-with `prompt=login` for SSO-only accounts. Re-authenticating mints a single-use confirmation
-token **bound to the pending action's id**, valid five minutes, from
-`POST /api/me/step-up` ([pending-actions.md](pending-actions.md) `PA-15`,
-[security model](security-model.md#sessions-csrf-and-step-up)) — one step-up can never
-approve two things, and a token that expires while the approver reads the summary can be
-re-minted for as long as the pending action itself lives. **This is the only list**; God
-Mode, the security model and the feature specs cite it rather than restating it.
+with `prompt=login` for SSO-only accounts. These are target requirements, not current
+factor availability: current API source enables neither `twoFactor` nor a verified fresh-SSO
+step-up adapter, so unsupported required methods fail closed. A single-use confirmation can
+bind to one pending action or to one explicitly registered operation; it is never a
+session-wide window. **This is the only list**; God Mode, the security model and the feature
+specs cite it rather than restating it. Binding, freshness and failure behavior are specified in
+[pending-actions.md](pending-actions.md) `PA-15` and
+[security-model.md](security-model.md#sessions-csrf-and-step-up).
 
 **This table is generated by `pnpm test:permissions` from the `elevated: true` entries in the
 `policy.ts` files.** Edit the registry, not this table; a hand-added row here that no policy
@@ -655,9 +789,10 @@ the first day.
 | --- | --- |
 | Creating or changing an identity connection (OIDC) or a non-OIDC auth plugin | `POST /api/instance/identity-connections`, `PATCH /api/instance/identity-connections/{id}`; `POST/PATCH /api/instance/plugins/{id}` for `auth.*` |
 | Creating, rotating or revoking a **SCIM token** | `POST /api/instance/identity-connections/{id}/scim`, `…/scim/rotate-token`, `…/scim/revoke-token` |
-| A group→role mapping that grants staff access, a role above `member`, or changes reach — **conditionally**: `PATCH …/scim` is elevated only when the change does one of those ([identity-provisioning.md](../03-features/identity-provisioning.md) `IP-6`) | `PATCH /api/instance/identity-connections/{id}/scim` |
+| OIDC mapping administration — every create, edit, enable and disable is unconditionally elevated, session-only and audited, including customer/display-only changes; forbidden authority remains impossible ([identity-provisioning.md](../03-features/identity-provisioning.md) `IP-6`, `IP-34`) | `POST /api/instance/identity-connections/{id}/oidc-group-mappings`, `PATCH /api/instance/identity-connections/{id}/oidc-group-mappings/{mappingId}` |
+| Every SCIM administration PATCH is route-wide elevated, session-only and audited; the route remains unusable until its strict DTO, parent-version CAS and dedicated PA-15 binding are specified in [issue #561](https://github.com/ThomasHeinThura/ticketing/issues/561), and fails closed meanwhile. Forbidden authority remains impossible ([identity-provisioning.md](../03-features/identity-provisioning.md) `IP-6`, `IP-20`–`IP-22`; [api-design.md](api-design.md#identity-connection-configuration-compare-and-set)) | `PATCH /api/instance/identity-connections/{id}/scim` |
 | Granting `instance:admin` | `POST /api/instance/users/{id}/grant-admin` |
-| Resetting another person's second factor | `POST /api/instance/users/{id}/reset-mfa` — with a mandatory verification note |
+| Resetting another person's second factor | Planned `POST /api/instance/users/{id}/reset-mfa` — with a mandatory verification note; unavailable until the factor adapter exists |
 | Creating a workspace **service** API key | `POST /api/workspaces/{id}/api-keys` — bounded by the creator's authority |
 | Granting `sees_all` on a membership | `PATCH /api/workspaces/{id}/members/{personId}` with `sees_all: true` — never self-grantable; audited as a reach change |
 | Marking a provider "MFA satisfied upstream", or a JIT rule that provisions `side = staff` or a role above `member` | `PATCH /api/instance/identity-connections/{id}` |
@@ -670,6 +805,18 @@ the first day.
 | Creating a webhook, or changing an existing webhook's `url` — a standing outbound data channel carrying every event in the owner's reach to an arbitrary endpoint, indefinitely | `POST /api/webhooks`, and `PATCH /api/webhooks/{id}` when the body changes `url` ([webhooks-and-api-keys.md](../03-features/webhooks-and-api-keys.md) `WH-14`) |
 | Overriding a change freeze | `POST /api/work-items/{key}/change/override-freeze` |
 | Creating, editing or deleting a workspace role — a role editor can mint authority up to their own rank | `POST /api/workspace/{workspaceId}/roles`, `PATCH /api/workspace/{workspaceId}/roles/{roleId}`, `DELETE /api/workspace/{workspaceId}/roles/{roleId}` |
+
+**Planned observability policy expectation (not a generated row yet):** when the rotation
+route is implemented, `POST
+/api/instance/observability/metrics-token/rotate` declares `instance:admin`, instance
+scope, `elevated: true`, and `sessionOnly: true`; its policy declaration must cause the
+generated elevated list above to include the metrics-token rotation action. Do not hand-edit
+that generated table in the documentation-only contract. The companion GET and PATCH
+policies are `instance:admin`, instance scope, `elevated: false`, each with a documented
+`elevationExemptionReason`: GET is read-only safe configuration; PATCH changes bounded log
+verbosity and mints no authority. GET/PATCH may use any credential for which the permission
+evaluator genuinely resolves `instance:admin`; rotation is session-only and rejects API,
+MCP, and impersonation credentials.
 
 ### Session-only routes
 

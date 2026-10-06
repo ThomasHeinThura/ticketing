@@ -48,6 +48,10 @@ export function useTaskFiltersWithLabelsSupport(
   const weekStartsOn = useUserPreferencesStore((state) => state.weekStartsOn);
   const storageKey = projectId ? `taskdesk:board-filters:${projectId}` : null;
   const [filters, setFilters] = useState<BoardFilters>(DEFAULT_FILTERS);
+  const hasActiveFilters = Object.values(filters).some((filter) =>
+    Array.isArray(filter) ? filter.length > 0 : filter !== null,
+  );
+  const normalizedTextQuery = textQuery?.trim().toLowerCase();
 
   useEffect(() => {
     if (!storageKey || typeof window === "undefined") return;
@@ -73,7 +77,7 @@ export function useTaskFiltersWithLabelsSupport(
 
   const filterTasks = useCallback(
     (tasks: Task[]): Task[] => {
-      const normalizedTextQuery = textQuery?.trim().toLowerCase();
+      if (!hasActiveFilters && !normalizedTextQuery) return tasks;
 
       return tasks.filter((task) => {
         if (normalizedTextQuery) {
@@ -182,11 +186,18 @@ export function useTaskFiltersWithLabelsSupport(
         return true;
       });
     },
-    [filters, project?.slug, textQuery, weekStartsOn],
+    [
+      filters,
+      hasActiveFilters,
+      normalizedTextQuery,
+      project?.slug,
+      weekStartsOn,
+    ],
   );
 
   const filteredProject = useMemo(() => {
     if (!project) return null;
+    if (!hasActiveFilters && !normalizedTextQuery) return project;
 
     return {
       ...project,
@@ -196,11 +207,7 @@ export function useTaskFiltersWithLabelsSupport(
           tasks: filterTasks(column.tasks),
         })) ?? [],
     };
-  }, [project, filterTasks]);
-
-  const hasActiveFilters = Object.values(filters).some((filter) =>
-    Array.isArray(filter) ? filter.length > 0 : filter !== null,
-  );
+  }, [project, filterTasks, hasActiveFilters, normalizedTextQuery]);
 
   const clearFilters = () => {
     setFilters(DEFAULT_FILTERS);

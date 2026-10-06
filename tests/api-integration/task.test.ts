@@ -8,6 +8,7 @@ import { resetTestDatabase } from "./helpers/database";
 import {
   createProjectFixture,
   createWorkspaceMember,
+  prepareAuthenticatedApiFixture,
   requireRow,
 } from "./helpers/fixtures";
 
@@ -146,6 +147,7 @@ describe("API integration: task creation", () => {
       "outsider",
     );
 
+    await prepareAuthenticatedApiFixture(outsider.id);
     mockAuthenticatedSession(outsider);
     const { app } = createApp();
 

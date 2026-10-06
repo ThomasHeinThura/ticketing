@@ -15,7 +15,10 @@ import { requireInviteAbuseGate } from "../utils/require-invite-abuse-gate";
 import { requireInviteRateLimit } from "../utils/require-invite-rate-limit";
 import { requireWorkspaceCreationAllowed } from "../utils/require-session";
 import { requireSessionOnly } from "../utils/require-session-only";
-import { requireWorkspaceCapability } from "../utils/require-workspace-capability";
+import {
+  assertCallerHasCapability,
+  requireWorkspaceCapability,
+} from "../utils/require-workspace-capability";
 import { requireWorkspaceMembership } from "../utils/require-workspace-membership";
 import {
   requireWorkspacePermission,
@@ -23,6 +26,7 @@ import {
 } from "../utils/require-workspace-permission";
 import { requireWorkspaceRoleAuthority } from "../utils/require-workspace-role-authority";
 import { workspaceAccess } from "../utils/workspace-access-middleware";
+import { invalidateNativeAuthorization } from "../ws";
 import activateWorkspaceCtrl from "./controllers/activate-workspace";
 import addWorkspaceMemberCtrl from "./controllers/add-workspace-member";
 import createWorkspaceCtrl, {
@@ -160,6 +164,7 @@ const getWorkspaceMembersRoute = createRoute({
   middleware: [
     requireSessionOnly(),
     workspaceAccess.fromParam("workspaceId"),
+    requireWorkspaceCapability("workspace:read"),
   ] as const,
   request: { params: workspaceIdParam },
   responses: {
@@ -180,6 +185,7 @@ const getWorkspaceInvitationsRoute = createRoute({
   middleware: [
     requireSessionOnly(),
     workspaceAccess.fromParam("workspaceId"),
+    requireWorkspaceCapability("workspace:read"),
   ] as const,
   request: { params: workspaceIdParam },
   responses: {
@@ -249,8 +255,8 @@ const updateWorkspaceRoute = createRoute({
     // not this lane's to invent — and choosing a different key here would
     // silently change who may update a workspace.
     requireWorkspacePermission({ organization: ["update"] }),
-    // Closes the instance-admin bypass `requireWorkspacePermission` alone
-    // would leave open — see require-workspace-role-authority.ts.
+    // Retains strict role-row validation for this authority-changing mutation;
+    // global reach is not a substitute for the caller's workspace role.
     requireWorkspaceRoleAuthority({ organization: ["update"] }),
   ] as const,
   request: {
@@ -285,8 +291,8 @@ const deleteWorkspaceRoute = createRoute({
     workspaceAccess.fromParam("workspaceId"),
     requireWorkspaceMembership,
     requireWorkspacePermission({ organization: ["delete"] }),
-    // Closes the instance-admin bypass `requireWorkspacePermission` alone
-    // would leave open — see require-workspace-role-authority.ts.
+    // Retains strict role-row validation for this authority-changing mutation;
+    // global reach is not a substitute for the caller's workspace role.
     requireWorkspaceRoleAuthority({ organization: ["delete"] }),
   ] as const,
   request: { params: workspaceIdParam },
@@ -635,6 +641,7 @@ const listWorkspaceRolesRoute = createRoute({
     requireSessionOnly(),
     workspaceAccess.fromParam("workspaceId"),
     requireWorkspaceMembership,
+    requireWorkspaceCapability("workspace:read"),
     requireWorkspacePermission({ ac: ["read"] }),
     requireWorkspaceRoleAuthority({ ac: ["read"] }),
   ] as const,
@@ -787,9 +794,25 @@ const workspace = apiRouter<BaseVariables & { workspaceId: string }>()
   .openapi(listWorkspacesRoute, async (c) =>
     c.json(await getUserWorkspacesCtrl(c.get("userId")), 200),
   )
-  .openapi(getWorkspaceRoute, async (c) =>
-    c.json(await getWorkspaceDetailCtrl(c.get("workspaceId")), 200),
-  )
+  .openapi(getWorkspaceRoute, async (c) => {
+    // Load first so an instance admin cannot turn an unverified nonexistent path id into
+    // a capability denial; the detail controller preserves the established 404 response.
+    const detail = await getWorkspaceDetailCtrl(c.get("workspaceId"));
+    try {
+      await assertCallerHasCapability(
+        c.get("workspaceId"),
+        c.get("userId"),
+        "workspace:read",
+      );
+    } catch (error) {
+      if (error instanceof HTTPException && error.status === 403) {
+        setShadowLegacyAuthorization(c, "denied");
+      }
+      throw error;
+    }
+    setShadowLegacyAuthorization(c, "allowed");
+    return c.json(detail, 200);
+  })
   .openapi(getWorkspaceMembersRoute, async (c) =>
     c.json(await getWorkspaceMembersCtrl(c.get("workspaceId")), 200),
   )
@@ -851,6 +874,7 @@ const workspace = apiRouter<BaseVariables & { workspaceId: string }>()
     if (!deleted) {
       throw new HTTPException(404, { message: "Workspace not found" });
     }
+    void invalidateNativeAuthorization({ workspaceId: c.get("workspaceId") });
     return c.json(deleted, 200);
   })
   .openapi(activateWorkspaceRoute, async (c) => {
@@ -858,6 +882,7 @@ const workspace = apiRouter<BaseVariables & { workspaceId: string }>()
       c.get("workspaceId"),
       requireSessionId(c),
     );
+    void invalidateNativeAuthorization({ workspaceId: c.get("workspaceId") });
     return c.json(activated, 200);
   })
   .openapi(addWorkspaceMemberRoute, async (c) => {
@@ -867,6 +892,10 @@ const workspace = apiRouter<BaseVariables & { workspaceId: string }>()
         workspaceId: c.get("workspaceId"),
         userId: body.userId,
         role: body.role,
+      });
+      void invalidateNativeAuthorization({
+        userId: body.userId,
+        workspaceId: c.get("workspaceId"),
       });
       return c.json(added, 200);
     } catch (error) {
@@ -891,6 +920,10 @@ const workspace = apiRouter<BaseVariables & { workspaceId: string }>()
         c.get("workspaceId"),
         c.req.valid("param").userId,
       );
+      void invalidateNativeAuthorization({
+        userId: c.req.valid("param").userId,
+        workspaceId: c.get("workspaceId"),
+      });
       return c.json(removed, 200);
     } catch (error) {
       if (error instanceof MemberNotFoundError) {
@@ -910,6 +943,10 @@ const workspace = apiRouter<BaseVariables & { workspaceId: string }>()
         c.req.valid("param").userId,
         body.role,
       );
+      void invalidateNativeAuthorization({
+        userId: c.req.valid("param").userId,
+        workspaceId: c.get("workspaceId"),
+      });
       return c.json(updated, 200);
     } catch (error) {
       if (error instanceof OwnerRoleNotAssignableHereError) {
@@ -935,6 +972,10 @@ const workspace = apiRouter<BaseVariables & { workspaceId: string }>()
         c.get("userId"),
         requireSessionId(c),
       );
+      void invalidateNativeAuthorization({
+        userId: c.get("userId"),
+        workspaceId: c.get("workspaceId"),
+      });
       setShadowLegacyAuthorization(c, "allowed");
       return c.json(left, 200);
     } catch (error) {
@@ -960,6 +1001,7 @@ const workspace = apiRouter<BaseVariables & { workspaceId: string }>()
         c.get("userId"),
         body.newOwnerUserId,
       );
+      void invalidateNativeAuthorization({ workspaceId: c.get("workspaceId") });
       setShadowLegacyAuthorization(c, "allowed");
       return c.json(transferred, 200);
     } catch (error) {
@@ -1050,6 +1092,7 @@ const workspace = apiRouter<BaseVariables & { workspaceId: string }>()
         permission: body.permission,
         callerStatements: await resolveCallerWorkspaceStatements(c),
       });
+      void invalidateNativeAuthorization({ workspaceId: c.get("workspaceId") });
       return c.json(updated, 200);
     } catch (error) {
       if (error instanceof InvalidPermissionResourceError) {
@@ -1073,6 +1116,7 @@ const workspace = apiRouter<BaseVariables & { workspaceId: string }>()
         c.get("workspaceId"),
         c.req.valid("param").roleId,
       );
+      void invalidateNativeAuthorization({ workspaceId: c.get("workspaceId") });
       return c.json(deleted, 200);
     } catch (error) {
       if (error instanceof RoleNameReservedError) {

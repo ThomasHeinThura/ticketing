@@ -17,6 +17,8 @@ import { resetTestDatabase } from "./helpers/database";
 import {
   createProjectFixture,
   createWorkspaceMember,
+  grantProjectRole,
+  prepareAuthenticatedApiFixture,
   requireRow,
 } from "./helpers/fixtures";
 import { raceProjectArchive } from "./helpers/race-soft-delete";
@@ -28,6 +30,13 @@ import { raceProjectArchive } from "./helpers/race-soft-delete";
  * already has one, exactly like `work-item-assign.test.ts`'s own `addPersonOnRoster`).
  */
 async function addPersonForUser(userId: string) {
+  const [existingPerson] = await db
+    .select({ id: schema.personTable.id })
+    .from(schema.personTable)
+    .where(eq(schema.personTable.userId, userId))
+    .limit(1);
+  if (existingPerson) return existingPerson;
+
   const organisation = await ensureInternalOrganisation();
   const now = new Date();
   return requireRow(
@@ -105,6 +114,10 @@ async function setupProject() {
     role: "admin",
   });
   const { project } = await createProjectFixture({ workspaceId: workspace.id });
+  await grantProjectRole(creator.id, project.id, [
+    "project:read",
+    "work_item:read",
+  ]);
   const type = await makeWorkItemType(workspace.id);
   await makeDefaultState(workspace.id, project.id);
   return { creator, workspace, project, type };
@@ -696,6 +709,7 @@ describe("API integration: work-item attachments (#28, attachments.md)", () => {
         .returning(),
       "restricted user",
     );
+    await prepareAuthenticatedApiFixture(restrictedUser.id);
     await db.insert(schema.workspaceUserTable).values({
       workspaceId: workspace.id,
       userId: restrictedUser.id,
@@ -707,6 +721,7 @@ describe("API integration: work-item attachments (#28, attachments.md)", () => {
       role: "attachment-list-probe",
       permission: JSON.stringify({ workspace: ["read"] }),
     });
+    await grantProjectRole(restrictedUser.id, project.id, ["project:read"]);
 
     mockAuthenticatedSession(restrictedUser);
     const listResponse = await app.request(

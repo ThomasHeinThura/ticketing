@@ -9,6 +9,7 @@ import {
   DropdownMenuTrigger,
 } from "@taskdesk/ui";
 import { ChevronsUpDown } from "lucide-react";
+import { useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { useGetTasks } from "@/hooks/queries/task/use-get-tasks";
 
@@ -26,15 +27,10 @@ export default function TaskCrumbSelect({
   onSelectTask,
 }: TaskCrumbSelectProps) {
   const { t } = useTranslation();
-  const { data: project } = useGetTasks(projectId);
-  const tasks = [
-    ...(project?.columns?.flatMap((column) => column.tasks) ?? []),
-    ...(project?.plannedTasks ?? []),
-    ...(project?.archivedTasks ?? []),
-  ];
+  const [open, setOpen] = useState(false);
 
   return (
-    <DropdownMenu>
+    <DropdownMenu open={open} onOpenChange={setOpen}>
       <DropdownMenuTrigger
         render={
           <Button
@@ -49,38 +45,65 @@ export default function TaskCrumbSelect({
         </span>
         <ChevronsUpDown className="size-3.5 text-muted-foreground" />
       </DropdownMenuTrigger>
-      <DropdownMenuContent className="w-80" align="start">
-        <DropdownMenuGroup>
-          <DropdownMenuLabel className="text-[11px] uppercase tracking-wide">
-            {t("navigation:search.groups.task")}
-          </DropdownMenuLabel>
-        </DropdownMenuGroup>
-        <DropdownMenuSeparator />
-        <DropdownMenuGroup>
-          {tasks.length > 0 ? (
-            tasks.map((task) => (
-              <DropdownMenuItem
-                key={task.id}
-                disabled={task.id === taskId}
-                onClick={() => onSelectTask(task.id)}
-                className="h-8 gap-2 text-sm"
-              >
-                <span className="min-w-0 truncate text-foreground">
-                  {task.number != null ? `#${task.number} ` : ""}
-                  {task.title}
-                </span>
-              </DropdownMenuItem>
-            ))
-          ) : (
-            <DropdownMenuItem
-              disabled
-              className="h-8 text-sm text-muted-foreground"
-            >
-              {t("tasks:listView.noTasks")}
-            </DropdownMenuItem>
-          )}
-        </DropdownMenuGroup>
-      </DropdownMenuContent>
+      {open && (
+        <TaskCrumbOptions
+          projectId={projectId}
+          taskId={taskId}
+          onSelectTask={onSelectTask}
+        />
+      )}
     </DropdownMenu>
+  );
+}
+
+function TaskCrumbOptions({
+  projectId,
+  taskId,
+  onSelectTask,
+}: Pick<TaskCrumbSelectProps, "projectId" | "taskId" | "onSelectTask">) {
+  const { t } = useTranslation();
+  const { data: project } = useGetTasks(projectId);
+  const tasks = useMemo(
+    () => [
+      ...(project?.columns?.flatMap((column) => column.tasks) ?? []),
+      ...(project?.plannedTasks ?? []),
+      ...(project?.archivedTasks ?? []),
+    ],
+    [project],
+  );
+
+  return (
+    <DropdownMenuContent className="w-80" align="start">
+      <DropdownMenuGroup>
+        <DropdownMenuLabel className="text-[11px] uppercase tracking-wide">
+          {t("navigation:search.groups.task")}
+        </DropdownMenuLabel>
+      </DropdownMenuGroup>
+      <DropdownMenuSeparator />
+      <DropdownMenuGroup>
+        {tasks.length > 0 ? (
+          tasks.map((task) => (
+            <DropdownMenuItem
+              key={task.id}
+              disabled={task.id === taskId}
+              onClick={() => onSelectTask(task.id)}
+              className="h-8 gap-2 text-sm"
+            >
+              <span className="min-w-0 truncate text-foreground">
+                {task.number != null ? `#${task.number} ` : ""}
+                {task.title}
+              </span>
+            </DropdownMenuItem>
+          ))
+        ) : (
+          <DropdownMenuItem
+            disabled
+            className="h-8 text-sm text-muted-foreground"
+          >
+            {t("tasks:listView.noTasks")}
+          </DropdownMenuItem>
+        )}
+      </DropdownMenuGroup>
+    </DropdownMenuContent>
   );
 }

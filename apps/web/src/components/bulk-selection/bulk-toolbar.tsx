@@ -37,7 +37,7 @@ import {
   useState,
 } from "react";
 import { useTranslation } from "react-i18next";
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/avatar";
 import { useBulkOperations } from "@/hooks/mutations/task/use-bulk-operations";
 import useGetLabelsByWorkspace from "@/hooks/queries/label/use-get-labels-by-workspace";
 import useActiveWorkspace from "@/hooks/queries/workspace/use-active-workspace";
@@ -71,6 +71,7 @@ function BulkToolbar() {
   const weekStartsOn = useUserPreferencesStore((state) => state.weekStartsOn);
   const { selectedTaskIds, clearSelection, selectAll } =
     useBulkSelectionStore();
+  const selectedCount = selectedTaskIds.size;
 
   const priorityOptions = useMemo(
     () => [
@@ -96,9 +97,11 @@ function BulkToolbar() {
   const { data: workspace } = useActiveWorkspace();
   const { data: workspaceUsers } = useGetActiveWorkspaceUsers(
     workspace?.id ?? "",
+    selectedCount > 0,
   );
   const { data: workspaceLabels = [] } = useGetLabelsByWorkspace(
     workspace?.id ?? "",
+    selectedCount > 0,
   );
   const { canUpdateTasks, canDeleteTasks, canAssignTasks, canUpdateLabels } =
     useWorkspacePermission();
@@ -108,8 +111,6 @@ function BulkToolbar() {
   const canEditLabels = canUpdateLabels();
   const [isActionsOpen, setIsActionsOpen] = useState(false);
   const [isDatePickerOpen, setIsDatePickerOpen] = useState(false);
-
-  const selectedCount = selectedTaskIds.size;
 
   const uniqueLabels = useMemo(() => {
     const labelMap = new Map<string, (typeof workspaceLabels)[0]>();

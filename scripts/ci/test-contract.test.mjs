@@ -3,6 +3,7 @@ import test from "node:test";
 import {
   hasStableV2Tag,
   isMissingBaseFileError,
+  oasdiffAssetFor,
   oasdiffExitError,
   parseApprovedBreaks,
   parseApprovedRedoclyFindings,
@@ -110,6 +111,35 @@ const oasdiffFinding = (overrides = {}) => ({
   text: "the response's body type changed",
   fingerprint: "fp-a",
   ...overrides,
+});
+
+test("oasdiff installer pins the Linux x64 archive unchanged", () => {
+  assert.deepEqual(oasdiffAssetFor("linux", "x64"), {
+    archiveName: "oasdiff_1.32.1_linux_amd64.tar.gz",
+    archiveSha256:
+      "7c8939fc49b75ee11fec66a5b83b37a2fca6aee109fed85013b1ba2ac2a1ee7f",
+  });
+});
+
+test("oasdiff installer uses the pinned universal macOS archive on x64 and arm64", () => {
+  const expected = {
+    archiveName: "oasdiff_1.32.1_darwin_all.tar.gz",
+    archiveSha256:
+      "e4d74b7e2dfb9d4819e7fc720c905ec86547e4637ac270a2b0187c0f1fb7187e",
+  };
+  assert.deepEqual(oasdiffAssetFor("darwin", "x64"), expected);
+  assert.deepEqual(oasdiffAssetFor("darwin", "arm64"), expected);
+  assert.match(expected.archiveSha256, /^[a-f0-9]{64}$/);
+});
+
+test("oasdiff installer rejects unsupported platform tuples", () => {
+  for (const [platform, arch] of [
+    ["linux", "arm64"],
+    ["win32", "x64"],
+    ["freebsd", "x64"],
+  ]) {
+    assert.throws(() => oasdiffAssetFor(platform, arch), /does not support/);
+  }
 });
 
 test("an unapproved oasdiff finding fails", () => {

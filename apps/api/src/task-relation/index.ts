@@ -141,7 +141,9 @@ const getTaskRelationsRoute = createRoute({
   summary: "Get task relations",
   description:
     "Get every relation where the task is the source or the target, each with a summary of both linked tasks. Relations pointing outside the caller's workspace are omitted.",
-  middleware: [workspaceAccess.fromTaskId("taskId")] as const,
+  middleware: [
+    workspaceAccess.fromTaskId("taskId", { requireProjectReach: true }),
+  ] as const,
   request: { params: taskIdParam },
   responses: {
     200: jsonResponse(

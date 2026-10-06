@@ -16,6 +16,8 @@ import { resetTestDatabase } from "./helpers/database";
 import {
   createProjectFixture,
   createWorkspaceMember,
+  grantProjectRole,
+  prepareAuthenticatedApiFixture,
   requireRow,
 } from "./helpers/fixtures";
 import { raceProjectSoftDelete } from "./helpers/race-soft-delete";
@@ -151,6 +153,8 @@ async function addWorkspaceMember(workspaceId: string, role: string) {
     "addWorkspaceMember: user",
   );
 
+  await prepareAuthenticatedApiFixture(user.id);
+
   await db.insert(schema.workspaceUserTable).values({
     workspaceId,
     userId: user.id,
@@ -175,6 +179,13 @@ async function addWorkspaceMember(workspaceId: string, role: string) {
 
 /** A `person` row for a user, mapping `person.user_id` for actor-role resolution. */
 async function makePerson(userId: string) {
+  const [existingPerson] = await db
+    .select()
+    .from(schema.personTable)
+    .where(eq(schema.personTable.userId, userId))
+    .limit(1);
+  if (existingPerson) return existingPerson;
+
   const organisation = await ensureInternalOrganisation();
   const now = new Date();
   return requireRow(
@@ -253,6 +264,10 @@ async function setupProject() {
     role: "admin",
   });
   const { project } = await createProjectFixture({ workspaceId: workspace.id });
+  await grantProjectRole(creator.id, project.id, [
+    "project:read",
+    "work_item:read",
+  ]);
   return { creator, workspace, project };
 }
 

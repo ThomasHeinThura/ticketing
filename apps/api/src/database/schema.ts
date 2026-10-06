@@ -42,6 +42,7 @@ export const userTable = pgTable("user", {
     .notNull(),
   isAnonymous: boolean("is_anonymous").default(false),
   role: text("role"),
+  twoFactorEnabled: boolean("two_factor_enabled").default(false),
   banned: boolean("banned").default(false),
   banReason: text("ban_reason"),
   banExpires: timestamp("ban_expires", { mode: "date" }),
@@ -62,11 +63,20 @@ export const sessionTable = pgTable(
     userId: text("user_id")
       .notNull()
       .references(() => userTable.id, { onDelete: "cascade" }),
+    // Set by the host-selected Better Auth instance at issuance; nullable only so
+    // pre-migration sessions fail closed until the user signs in again.
+    portal: text("portal", { enum: ["agent", "customer"] }),
     activeOrganizationId: text("active_organization_id"),
     activeTeamId: text("active_team_id"),
     impersonatedBy: text("impersonated_by"),
   },
-  (table) => [index("session_userId_idx").on(table.userId)],
+  (table) => [
+    index("session_userId_idx").on(table.userId),
+    check(
+      "session_portal_allowed",
+      sql`${table.portal} is null or ${table.portal} in ('agent', 'customer')`,
+    ),
+  ],
 );
 
 export const accountTable = pgTable(
@@ -140,6 +150,32 @@ export const verificationTable = pgTable(
       .notNull(),
   },
   (table) => [index("verification_identifier_idx").on(table.identifier)],
+);
+
+// Better Auth's installed `twoFactor` plugin schema. Secret and backup-code fields
+// are never returned by auth APIs; the plugin encrypts their values at rest.
+export const twoFactorTable = pgTable(
+  "two_factor",
+  {
+    id: text("id").primaryKey(),
+    secret: text("secret").notNull(),
+    backupCodes: text("backup_codes").notNull(),
+    userId: text("user_id")
+      .notNull()
+      .references(() => userTable.id, { onDelete: "cascade" }),
+    verified: boolean("verified").default(true),
+    failedVerificationCount: integer("failed_verification_count").default(0),
+    lockedUntil: timestamp("locked_until", { mode: "date" }),
+  },
+  (table) => [
+    index("two_factor_secret_idx").on(table.secret),
+    index("two_factor_user_id_idx").on(table.userId),
+    uniqueIndex("two_factor_user_id_unique").on(table.userId),
+    check(
+      "two_factor_failed_count_nonnegative",
+      sql`${table.failedVerificationCount} >= 0`,
+    ),
+  ],
 );
 
 export const workspaceTable = pgTable("workspace", {
@@ -351,6 +387,10 @@ export const projectTable = pgTable(
     icon: text("icon").default("Layout"),
     name: text("name").notNull(),
     description: text("description"),
+    defaultCommentVisibility: text("default_comment_visibility")
+      .$type<"public" | "internal">()
+      .notNull()
+      .default("internal"),
     createdAt: timestamp("created_at", { mode: "date" }).defaultNow().notNull(),
     archivedAt: timestamp("archived_at", { mode: "date" }),
     // #187: soft delete. `deletedAt`/`purgeAfter` mirror `organisationTable`'s own pair
@@ -367,6 +407,10 @@ export const projectTable = pgTable(
   },
   (table) => [
     unique("project_workspace_id_id_unique").on(table.workspaceId, table.id),
+    check(
+      "project_default_comment_visibility_allowed",
+      sql`${table.defaultCommentVisibility} in ('public', 'internal')`,
+    ),
     // #261 F1: instance-wide, not scoped to workspace -- see the `slug` column's own
     // comment above for why. Migration 0064 resolves any pre-existing collision by
     // deterministically suffixing the later-created duplicate(s) before adding this.
@@ -644,6 +688,7 @@ export const taskTable = pgTable(
     priority: text("priority").default("low").notNull(),
     startDate: timestamp("start_date", { mode: "date" }),
     dueDate: timestamp("due_date", { mode: "date" }),
+    version: integer("version").notNull().default(1),
     createdAt: timestamp("created_at", { mode: "date" }).defaultNow().notNull(),
     updatedAt: timestamp("updated_at", { mode: "date" })
       .defaultNow()
@@ -686,6 +731,22 @@ export const instanceSettingTable = pgTable(
     // consumed, expired-and-regenerated, or once setup_completed_at is set.
     setupTokenHash: text("setup_token_hash"),
     setupTokenExpiresAt: timestamp("setup_token_expires_at", { mode: "date" }),
+    localFactorPolicy: jsonb("local_factor_policy")
+      .$type<{ mode: string; requiredRoleId: string | null }>()
+      .notNull()
+      .default(sql`'{"mode":"optional","requiredRoleId":null}'::jsonb`),
+    observabilityLogLevels: jsonb("observability_log_levels")
+      .$type<{ default: string; modules: Record<string, string> }>()
+      .notNull()
+      .default(sql`'{"default":"info","modules":{}}'::jsonb`),
+    observabilityConfigVersion: integer("observability_config_version")
+      .notNull()
+      .default(1),
+    metricsTokenHash: bytea("metrics_token_hash"),
+    metricsTokenRotatedAt: timestamp("metrics_token_rotated_at", {
+      mode: "date",
+      withTimezone: true,
+    }),
     // Issue #28 (attachments). God Mode-configurable defaults, `attachments.md` §
     // Limits — additive columns on the existing singleton row, so every pre-existing
     // instance simply gets these three defaults applied via DEFAULT on migration, no
@@ -724,6 +785,41 @@ export const instanceSettingTable = pgTable(
     // going red. This CHECK makes the single-row invariant the comment above
     // already claims into something Postgres actually enforces.
     check("instance_setting_id_singleton", sql`${table.id} = 'singleton'`),
+    check(
+      "instance_setting_observability_version_positive",
+      sql`${table.observabilityConfigVersion} >= 1`,
+    ),
+    check(
+      "instance_setting_metrics_token_pair",
+      sql`(${table.metricsTokenHash} is null) = (${table.metricsTokenRotatedAt} is null)`,
+    ),
+    check(
+      "instance_setting_metrics_token_hash_length",
+      sql`${table.metricsTokenHash} is null or octet_length(${table.metricsTokenHash}) = 32`,
+    ),
+    check(
+      "instance_setting_observability_log_levels_shape",
+      sql`case
+        when jsonb_typeof(${table.observabilityLogLevels}) = 'object' then
+          (${table.observabilityLogLevels} ?& array['default', 'modules'])
+          and ((${table.observabilityLogLevels} - array['default', 'modules']::text[]) = '{}'::jsonb)
+          and jsonb_typeof(${table.observabilityLogLevels}->'default') = 'string'
+          and ${table.observabilityLogLevels}->>'default' in ('error', 'warn', 'info', 'debug')
+          and jsonb_typeof(${table.observabilityLogLevels}->'modules') = 'object'
+          and not (((${table.observabilityLogLevels}->'modules') - array['http', 'auth', 'database', 'jobs', 'audit', 'plugins', 'realtime']::text[]) <> '{}'::jsonb)
+          and not jsonb_path_exists(${table.observabilityLogLevels}, '$.modules.* ? (@ != \"error\" && @ != \"warn\" && @ != \"info\" && @ != \"debug\")')
+        else false
+      end`,
+    ),
+    check(
+      "instance_setting_local_factor_policy_shape",
+      sql`jsonb_typeof(${table.localFactorPolicy}) = 'object'
+        and ${table.localFactorPolicy} ?& array['mode', 'requiredRoleId']
+        and (${table.localFactorPolicy} - array['mode', 'requiredRoleId']::text[]) = '{}'::jsonb
+        and ${table.localFactorPolicy}->>'mode' in ('off', 'optional', 'required_staff', 'required_role', 'required_everyone')
+        and (((${table.localFactorPolicy}->>'mode') = 'required_role' and jsonb_typeof(${table.localFactorPolicy}->'requiredRoleId') = 'string' and length(${table.localFactorPolicy}->>'requiredRoleId') > 0)
+          or ((${table.localFactorPolicy}->>'mode') <> 'required_role' and jsonb_typeof(${table.localFactorPolicy}->'requiredRoleId') = 'null'))`,
+    ),
   ],
 );
 
@@ -941,6 +1037,41 @@ export const notificationTable = pgTable(
       .notNull(),
   },
   (table) => [index("notification_userId_idx").on(table.userId)],
+);
+
+export const outboxTable = pgTable(
+  "outbox",
+  {
+    eventId: text("event_id").primaryKey(),
+    kind: text("kind").notNull(),
+    payload: jsonb("payload").notNull(),
+    dedupeKey: text("dedupe_key"),
+    workspaceId: text("workspace_id").notNull(),
+    organisationId: text("organisation_id"),
+    state: text("state").notNull().default("pending"),
+    attempts: integer("attempts").notNull().default(0),
+    nextAttemptAt: timestamp("next_attempt_at", {
+      mode: "date",
+      withTimezone: true,
+    })
+      .defaultNow()
+      .notNull(),
+    lastError: text("last_error"),
+  },
+  (table) => [
+    check(
+      "outbox_state_check",
+      sql`${table.state} in ('pending', 'delivered', 'dead')`,
+    ),
+    check("outbox_attempts_nonnegative", sql`${table.attempts} >= 0`),
+    index("outbox_state_next_attempt_idx")
+      .on(table.state, table.nextAttemptAt)
+      .where(sql`${table.state} = 'pending'`),
+    index("outbox_workspace_state_idx").on(table.workspaceId, table.state),
+    index("outbox_dedupe_key_idx")
+      .on(table.dedupeKey)
+      .where(sql`${table.dedupeKey} is not null`),
+  ],
 );
 
 export const userNotificationPreferenceTable = pgTable(
@@ -2786,6 +2917,40 @@ export const cannedResponseTable = pgTable(
   ],
 );
 
+export const serviceCalendarTable = pgTable(
+  "service_calendar",
+  {
+    id: text("id")
+      .$defaultFn(() => createId())
+      .primaryKey(),
+    workspaceId: text("workspace_id")
+      .notNull()
+      .references(() => workspaceTable.id, {
+        onDelete: "cascade",
+        onUpdate: "cascade",
+      }),
+    name: text("name").notNull(),
+    timezone: text("timezone").notNull(),
+    windows: jsonb("windows").notNull(),
+    holidays: jsonb("holidays").notNull(),
+    version: integer("version").notNull().default(1),
+    createdAt: timestamp("created_at", { mode: "date", withTimezone: true })
+      .defaultNow()
+      .notNull(),
+    updatedAt: timestamp("updated_at", { mode: "date", withTimezone: true })
+      .defaultNow()
+      .$onUpdate(() => new Date())
+      .notNull(),
+  },
+  (table) => [
+    index("service_calendar_workspace_name_id_idx").on(
+      table.workspaceId,
+      table.name,
+      table.id,
+    ),
+  ],
+);
+
 export const workItemKeyAliasTable = pgTable(
   "work_item_key_alias",
   {
@@ -3174,28 +3339,190 @@ export const auditLogTable = pgTable(
   ],
 );
 
-// #24/#29 (views and layouts / search and saved views): a saved view IS a stored search
-// plus a presentation choice -- one table serves both specs (search-and-saved-views.md's
-// "Data" section, data-model.md's `saved_view` row). `workspace_id` is a denormalised
-// containment column (this codebase's established pattern -- see `labelTable`,
-// `activityTable` etc.) so `workspaceAccess.fromSavedView()` can resolve reach with a
-// single-column lookup, deliberately separate from `scope`/`scope_id`, which is the
-// QUERY's own target context (a workspace or a project) per search-and-saved-views.md's
-// SV-15: "This is a separate axis from `scope`/`scope_id`... and is unrelated to who can
-// see the view."
-//
-// `sharedWithTeamId`/team-lead editing (SV-17): `team_member` in this schema (below,
-// `teamMemberTable`) has no `is_lead` column yet -- data-model.md's own documented
-// `team_member` shape (`team_id`, `person_id`, `allocation_pct`, `is_lead`) is NOT what is
-// migrated today (`id`, `teamId`, `userId`, `createdAt` only). SV-17's "editable by...
-// team leads" therefore cannot be enforced yet; this PR's own body discloses that gap
-// rather than fake it. Team/workspace views are editable by their owner only, for now.
-//
-// `createdBy` references `person.id`, not `user.id` -- `packages/permissions`'s closed
-// `OWNER_PREDICATES` vocabulary only has `row.created_by === identity.personId`
-// (`policy.ts`), matching this table's own `orOwner(created_by, saved_view:create)` from
-// search-and-saved-views.md's API table. `person.user_id` has a global unique index, so
-// resolving the caller's own `person.id` from `c.get("userId")` is a single indexed lookup.
+/**
+ * Durable approval record for user initiated deletions. The payload is retained so
+ * approval can re-canonicalise and hash the exact operation; summaries are display
+ * data only. State transitions are single use and serialized by the service layer.
+ */
+export const pendingActionTable = pgTable(
+  "pending_action",
+  {
+    id: text("id")
+      .$defaultFn(() => createId())
+      .primaryKey(),
+    requestedByPersonId: text("requested_by_person_id").notNull(),
+    credentialType: text("credential_type").notNull(),
+    credentialId: text("credential_id"),
+    origin: text("origin").notNull(),
+    action: text("action").notNull(),
+    targetType: text("target_type").notNull(),
+    targetIds: text("target_ids").array().notNull(),
+    targetVersions: jsonb("target_versions"),
+    payload: jsonb("payload").notNull(),
+    routeKey: text("route_key").notNull(),
+    payloadHash: text("payload_hash").notNull(),
+    payloadSummary: jsonb("payload_summary").notNull(),
+    workspaceId: text("workspace_id"),
+    projectId: text("project_id"),
+    organisationId: text("organisation_id"),
+    confirmationRequired: text("confirmation_required").notNull(),
+    confirmationSupplied: jsonb("confirmation_supplied"),
+    state: text("state").notNull().default("pending"),
+    invalidationReason: text("invalidation_reason"),
+    createdAt: timestamp("created_at", { mode: "date", withTimezone: true })
+      .defaultNow()
+      .notNull(),
+    expiresAt: timestamp("expires_at", {
+      mode: "date",
+      withTimezone: true,
+    }).notNull(),
+    decidedByPersonId: text("decided_by_person_id"),
+    decisionSessionId: text("decision_session_id"),
+    decidedAt: timestamp("decided_at", { mode: "date", withTimezone: true }),
+    stepUpTokenId: text("step_up_token_id"),
+    executedAt: timestamp("executed_at", { mode: "date", withTimezone: true }),
+    error: text("error"),
+    traceId: text("trace_id").notNull(),
+  },
+  (table) => [
+    check(
+      "pending_action_credential_type_check",
+      sql`${table.credentialType} in ('session', 'api_key')`,
+    ),
+    check(
+      "pending_action_origin_check",
+      sql`${table.origin} in ('web', 'api', 'mcp')`,
+    ),
+    check(
+      "pending_action_action_check",
+      sql`${table.action} in ('delete', 'bulk_delete', 'purge', 'mcp_destructive')`,
+    ),
+    check(
+      "pending_action_confirmation_check",
+      sql`${table.confirmationRequired} in ('click', 'typed_name', 'typed_count', 'typed_count_step_up', 'typed_name_step_up')`,
+    ),
+    check(
+      "pending_action_state_check",
+      sql`${table.state} in ('pending', 'approved', 'denied', 'cancelled', 'expired', 'invalidated', 'executed', 'failed')`,
+    ),
+    check(
+      "pending_action_invalidation_reason_check",
+      sql`${table.invalidationReason} is null or ${table.invalidationReason} in ('credential_revoked', 'requester_deactivated', 'reach_lost', 'capability_removed', 'version_changed', 'scope_changed')`,
+    ),
+    check(
+      "pending_action_payload_hash_check",
+      sql`${table.payloadHash} ~ '^[0-9a-f]{64}$'`,
+    ),
+    check(
+      "pending_action_targets_nonempty",
+      sql`cardinality(${table.targetIds}) > 0`,
+    ),
+    index("pending_action_requester_state_expires_idx").on(
+      table.requestedByPersonId,
+      table.state,
+      table.expiresAt,
+    ),
+    index("pending_action_workspace_created_idx").on(
+      table.workspaceId,
+      table.createdAt.desc(),
+    ),
+    uniqueIndex("pending_action_one_pending_target_unique")
+      .on(table.requestedByPersonId, table.action, table.targetIds)
+      .where(sql`${table.state} = 'pending'`),
+  ],
+);
+
+export const stepUpConfirmationTable = pgTable(
+  "step_up_confirmation",
+  {
+    id: text("id")
+      .$defaultFn(() => createId())
+      .primaryKey(),
+    personId: text("person_id")
+      .notNull()
+      .references(() => personTable.id, { onDelete: "cascade" }),
+    sessionId: text("session_id")
+      .notNull()
+      .references(() => sessionTable.id, { onDelete: "cascade" }),
+    bindingKind: text("binding_kind").notNull(),
+    pendingActionId: text("pending_action_id").references(
+      () => pendingActionTable.id,
+      { onDelete: "cascade" },
+    ),
+    operationKey: text("operation_key"),
+    routeKey: text("route_key"),
+    expectedVersion: integer("expected_version"),
+    bodyHash: bytea("body_hash"),
+    challengeNonceHash: bytea("challenge_nonce_hash").notNull(),
+    state: text("state").notNull(),
+    tokenHash: bytea("token_hash"),
+    authMethod: text("auth_method"),
+    authenticatedAt: timestamp("authenticated_at", {
+      mode: "date",
+      withTimezone: true,
+    }),
+    issuedAt: timestamp("issued_at", { mode: "date", withTimezone: true }),
+    consumedAt: timestamp("consumed_at", {
+      mode: "date",
+      withTimezone: true,
+    }),
+    createdAt: timestamp("created_at", { mode: "date", withTimezone: true })
+      .defaultNow()
+      .notNull(),
+    challengeExpiresAt: timestamp("challenge_expires_at", {
+      mode: "date",
+      withTimezone: true,
+    }).notNull(),
+    tokenExpiresAt: timestamp("token_expires_at", {
+      mode: "date",
+      withTimezone: true,
+    }),
+  },
+  (table) => [
+    check(
+      "step_up_binding_shape",
+      sql`(${table.bindingKind} = 'pending_action' and ${table.pendingActionId} is not null
+          and ${table.operationKey} is null and ${table.routeKey} is null
+          and ${table.expectedVersion} is null and ${table.bodyHash} is null)
+        or (${table.bindingKind} = 'operation' and ${table.pendingActionId} is null
+          and ${table.operationKey} is not null and ${table.routeKey} is not null
+          and ${table.expectedVersion} is not null and ${table.expectedVersion} >= 1
+          and ${table.bodyHash} is not null and octet_length(${table.bodyHash}) = 32)`,
+    ),
+    check(
+      "step_up_operation_route",
+      sql`${table.operationKey} is null
+        or (${table.operationKey} = 'metrics_token_rotate' and ${table.routeKey} = 'POST /api/instance/observability/metrics-token/rotate')
+        or (${table.operationKey} = 'oidc_group_mapping_create' and ${table.routeKey} = 'POST /api/instance/identity-connections/{id}/oidc-group-mappings')
+        or (${table.operationKey} = 'oidc_group_mapping_update' and ${table.routeKey} = 'PATCH /api/instance/identity-connections/{id}/oidc-group-mappings/{mappingId}')
+        or (${table.operationKey} = 'mfa_reset' and ${table.routeKey} = 'POST /api/instance/users/{id}/reset-mfa')`,
+    ),
+    check(
+      "step_up_state_shape",
+      sql`(${table.state} = 'challenge' and ${table.tokenHash} is null and ${table.authMethod} is null and ${table.authenticatedAt} is null and ${table.issuedAt} is null and ${table.consumedAt} is null and ${table.tokenExpiresAt} is null)
+        or (${table.state} = 'issued' and ${table.tokenHash} is not null and octet_length(${table.tokenHash}) = 32 and ${table.authMethod} is not null and ${table.authMethod} in ('password','totp','backup_code','sso_prompt_login') and ${table.authenticatedAt} is not null and ${table.issuedAt} is not null and ${table.consumedAt} is null and ${table.tokenExpiresAt} is not null)
+        or (${table.state} = 'consumed' and ${table.tokenHash} is not null and octet_length(${table.tokenHash}) = 32 and ${table.authMethod} is not null and ${table.authMethod} in ('password','totp','backup_code','sso_prompt_login') and ${table.authenticatedAt} is not null and ${table.issuedAt} is not null and ${table.consumedAt} is not null and ${table.tokenExpiresAt} is not null)`,
+    ),
+    check(
+      "step_up_nonce_hash_length",
+      sql`octet_length(${table.challengeNonceHash}) = 32`,
+    ),
+    index("step_up_session_state_expiry_idx").on(
+      table.sessionId,
+      table.state,
+      table.challengeExpiresAt,
+      table.tokenExpiresAt,
+    ),
+    index("step_up_pending_action_state_idx").on(
+      table.pendingActionId,
+      table.state,
+    ),
+    uniqueIndex("step_up_token_hash_unique")
+      .on(table.tokenHash)
+      .where(sql`${table.tokenHash} is not null`),
+  ],
+);
+
 export const savedViewTable = pgTable(
   "saved_view",
   {
@@ -3320,6 +3647,7 @@ export const user = userTable;
 export const session = sessionTable;
 export const account = accountTable;
 export const verification = verificationTable;
+export const twoFactor = twoFactorTable;
 export const workspace = workspaceTable;
 export const team = teamTable;
 export const teamMember = teamMemberTable;

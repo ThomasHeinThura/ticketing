@@ -103,3 +103,27 @@ is to say so.
 Never paste code from a blog, a forum answer, or a model's recollection of another
 codebase: the provenance cannot be established afterwards, and an unprovenanced file is a
 licence risk that has to be removed rather than documented.
+
+# Direct API transport dependencies added for the Node WebSocket upgrade migration
+
+| Package | Version | Licence | Use |
+| --- | --- | --- | --- |
+| `ws` | 8.22.0 | MIT | WebSocket server owned directly by `apps/api` |
+| `@types/ws` | 8.18.2 | MIT | Development-only TypeScript declarations for `ws` |
+| `@hono/node-server` | 2.1.3 | MIT | Existing runtime dependency upgraded for the built-in upgrade helper |
+| `hono` | 4.13.12 | MIT | Existing runtime dependency upgraded to the patched path handling floor |
+
+The incompatible `@hono/node-ws` package is removed. Existing transitive `ip-address` and
+`fast-uri` floors are also raised for production advisory fixes; their verified licenses
+are MIT and BSD-3-Clause respectively (see the #557 decision in `docs/07-planning/decision-log.md`).
+
+## P0 observability dependencies
+
+| Package | Version | Licence | Use |
+| --- | --- | --- | --- |
+| `pino` | 10.4.0 | MIT | Allowlisted structured server logging |
+| `prom-client` | 15.1.3 | Apache-2.0 | Registered bounded Prometheus metrics |
+
+Installed as declared dependencies, with versions and transitive licences in the release
+SBOM. No implementation source is copied from either project. Thomas explicitly approved
+these additions on 2026-10-03.

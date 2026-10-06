@@ -1,6 +1,7 @@
 import { useNavigate } from "@tanstack/react-router";
 import { Timeline } from "@taskdesk/ui";
 import { ArrowUpRight } from "lucide-react";
+import { memo, useMemo } from "react";
 import { useTranslation } from "react-i18next";
 import Activity from "@/components/activity";
 import CommentInput from "@/components/activity/comment-input";
@@ -13,33 +14,69 @@ import useGetProject from "@/hooks/queries/project/use-get-project";
 import useGetTask from "@/hooks/queries/task/use-get-task";
 import useGetTaskRelations from "@/hooks/queries/task-relation/use-get-task-relations";
 import type { ExternalLink } from "@/types/external-link";
+import type { Project } from "@/types/project";
+import type Task from "@/types/task";
 import TaskDescription from "./task-description";
 import TaskRelations from "./task-relations";
 import TaskSubtasks from "./task-subtasks";
 import TaskTitle from "./task-title";
 
 type TaskDetailsContentProps = {
-  taskId: string | undefined;
+  taskId: string;
   projectId: string;
   workspaceId: string;
+  task?: TaskDetailsSummary;
+  project?: Project;
   className?: string;
+  dataTestId?: string;
 };
 
-export default function TaskDetailsContent({
+export type TaskDetailsSummary = Pick<Task, "number" | "title" | "description">;
+
+export const selectTaskDetailsSummary = (task: Task): TaskDetailsSummary => ({
+  number: task.number,
+  title: task.title,
+  description: task.description,
+});
+
+function TaskDetailsContent({
   taskId,
   projectId,
   workspaceId,
+  task,
+  project: providedProject,
   className,
+  dataTestId,
 }: TaskDetailsContentProps) {
   const { t } = useTranslation();
   const navigate = useNavigate();
-  const { data: task } = useGetTask(taskId ?? "");
-  const { data: project } = useGetProject({ id: projectId, workspaceId });
-  const { data: activities = [] } = useGetActivitiesByTaskId(taskId ?? "");
+  const { data: fetchedTask } = useGetTask(
+    taskId ?? "",
+    selectTaskDetailsSummary,
+    !task,
+  );
+  const { data: fetchedProject } = useGetProject({
+    id: providedProject ? "" : projectId,
+    workspaceId,
+  });
+  const currentTask = task ?? fetchedTask;
+  const project = providedProject ?? fetchedProject;
+  const currentTitle = currentTask?.title;
+  const currentDescription = currentTask?.description;
+  const titleTask = useMemo(
+    () => (currentTitle === undefined ? undefined : { title: currentTitle }),
+    [currentTitle],
+  );
+  const descriptionTask = useMemo(
+    () =>
+      currentTitle === undefined
+        ? undefined
+        : { description: currentDescription ?? null },
+    [currentDescription, currentTitle],
+  );
   const { data: externalLinks = [], isLoading: isLoadingExternalLinks } =
     useExternalLinks(taskId ?? "");
   const { data: relations = [] } = useGetTaskRelations(taskId ?? "");
-  const { user } = useAuth();
 
   const parentRelation = relations.find(
     (rel) => rel.relationType === "subtask" && rel.targetTaskId === taskId,
@@ -49,7 +86,7 @@ export default function TaskDetailsContent({
   if (!taskId) return null;
 
   return (
-    <div className={`${className} gap-4`}>
+    <div className={`${className} gap-4`} data-testid={dataTestId}>
       <div className="flex flex-col gap-2.5">
         {parentTask && (
           <button
@@ -73,11 +110,11 @@ export default function TaskDetailsContent({
             </span>
           </button>
         )}
-        <p className="text-xs font-semibold text-foreground/70">
-          {project?.slug}-{task?.number}
+        <p className="text-xs font-semibold text-foreground">
+          {project?.slug}-{currentTask?.number}
         </p>
-        <TaskTitle taskId={taskId} />
-        <TaskDescription taskId={taskId} />
+        <TaskTitle taskId={taskId} task={titleTask} />
+        <TaskDescription taskId={taskId} task={descriptionTask} />
       </div>
       {!isLoadingExternalLinks && externalLinks.length > 0 && (
         <div className="mt-4">
@@ -88,12 +125,11 @@ export default function TaskDetailsContent({
         </div>
       )}
       <div className="mt-4">
-        {task && (
+        {taskId && (
           <TaskSubtasks
             taskId={taskId}
             projectId={projectId}
             workspaceId={workspaceId}
-            parentStatus={task.status}
           />
         )}
       </div>
@@ -105,34 +141,46 @@ export default function TaskDetailsContent({
         />
       </div>
       <span className="text-sm font-medium text-muted-foreground h-[1px] bg-border w-full block shrink-0" />
-      <div className="flex flex-col gap-4">
-        <h1 className="text-md font-semibold">{t("tasks:detail.activity")}</h1>
-        {user?.id && taskId && <CommentInput taskId={taskId} />}
-        {activities.length > 0 ? (
-          <Timeline>
-            {activities.map((activity, index) => {
-              const nextActivity = activities[index + 1];
-              const showConnector =
-                !isCommentActivity(activity) &&
-                Boolean(nextActivity) &&
-                !isCommentActivity(nextActivity);
-
-              return (
-                <Activity
-                  key={activity.id}
-                  activity={activity}
-                  step={activities.length - index}
-                  showConnector={showConnector}
-                />
-              );
-            })}
-          </Timeline>
-        ) : (
-          <p className="text-sm font-medium text-muted-foreground">
-            {t("tasks:detail.noActivity")}
-          </p>
-        )}
-      </div>
+      <TaskActivitySection taskId={taskId} />
     </div>
   );
 }
+
+function TaskActivitySection({ taskId }: { taskId: string }) {
+  const { t } = useTranslation();
+  const { user } = useAuth();
+  const { data: activities = [] } = useGetActivitiesByTaskId(taskId);
+
+  return (
+    <div className="flex flex-col gap-4">
+      <h1 className="text-md font-semibold">{t("tasks:detail.activity")}</h1>
+      {user?.id && <CommentInput taskId={taskId} />}
+      {activities.length > 0 ? (
+        <Timeline>
+          {activities.map((activity, index) => {
+            const nextActivity = activities[index + 1];
+            const showConnector =
+              !isCommentActivity(activity) &&
+              Boolean(nextActivity) &&
+              !isCommentActivity(nextActivity);
+
+            return (
+              <Activity
+                key={activity.id}
+                activity={activity}
+                step={activities.length - index}
+                showConnector={showConnector}
+              />
+            );
+          })}
+        </Timeline>
+      ) : (
+        <p className="text-sm font-medium text-muted-foreground">
+          {t("tasks:detail.noActivity")}
+        </p>
+      )}
+    </div>
+  );
+}
+
+export default memo(TaskDetailsContent);

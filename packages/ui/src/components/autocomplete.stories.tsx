@@ -6,6 +6,7 @@ import {
   AutocompleteItem,
   AutocompleteList,
   AutocompletePopup,
+  AutocompleteStatus,
 } from "./autocomplete";
 
 const fruits = ["Apple", "Banana", "Cherry", "Dragonfruit"];
@@ -44,6 +45,7 @@ export const Open: Story = {
         )}
       </AutocompleteList>
       <AutocompleteEmpty>No matches found.</AutocompleteEmpty>
+      <AutocompleteStatus>Results are available.</AutocompleteStatus>
     </Autocomplete>
   ),
 };

@@ -82,7 +82,8 @@ exists yet (unbuilt scope, tracked on the audit-log work, not this issue).
 | `DISABLE_WORKSPACE_CREATION` | — | Set to `"true"` to restrict workspace creation to instance administrators. Inherited from kaneo, where it was the `organization()` plugin's `allowUserToCreateOrganization` callback; the S4 retrofit moves the same gate onto the native `POST /api/workspace` route (`apps/api/src/utils/require-session.ts`). The caller's role is re-read from the database rather than taken from the session, because the first-user bootstrap promotes to instance admin **after** `signUpEmail` has returned, so a session minted at sign-up can still say `role: "user"`. Read at request time, so it needs no restart |
 | `TASKDESK_STORAGE_DRIVER` | `filesystem` | `filesystem` \| `s3`. Which task-image-upload storage backend `apps/api/src/storage/index.ts` dispatches to. Bootstrap only because the real Storage plugin config below (God Mode, `storage.filesystem` / `storage.s3` / `storage.azure-blob`, the presign/quota/visibility system) does not exist yet — it is the P1 Attachments feature, currently blocked by its own open spec review. This variable is the narrow, interim bridge for the one storage use case that exists today (task image uploads); it is expected to be superseded, not extended, once God Mode Storage configuration lands. An unrecognized value is a startup-time configuration error, not silently rounded to a default. **Do not flip this on a running deployment without a migration plan:** deleting an asset whose bytes live on the backend you just switched *away* from succeeds as a silent no-op (the DB row is removed; the bytes are never reached), permanently orphaning them on the old backend — there is no cross-driver migration or cleanup tool today |
 | `TASKDESK_STORAGE_FILESYSTEM_ROOT` | `/app/data/attachments` | Root directory the `filesystem` driver reads and writes under. The default matches the directory the image itself creates and the `taskdesk-data` named volume mounts at `/app/data` (`Dockerfile`, `compose.yml`) — a fresh install needs no value here at all. Only meaningful when `TASKDESK_STORAGE_DRIVER=filesystem` |
-| `TASKDESK_POLICY_SHADOW` | `off` | `off` \| `on`. Switches issue #8's request-path shadow-mode middleware (`apps/api/src/permissions/shadow-middleware.ts`): when `on`, every request is also evaluated against the declarative policy registry and any disagreement with the existing hand-written authorization is recorded to `policy_shadow_tally`/`policy_shadow_event` (`data-model.md`) — it never blocks or changes a response. Bootstrap only because the real mechanism this belongs on, `plugin-architecture.md`'s "Feature toggles" (`instance_feature_flag` and its per-scope tables), is specified but not implemented anywhere in this codebase yet — this variable is the same kind of narrow, interim bridge `TASKDESK_STORAGE_DRIVER` above is, and is expected to be superseded, not extended. Any value other than `on`/`off` is a startup-time configuration error. Read once, at module load — changing it needs a restart |
+| `TASKDESK_POLICY_SHADOW` | `off` | `off` \| `on`. Switches issue #8's request-path shadow-mode middleware (`apps/api/src/permissions/shadow-middleware.ts`): when `on`, every request is also evaluated against the declarative policy registry and any disagreement with the existing hand-written authorization is recorded to `policy_shadow_tally`/`policy_shadow_event` (`data-model.md`) — it never blocks or changes a response. Development/P0 and UAT verification uses three issue-free UTC date buckets with source-bound behavior/router coverage; this does not authorize production promotion. Bootstrap only because the real mechanism this belongs on, `plugin-architecture.md`'s "Feature toggles" (`instance_feature_flag` and its per-scope tables), is specified but not implemented anywhere in this codebase yet — this variable is the same kind of narrow, interim bridge `TASKDESK_STORAGE_DRIVER` above is, and is expected to be superseded, not extended. Any value other than `on`/`off` is a startup-time configuration error. Read once, at module load — changing it needs a restart |
+| `TASKDESK_POLICY_ENFORCE` | empty | Comma-separated exact policy-source paths from the runtime registry, for example `apps/api/src/workspace/policy.ts`. Each listed source enforces registry ALLOW/DENY before its route handler can run; existing authorization checks remain alongside it. Empty keeps all sources in shadow/off mode. Requires the same deployed policy/source behavior to have three real, issue-free UTC date buckets with representative route coverage before setting a source. `apps/api/src/task/policy.ts` is accepted only when every other registered source is already listed, so the task router remains last. Unknown/duplicate/empty members and invalid order fail startup. Bootstrap-only because `plugin-architecture.md`'s per-scope feature-flag store is not implemented; do not activate for a deployment before its separately verified cutover evidence. Read and validated before serving; changing it needs a restart. See the 2026-10-04 #8 entry in `decision-log.md` |
 
 **Removed 2026-09-05, moved into the application:** the files/attachment origin (part of the
 storage plugin's configuration — `storage.s3` knows its own bucket URL), the log level (God
@@ -134,7 +135,7 @@ different blast radii.
 ### General
 
 Instance name · default locale · default timezone · date and number format ·
-audit retention · notification retention · deleted-item retention · support email ·
+audit retention · notification retention (`notification_retention_days`, default 90) · deleted-item retention · support email ·
 terms and privacy URLs
 
 ### Branding
@@ -153,10 +154,10 @@ before save.
 Per provider: type · display name · **portal scope** (agent / customer / both) ·
 discovery or endpoint URLs · client id · client secret · scopes · claim mapping ·
 JIT provisioning (side, organisation, role) · group-to-role mapping · domain restriction ·
-MFA-satisfied-upstream flag · enabled
+MFA-satisfied-upstream setting (planned; not verified or enforced by current API source) · enabled
 
-Instance-wide: MFA policy · session idle timeout · session absolute lifetime ·
-concurrent session limit · password policy
+Instance-wide: MFA policy (planned; no current factor enforcement) · session idle timeout ·
+session absolute lifetime · concurrent session limit · password policy
 
 ### Organisations
 
@@ -193,13 +194,11 @@ Per job: schedule · enabled · last run · manual trigger
 
 ### Observability
 
-Sentry DSN · OTLP endpoint and headers · trace sample rate · metrics bearer token ·
-log level per module
-
-The metrics bearer token is a planned God Mode → Observability setting, never an
-environment variable. The current API image does not read the setting or serve `/metrics`;
-see [observability.md](../01-architecture/observability.md) for the target contract and
-[runbook.md](runbook.md) for the currently usable diagnostics.
+The planned administrator API stores per-module log levels and a hash-only metrics bearer
+token in `instance_setting`; it adds no application environment variable. The current API
+image does not read these settings or serve `/metrics`. See
+[observability.md](../01-architecture/observability.md) for the target contract and
+[runbook.md](runbook.md) for currently usable diagnostics.
 
 ### AI (optional, off by default)
 

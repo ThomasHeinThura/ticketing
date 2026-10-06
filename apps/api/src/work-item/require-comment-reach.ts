@@ -52,8 +52,10 @@ export function requireCommentReach(idKey = "id") {
     // through that middleware.
     const [comment] = await db
       .select({
+        id: schema.commentTable.id,
         workItemId: schema.commentTable.workItemId,
         workspaceId: schema.commentTable.workspaceId,
+        authorId: schema.commentTable.authorId,
       })
       .from(schema.commentTable)
       .innerJoin(
@@ -93,6 +95,8 @@ export function requireCommentReach(idKey = "id") {
     // so shadow mode's evidence gate keeps it instead of always nulling it.
     c.set("workspaceIdSource", "row");
     c.set("workItemId", comment.workItemId);
+    c.set("policyScopeResource", "comment");
+    c.set("policyRowFacts", { personId: comment.authorId });
 
     return next();
   };

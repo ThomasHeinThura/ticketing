@@ -7,7 +7,7 @@ import {
   Input,
   KbdSequence,
 } from "@taskdesk/ui";
-import { useEffect, useMemo, useState } from "react";
+import { useMemo, useState } from "react";
 import { Trans, useTranslation } from "react-i18next";
 import { shortcuts } from "@/constants/shortcuts";
 
@@ -127,29 +127,16 @@ function useShortcutCategories(): ShortcutCategory[] {
   );
 }
 
-export function KeyboardShortcutsHelp() {
+export function KeyboardShortcutsHelp({
+  open,
+  onOpenChange,
+}: {
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+}) {
   const { t } = useTranslation();
   const shortcutCategories = useShortcutCategories();
-  const [open, setOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
-
-  useEffect(() => {
-    const handleKeyDown = (e: KeyboardEvent) => {
-      const target = e.target as HTMLElement;
-      const isTyping =
-        target.tagName === "INPUT" ||
-        target.tagName === "TEXTAREA" ||
-        target.contentEditable === "true";
-
-      if (e.key === "?" && !isTyping) {
-        e.preventDefault();
-        setOpen(true);
-      }
-    };
-
-    document.addEventListener("keydown", handleKeyDown);
-    return () => document.removeEventListener("keydown", handleKeyDown);
-  }, []);
 
   const filteredCategories = shortcutCategories
     .map((category) => ({
@@ -167,7 +154,7 @@ export function KeyboardShortcutsHelp() {
     .filter((category) => category.shortcuts.length > 0);
 
   return (
-    <Dialog open={open} onOpenChange={setOpen}>
+    <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent
         className="px-4 max-w-2xl max-h-[80vh] overflow-hidden flex flex-col"
         closeLabel={t("common:actions.close")}

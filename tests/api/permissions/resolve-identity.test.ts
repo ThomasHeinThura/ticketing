@@ -202,6 +202,85 @@ describe("resolveIdentityFromFacts — a multi-workspace user", () => {
   });
 });
 
+describe("resolveIdentityFromFacts — persisted scoped role memberships", () => {
+  const projectRole = {
+    scope: "project",
+    scopeId: "project-1",
+    seesAll: false,
+    inheritedFrom: null,
+    roleId: "role-project-1",
+    roleKey: "project-triager",
+    roleScope: "project",
+    roleWorkspaceId: "workspace-1",
+    scopeWorkspaceId: "workspace-1",
+    scopeExists: true,
+    rank: 30,
+    capabilities: ["work_item:read", "work_item:assign"],
+  } as const;
+
+  it("resolves project-scoped authority and reach from the joined persisted role", () => {
+    const identity = resolveIdentityFromFacts(
+      facts({ scopedRoleMemberships: [projectRole] }),
+    );
+
+    expect(identity?.memberships).toEqual([
+      {
+        scope: "project",
+        scopeId: "project-1",
+        seesAll: false,
+      },
+    ]);
+    expect(identity?.authority).toEqual([
+      {
+        roleKey: "project-triager",
+        scope: "project",
+        scopeId: "project-1",
+        rank: 30,
+        capabilities: ["work_item:read", "work_item:assign"],
+      },
+    ]);
+  });
+
+  it("refuses scope/role or resource-anchor mismatches", () => {
+    const identity = resolveIdentityFromFacts(
+      facts({
+        scopedRoleMemberships: [
+          { ...projectRole, roleScope: "workspace" },
+          { ...projectRole, roleWorkspaceId: "workspace-other" },
+          { ...projectRole, scopeExists: false },
+        ],
+      }),
+    );
+
+    expect(identity?.memberships).toEqual([]);
+    expect(identity?.authority).toEqual([]);
+  });
+
+  it("uses only trusted workspace sees_all grants for scoped reach", () => {
+    const identity = resolveIdentityFromFacts(
+      facts({
+        scopedRoleMemberships: [
+          {
+            ...projectRole,
+            scope: "workspace",
+            scopeId: "workspace-1",
+            roleScope: "workspace",
+            roleWorkspaceId: "workspace-1",
+            scopeWorkspaceId: null,
+            scopeExists: true,
+            seesAll: true,
+          },
+        ],
+      }),
+    );
+
+    expect(identity?.reach).toEqual({
+      kind: "membership_with_workspaces",
+      workspaceIds: ["workspace-1"],
+    });
+  });
+});
+
 describe("resolveIdentityFromFacts — issue #318 (security), S2: a custom row that shares a built-in name is not genuine", () => {
   const nonOwnerBuiltInRoles = [
     "admin",

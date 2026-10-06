@@ -458,11 +458,31 @@ describe("validatePolicy — there is no sixth kind", () => {
           exempt: "no_person_parameter",
           reason: "/api/me/settings addresses the session's own person",
         },
+        workspaceMembership: true,
       },
     ];
     for (const policy of policies) {
       expect(validatePolicy("GET /api/x", policy)).toEqual([]);
     }
+  });
+
+  it("rejects malformed or misplaced workspace-membership policy flags", () => {
+    expect(
+      validatePolicy("GET /api/x", {
+        authenticated: true,
+        self: true,
+        personParam: { exempt: "no_person_parameter", reason: "self map" },
+        workspaceMembership: false,
+      } as unknown as Policy).join("\n"),
+    ).toMatch(/workspaceMembership, when present, must be true/);
+
+    expect(
+      validatePolicy("GET /api/x", {
+        public: true,
+        reason: "health",
+        workspaceMembership: true,
+      } as unknown as Policy).join("\n"),
+    ).toMatch(/only valid on a self policy/);
   });
 
   it("rejects a capability policy that does not say whether reach applies", () => {

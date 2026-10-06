@@ -1,11 +1,4 @@
-import { and, eq } from "drizzle-orm";
 import { HTTPException } from "hono/http-exception";
-import db from "../../database";
-import {
-  savedViewTable,
-  teamMemberTable,
-  teamTable,
-} from "../../database/schema";
 import { publishEvent } from "../../events";
 import type { z } from "../../openapi";
 import { rejectNulByte } from "../../utils/reject-nul-byte";
@@ -17,6 +10,12 @@ import {
   savedViewAuditState,
   writeSavedViewAudit,
 } from "../audit";
+import {
+  findSavedViewByIdInTransaction,
+  teamMemberInWorkspaceTransaction,
+  updateSavedView,
+  withSavedViewTransaction,
+} from "../repository";
 import type { updateViewBody } from "../schema";
 
 type UpdateViewInput = z.infer<typeof updateViewBody>;
@@ -28,10 +27,8 @@ async function updateView(
   userId: string,
   auditActor: SavedViewAuditActor,
 ) {
-  const { updated, before } = await db.transaction(async (tx) => {
-    const view = await tx.query.savedViewTable.findFirst({
-      where: (savedView, { eq }) => eq(savedView.id, id),
-    });
+  const { updated, before } = await withSavedViewTransaction(async (tx) => {
+    const view = await findSavedViewByIdInTransaction(tx, id);
 
     if (!view) {
       throw new HTTPException(404, { message: "Saved view not found" });
@@ -62,19 +59,13 @@ async function updateView(
       // membership check: membership in the team alone is not enough -- the team must
       // also belong to THIS view's own workspace, or a caller who is a member of some
       // unrelated team in a foreign workspace could re-share their own view into it.
-      const [membership] = await tx
-        .select({ id: teamMemberTable.id })
-        .from(teamMemberTable)
-        .innerJoin(teamTable, eq(teamMemberTable.teamId, teamTable.id))
-        .where(
-          and(
-            eq(teamMemberTable.teamId, nextSharedWithTeamId),
-            eq(teamMemberTable.userId, userId),
-            eq(teamTable.workspaceId, view.workspaceId),
-          ),
-        )
-        .limit(1);
-      if (!membership) {
+      const membershipExists = await teamMemberInWorkspaceTransaction(
+        tx,
+        nextSharedWithTeamId,
+        userId,
+        view.workspaceId,
+      );
+      if (!membershipExists) {
         throw new HTTPException(403, {
           message: "Not a member of the team this view would be shared with",
         });
@@ -93,18 +84,13 @@ async function updateView(
       );
     }
 
-    const [updated] = await tx
-      .update(savedViewTable)
-      .set({
-        name: input.name ?? view.name,
-        visibility: nextVisibility,
-        sharedWithTeamId:
-          nextVisibility === "team" ? nextSharedWithTeamId : null,
-        layout: input.layout ?? view.layout,
-        query: input.query ?? view.query,
-      })
-      .where(eq(savedViewTable.id, id))
-      .returning();
+    const updated = await updateSavedView(tx, id, {
+      name: input.name ?? view.name,
+      visibility: nextVisibility,
+      sharedWithTeamId: nextVisibility === "team" ? nextSharedWithTeamId : null,
+      layout: input.layout ?? view.layout,
+      query: input.query ?? view.query,
+    });
 
     if (!updated) {
       throw new HTTPException(404, { message: "Saved view not found" });

@@ -28,16 +28,8 @@ import type { PolicyMap } from "@taskdesk/permissions";
  * capability-string evaluator — wiring the registry into the request path is #8's own,
  * separately tracked runtime-integration obligation, not this rename's.
  *
- * **None of the three read routes (`GET /{id}`, `GET /tasks/{projectId}`, `GET
- * /export/{projectId}`) has an explicit `requireWorkspacePermission` call at all** — their
- * only middleware is `workspaceAccess.fromTask()` / `.fromProject("projectId")`, i.e. a bare
- * workspace-membership check. This is not a gap: every seeded role (including `viewer`)
- * holds `work_item: ["read"]` in the legacy statements above, so membership alone is exactly
- * equivalent to a `work_item:read` check today. `workspace/policy.ts` records the identical
- * pattern for `GET /api/workspace/{workspaceId}` (declared `workspace:read` despite no
- * explicit permission-check middleware, for the same reason) and `apps/api/src/project/
- * policy.ts` records it again for `GET /api/project/{id}` — this file follows the same,
- * by-now-established convention rather than inventing a new one.
+ * The task reads enforce their declared `work_item:read` capability after row-derived reach.
+ * Instance-wide reach does not replace the caller's workspace role.
  *
  * **Scope.** Per `evaluator.ts` (`GRANT_SCOPES_FOR`, `requiredIdFor`), a `work_item`-scope
  * policy is authority-checked against the work item's own CONTAINING PROJECT (there is no
@@ -92,8 +84,7 @@ import type { PolicyMap } from "@taskdesk/permissions";
  */
 export const taskPolicies = {
   // Read one task by id, with its assignee's name resolved (`controllers/get-task.ts`).
-  // Runtime gate is membership only (`workspaceAccess.fromTask()`) — see file header for why
-  // `work_item:read` is still the correct declared capability.
+  // Runtime checks row-derived reach and the declared `work_item:read` capability.
   "GET /api/task/{id}": {
     capability: "work_item:read",
     scope: "work_item",
@@ -106,8 +97,7 @@ export const taskPolicies = {
   // path id; the returned board is that project's own contained collection, not multiple
   // top-level resources — same "addresses one container, returns what's inside it" shape
   // `workspace/policy.ts` uses for `GET /api/workspace/{workspaceId}/invitations`. Runtime
-  // gate is membership only (`workspaceAccess.fromProject("projectId")`) — same reasoning as
-  // the route above.
+  // runtime checks project-row reach and the declared `work_item:read` capability.
   "GET /api/task/tasks/{projectId}": {
     capability: "work_item:read",
     scope: "project",
@@ -116,9 +106,8 @@ export const taskPolicies = {
   },
 
   // Export a project's tasks, with their labels, as a JSON document
-  // (`controllers/export-tasks.ts`). Runtime gate is membership only
-  // (`workspaceAccess.fromProject("projectId")`) — structurally identical to the list route
-  // above, not a distinct, separately-enforced capability. `work_item:export` (rbac.md) is
+  // (`controllers/export-tasks.ts`). Runtime checks project-row reach and the declared
+  // `work_item:read` capability. `work_item:export` (rbac.md) is
   // deliberately NOT used here: the legacy `work_item` statement this route is actually gated
   // by has no `export` action at all (`create`/`read`/`update`/`delete`/`assign` only), so
   // nothing in the runtime distinguishes this from a plain read, and declaring
@@ -212,6 +201,12 @@ export const taskPolicies = {
   // align with `assignment.md`'s intent, not a security hole (the current behaviour is
   // over-restrictive, not under-restrictive).
   "PUT /api/task/{id}": {
+    capability: "work_item:update",
+    scope: "work_item",
+    scopeSource: "row",
+    reach: "required",
+  },
+  "PUT /api/v2/task/{id}": {
     capability: "work_item:update",
     scope: "work_item",
     scopeSource: "row",

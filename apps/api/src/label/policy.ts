@@ -30,9 +30,9 @@ import type { PolicyMap } from "@taskdesk/permissions";
  * `invitation/policy.ts` (its `member:invite` reuse for cancel) already established for an
  * imperfect-but-closest capability.** None of the three GET routes below calls
  * `requireWorkspacePermission` at all -- `getTaskLabelsRoute`, `getWorkspaceLabelsRoute` and
- * `getLabelRoute` carry only a `workspaceAccess.*` middleware, so the only real gate today is
- * workspace membership itself (or instance-admin), identical to what `workspace:read` already
- * requires everywhere else in this codebase. rbac.md defines `workspace:read` as "See the
+ * `getLabelRoute` resolve row reach and then enforce `workspace:read` through the canonical
+ * workspace-capability middleware. Instance-wide reach alone does not satisfy that check.
+ * rbac.md defines `workspace:read` as "See the
  * workspace and its settings", grants it to every built-in role from `viewer` upward
  * (`viewer`'s row is the read-only floor and already carries it), and its own table links it
  * to workspace-level "labels" visibility indirectly (`workspace:manage_settings`'s described

@@ -1,12 +1,8 @@
-import { and, eq, isNull } from "drizzle-orm";
+import { eq } from "drizzle-orm";
+import type { MiddlewareHandler } from "hono";
 import { HTTPException } from "hono/http-exception";
 import db from "../database";
-import {
-  assetTable,
-  projectTable,
-  taskTable,
-  workspaceTable,
-} from "../database/schema";
+import { assetTable, projectTable, workspaceTable } from "../database/schema";
 import {
   apiRouter,
   type BaseVariables,
@@ -25,12 +21,10 @@ import {
   validateTaskAssetUploadInput,
 } from "../storage";
 import { normalizeApiServerUrl } from "../utils/openapi-spec";
+import { requireWorkspaceMembership } from "../utils/require-workspace-membership";
 import { requireWorkspacePermission } from "../utils/require-workspace-permission";
-import {
-  validateAndParseDate,
-  validateDateRange,
-} from "../utils/validate-dates";
 import { workspaceAccess } from "../utils/workspace-access-middleware";
+import { lockTaskAndAssertProjectLive } from "./assert-task-project-live";
 import bulkUpdateTasks from "./controllers/bulk-update-tasks";
 import createTask from "./controllers/create-task";
 import deleteTask from "./controllers/delete-task";
@@ -44,7 +38,9 @@ import {
   requireBulkTaskPermission,
   requireTaskAssigneePermission,
 } from "./controllers/require-task-permission";
-import updateTask from "./controllers/update-task";
+import updateTask, {
+  TaskVersionConflictError,
+} from "./controllers/update-task";
 import updateTaskAssignee from "./controllers/update-task-assignee";
 import updateTaskDescription from "./controllers/update-task-description";
 import updateTaskDueDate from "./controllers/update-task-due-date";
@@ -60,6 +56,7 @@ import {
   taskExportSchema,
   taskImportResultSchema,
   taskSchema,
+  taskVersionConflictSchema,
   taskWithAssigneeSchema,
 } from "./response";
 import {
@@ -70,7 +67,9 @@ import {
   importTasksBody,
   listTasksQuery,
   moveTaskBody,
+  optionalTaskIfMatchHeader,
   projectIdParam,
+  taskIfMatchHeader,
   taskParam,
   updateAssigneeBody,
   updateDescriptionBody,
@@ -89,7 +88,9 @@ const listTasksRoute = createRoute({
   summary: "List tasks",
   description:
     "Get a project's board: its columns, each with the tasks in it, plus the archived and planned buckets. Filter and paginate with the query parameters.",
-  middleware: [workspaceAccess.fromProject("projectId")] as const,
+  middleware: [
+    workspaceAccess.fromProject("projectId", { requireProjectReach: true }),
+  ] as const,
   request: { params: projectIdParam, query: listTasksQuery },
   responses: {
     200: jsonResponse("The project board", boardSchema),
@@ -115,6 +116,7 @@ const bulkUpdateTasksRoute = createRoute({
     "Apply one operation to many tasks at once. Every task must be in the same workspace.",
   middleware: [
     workspaceAccess.fromTasks(),
+    requireWorkspaceMembership,
     requireBulkTaskPermission,
     requireBulkTaskEntitlement,
   ] as const,
@@ -129,10 +131,8 @@ const bulkUpdateTasksRoute = createRoute({
     400: errorResponse(
       "Invalid body, or the tasks span more than one workspace",
     ),
-    // S1 (Opus review of PR #307, delta round): restores `main`'s own membership
-    // check on the resolved workspace, independent of the instance-admin bypass
-    // every other check in this chain has -- an instance admin who isn't a member
-    // of the tasks' workspace gets this same 403, not the permission-only one.
+    // Retain the established membership-specific denial for a caller who can reach a task
+    // workspace but is not a member; global instance reach does not confer workspace roles.
     403: errorResponse(
       "Missing the permission the operation needs, or no access to this workspace",
     ),
@@ -177,7 +177,9 @@ const getTaskRoute = createRoute({
   tags: ["Tasks"],
   summary: "Get task",
   description: "Get a single task by ID, with its assignee's name resolved.",
-  middleware: [workspaceAccess.fromTask()] as const,
+  middleware: [
+    workspaceAccess.fromTask("id", { requireProjectReach: true }),
+  ] as const,
   request: { params: taskParam },
   responses: {
     200: jsonResponse("Task details", taskWithAssigneeSchema),
@@ -218,14 +220,142 @@ const moveTaskRoute = createRoute({
   },
 });
 
+const legacyTaskDeprecationHeaders: MiddlewareHandler<{
+  Variables: BaseVariables & { workspaceId: string };
+}> = async (c, next) => {
+  c.header("Deprecation", "@1790812800");
+  c.header("Sunset", "Thu, 01 Apr 2027 00:00:00 GMT");
+  c.header(
+    "Link",
+    `</api/v2/task/${c.req.param("id")}>; rel="successor-version"`,
+  );
+  await next();
+};
+
+const legacyTaskResponseHeaders = {
+  Deprecation: {
+    description: "This compatibility operation was deprecated on 2026-10-01.",
+    schema: { type: "string", example: "@1790812800" },
+  },
+  Sunset: {
+    description:
+      "Earliest removal date, subject to two subsequent minor releases.",
+    schema: { type: "string", example: "Thu, 01 Apr 2027 00:00:00 GMT" },
+  },
+  Link: {
+    description: "Successor version operation.",
+    schema: {
+      type: "string",
+      example: '</api/v2/task/{id}>; rel="successor-version"',
+    },
+  },
+} as const;
+
+async function runFullTaskUpdate(input: {
+  id: string;
+  assertedVersion: number | undefined;
+  title: string;
+  status: string;
+  startDate: string | undefined;
+  dueDate: string | undefined;
+  projectId: string;
+  description: string;
+  priority: string;
+  position: number;
+  userId: string | undefined;
+  currentUserId: string | undefined;
+}) {
+  try {
+    return {
+      task: await updateTask(
+        input.id,
+        input.assertedVersion,
+        input.title,
+        input.status,
+        input.startDate,
+        input.dueDate,
+        input.projectId,
+        input.description,
+        input.priority,
+        input.position,
+        input.userId,
+        input.currentUserId,
+      ),
+    };
+  } catch (error) {
+    if (error instanceof TaskVersionConflictError) {
+      return {
+        conflict: {
+          message: error.message,
+          assertedVersion: error.assertedVersion,
+          currentVersion: error.currentVersion,
+        },
+      };
+    }
+    throw error;
+  }
+}
+
 const updateTaskRoute = createRoute({
   method: "put",
   operationId: "updateTask",
   path: "/{id}",
   tags: ["Tasks"],
-  summary: "Update task",
+  deprecated: true,
+  summary: "Update task (deprecated compatibility route)",
   description:
-    "Replace every field of a task. Use the single-field routes for narrower edits.",
+    "Deprecated compatibility route. Replace every field of a task. If If-Match is " +
+    "supplied, it must be the current quoted version and a mismatch returns 409. Without " +
+    "If-Match, prior last-write-wins behavior is preserved. Use PUT /api/v2/task/{id} " +
+    "for required optimistic concurrency or a single-field route for narrower edits.",
+  middleware: [
+    legacyTaskDeprecationHeaders,
+    workspaceAccess.fromTask(),
+    requireWorkspacePermission({ work_item: ["update"] }),
+    requireTaskAssigneePermission,
+  ] as const,
+  request: {
+    params: taskParam,
+    headers: optionalTaskIfMatchHeader,
+    body: {
+      required: true,
+      content: { "application/json": { schema: updateTaskBody } },
+    },
+  },
+  responses: {
+    200: {
+      ...jsonResponse("The updated task", taskSchema),
+      headers: legacyTaskResponseHeaders,
+    },
+    400: {
+      ...errorResponse("Invalid body or malformed If-Match header"),
+      headers: legacyTaskResponseHeaders,
+    },
+    403: {
+      ...errorResponse(
+        "Missing work_item:update or work_item:assign permission",
+      ),
+      headers: legacyTaskResponseHeaders,
+    },
+    404: {
+      ...errorResponse("Task not found"),
+      headers: legacyTaskResponseHeaders,
+    },
+    409: {
+      ...jsonResponse("Task version conflict", taskVersionConflictSchema),
+      headers: legacyTaskResponseHeaders,
+    },
+  },
+});
+
+const updateTaskV2Route = createRoute({
+  method: "put",
+  operationId: "updateTaskV2",
+  path: "/{id}",
+  tags: ["Tasks"],
+  summary: "Update task with optimistic concurrency",
+  description:
+    "Replace every field of a task using its current quoted If-Match version. A mismatch returns 409 with asserted/current versions. Use the single-field routes for narrower edits.",
   middleware: [
     workspaceAccess.fromTask(),
     requireWorkspacePermission({ work_item: ["update"] }),
@@ -233,6 +363,7 @@ const updateTaskRoute = createRoute({
   ] as const,
   request: {
     params: taskParam,
+    headers: taskIfMatchHeader,
     body: {
       required: true,
       content: { "application/json": { schema: updateTaskBody } },
@@ -240,11 +371,12 @@ const updateTaskRoute = createRoute({
   },
   responses: {
     200: jsonResponse("The updated task", taskSchema),
-    400: errorResponse("Invalid body"),
+    400: errorResponse("Invalid body or missing/malformed If-Match header"),
     403: errorResponse(
       "Missing work_item:update or work_item:assign permission",
     ),
     404: errorResponse("Task not found"),
+    409: jsonResponse("Task version conflict", taskVersionConflictSchema),
   },
 });
 
@@ -256,7 +388,9 @@ const exportTasksRoute = createRoute({
   summary: "Export tasks",
   description:
     "Export a project's tasks, with their labels, as a JSON document.",
-  middleware: [workspaceAccess.fromProject("projectId")] as const,
+  middleware: [
+    workspaceAccess.fromProject("projectId", { requireProjectReach: true }),
+  ] as const,
   request: { params: projectIdParam },
   responses: {
     200: jsonResponse("The exported project and tasks", taskExportSchema),
@@ -550,16 +684,6 @@ const task = apiRouter<BaseVariables & { workspaceId: string }>()
       throw new HTTPException(401, { message: "Unauthorized" });
     }
 
-    if (
-      operation !== "delete" &&
-      operation !== "updateDueDate" &&
-      value === undefined
-    ) {
-      throw new HTTPException(400, {
-        message: "Value is required for this operation",
-      });
-    }
-
     markShadowLegacyAuthorizationUnknown(c);
     let result: Awaited<ReturnType<typeof bulkUpdateTasks>>;
     try {
@@ -585,25 +709,14 @@ const task = apiRouter<BaseVariables & { workspaceId: string }>()
     const { title, description, startDate, dueDate, priority, status, userId } =
       c.req.valid("json");
 
-    const parsedStartDate =
-      startDate !== undefined
-        ? validateAndParseDate(startDate, "startDate")
-        : undefined;
-    const parsedDueDate =
-      dueDate !== undefined
-        ? validateAndParseDate(dueDate, "dueDate")
-        : undefined;
-
-    validateDateRange(parsedStartDate, parsedDueDate);
-
     const task = await createTask({
       projectId,
       currentUserId: c.get("userId"),
       userId: userId,
       title,
       description,
-      startDate: parsedStartDate,
-      dueDate: parsedDueDate,
+      startDate,
+      dueDate,
       priority,
       status,
     });
@@ -633,6 +746,7 @@ const task = apiRouter<BaseVariables & { workspaceId: string }>()
   })
   .openapi(updateTaskRoute, async (c) => {
     const { id } = c.req.valid("param");
+    const { "if-match": ifMatch } = c.req.valid("header");
     const {
       title,
       description,
@@ -647,32 +761,22 @@ const task = apiRouter<BaseVariables & { workspaceId: string }>()
 
     const currentUserId = c.get("userId");
 
-    const parsedStartDate =
-      startDate !== undefined
-        ? validateAndParseDate(startDate, "startDate")
-        : undefined;
-    const parsedDueDate =
-      dueDate !== undefined
-        ? validateAndParseDate(dueDate, "dueDate")
-        : undefined;
-
-    validateDateRange(parsedStartDate, parsedDueDate);
-
-    const task = await updateTask(
+    const result = await runFullTaskUpdate({
       id,
+      assertedVersion: ifMatch ? Number(ifMatch.slice(1, -1)) : undefined,
       title,
       status,
-      parsedStartDate,
-      parsedDueDate,
+      startDate,
+      dueDate,
       projectId,
       description,
       priority,
       position,
       userId,
       currentUserId,
-    );
-
-    return c.json(task, 200);
+    });
+    if ("conflict" in result) return c.json(result.conflict, 409);
+    return c.json(result.task, 200);
   })
   .openapi(exportTasksRoute, async (c) => {
     const { projectId } = c.req.valid("param");
@@ -732,7 +836,7 @@ const task = apiRouter<BaseVariables & { workspaceId: string }>()
 
     const task = await updateTaskDueDate({
       id,
-      dueDate: dueDate ? validateAndParseDate(dueDate, "dueDate") : null,
+      dueDate,
       currentUserId,
     });
 
@@ -752,63 +856,42 @@ const task = apiRouter<BaseVariables & { workspaceId: string }>()
     const { filename, contentType, size, surface } = c.req.valid("json");
 
     try {
-      validateTaskAssetUploadInput(contentType, size);
-    } catch (error) {
-      throw new HTTPException(400, {
-        message:
-          error instanceof Error
-            ? error.message
-            : "Invalid image upload request",
-      });
-    }
-
-    const [taskContext] = await db
-      .select({
-        taskId: taskTable.id,
-        projectId: taskTable.projectId,
-        workspaceId: workspaceTable.id,
-      })
-      .from(taskTable)
-      .innerJoin(projectTable, eq(taskTable.projectId, projectTable.id))
-      .innerJoin(
-        workspaceTable,
-        eq(projectTable.workspaceId, workspaceTable.id),
-      )
-      .where(
-        and(
-          eq(taskTable.id, id),
-          // #202: a task inside a soft-deleted project is frozen for its project's
-          // 30-day recovery window (#187, PR-16), so no upload URL may be minted for
-          // it either. `getProjectWorkspaceId`, which the other task routes use, is
-          // not reachable here -- this handler needs the project and workspace ids
-          // in the same row -- so the exclusion is applied directly.
-          isNull(projectTable.deletedAt),
-        ),
-      )
-      .limit(1);
-
-    if (!taskContext) {
-      throw new HTTPException(404, { message: "Task not found" });
-    }
-
-    try {
-      const upload = await createTaskImageUploadUrl({
-        workspaceId: taskContext.workspaceId,
-        projectId: taskContext.projectId,
-        taskId: taskContext.taskId,
-        surface,
-        filename,
-        contentType,
-        // Only meaningful to the filesystem driver, whose "presigned URL" is a route on this
-        // API process itself rather than a separate storage endpoint — see
-        // storage/filesystem.ts, which normalizes this itself (via the same
-        // normalizeApiServerUrl used below for the finalize response), so the raw origin is
-        // passed here rather than pre-normalizing it. s3.ts ignores this field entirely.
-        apiBaseUrl: process.env.KANEO_API_URL || new URL(c.req.url).origin,
+      const upload = await db.transaction(async (tx) => {
+        const task = await lockTaskAndAssertProjectLive(tx, id);
+        try {
+          validateTaskAssetUploadInput(contentType, size);
+        } catch (error) {
+          throw new HTTPException(400, {
+            message:
+              error instanceof Error
+                ? error.message
+                : "Invalid image upload request",
+          });
+        }
+        const [context] = await tx
+          .select({ workspaceId: workspaceTable.id })
+          .from(projectTable)
+          .innerJoin(
+            workspaceTable,
+            eq(projectTable.workspaceId, workspaceTable.id),
+          )
+          .where(eq(projectTable.id, task.projectId));
+        if (!context)
+          throw new HTTPException(404, { message: "Task not found" });
+        return createTaskImageUploadUrl({
+          workspaceId: context.workspaceId,
+          projectId: task.projectId,
+          taskId: task.id,
+          surface,
+          filename,
+          contentType,
+          apiBaseUrl: process.env.KANEO_API_URL || new URL(c.req.url).origin,
+        });
       });
 
       return c.json(upload, 200);
     } catch (error) {
+      if (error instanceof HTTPException) throw error;
       throw new HTTPException(503, {
         message:
           error instanceof Error
@@ -822,99 +905,71 @@ const task = apiRouter<BaseVariables & { workspaceId: string }>()
     const { key, filename, contentType, size, surface } = c.req.valid("json");
     const userId = c.get("userId");
 
-    try {
-      validateTaskAssetUploadInput(contentType, size);
-    } catch (error) {
-      throw new HTTPException(400, {
-        message:
-          error instanceof Error
-            ? error.message
-            : "Invalid image upload request",
-      });
-    }
-
-    const [taskContext] = await db
-      .select({
-        taskId: taskTable.id,
-        projectId: taskTable.projectId,
-        workspaceId: workspaceTable.id,
-      })
-      .from(taskTable)
-      .innerJoin(projectTable, eq(taskTable.projectId, projectTable.id))
-      .innerJoin(
-        workspaceTable,
-        eq(projectTable.workspaceId, workspaceTable.id),
-      )
-      .where(
-        and(
-          eq(taskTable.id, id),
-          // #202: same exclusion as the create-upload handler above, and for the same
-          // reason -- without it, an already-uploaded key could still be finalized
-          // into a stored asset belonging to a soft-deleted project's task.
-          isNull(projectTable.deletedAt),
-        ),
-      )
-      .limit(1);
-
-    if (!taskContext) {
-      throw new HTTPException(404, { message: "Task not found" });
-    }
-
     const normalizedKey = key.trim();
-    if (
-      !assertTaskImageKeyMatchesContext(normalizedKey, {
-        workspaceId: taskContext.workspaceId,
-        projectId: taskContext.projectId,
-        taskId: taskContext.taskId,
+    const asset = await db.transaction(async (tx) => {
+      const task = await lockTaskAndAssertProjectLive(tx, id);
+      try {
+        validateTaskAssetUploadInput(contentType, size);
+      } catch (error) {
+        throw new HTTPException(400, {
+          message:
+            error instanceof Error
+              ? error.message
+              : "Invalid image upload request",
+        });
+      }
+      const [context] = await tx
+        .select({ workspaceId: workspaceTable.id })
+        .from(projectTable)
+        .innerJoin(
+          workspaceTable,
+          eq(projectTable.workspaceId, workspaceTable.id),
+        )
+        .where(eq(projectTable.id, task.projectId));
+      if (!context) throw new HTTPException(404, { message: "Task not found" });
+      if (
+        !assertTaskImageKeyMatchesContext(normalizedKey, {
+          workspaceId: context.workspaceId,
+          projectId: task.projectId,
+          taskId: task.id,
+          surface,
+        })
+      ) {
+        throw new HTTPException(400, {
+          message: "Image upload key does not match the task context.",
+        });
+      }
+
+      const [existingAsset] = await tx
+        .select({ id: assetTable.id })
+        .from(assetTable)
+        .where(eq(assetTable.objectKey, normalizedKey))
+        .limit(1);
+      const values = {
+        workspaceId: context.workspaceId,
+        projectId: task.projectId,
+        taskId: task.id,
+        filename,
+        mimeType: contentType,
+        size,
+        kind: isImageContentType(contentType)
+          ? ("image" as const)
+          : ("attachment" as const),
         surface,
-      })
-    ) {
-      throw new HTTPException(400, {
-        message: "Image upload key does not match the task context.",
-      });
-    }
-
-    const [existingAsset] = await db
-      .select({ id: assetTable.id })
-      .from(assetTable)
-      .where(eq(assetTable.objectKey, normalizedKey))
-      .limit(1);
-
-    const [asset] = existingAsset
-      ? await db
-          .update(assetTable)
-          .set({
-            workspaceId: taskContext.workspaceId,
-            projectId: taskContext.projectId,
-            taskId: taskContext.taskId,
-            filename,
-            mimeType: contentType,
-            size,
-            kind: isImageContentType(contentType) ? "image" : "attachment",
-            surface,
-            createdBy: userId || null,
-          })
-          .where(eq(assetTable.id, existingAsset.id))
-          .returning({
-            id: assetTable.id,
-          })
-      : await db
-          .insert(assetTable)
-          .values({
-            workspaceId: taskContext.workspaceId,
-            projectId: taskContext.projectId,
-            taskId: taskContext.taskId,
-            objectKey: normalizedKey,
-            filename,
-            mimeType: contentType,
-            size,
-            kind: isImageContentType(contentType) ? "image" : "attachment",
-            surface,
-            createdBy: userId || null,
-          })
-          .returning({
-            id: assetTable.id,
-          });
+        createdBy: userId || null,
+      };
+      const [asset] = existingAsset
+        ? await tx
+            .update(assetTable)
+            .set(values)
+            .where(eq(assetTable.id, existingAsset.id))
+            .returning({ id: assetTable.id })
+        : await tx
+            .insert(assetTable)
+            .values({ ...values, objectKey: normalizedKey })
+            .returning({ id: assetTable.id });
+      return asset;
+    });
 
     if (!asset) {
       throw new HTTPException(500, {
@@ -946,5 +1001,40 @@ const task = apiRouter<BaseVariables & { workspaceId: string }>()
 
     return c.json(task, 200);
   });
+
+export const taskV2 = apiRouter<
+  BaseVariables & { workspaceId: string }
+>().openapi(updateTaskV2Route, async (c) => {
+  const { id } = c.req.valid("param");
+  const { "if-match": ifMatch } = c.req.valid("header");
+  const {
+    title,
+    description,
+    startDate,
+    dueDate,
+    priority,
+    status,
+    projectId,
+    position,
+    userId,
+  } = c.req.valid("json");
+
+  const result = await runFullTaskUpdate({
+    id,
+    assertedVersion: Number(ifMatch.slice(1, -1)),
+    title,
+    status,
+    startDate,
+    dueDate,
+    projectId,
+    description,
+    priority,
+    position,
+    userId,
+    currentUserId: c.get("userId"),
+  });
+  if ("conflict" in result) return c.json(result.conflict, 409);
+  return c.json(result.task, 200);
+});
 
 export default task;

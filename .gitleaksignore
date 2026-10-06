@@ -3,3 +3,6 @@
 # Never widen these into path- or rule-wide ignores.
 dc63e859546223ac9c11abc3c1d36a5c79ef445e:tests/api-integration/audit-log.test.ts:generic-api-key:188
 4f20080a03bb5fe6804cfe32e79e21932d926300:tests/api-integration/audit-log.test.ts:generic-api-key:545
+# Historical public RFC 6238 TOTP vector in a pre-setup assertion. See 2026-10-05 decision log.
+69e61dd56c18bdbb90149f470d9a6615a9d28272:apps/web/e2e/mfa-csrf-journey.spec.ts:generic-api-key:13
+36959b579075a4463c04bd01ede7c55913abce33:docs/07-planning/security-reviews/579-p0-146f0584-luna-a.md:generic-api-key:28

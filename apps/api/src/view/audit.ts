@@ -1,6 +1,8 @@
 import type { JsonValue } from "@taskdesk/domain";
 import { appendAuditLog } from "../audit/audit-writer";
 import db from "../database";
+import { notifyCurrentInstanceAdminsOfAuditFailure } from "../instance/observability/audit-failure-notifier";
+import { recordAuditWriteFailure } from "../instance/observability/runtime";
 
 export type SavedViewAuditActor = {
   actorId: string;
@@ -35,9 +37,8 @@ export function savedViewAuditState(view: SavedViewAuditState): JsonValue {
 
 /**
  * AU-14: audit failure cannot roll back a completed saved-view mutation. This runs
- * after the mutation's transaction commits and reports failures at error level. The
- * shared audit-read path documents the metric and administrator-notification hooks as
- * observability work; this helper does not make an audit gap silent.
+ * after the mutation's transaction commits and reports failures through AU-14's
+ * structured error log, metric, and durable administrator notification.
  */
 export async function writeSavedViewAudit(input: {
   actor: SavedViewAuditActor;
@@ -61,12 +62,8 @@ export async function writeSavedViewAudit(input: {
       before: input.before,
       after: input.after,
     });
-  } catch (error) {
-    console.error(`AU-14: ${input.action} audit write failed`, {
-      workspaceId: input.workspaceId,
-      entityType: "saved_view",
-      entityId: input.entityId,
-      error,
-    });
+  } catch {
+    recordAuditWriteFailure("mutation");
+    await notifyCurrentInstanceAdminsOfAuditFailure("mutation");
   }
 }

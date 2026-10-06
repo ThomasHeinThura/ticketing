@@ -125,8 +125,8 @@ const manifest = [
   {
     gate: "pnpm check:inventory",
     stage: "fast",
-    run: null,
-    why: "needs generated routes to compare the screen inventory against; apps/web has no lib/routes.ts registry yet (AGENTS.md rule 4, #9 and P1).",
+    run: ["pnpm", "check:inventory"],
+    note: "G5 verifies deterministic metadata against both TanStack trees and checks route coverage/counts against the screen inventory.",
   },
   { gate: "pnpm check:reviews", stage: "fast", run: ["pnpm", "check:reviews"] },
   { gate: "pnpm check:env", stage: "fast", run: ["pnpm", "check:env"] },
@@ -162,10 +162,9 @@ const manifest = [
     note: "needs a pull-request body; locally it does nothing useful.",
   },
   {
-    gate: "no-inherited-routes",
+    gate: "pnpm test:no-inherited-routes",
     stage: "fast",
-    run: null,
-    why: "tests/permissions/no-inherited-integration-routes.test.ts is #6's and #7's to write (docs/04-engineering/testing-strategy.md § Permission tests). It runs under `pnpm test:permissions` once it exists.",
+    run: ["pnpm", "test:no-inherited-routes"],
   },
   { gate: "pnpm test", stage: "fast", run: ["pnpm", "test"] },
   {
@@ -195,16 +194,16 @@ const manifest = [
   },
   { gate: "pnpm build", stage: "fast", run: ["pnpm", "build"] },
   {
-    gate: "check:bundle-purity",
+    gate: "pnpm check:bundle-purity",
     stage: "fast",
-    run: null,
-    why: "apps/web builds one bundle. G12 is 'no agent module in the portal bundle', and the agent/portal split is #9.",
+    run: ["pnpm", "check:bundle-purity"],
+    note: "G12 checks every static and dynamic chunk reachable from the portal entry against bundler-emitted module graph metadata.",
   },
   {
-    gate: "check:bundle-size",
+    gate: "pnpm check:bundle-size",
     stage: "fast",
-    run: null,
-    why: "G11's budgets are not written down anywhere yet, and there is no portal bundle to measure.",
+    run: ["pnpm", "check:bundle-size"],
+    note: "G11 checks independent agent and portal entry budgets against emitted production bundles.",
   },
   {
     gate: "helm lint + helm template",
@@ -251,14 +250,14 @@ const manifest = [
   {
     gate: "pnpm test:visual",
     stage: "full",
-    run: null,
-    why: "Playwright screenshots are selected for G8, but deterministic screen/data fixtures and snapshot acceptance scope are not yet defined.",
+    run: ["pnpm", "test:visual"],
+    note: "checks in-repo Playwright baselines for every exported UI Storybook story and deterministic fixtures for each inventory route marked in progress or complete; new stories and active route rows require baselines in the same change.",
   },
   {
     gate: "pnpm test:perf",
     stage: "full",
-    run: null,
-    why: "no Playwright suite and no performance budgets (G11).",
+    run: ["pnpm", "test:perf"],
+    note: "runs the deterministic G11 Playwright interaction, route, render, layout-stability, and board budgets; dual-entry bundle budgets are checked separately by pnpm check:bundle-size.",
   },
 ];
 

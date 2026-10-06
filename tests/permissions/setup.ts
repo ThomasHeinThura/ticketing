@@ -12,7 +12,7 @@ const DEFAULTS: Record<string, string> = {
   NODE_ENV: "test",
   TASKDESK_AUTH_SECRET: "permissions-suite-secret-with-at-least-32-chars",
   TASKDESK_AGENT_URL: "http://localhost:5173",
-  TASKDESK_PORTAL_URL: "http://localhost:5174",
+  TASKDESK_PORTAL_URL: "http://portal.localhost:5174",
   TASKDESK_DATABASE_URL:
     "postgresql://postgres:postgres@127.0.0.1:1/taskdesk_route_enumeration_only",
 };

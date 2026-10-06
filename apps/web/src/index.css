@@ -4,6 +4,7 @@
 @source "../../../packages/ui/src";
 @import "@taskdesk/ui/styles/tokens.css";
 @import "@taskdesk/ui/styles/theme.css";
+@import "@taskdesk/ui/styles/density.css";
 @import "@taskdesk/ui/styles/motion.css";
 @import "@fontsource-variable/geist";
 @import "@fontsource-variable/geist-mono";
@@ -15,6 +16,23 @@ input:-webkit-autofill:active {
   -webkit-text-fill-color: var(--foreground) !important;
   -webkit-box-shadow: 0 0 0 1000px transparent inset !important;
   transition: background-color 5000s ease-in-out 0s;
+}
+
+@layer utilities {
+  /* Contain cell contents while keeping each native table row and cell mounted. */
+  .work-item-list-cell-content {
+    content-visibility: auto;
+    contain-intrinsic-block-size: calc(var(--spacing) * 4.5);
+  }
+
+  /* Keep every sortable card mounted, but let the browser defer card descendants
+     outside the board's scrollport until they approach the viewport. The intrinsic
+     estimate follows the compact single-line card geometry; once measured, `auto`
+     retains the card's actual size for later scrolls and drag measurements. */
+  .kanban-board-task-card {
+    content-visibility: auto;
+    contain-intrinsic-block-size: auto calc(var(--spacing) * 24);
+  }
 }
 
 @custom-variant dark (&:is(.dark *));

@@ -19,7 +19,7 @@
  * attempted, not merely caught later as a 500 on work-item create.
  */
 import { randomUUID } from "node:crypto";
-import { eq } from "drizzle-orm";
+import { eq, sql } from "drizzle-orm";
 import { beforeEach, describe, expect, it } from "vitest";
 import db, { schema } from "../../apps/api/src/database";
 import { createApp } from "../../apps/api/src/index";
@@ -48,6 +48,29 @@ function updateProjectRequest(
     headers: { "content-type": "application/json" },
     body: JSON.stringify(body),
   });
+}
+
+async function waitForBlockedProjectUpdate() {
+  const deadline = Date.now() + 10_000;
+
+  while (Date.now() < deadline) {
+    const activity = await db.execute(sql`
+      SELECT pid
+      FROM pg_stat_activity
+      WHERE datname = current_database()
+        AND state = 'active'
+        AND wait_event_type = 'Lock'
+        AND query ILIKE '%update "project"%'
+      LIMIT 1
+    `);
+
+    if (activity.rows.length > 0) return;
+    await new Promise((resolve) => setTimeout(resolve, 10));
+  }
+
+  throw new Error(
+    "Timed out waiting for the project rename to reach its row lock",
+  );
 }
 
 function deleteWorkspaceRequest(
@@ -452,5 +475,92 @@ describe("API integration: project.slug claims are permanent (#23 D1)", () => {
       "ROUNDTRIP",
       "ROUNDTRIP-2",
     ]);
+  });
+
+  it("rejects a rename when another project permanently claims the slug during preflight", async () => {
+    const owner = await createWorkspaceMember({ role: "admin" });
+    mockAuthenticatedSession(owner.user);
+    const { app } = createApp();
+
+    const firstCreate = await createProjectRequest(app, {
+      workspaceId: owner.workspace.id,
+      name: "First project",
+      icon: "Folder",
+      slug: "RACE-FIRST",
+    });
+    expect(firstCreate.status).toBe(200);
+    const firstProject = (await firstCreate.json()) as { id: string };
+
+    let releaseRowLock: (() => void) | undefined;
+    let signalRowLockAcquired: (() => void) | undefined;
+    const rowLockAcquired = new Promise<void>((resolve) => {
+      signalRowLockAcquired = resolve;
+    });
+    const waitToReleaseRowLock = new Promise<void>((resolve) => {
+      releaseRowLock = resolve;
+    });
+
+    const rowLockTransaction = db.transaction(async (tx) => {
+      await tx.execute(sql`
+        SELECT id
+        FROM project
+        WHERE id = ${firstProject.id}
+        FOR UPDATE
+      `);
+      signalRowLockAcquired?.();
+      await waitToReleaseRowLock;
+    });
+
+    await rowLockAcquired;
+
+    const pendingRename = updateProjectRequest(app, firstProject.id, {
+      name: "First project",
+      icon: "Folder",
+      slug: "RACE-SLUG",
+      description: "",
+    });
+
+    let secondProject: { id: string } | undefined;
+    try {
+      // The update has completed its live-project and claim pre-checks, then blocks on
+      // the row lock held above. A second project can now claim the target slug.
+      await waitForBlockedProjectUpdate();
+
+      const secondCreate = await createProjectRequest(app, {
+        workspaceId: owner.workspace.id,
+        name: "Second project",
+        icon: "Folder",
+        slug: "RACE-SLUG",
+      });
+      expect(secondCreate.status).toBe(200);
+      secondProject = (await secondCreate.json()) as { id: string };
+
+      // Move the live row away while preserving its permanent claim. The blocked
+      // transaction can then update the first project to RACE-SLUG unless it validates
+      // the claim-table conflict after its insert.
+      const moveSecond = await updateProjectRequest(app, secondProject.id, {
+        name: "Second project",
+        icon: "Folder",
+        slug: "RACE-OTHER",
+        description: "",
+      });
+      expect(moveSecond.status).toBe(200);
+    } finally {
+      releaseRowLock?.();
+      await rowLockTransaction;
+    }
+
+    const rename = await pendingRename;
+    expect(rename.status).toBe(409);
+
+    const firstAfterRace = await db.query.projectTable.findFirst({
+      where: eq(schema.projectTable.id, firstProject.id),
+    });
+    expect(firstAfterRace?.slug).toBe("RACE-FIRST");
+
+    const claim = await db.query.projectSlugClaimTable.findFirst({
+      where: eq(schema.projectSlugClaimTable.slug, "RACE-SLUG"),
+    });
+    expect(claim?.projectId).toBe(secondProject?.id);
   });
 });

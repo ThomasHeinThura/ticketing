@@ -4,6 +4,7 @@ import {
   errorResponse,
   jsonResponse,
 } from "../openapi";
+import { requireWorkspaceCapability } from "../utils/require-workspace-capability";
 import { workspaceAccess } from "../utils/workspace-access-middleware";
 import globalSearch from "./controllers/global-search";
 import { searchResponseSchema } from "./response";
@@ -17,7 +18,10 @@ const globalSearchRoute = createRoute({
   summary: "Global search",
   description:
     "Search across tasks, projects, workspaces, comments, and activities in one workspace. Results are ranked by relevance and returned as a single flat list, each entry tagged with its `type`.",
-  middleware: [workspaceAccess.fromQuery()] as const,
+  middleware: [
+    workspaceAccess.fromQuery(),
+    requireWorkspaceCapability("workspace:read"),
+  ] as const,
   request: { query: searchQuery },
   responses: {
     200: jsonResponse("Ranked search results", searchResponseSchema),

@@ -5,6 +5,7 @@ import {
   DragOverlay,
   type DragStartEvent,
   type DropAnimation,
+  defaultAnnouncements,
   defaultDropAnimationSideEffects,
   KeyboardSensor,
   MouseSensor,
@@ -13,46 +14,177 @@ import {
   useSensor,
   useSensors,
 } from "@dnd-kit/core";
+import { sortableKeyboardCoordinates } from "@dnd-kit/sortable";
 import { useQueryClient } from "@tanstack/react-query";
 import { useNavigate } from "@tanstack/react-router";
+import { ContextMenu, ContextMenuTrigger } from "@taskdesk/ui";
 import { produce } from "immer";
-import { useEffect, useState } from "react";
+import {
+  lazy,
+  memo,
+  Suspense,
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
+import { useTranslation } from "react-i18next";
+import { useShallow } from "zustand/react/shallow";
 import { useUpdateTask } from "@/hooks/mutations/task/use-update-task";
+import type { useGetActiveWorkspaceUsers } from "@/hooks/queries/workspace-users/use-get-active-workspace-users";
 import { useRegisterShortcuts } from "@/hooks/use-keyboard-shortcuts";
+import { isTaskCompleted } from "@/lib/due-date-status";
 import useBulkSelectionStore from "@/store/bulk-selection";
 import useProjectStore from "@/store/project";
+import { useUserPreferencesStore } from "@/store/user-preferences";
 import type { ProjectWithTasks } from "@/types/project";
 import BulkToolbar from "../bulk-selection/bulk-toolbar";
 import Column from "./column";
+import { BoardCreateTaskDialog } from "./create-task-dialog";
+import type {
+  TaskCardDisplayPreferences,
+  TaskCardWorkspaceUser,
+} from "./task-card";
 import TaskCard from "./task-card";
+import TaskCardContextMenuContent from "./task-card-context-menu/task-card-context-menu-content";
+
+const TaskCardDeleteConfirmation = lazy(
+  () => import("./task-card-delete-confirmation"),
+);
+
+const boardAnnouncements = {
+  ...defaultAnnouncements,
+  onDragOver({
+    active,
+    over,
+  }: Parameters<typeof defaultAnnouncements.onDragOver>[0]) {
+    if (over?.id === active.id) {
+      return defaultAnnouncements.onDragStart({ active });
+    }
+    return defaultAnnouncements.onDragOver({ active, over });
+  },
+};
 
 type KanbanBoardProps = {
   project: ProjectWithTasks;
+  workspaceId: string;
+  workspaceUsers: ReturnType<typeof useGetActiveWorkspaceUsers>["data"];
   disableDragDrop?: boolean;
 };
 
-function KanbanBoard({ project, disableDragDrop = false }: KanbanBoardProps) {
+function KanbanBoard({
+  project,
+  workspaceId,
+  workspaceUsers,
+  disableDragDrop = false,
+}: KanbanBoardProps) {
+  const { t } = useTranslation();
   const queryClient = useQueryClient();
-  const { setProject } = useProjectStore();
+  const setProject = useProjectStore((state) => state.setProject);
+  const displayPreferences = useUserPreferencesStore(
+    useShallow((state) => ({
+      showAssignees: state.showAssignees,
+      showPriority: state.showPriority,
+      showDueDates: state.showDueDates,
+      showLabels: state.showLabels,
+      showTaskNumbers: state.showTaskNumbers,
+      showTaskItemCounts: state.showTaskItemCounts,
+    })),
+  ) as TaskCardDisplayPreferences;
   const {
+    selectedTaskIds,
+    focusedTaskId,
     setAvailableTasks,
     focusNext,
     focusPrevious,
-    focusedTaskId,
     clearFocus,
-  } = useBulkSelectionStore();
+  } = useBulkSelectionStore(
+    useShallow((state) => ({
+      selectedTaskIds: state.selectedTaskIds,
+      focusedTaskId: state.focusedTaskId,
+      setAvailableTasks: state.setAvailableTasks,
+      focusNext: state.focusNext,
+      focusPrevious: state.focusPrevious,
+      clearFocus: state.clearFocus,
+    })),
+  );
   const [activeId, setActiveId] = useState<UniqueIdentifier | null>(null);
+  const [contextMenuTaskId, setContextMenuTaskId] = useState<string | null>(
+    null,
+  );
+  const [isContextMenuOpen, setIsContextMenuOpen] = useState(false);
+  const [deleteTaskId, setDeleteTaskId] = useState<string | null>(null);
+  const [createTaskStatus, setCreateTaskStatus] = useState<string | null>(null);
+  const createTaskTriggerRef = useRef<HTMLButtonElement | null>(null);
+  const workspaceUsersById = useMemo(() => {
+    const members = workspaceUsers?.members ?? [];
+    return new Map<string, TaskCardWorkspaceUser>(
+      members.map((member) => [member.userId, member]),
+    );
+  }, [workspaceUsers?.members]);
+  const columnCompletionBySlug = useMemo(
+    () =>
+      new Map(project.columns.map((column) => [column.slug, column.isFinal])),
+    [project.columns],
+  );
   const { mutate: updateTask } = useUpdateTask();
   const navigate = useNavigate();
+  const handleOpenTask = useCallback(
+    (taskId: string) => {
+      const currentTaskId = new URLSearchParams(window.location.search).get(
+        "taskId",
+      );
+      navigate({
+        to: ".",
+        search: currentTaskId === taskId ? {} : { taskId },
+      });
+    },
+    [navigate],
+  );
+  const handleCreateTask = useCallback(
+    (status: string, trigger: HTMLButtonElement) => {
+      createTaskTriggerRef.current = trigger;
+      setCreateTaskStatus(status);
+    },
+    [],
+  );
+  const handleCloseCreateTask = useCallback(
+    () => setCreateTaskStatus(null),
+    [],
+  );
+  const allTasks = useMemo(
+    () => project.columns?.flatMap((column) => column.tasks) ?? [],
+    [project.columns],
+  );
+  const contextMenuTask = contextMenuTaskId
+    ? allTasks.find((task) => task.id === contextMenuTaskId)
+    : undefined;
+
+  const setContextTaskFromEvent = (event: React.SyntheticEvent) => {
+    const target = event.target;
+    const element = target instanceof Element ? target : null;
+    const taskCard = element?.closest<HTMLElement>("[data-task-id]");
+    if (
+      !taskCard ||
+      !allTasks.some((task) => task.id === taskCard.dataset.taskId)
+    ) {
+      event.stopPropagation();
+      return;
+    }
+    setContextMenuTaskId(taskCard.dataset.taskId ?? null);
+  };
+
+  const openContextMenuForTask = useCallback((taskId: string) => {
+    setContextMenuTaskId(taskId);
+    setIsContextMenuOpen(true);
+  }, []);
 
   useEffect(() => {
     if (project?.columns) {
-      const allTaskIds = project.columns.flatMap((column) =>
-        column.tasks.map((task) => task.id),
-      );
-      setAvailableTasks(allTaskIds);
+      setAvailableTasks(allTasks.map((task) => task.id));
     }
-  }, [project, setAvailableTasks]);
+  }, [allTasks, project?.columns, setAvailableTasks]);
 
   useEffect(() => {
     clearFocus();
@@ -75,6 +207,7 @@ function KanbanBoard({ project, disableDragDrop = false }: KanbanBoardProps) {
         }
       },
       Enter: () => {
+        const focusedTaskId = useBulkSelectionStore.getState().focusedTaskId;
         if (focusedTaskId && project) {
           navigate({
             to: "/dashboard/workspace/$workspaceId/project/$projectId/task/$taskId",
@@ -99,7 +232,9 @@ function KanbanBoard({ project, disableDragDrop = false }: KanbanBoardProps) {
         tolerance: 10,
       },
     }),
-    useSensor(KeyboardSensor),
+    useSensor(KeyboardSensor, {
+      coordinateGetter: sortableKeyboardCoordinates,
+    }),
   );
 
   const dropAnimation: DropAnimation = {
@@ -116,6 +251,10 @@ function KanbanBoard({ project, disableDragDrop = false }: KanbanBoardProps) {
 
   const handleDragStart = (event: DragStartEvent) => {
     setActiveId(event.active.id);
+  };
+
+  const handleDragCancel = () => {
+    setActiveId(null);
   };
 
   const handleDragEnd = (event: DragEndEvent) => {
@@ -189,7 +328,7 @@ function KanbanBoard({ project, disableDragDrop = false }: KanbanBoardProps) {
 
   if (!project?.columns) {
     return (
-      <div className="flex h-full w-full flex-col bg-linear-to-b from-muted/25 to-background">
+      <div className="flex h-full w-full flex-col bg-background">
         <header className="mb-6 mt-6 space-y-6 shrink-0 px-6">
           <div className="flex items-center justify-between">
             <div className="w-48 h-8 bg-muted/50 rounded-md animate-pulse" />
@@ -236,45 +375,127 @@ function KanbanBoard({ project, disableDragDrop = false }: KanbanBoardProps) {
   }
 
   const activeTask = activeId
-    ? project.columns
-        .flatMap((col) => col.tasks)
-        .find((task) => task.id === activeId)
+    ? allTasks.find((task) => task.id === activeId)
     : null;
 
   return (
     <DndContext
+      accessibility={{ announcements: boardAnnouncements }}
       sensors={sensors}
       collisionDetection={closestCorners}
       onDragStart={handleDragStart}
+      onDragCancel={handleDragCancel}
       onDragEnd={handleDragEnd}
     >
-      <div className="flex h-full w-full flex-col bg-linear-to-b from-muted/20 to-background">
-        <div className="min-h-0 flex-1 overflow-x-auto [-webkit-overflow-scrolling:touch]">
-          <div className="flex h-full min-w-max gap-4 px-4 py-4 md:px-5">
-            {project.columns?.map((column) => (
-              <div
-                key={column.id}
-                className="h-full max-w-96 min-w-80 shrink-0 flex-1"
-              >
-                <Column column={column} disableDragDrop={disableDragDrop} />
+      <ContextMenu
+        open={isContextMenuOpen}
+        onOpenChange={(open) => {
+          setIsContextMenuOpen(open);
+          if (!open) setContextMenuTaskId(null);
+        }}
+      >
+        <ContextMenuTrigger asChild>
+          <div
+            className="flex h-full w-full flex-col bg-background"
+            onContextMenuCapture={setContextTaskFromEvent}
+          >
+            <div className="min-h-0 flex-1 overflow-x-auto [-webkit-overflow-scrolling:touch]">
+              <div className="flex h-full min-w-max gap-4 px-4 py-4 md:px-5">
+                {project.columns?.map((column) => (
+                  <div
+                    key={column.id}
+                    className="h-full max-w-96 min-w-80 shrink-0 flex-1"
+                  >
+                    <Column
+                      column={column}
+                      projectSlug={project.slug}
+                      projectColumns={project.columns}
+                      columnCompletionBySlug={columnCompletionBySlug}
+                      displayPreferences={displayPreferences}
+                      selectedTaskIds={selectedTaskIds}
+                      focusedTaskId={focusedTaskId}
+                      disableDragDrop={disableDragDrop}
+                      workspaceId={workspaceId}
+                      workspaceUsersById={workspaceUsersById}
+                      onContextMenuTask={openContextMenuForTask}
+                      onOpenTask={handleOpenTask}
+                      onCreateTask={handleCreateTask}
+                      t={t}
+                    />
+                  </div>
+                ))}
               </div>
-            ))}
+            </div>
           </div>
-        </div>
-      </div>
+        </ContextMenuTrigger>
+        {contextMenuTask ? (
+          <TaskCardContextMenuContent
+            task={contextMenuTask}
+            taskCardContext={{
+              projectId: project.id,
+              worskpaceId: workspaceId,
+            }}
+            onDeleteClick={() => {
+              setDeleteTaskId(contextMenuTask.id);
+              setIsContextMenuOpen(false);
+            }}
+          />
+        ) : null}
+      </ContextMenu>
       <DragOverlay dropAnimation={dropAnimation}>
         {activeTask ? (
           <div className="transform rotate-1 scale-[1.03] shadow-lg">
             <div className="ring-2 ring-ring/35 rounded-lg">
-              <TaskCard task={activeTask} />
+              <TaskCard
+                task={activeTask}
+                projectSlug={project.slug}
+                taskIsCompleted={isTaskCompleted(
+                  activeTask.status,
+                  project.columns,
+                )}
+                displayPreferences={displayPreferences}
+                isSelected={selectedTaskIds.has(activeTask.id)}
+                isFocused={focusedTaskId === activeTask.id}
+                workspaceId={workspaceId}
+                assignee={
+                  activeTask.userId
+                    ? workspaceUsersById.get(activeTask.userId)
+                    : undefined
+                }
+                onContextMenuTask={openContextMenuForTask}
+                onOpenTask={handleOpenTask}
+                t={t}
+              />
             </div>
           </div>
         ) : null}
       </DragOverlay>
 
       <BulkToolbar />
+      <BoardCreateTaskDialog
+        onClose={handleCloseCreateTask}
+        projectId={project.id}
+        status={createTaskStatus}
+        trigger={createTaskTriggerRef.current}
+      />
+      {deleteTaskId ? (
+        <Suspense
+          fallback={
+            <div role="status" aria-live="polite">
+              {t("common:empty.loading")}
+            </div>
+          }
+        >
+          <TaskCardDeleteConfirmation
+            taskId={deleteTaskId}
+            onOpenChange={(open) => {
+              if (!open) setDeleteTaskId(null);
+            }}
+          />
+        </Suspense>
+      ) : null}
     </DndContext>
   );
 }
 
-export default KanbanBoard;
+export default memo(KanbanBoard);

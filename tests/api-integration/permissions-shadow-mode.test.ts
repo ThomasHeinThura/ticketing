@@ -4,8 +4,8 @@
  * Four obligations from the brief, each its own describe block:
  *  1. Shadow off (the default) writes nothing — a true no-op.
  *  2. Responses are byte-identical with shadow on and off, for a representative route.
- *  3. A known disagreement — the instance-admin bypass (#315 S8) — is recorded, with shadow
- *     on, as `legacy_allow_policy_deny`.
+ *  3. Instance-admin reach does not bypass workspace capability authority; an assigned role
+ *     still permits the operation.
  *  4. An evaluator exception is caught and logged as `evaluator_error`; the response is
  *     unaffected.
  *
@@ -28,19 +28,24 @@ import {
   policyShadowTallyTable,
 } from "../../apps/api/src/permissions/shadow-schema";
 import { seedInternalOrganisationAndStaffPersons } from "../../apps/api/src/utils/seed-internal-organisation";
+import { withConfiguredAgentAuthority } from "./helpers/agent-authority";
 import { resetTestDatabase } from "./helpers/database";
 import {
   createProjectFixture,
   createWorkspaceMember,
+  prepareAuthenticatedApiFixture,
 } from "./helpers/fixtures";
+
+// This file resets the complete app module graph to test the import-time shadow
+// switch. Avoid the shared createApp mock here so each fresh graph retains its
+// own auth module instance; adapt only the app's in-process request boundary.
+vi.unmock("../../apps/api/src/index");
 
 /**
  * `resolveIdentity` requires a `person` row (#315 S7 — the real backfill runs once, at
- * boot). `createWorkspaceMember()` only inserts `user`/`workspace_member` rows, so every
- * test below calls this immediately after creating its fixtures, the same way
- * `tests/api-integration/resolve-identity.test.ts` does — otherwise every shadow comparison
- * in this file would itself demonstrate S7's own "unevaluated: missing_identity" case
- * instead of the scenario each test is actually about.
+ * boot). `createWorkspaceMember()` now provisions an ordinary active identity; this
+ * backfill remains for direct user rows this file creates so shadow comparisons exercise
+ * their intended scenario instead of S7's `missing_identity` case.
  */
 async function backfillPersons(): Promise<void> {
   await seedInternalOrganisationAndStaffPersons();
@@ -71,9 +76,18 @@ async function createAppWithShadow(value: "on" | "off"): Promise<FreshApp> {
   const indexModule = await import("../../apps/api/src/index");
   const authModule: AuthModule = await import("../../apps/api/src/auth");
   const databaseModule: DbModule = await import("../../apps/api/src/database");
+  const app = indexModule.createApp().app;
+  const request = app.request.bind(app);
+  app.request = (input, init, env, executionCtx) => {
+    if (typeof input === "string") {
+      const normalized = withConfiguredAgentAuthority(input, init);
+      return request(normalized.input, normalized.init, env, executionCtx);
+    }
+    return request(input, init, env, executionCtx);
+  };
 
   return {
-    app: indexModule.createApp().app,
+    app,
     db: databaseModule.default,
     schema: databaseModule.schema,
     mockUser: (user) => {
@@ -87,6 +101,7 @@ async function createAppWithShadow(value: "on" | "off"): Promise<FreshApp> {
           updatedAt: new Date(),
           ipAddress: null,
           userAgent: null,
+          portal: "agent",
         },
         // Mirrors mockAuthenticatedSession's own MockSessionUser widening
         // (tests/api-integration/helpers/auth.ts) — `role` is a plain userTable column, not
@@ -151,6 +166,130 @@ afterEach(async () => {
 
 const UPDATE_LABEL_ROUTE_KEY = "PUT /api/label/{id}";
 const LIST_PROJECTS_ROUTE_KEY = "GET /api/project";
+const LIST_NOTIFICATIONS_ROUTE_KEY = "GET /api/notification";
+const GET_NOTIFICATION_PREFERENCES_ROUTE_KEY =
+  "GET /api/notification-preferences";
+const GET_TASK_ROUTE_KEY = "GET /api/task/{id}";
+const DELETE_NOTIFICATION_WORKSPACE_RULE_ROUTE_KEY =
+  "DELETE /api/notification-preferences/workspaces/{workspaceId}";
+
+function postgresStatement(query: unknown): string {
+  if (typeof query === "string") return query;
+  if (
+    typeof query === "object" &&
+    query !== null &&
+    "text" in query &&
+    typeof query.text === "string"
+  ) {
+    return query.text;
+  }
+  return "";
+}
+
+describe("successful authentication is recorded as the legacy self-policy decision", () => {
+  it("compares notification and preference reads as authenticated self routes", {
+    timeout: 60_000,
+  }, async () => {
+    const fresh = await createAppWithShadow("on");
+    const member = await createWorkspaceMember();
+    await backfillPersons();
+    fresh.mockUser(member.user);
+
+    const notifications = await fresh.app.request("/api/notification");
+    const preferences = await fresh.app.request(
+      "/api/notification-preferences",
+    );
+    expect(notifications.status).toBe(200);
+    expect(preferences.status).toBe(200);
+
+    const notificationRows = await waitForShadowEvidence(async () => {
+      const rows = await shadowTalliesFor(LIST_NOTIFICATIONS_ROUTE_KEY);
+      return rows.length ? rows : undefined;
+    });
+    const preferenceRows = await waitForShadowEvidence(async () => {
+      const rows = await shadowTalliesFor(
+        GET_NOTIFICATION_PREFERENCES_ROUTE_KEY,
+      );
+      return rows.length ? rows : undefined;
+    });
+
+    expect(notificationRows).toContainEqual(
+      expect.objectContaining({ outcome: "agree", reasonCode: null }),
+    );
+    expect(preferenceRows).toContainEqual(
+      expect.objectContaining({ outcome: "agree", reasonCode: null }),
+    );
+  });
+
+  it("does not shadow an authentication denial as an allowed request", {
+    timeout: 60_000,
+  }, async () => {
+    const fresh = await createAppWithShadow("on");
+    const response = await fresh.app.request("/api/notification");
+
+    expect(response.status).toBe(401);
+    await new Promise((resolve) => setTimeout(resolve, 300));
+    expect(await shadowTalliesFor(LIST_NOTIFICATIONS_ROUTE_KEY)).toEqual([]);
+  });
+
+  it("keeps an authenticated comparison when a handler fails", {
+    timeout: 60_000,
+  }, async () => {
+    const fresh = await createAppWithShadow("on");
+    const member = await createWorkspaceMember();
+    await backfillPersons();
+    fresh.mockUser(member.user);
+    vi.spyOn(
+      fresh.db.query.userNotificationPreferenceTable,
+      "findFirst",
+    ).mockRejectedValueOnce(new Error("injected preference read failure"));
+
+    const response = await fresh.app.request("/api/notification-preferences");
+    expect(response.status).toBe(500);
+
+    const rows = await waitForShadowEvidence(async () => {
+      const tallies = await shadowTalliesFor(
+        GET_NOTIFICATION_PREFERENCES_ROUTE_KEY,
+      );
+      return tallies.length ? tallies : undefined;
+    });
+    expect(rows).toContainEqual(
+      expect.objectContaining({
+        outcome: "unevaluated",
+        reasonCode: "legacy_outcome_unknown",
+      }),
+    );
+  });
+
+  it("leaves an unrelated inline workspace denial unknown", {
+    timeout: 60_000,
+  }, async () => {
+    const fresh = await createAppWithShadow("on");
+    const caller = await createWorkspaceMember();
+    const other = await createWorkspaceMember();
+    await backfillPersons();
+    fresh.mockUser(caller.user);
+
+    const response = await fresh.app.request(
+      `/api/notification-preferences/workspaces/${other.workspace.id}`,
+      { method: "DELETE" },
+    );
+    expect(response.status).toBe(403);
+
+    const rows = await waitForShadowEvidence(async () => {
+      const tallies = await shadowTalliesFor(
+        DELETE_NOTIFICATION_WORKSPACE_RULE_ROUTE_KEY,
+      );
+      return tallies.length ? tallies : undefined;
+    });
+    expect(rows).toContainEqual(
+      expect.objectContaining({
+        outcome: "unevaluated",
+        reasonCode: "legacy_outcome_unknown",
+      }),
+    );
+  });
+});
 
 async function createLabelFixture(
   fresh: FreshApp,
@@ -264,18 +403,491 @@ describe("request-sourced scope is evaluated with request provenance", () => {
   });
 });
 
-describe("a known disagreement: the instance-admin bypass (#315 S8)", () => {
-  it("legacy allows (requireWorkspacePermission's isInstanceAdmin bypass), the registry denies (instance:* only) — recorded as legacy_allow_policy_deny", {
+describe("observer-only provenance for masked native read denials", () => {
+  it("agrees for an active workspace member with persisted project read authority", {
+    timeout: 60_000,
+  }, async () => {
+    const fresh = await createAppWithShadow("on");
+    const caller = await createWorkspaceMember();
+    const owner = await createWorkspaceMember();
+    const { project, columns } = await createProjectFixture({
+      workspaceId: owner.workspace.id,
+    });
+    await fresh.db.insert(fresh.schema.workspaceUserTable).values({
+      workspaceId: owner.workspace.id,
+      userId: caller.user.id,
+      role: "member",
+      joinedAt: new Date(),
+    });
+    const [task] = await fresh.db
+      .insert(fresh.schema.taskTable)
+      .values({
+        projectId: project.id,
+        title: "Independent project reach fixture",
+        description: "",
+        status: "to-do",
+        priority: "medium",
+        columnId: columns.todo.id,
+        number: 1,
+        position: 1,
+      })
+      .returning();
+    if (!task)
+      throw new Error("observer project reach task insert returned no row");
+
+    const [person] = await fresh.db
+      .select({ id: fresh.schema.personTable.id })
+      .from(fresh.schema.personTable)
+      .where(eq(fresh.schema.personTable.userId, caller.user.id))
+      .limit(1);
+    if (!person)
+      throw new Error("observer caller has no active person fixture");
+    const [role] = await fresh.db
+      .insert(fresh.schema.roleTable)
+      .values({
+        scope: "project",
+        workspaceId: owner.workspace.id,
+        key: `observer-${randomUUID()}`,
+        name: "Observer project reader",
+        rank: 1,
+        capabilities: ["work_item:read"],
+      })
+      .returning();
+    if (!role) throw new Error("observer project role insert returned no row");
+    await fresh.db.insert(fresh.schema.membershipTable).values({
+      personId: person.id,
+      scope: "project",
+      scopeId: project.id,
+      roleId: role.id,
+    });
+
+    await backfillPersons();
+    fresh.mockUser(caller.user);
+
+    // Both the native handler and independent policy evaluation use the active
+    // workspace membership and persisted project role. The project role may override
+    // a workspace role that lacks the selected read capability.
+    const response = await fresh.app.request(`/api/task/${task.id}`);
+    expect(response.status).toBe(200);
+
+    const tally = await waitForShadowEvidence(async () => {
+      const rows = await shadowTalliesFor(GET_TASK_ROUTE_KEY);
+      return rows.find(
+        (row) => row.outcome === "agree" && row.reasonCode === null,
+      );
+    });
+    expect(tally).toMatchObject({
+      outcome: "agree",
+      reasonCode: null,
+    });
+    // Shadow events are intentionally stored only for non-agree outcomes; the tally is
+    // the complete request counter and is the evidence for this successful comparison.
+    expect(await shadowEventsFor(GET_TASK_ROUTE_KEY, "agree")).toHaveLength(0);
+  });
+
+  it("records policy denial when a workspace member has no project reach", {
+    timeout: 60_000,
+  }, async () => {
+    const fresh = await createAppWithShadow("on");
+    const caller = await createWorkspaceMember();
+    const owner = await createWorkspaceMember();
+    const { project, columns } = await createProjectFixture({
+      workspaceId: owner.workspace.id,
+    });
+    await fresh.db.insert(fresh.schema.workspaceUserTable).values({
+      workspaceId: owner.workspace.id,
+      userId: caller.user.id,
+      role: "member",
+      joinedAt: new Date(),
+    });
+    const [task] = await fresh.db
+      .insert(fresh.schema.taskTable)
+      .values({
+        projectId: project.id,
+        title: "Resolved project reach fixture",
+        description: "",
+        status: "to-do",
+        priority: "medium",
+        columnId: columns.todo.id,
+        number: 1,
+        position: 1,
+      })
+      .returning();
+    if (!task)
+      throw new Error("resolved project reach task insert returned no row");
+    await backfillPersons();
+    fresh.mockUser(caller.user);
+
+    const response = await fresh.app.request(`/api/task/${task.id}`);
+    expect(response.status).toBe(404);
+    const tally = await waitForShadowEvidence(async () => {
+      const rows = await shadowTalliesFor(GET_TASK_ROUTE_KEY);
+      return rows.length ? rows : undefined;
+    });
+    expect(tally).toContainEqual(
+      expect.objectContaining({
+        outcome: "agree",
+        reasonCode: null,
+      }),
+    );
+  });
+
+  it("compares a real foreign work item using its persisted row scope while preserving the masked 404", {
+    timeout: 60_000,
+  }, async () => {
+    const fresh = await createAppWithShadow("on");
+    const caller = await createWorkspaceMember();
+    const owner = await createWorkspaceMember();
+    const { project, columns } = await createProjectFixture({
+      workspaceId: owner.workspace.id,
+    });
+    const [task] = await fresh.db
+      .insert(fresh.schema.taskTable)
+      .values({
+        projectId: project.id,
+        title: "Observer scope fixture",
+        description: "",
+        status: "to-do",
+        priority: "medium",
+        columnId: columns.todo.id,
+        number: 1,
+        position: 1,
+      })
+      .returning();
+    if (!task) throw new Error("observer fixture task insert returned no row");
+    await backfillPersons();
+    fresh.mockUser(caller.user);
+
+    const response = await fresh.app.request(`/api/task/${task.id}`);
+    expect(response.status).toBe(404);
+
+    const tally = await waitForShadowEvidence(async () => {
+      const rows = await shadowTalliesFor(GET_TASK_ROUTE_KEY);
+      return rows.length ? rows : undefined;
+    });
+    expect(tally).toMatchObject([{ outcome: "agree", reasonCode: null }]);
+    expect(
+      await shadowEventsFor(GET_TASK_ROUTE_KEY, "legacy_allow_policy_deny"),
+    ).toEqual([]);
+  });
+
+  it("keeps a missing work-item id unevaluated instead of manufacturing row scope", {
+    timeout: 60_000,
+  }, async () => {
+    const fresh = await createAppWithShadow("on");
+    const caller = await createWorkspaceMember();
+    await backfillPersons();
+    fresh.mockUser(caller.user);
+
+    const response = await fresh.app.request(
+      "/api/task/missing-shadow-row?workspaceId=caller-controlled",
+    );
+    expect(response.status).toBe(404);
+    const rows = await waitForShadowEvidence(async () => {
+      const events = await shadowEventsFor(GET_TASK_ROUTE_KEY, "unevaluated");
+      return events.length ? events : undefined;
+    });
+    expect(rows).toContainEqual(
+      expect.objectContaining({
+        outcome: "unevaluated",
+        reasonCode: "row_scope_unavailable",
+        workspaceId: null,
+      }),
+    );
+  });
+
+  it("records successful native self reads and the instance audit gate explicitly", {
+    timeout: 60_000,
+  }, async () => {
+    const fresh = await createAppWithShadow("on");
+    const member = await createWorkspaceMember({ role: "owner" });
+    await fresh.db
+      .update(fresh.schema.userTable)
+      .set({ role: "admin" })
+      .where(eq(fresh.schema.userTable.id, member.user.id));
+    await backfillPersons();
+    fresh.mockUser({ ...member.user, role: "admin" });
+
+    const audit = await fresh.app.request("/api/instance/audit");
+    expect(audit.status).toBe(200);
+    const token = await fresh.app.request("/api/oauth/id-token");
+    expect(token.status).toBe(200);
+    const pending = await fresh.app.request("/api/me/pending-actions");
+    expect(pending.status).toBe(200);
+    const avatar = await fresh.app.request("/api/user/avatar", {
+      method: "PUT",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({
+        contentType: "image/png",
+        data: Buffer.from([
+          0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a, 0x01, 0x02,
+        ]).toString("base64"),
+      }),
+    });
+    expect(avatar.status).toBe(200);
+    const deleted = await fresh.app.request("/api/user/avatar", {
+      method: "DELETE",
+    });
+    expect(deleted.status).toBe(200);
+
+    const routes = [
+      "GET /api/instance/audit",
+      "GET /api/oauth/id-token",
+      "GET /api/me/pending-actions",
+      "PUT /api/user/avatar",
+      "DELETE /api/user/avatar",
+    ];
+    for (const routeKey of routes) {
+      const rows = await waitForShadowEvidence(async () => {
+        const tallies = await shadowTalliesFor(routeKey);
+        return tallies.length === 0 ? undefined : tallies;
+      });
+      expect(rows).toHaveLength(1);
+      expect(rows[0]).toMatchObject({ outcome: "agree", count: 1 });
+    }
+  });
+
+  it("compares a two-actor persisted work-item mutation denial using loaded reach facts", {
+    timeout: 60_000,
+  }, async () => {
+    const fresh = await createAppWithShadow("on");
+    const owner = await createWorkspaceMember({ role: "owner" });
+    const outsider = await createWorkspaceMember({ role: "owner" });
+    const { project } = await createProjectFixture({
+      workspaceId: owner.workspace.id,
+    });
+    await backfillPersons();
+    fresh.mockUser(owner.user);
+
+    const now = new Date();
+    const [type] = await fresh.db
+      .insert(fresh.schema.workItemTypeTable)
+      .values({
+        workspaceId: owner.workspace.id,
+        key: `shadow-mutation-${randomUUID()}`,
+        name: "Shadow mutation item",
+        category: "delivery",
+        createdAt: now,
+        updatedAt: now,
+      })
+      .returning();
+    if (!type) throw new Error("work item type fixture insert failed");
+    const [template] = await fresh.db
+      .insert(fresh.schema.stateTemplateTable)
+      .values({
+        workspaceId: owner.workspace.id,
+        key: `shadow-mutation-state-${randomUUID()}`,
+        name: "Shadow mutation backlog",
+        group: "backlog",
+        createdAt: now,
+        updatedAt: now,
+      })
+      .returning();
+    if (!template) throw new Error("state template fixture insert failed");
+    await fresh.db.insert(fresh.schema.stateTable).values({
+      projectId: project.id,
+      stateTemplateId: template.id,
+      isDefault: true,
+      createdAt: now,
+      updatedAt: now,
+    });
+
+    const created = await fresh.app.request(
+      `/api/projects/${project.id}/work-items`,
+      {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ typeId: type.id, title: "Persisted original" }),
+      },
+    );
+    expect(created.status).toBe(200);
+    const createdBody = (await created.json()) as {
+      key: string;
+      version: number;
+    };
+    const [before] = await fresh.db
+      .select({
+        title: fresh.schema.workItemTable.title,
+        version: fresh.schema.workItemTable.version,
+      })
+      .from(fresh.schema.workItemTable)
+      .where(eq(fresh.schema.workItemTable.key, createdBody.key));
+    expect(before).toEqual({ title: "Persisted original", version: 1 });
+
+    fresh.mockUser(outsider.user);
+    const denied = await fresh.app.request(
+      `/api/work-items/${createdBody.key}`,
+      {
+        method: "PATCH",
+        headers: {
+          "content-type": "application/json",
+          "if-match": `"${createdBody.version}"`,
+        },
+        body: JSON.stringify({ title: "Unauthorized replacement" }),
+      },
+    );
+    expect(denied.status).toBe(404);
+
+    const [after] = await fresh.db
+      .select({
+        title: fresh.schema.workItemTable.title,
+        version: fresh.schema.workItemTable.version,
+      })
+      .from(fresh.schema.workItemTable)
+      .where(eq(fresh.schema.workItemTable.key, createdBody.key));
+    expect(after).toEqual(before);
+    const tally = await waitForShadowEvidence(async () => {
+      const rows = await shadowTalliesFor("PATCH /api/work-items/{key}");
+      return rows.find((row) => row.outcome === "agree");
+    });
+    expect(tally).toMatchObject({
+      outcome: "agree",
+      reasonCode: null,
+      count: 1,
+    });
+  });
+
+  it("keeps a soft-deleted containing project unknown for a nonmember read", {
+    timeout: 60_000,
+  }, async () => {
+    const fresh = await createAppWithShadow("on");
+    const caller = await createWorkspaceMember();
+    const owner = await createWorkspaceMember();
+    const { project, columns } = await createProjectFixture({
+      workspaceId: owner.workspace.id,
+    });
+    const [task] = await fresh.db
+      .insert(fresh.schema.taskTable)
+      .values({
+        projectId: project.id,
+        title: "Soft-deleted project fixture",
+        description: "",
+        status: "to-do",
+        priority: "medium",
+        columnId: columns.todo.id,
+        number: 1,
+        position: 1,
+      })
+      .returning();
+    if (!task) throw new Error("observer fixture task insert returned no row");
+    await fresh.db
+      .update(fresh.schema.projectTable)
+      .set({ deletedAt: new Date() })
+      .where(eq(fresh.schema.projectTable.id, project.id));
+    await backfillPersons();
+    fresh.mockUser(caller.user);
+
+    const response = await fresh.app.request(`/api/task/${task.id}`);
+    expect(response.status).toBe(404);
+    const rows = await waitForShadowEvidence(async () => {
+      const events = await shadowEventsFor(GET_TASK_ROUTE_KEY, "unevaluated");
+      return events.length ? events : undefined;
+    });
+    expect(rows).toContainEqual(
+      expect.objectContaining({
+        outcome: "unevaluated",
+        reasonCode: "row_scope_unavailable",
+        workspaceId: null,
+      }),
+    );
+  });
+
+  it("preserves the masked response and records unknown when the observer query fails", {
+    timeout: 60_000,
+  }, async () => {
+    const fresh = await createAppWithShadow("on");
+    const caller = await createWorkspaceMember();
+    const owner = await createWorkspaceMember();
+    const { project, columns } = await createProjectFixture({
+      workspaceId: owner.workspace.id,
+    });
+    const [task] = await fresh.db
+      .insert(fresh.schema.taskTable)
+      .values({
+        projectId: project.id,
+        title: "Observer failure fixture",
+        description: "",
+        status: "to-do",
+        priority: "medium",
+        columnId: columns.todo.id,
+        number: 1,
+        position: 1,
+      })
+      .returning();
+    if (!task)
+      throw new Error("observer failure fixture insert returned no row");
+    await backfillPersons();
+    fresh.mockUser(caller.user);
+
+    const pool = fresh.db.$client;
+    const originalQuery = pool.query.bind(pool);
+    let taskQueries = 0;
+    const selectSpy = vi.spyOn(pool, "query").mockImplementation((...args) => {
+      const statement = postgresStatement(args[0]);
+      if (/from\s+"task"/i.test(statement) && ++taskQueries === 2) {
+        return Promise.reject(new Error("observer read unavailable"));
+      }
+      return originalQuery(...args);
+    });
+    const response = await fresh.app.request(`/api/task/${task.id}`);
+    selectSpy.mockRestore();
+    expect(response.status).toBe(404);
+    const rows = await waitForShadowEvidence(async () => {
+      const events = await shadowEventsFor(GET_TASK_ROUTE_KEY, "unevaluated");
+      return events.length ? events : undefined;
+    });
+    expect(rows).toContainEqual(
+      expect.objectContaining({
+        outcome: "unevaluated",
+        reasonCode: "row_scope_unavailable",
+        workspaceId: null,
+      }),
+    );
+  });
+
+  it("does not issue an observer read when shadow mode is off", {
+    timeout: 60_000,
+  }, async () => {
+    const fresh = await createAppWithShadow("off");
+    const caller = await createWorkspaceMember();
+    const owner = await createWorkspaceMember();
+    const { project, columns } = await createProjectFixture({
+      workspaceId: owner.workspace.id,
+    });
+    const [task] = await fresh.db
+      .insert(fresh.schema.taskTable)
+      .values({
+        projectId: project.id,
+        title: "Shadow off observer fixture",
+        description: "",
+        status: "to-do",
+        priority: "medium",
+        columnId: columns.todo.id,
+        number: 1,
+        position: 1,
+      })
+      .returning();
+    if (!task) throw new Error("shadow-off fixture insert returned no row");
+    fresh.mockUser(caller.user);
+    const querySpy = vi.spyOn(fresh.db.$client, "query");
+    const response = await fresh.app.request(`/api/task/${task.id}`);
+    const taskQueries = querySpy.mock.calls.filter(([query]) => {
+      const statement = postgresStatement(query);
+      return /from\s+"task"/i.test(statement);
+    });
+    querySpy.mockRestore();
+    expect(response.status).toBe(404);
+    expect(taskQueries).toHaveLength(1);
+  });
+});
+
+describe("instance-admin reach does not bypass workspace capability authority", () => {
+  it("refuses a nonmember instance admin and records agreement with the declared capability", {
     timeout: 60_000,
   }, async () => {
     const fresh = await createAppWithShadow("on");
 
-    // A label in a workspace the "instance admin" below is NOT a member of at all —
-    // `PUT /api/label/{id}` is gated by `requireWorkspacePermission({ label: ["update"] })`
-    // alone (no `requireWorkspaceRoleAuthority` follow-up, unlike `PATCH /api/workspace/
-    // {workspaceId}`, which closes this exact bypass for itself — see that route's own
-    // policy.ts comment). `isInstanceAdmin()` short-circuits `requireWorkspacePermission`
-    // to `true` regardless of membership (apps/api/src/utils/require-workspace-permission.ts).
+    // The admin has global reach but no role in this workspace.
     const owner = await createWorkspaceMember();
     const labelId = await createLabelFixture(fresh, owner.workspace.id);
     await backfillPersons();
@@ -304,30 +916,144 @@ describe("a known disagreement: the instance-admin bypass (#315 S8)", () => {
       }),
     });
 
-    // Legacy path: allowed, via the instance-admin bypass.
-    expect(response.status).toBe(200);
+    expect(response.status).toBe(403);
 
     // Shadow write happens after the response, off the request's own promise chain
     // (see shadow-middleware.ts) — give it a tick to land.
     await new Promise((resolve) => setTimeout(resolve, 300));
 
-    const events = await shadowEventsFor(
-      UPDATE_LABEL_ROUTE_KEY,
-      "legacy_allow_policy_deny",
-    );
-    expect(events.length).toBeGreaterThanOrEqual(1);
-    const event = events.at(-1);
-    expect(event?.legacyAllowed).toBe(true);
-    expect(event?.legacyStatus).toBe(200);
-    expect(event?.policyAllowed).toBe(false);
-    expect(event?.workspaceId).toBe(owner.workspace.id);
-    expect(event?.identityKind).toBe("session");
-
     const tallies = await shadowTalliesFor(UPDATE_LABEL_ROUTE_KEY);
-    const disagreeTally = tallies.find(
-      (row) => row.outcome === "legacy_allow_policy_deny",
+    expect(tallies).toContainEqual(
+      expect.objectContaining({ outcome: "agree", reasonCode: null }),
     );
-    expect(disagreeTally?.count).toBeGreaterThanOrEqual(1);
+    expect(tallies).not.toContainEqual(
+      expect.objectContaining({ outcome: "legacy_allow_policy_deny" }),
+    );
+  });
+
+  it("allows an instance admin whose workspace role grants the required capability", {
+    timeout: 60_000,
+  }, async () => {
+    const fresh = await createAppWithShadow("on");
+    const member = await createWorkspaceMember({ role: "admin" });
+    const labelId = await createLabelFixture(fresh, member.workspace.id);
+    await fresh.db
+      .update(fresh.schema.userTable)
+      .set({ role: "admin" })
+      .where(eq(fresh.schema.userTable.id, member.user.id));
+    fresh.mockUser({ ...member.user, role: "admin" });
+
+    const response = await fresh.app.request(`/api/label/${labelId}`, {
+      method: "PUT",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({
+        name: "Updated by assigned admin",
+        color: "#00ff00",
+      }),
+    });
+    expect(response.status).toBe(200);
+
+    const tally = await waitForShadowEvidence(async () => {
+      const rows = await shadowTalliesFor(UPDATE_LABEL_ROUTE_KEY);
+      return rows.find((row) => row.outcome === "agree");
+    });
+    expect(tally.outcome).toBe("agree");
+  });
+
+  it("keeps workspace-read routes denied without a role and available to assigned roles", {
+    timeout: 60_000,
+  }, async () => {
+    const fresh = await createAppWithShadow("on");
+    const owner = await createWorkspaceMember({ role: "owner" });
+    const { project } = await createProjectFixture({
+      workspaceId: owner.workspace.id,
+    });
+    await backfillPersons();
+
+    const outsiderAdmin = {
+      id: "user-instance-admin-read-boundary-test",
+      email: "instance-admin-read-boundary-test@example.com",
+      name: "Instance Admin Without Workspace Role",
+      emailVerified: true,
+      role: "admin",
+    };
+    await fresh.db.insert(fresh.schema.userTable).values(outsiderAdmin);
+    await backfillPersons();
+    fresh.mockUser(outsiderAdmin);
+
+    const denied = await Promise.all([
+      fresh.app.request(`/api/project?workspaceId=${owner.workspace.id}`),
+      fresh.app.request(`/api/column/${project.id}`),
+      fresh.app.request(`/api/workflow-rule/${project.id}`),
+      fresh.app.request(`/api/label/workspace/${owner.workspace.id}`),
+      fresh.app.request(`/api/workspace/${owner.workspace.id}`),
+      fresh.app.request(`/api/capabilities?workspaceId=${owner.workspace.id}`),
+    ]);
+    expect(denied.map((response) => response.status)).toEqual([
+      403, 403, 403, 403, 403, 403,
+    ]);
+
+    const assignedAdmin = await createWorkspaceMember({
+      role: "admin",
+      workspaceName: "Instance Admin With Read Role",
+    });
+    await fresh.db
+      .update(fresh.schema.userTable)
+      .set({ role: "admin" })
+      .where(eq(fresh.schema.userTable.id, assignedAdmin.user.id));
+    fresh.mockUser({ ...assignedAdmin.user, role: "admin" });
+    const { project: assignedProject } = await createProjectFixture({
+      workspaceId: assignedAdmin.workspace.id,
+    });
+
+    const allowed = await Promise.all([
+      fresh.app.request(
+        `/api/project?workspaceId=${assignedAdmin.workspace.id}`,
+      ),
+      fresh.app.request(`/api/column/${assignedProject.id}`),
+      fresh.app.request(`/api/workflow-rule/${assignedProject.id}`),
+      fresh.app.request(`/api/label/workspace/${assignedAdmin.workspace.id}`),
+      fresh.app.request(`/api/workspace/${assignedAdmin.workspace.id}`),
+      fresh.app.request(
+        `/api/capabilities?workspaceId=${assignedAdmin.workspace.id}`,
+      ),
+    ]);
+    expect(allowed.map((response) => response.status)).toEqual([
+      200, 200, 200, 200, 200, 200,
+    ]);
+  });
+
+  it("lets a member inspect an unknown role as an all-false map without granting access", {
+    timeout: 60_000,
+  }, async () => {
+    const fresh = await createAppWithShadow("on");
+    const member = await createWorkspaceMember({ role: "viewer" });
+    await fresh.db
+      .update(fresh.schema.workspaceUserTable)
+      .set({ role: "toString" })
+      .where(
+        and(
+          eq(fresh.schema.workspaceUserTable.workspaceId, member.workspace.id),
+          eq(fresh.schema.workspaceUserTable.userId, member.user.id),
+        ),
+      );
+    await backfillPersons();
+    fresh.mockUser(member.user);
+
+    const response = await fresh.app.request(
+      `/api/capabilities?workspaceId=${member.workspace.id}`,
+    );
+    expect(response.status).toBe(200);
+    const capabilityMap = (await response.json()) as Record<string, boolean>;
+    expect(Object.values(capabilityMap).every((allowed) => !allowed)).toBe(
+      true,
+    );
+
+    const tally = await waitForShadowEvidence(async () => {
+      const rows = await shadowTalliesFor("GET /api/capabilities");
+      return rows.find((row) => row.outcome === "agree");
+    });
+    expect(tally.outcome).toBe("agree");
   });
 
   it("records a controller-level bulk membership denial after earlier gates allowed", {
@@ -536,6 +1262,7 @@ describe("#324 — denied param workspace scope is checked against a verified ro
       role: "admin",
     };
     await fresh.db.insert(fresh.schema.userTable).values(instanceAdminUser);
+    await prepareAuthenticatedApiFixture(instanceAdminUser.id);
     await backfillPersons();
     fresh.mockUser(instanceAdminUser);
     const untrustedWorkspaceId = `attacker-${"x".repeat(6_000)}`;
@@ -647,7 +1374,7 @@ describe("#324 — denied param workspace scope is checked against a verified ro
     expect(disagreements).toHaveLength(1);
   });
 
-  it("tracks project request-scope separately from row-derived workspace scope", {
+  it("tracks request-sourced project scope and independently denies missing project reach", {
     timeout: 60_000,
   }, async () => {
     const fresh = await createAppWithShadow("on");
@@ -704,20 +1431,12 @@ describe("#324 — denied param workspace scope is checked against a verified ro
     const tallies = await shadowTalliesFor(
       "POST /api/projects/{projectId}/work-items",
     );
-    expect(
-      tallies.some(
-        (row) =>
-          row.outcome === "unevaluated" &&
-          row.reasonCode === "reach_unavailable",
-      ),
-    ).toBe(true);
-    expect(
-      tallies.some(
-        (row) =>
-          row.outcome === "unevaluated" &&
-          row.reasonCode === "scope_source_unavailable",
-      ),
-    ).toBe(false);
+    expect(tallies).toContainEqual(
+      expect.objectContaining({
+        outcome: "legacy_allow_policy_deny",
+        reasonCode: "not_found",
+      }),
+    );
   });
 });
 

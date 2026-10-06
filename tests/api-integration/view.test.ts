@@ -5,6 +5,8 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import * as auditWriter from "../../apps/api/src/audit/audit-writer";
 import db, { schema } from "../../apps/api/src/database";
 import { createApp } from "../../apps/api/src/index";
+import * as auditFailureNotifier from "../../apps/api/src/instance/observability/audit-failure-notifier";
+import * as observabilityRuntime from "../../apps/api/src/instance/observability/runtime";
 import { ensureInternalOrganisation } from "../../apps/api/src/utils/seed-internal-organisation";
 import { mockAnonymousSession, mockAuthenticatedSession } from "./helpers/auth";
 import { resetTestDatabase } from "./helpers/database";
@@ -98,7 +100,7 @@ describe("API integration: saved views", () => {
     });
   });
 
-  it("keeps create successful and logs when the AU-14 audit append fails", async () => {
+  it("keeps create successful and reports an AU-14 audit append failure", async () => {
     const member = await createWorkspaceMember();
     await addPerson(member.user.id);
     mockAuthenticatedSession(member.user);
@@ -107,7 +109,10 @@ describe("API integration: saved views", () => {
     const appendAuditSpy = vi
       .spyOn(auditWriter, "appendAuditLog")
       .mockRejectedValueOnce(auditFailure);
-    const errorSpy = vi.spyOn(console, "error").mockImplementation(() => {});
+    const metricSpy = vi.spyOn(observabilityRuntime, "recordAuditWriteFailure");
+    const notifySpy = vi
+      .spyOn(auditFailureNotifier, "notifyCurrentInstanceAdminsOfAuditFailure")
+      .mockResolvedValueOnce();
 
     try {
       const response = await app.request("/api/views", {
@@ -131,15 +136,8 @@ describe("API integration: saved views", () => {
         }),
       ).toMatchObject({ id: created.id, name: "Audit outage queue" });
       expect(appendAuditSpy).toHaveBeenCalledOnce();
-      expect(errorSpy).toHaveBeenCalledWith(
-        "AU-14: saved_view.created audit write failed",
-        expect.objectContaining({
-          workspaceId: member.workspace.id,
-          entityType: "saved_view",
-          entityId: created.id,
-          error: auditFailure,
-        }),
-      );
+      expect(metricSpy).toHaveBeenCalledWith("mutation");
+      expect(notifySpy).toHaveBeenCalledWith("mutation");
       expect(
         await db.query.auditLogTable.findFirst({
           where: (row, { and, eq }) =>
@@ -151,7 +149,8 @@ describe("API integration: saved views", () => {
       ).toBeUndefined();
     } finally {
       appendAuditSpy.mockRestore();
-      errorSpy.mockRestore();
+      metricSpy.mockRestore();
+      notifySpy.mockRestore();
     }
   });
 

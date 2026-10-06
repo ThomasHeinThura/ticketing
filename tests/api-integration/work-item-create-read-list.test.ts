@@ -19,6 +19,8 @@ import { resetTestDatabase } from "./helpers/database";
 import {
   createProjectFixture,
   createWorkspaceMember,
+  grantProjectRole,
+  prepareAuthenticatedApiFixture,
 } from "./helpers/fixtures";
 import { raceProjectSoftDelete } from "./helpers/race-soft-delete";
 
@@ -97,6 +99,8 @@ async function addWorkspaceMember(workspaceId: string, role: string) {
     .returning();
   if (!user) throw new Error("addWorkspaceMember: user insert returned no row");
 
+  await prepareAuthenticatedApiFixture(user.id);
+
   await db.insert(schema.workspaceUserTable).values({
     workspaceId,
     userId: user.id,
@@ -142,6 +146,8 @@ async function addWorkspaceMemberWithoutGenuineRow(
     );
   }
 
+  await prepareAuthenticatedApiFixture(user.id);
+
   await db.insert(schema.workspaceUserTable).values({
     workspaceId,
     userId: user.id,
@@ -159,6 +165,10 @@ async function setupProjectWithDefaultState(
   const { project } = await createProjectFixture({
     workspaceId: creator.workspace.id,
   });
+  await grantProjectRole(creator.user.id, project.id, [
+    "project:read",
+    "work_item:read",
+  ]);
   const type = await makeWorkItemType(creator.workspace.id);
   const state = await makeDefaultState(creator.workspace.id, project.id);
   return { creator, project, type, state };
@@ -708,6 +718,7 @@ describe("API integration: work item create/read/list (#23)", () => {
           workspaceId,
           reservedRole,
         );
+        await grantProjectRole(asReservedRole.id, project.id, []);
         mockAuthenticatedSession(asReservedRole);
         const { app } = createApp();
 

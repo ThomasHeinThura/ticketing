@@ -18,8 +18,22 @@ describe("the approved plugin list", () => {
   it("passes when the constructed list is exactly the kept set", () => {
     const result = checkPluginList(KEPT);
     expect(result.ok).toBe(true);
-    // two-factor and passkey are approved additions that have not landed yet.
+    // P0 two-factor is also an approved addition; passkey is the later-stage addition.
     expect(result.pendingAddition).toEqual(["passkey", "two-factor"]);
+  });
+
+  it("accepts the explicit current P0 plugin construction", () => {
+    const constructed = checkPluginList([
+      "last-login-method",
+      "magic-link",
+      "two-factor",
+      "email-otp",
+      "generic-oauth",
+      "api-key",
+      "admin",
+    ]);
+    expect(constructed.ok).toBe(true);
+    expect(constructed.pendingAddition).toEqual(["passkey"]);
   });
 
   it("fails on a plugin that was removed at fork", () => {

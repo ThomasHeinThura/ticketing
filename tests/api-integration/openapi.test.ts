@@ -1,4 +1,4 @@
-import { beforeAll, describe, expect, it } from "vitest";
+import { afterEach, beforeAll, describe, expect, it, vi } from "vitest";
 import { createApp } from "../../apps/api/src/index";
 
 type Operation = {
@@ -10,6 +10,7 @@ type Operation = {
 type Spec = {
   openapi: string;
   info: { title: string; version: string };
+  servers: Array<{ url: string }>;
   paths: Record<string, Record<string, Operation>>;
   security?: Array<Record<string, unknown>>;
   components: {
@@ -39,7 +40,58 @@ beforeAll(async () => {
   spec = (await response.json()) as Spec;
 });
 
+afterEach(() => {
+  vi.unstubAllEnvs();
+});
+
 describe("TaskDesk API OpenAPI spec", () => {
+  it("serves the document on the configured agent host only", async () => {
+    const configuredAgentUrl = process.env.TASKDESK_AGENT_URL;
+    const configuredPortalUrl = process.env.TASKDESK_PORTAL_URL;
+    if (!configuredAgentUrl || !configuredPortalUrl) {
+      throw new Error("The integration host fixtures are not configured.");
+    }
+
+    const agentOrigin = new URL(configuredAgentUrl);
+    const portalOrigin = new URL(configuredPortalUrl);
+    const { app } = createApp();
+    const agentResponse = await app.request(
+      new URL("/api/openapi", agentOrigin).toString(),
+      { headers: { host: agentOrigin.host } },
+    );
+    const portalResponse = await app.request(
+      new URL("/api/openapi", portalOrigin).toString(),
+      { headers: { host: portalOrigin.host } },
+    );
+
+    expect(agentResponse.status).toBe(200);
+    expect(portalResponse.status).toBe(404);
+  });
+
+  it("keeps runtime clients on the same origin when no API URL is configured", async () => {
+    vi.stubEnv("KANEO_API_URL", undefined);
+
+    const { app } = createApp();
+    const response = await app.request("/api/openapi");
+    expect(response.status).toBe(200);
+    const runtimeSpec = (await response.json()) as Spec;
+
+    expect(runtimeSpec.servers[0]?.url).toBe("/api");
+  });
+
+  it("uses the configured API URL when one is explicitly set", async () => {
+    vi.stubEnv("KANEO_API_URL", "https://api.customer.example");
+
+    const { app } = createApp();
+    const response = await app.request("/api/openapi");
+    expect(response.status).toBe(200);
+    const runtimeSpec = (await response.json()) as Spec;
+
+    expect(runtimeSpec.servers[0]?.url).toBe(
+      "https://api.customer.example/api",
+    );
+  });
+
   it("is a valid OpenAPI 3.1 document", () => {
     expect(spec.openapi).toBe("3.1.0");
     expect(spec.info.title).toBe("TaskDesk API");

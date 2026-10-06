@@ -41,11 +41,23 @@ See ci-cd.md.
 
 ## Sampled big review (optional)
 
-<!-- Non-gating random/sample audit. When selected, use Opus 5.5 and attach the packet. -->
+<!--
+Non-gating random/sample audit. When selected, GPT-6 Luna or GPT-6 Sol prepares the packet
+before Opus 5.5 runs. Include the PR/issue/stage and exact SHA(s); what changed and why;
+changed files and highest-risk files; relevant specs, ADRs and rules; risk classification
+and why that tier applies; ordinary Luna verdicts and unresolved findings; the Sol verdict
+when the change is security-scope; tests actually run with suite/file/test counts and
+notable negative tests; residuals, waivers, exceptions and ## Not done items; recurring
+defect classes or invariants to challenge; and explicit spot-check questions. See
+CLAUDE.md's "Opus 5.5 — sampled big reviewer" and AGENTS.md's "Sampled big review" for the
+full packet contract. This sample is optional evidence and never satisfies or delays a
+required GPT-6 Sol review.
+-->
 
 **Selected:** <!-- yes / no -->
 **Model:** <!-- Opus 5.5, or n/a if not selected -->
 **Packet author:** <!-- GPT-6 Luna or GPT-6 Sol; n/a if not selected -->
+**Packet:** <!-- link to the structured packet; n/a if not selected -->
 **Verdict:** <!-- clear / findings / n/a if not selected -->
 
 ## Screens opened
@@ -127,7 +139,10 @@ one line saying why — it is never deleted from the pull request.
 
 ## Design review H1–H6
 
-<!-- Thomas only. Agents leave this section blank. -->
+<!--
+P0–P3: record “Deferred to integrated P4 human review; no approval claimed.” Do not
+fabricate or imply H1–H6 approval. Thomas records the integrated human review at P4.
+-->
 
 ## Not done
 

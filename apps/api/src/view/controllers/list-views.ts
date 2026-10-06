@@ -1,8 +1,4 @@
-import { and, eq, inArray, or } from "drizzle-orm";
-import db from "../../database";
-import { savedViewTable, teamMemberTable } from "../../database/schema";
-
-const PINNED_VIEWS_KEY = "pinned_view_ids";
+import { listSavedViewsForWorkspace } from "../repository";
 
 // SV-15..SV-18's reach rule: private → owner only, team → the shared team's members,
 // workspace → anyone (workspace membership is already established by
@@ -12,42 +8,15 @@ async function listViews(
   personId: string,
   userId: string,
 ) {
-  const teamIds = await db
-    .select({ teamId: teamMemberTable.teamId })
-    .from(teamMemberTable)
-    .where(eq(teamMemberTable.userId, userId));
-  const teamIdList = teamIds.map((t) => t.teamId);
-
-  const reachPredicate = or(
-    eq(savedViewTable.visibility, "workspace"),
-    eq(savedViewTable.createdBy, personId),
-    teamIdList.length > 0
-      ? and(
-          eq(savedViewTable.visibility, "team"),
-          inArray(savedViewTable.sharedWithTeamId, teamIdList),
-        )
-      : undefined,
+  const { views, pinnedValue } = await listSavedViewsForWorkspace(
+    workspaceId,
+    personId,
+    userId,
   );
 
-  const [views, preference] = await Promise.all([
-    db
-      .select()
-      .from(savedViewTable)
-      .where(and(eq(savedViewTable.workspaceId, workspaceId), reachPredicate)),
-    db.query.userPreferenceTable.findFirst({
-      where: (preferenceRow, { and, eq }) =>
-        and(
-          eq(preferenceRow.personId, personId),
-          eq(preferenceRow.scope, "workspace"),
-          eq(preferenceRow.scopeId, workspaceId),
-          eq(preferenceRow.key, PINNED_VIEWS_KEY),
-        ),
-    }),
-  ]);
-
   const pinnedIds = new Set(
-    Array.isArray(preference?.value)
-      ? preference.value.filter(
+    Array.isArray(pinnedValue)
+      ? pinnedValue.filter(
           (entry): entry is string => typeof entry === "string",
         )
       : [],

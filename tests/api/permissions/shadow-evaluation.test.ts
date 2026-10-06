@@ -8,7 +8,11 @@
  * portal context unavailable), and the instance-admin bypass surfacing as
  * `legacy_allow_policy_deny` (issue #8's own required example).
  */
-import type { RegistryEntry, ResolvedIdentity } from "@taskdesk/permissions";
+import type {
+  ProjectReachFacts,
+  RegistryEntry,
+  ResolvedIdentity,
+} from "@taskdesk/permissions";
 import {
   BUILT_IN_ROLES,
   evaluatePolicy,
@@ -100,6 +104,17 @@ function identity(overrides: Partial<ResolvedIdentity> = {}): ResolvedIdentity {
     ],
     keyCapabilities: undefined,
     ...overrides,
+  };
+}
+
+function projectReaderAuthority(scopeId: string) {
+  const [base] = identity().authority;
+  if (!base) throw new Error("base capability fixture is missing");
+  return {
+    ...base,
+    scope: "project" as const,
+    scopeId,
+    capabilities: ["work_item:read"],
   };
 }
 
@@ -251,6 +266,94 @@ describe("buildShadowPolicySide", () => {
     expect(result).toBe("reach_unavailable");
   });
 
+  it.each([
+    {
+      name: "direct project membership",
+      identity: identity({
+        memberships: [
+          { scope: "project", scopeId: "project_target", seesAll: false },
+        ],
+        authority: [projectReaderAuthority("project_target")],
+      }),
+      facts: {
+        projectId: "project_target",
+        workspaceId: "ws_foreign",
+        organisationId: null,
+        ancestorProjectIds: [],
+        ownerTeamId: null,
+      } satisfies ProjectReachFacts,
+    },
+    {
+      name: "ancestor project membership",
+      identity: identity({
+        memberships: [
+          { scope: "project", scopeId: "project_parent", seesAll: false },
+        ],
+        authority: [projectReaderAuthority("project_target")],
+      }),
+      facts: {
+        projectId: "project_target",
+        workspaceId: "ws_foreign",
+        organisationId: null,
+        ancestorProjectIds: ["project_parent"],
+        ownerTeamId: null,
+      } satisfies ProjectReachFacts,
+    },
+    {
+      name: "owning team membership",
+      identity: identity({
+        memberships: [],
+        teamIds: ["team_target"],
+        authority: [projectReaderAuthority("project_target")],
+      }),
+      facts: {
+        projectId: "project_target",
+        workspaceId: "ws_foreign",
+        organisationId: null,
+        ancestorProjectIds: [],
+        ownerTeamId: "team_target",
+      } satisfies ProjectReachFacts,
+    },
+  ])(
+    "keeps policy reach independent for $name",
+    ({ identity: actor, facts }) => {
+      const workItemEntry: RegistryEntry = {
+        ...CAPABILITY_ENTRY,
+        routeKey: "GET /api/task/{id}",
+        policy: {
+          ...CAPABILITY_ENTRY.policy,
+          scope: "work_item",
+        } as never,
+      };
+      const result = buildShadowPolicySide({
+        entry: workItemEntry,
+        identity: actor,
+        workspaceId: "ws_foreign",
+        workspaceIdSource: "row",
+        projectId: "project_target",
+        workItemId: "task_foreign",
+        projectReachFacts: facts,
+      });
+      if (typeof result === "string") throw new Error("expected a context");
+      expect(result.context.inReach).toBe(true);
+      const decision = evaluatePolicy(result.entry.policy, result.context);
+      expect(decision).toMatchObject({ allowed: true });
+      expect(
+        compareShadowOutcome({
+          routeKey: "GET /api/task/{id}",
+          routerGroup: "task",
+          policyKind: "capability",
+          policyCapability: "work_item:read",
+          identityKind: "session",
+          workspaceId: "ws_foreign",
+          traceId: null,
+          legacy: { known: true, allowed: false, status: 404 },
+          policy: { evaluated: true, errored: false, decision },
+        }),
+      ).toEqual({ outcome: "legacy_deny_policy_allow", reasonCode: null });
+    },
+  );
+
   it("can evaluate a project reach when the resolved identity has instance-wide reach", () => {
     const projectEntry: RegistryEntry = {
       ...CAPABILITY_ENTRY,
@@ -292,6 +395,13 @@ describe("buildShadowPolicySide", () => {
         workspaceIdSource: "row",
         projectId,
         ...(workItemId ? { workItemId } : {}),
+        projectReachFacts: {
+          projectId,
+          workspaceId: "ws_1",
+          organisationId: null,
+          ancestorProjectIds: [],
+          ownerTeamId: null,
+        },
       });
       if (typeof result === "string") throw new Error("expected a context");
       expect(result.context.inReach).toBe(true);

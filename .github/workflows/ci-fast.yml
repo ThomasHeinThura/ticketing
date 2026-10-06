@@ -5,9 +5,8 @@
 # the document does not declare: scripts/ci/test-all.mjs reconciles the two on every run,
 # and the `gates-declared` job below fails if they drift apart.
 #
-# Gates that cannot exist yet — check:queries, check:inventory, test:mcp,
-# check:bundle-purity, check:bundle-size — have no job here on purpose. `pnpm test:all
-# --list` prints each one with the reason and the issue that unblocks it. A job that passed
+# Gates that cannot exist yet — check:queries, test:mcp — have no job here
+# on purpose. `pnpm test:all --list` prints each one with the reason and the issue that unblocks it. A job that passed
 # because it found nothing to check would look like coverage and be worth less than
 # nothing. (`check:ui` is enabled, in the `registers` job below — #9's Radix-tracking
 # slice, only; its "no bespoke primitives" / "no Radix/Base UI import outside packages/ui"
@@ -100,6 +99,10 @@ jobs:
         # matrix.test.ts, and then runs it. `pnpm test:permissions` remains #21's
         # canonical entry point and this delegates to it.
         run: pnpm check:route-policy
+      - name: pnpm test:no-inherited-routes
+        # Keep the fork-removal assertion independently visible in the existing required
+        # route-policy context. The full permissions suite above also exercises this file.
+        run: pnpm test:no-inherited-routes
 
   static:
     name: static
@@ -114,11 +117,11 @@ jobs:
         run: pnpm lint:ci
       - name: pnpm typecheck
         run: pnpm typecheck
+      - name: Install Chromium for G3
+        run: ./apps/web/node_modules/.bin/playwright install --with-deps chromium
       - name: pnpm check:tokens
-        # #9 — theme.css token parity (concrete values in both light and dark) and no
-        # hard-coded color literal outside packages/ui/src/styles/, scoped to apps/web/src
-        # and packages/ui. See scripts/ci/check-tokens.mjs's own header for what G2/G3
-        # this does not yet cover (arbitrary spacing/radius/z-index values, contrast ratio).
+        # Token parity/literals plus density-slot enforcement and built-CSS Chromium contrast.
+        # The checker builds the web CSS and reuses the app's pinned Playwright tooling.
         run: pnpm check:tokens
       - name: pnpm check:i18n
         run: pnpm check:i18n
@@ -177,6 +180,8 @@ jobs:
         # KNOWN-RADIX.md — currently zero rows, since both real Radix imports
         # (form.tsx, timeline.tsx) were replaced by a local `Slot` in the same change.
         run: pnpm check:ui
+      - name: pnpm check:inventory
+        run: pnpm check:inventory
 
   pull-request:
     name: pull request template + security review
@@ -268,6 +273,12 @@ jobs:
       - uses: ./.github/actions/setup
       - name: pnpm build
         run: pnpm build
+        env:
+          VITE_API_URL: ""
+      - name: pnpm check:bundle-purity
+        run: pnpm check:bundle-purity
+      - name: pnpm check:bundle-size
+        run: pnpm check:bundle-size
 
   # Deliberately two jobs, not one. As a single "supply chain" job the first failing step
   # stopped the second, so a red dependency audit hid whether the repository had a secret in

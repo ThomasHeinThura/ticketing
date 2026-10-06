@@ -92,7 +92,7 @@ writing and the fork gets a verdict here before it travels.
 | `plans/` | Copy → `docs/02-design/motion/` | motion specs |
 | `pnpm-lock.yaml` | Copy | keeps the audited dependency graph; regenerated only after the removals |
 | `pnpm-workspace.yaml` | Copy | |
-| `release.config.js` | Copied from kaneo, retained but not invoked | The manual Release workflow is authoritative; it never commits version-file changes. |
+| `release.config.js` | Removed | The signed manual Release workflow is authoritative; semantic-release is not used. |
 | `scripts/i18n/` | Copy | `check/report/schema/shared.mjs` — the root `i18n:check` scripts and the CI i18n job call them |
 | `scripts/release/` | Do not copy | kaneo's release plumbing |
 | `scripts/provision-sentry-alerts.sh`, `scripts/provision-sentry-dashboards.sh` | Do not copy | Sentry is removed |
@@ -112,8 +112,8 @@ writing and the fork gets a verdict here before it travels.
 | `apps/api/drizzle/` | Copy | the 45 inherited migrations and `meta/_journal.json`, exactly as taken ([migrations.md](migrations.md)) |
 | `apps/api/.env.test.example`, `apps/api/drizzle.config.ts`, `apps/api/scripts/`, `apps/api/vitest*.config.ts`, `apps/api/tsconfig.json` | Copy | |
 | `apps/api/Dockerfile`, `apps/api/.dockerignore` | Do not copy | one image, not three |
-| `apps/docs` | Do not copy | kaneo's Mintlify docs; TaskDesk's docs site is an open decision ([08-docs-site/plan.md](../08-docs-site/plan.md)) |
-| `apps/site` | Do not copy | a Next 16 **marketing** site, not a docs framework — see the same open decision |
+| `apps/docs` | Do not copy | kaneo's Mintlify docs; TaskDesk's planned public docs site is specified in [08-docs-site/plan.md](../08-docs-site/plan.md) |
+| `apps/site` | Do not copy | a Next 16 **marketing** site, not a docs framework. TaskDesk plans a fresh headless Fumadocs site with Next.js static export; see [08-docs-site/plan.md](../08-docs-site/plan.md). This is a specification, not an implemented site or installed dependency set. |
 | `apps/web` | Copy, then strip per §3 | |
 | `apps/web/components.json` | Copy | shadcn generator config |
 | `apps/web/Dockerfile`, `apps/web/.dockerignore`, `apps/web/nginx.conf`, `apps/web/nginx.kaneo.conf`, `apps/web/env.sh`, `apps/web/.env.development`, `apps/web/.env.production` | Do not copy | the web bundle is served from the single image and learns its API origin from the page origin |

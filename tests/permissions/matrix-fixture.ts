@@ -174,6 +174,12 @@ function outcome(
       ? resolvedScopeFor(registryPolicy)
       : undefined,
     inReach: isCapabilityPolicy(registryPolicy) ? inReach : undefined,
+    ...(typeof registryPolicy === "object" &&
+    registryPolicy !== null &&
+    "workspaceMembership" in registryPolicy &&
+    registryPolicy.workspaceMembership === true
+      ? { workspaceMembership: inReach }
+      : {}),
     portalPredicateSatisfied: inReach,
   });
   if (decision.allowed) {

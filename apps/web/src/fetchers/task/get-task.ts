@@ -5,8 +5,11 @@ export type GetTaskRequest = InferRequestType<
   (typeof client)["task"][":id"]["$get"]
 >["param"];
 
-async function getTask(taskId: string) {
-  const response = await client.task[":id"].$get({ param: { id: taskId } });
+async function getTask(taskId: string, signal?: AbortSignal) {
+  const response = await client.task[":id"].$get(
+    { param: { id: taskId } },
+    signal ? { init: { signal } } : undefined,
+  );
 
   if (!response.ok) {
     const error = await response.text();

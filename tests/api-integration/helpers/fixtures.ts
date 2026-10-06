@@ -4,14 +4,32 @@ import {
   type DefaultRoleName,
   defaultRolePayloads,
 } from "@taskdesk/permissions";
+import { eq } from "drizzle-orm";
 import db, { schema } from "../../../apps/api/src/database";
 import { DEFAULT_PROJECT_COLUMNS } from "../../../apps/api/src/project/controllers/create-project";
-import { ensureInternalOrganisation } from "../../../apps/api/src/utils/seed-internal-organisation";
+import {
+  ensureInternalOrganisation,
+  ensureStaffPersonForUser,
+} from "../../../apps/api/src/utils/seed-internal-organisation";
 
 export type SeededMemberContext = {
   user: typeof schema.userTable.$inferSelect;
   workspace: typeof schema.workspaceTable.$inferSelect;
 };
+
+/**
+ * Give an authenticated integration-test caller the initialized-instance and active
+ * staff-identity context expected by agent API middleware. This deliberately does not
+ * repair an existing singleton row or an existing inactive/missing person: tests for
+ * bootstrap and identity-denial behavior must construct those states explicitly.
+ */
+export async function prepareAuthenticatedApiFixture(userId: string) {
+  await db
+    .insert(schema.instanceSettingTable)
+    .values({ id: "singleton", setupCompletedAt: new Date() })
+    .onConflictDoNothing({ target: schema.instanceSettingTable.id });
+  await ensureStaffPersonForUser(userId);
+}
 
 /**
  * `drizzle-orm`'s `.returning()` types as `T[]`, and `noUncheckedIndexedAccess` makes
@@ -76,6 +94,11 @@ export async function createWorkspaceMember(
       .returning(),
     "createWorkspaceMember: user",
   );
+
+  // Authenticated fixture users model an already-claimed instance and an ordinary
+  // active staff identity. Bootstrap/empty-instance tests build their own users and
+  // singleton rows so their negative cases stay meaningful.
+  await prepareAuthenticatedApiFixture(user.id);
 
   // #192: `workspace.organisation_id` is NOT NULL -- `resetTestDatabase` only truncates,
   // it does not reseed, so the internal organisation is genuinely absent after a reset and
@@ -187,4 +210,52 @@ export async function createProjectFixture({
       done,
     },
   };
+}
+
+/**
+ * Give a test actor explicit, persisted project authority. Workspace membership or
+ * workspace role alone is deliberately insufficient for project-scoped reads.
+ */
+export async function grantProjectRole(
+  userId: string,
+  projectId: string,
+  capabilities: readonly string[],
+) {
+  const [person] = await db
+    .select({ id: schema.personTable.id })
+    .from(schema.personTable)
+    .where(eq(schema.personTable.userId, userId))
+    .limit(1);
+  if (!person)
+    throw new Error("grantProjectRole: active person was not provisioned");
+
+  const [project] = await db
+    .select({ workspaceId: schema.projectTable.workspaceId })
+    .from(schema.projectTable)
+    .where(eq(schema.projectTable.id, projectId))
+    .limit(1);
+  if (!project)
+    throw new Error("grantProjectRole: project was not provisioned");
+
+  const [role] = await db
+    .insert(schema.roleTable)
+    .values({
+      scope: "project",
+      workspaceId: project.workspaceId,
+      key: `project-fixture-${randomUUID()}`,
+      name: "Integration project role",
+      rank: 1,
+      capabilities: [...capabilities],
+    })
+    .returning();
+  if (!role) throw new Error("grantProjectRole: role insert returned no row");
+
+  await db.insert(schema.membershipTable).values({
+    personId: person.id,
+    scope: "project",
+    scopeId: projectId,
+    roleId: role.id,
+    seesAll: false,
+  });
+  return role;
 }

@@ -5,7 +5,11 @@ import db, { schema } from "../../apps/api/src/database";
 import { createApp } from "../../apps/api/src/index";
 import { mockAuthenticatedSession } from "./helpers/auth";
 import { resetTestDatabase } from "./helpers/database";
-import { createWorkspaceMember, requireRow } from "./helpers/fixtures";
+import {
+  createWorkspaceMember,
+  prepareAuthenticatedApiFixture,
+  requireRow,
+} from "./helpers/fixtures";
 
 // GET /api/workspace/{id} -- the native replacement for
 // authClient.organization.getFullOrganization() (retrofit plan, S2 row,
@@ -26,6 +30,7 @@ async function createInstanceAdmin() {
       .returning(),
     "admin",
   );
+  await prepareAuthenticatedApiFixture(admin.id);
   return admin;
 }
 

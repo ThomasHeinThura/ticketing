@@ -4,6 +4,7 @@ import {
   errorResponse,
   jsonResponse,
 } from "../openapi";
+import { requireWorkspaceCapability } from "../utils/require-workspace-capability";
 import { requireWorkspacePermission } from "../utils/require-workspace-permission";
 import { workspaceAccess } from "../utils/workspace-access-middleware";
 import assignLabelToTask from "./controllers/assign-label-to-task";
@@ -31,7 +32,10 @@ const getTaskLabelsRoute = createRoute({
   tags: ["Labels"],
   summary: "Get task labels",
   description: "Get all labels assigned to a specific task",
-  middleware: [workspaceAccess.fromTaskId()] as const,
+  middleware: [
+    workspaceAccess.fromTaskId(),
+    requireWorkspaceCapability("workspace:read"),
+  ] as const,
   request: { params: taskIdParam },
   responses: {
     200: jsonResponse("List of labels for the task", labelListSchema),
@@ -50,7 +54,10 @@ const getWorkspaceLabelsRoute = createRoute({
   tags: ["Labels"],
   summary: "Get workspace labels",
   description: "Get all labels for a specific workspace",
-  middleware: [workspaceAccess.fromParam()] as const,
+  middleware: [
+    workspaceAccess.fromParam(),
+    requireWorkspaceCapability("workspace:read"),
+  ] as const,
   request: { params: workspaceIdParam },
   responses: {
     200: jsonResponse("List of labels in the workspace", labelListSchema),
@@ -93,7 +100,10 @@ const getLabelRoute = createRoute({
   tags: ["Labels"],
   summary: "Get label",
   description: "Get a specific label by ID",
-  middleware: [workspaceAccess.fromLabel()] as const,
+  middleware: [
+    workspaceAccess.fromLabel(),
+    requireWorkspaceCapability("workspace:read"),
+  ] as const,
   request: { params: labelParam },
   responses: {
     200: jsonResponse("Label details", labelSchema),

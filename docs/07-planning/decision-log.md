@@ -1,9 +1,1066 @@
+### 2026-10-05 · Suppress the historical public TOTP test vector by exact fingerprint
+
+Add only `69e61dd56c18bdbb90149f470d9a6615a9d28272:apps/web/e2e/mfa-csrf-journey.spec.ts:generic-api-key:13` to `.gitleaksignore`. The finding is in an already-pushed historical commit; its value is an `otpauth` test URI whose Base32 secret decodes to the published RFC 6238 test-vector bytes. The current source still contains the same public deterministic test-vector literal at `apps/web/e2e/mfa-csrf-journey.spec.ts:16`; the historical commit records it at line 13. The test uses the RFC timestamp `59000` and asserts the published vector output before it provisions the test app. Preserve history and suppress this finding by its exact fingerprint only; do not ignore the path or rule.
+
+This records a verified public test vector, not a real credential or a general scanner exception. It makes no claim that other secret findings are benign and waives no required check.
+
+### 2026-10-05 · Prepare isolated P4 integration while P0 acceptance remains open
+
+Apply Thomas's explicit parallel full-implementation authorization to a separate P4
+integration branch based on the functionally reviewed P0 foundation. Preserve accepted
+main's first80migration entries and the88migration prefix already applied to development.
+Compose only the unaccepted suffix semantically, using the existing generation workflow;
+never select a whole competing schema/journal/snapshot as the winner. Do not apply that
+union to live development or claim protected/phase acceptance before its required gates.
+
+The bounded next deliverable combines God Mode user deactivation with its necessary
+server-owned pending-action approval/execution path and existing IP15 credential retirement.
+Register any required kind/operation in its canonical contract before implementation;
+revalidate execution-time authority, target, current typed email and session-only PA15,
+with transactional audit/outbox behavior. Existing suspension remains distinct. This is
+implementation sequencing under standing authorization, not a new authority or gate waiver.
+P0 final integration takes priority; afterward the independent P4 lane resumes.
+
+### 2026-10-04 · Select bounded Users suspension input
+
+Under Thomas's standing authorization for recommended routine choices, the P4 suspension
+body may contain an optional trimmed, nonempty reason of at most500 Unicode code points
+and an optional nullable ISO expiry. A supplied expiry must be strictly after server now;
+null or omission means indefinite suspension. Register these rules in the owning God Mode
+contract before implementation. Revoke current native Better Auth apikey/session rows;
+no nonexistent API/MCP extension is claimed covered, and unsuspension restores no revoked
+credential. This selects validation for the authorized Users batch; it does not implement
+that batch in P0, waive review or grant stage acceptance.
+
+### 2026-10-04 · Bound the identity provisioning event-history read
+
+Under Thomas's standing authorization for recommended routine choices, select the missing
+connection-scoped provisioning ledger read as instance-admin-only. Require an existing
+parent connection; absent parents return the same 404. Query limit defaults to 25, maximum
+100. Use an opaque version-1 cursor bound to connection ID and descending created_at/id,
+with existing fail-closed query-validation conventions. Return only kind, outcome,
+actorType and createdAt in data, plus nextCursor/hasMore page metadata. No row IDs, trace
+IDs, stored detail or total-count query are exposed. Register this contract in the owning
+identity-provisioning spec before API/UI implementation; retain URL-state rules for the
+reachable history panel. This selects a bounded safe DTO, not a new authority, gate waiver,
+provider acceptance or stage-completion claim.
+
+### 2026-10-04 · Keep route coverage independent of web build artifacts
+
+The API registers declared static middleware unconditionally. Verify real route descriptors, registration counts, auth-guard ordering and middleware inventory against explicit missing and built roots; do not require a checkout without generated web output or delete output to manufacture a pass. Correct the obsolete build-order instructions and use direct exact-path Playwright/Vitest invocation to prevent accidental broad package-script selection. These related corrections join the complete P0 batch for independent risk-sized review; no route, authority, coverage assertion or required gate is waived.
+
+### 2026-10-04 · Preserve reactive full-task mutation freshness inside narrow display subscriptions
+
+The full task cache is the mutation authority, including version and omitted fields. Narrow display selection must not make a mutation snapshot nonreactive. Subscribe the controls to the shared complete task cache, keep the sidebar display selector narrow, and prove omitted-field/version advancement and identity reset through real-query and built browser regressions. Complete this entire correction before current risk-sized independent review. Preserve original request-changes reports and the earlier local22/22 result at its actual source; use final hosted performance for corrected acceptance rather than repeat local performance for comfort. No budget, data size, retry, permission, dependency or gate waiver changes.
+
+### 2026-10-04 · Complete related render fixes before bulk review and reserve performance capacity
+
+Apply the user's full-implementation-first cadence to the remaining measured state, assignment and board rendering paths together. Keep canonical data sizes, timings, retries, successful-write assertions and keyboard behavior unchanged. Run the completed source checkpoint once in a coordinated quiet local window; preserve any failing result and require actual hosted acceptance. Independent reviewers assess the complete delta at its risk tier, with current-head Sol confirmation for the composed security-scope candidate. The previous reviewed candidate may remain deployed for development under the standing authorization while performance acceptance is open. This selects implementation/verification order, not a gate waiver or an assertion of a CPU cause.
+
+### 2026-10-04 · Bounded follow-ups for the remaining actual P0 evidence dates
+
+Under Thomas's standing instruction to continue work and use three actual issue-free development/UAT observation dates, the orchestrator schedules two quiet thread heartbeat runs (`p0-remaining-evidence-dates`) for the remaining October 5/6 observations at local 21:30. Each must acquire actual source-bound traffic, compare tested policy behavior with the retained October 4 manifest, preserve immutable records, reconcile complete outcomes/events and eligible source coverage, and record explicit normative explanations. Current-day partial coverage is not a full-day or 72-hour claim. Time passing neither clears known failures nor authorizes protected merge, enforcement or stage completion. Required independent review, exact CI and the additional Sol finalizer remain. The follow-ups stay quiet unless there is a meaningful failure, a user-only blocker or completed acceptance; they do not create separate user-owned chats or message others.
+
 # Decision log
 
 Decisions too small for an [ADR](../01-architecture/adr/README.md) but worth recording:
 dependency choices, convention changes, scope calls, gate waivers.
 
 Newest first.
+
+### 2026-10-05 · Record both public RFC 6238 test-vector scanner findings accurately
+
+The current deterministic fixture remains in `apps/web/e2e/mfa-csrf-journey.spec.ts:16`; its
+historical finding is at line 13. A separate quoted copy in public review artifact
+`docs/07-planning/security-reviews/579-p0-146f0584-luna-a.md:28` is a second independently
+verified occurrence, fingerprinted at frozen commit `36959b579075a4463c04bd01ede7c55913abce33`.
+The public review copy now describes the RFC 6238 test vector without embedding its
+credential-shaped URI, with an explicit redaction annotation; its unredacted original is
+preserved in private evidence. Add only the exact historical commit/file/rule/line finding
+to `.gitleaksignore`. Keep both source and public-artifact findings distinct; do not ignore a
+path or rule, rewrite history, or infer that other scanner findings are benign. The deterministic
+test assertion remains unchanged. This documents verified public test data and preserves the
+original review evidence; it waives no required check.
+
+### 2026-10-04 · Require complete source-bound contrast records before utility matching
+
+The G3 occurrence-summary invariant applies to every pair. Both arrays must exist, be nonempty and correctly typed; detailed records must obey the closed schema/context values. A missing or malformed detail array must not fall back to utility-only acceptance. Preserve intentionally repeated detailed contexts and enforce the first-seen ordered distinct summary. Fix the entire absent/malformed class and its regressions in one completed batch, with the risk-sized current-head independent Luna/Sol review rather than per-edit comfort rounds. No pair colors, thresholds, source contexts or runtime behavior change; no gate waiver is introduced.
+
+### 2026-10-04 · Enforce contrast occurrence summaries structurally
+
+The contrast registry summary is the first-seen ordered distinct projection of detailed occurrence IDs; detailed records may repeat an ID for different surface contexts. Correct the eight stale summaries together and enforce this invariant across every pair with missing/extra/order regressions. Preserve pair identity, detailed contexts, colors, ratios and thresholds. Review this completed bounded checker pass/fail change with one strong independent Luna delta pass and the required full independent Sol pass, using earlier genuine UI bulk reviews as history rather than claiming current-head clearance. This applies the standing risk-sized review and complete-batch cadence; it waives no gate.
+
+### 2026-10-04 · Keep reviewed development delivery separate from protected acceptance
+
+**Decision:** apply Thomas's explicit OrbStack development deployment authorization to a
+reviewed implementation candidate with verified image boot, migration, health and real
+PostgreSQL/authentication evidence. Preserve data, runtime secrets, certificates and shadow
+mode; retain encrypted backups and source-bound deployment receipts. A development refresh
+makes implemented features available for UAT and does not certify protected merge, passing
+performance budgets, clean traffic dates, strict cutover or phase completion. Required
+reviews, exact-head checks and the Sol phase finalizer remain acceptance gates. Complete
+related performance/source fixes before one risk-sized bulk delta review; no comfort review
+is added for individual edits. This records the existing development authorization and
+implementation cadence, not a gate waiver.
+
+
+
+
+### 2026-10-04 · Preserve canonical project reach when repairing native project reads
+
+**Decision:** the existing RBAC Reach order remains authoritative. Plain workspace
+membership alone grants no project reach. The three source-bound native-allow/policy-deny
+project read outcomes must be investigated and repaired under that rule; moving their
+registered policies to workspace scope to manufacture agreement is rejected. The shadow
+contract's statement that workspace membership is comparable refers to persisted workspace
+facts, not an additional project grant. Explicit project membership or workspace `sees_all`
+still needs the declared capability, and denied reach remains masked with `404`.
+
+Implement one shared native read-guard conformance batch with actual persisted positive and
+negative fixtures, preserved liveness and independently computed shadow outcomes. Do not add
+automatic membership, implicit reach, invented roles or observer-side grants. This clarifies
+and applies the accepted 2026-09-09 canonical rule under the user's standing routine decision
+authorization; no authority expansion, human review or gate waiver is introduced.
+
+
+### 2026-10-04 · Close the server lifecycle logging defect class structurally
+
+**Decision:** register finite `http.lifecycle_failure` in the observability log contract,
+using the existing HTTP module, fixed error level and failed result. HTTP startup/close/forced
+close errors must use a no-argument helper with no raw exceptions or context. Realtime retains
+its separate finite failure event. Preserve shutdown behavior and prove injected sensitive
+errors cannot escape through lifecycle catches. Add a structural regression rather than
+repeat narrow special-case fixes. This is an autonomous routine remediation under the user's
+complete-batch instruction, not a quality-gate waiver. The required independent Sol pass
+may close narrower instances after the structural correction under the standing review rule.
+
+
+### 2026-10-04 · Complete native realtime invalidation and safe logging in one batch
+
+**Decision:** the documented internal `taskdesk:control` channel is the selected seam for
+native subscription authorization invalidation. Existing domain events alone do not cover
+session, membership, role and project authority changes. The implementation must publish
+only after the relevant mutation commits, refresh authority from current persisted facts,
+retain periodic reauthorization as fallback, and never expose control messages to browsers.
+Use the existing memory/Valkey adapter boundary; exact closed coordination keys, payloads
+and trigger semantics are registered in the owning realtime/auth runtime contract before
+implementation. This does not add an authority grant or a new identity cache.
+
+Add the finite `realtime` log module and `realtime.failure` message to the observability
+allowlists before replacing the native socket's raw exception logging. Error objects and
+arbitrary exception text remain prohibited. Archived projects must deny and revoke native
+subscriptions under the existing resource-live contract. All three independent bulk-review
+findings are implemented together, then verified at the required review tier. These routine
+recommended resolutions use the user's standing autonomous implementation authorization;
+no review, performance threshold or security gate is waived.
+
+
+
+### 2026-10-04 · Keep native-denial evidence independent from shadow reach
+
+**Decision:** for issue #8 observer-only native read evidence, the typed observer result may
+establish the native/legacy denial and the persisted row scope only. It must not force the
+declarative side's `inReach` to false. The declarative side evaluates `reaches()` from the
+resolved identity and independently loaded persisted target facts; direct project membership
+is comparable when those facts are present. If hierarchy, owner-team, customer-private
+visibility, or another required fact is unavailable, the shadow outcome is `unevaluated`.
+Do not infer a policy denial from the native predicate, URL, caller input, or HTTP status.
+This changes diagnostic comparison only: native access remains unchanged and a disagreement
+is retained as a disagreement. Shadow-off continues to perform no observer read. The
+contract is detailed in [RBAC § Shadow evidence for native read denials](../01-architecture/rbac.md#shadow-evidence-for-native-read-denials).
+
+For `/api/capabilities`, the selected self-introspection condition remains one exact active
+persisted workspace membership. Instance-admin global reach is not membership. An unambiguous
+member with a malformed/unknown role receives an all-false capability map, while ordinary
+write routes continue to reject that membership. This is not a new authority grant.
+
+
+### 2026-10-04 · Bound observer-only provenance reads for shadowed native read denials
+
+**Decision:** under the standing authorization to implement recommended P0 resolutions, a
+shadow-enabled native read may perform one additional observer-only lookup when its typed,
+reach-filtered resource lookup returns no row. The lookup is limited to the exact resource
+kind and identifier selected by that route's typed lookup middleware and to a matched,
+registered row-scoped capability policy. It must use persisted containment and the native
+resource's liveness rules. Only a live row whose denial by the same native reach predicate
+is established may supply row scope and an explicit legacy-denied marker. Missing, inactive,
+ambiguous, or unavailable rows remain unknown/error. The result stays in request context,
+never the response, log, or audit. Shadow-off performs no observer query. Mutation routes
+and post-mutation state are excluded. This resolves the #8 evidence gap without changing
+native authority or masked responses; details are in [RBAC § Shadow evidence for native read
+denials](../01-architecture/rbac.md#shadow-evidence-for-native-read-denials).
+
+**Limits:** this observer evidence does not make a missing policy or incomplete identity
+facts evaluable. Project hierarchy, team ownership, private-item visibility, public-route
+placement, and delegated protocol behavior remain governed by their existing contracts.
+Implementation evidence and source-bound traffic are still required; no clean date or
+cutover is established by this decision.
+
+For the same #8 batch, `/api/capabilities` is explicitly self-introspection, not a
+capability-gated read: a session with one unambiguous persisted membership in the requested
+workspace may receive its own boolean map, including all-false results for an unknown role.
+The self policy's `workspaceMembership: true` condition requires that exact membership and
+does not accept instance-admin reach as a substitute. Nonmembers remain denied; no write or
+other capability check is relaxed. See [RBAC § Route policies](../01-architecture/rbac.md#route-policies--the-anti-v1-mechanism).
+
+
+### 2026-10-04 · Pin SLA policy provenance at work-item creation
+
+**Decision:** implement the recommended SLA-1/SLA-3 provenance contract under Thomas's
+standing authorization for recommended decisions. The effective-time instant is
+`work_item.sla_started_at`, as ADR 0009 requires: original accepted submission creation
+time on conversion, otherwise work-item creation time. Reconcile the owning SLA spec's
+ambiguous "creation" wording before code. In the creation/acceptance transaction resolve
+work-item-type override → original accepted request type → project → workspace default,
+then select the published policy version effective at that instant. Register and persist
+`work_item.sla_policy_version_id` in the canonical data model before implementing it, with
+same-workspace integrity. Null means no effective configured version. Never reconstruct a
+missing historical pin from mutable current bindings on reads. Compute state and due time
+from this stored version plus its current live calendar; do not store SLA state/deadline.
+
+Duplicate submissions attach to the existing work item without changing its original SLA
+pin or start time. The accepted/auto-accepted submission that creates the item supplies
+request-type provenance. Existing rows in this unaccepted P2 rollout have no trustworthy
+binding history: leave their pin null and report `none`, without invented historical
+backfill. No P2 SLA evaluation is accepted or deployed by this decision. If separately
+operated SLA data is discovered, stop that data-migration path for an explicit owner data
+policy. Wire the existing `work-item/controllers/create-work-item.ts` transaction and the
+specified SLA read route; absent intake conversion/timer/cache/event writers remain real
+implementation dependencies and are not claimed complete. Stage candidate0088 as the four binding/pin columns for the current direct-create/read
+slice. Add canonical request-type/submission persistence with its complete intake conversion
+feature in a subsequent sequential candidate migration, including integrity constraints;
+the current slice does not claim request-type precedence or acceptance/duplicate writers. Human review remains deferred to integrated P4;
+normal independent review and migration acceptance are still required after the full batch.
+
+
+
+### 2026-10-04 · Serialize P2/P3 schema ownership and unaccepted migration composition
+
+**Decision:** implement the complete CAL-8/SLA read path after P3 explicitly yields the
+shared schema/migration contract. P2 appends candidate migration `0088` after its own
+unaccepted `0087`; it does not skip a journal sequence or import unfinished P3 migrations.
+P3 continues delegated identity/provisioning/UI work during this window and does not edit
+the shared schema/migration contract concurrently. These are branch-local candidate
+numbers, not accepted global migration history. Root composes protected acceptance in
+P0 → P2 → P3 order, resolving only the unaccepted colliding suffix through a normal
+forward commit and checking the actual accepted prefix before each integration. No
+accepted migration is rewritten and no unaccepted migration is applied to persistent
+development. This is implementation coordination under the authorized parallel program,
+not phase acceptance or a migration-gate waiver.
+
+
+
+### 2026-10-04 · Resolve live calendar evaluation with immutable SLA policy versions
+
+**Decision:** under Thomas's standing authorization to implement recommended decisions,
+resolve CAL-8 and SLA's published-version calendar wording as follows: a published
+`sla_policy_version` immutably pins its `calendar_id`, goals and threshold; it does not
+copy the referenced `service_calendar` definition. On every SLA evaluation, resolve that
+pinned calendar ID to the current same-workspace calendar row and pass its current
+timezone, windows and holidays to `packages/domain`'s pure evaluator. A calendar edit
+therefore immediately affects all SLAs whose effective policy version references that
+calendar, without updating any published SLA version. Drafts and published versions
+continue to store only the selected calendar ID. Record this rule in both owning feature
+specifications before implementing the evaluator adapter and its persisted regressions.
+No new table, endpoint, migration or dependency is selected by this resolution. Timer,
+scan, cache-writer and event delivery integration still need their own specified complete
+implementation; this decision and adapter do not claim those mechanisms or P2 complete.
+Human design review remains deferred to integrated P4; independent acceptance remains
+required after the implementation batch.
+
+
+### 2026-10-04 · Implement opt-in per-policy-source strict enforcement for #8
+
+**Decision:** complete the production request-path ALLOW/DENY integration for issue #8 in
+the current P0 implementation batch. Keep the existing hand-written guards in place beside
+strict evaluation until the later removal slice. Strict mode is an explicit bootstrap
+setting, `TASKDESK_POLICY_ENFORCE`, containing a comma-separated set of exact registered
+policy-source paths. It defaults to empty. Unknown, duplicate, whitespace-padded, empty
+members, or a request to enable `apps/api/src/task/policy.ts` before every other registered
+source is enabled fail startup. A source can be added only after the existing shadow evidence
+and the three-issue-free-UTC-date P0 verification rule below have been satisfied against the
+same deployed policy/source behavior; no dates or traffic are synthesized by code. This is
+an operational cutover control, not an automatic finding waiver or authorization to activate
+it now. No persistent development/UAT/production setting is changed by this implementation.
+
+The setting is a narrow temporary bridge because the specified per-scope feature-flag store
+in `plugin-architecture.md` is not implemented and the existing `TASKDESK_POLICY_SHADOW`
+switch cannot express one-router-at-a-time enforcement. It is bootstrap-only, read and
+validated before serving, and must be replaced by the approved feature-flag mechanism when
+that mechanism is delivered. The exact source-path vocabulary is the registry's
+`RegistryEntry.source`; there is no independent alias, per-customer branch, exception list,
+or capability translation.
+
+Every enabled route is evaluated after its route-specific validators and authoritative
+scope loaders but before its terminal handler can mutate state. Missing identity, malformed
+context, unknown scope provenance, unavailable reach/predicate evidence, unsupported required
+step-up binding, or an evaluator error denies before the handler. Persisted-row scopes may
+use only row-derived facts; request hints never substitute for missing row facts. The existing
+session-only, API-key capability ceiling, portal, CSRF, and operation-bound step-up controls
+remain in force. Delegated handlers retain their own protocol authorization. Registry denial
+does not invoke the terminal handler.
+
+For `GET /api/invitation/{id}`, implement the documented 2026-09-28 recommendation already
+present in `invitation/policy.ts`: retain the stable URL as deprecated and permanently
+disabled; its real row-scope `member:invite` and session-only middleware runs, then its handler
+refuses unconditionally. Do not introduce a sixth policy kind or expose invitation data.
+Keep the #392 `task` → `work_item` re-key and persisted backfill; do not contract away the
+legacy key while #398's deployment/rollback prerequisites remain unverified. The task policy
+source stays last in the strict source sequence.
+
+This selects implementation behavior under Thomas's standing authorization to proceed with
+documented recommendations and finish related P0 work. It does not satisfy the real three-date
+observation, authorize a live cutover, approve human H1–H6, waive a gate, or claim P0 complete.
+
+
+### 2026-10-03 · Select the bounded P2 holiday-import profile
+
+**Decision:** complete calendar holiday import in a separate full P2 implementation batch
+under Thomas's standing authorization for recommended decisions. Record the profile and
+API DTO in `service-calendars.md` before implementation. The initial profile accepts UTF-8
+RFC 5545 VCALENDAR version 2.0 containing finite all-day VEVENTs. DTSTART is required with
+`VALUE=DATE`; optional DATE DTEND is exclusive and defaults to the next day. Preserve an
+inclusive stored range after converting that exclusive endpoint. SUMMARY is optional plain
+text, with RFC unfolding/escaping and safe rendering. Require syntactically valid UID and
+DTSTAMP metadata; they confer no authority. This is a holiday-file importer, not scheduling:
+reject timed/TZID values, recurrence/exception properties, DURATION, non-VEVENT/nested
+components and malformed or unsupported properties with an actionable error. Permit only
+the documented safe calendar/event metadata allowlist; never fetch URLs or execute data.
+No partial successful import, silently dropped event or invented recurrence interpretation.
+Reference: [RFC 5545](https://www.rfc-editor.org/rfc/rfc5545.html), sections 3.1, 3.3.4,
+3.3.11 and 3.6.1. The supported subset and resource limits below are product decisions.
+
+Bound decoded input to 256 KiB UTF-8, 1,000 events, 8 KiB per unfolded content line,
+120 characters per holiday name and 366 covered dates per finite event. Reject an empty
+file/event set and out-of-range real dates; reuse canonical calendar date bounds. Preserve
+existing holidays. Deduplicate exact canonical holiday identities (shape/date or range or
+annual tuple plus normalized name); report added and duplicate counts. Different named
+holidays on the same day remain legitimate. Identical retries are no-op imports: do not
+advance version or emit mutation effects for zero additions. A supplied If-Match must still
+be validated under the row lock before reporting a no-op.
+
+Use existing `POST /api/service-calendars/{id}/holidays/import`, `sla_policy:manage` and
+workspace reach, with JSON `{ics: string}` and optional canonical If-Match. Register the
+response `{calendar, importedCount, duplicateCount}` using the existing safe calendar DTO.
+Parse/validate before mutation, then recheck reach/concurrency and append under the existing
+calendar lock, audit-savepoint, durable event and administrator-alert behavior. Reuse the
+registered calendar-update action/event; no new identifier, dependency, migration, external
+service or direct deletion is selected. Finish shared-UI file selection, confirmation/preview,
+error/partial-input refusal, translations, cache refresh and real persisted browser/API
+proof. Keep unavailable impact counts truthful under the existing CAL-13 limitation.
+Country presets and the other documented calendar dependencies remain distinct work.
+This selection is not independent review, protected acceptance or phase completion.
+
+
+### 2026-10-03 · Select the P1 concrete project-state read contract
+
+**Decision:** complete the v2 board's existing `VW-8` requirement in the full P1
+implementation batch under Thomas's standing authorization to proceed with recommended
+solutions. Register authenticated `GET /api/projects/{projectId}/states` in the canonical
+project API spec before code. Require `project:read` plus the existing project reach guard,
+with the established non-disclosing denial behavior. Return the project's active concrete
+states, including states with zero work items, ordered by `position ASC, id ASC`. The bounded
+DTO is `{id, stateTemplateId, name, group, position, isDefault}`; name/group come from the
+mapped workspace state template, position/default from the concrete state. An archived
+template remains referenceable by already-adopted active concrete states; it is not an
+excuse to drop a board column. No new table, migration, capability or environment setting
+is needed. Use existing canonical types/serialization conventions.
+
+The catalogue lists columns, never grants a transition. Cross-column moves use each item's
+server-returned legal offers and the existing transition endpoint; within-column reordering
+uses rank. Preserve `WI-4` default-state creation semantics. Publish the OpenAPI response,
+policy coverage, reach/empty-column/order regression proofs and full URL/keyboard/browser
+journey as one completed batch. This is implementation contract selection, not review,
+acceptance, a gate waiver or a human design approval.
+
+
+### 2026-10-03 · Select serialized P4 bootstrap admission for #231
+
+**Decision:** under Thomas's standing instruction to implement recommended solutions in
+parallel before bulk review, complete #231 in the isolated P4 bootstrap/recovery branch.
+Write the selected contract in its authoritative auth/data-model documents before code.
+The product invariant is one successful local first-user bootstrap admission and exactly
+one pending administrator when valid token and headless-email signups race. A losing signup
+must be refused without leaving another committed ordinary user. Validate authorization
+from trusted server credential handling; never accept a client role/flag or IdP grant.
+Serialize the first-user admission against authoritative database state using the existing
+promotion lock, and make user creation plus administrator grant atomic; an in-memory lock
+or a separately committed before-hook check is insufficient. Recheck stale/expired state
+inside that boundary. If the adapter needs a bounded database guard, document the mechanism
+and identifiers before generating its migration. No dependency is authorized here.
+
+Preserve #229: the setup-completed marker remains unset until actual verified TOTP, pending
+bootstrap requires enrollment even when policy is off, and additional registration is closed.
+Preserve initialized installation/provider behavior and the initialized-only #230 recovery
+CLI. Real concurrent distinct-credential regressions must prove no zero-admin/two-user
+result, including loser rollback; record image/browser and bulk independent acceptance
+honestly. P0 has priority over this lane's heavy test/build work. This selects implementation
+behavior, not a gate waiver, human design approval or phase-completion claim.
+
+### 2026-10-03 · Select the bounded P4 bootstrap-factor contract
+
+**Decision:** the orchestrator selects the recommended #229 contract under Thomas's standing
+instruction to proceed with recommended decisions and full implementation before bulk review.
+Record the canonical contract in the isolated P4 branch before implementation. This changes
+neither the P0 candidate's runtime nor the timing of Thomas's P4 design review.
+
+Keep the setup-completed marker unset until the exact first bootstrap administrator verifies
+its real TOTP enrollment. While that bootstrap remains pending, require enrollment regardless
+of the configured factor-policy mode, restrict that session to the documented authentication
+and enrollment surfaces, and return the existing `mfa_enrollment_required` from protected
+custom APIs. Finalize under the existing promotion lock after rechecking the first admin,
+active staff person and verified factor; clear setup-token fields then and preserve the stored
+policy. Apply the same ordering to headless bootstrap. The initial zero-user creation
+channel is local credential sign-up; enforce it on the server, including OAuth callbacks
+and email-OTP auto-creation, so initial TOTP enrollment has a real local credential and
+identity-provider data never supplies an administrator grant. Existing initialized provider
+behavior remains. Issue setup tokens only while there
+are zero users; refuse additional registrations after the first user exists until setup is
+complete. Never reopen an initialized marker. Do not invent a schema field, new role source,
+identity-provider administrator grant or repair of the separately disclosed #231 race.
+
+Existing credential recovery remains available. A first administrator losing both password
+and email access before enrollment needs a separately documented operator recovery contract;
+prepare that recommendation before implementing a new credential-reset or database-repair
+path. This decision does not claim that recovery scenario complete. The initialized-only
+#230 CLI contract remains intact. Image/TTY proofs, independent bulk reviews and protected
+acceptance remain required; no human approval or gate waiver is recorded here.
+
+
+
+
+### 2026-10-03 · Select complete P2 SLA-policy and P4 recovery implementation contracts
+
+**Decision:** use Thomas's standing instruction to proceed with recommended decisions and
+complete implementation batches. This authorizes the selected contracts in the isolated
+feature branches; it does not mark a human design review approved, waive a gate, or claim
+later phases complete.
+
+P2 policy authoring uses reachable workspace scope in the collection query, one editable
+draft, immutable published versions with their own calendar and threshold snapshots,
+complete metric/priority goal matrices for at least one type at publication, row-locked
+version/CAS semantics and the canonical optional If-Match mismatch response. The selected
+spec/data-model checkpoint is `e198fd12e2823ec062e4ef59c85cb615ef0d04d0`; no project policy FK,
+new domain event or direct deletion route is invented. The sole audit-contract author
+registered the three configuration actions before their writers in `ec400c25`.
+
+P4 recovery uses the existing instance-admin source, exactly one eligible active staff
+identity, service-process attribution plus host operator audit, interactive confirmation
+outside database locks, and revalidation under the shared promotion lock. Grant, audit and
+durable alerts are atomic; post-commit email failure reports the committed state and retains
+alerts. The selected canonical contract is `62710869`. MFA policy remains enforced and no
+IdP data, activation, linking or parallel authority source grants administration. Complete
+implementation still needs actual image/operator/browser proof and bulk independent review.
+Human P4 design acceptance remains outstanding.
+
+### 2026-10-03 · Complete the existing cookie CSRF requirement in the P0 implementation batch
+
+**Decision:** implement security-model.md's existing Origin/Referer **and** double-submit
+requirement for unsafe custom API requests authenticated by an ambient session cookie.
+Session-only authorization is not CSRF protection. Exemption depends on actually resolved
+nonambient credentials, not the presence of an Authorization or API-key header.
+
+The bounded implementation contract is authenticated `GET /api/me/csrf-token`, returning
+`{token, expiresAt}`, with a signed token bound to the current live session and configured
+agent origin, a random nonce and a ten-minute expiry. The HTTP-only host-only cookie is
+`__Host-tdk_csrf` on HTTPS (`Secure`, `SameSite=Strict`, `Path=/`, no `Domain`); explicit HTTP
+development uses the documented signed `tdk_csrf_dev` fallback. Unsafe session requests
+must supply the same token in `X-TaskDesk-CSRF` and a valid same-origin source. Referer may
+substitute only when Origin is absent; a supplied malformed, null or foreign Origin cannot
+be repaired by Referer. No browser-storage token is introduced. The issuer reuses a valid
+token to avoid invalidating another tab; any client retry is limited to a distinct CSRF
+failure rejected before mutation, never a generic permission or step-up denial.
+
+BetterAuth's own public authentication endpoints retain their separate origin protections;
+the disabled P0 portal API remains unavailable. The custom API boundary must not grant a
+new capability or relax any session realm, factor, impersonation or step-up requirement.
+Server enforcement, client transport, fixtures and actual negative/positive journeys form
+one full implementation batch before bulk review. This records implementation direction,
+not independent acceptance or a gate waiver.
+
+**Authorization:** the orchestrator's recommended implementation choices under Thomas's
+standing direction to finish all necessary P0 features and proceed with recommended
+decisions. The authoritative requirement remains in security-model.md.
+
+
+### 2026-10-03 · P0 structured logging and metrics dependencies authorized
+
+**Decision:** Thomas explicitly approved adding Pino and prom-client in this chat on
+2026-10-03. The P0 runtime implementation uses exact pins `pino` 10.4.0 (MIT) and
+`prom-client` 15.1.3 (Apache-2.0), verified against the npm registry and the projects'
+official release records. Node 24 satisfies the metrics client's declared engine range.
+The registry marks prom-client deprecated in favor of its renamed successor
+`@prometheus-io/client`; this entry authorizes the explicitly approved package, and does
+not silently add another dependency. Runtime APIs, singleton configuration, labels, token
+handling and listener boundaries follow observability.md and api-design.md.
+
+**Scope:** these dependencies support the still-missing P0 logging and metrics runtime.
+Installing them alone does not establish instrumentation, a usable metrics listener,
+durable AU-14 administrator alerts, acceptance, deployment or phase completion. The full
+implementation is batched before independent review.
+
+**Decided by:** Thomas, explicit dependency-approval reply; recorded by the orchestrator.
+
+### 2026-10-03 · Native work-item realtime uses one subscribed socket and key-only outbox hints (#570)
+
+**Decision:** P0 work-item subscriptions use `GET /api/ws` on the agent origin and explicit validated `subscribe` / `unsubscribe` frames for `project:{projectId}` and `work_item:{key}`. The separate legacy user socket continues to deliver notifications, and the legacy project socket continues to serve existing Task-model consumers; neither is the native work-item event path. The native server resolves topic resources from persisted project/work-item relationships and applies the same read capabilities and row/project reach as REST. Missing and unreadable topics have the same denial frame. Agent-host session Host/Origin/portal checks remain those in ADR 0004 and `realtime.md`.
+
+CP-19 takes precedence for the customer portal public edge in P0: every portal `/api` request and websocket upgrade is a generic 404 before auth/session/API-key lookup or other handler effects. This includes `/api/ws` and `/api/auth/*`. The separately configured `portalAuth` instance and its host-only cookie binding are not reachable through that edge and do not enable portal login or realtime. P0 tests the binding directly as an internal configuration property while separately proving the public portal edge stays denied. Portal socket availability requires the later reviewed P3 identity boundary and a corresponding CP-19 change.
+
+Every supported native work-item mutation writes one existing canonical event envelope to `outbox` in its mutation transaction. After commit, best-effort socket fan-out sends only `{type, topic, eventId, at, payload:{key}}`; domain payloads and internal-only comments/changes are never sent to customer subscriptions. Fan-out is an at-most-once invalidation hint, not a new replaying outbox consumer; reconnect refetch and 30-second foreground fallback repair missed messages. Existing event keys, outbox schema, capabilities, feature defaults, and polling assertions remain authoritative.
+
+This resolves the route, topic authorization, projection, deduplication, delete timing, and failure/recovery choices needed by #570. It does not close the owning architecture/feature review rows, claim independent review, or claim P0 completion. The reviewed spec and exact-head implementation still require the ordinary bulk panel and GPT-6 Sol security review.
+
+**Authorization and status:** the orchestrator authorized these bounded recommended defaults on 2026-10-03. This entry records implementation choices, not review or acceptance evidence.
+
+**Recorded by:** GPT-6 Luna implementation lane, 2026-10-03.
+
+### 2026-10-01 · Keep the P0 portal origin disabled until portal identity exists
+
+**Decision:** the two-entry P0 server selects the agent or portal app only from a
+validated raw Host matched to the configured public origins. Until the separately reviewed
+P3 identity boundary exists, the portal root serves the localized disabled notice, every
+portal API and websocket request returns a generic 404 before handler effects, and only
+the exact existing GET/HEAD health paths remain available on either configured origin and
+on a syntactically valid unknown Host. This exception preserves the loopback probes used by
+Docker and deploy.sh; malformed, missing, duplicate, or upgraded authorities are rejected.
+Static files come only from the selected output root; missing roots fail closed. The agent
+URLs and behavior stay unchanged. See customer-portal.md `CP-19` and phases.md's P0
+acceptance matrix. G5 metadata and inventory scope follow the existing
+[2026-09-28 gate-scope decision](#2026-09-28--10s-gate-scope-semantics-decided-applicable-now-gates-required-future-stage-gates-activate-with-their-prerequisite):
+all generated and inherited routes remain registered and round-trip checked, while only
+in-progress or complete inventory routes are claimed active; planned URLs remain planned.
+
+**Why:** selecting a portal bundle by Host alone would expose the current agent auth/API/
+websocket surface on the portal origin. ADR 0004 requires two origin-scoped portals, while
+P3 owns the portal auth pair and session boundary. The interim response keeps the portal
+unavailable without inventing a customer session, flag, capability, environment variable,
+database field or permission.
+
+**Recorded by:** orchestrator under the standing approval of recommended implementation
+decisions. This records the interim implementation contract; it does not approve H1–H6 or
+claim P0 completion.
+
+### 2026-10-02 · Implement P0–P3 features before integrated P4 human review
+
+**Decision:** implement the full related P0–P3 feature set first, then conduct its integrated
+bulk review. Early Thomas spec-read, design-review, and H1–H6 approval are not prerequisites
+for P0–P3 implementation. Human review is deferred to the integrated P4 review; record it as
+deferred and never claim H1 approval before it occurs. Approved contracts and documented
+recommendations explicitly authorized by the user are implementation direction now, including
+the documented #573 recommendation. If the written contract does not settle a behavior, do
+not guess; pause only that decision path and record the unresolved point.
+
+For development and UAT P0 policy-shadow verification, use three issue-free UTC calendar-date
+buckets, superseding the earlier approximately seven-day UAT wait for this P0/UAT purpose.
+Require source-bound behavior and router coverage across all three dates; matching existing
+representative evidence may count, and note-only or mechanical changes that do not affect the
+tested behavior do not restart the window. Run performance, unit, integration, and browser
+checks as soon as the batch is ready, without waiting for the shadow window. Elapsed time does
+not clear known failures; synthetic backfill is not evidence. Prioritize necessary P0 work and
+avoid unrelated features.
+
+**Boundary:** this defers human approval; it does not fabricate it, waive automated or
+independent review, weaken exact-head/CI/security/stage-finalizer requirements, or authorize an
+unreviewed merge. P0–P3 technical stage closure may record the human design review as deferred
+to P4 when every other applicable criterion, including automated/browser checks and the
+stage-level GPT-6 Sol finalizer, is satisfied. The three-day UAT/P0 rule is not a production
+cutover requirement. Separate production/go-live criteria apply only to an actual production
+promotion; this decision does not change them.
+
+**Decided by:** Thomas, explicit user instruction, 2026-10-02. See the canonical
+[bulk-review and human-review timing rules](../../AGENTS.md#bulk-implementation-and-review-cadence),
+[SDLC](../../04-engineering/sdlc.md), and [runbook](../05-operations/runbook.md#policy-shadow-summary).
+
+### 2026-10-02 · Development/P0 policy-shadow verification uses three issue-free UTC dates
+
+**Decision:** for development and P0 verification, use three issue-free UTC calendar-date
+buckets for policy-shadow evidence instead of the former approximately seven-day development
+wait. Require actual, source-bound coverage showing the tested behavior and relevant routers
+were exercised across all three dates. Existing representative three-day evidence counts when
+it covers the same source and behavior. Do not automatically restart the window for note-only
+or mechanical changes that do not affect tested behavior.
+
+Run performance, unit, integration, and browser checks as soon as the implementation batch is
+ready; do not wait for the shadow-soak calendar. Known failures do not become passes through
+elapsed time, and synthetic backfill is not evidence. Prioritize necessary remaining P0 work
+and avoid unrelated feature scope.
+
+**Boundary:** this changes development/P0 verification cadence only. The separate
+production/go-live acceptance criteria, including the roughly seven-day UAT shadow requirement
+in the 2026-09-23 runtime policy decision, remain unchanged. A three-date query selects exactly
+three UTC date buckets; it does not by itself prove 72 hours or full-day coverage.
+
+**Decided by:** Thomas, explicit user instruction, 2026-10-02 15:10 UTC. See the
+[development shadow summary](../05-operations/runbook.md#policy-shadow-summary) and canonical
+[agent instruction](../../AGENTS.md).
+
+### 2026-10-02 · Bulk implementation and review cadence
+
+**Decision:** implement related approved slices and known-finding fixes in coherent,
+substantial batches. Do not start a standalone review pass for small or mechanical edits or
+speculative trials. Run meaningful tests while implementation proceeds, freeze the final bulk
+candidate SHA, then perform the applicable independent review panel and required GPT-6 Sol
+security review before protected merge. Fix review findings together and review the resulting
+delta at its required tier; do not add automatic extra rounds for comfort. Tiny urgent fixes
+may join the next batch unless the user explicitly requests isolated delivery.
+
+**Guardrails:** existing risk-based reviewer counts, exact-head discipline, security review,
+required checks, stage finalizers, self-review prohibition, no-waiver rule and main protection
+remain unchanged. This decision does not authorize unreviewed merges or a downgraded review
+tier.
+
+**Recorded:** explicit user direction, 2026-10-02 Asia/Yangon (UTC+06:30).
+Canonical rule: [AGENTS.md § Bulk implementation and review cadence](../../AGENTS.md#bulk-implementation-and-review-cadence);
+workflow and OpenAI operating guide cross-reference it.
+
+### 2026-10-02 · P0 production advisory floors for ip-address and fast-uri (#557)
+
+**Decision:** raise only the existing pnpm override floors for `ip-address` to `^10.7.1`
+and `fast-uri` to `^3.1.8`, and regenerate the lockfile. Registry metadata was reverified
+on 2026-10-02: `ip-address@10.7.1` is MIT and requires Node >=12; `fast-uri@3.1.8` is
+BSD-3-Clause. The final compatible lock graph resolves `ip-address@10.7.2` and
+`fast-uri@3.1.8`. The accepted `main@917c93ad` production audit contained four moderate
+`ip-address` advisories and one moderate `fast-uri` advisory; it was not five advisories
+from `ip-address` alone. `pnpm audit --prod` reports zero advisories after these floors.
+
+No audit threshold, ignore list, or unrelated override was changed. This is limited to
+the two existing transitive packages and does not assert an application-level exploit.
+The Hono/WebSocket migration's separate Origin/session-portal limitation remains open
+under [#560](https://github.com/ThomasHeinThura/ticketing/issues/560); these dependency
+floors do not fix or waive that finding.
+
+**Authorization and status:** Thomas's standing recommended-decision authorization covers
+these bounded patched-version floors. Registry metadata, lock consumers, and the direct
+production audit were checked; this entry is not independent review or acceptance evidence.
+
+**Recorded by:** GPT-6 Luna implementation lane, 2026-10-02.
+
+### 2026-10-02 · P0 API upgrades use the patched Node adapter WebSocket helper (#557)
+
+**Decision:** `apps/api` owns direct exact runtime dependencies `hono@4.13.12` (MIT),
+`@hono/node-server@2.1.3` (MIT), and `ws@8.22.0` (MIT), plus development-only
+`@types/ws@8.18.2` (MIT). Remove `@hono/node-ws@1.3.1`: its peer range requires
+`@hono/node-server@^1.19.11` and excludes adapter 2.x. Raise the single pnpm override floors
+to Hono `^4.13.12` and Node adapter `^2.1.3`. Use `upgradeWebSocket` from
+`@hono/node-server`, with one `ws` `WebSocketServer({ noServer: true })` passed to the
+existing HTTP `serve()` listener.
+
+The migration preserves authentication before upgrade, user-route precedence, project
+reach checks and indistinguishable foreign/missing rejection, `windowId`, JSON events,
+ping handling, fan-out, close cleanup and bounded server shutdown. Public static files stay
+under the existing public build root, attachments stay private, and the adapter's default
+`allowPercentInPath: false` remains in force. The integration coverage exercises the real
+Node listener, including auth/reach handshakes and HTTP JSON/CORS/static/health behavior.
+
+**Security limitation:** `session.portal` is absent from the current session schema; runtime
+identity currently infers portal from identity side. This change does not add an Origin or
+session-portal binding and does not claim that the existing realtime contract is satisfied.
+The concrete owner follow-up is tracked in [#560](https://github.com/ThomasHeinThura/ticketing/issues/560),
+linked to #38 and #8; the existing High realtime finding remains open.
+
+**Authorization and status:** Thomas's standing recommended-decision authorization covers
+these direct dependencies and adapter choice. Registry metadata and licences were
+reverified on 2026-10-02. This decision records the implementation direction; it does not
+establish runtime acceptance, close the Origin/session-portal gap, waive review gates, or
+claim P0 completion.
+
+**Recorded by:** GPT-6 Luna implementation lane, 2026-10-02.
+
+### 2026-10-02 · Identity grant validity is commit-time; SCIM administration PATCH is route-wide elevated
+
+**Decision:** use `IP-22` as the single proposed source-validity and effective-projection
+invariant for every TaskDesk-controlled connection-policy, mapping-eligibility, role-eligibility
+or role-priority write. At commit, each affected active external grant must satisfy current
+source, connection, mapping, scope, role and ceiling rules; the stored effective membership
+must be recomputed from all remaining valid sources, including priority-only changes with no
+retirements. Retire source history append-preservingly; a retired external grant returns only
+after fresh evidence from that same source. Role/config/provider writers use the shared total
+lock order, closure re-read and full-transaction retry in IP-22. Preserve direct-grant
+independence, source isolation, the existing one-role projection, and the distinction between
+authority-cache invalidation and session revocation. No new schema, capability or event key is
+introduced by this proposed contract. ADR-0015 remains Proposed.
+
+The existing `PATCH /api/instance/identity-connections/{id}/scim` administration route is
+proposed as unconditionally `instance:admin`, elevated and session-only for every write.
+It is not usable until its owner defines the strict DTO/edit semantics, parent
+`identity_connection.config_version` compare-and-set and dedicated PA-15 operation binding.
+Until that contract exists, any mounted write must fail closed with `403 step_up_unavailable`
+and make no mutation. [Issue #561](https://github.com/ThomasHeinThura/ticketing/issues/561)
+tracks the owner obligation. Do not infer an operation key or reuse OIDC/metrics proof.
+
+**Why:** the current contract left materialized JIT grants or role winners stale after policy
+and rank changes, while conditional elevation on one PATCH route depended on request-body
+semantics that were not specified. One commit-time invariant closes the repeated lifecycle
+class; route-wide elevation removes a body-selected policy branch. The missing SCIM proof
+contract remains explicit rather than being guessed.
+
+**Authorization and status:** selected under Thomas's standing recommended-decisions
+authorization. This entry does not approve ADR-0015, close owning review rows 81–82, satisfy
+Thomas's finished-spec read, waive a gate, or claim implementation, runtime tests, Entra or
+browser evidence, independent reviews, H1–H6 or P3 acceptance. See [IP-22](../03-features/identity-provisioning.md)
+and [ADR 0015](../01-architecture/adr/0015-membership-grant-provenance.md).
+
+**Recorded by:** orchestrator, 2026-10-02.
+
+### 2026-10-02 · Entra app-role admission applies to every Entra login
+
+**Decision:** extend `IP-27`'s exact Entra app-role and signed `acct=0` admission predicate
+from new JIT creation to every Entra connection and login, including existing invite- or
+SCIM-provisioned identities when JIT is disabled. Every Entra connection must store one
+exact nonempty `required_entra_app_role` in the existing
+`identity_connection.jit_policy` at creation/configuration save and before enable; toggling
+JIT cannot waive it. A valid protocol-validated token that lacks the configured role or
+`acct=0` denies a new session and atomically retires only that external identity's OIDC/JIT
+grants. Invalid/unverified tokens or invalid persisted server configuration are not
+revocation evidence and mutate no grants. Direct, SCIM and other-connection grants remain
+untouched. An already-issued session is not revoked solely by upstream app-role removal;
+the admission change takes effect at the next validated login. The app role and `acct=0`
+remain IdP admission signals and cannot grant TaskDesk roles, capabilities, scope,
+`instance:admin` or `sees_all`. JIT remains a separate person/default-grant creation switch.
+
+**Why:** a login-time admission requirement cannot depend on whether the existing identity
+was originally created by JIT; otherwise the same Entra connection has no coherent
+admission contract after SCIM or invitation provisioning.
+
+**Authorization and status:** recorded under Thomas's standing recommended-decisions
+authorization after the cross-contract source check. This does not approve ADR-0015, close
+owning review rows 81–82, establish finished-spec read, waive a gate, or claim
+implementation, tests, Entra/browser evidence, H1–H6 or P3 acceptance. See
+[IP-27](../03-features/identity-provisioning.md) for the normative rule.
+
+**Recorded by:** orchestrator, 2026-10-02.
+
+### 2026-10-01 · P0 public docs site uses headless Fumadocs and static export
+
+**Decision:** recommend a fresh self-hosted documentation site at `apps/site`, using Next.js static export with headless Fumadocs. `fumadocs-core` supplies source/navigation/search data and `fumadocs-mdx` compiles local MDX; compose interactive controls from `@taskdesk/ui` and existing tokens. Do not import `fumadocs-ui`, copy kaneo's marketing app, or copy Mintlify content. The site is separate from the Vite agent/portal app and does not change its shared route registry.
+
+The proposed exact direct npm dependencies are `next@16.3.8` (MIT), `fumadocs-core@16.15.17` (MIT), `fumadocs-mdx@15.4.5` (MIT) and development-only `@types/mdx@2.0.14` (MIT). Reuse React `19.2.8`, `react-dom`, TypeScript, Tailwind/tokens and `@taskdesk/ui`. Zod `^4.6.5` and MDX tooling are transitive and require resolved-license/advisory inspection at implementation. These are recommendations for a future implementation, not installed dependencies or an authorization to change a manifest or lockfile.
+
+P0's public routes are `/`, `/docs`, `/search` backed by a generated static search index, and a true static 404. If the pinned Fumadocs build cannot produce working static search, remove `/search` from P0 and amend the site contract before implementation; do not ship a nonfunctional search control. Content is limited to verified existing behavior and stays separate from internal `docs/`. The site has no API proxy, auth, personalization, analytics or feedback endpoint.
+
+The separate image is proposed to use `nginxinc/nginx-unprivileged:1.30.5-alpine3.24@sha256:ed04ec1ff34502c339ee5c3ae3f855442398edc1d05591e2b98981dcbbd20b1e`, subject to digest/platform verification and image SBOM/license review at implementation. Its static site origin is planned as `docs.<domain>`, separate from both app origins and the conditional `files.<domain>`. Build, scan, SBOM, sign and publish on protected `main`; do not deploy from CI. Deliver to UAT through the existing pull process and promote to production manually by immutable digest. The docs plan records static serving, proxy and health-check behavior.
+
+**Why:** static export avoids a public runtime service and request-dependent behavior. Headless Fumadocs allows TaskDesk to use its own shared design system without importing a second UI library; an independently hosted docs origin keeps public documentation content away from authenticated application origins.
+
+**Authorization and status:** recorded under Thomas's standing recommended-decisions authorization. This entry does not assert that Thomas read the completed specification, grant H1–H6 approval, waive dependency/review gates, or establish implementation, deployment or stage completion. The proposed dependencies remain uninstalled.
+
+**Recorded by:** docs-site specification author, 2026-10-01.
+### 2026-10-01 · G11 failure evidence avoids timed DOM snapshots and raw network secrets
+
+**Decision:** G11's Playwright run retains failure traces with actions, screencast, source,
+and attachment data, but disables automatic DOM snapshots during timed samples. Playwright
+1.63 also leaves its trace network files empty in this mode. Each benchmark context therefore
+attaches a separate bounded, sanitized network summary containing only method, a closed
+known-safe benchmark route template (or the fixed label `unrecognized`), resource type,
+finite response status, and available finite timing. It may include a boolean request-failure
+flag. Dynamic path values are always replaced by fixed placeholders, independent of their
+contents; unknown path shapes retain no path detail. It retains no raw request or response
+objects, headers, cookies, bodies, full URLs, or query strings, and reports truncation.
+Explicit screenshots taken after measured actions and all functional assertions remain
+required.
+Playwright DOM snapshot serialization was observed
+inside hosted metric windows on exact source `13516958be469aa353d9b5f7e0b113880b31ed17`
+(run `36860954427`). This measurement change removes competing instrumentation without
+changing product budgets, marks, throttles, fixtures, retry policy, row/card counts, or the
+paint-visibility contract. Any resulting timing change requires a new hosted canonical run;
+the separate diagnostic profile is not acceptance evidence. Disabling DOM snapshots reduces
+DOM-state replay detail.
+
+**Why:** hosted source attribution showed Playwright DOM snapshot serialization executing
+inside the timed windows, including recursive document traversal. The separate sanitized
+network summary restores useful request evidence without copying query strings or credentials
+into a HAR. Closed route templates prevent opaque IDs, including all-letter bearer-like values,
+from being retained as path text. This changes how G11 measures rendering and is not evidence
+of an application speedup or a gate pass.
+
+**Recorded by:** task orchestrator under the bounded G11 measurement-repair assignment,
+2026-10-01.
+
+### 2026-10-01 · P0 observability uses bounded internal metrics and operation-bound rotation
+
+**Decision:** follow the P0 target contract in [observability.md](../01-architecture/observability.md),
+[api-design.md](../01-architecture/api-design.md), and PA-15 in
+[pending-actions.md](../01-architecture/pending-actions.md). Pino and `prom-client` are
+planned choices; no dependencies are added by this decision or the documentation PR, and
+no runtime behavior is claimed. Logs use allowlisted, redacted structured records with
+trace correlation in log/span context only. Metric labels use finite enums or registered
+HTTP route templates; work-item and SLA metrics are instance-wide aggregates. Job and
+database-operation producers remain withheld until their owners define finite labels, and
+plugin-instance identifiers are not approved dimensions.
+
+The target metrics endpoint is exact `GET /metrics` on a separate internal listener at port
+9464, not exposed by a host port or Traefik route. Its bearer is 32 random bytes encoded as
+43-character unpadded base64url and only a 32-byte digest is stored. Scrapes reread the
+current digest from PostgreSQL. Log-level changes use version compare-and-set and a maximum
+five-second refresh. Token rotation is elevated, session-only, bound to the exact
+`metrics_token_rotate` route/version/server-canonical `{version}` body, and consumes its
+one-use confirmation atomically with the rotation CAS. Existing pending-action ID/payload
+binding is preserved. Unsupported required verification fails closed. Current source has no
+separate Node metrics listener/manifest, P0 metric producers, factor verifier, or SSO step-up
+adapter; the existing Hono `/metrics` fixture is a placeholder, not the target listener.
+
+AU-14 keeps the existing audit-failure behavior: safe counter/log reporting is an operational
+signal, not the required durable notification to every current instance administrator; that
+notification remains unfinished. RUM, tracing, Sentry, deep health, broad dashboards, and
+P4 UI remain deferred.
+
+**Why:** aggregate operating metrics are still sensitive, unbounded labels leak inventory,
+and a session-wide elevation window cannot bind rotation to fresh action-specific proof.
+Separate listener coverage must complement Hono route coverage.
+
+**Authorization and status:** Thomas's standing recommended-decisions authorization covers
+this recommended documentation decision. It does not authorize a gate waiver or establish
+implementation, runtime acceptance, or H1–H6 completion.
+
+**Decided by:** Thomas, under the standing recommended-decisions authorization; recorded by
+the orchestrator on 2026-10-01.
+### 2026-10-01 · Entra JIT admission and home-realm routing are connection-bound
+
+**Decision:** before creating a new person or membership through first-release Entra JIT,
+validate the selected connection's exact `iss`, `tid` and `aud`, resolve immutable `oid`
+under that connection, require the exact nonempty `required_entra_app_role` configured in
+that connection's existing `identity_connection.jit_policy`, and require signed `acct=0`.
+Missing, malformed or nonmatching role, missing/malformed `acct`, and guest `acct=1` fail
+closed before creation. The Entra app registration must assign the app role and request the
+optional `acct` claim. This app role is only an IdP admission signal; it grants no TaskDesk
+role, capability, organisation, portal scope, or reach. Other provider JIT remains disabled
+until its own subject-admission rule is approved. For unauthenticated customer login
+initiation, a typed email domain may route to a configured connection; its server-side
+single-use state context binds that connection id, customer portal and persisted
+`organisation_id`. Callback claims cannot select or change connection or scope. This routing
+is not identity or admission proof. After token validation, a cross-connection domain
+collision may deny sign-in; a matching domain never admits. `email`, `preferred_username`,
+`upn` and their domains are not address-ownership proof, JIT authority, organisation
+selection or identity-linking signals. An unbound typed domain may fall through to existing
+non-SSO methods without guessing or creating an organisation. Existing SCIM scope/lifecycle
+and no-email-account-linking rules are unchanged. Upstream Entra app-role deassignment alone
+does not promise immediate revocation of an already issued TaskDesk session.
+
+The portal does not publish a customer provider or organisation list, but its complete
+unauthenticated bound and unbound flows are intentionally distinguishable. A person
+submitting a domain may infer that it has a customer SSO binding and see the selected IdP's
+public redirect destination, including its host or tenant path. TaskDesk's discovery
+surface does not return an organisation or connection inventory, names, ids, domain
+inventory, discovery configuration, claim mappings or secrets, or disclose whether a
+TaskDesk user account exists; anonymous rate limits reduce bulk probing but do not hide this
+domain-specific disclosure. The former assertion that equal initial body, status, or timing
+made the full flow non-enumerating is withdrawn. A private preflight that verifies control
+of an address before domain routing would change the sign-in
+journey and needs a separate design decision; it is not implied here.
+
+Add planned trust negatives as subcases of acceptance test 05, including browser coverage of
+complete bound/unbound flows and the permitted and prohibited disclosures, and protocol
+negatives under existing test 15. The planned `tests/e2e/security/` suite must cover the CSRF
+cases before its applicable security gate is claimed; it is not implemented at this
+candidate. Preserve all 25 named P3 acceptance tests and the real-Entra completion gate.
+Historical owning-review
+rows 81–82 remain active until an independent owner reviewer re-checks and closes them. No
+gate is waived and no tests are claimed to have run by this design decision.
+
+**Why:** exact token binding plus a connection-specific assigned app role and explicit
+member account type establishes a subject-admission predicate without treating mutable
+address claims as proof. `jit_policy` already stores per-connection JIT configuration, so the
+additional key is documented in the authoritative data model without a new table or TaskDesk
+authority. Domain bindings remain useful for login routing and conservative collision
+refusal; accepting the limited domain-to-SSO/IdP-destination disclosure preserves the
+specified home-realm flow without claiming equal initial response properties hide the
+follow-up redirect. This is an explicit threat-model decision, not a waiver of review or
+testing gates.
+
+**Decision-maker:** the orchestrator, adopting its recommended reconciliation under Thomas's
+standing authorization, 2026-10-01.
+
+### 2026-10-01 · Notification fan-out uses event parents, delivery children and digest groups
+
+**Decision:** retain exactly one `outbox` row per domain event, with
+`outbox.event_id = DomainEvent.id` as the parent primary key and consumer idempotency key.
+Materialize one `notification_delivery` row per unique
+`(event_id, recipient_person_id, channel)` and one in-app row per distinct event/person in
+the originating transaction. A delivery child's own stable `id` owns its provider attempt
+and `outbox_dedupe_reservation`; it never replaces the event id. Event-time digest
+preferences attach children to a `notification_digest` group in that same transaction.
+Digest membership seals after its stored local-time window, provider calls are fenced by the
+group lease and the member dedupe reservations, and current reach/preferences are checked
+again at send time. Child, group and parent retention is child-before-parent, with holds
+preserving matching history. Provider-accepted but uncommitted outcomes remain at-least-once.
+
+**Why:** the former contract placed one recipient/channel on the event-envelope primary row,
+which cannot represent several recipients or channels without changing the canonical event
+identity used by consumers. Separate delivery children preserve the event id while giving
+each provider attempt independent uniqueness, retry, lease, reach and retention state. A
+single relational digest group provides a sealed aggregate boundary without hiding members
+inside JSON or coupling inbox read retention to provider delivery.
+
+**Alternatives:** make one `outbox` row per recipient/channel with a different primary key
+(rejected because it changes the existing envelope schema and event-consumer idempotency
+assumption); use the in-app `notification` row as the provider queue (rejected because inbox
+read retention, visibility and multiple channels have different lifecycles); store all
+recipients in one parent payload (rejected because partial outcomes cannot be leased,
+retried or held independently); create notification children after commit (rejected because
+it breaks NO-8 atomicity); send each digest candidate separately (rejected because it breaks
+NO-6's one-summary-message contract).
+
+Parent event requeue reruns only idempotent event-consumer materialization and does not
+reset, recreate or resend already materialized notification children. Requeueing an
+individual notification keeps its child id and respects any live reservation. Webhook
+redelivery remains the explicit per-target action in WH-8.
+
+**Decided by:** Thomas, under the standing recommended-decisions authorization; recorded by
+the orchestrator on 2026-10-01.
+
+### 2026-10-01 · Pending-action decisions follow the existing AU-14 mutation contract
+
+**Reconciliation:** denial/cancellation mutations preserve the already-decided AU-14
+contract: action state and its outbox event commit together; an audit append failure rolls
+back its nested audit savepoint, reports the error and does not undo the committed mutation.
+The existing self-read contract remains separate: a summary-rendering read fails if its
+viewed audit cannot be written. This introduces no waiver or new exception.
+
+**Why:** the initial decision-route reviews inferred a conflicting fail-closed mutation
+rule from PA-11. The authoritative audit/security documents and Thomas's existing AU-14
+decision explicitly require mutation success with operator reporting. PR #539's candidate PA-11 text points to
+that contract, and real PostgreSQL service/HTTP tests exercise both audit failure and
+outbox failure independently. Metric/administrator alerting remains unfinished work.
+
+**Recorded by:** orchestrator, reconciling Thomas's existing AU-14 decision and the
+independent ordinary/security reconsiderations for PR #539. No new approval policy is made.
+
+### 2026-10-01 · Pending-action reads require current owner identity
+
+**Decision:** resolve the current database identity before either pending-action self read,
+for sessions and API keys. If no valid identity resolves, return 401 before querying an
+action or writing a viewed audit. Keep 404 for a valid caller querying a missing or foreign
+action. Apply the existing identity resolver's lifecycle, organisation and key-owner rules;
+authenticated-self reads do not require a workspace capability.
+
+**Why:** an API key can remain cryptographically valid after its owner is banned or
+deactivated. Stored summaries must stop being readable when the current identity becomes
+invalid. The existing permission evaluator treats an absent resolved identity as 401;
+using the same response for both self routes exposes no action-existence information.
+
+**Decided by:** Thomas, under the 2026-10-01 standing instruction to use recommended
+decisions; recorded by the orchestrator after PR #528's independent security finding.
+
+### 2026-10-01 · Pending-action self-read API contract
+
+**Decision:** `GET /api/me/pending-actions` returns only the caller's pending actions,
+ordered by `created_at DESC, id DESC`, with the standard opaque cursor and limit (default
+50, maximum 200) and `{ data, page, meta }` envelope. `GET
+/api/me/pending-actions/{id}` returns the caller's action in any state for polling; another
+requester's id returns the same 404 as a missing id. Both use one explicit allowlisted DTO:
+id, action, origin, target type and ids, summary, required confirmation, state, timestamps,
+invalidation reason, and the own API key's name when available. Payload/hash, route key,
+credential id, step-up token id, trace id, and internal error stay private. A read that
+renders a summary writes `pending_action.viewed`; an audit failure fails the read.
+
+**Why:** clients need a stable way to discover approval requests and poll their outcomes.
+The persistence row contains internal authorization and execution data, so returning it
+directly would expose fields that the UI and polling contract do not need.
+
+**Decided by:** task orchestrator, 2026-10-01.
+
+### 2026-10-01 · Versioned task writes use a successor route; legacy PUT stays compatible (#526)
+
+**Decision:** first-party full-task writes use required-precondition `PUT
+/api/v2/task/{id}` with the existing authorization chain and locked task-version comparison.
+The released `PUT /api/task/{id}` remains supported as a deprecated compatibility operation:
+omitting `If-Match` preserves its prior request behavior, while a supplied header is strictly
+parsed and enforced under the same lock. Both operations, and every other persisted task-row
+writer, atomically advance `task.version`. First-party web and MCP full-task writers use the
+versioned route. The legacy route emits `Deprecation: @1790812800`, `Sunset: Thu, 01 Apr 2027
+00:00:00 GMT`, and a `successor-version` Link to the v2 operation. Deprecation starts
+2026-10-01; removal is allowed only after both the sunset date and two subsequent minor
+releases, with no automatic removal. Unversioned third-party legacy clients retain their
+existing overwrite risk during migration; #526 protects first-party writers and version-aware
+requests, not every legacy client.
+
+**Why:** the stable 2.0 API cannot gain a required request header without a breaking change.
+The versioned operation enforces the concurrency contract while the legacy operation remains
+compatible and gives clients a dated successor path.
+
+**Alternatives:** make the old header optional only in OpenAPI (rejected because runtime and
+contract would disagree); exempt the break in the closed allowlist (rejected because stable
+API breaks require a successor version); remove legacy compatibility immediately (rejected
+because existing clients need a migration window).
+
+**Decided by:** Thomas under the standing all-recommended-decisions instruction, recorded by
+the orchestrating session on 2026-10-01.
+
+### 2026-10-01 · Legacy full-task PUT uses the work-item optimistic-concurrency contract (#526)
+
+**Decision:** while legacy task screens and `/api/task` remain active, full-task
+`PUT /api/task/{id}` uses the `api-design.md` `If-Match` version contract. Task responses expose
+an integer row version; every persisted task-row update advances it. The PUT checks the
+asserted version after locking the task and returns 409 with asserted/current versions on a
+mismatch, with no row or event side effects. Every full-task caller must send the version from
+the task it read. Existing field-specific status/assignee and move routes remain scoped to
+their requested fields and advance the same version. No last-write-wins exception is added
+for those fields or for other full-task PUT fields. The owning specification is
+`work-items.md` WI-7a.
+
+**Why:** the compatibility endpoint replaces multiple fields from one possibly stale task
+snapshot. A row lock alone serializes writes but still permits a late stale replacement to
+undo a status or assignee change. A row version checked under that lock preserves the latest
+committed change, including when requests finish in the reverse order.
+
+**Alternatives:** keep last-write-wins for legacy PUT (rejected because completion order can
+silently revert a concurrent edit); merge selected protected fields in the server (rejected
+because intent cannot be distinguished from a stale snapshot without a client revision).
+
+**Decided by:** the orchestrating session under the bounded #526 task-update concurrency
+assignment; recorded before implementation.
+
+### 2026-10-01 · G8 requires implemented screens now and activates future routes with implementation
+
+**Decision:** G8 requires screenshot comparison for every exported UI Storybook story and
+every `route`-kind inventory row marked in progress or complete. A route first marked in
+progress must gain its route registration, deterministic fixture, and committed baseline in
+that same change. Routes still marked not started remain planned work and do not need a
+baseline before implementation. Every inventory route is part of G8's eventual scope.
+
+**Why:** requiring baselines for future routes before they exist would force feature work
+solely to satisfy a gate. Deferring an implemented screen would leave a coverage gap. This
+states the active acceptance rule and the activation point explicitly in the UX-gate spec.
+
+**Alternatives:** require every planned route immediately (rejected because not-started
+routes do not exist yet); cover only today's active rows without an activation rule
+(rejected because future routes could remain uncovered).
+
+**Decided by:** Thomas, under the 2026-10-01 standing instruction to use recommended
+decisions; recorded by the orchestrator.
+
+### 2026-09-30 · TaskDesk public links use the Bimats host
+
+**Decision:** use `https://taskdesk.bimats.com` for current TaskDesk website links and the
+default OpenAPI server. The former `taskdesk.app` domain is not TaskDesk's domain. Preserve the
+separate UAT hostnames already defined by deployment configuration; never infer UAT from
+`uat.taskdesk.app`.
+
+Historical decisions, incidents, and review notes keep the hostnames that were accurate when
+written. This decision changes current links and defaults prospectively.
+
+**Why:** Thomas confirmed that `taskdesk.bimats.com` is the mapped product host and that the
+company domain is `bimats.com`. Current links to `taskdesk.app` and the prior `uat.taskdesk.app`
+reachability assumption were incorrect.
+
+**Decided by:** Thomas, 2026-09-30.
+
+### 2026-09-29 · G8 route coverage advances with screen implementation
+
+**Decision:** enable G8 incrementally across the screen inventory. Every route marked in
+progress or complete must have a registered application route, deterministic browser
+fixture, and committed screenshot baseline in the same change. A registered inventory
+route whose rows are all still marked not started fails the scope check. Every exported UI
+Storybook story remains covered. Routes still marked not started are planned work and are
+not represented as already covered; their G8 requirement activates when implementation
+moves them into progress. The eventual scope remains every inventory route.
+
+**Why:** the inventory includes future-stage screens that do not exist yet. Requiring their
+screenshots before implementation would force building future features just to satisfy the
+gate, while omitting them from the eventual contract would leave permanent coverage gaps.
+
+**Decided by:** Thomas, 2026-09-29.
 
 ### 2026-09-29 · OpenAI model routing replaces Claude/`pal-mcp` routing
 

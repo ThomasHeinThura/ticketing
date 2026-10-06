@@ -13,6 +13,7 @@ import {
   assertWorkItemStillLive,
   projectNotDeletedClause,
 } from "../assert-work-item-live";
+import { publishWorkItemHint, recordWorkItemEvent } from "../native-event";
 import { runWithParentWriteDeadlockRetry } from "../parent-write-deadlock-retry";
 
 /**
@@ -44,7 +45,7 @@ export async function detachWorkItemParent(
   actorId: string,
   actorType: ActivityActorType,
 ) {
-  const { updated, oldParentId, changed } =
+  const { updated, oldParentId, changed, realtimeEvent } =
     await runWithParentWriteDeadlockRetry(() =>
       db.transaction(async (tx) => {
         const [item] = await tx
@@ -100,15 +101,47 @@ export async function detachWorkItemParent(
           },
         ]);
 
+        const realtimeEvent = await recordWorkItemEvent(tx, {
+          kind: "work_item.updated",
+          workItemId: updatedRow.id,
+          key: updatedRow.key,
+          workspaceId: updatedRow.workspaceId,
+          projectId: updatedRow.projectId,
+          actorId,
+          actorType,
+          customerVisible: false,
+          payload: {
+            key: updatedRow.key,
+            url: `/agent/work-items/${encodeURIComponent(updatedRow.key)}`,
+            changes: [
+              {
+                field: "parent",
+                from: item.parentId,
+                to: null,
+                visibility: "internal",
+              },
+            ],
+          },
+        });
+
         return {
           updated: updatedRow,
           oldParentId: item.parentId,
           changed: true,
+          realtimeEvent,
         };
       }),
     );
 
   if (changed) {
+    if (!realtimeEvent)
+      throw new Error("Updated work item is missing realtime event");
+    await publishWorkItemHint(realtimeEvent, {
+      kind: "work_item.updated",
+      key: updated.key,
+      projectId: updated.projectId,
+      customerVisible: false,
+    });
     await publishEvent("work_item.updated", {
       workItemId: updated.id,
       key: updated.key,

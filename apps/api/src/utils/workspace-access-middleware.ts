@@ -1,11 +1,24 @@
-import { and, eq, inArray, type SQLWrapper, sql } from "drizzle-orm";
+import type { ProjectReachFacts } from "@taskdesk/permissions";
+import {
+  and,
+  eq,
+  inArray,
+  isNull,
+  not,
+  type SQL,
+  type SQLWrapper,
+  sql,
+} from "drizzle-orm";
 import type { Context, Next } from "hono";
 import { HTTPException } from "hono/http-exception";
 import db, { schema } from "../database";
+import { policyShadowEnabled } from "../permissions/shadow-config";
 import {
+  hasMatchedRowScopedCapabilityPolicy,
   markShadowLegacyAuthorizationUnknown,
   setShadowLegacyAuthorization,
 } from "../permissions/shadow-context";
+import { projectReadDecision } from "./has-project-reach";
 import { rejectNulByte } from "./reject-nul-byte";
 import { validateWorkspaceAccess } from "./validate-workspace-access";
 
@@ -59,8 +72,9 @@ const NUL_BYTE_LABEL = "Workspace/resource id";
 // api-design.md`'s 404 row requires exactly this to be indistinguishable ("not found or
 // out of reach"), and #261's F2 fixed the identical class for `require-work-item-reach.ts`.
 // The two cases now share not just the same status but the same message, and 403 stays
-// reserved for what `requireWorkspaceCapability` answers next: reachable workspace,
-// missing capability.
+// reserved for a reachable target with missing capability. Workspace-scoped routes use
+// `requireWorkspaceCapability`; project-scoped read routes opt into the canonical target
+// capability check in this middleware and do not apply a second workspace-role decision.
 const RESOURCE_NOT_FOUND_MESSAGE: Record<
   | "task"
   | "label"
@@ -115,13 +129,53 @@ type WorkspaceIdSource =
 
 type WorkspaceAccessMiddlewareConfig = {
   sources: WorkspaceIdSource[];
+  /** Enforce canonical project reach after the typed project row is resolved. */
+  requireProjectReach?: boolean;
 };
+
+type ShadowResourceAnchor = {
+  readonly resource: Extract<WorkspaceIdSource, { type: "lookup" }>["resource"];
+  readonly id: string;
+};
+
+type PolicyScopeResource =
+  | "project"
+  | "task"
+  | "label"
+  | "timeEntry"
+  | "activity"
+  | "comment"
+  | "column"
+  | "workflowRule"
+  | "savedView"
+  | "workflow"
+  | "workflowVersion";
 
 type WorkspaceRowScope = {
   workspaceId: string;
   projectId?: string;
   workItemId?: string;
+  projectReachFacts?: ProjectReachFacts;
 };
+
+/**
+ * Current project schema has no parent-project or owner-team columns. Supplying their
+ * current-schema values explicitly avoids guessing from a legacy denial while keeping
+ * future hierarchy/team support gated on the schema and loader that introduce those facts.
+ */
+function currentProjectReachFacts(
+  projectId: string,
+  workspaceId: string,
+  organisationId: string | null,
+): ProjectReachFacts {
+  return {
+    projectId,
+    workspaceId,
+    organisationId,
+    ancestorProjectIds: [],
+    ownerTeamId: null,
+  };
+}
 
 async function readJsonObjectBody(
   c: Context,
@@ -158,6 +212,7 @@ export function workspaceAccessMiddleware(
     let shadowProjectId: string | null = null;
     let shadowWorkItemId: string | null = null;
     let shadowWorkspaceIdSource: "request" | "row" | null = null;
+    let policyScopeResource: PolicyScopeResource | null = null;
 
     // Read once, ahead of the loop: `lookup`/`lookupMany` sources need it to check
     // reach as soon as they resolve a row, not only after the loop ends.
@@ -222,6 +277,53 @@ export function workspaceAccessMiddleware(
             userId,
             apiKeyId,
           );
+          if (
+            !resolved &&
+            policyShadowEnabled &&
+            c.req.method === "GET" &&
+            (await hasMatchedRowScopedCapabilityPolicy(c))
+          ) {
+            // This observer-only query never feeds the native authorization path. The
+            // typed lookup configuration selects both resource kind and id. A row is
+            // eligible only when it is still live and the ordinary reach-filtered lookup
+            // above excluded it; its persisted scope lets the post-response policy check
+            // explain a masked denial without revealing existence to the caller.
+            const anchor: ShadowResourceAnchor = {
+              resource: source.resource,
+              id,
+            };
+            const observerRow = await lookupWorkspaceId(
+              anchor.resource,
+              anchor.id,
+              userId,
+              apiKeyId,
+              { observerOnly: true },
+            );
+            if (observerRow) {
+              setShadowLegacyAuthorization(c, "denied");
+              c.set("workspaceId", observerRow.workspaceId);
+              c.set("workspaceIdSource", "row");
+              if (observerRow.projectId) {
+                c.set("projectId", observerRow.projectId);
+              }
+              if (observerRow.workItemId) {
+                c.set("workItemId", observerRow.workItemId);
+              }
+              if (observerRow.projectReachFacts) {
+                c.set("projectReachFacts", observerRow.projectReachFacts);
+              }
+              c.set("policyScopeResource", source.resource);
+            }
+          }
+          if (resolved) {
+            policyScopeResource =
+              source.resource === "task" ||
+              source.resource === "timeEntry" ||
+              source.resource === "activity" ||
+              source.resource === "comment"
+                ? "task"
+                : source.resource;
+          }
           workspaceId = resolved?.workspaceId ?? null;
           if (resolved) {
             shadowWorkspaceIdSource = "row";
@@ -229,6 +331,9 @@ export function workspaceAccessMiddleware(
             c.set("workspaceIdSource", "row");
             shadowProjectId = resolved.projectId ?? null;
             shadowWorkItemId = resolved.workItemId ?? null;
+            if (resolved.projectReachFacts) {
+              c.set("projectReachFacts", resolved.projectReachFacts);
+            }
           }
           if (!workspaceId) {
             if (source.resource !== "project") {
@@ -309,6 +414,7 @@ export function workspaceAccessMiddleware(
             shadowWorkspaceIdSource = "row";
             shadowWorkItemId =
               taskIds.length === 1 ? (taskIds[0] ?? null) : null;
+            policyScopeResource = "task";
           }
         }
       }
@@ -345,6 +451,42 @@ export function workspaceAccessMiddleware(
       c.set("projectId", shadowProjectId);
     }
     if (shadowWorkItemId) c.set("workItemId", shadowWorkItemId);
+    if (policyScopeResource) c.set("policyScopeResource", policyScopeResource);
+
+    if (config.requireProjectReach) {
+      const projectId = c.get("projectId") as string | undefined;
+      const projectReachFacts = c.get("projectReachFacts") as
+        | ProjectReachFacts
+        | undefined;
+      if (
+        !projectId ||
+        !projectReachFacts ||
+        projectReachFacts.projectId !== projectId ||
+        projectReachFacts.workspaceId !== workspaceId
+      ) {
+        throw new HTTPException(500, {
+          message: "Project reach context could not be determined",
+        });
+      }
+
+      const decision = await projectReadDecision(c, userId, {
+        ...projectReachFacts,
+        workItemId: c.get("workItemId") as string | undefined,
+      });
+      if (!decision) {
+        throw new HTTPException(500, {
+          message: "Project read policy could not be determined",
+        });
+      }
+      if (!decision.reachable) {
+        setShadowLegacyAuthorization(c, "denied");
+        throw new HTTPException(404, { message: "Project not found" });
+      }
+      if (!decision.capable) {
+        setShadowLegacyAuthorization(c, "denied");
+        throw new HTTPException(403, { message: "Insufficient permissions" });
+      }
+    }
 
     return next();
   };
@@ -364,25 +506,26 @@ export function reachableWorkspacePredicate(
   workspaceId: SQLWrapper,
   userId: string,
   apiKeyId?: string,
-) {
+): SQL {
   const reach = sql`(
-    EXISTS (
-      SELECT 1 FROM ${schema.userTable}
-      WHERE ${schema.userTable.id} = ${userId}
-        AND ${schema.userTable.role} = 'admin'
-    )
-    OR EXISTS (
-      SELECT 1 FROM ${schema.workspaceUserTable}
-      WHERE ${schema.workspaceUserTable.userId} = ${userId}
-        AND ${schema.workspaceUserTable.workspaceId} = ${workspaceId}
-    )
-  )`;
+        EXISTS (
+          SELECT 1 FROM ${schema.userTable}
+          WHERE ${schema.userTable.id} = ${userId}
+            AND ${schema.userTable.role} = 'admin'
+        )
+        OR EXISTS (
+          SELECT 1 FROM ${schema.workspaceUserTable}
+          WHERE ${schema.workspaceUserTable.userId} = ${userId}
+            AND ${schema.workspaceUserTable.workspaceId} = ${workspaceId}
+        )
+      )`;
 
   if (!apiKeyId) return reach;
 
-  return and(
-    reach,
-    sql`EXISTS (
+  return (
+    and(
+      reach,
+      sql`EXISTS (
       SELECT 1 FROM ${schema.apikeyTable}
       WHERE ${schema.apikeyTable.id} = ${apiKeyId}
         AND (
@@ -391,6 +534,7 @@ export function reachableWorkspacePredicate(
         )
         AND ${schema.apikeyTable.enabled} = true
     )`,
+    ) ?? sql`false`
   );
 }
 
@@ -410,7 +554,19 @@ async function lookupWorkspaceId(
   id: string,
   userId: string,
   apiKeyId?: string,
+  options: { readonly observerOnly?: boolean } = {},
 ): Promise<WorkspaceRowScope | null> {
+  const reach = (workspaceId: SQLWrapper) => {
+    const nativePredicate = reachableWorkspacePredicate(
+      workspaceId,
+      userId,
+      apiKeyId,
+    );
+    // Observer queries recover scope only when the same production reach predicate
+    // used by the native lookup evaluates false. They never make an allowed request
+    // appear denied because of a race between two differently filtered lookups.
+    return options.observerOnly ? not(nativePredicate) : nativePredicate;
+  };
   try {
     switch (resource) {
       case "project": {
@@ -418,21 +574,33 @@ async function lookupWorkspaceId(
           .select({
             workspaceId: schema.projectTable.workspaceId,
             projectId: schema.projectTable.id,
+            organisationId: schema.workspaceTable.organisationId,
           })
           .from(schema.projectTable)
+          .innerJoin(
+            schema.workspaceTable,
+            eq(schema.workspaceTable.id, schema.projectTable.workspaceId),
+          )
           .where(
             and(
               eq(schema.projectTable.id, id),
-              reachableWorkspacePredicate(
-                schema.projectTable.workspaceId,
-                userId,
-                apiKeyId,
-              ),
+              reach(schema.projectTable.workspaceId),
+              ...(options.observerOnly
+                ? [isNull(schema.projectTable.deletedAt)]
+                : []),
             ),
           )
           .limit(1);
         return project?.workspaceId
-          ? { workspaceId: project.workspaceId, projectId: project.projectId }
+          ? {
+              workspaceId: project.workspaceId,
+              projectId: project.projectId,
+              projectReachFacts: currentProjectReachFacts(
+                project.projectId,
+                project.workspaceId,
+                project.organisationId,
+              ),
+            }
           : null;
       }
 
@@ -442,20 +610,24 @@ async function lookupWorkspaceId(
             workspaceId: schema.projectTable.workspaceId,
             projectId: schema.taskTable.projectId,
             workItemId: schema.taskTable.id,
+            organisationId: schema.workspaceTable.organisationId,
           })
           .from(schema.taskTable)
           .innerJoin(
             schema.projectTable,
             eq(schema.taskTable.projectId, schema.projectTable.id),
           )
+          .innerJoin(
+            schema.workspaceTable,
+            eq(schema.workspaceTable.id, schema.projectTable.workspaceId),
+          )
           .where(
             and(
               eq(schema.taskTable.id, id),
-              reachableWorkspacePredicate(
-                schema.projectTable.workspaceId,
-                userId,
-                apiKeyId,
-              ),
+              reach(schema.projectTable.workspaceId),
+              ...(options.observerOnly
+                ? [isNull(schema.projectTable.deletedAt)]
+                : []),
             ),
           )
           .limit(1);
@@ -464,6 +636,11 @@ async function lookupWorkspaceId(
               workspaceId: task.workspaceId,
               projectId: task.projectId,
               workItemId: task.workItemId,
+              projectReachFacts: currentProjectReachFacts(
+                task.projectId,
+                task.workspaceId,
+                task.organisationId,
+              ),
             }
           : null;
       }
@@ -475,11 +652,7 @@ async function lookupWorkspaceId(
           .where(
             and(
               eq(schema.labelTable.id, id),
-              reachableWorkspacePredicate(
-                schema.labelTable.workspaceId,
-                userId,
-                apiKeyId,
-              ),
+              reach(schema.labelTable.workspaceId),
             ),
           )
           .limit(1);
@@ -492,6 +665,7 @@ async function lookupWorkspaceId(
             workspaceId: schema.projectTable.workspaceId,
             projectId: schema.taskTable.projectId,
             workItemId: schema.taskTable.id,
+            organisationId: schema.workspaceTable.organisationId,
           })
           .from(schema.timeEntryTable)
           .innerJoin(
@@ -502,14 +676,17 @@ async function lookupWorkspaceId(
             schema.projectTable,
             eq(schema.taskTable.projectId, schema.projectTable.id),
           )
+          .innerJoin(
+            schema.workspaceTable,
+            eq(schema.workspaceTable.id, schema.projectTable.workspaceId),
+          )
           .where(
             and(
               eq(schema.timeEntryTable.id, id),
-              reachableWorkspacePredicate(
-                schema.projectTable.workspaceId,
-                userId,
-                apiKeyId,
-              ),
+              reach(schema.projectTable.workspaceId),
+              ...(options.observerOnly
+                ? [isNull(schema.projectTable.deletedAt)]
+                : []),
             ),
           )
           .limit(1);
@@ -518,6 +695,11 @@ async function lookupWorkspaceId(
               workspaceId: timeEntry.workspaceId,
               projectId: timeEntry.projectId,
               workItemId: timeEntry.workItemId,
+              projectReachFacts: currentProjectReachFacts(
+                timeEntry.projectId,
+                timeEntry.workspaceId,
+                timeEntry.organisationId,
+              ),
             }
           : null;
       }
@@ -528,6 +710,7 @@ async function lookupWorkspaceId(
             workspaceId: schema.projectTable.workspaceId,
             projectId: schema.taskTable.projectId,
             workItemId: schema.taskTable.id,
+            organisationId: schema.workspaceTable.organisationId,
           })
           .from(schema.taskActivityTable)
           .innerJoin(
@@ -538,14 +721,17 @@ async function lookupWorkspaceId(
             schema.projectTable,
             eq(schema.taskTable.projectId, schema.projectTable.id),
           )
+          .innerJoin(
+            schema.workspaceTable,
+            eq(schema.workspaceTable.id, schema.projectTable.workspaceId),
+          )
           .where(
             and(
               eq(schema.taskActivityTable.id, id),
-              reachableWorkspacePredicate(
-                schema.projectTable.workspaceId,
-                userId,
-                apiKeyId,
-              ),
+              reach(schema.projectTable.workspaceId),
+              ...(options.observerOnly
+                ? [isNull(schema.projectTable.deletedAt)]
+                : []),
             ),
           )
           .limit(1);
@@ -554,6 +740,11 @@ async function lookupWorkspaceId(
               workspaceId: activity.workspaceId,
               projectId: activity.projectId,
               workItemId: activity.workItemId,
+              projectReachFacts: currentProjectReachFacts(
+                activity.projectId,
+                activity.workspaceId,
+                activity.organisationId,
+              ),
             }
           : null;
       }
@@ -564,6 +755,7 @@ async function lookupWorkspaceId(
             workspaceId: schema.projectTable.workspaceId,
             projectId: schema.taskTable.projectId,
             workItemId: schema.taskTable.id,
+            organisationId: schema.workspaceTable.organisationId,
           })
           .from(schema.taskActivityTable)
           .innerJoin(
@@ -574,15 +766,18 @@ async function lookupWorkspaceId(
             schema.projectTable,
             eq(schema.taskTable.projectId, schema.projectTable.id),
           )
+          .innerJoin(
+            schema.workspaceTable,
+            eq(schema.workspaceTable.id, schema.projectTable.workspaceId),
+          )
           .where(
             and(
               eq(schema.taskActivityTable.id, id),
               eq(schema.taskActivityTable.type, "comment"),
-              reachableWorkspacePredicate(
-                schema.projectTable.workspaceId,
-                userId,
-                apiKeyId,
-              ),
+              reach(schema.projectTable.workspaceId),
+              ...(options.observerOnly
+                ? [isNull(schema.projectTable.deletedAt)]
+                : []),
             ),
           )
           .limit(1);
@@ -591,6 +786,11 @@ async function lookupWorkspaceId(
               workspaceId: comment.workspaceId,
               projectId: comment.projectId,
               workItemId: comment.workItemId,
+              projectReachFacts: currentProjectReachFacts(
+                comment.projectId,
+                comment.workspaceId,
+                comment.organisationId,
+              ),
             }
           : null;
       }
@@ -600,25 +800,37 @@ async function lookupWorkspaceId(
           .select({
             workspaceId: schema.projectTable.workspaceId,
             projectId: schema.columnTable.projectId,
+            organisationId: schema.workspaceTable.organisationId,
           })
           .from(schema.columnTable)
           .innerJoin(
             schema.projectTable,
             eq(schema.columnTable.projectId, schema.projectTable.id),
           )
+          .innerJoin(
+            schema.workspaceTable,
+            eq(schema.workspaceTable.id, schema.projectTable.workspaceId),
+          )
           .where(
             and(
               eq(schema.columnTable.id, id),
-              reachableWorkspacePredicate(
-                schema.projectTable.workspaceId,
-                userId,
-                apiKeyId,
-              ),
+              reach(schema.projectTable.workspaceId),
+              ...(options.observerOnly
+                ? [isNull(schema.projectTable.deletedAt)]
+                : []),
             ),
           )
           .limit(1);
         return column?.workspaceId
-          ? { workspaceId: column.workspaceId, projectId: column.projectId }
+          ? {
+              workspaceId: column.workspaceId,
+              projectId: column.projectId,
+              projectReachFacts: currentProjectReachFacts(
+                column.projectId,
+                column.workspaceId,
+                column.organisationId,
+              ),
+            }
           : null;
       }
 
@@ -627,20 +839,24 @@ async function lookupWorkspaceId(
           .select({
             workspaceId: schema.projectTable.workspaceId,
             projectId: schema.workflowRuleTable.projectId,
+            organisationId: schema.workspaceTable.organisationId,
           })
           .from(schema.workflowRuleTable)
           .innerJoin(
             schema.projectTable,
             eq(schema.workflowRuleTable.projectId, schema.projectTable.id),
           )
+          .innerJoin(
+            schema.workspaceTable,
+            eq(schema.workspaceTable.id, schema.projectTable.workspaceId),
+          )
           .where(
             and(
               eq(schema.workflowRuleTable.id, id),
-              reachableWorkspacePredicate(
-                schema.projectTable.workspaceId,
-                userId,
-                apiKeyId,
-              ),
+              reach(schema.projectTable.workspaceId),
+              ...(options.observerOnly
+                ? [isNull(schema.projectTable.deletedAt)]
+                : []),
             ),
           )
           .limit(1);
@@ -648,6 +864,11 @@ async function lookupWorkspaceId(
           ? {
               workspaceId: workflowRule.workspaceId,
               projectId: workflowRule.projectId,
+              projectReachFacts: currentProjectReachFacts(
+                workflowRule.projectId,
+                workflowRule.workspaceId,
+                workflowRule.organisationId,
+              ),
             }
           : null;
       }
@@ -684,11 +905,7 @@ async function lookupWorkspaceId(
           .where(
             and(
               eq(schema.workflowTable.id, id),
-              reachableWorkspacePredicate(
-                schema.workflowTable.workspaceId,
-                userId,
-                apiKeyId,
-              ),
+              reach(schema.workflowTable.workspaceId),
             ),
           )
           .limit(1);
@@ -710,11 +927,7 @@ async function lookupWorkspaceId(
           .where(
             and(
               eq(schema.workflowVersionTable.id, id),
-              reachableWorkspacePredicate(
-                schema.workflowTable.workspaceId,
-                userId,
-                apiKeyId,
-              ),
+              reach(schema.workflowTable.workspaceId),
             ),
           )
           .limit(1);
@@ -727,6 +940,11 @@ async function lookupWorkspaceId(
         return null;
     }
   } catch (error) {
+    if (options.observerOnly) {
+      // The native masked response is authoritative. An observer read failure leaves
+      // scope unavailable and must not turn that response into a 503 or log row data.
+      return null;
+    }
     // Fail CLOSED. This used to `return null`, which is indistinguishable from
     // "the row does not exist" — and several sources (fromTask, fromTaskId,
     // fromLabel, fromComment, fromColumn, fromTimeEntry, fromActivity,
@@ -755,19 +973,31 @@ export const workspaceAccess = {
   fromParam: (key = "workspaceId") =>
     workspaceAccessMiddleware({ sources: [{ type: "param", key }] }),
 
-  fromProject: (idKey = "id") =>
+  fromProject: (
+    idKey = "id",
+    options: { readonly requireProjectReach?: boolean } = {},
+  ) =>
     workspaceAccessMiddleware({
       sources: [{ type: "lookup", resource: "project", idKey }],
+      requireProjectReach: options.requireProjectReach,
     }),
 
-  fromTask: (idKey = "id") =>
+  fromTask: (
+    idKey = "id",
+    options: { readonly requireProjectReach?: boolean } = {},
+  ) =>
     workspaceAccessMiddleware({
       sources: [{ type: "lookup", resource: "task", idKey }],
+      requireProjectReach: options.requireProjectReach,
     }),
 
-  fromTaskId: (idKey = "taskId") =>
+  fromTaskId: (
+    idKey = "taskId",
+    options: { readonly requireProjectReach?: boolean } = {},
+  ) =>
     workspaceAccessMiddleware({
       sources: [{ type: "lookup", resource: "task", idKey }],
+      requireProjectReach: options.requireProjectReach,
     }),
 
   fromTasks: (idKey = "taskIds") =>

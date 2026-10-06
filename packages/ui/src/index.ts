@@ -1,15 +1,12 @@
 // packages/ui — the single source of UI primitives (AGENTS.md rule 1).
+// Extraction batch notes below are historical snapshots; the latest #403 disposition is
+// recorded in the current-state note before Batch 6 and in docs/02-design/design-system.md.
 //
 // Batch 2 (issue #9): nine leaf primitives added on top of the first slice (contract
 // batch C1) — checkbox, collapsible, radio-group, scroll-area, slider, switch, tabs,
-// toggle, tooltip. All Base UI based, with no live Radix usage. `avatar` was
-// considered for this batch and dropped: its `AvatarImage` couples to
-// `apps/web`'s `resolveAvatarSrc`, which reads the web app's API base URL from its build env — an
-// app-bootstrap concern that does not belong in a dependency-free design-system
-// package, and every real call site passes an unresolved `/api/...` path, so moving it
-// as-is would either leak env-reading into `packages/ui` or require repointing ~20
-// call sites to pre-resolve `src` themselves — out of scope for a bounded leaf-primitive
-// batch.
+// toggle, tooltip. All Base UI based, with no live Radix usage. Avatar was deferred
+// from that relocation batch because its image adapter read the web app's API base URL;
+// it now lives here as a pure primitive, while the web component retains that URL adapter.
 //
 // Batch 3 (issue #9): ten more leaf primitives — accordion, checkbox-group,
 // circular-progress, input-group, number-field, popover, preview-card, table, toggle-group,
@@ -36,8 +33,8 @@
 // relocation-only batch may not add. `input-otp` was considered and dropped: it depends
 // on the `input-otp` npm package, which is a dependency of `apps/web` but not of
 // `packages/ui` — adding it would mean touching `packages/ui/package.json`, out of scope
-// for a relocation-only batch. The remaining ~17 primitives (including `avatar.tsx` and
-// `error-boundary.tsx`, still un-de-Sentry'd; `form.tsx`/`timeline.tsx`, still on Radix
+// for a relocation-only batch. The remaining primitives (including `error-boundary.tsx`,
+// still un-de-Sentry'd; `form.tsx`/`timeline.tsx`, still on Radix
 // `Slot`; `breadcrumb.tsx`/`pagination.tsx`, still on `react-i18next`/`i18n`; `dialog.tsx`,
 // `sheet.tsx`, `combobox.tsx`, blocked on the same `i18n` dependency; `input-otp.tsx`,
 // blocked on the `input-otp` package dependency; and `loading-skeleton.tsx`, an
@@ -56,24 +53,25 @@
 // its own remove control). `input-otp` remains blocked on the npm dependency (separate
 // issue).
 //
+// Historical batch notes below describe the extraction state at their original commit.
+// In the #403 UI-foundation candidate, the shared Avatar now lives in packages/ui while
+// its URL resolver remains in apps/web/src/components/avatar; app error compositions and
+// the first-load shell are also app-owned, and apps/web/src/components/ui is empty.
 // Batch 6 (issue #9): the last nine movable primitives — breadcrumb, calendar, form,
 // input-otp, pagination, shortcut-number, sidebar, timeline, toast — plus the shared
 // `Slot` helper (`apps/web/src/lib/slot.tsx` -> `./lib/slot.tsx`) and the mobile-breakpoint
 // hook (`apps/web/src/hooks/use-mobile.ts` -> `./lib/use-mobile.ts`, re-exported as
-// `useIsMobile`). `apps/web/src/components/ui` is not empty after this batch — five
-// primitives stay, for reasons read from their own source, not assumed from the batch-3/4
-// notes above:
+// `useIsMobile`). `apps/web/src/components/ui` is not empty after this batch — four
+// files stay, for reasons read from their own source, not assumed from the batch-3/4
+// notes above. The avatar's application URL resolver stays in its thin app adapter.
 //
-// - `avatar.tsx` — the batch-2 blocker (`AvatarImage` -> `resolveAvatarSrc`, an app
-//   build-env URL resolver) is unchanged: still 23 call sites passing a bare `/api/...`
-//   path, still out of scope for a relocation batch to repoint.
 // - `loading-skeleton.tsx` — the batch-3 finding is unchanged: a hardcoded mock of this
 //   app's own sidebar/nav shell (literal `workspace`/`issues`/`projects`/`views`/`settings`
 //   labels), not a generic primitive. It also has zero real importers today.
 // - `error-display.tsx`, `error-fallback.tsx`, `error-test.tsx` — new to this batch's
 //   judgment call, not previously assessed. `error-display.tsx` calls this app's own
 //   `../../lib/error-handler` (`parseApiError`, CORS/network troubleshooting copy) and
-//   hardcodes `https://taskdesk.app/docs` — app-specific error-reporting glue, not a
+//   hardcodes `https://taskdesk.bimats.com/docs` — app-specific error-reporting glue, not a
 //   design-system primitive. `error-fallback.tsx` and `error-test.tsx` both exist only to
 //   wrap `error-display.tsx`, so the same reasoning covers them; `error-test.tsx` is also a
 //   manual test harness (a hardcoded fake API host), not a shipped UI surface.
@@ -146,6 +144,7 @@ export {
   AutocompleteValue,
   useAutocompleteFilter,
 } from "./components/autocomplete";
+export { Avatar, AvatarFallback, AvatarImage } from "./components/avatar";
 export { Badge, badgeVariants } from "./components/badge";
 export {
   Breadcrumb,
@@ -158,6 +157,11 @@ export {
 } from "./components/breadcrumb";
 export { Button, type ButtonProps, buttonVariants } from "./components/button";
 export { Calendar } from "./components/calendar";
+export {
+  CapabilityMatrix,
+  type CapabilityMatrixItem,
+  type CapabilityMatrixProps,
+} from "./components/capability-matrix";
 export {
   Card,
   CardAction,
@@ -547,4 +551,5 @@ export {
   TooltipTrigger,
 } from "./components/tooltip";
 export { cn } from "./lib/cn";
+export { springSettle } from "./lib/motion";
 export { useIsMobile } from "./lib/use-mobile";

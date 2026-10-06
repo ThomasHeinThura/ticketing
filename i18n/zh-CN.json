@@ -331,6 +331,40 @@
 				"nameRequired": "名称不能为空",
 				"nameShort": "姓名至少需要 2 个字符"
 			}
+		},
+		"accountSecurity": {
+			"codeError": "The authenticator code was not accepted. Check the current code and retry.",
+			"codeLabel": "Enter the six-digit code",
+			"description": "Manage your authenticator factor and backup codes.",
+			"enabled": "Authenticator factor enabled",
+			"enabledDescription": "Sign-ins require an authenticator or an unused backup code.",
+			"enrollmentDisabled": "Local factor enrollment is disabled by instance policy.",
+			"enrollmentStartError": "Factor enrollment could not start. Check your password and try again.",
+			"loading": "Loading security settings…",
+			"pageTitle": "Account security",
+			"required": "Instance policy requires you to enroll a factor before continuing.",
+			"saveCodes": "Save these backup codes now. They are shown once and cannot be retrieved later.",
+			"savedCodes": "I saved these codes",
+			"scanDescription": "Scan this URI with your authenticator app. Treat it as a secret and do not share it.",
+			"scanTitle": "Add TaskDesk to your authenticator",
+			"setupButton": "Set up authenticator",
+			"setupDescription": "Your password is required to begin enrollment. Backup codes are shown once after verification.",
+			"setupTitle": "Set up an authenticator factor",
+			"starting": "Starting…",
+			"unavailable": "Security settings are unavailable.",
+			"verify": "Verify and enable",
+			"verifying": "Verifying…"
+		},
+		"twoFactor": {
+			"authenticatorCode": "Authenticator code",
+			"backupCode": "Backup code",
+			"error": "The verification code was not accepted. Try again.",
+			"subtitle": "Enter a code from your authenticator app to finish signing in.",
+			"title": "Two-factor verification",
+			"useAuthenticatorCode": "Use authenticator code",
+			"useBackupCode": "Use a backup code",
+			"verify": "Verify and sign in",
+			"verifying": "Verifying…"
 		}
 	},
 	"settings": {
@@ -1907,7 +1941,8 @@
 		},
 		"update": {
 			"success": "任务更新成功",
-			"error": "更新任务失败"
+			"error": "更新任务失败",
+			"conflict": "This task changed after you loaded it. Your update was not saved."
 		},
 		"contextMenu": {
 			"copyLink": "复制链接",
@@ -2182,7 +2217,8 @@
 			"unavailable": "Unavailable",
 			"unavailableFieldLabel": "{{field}} unavailable",
 			"partialNoticeTitle": "Some details are missing",
-			"partialNoticeDescription": "Some fields on this work item couldn't be fully loaded. They're marked below."
+			"partialNoticeDescription": "Some fields on this work item couldn't be fully loaded. They're marked below.",
+			"realtimeUnavailable": "Live updates are unavailable. This page refreshes every 30 seconds while open."
 		},
 		"list": {
 			"columnAssignee": "Assignee",
@@ -2240,6 +2276,20 @@
 			"typesLoading": "Loading types…",
 			"typesRetry": "Retry",
 			"close": "Close"
+		}
+	},
+	"portal": {
+		"unavailable": {
+			"title": "客户门户暂不可用",
+			"description": "客户访问目前尚不可用。如需帮助，请联系服务台管理员。"
+		},
+		"notFound": {
+			"title": "未找到页面",
+			"description": "此页面不可用。请检查地址后重试。"
+		},
+		"error": {
+			"title": "出现问题",
+			"description": "无法加载此页面。请重试。"
 		}
 	}
 }

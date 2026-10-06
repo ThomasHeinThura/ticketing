@@ -6,14 +6,13 @@ import { useTranslation } from "react-i18next";
 import useAttachLabelToTask from "@/hooks/mutations/label/use-attach-label-to-task";
 import useCreateLabel from "@/hooks/mutations/label/use-create-label";
 import useDetachLabelFromTask from "@/hooks/mutations/label/use-detach-label-from-task";
-import useGetLabelsByTask from "@/hooks/queries/label/use-get-labels-by-task";
-import useGetLabelsByWorkspace from "@/hooks/queries/label/use-get-labels-by-workspace";
+import type useGetLabelsByTask from "@/hooks/queries/label/use-get-labels-by-task";
+import type useGetLabelsByWorkspace from "@/hooks/queries/label/use-get-labels-by-workspace";
 import { useWorkspacePermission } from "@/hooks/use-workspace-permission";
 import { cn } from "@/lib/cn";
 import { getTaskLabelOptions } from "@/lib/get-task-label-options";
 import { resolveLabelColor } from "@/lib/label-color";
 import { toast } from "@/lib/toast";
-import type Task from "@/types/task";
 
 const labelColors = [
   { value: "gray", key: "stone", color: "var(--color-stone-500)" },
@@ -39,8 +38,13 @@ type LabelColor =
   | "red";
 
 type TaskLabelsPopoverProps = {
-  task: Task;
+  taskId: string;
+  projectId: string;
   workspaceId: string;
+  taskLabels: NonNullable<ReturnType<typeof useGetLabelsByTask>["data"]>;
+  workspaceLabels: NonNullable<
+    ReturnType<typeof useGetLabelsByWorkspace>["data"]
+  >;
   children: React.ReactNode;
   triggerNativeButton?: boolean;
 };
@@ -48,8 +52,11 @@ type TaskLabelsPopoverProps = {
 type PopoverStep = "select" | "color";
 
 export default function TaskLabelsPopover({
-  task,
+  taskId,
+  projectId,
   workspaceId,
+  taskLabels,
+  workspaceLabels,
   children,
   triggerNativeButton = true,
 }: TaskLabelsPopoverProps) {
@@ -70,9 +77,6 @@ export default function TaskLabelsPopover({
   const canCreate = canCreateLabels();
   const canEdit = canUpdateLabels();
 
-  const { data: taskLabels = [] } = useGetLabelsByTask(task.id);
-  const { data: workspaceLabels = [] } = useGetLabelsByWorkspace(workspaceId);
-
   const taskLabelNames = useMemo(
     () => taskLabels.map((label) => label.name),
     [taskLabels],
@@ -84,11 +88,11 @@ export default function TaskLabelsPopover({
   );
 
   const filteredLabels = useMemo(() => {
-    const selectableLabels = getTaskLabelOptions(workspaceLabels, task.id);
+    const selectableLabels = getTaskLabelOptions(workspaceLabels, taskId);
     return selectableLabels.filter((label) =>
       label.name.toLowerCase().includes(searchValue.toLowerCase()),
     );
-  }, [workspaceLabels, searchValue, task.id]);
+  }, [workspaceLabels, searchValue, taskId]);
 
   const isCreatingNewLabel = useMemo(
     () =>
@@ -137,13 +141,13 @@ export default function TaskLabelsPopover({
         if (workspaceLabel.taskId !== null) return;
         await attachLabel({
           labelId: workspaceLabel.id,
-          taskId: task.id,
+          taskId,
         });
         toast.success(t("tasks:popover.labels.addSuccess"));
       }
 
       await queryClient.invalidateQueries({
-        queryKey: ["tasks", task.projectId],
+        queryKey: ["tasks", projectId],
       });
     } catch (error) {
       toast.error(
@@ -175,11 +179,11 @@ export default function TaskLabelsPopover({
 
       await attachLabel({
         labelId: createdLabel.id,
-        taskId: task.id,
+        taskId,
       });
 
       await queryClient.invalidateQueries({
-        queryKey: ["tasks", task.projectId],
+        queryKey: ["tasks", projectId],
       });
 
       toast.success(t("tasks:popover.labels.createSuccess"));
@@ -202,7 +206,7 @@ export default function TaskLabelsPopover({
           value={searchValue}
           onChange={(e) => setSearchValue(e.target.value)}
           placeholder={t("tasks:popover.labels.searchPlaceholder")}
-          className="border-none p-0 h-auto focus-visible:ring-0 shadow-none !bg-transparent"
+          className="border-none h-auto focus-visible:ring-0 shadow-none !bg-transparent"
         />
       </div>
 

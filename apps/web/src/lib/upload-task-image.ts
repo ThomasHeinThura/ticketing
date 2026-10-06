@@ -60,6 +60,7 @@ export async function uploadTaskImage({
     method: "PUT",
     headers: upload.headers,
     body: file,
+    credentials: "omit",
   });
 
   if (!response.ok) {

@@ -1,5 +1,7 @@
 import { renderHook, waitFor } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
+import type { ProjectWithTasks } from "@/types/project";
+import type Task from "@/types/task";
 import { useTaskFiltersWithLabelsSupport } from "./use-task-filters-with-labels-support";
 
 describe("useTaskFiltersWithLabelsSupport", () => {
@@ -11,6 +13,42 @@ describe("useTaskFiltersWithLabelsSupport", () => {
 
   afterEach(() => {
     window.localStorage.clear();
+  });
+
+  it("reuses the complete project when no filter or search is active", () => {
+    const task = {
+      id: "task-1",
+      title: "Visible task",
+    } as Task;
+    const project = {
+      id: "project-1",
+      name: "Project",
+      slug: "PROJ",
+      icon: null,
+      description: null,
+      workspaceId: "workspace-1",
+      columns: [
+        {
+          id: "todo",
+          slug: "todo",
+          name: "Todo",
+          icon: null,
+          isFinal: false,
+          tasks: [task],
+        },
+      ],
+      plannedTasks: [],
+      archivedTasks: [],
+    } as ProjectWithTasks;
+
+    const { result } = renderHook(() =>
+      useTaskFiltersWithLabelsSupport(project, "project-1", "  "),
+    );
+
+    expect(result.current.filteredProject).toBe(project);
+    expect(result.current.filteredProject?.columns[0]?.tasks).toBe(
+      project.columns[0]?.tasks,
+    );
   });
 
   it("restores persisted label filters from storage and matches tasks from project data", async () => {
@@ -46,6 +84,7 @@ describe("useTaskFiltersWithLabelsSupport", () => {
               startDate: null,
               dueDate: null,
               position: 0,
+              version: 1,
               createdAt: "2026-04-16T00:00:00.000Z",
               updatedAt: "2026-04-16T00:00:00.000Z",
               userId: null,
@@ -72,6 +111,7 @@ describe("useTaskFiltersWithLabelsSupport", () => {
               startDate: null,
               dueDate: null,
               position: 1,
+              version: 1,
               createdAt: "2026-04-16T00:00:00.000Z",
               updatedAt: "2026-04-16T00:00:00.000Z",
               userId: null,
@@ -133,6 +173,7 @@ describe("useTaskFiltersWithLabelsSupport", () => {
                 startDate: null,
                 dueDate: null,
                 position: 0,
+                version: 1,
                 createdAt: "2026-04-16T00:00:00.000Z",
                 updatedAt: "2026-04-16T00:00:00.000Z",
                 userId: null,
@@ -153,6 +194,7 @@ describe("useTaskFiltersWithLabelsSupport", () => {
                 startDate: null,
                 dueDate: null,
                 position: 1,
+                version: 1,
                 createdAt: "2026-04-16T00:00:00.000Z",
                 updatedAt: "2026-04-16T00:00:00.000Z",
                 userId: null,

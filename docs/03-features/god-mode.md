@@ -120,25 +120,64 @@ signs in.
 
 ### Authentication — identity connections
 
+This section describes the target God Mode contract. The MFA, TOTP, passkey, and upstream
+MFA controls below are planned and are not currently enabled or enforced by API source.
+Required-MFA settings must fail closed until a verifier for the configured factor exists.
+
 The most important screen. See [auth and identity](../01-architecture/auth-and-identity.md),
 [identity provisioning](identity-provisioning.md) and
 [auth runtime reconfiguration](../01-architecture/auth-runtime-reconfiguration.md).
 
 - Add, edit, enable, disable and delete **identity connections** (OIDC — Microsoft Entra
-  first) and the non-OIDC auth plugins (password, OTP, magic link, TOTP, passkey).
+  first) and the non-OIDC auth plugins (password, OTP, magic link; TOTP planned for P0,
+  passkey planned later).
 - Each connection: provider type, display name, **which portal it serves — agent or
   customer, never both**, issuer/tenant, client id and encrypted secret, redirect URI,
-  claim mapping, domain bindings, just-in-time provisioning policy, MFA-upstream mode.
-  Customer connections are edited from the organisation's Identity tab (below) — same
-  routes, filtered.
-- **SCIM panel** per connection: endpoint URL, bearer token create / rotate / revoke
-  (shown once; rotation invalidates the old token at once), allowed resources, attribute
-  mapping, allowlisted group → role mappings (never `instance:admin`, never `sees_all`),
-  lifecycle policy, last sync, last failure without secrets, provisioning event log.
+  claim mapping, domain bindings, just-in-time provisioning policy, and the planned
+  MFA-upstream mode.
+  For every Entra connection, configure the exact nonempty `required_entra_app_role`
+  admission value separately from the TaskDesk default role, whether JIT is enabled or not.
+  JIT cannot be enabled without it, and turning JIT off does not waive admission for existing
+  invite- or SCIM-provisioned identities. Setup help directs administrators to define and
+  assign that app role and request the signed optional `acct` claim in the Entra app
+  registration. Both are checked at every login; missing/malformed persisted configuration
+  fails authentication closed and is surfaced as invalid connection health. These values
+  admit a member subject only; they never grant TaskDesk roles, capabilities or reach.
+  Domain
+  bindings support discovery and deny-only collision checks. Customer connections are edited
+  from the organisation's Identity tab (below) — same routes, filtered.
+- **Provisioning panel** per connection: OIDC group mappings use immutable group object ids
+  with display-name snapshots; the separate SCIM panel holds endpoint URL, bearer token
+  create / rotate / revoke (shown once; rotation invalidates the old token at once), allowed
+  resources, attribute mapping and SCIM group mappings. Every create/edit/enable validates
+  the connection portal and persisted organisation, target scope ownership, role side/rank,
+  and forbidden capabilities. Every OIDC mapping create/edit/enable/disable is elevated,
+  session-only and audited; its separate connection-scoped API uses a five-minute,
+  single-use PA-15 operation binding. OIDC mapping selection/open state is represented in
+  the screen URL. Every SCIM administration PATCH is proposed as route-wide elevated and
+  session-only, but is not usable until issue [#561](https://github.com/ThomasHeinThura/ticketing/issues/561)
+  defines its strict DTO, parent-version CAS and dedicated PA-15 binding; a mounted write
+  fails closed with `403 step_up_unavailable` meanwhile. Disabling/changing an
+  OIDC mapping retires only its grants and invalidates authority after
+  commit. Re-enabling an OIDC mapping requires a later validated OIDC login through that
+  connection with complete matching groups and current admission; SCIM cannot restore OIDC
+  grants. SCIM mappings require later authenticated SCIM evidence, not an OIDC login. A
+  lower enabled agent-connection role ceiling follows the source-scoped transaction in
+  [IP-3/IP-22](identity-provisioning.md), retiring only this connection's above-ceiling
+  JIT/OIDC/SCIM grants and recomputing effective authority.
+  JIT policy/default changes, mapping eligibility, role edits and other affected lifecycle
+  changes follow IP-22's shared validity invariant and lock/retry protocol; this screen does
+  not define a separate grant writer.
+  Existing sessions remain valid and use recomputed stored authority after cache invalidation
+  (30-second bound if lost); this does not revoke sessions. Neither source can grant
+  `instance:admin` or `sees_all`. Show the lifecycle
+  policy, last sync, last failure without secrets, provisioning event log, and overage warning
+  without exposing raw claims.
 - **Test connection** (OIDC discovery + dry run) and **Test SCIM** before going live; both
   audited even when nothing is saved.
-- MFA policy: off, optional, required for staff, required for a role, required for
-  everyone.
+- Planned MFA policy: off, optional, required for staff, required for a role, or required
+  for everyone. Current source does not enforce these settings; an unsupported required
+  factor must fail closed.
 - Session policy: idle timeout, absolute lifetime, concurrent session limit.
 - Password policy, when password auth is enabled.
 
@@ -199,8 +238,13 @@ test route. Plus the default notification preferences new users inherit.
 
 ### Deliveries
 
-The outbox: pending, retrying and **dead** deliveries (notifications and webhooks), with
-requeue and discard. This is where "SMTP has been down for hours" is visible.
+The parent event envelopes, per-recipient/channel notification children, digest groups and
+per-target webhook attempts. Notification requeue acts on the same child id and respects a
+live reservation; it does not mint a replacement delivery. Requeueing a parent event
+replays only idempotent consumer materialization: it cannot reset or duplicate already
+materialized notification children. Webhook redelivery remains the per-event action in
+WH-8. Pending, retrying, suppressed and **dead** notification deliveries remain separately
+inspectable. This is where "SMTP has been down for hours" is visible.
 
 ### Features
 
@@ -224,8 +268,11 @@ as plugins; they have no separate section.
 
 ### Observability
 
-Sentry DSN, OTLP endpoint and headers, trace sample rate, the `/metrics` bearer token, log
-level per module. Runtime settings, not environment variables
+The P0 administrator API configures log levels and rotates the `/metrics` bearer token;
+these are database-backed runtime settings, never environment variables. Token rotation is
+an elevated, session-only operation and requires a one-use operation-bound step-up token.
+Sentry DSN, OTLP endpoint and headers, trace sample rate, and the full God Mode screen remain
+deferred; this API contract does not claim the P4 screen is implemented
 ([observability.md](../01-architecture/observability.md)).
 
 ### MCP usage
@@ -236,8 +283,9 @@ Which keys, how many calls, which tools, error rates, auto-disabled keys
 ### Users
 
 Every account on the instance, across organisations. Search, view, suspend, unsuspend,
-force sign-out, reset MFA, delete (deactivate — people are never hard-deleted), export a
-person's data, anonymise a person, and **impersonate**.
+force sign-out, reset MFA (planned; unavailable until a factor adapter exists), delete
+(deactivate — people are never hard-deleted), export a person's data, anonymise a person,
+and **impersonate**.
 
 ### Audit
 
@@ -361,9 +409,12 @@ GET    /api/instance/identity-connections                         instance:admin
 POST   /api/instance/identity-connections                         instance:admin  E
 PATCH  /api/instance/identity-connections/{id}                    instance:admin  E
 DELETE /api/instance/identity-connections/{id}                    instance:admin  E  (pending action — typed name + step-up)
+GET    /api/instance/identity-connections/{id}/oidc-group-mappings instance:admin (read-only; explicit elevation exemption)
+POST   /api/instance/identity-connections/{id}/oidc-group-mappings instance:admin E (session-only; PA-15 operation-bound step-up)
+PATCH  /api/instance/identity-connections/{id}/oidc-group-mappings/{mappingId} instance:admin E (session-only; PA-15 operation-bound step-up)
 POST   /api/instance/identity-connections/{id}/test               instance:admin      (audited even unsaved)
 POST   /api/instance/identity-connections/{id}/scim               instance:admin  E
-PATCH  /api/instance/identity-connections/{id}/scim               instance:admin  E*  (*E when a mapping grants staff access, a role above member, or reach — IP-6)
+PATCH  /api/instance/identity-connections/{id}/scim               instance:admin  E  (route-wide; unusable until strict DTO/CAS/dedicated PA-15 contract in issue #561)
 POST   /api/instance/identity-connections/{id}/scim/rotate-token  instance:admin  E
 POST   /api/instance/identity-connections/{id}/scim/revoke-token  instance:admin  E
 POST   /api/instance/identity-connections/{id}/scim/test          instance:admin
@@ -373,7 +424,7 @@ GET    /api/instance/users                            instance:admin
 POST   /api/instance/users/{id}/suspend               instance:admin
 POST   /api/instance/users/{id}/unsuspend             instance:admin
 POST   /api/instance/users/{id}/sign-out              instance:admin
-POST   /api/instance/users/{id}/reset-mfa             instance:admin  E
+POST   /api/instance/users/{id}/reset-mfa             instance:admin  E  (planned; unavailable until the factor adapter exists)
 POST   /api/instance/users/{id}/grant-admin           instance:admin  E
 POST   /api/instance/users/{id}/deactivate            instance:admin
 GET    /api/instance/users/{id}/export                instance:admin  E

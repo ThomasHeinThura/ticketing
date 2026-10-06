@@ -53,12 +53,8 @@ import type { PolicyMap } from "@taskdesk/permissions";
  * scope id names nothing that could be out of reach.
  */
 export const columnPolicies = {
-  // List a project's columns, in position order. `getColumnsRoute`'s only middleware is
-  // `workspaceAccess.fromProject("projectId")` -- no `requireWorkspacePermission` call, same
-  // "reach alone, capability declared for the target model anyway" shape as
-  // `GET /api/project/{id}` and `GET /api/project`: every seeded role holds `project: ["read"]`
-  // unconditionally, so there is no role that reaches the project yet lacks read authority
-  // over it.
+  // List a project's columns, in position order. Runtime checks row-derived reach and then
+  // requires `project:read` from the caller's workspace role.
   "GET /api/column/{projectId}": {
     capability: "project:read",
     scope: "project",

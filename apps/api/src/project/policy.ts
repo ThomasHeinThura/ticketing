@@ -84,14 +84,8 @@ export const projectPolicies = {
     reach: "required",
   },
 
-  // List a workspace's projects (sidebar order, rollup stats). `getProjectsRoute`'s only
-  // middleware is `workspaceAccess.fromQuery()` -- no `requireWorkspacePermission` call at all,
-  // same shape as `GET /api/project/{id}` above: the runtime relies entirely on workspace
-  // membership (reach), never a distinct capability check, because every seeded role
-  // (`legacy-better-auth-access-control.ts`: viewer/member/admin/owner) holds `project: ["read"]`
-  // unconditionally -- there is no role that is a workspace member yet lacks project:read.
-  // `project:read` is declared here for the same reason it is on the `{id}` route: it is the
-  // correct TARGET capability even though nothing distinct enforces it today.
+  // List a workspace's projects (sidebar order, rollup stats). Runtime checks row-independent
+  // workspace reach, then requires `project:read` from the caller's workspace role.
   "GET /api/project": {
     capability: "project:read",
     scope: "workspace",

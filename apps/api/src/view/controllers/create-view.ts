@@ -1,12 +1,4 @@
-import { and, eq } from "drizzle-orm";
 import { HTTPException } from "hono/http-exception";
-import db from "../../database";
-import {
-  projectTable,
-  savedViewTable,
-  teamMemberTable,
-  teamTable,
-} from "../../database/schema";
 import { publishEvent } from "../../events";
 import type { z } from "../../openapi";
 import { rejectNulByte } from "../../utils/reject-nul-byte";
@@ -17,6 +9,11 @@ import {
   savedViewAuditState,
   writeSavedViewAudit,
 } from "../audit";
+import {
+  insertSavedView,
+  projectBelongsToWorkspace,
+  teamMemberInWorkspace,
+} from "../repository";
 import type { createViewBody } from "../schema";
 
 type CreateViewInput = z.infer<typeof createViewBody>;
@@ -40,18 +37,9 @@ async function assertScopeBelongsToWorkspace(
   }
 
   rejectNulByte(scopeId, "scopeId");
-  const [project] = await db
-    .select({ id: projectTable.id })
-    .from(projectTable)
-    .where(
-      and(
-        eq(projectTable.id, scopeId),
-        eq(projectTable.workspaceId, workspaceId),
-      ),
-    )
-    .limit(1);
+  const projectExists = await projectBelongsToWorkspace(scopeId, workspaceId);
 
-  if (!project) {
+  if (!projectExists) {
     throw new HTTPException(400, {
       message: "scopeId must be a project in this workspace",
     });
@@ -78,19 +66,12 @@ async function createView(
     rejectNulByte(sharedWithTeamId, "sharedWithTeamId");
     // `saved_view:share` (rbac.md) and membership in THIS team are separate gates.
     await assertCanShareView(workspaceId, userId);
-    const [membership] = await db
-      .select({ id: teamMemberTable.id })
-      .from(teamMemberTable)
-      .innerJoin(teamTable, eq(teamMemberTable.teamId, teamTable.id))
-      .where(
-        and(
-          eq(teamMemberTable.teamId, sharedWithTeamId),
-          eq(teamMemberTable.userId, userId),
-          eq(teamTable.workspaceId, workspaceId),
-        ),
-      )
-      .limit(1);
-    if (!membership) {
+    const membershipExists = await teamMemberInWorkspace(
+      sharedWithTeamId,
+      userId,
+      workspaceId,
+    );
+    if (!membershipExists) {
       throw new HTTPException(403, {
         message: "Not a member of the team this view would be shared with",
       });
@@ -110,20 +91,17 @@ async function createView(
     );
   }
 
-  const [inserted] = await db
-    .insert(savedViewTable)
-    .values({
-      workspaceId,
-      createdBy: personId,
-      name: input.name,
-      scope,
-      scopeId,
-      visibility,
-      sharedWithTeamId: visibility === "team" ? sharedWithTeamId : null,
-      layout: input.layout,
-      query: input.query,
-    })
-    .returning();
+  const inserted = await insertSavedView({
+    workspaceId,
+    createdBy: personId,
+    name: input.name,
+    scope,
+    scopeId,
+    visibility,
+    sharedWithTeamId: visibility === "team" ? sharedWithTeamId : null,
+    layout: input.layout,
+    query: input.query,
+  });
 
   if (!inserted) {
     throw new Error("Failed to create saved view");

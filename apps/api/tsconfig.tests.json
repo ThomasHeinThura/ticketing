@@ -38,7 +38,15 @@
 		}
 	},
 	"include": [
+		"scripts/seed-profile.ts",
+		"scripts/seed-cli.ts",
+		"scripts/seed-cli.test.ts",
+		"scripts/seed-postgres.test.ts",
+		"scripts/seed-test-global-setup.ts",
+		"scripts/seed-test-setup.ts",
+		"vitest.seed.config.ts",
 		"../../tests/api/**/*.ts",
-		"../../tests/api-integration/**/*.ts"
+		"../../tests/api-integration/**/*.ts",
+		"../../tests/e2e/helpers/mfa-csrf-app-fixture.ts"
 	]
 }

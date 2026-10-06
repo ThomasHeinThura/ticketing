@@ -11,7 +11,7 @@ import {
 import { X } from "lucide-react";
 import { useMemo } from "react";
 import { useTranslation } from "react-i18next";
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/avatar";
 import { useUpdateTask } from "@/hooks/mutations/task/use-update-task";
 import { useUpdateTaskAssignee } from "@/hooks/mutations/task/use-update-task-assignee";
 import { useUpdateTaskDescription } from "@/hooks/mutations/task/use-update-task-description";
@@ -27,6 +27,7 @@ import { generateLink } from "@/lib/generate-link";
 import { getInitials } from "@/lib/get-initials";
 import { getPriorityLabel } from "@/lib/i18n/domain";
 import { getPriorityIcon } from "@/lib/priority";
+import { TaskUpdateError } from "@/lib/task-update-error";
 import { toast } from "@/lib/toast";
 import useProjectStore from "@/store/project";
 import { useUserPreferencesStore } from "@/store/user-preferences";
@@ -126,12 +127,13 @@ export default function TaskCardContextMenuContent({
             [field]: value,
           });
       }
-    } catch (error) {
-      toast.error(
-        error instanceof Error ? error.message : t("tasks:update.error"),
-      );
-    } finally {
       toast.success(t("tasks:update.success"));
+    } catch (error) {
+      if (!(error instanceof TaskUpdateError)) {
+        toast.error(
+          error instanceof Error ? error.message : t("tasks:update.error"),
+        );
+      }
     }
   };
 

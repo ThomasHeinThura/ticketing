@@ -3,21 +3,46 @@ import {
   SortableContext,
   verticalListSortingStrategy,
 } from "@dnd-kit/sortable";
-import { AnimatePresence, motion, useReducedMotion } from "framer-motion";
-import { useEffect } from "react";
+import { memo, useEffect } from "react";
 import type { ProjectWithTasks } from "@/types/project";
-import TaskCard from "../task-card";
+import TaskCard, {
+  type TaskCardDisplayPreferences,
+  type TaskCardProps,
+  type TaskCardWorkspaceUser,
+} from "../task-card";
 
 type ColumnDropzoneProps = {
   column: ProjectWithTasks["columns"][number];
+  projectSlug: string;
+  projectColumns: ProjectWithTasks["columns"];
+  columnCompletionBySlug: ReadonlyMap<string, boolean>;
+  displayPreferences: TaskCardDisplayPreferences;
+  selectedTaskIds: ReadonlySet<string>;
+  focusedTaskId: string | null;
   disableDragDrop?: boolean;
   onIsOverChange?: (isOver: boolean) => void;
+  workspaceId?: string;
+  workspaceUsersById: ReadonlyMap<string, TaskCardWorkspaceUser>;
+  onContextMenuTask: TaskCardProps["onContextMenuTask"];
+  onOpenTask: TaskCardProps["onOpenTask"];
+  t: TaskCardProps["t"];
 };
 
 export function ColumnDropzone({
   column,
+  projectSlug,
+  projectColumns,
+  columnCompletionBySlug,
+  displayPreferences,
+  selectedTaskIds,
+  focusedTaskId,
   disableDragDrop = false,
   onIsOverChange,
+  workspaceId,
+  workspaceUsersById,
+  onContextMenuTask,
+  onOpenTask,
+  t,
 }: ColumnDropzoneProps) {
   const { setNodeRef, isOver } = useDroppable({
     id: column.id,
@@ -31,36 +56,72 @@ export function ColumnDropzone({
     onIsOverChange?.(isOver);
   }, [isOver, onIsOverChange]);
 
-  const reduceMotion = useReducedMotion();
-
   return (
     <div ref={setNodeRef} className="flex-1 min-h-0">
       <SortableContext
         items={column.tasks}
         strategy={verticalListSortingStrategy}
       >
-        <div className="flex flex-col gap-2">
-          <AnimatePresence initial={false} mode="popLayout">
-            {column.tasks.map((task) => (
-              <motion.div
-                key={task.id}
-                initial={
-                  reduceMotion ? { opacity: 0 } : { opacity: 0, scale: 0.98 }
-                }
-                animate={
-                  reduceMotion ? { opacity: 1 } : { opacity: 1, scale: 1 }
-                }
-                exit={
-                  reduceMotion ? { opacity: 0 } : { opacity: 0, scale: 0.98 }
-                }
-                transition={{ type: "spring", duration: 0.35, bounce: 0.15 }}
-              >
-                <TaskCard task={task} disableDragDrop={disableDragDrop} />
-              </motion.div>
-            ))}
-          </AnimatePresence>
-        </div>
+        <TaskCardList
+          column={column}
+          projectSlug={projectSlug}
+          projectColumns={projectColumns}
+          columnCompletionBySlug={columnCompletionBySlug}
+          displayPreferences={displayPreferences}
+          selectedTaskIds={selectedTaskIds}
+          focusedTaskId={focusedTaskId}
+          disableDragDrop={disableDragDrop}
+          workspaceId={workspaceId}
+          workspaceUsersById={workspaceUsersById}
+          onContextMenuTask={onContextMenuTask}
+          onOpenTask={onOpenTask}
+          t={t}
+        />
       </SortableContext>
     </div>
   );
 }
+
+const TaskCardList = memo(function TaskCardList({
+  column,
+  projectSlug,
+  projectColumns,
+  columnCompletionBySlug,
+  displayPreferences,
+  selectedTaskIds,
+  focusedTaskId,
+  disableDragDrop = false,
+  workspaceId,
+  workspaceUsersById,
+  onContextMenuTask,
+  onOpenTask,
+  t,
+}: ColumnDropzoneProps) {
+  return (
+    <div className="flex flex-col gap-2 [contain:layout_style]">
+      {column.tasks.map((task) => (
+        <TaskCard
+          key={task.id}
+          task={task}
+          projectSlug={projectSlug}
+          taskIsCompleted={
+            projectColumns.length > 0
+              ? (columnCompletionBySlug.get(task.status) ?? false)
+              : task.status === "done" || task.status === "archived"
+          }
+          displayPreferences={displayPreferences}
+          isSelected={selectedTaskIds.has(task.id)}
+          isFocused={focusedTaskId === task.id}
+          disableDragDrop={disableDragDrop}
+          workspaceId={workspaceId}
+          assignee={
+            task.userId ? workspaceUsersById.get(task.userId) : undefined
+          }
+          onContextMenuTask={onContextMenuTask}
+          onOpenTask={onOpenTask}
+          t={t}
+        />
+      ))}
+    </div>
+  );
+});
