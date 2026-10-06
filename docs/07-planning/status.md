@@ -1,3 +1,37 @@
+## October 6 exact-source continuation — 06:39 UTC
+
+- **P0 authorization #584:** current candidate `c9a7f26ca16eac524847be80d23a9729789bbef5`
+  includes the previously reviewed workspace provenance fix and three approved dependency
+  floors. Two ordinary product reviews clear source81; the independent C9 dependency/private
+  runner delta review passes with28/28 offline tests and seven matching file pins. Full fresh
+  Sol security review is underway. Hosted fast CI passes all12 implementation jobs, including
+  dependency audit; the template/security evidence gate is pending. Full CI passes PostgreSQL
+  integration, browser smoke, accessibility and visual regression, but G11 fails17/22:
+  list500.6ms, LCP2616ms, palette200.7ms, assignment210.6ms and board664.9ms exceed unchanged
+  budgets. The candidate does not include the installer performance batch. Its source-labelled
+  image builds as `sha256:cff8de23170279a802a2416c849ea7ac90daa48c7c7ab7caa7160888d57aaba2`
+  with user taskdesk; no boot or deployment is claimed. Private C9 operational draft remains
+  unauthorized/unexecuted, and evidence compatibility/cutover/finalizer remain open.
+- **P0 installer #583:** candidate `9e63830c622f509abbfc337de0c133b51d2f8bf9` is pushed.
+  The complete follow-up replaces project readiness with generation-bound state and rejects
+  stale callbacks, covering rapid A→B→A navigation. Nonsecret MFA test-step labels identify
+  waits without altering assertions, timeouts or retries. Actual focused local checks pass22
+  tests across three files and web types. Prior source034 hosted G11 passes22/22, while its
+  MFA browser test times out (23 passed/1 failed); both original results remain retained.
+  Current9e hosted browser smoke, accessibility, visuals and all12 fast implementation jobs
+  pass; its PostgreSQL/performance jobs and current independent reviews remain pending.
+  Prior-source performance is not represented as current-source acceptance.
+- **P4 #580:** ordinary delta clearsc29, but full Sol finds computed method references bound
+  to local aliases can bypass the query gate. This is the third finding in the same mechanism,
+  so the assigned batch replaces fixed token offsets with normalized member-reference and
+  alias parsing, with interaction-matrix regressions. API transaction fixes remain unchanged
+  fromc29; prior scoped SQL6/6 and original full-source1717 counts retain their exact scope.
+- **Program:** model-tool thread capacity is limiting simultaneous reviews; pending gates
+  stay open while active implementation and security review continue. Main/persistent DEV
+  remain unchanged. The already asked public-config exception and pending-action versioning
+  decisions remain pending. No P0–P7 acceptance, protected merge or enforcement activation
+  is claimed.
+
 ## October 6 implementation batches — 06:21 UTC
 
 - **P0 authorization #584:** source `81bcda5b3940a3bc0ae6d0e1053f3b93f6276588`
