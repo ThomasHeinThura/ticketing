@@ -1,5 +1,9 @@
 import { createId } from "@paralleldrive/cuid2";
-import { isCapability } from "@taskdesk/permissions";
+import {
+  isCapability,
+  type RoleScope,
+  roleCompositionProblems,
+} from "@taskdesk/permissions";
 import {
   and,
   asc,
@@ -210,6 +214,27 @@ export function getIdentityPersonForUserInTransaction(
     .select({ id: schema.personTable.id })
     .from(schema.personTable)
     .where(eq(schema.personTable.userId, userId))
+    .limit(1);
+}
+
+export function getCurrentInstanceAdminPersonInTransaction(
+  tx: IdentityTransaction,
+  userId: string,
+) {
+  return tx
+    .select({ id: schema.personTable.id })
+    .from(schema.userTable)
+    .innerJoin(
+      schema.personTable,
+      and(
+        eq(schema.personTable.userId, schema.userTable.id),
+        eq(schema.personTable.side, "staff"),
+        eq(schema.personTable.active, true),
+      ),
+    )
+    .where(
+      and(eq(schema.userTable.id, userId), eq(schema.userTable.role, "admin")),
+    )
     .limit(1);
 }
 
@@ -663,6 +688,246 @@ export function listScimGroupMappings(connectionId: string) {
     );
 }
 
+export function listOidcGroupMappings(connectionId: string) {
+  return db
+    .select({
+      id: schema.oidcGroupMappingTable.id,
+      externalGroupId: schema.oidcGroupMappingTable.externalGroupId,
+      externalGroupNameSnapshot:
+        schema.oidcGroupMappingTable.externalGroupNameSnapshot,
+      roleId: schema.oidcGroupMappingTable.roleId,
+      scope: schema.oidcGroupMappingTable.scope,
+      scopeId: schema.oidcGroupMappingTable.scopeId,
+      enabled: schema.oidcGroupMappingTable.enabled,
+      createdAt: schema.oidcGroupMappingTable.createdAt,
+      updatedAt: schema.oidcGroupMappingTable.updatedAt,
+    })
+    .from(schema.oidcGroupMappingTable)
+    .where(eq(schema.oidcGroupMappingTable.identityConnectionId, connectionId))
+    .orderBy(
+      schema.oidcGroupMappingTable.externalGroupId,
+      schema.oidcGroupMappingTable.id,
+    );
+}
+
+export function getOidcMappingAdminConnection(connectionId: string) {
+  return db
+    .select({
+      id: schema.identityConnectionTable.id,
+      providerType: schema.identityConnectionTable.providerType,
+      portalScope: schema.identityConnectionTable.portalScope,
+      organisationId: schema.identityConnectionTable.organisationId,
+      maxRoleRank: schema.identityConnectionTable.maxRoleRank,
+      configVersion: schema.identityConnectionTable.configVersion,
+    })
+    .from(schema.identityConnectionTable)
+    .where(eq(schema.identityConnectionTable.id, connectionId))
+    .limit(1);
+}
+
+export function getOidcGroupMappingById(
+  connectionId: string,
+  mappingId: string,
+) {
+  return db
+    .select()
+    .from(schema.oidcGroupMappingTable)
+    .where(
+      and(
+        eq(schema.oidcGroupMappingTable.identityConnectionId, connectionId),
+        eq(schema.oidcGroupMappingTable.id, mappingId),
+      ),
+    )
+    .limit(1);
+}
+
+export function findOidcGroupMapping(
+  tx: IdentityTransaction,
+  connectionId: string,
+  externalGroupId: string,
+) {
+  return tx
+    .select({ id: schema.oidcGroupMappingTable.id })
+    .from(schema.oidcGroupMappingTable)
+    .where(
+      and(
+        eq(schema.oidcGroupMappingTable.identityConnectionId, connectionId),
+        eq(schema.oidcGroupMappingTable.externalGroupId, externalGroupId),
+      ),
+    )
+    .limit(1);
+}
+
+export function lockOidcGroupMappingById(
+  tx: IdentityTransaction,
+  connectionId: string,
+  mappingId: string,
+) {
+  return tx
+    .select()
+    .from(schema.oidcGroupMappingTable)
+    .where(
+      and(
+        eq(schema.oidcGroupMappingTable.identityConnectionId, connectionId),
+        eq(schema.oidcGroupMappingTable.id, mappingId),
+      ),
+    )
+    .for("update")
+    .limit(1);
+}
+
+export async function validateOidcMappingRole(
+  tx: IdentityTransaction,
+  input: {
+    providerType: string;
+    portalScope: string;
+    organisationId: string | null;
+    maxRoleRank: number | null;
+    scope: "organisation" | "workspace";
+    scopeId: string;
+    roleId: string;
+  },
+) {
+  if (input.providerType !== "entra") return false;
+  if (input.portalScope === "customer") {
+    if (
+      input.scope !== "organisation" ||
+      !input.organisationId ||
+      input.scopeId !== input.organisationId ||
+      input.maxRoleRank !== null
+    )
+      return false;
+    const [organisation] = await tx
+      .select({ id: schema.organisationTable.id })
+      .from(schema.organisationTable)
+      .where(
+        and(
+          eq(schema.organisationTable.id, input.organisationId),
+          eq(schema.organisationTable.active, true),
+          eq(schema.organisationTable.portalAccess, true),
+          eq(schema.organisationTable.isInternal, false),
+          isNull(schema.organisationTable.deletedAt),
+        ),
+      )
+      .limit(1);
+    if (!organisation) return false;
+  } else if (input.portalScope === "agent") {
+    if (
+      input.scope !== "workspace" ||
+      !input.scopeId ||
+      input.organisationId !== null ||
+      input.maxRoleRank === null
+    )
+      return false;
+    const [workspace] = await tx
+      .select({ id: schema.workspaceTable.id })
+      .from(schema.workspaceTable)
+      .innerJoin(
+        schema.organisationTable,
+        eq(schema.organisationTable.id, schema.workspaceTable.organisationId),
+      )
+      .where(
+        and(
+          eq(schema.workspaceTable.id, input.scopeId),
+          isNull(schema.workspaceTable.deletedAt),
+          eq(schema.organisationTable.active, true),
+          eq(schema.organisationTable.isInternal, true),
+          isNull(schema.organisationTable.deletedAt),
+        ),
+      )
+      .limit(1);
+    if (!workspace) return false;
+  } else return false;
+
+  const [role] = await tx
+    .select({
+      scope: schema.roleTable.scope,
+      workspaceId: schema.roleTable.workspaceId,
+      key: schema.roleTable.key,
+      rank: schema.roleTable.rank,
+      capabilities: schema.roleTable.capabilities,
+    })
+    .from(schema.roleTable)
+    .where(eq(schema.roleTable.id, input.roleId))
+    .limit(1);
+  if (!role || role.scope !== input.scope || role.rank < 0) return false;
+  if (!hasSafeOidcRoleCapabilities(role.scope, role.capabilities)) return false;
+  if (input.portalScope === "customer")
+    return role.workspaceId === null && role.key === "customer";
+  if (
+    input.maxRoleRank === null ||
+    role.rank > input.maxRoleRank ||
+    role.workspaceId !== input.scopeId ||
+    role.key === "admin" ||
+    role.key === "owner"
+  )
+    return false;
+  return true;
+}
+
+function hasSafeOidcRoleCapabilities(scope: string, value: unknown): boolean {
+  if (scope !== "organisation" && scope !== "workspace") return false;
+  if (
+    !Array.isArray(value) ||
+    !value.every(
+      (capability): capability is string =>
+        typeof capability === "string" &&
+        capability !== "sees_all" &&
+        isCapability(capability),
+    )
+  )
+    return false;
+  return roleCompositionProblems(scope as RoleScope, value).length === 0;
+}
+
+export async function retireOidcGroupGrants(
+  tx: IdentityTransaction,
+  mappingId: string,
+) {
+  const active = await tx
+    .select({
+      id: schema.membershipGrantTable.id,
+      personId: schema.membershipGrantTable.personId,
+      scope: schema.membershipGrantTable.scope,
+      scopeId: schema.membershipGrantTable.scopeId,
+    })
+    .from(schema.membershipGrantTable)
+    .where(
+      and(
+        eq(schema.membershipGrantTable.sourceKind, "oidc_group"),
+        eq(schema.membershipGrantTable.oidcGroupMappingId, mappingId),
+        isNull(schema.membershipGrantTable.revokedAt),
+      ),
+    )
+    .orderBy(schema.membershipGrantTable.id)
+    .for("update");
+  if (!active.length) return [];
+  const now = new Date();
+  await tx
+    .update(schema.membershipGrantTable)
+    .set({
+      revokedAt: now,
+      revocationReason: "mapping_changed",
+      updatedAt: now,
+      membershipId: null,
+    })
+    .where(
+      inArray(
+        schema.membershipGrantTable.id,
+        active.map(({ id }) => id),
+      ),
+    );
+  await projectMembershipKeys(
+    tx,
+    active.map(({ personId, scope, scopeId }) => ({
+      personId,
+      scope,
+      scopeId,
+    })),
+  );
+  return active;
+}
+
 export class IdentityGrantClosureChangedError extends Error {
   constructor() {
     super("IP-22 closure changed while locking; retry from a fresh snapshot");
@@ -813,6 +1078,17 @@ export async function lockScimGrantClosure(
     .where(
       eq(schema.scimGroupMappingTable.scimConnectionId, input.connectionId),
     );
+  const oidcMappings = await tx
+    .select({
+      id: schema.oidcGroupMappingTable.id,
+      roleId: schema.oidcGroupMappingTable.roleId,
+      scope: schema.oidcGroupMappingTable.scope,
+      scopeId: schema.oidcGroupMappingTable.scopeId,
+    })
+    .from(schema.oidcGroupMappingTable)
+    .where(
+      eq(schema.oidcGroupMappingTable.identityConnectionId, input.connectionId),
+    );
   const proposedScope =
     input.proposedScope ??
     mappings.find((mapping) => mapping.id === input.mappingId)?.scope;
@@ -845,6 +1121,9 @@ export async function lockScimGrantClosure(
       ...mappings
         .filter((mapping) => mapping.scope === "organisation")
         .map((mapping) => mapping.scopeId),
+      ...oidcMappings
+        .filter((mapping) => mapping.scope === "organisation")
+        .map((mapping) => mapping.scopeId),
     ]),
   ].sort();
   if (organisationIds.length) {
@@ -864,6 +1143,9 @@ export async function lockScimGrantClosure(
         .filter((key) => key.scope === "workspace")
         .map((key) => key.scopeId),
       ...mappings
+        .filter((mapping) => mapping.scope === "workspace")
+        .map((mapping) => mapping.scopeId),
+      ...oidcMappings
         .filter((mapping) => mapping.scope === "workspace")
         .map((mapping) => mapping.scopeId),
       ...(proposedScope === "workspace" && input.proposedScopeId
@@ -892,6 +1174,7 @@ export async function lockScimGrantClosure(
       ...projectionGrants.map((grant) => grant.roleId),
       ...(input.additionalProjectionKeys ?? []).map((grant) => grant.roleId),
       ...mappings.map((mapping) => mapping.roleId),
+      ...oidcMappings.map((mapping) => mapping.roleId),
       ...(input.proposedRoleId ? [input.proposedRoleId] : []),
     ]),
   ].sort();
@@ -910,11 +1193,12 @@ export async function lockScimGrantClosure(
     .orderBy(schema.identityConnectionTable.id)
     .for("update");
   const oidcMappingIds = [
-    ...new Set(
-      projectionGrants.flatMap((grant) =>
+    ...new Set([
+      ...projectionGrants.flatMap((grant) =>
         grant.oidcGroupMappingId ? [grant.oidcGroupMappingId] : [],
       ),
-    ),
+      ...oidcMappings.map(({ id }) => id),
+    ]),
   ].sort();
   if (oidcMappingIds.length) {
     await tx
@@ -988,6 +1272,29 @@ export async function lockScimGrantClosure(
   ) {
     throw new IdentityGrantClosureChangedError();
   }
+  const currentOidcMappings = await tx
+    .select({
+      id: schema.oidcGroupMappingTable.id,
+      roleId: schema.oidcGroupMappingTable.roleId,
+      scope: schema.oidcGroupMappingTable.scope,
+      scopeId: schema.oidcGroupMappingTable.scopeId,
+    })
+    .from(schema.oidcGroupMappingTable)
+    .where(
+      eq(schema.oidcGroupMappingTable.identityConnectionId, input.connectionId),
+    )
+    .orderBy(schema.oidcGroupMappingTable.id);
+  const oidcMappingKey = (mapping: (typeof oidcMappings)[number]) =>
+    [mapping.id, mapping.roleId, mapping.scope, mapping.scopeId].join("\0");
+  const discoveredOidcMappingKeys = oidcMappings.map(oidcMappingKey).sort();
+  const currentOidcMappingKeys = currentOidcMappings.map(oidcMappingKey).sort();
+  if (
+    discoveredOidcMappingKeys.length !== currentOidcMappingKeys.length ||
+    currentOidcMappingKeys.some(
+      (key, index) => key !== discoveredOidcMappingKeys[index],
+    )
+  )
+    throw new IdentityGrantClosureChangedError();
   const identityIds = [
     ...new Set([
       ...projectionGrants.flatMap((grant) =>

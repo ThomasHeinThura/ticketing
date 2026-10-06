@@ -13,7 +13,20 @@ import {
   identityConnectionConfigureRequestSchema,
   identityConnectionCreateRequestSchema,
 } from "../identity/connection-contract";
+import {
+  OIDC_GROUP_MAPPING_CREATE_OPERATION,
+  OIDC_GROUP_MAPPING_UPDATE_OPERATION,
+  type OidcGroupMappingCreateRequest,
+  type OidcGroupMappingUpdateRequest,
+  oidcGroupMappingCreateRequestSchema,
+  oidcGroupMappingUpdateRequestSchema,
+} from "../identity/oidc-group-mapping-contract";
 import { loadEntraDiscovery } from "../identity/oidc-provider";
+import {
+  getOidcGroupMappingById,
+  getOidcMappingAdminConnection,
+  validateOidcMappingRole,
+} from "../identity/repository";
 import { isCurrentInstanceAdmin } from "../instance/observability/audit-failure-notifier";
 import { getObservabilityVersion } from "../instance/observability/repository";
 import { apiRouter, createRoute, jsonResponse, z } from "../openapi";
@@ -41,6 +54,7 @@ import {
   createIdentityConnectionChallenge,
   createInstanceAdminGrantChallenge,
   createMfaResetChallenge,
+  createOidcGroupMappingChallenge,
   createPendingActionChallenge,
   createRotationChallenge,
   createScimAdminChallenge,
@@ -50,6 +64,7 @@ import {
   issueIdentityConnectionToken,
   issueInstanceAdminGrantToken,
   issueMfaResetToken,
+  issueOidcGroupMappingToken,
   issuePendingActionToken,
   issueRotationToken,
   issueScimAdminToken,
@@ -151,6 +166,23 @@ const challengeRoute = createRoute({
                   operation: z.literal("scim_admin_update"),
                   connectionId: z.string().min(1),
                   request: z.record(z.string(), z.unknown()),
+                })
+                .strict(),
+              z
+                .object({
+                  kind: z.literal("operation"),
+                  operation: z.literal(OIDC_GROUP_MAPPING_CREATE_OPERATION),
+                  connectionId: z.string().min(1).max(128),
+                  request: oidcGroupMappingCreateRequestSchema,
+                })
+                .strict(),
+              z
+                .object({
+                  kind: z.literal("operation"),
+                  operation: z.literal(OIDC_GROUP_MAPPING_UPDATE_OPERATION),
+                  connectionId: z.string().min(1).max(128),
+                  mappingId: z.string().min(1).max(128),
+                  request: oidcGroupMappingUpdateRequestSchema,
                 })
                 .strict(),
               z
@@ -342,6 +374,42 @@ const proveRoute = createRoute({
                 code: z.string().min(1).max(64),
               })
               .strict(),
+            ...(
+              [
+                OIDC_GROUP_MAPPING_CREATE_OPERATION,
+                OIDC_GROUP_MAPPING_UPDATE_OPERATION,
+              ] as const
+            ).flatMap((operation) => {
+              const requestSchema =
+                operation === OIDC_GROUP_MAPPING_CREATE_OPERATION
+                  ? oidcGroupMappingCreateRequestSchema
+                  : oidcGroupMappingUpdateRequestSchema;
+              return (["password", "totp", "backup_code"] as const).map(
+                (method) =>
+                  z
+                    .object({
+                      kind: z.literal("operation"),
+                      operation: z.literal(operation),
+                      connectionId: z.string().min(1).max(128),
+                      ...(operation === OIDC_GROUP_MAPPING_UPDATE_OPERATION
+                        ? { mappingId: z.string().min(1).max(128) }
+                        : {}),
+                      request: requestSchema,
+                      challengeId: z.string(),
+                      nonce: z.string().length(43),
+                      method: z.literal(method),
+                      ...(method === "password"
+                        ? { password: z.string().min(1).max(1024) }
+                        : {
+                            code:
+                              method === "totp"
+                                ? z.string().regex(/^\d{6}$/u)
+                                : z.string().min(1).max(64),
+                          }),
+                    })
+                    .strict(),
+              );
+            }),
             ...(["scim_token_rotate", "scim_token_revoke"] as const).flatMap(
               (operation) => [
                 z
@@ -649,6 +717,125 @@ const routes = apiRouter()
         }
         throw error;
       }
+      setShadowLegacyAuthorization(c, "allowed");
+      return c.json(
+        {
+          challengeId: challenge.id,
+          nonce: challenge.nonce,
+          expiresAt: challenge.expiresAt,
+        },
+        200,
+      );
+    }
+    if (
+      input.operation === OIDC_GROUP_MAPPING_CREATE_OPERATION ||
+      input.operation === OIDC_GROUP_MAPPING_UPDATE_OPERATION
+    ) {
+      const mappingInput = input as typeof input & {
+        connectionId: string;
+        mappingId?: string;
+        request: OidcGroupMappingCreateRequest | OidcGroupMappingUpdateRequest;
+      };
+      if (!(await isCurrentInstanceAdmin(c.get("userId"))))
+        throw new HTTPException(403, { message: "Forbidden" });
+      const creating =
+        mappingInput.operation === OIDC_GROUP_MAPPING_CREATE_OPERATION;
+      const [connection] = await getOidcMappingAdminConnection(
+        mappingInput.connectionId,
+      );
+      if (!connection)
+        throw new HTTPException(404, { message: "Connection unavailable" });
+      if (connection.configVersion !== mappingInput.request.configVersion)
+        return c.json(
+          {
+            message: "version_conflict" as const,
+            version: connection.configVersion,
+          },
+          409,
+        );
+
+      const [mapping] = creating
+        ? []
+        : await getOidcGroupMappingById(
+            mappingInput.connectionId,
+            mappingInput.mappingId ?? "",
+          );
+      if (!creating && !mapping)
+        throw new HTTPException(404, { message: "Mapping unavailable" });
+      const request = mappingInput.request;
+      const scope = creating
+        ? (request as OidcGroupMappingCreateRequest).scope
+        : (mapping?.scope as "organisation" | "workspace");
+      const scopeId = creating
+        ? (request as OidcGroupMappingCreateRequest).scope === "organisation"
+          ? (connection.organisationId ?? "")
+          : (request as OidcGroupMappingCreateRequest).scopeId
+        : (request.scopeId ?? mapping?.scopeId);
+      const roleId = request.roleId ?? mapping?.roleId;
+      const targetIsValid =
+        Boolean(scopeId && roleId) &&
+        !(
+          connection.portalScope === "customer" &&
+          !creating &&
+          request.scopeId !== undefined
+        ) &&
+        (await db.transaction((tx) =>
+          validateOidcMappingRole(tx, {
+            providerType: connection.providerType,
+            portalScope: connection.portalScope,
+            organisationId: connection.organisationId,
+            maxRoleRank: connection.maxRoleRank,
+            scope,
+            scopeId: scopeId ?? "",
+            roleId: roleId ?? "",
+          }),
+        ));
+      if (!targetIsValid)
+        throw new HTTPException(422, {
+          message: "Invalid OIDC group mapping target or role",
+        });
+      const operation = creating
+        ? OIDC_GROUP_MAPPING_CREATE_OPERATION
+        : OIDC_GROUP_MAPPING_UPDATE_OPERATION;
+      let challenge: Awaited<
+        ReturnType<typeof createOidcGroupMappingChallenge>
+      >;
+      try {
+        challenge = await createOidcGroupMappingChallenge({
+          personId: actor.factor.personId,
+          sessionId: actor.session.id,
+          connectionId: mappingInput.connectionId,
+          ...(creating ? {} : { mappingId: mappingInput.mappingId }),
+          request,
+          operation,
+        });
+      } catch (error) {
+        if (error instanceof StepUpAttemptLimitError) {
+          await appendStepUpAudit(db, {
+            action: "auth.step_up_denied",
+            actorId: c.get("userId"),
+            personId: actor.factor.personId,
+            operation,
+            traceId: c.req.header("x-request-id"),
+          });
+          return c.json(
+            {
+              message: "step_up_attempt_limit" as const,
+              limit: STEP_UP_CHALLENGE_LIMIT,
+              windowMinutes: STEP_UP_CHALLENGE_WINDOW_MINUTES,
+            },
+            429,
+          );
+        }
+        throw error;
+      }
+      await appendStepUpAudit(db, {
+        action: "auth.step_up_issued",
+        actorId: c.get("userId"),
+        personId: actor.factor.personId,
+        operation,
+        traceId: c.req.header("x-request-id"),
+      });
       setShadowLegacyAuthorization(c, "allowed");
       return c.json(
         {
@@ -987,6 +1174,91 @@ const routes = apiRouter()
           );
       }
     }
+    let oidcMappingBinding:
+      | {
+          operation:
+            | typeof OIDC_GROUP_MAPPING_CREATE_OPERATION
+            | typeof OIDC_GROUP_MAPPING_UPDATE_OPERATION;
+          connectionId: string;
+          mappingId?: string;
+          request:
+            | OidcGroupMappingCreateRequest
+            | OidcGroupMappingUpdateRequest;
+        }
+      | undefined;
+    if (
+      operationInput.operation === OIDC_GROUP_MAPPING_CREATE_OPERATION ||
+      operationInput.operation === OIDC_GROUP_MAPPING_UPDATE_OPERATION
+    ) {
+      const mappingInput = operationInput as typeof operationInput & {
+        connectionId: string;
+        mappingId?: string;
+        request: OidcGroupMappingCreateRequest | OidcGroupMappingUpdateRequest;
+      };
+      if (!(await isCurrentInstanceAdmin(c.get("userId"))))
+        throw new HTTPException(403, { message: "Forbidden" });
+      const creating =
+        mappingInput.operation === OIDC_GROUP_MAPPING_CREATE_OPERATION;
+      const [connection] = await getOidcMappingAdminConnection(
+        mappingInput.connectionId,
+      );
+      if (!connection)
+        throw new HTTPException(404, { message: "Connection unavailable" });
+      if (connection.configVersion !== mappingInput.request.configVersion)
+        return c.json(
+          {
+            message: "version_conflict" as const,
+            version: connection.configVersion,
+          },
+          409,
+        );
+      const [mapping] = creating
+        ? []
+        : await getOidcGroupMappingById(
+            mappingInput.connectionId,
+            mappingInput.mappingId ?? "",
+          );
+      if (!creating && !mapping)
+        throw new HTTPException(404, { message: "Mapping unavailable" });
+      const request = mappingInput.request;
+      const scope = creating
+        ? (request as OidcGroupMappingCreateRequest).scope
+        : (mapping?.scope as "organisation" | "workspace");
+      const scopeId = creating
+        ? (request as OidcGroupMappingCreateRequest).scope === "organisation"
+          ? (connection.organisationId ?? "")
+          : (request as OidcGroupMappingCreateRequest).scopeId
+        : (request.scopeId ?? mapping?.scopeId);
+      const roleId = request.roleId ?? mapping?.roleId;
+      const targetIsValid =
+        Boolean(scopeId && roleId) &&
+        !(
+          connection.portalScope === "customer" &&
+          !creating &&
+          request.scopeId !== undefined
+        ) &&
+        (await db.transaction((tx) =>
+          validateOidcMappingRole(tx, {
+            providerType: connection.providerType,
+            portalScope: connection.portalScope,
+            organisationId: connection.organisationId,
+            maxRoleRank: connection.maxRoleRank,
+            scope,
+            scopeId: scopeId ?? "",
+            roleId: roleId ?? "",
+          }),
+        ));
+      if (!targetIsValid)
+        throw new HTTPException(422, {
+          message: "Invalid OIDC group mapping target or role",
+        });
+      oidcMappingBinding = {
+        operation: mappingInput.operation,
+        connectionId: mappingInput.connectionId,
+        ...(creating ? {} : { mappingId: mappingInput.mappingId }),
+        request,
+      };
+    }
     let scimAdminRequest: ScimAdminRequest | undefined;
     if (operationInput.operation === "scim_admin_update") {
       const validated = validateScimAdminRequest(operationInput.request);
@@ -1111,9 +1383,20 @@ const routes = apiRouter()
       setShadowLegacyAuthorization(c, "allowed");
       return c.json({ token: token.token, expiresAt: token.expiresAt }, 200);
     }
-    const token =
-      operationInput.operation === IDENTITY_CONNECTION_CREATE_OPERATION ||
-      operationInput.operation === IDENTITY_CONNECTION_CONFIGURE_OPERATION
+    const token = oidcMappingBinding
+      ? await issueOidcGroupMappingToken(
+          {
+            id: input.challengeId,
+            nonce: input.nonce,
+            personId: actor.factor.personId,
+            sessionId: actor.session.id,
+            userId: c.get("userId"),
+            ...oidcMappingBinding,
+          },
+          verifyAuthentication,
+        )
+      : operationInput.operation === IDENTITY_CONNECTION_CREATE_OPERATION ||
+          operationInput.operation === IDENTITY_CONNECTION_CONFIGURE_OPERATION
         ? await issueIdentityConnectionToken(
             {
               id: input.challengeId,
