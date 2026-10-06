@@ -741,6 +741,32 @@ export function getOidcGroupMappingById(
     .limit(1);
 }
 
+export function getOidcGroupMappingSnapshot(
+  connectionId: string,
+  mappingId: string,
+) {
+  return db
+    .select()
+    .from(schema.oidcGroupMappingTable)
+    .where(
+      and(
+        eq(schema.oidcGroupMappingTable.identityConnectionId, connectionId),
+        eq(schema.oidcGroupMappingTable.id, mappingId),
+      ),
+    )
+    .limit(1);
+}
+
+export function listOidcMappingAffectedUserIds(
+  tx: IdentityTransaction,
+  personIds: readonly string[],
+) {
+  return tx
+    .select({ userId: schema.personTable.userId })
+    .from(schema.personTable)
+    .where(inArray(schema.personTable.id, [...personIds]));
+}
+
 export function findOidcGroupMapping(
   tx: IdentityTransaction,
   connectionId: string,
@@ -1635,6 +1661,143 @@ export function getOidcIdentityForSignIn(
       ),
     )
     .for("update", { of: schema.externalIdentityTable })
+    .limit(1);
+}
+
+export function getOidcConnectionSnapshot(
+  tx: IdentityTransaction,
+  connectionId: string,
+) {
+  return tx
+    .select()
+    .from(schema.identityConnectionTable)
+    .where(eq(schema.identityConnectionTable.id, connectionId))
+    .limit(1);
+}
+
+export function findOidcIdentityForClosure(
+  tx: IdentityTransaction,
+  input: { connectionId: string; issuer: string; subject: string },
+) {
+  return tx
+    .select({
+      id: schema.externalIdentityTable.id,
+      personId: schema.externalIdentityTable.personId,
+    })
+    .from(schema.externalIdentityTable)
+    .where(
+      and(
+        eq(
+          schema.externalIdentityTable.identityConnectionId,
+          input.connectionId,
+        ),
+        eq(schema.externalIdentityTable.issuer, input.issuer),
+        eq(schema.externalIdentityTable.subject, input.subject),
+      ),
+    )
+    .limit(1);
+}
+
+export function listActiveOidcGrantsForSignIn(
+  tx: IdentityTransaction,
+  input: { personId: string; connectionId: string; externalIdentityId: string },
+) {
+  return tx
+    .select({
+      id: schema.membershipGrantTable.id,
+      roleId: schema.membershipGrantTable.roleId,
+      scope: schema.membershipGrantTable.scope,
+      scopeId: schema.membershipGrantTable.scopeId,
+      sourceKind: schema.membershipGrantTable.sourceKind,
+      oidcGroupMappingId: schema.membershipGrantTable.oidcGroupMappingId,
+    })
+    .from(schema.membershipGrantTable)
+    .where(
+      and(
+        eq(schema.membershipGrantTable.personId, input.personId),
+        eq(
+          schema.membershipGrantTable.identityConnectionId,
+          input.connectionId,
+        ),
+        eq(
+          schema.membershipGrantTable.externalIdentityId,
+          input.externalIdentityId,
+        ),
+        inArray(schema.membershipGrantTable.sourceKind, [
+          "jit_default",
+          "oidc_group",
+        ]),
+        isNull(schema.membershipGrantTable.revokedAt),
+      ),
+    )
+    .orderBy(schema.membershipGrantTable.id)
+    .for("update");
+}
+
+export function listAdmissionFailedOidcGrants(
+  tx: IdentityTransaction,
+  input: { personId: string; externalIdentityId: string; connectionId: string },
+) {
+  return tx
+    .select({
+      id: schema.membershipGrantTable.id,
+      scope: schema.membershipGrantTable.scope,
+      scopeId: schema.membershipGrantTable.scopeId,
+      sourceKind: schema.membershipGrantTable.sourceKind,
+    })
+    .from(schema.membershipGrantTable)
+    .where(
+      and(
+        eq(schema.membershipGrantTable.personId, input.personId),
+        eq(
+          schema.membershipGrantTable.externalIdentityId,
+          input.externalIdentityId,
+        ),
+        eq(
+          schema.membershipGrantTable.identityConnectionId,
+          input.connectionId,
+        ),
+        inArray(schema.membershipGrantTable.sourceKind, [
+          "jit_default",
+          "oidc_group",
+        ]),
+        isNull(schema.membershipGrantTable.revokedAt),
+      ),
+    )
+    .orderBy(schema.membershipGrantTable.id)
+    .for("update");
+}
+
+export function getOidcPersonForSignIn(
+  tx: IdentityTransaction,
+  personId: string,
+) {
+  return tx
+    .select()
+    .from(schema.personTable)
+    .where(eq(schema.personTable.id, personId))
+    .limit(1);
+}
+
+export function listOidcMappingsForReconciliation(
+  tx: IdentityTransaction,
+  connectionId: string,
+) {
+  return tx
+    .select()
+    .from(schema.oidcGroupMappingTable)
+    .where(eq(schema.oidcGroupMappingTable.identityConnectionId, connectionId))
+    .orderBy(schema.oidcGroupMappingTable.id);
+}
+
+export function getOidcRoleForReconciliation(
+  tx: IdentityTransaction,
+  roleId: string,
+) {
+  return tx
+    .select()
+    .from(schema.roleTable)
+    .where(eq(schema.roleTable.id, roleId))
     .limit(1);
 }
 
