@@ -1,3 +1,37 @@
+## October 6 complete batches and current-source failures — 07:27 UTC
+
+- **P0 #583 composition:** exact `22702a13c59240be51fe4c732c8b6e902271fa8d` combines
+  installer/UI/lifecycle source edaa6845 with the reviewed C9 workspace strict fix and
+  approved dependency floors. Its actual hosted PostgreSQL suite passes136 files/1651
+  tests; accessibility, visuals and all12 fast implementation jobs pass. Current G11
+  fails18/22: LCP2628ms, state271.3ms, assignment211.9ms and board689.8ms exceed unchanged
+  budgets. Current browser smoke passes23 tests and times out in the MFA journey at
+  restoration of the realtime log level. Earlier edaa's22/22 performance result remains
+  parent-source evidence, not current acceptance. Original current logs and downloaded
+  diagnostic evidence are retained privately. Bulk ordinary review clears the committed
+  lifecycle fix but finds Ctrl/Cmd+A absent from a board with zero selection because its
+  keyboard listener is inside the lazy toolbar. The complete correction/investigation
+  batch continues before further final reviews. The current exact image builds; no boot,
+  runtime compatibility, enforcement activation or deployment is claimed.
+- **P4 #580:** Thomas explicitly approved the existing Babel parser7.29.8 as a direct
+  development dependency. Structural AST candidate `f298edcad4653ab4363d9ce188d7db40e6b2bcd2`
+  is committed/pushed and passes13 scanner tests,1091 CI-script tests across112 suites,
+  frozen install, dependency checks and all9 typecheck tasks. It replaces the handwritten
+  parser after repeated syntax-class bypasses; API transaction source remains unchanged
+  fromc29. A strong independent ordinary pass followed by current full Sol remains needed;
+  no P4 query acceptance is claimed. Composition must also relocate any new P0 row lookup.
+- **P4 notifications:** the full schema/producer/fenced-worker implementation is active
+  in its isolated lane. Root acquired an exclusive PostgreSQL18 test container with a
+  private connection and exact ownership receipt for focused real-SQL verification.
+  SQL results and cleanup are not yet claimed. Digest grouping, event materialization and
+  concrete provider integration remain tracked. Quiet-hours format/DST semantics await
+  the already asked written decision; independent engine implementation continues.
+- **Acceptance:** all three original representative partial UTC observation dates remain
+  retained. Changed-source/dependency runtime compatibility, eligible strict testing,
+  public-config exception, required final reviews/CI and additional phase finalizer remain
+  open. P1/P2/P3 prepared integration and P4 implementation continue; no calendar wait,
+  protected merge, phase closure or persistent DEV update is claimed.
+
 ## October 6 completed verification and next implementation batch — 06:48 UTC
 
 - **P0 #584:** independent full Sol clears product/dependency sourceC9; the review artifact
