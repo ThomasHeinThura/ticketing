@@ -1,16 +1,20 @@
-import { and, asc, eq, isNull, max, sql } from "drizzle-orm";
+import { eq, sql } from "drizzle-orm";
 import { HTTPException } from "hono/http-exception";
 import db from "../../database";
-import {
-  assetTable,
-  columnTable,
-  projectTable,
-  taskTable,
-} from "../../database/schema";
+import { assetTable, taskTable } from "../../database/schema";
 import { publishEvent } from "../../events";
 import { rejectNulByte } from "../../utils/reject-nul-byte";
 import { assertProjectStillLive } from "../../work-item/assert-work-item-live";
 import { lockLegacyTaskRow } from "../assert-task-project-live";
+import {
+  findMoveDestinationPreflightQuery,
+  findMoveDestinationProjectQuery,
+  findMoveSourcePreflightQuery,
+  findMoveSourceProjectQuery,
+  listMoveColumnsQuery,
+  lockMoveProjectLivenessQuery,
+  maxMovePositionQuery,
+} from "../repository";
 import { claimTaskNumber } from "./claim-task-numbers";
 
 type DbOrTx = typeof db | Parameters<Parameters<typeof db.transaction>[0]>[0];
@@ -28,15 +32,10 @@ async function resolveDestinationStatus(
   currentStatus: string,
   requestedStatus?: string,
 ) {
-  const destinationColumns = await dbOrTx
-    .select({
-      id: columnTable.id,
-      slug: columnTable.slug,
-      position: columnTable.position,
-    })
-    .from(columnTable)
-    .where(eq(columnTable.projectId, destinationProjectId))
-    .orderBy(asc(columnTable.position));
+  const destinationColumns = await listMoveColumnsQuery(
+    dbOrTx,
+    destinationProjectId,
+  );
 
   const [firstColumn] = destinationColumns;
 
@@ -69,16 +68,12 @@ async function getNextTaskPosition(
   status: string,
   columnId: string,
 ) {
-  const [maxPositionResult] = await dbOrTx
-    .select({ maxPosition: max(taskTable.position) })
-    .from(taskTable)
-    .where(
-      and(
-        eq(taskTable.projectId, projectId),
-        eq(taskTable.status, status),
-        eq(taskTable.columnId, columnId),
-      ),
-    );
+  const [maxPositionResult] = await maxMovePositionQuery(
+    dbOrTx,
+    projectId,
+    status,
+    columnId,
+  );
 
   return (maxPositionResult?.maxPosition ?? 0) + 1;
 }
@@ -110,16 +105,10 @@ async function moveTask({
 
     // Reject frozen sources before touching a request-selected destination id.
     // These reads only establish reach; sorted row locks below recheck both rows.
-    const [sourcePreflight] = await tx
-      .select({
-        id: projectTable.id,
-        workspaceId: projectTable.workspaceId,
-        archivedAt: projectTable.archivedAt,
-        deletedAt: projectTable.deletedAt,
-      })
-      .from(projectTable)
-      .where(eq(projectTable.id, lockedTask.projectId))
-      .limit(1);
+    const [sourcePreflight] = await findMoveSourcePreflightQuery(
+      tx,
+      lockedTask.projectId,
+    );
     if (
       !sourcePreflight ||
       sourcePreflight.archivedAt !== null ||
@@ -134,18 +123,11 @@ async function moveTask({
       });
     }
 
-    const [destinationPreflight] = await tx
-      .select({ id: projectTable.id })
-      .from(projectTable)
-      .where(
-        and(
-          eq(projectTable.id, destinationProjectId),
-          eq(projectTable.workspaceId, sourcePreflight.workspaceId),
-          isNull(projectTable.deletedAt),
-          isNull(projectTable.archivedAt),
-        ),
-      )
-      .limit(1);
+    const [destinationPreflight] = await findMoveDestinationPreflightQuery(
+      tx,
+      destinationProjectId,
+      sourcePreflight.workspaceId,
+    );
     if (!destinationPreflight) {
       // A plain source preflight may have gone stale while checking destination reach.
       await assertProjectStillLive(tx, lockedTask.projectId, "Task not found");
@@ -159,20 +141,12 @@ async function moveTask({
       ...new Set([lockedTask.projectId, destinationProjectId]),
     ].sort()) {
       const isDestination = projectId === destinationProjectId;
-      const [liveProject] = await tx
-        .select({ id: projectTable.id })
-        .from(projectTable)
-        .where(
-          and(
-            eq(projectTable.id, projectId),
-            isNull(projectTable.deletedAt),
-            isNull(projectTable.archivedAt),
-            ...(isDestination
-              ? [eq(projectTable.workspaceId, sourcePreflight.workspaceId)]
-              : []),
-          ),
-        )
-        .for(isDestination ? "update" : "share");
+      const [liveProject] = await lockMoveProjectLivenessQuery(
+        tx,
+        projectId,
+        isDestination,
+        sourcePreflight.workspaceId,
+      );
       lockedProjectLiveness.set(projectId, liveProject !== undefined);
     }
     if (!lockedProjectLiveness.get(lockedTask.projectId)) {
@@ -182,35 +156,21 @@ async function moveTask({
       throw new HTTPException(404, { message: "Project not found" });
     }
 
-    const [sourceProject] = await tx
-      .select({
-        id: projectTable.id,
-        name: projectTable.name,
-        workspaceId: projectTable.workspaceId,
-      })
-      .from(projectTable)
-      .where(eq(projectTable.id, lockedTask.projectId))
-      .limit(1);
+    const [sourceProject] = await findMoveSourceProjectQuery(
+      tx,
+      lockedTask.projectId,
+    );
     if (!sourceProject) {
       throw new HTTPException(404, { message: "Project not found" });
     }
 
     // S2 (review of PR #307): scope the destination lookup to the source's
     // current workspace so foreign and missing project ids remain indistinct.
-    const [destinationProject] = await tx
-      .select({
-        id: projectTable.id,
-        name: projectTable.name,
-      })
-      .from(projectTable)
-      .where(
-        and(
-          eq(projectTable.id, destinationProjectId),
-          eq(projectTable.workspaceId, sourceProject.workspaceId),
-          isNull(projectTable.deletedAt),
-        ),
-      )
-      .limit(1);
+    const [destinationProject] = await findMoveDestinationProjectQuery(
+      tx,
+      destinationProjectId,
+      sourceProject.workspaceId,
+    );
     if (!destinationProject) {
       throw new HTTPException(404, { message: "Project not found" });
     }

@@ -119,8 +119,12 @@ const manifest = [
   {
     gate: "pnpm check:queries",
     stage: "fast",
-    run: null,
-    why: "the repository.ts convention in docs/04-engineering/coding-standards.md has not been applied to the inherited tree yet, so 'no db.select() outside repository.ts' has no repository layer to be outside of.",
+    run: ["pnpm", "check:queries"],
+    note:
+      "Drizzle read-method calls must be owned by repository.ts files. The scanner covers " +
+      "select/selectDistinct/selectDistinctOn and relational find* calls, including optional, " +
+      "computed literal, and simple local alias forms; raw SQL through execute/query is outside " +
+      "this gate's documented scope.",
   },
   {
     gate: "pnpm check:inventory",

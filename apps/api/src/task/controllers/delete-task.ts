@@ -1,25 +1,17 @@
-import { eq, or } from "drizzle-orm";
+import { eq } from "drizzle-orm";
 import { HTTPException } from "hono/http-exception";
 import db from "../../database";
-import { taskRelationTable, taskTable } from "../../database/schema";
+import { taskTable } from "../../database/schema";
 import { publishEvent } from "../../events";
 import { deleteS3Keys, getTaskAssetKeys } from "../../storage/cleanup-assets";
 import { lockTaskAndAssertProjectLive } from "../assert-task-project-live";
+import { listTaskRelationsForTask } from "../repository";
 
 async function deleteTask(taskId: string, currentUserId: string) {
   const { relations, assetKeys, deletedTask } = await db.transaction(
     async (tx) => {
       await lockTaskAndAssertProjectLive(tx, taskId);
-      const relations = await tx
-        .select()
-        .from(taskRelationTable)
-        .where(
-          or(
-            eq(taskRelationTable.sourceTaskId, taskId),
-            eq(taskRelationTable.targetTaskId, taskId),
-          ),
-        )
-        .execute();
+      const relations = await listTaskRelationsForTask(tx, taskId);
       const assetKeys = await getTaskAssetKeys(taskId, tx);
       const [deletedTask] = await tx
         .delete(taskTable)

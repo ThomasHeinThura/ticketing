@@ -7,10 +7,8 @@ import {
   validateCalendar,
   weeklyCoverMinutes,
 } from "@taskdesk/domain";
-import { eq } from "drizzle-orm";
 import type { Context, Next } from "hono";
 import { HTTPException } from "hono/http-exception";
-import db, { schema } from "../database";
 import {
   apiRouter,
   type BaseVariables,
@@ -32,6 +30,7 @@ import {
   createCalendar,
   getCalendar,
   getCalendarUsage,
+  getCalendarWorkspace,
   importCalendarHolidays,
   listCalendars,
   ServiceCalendarVersionConflictError,
@@ -60,11 +59,7 @@ async function calendarReach(c: Context, next: Next) {
   if (!id)
     throw new HTTPException(400, { message: "Missing service calendar id" });
   rejectNulByte(id, "Service calendar id");
-  const [calendar] = await db
-    .select({ workspaceId: schema.serviceCalendarTable.workspaceId })
-    .from(schema.serviceCalendarTable)
-    .where(eq(schema.serviceCalendarTable.id, id))
-    .limit(1);
+  const [calendar] = await getCalendarWorkspace(id);
   if (!calendar)
     throw new HTTPException(404, { message: "Service calendar not found" });
   try {

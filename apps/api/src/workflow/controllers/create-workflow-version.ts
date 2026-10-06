@@ -4,18 +4,20 @@ import {
   type WorkflowState,
   type WorkflowTransition,
 } from "@taskdesk/domain";
-import { eq, inArray, isNull, max, or } from "drizzle-orm";
 import { HTTPException } from "hono/http-exception";
 import db from "../../database";
 import {
-  personTable,
-  roleTable,
-  stateTemplateTable,
-  workflowTable,
   workflowTransitionTable,
   workflowVersionTable,
 } from "../../database/schema";
 import type { z } from "../../openapi";
+import {
+  getNextWorkflowVersionNumberQuery,
+  getWorkflowWorkspaceQuery,
+  listWorkflowPeopleQuery,
+  listWorkflowRolesQuery,
+  listWorkflowTemplatesQuery,
+} from "../repository";
 import type { createWorkflowVersionBody } from "../schema";
 
 type TransitionInput = z.infer<
@@ -33,20 +35,13 @@ async function createWorkflowVersion(
   workflowId: string,
   transitions: readonly TransitionInput[],
 ) {
-  const [workflow] = await db
-    .select({ workspaceId: workflowTable.workspaceId })
-    .from(workflowTable)
-    .where(eq(workflowTable.id, workflowId))
-    .limit(1);
+  const [workflow] = await getWorkflowWorkspaceQuery(workflowId);
 
   if (!workflow) {
     throw new HTTPException(404, { message: "Workflow not found" });
   }
 
-  const templates = await db
-    .select({ id: stateTemplateTable.id, group: stateTemplateTable.group })
-    .from(stateTemplateTable)
-    .where(eq(stateTemplateTable.workspaceId, workflow.workspaceId));
+  const templates = await listWorkflowTemplatesQuery(workflow.workspaceId);
 
   const states: WorkflowState[] = templates.map((t) => ({
     id: asStateTemplateId(t.id),
@@ -66,15 +61,7 @@ async function createWorkflowVersion(
   // names one outside it, before anything is persisted.
   const stateIds = new Set(states.map((s) => s.id));
 
-  const roleRows = await db
-    .select({ id: roleTable.id })
-    .from(roleTable)
-    .where(
-      or(
-        eq(roleTable.workspaceId, workflow.workspaceId),
-        isNull(roleTable.workspaceId),
-      ),
-    );
+  const roleRows = await listWorkflowRolesQuery(workflow.workspaceId);
   const roleIds = new Set(roleRows.map((r) => r.id));
 
   // Opus security review of PR #457 (B2's "defence in depth" ask, alongside the
@@ -104,12 +91,9 @@ async function createWorkflowVersion(
     assigneeEffectPersonIds.size === 0
       ? new Set<string>()
       : new Set(
-          (
-            await db
-              .select({ id: personTable.id })
-              .from(personTable)
-              .where(inArray(personTable.id, [...assigneeEffectPersonIds]))
-          ).map((p) => p.id),
+          (await listWorkflowPeopleQuery([...assigneeEffectPersonIds])).map(
+            (p) => p.id,
+          ),
         );
 
   for (const t of transitions) {
@@ -178,10 +162,7 @@ async function createWorkflowVersion(
   }
 
   return db.transaction(async (tx) => {
-    const [maxRow] = await tx
-      .select({ nextNumber: max(workflowVersionTable.number) })
-      .from(workflowVersionTable)
-      .where(eq(workflowVersionTable.workflowId, workflowId));
+    const [maxRow] = await getNextWorkflowVersionNumberQuery(tx, workflowId);
 
     const [version] = await tx
       .insert(workflowVersionTable)

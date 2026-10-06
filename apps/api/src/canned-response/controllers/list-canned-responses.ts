@@ -1,13 +1,7 @@
-import { eq } from "drizzle-orm";
-import db from "../../database";
-import { cannedResponseTable } from "../../database/schema";
+import { listCannedResponsesQuery } from "../repository";
 
 export async function listCannedResponses(workspaceId: string) {
-  return db
-    .select()
-    .from(cannedResponseTable)
-    .where(eq(cannedResponseTable.workspaceId, workspaceId))
-    .orderBy(cannedResponseTable.name);
+  return listCannedResponsesQuery(workspaceId);
 }
 
 export default listCannedResponses;

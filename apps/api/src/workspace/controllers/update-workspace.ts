@@ -1,6 +1,10 @@
-import { and, eq, ne } from "drizzle-orm";
+import { eq } from "drizzle-orm";
 import db, { schema } from "../../database";
 import { isUniqueViolation } from "../../utils/is-unique-violation";
+import {
+  findWorkspaceSlugConflictQuery,
+  getWorkspaceQuery,
+} from "../repository";
 import { WorkspaceSlugTakenError } from "./create-workspace";
 
 export type UpdateWorkspaceInput = {
@@ -35,10 +39,7 @@ async function updateWorkspace(
   if (input.description !== undefined) values.description = input.description;
 
   if (Object.keys(values).length === 0) {
-    const [unchanged] = await db
-      .select()
-      .from(schema.workspaceTable)
-      .where(eq(schema.workspaceTable.id, workspaceId));
+    const [unchanged] = await getWorkspaceQuery(workspaceId);
     return unchanged ?? null;
   }
 
@@ -46,16 +47,10 @@ async function updateWorkspace(
   // common case is a clean 409 rather than a caught driver error. The catch
   // below still covers the race between this read and the update.
   if (typeof input.slug === "string") {
-    const [clash] = await db
-      .select({ id: schema.workspaceTable.id })
-      .from(schema.workspaceTable)
-      .where(
-        and(
-          eq(schema.workspaceTable.slug, input.slug),
-          ne(schema.workspaceTable.id, workspaceId),
-        ),
-      )
-      .limit(1);
+    const [clash] = await findWorkspaceSlugConflictQuery(
+      input.slug,
+      workspaceId,
+    );
     if (clash) {
       throw new WorkspaceSlugTakenError(input.slug);
     }

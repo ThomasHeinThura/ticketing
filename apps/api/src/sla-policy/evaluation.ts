@@ -6,8 +6,11 @@ import type {
   SlaWorkItemFacts,
 } from "@taskdesk/domain";
 import { computeSlaState, SLA_METRICS } from "@taskdesk/domain";
-import { and, eq } from "drizzle-orm";
-import db, { schema } from "../database";
+import {
+  getCalendarForEvaluation,
+  getPinnedVersionForEvaluation,
+  listGoalsForEvaluation,
+} from "./repository";
 
 /** Evaluate the version persisted on the work item, against its live calendar. */
 export async function evaluatePinnedWorkItemSla(input: {
@@ -30,21 +33,10 @@ export async function evaluatePinnedWorkItemSla(input: {
     }));
   }
 
-  const [version] = await db
-    .select({
-      id: schema.slaPolicyVersionTable.id,
-      calendarId: schema.slaPolicyVersionTable.calendarId,
-      atRiskThresholdPct: schema.slaPolicyVersionTable.atRiskThresholdPct,
-      effectiveFrom: schema.slaPolicyVersionTable.effectiveFrom,
-    })
-    .from(schema.slaPolicyVersionTable)
-    .where(
-      and(
-        eq(schema.slaPolicyVersionTable.id, input.policyVersionId),
-        eq(schema.slaPolicyVersionTable.workspaceId, input.workspaceId),
-      ),
-    )
-    .limit(1);
+  const [version] = await getPinnedVersionForEvaluation(
+    input.policyVersionId,
+    input.workspaceId,
+  );
 
   if (
     !version?.effectiveFrom ||
@@ -55,20 +47,10 @@ export async function evaluatePinnedWorkItemSla(input: {
     );
   }
 
-  const [calendar] = await db
-    .select({
-      timezone: schema.serviceCalendarTable.timezone,
-      windows: schema.serviceCalendarTable.windows,
-      holidays: schema.serviceCalendarTable.holidays,
-    })
-    .from(schema.serviceCalendarTable)
-    .where(
-      and(
-        eq(schema.serviceCalendarTable.id, version.calendarId),
-        eq(schema.serviceCalendarTable.workspaceId, input.workspaceId),
-      ),
-    )
-    .limit(1);
+  const [calendar] = await getCalendarForEvaluation(
+    version.calendarId,
+    input.workspaceId,
+  );
 
   if (!calendar) {
     throw new Error(
@@ -76,20 +58,7 @@ export async function evaluatePinnedWorkItemSla(input: {
     );
   }
 
-  const goals = await db
-    .select({
-      metric: schema.slaGoalTable.metric,
-      workItemTypeId: schema.slaGoalTable.workItemTypeId,
-      priority: schema.slaGoalTable.priority,
-      targetMinutes: schema.slaGoalTable.targetMinutes,
-    })
-    .from(schema.slaGoalTable)
-    .where(
-      and(
-        eq(schema.slaGoalTable.workspaceId, input.workspaceId),
-        eq(schema.slaGoalTable.versionId, version.id),
-      ),
-    );
+  const goals = await listGoalsForEvaluation(input.workspaceId, version.id);
 
   const policy: SlaPolicy = {
     calendar: {

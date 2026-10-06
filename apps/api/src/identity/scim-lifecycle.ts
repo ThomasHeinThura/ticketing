@@ -7,6 +7,7 @@ import { notifyCurrentInstanceAdminsOfAuditFailure } from "../instance/observabi
 import { recordAuditWriteFailure } from "../instance/observability/runtime";
 import { retryIdentityGrantClosure } from "./membership-projection";
 import { transitionPersonLifecycleInTransaction } from "./person-lifecycle";
+import { getScimExternalIdentity } from "./repository";
 
 /** SCIM source wrapper: the shared transition owns person-wide state and grants. */
 export async function setScimIdentityActive(
@@ -35,17 +36,11 @@ export async function setScimIdentityActiveInTransaction(
   active: boolean,
   lifecyclePolicy: "end_memberships" | "keep_memberships",
 ) {
-  const [identity] = await tx
-    .select({ personId: schema.externalIdentityTable.personId })
-    .from(schema.externalIdentityTable)
-    .where(
-      and(
-        eq(schema.externalIdentityTable.id, identityId),
-        eq(schema.externalIdentityTable.identityConnectionId, connectionId),
-        eq(schema.externalIdentityTable.provisionedVia, "scim"),
-      ),
-    )
-    .limit(1);
+  const [identity] = await getScimExternalIdentity(
+    tx,
+    identityId,
+    connectionId,
+  );
   if (!identity) return false;
 
   const changed = await transitionPersonLifecycleInTransaction(

@@ -1,11 +1,5 @@
-import { and, eq, isNull } from "drizzle-orm";
 import { HTTPException } from "hono/http-exception";
 import db from "../database";
-import {
-  membershipTable,
-  personTable,
-  workItemTable,
-} from "../database/schema";
 import {
   type ApiKey,
   apiRouter,
@@ -64,6 +58,11 @@ import updateWorkItem, {
   WorkItemVersionConflictError,
 } from "./controllers/update-work-item";
 import { unwatchWorkItem, watchWorkItem } from "./controllers/watch-work-item";
+import {
+  findPersonIdByUserIdQuery,
+  findStaffPersonOnProjectRosterQuery,
+  findWorkItemAssigneeForActorQuery,
+} from "./repository";
 import { requireCommentReach } from "./require-comment-reach";
 import { requireWorkItemReach } from "./require-work-item-reach";
 import {
@@ -1115,20 +1114,11 @@ const workItem = apiRouter<
     // reachable today. The resolution above is kept anyway, because it makes the id the
     // self branch uses the SAME fact the roster is built from (staff, on this roster),
     // instead of relying on a constraint defined in another file to stay deterministic.
-    const [callerPerson] = await db
-      .select({ id: personTable.id })
-      .from(personTable)
-      .innerJoin(membershipTable, eq(membershipTable.personId, personTable.id))
-      .where(
-        and(
-          eq(personTable.userId, userId),
-          eq(personTable.side, "staff"),
-          eq(membershipTable.scope, "project"),
-          eq(membershipTable.scopeId, projectId),
-        ),
-      )
-      .orderBy(personTable.createdAt)
-      .limit(1);
+    const [callerPerson] = await findStaffPersonOnProjectRosterQuery(
+      db,
+      userId,
+      projectId,
+    );
 
     // "May assign anyone" reads the caller's own role through the same
     // `builtInRoleHasCapability` predicate every other authority check uses (#318's
@@ -1174,11 +1164,7 @@ const workItem = apiRouter<
     // same mapping the identity adapter walks (#315). A caller with no person row can
     // never BE the target, so the branch is false and only `work_item:assign` carries
     // them.
-    const [callerPerson] = await db
-      .select({ id: personTable.id })
-      .from(personTable)
-      .where(eq(personTable.userId, userId))
-      .limit(1);
+    const [callerPerson] = await findPersonIdByUserIdQuery(db, userId);
     await assertCallerHasCapabilityOrSelf(
       workspaceId,
       userId,
@@ -1362,26 +1348,15 @@ const workItem = apiRouter<
     // `work_item:assign` carries them. The read here is the row the predicate names;
     // the controller re-loads it (same shape as the assign route) and re-scopes its own
     // conditional write.
-    const [current] = await db
-      .select({ assigneeId: workItemTable.assigneeId })
-      .from(workItemTable)
-      .where(
-        and(
-          eq(workItemTable.key, key),
-          eq(workItemTable.workspaceId, workspaceId),
-          isNull(workItemTable.archivedAt),
-          isNull(workItemTable.deletedAt),
-        ),
-      )
-      .limit(1);
+    const [current] = await findWorkItemAssigneeForActorQuery(
+      db,
+      key,
+      workspaceId,
+    );
     if (current === undefined) {
       throw new HTTPException(404, { message: "Work item not found" });
     }
-    const [callerPerson] = await db
-      .select({ id: personTable.id })
-      .from(personTable)
-      .where(eq(personTable.userId, userId))
-      .limit(1);
+    const [callerPerson] = await findPersonIdByUserIdQuery(db, userId);
     await assertCallerHasCapabilityOrSelf(
       workspaceId,
       userId,
@@ -1430,11 +1405,7 @@ const workItem = apiRouter<
     const { toStateTemplateId, note } = c.req.valid("json");
     const { actorId, actorType } = resolveActor(userId, c.get("apiKey"));
 
-    const [callerPerson] = await db
-      .select({ id: personTable.id })
-      .from(personTable)
-      .where(eq(personTable.userId, userId))
-      .limit(1);
+    const [callerPerson] = await findPersonIdByUserIdQuery(db, userId);
 
     try {
       const transitioned = await transitionWorkItem(
@@ -1464,11 +1435,7 @@ const workItem = apiRouter<
   .openapi(listWorkItemTransitionsRoute, async (c) => {
     const workItemId = c.get("workItemId");
     const userId = c.get("userId");
-    const [callerPerson] = await db
-      .select({ id: personTable.id })
-      .from(personTable)
-      .where(eq(personTable.userId, userId))
-      .limit(1);
+    const [callerPerson] = await findPersonIdByUserIdQuery(db, userId);
     const offers = await listWorkItemTransitions(
       workItemId,
       callerPerson?.id ?? null,

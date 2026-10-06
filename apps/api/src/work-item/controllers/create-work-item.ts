@@ -1,19 +1,18 @@
-import { and, desc, eq, isNotNull, isNull, lte } from "drizzle-orm";
 import { HTTPException } from "hono/http-exception";
 import db from "../../database";
-import {
-  projectTable,
-  slaPolicyTable,
-  slaPolicyVersionTable,
-  stateTable,
-  workItemTable,
-  workItemTypeTable,
-  workspaceTable,
-} from "../../database/schema";
+import { workItemTable } from "../../database/schema";
 import { publishEvent } from "../../events";
 import { isUniqueViolation } from "../../utils/is-unique-violation";
 import { type ActivityActorType, recordWorkItemActivity } from "../activity";
 import { publishWorkItemHint, recordWorkItemEvent } from "../native-event";
+import {
+  findCreateProjectQuery,
+  findCreateWorkItemTypeQuery,
+  findDefaultProjectStateQuery,
+  findEffectiveSlaPolicyVersionQuery,
+  findWorkspaceDefaultSlaPolicyQuery,
+  findWorkspaceOwnedSlaPolicyQuery,
+} from "../repository";
 import { claimWorkItemNumber } from "./claim-work-item-number";
 
 /**
@@ -84,13 +83,7 @@ export async function createWorkItem(input: CreateWorkItemInput) {
   // loaded project row below closes the same TOCTOU-adjacent class of gap
   // `get-project.ts` closes for reads: the row loaded for the INSERT is scoped by BOTH
   // its id and the workspace the caller was actually authorized against.
-  const project = await db.query.projectTable.findFirst({
-    where: and(
-      eq(projectTable.id, projectId),
-      eq(projectTable.workspaceId, workspaceId),
-      isNull(projectTable.deletedAt),
-    ),
-  });
+  const project = await findCreateProjectQuery(db, projectId, workspaceId);
 
   if (!project) {
     throw new HTTPException(404, { message: "Project not found" });
@@ -112,12 +105,11 @@ export async function createWorkItem(input: CreateWorkItemInput) {
   // checks (`upsert-workflow-rule.ts`'s `columnId`, `reorder-columns.ts`'s `col.id`,
   // confirmed side by side in #307's own Opus review table). A nonexistent id and a
   // real-but-foreign-workspace id now answer byte-identically.
-  const type = await db.query.workItemTypeTable.findFirst({
-    where: and(
-      eq(workItemTypeTable.id, typeId),
-      eq(workItemTypeTable.workspaceId, project.workspaceId),
-    ),
-  });
+  const type = await findCreateWorkItemTypeQuery(
+    db,
+    typeId,
+    project.workspaceId,
+  );
 
   if (!type) {
     throw new HTTPException(400, {
@@ -134,12 +126,7 @@ export async function createWorkItem(input: CreateWorkItemInput) {
   // this schema yet", `schema.ts`'s own comment), and `workflows.md` (P2, a later stage)
   // defines no "leaveable" predicate this code could check against. There is nothing to
   // query. This is a TODO for the workflow-engine slice, not an omission in this one.
-  const defaultState = await db.query.stateTable.findFirst({
-    where: and(
-      eq(stateTable.projectId, project.id),
-      eq(stateTable.isDefault, true),
-    ),
-  });
+  const defaultState = await findDefaultProjectStateQuery(db, project.id);
 
   if (!defaultState) {
     throw new HTTPException(400, {
@@ -159,48 +146,32 @@ export async function createWorkItem(input: CreateWorkItemInput) {
   try {
     created = await db.transaction(async (tx) => {
       const slaStartedAt = new Date();
-      const [workspace] = await tx
-        .select({ slaPolicyId: workspaceTable.defaultSlaPolicyId })
-        .from(workspaceTable)
-        .where(eq(workspaceTable.id, project.workspaceId))
-        .limit(1);
+      const [workspace] = await findWorkspaceDefaultSlaPolicyQuery(
+        tx,
+        project.workspaceId,
+      );
       if (!workspace) {
         throw new Error("Work item's workspace disappeared during creation");
       }
       const policyId =
         type.slaPolicyId ?? project.slaPolicyId ?? workspace.slaPolicyId;
       if (policyId) {
-        const [ownedPolicy] = await tx
-          .select({ id: slaPolicyTable.id })
-          .from(slaPolicyTable)
-          .where(
-            and(
-              eq(slaPolicyTable.id, policyId),
-              eq(slaPolicyTable.workspaceId, project.workspaceId),
-            ),
-          )
-          .limit(1);
+        const [ownedPolicy] = await findWorkspaceOwnedSlaPolicyQuery(
+          tx,
+          policyId,
+          project.workspaceId,
+        );
         if (!ownedPolicy) {
           throw new Error("Work item SLA binding is outside its workspace");
         }
       }
       const [policyVersion] = policyId
-        ? await tx
-            .select({ id: slaPolicyVersionTable.id })
-            .from(slaPolicyVersionTable)
-            .where(
-              and(
-                eq(slaPolicyVersionTable.workspaceId, project.workspaceId),
-                eq(slaPolicyVersionTable.policyId, policyId),
-                isNotNull(slaPolicyVersionTable.effectiveFrom),
-                lte(slaPolicyVersionTable.effectiveFrom, slaStartedAt),
-              ),
-            )
-            .orderBy(
-              desc(slaPolicyVersionTable.effectiveFrom),
-              desc(slaPolicyVersionTable.number),
-            )
-            .limit(1)
+        ? await findEffectiveSlaPolicyVersionQuery(
+            tx,
+            project.workspaceId,
+            policyId,
+            slaStartedAt,
+          )
         : [];
       const number = await claimWorkItemNumber(project.id, tx);
       const key = `${project.slug}-${number}`;

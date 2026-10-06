@@ -3,15 +3,10 @@ import { HTTPException } from "hono/http-exception";
 import db from "../../database";
 import { notificationTable } from "../../database/schema";
 import { isCurrentInstanceAdmin } from "../../instance/observability/audit-failure-notifier";
+import { getOwnedNotificationType } from "../repository";
 
 async function markNotificationAsRead(id: string, userId: string) {
-  const [existing] = await db
-    .select({ type: notificationTable.type })
-    .from(notificationTable)
-    .where(
-      and(eq(notificationTable.id, id), eq(notificationTable.userId, userId)),
-    )
-    .limit(1);
+  const [existing] = await getOwnedNotificationType(id, userId);
   if (
     existing?.type === "audit_write_failed" &&
     !(await isCurrentInstanceAdmin(userId))

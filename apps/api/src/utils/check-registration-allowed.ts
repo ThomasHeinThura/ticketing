@@ -1,6 +1,8 @@
-import { and, eq, gt } from "drizzle-orm";
-import db from "../database";
-import { invitationTable, userTable, workspaceTable } from "../database/schema";
+import {
+  getInvitationDetailsRow,
+  listPendingInvitationsForEmail,
+  findValidInvitation as readValidInvitation,
+} from "../invitation/repository";
 
 type RegistrationCheckResult = {
   allowed: boolean;
@@ -63,41 +65,11 @@ async function findValidInvitation(
 ): Promise<RegistrationCheckResult["invitation"] | null> {
   const now = new Date();
 
-  const conditions = [
-    eq(invitationTable.status, "pending"),
-    gt(invitationTable.expiresAt, now),
-  ];
-
-  if (invitationId) {
-    conditions.push(eq(invitationTable.id, invitationId));
-  }
-
-  if (email) {
-    conditions.push(eq(invitationTable.email, email.toLowerCase()));
-  }
-
   if (!invitationId && !email) {
     return null;
   }
 
-  const result = await db
-    .select({
-      id: invitationTable.id,
-      email: invitationTable.email,
-      workspaceId: invitationTable.workspaceId,
-      workspaceName: workspaceTable.name,
-      inviterName: userTable.name,
-      expiresAt: invitationTable.expiresAt,
-      status: invitationTable.status,
-    })
-    .from(invitationTable)
-    .innerJoin(
-      workspaceTable,
-      eq(invitationTable.workspaceId, workspaceTable.id),
-    )
-    .innerJoin(userTable, eq(invitationTable.inviterId, userTable.id))
-    .where(and(...conditions))
-    .limit(1);
+  const result = await readValidInvitation(email, invitationId, now);
 
   const row = result[0];
   if (!row) {
@@ -128,23 +100,7 @@ export async function getInvitationDetails(
 ): Promise<InvitationDetailsResult> {
   const now = new Date();
 
-  const result = await db
-    .select({
-      id: invitationTable.id,
-      email: invitationTable.email,
-      workspaceName: workspaceTable.name,
-      inviterName: userTable.name,
-      expiresAt: invitationTable.expiresAt,
-      status: invitationTable.status,
-    })
-    .from(invitationTable)
-    .innerJoin(
-      workspaceTable,
-      eq(invitationTable.workspaceId, workspaceTable.id),
-    )
-    .innerJoin(userTable, eq(invitationTable.inviterId, userTable.id))
-    .where(eq(invitationTable.id, invitationId))
-    .limit(1);
+  const result = await getInvitationDetailsRow(invitationId);
 
   const row = result[0];
   if (!row) {
@@ -199,31 +155,7 @@ export async function getInvitationDetails(
 export async function getUserPendingInvitations(userEmail: string) {
   const now = new Date();
 
-  const result = await db
-    .select({
-      id: invitationTable.id,
-      email: invitationTable.email,
-      workspaceId: invitationTable.workspaceId,
-      workspaceName: workspaceTable.name,
-      inviterName: userTable.name,
-      expiresAt: invitationTable.expiresAt,
-      createdAt: invitationTable.createdAt,
-      status: invitationTable.status,
-    })
-    .from(invitationTable)
-    .innerJoin(
-      workspaceTable,
-      eq(invitationTable.workspaceId, workspaceTable.id),
-    )
-    .innerJoin(userTable, eq(invitationTable.inviterId, userTable.id))
-    .where(
-      and(
-        eq(invitationTable.email, userEmail.toLowerCase()),
-        eq(invitationTable.status, "pending"),
-        gt(invitationTable.expiresAt, now),
-      ),
-    )
-    .orderBy(invitationTable.createdAt);
+  const result = await listPendingInvitationsForEmail(userEmail, now);
 
   return result;
 }

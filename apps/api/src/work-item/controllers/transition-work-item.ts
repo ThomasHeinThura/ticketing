@@ -9,15 +9,13 @@ import {
   resolveStateTemplateForProject,
   type TransitionOfferContext,
 } from "@taskdesk/domain";
-import { and, eq, inArray, isNull, sql } from "drizzle-orm";
+import { and, eq, isNull, sql } from "drizzle-orm";
 import { HTTPException } from "hono/http-exception";
 import { appendAuditLog } from "../../audit/audit-writer";
 import db from "../../database";
 import {
   commentTable,
   scheduledTransitionTable,
-  stateTable,
-  stateTemplateTable,
   workItemTable,
 } from "../../database/schema";
 import { publishEvent } from "../../events";
@@ -28,6 +26,12 @@ import {
 } from "../assert-work-item-live";
 import { resolveAssigneeEligibility } from "../assignee-eligibility";
 import { publishWorkItemHint, recordWorkItemEvent } from "../native-event";
+import {
+  findCurrentTransitionStateQuery,
+  listTransitionChildStateGroupsQuery,
+  lockTransitionChildrenQuery,
+  lockTransitionWorkItemQuery,
+} from "../repository";
 import {
   loadWorkflowTransitionContext,
   resolveActorRoleIds,
@@ -324,17 +328,7 @@ export async function transitionWorkItem(
     db.transaction(async (tx) => {
       // B1: lock the row FIRST, before deciding anything guard-shaped. Every fact below is
       // read from THIS locked row, never from `ctx`'s earlier, unlocked read.
-      const [locked] = await tx
-        .select({
-          stateId: workItemTable.stateId,
-          assigneeId: workItemTable.assigneeId,
-          projectId: workItemTable.projectId,
-          deletedAt: workItemTable.deletedAt,
-          archivedAt: workItemTable.archivedAt,
-        })
-        .from(workItemTable)
-        .where(eq(workItemTable.id, ctx.workItem.id))
-        .for("update");
+      const [locked] = await lockTransitionWorkItemQuery(tx, ctx.workItem.id);
 
       // Issue #490: the same TOCTOU class #276/#486/#488 closed elsewhere.
       // `require-work-item-reach.ts` already checked `deletedAt`/`archivedAt` on this same
@@ -366,34 +360,17 @@ export async function transitionWorkItem(
       // the `stateId` this step reads back is the true, post-commit value; state templates
       // are effectively static reference data, so resolving THEIR group in a second,
       // unlocked query is safe.
-      const lockedChildren = await tx
-        .select({ id: workItemTable.id, stateId: workItemTable.stateId })
-        .from(workItemTable)
-        .where(
-          and(
-            eq(workItemTable.parentId, ctx.workItem.id),
-            isNull(workItemTable.archivedAt),
-            isNull(workItemTable.deletedAt),
-          ),
-        )
-        .for("share");
+      const lockedChildren = await lockTransitionChildrenQuery(
+        tx,
+        ctx.workItem.id,
+      );
       const childStateIds = [...new Set(lockedChildren.map((c) => c.stateId))];
       const childStateGroups =
         childStateIds.length === 0
           ? new Map<string, string>()
           : new Map(
               (
-                await tx
-                  .select({
-                    id: stateTable.id,
-                    group: stateTemplateTable.group,
-                  })
-                  .from(stateTable)
-                  .innerJoin(
-                    stateTemplateTable,
-                    eq(stateTable.stateTemplateId, stateTemplateTable.id),
-                  )
-                  .where(inArray(stateTable.id, childStateIds))
+                await listTransitionChildStateGroupsQuery(tx, childStateIds)
               ).map((row) => [row.id, row.group]),
             );
       const allChildrenClosed = lockedChildren.every((child) => {
@@ -485,11 +462,10 @@ export async function transitionWorkItem(
         // Defence in depth only -- the `FOR UPDATE` lock above already makes this
         // unreachable in practice, since nothing can change `state_id` between that lock
         // and this write without first taking the same lock.
-        const [current] = await tx
-          .select({ stateId: workItemTable.stateId })
-          .from(workItemTable)
-          .where(eq(workItemTable.id, ctx.workItem.id))
-          .limit(1);
+        const [current] = await findCurrentTransitionStateQuery(
+          tx,
+          ctx.workItem.id,
+        );
         throw new TransitionConflictError(current?.stateId ?? fromStateId);
       }
 

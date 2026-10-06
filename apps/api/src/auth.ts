@@ -16,9 +16,16 @@ import {
 } from "better-auth/plugins";
 import type { UserWithAnonymous } from "better-auth/plugins/anonymous";
 import { config } from "dotenv-mono";
-import { and, count, eq, ne, sql } from "drizzle-orm";
+import { and, eq, ne, sql } from "drizzle-orm";
 import { appendAuditLog } from "./audit/audit-writer";
 import { loadLocalFactorState } from "./auth/local-factor-service";
+import {
+  countAuthUsers,
+  countAuthUsersForExecutor,
+  getAuthUserLocale,
+  getFirstUserWorkspaceMembership,
+  getSetupCompletionMarker,
+} from "./auth/repository";
 import db, { schema } from "./database";
 import {
   bindTwoFactorOidcSession,
@@ -107,11 +114,7 @@ export function getConfiguredAgentOrigin(): string {
 }
 
 async function getUserLocale(email: string) {
-  const [user] = await db
-    .select({ locale: schema.userTable.locale })
-    .from(schema.userTable)
-    .where(eq(schema.userTable.email, email))
-    .limit(1);
+  const [user] = await getAuthUserLocale(email);
 
   return user?.locale ?? null;
 }
@@ -446,9 +449,7 @@ function createAuth(portal: AuthPortal) {
             //     set up, which must never re-open this window.
             // `instance_setting.setup_completed_at` is the durable marker that
             // tells them apart; it is never cleared by deleting user rows.
-            const [userCountRow] = await db
-              .select({ value: count() })
-              .from(schema.userTable);
+            const [userCountRow] = await countAuthUsers();
             const existingUserCount = userCountRow?.value ?? 0;
 
             // Computed once, up front, so the SAME call with the SAME
@@ -566,18 +567,10 @@ function createAuth(portal: AuthPortal) {
             await db.transaction(async (tx) => {
               await tx.execute(sql`SELECT pg_advisory_xact_lock(2026)`);
 
-              const totalRows = await tx
-                .select({ value: count() })
-                .from(schema.userTable);
+              const totalRows = await countAuthUsersForExecutor(tx);
               const totalUserCount = totalRows[0]?.value ?? 0;
 
-              const [setting] = await tx
-                .select({
-                  setupCompletedAt:
-                    schema.instanceSettingTable.setupCompletedAt,
-                })
-                .from(schema.instanceSettingTable)
-                .limit(1);
+              const [setting] = await getSetupCompletionMarker(tx);
               const setupAlreadyCompleted = setting?.setupCompletedAt != null;
 
               // This hook runs after the user row is inserted, so the
@@ -671,9 +664,7 @@ function createAuth(portal: AuthPortal) {
           return;
         }
 
-        const userCountRows = await db
-          .select({ value: count() })
-          .from(schema.userTable);
+        const userCountRows = await countAuthUsers();
         const existingUserCount = userCountRows[0]?.value ?? 0;
         const isInstanceAdminSetup = existingUserCount === 0;
 
@@ -840,11 +831,9 @@ function createAuth(portal: AuthPortal) {
           ctx.path.startsWith("/sign-in") ||
           factorVerifiedEndpoint
         ) {
-          const workspaceMember = await db
-            .select({ workspaceId: schema.workspaceUserTable.workspaceId })
-            .from(schema.workspaceUserTable)
-            .where(eq(schema.workspaceUserTable.userId, newSession.user.id))
-            .limit(1);
+          const workspaceMember = await getFirstUserWorkspaceMembership(
+            newSession.user.id,
+          );
 
           const activeWorkspaceId = workspaceMember[0]?.workspaceId || null;
 

@@ -1,7 +1,5 @@
-import { and, eq, isNull } from "drizzle-orm";
 import { HTTPException } from "hono/http-exception";
-import db from "../database";
-import { projectTable } from "../database/schema";
+import { getActiveProjectIdQuery } from "./repository";
 
 /**
  * Shared existence check for issue #25's project sub-resource routes (stakeholders,
@@ -14,17 +12,7 @@ import { projectTable } from "../database/schema";
  * controllers don't each reimplement it.
  */
 export async function requireActiveProject(id: string, workspaceId: string) {
-  const [project] = await db
-    .select({ id: projectTable.id })
-    .from(projectTable)
-    .where(
-      and(
-        eq(projectTable.id, id),
-        eq(projectTable.workspaceId, workspaceId),
-        isNull(projectTable.deletedAt),
-      ),
-    )
-    .limit(1);
+  const [project] = await getActiveProjectIdQuery(id, workspaceId);
 
   if (!project) {
     throw new HTTPException(404, { message: "Project not found" });

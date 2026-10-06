@@ -1,32 +1,10 @@
-import { eq } from "drizzle-orm";
 import { HTTPException } from "hono/http-exception";
 import db from "../../database";
-import { taskTable, userTable } from "../../database/schema";
 import { getProjectWorkspaceId } from "../../utils/assert-assignable-user";
+import { getTaskByIdQuery } from "../repository";
 
 async function getTask(taskId: string) {
-  const task = await db
-    .select({
-      id: taskTable.id,
-      title: taskTable.title,
-      number: taskTable.number,
-      description: taskTable.description,
-      status: taskTable.status,
-      priority: taskTable.priority,
-      startDate: taskTable.startDate,
-      dueDate: taskTable.dueDate,
-      position: taskTable.position,
-      createdAt: taskTable.createdAt,
-      version: taskTable.version,
-      userId: taskTable.userId,
-      assigneeName: userTable.name,
-      assigneeId: userTable.id,
-      projectId: taskTable.projectId,
-    })
-    .from(taskTable)
-    .leftJoin(userTable, eq(taskTable.userId, userTable.id))
-    .where(eq(taskTable.id, taskId))
-    .limit(1);
+  const task = await getTaskByIdQuery(db, taskId);
 
   const found = task[0];
 

@@ -1,23 +1,9 @@
-import { and, eq } from "drizzle-orm";
 import db, { schema } from "../../database";
 import type { AuditFailureOperation } from "../../observability/metrics.js";
+import { getCurrentInstanceAdmin, listInstanceAdminUsers } from "./repository";
 
 export async function isCurrentInstanceAdmin(userId: string): Promise<boolean> {
-  const [admin] = await db
-    .select({ id: schema.userTable.id })
-    .from(schema.userTable)
-    .innerJoin(
-      schema.personTable,
-      and(
-        eq(schema.personTable.userId, schema.userTable.id),
-        eq(schema.personTable.side, "staff"),
-        eq(schema.personTable.active, true),
-      ),
-    )
-    .where(
-      and(eq(schema.userTable.id, userId), eq(schema.userTable.role, "admin")),
-    )
-    .limit(1);
+  const [admin] = await getCurrentInstanceAdmin(userId);
   return admin !== undefined;
 }
 
@@ -32,18 +18,7 @@ export async function notifyCurrentInstanceAdminsOfAuditFailure(
   for (let attempt = 0; attempt < 2; attempt += 1) {
     try {
       await db.transaction(async (tx) => {
-        const admins = await tx
-          .selectDistinct({ userId: schema.userTable.id })
-          .from(schema.userTable)
-          .innerJoin(
-            schema.personTable,
-            and(
-              eq(schema.personTable.userId, schema.userTable.id),
-              eq(schema.personTable.side, "staff"),
-              eq(schema.personTable.active, true),
-            ),
-          )
-          .where(eq(schema.userTable.role, "admin"));
+        const admins = await listInstanceAdminUsers(tx);
         if (admins.length === 0) return;
         await tx.insert(schema.notificationTable).values(
           admins.map(({ userId }) => ({

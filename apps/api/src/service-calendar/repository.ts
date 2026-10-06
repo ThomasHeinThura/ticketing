@@ -30,6 +30,14 @@ type CalendarActor = {
 
 type CalendarTransaction = Parameters<Parameters<typeof db.transaction>[0]>[0];
 
+export function getCalendarWorkspace(id: string) {
+  return db
+    .select({ workspaceId: serviceCalendarTable.workspaceId })
+    .from(serviceCalendarTable)
+    .where(eq(serviceCalendarTable.id, id))
+    .limit(1);
+}
+
 export async function getCalendarUsage(id: string, workspaceId: string) {
   const [projectCount] = await db
     .select({ value: count() })

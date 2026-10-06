@@ -1,7 +1,7 @@
 import { and, eq, isNull } from "drizzle-orm";
 import { HTTPException } from "hono/http-exception";
 import db from "../database";
-import { projectTable, serviceCalendarTable } from "../database/schema";
+import { projectTable } from "../database/schema";
 import {
   apiRouter,
   type BaseVariables,
@@ -39,6 +39,10 @@ import updatePrerequisiteCtrl from "./controllers/update-prerequisite";
 import updateProjectCtrl from "./controllers/update-project";
 import updateStakeholderCtrl from "./controllers/update-stakeholder";
 import {
+  getProjectConfigurationQuery,
+  getServiceCalendarByWorkspaceQuery,
+} from "./repository";
+import {
   documentLinkSchema,
   milestoneSchema,
   prerequisiteSchema,
@@ -72,16 +76,10 @@ async function assertProjectCalendar(
   calendarId: string | null | undefined,
 ) {
   if (calendarId == null) return;
-  const [calendar] = await db
-    .select({ id: serviceCalendarTable.id })
-    .from(serviceCalendarTable)
-    .where(
-      and(
-        eq(serviceCalendarTable.id, calendarId),
-        eq(serviceCalendarTable.workspaceId, workspaceId),
-      ),
-    )
-    .limit(1);
+  const [calendar] = await getServiceCalendarByWorkspaceQuery(
+    calendarId,
+    workspaceId,
+  );
   if (!calendar)
     throw new HTTPException(422, {
       message: "service_calendar_must_belong_to_workspace",
@@ -805,21 +803,7 @@ const project = apiRouter<BaseVariables & { workspaceId: string }>()
     const body = c.req.valid("json");
     const { name, icon, slug, description } = body;
     const workspaceId = c.get("workspaceId");
-    const [current] = await db
-      .select({
-        kind: projectTable.kind,
-        supportLevel: projectTable.supportLevel,
-        serviceCalendarId: projectTable.serviceCalendarId,
-      })
-      .from(projectTable)
-      .where(
-        and(
-          eq(projectTable.id, id),
-          eq(projectTable.workspaceId, workspaceId),
-          isNull(projectTable.deletedAt),
-        ),
-      )
-      .limit(1);
+    const [current] = await getProjectConfigurationQuery(id, workspaceId);
     if (!current)
       throw new HTTPException(404, { message: "Project not found" });
     const configuration = {

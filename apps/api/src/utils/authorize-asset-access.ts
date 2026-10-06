@@ -1,13 +1,13 @@
-import { and, eq, isNull, not } from "drizzle-orm";
 import type { Context } from "hono";
 import { HTTPException } from "hono/http-exception";
-import db, { schema } from "../database";
+import { schema } from "../database";
 import { policyShadowEnabled } from "../permissions/shadow-config";
 import {
   hasMatchedRowScopedCapabilityPolicy,
   setShadowLegacyAuthorization,
 } from "../permissions/shadow-context";
 import { resolveAssetBearerOrCookie } from "./authenticate-api-request";
+import { getAssetDeniedByReach, getReachableAsset } from "./repository";
 import { reachableWorkspacePredicate } from "./workspace-access-middleware";
 
 export type ReachableAsset = {
@@ -46,33 +46,14 @@ export async function loadReachableAsset(
 ): Promise<ReachableAsset> {
   const { userId, apiKeyId } = await resolveAssetBearerOrCookie(c);
 
-  const [asset] = await db
-    .select({
-      id: schema.assetTable.id,
-      objectKey: schema.assetTable.objectKey,
-      mimeType: schema.assetTable.mimeType,
-      filename: schema.assetTable.filename,
-      workspaceId: schema.assetTable.workspaceId,
-    })
-    .from(schema.assetTable)
-    // The join selects nothing now that `is_public` is gone, but it is kept
-    // deliberately: it still requires the asset to belong to a real project,
-    // so an orphaned asset row 404s rather than being served.
-    .innerJoin(
-      schema.projectTable,
-      eq(schema.assetTable.projectId, schema.projectTable.id),
-    )
-    .where(
-      and(
-        eq(schema.assetTable.id, id),
-        reachableWorkspacePredicate(
-          schema.projectTable.workspaceId,
-          userId,
-          apiKeyId,
-        ),
-      ),
-    )
-    .limit(1);
+  const [asset] = await getReachableAsset(
+    id,
+    reachableWorkspacePredicate(
+      schema.projectTable.workspaceId,
+      userId,
+      apiKeyId,
+    ),
+  );
 
   if (!asset) {
     if (policyShadowEnabled && (await hasMatchedRowScopedCapabilityPolicy(c))) {
@@ -80,27 +61,14 @@ export async function loadReachableAsset(
       // unless a live, non-orphaned row is proven to have failed the same reach
       // predicate used by the primary load above.
       try {
-        const [deniedAsset] = await db
-          .select({ workspaceId: schema.assetTable.workspaceId })
-          .from(schema.assetTable)
-          .innerJoin(
-            schema.projectTable,
-            eq(schema.assetTable.projectId, schema.projectTable.id),
-          )
-          .where(
-            and(
-              eq(schema.assetTable.id, id),
-              isNull(schema.projectTable.deletedAt),
-              not(
-                reachableWorkspacePredicate(
-                  schema.projectTable.workspaceId,
-                  userId,
-                  apiKeyId,
-                ),
-              ),
-            ),
-          )
-          .limit(1);
+        const [deniedAsset] = await getAssetDeniedByReach(
+          id,
+          reachableWorkspacePredicate(
+            schema.projectTable.workspaceId,
+            userId,
+            apiKeyId,
+          ),
+        );
         if (deniedAsset) {
           setShadowLegacyAuthorization(c, "denied");
           c.set("workspaceId", deniedAsset.workspaceId);

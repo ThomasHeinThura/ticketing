@@ -1,7 +1,5 @@
-import { eq } from "drizzle-orm";
 import type { Context, Next } from "hono";
 import { HTTPException } from "hono/http-exception";
-import db, { schema } from "../database";
 import {
   apiRouter,
   type BaseVariables,
@@ -17,6 +15,7 @@ import { workspaceAccess } from "../utils/workspace-access-middleware";
 import {
   createPolicy,
   getPolicy,
+  getPolicyWorkspace,
   listPolicies,
   PolicyVersionConflictError,
   publishPolicy,
@@ -39,11 +38,7 @@ async function policyReach(c: Context, next: Next) {
   const id = c.req.param("id");
   if (!id) throw new HTTPException(400, { message: "Missing SLA policy id" });
   rejectNulByte(id, "SLA policy id");
-  const [row] = await db
-    .select({ workspaceId: schema.slaPolicyTable.workspaceId })
-    .from(schema.slaPolicyTable)
-    .where(eq(schema.slaPolicyTable.id, id))
-    .limit(1);
+  const [row] = await getPolicyWorkspace(id);
   if (!row) throw new HTTPException(404, { message: "SLA policy not found" });
   try {
     await validateWorkspaceAccess(

@@ -1,15 +1,7 @@
 import { createId } from "@paralleldrive/cuid2";
-import { count, eq } from "drizzle-orm";
 import { HTTPException } from "hono/http-exception";
 import db from "../../database";
-import {
-  attachmentTable,
-  instanceSettingTable,
-  organisationTable,
-  personTable,
-  workItemTable,
-  workspaceTable,
-} from "../../database/schema";
+import { attachmentTable } from "../../database/schema";
 import { createAttachmentUploadUrl } from "../../storage";
 import { getFileExtension, sanitizePathSegment } from "../../storage/shared";
 import {
@@ -17,6 +9,13 @@ import {
   assertWorkItemStillLive,
 } from "../../work-item/assert-work-item-live";
 import { isMimeTypeAllowedForExtension } from "../magic-bytes";
+import {
+  countWorkItemAttachments,
+  getAttachmentSettings,
+  getUploaderPerson,
+  getWorkspaceOrganisation,
+  lockWorkItemForAttachmentCompletion,
+} from "../repository";
 
 export type PresignAttachmentInput = {
   workItemId: string;
@@ -86,32 +85,17 @@ export async function presignAttachment(input: PresignAttachmentInput) {
   // workspace's own organisation, not merely absent -- every `workspace` row has a
   // real `organisation_id` today (#192: it defaults to the seeded internal
   // organisation), so "internal" is `organisation.is_internal`, not "no row".
-  const [workspaceOrganisation] = await db
-    .select({
-      isInternal: organisationTable.isInternal,
-      id: organisationTable.id,
-    })
-    .from(workspaceTable)
-    .innerJoin(
-      organisationTable,
-      eq(workspaceTable.organisationId, organisationTable.id),
-    )
-    .where(eq(workspaceTable.id, workspaceId))
-    .limit(1);
+  const [workspaceOrganisation] = await getWorkspaceOrganisation(
+    db,
+    workspaceId,
+  );
 
   const organisationId =
     workspaceOrganisation && !workspaceOrganisation.isInternal
       ? workspaceOrganisation.id
       : null;
 
-  const [settings] = await db
-    .select({
-      maxBytes: instanceSettingTable.attachmentMaxBytes,
-      maxPerItem: instanceSettingTable.attachmentMaxPerItem,
-      allowedExtensions: instanceSettingTable.attachmentAllowedExtensions,
-    })
-    .from(instanceSettingTable)
-    .limit(1);
+  const [settings] = await getAttachmentSettings(db);
 
   const maxBytes = settings?.maxBytes ?? FALLBACK_MAX_BYTES;
   const maxPerItem = settings?.maxPerItem ?? FALLBACK_MAX_PER_ITEM;
@@ -149,10 +133,7 @@ export async function presignAttachment(input: PresignAttachmentInput) {
     });
   }
 
-  const [countRow] = await db
-    .select({ value: count() })
-    .from(attachmentTable)
-    .where(eq(attachmentTable.workItemId, workItemId));
+  const [countRow] = await countWorkItemAttachments(db, workItemId);
   const existingCount = countRow?.value ?? 0;
 
   if (existingCount >= maxPerItem) {
@@ -164,11 +145,7 @@ export async function presignAttachment(input: PresignAttachmentInput) {
   // Best-effort actor-to-person resolution (`legal_hold.placed_by`'s own comment: no
   // reliable session->person resolver exists in apps/api yet). Null is a valid,
   // nullable value for `uploaded_by` when no match is found.
-  const [person] = await db
-    .select({ id: personTable.id })
-    .from(personTable)
-    .where(eq(personTable.userId, userId))
-    .limit(1);
+  const [person] = await getUploaderPerson(db, userId);
 
   const sanitizedFilename = `${sanitizePathSegment(filename.replace(/\.[^/.]+$/, "") || "file")}${extension ? `.${extension}` : ""}`;
 
@@ -193,15 +170,7 @@ export async function presignAttachment(input: PresignAttachmentInput) {
   // closing the same reach-check-to-write race #276 closed for `update-work-item.ts` --
   // read-only here (nothing about the work item row is written), so a shared lock suffices.
   const inserted = await db.transaction(async (tx) => {
-    const [locked] = await tx
-      .select({
-        projectId: workItemTable.projectId,
-        deletedAt: workItemTable.deletedAt,
-        archivedAt: workItemTable.archivedAt,
-      })
-      .from(workItemTable)
-      .where(eq(workItemTable.id, workItemId))
-      .for("share");
+    const [locked] = await lockWorkItemForAttachmentCompletion(tx, workItemId);
     assertWorkItemStillLive(locked);
     await assertProjectStillLive(tx, locked.projectId);
 

@@ -1,11 +1,7 @@
-import { and, count, eq } from "drizzle-orm";
+import { eq } from "drizzle-orm";
 import { HTTPException } from "hono/http-exception";
 import db from "../../database";
-import {
-  commentTable,
-  commentVersionTable,
-  workItemTable,
-} from "../../database/schema";
+import { commentTable, commentVersionTable } from "../../database/schema";
 import { builtInRoleHasCapability } from "../../utils/require-workspace-capability";
 import {
   isUnambiguousMembership,
@@ -15,6 +11,11 @@ import {
   assertProjectStillLive,
   assertWorkItemStillLive,
 } from "../assert-work-item-live";
+import {
+  countCommentVersionsQuery,
+  lockCommentForMutationQuery,
+  lockWorkItemForCommentMutationQuery,
+} from "../repository";
 
 // `CA-17`: "Editing is allowed for 15 minutes by the author."
 const EDIT_WINDOW_MINUTES = 15;
@@ -40,36 +41,21 @@ export async function updateComment(
   newBody: unknown,
 ) {
   return db.transaction(async (tx) => {
-    const [locked] = await tx
-      .select()
-      .from(commentTable)
-      .where(
-        and(
-          eq(commentTable.id, commentId),
-          eq(commentTable.workspaceId, workspaceId),
-        ),
-      )
-      .for("update");
+    const [locked] = await lockCommentForMutationQuery(
+      tx,
+      commentId,
+      workspaceId,
+    );
 
     if (!locked || locked.deletedAt !== null) {
       throw new HTTPException(404, { message: "Comment not found" });
     }
 
-    const [workItem] = await tx
-      .select({
-        id: workItemTable.id,
-        projectId: workItemTable.projectId,
-        deletedAt: workItemTable.deletedAt,
-        archivedAt: workItemTable.archivedAt,
-      })
-      .from(workItemTable)
-      .where(
-        and(
-          eq(workItemTable.id, locked.workItemId),
-          eq(workItemTable.workspaceId, workspaceId),
-        ),
-      )
-      .for("share");
+    const [workItem] = await lockWorkItemForCommentMutationQuery(
+      tx,
+      locked.workItemId,
+      workspaceId,
+    );
     assertWorkItemStillLive(workItem);
     await assertProjectStillLive(tx, workItem.projectId);
 
@@ -111,10 +97,7 @@ export async function updateComment(
     // `CA-17`: "Each edit writes a new `comment_version` row" -- the row this writes
     // captures the CURRENT (pre-edit) body, so the version history is every PAST body,
     // not the latest (which lives on `comment.body` itself).
-    const [existing] = await tx
-      .select({ value: count() })
-      .from(commentVersionTable)
-      .where(eq(commentVersionTable.commentId, commentId));
+    const [existing] = await countCommentVersionsQuery(tx, commentId);
 
     await tx.insert(commentVersionTable).values({
       commentId,

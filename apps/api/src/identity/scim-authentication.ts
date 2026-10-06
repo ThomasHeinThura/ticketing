@@ -1,7 +1,11 @@
 import { createHash } from "node:crypto";
-import { and, eq, isNotNull } from "drizzle-orm";
 import { HTTPException } from "hono/http-exception";
-import db, { schema } from "../database";
+import type db from "../database";
+import {
+  getScimIdentityByTokenDigest,
+  lockScimConnection,
+  lockScimIdentityConnection,
+} from "./repository";
 
 export type ScimRequestAuthority = {
   connectionId: string;
@@ -19,32 +23,11 @@ export async function lockAndVerifyScimMutation(
   authority: ScimRequestAuthority,
   requiredResource: "users" | "groups",
 ) {
-  const [connection] = await tx
-    .select({
-      issuer: schema.identityConnectionTable.issuer,
-      enabled: schema.identityConnectionTable.enabled,
-      portalScope: schema.identityConnectionTable.portalScope,
-      organisationId: schema.identityConnectionTable.organisationId,
-    })
-    .from(schema.identityConnectionTable)
-    .where(eq(schema.identityConnectionTable.id, authority.connectionId))
-    .for("update");
-  const [scim] = await tx
-    .select({
-      enabled: schema.scimConnectionTable.enabled,
-      tokenHash: schema.scimConnectionTable.tokenHash,
-      allowedResources: schema.scimConnectionTable.allowedResources,
-      attributeMapping: schema.scimConnectionTable.attributeMapping,
-      lifecyclePolicy: schema.scimConnectionTable.lifecyclePolicy,
-    })
-    .from(schema.scimConnectionTable)
-    .where(
-      eq(
-        schema.scimConnectionTable.identityConnectionId,
-        authority.connectionId,
-      ),
-    )
-    .for("update");
+  const [connection] = await lockScimIdentityConnection(
+    tx,
+    authority.connectionId,
+  );
+  const [scim] = await lockScimConnection(tx, authority.connectionId);
   if (!connection?.enabled || !scim?.enabled)
     throw new HTTPException(403, { message: "Connection disabled" });
   if (
@@ -79,35 +62,10 @@ export async function resolveScimBearer(
   const token = match[1];
   if (!token) throw new HTTPException(401, { message: "Unauthorized" });
   const digest = createHash("sha256").update(token, "utf8").digest();
-  const [row] = await db
-    .select({
-      connectionId: schema.scimConnectionTable.identityConnectionId,
-      enabled: schema.scimConnectionTable.enabled,
-      allowedResources: schema.scimConnectionTable.allowedResources,
-      portalScope: schema.identityConnectionTable.portalScope,
-      organisationId: schema.identityConnectionTable.organisationId,
-      connectionEnabled: schema.identityConnectionTable.enabled,
-      maxRoleRank: schema.identityConnectionTable.maxRoleRank,
-    })
-    .from(schema.scimConnectionTable)
-    .innerJoin(
-      schema.identityConnectionTable,
-      eq(
-        schema.identityConnectionTable.id,
-        schema.scimConnectionTable.identityConnectionId,
-      ),
-    )
-    .where(
-      and(
-        eq(schema.scimConnectionTable.tokenHash, digest),
-        isNotNull(schema.scimConnectionTable.tokenHash),
-      ),
-    )
-    .limit(1);
+  const [row] = await getScimIdentityByTokenDigest(digest);
 
   if (
-    !row ||
-    !row.enabled ||
+    !row?.enabled ||
     !row.connectionEnabled ||
     (row.portalScope !== "agent" && row.portalScope !== "customer") ||
     (row.portalScope === "customer" && !row.organisationId)

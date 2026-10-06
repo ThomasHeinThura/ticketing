@@ -4,6 +4,7 @@ import db from "../../database";
 import { timeEntryTable } from "../../database/schema";
 import { lockTaskAndAssertProjectLive } from "../../task/assert-task-project-live";
 import { resolveDuration } from "../duration";
+import { getTimeEntry } from "../repository";
 
 type UpdateTimeEntryParams = {
   timeEntryId: string;
@@ -15,10 +16,7 @@ type UpdateTimeEntryParams = {
 async function updateTimeEntry(params: UpdateTimeEntryParams) {
   const { timeEntryId, startTime, endTime, description } = params;
 
-  const [existingTimeEntry] = await db
-    .select()
-    .from(timeEntryTable)
-    .where(eq(timeEntryTable.id, timeEntryId));
+  const [existingTimeEntry] = await getTimeEntry(db, timeEntryId);
 
   if (!existingTimeEntry) {
     throw new HTTPException(404, {

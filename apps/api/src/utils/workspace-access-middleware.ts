@@ -1,17 +1,8 @@
 import type { ProjectReachFacts } from "@taskdesk/permissions";
-import {
-  and,
-  eq,
-  inArray,
-  isNull,
-  not,
-  type SQL,
-  type SQLWrapper,
-  sql,
-} from "drizzle-orm";
+import { and, not, type SQL, type SQLWrapper, sql } from "drizzle-orm";
 import type { Context, Next } from "hono";
 import { HTTPException } from "hono/http-exception";
-import db, { schema } from "../database";
+import { schema } from "../database";
 import { policyShadowEnabled } from "../permissions/shadow-config";
 import {
   hasMatchedRowScopedCapabilityPolicy,
@@ -20,6 +11,7 @@ import {
 } from "../permissions/shadow-context";
 import { projectReadDecision } from "./has-project-reach";
 import { rejectNulByte } from "./reject-nul-byte";
+import { listTaskWorkspaceRows, lookupWorkspaceResource } from "./repository";
 import { validateWorkspaceAccess } from "./validate-workspace-access";
 
 // T4 (independent Opus security review of PR #271, delta round): a NUL byte in an id
@@ -368,23 +360,14 @@ export function workspaceAccessMiddleware(
             rejectNulByte(taskId, NUL_BYTE_LABEL);
           }
           if (taskIds.length > 0) {
-            const tasks = await db
-              .select({ workspaceId: schema.projectTable.workspaceId })
-              .from(schema.taskTable)
-              .innerJoin(
-                schema.projectTable,
-                eq(schema.taskTable.projectId, schema.projectTable.id),
-              )
-              .where(
-                and(
-                  inArray(schema.taskTable.id, taskIds),
-                  reachableWorkspacePredicate(
-                    schema.projectTable.workspaceId,
-                    userId,
-                    apiKeyId,
-                  ),
-                ),
-              );
+            const tasks = await listTaskWorkspaceRows(
+              taskIds,
+              reachableWorkspacePredicate(
+                schema.projectTable.workspaceId,
+                userId,
+                apiKeyId,
+              ),
+            );
             const distinctWorkspaceIds = [
               ...new Set(tasks.map((task) => task.workspaceId)),
             ];
@@ -563,353 +546,58 @@ async function lookupWorkspaceId(
     return options.observerOnly ? not(nativePredicate) : nativePredicate;
   };
   try {
-    switch (resource) {
-      case "project": {
-        const [project] = await db
-          .select({
-            workspaceId: schema.projectTable.workspaceId,
-            projectId: schema.projectTable.id,
-            organisationId: schema.workspaceTable.organisationId,
-          })
-          .from(schema.projectTable)
-          .innerJoin(
-            schema.workspaceTable,
-            eq(schema.workspaceTable.id, schema.projectTable.workspaceId),
-          )
-          .where(
-            and(
-              eq(schema.projectTable.id, id),
-              reach(schema.projectTable.workspaceId),
-              ...(options.observerOnly
-                ? [isNull(schema.projectTable.deletedAt)]
-                : []),
-            ),
-          )
-          .limit(1);
-        return project?.workspaceId
-          ? {
-              workspaceId: project.workspaceId,
-              projectId: project.projectId,
-              projectReachFacts: currentProjectReachFacts(
-                project.projectId,
-                project.workspaceId,
-                project.organisationId,
-              ),
-            }
-          : null;
-      }
-
-      case "task": {
-        const [task] = await db
-          .select({
-            workspaceId: schema.projectTable.workspaceId,
-            projectId: schema.taskTable.projectId,
-            workItemId: schema.taskTable.id,
-            organisationId: schema.workspaceTable.organisationId,
-          })
-          .from(schema.taskTable)
-          .innerJoin(
-            schema.projectTable,
-            eq(schema.taskTable.projectId, schema.projectTable.id),
-          )
-          .innerJoin(
-            schema.workspaceTable,
-            eq(schema.workspaceTable.id, schema.projectTable.workspaceId),
-          )
-          .where(
-            and(
-              eq(schema.taskTable.id, id),
-              reach(schema.projectTable.workspaceId),
-              ...(options.observerOnly
-                ? [isNull(schema.projectTable.deletedAt)]
-                : []),
-            ),
-          )
-          .limit(1);
-        return task?.workspaceId
-          ? {
-              workspaceId: task.workspaceId,
-              projectId: task.projectId,
-              workItemId: task.workItemId,
-              projectReachFacts: currentProjectReachFacts(
-                task.projectId,
-                task.workspaceId,
-                task.organisationId,
-              ),
-            }
-          : null;
-      }
-
-      case "label": {
-        const [label] = await db
-          .select({ workspaceId: schema.labelTable.workspaceId })
-          .from(schema.labelTable)
-          .where(
-            and(
-              eq(schema.labelTable.id, id),
-              reach(schema.labelTable.workspaceId),
-            ),
-          )
-          .limit(1);
-        return label?.workspaceId ? { workspaceId: label.workspaceId } : null;
-      }
-
-      case "timeEntry": {
-        const [timeEntry] = await db
-          .select({
-            workspaceId: schema.projectTable.workspaceId,
-            projectId: schema.taskTable.projectId,
-            workItemId: schema.taskTable.id,
-            organisationId: schema.workspaceTable.organisationId,
-          })
-          .from(schema.timeEntryTable)
-          .innerJoin(
-            schema.taskTable,
-            eq(schema.timeEntryTable.taskId, schema.taskTable.id),
-          )
-          .innerJoin(
-            schema.projectTable,
-            eq(schema.taskTable.projectId, schema.projectTable.id),
-          )
-          .innerJoin(
-            schema.workspaceTable,
-            eq(schema.workspaceTable.id, schema.projectTable.workspaceId),
-          )
-          .where(
-            and(
-              eq(schema.timeEntryTable.id, id),
-              reach(schema.projectTable.workspaceId),
-              ...(options.observerOnly
-                ? [isNull(schema.projectTable.deletedAt)]
-                : []),
-            ),
-          )
-          .limit(1);
-        return timeEntry?.workspaceId
-          ? {
-              workspaceId: timeEntry.workspaceId,
-              projectId: timeEntry.projectId,
-              workItemId: timeEntry.workItemId,
-              projectReachFacts: currentProjectReachFacts(
-                timeEntry.projectId,
-                timeEntry.workspaceId,
-                timeEntry.organisationId,
-              ),
-            }
-          : null;
-      }
-
-      case "activity": {
-        const [activity] = await db
-          .select({
-            workspaceId: schema.projectTable.workspaceId,
-            projectId: schema.taskTable.projectId,
-            workItemId: schema.taskTable.id,
-            organisationId: schema.workspaceTable.organisationId,
-          })
-          .from(schema.taskActivityTable)
-          .innerJoin(
-            schema.taskTable,
-            eq(schema.taskActivityTable.taskId, schema.taskTable.id),
-          )
-          .innerJoin(
-            schema.projectTable,
-            eq(schema.taskTable.projectId, schema.projectTable.id),
-          )
-          .innerJoin(
-            schema.workspaceTable,
-            eq(schema.workspaceTable.id, schema.projectTable.workspaceId),
-          )
-          .where(
-            and(
-              eq(schema.taskActivityTable.id, id),
-              reach(schema.projectTable.workspaceId),
-              ...(options.observerOnly
-                ? [isNull(schema.projectTable.deletedAt)]
-                : []),
-            ),
-          )
-          .limit(1);
-        return activity?.workspaceId
-          ? {
-              workspaceId: activity.workspaceId,
-              projectId: activity.projectId,
-              workItemId: activity.workItemId,
-              projectReachFacts: currentProjectReachFacts(
-                activity.projectId,
-                activity.workspaceId,
-                activity.organisationId,
-              ),
-            }
-          : null;
-      }
-
-      case "comment": {
-        const [comment] = await db
-          .select({
-            workspaceId: schema.projectTable.workspaceId,
-            projectId: schema.taskTable.projectId,
-            workItemId: schema.taskTable.id,
-            organisationId: schema.workspaceTable.organisationId,
-          })
-          .from(schema.taskActivityTable)
-          .innerJoin(
-            schema.taskTable,
-            eq(schema.taskActivityTable.taskId, schema.taskTable.id),
-          )
-          .innerJoin(
-            schema.projectTable,
-            eq(schema.taskTable.projectId, schema.projectTable.id),
-          )
-          .innerJoin(
-            schema.workspaceTable,
-            eq(schema.workspaceTable.id, schema.projectTable.workspaceId),
-          )
-          .where(
-            and(
-              eq(schema.taskActivityTable.id, id),
-              eq(schema.taskActivityTable.type, "comment"),
-              reach(schema.projectTable.workspaceId),
-              ...(options.observerOnly
-                ? [isNull(schema.projectTable.deletedAt)]
-                : []),
-            ),
-          )
-          .limit(1);
-        return comment?.workspaceId
-          ? {
-              workspaceId: comment.workspaceId,
-              projectId: comment.projectId,
-              workItemId: comment.workItemId,
-              projectReachFacts: currentProjectReachFacts(
-                comment.projectId,
-                comment.workspaceId,
-                comment.organisationId,
-              ),
-            }
-          : null;
-      }
-
-      case "column": {
-        const [column] = await db
-          .select({
-            workspaceId: schema.projectTable.workspaceId,
-            projectId: schema.columnTable.projectId,
-            organisationId: schema.workspaceTable.organisationId,
-          })
-          .from(schema.columnTable)
-          .innerJoin(
-            schema.projectTable,
-            eq(schema.columnTable.projectId, schema.projectTable.id),
-          )
-          .innerJoin(
-            schema.workspaceTable,
-            eq(schema.workspaceTable.id, schema.projectTable.workspaceId),
-          )
-          .where(
-            and(
-              eq(schema.columnTable.id, id),
-              reach(schema.projectTable.workspaceId),
-              ...(options.observerOnly
-                ? [isNull(schema.projectTable.deletedAt)]
-                : []),
-            ),
-          )
-          .limit(1);
-        return column?.workspaceId
-          ? {
-              workspaceId: column.workspaceId,
-              projectId: column.projectId,
-              projectReachFacts: currentProjectReachFacts(
-                column.projectId,
-                column.workspaceId,
-                column.organisationId,
-              ),
-            }
-          : null;
-      }
-
-      case "workflowRule": {
-        const [workflowRule] = await db
-          .select({
-            workspaceId: schema.projectTable.workspaceId,
-            projectId: schema.workflowRuleTable.projectId,
-            organisationId: schema.workspaceTable.organisationId,
-          })
-          .from(schema.workflowRuleTable)
-          .innerJoin(
-            schema.projectTable,
-            eq(schema.workflowRuleTable.projectId, schema.projectTable.id),
-          )
-          .innerJoin(
-            schema.workspaceTable,
-            eq(schema.workspaceTable.id, schema.projectTable.workspaceId),
-          )
-          .where(
-            and(
-              eq(schema.workflowRuleTable.id, id),
-              reach(schema.projectTable.workspaceId),
-              ...(options.observerOnly
-                ? [isNull(schema.projectTable.deletedAt)]
-                : []),
-            ),
-          )
-          .limit(1);
-        return workflowRule?.workspaceId
-          ? {
-              workspaceId: workflowRule.workspaceId,
-              projectId: workflowRule.projectId,
-              projectReachFacts: currentProjectReachFacts(
-                workflowRule.projectId,
-                workflowRule.workspaceId,
-                workflowRule.organisationId,
-              ),
-            }
-          : null;
-      }
-
-      // #31 -- `workflow` carries its own `workspaceId` directly, same shape as `label`.
-      case "workflow": {
-        const [workflow] = await db
-          .select({ workspaceId: schema.workflowTable.workspaceId })
-          .from(schema.workflowTable)
-          .where(
-            and(
-              eq(schema.workflowTable.id, id),
-              reach(schema.workflowTable.workspaceId),
-            ),
-          )
-          .limit(1);
-        return workflow?.workspaceId
-          ? { workspaceId: workflow.workspaceId }
-          : null;
-      }
-
-      // #31 -- a version's own row carries no `workspaceId`; join to its workflow, same
-      // shape as `workflowRule`'s join to `project`.
-      case "workflowVersion": {
-        const [version] = await db
-          .select({ workspaceId: schema.workflowTable.workspaceId })
-          .from(schema.workflowVersionTable)
-          .innerJoin(
-            schema.workflowTable,
-            eq(schema.workflowVersionTable.workflowId, schema.workflowTable.id),
-          )
-          .where(
-            and(
-              eq(schema.workflowVersionTable.id, id),
-              reach(schema.workflowTable.workspaceId),
-            ),
-          )
-          .limit(1);
-        return version?.workspaceId
-          ? { workspaceId: version.workspaceId }
-          : null;
-      }
-
-      default:
-        return null;
+    const row = await lookupWorkspaceResource(
+      resource,
+      id,
+      (workspaceId) => reach(workspaceId),
+      options.observerOnly ?? false,
+    );
+    if (!row?.workspaceId) return null;
+    if (resource === "project") {
+      if (!row.projectId) return null;
+      return {
+        workspaceId: row.workspaceId,
+        projectId: row.projectId,
+        projectReachFacts: currentProjectReachFacts(
+          row.projectId,
+          row.workspaceId,
+          row.organisationId ?? null,
+        ),
+      };
     }
+    if (
+      resource === "task" ||
+      resource === "timeEntry" ||
+      resource === "activity" ||
+      resource === "comment"
+    ) {
+      if (!row.projectId || !row.workItemId) return null;
+      return {
+        workspaceId: row.workspaceId,
+        projectId: row.projectId,
+        workItemId: row.workItemId,
+        projectReachFacts: currentProjectReachFacts(
+          row.projectId,
+          row.workspaceId,
+          row.organisationId ?? null,
+        ),
+      };
+    }
+    if (
+      (resource === "column" || resource === "workflowRule") &&
+      row.projectId
+    ) {
+      return {
+        workspaceId: row.workspaceId,
+        projectId: row.projectId,
+        projectReachFacts: currentProjectReachFacts(
+          row.projectId,
+          row.workspaceId,
+          row.organisationId ?? null,
+        ),
+      };
+    }
+    return { workspaceId: row.workspaceId };
   } catch (error) {
     if (options.observerOnly) {
       // The native masked response is authoritative. An observer read failure leaves

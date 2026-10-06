@@ -1,6 +1,4 @@
-import { and, eq } from "drizzle-orm";
-import db from "../../database";
-import { invitationTable } from "../../database/schema";
+import { listWorkspaceInvitationsQuery } from "../repository";
 
 /**
  * A workspace's invitations that are still `status = "pending"` --
@@ -40,23 +38,7 @@ import { invitationTable } from "../../database/schema";
  * drift apart.
  */
 async function getWorkspaceInvitations(workspaceId: string) {
-  return db
-    .select({
-      id: invitationTable.id,
-      email: invitationTable.email,
-      role: invitationTable.role,
-      status: invitationTable.status,
-      expiresAt: invitationTable.expiresAt,
-      createdAt: invitationTable.createdAt,
-      inviterId: invitationTable.inviterId,
-    })
-    .from(invitationTable)
-    .where(
-      and(
-        eq(invitationTable.workspaceId, workspaceId),
-        eq(invitationTable.status, "pending"),
-      ),
-    );
+  return listWorkspaceInvitationsQuery(workspaceId);
 }
 
 export default getWorkspaceInvitations;

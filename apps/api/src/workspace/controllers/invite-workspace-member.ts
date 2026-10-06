@@ -1,8 +1,16 @@
-import { and, count, eq, gt } from "drizzle-orm";
+import { eq } from "drizzle-orm";
 import db, { schema } from "../../database";
 import { sendNativeWorkspaceInvitationEmail } from "../../utils/send-workspace-invitation-email";
 import { MAX_PENDING_INVITATIONS_PER_WORKSPACE } from "../../utils/workspace-invitation-limits";
 import { roleGrantsOwner } from "../../utils/workspace-member-roles";
+import {
+  countPendingInvitationsQuery,
+  findPendingInvitationQuery,
+  findWorkspaceMemberByEmailQuery,
+  getInviterQuery,
+  getWorkspaceNameQuery,
+  getWorkspaceRoleQuery,
+} from "../repository";
 import {
   InvitationAlreadyPendingError,
   InvitationLimitReachedError,
@@ -90,51 +98,31 @@ async function inviteWorkspaceMember(
   const invitation = await db.transaction(async (tx) => {
     await lockWorkspaceRoleAssignment(tx, input.workspaceId);
 
-    const [roleRow] = await tx
-      .select({ role: schema.workspaceRoleTable.role })
-      .from(schema.workspaceRoleTable)
-      .where(
-        and(
-          eq(schema.workspaceRoleTable.workspaceId, input.workspaceId),
-          eq(schema.workspaceRoleTable.role, input.role),
-        ),
-      )
-      .limit(1);
+    const [roleRow] = await getWorkspaceRoleQuery(
+      tx,
+      input.workspaceId,
+      input.role,
+    );
     if (!roleRow) {
       throw new WorkspaceRoleNotFoundError(input.role);
     }
 
-    const [existingMember] = await tx
-      .select({ userId: schema.workspaceUserTable.userId })
-      .from(schema.workspaceUserTable)
-      .innerJoin(
-        schema.userTable,
-        eq(schema.workspaceUserTable.userId, schema.userTable.id),
-      )
-      .where(
-        and(
-          eq(schema.workspaceUserTable.workspaceId, input.workspaceId),
-          eq(schema.userTable.email, email),
-        ),
-      )
-      .limit(1);
+    const [existingMember] = await findWorkspaceMemberByEmailQuery(
+      tx,
+      input.workspaceId,
+      email,
+    );
     if (existingMember) {
       throw new UserAlreadyMemberError();
     }
 
     const now = new Date();
-    const [existingInvitation] = await tx
-      .select({ id: schema.invitationTable.id })
-      .from(schema.invitationTable)
-      .where(
-        and(
-          eq(schema.invitationTable.workspaceId, input.workspaceId),
-          eq(schema.invitationTable.email, email),
-          eq(schema.invitationTable.status, "pending"),
-          gt(schema.invitationTable.expiresAt, now),
-        ),
-      )
-      .limit(1);
+    const [existingInvitation] = await findPendingInvitationQuery(
+      tx,
+      input.workspaceId,
+      email,
+      now,
+    );
 
     const expiresAt = new Date(now.getTime() + INVITATION_EXPIRY_MS);
 
@@ -174,15 +162,10 @@ async function inviteWorkspaceMember(
     // all. Counting them conservatively means an admin sitting on a stale
     // backlog must cancel some of it before inviting further -- a minor
     // inconvenience next to the alternative of an unenforceable cap.
-    const [pendingCountRow] = await tx
-      .select({ value: count() })
-      .from(schema.invitationTable)
-      .where(
-        and(
-          eq(schema.invitationTable.workspaceId, input.workspaceId),
-          eq(schema.invitationTable.status, "pending"),
-        ),
-      );
+    const [pendingCountRow] = await countPendingInvitationsQuery(
+      tx,
+      input.workspaceId,
+    );
     if (
       (pendingCountRow?.value ?? 0) >= MAX_PENDING_INVITATIONS_PER_WORKSPACE
     ) {
@@ -209,16 +192,8 @@ async function inviteWorkspaceMember(
     return created;
   });
 
-  const [workspace] = await db
-    .select({ name: schema.workspaceTable.name })
-    .from(schema.workspaceTable)
-    .where(eq(schema.workspaceTable.id, input.workspaceId))
-    .limit(1);
-  const [inviter] = await db
-    .select({ name: schema.userTable.name, email: schema.userTable.email })
-    .from(schema.userTable)
-    .where(eq(schema.userTable.id, input.inviterId))
-    .limit(1);
+  const [workspace] = await getWorkspaceNameQuery(input.workspaceId);
+  const [inviter] = await getInviterQuery(input.inviterId);
 
   await sendNativeWorkspaceInvitationEmail({
     invitationId: invitation.id,

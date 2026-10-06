@@ -1,8 +1,10 @@
-import { and, eq, isNull } from "drizzle-orm";
 import { HTTPException } from "hono/http-exception";
 import type db from "../database";
-import { projectTable, taskTable } from "../database/schema";
 import { assertProjectStillLive } from "../work-item/assert-work-item-live";
+import {
+  lockLegacyTaskRowQuery,
+  lockProjectForTaskNumberQuery,
+} from "./repository";
 
 type DbOrTx = typeof db | Parameters<Parameters<typeof db.transaction>[0]>[0];
 
@@ -23,11 +25,7 @@ export async function lockLegacyTaskRow(tx: DbOrTx, taskId: string) {
 }
 
 export async function lockLegacyTaskRowIfPresent(tx: DbOrTx, taskId: string) {
-  const [task] = await tx
-    .select()
-    .from(taskTable)
-    .where(eq(taskTable.id, taskId))
-    .for("update");
+  const [task] = await lockLegacyTaskRowQuery(tx, taskId);
   return task;
 }
 
@@ -70,17 +68,7 @@ export async function lockProjectAndAssertLiveForTaskNumber(
   projectId: string,
   projectNotFoundMessage = "Task not found",
 ) {
-  const [project] = await tx
-    .select({ id: projectTable.id })
-    .from(projectTable)
-    .where(
-      and(
-        eq(projectTable.id, projectId),
-        isNull(projectTable.deletedAt),
-        isNull(projectTable.archivedAt),
-      ),
-    )
-    .for("update");
+  const [project] = await lockProjectForTaskNumberQuery(tx, projectId);
 
   if (!project) {
     throw new HTTPException(404, { message: projectNotFoundMessage });

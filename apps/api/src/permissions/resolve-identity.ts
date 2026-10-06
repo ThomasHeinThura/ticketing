@@ -124,12 +124,18 @@ import {
   type RoleGrant,
   type Side,
 } from "@taskdesk/permissions";
-import { and, eq, inArray } from "drizzle-orm";
-import db, { schema } from "../database";
+import db from "../database";
 import {
   isGenuineBuiltInRoleGrant,
   resolveMembershipRoleFrom,
 } from "../utils/workspace-member-roles";
+import {
+  getIdentityBase,
+  listGenuineWorkspaceRoles,
+  listScopedIdentityRoles,
+  listUserTeams,
+  listUserWorkspaceMemberships,
+} from "./repository";
 
 /* ------------------------------------------------------------------ *
  * The pure mapper
@@ -639,29 +645,7 @@ export async function resolveIdentity(
   input: ResolveIdentityInput,
   executor: DbOrTx = db,
 ): Promise<ResolvedIdentity | null> {
-  const [row] = await executor
-    .select({
-      personId: schema.personTable.id,
-      organisationId: schema.personTable.organisationId,
-      side: schema.personTable.side,
-      active: schema.personTable.active,
-      instanceRole: schema.userTable.role,
-      banned: schema.userTable.banned,
-      organisationActive: schema.organisationTable.active,
-      organisationPortalAccess: schema.organisationTable.portalAccess,
-      organisationDeletedAt: schema.organisationTable.deletedAt,
-    })
-    .from(schema.userTable)
-    .leftJoin(
-      schema.personTable,
-      eq(schema.personTable.userId, schema.userTable.id),
-    )
-    .leftJoin(
-      schema.organisationTable,
-      eq(schema.organisationTable.id, schema.personTable.organisationId),
-    )
-    .where(eq(schema.userTable.id, input.userId))
-    .limit(1);
+  const [row] = await getIdentityBase(executor, input.userId);
 
   // A `leftJoin` types every joined-table column as nullable regardless of that table's own
   // NOT NULL constraints (drizzle cannot know the join matched from the column types alone),
@@ -699,13 +683,7 @@ export async function resolveIdentity(
     organisationDeleted: row.organisationDeletedAt !== null,
   };
 
-  const memberRows = await executor
-    .select({
-      workspaceId: schema.workspaceUserTable.workspaceId,
-      role: schema.workspaceUserTable.role,
-    })
-    .from(schema.workspaceUserTable)
-    .where(eq(schema.workspaceUserTable.userId, input.userId));
+  const memberRows = await listUserWorkspaceMemberships(executor, input.userId);
 
   // Issue #318 (security), S2. A 4th bounded query (still fixed regardless of how many
   // memberships this person has — never one per membership): which of THIS person's
@@ -719,81 +697,17 @@ export async function resolveIdentity(
   const systemRoleRows =
     memberWorkspaceIds.length === 0
       ? []
-      : await executor
-          .select({
-            workspaceId: schema.workspaceRoleTable.workspaceId,
-            role: schema.workspaceRoleTable.role,
-          })
-          .from(schema.workspaceRoleTable)
-          .where(
-            and(
-              inArray(
-                schema.workspaceRoleTable.workspaceId,
-                memberWorkspaceIds,
-              ),
-              eq(schema.workspaceRoleTable.isSystem, true),
-            ),
-          );
+      : await listGenuineWorkspaceRoles(executor, memberWorkspaceIds);
   const systemRoleKeys = new Set(
     systemRoleRows.map((row) => `${row.workspaceId}\u0000${row.role}`),
   );
 
-  const scopedRoleRows = await executor
-    .select({
-      scope: schema.membershipTable.scope,
-      scopeId: schema.membershipTable.scopeId,
-      seesAll: schema.membershipTable.seesAll,
-      inheritedFrom: schema.membershipTable.inheritedFrom,
-      roleId: schema.roleTable.id,
-      roleKey: schema.roleTable.key,
-      roleScope: schema.roleTable.scope,
-      roleWorkspaceId: schema.roleTable.workspaceId,
-      rank: schema.roleTable.rank,
-      capabilities: schema.roleTable.capabilities,
-      projectId: schema.projectTable.id,
-      projectWorkspaceId: schema.projectTable.workspaceId,
-      workspaceId: schema.workspaceTable.id,
-      organisationId: schema.organisationTable.id,
-    })
-    .from(schema.membershipTable)
-    .innerJoin(
-      schema.roleTable,
-      eq(schema.roleTable.id, schema.membershipTable.roleId),
-    )
-    .leftJoin(
-      schema.projectTable,
-      and(
-        eq(schema.membershipTable.scope, "project"),
-        eq(schema.projectTable.id, schema.membershipTable.scopeId),
-      ),
-    )
-    .leftJoin(
-      schema.workspaceTable,
-      and(
-        eq(schema.membershipTable.scope, "workspace"),
-        eq(schema.workspaceTable.id, schema.membershipTable.scopeId),
-      ),
-    )
-    .leftJoin(
-      schema.organisationTable,
-      and(
-        eq(schema.membershipTable.scope, "organisation"),
-        eq(schema.organisationTable.id, schema.membershipTable.scopeId),
-      ),
-    )
-    .where(eq(schema.membershipTable.personId, person.personId));
+  const scopedRoleRows = await listScopedIdentityRoles(
+    executor,
+    person.personId,
+  );
 
-  const teamRows = await executor
-    .select({
-      teamId: schema.teamMemberTable.teamId,
-      workspaceId: schema.teamTable.workspaceId,
-    })
-    .from(schema.teamMemberTable)
-    .innerJoin(
-      schema.teamTable,
-      eq(schema.teamTable.id, schema.teamMemberTable.teamId),
-    )
-    .where(eq(schema.teamMemberTable.userId, input.userId));
+  const teamRows = await listUserTeams(executor, input.userId);
 
   return resolveIdentityFromFacts({
     userId: input.userId,

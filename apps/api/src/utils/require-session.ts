@@ -1,7 +1,6 @@
-import { eq } from "drizzle-orm";
 import type { Context, Next } from "hono";
 import { HTTPException } from "hono/http-exception";
-import db, { schema } from "../database";
+import { getUserRole } from "./repository";
 
 /**
  * The `DISABLE_WORKSPACE_CREATION` instance-admin gate, moved off the plugin
@@ -40,11 +39,7 @@ export async function requireWorkspaceCreationAllowed(c: Context, next: Next) {
     throw new HTTPException(401, { message: "Unauthorized" });
   }
 
-  const [user] = await db
-    .select({ role: schema.userTable.role })
-    .from(schema.userTable)
-    .where(eq(schema.userTable.id, userId))
-    .limit(1);
+  const [user] = await getUserRole(userId);
 
   if (user?.role !== "admin") {
     throw new HTTPException(403, {

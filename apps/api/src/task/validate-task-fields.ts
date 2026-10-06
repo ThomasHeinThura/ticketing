@@ -1,7 +1,6 @@
-import { asc, eq } from "drizzle-orm";
 import { HTTPException } from "hono/http-exception";
 import db from "../database";
-import { columnTable } from "../database/schema";
+import { listTaskStatusColumns } from "./repository";
 
 type DbOrTx = typeof db | Parameters<Parameters<typeof db.transaction>[0]>[0];
 
@@ -27,11 +26,7 @@ export async function getValidTaskStatuses(
   projectId: string,
   executor: DbOrTx = db,
 ): Promise<string[]> {
-  const columns = await executor
-    .select({ slug: columnTable.slug })
-    .from(columnTable)
-    .where(eq(columnTable.projectId, projectId))
-    .orderBy(asc(columnTable.position));
+  const columns = await listTaskStatusColumns(executor, projectId);
 
   return [...columns.map((c) => c.slug), ...VIRTUAL_STATUSES];
 }

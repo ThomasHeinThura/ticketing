@@ -1,12 +1,8 @@
-import { desc, eq } from "drizzle-orm";
 import db from "../../database";
-import { taskActivityTable } from "../../database/schema";
+import { listActivities } from "../repository";
 
 async function getActivitiesFromTaskId(taskId: string) {
-  const activities = await db.query.taskActivityTable.findMany({
-    where: eq(taskActivityTable.taskId, taskId),
-    orderBy: [desc(taskActivityTable.createdAt)],
-  });
+  const activities = await listActivities(db, taskId);
 
   activities.forEach((x) => {
     if (x.content) {

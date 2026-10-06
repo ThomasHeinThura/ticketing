@@ -1,11 +1,9 @@
-import { and, eq, inArray } from "drizzle-orm";
+import { eq } from "drizzle-orm";
 import { HTTPException } from "hono/http-exception";
 import db from "../../database";
 import {
   labelTable,
   type labelTable as labelTableType,
-  projectTable,
-  taskTable,
 } from "../../database/schema";
 import { publishEvent } from "../../events";
 import {
@@ -14,6 +12,13 @@ import {
 } from "../../task/assert-task-project-live";
 import { rejectNulByte } from "../../utils/reject-nul-byte";
 import { lockWorkspaceLabelNames } from "../label-name-lock";
+import {
+  getAssignedLabelQuery,
+  getLabelForUpdateQuery,
+  getLabelQuery,
+  getProjectsByIdsQuery,
+  getTaskProjectInWorkspaceQuery,
+} from "../repository";
 
 type LabelRow = typeof labelTableType.$inferSelect;
 
@@ -23,9 +28,7 @@ async function assignLabelToTask(id: string, taskId: string, userId: string) {
   // reached `eq(taskTable.id, taskId)` unvalidated and 500'd.
   rejectNulByte(taskId, "Task id");
 
-  const label = await db.query.labelTable.findFirst({
-    where: (label, { eq }) => eq(label.id, id),
-  });
+  const label = await getLabelQuery(id);
 
   if (!label) {
     throw new HTTPException(404, {
@@ -49,21 +52,10 @@ async function assignLabelToTask(id: string, taskId: string, userId: string) {
   // both now 404 `Task not found` here, instead of a nonexistent id 404ing while
   // a foreign id resolved and then 400'd "must belong to the same workspace",
   // which is the #290/#285 existence-oracle class applied to task ids.
-  const [task] = await db
-    .select({
-      id: taskTable.id,
-      projectId: taskTable.projectId,
-      workspaceId: projectTable.workspaceId,
-    })
-    .from(taskTable)
-    .innerJoin(projectTable, eq(taskTable.projectId, projectTable.id))
-    .where(
-      and(
-        eq(taskTable.id, taskId),
-        eq(projectTable.workspaceId, label.workspaceId),
-      ),
-    )
-    .limit(1);
+  const [task] = await getTaskProjectInWorkspaceQuery(
+    taskId,
+    label.workspaceId,
+  );
 
   if (!task) {
     throw new HTTPException(404, {
@@ -95,11 +87,7 @@ async function assignLabelToTask(id: string, taskId: string, userId: string) {
     >();
     let currentLabel: LabelRow | undefined;
     if (!label.taskId) {
-      [currentLabel] = await tx
-        .select()
-        .from(labelTable)
-        .where(eq(labelTable.id, id))
-        .for("update");
+      [currentLabel] = await getLabelForUpdateQuery(tx, id);
     }
     if (!currentLabel && !label.taskId) {
       throw new HTTPException(404, { message: "Label not found" });
@@ -111,11 +99,7 @@ async function assignLabelToTask(id: string, taskId: string, userId: string) {
       );
     }
     if (label.taskId) {
-      [currentLabel] = await tx
-        .select()
-        .from(labelTable)
-        .where(eq(labelTable.id, id))
-        .for("update");
+      [currentLabel] = await getLabelForUpdateQuery(tx, id);
     }
     if (!currentLabel) {
       throw new HTTPException(404, { message: "Label not found" });
@@ -140,10 +124,7 @@ async function assignLabelToTask(id: string, taskId: string, userId: string) {
     }
     const projectIds = [...lockedTasks.values()].map((row) => row.projectId);
     await lockProjectsAndAssertLive(tx, projectIds);
-    const projects = await tx
-      .select({ id: projectTable.id, workspaceId: projectTable.workspaceId })
-      .from(projectTable)
-      .where(inArray(projectTable.id, projectIds));
+    const projects = await getProjectsByIdsQuery(tx, projectIds);
     const lockedTargetProject = projects.find(
       (project) => project.id === lockedTargetTask.projectId,
     );
@@ -196,12 +177,7 @@ async function assignLabelToTask(id: string, taskId: string, userId: string) {
       };
     }
 
-    const existing = await tx.query.labelTable.findFirst({
-      where: and(
-        eq(labelTable.taskId, taskId),
-        eq(labelTable.name, currentLabel.name),
-      ),
-    });
+    const existing = await getAssignedLabelQuery(tx, taskId, currentLabel.name);
 
     if (!existing) {
       throw new HTTPException(500, {
