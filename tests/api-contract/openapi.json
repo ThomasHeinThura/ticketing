@@ -11704,6 +11704,16 @@
           },
           "401": {
             "description": "Missing or invalid credentials"
+          },
+          "403": {
+            "description": "A browser session is required",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
           }
         }
       }
@@ -11740,6 +11750,16 @@
           "401": {
             "description": "Missing or invalid credentials"
           },
+          "403": {
+            "description": "A browser session is required",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
           "404": {
             "description": "Notification not found",
             "content": {
@@ -11774,6 +11794,16 @@
           },
           "401": {
             "description": "Missing or invalid credentials"
+          },
+          "403": {
+            "description": "A browser session is required",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
           }
         }
       }
@@ -11799,6 +11829,16 @@
           },
           "401": {
             "description": "Missing or invalid credentials"
+          },
+          "403": {
+            "description": "A browser session is required",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
           }
         }
       }
@@ -11941,6 +11981,16 @@
           },
           "401": {
             "description": "Missing or invalid credentials"
+          },
+          "403": {
+            "description": "A browser session is required",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
           }
         }
       }
@@ -23310,6 +23360,16 @@
           },
           "401": {
             "description": "Missing or invalid credentials"
+          },
+          "403": {
+            "description": "A browser session is required",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
           }
         }
       },
@@ -23333,6 +23393,16 @@
           },
           "401": {
             "description": "Missing or invalid credentials"
+          },
+          "403": {
+            "description": "A browser session is required",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
           }
         }
       }

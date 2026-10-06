@@ -13,6 +13,10 @@ import {
 } from "../permissions/shadow-context";
 import { getWorkspaceRoleSystemFlag } from "./repository";
 import {
+  type ApiKeyPermissionScope,
+  apiKeyHasCapabilityScope,
+} from "./require-api-key-permission-scope";
+import {
   isGenuineBuiltInRoleGrant,
   isUnambiguousMembership,
   workspaceMemberRoles,
@@ -21,20 +25,11 @@ import {
 /** Anything `db` or `db.transaction`'s callback argument can run a `select` through. */
 type DbOrTx = Pick<typeof db, "select">;
 
-export type ApiKeyCapabilityScope = {
-  permissions?: Record<string, string[]> | null;
-};
-
 function apiKeyHasCapability(
-  apiKey: ApiKeyCapabilityScope | undefined,
+  apiKey: ApiKeyPermissionScope | undefined,
   capability: Capability,
 ): boolean {
-  if (!apiKey) return true;
-  const separator = capability.indexOf(":");
-  if (separator <= 0 || separator === capability.length - 1) return false;
-  const resource = capability.slice(0, separator);
-  const action = capability.slice(separator + 1);
-  return apiKey.permissions?.[resource]?.includes(action) ?? false;
+  return apiKeyHasCapabilityScope(apiKey, capability);
 }
 
 /**
@@ -109,7 +104,7 @@ export function requireWorkspaceCapability(capability: Capability) {
         workspaceId,
         userId,
         capability,
-        c.get("apiKey") as ApiKeyCapabilityScope | undefined,
+        c.get("apiKey") as ApiKeyPermissionScope | undefined,
       );
     } catch (error) {
       if (error instanceof HTTPException && error.status === 403) {
@@ -162,7 +157,7 @@ export async function assertCallerHasCapability(
   workspaceId: string,
   userId: string,
   capability: Capability,
-  apiKey?: ApiKeyCapabilityScope,
+  apiKey?: ApiKeyPermissionScope,
 ): Promise<void> {
   if (!apiKeyHasCapability(apiKey, capability)) {
     throw new HTTPException(403, { message: "Insufficient API key scope" });
@@ -223,7 +218,7 @@ export async function assertCallerHasCapabilityOrSelf(
   capability: Capability,
   selfCapability: Capability,
   isSelfTarget: boolean,
-  apiKey?: ApiKeyCapabilityScope,
+  apiKey?: ApiKeyPermissionScope,
 ): Promise<void> {
   const roles = await workspaceMemberRoles(db, workspaceId, userId);
   if (!isUnambiguousMembership(roles)) {
