@@ -1,0 +1,51 @@
+{
+  "recorded_at": "2026-10-06T16:00:28.708127+00:00",
+  "candidate": "c2fd8153676baecc958c089988f60ab156b26aff",
+  "run_id": 37489667941,
+  "g11": {
+    "passed": 20,
+    "total": 22,
+    "failures": [
+      "work-list LCP2520ms, budget strictly below2500",
+      "create dialog absent after original5000ms assertion"
+    ],
+    "passing_interactions_ms": {
+      "state": 137.5,
+      "assignment": 120.3,
+      "board_render": 499.9
+    }
+  },
+  "sql": {
+    "files_passed": 146,
+    "files_total": 148,
+    "failures": [
+      "WS unauthenticated fixture403-vs401",
+      "WS invalid portal401-vs403",
+      "unscoped API-key assignment200-vs403"
+    ]
+  },
+  "trace_limits": [
+    "Trigger click completes; dialog missing at original assertion",
+    "No recorded console/page error",
+    "Both network trace files are empty; chunk timing/cause unproved"
+  ],
+  "evidence": [
+    {
+      "path": "hosted-c2fd-g11.log",
+      "sha256": "570f7543971bb348026b8ad5b6a2e720d5780210798f9d7bf27a340ef9dda66f"
+    },
+    {
+      "path": "hosted-c2fd-sql.log",
+      "sha256": "7901b4b20094c2cf56d52c85863c8aaf578529661bd1c2752926008a280e3f70"
+    },
+    {
+      "path": "hosted-c2fd-performance/performance.bench.ts-G11-create-work-item-click-to-paint/trace.zip",
+      "sha256": "41e50d760e56e8ae06b254eab8e3035712dd81c3e2ea506ada3b7200b4424f87"
+    },
+    {
+      "path": "hosted-c2fd-performance/performance.bench.ts-G11-create-work-item-click-to-paint/error-context.md",
+      "sha256": "5095ccec68207b8bb77d7904113072bd6cbcb9389f559195ba9e18dc427d0824"
+    }
+  ],
+  "acceptance": false
+}
