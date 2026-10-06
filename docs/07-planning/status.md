@@ -1,3 +1,41 @@
+## October 6 continuation checkpoint — implementation first, bulk acceptance pending
+
+- **P0 priority:** the three actual partial UTC observation dates are reconciled; there is
+  no additional calendar wait. The public-config pre-guard exception remains pending Thomas,
+  and task selection remains dependent on accepted config runtime and fresh re-key evidence.
+  The isolated platform/27-source test has an accurately attributed delegated application
+  record; no Thomas personal digest approval is claimed. The private adapter's raw-file vs
+  canonical-JSON hash correction passes 23 offline tests and current ordinary review. Its
+  new exact-hash Sol review and real disposable runtime/rollback/cleanup remain pending.
+  Persistent DEV enforcement is unchanged; the earlier whole-P0 finalizer is provisional.
+- **P0 installer #583:** the complete installer has actual full-path regressions for both
+  discovered deployment defects: Bash top-level `local` and stale digest across version
+  change. Source `ff491728ba2bfd600c6474ba8b45cd91b6660ef8` is pushed with 25/25 tests.
+  Further compatible MFA/performance implementation is active before another bulk acceptance
+  freeze. The preceding `a81c307a` hosted PG passed 136 files/1649 tests, G8/G4 passed,
+  MFA E2E timed out (23 passed/1 failed), and G11 remained 20/22. None is silently retried,
+  waived or represented as the new source's acceptance. Installer runtime and current Sol
+  clearance remain required before protected acceptance or P0 completion.
+- **P1/P2/P3/P4 integration #581:** exact source
+  `0f56575a9dfbed904482dce0651ea8dfb7f07743` clears all three ordinary scopes and full
+  independent Sol source review. Actual hosted G11 run37414196827 passes 22/22 with
+  unchanged budgets (LCP median2440ms, board median464.9ms). G8/G4/E2E pass. Its synthetic
+  merge `03d0c709a024dfbbb38867858a5d65705ff08a3a` has the identical candidate tree.
+  Required static contrast ownership and five OpenAPI compatibility findings remain red;
+  template/evidence acceptance is pending, and PG is still running at this checkpoint.
+  The reviewed source builds image `sha256:2236fff37477bd148a8de805653091eafb602421b86c4ee64d9fbd2cc18aaac8`
+  with OCI0f and usertaskdesk; boot/health has not run. No feature deployment or merge.
+- **P4 repository ownership #580:** composition `fa0afbf5` passed 79 files/1125 SQL tests,
+  nine-package typecheck and scoped static checks. The failed first SQL run remains an
+  infrastructure incident; the successful rerun acquired and removed its exact owned PG ID.
+  Remaining module conversions and the genuinely missing query-gate implementation are now
+  one complete implementation batch. The new gate stays red while reads are relocated;
+  there is no grandfathered baseline or exemption. Full P4 acceptance remains mandatory.
+- **Program:** real Entra certification and executable outbox delivery remain unclaimed.
+  P0–P7 remain open; independent reviews and actual tests are evidence, not phase claims.
+  Root reserves the next local resource window for the P0 disposable proof; other lanes
+  continue source implementation without overlapping local measurements or generic cleanup.
+
 ## October 6 representative capture reconciled; parallel slices pushed — 2026-10-06
 
 Accepted main remains `3096cb044bdf6ae98488bfc385f532fa6386343a`; reviewed OrbStack DEV
