@@ -17,6 +17,7 @@ import {
   timestamp,
   unique,
   uniqueIndex,
+  uuid,
 } from "drizzle-orm/pg-core";
 
 const bytea = customType<{ data: Buffer; driverData: Buffer }>({
@@ -1180,6 +1181,16 @@ export const notificationTable = pgTable(
     isRead: boolean("is_read").default(false),
     resourceId: text("resource_id"),
     resourceType: text("resource_type"),
+    // Canonical event-derived inbox identity. Legacy rows may keep this null until
+    // their old user-based source can be resolved to a person.
+    personId: text("person_id").references(() => personTable.id, {
+      onDelete: "cascade",
+      onUpdate: "cascade",
+    }),
+    eventId: text("event_id"),
+    kind: text("kind"),
+    body: text("body"),
+    readAt: timestamp("read_at", { mode: "date" }),
     createdAt: timestamp("created_at", { mode: "date", withTimezone: true })
       .defaultNow()
       .notNull(),
@@ -1188,7 +1199,13 @@ export const notificationTable = pgTable(
       .$onUpdate(() => new Date())
       .notNull(),
   },
-  (table) => [index("notification_userId_idx").on(table.userId)],
+  (table) => [
+    index("notification_userId_idx").on(table.userId),
+    index("notification_person_id_idx").on(table.personId),
+    uniqueIndex("notification_event_person_unique")
+      .on(table.eventId, table.personId)
+      .where(sql`${table.eventId} is not null`),
+  ],
 );
 
 export const outboxTable = pgTable(
@@ -1209,6 +1226,13 @@ export const outboxTable = pgTable(
       .defaultNow()
       .notNull(),
     lastError: text("last_error"),
+    createdAt: timestamp("created_at", { mode: "date", withTimezone: true })
+      .defaultNow()
+      .notNull(),
+    updatedAt: timestamp("updated_at", { mode: "date", withTimezone: true })
+      .defaultNow()
+      .$onUpdate(() => new Date())
+      .notNull(),
   },
   (table) => [
     check(
@@ -1671,6 +1695,241 @@ export const personTable = pgTable(
     uniqueIndex("person_user_unique")
       .on(table.userId)
       .where(sql`${table.userId} is not null`),
+  ],
+);
+
+export const notificationPreferenceTable = pgTable(
+  "notification_preference",
+  {
+    personId: text("person_id")
+      .notNull()
+      .references(() => personTable.id, {
+        onDelete: "cascade",
+        onUpdate: "cascade",
+      }),
+    scope: text("scope").notNull(),
+    scopeId: text("scope_id"),
+    channel: text("channel").notNull(),
+    eventKind: text("event_kind").notNull(),
+    enabled: boolean("enabled").notNull(),
+    digest: text("digest").notNull().default("off"),
+  },
+  (table) => [
+    check(
+      "notification_preference_scope_check",
+      sql`(${table.scope} = 'global' and ${table.scopeId} is null) or (${table.scope} in ('workspace', 'project') and ${table.scopeId} is not null)`,
+    ),
+    check(
+      "notification_preference_channel_check",
+      sql`${table.channel} = 'in_app' or ${table.channel} like 'notify.%'`,
+    ),
+    check(
+      "notification_preference_digest_check",
+      sql`${table.digest} in ('off', 'hourly', 'daily')`,
+    ),
+    unique("notification_preference_person_scope_channel_event_unique")
+      .on(
+        table.personId,
+        table.scope,
+        table.scopeId,
+        table.channel,
+        table.eventKind,
+      )
+      .nullsNotDistinct(),
+    index("notification_preference_person_event_idx").on(
+      table.personId,
+      table.eventKind,
+    ),
+  ],
+);
+
+export const notificationDeliveryTable = pgTable(
+  "notification_delivery",
+  {
+    id: text("id")
+      .$defaultFn(() => createId())
+      .primaryKey(),
+    eventId: text("event_id")
+      .notNull()
+      .references(() => outboxTable.eventId, {
+        onDelete: "cascade",
+        onUpdate: "cascade",
+      }),
+    recipientPersonId: text("recipient_person_id")
+      .notNull()
+      .references(() => personTable.id, {
+        onDelete: "cascade",
+        onUpdate: "cascade",
+      }),
+    channel: text("channel").notNull(),
+    workspaceId: text("workspace_id")
+      .notNull()
+      .references(() => workspaceTable.id, {
+        onDelete: "cascade",
+        onUpdate: "cascade",
+      }),
+    organisationId: text("organisation_id").references(
+      () => organisationTable.id,
+      {
+        onDelete: "cascade",
+        onUpdate: "cascade",
+      },
+    ),
+    dedupeKey: text("dedupe_key").notNull(),
+    digestId: text("digest_id").references(() => notificationDigestTable.id, {
+      onDelete: "restrict",
+      onUpdate: "cascade",
+    }),
+    state: text("state").notNull().default("pending"),
+    attempts: integer("attempts").notNull().default(0),
+    nextAttemptAt: timestamp("next_attempt_at", { mode: "date" })
+      .defaultNow()
+      .notNull(),
+    deliveredAt: timestamp("delivered_at", { mode: "date" }),
+    lastError: text("last_error"),
+    createdAt: timestamp("created_at", { mode: "date" }).defaultNow().notNull(),
+    updatedAt: timestamp("updated_at", { mode: "date" }).defaultNow().notNull(),
+  },
+  (table) => [
+    check(
+      "notification_delivery_channel_check",
+      sql`${table.channel} like 'notify.%'`,
+    ),
+    check(
+      "notification_delivery_state_check",
+      sql`${table.state} in ('pending', 'delivered', 'dead', 'suppressed')`,
+    ),
+    check("notification_delivery_attempts_check", sql`${table.attempts} >= 0`),
+    unique("notification_delivery_event_recipient_channel_unique").on(
+      table.eventId,
+      table.recipientPersonId,
+      table.channel,
+    ),
+    index("notification_delivery_state_next_attempt_idx")
+      .on(table.state, table.nextAttemptAt)
+      .where(sql`${table.state} = 'pending' and ${table.digestId} is null`),
+    index("notification_delivery_workspace_state_idx").on(
+      table.workspaceId,
+      table.state,
+    ),
+    index("notification_delivery_digest_idx").on(table.digestId),
+    index("notification_delivery_recent_success_idx")
+      .on(
+        table.recipientPersonId,
+        table.channel,
+        table.dedupeKey,
+        table.deliveredAt,
+      )
+      .where(sql`${table.deliveredAt} is not null`),
+  ],
+);
+
+export const notificationDigestTable = pgTable(
+  "notification_digest",
+  {
+    id: text("id")
+      .$defaultFn(() => createId())
+      .primaryKey(),
+    recipientPersonId: text("recipient_person_id")
+      .notNull()
+      .references(() => personTable.id, {
+        onDelete: "cascade",
+        onUpdate: "cascade",
+      }),
+    channel: text("channel").notNull(),
+    workspaceId: text("workspace_id")
+      .notNull()
+      .references(() => workspaceTable.id, {
+        onDelete: "cascade",
+        onUpdate: "cascade",
+      }),
+    organisationId: text("organisation_id").references(
+      () => organisationTable.id,
+      {
+        onDelete: "cascade",
+        onUpdate: "cascade",
+      },
+    ),
+    cadence: text("cadence").notNull(),
+    timezone: text("timezone").notNull(),
+    windowStartAt: timestamp("window_start_at", { mode: "date" }).notNull(),
+    windowEndAt: timestamp("window_end_at", { mode: "date" }).notNull(),
+    state: text("state").notNull().default("collecting"),
+    attempts: integer("attempts").notNull().default(0),
+    nextAttemptAt: timestamp("next_attempt_at", { mode: "date" })
+      .defaultNow()
+      .notNull(),
+    deliveredAt: timestamp("delivered_at", { mode: "date" }),
+    lastError: text("last_error"),
+    payloadHash: text("payload_hash"),
+    leaseToken: uuid("lease_token"),
+    leaseExpiresAt: timestamp("lease_expires_at", { mode: "date" }),
+    createdAt: timestamp("created_at", { mode: "date" }).defaultNow().notNull(),
+    updatedAt: timestamp("updated_at", { mode: "date" }).defaultNow().notNull(),
+  },
+  (table) => [
+    check(
+      "notification_digest_channel_check",
+      sql`${table.channel} like 'notify.%'`,
+    ),
+    check(
+      "notification_digest_cadence_check",
+      sql`${table.cadence} in ('hourly', 'daily')`,
+    ),
+    check(
+      "notification_digest_state_check",
+      sql`${table.state} in ('collecting', 'pending', 'delivered', 'dead', 'suppressed')`,
+    ),
+    check("notification_digest_attempts_check", sql`${table.attempts} >= 0`),
+    unique("notification_digest_partition_unique")
+      .on(
+        table.recipientPersonId,
+        table.channel,
+        table.workspaceId,
+        table.organisationId,
+        table.cadence,
+        table.windowStartAt,
+        table.windowEndAt,
+      )
+      .nullsNotDistinct(),
+    index("notification_digest_due_idx")
+      .on(table.state, table.nextAttemptAt)
+      .where(sql`${table.state} in ('collecting', 'pending')`),
+  ],
+);
+
+export const outboxDedupeReservationTable = pgTable(
+  "outbox_dedupe_reservation",
+  {
+    reservationKey: bytea("reservation_key").primaryKey(),
+    recipientPersonId: text("recipient_person_id")
+      .notNull()
+      .references(() => personTable.id, {
+        onDelete: "cascade",
+        onUpdate: "cascade",
+      }),
+    channel: text("channel").notNull(),
+    dedupeKey: text("dedupe_key").notNull(),
+    ownerDeliveryId: text("owner_delivery_id")
+      .notNull()
+      .references(() => notificationDeliveryTable.id, {
+        onDelete: "cascade",
+        onUpdate: "cascade",
+      }),
+    leaseToken: uuid("lease_token").notNull(),
+    leaseExpiresAt: timestamp("lease_expires_at", { mode: "date" }).notNull(),
+  },
+  (table) => [
+    check(
+      "outbox_dedupe_reservation_key_length",
+      sql`octet_length(${table.reservationKey}) = 32`,
+    ),
+    unique("outbox_dedupe_reservation_tuple_unique").on(
+      table.recipientPersonId,
+      table.channel,
+      table.dedupeKey,
+    ),
+    index("outbox_dedupe_reservation_expiry_idx").on(table.leaseExpiresAt),
   ],
 );
 
