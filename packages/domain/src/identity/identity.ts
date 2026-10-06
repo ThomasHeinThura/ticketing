@@ -180,18 +180,25 @@ export function normaliseEntraClaims(
     return { ok: false, reason: "domain_bound_elsewhere" };
   }
 
-  let groupObjectIds: readonly string[] | "overage" = [];
+  let groupObjectIds: import("./types.js").EntraGroupClaimEvidence;
   if (isGroupOverage(claims) || hasInvalidGroupOverageMarker(claims)) {
-    groupObjectIds = "overage";
+    groupObjectIds = { kind: "overage" };
+  } else if (claims.groups === undefined) {
+    groupObjectIds = { kind: "missing" };
   } else if (
     Array.isArray(claims.groups) &&
     claims.groups.every(
       (group) => canonicalEntraGroupObjectId(group) !== undefined,
     )
   ) {
-    groupObjectIds = [
-      ...new Set(claims.groups.map(canonicalEntraGroupObjectId)),
-    ].filter((group): group is string => group !== undefined);
+    groupObjectIds = {
+      kind: "complete",
+      objectIds: [
+        ...new Set(claims.groups.map(canonicalEntraGroupObjectId)),
+      ].filter((group): group is string => group !== undefined),
+    };
+  } else {
+    groupObjectIds = { kind: "malformed" };
   }
 
   return {

@@ -571,29 +571,36 @@ describe("identity connection administration", () => {
 
     let groups: unknown = [groupId.toUpperCase()];
     let groupOverage = false;
+    let tokenValid = true;
     let roles: unknown = ["TaskDesk.User"];
     const acct: unknown = 0;
     vi.mocked(oidcToken.validateEntraIdToken).mockImplementation(
-      (_token, _jwks, expectation) => ({
-        ok: true,
-        claims: {
-          iss: expectation.issuer,
-          tid: expectation.tenantId,
-          oid: "direct-oidc-subject",
-          email: "direct-oidc@example.test",
-          email_verified: true,
-          name: "Direct OIDC User",
-          groups,
-          ...(groupOverage
-            ? {
-                _claim_names: { groups: "src1" },
-                _claim_sources: { src1: { endpoint: "https://invalid.test" } },
-              }
-            : {}),
-          acct,
-          roles,
-        },
-      }),
+      (_token, _jwks, expectation) => {
+        if (!tokenValid)
+          return { ok: false as const, reason: "invalid_signature" as const };
+        return {
+          ok: true as const,
+          claims: {
+            iss: expectation.issuer,
+            tid: expectation.tenantId,
+            oid: "direct-oidc-subject",
+            email: "direct-oidc@example.test",
+            email_verified: true,
+            name: "Direct OIDC User",
+            groups,
+            ...(groupOverage
+              ? {
+                  _claim_names: { groups: "src1" },
+                  _claim_sources: {
+                    src1: { endpoint: "https://invalid.test" },
+                  },
+                }
+              : {}),
+            acct,
+            roles,
+          },
+        };
+      },
     );
 
     const login = async () => {
@@ -619,6 +626,75 @@ describe("identity connection administration", () => {
       );
       return response;
     };
+    const expectLatestOidcRetirement = async (
+      reason:
+        | "claim_missing"
+        | "claim_removed"
+        | "claim_overage"
+        | "mapping_changed"
+        | "admission_failed",
+    ) => {
+      const grantRows = await db
+        .select()
+        .from(schema.membershipGrantTable)
+        .where(
+          eq(
+            schema.membershipGrantTable.externalIdentityId,
+            externalIdentity.id,
+          ),
+        );
+      const latestGrant = grantRows
+        .filter(
+          (grant) =>
+            grant.sourceKind === "oidc_group" &&
+            grant.oidcGroupMappingId === mappingId &&
+            grant.revokedAt !== null,
+        )
+        .sort(
+          (left, right) =>
+            (right.revokedAt?.getTime() ?? 0) -
+            (left.revokedAt?.getTime() ?? 0),
+        )[0];
+      expect(latestGrant?.revocationReason).toBe(reason);
+      const events = await db
+        .select()
+        .from(schema.provisioningEventTable)
+        .where(
+          eq(
+            schema.provisioningEventTable.externalIdentityId,
+            externalIdentity.id,
+          ),
+        );
+      const latestEvent = events
+        .filter((event) => event.kind === "group.member_removed")
+        .sort(
+          (left, right) => right.createdAt.getTime() - left.createdAt.getTime(),
+        )[0];
+      expect(latestEvent?.detail).toMatchObject({ reason });
+      const audits = await db
+        .select()
+        .from(schema.auditLogTable)
+        .where(eq(schema.auditLogTable.entityId, person.id));
+      const latestAudit = audits.sort(
+        (left, right) => right.createdAt.getTime() - left.createdAt.getTime(),
+      )[0];
+      if (reason === "admission_failed") {
+        expect(latestAudit?.after).toMatchObject({ reason });
+      } else {
+        expect(latestAudit?.after).toMatchObject({
+          revocationReasons: { [reason]: expect.any(Number) },
+        });
+      }
+      const direct = await db
+        .select()
+        .from(schema.membershipGrantTable)
+        .where(eq(schema.membershipGrantTable.personId, person.id));
+      expect(
+        direct.some(
+          (grant) => grant.sourceKind === "direct" && grant.revokedAt === null,
+        ),
+      ).toBe(true);
+    };
 
     const first = await login();
     expect(first.status).toBe(302);
@@ -642,9 +718,9 @@ describe("identity connection administration", () => {
       ),
     ).toHaveLength(1);
 
-    groups = "malformed-group-payload";
-    const malformedGroups = await login();
-    expect(malformedGroups.status).toBe(302);
+    groups = undefined;
+    expect((await login()).status).toBe(302);
+    await expectLatestOidcRetirement("claim_missing");
     grants = await db
       .select()
       .from(schema.membershipGrantTable)
@@ -666,8 +742,78 @@ describe("identity connection administration", () => {
 
     groups = [groupId];
     expect((await login()).status).toBe(302);
+    groups = "malformed-group-payload";
+    expect((await login()).status).toBe(302);
+    await expectLatestOidcRetirement("claim_missing");
+    groups = [groupId];
+    expect((await login()).status).toBe(302);
+    groups = [];
+    expect((await login()).status).toBe(302);
+    await expectLatestOidcRetirement("claim_removed");
+    groups = [groupId];
+    expect((await login()).status).toBe(302);
+    await db
+      .update(schema.oidcGroupMappingTable)
+      .set({ roleId: directRoleId, updatedAt: new Date(Date.now() + 1000) })
+      .where(eq(schema.oidcGroupMappingTable.id, mappingId));
+    expect((await login()).status).toBe(302);
+    await expectLatestOidcRetirement("mapping_changed");
+    await db
+      .update(schema.oidcGroupMappingTable)
+      .set({ roleId, updatedAt: new Date(Date.now() + 2000) })
+      .where(eq(schema.oidcGroupMappingTable.id, mappingId));
+    expect((await login()).status).toBe(302);
+    await expectLatestOidcRetirement("mapping_changed");
+    await db
+      .update(schema.oidcGroupMappingTable)
+      .set({ enabled: false, updatedAt: new Date(Date.now() + 3000) })
+      .where(eq(schema.oidcGroupMappingTable.id, mappingId));
+    expect((await login()).status).toBe(302);
+    await expectLatestOidcRetirement("mapping_changed");
+    await db
+      .update(schema.oidcGroupMappingTable)
+      .set({ enabled: true, updatedAt: new Date(Date.now() + 4000) })
+      .where(eq(schema.oidcGroupMappingTable.id, mappingId));
+    expect((await login()).status).toBe(302);
+    const activeBeforeInvalidToken = await db
+      .select({
+        id: schema.membershipGrantTable.id,
+        revokedAt: schema.membershipGrantTable.revokedAt,
+        revocationReason: schema.membershipGrantTable.revocationReason,
+        updatedAt: schema.membershipGrantTable.updatedAt,
+        lastConfirmedAt: schema.membershipGrantTable.lastConfirmedAt,
+      })
+      .from(schema.membershipGrantTable)
+      .where(
+        eq(schema.membershipGrantTable.externalIdentityId, externalIdentity.id),
+      );
+    tokenValid = false;
+    expect((await login()).status).toBe(302);
+    tokenValid = true;
+    const activeAfterInvalidToken = await db
+      .select({
+        id: schema.membershipGrantTable.id,
+        revokedAt: schema.membershipGrantTable.revokedAt,
+        revocationReason: schema.membershipGrantTable.revocationReason,
+        updatedAt: schema.membershipGrantTable.updatedAt,
+        lastConfirmedAt: schema.membershipGrantTable.lastConfirmedAt,
+      })
+      .from(schema.membershipGrantTable)
+      .where(
+        eq(schema.membershipGrantTable.externalIdentityId, externalIdentity.id),
+      );
+    expect(
+      activeAfterInvalidToken.sort((left, right) =>
+        left.id.localeCompare(right.id),
+      ),
+    ).toEqual(
+      activeBeforeInvalidToken.sort((left, right) =>
+        left.id.localeCompare(right.id),
+      ),
+    );
     groupOverage = true;
     expect((await login()).status).toBe(302);
+    await expectLatestOidcRetirement("claim_overage");
     grants = await db
       .select()
       .from(schema.membershipGrantTable)
@@ -711,6 +857,7 @@ describe("identity connection administration", () => {
       .from(schema.sessionTable)
       .where(eq(schema.sessionTable.userId, user.id));
     expect(sessionsAfterDenial).toHaveLength(sessionCount.length);
+    await expectLatestOidcRetirement("admission_failed");
     grants = await db
       .select()
       .from(schema.membershipGrantTable)
@@ -729,7 +876,6 @@ describe("identity connection administration", () => {
           grant.sourceKind === "oidc_group" && grant.revokedAt === null,
       ),
     ).toHaveLength(0);
-    expect(grants.filter((grant) => grant.revokedAt !== null)).toHaveLength(4);
     expect(
       grants.some(
         (grant) => grant.sourceKind === "direct" && grant.revokedAt === null,
