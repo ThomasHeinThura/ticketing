@@ -51,6 +51,44 @@ test("check:queries detects optional and computed read-member calls", () => {
   );
 });
 
+test("check:queries decodes escaped static member names and aliases", () => {
+  const source = String.raw`
+db["sel\u0065ct"]().from(table);
+db['\x73elect']().from(table);
+db["\u{73}elect"]().from(table);
+db["sel\"ect"]();
+db["sele\
+ct"]().from(table);
+db.\u0073elect().from(table);
+const { ["\u0073elect"]: read } = db;
+read().from(table);
+const { find\u004dany: list } = db.query.person;
+list();
+`;
+  // biome-ignore lint/suspicious/noTemplateCurlyInString: Template source is fixture input.
+  const templateSource = 'const rendered = `value ${db["\\u0066indFirst"]()}`;';
+  assert.deepEqual(
+    queryReadViolations(source + templateSource, "example.ts").map(
+      ({ method }) => method,
+    ),
+    [
+      "select",
+      "select",
+      "select",
+      "select",
+      "select",
+      "select",
+      "findMany",
+      "findFirst",
+    ],
+  );
+
+  // These spellings are valid JS and resolve to the same property at runtime.
+  const runtime = { select: () => "selected" };
+  assert.equal(runtime["sel\u0065ct"](), "selected");
+  assert.equal(runtime.\u0073elect(), "selected");
+});
+
 test("check:queries detects receiver and simple method aliases", () => {
   const source = [
     "const executorAlias = tx;",

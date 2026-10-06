@@ -277,16 +277,22 @@ export function getScimConnectionVersion(tx: IdentityTransaction, id: string) {
     .limit(1);
 }
 
-export function findIdentityConnectionForOrganisation(organisationId: string) {
-  return db
+export function findIdentityConnectionForOrganisation(
+  tx: IdentityTransaction,
+  organisationId: string,
+) {
+  return tx
     .select({ id: schema.identityConnectionTable.id })
     .from(schema.identityConnectionTable)
     .where(eq(schema.identityConnectionTable.organisationId, organisationId))
     .limit(1);
 }
 
-export function getWorkspaceOrganisation(workspaceId: string) {
-  return db
+export function getWorkspaceOrganisation(
+  tx: IdentityTransaction,
+  workspaceId: string,
+) {
+  return tx
     .select({ organisationId: schema.workspaceTable.organisationId })
     .from(schema.workspaceTable)
     .where(eq(schema.workspaceTable.id, workspaceId))

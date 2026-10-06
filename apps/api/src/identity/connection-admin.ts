@@ -666,6 +666,7 @@ router.openapi(createConnectionRoute, async (c) => {
     await lockIdentityDomainBindings(tx);
     if (request.organisationId) {
       const [existing] = await findIdentityConnectionForOrganisation(
+        tx,
         request.organisationId,
       );
       if (existing) return { kind: "duplicate" as const };
@@ -673,7 +674,7 @@ router.openapi(createConnectionRoute, async (c) => {
     if (!(await domainBindingsAreUnique(tx, request.domainBindings)))
       return { kind: "invalid" as const };
     const [targetWorkspace] = request.defaultWorkspaceId
-      ? await getWorkspaceOrganisation(request.defaultWorkspaceId)
+      ? await getWorkspaceOrganisation(tx, request.defaultWorkspaceId)
       : [];
     await lockScimGrantClosure(tx, {
       connectionId,
@@ -827,7 +828,7 @@ router.openapi(configureConnectionRoute, async (c) => {
           ? before?.defaultWorkspaceId
           : request.defaultWorkspaceId;
       const [targetWorkspace] = candidateWorkspaceId
-        ? await getWorkspaceOrganisation(candidateWorkspaceId)
+        ? await getWorkspaceOrganisation(tx, candidateWorkspaceId)
         : [];
       const currentJit = parseIdentityJitPolicy(before?.jitPolicy);
       const candidateJit =

@@ -19,11 +19,16 @@ function readTokens(source) {
     while (index < source.length) {
       if (source[index] === "\\") index += 2;
       else if (source[index] === quote) {
-        add(source.slice(start + 1, index), start, "string");
+        const value = decodeStringLiteral(source.slice(start + 1, index));
+        add(
+          value ?? source.slice(start + 1, index),
+          start,
+          value === null ? "opaque-string" : "string",
+        );
         return index + 1;
       } else index += 1;
     }
-    add(source.slice(start + 1), start, "string");
+    add(source.slice(start + 1), start, "opaque-string");
     return index;
   }
 
@@ -123,11 +128,11 @@ function readTokens(source) {
         continue;
       }
       if (stopAtBrace && ch === "}" && braces === 0) return index + 1;
-      if (identifierStart.test(ch)) {
-        const start = index++;
-        while (index < source.length && identifierPart.test(source[index]))
-          index += 1;
-        add(source.slice(start, index), start);
+      if (
+        identifierStart.test(String.fromCodePoint(source.codePointAt(index))) ||
+        (ch === "\\" && source[index + 1] === "u")
+      ) {
+        index = scanIdentifier(index);
         continue;
       }
       if (ch === "{") braces += 1;
@@ -140,6 +145,101 @@ function readTokens(source) {
 
   scanCode(0);
   return tokens;
+
+  function scanIdentifier(index) {
+    const start = index;
+    let value = "";
+    let first = true;
+    while (index < source.length) {
+      let character;
+      let end;
+      if (source[index] === "\\" && source[index + 1] === "u") {
+        const escaped = readUnicodeEscape(source, index);
+        if (!escaped) break;
+        character = escaped.value;
+        end = escaped.end;
+      } else {
+        const codePoint = source.codePointAt(index);
+        if (codePoint === undefined) break;
+        character = String.fromCodePoint(codePoint);
+        end = index + character.length;
+      }
+      if (!(first ? identifierStart : identifierPart).test(character)) break;
+      value += character;
+      first = false;
+      index = end;
+    }
+    if (!first) add(value, start);
+    return first ? start + 1 : index;
+  }
+}
+
+function readUnicodeEscape(source, index) {
+  if (source[index] !== "\\" || source[index + 1] !== "u") return null;
+  if (source[index + 2] === "{") {
+    const end = source.indexOf("}", index + 3);
+    if (end < 0) return null;
+    const digits = source.slice(index + 3, end);
+    if (!/^[\da-fA-F]{1,6}$/.test(digits)) return null;
+    const point = Number.parseInt(digits, 16);
+    if (point > 0x10ffff || (point >= 0xd800 && point <= 0xdfff)) return null;
+    return { value: String.fromCodePoint(point), end: end + 1 };
+  }
+  const digits = source.slice(index + 2, index + 6);
+  if (!/^[\da-fA-F]{4}$/.test(digits)) return null;
+  return {
+    value: String.fromCharCode(Number.parseInt(digits, 16)),
+    end: index + 6,
+  };
+}
+
+function decodeStringLiteral(raw) {
+  let value = "";
+  for (let index = 0; index < raw.length; index += 1) {
+    if (raw[index] !== "\\") {
+      value += raw[index];
+      continue;
+    }
+    index += 1;
+    if (index >= raw.length) return null;
+    const escaped = raw[index];
+    if (escaped === "\n" || escaped === "\u2028" || escaped === "\u2029")
+      continue;
+    if (escaped === "\r") {
+      if (raw[index + 1] === "\n") index += 1;
+      continue;
+    }
+    if (escaped === "x") {
+      const digits = raw.slice(index + 1, index + 3);
+      if (!/^[\da-fA-F]{2}$/.test(digits)) return null;
+      value += String.fromCharCode(Number.parseInt(digits, 16));
+      index += 2;
+      continue;
+    }
+    if (escaped === "u") {
+      const decoded = readUnicodeEscape(raw, index - 1);
+      if (!decoded) return null;
+      value += decoded.value;
+      index = decoded.end - 1;
+      continue;
+    }
+    if (escaped === "0") {
+      if (/\d/.test(raw[index + 1] ?? "")) return null;
+      value += "\0";
+      continue;
+    }
+    if (/^[1-9]$/.test(escaped)) return null;
+    const simpleEscapes = {
+      b: "\b",
+      f: "\f",
+      n: "\n",
+      r: "\r",
+      t: "\t",
+      v: "\v",
+    };
+    value += simpleEscapes[escaped] ?? escaped;
+  }
+  return value;
 }
 
 export function queryReadViolations(source, file) {
@@ -246,7 +346,7 @@ function isReadReferenceEnd(tokens, index) {
 /**
  * Resolve simple local aliases of a read method, such as `const read = db.select`,
  * `const read = db.select.bind(db)`, and `const { select: read } = db`. This is deliberately lexical and bounded;
- * computed variable keys and interprocedural data flow are outside this gate's contract.
+ * dynamic variable keys and interprocedural data flow are outside this gate's contract.
  */
 function readMethodBindings(tokens, readMethods) {
   const bindings = new Map();
@@ -273,9 +373,20 @@ function readMethodBindings(tokens, readMethods) {
     if (tokens[index + 1]?.value !== "{") continue;
     let cursor = index + 2;
     while (cursor < tokens.length && tokens[cursor].value !== "}") {
-      const property = tokens[cursor];
+      let property = tokens[cursor];
+      let propertyEnd = cursor;
+      if (
+        property?.value === "[" &&
+        tokens[cursor + 2]?.value === "]" &&
+        tokens[cursor + 1]?.kind === "string"
+      ) {
+        property = tokens[cursor + 1];
+        propertyEnd = cursor + 2;
+      }
       const alias =
-        tokens[cursor + 1]?.value === ":" ? tokens[cursor + 2] : property;
+        tokens[propertyEnd + 1]?.value === ":"
+          ? tokens[propertyEnd + 2]
+          : property;
       if (
         readMethods.has(property?.value) &&
         (property?.kind === "token" || property?.kind === "string") &&
