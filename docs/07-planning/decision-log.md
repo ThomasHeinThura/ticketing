@@ -6099,3 +6099,18 @@ Gate waivers, recorded per [UX quality gates](../02-design/ux-quality-gates.md).
 ## Related
 
 - [ADR index](../01-architecture/adr/README.md) · [Risks](risks.md) · [Status](status.md)
+
+
+### 2026-10-06 · Completed date observation schedule and continued execution
+
+The actual October 6 partial representative observation was acquired and deterministically
+reconciled with the retained October 4 and 5 records. Pause the completed observation heartbeat
+as its existing prompt requires; continue independent operational cutover assessment and the
+additional Sol phase finalizer, without claiming closure from elapsed time. The absent historical
+schema-80 image was rebuilt from exact old source and its new digest is explicitly recorded;
+source/user/journal/hash guards stay enforced and original failure records stay intact.
+
+Thomas's standing parallel and bulk-implementation instructions continue to apply. P1/P2
+completed slices proceed toward one composed acceptance batch; P4 repository conversion resumes
+on the next bounded bucket while P0 operational acceptance runs. No new waiver, dependency,
+production deployment, human design approval or relaxed performance budget is authorized here.
