@@ -1,5 +1,5 @@
 import { eq } from "drizzle-orm";
-import { beforeEach, describe, expect, it } from "vitest";
+import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { resolveApprovalFeatureFlag } from "../../apps/api/src/approval/repository";
 import db, { schema } from "../../apps/api/src/database";
 import { resetTestDatabase } from "./helpers/database";
@@ -11,6 +11,19 @@ import {
 describe("approval feature-flag repository resolution", () => {
   beforeEach(async () => {
     await resetTestDatabase();
+    await db
+      .delete(schema.instanceFeatureFlagTable)
+      .where(
+        eq(schema.instanceFeatureFlagTable.featureKey, "feature.approvals"),
+      );
+  });
+
+  afterEach(async () => {
+    await db
+      .delete(schema.instanceFeatureFlagTable)
+      .where(
+        eq(schema.instanceFeatureFlagTable.featureKey, "feature.approvals"),
+      );
   });
 
   it("applies project, workspace, instance, lock, then built-in default precedence", async () => {

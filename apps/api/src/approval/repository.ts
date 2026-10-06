@@ -564,5 +564,8 @@ export function hasApprovalCapability(
 ): boolean {
   return can(identity, capability, "work_item", {
     workItemId: target.workItemId,
+    workItemProjectId: target.projectId,
+    workspaceId: target.workspaceId,
+    organisationId: target.organisationId,
   });
 }

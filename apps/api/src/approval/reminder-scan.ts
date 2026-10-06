@@ -31,7 +31,10 @@ export async function scanApprovalReminders(): Promise<ApprovalReminderOutcome> 
         const batch = await withDueApprovalRows(
           Math.min(BATCH_SIZE, MAX_ROWS_PER_RUN - scanned),
           async (tx, row) => {
-            const now = row.now;
+            // Computed timestamp expressions may arrive as ISO strings through
+            // some PostgreSQL drivers even though schema-backed timestamps are
+            // mapped to Date instances.
+            const now = row.now instanceof Date ? row.now : new Date(row.now);
             const approval = {
               id: row.id,
               transitionId: row.transitionId,
