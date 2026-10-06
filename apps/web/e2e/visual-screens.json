@@ -30,6 +30,13 @@
 		"screenshot": "work-item-detail.png"
 	},
 	{
+		"name": "my-work-approvals",
+		"inventoryRoute": "/agent/my-work",
+		"applicationRoute": "/agent/my-work",
+		"test": "my approvals inbox screen @visual",
+		"screenshot": "my-work-approvals.png"
+	},
+	{
 		"name": "account-security",
 		"inventoryRoute": "/dashboard/settings/account/security",
 		"applicationRoute": "/dashboard/settings/account/security",

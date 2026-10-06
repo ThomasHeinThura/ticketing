@@ -279,6 +279,7 @@ export const teamTable = pgTable(
     workspaceId: text("workspace_id")
       .notNull()
       .references(() => workspaceTable.id, { onDelete: "cascade" }),
+    isCab: boolean("is_cab").notNull().default(false),
     createdAt: timestamp("created_at").notNull(),
     updatedAt: timestamp("updated_at").$onUpdate(
       () => /* @__PURE__ */ new Date(),
@@ -884,6 +885,9 @@ export const instanceSettingTable = pgTable(
     // consumed, expired-and-regenerated, or once setup_completed_at is set.
     setupTokenHash: text("setup_token_hash"),
     setupTokenExpiresAt: timestamp("setup_token_expires_at", { mode: "date" }),
+    approvalDefaultExpiryDays: integer("approval_default_expiry_days")
+      .notNull()
+      .default(7),
     localFactorPolicy: jsonb("local_factor_policy")
       .$type<{ mode: string; requiredRoleId: string | null }>()
       .notNull()
@@ -3069,6 +3073,60 @@ export const workflowTransitionTable = pgTable(
     check(
       "workflow_transition_approval_policy_allowed",
       sql`${table.approvalPolicy} is null or ${table.approvalPolicy} in ('any', 'all')`,
+    ),
+  ],
+);
+
+/**
+ * AP-1..AP-21 durable approval decisions. `created_at` is the request instant used by
+ * reminder-window arithmetic (AP-13) and blocked-transition context (AP-17). Work-item
+ * deletion is the only lifecycle purge that removes approvals; deleting a referenced
+ * published transition or person is restricted so an approval fact is not silently
+ * rewritten or discarded.
+ */
+export const approvalTable = pgTable(
+  "approval",
+  {
+    id: text("id")
+      .$defaultFn(() => createId())
+      .primaryKey(),
+    workItemId: text("work_item_id")
+      .notNull()
+      .references(() => workItemTable.id, { onDelete: "cascade" }),
+    transitionId: text("transition_id")
+      .notNull()
+      .references(() => workflowTransitionTable.id, { onDelete: "restrict" }),
+    kind: text("kind").notNull(),
+    requestedBy: text("requested_by")
+      .notNull()
+      .references(() => personTable.id, { onDelete: "restrict" }),
+    approverId: text("approver_id")
+      .notNull()
+      .references(() => personTable.id, { onDelete: "restrict" }),
+    state: text("state").notNull().default("pending"),
+    createdAt: timestamp("created_at", { mode: "date" }).defaultNow().notNull(),
+    expiresAt: timestamp("expires_at", { mode: "date" }).notNull(),
+    reminder50SentAt: timestamp("reminder_50_sent_at", { mode: "date" }),
+    reminder90SentAt: timestamp("reminder_90_sent_at", { mode: "date" }),
+    decidedAt: timestamp("decided_at", { mode: "date" }),
+    decisionNote: text("decision_note"),
+  },
+  (table) => [
+    index("approval_work_item_created_idx").on(
+      table.workItemId,
+      table.createdAt,
+    ),
+    index("approval_approver_state_expiry_idx").on(
+      table.approverId,
+      table.state,
+      table.expiresAt,
+    ),
+    index("approval_requester_state_idx").on(table.requestedBy, table.state),
+    index("approval_transition_state_idx").on(table.transitionId, table.state),
+    check("approval_kind_allowed", sql`${table.kind} in ('customer', 'cab')`),
+    check(
+      "approval_state_allowed",
+      sql`${table.state} in ('pending', 'approved', 'rejected', 'expired', 'withdrawn')`,
     ),
   ],
 );

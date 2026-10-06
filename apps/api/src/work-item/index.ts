@@ -59,6 +59,7 @@ import updateWorkItem, {
 } from "./controllers/update-work-item";
 import { unwatchWorkItem, watchWorkItem } from "./controllers/watch-work-item";
 import {
+  findPersonByUserIdQuery,
   findPersonIdByUserIdQuery,
   findStaffPersonOnProjectRosterQuery,
   findWorkItemAssigneeForActorQuery,
@@ -1435,10 +1436,11 @@ const workItem = apiRouter<
   .openapi(listWorkItemTransitionsRoute, async (c) => {
     const workItemId = c.get("workItemId");
     const userId = c.get("userId");
-    const [callerPerson] = await findPersonIdByUserIdQuery(db, userId);
+    const callerPerson = await findPersonByUserIdQuery(db, userId);
     const offers = await listWorkItemTransitions(
       workItemId,
       callerPerson?.id ?? null,
+      callerPerson?.side ?? null,
     );
     return c.json(offers, 200);
   })

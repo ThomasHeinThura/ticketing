@@ -92,6 +92,12 @@ export type ServiceCalendarListSearch = { cursor?: string };
 export type SlaPolicyListSearch = { cursor?: string };
 export type IdentityConnectionEventsSearch = { eventsCursor?: string };
 export type PendingActionsSearch = { cursor?: string };
+export type MyWorkSearch = { lens: "approvals" };
+
+export function parseMyWorkSearch(raw: unknown): MyWorkSearch {
+  const candidate = (raw ?? {}) as Record<string, unknown>;
+  return { lens: candidate.lens === "approvals" ? "approvals" : "approvals" };
+}
 
 export function parsePendingActionsSearch(raw: unknown): PendingActionsSearch {
   const value = (raw ?? {}) as Record<string, unknown>;
@@ -225,11 +231,26 @@ export function toggleWorkItemSortDirection(
 }
 
 export const routes = {
+  /** `docs/02-design/screen-inventory.md` "Approvals inbox". */
+  myWork: {
+    path: "/agent/my-work" as const,
+    build: (search: MyWorkSearch = { lens: "approvals" }) => {
+      const resolved = parseMyWorkSearch(search);
+      return `/agent/my-work?lens=${resolved.lens}`;
+    },
+  },
   /** Customer portal's P0 disabled landing page, rooted on its separate origin. */
   portalHome: {
     path: "/" as const,
     build: () => "/",
     parse: (pathname: string) => (pathname === "/" ? "/" : undefined),
+  },
+  /** Customer portal's approval list (`customer-portal.md`, `approvals.md`). */
+  portalApprovals: {
+    path: "/portal/approvals" as const,
+    build: () => "/portal/approvals",
+    parse: (pathname: string) =>
+      pathname === "/portal/approvals" ? "/portal/approvals" : undefined,
   },
   /** `docs/02-design/screen-inventory.md` "Workspace — service calendars". */
   serviceCalendars: {

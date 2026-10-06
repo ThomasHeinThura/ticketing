@@ -33,8 +33,8 @@ export async function expectedRouteMetadata(root = repoRoot) {
 
 export function renderRouteMetadata(metadata) {
   const entries = Object.entries(metadata).map(([surface, paths]) => {
-    if (paths.length === 1)
-      return `  ${surface}: [${JSON.stringify(paths[0])}],`;
+    if (paths.length <= 2)
+      return `  ${surface}: [${paths.map((route) => JSON.stringify(route)).join(", ")}],`;
     return [
       `  ${surface}: [`,
       ...paths.map((route) => `    ${JSON.stringify(route)},`),

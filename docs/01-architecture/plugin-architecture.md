@@ -248,7 +248,7 @@ equals this list.
 | `feature.estimates` | Story points / estimates | P5 | `false` |
 | `feature.intake` | Intake queue, request types, catalogue | P2 | `false` |
 | `feature.sla` | SLA policies, service calendars, SLA badges, SLA reports | P2 | `false` |
-| `feature.approvals` | Approvals and CAB | P2 | `false` |
+| `feature.approvals` | Approval request creation and CAB requests; existing requests remain actionable per [approvals.md](../03-features/approvals.md) | P2 | `false` |
 | `feature.time_tracking` | Timesheets, time entries, timer | P5 | `false` |
 | `feature.cost_tracking` | Rates, budgets, cost reports | P5 | `false` |
 | `feature.knowledge_base` | KB, deflection | P5 | `false` |
