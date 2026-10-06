@@ -30,6 +30,7 @@ async function fixture(
     symlinkArchive = false,
     hardlinkArchive = false,
     unsafeMember = false,
+    realDeployment = false,
   } = {},
 ) {
   const temp = await mkdtemp(path.join(os.tmpdir(), "taskdesk-install-test-"));
@@ -55,12 +56,12 @@ async function fixture(
   ]) {
     const target = path.join(content, file);
     await mkdir(path.dirname(target), { recursive: true });
-    await writeFile(
-      target,
-      file === "scripts/deploy.sh"
+    const contents = realDeployment
+      ? await readFile(path.join(root, file))
+      : file === "scripts/deploy.sh"
         ? '#!/usr/bin/env bash\nprintf "%s\\n" "$*" >> "$DEPLOY_LOG"\n'
-        : `fixture ${file}\n`,
-    );
+        : `fixture ${file}\n`;
+    await writeFile(target, contents);
   }
   await chmod(path.join(content, "scripts/deploy.sh"), 0o755);
   if (symlinkArchive)
@@ -120,11 +121,48 @@ printf '%s\\n' "$*" >> "$COSIGN_LOG"
 [[ "\${FAKE_DOCKER_MISSING:-0}" != 1 ]] || exit 1
 [[ "$1" == compose && "$2" == version ]] && { printf 'Docker Compose version test\n'; exit 0; }
 [[ "$1" == info ]] && exit 0
+if [[ "\${FAKE_DOCKER_FULL:-0}" == 1 ]]; then
+  printf 'env-digest=%s args=%s\\n' "\${TASKDESK_IMAGE_DIGEST:-}" "$*" >> "$FAKE_DOCKER_LOG"
+  if [[ "$1" == buildx && "$2" == imagetools && "$3" == inspect ]]; then
+    printf 'Digest: %s\\n' "$FAKE_RESOLVED_DIGEST"
+    exit 0
+  fi
+  if [[ "$1" == compose ]]; then
+    shift
+    args=()
+    while (($#)); do
+      case "$1" in
+        -f|--profile) shift 2 ;;
+        *) args+=("$1"); shift ;;
+      esac
+    done
+    case "\${args[0]:-}" in
+      port)
+        if [[ "\${args[1]:-}" == traefik && "\${FAKE_ASSUME_LOCAL_PROXY:-0}" == 1 ]]; then exit 0; fi
+        exit 1
+        ;;
+      logs) printf 'setup url: https://ticket.example.test/setup\\n'; exit 0 ;;
+      *) exit 0 ;;
+    esac
+  fi
+fi
 exit 2
 `,
   );
+  await writeFile(path.join(bin, "getent"), "#!/usr/bin/env bash\nexit 0\n");
+  await writeFile(path.join(bin, "ss"), "#!/usr/bin/env bash\nexit 0\n");
+  await writeFile(
+    path.join(bin, "uname"),
+    `#!/usr/bin/env bash
+case "$1" in
+  -s) [[ "\${FAKE_PRODUCTION_HOST:-0}" == 1 ]] && printf 'Linux\\n' || /usr/bin/uname -s ;;
+  -m) [[ "\${FAKE_PRODUCTION_HOST:-0}" == 1 ]] && printf 'x86_64\\n' || /usr/bin/uname -m ;;
+  *) /usr/bin/uname "$@" ;;
+esac
+`,
+  );
   await Promise.all(
-    ["curl", "cosign", "docker"].map((name) =>
+    ["curl", "cosign", "docker", "getent", "ss", "uname"].map((name) =>
       chmod(path.join(bin, name), 0o755),
     ),
   );
@@ -159,6 +197,32 @@ function run(f, args, extraEnv = {}, input = "") {
   });
 }
 
+async function writeExistingEnv(
+  directory,
+  { tag, digest, domain = "localhost" },
+) {
+  let env = await readFile(path.join(root, "deploy/.env.example"), "utf8");
+  env = env
+    .replace(
+      /^TASKDESK_ENCRYPTION_KEY=$/m,
+      "TASKDESK_ENCRYPTION_KEY=test-encryption-secret",
+    )
+    .replace(
+      /^TASKDESK_AUTH_SECRET=$/m,
+      "TASKDESK_AUTH_SECRET=test-auth-secret",
+    )
+    .replace(/^POSTGRES_PASSWORD=$/m, "POSTGRES_PASSWORD=test-postgres-secret")
+    .replace(
+      /^TASKDESK_APP_DB_PASSWORD=$/m,
+      "TASKDESK_APP_DB_PASSWORD=test-app-db-secret",
+    )
+    .replace(/^DOMAIN=.*$/m, `DOMAIN=${domain}`)
+    .replace(/^TASKDESK_IMAGE_TAG=.*$/m, `TASKDESK_IMAGE_TAG=${tag}`)
+    .replace(/^TASKDESK_IMAGE_DIGEST=.*$/m, `TASKDESK_IMAGE_DIGEST=${digest}`);
+  await mkdir(directory, { recursive: true });
+  await writeFile(path.join(directory, ".env"), env, { mode: 0o600 });
+}
+
 test("installer verifies both release signatures, digest, paths, prompts, preserves .env, and delegates deployment", async (t) => {
   const f = await fixture(t);
   const first = run(f, ["--version", "1.2.3", "--dir", f.path, "--yes"]);
@@ -186,6 +250,11 @@ test("installer verifies both release signatures, digest, paths, prompts, preser
     "TASKDESK_AGENT_URL=https://ticket.localhost",
     "TASKDESK_AGENT_URL=https://custom.example.test:8443",
   );
+  const retainedRollbackDigest = `sha256:${"c".repeat(64)}`;
+  env = env.replace(
+    /^TASKDESK_IMAGE_DIGEST=.*$/m,
+    `TASKDESK_IMAGE_DIGEST=${retainedRollbackDigest}`,
+  );
   await writeFile(envPath, env, { mode: 0o600 });
   const second = run(f, ["--version", "1.2.3", "--dir", f.path, "--yes"]);
   assert.equal(second.status, 0, second.stderr);
@@ -196,6 +265,89 @@ test("installer verifies both release signatures, digest, paths, prompts, preser
     env,
     /^TASKDESK_AGENT_URL=https:\/\/custom\.example\.test:8443$/m,
   );
+  assert.match(
+    env,
+    new RegExp(`^TASKDESK_IMAGE_DIGEST=${retainedRollbackDigest}$`, "m"),
+  );
+});
+
+test("installer local mode reaches the real deploy script with rollback digest cleared", async (t) => {
+  const f = await fixture(t, { realDeployment: true });
+  const oldDigest = `sha256:${"b".repeat(64)}`;
+  await writeExistingEnv(f.path, { tag: "v9.8.7", digest: oldDigest });
+  const result = run(f, ["--version", "1.2.3", "--dir", f.path, "--yes"], {
+    FAKE_DOCKER_FULL: "1",
+    FAKE_ASSUME_LOCAL_PROXY: "1",
+    FAKE_DOCKER_LOG: path.join(f.temp, "docker.log"),
+  });
+
+  assert.equal(result.status, 0, result.stderr);
+  assert.match(result.stdout, /certificate in deploy\/local\/certs/);
+  assert.match(result.stdout, /TaskDesk is up/);
+  const env = await readFile(path.join(f.path, ".env"), "utf8");
+  assert.match(env, /^TASKDESK_IMAGE_TAG=v1\.2\.3$/m);
+  assert.match(env, /^TASKDESK_IMAGE_DIGEST=$/m);
+  assert.match(env, /^TASKDESK_AUTH_SECRET=test-auth-secret$/m);
+  const dockerLog = await readFile(path.join(f.temp, "docker.log"), "utf8");
+  assert.doesNotMatch(dockerLog, new RegExp(oldDigest));
+  assert.match(dockerLog, /args=compose .* port traefik 80/);
+  assert.match(dockerLog, /args=compose .* up -d --wait/);
+  assert.equal(
+    (await stat(path.join(f.path, "deploy/local/certs/local.crt"))).isFile(),
+    true,
+  );
+});
+
+test("production repeat install resolves and verifies the selected tag, not a rollback digest", async (t) => {
+  const f = await fixture(t, { realDeployment: true });
+  const oldDigest = `sha256:${"b".repeat(64)}`;
+  const selectedDigest = `sha256:${"a".repeat(64)}`;
+  await writeExistingEnv(f.path, {
+    tag: "v9.8.7",
+    digest: oldDigest,
+    domain: "example.test",
+  });
+  const result = run(
+    f,
+    [
+      "--env",
+      "production",
+      "--domain",
+      "example.test",
+      "--version",
+      "1.2.3",
+      "--dir",
+      f.path,
+      "--yes",
+    ],
+    {
+      FAKE_DOCKER_FULL: "1",
+      FAKE_PRODUCTION_HOST: "1",
+      FAKE_RESOLVED_DIGEST: selectedDigest,
+      FAKE_DOCKER_LOG: path.join(f.temp, "docker.log"),
+    },
+  );
+
+  assert.equal(result.status, 0, result.stderr);
+  assert.match(result.stdout, /signature verified/);
+  assert.match(result.stdout, /no application port is published/);
+  const env = await readFile(path.join(f.path, ".env"), "utf8");
+  assert.match(env, /^TASKDESK_IMAGE_TAG=v1\.2\.3$/m);
+  assert.match(env, /^TASKDESK_IMAGE_DIGEST=$/m);
+  assert.match(env, /^DOMAIN=example\.test$/m);
+  const dockerLog = await readFile(path.join(f.temp, "docker.log"), "utf8");
+  assert.match(
+    dockerLog,
+    /buildx imagetools inspect ghcr\.io\/thomasheinthura\/taskdesk:v1\.2\.3/,
+  );
+  assert.match(dockerLog, new RegExp(`env-digest=${selectedDigest}`));
+  assert.doesNotMatch(dockerLog, new RegExp(oldDigest));
+  const cosignLog = await readFile(path.join(f.temp, "cosign.log"), "utf8");
+  assert.match(
+    cosignLog,
+    new RegExp(`ghcr.io/thomasheinthura/taskdesk@${selectedDigest}`),
+  );
+  assert.doesNotMatch(cosignLog, new RegExp(oldDigest));
 });
 
 test("stable pointer is HTTPS-fetched and normalized to a validated versioned asset path", async (t) => {

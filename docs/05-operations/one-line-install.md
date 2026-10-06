@@ -43,9 +43,11 @@ copy of `install.sh` and pass `--version` for a published release.
    opt-out; it prints a warning and still checks the archive SHA-256.
 5. **Install deployment files.** Files are unpacked in a private temporary directory before
    the installer prompts to write them. The installer preserves an existing `.env`, generated
-   secrets, certificates, database volumes, and deployment data. It updates the image tag
-   and only changes hostname settings when the corresponding flags are supplied. A new `.env`
-   is created from `deploy/.env.example` with mode `0600`.
+   secrets, certificates, database volumes, and deployment data. When the selected version
+   changes, it updates the image tag and clears a retained rollback digest so the selected
+   version resolves to its signed image. It only changes hostname settings when the
+   corresponding flags are supplied. A new `.env` is created from `deploy/.env.example`
+   with mode `0600`.
 6. **Delegate deployment.** The installer runs `scripts/deploy.sh` in the selected mode. That
    script generates only missing secrets, verifies the image signature, waits for health,
    runs migrations through its one-shot role, probes the API, and prints the first-run setup
@@ -106,7 +108,7 @@ install directory. There is no automatic fallback from a failed signature check.
 The source installer is small and reviewable. Its SHA-256 is:
 
 ```text
-c199bacb17b04dcc57900559c3ce6a8134492748c28b9617a1c09c06f944ab15
+e5f199b8e7aeccce2c8a1a0f91a1dab74add5278b45829bb51c239f00df3d867
 ```
 
 You can download and inspect the script before running it. The installer requests elevation

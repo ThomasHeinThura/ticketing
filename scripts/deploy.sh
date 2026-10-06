@@ -221,9 +221,9 @@ if [ "$MODE" = "local" ]; then
   DOMAIN="${DOMAIN:-localhost}"
   # shellcheck source=scripts/lib/local-certificate.sh
   . "$REPO_ROOT/scripts/lib/local-certificate.sh"
-  local agent_host="${TASKDESK_AGENT_HOST:-ticket.${DOMAIN}}"
-  local portal_host="${TASKDESK_PORTAL_HOST:-portal.${DOMAIN}}"
-  local files_host="${TASKDESK_FILES_HOST:-files.${DOMAIN}}"
+  agent_host="${TASKDESK_AGENT_HOST:-ticket.${DOMAIN}}"
+  portal_host="${TASKDESK_PORTAL_HOST:-portal.${DOMAIN}}"
+  files_host="${TASKDESK_FILES_HOST:-files.${DOMAIN}}"
   if ! local_certificate_covers_routes "$CERT_DIR/local.crt" "$CERT_DIR/local.key" "$DOMAIN" "$agent_host" "$portal_host" "$files_host"; then
     say "generating a self-signed certificate for *.${DOMAIN}"
   fi

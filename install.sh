@@ -253,7 +253,12 @@ set_env_value() {
   chmod 0600 "$temp"
   mv "$temp" "${INSTALL_DIR}/.env"
 }
+previous_image_tag="$(read_env_value TASKDESK_IMAGE_TAG)"
 set_env_value TASKDESK_IMAGE_TAG "$VERSION"
+# A new release selection supersedes any digest retained by a rollback.
+if [[ "$previous_image_tag" != "$VERSION" ]]; then
+  set_env_value TASKDESK_IMAGE_DIGEST ""
+fi
 if ((DOMAIN_SET)) || ((EXISTING_ENV == 0)); then set_env_value DOMAIN "${DOMAIN:-localhost}"; fi
 if ((AGENT_HOST_SET || DOMAIN_SET || EXISTING_ENV == 0)); then
   set_env_value TASKDESK_AGENT_URL "https://${AGENT_HOST}"
