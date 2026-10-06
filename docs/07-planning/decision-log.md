@@ -1,3 +1,18 @@
+### 2026-10-06 · Record exact installer release ordering conflict
+
+**Evidence and pending recommendation; no Thomas approval or waiver.** Root read-only GitHub
+inventory at actual23:00UTC finds only v2.0.1 (targeted250723) with two SBOM assets, not a
+signed installer archive for frozen53269374. The release workflow rejects a selected source
+not already reachable from main. Thus official exact-candidate signed installer runtime
+before protected merge has a publication-order dependency. Preserve the complete offline
+installer20/20 result and private owned runtime plan; mocks are not official signatures.
+
+Root asks once to run reviewed local-image upgrade/idempotency/rollback proof before merge,
+then publish and verify the official signed prerelease after all protected merge gates pass
+and before the P0 finalizer. Final P0 criteria and fixed cosign issuer/workflow remain intact.
+No workflow dispatch, release publication, skip-verify, gate waiver, merge, date carry or
+production action is authorized by this record. The actual answer remains pending.
+
 ### 2026-10-06 · Execute reviewed532 complete off/shadow derivative
 
 **Orchestrator application of existing disposable verification:** preserve the actual failed
