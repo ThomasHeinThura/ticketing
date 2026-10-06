@@ -1,5 +1,13 @@
 import { Alert, AlertDescription } from "@taskdesk/ui";
-import { lazy, memo, Suspense, useEffect, useRef, useState } from "react";
+import {
+  lazy,
+  memo,
+  Suspense,
+  useEffect,
+  useLayoutEffect,
+  useRef,
+  useState,
+} from "react";
 import { useTranslation } from "react-i18next";
 import WorkItemListLoading from "@/components/work-item/work-item-list-loading";
 import type { WorkItemsResult } from "@/fetchers/work-item/get-work-items";
@@ -47,35 +55,45 @@ function WorkItemsPanel({
 }: WorkItemsPanelProps) {
   const { t } = useTranslation();
   const workItems = workItemsResult?.items;
-  const projectLifecycle = useRef({
+  const [projectLifecycle, setProjectLifecycle] = useState(() => ({
     projectId: project?.id,
     generation: 0,
     isLoading,
-  });
-  if (
-    projectLifecycle.current.projectId !== project?.id ||
-    (!projectLifecycle.current.isLoading && isLoading)
-  ) {
-    projectLifecycle.current = {
+  }));
+  const committedLifecycle = useRef(projectLifecycle);
+  useLayoutEffect(() => {
+    const current = committedLifecycle.current;
+    const projectChanged = current.projectId !== project?.id;
+    const loadingResumed = !current.isLoading && isLoading;
+    if (!projectChanged && !loadingResumed && current.isLoading === isLoading) {
+      return;
+    }
+
+    const next = {
       projectId: project?.id,
-      generation: projectLifecycle.current.generation + 1,
+      generation: current.generation + Number(projectChanged || loadingResumed),
       isLoading,
     };
-  } else {
-    projectLifecycle.current.isLoading = isLoading;
-  }
-  const { generation: projectGeneration } = projectLifecycle.current;
+    committedLifecycle.current = next;
+    setProjectLifecycle(next);
+  }, [isLoading, project?.id]);
+  const projectGeneration = projectLifecycle.generation;
   const [realtimeReadyGeneration, setRealtimeReadyGeneration] =
     useState<number>();
 
   useEffect(() => {
     const isCurrentLifecycle = () =>
-      projectLifecycle.current.projectId === project?.id &&
-      projectLifecycle.current.generation === projectGeneration &&
-      !projectLifecycle.current.isLoading;
+      committedLifecycle.current.projectId === project?.id &&
+      committedLifecycle.current.generation === projectGeneration &&
+      !committedLifecycle.current.isLoading;
 
     setRealtimeReadyGeneration(undefined);
-    if (isLoading || !project?.id) {
+    if (
+      isLoading ||
+      !project?.id ||
+      projectLifecycle.projectId !== project.id ||
+      projectLifecycle.isLoading
+    ) {
       return;
     }
 
@@ -123,7 +141,13 @@ function WorkItemsPanel({
       if (firstFrame !== undefined) cancelAnimationFrame(firstFrame);
       if (secondFrame !== undefined) cancelAnimationFrame(secondFrame);
     };
-  }, [isLoading, project?.id, projectGeneration]);
+  }, [
+    isLoading,
+    project?.id,
+    projectGeneration,
+    projectLifecycle.isLoading,
+    projectLifecycle.projectId,
+  ]);
 
   return (
     <>
@@ -156,6 +180,8 @@ function WorkItemsPanel({
       </Suspense>
       {project &&
       !isLoading &&
+      projectLifecycle.projectId === project.id &&
+      !projectLifecycle.isLoading &&
       realtimeReadyGeneration === projectGeneration &&
       realtimeProjectId === project.id ? (
         <Suspense fallback={null}>

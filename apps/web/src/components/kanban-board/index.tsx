@@ -39,7 +39,6 @@ import useBulkSelectionStore from "@/store/bulk-selection";
 import useProjectStore from "@/store/project";
 import { useUserPreferencesStore } from "@/store/user-preferences";
 import type { ProjectWithTasks } from "@/types/project";
-import BulkToolbar from "../bulk-selection/bulk-toolbar";
 import Column from "./column";
 import { BoardCreateTaskDialog } from "./create-task-dialog";
 import type {
@@ -47,7 +46,11 @@ import type {
   TaskCardWorkspaceUser,
 } from "./task-card";
 import TaskCard from "./task-card";
-import TaskCardContextMenuContent from "./task-card-context-menu/task-card-context-menu-content";
+
+const BulkToolbar = lazy(() => import("../bulk-selection/bulk-toolbar"));
+const TaskCardContextMenuContent = lazy(
+  () => import("./task-card-context-menu/task-card-context-menu-content"),
+);
 
 const TaskCardDeleteConfirmation = lazy(
   () => import("./task-card-delete-confirmation"),
@@ -429,17 +432,19 @@ function KanbanBoard({
           </div>
         </ContextMenuTrigger>
         {contextMenuTask ? (
-          <TaskCardContextMenuContent
-            task={contextMenuTask}
-            taskCardContext={{
-              projectId: project.id,
-              worskpaceId: workspaceId,
-            }}
-            onDeleteClick={() => {
-              setDeleteTaskId(contextMenuTask.id);
-              setIsContextMenuOpen(false);
-            }}
-          />
+          <Suspense fallback={null}>
+            <TaskCardContextMenuContent
+              task={contextMenuTask}
+              taskCardContext={{
+                projectId: project.id,
+                worskpaceId: workspaceId,
+              }}
+              onDeleteClick={() => {
+                setDeleteTaskId(contextMenuTask.id);
+                setIsContextMenuOpen(false);
+              }}
+            />
+          </Suspense>
         ) : null}
       </ContextMenu>
       <DragOverlay dropAnimation={dropAnimation}>
@@ -471,7 +476,11 @@ function KanbanBoard({
         ) : null}
       </DragOverlay>
 
-      <BulkToolbar />
+      {selectedTaskIds.size > 0 ? (
+        <Suspense fallback={null}>
+          <BulkToolbar />
+        </Suspense>
+      ) : null}
       <BoardCreateTaskDialog
         onClose={handleCloseCreateTask}
         projectId={project.id}
