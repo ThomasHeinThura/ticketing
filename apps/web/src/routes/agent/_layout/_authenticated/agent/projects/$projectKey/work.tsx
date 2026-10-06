@@ -19,9 +19,28 @@ import useGetWorkItems from "@/hooks/queries/work-item/use-get-work-items";
 import useActiveWorkspace from "@/hooks/queries/workspace/use-active-workspace";
 import type { WorkItemRealtimeStatus } from "@/hooks/use-native-work-item-realtime";
 
-const WorkItemsPanel = lazy(
-  () => import("@/components/work-item/work-items-panel"),
-);
+type WorkItemsPanelModule =
+  typeof import("@/components/work-item/work-items-panel");
+
+let workItemsPanelModulePromise: Promise<WorkItemsPanelModule> | undefined;
+
+function loadWorkItemsPanel(): Promise<WorkItemsPanelModule> {
+  if (!workItemsPanelModulePromise) {
+    workItemsPanelModulePromise = import(
+      "@/components/work-item/work-items-panel"
+    ).catch((error: unknown) => {
+      workItemsPanelModulePromise = undefined;
+      throw error;
+    });
+  }
+  return workItemsPanelModulePromise;
+}
+
+function preloadWorkItemsPanel() {
+  void loadWorkItemsPanel().catch(() => undefined);
+}
+
+const WorkItemsPanel = lazy(loadWorkItemsPanel);
 const WorkItemCreateTrigger = lazy(
   () => import("@/components/work-item/work-item-create-trigger"),
 );
@@ -75,6 +94,7 @@ export const Route = createFileRoute(
   "/_layout/_authenticated/agent/projects/$projectKey/work",
 )({
   validateSearch: parseWorkItemListSearch,
+  beforeLoad: preloadWorkItemsPanel,
   component: WorkItemsRouteComponent,
 });
 

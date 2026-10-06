@@ -29949,6 +29949,12 @@
       }
     },
     "/scim/v2/Users": {
+      "servers": [
+        {
+          "url": "/",
+          "description": "TaskDesk SCIM API Server"
+        }
+      ],
       "get": {
         "operationId": "listScimUsers",
         "tags": [
@@ -30122,15 +30128,15 @@
             "scimBearerAuth": []
           }
         ]
-      },
-      "servers": [
-        {
-          "url": "http://localhost:5173",
-          "description": "SCIM protocol on the agent origin"
-        }
-      ]
+      }
     },
     "/scim/v2/Users/{id}": {
+      "servers": [
+        {
+          "url": "/",
+          "description": "TaskDesk SCIM API Server"
+        }
+      ],
       "get": {
         "operationId": "getScimUser",
         "tags": [
@@ -30456,15 +30462,15 @@
             "scimBearerAuth": []
           }
         ]
-      },
-      "servers": [
-        {
-          "url": "http://localhost:5173",
-          "description": "SCIM protocol on the agent origin"
-        }
-      ]
+      }
     },
     "/scim/v2/Groups": {
+      "servers": [
+        {
+          "url": "/",
+          "description": "TaskDesk SCIM API Server"
+        }
+      ],
       "get": {
         "operationId": "listScimGroups",
         "tags": [
@@ -30607,15 +30613,15 @@
             "scimBearerAuth": []
           }
         ]
-      },
-      "servers": [
-        {
-          "url": "http://localhost:5173",
-          "description": "SCIM protocol on the agent origin"
-        }
-      ]
+      }
     },
     "/scim/v2/Groups/{id}": {
+      "servers": [
+        {
+          "url": "/",
+          "description": "TaskDesk SCIM API Server"
+        }
+      ],
       "get": {
         "operationId": "getScimGroup",
         "tags": [
@@ -30930,15 +30936,15 @@
             "scimBearerAuth": []
           }
         ]
-      },
-      "servers": [
-        {
-          "url": "http://localhost:5173",
-          "description": "SCIM protocol on the agent origin"
-        }
-      ]
+      }
     },
     "/scim/v2/ServiceProviderConfig": {
+      "servers": [
+        {
+          "url": "/",
+          "description": "TaskDesk SCIM API Server"
+        }
+      ],
       "get": {
         "operationId": "getScimServiceProviderConfig",
         "tags": [
@@ -31096,15 +31102,15 @@
             "scimBearerAuth": []
           }
         ]
-      },
-      "servers": [
-        {
-          "url": "http://localhost:5173",
-          "description": "SCIM protocol on the agent origin"
-        }
-      ]
+      }
     },
     "/scim/v2/ResourceTypes": {
+      "servers": [
+        {
+          "url": "/",
+          "description": "TaskDesk SCIM API Server"
+        }
+      ],
       "get": {
         "operationId": "listScimResourceTypes",
         "tags": [
@@ -31199,15 +31205,15 @@
             "scimBearerAuth": []
           }
         ]
-      },
-      "servers": [
-        {
-          "url": "http://localhost:5173",
-          "description": "SCIM protocol on the agent origin"
-        }
-      ]
+      }
     },
     "/scim/v2/Schemas": {
+      "servers": [
+        {
+          "url": "/",
+          "description": "TaskDesk SCIM API Server"
+        }
+      ],
       "get": {
         "operationId": "listScimSchemas",
         "tags": [
@@ -31265,13 +31271,7 @@
             "scimBearerAuth": []
           }
         ]
-      },
-      "servers": [
-        {
-          "url": "http://localhost:5173",
-          "description": "SCIM protocol on the agent origin"
-        }
-      ]
+      }
     }
   },
   "webhooks": {}

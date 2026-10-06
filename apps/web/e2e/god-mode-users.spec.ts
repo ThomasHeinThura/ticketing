@@ -329,7 +329,7 @@ test("God Mode users directory supports filters and audited account actions", as
     page.getByText("Expires", { exact: false }).first(),
   ).toBeVisible();
   await page.screenshot({
-    path: "/Users/heinthura/.codex/taskdesk-evidence/2026-10-05/p4-person-deactivation-b58/screens/pending-actions-list.png",
+    path: testInfo.outputPath("pending-actions-list.png"),
     fullPage: true,
   });
   await page.goto(
@@ -339,7 +339,7 @@ test("God Mode users directory supports filters and audited account actions", as
     page.getByRole("heading", { name: "Approve person deactivation" }),
   ).toBeVisible();
   await page.screenshot({
-    path: "/Users/heinthura/.codex/taskdesk-evidence/2026-10-05/p4-person-deactivation-b58/screens/pending-action-deactivation-approval.png",
+    path: testInfo.outputPath("pending-action-deactivation-approval.png"),
     fullPage: true,
   });
   await expect(
