@@ -1,3 +1,42 @@
+## October 6 implementation batches — 06:21 UTC
+
+- **P0 authorization #584:** source `81bcda5b3940a3bc0ae6d0e1053f3b93f6276588`
+  resolves the persisted workspace row before strict evaluation across all five row-scoped
+  workspace routes. Native reach and capability grants are unchanged. Actual focused SQL
+  passes7/7, focused units pass37/37 and route-policy/permission tests pass88/88; root
+  independently verified the exact acquired PostgreSQL ID absent. Two independent Luna
+  reviews clear this exact product source. Its frozen candidate-bound diagnostics draft
+  passes28 offline tests and independent ordinary review; it is explicitly unauthorized
+  and unexecuted. Fresh Sol and source/evidence compatibility remain pending.
+  Hosted source81 static/build/permissions/unit/contract pass, but dependency audit is red
+  on three existing-package advisories. Their previously implemented installer floors are
+  being ported in a separate complete dependency batch before final composition/review.
+  No current whole-candidate CI pass, cutover, deployment or P0 completion is claimed.
+- **P0 installer #583:** complete remediation `03432f669b77bddbad387c862aee10e858abf401`
+  is pushed. It adds panel lifecycle regressions, preserves existing offline .env values,
+  disables initial board-row opacity animation and consolidates existing store selectors.
+  Actual local checks pass23 focused tests, web types and434 computed contrast pairs.
+  Bulk independent current-source review and hosted acceptance are underway. Prior source66
+  actually passed136 PostgreSQL files/1649 tests, accessibility, visuals and E2E, built the
+  exact non-root image, and failed G11 at19/22: LCP2608ms, assignment222.7ms and board647.5ms.
+  Those failures remain original evidence. No validated dedicated LCP/assignment source
+  correction or final-source performance/runtime/browser pass is asserted.
+- **P4 #580:** the full API relocation's145-file/1717-test SQL result remains tied to
+  source0d694754. Independent full Sol atffabd23a found escaped computed-call bypasses and
+  two global-pool reads inside identity transactions. Complete remediation
+  `c29dd0db2685b2c8c35d8a4cfa703bad64eca29f` is pushed: structural JS escape decoding and
+  explicit transaction executors, with actual scanner9/9 and focused identity-admin SQL6/6.
+  Query gate/types/CI manifest/static checks pass. Temporary acquisition instrumentation
+  was restored to its original hash. Root verified the acquired PG ID absent and no remaining
+  session-labelled containers; an exact acquired Ryuk ID was not in this focused receipt,
+  so no stronger acquisition claim is made. Fresh delta ordinary/Sol review remains required;
+  the old full SQL result is not represented as a full final-source rerun.
+- **Program:** P1/P2/P3 integration remains prepared in#581; versioned pending-action
+  compatibility and the public-config P0 exception are pending written decisions already
+  asked once. Observation dates are complete, not a calendar wait. Main and persistent DEV
+  remain unchanged. All source corrections are implemented in batches before bulk review;
+  P0–P7 acceptance is not claimed.
+
 ## October 6 bulk continuation — actual failures remain open
 
 - **P0 strict runtime:** all three representative partial UTC date buckets are reconciled;
