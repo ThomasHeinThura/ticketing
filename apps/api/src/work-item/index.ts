@@ -1,4 +1,5 @@
 import { HTTPException } from "hono/http-exception";
+import { appendAuditLog } from "../audit/audit-writer";
 import db from "../database";
 import {
   type ApiKey,
@@ -101,6 +102,7 @@ import {
   workItemKeyParam,
   workspaceIdParam,
 } from "./schema";
+import { collectExportPages, exportColumns, workItemsCsv } from "./search/csv";
 import {
   SEARCH_BODY_MAX_BYTES,
   validateWorkItemSearchQuery,
@@ -333,6 +335,75 @@ const searchWorkItemsRoute = createRoute({
     422: errorResponse(
       "Unsupported entity, unavailable filter field, or unreadable field",
     ),
+  },
+});
+
+const exportWorkItemsRoute = createRoute({
+  method: "post",
+  operationId: "exportWorkItems",
+  path: "/work-items/export",
+  tags: ["Work items"],
+  summary: "Export work items as CSV",
+  description:
+    "Exports every reachable work item matching the supplied view query.",
+  middleware: [
+    async (c, next) => {
+      const body = await c.req.raw.clone().arrayBuffer();
+      if (body.byteLength > SEARCH_BODY_MAX_BYTES)
+        throw new HTTPException(400, {
+          message: "Request body exceeds 32 KiB",
+        });
+      await next();
+    },
+    async (c, next) => {
+      try {
+        await workspaceAccess.fromBody("workspaceId")(c, next);
+      } catch (error) {
+        if (error instanceof HTTPException && error.status === 403)
+          throw new HTTPException(404, { message: "Workspace not found" });
+        throw error;
+      }
+    },
+    requireWorkspaceCapability("work_item:export"),
+  ] as const,
+  request: {
+    body: {
+      required: true,
+      content: {
+        "application/json": {
+          schema: z
+            .object({
+              workspaceId: z.string().min(1),
+              query: z
+                .object({
+                  entity: z.string(),
+                  filter: z.unknown().optional(),
+                  sort: z
+                    .array(
+                      z
+                        .object({ field: z.string(), order: z.string() })
+                        .strict(),
+                    )
+                    .max(1)
+                    .optional(),
+                  columns: z.array(z.string()).optional(),
+                })
+                .strict(),
+            })
+            .strict(),
+        },
+      },
+    },
+  },
+  responses: {
+    200: {
+      description: "CSV file",
+      content: { "text/csv": { schema: z.string() } },
+    },
+    400: errorResponse("Malformed or over-limit export request"),
+    403: errorResponse("Missing work_item:export permission"),
+    404: errorResponse("Workspace not found or unreachable"),
+    422: errorResponse("Unsupported entity or unavailable filter field"),
   },
 });
 
@@ -1025,6 +1096,59 @@ const workItem = apiRouter<
       cursor: body.cursor ?? undefined,
     });
     return c.json(result, 200);
+  })
+  .openapi(exportWorkItemsRoute, async (c) => {
+    const body = c.req.valid("json");
+    const query = validateWorkItemSearchQuery(body.query);
+    const columns = exportColumns(query);
+    const session = c.get("session") as
+      | { impersonatedBy?: string | null }
+      | null
+      | undefined;
+    const { rows, total } = await collectExportPages((cursor) =>
+      searchWorkItems({
+        userId: c.get("userId"),
+        apiKey: c.get("apiKey"),
+        impersonatedBy: session?.impersonatedBy,
+        workspaceId: c.get("workspaceId"),
+        query,
+        limit: 200,
+        cursor,
+      }),
+    );
+    const csv = workItemsCsv(
+      rows.map((row) => ({
+        key: row.key,
+        title: row.title,
+        stateName: row.stateName,
+        assigneeName: row.assigneeName,
+        priority: row.priority,
+        dueDate: row.dueDate?.toISOString().slice(0, 10) ?? null,
+      })),
+      columns,
+    );
+    const { actorId, actorType } = resolveActor(
+      c.get("userId"),
+      c.get("apiKey"),
+    );
+    await appendAuditLog(db, {
+      actorId,
+      actorType,
+      apiKeyId: c.get("apiKey")?.id ?? null,
+      impersonatorId: session?.impersonatedBy ?? null,
+      workspaceId: c.get("workspaceId"),
+      action: "work_item.exported",
+      entityType: "work_item_view",
+      entityId: "workspace",
+      after: { format: "csv", count: total, columns },
+    });
+    return new Response(csv, {
+      status: 200,
+      headers: {
+        "content-type": "text/csv; charset=utf-8",
+        "content-disposition": 'attachment; filename="work-items.csv"',
+      },
+    });
   })
   .openapi(getWorkItemRoute, async (c) => {
     const { key } = c.req.valid("param");

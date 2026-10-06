@@ -2279,7 +2279,8 @@
 			"unassigned": "Unassigned",
 			"unavailable": "Unavailable",
 			"unavailableFieldLabel": "{{field}} unavailable",
-			"assigneeInactive": "(inactive)"
+			"assigneeInactive": "(inactive)",
+			"export": "Export CSV"
 		},
 		"create": {
 			"cancel": "Cancel",

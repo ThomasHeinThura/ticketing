@@ -1,5 +1,7 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { Button, Input, Skeleton } from "@taskdesk/ui";
+import { saveAs } from "file-saver";
+import { Download, Loader2 } from "lucide-react";
 import {
   lazy,
   Suspense,
@@ -12,11 +14,13 @@ import {
 import { useTranslation } from "react-i18next";
 import PageTitle from "@/components/page-title";
 import WorkItemListLoading from "@/components/work-item/work-item-list-loading";
+import { exportWorkItems } from "@/fetchers/work-item/export-work-items";
 import type { WorkItemsResult } from "@/fetchers/work-item/get-work-items";
 import useGetProjects from "@/hooks/queries/project/use-get-projects";
 import useGetWorkItems from "@/hooks/queries/work-item/use-get-work-items";
 import useActiveWorkspace from "@/hooks/queries/workspace/use-active-workspace";
 import type { WorkItemRealtimeStatus } from "@/hooks/use-native-work-item-realtime";
+import { toast } from "@/lib/toast";
 
 type WorkItemsPanelModule =
   typeof import("@/components/work-item/work-items-panel");
@@ -104,6 +108,7 @@ function ProjectWorkItemsRoute({ projectKey }: { projectKey: string }) {
   const { sort, dir, filter } = Route.useSearch();
   const navigate = Route.useNavigate();
   const [isCreateOpen, setIsCreateOpen] = useState(false);
+  const [isExporting, setIsExporting] = useState(false);
   const [filterDraft, setFilterDraft] = useState(filter ?? "");
   const [isCreateDialogReady, setIsCreateDialogReady] = useState(false);
   const [isCreateDialogLoadError, setIsCreateDialogLoadError] = useState(false);
@@ -269,6 +274,28 @@ function ProjectWorkItemsRoute({ projectKey }: { projectKey: string }) {
     refetchProjects();
   }, [refetchProjects]);
 
+  const handleExport = useCallback(async () => {
+    if (!workspace?.id || !project || isExporting) return;
+    setIsExporting(true);
+    try {
+      const csv = await exportWorkItems({
+        workspaceId: workspace.id,
+        projectSlug: project.slug,
+        filter: filter ?? "",
+        sort: sort ?? "key",
+        dir: dir ?? "asc",
+      });
+      saveAs(
+        new Blob([csv], { type: "text/csv;charset=utf-8" }),
+        `${project.slug}-work-items.csv`,
+      );
+    } catch {
+      toast.error(t("common:error.title"));
+    } finally {
+      setIsExporting(false);
+    }
+  }, [dir, filter, isExporting, project, sort, t, workspace?.id]);
+
   const handleRetry = useCallback(() => {
     handleRetryProjects();
     if (project) refetchWorkItems();
@@ -295,13 +322,28 @@ function ProjectWorkItemsRoute({ projectKey }: { projectKey: string }) {
             {t("workItems:list.heading")}
           </h1>
           {project ? (
-            <Suspense fallback={null}>
-              <WorkItemCreateTrigger
-                buttonRef={createTriggerRef}
-                onPreload={preloadCreateWorkItemDialog}
-                onClick={openCreateDialog}
-              />
-            </Suspense>
+            <div className="flex items-center gap-2">
+              <Button
+                size="sm"
+                variant="outline"
+                onClick={() => void handleExport()}
+                disabled={isExporting || !workspace?.id}
+              >
+                {isExporting ? (
+                  <Loader2 className="animate-spin" />
+                ) : (
+                  <Download />
+                )}
+                {t("workItems:list.export")}
+              </Button>
+              <Suspense fallback={null}>
+                <WorkItemCreateTrigger
+                  buttonRef={createTriggerRef}
+                  onPreload={preloadCreateWorkItemDialog}
+                  onClick={openCreateDialog}
+                />
+              </Suspense>
+            </div>
           ) : null}
         </div>
         {project && isCreateOpenForProject && isCreateDialogLoadError ? (

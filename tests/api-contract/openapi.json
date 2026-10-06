@@ -20084,6 +20084,131 @@
         }
       }
     },
+    "/work-items/export": {
+      "post": {
+        "operationId": "exportWorkItems",
+        "tags": [
+          "Work items"
+        ],
+        "summary": "Export work items as CSV",
+        "description": "Exports every reachable work item matching the supplied view query.",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "workspaceId": {
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  "query": {
+                    "type": "object",
+                    "properties": {
+                      "entity": {
+                        "type": "string"
+                      },
+                      "filter": {},
+                      "sort": {
+                        "type": "array",
+                        "items": {
+                          "type": "object",
+                          "properties": {
+                            "field": {
+                              "type": "string"
+                            },
+                            "order": {
+                              "type": "string"
+                            }
+                          },
+                          "required": [
+                            "field",
+                            "order"
+                          ],
+                          "additionalProperties": false
+                        },
+                        "maxItems": 1
+                      },
+                      "columns": {
+                        "type": "array",
+                        "items": {
+                          "type": "string"
+                        }
+                      }
+                    },
+                    "required": [
+                      "entity"
+                    ],
+                    "additionalProperties": false
+                  }
+                },
+                "required": [
+                  "workspaceId",
+                  "query"
+                ],
+                "additionalProperties": false
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "CSV file",
+            "content": {
+              "text/csv": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Malformed or over-limit export request",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing or invalid credentials"
+          },
+          "403": {
+            "description": "Missing work_item:export permission",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Workspace not found or unreachable",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Unsupported entity or unavailable filter field",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/work-items/{key}": {
       "get": {
         "operationId": "getWorkItem",

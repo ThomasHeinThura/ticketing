@@ -2224,6 +2224,7 @@
 			"pageTitle": "Work items",
 			"pageTitleWithProject": "Work items · {{project}}",
 			"heading": "Work items",
+			"export": "Export CSV",
 			"columnKey": "Key",
 			"columnTitle": "Title",
 			"columnPriority": "Priority",
