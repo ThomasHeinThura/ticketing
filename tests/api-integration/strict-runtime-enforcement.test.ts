@@ -40,8 +40,9 @@ const priorEnforcementSetting = vi.hoisted(() => {
 
 import db, { schema } from "../../apps/api/src/database";
 import { createApp } from "../../apps/api/src/index";
+import * as storage from "../../apps/api/src/storage";
 import { validateWorkspaceAccess } from "../../apps/api/src/utils/validate-workspace-access";
-import { mockAuthenticatedSession } from "./helpers/auth";
+import { mockAnonymousSession, mockAuthenticatedSession } from "./helpers/auth";
 import { resetTestDatabase } from "./helpers/database";
 import {
   createProjectFixture,
@@ -535,6 +536,75 @@ describe("strict policy runtime enforcement against the production API graph", (
 
       const deleted = await app.request(base, { method: "DELETE" });
       expect(deleted.status, await deleted.clone().text()).toBe(200);
+    });
+
+    it("loads persisted asset workspace scope before strict evaluation and preserves native reach responses", async () => {
+      const owner = await createWorkspaceMember({ role: "owner" });
+      const stranger = await createWorkspaceMember();
+      const { project } = await createProjectFixture({
+        workspaceId: owner.workspace.id,
+      });
+      const asset = requireRow(
+        await db
+          .insert(schema.assetTable)
+          .values({
+            id: `asset-${randomUUID()}`,
+            workspaceId: owner.workspace.id,
+            projectId: project.id,
+            objectKey: `workspace/${owner.workspace.id}/strict-test.png`,
+            filename: "strict-test.png",
+            mimeType: "image/png",
+            size: 1,
+            createdBy: owner.user.id,
+          })
+          .returning(),
+        "strict runtime asset",
+      );
+      const getPrivateObject = vi
+        .spyOn(storage, "getPrivateObject")
+        .mockResolvedValue({
+          body: new Uint8Array([1]),
+          contentType: "image/png",
+          contentLength: 1,
+          etag: undefined,
+          lastModified: undefined,
+        });
+      const { app } = createApp();
+
+      mockAnonymousSession();
+      const unauthenticated = await app.request(`/api/asset/${asset.id}`);
+      expect(unauthenticated.status).toBe(401);
+
+      mockAuthenticatedSession(owner.user);
+      const reachable = await app.request(`/api/asset/${asset.id}`);
+      expect(reachable.status, await reachable.clone().text()).toBe(200);
+      expect(getPrivateObject).toHaveBeenCalledWith(asset.objectKey);
+
+      const admin = {
+        id: `user-${randomUUID()}`,
+        email: `strict-asset-admin-${randomUUID()}@example.com`,
+        emailVerified: true,
+        name: "Strict asset nonmember instance admin",
+        role: "admin",
+        createdAt: new Date(),
+        updatedAt: new Date(),
+      };
+      await db.insert(schema.userTable).values(admin);
+      await prepareAuthenticatedApiFixture(admin.id);
+      mockAuthenticatedSession(admin);
+      const deniedByCapability = await app.request(`/api/asset/${asset.id}`);
+      expect(
+        deniedByCapability.status,
+        await deniedByCapability.clone().text(),
+      ).toBe(403);
+      expect(getPrivateObject).toHaveBeenCalledTimes(1);
+
+      mockAuthenticatedSession(stranger.user);
+      const foreign = await app.request(`/api/asset/${asset.id}`);
+      expect(foreign.status, await foreign.clone().text()).toBe(404);
+
+      const missing = await app.request(`/api/asset/asset-${randomUUID()}`);
+      expect(missing.status, await missing.clone().text()).toBe(404);
     });
 
     it("keeps the native admin bypass distinct from strict capability denial and preserves missing-row masking", async () => {

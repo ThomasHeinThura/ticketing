@@ -23,8 +23,10 @@ import {
 import { and, eq } from "drizzle-orm";
 import type { Context, Next } from "hono";
 import { HTTPException } from "hono/http-exception";
+import { findAssetWorkspaceScope } from "../asset/repository";
 import db, { schema } from "../database";
 import { policyRegistry } from "../policy-registry";
+import { rejectNulByte } from "../utils/reject-nul-byte";
 import { enforcedPolicySources } from "./enforcement-config";
 import { resolveIdentity } from "./resolve-identity";
 import { attributedMatchedRoute } from "./shadow-middleware";
@@ -361,6 +363,23 @@ async function loadAuthoritativeEvidence(
   }
 
   let evidence = initial;
+  if (
+    entry.source === "apps/api/src/asset/policy.ts" &&
+    policy.scope === "workspace" &&
+    policy.scopeSource === "row"
+  ) {
+    const assetId = c.req.param("id");
+    if (!assetId) refuse(404);
+    rejectNulByte(assetId, "Asset id");
+    const asset = await findAssetWorkspaceScope(assetId);
+    if (!asset) refuse(404);
+    if (asset.workspaceId !== asset.projectWorkspaceId) refuse(500);
+    evidence = {
+      ...evidence,
+      workspaceId: asset.workspaceId,
+      workspaceIdSource: "row",
+    };
+  }
   if (policy.scope === "workspace" && policy.scopeSource === "row") {
     if (!evidence.workspaceId) refuse(500);
     if (evidence.workspaceIdSource === "request") {
