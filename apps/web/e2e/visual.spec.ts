@@ -200,6 +200,25 @@ async function installAuthenticatedFixture(page: Page) {
       ];
     } else if (path.endsWith("/api/capabilities")) {
       body = { createTasks: true };
+    } else if (path.endsWith("/api/me/approvals")) {
+      body = {
+        approvals: [
+          {
+            id: "visual-approval",
+            workItemKey: "OPS-12",
+            workItemTitle: "Review firewall change",
+            kind: "cab",
+            state: "pending",
+            requester: { id: "visual-requester", displayName: "Riley" },
+            approver: { id: "visual-approver", displayName: "Ada Example" },
+            createdAt: "2026-10-01T00:00:00.000Z",
+            expiresAt: "2026-10-08T00:00:00.000Z",
+            decidedAt: null,
+            decisionNote: null,
+            approverReachLost: false,
+          },
+        ],
+      };
     } else if (path.endsWith("/api/service-calendars")) {
       body = {
         data: [visualCalendar],
@@ -400,6 +419,28 @@ test("work-item detail screen @visual", async ({ page }) => {
     page.getByText("Customer cannot reset their password", { exact: true }),
   ).toBeVisible();
   await expect(page).toHaveScreenshot("work-item-detail.png", {
+    animations: "disabled",
+    caret: "hide",
+    fullPage: true,
+    scale: "css",
+    maxDiffPixels: 0,
+    threshold: 0,
+    includeAA: true,
+  });
+});
+
+test("my approvals inbox screen @visual", async ({ page }) => {
+  await installAuthenticatedFixture(page);
+  await page.goto("/agent/my-work");
+  await expect(
+    page.getByRole("heading", { name: "Waiting on my approval" }),
+  ).toBeVisible();
+  await expect(page.getByText("Review firewall change")).toBeVisible();
+  await expect(
+    page.getByText("OPS-12 · Requested by Riley", { exact: true }),
+  ).toBeVisible();
+  await expect(page.getByRole("button", { name: "Approve" })).toBeVisible();
+  await expect(page).toHaveScreenshot("my-work-approvals.png", {
     animations: "disabled",
     caret: "hide",
     fullPage: true,

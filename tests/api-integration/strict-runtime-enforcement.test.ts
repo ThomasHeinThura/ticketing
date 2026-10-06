@@ -1,47 +1,21 @@
 import { createHash, randomUUID } from "node:crypto";
 import { eq } from "drizzle-orm";
-import { afterAll, beforeEach, describe, expect, it, vi } from "vitest";
+import {
+  afterAll,
+  beforeAll,
+  beforeEach,
+  describe,
+  expect,
+  it,
+  vi,
+} from "vitest";
 
 const priorEnforcementSetting = vi.hoisted(() => {
-  const previous = process.env.TASKDESK_POLICY_ENFORCE;
-  process.env.TASKDESK_POLICY_ENFORCE = [
-    "apps/api/src/policy-registry.ts (platform)",
-    "apps/api/src/instance/policy.ts",
-    "apps/api/src/project/policy.ts",
-    "apps/api/src/workspace/policy.ts",
-    "apps/api/src/invitation/policy.ts",
-    "apps/api/src/work-item/policy.ts",
-    "apps/api/src/time-entry/policy.ts",
-    "apps/api/src/capabilities/policy.ts",
-    "apps/api/src/column/policy.ts",
-    "apps/api/src/task-relation/policy.ts",
-    "apps/api/src/workflow-rule/policy.ts",
-    "apps/api/src/external-link/policy.ts",
-    "apps/api/src/comment/policy.ts",
-    "apps/api/src/activity/policy.ts",
-    "apps/api/src/canned-response/policy.ts",
-    "apps/api/src/notification/policy.ts",
-    "apps/api/src/notification-preferences/policy.ts",
-    "apps/api/src/search/policy.ts",
-    "apps/api/src/user/policy.ts",
-    "apps/api/src/auth/factor-status-policy.ts",
-    "apps/api/src/pending-action/policy.ts",
-    "apps/api/src/oauth/policy.ts",
-    "apps/api/src/config/policy.ts",
-    "apps/api/src/audit/policy.ts",
-    "apps/api/src/label/policy.ts",
-    "apps/api/src/asset/policy.ts",
-    "apps/api/src/service-calendar/policy.ts",
-    "apps/api/src/sla-policy/policy.ts",
-    "apps/api/src/attachment/policy.ts",
-    "apps/api/src/workflow/policy.ts",
-    "apps/api/src/task/policy.ts",
-  ].join(",");
-  return previous;
+  return process.env.TASKDESK_POLICY_ENFORCE;
 });
 
 import db, { schema } from "../../apps/api/src/database";
-import { createApp } from "../../apps/api/src/index";
+import { policyRegistry } from "../../apps/api/src/policy-registry";
 import { mockAuthenticatedSession } from "./helpers/auth";
 import { resetTestDatabase } from "./helpers/database";
 import {
@@ -171,9 +145,32 @@ async function grantProjectReach(
 }
 
 describe("strict policy runtime enforcement against the production API graph", () => {
+  beforeAll(async () => {
+    const registeredSources = [
+      ...new Set(policyRegistry.entries.map(({ source }) => source)),
+    ];
+    const taskPolicySource = registeredSources.find((source) =>
+      source.endsWith("/task/policy.ts"),
+    );
+    if (!taskPolicySource)
+      throw new Error(
+        "The production policy registry has no task policy source.",
+      );
+    process.env.TASKDESK_POLICY_ENFORCE = [
+      ...registeredSources.filter((source) => source !== taskPolicySource),
+      taskPolicySource,
+    ].join(",");
+    await import("../../apps/api/src/index");
+  });
+
   beforeEach(async () => {
     await resetTestDatabase();
   });
+
+  async function createStrictApp() {
+    const { createApp } = await import("../../apps/api/src/index");
+    return createApp();
+  }
 
   afterAll(() => {
     if (priorEnforcementSetting === undefined) {
@@ -193,7 +190,7 @@ describe("strict policy runtime enforcement against the production API graph", (
     await createDefaultState(member.workspace.id, project.id);
 
     mockAuthenticatedSession(member.user);
-    const { app } = createApp();
+    const { app } = await createStrictApp();
     const createResponse = await app.request(
       `/api/projects/${project.id}/work-items`,
       {
@@ -304,7 +301,7 @@ describe("strict policy runtime enforcement against the production API graph", (
     await createDefaultState(foreign.workspace.id, foreignProject.id);
 
     mockAuthenticatedSession(foreign.user);
-    const { app } = createApp();
+    const { app } = await createStrictApp();
     const createResponse = await app.request(
       `/api/projects/${foreignProject.id}/work-items`,
       {
@@ -383,7 +380,7 @@ describe("strict policy runtime enforcement against the production API graph", (
     );
 
     mockAuthenticatedSession(member.user);
-    const { app } = createApp();
+    const { app } = await createStrictApp();
     const response = await app.request(`/api/task/${legacyTask.id}`);
 
     expect(response.status, await response.clone().text()).toBe(200);
@@ -407,7 +404,7 @@ describe("strict policy runtime enforcement against the production API graph", (
     await createDefaultState(member.workspace.id, project.id);
 
     mockAuthenticatedSession(member.user);
-    const { app } = createApp();
+    const { app } = await createStrictApp();
     const createResponse = await app.request(
       `/api/projects/${project.id}/work-items`,
       {
@@ -474,7 +471,7 @@ describe("strict policy runtime enforcement against the production API graph", (
       .where(eq(schema.workspaceTable.id, staff.workspace.id));
     const participant = await createCustomerIdentity(organisation.id);
     mockAuthenticatedSession(staff.user);
-    const { app } = createApp();
+    const { app } = await createStrictApp();
     const createResponse = await app.request(
       `/api/projects/${project.id}/work-items`,
       {

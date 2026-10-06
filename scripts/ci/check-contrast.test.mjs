@@ -513,7 +513,7 @@ describe("G3 contrast inventory and math", () => {
   });
 
   it("deduplicates class-combination derivations without merging distinct JSX contexts", async () => {
-    const fixture = `scripts/ci/.contrast-occurrence-contexts-${process.pid}.tsx`;
+    const fixture = `apps/web/src/.contrast-occurrence-contexts-${process.pid}.tsx`;
     await writeFile(
       fixture,
       '<><p className={cn("text-primary bg-card", "bg-card")}>One</p><p className={cn("text-primary bg-card", "bg-card")}>Two</p></>',

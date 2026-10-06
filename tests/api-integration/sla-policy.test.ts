@@ -339,21 +339,29 @@ describe("API integration: SLA policy authoring contract", () => {
       })
       .from(schema.auditLogTable)
       .where(eq(schema.auditLogTable.entityId, created.id));
-    expect(auditRows.map((row) => row.action)).toEqual([
-      "sla_policy.created",
-      "sla_policy.published",
-      "sla_policy.updated",
-    ]);
-    expect(auditRows[0]?.after).toEqual({
+    expect(auditRows.map((row) => row.action).sort()).toEqual(
+      [
+        "sla_policy.created",
+        "sla_policy.published",
+        "sla_policy.updated",
+      ].sort(),
+    );
+    const createdAudit = auditRows.find(
+      (row) => row.action === "sla_policy.created",
+    );
+    const updatedAudit = auditRows.find(
+      (row) => row.action === "sla_policy.updated",
+    );
+    expect(createdAudit?.after).toEqual({
       policyId: created.id,
       versionId: expect.any(String),
     });
-    expect(auditRows[2]?.after).toMatchObject({
+    expect(updatedAudit?.after).toMatchObject({
       policyId: created.id,
       changedFields: ["atRiskThresholdPct"],
       atRiskThresholdPct: 80,
     });
-    expect(auditRows[2]?.after).not.toHaveProperty("calendarId");
+    expect(updatedAudit?.after).not.toHaveProperty("calendarId");
   });
 
   it("CAL-8: evaluates a pinned policy version against the calendar's current definition", async () => {
