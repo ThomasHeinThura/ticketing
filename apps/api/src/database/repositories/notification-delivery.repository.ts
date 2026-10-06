@@ -39,6 +39,22 @@ export type ReservationClaim =
   | { status: "deferred"; leaseExpiresAt: Date }
   | { status: "digest_collision" };
 
+/** A cleanup/acquire race could not be resolved within the bounded DB retry budget. */
+export class NotificationReservationContentionError extends Error {
+  readonly retryable = true;
+
+  constructor() {
+    super(
+      "Notification reservation row remained unavailable during acquisition",
+    );
+    this.name = "NotificationReservationContentionError";
+  }
+}
+
+// This is a bounded row-acquisition retry budget, independent of the six provider-attempt
+// limit. It never authorizes a provider call or increments notification_delivery.attempts.
+const MAX_RESERVATION_ACQUIRE_RETRIES = 6;
+
 function rows<T>(result: { rows: unknown[] }): T[] {
   return result.rows as T[];
 }
@@ -99,87 +115,98 @@ export async function acquireNotificationReservation(
   },
 ): Promise<ReservationClaim> {
   const key = notificationReservationKey(input);
-  const proposedToken = randomUUID();
-  await tx.execute(sql`
-    INSERT INTO outbox_dedupe_reservation
-      (reservation_key, recipient_person_id, channel, dedupe_key,
-       owner_delivery_id, lease_token, lease_expires_at)
-    VALUES (${key}, ${input.recipientPersonId}, ${input.channel}, ${input.dedupeKey},
-            ${input.ownerDeliveryId}, ${proposedToken}, TIMESTAMP 'epoch')
-    ON CONFLICT DO NOTHING
-  `);
-
-  const locked = await tx.execute(sql`
-    SELECT recipient_person_id AS "recipientPersonId",
-           channel,
-           dedupe_key AS "dedupeKey",
-           owner_delivery_id AS "ownerDeliveryId",
-           lease_token AS "leaseToken",
-           lease_expires_at AS "leaseExpiresAt"
-      FROM outbox_dedupe_reservation
-     WHERE reservation_key = ${key}
-     FOR UPDATE
-  `);
-  const current = rows<{
-    recipientPersonId: string;
-    channel: string;
-    dedupeKey: string;
-    ownerDeliveryId: string;
-    leaseToken: string;
-    leaseExpiresAt: Date;
-  }>(locked)[0];
-  if (!current) return { status: "digest_collision" };
-  if (
-    current.recipientPersonId !== input.recipientPersonId ||
-    current.channel !== input.channel ||
-    current.dedupeKey !== input.dedupeKey
+  for (
+    let acquisitionAttempt = 0;
+    acquisitionAttempt < MAX_RESERVATION_ACQUIRE_RETRIES;
+    acquisitionAttempt += 1
   ) {
-    return { status: "digest_collision" };
-  }
-  const sampled = await tx.execute(sql`
-    SELECT clock_timestamp() AT TIME ZONE 'UTC' AS "sampledAt"
-  `);
-  const sampledAt = utcDate(
-    rows<{ sampledAt: Date | string }>(sampled)[0]?.sampledAt,
-  );
-  if (!sampledAt) throw new Error("Database wall-clock sample was unavailable");
+    const proposedToken = randomUUID();
+    await tx.execute(sql`
+      INSERT INTO outbox_dedupe_reservation
+        (reservation_key, recipient_person_id, channel, dedupe_key,
+         owner_delivery_id, lease_token, lease_expires_at)
+      VALUES (${key}, ${input.recipientPersonId}, ${input.channel}, ${input.dedupeKey},
+              ${input.ownerDeliveryId}, ${proposedToken}, TIMESTAMP 'epoch')
+      ON CONFLICT DO NOTHING
+    `);
 
-  const insertedByThisCall = current.leaseToken === proposedToken;
-  const currentLeaseExpiry = utcDate(current.leaseExpiresAt);
-  if (!currentLeaseExpiry)
-    throw new Error("Stored notification lease timestamp was invalid");
-  const isExpired = currentLeaseExpiry.getTime() <= sampledAt.getTime();
-  if (!insertedByThisCall && !isExpired) {
-    return { status: "deferred", leaseExpiresAt: currentLeaseExpiry };
-  }
+    const locked = await tx.execute(sql`
+      SELECT recipient_person_id AS "recipientPersonId",
+             channel,
+             dedupe_key AS "dedupeKey",
+             owner_delivery_id AS "ownerDeliveryId",
+             lease_token AS "leaseToken",
+             lease_expires_at AS "leaseExpiresAt"
+        FROM outbox_dedupe_reservation
+       WHERE reservation_key = ${key}
+       FOR UPDATE
+    `);
+    const current = rows<{
+      recipientPersonId: string;
+      channel: string;
+      dedupeKey: string;
+      ownerDeliveryId: string;
+      leaseToken: string;
+      leaseExpiresAt: Date;
+    }>(locked)[0];
+    // Cleanup may delete an expired conflicting row after INSERT .. DO NOTHING but before
+    // this SELECT. Retry the whole insert/lock sequence; absence is not a digest collision.
+    if (!current) continue;
+    if (
+      current.recipientPersonId !== input.recipientPersonId ||
+      current.channel !== input.channel ||
+      current.dedupeKey !== input.dedupeKey
+    ) {
+      return { status: "digest_collision" };
+    }
+    const sampled = await tx.execute(sql`
+      SELECT clock_timestamp() AT TIME ZONE 'UTC' AS "sampledAt"
+    `);
+    const sampledAt = utcDate(
+      rows<{ sampledAt: Date | string }>(sampled)[0]?.sampledAt,
+    );
+    if (!sampledAt)
+      throw new Error("Database wall-clock sample was unavailable");
 
-  const token = insertedByThisCall ? proposedToken : randomUUID();
-  const updated = await tx.execute(sql`
-    UPDATE outbox_dedupe_reservation
-       SET owner_delivery_id = ${input.ownerDeliveryId},
-           lease_token = ${token},
-           lease_expires_at = ${sampledAt}::timestamp + interval '60 seconds'
-     WHERE reservation_key = ${key}
-       AND recipient_person_id = ${input.recipientPersonId}
-       AND channel = ${input.channel}
-       AND dedupe_key = ${input.dedupeKey}
-       AND (lease_token = ${proposedToken} OR lease_expires_at <= ${sampledAt}::timestamp)
-    RETURNING lease_expires_at AS "leaseExpiresAt"
-  `);
-  const leaseExpiresAt = utcDate(
-    rows<{ leaseExpiresAt: Date | string }>(updated)[0]?.leaseExpiresAt,
-  );
-  if (!leaseExpiresAt)
-    return { status: "deferred", leaseExpiresAt: currentLeaseExpiry };
-  return {
-    status: "acquired",
-    reservation: {
-      key,
-      leaseToken: token,
-      leaseExpiresAt,
-      ownerDeliveryId: input.ownerDeliveryId,
-    },
-  };
+    const insertedByThisCall = current.leaseToken === proposedToken;
+    const currentLeaseExpiry = utcDate(current.leaseExpiresAt);
+    if (!currentLeaseExpiry)
+      throw new Error("Stored notification lease timestamp was invalid");
+    const isExpired = currentLeaseExpiry.getTime() <= sampledAt.getTime();
+    if (!insertedByThisCall && !isExpired) {
+      return { status: "deferred", leaseExpiresAt: currentLeaseExpiry };
+    }
+
+    const token = insertedByThisCall ? proposedToken : randomUUID();
+    const updated = await tx.execute(sql`
+      UPDATE outbox_dedupe_reservation
+         SET owner_delivery_id = ${input.ownerDeliveryId},
+             lease_token = ${token},
+             lease_expires_at = ${sampledAt}::timestamp + interval '60 seconds'
+       WHERE reservation_key = ${key}
+         AND recipient_person_id = ${input.recipientPersonId}
+         AND channel = ${input.channel}
+         AND dedupe_key = ${input.dedupeKey}
+         AND (lease_token = ${proposedToken} OR lease_expires_at <= ${sampledAt}::timestamp)
+      RETURNING lease_expires_at AS "leaseExpiresAt"
+    `);
+    const leaseExpiresAt = utcDate(
+      rows<{ leaseExpiresAt: Date | string }>(updated)[0]?.leaseExpiresAt,
+    );
+    if (!leaseExpiresAt) throw new NotificationReservationContentionError();
+    return {
+      status: "acquired",
+      reservation: {
+        key,
+        leaseToken: token,
+        leaseExpiresAt,
+        ownerDeliveryId: input.ownerDeliveryId,
+      },
+    };
+  }
+  // The caller sees an ordinary retryable operation failure. No lease expiry is invented,
+  // no delivery attempt is consumed, and provider I/O is unreachable on this path.
+  throw new NotificationReservationContentionError();
 }
 
 export async function hasRecentNotificationSuccess(
@@ -229,7 +256,7 @@ export async function authorizeNotificationProviderAttempt(
     channel: string;
     dedupeKey: string;
   }>(delivery)[0];
-  if (!current || current.state !== "pending") return null;
+  if (current?.state !== "pending") return null;
   const locked = await tx.execute(sql`
     SELECT recipient_person_id AS "recipientPersonId", channel, dedupe_key AS "dedupeKey",
            owner_delivery_id AS "ownerDeliveryId", lease_token AS "leaseToken",
@@ -324,13 +351,7 @@ export async function completeNotificationDelivery(
     rows<{ sampledAt: Date | string }>(sampled)[0]?.sampledAt,
   );
   const currentExpiry = utcDate(current?.leaseExpiresAt);
-  if (
-    !child ||
-    child.state !== "pending" ||
-    !current ||
-    !sampledAt ||
-    !currentExpiry
-  )
+  if (child?.state !== "pending" || !current || !sampledAt || !currentExpiry)
     return false;
   if (
     current.ownerDeliveryId !== deliveryId ||

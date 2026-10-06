@@ -7,6 +7,7 @@ import {
   authorizeNotificationProviderAttempt,
   completeNotificationDelivery,
   hasRecentNotificationSuccess,
+  NotificationReservationContentionError,
 } from "../../apps/api/src/database/repositories/notification-delivery.repository";
 import { notificationReservationKey } from "../../apps/api/src/notification/delivery-primitives";
 import type { NotificationOutboxRuntime } from "../../apps/api/src/notification/outbox-drain";
@@ -14,6 +15,7 @@ import {
   currentEligibilityRuntime,
   processNextNotificationDelivery,
 } from "../../apps/api/src/notification/outbox-drain";
+import { deleteExpiredNotificationReservations } from "../../apps/api/src/scheduler/session-cleanup";
 import { seedDefaultWorkspaceRoles } from "../../apps/api/src/utils/seed-default-workspace-roles";
 import { ensureTestDatabaseMigrated } from "./helpers/database";
 import { createProjectFixture, grantProjectRole } from "./helpers/fixtures";
@@ -225,6 +227,107 @@ describe("outbox notification direct-delivery persistence", () => {
         takeoverClaim.reservation.leaseExpiresAt.getTime(),
       ).toBeGreaterThan(Date.now() + 55_000);
     }
+  });
+
+  it("re-acquires when cleanup deletes the expired conflict in the insert/lock gap", async () => {
+    const fixture = await makeEventAndDelivery();
+    const key = notificationReservationKey({
+      recipientPersonId: ids.person,
+      channel,
+      dedupeKey,
+    });
+    await db.execute(sql`
+      INSERT INTO outbox_dedupe_reservation
+        (reservation_key, recipient_person_id, channel, dedupe_key,
+         owner_delivery_id, lease_token, lease_expires_at)
+      VALUES (${key}, ${ids.person}, ${channel}, ${dedupeKey}, ${fixture.deliveryId},
+        ${randomUUID()}, clock_timestamp() AT TIME ZONE 'UTC' - interval '1 second')
+    `);
+
+    let cleanupInterleaved = false;
+    const claim = await db.transaction(async (tx) => {
+      const interleavedExecutor = {
+        execute: async (query: Parameters<typeof tx.execute>[0]) => {
+          const result = await tx.execute(query);
+          if (!cleanupInterleaved) {
+            cleanupInterleaved = true;
+            expect(await deleteExpiredNotificationReservations()).toBe(1);
+          }
+          return result;
+        },
+      } as unknown as Parameters<typeof acquireNotificationReservation>[0];
+      return acquireNotificationReservation(interleavedExecutor, {
+        recipientPersonId: ids.person,
+        channel,
+        dedupeKey,
+        ownerDeliveryId: fixture.deliveryId,
+      });
+    });
+
+    expect(cleanupInterleaved).toBe(true);
+    expect(claim.status).toBe("acquired");
+    const reservation = await db.execute<{
+      ownerDeliveryId: string;
+      leaseExpiresAt: Date | string;
+    }>(sql`
+      SELECT owner_delivery_id AS "ownerDeliveryId",
+             lease_expires_at AT TIME ZONE 'UTC' AS "leaseExpiresAt"
+        FROM outbox_dedupe_reservation WHERE reservation_key = ${key}
+    `);
+    expect(reservation.rows).toHaveLength(1);
+    expect(reservation.rows[0]?.ownerDeliveryId).toBe(fixture.deliveryId);
+    const leaseExpiryMs = new Date(
+      reservation.rows[0]?.leaseExpiresAt ?? 0,
+    ).getTime();
+    expect(leaseExpiryMs).toBeGreaterThan(Date.now() + 55_000);
+  });
+
+  it("fails retryably after repeated cleanup races without claiming a lease or consuming an attempt", async () => {
+    const fixture = await makeEventAndDelivery();
+    let inserts = 0;
+    await expect(
+      db.transaction(async (tx) => {
+        const interleavedExecutor = {
+          execute: async (query: Parameters<typeof tx.execute>[0]) => {
+            const result = await tx.execute(query);
+            // Each acquire cycle begins with INSERT followed by SELECT. Remove the
+            // just-inserted epoch lease inside this transaction to inject a repeated
+            // insert/lock-gap loss deterministically; the separate-connection cleanup race
+            // is covered by the preceding integration case.
+            if (inserts % 2 === 0) {
+              const removed = await tx.execute(sql`
+                DELETE FROM outbox_dedupe_reservation
+                 WHERE reservation_key = ${notificationReservationKey({
+                   recipientPersonId: ids.person,
+                   channel,
+                   dedupeKey,
+                 })}
+                   AND lease_expires_at <= clock_timestamp() AT TIME ZONE 'UTC'
+              `);
+              expect(removed.rowCount).toBe(1);
+            }
+            inserts += 1;
+            return result;
+          },
+        } as unknown as Parameters<typeof acquireNotificationReservation>[0];
+        return acquireNotificationReservation(interleavedExecutor, {
+          recipientPersonId: ids.person,
+          channel,
+          dedupeKey,
+          ownerDeliveryId: fixture.deliveryId,
+        });
+      }),
+    ).rejects.toBeInstanceOf(NotificationReservationContentionError);
+    expect(inserts).toBe(12);
+    const row = await db.execute<{ attempts: number }>(sql`
+      SELECT attempts FROM notification_delivery WHERE id = ${fixture.deliveryId}
+    `);
+    expect(row.rows[0]?.attempts).toBe(0);
+    const reservations = await db.execute(sql`
+      SELECT reservation_key FROM outbox_dedupe_reservation WHERE reservation_key =
+        ${notificationReservationKey({ recipientPersonId: ids.person, channel, dedupeKey })}
+    `);
+    expect(reservations.rows).toHaveLength(0);
   });
 
   it("durably counts exactly six authorized provider attempts and dead-letters the sixth", async () => {
