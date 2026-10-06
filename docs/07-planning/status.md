@@ -1,3 +1,46 @@
+## October 6 strict runtime proof and continuing implementation — 08:08 UTC
+
+- **P0 #583:** exact `c46825e938019c354c615be03200cefeab7d710d` includes the
+  zero-selection keyboard fix and safe offline-upgrade documentation. Three independent
+  ordinary review contexts and the full independent Sol product/security pass clear their
+  applicable exact source/deltas. Current hosted CI passes136 PostgreSQL files/1651 tests,
+  browser smoke24/24, accessibility, visuals and12 fast implementation jobs. G11 fails19/22:
+  LCP2656ms, state240.2ms and board650.8ms exceed unchanged budgets. The PR evidence/template
+  gate remains red. A separate complete performance implementation lane has one bounded
+  diagnostic window after the disposable runtime cleanup; no speculative fix or budget change.
+- **P0 disposable runtime:** independently pinned C468 run `20261006T080705Z-c46825e9`
+  exits0. Schema80→88 upgrade, live/ready200, UID10001, all47 scheduled actor-route pairs,
+  platform-only then27 observed non-task strict sources, metrics/CAS/step-up and empty-value
+  rollback pass. All six runner resources are absent without cleanup errors; root captured
+  six owned containers and removed the exact unused PostgreSQL anonymous volume, verifying
+  absence. The actual shadow traffic interval is08:07:53.637456–08:08:01.227095UTC.
+  **Shadow compatibility is not accepted:**129 requests and46 tally rows reconcile events,
+  but three unexplained rows/four occurrences remain, including two asset reads returning500
+  and unknown native decisions for capabilities/workspace403s. The representative report
+  is unclean despite successful strict-stage checks. Independent assessment is active;
+  original failures and all three earlier partial observation dates remain unchanged.
+- **P4 #580:** user-approved Babel7.29.8 AST replacement and the complete structural
+  callable/static-key follow-up are pushed at `d8060aec656047e085e3025f9e44ae0f6297a611`.
+  Scanner15/15, CI-script1093/1093 across112 suites, all9 typechecks and query/dependency
+  checks pass. Full independent Sol clears that exact gate candidate after the prior
+  strong ordinary findings were fixed together. API transaction source remains unchanged
+  fromc29; composition still needs relocation of the new P0 workspace-row lookup.
+- **P2 approvals:** full lifecycle schema/API/URL UI implementation is active in a separate
+  worktree based on notification candidate5a371451. Migration0116 is reserved. Current
+  reach-loss handling denies decisions while pending reach is lost; created_at and internal
+  approval.decided are aligned in the authoritative contracts. Initial domain657 tests/19
+  files and API types pass; full lifecycle integration/browser acceptance is not claimed.
+- **P4 notifications #585:** exact5a371451 adds the first canonical workspace.created
+  recipient resolver to the fenced delivery engine. Prior direct engine SQL passes5/5;
+  current unit tests7/7 and API types pass. Concrete providers, producers, digest grouping,
+  additional recipient sources and quiet-hour decisions remain incomplete. Pending digest
+  DST, quiet-hours, pending-action versioning and public-config questions are not assumed
+  answered. Human integrated review remains deferred toP4.
+- **Acceptance/deployment:** P0 remains open on performance, unclean shadow compatibility,
+  config/task prerequisites, required exact-source gates and the additional Sol finalizer.
+  P1–P4 execution continues concurrently. No protected merge, phase closure, original-date
+  carry-forward, persistent DEV replacement or enforcement activation is claimed.
+
 ## October 6 complete batches and current-source failures — 07:27 UTC
 
 - **P0 #583 composition:** exact `22702a13c59240be51fe4c732c8b6e902271fa8d` combines
