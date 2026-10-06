@@ -2,6 +2,8 @@
 
 Snapshot: 2026-10-06 22:08 UTC (7 October in Yangon). Accepted main remains3096cb04; DEV remains08842235 with shadow on and enforcement off. No merge, DEV refresh, strict activation or phase completion.
 
+Update22:15 UTC: the authorized exact532 disposable off/shadow acquisition20261006T221158Z-53269374 failed at private runner assessment with undefined canonical CONFIG/TASK names. All130 acquired status expectations matched; actual image boot/revision/UID10001, live/ready200, migration80→88, settings CAS/step-up/metrics token checks passed. Original artifacts are retained, with no result or acceptance. Cleanup receipt passes9/9 and root independently verifies all9absent. Offline completion inspection also identifies an actual authenticated WS101 row classifiedother instead ofallow; both completion classes enter one structural private runner batch with protocol-bound negative tests. No old traffic is rewritten, no runtime outcome synthesized, no performance retry/DEV mutation/strict activation. P1's private PG resource window is released. P4's full fresh Sol clears the reviewed four-file cleanup delta; draft#594 publishes the larger isolated send-time/cleanup slice toward#589, explicitly retaining full composed review/CI/runtime as pending. Original#585 producer/drain history remains preserved.
+
 | Phase | Implementation | Integration | Acceptance / operational closure |
 | --- | --- | --- | --- |
 | P0 | Frozen53269374; source reviews clear; exact imagef44 built and isolated runtime UID/GID10001 verified | Sole closure#583; private operational report-contract bundle independently clear | Hosted native137/1659, E2E27, G4/G8 pass; hostedG1119/22 red; runtime/strict/rollback/finalizer open |
