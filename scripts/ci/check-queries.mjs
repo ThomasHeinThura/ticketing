@@ -137,7 +137,7 @@ function readTokens(source) {
       }
       if (ch === "{") braces += 1;
       else if (ch === "}" && braces > 0) braces -= 1;
-      add(ch, index);
+      add(ch, index, "punctuator");
       index += 1;
     }
     return index;
@@ -388,7 +388,7 @@ function parseMemberAccess(tokens, index) {
   if (tokens[index]?.value === "?") {
     if (tokens[index + 1]?.value !== ".") return null;
     optional = true;
-    openIndex = index + 2;
+    openIndex = tokens[index + 2]?.value === "[" ? index + 2 : index + 1;
   }
 
   if (tokens[openIndex]?.value === ".") {

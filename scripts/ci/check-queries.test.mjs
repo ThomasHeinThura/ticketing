@@ -209,6 +209,97 @@ test("check:queries parses dotted, computed, escaped, and forwarded references u
   assert.equal(runtime["sel\u0065ct"].apply(runtime, []), "selected");
 });
 
+test("check:queries carries optional-chain state through reads, forwarding, and aliases", () => {
+  const properties = [
+    ".select",
+    '["select"]',
+    String.raw`["sel\u0065ct"]`,
+    String.raw`["\u{73}elect"]`,
+    String.raw`['\x73elect']`,
+    String.raw`.\u0073elect`,
+  ];
+  const buildAccess = (property, optionalRoot) =>
+    `db${property.startsWith(".") ? (optionalRoot ? "?." : ".") + property.slice(1) : (optionalRoot ? "?." : "") + property}`;
+  const cases = [];
+
+  for (const property of properties) {
+    for (const optionalRoot of [false, true]) {
+      const access = buildAccess(property, optionalRoot);
+      for (const optionalInvocation of [false, true]) {
+        cases.push({
+          name: `direct ${property} root=${optionalRoot} call=${optionalInvocation}`,
+          source: `${access}${optionalInvocation ? "?.()" : "()"}`,
+        });
+      }
+      for (const optionalMember of [false, true]) {
+        for (const optionalForwardCall of [false, true]) {
+          for (const optionalInvocation of [false, true]) {
+            const member = optionalMember ? "?." : ".";
+            const forwardCall = optionalForwardCall ? "?.(" : "(";
+            cases.push({
+              name: `bound ${property} root=${optionalRoot} member=${optionalMember} forwardCall=${optionalForwardCall} invoke=${optionalInvocation}`,
+              source: `const read = ${access}${member}bind${forwardCall}db); read${optionalInvocation ? "?.()" : "()"}`,
+            });
+          }
+          for (const forwarder of ["call", "apply"]) {
+            const member = optionalMember ? "?." : ".";
+            const forwardCall = optionalForwardCall ? "?.(" : "(";
+            const args = forwarder === "call" ? "db" : "db, []";
+            cases.push({
+              name: `${forwarder} ${property} root=${optionalRoot} member=${optionalMember} forwardCall=${optionalForwardCall}`,
+              source: `${access}${member}${forwarder}${forwardCall}${args})`,
+            });
+          }
+        }
+      }
+      cases.push({
+        name: `bare alias ${property} root=${optionalRoot}`,
+        source: `const read = ${access}; read?.()`,
+      });
+    }
+  }
+
+  for (const { name, source } of cases) {
+    assert.deepEqual(
+      queryReadViolations(`${source};`, "example.ts").map(
+        ({ method }) => method,
+      ),
+      ["select"],
+      name,
+    );
+  }
+
+  for (const property of [
+    '"select"',
+    String.raw`"sel\u0065ct"`,
+    String.raw`"\u{73}elect"`,
+    String.raw`'\x73elect'`,
+  ]) {
+    for (const optionalInvocation of [false, true]) {
+      const source = `const { [${property}]: read } = db; read${optionalInvocation ? "?.()" : "()"};`;
+      assert.deepEqual(
+        queryReadViolations(source, "example.ts").map(({ method }) => method),
+        ["select"],
+        source,
+      );
+    }
+  }
+
+  const unrelated = "const read = db?.notARead.bind(db); read?.();";
+  assert.deepEqual(queryReadViolations(unrelated, "example.ts"), []);
+
+  const runtime = { select: () => "selected" };
+  assert.equal(runtime.select?.bind(runtime)?.(), "selected");
+  assert.equal(runtime?.["sel\u0065ct"]?.bind?.(runtime)?.(), "selected");
+  assert.equal(runtime.select?.bind(runtime)(), "selected");
+  assert.equal(runtime.select?.call(runtime), "selected");
+  assert.equal(runtime.select?.apply(runtime, []), "selected");
+  const optionalRootRead = runtime?.select.bind(runtime);
+  assert.equal(optionalRootRead(), "selected");
+  const maybeBound = runtime?.select?.bind(runtime);
+  assert.equal(maybeBound?.(), "selected");
+});
+
 test("check:queries ignores comments, string contents, regexes, and template text", () => {
   const source = [
     "// db.select().from(table)",
@@ -269,12 +360,22 @@ test("check:queries exempts only nested repository.ts modules", async (t) => {
   );
   await writeFile(
     path.join(sourceRoot, "feature/controller.ts"),
-    String.raw`const read = db["sel\u0065ct"].bind(db); read();`,
+    String.raw`const read = db["sel\u0065ct"].bind(db); read();
+db.select?.bind(db)();
+db.select?.call(db);
+db.select?.apply(db, []);
+const optionalRead = db?.select.bind(db); optionalRead();
+db?.select?.bind?.(db)?.();`,
   );
 
   assert.deepEqual(
     (await checkQueries(root)).map(({ file, method }) => [file, method]),
     [
+      ["apps/api/src/feature/controller.ts", "select"],
+      ["apps/api/src/feature/controller.ts", "select"],
+      ["apps/api/src/feature/controller.ts", "select"],
+      ["apps/api/src/feature/controller.ts", "select"],
+      ["apps/api/src/feature/controller.ts", "select"],
       ["apps/api/src/feature/controller.ts", "select"],
       ["apps/api/src/repository.ts", "select"],
     ],
