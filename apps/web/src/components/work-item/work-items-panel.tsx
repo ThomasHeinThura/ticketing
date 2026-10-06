@@ -1,5 +1,5 @@
 import { Alert, AlertDescription } from "@taskdesk/ui";
-import { lazy, memo, Suspense } from "react";
+import { lazy, memo, Suspense, useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 import WorkItemListLoading from "@/components/work-item/work-item-list-loading";
 import type { WorkItemsResult } from "@/fetchers/work-item/get-work-items";
@@ -47,6 +47,31 @@ function WorkItemsPanel({
 }: WorkItemsPanelProps) {
   const { t } = useTranslation();
   const workItems = workItemsResult?.items;
+  const [realtimeReadyProjectId, setRealtimeReadyProjectId] =
+    useState<string>();
+
+  useEffect(() => {
+    if (isLoading) {
+      setRealtimeReadyProjectId(undefined);
+      return;
+    }
+
+    // Keep the socket and its status updates out of the list's first content
+    // paint. The page already renders the primary rows and reports transport
+    // status when the connection starts on the next two frames.
+    let firstFrame: number | undefined;
+    let secondFrame: number | undefined;
+    firstFrame = requestAnimationFrame(() => {
+      secondFrame = requestAnimationFrame(() =>
+        setRealtimeReadyProjectId(project?.id),
+      );
+    });
+
+    return () => {
+      if (firstFrame !== undefined) cancelAnimationFrame(firstFrame);
+      if (secondFrame !== undefined) cancelAnimationFrame(secondFrame);
+    };
+  }, [isLoading, project?.id]);
 
   return (
     <>
@@ -75,7 +100,9 @@ function WorkItemsPanel({
           onRetry={onRetry}
         />
       </Suspense>
-      {project && realtimeProjectId === project.id ? (
+      {project &&
+      realtimeReadyProjectId === project.id &&
+      realtimeProjectId === project.id ? (
         <Suspense fallback={null}>
           <WorkItemListRealtime
             key={project.id}
