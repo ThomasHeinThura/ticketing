@@ -163,6 +163,49 @@ describe("work-item list realtime startup", () => {
     );
   });
 
+  it("requires fresh two-frame readiness after a ready A to B to A transition", async () => {
+    const view = render(
+      <WorkItemsPanel
+        {...panelProps({ isLoading: false, projectId: "project-a" })}
+      />,
+    );
+    await waitFor(() => expect(frameCallbacks.size).toBe(1));
+    advanceAnimationFrame();
+    await waitFor(() => expect(frameCallbacks.size).toBe(1));
+    advanceAnimationFrame();
+    await waitFor(() =>
+      expect(screen.getByTestId("work-list-realtime")).toHaveTextContent(
+        "Realtime project-a",
+      ),
+    );
+
+    view.rerender(
+      <WorkItemsPanel
+        {...panelProps({ isLoading: false, projectId: "project-b" })}
+      />,
+    );
+    await waitFor(() => expect(frameCallbacks.size).toBe(1));
+    const staleProjectFrame = [...frameCallbacks.keys()][0];
+
+    view.rerender(
+      <WorkItemsPanel
+        {...panelProps({ isLoading: false, projectId: "project-a" })}
+      />,
+    );
+    expect(screen.queryByTestId("work-list-realtime")).not.toBeInTheDocument();
+    await waitFor(() => expect(frameCallbacks.size).toBe(1));
+    expect(frameCallbacks.has(staleProjectFrame)).toBe(false);
+
+    advanceAnimationFrame();
+    expect(screen.queryByTestId("work-list-realtime")).not.toBeInTheDocument();
+    advanceAnimationFrame();
+    await waitFor(() =>
+      expect(screen.getByTestId("work-list-realtime")).toHaveTextContent(
+        "Realtime project-a",
+      ),
+    );
+  });
+
   it("does not start the previous project's socket when a project switch begins", async () => {
     const view = render(
       <WorkItemsPanel

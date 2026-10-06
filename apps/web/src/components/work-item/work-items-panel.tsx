@@ -1,5 +1,5 @@
 import { Alert, AlertDescription } from "@taskdesk/ui";
-import { lazy, memo, Suspense, useEffect, useState } from "react";
+import { lazy, memo, Suspense, useEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import WorkItemListLoading from "@/components/work-item/work-item-list-loading";
 import type { WorkItemsResult } from "@/fetchers/work-item/get-work-items";
@@ -47,12 +47,35 @@ function WorkItemsPanel({
 }: WorkItemsPanelProps) {
   const { t } = useTranslation();
   const workItems = workItemsResult?.items;
-  const [realtimeReadyProjectId, setRealtimeReadyProjectId] =
-    useState<string>();
+  const projectLifecycle = useRef({
+    projectId: project?.id,
+    generation: 0,
+    isLoading,
+  });
+  if (
+    projectLifecycle.current.projectId !== project?.id ||
+    (!projectLifecycle.current.isLoading && isLoading)
+  ) {
+    projectLifecycle.current = {
+      projectId: project?.id,
+      generation: projectLifecycle.current.generation + 1,
+      isLoading,
+    };
+  } else {
+    projectLifecycle.current.isLoading = isLoading;
+  }
+  const { generation: projectGeneration } = projectLifecycle.current;
+  const [realtimeReadyGeneration, setRealtimeReadyGeneration] =
+    useState<number>();
 
   useEffect(() => {
+    const isCurrentLifecycle = () =>
+      projectLifecycle.current.projectId === project?.id &&
+      projectLifecycle.current.generation === projectGeneration &&
+      !projectLifecycle.current.isLoading;
+
+    setRealtimeReadyGeneration(undefined);
     if (isLoading || !project?.id) {
-      setRealtimeReadyProjectId(undefined);
       return;
     }
 
@@ -66,11 +89,20 @@ function WorkItemsPanel({
     let firstFrame: number | undefined;
     let secondFrame: number | undefined;
     const startAfterPaint = () => {
-      if (firstFrame !== undefined || secondFrame !== undefined) return;
+      if (
+        !isCurrentLifecycle() ||
+        firstFrame !== undefined ||
+        secondFrame !== undefined
+      ) {
+        return;
+      }
       firstFrame = requestAnimationFrame(() => {
-        secondFrame = requestAnimationFrame(() =>
-          setRealtimeReadyProjectId(project.id),
-        );
+        if (!isCurrentLifecycle()) return;
+        secondFrame = requestAnimationFrame(() => {
+          if (isCurrentLifecycle()) {
+            setRealtimeReadyGeneration(projectGeneration);
+          }
+        });
       });
     };
     let observer: MutationObserver | undefined;
@@ -78,6 +110,7 @@ function WorkItemsPanel({
       startAfterPaint();
     } else {
       observer = new MutationObserver(() => {
+        if (!isCurrentLifecycle()) return;
         if (!listContentReady()) return;
         observer?.disconnect();
         startAfterPaint();
@@ -90,7 +123,7 @@ function WorkItemsPanel({
       if (firstFrame !== undefined) cancelAnimationFrame(firstFrame);
       if (secondFrame !== undefined) cancelAnimationFrame(secondFrame);
     };
-  }, [isLoading, project?.id]);
+  }, [isLoading, project?.id, projectGeneration]);
 
   return (
     <>
@@ -122,7 +155,8 @@ function WorkItemsPanel({
         />
       </Suspense>
       {project &&
-      realtimeReadyProjectId === project.id &&
+      !isLoading &&
+      realtimeReadyGeneration === projectGeneration &&
       realtimeProjectId === project.id ? (
         <Suspense fallback={null}>
           <WorkItemListRealtime
