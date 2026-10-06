@@ -161,6 +161,9 @@ async function createApiKeyFor(userId: string): Promise<string> {
     userId,
     key: hashApiKeyForTest(rawKey),
     name: "work-item activity wiring test key",
+    permissions: JSON.stringify({
+      work_item: ["create", "update", "set_priority"],
+    }),
     start: rawKey.slice(0, 12),
     prefix: "taskdesk",
     createdAt: now,

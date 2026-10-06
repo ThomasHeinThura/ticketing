@@ -6625,7 +6625,8 @@
       "packages/ui/src/components/input-group.tsx::InputGroupText::span[0]::text-muted-foreground#0",
       "packages/ui/src/components/select.tsx::SelectButton::span[0]::in-data-placeholder:text-muted-foreground#0",
       "packages/ui/src/components/select.tsx::SelectValue::SelectPrimitive.Value[0]::data-placeholder:text-muted-foreground#0",
-      "packages/ui/src/components/table.tsx::TableHead::th[0]::text-muted-foreground#0"
+      "packages/ui/src/components/table.tsx::TableHead::th[0]::text-muted-foreground#0",
+      "apps/web/src/routes/agent/_layout/_authenticated/agent/views.tsx::SavedViewsRoute::main[0]/header[0]/p[0]::text-muted-foreground#0"
     ],
     "surfaceContext": "nearest-opaque-ancestor",
     "occurrences": [
@@ -8293,6 +8294,19 @@
         "chain": [
           "apps/web/src/routes/agent/_layout/_authenticated/dashboard/invitations.tsx:InvitationsPage",
           "Layout->apps/web/src/components/common/layout.tsx:default"
+        ],
+        "backdropLayers": []
+      },
+      {
+        "id": "apps/web/src/routes/agent/_layout/_authenticated/agent/views.tsx::SavedViewsRoute::main[0]/header[0]/p[0]::text-muted-foreground#0",
+        "usage": "apps/web/src/routes/agent/_layout/_authenticated/agent/views.tsx",
+        "surfaceContext": "route-layout-body",
+        "category": "body",
+        "chain": [
+          "apps/web/src/routes/agent/_layout/_authenticated/agent/views.tsx:/_layout/_authenticated/agent/views",
+          "apps/web/src/routes/agent/_layout/_authenticated.tsx:/_layout/_authenticated",
+          "apps/web/src/routes/agent/_layout.tsx:/_layout",
+          "apps/web/src/index.css:body>@apply bg-background"
         ],
         "backdropLayers": []
       }
@@ -8418,7 +8432,8 @@
       "packages/ui/src/components/input-group.tsx::InputGroupText::span[0]::text-muted-foreground#0",
       "packages/ui/src/components/select.tsx::SelectButton::span[0]::in-data-placeholder:text-muted-foreground#0",
       "packages/ui/src/components/select.tsx::SelectValue::SelectPrimitive.Value[0]::data-placeholder:text-muted-foreground#0",
-      "packages/ui/src/components/table.tsx::TableHead::th[0]::text-muted-foreground#0"
+      "packages/ui/src/components/table.tsx::TableHead::th[0]::text-muted-foreground#0",
+      "apps/web/src/routes/agent/_layout/_authenticated/agent/views.tsx::SavedViewsRoute::main[0]/header[0]/p[0]::text-muted-foreground#0"
     ],
     "surfaceContext": "nearest-opaque-ancestor",
     "occurrences": [
@@ -10086,6 +10101,19 @@
         "chain": [
           "apps/web/src/routes/agent/_layout/_authenticated/dashboard/invitations.tsx:InvitationsPage",
           "Layout->apps/web/src/components/common/layout.tsx:default"
+        ],
+        "backdropLayers": []
+      },
+      {
+        "id": "apps/web/src/routes/agent/_layout/_authenticated/agent/views.tsx::SavedViewsRoute::main[0]/header[0]/p[0]::text-muted-foreground#0",
+        "usage": "apps/web/src/routes/agent/_layout/_authenticated/agent/views.tsx",
+        "surfaceContext": "route-layout-body",
+        "category": "body",
+        "chain": [
+          "apps/web/src/routes/agent/_layout/_authenticated/agent/views.tsx:/_layout/_authenticated/agent/views",
+          "apps/web/src/routes/agent/_layout/_authenticated.tsx:/_layout/_authenticated",
+          "apps/web/src/routes/agent/_layout.tsx:/_layout",
+          "apps/web/src/index.css:body>@apply bg-background"
         ],
         "backdropLayers": []
       }
@@ -10666,7 +10694,9 @@
       "packages/ui/src/components/dialog.tsx::DialogDescription::DialogPrimitive.Description[0]::text-muted-foreground#0",
       "packages/ui/src/components/empty.tsx::EmptyDescription::div[0]::text-muted-foreground#0",
       "packages/ui/src/components/table.tsx::TableHead::th[0]::text-muted-foreground#0",
-      "packages/ui/src/components/timeline.tsx::TimelineContent::div[0]::text-muted-foreground#0"
+      "packages/ui/src/components/timeline.tsx::TimelineContent::div[0]::text-muted-foreground#0",
+      "apps/web/src/routes/agent/_layout/_authenticated/agent/views.tsx::SavedViewsRoute::main[0]/section[0]/Card[0]/CardContent[0]/div[0]/p[0]::text-muted-foreground#0",
+      "apps/web/src/routes/agent/_layout/_authenticated/agent/views.tsx::SavedViewsRoute::main[0]/Card[0]/CardContent[0]::text-muted-foreground#0"
     ],
     "surfaceContext": "nearest-opaque-ancestor",
     "occurrences": [
@@ -12804,6 +12834,30 @@
         "chain": [
           "apps/web/src/routes/agent/_layout/_authenticated/dashboard/workspace/$workspaceId/project/$projectId/task/$taskId_.tsx:RouteComponent",
           "TaskLayout->apps/web/src/components/common/task-layout.tsx:default"
+        ],
+        "backdropLayers": []
+      },
+      {
+        "id": "apps/web/src/routes/agent/_layout/_authenticated/agent/views.tsx::SavedViewsRoute::main[0]/section[0]/Card[0]/CardContent[0]/div[0]/p[0]::text-muted-foreground#0",
+        "usage": "apps/web/src/routes/agent/_layout/_authenticated/agent/views.tsx",
+        "surfaceContext": "imported-opaque-wrapper",
+        "category": "body",
+        "chain": [
+          "apps/web/src/routes/agent/_layout/_authenticated/agent/views.tsx:SavedViewsRoute",
+          "jsx:main[0]/section[0]/Card[0]/CardContent[0]/div[0]/p[0]",
+          "Card->packages/ui/src/components/card.tsx:Card>bg-card"
+        ],
+        "backdropLayers": []
+      },
+      {
+        "id": "apps/web/src/routes/agent/_layout/_authenticated/agent/views.tsx::SavedViewsRoute::main[0]/Card[0]/CardContent[0]::text-muted-foreground#0",
+        "usage": "apps/web/src/routes/agent/_layout/_authenticated/agent/views.tsx",
+        "surfaceContext": "imported-opaque-wrapper",
+        "category": "body",
+        "chain": [
+          "apps/web/src/routes/agent/_layout/_authenticated/agent/views.tsx:SavedViewsRoute",
+          "jsx:main[0]/Card[0]/CardContent[0]",
+          "Card->packages/ui/src/components/card.tsx:Card>bg-card"
         ],
         "backdropLayers": []
       }
@@ -12996,7 +13050,9 @@
       "packages/ui/src/components/dialog.tsx::DialogDescription::DialogPrimitive.Description[0]::text-muted-foreground#0",
       "packages/ui/src/components/empty.tsx::EmptyDescription::div[0]::text-muted-foreground#0",
       "packages/ui/src/components/table.tsx::TableHead::th[0]::text-muted-foreground#0",
-      "packages/ui/src/components/timeline.tsx::TimelineContent::div[0]::text-muted-foreground#0"
+      "packages/ui/src/components/timeline.tsx::TimelineContent::div[0]::text-muted-foreground#0",
+      "apps/web/src/routes/agent/_layout/_authenticated/agent/views.tsx::SavedViewsRoute::main[0]/section[0]/Card[0]/CardContent[0]/div[0]/p[0]::text-muted-foreground#0",
+      "apps/web/src/routes/agent/_layout/_authenticated/agent/views.tsx::SavedViewsRoute::main[0]/Card[0]/CardContent[0]::text-muted-foreground#0"
     ],
     "surfaceContext": "nearest-opaque-ancestor",
     "occurrences": [
@@ -15134,6 +15190,30 @@
         "chain": [
           "apps/web/src/routes/agent/_layout/_authenticated/dashboard/workspace/$workspaceId/project/$projectId/task/$taskId_.tsx:RouteComponent",
           "TaskLayout->apps/web/src/components/common/task-layout.tsx:default"
+        ],
+        "backdropLayers": []
+      },
+      {
+        "id": "apps/web/src/routes/agent/_layout/_authenticated/agent/views.tsx::SavedViewsRoute::main[0]/section[0]/Card[0]/CardContent[0]/div[0]/p[0]::text-muted-foreground#0",
+        "usage": "apps/web/src/routes/agent/_layout/_authenticated/agent/views.tsx",
+        "surfaceContext": "imported-opaque-wrapper",
+        "category": "body",
+        "chain": [
+          "apps/web/src/routes/agent/_layout/_authenticated/agent/views.tsx:SavedViewsRoute",
+          "jsx:main[0]/section[0]/Card[0]/CardContent[0]/div[0]/p[0]",
+          "Card->packages/ui/src/components/card.tsx:Card>bg-card"
+        ],
+        "backdropLayers": []
+      },
+      {
+        "id": "apps/web/src/routes/agent/_layout/_authenticated/agent/views.tsx::SavedViewsRoute::main[0]/Card[0]/CardContent[0]::text-muted-foreground#0",
+        "usage": "apps/web/src/routes/agent/_layout/_authenticated/agent/views.tsx",
+        "surfaceContext": "imported-opaque-wrapper",
+        "category": "body",
+        "chain": [
+          "apps/web/src/routes/agent/_layout/_authenticated/agent/views.tsx:SavedViewsRoute",
+          "jsx:main[0]/Card[0]/CardContent[0]",
+          "Card->packages/ui/src/components/card.tsx:Card>bg-card"
         ],
         "backdropLayers": []
       }
@@ -28324,7 +28404,9 @@
       "apps/web/src/routes/agent/_layout/_authenticated/agent/settings/profile/pending-actions.tsx::PendingActionsList::main[0]/p[0]::text-destructive#1",
       "apps/web/src/routes/agent/_layout/_authenticated/agent/settings/profile/pending-actions/$id.tsx::PendingActionDetailRoute::main[0]/p[0]::text-destructive#0",
       "packages/ui/src/components/form.tsx::FormLabel::Label[0]::text-destructive#0",
-      "packages/ui/src/components/form.tsx::FormMessage::p[0]::text-destructive#0"
+      "packages/ui/src/components/form.tsx::FormMessage::p[0]::text-destructive#0",
+      "apps/web/src/routes/agent/_layout/_authenticated/agent/views.tsx::SavedViewsRoute::main[0]/p[0]::text-destructive#0",
+      "apps/web/src/routes/agent/_layout/_authenticated/agent/views.tsx::SavedViewsRoute::main[0]/p[0]::text-destructive#1"
     ],
     "surfaceContext": "imported-opaque-wrapper",
     "occurrences": [
@@ -28454,6 +28536,32 @@
         "chain": [
           "apps/web/src/routes/agent/auth/verify-otp.tsx:VerifyOtp",
           "AuthLayout->apps/web/src/components/auth/layout.tsx:AuthLayout"
+        ],
+        "backdropLayers": []
+      },
+      {
+        "id": "apps/web/src/routes/agent/_layout/_authenticated/agent/views.tsx::SavedViewsRoute::main[0]/p[0]::text-destructive#0",
+        "usage": "apps/web/src/routes/agent/_layout/_authenticated/agent/views.tsx",
+        "surfaceContext": "route-layout-body",
+        "category": "body",
+        "chain": [
+          "apps/web/src/routes/agent/_layout/_authenticated/agent/views.tsx:/_layout/_authenticated/agent/views",
+          "apps/web/src/routes/agent/_layout/_authenticated.tsx:/_layout/_authenticated",
+          "apps/web/src/routes/agent/_layout.tsx:/_layout",
+          "apps/web/src/index.css:body>@apply bg-background"
+        ],
+        "backdropLayers": []
+      },
+      {
+        "id": "apps/web/src/routes/agent/_layout/_authenticated/agent/views.tsx::SavedViewsRoute::main[0]/p[0]::text-destructive#1",
+        "usage": "apps/web/src/routes/agent/_layout/_authenticated/agent/views.tsx",
+        "surfaceContext": "route-layout-body",
+        "category": "body",
+        "chain": [
+          "apps/web/src/routes/agent/_layout/_authenticated/agent/views.tsx:/_layout/_authenticated/agent/views",
+          "apps/web/src/routes/agent/_layout/_authenticated.tsx:/_layout/_authenticated",
+          "apps/web/src/routes/agent/_layout.tsx:/_layout",
+          "apps/web/src/index.css:body>@apply bg-background"
         ],
         "backdropLayers": []
       }
@@ -28480,7 +28588,9 @@
       "apps/web/src/routes/agent/_layout/_authenticated/agent/settings/profile/pending-actions.tsx::PendingActionsList::main[0]/p[0]::text-destructive#1",
       "apps/web/src/routes/agent/_layout/_authenticated/agent/settings/profile/pending-actions/$id.tsx::PendingActionDetailRoute::main[0]/p[0]::text-destructive#0",
       "packages/ui/src/components/form.tsx::FormLabel::Label[0]::text-destructive#0",
-      "packages/ui/src/components/form.tsx::FormMessage::p[0]::text-destructive#0"
+      "packages/ui/src/components/form.tsx::FormMessage::p[0]::text-destructive#0",
+      "apps/web/src/routes/agent/_layout/_authenticated/agent/views.tsx::SavedViewsRoute::main[0]/p[0]::text-destructive#0",
+      "apps/web/src/routes/agent/_layout/_authenticated/agent/views.tsx::SavedViewsRoute::main[0]/p[0]::text-destructive#1"
     ],
     "surfaceContext": "imported-opaque-wrapper",
     "occurrences": [
@@ -28610,6 +28720,32 @@
         "chain": [
           "apps/web/src/routes/agent/auth/verify-otp.tsx:VerifyOtp",
           "AuthLayout->apps/web/src/components/auth/layout.tsx:AuthLayout"
+        ],
+        "backdropLayers": []
+      },
+      {
+        "id": "apps/web/src/routes/agent/_layout/_authenticated/agent/views.tsx::SavedViewsRoute::main[0]/p[0]::text-destructive#0",
+        "usage": "apps/web/src/routes/agent/_layout/_authenticated/agent/views.tsx",
+        "surfaceContext": "route-layout-body",
+        "category": "body",
+        "chain": [
+          "apps/web/src/routes/agent/_layout/_authenticated/agent/views.tsx:/_layout/_authenticated/agent/views",
+          "apps/web/src/routes/agent/_layout/_authenticated.tsx:/_layout/_authenticated",
+          "apps/web/src/routes/agent/_layout.tsx:/_layout",
+          "apps/web/src/index.css:body>@apply bg-background"
+        ],
+        "backdropLayers": []
+      },
+      {
+        "id": "apps/web/src/routes/agent/_layout/_authenticated/agent/views.tsx::SavedViewsRoute::main[0]/p[0]::text-destructive#1",
+        "usage": "apps/web/src/routes/agent/_layout/_authenticated/agent/views.tsx",
+        "surfaceContext": "route-layout-body",
+        "category": "body",
+        "chain": [
+          "apps/web/src/routes/agent/_layout/_authenticated/agent/views.tsx:/_layout/_authenticated/agent/views",
+          "apps/web/src/routes/agent/_layout/_authenticated.tsx:/_layout/_authenticated",
+          "apps/web/src/routes/agent/_layout.tsx:/_layout",
+          "apps/web/src/index.css:body>@apply bg-background"
         ],
         "backdropLayers": []
       }

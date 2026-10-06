@@ -48,6 +48,7 @@ describe("API integration: API key bearer authentication", () => {
       userId: member.user.id,
       key: hashed,
       name: "api key bearer test",
+      permissions: JSON.stringify({ project: ["read"] }),
       start: rawKey.slice(0, 12),
       prefix: "taskdesk",
       createdAt: now,
