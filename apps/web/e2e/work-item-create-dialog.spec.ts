@@ -4,6 +4,33 @@ import {
   WORK_LIST_PATH,
 } from "./helpers/g11-performance-fixture";
 
+const PROJECT_A = {
+  id: "project-g11",
+  workspaceId: "ws-g11",
+  slug: "WLP",
+  name: "Performance fixture",
+  description: null,
+  icon: null,
+  defaultCommentVisibility: "internal",
+  createdAt: "2026-09-30T00:00:00.000Z",
+  archivedAt: null,
+  deletedAt: null,
+  purgeAfter: null,
+  position: 1,
+  lastTaskNumber: 500,
+  statistics: { completionPercentage: 0, totalTasks: 500, dueDate: null },
+  archivedTasks: [],
+  plannedTasks: [],
+  columns: [],
+};
+
+const PROJECT_B = {
+  ...PROJECT_A,
+  id: "project-g11-b",
+  slug: "WLP-B",
+  name: "Second performance fixture",
+};
+
 test("work-list create dialog shell opens, closes, and reopens independently of the list", async ({
   page,
 }, testInfo) => {
@@ -159,6 +186,184 @@ test("create dialog opens while the list, wrapper, and form load independently",
     releaseWrapper();
     releaseForm();
     releaseList();
+  }
+});
+
+test("a pending create intent is cancelled across project changes and browser back", async ({
+  page,
+}, testInfo) => {
+  await page.setViewportSize({ width: 1280, height: 720 });
+  await installPerformanceApiFixture(page);
+  await page.route(
+    (url) =>
+      url.pathname === "/api/project" && url.searchParams.has("workspaceId"),
+    async (route) => {
+      if (route.request().method() !== "GET") {
+        await route.fallback();
+        return;
+      }
+      await route.fulfill({
+        status: 200,
+        contentType: "application/json",
+        body: JSON.stringify([PROJECT_A, PROJECT_B]),
+      });
+    },
+  );
+  await page.route(
+    (url) => url.pathname === "/api/projects/project-g11-b/work-items",
+    async (route) => {
+      if (route.request().method() !== "GET") {
+        await route.fallback();
+        return;
+      }
+      await route.fulfill({
+        status: 200,
+        contentType: "application/json",
+        body: JSON.stringify({
+          data: [],
+          page: { hasMore: false, nextCursor: null },
+          meta: {},
+        }),
+      });
+    },
+  );
+
+  let releaseShell!: () => void;
+  let shellRequested!: () => void;
+  let shellContinued!: () => void;
+  const shellRequest = new Promise<void>((resolve) => {
+    shellRequested = resolve;
+  });
+  const shellRelease = new Promise<void>((resolve) => {
+    releaseShell = resolve;
+  });
+  const shellFinished = new Promise<void>((resolve) => {
+    shellContinued = resolve;
+  });
+  await page.route(
+    (url) =>
+      url.pathname.includes("work-item-create-dialog-shell-") &&
+      url.pathname.endsWith(".js"),
+    async (route) => {
+      shellRequested();
+      await shellRelease;
+      await route.continue();
+      shellContinued();
+    },
+  );
+
+  try {
+    await page.goto(WORK_LIST_PATH);
+    const triggerA = page.getByTestId("create-work-item-trigger");
+    await expect(triggerA).toBeVisible();
+    await triggerA.click();
+    await shellRequest;
+    await expect(
+      page.getByTestId("create-work-item-dialog-loading"),
+    ).toBeVisible();
+
+    await page.evaluate((nextPath) => {
+      window.history.pushState({}, "", nextPath);
+      window.dispatchEvent(
+        new PopStateEvent("popstate", { state: history.state }),
+      );
+    }, "/agent/projects/WLP-B/work?layout=list");
+
+    await expect(page).toHaveURL(/\/agent\/projects\/WLP-B\/work/u);
+    await expect(
+      page.getByRole("heading", { name: /second performance fixture/i }),
+    ).toBeVisible();
+    await expect(page.getByTestId("create-work-item-trigger")).toBeVisible();
+    await expect(page.getByRole("dialog")).toHaveCount(0);
+    releaseShell();
+    await shellFinished;
+    await page.evaluate(
+      () =>
+        new Promise<void>((resolve) =>
+          requestAnimationFrame(() => requestAnimationFrame(() => resolve())),
+        ),
+    );
+    await expect(page.getByRole("dialog")).toHaveCount(0);
+    await expect(
+      page.getByTestId("create-work-item-dialog-loading"),
+    ).toHaveCount(0);
+    await page.screenshot({
+      path: testInfo.outputPath("project-b-after-cancelled-create-intent.png"),
+    });
+
+    const triggerB = page.getByTestId("create-work-item-trigger");
+    await triggerB.click();
+    const dialogB = page.getByRole("dialog");
+    await expect(dialogB).toBeVisible();
+    await expect(dialogB.getByTestId("create-work-item-title")).toBeVisible();
+    await page.screenshot({
+      path: testInfo.outputPath("project-b-create-dialog-open.png"),
+    });
+    await page.keyboard.press("Escape");
+    await expect(dialogB).toBeHidden();
+    await expect(triggerB).toBeFocused();
+
+    await page.goBack();
+    await expect(page).toHaveURL(/\/agent\/projects\/WLP\/work/u);
+    await expect(
+      page.getByRole("heading", { name: /performance fixture/i }),
+    ).toBeVisible();
+    await expect(page.getByRole("dialog")).toHaveCount(0);
+    await page.getByTestId("create-work-item-trigger").click();
+    await expect(page.getByRole("dialog")).toBeVisible();
+  } finally {
+    releaseShell();
+  }
+});
+
+test("leaving the work route cancels a pending create intent on unmount", async ({
+  page,
+}) => {
+  await page.setViewportSize({ width: 1280, height: 720 });
+  await installPerformanceApiFixture(page);
+
+  let releaseShell!: () => void;
+  let shellRequested!: () => void;
+  let shellContinued!: () => void;
+  const shellRequest = new Promise<void>((resolve) => {
+    shellRequested = resolve;
+  });
+  const shellRelease = new Promise<void>((resolve) => {
+    releaseShell = resolve;
+  });
+  const shellFinished = new Promise<void>((resolve) => {
+    shellContinued = resolve;
+  });
+  await page.route(
+    (url) =>
+      url.pathname.includes("work-item-create-dialog-shell-") &&
+      url.pathname.endsWith(".js"),
+    async (route) => {
+      shellRequested();
+      await shellRelease;
+      await route.continue();
+      shellContinued();
+    },
+  );
+
+  try {
+    await page.goto(WORK_LIST_PATH);
+    await page.getByTestId("create-work-item-trigger").click();
+    await shellRequest;
+    await page.getByRole("link", { name: "WLP-1", exact: true }).click();
+    await expect(page).toHaveURL(/\/agent\/work-items\/WLP-1/u);
+    releaseShell();
+    await shellFinished;
+    await page.evaluate(
+      () =>
+        new Promise<void>((resolve) =>
+          requestAnimationFrame(() => requestAnimationFrame(() => resolve())),
+        ),
+    );
+    await expect(page.getByRole("dialog")).toHaveCount(0);
+    await expect(page).toHaveURL(/\/agent\/work-items\/WLP-1/u);
+  } finally {
+    releaseShell();
   }
 });
 
