@@ -157,7 +157,13 @@
       "original_private_path": "/Users/heinthura/.codex/taskdesk-evidence/2026-10-06/p0-strict-cutover-prep/denial-contract-audit-08842235.md",
       "sha256": "244b8ef234f69aadb904b5ed7f69f92fd354998ce3e28e01d8dcf9f29670747e",
       "original_bytes_preserved": true
+    },
+    {
+      "file": "luna-ui-85d17a59.md",
+      "original_private_path": "/Users/heinthura/.codex/taskdesk-evidence/2026-10-06/bulk-integration/luna-ui-85d17a59.md",
+      "sha256": "08086ddc67c949cc00822f9e905fd519913d3f97e5fa875485217a7bee913b6c",
+      "original_bytes_preserved": true
     }
   ],
-  "latest_copy_utc": "2026-10-06T15:18:27.472052+00:00"
+  "latest_copy_utc": "2026-10-06T15:39:05.483447+00:00"
 }
