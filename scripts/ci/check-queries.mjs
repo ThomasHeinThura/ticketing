@@ -415,7 +415,7 @@ function projectStaticValue(base, path, origin) {
   return value;
 }
 
-function reflectApplyTarget(call, bindings) {
+function forwardedInvocationArguments(call, bindings) {
   const scope = bindings.nodeScopes.get(call) ?? bindings.rootScope;
   const callee = unwrap(call.callee);
   const direct = resolveStaticValue(
@@ -424,7 +424,7 @@ function reflectApplyTarget(call, bindings) {
     bindings,
   );
   if (direct?.kind === "reflectApply") {
-    return [...direct.boundArgs, ...call.arguments][0] ?? null;
+    return [...direct.boundArgs, ...call.arguments];
   }
 
   if (!memberTypes.has(callee?.type)) return null;
@@ -438,11 +438,39 @@ function reflectApplyTarget(call, bindings) {
   if (target?.kind !== "reflectApply") return null;
 
   if (forwarder === "call") {
-    return [...target.boundArgs, ...call.arguments.slice(1)][0] ?? null;
+    return [...target.boundArgs, ...call.arguments.slice(1)];
   }
   const forwarded = unwrap(call.arguments[1]);
   if (forwarded?.type !== "ArrayExpression") return null;
-  return [...target.boundArgs, ...forwarded.elements][0] ?? null;
+  return [...target.boundArgs, ...forwarded.elements];
+}
+
+function resolveInvokedQueryRead(call, bindings, seen = new Set(), depth = 0) {
+  if (depth >= 32 || seen.has(call)) return null;
+  const nextSeen = new Set(seen);
+  nextSeen.add(call);
+
+  const args = forwardedInvocationArguments(call, bindings);
+  if (!args) return null;
+  const scope = bindings.nodeScopes.get(call) ?? bindings.rootScope;
+  const targetNode = args[0];
+  if (!targetNode) return null;
+  const target = resolveStaticValue(
+    targetNode,
+    bindings.nodeScopes.get(targetNode) ?? scope,
+    bindings,
+  );
+  if (target?.kind === "queryRead") return target;
+  if (target?.kind !== "reflectApply") return null;
+
+  const forwardedArgs = unwrap(args[2]);
+  if (forwardedArgs?.type !== "ArrayExpression") return null;
+  const nestedCall = {
+    type: "CallExpression",
+    callee: targetNode,
+    arguments: forwardedArgs.elements,
+  };
+  return resolveInvokedQueryRead(nestedCall, bindings, nextSeen, depth + 1);
 }
 
 export function queryReadViolations(source, file) {
@@ -465,16 +493,9 @@ export function queryReadViolations(source, file) {
   visit(ast, (node) => {
     if (!callTypes.has(node.type)) return;
     const callee = unwrap(node.callee);
-    const appliedTarget = reflectApplyTarget(node, bindings);
-    if (appliedTarget) {
-      const target = resolveStaticValue(
-        appliedTarget,
-        bindings.nodeScopes.get(appliedTarget) ?? bindings.rootScope,
-        bindings,
-      );
-      if (target?.kind === "queryRead") {
-        add(target.method, target.origin?.start ?? appliedTarget.start);
-      }
+    const appliedRead = resolveInvokedQueryRead(node, bindings);
+    if (appliedRead) {
+      add(appliedRead.method, appliedRead.origin?.start ?? node.start);
     }
     if (memberTypes.has(callee?.type)) {
       const name = propertyName(callee);

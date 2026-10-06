@@ -136,6 +136,14 @@ test("check:queries resolves global Reflect.apply bindings and forwarded targets
     "Reflect.apply.bind(Reflect, db.select, db, [])()",
     "const apply = Reflect.apply.bind(Reflect); apply(db.select, db, [])",
     "const { apply } = Reflect; apply.call(Reflect, db.select, db, [])",
+    "Reflect.apply(Reflect.apply, Reflect, [db.select, db, []])",
+    "const r = Reflect.apply.bind(Reflect, db.select); Reflect.apply(r, null, [db, []])",
+    "Reflect.apply(Reflect.apply, Reflect, [Reflect.apply, Reflect, [db.select, db, []]])",
+    "Reflect.apply.call(Reflect, Reflect.apply, Reflect, [db.select, db, []])",
+    "Reflect.apply.apply(Reflect, [Reflect.apply, Reflect, [db.select, db, []]])",
+    "Reflect.apply.bind(Reflect, Reflect.apply, Reflect, [db.select, db, []])()",
+    "const nested = Reflect.apply.bind(Reflect, Reflect.apply); nested(Reflect, [db.select, db, []])",
+    "const first = Reflect.apply.bind(Reflect, db.select); const second = Reflect.apply.bind(Reflect, first); second(null, [db, []])",
   ];
 
   for (const source of cases) {
@@ -162,8 +170,15 @@ test("check:queries leaves shadowed and unrelated Reflect.apply-shaped calls alo
     "function f(globalThis) { globalThis.Reflect.apply(db.select, db, []); }",
     "const apply = Reflect.apply; { const apply = custom; apply(db.select, db, []); }",
     "const apply = Reflect.apply; let changed = apply; changed = custom; changed(db.select, db, []);",
+    "let R = Reflect; R = customNamespace; R.apply(db.select, db, []);",
+    "const first = second; const second = first; Reflect.apply(first, db, []);",
     "Reflect.apply(dynamicTarget, db, []);",
     "Reflect.apply.bind(Reflect, dynamicTarget, db, [])();",
+    "Reflect.apply(Reflect.apply, Reflect, dynamicArguments)",
+    "Reflect.apply(Reflect.apply.bind(Reflect, db.select), null, dynamicArguments)",
+    "const r = Reflect.apply.bind(Reflect, custom); Reflect.apply(r, null, [db, []])",
+    "const Reflect = custom; Reflect.apply(Reflect.apply, Reflect, [db.select, db, []])",
+    "const r = Reflect.apply; function f(r) { Reflect.apply(r, null, [db.select, db, []]); }",
   ];
 
   for (const source of cases) {
