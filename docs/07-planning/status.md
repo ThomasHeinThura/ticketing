@@ -1,5 +1,55 @@
 ## Status First
 
+Snapshot: 2026-10-06 22:08 UTC (7 October in Yangon). Accepted main remains3096cb04; DEV remains08842235 with shadow on and enforcement off. No merge, DEV refresh, strict activation or phase completion.
+
+| Phase | Implementation | Integration | Acceptance / operational closure |
+| --- | --- | --- | --- |
+| P0 | Frozen53269374; source reviews clear; exact imagef44 built and isolated runtime UID/GID10001 verified | Sole closure#583; private operational report-contract bundle independently clear | Hosted native137/1659, E2E27, G4/G8 pass; hostedG1119/22 red; runtime/strict/rollback/finalizer open |
+| P1 | Complete CSV export and authenticated key scope bridge2d438767 | Isolated saved-view/export lane;0118 provisional | CSV7, adapter9, native9 and mock-browser1 pass; bulk review found strict identity adapter false denial |
+| P2 | Reviewed complete withdrawal source d5b2842e; notes-only c89c11c0 | Isolated mature checkpoint | Lifecycle/domain79 and source reviews clear; integration/real-browser acceptance open |
+| P3 | Mapping0796bb30 with after-commit invalidation | Cache contract audit complete | Provider and integrated acceptance open |
+| P4 | Complete expired-reservation cleanup and acquisition-race batch586e8f0e | No new migration, dependency, job key or provider activation | APIunit103 files/720 tests, native2/34, types/query ownership pass; all three ordinary panels clear; fresh Sol underway |
+
+### What changed
+
+Current frozenP0 unchanged built app passes one controlled local canonical G11 acquisition22/22. Nine retained initial hosted asset hashes match. This macOS/ARM measurement is diagnostic, not hosted acceptance; failed hosted19/22 remains current. No defensible source correction was identified, no speculative#590 cherry-pick or performance retry occurred. The optional profiler's event bound failed; no consolidated profile or profiler expansion is claimed. Owned4181 listener and temporary files were removed; unrelated4178 remains untouched.
+
+The immutable final-532-g11-report-contract-20261007 operational bundle clears fresh strong Luna and full independent Sol review on manifest833c32f24c6b021b38b612a89d54739e59d8fe87884864c04b255e8cf635a065. Offline74/74 passes. The missing-selected-file behavior was independently probed by Sol, not covered by the74-test suite despite inaccurate manifest coverage wording. Original blocked predecessors remain intact. Exact imagef44 runs UID/GID10001 in an isolated network-none/read-only id probe; this is not service boot, health, installer or migration proof.
+
+P1's complete export now has real reached-row/current-project filtering and meaningful key scope positive/negative coverage, native9/9 plus adapter9/9. A real work-list browser test passes against mocked API responses, including request state, CSV filename/content and403 toast; no live API browser claim. Bulk panel A found that centralized strict-policy identity construction still drops key scope before the handler. Panel B's default/off-mode native evidence cannot prove strict acceptance. One structural remediation batch waits for panel C's remaining findings. P4's complete cleanup/concurrency batch has passed author API720/native34 and panel B's independent native34 acquisition.
+
+### What is being worked on now
+
+#583: private execution-precondition and receipt preparation for disposable off/shadow proof; no enforcement activation or assertion that required CI is green. The one fresh hosted confirmation decision is pending under Thomas's explicit no-extra-retry directive. All bulk panels have completed. P1's shared authenticated identity adapter repair and mode-parity coverage are authorized as one batch. Panel C's second assertion that the existing native fixture fails is not reproduced: the existing API-key request is unfiltered and really passed. Add missing project-filter coverage without widening export into project-read authority. P4's three ordinary reviews clear; fresh full Sol review is underway. The CI-window receipt reserves resources; it is not a required-CI-green assertion.
+
+### Critical path
+
+1. Resolve the pending one-hosted-confirmation decision and current G11 red without changing budgets, workload or retry policy.
+2. Complete exact-source image/service/auth/installer and required CI proof.
+3. Acquire off/shadow/key/session/strict compatibility evidence and independently adjudicate the actual October4/5/6 records.
+4. Resolve public-config substitution and execute eligible reviewed DEV/UAT strict cutover/rollback, task last.
+5. Protected merge, fresh independent Sol phase finalizer on accepted main, and P0 issue reconciliation.
+
+### Misalignment / drift
+
+#583 sole P0 closure;#589 sole post-P0 train;#581 superseded without merge;#587 diagnostic only. Current hosted19/22 replaces the pasted report's historical17/22; local22/22 and earlier hosted22/22 never replace the red current gate. Later feature heads are pushed branch checkpoints, not the older PR heads or accepted main. Migration0088–0117 and saved-view0118 remain provisional; no0119 allocated. Query ownership passes in currentP4, so the old352-read count is not its current backlog.
+
+### Concerns
+
+Runner source review does not supply runtime proof. Worker/browser variance is supported but not established as the exclusive performance cause. P1 strict key denial needs the shared identity invariant corrected and real mode-parity coverage. The bulk source freeze is now released for one complete remediation batch. Mock-browser evidence and absent provider acceptance remain explicit limitations.
+
+### Decisions needed from Thomas
+
+Previously asked public-config evidence substitution remains unanswered. One unchanged-source hosted confirmation is asked once because the latest directive forbids extra retries; no rerun occurs without an actual reply. P1 current-team lead plus saved_view:create behavior remains a separate pending decision, not a P0 prerequisite. UI tool delivery acknowledgement is not approval.
+
+### Next merge candidates
+
+#583 after every required actual gate. Then mature P1–P4 slices enter the canonical post-P0 base in dependency order with centralized migration allocation and bulk integrated acceptance. No dates promised.
+
+---
+
+## Status First
+
 Snapshot: 2026-10-06 21:35 UTC (7 October in Yangon). Accepted main3096cb04; reviewed DEV08842235 remains shadow-on/enforcement-off. No merge, DEV refresh, strict activation or phase completion occurred.
 
 | Phase | Implementation | Integration | Acceptance / operational closure |
