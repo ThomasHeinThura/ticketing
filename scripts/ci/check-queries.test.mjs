@@ -108,14 +108,14 @@ test("check:queries detects receiver and simple method aliases", () => {
     ]),
     [
       [2, "findFirst"],
-      [4, "select"],
-      [6, "select"],
-      [8, "findMany"],
+      [3, "select"],
+      [5, "select"],
+      [7, "findMany"],
     ],
   );
 });
 
-test("check:queries resolves global Reflect.apply bindings and forwarded targets", () => {
+test("check:queries captures known Drizzle method references independent of invocation", () => {
   const cases = [
     "Reflect.apply(db.select, db, [])",
     'Reflect.apply(db["select"], db, [])',
@@ -144,41 +144,50 @@ test("check:queries resolves global Reflect.apply bindings and forwarded targets
     "Reflect.apply.bind(Reflect, Reflect.apply, Reflect, [db.select, db, []])()",
     "const nested = Reflect.apply.bind(Reflect, Reflect.apply); nested(Reflect, [db.select, db, []])",
     "const first = Reflect.apply.bind(Reflect, db.select); const second = Reflect.apply.bind(Reflect, first); second(null, [db, []])",
+    "Reflect.apply(Reflect.apply.call, Reflect.apply, [Reflect, db.select, db, []])",
+    "Reflect.apply(Reflect.apply.apply, Reflect.apply, [Reflect, [db.select, db, []]])",
+    "const f = Reflect.apply.bind(Reflect, db.select); Reflect.apply(f.call, f, [null, db, []])",
+    "const deferred = db.query.person.findMany; publish(deferred)",
+    "const read = db.select; Reflect.apply(read, db, [])",
+    'import db from "./database"; db.transaction((tx) => tx.select());',
+    "function read(tx: Transaction) { return tx.query.person.findMany; }",
+    'import db from "./database"; db.transaction(({ select: read }) => read);',
+    'import db from "./database"; const transact = db.transaction; transact((tx) => tx.select());',
+    'import db from "./database"; const { transaction } = db; transaction((tx) => tx.query.person.findFirst);',
   ];
 
   for (const source of cases) {
+    const method = source.includes("findFirst")
+      ? "findFirst"
+      : source.includes("findMany")
+        ? "findMany"
+        : "select";
     assert.deepEqual(
       queryReadViolations(`${source};`, "example.ts").map(
         ({ method }) => method,
       ),
-      ["select"],
+      [method],
       source,
     );
   }
-
-  const runtime = { select: () => "selected" };
-  assert.equal(Reflect.apply(runtime.select, runtime, []), "selected");
 });
 
-test("check:queries leaves shadowed and unrelated Reflect.apply-shaped calls alone", () => {
+test("check:queries ignores unrelated objects, shadowed database names, and type-only references", () => {
   const cases = [
-    "function f(Reflect) { Reflect.apply(db.select, db, []); }",
-    "const Reflect = localNamespace; Reflect.apply(db.select, db, []);",
-    "const R = customNamespace; R.apply(db.select, db, []);",
-    "const { [dynamicName]: R } = Reflect; R.apply(db.select, db, []);",
-    "const apply = customFunction.apply; apply(db.select, db, []);",
-    "function f(globalThis) { globalThis.Reflect.apply(db.select, db, []); }",
-    "const apply = Reflect.apply; { const apply = custom; apply(db.select, db, []); }",
-    "const apply = Reflect.apply; let changed = apply; changed = custom; changed(db.select, db, []);",
-    "let R = Reflect; R = customNamespace; R.apply(db.select, db, []);",
-    "const first = second; const second = first; Reflect.apply(first, db, []);",
-    "Reflect.apply(dynamicTarget, db, []);",
-    "Reflect.apply.bind(Reflect, dynamicTarget, db, [])();",
-    "Reflect.apply(Reflect.apply, Reflect, dynamicArguments)",
-    "Reflect.apply(Reflect.apply.bind(Reflect, db.select), null, dynamicArguments)",
-    "const r = Reflect.apply.bind(Reflect, custom); Reflect.apply(r, null, [db, []])",
-    "const Reflect = custom; Reflect.apply(Reflect.apply, Reflect, [db.select, db, []])",
-    "const r = Reflect.apply; function f(r) { Reflect.apply(r, null, [db.select, db, []]); }",
+    "const client = customObject; client.select();",
+    "const client = customObject; client.query.person.findMany();",
+    "const client = customObject; client.transaction((tx) => tx.select());",
+    "function f(db) { db.select(); }",
+    "function f(tx: CustomerRecord) { tx.query.person.findFirst(); }",
+    "function f(tx: CustomerRecord<DbTransaction>) { tx.query.person.findFirst(); }",
+    "const db = customObject; db.select();",
+    "const { select: read } = customObject; read();",
+    "const Reflect = localNamespace; Reflect.apply(client.select, client, []);",
+    "const R = customNamespace; R.apply(client.select, client, []);",
+    "function f(globalThis) { globalThis.Reflect.apply(client.select, client, []); }",
+    "Reflect.apply(dynamicTarget, client, []);",
+    "type Select = typeof db.select;",
+    "type Find = typeof db.query.person.findMany;",
   ];
 
   for (const source of cases) {
@@ -300,7 +309,7 @@ test("check:queries parses dotted, computed, escaped, and forwarded references u
   assert.equal(runtime[`select`].bind(runtime).apply(runtime, []), "selected");
 });
 
-test("check:queries carries optional-chain state through reads, forwarding, and aliases", () => {
+test("check:queries captures references across optional access and aliases", () => {
   const properties = [
     ".select",
     '["select"]',
@@ -398,7 +407,7 @@ test("check:queries carries optional-chain state through reads, forwarding, and 
   );
 });
 
-test("check:queries follows bound-call forwarding across optional and static-template forms", () => {
+test("check:queries captures references with call, apply, and bind wrappers", () => {
   const cases = [
     "db.select.bind(db).call(db)",
     "db.select.bind(db).apply(db, [])",
@@ -446,7 +455,7 @@ test("check:queries follows bound-call forwarding across optional and static-tem
   assert.equal(read(), "selected");
 });
 
-test("check:queries covers the bound-forwarder optionality cross-product", () => {
+test("check:queries covers the optional method-reference cross-product", () => {
   const properties = [
     ".select",
     '["select"]',

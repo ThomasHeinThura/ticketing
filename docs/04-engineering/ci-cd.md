@@ -97,11 +97,16 @@ its source-binding limit are recorded in the
 └──────────────────────────────────────────────────┘
 ```
 
-`check:queries` enforces repository ownership for Drizzle `select`, `selectDistinct`,
-`selectDistinctOn`, and relational `findFirst`/`findMany` calls, including their `OrThrow`
-variants. It recognizes optional calls, static computed properties, and simple local method
-aliases. Raw SQL sent through `execute()` or a database driver's `query()` is outside this
-gate's scope; the checker does not claim to enforce ownership for those calls.
+`check:queries` enforces repository ownership for runtime references to Drizzle `select`,
+`selectDistinct`, `selectDistinctOn`, and relational `findFirst`/`findMany` methods, including
+their `OrThrow` variants. Ownership is attached to the known database/query/transaction
+method lookup itself, whether it is invoked there, stored in an alias, destructured, or passed
+to a forwarder such as `Reflect.apply`, `.call`, `.apply`, or `.bind`. The checker resolves
+statically known database bindings, lexical aliases, transaction callbacks and database
+transaction types. It recognizes static computed method names and ignores unrelated receivers,
+shadowed bindings and type-only references. Dynamic computed method names are outside this
+bounded gate. Raw SQL sent through `execute()` or a database driver's `query()` is also outside
+the gate's scope; the checker does not claim to enforce ownership for those calls.
 
 The Build job runs `pnpm build`, `pnpm check:bundle-purity` and `pnpm check:bundle-size`.
 The purity gate walks static and dynamic chunks from the portal entry using bundler-emitted

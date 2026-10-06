@@ -52,81 +52,29 @@ function staticStringValue(input) {
   return null;
 }
 
-function isMember(node, name) {
-  return memberTypes.has(node?.type) && propertyName(node) === name;
+function isDatabaseModule(source) {
+  return typeof source === "string" && /(?:^|\/)database(?:\/|$)/u.test(source);
 }
 
-function referenceMethod(input, aliases) {
-  const node = unwrap(input);
-  if (memberTypes.has(node?.type)) {
-    const name = propertyName(node);
-    if (readMethods.has(name)) return name;
-    return null;
+function hasDatabaseTypeAnnotation(input) {
+  const node = unwrap(
+    input?.type === "TSTypeAnnotation" ? input.typeAnnotation : input,
+  );
+  if (!node) return false;
+  if (node.type === "TSUnionType" || node.type === "TSIntersectionType") {
+    return node.types.some(hasDatabaseTypeAnnotation);
   }
-  if (node?.type === "Identifier") return aliases.get(node.name) ?? null;
-  return null;
-}
-
-function callableReferenceMethod(input, aliases) {
-  const node = unwrap(input);
-  if (memberTypes.has(node?.type)) {
-    const name = propertyName(node);
-    return readMethods.has(name) ? name : null;
-  }
-  if (node?.type === "Identifier") return aliases.get(node.name) ?? null;
-  if (callTypes.has(node?.type) && isMember(unwrap(node.callee), "bind")) {
-    return callableReferenceMethod(unwrap(node.callee).object, aliases);
-  }
-  return null;
-}
-
-function boundReferenceMethod(input, aliases) {
-  const node = unwrap(input);
-  if (callTypes.has(node?.type) && isMember(unwrap(node.callee), "bind")) {
-    return callableReferenceMethod(unwrap(node.callee).object, aliases);
-  }
-  return referenceMethod(node, aliases);
-}
-
-function destructuredBindings(input, aliases) {
-  const pattern = unwrap(input);
-  if (pattern?.type !== "ObjectPattern") return false;
-  let changed = false;
-  for (const item of pattern.properties) {
-    if (item.type !== "ObjectProperty") continue;
-    const name = item.computed ? staticStringValue(item.key) : item.key?.name;
-    const target = unwrap(item.value);
-    if (readMethods.has(name) && target?.type === "Identifier") {
-      aliases.set(target.name, name);
-      changed = true;
-    }
-  }
-  return changed;
-}
-
-function collectAliases(ast) {
-  const aliases = new Map();
-  const declarations = [];
-  visit(ast, (node) => {
-    if (node.type === "VariableDeclarator") declarations.push(node);
-  });
-  for (let pass = 0; pass <= declarations.length; pass += 1) {
-    let changed = false;
-    for (const declaration of declarations) {
-      const pattern = unwrap(declaration.id);
-      if (pattern?.type === "Identifier") {
-        const method = boundReferenceMethod(declaration.init, aliases);
-        if (method && aliases.get(pattern.name) !== method) {
-          aliases.set(pattern.name, method);
-          changed = true;
-        }
-      } else if (destructuredBindings(pattern, aliases)) {
-        changed = true;
-      }
-    }
-    if (!changed) break;
-  }
-  return aliases;
+  if (node.type === "TSParenthesizedType")
+    return hasDatabaseTypeAnnotation(node.typeAnnotation);
+  if (node.type !== "TSTypeReference") return false;
+  const typeName = unwrap(node.typeName);
+  if (typeName?.type !== "Identifier") return false;
+  return (
+    typeName.name === "DatabaseInstance" ||
+    typeName.name === "DbOrTx" ||
+    typeName.name === "DbTransaction" ||
+    typeName.name.endsWith("Transaction")
+  );
 }
 
 function visit(value, callback) {
@@ -245,7 +193,10 @@ function collectStaticBindings(ast) {
       }
       nodeScopes.set(node, functionScope);
       for (const parameter of node.params ?? []) {
-        addPattern(functionScope, parameter, { kind: "parameter" });
+        addPattern(functionScope, parameter, {
+          kind: "parameter",
+          database: hasDatabaseTypeAnnotation(parameter.typeAnnotation),
+        });
         walk(parameter, functionScope);
       }
       if (node.body) walk(node.body, functionScope);
@@ -292,7 +243,13 @@ function collectStaticBindings(ast) {
       }
     } else if (node.type === "ImportDeclaration") {
       for (const specifier of node.specifiers) {
-        addBinding(activeScope, specifier.local.name, { kind: "declaration" });
+        addBinding(activeScope, specifier.local.name, {
+          kind: "import",
+          database:
+            node.importKind !== "type" &&
+            specifier.importKind !== "type" &&
+            isDatabaseModule(node.source?.value),
+        });
       }
     }
 
@@ -304,7 +261,37 @@ function collectStaticBindings(ast) {
   }
 
   walk(ast, rootScope);
-  return { nodeScopes, rootScope };
+  const bindings = { nodeScopes, rootScope };
+  visit(ast, (node) => {
+    if (!callTypes.has(node.type)) return;
+    const callee = unwrap(node.callee);
+    const transactionCall = resolveStaticValue(
+      callee,
+      nodeScopes.get(callee) ?? rootScope,
+      bindings,
+    );
+    if (transactionCall?.kind !== "transactionMethod") return;
+    const callback = unwrap(node.arguments?.[0]);
+    if (
+      !["FunctionExpression", "ArrowFunctionExpression"].includes(
+        callback?.type,
+      )
+    ) {
+      return;
+    }
+    const callbackScope = nodeScopes.get(callback);
+    for (const parameter of callback.params ?? []) {
+      const identifiers = [];
+      visit(parameter, (candidate) => {
+        if (candidate.type === "Identifier") identifiers.push(candidate);
+      });
+      for (const identifier of identifiers) {
+        const binding = callbackScope?.bindings.get(identifier.name);
+        if (binding) binding.database = true;
+      }
+    }
+  });
+  return bindings;
 }
 
 function resolveStaticValue(input, scope, bindings, seen = new Set()) {
@@ -324,10 +311,16 @@ function resolveStaticValue(input, scope, bindings, seen = new Set()) {
       currentScope = currentScope.parent;
     }
     if (!binding) {
-      if (node.name === "Reflect") return { kind: "reflect", origin: node };
-      if (node.name === "globalThis")
-        return { kind: "globalThis", origin: node };
+      if (["db", "tx", "dbOrTx"].includes(node.name)) {
+        return { kind: "database", path: [] };
+      }
       return null;
+    }
+    if (binding.database) {
+      const database = { kind: "database", path: [] };
+      return binding.path
+        ? projectStaticValue(database, binding.path, node)
+        : database;
     }
     if (
       binding.kind !== "const" ||
@@ -363,36 +356,28 @@ function resolveStaticValue(input, scope, bindings, seen = new Set()) {
       bindings,
       seen,
     );
-    if (object?.kind === "globalThis" && name === "Reflect") {
-      return { kind: "reflect", origin: node.property };
-    }
-    if (object?.kind === "reflect" && name === "apply") {
-      return { kind: "reflectApply", boundArgs: [], origin: node.property };
-    }
-    if (object?.kind === "reflect" || object?.kind === "globalThis")
-      return null;
-    if (readMethods.has(name))
+    if (object?.kind === "database" && readMethods.has(name)) {
       return { kind: "queryRead", method: name, origin: node.property };
+    }
+    if (object?.kind === "database") {
+      if (name === "transaction") return { kind: "transactionMethod" };
+      return {
+        kind: "database",
+        path: name === null ? null : [...(object.path ?? []), name],
+      };
+    }
     return null;
   }
 
   if (callTypes.has(node.type)) {
     const callee = unwrap(node.callee);
-    if (memberTypes.has(callee?.type) && propertyName(callee) === "bind") {
-      const target = resolveStaticValue(
+    if (memberTypes.has(callee?.type) && propertyName(callee) === "bind")
+      return resolveStaticValue(
         callee.object,
         bindings.nodeScopes.get(callee.object) ?? scope,
         bindings,
         seen,
       );
-      if (target?.kind === "queryRead") return target;
-      if (target?.kind === "reflectApply") {
-        return {
-          ...target,
-          boundArgs: [...target.boundArgs, ...node.arguments.slice(1)],
-        };
-      }
-    }
   }
 
   return null;
@@ -402,75 +387,20 @@ function projectStaticValue(base, path, origin) {
   if (!path?.length) return null;
   let value = base;
   for (const name of path) {
-    if (value?.kind === "globalThis" && name === "Reflect") {
-      value = { kind: "reflect", origin };
-    } else if (value?.kind === "reflect" && name === "apply") {
-      value = { kind: "reflectApply", boundArgs: [], origin };
-    } else if (!value && readMethods.has(name)) {
+    if (value?.kind === "database" && readMethods.has(name)) {
       value = { kind: "queryRead", method: name, origin };
+    } else if (value?.kind === "database" && name === "transaction") {
+      value = { kind: "transactionMethod" };
+    } else if (value?.kind === "database") {
+      value = {
+        kind: "database",
+        path: [...(value.path ?? []), name],
+      };
     } else {
       return null;
     }
   }
   return value;
-}
-
-function forwardedInvocationArguments(call, bindings) {
-  const scope = bindings.nodeScopes.get(call) ?? bindings.rootScope;
-  const callee = unwrap(call.callee);
-  const direct = resolveStaticValue(
-    callee,
-    bindings.nodeScopes.get(callee) ?? scope,
-    bindings,
-  );
-  if (direct?.kind === "reflectApply") {
-    return [...direct.boundArgs, ...call.arguments];
-  }
-
-  if (!memberTypes.has(callee?.type)) return null;
-  const forwarder = propertyName(callee);
-  if (!["call", "apply"].includes(forwarder)) return null;
-  const target = resolveStaticValue(
-    callee.object,
-    bindings.nodeScopes.get(callee.object) ?? scope,
-    bindings,
-  );
-  if (target?.kind !== "reflectApply") return null;
-
-  if (forwarder === "call") {
-    return [...target.boundArgs, ...call.arguments.slice(1)];
-  }
-  const forwarded = unwrap(call.arguments[1]);
-  if (forwarded?.type !== "ArrayExpression") return null;
-  return [...target.boundArgs, ...forwarded.elements];
-}
-
-function resolveInvokedQueryRead(call, bindings, seen = new Set(), depth = 0) {
-  if (depth >= 32 || seen.has(call)) return null;
-  const nextSeen = new Set(seen);
-  nextSeen.add(call);
-
-  const args = forwardedInvocationArguments(call, bindings);
-  if (!args) return null;
-  const scope = bindings.nodeScopes.get(call) ?? bindings.rootScope;
-  const targetNode = args[0];
-  if (!targetNode) return null;
-  const target = resolveStaticValue(
-    targetNode,
-    bindings.nodeScopes.get(targetNode) ?? scope,
-    bindings,
-  );
-  if (target?.kind === "queryRead") return target;
-  if (target?.kind !== "reflectApply") return null;
-
-  const forwardedArgs = unwrap(args[2]);
-  if (forwardedArgs?.type !== "ArrayExpression") return null;
-  const nestedCall = {
-    type: "CallExpression",
-    callee: targetNode,
-    arguments: forwardedArgs.elements,
-  };
-  return resolveInvokedQueryRead(nestedCall, bindings, nextSeen, depth + 1);
 }
 
 export function queryReadViolations(source, file) {
@@ -487,37 +417,30 @@ export function queryReadViolations(source, file) {
     return [{ file, line, method: "parse error" }];
   }
 
-  const aliases = collectAliases(ast);
   const bindings = collectStaticBindings(ast);
   const byOffset = new Map();
+  // Enforce ownership at the database method lookup. That static reference remains
+  // visible when a caller stores, extracts, or forwards it through arbitrary wrappers,
+  // so this gate intentionally does not model JavaScript invocation semantics.
   visit(ast, (node) => {
-    if (!callTypes.has(node.type)) return;
-    const callee = unwrap(node.callee);
-    const appliedRead = resolveInvokedQueryRead(node, bindings);
-    if (appliedRead) {
-      add(appliedRead.method, appliedRead.origin?.start ?? node.start);
-    }
-    if (memberTypes.has(callee?.type)) {
-      const name = propertyName(callee);
-      if (readMethods.has(name)) {
-        add(name, callee.property.start);
-        return;
+    const scope = bindings.nodeScopes.get(node) ?? bindings.rootScope;
+    if (memberTypes.has(node.type)) {
+      const value = resolveStaticValue(node, scope, bindings);
+      if (value?.kind === "queryRead") {
+        add(value.method, value.origin?.start ?? node.property.start);
       }
-      if (["bind", "call", "apply"].includes(name)) {
-        if (name === "bind") return;
-        const method = callableReferenceMethod(callee.object, aliases);
-        if (method)
-          add(
-            method,
-            unwrap(callee.object).property?.start ?? callee.object.start,
-          );
-        return;
-      }
-    }
-    const method = boundReferenceMethod(callee, aliases);
-    if (method) {
-      const origin = originNode(callee, aliases);
-      add(method, origin?.start ?? callee.start);
+    } else if (node.type === "ObjectPattern") {
+      visit(node, (identifier) => {
+        if (identifier.type !== "Identifier") return;
+        const value = resolveStaticValue(
+          identifier,
+          bindings.nodeScopes.get(identifier) ?? scope,
+          bindings,
+        );
+        if (value?.kind === "queryRead") {
+          add(value.method, value.origin?.start ?? identifier.start);
+        }
+      });
     }
   });
 
@@ -533,16 +456,6 @@ export function queryReadViolations(source, file) {
     if (method && Number.isInteger(offset) && !byOffset.has(offset))
       byOffset.set(offset, method);
   }
-}
-
-function originNode(input, aliases) {
-  const node = unwrap(input);
-  if (callTypes.has(node?.type) && isMember(unwrap(node.callee), "bind"))
-    return originNode(unwrap(node.callee).object, aliases);
-  if (node?.type === "Identifier" && aliases.has(node.name)) return node;
-  if (memberTypes.has(node?.type) && readMethods.has(propertyName(node)))
-    return node.property;
-  return node;
 }
 
 export async function checkQueries(root = repoRoot) {
