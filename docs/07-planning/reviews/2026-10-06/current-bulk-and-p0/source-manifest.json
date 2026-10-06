@@ -79,7 +79,13 @@
       "original_private_path": "/Users/heinthura/.codex/taskdesk-evidence/2026-10-06/p0-native-profile-ordering/75d2c97b-sol-review.md",
       "sha256": "573ef78e059d0746c698733a772dde6a8787e92eca79af0ca50e107f70cfb4af",
       "original_bytes_preserved": true
+    },
+    {
+      "file": "full-operational-review-final61.md",
+      "original_private_path": "/Users/heinthura/.codex/taskdesk-evidence/2026-10-06/p0-strict-cutover-prep/full-operational-review-final61.md",
+      "sha256": "18947629cc6e6d54e27f735a48051da5957f47b7ffd3ec9a1ee9e7119d31d9b2",
+      "original_bytes_preserved": true
     }
   ],
-  "latest_copy_utc": "2026-10-06T13:53:51.579576+00:00"
+  "latest_copy_utc": "2026-10-06T14:15:36.555359+00:00"
 }
