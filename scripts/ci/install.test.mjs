@@ -223,6 +223,24 @@ async function writeExistingEnv(
   await writeFile(path.join(directory, ".env"), env, { mode: 0o600 });
 }
 
+async function failFirstEnvSelectionRename(f) {
+  const mvPath = path.join(f.bin, "mv");
+  await writeFile(
+    mvPath,
+    `#!/usr/bin/env bash
+set -euo pipefail
+destination="\${@: -1}"
+if [[ "$destination" == "$FAKE_INSTALL_DIR/.env" && ! -e "$FAKE_ENV_RENAME_FAILED" ]]; then
+  cp "$1" "$FAKE_IMAGE_SELECTION_CANDIDATE"
+  : > "$FAKE_ENV_RENAME_FAILED"
+  exit 91
+fi
+exec /bin/mv "$@"
+`,
+  );
+  await chmod(mvPath, 0o755);
+}
+
 test("installer verifies both release signatures, digest, paths, prompts, preserves .env, and delegates deployment", async (t) => {
   const f = await fixture(t);
   const first = run(f, ["--version", "1.2.3", "--dir", f.path, "--yes"]);
@@ -348,6 +366,52 @@ test("production repeat install resolves and verifies the selected tag, not a ro
     new RegExp(`ghcr.io/thomasheinthura/taskdesk@${selectedDigest}`),
   );
   assert.doesNotMatch(cosignLog, new RegExp(oldDigest));
+});
+
+test("release tag and rollback digest commit atomically and retry after rename interruption", async (t) => {
+  const f = await fixture(t, { realDeployment: true });
+  const oldDigest = `sha256:${"b".repeat(64)}`;
+  await writeExistingEnv(f.path, { tag: "v9.8.7", digest: oldDigest });
+  const envPath = path.join(f.path, ".env");
+  const originalEnv = await readFile(envPath, "utf8");
+  await failFirstEnvSelectionRename(f);
+
+  const installArgs = ["--version", "1.2.3", "--dir", f.path, "--yes"];
+  const injected = {
+    FAKE_DOCKER_FULL: "1",
+    FAKE_ASSUME_LOCAL_PROXY: "1",
+    FAKE_DOCKER_LOG: path.join(f.temp, "docker.log"),
+    FAKE_INSTALL_DIR: f.path,
+    FAKE_ENV_RENAME_FAILED: path.join(f.temp, "rename-failed"),
+    FAKE_IMAGE_SELECTION_CANDIDATE: path.join(
+      f.temp,
+      "selection-candidate.env",
+    ),
+  };
+  const interrupted = run(f, installArgs, injected);
+  assert.notEqual(interrupted.status, 0);
+  assert.equal(await readFile(envPath, "utf8"), originalEnv);
+
+  const candidateEnv = await readFile(
+    injected.FAKE_IMAGE_SELECTION_CANDIDATE,
+    "utf8",
+  );
+  const expectedCandidateEnv = originalEnv
+    .replace(/^TASKDESK_IMAGE_TAG=.*$/m, "TASKDESK_IMAGE_TAG=v1.2.3")
+    .replace(/^TASKDESK_IMAGE_DIGEST=.*$/m, "TASKDESK_IMAGE_DIGEST=");
+  assert.equal(candidateEnv, expectedCandidateEnv);
+  assert.match(candidateEnv, /^TASKDESK_IMAGE_TAG=v1\.2\.3$/m);
+  assert.match(candidateEnv, /^TASKDESK_IMAGE_DIGEST=$/m);
+  assert.match(candidateEnv, /^TASKDESK_AUTH_SECRET=test-auth-secret$/m);
+
+  const retried = run(f, installArgs, injected);
+  assert.equal(retried.status, 0, retried.stderr);
+  const envAfterRetry = await readFile(envPath, "utf8");
+  assert.match(envAfterRetry, /^TASKDESK_IMAGE_TAG=v1\.2\.3$/m);
+  assert.match(envAfterRetry, /^TASKDESK_IMAGE_DIGEST=$/m);
+  assert.match(envAfterRetry, /^TASKDESK_AUTH_SECRET=test-auth-secret$/m);
+  const dockerLog = await readFile(injected.FAKE_DOCKER_LOG, "utf8");
+  assert.doesNotMatch(dockerLog, new RegExp(oldDigest));
 });
 
 test("stable pointer is HTTPS-fetched and normalized to a validated versioned asset path", async (t) => {

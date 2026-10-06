@@ -253,12 +253,37 @@ set_env_value() {
   chmod 0600 "$temp"
   mv "$temp" "${INSTALL_DIR}/.env"
 }
+set_image_selection() {
+  local tag="$1" digest="$2" temp
+  [[ "$tag" != *$'\n'* && "$tag" != *$'\r'* ]] || die 'invalid value for TASKDESK_IMAGE_TAG'
+  [[ "$digest" != *$'\n'* && "$digest" != *$'\r'* ]] || die 'invalid value for TASKDESK_IMAGE_DIGEST'
+  temp="$(mktemp "${INSTALL_DIR}/.env.install.XXXXXX")"
+  awk -v tag="$tag" -v digest="$digest" '
+    BEGIN { tag_found=0; digest_found=0 }
+    index($0, "TASKDESK_IMAGE_TAG=")==1 {
+      if (!tag_found) { print "TASKDESK_IMAGE_TAG=" tag; tag_found=1 }
+      next
+    }
+    index($0, "TASKDESK_IMAGE_DIGEST=")==1 {
+      if (!digest_found) { print "TASKDESK_IMAGE_DIGEST=" digest; digest_found=1 }
+      next
+    }
+    { print }
+    END {
+      if (!tag_found) print "TASKDESK_IMAGE_TAG=" tag
+      if (!digest_found) print "TASKDESK_IMAGE_DIGEST=" digest
+    }
+  ' "${INSTALL_DIR}/.env" > "$temp"
+  chmod 0600 "$temp"
+  mv "$temp" "${INSTALL_DIR}/.env"
+}
 previous_image_tag="$(read_env_value TASKDESK_IMAGE_TAG)"
-set_env_value TASKDESK_IMAGE_TAG "$VERSION"
 # A new release selection supersedes any digest retained by a rollback.
+image_digest="$(read_env_value TASKDESK_IMAGE_DIGEST)"
 if [[ "$previous_image_tag" != "$VERSION" ]]; then
-  set_env_value TASKDESK_IMAGE_DIGEST ""
+  image_digest=''
 fi
+set_image_selection "$VERSION" "$image_digest"
 if ((DOMAIN_SET)) || ((EXISTING_ENV == 0)); then set_env_value DOMAIN "${DOMAIN:-localhost}"; fi
 if ((AGENT_HOST_SET || DOMAIN_SET || EXISTING_ENV == 0)); then
   set_env_value TASKDESK_AGENT_URL "https://${AGENT_HOST}"

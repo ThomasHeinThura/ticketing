@@ -108,7 +108,7 @@ install directory. There is no automatic fallback from a failed signature check.
 The source installer is small and reviewable. Its SHA-256 is:
 
 ```text
-e5f199b8e7aeccce2c8a1a0f91a1dab74add5278b45829bb51c239f00df3d867
+23e80455f83c7fcf9dc1e9bf24c21ea4a1ccb2862bdb191e19d36c0f78856057
 ```
 
 You can download and inspect the script before running it. The installer requests elevation
