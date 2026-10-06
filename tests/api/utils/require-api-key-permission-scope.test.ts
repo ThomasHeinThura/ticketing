@@ -2,11 +2,31 @@ import { describe, expect, it } from "vitest";
 import {
   apiKeyCapabilitySubset,
   apiKeyHasCapabilityScope,
+  apiKeyScopeFromStoredPermissions,
   apiKeyScopeSatisfies,
 } from "../../../apps/api/src/utils/require-api-key-permission-scope";
 
 describe("API-key permission scope intersection", () => {
   const required = { project: ["create"] };
+
+  it("parses persisted key scopes and fails closed on malformed values", () => {
+    expect(
+      apiKeyScopeFromStoredPermissions(
+        JSON.stringify({ work_item: ["read", "delete"] }),
+      ),
+    ).toEqual({ permissions: { work_item: ["read", "delete"] } });
+    expect(apiKeyScopeFromStoredPermissions(null)).toEqual({
+      permissions: null,
+    });
+    expect(apiKeyScopeFromStoredPermissions("not-json")).toEqual({
+      permissions: null,
+    });
+    expect(
+      apiKeyScopeFromStoredPermissions(JSON.stringify({ work_item: 1 })),
+    ).toEqual({
+      permissions: null,
+    });
+  });
 
   it("leaves session requests to the role evaluator", () => {
     expect(apiKeyScopeSatisfies(undefined, required)).toBe(true);

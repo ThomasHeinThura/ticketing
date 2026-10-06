@@ -173,9 +173,9 @@ jobs:
         run: pnpm check:dockerfile-deps
       - name: pnpm check:ui
         run: pnpm check:ui
-      - name: pnpm check:ui --raw-elements
+      - name: pnpm check:ui:raw-elements
         # G1a: parse all JSX in apps/web and reject raw native button/form/dialog elements.
-        run: pnpm check:ui --raw-elements
+        run: pnpm check:ui:raw-elements
       - name: pnpm check:inventory
         run: pnpm check:inventory
 

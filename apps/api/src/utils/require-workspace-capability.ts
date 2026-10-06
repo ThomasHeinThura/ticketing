@@ -23,7 +23,7 @@ import {
 } from "./workspace-member-roles";
 
 /** Anything `db` or `db.transaction`'s callback argument can run a `select` through. */
-type DbOrTx = Pick<typeof db, "select">;
+type DbOrTx = typeof db | Parameters<Parameters<typeof db.transaction>[0]>[0];
 
 function apiKeyHasCapability(
   apiKey: ApiKeyPermissionScope | undefined,
@@ -104,7 +104,9 @@ export function requireWorkspaceCapability(capability: Capability) {
         workspaceId,
         userId,
         capability,
-        c.get("apiKey") as ApiKeyPermissionScope | undefined,
+        capabilityCredential(
+          c.get("apiKey") as ApiKeyPermissionScope | undefined,
+        ),
       );
     } catch (error) {
       if (error instanceof HTTPException && error.status === 403) {
@@ -117,6 +119,17 @@ export function requireWorkspaceCapability(capability: Capability) {
 
     return next();
   };
+}
+
+export type CapabilityCredential =
+  | { kind: "session" }
+  | { kind: "api_key"; scope: ApiKeyPermissionScope };
+
+/** Make the authenticated credential explicit at every manual capability call site. */
+export function capabilityCredential(
+  apiKey: ApiKeyPermissionScope | undefined,
+): CapabilityCredential {
+  return apiKey ? { kind: "api_key", scope: apiKey } : { kind: "session" };
 }
 
 /**
@@ -157,9 +170,13 @@ export async function assertCallerHasCapability(
   workspaceId: string,
   userId: string,
   capability: Capability,
-  apiKey?: ApiKeyPermissionScope,
+  credential: CapabilityCredential,
+  executor: DbOrTx = db,
 ): Promise<void> {
-  if (!apiKeyHasCapability(apiKey, capability)) {
+  if (
+    credential.kind === "api_key" &&
+    !apiKeyHasCapability(credential.scope, capability)
+  ) {
     throw new HTTPException(403, { message: "Insufficient API key scope" });
   }
   // Fail-closed against duplicate `workspace_member` rows for this pair
@@ -170,7 +187,7 @@ export async function assertCallerHasCapability(
   // explicitly rather than relying on `.every()` alone -- `[].every(...)`
   // is vacuously `true` in JS, which would silently grant a non-member
   // every capability.
-  const roles = await workspaceMemberRoles(db, workspaceId, userId);
+  const roles = await workspaceMemberRoles(executor, workspaceId, userId);
 
   // ONE predicate, shared with `transferWorkspaceOwnership`'s own
   // in-transaction check, so the two cannot reduce the same rows
@@ -191,7 +208,12 @@ export async function assertCallerHasCapability(
   // makes that case unreachable once it lands.
   if (
     !isUnambiguousMembership(roles) ||
-    !(await builtInRoleHasCapability(workspaceId, roles[0], capability))
+    !(await builtInRoleHasCapability(
+      workspaceId,
+      roles[0],
+      capability,
+      executor,
+    ))
   ) {
     throw new HTTPException(403, { message: "Insufficient permissions" });
   }

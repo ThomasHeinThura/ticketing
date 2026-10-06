@@ -436,11 +436,17 @@ POST   /api/instance/deliveries/{id}/requeue                  instance:admin
 DELETE /api/instance/deliveries/{id}                          instance:admin
 ```
 
-The browser-session restriction on agent-side self writes is an AK-9 key-eligibility rule:
+The browser-session restriction on agent-side self writes is a key-eligibility rule:
 `self` limits the affected person but is not an API-key write capability. Reads remain
-self-scoped and follow the key's stored read-capability subset. See `webhooks-and-api-keys.md`
-AK-9 and the 2026-10-06 decision-log entry. Portal routes retain their separate customer
-session contract.
+self-scoped and follow the key's stored read-capability subset. The 2026-10-06 decision-log
+entry records this rule. Portal routes retain their separate customer session contract.
+
+Until a per-user resource has an explicitly registered API-key capability and scope, its
+self-only mutations require a browser session. This includes creating, marking and deleting
+in-app notifications, changing notification preferences or workspace rules, and uploading or
+deleting the caller's avatar. The `self` route policy continues to constrain whose row is
+touched; it does not grant a key mutation right. Reopening these writes requires a separate
+capability and policy decision, not an arbitrary stored permission string.
 
 The mark-unread route is a target route required by `NO-15`; it must use the same recipient
 and task-reach checks as mark-read. Project preference overrides use the same per-person

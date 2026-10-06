@@ -203,10 +203,16 @@ describe("strict policy runtime enforcement against the production API graph", (
     const { project } = await createProjectFixture({
       workspaceId: member.workspace.id,
     });
+    const projectRoleCapabilities = [
+      "work_item:create",
+      "work_item:read",
+      "work_item:assign",
+    ];
     const projectRole = await grantProjectReach(
       member.user.id,
       member.workspace.id,
       project.id,
+      projectRoleCapabilities,
     );
     const type = await createWorkItemType(member.workspace.id);
     await createDefaultState(member.workspace.id, project.id);
@@ -352,7 +358,9 @@ describe("strict policy runtime enforcement against the production API graph", (
 
     await db
       .update(schema.roleTable)
-      .set({ capabilities: [...projectRole.capabilities, "work_item:update"] })
+      .set({
+        capabilities: [...projectRoleCapabilities, "work_item:update"],
+      })
       .where(eq(schema.roleTable.id, projectRole.id));
     const allowedScopedSelfAssignment = await app.request(
       `/api/work-items/${key}/assign`,

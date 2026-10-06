@@ -18,6 +18,7 @@ import {
   assertCallerHasCapability,
   assertCallerHasCapabilityOrSelf,
   builtInRoleHasCapability,
+  capabilityCredential,
   requireWorkspaceCapability,
 } from "../utils/require-workspace-capability";
 import { validateWorkspaceAccess } from "../utils/validate-workspace-access";
@@ -930,7 +931,7 @@ const workItem = apiRouter<
         workspaceId,
         c.get("userId"),
         "work_item:set_priority",
-        c.get("apiKey"),
+        capabilityCredential(c.get("apiKey")),
       );
     }
 
@@ -1189,7 +1190,7 @@ const workItem = apiRouter<
       workspaceId,
       userId,
       operation === "delete" ? "work_item:delete" : "work_item:assign",
-      c.get("apiKey"),
+      capabilityCredential(c.get("apiKey")),
     );
 
     const { actorId, actorType } = resolveActor(

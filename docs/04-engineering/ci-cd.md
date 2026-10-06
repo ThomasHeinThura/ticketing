@@ -55,6 +55,8 @@ its source-binding limit are recorded in the
 │                      no Radix/Base UI import     │
 │                      outside packages/ui; Radix  │
 │                      only per KNOWN-RADIX.md     │
+│ pnpm check:ui:raw-elements G1a — no raw form     │
+│                      controls outside packages/ui│
 │ pnpm check:deps      no cycles, no boundary break│
 │ pnpm check:i18n      en-US complete              │
 │ pnpm audit           high/critical fails         │

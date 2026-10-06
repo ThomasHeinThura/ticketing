@@ -9,6 +9,32 @@ export type ApiKeyPermissionScope = {
   permissions?: Record<string, string[]> | null;
 };
 
+/** Parse the persisted better-auth permissions column without widening malformed data. */
+export function apiKeyScopeFromStoredPermissions(
+  raw: string | null,
+): ApiKeyPermissionScope {
+  if (raw === null) return { permissions: null };
+  try {
+    const value: unknown = JSON.parse(raw);
+    if (!value || typeof value !== "object" || Array.isArray(value)) {
+      return { permissions: null };
+    }
+    const permissions: Record<string, string[]> = {};
+    for (const [resource, actions] of Object.entries(value)) {
+      if (
+        !Array.isArray(actions) ||
+        actions.some((action) => typeof action !== "string")
+      ) {
+        return { permissions: null };
+      }
+      permissions[resource] = actions;
+    }
+    return { permissions };
+  } catch {
+    return { permissions: null };
+  }
+}
+
 /**
  * Convert only exact resource/action pairs already present in the canonical capability
  * registry. This keeps strict policy evaluation under the same RBAC ∩ stored-key-scope

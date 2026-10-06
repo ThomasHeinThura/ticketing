@@ -121,7 +121,10 @@ import {
   parseConfiguredOrigins,
   selectOriginFromContext,
 } from "./utils/request-origin";
-import { assertCallerHasCapability } from "./utils/require-workspace-capability";
+import {
+  assertCallerHasCapability,
+  capabilityCredential,
+} from "./utils/require-workspace-capability";
 import { seedDefaultWorkspaceRoles } from "./utils/seed-default-workspace-roles";
 import { seedInternalOrganisationAndStaffPersons } from "./utils/seed-internal-organisation";
 import { reachableWorkspacePredicate } from "./utils/workspace-access-middleware";
@@ -1161,7 +1164,7 @@ export function createApp(
           asset.workspaceId,
           c.get("userId"),
           "workspace:read",
-          c.get("apiKey"),
+          capabilityCredential(c.get("apiKey")),
         );
       } catch (error) {
         if (error instanceof HTTPException && error.status === 403) {

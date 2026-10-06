@@ -74,9 +74,9 @@ const manifest = [
       "same check also rejects Base UI imports outside packages/ui.",
   },
   {
-    gate: "pnpm check:ui --raw-elements",
+    gate: "pnpm check:ui:raw-elements",
     stage: "fast",
-    run: ["pnpm", "check:ui", "--raw-elements"],
+    run: ["pnpm", "check:ui:raw-elements"],
     note:
       "G1a parses JSX in apps/web and rejects raw button/input/select/textarea/dialog " +
       "elements outside packages/ui, with only a local reasoned ui-exempt comment.",
