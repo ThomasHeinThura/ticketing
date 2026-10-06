@@ -1,3 +1,56 @@
+## October 6 representative capture reconciled; parallel slices pushed — 2026-10-06
+
+Accepted main remains `3096cb044bdf6ae98488bfc385f532fa6386343a`; reviewed OrbStack DEV
+remains `e26db50e23b2d685c7277c63bc9ee71a8076fcee`. No new feature source is deployed.
+Actual October 6 traffic was captured at 01:53:15.538258–01:53:22.000250 UTC: 129 requests,
+44 tally rows / 127 occurrences, all 28 eligible sources observed (29 registered; the public
+pre-guard configuration route is separately source-proven), zero unexplained outcomes,
+zero uncovered eligible sources, complete event reconciliation, and all eight owned resources
+absent with zero cleanup errors. The one delegated WebSocket outcome remains explicitly
+attributed to its native protocol handler. This is representative source coverage, not a claim
+that every one of the 185 eligible registry routes was individually exercised.
+
+Retained October 4/5/6 records now form three actual partial UTC date buckets. Original
+acquisitions and failed records remain intact. Root deterministically replayed the October 6
+acquisition and matched its report. The retained EA behavior manifest has 684 paths: 683
+identical and one API-index documentation-comment-only change; scoped behavior is unchanged.
+The first October 6 attempt failed before traffic because its historical schema-80 baseline
+image was absent. A separately repaired private runner selected a newly rebuilt exact
+`b80ff7c3` source image by actual digest, validated its source/user, and preserved the 80-entry
+journal/prefix/hash checks. It does not claim the historical image digest was reproduced.
+The corrected attempt passed schema-80 to schema-88 migration/runtime/metrics proof and
+cleanup. Its private complete packet is under `2026-10-06/p0-observation-preflight/`.
+
+The fresh independent GPT-6 Sol operational review cleared the three-date observation for
+28 eligible sources and a staged proposal for 27 directly observed non-task sources. It blocks
+config/task activation pending an explicit DEV/UAT evidence exception: public `GET /api/config`
+returned 200 on each actual date but is structurally above the shadow logger. Its immutable
+public-policy/placement proof cannot silently substitute for the mandatory tally. A concrete
+narrow proposal is pending Thomas; the other sources keep their existing evidence requirements.
+Enforcement remains off. Read-only DEV queries found zero
+roles/API keys containing only the old task permission key; legacy keys were not removed.
+Actual reviewed cutover, runtime verification and a separate fresh Sol P0 phase finalizer
+remain before #8/P0 closure. Three partial captures do not establish full days, 72 hours,
+production readiness, protected acceptance or automatic cutover. The completed date-observation
+heartbeat is paused after reconciliation; no duplicate schedule is created.
+
+P1 structured search is pushed clean at `14742c648015dbc0961c15cdfa5d18cdddcad008`:
+SQL 3/3, query units 3/3, browser 3/3 including a real built-app/database journey, types/builds,
+permissions 14 files/88 tests and OpenAPI 226 operations pass. P2 project/calendar/CAL-9
+is pushed clean at `1dfeb82567fdeff59f9ea61fd9ff3cb281b4c4c5`: SQL 3 files/28 tests,
+11 browser journeys, types 9/9, permissions 14 files/88 tests, OpenAPI 229 operations and
+18 locales pass. Author results are not independent review, hosted acceptance or phase claims.
+Both P2 private databases were removed after exact ownership checks.
+
+Integration #581 remains draft; local composed source is now `66d468a1` after the complete
+P1 search and P2 calendar branches were merged normally into its isolated branch. The hosted
+PR remains on its older head until the full CI correction is composed. Whole CI correction continues for literal
+registered encryption-key reads, generated contract drift, God Mode visual/inventory coverage,
+actual browser defects and unchanged strict performance budgets. Earlier hosted failures remain
+open. P4 #580 bucket B resumes across seven modules on its separate branch; bucket A remains
+pushed/unaccepted. Full query-gate acceptance is still required at P4. P3 portal depends on its
+real catalogue/intake foundations; real Entra and outbox delivery are not claimed.
+
 ## Complete integration correction passes full PostgreSQL; parallel work continues — 2026-10-05
 
 Complete author1279f80e350bd66c60f74e9eb4050b7a93ac6f8f is composed asb49c441d.
@@ -297,6 +350,7 @@ cutover and the additional fresh independent Sol phase finalizer remain. Three d
 not prove72hours/full-day/all185route coverage or authorize enforcement by elapsed time.
 P4 full Users/PA15 recovery/localization correction continues on a separate branch;
 root composes its frozen implementation against accepted main before bulk review.
+
 
 ## Complete public-artifact scanner correction frozen — 2026-10-05 10:51 UTC
 
