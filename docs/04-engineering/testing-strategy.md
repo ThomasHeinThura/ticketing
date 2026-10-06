@@ -392,9 +392,11 @@ Mapped coordinates are numeric source/name indexes plus original line/column, al
 the map digest; artifacts never include source paths, `sourcesContent`, map names, full URLs,
 or function labels. Numeric map indexes let an offline reader resolve module/function names only
 against the exact map digest. These fields identify candidate call paths for source inspection;
-they do not establish causal savings or alter canonical G11 timing/budgets. CPU samples remain
-clipped from each V8 trace chunk's timestamp/deltas to the calibrated CDP trace-clock recorder
-span, and coverage explicitly reports uncovered prefixes/suffixes rather than filling gaps.
+they do not establish causal savings or alter canonical G11 timing/budgets. CPU sample intervals
+start at the initial V8 `Profile` event's CDP trace timestamp. The marker is joined to `ProfileChunk`
+events by process, source and profile ID because their trace thread IDs can differ; `timeDeltas`
+accumulate in stream order across chunks. Intervals are clipped to the calibrated CDP trace-clock
+recorder span, and coverage explicitly reports uncovered prefixes/suffixes rather than filling gaps.
 Profile chunks are bounded during ingestion as well as in the emitted packet: at most 32
 profile keys, 5,000 nodes and 100,000 samples per profile, and 20,000 nodes / 200,000 samples
 across a capture. An over-limit or malformed profile is dropped immediately and later chunks

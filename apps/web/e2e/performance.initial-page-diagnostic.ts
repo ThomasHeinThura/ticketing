@@ -1395,7 +1395,7 @@ test("diagnostic: source-bound G11 failure-path CPU profiles", async ({
       transform:
         "Two diagnostic CDP TimeStamp markers on the same document, measured around window.performance.now(); affine scale and offset map canonical recorder values to trace time. Uncertainty includes marker-call brackets plus measured slope uncertainty propagated across extrapolated distance.",
       cpuProfileClock:
-        "V8 trace ProfileChunk sample intervals use each chunk's CDP trace timestamp and timeDeltas, then are clipped to the calibrated recorder span. Coverage reports observed sample bounds and uncovered prefixes/suffixes; gaps remain gaps.",
+        "V8 sample intervals start at the initial Profile event's CDP trace timestamp, joined to ProfileChunk events by process, source, and profile ID across differing trace threads. timeDeltas accumulate in stream order across chunks; intervals are clipped to the calibrated CDP trace-clock recorder span. Coverage reports observed sample bounds and uncovered prefixes/suffixes; gaps remain gaps.",
       sourceMapBinding:
         "A source-map index is used only when its adjacent map parses as version 3, its optional file name matches the profiled asset basename, and the JavaScript asset is present in the emitted Vite manifest. The artifact stores exact JavaScript and map SHA-256 plus numeric source/name indexes and original coordinates; it never stores source paths, source contents, or source-map names.",
       callerAttribution:
