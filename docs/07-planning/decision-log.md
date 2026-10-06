@@ -1,3 +1,13 @@
+### 2026-10-06 · Freeze provisional train allocation for SQL-bound snapshot reconciliation
+
+**Decision:** The orchestrator applies Thomas's realignment instruction to centralize migration allocation and regenerate metadata only after the preceding train freezes. The preceding migration train is frozen at canonical #589 source `f4789aefd3c3d08595642414dda63770d8973f64` for this bounded reconciliation: existing 0088–0117 SQL, numbers, journal order and schema intent are the frozen inputs; no lane may allocate or renumber that range concurrently. Saved-view0118 remains provisional until the reconciled predecessor is composed. No0119 is allocated.
+
+Actual inspection found that P1 lacks0088_snapshot.json; the central0088 blob fits the identifier chain but already contains columns added by0089 SQL, while0089 snapshot omits the preceding SLA schema. An ID-only restore would hide schema drift. The authorized structural batch must compare metadata against each actual SQL prefix in an owned disposable database, retain original hashes/failures, and regenerate only inconsistent/missing metadata through the existing locked tooling. Migration SQL, runtime schema contracts and journal numbers may not be silently changed; any real SQL defect is reported separately. Required current-head independent reviews/CI still apply to the completed batch.
+
+This allocation freeze authorizes post-P0 integration repair, not acceptance of #589, a protected merge, strict activation, a new migration, or a P0 scope expansion. Frozen P0 #583 remains independent and cannot be delayed by this reconciliation.
+
+**Recorded:** orchestrator, standing realignment authorization, actual UTC6October.
+
 ### 2026-10-06 · Record exact installer release ordering conflict
 
 **Evidence and pending recommendation; no Thomas approval or waiver.** Root read-only GitHub
