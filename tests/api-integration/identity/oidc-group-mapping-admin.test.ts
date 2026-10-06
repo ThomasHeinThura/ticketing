@@ -32,6 +32,8 @@ const SECOND_ADMIN_ID = "oidc-group-mapping-admin-two";
 const CONNECTION_ID = "oidc-group-mapping-connection";
 const WORKSPACE_ID = "oidc-group-mapping-workspace";
 const WORKSPACE_ROLE_ID = "oidc-group-mapping-role";
+const CUSTOMER_ORGANISATION_ID = "oidc-group-mapping-customer-org";
+const CUSTOMER_ROLE_ID = "oidc-group-mapping-customer-role";
 const DIRECT_ROLE_ID = "oidc-group-mapping-direct-role";
 const OTHER_ROLE_ID = "oidc-group-mapping-other-role";
 const OVER_CEILING_ROLE_ID = "oidc-group-mapping-over-ceiling-role";
@@ -155,6 +157,44 @@ async function setupConnection() {
   });
 }
 
+async function setupCustomerConnection() {
+  await db.insert(schema.organisationTable).values({
+    id: CUSTOMER_ORGANISATION_ID,
+    key: "oidc-mapping-customer",
+    name: "OIDC Mapping Customer",
+    isInternal: false,
+    portalAccess: true,
+  });
+  await db.insert(schema.roleTable).values({
+    id: CUSTOMER_ROLE_ID,
+    scope: "organisation",
+    workspaceId: null,
+    key: "customer",
+    name: "Customer",
+    rank: 0,
+    capabilities: [],
+  });
+  await db.insert(schema.identityConnectionTable).values({
+    id: CONNECTION_ID,
+    providerType: "entra",
+    portalScope: "customer",
+    organisationId: CUSTOMER_ORGANISATION_ID,
+    defaultWorkspaceId: null,
+    displayName: "OIDC Mapping Customer Connection",
+    issuer: "https://login.microsoftonline.com/tenant/v2.0",
+    tenantId: "tenant",
+    clientId: "oidc-mapping-customer-client",
+    clientSecret: encryptIdentityClientSecret(CONNECTION_ID, "test-secret"),
+    redirectUri: "http://localhost:1337/api/auth/identity/callback",
+    scopes: ["openid"],
+    claimMapping: {},
+    domainBindings: [],
+    jitPolicy: { enabled: false, required_entra_app_role: "TaskDesk.User" },
+    maxRoleRank: null,
+    enabled: true,
+  });
+}
+
 function createMappingApp() {
   const app = createApp().app;
   const routePath =
@@ -226,7 +266,13 @@ async function waitForBlockedPid(client: Client, blockerPid: number) {
   throw new Error(`No PostgreSQL session blocked by pid ${blockerPid}`);
 }
 
-function createRequest(externalGroupId: string) {
+function createRequest(externalGroupId: string): {
+  configVersion: number;
+  externalGroupId: string;
+  roleId: string;
+  scope: "workspace";
+  scopeId: string;
+} {
   return {
     configVersion: 1,
     externalGroupId,
@@ -239,7 +285,15 @@ function createRequest(externalGroupId: string) {
 async function createMapping(
   app: ReturnType<typeof createApp>["app"],
   sessionCookie: string,
-  request: ReturnType<typeof createRequest>,
+  request: {
+    configVersion: number;
+    externalGroupId: string;
+    roleId: string;
+    scope: "organisation" | "workspace";
+    scopeId?: string;
+    enabled?: boolean;
+    externalGroupNameSnapshot?: string | null;
+  },
 ) {
   const binding = {
     kind: "operation",
@@ -320,6 +374,210 @@ afterEach(() => {
 });
 
 describe("IP-34 OIDC group mapping administration", () => {
+  it("IP-34 rejects persisted customer-role capability corruption on every mapping boundary", async () => {
+    const { sessionCookie } = await setupAdmin();
+    await setupCustomerConnection();
+    const app = createMappingApp();
+    const createRequest = {
+      configVersion: 1,
+      externalGroupId: GROUP_A,
+      roleId: CUSTOMER_ROLE_ID,
+      scope: "organisation" as const,
+      enabled: false,
+    };
+    const created = await createMapping(app, sessionCookie, createRequest);
+    expect(created.status).toBe(201);
+    const payload = (await created.json()) as { data: { id: string } };
+    const mappingId = payload.data.id;
+    const enableRequest = { configVersion: 2, enabled: true };
+    const enableToken = await issueProof(app, sessionCookie, {
+      kind: "operation",
+      operation: "oidc_group_mapping_update",
+      connectionId: CONNECTION_ID,
+      mappingId,
+      request: enableRequest,
+    });
+    await db
+      .update(schema.roleTable)
+      .set({ capabilities: ["instance:admin"] })
+      .where(eq(schema.roleTable.id, CUSTOMER_ROLE_ID));
+
+    const eventIdsBeforeFailure = await db
+      .select({ id: schema.provisioningEventTable.id })
+      .from(schema.provisioningEventTable)
+      .where(
+        eq(schema.provisioningEventTable.identityConnectionId, CONNECTION_ID),
+      );
+    const read = await app.request(
+      `/api/instance/identity-connections/${CONNECTION_ID}/oidc-group-mappings`,
+      { headers: { cookie: sessionCookie } },
+    );
+    expect(read.status).toBe(503);
+
+    const enable = await csrfRequest(
+      app,
+      `/api/instance/identity-connections/${CONNECTION_ID}/oidc-group-mappings/${mappingId}`,
+      {
+        method: "PATCH",
+        headers: {
+          "content-type": "application/json",
+          "x-taskdesk-step-up-token": enableToken,
+        },
+        body: JSON.stringify(enableRequest),
+      },
+      sessionCookie,
+    );
+    expect(enable.status).toBe(422);
+    const enableTokenHash = createHash("sha256")
+      .update(Buffer.from(enableToken, "base64url"))
+      .digest();
+    const [enableProof] = await db
+      .select({ state: schema.stepUpConfirmationTable.state })
+      .from(schema.stepUpConfirmationTable)
+      .where(eq(schema.stepUpConfirmationTable.tokenHash, enableTokenHash));
+    expect(enableProof?.state).toBe("issued");
+    const [enableConsumption] = await db
+      .select({ consumedAt: schema.stepUpConfirmationTable.consumedAt })
+      .from(schema.stepUpConfirmationTable)
+      .where(eq(schema.stepUpConfirmationTable.tokenHash, enableTokenHash));
+    expect(enableConsumption?.consumedAt).toBeNull();
+
+    await db
+      .update(schema.roleTable)
+      .set({ capabilities: [] })
+      .where(eq(schema.roleTable.id, CUSTOMER_ROLE_ID));
+    const editRequest = {
+      configVersion: 2,
+      externalGroupNameSnapshot: "Customer group",
+    };
+    const editToken = await issueProof(app, sessionCookie, {
+      kind: "operation",
+      operation: "oidc_group_mapping_update",
+      connectionId: CONNECTION_ID,
+      mappingId,
+      request: editRequest,
+    });
+    await db
+      .update(schema.roleTable)
+      .set({ capabilities: { malformed: true } })
+      .where(eq(schema.roleTable.id, CUSTOMER_ROLE_ID));
+    const edit = await csrfRequest(
+      app,
+      `/api/instance/identity-connections/${CONNECTION_ID}/oidc-group-mappings/${mappingId}`,
+      {
+        method: "PATCH",
+        headers: {
+          "content-type": "application/json",
+          "x-taskdesk-step-up-token": editToken,
+        },
+        body: JSON.stringify(editRequest),
+      },
+      sessionCookie,
+    );
+    expect(edit.status).toBe(422);
+    const editTokenHash = createHash("sha256")
+      .update(Buffer.from(editToken, "base64url"))
+      .digest();
+    const [editProof] = await db
+      .select({ state: schema.stepUpConfirmationTable.state })
+      .from(schema.stepUpConfirmationTable)
+      .where(eq(schema.stepUpConfirmationTable.tokenHash, editTokenHash));
+    expect(editProof?.state).toBe("issued");
+    const [editConsumption] = await db
+      .select({ consumedAt: schema.stepUpConfirmationTable.consumedAt })
+      .from(schema.stepUpConfirmationTable)
+      .where(eq(schema.stepUpConfirmationTable.tokenHash, editTokenHash));
+    expect(editConsumption?.consumedAt).toBeNull();
+
+    await db
+      .update(schema.roleTable)
+      .set({ capabilities: ["unknown:capability"] })
+      .where(eq(schema.roleTable.id, CUSTOMER_ROLE_ID));
+    const malformedRead = await app.request(
+      `/api/instance/identity-connections/${CONNECTION_ID}/oidc-group-mappings`,
+      { headers: { cookie: sessionCookie } },
+    );
+    expect(malformedRead.status).toBe(503);
+    const invalidCreateRequest = {
+      ...createRequest,
+      configVersion: 2,
+      externalGroupId: GROUP_B,
+    };
+    const proofIdsBeforeInvalidCreate = await db
+      .select({ id: schema.stepUpConfirmationTable.id })
+      .from(schema.stepUpConfirmationTable);
+    const invalidChallenge = await csrfRequest(
+      app,
+      "/api/me/step-up/challenges",
+      {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({
+          kind: "operation",
+          operation: "oidc_group_mapping_create",
+          connectionId: CONNECTION_ID,
+          request: invalidCreateRequest,
+        }),
+      },
+      sessionCookie,
+    );
+    expect(invalidChallenge.status).toBe(422);
+    const invalidCreate = await csrfRequest(
+      app,
+      `/api/instance/identity-connections/${CONNECTION_ID}/oidc-group-mappings`,
+      {
+        method: "POST",
+        headers: {
+          "content-type": "application/json",
+          "x-taskdesk-step-up-token": "unusable-step-up-token",
+        },
+        body: JSON.stringify(invalidCreateRequest),
+      },
+      sessionCookie,
+    );
+    expect(invalidCreate.status).toBe(422);
+    expect(
+      await db
+        .select({ id: schema.stepUpConfirmationTable.id })
+        .from(schema.stepUpConfirmationTable),
+    ).toEqual(proofIdsBeforeInvalidCreate);
+
+    expect(
+      await db
+        .select({ enabled: schema.oidcGroupMappingTable.enabled })
+        .from(schema.oidcGroupMappingTable)
+        .where(eq(schema.oidcGroupMappingTable.id, mappingId)),
+    ).toEqual([{ enabled: false }]);
+    expect(
+      await db
+        .select({ id: schema.oidcGroupMappingTable.id })
+        .from(schema.oidcGroupMappingTable)
+        .where(eq(schema.oidcGroupMappingTable.externalGroupId, GROUP_B)),
+    ).toEqual([]);
+    expect(
+      await db
+        .select({ id: schema.membershipGrantTable.id })
+        .from(schema.membershipGrantTable)
+        .where(
+          eq(schema.membershipGrantTable.identityConnectionId, CONNECTION_ID),
+        ),
+    ).toEqual([]);
+    expect(
+      await db
+        .select({ configVersion: schema.identityConnectionTable.configVersion })
+        .from(schema.identityConnectionTable)
+        .where(eq(schema.identityConnectionTable.id, CONNECTION_ID)),
+    ).toEqual([{ configVersion: 2 }]);
+    expect(
+      await db
+        .select({ id: schema.provisioningEventTable.id })
+        .from(schema.provisioningEventTable)
+        .where(
+          eq(schema.provisioningEventTable.identityConnectionId, CONNECTION_ID),
+        ),
+    ).toEqual(eventIdsBeforeFailure);
+  });
+
   it("strictly validates targets, binds PA-15 to the exact body, and creates no grant before login", async () => {
     const { personId, sessionCookie } = await setupAdmin();
     await setupConnection();
