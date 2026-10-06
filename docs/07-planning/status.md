@@ -49,13 +49,17 @@ is pushed clean at `1dfeb82567fdeff59f9ea61fd9ff3cb281b4c4c5`: SQL 3 files/28 te
 18 locales pass. Author results are not independent review, hosted acceptance or phase claims.
 Both P2 private databases were removed after exact ownership checks.
 
-Integration #581 remains draft; local composed source is now `66d468a1` after the complete
-P1 search and P2 calendar branches were merged normally into its isolated branch. The hosted
-PR remains on its older head until the full CI correction is composed. Whole CI correction continues for literal
+Integration #581 remains draft; local composed source `7b3d0b8e` includes complete P1 search,
+P2 calendar, the CI/rendering correction `1898dffb` and the October 6 checkpoint. The hosted
+PR remains on its older head until this complete composition is pushed. Required independent
+review and hosted exact-head acceptance remain pending. Whole CI correction continues for literal
 registered encryption-key reads, generated contract drift, God Mode visual/inventory coverage,
 actual browser defects and unchanged strict performance budgets. Earlier hosted failures remain
-open. P4 #580 bucket B resumes across seven modules on its separate branch; bucket A remains
-pushed/unaccepted. Full query-gate acceptance is still required at P4. P3 portal depends on its
+open. P4 #580 bucket B is pushed at `3adb17d3ba8604149f4489a34b72ab7c208dca07` across seven
+modules. Root verified its complete fresh PostgreSQL SQL batch: 46 files / 412 tests passed,
+zero skips, 137.62 seconds. Both acquired Testcontainers resources are absent after automatic
+teardown. This proves the bounded batch, not whole-refactor or phase acceptance; bucket A
+remains pushed/unaccepted. Full query-gate acceptance is still required at P4. P3 portal depends on its
 real catalogue/intake foundations; real Entra and outbox delivery are not claimed.
 
 ## Complete integration correction passes full PostgreSQL; parallel work continues — 2026-10-05
