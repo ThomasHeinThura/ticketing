@@ -21,8 +21,13 @@ journal/prefix/hash checks. It does not claim the historical image digest was re
 The corrected attempt passed schema-80 to schema-88 migration/runtime/metrics proof and
 cleanup. Its private complete packet is under `2026-10-06/p0-observation-preflight/`.
 
-A fresh independent GPT-6 Sol operational review is assessing the observation evidence and
-eligible strict source sequence. Enforcement remains off. Read-only DEV queries found zero
+The fresh independent GPT-6 Sol operational review cleared the three-date observation for
+28 eligible sources and a staged proposal for 27 directly observed non-task sources. It blocks
+config/task activation pending an explicit DEV/UAT evidence exception: public `GET /api/config`
+returned 200 on each actual date but is structurally above the shadow logger. Its immutable
+public-policy/placement proof cannot silently substitute for the mandatory tally. A concrete
+narrow proposal is pending Thomas; the other sources keep their existing evidence requirements.
+Enforcement remains off. Read-only DEV queries found zero
 roles/API keys containing only the old task permission key; legacy keys were not removed.
 Actual reviewed cutover, runtime verification and a separate fresh Sol P0 phase finalizer
 remain before #8/P0 closure. Three partial captures do not establish full days, 72 hours,
@@ -37,7 +42,9 @@ is pushed clean at `1dfeb82567fdeff59f9ea61fd9ff3cb281b4c4c5`: SQL 3 files/28 te
 18 locales pass. Author results are not independent review, hosted acceptance or phase claims.
 Both P2 private databases were removed after exact ownership checks.
 
-Integration #581 remains draft at `25207e3e`. Whole CI correction continues for literal
+Integration #581 remains draft; local composed source is now `66d468a1` after the complete
+P1 search and P2 calendar branches were merged normally into its isolated branch. The hosted
+PR remains on its older head until the full CI correction is composed. Whole CI correction continues for literal
 registered encryption-key reads, generated contract drift, God Mode visual/inventory coverage,
 actual browser defects and unchanged strict performance budgets. Earlier hosted failures remain
 open. P4 #580 bucket B resumes across seven modules on its separate branch; bucket A remains

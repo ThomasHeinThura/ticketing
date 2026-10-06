@@ -6114,3 +6114,15 @@ Thomas's standing parallel and bulk-implementation instructions continue to appl
 completed slices proceed toward one composed acceptance batch; P4 repository conversion resumes
 on the next bounded bucket while P0 operational acceptance runs. No new waiver, dependency,
 production deployment, human design approval or relaxed performance budget is authorized here.
+
+
+### 2026-10-06 · Operational review distinguishes observations from config/task activation
+
+The independent Sol operational reviewer cleared the three actual representative UTC date
+records for 28 shadow-observable sources and proposed staged consideration of 27 non-task
+sources. Public `GET /api/config` has original 200 request records on all three dates and
+immutable same-source proof, but its pre-guard placement produces no shadow tally. The existing
+strict source selection contract does not explicitly permit substituting this proof, so config
+and task activation remain blocked. A concrete DEV/UAT-only evidence exception was prepared
+and submitted to Thomas, who retains gate-exception authority. This entry does not approve it.
+The additional fresh P0 Sol phase finalizer remains separate and outstanding.
