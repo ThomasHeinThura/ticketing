@@ -1,3 +1,29 @@
+### 2026-10-06 · Execute reviewed532 complete off/shadow derivative
+
+**Orchestrator application of existing disposable verification:** preserve the actual failed
+20261006T221158Z-53269374 acquisition and execute a new off/shadow-only proof using the complete
+reviewed derivative final-532-g11-completion-batch-20261007, manifestb73400186f5d1e0112956c8f1b323305d57af4ad257e20c1f02f35778f6c2f4a.
+Frozen product source remains5326937460b195d8e69584c0cb99305348330a95. The prior run matched all130
+status expectations and passed boot/health/migration/metrics controls, then failed on undefined
+runner source names. Cleanup9/9 and root's independent absence checks passed. Offline replay
+found the authenticated WebSocket101 classification gap; both classes were repaired together,
+with canonical source identities, source-bound protocol validation and negative regressions.
+Original records remain unchanged and do not become accepted observations.
+
+Fresh strong Luna and full independent Sol clear the exact derivative after78 offline tests,
+15 file pins and retained-input replay. No source, expectation, performance budget/workload/
+retry policy, or authority gate is relaxed. Root issues new externally pinned application,
+genuine-review projection and exclusive-resource release records. The resource window is not
+required-CI acceptance; hostedG11 remains19/22 and its confirmation decision is still pending.
+
+Only owned disposable off/shadow resources, platform then27 observed non-task sources, with
+empty enforcement and verified cleanup. Config/task, strict activation, persistent DEV,
+production, merge, date carry-forward and phase completion remain unauthorized by this
+application. Later heavy acquisitions wait for this bounded runtime window to end.
+
+**Recorded:** top-level orchestrator under existing Thomas authorization, not a new personal
+Thomas approval or waiver.
+
 ### 2026-10-06 · Apply standing verification to frozen532 off/shadow only
 
 **Orchestrator application of existing authorization:** acquire one disposable exact-source
