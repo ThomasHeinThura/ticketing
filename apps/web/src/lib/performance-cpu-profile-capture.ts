@@ -63,6 +63,16 @@ export type CpuProfileAccumulator = {
   finalized: boolean;
 };
 
+export type CpuProfileStartIdentity = {
+  id: string;
+  source: string;
+  pid: number;
+};
+
+export type CpuProfileStartRegistry = {
+  timestamps: Map<string, number>;
+};
+
 export type CpuProfileChunkInput = {
   key: string;
   id: string;
@@ -94,6 +104,47 @@ export function normalizeCpuProfileSource(raw: unknown): string {
 
 const SAFE_PROFILE_KEY = /^[A-Za-z0-9_.:-]{1,180}$/;
 const SAFE_PROFILE_PART = /^[A-Za-z0-9_.:-]{1,64}$/;
+
+export function createCpuProfileStartRegistry(): CpuProfileStartRegistry {
+  return { timestamps: new Map() };
+}
+
+function cpuProfileStartKey(identity: CpuProfileStartIdentity) {
+  if (
+    identity.source === "unknown-source" ||
+    identity.id === "invalid-id" ||
+    !SAFE_PROFILE_PART.test(identity.id) ||
+    !SAFE_PROFILE_PART.test(identity.source) ||
+    !Number.isSafeInteger(identity.pid) ||
+    identity.pid < 0
+  )
+    return undefined;
+  // V8's global Profile event uses TID 0; ProfileChunk uses the sampling thread.
+  return `${identity.pid}:${identity.source}:${identity.id}`;
+}
+
+export function recordCpuProfileStart(
+  registry: CpuProfileStartRegistry,
+  identity: CpuProfileStartIdentity,
+  timestamp: number,
+) {
+  const key = cpuProfileStartKey(identity);
+  if (!key || !Number.isFinite(timestamp)) return;
+  if (
+    !registry.timestamps.has(key) &&
+    registry.timestamps.size >= CPU_PROFILE_LIMITS.profiles
+  )
+    return;
+  registry.timestamps.set(key, timestamp);
+}
+
+export function cpuProfileStartTimestamp(
+  registry: CpuProfileStartRegistry,
+  identity: CpuProfileStartIdentity,
+) {
+  const key = cpuProfileStartKey(identity);
+  return key ? registry.timestamps.get(key) : undefined;
+}
 
 function increment(value: number) {
   return Math.min(value + 1, Number.MAX_SAFE_INTEGER);

@@ -4,10 +4,13 @@ import {
   CPU_PROFILE_LIMITS,
   type CpuProfileChunkInput,
   type CpuProfileNode,
+  cpuProfileStartTimestamp,
   createCpuProfileAccumulator,
+  createCpuProfileStartRegistry,
   finalizeCpuProfileCapture,
   normalizeCpuProfileChunkData,
   normalizeCpuProfileSource,
+  recordCpuProfileStart,
 } from "./performance-cpu-profile-capture";
 import { summarizeProfileCoverage } from "./performance-profile-intervals";
 
@@ -42,6 +45,86 @@ function chunk(
 }
 
 describe("bounded CPU profile chunk capture", () => {
+  it("joins native Profile and ProfileChunk events across their different thread ids", () => {
+    const profileEvent = {
+      pid: 41,
+      tid: 0,
+      id: "native-profile",
+      ts: 1_000,
+      args: { data: { source: "Inspector", startTime: 1_000 } },
+    };
+    const chunkEvent = {
+      pid: 41,
+      tid: 73,
+      id: "native-profile",
+      ts: 1_700,
+      args: {
+        data: {
+          source: "Inspector",
+          cpuProfile: { nodes: [node(1)], samples: [1] },
+          timeDeltas: [25],
+        },
+      },
+    };
+    const registry = createCpuProfileStartRegistry();
+    const profileSource = normalizeCpuProfileSource(
+      profileEvent.args.data.source,
+    );
+    const chunkSource = normalizeCpuProfileSource(chunkEvent.args.data.source);
+    recordCpuProfileStart(
+      registry,
+      { id: profileEvent.id, source: profileSource, pid: profileEvent.pid },
+      profileEvent.ts,
+    );
+    const anchor = cpuProfileStartTimestamp(registry, {
+      id: chunkEvent.id,
+      source: chunkSource,
+      pid: chunkEvent.pid,
+    });
+    const normalized = normalizeCpuProfileChunkData(chunkEvent.args.data);
+    const capture = createCpuProfileAccumulator();
+    accumulateCpuProfileChunk(capture, {
+      ...chunk("native-profile", { profileStartTimestamp: anchor }),
+      ...normalized,
+      id: chunkEvent.id,
+      source: chunkSource,
+      pid: chunkEvent.pid,
+      tid: chunkEvent.tid,
+    });
+
+    expect(registry.timestamps.size).toBe(1);
+    expect(capture.profiles.get("native-profile")?.samples).toEqual([
+      { nodeId: 1, start: 1_000, duration: 25 },
+    ]);
+    expect(
+      finalizeCpuProfileCapture(capture).omissions["malformed-chunk"],
+    ).toBe(0);
+  });
+
+  it("caps retained profile start identities at the profile limit", () => {
+    const registry = createCpuProfileStartRegistry();
+    for (let index = 0; index < CPU_PROFILE_LIMITS.profiles; index += 1)
+      recordCpuProfileStart(
+        registry,
+        { id: `profile-${index}`, source: "Inspector", pid: 1 },
+        index,
+      );
+    recordCpuProfileStart(
+      registry,
+      { id: "overflow-profile", source: "Inspector", pid: 1 },
+      500,
+    );
+
+    expect(registry.timestamps.size).toBe(CPU_PROFILE_LIMITS.profiles);
+    expect(
+      cpuProfileStartTimestamp(registry, {
+        id: "overflow-profile",
+        source: "Inspector",
+        pid: 1,
+      }),
+    ).toBeUndefined();
+  });
+
   it("anchors ordered sample deltas at Profile across delayed chunks and recorder edges", () => {
     const capture = createCpuProfileAccumulator();
     accumulateCpuProfileChunk(

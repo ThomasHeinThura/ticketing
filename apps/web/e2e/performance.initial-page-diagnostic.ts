@@ -8,10 +8,13 @@ import {
   accumulateCpuProfileChunk,
   type CpuProfile,
   type CpuProfileCaptureStatus,
+  cpuProfileStartTimestamp,
   createCpuProfileAccumulator,
+  createCpuProfileStartRegistry,
   finalizeCpuProfileCapture,
   normalizeCpuProfileChunkData,
   normalizeCpuProfileSource,
+  recordCpuProfileStart,
 } from "../src/lib/performance-cpu-profile-capture";
 import {
   type BoundProfileSourceMap,
@@ -779,7 +782,7 @@ async function withDiagnosticProfile(
   let cpuProfiles: CpuProfile[] = [];
   const timelineEvents: BrowserTimelineEvent[] = [];
   const cpuProfileAccumulator = createCpuProfileAccumulator();
-  const profileStartTimestamps = new Map<string, number>();
+  const profileStartTimestamps = createCpuProfileStartRegistry();
   let clockMarks: DiagnosticCapture["clockMarks"] = [];
   let timelineOverflow = false;
   cdp.on("Tracing.dataCollected", ({ value }) => {
@@ -806,14 +809,12 @@ async function withDiagnosticProfile(
         const validIdentity =
           source !== "unknown-source" && id !== "invalid-id";
         if (event.name === "Profile") {
-          const profileStart = Number(event.ts);
-          if (
-            validIdentity &&
-            Number.isFinite(profileStart) &&
-            (profileStartTimestamps.has(key) ||
-              profileStartTimestamps.size < 32)
-          )
-            profileStartTimestamps.set(key, profileStart);
+          if (validIdentity)
+            recordCpuProfileStart(
+              profileStartTimestamps,
+              { id, source, pid },
+              Number(event.ts),
+            );
           continue;
         }
         const normalizedChunk = normalizeCpuProfileChunkData(data);
@@ -826,7 +827,10 @@ async function withDiagnosticProfile(
           source,
           pid,
           tid,
-          profileStartTimestamp: profileStartTimestamps.get(key),
+          profileStartTimestamp: cpuProfileStartTimestamp(
+            profileStartTimestamps,
+            { id, source, pid },
+          ),
           nodes: normalizedChunk.nodes,
           sampleIds: normalizedChunk.sampleIds,
           timeDeltas: normalizedChunk.timeDeltas,
