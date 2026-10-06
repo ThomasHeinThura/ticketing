@@ -15,7 +15,7 @@ import {
 import type { BetterAuthPlugin, GenericEndpointContext } from "better-auth";
 import { APIError, createAuthEndpoint } from "better-auth/api";
 import { setSessionCookie } from "better-auth/cookies";
-import { and, eq, gt, inArray, isNull, sql } from "drizzle-orm";
+import { and, eq, gt, isNull, sql } from "drizzle-orm";
 import { z } from "zod";
 import { appendAuditLog } from "../audit/audit-writer";
 import db, { schema } from "../database";
@@ -32,12 +32,19 @@ import {
 import { validateEntraIdToken } from "./oidc-token";
 import {
   findOidcEmailOwner,
+  findOidcIdentityForClosure,
   getOidcConnectionForCallback,
   getOidcConnectionForStart,
+  getOidcConnectionSnapshot,
   getOidcIdentityForSignIn,
+  getOidcPersonForSignIn,
+  getOidcRoleForReconciliation,
   getOidcUserFactorState,
   IdentityGrantClosureChangedError,
+  listActiveOidcGrantsForSignIn,
+  listAdmissionFailedOidcGrants,
   listEnabledOidcDomainOwners,
+  listOidcMappingsForReconciliation,
   lockIdentityConnection,
   lockOidcConnection,
   lockOidcDefaultRole,
@@ -492,11 +499,10 @@ async function signInAdmittedIdentity(input: {
   const subject = identity.subject.oid;
   const result = await retryIdentityGrantClosure(() =>
     db.transaction(async (tx) => {
-      const [observedConnection] = await tx
-        .select()
-        .from(schema.identityConnectionTable)
-        .where(eq(schema.identityConnectionTable.id, connection.id))
-        .limit(1);
+      const [observedConnection] = await getOidcConnectionSnapshot(
+        tx,
+        connection.id,
+      );
       if (
         !observedConnection ||
         !observedConnection.enabled ||
@@ -509,23 +515,11 @@ async function signInAdmittedIdentity(input: {
         throw new APIError("UNAUTHORIZED", {
           message: "Identity sign-in failed",
         });
-      const [observedIdentity] = await tx
-        .select({
-          id: schema.externalIdentityTable.id,
-          personId: schema.externalIdentityTable.personId,
-        })
-        .from(schema.externalIdentityTable)
-        .where(
-          and(
-            eq(
-              schema.externalIdentityTable.identityConnectionId,
-              connection.id,
-            ),
-            eq(schema.externalIdentityTable.issuer, connection.issuer),
-            eq(schema.externalIdentityTable.subject, subject),
-          ),
-        )
-        .limit(1);
+      const [observedIdentity] = await findOidcIdentityForClosure(tx, {
+        connectionId: connection.id,
+        issuer: connection.issuer,
+        subject,
+      });
       const observedJit = parseIdentityJitPolicy(observedConnection.jitPolicy);
       if (!observedJit.ok)
         throw new APIError("UNAUTHORIZED", {
@@ -599,31 +593,11 @@ async function signInAdmittedIdentity(input: {
           scopeId: string;
         }> = [];
         if (existing) {
-          const removed = await tx
-            .select({
-              id: schema.membershipGrantTable.id,
-              scope: schema.membershipGrantTable.scope,
-              scopeId: schema.membershipGrantTable.scopeId,
-              sourceKind: schema.membershipGrantTable.sourceKind,
-            })
-            .from(schema.membershipGrantTable)
-            .where(
-              and(
-                eq(schema.membershipGrantTable.personId, existing.personId),
-                eq(schema.membershipGrantTable.externalIdentityId, existing.id),
-                eq(
-                  schema.membershipGrantTable.identityConnectionId,
-                  connection.id,
-                ),
-                inArray(schema.membershipGrantTable.sourceKind, [
-                  "jit_default",
-                  "oidc_group",
-                ]),
-                isNull(schema.membershipGrantTable.revokedAt),
-              ),
-            )
-            .orderBy(schema.membershipGrantTable.id)
-            .for("update");
+          const removed = await listAdmissionFailedOidcGrants(tx, {
+            personId: existing.personId,
+            externalIdentityId: existing.id,
+            connectionId: connection.id,
+          });
           for (const grant of removed) {
             await tx
               .update(schema.membershipGrantTable)
@@ -878,11 +852,7 @@ async function signInAdmittedIdentity(input: {
           .update(schema.personTable)
           .set({ displayName: identity.displayName, updatedAt: now })
           .where(eq(schema.personTable.id, personId));
-      const [currentPerson] = await tx
-        .select()
-        .from(schema.personTable)
-        .where(eq(schema.personTable.id, personId))
-        .limit(1);
+      const [currentPerson] = await getOidcPersonForSignIn(tx, personId);
       if (
         !currentPerson ||
         !currentPerson.active ||
@@ -904,41 +874,16 @@ async function signInAdmittedIdentity(input: {
         scope: "workspace" | "organisation";
         scopeId: string;
       }> = [];
-      const activeSources = await tx
-        .select({
-          id: schema.membershipGrantTable.id,
-          roleId: schema.membershipGrantTable.roleId,
-          scope: schema.membershipGrantTable.scope,
-          scopeId: schema.membershipGrantTable.scopeId,
-          sourceKind: schema.membershipGrantTable.sourceKind,
-          oidcGroupMappingId: schema.membershipGrantTable.oidcGroupMappingId,
-        })
-        .from(schema.membershipGrantTable)
-        .where(
-          and(
-            eq(schema.membershipGrantTable.personId, personId),
-            eq(schema.membershipGrantTable.identityConnectionId, connection.id),
-            eq(
-              schema.membershipGrantTable.externalIdentityId,
-              externalIdentityId,
-            ),
-            inArray(schema.membershipGrantTable.sourceKind, [
-              "jit_default",
-              "oidc_group",
-            ]),
-            isNull(schema.membershipGrantTable.revokedAt),
-          ),
-        )
-        .orderBy(schema.membershipGrantTable.id)
-        .for("update");
+      const activeSources = await listActiveOidcGrantsForSignIn(tx, {
+        personId,
+        connectionId: connection.id,
+        externalIdentityId,
+      });
 
-      const mappings = await tx
-        .select()
-        .from(schema.oidcGroupMappingTable)
-        .where(
-          eq(schema.oidcGroupMappingTable.identityConnectionId, connection.id),
-        )
-        .orderBy(schema.oidcGroupMappingTable.id);
+      const mappings = await listOidcMappingsForReconciliation(
+        tx,
+        connection.id,
+      );
       const validMappings = [] as typeof mappings;
       const eligibleMappings = [] as typeof mappings;
       const groupIds = new Set(
@@ -978,13 +923,10 @@ async function signInAdmittedIdentity(input: {
       );
       const wantedJit = currentJit.value.enabled && Boolean(roleScopeId);
       const [jitRole] = wantedJit
-        ? await tx
-            .select()
-            .from(schema.roleTable)
-            .where(
-              eq(schema.roleTable.id, currentJit.value.default_role_id ?? ""),
-            )
-            .limit(1)
+        ? await getOidcRoleForReconciliation(
+            tx,
+            currentJit.value.default_role_id ?? "",
+          )
         : [];
       const validJit = Boolean(
         jitRole &&
