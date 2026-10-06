@@ -127,6 +127,41 @@ const visualSlaPolicy = {
   draftVersion: null,
 };
 
+const visualInstanceUser = {
+  id: "visual-instance-user",
+  name: "Taylor Staff",
+  email: "taylor@example.test",
+  emailVerified: true,
+  createdAt: "2026-10-01T12:00:00.000Z",
+  locale: "en-GB",
+  isInstanceAdmin: false,
+  isSuspended: false,
+  suspensionExpiresAt: null,
+  twoFactorEnabled: true,
+  person: {
+    id: "visual-person",
+    side: "staff" as const,
+    organisationId: null,
+    organisationName: null,
+    active: true,
+    isPlaceholder: false,
+  },
+};
+
+const visualPendingAction = {
+  id: "visual-pending-deactivation",
+  action: "user_deactivation",
+  origin: "web",
+  targetType: "person",
+  targetIds: [visualInstanceUser.person.id],
+  summary: { email: visualInstanceUser.email },
+  confirmation: "typed_name_step_up",
+  state: "pending",
+  createdAt: "2026-10-05T10:00:00.000Z",
+  expiresAt: "2026-10-05T10:15:00.000Z",
+  invalidationReason: null,
+};
+
 async function installAuthenticatedFixture(page: Page) {
   await page.route("**/api/**", async (route) => {
     const url = new URL(route.request().url());
@@ -170,6 +205,16 @@ async function installAuthenticatedFixture(page: Page) {
         data: [visualCalendar],
         page: { previousCursor: null, nextCursor: null, hasMore: false },
         meta: { total: 1 },
+      };
+    } else if (path.endsWith("/api/service-calendars/visual-calendar/usage")) {
+      body = {
+        calendarId: visualCalendar.id,
+        counts: {
+          projects: 0,
+          slaPolicyVersions: 1,
+          currentSlaPolicies: 1,
+          workItems: 0,
+        },
       };
     } else if (
       path.endsWith("/api/service-calendars/visual-calendar/preview")
@@ -230,6 +275,22 @@ async function installAuthenticatedFixture(page: Page) {
     } else if (path.endsWith("/api/work-items/HELP-7")) body = workItem;
     else if (path.endsWith("/api/me/security/factors")) {
       body = { enabled: false, required: false, policyMode: "optional" };
+    } else if (path.endsWith("/api/instance/users")) {
+      body = {
+        data: [visualInstanceUser],
+        page: { nextCursor: null, hasMore: false },
+      };
+    } else if (path.endsWith(`/api/instance/users/${visualInstanceUser.id}`)) {
+      body = visualInstanceUser;
+    } else if (path.endsWith("/api/me/pending-actions")) {
+      body = {
+        data: [visualPendingAction],
+        page: { nextCursor: null, hasMore: false },
+      };
+    } else if (
+      path.endsWith(`/api/me/pending-actions/${visualPendingAction.id}`)
+    ) {
+      body = visualPendingAction;
     } else if (path.endsWith("/api/instance/observability")) {
       body = {
         version: 1,
@@ -419,6 +480,66 @@ test("observability settings screen @visual", async ({ page }) => {
   });
 });
 
+test("God Mode users directory screen @visual", async ({ page }) => {
+  await installAuthenticatedFixture(page);
+  await page.goto("/god-mode/users");
+  await expect(
+    page.getByRole("heading", { name: "Instance users", exact: true }),
+  ).toBeVisible();
+  await expect(
+    page.getByText("taylor@example.test", { exact: true }),
+  ).toBeVisible();
+  await expect(page).toHaveScreenshot("instance-users-directory.png", {
+    animations: "disabled",
+    caret: "hide",
+    fullPage: true,
+    scale: "css",
+    maxDiffPixels: 0,
+    threshold: 0,
+    includeAA: true,
+  });
+});
+
+test("profile pending actions screen @visual", async ({ page }) => {
+  await installAuthenticatedFixture(page);
+  await page.goto("/agent/settings/profile/pending-actions");
+  await expect(
+    page.getByRole("heading", { name: "My pending actions", exact: true }),
+  ).toBeVisible();
+  await expect(
+    page.getByText("Deactivate person · taylor@example.test"),
+  ).toBeVisible();
+  await expect(page).toHaveScreenshot("profile-pending-actions.png", {
+    animations: "disabled",
+    caret: "hide",
+    fullPage: true,
+    scale: "css",
+    maxDiffPixels: 0,
+    threshold: 0,
+    includeAA: true,
+  });
+});
+
+test("profile pending action detail screen @visual", async ({ page }) => {
+  await installAuthenticatedFixture(page);
+  await page.goto(
+    "/agent/settings/profile/pending-actions/visual-pending-deactivation",
+  );
+  await expect(
+    page.getByRole("heading", { name: "Approve person deactivation" }),
+  ).toBeVisible();
+  await expect(page.getByLabel("Type the exact current email")).toBeVisible();
+  await expect(page).toHaveScreenshot("profile-pending-action-detail.png", {
+    animations: "disabled",
+    caret: "hide",
+    fullPage: true,
+    scale: "css",
+    maxDiffPixels: 0,
+    threshold: 0,
+    includeAA: true,
+  });
+});
+
 test("service calendar list screen @visual", async ({ page }) => {
   await installAuthenticatedFixture(page);
   await page.goto("/agent/settings/calendars");
@@ -445,7 +566,11 @@ test("service calendar editor screen @visual", async ({ page }) => {
   await expect(
     page.getByRole("heading", { name: "Support coverage" }),
   ).toBeVisible();
-  await expect(page.getByText("40 hours of cover per week")).toBeVisible();
+  await expect(
+    page.getByText(
+      "0 projects; 1 current policies across 1 versions; 0 work items.",
+    ),
+  ).toBeVisible();
   await expect(page).toHaveScreenshot("service-calendar-editor.png", {
     animations: "disabled",
     caret: "hide",

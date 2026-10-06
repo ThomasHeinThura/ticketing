@@ -51,6 +51,27 @@
 		"screenshot": "observability-settings.png"
 	},
 	{
+		"name": "instance-users-directory",
+		"inventoryRoute": "/god-mode/users",
+		"applicationRoute": "/god-mode/users",
+		"test": "God Mode users directory screen @visual",
+		"screenshot": "instance-users-directory.png"
+	},
+	{
+		"name": "profile-pending-actions",
+		"inventoryRoute": "/agent/settings/profile/pending-actions",
+		"applicationRoute": "/agent/settings/profile/pending-actions",
+		"test": "profile pending actions screen @visual",
+		"screenshot": "profile-pending-actions.png"
+	},
+	{
+		"name": "profile-pending-action-detail",
+		"inventoryRoute": "/agent/settings/profile/pending-actions/{id}",
+		"applicationRoute": "/agent/settings/profile/pending-actions/$id",
+		"test": "profile pending action detail screen @visual",
+		"screenshot": "profile-pending-action-detail.png"
+	},
+	{
 		"name": "service-calendar-list",
 		"inventoryRoute": "/agent/settings/calendars",
 		"applicationRoute": "/agent/settings/calendars",

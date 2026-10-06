@@ -105,8 +105,8 @@ prerequisite-based scope follows the [2026-09-28 gate-scope decision](../07-plan
 | Profile — appearance | `/agent/settings/profile/appearance` | route | P1 | ⬜ |
 | Profile — notifications | `/agent/settings/profile/notifications` | route | P4 | ⬜ |
 | Profile — security & sessions | `/agent/settings/profile/security` | route | P3 | ⬜ |
-| Profile — pending actions (my registered approvals, including God Mode person deactivation) | `/agent/settings/profile/pending-actions` | route | P4 | ⬜ |
-| Profile — pending action detail and approval | `/agent/settings/profile/pending-actions/{id}` | route | P4 | ⬜ |
+| Profile — pending actions (my registered approvals, including God Mode person deactivation) | `/agent/settings/profile/pending-actions` | route | P4 | 🟡 |
+| Profile — pending action detail and approval | `/agent/settings/profile/pending-actions/{id}` | route | P4 | 🟡 |
 | Profile — API keys | `/agent/settings/profile/api-keys` | route | P4 | ⬜ |
 | Workspace — general | `/agent/settings` | route | P1 | ⬜ |
 | Workspace — terminology | `/agent/settings/terminology` | route | P4 | ⬜ |
@@ -205,14 +205,14 @@ build if it drifts.
 
 | Stage | Screens |
 | --- | --- |
-| P0 Foundation | 7 |
+| P0 Foundation | 8 |
 | P1 Core work | 33 |
 | P2 Service desk | 19 |
 | P3 Portal & identity | 21 |
 | P4 Governance | 29 |
 | P5 Insight & agile | 28 |
 | P6 Import | 2 |
-| **Total** | **139** |
+| **Total** | **140** |
 
 For comparison, v1 had roughly 25 screens, each at perhaps 60% quality. The target here is
 more screens at 100%, delivered a stage at a time — see
