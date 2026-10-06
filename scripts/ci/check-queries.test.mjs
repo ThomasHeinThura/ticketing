@@ -150,18 +150,25 @@ test("check:queries captures known Drizzle method references independent of invo
     "const deferred = db.query.person.findMany; publish(deferred)",
     "const read = db.select; Reflect.apply(read, db, [])",
     'import db from "./database"; db.transaction((tx) => tx.select());',
-    "function read(tx: Transaction) { return tx.query.person.findMany; }",
+    'import type { DbTransaction as Transaction } from "../events/outbox"; function read(tx: Transaction) { return tx.query.person.findMany; }',
     'import db from "./database"; db.transaction(({ select: read }) => read);',
     'import db from "./database"; const transact = db.transaction; transact((tx) => tx.select());',
     'import db from "./database"; const { transaction } = db; transaction((tx) => tx.query.person.findFirst);',
   ];
 
   for (const source of cases) {
-    const method = source.includes("findFirst")
-      ? "findFirst"
-      : source.includes("findMany")
-        ? "findMany"
-        : "select";
+    const method =
+      source.includes(".transaction.call") ||
+      source.includes(".transaction.apply") ||
+      source.includes("Reflect.apply(db.transaction") ||
+      source.includes("const transact") ||
+      source.includes("const { transaction")
+        ? "transaction"
+        : source.includes("findFirst")
+          ? "findFirst"
+          : source.includes("findMany")
+            ? "findMany"
+            : "select";
     assert.deepEqual(
       queryReadViolations(`${source};`, "example.ts").map(
         ({ method }) => method,
@@ -194,6 +201,92 @@ test("check:queries ignores unrelated objects, shadowed database names, and type
     assert.deepEqual(
       queryReadViolations(`${source};`, "example.ts"),
       [],
+      source,
+    );
+  }
+});
+
+test("check:queries binds only registered database transaction callback types", () => {
+  const positiveCases = [
+    {
+      name: "direct imported transaction callback",
+      source:
+        'import db from "../database"; db.transaction((tx) => tx.select());',
+      methods: ["select"],
+    },
+    {
+      name: "typed local alias from the imported database value",
+      source: [
+        'import database from "../database";',
+        "type LocalTransaction = Parameters<Parameters<typeof database.transaction>[0]>[0];",
+        "function read(tx: LocalTransaction) { return tx.query.person.findMany(); }",
+      ].join("\n"),
+      methods: ["findMany"],
+    },
+    {
+      name: "type-only DatabaseInstance import and indexed transaction type",
+      source: [
+        'import type { DatabaseInstance as PrimaryDatabase } from "../database";',
+        'type LocalTransaction = Parameters<Parameters<PrimaryDatabase["transaction"]>[0]>[0];',
+        "function read(tx: LocalTransaction) { return tx.select(); }",
+      ].join("\n"),
+      methods: ["select"],
+    },
+    {
+      name: "registered exported DbTransaction type",
+      source: [
+        'import type { DbTransaction as OutboxTransaction } from "../events/outbox";',
+        "function read(tx: OutboxTransaction) { return tx.query.person.findFirst(); }",
+      ].join("\n"),
+      methods: ["findFirst"],
+    },
+  ];
+
+  for (const { name, source, methods } of positiveCases) {
+    assert.deepEqual(
+      queryReadViolations(source, "apps/api/src/example.ts").map(
+        ({ method }) => method,
+      ),
+      methods,
+      name,
+    );
+  }
+
+  const negativeCases = [
+    'import { schema } from "../database"; schema.select();',
+    'import type { schema } from "../database"; schema.select();',
+    'import schema from "../database/schema"; schema.select();',
+    "type BusinessTransaction = { query: { person: { findMany(): void } } }; function read(tx: BusinessTransaction) { tx.query.person.findMany(); }",
+    "type DatabaseInstance = { select(): void }; function read(db: DatabaseInstance) { db.select(); }",
+    "function run(db: CustomerRecord) { type LocalTransaction = Parameters<Parameters<typeof db.transaction>[0]>[0]; function read(tx: LocalTransaction) { tx.select(); } }",
+    "type Select = typeof db.select;",
+    "function read(db: CustomerRecord) { db.select(); }",
+  ];
+
+  for (const source of negativeCases) {
+    assert.deepEqual(
+      queryReadViolations(source, "apps/api/src/example.ts"),
+      [],
+      source,
+    );
+  }
+});
+
+test("check:queries flags known transaction methods that escape the direct callback boundary", () => {
+  const cases = [
+    'import db from "../database"; db.transaction.call(db, (tx) => tx.select());',
+    'import db from "../database"; db.transaction.apply(db, [(tx) => tx.query.person.findMany()]);',
+    'import db from "../database"; Reflect.apply(db.transaction, db, [(tx) => tx.select()]);',
+    'import db from "../database"; const transact = db.transaction; transact((tx) => tx.select());',
+    'import db from "../database"; publish(db.transaction);',
+  ];
+
+  for (const source of cases) {
+    assert.deepEqual(
+      queryReadViolations(source, "apps/api/src/feature/controller.ts").map(
+        ({ method }) => method,
+      ),
+      ["transaction"],
       source,
     );
   }
