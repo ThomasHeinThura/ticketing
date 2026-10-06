@@ -1,3 +1,46 @@
+## October 6 full integration review and isolated P0 proof — 13:15 UTC
+
+- **Implementation composition:** draft PR #589 is pushed at
+  `7dd3cbb461e9a6567acb07eda64cd3bbaaac54de`, composing the complete bounded
+  P0, approval, portal identity, outbox and P4 repository batches. Local typecheck9/9,
+  query ownership, inventory53 routes/14 active, OpenAPI230 operations, route-policy88
+  tests and production agent/portal contrast434 pairs pass. These focused checks do
+  not establish full integration acceptance. Hosted gates retain real route-registry,
+  OpenAPI, G8 and performance failures. Required independent review evidence remains pending.
+- **Bulk review:** fresh Luna panels A/B find two P1 blockers: independent provider
+  configuration versions are collapsed into one maximum, so lower-version updates can
+  remain unapplied; SLA pauses beginning before the next calendar opening are omitted,
+  producing premature due times and a due time during an open pause. Panel C is continuing
+  UI, contract and query-control review. One complete remediation batch will follow the
+  panel rather than separate small edit/review loops. No phase is claimed complete.
+- **P0 private proof:** the final54 actor/state defects are repaired in final56. The full
+  independent Sol report clears exact private manifest
+  `94850a8bc8a13ce7425ce6512c25959a60f61a581607819285b593d51b9f88f2`, verifying
+  controlled hashes and the author56/56 offline test log without executing runtime.
+  Root issued fresh externally pinned application, authorization, Sol and exclusive
+  local CI-window records; both pure authority/release validators pass. One isolated
+  source088 proof is now running. It permits only27 reversible policy sources; config,
+  task, persistent DEV, production and enforcement activation remain excluded. Prior
+  failed captures and original records are unchanged. No runtime acceptance is yet claimed.
+- **P0 performance:** PR #587 at `e3ac04596499bd59772403bb4e0534b40dc1ac88`
+  clears the independent full Sol diagnostic review. Actual hosted run37466514841
+  nevertheless remains18/22: LCP2652ms, state269.5ms, assignment233.2ms and board688.9ms
+  fail their unchanged budgets. All five normalized native profile windows still retain
+  zero complete profiles and no JavaScript frames. A complete native producer-to-consumer
+  investigation with positive local evidence is assigned before another broad CI loop.
+  Source review clearance is not usable profiler or performance acceptance.
+- **DEV and browser:** reviewed088 remains deployed through OrbStack/Traefik at
+  `ticketing.localhost` and `portal.localhost`, with verified TLS health/static200 and
+  preserved encrypted backups/data/shadow mode. The cached private admin password is
+  stale: a read-only comparison fails against the existing credential hash. No password
+  was reset. The existing request to dismiss the extension popup and sign in with the
+  current password remains pending; authenticated manual UI verification is blocked.
+- **Main and scope:** accepted main remains3096cb0. Duplicate PR #584 was closed only
+  after verifying its source is contained in PR #583; no acceptance gate was closed.
+  Three actual partial UTC dates are retained without backfill or a new calendar wait.
+  Actual G11, compatible full runtime evidence, config/task prerequisites, exact required
+  CI/reviews and the additional fresh Sol phase finalizer still prevent P0 completion.
+
 ## October 6 reviewed OrbStack DEV refresh and full implementation composition — 12:35 UTC
 
 - **DEV refreshed:** root deployed reviewed P0 product `08842235047a3ab2714427edce80331b94558150`
