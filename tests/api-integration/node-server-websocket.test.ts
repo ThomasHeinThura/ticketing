@@ -1021,7 +1021,7 @@ describe("P0 #557: real Node HTTP and WebSocket adapter", () => {
         userAgent: null,
         portal: "agent",
       },
-      user: { ...secondUser, twoFactorEnabled: false },
+      user: { ...secondUser },
     });
     const secondSocket = await openSocket(url, {
       ...headers,
@@ -1039,7 +1039,7 @@ describe("P0 #557: real Node HTTP and WebSocket adapter", () => {
         userAgent: null,
         portal: "agent",
       },
-      user: { ...first.user, twoFactorEnabled: false },
+      user: { ...first.user },
     });
 
     for (const socket of [firstSocket, secondSocket]) {
@@ -1272,9 +1272,7 @@ describe("P0 #557: real Node HTTP and WebSocket adapter", () => {
     // The session mock is not consulted for an upgrade without a browser Origin:
     // authentication fails closed before the later Origin/session binding check.
     // The pure origin-policy tests cover the authenticated missing-Origin case.
-    expect(
-      await rejectHandshake(url, { host: "localhost:1337" }),
-    ).toBe(401);
+    expect(await rejectHandshake(url, { host: "localhost:1337" })).toBe(401);
     expect(
       await rejectHandshake(url, {
         host: "localhost:1337",
@@ -1466,9 +1464,9 @@ describe("P0 #557: real Node HTTP and WebSocket adapter", () => {
     expect(currentSessions.some((session) => session.portal === "agent")).toBe(
       true,
     );
-    expect(currentSessions.some((session) => session.portal === "customer")).toBe(
-      false,
-    );
+    expect(
+      currentSessions.some((session) => session.portal === "customer"),
+    ).toBe(false);
 
     const url = websocketUrl(node.server, "/api/ws");
     expect(

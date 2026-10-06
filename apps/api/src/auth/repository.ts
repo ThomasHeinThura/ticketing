@@ -449,7 +449,6 @@ export function lockOperationChallenge(
     .limit(1);
 }
 
-
 export function getCustomerPortalIdentityRow(userId: string) {
   return db
     .select({ personId: schema.personTable.id })

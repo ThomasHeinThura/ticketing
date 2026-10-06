@@ -1,10 +1,14 @@
 import { can, type ProjectReachFacts, reaches } from "@taskdesk/permissions";
-import { and, eq, isNull } from "drizzle-orm";
-import { schema } from "../database";
-import { workspaceTable } from "../database/schema";
 import type { DbTransaction, DomainEventEnvelope } from "../events/outbox";
 import { resolveIdentity } from "../permissions/resolve-identity";
 import type { NotificationRecipientCandidate } from "./fanout";
+import {
+  findApprovalNotificationContext,
+  findNotificationPerson,
+  findNotificationWorkspace,
+  listApprovalParticipantPersonIds,
+  listApprovalWatcherPersonIds,
+} from "./repository";
 
 export type EnabledNotificationChannels = (input: {
   tx: DbTransaction;
@@ -21,41 +25,7 @@ export async function resolveApprovalEventRecipients(
   if (!event.kind.startsWith("approval.")) return [];
   const approvalId = event.payload.approvalId;
   if (typeof approvalId !== "string" || !approvalId) return [];
-  const [row] = await tx
-    .select({
-      id: schema.approvalTable.id,
-      kind: schema.approvalTable.kind,
-      requestedBy: schema.approvalTable.requestedBy,
-      approverId: schema.approvalTable.approverId,
-      workItemId: schema.workItemTable.id,
-      workspaceId: schema.workItemTable.workspaceId,
-      projectId: schema.workItemTable.projectId,
-      organisationId: schema.workspaceTable.organisationId,
-      requesterId: schema.workItemTable.requesterId,
-      customerVisibility: schema.workItemTable.customerVisibility,
-    })
-    .from(schema.approvalTable)
-    .innerJoin(
-      schema.workItemTable,
-      eq(schema.workItemTable.id, schema.approvalTable.workItemId),
-    )
-    .innerJoin(
-      schema.projectTable,
-      eq(schema.projectTable.id, schema.workItemTable.projectId),
-    )
-    .innerJoin(
-      schema.workspaceTable,
-      eq(schema.workspaceTable.id, schema.workItemTable.workspaceId),
-    )
-    .where(
-      and(
-        eq(schema.approvalTable.id, approvalId),
-        isNull(schema.workItemTable.deletedAt),
-        isNull(schema.workItemTable.archivedAt),
-        isNull(schema.projectTable.deletedAt),
-      ),
-    )
-    .limit(1);
+  const row = await findApprovalNotificationContext(tx, approvalId);
   if (
     !row ||
     !("workspaceId" in event.scope) ||
@@ -74,10 +44,7 @@ export async function resolveApprovalEventRecipients(
       personIds = [row.requestedBy];
       break;
     case "approval.decided": {
-      const watchers = await tx
-        .select({ personId: schema.watcherTable.personId })
-        .from(schema.watcherTable)
-        .where(eq(schema.watcherTable.workItemId, row.workItemId));
+      const watchers = await listApprovalWatcherPersonIds(tx, row.workItemId);
       personIds = [
         row.requestedBy,
         ...watchers.map(({ personId }) => personId),
@@ -92,14 +59,9 @@ export async function resolveApprovalEventRecipients(
     row.customerVisibility === "private"
       ? [
           ...(row.requesterId ? [row.requesterId] : []),
-          ...(
-            await tx
-              .select({ personId: schema.requestParticipantTable.personId })
-              .from(schema.requestParticipantTable)
-              .where(
-                eq(schema.requestParticipantTable.workItemId, row.workItemId),
-              )
-          ).map(({ personId }) => personId),
+          ...(await listApprovalParticipantPersonIds(tx, row.workItemId)).map(
+            ({ personId }) => personId,
+          ),
         ]
       : null;
   const reachFacts: ProjectReachFacts = {
@@ -110,15 +72,7 @@ export async function resolveApprovalEventRecipients(
   };
   const candidates: NotificationRecipientCandidate[] = [];
   for (const personId of new Set(personIds)) {
-    const [person] = await tx
-      .select({
-        userId: schema.personTable.userId,
-        side: schema.personTable.side,
-        active: schema.personTable.active,
-      })
-      .from(schema.personTable)
-      .where(eq(schema.personTable.id, personId))
-      .limit(1);
+    const person = await findNotificationPerson(tx, personId);
     if (!person?.active || !person.userId) continue;
     // Customers are notified only about approvals directly addressed to or raised by them.
     if (
@@ -189,11 +143,7 @@ export async function resolveWorkspaceCreatedRecipient(
     return [];
   }
 
-  const [workspace] = await tx
-    .select({ id: workspaceTable.id })
-    .from(workspaceTable)
-    .where(eq(workspaceTable.id, workspaceId))
-    .limit(1);
+  const workspace = await findNotificationWorkspace(tx, workspaceId);
   if (!workspace) return [];
 
   const identity = await resolveIdentity(

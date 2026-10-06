@@ -1,4 +1,5 @@
 import assert from "node:assert/strict";
+import { randomUUID } from "node:crypto";
 import { readFile, rm, writeFile } from "node:fs/promises";
 import path from "node:path";
 import { describe, it } from "node:test";
@@ -44,7 +45,7 @@ describe("G3 contrast inventory and math", () => {
   });
 
   it("keeps product and Storybook TSX in scope while excluding only test/spec renderers", async () => {
-    const suffix = `-${process.pid}`;
+    const suffix = `-${randomUUID()}`;
     const product = `apps/web/src/components/.contrast-product${suffix}.tsx`;
     const story = `packages/ui/src/components/.contrast-product${suffix}.stories.tsx`;
     const unitTest = `apps/web/src/components/.contrast-product${suffix}.test.tsx`;
@@ -114,7 +115,7 @@ describe("G3 contrast inventory and math", () => {
   });
 
   it("measures a colored descendant against its nearest opaque ancestor", async () => {
-    const fixture = `scripts/ci/.contrast-inheritance-${process.pid}.tsx`;
+    const fixture = `scripts/ci/.contrast-inheritance-${randomUUID()}.tsx`;
     await writeFile(
       fixture,
       '<div className="bg-card"><p className="text-destructive">Card error</p></div><div className="bg-popover"><p className="text-destructive">Popover error</p></div><div className="bg-background"><p className="text-destructive">Body error</p></div>',
@@ -162,7 +163,7 @@ describe("G3 contrast inventory and math", () => {
   });
 
   it("keeps supported ancestor hover surfaces as a distinct measured context", async () => {
-    const fixture = `scripts/ci/.contrast-hover-ancestor-${process.pid}.tsx`;
+    const fixture = `scripts/ci/.contrast-hover-ancestor-${randomUUID()}.tsx`;
     await writeFile(
       fixture,
       '<main className="bg-background"><div className="bg-card hover:bg-muted"><p className="text-muted-foreground">Muted</p></div></main>',
@@ -186,7 +187,7 @@ describe("G3 contrast inventory and math", () => {
   });
 
   it("binds reachable data-state ancestor backgrounds without losing the opaque fallback", async () => {
-    const fixture = `scripts/ci/.contrast-data-state-${process.pid}.tsx`;
+    const fixture = `scripts/ci/.contrast-data-state-${randomUUID()}.tsx`;
     await writeFile(
       fixture,
       '<main className="bg-background"><div className="bg-background data-[task-dragging=true]:bg-card data-[task-selected=true]:not-data-[task-dragging=true]:bg-accent/50" data-task-dragging={dragging ? "true" : undefined} data-task-selected={selected ? "true" : undefined}><span className="text-muted-foreground">Selected</span></div></main>',
@@ -218,7 +219,7 @@ describe("G3 contrast inventory and math", () => {
   });
 
   it("keeps unsupported state background variants unresolved", async () => {
-    const fixture = `scripts/ci/.contrast-unknown-state-${process.pid}.tsx`;
+    const fixture = `scripts/ci/.contrast-unknown-state-${randomUUID()}.tsx`;
     await writeFile(
       fixture,
       '<main className="bg-background"><div className="data-[mystery=true]:bg-card"><span className="text-muted-foreground">Unknown</span></div></main>',
@@ -241,7 +242,7 @@ describe("G3 contrast inventory and math", () => {
   });
 
   it("enumerates a supported backdrop-filter background override with its fallback", async () => {
-    const fixture = `scripts/ci/.contrast-supports-state-${process.pid}.tsx`;
+    const fixture = `scripts/ci/.contrast-supports-state-${randomUUID()}.tsx`;
     await writeFile(
       fixture,
       '<main className="bg-background"><div className="bg-card/80 supports-[backdrop-filter]:bg-card/70"><span className="text-muted-foreground">Card</span></div></main>',
@@ -268,7 +269,7 @@ describe("G3 contrast inventory and math", () => {
   });
 
   it("accepts a Base UI highlighted menu surface only on the forwarded menu item primitive", async () => {
-    const fixture = `packages/ui/src/components/.contrast-base-ui-state-${process.pid}.tsx`;
+    const fixture = `packages/ui/src/components/.contrast-base-ui-state-${randomUUID()}.tsx`;
     try {
       await writeFile(
         fixture,
@@ -293,8 +294,9 @@ describe("G3 contrast inventory and math", () => {
   });
 
   it("binds direct JSX-return helpers through renamed imports at every real caller", async () => {
-    const helper = `apps/web/src/components/.contrast-icon-helper-${process.pid}.tsx`;
-    const caller = `apps/web/src/components/.contrast-icon-caller-${process.pid}.tsx`;
+    const suffix = randomUUID();
+    const helper = `apps/web/src/components/.contrast-icon-helper-${suffix}.tsx`;
+    const caller = `apps/web/src/components/.contrast-icon-caller-${suffix}.tsx`;
     const theme = await readFile(
       path.join(process.cwd(), "packages/ui/src/styles/theme.css"),
       "utf8",
@@ -312,7 +314,7 @@ describe("G3 contrast inventory and math", () => {
       await writeFile(
         caller,
         'import { renderIcon as paintIcon } from "./.contrast-icon-helper-' +
-          process.pid +
+          suffix +
           '"; export function Caller(){ return <main className="bg-background"><button className="bg-muted/50">{paintIcon()}</button><div className="bg-card">{paintIcon()}</div></main>; }',
       );
       const observed = observeInheritedForegroundSurfaces(
@@ -338,8 +340,9 @@ describe("G3 contrast inventory and math", () => {
   });
 
   it("keeps a direct JSX-return helper unresolved when any caller surface is unsupported", async () => {
-    const helper = `apps/web/src/components/.contrast-unbound-helper-${process.pid}.tsx`;
-    const caller = `apps/web/src/components/.contrast-unbound-caller-${process.pid}.tsx`;
+    const suffix = randomUUID();
+    const helper = `apps/web/src/components/.contrast-unbound-helper-${suffix}.tsx`;
+    const caller = `apps/web/src/components/.contrast-unbound-caller-${suffix}.tsx`;
     const theme = await readFile(
       path.join(process.cwd(), "packages/ui/src/styles/theme.css"),
       "utf8",
@@ -357,7 +360,7 @@ describe("G3 contrast inventory and math", () => {
       await writeFile(
         caller,
         'import { renderIcon as paintIcon } from "./.contrast-unbound-helper-' +
-          process.pid +
+          suffix +
           '"; export function Caller(){ return <main className="bg-background"><div className="data-[mystery=true]:bg-card">{paintIcon()}</div></main>; }',
       );
       const observed = observeInheritedForegroundSurfaces(
@@ -377,7 +380,7 @@ describe("G3 contrast inventory and math", () => {
   });
 
   it("binds a local memo-wrapped row to its actual module caller", async () => {
-    const fixture = `apps/web/src/components/.contrast-local-memo-${process.pid}.tsx`;
+    const fixture = `apps/web/src/components/.contrast-local-memo-${randomUUID()}.tsx`;
     const theme = await readFile(
       path.join(process.cwd(), "packages/ui/src/styles/theme.css"),
       "utf8",
@@ -410,7 +413,7 @@ describe("G3 contrast inventory and math", () => {
   });
 
   it("follows inline lazy imports when binding shipped caller surfaces", async () => {
-    const suffix = `-${process.pid}`;
+    const suffix = `-${randomUUID()}`;
     const route = `apps/web/src/.contrast-lazy-route${suffix}.tsx`;
     const component = `apps/web/src/.contrast-lazy-component${suffix}.tsx`;
     try {
@@ -445,7 +448,7 @@ describe("G3 contrast inventory and math", () => {
   });
 
   it("binds the explicitly selected named export in React.lazy and rejects other mappings", async () => {
-    const suffix = `-${process.pid}`;
+    const suffix = `-${randomUUID()}`;
     const route = `apps/web/src/.contrast-lazy-named-route${suffix}.tsx`;
     const component = `apps/web/src/.contrast-lazy-named-component${suffix}.tsx`;
     const tokenNames = new Set(["background", "muted-foreground"]);
@@ -496,7 +499,7 @@ describe("G3 contrast inventory and math", () => {
   });
 
   it("fails closed for a colored text node without a supported surface context", async () => {
-    const fixture = `scripts/ci/.contrast-unresolved-${process.pid}.tsx`;
+    const fixture = `scripts/ci/.contrast-unresolved-${randomUUID()}.tsx`;
     await writeFile(fixture, '<p className="text-destructive">Invalid</p>');
     try {
       const result = observeInheritedForegroundSurfaces(
@@ -513,7 +516,7 @@ describe("G3 contrast inventory and math", () => {
   });
 
   it("deduplicates class-combination derivations without merging distinct JSX contexts", async () => {
-    const fixture = `apps/web/src/.contrast-occurrence-contexts-${process.pid}.tsx`;
+    const fixture = `apps/web/src/.contrast-occurrence-contexts-${randomUUID()}.tsx`;
     await writeFile(
       fixture,
       '<><p className={cn("text-primary bg-card", "bg-card")}>One</p><p className={cn("text-primary bg-card", "bg-card")}>Two</p></>',
@@ -534,7 +537,7 @@ describe("G3 contrast inventory and math", () => {
   });
 
   it("traces JSX-returning helper calls through their painted caller surface", async () => {
-    const suffix = process.pid;
+    const suffix = randomUUID();
     const helper = `apps/web/src/lib/.contrast-icon-${suffix}.tsx`;
     const caller = `apps/web/src/lib/.contrast-icon-caller-${suffix}.tsx`;
     try {
@@ -560,8 +563,9 @@ describe("G3 contrast inventory and math", () => {
   });
 
   it("traces default memo exports through their actual painted caller", async () => {
-    const component = `scripts/ci/.contrast-memo-leaf-${process.pid}.tsx`;
-    const caller = `scripts/ci/.contrast-memo-caller-${process.pid}.tsx`;
+    const suffix = randomUUID();
+    const component = `scripts/ci/.contrast-memo-leaf-${suffix}.tsx`;
+    const caller = `scripts/ci/.contrast-memo-caller-${suffix}.tsx`;
     const theme = await readFile(
       path.join(process.cwd(), "packages/ui/src/styles/theme.css"),
       "utf8",
@@ -579,7 +583,7 @@ describe("G3 contrast inventory and math", () => {
       await writeFile(
         caller,
         'import MemoLeaf from "./.contrast-memo-leaf-' +
-          process.pid +
+          suffix +
           '"; export function Caller(){ return <div className="bg-card"><MemoLeaf /></div>; }',
       );
       const observed = observeInheritedForegroundSurfaces(
@@ -598,7 +602,7 @@ describe("G3 contrast inventory and math", () => {
   });
 
   it("follows JSX values returned through object properties to every real use", async () => {
-    const fixture = `scripts/ci/.contrast-returned-icon-${process.pid}.tsx`;
+    const fixture = `scripts/ci/.contrast-returned-icon-${randomUUID()}.tsx`;
     const theme = await readFile(
       path.join(process.cwd(), "packages/ui/src/styles/theme.css"),
       "utf8",
@@ -638,7 +642,7 @@ describe("G3 contrast inventory and math", () => {
   });
 
   it("binds a named global CSS surface to its real JSX ancestor", async () => {
-    const sourcePath = `apps/web/src/components/.contrast-global-css-${process.pid}.tsx`;
+    const sourcePath = `apps/web/src/components/.contrast-global-css-${randomUUID()}.tsx`;
     await writeFile(
       sourcePath,
       'export function Fixture(){ return <div className="taskdesk-comment-editor-bubble"><span className="text-destructive">Error</span></div>; }',
@@ -782,7 +786,7 @@ describe("G3 contrast inventory and math", () => {
   });
 
   it("binds imported surfaces to the current caller tag and rejects caller overrides", async () => {
-    const fixture = `scripts/ci/.contrast-wrapper-${process.pid}.tsx`;
+    const fixture = `scripts/ci/.contrast-wrapper-${randomUUID()}.tsx`;
     const theme = await readFile(
       path.join(process.cwd(), "packages/ui/src/styles/theme.css"),
       "utf8",
@@ -828,8 +832,9 @@ describe("G3 contrast inventory and math", () => {
   });
 
   it("resolves local named export aliases to their painted implementation", async () => {
-    const component = `scripts/ci/contrast-alias-surface-${process.pid}.tsx`;
-    const caller = `scripts/ci/contrast-alias-caller-${process.pid}.tsx`;
+    const suffix = randomUUID();
+    const component = `scripts/ci/contrast-alias-surface-${suffix}.tsx`;
+    const caller = `scripts/ci/contrast-alias-caller-${suffix}.tsx`;
     const theme = await readFile(
       path.join(process.cwd(), "packages/ui/src/styles/theme.css"),
       "utf8",
@@ -847,7 +852,7 @@ describe("G3 contrast inventory and math", () => {
       await writeFile(
         caller,
         'import { PopupContent } from "./contrast-alias-surface-' +
-          process.pid +
+          suffix +
           '"; export function Caller(){ return <PopupContent><p className="text-muted-foreground">Status</p></PopupContent>; }',
       );
       const observed = observeInheritedForegroundSurfaces(
@@ -868,9 +873,11 @@ describe("G3 contrast inventory and math", () => {
   });
 
   it("resolves conditional alpha caller surfaces against the next opaque ancestor", async () => {
-    const leaf = `scripts/ci/contrast-branch-leaf-${process.pid}.tsx`;
-    const branch = `scripts/ci/contrast-branch-owner-${process.pid}.tsx`;
-    const root = `scripts/ci/contrast-branch-root-${process.pid}.tsx`;
+    const leafSuffix = randomUUID();
+    const branchSuffix = randomUUID();
+    const root = `scripts/ci/contrast-branch-root-${randomUUID()}.tsx`;
+    const leaf = `scripts/ci/contrast-branch-leaf-${leafSuffix}.tsx`;
+    const branch = `scripts/ci/contrast-branch-owner-${branchSuffix}.tsx`;
     const theme = await readFile(
       path.join(process.cwd(), "packages/ui/src/styles/theme.css"),
       "utf8",
@@ -888,14 +895,14 @@ describe("G3 contrast inventory and math", () => {
       await writeFile(
         branch,
         'import { BranchLeaf } from "./contrast-branch-leaf-' +
-          process.pid +
+          leafSuffix +
           '"; export function BranchOwner({ active }){ return <div className={`relative $' +
           '{active ? "bg-accent/60" : "bg-muted/40 dark:bg-card/90"}`}><BranchLeaf /></div>; }',
       );
       await writeFile(
         root,
         'import { BranchOwner } from "./contrast-branch-owner-' +
-          process.pid +
+          branchSuffix +
           '"; export function BranchRoot(){ return <main className="bg-background"><section className="bg-muted/20"><div className="bg-muted/30"><BranchOwner active={false} /></div></section></main>; }',
       );
       const observed = observeInheritedForegroundSurfaces(
@@ -945,9 +952,10 @@ describe("G3 contrast inventory and math", () => {
   });
 
   it("does not treat test renderer mounts as additional product surfaces", async () => {
-    const component = `scripts/ci/.contrast-leaf-${process.pid}.tsx`;
-    const product = `scripts/ci/.contrast-product-${process.pid}.tsx`;
-    const testRenderer = `scripts/ci/.contrast-renderer-${process.pid}.test.tsx`;
+    const suffix = randomUUID();
+    const component = `scripts/ci/.contrast-leaf-${suffix}.tsx`;
+    const product = `scripts/ci/.contrast-product-${randomUUID()}.tsx`;
+    const testRenderer = `scripts/ci/.contrast-renderer-${randomUUID()}.test.tsx`;
     const theme = await readFile(
       path.join(process.cwd(), "packages/ui/src/styles/theme.css"),
       "utf8",
@@ -965,13 +973,13 @@ describe("G3 contrast inventory and math", () => {
       await writeFile(
         product,
         'import { Card } from "@taskdesk/ui"; import Leaf from "./.contrast-leaf-' +
-          process.pid +
+          suffix +
           '"; export function Product(){ return <Card><Leaf /></Card>; }',
       );
       await writeFile(
         testRenderer,
         'import Leaf from "./.contrast-leaf-' +
-          process.pid +
+          suffix +
           '"; export function TestRenderer(){ return <Leaf />; }',
       );
       const observed = observeInheritedForegroundSurfaces(
@@ -998,8 +1006,8 @@ describe("G3 contrast inventory and math", () => {
   });
 
   it("binds route text to the current parent Outlet surface", async () => {
-    const parent = `apps/web/src/routes/.contrast-parent-${process.pid}.tsx`;
-    const child = `apps/web/src/routes/.contrast-child-${process.pid}.tsx`;
+    const parent = `apps/web/src/routes/.contrast-parent-${randomUUID()}.tsx`;
+    const child = `apps/web/src/routes/.contrast-child-${randomUUID()}.tsx`;
     const theme = await readFile(
       path.join(process.cwd(), "packages/ui/src/styles/theme.css"),
       "utf8",
@@ -1071,7 +1079,7 @@ describe("G3 contrast inventory and math", () => {
   });
 
   it("binds button descendants to the caller's declared button variant", async () => {
-    const fixture = `scripts/ci/.contrast-button-${process.pid}.tsx`;
+    const fixture = `scripts/ci/.contrast-button-${randomUUID()}.tsx`;
     const theme = await readFile(
       path.join(process.cwd(), "packages/ui/src/styles/theme.css"),
       "utf8",
@@ -1391,7 +1399,7 @@ describe("G3 contrast inventory and math", () => {
   });
 
   it("keeps source occurrence bindings separate for foreground opacity states", async () => {
-    const fixture = `apps/web/src/components/.contrast-alpha-identity-${process.pid}.tsx`;
+    const fixture = `apps/web/src/components/.contrast-alpha-identity-${randomUUID()}.tsx`;
     try {
       await writeFile(
         fixture,

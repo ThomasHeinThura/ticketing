@@ -22,12 +22,12 @@ import { loadLocalFactorState } from "./auth/local-factor-service";
 import {
   countAuthUsers,
   countAuthUsersForExecutor,
-  getCustomerPortalIdentityRow,
-  getIdentityConnectionConfigVersions,
-  getStoredAuthPluginConfigRows,
   getAuthUserLocale,
+  getCustomerPortalIdentityRow,
   getFirstUserWorkspaceMembership,
+  getIdentityConnectionConfigVersions,
   getSetupCompletionMarker,
+  getStoredAuthPluginConfigRows,
 } from "./auth/repository";
 import db, { schema } from "./database";
 import {

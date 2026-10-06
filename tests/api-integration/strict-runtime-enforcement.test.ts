@@ -16,8 +16,8 @@ const priorEnforcementSetting = vi.hoisted(() => {
 });
 
 import db, { schema } from "../../apps/api/src/database";
-import * as storage from "../../apps/api/src/storage";
 import { policyRegistry } from "../../apps/api/src/policy-registry";
+import * as storage from "../../apps/api/src/storage";
 import { validateWorkspaceAccess } from "../../apps/api/src/utils/validate-workspace-access";
 import { mockAnonymousSession, mockAuthenticatedSession } from "./helpers/auth";
 import { resetTestDatabase } from "./helpers/database";

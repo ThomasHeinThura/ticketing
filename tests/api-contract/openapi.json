@@ -21214,7 +21214,7 @@
           "Work items"
         ],
         "summary": "Transition work item",
-        "description": "Move a work item to a new state through its type's active workflow version (`workflows.md`). `toStateTemplateId` is the target `state_template.id` (see `GET .../transitions`). Approval and CAB gates use persisted matching approval rows. Guard resolution is also partial today: `no_open_blockers` (no `work_item_relation` table yet), `field_required` (no custom-field/satellite value store yet) and `change_risk_at_most` (no change-risk column yet) always fail closed (blocked), never fabricated as satisfied. `pause_sla`/`resume_sla`/`set_field` effects are silent no-ops (no backing table yet); `set_assignee`'s `'default'` always resolves to no assignee (no project/type default-assignee column yet).",
+        "description": "Move a work item to a new state through its type's active workflow version (`workflows.md`). `toStateTemplateId` is the target `state_template.id` (see `GET .../transitions`). INTERIM, until issue #36 (approvals) lands: a transition whose `requires_approval` or `requires_cab` is set can never complete through this route -- both gates are treated as permanently unsatisfied. Guard resolution is also partial today: `no_open_blockers` (no `work_item_relation` table yet), `field_required` (no custom-field/satellite value store yet) and `change_risk_at_most` (no change-risk column yet) always fail closed (blocked), never fabricated as satisfied. `pause_sla`/`resume_sla`/`set_field` effects are silent no-ops (no backing table yet); `set_assignee`'s `'default'` always resolves to no assignee (no project/type default-assignee column yet).",
         "parameters": [
           {
             "schema": {

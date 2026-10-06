@@ -56,5 +56,5 @@ export const generatedRouteMetadata = {
     "/profile-setup",
     "/test-error",
   ],
-  portal: ["/", "/approvals"],
+  portal: ["/", "/approvals", "/sign-in"],
 } as const;

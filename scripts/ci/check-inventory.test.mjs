@@ -52,6 +52,16 @@ test("G5 extracts both ordinary and portal root paths from TanStack's generated 
   );
 });
 
+test("G5 keeps short generated route arrays on one line", () => {
+  assert.match(
+    renderRouteMetadata({
+      agent: ["/"],
+      portal: ["/", "/approvals", "/sign-in"],
+    }),
+    / {2}portal: \["\/", "\/approvals", "\/sign-in"\],/u,
+  );
+});
+
 test("G5 leaves not-started inventory URLs planned while enforcing active screens", () => {
   const source = [
     "| Screen | Route | Kind | Stage | Status |",

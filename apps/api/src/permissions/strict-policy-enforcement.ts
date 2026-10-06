@@ -33,6 +33,7 @@ import {
   getTaskAuthorityEvidence,
   getTaskPolicyEvidence,
   getWorkItemAuthorityEvidence,
+  getWorkspaceById,
   listWorkItemWatcherPersonIds,
   listWorkspaceMembershipEvidence,
 } from "./repository";
@@ -368,11 +369,7 @@ async function loadAuthoritativeEvidence(
       // so the evaluator can use the policy's declared row provenance. This
       // also preserves the compound detail route's existing 404 for a missing
       // workspace without allowing a request id to masquerade as a loaded row.
-      const [workspace] = await db
-        .select({ id: schema.workspaceTable.id })
-        .from(schema.workspaceTable)
-        .where(eq(schema.workspaceTable.id, evidence.workspaceId))
-        .limit(1);
+      const [workspace] = await getWorkspaceById(evidence.workspaceId);
       if (!workspace) refuse(404);
       evidence = {
         ...evidence,
