@@ -17,12 +17,11 @@ import {
 } from "drizzle-orm";
 import { HTTPException } from "hono/http-exception";
 import db, { schema } from "../../database";
-import { resolveIdentity } from "../../permissions/resolve-identity";
-import { evaluateProjectRead } from "../../utils/has-project-reach";
 import {
-  type ApiKeyPermissionScope,
-  apiKeyCapabilitySubset,
-} from "../../utils/require-api-key-permission-scope";
+  type AuthenticatedApiKey,
+  resolveRequestIdentity,
+} from "../../permissions/resolve-request-identity";
+import { evaluateProjectRead } from "../../utils/has-project-reach";
 import { workItemPolicies } from "../policy";
 import type { SearchFilter, WorkItemSearchQuery } from "./query";
 
@@ -207,7 +206,7 @@ function decodeCursor(
 
 export async function searchWorkItems(input: {
   userId: string;
-  apiKey?: { enabled?: boolean; userId?: string } & ApiKeyPermissionScope;
+  apiKey?: AuthenticatedApiKey;
   impersonatedBy?: string | null;
   workspaceId: string;
   query: WorkItemSearchQuery;
@@ -215,22 +214,10 @@ export async function searchWorkItems(input: {
   cursor?: string;
 }) {
   const { userId, workspaceId, query, limit } = input;
-  const identity = await resolveIdentity({
+  const identity = await resolveRequestIdentity({
     userId,
-    credential: input.apiKey
-      ? "api_key"
-      : input.impersonatedBy
-        ? "impersonation"
-        : "session",
-    ...(input.apiKey
-      ? {
-          apiKey: {
-            enabled: input.apiKey.enabled === true,
-            ownerUserId: input.apiKey.userId ?? "",
-            capabilities: apiKeyCapabilitySubset(input.apiKey),
-          },
-        }
-      : {}),
+    apiKey: input.apiKey,
+    impersonatedBy: input.impersonatedBy,
   });
   const [person] = await db
     .select({ id: schema.personTable.id })

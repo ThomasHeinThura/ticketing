@@ -45,6 +45,10 @@ async function createApiKeyFor(
 async function exportWithKey(
   rawKey: string,
   workspaceId: string,
+  query: Record<string, unknown> = {
+    entity: "work_item",
+    columns: ["key", "title"],
+  },
 ): Promise<Response> {
   const { app } = createApp();
   return app.request("/api/work-items/export", {
@@ -55,7 +59,7 @@ async function exportWithKey(
     },
     body: JSON.stringify({
       workspaceId,
-      query: { entity: "work_item", columns: ["key", "title"] },
+      query,
     }),
   });
 }
@@ -125,7 +129,7 @@ describe("POST /api/work-items/export", () => {
     });
   });
 
-  it("allows an owner API key with an explicit export scope and audits the key actor", async () => {
+  it("exports real reached rows for an owner API key with an explicit export scope", async () => {
     const owner = await createWorkspaceMember({ role: "owner" });
     const reachable = await createProjectFixture({
       workspaceId: owner.workspace.id,
@@ -222,6 +226,113 @@ describe("POST /api/work-items/export", () => {
       actorType: "api_key",
       apiKeyId: expect.any(String),
     });
+  });
+
+  it("requires project:read in key scope for a project-filtered export", async () => {
+    const owner = await createWorkspaceMember({ role: "owner" });
+    const reachable = await createProjectFixture({
+      workspaceId: owner.workspace.id,
+    });
+    await grantProjectRole(owner.user.id, reachable.project.id, [
+      "work_item:create",
+      "work_item:export",
+      "project:read",
+    ]);
+    const now = new Date();
+    const [type] = await db
+      .insert(schema.workItemTypeTable)
+      .values({
+        workspaceId: owner.workspace.id,
+        key: `type-${randomUUID()}`,
+        name: "Task",
+        category: "delivery",
+        createdAt: now,
+        updatedAt: now,
+      })
+      .returning();
+    const [template] = await db
+      .insert(schema.stateTemplateTable)
+      .values({
+        workspaceId: owner.workspace.id,
+        key: `state-${randomUUID()}`,
+        name: "Started",
+        group: "started",
+        createdAt: now,
+        updatedAt: now,
+      })
+      .returning();
+    if (!type || !template) throw new Error("Export fixture setup failed");
+    await db.insert(schema.stateTable).values({
+      projectId: reachable.project.id,
+      stateTemplateId: template.id,
+      isDefault: true,
+      createdAt: now,
+      updatedAt: now,
+    });
+    mockAuthenticatedSession(owner.user);
+    const { app } = createApp();
+    const created = await app.request(
+      `/api/projects/${reachable.project.id}/work-items`,
+      {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({
+          typeId: type.id,
+          title: "Filtered reachable export row",
+        }),
+      },
+    );
+    expect(created.status).toBe(200);
+
+    const filteredQuery = {
+      entity: "work_item",
+      filter: { field: "project", op: "eq", value: reachable.project.slug },
+      columns: ["key", "title"],
+    };
+    const fullyScopedKey = await createApiKeyFor(
+      owner.user.id,
+      JSON.stringify({ work_item: ["export"], project: ["read"] }),
+    );
+    const allowed = await exportWithKey(
+      fullyScopedKey,
+      owner.workspace.id,
+      filteredQuery,
+    );
+    expect(allowed.status).toBe(200);
+    expect(await allowed.text()).toContain("Filtered reachable export row");
+
+    const exportOnlyKey = await createApiKeyFor(
+      owner.user.id,
+      JSON.stringify({ work_item: ["export"] }),
+    );
+    const denied = await exportWithKey(
+      exportOnlyKey,
+      owner.workspace.id,
+      filteredQuery,
+    );
+    expect(denied.status).toBe(422);
+    expect(
+      (await db.select().from(schema.auditLogTable)).filter(
+        (audit) => audit.action === "work_item.exported",
+      ),
+    ).toHaveLength(1);
+  });
+
+  it("keeps the key's export scope subordinate to the owner's current workspace role", async () => {
+    const member = await createWorkspaceMember({ role: "member" });
+    const key = await createApiKeyFor(
+      member.user.id,
+      JSON.stringify({ work_item: ["export"], project: ["read"] }),
+    );
+
+    const response = await exportWithKey(key, member.workspace.id);
+
+    expect(response.status).toBe(403);
+    expect(
+      (await db.select().from(schema.auditLogTable)).filter(
+        (audit) => audit.action === "work_item.exported",
+      ),
+    ).toHaveLength(0);
   });
 
   it.each([

@@ -37,7 +37,10 @@ import {
   listWorkItemWatcherPersonIds,
   listWorkspaceMembershipEvidence,
 } from "./repository";
-import { resolveIdentity } from "./resolve-identity";
+import {
+  type AuthenticatedApiKey,
+  resolveRequestIdentity,
+} from "./resolve-request-identity";
 import { attributedMatchedRoute } from "./shadow-middleware";
 
 type RuntimeContext = Context;
@@ -106,30 +109,15 @@ async function identityFor(
   const userId = c.get("userId") as string | undefined;
   if (!userId) return null;
 
-  const apiKey = c.get("apiKey") as
-    | { id: string; userId: string; enabled: boolean }
-    | undefined;
+  const apiKey = c.get("apiKey") as AuthenticatedApiKey | undefined;
   const session = c.get("session") as
     | { id?: string; impersonatedBy?: string | null }
     | null
     | undefined;
-  const credential = apiKey
-    ? "api_key"
-    : session?.impersonatedBy
-      ? "impersonation"
-      : "session";
-
-  return resolveIdentity({
+  return resolveRequestIdentity({
     userId,
-    credential,
-    ...(apiKey
-      ? {
-          apiKey: {
-            enabled: apiKey.enabled,
-            ownerUserId: apiKey.userId,
-          },
-        }
-      : {}),
+    apiKey,
+    impersonatedBy: session?.impersonatedBy,
   });
 }
 
