@@ -162,7 +162,13 @@ const visualPendingAction = {
   invalidationReason: null,
 };
 
-async function installAuthenticatedFixture(page: Page) {
+async function installAuthenticatedFixture(
+  page: Page,
+  options: {
+    workItemApprovals?: { approvals: Record<string, unknown>[] };
+  } = {},
+) {
+  let workItemApprovals = options.workItemApprovals ?? { approvals: [] };
   await page.route("**/api/**", async (route) => {
     const url = new URL(route.request().url());
     const path = url.pathname;
@@ -171,7 +177,12 @@ async function installAuthenticatedFixture(page: Page) {
     let body: unknown = [];
 
     if (path.endsWith("/api/auth/get-session")) body = session;
-    else if (path.endsWith("/api/config")) {
+    else if (path.endsWith("/api/me/csrf-token")) {
+      body = {
+        token: "visual-csrf-token",
+        expiresAt: "2030-01-01T00:00:00.000Z",
+      };
+    } else if (path.endsWith("/api/config")) {
       body = {
         disableRegistration: true,
         disablePasswordRegistration: false,
@@ -216,6 +227,7 @@ async function installAuthenticatedFixture(page: Page) {
             decidedAt: null,
             decisionNote: null,
             approverReachLost: false,
+            canWithdraw: false,
           },
         ],
       };
@@ -291,8 +303,17 @@ async function installAuthenticatedFixture(page: Page) {
         page: { hasMore: false, nextCursor: null },
         meta: {},
       };
+    } else if (path.endsWith("/approvals/visual-approval/withdraw")) {
+      workItemApprovals = {
+        approvals: workItemApprovals.approvals.map((approval) => ({
+          ...approval,
+          state: "withdrawn",
+          canWithdraw: false,
+        })),
+      };
+      body = workItemApprovals.approvals[0] ?? {};
     } else if (path.endsWith("/api/work-items/HELP-7/approvals")) {
-      body = { approvals: [] };
+      body = workItemApprovals;
     } else if (path.endsWith("/api/work-items/HELP-7")) body = workItem;
     else if (path.endsWith("/api/me/security/factors")) {
       body = { enabled: false, required: false, policyMode: "optional" };
@@ -428,6 +449,51 @@ test("work-item detail screen @visual", async ({ page }) => {
     maxDiffPixels: 0,
     threshold: 0,
     includeAA: true,
+  });
+});
+
+test("work-item approval withdrawal refreshes existing state in browser", async ({
+  page,
+}, testInfo) => {
+  await installAuthenticatedFixture(page, {
+    workItemApprovals: {
+      approvals: [
+        {
+          id: "visual-approval",
+          workItemId: workItem.id,
+          workItemKey: workItem.key,
+          workItemTitle: workItem.title,
+          transitionId: "visual-transition",
+          kind: "customer",
+          state: "pending",
+          requester: { id: "visual-person", displayName: "Ada Example" },
+          approver: { id: "visual-approver", displayName: "Casey Review" },
+          createdAt: "2026-10-01T00:00:00.000Z",
+          expiresAt: "2026-10-08T00:00:00.000Z",
+          decidedAt: null,
+          decisionNote: null,
+          approverReachLost: false,
+          canWithdraw: true,
+        },
+      ],
+    },
+  });
+  await page.goto("/agent/work-items/HELP-7");
+  await expect(
+    page.getByText("Customer approval for Casey Review"),
+  ).toBeVisible();
+  const withdrawalResponse = page.waitForResponse((response) =>
+    response.url().includes("/approvals/visual-approval/withdraw"),
+  );
+  await page.getByRole("button", { name: "Withdraw request" }).click();
+  expect((await withdrawalResponse).status()).toBe(200);
+  await expect(page.getByText("withdrawn", { exact: true })).toBeVisible();
+  await expect(
+    page.getByRole("button", { name: "Withdraw request" }),
+  ).toHaveCount(0);
+  await page.screenshot({
+    path: testInfo.outputPath("approval-withdrawn.png"),
+    fullPage: true,
   });
 });
 

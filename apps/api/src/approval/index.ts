@@ -1,4 +1,4 @@
-import { type Capability, expandCapabilities } from "@taskdesk/permissions";
+import type { Capability } from "@taskdesk/permissions";
 import { HTTPException } from "hono/http-exception";
 import {
   apiRouter,
@@ -7,6 +7,7 @@ import {
   jsonResponse,
 } from "../openapi";
 import {
+  canWithdrawApproval,
   hasApprovalCapability,
   hasWorkItemReach,
   isCabTeamMember,
@@ -47,6 +48,7 @@ function responseRow(row: {
   approverId: string;
   approverName: string | null;
   approverReachLost: boolean;
+  canWithdraw: boolean;
 }) {
   return {
     id: row.id,
@@ -68,6 +70,7 @@ function responseRow(row: {
     decidedAt: row.decidedAt?.toISOString() ?? null,
     decisionNote: row.decisionNote,
     approverReachLost: row.approverReachLost,
+    canWithdraw: row.canWithdraw,
   };
 }
 
@@ -88,7 +91,8 @@ async function formatApproval(
   const approverReachLost =
     row.state === "pending" &&
     (!approverIdentity || !(await hasWorkItemReach(approverIdentity, target)));
-  return responseRow({ ...row, approverReachLost });
+  const canWithdraw = await canWithdrawApproval(row, viewer, target);
+  return responseRow({ ...row, approverReachLost, canWithdraw });
 }
 
 const listWorkItemApprovalsRoute = createRoute({
@@ -372,30 +376,11 @@ function approvalRouter() {
       const target = await loadApprovalTargetByApprovalId(id);
       if (!target)
         throw new HTTPException(404, { message: "Approval not found" });
-      const apiKey = c.get("apiKey");
-      // AP-7's instance-admin withdrawal exception does not remove the API key's
-      // capability ceiling. The normal requester branch is checked against the owner's
-      // current authority and the projected key subset by `hasApprovalCapability` below;
-      // the admin exception still requires the route's registered `approval:request`
-      // key scope.
-      if (
-        apiKey &&
-        !expandCapabilities(identity.keyCapabilities ?? []).has(
-          "approval:request" as Capability,
-        )
-      ) {
-        throw new HTTPException(403, {
-          message: "Insufficient API key scope",
-        });
-      }
-      if (
-        identity.reach.kind !== "all" &&
-        !hasApprovalCapability(
-          identity,
-          "approval:request" as Capability,
-          target,
-        )
-      ) {
+      const row = (await listApprovalRows(target.workItemId)).find(
+        (item) => item.id === id,
+      );
+      if (!row) throw new HTTPException(404, { message: "Approval not found" });
+      if (!(await canWithdrawApproval(row, identity, target))) {
         throw new HTTPException(403, { message: "Insufficient permissions" });
       }
       const updated = await withdrawApproval({

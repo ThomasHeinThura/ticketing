@@ -358,6 +358,25 @@ describe("API integration: approval lifecycle", () => {
     expect(requestAudit).toHaveLength(1);
 
     mockAuthenticatedSession(approver.user);
+    const approverView = await app.request(requestUrl);
+    expect(approverView.status, await approverView.clone().text()).toBe(200);
+    const approverViewBody = (await approverView.json()) as {
+      approvals: { id: string; canWithdraw: boolean }[];
+    };
+    expect(approverViewBody.approvals).toEqual([
+      expect.objectContaining({ id: approval.id, canWithdraw: false }),
+    ]);
+    const nonRequesterWithdrawal = await app.request(
+      `/api/approvals/${approval.id}/withdraw`,
+      { method: "POST" },
+    );
+    expect(nonRequesterWithdrawal.status).toBe(403);
+    const [pendingAfterNonRequesterDenial] = await db
+      .select({ state: schema.approvalTable.state })
+      .from(schema.approvalTable)
+      .where(eq(schema.approvalTable.id, approval.id));
+    expect(pendingAfterNonRequesterDenial?.state).toBe("pending");
+
     await db
       .delete(schema.teamMemberTable)
       .where(eq(schema.teamMemberTable.id, cabMember.id));
@@ -395,6 +414,19 @@ describe("API integration: approval lifecycle", () => {
     };
     expect(blockedBody.blockedBy.map(({ kind }) => kind)).toContain("approval");
 
+    mockAuthenticatedSession(requester.user);
+    const visibleWhileDisabled = await app.request(requestUrl);
+    expect(
+      visibleWhileDisabled.status,
+      await visibleWhileDisabled.clone().text(),
+    ).toBe(200);
+    const visibleBody = (await visibleWhileDisabled.json()) as {
+      approvals: { id: string; canWithdraw: boolean }[];
+    };
+    expect(visibleBody.approvals).toEqual([
+      expect.objectContaining({ id: approval.id, canWithdraw: true }),
+    ]);
+
     await db
       .delete(schema.requestParticipantTable)
       .where(
@@ -407,10 +439,18 @@ describe("API integration: approval lifecycle", () => {
     const myApprovals = await app.request("/api/me/approvals");
     expect(myApprovals.status, await myApprovals.clone().text()).toBe(200);
     const listBody = (await myApprovals.json()) as {
-      approvals: { id: string; approverReachLost: boolean }[];
+      approvals: {
+        id: string;
+        approverReachLost: boolean;
+        canWithdraw: boolean;
+      }[];
     };
     expect(listBody.approvals).toEqual([
-      expect.objectContaining({ id: approval.id, approverReachLost: true }),
+      expect.objectContaining({
+        id: approval.id,
+        approverReachLost: true,
+        canWithdraw: false,
+      }),
     ]);
     const lostReachDecision = await app.request(
       `/api/approvals/${approval.id}/decide`,

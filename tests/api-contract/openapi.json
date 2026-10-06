@@ -21766,6 +21766,9 @@
                           },
                           "approverReachLost": {
                             "type": "boolean"
+                          },
+                          "canWithdraw": {
+                            "type": "boolean"
                           }
                         },
                         "required": [
@@ -21782,7 +21785,8 @@
                           "expiresAt",
                           "decidedAt",
                           "decisionNote",
-                          "approverReachLost"
+                          "approverReachLost",
+                          "canWithdraw"
                         ]
                       }
                     }
@@ -21968,6 +21972,9 @@
                     },
                     "approverReachLost": {
                       "type": "boolean"
+                    },
+                    "canWithdraw": {
+                      "type": "boolean"
                     }
                   },
                   "required": [
@@ -21984,7 +21991,8 @@
                     "expiresAt",
                     "decidedAt",
                     "decisionNote",
-                    "approverReachLost"
+                    "approverReachLost",
+                    "canWithdraw"
                   ]
                 }
               }
@@ -22189,6 +22197,9 @@
                     },
                     "approverReachLost": {
                       "type": "boolean"
+                    },
+                    "canWithdraw": {
+                      "type": "boolean"
                     }
                   },
                   "required": [
@@ -22205,7 +22216,8 @@
                     "expiresAt",
                     "decidedAt",
                     "decisionNote",
-                    "approverReachLost"
+                    "approverReachLost",
+                    "canWithdraw"
                   ]
                 }
               }
@@ -22391,6 +22403,9 @@
                     },
                     "approverReachLost": {
                       "type": "boolean"
+                    },
+                    "canWithdraw": {
+                      "type": "boolean"
                     }
                   },
                   "required": [
@@ -22407,7 +22422,8 @@
                     "expiresAt",
                     "decidedAt",
                     "decisionNote",
-                    "approverReachLost"
+                    "approverReachLost",
+                    "canWithdraw"
                   ]
                 }
               }
@@ -22567,6 +22583,9 @@
                           },
                           "approverReachLost": {
                             "type": "boolean"
+                          },
+                          "canWithdraw": {
+                            "type": "boolean"
                           }
                         },
                         "required": [
@@ -22583,7 +22602,8 @@
                           "expiresAt",
                           "decidedAt",
                           "decisionNote",
-                          "approverReachLost"
+                          "approverReachLost",
+                          "canWithdraw"
                         ]
                       }
                     }
@@ -22719,6 +22739,9 @@
                           },
                           "approverReachLost": {
                             "type": "boolean"
+                          },
+                          "canWithdraw": {
+                            "type": "boolean"
                           }
                         },
                         "required": [
@@ -22735,7 +22758,8 @@
                           "expiresAt",
                           "decidedAt",
                           "decisionNote",
-                          "approverReachLost"
+                          "approverReachLost",
+                          "canWithdraw"
                         ]
                       }
                     }
@@ -22916,6 +22940,9 @@
                     },
                     "approverReachLost": {
                       "type": "boolean"
+                    },
+                    "canWithdraw": {
+                      "type": "boolean"
                     }
                   },
                   "required": [
@@ -22932,7 +22959,8 @@
                     "expiresAt",
                     "decidedAt",
                     "decisionNote",
-                    "approverReachLost"
+                    "approverReachLost",
+                    "canWithdraw"
                   ]
                 }
               }
