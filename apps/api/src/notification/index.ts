@@ -6,6 +6,7 @@ import {
   jsonResponse,
 } from "../openapi";
 import { setShadowLegacyAuthorization } from "../permissions/shadow-context";
+import { requireSessionOnly } from "../utils/require-session-only";
 import clearNotifications from "./controllers/clear-notifications";
 import createNotification from "./controllers/create-notification";
 import getNotifications from "./controllers/get-notifications";
@@ -39,6 +40,7 @@ const createNotificationRoute = createRoute({
   summary: "Create notification",
   description:
     "Create a notification for the current user. Most notifications are raised by the server from task and workspace events; this exists for integrations. Returns null when the user has turned off this notification category in their preferences.",
+  middleware: [requireSessionOnly()] as const,
   request: {
     body: {
       required: true,
@@ -51,6 +53,7 @@ const createNotificationRoute = createRoute({
       notificationSchema.nullable(),
     ),
     400: errorResponse("Invalid request"),
+    403: errorResponse("A browser session is required"),
   },
 });
 
@@ -62,9 +65,11 @@ const markAsReadRoute = createRoute({
   summary: "Mark notification read",
   description:
     "Mark one notification as read. Scoped to the current user, so another user's notification is not found.",
+  middleware: [requireSessionOnly()] as const,
   request: { params: notificationParam },
   responses: {
     200: jsonResponse("The updated notification", notificationSchema),
+    403: errorResponse("A browser session is required"),
     404: errorResponse("Notification not found"),
   },
 });
@@ -76,8 +81,10 @@ const markAllAsReadRoute = createRoute({
   tags: ["Notifications"],
   summary: "Mark all read",
   description: "Mark every notification for the current user as read.",
+  middleware: [requireSessionOnly()] as const,
   responses: {
     200: jsonResponse("All notifications marked as read", bulkResultSchema),
+    403: errorResponse("A browser session is required"),
   },
 });
 
@@ -89,8 +96,10 @@ const clearAllRoute = createRoute({
   summary: "Clear all",
   description:
     "Permanently delete every notification for the current user. This cannot be undone.",
+  middleware: [requireSessionOnly()] as const,
   responses: {
     200: jsonResponse("All notifications cleared", bulkResultSchema),
+    403: errorResponse("A browser session is required"),
   },
 });
 

@@ -1,3 +1,21 @@
+### 2026-10-06 · Keep self-only personal writes session-only until explicit API-key scopes exist
+
+**Decision:** Thomas explicitly approves “Make self writes session-only (recommended)” for
+the identified API self-write class. API-key and MCP-key credentials cannot create, update,
+read-mark, or delete the caller's notifications; mutate the caller's notification preferences
+or workspace notification rules; or upload/delete the caller's avatar. These mutations require
+a real browser session and use the existing `requireSessionOnly()` guard. Existing session
+behavior is preserved. Read-only self routes remain unchanged. This applies whether the key is
+personal, MCP-flagged, or otherwise; self-row ownership does not bypass AK-9's read-only default.
+
+No notification, notification-preference, or avatar capability is invented. Reopening API-key
+write access requires a separately registered capability and explicit policy/schema contract.
+This resolves the known self-write eligibility class for these endpoints; it does not change
+workspace or instance key scopes, nor claim the #592 legacy-scope remediation is independently
+reviewed or stage-complete.
+
+**Recorded:** orchestrator, Thomas's explicit approval in this task, 2026-10-06.
+
 ### 2026-10-06 · Use the existing Babel parser for the query ownership gate
 
 **Decision:** Add the existing Babel parser as a dev dependency (recommended). Replace

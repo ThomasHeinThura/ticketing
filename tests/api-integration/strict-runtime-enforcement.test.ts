@@ -319,6 +319,250 @@ describe("strict policy runtime enforcement against the production API graph", (
     expect(afterAllowed?.assigneeId).toBe(assignee?.id);
   });
 
+  it("intersects legacy project writes with API-key scope and the current role", async () => {
+    const member = await createWorkspaceMember({ role: "member" });
+    const viewer = await createWorkspaceMember({ role: "viewer" });
+    const { app } = await createStrictApp();
+
+    async function issueKey(
+      userId: string,
+      name: string,
+      permissions: string | null,
+    ) {
+      const rawKey = `taskdesk_test_${randomUUID()}`;
+      await db.insert(schema.apikeyTable).values({
+        referenceId: userId,
+        userId,
+        key: hashApiKey(rawKey),
+        name,
+        start: rawKey.slice(0, 12),
+        prefix: "taskdesk",
+        permissions,
+        createdAt: new Date(),
+        updatedAt: new Date(),
+      });
+      return rawKey;
+    }
+
+    async function createProjectWithKey(
+      workspaceId: string,
+      rawKey: string,
+      slug: string,
+    ) {
+      return app.request("/api/project", {
+        method: "POST",
+        headers: {
+          authorization: `Bearer ${rawKey}`,
+          "content-type": "application/json",
+        },
+        body: JSON.stringify({
+          name: `API key scope ${slug}`,
+          workspaceId,
+          slug,
+          icon: "Folder",
+        }),
+      });
+    }
+
+    const [projectsBefore] = await db
+      .select({ id: schema.projectTable.id })
+      .from(schema.projectTable)
+      .where(eq(schema.projectTable.workspaceId, member.workspace.id));
+    expect(projectsBefore).toBeUndefined();
+
+    const nullScopeKey = await issueKey(
+      member.user.id,
+      "legacy null-scope key",
+      null,
+    );
+    const nullScope = await createProjectWithKey(
+      member.workspace.id,
+      nullScopeKey,
+      "null-scope",
+    );
+    expect(nullScope.status, await nullScope.clone().text()).toBe(403);
+
+    const malformedScopeKey = await issueKey(
+      member.user.id,
+      "legacy malformed-scope key",
+      "{",
+    );
+    const malformedScope = await createProjectWithKey(
+      member.workspace.id,
+      malformedScopeKey,
+      "malformed-scope",
+    );
+    expect(malformedScope.status, await malformedScope.clone().text()).toBe(
+      403,
+    );
+
+    const validScopeKey = await issueKey(
+      member.user.id,
+      "legacy explicitly scoped key",
+      JSON.stringify({ project: ["create"] }),
+    );
+    const validScope = await createProjectWithKey(
+      member.workspace.id,
+      validScopeKey,
+      "scoped-create",
+    );
+    expect(validScope.status, await validScope.clone().text()).toBe(200);
+
+    const roleDeniedKey = await issueKey(
+      viewer.user.id,
+      "scope cannot widen viewer role",
+      JSON.stringify({ project: ["create"] }),
+    );
+    const roleDenied = await createProjectWithKey(
+      viewer.workspace.id,
+      roleDeniedKey,
+      "role-denied-create",
+    );
+    expect(roleDenied.status, await roleDenied.clone().text()).toBe(403);
+
+    const memberProjects = await db
+      .select({ id: schema.projectTable.id })
+      .from(schema.projectTable)
+      .where(eq(schema.projectTable.workspaceId, member.workspace.id));
+    expect(memberProjects).toHaveLength(1);
+    const viewerProjects = await db
+      .select({ id: schema.projectTable.id })
+      .from(schema.projectTable)
+      .where(eq(schema.projectTable.workspaceId, viewer.workspace.id));
+    expect(viewerProjects).toHaveLength(0);
+  });
+
+  it("keeps canonical self-assignment scoped by both the API key and current role", async () => {
+    const member = await createWorkspaceMember({ role: "member" });
+    const { project } = await createProjectFixture({
+      workspaceId: member.workspace.id,
+    });
+    await grantProjectReach(member.user.id, member.workspace.id, project.id, [
+      "work_item:create",
+      "work_item:read",
+      "work_item:assign",
+    ]);
+    const otherMember = await createWorkspaceMember({ role: "member" });
+    await db.insert(schema.workspaceUserTable).values({
+      workspaceId: member.workspace.id,
+      userId: otherMember.user.id,
+      role: "member",
+      joinedAt: new Date(),
+    });
+    await grantProjectReach(
+      otherMember.user.id,
+      member.workspace.id,
+      project.id,
+      ["work_item:read"],
+    );
+    const type = await createWorkItemType(member.workspace.id);
+    await createDefaultState(member.workspace.id, project.id);
+
+    mockAuthenticatedSession(member.user);
+    const { app } = await createStrictApp();
+    const created = await app.request(
+      `/api/projects/${project.id}/work-items`,
+      {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({
+          typeId: type.id,
+          title: "Member assignment target",
+        }),
+      },
+    );
+    expect(created.status, await created.clone().text()).toBe(200);
+    const { key } = (await created.json()) as { key: string };
+    const [person] = await db
+      .select({ id: schema.personTable.id })
+      .from(schema.personTable)
+      .where(eq(schema.personTable.userId, member.user.id))
+      .limit(1);
+    expect(person).toBeDefined();
+    const [otherPerson] = await db
+      .select({ id: schema.personTable.id })
+      .from(schema.personTable)
+      .where(eq(schema.personTable.userId, otherMember.user.id))
+      .limit(1);
+    expect(otherPerson).toBeDefined();
+
+    const selfKey = `taskdesk_test_${randomUUID()}`;
+    await db.insert(schema.apikeyTable).values({
+      referenceId: member.user.id,
+      userId: member.user.id,
+      key: hashApiKey(selfKey),
+      name: "scoped self-assignment key",
+      start: selfKey.slice(0, 12),
+      prefix: "taskdesk",
+      permissions: JSON.stringify({ work_item: ["update"] }),
+      createdAt: new Date(),
+      updatedAt: new Date(),
+    });
+    const selfAssignment = await app.request(`/api/work-items/${key}/assign`, {
+      method: "POST",
+      headers: {
+        authorization: `Bearer ${selfKey}`,
+        "content-type": "application/json",
+      },
+      body: JSON.stringify({ assigneeId: person?.id }),
+    });
+    expect(selfAssignment.status, await selfAssignment.clone().text()).toBe(
+      200,
+    );
+
+    const roleDeniedKey = `taskdesk_test_${randomUUID()}`;
+    await db.insert(schema.apikeyTable).values({
+      referenceId: member.user.id,
+      userId: member.user.id,
+      key: hashApiKey(roleDeniedKey),
+      name: "key scope cannot widen member assignment role",
+      start: roleDeniedKey.slice(0, 12),
+      prefix: "taskdesk",
+      permissions: JSON.stringify({ work_item: ["assign"] }),
+      createdAt: new Date(),
+      updatedAt: new Date(),
+    });
+
+    const [before] = await db
+      .select({
+        id: schema.workItemTable.id,
+        assigneeId: schema.workItemTable.assigneeId,
+        version: schema.workItemTable.version,
+      })
+      .from(schema.workItemTable)
+      .where(eq(schema.workItemTable.key, key));
+    const activitiesBefore = await db
+      .select({ id: schema.activityTable.id })
+      .from(schema.activityTable)
+      .where(eq(schema.activityTable.workItemId, before?.id ?? ""));
+    const denied = await app.request(`/api/work-items/${key}/assign`, {
+      method: "POST",
+      headers: {
+        authorization: `Bearer ${roleDeniedKey}`,
+        "content-type": "application/json",
+      },
+      body: JSON.stringify({ assigneeId: otherPerson?.id }),
+    });
+    expect(denied.status, await denied.clone().text()).toBe(403);
+
+    const [after] = await db
+      .select({
+        id: schema.workItemTable.id,
+        assigneeId: schema.workItemTable.assigneeId,
+        version: schema.workItemTable.version,
+      })
+      .from(schema.workItemTable)
+      .where(eq(schema.workItemTable.key, key));
+    const activitiesAfter = await db
+      .select({ id: schema.activityTable.id })
+      .from(schema.activityTable)
+      .where(eq(schema.activityTable.workItemId, before?.id ?? ""));
+    expect(after).toEqual(before);
+    expect(activitiesAfter.map((row) => row.id)).toEqual(
+      activitiesBefore.map((row) => row.id),
+    );
+  });
+
   it("uses the addressed row's workspace and refuses a caller query hint for another workspace", async () => {
     const owner = await createWorkspaceMember({ role: "admin" });
     const foreign = await createWorkspaceMember({ role: "admin" });
