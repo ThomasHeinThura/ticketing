@@ -39,8 +39,17 @@ function propertyName(member) {
   if (!memberTypes.has(member?.type)) return null;
   if (!member.computed && member.property?.type === "Identifier")
     return member.property.name;
-  const property = unwrap(member.property);
-  return property?.type === "StringLiteral" ? property.value : null;
+  return staticStringValue(member.property);
+}
+
+function staticStringValue(input) {
+  const value = unwrap(input);
+  if (value?.type === "StringLiteral") return value.value;
+  if (value?.type === "TemplateLiteral" && value.expressions.length === 0) {
+    const cooked = value.quasis[0]?.value.cooked;
+    return typeof cooked === "string" ? cooked : null;
+  }
+  return null;
 }
 
 function isMember(node, name) {
@@ -58,10 +67,23 @@ function referenceMethod(input, aliases) {
   return null;
 }
 
+function callableReferenceMethod(input, aliases) {
+  const node = unwrap(input);
+  if (memberTypes.has(node?.type)) {
+    const name = propertyName(node);
+    return readMethods.has(name) ? name : null;
+  }
+  if (node?.type === "Identifier") return aliases.get(node.name) ?? null;
+  if (callTypes.has(node?.type) && isMember(unwrap(node.callee), "bind")) {
+    return callableReferenceMethod(unwrap(node.callee).object, aliases);
+  }
+  return null;
+}
+
 function boundReferenceMethod(input, aliases) {
   const node = unwrap(input);
   if (callTypes.has(node?.type) && isMember(unwrap(node.callee), "bind")) {
-    return referenceMethod(unwrap(node.callee).object, aliases);
+    return callableReferenceMethod(unwrap(node.callee).object, aliases);
   }
   return referenceMethod(node, aliases);
 }
@@ -72,11 +94,7 @@ function destructuredBindings(input, aliases) {
   let changed = false;
   for (const item of pattern.properties) {
     if (item.type !== "ObjectProperty") continue;
-    const name = item.computed
-      ? unwrap(item.key)?.type === "StringLiteral"
-        ? unwrap(item.key).value
-        : null
-      : item.key?.name;
+    const name = item.computed ? staticStringValue(item.key) : item.key?.name;
     const target = unwrap(item.value);
     if (readMethods.has(name) && target?.type === "Identifier") {
       aliases.set(target.name, name);
@@ -152,7 +170,7 @@ export function queryReadViolations(source, file) {
       }
       if (["bind", "call", "apply"].includes(name)) {
         if (name === "bind") return;
-        const method = referenceMethod(callee.object, aliases);
+        const method = callableReferenceMethod(callee.object, aliases);
         if (method)
           add(
             method,

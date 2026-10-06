@@ -119,6 +119,8 @@ test("check:queries parses dotted, computed, escaped, and forwarded references u
   const memberForms = [
     ".select",
     '["select"]',
+    "[`select`]",
+    "[`sel\\u0065ct`]",
     String.raw`["sel\u0065ct"]`,
     String.raw`["\u{73}elect"]`,
     String.raw`['\x73elect']`,
@@ -160,6 +162,14 @@ test("check:queries parses dotted, computed, escaped, and forwarded references u
       name: `${member} alias bound invocation`,
       source: `const read = db${member}; read.bind(db)()`,
     },
+    {
+      name: `${member} bound call forwarding`,
+      source: `db${member}.bind(db).call(db)`,
+    },
+    {
+      name: `${member} bound apply forwarding`,
+      source: `db${member}.bind(db).apply(db, [])`,
+    },
   ]);
 
   for (const { name, source } of cases) {
@@ -174,6 +184,8 @@ test("check:queries parses dotted, computed, escaped, and forwarded references u
 
   for (const property of [
     '"select"',
+    "`select`",
+    "`sel\\u0065ct`",
     String.raw`"sel\u0065ct"`,
     String.raw`"\u{73}elect"`,
     String.raw`'\x73elect'`,
@@ -207,12 +219,18 @@ test("check:queries parses dotted, computed, escaped, and forwarded references u
   assert.equal(bound(), "selected");
   assert.equal(runtime["sel\u0065ct"].call(runtime), "selected");
   assert.equal(runtime["sel\u0065ct"].apply(runtime, []), "selected");
+  // biome-ignore lint/complexity/useLiteralKeys lint/style/noUnusedTemplateLiteral: These exercise computed forwarding.
+  assert.equal(runtime[`select`].bind(runtime).call(runtime), "selected");
+  // biome-ignore lint/complexity/useLiteralKeys lint/style/noUnusedTemplateLiteral: These exercise computed forwarding.
+  assert.equal(runtime[`select`].bind(runtime).apply(runtime, []), "selected");
 });
 
 test("check:queries carries optional-chain state through reads, forwarding, and aliases", () => {
   const properties = [
     ".select",
     '["select"]',
+    "[`select`]",
+    "[`sel\\u0065ct`]",
     String.raw`["sel\u0065ct"]`,
     String.raw`["\u{73}elect"]`,
     String.raw`['\x73elect']`,
@@ -298,6 +316,100 @@ test("check:queries carries optional-chain state through reads, forwarding, and 
   assert.equal(optionalRootRead(), "selected");
   const maybeBound = runtime?.select?.bind(runtime);
   assert.equal(maybeBound?.(), "selected");
+  assert.equal(runtime.select?.bind?.(runtime)?.call?.(runtime), "selected");
+  assert.equal(
+    runtime.select?.bind?.(runtime)?.apply?.(runtime, []),
+    "selected",
+  );
+});
+
+test("check:queries follows bound-call forwarding across optional and static-template forms", () => {
+  const cases = [
+    "db.select.bind(db).call(db)",
+    "db.select.bind(db).apply(db, [])",
+    "db.select?.bind?.(db)?.call?.(db)",
+    "db.select?.bind?.(db)?.apply?.(db, [])",
+    "db?.select?.bind?.(db)?.call?.(db)",
+    "db?.select?.bind?.(db)?.apply?.(db, [])",
+    "db[`select`]().from(table)",
+    "db?.[`select`]?.().from(table)",
+    "const { [`select`]: read } = db; read()",
+    "const { [`findMany`]: list } = db.query.person; list()",
+    "const read = db[`select`].bind(db); read.call(db)",
+    "const read = db[`select`].bind(db); read.apply(db, [])",
+  ];
+  for (const source of cases) {
+    assert.deepEqual(
+      queryReadViolations(`${source};`, "example.ts").map(
+        ({ method }) => method,
+      ),
+      [source.includes("findMany") ? "findMany" : "select"],
+      source,
+    );
+  }
+
+  assert.deepEqual(
+    queryReadViolations(
+      // biome-ignore lint/suspicious/noTemplateCurlyInString: The fixture source intentionally contains interpolated template keys.
+      "db[`sel${suffix}`](); db[templateKey](); const { [`sel${suffix}`]: read } = db; read(); db.execute(sql`SELECT 1`);",
+      "example.ts",
+    ),
+    [],
+  );
+
+  const runtime = {
+    select() {
+      return "selected";
+    },
+  };
+  assert.equal(runtime.select.bind(runtime).call(runtime), "selected");
+  assert.equal(runtime.select.bind(runtime).apply(runtime, []), "selected");
+  // biome-ignore lint/complexity/useLiteralKeys lint/style/noUnusedTemplateLiteral: This exercises a computed template key.
+  assert.equal(runtime[`select`](), "selected");
+  // biome-ignore lint/complexity/useLiteralKeys lint/style/noUnusedTemplateLiteral: This exercises a computed template key.
+  const { [`select`]: read } = runtime;
+  assert.equal(read(), "selected");
+});
+
+test("check:queries covers the bound-forwarder optionality cross-product", () => {
+  const properties = [
+    ".select",
+    '["select"]',
+    "[`select`]",
+    String.raw`["sel\u0065ct"]`,
+    String.raw`["\u{73}elect"]`,
+    String.raw`['\x73elect']`,
+  ];
+  for (const property of properties) {
+    for (const optionalRoot of [false, true]) {
+      const access = property.startsWith(".")
+        ? `db${optionalRoot ? "?." : "."}${property.slice(1)}`
+        : `db${optionalRoot ? "?." : ""}${property}`;
+      for (const optionalBindMember of [false, true]) {
+        for (const optionalBindCall of [false, true]) {
+          for (const forwarder of ["call", "apply"]) {
+            for (const optionalForwarderMember of [false, true]) {
+              for (const optionalForwarderCall of [false, true]) {
+                const bindMember = optionalBindMember ? "?." : ".";
+                const bindCall = optionalBindCall ? "?.(" : "(";
+                const forwarderMember = optionalForwarderMember ? "?." : ".";
+                const forwarderCall = optionalForwarderCall ? "?.(" : "(";
+                const args = forwarder === "call" ? "db" : "db, []";
+                const source = `${access}${bindMember}bind${bindCall}db)${forwarderMember}${forwarder}${forwarderCall}${args})`;
+                assert.deepEqual(
+                  queryReadViolations(`${source};`, "example.ts").map(
+                    ({ method }) => method,
+                  ),
+                  ["select"],
+                  source,
+                );
+              }
+            }
+          }
+        }
+      }
+    }
+  }
 });
 
 test("check:queries normalizes grouping and transparent TypeScript wrappers", () => {
