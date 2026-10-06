@@ -523,7 +523,7 @@ function ListView({ project, disableDragDrop = false }: ListViewProps) {
                   {column.tasks.map((task) => (
                     <motion.div
                       key={task.id}
-                      initial={{ opacity: 0 }}
+                      initial={false}
                       animate={{ opacity: 1 }}
                       exit={{ opacity: 0 }}
                       transition={{ duration: 0.15, ease: [0.23, 1, 0.32, 1] }}

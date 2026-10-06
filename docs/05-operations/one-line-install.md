@@ -138,12 +138,18 @@ sha256sum -c "$archive.sha256"
 
 The installer cannot be used on the air-gapped host because it fetches its release assets
 from GitHub. After transferring the four verified files, extract the archive and deploy from
-the versioned directory:
+the versioned directory. These commands create a fresh installation. If `.env` already exists,
+keep it: it contains deployment secrets, including the encryption key for stored plugin
+credentials. Do not replace it with the example file when upgrading an existing installation.
 
 ```bash
 tar -xzf "$archive"
 cd "taskdesk-${version}"
-cp deploy/.env.example .env
+if [ -e .env ]; then
+  printf '%s\n' 'Keeping existing .env; review it and preserve its secrets.'
+else
+  cp deploy/.env.example .env
+fi
 $EDITOR .env
 scripts/deploy.sh local
 ```
