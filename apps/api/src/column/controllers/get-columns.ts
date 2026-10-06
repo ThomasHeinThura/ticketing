@@ -1,7 +1,5 @@
-import { asc, eq } from "drizzle-orm";
-import db from "../../database";
-import { columnTable } from "../../database/schema";
 import { getProjectWorkspaceId } from "../../utils/assert-assignable-user";
+import { listColumnsQuery } from "../repository";
 
 async function getColumns(projectId: string) {
   // #202: rejects a soft-deleted project before returning its board. A *nonexistent*
@@ -11,11 +9,7 @@ async function getColumns(projectId: string) {
   // use; the workspace id itself isn't needed here, same as in `create-column.ts`.
   await getProjectWorkspaceId(projectId);
 
-  const columns = await db
-    .select()
-    .from(columnTable)
-    .where(eq(columnTable.projectId, projectId))
-    .orderBy(asc(columnTable.position));
+  const columns = await listColumnsQuery(projectId);
 
   return columns;
 }

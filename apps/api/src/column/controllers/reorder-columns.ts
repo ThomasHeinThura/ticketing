@@ -3,6 +3,7 @@ import { HTTPException } from "hono/http-exception";
 import db from "../../database";
 import { columnTable } from "../../database/schema";
 import { getProjectWorkspaceId } from "../../utils/assert-assignable-user";
+import { getColumnsByProjectQuery } from "../repository";
 
 async function reorderColumns(
   projectId: string,
@@ -30,10 +31,7 @@ async function reorderColumns(
     }
   }
 
-  const updated = await db.query.columnTable.findMany({
-    where: eq(columnTable.projectId, projectId),
-    orderBy: (columns, { asc }) => [asc(columns.position)],
-  });
+  const updated = await getColumnsByProjectQuery(projectId);
 
   return updated;
 }

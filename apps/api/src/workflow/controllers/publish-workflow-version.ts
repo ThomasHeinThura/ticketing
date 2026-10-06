@@ -1,12 +1,12 @@
-import { and, eq } from "drizzle-orm";
+import { eq } from "drizzle-orm";
 import { HTTPException } from "hono/http-exception";
 import db from "../../database";
+import { workflowTable, workflowVersionTable } from "../../database/schema";
 import {
-  personTable,
-  workflowTable,
-  workflowTransitionTable,
-  workflowVersionTable,
-} from "../../database/schema";
+  getWorkflowPublisherQuery,
+  getWorkflowVersionQuery,
+  listWorkflowTransitionsQuery,
+} from "../repository";
 
 /**
  * Publishes `number` for `workflowId`: stamps `published_at`/`published_by` on that
@@ -20,26 +20,13 @@ async function publishWorkflowVersion(
   number: number,
   userId: string,
 ) {
-  const [version] = await db
-    .select()
-    .from(workflowVersionTable)
-    .where(
-      and(
-        eq(workflowVersionTable.workflowId, workflowId),
-        eq(workflowVersionTable.number, number),
-      ),
-    )
-    .limit(1);
+  const [version] = await getWorkflowVersionQuery(workflowId, number);
 
   if (!version) {
     throw new HTTPException(404, { message: "Workflow version not found" });
   }
 
-  const [caller] = await db
-    .select({ id: personTable.id })
-    .from(personTable)
-    .where(eq(personTable.userId, userId))
-    .limit(1);
+  const [caller] = await getWorkflowPublisherQuery(userId);
 
   return db.transaction(async (tx) => {
     const [published] = await tx
@@ -53,10 +40,7 @@ async function publishWorkflowVersion(
       .set({ activeVersionId: version.id })
       .where(eq(workflowTable.id, workflowId));
 
-    const transitions = await tx
-      .select()
-      .from(workflowTransitionTable)
-      .where(eq(workflowTransitionTable.versionId, version.id));
+    const transitions = await listWorkflowTransitionsQuery(tx, version.id);
 
     return { ...published, transitions };
   });

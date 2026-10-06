@@ -1,19 +1,7 @@
-import { eq } from "drizzle-orm";
-import db from "../../database";
-import { userTable, workspaceUserTable } from "../../database/schema";
+import { listWorkspaceMembersQuery } from "../repository";
 
 async function getWorkspaceMembers(workspaceId: string) {
-  const members = await db
-    .select({
-      id: userTable.id,
-      name: userTable.name,
-      email: userTable.email,
-      image: userTable.image,
-      role: workspaceUserTable.role,
-    })
-    .from(workspaceUserTable)
-    .innerJoin(userTable, eq(workspaceUserTable.userId, userTable.id))
-    .where(eq(workspaceUserTable.workspaceId, workspaceId));
+  const members = await listWorkspaceMembersQuery(workspaceId);
 
   return members;
 }

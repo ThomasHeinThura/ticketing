@@ -1,6 +1,7 @@
 import { statement } from "@taskdesk/permissions";
-import { and, eq, sql } from "drizzle-orm";
+import { eq, sql } from "drizzle-orm";
 import db, { schema } from "../../database";
+import { getWorkspaceRoleByIdQuery } from "../repository";
 import type { WorkspaceRoleRow } from "./list-workspace-roles";
 import { WorkspaceRoleNotFoundError } from "./workspace-membership-errors";
 import {
@@ -70,16 +71,11 @@ async function updateWorkspaceRole(
       sql`SELECT pg_advisory_xact_lock(${WORKSPACE_ROLE_LOCK_NAMESPACE}, hashtext(${input.workspaceId}))`,
     );
 
-    const [existing] = await tx
-      .select()
-      .from(schema.workspaceRoleTable)
-      .where(
-        and(
-          eq(schema.workspaceRoleTable.workspaceId, input.workspaceId),
-          eq(schema.workspaceRoleTable.id, input.roleId),
-        ),
-      )
-      .limit(1);
+    const [existing] = await getWorkspaceRoleByIdQuery(
+      tx,
+      input.workspaceId,
+      input.roleId,
+    );
     if (!existing) {
       throw new WorkspaceRoleNotFoundError(input.roleId);
     }

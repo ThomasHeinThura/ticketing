@@ -1,4 +1,4 @@
-import { and, asc, eq, inArray, isNotNull } from "drizzle-orm";
+import { eq, inArray } from "drizzle-orm";
 import { HTTPException } from "hono/http-exception";
 import db from "../../database";
 import { labelTable } from "../../database/schema";
@@ -8,11 +8,15 @@ import {
   lockTaskAndAssertProjectLive,
 } from "../../task/assert-task-project-live";
 import { lockWorkspaceLabelNames } from "../label-name-lock";
+import {
+  getLabelForUpdateQuery,
+  getLabelSnapshotQuery,
+  listCopiesByWorkspaceNameQuery,
+  listLockedCopiesQuery,
+} from "../repository";
 
 async function updateLabel(id: string, name: string, color: string) {
-  const labelSnapshot = await db.query.labelTable.findFirst({
-    where: eq(labelTable.id, id),
-  });
+  const labelSnapshot = await getLabelSnapshotQuery(id);
   if (!labelSnapshot) {
     throw new HTTPException(404, { message: "Label not found" });
   }
@@ -25,11 +29,7 @@ async function updateLabel(id: string, name: string, color: string) {
     if (labelSnapshot.taskId) {
       await lockTaskAndAssertProjectLive(tx, labelSnapshot.taskId);
     }
-    const [label] = await tx
-      .select()
-      .from(labelTable)
-      .where(eq(labelTable.id, id))
-      .for("update");
+    const [label] = await getLabelForUpdateQuery(tx, id);
 
     if (!label) {
       throw new HTTPException(404, {
@@ -49,16 +49,11 @@ async function updateLabel(id: string, name: string, color: string) {
 
     let remainingCopyIds: string[] = [];
     if (!label.taskId && label.workspaceId) {
-      const copies = await tx
-        .select({ taskId: labelTable.taskId })
-        .from(labelTable)
-        .where(
-          and(
-            eq(labelTable.workspaceId, label.workspaceId),
-            eq(labelTable.name, label.name),
-            isNotNull(labelTable.taskId),
-          ),
-        );
+      const copies = await listCopiesByWorkspaceNameQuery(
+        tx,
+        label.workspaceId,
+        label.name,
+      );
       const taskIds = [
         ...new Set(
           copies
@@ -77,19 +72,12 @@ async function updateLabel(id: string, name: string, color: string) {
       );
       const lockedTaskIds = tasks.map((task) => task.id);
       const remainingCopies = lockedTaskIds.length
-        ? await tx
-            .select({ id: labelTable.id })
-            .from(labelTable)
-            .where(
-              and(
-                eq(labelTable.workspaceId, label.workspaceId),
-                eq(labelTable.name, label.name),
-                isNotNull(labelTable.taskId),
-                inArray(labelTable.taskId, lockedTaskIds),
-              ),
-            )
-            .orderBy(asc(labelTable.taskId), asc(labelTable.id))
-            .for("update")
+        ? await listLockedCopiesQuery(
+            tx,
+            label.workspaceId,
+            label.name,
+            lockedTaskIds,
+          )
         : [];
       remainingCopyIds = remainingCopies.map((copy) => copy.id);
     }

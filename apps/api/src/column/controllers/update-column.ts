@@ -3,6 +3,7 @@ import { HTTPException } from "hono/http-exception";
 import db from "../../database";
 import { columnTable } from "../../database/schema";
 import { getProjectWorkspaceId } from "../../utils/assert-assignable-user";
+import { getColumnQuery } from "../repository";
 
 async function updateColumn(
   id: string,
@@ -13,9 +14,7 @@ async function updateColumn(
     isFinal?: boolean;
   },
 ) {
-  const existing = await db.query.columnTable.findFirst({
-    where: eq(columnTable.id, id),
-  });
+  const existing = await getColumnQuery(id);
 
   if (!existing) {
     throw new HTTPException(404, { message: "Column not found" });

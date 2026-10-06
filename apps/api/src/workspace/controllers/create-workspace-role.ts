@@ -1,7 +1,11 @@
 import { BUILT_IN_ROLE_KEYS, statement } from "@taskdesk/permissions";
-import { and, count, eq, sql } from "drizzle-orm";
+import { sql } from "drizzle-orm";
 import db, { schema } from "../../database";
 import { MAX_WORKSPACE_ROLES_PER_WORKSPACE } from "../../utils/workspace-role-limits";
+import {
+  countWorkspaceRolesQuery,
+  findWorkspaceRoleByNameQuery,
+} from "../repository";
 import type { WorkspaceRoleRow } from "./list-workspace-roles";
 import {
   InsufficientPermissionToGrantError,
@@ -103,24 +107,19 @@ async function createWorkspaceRole(
       sql`SELECT pg_advisory_xact_lock(${WORKSPACE_ROLE_LOCK_NAMESPACE}, hashtext(${input.workspaceId}))`,
     );
 
-    const [existingCountRow] = await tx
-      .select({ value: count() })
-      .from(schema.workspaceRoleTable)
-      .where(eq(schema.workspaceRoleTable.workspaceId, input.workspaceId));
+    const [existingCountRow] = await countWorkspaceRolesQuery(
+      tx,
+      input.workspaceId,
+    );
     if ((existingCountRow?.value ?? 0) >= MAX_WORKSPACE_ROLES_PER_WORKSPACE) {
       throw new RoleLimitReachedError(MAX_WORKSPACE_ROLES_PER_WORKSPACE);
     }
 
-    const [existing] = await tx
-      .select({ id: schema.workspaceRoleTable.id })
-      .from(schema.workspaceRoleTable)
-      .where(
-        and(
-          eq(schema.workspaceRoleTable.workspaceId, input.workspaceId),
-          eq(schema.workspaceRoleTable.role, normalizedRole),
-        ),
-      )
-      .limit(1);
+    const [existing] = await findWorkspaceRoleByNameQuery(
+      tx,
+      input.workspaceId,
+      normalizedRole,
+    );
     if (existing) {
       throw new RoleNameTakenError(normalizedRole);
     }

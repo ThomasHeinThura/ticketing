@@ -5,18 +5,14 @@ import { labelTable } from "../../database/schema";
 import { publishEvent } from "../../events";
 import { lockTaskAndAssertProjectLive } from "../../task/assert-task-project-live";
 import { lockWorkspaceLabelNames } from "../label-name-lock";
+import {
+  getLabelAssignmentSnapshotQuery,
+  getLabelForUpdateQuery,
+} from "../repository";
 
 async function unassignLabelFromTask(id: string, userId: string) {
   const { deletedLabel, task } = await db.transaction(async (tx) => {
-    const [labelSnapshot] = await tx
-      .select({
-        taskId: labelTable.taskId,
-        workspaceId: labelTable.workspaceId,
-        name: labelTable.name,
-      })
-      .from(labelTable)
-      .where(eq(labelTable.id, id))
-      .limit(1);
+    const [labelSnapshot] = await getLabelAssignmentSnapshotQuery(tx, id);
     if (!labelSnapshot) {
       throw new HTTPException(404, { message: "Label not found" });
     }
@@ -36,11 +32,7 @@ async function unassignLabelFromTask(id: string, userId: string) {
       tx,
       labelSnapshot.taskId,
     );
-    const [label] = await tx
-      .select()
-      .from(labelTable)
-      .where(eq(labelTable.id, id))
-      .for("update");
+    const [label] = await getLabelForUpdateQuery(tx, id);
     if (!label) {
       throw new HTTPException(404, { message: "Label not found" });
     }
