@@ -1,4 +1,3 @@
-import { sql } from "drizzle-orm";
 import db from "../database";
 import {
   acquireNotificationReservation,
@@ -11,6 +10,7 @@ import {
   type ReservationToken,
   releaseNotificationReservation,
   renewNotificationReservation,
+  updateUnreservedNotificationDelivery,
 } from "../database/repositories/notification-delivery.repository";
 import type { DbTransaction } from "../events/outbox";
 import { evaluateCurrentNotificationReachAndPreference } from "./current-eligibility";
@@ -150,22 +150,28 @@ export async function processNextNotificationDelivery(
   if (eligibility.kind === "unresolved")
     return leaveUnresolved(delivery, eligibility.reason);
   if (eligibility.kind === "defer") {
-    await db.execute(sql`
-      UPDATE notification_delivery
-         SET next_attempt_at = ${eligibility.until}, last_error = ${eligibility.reason},
-             updated_at = clock_timestamp() AT TIME ZONE 'UTC'
-       WHERE id = ${delivery.id} AND state = 'pending'
-    `);
-    return { kind: "deferred", reason: eligibility.reason };
+    const changed = await db.transaction((tx) =>
+      updateUnreservedNotificationDelivery(tx, delivery.id, {
+        kind: "deferred",
+        until: eligibility.until,
+        reason: eligibility.reason,
+      }),
+    );
+    return {
+      kind: "deferred",
+      reason: changed ? eligibility.reason : "delivery_fence",
+    };
   }
   if (eligibility.kind === "suppress") {
-    await db.execute(sql`
-      UPDATE notification_delivery
-         SET state = 'suppressed', last_error = ${eligibility.reason},
-             updated_at = clock_timestamp() AT TIME ZONE 'UTC'
-       WHERE id = ${delivery.id} AND state = 'pending'
-    `);
-    return { kind: "suppressed", reason: eligibility.reason };
+    const changed = await db.transaction((tx) =>
+      updateUnreservedNotificationDelivery(tx, delivery.id, {
+        kind: "suppressed",
+        reason: eligibility.reason,
+      }),
+    );
+    return changed
+      ? { kind: "suppressed", reason: eligibility.reason }
+      : { kind: "deferred", reason: "delivery_fence" };
   }
 
   const claim = await db.transaction((tx) =>
@@ -176,16 +182,27 @@ export async function processNextNotificationDelivery(
       ownerDeliveryId: delivery.id,
     }),
   );
+  if (claim.status === "not_pending")
+    return { kind: "deferred", reason: "delivery_fence" };
   if (claim.status === "digest_collision") {
-    await db.execute(sql`UPDATE notification_delivery SET state = 'suppressed',
-      last_error = 'reservation_digest_collision', updated_at = clock_timestamp() AT TIME ZONE 'UTC'
-      WHERE id = ${delivery.id} AND state = 'pending'`);
-    return { kind: "suppressed", reason: claim.status };
+    const changed = await db.transaction((tx) =>
+      updateUnreservedNotificationDelivery(tx, delivery.id, {
+        kind: "suppressed",
+        reason: "reservation_digest_collision",
+      }),
+    );
+    return changed
+      ? { kind: "suppressed", reason: claim.status }
+      : { kind: "deferred", reason: "delivery_fence" };
   }
   if (claim.status === "deferred") {
-    await db.execute(sql`UPDATE notification_delivery SET next_attempt_at = ${claim.leaseExpiresAt},
-      last_error = 'reservation_contention', updated_at = clock_timestamp() AT TIME ZONE 'UTC'
-      WHERE id = ${delivery.id} AND state = 'pending'`);
+    await db.transaction((tx) =>
+      updateUnreservedNotificationDelivery(tx, delivery.id, {
+        kind: "deferred",
+        until: claim.leaseExpiresAt,
+        reason: "reservation_contention",
+      }),
+    );
     return { kind: "deferred", reason: claim.status };
   }
   const reservation = claim.reservation;

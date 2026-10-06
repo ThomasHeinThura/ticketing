@@ -27,8 +27,10 @@ export type CurrentNotificationEligibility =
       kind: "destination_unresolved";
     };
 
-function eventPayload(payload: unknown): Record<string, unknown> | null {
-  let parsed = payload;
+function eventPayload(
+  delivery: ClaimedNotificationDelivery,
+): Record<string, unknown> | null {
+  let parsed = delivery.payload;
   if (typeof parsed === "string") {
     try {
       parsed = JSON.parse(parsed);
@@ -38,7 +40,18 @@ function eventPayload(payload: unknown): Record<string, unknown> | null {
   }
   if (!parsed || typeof parsed !== "object" || Array.isArray(parsed))
     return null;
-  const envelopePayload = (parsed as Record<string, unknown>).payload;
+  const envelope = parsed as Record<string, unknown>;
+  const scope = envelope.scope;
+  if (
+    envelope.id !== delivery.eventId ||
+    envelope.kind !== delivery.eventKind ||
+    !scope ||
+    typeof scope !== "object" ||
+    Array.isArray(scope) ||
+    (scope as Record<string, unknown>).workspaceId !== delivery.workspaceId
+  )
+    return null;
+  const envelopePayload = envelope.payload;
   return envelopePayload &&
     typeof envelopePayload === "object" &&
     !Array.isArray(envelopePayload)
@@ -49,7 +62,7 @@ function eventPayload(payload: unknown): Record<string, unknown> | null {
 function matchesCanonicalResource(
   delivery: ClaimedNotificationDelivery,
 ): boolean {
-  const payload = eventPayload(delivery.payload);
+  const payload = eventPayload(delivery);
   if (!payload) return false;
   if (delivery.resourceType === "approval")
     return payload.approvalId === delivery.resourceId;
@@ -63,6 +76,25 @@ function matchesCanonicalResource(
     typeof payload.commentId === "string"
   )
     return false;
+  if (
+    delivery.resourceType === "work_item" &&
+    [
+      "work_item.assigned",
+      "work_item.unassigned",
+      "work_item.mentioned",
+      "work_item.transitioned",
+      "work_item.escalated",
+      "work_item.due_soon",
+      "work_item.overdue",
+      "work_item.unblocked",
+      "sla.at_risk",
+      "sla.breached",
+    ].includes(delivery.eventKind)
+  )
+    return (
+      payload.workItemId === delivery.resourceId ||
+      payload.key === delivery.resourceId
+    );
   return true;
 }
 

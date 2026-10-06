@@ -37,6 +37,7 @@ export type ReservationToken = {
 export type ReservationClaim =
   | { status: "acquired"; reservation: ReservationToken }
   | { status: "deferred"; leaseExpiresAt: Date }
+  | { status: "not_pending" }
   | { status: "digest_collision" };
 
 /** A cleanup/acquire race could not be resolved within the bounded DB retry budget. */
@@ -115,6 +116,15 @@ export async function acquireNotificationReservation(
   },
 ): Promise<ReservationClaim> {
   const key = notificationReservationKey(input);
+  // Use the delivery row as the common serialization point for reservation acquisition
+  // and every state/scheduling write. A second drain may have claimed this same row after
+  // the first claim transaction committed; it must not start a reservation after another
+  // worker has terminalized or deferred it.
+  const delivery = await tx.execute(sql`
+    SELECT state FROM notification_delivery WHERE id = ${input.ownerDeliveryId} FOR UPDATE
+  `);
+  if (rows<{ state: string }>(delivery)[0]?.state !== "pending")
+    return { status: "not_pending" };
   for (
     let acquisitionAttempt = 0;
     acquisitionAttempt < MAX_RESERVATION_ACQUIRE_RETRIES;
@@ -207,6 +217,78 @@ export async function acquireNotificationReservation(
   // The caller sees an ordinary retryable operation failure. No lease expiry is invented,
   // no delivery attempt is consumed, and provider I/O is unreachable on this path.
   throw new NotificationReservationContentionError();
+}
+
+/**
+ * Apply an eligibility or reservation scheduling result only while this delivery is not
+ * already fenced for provider work. Lock order is always delivery then reservation, the
+ * same order used by acquire/authorize/complete. The post-lock sample ensures an expired
+ * lease no longer blocks this worker, even when physical cleanup has not run.
+ */
+export async function updateUnreservedNotificationDelivery(
+  tx: DbTransaction,
+  deliveryId: string,
+  update:
+    | { kind: "suppressed"; reason: string }
+    | { kind: "deferred"; until: Date; reason: string },
+): Promise<boolean> {
+  const deliveryResult = await tx.execute(sql`
+    SELECT state, recipient_person_id AS "recipientPersonId", channel,
+           dedupe_key AS "dedupeKey"
+      FROM notification_delivery WHERE id = ${deliveryId} FOR UPDATE
+  `);
+  const delivery = rows<{
+    state: string;
+    recipientPersonId: string;
+    channel: string;
+    dedupeKey: string;
+  }>(deliveryResult)[0];
+  if (delivery?.state !== "pending") return false;
+
+  const key = notificationReservationKey(delivery);
+  const reservationResult = await tx.execute(sql`
+    SELECT owner_delivery_id AS "ownerDeliveryId", lease_expires_at AS "leaseExpiresAt"
+      FROM outbox_dedupe_reservation
+     WHERE reservation_key = ${key}
+     FOR UPDATE
+  `);
+  const reservation = rows<{
+    ownerDeliveryId: string;
+    leaseExpiresAt: Date | string;
+  }>(reservationResult)[0];
+  const sampledResult = await tx.execute(sql`
+    SELECT clock_timestamp() AT TIME ZONE 'UTC' AS "sampledAt"
+  `);
+  const sampledAt = utcDate(
+    rows<{ sampledAt: Date | string }>(sampledResult)[0]?.sampledAt,
+  );
+  const leaseExpiresAt = utcDate(reservation?.leaseExpiresAt);
+  if (!sampledAt) throw new Error("Database wall-clock sample was unavailable");
+  if (
+    reservation?.ownerDeliveryId === deliveryId &&
+    leaseExpiresAt &&
+    leaseExpiresAt.getTime() > sampledAt.getTime()
+  )
+    return false;
+
+  if (update.kind === "suppressed") {
+    const changed = await tx.execute(sql`
+      UPDATE notification_delivery
+         SET state = 'suppressed', last_error = ${update.reason},
+             delivered_at = NULL, updated_at = ${sampledAt}::timestamp
+       WHERE id = ${deliveryId} AND state = 'pending'
+       RETURNING id
+    `);
+    return rows<unknown>(changed).length === 1;
+  }
+  const changed = await tx.execute(sql`
+    UPDATE notification_delivery
+       SET next_attempt_at = ${update.until}, last_error = ${update.reason},
+           updated_at = ${sampledAt}::timestamp
+     WHERE id = ${deliveryId} AND state = 'pending'
+     RETURNING id
+  `);
+  return rows<unknown>(changed).length === 1;
 }
 
 export async function hasRecentNotificationSuccess(
