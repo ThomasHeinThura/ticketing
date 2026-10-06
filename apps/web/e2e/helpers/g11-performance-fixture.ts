@@ -269,7 +269,8 @@ export async function installPerformanceApiFixture(
         status,
         contentType: "application/json",
         headers: {
-          "Access-Control-Allow-Origin": "http://127.0.0.1:4178",
+          "Access-Control-Allow-Origin":
+            request.headers().origin ?? "http://127.0.0.1:4178",
           "Access-Control-Allow-Credentials": "true",
           "Access-Control-Allow-Headers":
             "Content-Type, X-TaskDesk-Window-Id, X-TaskDesk-CSRF, If-Match",
@@ -283,7 +284,8 @@ export async function installPerformanceApiFixture(
       return route.fulfill({
         status: 204,
         headers: {
-          "Access-Control-Allow-Origin": "http://127.0.0.1:4178",
+          "Access-Control-Allow-Origin":
+            request.headers().origin ?? "http://127.0.0.1:4178",
           "Access-Control-Allow-Credentials": "true",
           "Access-Control-Allow-Headers":
             "Content-Type, X-TaskDesk-Window-Id, X-TaskDesk-CSRF, If-Match",

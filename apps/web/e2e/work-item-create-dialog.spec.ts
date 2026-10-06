@@ -63,12 +63,16 @@ test("create dialog opens while the list, wrapper, and form load independently",
 
   let releaseWrapper!: () => void;
   let wrapperRequested!: () => void;
+  let wrapperContinued!: () => void;
   let wrapperRequestCount = 0;
   const wrapperRequest = new Promise<void>((resolve) => {
     wrapperRequested = resolve;
   });
   const wrapperRelease = new Promise<void>((resolve) => {
     releaseWrapper = resolve;
+  });
+  const wrapperFinished = new Promise<void>((resolve) => {
+    wrapperContinued = resolve;
   });
   await page.route(
     (url) =>
@@ -80,6 +84,7 @@ test("create dialog opens while the list, wrapper, and form load independently",
       wrapperRequested();
       await wrapperRelease;
       await route.continue();
+      wrapperContinued();
     },
   );
 
@@ -112,7 +117,27 @@ test("create dialog opens while the list, wrapper, and form load independently",
     await expect(
       page.getByTestId("create-work-item-dialog-loading"),
     ).toBeVisible();
+    await page.keyboard.press("Escape");
+    await expect(page.getByRole("dialog")).toHaveCount(0);
+    await expect(
+      page.getByTestId("create-work-item-dialog-loading"),
+    ).toHaveCount(0);
+    await expect(trigger).toBeFocused();
+
     releaseWrapper();
+    await wrapperFinished;
+    await page.evaluate(
+      () =>
+        new Promise<void>((resolve) =>
+          requestAnimationFrame(() => requestAnimationFrame(() => resolve())),
+        ),
+    );
+    await expect(page.getByRole("dialog")).toHaveCount(0);
+    await expect(
+      page.getByTestId("create-work-item-dialog-loading"),
+    ).toHaveCount(0);
+
+    await trigger.click();
 
     const dialog = page.getByRole("dialog");
     await expect(dialog).toBeVisible();

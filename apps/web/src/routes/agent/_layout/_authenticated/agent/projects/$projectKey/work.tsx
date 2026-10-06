@@ -1,6 +1,13 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { Button, Skeleton } from "@taskdesk/ui";
-import { lazy, Suspense, useCallback, useEffect, useState } from "react";
+import {
+  lazy,
+  Suspense,
+  useCallback,
+  useEffect,
+  useRef,
+  useState,
+} from "react";
 import { useTranslation } from "react-i18next";
 import PageTitle from "@/components/page-title";
 import WorkItemListLoading from "@/components/work-item/work-item-list-loading";
@@ -94,6 +101,7 @@ function WorkItemsRouteComponent() {
   const [isCreateOpen, setIsCreateOpen] = useState(false);
   const [isCreateDialogReady, setIsCreateDialogReady] = useState(false);
   const [isCreateDialogLoadError, setIsCreateDialogLoadError] = useState(false);
+  const createTriggerRef = useRef<HTMLButtonElement>(null);
   const [realtimeProjectId, setRealtimeProjectId] = useState<string>();
   const [realtimeStatus, setRealtimeStatus] = useState<{
     projectId: string;
@@ -159,6 +167,20 @@ function WorkItemsRouteComponent() {
     setRealtimeStatus({ projectId: project.id, status: "connecting" });
   }, [project?.id]);
 
+  useEffect(() => {
+    if (!isCreateOpen || isCreateDialogReady || isCreateDialogLoadError) return;
+
+    const cancelPendingOpen = (event: KeyboardEvent) => {
+      if (event.key !== "Escape") return;
+      event.preventDefault();
+      setIsCreateOpen(false);
+      createTriggerRef.current?.focus();
+    };
+
+    window.addEventListener("keydown", cancelPendingOpen);
+    return () => window.removeEventListener("keydown", cancelPendingOpen);
+  }, [isCreateDialogLoadError, isCreateDialogReady, isCreateOpen]);
+
   const handleRealtimeAvailabilityChange = useCallback(
     (projectId: string, status: WorkItemRealtimeStatus) => {
       if (projectId !== project?.id) return;
@@ -213,6 +235,7 @@ function WorkItemsRouteComponent() {
           {project ? (
             <Suspense fallback={null}>
               <WorkItemCreateTrigger
+                buttonRef={createTriggerRef}
                 onPreload={preloadCreateWorkItemDialog}
                 onClick={openCreateDialog}
               />
