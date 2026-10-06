@@ -1,3 +1,17 @@
+### 2026-10-06 · Use the existing Babel parser for the query ownership gate
+
+**Decision:** Add the existing Babel parser as a dev dependency (recommended). Replace
+the hand-written source lexer/member parser in `check:queries` with Babel's parser and
+AST-based recognition. Keep the gate's current Drizzle read-method families, canonical
+repository exemption, simple alias scope, and fail-closed handling of unparseable source.
+This does not broaden the gate to raw SQL transport or dynamic/interprocedural analysis.
+
+**Approval:** Thomas explicitly approved the dependency addition in this chat: “Add the
+existing Babel parser as a dev dependency (recommended)”. Use the already locked
+`@babel/parser` 7.29.8 version.
+
+**Recorded:** orchestrator, 2026-10-06.
+
 ### 2026-10-05 · Continue P1–P4 execution and prepare combined phase acceptance
 
 Thomas explicitly instructs the orchestrator to check and continue P1, P2, P3 and P4

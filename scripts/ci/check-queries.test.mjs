@@ -300,6 +300,47 @@ test("check:queries carries optional-chain state through reads, forwarding, and 
   assert.equal(maybeBound?.(), "selected");
 });
 
+test("check:queries normalizes grouping and transparent TypeScript wrappers", () => {
+  const cases = [
+    "const read = (db.select).bind(db); read()",
+    "(db.select).call(db)",
+    "(db.select).bind(db)()",
+    "const read = db.select.bind(db); (read)()",
+    "const read = ((db.select as DrizzleExecutor['select'])).bind(db); read()",
+    "const read = ((db.select!)).bind(db); read()",
+    "const { select: read } = (db as DrizzleExecutor); read()",
+  ];
+  for (const source of cases) {
+    assert.deepEqual(
+      queryReadViolations(`${source};`, "example.ts").map(
+        ({ method }) => method,
+      ),
+      ["select"],
+      source,
+    );
+  }
+
+  const runtime = {
+    select() {
+      return "selected";
+    },
+  };
+  const read = runtime.select.bind(runtime);
+  assert.equal(read(), "selected");
+  assert.equal(runtime.select.call(runtime), "selected");
+  assert.equal(runtime.select.bind(runtime)(), "selected");
+  const alias = runtime.select.bind(runtime);
+  assert.equal(alias(), "selected");
+
+  assert.deepEqual(
+    queryReadViolations(
+      'const note = "(db.select).call(db)"; /* db.select() */ const value: string = "ok"; const other = { lookup: () => 1 }; other.lookup(); db.execute(sql`SELECT 1`);',
+      "example.ts",
+    ),
+    [],
+  );
+});
+
 test("check:queries ignores comments, string contents, regexes, and template text", () => {
   const source = [
     "// db.select().from(table)",
@@ -342,6 +383,12 @@ test("check:queries scope is Drizzle read methods, not raw SQL transport", () =>
   const source = "await db.execute(sql`SELECT * FROM work_item`);";
 
   assert.deepEqual(queryReadViolations(source, "example.ts"), []);
+});
+
+test("check:queries fails closed when TypeScript cannot be parsed", () => {
+  assert.deepEqual(queryReadViolations("db.select( ;", "example.ts"), [
+    { file: "example.ts", line: 1, method: "parse error" },
+  ]);
 });
 
 test("check:queries exempts only nested repository.ts modules", async (t) => {
