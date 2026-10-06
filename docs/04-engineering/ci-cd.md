@@ -67,7 +67,7 @@ its source-binding limit are recorded in the
 │ pnpm check:overrides one override source only    │
 │ pnpm check:dockerfile-deps Dockerfile=workspace  │
 │ gitleaks             no secrets in the diff      │
-│ pnpm check:queries   no db.select() outside repo │
+│ pnpm check:queries   Drizzle reads in repository │
 │ pnpm check:inventory screen counts match rows    │
 │ pnpm check:reviews   review section empty        │
 │ pnpm check:env       no stray process.env        │
@@ -96,6 +96,12 @@ its source-binding limit are recorded in the
 │ helm lint + helm template   charts/taskdesk      │
 └──────────────────────────────────────────────────┘
 ```
+
+`check:queries` enforces repository ownership for Drizzle `select`, `selectDistinct`,
+`selectDistinctOn`, and relational `findFirst`/`findMany` calls, including their `OrThrow`
+variants. It recognizes optional calls, static computed properties, and simple local method
+aliases. Raw SQL sent through `execute()` or a database driver's `query()` is outside this
+gate's scope; the checker does not claim to enforce ownership for those calls.
 
 The Build job runs `pnpm build`, `pnpm check:bundle-purity` and `pnpm check:bundle-size`.
 The purity gate walks static and dynamic chunks from the portal entry using bundler-emitted

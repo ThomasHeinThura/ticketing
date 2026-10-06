@@ -1,6 +1,9 @@
 import assert from "node:assert/strict";
+import { mkdir, mkdtemp, rm, writeFile } from "node:fs/promises";
+import os from "node:os";
+import path from "node:path";
 import test from "node:test";
-import { queryReadViolations } from "./check-queries.mjs";
+import { checkQueries, queryReadViolations } from "./check-queries.mjs";
 
 test("check:queries detects fluent and relational Drizzle reads", () => {
   const source = [
@@ -18,6 +21,58 @@ test("check:queries detects fluent and relational Drizzle reads", () => {
       [1, "select"],
       [2, "findFirst"],
       [3, "selectDistinctOn"],
+    ],
+  );
+});
+
+test("check:queries detects optional and computed read-member calls", () => {
+  const source = [
+    "db?.select().from(table);",
+    "db.select?.().from(table);",
+    'db["select"]().from(table);',
+    'tx?.["query"].person.findFirst?.();',
+    "db.query.user['findMany']();",
+    "db['selectDistinct']().from(table);",
+  ].join("\n");
+
+  assert.deepEqual(
+    queryReadViolations(source, "example.ts").map(({ line, method }) => [
+      line,
+      method,
+    ]),
+    [
+      [1, "select"],
+      [2, "select"],
+      [3, "select"],
+      [4, "findFirst"],
+      [5, "findMany"],
+      [6, "selectDistinct"],
+    ],
+  );
+});
+
+test("check:queries detects receiver and simple method aliases", () => {
+  const source = [
+    "const executorAlias = tx;",
+    "executorAlias.query.person.findFirst();",
+    "const read = db.select;",
+    "read().from(table);",
+    "const boundRead = db.select.bind(db);",
+    "boundRead().from(table);",
+    "const { findMany: list } = db.query.person;",
+    "list();",
+  ].join("\n");
+
+  assert.deepEqual(
+    queryReadViolations(source, "example.ts").map(({ line, method }) => [
+      line,
+      method,
+    ]),
+    [
+      [2, "findFirst"],
+      [4, "select"],
+      [6, "select"],
+      [8, "findMany"],
     ],
   );
 });
@@ -44,5 +99,45 @@ test("check:queries scans executable template substitutions", () => {
       method,
     ]),
     [[1, "select"]],
+  );
+});
+
+test("check:queries scans nested executable template substitutions", () => {
+  const source =
+    "const rendered = `outer $" +
+    "{sql`SELECT $" +
+    "{db.select().from(t)}}`" +
+    "} end`;";
+
+  assert.deepEqual(
+    queryReadViolations(source, "example.ts").map(({ method }) => method),
+    ["select"],
+  );
+});
+
+test("check:queries scope is Drizzle read methods, not raw SQL transport", () => {
+  const source = "await db.execute(sql`SELECT * FROM work_item`);";
+
+  assert.deepEqual(queryReadViolations(source, "example.ts"), []);
+});
+
+test("check:queries exempts only nested repository.ts modules", async (t) => {
+  const root = await mkdtemp(path.join(os.tmpdir(), "taskdesk-query-gate-"));
+  t.after(async () => rm(root, { recursive: true, force: true }));
+
+  const sourceRoot = path.join(root, "apps/api/src");
+  await mkdir(path.join(sourceRoot, "feature"), { recursive: true });
+  await writeFile(
+    path.join(sourceRoot, "repository.ts"),
+    "db.select().from(table);",
+  );
+  await writeFile(
+    path.join(sourceRoot, "feature/repository.ts"),
+    "db.select().from(table);",
+  );
+
+  assert.deepEqual(
+    (await checkQueries(root)).map(({ file, method }) => [file, method]),
+    [["apps/api/src/repository.ts", "select"]],
   );
 });

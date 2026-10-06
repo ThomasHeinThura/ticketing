@@ -10,15 +10,20 @@ function readTokens(source) {
   const tokens = [];
   const identifierStart = /[$_\p{ID_Start}]/u;
   const identifierPart = /(?:[$_]|\u200c|\u200d|\p{ID_Continue})/u;
-  const add = (value, offset) => tokens.push({ value, offset });
+  const add = (value, offset, kind = "token") =>
+    tokens.push({ value, offset, kind });
 
-  function skipQuoted(index, quote) {
+  function scanQuoted(index, quote) {
+    const start = index;
     index += 1;
     while (index < source.length) {
       if (source[index] === "\\") index += 2;
-      else if (source[index] === quote) return index + 1;
-      else index += 1;
+      else if (source[index] === quote) {
+        add(source.slice(start + 1, index), start, "string");
+        return index + 1;
+      } else index += 1;
     }
+    add(source.slice(start + 1), start, "string");
     return index;
   }
 
@@ -98,7 +103,7 @@ function readTokens(source) {
         continue;
       }
       if (ch === "'" || ch === '"') {
-        index = skipQuoted(index, ch);
+        index = scanQuoted(index, ch);
         continue;
       }
       if (ch === "`") {
@@ -140,6 +145,7 @@ function readTokens(source) {
 export function queryReadViolations(source, file) {
   const tokens = readTokens(source);
   const results = [];
+  const seen = new Set();
   const readMethods = new Set([
     "select",
     "selectDistinct",
@@ -149,26 +155,156 @@ export function queryReadViolations(source, file) {
     "findFirstOrThrow",
     "findManyOrThrow",
   ]);
-  for (let index = 1; index + 1 < tokens.length; index += 1) {
+  const methodBindings = readMethodBindings(tokens, readMethods);
+
+  for (let index = 0; index < tokens.length; index += 1) {
+    const token = tokens[index];
+    if (readMethods.has(token.value) && isCalledMember(tokens, index)) {
+      addFinding(token.value, token.offset);
+    }
+  }
+
+  for (let index = 0; index < tokens.length; index += 1) {
+    const token = tokens[index];
     if (
-      tokens[index - 1].value !== "." ||
-      !readMethods.has(tokens[index].value) ||
-      tokens[index + 1].value !== "("
+      token.kind === "token" &&
+      methodBindings.has(token.value) &&
+      !isMemberProperty(tokens, index) &&
+      isCalled(tokens, index + 1)
+    ) {
+      addFinding(methodBindings.get(token.value), token.offset);
+    }
+  }
+
+  return results.sort((a, b) => a.line - b.line);
+
+  function addFinding(method, offset) {
+    if (seen.has(offset)) return;
+    seen.add(offset);
+    const line = source.slice(0, offset).split("\n").length;
+    results.push({ file, line, method });
+  }
+}
+
+function isCalled(tokens, index) {
+  return (
+    tokens[index]?.value === "(" ||
+    (tokens[index]?.value === "?" &&
+      tokens[index + 1]?.value === "." &&
+      tokens[index + 2]?.value === "(")
+  );
+}
+
+function isMemberProperty(tokens, index) {
+  if (tokens[index - 1]?.value === ".") return true;
+  return tokens[index - 1]?.value === "[" && tokens[index + 1]?.value === "]";
+}
+
+function isCalledMember(tokens, index) {
+  const token = tokens[index];
+  if (!token || !(token.kind === "token" || token.kind === "string"))
+    return false;
+  if (tokens[index - 1]?.value === ".") return isCalled(tokens, index + 1);
+  return (
+    tokens[index - 1]?.value === "[" &&
+    tokens[index + 1]?.value === "]" &&
+    isCalled(tokens, index + 2)
+  );
+}
+
+function isReadReferenceEnd(tokens, index) {
+  const next = index + 1;
+  if (tokens[next]?.value === ";" || tokens[next]?.value === ",") return true;
+
+  const bindIndex =
+    tokens[next]?.value === "."
+      ? next + 1
+      : tokens[next]?.value === "?" && tokens[next + 1]?.value === "."
+        ? next + 2
+        : -1;
+  if (
+    bindIndex < 0 ||
+    tokens[bindIndex]?.value !== "bind" ||
+    tokens[bindIndex + 1]?.value !== "("
+  ) {
+    return false;
+  }
+
+  let depth = 0;
+  for (let cursor = bindIndex + 1; cursor < tokens.length; cursor += 1) {
+    if (tokens[cursor].value === "(") depth += 1;
+    else if (tokens[cursor].value === ")") {
+      depth -= 1;
+      if (depth === 0) {
+        return [";", ","].includes(tokens[cursor + 1]?.value);
+      }
+    }
+  }
+  return false;
+}
+
+/**
+ * Resolve simple local aliases of a read method, such as `const read = db.select`,
+ * `const read = db.select.bind(db)`, and `const { select: read } = db`. This is deliberately lexical and bounded;
+ * computed variable keys and interprocedural data flow are outside this gate's contract.
+ */
+function readMethodBindings(tokens, readMethods) {
+  const bindings = new Map();
+  for (let index = 0; index < tokens.length; index += 1) {
+    const token = tokens[index];
+    if (
+      !readMethods.has(token.value) ||
+      !isMemberProperty(tokens, index) ||
+      isCalled(tokens, index + 1)
     ) {
       continue;
     }
-    const method = tokens[index].value;
-    const line = source.slice(0, tokens[index].offset).split("\n").length;
-    results.push({ file, line, method });
+    if (
+      isReadReferenceEnd(tokens, index) &&
+      tokens[index - 3]?.value === "=" &&
+      tokens[index - 4]?.kind === "token"
+    ) {
+      bindings.set(tokens[index - 4].value, token.value);
+    }
   }
-  return results;
+
+  for (let index = 0; index < tokens.length; index += 1) {
+    if (!["const", "let", "var"].includes(tokens[index].value)) continue;
+    if (tokens[index + 1]?.value !== "{") continue;
+    let cursor = index + 2;
+    while (cursor < tokens.length && tokens[cursor].value !== "}") {
+      const property = tokens[cursor];
+      const alias =
+        tokens[cursor + 1]?.value === ":" ? tokens[cursor + 2] : property;
+      if (
+        readMethods.has(property?.value) &&
+        (property?.kind === "token" || property?.kind === "string") &&
+        alias?.kind === "token"
+      ) {
+        bindings.set(alias.value, property.value);
+      }
+      while (
+        cursor < tokens.length &&
+        ![",", "}"].includes(tokens[cursor].value)
+      ) {
+        cursor += 1;
+      }
+      if (tokens[cursor]?.value === ",") cursor += 1;
+    }
+  }
+  return bindings;
 }
 
 export async function checkQueries(root = repoRoot) {
   const sourceRoot = path.join(root, "apps/api/src");
   const violations = [];
   for (const file of await walk(sourceRoot)) {
-    if (!file.endsWith(".ts") || path.basename(file) === "repository.ts")
+    const relativeToSource = path.relative(sourceRoot, file);
+    if (
+      !file.endsWith(".ts") ||
+      (path.basename(file) === "repository.ts" &&
+        path.dirname(relativeToSource) !== ".")
+    )
       continue;
     const relative = path.relative(root, file).split(path.sep).join("/");
     const source = await readText(file);
@@ -193,6 +329,6 @@ if (
   finish({
     name: "check:queries",
     failures: violations.map(({ message }) => message),
-    ok: "All API database read calls are owned by repository.ts files.",
+    ok: "All recognized Drizzle read-method calls are owned by repository.ts files.",
   });
 }
