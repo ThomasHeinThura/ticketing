@@ -33,6 +33,7 @@ import { useTranslation } from "react-i18next";
 import { useShallow } from "zustand/react/shallow";
 import { useUpdateTask } from "@/hooks/mutations/task/use-update-task";
 import type { useGetActiveWorkspaceUsers } from "@/hooks/queries/workspace-users/use-get-active-workspace-users";
+import { useBulkSelectionKeyboardShortcuts } from "@/hooks/use-bulk-selection-keyboard-shortcuts";
 import { useRegisterShortcuts } from "@/hooks/use-keyboard-shortcuts";
 import { isTaskCompleted } from "@/lib/due-date-status";
 import useBulkSelectionStore from "@/store/bulk-selection";
@@ -112,6 +113,7 @@ function KanbanBoard({
       clearFocus: state.clearFocus,
     })),
   );
+  useBulkSelectionKeyboardShortcuts();
   const [activeId, setActiveId] = useState<UniqueIdentifier | null>(null);
   const [contextMenuTaskId, setContextMenuTaskId] = useState<string | null>(
     null,
@@ -478,7 +480,7 @@ function KanbanBoard({
 
       {selectedTaskIds.size > 0 ? (
         <Suspense fallback={null}>
-          <BulkToolbar />
+          <BulkToolbar keyboardShortcutsEnabled={false} />
         </Suspense>
       ) : null}
       <BoardCreateTaskDialog
