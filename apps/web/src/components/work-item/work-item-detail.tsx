@@ -16,6 +16,7 @@ import {
 } from "@taskdesk/ui";
 import { ChevronDown, Info, TriangleAlert } from "lucide-react";
 import { useTranslation } from "react-i18next";
+import useGetWorkItemApprovals from "@/hooks/queries/approval/use-get-work-item-approvals";
 import { formatDateMedium, formatDateTime } from "@/lib/format";
 import { getPriorityIcon } from "@/lib/priority";
 import { routes } from "@/lib/routes";
@@ -104,6 +105,10 @@ function WorkItemDetail({
   onRetry,
 }: WorkItemDetailProps) {
   const { t } = useTranslation();
+  const approvalsQuery = useGetWorkItemApprovals({
+    key: workItemKey,
+    enabled: Boolean(item),
+  });
 
   if (isNotFound) {
     return (
@@ -236,6 +241,73 @@ function WorkItemDetail({
           <p className="text-muted-foreground text-sm">
             {t("workItems:detail.noDescription")}
           </p>
+        )}
+      </section>
+
+      <section
+        className="flex flex-col gap-3"
+        aria-labelledby="approvals-heading"
+      >
+        <h2 id="approvals-heading" className="font-medium text-lg">
+          Approvals
+        </h2>
+        {approvalsQuery.isError ? (
+          <Alert variant="error" data-testid="work-item-approvals-error">
+            <AlertDescription>
+              Could not load approvals.{" "}
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => void approvalsQuery.refetch()}
+              >
+                Retry
+              </Button>
+            </AlertDescription>
+          </Alert>
+        ) : approvalsQuery.isLoading ? (
+          <p role="status" className="text-muted-foreground text-sm">
+            Loading approvals…
+          </p>
+        ) : (approvalsQuery.data?.approvals.length ?? 0) === 0 ? (
+          <p className="text-muted-foreground text-sm">
+            No approval requests yet.
+          </p>
+        ) : (
+          <ul className="flex flex-col gap-2">
+            {approvalsQuery.data?.approvals.map((approval) => (
+              <li
+                key={approval.id}
+                className="flex flex-wrap items-start justify-between gap-3 rounded-md border p-3"
+              >
+                <div className="flex flex-col gap-1 text-sm">
+                  <span>
+                    {approval.kind === "cab"
+                      ? "CAB approval"
+                      : "Customer approval"}{" "}
+                    for {approval.approver.displayName ?? "Inactive person"}
+                  </span>
+                  <span className="text-muted-foreground">
+                    Requested by{" "}
+                    {approval.requester.displayName ?? "Inactive person"}
+                    {"; expires "}
+                    {formatDateTime(approval.expiresAt)}
+                  </span>
+                  {approval.approverReachLost && (
+                    <span className="text-warning-foreground">
+                      Approver has lost reach and cannot decide.
+                    </span>
+                  )}
+                </div>
+                <Badge
+                  variant={
+                    approval.state === "pending" ? "outline" : "secondary"
+                  }
+                >
+                  {approval.state}
+                </Badge>
+              </li>
+            ))}
+          </ul>
         )}
       </section>
 

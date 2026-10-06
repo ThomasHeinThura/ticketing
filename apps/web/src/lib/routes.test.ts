@@ -6,6 +6,7 @@ import {
   parseGeneratedRouteUrl,
   parseIdentityConnectionEventsSearch,
   parseIdentityConnectionEventsSearchFromQueryString,
+  parseMyWorkSearch,
   parsePendingActionsSearch,
   parseServiceCalendarListSearchFromQueryString,
   parseSlaPolicyListSearch,
@@ -148,12 +149,24 @@ describe("routes.workItemList", () => {
   });
 });
 
+describe("routes.myWork", () => {
+  it("keeps the approvals lens in the URL across a reload", () => {
+    const url = routes.myWork.build({ lens: "approvals" });
+    expect(url).toBe("/agent/my-work?lens=approvals");
+    expect(
+      parseMyWorkSearch({
+        lens: new URL(url, "https://app.test").searchParams.get("lens"),
+      }),
+    ).toEqual({ lens: "approvals" });
+  });
+});
+
 describe("G5 route metadata", () => {
   it("keeps agent and portal routes sourced from their independent generated trees", () => {
     expect(generatedRouteMetadata.agent).toContain(
       "/agent/projects/$projectKey/work",
     );
-    expect(generatedRouteMetadata.portal).toEqual(["/"]);
+    expect(generatedRouteMetadata.portal).toEqual(["/", "/approvals"]);
   });
 
   it("round-trips the portal root URL through its route helper", () => {
@@ -165,6 +178,13 @@ describe("G5 route metadata", () => {
       routes.portalHome.build(),
     );
     expect(routes.portalHome.parse("/unmatched")).toBeUndefined();
+  });
+
+  it("round-trips the portal approvals URL", () => {
+    const url = routes.portalApprovals.build();
+    expect(url).toBe("/portal/approvals");
+    expect(routes.portalApprovals.parse(url)).toBe(url);
+    expect(routes.portalApprovals.parse("/portal/other")).toBeUndefined();
   });
 
   it("builds and parses every generated agent and portal route template", () => {

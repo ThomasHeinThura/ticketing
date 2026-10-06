@@ -1,3 +1,19 @@
+### 2026-10-06 · Preserve existing approvals when the feature flag is disabled
+
+**Decision:** Thomas explicitly approves continuity for existing approvals. The resolved
+`feature.approvals` flag blocks new approval requests when disabled, but existing approvals
+remain listable/readable, decidable, withdrawable and eligible for reminders under the
+existing permission and current-reach rules. A disabled flag never bypasses workflow approval
+requirements. The built-in default remains `false`; flag resolution remains project →
+workspace → instance → built-in default. The approver-picker route and its candidate source
+remain a separate pending contract question and are not approved by this decision.
+
+**Finding mapping:** this defines only feature-disable lifecycle continuity; it does not
+grant authority, waive tests/reviews or accept the P2 phase. Human design review remains
+deferred to integrated P4. Independent ordinary review and full Sol review remain required.
+
+**Recorded:** orchestrator, Thomas's explicit approval in this task, 2026-10-06.
+
 ### 2026-10-05 · Continue P1–P4 execution and prepare combined phase acceptance
 
 Thomas explicitly instructs the orchestrator to check and continue P1, P2, P3 and P4
@@ -10,6 +26,32 @@ Complete implementation batches precede bulk review. Human design review remains
 to integrated P4 under Thomas's earlier decision.
 
 **Recorded:** orchestrator, Thomas's explicit instruction in this chat, 2026-10-05.
+
+### 2026-10-06 · Resolve bounded approvals storage and reach behavior for implementation
+
+**Decision:** for the P2 approvals implementation, `approval.created_at` is the persisted
+request instant required by AP-13 reminder-window arithmetic and AP-17's “requested N days
+ago” explanation; add it to the authoritative `approval` row in `data-model.md`. Approver
+reach loss is derived at read/decision time from canonical current work-item reach, not a
+new stored state: keep the approval pending and return an `approverReachLost` indicator;
+deny a decision while its named approver lacks reach. The requester may withdraw under
+AP-6, and an instance admin may withdraw on the requester's behalf under AP-7, with the
+existing audit requirement. This does not grant admins decision authority or create a new
+approval state. Register `approval.decided` as an internal activity verb; decision notes
+are stored only in `decision_note` and are not copied into activity or notification
+metadata.
+
+**Finding mapping:** this resolves only the implementation ambiguity between AP-3 and the
+“approver loses reach” edge case without adding a schema state; AP-13/AP-17 use the
+existing domain `Approval.createdAt`; AP-11 uses the existing fail-closed activity
+visibility rule. Historical review text remains unchanged. This is an orchestrator
+implementation choice under Thomas's standing authorization of recommended technical
+decisions, not Thomas's per-feature approval, finding closure, or phase acceptance. Human
+design review remains deferred to integrated P4; independent ordinary review and full Sol
+review remain required before acceptance.
+
+**Recorded:** orchestrator, Thomas's explicit implementation authorization in this task,
+2026-10-06.
 
 ### 2026-10-05 · Thomas defers repository refactor and query-gate acceptance from P0 to P4
 

@@ -825,9 +825,8 @@ const transitionWorkItemRoute = createRoute({
   description:
     "Move a work item to a new state through its type's active workflow version " +
     "(`workflows.md`). `toStateTemplateId` is the target `state_template.id` (see " +
-    "`GET .../transitions`). INTERIM, until issue #36 (approvals) lands: a transition " +
-    "whose `requires_approval` or `requires_cab` is set can never complete through this " +
-    "route -- both gates are treated as permanently unsatisfied. Guard resolution is " +
+    "`GET .../transitions`). Approval and CAB gates use persisted matching approval " +
+    "rows. Guard resolution is " +
     "also partial today: `no_open_blockers` (no `work_item_relation` table yet), " +
     "`field_required` (no custom-field/satellite value store yet) and " +
     "`change_risk_at_most` (no change-risk column yet) always fail closed (blocked), " +
@@ -1465,13 +1464,14 @@ const workItem = apiRouter<
     const workItemId = c.get("workItemId");
     const userId = c.get("userId");
     const [callerPerson] = await db
-      .select({ id: personTable.id })
+      .select({ id: personTable.id, side: personTable.side })
       .from(personTable)
       .where(eq(personTable.userId, userId))
       .limit(1);
     const offers = await listWorkItemTransitions(
       workItemId,
       callerPerson?.id ?? null,
+      callerPerson?.side ?? null,
     );
     return c.json(offers, 200);
   })

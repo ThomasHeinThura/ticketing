@@ -25,6 +25,15 @@ vi.mock("react-i18next", () => ({
   initReactI18next: { type: "3rdParty", init: () => {} },
 }));
 
+vi.mock("@/hooks/queries/approval/use-get-work-item-approvals", () => ({
+  default: () => ({
+    data: { approvals: [] },
+    isError: false,
+    isLoading: false,
+    refetch: vi.fn(),
+  }),
+}));
+
 function makeItem(
   overrides: Partial<WorkItemDetailRow> = {},
 ): WorkItemDetailRow {

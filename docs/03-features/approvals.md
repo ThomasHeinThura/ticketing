@@ -40,6 +40,14 @@ document does not repeat it. `workflow_transition.approval_policy` (`any`\|`all`
 
 ## Behaviour
 
+The `feature.approvals` flag resolves project → workspace → instance → built-in default
+([settings hierarchy](settings-hierarchy.md) ST-1; [plugin architecture](../01-architecture/plugin-architecture.md#feature-toggles)).
+Its built-in default remains `false`. When disabled, new approval requests are refused and
+the request action is hidden or disabled. Existing approvals remain available under their
+existing permissions and current-reach rules: they can be listed, read, decided, withdrawn,
+and processed by `reminder-scan`. Disabling the flag never bypasses an approval requirement
+on a workflow transition.
+
 **Requesting**
 
 - `AP-1` A customer approval may be requested by staff with `approval:request`, on a work
@@ -149,7 +157,8 @@ POST   /api/portal/approvals/{id}/decide      approval:decide
 | Case | Behaviour |
 | --- | --- |
 | Approver leaves the organisation | The approval stays pending and is flagged. It must be withdrawn and re-requested |
-| Approver loses reach on the work item | Same as above — flagged, not silently voided |
+| Approver loses reach on the work item | Same as above — flagged, not silently voided. The flag is derived from current canonical work-item reach, not stored as an approval state. While reach is lost, the named approver cannot decide; the requester may withdraw under `AP-6`, and an instance admin may withdraw on the requester's behalf under `AP-7`. |
+| Approvals feature is disabled at the resolved project/workspace/instance level | New approval requests are refused; existing approvals remain readable and actionable under the existing permission/current-reach rules, reminders continue, and workflow approval gates are never bypassed. |
 | Work item soft-deleted with a pending approval | Hidden along with the work item, not deleted; both reappear together if the work item is restored within its 30-day soft-delete window. Removed only at purge, at the end of that window ([work-items.md](work-items.md) `WI-21`) |
 | Two approvals, "all" policy, one rejected | The gate stays blocked. The rejection is visible |
 | Approval requested on an already-completed item | Allowed. Some processes approve after the fact |
