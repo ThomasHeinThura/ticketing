@@ -124,12 +124,8 @@ const getProjectRoute = createRoute({
   request: { params: projectParam },
   responses: {
     200: jsonResponse("Project details", projectSchema),
-    // #290: an out-of-reach project now gets this identical 400 too, not the 403
-    // `workspaceAccess.fromProject` used to answer for it (#202's own precedent).
-    400: errorResponse(
-      "Unknown project, or its workspace could not be determined",
-    ),
-    404: errorResponse("Project not found"),
+    400: errorResponse("Malformed project ID (including a NUL byte)"),
+    404: errorResponse("Project not found or out of reach"),
   },
 });
 
@@ -290,10 +286,8 @@ const listMilestonesRoute = createRoute({
   request: { params: projectParam },
   responses: {
     200: jsonResponse("The project's milestones", z.array(milestoneSchema)),
-    400: errorResponse(
-      "Unknown project, or its workspace could not be determined",
-    ),
-    404: errorResponse("Project not found"),
+    400: errorResponse("Malformed project ID (including a NUL byte)"),
+    404: errorResponse("Project not found or out of reach"),
   },
 });
 
@@ -385,10 +379,8 @@ const listPrerequisitesRoute = createRoute({
       "The project's prerequisites",
       z.array(prerequisiteSchema),
     ),
-    400: errorResponse(
-      "Unknown project, or its workspace could not be determined",
-    ),
-    404: errorResponse("Project not found"),
+    400: errorResponse("Malformed project ID (including a NUL byte)"),
+    404: errorResponse("Project not found or out of reach"),
   },
 });
 
@@ -480,10 +472,8 @@ const listStakeholdersRoute = createRoute({
   request: { params: projectParam },
   responses: {
     200: jsonResponse("The project's stakeholders", z.array(stakeholderSchema)),
-    400: errorResponse(
-      "Unknown project, or its workspace could not be determined",
-    ),
-    404: errorResponse("Project not found"),
+    400: errorResponse("Malformed project ID (including a NUL byte)"),
+    404: errorResponse("Project not found or out of reach"),
   },
 });
 
@@ -575,10 +565,8 @@ const listDocumentLinksRoute = createRoute({
       "The project's document links",
       z.array(documentLinkSchema),
     ),
-    400: errorResponse(
-      "Unknown project, or its workspace could not be determined",
-    ),
-    404: errorResponse("Project not found"),
+    400: errorResponse("Malformed project ID (including a NUL byte)"),
+    404: errorResponse("Project not found or out of reach"),
   },
 });
 

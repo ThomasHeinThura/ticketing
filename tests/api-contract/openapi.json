@@ -5181,7 +5181,7 @@
             }
           },
           "400": {
-            "description": "Unknown project, or its workspace could not be determined",
+            "description": "Malformed project ID (including a NUL byte)",
             "content": {
               "text/plain": {
                 "schema": {
@@ -5194,7 +5194,7 @@
             "description": "Missing or invalid credentials"
           },
           "404": {
-            "description": "Project not found",
+            "description": "Project not found or out of reach",
             "content": {
               "text/plain": {
                 "schema": {
@@ -5628,7 +5628,7 @@
             }
           },
           "400": {
-            "description": "Unknown project, or its workspace could not be determined",
+            "description": "Malformed project ID (including a NUL byte)",
             "content": {
               "text/plain": {
                 "schema": {
@@ -5641,7 +5641,7 @@
             "description": "Missing or invalid credentials"
           },
           "404": {
-            "description": "Project not found",
+            "description": "Project not found or out of reach",
             "content": {
               "text/plain": {
                 "schema": {
@@ -5941,7 +5941,7 @@
             }
           },
           "400": {
-            "description": "Unknown project, or its workspace could not be determined",
+            "description": "Malformed project ID (including a NUL byte)",
             "content": {
               "text/plain": {
                 "schema": {
@@ -5954,7 +5954,7 @@
             "description": "Missing or invalid credentials"
           },
           "404": {
-            "description": "Project not found",
+            "description": "Project not found or out of reach",
             "content": {
               "text/plain": {
                 "schema": {
@@ -6283,7 +6283,7 @@
             }
           },
           "400": {
-            "description": "Unknown project, or its workspace could not be determined",
+            "description": "Malformed project ID (including a NUL byte)",
             "content": {
               "text/plain": {
                 "schema": {
@@ -6296,7 +6296,7 @@
             "description": "Missing or invalid credentials"
           },
           "404": {
-            "description": "Project not found",
+            "description": "Project not found or out of reach",
             "content": {
               "text/plain": {
                 "schema": {
@@ -6612,7 +6612,7 @@
             }
           },
           "400": {
-            "description": "Unknown project, or its workspace could not be determined",
+            "description": "Malformed project ID (including a NUL byte)",
             "content": {
               "text/plain": {
                 "schema": {
@@ -6625,7 +6625,7 @@
             "description": "Missing or invalid credentials"
           },
           "404": {
-            "description": "Project not found",
+            "description": "Project not found or out of reach",
             "content": {
               "text/plain": {
                 "schema": {
@@ -6917,7 +6917,7 @@
             }
           },
           "400": {
-            "description": "Unknown project, or its workspace could not be determined",
+            "description": "Malformed project ID (including a NUL byte)",
             "content": {
               "text/plain": {
                 "schema": {
@@ -6930,7 +6930,7 @@
             "description": "Missing or invalid credentials"
           },
           "404": {
-            "description": "Project not found",
+            "description": "Project not found or out of reach",
             "content": {
               "text/plain": {
                 "schema": {
@@ -7639,7 +7639,7 @@
             }
           },
           "400": {
-            "description": "Unknown project, or its workspace could not be determined",
+            "description": "Malformed project ID (including a NUL byte)",
             "content": {
               "text/plain": {
                 "schema": {
@@ -7652,7 +7652,7 @@
             "description": "Missing or invalid credentials"
           },
           "404": {
-            "description": "Project not found",
+            "description": "Project not found or out of reach",
             "content": {
               "text/plain": {
                 "schema": {
@@ -8678,7 +8678,7 @@
             }
           },
           "400": {
-            "description": "Unknown project, or its workspace could not be determined",
+            "description": "Malformed project ID (including a NUL byte)",
             "content": {
               "text/plain": {
                 "schema": {
@@ -8691,7 +8691,7 @@
             "description": "Missing or invalid credentials"
           },
           "404": {
-            "description": "Project not found",
+            "description": "Project not found or out of reach",
             "content": {
               "text/plain": {
                 "schema": {
@@ -12450,7 +12450,7 @@
             }
           },
           "400": {
-            "description": "Unknown project, or its workspace could not be determined",
+            "description": "Malformed project ID (including a NUL byte)",
             "content": {
               "text/plain": {
                 "schema": {
@@ -12463,7 +12463,7 @@
             "description": "Missing or invalid credentials"
           },
           "404": {
-            "description": "Project not found",
+            "description": "Project not found or out of reach",
             "content": {
               "text/plain": {
                 "schema": {
@@ -15354,7 +15354,7 @@
             }
           },
           "400": {
-            "description": "Unknown project or its workspace could not be determined, or an invalid query parameter (unknown sort field, out-of-range limit, malformed cursor, NUL byte, etc.)",
+            "description": "Malformed project ID or invalid query parameter (unknown sort field, out-of-range limit, malformed cursor, NUL byte, etc.)",
             "content": {
               "text/plain": {
                 "schema": {
@@ -15377,7 +15377,7 @@
             }
           },
           "404": {
-            "description": "Project not found",
+            "description": "Project not found or out of reach",
             "content": {
               "text/plain": {
                 "schema": {
@@ -15715,7 +15715,7 @@
             }
           },
           "400": {
-            "description": "Unknown project, or its workspace could not be determined",
+            "description": "Malformed project ID (including a NUL byte)",
             "content": {
               "text/plain": {
                 "schema": {
@@ -15738,7 +15738,7 @@
             }
           },
           "404": {
-            "description": "Project not found",
+            "description": "Project not found or out of reach",
             "content": {
               "text/plain": {
                 "schema": {

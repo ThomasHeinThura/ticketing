@@ -56,12 +56,9 @@ const NUL_BYTE_LABEL = "Workspace/resource id";
 
 // Issue #256: a failed row lookup for these resources is a genuinely missing resource,
 // not a malformed request -- so it answers with the same 404 the resource's own
-// controller already uses when a caller reaches it with a fabricated `?workspaceId=`
-// (`get-label.ts`, `update-time-entry.ts`, `delete-workflow-rule.ts`, etc. all 404 with
-// exactly this wording). `"project"` is deliberately absent: `fromProject` has always
-// answered the generic 400 for an unknown id (`workflow-rule/index.ts`'s own route
-// comments document this, and #202's tests depend on it) -- see #290's own handling of
-// `"project"` below, which keeps that 400 rather than switching it to this 404.
+// controller already uses when a caller reaches it with a fabricated `?workspaceId=`.
+// Project reads that require canonical reach use the same masked 404 below; project
+// mutation routes retain their request/context 400 behavior.
 //
 // Issue #290: this is now ALSO the answer when the row exists but resolves to a
 // workspace the caller cannot reach -- previously that case fell through to the generic
@@ -344,9 +341,11 @@ export function workspaceAccessMiddleware(
                 message: RESOURCE_NOT_FOUND_MESSAGE[source.resource],
               });
             }
-            // "project": `fromProject` has always answered the generic 400 below for
-            // an unknown id (#202's tests depend on it) -- `workspaceId` stays `null`
-            // and falls through to that same post-loop throw.
+            // Project reads that enforce canonical reach mask missing and out-of-reach
+            // ids together; project mutations retain their existing 400 behavior.
+            if (config.requireProjectReach) {
+              throw new HTTPException(404, { message: "Project not found" });
+            }
           } else {
             // Reach and key validity are part of the lookup SQL itself. Preserve the
             // project id as read-only shadow-policy evidence; it is never used by the

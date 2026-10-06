@@ -33,18 +33,8 @@ const getColumnsRoute = createRoute({
   request: { params: projectIdParam },
   responses: {
     200: jsonResponse("List of columns ordered by position", columnListSchema),
-    // #290: an out-of-reach project now gets this identical 400 too, not the 403
-    // `workspaceAccess.fromProject` used to answer for it (#202's own precedent for
-    // this helper: an unresolvable project is 400, not 404).
-    400: errorResponse(
-      "Unknown project, or its workspace could not be determined",
-    ),
-    // #202: newly reachable. This route answered 200 with an empty board for a
-    // soft-deleted project until #202; it now answers 404. A *nonexistent or
-    // out-of-reach* project answers the 400 above instead --
-    // `workspaceAccess.fromProject` fails before the handler runs -- so 404 on this
-    // route means "soft-deleted", not "unknown"/"unreachable".
-    404: errorResponse("Project not found"),
+    400: errorResponse("Malformed project ID (including a NUL byte)"),
+    404: errorResponse("Project not found or out of reach"),
   },
 });
 
