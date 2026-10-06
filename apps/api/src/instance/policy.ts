@@ -167,6 +167,42 @@ export const instancePolicies = {
     elevationExemptionReason:
       "read-only SCIM settings omit token material and identity payloads",
   },
+  "GET /api/instance/identity-connections/{id}/oidc-group-mappings": {
+    capability: "instance:admin",
+    scope: "instance",
+    scopeSource: "instance",
+    reach: {
+      exempt: "no_single_resource",
+      reason: "OIDC group mapping configuration is instance-admin scoped",
+    },
+    elevated: false,
+    elevationExemptionReason:
+      "read-only mapping DTO omits credentials and provider claims",
+    sessionOnly: true,
+  },
+  "POST /api/instance/identity-connections/{id}/oidc-group-mappings": {
+    capability: "instance:admin",
+    scope: "instance",
+    scopeSource: "instance",
+    reach: {
+      exempt: "no_single_resource",
+      reason: "OIDC group mapping changes are instance-admin scoped",
+    },
+    elevated: true,
+    sessionOnly: true,
+  },
+  "PATCH /api/instance/identity-connections/{id}/oidc-group-mappings/{mappingId}":
+    {
+      capability: "instance:admin",
+      scope: "instance",
+      scopeSource: "instance",
+      reach: {
+        exempt: "no_single_resource",
+        reason: "OIDC group mapping changes are instance-admin scoped",
+      },
+      elevated: true,
+      sessionOnly: true,
+    },
   "GET /api/instance/identity-connections/{id}/scim/mapping-options": {
     capability: "instance:admin",
     scope: "instance",
