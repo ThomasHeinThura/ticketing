@@ -1,3 +1,31 @@
+### 2026-10-06 · Apply standing verification to frozen532 off/shadow only
+
+**Orchestrator application of existing authorization:** acquire one disposable exact-source
+off/shadow runtime proof for5326937460b195d8e69584c0cb99305348330a95, using the immutable
+final-532-g11-report-contract-20261007 bundle (manifest833c32f24c6b021b38b612a89d54739e59d8fe87884864c04b255e8cf635a065).
+Fresh strong ordinary and full independent Sol operational reviews clear these bytes.
+Original failed acquisitions, blocked runner reports and earlier applications remain intact.
+
+This narrows the existing delegated disposable verification to **off/shadow only**, platform
+then27 observed non-task sources, with explicit empty enforcement. No strict activation,
+config/task selection, persistent DEV mutation, production, protected merge or phase claim.
+The baseline schema80 image6a6315c2890b5677f9afb858c3f81aa86c181e7d3270fa7164d889111e214628
+remains separate from the exact candidate imagef44 and any runner-built disposable artifact.
+Resource release means exclusive local acquisition, not required-CI acceptance: hostedG11
+is19/22 red and the requested one-hosted-confirmation decision remains unanswered. No
+performance retry, budget, workload, assertion or test retry policy changes are authorized.
+
+Root pins current source, clean checkout, controlled files, genuine reviewer report bytes,
+decision log, new delegated application and release records before execution. Later lanes
+hold PG/image/runtime acquisitions for this bounded window. Capture owned resource identities,
+private records, health/status/events/coverage and cleanup readback; preserve unrelated
+resources. A failure remains open. No date compatibility verdict or carry-forward is supplied
+by this application. Three original partial UTC observations remain subject to actual
+same-actor/source compatibility and independent adjudication.
+
+**Recorded:** top-level orchestrator under Thomas's standing instructions; not a new personal
+Thomas approval or a waived gate.
+
 ### 2026-10-06 · Thomas directs P0 realignment and implementation batches
 
 Thomas supplies the Project Realignment & Implementation Directive. Complete a read-only ownership map before source edits, then use #583 or one minimal successor as the sole P0 closure vehicle. #589 is the canonical post-P0 integration train and cannot block P0 acceptance. #581 is superseded after preserving unique source/evidence. Preserve later implementation; no gate, review tier, budget or assertion is waived. Keep one centralized migration ledger, with saved-view0118 provisional until the preceding train freezes. Retain original observation records and require independent source compatibility adjudication. Reports use Status First and the specified sections.
