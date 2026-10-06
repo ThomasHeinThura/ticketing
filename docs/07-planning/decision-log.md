@@ -1,3 +1,26 @@
+### 2026-10-06 · Bound approval reach-loss and storage alignment
+
+Under Thomas's standing instruction to implement P0–P4 in parallel, take recommended
+routine decisions and defer P0–P3 human design review to integrated P4, the orchestrator
+selects the following necessary approval contract alignment before implementation:
+
+- AP3 reach loss is a derived approverReachLost response flag from current canonical
+  work-item reach. The approval remains pending; a named approver without current reach
+  cannot decide. Requester or instance-admin withdrawal uses only existing explicit AP7
+  authority and grants no admin decision override.
+- AP13/AP17 and the existing pure Approval.createdAt require a persisted request creation
+  instant. Register created_at in the authoritative approval data model in the schema batch.
+- Register approval.decided as internal activity in the authoritative activity taxonomy,
+  using the already registered event identity. Retain fail-closed/internal visibility;
+  do not expose decision notes through broad event/activity metadata. Any contradiction
+  with the explicit AP note visibility rule still blocks that narrow path.
+
+This records an orchestrator choice, not Thomas's personal per-feature approval, a new
+capability or a gate waiver. Human review stays deferred. The complete implementation
+receives independent ordinary/full Sol review and actual integration/browser/image proof
+before acceptance. The isolated branch reserves migration0116 after the existing0114/0115
+notification suffix; live/shared schema is unchanged.
+
 ### 2026-10-06 · Apply standing disposable verification to the reviewed C468 correction
 
 **Orchestrator decision under Thomas's standing authorization:** apply the existing
