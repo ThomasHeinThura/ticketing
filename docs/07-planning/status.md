@@ -1,3 +1,32 @@
+## October 6 actual final56 runtime outcome — 13:15 UTC
+
+- **Original timestamp correction:** the preceding13:15 snapshot was written at13:12UTC;
+  its heading was ahead of the clock. This entry uses the actual clock. Original records remain retained.
+- **Actual source088 proof:** run `20261006T131155Z-08842235` exits1 during the off/shadow
+  representative window. The positive asset workspace-owner read returns404 instead of200,
+  so the full130-pair journey and strict stage do not pass. Schema80→88, live/ready200,
+  UID10001, settings CAS, bound step-up/replay and token-rotation/metrics checks pass before
+  that failure. No source compatibility, date carry-forward or strict acceptance is claimed.
+- **Cleanup:** the original receipt correctly prevents success but rejects image/network
+  absence response formats. Root separately verifies all seven exact Docker resources absent
+  using read-only type-specific inspections and records that beside the unchanged failed
+  receipt. No persistent DEV or unrelated resource was mutated. The fixture and exact native
+  cleanup classification are assigned together as a complete private remediation batch.
+- **Bulk implementation:** all three fresh ordinary panels at7dd3cbb4 are now recorded.
+  Panel C adds a reproducible `Reflect.apply(db.select, ...)` query-control bypass and the
+  stale portal sign-in route assertion. All source findings are assigned to one remediation
+  batch. G8 needs its real Linux approvals visual baseline. Actual hosted G11 is19/22,
+  failing LCP2708ms, palette201.6ms and board664.2ms. The four new pending-action enum
+  findings remain blocked on the already requested API evolution decision; no schema
+  relaxation or hidden safety records are authorized. Required Sol review follows ordinary
+  clearance at the resulting exact head; PR body evidence will cite actual reports.
+- **Durable review evidence:** original-byte copies of all three bulk Luna reports, the
+  final56 Sol runner report and the e3ac Sol diagnostic report are committed under
+  `docs/07-planning/reviews/2026-10-06/current-bulk-and-p0/` with a source SHA manifest.
+  Sol source clearance did not make either failed runtime capture pass. P0 remains first
+  priority, later dependency-safe implementation continues, and no stage or protected merge
+  is claimed.
+
 ## October 6 full integration review and isolated P0 proof — 13:15 UTC
 
 - **Implementation composition:** draft PR #589 is pushed at
