@@ -1,6 +1,7 @@
 import { writeFile } from "node:fs/promises";
 import { resolve } from "node:path";
 import { createApp } from "../src/index";
+import { retainStepUpChallengeOneOf } from "../src/openapi-union";
 
 process.env.KANEO_API_URL = "https://taskdesk.bimats.com";
 
@@ -14,7 +15,7 @@ if (!response.ok) {
   throw new Error(`OpenAPI export failed with status ${response.status}`);
 }
 
-const spec = await response.json();
+const spec = retainStepUpChallengeOneOf(await response.json());
 const outputPath = process.argv[2]
   ? resolve(process.argv[2])
   : resolve(import.meta.dirname, "../../docs/openapi.json");

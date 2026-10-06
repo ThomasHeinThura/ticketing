@@ -22137,7 +22137,7 @@
           "content": {
             "application/json": {
               "schema": {
-                "anyOf": [
+                "oneOf": [
                   {
                     "type": "object",
                     "properties": {

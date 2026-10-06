@@ -99,15 +99,17 @@ function WorkItemsPanel({
       {project &&
       realtimeStatus?.projectId === project.id &&
       realtimeStatus?.status === "unavailable" ? (
-        <Alert
-          variant="warning"
-          role="status"
-          data-testid="realtime-unavailable"
-        >
-          <AlertDescription>
-            {t("workItems:detail.realtimeUnavailable")}
-          </AlertDescription>
-        </Alert>
+        <div className="bg-background">
+          <Alert
+            variant="warning"
+            role="status"
+            data-testid="realtime-unavailable"
+          >
+            <AlertDescription>
+              {t("workItems:detail.realtimeUnavailable")}
+            </AlertDescription>
+          </Alert>
+        </div>
       ) : null}
       <Suspense fallback={<WorkItemListLoading />}>
         <WorkItemList
