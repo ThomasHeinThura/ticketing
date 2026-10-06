@@ -1,6 +1,14 @@
 import { createHash, randomUUID } from "node:crypto";
 import { eq } from "drizzle-orm";
-import { afterAll, beforeEach, describe, expect, it, vi } from "vitest";
+import {
+  afterAll,
+  afterEach,
+  beforeEach,
+  describe,
+  expect,
+  it,
+  vi,
+} from "vitest";
 
 const priorEnforcementSetting = vi.hoisted(() => {
   const previous = process.env.TASKDESK_POLICY_ENFORCE;
@@ -172,6 +180,10 @@ async function grantProjectReach(
 }
 
 describe("strict policy runtime enforcement against the production API graph", () => {
+  afterEach(() => {
+    vi.restoreAllMocks();
+  });
+
   beforeEach(async () => {
     await resetTestDatabase();
   });
@@ -541,6 +553,7 @@ describe("strict policy runtime enforcement against the production API graph", (
     it("loads persisted asset workspace scope before strict evaluation and preserves native reach responses", async () => {
       const owner = await createWorkspaceMember({ role: "owner" });
       const stranger = await createWorkspaceMember();
+      const outsider = await createWorkspaceMember();
       const { project } = await createProjectFixture({
         workspaceId: owner.workspace.id,
       });
@@ -559,6 +572,22 @@ describe("strict policy runtime enforcement against the production API graph", (
           })
           .returning(),
         "strict runtime asset",
+      );
+      const mismatchedAsset = requireRow(
+        await db
+          .insert(schema.assetTable)
+          .values({
+            id: `asset-${randomUUID()}`,
+            workspaceId: stranger.workspace.id,
+            projectId: project.id,
+            objectKey: `workspace/${stranger.workspace.id}/mismatched-scope.png`,
+            filename: "mismatched-scope.png",
+            mimeType: "image/png",
+            size: 1,
+            createdBy: owner.user.id,
+          })
+          .returning(),
+        "strict runtime mismatched asset",
       );
       const getPrivateObject = vi
         .spyOn(storage, "getPrivateObject")
@@ -605,6 +634,23 @@ describe("strict policy runtime enforcement against the production API graph", (
 
       const missing = await app.request(`/api/asset/asset-${randomUUID()}`);
       expect(missing.status, await missing.clone().text()).toBe(404);
+      expect(await foreign.clone().text()).toBe(await missing.clone().text());
+
+      mockAuthenticatedSession(outsider.user);
+      const unreachableMismatch = await app.request(
+        `/api/asset/${mismatchedAsset.id}`,
+      );
+      expect(unreachableMismatch.status).toBe(404);
+      expect(await unreachableMismatch.clone().text()).toBe(
+        await missing.clone().text(),
+      );
+      expect(getPrivateObject).toHaveBeenCalledTimes(1);
+
+      const nulByte = await app.request(
+        `/api/asset/${encodeURIComponent("\u0000x")}`,
+      );
+      expect(nulByte.status).toBe(400);
+      expect(getPrivateObject).toHaveBeenCalledTimes(1);
     });
 
     it("keeps the native admin bypass distinct from strict capability denial and preserves missing-row masking", async () => {

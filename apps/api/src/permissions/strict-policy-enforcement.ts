@@ -41,6 +41,7 @@ type RegisteredRoute = {
 type ScopeEvidence = {
   readonly workspaceId?: string;
   readonly workspaceIdSource?: "row" | "request";
+  readonly reachWorkspaceId?: string;
   readonly projectId?: string;
   readonly projectIdFromRequest?: string;
   readonly workItemId?: string;
@@ -373,11 +374,11 @@ async function loadAuthoritativeEvidence(
     rejectNulByte(assetId, "Asset id");
     const asset = await findAssetWorkspaceScope(assetId);
     if (!asset) refuse(404);
-    if (asset.workspaceId !== asset.projectWorkspaceId) refuse(500);
     evidence = {
       ...evidence,
       workspaceId: asset.workspaceId,
       workspaceIdSource: "row",
+      reachWorkspaceId: asset.projectWorkspaceId,
     };
   }
   if (policy.scope === "workspace" && policy.scopeSource === "row") {
@@ -573,8 +574,10 @@ async function buildContext(
         (identity.reach.kind === "organisation" &&
           identity.reach.ids.includes(evidence.organisationId ?? ""));
     } else if (policy.scope === "workspace") {
-      inReach = evidence.workspaceId
-        ? workspaceReach(identity, evidence.workspaceId)
+      const reachWorkspaceId =
+        evidence.reachWorkspaceId ?? evidence.workspaceId;
+      inReach = reachWorkspaceId
+        ? workspaceReach(identity, reachWorkspaceId)
         : undefined;
     } else if (policy.scope === "project" || policy.scope === "work_item") {
       inReach = await projectReach(identity, evidence, policy.scope);
