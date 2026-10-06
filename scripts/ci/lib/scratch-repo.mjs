@@ -26,6 +26,7 @@
 import { spawnSync } from "node:child_process";
 import {
   cpSync,
+  existsSync,
   mkdirSync,
   mkdtempSync,
   rmSync,
@@ -102,15 +103,32 @@ export function setOriginMain(dir, sha) {
 }
 
 /**
- * Copy `scripts/ci/` (minus the tests and the probes themselves) into the scratch repo,
- * so the checker that runs there is byte-for-byte the one this branch ships.
+ * Copy tracked `scripts/ci/` files (minus tests and probes) into the scratch repo, so the
+ * checker that runs there is byte-for-byte the one this branch ships. Walking the live
+ * source directory races tests that create temporary TSX fixtures beneath `scripts/ci/`.
  */
 export function installCheckers(dir) {
-  cpSync(path.join(repoRoot, "scripts/ci"), path.join(dir, "scripts/ci"), {
-    recursive: true,
-    filter: (source) =>
-      !source.endsWith(".test.mjs") && !source.includes(`${path.sep}probes`),
-  });
+  const checkerFiles = git(repoRoot, [
+    "ls-files",
+    "--cached",
+    "-z",
+    "--",
+    "scripts/ci",
+  ])
+    .split("\0")
+    .filter(
+      (relative) =>
+        relative &&
+        !relative.endsWith(".test.mjs") &&
+        !relative.includes("/probes/"),
+    );
+  for (const relative of checkerFiles) {
+    const source = path.join(repoRoot, relative);
+    if (!existsSync(source)) continue;
+    const destination = path.join(dir, relative);
+    mkdirSync(path.dirname(destination), { recursive: true });
+    cpSync(source, destination);
+  }
 
   // A5: `check-skips`, `check-env`, `check-vocabulary` and `check-overrides` derive the
   // directories they scan from pnpm-workspace.yaml, and they FAIL CLOSED when it cannot

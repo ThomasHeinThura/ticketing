@@ -255,23 +255,35 @@ export function queryReadViolations(source, file) {
     "findFirstOrThrow",
     "findManyOrThrow",
   ]);
-  const methodBindings = readMethodBindings(tokens, readMethods);
+  const expressions = readMemberExpressions(tokens);
+  const methodBindings = readMethodBindings(tokens, expressions, readMethods);
 
-  for (let index = 0; index < tokens.length; index += 1) {
-    const token = tokens[index];
-    if (readMethods.has(token.value) && isCalledMember(tokens, index)) {
-      addFinding(token.value, token.offset);
+  for (const expression of expressions) {
+    for (const segment of expression.segments) {
+      if (!readMethods.has(segment.property)) continue;
+      const next = expression.segments[segment.segmentIndex + 1];
+      const invokedThroughForwarder =
+        next && ["call", "apply"].includes(next.property) && next.called;
+      const boundAndInvoked =
+        next?.property === "bind" &&
+        next.called &&
+        isCallStart(tokens, next.end + 1);
+      if (segment.called || invokedThroughForwarder || boundAndInvoked) {
+        addFinding(segment.property, tokens[segment.propertyIndex].offset);
+      }
     }
   }
 
   for (let index = 0; index < tokens.length; index += 1) {
     const token = tokens[index];
     if (
-      token.kind === "token" &&
-      methodBindings.has(token.value) &&
-      !isMemberProperty(tokens, index) &&
-      isCalled(tokens, index + 1)
+      token.kind !== "token" ||
+      !methodBindings.has(token.value) ||
+      isMemberProperty(tokens, index)
     ) {
+      continue;
+    }
+    if (isCalled(tokens, index + 1) || isForwardedCall(tokens, index)) {
       addFinding(methodBindings.get(token.value), token.offset);
     }
   }
@@ -300,72 +312,218 @@ function isMemberProperty(tokens, index) {
   return tokens[index - 1]?.value === "[" && tokens[index + 1]?.value === "]";
 }
 
-function isCalledMember(tokens, index) {
-  const token = tokens[index];
-  if (!token || !(token.kind === "token" || token.kind === "string"))
-    return false;
-  if (tokens[index - 1]?.value === ".") return isCalled(tokens, index + 1);
+function isForwardedCall(tokens, index) {
+  const expression = parseMemberExpression(tokens, index);
+  const forwarding = expression.segments[0];
   return (
-    tokens[index - 1]?.value === "[" &&
-    tokens[index + 1]?.value === "]" &&
-    isCalled(tokens, index + 2)
+    forwarding?.called &&
+    (["call", "apply"].includes(forwarding.property) ||
+      (forwarding.property === "bind" &&
+        isCallStart(tokens, expression.end + 1)))
   );
 }
 
-function isReadReferenceEnd(tokens, index) {
-  const next = index + 1;
-  if (tokens[next]?.value === ";" || tokens[next]?.value === ",") return true;
-
-  const bindIndex =
-    tokens[next]?.value === "."
-      ? next + 1
-      : tokens[next]?.value === "?" && tokens[next + 1]?.value === "."
-        ? next + 2
-        : -1;
-  if (
-    bindIndex < 0 ||
-    tokens[bindIndex]?.value !== "bind" ||
-    tokens[bindIndex + 1]?.value !== "("
-  ) {
-    return false;
-  }
-
-  let depth = 0;
-  for (let cursor = bindIndex + 1; cursor < tokens.length; cursor += 1) {
-    if (tokens[cursor].value === "(") depth += 1;
-    else if (tokens[cursor].value === ")") {
-      depth -= 1;
-      if (depth === 0) {
-        return [";", ","].includes(tokens[cursor + 1]?.value);
-      }
-    }
-  }
-  return false;
-}
-
-/**
- * Resolve simple local aliases of a read method, such as `const read = db.select`,
- * `const read = db.select.bind(db)`, and `const { select: read } = db`. This is deliberately lexical and bounded;
- * dynamic variable keys and interprocedural data flow are outside this gate's contract.
- */
-function readMethodBindings(tokens, readMethods) {
-  const bindings = new Map();
+function readMemberExpressions(tokens) {
+  const expressions = [];
   for (let index = 0; index < tokens.length; index += 1) {
-    const token = tokens[index];
     if (
-      !readMethods.has(token.value) ||
-      !isMemberProperty(tokens, index) ||
-      isCalled(tokens, index + 1)
+      tokens[index]?.kind !== "token" ||
+      isMemberProperty(tokens, index) ||
+      !startsMemberExpression(tokens, index)
     ) {
       continue;
     }
-    if (
-      isReadReferenceEnd(tokens, index) &&
-      tokens[index - 3]?.value === "=" &&
-      tokens[index - 4]?.kind === "token"
-    ) {
-      bindings.set(tokens[index - 4].value, token.value);
+    const expression = parseMemberExpression(tokens, index);
+    if (expression.segments.length > 0) expressions.push(expression);
+  }
+  return expressions;
+}
+
+function startsMemberExpression(tokens, start) {
+  if (parseMemberAccess(tokens, start + 1)) return true;
+  if (!isCallStart(tokens, start + 1)) return false;
+  const callEnd = consumeCall(tokens, start + 1);
+  return callEnd >= 0 && parseMemberAccess(tokens, callEnd + 1) !== null;
+}
+
+function parseMemberExpression(tokens, start) {
+  const expression = {
+    start,
+    root: tokens[start].value,
+    end: start,
+    segments: [],
+  };
+  let cursor = start;
+  if (isCallStart(tokens, cursor + 1)) {
+    const callEnd = consumeCall(tokens, cursor + 1);
+    if (callEnd >= 0) cursor = callEnd;
+  }
+
+  while (cursor + 1 < tokens.length) {
+    const access = parseMemberAccess(tokens, cursor + 1);
+    if (!access) break;
+    const segment = {
+      ...access,
+      segmentIndex: expression.segments.length,
+      called: false,
+      end: access.propertyEnd,
+    };
+    if (isCallStart(tokens, access.propertyEnd + 1)) {
+      const callEnd = consumeCall(tokens, access.propertyEnd + 1);
+      if (callEnd >= 0) {
+        segment.called = true;
+        segment.end = callEnd;
+      }
     }
+    expression.segments.push(segment);
+    cursor = segment.end;
+  }
+  expression.end = cursor;
+  return expression;
+}
+
+function parseMemberAccess(tokens, index) {
+  let optional = false;
+  let openIndex = index;
+  if (tokens[index]?.value === "?") {
+    if (tokens[index + 1]?.value !== ".") return null;
+    optional = true;
+    openIndex = index + 2;
+  }
+
+  if (tokens[openIndex]?.value === ".") {
+    const propertyIndex = openIndex + 1;
+    const property = tokens[propertyIndex];
+    if (property?.kind !== "token" && property?.kind !== "string") return null;
+    return {
+      property: property.value,
+      propertyIndex,
+      propertyEnd: propertyIndex,
+      optional,
+      computed: false,
+    };
+  }
+
+  if (tokens[openIndex]?.value !== "[") return null;
+  let depth = 1;
+  let closeIndex = openIndex + 1;
+  for (; closeIndex < tokens.length; closeIndex += 1) {
+    if (tokens[closeIndex].value === "[") depth += 1;
+    else if (tokens[closeIndex].value === "]") {
+      depth -= 1;
+      if (depth === 0) break;
+    }
+  }
+  if (depth !== 0) return null;
+
+  const staticProperty =
+    closeIndex === openIndex + 2 && tokens[openIndex + 1]?.kind === "string"
+      ? tokens[openIndex + 1]
+      : null;
+  return {
+    property: staticProperty?.value ?? null,
+    propertyIndex: staticProperty ? openIndex + 1 : openIndex,
+    propertyEnd: closeIndex,
+    optional,
+    computed: true,
+  };
+}
+
+function isCallStart(tokens, index) {
+  return (
+    tokens[index]?.value === "(" ||
+    (tokens[index]?.value === "?" &&
+      tokens[index + 1]?.value === "." &&
+      tokens[index + 2]?.value === "(")
+  );
+}
+
+function consumeCall(tokens, index) {
+  const openIndex = tokens[index]?.value === "?" ? index + 2 : index;
+  if (tokens[openIndex]?.value !== "(") return -1;
+  let depth = 0;
+  for (let cursor = openIndex; cursor < tokens.length; cursor += 1) {
+    if (tokens[cursor].value === "(") depth += 1;
+    else if (tokens[cursor].value === ")") {
+      depth -= 1;
+      if (depth === 0) return cursor;
+    }
+  }
+  return -1;
+}
+
+/** Resolve local read references from parsed member expressions and static destructuring. */
+function readMethodBindings(tokens, expressions, readMethods) {
+  const bindings = new Map();
+  const simpleAliases = [];
+  for (let index = 0; index + 3 < tokens.length; index += 1) {
+    if (
+      ["const", "let", "var"].includes(tokens[index]?.value) &&
+      tokens[index + 1]?.kind === "token" &&
+      tokens[index + 2]?.value === "=" &&
+      tokens[index + 3]?.kind === "token" &&
+      [";", ",", undefined].includes(tokens[index + 4]?.value)
+    ) {
+      simpleAliases.push({
+        alias: tokens[index + 1].value,
+        source: tokens[index + 3].value,
+      });
+    }
+  }
+  for (
+    let pass = 0;
+    pass <= expressions.length + simpleAliases.length;
+    pass += 1
+  ) {
+    let changed = false;
+    for (const expression of expressions) {
+      const lhs = expression.start - 1;
+      if (
+        tokens[lhs]?.value !== "=" ||
+        !["const", "let", "var"].includes(tokens[lhs - 2]?.value) ||
+        tokens[lhs - 1]?.kind !== "token"
+      ) {
+        continue;
+      }
+      const alias = tokens[lhs - 1].value;
+      const candidate = expression.segments.find((segment) =>
+        readMethods.has(segment.property),
+      );
+      if (candidate) {
+        const next = expression.segments[candidate.segmentIndex + 1];
+        const isBareReference =
+          candidate === expression.segments.at(-1) && !candidate.called;
+        const isBoundReference =
+          next?.property === "bind" &&
+          next.called &&
+          next === expression.segments.at(-1);
+        if (isBareReference || isBoundReference) {
+          if (bindings.get(alias) !== candidate.property) {
+            bindings.set(alias, candidate.property);
+            changed = true;
+          }
+        }
+      } else if (
+        bindings.has(expression.root) &&
+        expression.segments.length === 1 &&
+        expression.segments[0].property === "bind" &&
+        expression.segments[0].called &&
+        bindings.get(alias) !== bindings.get(expression.root)
+      ) {
+        bindings.set(alias, bindings.get(expression.root));
+        changed = true;
+      }
+    }
+    for (const { alias, source } of simpleAliases) {
+      if (
+        bindings.has(source) &&
+        bindings.get(alias) !== bindings.get(source)
+      ) {
+        bindings.set(alias, bindings.get(source));
+        changed = true;
+      }
+    }
+    if (!changed) break;
   }
 
   for (let index = 0; index < tokens.length; index += 1) {
@@ -373,16 +531,17 @@ function readMethodBindings(tokens, readMethods) {
     if (tokens[index + 1]?.value !== "{") continue;
     let cursor = index + 2;
     while (cursor < tokens.length && tokens[cursor].value !== "}") {
-      let property = tokens[cursor];
-      let propertyEnd = cursor;
-      if (
-        property?.value === "[" &&
-        tokens[cursor + 2]?.value === "]" &&
-        tokens[cursor + 1]?.kind === "string"
-      ) {
-        property = tokens[cursor + 1];
-        propertyEnd = cursor + 2;
-      }
+      const propertyAccess =
+        tokens[cursor]?.value === "["
+          ? parseMemberAccess(tokens, cursor)
+          : null;
+      const property = propertyAccess
+        ? {
+            value: propertyAccess.property,
+            kind: propertyAccess.property === null ? "dynamic" : "string",
+          }
+        : tokens[cursor];
+      const propertyEnd = propertyAccess?.propertyEnd ?? cursor;
       const alias =
         tokens[propertyEnd + 1]?.value === ":"
           ? tokens[propertyEnd + 2]

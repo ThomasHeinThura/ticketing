@@ -115,6 +115,100 @@ test("check:queries detects receiver and simple method aliases", () => {
   );
 });
 
+test("check:queries parses dotted, computed, escaped, and forwarded references uniformly", () => {
+  const memberForms = [
+    ".select",
+    '["select"]',
+    String.raw`["sel\u0065ct"]`,
+    String.raw`["\u{73}elect"]`,
+    String.raw`['\x73elect']`,
+    String.raw`.\u0073elect`,
+  ];
+  const cases = memberForms.flatMap((member) => [
+    { name: `${member} direct`, source: `db${member}()` },
+    {
+      name: `${member} optional direct`,
+      source: `db?.${member.startsWith("[") ? member : member.slice(1)}?.()`,
+    },
+    {
+      name: `${member} bare alias`,
+      source: `const read = db${member}; read()`,
+    },
+    {
+      name: `${member} bound alias`,
+      source: `const read = db${member}.bind(db); read()`,
+    },
+    {
+      name: `${member} computed bind alias`,
+      source: `const read = db${member}["bind"](db); read()`,
+    },
+    { name: `${member} call forwarding`, source: `db${member}.call(db)` },
+    { name: `${member} apply forwarding`, source: `db${member}.apply(db, [])` },
+    {
+      name: `${member} immediate bound invocation`,
+      source: `db${member}.bind(db)()`,
+    },
+    {
+      name: `${member} alias forwarding`,
+      source: `const read = db${member}.bind(db); read.call(db)`,
+    },
+    {
+      name: `${member} alias apply forwarding`,
+      source: `const read = db${member}.bind(db); read.apply(db, [])`,
+    },
+    {
+      name: `${member} alias bound invocation`,
+      source: `const read = db${member}; read.bind(db)()`,
+    },
+  ]);
+
+  for (const { name, source } of cases) {
+    assert.deepEqual(
+      queryReadViolations(`${source};`, "example.ts").map(
+        ({ method }) => method,
+      ),
+      ["select"],
+      name,
+    );
+  }
+
+  for (const property of [
+    '"select"',
+    String.raw`"sel\u0065ct"`,
+    String.raw`"\u{73}elect"`,
+    String.raw`'\x73elect'`,
+  ]) {
+    const source = `const { [${property}]: read } = db; read();`;
+    assert.deepEqual(
+      queryReadViolations(source, "example.ts").map(({ method }) => method),
+      ["select"],
+      source,
+    );
+  }
+
+  assert.deepEqual(
+    queryReadViolations(
+      "const read = db[methodName]; read(); db.execute(sql`SELECT 1`);",
+      "example.ts",
+    ),
+    [],
+  );
+
+  assert.deepEqual(
+    queryReadViolations(
+      'const first = db["select"]; const second = first; second();',
+      "example.ts",
+    ).map(({ method }) => method),
+    ["select"],
+  );
+
+  const runtime = { select: () => "selected" };
+  const bound = runtime["sel\u0065ct"].bind(runtime);
+  assert.equal(bound(), "selected");
+  assert.equal(runtime["sel\u0065ct"].call(runtime), "selected");
+  assert.equal(runtime["sel\u0065ct"].apply(runtime, []), "selected");
+});
+
 test("check:queries ignores comments, string contents, regexes, and template text", () => {
   const source = [
     "// db.select().from(table)",
@@ -173,9 +267,16 @@ test("check:queries exempts only nested repository.ts modules", async (t) => {
     path.join(sourceRoot, "feature/repository.ts"),
     "db.select().from(table);",
   );
+  await writeFile(
+    path.join(sourceRoot, "feature/controller.ts"),
+    String.raw`const read = db["sel\u0065ct"].bind(db); read();`,
+  );
 
   assert.deepEqual(
     (await checkQueries(root)).map(({ file, method }) => [file, method]),
-    [["apps/api/src/repository.ts", "select"]],
+    [
+      ["apps/api/src/feature/controller.ts", "select"],
+      ["apps/api/src/repository.ts", "select"],
+    ],
   );
 });
