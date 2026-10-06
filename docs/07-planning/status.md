@@ -1,5 +1,55 @@
 ## Status First
 
+Snapshot: 2026-10-06 23:44 UTC (7 October in Yangon). Accepted main remains3096cb04; reviewed DEV remains08842235, shadow on and enforcement off. No protected merge, DEV refresh, strict activation or completed phase.
+
+| Phase | Implementation | Integration | Acceptance / operational closure |
+| --- | --- | --- | --- |
+| P0 | Frozen53269374; product and offline runner reviews clear | Sole closure#583; installer scaffold remains explicitly partial | HostedG1119/22 red; signed installer/upgrade/rollback, strict/cutover and finalizer open |
+| P1 | Complete saved views/CSV source8c; nine-file CI correctionfd8d8274 | Linux Saved Views visual1/1, contrast gate, exact key fixtures and SDK patch complete;0118 provisional | Ordinary delta has no defect; whole candidate blocked by inherited SQL/snapshot history. OpenAPI/G11 and full composed acceptance open |
+| P2 | Complete approvals source d5; fixture/SDK product38f96f3b, published notes-onlyb499ad3b | Draft#586 on sole train#589; full current delta Luna/Sol CLEAR | Native2files20 and MCP7files31 pass; inherited OpenAPI/G8/G11 and liveAPI/image/phase acceptance open |
+| P3 | Complete login provenancebc03 plus nine-read relocationb78a0ff4; notes-only08c162d7 | Draft#596 stacked on mapping#595; complete current delta Luna/Sol CLEAR | Query/types/domain31/contracts17/perms88/native2files16 pass; Health/provider and broad composed acceptance open |
+| P4 | Complete canonical outbox binding/fencing8ba; notes-only359d60bd | Draft#594 on#589; source reviews clear | Actual full native run has only the same four shared fixture failures; broad CI/image/provider/fullP4 acceptance open |
+
+### What changed
+
+P1/P2 complete CI batches fix narrow positive key fixtures without changing permissions or assertions and raise both existing SDK users to the approved^1.31.0 floor, lock1.32.1. Author scoped native2files20 pass; audits exit0 at high severity with oneLOW advisory. P1 adds real populated Saved Views visual coverage and the Linux baseline; the pinned linux/amd64 CI image captures1/1. Tokens/contrast and visual scope pass. Temporary capture override/build stdout were not retained, so no complete acquisition receipt is invented. Source/test/log/baseline hashes and actual image identity remain available.
+
+P3 relocates all nine new reads into the identity repository while preserving executor, locking, filters, projection and caller timing. Author native2files16/domain31/contracts17/perms88 pass. Fresh Luna and lightweight Sol each run query gate, API typecheck and diff, and CLEAR the complete relocation delta. Product b78→08c changes only review notes; root proves source equivalence. P2 complete five-file delta also clears fresh ordinary/full Sol; root fast-forwards the actual published586 branch after adding records, preserving c89 history.
+
+Inspection rejects an ID-only migration repair: central0088 metadata contains columns introduced by0089 SQL, while0089 metadata omits the preceding SLA schema. Original files/failures remain. Allocation and frozen SQL/journal inputs0088–0117 at canonical f478 are now recorded for one SQL-bound metadata reconciliation; no new numbers, SQL rewrites or P0 changes are authorized. Saved-view0118 remains provisional. P1 ordinary report is BLOCKED for whole-candidate acceptance, without a defect in its nine-file correction delta; Sol is not falsely claimed clear.
+
+### What is being worked on now
+
+One Luna author owns the central provisional SQL-prefix/snapshot reconciliation in#589, with an exclusive owned PostgreSQL window. A separate isolated Luna lane addresses the actual post-P0 visual-scope failure as one complete mechanism batch, without weakening fixtures or screenshot requirements. The inherited deferred create-dialog defect is preserved for its own correction; it is absent from current P0's failing cases and not composed into586 or583. Finished P2/P3 batches have current committed review records, not a whole-phase acceptance claim.
+
+### Critical path
+
+1. Resolve current P0 hostedG11 failure under the no-extra-retry rule.
+2. Complete exact-source installer/upgrade/preservation/idempotency/rollback proof in the approved release order.
+3. Prove current off/shadow/strict behavior and independently adjudicate actual Oct4/5/6 partial evidence.
+4. Resolve the public-config substitution and perform eligible reviewed reversible DEV/UAT cutover.
+5. Protected merge with every required exact-head gate, official installer proof and fresh Sol finalizer.
+
+### Misalignment / drift
+
+#583 is the only P0 closure candidate. #589 is the sole post-P0 integration train;#581 remains superseded and#587 diagnostic only. P1/P2/P3/P4 are not waiting for P0 to implement. Acceptance remains serial. #594/#595 full native failures are the same four already-corrected shared fixtures, not new outbox/OIDC defects:149files/1747passed tests and150files/1736passed tests respectively surround those four failures. The original runs stay FAILED; no duplicate broad acquisition is queued to repeat them.
+
+### Concerns
+
+Official release publishes only source already onmain; exact signed installer proof cannot precede merge under the present workflow. The private validator has five passing offline tests but is not a runnable installer/lifecycle harness or GateC acceptance. Local22/22 does not replace current hosted19/22. Published v2.0.1 closes the pre-release OpenAPI break allowlist; inherited user_deactivation enum diffs need correct versioned integration treatment. Snapshot IDs alone cannot prove schema history.
+
+### Decisions needed from Thomas
+
+Previously requested public-config substitution, one unchanged-source hosted confirmation, installer release sequencing and separate P1 current-team lead rule remain pending. No duplicate questions or elapsed-time approval. P1 and central train work do not block P0.
+
+### Next merge candidates
+
+#583 only after real P0 gates. Then complete reviewed P1–P4 candidates compose through#589 on accepted P0, including central metadata reconciliation and current integration checks. No candidate with a missing review, red check or unresolved blocker is merge-ready.
+
+---
+
+## Status First
+
 Snapshot: 2026-10-06 23:24 UTC (7 October in Yangon). Accepted main remains3096cb04; DEV remains08842235 with shadow enabled and enforcement empty. No protected main merge, DEV refresh, strict cutover or phase completion.
 
 | Phase | Implementation | Integration | Acceptance / operational closure |
