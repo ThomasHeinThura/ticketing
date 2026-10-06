@@ -212,7 +212,7 @@ if ! command -v docker >/dev/null 2>&1 || ! docker compose version >/dev/null 2>
     Darwin:*) command -v brew >/dev/null 2>&1 || die 'install Docker Desktop from docker.com or install Homebrew, then rerun'; brew install --cask docker ;;
     Linux:debian|Linux:ubuntu) command -v sudo >/dev/null 2>&1 || die 'sudo is required to install Docker'; sudo apt-get update; sudo apt-get install -y docker.io docker-compose-v2; sudo systemctl enable --now docker ;;
     Linux:fedora|Linux:rhel|Linux:centos) command -v sudo >/dev/null 2>&1 || die 'sudo is required to install Docker'; sudo dnf install -y docker docker-compose-plugin; sudo systemctl enable --now docker ;;
-    Linux:arch) command -v sudo >/dev/null 2>&1 || die 'sudo is required to install Docker'; sudo pacman -Sy --noconfirm docker docker-compose; sudo systemctl enable --now docker ;;
+    Linux:arch) die 'automatic Docker installation is disabled on Arch Linux to avoid partial system upgrades; install Docker during a synchronized full-system update, then rerun install.sh' ;;
     *) die 'automatic Docker installation is unsupported for this distribution; install Docker Engine and the Compose plugin, then rerun';;
   esac
   command -v docker >/dev/null 2>&1 && docker compose version >/dev/null 2>&1 || die 'Docker or the Compose plugin is still unavailable after installation'

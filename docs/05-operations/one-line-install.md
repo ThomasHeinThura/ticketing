@@ -26,9 +26,11 @@ copy of `install.sh` and pass `--version` for a published release.
 1. **Check the host.** Linux x86-64 and arm64 are supported for production. macOS is supported
    for local evaluation. Other operating systems and architectures stop before downloads.
 2. **Check Docker.** Docker Engine and the Compose plugin must be available. If either is
-   missing, the installer asks before using the supported system package manager. `--yes`
-   accepts this prompt and the later install-file prompt. It never pipes a remote script into
-   a shell. The Docker daemon must be running and accessible to the invoking user.
+   missing, the installer asks before using a supported system package manager. Arch Linux
+   stops with guidance to install Docker during a synchronized full-system update; the
+   installer never runs a partial `pacman` upgrade. `--yes` accepts supported install prompts
+   and the later install-file prompt. It never pipes a remote script into a shell. The Docker
+   daemon must be running and accessible to the invoking user.
 3. **Choose a release.** `--version TAG` selects an exact semantic version tag. Without that
    flag, the installer reads the single-line `stable.txt` pointer over HTTPS. A static
    `stable.txt` is published as part of P7 hosting; it is not dynamically resolved by a
@@ -104,11 +106,12 @@ install directory. There is no automatic fallback from a failed signature check.
 The source installer is small and reviewable. Its SHA-256 is:
 
 ```text
-8e4025bdd9bb30c9eac6a4f3de1de3dac7a634b3e74d1aab58533b37021bd5b2
+c199bacb17b04dcc57900559c3ce6a8134492748c28b9617a1c09c06f944ab15
 ```
 
 You can download and inspect the script before running it. The installer requests elevation
-only through an explicit package-manager prompt when Docker is missing; the rest of the flow
+only through an explicit supported package-manager prompt when Docker is missing; Arch Linux
+requires a synchronized full-system update performed by the operator. The rest of the flow
 runs as the invoking user.
 
 ## Offline / air-gapped install
