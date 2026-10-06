@@ -986,6 +986,10 @@ export function createApp(
       }
       document.paths ??= {};
       document.paths[`/scim/v2${path}`] = {
+        // SCIM is mounted at the agent origin root, while the rest of the API
+        // inherits the `/api` server above. A path-level relative root keeps
+        // SCIM clients on the same origin without incorrectly prefixing `/api`.
+        servers: [{ url: "/", description: "TaskDesk SCIM API Server" }],
         ...scimPathItem,
       } as NonNullable<typeof document.paths>[string];
     }

@@ -33,6 +33,7 @@ import { randomBytes } from "node:crypto";
 import fs from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
+import { operationsOf } from "./lib/openapi-operations.mjs";
 import { exists, finish, readText, repoRoot, violation } from "./lib/repo.mjs";
 
 const NAME = "check:openapi";
@@ -72,16 +73,6 @@ function run(command, args) {
         process.env.TASKDESK_PORTAL_URL ?? "http://portal.localhost:5174",
     },
   });
-}
-
-function operationsOf(document) {
-  const operations = new Set();
-  for (const [route, methods] of Object.entries(document.paths ?? {})) {
-    for (const method of Object.keys(methods ?? {})) {
-      operations.add(`${method.toUpperCase()} ${route}`);
-    }
-  }
-  return operations;
 }
 
 function summarise(before, after) {

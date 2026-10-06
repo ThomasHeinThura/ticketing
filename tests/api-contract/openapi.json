@@ -29949,6 +29949,12 @@
       }
     },
     "/scim/v2/Users": {
+      "servers": [
+        {
+          "url": "/",
+          "description": "TaskDesk SCIM API Server"
+        }
+      ],
       "get": {
         "operationId": "listScimUsers",
         "tags": [
@@ -30125,6 +30131,12 @@
       }
     },
     "/scim/v2/Users/{id}": {
+      "servers": [
+        {
+          "url": "/",
+          "description": "TaskDesk SCIM API Server"
+        }
+      ],
       "get": {
         "operationId": "getScimUser",
         "tags": [
@@ -30453,6 +30465,12 @@
       }
     },
     "/scim/v2/Groups": {
+      "servers": [
+        {
+          "url": "/",
+          "description": "TaskDesk SCIM API Server"
+        }
+      ],
       "get": {
         "operationId": "listScimGroups",
         "tags": [
@@ -30598,6 +30616,12 @@
       }
     },
     "/scim/v2/Groups/{id}": {
+      "servers": [
+        {
+          "url": "/",
+          "description": "TaskDesk SCIM API Server"
+        }
+      ],
       "get": {
         "operationId": "getScimGroup",
         "tags": [
@@ -30915,6 +30939,12 @@
       }
     },
     "/scim/v2/ServiceProviderConfig": {
+      "servers": [
+        {
+          "url": "/",
+          "description": "TaskDesk SCIM API Server"
+        }
+      ],
       "get": {
         "operationId": "getScimServiceProviderConfig",
         "tags": [
@@ -31075,6 +31105,12 @@
       }
     },
     "/scim/v2/ResourceTypes": {
+      "servers": [
+        {
+          "url": "/",
+          "description": "TaskDesk SCIM API Server"
+        }
+      ],
       "get": {
         "operationId": "listScimResourceTypes",
         "tags": [
@@ -31172,6 +31208,12 @@
       }
     },
     "/scim/v2/Schemas": {
+      "servers": [
+        {
+          "url": "/",
+          "description": "TaskDesk SCIM API Server"
+        }
+      ],
       "get": {
         "operationId": "listScimSchemas",
         "tags": [
