@@ -488,6 +488,7 @@ export function getCustomerPortalIdentityRow(userId: string) {
 export function getStoredAuthPluginConfigRows() {
   return db
     .select({
+      id: schema.instancePluginConfigTable.id,
       pluginId: schema.instancePluginConfigTable.pluginId,
       enabled: schema.instancePluginConfigTable.enabled,
       scope: schema.instancePluginConfigTable.scope,
@@ -500,6 +501,9 @@ export function getStoredAuthPluginConfigRows() {
 
 export function getIdentityConnectionConfigVersions() {
   return db
-    .select({ configVersion: schema.identityConnectionTable.configVersion })
+    .select({
+      id: schema.identityConnectionTable.id,
+      configVersion: schema.identityConnectionTable.configVersion,
+    })
     .from(schema.identityConnectionTable);
 }

@@ -18,6 +18,7 @@ import type { UserWithAnonymous } from "better-auth/plugins/anonymous";
 import { config } from "dotenv-mono";
 import { and, eq, ne, sql } from "drizzle-orm";
 import { appendAuditLog } from "./audit/audit-writer";
+import { authConfigurationVersion } from "./auth/configuration-version";
 import { loadLocalFactorState } from "./auth/local-factor-service";
 import {
   countAuthUsers,
@@ -1006,6 +1007,7 @@ export let portalAuth = createAuth("customer");
 let customerLocalAuthProviders = disabledCustomerLocalAuthProviders;
 
 let authConfigVersion = -1;
+let authConfigFingerprint: string | null = null;
 let authReloadPromise: Promise<boolean> | null = null;
 let authConfigPoller: ReturnType<typeof setInterval> | null = null;
 
@@ -1022,7 +1024,11 @@ export async function reloadAuthConfiguration(): Promise<boolean> {
       ...pluginRows.map((row) => row.configVersion),
       ...connectionRows.map((row) => row.configVersion),
     );
-    if (authConfigVersion === nextVersion) return false;
+    const nextFingerprint = authConfigurationVersion(
+      pluginRows,
+      connectionRows,
+    );
+    if (authConfigFingerprint === nextFingerprint) return false;
 
     const nextAgentProviders = resolveLocalAuthProviders("agent", pluginRows);
     const nextCustomerProviders = resolveLocalAuthProviders(
@@ -1038,6 +1044,7 @@ export async function reloadAuthConfiguration(): Promise<boolean> {
     portalAuth = nextPortalAuth;
     customerLocalAuthProviders = nextCustomerProviders;
     authConfigVersion = nextVersion;
+    authConfigFingerprint = nextFingerprint;
     recordAuthReload("ok", nextVersion);
     return true;
   })();

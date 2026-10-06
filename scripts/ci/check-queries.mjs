@@ -15,6 +15,7 @@ const readMethods = new Set([
 ]);
 const memberTypes = new Set(["MemberExpression", "OptionalMemberExpression"]);
 const callTypes = new Set(["CallExpression", "OptionalCallExpression"]);
+const reflectApplyAlias = "__taskdesk_reflect_apply__";
 
 function unwrap(input) {
   let node = input;
@@ -58,6 +59,7 @@ function isMember(node, name) {
 
 function referenceMethod(input, aliases) {
   const node = unwrap(input);
+  if (isReflectApplyReference(node)) return reflectApplyAlias;
   if (memberTypes.has(node?.type)) {
     const name = propertyName(node);
     if (readMethods.has(name)) return name;
@@ -69,6 +71,7 @@ function referenceMethod(input, aliases) {
 
 function callableReferenceMethod(input, aliases) {
   const node = unwrap(input);
+  if (isReflectApplyReference(node)) return reflectApplyAlias;
   if (memberTypes.has(node?.type)) {
     const name = propertyName(node);
     return readMethods.has(name) ? name : null;
@@ -86,6 +89,16 @@ function boundReferenceMethod(input, aliases) {
     return callableReferenceMethod(unwrap(node.callee).object, aliases);
   }
   return referenceMethod(node, aliases);
+}
+
+function isReflectApplyReference(node) {
+  const target = unwrap(node);
+  return (
+    memberTypes.has(target?.type) &&
+    propertyName(target) === "apply" &&
+    unwrap(target.object)?.type === "Identifier" &&
+    unwrap(target.object).name === "Reflect"
+  );
 }
 
 function destructuredBindings(input, aliases) {
@@ -162,6 +175,10 @@ export function queryReadViolations(source, file) {
   visit(ast, (node) => {
     if (!callTypes.has(node.type)) return;
     const callee = unwrap(node.callee);
+    if (isReflectApplyReference(callee)) {
+      addAppliedRead(node);
+      return;
+    }
     if (memberTypes.has(callee?.type)) {
       const name = propertyName(callee);
       if (readMethods.has(name)) {
@@ -180,7 +197,9 @@ export function queryReadViolations(source, file) {
       }
     }
     const method = boundReferenceMethod(callee, aliases);
-    if (method) {
+    if (method === reflectApplyAlias) {
+      addAppliedRead(node);
+    } else if (method) {
       const origin = originNode(callee, aliases);
       add(method, origin?.start ?? callee.start);
     }
@@ -198,10 +217,19 @@ export function queryReadViolations(source, file) {
     if (method && Number.isInteger(offset) && !byOffset.has(offset))
       byOffset.set(offset, method);
   }
+
+  function addAppliedRead(call) {
+    const method = referenceMethod(call.arguments?.[0], aliases);
+    if (method && method !== reflectApplyAlias) {
+      const origin = originNode(call.arguments[0], aliases);
+      add(method, origin?.start ?? call.arguments[0]?.start);
+    }
+  }
 }
 
 function originNode(input, aliases) {
   const node = unwrap(input);
+  if (isReflectApplyReference(node)) return node.property;
   if (callTypes.has(node?.type) && isMember(unwrap(node.callee), "bind"))
     return originNode(unwrap(node.callee).object, aliases);
   if (node?.type === "Identifier" && aliases.has(node.name)) return node;

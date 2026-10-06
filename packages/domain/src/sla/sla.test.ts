@@ -300,6 +300,85 @@ describe("dueAtFor", () => {
     expect(dueAtFor(p, from, 120, pauses)).toBeNull();
   });
 
+  it("an open pause already active at the evaluation start freezes the clock", () => {
+    const p = policy(CALENDAR_8X5, 60);
+    const from = new Date("2026-09-14T09:00:00Z"); // Monday 10:00 BST
+    const pauses: SlaPause[] = [
+      {
+        metric: "resolution",
+        startedAt: new Date("2026-09-14T08:30:00Z"), // Monday 09:30 BST
+        endedAt: null,
+        reason: "waiting_customer",
+      },
+    ];
+
+    expect(dueAtFor(p, from, 60, pauses)).toBeNull();
+  });
+
+  it("a zero target preserves the requested start even during an open pause", () => {
+    const p = policy(CALENDAR_8X5, 0);
+    const from = new Date("2026-09-14T09:00:00Z");
+    const pauses: SlaPause[] = [
+      {
+        metric: "resolution",
+        startedAt: new Date("2026-09-14T08:30:00Z"),
+        endedAt: null,
+        reason: "waiting_customer",
+      },
+    ];
+
+    expect(dueAtFor(p, from, 0, pauses)).toBe(from);
+  });
+
+  it("a closed pause starting after hours and spanning the next opening defers due time", () => {
+    const p = policy(CALENDAR_8X5, 60);
+    const from = new Date("2026-09-18T17:00:00Z"); // Friday 18:00 BST
+    const pauses: SlaPause[] = [
+      {
+        metric: "resolution",
+        startedAt: new Date("2026-09-18T18:00:00Z"), // Friday 19:00 BST
+        endedAt: new Date("2026-09-21T09:00:00Z"), // Monday 10:00 BST
+        reason: "waiting_customer",
+      },
+    ];
+
+    expect(dueAtFor(p, from, 60, pauses)?.getTime()).toBe(
+      new Date("2026-09-21T10:00:00Z").getTime(), // Monday 11:00 BST
+    );
+  });
+
+  it("an open pause starting after hours freezes the next covered window", () => {
+    const p = policy(CALENDAR_8X5, 60);
+    const from = new Date("2026-09-18T17:00:00Z"); // Friday 18:00 BST
+    const pauses: SlaPause[] = [
+      {
+        metric: "resolution",
+        startedAt: new Date("2026-09-18T18:00:00Z"), // Friday 19:00 BST
+        endedAt: null,
+        reason: "waiting_customer",
+      },
+    ];
+
+    expect(dueAtFor(p, from, 60, pauses)).toBeNull();
+  });
+
+  it("a pause starting exactly at the next opening defers that opening", () => {
+    const p = policy(CALENDAR_8X5, 60);
+    const from = new Date("2026-09-18T17:00:00Z"); // Friday 18:00 BST
+    const pauses: SlaPause[] = [
+      {
+        metric: "resolution",
+        startedAt: new Date("2026-09-21T08:00:00Z"), // Monday 09:00 BST
+        endedAt: new Date("2026-09-21T09:00:00Z"), // Monday 10:00 BST
+        reason: "waiting_customer",
+      },
+    ];
+
+    expect(dueAtFor(p, from, 60, pauses)?.getTime()).toBe(
+      new Date("2026-09-21T10:00:00Z").getTime(), // Monday 11:00 BST
+    );
+  });
+
   it("a zero-cover calendar never opens", () => {
     const p = policy({ timezone: "UTC", windows: {}, holidays: [] }, 60);
     expect(dueAtFor(p, new Date("2026-09-14T09:00:00Z"), 60, [])).toBeNull();

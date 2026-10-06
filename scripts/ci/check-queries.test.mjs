@@ -115,6 +115,30 @@ test("check:queries detects receiver and simple method aliases", () => {
   );
 });
 
+test("check:queries detects Reflect.apply with statically known read methods", () => {
+  const cases = [
+    "Reflect.apply(db.select, db, [])",
+    'Reflect.apply(db["select"], db, [])',
+    "Reflect.apply(db[`select`], db, [])",
+    "Reflect[`apply`](db.select, db, [])",
+    "const read = db.select; Reflect.apply(read, db, [])",
+    "const apply = Reflect.apply; apply(db.select, db, [])",
+  ];
+
+  for (const source of cases) {
+    assert.deepEqual(
+      queryReadViolations(`${source};`, "example.ts").map(
+        ({ method }) => method,
+      ),
+      ["select"],
+      source,
+    );
+  }
+
+  const runtime = { select: () => "selected" };
+  assert.equal(Reflect.apply(runtime.select, runtime, []), "selected");
+});
+
 test("check:queries parses dotted, computed, escaped, and forwarded references uniformly", () => {
   const memberForms = [
     ".select",

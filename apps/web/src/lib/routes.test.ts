@@ -166,7 +166,11 @@ describe("G5 route metadata", () => {
     expect(generatedRouteMetadata.agent).toContain(
       "/agent/projects/$projectKey/work",
     );
-    expect(generatedRouteMetadata.portal).toEqual(["/", "/approvals"]);
+    expect(generatedRouteMetadata.portal).toEqual([
+      "/",
+      "/approvals",
+      "/sign-in",
+    ]);
   });
 
   it("round-trips the portal root URL through its route helper", () => {
