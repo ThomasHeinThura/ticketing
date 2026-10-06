@@ -31,25 +31,43 @@ import type { WorkItemSortDirection, WorkItemSortField } from "@/lib/routes";
  */
 function useGetWorkItems({
   projectId,
+  projectSlug,
+  workspaceId,
+  filter,
   sort,
   dir,
   realtimeStatus = "connecting",
 }: {
   projectId: string | undefined;
+  projectSlug?: string;
+  workspaceId?: string;
+  filter?: string;
   sort: WorkItemSortField;
   dir: WorkItemSortDirection;
   /** Stay on the conservative foreground polling fallback until list realtime is ready. */
   realtimeStatus?: WorkItemRealtimeStatus;
 }) {
   const query = useQuery({
-    queryKey: ["work-items", projectId, sort, dir],
+    queryKey: ["work-items", projectId, workspaceId, sort, dir, filter ?? ""],
     queryFn: async () => {
+      if (filter?.trim()) {
+        const { default: searchWorkItems } = await import(
+          "@/fetchers/work-item/search-work-items"
+        );
+        return searchWorkItems({
+          workspaceId: workspaceId as string,
+          projectSlug: projectSlug as string,
+          filter,
+          sort,
+          dir,
+        });
+      }
       const { default: getWorkItems } = await import(
         "@/fetchers/work-item/get-work-items"
       );
       return getWorkItems(projectId as string, sort, dir);
     },
-    enabled: !!projectId,
+    enabled: !!projectId && (!filter?.trim() || !!workspaceId),
     refetchInterval: realtimeStatus === "available" ? false : 30_000,
     refetchIntervalInBackground: false,
     placeholderData: (

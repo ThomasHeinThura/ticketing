@@ -23,6 +23,7 @@ import {
 } from "./schema";
 import {
   approvePersonDeactivation,
+  approveServiceCalendarDeletion,
   decideOwnPendingAction,
   getOwnPendingAction,
   getOwnPendingActions,
@@ -104,18 +105,25 @@ const approvePendingActionRoute = createRoute({
   middleware: [requireSessionOnly()] as const,
   request: {
     params: pendingActionParamSchema,
-    headers: z.object({ "x-taskdesk-step-up-token": z.string().length(43) }),
+    headers: z.object({
+      "x-taskdesk-step-up-token": z.string().length(43).optional(),
+    }),
     body: {
       required: true,
       content: {
         "application/json": {
-          schema: z.object({ typedName: z.string().max(320) }).strict(),
+          schema: z
+            .object({ typedName: z.string().max(320).optional() })
+            .strict(),
         },
       },
     },
   },
   responses: {
-    200: jsonResponse("Deactivation executed", pendingActionApprovalSchema),
+    200: jsonResponse(
+      "Approved pending action executed",
+      pendingActionApprovalSchema,
+    ),
     400: errorResponse("The typed target name does not match"),
     401: errorResponse("The current session is unavailable"),
     403: errorResponse("Current authority or PA-15 proof is unavailable"),
@@ -194,15 +202,32 @@ const pendingAction = apiRouter()
     );
     const session = c.get("session") as { id?: string } | null;
     if (!session?.id) throw new HTTPException(401, { message: "Unauthorized" });
-    const result = await approvePersonDeactivation({
-      id: c.req.valid("param").id,
-      requesterPersonId,
-      userId: c.get("userId"),
-      sessionId: session.id,
-      typedName: c.req.valid("json").typedName,
-      stepUpToken: c.req.valid("header")["x-taskdesk-step-up-token"],
-      traceId: normaliseTraceId(c.req.header("x-request-id")),
-    });
+    const id = c.req.valid("param").id;
+    const typedName = c.req.valid("json").typedName;
+    const token = c.req.valid("header")["x-taskdesk-step-up-token"];
+    const traceId = normaliseTraceId(c.req.header("x-request-id"));
+    const result =
+      typedName === undefined
+        ? await approveServiceCalendarDeletion({
+            id,
+            requesterPersonId,
+            userId: c.get("userId"),
+            sessionId: session.id,
+            traceId,
+          })
+        : token === undefined
+          ? (() => {
+              throw new HTTPException(403, { message: "step_up_expired" });
+            })()
+          : await approvePersonDeactivation({
+              id,
+              requesterPersonId,
+              userId: c.get("userId"),
+              sessionId: session.id,
+              typedName,
+              stepUpToken: token,
+              traceId,
+            });
     setShadowLegacyAuthorization(c, "allowed");
     return c.json(
       { id: result.id, state: result.state as "executed" | "expired" },

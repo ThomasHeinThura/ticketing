@@ -11,6 +11,18 @@ export const projectSchema = z
     icon: z.string().nullable(),
     name: z.string(),
     description: z.string().nullable(),
+    // The database stores text with authoritative CHECK constraints. Request DTOs
+    // enforce the closed write vocabulary; keep response typing aligned with Drizzle.
+    kind: z.string().openapi({ enum: ["project", "managed_service"] }),
+    health: z
+      .string()
+      .nullable()
+      .openapi({ enum: ["red", "amber", "green"] }),
+    supportLevel: z
+      .string()
+      .nullable()
+      .openapi({ enum: ["L1", "L2", "L3"] }),
+    serviceCalendarId: z.string().nullable(),
     createdAt: responseTimestamp,
     archivedAt: nullableResponseTimestamp.openapi({
       description:

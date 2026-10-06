@@ -866,7 +866,28 @@
 				"iconRequired": "图标不能为空"
 			},
 			"importExportTasks": "导入/导出",
-			"importExportTasksDescription": "导入和导出任务。"
+			"importExportTasksDescription": "导入和导出任务。",
+			"engagement": {
+				"title": "Engagement and service",
+				"description": "Set the project kind, health, support level, and service calendar.",
+				"kind": "Project kind",
+				"project": "Project",
+				"managedService": "Managed service",
+				"health": "Health",
+				"unset": "Not set",
+				"red": "Red",
+				"amber": "Amber",
+				"green": "Green",
+				"supportLevel": "Support level",
+				"serviceCalendar": "Service calendar",
+				"selectCalendar": "Select a service calendar",
+				"none": "None",
+				"required": "Managed services require a support level and service calendar.",
+				"saved": "Engagement settings saved.",
+				"saveError": "Could not save engagement settings.",
+				"saving": "Saving…",
+				"save": "Save engagement settings"
+			}
 		},
 		"projectIntegrations": {
 			"pageTitle": "项目集成",
@@ -2295,7 +2316,7 @@
 			"allCalendars": "All calendars",
 			"back": "Back to calendars",
 			"cancel": "Cancel",
-			"changesDescription": "Affected-work-item counts are unavailable because this screen does not expose calendar usage.",
+			"changesDescription": "Review the calendar usage panel to see current project, SLA version, and work item references.",
 			"changesTitle": "Calendar impact is not shown",
 			"confirmSave": "Confirm and save",
 			"conflictDescription": "Your draft is still available. Reload the latest calendar to discard it, or keep your draft and save it against version {{version}}.",
@@ -2304,7 +2325,7 @@
 			"discardReload": "Discard draft and reload latest",
 			"editableLegend": "Editable service calendar settings",
 			"keepDraft": "Keep my draft",
-			"limitedDescription": "Configure windows and holidays manually or import a supported .ics file. Presets, cloning, country holidays, reference counts, and safe deletion are not available in the current API slice.",
+			"limitedDescription": "Configure windows and holidays manually or import a supported .ics file. Presets, cloning, and country holidays are not available in this API slice.",
 			"limitedTitle": "Limited calendar tools",
 			"loadErrorDescription": "The calendar may be unavailable or outside your workspace access.",
 			"loadErrorTitle": "Calendar could not be loaded",
@@ -2316,7 +2337,7 @@
 			"retry": "Retry",
 			"save": "Save changes",
 			"saving": "Saving…",
-			"timezoneCount": "The affected open-item count is not available yet. The calendar usage count is not available yet. Confirm to continue without that count.",
+			"timezoneCount": "Use the calendar usage panel to review project and SLA policy references before changing the timezone.",
 			"timezoneDescription": "Changing the calendar timezone immediately changes how SLA deadlines are calculated for work items using this calendar.",
 			"timezoneTitle": "Confirm calendar timezone change",
 			"zeroDescription": "Add at least one window before saving if this calendar should move SLA clocks.",
@@ -2338,7 +2359,7 @@
 			"month": "Month",
 			"nameOptional": "Name (optional)",
 			"none": "No holidays configured.",
-			"pastWarning": "Adding a past holiday can move deadlines later. The affected item count is unavailable until calendar usage is implemented.",
+			"pastWarning": "Adding a past holiday can move deadlines later. Review the calendar usage panel before saving.",
 			"pattern": "Holiday pattern",
 			"range": "Date range",
 			"remove": "Remove",
@@ -2361,14 +2382,14 @@
 			"readOnlyTitle": "Read-only access",
 			"retry": "Retry",
 			"title": "Service calendars",
-			"toolsDescription": "Presets, calendar cloning and country holidays are not available yet. Add holidays manually or import a supported .ics file. Reference counts and safe deletion are unavailable until the calendar usage API is implemented.",
+			"toolsDescription": "Presets, calendar cloning and country holidays are not available yet. Add holidays manually or import a supported .ics file.",
 			"toolsTitle": "Some calendar tools are not available yet",
-			"usageUnavailable": "Policy and project usage counts are not available yet.",
+			"usageUnavailable": "Project and SLA policy reference counts are shown on each calendar.",
 			"weeklyHours": "{{hours}} h/week"
 		},
 		"preview": {
 			"annualHours": "hours in {{year}} after holidays",
-			"calendar": "Calendar: {{name}}. Usage details are unavailable in this slice.",
+			"calendar": "Calendar: {{name}}. Review its usage panel for current references.",
 			"description": "Calculated by the server with its timezone database. Values reflect the last saved settings; save changes to recalculate.",
 			"retry": "Retry preview",
 			"saveToCalculate": "Save this calendar to calculate its annual cover.",
@@ -2431,6 +2452,17 @@
 			"tooLarge": "Calendar file exceeds the 256 KiB limit.",
 			"tooMany": "Calendar file exceeds the 1,000 event limit.",
 			"noEvents": "No calendar events were found to preview."
+		},
+		"usage": {
+			"title": "Calendar usage",
+			"loading": "Checking references…",
+			"error": "Calendar usage could not be loaded. Deletion is unavailable.",
+			"counts": "{{projects}} projects; {{policies}} current policies across {{versions}} versions; {{workItems}} work items.",
+			"unused": "No project or SLA version references this calendar.",
+			"inUse": "This calendar is referenced and cannot be deleted.",
+			"delete": "Request deletion",
+			"requesting": "Requesting…",
+			"deleteError": "Could not request calendar deletion."
 		}
 	},
 	"portal": {
@@ -2934,7 +2966,10 @@
 				"userDeactivation": "停用人员"
 			},
 			"unknownAction": "未知操作",
-			"expires": "到期时间"
+			"expires": "到期时间",
+			"calendarDeletionApproved": "Calendar deletion approved. The calendar and its audit record were removed.",
+			"approveCalendarDeletion": "Approve deletion of {{name}}? This cannot be undone.",
+			"deleteServiceCalendar": "Delete service calendar {{name}}"
 		}
 	}
 }

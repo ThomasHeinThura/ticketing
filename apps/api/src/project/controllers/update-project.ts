@@ -12,6 +12,11 @@ async function updateProject(
   slug: string,
   description: string,
   workspaceId: string,
+  configuration: {
+    kind?: "project" | "managed_service";
+    supportLevel?: "L1" | "L2" | "L3" | null;
+    serviceCalendarId?: string | null;
+  },
 ) {
   // #23's mandatory Opus security review of PR #261, F1's delta-confirmation (D1,
   // 2026-09-22): the claim check and the claim write for the NEW slug now have to commit
@@ -79,6 +84,15 @@ async function updateProject(
           icon,
           slug,
           description,
+          ...(configuration.kind !== undefined
+            ? { kind: configuration.kind }
+            : {}),
+          ...(configuration.supportLevel !== undefined
+            ? { supportLevel: configuration.supportLevel }
+            : {}),
+          ...(configuration.serviceCalendarId !== undefined
+            ? { serviceCalendarId: configuration.serviceCalendarId }
+            : {}),
         })
         .where(eq(projectTable.id, id))
         .returning();

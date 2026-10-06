@@ -17,7 +17,12 @@ import {
   createRoute,
   errorResponse,
   jsonResponse,
+  z,
 } from "../openapi";
+import {
+  createPendingAction,
+  requirePendingActionRequesterIdentity,
+} from "../pending-action/service";
 import { rejectNulByte } from "../utils/reject-nul-byte";
 import { requireApiKeyPermissionScope } from "../utils/require-api-key-permission-scope";
 import { requireWorkspaceCapability } from "../utils/require-workspace-capability";
@@ -26,6 +31,7 @@ import { workspaceAccess } from "../utils/workspace-access-middleware";
 import {
   createCalendar,
   getCalendar,
+  getCalendarUsage,
   importCalendarHolidays,
   listCalendars,
   ServiceCalendarVersionConflictError,
@@ -240,6 +246,72 @@ const importHolidaysRoute = createRoute({
   },
 });
 
+const calendarUsageSchema = z.object({
+  calendarId: z.string(),
+  counts: z.object({
+    projects: z.number().int().min(0),
+    slaPolicyVersions: z.number().int().min(0),
+    currentSlaPolicies: z.number().int().min(0),
+    workItems: z.number().int().min(0),
+  }),
+});
+
+const usageRoute = createRoute({
+  method: "get",
+  path: "/{id}/usage",
+  operationId: "getServiceCalendarUsage",
+  tags: ["Service calendars"],
+  summary: "Get calendar usage",
+  middleware: [
+    calendarReach,
+    requireApiKeyPermissionScope({ sla_policy: ["read"] }),
+    requireWorkspaceCapability("sla_policy:read"),
+  ] as const,
+  request: { params: calendarIdParam },
+  responses: {
+    200: jsonResponse(
+      "Live project, SLA version, and work item reference counts",
+      calendarUsageSchema,
+    ),
+    403: errorResponse("Missing sla_policy:read permission"),
+    404: errorResponse("Service calendar not found"),
+  },
+});
+
+const deleteCalendarRoute = createRoute({
+  method: "delete",
+  path: "/{id}",
+  operationId: "requestServiceCalendarDeletion",
+  tags: ["Service calendars"],
+  summary: "Request service calendar deletion",
+  description:
+    "Creates a pending action for an unused calendar; approval rechecks its version and all live references.",
+  middleware: [
+    calendarReach,
+    requireApiKeyPermissionScope({ sla_policy: ["manage"] }),
+    requireWorkspaceCapability("sla_policy:manage"),
+  ] as const,
+  request: { params: calendarIdParam },
+  responses: {
+    202: jsonResponse(
+      "Calendar deletion pending action",
+      z.object({
+        pendingActionId: z.string(),
+        action: z.literal("delete"),
+        summary: z.record(z.string(), z.unknown()),
+        confirmation: z.literal("click"),
+        expiresAt: z.string().datetime(),
+        approveUrl: z.string(),
+      }),
+    ),
+    403: errorResponse(
+      "Missing sla_policy:manage permission or requester identity",
+    ),
+    404: errorResponse("Service calendar not found"),
+    409: errorResponse("Calendar is in use or already has a pending deletion"),
+  },
+});
+
 const router = apiRouter<BaseVariables & { workspaceId: string }>()
   .openapi(listRoute, async (c) =>
     c.json(
@@ -391,6 +463,52 @@ const router = apiRouter<BaseVariables & { workspaceId: string }>()
         hasCover: calendarHasCover(calendar),
       },
       200,
+    );
+  })
+  .openapi(usageRoute, async (c) => {
+    const result = await getCalendarUsage(
+      c.req.valid("param").id,
+      c.get("workspaceId"),
+    );
+    return c.json(calendarUsageSchema.parse(result), 200);
+  })
+  .openapi(deleteCalendarRoute, async (c) => {
+    const apiKey = c.get("apiKey") as
+      | { id: string; userId: string; enabled: boolean }
+      | undefined;
+    const requesterPersonId = await requirePendingActionRequesterIdentity(
+      c.get("userId"),
+      apiKey,
+    );
+    const created = await createPendingAction({
+      requesterPersonId,
+      credentialType: apiKey ? "api_key" : "session",
+      credentialId: apiKey?.id ?? null,
+      origin: apiKey ? "api" : "web",
+      action: "delete",
+      routeKey: "DELETE /api/service-calendars/{id}",
+      targetType: "service_calendar",
+      targetIds: [c.req.valid("param").id],
+      workspaceId: c.get("workspaceId"),
+      projectId: null,
+      organisationId: null,
+      actorId: c.get("userId"),
+      actorType: apiKey ? "api_key" : "person",
+      actorIp: c.req.header("x-forwarded-for") ?? null,
+      userAgent: c.req.header("user-agent") ?? null,
+    });
+    return c.json(
+      z
+        .object({
+          pendingActionId: z.string(),
+          action: z.literal("delete"),
+          summary: z.record(z.string(), z.unknown()),
+          confirmation: z.literal("click"),
+          expiresAt: z.string().datetime(),
+          approveUrl: z.string(),
+        })
+        .parse(created),
+      202,
     );
   });
 

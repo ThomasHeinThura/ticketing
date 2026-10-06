@@ -402,6 +402,10 @@ export const projectTable = pgTable(
         onUpdate: "no action",
       },
     ),
+    kind: text("kind").notNull().default("project"),
+    health: text("health"),
+    supportLevel: text("support_level"),
+    serviceCalendarId: text("service_calendar_id"),
     // #261's mandatory Opus security review, F1 (decision log 2026-09-22 "#261's
     // mandatory Opus review F1: `project.slug` becomes globally unique"): this column
     // carries a real, instance-wide unique constraint (`project_slug_unique` below,
@@ -441,14 +445,42 @@ export const projectTable = pgTable(
   (table) => [
     unique("project_workspace_id_id_unique").on(table.workspaceId, table.id),
     foreignKey({
+      name: "project_workspace_service_calendar_fk",
+      columns: [table.workspaceId, table.serviceCalendarId],
+      foreignColumns: [
+        serviceCalendarTable.workspaceId,
+        serviceCalendarTable.id,
+      ],
+    }).onDelete("restrict"),
+    foreignKey({
       name: "project_workspace_sla_policy_fk",
       columns: [table.workspaceId, table.slaPolicyId],
       foreignColumns: [slaPolicyWorkspaceColumn(), slaPolicyIdColumn()],
     }).onDelete("restrict"),
     index("project_organisation_id_idx").on(table.organisationId),
+    index("project_workspace_service_calendar_idx").on(
+      table.workspaceId,
+      table.serviceCalendarId,
+    ),
     check(
       "project_default_comment_visibility_allowed",
       sql`${table.defaultCommentVisibility} in ('public', 'internal')`,
+    ),
+    check(
+      "project_kind_allowed",
+      sql`${table.kind} in ('project', 'managed_service')`,
+    ),
+    check(
+      "project_health_allowed",
+      sql`${table.health} is null or ${table.health} in ('red', 'amber', 'green')`,
+    ),
+    check(
+      "project_support_level_allowed",
+      sql`${table.supportLevel} is null or ${table.supportLevel} in ('L1', 'L2', 'L3')`,
+    ),
+    check(
+      "project_managed_service_complete",
+      sql`${table.kind} <> 'managed_service' or (${table.supportLevel} is not null and ${table.serviceCalendarId} is not null)`,
     ),
     // #261 F1: instance-wide, not scoped to workspace -- see the `slug` column's own
     // comment above for why. Migration 0064 resolves any pre-existing collision by

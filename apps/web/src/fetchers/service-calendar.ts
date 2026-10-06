@@ -19,6 +19,10 @@ export type ServiceCalendarPreview = InferResponseType<
   (typeof client)["service-calendars"][":id"]["preview"]["$get"],
   200
 >;
+export type ServiceCalendarUsage = InferResponseType<
+  (typeof client)["service-calendars"][":id"]["usage"]["$get"],
+  200
+>;
 export type ServiceCalendarInput = Omit<
   ServiceCalendar,
   "id" | "workspaceId" | "createdAt" | "updatedAt" | "version"
@@ -91,6 +95,26 @@ export async function getServiceCalendarPreview(
     );
   }
 
+  return response.json();
+}
+
+export async function getServiceCalendarUsage(
+  id: string,
+): Promise<ServiceCalendarUsage> {
+  const response = await client["service-calendars"][":id"].usage.$get({
+    param: { id },
+  });
+  if (!response.ok)
+    throw new HttpError(response.status, "Failed to load calendar usage");
+  return response.json();
+}
+
+export async function requestServiceCalendarDeletion(id: string) {
+  const response = await client["service-calendars"][":id"].$delete({
+    param: { id },
+  });
+  if (!response.ok)
+    throw new HttpError(response.status, "Unable to request calendar deletion");
   return response.json();
 }
 

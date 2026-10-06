@@ -7,7 +7,7 @@ import {
   Input,
   Label,
 } from "@taskdesk/ui";
-import type { UseFormReturn } from "react-hook-form";
+import { Controller, type UseFormReturn } from "react-hook-form";
 import { useTranslation } from "react-i18next";
 import type { CalendarMetadata } from "@/hooks/use-service-calendar-editor";
 import { timezoneOptions } from "@/lib/service-calendar-form";
@@ -29,12 +29,22 @@ export function CalendarDetailsCard({
       <CardContent className="grid gap-4 sm:grid-cols-2">
         <div className="space-y-2">
           <Label htmlFor="calendar-name">{t("details.name")}</Label>
-          <Input
-            id="calendar-name"
-            autoComplete="off"
-            maxLength={120}
-            {...form.register("name")}
-            aria-invalid={Boolean(form.formState.errors.name)}
+          <Controller
+            control={form.control}
+            name="name"
+            render={({ field }) => (
+              <Input
+                id="calendar-name"
+                autoComplete="off"
+                maxLength={120}
+                name={field.name}
+                ref={field.ref}
+                value={field.value}
+                onBlur={field.onBlur}
+                onChange={field.onChange}
+                aria-invalid={Boolean(form.formState.errors.name)}
+              />
+            )}
           />
           {form.formState.errors.name ? (
             <p className="text-sm text-destructive" role="alert">
@@ -44,13 +54,23 @@ export function CalendarDetailsCard({
         </div>
         <div className="space-y-2">
           <Label htmlFor="calendar-timezone">{t("details.timezone")}</Label>
-          <Input
-            id="calendar-timezone"
-            list="service-calendar-timezones"
-            placeholder={t("details.timezonePlaceholder")}
-            autoComplete="off"
-            {...form.register("timezone")}
-            aria-invalid={Boolean(form.formState.errors.timezone)}
+          <Controller
+            control={form.control}
+            name="timezone"
+            render={({ field }) => (
+              <Input
+                id="calendar-timezone"
+                list="service-calendar-timezones"
+                placeholder={t("details.timezonePlaceholder")}
+                autoComplete="off"
+                name={field.name}
+                ref={field.ref}
+                value={field.value}
+                onBlur={field.onBlur}
+                onChange={field.onChange}
+                aria-invalid={Boolean(form.formState.errors.timezone)}
+              />
+            )}
           />
           <datalist id="service-calendar-timezones">
             {TIMEZONE_OPTIONS.map((timezone) => (

@@ -93,16 +93,20 @@ export async function createPendingActionProof(input: {
   return proof.token;
 }
 
-export async function approveOwnDeactivation(input: {
+export async function approveOwnPendingAction(input: {
   id: string;
-  typedName: string;
-  stepUpToken: string;
+  typedName?: string;
+  stepUpToken?: string;
 }) {
   const response = await pendingActions[":id"].approve.$post({
     param: { id: input.id },
-    header: { "x-taskdesk-step-up-token": input.stepUpToken },
-    json: { typedName: input.typedName },
+    header: input.stepUpToken
+      ? { "x-taskdesk-step-up-token": input.stepUpToken }
+      : {},
+    json: input.typedName === undefined ? {} : { typedName: input.typedName },
   });
-  await ensureOk(response, "Unable to approve this deactivation");
+  await ensureOk(response, "Unable to approve this pending action");
   return response.json();
 }
+
+export const approveOwnDeactivation = approveOwnPendingAction;
