@@ -50,6 +50,7 @@ describe("API integration: API key bearer authentication", () => {
       name: "api key bearer test",
       start: rawKey.slice(0, 12),
       prefix: "taskdesk",
+      permissions: JSON.stringify({ project: ["read"] }),
       createdAt: now,
       updatedAt: now,
     });

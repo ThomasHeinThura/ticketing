@@ -16,6 +16,7 @@ import {
 } from "@taskdesk/ui";
 import { ChevronDown, Info, TriangleAlert } from "lucide-react";
 import { useTranslation } from "react-i18next";
+import useWithdrawApproval from "@/hooks/mutations/approval/use-withdraw-approval";
 import useGetWorkItemApprovals from "@/hooks/queries/approval/use-get-work-item-approvals";
 import { formatDateMedium, formatDateTime } from "@/lib/format";
 import { getPriorityIcon } from "@/lib/priority";
@@ -109,6 +110,7 @@ function WorkItemDetail({
     key: workItemKey,
     enabled: Boolean(item),
   });
+  const withdraw = useWithdrawApproval();
 
   if (isNotFound) {
     return (
@@ -251,6 +253,21 @@ function WorkItemDetail({
         <h2 id="approvals-heading" className="font-medium text-lg">
           Approvals
         </h2>
+        {withdraw.isError && (
+          <Alert variant="error" role="alert">
+            <AlertDescription>
+              The approval could not be withdrawn. Its state or your permission
+              may have changed. Reload the approvals and try again.
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => void approvalsQuery.refetch()}
+              >
+                Reload approvals
+              </Button>
+            </AlertDescription>
+          </Alert>
+        )}
         {approvalsQuery.isError ? (
           <Alert variant="error" data-testid="work-item-approvals-error">
             <AlertDescription>
@@ -305,6 +322,16 @@ function WorkItemDetail({
                 >
                   {approval.state}
                 </Badge>
+                {approval.canWithdraw && approval.state === "pending" && (
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    disabled={withdraw.isPending}
+                    onClick={() => withdraw.mutate(approval.id)}
+                  >
+                    Withdraw request
+                  </Button>
+                )}
               </li>
             ))}
           </ul>

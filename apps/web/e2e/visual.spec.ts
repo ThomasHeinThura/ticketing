@@ -216,6 +216,7 @@ async function installAuthenticatedFixture(page: Page) {
             decidedAt: null,
             decisionNote: null,
             approverReachLost: false,
+            canWithdraw: false,
           },
         ],
       };

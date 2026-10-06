@@ -7,6 +7,7 @@ import {
   jsonResponse,
 } from "../openapi";
 import {
+  canWithdrawApproval,
   hasApprovalCapability,
   hasWorkItemReach,
   isCabTeamMember,
@@ -47,6 +48,7 @@ function responseRow(row: {
   approverId: string;
   approverName: string | null;
   approverReachLost: boolean;
+  canWithdraw: boolean;
 }) {
   return {
     id: row.id,
@@ -68,6 +70,7 @@ function responseRow(row: {
     decidedAt: row.decidedAt?.toISOString() ?? null,
     decisionNote: row.decisionNote,
     approverReachLost: row.approverReachLost,
+    canWithdraw: row.canWithdraw,
   };
 }
 
@@ -88,7 +91,12 @@ async function formatApproval(
   const approverReachLost =
     row.state === "pending" &&
     (!approverIdentity || !(await hasWorkItemReach(approverIdentity, target)));
-  return responseRow({ ...row, approverReachLost });
+  const withdrawal = await canWithdrawApproval(row, viewer, target);
+  return responseRow({
+    ...row,
+    approverReachLost,
+    canWithdraw: withdrawal.actionable,
+  });
 }
 
 const listWorkItemApprovalsRoute = createRoute({
@@ -372,14 +380,12 @@ function approvalRouter() {
       const target = await loadApprovalTargetByApprovalId(id);
       if (!target)
         throw new HTTPException(404, { message: "Approval not found" });
-      if (
-        identity.reach.kind !== "all" &&
-        !hasApprovalCapability(
-          identity,
-          "approval:request" as Capability,
-          target,
-        )
-      ) {
+      const row = (await listApprovalRows(target.workItemId)).find(
+        (item) => item.id === id,
+      );
+      if (!row) throw new HTTPException(404, { message: "Approval not found" });
+      const withdrawal = await canWithdrawApproval(row, identity, target);
+      if (!withdrawal.authorized) {
         throw new HTTPException(403, { message: "Insufficient permissions" });
       }
       const updated = await withdrawApproval({

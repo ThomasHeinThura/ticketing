@@ -1,4 +1,4 @@
-import { randomUUID } from "node:crypto";
+import { createHash, randomUUID } from "node:crypto";
 import { and, eq } from "drizzle-orm";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { scanApprovalReminders } from "../../apps/api/src/approval/reminder-scan";
@@ -12,6 +12,53 @@ import {
   grantProjectRole,
   requireRow,
 } from "./helpers/fixtures";
+
+function hashApiKeyForTest(key: string): string {
+  return createHash("sha256")
+    .update(key)
+    .digest()
+    .toString("base64")
+    .replace(/\+/g, "-")
+    .replace(/\//g, "_")
+    .replace(/=+$/, "");
+}
+
+async function createApprovalApiKey(
+  userId: string,
+  permissions: Record<string, string[]> | null,
+): Promise<string> {
+  const rawKey = `taskdesk_test_${randomUUID()}`;
+  const now = new Date();
+  await db.insert(schema.apikeyTable).values({
+    referenceId: userId,
+    userId,
+    key: hashApiKeyForTest(rawKey),
+    name: "approval scope test key",
+    start: rawKey.slice(0, 12),
+    prefix: "taskdesk",
+    permissions: permissions === null ? null : JSON.stringify(permissions),
+    enabled: true,
+    createdAt: now,
+    updatedAt: now,
+  });
+  return rawKey;
+}
+
+async function approvalEffectCounts(
+  kind: "approval.decided" | "approval.withdrawn",
+) {
+  const [events, auditRows] = await Promise.all([
+    db
+      .select()
+      .from(schema.outboxTable)
+      .where(eq(schema.outboxTable.kind, kind)),
+    db
+      .select()
+      .from(schema.auditLogTable)
+      .where(eq(schema.auditLogTable.action, kind)),
+  ]);
+  return { events: events.length, audit: auditRows.length };
+}
 
 describe("API integration: approval lifecycle", () => {
   beforeEach(async () => {
@@ -311,6 +358,25 @@ describe("API integration: approval lifecycle", () => {
     expect(requestAudit).toHaveLength(1);
 
     mockAuthenticatedSession(approver.user);
+    const approverView = await app.request(requestUrl);
+    expect(approverView.status, await approverView.clone().text()).toBe(200);
+    const approverViewBody = (await approverView.json()) as {
+      approvals: { id: string; canWithdraw: boolean }[];
+    };
+    expect(approverViewBody.approvals).toEqual([
+      expect.objectContaining({ id: approval.id, canWithdraw: false }),
+    ]);
+    const nonRequesterWithdrawal = await app.request(
+      `/api/approvals/${approval.id}/withdraw`,
+      { method: "POST" },
+    );
+    expect(nonRequesterWithdrawal.status).toBe(403);
+    const [pendingAfterNonRequesterDenial] = await db
+      .select({ state: schema.approvalTable.state })
+      .from(schema.approvalTable)
+      .where(eq(schema.approvalTable.id, approval.id));
+    expect(pendingAfterNonRequesterDenial?.state).toBe("pending");
+
     await db
       .delete(schema.teamMemberTable)
       .where(eq(schema.teamMemberTable.id, cabMember.id));
@@ -348,6 +414,19 @@ describe("API integration: approval lifecycle", () => {
     };
     expect(blockedBody.blockedBy.map(({ kind }) => kind)).toContain("approval");
 
+    mockAuthenticatedSession(requester.user);
+    const visibleWhileDisabled = await app.request(requestUrl);
+    expect(
+      visibleWhileDisabled.status,
+      await visibleWhileDisabled.clone().text(),
+    ).toBe(200);
+    const visibleBody = (await visibleWhileDisabled.json()) as {
+      approvals: { id: string; canWithdraw: boolean }[];
+    };
+    expect(visibleBody.approvals).toEqual([
+      expect.objectContaining({ id: approval.id, canWithdraw: true }),
+    ]);
+
     await db
       .delete(schema.requestParticipantTable)
       .where(
@@ -360,10 +439,18 @@ describe("API integration: approval lifecycle", () => {
     const myApprovals = await app.request("/api/me/approvals");
     expect(myApprovals.status, await myApprovals.clone().text()).toBe(200);
     const listBody = (await myApprovals.json()) as {
-      approvals: { id: string; approverReachLost: boolean }[];
+      approvals: {
+        id: string;
+        approverReachLost: boolean;
+        canWithdraw: boolean;
+      }[];
     };
     expect(listBody.approvals).toEqual([
-      expect.objectContaining({ id: approval.id, approverReachLost: true }),
+      expect.objectContaining({
+        id: approval.id,
+        approverReachLost: true,
+        canWithdraw: false,
+      }),
     ]);
     const lostReachDecision = await app.request(
       `/api/approvals/${approval.id}/decide`,
@@ -444,6 +531,146 @@ describe("API integration: approval lifecycle", () => {
       return (await response.json()) as { id: string };
     };
 
+    const scopedDecisionApproval = await createAdditionalApproval();
+    const wrongDecisionScopeKey = await createApprovalApiKey(approver.user.id, {
+      approval: ["request"],
+    });
+    const decisionEffectsBeforeDenial =
+      await approvalEffectCounts("approval.decided");
+    const wrongScopeDecision = await app.request(
+      `/api/approvals/${scopedDecisionApproval.id}/decide`,
+      {
+        method: "POST",
+        headers: {
+          "content-type": "application/json",
+          "x-api-key": wrongDecisionScopeKey,
+        },
+        body: JSON.stringify({ action: "approve" }),
+      },
+    );
+    expect(wrongScopeDecision.status).toBe(403);
+    const [stillPendingAfterWrongScope] = await db
+      .select({ state: schema.approvalTable.state })
+      .from(schema.approvalTable)
+      .where(eq(schema.approvalTable.id, scopedDecisionApproval.id));
+    expect(stillPendingAfterWrongScope?.state).toBe("pending");
+    expect(await approvalEffectCounts("approval.decided")).toEqual(
+      decisionEffectsBeforeDenial,
+    );
+
+    const correctDecisionScopeKey = await createApprovalApiKey(
+      approver.user.id,
+      { approval: ["decide", "decide_cab"] },
+    );
+    const scopedDecision = await app.request(
+      `/api/approvals/${scopedDecisionApproval.id}/decide`,
+      {
+        method: "POST",
+        headers: {
+          "content-type": "application/json",
+          "x-api-key": correctDecisionScopeKey,
+        },
+        body: JSON.stringify({ action: "approve" }),
+      },
+    );
+    expect(scopedDecision.status, await scopedDecision.clone().text()).toBe(
+      200,
+    );
+    expect((await scopedDecision.json()).state).toBe("approved");
+
+    const scopedWithdrawalApproval = await createAdditionalApproval();
+    const wrongWithdrawalScopeKey = await createApprovalApiKey(
+      requester.user.id,
+      { approval: ["decide"] },
+    );
+    const withdrawalEffectsBeforeDenial =
+      await approvalEffectCounts("approval.withdrawn");
+    const wrongScopeWithdrawal = await app.request(
+      `/api/approvals/${scopedWithdrawalApproval.id}/withdraw`,
+      { method: "POST", headers: { "x-api-key": wrongWithdrawalScopeKey } },
+    );
+    expect(wrongScopeWithdrawal.status).toBe(403);
+    const [stillPendingAfterWrongWithdrawalScope] = await db
+      .select({ state: schema.approvalTable.state })
+      .from(schema.approvalTable)
+      .where(eq(schema.approvalTable.id, scopedWithdrawalApproval.id));
+    expect(stillPendingAfterWrongWithdrawalScope?.state).toBe("pending");
+    expect(await approvalEffectCounts("approval.withdrawn")).toEqual(
+      withdrawalEffectsBeforeDenial,
+    );
+
+    const correctWithdrawalScopeKey = await createApprovalApiKey(
+      requester.user.id,
+      { approval: ["request"] },
+    );
+    const scopedWithdrawal = await app.request(
+      `/api/approvals/${scopedWithdrawalApproval.id}/withdraw`,
+      { method: "POST", headers: { "x-api-key": correctWithdrawalScopeKey } },
+    );
+    expect(scopedWithdrawal.status, await scopedWithdrawal.clone().text()).toBe(
+      200,
+    );
+    expect((await scopedWithdrawal.json()).state).toBe("withdrawn");
+
+    const instanceAdmin = await createWorkspaceMember({ role: "owner" });
+    await db
+      .update(schema.userTable)
+      .set({ role: "admin" })
+      .where(eq(schema.userTable.id, instanceAdmin.user.id));
+    const adminWithdrawalApproval = await createAdditionalApproval();
+    const adminKeyWithoutRequestScope = await createApprovalApiKey(
+      instanceAdmin.user.id,
+      { work_item: ["read"] },
+    );
+    const adminKeyEffectsBeforeDenial =
+      await approvalEffectCounts("approval.withdrawn");
+    const adminKeyWithdrawal = await app.request(
+      `/api/approvals/${adminWithdrawalApproval.id}/withdraw`,
+      {
+        method: "POST",
+        headers: { "x-api-key": adminKeyWithoutRequestScope },
+      },
+    );
+    expect(adminKeyWithdrawal.status).toBe(403);
+    const [stillPendingAfterAdminKey] = await db
+      .select({ state: schema.approvalTable.state })
+      .from(schema.approvalTable)
+      .where(eq(schema.approvalTable.id, adminWithdrawalApproval.id));
+    expect(stillPendingAfterAdminKey?.state).toBe("pending");
+    expect(await approvalEffectCounts("approval.withdrawn")).toEqual(
+      adminKeyEffectsBeforeDenial,
+    );
+
+    const scopedAdminWithdrawalApproval = await createAdditionalApproval();
+    const adminKeyWithRequestScope = await createApprovalApiKey(
+      instanceAdmin.user.id,
+      { approval: ["request"] },
+    );
+    const scopedAdminKeyWithdrawal = await app.request(
+      `/api/approvals/${scopedAdminWithdrawalApproval.id}/withdraw`,
+      {
+        method: "POST",
+        headers: { "x-api-key": adminKeyWithRequestScope },
+      },
+    );
+    expect(
+      scopedAdminKeyWithdrawal.status,
+      await scopedAdminKeyWithdrawal.clone().text(),
+    ).toBe(200);
+    expect((await scopedAdminKeyWithdrawal.json()).state).toBe("withdrawn");
+
+    const sessionAdminWithdrawalApproval = await createAdditionalApproval();
+    mockAuthenticatedSession({ ...instanceAdmin.user, role: "admin" });
+    const adminSessionWithdrawal = await app.request(
+      `/api/approvals/${sessionAdminWithdrawalApproval.id}/withdraw`,
+      { method: "POST" },
+    );
+    expect(
+      adminSessionWithdrawal.status,
+      await adminSessionWithdrawal.clone().text(),
+    ).toBe(200);
+    expect((await adminSessionWithdrawal.json()).state).toBe("withdrawn");
+
     const rejectedApproval = await createAdditionalApproval();
     mockAuthenticatedSession(approver.user);
     const rejected = await app.request(
@@ -499,6 +726,79 @@ describe("API integration: approval lifecycle", () => {
         .where(eq(schema.outboxTable.kind, "approval.expired")),
     ).toHaveLength(1);
 
+    const terminalApprovals = [
+      { id: approval.id, state: "approved" },
+      { id: rejectedApproval.id, state: "rejected" },
+      { id: expiredApproval.id, state: "expired" },
+      { id: withdrawnApproval.id, state: "withdrawn" },
+    ];
+    const terminalWithdrawalEffects =
+      await approvalEffectCounts("approval.withdrawn");
+    const narrowRequesterKey = await createApprovalApiKey(requester.user.id, {
+      approval: ["decide"],
+    });
+    const scopedAdminKey = await createApprovalApiKey(instanceAdmin.user.id, {
+      approval: ["request"],
+    });
+    for (const terminal of terminalApprovals) {
+      mockAuthenticatedSession(requester.user);
+      const terminalView = await app.request(requestUrl);
+      expect(terminalView.status, await terminalView.clone().text()).toBe(200);
+      const terminalViewBody = (await terminalView.json()) as {
+        approvals: { id: string; state: string; canWithdraw: boolean }[];
+      };
+      expect(terminalViewBody.approvals).toContainEqual(
+        expect.objectContaining({
+          id: terminal.id,
+          state: terminal.state,
+          canWithdraw: false,
+        }),
+      );
+
+      const requesterRetry = await app.request(
+        `/api/approvals/${terminal.id}/withdraw`,
+        { method: "POST" },
+      );
+      expect(requesterRetry.status).toBe(409);
+
+      mockAuthenticatedSession({ ...instanceAdmin.user, role: "admin" });
+      const sessionAdminRetry = await app.request(
+        `/api/approvals/${terminal.id}/withdraw`,
+        { method: "POST" },
+      );
+      expect(sessionAdminRetry.status).toBe(409);
+
+      const adminKeyRetry = await app.request(
+        `/api/approvals/${terminal.id}/withdraw`,
+        { method: "POST", headers: { "x-api-key": scopedAdminKey } },
+      );
+      expect(adminKeyRetry.status).toBe(409);
+
+      mockAuthenticatedSession(approver.user);
+      const unauthorizedRetry = await app.request(
+        `/api/approvals/${terminal.id}/withdraw`,
+        { method: "POST" },
+      );
+      expect(unauthorizedRetry.status).toBe(403);
+      const unauthorizedBody = await unauthorizedRetry.text();
+      expect(unauthorizedBody).not.toContain(terminal.state);
+
+      const narrowKeyRetry = await app.request(
+        `/api/approvals/${terminal.id}/withdraw`,
+        { method: "POST", headers: { "x-api-key": narrowRequesterKey } },
+      );
+      expect(narrowKeyRetry.status).toBe(403);
+      expect(await narrowKeyRetry.text()).not.toContain(terminal.state);
+      const [unchangedTerminal] = await db
+        .select({ state: schema.approvalTable.state })
+        .from(schema.approvalTable)
+        .where(eq(schema.approvalTable.id, terminal.id));
+      expect(unchangedTerminal?.state).toBe(terminal.state);
+    }
+    expect(await approvalEffectCounts("approval.withdrawn")).toEqual(
+      terminalWithdrawalEffects,
+    );
+
     const reminderApproval = await createAdditionalApproval();
     const reminderNow = Date.now();
     await db
@@ -537,5 +837,52 @@ describe("API integration: approval lifecycle", () => {
       .from(schema.workItemTable)
       .where(eq(schema.workItemTable.key, workItem.key));
     expect(finalWorkItem?.stateId).toBe(doneState.id);
+
+    await db
+      .update(schema.projectFeatureFlagTable)
+      .set({ enabled: true })
+      .where(
+        and(
+          eq(schema.projectFeatureFlagTable.projectId, project.id),
+          eq(schema.projectFeatureFlagTable.featureKey, "feature.approvals"),
+        ),
+      );
+    const approvalCountBeforeKeyRequest = await db
+      .select()
+      .from(schema.approvalTable)
+      .where(eq(schema.approvalTable.workItemId, workItemRow?.id ?? ""));
+    const wrongRequestScopeKey = await createApprovalApiKey(requester.user.id, {
+      approval: ["decide"],
+    });
+    const wrongScopeRequest = await app.request(requestUrl, {
+      method: "POST",
+      headers: {
+        "content-type": "application/json",
+        "x-api-key": wrongRequestScopeKey,
+      },
+      body: JSON.stringify(requestBody),
+    });
+    expect(wrongScopeRequest.status).toBe(403);
+    expect(
+      await db
+        .select()
+        .from(schema.approvalTable)
+        .where(eq(schema.approvalTable.workItemId, workItemRow?.id ?? "")),
+    ).toHaveLength(approvalCountBeforeKeyRequest.length);
+
+    const correctRequestScopeKey = await createApprovalApiKey(
+      requester.user.id,
+      { approval: ["request_cab"] },
+    );
+    const scopedRequest = await app.request(requestUrl, {
+      method: "POST",
+      headers: {
+        "content-type": "application/json",
+        "x-api-key": correctRequestScopeKey,
+      },
+      body: JSON.stringify(requestBody),
+    });
+    expect(scopedRequest.status, await scopedRequest.clone().text()).toBe(200);
+    expect((await scopedRequest.json()).state).toBe("pending");
   });
 });
