@@ -23,6 +23,7 @@ export * from "./calendar/types.js";
 export * from "./hierarchy/hierarchy.js";
 export * from "./hierarchy/types.js";
 export * from "./identity/claim-mapping.js";
+export * from "./identity/group-object-id.js";
 export * from "./identity/identity.js";
 export * from "./identity/jit-policy.js";
 export * from "./identity/membership-projection.js";
