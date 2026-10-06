@@ -77,6 +77,13 @@ export function beginObservedRequest(): () => void {
   return metrics.beginHttpRequest();
 }
 
+export function recordAuthReload(
+  outcome: "ok" | "failed",
+  configVersion: number,
+): void {
+  metrics.recordAuthReload(outcome, configVersion);
+}
+
 export function recordAuditWriteFailure(
   operation: AuditFailureOperation,
   options: { readonly log?: boolean } = {},

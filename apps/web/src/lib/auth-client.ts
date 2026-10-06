@@ -26,7 +26,11 @@ const getBaseURL = () => {
 };
 
 export const authClient = createAuthClient({
-  baseURL: getBaseURL(),
+  // The two app entries share source but have separate auth origins. The portal
+  // bundle must send credentials to its own host so Better Auth selects the
+  // customer instance and its host-only cookie.
+  baseURL:
+    import.meta.env.MODE === "portal" ? window.location.origin : getBaseURL(),
   basePath: "/api/auth",
   plugins: [
     lastLoginMethodClient(),

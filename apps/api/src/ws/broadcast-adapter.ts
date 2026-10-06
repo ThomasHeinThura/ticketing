@@ -40,6 +40,10 @@ export type NativeAuthorizationInvalidation = {
   projectId?: string;
 };
 
+export type ControlMessage =
+  | NativeAuthorizationInvalidation
+  | { type: "auth.reload" };
+
 export type BroadcastAdapter = {
   /** Publish a message to all instances watching this project */
   publish(msg: BroadcastMessage): Promise<void>;
@@ -57,11 +61,9 @@ export type BroadcastAdapter = {
     handler: (msg: NativeBroadcastMessage) => void,
   ): Promise<void>;
 
-  publishControl(message: NativeAuthorizationInvalidation): Promise<void>;
+  publishControl(message: ControlMessage): Promise<void>;
 
-  subscribeToControl(
-    handler: (message: NativeAuthorizationInvalidation) => void,
-  ): Promise<void>;
+  subscribeToControl(handler: (message: ControlMessage) => void): Promise<void>;
 
   /** Cleanup on shutdown */
   shutdown(): Promise<void>;

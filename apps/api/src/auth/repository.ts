@@ -1,4 +1,4 @@
-import { and, count, eq, gt, sql } from "drizzle-orm";
+import { and, count, eq, gt, isNull, sql } from "drizzle-orm";
 import db, { schema } from "../database";
 
 export function getActiveAgentSession(
@@ -447,4 +447,60 @@ export function lockOperationChallenge(
     )
     .for("update")
     .limit(1);
+}
+
+
+export function getCustomerPortalIdentityRow(userId: string) {
+  return db
+    .select({ personId: schema.personTable.id })
+    .from(schema.personTable)
+    .innerJoin(
+      schema.organisationTable,
+      eq(schema.personTable.organisationId, schema.organisationTable.id),
+    )
+    .innerJoin(
+      schema.membershipTable,
+      and(
+        eq(schema.membershipTable.personId, schema.personTable.id),
+        eq(schema.membershipTable.scope, "organisation"),
+        eq(schema.membershipTable.scopeId, schema.personTable.organisationId),
+      ),
+    )
+    .innerJoin(
+      schema.roleTable,
+      eq(schema.membershipTable.roleId, schema.roleTable.id),
+    )
+    .where(
+      and(
+        eq(schema.personTable.userId, userId),
+        eq(schema.personTable.side, "customer"),
+        eq(schema.personTable.active, true),
+        eq(schema.personTable.isPlaceholder, false),
+        eq(schema.organisationTable.active, true),
+        eq(schema.organisationTable.portalAccess, true),
+        isNull(schema.organisationTable.deletedAt),
+        eq(schema.roleTable.scope, "organisation"),
+        eq(schema.roleTable.key, "customer"),
+      ),
+    )
+    .limit(1);
+}
+
+export function getStoredAuthPluginConfigRows() {
+  return db
+    .select({
+      pluginId: schema.instancePluginConfigTable.pluginId,
+      enabled: schema.instancePluginConfigTable.enabled,
+      scope: schema.instancePluginConfigTable.scope,
+      portalScope: schema.instancePluginConfigTable.portalScope,
+      configVersion: schema.instancePluginConfigTable.configVersion,
+    })
+    .from(schema.instancePluginConfigTable)
+    .where(sql`${schema.instancePluginConfigTable.pluginId} like 'auth.%'`);
+}
+
+export function getIdentityConnectionConfigVersions() {
+  return db
+    .select({ configVersion: schema.identityConnectionTable.configVersion })
+    .from(schema.identityConnectionTable);
 }

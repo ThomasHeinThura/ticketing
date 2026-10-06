@@ -149,6 +149,12 @@ export async function initializeWebSocketAdapter(
     });
     await nextAdapter.subscribeToNative((msg) => deliverNativeBroadcast(msg));
     await nextAdapter.subscribeToControl((message) => {
+      if (message.type === "auth.reload") {
+        void import("../auth")
+          .then(({ reloadAuthConfiguration }) => reloadAuthConfiguration())
+          .catch(() => logRealtimeFailure());
+        return;
+      }
       void handleNativeAuthorizationInvalidation(message).catch(() =>
         logRealtimeFailure(),
       );
@@ -182,6 +188,18 @@ export async function invalidateNativeAuthorization(
     await adapter.publishControl(message);
   } catch {
     // The 60-second native authorization refresh is the recovery floor.
+    logRealtimeFailure();
+  }
+}
+
+/** Publish a stored-auth configuration change after its transaction commits. */
+export async function publishAuthReload(): Promise<void> {
+  const message = { type: "auth.reload" } as const;
+  if (!adapter) return;
+  try {
+    await adapter.publishControl(message);
+  } catch {
+    // The documented 10-second DB poll remains the recovery path.
     logRealtimeFailure();
   }
 }

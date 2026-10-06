@@ -21,7 +21,11 @@ import audit from "./audit";
 import {
   assertCookieDomainIsNotConfiguredForHostIsolation,
   authForHost,
+  hasCustomerPortalIdentity,
+  isCustomerLocalAuthEndpoint,
   portalForHost,
+  startAuthConfigRuntime,
+  stopAuthConfigRuntime,
 } from "./auth";
 import csrfToken from "./auth/csrf-token-api";
 import factorStatus from "./auth/factor-status-api";
@@ -285,6 +289,45 @@ function isApiRequestPath(path: string): boolean {
   return path === "/api" || path.startsWith("/api/");
 }
 
+const CUSTOMER_AUTH_ENDPOINTS = new Set([
+  "GET /api/auth/get-session",
+  "POST /api/auth/sign-out",
+  "POST /api/auth/two-factor/verify-totp",
+  "POST /api/auth/two-factor/verify-backup-code",
+]);
+
+function matchesPortalPolicyRoute(method: string, path: string): boolean {
+  const pathParts = path.split("/");
+  return policyRegistry.entries.some((entry) => {
+    if (entry.kind !== "portal") return false;
+    const separator = entry.routeKey.indexOf(" ");
+    if (separator < 0 || entry.routeKey.slice(0, separator) !== method)
+      return false;
+    const routeParts = entry.routeKey.slice(separator + 1).split("/");
+    return (
+      routeParts.length === pathParts.length &&
+      routeParts.every(
+        (part, index) => /^\{[^/]+\}$/u.test(part) || part === pathParts[index],
+      )
+    );
+  });
+}
+
+function isCustomerAuthEndpoint(method: string, path: string): boolean {
+  if (CUSTOMER_AUTH_ENDPOINTS.has(`${method} ${path}`)) return true;
+  if (isCustomerLocalAuthEndpoint(method, path)) return true;
+  if (method !== "GET") return false;
+  const parts = path.split("/");
+  return (
+    parts.length === 6 &&
+    parts[1] === "api" &&
+    parts[2] === "auth" &&
+    parts[3] === "identity" &&
+    Boolean(parts[4]) &&
+    (parts[5] === "start" || parts[5] === "callback")
+  );
+}
+
 function authForRequest(c: Context) {
   const selected = authForHost(c.req.header("Host"));
   if (!selected) throw new HTTPException(403, { message: "Forbidden" });
@@ -309,8 +352,13 @@ async function handleAuthRequest(c: Context, headers?: Headers) {
   const session = await selected.api.getSession({
     headers: c.req.raw.headers,
   });
-  if (session?.session && session.session.portal !== portal) {
-    throw new HTTPException(403, { message: "Forbidden" });
+  if (
+    session?.session &&
+    (session.session.portal !== portal ||
+      (portal === "customer" &&
+        !(await hasCustomerPortalIdentity(session.user.id))))
+  ) {
+    throw new HTTPException(401, { message: "Unauthorized" });
   }
 
   return selected.handler(buildAuthRequest(c, headers));
@@ -502,9 +550,20 @@ export function createApp(
     if (selected === "unknown") return denyByHost(c);
     c.set("appOrigin", selected);
     if (selected === "portal") {
-      if (isApiRequestPath(c.req.path)) return denyByHost(c);
+      if (isApiRequestPath(c.req.path)) {
+        if (
+          !isCustomerAuthEndpoint(c.req.method, c.req.path) &&
+          !matchesPortalPolicyRoute(c.req.method, c.req.path)
+        )
+          return denyByHost(c);
+      }
       if (c.req.method !== "GET" && c.req.method !== "HEAD")
-        return denyByHost(c);
+        if (
+          !isApiRequestPath(c.req.path) ||
+          (!isCustomerAuthEndpoint(c.req.method, c.req.path) &&
+            !matchesPortalPolicyRoute(c.req.method, c.req.path))
+        )
+          return denyByHost(c);
     }
     return next();
   };
@@ -1726,6 +1785,7 @@ export async function runApiBootTasks(): Promise<void> {
   console.log(`🔐 ${policyRegistry.entries.length} policies loaded`);
 
   await migrateColumns();
+  await startAuthConfigRuntime();
   await seedDefaultWorkspaceRoles();
   await seedInternalOrganisationAndStaffPersons();
 
@@ -1794,6 +1854,7 @@ export function createNodeServer(
   let closePromise: Promise<ShutdownResult> | null = null;
   const close = () => {
     if (closePromise) return closePromise;
+    stopAuthConfigRuntime();
 
     let resolveClose!: (result: ShutdownResult) => void;
     closePromise = new Promise<ShutdownResult>((resolve) => {

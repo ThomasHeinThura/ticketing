@@ -820,6 +820,13 @@
 			"when": 1791270548590,
 			"tag": "0116_approvals_lifecycle",
 			"breakpoints": true
+		},
+		{
+			"idx": 117,
+			"version": "7",
+			"when": 1791287362449,
+			"tag": "0117_instance_plugin_config",
+			"breakpoints": true
 		}
 	]
 }

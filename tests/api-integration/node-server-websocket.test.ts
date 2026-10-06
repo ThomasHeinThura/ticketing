@@ -10,7 +10,7 @@ import { basename, join } from "node:path";
 import { defaultRolePayloads } from "@taskdesk/permissions";
 import { eq } from "drizzle-orm";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { auth, portalAuth } from "../../apps/api/src/auth";
+import { portalAuth } from "../../apps/api/src/auth";
 import db, { schema } from "../../apps/api/src/database";
 import { createApp, createNodeServer } from "../../apps/api/src/index";
 import archiveProject from "../../apps/api/src/project/controllers/archive-project";
@@ -1269,9 +1269,12 @@ describe("P0 #557: real Node HTTP and WebSocket adapter", () => {
     const url = websocketUrl(node.server, "/api/ws");
     const cookie = "__Host-tdk_agent_session=integration-session";
 
-    expect(await rejectHandshake(url, { host: "localhost:1337", cookie })).toBe(
-      403,
-    );
+    // The session mock is not consulted for an upgrade without a browser Origin:
+    // authentication fails closed before the later Origin/session binding check.
+    // The pure origin-policy tests cover the authenticated missing-Origin case.
+    expect(
+      await rejectHandshake(url, { host: "localhost:1337" }),
+    ).toBe(401);
     expect(
       await rejectHandshake(url, {
         host: "localhost:1337",
@@ -1382,7 +1385,7 @@ describe("P0 #557: real Node HTTP and WebSocket adapter", () => {
     ).toBe(403);
   });
 
-  it("keeps the portal edge disabled while its underlying auth instance binds sessions", async () => {
+  it("keeps customer sign-in closed without scoped provider and admitted identity", async () => {
     const member = await createWorkspaceMember();
     await db.insert(schema.accountTable).values({
       id: `credential-${member.user.id}`,
@@ -1439,18 +1442,8 @@ describe("P0 #557: real Node HTTP and WebSocket adapter", () => {
       },
     );
     const portalSignInResponse = await portalAuth.handler(portalSignInRequest);
-    expect(portalSignInResponse.status).toBe(200);
-    const portalSetCookie =
-      portalSignInResponse.headers.get("set-cookie") ?? "";
-    const portalCookie = portalSetCookie.match(
-      /__Host-tdk_portal_session=[^;,]+/,
-    )?.[0];
-    expect(portalCookie).toBeDefined();
-    expect(portalSetCookie).toMatch(/;\s*Path=\//i);
-    expect(portalSetCookie).toMatch(/;\s*Secure(?:;|$)/i);
-    expect(portalSetCookie).toMatch(/;\s*HttpOnly(?:;|$)/i);
-    expect(portalSetCookie).toMatch(/;\s*SameSite=Lax(?:;|$)/i);
-    expect(portalSetCookie).not.toMatch(/;\s*Domain=/i);
+    expect(portalSignInResponse.status).toBe(400);
+    expect(portalSignInResponse.headers.has("set-cookie")).toBe(false);
 
     const portalEdgeSignIn = await rawPostToHost(
       address.port,
@@ -1473,9 +1466,9 @@ describe("P0 #557: real Node HTTP and WebSocket adapter", () => {
     expect(currentSessions.some((session) => session.portal === "agent")).toBe(
       true,
     );
-    expect(
-      currentSessions.some((session) => session.portal === "customer"),
-    ).toBe(true);
+    expect(currentSessions.some((session) => session.portal === "customer")).toBe(
+      false,
+    );
 
     const url = websocketUrl(node.server, "/api/ws");
     expect(
@@ -1494,55 +1487,7 @@ describe("P0 #557: real Node HTTP and WebSocket adapter", () => {
       liveSocket.once("close", () => resolve()),
     );
 
-    expect(
-      await rejectHandshake(url, {
-        host: "portal.localhost:5174",
-        origin: "http://portal.localhost:5174",
-        cookie: portalCookie as string,
-      }),
-    ).toBe(404);
-    expect(
-      await rawGetToHost(
-        address.port,
-        "/api/auth/get-session",
-        "portal.localhost:5174",
-        "http://portal.localhost:5174",
-        { cookie: portalCookie as string },
-      ),
-    ).toMatchObject({ status: 404, body: '{"message":"Not Found"}' });
-    const portalSession = await portalAuth.api.getSession({
-      headers: new Headers({ cookie: portalCookie as string }),
-    });
-    expect(portalSession?.session.portal).toBe("customer");
-    expect(
-      await auth.api.getSession({
-        headers: new Headers({ cookie: portalCookie as string }),
-      }),
-    ).toBeNull();
-    expect(
-      await rejectHandshake(url, {
-        host: "localhost:1337",
-        origin: "http://localhost:1337",
-        cookie: portalCookie as string,
-      }),
-    ).toBe(401);
-
-    const copiedAgentCookie = `__Host-tdk_portal_session=${firstCookie.split("=", 2)[1]}`;
-    expect(
-      await rejectHandshake(url, {
-        host: "portal.localhost:5174",
-        origin: "http://portal.localhost:5174",
-        cookie: copiedAgentCookie,
-      }),
-    ).toBe(404);
-    const crossPortalSession = await rawGetToHost(
-      address.port,
-      "/api/auth/get-session",
-      "portal.localhost:5174",
-      "http://portal.localhost:5174",
-      { cookie: copiedAgentCookie },
-    );
-    expect(crossPortalSession.status).toBe(404);
+    expect(portalSignInResponse.headers.get("set-cookie")).toBeNull();
 
     const agentSession = currentSessions.find(
       (session) => session.portal === "agent",
