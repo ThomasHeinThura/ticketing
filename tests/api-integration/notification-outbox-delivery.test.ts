@@ -546,6 +546,53 @@ describe("outbox notification direct-delivery persistence", () => {
     expect(sent).toBe(0);
   });
 
+  it("fails closed when the event organisation is absent for an organisation-bound delivery", async () => {
+    const fixture = await makeEventAndDelivery(true, {
+      eventKind: "work_item.assigned",
+      resourceType: "work_item",
+      resourceId: ids.item,
+      payload: { workItemId: ids.item },
+    });
+    await db.execute(sql`
+      UPDATE outbox SET payload = payload #- '{scope,organisationId}'
+       WHERE event_id = ${fixture.eventId}
+    `);
+    let sent = 0;
+    await expect(
+      processNextNotificationDelivery(
+        currentEligibilityRuntime(async () => {
+          sent += 1;
+        }),
+      ),
+    ).resolves.toEqual({
+      kind: "suppressed",
+      reason: "resource_mapping_mismatch",
+    });
+    expect(sent).toBe(0);
+  });
+
+  it("fails closed when supplied work-item id and key resolve to different rows", async () => {
+    const fixture = await makeEventAndDelivery(true, {
+      eventKind: "work_item.assigned",
+      resourceType: "work_item",
+      resourceId: ids.item,
+      payload: { workItemId: ids.item, key: "OTHER-ITEM" },
+    });
+    let sent = 0;
+    await expect(
+      processNextNotificationDelivery(
+        currentEligibilityRuntime(async () => {
+          sent += 1;
+        }),
+      ),
+    ).resolves.toEqual({ kind: "suppressed", reason: "resource_unavailable" });
+    expect(sent).toBe(0);
+    const row = await db.execute<{ attempts: number; state: string }>(sql`
+      SELECT attempts, state FROM notification_delivery WHERE id = ${fixture.deliveryId}
+    `);
+    expect(row.rows[0]).toEqual({ attempts: 0, state: "suppressed" });
+  });
+
   it("accepts a work-item notification mapped by the canonical work-item key", async () => {
     const key = `NOT-${suffix.slice(0, 8)}-1`;
     const fixture = await makeEventAndDelivery(true, {
@@ -586,7 +633,10 @@ describe("outbox notification direct-delivery persistence", () => {
           sent += 1;
         }),
       ),
-    ).resolves.toEqual({ kind: "suppressed", reason: "resource_unavailable" });
+    ).resolves.toEqual({
+      kind: "suppressed",
+      reason: "resource_mapping_mismatch",
+    });
     expect(sent).toBe(0);
     const row = await db.execute<{ attempts: number; state: string }>(sql`
       SELECT attempts, state FROM notification_delivery WHERE id = ${fixture.deliveryId}

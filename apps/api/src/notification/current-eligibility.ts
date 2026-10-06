@@ -10,6 +10,7 @@ import {
   findNotificationPerson,
   listApprovalWatcherPersonIds,
 } from "./repository";
+import { isSupportedNotificationResourceEvent } from "./resource-contract";
 
 export type CurrentNotificationEligibility =
   | { kind: "suppress"; reason: string }
@@ -27,9 +28,16 @@ export type CurrentNotificationEligibility =
       kind: "destination_unresolved";
     };
 
-function eventPayload(
+type CanonicalBinding = {
+  payload: Record<string, unknown>;
+  projectId: string | null;
+  workItemId?: string;
+  workItemKey?: string;
+};
+
+function canonicalBinding(
   delivery: ClaimedNotificationDelivery,
-): Record<string, unknown> | null {
+): CanonicalBinding | null {
   let parsed = delivery.payload;
   if (typeof parsed === "string") {
     try {
@@ -42,60 +50,90 @@ function eventPayload(
     return null;
   const envelope = parsed as Record<string, unknown>;
   const scope = envelope.scope;
+  const scopeRecord =
+    scope && typeof scope === "object" && !Array.isArray(scope)
+      ? (scope as Record<string, unknown>)
+      : null;
   if (
     envelope.id !== delivery.eventId ||
     envelope.kind !== delivery.eventKind ||
-    !scope ||
-    typeof scope !== "object" ||
-    Array.isArray(scope) ||
-    (scope as Record<string, unknown>).workspaceId !== delivery.workspaceId
+    !scopeRecord ||
+    scopeRecord.workspaceId !== delivery.workspaceId ||
+    (scopeRecord.organisationId ?? null) !== delivery.organisationId ||
+    (scopeRecord.projectId !== undefined &&
+      (typeof scopeRecord.projectId !== "string" ||
+        scopeRecord.projectId.length === 0))
   )
     return null;
   const envelopePayload = envelope.payload;
-  return envelopePayload &&
-    typeof envelopePayload === "object" &&
-    !Array.isArray(envelopePayload)
-    ? (envelopePayload as Record<string, unknown>)
-    : null;
-}
+  if (
+    !envelopePayload ||
+    typeof envelopePayload !== "object" ||
+    Array.isArray(envelopePayload)
+  )
+    return null;
+  const payload = envelopePayload as Record<string, unknown>;
+  const scopeProjectId = scopeRecord.projectId;
+  const projectId = typeof scopeProjectId === "string" ? scopeProjectId : null;
+  const workItemId = payload.workItemId;
+  const workItemKey = payload.key;
+  const hasWorkItemId = Object.hasOwn(payload, "workItemId");
+  const hasWorkItemKey = Object.hasOwn(payload, "key");
+  if (
+    (hasWorkItemId &&
+      (typeof workItemId !== "string" || workItemId.length === 0)) ||
+    (hasWorkItemKey &&
+      (typeof workItemKey !== "string" || workItemKey.length === 0))
+  )
+    return null;
+  const hasWorkItemIdentity =
+    (typeof workItemId === "string" && workItemId.length > 0) ||
+    (typeof workItemKey === "string" && workItemKey.length > 0);
 
-function matchesCanonicalResource(
-  delivery: ClaimedNotificationDelivery,
-): boolean {
-  const payload = eventPayload(delivery);
-  if (!payload) return false;
-  if (delivery.resourceType === "approval")
-    return payload.approvalId === delivery.resourceId;
-  if (delivery.resourceType === "workspace")
-    return payload.workspaceId === delivery.resourceId;
-  if (delivery.resourceType === "comment")
-    return payload.commentId === delivery.resourceId;
+  if (delivery.resourceType === "work_item") {
+    if (
+      !isSupportedNotificationResourceEvent("work_item", delivery.eventKind) ||
+      (delivery.eventKind === "work_item.mentioned" &&
+        Object.hasOwn(payload, "commentId")) ||
+      !hasWorkItemIdentity ||
+      (delivery.resourceId !== workItemId &&
+        delivery.resourceId !== workItemKey)
+    )
+      return null;
+    return {
+      payload,
+      projectId,
+      ...(typeof workItemId === "string" ? { workItemId } : {}),
+      ...(typeof workItemKey === "string" ? { workItemKey } : {}),
+    };
+  }
+  if (delivery.resourceType === "comment") {
+    if (
+      !isSupportedNotificationResourceEvent("comment", delivery.eventKind) ||
+      typeof payload.commentId !== "string" ||
+      payload.commentId !== delivery.resourceId
+    )
+      return null;
+    return {
+      payload,
+      projectId,
+      ...(typeof workItemId === "string" ? { workItemId } : {}),
+      ...(typeof workItemKey === "string" ? { workItemKey } : {}),
+    };
+  }
   if (
-    delivery.resourceType === "work_item" &&
-    delivery.eventKind === "work_item.mentioned" &&
-    typeof payload.commentId === "string"
+    delivery.resourceType === "approval" &&
+    isSupportedNotificationResourceEvent("approval", delivery.eventKind) &&
+    payload.approvalId === delivery.resourceId
   )
-    return false;
+    return { payload, projectId };
   if (
-    delivery.resourceType === "work_item" &&
-    [
-      "work_item.assigned",
-      "work_item.unassigned",
-      "work_item.mentioned",
-      "work_item.transitioned",
-      "work_item.escalated",
-      "work_item.due_soon",
-      "work_item.overdue",
-      "work_item.unblocked",
-      "sla.at_risk",
-      "sla.breached",
-    ].includes(delivery.eventKind)
+    delivery.resourceType === "workspace" &&
+    isSupportedNotificationResourceEvent("workspace", delivery.eventKind) &&
+    payload.workspaceId === delivery.resourceId
   )
-    return (
-      payload.workItemId === delivery.resourceId ||
-      payload.key === delivery.resourceId
-    );
-  return true;
+    return { payload, projectId };
+  return null;
 }
 
 /**
@@ -114,7 +152,8 @@ export async function evaluateCurrentNotificationReachAndPreference(
     !delivery.body
   )
     return { kind: "suppress", reason: "resource_mapping_missing" };
-  if (!matchesCanonicalResource(delivery))
+  const binding = canonicalBinding(delivery);
+  if (!binding)
     return { kind: "suppress", reason: "resource_mapping_mismatch" };
 
   const person = await findNotificationPerson(tx, delivery.recipientPersonId);
@@ -132,14 +171,18 @@ export async function evaluateCurrentNotificationReachAndPreference(
     resourceType: delivery.resourceType,
     resourceId: delivery.resourceId,
     eventKind: delivery.eventKind,
+    canonicalWorkItem: {
+      ...(binding.workItemId ? { id: binding.workItemId } : {}),
+      ...(binding.workItemKey ? { key: binding.workItemKey } : {}),
+    },
   });
   if (!resource) return { kind: "suppress", reason: "resource_unavailable" };
   if (resource.projectId === null && delivery.resourceType !== "workspace")
     return { kind: "suppress", reason: "resource_unavailable" };
   if (
     resource.workspaceId !== delivery.workspaceId ||
-    (delivery.organisationId !== null &&
-      resource.organisationId !== delivery.organisationId)
+    resource.organisationId !== delivery.organisationId ||
+    (binding.projectId !== null && resource.projectId !== binding.projectId)
   )
     return { kind: "suppress", reason: "resource_scope_changed" };
   if (identity.side === "customer" && !resource.customerVisible)
