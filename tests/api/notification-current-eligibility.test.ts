@@ -143,6 +143,16 @@ describe("current notification reach and preference", () => {
     expect(mocks.resolveNotificationPreference).not.toHaveBeenCalled();
   });
 
+  it("does not give a customer a staff work-item destination", async () => {
+    mocks.resolveIdentity.mockResolvedValue({
+      personId: "person-1",
+      side: "customer",
+    });
+    await expect(
+      evaluateCurrentNotificationReachAndPreference(tx, delivery),
+    ).resolves.toEqual({ kind: "destination_unresolved" });
+  });
+
   it("limits customer approval projection to the addressed approver or requester", async () => {
     mocks.resolveIdentity.mockResolvedValue({
       personId: "person-1",

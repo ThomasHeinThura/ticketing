@@ -1,19 +1,22 @@
 import { randomUUID } from "node:crypto";
 import { sql } from "drizzle-orm";
 import { afterAll, afterEach, beforeAll, describe, expect, it } from "vitest";
-import db from "../../apps/api/src/database";
+import db, { schema } from "../../apps/api/src/database";
 import {
   acquireNotificationReservation,
   authorizeNotificationProviderAttempt,
   completeNotificationDelivery,
   hasRecentNotificationSuccess,
 } from "../../apps/api/src/database/repositories/notification-delivery.repository";
-import { evaluateCurrentNotificationReachAndPreference } from "../../apps/api/src/notification/current-eligibility";
 import { notificationReservationKey } from "../../apps/api/src/notification/delivery-primitives";
 import type { NotificationOutboxRuntime } from "../../apps/api/src/notification/outbox-drain";
-import { processNextNotificationDelivery } from "../../apps/api/src/notification/outbox-drain";
+import {
+  currentEligibilityRuntime,
+  processNextNotificationDelivery,
+} from "../../apps/api/src/notification/outbox-drain";
 import { seedDefaultWorkspaceRoles } from "../../apps/api/src/utils/seed-default-workspace-roles";
 import { ensureTestDatabaseMigrated } from "./helpers/database";
+import { createProjectFixture, grantProjectRole } from "./helpers/fixtures";
 
 const suffix = randomUUID().replaceAll("-", "");
 const ids = {
@@ -21,6 +24,11 @@ const ids = {
   workspace: `notification-test-workspace-${suffix}`,
   user: `notification-test-user-${suffix}`,
   person: `notification-test-person-${suffix}`,
+  project: "",
+  item: `notification-test-item-${suffix}`,
+  type: `notification-test-type-${suffix}`,
+  template: `notification-test-template-${suffix}`,
+  state: `notification-test-state-${suffix}`,
 };
 const createdEvents: string[] = [];
 const channel = "notify.email";
@@ -84,6 +92,37 @@ describe("outbox notification direct-delivery persistence", () => {
     await seedDefaultWorkspaceRoles();
     await db.execute(sql`INSERT INTO workspace_member (id, workspace_id, user_id, role, joined_at)
       VALUES (${`notification-test-member-${suffix}`}, ${ids.workspace}, ${ids.user}, 'admin', clock_timestamp())`);
+    const project = await createProjectFixture({
+      workspaceId: ids.workspace,
+      slug: `notification-test-${suffix}`,
+    });
+    ids.project = project.project.id;
+    await db.execute(
+      sql`UPDATE project SET organisation_id = ${ids.organisation} WHERE id = ${ids.project}`,
+    );
+    await grantProjectRole(ids.user, ids.project, []);
+    await db.insert(schema.workItemTypeTable).values({
+      id: ids.type,
+      workspaceId: ids.workspace,
+      key: `type-${suffix}`,
+      name: "Task",
+      category: "delivery",
+    });
+    await db.insert(schema.stateTemplateTable).values({
+      id: ids.template,
+      workspaceId: ids.workspace,
+      key: `state-${suffix}`,
+      name: "Backlog",
+      group: "backlog",
+    });
+    await db.insert(schema.stateTable).values({
+      id: ids.state,
+      projectId: ids.project,
+      stateTemplateId: ids.template,
+      isDefault: true,
+    });
+    await db.execute(sql`INSERT INTO work_item (id, project_id, workspace_id, type_id, number, key, title, state_id, customer_visibility)
+      VALUES (${ids.item}, ${ids.project}, ${ids.workspace}, ${ids.type}, 1, ${`NOT-${suffix.slice(0, 8)}-1`}, 'Assigned', ${ids.state}, 'organisation')`);
   });
 
   afterEach(async () => {
@@ -262,6 +301,28 @@ describe("outbox notification direct-delivery persistence", () => {
     expect(row.rows[0]).toEqual({ attempts: 1, state: "delivered" });
   });
 
+  it("NO-3/NO-9 rechecks a staff work-item destination with no configured quiet hours before send", async () => {
+    const fixture = await makeEventAndDelivery(true, {
+      eventKind: "work_item.assigned",
+      resourceType: "work_item",
+      resourceId: ids.item,
+      payload: { workItemId: ids.item },
+    });
+    let sent = 0;
+    const runtime = currentEligibilityRuntime(async (_channel, projection) => {
+      expect(projection.url).toContain("/agent/work-items/");
+      sent += 1;
+    });
+    await expect(processNextNotificationDelivery(runtime)).resolves.toEqual({
+      kind: "delivered",
+    });
+    expect(sent).toBe(1);
+    const row = await db.execute<{ attempts: number; state: string }>(sql`
+      SELECT attempts, state FROM notification_delivery WHERE id = ${fixture.deliveryId}
+    `);
+    expect(row.rows[0]).toEqual({ attempts: 1, state: "delivered" });
+  });
+
   it("suppresses after send-time reach denial without calling the adapter or consuming an attempt", async () => {
     const fixture = await makeEventAndDelivery(true);
     let sent = 0;
@@ -296,22 +357,9 @@ describe("outbox notification direct-delivery persistence", () => {
       sql`UPDATE workspace SET deleted_at = clock_timestamp() WHERE id = ${ids.workspace}`,
     );
     let sent = 0;
-    const runtime: NotificationOutboxRuntime = {
-      evaluateCurrentEligibility: async (tx, delivery) => {
-        const current = await evaluateCurrentNotificationReachAndPreference(
-          tx,
-          delivery,
-        );
-        if (current.kind === "quiet_hours_unresolved")
-          throw new Error("Quiet-hours contract is unresolved");
-        if (current.kind === "destination_unresolved")
-          throw new Error("Resource destination contract is unresolved");
-        return current;
-      },
-      send: async () => {
-        sent += 1;
-      },
-    };
+    const runtime = currentEligibilityRuntime(async () => {
+      sent += 1;
+    });
 
     await expect(processNextNotificationDelivery(runtime)).resolves.toEqual({
       kind: "suppressed",
@@ -336,22 +384,9 @@ describe("outbox notification direct-delivery persistence", () => {
       VALUES (${ids.person}, 'global', NULL, ${channel}, 'workspace.created', false, 'off')`);
 
     let sent = 0;
-    const runtime: NotificationOutboxRuntime = {
-      evaluateCurrentEligibility: async (tx, delivery) => {
-        const current = await evaluateCurrentNotificationReachAndPreference(
-          tx,
-          delivery,
-        );
-        if (current.kind === "quiet_hours_unresolved")
-          throw new Error("Quiet-hours contract is unresolved");
-        if (current.kind === "destination_unresolved")
-          throw new Error("Resource destination contract is unresolved");
-        return current;
-      },
-      send: async () => {
-        sent += 1;
-      },
-    };
+    const runtime = currentEligibilityRuntime(async () => {
+      sent += 1;
+    });
 
     await expect(processNextNotificationDelivery(runtime)).resolves.toEqual({
       kind: "suppressed",
@@ -364,7 +399,7 @@ describe("outbox notification direct-delivery persistence", () => {
     expect(row.rows[0]).toEqual({ attempts: 0, state: "suppressed" });
   });
 
-  it("leaves a child pending without provider authorization when quiet hours are configured but unresolved", async () => {
+  it("keeps an eligible but unmapped destination pending with no provider attempt", async () => {
     const fixture = await makeEventAndDelivery(true, {
       eventKind: "workspace.created",
       resourceType: "workspace",
@@ -374,35 +409,86 @@ describe("outbox notification direct-delivery persistence", () => {
     await db.execute(sql`INSERT INTO notification_preference
       (person_id, scope, scope_id, channel, event_kind, enabled, digest)
       VALUES (${ids.person}, 'global', NULL, ${channel}, 'workspace.created', true, 'off')`);
-    await db.execute(sql`UPDATE person SET quiet_hours_start = '22:00', quiet_hours_end = '07:00',
-      quiet_hours_timezone = 'Europe/London' WHERE id = ${ids.person}`);
-
     let sent = 0;
-    const runtime: NotificationOutboxRuntime = {
-      evaluateCurrentEligibility: async (tx, delivery) => {
-        const current = await evaluateCurrentNotificationReachAndPreference(
-          tx,
-          delivery,
-        );
-        if (current.kind === "quiet_hours_unresolved")
-          throw new Error("Quiet-hours contract is unresolved");
-        if (current.kind === "destination_unresolved")
-          throw new Error("Resource destination contract is unresolved");
-        return current;
-      },
-      send: async () => {
-        sent += 1;
-      },
-    };
-
-    await expect(processNextNotificationDelivery(runtime)).rejects.toThrow(
-      "Quiet-hours contract is unresolved",
-    );
+    await expect(
+      processNextNotificationDelivery(
+        currentEligibilityRuntime(async () => {
+          sent += 1;
+        }),
+      ),
+    ).resolves.toEqual({
+      kind: "unresolved",
+      reason: "destination_unresolved",
+    });
     expect(sent).toBe(0);
     const row = await db.execute<{ attempts: number; state: string }>(sql`
       SELECT attempts, state FROM notification_delivery WHERE id = ${fixture.deliveryId}
     `);
     expect(row.rows[0]).toEqual({ attempts: 0, state: "pending" });
+  });
+
+  it("NO-3 leaves a child pending without provider authorization when quiet hours are configured but unresolved", async () => {
+    const fixture = await makeEventAndDelivery(true, {
+      eventKind: "work_item.assigned",
+      resourceType: "work_item",
+      resourceId: ids.item,
+      payload: { workItemId: ids.item },
+    });
+    await db.execute(sql`UPDATE person SET quiet_hours_start = '22:00', quiet_hours_end = '07:00',
+      quiet_hours_timezone = 'Europe/London' WHERE id = ${ids.person}`);
+
+    let sent = 0;
+    const runtime = currentEligibilityRuntime(async () => {
+      sent += 1;
+    });
+
+    await expect(processNextNotificationDelivery(runtime)).resolves.toEqual({
+      kind: "unresolved",
+      reason: "quiet_hours_unresolved",
+    });
+    expect(sent).toBe(0);
+    const row = await db.execute<{ attempts: number; state: string }>(sql`
+      SELECT attempts, state FROM notification_delivery WHERE id = ${fixture.deliveryId}
+    `);
+    expect(row.rows[0]).toEqual({ attempts: 0, state: "pending" });
+  });
+
+  it("releases its fenced reservation when eligibility becomes unresolved during preflight", async () => {
+    const fixture = await makeEventAndDelivery(true);
+    let checks = 0;
+    let sent = 0;
+    const runtime: NotificationOutboxRuntime = {
+      evaluateCurrentEligibility: async () => {
+        checks += 1;
+        return checks === 1
+          ? {
+              kind: "eligible",
+              projection: {
+                title: "Assigned",
+                body: "Safe",
+                url: "/agent/work-items/item-1",
+              },
+            }
+          : { kind: "unresolved", reason: "quiet_hours_unresolved" };
+      },
+      send: async () => {
+        sent += 1;
+      },
+    };
+    await expect(processNextNotificationDelivery(runtime)).resolves.toEqual({
+      kind: "unresolved",
+      reason: "quiet_hours_unresolved",
+    });
+    expect(checks).toBe(2);
+    expect(sent).toBe(0);
+    const delivery = await db.execute<{ attempts: number; state: string }>(sql`
+      SELECT attempts, state FROM notification_delivery WHERE id = ${fixture.deliveryId}
+    `);
+    expect(delivery.rows[0]).toEqual({ attempts: 0, state: "pending" });
+    const reservations = await db.execute(sql`
+      SELECT reservation_key FROM outbox_dedupe_reservation WHERE owner_delivery_id = ${fixture.deliveryId}
+    `);
+    expect(reservations.rows).toHaveLength(0);
   });
 
   it("rejects a mismatched reservation tuple even if its digest key collides", async () => {

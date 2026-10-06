@@ -9,9 +9,11 @@ import {
   deferNotificationDelivery,
   hasRecentNotificationSuccess,
   type ReservationToken,
+  releaseNotificationReservation,
   renewNotificationReservation,
 } from "../database/repositories/notification-delivery.repository";
 import type { DbTransaction } from "../events/outbox";
+import { evaluateCurrentNotificationReachAndPreference } from "./current-eligibility";
 import {
   callNotificationProvider,
   NotificationProviderDeadlineExceeded,
@@ -26,7 +28,11 @@ export type NotificationProjection = {
 export type NotificationEligibility =
   | { kind: "eligible"; projection: NotificationProjection }
   | { kind: "defer"; until: Date; reason: string }
-  | { kind: "suppress"; reason: string };
+  | { kind: "suppress"; reason: string }
+  | {
+      kind: "unresolved";
+      reason: "quiet_hours_unresolved" | "destination_unresolved";
+    };
 
 /**
  * Runtime seams are supplied by the owning notification/plugin integration. The
@@ -49,8 +55,32 @@ export type NotificationDrainResult =
   | { kind: "idle" }
   | { kind: "deferred"; reason: string }
   | { kind: "suppressed"; reason: string }
+  | {
+      kind: "unresolved";
+      reason: "quiet_hours_unresolved" | "destination_unresolved";
+    }
   | { kind: "delivered" }
   | { kind: "retry"; ambiguous: boolean };
+
+export function currentEligibilityRuntime(
+  send: NotificationOutboxRuntime["send"],
+): NotificationOutboxRuntime {
+  return {
+    evaluateCurrentEligibility: async (tx, delivery) => {
+      const current = await evaluateCurrentNotificationReachAndPreference(
+        tx,
+        delivery,
+      );
+      if (
+        current.kind === "quiet_hours_unresolved" ||
+        current.kind === "destination_unresolved"
+      )
+        return { kind: "unresolved", reason: current.kind };
+      return current;
+    },
+    send,
+  };
+}
 
 async function releaseAsSuppressed(
   delivery: ClaimedNotificationDelivery,
@@ -65,6 +95,18 @@ async function releaseAsSuppressed(
     // returned to worker observability, not persisted in a customer-facing row.
     void reason;
   });
+}
+
+async function leaveUnresolved(
+  delivery: ClaimedNotificationDelivery,
+  reason: "quiet_hours_unresolved" | "destination_unresolved",
+  reservation?: ReservationToken,
+): Promise<NotificationDrainResult> {
+  if (reservation)
+    await db.transaction((tx) =>
+      releaseNotificationReservation(tx, delivery.id, reservation),
+    );
+  return { kind: "unresolved", reason };
 }
 
 async function renewUntilStopped(
@@ -105,6 +147,8 @@ export async function processNextNotificationDelivery(
   const eligibility = await db.transaction((tx) =>
     runtime.evaluateCurrentEligibility(tx, delivery),
   );
+  if (eligibility.kind === "unresolved")
+    return leaveUnresolved(delivery, eligibility.reason);
   if (eligibility.kind === "defer") {
     await db.execute(sql`
       UPDATE notification_delivery
@@ -164,6 +208,8 @@ export async function processNextNotificationDelivery(
       return { kind: "defer" as const, eligibility: current };
     if (current.kind === "suppress")
       return { kind: "suppress" as const, eligibility: current };
+    if (current.kind === "unresolved")
+      return { kind: "unresolved" as const, eligibility: current };
     const attempt = await authorizeNotificationProviderAttempt(
       tx,
       delivery.id,
@@ -183,6 +229,8 @@ export async function processNextNotificationDelivery(
     );
     return { kind: "deferred", reason: preflight.eligibility.reason };
   }
+  if (preflight.kind === "unresolved")
+    return leaveUnresolved(delivery, preflight.eligibility.reason, reservation);
   if (preflight.kind === "suppress") {
     await releaseAsSuppressed(
       delivery,

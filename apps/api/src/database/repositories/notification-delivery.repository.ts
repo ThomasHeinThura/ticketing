@@ -486,3 +486,46 @@ export async function deferNotificationDelivery(
   `);
   return true;
 }
+
+export async function releaseNotificationReservation(
+  tx: DbTransaction,
+  deliveryId: string,
+  reservation: ReservationToken,
+): Promise<boolean> {
+  const child = await tx.execute(sql`
+    SELECT state FROM notification_delivery WHERE id = ${deliveryId} FOR UPDATE
+  `);
+  if (rows<{ state: string }>(child)[0]?.state !== "pending") return false;
+  const locked = await tx.execute(sql`
+    SELECT owner_delivery_id AS "ownerDeliveryId", lease_token AS "leaseToken",
+           lease_expires_at AS "leaseExpiresAt"
+      FROM outbox_dedupe_reservation WHERE reservation_key = ${reservation.key} FOR UPDATE
+  `);
+  const current = rows<{
+    ownerDeliveryId: string;
+    leaseToken: string;
+    leaseExpiresAt: Date;
+  }>(locked)[0];
+  const sampled = await tx.execute(
+    sql`SELECT clock_timestamp() AT TIME ZONE 'UTC' AS "sampledAt"`,
+  );
+  const sampledAt = utcDate(
+    rows<{ sampledAt: Date | string }>(sampled)[0]?.sampledAt,
+  );
+  const currentExpiry = utcDate(current?.leaseExpiresAt);
+  if (
+    !current ||
+    !sampledAt ||
+    !currentExpiry ||
+    current.ownerDeliveryId !== deliveryId ||
+    current.leaseToken !== reservation.leaseToken ||
+    currentExpiry.getTime() <= sampledAt.getTime()
+  )
+    return false;
+  await tx.execute(sql`
+    DELETE FROM outbox_dedupe_reservation WHERE reservation_key = ${reservation.key}
+      AND owner_delivery_id = ${deliveryId} AND lease_token = ${reservation.leaseToken}
+      AND lease_expires_at > ${sampledAt}::timestamp
+  `);
+  return true;
+}
