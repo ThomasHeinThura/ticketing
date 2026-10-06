@@ -128,7 +128,12 @@ function decodeMappings(map: ProfileSourceMap): DecodedSegment[][] | null {
         if (fields.length > 5) return null;
       }
       generatedColumn += fields[0] ?? 0;
-      if ((fields[0] ?? 0) < 0 || generatedColumn < 0) return null;
+      if (
+        !Number.isSafeInteger(generatedColumn) ||
+        (fields[0] ?? 0) < 0 ||
+        generatedColumn < 0
+      )
+        return null;
       if (fields.length === 1) {
         segments.push({ generatedColumn });
         continue;
@@ -138,6 +143,9 @@ function decodeMappings(map: ProfileSourceMap): DecodedSegment[][] | null {
       originalLine += fields[2] ?? 0;
       originalColumn += fields[3] ?? 0;
       if (
+        !Number.isSafeInteger(sourceIndex) ||
+        !Number.isSafeInteger(originalLine) ||
+        !Number.isSafeInteger(originalColumn) ||
         sourceIndex < 0 ||
         sourceIndex >= map.sources.length ||
         originalLine < 0 ||
@@ -152,7 +160,12 @@ function decodeMappings(map: ProfileSourceMap): DecodedSegment[][] | null {
       };
       if (fields.length === 5) {
         nameIndex += fields[4] ?? 0;
-        if (nameIndex < 0 || nameIndex >= map.names.length) return null;
+        if (
+          !Number.isSafeInteger(nameIndex) ||
+          nameIndex < 0 ||
+          nameIndex >= map.names.length
+        )
+          return null;
         segment.nameIndex = nameIndex;
       }
       segments.push(segment);
@@ -203,9 +216,9 @@ export function mapGeneratedPosition(
   column: number,
 ): SafeProfileSource | null {
   if (
-    !Number.isInteger(line) ||
+    !Number.isSafeInteger(line) ||
     line < 1 ||
-    !Number.isInteger(column) ||
+    !Number.isSafeInteger(column) ||
     column < 1
   )
     return null;
@@ -214,7 +227,7 @@ export function mapGeneratedPosition(
   let best: DecodedSegment | undefined;
   for (const segment of segments) {
     if (segment.generatedColumn > column - 1) break;
-    if (segment.sourceIndex !== undefined) best = segment;
+    best = segment;
   }
   if (
     !best ||

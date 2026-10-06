@@ -8,9 +8,10 @@ import {
   accumulateCpuProfileChunk,
   type CpuProfile,
   type CpuProfileCaptureStatus,
-  type CpuProfileNode,
   createCpuProfileAccumulator,
   finalizeCpuProfileCapture,
+  normalizeCpuProfileChunkData,
+  normalizeCpuProfileSource,
 } from "../src/lib/performance-cpu-profile-capture";
 import {
   type BoundProfileSourceMap,
@@ -783,20 +784,13 @@ async function withDiagnosticProfile(
   cdp.on("Tracing.dataCollected", ({ value }) => {
     for (const event of value ?? []) {
       if (event.name === "ProfileChunk") {
-        const data = (
-          event.args as { data?: Record<string, unknown> } | undefined
-        )?.data;
-        const profileChunk = data?.cpuProfile as
-          | { nodes?: CpuProfileNode[]; samples?: number[] }
-          | undefined;
-        const timeDeltas = data?.timeDeltas as number[] | undefined;
-        const rawSource = data?.source;
-        const source =
-          typeof rawSource === "string" &&
-          rawSource.length <= 64 &&
-          /^[A-Za-z0-9_.:-]+$/.test(rawSource)
-            ? rawSource
-            : "invalid-source";
+        const data = (event.args as { data?: unknown } | undefined)?.data;
+        const normalizedChunk = normalizeCpuProfileChunkData(data);
+        const dataFields =
+          data && typeof data === "object" && !Array.isArray(data)
+            ? (data as Record<string, unknown>)
+            : undefined;
+        const source = normalizeCpuProfileSource(dataFields?.source);
         const rawPid = Number(event.pid);
         const rawTid = Number(event.tid);
         const pid = Number.isSafeInteger(rawPid) && rawPid >= 0 ? rawPid : 0;
@@ -809,16 +803,9 @@ async function withDiagnosticProfile(
             ? String(rawId)
             : "invalid-id";
         const key = `${pid}:${tid}:${source}:${id}`;
-        const nodes = Array.isArray(profileChunk?.nodes)
-          ? profileChunk.nodes
-          : [];
-        const sampleIds = Array.isArray(profileChunk?.samples)
-          ? profileChunk.samples
-          : [];
-        const deltas = Array.isArray(timeDeltas) ? timeDeltas : [];
         accumulateCpuProfileChunk(cpuProfileAccumulator, {
           key:
-            source === "invalid-source" || id === "invalid-id"
+            source === "unknown-source" || id === "invalid-id"
               ? `invalid profile key ${pid}:${tid}`
               : key,
           id,
@@ -826,14 +813,11 @@ async function withDiagnosticProfile(
           pid,
           tid,
           timestamp: Number(event.ts),
-          nodes,
-          sampleIds,
-          timeDeltas: deltas,
-          malformed:
-            !profileChunk ||
-            !Array.isArray(profileChunk.nodes) ||
-            !Array.isArray(profileChunk.samples) ||
-            !Array.isArray(timeDeltas),
+          nodes: normalizedChunk.nodes,
+          sampleIds: normalizedChunk.sampleIds,
+          timeDeltas: normalizedChunk.timeDeltas,
+          malformed: normalizedChunk.malformed,
+          shape: normalizedChunk.shape,
         });
       }
       const sanitized = sanitizeTimelineEvent(event);
@@ -1377,7 +1361,7 @@ test("diagnostic: source-bound G11 failure-path CPU profiles", async ({
   });
   const initial = captures[0];
   const result = {
-    schemaVersion: 5,
+    schemaVersion: 6,
     diagnosticOnly: true,
     fixture:
       "canonical G11 installPerformanceApiFixture (500 work items, 200 board cards)",

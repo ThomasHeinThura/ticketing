@@ -6,6 +6,8 @@ import {
   type CpuProfileNode,
   createCpuProfileAccumulator,
   finalizeCpuProfileCapture,
+  normalizeCpuProfileChunkData,
+  normalizeCpuProfileSource,
 } from "./performance-cpu-profile-capture";
 
 function node(id: number): CpuProfileNode {
@@ -39,6 +41,107 @@ function chunk(
 }
 
 describe("bounded CPU profile chunk capture", () => {
+  it("uses fixed native source labels and never retains arbitrary source text", () => {
+    expect(normalizeCpuProfileSource(undefined)).toBe("sampling");
+    expect(normalizeCpuProfileSource("Internal")).toBe("Internal");
+    expect(normalizeCpuProfileSource("Inspector")).toBe("Inspector");
+    expect(normalizeCpuProfileSource("SelfProfiling")).toBe("SelfProfiling");
+    expect(normalizeCpuProfileSource("private/path?token=secret")).toBe(
+      "unknown-source",
+    );
+  });
+
+  it("normalizes native node-only, sample-only, and end metadata chunks", () => {
+    const capture = createCpuProfileAccumulator();
+    const nodeOnly = normalizeCpuProfileChunkData({
+      cpuProfile: { nodes: [node(1)] },
+    });
+    expect(nodeOnly).toMatchObject({
+      malformed: false,
+      shape: "nodes-only",
+      sampleIds: [],
+      timeDeltas: [],
+    });
+    accumulateCpuProfileChunk(capture, {
+      ...chunk("native-1"),
+      ...nodeOnly,
+    });
+
+    const samplesOnly = normalizeCpuProfileChunkData({
+      cpuProfile: { samples: [1] },
+      timeDeltas: [5],
+    });
+    expect(samplesOnly).toMatchObject({ malformed: false, shape: "sampled" });
+    accumulateCpuProfileChunk(capture, {
+      ...chunk("native-1"),
+      ...samplesOnly,
+    });
+
+    const finalChunk = normalizeCpuProfileChunkData({ endTime: 15 });
+    expect(finalChunk).toMatchObject({
+      malformed: false,
+      shape: "metadata-only",
+    });
+    accumulateCpuProfileChunk(capture, {
+      ...chunk("native-1"),
+      ...finalChunk,
+    });
+
+    expect(finalizeCpuProfileCapture(capture)).toMatchObject({
+      retainedProfiles: 1,
+      completeProfiles: 1,
+      omittedProfiles: 0,
+      chunks: { metadataOnly: 1, nodesOnly: 1, sampled: 1, malformed: 0 },
+    });
+  });
+
+  it("accepts V8 root frames with omitted optional URL and source coordinates", () => {
+    const capture = createCpuProfileAccumulator();
+    const nativeRoot = {
+      id: 1,
+      callFrame: { functionName: "(root)", scriptId: "0" },
+    };
+    const nodeOnly = normalizeCpuProfileChunkData({
+      cpuProfile: { nodes: [nativeRoot] },
+    });
+    accumulateCpuProfileChunk(capture, {
+      ...chunk("native-root"),
+      ...nodeOnly,
+    });
+    const sampleChunk = normalizeCpuProfileChunkData({
+      cpuProfile: { samples: [1] },
+      timeDeltas: [2],
+    });
+    accumulateCpuProfileChunk(capture, {
+      ...chunk("native-root"),
+      ...sampleChunk,
+    });
+    expect(capture.profiles.get("native-root")?.nodes.get(1)).toMatchObject({
+      id: 1,
+      callFrame: { url: "", lineNumber: -1, columnNumber: -1 },
+    });
+    expect(
+      finalizeCpuProfileCapture(capture).omissions["malformed-chunk"],
+    ).toBe(0);
+  });
+
+  it("keeps malformed field pairings explicitly counted", () => {
+    const normalized = normalizeCpuProfileChunkData({
+      cpuProfile: { samples: [1] },
+    });
+    expect(normalized).toMatchObject({ malformed: true, shape: "malformed" });
+    const capture = createCpuProfileAccumulator();
+    accumulateCpuProfileChunk(capture, {
+      ...chunk("malformed-native"),
+      ...normalized,
+    });
+    expect(finalizeCpuProfileCapture(capture)).toMatchObject({
+      omittedProfiles: 1,
+      chunks: { malformed: 1 },
+      omissions: { "malformed-chunk": 1 },
+    });
+  });
+
   it("drops a profile immediately when node limits are crossed across chunks", () => {
     const capture = createCpuProfileAccumulator();
     const firstHalf = Array.from({ length: 2_500 }, (_, index) => node(index));

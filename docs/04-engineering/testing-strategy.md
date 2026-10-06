@@ -378,13 +378,16 @@ Against a seeded dataset, asserting the budgets in
 [UX quality gates](../02-design/ux-quality-gates.md).
 
 The separate G11 initial-page diagnostic writes a private `initial-page-profile.json` artifact
-with schema version 5. Its `cpuProfiles` preserve bounded V8 node/sample data, including parent
+with schema version 6. Its `cpuProfiles` preserve bounded V8 node/sample data, including parent
 node ids; `topCpuFrames` adds a unique acyclic caller chain (maximum eight frames) for the top
 60 sampled nodes. Profiles above 5,000 nodes or 100,000 samples are omitted rather than
 truncated into potentially false ancestry. The diagnostic records the emitted JavaScript
 SHA-256 and adjacent source-map SHA-256 for each profiled manifest asset. Source maps are used
 only when they parse as version 3 and their optional `file` basename matches that asset; a
 missing, invalid or mismatched map has a fixed status and cannot contribute mapped coordinates.
+Generated-position lookup selects the nearest preceding segment; if that segment is explicitly
+unmapped, it returns no source until a later mapped segment. Coordinates must be positive safe
+integers and decoded cumulative map positions must remain safe integers.
 Mapped coordinates are numeric source/name indexes plus original line/column, always bound to
 the map digest; artifacts never include source paths, `sourcesContent`, map names, full URLs,
 or function labels. Numeric map indexes let an offline reader resolve module/function names only
@@ -397,8 +400,12 @@ profile keys, 5,000 nodes and 100,000 samples per profile, and 20,000 nodes / 20
 across a capture. An over-limit or malformed profile is dropped immediately and later chunks
 for its key are ignored. Each profile window records fixed omission counts and retained/complete
 profile counts without serializing profile keys; zero-sample profiles are reported as omitted.
-Omission counts for retained keys count profiles; invalid and over-limit keys count rejected
-chunks because their identifiers are deliberately not retained to deduplicate them.
+The `chunks` counters classify sample-bearing, node-only, metadata-only, and malformed chunks;
+they contain only capped numeric counts. Native V8 nodes may omit URL/line/column fields on root
+frames, so capture normalizes those to an empty URL and `-1` source coordinates before bounded
+retention. Missing `source` uses the fixed `sampling` label; unrecognized source strings become
+`unknown-source`. Omission counts for retained keys count profiles; invalid and over-limit keys
+count rejected chunks because their identifiers are deliberately not retained to deduplicate them.
 
 ### Design-system conformance
 

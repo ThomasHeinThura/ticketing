@@ -115,6 +115,49 @@ describe("bounded diagnostic CPU profile attribution", () => {
     ).toBeNull();
   });
 
+  it("does not carry a mapped source across an unmapped generated span", () => {
+    const parsed = parseProfileSourceMap(
+      sourceMap({ mappings: "AAAAA,K,GAAA;AAAAA" }),
+      ASSET,
+    );
+    expect(parsed).not.toBeNull();
+    if (!parsed) return;
+    expect(mapGeneratedPosition(parsed, 1, 1)).toEqual({
+      sourceIndex: 0,
+      nameIndex: 0,
+      line: 1,
+      column: 1,
+    });
+    expect(mapGeneratedPosition(parsed, 1, 6)).toBeNull();
+    expect(mapGeneratedPosition(parsed, 1, 8)).toBeNull();
+    expect(mapGeneratedPosition(parsed, 1, 9)).toEqual({
+      sourceIndex: 0,
+      nameIndex: null,
+      line: 1,
+      column: 1,
+    });
+    expect(mapGeneratedPosition(parsed, 2, 1)).toEqual({
+      sourceIndex: 0,
+      nameIndex: 0,
+      line: 1,
+      column: 1,
+    });
+  });
+
+  it("rejects non-canonical coordinates and unsafe cumulative map positions", () => {
+    const parsed = parseProfileSourceMap(sourceMap(), ASSET);
+    expect(parsed).not.toBeNull();
+    if (!parsed) return;
+    expect(mapGeneratedPosition(parsed, 0, 1)).toBeNull();
+    expect(mapGeneratedPosition(parsed, 1, 0)).toBeNull();
+    expect(mapGeneratedPosition(parsed, Number.MAX_SAFE_INTEGER + 1, 1)).toBe(
+      null,
+    );
+    expect(
+      parseProfileSourceMap(sourceMap({ mappings: "/////////" }), ASSET),
+    ).toBeNull();
+  });
+
   it("does not emit source-map attribution when the map digest does not match", () => {
     const parsed = parseProfileSourceMap(sourceMap(), ASSET);
     expect(parsed).not.toBeNull();

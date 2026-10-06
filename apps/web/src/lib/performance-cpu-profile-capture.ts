@@ -40,7 +40,19 @@ export type CpuProfileCaptureStatus = {
   completeProfiles: number;
   omittedProfiles: number;
   omissions: Record<CpuProfileOmissionReason, number>;
+  chunks: {
+    metadataOnly: number;
+    nodesOnly: number;
+    sampled: number;
+    malformed: number;
+  };
 };
+
+export type CpuProfileChunkShape =
+  | "metadata-only"
+  | "nodes-only"
+  | "sampled"
+  | "malformed";
 
 export type CpuProfileAccumulator = {
   profiles: Map<string, CpuProfile>;
@@ -57,11 +69,27 @@ export type CpuProfileChunkInput = {
   pid: number;
   tid: number;
   timestamp: number;
-  nodes: readonly CpuProfileNode[];
-  sampleIds: readonly number[];
-  timeDeltas: readonly number[];
+  nodes: readonly unknown[];
+  sampleIds: readonly unknown[];
+  timeDeltas: readonly unknown[];
   malformed?: boolean;
+  shape?: CpuProfileChunkShape;
 };
+
+export type NormalizedCpuProfileChunk = {
+  nodes: readonly unknown[];
+  sampleIds: readonly unknown[];
+  timeDeltas: readonly unknown[];
+  malformed: boolean;
+  shape: CpuProfileChunkShape;
+};
+
+export function normalizeCpuProfileSource(raw: unknown): string {
+  if (raw === undefined) return "sampling";
+  return raw === "Internal" || raw === "Inspector" || raw === "SelfProfiling"
+    ? raw
+    : "unknown-source";
+}
 
 const SAFE_PROFILE_KEY = /^[A-Za-z0-9_.:-]{1,180}$/;
 const SAFE_PROFILE_PART = /^[A-Za-z0-9_.:-]{1,64}$/;
@@ -85,10 +113,74 @@ export function createCpuProfileAccumulator(): CpuProfileAccumulator {
         "malformed-chunk": 0,
         "no-samples": 0,
       },
+      chunks: { metadataOnly: 0, nodesOnly: 0, sampled: 0, malformed: 0 },
     },
     retainedNodes: 0,
     retainedSamples: 0,
     finalized: false,
+  };
+}
+
+/**
+ * V8 streams ProfileChunk data incrementally. Its native serializer can emit
+ * nodes without samples, samples without new nodes, and a final endTime-only
+ * chunk. Normalize those documented optional fields without copying arrays;
+ * the accumulator applies its limits before traversing or retaining them.
+ */
+export function normalizeCpuProfileChunkData(
+  raw: unknown,
+): NormalizedCpuProfileChunk {
+  const malformed = (
+    nodes: readonly unknown[] = [],
+    sampleIds: readonly unknown[] = [],
+    timeDeltas: readonly unknown[] = [],
+  ): NormalizedCpuProfileChunk => ({
+    nodes,
+    sampleIds,
+    timeDeltas,
+    malformed: true,
+    shape: "malformed",
+  });
+  if (!raw || typeof raw !== "object" || Array.isArray(raw)) return malformed();
+
+  const data = raw as Record<string, unknown>;
+  const profile = data.cpuProfile;
+  if (
+    profile !== undefined &&
+    (!profile || typeof profile !== "object" || Array.isArray(profile))
+  )
+    return malformed();
+  const cpuProfile = (profile ?? {}) as Record<string, unknown>;
+  const rawNodes = cpuProfile.nodes;
+  const rawSamples = cpuProfile.samples;
+  const rawDeltas = data.timeDeltas;
+  if (
+    (rawNodes !== undefined && !Array.isArray(rawNodes)) ||
+    (rawSamples !== undefined && !Array.isArray(rawSamples)) ||
+    (rawDeltas !== undefined && !Array.isArray(rawDeltas))
+  )
+    return malformed();
+
+  const nodes = Array.isArray(rawNodes) ? rawNodes : [];
+  const sampleIds = Array.isArray(rawSamples) ? rawSamples : [];
+  const timeDeltas = Array.isArray(rawDeltas) ? rawDeltas : [];
+  if (
+    sampleIds.length !== timeDeltas.length ||
+    (rawSamples === undefined && timeDeltas.length > 0)
+  )
+    return malformed(nodes, sampleIds, timeDeltas);
+
+  return {
+    nodes,
+    sampleIds,
+    timeDeltas,
+    malformed: false,
+    shape:
+      sampleIds.length > 0
+        ? "sampled"
+        : nodes.length > 0
+          ? "nodes-only"
+          : "metadata-only",
   };
 }
 
@@ -118,18 +210,24 @@ function dropProfile(
   omission(accumulator, reason);
 }
 
-function safeNode(node: CpuProfileNode): CpuProfileNode | null {
-  const callFrame = node?.callFrame;
+function safeNode(rawNode: unknown): CpuProfileNode | null {
+  if (!rawNode || typeof rawNode !== "object" || Array.isArray(rawNode))
+    return null;
+  const node = rawNode as Partial<CpuProfileNode>;
+  const callFrame = node.callFrame;
   if (
-    !Number.isSafeInteger(node?.id) ||
+    typeof node.id !== "number" ||
+    !Number.isSafeInteger(node.id) ||
     node.id < 0 ||
     !callFrame ||
     typeof callFrame.functionName !== "string" ||
     callFrame.functionName.length > 256 ||
-    typeof callFrame.url !== "string" ||
-    callFrame.url.length > 1_024 ||
-    !Number.isSafeInteger(callFrame.lineNumber) ||
-    !Number.isSafeInteger(callFrame.columnNumber) ||
+    (callFrame.url !== undefined &&
+      (typeof callFrame.url !== "string" || callFrame.url.length > 1_024)) ||
+    (callFrame.lineNumber !== undefined &&
+      !Number.isSafeInteger(callFrame.lineNumber)) ||
+    (callFrame.columnNumber !== undefined &&
+      !Number.isSafeInteger(callFrame.columnNumber)) ||
     (node.parent !== undefined &&
       (!Number.isSafeInteger(node.parent) || node.parent < 0))
   )
@@ -139,9 +237,9 @@ function safeNode(node: CpuProfileNode): CpuProfileNode | null {
     ...(node.parent !== undefined ? { parent: node.parent } : {}),
     callFrame: {
       functionName: callFrame.functionName,
-      url: callFrame.url,
-      lineNumber: callFrame.lineNumber,
-      columnNumber: callFrame.columnNumber,
+      url: callFrame.url ?? "",
+      lineNumber: callFrame.lineNumber ?? -1,
+      columnNumber: callFrame.columnNumber ?? -1,
     },
   };
 }
@@ -151,6 +249,20 @@ export function accumulateCpuProfileChunk(
   input: CpuProfileChunkInput,
 ) {
   if (accumulator.finalized) return;
+  const chunkShape = input.malformed ? "malformed" : (input.shape ?? "sampled");
+  const chunkCounter = {
+    "metadata-only": "metadataOnly",
+    "nodes-only": "nodesOnly",
+    sampled: "sampled",
+    malformed: "malformed",
+  } as const satisfies Record<
+    CpuProfileChunkShape,
+    keyof CpuProfileCaptureStatus["chunks"]
+  >;
+  const chunkCountKey = chunkCounter[chunkShape];
+  accumulator.status.chunks[chunkCountKey] = increment(
+    accumulator.status.chunks[chunkCountKey],
+  );
   let profile = accumulator.profiles.get(input.key);
   if (!profile) {
     if (
@@ -189,6 +301,9 @@ export function accumulateCpuProfileChunk(
     dropProfile(accumulator, profile, "malformed-chunk");
     return;
   }
+
+  const timeDeltas = input.timeDeltas as readonly number[];
+  const sampleIds = input.sampleIds as readonly number[];
   if (
     profile.nodes.size + input.nodes.length >
       CPU_PROFILE_LIMITS.nodesPerProfile ||
@@ -208,9 +323,15 @@ export function accumulateCpuProfileChunk(
     return;
   }
   if (
-    input.timeDeltas.some((delta) => !Number.isFinite(delta) || delta < 0) ||
+    input.timeDeltas.some(
+      (delta) =>
+        typeof delta !== "number" || !Number.isFinite(delta) || delta < 0,
+    ) ||
     input.sampleIds.some(
-      (nodeId) => !Number.isSafeInteger(nodeId) || nodeId < 0,
+      (nodeId) =>
+        typeof nodeId !== "number" ||
+        !Number.isSafeInteger(nodeId) ||
+        nodeId < 0,
     )
   ) {
     dropProfile(accumulator, profile, "malformed-chunk");
@@ -230,7 +351,7 @@ export function accumulateCpuProfileChunk(
     chunkNodeIds.add(safe.id);
   }
   let totalDelta = 0;
-  for (const delta of input.timeDeltas) totalDelta += delta;
+  for (const delta of timeDeltas) totalDelta += delta;
   if (!Number.isFinite(totalDelta)) {
     dropProfile(accumulator, profile, "malformed-chunk");
     return;
@@ -243,12 +364,12 @@ export function accumulateCpuProfileChunk(
     dropProfile(accumulator, profile, "malformed-chunk");
     return;
   }
-  for (const [index, nodeId] of input.sampleIds.entries()) {
-    const duration = input.timeDeltas[index] ?? 0;
+  for (const [index, nodeId] of sampleIds.entries()) {
+    const duration = timeDeltas[index] ?? 0;
     profile.samples.push({ nodeId, start: sampleTime, duration });
     sampleTime += duration;
   }
-  accumulator.retainedSamples += input.sampleIds.length;
+  accumulator.retainedSamples += sampleIds.length;
 }
 
 export function finalizeCpuProfileCapture(
