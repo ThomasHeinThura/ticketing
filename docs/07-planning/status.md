@@ -1,3 +1,44 @@
+## October 6 actual disposable run and continued bulk repair — 12:04 UTC
+
+- **P0 image/runtime:** root issued a separately pinned reversible runtime release only
+  after final50 private-runner GPT-6 Sol clearance. Actual run
+  `20261006T115701Z-08842235` builds and boots exact088, upgrades the retained schema80
+  baseline through88 migrations, returns live/ready200, runs as UID10001 and passes
+  settings CAS, operation-bound step-up, token rotation/replay and the internal metrics
+  status matrix. Persistent OrbStack DEV is unchanged.
+- **Actual failure, not acceptance:** the process exits1 before the27-source strict
+  representative stage. Its explicitly empty-enforcement/shadow-on traffic runs from
+  11:57:51.707819 to11:57:52.042779UTC:48 planned requests, zero actual status mismatches,
+  zero unexplained tally rows and complete48 actor/route coverage. However17 planned
+  expectations are unspecified, and global coverage counts the intentionally ineligible
+  public-config source as uncovered. The fixture rejects these conditions. This subset
+  does not establish compatibility with the earlier129-request observations; no original
+  date is carried forward or relabelled, and the public-config decision remains open.
+- **Cleanup:** the runner rejects its cleanup receipt because its Docker absence parser
+  fails to recognize OrbStack's exact-volume `get <name>: no such volume` response.
+  Root independently inspects all seven captured Docker resource IDs/names and confirms
+  all absent, without mutation. The original failed receipt stays unchanged beside a
+  separate root verification. Proxy shutdown, thread exit and listener closure pass.
+  Full canonical traffic/status and source eligibility, plus resource-type-specific
+  absence recognition, are being repaired together in the private implementation lane.
+  The exact50 input and12 hashes were preserved before this new batch.
+- **P0 diagnostics #587:** the capture-bound remediation is pushed at
+  `d8397a23ac9bdd1ac0b83fc55ee51915d24559a1`; independent ordinary delta review clears
+  it after3 files/14 tests. Full six-file Sol review finds a different real correctness
+  blocker: an explicitly unmapped source-map span inherits the previous source, producing
+  false attribution. Capture bounds/privacy otherwise clear. A complete source-map fix is
+  queued after the current P2 repair batch; no optimization or diagnostic acceptance is claimed.
+- **P2/P3:** the complete P2 integration repair batch is active, reusing the existing
+  contrast/OpenAPI correction rather than duplicating it. P3 repairs the missing0116
+  snapshot from the actual approval schema/SQL, then chains generated0117 auth configuration
+  to it; real Drizzle generation reports no schema change. P3 keeps customer providers
+  disabled absent explicit customer-scoped configuration and does not invent invitation
+  or discovery contracts. Shared source edit partitions remain separate.
+- **Acceptance:** hosted performance, exact required CI/review evidence, remaining
+  config/task prerequisites and the fresh additional Sol phase finalizer remain open.
+  Main remains3096cb0. No protected merge, calendar wait, new persistent deployment,
+  production, activation or phase completion is claimed.
+
 ## October 6 bulk implementation and actual remaining failures — 11:48 UTC
 
 - **P0 #583:** exact product `08842235047a3ab2714427edce80331b94558150`
