@@ -1,5 +1,55 @@
 ## Status First
 
+Implementation snapshot: 2026-10-06 20:43 UTC (7 October in Yangon). Accepted main remains `3096cb044bdf6ae98488bfc385f532fa6386343a`. Reviewed OrbStack DEV remains `08842235047a3ab2714427edce80331b94558150`, shadow on and enforcement off.
+
+| Phase | Implementation | Integration | Acceptance / operational closure |
+| --- | --- | --- | --- |
+| P0 | Canonical source `8f6ca5375171eb0740fae7d4eecfe56deaef2c0b`; current source reviews clear | Sole closure #583; final gate repair prepared privately | Hosted G4/G8/G11 22/22 pass; native/E2E and review-note publication remain red; runtime, strict/rollback and finalizer open |
+| P1 | Saved views `7163ad86cb558684c72855232041270b20254d03`, PG17/17 | Isolated;0118 provisional | Lead seam and integrated acceptance open |
+| P2 | Continuity/key ceiling `54858055d2a623038478756e76a570b8c92e91c5`, lifecycle1/1; withdrawal UI batch active | Isolated; server-computed affordance uses existing withdrawal authority | Complete API/UI batch, independent review and integration open |
+| P3 | Mapping invalidation `0796bb30d80191253e79a6d4479db0c0f9bb448a`, PG8/8 and native WS1/1 | Isolated; authority-cache completion lane active | Real provider and full cache/integration acceptance open |
+| P4 | Worker integration `8eb0475e793b1aa9133812e3bd4912d1a1d1491a`, unit10/10 and PG11/11 | Current eligibility wired; unresolved preflight releases fenced reservation | Quiet-hour/destination contracts, provider activation and integrated acceptance open |
+
+### What changed
+
+P3 now publishes existing native identity invalidation only after committed mapping/grant changes. Persisted tests cover affected-user delegation, preserved sessions and other-source grants, display-only no-op and transaction rollback. No separate Valkey authority cache exists yet; the native60-second subscription reauthorization fallback is not proof of the documented30-second authority-cache obligation.
+
+P4 now calls current eligibility from the worker. Exact staff destinations and absent quiet-hour configuration can proceed under existing policy; unresolved timing or destination leaves delivery pending without send, discard or attempt consumption. If the second preflight becomes unresolved, the owned fenced reservation is released. Real PostgreSQL11/11 passes; no scheduler or external provider is activated.
+
+The independent ordinary runner review found a source-pin blocker: the delegated path still rejected repaired source because it authorized only historical088. The blocked report and predecessor are preserved. A separate structural derivative keeps088 solely as the schema80 baseline identity and introduces a distinct fail-closed current candidate pin. Offline72/72, compilation4 files, manifest7/7, launcher5/5 and helper2/2 pass. Its pin remains `FINAL_FREEZE_SHA_REQUIRED`; it is neither executable acceptance evidence nor independently cleared yet.
+
+### What is being worked on now
+
+#583 remains clean at8f6. The private gate batch combines the two stale400 project-read test expectations with the complete MFA/observability/CSRF journey repair. Correct CI same-origin build configuration disproved the original cumulative-MFA-only timeout theory: the fresh observability journey still times out while restoring a log-level selection. A bounded real-server default-selection actionability probe succeeded, so no generic Select UI defect is established. One exact multi-save sequence probe will establish the mechanism before any product fix; no force click, weakened assertion, added retry or larger timeout is authorized. The complete batch will receive one risk-sized delta review and genuine review-note publication together.
+
+P2 implements existing-request withdrawal with a server-computed affordance derived from the same current AP6 authorization used by the actual mutation. Client hints do not replace server checks. Approver-picker/new-request behavior remains outside this slice. P3 audits and completes the already documented cache/invalidation seam only where its owning contract settles behavior. Both lanes remain outside P0.
+
+### Critical path
+
+1. Resolve the actual E2E mechanism and complete the combined stale-oracle/test batch; freeze its exact source.
+2. Pin and independently review the structural runner derivative plus the final source delta; publish genuine review notes and clear all exact-head CI.
+3. Build/boot the exact reviewed image and prove real auth, installer, off/shadow behavior and API-key/session negatives.
+4. Resolve public-config substitution and independently adjudicate the actual October4/5/6 partial-date evidence; complete eligible strict and rollback proof.
+5. Protected integration, conditional reviewed DEV/UAT cutover/rollback, separate fresh Sol phase finalizer and P0 administrative closure.
+
+### Misalignment / drift
+
+#583 alone closes P0. #589 remains the designated post-P0 train; #581 is preserved/superseded without merge. #587 stays diagnostic only. Product performance work stopped immediately after actual hosted22/22; no speculative fix follows passing budgets. Later checkpoints are not composed or deployed into P0.0088–0117 and0118 allocations remain provisional, with no0119. Old PR bodies and reports remain historical where their SHA differs; the current #583 body still needs its final combined publication update.
+
+### Concerns
+
+The two native failures are stale denial expectations; the E2E timeout still needs a demonstrated cause. Source review does not clear these tests or runtime acceptance. The runner's trusted-current-source mechanism must be fully pinned, reviewed and actually exercised before it supplies proof. Historical130-pair failure remains failed. The accidentally overwritten original project author packet is unrecoverable; its retained raw native log and explicitly transcript-derived attestation remain separate from independent review. Prior partial dates are not full-day or72-hour evidence, and compatibility is not presumed.
+
+### Decisions needed from Thomas
+
+Public-config evidence substitution remains pending: source-bound October4/5/6 public200 responses plus unchanged pre-guard behavior in place of impossible shadow tally eligibility. AGENTS reserves gate substitutions for Thomas; no submitted reply has authorized this yet. Later lead, versioned pending-action route, approver-picker and quiet-hour/digest decisions remain in their owning lanes. Existing conditional DEV/UAT cutover authorization is retained; no repeat approval is requested.
+
+### Next merge candidates
+
+#583 after all required gates genuinely pass. The designated post-P0 train and mature P1–P4 checkpoints follow dependency-safe integration on accepted P0. No candidate is merge-ready, no new image is deployed and no phase is claimed complete.
+
+## Status First
+
 Implementation snapshot: 2026-10-06 20:17 UTC (7 October in Yangon). Accepted main remains `3096cb044bdf6ae98488bfc385f532fa6386343a`; reviewed OrbStack DEV remains source `08842235047a3ab2714427edce80331b94558150` in shadow mode.
 
 | Phase | Implementation | Integration | Acceptance / operational closure |
