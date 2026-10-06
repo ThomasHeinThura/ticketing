@@ -67,7 +67,6 @@ function classifyOidcGrantRetirementReason(input: {
     roleId: string;
     scope: string;
     scopeId: string;
-    lastConfirmedAt: Date | null;
     oidcGroupMappingId: string | null;
   };
   mapping: typeof schema.oidcGroupMappingTable.$inferSelect | undefined;
@@ -84,9 +83,7 @@ function classifyOidcGrantRetirementReason(input: {
     !eligibleMappingIds.has(mapping.id) ||
     mapping.roleId !== grant.roleId ||
     mapping.scope !== grant.scope ||
-    mapping.scopeId !== grant.scopeId ||
-    !grant.lastConfirmedAt ||
-    mapping.updatedAt > grant.lastConfirmedAt
+    mapping.scopeId !== grant.scopeId
   ) {
     return "mapping_changed";
   }
@@ -913,7 +910,6 @@ async function signInAdmittedIdentity(input: {
           roleId: schema.membershipGrantTable.roleId,
           scope: schema.membershipGrantTable.scope,
           scopeId: schema.membershipGrantTable.scopeId,
-          lastConfirmedAt: schema.membershipGrantTable.lastConfirmedAt,
           sourceKind: schema.membershipGrantTable.sourceKind,
           oidcGroupMappingId: schema.membershipGrantTable.oidcGroupMappingId,
         })
