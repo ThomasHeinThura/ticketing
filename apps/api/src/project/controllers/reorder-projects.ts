@@ -1,7 +1,12 @@
-import { and, asc, eq, isNotNull, isNull, sql } from "drizzle-orm";
+import { eq, sql } from "drizzle-orm";
 import { HTTPException } from "hono/http-exception";
 import db from "../../database";
 import { projectTable } from "../../database/schema";
+import {
+  getDeletedProjectForReorderQuery,
+  listProjectsAfterReorderQuery,
+  listProjectsForReorderQuery,
+} from "../repository";
 
 async function reorderProjects(
   workspaceId: string,
@@ -30,20 +35,7 @@ async function reorderProjects(
     // rank, which is what the renumbering below pins them to.
     // #187: a soft-deleted project never holds a place -- unlike `archivedAt`, it is
     // excluded here the same way `get-projects.ts` excludes it from the list.
-    const existing = await tx
-      .select({ id: projectTable.id, position: projectTable.position })
-      .from(projectTable)
-      .where(
-        and(
-          eq(projectTable.workspaceId, workspaceId),
-          isNull(projectTable.deletedAt),
-        ),
-      )
-      .orderBy(
-        asc(projectTable.position),
-        asc(projectTable.createdAt),
-        asc(projectTable.id),
-      );
+    const existing = await listProjectsForReorderQuery(tx, workspaceId);
 
     // Verify ownership of the whole batch before writing anything, so a
     // smuggled foreign id cannot leave the workspace half-renumbered.
@@ -56,17 +48,11 @@ async function reorderProjects(
       // above). Reporting it as "does not belong to this workspace" is wrong: it does
       // belong here, it is gone (#187, PR-16). Both stay a 400 so the route's declared
       // responses are unchanged; only the message distinguishes them.
-      const [softDeletedHere] = await tx
-        .select({ id: projectTable.id })
-        .from(projectTable)
-        .where(
-          and(
-            eq(projectTable.id, foreignId),
-            eq(projectTable.workspaceId, workspaceId),
-            isNotNull(projectTable.deletedAt),
-          ),
-        )
-        .limit(1);
+      const [softDeletedHere] = await getDeletedProjectForReorderQuery(
+        tx,
+        foreignId,
+        workspaceId,
+      );
 
       throw new HTTPException(400, {
         message: softDeletedHere
@@ -110,19 +96,7 @@ async function reorderProjects(
         .where(eq(projectTable.id, id));
     }
 
-    return tx.query.projectTable.findMany({
-      // #187: same exclusion as the read above -- a soft-deleted project must not
-      // reappear in the response either.
-      where: and(
-        eq(projectTable.workspaceId, workspaceId),
-        isNull(projectTable.deletedAt),
-      ),
-      orderBy: [
-        asc(projectTable.position),
-        asc(projectTable.createdAt),
-        asc(projectTable.id),
-      ],
-    });
+    return listProjectsAfterReorderQuery(tx, workspaceId);
   });
 }
 

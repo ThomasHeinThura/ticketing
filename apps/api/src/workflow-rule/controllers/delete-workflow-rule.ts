@@ -3,11 +3,10 @@ import { HTTPException } from "hono/http-exception";
 import db from "../../database";
 import { workflowRuleTable } from "../../database/schema";
 import { getProjectWorkspaceId } from "../../utils/assert-assignable-user";
+import { getWorkflowRuleQuery } from "../repository";
 
 async function deleteWorkflowRule(id: string) {
-  const existing = await db.query.workflowRuleTable.findFirst({
-    where: eq(workflowRuleTable.id, id),
-  });
+  const existing = await getWorkflowRuleQuery(id);
 
   if (!existing) {
     throw new HTTPException(404, { message: "Workflow rule not found" });

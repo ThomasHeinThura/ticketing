@@ -1,11 +1,7 @@
-import { and, eq } from "drizzle-orm";
 import { HTTPException } from "hono/http-exception";
 import db from "../../database";
-import {
-  personTable,
-  stakeholderTable,
-  workspaceTable,
-} from "../../database/schema";
+import { stakeholderTable } from "../../database/schema";
+import { findStakeholderPersonQuery } from "../repository";
 import { requireActiveProject } from "../require-active-project";
 
 export type AddStakeholderInput = {
@@ -29,20 +25,10 @@ async function addStakeholder(
   // Same shape `assign-work-item.ts` uses for its own roster check (a join scoped to the
   // resource's own tenant boundary), adapted here to organisation rather than project
   // membership, since a stakeholder need not be a project member.
-  const [person] = await db
-    .select({ id: personTable.id })
-    .from(personTable)
-    .innerJoin(
-      workspaceTable,
-      eq(workspaceTable.organisationId, personTable.organisationId),
-    )
-    .where(
-      and(
-        eq(personTable.id, input.personId),
-        eq(workspaceTable.id, workspaceId),
-      ),
-    )
-    .limit(1);
+  const [person] = await findStakeholderPersonQuery(
+    input.personId,
+    workspaceId,
+  );
 
   if (!person) {
     throw new HTTPException(404, { message: "Person not found" });

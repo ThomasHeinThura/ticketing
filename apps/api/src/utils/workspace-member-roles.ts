@@ -3,9 +3,12 @@ import {
   type MembershipRoleProblem,
   membershipRoleProblem,
 } from "@taskdesk/permissions";
-import { and, countDistinct, eq } from "drizzle-orm";
 import type db from "../database";
-import { schema } from "../database";
+import {
+  countDistinctWorkspaceOwnersQuery,
+  listWorkspaceMemberRolesQuery,
+  listWorkspaceRolesByRoleQuery,
+} from "../workspace/repository";
 
 type DbOrTx = typeof db | Parameters<Parameters<typeof db.transaction>[0]>[0];
 
@@ -63,15 +66,11 @@ export async function workspaceMemberRoles(
   workspaceId: string,
   userId: string,
 ): Promise<string[]> {
-  const rows = await executor
-    .select({ role: schema.workspaceUserTable.role })
-    .from(schema.workspaceUserTable)
-    .where(
-      and(
-        eq(schema.workspaceUserTable.workspaceId, workspaceId),
-        eq(schema.workspaceUserTable.userId, userId),
-      ),
-    );
+  const rows = await listWorkspaceMemberRolesQuery(
+    executor,
+    workspaceId,
+    userId,
+  );
   return rows.map((row) => row.role);
 }
 
@@ -163,15 +162,7 @@ export async function distinctOwnerUserCount(
   executor: DbOrTx,
   workspaceId: string,
 ): Promise<number> {
-  const [row] = await executor
-    .select({ owners: countDistinct(schema.workspaceUserTable.userId) })
-    .from(schema.workspaceUserTable)
-    .where(
-      and(
-        eq(schema.workspaceUserTable.workspaceId, workspaceId),
-        eq(schema.workspaceUserTable.role, "owner"),
-      ),
-    );
+  const [row] = await countDistinctWorkspaceOwnersQuery(executor, workspaceId);
   return Number(row?.owners ?? 0);
 }
 
@@ -240,15 +231,7 @@ export async function workspaceRolePermission(
   workspaceId: string,
   role: string,
 ): Promise<string | null> {
-  const rows = await executor
-    .select({ permission: schema.workspaceRoleTable.permission })
-    .from(schema.workspaceRoleTable)
-    .where(
-      and(
-        eq(schema.workspaceRoleTable.workspaceId, workspaceId),
-        eq(schema.workspaceRoleTable.role, role),
-      ),
-    );
+  const rows = await listWorkspaceRolesByRoleQuery(executor, workspaceId, role);
 
   // NOT `.limit(1)`, and NOT `rows[0]`. Exactly one row, or no answer.
   if (rows.length !== 1) return null;

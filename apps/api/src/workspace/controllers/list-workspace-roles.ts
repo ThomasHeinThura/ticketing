@@ -1,6 +1,6 @@
 import { statement } from "@taskdesk/permissions";
-import { eq } from "drizzle-orm";
-import db, { schema } from "../../database";
+import type { schema } from "../../database";
+import { listWorkspaceRolesQuery } from "../repository";
 
 /**
  * One `workspace_role` row, `permission` parsed back into an object — matches better-auth's
@@ -63,10 +63,7 @@ function parsePermission(raw: string): Record<string, string[]> {
 async function listWorkspaceRoles(
   workspaceId: string,
 ): Promise<WorkspaceRoleRow[]> {
-  const rows = await db
-    .select()
-    .from(schema.workspaceRoleTable)
-    .where(eq(schema.workspaceRoleTable.workspaceId, workspaceId));
+  const rows = await listWorkspaceRolesQuery(workspaceId);
 
   return rows.map((row) => ({
     ...row,

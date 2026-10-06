@@ -1,24 +1,12 @@
-import { and, eq, isNull } from "drizzle-orm";
+import { eq } from "drizzle-orm";
 import { HTTPException } from "hono/http-exception";
 import db from "../../database";
 import { projectTable } from "../../database/schema";
 import { invalidateNativeAuthorization } from "../../ws";
+import { getActiveProjectQuery } from "../repository";
 
 async function unarchiveProject(id: string, workspaceId: string) {
-  const [existingProject] = await db
-    .select()
-    .from(projectTable)
-    .where(
-      and(
-        eq(projectTable.id, id),
-        eq(projectTable.workspaceId, workspaceId),
-        // #202: a soft-deleted project is gone for ordinary use during its 30-day
-        // recovery window (#187, PR-16) -- unarchiving one would return a row to
-        // the (still deleted) state it was in, with a misleading success. Same
-        // exclusion `get-project.ts` applies.
-        isNull(projectTable.deletedAt),
-      ),
-    );
+  const [existingProject] = await getActiveProjectQuery(id, workspaceId);
 
   if (!existingProject) {
     throw new HTTPException(404, {

@@ -1,5 +1,9 @@
-import { and, eq } from "drizzle-orm";
+import { eq } from "drizzle-orm";
 import db, { schema } from "../../database";
+import {
+  getWorkspaceRoleByIdQuery,
+  listWorkspaceMemberRoleValuesQuery,
+} from "../repository";
 import { WorkspaceRoleNotFoundError } from "./workspace-membership-errors";
 import { lockWorkspaceRoleAssignment } from "./workspace-role-assignment-lock";
 import {
@@ -76,16 +80,7 @@ async function deleteWorkspaceRole(
   return db.transaction(async (tx) => {
     await lockWorkspaceRoleAssignment(tx, workspaceId);
 
-    const [existing] = await tx
-      .select()
-      .from(schema.workspaceRoleTable)
-      .where(
-        and(
-          eq(schema.workspaceRoleTable.workspaceId, workspaceId),
-          eq(schema.workspaceRoleTable.id, roleId),
-        ),
-      )
-      .limit(1);
+    const [existing] = await getWorkspaceRoleByIdQuery(tx, workspaceId, roleId);
     if (!existing) {
       throw new WorkspaceRoleNotFoundError(roleId);
     }
@@ -95,10 +90,10 @@ async function deleteWorkspaceRole(
       throw new RoleNameReservedError();
     }
 
-    const memberRows = await tx
-      .select({ role: schema.workspaceUserTable.role })
-      .from(schema.workspaceUserTable)
-      .where(eq(schema.workspaceUserTable.workspaceId, workspaceId));
+    const memberRows = await listWorkspaceMemberRoleValuesQuery(
+      tx,
+      workspaceId,
+    );
 
     if (
       roleIsReferencedBy(

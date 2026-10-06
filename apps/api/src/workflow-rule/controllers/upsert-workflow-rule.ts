@@ -1,9 +1,10 @@
-import { and, eq } from "drizzle-orm";
+import { eq } from "drizzle-orm";
 import { HTTPException } from "hono/http-exception";
 import db from "../../database";
-import { columnTable, workflowRuleTable } from "../../database/schema";
+import { workflowRuleTable } from "../../database/schema";
 import { getProjectWorkspaceId } from "../../utils/assert-assignable-user";
 import { rejectNulByte } from "../../utils/reject-nul-byte";
+import { findRuleColumnQuery, findWorkflowRuleQuery } from "../repository";
 
 async function upsertWorkflowRule({
   projectId,
@@ -31,12 +32,7 @@ async function upsertWorkflowRule({
   // 400 the column check would otherwise produce.
   await getProjectWorkspaceId(projectId);
 
-  const targetColumn = await db.query.columnTable.findFirst({
-    where: and(
-      eq(columnTable.id, columnId),
-      eq(columnTable.projectId, projectId),
-    ),
-  });
+  const targetColumn = await findRuleColumnQuery(columnId, projectId);
 
   if (!targetColumn) {
     throw new HTTPException(400, {
@@ -44,13 +40,11 @@ async function upsertWorkflowRule({
     });
   }
 
-  const existing = await db.query.workflowRuleTable.findFirst({
-    where: and(
-      eq(workflowRuleTable.projectId, projectId),
-      eq(workflowRuleTable.integrationType, integrationType),
-      eq(workflowRuleTable.eventType, eventType),
-    ),
-  });
+  const existing = await findWorkflowRuleQuery(
+    projectId,
+    integrationType,
+    eventType,
+  );
 
   if (existing) {
     const [updated] = await db

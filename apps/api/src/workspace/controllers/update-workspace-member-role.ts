@@ -5,6 +5,7 @@ import {
   roleGrantsOwner,
   workspaceMemberRoles,
 } from "../../utils/workspace-member-roles";
+import { getWorkspaceRoleQuery } from "../repository";
 import {
   CannotChangeOwnerRoleHereError,
   MemberNotFoundError,
@@ -71,16 +72,7 @@ async function updateWorkspaceMemberRole(
       throw new CannotChangeOwnerRoleHereError();
     }
 
-    const [roleRow] = await tx
-      .select({ role: schema.workspaceRoleTable.role })
-      .from(schema.workspaceRoleTable)
-      .where(
-        and(
-          eq(schema.workspaceRoleTable.workspaceId, workspaceId),
-          eq(schema.workspaceRoleTable.role, role),
-        ),
-      )
-      .limit(1);
+    const [roleRow] = await getWorkspaceRoleQuery(tx, workspaceId, role);
     if (!roleRow) {
       throw new WorkspaceRoleNotFoundError(role);
     }
