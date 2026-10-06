@@ -457,7 +457,7 @@ describe("identity connection administration", () => {
   });
 
   it("reconciles only the linked identity's OIDC and JIT grants from current login evidence", async () => {
-    await setupAdmin();
+    const { sessionCookie } = await setupAdmin();
     const app = createApp().app;
     const connectionId = "native-oidc-reconcile-connection";
     await createConnection(connectionId, true);
@@ -718,6 +718,53 @@ describe("identity connection administration", () => {
       ),
     ).toHaveLength(1);
 
+    const originalOidcGrant = grants.find(
+      (grant) => grant.sourceKind === "oidc_group" && grant.revokedAt === null,
+    );
+    if (!originalOidcGrant) throw new Error("OIDC grant fixture is missing");
+    const metadataPatch = {
+      configVersion: 1,
+      externalGroupNameSnapshot: "Renamed support group",
+    };
+    const metadataProof = await stepUp(app, sessionCookie, {
+      kind: "operation",
+      operation: "oidc_group_mapping_update",
+      connectionId,
+      mappingId,
+      request: metadataPatch,
+    });
+    const metadataResponse = await csrfRequest(
+      app,
+      `/api/instance/identity-connections/${connectionId}/oidc-group-mappings/${mappingId}`,
+      {
+        method: "PATCH",
+        headers: {
+          "content-type": "application/json",
+          "x-taskdesk-step-up-token": metadataProof.token,
+        },
+        body: JSON.stringify(metadataPatch),
+      },
+      sessionCookie,
+    );
+    expect(metadataResponse.status).toBe(200);
+    const grantAfterMetadataPatch = await db
+      .select()
+      .from(schema.membershipGrantTable)
+      .where(eq(schema.membershipGrantTable.id, originalOidcGrant.id));
+    expect(grantAfterMetadataPatch[0]).toMatchObject({
+      revokedAt: null,
+      revocationReason: null,
+      roleId,
+      scope: "workspace",
+      scopeId: workspaceId,
+    });
+
+    groups = [];
+    expect((await login()).status).toBe(302);
+    await expectLatestOidcRetirement("claim_removed");
+
+    groups = [groupId];
+    expect((await login()).status).toBe(302);
     groups = undefined;
     expect((await login()).status).toBe(302);
     await expectLatestOidcRetirement("claim_missing");
