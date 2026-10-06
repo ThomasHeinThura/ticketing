@@ -1,3 +1,29 @@
+## October 6 completed verification and next implementation batch — 06:49 UTC
+
+- **P0 #584:** independent full Sol clears product/dependency sourceC9; the review artifact
+  is committed and pushed atbb4b29e4. It does not authorize runtime cutover, observation
+  carry-forward or phase acceptance. The original three partial UTC observations remain
+  preserved, with changed dependency runtime compatibility still unproven. G11 remains17/22.
+- **P0 #583:** exact9e hosted SQL passes136 files/1649 tests/5 tasks; E2E, accessibility and
+  visual checks pass. G11 fails19/22 (LCP2632ms, state208.2ms, board658.6ms), with unchanged
+  budgets. Its existing diagnostic artifact was downloaded: CI merge sourcedb234e9a has
+  parents main3096 and9e, and its Git tree equals9e exactly. Diagnostic samples are not
+  canonical acceptance or complete CPU attribution. The9e image builds with usertaskdesk
+  and OCI revision9e; no boot/deployment is claimed. Independent review clears the prior
+  A→B→A defect but finds shared lifecycle-ref mutation during abandoned React renders.
+  A complete committed-lifecycle and grounded performance implementation batch is active;
+  further reviews wait for that batch's frozen source.
+- **P4 #580:** structural repair `15712410049e7b3ca4607c460f1dbe9add3a8845` is clean,
+  committed and pushed. It replaces token-offset inference with shared member/alias parsing
+  and cross-product regressions, and isolates the demonstrated concurrent checker-copy
+  fixture race. Scanner10/10, concurrent71/71 and full CI-script1088/1088 checks pass.
+  The original1087/1 failure is retained in task history. API files are unchanged fromc29;
+  no new SQL counts are claimed. Independent current Sol review is underway.
+- **Program:** P0 implementation and P4 security review continue in parallel. No calendar
+  wait remains. Public-config exception and pending-action versioning decisions already asked
+  remain pending. Primary unrelated edits, accepted main and persistent DEV are unchanged.
+  No phase, protected merge, cutover or deployment acceptance is claimed.
+
 ## October 6 exact-source continuation — 06:39 UTC
 
 - **P0 authorization #584:** current candidate `c9a7f26ca16eac524847be80d23a9729789bbef5`
