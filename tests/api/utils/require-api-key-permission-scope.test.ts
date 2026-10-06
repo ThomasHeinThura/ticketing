@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import {
+  apiKeyCapabilitySubset,
   apiKeyHasCapabilityScope,
   apiKeyScopeSatisfies,
 } from "../../../apps/api/src/utils/require-api-key-permission-scope";
@@ -53,5 +54,22 @@ describe("API-key permission scope intersection", () => {
     expect(apiKeyHasCapabilityScope(undefined, "instance:read_audit")).toBe(
       true,
     );
+  });
+
+  it("projects only exact registered stored resource/action pairs", () => {
+    expect(
+      apiKeyCapabilitySubset({
+        permissions: {
+          work_item: ["export", "invented"],
+          unknown_resource: ["read"],
+        },
+      }),
+    ).toEqual(["work_item:export"]);
+    expect(
+      apiKeyCapabilitySubset({
+        permissions: { work_item: ["export"], project: "read" as never },
+      }),
+    ).toEqual([]);
+    expect(apiKeyCapabilitySubset({ permissions: null })).toEqual([]);
   });
 });

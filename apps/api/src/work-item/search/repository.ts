@@ -19,6 +19,10 @@ import { HTTPException } from "hono/http-exception";
 import db, { schema } from "../../database";
 import { resolveIdentity } from "../../permissions/resolve-identity";
 import { evaluateProjectRead } from "../../utils/has-project-reach";
+import {
+  type ApiKeyPermissionScope,
+  apiKeyCapabilitySubset,
+} from "../../utils/require-api-key-permission-scope";
 import { workItemPolicies } from "../policy";
 import type { SearchFilter, WorkItemSearchQuery } from "./query";
 
@@ -203,7 +207,7 @@ function decodeCursor(
 
 export async function searchWorkItems(input: {
   userId: string;
-  apiKey?: { enabled?: boolean; userId?: string };
+  apiKey?: { enabled?: boolean; userId?: string } & ApiKeyPermissionScope;
   impersonatedBy?: string | null;
   workspaceId: string;
   query: WorkItemSearchQuery;
@@ -223,6 +227,7 @@ export async function searchWorkItems(input: {
           apiKey: {
             enabled: input.apiKey.enabled === true,
             ownerUserId: input.apiKey.userId ?? "",
+            capabilities: apiKeyCapabilitySubset(input.apiKey),
           },
         }
       : {}),
