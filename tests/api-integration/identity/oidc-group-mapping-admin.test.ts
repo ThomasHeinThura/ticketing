@@ -9,11 +9,13 @@ import db, { schema } from "../../../apps/api/src/database";
 import { encryptIdentityClientSecret } from "../../../apps/api/src/identity/client-secret";
 import { projectMembershipKeys } from "../../../apps/api/src/identity/membership-projection";
 import { oidcGroupMappingAdminRouter } from "../../../apps/api/src/identity/oidc-group-mapping-admin";
+import * as identityRepository from "../../../apps/api/src/identity/repository";
 import { createApp } from "../../../apps/api/src/index";
 import {
   ensureInternalOrganisation,
   ensureStaffPersonForUser,
 } from "../../../apps/api/src/utils/seed-internal-organisation";
+import * as websocket from "../../../apps/api/src/ws";
 import { mockAuthenticatedSession } from "../helpers/auth";
 import { csrfRequest } from "../helpers/csrf";
 import { resetTestDatabase } from "../helpers/database";
@@ -258,6 +260,42 @@ async function createMapping(
       body: JSON.stringify(request),
     },
     sessionCookie,
+  );
+}
+
+async function seedActiveMappingGrant(
+  personId: string,
+  mappingId: string,
+  grantId: string,
+) {
+  const externalIdentityId = `external-${randomUUID()}`;
+  await db.insert(schema.externalIdentityTable).values({
+    id: externalIdentityId,
+    identityConnectionId: CONNECTION_ID,
+    personId,
+    userId: ADMIN_ID,
+    issuer: "https://login.microsoftonline.com/tenant/v2.0",
+    subject: `subject-${randomUUID()}`,
+    userNameSnapshot: "mapping-test@example.test",
+    emailSnapshot: "mapping-test@example.test",
+    active: true,
+    provisionedVia: "jit",
+  });
+  await db.insert(schema.membershipGrantTable).values({
+    id: grantId,
+    personId,
+    scope: "workspace",
+    scopeId: WORKSPACE_ID,
+    roleId: WORKSPACE_ROLE_ID,
+    sourceKind: "oidc_group",
+    externalIdentityId,
+    identityConnectionId: CONNECTION_ID,
+    oidcGroupMappingId: mappingId,
+  });
+  await db.transaction((tx) =>
+    projectMembershipKeys(tx, [
+      { personId, scope: "workspace", scopeId: WORKSPACE_ID },
+    ]),
   );
 }
 
@@ -600,6 +638,35 @@ describe("IP-34 OIDC group mapping administration", () => {
         { personId, scope: "workspace", scopeId: WORKSPACE_ID },
       ]),
     );
+    const now = new Date();
+    await db.insert(schema.apikeyTable).values({
+      id: "oidc-mapping-preserved-api-key",
+      referenceId: ADMIN_ID,
+      userId: ADMIN_ID,
+      key: "oidc-mapping-preserved-api-key-hash",
+      name: "OIDC mapping session-preservation fixture",
+      enabled: true,
+      createdAt: now,
+      updatedAt: now,
+    });
+    const invalidationObservations: Array<{
+      target: { userId?: string; workspaceId?: string; projectId?: string };
+      revokedAt: Date | null | undefined;
+    }> = [];
+    const publishInvalidation = websocket.invalidateNativeAuthorization;
+    const invalidationSpy = vi
+      .spyOn(websocket, "invalidateNativeAuthorization")
+      .mockImplementation(async (target) => {
+        const [grant] = await db
+          .select({ revokedAt: schema.membershipGrantTable.revokedAt })
+          .from(schema.membershipGrantTable)
+          .where(eq(schema.membershipGrantTable.id, "oidc-mapping-a-grant"));
+        invalidationObservations.push({
+          target,
+          revokedAt: grant?.revokedAt,
+        });
+        await publishInvalidation(target);
+      });
 
     const patchRequest = { configVersion: 2, enabled: false };
     const binding = {
@@ -624,6 +691,10 @@ describe("IP-34 OIDC group mapping administration", () => {
       sessionCookie,
     );
     expect(updated.status).toBe(200);
+    expect(invalidationSpy.mock.calls).toEqual([[{ userId: ADMIN_ID }]]);
+    expect(invalidationObservations).toEqual([
+      { target: { userId: ADMIN_ID }, revokedAt: expect.any(Date) },
+    ]);
     const grants = await db
       .select({
         id: schema.membershipGrantTable.id,
@@ -669,6 +740,18 @@ describe("IP-34 OIDC group mapping administration", () => {
         ),
       );
     expect(membership?.roleId).toBe(DIRECT_ROLE_ID);
+    expect(
+      await db
+        .select({ id: schema.sessionTable.id })
+        .from(schema.sessionTable)
+        .where(eq(schema.sessionTable.id, `session-${ADMIN_ID}`)),
+    ).toEqual([{ id: `session-${ADMIN_ID}` }]);
+    expect(
+      await db
+        .select({ enabled: schema.apikeyTable.enabled })
+        .from(schema.apikeyTable)
+        .where(eq(schema.apikeyTable.id, "oidc-mapping-preserved-api-key")),
+    ).toEqual([{ enabled: true }]);
     const events = await db
       .select({ kind: schema.provisioningEventTable.kind })
       .from(schema.provisioningEventTable)
@@ -680,6 +763,162 @@ describe("IP-34 OIDC group mapping administration", () => {
         ),
       );
     expect(events).toHaveLength(2);
+  });
+
+  it("keeps authority and cache unchanged for a display-only mapping edit", async () => {
+    const { personId, sessionCookie } = await setupAdmin();
+    await setupConnection();
+    const app = createMappingApp();
+    const created = await createMapping(
+      app,
+      sessionCookie,
+      createRequest(GROUP_A),
+    );
+    expect(created.status).toBe(201);
+    const { data } = (await created.json()) as { data: { id: string } };
+    const mappingId = data.id;
+    await seedActiveMappingGrant(
+      personId,
+      mappingId,
+      "display-only-active-grant",
+    );
+    const invalidationSpy = vi.spyOn(
+      websocket,
+      "invalidateNativeAuthorization",
+    );
+    const patchRequest = {
+      configVersion: 2,
+      externalGroupNameSnapshot: "Renamed directory group",
+    };
+    const token = await issueProof(app, sessionCookie, {
+      kind: "operation",
+      operation: "oidc_group_mapping_update",
+      connectionId: CONNECTION_ID,
+      mappingId,
+      request: patchRequest,
+    });
+    const updated = await csrfRequest(
+      app,
+      `/api/instance/identity-connections/${CONNECTION_ID}/oidc-group-mappings/${mappingId}`,
+      {
+        method: "PATCH",
+        headers: {
+          "content-type": "application/json",
+          "x-taskdesk-step-up-token": token,
+        },
+        body: JSON.stringify(patchRequest),
+      },
+      sessionCookie,
+    );
+
+    expect(updated.status).toBe(200);
+    expect(invalidationSpy).not.toHaveBeenCalled();
+    expect(
+      await db
+        .select({ revokedAt: schema.membershipGrantTable.revokedAt })
+        .from(schema.membershipGrantTable)
+        .where(eq(schema.membershipGrantTable.id, "display-only-active-grant")),
+    ).toEqual([{ revokedAt: null }]);
+    expect(
+      await db
+        .select({ roleId: schema.membershipTable.roleId })
+        .from(schema.membershipTable)
+        .where(
+          and(
+            eq(schema.membershipTable.personId, personId),
+            eq(schema.membershipTable.scope, "workspace"),
+            eq(schema.membershipTable.scopeId, WORKSPACE_ID),
+          ),
+        ),
+    ).toEqual([{ roleId: WORKSPACE_ROLE_ID }]);
+  });
+
+  it("rolls back grant retirement and publishes no invalidation when the transaction fails", async () => {
+    const { personId, sessionCookie } = await setupAdmin();
+    await setupConnection();
+    const app = createMappingApp();
+    const created = await createMapping(
+      app,
+      sessionCookie,
+      createRequest(GROUP_A),
+    );
+    expect(created.status).toBe(201);
+    const { data } = (await created.json()) as { data: { id: string } };
+    const mappingId = data.id;
+    await seedActiveMappingGrant(personId, mappingId, "rollback-active-grant");
+    const patchRequest = { configVersion: 2, enabled: false };
+    const token = await issueProof(app, sessionCookie, {
+      kind: "operation",
+      operation: "oidc_group_mapping_update",
+      connectionId: CONNECTION_ID,
+      mappingId,
+      request: patchRequest,
+    });
+    const retireGrants = identityRepository.retireOidcGroupGrants;
+    const retirementSpy = vi
+      .spyOn(identityRepository, "retireOidcGroupGrants")
+      .mockImplementation(async (tx, targetMappingId) => {
+        const retired = await retireGrants(tx, targetMappingId);
+        expect(retired.map(({ id }) => id)).toEqual(["rollback-active-grant"]);
+        throw new Error("injected failure after grant retirement");
+      });
+    const invalidationSpy = vi.spyOn(
+      websocket,
+      "invalidateNativeAuthorization",
+    );
+    const response = await csrfRequest(
+      app,
+      `/api/instance/identity-connections/${CONNECTION_ID}/oidc-group-mappings/${mappingId}`,
+      {
+        method: "PATCH",
+        headers: {
+          "content-type": "application/json",
+          "x-taskdesk-step-up-token": token,
+        },
+        body: JSON.stringify(patchRequest),
+      },
+      sessionCookie,
+    );
+
+    expect(retirementSpy).toHaveBeenCalledOnce();
+    expect(response.status).toBe(500);
+    expect(invalidationSpy).not.toHaveBeenCalled();
+    expect(
+      await db
+        .select({ enabled: schema.oidcGroupMappingTable.enabled })
+        .from(schema.oidcGroupMappingTable)
+        .where(eq(schema.oidcGroupMappingTable.id, mappingId)),
+    ).toEqual([{ enabled: true }]);
+    expect(
+      await db
+        .select({ configVersion: schema.identityConnectionTable.configVersion })
+        .from(schema.identityConnectionTable)
+        .where(eq(schema.identityConnectionTable.id, CONNECTION_ID)),
+    ).toEqual([{ configVersion: 2 }]);
+    expect(
+      await db
+        .select({ revokedAt: schema.membershipGrantTable.revokedAt })
+        .from(schema.membershipGrantTable)
+        .where(eq(schema.membershipGrantTable.id, "rollback-active-grant")),
+    ).toEqual([{ revokedAt: null }]);
+    expect(
+      await db
+        .select({ roleId: schema.membershipTable.roleId })
+        .from(schema.membershipTable)
+        .where(
+          and(
+            eq(schema.membershipTable.personId, personId),
+            eq(schema.membershipTable.scope, "workspace"),
+            eq(schema.membershipTable.scopeId, WORKSPACE_ID),
+          ),
+        ),
+    ).toEqual([{ roleId: WORKSPACE_ROLE_ID }]);
+    expect(
+      await db
+        .select({ id: schema.sessionTable.id })
+        .from(schema.sessionTable)
+        .where(eq(schema.sessionTable.id, `session-${ADMIN_ID}`)),
+    ).toEqual([{ id: `session-${ADMIN_ID}` }]);
   });
 
   it("revalidates and updates both target anchors for a grant-empty mapping", async () => {
