@@ -1,3 +1,52 @@
+## Status First
+
+Snapshot: 6 October 2026; accepted main `3096cb044bdf6ae98488bfc385f532fa6386343a`.
+
+| Phase | Implementation | Integration | Acceptance / operational closure |
+| --- | --- | --- | --- |
+| P0 | Foundation exists; minimal inherited auth and required UI/performance fixes in progress on sole vehicle #583 | Later-phase source removed from P0 critical path | Open: current required performance, authorization contracts/strict evidence, exact-head gates and Sol finalizer |
+| P1 | Saved-view CRUD/pins/deletion checkpoint86d5 preserved; inbox/detail work retained | Separate post-P0 train; provisional migration only | Native/browser verification pending; lead authority decision held |
+| P2 | Calendar/SLA/approvals work retained | Post-P0 #589; unique old513 deltas require reconciliation | Open; no phase claim |
+| P3 | Identity/SCIM/plugin configuration work retained | Post-P0 #589/#588 | Open; no phase claim |
+| P4 | Query invariant, outbox, flags and expiry intent retained | Post-P0 #589/#585/#569; centralized migration allocation | Open; query acceptance deferred here by Thomas |
+
+### What changed
+
+Completed the read-only ownership audit covering every open PR's exact head, source ancestry, required protection, stage:P0 issues, source/evidence bindings and migration conflicts. [Authoritative map](reviews/2026-10-06/realignment/ownership-map.md) assigns one category and disposition per vehicle. #583 is the sole P0 closure vehicle; #589 is the canonical post-P0 train. Duplicate #581 was closed without merging after preserving its evidence and confirming its full source ancestry in #589. No phase was closed. #337's P0 label was planning drift; its unresolved webhook vocabulary obligation belongs to P4. #592 is the real inherited P0 API-key defect.
+
+Approved complete auth work is preserved at #589 `f4789aefd3c3d08595642414dda63770d8973f64`; its predecessor9ab outcomes do not clear this new SHA. Original9ab G11 passed21/22, sole create-dialog visibility failure. Original9ab hosted PostgreSQL failed four key-authentication/activity expectations across two files (146 passed of148). No failure cause or fixture correction is assumed without contract comparison.
+
+### What is being worked on now
+
+Luna is porting only necessary inherited auth corrections and bounded UI fixes onto clean #583088, excluding later features, diagnostic expansion and P4 query architecture. A separate Luna lane resumes native/browser saved-view verification on its preserved P1 source. No lane may allocate final migrations concurrently.
+
+### Critical path
+
+1. Complete and freeze one minimal P0 candidate.
+2. Clear required exact-head CI, including unchanged G11 budgets, plus ordinary and independent Sol review.
+3. Resolve documented denial-contract/config/task scope decisions and acquire matching operational strict/rollback evidence.
+4. Independently adjudicate Oct4/5/6 compatibility against frozen source; no automatic carry.
+5. Protected integration, fresh Sol phase finalizer on accepted source, then administrative issue closure.
+
+### Misalignment / drift
+
+P0 had absorbed a broad later-phase train and repeated review work. #589 is now explicitly outside P0 acceptance. Old17/22 and48-pair statements describe older sources/captures; they are not current whole-program truth. Correct088 operational capture contains130 off/shadow pairs, valid tally reconciliation and13 response-contract mismatches. Three partial UTC observations are not full-day or72-hour coverage. Saved-view0118 is provisional; final migration must be regenerated only after its preceding train freezes.
+
+### Concerns
+
+- Key-scope authority: finish shared fail-closed invariant and native role/key intersection proof before exact-head review.
+- Dialog timeout: port bounded product fixes and diagnose retained trace; do not relax budgets/assertions or claim causality from a single local pass.
+- Denial contract: retain original failed evidence; do not rewrite an oracle before the authority conflict is decided.
+- Old512/513/555 source: preserve unique implementation/evidence and reconcile against canonical train before superseding; no blind merge or whole-PR delivered claim.
+
+### Decisions needed from Thomas
+
+Existing unanswered choices remain: legacy denial compatibility versus uniform404; public-config observation exception; task/pending-action versioned API contract; saved-view team-lead authority. P2 approver-picker and notification quiet-hours/digest DST decisions remain later-phase held paths. These do not stop the currently runnable implementation lanes. No repeated question is issued here.
+
+### Next merge candidates
+
+#583 after its minimal batch clears every exact-head gate. No candidate is merge-ready now. #589 is a later-phase integration candidate only, and will incorporate accepted P0 source through normal protected flow. Reviewed088 remains the persistent OrbStack/Traefik DEV image; no unreviewed deployment, enforcement activation or production change is claimed.
+
 ## October 6 full authorization remediation and current hosted outcomes — 16:04 UTC
 
 - **Complete bulk source:** PR589 remains pushed at `c2fd8153676baecc958c089988f60ab156b26aff`. Its project-bound creation lifecycle passes all5 focused mock-browser journeys, including A→B pending cancellation, intentional B reopen, Escape/focus, Back and unmount. Root inspects both original B screenshots. This is functional browser evidence, not hosted budget acceptance.

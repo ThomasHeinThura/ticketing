@@ -1,3 +1,9 @@
+### 2026-10-06 · Thomas directs P0 realignment and implementation batches
+
+Thomas supplies the Project Realignment & Implementation Directive. Complete a read-only ownership map before source edits, then use #583 or one minimal successor as the sole P0 closure vehicle. #589 is the canonical post-P0 integration train and cannot block P0 acceptance. #581 is superseded after preserving unique source/evidence. Preserve later implementation; no gate, review tier, budget or assertion is waived. Keep one centralized migration ledger, with saved-view0118 provisional until the preceding train freezes. Retain original observation records and require independent source compatibility adjudication. Reports use Status First and the specified sections.
+
+The read-only audit is complete; source work resumes on isolated P0 and P1 lanes. Closing the duplicate integration vehicle is not phase acceptance. Thomas's explicit self-write authorization makes notification, preference and avatar mutations session-only until key scopes are defined; no capability is invented. The prior query acceptance deferral toP4 remains in force.
+
 ### 2026-10-06 · Apply standing disposable verification to the reviewed 088 asset correction
 
 **Orchestrator decision under Thomas's standing authorization:** prepare the next reversible
