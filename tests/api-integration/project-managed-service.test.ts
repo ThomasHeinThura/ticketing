@@ -8,6 +8,7 @@ import { resetTestDatabase } from "./helpers/database";
 import {
   createProjectFixture,
   createWorkspaceMember,
+  grantProjectRole,
 } from "./helpers/fixtures";
 
 const windows = {
@@ -100,6 +101,7 @@ describe("API integration: managed-service project configuration", () => {
     const { project } = await createProjectFixture({
       workspaceId: owner.workspace.id,
     });
+    await grantProjectRole(owner.user.id, project.id, ["project:read"]);
     mockAuthenticatedSession(owner.user);
     const { app } = createApp();
 

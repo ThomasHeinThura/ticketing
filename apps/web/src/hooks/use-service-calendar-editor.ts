@@ -1,6 +1,6 @@
 import type { DragEndEvent } from "@dnd-kit/core";
 import { standardSchemaResolver } from "@hookform/resolvers/standard-schema";
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useForm } from "react-hook-form";
 import { useTranslation } from "react-i18next";
 import { z } from "zod";
@@ -84,7 +84,9 @@ export function useServiceCalendarEditor({
     useState(false);
   const [pendingSaveValues, setPendingSaveValues] =
     useState<CalendarMetadata | null>(null);
-  const hydratedCalendarId = useRef<string | null>(null);
+  const [hydratedCalendarId, setHydratedCalendarId] = useState<string | null>(
+    null,
+  );
   const [calendarConflict, setCalendarConflict] = useState<{
     assertedVersion: number;
     currentVersion: number;
@@ -114,8 +116,7 @@ export function useServiceCalendarEditor({
   });
 
   useEffect(() => {
-    if (!calendar || hydratedCalendarId.current === calendar.id) return;
-    hydratedCalendarId.current = calendar.id;
+    if (!calendar || hydratedCalendarId === calendar.id) return;
     form.reset({ name: calendar.name, timezone: calendar.timezone });
     setWindows(copyCalendarWindows(calendar.windows));
     setHolidays(calendar.holidays.map((holiday) => ({ ...holiday })));
@@ -128,7 +129,8 @@ export function useServiceCalendarEditor({
       ) as Record<Weekday, string[]>,
     );
     setHolidayIds(calendar.holidays.map(() => createFieldId()));
-  }, [calendar, form]);
+    setHydratedCalendarId(calendar.id);
+  }, [calendar, form, hydratedCalendarId]);
 
   async function persist(values: CalendarMetadata) {
     if (!canManageServiceCalendars()) {
@@ -248,7 +250,6 @@ export function useServiceCalendarEditor({
     if (conflictRefreshState !== "ready") return;
     const latest = conflictFreshCalendar;
     if (!latest) return;
-    hydratedCalendarId.current = null;
     form.reset({ name: latest.name, timezone: latest.timezone });
     setWindows(copyCalendarWindows(latest.windows));
     setHolidays(latest.holidays.map((holiday) => ({ ...holiday })));
@@ -261,6 +262,7 @@ export function useServiceCalendarEditor({
       ) as Record<Weekday, string[]>,
     );
     setHolidayIds(latest.holidays.map(() => createFieldId()));
+    setHydratedCalendarId(latest.id);
     setCalendarConflict(null);
     setConflictFreshCalendar(null);
     setConflictRefreshState("idle");
@@ -383,7 +385,12 @@ export function useServiceCalendarEditor({
     saving: createCalendar.isPending || updateCalendar.isPending,
     canManageCalendars: canManageServiceCalendars(),
     isCheckingPermissions,
-    loading: isWorkspaceLoading || (!isNew && isCalendarLoading),
+    loading:
+      isWorkspaceLoading ||
+      (!isNew &&
+        (isCalendarLoading ||
+          (!isCalendarError &&
+            (!calendar || hydratedCalendarId !== calendar.id)))),
     isCalendarError,
     refetchCalendar,
     handleSave,

@@ -392,7 +392,11 @@ async function setupCalendarPage(page: Page): Promise<CalendarPageFixture> {
       await route.fulfill({
         status: 200,
         contentType: "application/json",
-        body: JSON.stringify(savedCalendar),
+        body: JSON.stringify(
+          path === `/api/service-calendars/${loadingCalendarId}`
+            ? { ...savedCalendar, id: loadingCalendarId }
+            : savedCalendar,
+        ),
       });
       return;
     }

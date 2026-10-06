@@ -1,5 +1,5 @@
-import { and, eq } from "drizzle-orm";
-import { beforeEach, describe, expect, it } from "vitest";
+import { and, eq, sql } from "drizzle-orm";
+import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import db, { schema } from "../../apps/api/src/database";
 import { createApp } from "../../apps/api/src/index";
 import { createCalendar } from "../../apps/api/src/service-calendar/repository";
@@ -11,6 +11,40 @@ import {
 } from "./helpers/fixtures";
 
 const windows = { mon: [{ from: 540, to: 1020 }] };
+const AUDIT_FAILURE_TRIGGER = "td_calendar_delete_audit_failure";
+
+async function armCalendarDeleteAuditFailure() {
+  await db.execute(
+    sql.raw(`
+    CREATE OR REPLACE FUNCTION ${AUDIT_FAILURE_TRIGGER}() RETURNS trigger AS $$
+    BEGIN
+      IF NEW.action = 'service_calendar.deleted' THEN
+        RAISE EXCEPTION 'calendar deletion audit failure fixture';
+      END IF;
+      RETURN NEW;
+    END;
+    $$ LANGUAGE plpgsql;
+  `),
+  );
+  await db.execute(
+    sql.raw(`
+    CREATE TRIGGER ${AUDIT_FAILURE_TRIGGER}
+    BEFORE INSERT ON audit_log
+    FOR EACH ROW EXECUTE FUNCTION ${AUDIT_FAILURE_TRIGGER}();
+  `),
+  );
+}
+
+async function disarmCalendarDeleteAuditFailure() {
+  await db.execute(
+    sql.raw(`DROP TRIGGER IF EXISTS ${AUDIT_FAILURE_TRIGGER} ON audit_log`),
+  );
+  await db.execute(
+    sql.raw(`DROP FUNCTION IF EXISTS ${AUDIT_FAILURE_TRIGGER}()`),
+  );
+}
+
+afterEach(async () => disarmCalendarDeleteAuditFailure());
 
 async function makeCalendar(workspaceId: string, actorId: string) {
   return createCalendar({
@@ -138,6 +172,25 @@ describe("API integration: service-calendar usage and CAL-9 deletion", () => {
         .from(schema.outboxTable)
         .where(eq(schema.outboxTable.kind, "service_calendar.deleted")),
     ).toHaveLength(1);
+
+    const replay = await app.request(
+      `/api/me/pending-actions/${pending.pendingActionId}/approve`,
+      {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: "{}",
+      },
+    );
+    expect(replay.status).toBe(409);
+    await expect(replay.text()).resolves.toContain(
+      "pending_action_not_pending",
+    );
+    expect(
+      await db
+        .select()
+        .from(schema.outboxTable)
+        .where(eq(schema.outboxTable.kind, "service_calendar.deleted")),
+    ).toHaveLength(1);
   });
 
   it("rejects deletion requests while any project still references the calendar", async () => {
@@ -170,5 +223,209 @@ describe("API integration: service-calendar usage and CAL-9 deletion", () => {
         .from(schema.serviceCalendarTable)
         .where(eq(schema.serviceCalendarTable.id, calendar.id)),
     ).toHaveLength(1);
+  });
+
+  it("CAL-9: rechecks project references at approval and allows a later retry after replacement", async () => {
+    const owner = await createWorkspaceMember({ role: "admin" });
+    const calendar = await makeCalendar(owner.workspace.id, owner.user.id);
+    const { project } = await createProjectFixture({
+      workspaceId: owner.workspace.id,
+    });
+    mockAuthenticatedSession(owner.user);
+    const sessionId = `session-${owner.user.id}`;
+    const now = new Date();
+    await db.insert(schema.sessionTable).values({
+      id: sessionId,
+      token: `token-${owner.user.id}`,
+      userId: owner.user.id,
+      portal: "agent",
+      expiresAt: new Date(now.getTime() + 60 * 60 * 1000),
+      createdAt: now,
+      updatedAt: now,
+    });
+    const { app } = createApp();
+    const request = await app.request(`/api/service-calendars/${calendar.id}`, {
+      method: "DELETE",
+    });
+    expect(request.status).toBe(202);
+    const pending = (await request.json()) as { pendingActionId: string };
+
+    const duplicate = await app.request(
+      `/api/service-calendars/${calendar.id}`,
+      { method: "DELETE" },
+    );
+    expect(duplicate.status).toBe(409);
+    await expect(duplicate.text()).resolves.toContain("pending_approval");
+    expect(await db.select().from(schema.pendingActionTable)).toHaveLength(1);
+
+    await db
+      .update(schema.projectTable)
+      .set({
+        kind: "managed_service",
+        supportLevel: "L1",
+        serviceCalendarId: calendar.id,
+      })
+      .where(eq(schema.projectTable.id, project.id));
+    const blocked = await app.request(
+      `/api/me/pending-actions/${pending.pendingActionId}/approve`,
+      {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: "{}",
+      },
+    );
+    expect(blocked.status).toBe(409);
+    await expect(blocked.text()).resolves.toContain("service_calendar_in_use");
+    const [stillPending] = await db
+      .select({ state: schema.pendingActionTable.state })
+      .from(schema.pendingActionTable)
+      .where(eq(schema.pendingActionTable.id, pending.pendingActionId));
+    expect(stillPending?.state).toBe("pending");
+
+    await db
+      .update(schema.projectTable)
+      .set({ kind: "project", supportLevel: null, serviceCalendarId: null })
+      .where(eq(schema.projectTable.id, project.id));
+    const approved = await app.request(
+      `/api/me/pending-actions/${pending.pendingActionId}/approve`,
+      {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: "{}",
+      },
+    );
+    expect(approved.status).toBe(200);
+    await expect(approved.json()).resolves.toMatchObject({ state: "executed" });
+  });
+
+  it("CAL-9: invalidates a deletion request when the calendar version changes", async () => {
+    const owner = await createWorkspaceMember({ role: "admin" });
+    const calendar = await makeCalendar(owner.workspace.id, owner.user.id);
+    mockAuthenticatedSession(owner.user);
+    const sessionId = `session-${owner.user.id}`;
+    const now = new Date();
+    await db.insert(schema.sessionTable).values({
+      id: sessionId,
+      token: `token-${owner.user.id}`,
+      userId: owner.user.id,
+      portal: "agent",
+      expiresAt: new Date(now.getTime() + 60 * 60 * 1000),
+      createdAt: now,
+      updatedAt: now,
+    });
+    const { app } = createApp();
+    const request = await app.request(`/api/service-calendars/${calendar.id}`, {
+      method: "DELETE",
+    });
+    expect(request.status).toBe(202);
+    const pending = (await request.json()) as { pendingActionId: string };
+
+    const update = await app.request(`/api/service-calendars/${calendar.id}`, {
+      method: "PATCH",
+      headers: {
+        "content-type": "application/json",
+        "if-match": `"${calendar.version}"`,
+      },
+      body: JSON.stringify({ name: "Changed after deletion request" }),
+    });
+    expect(update.status).toBe(200);
+
+    const approval = await app.request(
+      `/api/me/pending-actions/${pending.pendingActionId}/approve`,
+      {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: "{}",
+      },
+    );
+    expect(approval.status).toBe(409);
+    await expect(approval.text()).resolves.toContain(
+      "pending_action_target_changed",
+    );
+    const [invalidated] = await db
+      .select({ state: schema.pendingActionTable.state })
+      .from(schema.pendingActionTable)
+      .where(eq(schema.pendingActionTable.id, pending.pendingActionId));
+    expect(invalidated?.state).toBe("invalidated");
+    expect(
+      await db
+        .select()
+        .from(schema.serviceCalendarTable)
+        .where(eq(schema.serviceCalendarTable.id, calendar.id)),
+    ).toHaveLength(1);
+  });
+
+  it("CAL-14: commits calendar deletion and events when its audit row fails", async () => {
+    const owner = await createWorkspaceMember({ role: "admin" });
+    await db
+      .update(schema.userTable)
+      .set({ role: "admin" })
+      .where(eq(schema.userTable.id, owner.user.id));
+    mockAuthenticatedSession({ ...owner.user, role: "admin" });
+    const calendar = await makeCalendar(owner.workspace.id, owner.user.id);
+    const sessionId = `session-${owner.user.id}`;
+    const now = new Date();
+    await db.insert(schema.sessionTable).values({
+      id: sessionId,
+      token: `token-${owner.user.id}`,
+      userId: owner.user.id,
+      portal: "agent",
+      expiresAt: new Date(now.getTime() + 60 * 60 * 1000),
+      createdAt: now,
+      updatedAt: now,
+    });
+    const { app } = createApp();
+    const request = await app.request(`/api/service-calendars/${calendar.id}`, {
+      method: "DELETE",
+    });
+    expect(request.status).toBe(202);
+    const pending = (await request.json()) as { pendingActionId: string };
+
+    await armCalendarDeleteAuditFailure();
+    try {
+      const approval = await app.request(
+        `/api/me/pending-actions/${pending.pendingActionId}/approve`,
+        {
+          method: "POST",
+          headers: { "content-type": "application/json" },
+          body: "{}",
+        },
+      );
+      expect(approval.status).toBe(200);
+      await expect(approval.json()).resolves.toMatchObject({
+        state: "executed",
+      });
+      expect(
+        await db
+          .select()
+          .from(schema.serviceCalendarTable)
+          .where(eq(schema.serviceCalendarTable.id, calendar.id)),
+      ).toHaveLength(0);
+      expect(
+        await db
+          .select()
+          .from(schema.outboxTable)
+          .where(eq(schema.outboxTable.kind, "service_calendar.deleted")),
+      ).toHaveLength(1);
+      const [action] = await db
+        .select({ state: schema.pendingActionTable.state })
+        .from(schema.pendingActionTable)
+        .where(eq(schema.pendingActionTable.id, pending.pendingActionId));
+      expect(action?.state).toBe("executed");
+      expect(
+        await db
+          .select()
+          .from(schema.auditLogTable)
+          .where(
+            and(
+              eq(schema.auditLogTable.entityType, "service_calendar"),
+              eq(schema.auditLogTable.entityId, calendar.id),
+              eq(schema.auditLogTable.action, "service_calendar.deleted"),
+            ),
+          ),
+      ).toHaveLength(0);
+    } finally {
+      await disarmCalendarDeleteAuditFailure();
+    }
   });
 });
