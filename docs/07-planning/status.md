@@ -1,3 +1,37 @@
+## October 6 corrected enforcement interpretation and full repair batches — 08:28 UTC
+
+- **Correction to the08:08 snapshot:** independent Sol confirms the129 representative
+  requests in C468 run `20261006T080705Z-c46825e9` executed AFTER the runner switched to
+  27-source strict enforcement. The renderer falsely hardcoded strict mode inactive.
+  Comparing the two strict asset500s with the older shadow-only403/404 observations did
+  not establish off/shadow behavior drift. C468 off/shadow compatibility remains unmeasured;
+  no original observation date is carried forward. The original assessment and records
+  remain unchanged, with an independent addendum recording this correction.
+- **Actual P0 defect:** strict evaluation reaches the asset policy before the native handler
+  establishes persisted workspace row context. A grounded source-bound reproduction and
+  complete correction batch are active. Early strict403s must not be relabelled as observed
+  legacy decisions. The source batch will preserve native401/403/404 and current reach.
+- **Actual proof defect:** the runner exits0 despite two selected asset500s and an unclean
+  tally. Platform/27-source boot and rollback checks remain true observations, but this is
+  not successful strict representative acceptance. A separate Luna lane is implementing
+  the full private runner repair: separate off/shadow and strict windows; verified mode,
+  stage and source metadata; fail-closed acceptance; pre-restart diagnostics; and exact
+  container/volume ownership cleanup. No original draft is edited or new run authorized.
+- **Performance:** one bounded clean C468 local4188 diagnostic passes the selected three
+  cases (LCP2436ms, state87.2ms, board290.7ms); one first LCP sample exceeds its budget.
+  Port/process cleanup is verified and4178 untouched. These local timings do not clear
+  current hosted19/22 or identify a product optimization. Budgets remain unchanged.
+- **P2 approvals:** schema, repository and workflow-version validation compile; reminder
+  scan is registered at15-minute cadence with bounded locks, DB clock, durable50/90 markers,
+  expiry audit/outbox and decided_at. Domain19 files/657 tests pass. Full API/UI implementation
+  continues before bulk review. A safe approver-picker GET contract is proposed and asked
+  once because the existing staff assignment roster omits customers and has different reach;
+  no undocumented route or assumed approval is shipped.
+- **Acceptance:** P0 remains open on actual strict behavior, truthful proof acquisition,
+  current hosted performance, remaining config/task prerequisites, required exact-head
+  reviews/CI and the additional Sol finalizer. The three earlier partial dates are retained.
+  No calendar wait, protected merge, phase closure or persistent DEV replacement is claimed.
+
 ## October 6 strict runtime proof and continuing implementation — 08:08 UTC
 
 - **P0 #583:** exact `c46825e938019c354c615be03200cefeab7d710d` includes the
