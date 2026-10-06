@@ -115,7 +115,7 @@ test("check:queries detects receiver and simple method aliases", () => {
   );
 });
 
-test("check:queries detects Reflect.apply with statically known read methods", () => {
+test("check:queries resolves global Reflect.apply bindings and forwarded targets", () => {
   const cases = [
     "Reflect.apply(db.select, db, [])",
     'Reflect.apply(db["select"], db, [])',
@@ -123,6 +123,19 @@ test("check:queries detects Reflect.apply with statically known read methods", (
     "Reflect[`apply`](db.select, db, [])",
     "const read = db.select; Reflect.apply(read, db, [])",
     "const apply = Reflect.apply; apply(db.select, db, [])",
+    "const R = Reflect; R.apply(db.select, db, [])",
+    "const { apply } = Reflect; apply(db.select, db, [])",
+    "const { select: read } = db; Reflect.apply(read, db, [])",
+    "(0, Reflect.apply)(db.select, db, [])",
+    "globalThis.Reflect.apply(db.select, db, [])",
+    "globalThis[`Reflect`][`apply`](db.select, db, [])",
+    "const R = globalThis.Reflect; R.apply(db.select, db, [])",
+    "const { Reflect: R } = globalThis; R.apply(db.select, db, [])",
+    "Reflect.apply.call(Reflect, db.select, db, [])",
+    "Reflect.apply.apply(Reflect, [db.select, db, []])",
+    "Reflect.apply.bind(Reflect, db.select, db, [])()",
+    "const apply = Reflect.apply.bind(Reflect); apply(db.select, db, [])",
+    "const { apply } = Reflect; apply.call(Reflect, db.select, db, [])",
   ];
 
   for (const source of cases) {
@@ -137,6 +150,29 @@ test("check:queries detects Reflect.apply with statically known read methods", (
 
   const runtime = { select: () => "selected" };
   assert.equal(Reflect.apply(runtime.select, runtime, []), "selected");
+});
+
+test("check:queries leaves shadowed and unrelated Reflect.apply-shaped calls alone", () => {
+  const cases = [
+    "function f(Reflect) { Reflect.apply(db.select, db, []); }",
+    "const Reflect = localNamespace; Reflect.apply(db.select, db, []);",
+    "const R = customNamespace; R.apply(db.select, db, []);",
+    "const { [dynamicName]: R } = Reflect; R.apply(db.select, db, []);",
+    "const apply = customFunction.apply; apply(db.select, db, []);",
+    "function f(globalThis) { globalThis.Reflect.apply(db.select, db, []); }",
+    "const apply = Reflect.apply; { const apply = custom; apply(db.select, db, []); }",
+    "const apply = Reflect.apply; let changed = apply; changed = custom; changed(db.select, db, []);",
+    "Reflect.apply(dynamicTarget, db, []);",
+    "Reflect.apply.bind(Reflect, dynamicTarget, db, [])();",
+  ];
+
+  for (const source of cases) {
+    assert.deepEqual(
+      queryReadViolations(`${source};`, "example.ts"),
+      [],
+      source,
+    );
+  }
 });
 
 test("check:queries parses dotted, computed, escaped, and forwarded references uniformly", () => {
