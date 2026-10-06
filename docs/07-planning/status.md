@@ -1,3 +1,23 @@
+## Blocked — current October 6 checkpoint
+
+- **P0:** the three actual representative UTC observation dates are reconciled. Runtime
+  enforcement and rollback acceptance remain incomplete; the private strict adapter is under
+  one structural provenance-repair batch after independent Sol findings. Public-config tally
+  substitution remains a concrete DEV/UAT-only exception pending Thomas, not an inferred waiver.
+  The previously missing installer is implemented and pushed as draft #583 at `b7d4a360`;
+  22 offline adversarial tests pass, but independent review, required CI and applicable runtime
+  acceptance are pending. The additional whole-P0 Sol finalizer is provisional, not CLEAR.
+- **P1–P4:** complete implementation slices continue in parallel. Fresh ordinary review A
+  and B clear their assigned API/domain/identity/migration scopes at exact source `326203ba`;
+  the UI-only rendering delta is composed locally at `4d80d9cb`. Full current-source review,
+  independent Sol, hosted AMD64 visuals/performance and required CI remain before acceptance.
+  Actual hosted failures include contract lint, token scanning, visual baselines and new
+  transitive dependency advisories; one complete source correction batch is active.
+  P4 query bucket B SQL passes 46 files/412 tests; full #580 acceptance remains P4.
+- **External acceptance:** real Entra 25-test certification and executable outbox delivery
+  remain unclaimed. No new feature source is deployed, no production cutover is authorized,
+  and no phase is marked complete by these implementation or review checkpoints.
+
 ## October 6 representative capture reconciled; parallel slices pushed — 2026-10-06
 
 Accepted main remains `3096cb044bdf6ae98488bfc385f532fa6386343a`; reviewed OrbStack DEV
