@@ -17,7 +17,7 @@ import { useEffect, useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { getPortalCatalogue, submitPortalRequest } from "@/fetchers/intake";
 import { missingRequiredIntakeFields } from "@/lib/intake-validation";
-import { isIntakeConditionSatisfied } from "@/lib/intake-visibility";
+import { resolveIntakeVisibility } from "@/lib/intake-visibility";
 import { parsePortalCatalogueSearch, routes } from "@/lib/routes";
 
 type Entry = {
@@ -95,16 +95,20 @@ function PortalCatalogue() {
       localStorage.setItem(storageKey, JSON.stringify(answers));
   }, [storageKey, answers]);
   const fields = selected?.formSchema.fields ?? [];
+  const selectedSchema = selected?.formSchema;
+  const fieldVisibility = useMemo(
+    () =>
+      selectedSchema
+        ? resolveIntakeVisibility(selectedSchema, answers)
+        : new Map<string, boolean>(),
+    [selectedSchema, answers],
+  );
   const groups = useMemo(
     () => [...new Set(entries.map((entry) => entry.group))],
     [entries],
   );
-  const visible = (field: FormSchema["fields"][number]) => {
-    const condition = field.showIf;
-    if (!condition) return true;
-    const value = answers[condition.field_key];
-    return isIntakeConditionSatisfied(condition, value);
-  };
+  const visible = (field: FormSchema["fields"][number]) =>
+    fieldVisibility.get(field.key) ?? true;
   return (
     <main className="mx-auto flex min-h-svh w-full max-w-3xl flex-col gap-6 p-6">
       <header>

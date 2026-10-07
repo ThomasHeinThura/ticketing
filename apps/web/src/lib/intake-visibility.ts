@@ -1,6 +1,8 @@
 import {
+  type FormSchema,
   type FormValue,
   isVisibilityConditionSatisfied,
+  resolveFormVisibility,
   type VisibilityCondition,
 } from "@taskdesk/domain";
 
@@ -19,4 +21,12 @@ export function isIntakeConditionSatisfied(
     condition as VisibilityCondition,
     value as FormValue,
   );
+}
+
+/** Resolve every portal field with the same visibility result used by validation. */
+export function resolveIntakeVisibility(
+  schema: FormSchema,
+  answers: Readonly<Record<string, unknown>>,
+): ReadonlyMap<string, boolean> {
+  return resolveFormVisibility(schema, answers as Record<string, FormValue>);
 }

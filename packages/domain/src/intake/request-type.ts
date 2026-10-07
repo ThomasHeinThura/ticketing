@@ -198,13 +198,14 @@ function valuesEqual(a: FormValue, b: FormValue): boolean {
  * `validateFormSchema` should already have rejected, fails **closed**: the field counts
  * as visible, so its `required` is still enforced rather than silently skippable (H1).
  */
-function resolveVisibility(
+export function resolveFormVisibility(
   schema: FormSchema,
   data: Readonly<Record<string, FormValue>>,
 ): ReadonlyMap<string, boolean> {
   const byKey = new Map(schema.fields.map((f) => [f.key, f]));
   const cache = new Map<string, boolean>();
-  const resolving = new Set<string>();
+  const resolving = new Map<string, number>();
+  const path: string[] = [];
 
   function resolve(field: FormField): boolean {
     const cached = cache.get(field.key);
@@ -215,15 +216,25 @@ function resolveVisibility(
       cache.set(field.key, true);
       return true;
     }
-    if (resolving.has(field.key) || !isConditionWellFormed(condition)) {
+    if (!isConditionWellFormed(condition)) {
       cache.set(field.key, true);
       return true;
     }
+    const cycleStart = resolving.get(field.key);
+    if (cycleStart !== undefined) {
+      for (const key of path.slice(cycleStart)) cache.set(key, true);
+      return true;
+    }
 
-    resolving.add(field.key);
+    resolving.set(field.key, path.length);
+    path.push(field.key);
     const controller = byKey.get(condition.field_key);
     const controllerVisible = controller === undefined || resolve(controller);
+    path.pop();
     resolving.delete(field.key);
+
+    // A cycle member stays fail-closed/visible even after recursion unwinds.
+    if (cache.has(field.key)) return true;
 
     // N1: a hidden controller's answer never decides another field's visibility.
     const actual: FormValue =
@@ -245,7 +256,7 @@ export function isFieldVisible(
   field: FormField,
   data: Readonly<Record<string, FormValue>>,
 ): boolean {
-  return resolveVisibility(schema, data).get(field.key) ?? true;
+  return resolveFormVisibility(schema, data).get(field.key) ?? true;
 }
 
 /** The fields a customer actually sees for the data so far — required checks apply only here. */
@@ -253,7 +264,7 @@ export function visibleFields(
   schema: FormSchema,
   data: Readonly<Record<string, FormValue>>,
 ): readonly FormField[] {
-  const visibility = resolveVisibility(schema, data);
+  const visibility = resolveFormVisibility(schema, data);
   return schema.fields.filter((f) => visibility.get(f.key) ?? true);
 }
 

@@ -18,6 +18,7 @@ import {
   isFieldVisible,
   isRequestTypeVisible,
   MAX_TEXT_ANSWER_LENGTH,
+  resolveFormVisibility,
   translateMapsTo,
   validateFormSchema,
   validateSubmissionData,
@@ -636,6 +637,40 @@ describe("showIf — single-level chains rejected at publish, a smuggled hidden 
     // a=true → b visible; b="n" → c (neq "y") is visible and required.
     expect(validateSubmissionData(CHAIN_SCHEMA, { a: true, b: "n" })).toEqual([
       { key: "c", problem: "required_missing" },
+    ]);
+  });
+
+  it("keeps every member of a legacy visibility cycle visible", () => {
+    const cyclicSchema: FormSchema = {
+      fields: [
+        {
+          key: "first",
+          type: "text",
+          label: "First",
+          required: true,
+          showIf: { field_key: "second", op: "eq", value: "hide" },
+        },
+        {
+          key: "second",
+          type: "text",
+          label: "Second",
+          required: true,
+          showIf: { field_key: "first", op: "eq", value: "hide" },
+        },
+      ],
+    };
+    const answers = { first: "show", second: "show" };
+
+    expect(resolveFormVisibility(cyclicSchema, answers)).toEqual(
+      new Map([
+        ["first", true],
+        ["second", true],
+      ]),
+    );
+    expect(validateSubmissionData(cyclicSchema, answers)).toEqual([]);
+    expect(validateSubmissionData(cyclicSchema, {})).toEqual([
+      { key: "first", problem: "required_missing" },
+      { key: "second", problem: "required_missing" },
     ]);
   });
 });
