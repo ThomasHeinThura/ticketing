@@ -23213,6 +23213,2614 @@
         }
       }
     },
+    "/request-types": {
+      "get": {
+        "operationId": "listRequestTypes",
+        "tags": [
+          "Request types"
+        ],
+        "summary": "List request types",
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 200
+            },
+            "required": true,
+            "name": "workspaceId",
+            "in": "query"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Request types",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "requestTypes": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "id": {
+                            "type": "string"
+                          },
+                          "key": {
+                            "type": "string"
+                          },
+                          "workspaceId": {
+                            "type": "string"
+                          },
+                          "name": {
+                            "type": "string"
+                          },
+                          "description": {
+                            "type": [
+                              "string",
+                              "null"
+                            ]
+                          },
+                          "icon": {
+                            "type": [
+                              "string",
+                              "null"
+                            ]
+                          },
+                          "group": {
+                            "type": "string"
+                          },
+                          "workItemTypeId": {
+                            "type": "string"
+                          },
+                          "defaultProjectId": {
+                            "type": [
+                              "string",
+                              "null"
+                            ]
+                          },
+                          "formSchema": {},
+                          "slaPolicyId": {
+                            "type": [
+                              "string",
+                              "null"
+                            ]
+                          },
+                          "defaultAssigneeId": {
+                            "type": [
+                              "string",
+                              "null"
+                            ]
+                          },
+                          "autoAccept": {
+                            "type": "boolean"
+                          },
+                          "customerVisible": {
+                            "type": "boolean"
+                          },
+                          "forcePrivate": {
+                            "type": "boolean"
+                          },
+                          "published": {
+                            "type": "boolean"
+                          },
+                          "position": {
+                            "type": "number"
+                          },
+                          "version": {
+                            "type": "number"
+                          },
+                          "createdAt": {
+                            "type": "string",
+                            "format": "date-time"
+                          },
+                          "updatedAt": {
+                            "type": "string",
+                            "format": "date-time"
+                          }
+                        },
+                        "required": [
+                          "id",
+                          "key",
+                          "workspaceId",
+                          "name",
+                          "description",
+                          "icon",
+                          "group",
+                          "workItemTypeId",
+                          "defaultProjectId",
+                          "slaPolicyId",
+                          "defaultAssigneeId",
+                          "autoAccept",
+                          "customerVisible",
+                          "forcePrivate",
+                          "published",
+                          "position",
+                          "version",
+                          "createdAt",
+                          "updatedAt"
+                        ]
+                      }
+                    }
+                  },
+                  "required": [
+                    "requestTypes"
+                  ]
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing or invalid credentials"
+          },
+          "403": {
+            "description": "Missing request type read capability",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "operationId": "createRequestType",
+        "tags": [
+          "Request types"
+        ],
+        "summary": "Create a request type",
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 200
+            },
+            "required": true,
+            "name": "workspaceId",
+            "in": "query"
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "name": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 120
+                  },
+                  "description": {
+                    "type": [
+                      "string",
+                      "null"
+                    ],
+                    "maxLength": 2000
+                  },
+                  "icon": {
+                    "type": [
+                      "string",
+                      "null"
+                    ],
+                    "maxLength": 100
+                  },
+                  "group": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 120
+                  },
+                  "workItemTypeId": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 200
+                  },
+                  "defaultProjectId": {
+                    "type": [
+                      "string",
+                      "null"
+                    ],
+                    "minLength": 1,
+                    "maxLength": 200
+                  },
+                  "formSchema": {
+                    "type": "object",
+                    "properties": {
+                      "fields": {
+                        "type": "array",
+                        "items": {
+                          "type": "object",
+                          "properties": {
+                            "key": {
+                              "type": "string",
+                              "minLength": 1,
+                              "maxLength": 100
+                            },
+                            "type": {
+                              "type": "string",
+                              "enum": [
+                                "text",
+                                "textarea",
+                                "select",
+                                "combobox",
+                                "number",
+                                "date",
+                                "checkbox",
+                                "file"
+                              ]
+                            },
+                            "label": {
+                              "type": "string",
+                              "minLength": 1,
+                              "maxLength": 200
+                            },
+                            "required": {
+                              "type": "boolean"
+                            },
+                            "options": {
+                              "type": "array",
+                              "items": {
+                                "type": "string",
+                                "minLength": 1,
+                                "maxLength": 200
+                              },
+                              "maxItems": 500
+                            },
+                            "help": {
+                              "type": "string",
+                              "maxLength": 1000
+                            },
+                            "multiple": {
+                              "type": "boolean"
+                            },
+                            "mapsTo": {
+                              "type": "object",
+                              "properties": {
+                                "field": {
+                                  "type": "string",
+                                  "minLength": 1,
+                                  "maxLength": 100
+                                },
+                                "map": {
+                                  "type": "object",
+                                  "additionalProperties": {
+                                    "type": "string"
+                                  }
+                                }
+                              },
+                              "required": [
+                                "field"
+                              ],
+                              "additionalProperties": false
+                            },
+                            "showIf": {
+                              "type": [
+                                "object",
+                                "null"
+                              ],
+                              "properties": {
+                                "field_key": {
+                                  "type": "string",
+                                  "minLength": 1
+                                },
+                                "op": {
+                                  "type": "string",
+                                  "enum": [
+                                    "eq",
+                                    "neq",
+                                    "in",
+                                    "is_set"
+                                  ]
+                                },
+                                "value": {}
+                              },
+                              "required": [
+                                "field_key",
+                                "op"
+                              ],
+                              "additionalProperties": false
+                            }
+                          },
+                          "required": [
+                            "key",
+                            "type",
+                            "label"
+                          ],
+                          "additionalProperties": false
+                        },
+                        "maxItems": 100
+                      }
+                    },
+                    "required": [
+                      "fields"
+                    ],
+                    "additionalProperties": false
+                  },
+                  "slaPolicyId": {
+                    "type": [
+                      "string",
+                      "null"
+                    ],
+                    "minLength": 1,
+                    "maxLength": 200
+                  },
+                  "defaultAssigneeId": {
+                    "type": [
+                      "string",
+                      "null"
+                    ],
+                    "minLength": 1,
+                    "maxLength": 200
+                  },
+                  "autoAccept": {
+                    "type": "boolean",
+                    "default": false
+                  },
+                  "customerVisible": {
+                    "type": "boolean",
+                    "default": false
+                  },
+                  "forcePrivate": {
+                    "type": "boolean",
+                    "default": false
+                  },
+                  "position": {
+                    "type": "integer",
+                    "minimum": 0,
+                    "default": 0
+                  }
+                },
+                "required": [
+                  "name",
+                  "group",
+                  "workItemTypeId",
+                  "formSchema"
+                ],
+                "additionalProperties": false
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Created request type",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "id": {
+                      "type": "string"
+                    },
+                    "key": {
+                      "type": "string"
+                    },
+                    "workspaceId": {
+                      "type": "string"
+                    },
+                    "name": {
+                      "type": "string"
+                    },
+                    "description": {
+                      "type": [
+                        "string",
+                        "null"
+                      ]
+                    },
+                    "icon": {
+                      "type": [
+                        "string",
+                        "null"
+                      ]
+                    },
+                    "group": {
+                      "type": "string"
+                    },
+                    "workItemTypeId": {
+                      "type": "string"
+                    },
+                    "defaultProjectId": {
+                      "type": [
+                        "string",
+                        "null"
+                      ]
+                    },
+                    "formSchema": {},
+                    "slaPolicyId": {
+                      "type": [
+                        "string",
+                        "null"
+                      ]
+                    },
+                    "defaultAssigneeId": {
+                      "type": [
+                        "string",
+                        "null"
+                      ]
+                    },
+                    "autoAccept": {
+                      "type": "boolean"
+                    },
+                    "customerVisible": {
+                      "type": "boolean"
+                    },
+                    "forcePrivate": {
+                      "type": "boolean"
+                    },
+                    "published": {
+                      "type": "boolean"
+                    },
+                    "position": {
+                      "type": "number"
+                    },
+                    "version": {
+                      "type": "number"
+                    },
+                    "createdAt": {
+                      "type": "string",
+                      "format": "date-time"
+                    },
+                    "updatedAt": {
+                      "type": "string",
+                      "format": "date-time"
+                    }
+                  },
+                  "required": [
+                    "id",
+                    "key",
+                    "workspaceId",
+                    "name",
+                    "description",
+                    "icon",
+                    "group",
+                    "workItemTypeId",
+                    "defaultProjectId",
+                    "slaPolicyId",
+                    "defaultAssigneeId",
+                    "autoAccept",
+                    "customerVisible",
+                    "forcePrivate",
+                    "published",
+                    "position",
+                    "version",
+                    "createdAt",
+                    "updatedAt"
+                  ]
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing or invalid credentials"
+          },
+          "403": {
+            "description": "Missing request type manage capability",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/request-types/{id}": {
+      "get": {
+        "operationId": "getRequestType",
+        "tags": [
+          "Request types"
+        ],
+        "summary": "Get a request type and published history",
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 200
+            },
+            "required": true,
+            "name": "id",
+            "in": "path"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Request type and versions",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "id": {
+                      "type": "string"
+                    },
+                    "key": {
+                      "type": "string"
+                    },
+                    "workspaceId": {
+                      "type": "string"
+                    },
+                    "name": {
+                      "type": "string"
+                    },
+                    "description": {
+                      "type": [
+                        "string",
+                        "null"
+                      ]
+                    },
+                    "icon": {
+                      "type": [
+                        "string",
+                        "null"
+                      ]
+                    },
+                    "group": {
+                      "type": "string"
+                    },
+                    "workItemTypeId": {
+                      "type": "string"
+                    },
+                    "defaultProjectId": {
+                      "type": [
+                        "string",
+                        "null"
+                      ]
+                    },
+                    "formSchema": {},
+                    "slaPolicyId": {
+                      "type": [
+                        "string",
+                        "null"
+                      ]
+                    },
+                    "defaultAssigneeId": {
+                      "type": [
+                        "string",
+                        "null"
+                      ]
+                    },
+                    "autoAccept": {
+                      "type": "boolean"
+                    },
+                    "customerVisible": {
+                      "type": "boolean"
+                    },
+                    "forcePrivate": {
+                      "type": "boolean"
+                    },
+                    "published": {
+                      "type": "boolean"
+                    },
+                    "position": {
+                      "type": "number"
+                    },
+                    "version": {
+                      "type": "number"
+                    },
+                    "createdAt": {
+                      "type": "string",
+                      "format": "date-time"
+                    },
+                    "updatedAt": {
+                      "type": "string",
+                      "format": "date-time"
+                    },
+                    "versions": {
+                      "type": "array",
+                      "items": {}
+                    }
+                  },
+                  "required": [
+                    "id",
+                    "key",
+                    "workspaceId",
+                    "name",
+                    "description",
+                    "icon",
+                    "group",
+                    "workItemTypeId",
+                    "defaultProjectId",
+                    "slaPolicyId",
+                    "defaultAssigneeId",
+                    "autoAccept",
+                    "customerVisible",
+                    "forcePrivate",
+                    "published",
+                    "position",
+                    "version",
+                    "createdAt",
+                    "updatedAt",
+                    "versions"
+                  ]
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing or invalid credentials"
+          },
+          "404": {
+            "description": "Request type not found",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          }
+        }
+      },
+      "patch": {
+        "operationId": "updateRequestType",
+        "tags": [
+          "Request types"
+        ],
+        "summary": "Update a request type draft",
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 200
+            },
+            "required": true,
+            "name": "id",
+            "in": "path"
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "name": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 120
+                  },
+                  "description": {
+                    "type": [
+                      "string",
+                      "null"
+                    ],
+                    "maxLength": 2000
+                  },
+                  "icon": {
+                    "type": [
+                      "string",
+                      "null"
+                    ],
+                    "maxLength": 100
+                  },
+                  "group": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 120
+                  },
+                  "workItemTypeId": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 200
+                  },
+                  "defaultProjectId": {
+                    "type": [
+                      "string",
+                      "null"
+                    ],
+                    "minLength": 1,
+                    "maxLength": 200
+                  },
+                  "formSchema": {
+                    "type": "object",
+                    "properties": {
+                      "fields": {
+                        "type": "array",
+                        "items": {
+                          "type": "object",
+                          "properties": {
+                            "key": {
+                              "type": "string",
+                              "minLength": 1,
+                              "maxLength": 100
+                            },
+                            "type": {
+                              "type": "string",
+                              "enum": [
+                                "text",
+                                "textarea",
+                                "select",
+                                "combobox",
+                                "number",
+                                "date",
+                                "checkbox",
+                                "file"
+                              ]
+                            },
+                            "label": {
+                              "type": "string",
+                              "minLength": 1,
+                              "maxLength": 200
+                            },
+                            "required": {
+                              "type": "boolean"
+                            },
+                            "options": {
+                              "type": "array",
+                              "items": {
+                                "type": "string",
+                                "minLength": 1,
+                                "maxLength": 200
+                              },
+                              "maxItems": 500
+                            },
+                            "help": {
+                              "type": "string",
+                              "maxLength": 1000
+                            },
+                            "multiple": {
+                              "type": "boolean"
+                            },
+                            "mapsTo": {
+                              "type": "object",
+                              "properties": {
+                                "field": {
+                                  "type": "string",
+                                  "minLength": 1,
+                                  "maxLength": 100
+                                },
+                                "map": {
+                                  "type": "object",
+                                  "additionalProperties": {
+                                    "type": "string"
+                                  }
+                                }
+                              },
+                              "required": [
+                                "field"
+                              ],
+                              "additionalProperties": false
+                            },
+                            "showIf": {
+                              "type": [
+                                "object",
+                                "null"
+                              ],
+                              "properties": {
+                                "field_key": {
+                                  "type": "string",
+                                  "minLength": 1
+                                },
+                                "op": {
+                                  "type": "string",
+                                  "enum": [
+                                    "eq",
+                                    "neq",
+                                    "in",
+                                    "is_set"
+                                  ]
+                                },
+                                "value": {}
+                              },
+                              "required": [
+                                "field_key",
+                                "op"
+                              ],
+                              "additionalProperties": false
+                            }
+                          },
+                          "required": [
+                            "key",
+                            "type",
+                            "label"
+                          ],
+                          "additionalProperties": false
+                        },
+                        "maxItems": 100
+                      }
+                    },
+                    "required": [
+                      "fields"
+                    ],
+                    "additionalProperties": false
+                  },
+                  "slaPolicyId": {
+                    "type": [
+                      "string",
+                      "null"
+                    ],
+                    "minLength": 1,
+                    "maxLength": 200
+                  },
+                  "defaultAssigneeId": {
+                    "type": [
+                      "string",
+                      "null"
+                    ],
+                    "minLength": 1,
+                    "maxLength": 200
+                  },
+                  "autoAccept": {
+                    "type": "boolean",
+                    "default": false
+                  },
+                  "customerVisible": {
+                    "type": "boolean",
+                    "default": false
+                  },
+                  "forcePrivate": {
+                    "type": "boolean",
+                    "default": false
+                  },
+                  "position": {
+                    "type": "integer",
+                    "minimum": 0,
+                    "default": 0
+                  },
+                  "version": {
+                    "type": "integer",
+                    "exclusiveMinimum": 0
+                  }
+                },
+                "required": [
+                  "version"
+                ],
+                "additionalProperties": false
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Updated request type",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "id": {
+                      "type": "string"
+                    },
+                    "key": {
+                      "type": "string"
+                    },
+                    "workspaceId": {
+                      "type": "string"
+                    },
+                    "name": {
+                      "type": "string"
+                    },
+                    "description": {
+                      "type": [
+                        "string",
+                        "null"
+                      ]
+                    },
+                    "icon": {
+                      "type": [
+                        "string",
+                        "null"
+                      ]
+                    },
+                    "group": {
+                      "type": "string"
+                    },
+                    "workItemTypeId": {
+                      "type": "string"
+                    },
+                    "defaultProjectId": {
+                      "type": [
+                        "string",
+                        "null"
+                      ]
+                    },
+                    "formSchema": {},
+                    "slaPolicyId": {
+                      "type": [
+                        "string",
+                        "null"
+                      ]
+                    },
+                    "defaultAssigneeId": {
+                      "type": [
+                        "string",
+                        "null"
+                      ]
+                    },
+                    "autoAccept": {
+                      "type": "boolean"
+                    },
+                    "customerVisible": {
+                      "type": "boolean"
+                    },
+                    "forcePrivate": {
+                      "type": "boolean"
+                    },
+                    "published": {
+                      "type": "boolean"
+                    },
+                    "position": {
+                      "type": "number"
+                    },
+                    "version": {
+                      "type": "number"
+                    },
+                    "createdAt": {
+                      "type": "string",
+                      "format": "date-time"
+                    },
+                    "updatedAt": {
+                      "type": "string",
+                      "format": "date-time"
+                    }
+                  },
+                  "required": [
+                    "id",
+                    "key",
+                    "workspaceId",
+                    "name",
+                    "description",
+                    "icon",
+                    "group",
+                    "workItemTypeId",
+                    "defaultProjectId",
+                    "slaPolicyId",
+                    "defaultAssigneeId",
+                    "autoAccept",
+                    "customerVisible",
+                    "forcePrivate",
+                    "published",
+                    "position",
+                    "version",
+                    "createdAt",
+                    "updatedAt"
+                  ]
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing or invalid credentials"
+          },
+          "404": {
+            "description": "Request type not found",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Request type changed",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          }
+        }
+      },
+      "delete": {
+        "operationId": "deleteRequestType",
+        "tags": [
+          "Request types"
+        ],
+        "summary": "Delete an unpublished request type without submissions",
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 200
+            },
+            "required": true,
+            "name": "id",
+            "in": "path"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Deleted",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "deleted": {
+                      "type": "boolean",
+                      "enum": [
+                        true
+                      ]
+                    }
+                  },
+                  "required": [
+                    "deleted"
+                  ]
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing or invalid credentials"
+          },
+          "404": {
+            "description": "Request type not found",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Request type cannot be deleted",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/request-types/{id}/publish": {
+      "post": {
+        "operationId": "publishRequestType",
+        "tags": [
+          "Request types"
+        ],
+        "summary": "Publish an immutable form version",
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 200
+            },
+            "required": true,
+            "name": "id",
+            "in": "path"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Published request type",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "requestType": {
+                      "type": "object",
+                      "properties": {
+                        "id": {
+                          "type": "string"
+                        },
+                        "key": {
+                          "type": "string"
+                        },
+                        "workspaceId": {
+                          "type": "string"
+                        },
+                        "name": {
+                          "type": "string"
+                        },
+                        "description": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "icon": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "group": {
+                          "type": "string"
+                        },
+                        "workItemTypeId": {
+                          "type": "string"
+                        },
+                        "defaultProjectId": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "formSchema": {},
+                        "slaPolicyId": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "defaultAssigneeId": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "autoAccept": {
+                          "type": "boolean"
+                        },
+                        "customerVisible": {
+                          "type": "boolean"
+                        },
+                        "forcePrivate": {
+                          "type": "boolean"
+                        },
+                        "published": {
+                          "type": "boolean"
+                        },
+                        "position": {
+                          "type": "number"
+                        },
+                        "version": {
+                          "type": "number"
+                        },
+                        "createdAt": {
+                          "type": "string",
+                          "format": "date-time"
+                        },
+                        "updatedAt": {
+                          "type": "string",
+                          "format": "date-time"
+                        }
+                      },
+                      "required": [
+                        "id",
+                        "key",
+                        "workspaceId",
+                        "name",
+                        "description",
+                        "icon",
+                        "group",
+                        "workItemTypeId",
+                        "defaultProjectId",
+                        "slaPolicyId",
+                        "defaultAssigneeId",
+                        "autoAccept",
+                        "customerVisible",
+                        "forcePrivate",
+                        "published",
+                        "position",
+                        "version",
+                        "createdAt",
+                        "updatedAt"
+                      ]
+                    },
+                    "version": {}
+                  },
+                  "required": [
+                    "requestType"
+                  ]
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing or invalid credentials"
+          },
+          "404": {
+            "description": "Request type not found",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Request type form is not publishable",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/request-types/{id}/unpublish": {
+      "post": {
+        "operationId": "unpublishRequestType",
+        "tags": [
+          "Request types"
+        ],
+        "summary": "Unpublish a request type",
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 200
+            },
+            "required": true,
+            "name": "id",
+            "in": "path"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Unpublished request type",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "id": {
+                      "type": "string"
+                    },
+                    "key": {
+                      "type": "string"
+                    },
+                    "workspaceId": {
+                      "type": "string"
+                    },
+                    "name": {
+                      "type": "string"
+                    },
+                    "description": {
+                      "type": [
+                        "string",
+                        "null"
+                      ]
+                    },
+                    "icon": {
+                      "type": [
+                        "string",
+                        "null"
+                      ]
+                    },
+                    "group": {
+                      "type": "string"
+                    },
+                    "workItemTypeId": {
+                      "type": "string"
+                    },
+                    "defaultProjectId": {
+                      "type": [
+                        "string",
+                        "null"
+                      ]
+                    },
+                    "formSchema": {},
+                    "slaPolicyId": {
+                      "type": [
+                        "string",
+                        "null"
+                      ]
+                    },
+                    "defaultAssigneeId": {
+                      "type": [
+                        "string",
+                        "null"
+                      ]
+                    },
+                    "autoAccept": {
+                      "type": "boolean"
+                    },
+                    "customerVisible": {
+                      "type": "boolean"
+                    },
+                    "forcePrivate": {
+                      "type": "boolean"
+                    },
+                    "published": {
+                      "type": "boolean"
+                    },
+                    "position": {
+                      "type": "number"
+                    },
+                    "version": {
+                      "type": "number"
+                    },
+                    "createdAt": {
+                      "type": "string",
+                      "format": "date-time"
+                    },
+                    "updatedAt": {
+                      "type": "string",
+                      "format": "date-time"
+                    }
+                  },
+                  "required": [
+                    "id",
+                    "key",
+                    "workspaceId",
+                    "name",
+                    "description",
+                    "icon",
+                    "group",
+                    "workItemTypeId",
+                    "defaultProjectId",
+                    "slaPolicyId",
+                    "defaultAssigneeId",
+                    "autoAccept",
+                    "customerVisible",
+                    "forcePrivate",
+                    "published",
+                    "position",
+                    "version",
+                    "createdAt",
+                    "updatedAt"
+                  ]
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing or invalid credentials"
+          },
+          "404": {
+            "description": "Request type not found",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/portal/catalogue": {
+      "get": {
+        "operationId": "getPortalCatalogue",
+        "tags": [
+          "Portal catalogue"
+        ],
+        "summary": "List the caller organisation's request types",
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "maxLength": 200,
+              "default": ""
+            },
+            "required": false,
+            "name": "q",
+            "in": "query"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Visible catalogue",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "defaultCustomerVisibility": {
+                      "type": "string",
+                      "enum": [
+                        "private",
+                        "organisation"
+                      ]
+                    },
+                    "requestTypes": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "key": {
+                            "type": "string"
+                          },
+                          "name": {
+                            "type": "string"
+                          },
+                          "description": {
+                            "type": [
+                              "string",
+                              "null"
+                            ]
+                          },
+                          "icon": {
+                            "type": [
+                              "string",
+                              "null"
+                            ]
+                          },
+                          "group": {
+                            "type": "string"
+                          },
+                          "position": {
+                            "type": "number"
+                          },
+                          "forcePrivate": {
+                            "type": "boolean"
+                          },
+                          "formSchema": {},
+                          "version": {
+                            "type": "number"
+                          }
+                        },
+                        "required": [
+                          "key",
+                          "name",
+                          "description",
+                          "icon",
+                          "group",
+                          "position",
+                          "forcePrivate",
+                          "version"
+                        ]
+                      }
+                    }
+                  },
+                  "required": [
+                    "defaultCustomerVisibility",
+                    "requestTypes"
+                  ]
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing or invalid credentials"
+          }
+        }
+      }
+    },
+    "/portal/catalogue/{key}": {
+      "get": {
+        "operationId": "getPortalRequestType",
+        "tags": [
+          "Portal catalogue"
+        ],
+        "summary": "Get a visible request type form",
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 200
+            },
+            "required": true,
+            "name": "key",
+            "in": "path"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Versioned request form",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "key": {
+                      "type": "string"
+                    },
+                    "name": {
+                      "type": "string"
+                    },
+                    "description": {
+                      "type": [
+                        "string",
+                        "null"
+                      ]
+                    },
+                    "formSchema": {},
+                    "version": {
+                      "type": "number"
+                    }
+                  },
+                  "required": [
+                    "key",
+                    "name",
+                    "description",
+                    "version"
+                  ]
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing or invalid credentials"
+          },
+          "404": {
+            "description": "Request type not found",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/portal/submissions": {
+      "post": {
+        "operationId": "createPortalSubmission",
+        "tags": [
+          "Portal submissions"
+        ],
+        "summary": "Submit a request",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "key": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 200
+                  },
+                  "formData": {
+                    "type": "object",
+                    "additionalProperties": {}
+                  },
+                  "customerVisibility": {
+                    "type": "string",
+                    "enum": [
+                      "private",
+                      "organisation"
+                    ]
+                  }
+                },
+                "required": [
+                  "key",
+                  "formData"
+                ],
+                "additionalProperties": false
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Created submission",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "id": {
+                      "type": "string"
+                    },
+                    "number": {
+                      "type": "number"
+                    },
+                    "ref": {
+                      "type": "string"
+                    },
+                    "state": {
+                      "type": "string"
+                    },
+                    "createdAt": {
+                      "type": "string",
+                      "format": "date-time"
+                    }
+                  },
+                  "required": [
+                    "id",
+                    "number",
+                    "ref",
+                    "state",
+                    "createdAt"
+                  ]
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing or invalid credentials"
+          },
+          "404": {
+            "description": "Request type not found in this organisation's catalogue",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Form answers do not match the published form",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          }
+        }
+      },
+      "get": {
+        "operationId": "listOwnPortalSubmissions",
+        "tags": [
+          "Portal submissions"
+        ],
+        "summary": "List the caller's submissions",
+        "responses": {
+          "200": {
+            "description": "Submissions",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "submissions": {
+                      "type": "array",
+                      "items": {}
+                    }
+                  },
+                  "required": [
+                    "submissions"
+                  ]
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing or invalid credentials"
+          }
+        }
+      }
+    },
+    "/submissions": {
+      "get": {
+        "operationId": "listSubmissions",
+        "tags": [
+          "Intake"
+        ],
+        "summary": "List submissions for triage",
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 200
+            },
+            "required": true,
+            "name": "workspaceId",
+            "in": "query"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "enum": [
+                "new",
+                "clarifying",
+                "accepted",
+                "declined",
+                "duplicate",
+                "withdrawn"
+              ]
+            },
+            "required": false,
+            "name": "state",
+            "in": "query"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Submission queue",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "submissions": {
+                      "type": "array",
+                      "items": {}
+                    }
+                  },
+                  "required": [
+                    "submissions"
+                  ]
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing or invalid credentials"
+          },
+          "403": {
+            "description": "Missing triage capability",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/submissions/{ref}": {
+      "get": {
+        "operationId": "getSubmission",
+        "tags": [
+          "Intake"
+        ],
+        "summary": "Get a submission and its thread",
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "pattern": "^SUB-[1-9]\\d{0,9}$"
+            },
+            "required": true,
+            "name": "ref",
+            "in": "path"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Submission detail",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "submission": {},
+                    "requestType": {},
+                    "version": {},
+                    "messages": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "id": {
+                            "type": "string"
+                          },
+                          "authorId": {
+                            "type": "string"
+                          },
+                          "actorType": {
+                            "type": "string"
+                          },
+                          "body": {
+                            "type": "string"
+                          },
+                          "createdAt": {
+                            "type": "string",
+                            "format": "date-time"
+                          }
+                        },
+                        "required": [
+                          "id",
+                          "authorId",
+                          "actorType",
+                          "body",
+                          "createdAt"
+                        ]
+                      }
+                    },
+                    "ref": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "messages",
+                    "ref"
+                  ]
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing or invalid credentials"
+          },
+          "404": {
+            "description": "Submission not found",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/submissions/{ref}/claim": {
+      "post": {
+        "operationId": "claimSubmission",
+        "tags": [
+          "Intake"
+        ],
+        "summary": "Claim a submission for triage",
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "pattern": "^SUB-[1-9]\\d{0,9}$"
+            },
+            "required": true,
+            "name": "ref",
+            "in": "path"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Claimed submission",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "id": {
+                      "type": "string"
+                    },
+                    "ref": {
+                      "type": "string"
+                    },
+                    "state": {
+                      "type": "string"
+                    },
+                    "claimedBy": {
+                      "type": [
+                        "string",
+                        "null"
+                      ]
+                    },
+                    "claimedAt": {
+                      "type": [
+                        "string",
+                        "null"
+                      ],
+                      "format": "date-time"
+                    }
+                  },
+                  "required": [
+                    "id",
+                    "ref",
+                    "state",
+                    "claimedBy",
+                    "claimedAt"
+                  ]
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing or invalid credentials"
+          },
+          "409": {
+            "description": "Submission is no longer claimable",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/submissions/{ref}/accept": {
+      "post": {
+        "operationId": "acceptSubmission",
+        "tags": [
+          "Intake"
+        ],
+        "summary": "Convert a submission into a work item",
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "pattern": "^SUB-[1-9]\\d{0,9}$"
+            },
+            "required": true,
+            "name": "ref",
+            "in": "path"
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "projectId": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 200
+                  },
+                  "workItemTypeId": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 200
+                  }
+                },
+                "required": [
+                  "projectId",
+                  "workItemTypeId"
+                ],
+                "additionalProperties": false
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Accepted submission",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "ref": {
+                      "type": "string"
+                    },
+                    "state": {
+                      "type": "string",
+                      "enum": [
+                        "accepted"
+                      ]
+                    },
+                    "workItem": {}
+                  },
+                  "required": [
+                    "ref",
+                    "state"
+                  ]
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing or invalid credentials"
+          },
+          "409": {
+            "description": "Submission is no longer open",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Destination unavailable",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/submissions/{ref}/duplicate": {
+      "post": {
+        "operationId": "markSubmissionDuplicate",
+        "tags": [
+          "Intake"
+        ],
+        "summary": "Link a submission to an existing work item",
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "pattern": "^SUB-[1-9]\\d{0,9}$"
+            },
+            "required": true,
+            "name": "ref",
+            "in": "path"
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "workItemId": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 200
+                  }
+                },
+                "required": [
+                  "workItemId"
+                ],
+                "additionalProperties": false
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Linked duplicate",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "ref": {
+                      "type": "string"
+                    },
+                    "state": {
+                      "type": "string"
+                    },
+                    "workItem": {}
+                  },
+                  "required": [
+                    "ref",
+                    "state"
+                  ]
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing or invalid credentials"
+          },
+          "404": {
+            "description": "Work item not found",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Submission is no longer open",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/submissions/{ref}/duplicates": {
+      "get": {
+        "operationId": "suggestSubmissionDuplicates",
+        "tags": [
+          "Intake"
+        ],
+        "summary": "Suggest similar work items in the same organisation",
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "pattern": "^SUB-[1-9]\\d{0,9}$"
+            },
+            "required": true,
+            "name": "ref",
+            "in": "path"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Potential duplicate work items",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "suggestions": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "id": {
+                            "type": "string"
+                          },
+                          "key": {
+                            "type": "string"
+                          },
+                          "title": {
+                            "type": "string"
+                          },
+                          "score": {
+                            "type": "number"
+                          }
+                        },
+                        "required": [
+                          "id",
+                          "key",
+                          "title",
+                          "score"
+                        ]
+                      }
+                    }
+                  },
+                  "required": [
+                    "suggestions"
+                  ]
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing or invalid credentials"
+          }
+        }
+      }
+    },
+    "/submissions/{ref}/decline": {
+      "post": {
+        "operationId": "declineSubmission",
+        "tags": [
+          "Intake"
+        ],
+        "summary": "Decline with a customer-visible reason",
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "pattern": "^SUB-[1-9]\\d{0,9}$"
+            },
+            "required": true,
+            "name": "ref",
+            "in": "path"
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "reason": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 4000
+                  }
+                },
+                "required": [
+                  "reason"
+                ],
+                "additionalProperties": false
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Declined submission",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "ref": {
+                      "type": "string"
+                    },
+                    "state": {
+                      "type": "string"
+                    },
+                    "reason": {
+                      "type": "string"
+                    },
+                    "message": {}
+                  },
+                  "required": [
+                    "ref",
+                    "state",
+                    "reason"
+                  ]
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing or invalid credentials"
+          },
+          "409": {
+            "description": "Submission is no longer open",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/submissions/{ref}/messages": {
+      "post": {
+        "operationId": "askSubmissionClarification",
+        "tags": [
+          "Intake"
+        ],
+        "summary": "Ask for clarification",
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "pattern": "^SUB-[1-9]\\d{0,9}$"
+            },
+            "required": true,
+            "name": "ref",
+            "in": "path"
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "body": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 20000
+                  }
+                },
+                "required": [
+                  "body"
+                ],
+                "additionalProperties": false
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Clarification posted",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "id": {
+                      "type": "string"
+                    },
+                    "ref": {
+                      "type": "string"
+                    },
+                    "state": {
+                      "type": "string"
+                    },
+                    "message": {
+                      "type": "object",
+                      "properties": {
+                        "id": {
+                          "type": "string"
+                        },
+                        "authorId": {
+                          "type": "string"
+                        },
+                        "actorType": {
+                          "type": "string"
+                        },
+                        "body": {
+                          "type": "string"
+                        },
+                        "createdAt": {
+                          "type": "string",
+                          "format": "date-time"
+                        }
+                      },
+                      "required": [
+                        "id",
+                        "authorId",
+                        "actorType",
+                        "body",
+                        "createdAt"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "id",
+                    "ref",
+                    "state",
+                    "message"
+                  ]
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing or invalid credentials"
+          }
+        }
+      }
+    },
+    "/portal/submissions/{ref}": {
+      "get": {
+        "operationId": "getOwnPortalSubmission",
+        "tags": [
+          "Portal submissions"
+        ],
+        "summary": "Get the caller's durable submission page",
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "pattern": "^SUB-[1-9]\\d{0,9}$"
+            },
+            "required": true,
+            "name": "ref",
+            "in": "path"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Submission page",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "submission": {},
+                    "requestType": {},
+                    "version": {},
+                    "messages": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "id": {
+                            "type": "string"
+                          },
+                          "authorId": {
+                            "type": "string"
+                          },
+                          "actorType": {
+                            "type": "string"
+                          },
+                          "body": {
+                            "type": "string"
+                          },
+                          "createdAt": {
+                            "type": "string",
+                            "format": "date-time"
+                          }
+                        },
+                        "required": [
+                          "id",
+                          "authorId",
+                          "actorType",
+                          "body",
+                          "createdAt"
+                        ]
+                      }
+                    },
+                    "ref": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "messages",
+                    "ref"
+                  ]
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing or invalid credentials"
+          },
+          "404": {
+            "description": "Submission not found",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/portal/submissions/{ref}/messages": {
+      "post": {
+        "operationId": "replyToPortalSubmission",
+        "tags": [
+          "Portal submissions"
+        ],
+        "summary": "Reply to a clarification",
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "pattern": "^SUB-[1-9]\\d{0,9}$"
+            },
+            "required": true,
+            "name": "ref",
+            "in": "path"
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "body": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 20000
+                  }
+                },
+                "required": [
+                  "body"
+                ],
+                "additionalProperties": false
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Reply posted",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "id": {
+                      "type": "string"
+                    },
+                    "ref": {
+                      "type": "string"
+                    },
+                    "state": {
+                      "type": "string"
+                    },
+                    "message": {
+                      "type": "object",
+                      "properties": {
+                        "id": {
+                          "type": "string"
+                        },
+                        "authorId": {
+                          "type": "string"
+                        },
+                        "actorType": {
+                          "type": "string"
+                        },
+                        "body": {
+                          "type": "string"
+                        },
+                        "createdAt": {
+                          "type": "string",
+                          "format": "date-time"
+                        }
+                      },
+                      "required": [
+                        "id",
+                        "authorId",
+                        "actorType",
+                        "body",
+                        "createdAt"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "id",
+                    "ref",
+                    "state",
+                    "message"
+                  ]
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing or invalid credentials"
+          },
+          "409": {
+            "description": "Submission cannot receive a reply",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/portal/submissions/{ref}/withdraw": {
+      "post": {
+        "operationId": "withdrawPortalSubmission",
+        "tags": [
+          "Portal submissions"
+        ],
+        "summary": "Withdraw an unclaimed submission",
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "pattern": "^SUB-[1-9]\\d{0,9}$"
+            },
+            "required": true,
+            "name": "ref",
+            "in": "path"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Withdrawn submission",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "ref": {
+                      "type": "string"
+                    },
+                    "state": {
+                      "type": "string"
+                    },
+                    "version": {
+                      "type": "number"
+                    }
+                  },
+                  "required": [
+                    "ref",
+                    "state",
+                    "version"
+                  ]
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing or invalid credentials"
+          },
+          "409": {
+            "description": "Triage has already started",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/work-items/{key}/attachments/presign": {
       "post": {
         "operationId": "presignAttachment",
@@ -23525,6 +26133,473 @@
           },
           "403": {
             "description": "Not the uploader, or missing work_item:update permission",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Attachment not found",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/portal/submissions/{ref}/attachments/presign": {
+      "post": {
+        "operationId": "presignPortalSubmissionAttachment",
+        "tags": [
+          "Attachments"
+        ],
+        "summary": "Presign a customer attachment upload",
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "pattern": "^SUB-[1-9]\\d{0,9}$"
+            },
+            "required": true,
+            "name": "ref",
+            "in": "path"
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "filename": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 255
+                  },
+                  "contentType": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 255
+                  },
+                  "size": {
+                    "type": "integer",
+                    "exclusiveMinimum": 0
+                  },
+                  "customerVisible": {
+                    "type": "boolean",
+                    "description": "AT-3: staff uploads default to false (not customer-visible); explicit true is honoured."
+                  },
+                  "fieldKey": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 100
+                  }
+                },
+                "required": [
+                  "filename",
+                  "contentType",
+                  "size"
+                ],
+                "additionalProperties": false
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "The presigned upload",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AttachmentPresignResult"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid or disallowed file",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing or invalid credentials"
+          },
+          "404": {
+            "description": "Submission not found",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/portal/submissions/{ref}/attachments/{id}/complete": {
+      "post": {
+        "operationId": "completePortalSubmissionAttachment",
+        "tags": [
+          "Attachments"
+        ],
+        "summary": "Verify and complete a customer attachment upload",
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "pattern": "^SUB-[1-9]\\d{0,9}$"
+            },
+            "required": true,
+            "name": "ref",
+            "in": "path"
+          },
+          {
+            "schema": {
+              "type": "string"
+            },
+            "required": true,
+            "name": "id",
+            "in": "path"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Completed submission attachment",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    {
+                      "$ref": "#/components/schemas/Attachment"
+                    },
+                    {
+                      "type": "object",
+                      "properties": {
+                        "workItemId": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "submissionId": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        }
+                      },
+                      "required": [
+                        "submissionId"
+                      ]
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Upload bytes are invalid",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing or invalid credentials"
+          },
+          "404": {
+            "description": "Attachment not found",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Attachment is no longer pending",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/portal/submissions/{ref}/attachments": {
+      "get": {
+        "operationId": "listPortalSubmissionAttachments",
+        "tags": [
+          "Attachments"
+        ],
+        "summary": "List visible submission attachments",
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "pattern": "^SUB-[1-9]\\d{0,9}$"
+            },
+            "required": true,
+            "name": "ref",
+            "in": "path"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Customer-visible attachments",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "type": "object",
+                    "properties": {
+                      "id": {
+                        "type": "string"
+                      },
+                      "filename": {
+                        "type": "string"
+                      },
+                      "mimeType": {
+                        "type": "string"
+                      },
+                      "size": {
+                        "type": "number"
+                      },
+                      "submissionFieldKey": {
+                        "type": [
+                          "string",
+                          "null"
+                        ]
+                      },
+                      "state": {
+                        "type": "string"
+                      },
+                      "createdAt": {
+                        "type": "string",
+                        "format": "date-time"
+                      }
+                    },
+                    "required": [
+                      "id",
+                      "filename",
+                      "mimeType",
+                      "size",
+                      "submissionFieldKey",
+                      "state",
+                      "createdAt"
+                    ]
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing or invalid credentials"
+          }
+        }
+      }
+    },
+    "/portal/submissions/{ref}/attachments/{id}": {
+      "get": {
+        "operationId": "downloadPortalSubmissionAttachment",
+        "tags": [
+          "Attachments"
+        ],
+        "summary": "Download a visible submission attachment",
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "pattern": "^SUB-[1-9]\\d{0,9}$"
+            },
+            "required": true,
+            "name": "ref",
+            "in": "path"
+          },
+          {
+            "schema": {
+              "type": "string"
+            },
+            "required": true,
+            "name": "id",
+            "in": "path"
+          }
+        ],
+        "responses": {
+          "302": {
+            "description": "Redirect to the presigned download URL"
+          },
+          "401": {
+            "description": "Missing or invalid credentials"
+          },
+          "404": {
+            "description": "Attachment not found",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/submissions/{ref}/attachments": {
+      "get": {
+        "operationId": "listSubmissionAttachments",
+        "tags": [
+          "Attachments"
+        ],
+        "summary": "List attachments for triage",
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "pattern": "^SUB-[1-9]\\d{0,9}$"
+            },
+            "required": true,
+            "name": "ref",
+            "in": "path"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Submission attachments",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "type": "object",
+                    "properties": {
+                      "id": {
+                        "type": "string"
+                      },
+                      "filename": {
+                        "type": "string"
+                      },
+                      "mimeType": {
+                        "type": "string"
+                      },
+                      "size": {
+                        "type": "number"
+                      },
+                      "submissionFieldKey": {
+                        "type": [
+                          "string",
+                          "null"
+                        ]
+                      },
+                      "state": {
+                        "type": "string"
+                      },
+                      "customerVisible": {
+                        "type": "boolean"
+                      },
+                      "createdAt": {
+                        "type": "string",
+                        "format": "date-time"
+                      }
+                    },
+                    "required": [
+                      "id",
+                      "filename",
+                      "mimeType",
+                      "size",
+                      "submissionFieldKey",
+                      "state",
+                      "customerVisible",
+                      "createdAt"
+                    ]
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing or invalid credentials"
+          },
+          "403": {
+            "description": "Missing triage permission",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Submission not found",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/submissions/{ref}/attachments/{id}": {
+      "get": {
+        "operationId": "downloadSubmissionAttachment",
+        "tags": [
+          "Attachments"
+        ],
+        "summary": "Download an attachment during triage",
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "pattern": "^SUB-[1-9]\\d{0,9}$"
+            },
+            "required": true,
+            "name": "ref",
+            "in": "path"
+          },
+          {
+            "schema": {
+              "type": "string"
+            },
+            "required": true,
+            "name": "id",
+            "in": "path"
+          }
+        ],
+        "responses": {
+          "302": {
+            "description": "Redirect to the presigned download URL"
+          },
+          "401": {
+            "description": "Missing or invalid credentials"
+          },
+          "403": {
+            "description": "Missing triage permission",
             "content": {
               "text/plain": {
                 "schema": {

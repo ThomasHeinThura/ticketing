@@ -9,8 +9,10 @@ export const generatedRouteMetadata = {
     "/agent/settings/calendars/$id",
     "/agent/settings/profile/pending-actions",
     "/agent/settings/profile/pending-actions/$id",
+    "/agent/settings/request-types",
     "/agent/settings/sla-policies",
     "/agent/settings/sla-policies/$id",
+    "/agent/triage",
     "/agent/views",
     "/agent/views/$id",
     "/agent/work-items/$key",
@@ -58,5 +60,5 @@ export const generatedRouteMetadata = {
     "/profile-setup",
     "/test-error",
   ],
-  portal: ["/", "/approvals", "/sign-in"],
+  portal: ["/", "/approvals", "/catalogue", "/sign-in", "/submissions/$ref"],
 } as const;

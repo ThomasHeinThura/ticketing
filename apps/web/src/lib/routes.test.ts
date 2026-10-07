@@ -6,8 +6,10 @@ import {
   parseGeneratedRouteUrl,
   parseIdentityConnectionEventsSearch,
   parseIdentityConnectionEventsSearchFromQueryString,
+  parseIntakeSearch,
   parseMyWorkSearch,
   parsePendingActionsSearch,
+  parsePortalCatalogueSearch,
   parseSavedViewsSearch,
   parseSavedViewUrlSearchFromQueryString,
   parseServiceCalendarListSearchFromQueryString,
@@ -246,6 +248,45 @@ describe("routes.workItemList", () => {
   });
 });
 
+describe("routes.intakeQueue", () => {
+  it("round-trips the selected status and submission reference", () => {
+    const url = routes.intakeQueue.build({
+      state: "clarifying",
+      ref: "SUB-42",
+    });
+    expect(url).toBe("/agent/triage?state=clarifying&ref=SUB-42");
+    const parsed = parseIntakeSearch(
+      Object.fromEntries(new URLSearchParams(url.split("?")[1])),
+    );
+    expect(parsed).toEqual({ state: "clarifying", ref: "SUB-42" });
+  });
+
+  it("fails closed to the new queue for malformed filter values", () => {
+    expect(parseIntakeSearch({ state: "all", ref: "SUB-0" })).toEqual({
+      state: "new",
+    });
+  });
+});
+
+describe("routes.requestTypes and portalCatalogue", () => {
+  it("keeps request type administration registered and round-trips customer catalogue search and selection", () => {
+    expect(routes.requestTypes.build()).toBe("/agent/settings/request-types");
+    expect(generatedRouteMetadata.agent).toContain(routes.requestTypes.path);
+    const url = routes.portalCatalogue.build({
+      q: "access / laptop",
+      key: "opaque+key",
+    });
+    expect(url).toBe("/catalogue?q=access+%2F+laptop&key=opaque%2Bkey");
+    const parsedUrl = new URL(url, "https://taskdesk.invalid");
+    expect(
+      parsePortalCatalogueSearch({
+        q: parsedUrl.searchParams.get("q"),
+        key: parsedUrl.searchParams.get("key"),
+      }),
+    ).toEqual({ q: "access / laptop", key: "opaque+key" });
+  });
+});
+
 describe("routes.savedView", () => {
   it("SV-19: round-trips full query and presentation state in a shareable URL", () => {
     const search = {
@@ -288,7 +329,9 @@ describe("G5 route metadata", () => {
     expect(generatedRouteMetadata.portal).toEqual([
       "/",
       "/approvals",
+      "/catalogue",
       "/sign-in",
+      "/submissions/$ref",
     ]);
   });
 

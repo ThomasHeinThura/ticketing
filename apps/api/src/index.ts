@@ -75,6 +75,7 @@ import {
 import resetMfa from "./instance/reset-mfa";
 import { ensureSetupToken } from "./instance/setup-token";
 import users from "./instance/users";
+import intake from "./intake";
 import invitation from "./invitation";
 import label from "./label";
 import { migrateColumns } from "./migrations/column-migration";
@@ -1355,6 +1356,7 @@ export function createApp(
   // `work-item/index.ts`'s file comment.
   const workItemApi = api.route("/", workItem);
   const approvalApi = api.route("/", approval);
+  const intakeApi = api.route("/", intake);
   const attachmentApi = api.route("/", attachment);
   const userApi = api.route("/user", user);
   const viewApi = api.route("/views", view);
@@ -1668,6 +1670,7 @@ export function createApp(
     scimProtocolApi,
     invitationApi,
     invitationPublicApi,
+    intakeApi,
     oauthApi,
     labelApi,
     notificationApi,
@@ -2050,6 +2053,7 @@ const {
   scimProtocolApi,
   invitationApi,
   invitationPublicApi,
+  intakeApi,
   oauthApi,
   labelApi,
   notificationApi,
@@ -2148,6 +2152,7 @@ export type AppType =
   | typeof viewApi
   | typeof userApi
   | typeof invitationPublicApi
+  | typeof intakeApi
   | typeof oauthApi
   | typeof capabilitiesApi;
 

@@ -11,7 +11,9 @@
 import { Route as rootRouteImport } from './routes/portal/__root'
 import { Route as IndexRouteImport } from './routes/portal/index'
 import { Route as ApprovalsRouteImport } from './routes/portal/approvals'
+import { Route as CatalogueRouteImport } from './routes/portal/catalogue'
 import { Route as SignInRouteImport } from './routes/portal/sign-in'
+import { Route as SubmissionsRefRouteImport } from './routes/portal/submissions/$ref'
 
 const IndexRoute = IndexRouteImport.update({
   id: '/',
@@ -23,40 +25,65 @@ const ApprovalsRoute = ApprovalsRouteImport.update({
   path: '/approvals',
   getParentRoute: () => rootRouteImport,
 } as any)
+const CatalogueRoute = CatalogueRouteImport.update({
+  id: '/catalogue',
+  path: '/catalogue',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const SignInRoute = SignInRouteImport.update({
   id: '/sign-in',
   path: '/sign-in',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const SubmissionsRefRoute = SubmissionsRefRouteImport.update({
+  id: '/submissions/$ref',
+  path: '/submissions/$ref',
   getParentRoute: () => rootRouteImport,
 } as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/approvals': typeof ApprovalsRoute
+  '/catalogue': typeof CatalogueRoute
   '/sign-in': typeof SignInRoute
+  '/submissions/$ref': typeof SubmissionsRefRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/approvals': typeof ApprovalsRoute
+  '/catalogue': typeof CatalogueRoute
   '/sign-in': typeof SignInRoute
+  '/submissions/$ref': typeof SubmissionsRefRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
   '/approvals': typeof ApprovalsRoute
+  '/catalogue': typeof CatalogueRoute
   '/sign-in': typeof SignInRoute
+  '/submissions/$ref': typeof SubmissionsRefRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/' | '/approvals' | '/sign-in'
+  fullPaths:
+    '/' | '/approvals' | '/catalogue' | '/sign-in' | '/submissions/$ref'
   fileRoutesByTo: FileRoutesByTo
-  to: '/' | '/approvals' | '/sign-in'
-  id: '__root__' | '/' | '/approvals' | '/sign-in'
+  to: '/' | '/approvals' | '/catalogue' | '/sign-in' | '/submissions/$ref'
+  id:
+    | '__root__'
+    | '/'
+    | '/approvals'
+    | '/catalogue'
+    | '/sign-in'
+    | '/submissions/$ref'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   ApprovalsRoute: typeof ApprovalsRoute
+  CatalogueRoute: typeof CatalogueRoute
   SignInRoute: typeof SignInRoute
+  SubmissionsRefRoute: typeof SubmissionsRefRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -75,11 +102,25 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApprovalsRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/catalogue': {
+      id: '/catalogue'
+      path: '/catalogue'
+      fullPath: '/catalogue'
+      preLoaderRoute: typeof CatalogueRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/sign-in': {
       id: '/sign-in'
       path: '/sign-in'
       fullPath: '/sign-in'
       preLoaderRoute: typeof SignInRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/submissions/$ref': {
+      id: '/submissions/$ref'
+      path: '/submissions/$ref'
+      fullPath: '/submissions/$ref'
+      preLoaderRoute: typeof SubmissionsRefRouteImport
       parentRoute: typeof rootRouteImport
     }
   }
@@ -88,7 +129,9 @@ declare module '@tanstack/react-router' {
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   ApprovalsRoute: ApprovalsRoute,
+  CatalogueRoute: CatalogueRoute,
   SignInRoute: SignInRoute,
+  SubmissionsRefRoute: SubmissionsRefRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)

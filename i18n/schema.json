@@ -9178,6 +9178,9 @@
 						"heading": {
 							"type": "string"
 						},
+						"export": {
+							"type": "string"
+						},
 						"columnKey": {
 							"type": "string"
 						},
@@ -9262,6 +9265,7 @@
 						"pageTitle",
 						"pageTitleWithProject",
 						"heading",
+						"export",
 						"columnKey",
 						"columnTitle",
 						"columnPriority",
@@ -9554,9 +9558,109 @@
 						}
 					},
 					"required": ["title", "description"]
+				},
+				"intake": {
+					"type": "object",
+					"additionalProperties": false,
+					"properties": {
+						"catalogueTitle": {
+							"type": "string"
+						},
+						"catalogueDescription": {
+							"type": "string"
+						},
+						"loadError": {
+							"type": "string"
+						},
+						"searchPlaceholder": {
+							"type": "string"
+						},
+						"backToCatalogue": {
+							"type": "string"
+						},
+						"fileUploadAfterSubmission": {
+							"type": "string"
+						},
+						"visibilityLabel": {
+							"type": "string"
+						},
+						"visibilityPrivate": {
+							"type": "string"
+						},
+						"visibilityOrganisation": {
+							"type": "string"
+						},
+						"submitError": {
+							"type": "string"
+						},
+						"submit": {
+							"type": "string"
+						},
+						"emptyCatalogue": {
+							"type": "string"
+						},
+						"submissionTitle": {
+							"type": "string"
+						},
+						"pageError": {
+							"type": "string"
+						},
+						"answers": {
+							"type": "string"
+						},
+						"accepted": {
+							"type": "string"
+						},
+						"attachments": {
+							"type": "string"
+						},
+						"download": {
+							"type": "string"
+						},
+						"uploadError": {
+							"type": "string"
+						},
+						"conversation": {
+							"type": "string"
+						},
+						"reply": {
+							"type": "string"
+						},
+						"sendReply": {
+							"type": "string"
+						},
+						"withdraw": {
+							"type": "string"
+						}
+					},
+					"required": [
+						"catalogueTitle",
+						"catalogueDescription",
+						"loadError",
+						"searchPlaceholder",
+						"backToCatalogue",
+						"fileUploadAfterSubmission",
+						"visibilityLabel",
+						"visibilityPrivate",
+						"visibilityOrganisation",
+						"submitError",
+						"submit",
+						"emptyCatalogue",
+						"submissionTitle",
+						"pageError",
+						"answers",
+						"accepted",
+						"attachments",
+						"download",
+						"uploadError",
+						"conversation",
+						"reply",
+						"sendReply",
+						"withdraw"
+					]
 				}
 			},
-			"required": ["unavailable", "notFound", "error"]
+			"required": ["unavailable", "notFound", "error", "intake"]
 		},
 		"slaPolicies": {
 			"type": "object",
@@ -11424,6 +11528,93 @@
 				"search": {
 					"type": "string"
 				},
+				"name": {
+					"type": "string"
+				},
+				"create": {
+					"type": "string"
+				},
+				"creating": {
+					"type": "string"
+				},
+				"createError": {
+					"type": "string"
+				},
+				"countLoading": {
+					"type": "string"
+				},
+				"count": {
+					"type": "string"
+				},
+				"count_zero": {
+					"type": "string"
+				},
+				"count_one": {
+					"type": "string"
+				},
+				"count_two": {
+					"type": "string"
+				},
+				"count_few": {
+					"type": "string"
+				},
+				"count_many": {
+					"type": "string"
+				},
+				"count_other": {
+					"type": "string"
+				},
+				"togglePin": {
+					"type": "string"
+				},
+				"pin": {
+					"type": "string"
+				},
+				"unpin": {
+					"type": "string"
+				},
+				"clone": {
+					"type": "string"
+				},
+				"cancelEdit": {
+					"type": "string"
+				},
+				"edit": {
+					"type": "string"
+				},
+				"save": {
+					"type": "string"
+				},
+				"loadingView": {
+					"type": "string"
+				},
+				"projectUnavailable": {
+					"type": "string"
+				},
+				"layoutUnavailable": {
+					"type": "string"
+				},
+				"sort": {
+					"type": "string"
+				},
+				"direction": {
+					"type": "string"
+				},
+				"columns": {
+					"type": "string"
+				},
+				"runError": {
+					"type": "string"
+				},
+				"loadingMore": {
+					"type": "string"
+				},
+				"loadMore": {
+					"type": "string"
+				},
+				"saveError": {
+					"type": "string"
+				},
 				"empty": {
 					"type": "string"
 				},
@@ -11459,6 +11650,28 @@
 				"title",
 				"description",
 				"search",
+				"name",
+				"create",
+				"creating",
+				"createError",
+				"countLoading",
+				"togglePin",
+				"pin",
+				"unpin",
+				"clone",
+				"cancelEdit",
+				"edit",
+				"save",
+				"loadingView",
+				"projectUnavailable",
+				"layoutUnavailable",
+				"sort",
+				"direction",
+				"columns",
+				"runError",
+				"loadingMore",
+				"loadMore",
+				"saveError",
 				"empty",
 				"requestDelete",
 				"requesting",
@@ -12352,6 +12565,350 @@
 				}
 			},
 			"required": ["list", "editor", "events", "scim"]
+		},
+		"intake": {
+			"type": "object",
+			"additionalProperties": false,
+			"properties": {
+				"title": {
+					"type": "string"
+				},
+				"description": {
+					"type": "string"
+				},
+				"selectWorkspace": {
+					"type": "string"
+				},
+				"actionError": {
+					"type": "string"
+				},
+				"loading": {
+					"type": "string"
+				},
+				"noState": {
+					"type": "string"
+				},
+				"newRequests": {
+					"type": "string"
+				},
+				"customer": {
+					"type": "string"
+				},
+				"status": {
+					"type": "string"
+				},
+				"submittedAnswers": {
+					"type": "string"
+				},
+				"conversation": {
+					"type": "string"
+				},
+				"attachments": {
+					"type": "string"
+				},
+				"claim": {
+					"type": "string"
+				},
+				"accept": {
+					"type": "string"
+				},
+				"clarify": {
+					"type": "string"
+				},
+				"decline": {
+					"type": "string"
+				},
+				"clarificationMessage": {
+					"type": "string"
+				},
+				"declineReason": {
+					"type": "string"
+				},
+				"possibleDuplicates": {
+					"type": "string"
+				},
+				"linkDuplicate": {
+					"type": "string"
+				},
+				"download": {
+					"type": "string"
+				},
+				"type": {
+					"type": "string"
+				}
+			},
+			"required": [
+				"title",
+				"description",
+				"selectWorkspace",
+				"actionError",
+				"loading",
+				"noState",
+				"newRequests",
+				"customer",
+				"status",
+				"submittedAnswers",
+				"conversation",
+				"attachments",
+				"claim",
+				"accept",
+				"clarify",
+				"decline",
+				"clarificationMessage",
+				"declineReason",
+				"possibleDuplicates",
+				"linkDuplicate",
+				"download",
+				"type"
+			]
+		},
+		"requestTypes": {
+			"type": "object",
+			"additionalProperties": false,
+			"properties": {
+				"title": {
+					"type": "string"
+				},
+				"description": {
+					"type": "string"
+				},
+				"new": {
+					"type": "string"
+				},
+				"loading": {
+					"type": "string"
+				},
+				"edit": {
+					"type": "string"
+				},
+				"create": {
+					"type": "string"
+				},
+				"name": {
+					"type": "string"
+				},
+				"group": {
+					"type": "string"
+				},
+				"summary": {
+					"type": "string"
+				},
+				"workItemType": {
+					"type": "string"
+				},
+				"chooseType": {
+					"type": "string"
+				},
+				"projectId": {
+					"type": "string"
+				},
+				"order": {
+					"type": "string"
+				},
+				"visible": {
+					"type": "string"
+				},
+				"autoAccept": {
+					"type": "string"
+				},
+				"forcePrivate": {
+					"type": "string"
+				},
+				"fields": {
+					"type": "string"
+				},
+				"addField": {
+					"type": "string"
+				},
+				"fieldKey": {
+					"type": "string"
+				},
+				"label": {
+					"type": "string"
+				},
+				"type": {
+					"type": "string"
+				},
+				"text": {
+					"type": "string"
+				},
+				"longText": {
+					"type": "string"
+				},
+				"select": {
+					"type": "string"
+				},
+				"checkbox": {
+					"type": "string"
+				},
+				"file": {
+					"type": "string"
+				},
+				"required": {
+					"type": "string"
+				},
+				"help": {
+					"type": "string"
+				},
+				"options": {
+					"type": "string"
+				},
+				"mapsTo": {
+					"type": "string"
+				},
+				"unmapped": {
+					"type": "string"
+				},
+				"titleMapping": {
+					"type": "string"
+				},
+				"descriptionMapping": {
+					"type": "string"
+				},
+				"priorityMapping": {
+					"type": "string"
+				},
+				"showWhen": {
+					"type": "string"
+				},
+				"always": {
+					"type": "string"
+				},
+				"equals": {
+					"type": "string"
+				},
+				"multiple": {
+					"type": "string"
+				},
+				"remove": {
+					"type": "string"
+				},
+				"moveUp": {
+					"type": "string"
+				},
+				"moveDown": {
+					"type": "string"
+				},
+				"preview": {
+					"type": "string"
+				},
+				"previewDescription": {
+					"type": "string"
+				},
+				"choose": {
+					"type": "string"
+				},
+				"titleMappingValid": {
+					"type": "string"
+				},
+				"titleMappingInvalid": {
+					"type": "string"
+				},
+				"save": {
+					"type": "string"
+				},
+				"publish": {
+					"type": "string"
+				},
+				"publishNew": {
+					"type": "string"
+				},
+				"unpublish": {
+					"type": "string"
+				},
+				"delete": {
+					"type": "string"
+				},
+				"published": {
+					"type": "string"
+				},
+				"draft": {
+					"type": "string"
+				},
+				"versions": {
+					"type": "string"
+				},
+				"version": {
+					"type": "string"
+				},
+				"emptyTitle": {
+					"type": "string"
+				},
+				"emptyDescription": {
+					"type": "string"
+				},
+				"list": {
+					"type": "string"
+				},
+				"opaqueKey": {
+					"type": "string"
+				},
+				"loadError": {
+					"type": "string"
+				}
+			},
+			"required": [
+				"title",
+				"description",
+				"new",
+				"loading",
+				"edit",
+				"create",
+				"name",
+				"group",
+				"summary",
+				"workItemType",
+				"chooseType",
+				"projectId",
+				"order",
+				"visible",
+				"autoAccept",
+				"forcePrivate",
+				"fields",
+				"addField",
+				"fieldKey",
+				"label",
+				"type",
+				"text",
+				"longText",
+				"select",
+				"checkbox",
+				"file",
+				"required",
+				"help",
+				"options",
+				"mapsTo",
+				"unmapped",
+				"titleMapping",
+				"descriptionMapping",
+				"priorityMapping",
+				"showWhen",
+				"always",
+				"equals",
+				"multiple",
+				"remove",
+				"moveUp",
+				"moveDown",
+				"preview",
+				"previewDescription",
+				"choose",
+				"titleMappingValid",
+				"titleMappingInvalid",
+				"save",
+				"publish",
+				"publishNew",
+				"unpublish",
+				"delete",
+				"published",
+				"draft",
+				"versions",
+				"version",
+				"emptyTitle",
+				"emptyDescription",
+				"list",
+				"opaqueKey",
+				"loadError"
+			]
 		}
 	},
 	"required": [
@@ -12373,6 +12930,8 @@
 		"instanceUsers",
 		"pendingActions",
 		"savedViews",
-		"identityConnections"
+		"identityConnections",
+		"intake",
+		"requestTypes"
 	]
 }

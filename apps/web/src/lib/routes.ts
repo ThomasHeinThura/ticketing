@@ -134,6 +134,47 @@ export type SavedViewUrlSearch = {
   cursor?: string;
 };
 export type MyWorkSearch = { lens: "approvals" };
+export type IntakeQueueSearch = {
+  state:
+    | "new"
+    | "clarifying"
+    | "accepted"
+    | "declined"
+    | "duplicate"
+    | "withdrawn";
+  ref?: string;
+};
+export type PortalCatalogueSearch = { q?: string; key?: string };
+
+export function parseIntakeSearch(raw: unknown): IntakeQueueSearch {
+  const value = (raw ?? {}) as Record<string, unknown>;
+  const states = [
+    "new",
+    "clarifying",
+    "accepted",
+    "declined",
+    "duplicate",
+    "withdrawn",
+  ] as const;
+  const state = states.find((candidate) => candidate === value.state) ?? "new";
+  const ref =
+    typeof value.ref === "string" && /^SUB-[1-9]\d{0,9}$/u.test(value.ref)
+      ? value.ref
+      : undefined;
+  return { state, ...(ref ? { ref } : {}) };
+}
+
+export function parsePortalCatalogueSearch(
+  raw: unknown,
+): PortalCatalogueSearch {
+  const value = (raw ?? {}) as Record<string, unknown>;
+  const q = typeof value.q === "string" ? value.q.trim().slice(0, 200) : "";
+  const key =
+    typeof value.key === "string" && value.key.length <= 200
+      ? value.key
+      : undefined;
+  return { ...(q ? { q } : {}), ...(key ? { key } : {}) };
+}
 
 export function parseMyWorkSearch(raw: unknown): MyWorkSearch {
   const candidate = (raw ?? {}) as Record<string, unknown>;
@@ -338,6 +379,20 @@ export function toggleWorkItemSortDirection(
 }
 
 export const routes = {
+  requestTypes: {
+    path: "/agent/settings/request-types" as const,
+    build: () => "/agent/settings/request-types",
+  },
+  /** `docs/02-design/screen-inventory.md` intake queue; filters and selected submission are URL state. */
+  intakeQueue: {
+    path: "/agent/triage" as const,
+    build: (search: IntakeQueueSearch = { state: "new" }) => {
+      const resolved = parseIntakeSearch(search);
+      const query = new URLSearchParams({ state: resolved.state });
+      if (resolved.ref) query.set("ref", resolved.ref);
+      return `/agent/triage?${query.toString()}`;
+    },
+  },
   /** `docs/02-design/screen-inventory.md` "Approvals inbox". */
   myWork: {
     path: "/agent/my-work" as const,
@@ -351,6 +406,22 @@ export const routes = {
     path: "/" as const,
     build: () => "/",
     parse: (pathname: string) => (pathname === "/" ? "/" : undefined),
+  },
+  portalCatalogue: {
+    path: "/catalogue" as const,
+    build: (search: PortalCatalogueSearch = {}) => {
+      const resolved = parsePortalCatalogueSearch(search);
+      const query = new URLSearchParams();
+      if (resolved.q) query.set("q", resolved.q);
+      if (resolved.key) query.set("key", resolved.key);
+      const suffix = query.toString();
+      return suffix ? `/catalogue?${suffix}` : "/catalogue";
+    },
+  },
+  portalSubmission: {
+    path: "/submissions/$ref" as const,
+    build: (params: { ref: string }) =>
+      `/submissions/${encodeURIComponent(params.ref)}`,
   },
   /** Customer portal's approval list (`customer-portal.md`, `approvals.md`). */
   portalApprovals: {
