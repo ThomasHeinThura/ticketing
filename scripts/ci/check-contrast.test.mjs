@@ -828,8 +828,8 @@ describe("G3 contrast inventory and math", () => {
   });
 
   it("resolves local named export aliases to their painted implementation", async () => {
-    const component = `scripts/ci/contrast-alias-surface-${process.pid}.tsx`;
-    const caller = `scripts/ci/contrast-alias-caller-${process.pid}.tsx`;
+    const component = `apps/web/src/components/contrast-alias-surface-${process.pid}.tsx`;
+    const caller = `apps/web/src/components/contrast-alias-caller-${process.pid}.tsx`;
     const theme = await readFile(
       path.join(process.cwd(), "packages/ui/src/styles/theme.css"),
       "utf8",
@@ -868,9 +868,9 @@ describe("G3 contrast inventory and math", () => {
   });
 
   it("resolves conditional alpha caller surfaces against the next opaque ancestor", async () => {
-    const leaf = `scripts/ci/contrast-branch-leaf-${process.pid}.tsx`;
-    const branch = `scripts/ci/contrast-branch-owner-${process.pid}.tsx`;
-    const root = `scripts/ci/contrast-branch-root-${process.pid}.tsx`;
+    const leaf = `apps/web/src/components/contrast-branch-leaf-${process.pid}.tsx`;
+    const branch = `apps/web/src/components/contrast-branch-owner-${process.pid}.tsx`;
+    const root = `apps/web/src/components/contrast-branch-root-${process.pid}.tsx`;
     const theme = await readFile(
       path.join(process.cwd(), "packages/ui/src/styles/theme.css"),
       "utf8",
