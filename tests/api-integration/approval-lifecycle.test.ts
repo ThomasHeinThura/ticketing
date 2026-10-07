@@ -2,8 +2,10 @@ import { createHash, randomUUID } from "node:crypto";
 import { and, eq } from "drizzle-orm";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { scanApprovalReminders } from "../../apps/api/src/approval/reminder-scan";
+import { auth } from "../../apps/api/src/auth";
 import db, { schema } from "../../apps/api/src/database";
 import { createApp } from "../../apps/api/src/index";
+import { isCurrentInstanceAdmin } from "../../apps/api/src/instance/observability/audit-failure-notifier";
 import { mockAuthenticatedSession } from "./helpers/auth";
 import { resetTestDatabase } from "./helpers/database";
 import {
@@ -502,7 +504,7 @@ describe("API integration: approval lifecycle", () => {
       "decisionNote",
     );
 
-    const createAdditionalApproval = async () => {
+    const createAdditionalApprovalAsRequester = async () => {
       mockAuthenticatedSession(requester.user);
       await db
         .update(schema.projectFeatureFlagTable)
@@ -531,7 +533,7 @@ describe("API integration: approval lifecycle", () => {
       return (await response.json()) as { id: string };
     };
 
-    const scopedDecisionApproval = await createAdditionalApproval();
+    const scopedDecisionApproval = await createAdditionalApprovalAsRequester();
     const wrongDecisionScopeKey = await createApprovalApiKey(approver.user.id, {
       approval: ["request"],
     });
@@ -578,7 +580,8 @@ describe("API integration: approval lifecycle", () => {
     );
     expect((await scopedDecision.json()).state).toBe("approved");
 
-    const scopedWithdrawalApproval = await createAdditionalApproval();
+    const scopedWithdrawalApproval =
+      await createAdditionalApprovalAsRequester();
     const wrongWithdrawalScopeKey = await createApprovalApiKey(
       requester.user.id,
       { approval: ["decide"] },
@@ -617,7 +620,7 @@ describe("API integration: approval lifecycle", () => {
       .update(schema.userTable)
       .set({ role: "admin" })
       .where(eq(schema.userTable.id, instanceAdmin.user.id));
-    const adminWithdrawalApproval = await createAdditionalApproval();
+    const adminWithdrawalApproval = await createAdditionalApprovalAsRequester();
     const adminKeyWithoutRequestScope = await createApprovalApiKey(
       instanceAdmin.user.id,
       { work_item: ["read"] },
@@ -641,7 +644,8 @@ describe("API integration: approval lifecycle", () => {
       adminKeyEffectsBeforeDenial,
     );
 
-    const scopedAdminWithdrawalApproval = await createAdditionalApproval();
+    const scopedAdminWithdrawalApproval =
+      await createAdditionalApprovalAsRequester();
     const adminKeyWithRequestScope = await createApprovalApiKey(
       instanceAdmin.user.id,
       { approval: ["request"] },
@@ -673,7 +677,8 @@ describe("API integration: approval lifecycle", () => {
       scopedAdminEffectsBeforeDenial,
     );
 
-    const sessionAdminWithdrawalApproval = await createAdditionalApproval();
+    const sessionAdminWithdrawalApproval =
+      await createAdditionalApprovalAsRequester();
     mockAuthenticatedSession({ ...instanceAdmin.user, role: "admin" });
     const targetWorkspaceAdminMembership = await db
       .select({ userId: schema.workspaceUserTable.userId })
@@ -700,7 +705,7 @@ describe("API integration: approval lifecycle", () => {
     ).toBe(200);
     expect((await adminSessionWithdrawal.json()).state).toBe("withdrawn");
 
-    const inactiveAdminApproval = await createAdditionalApproval();
+    const inactiveAdminApproval = await createAdditionalApprovalAsRequester();
     const inactiveAdmin = await createWorkspaceMember({ role: "owner" });
     await db
       .update(schema.userTable)
@@ -723,6 +728,8 @@ describe("API integration: approval lifecycle", () => {
       .update(schema.personTable)
       .set({ active: false })
       .where(eq(schema.personTable.id, adminPerson.id));
+    expect(await isCurrentInstanceAdmin(inactiveAdmin.user.id)).toBe(false);
+    expect(await isCurrentInstanceAdmin(instanceAdmin.user.id)).toBe(true);
     const effectsBeforeInactiveAdminDenial =
       await approvalEffectCounts("approval.withdrawn");
     mockAuthenticatedSession({ ...inactiveAdmin.user, role: "admin" });
@@ -730,7 +737,7 @@ describe("API integration: approval lifecycle", () => {
       `/api/admin/approvals/${inactiveAdminApproval.id}/withdraw`,
       { method: "POST" },
     );
-    expect([403, 503]).toContain(inactiveAdminWithdrawal.status);
+    expect(inactiveAdminWithdrawal.status).toBe(403);
     const [stillPendingForInactiveAdmin] = await db
       .select({ state: schema.approvalTable.state })
       .from(schema.approvalTable)
@@ -740,8 +747,16 @@ describe("API integration: approval lifecycle", () => {
       effectsBeforeInactiveAdminDenial,
     );
     mockAuthenticatedSession({ ...instanceAdmin.user, role: "admin" });
+    expect(await isCurrentInstanceAdmin(instanceAdmin.user.id)).toBe(true);
 
-    const disabledFeatureAdminApproval = await createAdditionalApproval();
+    const disabledFeatureAdminApproval =
+      await createAdditionalApprovalAsRequester();
+    mockAuthenticatedSession({ ...instanceAdmin.user, role: "admin" });
+    const restoredSession = await auth.api.getSession({
+      headers: new Headers(),
+    });
+    expect(restoredSession?.user.id).toBe(instanceAdmin.user.id);
+    expect(await isCurrentInstanceAdmin(instanceAdmin.user.id)).toBe(true);
     await db
       .update(schema.projectFeatureFlagTable)
       .set({ enabled: false })
@@ -772,7 +787,7 @@ describe("API integration: approval lifecycle", () => {
         ),
       );
 
-    const rejectedApproval = await createAdditionalApproval();
+    const rejectedApproval = await createAdditionalApprovalAsRequester();
     mockAuthenticatedSession(approver.user);
     const rejected = await app.request(
       `/api/approvals/${rejectedApproval.id}/decide`,
@@ -795,7 +810,7 @@ describe("API integration: approval lifecycle", () => {
       .where(eq(schema.outboxTable.kind, "approval.decided"));
     expect(JSON.stringify(rejectedEvent)).not.toContain("Declined");
 
-    const withdrawnApproval = await createAdditionalApproval();
+    const withdrawnApproval = await createAdditionalApprovalAsRequester();
     mockAuthenticatedSession(requester.user);
     const withdrawn = await app.request(
       `/api/approvals/${withdrawnApproval.id}/withdraw`,
@@ -808,7 +823,7 @@ describe("API integration: approval lifecycle", () => {
       .where(eq(schema.approvalTable.id, withdrawnApproval.id));
     expect(withdrawnRow?.state).toBe("withdrawn");
 
-    const racedWithdrawalApproval = await createAdditionalApproval();
+    const racedWithdrawalApproval = await createAdditionalApprovalAsRequester();
     mockAuthenticatedSession({ ...instanceAdmin.user, role: "admin" });
     const withdrawalEffectsBeforeRace =
       await approvalEffectCounts("approval.withdrawn");
@@ -837,7 +852,7 @@ describe("API integration: approval lifecycle", () => {
       audit: withdrawalEffectsBeforeRace.audit + 1,
     });
 
-    const expiredApproval = await createAdditionalApproval();
+    const expiredApproval = await createAdditionalApprovalAsRequester();
     await db
       .update(schema.approvalTable)
       .set({ expiresAt: new Date(Date.now() - 1_000) })
@@ -929,7 +944,7 @@ describe("API integration: approval lifecycle", () => {
       terminalWithdrawalEffects,
     );
 
-    const reminderApproval = await createAdditionalApproval();
+    const reminderApproval = await createAdditionalApprovalAsRequester();
     const reminderNow = Date.now();
     await db
       .update(schema.approvalTable)

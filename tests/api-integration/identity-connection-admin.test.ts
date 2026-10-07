@@ -1068,6 +1068,21 @@ describe("identity connection administration", () => {
     );
     expect(ceilingResponse.status).toBe(200);
     expect(invalidateAuthorization).toHaveBeenCalledWith({ userId: user.id });
+    const [loweredConnection] = await db
+      .select({
+        maxRoleRank: schema.identityConnectionTable.maxRoleRank,
+        jitPolicy: schema.identityConnectionTable.jitPolicy,
+      })
+      .from(schema.identityConnectionTable)
+      .where(eq(schema.identityConnectionTable.id, connectionId))
+      .limit(1);
+    expect(loweredConnection).toMatchObject({
+      maxRoleRank: 1,
+      jitPolicy: {
+        enabled: true,
+        default_role_id: roleId,
+      },
+    });
     const postCeilingGrants = await db
       .select()
       .from(schema.membershipGrantTable)

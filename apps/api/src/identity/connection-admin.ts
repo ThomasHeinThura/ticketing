@@ -452,6 +452,7 @@ async function validateConnectionReferences(
     maxRoleRank: number | null;
     jitPolicy: unknown;
   },
+  options: { allowDormantDefaultRole?: boolean } = {},
 ) {
   const jit = parseIdentityJitPolicy(value.jitPolicy);
   if (!jit.ok) return false;
@@ -490,7 +491,7 @@ async function validateConnectionReferences(
         role.scope === "workspace" &&
         role.workspaceId === value.defaultWorkspaceId &&
         role.rank >= 0 &&
-        role.rank <= value.maxRoleRank &&
+        (options.allowDormantDefaultRole || role.rank <= value.maxRoleRank) &&
         role.key !== "admin" &&
         role.key !== "owner" &&
         safeRoleCapabilities(role.capabilities),
@@ -879,10 +880,15 @@ router.openapi(configureConnectionRoute, async (c) => {
             : request.maxRoleRank,
         jitPolicy,
       };
+      const preservingExistingJitPolicy =
+        request.jitPolicy === undefined &&
+        request.defaultWorkspaceId === undefined;
       if (
         !parseIdentityClaimMapping(claimMapping).ok ||
         !(await domainBindingsAreUnique(tx, domainBindings, id)) ||
-        !(await validateConnectionReferences(tx, config))
+        !(await validateConnectionReferences(tx, config, {
+          allowDormantDefaultRole: preservingExistingJitPolicy,
+        }))
       )
         return { kind: "invalid" as const };
       if (request.enabled === true && discovery?.issuer !== current.issuer)

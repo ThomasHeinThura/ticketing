@@ -48,8 +48,13 @@ type App = ReturnType<typeof createApp>["app"];
 async function expectAllFalseCapabilityMap(response: Response): Promise<void> {
   expect(response.status).toBe(200);
   const capabilities = (await response.json()) as Record<string, unknown>;
-  expect(Object.keys(capabilities)).toHaveLength(
-    Object.keys(CAPABILITY_CHECKS).length + 1,
+  expect(Object.keys(capabilities).sort()).toEqual(
+    [
+      ...Object.keys(CAPABILITY_CHECKS),
+      "manageServiceCalendars",
+      "shareSavedViews",
+      "manageWorkspaceSettings",
+    ].sort(),
   );
   expect(Object.values(capabilities).every((value) => value === false)).toBe(
     true,
