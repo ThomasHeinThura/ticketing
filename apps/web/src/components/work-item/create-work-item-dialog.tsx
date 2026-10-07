@@ -1,27 +1,41 @@
 import {
+  Button,
   Dialog,
   DialogContent,
   DialogDescription,
   DialogHeader,
   DialogTitle,
+  ErrorBoundary,
   Skeleton,
 } from "@taskdesk/ui";
-import { lazy, Suspense } from "react";
+import {
+  type ComponentType,
+  type LazyExoticComponent,
+  lazy,
+  Suspense,
+  useState,
+} from "react";
 import { useTranslation } from "react-i18next";
 import type { CreateWorkItemDialogProps } from "./create-work-item-dialog-form";
 
-const CreateWorkItemDialogForm = lazy(
-  () => import("./create-work-item-dialog-form"),
-);
-
 type Props = CreateWorkItemDialogProps & { open: boolean };
 
-type ContentProps = CreateWorkItemDialogProps;
+type FormComponent = LazyExoticComponent<
+  ComponentType<CreateWorkItemDialogProps>
+>;
+type ContentProps = CreateWorkItemDialogProps & {
+  Form?: FormComponent;
+};
+
+const DefaultCreateWorkItemDialogForm: FormComponent = lazy(
+  () => import("./create-work-item-dialog-form"),
+);
 
 export function CreateWorkItemDialogContent({
   onClose,
   projectId,
   workspaceId,
+  Form = DefaultCreateWorkItemDialogForm,
 }: ContentProps) {
   return (
     <Suspense
@@ -39,11 +53,7 @@ export function CreateWorkItemDialogContent({
         </div>
       }
     >
-      <CreateWorkItemDialogForm
-        onClose={onClose}
-        projectId={projectId}
-        workspaceId={workspaceId}
-      />
+      <Form onClose={onClose} projectId={projectId} workspaceId={workspaceId} />
     </Suspense>
   );
 }
@@ -57,6 +67,27 @@ export default function CreateWorkItemDialog({
   workspaceId,
 }: Props) {
   const { t } = useTranslation();
+  const [Form, setForm] = useState<FormComponent>(() =>
+    lazy(() => import("./create-work-item-dialog-form")),
+  );
+
+  function FormLoadError({ resetError }: { resetError: () => void }) {
+    return (
+      <div role="alert" className="flex flex-col gap-3">
+        <p>{t("common:error.title")}</p>
+        <Button
+          size="sm"
+          variant="outline"
+          onClick={() => {
+            setForm(() => lazy(() => import("./create-work-item-dialog-form")));
+            resetError();
+          }}
+        >
+          {t("common:error.tryAgain")}
+        </Button>
+      </div>
+    );
+  }
 
   return (
     <Dialog
@@ -77,11 +108,16 @@ export default function CreateWorkItemDialog({
             {t("workItems:create.description")}
           </DialogDescription>
         </DialogHeader>
-        <CreateWorkItemDialogContent
-          onClose={onClose}
-          projectId={projectId}
-          workspaceId={workspaceId}
-        />
+        {open ? (
+          <ErrorBoundary fallback={FormLoadError}>
+            <CreateWorkItemDialogContent
+              onClose={onClose}
+              projectId={projectId}
+              workspaceId={workspaceId}
+              Form={Form}
+            />
+          </ErrorBoundary>
+        ) : null}
       </DialogContent>
     </Dialog>
   );

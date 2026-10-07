@@ -152,7 +152,11 @@ function CreateWorkItemDialogForm({
   };
 
   return (
-    <form onSubmit={handleSubmit} className="flex flex-col gap-4" noValidate>
+    <form
+      onSubmit={handleSubmit}
+      className="flex flex-col gap-4 bg-popover"
+      noValidate
+    >
       <Field>
         <FieldLabel htmlFor="create-work-item-type">
           {t("workItems:create.fieldType")}
