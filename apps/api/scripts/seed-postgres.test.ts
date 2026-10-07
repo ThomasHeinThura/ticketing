@@ -920,12 +920,15 @@ describe("explicit test-user seed batch", () => {
       const localPasswordCredentials = credentials.filter(
         ({ authentication }) => authentication === "local_password",
       );
+      const agentOrigin = process.env.TASKDESK_AGENT_URL;
+      const customerOrigin = process.env.TASKDESK_PORTAL_URL;
+      if (!agentOrigin || !customerOrigin) {
+        throw new Error("Integration portal origins are not configured");
+      }
       let customerSessionCookie: string | undefined;
       for (const [index, credential] of localPasswordCredentials.entries()) {
         const origin =
-          credential.role === "customer"
-            ? "http://localhost:5174"
-            : "http://localhost:5173";
+          credential.role === "customer" ? customerOrigin : agentOrigin;
         const request = {
           method: "POST",
           headers: {
@@ -953,7 +956,10 @@ describe("explicit test-user seed batch", () => {
           .catch(() => null);
         expect(
           response.status,
-          `${credential.role}: ${JSON.stringify(responseBody)}`,
+          `${credential.role}: ${JSON.stringify({
+            message: responseBody?.message,
+            code: responseBody?.code,
+          })}`,
         ).toBe(200);
         if (credential.role === "customer") {
           const customerCookie = response.headers
@@ -1004,12 +1010,12 @@ describe("explicit test-user seed batch", () => {
 
       expect(customerSessionCookie).toBeTruthy();
       const customerSessionResponse = await portalApp.app.request(
-        "http://localhost:5174/api/auth/get-session",
+        `${customerOrigin}/api/auth/get-session`,
         {
           headers: {
             cookie: customerSessionCookie ?? "",
-            host: "localhost:5174",
-            origin: "http://localhost:5174",
+            host: new URL(customerOrigin).host,
+            origin: customerOrigin,
           },
         },
       );
