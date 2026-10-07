@@ -218,7 +218,7 @@ function WorkItemList({
         <a
           href={detailHref}
           data-work-item-key={item.key}
-          className="font-medium text-primary underline-offset-2 hover:underline"
+          className="bg-background font-medium text-primary underline-offset-2 hover:underline"
         >
           {item.key}
         </a>

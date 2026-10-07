@@ -26,23 +26,15 @@ export function getPriorityIcon(priority: string) {
   const icon = (() => {
     switch (key) {
       case "urgent":
-        return (
-          <CircleAlert className="h-[12px] w-[12px] text-destructive-foreground" />
-        );
+        return <CircleAlert className="h-[12px] w-[12px] text-current" />;
       case "high":
-        return (
-          <ChevronsUp className="h-[12px] w-[12px] text-warning-foreground" />
-        );
+        return <ChevronsUp className="h-[12px] w-[12px] text-current" />;
       case "medium":
-        return (
-          <ChevronUp className="h-[12px] w-[12px] text-warning-foreground/80" />
-        );
+        return <ChevronUp className="h-[12px] w-[12px] text-current" />;
       case "low":
-        return (
-          <ChevronDown className="h-[12px] w-[12px] text-info-foreground/85" />
-        );
+        return <ChevronDown className="h-[12px] w-[12px] text-current" />;
       case "no-priority":
-        return <Minus className="h-[12px] w-[12px] text-muted-foreground" />;
+        return <Minus className="h-[12px] w-[12px] text-current" />;
     }
   })();
 

@@ -512,6 +512,7 @@ function SavedViewRoute() {
             <WorkItemFilterEditor
               filter={filter}
               mode={filterMode}
+              fallbackSurface="card"
               onModeChange={(mode) => {
                 setFilterMode(mode);
                 updateSearch({ filterMode: mode });

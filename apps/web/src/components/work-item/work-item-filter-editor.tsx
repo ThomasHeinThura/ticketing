@@ -11,6 +11,7 @@ import {
 } from "@taskdesk/ui";
 import { Plus, Trash2 } from "lucide-react";
 import { type FormEvent, useEffect, useMemo, useState } from "react";
+import { cn } from "@/lib/cn";
 import type { WorkItemFilterMode } from "@/lib/routes";
 import {
   parseWorkItemFilterText,
@@ -171,11 +172,13 @@ function knownUnavailable(field: string): boolean {
 function FilterNodeEditor({
   node,
   path,
+  fallbackSurface,
   onChange,
   onRemove,
 }: {
   node: WorkItemFilter;
   path: number[];
+  fallbackSurface: "background" | "card";
   onChange: (
     path: number[],
     change: (current: WorkItemFilter) => WorkItemFilter,
@@ -189,7 +192,10 @@ function FilterNodeEditor({
     if (!field) {
       return (
         <div
-          className="flex flex-wrap items-center gap-2 rounded-md border border-border p-3"
+          className={cn(
+            "flex flex-wrap items-center gap-2 rounded-md border border-border p-3",
+            fallbackSurface === "card" ? "bg-card" : "bg-background",
+          )}
           data-testid="filter-unavailable-field"
         >
           <span className="text-sm">
@@ -419,6 +425,7 @@ function FilterNodeEditor({
             key={[...path, index].join(".")}
             node={child}
             path={[...path, index]}
+            fallbackSurface={fallbackSurface}
             onChange={onChange}
             onRemove={onRemove}
           />
@@ -431,6 +438,7 @@ function FilterNodeEditor({
 type WorkItemFilterEditorProps = {
   filter: string;
   mode: WorkItemFilterMode;
+  fallbackSurface?: "background" | "card";
   apiError?: string;
   onModeChange: (mode: WorkItemFilterMode) => void;
   onApply: (filter: string) => void;
@@ -439,6 +447,7 @@ type WorkItemFilterEditorProps = {
 export default function WorkItemFilterEditor({
   filter,
   mode,
+  fallbackSurface = "background",
   apiError,
   onModeChange,
   onApply,
@@ -578,6 +587,7 @@ export default function WorkItemFilterEditor({
         <FilterNodeEditor
           node={visualDraft}
           path={[]}
+          fallbackSurface={fallbackSurface}
           onChange={onChange}
           onRemove={onRemove}
         />

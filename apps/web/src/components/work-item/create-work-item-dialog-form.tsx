@@ -153,7 +153,7 @@ function CreateWorkItemDialogForm({
 
   return (
     <form onSubmit={handleSubmit} className="flex flex-col gap-4" noValidate>
-      <Field>
+      <Field className="bg-popover">
         <FieldLabel htmlFor="create-work-item-type">
           {t("workItems:create.fieldType")}
         </FieldLabel>
@@ -185,10 +185,8 @@ function CreateWorkItemDialogForm({
           </SelectContent>
         </Select>
         {isTypesError && (
-          <FieldDescription className="flex items-center gap-2">
-            <span className="text-destructive-foreground">
-              {t("workItems:create.typesError")}
-            </span>
+          <FieldDescription className="flex items-center gap-2 text-destructive">
+            <span>{t("workItems:create.typesError")}</span>
             <Button
               type="button"
               variant="outline"
@@ -207,7 +205,7 @@ function CreateWorkItemDialogForm({
           )}
       </Field>
 
-      <Field>
+      <Field className="bg-popover">
         <FieldLabel htmlFor="create-work-item-title">
           {t("workItems:create.fieldTitle")}
         </FieldLabel>
@@ -222,7 +220,7 @@ function CreateWorkItemDialogForm({
         />
       </Field>
 
-      <Field>
+      <Field className="bg-popover">
         <FieldLabel htmlFor="create-work-item-description">
           {t("workItems:create.fieldDescription")}
         </FieldLabel>
@@ -236,7 +234,7 @@ function CreateWorkItemDialogForm({
         />
       </Field>
 
-      <Field>
+      <Field className="bg-popover">
         <FieldLabel htmlFor="create-work-item-priority">
           {t("workItems:create.fieldPriority")}
         </FieldLabel>

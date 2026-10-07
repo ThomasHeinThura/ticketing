@@ -370,7 +370,7 @@ export function SlaPolicyEditor({ id }: { id: string }) {
               <CardDescription>{t("editor.draftHelp")}</CardDescription>
             </CardHeader>
             <CardContent className="grid gap-4 sm:grid-cols-2">
-              <Field>
+              <Field className="bg-card">
                 <FieldLabel htmlFor="sla-policy-name">
                   {t("editor.name")}
                 </FieldLabel>
@@ -383,7 +383,7 @@ export function SlaPolicyEditor({ id }: { id: string }) {
                   disabled={!canManage || isCheckingPermissions}
                 />
               </Field>
-              <Field>
+              <Field className="bg-card">
                 <FieldLabel htmlFor="sla-policy-description">
                   {t("editor.description")}
                 </FieldLabel>
@@ -395,7 +395,7 @@ export function SlaPolicyEditor({ id }: { id: string }) {
                   disabled={!canManage || isCheckingPermissions}
                 />
               </Field>
-              <Field>
+              <Field className="bg-card">
                 <FieldLabel htmlFor="sla-policy-calendar">
                   {t("editor.calendar")}
                 </FieldLabel>
@@ -418,7 +418,7 @@ export function SlaPolicyEditor({ id }: { id: string }) {
                   </SelectContent>
                 </Select>
               </Field>
-              <Field>
+              <Field className="bg-card">
                 <FieldLabel htmlFor="sla-policy-threshold">
                   {t("editor.threshold")}
                 </FieldLabel>
@@ -509,7 +509,7 @@ export function SlaPolicyEditor({ id }: { id: string }) {
                                     numericValue > MAX_TARGET_MINUTES),
                               );
                               return (
-                                <Field key={priority}>
+                                <Field key={priority} className="bg-card">
                                   <FieldLabel htmlFor={inputId}>
                                     {t(`editor.priorities.${priority}`)}
                                   </FieldLabel>

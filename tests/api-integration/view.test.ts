@@ -1547,10 +1547,19 @@ describe("API integration: saved views", () => {
       method: "POST",
     });
     expect(response.status).toBe(422);
-    await expect(response.json()).resolves.toMatchObject({
-      message: "Saved view query contains unsupported properties",
-    });
+    expect(response.headers.get("content-type")).toBe(
+      "text/plain; charset=UTF-8",
+    );
+    await expect(response.text()).resolves.toBe(
+      "Saved view query contains unsupported properties",
+    );
     const countResponse = await app.request(`/api/views/${created.id}/count`);
     expect(countResponse.status).toBe(422);
+    expect(countResponse.headers.get("content-type")).toBe(
+      "text/plain; charset=UTF-8",
+    );
+    await expect(countResponse.text()).resolves.toBe(
+      "Saved view query contains unsupported properties",
+    );
   });
 });
