@@ -1,3 +1,32 @@
+## Status first — verified 2026-10-07 23:34 UTC
+
+**Accepted main:** `3096cb044bdf6ae98488bfc385f532fa6386343a`. **Persistent OrbStack DEV:** revision `08842235047a3ab2714427edce80331b94558150`, image `sha256:75b153d7d9583993127e1be8c06453159e4fe7319abfcd8431f093c9ca002bcf`; actual UID10001, CA-verified readiness200 on both hosts at8443. Standard443 remains unavailable. No new persistent deployment, protected merge, strict activation or phase finalizer occurred.
+
+| Stage | Formal status |
+| --- | --- |
+| P0 | Open — #602 current source01de; hosted G11 **22/22**, runtime/recorded acceptance pending |
+| P1 | Open — #605 native realtime slice independently reviewed; activity/comments UI implementation active; views/attachments integration pending |
+| P2 | Open — approvals/intake/SLA lanes; two intake contracts pending |
+| P3 | Open — portal/identity lanes; real-provider and integrated acceptance pending |
+| P4 | Open — query ownership completed on branch; settings/custom-field runtime gaps and contract decisions remain |
+| P5–P7 | Open — no completion claim |
+
+**New P0 evidence:** sole candidate #602 is clean/pushed at `01de3c09c3ef6038f0cfda5244ac710f1c59b453`. Five-file UI scheduling correction defers closed-palette warm-up until browser idle after existing primary readiness/two frames, preserves unsupported-browser behavior and explicit intent, and marks actual resolved work-list output. No benchmark/workload/fixture/budget/retry changes. Full hosted run `37700952445` passed **G11 22/22**: list300.4ms, LCP2328ms, board424.4ms; PostgreSQL **137 files / 1659 tests**, G4, G8 and E2E **27 tests** passed. Two fresh independent Luna contexts each passed **2 files / 18 tests** and cleared current source. Fresh exact-head Sol PR review is underway. Fast source checks pass; PR-template/security-record gate is correctly red for stale review notes and incomplete runtime acceptance. No gate is waived and no FINAL_P0_SHA is yet recorded.
+
+**P0 scope/convergence:** #599 remains excluded. #558/#575/#583/#590/#587/#600 are closed as superseded with historical evidence preserved. Diagnostic #604 is now frozen/closed after exactd5 run `37698715747` produced both usable attribution tests. Its unchanged two-case diagnostic failed on both reference/current sources; profile timing is instrumented, not canonical acceptance. All source-map fingerprints and cleanup were verified. It will not enter P0 source or continue collecting without a concrete unanswered question. The source-supported scheduling correction above is kept because the complete unchanged suite now passes; no causal certainty is claimed from a single profile.
+
+**Runtime audit:** OrbStack2.2.3 uses native arm64 containers,14CPU and31GiB engine memory; PostgreSQL/Valkey/app data use named Linux volumes. Docker Desktop is not installed, so no A/B comparison is claimed. Local timing cannot explain hosted failures. Exact frozen image/installer/migration/upgrade/rollback, off → shadow → strict → rollback, independent October4/5/6 compatibility and accepted-main phase finalizer remain outstanding. Existing dates are neither automatically reused nor restarted.
+
+**New P1 capability:** #605 exact `024788d8d9fe5e2aa9f63d17e1fb7c96f978fbe1` completes per-socket/per-key event deduplication, project-topic item/activity invalidation and cleanup lifecycle. Two fresh independent Luna contexts each passed8/8 and returned CLEAR. Root actual current-source unchanged two-session browser journey passed1/1, zero skipped/flaky/unexpected. Native17/17 PostgreSQL/WebSocket tests ran on64762484, with API/domain/permissions/integration/lockfile byte equivalence explicitly verified at024. Owned resources were removed; original failures remain preserved. Image/hosted integrated acceptance is pending. A separate full supported native activity/comment UI family is being implemented; comment-history read, mentions/watchers and comment-attachment server linkage remain explicit residuals.
+
+**Later integration:** #589 historical2350397b stays frozen until recreation from accepted post-P0 main with central migration allocation. #603 exact9ed99f2 has **zero unowned Drizzle reads** and passing query ownership check; this is branch implementation, not P4 acceptance. P4 settings currently lacks full control-plane API/UI; custom fields have tables but no runtime/UI. Team-lead, two intake, pending-action API-version, custom-field bundle and feature-lock ownership decisions are pending, isolated from P0.
+
+**Private testing/security:** the completed eight-role V7 proof remains39 native tests +3 supplemental cases and23PASS/0FAIL/1BLOCKED API probes; customer audit HTTP was masked404. No all24HTTP-pass or persistent seeded-user claim. Seeders, passwords and credential Markdown remain outside Git/GitHub; all owned temporary credentials/users/resources were removed. #8/#592/#593 remain open pending accepted-source runtime/finalizer proof. Historical generic-secret finding is unresolved; no scanner suppression or secret publication.
+
+**Critical path:** (1) exact-head Sol clearance and source-equivalent review record; (2) freeze final SHA and reconcile all hosted gates; (3) exact image/installer/migration/upgrade/rollback and authorization runtime proof; (4) independent observation compatibility adjudication; (5) protected merge then fresh independent GPT-6.1 Sol phase finalizer. **Next merge candidate:** #602 after these gates; later slices after reconstructed integrated acceptance. Main and DEV are unchanged. Historical snapshots follow.
+
+---
+
 ## Status first — verified 2026-10-07 22:48 UTC
 
 **Accepted main:** `3096cb044bdf6ae98488bfc385f532fa6386343a`. **Persistent OrbStack DEV:** revision `08842235047a3ab2714427edce80331b94558150`, image `sha256:75b153d7d9583993127e1be8c06453159e4fe7319abfcd8431f093c9ca002bcf`. Actual UID is **10001**; both local hosts answer readiness **200** with the retained public CA on **8443**. Standard **443** is unavailable. No deployment, protected merge, strict activation or phase finalizer occurred.

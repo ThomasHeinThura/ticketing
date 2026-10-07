@@ -6724,3 +6724,9 @@ P0 v12 exact private manifest receives independent Sol static clearance. Actual 
 Hosted #583 G11 remains FAIL and no manual retry occurred. Persistent DEV088 and accepted main309 remain unchanged. This entry records evidence and candidate state only; it does not approve the #598 decisions, accept any PR, authorize an additional runtime, change review requirements, or claim P0 completion.
 
 **Recorded:** orchestrator at actual2026-10-07T11:43:44Z under existing bounded operational-records authority.
+
+### 2026-10-08 · P0 isolated source converges; keep later implementation concurrent
+
+Thomas's autonomous realignment directive limits P0 to its documented installer, authorization, primitive/gate, required performance and operational obligations. #599 attachments stay P1; historical #589 is rebuilt from accepted post-P0 main. Superseded performance/diagnostic branches close with evidence preserved. Implementation workstreams continue concurrently; acceptance remains independent. No thresholds, fixtures, retries, workload, security or review gates are weakened.
+
+Exact01de source achieved unchanged hosted G11 22/22 with full-run PostgreSQL137/1659, G4/G8/E2E27 pass. Ordinary current-source reviews clear18tests each; Sol and runtime/installer/date-compatibility/finalizer remain separate. This result is evidence, not P0 closure. Diagnostic604 is frozen/closed, with failed comparisons retained. Current main3096 and persistent DEV088 remain unchanged. Private testing seeders/credentials stay outside the repository and owned temporary resources are removed. Recorded 2026-10-07 23:34 UTC.
