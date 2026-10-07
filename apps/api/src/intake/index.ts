@@ -127,7 +127,12 @@ const portalSubmissionResponseSchema = z.object({
     }),
   }),
   workItem: z
-    .object({ key: z.string(), title: z.string(), state: z.string() })
+    .object({
+      title: z.string(),
+      description: z.string(),
+      state: z.string(),
+      priority: z.string().nullable(),
+    })
     .nullable(),
   messages: z.array(
     z.object({

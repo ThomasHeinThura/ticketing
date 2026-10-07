@@ -192,6 +192,46 @@ function hasValidTitleMapping(formSchema: FormSchema) {
   );
 }
 
+async function requireAutoAcceptProject(
+  tx: DbTransaction,
+  input: {
+    autoAccept: boolean;
+    workspaceId: string;
+    projectId: string | null;
+    organisationId?: string;
+  },
+) {
+  if (!input.autoAccept) return;
+  if (!input.projectId)
+    throw new HTTPException(422, {
+      message: "Auto-accept requires a default customer-serving project",
+    });
+  const [project] = await tx
+    .select({
+      id: schema.projectTable.id,
+      organisationId: schema.projectTable.organisationId,
+    })
+    .from(schema.projectTable)
+    .where(
+      and(
+        eq(schema.projectTable.id, input.projectId),
+        eq(schema.projectTable.workspaceId, input.workspaceId),
+        isNull(schema.projectTable.deletedAt),
+        isNull(schema.projectTable.archivedAt),
+      ),
+    )
+    .for("share")
+    .limit(1);
+  if (
+    !project?.organisationId ||
+    (input.organisationId !== undefined &&
+      project?.organisationId !== input.organisationId)
+  )
+    throw new HTTPException(422, {
+      message: "Auto-accept project is unavailable for this organisation",
+    });
+}
+
 export async function publishRequestType(id: string, actorId: string) {
   return db.transaction(async (tx) => {
     const [type] = await tx
@@ -203,6 +243,11 @@ export async function publishRequestType(id: string, actorId: string) {
     if (!type)
       throw new HTTPException(404, { message: "Request type not found" });
     const formSchema = type.formSchema as FormSchema;
+    await requireAutoAcceptProject(tx, {
+      autoAccept: type.autoAccept,
+      workspaceId: type.workspaceId,
+      projectId: type.defaultProjectId,
+    });
     const defects = validateFormSchema(
       formSchema,
       new Set(["title", "description", "priority"]),
@@ -593,6 +638,12 @@ export async function createSubmission(input: {
         message: "Request type changed; reload the catalogue",
       });
     const version = currentType.version;
+    await requireAutoAcceptProject(tx, {
+      autoAccept: version.autoAccept,
+      workspaceId: selected.workspaceId,
+      projectId: version.defaultProjectId,
+      organisationId: identity.organisationId,
+    });
     const [instanceFlag] = await tx
       .select()
       .from(schema.instanceFeatureFlagTable)
@@ -1317,13 +1368,19 @@ export async function findPortalSubmission(ref: string, requesterId: string) {
     label: field.label,
     multiple: field.multiple,
   }));
-  let workItem: { key: string; title: string; state: string } | null = null;
+  let workItem: {
+    title: string;
+    description: string;
+    state: string;
+    priority: string | null;
+  } | null = null;
   if (row.submission.workItemId) {
     const [item] = await db
       .select({
-        key: schema.workItemTable.key,
         title: schema.workItemTable.title,
+        description: schema.workItemTable.description,
         state: schema.stateTemplateTable.name,
+        priority: schema.workItemTable.priority,
       })
       .from(schema.workItemTable)
       .innerJoin(
@@ -1342,7 +1399,11 @@ export async function findPortalSubmission(ref: string, requesterId: string) {
         ),
       )
       .limit(1);
-    if (item) workItem = item;
+    if (item)
+      workItem = {
+        ...item,
+        description: extractDocumentText(item.description),
+      };
   }
   return {
     ref: row.ref,

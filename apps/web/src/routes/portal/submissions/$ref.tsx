@@ -87,7 +87,12 @@ function PortalSubmissionPage() {
           workItemId?: string | null;
         };
         canWithdraw?: boolean;
-        workItem?: { key: string; title: string; state: string } | null;
+        workItem?: {
+          title: string;
+          description: string;
+          state: string;
+          priority: string | null;
+        } | null;
         requestType?: { name?: string };
         version?: {
           formSchema?: {
@@ -120,7 +125,8 @@ function PortalSubmissionPage() {
           })}
         </h1>
         <p className="text-muted-foreground">
-          {record?.requestType?.name} · {state}
+          {record?.requestType?.name} ·{" "}
+          {state === "accepted" ? record?.workItem?.state : state}
         </p>
       </header>
       {page.isLoading && (
@@ -142,12 +148,29 @@ function PortalSubmissionPage() {
           {state === "accepted" && record.workItem ? (
             <section
               className="rounded-md border p-4"
-              aria-label="Accepted work item"
+              aria-label="Request details"
             >
-              <h2 className="font-medium">{record.workItem.title}</h2>
-              <p className="text-muted-foreground">
-                {record.workItem.key} · {record.workItem.state}
-              </p>
+              <header className="flex flex-wrap items-baseline justify-between gap-2">
+                <h2 className="font-semibold text-lg">
+                  {record.workItem.title}
+                </h2>
+                <span className="text-muted-foreground">
+                  {record.workItem.state}
+                </span>
+              </header>
+              <dl className="mt-3 grid gap-2 sm:grid-cols-2">
+                {record.workItem.priority && (
+                  <div>
+                    <dt className="text-muted-foreground text-sm">Priority</dt>
+                    <dd className="capitalize">{record.workItem.priority}</dd>
+                  </div>
+                )}
+              </dl>
+              {record.workItem.description && (
+                <p className="mt-3 whitespace-pre-wrap">
+                  {record.workItem.description}
+                </p>
+              )}
             </section>
           ) : (
             <section className="rounded-md border p-4">
@@ -165,16 +188,6 @@ function PortalSubmissionPage() {
                 )}
               </dl>
             </section>
-          )}
-          {state === "accepted" && (
-            <Alert variant="info">
-              <AlertDescription>
-                {t("portal:intake.accepted", {
-                  defaultValue:
-                    "This request is now a work item. You can keep replying here and your message will be added to its conversation.",
-                })}
-              </AlertDescription>
-            </Alert>
           )}
           {state === "declined" && (
             <Alert variant="warning">

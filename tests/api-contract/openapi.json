@@ -25819,20 +25819,27 @@
                         "null"
                       ],
                       "properties": {
-                        "key": {
+                        "title": {
                           "type": "string"
                         },
-                        "title": {
+                        "description": {
                           "type": "string"
                         },
                         "state": {
                           "type": "string"
+                        },
+                        "priority": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
                         }
                       },
                       "required": [
-                        "key",
                         "title",
-                        "state"
+                        "description",
+                        "state",
+                        "priority"
                       ]
                     },
                     "messages": {

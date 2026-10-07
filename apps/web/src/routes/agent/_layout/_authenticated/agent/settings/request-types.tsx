@@ -30,6 +30,7 @@ import {
 } from "@/fetchers/intake";
 import useGetWorkItemTypes from "@/hooks/queries/work-item/use-get-work-item-types";
 import useActiveWorkspace from "@/hooks/queries/workspace/use-active-workspace";
+import { isIntakeConditionSatisfied } from "@/lib/intake-visibility";
 import { parseRequestTypeEditorSearch } from "@/lib/routes";
 
 export const Route = createFileRoute(
@@ -205,6 +206,20 @@ function RequestTypesPage() {
         (field.type === "text" || field.type === "textarea") &&
         !field.showIf,
     ).length === 1;
+  const priorityMappingValid = fields.every((field) => {
+    if (field.mapsTo?.field !== "priority") return true;
+    if (field.type !== "select" || !field.options?.length) return false;
+    return field.options.every((option) => {
+      const mapped =
+        field.mapsTo?.map && Object.hasOwn(field.mapsTo.map, option)
+          ? field.mapsTo.map[option]
+          : option;
+      return ["low", "medium", "high", "urgent"].includes(mapped ?? "");
+    });
+  });
+  const requiredFileValid = fields.every(
+    (field) => field.type !== "file" || field.required !== true,
+  );
   return (
     <main className="flex h-full flex-col gap-6 overflow-y-auto p-6">
       <PageTitle title={t("title")} />
@@ -479,12 +494,26 @@ function RequestTypesPage() {
                   <Checkbox
                     id={`field-required-${index}`}
                     checked={field.required}
+                    disabled={field.type === "file" && !field.required}
                     onCheckedChange={(checked) =>
                       updateField(index, { required: Boolean(checked) })
                     }
                   />{" "}
                   Required
                 </label>
+                {field.type === "file" && (
+                  <p
+                    className={
+                      field.required
+                        ? "text-sm text-destructive sm:col-span-2"
+                        : "text-sm text-muted-foreground sm:col-span-2"
+                    }
+                  >
+                    {field.required
+                      ? "Required file uploads are not publishable until the submission file contract is defined; clear Required to publish."
+                      : "Required is unavailable for file uploads until the submission file contract is defined."}
+                  </p>
+                )}
                 <label
                   className="sm:col-span-2"
                   htmlFor={`field-help-${index}`}
@@ -687,20 +716,7 @@ function RequestTypesPage() {
                   .filter((field) => {
                     if (!field.showIf) return true;
                     const actual = previewValues[field.showIf.field_key];
-                    if (field.showIf.op === "is_set")
-                      return (
-                        actual !== undefined &&
-                        actual !== "" &&
-                        actual !== false
-                      );
-                    if (field.showIf.op === "neq")
-                      return actual !== field.showIf.value;
-                    if (field.showIf.op === "in")
-                      return (
-                        Array.isArray(field.showIf.value) &&
-                        field.showIf.value.includes(actual)
-                      );
-                    return actual === field.showIf.value;
+                    return isIntakeConditionSatisfied(field.showIf, actual);
                   })
                   .map((field) => (
                     <div key={field.key} className="flex flex-col gap-1">
@@ -777,6 +793,18 @@ function RequestTypesPage() {
                 ? "Exactly one required text field maps to the work item title."
                 : "Publishing requires exactly one required text field mapped to the work item title."}
             </p>
+            {!priorityMappingValid && (
+              <p className="text-sm text-destructive" role="alert">
+                Every priority option must map to low, medium, high, or urgent
+                before publishing.
+              </p>
+            )}
+            {!requiredFileValid && (
+              <p className="text-sm text-destructive" role="alert">
+                Required file uploads are not publishable until the submission
+                file contract is defined; clear Required to publish.
+              </p>
+            )}
             {selectedType?.key && (
               <p className="text-xs text-muted-foreground">
                 Opaque catalogue key: {selectedType.key}
@@ -797,7 +825,12 @@ function RequestTypesPage() {
               {selected && (
                 <Button
                   onClick={() => action.mutate("publish")}
-                  disabled={!titleMappingValid || action.isPending}
+                  disabled={
+                    !titleMappingValid ||
+                    !priorityMappingValid ||
+                    !requiredFileValid ||
+                    action.isPending
+                  }
                 >
                   {selectedType?.published ? t("publishNew") : t("publish")}
                 </Button>

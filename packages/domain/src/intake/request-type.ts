@@ -32,7 +32,8 @@ export type SchemaDefect = {
     | "show_if_invalid_condition"
     | "show_if_chained_condition"
     | "maps_to_empty"
-    | "maps_to_missing_native_field";
+    | "maps_to_missing_native_field"
+    | "maps_to_invalid_priority_value";
 };
 
 const VISIBILITY_OPS = new Set(["eq", "neq", "in", "is_set"]);
@@ -121,6 +122,21 @@ export function validateFormSchema(
         // The spec's `mapsTo` custom-field-deleted case, generalized: when the caller
         // declares the native set, an unknown target is a publish defect.
         defects.push({ key, problem: "maps_to_missing_native_field" });
+      }
+      if (field.mapsTo.field === "priority") {
+        const allowed = new Set(["low", "medium", "high", "urgent"]);
+        const invalidPriorityMapping =
+          (field.type !== "select" && field.type !== "combobox") ||
+          !field.options?.length ||
+          (field.options ?? []).some((option) => {
+            const mapped =
+              field.mapsTo?.map && Object.hasOwn(field.mapsTo.map, option)
+                ? field.mapsTo.map[option]
+                : option;
+            return !allowed.has(mapped ?? "");
+          });
+        if (invalidPriorityMapping)
+          defects.push({ key, problem: "maps_to_invalid_priority_value" });
       }
     }
   }

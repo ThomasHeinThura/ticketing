@@ -141,6 +141,12 @@ here, to avoid two specs each defining the same write path differently.
 - `RT-15` A request type may be marked **auto-accept** (`request_type.auto_accept boolean` —
   [data-model.md](../01-architecture/data-model.md)), in which case a work item is created
   immediately and the submission is closed. Used for well-understood, high-volume requests.
+  Auto-accept requires a pinned default project that is active, in the request type's
+  workspace, and serves the submitting organisation. Publishing, submission, and
+  acceptance revalidate that binding atomically; the customer never selects a project and
+  the server never chooses an arbitrary project (decision log, 2026-10-04,
+  “Request-type default project and auto-accept binding”). Manual acceptance remains
+  governed by `IQ-7`.
   Its `submission.accepted` audit and outbox event use the `system` actor with no person
   actor id and display name `Request type auto-accept`; the customer remains the requester
   and initiator. Manual acceptance uses the acting staff person's identity and name.

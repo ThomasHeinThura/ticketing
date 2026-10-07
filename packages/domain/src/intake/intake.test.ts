@@ -424,6 +424,30 @@ describe("showIf — spec's field_key/op/value shape, verbatim (H1)", () => {
     ).toEqual([]);
   });
 
+  it("rejects priority options that cannot map to a canonical value", () => {
+    const prioritySchema = (map?: Record<string, string>) => ({
+      fields: [
+        {
+          key: "impact",
+          type: "select" as const,
+          label: "Impact",
+          options: ["low", "Everyone"],
+          mapsTo: { field: "priority", ...(map ? { map } : {}) },
+        },
+      ],
+    });
+
+    expect(validateFormSchema(prioritySchema())).toEqual([
+      { key: "impact", problem: "maps_to_invalid_priority_value" },
+    ]);
+    expect(validateFormSchema(prioritySchema({ Everyone: "high" }))).toEqual(
+      [],
+    );
+    expect(
+      validateFormSchema(prioritySchema({ Everyone: "critical" })),
+    ).toEqual([{ key: "impact", problem: "maps_to_invalid_priority_value" }]);
+  });
+
   it("evaluates all four operators: eq, neq, in, is_set", () => {
     const field = (op: "eq" | "neq" | "in" | "is_set", value?: unknown) => ({
       key: "f",

@@ -1,9 +1,21 @@
 import { useMutation, useQuery } from "@tanstack/react-query";
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
-import { Alert, AlertDescription, Button, Input, Textarea } from "@taskdesk/ui";
+import {
+  Alert,
+  AlertDescription,
+  Button,
+  Input,
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+  Textarea,
+} from "@taskdesk/ui";
 import { useEffect, useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { getPortalCatalogue, submitPortalRequest } from "@/fetchers/intake";
+import { isIntakeConditionSatisfied } from "@/lib/intake-visibility";
 import { parsePortalCatalogueSearch, routes } from "@/lib/routes";
 
 type Field = {
@@ -98,13 +110,7 @@ function PortalCatalogue() {
     const condition = field.showIf;
     if (!condition) return true;
     const value = answers[condition.field_key];
-    if (condition.op === "is_set")
-      return value !== undefined && value !== null && value !== "";
-    if (condition.op === "eq") return value === condition.value;
-    if (condition.op === "neq") return value !== condition.value;
-    if (condition.op === "in")
-      return Array.isArray(condition.value) && condition.value.includes(value);
-    return false;
+    return isIntakeConditionSatisfied(condition, value);
   };
   return (
     <main className="mx-auto flex min-h-svh w-full max-w-3xl flex-col gap-6 p-6">
@@ -197,30 +203,34 @@ function PortalCatalogue() {
                     }
                   />
                 ) : field.type === "select" || field.type === "combobox" ? (
-                  <select
-                    id={`request-field-${field.key}`}
-                    aria-label={field.label}
-                    className="h-10 rounded-md border bg-background px-3"
-                    required={field.required}
-                    value={String(answers[field.key] ?? "")}
-                    onChange={(event) =>
+                  <Select
+                    value={String(answers[field.key] ?? "") || null}
+                    onValueChange={(value) =>
                       setAnswers((old) => ({
                         ...old,
-                        [field.key]: event.target.value,
+                        [field.key]: value ?? "",
                       }))
                     }
                   >
-                    <option value="">
-                      {t("common:empty.select", {
-                        defaultValue: "Choose an option",
-                      })}
-                    </option>
-                    {(field.options ?? []).map((option) => (
-                      <option key={option} value={option}>
-                        {option}
-                      </option>
-                    ))}
-                  </select>
+                    <SelectTrigger
+                      id={`request-field-${field.key}`}
+                      aria-label={field.label}
+                      aria-required={field.required}
+                    >
+                      <SelectValue
+                        placeholder={t("common:empty.select", {
+                          defaultValue: "Choose an option",
+                        })}
+                      />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {(field.options ?? []).map((option) => (
+                        <SelectItem key={option} value={option}>
+                          {option}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
                 ) : field.type === "checkbox" ? (
                   <Input
                     id={`request-field-${field.key}`}
@@ -263,32 +273,36 @@ function PortalCatalogue() {
                 {t("portal:intake.visibilityLabel", {
                   defaultValue: "Who can see this request?",
                 })}
-                <select
-                  id="request-customer-visibility"
-                  className="h-10 rounded-md border bg-background px-3"
+                <Select
                   value={
                     visibilityValue ??
                     catalogue.data?.defaultCustomerVisibility ??
                     "organisation"
                   }
-                  onChange={(event) =>
+                  onValueChange={(value) =>
+                    value &&
                     setVisibility({
                       key: selected.key,
-                      value: event.target.value as "private" | "organisation",
+                      value: value as "private" | "organisation",
                     })
                   }
                 >
-                  <option value="private">
-                    {t("portal:intake.visibilityPrivate", {
-                      defaultValue: "Only me and invited participants",
-                    })}
-                  </option>
-                  <option value="organisation">
-                    {t("portal:intake.visibilityOrganisation", {
-                      defaultValue: "People in my organisation",
-                    })}
-                  </option>
-                </select>
+                  <SelectTrigger id="request-customer-visibility">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="private">
+                      {t("portal:intake.visibilityPrivate", {
+                        defaultValue: "Only me and invited participants",
+                      })}
+                    </SelectItem>
+                    <SelectItem value="organisation">
+                      {t("portal:intake.visibilityOrganisation", {
+                        defaultValue: "People in my organisation",
+                      })}
+                    </SelectItem>
+                  </SelectContent>
+                </Select>
               </label>
             )}
             {submit.isError && (

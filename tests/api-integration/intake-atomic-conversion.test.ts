@@ -8,6 +8,7 @@ import {
   acceptSubmission,
   createSubmission,
   findPortalSubmission,
+  publishRequestType,
 } from "../../apps/api/src/intake/repository";
 import { resetTestDatabase } from "./helpers/database";
 import {
@@ -442,6 +443,46 @@ describe("intake atomic conversion", () => {
     });
     expect(result.state).toBe("accepted");
     expect(result.workItemId).toBeTruthy();
+    const portalPage = await findPortalSubmission(
+      `SUB-${result.number}`,
+      requester.id,
+    );
+    expect(portalPage.workItem).toMatchObject({
+      title: "Reset access",
+      description: "",
+      state: "Backlog",
+      priority: null,
+    });
+    expect(portalPage.workItem).not.toHaveProperty("key");
+    await db
+      .update(schema.projectTable)
+      .set({ archivedAt: new Date() })
+      .where(eq(schema.projectTable.id, project.id));
+    await expect(
+      createSubmission({
+        userId: customerUser.id,
+        key: requestType.key,
+        formData: { summary: "Should stay retryable" },
+      }),
+    ).rejects.toMatchObject({ status: 422 });
+    const submissionsAfterRejectedRetry = await db
+      .select({ id: schema.submissionTable.id })
+      .from(schema.submissionTable)
+      .where(eq(schema.submissionTable.requestTypeId, requestType.id));
+    expect(submissionsAfterRejectedRetry).toHaveLength(1);
+    await db
+      .update(schema.projectTable)
+      .set({ archivedAt: null })
+      .where(eq(schema.projectTable.id, project.id));
+    await db
+      .update(schema.requestTypeTable)
+      .set({ defaultProjectId: null })
+      .where(eq(schema.requestTypeTable.id, requestType.id));
+    await expect(
+      publishRequestType(requestType.id, "test-actor"),
+    ).rejects.toMatchObject({
+      status: 422,
+    });
     const [item] = await db
       .select()
       .from(schema.workItemTable)
