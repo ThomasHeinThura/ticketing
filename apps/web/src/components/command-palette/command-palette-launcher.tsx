@@ -15,6 +15,14 @@ const CommandPalette = lazy(async () => {
   return { default: module.CommandPalette };
 });
 
+function preloadCommandPalette() {
+  // Importing warms the code-split module without rendering CommandPalette's
+  // closed dialog, queries, or command-list primitives on the initial screen.
+  // A failed background preload is ignored; the normal lazy import still runs
+  // when the user requests the palette.
+  void import("./index").catch(() => {});
+}
+
 let nextRequestId = 0;
 
 type IdleWindow = Window & {
@@ -27,7 +35,6 @@ export default function CommandPaletteLauncher() {
   const [requested, setRequested] = useState(false);
   const [open, setOpen] = useState(false);
   const [request, setRequest] = useState<CommandPaletteRequest | null>(null);
-  const [keepMounted, setKeepMounted] = useState(false);
   const requestedRef = useRef(false);
   const idleMountRef = useRef<number | undefined>(undefined);
 
@@ -82,8 +89,8 @@ export default function CommandPaletteLauncher() {
 
   useEffect(() => {
     // On the heavy work and board screens, wait for their real primary content
-    // paint before warming the closed palette. Explicit shortcut intent still
-    // loads immediately through `requested`.
+    // paint before warming the palette module. Explicit shortcut intent still
+    // loads and renders immediately through `requested`.
     const path = window.location.pathname;
     const waitsForPrimaryContent =
       (path.includes("/agent/projects/") && path.endsWith("/work")) ||
@@ -106,12 +113,12 @@ export default function CommandPaletteLauncher() {
         secondFrame = requestAnimationFrame(() => {
           if (cancelled || requestedRef.current) return;
           if (typeof idleWindow.requestIdleCallback !== "function") {
-            setKeepMounted(true);
+            preloadCommandPalette();
             return;
           }
           idleMountRef.current = idleWindow.requestIdleCallback(() => {
             idleMountRef.current = undefined;
-            if (!cancelled) setKeepMounted(true);
+            if (!cancelled && !requestedRef.current) preloadCommandPalette();
           });
         });
       });
@@ -144,7 +151,7 @@ export default function CommandPaletteLauncher() {
     };
   }, [cancelIdleMount]);
 
-  if (!requested && !keepMounted) return null;
+  if (!requested) return null;
   return (
     <Suspense fallback={null}>
       <CommandPalette
@@ -152,7 +159,7 @@ export default function CommandPaletteLauncher() {
         onOpenChange={setOpen}
         request={request}
         onRequestHandled={onRequestHandled}
-        keepMounted={keepMounted}
+        keepMounted={requested}
       />
     </Suspense>
   );
