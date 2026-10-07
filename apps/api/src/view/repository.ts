@@ -1,4 +1,4 @@
-import { and, eq, inArray, or } from "drizzle-orm";
+import { and, eq, inArray, or, sql } from "drizzle-orm";
 import { HTTPException } from "hono/http-exception";
 import db from "../database";
 import {
@@ -85,13 +85,17 @@ export async function findSavedViewById(id: string) {
   });
 }
 
-export async function findSavedViewByIdInTransaction(
+export async function lockSavedViewByIdInTransaction(
   tx: SavedViewTransaction,
   id: string,
 ) {
-  return tx.query.savedViewTable.findFirst({
-    where: (view, { eq }) => eq(view.id, id),
-  });
+  const [view] = await tx
+    .select()
+    .from(savedViewTable)
+    .where(eq(savedViewTable.id, id))
+    .for("update")
+    .limit(1);
+  return view;
 }
 
 export async function listSavedViewsForWorkspace(
@@ -182,6 +186,14 @@ export async function togglePinnedView(
   viewId: string,
 ) {
   return withSavedViewTransaction(async (tx) => {
+    // Serialize on the preference identity, including when the row does not yet
+    // exist. A row lock alone cannot protect the first insert from a concurrent
+    // pin of a different view by the same person.
+    await tx.execute(sql`
+      select pg_advisory_xact_lock(
+        hashtextextended(${`pinned_view_ids:${personId}:${workspaceId}`}, 0)
+      )
+    `);
     const [view] = await tx
       .select({ id: savedViewTable.id })
       .from(savedViewTable)

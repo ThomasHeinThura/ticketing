@@ -24240,7 +24240,9 @@
             "description": "A page of reachable matching work items",
             "content": {
               "application/json": {
-                "schema": {}
+                "schema": {
+                  "$ref": "#/components/schemas/WorkItemListResponse"
+                }
               }
             }
           },

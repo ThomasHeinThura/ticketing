@@ -11,7 +11,18 @@ import {
   useNavigate,
   useRouterState,
 } from "@tanstack/react-router";
-import { Button, Card, CardContent, Input, Skeleton } from "@taskdesk/ui";
+import {
+  Button,
+  Card,
+  CardContent,
+  Input,
+  Select,
+  SelectItem,
+  SelectPopup,
+  SelectTrigger,
+  SelectValue,
+  Skeleton,
+} from "@taskdesk/ui";
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
 import PageTitle from "@/components/page-title";
@@ -49,6 +60,10 @@ function SavedViewsIndexRoute() {
     useActiveWorkspace();
   const queryClient = useQueryClient();
   const [newName, setNewName] = useState("");
+  const [newVisibility, setNewVisibility] = useState<
+    "private" | "team" | "workspace"
+  >("private");
+  const [newTeamId, setNewTeamId] = useState("");
   const navigate = useNavigate({ from: Route.fullPath });
   const { query } = Route.useSearch();
   const views = useQuery({
@@ -68,12 +83,17 @@ function SavedViewsIndexRoute() {
         name: newName.trim(),
         scope: "workspace",
         scopeId: workspace?.id ?? "",
-        visibility: "private",
+        visibility: newVisibility,
+        ...(newVisibility === "team" && newTeamId.trim()
+          ? { sharedWithTeamId: newTeamId.trim() }
+          : {}),
         layout: "list",
         query: { entity: "work_item" },
       }),
     onSuccess: async (view) => {
       setNewName("");
+      setNewVisibility("private");
+      setNewTeamId("");
       await queryClient.invalidateQueries({ queryKey: ["saved-views"] });
       await navigate({ to: routes.savedView.path, params: { id: view.id } });
     },
@@ -114,10 +134,15 @@ function SavedViewsIndexRoute() {
         }
       />
       <form
-        className="flex flex-wrap gap-2"
+        className="flex flex-wrap items-end gap-2"
         onSubmit={(event) => {
           event.preventDefault();
-          if (newName.trim()) create.mutate();
+          if (
+            newName.trim() &&
+            (newVisibility !== "team" || newTeamId.trim())
+          ) {
+            create.mutate();
+          }
         }}
       >
         <Input
@@ -126,8 +151,48 @@ function SavedViewsIndexRoute() {
           value={newName}
           onChange={(event) => setNewName(event.target.value)}
         />
+        <div className="grid gap-1 text-sm">
+          {t("visibility", { visibility: "" })}
+          <Select
+            value={newVisibility}
+            onValueChange={(value) => {
+              if (
+                value === "private" ||
+                value === "team" ||
+                value === "workspace"
+              ) {
+                setNewVisibility(value);
+                if (value !== "team") setNewTeamId("");
+              }
+            }}
+          >
+            <SelectTrigger aria-label={t("visibility", { visibility: "" })}>
+              <SelectValue />
+            </SelectTrigger>
+            <SelectPopup>
+              {(["private", "team", "workspace"] as const).map((value) => (
+                <SelectItem key={value} value={value}>
+                  {t("visibility", { visibility: value })}
+                </SelectItem>
+              ))}
+            </SelectPopup>
+          </Select>
+        </div>
+        {newVisibility === "team" ? (
+          <Input
+            aria-label={t("visibility", { visibility: "team audience ID" })}
+            placeholder={t("visibility", { visibility: "team audience ID" })}
+            value={newTeamId}
+            onChange={(event) => setNewTeamId(event.target.value)}
+          />
+        ) : null}
         <Button
-          disabled={!workspace?.id || !newName.trim() || create.isPending}
+          disabled={
+            !workspace?.id ||
+            !newName.trim() ||
+            (newVisibility === "team" && !newTeamId.trim()) ||
+            create.isPending
+          }
         >
           {create.isPending ? t("creating") : t("create")}
         </Button>

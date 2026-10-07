@@ -13,6 +13,7 @@ import {
 import type { ApiKeyPermissionScope } from "../utils/require-api-key-permission-scope";
 import { requireWorkspaceCapability } from "../utils/require-workspace-capability";
 import { workspaceAccess } from "../utils/workspace-access-middleware";
+import { workItemListResponseSchema } from "../work-item/response";
 import type { SavedViewAuditActor } from "./audit";
 import createView from "./controllers/create-view";
 import getView from "./controllers/get-view";
@@ -190,7 +191,10 @@ const runViewRoute = createRoute({
   ] as const,
   request: { params: savedViewIdParam, query: runViewQuery },
   responses: {
-    200: jsonResponse("A page of reachable matching work items", z.unknown()),
+    200: jsonResponse(
+      "A page of reachable matching work items",
+      workItemListResponseSchema,
+    ),
     404: errorResponse("Saved view not found or out of reach"),
     422: errorResponse("Saved query contains unsupported filters"),
   },

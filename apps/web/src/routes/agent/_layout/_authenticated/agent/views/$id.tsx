@@ -28,6 +28,7 @@ import {
   createSavedView,
   getSavedView,
   getSavedViews,
+  runSavedView,
   runSavedViewUrlQuery,
   toggleSavedViewPin,
   updateSavedView,
@@ -41,9 +42,15 @@ import {
   type WorkItemSortField,
 } from "@/lib/routes";
 import {
+  cloneSavedViewName,
+  isExecutableSavedViewQuery,
+  savedViewUrlContextMatches,
+} from "@/lib/saved-view-query";
+import {
   parseWorkItemFilterText,
   printWorkItemFilterText,
 } from "@/lib/work-item-filter";
+import { parseWorkItemRow } from "@/types/work-item";
 
 export const Route = createFileRoute("/_layout/_authenticated/agent/views/$id")(
   {
@@ -99,14 +106,11 @@ function storedSearch(
     layout: view.layout,
     ...(filter ? { filter } : {}),
     filterMode: "visual",
-    ...(sort && typeof sort.field === "string"
-      ? { sort: sort.field as WorkItemSortField }
-      : {}),
-    ...(sort?.direction === "desc"
-      ? { dir: "desc" as const }
-      : sort?.direction === "asc"
-        ? { dir: "asc" as const }
-        : {}),
+    sort:
+      sort && typeof sort.field === "string"
+        ? (sort.field as WorkItemSortField)
+        : "key",
+    dir: sort?.direction === "desc" ? "desc" : "asc",
     ...(columns ? { columns } : {}),
   };
 }
@@ -138,10 +142,17 @@ function SavedViewRoute() {
   });
   const [name, setName] = useState("");
   const [filter, setFilter] = useState("");
+  const [visibility, setVisibility] = useState<
+    "private" | "team" | "workspace"
+  >("private");
+  const [teamAudienceId, setTeamAudienceId] = useState("");
   const [filterMode, setFilterMode] = useState<"visual" | "text">("visual");
   const [isEditing, setIsEditing] = useState(false);
   const snapshotComplete = Boolean(
     search.workspaceId && search.scope && search.scopeId && search.layout,
+  );
+  const storedQueryIsUnsupported = Boolean(
+    viewQuery.data && !isExecutableSavedViewQuery(viewQuery.data.query),
   );
   const workspaceId = search.workspaceId ?? viewQuery.data?.workspaceId;
   const workspaceViews = useQuery({
@@ -169,6 +180,14 @@ function SavedViewRoute() {
     if (!viewQuery.data) return;
     const snapshot = storedSearch(viewQuery.data);
     setName(viewQuery.data.name);
+    if (
+      viewQuery.data.visibility === "private" ||
+      viewQuery.data.visibility === "team" ||
+      viewQuery.data.visibility === "workspace"
+    ) {
+      setVisibility(viewQuery.data.visibility);
+    }
+    setTeamAudienceId(viewQuery.data.sharedWithTeamId ?? "");
     if (!snapshotComplete) {
       setFilter(snapshot.filter ?? "");
       void navigate({ search: snapshot, replace: true });
@@ -182,6 +201,15 @@ function SavedViewRoute() {
     : viewQuery.data
       ? storedSearch(viewQuery.data)
       : search;
+  const savedViewContextMatches = Boolean(
+    viewQuery.data &&
+      savedViewUrlContextMatches(viewQuery.data, search, snapshotComplete),
+  );
+  const unsupportedStoredQuery = Boolean(
+    storedQueryIsUnsupported ||
+      (viewQuery.data &&
+        (!savedViewContextMatches || effectiveSearch.layout !== "list")),
+  );
   const sort = effectiveSearch.sort ?? "key";
   const dir = effectiveSearch.dir ?? "asc";
   const cloneLayoutIsKnown = [
@@ -192,32 +220,6 @@ function SavedViewRoute() {
     "timeline",
     "chart",
   ].includes(effectiveSearch.layout ?? "");
-  const queryKey = useMemo(
-    () => ["saved-view-url-run", user?.id, id, effectiveSearch],
-    [effectiveSearch, id, user?.id],
-  );
-  const results = useInfiniteQuery({
-    queryKey,
-    enabled: Boolean(
-      effectiveSearch.workspaceId &&
-        (effectiveSearch.scope !== "project" || project),
-    ),
-    initialPageParam: effectiveSearch.cursor,
-    queryFn: ({ pageParam }) =>
-      runSavedViewUrlQuery({
-        workspaceId: effectiveSearch.workspaceId as string,
-        filter: effectiveSearch.filter,
-        ...(effectiveSearch.scope === "project" && project
-          ? { projectSlug: project.slug }
-          : {}),
-        sort,
-        dir,
-        columns: effectiveSearch.columns,
-        cursor: pageParam,
-      }),
-    getNextPageParam: (last) =>
-      last.hasMore ? (last.nextCursor ?? undefined) : undefined,
-  });
   const stored = viewQuery.data ? storedSearch(viewQuery.data) : undefined;
   const savedDefinitionMatches = Boolean(
     stored &&
@@ -231,10 +233,61 @@ function SavedViewRoute() {
       JSON.stringify(stored.columns ?? null) ===
         JSON.stringify(effectiveSearch.columns ?? null),
   );
+  const queryKey = useMemo(
+    () => [
+      "saved-view-run",
+      user?.id,
+      id,
+      viewQuery.data?.updatedAt,
+      effectiveSearch,
+    ],
+    [effectiveSearch, id, user?.id, viewQuery.data?.updatedAt],
+  );
+  const results = useInfiniteQuery({
+    queryKey,
+    enabled: Boolean(
+      viewQuery.data &&
+        !unsupportedStoredQuery &&
+        effectiveSearch.layout === "list" &&
+        effectiveSearch.workspaceId &&
+        (effectiveSearch.scope !== "project" || project),
+    ),
+    initialPageParam: effectiveSearch.cursor,
+    queryFn: async ({ pageParam }) => {
+      if (savedDefinitionMatches) {
+        const result = await runSavedView({ id, cursor: pageParam });
+        const items = result.data.map(parseWorkItemRow);
+        return {
+          items,
+          hasPartialFailure: items.some(
+            (item) => item.unavailableFields.length > 0,
+          ),
+          hasMore: result.page.hasMore,
+          nextCursor: result.page.nextCursor,
+          total: result.meta.total,
+        };
+      }
+      return runSavedViewUrlQuery({
+        workspaceId: effectiveSearch.workspaceId as string,
+        filter: effectiveSearch.filter,
+        ...(effectiveSearch.scope === "project" && project
+          ? { projectSlug: project.slug }
+          : {}),
+        sort,
+        dir,
+        columns: effectiveSearch.columns,
+        cursor: pageParam,
+      });
+    },
+    getNextPageParam: (last) =>
+      last.hasMore ? (last.nextCursor ?? undefined) : undefined,
+  });
   const countQuery = useQuery({
     queryKey: ["saved-view-count", user?.id, id, viewQuery.data?.updatedAt],
     queryFn: () => countSavedView(id),
-    enabled: Boolean(viewQuery.data && savedDefinitionMatches),
+    enabled: Boolean(
+      viewQuery.data && savedDefinitionMatches && !unsupportedStoredQuery,
+    ),
     staleTime: 30_000,
   });
 
@@ -248,6 +301,8 @@ function SavedViewRoute() {
       updateSavedView({
         id,
         name,
+        visibility,
+        sharedWithTeamId: visibility === "team" ? teamAudienceId.trim() : null,
         layout: effectiveSearch.layout,
         query: queryFor(effectiveSearch),
       }),
@@ -268,7 +323,7 @@ function SavedViewRoute() {
     mutationFn: () =>
       createSavedView({
         workspaceId: effectiveSearch.workspaceId as string,
-        name: `${viewQuery.data?.name ?? t("title")} copy`,
+        name: cloneSavedViewName(viewQuery.data?.name ?? t("title")),
         scope: effectiveSearch.scope as "workspace" | "project",
         scopeId: effectiveSearch.scopeId as string,
         visibility: "private",
@@ -329,6 +384,7 @@ function SavedViewRoute() {
             variant="outline"
             disabled={
               clone.isPending ||
+              unsupportedStoredQuery ||
               !effectiveSearch.workspaceId ||
               !effectiveSearch.scopeId ||
               !cloneLayoutIsKnown
@@ -340,13 +396,20 @@ function SavedViewRoute() {
           {viewQuery.data && (
             <Button
               variant="outline"
+              disabled={unsupportedStoredQuery}
               onClick={() => setIsEditing((value) => !value)}
             >
               {isEditing ? t("cancelEdit") : t("edit")}
             </Button>
           )}
           {isEditing && (
-            <Button disabled={save.isPending} onClick={() => save.mutate()}>
+            <Button
+              disabled={
+                save.isPending ||
+                (visibility === "team" && !teamAudienceId.trim())
+              }
+              onClick={() => save.mutate()}
+            >
               {t("save")}
             </Button>
           )}
@@ -361,6 +424,9 @@ function SavedViewRoute() {
       {search.scope === "project" && !project ? (
         <p role="alert">{t("projectUnavailable")}</p>
       ) : null}
+      {unsupportedStoredQuery && effectiveSearch.layout === "list" ? (
+        <p role="alert">{t("layoutUnavailable")}</p>
+      ) : null}
       {effectiveSearch.layout !== "list" ? (
         <p role="alert">{t("layoutUnavailable")}</p>
       ) : null}
@@ -372,6 +438,43 @@ function SavedViewRoute() {
               value={name}
               onChange={(event) => setName(event.target.value)}
             />
+            <div className="grid gap-1 text-sm">
+              {t("visibility", { visibility: "" })}
+              <Select
+                value={visibility}
+                onValueChange={(value) => {
+                  if (
+                    value === "private" ||
+                    value === "team" ||
+                    value === "workspace"
+                  ) {
+                    setVisibility(value);
+                    if (value !== "team") setTeamAudienceId("");
+                  }
+                }}
+              >
+                <SelectTrigger aria-label={t("visibility", { visibility: "" })}>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectPopup>
+                  {(["private", "team", "workspace"] as const).map((value) => (
+                    <SelectItem key={value} value={value}>
+                      {t("visibility", { visibility: value })}
+                    </SelectItem>
+                  ))}
+                </SelectPopup>
+              </Select>
+            </div>
+            {visibility === "team" ? (
+              <Input
+                aria-label={t("visibility", { visibility: "team audience ID" })}
+                placeholder={t("visibility", {
+                  visibility: "team audience ID",
+                })}
+                value={teamAudienceId}
+                onChange={(event) => setTeamAudienceId(event.target.value)}
+              />
+            ) : null}
             <div className="flex flex-wrap gap-3">
               <Select
                 value={sort}

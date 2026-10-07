@@ -18,6 +18,35 @@ export function executableQuery(value: unknown) {
       message: "Saved view query is not executable",
     });
   const stored = value as Record<string, unknown>;
+  const supportedKeys = new Set([
+    "entity",
+    "filter",
+    "sort",
+    "groupBy",
+    "columns",
+    "aggregate",
+  ]);
+  if (
+    Object.keys(stored).some((key) => !supportedKeys.has(key)) ||
+    (stored.entity !== undefined && stored.entity !== "work_item")
+  ) {
+    throw new HTTPException(422, {
+      message: "Saved view query contains unsupported properties",
+    });
+  }
+  if (
+    Array.isArray(stored.sort) &&
+    stored.sort.some(
+      (item) =>
+        item &&
+        typeof item === "object" &&
+        Object.keys(item).some((key) => !["field", "direction"].includes(key)),
+    )
+  ) {
+    throw new HTTPException(422, {
+      message: "Saved view query contains unsupported sort properties",
+    });
+  }
   const sort = Array.isArray(stored.sort)
     ? stored.sort.map((item) => {
         if (!item || typeof item !== "object") return item;

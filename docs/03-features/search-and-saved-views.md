@@ -129,8 +129,8 @@ triage. See [intake queue](intake-queue.md).
 | --- | --- |
 | Command palette | `⌘K` overlay — global search, navigation, actions (`SV-1`) |
 | Global search results | The full results list, for a query the palette alone can't hold |
-| Saved views index | Every view the actor can reach, pinned ones first |
-| Saved view | One view, rendered in its stored layout |
+| Saved views index | Every view the actor can reach, pinned ones first; create a private view by default or choose team/workspace visibility |
+| Saved view | One view, rendered in its stored layout; the editor can change its name, query, visibility, and team audience |
 
 Routes and status in the [screen inventory](../02-design/screen-inventory.md).
 

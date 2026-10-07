@@ -1386,6 +1386,29 @@ describe("API integration: saved views", () => {
       sharedWithTeamId: teamId,
     });
 
+    const unshareResponse = await adminApp.request(`/api/views/${created.id}`, {
+      method: "PATCH",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ visibility: "private" }),
+    });
+    expect(unshareResponse.status).toBe(200);
+    const unshared = await db.query.savedViewTable.findFirst({
+      where: eq(schema.savedViewTable.id, created.id),
+    });
+    expect(unshared).toMatchObject({
+      visibility: "private",
+      sharedWithTeamId: null,
+    });
+    const reshareResponse = await adminApp.request(`/api/views/${created.id}`, {
+      method: "PATCH",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({
+        visibility: "team",
+        sharedWithTeamId: teamId,
+      }),
+    });
+    expect(reshareResponse.status).toBe(200);
+
     const deleteResponse = await adminApp.request(`/api/views/${created.id}`, {
       method: "DELETE",
     });
@@ -1400,5 +1423,134 @@ describe("API integration: saved views", () => {
       visibility: "team",
       sharedWithTeamId: teamId,
     });
+  });
+
+  it("serializes first-time concurrent pins for different views", async () => {
+    const member = await createWorkspaceMember();
+    const person = await addPerson(member.user.id);
+    mockAuthenticatedSession(member.user);
+    const { app } = createApp();
+    const createView = async (name: string) => {
+      const response = await app.request("/api/views", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({
+          workspaceId: member.workspace.id,
+          name,
+          scope: "workspace",
+          scopeId: member.workspace.id,
+          layout: "list",
+          query: { entity: "work_item" },
+        }),
+      });
+      expect(response.status).toBe(200);
+      return (await response.json()) as { id: string };
+    };
+    const [first, second] = await Promise.all([
+      createView("First concurrent pin"),
+      createView("Second concurrent pin"),
+    ]);
+
+    const responses = await Promise.all(
+      [first, second].map((view) =>
+        app.request(`/api/views/${view.id}/pin`, { method: "POST" }),
+      ),
+    );
+    expect(responses.map((response) => response.status)).toEqual([200, 200]);
+
+    const preference = await db.query.userPreferenceTable.findFirst({
+      where: and(
+        eq(schema.userPreferenceTable.personId, person.id),
+        eq(schema.userPreferenceTable.scope, "workspace"),
+        eq(schema.userPreferenceTable.scopeId, member.workspace.id),
+        eq(schema.userPreferenceTable.key, "pinned_view_ids"),
+      ),
+    });
+    expect(preference?.value).toEqual(
+      expect.arrayContaining([first.id, second.id]),
+    );
+  });
+
+  it("preserves disjoint fields from concurrent partial view updates", async () => {
+    const member = await createWorkspaceMember();
+    await addPerson(member.user.id);
+    mockAuthenticatedSession(member.user);
+    const { app } = createApp();
+    const createResponse = await app.request("/api/views", {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({
+        workspaceId: member.workspace.id,
+        name: "Before concurrent edits",
+        scope: "workspace",
+        scopeId: member.workspace.id,
+        layout: "list",
+        query: { entity: "work_item" },
+      }),
+    });
+    expect(createResponse.status).toBe(200);
+    const created = (await createResponse.json()) as { id: string };
+
+    const responses = await Promise.all([
+      app.request(`/api/views/${created.id}`, {
+        method: "PATCH",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ name: "Name update" }),
+      }),
+      app.request(`/api/views/${created.id}`, {
+        method: "PATCH",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({
+          query: {
+            entity: "work_item",
+            filter: { field: "priority", op: "eq", value: "high" },
+          },
+        }),
+      }),
+    ]);
+    expect(responses.map((response) => response.status)).toEqual([200, 200]);
+
+    const persisted = await db.query.savedViewTable.findFirst({
+      where: eq(schema.savedViewTable.id, created.id),
+    });
+    expect(persisted?.name).toBe("Name update");
+    expect(persisted?.query).toEqual({
+      entity: "work_item",
+      filter: { field: "priority", op: "eq", value: "high" },
+    });
+  });
+
+  it("fails closed when a persisted saved query contains unknown execution semantics", async () => {
+    const member = await createWorkspaceMember();
+    await addPerson(member.user.id);
+    mockAuthenticatedSession(member.user);
+    const { app } = createApp();
+    const createResponse = await app.request("/api/views", {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({
+        workspaceId: member.workspace.id,
+        name: "Future query",
+        scope: "workspace",
+        scopeId: member.workspace.id,
+        layout: "list",
+        query: { entity: "work_item" },
+      }),
+    });
+    const created = (await createResponse.json()) as { id: string };
+    await db
+      .update(schema.savedViewTable)
+      .set({ query: { entity: "work_item", futureExecutionMode: "grouped" } })
+      .where(eq(schema.savedViewTable.id, created.id));
+
+    const response = await app.request(`/api/views/${created.id}/run`, {
+      method: "POST",
+    });
+    expect(response.status).toBe(422);
+    await expect(response.json()).resolves.toMatchObject({
+      message: "Saved view query contains unsupported properties",
+    });
+    const countResponse = await app.request(`/api/views/${created.id}/count`);
+    expect(countResponse.status).toBe(422);
   });
 });

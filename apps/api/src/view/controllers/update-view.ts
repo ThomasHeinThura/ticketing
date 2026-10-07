@@ -12,7 +12,7 @@ import {
   writeSavedViewAudit,
 } from "../audit";
 import {
-  findSavedViewByIdInTransaction,
+  lockSavedViewByIdInTransaction,
   teamMemberInWorkspaceTransaction,
   updateSavedView,
   withSavedViewTransaction,
@@ -30,7 +30,7 @@ async function updateView(
   apiKey?: ApiKeyPermissionScope,
 ) {
   const { updated, before } = await withSavedViewTransaction(async (tx) => {
-    const view = await findSavedViewByIdInTransaction(tx, id);
+    const view = await lockSavedViewByIdInTransaction(tx, id);
 
     if (!view) {
       throw new HTTPException(404, { message: "Saved view not found" });
@@ -42,7 +42,9 @@ async function updateView(
     const nextSharedWithTeamId =
       input.sharedWithTeamId !== undefined
         ? input.sharedWithTeamId
-        : view.sharedWithTeamId;
+        : input.visibility !== undefined && input.visibility !== view.visibility
+          ? null
+          : view.sharedWithTeamId;
 
     if (nextVisibility === "team") {
       if (!nextSharedWithTeamId) {

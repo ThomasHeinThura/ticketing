@@ -99,6 +99,7 @@ export async function createSavedView(input: {
 export async function updateSavedView(input: {
   id: string;
   name?: string;
+  sharedWithTeamId?: string | null;
   visibility?: "private" | "team" | "workspace";
   layout?: "board" | "list" | "table" | "calendar" | "timeline" | "chart";
   query?: Record<string, unknown>;
@@ -110,6 +111,9 @@ export async function updateSavedView(input: {
       ...(input.visibility === undefined
         ? {}
         : { visibility: input.visibility }),
+      ...(input.sharedWithTeamId === undefined
+        ? {}
+        : { sharedWithTeamId: input.sharedWithTeamId }),
       ...(input.layout === undefined ? {} : { layout: input.layout }),
       ...(input.query === undefined ? {} : { query: input.query }),
     },
