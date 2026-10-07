@@ -3,7 +3,7 @@ import {
   BUILT_IN_ROLES,
   DEFAULT_ROLE_NAMES,
 } from "@taskdesk/permissions";
-import { hashPassword, verifyPassword } from "better-auth/crypto";
+import bcrypt from "bcryptjs";
 import { and, eq, inArray, or } from "drizzle-orm";
 import db, { getDatabasePool, schema } from "../src/database";
 import { seedDefaultWorkspaceRolesForWorkspace } from "../src/utils/seed-default-workspace-roles";
@@ -240,10 +240,7 @@ async function verifyExistingFixture(
           account.accountId !== user.id ||
           !account.password ||
           !credential.password ||
-          !(await verifyPassword({
-            hash: account.password,
-            password: credential.password,
-          })))) ||
+          !(await bcrypt.compare(credential.password, account.password)))) ||
       (credential.authentication === "external_provider_required" &&
         account !== undefined) ||
       person?.id !== personId(role) ||
@@ -394,7 +391,7 @@ async function createFixture(
           accountId: id,
           providerId: "credential",
           userId: id,
-          password: await hashPassword(credential.password),
+          password: await bcrypt.hash(credential.password, 10),
           createdAt: now,
           updatedAt: now,
         });
