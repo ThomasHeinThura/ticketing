@@ -1,3 +1,13 @@
+### 2026-10-07 · Complete implementation batches before delta review; preserve blocked evidence
+
+**Operational application of the realignment directive, no waiver.** Full P1 visual-filter implementation `9d2f27a5efce3cfc9dd7dfe498ad8f27302f42f9` is pushed with author tests/browser evidence, then receives its full independent ordinary panel. Collect partial-sort disagreement, invalid IN bounds/parsing and unary-group operator loss before one structural parser/URL remedy. Preserve the candidate and reports; neither semantic-only AST normalization nor rejecting valid unary groups satisfies exact lossless tree round-trip. This remains a P1 leaf, not a P0 prerequisite.
+
+Private lifecycle v7 completes 40 offline regressions and immutable manifest `3ee50b12971da8176d404c7619027589f7f2d5192c0a742f82649fa072935c1e`; fresh ordinary delta review blocks quoted JSON credentials escaping generic redaction. Preserve that complete blocked bundle. The successor repairs all output-persistence/redaction surfaces with meaningful adversarial regressions; repeated-class handling requires a structural invariant, not escalating comfort rounds or another narrow regex patch. A clean required fresh full Sol pass may close the review tier under the existing repeated-class rule once the structural remedy is complete. No actual runtime grant, retry, Gate C claim or authority exception is supplied by this entry.
+
+The complete central migration/schema semantic remedy continues offline, preserving accepted metadata, allocated SQL and journal. Prefer exact trusted static SQL/default/check/predicate representations and bounded justified normalization; do not import generated snapshot data as a tautological source oracle or accept unsupported expressions by stripping syntax. Root's earlier named PostgreSQL window remains closed. Existing anonymous-volume incidents and failed runs remain unchanged.
+
+**Recorded:** root at actual 2026-10-07T02:26:10.911238+00:00; live main `3096cb04`, frozen P0 `53269374` unchanged.
+
 ### 2026-10-07 · Preserve actual lifecycle failures; require full semantic generation invariant
 
 **Root operational application, no waiver.** Complete lifecyclev6 manifestb989ab94c68a1ac0b9790cb84d555b9659e0e13dad0f79dc260ff42e69191ee8 has independent Sol clearance of its absolute-expiry delta and33offline tests. Root verifies both local image revisions, named central resource ownership/released connections and exact cleanup; original failed case-sensitive absence readback remains beside successful completion. Root then issues distinct actual external-pin applications/windows for disposable local Compose, with Thomas-personal-approval false, no persistentDEV/production/performance/officialrelease/GateC authority.

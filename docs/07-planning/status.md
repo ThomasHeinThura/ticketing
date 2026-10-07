@@ -1,5 +1,53 @@
 ## Status First
 
+Snapshot: 2026-10-07T02:26:10.911238+00:00. Remote main remains `3096cb044bdf6ae98488bfc385f532fa6386343a` by fresh live readback. P0 #583 remains frozen at `5326937460b195d8e69584c0cb99305348330a95`. No merge, runtime retry, DEV refresh, release publication or phase acceptance occurred in this update.
+
+| Phase | Implementation | Integration | Acceptance |
+| --- | --- | --- | --- |
+| P0 | Frozen product; complete private lifecycle v7 implemented, structural redaction successor underway | Sole closure #583 | Hosted G11 19/22; actual lifecycle, TLS, signed installer, strict compatibility/cutover and finalizer open |
+| P1 | Saved views/CSV implemented; full visual filter builder implemented with bulk correction underway | #591 and isolated builder; provisional 0118 | Builder first candidate ordinary panel blocked; shared metadata and composed acceptance open |
+| P2 | Selected approval continuity/withdrawal and browser-placement slices implemented and reviewed | #586 | Phase integration, live API/image and current composed gates open |
+| P3 | Selected mapping/login and repository-relocation slices implemented and reviewed | #595 then #596 | Real provider, Health and phase integration acceptance open |
+| P4 | Selected outbox eligibility/fencing/binding slice implemented and reviewed | #594 | Shared composition, image/provider and phase acceptance open |
+
+### What changed
+
+Full P1 filter-builder candidate `9d2f27a5efce3cfc9dd7dfe498ad8f27302f42f9` is committed and pushed. Author evidence includes 41 focused tests, 128 files/518 web tests and three mocked browser journeys; that does not establish live API, image or phase acceptance. Both independent ordinary reviewers collected the full findings before remediation: partial sort URLs can disagree with API result order; invalid empty/oversized/trailing-comma IN lists are accepted; unary OR loses its operator in text round-trip. One full structural parser/URL remedy is underway with exact AST round-trip regression coverage. No P0 feature was added.
+
+Full private lifecycle v7 manifest `3ee50b12971da8176d404c7619027589f7f2d5192c0a742f82649fa072935c1e` freezes 11 payloads and passes 40 offline tests. It addresses image-ID normalization, actual Docker absence responses, complete mount identity capture, PG18 anonymous-parent prevention and precleanup failure logs. Fresh ordinary review blocks quoted JSON credentials bypassing redaction; v8 must repair the whole persistence/redaction boundary, not add another isolated regex exception. No v7 runtime grant or retry occurred; failed v6 runs and the unbound volume remain preserved.
+
+### What is being worked on now
+
+Three bounded Luna implementation lanes continue: #589 configured schema/generation semantics against retained actual catalog; P1 complete parser, sort and lossless group correction; private P0 lifecycle output-redaction structural successor. Source freezes precede reviews. The migration author has no PostgreSQL/Docker window; the builder's browser authority is limited to owned mocked port 4316; no private lifecycle runtime authority exists.
+
+### Critical path
+
+1. Resolve frozen P0 hosted G11 under its existing no-extra-retry rule.
+2. Complete reviewed actual local lifecycle and exact signed-installer/TLS proof.
+3. Establish current strict behavior and independent compatibility of the original partial observation dates.
+4. Resolve public-config criterion and execute eligible reversible cutover.
+5. Protected exact-head merge, official installer acceptance and fresh Sol phase finalizer.
+
+### Misalignment / drift
+
+The pasted drift report's 17/22 figure is historical. Current hosted G11 remains 19/22, not green. #583 is sole P0; #589 is sole later integration train, independent of P0 closure; #581 is superseded and #587 diagnostic only. Primary checkout status is stale, so live GitHub and these dated operational records govern current work. No extra performance run, threshold change, later migration or post-P0 feature is used to close P0.
+
+### Concerns
+
+The migration comparator must reject column/type/null/default/constraint/index drift; names/counts alone are insufficient. The complete remedy uses trusted frozen SQL/catalog representations rather than a broad unsafe SQL normalizer. Private runner credential output must fail closed before persistence. Prior anonymous-volume deletion remains irreversible and unproven; new volume `3cdc71ba8cc620aa1bf92ea39b479c322bdacc3d409a77d068d492577d6ebcc0` stays preserved with no inferred ownership or removal. Lost migrate logs leave its actual cause unknown.
+
+### Decisions needed from Thomas
+
+Existing questions remain pending: public-config criterion, one unchanged-source hosted confirmation, official signed-installer release ordering, and P1 current-team lead behavior. No duplicate question or elapsed-time approval.
+
+### Next merge candidates
+
+#583 only after actual required gates clear. Mature later slices, complete schema/generation remedy, reviewed dialog and corrected filter builder compose through #589 on accepted P0. No blocked candidate is merge-ready.
+
+---
+
+## Status First
+
 Snapshot: 2026-10-07T02:04:02.983140+00:00. Remote main independently remains3096cb04; reviewed DEV container4ecd200a8e07 remains running/healthy on image75b153d7. P0#583 remains frozen53269374. No protected merge, DEV refresh, strict cutover, release publication or phase completion.
 
 | Phase | Implementation | Integration | Acceptance |
