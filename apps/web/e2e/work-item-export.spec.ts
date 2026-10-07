@@ -82,7 +82,7 @@ test("work-list URL state drives CSV download and a denied export reports an err
   });
 
   await page.goto(
-    `${WORK_LIST_PATH}&filter=priority%3Ahigh&sort=title&dir=desc`,
+    `${WORK_LIST_PATH}&filterMode=text&filter=priority%3Ahigh&sort=title&dir=desc`,
   );
   await expect(page).toHaveURL(/filter=priority%3Ahigh/u);
   await expect(page).toHaveURL(/sort=title/u);

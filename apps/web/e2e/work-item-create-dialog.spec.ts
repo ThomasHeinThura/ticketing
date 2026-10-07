@@ -401,7 +401,7 @@ test("leaving the work route cancels a pending create intent on unmount", async 
   }
 });
 
-test("a failed form chunk shows a retry state and recovers after reload", async ({
+test("a failed form chunk retries in place and restores focus to its trigger", async ({
   page,
 }, testInfo) => {
   await page.setViewportSize({ width: 1280, height: 720 });
@@ -434,14 +434,12 @@ test("a failed form chunk shows a retry state and recovers after reload", async 
     path: testInfo.outputPath("create-dialog-load-error.png"),
   });
   await page.getByRole("button", { name: /try again/i }).click();
-  await expect(page.getByTestId("create-work-item-trigger")).toBeVisible();
-  await page.getByTestId("create-work-item-trigger").click();
   await expect(dialog).toBeVisible();
   await expect(dialog.getByTestId("create-work-item-title")).toBeVisible();
   expect(formRequestCount).toBeGreaterThanOrEqual(2);
   await page.keyboard.press("Escape");
   await expect(dialog).toBeHidden();
-  await page.getByTestId("create-work-item-trigger").focus();
+  await expect(trigger).toBeFocused();
   await page.keyboard.press("Enter");
   await expect(dialog).toBeVisible();
   await expect(dialog.getByTestId("create-work-item-title")).toBeVisible();

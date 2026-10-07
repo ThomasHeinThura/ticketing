@@ -12,8 +12,21 @@ import { lazy, Suspense, useState } from "react";
 import { useTranslation } from "react-i18next";
 import type { CreateWorkItemDialogProps } from "./create-work-item-dialog-form";
 
-const loadCreateWorkItemDialogForm = () =>
-  import("./create-work-item-dialog-form");
+type FormModule = typeof import("./create-work-item-dialog-form");
+
+let formModulePromise: Promise<FormModule> | undefined;
+
+function loadCreateWorkItemDialogForm(): Promise<FormModule> {
+  if (!formModulePromise) {
+    formModulePromise = import("./create-work-item-dialog-form").catch(
+      (error: unknown) => {
+        formModulePromise = undefined;
+        throw error;
+      },
+    );
+  }
+  return formModulePromise;
+}
 
 type Props = CreateWorkItemDialogProps & { open: boolean };
 
@@ -24,19 +37,23 @@ export function CreateWorkItemDialogContent({
   projectId,
   workspaceId,
 }: ContentProps) {
-  const [Form] = useState(() => lazy(loadCreateWorkItemDialogForm));
+  const [Form, setForm] = useState(() => lazy(loadCreateWorkItemDialogForm));
+  const [attempt, setAttempt] = useState(0);
   const { t } = useTranslation();
+
+  const retry = () => {
+    formModulePromise = undefined;
+    setForm(() => lazy(loadCreateWorkItemDialogForm));
+    setAttempt((current) => current + 1);
+  };
 
   return (
     <ErrorBoundary
+      key={attempt}
       fallback={() => (
         <div role="alert" className="flex flex-col gap-3">
           <p>{t("common:error.title")}</p>
-          <Button
-            size="sm"
-            variant="outline"
-            onClick={() => window.location.reload()}
-          >
+          <Button size="sm" variant="outline" onClick={retry}>
             {t("common:error.tryAgain")}
           </Button>
         </div>

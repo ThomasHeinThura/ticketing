@@ -1,7 +1,4 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { Button } from "@taskdesk/ui";
-import { saveAs } from "file-saver";
-import { Download, Loader2 } from "lucide-react";
 import {
   lazy,
   Suspense,
@@ -13,18 +10,11 @@ import {
 } from "react";
 import { useTranslation } from "react-i18next";
 import PageTitle from "@/components/page-title";
-import WorkItemCreateDialogShell from "@/components/work-item/work-item-create-dialog-shell";
-import WorkItemFilterEditor from "@/components/work-item/work-item-filter-editor";
-import WorkItemListLoading from "@/components/work-item/work-item-list-loading";
-import { exportWorkItems } from "@/fetchers/work-item/export-work-items";
 import type { WorkItemsResult } from "@/fetchers/work-item/get-work-items";
 import useGetProjects from "@/hooks/queries/project/use-get-projects";
 import useGetWorkItems from "@/hooks/queries/work-item/use-get-work-items";
 import useActiveWorkspace from "@/hooks/queries/workspace/use-active-workspace";
 import type { WorkItemRealtimeStatus } from "@/hooks/use-native-work-item-realtime";
-import { useWorkspacePermission } from "@/hooks/use-workspace-permission";
-import { HttpError } from "@/lib/http-error";
-import { toast } from "@/lib/toast";
 
 type WorkItemsPanelModule =
   typeof import("@/components/work-item/work-items-panel");
@@ -48,8 +38,11 @@ function preloadWorkItemsPanel() {
 }
 
 const WorkItemsPanel = lazy(loadWorkItemsPanel);
-const WorkItemCreateTrigger = lazy(
-  () => import("@/components/work-item/work-item-create-trigger"),
+const WorkItemListControls = lazy(
+  () => import("@/components/work-item/work-item-list-controls"),
+);
+const WorkItemCreateDialogLoader = lazy(
+  () => import("@/components/work-item/work-item-create-dialog-loader"),
 );
 
 import {
@@ -58,7 +51,7 @@ import {
   type WorkItemListSearch,
   type WorkItemSortDirection,
   type WorkItemSortField,
-} from "@/lib/routes";
+} from "@/lib/work-item-list-search";
 
 /**
  * `docs/02-design/screen-inventory.md` "Work — list" (P1), the first v2 work-item
@@ -108,9 +101,6 @@ function ProjectWorkItemsRoute({ projectKey }: { projectKey: string }) {
     isError: isWorkspaceError,
   } = useActiveWorkspace();
 
-  const { canCreateTasks, isCheckingPermissions } = useWorkspacePermission();
-  const canOpenCreateDialog = !isCheckingPermissions && canCreateTasks();
-
   const {
     data: projects,
     isLoading: isProjectsLoading,
@@ -139,16 +129,10 @@ function ProjectWorkItemsRoute({ projectKey }: { projectKey: string }) {
     setCreateIntentProjectContext(undefined);
   }, []);
   const openCreateDialog = useCallback(() => {
-    if (!projectContext || !canOpenCreateDialog) return;
+    if (!projectContext) return;
     setIsCreateOpen(true);
     setCreateIntentProjectContext(projectContext);
-  }, [canOpenCreateDialog, projectContext]);
-
-  useLayoutEffect(() => {
-    if (!isCreateOpen || canOpenCreateDialog) return;
-    setIsCreateOpen(false);
-    setCreateIntentProjectContext(undefined);
-  }, [canOpenCreateDialog, isCreateOpen]);
+  }, [projectContext]);
 
   const {
     data: workItemsResult,
@@ -214,18 +198,18 @@ function ProjectWorkItemsRoute({ projectKey }: { projectKey: string }) {
     if (!workspace?.id || !project || isExporting) return;
     setIsExporting(true);
     try {
-      const csv = await exportWorkItems({
+      const { downloadWorkItems } = await import(
+        "@/fetchers/work-item/download-work-items"
+      );
+      await downloadWorkItems({
         workspaceId: workspace.id,
         projectSlug: project.slug,
         filter: filter ?? "",
         sort: activeSort,
         dir: activeDir,
       });
-      saveAs(
-        new Blob([csv], { type: "text/csv;charset=utf-8" }),
-        `${project.slug}-work-items.csv`,
-      );
     } catch {
+      const { toast } = await import("@/lib/toast");
       toast.error(t("common:error.title"));
     } finally {
       setIsExporting(false);
@@ -258,60 +242,52 @@ function ProjectWorkItemsRoute({ projectKey }: { projectKey: string }) {
             {t("workItems:list.heading")}
           </h1>
           {project ? (
-            <div className="flex items-center gap-2">
-              <Button
-                size="sm"
-                variant="outline"
-                onClick={() => void handleExport()}
-                disabled={isExporting || !workspace?.id}
-              >
-                {isExporting ? (
-                  <Loader2 className="animate-spin" />
-                ) : (
-                  <Download />
-                )}
-                {t("workItems:list.export")}
-              </Button>
-              {canOpenCreateDialog ? (
-                <Suspense fallback={null}>
-                  <WorkItemCreateTrigger
-                    buttonRef={createTriggerRef}
-                    onClick={openCreateDialog}
-                  />
-                </Suspense>
-              ) : null}
-            </div>
+            <Suspense
+              fallback={<div className="h-9 w-40" aria-hidden="true" />}
+            >
+              <WorkItemListControls
+                filter={filter ?? ""}
+                mode={filterMode ?? "visual"}
+                workItemsError={workItemsError}
+                canCreate
+                createTriggerRef={createTriggerRef}
+                isExporting={isExporting || !workspace?.id}
+                onCreate={openCreateDialog}
+                onExport={() => void handleExport()}
+                onModeChange={(nextMode) =>
+                  navigate({
+                    search: (prev: WorkItemListSearch) => ({
+                      ...prev,
+                      filterMode: nextMode,
+                    }),
+                  })
+                }
+                onApply={(nextFilter) =>
+                  navigate({
+                    search: (prev: WorkItemListSearch) => ({
+                      ...prev,
+                      ...(nextFilter
+                        ? { filter: nextFilter }
+                        : { filter: undefined }),
+                    }),
+                  })
+                }
+              />
+            </Suspense>
           ) : null}
         </div>
-        <WorkItemFilterEditor
-          filter={filter ?? ""}
-          mode={filterMode ?? "visual"}
-          apiError={
-            workItemsError instanceof HttpError &&
-            [400, 403, 422].includes(workItemsError.status)
-              ? `${workItemsError.status}: ${workItemsError.message}`
-              : undefined
+        <Suspense
+          fallback={
+            <div
+              className="h-48 rounded-md border bg-muted/20"
+              role="status"
+              aria-busy="true"
+              aria-live="polite"
+            >
+              <span className="sr-only">{t("common:empty.loading")}</span>
+            </div>
           }
-          onModeChange={(nextMode) =>
-            navigate({
-              search: (prev: WorkItemListSearch) => ({
-                ...prev,
-                filterMode: nextMode,
-              }),
-            })
-          }
-          onApply={(nextFilter) =>
-            navigate({
-              search: (prev: WorkItemListSearch) => ({
-                ...prev,
-                ...(nextFilter
-                  ? { filter: nextFilter }
-                  : { filter: undefined }),
-              }),
-            })
-          }
-        />
-        <Suspense fallback={<WorkItemListLoading />}>
+        >
           <WorkItemsPanel
             project={project}
             workItemsResult={workItemsResult as WorkItemsResult | undefined}
@@ -327,8 +303,8 @@ function ProjectWorkItemsRoute({ projectKey }: { projectKey: string }) {
             onRetry={handleRetry}
           />
         </Suspense>
-        {project && canOpenCreateDialog && isCreateOpenForProject ? (
-          <WorkItemCreateDialogShell
+        {project && isCreateOpenForProject ? (
+          <WorkItemCreateDialogLoader
             projectId={project.id}
             workspaceId={workspace?.id}
             onClose={closeCreateDialog}

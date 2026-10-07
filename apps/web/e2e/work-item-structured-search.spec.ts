@@ -353,7 +353,7 @@ test("fixture-backed structured search renders real scoped work items", async ({
 
     await page.goto(
       new URL(
-        `/agent/projects/${project.slug}/work?layout=list`,
+        `/agent/projects/${project.slug}/work?layout=list&filterMode=text`,
         origin,
       ).toString(),
     );
