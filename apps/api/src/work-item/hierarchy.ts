@@ -1,14 +1,14 @@
-import { eq, inArray } from "drizzle-orm";
-import type db from "../database";
 import {
-  stateTable,
-  stateTemplateTable,
-  workItemTable,
-} from "../database/schema";
+  findHierarchyRootQuery,
+  getAncestorQuery,
+  listDescendantIdsQuery,
+  listHierarchyChildrenQuery,
+  type WorkItemQueryExecutor,
+} from "./repository";
 
 /** Anything `db` or `db.transaction`'s callback argument can run a `select` through --
  * the same narrow shape `require-workspace-capability.ts`'s own `DbOrTx` uses. */
-type DbOrTx = Pick<typeof db, "select">;
+type DbOrTx = WorkItemQueryExecutor;
 
 /**
  * `RH-7`'s own defensive bound, mirrored from `work_item_reject_parent_cycle`'s
@@ -42,11 +42,7 @@ export async function ancestorChain(
   let currentId = startId;
 
   for (let hops = 0; hops < MAX_WALK_HOPS; hops++) {
-    const [row] = await executor
-      .select({ parentId: workItemTable.parentId })
-      .from(workItemTable)
-      .where(eq(workItemTable.id, currentId))
-      .limit(1);
+    const [row] = await getAncestorQuery(executor, currentId);
 
     if (!row || row.parentId === null) {
       return chain;
@@ -74,10 +70,7 @@ export async function descendantDepth(
   let depth = 0;
 
   for (let hops = 0; hops < MAX_WALK_HOPS; hops++) {
-    const rows = await executor
-      .select({ id: workItemTable.id })
-      .from(workItemTable)
-      .where(inArray(workItemTable.parentId, frontier));
+    const rows = await listDescendantIdsQuery(executor, frontier);
 
     if (rows.length === 0) {
       return depth;
@@ -136,54 +129,11 @@ export type SubtreeResult = {
  */
 export const MAX_TREE_NODES = 500;
 
-/**
- * `GET /api/work-items/{key}/tree`'s data: every row of the SAME project reachable from
- * `rootId` downward (inclusive), each with the resolved `stateName`/`stateCategory` the
- * detail route already resolves for a single item (`get-work-item.ts`'s own join, same
- * shape). One query per level, same breadth-first shape as `descendantDepth`, bounded by
- * the same defensive `MAX_WALK_HOPS`, and now also by `MAX_TREE_NODES` (see its own
- * comment). `RH-6` (parent and child always share a project) is DB-enforced (`work_item`'s
- * composite self-FK, `schema.ts`), so every row this returns is already guaranteed to be
- * in `rootId`'s own project -- no separate project filter is needed to keep the tree from
- * crossing a project boundary.
- */
-function selectHierarchyNodes(executor: DbOrTx) {
-  return (
-    executor
-      .select({
-        id: workItemTable.id,
-        key: workItemTable.key,
-        title: workItemTable.title,
-        parentId: workItemTable.parentId,
-        stateName: stateTemplateTable.name,
-        stateCategory: stateTemplateTable.group,
-      })
-      .from(workItemTable)
-      .innerJoin(stateTable, eq(workItemTable.stateId, stateTable.id))
-      .innerJoin(
-        stateTemplateTable,
-        eq(stateTable.stateTemplateId, stateTemplateTable.id),
-      )
-      // Deterministic order (Opus security review of PR #432, finding F2): `position`
-      // alone is not a real ordering here -- nothing in this codebase writes
-      // `work_item.position` yet (`WI-11` ranking is unbuilt), so every row keeps its
-      // `NOT NULL DEFAULT '0'` value and `.orderBy(position)` alone ties on every row,
-      // making which rows survive `MAX_TREE_NODES`'s truncation arbitrary (Postgres's own
-      // tie-break, which can change after an unrelated edit elsewhere in the table). The
-      // codebase's own established rule for this -- `list-query.ts` lines 115-143's own
-      // comment -- is that every sort needs an explicit tie-break column; `id` (a cuid2,
-      // permanent and unique) is that tie-break here, the same role it plays there.
-      .orderBy(workItemTable.position, workItemTable.id)
-  );
-}
-
 export async function loadSubtreeRows(
   executor: DbOrTx,
   rootId: string,
 ): Promise<SubtreeResult> {
-  const [rootRow] = await selectHierarchyNodes(executor).where(
-    eq(workItemTable.id, rootId),
-  );
+  const [rootRow] = await findHierarchyRootQuery(executor, rootId);
 
   if (!rootRow) {
     return { rows: [], truncated: false };
@@ -204,9 +154,11 @@ export async function loadSubtreeRows(
     // query's own memory/row-fetch cost. `remaining + 1` (not `remaining`) so the
     // `level.length > remaining` truncation check just below can still tell "exactly
     // enough children exist" apart from "more exist than fit" without a second query.
-    const level = await selectHierarchyNodes(executor)
-      .where(inArray(workItemTable.parentId, frontier))
-      .limit(remaining + 1);
+    const level = await listHierarchyChildrenQuery(
+      executor,
+      frontier,
+      remaining + 1,
+    );
 
     if (level.length === 0) {
       return { rows, truncated: false };

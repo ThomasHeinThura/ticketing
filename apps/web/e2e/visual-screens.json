@@ -30,6 +30,20 @@
 		"screenshot": "work-item-detail.png"
 	},
 	{
+		"name": "my-work-approvals",
+		"inventoryRoute": "/agent/my-work",
+		"applicationRoute": "/agent/my-work",
+		"test": "my approvals inbox screen @visual",
+		"screenshot": "my-work-approvals.png"
+	},
+	{
+		"name": "saved-views-index",
+		"inventoryRoute": "/agent/views",
+		"applicationRoute": "/agent/views",
+		"test": "Saved views index screen @visual",
+		"screenshot": "saved-views-index.png"
+	},
+	{
 		"name": "account-security",
 		"inventoryRoute": "/dashboard/settings/account/security",
 		"applicationRoute": "/dashboard/settings/account/security",
@@ -49,5 +63,54 @@
 		"applicationRoute": "/god-mode/observability",
 		"test": "observability settings screen @visual",
 		"screenshot": "observability-settings.png"
+	},
+	{
+		"name": "instance-users-directory",
+		"inventoryRoute": "/god-mode/users",
+		"applicationRoute": "/god-mode/users",
+		"test": "God Mode users directory screen @visual",
+		"screenshot": "instance-users-directory.png"
+	},
+	{
+		"name": "profile-pending-actions",
+		"inventoryRoute": "/agent/settings/profile/pending-actions",
+		"applicationRoute": "/agent/settings/profile/pending-actions",
+		"test": "profile pending actions screen @visual",
+		"screenshot": "profile-pending-actions.png"
+	},
+	{
+		"name": "profile-pending-action-detail",
+		"inventoryRoute": "/agent/settings/profile/pending-actions/{id}",
+		"applicationRoute": "/agent/settings/profile/pending-actions/$id",
+		"test": "profile pending action detail screen @visual",
+		"screenshot": "profile-pending-action-detail.png"
+	},
+	{
+		"name": "service-calendar-list",
+		"inventoryRoute": "/agent/settings/calendars",
+		"applicationRoute": "/agent/settings/calendars",
+		"test": "service calendar list screen @visual",
+		"screenshot": "service-calendar-list.png"
+	},
+	{
+		"name": "service-calendar-editor",
+		"inventoryRoute": "/agent/settings/calendars/{id}",
+		"applicationRoute": "/agent/settings/calendars/$id",
+		"test": "service calendar editor screen @visual",
+		"screenshot": "service-calendar-editor.png"
+	},
+	{
+		"name": "sla-policy-list",
+		"inventoryRoute": "/agent/settings/sla-policies",
+		"applicationRoute": "/agent/settings/sla-policies",
+		"test": "SLA policy list screen @visual",
+		"screenshot": "sla-policy-list.png"
+	},
+	{
+		"name": "sla-policy-editor",
+		"inventoryRoute": "/agent/settings/sla-policies/{id}",
+		"applicationRoute": "/agent/settings/sla-policies/$id",
+		"test": "SLA policy editor screen @visual",
+		"screenshot": "sla-policy-editor.png"
 	}
 ]

@@ -1,6 +1,11 @@
-import { eq, isNotNull, sql } from "drizzle-orm";
+import { sql } from "drizzle-orm";
 import db, { schema } from "../database";
 import { isUniqueViolation } from "./is-unique-violation";
+import {
+  findInternalOrganisation,
+  listExistingPersonUserIds,
+  listUsersForInternalPersonSeed,
+} from "./repository";
 
 /**
  * The one internal `organisation` row every deployment needs — the operating company
@@ -54,11 +59,7 @@ export async function ensureInternalOrganisation(
   // so this is the narrowest type that accepts both the plain pooled `db` and a `tx`.
   dbOrTx: Pick<typeof db, "select" | "insert" | "transaction"> = db,
 ): Promise<{ id: string }> {
-  const [existing] = await dbOrTx
-    .select({ id: schema.organisationTable.id })
-    .from(schema.organisationTable)
-    .where(eq(schema.organisationTable.isInternal, true))
-    .limit(1);
+  const [existing] = await findInternalOrganisation(dbOrTx);
 
   if (existing) {
     return existing;
@@ -95,11 +96,7 @@ export async function ensureInternalOrganisation(
     // transaction (if any) is still healthy here -- fall through to re-read below.
   }
 
-  const [nowExisting] = await dbOrTx
-    .select({ id: schema.organisationTable.id })
-    .from(schema.organisationTable)
-    .where(eq(schema.organisationTable.isInternal, true))
-    .limit(1);
+  const [nowExisting] = await findInternalOrganisation(dbOrTx);
 
   if (!nowExisting) {
     throw new Error(
@@ -148,18 +145,13 @@ export async function seedInternalOrganisationAndStaffPersons() {
   try {
     const internalOrganisation = await ensureInternalOrganisation();
 
-    const users = await db
-      .select({ id: schema.userTable.id })
-      .from(schema.userTable);
+    const users = await listUsersForInternalPersonSeed();
 
     if (users.length === 0) {
       return;
     }
 
-    const existingPersons = await db
-      .select({ userId: schema.personTable.userId })
-      .from(schema.personTable)
-      .where(isNotNull(schema.personTable.userId));
+    const existingPersons = await listExistingPersonUserIds();
 
     const existingUserIds = new Set(
       existingPersons

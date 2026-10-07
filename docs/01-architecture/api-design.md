@@ -1,5 +1,52 @@
 # API design
 
+## SCIM group-mapping selector options
+
+`GET /api/instance/identity-connections/{id}/scim/mapping-options` is a safe,
+session-only instance-administrator read used by the SCIM group-mapping editor. A missing
+identity connection or SCIM child returns the same `404`. It returns only target and role
+IDs, display names, and role ranks; it never returns membership, grants, capabilities,
+provider data, or credentials. This selector read grants no authority.
+
+The result is connection-bound and uses the same eligibility predicate as
+`validateScimMappingRole` for mapping writes. For a customer connection it returns only the
+connection's active, portal-enabled, non-internal organisation and its existing `customer`
+role. For an agent connection, a request without `workspaceId` returns eligible active
+workspaces in the active internal organisation; a request with `workspaceId` returns only
+existing roles valid for that workspace, its connection's `maxRoleRank`, and the mapping
+capability exclusions. An agent workspace role must be workspace-scoped or global as the
+existing validator allows, match the selected workspace if scoped, have a valid capability
+set, be at or below the configured rank ceiling, and contain no `instance:*` capability.
+Customer mappings remain fixed to their connection organisation and `customer` role.
+Target/role reads must share the write validator rather than maintaining a second eligibility
+interpretation.
+
+Both agent result sets are paged in stable ID order. `limit` defaults to 50 and is bounded
+to 100; `cursor` is an opaque continuation for the same connection, result kind, and
+workspace selection. The response includes `nextCursor: string | null`; callers must follow
+it to enumerate all options and may not treat one page as the complete set. Invalid query
+combinations or cursors return `400`; they never widen the selection. The route is
+`instance:admin`, `scope: instance`, `sessionOnly: true`, read-only/elevation-exempt because
+it returns only selector metadata and performs no mutation.
+
+## Identity connection provisioning-event history
+
+`GET /api/instance/identity-connections/{id}/events` returns a connection-scoped page of
+the persisted provisioning ledger to an instance administrator. The parent connection is
+looked up first; a missing connection returns the same `404` as an unavailable connection.
+The optional `limit` defaults to 25 and is bounded to 1–100. The optional opaque version-1
+cursor is bound to the path connection id and the last `(created_at,id)` pair, preserving
+PostgreSQL timestamp precision in its continuation. Pages sort descending by both fields,
+so equal timestamps remain deterministic. A malformed cursor or one made for another
+connection returns `400`.
+
+The response is `{data: EventSummary[], page: {nextCursor, hasMore}}`; each summary contains
+exactly `kind`, `outcome`, `actorType`, and ISO `createdAt`. It deliberately omits database
+event ids, trace ids, structured `detail`, and a total count. Event detail is internal
+write-side evidence and is not rendered by this endpoint. The endpoint is read-only,
+instance-admin-only, and elevation-exempt; the browser follows `nextCursor` in the existing
+identity-editor URL query state.
+
 REST over HTTP, described by an OpenAPI document generated from Zod schemas via
 `@hono/zod-openapi`. **The OpenAPI document is the published contract for third parties**
 (MCP clients, importers, customers' integrations, the Scalar reference); **the in-repo
@@ -110,29 +157,286 @@ method cannot be verified, return `403 step_up_unavailable` and do not rotate. S
 [security-model.md](security-model.md#sessions-csrf-and-step-up) and
 [pending-actions.md](pending-actions.md) `PA-15`.
 
-### Identity-connection configuration compare-and-set
+### Identity-connection create and configuration compare-and-set — PA-15
 
-`PATCH /api/instance/identity-connections/{id}` carries the connection's expected positive
-safe-integer `configVersion` with the configured fields. Under the `IP-22` total lock order,
-compare it with `identity_connection.config_version`; a stale version returns
-`409 version_conflict` with only the current safe version and changes nothing. Every
-committed connection-configuration mutation advances the version exactly once. In
-particular, changing JIT enabled/default-role/target policy and lowering an enabled agent
-connection's `max_role_rank` apply the `IP-22` source-scoped retirement, projection,
-audit/provisioning and existing event/outbox changes in the same CAS transaction. The
-shared lock/retry protocol prevents racing a mapping write, OIDC login, SCIM synchronization,
-role edit or connection disable into committing stale authority. This ordinary connection
-update is not a new PA-15 operation; the two OIDC mapping routes below retain their separate
-operation-bound proof.
+`POST /api/instance/identity-connections` and
+`PATCH /api/instance/identity-connections/{id}` require distinct session-only PA-15
+operations, `identity_connection_create` and `identity_connection_configure`. Both require
+current `instance:admin`; API keys are refused. Create is bound to fixed expected version
+`1`, the exact collection route and the server-canonical complete validated request body.
+PATCH is bound to the path connection id, current positive `configVersion`, exact route and
+complete validated request body. Challenge and proof routes derive these bindings from the
+same strict request; clients cannot provide a hash, route key or version outside the body.
+Missing, expired, replayed, cross-route, cross-connection, stale-version or wrong-body proof
+fails without mutation. The existing single-use transaction consumes proof in the same
+transaction as the configuration CAS.
 
-The separate administration route `PATCH /api/instance/identity-connections/{id}/scim` has
-a proposed route-wide `instance:admin`, `elevated: true`, `sessionOnly: true` policy. Its
-strict request/response DTO, edit/omission semantics, parent `config_version` CAS, and
-dedicated PA-15 route/body/version binding are not specified by this contract. They are an
-open owner obligation tracked in [issue #561](https://github.com/ThomasHeinThura/ticketing/issues/561).
-Do not infer an operation key or reuse an OIDC/metrics proof. Until that contract is
-specified, a mounted SCIM administration write fails closed with the existing
-`403 step_up_unavailable` response and makes no configuration or grant mutation.
+The create body is strict: `{portalScope, organisationId, defaultWorkspaceId, displayName,
+tenantId, clientId, clientSecret, scopes, claimMapping, domainBindings, jitPolicy,
+maxRoleRank}`. `providerType` is fixed to `entra`; the server derives `issuer` from the
+tenant-specific Entra discovery document and derives `redirectUri` from the configured
+portal origin and generated connection id. The server creates the id, starts at
+`configVersion: 1`, and starts disabled. Customer scope requires its exact existing
+organisation and null workspace/rank; agent scope has null organisation and validates any
+configured JIT workspace/role using IP-3/IP-22. The required Entra app role is validated
+even when JIT is disabled. The secret is encrypted with the existing per-row AES-256-GCM
+helper before persistence and is never returned. The mutation response uses the existing
+safe connection DTO.
+
+PATCH accepts only `{configVersion, displayName?, clientId?, clientSecret?, scopes?,
+claimMapping?, domainBindings?, defaultWorkspaceId?, jitPolicy?, maxRoleRank?, enabled?}`.
+Omitted fields retain their current values; nullable `defaultWorkspaceId` and
+`jitPolicy.default_role_id` explicitly clear those values where allowed. Unknown fields,
+null secrets and empty replacement secrets are rejected. Connection id, provider, portal,
+customer organisation, tenant, issuer and derived redirect URI are immutable; changing
+tenant or ownership requires a separate connection and the existing typed-name deletion
+workflow. Each successful create/configure/disable mutation advances the connection version
+exactly once. A stale version returns `409 version_conflict` with only the current safe
+version. Under the `IP-22` total lock order, changing JIT policy or lowering an enabled
+agent connection's `max_role_rank` applies source-scoped grant retirement, projection,
+audit/provisioning and existing event/outbox changes in the same transaction. Disabling
+also revokes only sessions tagged with this connection id and retires only its external
+grant sources; direct and other-connection sessions/grants remain. Re-enabling does not
+restore retired grants; fresh validated identity evidence is required. Network discovery
+occurs before locks, then the selected immutable connection facts and references are
+revalidated under the complete IP-22 closure before commit.
+
+This contract is the dated superseding PA-15 decision in
+[decision-log.md](../07-planning/decision-log.md). The previous sentence describing ordinary
+connection PATCH as non-PA-15 is superseded. Connection deletion remains its separately
+specified typed-name pending action. The `mfaUpstreamMode` column remains read-only and
+defaults to `off`; this batch does not claim enforcement of the planned upstream-MFA modes.
+
+The strict connection DTO may replace `claimMapping` only with the closed first-release
+profile map `{ "version": 1, "displayName": "name" }`. Missing or null persisted data
+means that exact default; malformed non-null persisted data fails OIDC login closed and is
+repairable by saving the valid map with the current `configVersion`. No arbitrary claim
+selector is accepted. The fixed `oid`/`tid` subject and
+`email` → `preferred_username` → `upn` metadata precedence are not configurable. An absent
+or invalid optional name is omitted; it is never synthesized from email or username. The
+map changes profile metadata only and cannot select identity, tenant, portal, organisation,
+role, capability or reach.
+
+The connection DTO serializes `jitPolicy` as exactly `{ enabled, default_role_id,
+required_entra_app_role }`. `enabled` is boolean, `default_role_id` is a canonical role id or
+null, and `required_entra_app_role` is the exact nonempty Entra app-role value, preserved
+byte-for-byte. Unknown persisted keys are never returned. A customer connection has only
+the Customer role as its default. An enabled agent JIT default must remain within its
+configured ceiling. Agent connections also return `defaultWorkspaceId`, the explicitly configured active internal workspace used for the JIT grant; customer connections return null. The server does not choose a workspace. If a later ceiling reduction makes the role ineligible, it is retained as
+dormant policy and grants nothing. Enabling, saving or logging in with malformed admission
+configuration fails closed.
+
+The separate SCIM administration route uses the same parent version; its complete bounded
+write and proof contract follows. Neither route maintains a child SCIM version. A successful
+SCIM administration write makes a stale OIDC mapping or connection-config writer fail CAS,
+and the reverse holds. Authenticated SCIM provisioning requests do not edit configuration
+or advance this version; they still serialize grant changes under `IP-22`.
+
+### SCIM administration PATCH — issue #561 owner contract
+
+`PATCH /api/instance/identity-connections/{id}/scim` is a God Mode operation with
+`instance:admin`, `scope: instance`, `scopeSource: instance`, `elevated: true`, and
+`sessionOnly: true` for **every** body variant. An API key, MCP key, SCIM bearer or
+impersonation session receives `403 session_required` before proof issuance or mutation.
+Unknown connections, absent SCIM child rows and foreign mapping ids receive the same `404`.
+The route uses RFC 9457 errors and `Cache-Control: no-store`; it is distinct from
+`/scim/v2/*` and never accepts a provisioning payload. No runtime route is authorized by
+this documentation change alone.
+
+The request is one of the following strict, closed objects. Each carries a positive safe
+integer `configVersion`; unknown keys, extra nested keys, explicit `null` outside the one
+nullable display snapshot, and multiple actions are rejected. A request makes exactly one
+settings edit, one group-mapping edit or one attribute-map replacement, never a bulk
+replacement across those categories.
+
+```json
+{ "configVersion": 7, "kind": "settings", "enabled": false }
+{ "configVersion": 7, "kind": "settings", "allowedResources": ["users", "groups"], "lifecyclePolicy": "end_memberships" }
+{ "configVersion": 7, "kind": "settings", "matchAttributes": ["externalId", "userName", "displayName"] }
+{ "configVersion": 7, "kind": "mapping_create", "externalGroupId": "provider-group-id", "externalGroupNameSnapshot": null, "roleId": "...", "scope": "workspace", "scopeId": "...", "enabled": true }
+{ "configVersion": 7, "kind": "mapping_update", "mappingId": "...", "externalGroupNameSnapshot": null, "roleId": "...", "scopeId": "...", "enabled": false }
+{ "configVersion": 7, "kind": "attribute_mapping", "attributeMapping": { "version": 1, "name": "displayName", "email": "emails.primary.value", "jobTitle": "title", "locale": "preferredLanguage" } }
+```
+
+`settings` requires at least one of `enabled`, `allowedResources`, `lifecyclePolicy`,
+`matchAttributes`.
+`enabled` is boolean. `allowedResources` is a canonical set in the fixed order `users`,
+`groups`: `users` is required; `groups` is optional; duplicates and other values fail
+validation. `lifecyclePolicy` is `end_memberships` or `keep_memberships` and governs future
+SCIM person deactivation only. Omitting a settings property preserves its stored value;
+explicit null never clears it. A settings request that changes no persisted value is
+rejected `422`, so a successful write always advances the version once.
+
+`matchAttributes` is a nonempty, duplicate-free, case-sensitive array containing only
+`externalId`, `userName`, `displayName`, `name.formatted`, `title`, and
+`preferredLanguage`. It must contain both `externalId` and `userName`. Storage and response
+order is canonical: those required names first, followed by optional names in the order
+listed above. Omission preserves the persisted array; the default is
+`["externalId", "userName"]`. This list permits optional names in the SCIM `/Users` `eq`
+filter only; it does not add profile fields or identity lookups. Supported sources and the
+explicitly unsupported `emails.value` and `locale` paths are specified in
+[`identity-provisioning.md`](../03-features/identity-provisioning.md#scim-endpoint).
+Invalid or duplicate names, missing required names, and an unchanged effective setting
+return `422`; successful writes use the same parent `configVersion` CAS and audit semantics
+as other settings edits.
+
+`mapping_create` requires `externalGroupId`, `roleId` and `scope`; `enabled` defaults true
+and `externalGroupNameSnapshot` defaults null. `mapping_update` requires a mapping id
+belonging to this SCIM connection and at least one mutable property among
+`externalGroupNameSnapshot`, `roleId`, `scopeId`, `enabled`. The external group id, mapping
+scope, parent connection and customer organisation are immutable. Omission preserves a
+stored property; an explicit null clears only the display snapshot. A create may set that
+snapshot to null; it is display-only and never authority evidence. Mapping updates that
+change no persisted property return `422`. There is no mapping DELETE, bulk edit or
+omission-as-removal: `enabled: false` retains history.
+
+`externalGroupId` is a nonempty provider-opaque identifier of at most 255 UTF-8 bytes,
+without control characters; it is compared byte-for-byte within the SCIM connection, not
+converted from a display name, lowercased or inferred from an OIDC group id. The display
+snapshot is null or a nonempty string of at most 255 UTF-8 bytes without control
+characters. The persisted unique `(scim_connection_id, external_group_id)` prevents
+duplicates; a duplicate create returns `409`. Ids and role references use the existing
+repository id validators. Caller-supplied organisation, portal, person, external identity,
+grant, capability, `seesAll`, token, token hash, `attributeMapping`, sync/health metadata,
+creator and audit fields are rejected as unknown in the existing variants. The dedicated
+`attribute_mapping` variant below is the sole exception; it cannot edit settings or group
+mappings in the same request. Token create/rotate/revoke retain their separate
+routes and proof rules.
+
+`attribute_mapping` requires exactly the version plus four destination fields in the
+`attributeMapping` object shown above
+and changes only `scim_connection.attribute_mapping`. Its grammar is a closed map from
+safe SCIM profile inputs to existing TaskDesk profile fields, not an expression language:
+`version` is exactly integer `1`; `name` is `displayName` or `name.formatted`; `email` is
+`emails.primary.value` or `userName`; `jobTitle` is `title` or `unmapped`; `locale` is
+`preferredLanguage`, `locale`, or `unmapped`. The default stored mapping is the JSON
+object shown above. A legacy null mapping is read as that default and is normalized only
+by an explicit successful write. The four fields are always supplied together; unknown
+paths, mixed-case aliases, wildcards, filters, transformations, nested objects, arrays,
+empty values, and extra keys are rejected. A value of `unmapped` leaves that optional
+profile field unchanged; it is forbidden for name or email. An identical effective
+mapping is a `422` no-op without proof consumption or version advance.
+
+The map's name destination is `person.display_name`, independent of account-wide
+`user.name`; a placeholder can therefore have a profile before it has a login. The email
+destination is the connection-scoped `external_identity.email_snapshot`, never a verified
+login address or an automatic account-link key. Fixed `userName` is retained separately in
+`external_identity.user_name_snapshot`. Job title and locale use the existing `person`
+fields. Reads emit stored `displayName` and `name.formatted` values only; they do not derive
+given/family components or substitute `userName` or email for a missing profile name. Existing
+people without a stored display name remain without one; migration must not synthesize it
+from account-wide names or identity snapshots. Profile data and identity snapshots remain
+available after deactivation/reactivation.
+
+The fixed identity keys (`id`, `externalId`, `userName` for lookup), `active`, group/member
+links, portal, organisation, side, person/user ids, roles, grants, reach and capabilities
+are outside this map and never configurable through it. `userName` as an email profile
+value remains contact metadata only; it never links an account, verifies an address,
+selects an organisation or admits a login. For `emails.primary.value`, choose the unique
+`primary=true` item; with no marked primary, choose only if exactly one email item exists.
+Zero or multiple candidates make a supplied email source invalid and reject that SCIM user
+write without profile or authority mutation. A selected value must pass existing profile
+validation. `POST` and replacement `PUT` require valid mapped name and email values;
+their absence or invalidity fails the write atomically. A partial `PATCH` changes a mapped
+profile field only when its source attribute is supplied; absent sources leave existing
+values unchanged, while a supplied but invalid required source rejects the entire PATCH.
+Missing optional title/locale leaves the current value unchanged. Never fall back to another
+attribute implicitly. Changing a map affects **future** authenticated SCIM user writes
+only; it does not reinterpret old payloads, retroactively rewrite profiles, create grants,
+or alter live sessions. Raw incoming attributes remain untrusted and are never stored in
+the mapping or audit detail.
+
+For a customer connection, mapping `scope` must be `organisation`, `scopeId` is omitted
+on create/update and resolved only from the persisted connection, and `roleId` must name
+the existing customer role. For an agent connection, mapping `scope` must be `workspace`,
+`scopeId` is required on create and, when changing a target, on update. The target must be
+an existing non-deleted workspace owned by the unique active, non-deleted internal
+organisation, with a current approved staff role in that workspace at or below the
+connection's current `max_role_rank`. The persisted portal/organisation, SCIM child
+ownership, role side/scope/rank/capabilities, target lifecycle and administrator authority
+guardrails are rechecked under `IP-22` locks for **all** mapping writes, including a
+disabled row or a display-only edit. `groups` must be allowed and the SCIM child must be
+enabled to create or enable a mapping. A disabled mapping may be edited while the child is
+disabled but remains ineligible. Removing `groups` remains permitted and retires its active
+grants. No mapping can
+grant `instance:admin`, `sees_all` or a role with forbidden external capabilities. The
+provider never chooses a scope, role or organisation. Invalid persisted state fails closed.
+
+`200` returns exactly `{data: ScimAdminDto, configVersion}` where `ScimAdminDto` contains
+`enabled`, `allowedResources`, `lifecyclePolicy`, `attributeMapping` and `mappings`. The
+attribute mapping is the effective validated versioned safe profile map above; it contains
+no provider payload or secret. Each group mapping contains
+exactly `id`, `externalGroupId`, `externalGroupNameSnapshot`, `roleId`, `scope`, `scopeId`,
+`enabled`; mappings are ordered by external group id then id. `scopeId` is the resolved
+persisted organisation id for customer mappings. The response version is the incremented
+parent version. No raw bearer, prefix, token hash, client secret, raw claim, member list,
+sync error detail or unlisted column is returned. The existing God Mode
+connection read must use this same safe SCIM projection when it displays these fields.
+
+The handler compares body `configVersion` to the locked
+`identity_connection.config_version` and increments that parent version exactly once per
+committed request. A stale version returns `409 version_conflict` containing only the
+current safe version and makes no settings, mapping, grant, history, event or proof change.
+Invalid shape or foreign resource fails before mutation; invalid role/scope/authority
+returns `422` without a secret-bearing field echo. The PA-15 proof is mandatory for all
+variants. Challenge and proof completion bind the dedicated `scim_admin_update` operation,
+this fixed PATCH route, path connection id, expected persisted parent version and the
+server-canonical validated body. Canonical JSON is the closed envelope
+`{routeKey, connectionId, request}`. The server serializes fields in the order shown in
+the variants above, omits absent optional properties, preserves explicit display-snapshot
+null, applies create defaults, canonicalizes allowed-resource order, and serializes the
+complete attribute-map object in `version`, `name`, `email`, `jobTitle`, `locale` order
+before hashing UTF-8 bytes. The client supplies neither route key nor hash. Execution recomputes it and
+consumes the one-use proof with CAS and mutation in one transaction; stale CAS or failed
+validation rolls back consumption. An unavailable fresh supported verifier returns
+`403 step_up_unavailable`; no OIDC, MFA-reset or metrics proof is accepted.
+
+### SCIM token rotation and revocation — PA-15 operations
+
+The separate token lifecycle routes are session-only God Mode operations:
+
+```
+POST /api/instance/identity-connections/{id}/scim/rotate-token
+POST /api/instance/identity-connections/{id}/scim/revoke-token
+```
+
+Both accept exactly `{ "version": <positive safe integer> }`, use
+`identity_connection.config_version` as the compare-and-set value, require
+`instance:admin`, and require their distinct `scim_token_rotate` or
+`scim_token_revoke` PA-15 binding. Challenge, proof mint and execution bind the exact route,
+connection id and canonical UTF-8 `{"version":<base-10 integer>}`; no other operation's
+proof is accepted. A stale version returns `409 version_conflict` without consuming proof or
+changing the token. Each committed operation increments the parent version exactly once,
+sets the SCIM child disabled and invalidates the old bearer immediately. Rotation returns
+`{configVersion, token, tokenRotatedAt}` once with `Cache-Control: no-store`; the token is a
+fresh 32-byte random value encoded as unpadded base64url. Revoke returns only
+`{configVersion, revoked: true}`. Revoking an already absent token is a `422` no-op and
+does not consume proof. Re-enabling SCIM requires a later settings PATCH after the upstream
+bearer has been updated.
+
+Both operations record only the changed key and new version in `identity_connection.changed`
+audit detail, and a `token.rotated` or `token.revoked` provisioning event with connection
+id and version. Raw tokens, token prefixes, hashes and bearer header values never enter
+audit, event details, logs or read DTOs. Audit append failure follows AU-14; the mutation
+commits with the durable operational alert. The response and step-up credentials are
+no-store.
+
+`IP-22` governs pre-discovery, total parent-first lock order, closure re-read/retry and
+atomic source-validity projection. Disabling this SCIM child or removing `groups` retires
+only its active `scim_group` grants (`connection_disabled` for child disable;
+`mapping_changed` for removed group eligibility), repairs linked `scim_group_member`
+history/pointers and recomputes each affected effective membership. Attribute-map edits
+change profile interpretation for future SCIM user writes and retire no grant. Disabling,
+retargeting
+or changing a mapping retires only that mapping's active grants (`mapping_disabled` or
+`mapping_changed`); display-only edits and lifecycle-policy edits retire none. Re-enabling
+the child or mapping, or restoring `groups`, creates no grant: later authenticated
+same-connection SCIM evidence is required. Parent connection disable retains its broader
+session-revocation rule. This child-only edit does not revoke OIDC sessions. Existing
+`IP-24` provisioning/audit rows commit with the mutation and existing outbox/authority
+cache invalidation follows commit; details contain ids/changed keys/reasons only. An audit
+append failure follows `AU-14`, not a fabricated rollback claim. No new event key is
+introduced.
 
 ### OIDC group-mapping administration
 
@@ -354,8 +658,118 @@ GET /api/projects/{projectId}/work-items
 ## Query grammar — filters, sort, grouping, aggregation
 
 Complex queries — saved views, queues, tier 2 and tier 3 reports — use one structured
-document, sent as `POST /api/work-items/search` and stored verbatim as
-`saved_view.query`:
+document, stored verbatim as `saved_view.query`. The request scope and pagination controls
+are transport metadata around that document; they are not added to, or removed from, the
+stored query:
+
+```json
+{
+  "workspaceId": "ws_123",
+  "query": {
+    "entity": "work_item",
+    "filter": {
+      "op": "and",
+      "clauses": [
+        { "field": "state.group", "op": "in", "value": ["started"] },
+        { "field": "assignee", "op": "eq", "value": "@me" }
+      ]
+    },
+    "sort": [{ "field": "priority", "order": "desc" }],
+    "columns": ["key", "title", "state", "assignee"]
+  },
+  "limit": 50,
+  "cursor": null
+}
+```
+
+### Work-item search v1 (`POST /api/work-items/search`)
+
+P1 implements only `entity: "work_item"`. The required `workspaceId` is resolved from the
+JSON body by `workspaceAccess.fromBody("workspaceId")` before the route's
+`work_item:read` check. It is never inferred from a `project` filter, a saved-view owner, or
+the currently selected browser workspace. A missing or malformed id returns `400`; an
+unreachable workspace is masked as `404`. The route returns only live work items in that
+workspace and in the actor's project reach. Search predicates are applied after that scope,
+and `meta.total` counts only those same reachable rows.
+
+The `query` object keeps the `{ entity, filter, sort, groupBy, columns, aggregate }`
+envelope. Its `entity` must be `work_item`. P1 accepts `filter`, `sort`, and `columns`;
+`groupBy` and `aggregate` are later-phase query features and receive `422` when supplied.
+Other entities in the wider grammar (`submission`, `time_entry`, `sla_event`) also receive
+`422` on this P1 route. Unknown keys and malformed shapes receive `400`; they are never
+silently dropped. The text editor is a filter editor; switching modes preserves the other
+query-document properties byte-for-byte at the JSON value level.
+
+The P1 filter tree contains only `and` and `or` groups with nonempty `clauses`, or a leaf
+`{ "field", "op", "value" }`. It is bounded to 64 leaves, depth 8, 32 clauses per group,
+and a 32 KiB JSON request body. Values are typed by the field table below. Operators not
+listed for a field, unknown fields, and values of the wrong type return `400`. A recognized
+field that is unavailable in this implementation or whose field-level read requirement is
+not met returns `422` naming that field.
+
+| Structured field | P1 operators and values | Field read capability | SQL source / notes |
+| --- | --- | --- | --- |
+| `state.group` | `eq` string; `in` nonempty string array (1–20). Values: `backlog`, `unstarted`, `started`, `completed`, `cancelled` | `work_item:read` | `state.state_template_id → state_template.group` |
+| `priority` | `eq`, `in` (1–4), `gt`, `gte`, `lt`, `lte`; values `low`, `medium`, `high`, `urgent` in that order | `work_item:read` | `work_item.priority`; comparison uses the declared order, not text collation |
+| `assignee` | `eq` with the literal `@me` | `work_item:read` | Resolved at query time to the authenticated person's `person.id`; no caller-selected person id in v1 |
+| `watcher` | `contains` with the literal `@me` | `work_item:read` | `watcher` rows for the authenticated person with `muted = false` |
+| `dueDate` | `lt`, `lte`, `gt`, `gte`; ISO calendar date or relative day value such as `7d` | `work_item:read` | `work_item.due_date`; `Nd` is a fixed duration of N×24 hours from the request's captured query time, with N from 1–3650; null dates do not match comparisons |
+| `createdAt` | `lt`, `lte`, `gt`, `gte`; ISO calendar date | `work_item:read` | `work_item.created_at`; a date means midnight UTC at the start of that date; null is not applicable |
+| `project` | `eq` slug string | `project:read` | `project.slug`, joined within the resolved workspace |
+| `type` | `eq` key string | `workspace:read` | `work_item_type.key`, joined within the resolved workspace |
+
+P1 deliberately does not expose `sla.state` or `sla.due_at`: the documented
+`work_item_sla_cache` has no current table or loader in this checkout. It does not expose
+`cf.<key>`: the custom-field value store and visibility loader are not implemented. It does
+not expose `label`: the `work_item_label` join table is not implemented. Those known fields
+return `422` with the field named; they are not treated as false predicates. This keeps the
+spec's eventual-consistency, custom-field-visibility, and label contracts intact until their
+own foundations exist.
+
+`filter` may be omitted, which means every live, reachable work item in the required
+workspace. `sort` is an array of zero or one item from `key`, `title`, `priority`, or
+`dueDate`, with `order` `asc` or `desc`; omission defaults to `key asc`. `id asc` is always
+the stable tie-break. `columns` is an optional, duplicate-free subset of `key`, `title`,
+`state`, `assignee`, `priority`, and `dueDate`; omission means all six. It is presentation
+metadata and does not weaken field-read checks or change the response row schema.
+
+The request `limit` defaults to 50 and must be 1–200. `cursor` is either omitted/null or an
+opaque continuation from this route. A continuation is bound to the authenticated actor,
+workspace, normalized query document, and limit; a mismatch or malformed cursor returns
+`400`. The cursor is keyset-based and preserves the declared sort plus the stable id
+tie-break. Response shape is `{ data, page: { nextCursor, hasMore }, meta: { total } }`;
+`meta.total` is an exact count of rows after workspace scope, project reach, live-row
+exclusion, and filter predicates. The page rows use the explicit work-item list response
+schema, never raw Drizzle rows.
+
+The work-item list's P1 text syntax is a filter-only rendering of the same AST. Adjacent
+terms are `and`; `AND` is explicit conjunction; `OR` is disjunction; parentheses preserve
+infix-expression nesting. The canonical printer renders every AST group explicitly as
+`AND(clause,...)` or `OR(clause,...)`, reusing the existing Boolean operators with the
+grammar's comma and parenthesis delimiters so operator, arity (including one-child groups),
+nested same-operator groups, and clause order round-trip exactly. The text parser also accepts
+the infix forms below. Field
+aliases in the existing examples are canonical (`state` → `state.group`, `due` → `dueDate`,
+`created` → `createdAt`). Examples include `assignee:@me state:started`,
+`priority:>=high`, `due:<7d`, `project:SUP`, `type:incident`,
+`created:>2026-01-01`, and `watcher:contains(@me)`. `in` uses
+`field:in(value1,value2)`. Whitespace or reserved punctuation in a string value is represented
+with a JSON-quoted string. Comparisons use `<`, `<=`, `>`, `>=`; the parser has no escape
+that can introduce a field, operator, or SQL fragment. Parsing and printing preserve the
+filter tree, values, and clause order; sort and columns stay unchanged in the surrounding
+query document when the user switches modes.
+
+The P1 endpoint compiles only these validated nodes to parameterized Drizzle SQL. Field
+expressions are fixed server-side mappings; values are always bound parameters. The scoped
+workspace and actor's project reach are established before filter compilation and are
+present in both the page and count read chains. A field-level read denial is `422` naming the
+field; it is never converted into an empty result or a different `meta.total`.
+
+The wider, future grammar continues to use the same envelope. It lists all product entities,
+future fields and report clauses; it does not make those later-phase facilities available
+through this P1 endpoint before their owning storage and authorization contracts exist.
+
+The canonical query document, without transport metadata, is:
 
 ```json
 {
@@ -364,8 +778,6 @@ document, sent as `POST /api/work-items/search` and stored verbatim as
     "op": "and",
     "clauses": [
       { "field": "state.group", "op": "in", "value": ["started"] },
-      { "field": "sla.state",   "op": "eq", "value": "at_risk" },
-      { "field": "cf.impact",   "op": "eq", "value": "Everyone" },
       { "op": "or", "clauses": [
         { "field": "assignee", "op": "eq", "value": "@me" },
         { "field": "watcher",  "op": "contains", "value": "@me" }
@@ -373,14 +785,13 @@ document, sent as `POST /api/work-items/search` and stored verbatim as
     ]
   },
   "sort":    [{ "field": "priority", "order": "desc" }],
-  "columns": ["key", "title", "state", "assignee", "sla.due_at"],
-  "groupBy": "assignee",
-  "aggregate": { "fn": "count" }
+  "columns": ["key", "title", "state", "assignee"]
 }
 ```
 
-- `entity` ∈ `work_item | submission | time_entry | sla_event`. A queue over submissions
-  *and* work items is two saved views presented together, not one document.
+- The wider product grammar names `work_item | submission | time_entry | sla_event`. P1's
+  `/api/work-items/search` implementation accepts `work_item` only. A queue over
+  submissions *and* work items is two saved views presented together, not one document.
 - **Fields are whitelisted per entity**; `cf.<key>` addresses a custom field; `organisation`
   resolves through `project.organisation_id`; `state.group` is not a stored column — it
   resolves through the join `state.state_template_id → state_template.group`
@@ -389,13 +800,14 @@ document, sent as `POST /api/work-items/search` and stored verbatim as
   detail endpoint always recomputes, and where they disagree the computed value wins
   ([ADR 0009](adr/0009-lazy-sla-evaluation.md)).
 - `groupBy` and `aggregate` (`count | sum { field } | avg { field } | percentile { field, p }`)
-  are what tier 3 reports add; a plain saved view omits them.
+  are what tier 3 reports add; a plain saved view omits them. They are not accepted by the
+  P1 endpoint until their owning report implementation lands.
 - The grammar compiles to parameterised SQL and can never express arbitrary SQL.
 - **Authorization inside the filter.** Every filterable field carries its own read
-  capability (a customer cannot filter on `assignee` or an internal custom field; the
-  request is 422 naming the field); the filter is evaluated **after** the identity scope is
-  applied; and `meta.total` counts only rows within reach — so search can never become an
-  existence oracle for records the caller may not see.
+  capability; the request is `422` naming any recognized field the caller cannot read. The
+  filter is evaluated **after** the identity scope is applied, and `meta.total` counts only
+  rows within reach — so search can never become an existence oracle for records the caller
+  may not see. The concrete P1 field set and field-level responses are listed above.
 
 A saved view is exactly a stored query document plus a `layout`; there is **one** route
 family for saved views, `/api/views`, defined in

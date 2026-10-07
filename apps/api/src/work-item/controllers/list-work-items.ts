@@ -1,13 +1,6 @@
 import { and, eq, inArray, isNull, lt, type SQL, sql } from "drizzle-orm";
 import db from "../../database";
-import {
-  personTable,
-  stateTable,
-  stateTemplateTable,
-  userTable,
-  workItemTable,
-  workspaceUserTable,
-} from "../../database/schema";
+import { workItemTable } from "../../database/schema";
 import { getProjectWorkspaceId } from "../../utils/assert-assignable-user";
 import {
   DEFAULT_WORK_ITEM_LIST_LIMIT,
@@ -19,6 +12,11 @@ import {
   workItemCursorCondition,
   workItemOrderBy,
 } from "../list-query";
+import {
+  countWorkItemsQuery,
+  findPersonForWorkItemFilterQuery,
+  listWorkItemsQuery,
+} from "../repository";
 import type { ListWorkItemsQuery } from "../schema";
 
 /**
@@ -118,9 +116,7 @@ async function buildFilterConditions(
       // wires one up outside the P3 identity seed today) simply matches nothing --
       // `assignee=me` on an empty result is the correct, non-erroring answer, not a
       // bug: it can never widen the result (an always-false condition only narrows).
-      const caller = await db.query.personTable.findFirst({
-        where: eq(personTable.userId, callerUserId),
-      });
+      const caller = await findPersonForWorkItemFilterQuery(db, callerUserId);
       conditions.push(
         caller ? eq(workItemTable.assigneeId, caller.id) : sql`false`,
       );
@@ -163,64 +159,17 @@ export async function listWorkItems(
   // `limit + 1`: the standard cursor-pagination lookahead -- fetching one extra row
   // tells us whether another page exists without a separate query, and that extra row
   // is dropped before the response is built.
-  const rows = await db
-    .select({
-      workItem: workItemTable,
-      stateName: stateTemplateTable.name,
-      stateCategory: stateTemplateTable.group,
-      assigneeName: userTable.name,
-      // #320 security review, S3: signals whether the assignee's own user is
-      // actually a member of THIS work item's workspace -- see the join comment
-      // below for why this gates `assigneeName` rather than the join itself.
-      assigneeIsWorkspaceMember: workspaceUserTable.id,
-    })
-    .from(workItemTable)
-    // `work_item.state_id` is `NOT NULL` and `state.state_template_id` is `NOT NULL`
-    // (`database/schema.ts`), so every work item has exactly one state and template --
-    // an INNER JOIN can never drop a row here.
-    .innerJoin(stateTable, eq(workItemTable.stateId, stateTable.id))
-    .innerJoin(
-      stateTemplateTable,
-      eq(stateTable.stateTemplateId, stateTemplateTable.id),
-    )
-    // `assignee_id`/`person.user_id` are both nullable (unassigned; or a placeholder
-    // person with no linked login) -- LEFT JOIN so those rows still come back, with
-    // `assigneeName: null`, rather than being silently dropped.
-    .leftJoin(personTable, eq(workItemTable.assigneeId, personTable.id))
-    .leftJoin(userTable, eq(personTable.userId, userTable.id))
-    // #320 security review, S3: `work_item.assignee_id -> person.id` is a plain,
-    // UNSCOPED foreign key (`schema.ts:1713`), unlike `state_id`/`type_id`/
-    // `parent_id`, which are all composite-FK'd to the same workspace/project this
-    // work item belongs to. Nothing in this codebase writes `assignee_id` today
-    // (WI-10 assignment is unbuilt), so this is latent, not live -- but the review
-    // proved live, with a direct SQL write, that a person in a completely different
-    // organisation/workspace resolves and prints their real name here if that FK is
-    // ever pointed there by a future write path. Rather than trust that every future
-    // writer of `assignee_id` gets the roster check right, this route scopes the
-    // NAME DISCLOSURE itself: `assigneeName` is only ever the resolved name when the
-    // assignee's own user actually holds a `workspace_member` row in the SAME
-    // workspace as this work item. A LEFT JOIN (not an inner join or a WHERE) so a
-    // foreign assignment still returns the row -- with `assigneeName: null`, the
-    // same shape an unresolvable name already has -- rather than hiding the work
-    // item itself.
-    .leftJoin(
-      workspaceUserTable,
-      and(
-        eq(workspaceUserTable.userId, personTable.userId),
-        eq(workspaceUserTable.workspaceId, workItemTable.workspaceId),
-      ),
-    )
-    .where(and(...pageConditions))
-    .orderBy(...workItemOrderBy(sortField, dir))
-    .limit(limit + 1);
+  const rows = await listWorkItemsQuery(
+    db,
+    and(...pageConditions),
+    workItemOrderBy(sortField, dir),
+    limit + 1,
+  );
 
   const hasMore = rows.length > limit;
   const page = hasMore ? rows.slice(0, limit) : rows;
 
-  const [totalRow] = await db
-    .select({ total: sql<number>`count(*)::int` })
-    .from(workItemTable)
-    .where(and(...filterConditions));
+  const [totalRow] = await countWorkItemsQuery(db, and(...filterConditions));
   const total = totalRow?.total ?? 0;
 
   const lastRow = page.at(-1);

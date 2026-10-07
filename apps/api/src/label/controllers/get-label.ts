@@ -1,10 +1,8 @@
 import { HTTPException } from "hono/http-exception";
-import db from "../../database";
+import { getLabelQuery } from "../repository";
 
 async function getLabel(id: string) {
-  const label = await db.query.labelTable.findFirst({
-    where: (label, { eq }) => eq(label.id, id),
-  });
+  const label = await getLabelQuery(id);
 
   if (!label) {
     throw new HTTPException(404, {

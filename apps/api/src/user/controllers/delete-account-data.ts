@@ -13,17 +13,15 @@ import {
   planAccountDeletion,
   type WorkspaceMembershipSummary,
 } from "../account-deletion";
+import {
+  listWorkspaceMemberNames,
+  listWorkspaceMemberships,
+} from "../repository";
 
 async function collectMemberships(
   userId: string,
 ): Promise<WorkspaceMembershipSummary[]> {
-  const memberships = await db
-    .select({
-      workspaceId: workspaceUserTable.workspaceId,
-      role: workspaceUserTable.role,
-    })
-    .from(workspaceUserTable)
-    .where(eq(workspaceUserTable.userId, userId));
+  const memberships = await listWorkspaceMemberships(db, userId);
 
   if (memberships.length === 0) {
     return [];
@@ -31,18 +29,7 @@ async function collectMemberships(
 
   const workspaceIds = memberships.map((membership) => membership.workspaceId);
 
-  const members = await db
-    .select({
-      workspaceId: workspaceUserTable.workspaceId,
-      workspaceName: workspaceTable.name,
-      role: workspaceUserTable.role,
-    })
-    .from(workspaceUserTable)
-    .innerJoin(
-      workspaceTable,
-      eq(workspaceUserTable.workspaceId, workspaceTable.id),
-    )
-    .where(inArray(workspaceUserTable.workspaceId, workspaceIds));
+  const members = await listWorkspaceMemberNames(db, workspaceIds);
 
   return memberships.map((membership) => {
     const workspaceMembers = members.filter(

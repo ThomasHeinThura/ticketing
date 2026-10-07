@@ -93,15 +93,15 @@ test.describe("P0 MFA and CSRF browser journey", () => {
       expect(factorStatus.required).toBe(false);
 
       const signOut = async () => {
-        const status = await page.evaluate(async () => {
-          const response = await fetch("/api/auth/sign-out", {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: "{}",
-          });
-          return response.status;
-        });
-        expect(status).toBe(200);
+        // Sign out while the dashboard is detached. Otherwise its session
+        // subscription can start an auth redirect at the same time as the
+        // next explicit sign-in navigation, aborting that navigation.
+        await page.goto("about:blank");
+        const response = await page.request.post(
+          new URL("/api/auth/sign-out", origin).toString(),
+          { headers: { Origin: origin }, data: {} },
+        );
+        expect(response.status()).toBe(200);
       };
       const signInAndCompleteChallenge = async (factor: "totp" | "backup") => {
         await page.goto(new URL("/auth/sign-in", origin).toString());
@@ -121,10 +121,12 @@ test.describe("P0 MFA and CSRF browser journey", () => {
         await expect(page).toHaveURL(/\/dashboard(?:\/|\?|$)/);
       };
 
-      await signOut();
-      await signInAndCompleteChallenge("totp");
-      await signOut();
-      await signInAndCompleteChallenge("backup");
+      await test.step("MFA: sign out after enrollment", signOut);
+      await test.step("MFA: complete authenticator challenge", () =>
+        signInAndCompleteChallenge("totp"));
+      await test.step("MFA: sign out before backup-code challenge", signOut);
+      await test.step("MFA: complete backup-code challenge", () =>
+        signInAndCompleteChallenge("backup"));
 
       type LogLevel = "error" | "warn" | "info" | "debug";
       type ObservabilitySnapshot = {
@@ -160,7 +162,10 @@ test.describe("P0 MFA and CSRF browser journey", () => {
           version: body.version,
         };
       };
-      const initialSettings = await readSettings();
+      const initialSettings = await test.step(
+        "observability: read initial settings",
+        readSettings,
+      );
       const changedDefault =
         initialSettings.logLevels.default === "error" ? "warn" : "error";
       const initialRealtime =
@@ -168,36 +173,50 @@ test.describe("P0 MFA and CSRF browser journey", () => {
         initialSettings.logLevels.default;
       const changedRealtime = initialRealtime === "debug" ? "info" : "debug";
 
-      await page.goto(new URL("/god-mode/observability", origin).toString());
+      await test.step("observability: open God Mode settings", () =>
+        page.goto(new URL("/god-mode/observability", origin).toString()));
       const defaultLevel = page.getByLabel("Default level");
-      const saveLogLevels = async () => {
-        const responsePromise = page.waitForResponse(
-          (response) =>
-            new URL(response.url()).pathname ===
-              "/api/instance/observability" &&
-            response.request().method() === "PATCH",
-        );
-        await page.getByRole("button", { name: "Save log levels" }).click();
-        const response = await responsePromise;
-        expect(response.status()).toBe(200);
+      const saveLogLevels = async (label: string) => {
+        await test.step(label, async () => {
+          const responsePromise = page.waitForResponse(
+            (response) =>
+              new URL(response.url()).pathname ===
+                "/api/instance/observability" &&
+              response.request().method() === "PATCH",
+          );
+          await page.getByRole("button", { name: "Save log levels" }).click();
+          const response = await responsePromise;
+          expect(response.status()).toBe(200);
+        });
       };
-      await defaultLevel.click();
-      await page
-        .getByRole("option", { name: changedDefault, exact: true })
-        .click();
-      await saveLogLevels();
-      const changedSettings = await readSettings();
+      await test.step("observability: open default log-level options", () =>
+        defaultLevel.click());
+      await test.step("observability: select changed default log level", () =>
+        page
+          .getByRole("option", { name: changedDefault, exact: true })
+          .click());
+      await saveLogLevels("observability: save changed default log level");
+      const changedSettings = await test.step(
+        "observability: read changed default setting",
+        readSettings,
+      );
       expect(changedSettings.logLevels.default).toBe(changedDefault);
       expect(changedSettings.version > initialSettings.version).toBe(true);
 
       const realtimeLevel = page.getByLabel("realtime");
-      await realtimeLevel.click();
-      await page
-        .getByRole("option", { name: changedRealtime, exact: true })
-        .click();
-      await realtimeLevel.press("Escape");
-      await saveLogLevels();
-      const changedRealtimeSettings = await readSettings();
+      await test.step("observability: open realtime log-level options", () =>
+        realtimeLevel.click());
+      await test.step("observability: select changed realtime log level", () =>
+        page
+          .getByRole("option", { name: changedRealtime, exact: true })
+          .click());
+      await test.step("observability: dismiss realtime log-level options", () =>
+        realtimeLevel.press("Escape"));
+      await saveLogLevels("observability: save changed realtime log level");
+      const changedRealtimeSettings = await test.step(
+        "observability: read changed realtime setting",
+        readSettings,
+      );
       expect(changedRealtimeSettings.logLevels.modules.realtime).toBe(
         changedRealtime,
       );
@@ -205,21 +224,29 @@ test.describe("P0 MFA and CSRF browser journey", () => {
         true,
       );
 
-      await defaultLevel.click();
-      await page
-        .getByRole("option", {
-          name: initialSettings.logLevels.default,
-          exact: true,
-        })
-        .click();
-      await saveLogLevels();
-      await realtimeLevel.click();
-      await page
-        .getByRole("option", { name: initialRealtime, exact: true })
-        .click();
-      await realtimeLevel.press("Escape");
-      await saveLogLevels();
-      const restoredSettings = await readSettings();
+      await test.step("observability: reopen default log-level options", () =>
+        defaultLevel.click());
+      await test.step("observability: select original default log level", () =>
+        page
+          .getByRole("option", {
+            name: initialSettings.logLevels.default,
+            exact: true,
+          })
+          .click());
+      await saveLogLevels("observability: save restored default log level");
+      await test.step("observability: reopen realtime log-level options", () =>
+        realtimeLevel.click());
+      await test.step("observability: select original realtime log level", () =>
+        page
+          .getByRole("option", { name: initialRealtime, exact: true })
+          .click());
+      await test.step("observability: dismiss restored realtime options", () =>
+        realtimeLevel.press("Escape"));
+      await saveLogLevels("observability: save restored realtime log level");
+      const restoredSettings = await test.step(
+        "observability: verify restored settings",
+        readSettings,
+      );
       expect(restoredSettings.logLevels.default).toBe(
         initialSettings.logLevels.default,
       );
@@ -228,10 +255,11 @@ test.describe("P0 MFA and CSRF browser journey", () => {
         true,
       );
 
-      const csrfResponse = await page.request.get(
-        new URL("/api/me/csrf-token", origin).toString(),
-        { headers: { Origin: origin } },
-      );
+      const csrfResponse =
+        await test.step("CSRF: retrieve token for rejection checks", () =>
+          page.request.get(new URL("/api/me/csrf-token", origin).toString(), {
+            headers: { Origin: origin },
+          }));
       expect(csrfResponse.status()).toBe(200);
       const csrfPayload = (await csrfResponse.json()) as { token?: string };
       const csrfToken = csrfPayload.token ?? "";

@@ -1,12 +1,13 @@
 import { eq, sql } from "drizzle-orm";
 import { HTTPException } from "hono/http-exception";
 import db from "../../database";
-import { taskTable, userTable } from "../../database/schema";
+import { taskTable } from "../../database/schema";
 import { publishEvent } from "../../events";
 import createNotification from "../../notification/controllers/create-notification";
 import { deleteOrphanedAssets } from "../../storage/cleanup-assets";
 import { parseMentionIds } from "../../utils/parse-mentions";
 import { lockTaskAndAssertProjectLive } from "../assert-task-project-live";
+import { findCurrentAssigneeNameQuery } from "../repository";
 
 async function updateTaskDescription({
   id,
@@ -55,10 +56,7 @@ async function updateTaskDescription({
   );
 
   if (newlyMentioned.length > 0) {
-    const [editor] = await db
-      .select({ name: userTable.name })
-      .from(userTable)
-      .where(eq(userTable.id, currentUserId));
+    const [editor] = await findCurrentAssigneeNameQuery(db, currentUserId);
 
     for (const mentionedId of newlyMentioned) {
       await createNotification({

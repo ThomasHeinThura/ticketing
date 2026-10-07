@@ -1,11 +1,11 @@
-import { eq } from "drizzle-orm";
 import { HTTPException } from "hono/http-exception";
 import db from "../../database";
-import { taskActivityTable, userTable } from "../../database/schema";
+import { taskActivityTable } from "../../database/schema";
 import { publishEvent } from "../../events";
 import createNotification from "../../notification/controllers/create-notification";
 import { lockTaskAndAssertProjectLive } from "../../task/assert-task-project-live";
 import { parseMentionIds } from "../../utils/parse-mentions";
+import { getProjectWorkspace, getUserName } from "../repository";
 
 async function createComment(
   taskId: string,
@@ -30,10 +30,7 @@ async function createComment(
           : {}),
       })
       .returning();
-    const project = await tx.query.projectTable.findFirst({
-      columns: { workspaceId: true },
-      where: (project, { eq }) => eq(project.id, lockedTask.projectId),
-    });
+    const project = await getProjectWorkspace(tx, lockedTask.projectId);
     if (!project) throw new HTTPException(404, { message: "Task not found" });
     return {
       activity,
@@ -52,10 +49,7 @@ async function createComment(
     });
   }
 
-  const [user] = await db
-    .select({ name: userTable.name })
-    .from(userTable)
-    .where(eq(userTable.id, userId));
+  const [user] = await getUserName(db, userId);
 
   const task = taskContext;
 

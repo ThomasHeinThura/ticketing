@@ -183,6 +183,11 @@ Borrowed from OpenProject's journal design.
   Read behavior follows the owning feature contract: audit-log reads remain best-effort,
   while PA-11 pending-action detail reads fail closed and return no summary when their
   `pending_action.viewed` audit append fails ([pending-actions.md](../01-architecture/pending-actions.md)).
+  SLA policy create/update/publish mutations use the same mutation rule: an audit failure
+  after the policy write rolls back only the nested audit savepoint, allows the policy
+  mutation to commit, and reports the failure through the bounded AU-14 counter/log and
+  durable administrator-notification path. Publish immutability checks remain enforced
+  independently of audit success.
 - `AU-15` Rows are **hash-chained**: `row_hash` is SHA-256 over the **canonical form defined
   once in data-model.md §11** — the ordered column list (`prev_hash` **included**, as its
   first field, per §11's own "Hash input" list — corrected 2026-09-16: an earlier version
@@ -223,10 +228,20 @@ them; a new audit-only action is added here first ([AGENTS.md](../../AGENTS.md) 
 | --- | --- |
 | `auth.sign_in_succeeded` · `auth.sign_in_failed` · `auth.sign_out` · `auth.session_revoked` | Authentication lifecycle, with the provider used |
 | `auth.mfa_enrolled` · `auth.mfa_reset` | Second-factor enrollment and administrator reset (with the required verification note); never record the secret, TOTP, backup codes, or proof |
+| `auth.user_suspended` · `auth.user_unsuspended` | God Mode account suspension changes; record target user id, outcome, and whether a finite expiry was set, but never the ban reason text or exact expiry |
+| `auth.sessions_revoked` | God Mode force sign-out; one summary row with target user id and count, never session ids, tokens, IP addresses or user agents |
+| `auth.instance_admin_granted` | God Mode grant-admin; record actor and target user ids plus `granted` or `already_admin`; never record step-up proof, token, or request body |
+| `auth.break_glass_used` | Issue #230 recovery CLI use, including an already-admin no-op, refusal, or cancellation after a valid command reaches the database. Actor is `system`, actor id is null; entity is the target user when resolved, otherwise the singleton `instance_setting` row. `outcome` is `granted`, `already_admin`, `refused`, or `cancelled`; `reason` is limited to `setup_incomplete`, `target_unresolved`, `target_ineligible`, or `displayed_state_changed`. Details also record the effective container UID and passwd name. Never record the supplied email or credentials. A grant, its audit append, and durable in-app notices commit atomically; audit failure means no grant. This is the orchestrator-selected P4 implementation contract, not Thomas's P4 design approval. |
 | `auth.step_up_issued` · `auth.step_up_consumed` · `auth.step_up_denied` | A single-use step-up confirmation is issued, consumed, or denied; record binding kind and fixed operation key/route where applicable, never proof, nonce, token, hash or request body |
 | `impersonation.started` · `impersonation.ended` | `GM-7`, `GM-11` |
 | `role.created` · `role.updated` · `role.deleted` · `membership.changed` · `membership.sees_all_granted` | Authority and reach changes |
 | `project.reach_changed` | `owner_team_id` or `parent_id` changed ([rbac.md](../01-architecture/rbac.md#reach)) |
+| `sla_policy.created` | SLA policy created; record only `policyId` and its initial `versionId` as safe identifiers. The raw policy body is never audited. |
+| `sla_policy.updated` | SLA policy draft changed; record `policyId`, `versionId`, a closed `changedFields` list (`name`, `description`, `calendarId`, `atRiskThresholdPct`, `goals`), and only the safe scalar values `calendarId` and `atRiskThresholdPct` when changed. Never record names/descriptions, goal matrices, or a raw request body. Published versions are immutable; an edit creates or updates a draft version and never rewrites a published one. |
+| `sla_policy.published` | SLA policy version published; record `policyId`, `versionId`, prior active version id when present, and the canonical `effectiveFrom` scalar. A publish never mutates an already-published version. |
+| `request_type.created` · `request_type.updated` · `request_type.published` · `request_type.unpublished` · `request_type.deleted` | Request-type lifecycle. Record safe request type/workspace identifiers and a closed changed-field list; never store the form schema, labels, customer answers, or raw request body. Audit-only; no outbox event. |
+| `submission.claimed` | A triager claims a submission; record submission reference and the actor id. Audit-only; no outbox event. |
+| `submission.duplicate` | A triager links a submission to a same-organisation work item; record submission reference and linked work-item id/key. Audit-only; no outbox event. |
 | `invitation.sent` · `invitation.redeemed` · `invitation.revoked` | Invitations |
 | `plugin.changed` · `plugin.tested` · `secrets.rekeyed` | Plugin configuration (keys only, never values), a `test()` call even when unsaved, key rotation |
 | `feature_flag.changed` | Any level |

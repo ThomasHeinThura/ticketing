@@ -12,6 +12,7 @@ import {
 } from "lucide-react";
 import type { CSSProperties } from "react";
 import { memo, useMemo } from "react";
+import { useShallow } from "zustand/react/shallow";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/avatar";
 import { cn } from "@/lib/cn";
 import { dueDateStatusColors, getDueDateStatus } from "@/lib/due-date-status";
@@ -56,14 +57,12 @@ function TaskRow({
     isDragging,
   } = useSortable({ id: task.id });
 
-  const toggleSelection = useBulkSelectionStore(
-    (state) => state.toggleSelection,
-  );
-  const selected = useBulkSelectionStore((state) =>
-    state.selectedTaskIds.has(task.id),
-  );
-  const focused = useBulkSelectionStore(
-    (state) => state.focusedTaskId === task.id,
+  const { toggleSelection, selected, focused } = useBulkSelectionStore(
+    useShallow((state) => ({
+      toggleSelection: state.toggleSelection,
+      selected: state.selectedTaskIds.has(task.id),
+      focused: state.focusedTaskId === task.id,
+    })),
   );
   const {
     showAssignees,

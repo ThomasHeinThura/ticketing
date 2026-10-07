@@ -1,7 +1,6 @@
-import { and, eq, max } from "drizzle-orm";
 import { HTTPException } from "hono/http-exception";
 import db from "../../database";
-import { columnTable, taskTable, userTable } from "../../database/schema";
+import { taskTable } from "../../database/schema";
 import { publishEvent } from "../../events";
 import {
   assertAssignableUserAndLockMembership,
@@ -13,6 +12,11 @@ import {
   validateDateRange,
 } from "../../utils/validate-dates";
 import { lockProjectAndAssertLiveForTaskNumber } from "../assert-task-project-live";
+import {
+  findCurrentAssigneeNameQuery,
+  findMaxTaskPositionQuery,
+  findTaskColumnBySlugQuery,
+} from "../repository";
 import { assertValidTaskStatus } from "../validate-task-fields";
 import { claimTaskNumber } from "./claim-task-numbers";
 
@@ -68,29 +72,20 @@ async function createTask({
           tx,
         );
 
-        [assignee] = await tx
-          .select({ name: userTable.name })
-          .from(userTable)
-          .where(eq(userTable.id, normalizedUserId));
+        [assignee] = await findCurrentAssigneeNameQuery(tx, normalizedUserId);
       }
 
-      const column = await tx.query.columnTable.findFirst({
-        where: and(
-          eq(columnTable.projectId, projectId),
-          eq(columnTable.slug, resolvedStatus),
-        ),
-      });
-      const [maxPositionResult] = await tx
-        .select({ maxPosition: max(taskTable.position) })
-        .from(taskTable)
-        .where(
-          and(
-            eq(taskTable.projectId, projectId),
-            column?.id
-              ? eq(taskTable.columnId, column.id)
-              : eq(taskTable.status, resolvedStatus),
-          ),
-        );
+      const column = await findTaskColumnBySlugQuery(
+        tx,
+        projectId,
+        resolvedStatus,
+      );
+      const [maxPositionResult] = await findMaxTaskPositionQuery(
+        tx,
+        projectId,
+        column?.id ?? null,
+        resolvedStatus,
+      );
       const nextPosition = (maxPositionResult?.maxPosition ?? 0) + 1;
 
       const taskNumber = await claimTaskNumber(projectId, tx);

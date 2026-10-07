@@ -1049,6 +1049,142 @@
 						"createAccount"
 					]
 				},
+				"twoFactor": {
+					"type": "object",
+					"additionalProperties": false,
+					"properties": {
+						"title": {
+							"type": "string"
+						},
+						"subtitle": {
+							"type": "string"
+						},
+						"authenticatorCode": {
+							"type": "string"
+						},
+						"backupCode": {
+							"type": "string"
+						},
+						"verify": {
+							"type": "string"
+						},
+						"verifying": {
+							"type": "string"
+						},
+						"useBackupCode": {
+							"type": "string"
+						},
+						"useAuthenticatorCode": {
+							"type": "string"
+						},
+						"error": {
+							"type": "string"
+						}
+					},
+					"required": [
+						"title",
+						"subtitle",
+						"authenticatorCode",
+						"backupCode",
+						"verify",
+						"verifying",
+						"useBackupCode",
+						"useAuthenticatorCode",
+						"error"
+					]
+				},
+				"accountSecurity": {
+					"type": "object",
+					"additionalProperties": false,
+					"properties": {
+						"pageTitle": {
+							"type": "string"
+						},
+						"description": {
+							"type": "string"
+						},
+						"required": {
+							"type": "string"
+						},
+						"unavailable": {
+							"type": "string"
+						},
+						"enabled": {
+							"type": "string"
+						},
+						"enabledDescription": {
+							"type": "string"
+						},
+						"saveCodes": {
+							"type": "string"
+						},
+						"savedCodes": {
+							"type": "string"
+						},
+						"setupTitle": {
+							"type": "string"
+						},
+						"setupDescription": {
+							"type": "string"
+						},
+						"setupButton": {
+							"type": "string"
+						},
+						"starting": {
+							"type": "string"
+						},
+						"scanTitle": {
+							"type": "string"
+						},
+						"scanDescription": {
+							"type": "string"
+						},
+						"codeLabel": {
+							"type": "string"
+						},
+						"verify": {
+							"type": "string"
+						},
+						"verifying": {
+							"type": "string"
+						},
+						"enrollmentDisabled": {
+							"type": "string"
+						},
+						"enrollmentStartError": {
+							"type": "string"
+						},
+						"codeError": {
+							"type": "string"
+						},
+						"loading": {
+							"type": "string"
+						}
+					},
+					"required": [
+						"pageTitle",
+						"description",
+						"required",
+						"unavailable",
+						"enabled",
+						"enabledDescription",
+						"saveCodes",
+						"savedCodes",
+						"setupTitle",
+						"setupDescription",
+						"setupButton",
+						"starting",
+						"scanTitle",
+						"scanDescription",
+						"codeLabel",
+						"verify",
+						"verifying",
+						"enrollmentDisabled",
+						"enrollmentStartError",
+						"codeError",
+						"loading"
+					]
+				},
 				"invitation": {
 					"type": "object",
 					"additionalProperties": false,
@@ -1323,6 +1459,8 @@
 				"otpSignIn",
 				"signInForm",
 				"signUpForm",
+				"twoFactor",
+				"accountSecurity",
 				"invitation",
 				"onboarding",
 				"profileSetup"
@@ -3233,6 +3371,90 @@
 						},
 						"importExportTasksDescription": {
 							"type": "string"
+						},
+						"engagement": {
+							"type": "object",
+							"additionalProperties": false,
+							"properties": {
+								"title": {
+									"type": "string"
+								},
+								"description": {
+									"type": "string"
+								},
+								"kind": {
+									"type": "string"
+								},
+								"project": {
+									"type": "string"
+								},
+								"managedService": {
+									"type": "string"
+								},
+								"health": {
+									"type": "string"
+								},
+								"unset": {
+									"type": "string"
+								},
+								"red": {
+									"type": "string"
+								},
+								"amber": {
+									"type": "string"
+								},
+								"green": {
+									"type": "string"
+								},
+								"supportLevel": {
+									"type": "string"
+								},
+								"serviceCalendar": {
+									"type": "string"
+								},
+								"selectCalendar": {
+									"type": "string"
+								},
+								"none": {
+									"type": "string"
+								},
+								"required": {
+									"type": "string"
+								},
+								"saved": {
+									"type": "string"
+								},
+								"saveError": {
+									"type": "string"
+								},
+								"saving": {
+									"type": "string"
+								},
+								"save": {
+									"type": "string"
+								}
+							},
+							"required": [
+								"title",
+								"description",
+								"kind",
+								"project",
+								"managedService",
+								"health",
+								"unset",
+								"red",
+								"amber",
+								"green",
+								"supportLevel",
+								"serviceCalendar",
+								"selectCalendar",
+								"none",
+								"required",
+								"saved",
+								"saveError",
+								"saving",
+								"save"
+							]
 						}
 					},
 					"required": [
@@ -3267,7 +3489,8 @@
 						"toastDeleteError",
 						"validation",
 						"importExportTasks",
-						"importExportTasksDescription"
+						"importExportTasksDescription",
+						"engagement"
 					]
 				},
 				"projectIntegrations": {
@@ -5238,6 +5461,9 @@
 						"members": {
 							"type": "string"
 						},
+						"savedViews": {
+							"type": "string"
+						},
 						"invitations": {
 							"type": "string"
 						},
@@ -5252,6 +5478,7 @@
 						"overview",
 						"projects",
 						"members",
+						"savedViews",
 						"invitations",
 						"more",
 						"backToBoard"
@@ -5404,6 +5631,9 @@
 						"addWorkspace": {
 							"type": "string"
 						},
+						"instanceUsers": {
+							"type": "string"
+						},
 						"selectWorkspace": {
 							"type": "string"
 						}
@@ -5412,6 +5642,7 @@
 						"workspaces",
 						"switching",
 						"addWorkspace",
+						"instanceUsers",
 						"selectWorkspace"
 					]
 				},
@@ -8947,6 +9178,9 @@
 						"heading": {
 							"type": "string"
 						},
+						"export": {
+							"type": "string"
+						},
 						"columnKey": {
 							"type": "string"
 						},
@@ -9031,6 +9265,7 @@
 						"pageTitle",
 						"pageTitleWithProject",
 						"heading",
+						"export",
 						"columnKey",
 						"columnTitle",
 						"columnPriority",
@@ -9323,9 +9558,3357 @@
 						}
 					},
 					"required": ["title", "description"]
+				},
+				"intake": {
+					"type": "object",
+					"additionalProperties": false,
+					"properties": {
+						"catalogueTitle": {
+							"type": "string"
+						},
+						"catalogueDescription": {
+							"type": "string"
+						},
+						"loadError": {
+							"type": "string"
+						},
+						"searchPlaceholder": {
+							"type": "string"
+						},
+						"backToCatalogue": {
+							"type": "string"
+						},
+						"fileUploadAfterSubmission": {
+							"type": "string"
+						},
+						"visibilityLabel": {
+							"type": "string"
+						},
+						"visibilityPrivate": {
+							"type": "string"
+						},
+						"visibilityOrganisation": {
+							"type": "string"
+						},
+						"submitError": {
+							"type": "string"
+						},
+						"submit": {
+							"type": "string"
+						},
+						"emptyCatalogue": {
+							"type": "string"
+						},
+						"submissionTitle": {
+							"type": "string"
+						},
+						"pageError": {
+							"type": "string"
+						},
+						"answers": {
+							"type": "string"
+						},
+						"accepted": {
+							"type": "string"
+						},
+						"attachments": {
+							"type": "string"
+						},
+						"download": {
+							"type": "string"
+						},
+						"uploadError": {
+							"type": "string"
+						},
+						"conversation": {
+							"type": "string"
+						},
+						"reply": {
+							"type": "string"
+						},
+						"sendReply": {
+							"type": "string"
+						},
+						"withdraw": {
+							"type": "string"
+						}
+					},
+					"required": [
+						"catalogueTitle",
+						"catalogueDescription",
+						"loadError",
+						"searchPlaceholder",
+						"backToCatalogue",
+						"fileUploadAfterSubmission",
+						"visibilityLabel",
+						"visibilityPrivate",
+						"visibilityOrganisation",
+						"submitError",
+						"submit",
+						"emptyCatalogue",
+						"submissionTitle",
+						"pageError",
+						"answers",
+						"accepted",
+						"attachments",
+						"download",
+						"uploadError",
+						"conversation",
+						"reply",
+						"sendReply",
+						"withdraw"
+					]
 				}
 			},
-			"required": ["unavailable", "notFound", "error"]
+			"required": ["unavailable", "notFound", "error", "intake"]
+		},
+		"slaPolicies": {
+			"type": "object",
+			"additionalProperties": false,
+			"properties": {
+				"list": {
+					"type": "object",
+					"additionalProperties": false,
+					"properties": {
+						"title": {
+							"type": "string"
+						},
+						"description": {
+							"type": "string"
+						},
+						"label": {
+							"type": "string"
+						},
+						"noDescription": {
+							"type": "string"
+						},
+						"loadErrorTitle": {
+							"type": "string"
+						},
+						"loadErrorDescription": {
+							"type": "string"
+						},
+						"new": {
+							"type": "string"
+						},
+						"loading": {
+							"type": "string"
+						},
+						"retry": {
+							"type": "string"
+						},
+						"emptyTitle": {
+							"type": "string"
+						},
+						"emptyDescription": {
+							"type": "string"
+						},
+						"readOnlyTitle": {
+							"type": "string"
+						},
+						"readOnlyDescription": {
+							"type": "string"
+						},
+						"active": {
+							"type": "string"
+						},
+						"draft": {
+							"type": "string"
+						},
+						"unpublished": {
+							"type": "string"
+						},
+						"next": {
+							"type": "string"
+						},
+						"previous": {
+							"type": "string"
+						}
+					},
+					"required": [
+						"title",
+						"description",
+						"label",
+						"noDescription",
+						"loadErrorTitle",
+						"loadErrorDescription",
+						"new",
+						"loading",
+						"retry",
+						"emptyTitle",
+						"emptyDescription",
+						"readOnlyTitle",
+						"readOnlyDescription",
+						"active",
+						"draft",
+						"unpublished",
+						"next",
+						"previous"
+					]
+				},
+				"editor": {
+					"type": "object",
+					"additionalProperties": false,
+					"properties": {
+						"title": {
+							"type": "string"
+						},
+						"newTitle": {
+							"type": "string"
+						},
+						"detailsTitle": {
+							"type": "string"
+						},
+						"calendarPlaceholder": {
+							"type": "string"
+						},
+						"typesHelp": {
+							"type": "string"
+						},
+						"typesError": {
+							"type": "string"
+						},
+						"noTypes": {
+							"type": "string"
+						},
+						"targetUnit": {
+							"type": "string"
+						},
+						"invalidTarget": {
+							"type": "string"
+						},
+						"incomplete": {
+							"type": "string"
+						},
+						"readyToPublish": {
+							"type": "string"
+						},
+						"back": {
+							"type": "string"
+						},
+						"name": {
+							"type": "string"
+						},
+						"description": {
+							"type": "string"
+						},
+						"calendar": {
+							"type": "string"
+						},
+						"threshold": {
+							"type": "string"
+						},
+						"types": {
+							"type": "string"
+						},
+						"goals": {
+							"type": "string"
+						},
+						"metric": {
+							"type": "string"
+						},
+						"firstResponse": {
+							"type": "string"
+						},
+						"resolution": {
+							"type": "string"
+						},
+						"priority": {
+							"type": "string"
+						},
+						"targetMinutes": {
+							"type": "string"
+						},
+						"save": {
+							"type": "string"
+						},
+						"saving": {
+							"type": "string"
+						},
+						"publish": {
+							"type": "string"
+						},
+						"publishing": {
+							"type": "string"
+						},
+						"loading": {
+							"type": "string"
+						},
+						"loadErrorTitle": {
+							"type": "string"
+						},
+						"loadError": {
+							"type": "string"
+						},
+						"saveError": {
+							"type": "string"
+						},
+						"publishError": {
+							"type": "string"
+						},
+						"conflictTitle": {
+							"type": "string"
+						},
+						"conflict": {
+							"type": "string"
+						},
+						"reload": {
+							"type": "string"
+						},
+						"publishHelp": {
+							"type": "string"
+						},
+						"draftHelp": {
+							"type": "string"
+						},
+						"saved": {
+							"type": "string"
+						},
+						"published": {
+							"type": "string"
+						},
+						"required": {
+							"type": "string"
+						},
+						"metrics": {
+							"type": "object",
+							"additionalProperties": false,
+							"properties": {
+								"first_response": {
+									"type": "string"
+								},
+								"resolution": {
+									"type": "string"
+								}
+							},
+							"required": ["first_response", "resolution"]
+						},
+						"priorities": {
+							"type": "object",
+							"additionalProperties": false,
+							"properties": {
+								"low": {
+									"type": "string"
+								},
+								"medium": {
+									"type": "string"
+								},
+								"high": {
+									"type": "string"
+								},
+								"urgent": {
+									"type": "string"
+								}
+							},
+							"required": ["low", "medium", "high", "urgent"]
+						}
+					},
+					"required": [
+						"title",
+						"newTitle",
+						"detailsTitle",
+						"calendarPlaceholder",
+						"typesHelp",
+						"typesError",
+						"noTypes",
+						"targetUnit",
+						"invalidTarget",
+						"incomplete",
+						"readyToPublish",
+						"back",
+						"name",
+						"description",
+						"calendar",
+						"threshold",
+						"types",
+						"goals",
+						"metric",
+						"firstResponse",
+						"resolution",
+						"priority",
+						"targetMinutes",
+						"save",
+						"saving",
+						"publish",
+						"publishing",
+						"loading",
+						"loadErrorTitle",
+						"loadError",
+						"saveError",
+						"publishError",
+						"conflictTitle",
+						"conflict",
+						"reload",
+						"publishHelp",
+						"draftHelp",
+						"saved",
+						"published",
+						"required",
+						"metrics",
+						"priorities"
+					]
+				}
+			},
+			"required": ["list", "editor"]
+		},
+		"serviceCalendars": {
+			"type": "object",
+			"additionalProperties": false,
+			"properties": {
+				"weekdays": {
+					"type": "object",
+					"additionalProperties": false,
+					"properties": {
+						"mon": {
+							"type": "string"
+						},
+						"tue": {
+							"type": "string"
+						},
+						"wed": {
+							"type": "string"
+						},
+						"thu": {
+							"type": "string"
+						},
+						"fri": {
+							"type": "string"
+						},
+						"sat": {
+							"type": "string"
+						},
+						"sun": {
+							"type": "string"
+						}
+					},
+					"required": ["mon", "tue", "wed", "thu", "fri", "sat", "sun"]
+				},
+				"list": {
+					"type": "object",
+					"additionalProperties": false,
+					"properties": {
+						"title": {
+							"type": "string"
+						},
+						"description": {
+							"type": "string"
+						},
+						"new": {
+							"type": "string"
+						},
+						"readOnlyTitle": {
+							"type": "string"
+						},
+						"readOnlyDescription": {
+							"type": "string"
+						},
+						"toolsTitle": {
+							"type": "string"
+						},
+						"toolsDescription": {
+							"type": "string"
+						},
+						"loading": {
+							"type": "string"
+						},
+						"loadErrorTitle": {
+							"type": "string"
+						},
+						"loadErrorDescription": {
+							"type": "string"
+						},
+						"retry": {
+							"type": "string"
+						},
+						"label": {
+							"type": "string"
+						},
+						"emptyTitle": {
+							"type": "string"
+						},
+						"emptyDescription": {
+							"type": "string"
+						},
+						"create": {
+							"type": "string"
+						},
+						"weeklyHours": {
+							"type": "string"
+						},
+						"manualHolidays": {
+							"type": "string"
+						},
+						"manualHolidays_zero": {
+							"type": "string"
+						},
+						"manualHolidays_one": {
+							"type": "string"
+						},
+						"manualHolidays_two": {
+							"type": "string"
+						},
+						"manualHolidays_few": {
+							"type": "string"
+						},
+						"manualHolidays_many": {
+							"type": "string"
+						},
+						"manualHolidays_other": {
+							"type": "string"
+						},
+						"usageUnavailable": {
+							"type": "string"
+						}
+					},
+					"required": [
+						"title",
+						"description",
+						"new",
+						"readOnlyTitle",
+						"readOnlyDescription",
+						"toolsTitle",
+						"toolsDescription",
+						"loading",
+						"loadErrorTitle",
+						"loadErrorDescription",
+						"retry",
+						"label",
+						"emptyTitle",
+						"emptyDescription",
+						"create",
+						"weeklyHours",
+						"usageUnavailable"
+					]
+				},
+				"editor": {
+					"type": "object",
+					"additionalProperties": false,
+					"properties": {
+						"pageTitle": {
+							"type": "string"
+						},
+						"newTitle": {
+							"type": "string"
+						},
+						"loading": {
+							"type": "string"
+						},
+						"loadErrorTitle": {
+							"type": "string"
+						},
+						"loadErrorDescription": {
+							"type": "string"
+						},
+						"retry": {
+							"type": "string"
+						},
+						"back": {
+							"type": "string"
+						},
+						"save": {
+							"type": "string"
+						},
+						"create": {
+							"type": "string"
+						},
+						"saving": {
+							"type": "string"
+						},
+						"conflictTitle": {
+							"type": "string"
+						},
+						"conflictDescription": {
+							"type": "string"
+						},
+						"conflictRefreshing": {
+							"type": "string"
+						},
+						"conflictRefreshFailed": {
+							"type": "string"
+						},
+						"discardReload": {
+							"type": "string"
+						},
+						"keepDraft": {
+							"type": "string"
+						},
+						"readOnlyTitle": {
+							"type": "string"
+						},
+						"readOnlyDescription": {
+							"type": "string"
+						},
+						"timezoneTitle": {
+							"type": "string"
+						},
+						"timezoneDescription": {
+							"type": "string"
+						},
+						"timezoneCount": {
+							"type": "string"
+						},
+						"cancel": {
+							"type": "string"
+						},
+						"confirmSave": {
+							"type": "string"
+						},
+						"changesTitle": {
+							"type": "string"
+						},
+						"changesDescription": {
+							"type": "string"
+						},
+						"zeroWeeklyTitle": {
+							"type": "string"
+						},
+						"zeroWeeklyDescription": {
+							"type": "string"
+						},
+						"zeroTitle": {
+							"type": "string"
+						},
+						"zeroDescription": {
+							"type": "string"
+						},
+						"limitedTitle": {
+							"type": "string"
+						},
+						"limitedDescription": {
+							"type": "string"
+						},
+						"allCalendars": {
+							"type": "string"
+						},
+						"editableLegend": {
+							"type": "string"
+						}
+					},
+					"required": [
+						"pageTitle",
+						"newTitle",
+						"loading",
+						"loadErrorTitle",
+						"loadErrorDescription",
+						"retry",
+						"back",
+						"save",
+						"create",
+						"saving",
+						"conflictTitle",
+						"conflictDescription",
+						"conflictRefreshing",
+						"conflictRefreshFailed",
+						"discardReload",
+						"keepDraft",
+						"readOnlyTitle",
+						"readOnlyDescription",
+						"timezoneTitle",
+						"timezoneDescription",
+						"timezoneCount",
+						"cancel",
+						"confirmSave",
+						"changesTitle",
+						"changesDescription",
+						"zeroWeeklyTitle",
+						"zeroWeeklyDescription",
+						"zeroTitle",
+						"zeroDescription",
+						"limitedTitle",
+						"limitedDescription",
+						"allCalendars",
+						"editableLegend"
+					]
+				},
+				"details": {
+					"type": "object",
+					"additionalProperties": false,
+					"properties": {
+						"title": {
+							"type": "string"
+						},
+						"description": {
+							"type": "string"
+						},
+						"name": {
+							"type": "string"
+						},
+						"timezone": {
+							"type": "string"
+						},
+						"timezonePlaceholder": {
+							"type": "string"
+						},
+						"timezoneHelp": {
+							"type": "string"
+						},
+						"nameRequired": {
+							"type": "string"
+						},
+						"timezoneRequired": {
+							"type": "string"
+						},
+						"timezoneInvalid": {
+							"type": "string"
+						}
+					},
+					"required": [
+						"title",
+						"description",
+						"name",
+						"timezone",
+						"timezonePlaceholder",
+						"timezoneHelp",
+						"nameRequired",
+						"timezoneRequired",
+						"timezoneInvalid"
+					]
+				},
+				"preview": {
+					"type": "object",
+					"additionalProperties": false,
+					"properties": {
+						"title": {
+							"type": "string"
+						},
+						"description": {
+							"type": "string"
+						},
+						"year": {
+							"type": "string"
+						},
+						"yearHelp": {
+							"type": "string"
+						},
+						"saveToCalculate": {
+							"type": "string"
+						},
+						"unavailable": {
+							"type": "string"
+						},
+						"retry": {
+							"type": "string"
+						},
+						"weeklyHours": {
+							"type": "string"
+						},
+						"annualHours": {
+							"type": "string"
+						},
+						"zeroCover": {
+							"type": "string"
+						},
+						"calendar": {
+							"type": "string"
+						}
+					},
+					"required": [
+						"title",
+						"description",
+						"year",
+						"yearHelp",
+						"saveToCalculate",
+						"unavailable",
+						"retry",
+						"weeklyHours",
+						"annualHours",
+						"zeroCover",
+						"calendar"
+					]
+				},
+				"weekly": {
+					"type": "object",
+					"additionalProperties": false,
+					"properties": {
+						"title": {
+							"type": "string"
+						},
+						"description": {
+							"type": "string"
+						},
+						"none": {
+							"type": "string"
+						},
+						"add": {
+							"type": "string"
+						},
+						"addOn": {
+							"type": "string"
+						},
+						"windowInvalid": {
+							"type": "string"
+						},
+						"chooseWorkspace": {
+							"type": "string"
+						},
+						"created": {
+							"type": "string"
+						},
+						"saved": {
+							"type": "string"
+						},
+						"saveFailed": {
+							"type": "string"
+						}
+					},
+					"required": [
+						"title",
+						"description",
+						"none",
+						"add",
+						"addOn",
+						"windowInvalid",
+						"chooseWorkspace",
+						"created",
+						"saved",
+						"saveFailed"
+					]
+				},
+				"window": {
+					"type": "object",
+					"additionalProperties": false,
+					"properties": {
+						"timeline": {
+							"type": "string"
+						},
+						"label": {
+							"type": "string"
+						},
+						"label_zero": {
+							"type": "string"
+						},
+						"label_one": {
+							"type": "string"
+						},
+						"label_two": {
+							"type": "string"
+						},
+						"label_few": {
+							"type": "string"
+						},
+						"label_many": {
+							"type": "string"
+						},
+						"label_other": {
+							"type": "string"
+						},
+						"move": {
+							"type": "string"
+						},
+						"starts": {
+							"type": "string"
+						},
+						"ends": {
+							"type": "string"
+						},
+						"endBoundary": {
+							"type": "string"
+						},
+						"endBoundaryLabel": {
+							"type": "string"
+						},
+						"remove": {
+							"type": "string"
+						},
+						"removeWindow": {
+							"type": "string"
+						},
+						"startLabel": {
+							"type": "string"
+						},
+						"endLabel": {
+							"type": "string"
+						}
+					},
+					"required": [
+						"timeline",
+						"move",
+						"starts",
+						"ends",
+						"endBoundary",
+						"endBoundaryLabel",
+						"remove",
+						"removeWindow",
+						"startLabel",
+						"endLabel"
+					]
+				},
+				"holidays": {
+					"type": "object",
+					"additionalProperties": false,
+					"properties": {
+						"title": {
+							"type": "string"
+						},
+						"description": {
+							"type": "string"
+						},
+						"pastWarning": {
+							"type": "string"
+						},
+						"add": {
+							"type": "string"
+						},
+						"none": {
+							"type": "string"
+						},
+						"item": {
+							"type": "string"
+						},
+						"item_zero": {
+							"type": "string"
+						},
+						"item_one": {
+							"type": "string"
+						},
+						"item_two": {
+							"type": "string"
+						},
+						"item_few": {
+							"type": "string"
+						},
+						"item_many": {
+							"type": "string"
+						},
+						"item_other": {
+							"type": "string"
+						},
+						"pattern": {
+							"type": "string"
+						},
+						"date": {
+							"type": "string"
+						},
+						"range": {
+							"type": "string"
+						},
+						"annual": {
+							"type": "string"
+						},
+						"dateLabel": {
+							"type": "string"
+						},
+						"from": {
+							"type": "string"
+						},
+						"through": {
+							"type": "string"
+						},
+						"month": {
+							"type": "string"
+						},
+						"day": {
+							"type": "string"
+						},
+						"nameOptional": {
+							"type": "string"
+						},
+						"remove": {
+							"type": "string"
+						},
+						"removeHoliday": {
+							"type": "string"
+						},
+						"removeHoliday_zero": {
+							"type": "string"
+						},
+						"removeHoliday_one": {
+							"type": "string"
+						},
+						"removeHoliday_two": {
+							"type": "string"
+						},
+						"removeHoliday_few": {
+							"type": "string"
+						},
+						"removeHoliday_many": {
+							"type": "string"
+						},
+						"removeHoliday_other": {
+							"type": "string"
+						}
+					},
+					"required": [
+						"title",
+						"description",
+						"pastWarning",
+						"add",
+						"none",
+						"pattern",
+						"date",
+						"range",
+						"annual",
+						"dateLabel",
+						"from",
+						"through",
+						"month",
+						"day",
+						"nameOptional",
+						"remove"
+					]
+				},
+				"import": {
+					"type": "object",
+					"additionalProperties": false,
+					"properties": {
+						"title": {
+							"type": "string"
+						},
+						"description": {
+							"type": "string"
+						},
+						"file": {
+							"type": "string"
+						},
+						"unnamed": {
+							"type": "string"
+						},
+						"readError": {
+							"type": "string"
+						},
+						"errorTitle": {
+							"type": "string"
+						},
+						"error": {
+							"type": "string"
+						},
+						"preview": {
+							"type": "string"
+						},
+						"preview_zero": {
+							"type": "string"
+						},
+						"preview_one": {
+							"type": "string"
+						},
+						"preview_two": {
+							"type": "string"
+						},
+						"preview_few": {
+							"type": "string"
+						},
+						"preview_many": {
+							"type": "string"
+						},
+						"preview_other": {
+							"type": "string"
+						},
+						"confirmDescription": {
+							"type": "string"
+						},
+						"confirm": {
+							"type": "string"
+						},
+						"importing": {
+							"type": "string"
+						},
+						"successTitle": {
+							"type": "string"
+						},
+						"success": {
+							"type": "string"
+						},
+						"counts": {
+							"type": "string"
+						},
+						"tooLarge": {
+							"type": "string"
+						},
+						"tooMany": {
+							"type": "string"
+						},
+						"noEvents": {
+							"type": "string"
+						}
+					},
+					"required": [
+						"title",
+						"description",
+						"file",
+						"unnamed",
+						"readError",
+						"errorTitle",
+						"error",
+						"confirmDescription",
+						"confirm",
+						"importing",
+						"successTitle",
+						"success",
+						"counts",
+						"tooLarge",
+						"tooMany",
+						"noEvents"
+					]
+				},
+				"usage": {
+					"type": "object",
+					"additionalProperties": false,
+					"properties": {
+						"title": {
+							"type": "string"
+						},
+						"loading": {
+							"type": "string"
+						},
+						"error": {
+							"type": "string"
+						},
+						"counts": {
+							"type": "string"
+						},
+						"unused": {
+							"type": "string"
+						},
+						"inUse": {
+							"type": "string"
+						},
+						"delete": {
+							"type": "string"
+						},
+						"requesting": {
+							"type": "string"
+						},
+						"deleteError": {
+							"type": "string"
+						}
+					},
+					"required": [
+						"title",
+						"loading",
+						"error",
+						"counts",
+						"unused",
+						"inUse",
+						"delete",
+						"requesting",
+						"deleteError"
+					]
+				}
+			},
+			"required": [
+				"weekdays",
+				"list",
+				"editor",
+				"details",
+				"preview",
+				"weekly",
+				"window",
+				"holidays",
+				"import",
+				"usage"
+			]
+		},
+		"instanceUsers": {
+			"type": "object",
+			"additionalProperties": false,
+			"properties": {
+				"selectUser": {
+					"type": "string"
+				},
+				"copy": {
+					"type": "object",
+					"additionalProperties": false,
+					"properties": {
+						"d094be66b726": {
+							"type": "string"
+						},
+						"211715f3fe3d": {
+							"type": "string"
+						},
+						"56e3badc4e6c": {
+							"type": "string"
+						},
+						"ad11be6e92db": {
+							"type": "string"
+						},
+						"8008829bb5ed": {
+							"type": "string"
+						},
+						"ec137488beec": {
+							"type": "string"
+						},
+						"a4730a22cf49": {
+							"type": "string"
+						},
+						"0e85749a6f40": {
+							"type": "string"
+						},
+						"6405179d241b": {
+							"type": "string"
+						},
+						"274e10cde2d6": {
+							"type": "string"
+						},
+						"c51407d28beb": {
+							"type": "string"
+						},
+						"a93b05eaba35": {
+							"type": "string"
+						},
+						"5de26f1895d9": {
+							"type": "string"
+						},
+						"9f5cd8a2e880": {
+							"type": "string"
+						},
+						"612eb3c64c41": {
+							"type": "string"
+						},
+						"82457330d2e6": {
+							"type": "string"
+						},
+						"9f8a2389a20c": {
+							"type": "string"
+						},
+						"3deb74565196": {
+							"type": "string"
+						},
+						"6e99c1d3b150": {
+							"type": "string"
+						},
+						"bae7d5be7082": {
+							"type": "string"
+						},
+						"1eda23758be9": {
+							"type": "string"
+						},
+						"794696a72066": {
+							"type": "string"
+						},
+						"09af574c7f20": {
+							"type": "string"
+						},
+						"4bfc194b68a3": {
+							"type": "string"
+						},
+						"2dc7a078a492": {
+							"type": "string"
+						},
+						"db0e0e9d496c": {
+							"type": "string"
+						},
+						"bbfa773e5a63": {
+							"type": "string"
+						},
+						"85dfa32c97d8": {
+							"type": "string"
+						},
+						"886f2447688e": {
+							"type": "string"
+						},
+						"fae11b81f599": {
+							"type": "string"
+						},
+						"accf40c89baa": {
+							"type": "string"
+						},
+						"1e1ba090dab9": {
+							"type": "string"
+						},
+						"6361cbb3f6ca": {
+							"type": "string"
+						},
+						"c4d18ce42e74": {
+							"type": "string"
+						},
+						"eb3c0567a3f7": {
+							"type": "string"
+						},
+						"f70b8a00f6fb": {
+							"type": "string"
+						},
+						"0c1fff37e9d6": {
+							"type": "string"
+						},
+						"d6ac6adb7aa6": {
+							"type": "string"
+						},
+						"9b3e95464b4a": {
+							"type": "string"
+						},
+						"f6826f8fc9b4": {
+							"type": "string"
+						},
+						"728bac665663": {
+							"type": "string"
+						},
+						"5f1d7b5a1d87": {
+							"type": "string"
+						},
+						"711c48ecc613": {
+							"type": "string"
+						},
+						"7648a80e2e1a": {
+							"type": "string"
+						},
+						"83cee4a5b3db": {
+							"type": "string"
+						},
+						"d20b1e22f25a": {
+							"type": "string"
+						},
+						"e45a0de86960": {
+							"type": "string"
+						},
+						"18422bfc5104": {
+							"type": "string"
+						},
+						"fc7481906e3b": {
+							"type": "string"
+						},
+						"2908b4e9c428": {
+							"type": "string"
+						},
+						"2a8367498e23": {
+							"type": "string"
+						},
+						"19dff4dad0a7": {
+							"type": "string"
+						},
+						"02c7fa45ff1a": {
+							"type": "string"
+						},
+						"d5d49ba4b1bf": {
+							"type": "string"
+						},
+						"f169620795e0": {
+							"type": "string"
+						},
+						"77dfd2135f4d": {
+							"type": "string"
+						},
+						"4f6c2db66053": {
+							"type": "string"
+						},
+						"1bd6226dd199": {
+							"type": "string"
+						},
+						"5d12419516ef": {
+							"type": "string"
+						},
+						"4dc97a606e2f": {
+							"type": "string"
+						},
+						"dd5947e50ac8": {
+							"type": "string"
+						},
+						"b745c3cd8743": {
+							"type": "string"
+						},
+						"5f2c539d453e": {
+							"type": "string"
+						},
+						"352046dda7cf": {
+							"type": "string"
+						},
+						"4135684d2d0a": {
+							"type": "string"
+						}
+					},
+					"required": [
+						"d094be66b726",
+						"211715f3fe3d",
+						"56e3badc4e6c",
+						"ad11be6e92db",
+						"8008829bb5ed",
+						"ec137488beec",
+						"a4730a22cf49",
+						"0e85749a6f40",
+						"6405179d241b",
+						"274e10cde2d6",
+						"c51407d28beb",
+						"a93b05eaba35",
+						"5de26f1895d9",
+						"9f5cd8a2e880",
+						"612eb3c64c41",
+						"82457330d2e6",
+						"9f8a2389a20c",
+						"3deb74565196",
+						"6e99c1d3b150",
+						"bae7d5be7082",
+						"1eda23758be9",
+						"794696a72066",
+						"09af574c7f20",
+						"4bfc194b68a3",
+						"2dc7a078a492",
+						"db0e0e9d496c",
+						"bbfa773e5a63",
+						"85dfa32c97d8",
+						"886f2447688e",
+						"fae11b81f599",
+						"accf40c89baa",
+						"1e1ba090dab9",
+						"6361cbb3f6ca",
+						"c4d18ce42e74",
+						"eb3c0567a3f7",
+						"f70b8a00f6fb",
+						"0c1fff37e9d6",
+						"d6ac6adb7aa6",
+						"9b3e95464b4a",
+						"f6826f8fc9b4",
+						"728bac665663",
+						"5f1d7b5a1d87",
+						"711c48ecc613",
+						"7648a80e2e1a",
+						"83cee4a5b3db",
+						"d20b1e22f25a",
+						"e45a0de86960",
+						"18422bfc5104",
+						"fc7481906e3b",
+						"2908b4e9c428",
+						"2a8367498e23",
+						"19dff4dad0a7",
+						"02c7fa45ff1a",
+						"d5d49ba4b1bf",
+						"f169620795e0",
+						"77dfd2135f4d",
+						"4f6c2db66053",
+						"1bd6226dd199",
+						"5d12419516ef",
+						"4dc97a606e2f",
+						"dd5947e50ac8",
+						"b745c3cd8743",
+						"5f2c539d453e",
+						"352046dda7cf",
+						"4135684d2d0a"
+					]
+				},
+				"dynamic": {
+					"type": "object",
+					"additionalProperties": false,
+					"properties": {
+						"approvalMissing": {
+							"type": "string"
+						},
+						"deactivationRequested": {
+							"type": "string"
+						},
+						"notices": {
+							"type": "object",
+							"additionalProperties": false,
+							"properties": {
+								"suspended": {
+									"type": "string"
+								},
+								"unsuspended": {
+									"type": "string"
+								},
+								"signedOut": {
+									"type": "string"
+								},
+								"adminGranted": {
+									"type": "string"
+								},
+								"mfaReset": {
+									"type": "string"
+								}
+							},
+							"required": [
+								"suspended",
+								"unsuspended",
+								"signedOut",
+								"adminGranted",
+								"mfaReset"
+							]
+						},
+						"errors": {
+							"type": "object",
+							"additionalProperties": false,
+							"properties": {
+								"accountChanged": {
+									"type": "string"
+								},
+								"notificationUnavailable": {
+									"type": "string"
+								},
+								"actionFailed": {
+									"type": "string"
+								}
+							},
+							"required": [
+								"accountChanged",
+								"notificationUnavailable",
+								"actionFailed"
+							]
+						},
+						"usersOnPage": {
+							"type": "string"
+						},
+						"usersOnPage_zero": {
+							"type": "string"
+						},
+						"usersOnPage_one": {
+							"type": "string"
+						},
+						"usersOnPage_two": {
+							"type": "string"
+						},
+						"usersOnPage_few": {
+							"type": "string"
+						},
+						"usersOnPage_many": {
+							"type": "string"
+						},
+						"usersOnPage_other": {
+							"type": "string"
+						},
+						"side": {
+							"type": "object",
+							"additionalProperties": false,
+							"properties": {
+								"staff": {
+									"type": "string"
+								},
+								"customer": {
+									"type": "string"
+								}
+							},
+							"required": ["staff", "customer"]
+						},
+						"unlinked": {
+							"type": "string"
+						},
+						"personActive": {
+							"type": "string"
+						},
+						"personInactive": {
+							"type": "string"
+						},
+						"noLinkedPerson": {
+							"type": "string"
+						},
+						"enabled": {
+							"type": "string"
+						},
+						"notEnabled": {
+							"type": "string"
+						},
+						"actions": {
+							"type": "object",
+							"additionalProperties": false,
+							"properties": {
+								"suspend": {
+									"type": "string"
+								},
+								"unsuspend": {
+									"type": "string"
+								},
+								"grantAdmin": {
+									"type": "string"
+								},
+								"resetMfa": {
+									"type": "string"
+								},
+								"signOut": {
+									"type": "string"
+								},
+								"deactivate": {
+									"type": "string"
+								}
+							},
+							"required": [
+								"suspend",
+								"unsuspend",
+								"grantAdmin",
+								"resetMfa",
+								"signOut",
+								"deactivate"
+							]
+						},
+						"working": {
+							"type": "string"
+						},
+						"signOutSessions": {
+							"type": "string"
+						},
+						"authenticatorCode": {
+							"type": "string"
+						},
+						"backupCode": {
+							"type": "string"
+						},
+						"accountPassword": {
+							"type": "string"
+						}
+					},
+					"required": [
+						"approvalMissing",
+						"deactivationRequested",
+						"notices",
+						"errors",
+						"side",
+						"unlinked",
+						"personActive",
+						"personInactive",
+						"noLinkedPerson",
+						"enabled",
+						"notEnabled",
+						"actions",
+						"working",
+						"signOutSessions",
+						"authenticatorCode",
+						"backupCode",
+						"accountPassword"
+					]
+				}
+			},
+			"required": ["selectUser", "copy", "dynamic"]
+		},
+		"pendingActions": {
+			"type": "object",
+			"additionalProperties": false,
+			"properties": {
+				"review": {
+					"type": "string"
+				},
+				"emailMismatch": {
+					"type": "string"
+				},
+				"staleApproval": {
+					"type": "string"
+				},
+				"approvalFailed": {
+					"type": "string"
+				},
+				"requestFreshDeactivation": {
+					"type": "string"
+				},
+				"openUsers": {
+					"type": "string"
+				},
+				"copy": {
+					"type": "object",
+					"additionalProperties": false,
+					"properties": {
+						"8008829bb5ed": {
+							"type": "string"
+						},
+						"eeab44be9789": {
+							"type": "string"
+						},
+						"3ccd9fbc7f89": {
+							"type": "string"
+						},
+						"68f8856d348a": {
+							"type": "string"
+						},
+						"b7bd2b2fc798": {
+							"type": "string"
+						},
+						"77dfd2135f4d": {
+							"type": "string"
+						},
+						"4bfc194b68a3": {
+							"type": "string"
+						},
+						"3b04d7a51cb2": {
+							"type": "string"
+						},
+						"f6f50d54eb36": {
+							"type": "string"
+						},
+						"bc2597b55c34": {
+							"type": "string"
+						},
+						"8a1657ab9e97": {
+							"type": "string"
+						},
+						"85baf535b480": {
+							"type": "string"
+						},
+						"c4c695a8da8e": {
+							"type": "string"
+						},
+						"97c89a4d6630": {
+							"type": "string"
+						},
+						"61ad50a9b918": {
+							"type": "string"
+						},
+						"bae7d5be7082": {
+							"type": "string"
+						},
+						"f219cc0614ae": {
+							"type": "string"
+						},
+						"71f269fe7eee": {
+							"type": "string"
+						},
+						"c65f42061785": {
+							"type": "string"
+						},
+						"3a725803c822": {
+							"type": "string"
+						},
+						"2908b4e9c428": {
+							"type": "string"
+						},
+						"2a8367498e23": {
+							"type": "string"
+						},
+						"02c7fa45ff1a": {
+							"type": "string"
+						},
+						"8a8c6877113f": {
+							"type": "string"
+						},
+						"a2b52d875e8b": {
+							"type": "string"
+						},
+						"84837a216817": {
+							"type": "string"
+						},
+						"e76b511b0a44": {
+							"type": "string"
+						},
+						"d3d84fb23a45": {
+							"type": "string"
+						},
+						"a93eb80c8601": {
+							"type": "string"
+						}
+					},
+					"required": [
+						"8008829bb5ed",
+						"eeab44be9789",
+						"3ccd9fbc7f89",
+						"68f8856d348a",
+						"b7bd2b2fc798",
+						"77dfd2135f4d",
+						"4bfc194b68a3",
+						"3b04d7a51cb2",
+						"f6f50d54eb36",
+						"bc2597b55c34",
+						"8a1657ab9e97",
+						"85baf535b480",
+						"c4c695a8da8e",
+						"97c89a4d6630",
+						"61ad50a9b918",
+						"bae7d5be7082",
+						"f219cc0614ae",
+						"71f269fe7eee",
+						"c65f42061785",
+						"3a725803c822",
+						"2908b4e9c428",
+						"2a8367498e23",
+						"02c7fa45ff1a",
+						"8a8c6877113f",
+						"a2b52d875e8b",
+						"84837a216817",
+						"e76b511b0a44",
+						"d3d84fb23a45",
+						"a93eb80c8601"
+					]
+				},
+				"dynamic": {
+					"type": "object",
+					"additionalProperties": false,
+					"properties": {
+						"deactivatePerson": {
+							"type": "string"
+						},
+						"genericAction": {
+							"type": "string"
+						},
+						"deactivationApproved": {
+							"type": "string"
+						},
+						"cancelled": {
+							"type": "string"
+						},
+						"cancelFailed": {
+							"type": "string"
+						},
+						"approveDeactivation": {
+							"type": "string"
+						},
+						"pendingAction": {
+							"type": "string"
+						},
+						"requestedFrom": {
+							"type": "string"
+						},
+						"origins": {
+							"type": "object",
+							"additionalProperties": false,
+							"properties": {
+								"web": {
+									"type": "string"
+								},
+								"api": {
+									"type": "string"
+								},
+								"mcp": {
+									"type": "string"
+								},
+								"unknown": {
+									"type": "string"
+								}
+							},
+							"required": ["web", "api", "mcp", "unknown"]
+						},
+						"states": {
+							"type": "object",
+							"additionalProperties": false,
+							"properties": {
+								"pending": {
+									"type": "string"
+								},
+								"approved": {
+									"type": "string"
+								},
+								"denied": {
+									"type": "string"
+								},
+								"cancelled": {
+									"type": "string"
+								},
+								"expired": {
+									"type": "string"
+								},
+								"invalidated": {
+									"type": "string"
+								},
+								"executed": {
+									"type": "string"
+								},
+								"failed": {
+									"type": "string"
+								}
+							},
+							"required": [
+								"pending",
+								"approved",
+								"denied",
+								"cancelled",
+								"expired",
+								"invalidated",
+								"executed",
+								"failed"
+							]
+						},
+						"reasons": {
+							"type": "object",
+							"additionalProperties": false,
+							"properties": {
+								"credential_revoked": {
+									"type": "string"
+								},
+								"requester_deactivated": {
+									"type": "string"
+								},
+								"reach_lost": {
+									"type": "string"
+								},
+								"capability_removed": {
+									"type": "string"
+								},
+								"version_changed": {
+									"type": "string"
+								},
+								"scope_changed": {
+									"type": "string"
+								}
+							},
+							"required": [
+								"credential_revoked",
+								"requester_deactivated",
+								"reach_lost",
+								"capability_removed",
+								"version_changed",
+								"scope_changed"
+							]
+						},
+						"authenticatorCode": {
+							"type": "string"
+						},
+						"backupCode": {
+							"type": "string"
+						},
+						"accountPassword": {
+							"type": "string"
+						},
+						"actions": {
+							"type": "object",
+							"additionalProperties": false,
+							"properties": {
+								"delete": {
+									"type": "string"
+								},
+								"bulkDelete": {
+									"type": "string"
+								},
+								"purge": {
+									"type": "string"
+								},
+								"mcpDestructive": {
+									"type": "string"
+								},
+								"userDeactivation": {
+									"type": "string"
+								}
+							},
+							"required": [
+								"delete",
+								"bulkDelete",
+								"purge",
+								"mcpDestructive",
+								"userDeactivation"
+							]
+						},
+						"unknownAction": {
+							"type": "string"
+						},
+						"expires": {
+							"type": "string"
+						},
+						"calendarDeletionApproved": {
+							"type": "string"
+						},
+						"savedViewDeletionApproved": {
+							"type": "string"
+						},
+						"approveAction": {
+							"type": "string"
+						},
+						"approveCalendarDeletion": {
+							"type": "string"
+						},
+						"deleteServiceCalendar": {
+							"type": "string"
+						}
+					},
+					"required": [
+						"deactivatePerson",
+						"genericAction",
+						"deactivationApproved",
+						"cancelled",
+						"cancelFailed",
+						"approveDeactivation",
+						"pendingAction",
+						"requestedFrom",
+						"origins",
+						"states",
+						"reasons",
+						"authenticatorCode",
+						"backupCode",
+						"accountPassword",
+						"actions",
+						"unknownAction",
+						"expires",
+						"calendarDeletionApproved",
+						"savedViewDeletionApproved",
+						"approveAction",
+						"approveCalendarDeletion",
+						"deleteServiceCalendar"
+					]
+				}
+			},
+			"required": [
+				"review",
+				"emailMismatch",
+				"staleApproval",
+				"approvalFailed",
+				"requestFreshDeactivation",
+				"openUsers",
+				"copy",
+				"dynamic"
+			]
+		},
+		"savedViews": {
+			"type": "object",
+			"additionalProperties": false,
+			"properties": {
+				"title": {
+					"type": "string"
+				},
+				"description": {
+					"type": "string"
+				},
+				"search": {
+					"type": "string"
+				},
+				"name": {
+					"type": "string"
+				},
+				"create": {
+					"type": "string"
+				},
+				"creating": {
+					"type": "string"
+				},
+				"createError": {
+					"type": "string"
+				},
+				"countLoading": {
+					"type": "string"
+				},
+				"count": {
+					"type": "string"
+				},
+				"count_zero": {
+					"type": "string"
+				},
+				"count_one": {
+					"type": "string"
+				},
+				"count_two": {
+					"type": "string"
+				},
+				"count_few": {
+					"type": "string"
+				},
+				"count_many": {
+					"type": "string"
+				},
+				"count_other": {
+					"type": "string"
+				},
+				"togglePin": {
+					"type": "string"
+				},
+				"pin": {
+					"type": "string"
+				},
+				"unpin": {
+					"type": "string"
+				},
+				"clone": {
+					"type": "string"
+				},
+				"cancelEdit": {
+					"type": "string"
+				},
+				"edit": {
+					"type": "string"
+				},
+				"save": {
+					"type": "string"
+				},
+				"loadingView": {
+					"type": "string"
+				},
+				"projectUnavailable": {
+					"type": "string"
+				},
+				"layoutUnavailable": {
+					"type": "string"
+				},
+				"sort": {
+					"type": "string"
+				},
+				"direction": {
+					"type": "string"
+				},
+				"columns": {
+					"type": "string"
+				},
+				"runError": {
+					"type": "string"
+				},
+				"loadingMore": {
+					"type": "string"
+				},
+				"loadMore": {
+					"type": "string"
+				},
+				"saveError": {
+					"type": "string"
+				},
+				"empty": {
+					"type": "string"
+				},
+				"requestDelete": {
+					"type": "string"
+				},
+				"requesting": {
+					"type": "string"
+				},
+				"loadError": {
+					"type": "string"
+				},
+				"deleteError": {
+					"type": "string"
+				},
+				"requestCreated": {
+					"type": "string"
+				},
+				"pinned": {
+					"type": "string"
+				},
+				"visibility": {
+					"type": "string"
+				},
+				"deleteNamed": {
+					"type": "string"
+				},
+				"approveDelete": {
+					"type": "string"
+				}
+			},
+			"required": [
+				"title",
+				"description",
+				"search",
+				"name",
+				"create",
+				"creating",
+				"createError",
+				"countLoading",
+				"togglePin",
+				"pin",
+				"unpin",
+				"clone",
+				"cancelEdit",
+				"edit",
+				"save",
+				"loadingView",
+				"projectUnavailable",
+				"layoutUnavailable",
+				"sort",
+				"direction",
+				"columns",
+				"runError",
+				"loadingMore",
+				"loadMore",
+				"saveError",
+				"empty",
+				"requestDelete",
+				"requesting",
+				"loadError",
+				"deleteError",
+				"requestCreated",
+				"pinned",
+				"visibility",
+				"deleteNamed",
+				"approveDelete"
+			]
+		},
+		"identityConnections": {
+			"type": "object",
+			"additionalProperties": false,
+			"properties": {
+				"list": {
+					"type": "object",
+					"additionalProperties": false,
+					"properties": {
+						"title": {
+							"type": "string"
+						},
+						"description": {
+							"type": "string"
+						},
+						"add": {
+							"type": "string"
+						},
+						"unavailable": {
+							"type": "string"
+						},
+						"loadFailed": {
+							"type": "string"
+						},
+						"retry": {
+							"type": "string"
+						},
+						"loading": {
+							"type": "string"
+						},
+						"configured": {
+							"type": "string"
+						},
+						"organisationBound": {
+							"type": "string"
+						},
+						"enabled": {
+							"type": "string"
+						},
+						"disabled": {
+							"type": "string"
+						},
+						"manage": {
+							"type": "string"
+						},
+						"empty": {
+							"type": "string"
+						}
+					},
+					"required": [
+						"title",
+						"description",
+						"add",
+						"unavailable",
+						"loadFailed",
+						"retry",
+						"loading",
+						"configured",
+						"organisationBound",
+						"enabled",
+						"disabled",
+						"manage",
+						"empty"
+					]
+				},
+				"editor": {
+					"type": "object",
+					"additionalProperties": false,
+					"properties": {
+						"loading": {
+							"type": "string"
+						},
+						"loadFailed": {
+							"type": "string"
+						},
+						"factorRequired": {
+							"type": "string"
+						},
+						"stepUpFailed": {
+							"type": "string"
+						},
+						"notFound": {
+							"type": "string"
+						},
+						"stale": {
+							"type": "string"
+						},
+						"invalid": {
+							"type": "string"
+						},
+						"saveFailed": {
+							"type": "string"
+						},
+						"created": {
+							"type": "string"
+						},
+						"createdDescription": {
+							"type": "string"
+						},
+						"openSettings": {
+							"type": "string"
+						},
+						"addTitle": {
+							"type": "string"
+						},
+						"editTitle": {
+							"type": "string"
+						},
+						"intro": {
+							"type": "string"
+						},
+						"notSaved": {
+							"type": "string"
+						},
+						"saved": {
+							"type": "string"
+						},
+						"savedDescription": {
+							"type": "string"
+						},
+						"connectionName": {
+							"type": "string"
+						},
+						"portal": {
+							"type": "string"
+						},
+						"staffPortal": {
+							"type": "string"
+						},
+						"customerPortal": {
+							"type": "string"
+						},
+						"organisationId": {
+							"type": "string"
+						},
+						"workspaceId": {
+							"type": "string"
+						},
+						"tenantId": {
+							"type": "string"
+						},
+						"clientId": {
+							"type": "string"
+						},
+						"clientSecret": {
+							"type": "string"
+						},
+						"replaceSecret": {
+							"type": "string"
+						},
+						"scopes": {
+							"type": "string"
+						},
+						"domains": {
+							"type": "string"
+						},
+						"jitAccess": {
+							"type": "string"
+						},
+						"enableJit": {
+							"type": "string"
+						},
+						"defaultRole": {
+							"type": "string"
+						},
+						"requiredAppRole": {
+							"type": "string"
+						},
+						"maxRoleRank": {
+							"type": "string"
+						},
+						"enableConnection": {
+							"type": "string"
+						},
+						"confirmChange": {
+							"type": "string"
+						},
+						"authMethod": {
+							"type": "string"
+						},
+						"password": {
+							"type": "string"
+						},
+						"authenticatorCode": {
+							"type": "string"
+						},
+						"backupCode": {
+							"type": "string"
+						},
+						"freshAuth": {
+							"type": "string"
+						},
+						"saving": {
+							"type": "string"
+						},
+						"createDisabled": {
+							"type": "string"
+						},
+						"saveApply": {
+							"type": "string"
+						},
+						"version": {
+							"type": "string"
+						}
+					},
+					"required": [
+						"loading",
+						"loadFailed",
+						"factorRequired",
+						"stepUpFailed",
+						"notFound",
+						"stale",
+						"invalid",
+						"saveFailed",
+						"created",
+						"createdDescription",
+						"openSettings",
+						"addTitle",
+						"editTitle",
+						"intro",
+						"notSaved",
+						"saved",
+						"savedDescription",
+						"connectionName",
+						"portal",
+						"staffPortal",
+						"customerPortal",
+						"organisationId",
+						"workspaceId",
+						"tenantId",
+						"clientId",
+						"clientSecret",
+						"replaceSecret",
+						"scopes",
+						"domains",
+						"jitAccess",
+						"enableJit",
+						"defaultRole",
+						"requiredAppRole",
+						"maxRoleRank",
+						"enableConnection",
+						"confirmChange",
+						"authMethod",
+						"password",
+						"authenticatorCode",
+						"backupCode",
+						"freshAuth",
+						"saving",
+						"createDisabled",
+						"saveApply",
+						"version"
+					]
+				},
+				"events": {
+					"type": "object",
+					"additionalProperties": false,
+					"properties": {
+						"title": {
+							"type": "string"
+						},
+						"loadFailed": {
+							"type": "string"
+						},
+						"loading": {
+							"type": "string"
+						},
+						"empty": {
+							"type": "string"
+						},
+						"listLabel": {
+							"type": "string"
+						},
+						"older": {
+							"type": "string"
+						},
+						"newest": {
+							"type": "string"
+						},
+						"unknown": {
+							"type": "string"
+						},
+						"kinds": {
+							"type": "object",
+							"additionalProperties": false,
+							"properties": {
+								"userCreated": {
+									"type": "string"
+								},
+								"userUpdated": {
+									"type": "string"
+								},
+								"userDeactivated": {
+									"type": "string"
+								},
+								"userReactivated": {
+									"type": "string"
+								},
+								"groupDirectoryChanged": {
+									"type": "string"
+								},
+								"groupMappingChanged": {
+									"type": "string"
+								},
+								"groupMemberAdded": {
+									"type": "string"
+								},
+								"groupMemberRemoved": {
+									"type": "string"
+								},
+								"requestDenied": {
+									"type": "string"
+								},
+								"authFailed": {
+									"type": "string"
+								},
+								"tokenRotated": {
+									"type": "string"
+								},
+								"tokenRevoked": {
+									"type": "string"
+								},
+								"connectionChanged": {
+									"type": "string"
+								},
+								"syncFailed": {
+									"type": "string"
+								}
+							},
+							"required": [
+								"userCreated",
+								"userUpdated",
+								"userDeactivated",
+								"userReactivated",
+								"groupDirectoryChanged",
+								"groupMappingChanged",
+								"groupMemberAdded",
+								"groupMemberRemoved",
+								"requestDenied",
+								"authFailed",
+								"tokenRotated",
+								"tokenRevoked",
+								"connectionChanged",
+								"syncFailed"
+							]
+						},
+						"outcomes": {
+							"type": "object",
+							"additionalProperties": false,
+							"properties": {
+								"success": {
+									"type": "string"
+								}
+							},
+							"required": ["success"]
+						},
+						"actors": {
+							"type": "object",
+							"additionalProperties": false,
+							"properties": {
+								"person": {
+									"type": "string"
+								},
+								"scim": {
+									"type": "string"
+								},
+								"oidc": {
+									"type": "string"
+								}
+							},
+							"required": ["person", "scim", "oidc"]
+						}
+					},
+					"required": [
+						"title",
+						"loadFailed",
+						"loading",
+						"empty",
+						"listLabel",
+						"older",
+						"newest",
+						"unknown",
+						"kinds",
+						"outcomes",
+						"actors"
+					]
+				},
+				"scim": {
+					"type": "object",
+					"additionalProperties": false,
+					"properties": {
+						"common": {
+							"type": "object",
+							"additionalProperties": false,
+							"properties": {
+								"passwordRequired": {
+									"type": "string"
+								},
+								"codeRequired": {
+									"type": "string"
+								},
+								"password": {
+									"type": "string"
+								},
+								"authenticatorCode": {
+									"type": "string"
+								},
+								"backupCode": {
+									"type": "string"
+								},
+								"verificationMethod": {
+									"type": "string"
+								},
+								"saving": {
+									"type": "string"
+								},
+								"working": {
+									"type": "string"
+								},
+								"reload": {
+									"type": "string"
+								}
+							},
+							"required": [
+								"passwordRequired",
+								"codeRequired",
+								"password",
+								"authenticatorCode",
+								"backupCode",
+								"verificationMethod",
+								"saving",
+								"working",
+								"reload"
+							]
+						},
+						"match": {
+							"type": "object",
+							"additionalProperties": false,
+							"properties": {
+								"loading": {
+									"type": "string"
+								},
+								"unavailable": {
+									"type": "string"
+								},
+								"retry": {
+									"type": "string"
+								},
+								"title": {
+									"type": "string"
+								},
+								"description": {
+									"type": "string"
+								},
+								"resources": {
+									"type": "string"
+								},
+								"users": {
+									"type": "string"
+								},
+								"requiredByConnection": {
+									"type": "string"
+								},
+								"groups": {
+									"type": "string"
+								},
+								"deactivationPolicy": {
+									"type": "string"
+								},
+								"endMemberships": {
+									"type": "string"
+								},
+								"keepMemberships": {
+									"type": "string"
+								},
+								"futureDeactivations": {
+									"type": "string"
+								},
+								"supportedAttributes": {
+									"type": "string"
+								},
+								"requiredForConnection": {
+									"type": "string"
+								},
+								"stepUpTitle": {
+									"type": "string"
+								},
+								"stepUpDescription": {
+									"type": "string"
+								},
+								"configurationNotSaved": {
+									"type": "string"
+								},
+								"save": {
+									"type": "string"
+								},
+								"version": {
+									"type": "string"
+								},
+								"profileTitle": {
+									"type": "string"
+								},
+								"profileDescription": {
+									"type": "string"
+								},
+								"displayNameSource": {
+									"type": "string"
+								},
+								"contactEmailSource": {
+									"type": "string"
+								},
+								"jobTitleSource": {
+									"type": "string"
+								},
+								"localeSource": {
+									"type": "string"
+								},
+								"saveProfile": {
+									"type": "string"
+								},
+								"noRawData": {
+									"type": "string"
+								},
+								"errors": {
+									"type": "object",
+									"additionalProperties": false,
+									"properties": {
+										"forbidden": {
+											"type": "string"
+										},
+										"notFound": {
+											"type": "string"
+										},
+										"stale": {
+											"type": "string"
+										},
+										"invalid": {
+											"type": "string"
+										},
+										"unavailable": {
+											"type": "string"
+										},
+										"load": {
+											"type": "string"
+										},
+										"save": {
+											"type": "string"
+										}
+									},
+									"required": [
+										"forbidden",
+										"notFound",
+										"stale",
+										"invalid",
+										"unavailable",
+										"load",
+										"save"
+									]
+								}
+							},
+							"required": [
+								"loading",
+								"unavailable",
+								"retry",
+								"title",
+								"description",
+								"resources",
+								"users",
+								"requiredByConnection",
+								"groups",
+								"deactivationPolicy",
+								"endMemberships",
+								"keepMemberships",
+								"futureDeactivations",
+								"supportedAttributes",
+								"requiredForConnection",
+								"stepUpTitle",
+								"stepUpDescription",
+								"configurationNotSaved",
+								"save",
+								"version",
+								"profileTitle",
+								"profileDescription",
+								"displayNameSource",
+								"contactEmailSource",
+								"jobTitleSource",
+								"localeSource",
+								"saveProfile",
+								"noRawData",
+								"errors"
+							]
+						},
+						"group": {
+							"type": "object",
+							"additionalProperties": false,
+							"properties": {
+								"title": {
+									"type": "string"
+								},
+								"description": {
+									"type": "string"
+								},
+								"loadFailed": {
+									"type": "string"
+								},
+								"rolesLoadFailed": {
+									"type": "string"
+								},
+								"loadUnavailable": {
+									"type": "string"
+								},
+								"retry": {
+									"type": "string"
+								},
+								"loading": {
+									"type": "string"
+								},
+								"customerUnavailable": {
+									"type": "string"
+								},
+								"listLabel": {
+									"type": "string"
+								},
+								"roleLabel": {
+									"type": "string"
+								},
+								"enabled": {
+									"type": "string"
+								},
+								"disabled": {
+									"type": "string"
+								},
+								"editAction": {
+									"type": "string"
+								},
+								"empty": {
+									"type": "string"
+								},
+								"editTitle": {
+									"type": "string"
+								},
+								"addTitle": {
+									"type": "string"
+								},
+								"externalId": {
+									"type": "string"
+								},
+								"displayName": {
+									"type": "string"
+								},
+								"workspace": {
+									"type": "string"
+								},
+								"chooseWorkspace": {
+									"type": "string"
+								},
+								"customerOrganisation": {
+									"type": "string"
+								},
+								"eligibleRole": {
+									"type": "string"
+								},
+								"loadingRoles": {
+									"type": "string"
+								},
+								"chooseRole": {
+									"type": "string"
+								},
+								"rank": {
+									"type": "string"
+								},
+								"mappingEnabled": {
+									"type": "string"
+								},
+								"notSaved": {
+									"type": "string"
+								},
+								"save": {
+									"type": "string"
+								},
+								"create": {
+									"type": "string"
+								},
+								"cancel": {
+									"type": "string"
+								},
+								"errors": {
+									"type": "object",
+									"additionalProperties": false,
+									"properties": {
+										"targetRequired": {
+											"type": "string"
+										},
+										"externalIdRequired": {
+											"type": "string"
+										},
+										"factorRequired": {
+											"type": "string"
+										},
+										"duplicate": {
+											"type": "string"
+										},
+										"stale": {
+											"type": "string"
+										},
+										"ineligible": {
+											"type": "string"
+										},
+										"saveFailed": {
+											"type": "string"
+										}
+									},
+									"required": [
+										"targetRequired",
+										"externalIdRequired",
+										"factorRequired",
+										"duplicate",
+										"stale",
+										"ineligible",
+										"saveFailed"
+									]
+								}
+							},
+							"required": [
+								"title",
+								"description",
+								"loadFailed",
+								"rolesLoadFailed",
+								"loadUnavailable",
+								"retry",
+								"loading",
+								"customerUnavailable",
+								"listLabel",
+								"roleLabel",
+								"enabled",
+								"disabled",
+								"editAction",
+								"empty",
+								"editTitle",
+								"addTitle",
+								"externalId",
+								"displayName",
+								"workspace",
+								"chooseWorkspace",
+								"customerOrganisation",
+								"eligibleRole",
+								"loadingRoles",
+								"chooseRole",
+								"rank",
+								"mappingEnabled",
+								"notSaved",
+								"save",
+								"create",
+								"cancel",
+								"errors"
+							]
+						},
+						"token": {
+							"type": "object",
+							"additionalProperties": false,
+							"properties": {
+								"title": {
+									"type": "string"
+								},
+								"description": {
+									"type": "string"
+								},
+								"operationPassword": {
+									"type": "string"
+								},
+								"operationCode": {
+									"type": "string"
+								},
+								"operationBackupCode": {
+									"type": "string"
+								},
+								"notSaved": {
+									"type": "string"
+								},
+								"updated": {
+									"type": "string"
+								},
+								"newToken": {
+									"type": "string"
+								},
+								"copied": {
+									"type": "string"
+								},
+								"copy": {
+									"type": "string"
+								},
+								"issueOrRotate": {
+									"type": "string"
+								},
+								"revoke": {
+									"type": "string"
+								},
+								"reenable": {
+									"type": "string"
+								},
+								"rotateSuccess": {
+									"type": "string"
+								},
+								"revokeSuccess": {
+									"type": "string"
+								},
+								"enableSuccess": {
+									"type": "string"
+								},
+								"clipboardFailed": {
+									"type": "string"
+								},
+								"errors": {
+									"type": "object",
+									"additionalProperties": false,
+									"properties": {
+										"forbidden": {
+											"type": "string"
+										},
+										"notFound": {
+											"type": "string"
+										},
+										"stale": {
+											"type": "string"
+										},
+										"revokeInvalid": {
+											"type": "string"
+										},
+										"enableInvalid": {
+											"type": "string"
+										},
+										"unavailable": {
+											"type": "string"
+										},
+										"failed": {
+											"type": "string"
+										},
+										"factorRequiredPassword": {
+											"type": "string"
+										},
+										"factorRequiredCode": {
+											"type": "string"
+										}
+									},
+									"required": [
+										"forbidden",
+										"notFound",
+										"stale",
+										"revokeInvalid",
+										"enableInvalid",
+										"unavailable",
+										"failed",
+										"factorRequiredPassword",
+										"factorRequiredCode"
+									]
+								}
+							},
+							"required": [
+								"title",
+								"description",
+								"operationPassword",
+								"operationCode",
+								"operationBackupCode",
+								"notSaved",
+								"updated",
+								"newToken",
+								"copied",
+								"copy",
+								"issueOrRotate",
+								"revoke",
+								"reenable",
+								"rotateSuccess",
+								"revokeSuccess",
+								"enableSuccess",
+								"clipboardFailed",
+								"errors"
+							]
+						}
+					},
+					"required": ["common", "match", "group", "token"]
+				}
+			},
+			"required": ["list", "editor", "events", "scim"]
+		},
+		"intake": {
+			"type": "object",
+			"additionalProperties": false,
+			"properties": {
+				"title": {
+					"type": "string"
+				},
+				"description": {
+					"type": "string"
+				},
+				"selectWorkspace": {
+					"type": "string"
+				},
+				"actionError": {
+					"type": "string"
+				},
+				"loading": {
+					"type": "string"
+				},
+				"noState": {
+					"type": "string"
+				},
+				"newRequests": {
+					"type": "string"
+				},
+				"customer": {
+					"type": "string"
+				},
+				"status": {
+					"type": "string"
+				},
+				"submittedAnswers": {
+					"type": "string"
+				},
+				"conversation": {
+					"type": "string"
+				},
+				"attachments": {
+					"type": "string"
+				},
+				"claim": {
+					"type": "string"
+				},
+				"accept": {
+					"type": "string"
+				},
+				"clarify": {
+					"type": "string"
+				},
+				"decline": {
+					"type": "string"
+				},
+				"clarificationMessage": {
+					"type": "string"
+				},
+				"declineReason": {
+					"type": "string"
+				},
+				"possibleDuplicates": {
+					"type": "string"
+				},
+				"linkDuplicate": {
+					"type": "string"
+				},
+				"download": {
+					"type": "string"
+				},
+				"type": {
+					"type": "string"
+				}
+			},
+			"required": [
+				"title",
+				"description",
+				"selectWorkspace",
+				"actionError",
+				"loading",
+				"noState",
+				"newRequests",
+				"customer",
+				"status",
+				"submittedAnswers",
+				"conversation",
+				"attachments",
+				"claim",
+				"accept",
+				"clarify",
+				"decline",
+				"clarificationMessage",
+				"declineReason",
+				"possibleDuplicates",
+				"linkDuplicate",
+				"download",
+				"type"
+			]
+		},
+		"requestTypes": {
+			"type": "object",
+			"additionalProperties": false,
+			"properties": {
+				"title": {
+					"type": "string"
+				},
+				"description": {
+					"type": "string"
+				},
+				"new": {
+					"type": "string"
+				},
+				"loading": {
+					"type": "string"
+				},
+				"edit": {
+					"type": "string"
+				},
+				"create": {
+					"type": "string"
+				},
+				"name": {
+					"type": "string"
+				},
+				"group": {
+					"type": "string"
+				},
+				"summary": {
+					"type": "string"
+				},
+				"workItemType": {
+					"type": "string"
+				},
+				"chooseType": {
+					"type": "string"
+				},
+				"projectId": {
+					"type": "string"
+				},
+				"order": {
+					"type": "string"
+				},
+				"visible": {
+					"type": "string"
+				},
+				"autoAccept": {
+					"type": "string"
+				},
+				"forcePrivate": {
+					"type": "string"
+				},
+				"fields": {
+					"type": "string"
+				},
+				"addField": {
+					"type": "string"
+				},
+				"fieldKey": {
+					"type": "string"
+				},
+				"label": {
+					"type": "string"
+				},
+				"type": {
+					"type": "string"
+				},
+				"text": {
+					"type": "string"
+				},
+				"longText": {
+					"type": "string"
+				},
+				"select": {
+					"type": "string"
+				},
+				"checkbox": {
+					"type": "string"
+				},
+				"file": {
+					"type": "string"
+				},
+				"required": {
+					"type": "string"
+				},
+				"help": {
+					"type": "string"
+				},
+				"options": {
+					"type": "string"
+				},
+				"mapsTo": {
+					"type": "string"
+				},
+				"unmapped": {
+					"type": "string"
+				},
+				"titleMapping": {
+					"type": "string"
+				},
+				"descriptionMapping": {
+					"type": "string"
+				},
+				"priorityMapping": {
+					"type": "string"
+				},
+				"showWhen": {
+					"type": "string"
+				},
+				"always": {
+					"type": "string"
+				},
+				"equals": {
+					"type": "string"
+				},
+				"multiple": {
+					"type": "string"
+				},
+				"remove": {
+					"type": "string"
+				},
+				"moveUp": {
+					"type": "string"
+				},
+				"moveDown": {
+					"type": "string"
+				},
+				"preview": {
+					"type": "string"
+				},
+				"previewDescription": {
+					"type": "string"
+				},
+				"choose": {
+					"type": "string"
+				},
+				"titleMappingValid": {
+					"type": "string"
+				},
+				"titleMappingInvalid": {
+					"type": "string"
+				},
+				"save": {
+					"type": "string"
+				},
+				"publish": {
+					"type": "string"
+				},
+				"publishNew": {
+					"type": "string"
+				},
+				"unpublish": {
+					"type": "string"
+				},
+				"delete": {
+					"type": "string"
+				},
+				"published": {
+					"type": "string"
+				},
+				"draft": {
+					"type": "string"
+				},
+				"versions": {
+					"type": "string"
+				},
+				"version": {
+					"type": "string"
+				},
+				"emptyTitle": {
+					"type": "string"
+				},
+				"emptyDescription": {
+					"type": "string"
+				},
+				"list": {
+					"type": "string"
+				},
+				"opaqueKey": {
+					"type": "string"
+				},
+				"loadError": {
+					"type": "string"
+				}
+			},
+			"required": [
+				"title",
+				"description",
+				"new",
+				"loading",
+				"edit",
+				"create",
+				"name",
+				"group",
+				"summary",
+				"workItemType",
+				"chooseType",
+				"projectId",
+				"order",
+				"visible",
+				"autoAccept",
+				"forcePrivate",
+				"fields",
+				"addField",
+				"fieldKey",
+				"label",
+				"type",
+				"text",
+				"longText",
+				"select",
+				"checkbox",
+				"file",
+				"required",
+				"help",
+				"options",
+				"mapsTo",
+				"unmapped",
+				"titleMapping",
+				"descriptionMapping",
+				"priorityMapping",
+				"showWhen",
+				"always",
+				"equals",
+				"multiple",
+				"remove",
+				"moveUp",
+				"moveDown",
+				"preview",
+				"previewDescription",
+				"choose",
+				"titleMappingValid",
+				"titleMappingInvalid",
+				"save",
+				"publish",
+				"publishNew",
+				"unpublish",
+				"delete",
+				"published",
+				"draft",
+				"versions",
+				"version",
+				"emptyTitle",
+				"emptyDescription",
+				"list",
+				"opaqueKey",
+				"loadError"
+			]
 		}
 	},
 	"required": [
@@ -9341,6 +12924,14 @@
 		"team",
 		"publicProject",
 		"workItems",
-		"portal"
+		"portal",
+		"slaPolicies",
+		"serviceCalendars",
+		"instanceUsers",
+		"pendingActions",
+		"savedViews",
+		"identityConnections",
+		"intake",
+		"requestTypes"
 	]
 }

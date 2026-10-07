@@ -1,3 +1,9 @@
+> **Query-gate stage timing (Thomas, 2026-10-05):** the inherited repository refactor
+> and `check:queries` acceptance move from P0 to P4. The complete query ownership gate
+> must be implemented, enabled and accepted before P4 completion; no inherited baseline
+> or permanent exemption is selected. Existing required CI and authorization checks remain
+> unchanged. See the named decision in [decision-log.md](../07-planning/decision-log.md).
+
 # CI/CD
 
 ## Pipelines
@@ -61,7 +67,7 @@ its source-binding limit are recorded in the
 │ pnpm check:overrides one override source only    │
 │ pnpm check:dockerfile-deps Dockerfile=workspace  │
 │ gitleaks             no secrets in the diff      │
-│ pnpm check:queries   no db.select() outside repo │
+│ pnpm check:queries   Drizzle reads in repository │
 │ pnpm check:inventory screen counts match rows    │
 │ pnpm check:reviews   review section empty        │
 │ pnpm check:env       no stray process.env        │
@@ -90,6 +96,29 @@ its source-binding limit are recorded in the
 │ helm lint + helm template   charts/taskdesk      │
 └──────────────────────────────────────────────────┘
 ```
+
+`check:queries` enforces repository ownership for runtime references to Drizzle `select`,
+`selectDistinct`, `selectDistinctOn`, and relational `findFirst`/`findMany` methods, including
+their `OrThrow` variants. Ownership is attached to the known database/query/transaction
+method lookup itself, whether it is invoked there, stored in an alias, destructured, or passed
+to a forwarder such as `Reflect.apply`, `.call`, `.apply`, or `.bind`. Transaction orchestration
+has one narrow exception: outside repositories, a statically known `transaction` method
+reference is allowed only as the callee of a direct call whose first argument is an inline
+function or arrow callback. This keeps ordinary controller orchestration available while
+requiring captured, destructured, passed, or otherwise escaped transaction-method references
+to live in a repository. Runtime database identity comes from the default import of the
+`database` module; named schema imports and imports from `database/schema` are not database
+executors. Transaction callback types are recognized from `DatabaseInstance` imported from
+that module, `DbTransaction` imported from `events/outbox`, and local aliases structurally
+derived from a known database transaction method. It follows lexical aliases and simple
+generic identity aliases with cycle detection; it does not infer arbitrary TypeScript type
+semantics. A type name is not treated as a database transaction merely because it ends in
+`Transaction`. The checker resolves statically known database bindings, lexical aliases,
+transaction callbacks and these registered transaction types. It recognizes static computed
+method names and ignores unrelated receivers, shadowed bindings and type-only references.
+Dynamic computed method names are outside this bounded gate. Raw SQL sent through `execute()`
+or a database driver's `query()` is also outside the gate's scope; the checker does not claim
+to enforce ownership for those calls.
 
 The Build job runs `pnpm build`, `pnpm check:bundle-purity` and `pnpm check:bundle-size`.
 The purity gate walks static and dynamic chunks from the portal entry using bundler-emitted

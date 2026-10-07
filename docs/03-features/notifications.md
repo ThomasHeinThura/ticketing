@@ -413,15 +413,15 @@ screens.
 
 ```
 GET    /api/notification                                      (self)
-POST   /api/notification                                      (self; integration notification)
-PATCH  /api/notification/{id}/read                           (self)
-PATCH  /api/notification/read-all                             (self)
+POST   /api/notification                                      (self; integration notification; browser session only)
+PATCH  /api/notification/{id}/read                           (self; browser session only)
+PATCH  /api/notification/read-all                             (self; browser session only)
 PATCH  /api/notification/{id}/unread                          (self; target route for NO-15)
-DELETE /api/notification/clear-all                            (self)
+DELETE /api/notification/clear-all                            (self; browser session only)
 GET    /api/notification-preferences                         (self)
-PUT    /api/notification-preferences                         (self)
-PUT    /api/notification-preferences/workspaces/{workspaceId} (self; workspace reach checked)
-DELETE /api/notification-preferences/workspaces/{workspaceId} (self; workspace reach checked)
+PUT    /api/notification-preferences                         (self; browser session only)
+PUT    /api/notification-preferences/workspaces/{workspaceId} (self; workspace reach checked; browser session only)
+DELETE /api/notification-preferences/workspaces/{workspaceId} (self; workspace reach checked; browser session only)
 PUT    /api/notification-preferences/projects/{projectId}    (self; project reach checked)
 DELETE /api/notification-preferences/projects/{projectId}    (self; project reach checked)
 POST   /api/public/agent/notification-preference-handoffs     (public; signed token body; short-lived server-side handoff only)
@@ -435,6 +435,12 @@ GET    /api/instance/deliveries                               instance:admin
 POST   /api/instance/deliveries/{id}/requeue                  instance:admin
 DELETE /api/instance/deliveries/{id}                          instance:admin
 ```
+
+The browser-session restriction on agent-side self writes is an AK-9 key-eligibility rule:
+`self` limits the affected person but is not an API-key write capability. Reads remain
+self-scoped and follow the key's stored read-capability subset. See `webhooks-and-api-keys.md`
+AK-9 and the 2026-10-06 decision-log entry. Portal routes retain their separate customer
+session contract.
 
 The mark-unread route is a target route required by `NO-15`; it must use the same recipient
 and task-reach checks as mark-read. Project preference overrides use the same per-person
@@ -561,7 +567,15 @@ that GET makes no change, then authenticating and explicitly saving the selected
 ## Open questions
 
 None. The prior draft's `work_item.unblocked` recipient gap is resolved by `RH-18`: it targets
-the assignee of the formerly blocked work item. Runtime delivery remains unimplemented.
+the assignee of the formerly blocked work item. The initial direct-child outbox worker now
+implements reservation fencing, retries, deadlines, and attempt limits behind injected
+eligibility and provider seams. A transactional fan-out producer seam and a
+`workspace.created` owner resolver exist, but are not wired to mutation producers. Other
+canonical event-specific recipient/reach resolution is not implemented. This does not
+complete Notifications: digest grouping/delivery, scheduler registration, the concrete
+`notify.*` adapter registry, and concrete reach/preference/quiet-hours evaluation remain pending. See
+[background jobs](../01-architecture/background-jobs.md#outbox-delivery) for the implemented
+worker boundary. Browser acceptance remains pending.
 
 ## Related
 

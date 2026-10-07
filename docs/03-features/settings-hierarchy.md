@@ -107,6 +107,9 @@ Everything that varies between *people*. Stored in `user_preference`.
 
 - `ST-1` Feature flags resolve **project → workspace → instance → built-in default**, over
   `project_feature_flag`, `workspace_feature_flag`, `instance_feature_flag`.
+- `ST-11` Feature-specific disable behaviour is owned by each feature specification. A flag
+  change does not itself delete persisted domain records or grant permission; each feature
+  states which existing records remain readable or actionable when new use is disabled.
 - `ST-2` An instance flag marked `locked` cannot be overridden below; a write to a lower
   level for a locked flag returns 409. This is how editions are sold from one image.
 - `ST-3` **Exactly these project settings inherit from the workspace, and nothing else
@@ -156,18 +159,24 @@ them requires no relearning. Rows in the [screen inventory](../02-design/screen-
 
 ```
 GET/PATCH /api/instance/settings                       instance:admin                 instance
+GET/PATCH /api/instance/features                       instance:admin                 instance
 GET/PATCH /api/workspaces/{id}/settings                workspace:manage_settings      workspace
 GET/PATCH /api/workspaces/{id}/features                workspace:manage_settings      workspace
 DELETE    /api/workspaces/{id}                         workspace:delete  E            workspace — the danger zone; → 202 pending action (typed exact name + step-up), refused while the workspace has active projects ([pending-actions.md](../01-architecture/pending-actions.md))
 GET/PATCH /api/projects/{projectId}/settings           project:manage_settings        project
 GET/PATCH /api/projects/{projectId}/features           project:manage_settings        project
 GET/PATCH /api/me/settings                             self (kind 2 — the caller's own `user_preference` rows)
-GET       /api/features/resolved?project=…             project:read, scope: project, reach: required (kind 1) — resolved for the caller's reach
+GET       /api/features/resolved?workspaceId=…&projectId=… workspace/project:read, reach required — resolved for the caller's reach
 GET       /api/audit?entity_type=&entity_id=           the entity's read capability (kind 1, chosen by `entity_type` from the registry)
 ```
 
 `GET /features/resolved` returns the fully resolved flag set for a context, so the client
 never re-implements the resolution order.
+
+Flag writes include the row `version` and return `409` on stale versions. Instance,
+workspace, and project changes append their audit entry in the same transaction as the flag
+update. A lower-level write against an instance-locked flag returns `409`. Defaults and the
+complete enumeration are defined in [plugin-architecture.md](../01-architecture/plugin-architecture.md#feature-toggles).
 
 ## Edge cases
 

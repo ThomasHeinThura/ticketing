@@ -1,19 +1,13 @@
-import { and, eq, inArray, isNull } from "drizzle-orm";
 import { HTTPException } from "hono/http-exception";
 import db from "../../database";
 import {
-  labelTable,
-  projectTable,
-  taskTable,
-  userTable,
-} from "../../database/schema";
+  findLiveProjectQuery,
+  listExportTasksQuery,
+  listTaskLabelsForTasksQuery,
+} from "../repository";
 
 async function exportTasks(projectId: string) {
-  const project = await db.query.projectTable.findFirst({
-    // #187: a soft-deleted project is treated as gone everywhere in ordinary use,
-    // matching `get-project.ts`'s convention.
-    where: and(eq(projectTable.id, projectId), isNull(projectTable.deletedAt)),
-  });
+  const project = await findLiveProjectQuery(db, projectId);
 
   if (!project) {
     throw new HTTPException(404, {
@@ -21,42 +15,12 @@ async function exportTasks(projectId: string) {
     });
   }
 
-  const tasks = await db
-    .select({
-      version: taskTable.version,
-      id: taskTable.id,
-      title: taskTable.title,
-      number: taskTable.number,
-      description: taskTable.description,
-      status: taskTable.status,
-      priority: taskTable.priority,
-      startDate: taskTable.startDate,
-      dueDate: taskTable.dueDate,
-      position: taskTable.position,
-      createdAt: taskTable.createdAt,
-      userId: taskTable.userId,
-      assigneeName: userTable.name,
-      assigneeId: userTable.id,
-    })
-    .from(taskTable)
-    .leftJoin(userTable, eq(taskTable.userId, userTable.id))
-    .where(eq(taskTable.projectId, projectId))
-    .orderBy(taskTable.position);
+  const tasks = await listExportTasksQuery(db, projectId);
 
   const taskIds = tasks.map((task) => task.id);
 
   const labelsData =
-    taskIds.length > 0
-      ? await db
-          .select({
-            id: labelTable.id,
-            name: labelTable.name,
-            color: labelTable.color,
-            taskId: labelTable.taskId,
-          })
-          .from(labelTable)
-          .where(inArray(labelTable.taskId, taskIds))
-      : [];
+    taskIds.length > 0 ? await listTaskLabelsForTasksQuery(db, taskIds) : [];
 
   const taskLabelsMap = new Map<
     string,

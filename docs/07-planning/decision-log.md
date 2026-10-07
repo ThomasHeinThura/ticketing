@@ -1,3 +1,211 @@
+### 2026-10-07 · Reuse canonical domain visibility in the portal
+
+**Decision:** Add the existing `@taskdesk/domain` package as a direct workspace dependency
+of `@taskdesk/web` and call its canonical request-type visibility evaluator from the portal.
+The evaluator owns `eq`, `neq`, `in`, and trimmed `is_set` semantics; do not maintain a
+second frontend operator switch. This adds no package or runtime dependency beyond the
+already existing workspace package.
+
+**Approval:** Thomas explicitly approved adding the existing workspace dependency in the
+PR #598 bulk-remediation task, 2026-10-07.
+
+**Recorded:** orchestrator, 2026-10-07.
+
+### 2026-10-07 · Auto-accept actor attribution for intake acceptance
+
+**Decision:** Thomas explicitly approves auto-accept attribution as a `system` action with no
+person actor id and display name `Request type auto-accept`; the customer remains the
+requester and initiator. Manual acceptance retains the actual staff actor id and name. Use the
+existing outbox actor shape (`type: "system"`, `id: null`, `name: "Request type auto-accept"`);
+do not invent a job or automation key. Canonical behavior is recorded in `RT-15`, `IQ-4`, and
+the audit actor contract before source changes.
+
+This settles attribution only. It adds no event key, actor identifier, or phase/merge claim.
+
+**Approval:** Thomas explicitly approved this rule in the PR #598 bulk-remediation task,
+2026-10-07.
+
+**Recorded:** orchestrator, 2026-10-07.
+
+### 2026-10-07 · Register request-type and intake triage audit actions
+
+**Decision:** Thomas approves the audit-only actions `request_type.created`,
+`request_type.updated`, `request_type.published`, `request_type.unpublished`,
+`request_type.deleted`, `submission.claimed`, and `submission.duplicate`. These actions are
+registered in the audit-trail catalogue and written in the same transaction as their
+mutation. They do not add domain events or outbox rows. Existing `submission.accepted`
+continues to be emitted by the shared conversion path for both manual and auto-accept.
+
+This resolves only the canonical vocabulary gap identified during PR #598 bulk remediation.
+It does not clear the custom-field mapping hold, the required-file serialization contract,
+the review ledger, independent review, or any P2 acceptance gate.
+
+**Approval:** Thomas explicitly approved the exact actions and no-new-event boundary in this
+task, 2026-10-07.
+
+**Recorded:** orchestrator, 2026-10-07.
+
+### 2026-10-07 · Keep test role seeding private-only
+
+**Decision:** Thomas explicitly instructs: “make sure seeder and credentials md are not
+store in code or in repo. just seeded and check ... setup api rbac”. Remove the test-only
+role-user seeder, its credential-manifest writer, wrappers, dedicated tests/configuration,
+and public documentation from the repository delivery candidate. Role-specific test users
+may be prepared only through private operator-managed tooling, then checked through the API
+for identity scope and RBAC behavior. Do not store generated user credentials or a usable
+credential manifest in source control.
+
+Keep ordinary `minimal` / `realistic` / `hostile` data profiles, canonical default-role
+provisioning, production role defaults, and existing generic API/RBAC coverage. The
+role-seeder source, tests, and review evidence are preserved as an immutable mode-0700/0600
+private archive outside the repository at
+`/Users/heinthura/.codex/taskdesk-evidence/2026-10-07/private-role-seeding-tooling/`;
+that archive contains no generated credentials or operational secrets. This is a
+user-directed scope change, not a test-gate waiver. The general seed-profile test suite
+remains in place.
+
+**P2 scope provenance:** This leaf mirrors the already approved private-only decision recorded in central commit `99528ca562c22ffee9e926bfe0879785f1385322`. It does not add behavior or change the preserved generic seed/RBAC coverage.
+
+**Recorded:** orchestrator, Thomas's explicit instruction relayed for this task, 2026-10-07.
+
+### 2026-10-06 · Keep self-only personal writes session-only until explicit API-key scopes exist
+
+**Decision:** Thomas explicitly approves “Make self writes session-only (recommended)” for
+the identified API self-write class. API-key and MCP-key credentials cannot create, update,
+read-mark, or delete the caller's notifications; mutate the caller's notification preferences
+or workspace notification rules; or upload/delete the caller's avatar. These mutations require
+a real browser session and use the existing `requireSessionOnly()` guard. Existing session
+behavior is preserved. Read-only self routes remain unchanged. This applies whether the key is
+personal, MCP-flagged, or otherwise; self-row ownership does not bypass AK-9's read-only default.
+
+No notification, notification-preference, or avatar capability is invented. Reopening API-key
+write access requires a separately registered capability and explicit policy/schema contract.
+This resolves the known self-write eligibility class for these endpoints; it does not change
+workspace or instance key scopes, nor claim the #592 legacy-scope remediation is independently
+reviewed or stage-complete.
+
+**Recorded:** orchestrator, Thomas's explicit approval in this task, 2026-10-06.
+
+### 2026-10-06 · Use the existing Babel parser for the query ownership gate
+
+**Decision:** Add the existing Babel parser as a dev dependency (recommended). Replace
+the hand-written source lexer/member parser in `check:queries` with Babel's parser and
+AST-based recognition. Keep the gate's current Drizzle read-method families, canonical
+repository exemption, simple alias scope, and fail-closed handling of unparseable source.
+This does not broaden the gate to raw SQL transport or dynamic/interprocedural analysis.
+
+**Approval:** Thomas explicitly approved the dependency addition in this chat: “Add the
+existing Babel parser as a dev dependency (recommended)”. Use the already locked
+`@babel/parser` 7.29.8 version.
+
+**Recorded:** orchestrator, 2026-10-06.
+### 2026-10-06 · Preserve existing approvals when the feature flag is disabled
+
+**Decision:** Thomas explicitly approves continuity for existing approvals. The resolved
+`feature.approvals` flag blocks new approval requests when disabled, but existing approvals
+remain listable/readable, decidable, withdrawable and eligible for reminders under the
+existing permission and current-reach rules. A disabled flag never bypasses workflow approval
+requirements. The built-in default remains `false`; flag resolution remains project →
+workspace → instance → built-in default. The approver-picker route and its candidate source
+remain a separate pending contract question and are not approved by this decision.
+
+**Finding mapping:** this defines only feature-disable lifecycle continuity; it does not
+grant authority, waive tests/reviews or accept the P2 phase. Human design review remains
+deferred to integrated P4. Independent ordinary review and full Sol review remain required.
+
+**Recorded:** orchestrator, Thomas's explicit approval in this task, 2026-10-06.
+
+### 2026-10-05 · Continue P1–P4 execution and prepare combined phase acceptance
+
+Thomas explicitly instructs the orchestrator to check and continue P1, P2, P3 and P4
+in parallel while P0 awaits its actual October6 observation. P1/P2 integration acceptance
+may be prepared and closed alongside P0 when their own actual exit criteria and additional
+Sol phase-finalizer passes are satisfied. A P0 observation wait does not stop dependency-safe
+implementation or review. This selects execution and acceptance timing, not a waiver of
+phase requirements, protected CI, independent reviews, browser/runtime proof or known defects.
+Complete implementation batches precede bulk review. Human design review remains deferred
+to integrated P4 under Thomas's earlier decision.
+
+**Recorded:** orchestrator, Thomas's explicit instruction in this chat, 2026-10-05.
+
+### 2026-10-06 · Resolve bounded approvals storage and reach behavior for implementation
+
+**Decision:** for the P2 approvals implementation, `approval.created_at` is the persisted
+request instant required by AP-13 reminder-window arithmetic and AP-17's “requested N days
+ago” explanation; add it to the authoritative `approval` row in `data-model.md`. Approver
+reach loss is derived at read/decision time from canonical current work-item reach, not a
+new stored state: keep the approval pending and return an `approverReachLost` indicator;
+deny a decision while its named approver lacks reach. The requester may withdraw under
+AP-6, and an instance admin may withdraw on the requester's behalf under AP-7, with the
+existing audit requirement. This does not grant admins decision authority or create a new
+approval state. Register `approval.decided` as an internal activity verb; decision notes
+are stored only in `decision_note` and are not copied into activity or notification
+metadata.
+
+**Finding mapping:** this resolves only the implementation ambiguity between AP-3 and the
+“approver loses reach” edge case without adding a schema state; AP-13/AP-17 use the
+existing domain `Approval.createdAt`; AP-11 uses the existing fail-closed activity
+visibility rule. Historical review text remains unchanged. This is an orchestrator
+implementation choice under Thomas's standing authorization of recommended technical
+decisions, not Thomas's per-feature approval, finding closure, or phase acceptance. Human
+design review remains deferred to integrated P4; independent ordinary review and full Sol
+review remain required before acceptance.
+
+**Recorded:** orchestrator, Thomas's explicit implementation authorization in this task,
+2026-10-06.
+
+### 2026-10-05 · Thomas defers repository refactor and query-gate acceptance from P0 to P4
+
+**Decision:** Thomas explicitly selects “Defer repository refactor and check:queries
+acceptance to P4 (recommended)” in this chat. This supersedes only the P0 timing of
+repository-bootstrap section 4 step 4/section 5 and #10's `check:queries` acceptance;
+it does not remove the repository-ownership contract or waive any existing protected CI,
+authorization, independent review or phase-finalizer requirement. The complete refactor
+and gate must be accepted in P4 before P4 completion, with ordinary independent review,
+required Sol review and real verification. No legacy baseline or permanent exemption is
+selected. MCP parity retains its separately decided future-capability applicability.
+
+**Reason/evidence:** accepted main3096 has no repository.ts layer. The bounded typed API
+inventory reports352Drizzle select calls across148files; its earlier same-line lexical
+one-call estimate was incomplete and is superseded. This structural refactor is substantial
+and has no demonstrated authorization exploit in this audit. Track full implementation
+as P4 issue #580 while finishing P0's actual-date observation, eligible cutover and additional
+fresh independent Sol finalizer. Existing P0 source and deployment are unchanged.
+
+**Recorded:** orchestrator; explicit Thomas answer on 2026-10-05. This is a named stage-scope
+deferral by Thomas, not an agent-selected gate waiver or permission to claim completed work.
+
+### 2026-10-05 · Run the final actual P0 observation at the earliest next UTC date
+
+Move the existing `p0-remaining-evidence-dates` heartbeat's remaining run from local
+21:30 to October 6 at 06:35 Asia/Yangon (00:05 UTC), superseding only the timing in
+the October 4 scheduling entry. Use the clean accepted `3096cb044bdf6ae98488bfc385f532fa6386343a`
+checkout and recheck source-bound behavior against the retained October 4 manifest.
+The runner is prepared; no October 6 observation has occurred yet. Preserve both actual
+October 4/5 partial observations, complete reconciliation and cleanup. Disable the
+observation schedule after its completed final capture. This advances authorized P0 work;
+it does not backfill a date, activate enforcement, waive a gate or claim phase completion.
+
+### 2026-10-05 · Activate G11 protection after real hosted acceptance
+
+**Decision:** add the existing exact `performance - budgets (G11)` context to active
+protect-main ruleset22365005 after publishedf10's hosted full run37300050276 passes22/22
+and the corrected PR-body fast run37302827641 passes every required context. Retain all
+17 previous checks, strict policy and zero bypass actors. No gate, review tier or
+performance budget is waived. Protected PR #579 then merges as3096cb04.
+
+**Evidence:** private before/after ruleset and exact-head preflight receipts under
+`2026-10-05/p0-performance-takeover-500c491b/`; committed exact-source Luna/Sol notes in
+`security-reviews/579-p0-e26db50e-*.md`; actual hosted job results. The earlier G11 failure
+history remains retained. DEV delivery is reviewed-e26 with preserved data and rollback.
+
+**Boundary:** operational protection activation follows the standing authorized P0
+acceptance plan. It does not claim phase completion or authorize strict enforcement,
+production deployment, a calendar backfill or bypass. October6 qualifying observation,
+eligible cutover and the additional fresh Sol phase finalizer remain required.
+
+**Recorded:** orchestrator, 2026-10-05 11:31 UTC.
+
 ### 2026-10-05 · Suppress the historical public TOTP test vector by exact fingerprint
 
 Add only `69e61dd56c18bdbb90149f470d9a6615a9d28272:apps/web/e2e/mfa-csrf-journey.spec.ts:generic-api-key:13` to `.gitleaksignore`. The finding is in an already-pushed historical commit; its value is an `otpauth` test URI whose Base32 secret decodes to the published RFC 6238 test-vector bytes. The current source still contains the same public deterministic test-vector literal at `apps/web/e2e/mfa-csrf-journey.spec.ts:16`; the historical commit records it at line 13. The test uses the RFC timestamp `59000` and asserts the published vector output before it provisions the test app. Preserve history and suppress this finding by its exact fingerprint only; do not ignore the path or rule.
@@ -6099,3 +6307,52 @@ Gate waivers, recorded per [UX quality gates](../02-design/ux-quality-gates.md).
 ## Related
 
 - [ADR index](../01-architecture/adr/README.md) · [Risks](risks.md) · [Status](status.md)
+
+
+### 2026-10-06 · Completed date observation schedule and continued execution
+
+The actual October 6 partial representative observation was acquired and deterministically
+reconciled with the retained October 4 and 5 records. Pause the completed observation heartbeat
+as its existing prompt requires; continue independent operational cutover assessment and the
+additional Sol phase finalizer, without claiming closure from elapsed time. The absent historical
+schema-80 image was rebuilt from exact old source and its new digest is explicitly recorded;
+source/user/journal/hash guards stay enforced and original failure records stay intact.
+
+Thomas's standing parallel and bulk-implementation instructions continue to apply. P1/P2
+completed slices proceed toward one composed acceptance batch; P4 repository conversion resumes
+on the next bounded bucket while P0 operational acceptance runs. No new waiver, dependency,
+production deployment, human design approval or relaxed performance budget is authorized here.
+
+
+### 2026-10-06 · Operational review distinguishes observations from config/task activation
+
+The independent Sol operational reviewer cleared the three actual representative UTC date
+records for 28 shadow-observable sources and proposed staged consideration of 27 non-task
+sources. Public `GET /api/config` has original 200 request records on all three dates and
+immutable same-source proof, but its pre-guard placement produces no shadow tally. The existing
+strict source selection contract does not explicitly permit substituting this proof, so config
+and task activation remain blocked. A concrete DEV/UAT-only evidence exception was prepared
+and submitted to Thomas, who retains gate-exception authority. This entry does not approve it.
+The additional fresh P0 Sol phase finalizer remains separate and outstanding.
+
+
+### 2026-10-06 · Implement the missing P0 bootstrapper; retain P7 publication scope
+
+The fresh independent whole-P0 Sol finalizer found accepted main has no root `install.sh`,
+although phases.md P0 and the existing one-line-install specification require it. Issue #582
+tracks the complete existing-contract implementation and acceptance batch, assigned to Luna
+under Thomas's standing direction to finish necessary P0 implementation first. The earlier
+“two gates left” checkpoint was incomplete; elapsed observation dates do not close this gap.
+P7's hardened stable-URL publication remains P7/issue #55, not a new P0 hosting requirement.
+No production release, domain publication, dependency addition or quality-gate waiver is made.
+
+
+### 2026-10-06 · Describe actual strict source-order validation accurately
+
+Correct the runbook and configuration reference to match the accepted parser: unknown,
+duplicate, empty, whitespace-padded and malformed members are rejected; task requires the
+complete other-source set and must be last. Arbitrary non-task permutations are not rejected
+by startup, although operators use registry order for staged rollout. This changes the claimed
+control to describe existing behavior; no parser, source set, authorization or pass/fail result
+is relaxed. The corrected documentation joins the complete P0 acceptance batch for required
+review; the config evidence exception remains independently pending Thomas.

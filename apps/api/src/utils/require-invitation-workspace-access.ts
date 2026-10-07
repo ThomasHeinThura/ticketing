@@ -1,8 +1,7 @@
-import { and, eq } from "drizzle-orm";
 import type { Context, Next } from "hono";
 import { HTTPException } from "hono/http-exception";
-import db, { schema } from "../database";
 import { rejectNulByte } from "./reject-nul-byte";
+import { getInvitationWorkspaceId, getWorkspaceMembership } from "./repository";
 
 /**
  * Resolves `workspaceId` into the context FROM an invitation id path
@@ -34,11 +33,7 @@ export function requireInvitationWorkspaceAccess(idParam = "id") {
     // unvalidated -- a NUL byte would otherwise 500 instead of a clean 400.
     rejectNulByte(invitationId, "Invitation id");
 
-    const [row] = await db
-      .select({ workspaceId: schema.invitationTable.workspaceId })
-      .from(schema.invitationTable)
-      .where(eq(schema.invitationTable.id, invitationId))
-      .limit(1);
+    const [row] = await getInvitationWorkspaceId(invitationId);
 
     if (!row) {
       throw new HTTPException(404, { message: "Invitation not found" });
@@ -75,16 +70,10 @@ export function requireInvitationWorkspaceAccess(idParam = "id") {
     // any future change to its own check is inherited automatically.
     const userId = c.get("userId");
     if (userId) {
-      const [membership] = await db
-        .select({ userId: schema.workspaceUserTable.userId })
-        .from(schema.workspaceUserTable)
-        .where(
-          and(
-            eq(schema.workspaceUserTable.userId, userId),
-            eq(schema.workspaceUserTable.workspaceId, row.workspaceId),
-          ),
-        )
-        .limit(1);
+      const [membership] = await getWorkspaceMembership(
+        userId,
+        row.workspaceId,
+      );
 
       if (!membership) {
         throw new HTTPException(404, { message: "Invitation not found" });

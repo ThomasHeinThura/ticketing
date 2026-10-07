@@ -1,7 +1,11 @@
 import { useQuery } from "@tanstack/react-query";
 import type { WorkItemsResult } from "@/fetchers/work-item/get-work-items";
 import type { WorkItemRealtimeStatus } from "@/hooks/use-native-work-item-realtime";
-import type { WorkItemSortDirection, WorkItemSortField } from "@/lib/routes";
+import type {
+  WorkItemSearchColumn,
+  WorkItemSortDirection,
+  WorkItemSortField,
+} from "@/lib/routes";
 
 /**
  * `sort`/`dir` are part of the query key (#310): the server now sorts server-side, so
@@ -31,25 +35,58 @@ import type { WorkItemSortDirection, WorkItemSortField } from "@/lib/routes";
  */
 function useGetWorkItems({
   projectId,
+  projectSlug,
+  workspaceId,
+  filter,
   sort,
   dir,
+  columns,
+  querySort,
   realtimeStatus = "connecting",
 }: {
   projectId: string | undefined;
+  projectSlug?: string;
+  workspaceId?: string;
+  filter?: string;
   sort: WorkItemSortField;
   dir: WorkItemSortDirection;
+  columns?: WorkItemSearchColumn[];
+  querySort?: { field: WorkItemSortField; order: WorkItemSortDirection }[];
   /** Stay on the conservative foreground polling fallback until list realtime is ready. */
   realtimeStatus?: WorkItemRealtimeStatus;
 }) {
   const query = useQuery({
-    queryKey: ["work-items", projectId, sort, dir],
+    queryKey: [
+      "work-items",
+      projectId,
+      workspaceId,
+      sort,
+      dir,
+      filter ?? "",
+      columns ?? null,
+      querySort ?? null,
+    ],
     queryFn: async () => {
+      if (filter?.trim()) {
+        const { default: searchWorkItems } = await import(
+          "@/fetchers/work-item/search-work-items"
+        );
+        return searchWorkItems({
+          workspaceId: workspaceId as string,
+          projectSlug: projectSlug as string,
+          filter,
+          sort,
+          dir,
+          columns,
+          querySort,
+        });
+      }
       const { default: getWorkItems } = await import(
         "@/fetchers/work-item/get-work-items"
       );
       return getWorkItems(projectId as string, sort, dir);
     },
-    enabled: !!projectId,
+    enabled: !!projectId && (!filter?.trim() || !!workspaceId),
     refetchInterval: realtimeStatus === "available" ? false : 30_000,
     refetchIntervalInBackground: false,
     placeholderData: (

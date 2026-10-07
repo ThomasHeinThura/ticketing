@@ -1,7 +1,8 @@
-import { and, eq, isNull, sql } from "drizzle-orm";
+import { sql } from "drizzle-orm";
 import { HTTPException } from "hono/http-exception";
 import type db from "../database";
 import { projectTable, workItemTable } from "../database/schema";
+import { lockLiveProjectQuery } from "./repository";
 
 type DbOrTx = typeof db | Parameters<Parameters<typeof db.transaction>[0]>[0];
 
@@ -50,17 +51,7 @@ export async function assertProjectStillLive(
   projectId: string,
   message = "Work item not found",
 ): Promise<void> {
-  const [projectAlive] = await tx
-    .select({ id: projectTable.id })
-    .from(projectTable)
-    .where(
-      and(
-        eq(projectTable.id, projectId),
-        isNull(projectTable.deletedAt),
-        isNull(projectTable.archivedAt),
-      ),
-    )
-    .for("share");
+  const [projectAlive] = await lockLiveProjectQuery(tx, projectId);
 
   if (!projectAlive) {
     throw new HTTPException(404, { message });

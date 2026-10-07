@@ -38,7 +38,11 @@ Intake is where a human — or an automation — makes that judgement.
 ## Data
 
 `submission`, `submission_message`. A submission holds `form_data` and the request type
-version it was made against, plus `claimed_by`/`claimed_at` (`IQ-16a`), `customer_visibility`
+version it was made against. The immutable version also captures the work-item type,
+request-type SLA override and default assignee selected when the customer submitted; a later
+request-type edit never remaps a queued submission. Acceptance revalidates those same-workspace
+references and fails atomically if a reference is no longer available. It also holds
+`claimed_by`/`claimed_at` (`IQ-16a`), `customer_visibility`
 and `work_item_id` (set on acceptance) — [data-model.md](../01-architecture/data-model.md).
 
 ## Behaviour
@@ -61,7 +65,16 @@ and `work_item_id` (set on acceptance) — [data-model.md](../01-architecture/da
   changes (`IQ-11`) and stays valid across sign-out/sign-in cycles for that requester —
   not that `SUB-n` alone is a credential. Knowing a reference grants nothing without a
   session scoped to it.
-- `IQ-4` A request type marked auto-accept skips intake entirely.
+- `IQ-4` A request type marked auto-accept skips intake entirely. It requires a pinned
+  default project that is active, in the request type's workspace, and serves the submitting
+  organisation. Publishing, submission, and acceptance revalidate this binding atomically;
+  the customer never chooses a project and the server never chooses one arbitrarily
+  (decision log, 2026-10-04, “Request-type default project and auto-accept binding”). Manual
+  acceptance remains governed by `IQ-7`. Its
+  `submission.accepted` audit and outbox event use the `system` actor with no person actor
+  id and display name `Request type auto-accept`; the customer remains the requester and
+  initiator. Manual acceptance uses the acting staff person's identity and name
+  ([request-types-and-catalogue.md](request-types-and-catalogue.md) `RT-15`).
 
 **Triage**
 
@@ -73,7 +86,8 @@ and `work_item_id` (set on acceptance) — [data-model.md](../01-architecture/da
   are pre-filled from the request type; the pre-fill is a suggestion, not a decision.
 - `IQ-8` On acceptance, form data is mapped onto native and custom fields per the request
   type's `mapsTo` rules, and anything unmapped is rendered into the description under a
-  clear heading.
+  clear heading. The pinned version's required, always-visible `work_item.title` mapping
+  supplies the work-item title; acceptance fails atomically if that mapping is invalid.
 - `IQ-9` Attachments transfer to the work item, preserving customer visibility
   (`attachment.submission_id` before acceptance, `attachment.work_item_id` after —
   [data-model.md](../01-architecture/data-model.md)).

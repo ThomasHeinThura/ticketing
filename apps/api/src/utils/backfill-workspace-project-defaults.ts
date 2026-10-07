@@ -1,5 +1,12 @@
-import { and, eq, exists, isNull, notExists, sql } from "drizzle-orm";
-import db, { schema } from "../database";
+import { sql } from "drizzle-orm";
+import db from "../database";
+import {
+  countProjectsWithoutActiveTemplates,
+  getExistingWorkspaceTemplate,
+  getExistingWorkspaceType,
+  listLegacyProjectsNeedingStates,
+  listWorkspaceDefaultsNeedingBackfill,
+} from "./repository";
 import { seedProjectStates } from "./seed-project-states";
 import {
   seedDefaultStateTemplates,
@@ -165,30 +172,10 @@ function logBackfillFailure(
 }
 
 async function backfillLegacyWorkspaceDefaults(): Promise<WorkspaceBackfillSummary> {
-  const hasTypeSubquery = () =>
-    db
-      .select({ one: sql`1` })
-      .from(schema.workItemTypeTable)
-      .where(
-        eq(schema.workItemTypeTable.workspaceId, schema.workspaceTable.id),
-      );
-  const hasTemplateSubquery = () =>
-    db
-      .select({ one: sql`1` })
-      .from(schema.stateTemplateTable)
-      .where(
-        eq(schema.stateTemplateTable.workspaceId, schema.workspaceTable.id),
-      );
-
   // Candidates: missing EITHER kind. The per-kind check that decides what actually gets
   // inserted happens again, per kind, inside each workspace's own transaction below --
   // this outer query only narrows which workspaces are worth opening a transaction for.
-  const candidates = await db
-    .select({ id: schema.workspaceTable.id })
-    .from(schema.workspaceTable)
-    .where(
-      sql`${notExists(hasTypeSubquery())} or ${notExists(hasTemplateSubquery())}`,
-    );
+  const candidates = await listWorkspaceDefaultsNeedingBackfill();
 
   let typesSeeded = 0;
   let templatesSeeded = 0;
@@ -197,16 +184,11 @@ async function backfillLegacyWorkspaceDefaults(): Promise<WorkspaceBackfillSumma
   for (const workspace of candidates) {
     try {
       const result = await db.transaction(async (tx) => {
-        const [existingType] = await tx
-          .select({ id: schema.workItemTypeTable.id })
-          .from(schema.workItemTypeTable)
-          .where(eq(schema.workItemTypeTable.workspaceId, workspace.id))
-          .limit(1);
-        const [existingTemplate] = await tx
-          .select({ id: schema.stateTemplateTable.id })
-          .from(schema.stateTemplateTable)
-          .where(eq(schema.stateTemplateTable.workspaceId, workspace.id))
-          .limit(1);
+        const [existingType] = await getExistingWorkspaceType(tx, workspace.id);
+        const [existingTemplate] = await getExistingWorkspaceTemplate(
+          tx,
+          workspace.id,
+        );
 
         let seededTypes = false;
         let seededTemplates = false;
@@ -238,26 +220,6 @@ async function backfillLegacyWorkspaceDefaults(): Promise<WorkspaceBackfillSumma
 }
 
 async function backfillLegacyProjectStates(): Promise<ProjectBackfillSummary> {
-  const hasStateSubquery = () =>
-    db
-      .select({ one: sql`1` })
-      .from(schema.stateTable)
-      .where(eq(schema.stateTable.projectId, schema.projectTable.id));
-  // "Active" mirrors `seedProjectStates`'s own template query (`archived_at is null`).
-  const hasActiveTemplateSubquery = () =>
-    db
-      .select({ one: sql`1` })
-      .from(schema.stateTemplateTable)
-      .where(
-        and(
-          eq(
-            schema.stateTemplateTable.workspaceId,
-            schema.projectTable.workspaceId,
-          ),
-          isNull(schema.stateTemplateTable.archivedAt),
-        ),
-      );
-
   // Excludes a project whose workspace has zero ACTIVE templates from the query itself
   // (independent review of this PR, first round) -- not merely a runtime skip. Without
   // this, such a project is re-selected as "legacy" on every single boot forever (its
@@ -265,26 +227,9 @@ async function backfillLegacyProjectStates(): Promise<ProjectBackfillSummary> {
   // template is archived), each time opening a transaction and taking the advisory lock
   // for no reason: `seedProjectStates` itself already no-ops when it finds zero active
   // templates (its own comment), so the wasted attempt would never insert anything.
-  const legacyProjects = await db
-    .select({
-      id: schema.projectTable.id,
-      workspaceId: schema.projectTable.workspaceId,
-    })
-    .from(schema.projectTable)
-    .where(
-      sql`${isNull(schema.projectTable.deletedAt)} and ${notExists(
-        hasStateSubquery(),
-      )} and ${exists(hasActiveTemplateSubquery())}`,
-    );
+  const legacyProjects = await listLegacyProjectsNeedingStates();
 
-  const [stuckRow] = await db
-    .select({ stuckCount: sql<string>`count(*)` })
-    .from(schema.projectTable)
-    .where(
-      sql`${isNull(schema.projectTable.deletedAt)} and ${notExists(
-        hasStateSubquery(),
-      )} and ${notExists(hasActiveTemplateSubquery())}`,
-    );
+  const [stuckRow] = await countProjectsWithoutActiveTemplates();
   const skippedNoActiveTemplate = Number(stuckRow?.stuckCount ?? 0);
 
   let seeded = 0;

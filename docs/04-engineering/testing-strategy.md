@@ -433,10 +433,20 @@ database must already have the current schema. The fast API suite covers the CLI
 configuration preflight without connecting to PostgreSQL. The disposable PostgreSQL
 integration suite verifies profile counts, a repeated run, and preservation of an unrelated
 row. The command does not create login credentials or grant memberships/roles.
+Run `pnpm test:seed` for the disposable PostgreSQL regression suite covering these ordinary
+data profiles.
 The CLI verifies the complete fixture-owned default type/template sets and each project's
 default columns and concrete states against the existing code defaults, including state
 order, default selection, and template references. It retains database-generated row IDs;
 any conflicting or incomplete default set fails the seed transaction without rewriting it.
+
+### Manual role verification
+
+The ordinary `minimal`, `realistic`, and `hostile` profiles remain login-free. Role-specific
+test accounts are provisioned only through private, operator-managed tooling; this repository
+does not contain a role-user seeder or generated credential manifest. Verify the resulting
+identity scope and role-based access through the API against an explicitly isolated test
+database. Never commit test login identities, credentials, or credential instructions.
 
 Three sizes: **minimal** (one org, one project, ten items — for fast tests),
 **realistic** (as above, for manual and performance), **hostile** (empty strings, 500-

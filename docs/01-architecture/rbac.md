@@ -657,9 +657,13 @@ document contradicted itself in each place:
 header (or `?workspace=`), validated against the identity's memberships **before** the
 policy check; absent ⇒ `400`. Defined once in [api-design.md](api-design.md). The scope
 object is therefore resolved from the route's declared **scope source** — a path parameter,
-that header/query parameter, or (for `POST /api/work-items/search`) the filter body — and
-`idor-fuzz.test.ts` substitutes an id from the other seeded tenant at **every** source, not
-only in the path.
+that header/query parameter, or, for `POST /api/work-items/search`, the explicit
+`workspaceId` property in the JSON request body (outside its `query` document). The search
+route loads and validates that workspace before its `work_item:read` policy check; its
+repository then evaluates each candidate work item's project reach before applying query
+filters or counting rows. A `project` filter only narrows results within that validated
+workspace; it never supplies or widens authority. `idor-fuzz.test.ts` substitutes an id from
+the other seeded tenant at **every** source, not only in the path.
 
 **Scope evidence is mandatory, with no fallback.** `evaluatePolicy` does not select a capability
 policy's scope id off the flat request/row bag it is handed — it demands a `ResolvedScope`,
@@ -788,11 +792,12 @@ the first day.
 | Action | Route |
 | --- | --- |
 | Creating or changing an identity connection (OIDC) or a non-OIDC auth plugin | `POST /api/instance/identity-connections`, `PATCH /api/instance/identity-connections/{id}`; `POST/PATCH /api/instance/plugins/{id}` for `auth.*` |
-| Creating, rotating or revoking a **SCIM token** | `POST /api/instance/identity-connections/{id}/scim`, `…/scim/rotate-token`, `…/scim/revoke-token` |
+| Creating, rotating or revoking a **SCIM token** | `POST /api/instance/identity-connections/{id}/scim`, `POST /api/instance/identity-connections/{id}/scim/rotate-token`, `POST /api/instance/identity-connections/{id}/scim/revoke-token` |
 | OIDC mapping administration — every create, edit, enable and disable is unconditionally elevated, session-only and audited, including customer/display-only changes; forbidden authority remains impossible ([identity-provisioning.md](../03-features/identity-provisioning.md) `IP-6`, `IP-34`) | `POST /api/instance/identity-connections/{id}/oidc-group-mappings`, `PATCH /api/instance/identity-connections/{id}/oidc-group-mappings/{mappingId}` |
-| Every SCIM administration PATCH is route-wide elevated, session-only and audited; the route remains unusable until its strict DTO, parent-version CAS and dedicated PA-15 binding are specified in [issue #561](https://github.com/ThomasHeinThura/ticketing/issues/561), and fails closed meanwhile. Forbidden authority remains impossible ([identity-provisioning.md](../03-features/identity-provisioning.md) `IP-6`, `IP-20`–`IP-22`; [api-design.md](api-design.md#identity-connection-configuration-compare-and-set)) | `PATCH /api/instance/identity-connections/{id}/scim` |
+| Every SCIM administration PATCH is route-wide elevated, session-only and audited, with strict DTO, parent-version CAS and dedicated `scim_admin_update` PA-15 proof. An implementation lacking its verifier fails closed. Forbidden authority remains impossible ([identity-provisioning.md](../03-features/identity-provisioning.md) `IP-6`, `IP-20`–`IP-22`; [api-design.md](api-design.md#scim-administration-patch--issue-561-owner-contract)) | `PATCH /api/instance/identity-connections/{id}/scim` |
 | Granting `instance:admin` | `POST /api/instance/users/{id}/grant-admin` |
-| Resetting another person's second factor | Planned `POST /api/instance/users/{id}/reset-mfa` — with a mandatory verification note; unavailable until the factor adapter exists |
+| Approving the distinct `user_deactivation` pending action, with exact current account email and action-bound step-up | `POST /api/me/pending-actions/{id}/approve` |
+| Resetting another person's second factor | `POST /api/instance/users/{id}/reset-mfa` — requires a mandatory verification note and fresh step-up proof; unavailable when the target has no enabled local second factor |
 | Creating a workspace **service** API key | `POST /api/workspaces/{id}/api-keys` — bounded by the creator's authority |
 | Granting `sees_all` on a membership | `PATCH /api/workspaces/{id}/members/{personId}` with `sees_all: true` — never self-grantable; audited as a reach change |
 | Marking a provider "MFA satisfied upstream", or a JIT rule that provisions `side = staff` or a role above `member` | `PATCH /api/instance/identity-connections/{id}` |

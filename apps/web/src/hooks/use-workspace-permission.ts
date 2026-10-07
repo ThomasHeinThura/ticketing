@@ -36,12 +36,16 @@ const EMPTY_CAPABILITIES = {
   inviteUsers: false,
   manageTeam: false,
   removeMembers: false,
+  manageServiceCalendars: false,
 } as const satisfies Record<string, boolean>;
 
-export function useWorkspacePermission() {
+export function useWorkspacePermission(workspaceIdOverride?: string | null) {
   const { data: activeWorkspace } = useActiveWorkspace();
   const { data: activeMember } = useGetActiveWorkspaceUser();
-  const workspaceId = activeWorkspace?.id;
+  const usesWorkspaceOverride = workspaceIdOverride !== undefined;
+  const workspaceId = usesWorkspaceOverride
+    ? (workspaceIdOverride ?? undefined)
+    : activeWorkspace?.id;
   const role = activeMember?.role as string | undefined;
 
   // One query per (workspaceId, role) that replaces all 16 round trips with
@@ -57,8 +61,12 @@ export function useWorkspacePermission() {
     isLoading,
     isFetching,
   } = useQuery({
-    queryKey: ["workspace-capabilities", workspaceId, role],
-    enabled: Boolean(workspaceId && role),
+    queryKey: [
+      "workspace-capabilities",
+      workspaceId,
+      usesWorkspaceOverride ? null : role,
+    ],
+    enabled: Boolean(workspaceId && (usesWorkspaceOverride || role)),
     staleTime: 5 * 60 * 1000,
     queryFn: async (): Promise<CapabilityMap> => {
       const response = await client.capabilities.$get({
@@ -93,6 +101,7 @@ export function useWorkspacePermission() {
       canInviteUsers: () => can.inviteUsers,
       canManageTeam: () => can.manageTeam,
       canRemoveMembers: () => can.removeMembers,
+      canManageServiceCalendars: () => can.manageServiceCalendars,
     };
   }, [can]);
 
@@ -107,7 +116,8 @@ export function useWorkspacePermission() {
     // action UI during the initial render instead of flashing it on then
     // off when the server check resolves.
     isCheckingPermissions:
-      Boolean(workspaceId && role) && (isLoading || !capabilities),
+      Boolean(workspaceId && (usesWorkspaceOverride || role)) &&
+      (isLoading || !capabilities),
     isRefetchingPermissions: isFetching,
   };
 }

@@ -1,9 +1,8 @@
-import { eq } from "drizzle-orm";
 import type { Context, Next } from "hono";
 import { HTTPException } from "hono/http-exception";
-import db, { schema } from "../database";
 import { isCloud } from "./is-cloud";
 import { isDisposableEmail } from "./is-disposable-email";
+import { getUserAnonymousFlag } from "./repository";
 
 /**
  * The native equivalent of `auth.ts`'s `ctx.path === "/organization/
@@ -78,11 +77,7 @@ async function isAnonymousCaller(c: Context): Promise<boolean> {
   const userId = c.get("userId");
   if (!userId) return false;
 
-  const [row] = await db
-    .select({ isAnonymous: schema.userTable.isAnonymous })
-    .from(schema.userTable)
-    .where(eq(schema.userTable.id, userId))
-    .limit(1);
+  const [row] = await getUserAnonymousFlag(userId);
 
   return row?.isAnonymous ?? false;
 }

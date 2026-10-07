@@ -1,5 +1,3 @@
-import { eq } from "drizzle-orm";
-import db, { schema } from "../../database";
 import {
   createTaskDeskLogger,
   type TaskDeskLogEvent,
@@ -17,6 +15,7 @@ import {
 import { defaultLogLevels } from "../../observability/settings.js";
 import { policyRegistry } from "../../policy-registry";
 import { createObservabilityConfigRefresher } from "./config-refresh-version";
+import { getMetricsTokenDigest, getObservabilityLevels } from "./repository";
 import { parseLogLevels } from "./settings";
 
 const routeKeys = policyRegistry.entries.flatMap(({ routeKey }) => {
@@ -78,6 +77,13 @@ export function beginObservedRequest(): () => void {
   return metrics.beginHttpRequest();
 }
 
+export function recordAuthReload(
+  outcome: "ok" | "failed",
+  configVersion: number,
+): void {
+  metrics.recordAuthReload(outcome, configVersion);
+}
+
 export function recordAuditWriteFailure(
   operation: AuditFailureOperation,
   options: { readonly log?: boolean } = {},
@@ -95,24 +101,13 @@ export function recordAuditWriteFailure(
 }
 
 export async function startObservabilityRuntime(): Promise<void> {
-  const [row] = await db
-    .select({
-      version: schema.instanceSettingTable.observabilityConfigVersion,
-      levels: schema.instanceSettingTable.observabilityLogLevels,
-    })
-    .from(schema.instanceSettingTable)
-    .where(eq(schema.instanceSettingTable.id, "singleton"))
-    .limit(1);
+  const [row] = await getObservabilityLevels();
   if (!row) throw new Error("Observability settings unavailable");
   logger.setLogLevels(parseLogLevels(row.levels));
 
   listener = createMetricsListener({
     readCurrentTokenDigest: async () => {
-      const [current] = await db
-        .select({ digest: schema.instanceSettingTable.metricsTokenHash })
-        .from(schema.instanceSettingTable)
-        .where(eq(schema.instanceSettingTable.id, "singleton"))
-        .limit(1);
+      const [current] = await getMetricsTokenDigest();
       return current?.digest ?? null;
     },
     renderMetrics: () => metrics.metrics(),
@@ -133,14 +128,7 @@ export async function startObservabilityRuntime(): Promise<void> {
 
   refreshController = createObservabilityConfigRefresher({
     read: async () => {
-      const [current] = await db
-        .select({
-          version: schema.instanceSettingTable.observabilityConfigVersion,
-          levels: schema.instanceSettingTable.observabilityLogLevels,
-        })
-        .from(schema.instanceSettingTable)
-        .where(eq(schema.instanceSettingTable.id, "singleton"))
-        .limit(1);
+      const [current] = await getObservabilityLevels();
       return current;
     },
     validate: parseLogLevels,

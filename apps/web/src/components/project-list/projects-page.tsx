@@ -217,64 +217,62 @@ export default function ProjectsPage({ workspaceId }: { workspaceId: string }) {
 
   if (isLoading) {
     return (
-      <>
-        <WorkspaceLayout
-          title={t("workspace:projects.pageTitle")}
-          headerActions={
-            canCreate ? (
-              <Button
-                variant="outline"
-                size="xs"
-                onClick={handleCreateProject}
-                className="gap-1"
-              >
-                <Plus className="w-3 h-3" />
-                {t("workspace:projects.createProject")}
-              </Button>
-            ) : null
-          }
-        >
-          <Table data-testid="workspace-projects-loading">
-            <TableHeader>
-              <TableRow>
-                <TableHead className="text-foreground font-medium">
-                  {t("workspace:projects.title")}
-                </TableHead>
-                <TableHead className="text-foreground font-medium">
-                  {t("workspace:projects.progress")}
-                </TableHead>
-                <TableHead className="text-foreground font-medium">
-                  {t("workspace:projects.targetDate")}
-                </TableHead>
-                <TableHead className="text-foreground font-medium">
-                  {t("workspace:projects.status")}
-                </TableHead>
+      <WorkspaceLayout
+        title={t("workspace:projects.pageTitle")}
+        headerActions={
+          canCreate ? (
+            <Button
+              variant="outline"
+              size="xs"
+              onClick={handleCreateProject}
+              className="gap-1"
+            >
+              <Plus className="w-3 h-3" />
+              {t("workspace:projects.createProject")}
+            </Button>
+          ) : null
+        }
+      >
+        <Table data-testid="workspace-projects-loading">
+          <TableHeader>
+            <TableRow>
+              <TableHead className="text-foreground font-medium">
+                {t("workspace:projects.title")}
+              </TableHead>
+              <TableHead className="text-foreground font-medium">
+                {t("workspace:projects.progress")}
+              </TableHead>
+              <TableHead className="text-foreground font-medium">
+                {t("workspace:projects.targetDate")}
+              </TableHead>
+              <TableHead className="text-foreground font-medium">
+                {t("workspace:projects.status")}
+              </TableHead>
+            </TableRow>
+          </TableHeader>
+          <TableBody>
+            {[1, 2, 3].map((i) => (
+              <TableRow key={i}>
+                <TableCell className="py-3">
+                  <div className="flex items-center gap-3">
+                    <Skeleton className="h-5 w-5" />
+                    <Skeleton className="h-4 w-24" />
+                  </div>
+                </TableCell>
+                <TableCell className="py-3">
+                  <Skeleton className="h-2 w-20" />
+                </TableCell>
+                <TableCell className="py-3">
+                  <Skeleton className="h-4 w-20" />
+                </TableCell>
+                <TableCell className="py-3">
+                  <Skeleton className="h-5 w-16" />
+                </TableCell>
               </TableRow>
-            </TableHeader>
-            <TableBody>
-              {[1, 2, 3].map((i) => (
-                <TableRow key={i}>
-                  <TableCell className="py-3">
-                    <div className="flex items-center gap-3">
-                      <Skeleton className="h-5 w-5" />
-                      <Skeleton className="h-4 w-24" />
-                    </div>
-                  </TableCell>
-                  <TableCell className="py-3">
-                    <Skeleton className="h-2 w-20" />
-                  </TableCell>
-                  <TableCell className="py-3">
-                    <Skeleton className="h-4 w-20" />
-                  </TableCell>
-                  <TableCell className="py-3">
-                    <Skeleton className="h-5 w-16" />
-                  </TableCell>
-                </TableRow>
-              ))}
-            </TableBody>
-          </Table>
-        </WorkspaceLayout>
-      </>
+            ))}
+          </TableBody>
+        </Table>
+      </WorkspaceLayout>
     );
   }
 

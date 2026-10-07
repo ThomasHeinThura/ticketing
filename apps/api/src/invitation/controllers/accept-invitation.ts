@@ -1,6 +1,13 @@
-import { and, eq, sql } from "drizzle-orm";
+import { eq } from "drizzle-orm";
 import db, { schema } from "../../database";
-import { WORKSPACE_MEMBERSHIP_LOCK_NAMESPACE } from "../../workspace/controllers/workspace-membership-lock";
+import { WorkspaceRoleNotFoundError } from "../../workspace/controllers/workspace-membership-errors";
+import { lockWorkspaceRoleAssignment } from "../../workspace/controllers/workspace-role-assignment-lock";
+import {
+  getInvitationForAcceptance,
+  getInvitationWorkspace,
+  getWorkspaceMember,
+  getWorkspaceRoleId,
+} from "../repository";
 import {
   AlreadyWorkspaceMemberError,
   InvitationExpiredError,
@@ -40,10 +47,9 @@ export type AcceptedInvitation = {
  *
  * Reads the invitation TWICE, deliberately. The first read (outside any
  * lock) exists only to learn which workspace's advisory lock to take --
- * `WORKSPACE_MEMBERSHIP_LOCK_NAMESPACE`, the SAME namespace every S5
- * membership write and `inviteWorkspaceMember` use, so this accept, a
- * concurrent `addWorkspaceMember`, and a concurrent second accept for the
- * same workspace all serialize against each other. The second read, taken
+ * the shared membership→role lock pair used by role assignment/deletion,
+ * `inviteWorkspaceMember`, and every other native membership writer. The
+ * second read, taken
  * AFTER the lock is held, is the one every check below is against -- status,
  * expiry, recipient match, and the existing-membership check that is this
  * function's whole reason to exist. A lock taken on stale data protects
@@ -54,32 +60,15 @@ async function acceptInvitation(
   callerId: string,
   callerEmail: string,
 ): Promise<AcceptedInvitation> {
-  const [pre] = await db
-    .select({ workspaceId: schema.invitationTable.workspaceId })
-    .from(schema.invitationTable)
-    .where(eq(schema.invitationTable.id, invitationId))
-    .limit(1);
+  const [pre] = await getInvitationWorkspace(db, invitationId);
   if (!pre) {
     throw new InvitationNotFoundError();
   }
 
   return db.transaction(async (tx) => {
-    await tx.execute(
-      sql`SELECT pg_advisory_xact_lock(${WORKSPACE_MEMBERSHIP_LOCK_NAMESPACE}, hashtext(${pre.workspaceId}))`,
-    );
+    await lockWorkspaceRoleAssignment(tx, pre.workspaceId);
 
-    const [invitation] = await tx
-      .select({
-        id: schema.invitationTable.id,
-        workspaceId: schema.invitationTable.workspaceId,
-        email: schema.invitationTable.email,
-        role: schema.invitationTable.role,
-        status: schema.invitationTable.status,
-        expiresAt: schema.invitationTable.expiresAt,
-      })
-      .from(schema.invitationTable)
-      .where(eq(schema.invitationTable.id, invitationId))
-      .limit(1);
+    const [invitation] = await getInvitationForAcceptance(tx, invitationId);
     if (!invitation) {
       throw new InvitationNotFoundError();
     }
@@ -97,21 +86,24 @@ async function acceptInvitation(
     // below, not before it -- a check-then-write outside the lock is exactly
     // the race shape `workspace-membership-lock.ts` documents for every other
     // membership write.
-    const [existingMember] = await tx
-      .select({ userId: schema.workspaceUserTable.userId })
-      .from(schema.workspaceUserTable)
-      .where(
-        and(
-          eq(schema.workspaceUserTable.workspaceId, invitation.workspaceId),
-          eq(schema.workspaceUserTable.userId, callerId),
-        ),
-      )
-      .limit(1);
+    const [existingMember] = await getWorkspaceMember(
+      tx,
+      invitation.workspaceId,
+      callerId,
+    );
     if (existingMember) {
       throw new AlreadyWorkspaceMemberError();
     }
 
     const role = invitation.role ?? "member";
+    const [roleRow] = await getWorkspaceRoleId(
+      tx,
+      invitation.workspaceId,
+      role,
+    );
+    if (!roleRow) {
+      throw new WorkspaceRoleNotFoundError(role);
+    }
     const now = new Date();
 
     await tx

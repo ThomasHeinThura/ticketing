@@ -1,11 +1,15 @@
-import { and, eq, sql } from "drizzle-orm";
+import { eq } from "drizzle-orm";
 import db, { schema } from "../../database";
+import {
+  getWorkspaceRoleByIdQuery,
+  listWorkspaceMemberRoleValuesQuery,
+} from "../repository";
 import { WorkspaceRoleNotFoundError } from "./workspace-membership-errors";
+import { lockWorkspaceRoleAssignment } from "./workspace-role-assignment-lock";
 import {
   RoleAssignedToMembersError,
   RoleNameReservedError,
 } from "./workspace-role-errors";
-import { WORKSPACE_ROLE_LOCK_NAMESPACE } from "./workspace-role-lock";
 
 export type DeletedWorkspaceRole = { id: string; role: string };
 
@@ -63,28 +67,20 @@ export function roleIsReferencedBy(
  * Delete a custom role. Native replacement for `authClient.organization.deleteRole()`.
  *
  * Refuses `"owner"` (defensive — see the comment below) and refuses a role still assigned to
- * any member, both under the same advisory lock create/update use, so a concurrent add of a
- * member into this exact role cannot race the delete.
+ * any member. Role-definition writes use 4_003. This deletion also acquires the shared
+ * membership→role lock pair from `workspace-role-assignment-lock.ts`, which serializes it
+ * against native membership and invitation-acceptance paths that assign a role. Both sides
+ * re-read under the pair, so a concurrent assignment either makes deletion refuse or sees
+ * the committed deletion and refuses to assign.
  */
 async function deleteWorkspaceRole(
   workspaceId: string,
   roleId: string,
 ): Promise<DeletedWorkspaceRole> {
   return db.transaction(async (tx) => {
-    await tx.execute(
-      sql`SELECT pg_advisory_xact_lock(${WORKSPACE_ROLE_LOCK_NAMESPACE}, hashtext(${workspaceId}))`,
-    );
+    await lockWorkspaceRoleAssignment(tx, workspaceId);
 
-    const [existing] = await tx
-      .select()
-      .from(schema.workspaceRoleTable)
-      .where(
-        and(
-          eq(schema.workspaceRoleTable.workspaceId, workspaceId),
-          eq(schema.workspaceRoleTable.id, roleId),
-        ),
-      )
-      .limit(1);
+    const [existing] = await getWorkspaceRoleByIdQuery(tx, workspaceId, roleId);
     if (!existing) {
       throw new WorkspaceRoleNotFoundError(roleId);
     }
@@ -94,10 +90,10 @@ async function deleteWorkspaceRole(
       throw new RoleNameReservedError();
     }
 
-    const memberRows = await tx
-      .select({ role: schema.workspaceUserTable.role })
-      .from(schema.workspaceUserTable)
-      .where(eq(schema.workspaceUserTable.workspaceId, workspaceId));
+    const memberRows = await listWorkspaceMemberRoleValuesQuery(
+      tx,
+      workspaceId,
+    );
 
     if (
       roleIsReferencedBy(

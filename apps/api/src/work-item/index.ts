@@ -1,11 +1,6 @@
-import { and, eq, isNull } from "drizzle-orm";
 import { HTTPException } from "hono/http-exception";
+import { appendAuditLog } from "../audit/audit-writer";
 import db from "../database";
-import {
-  membershipTable,
-  personTable,
-  workItemTable,
-} from "../database/schema";
 import {
   type ApiKey,
   apiRouter,
@@ -13,6 +8,7 @@ import {
   createRoute,
   errorResponse,
   jsonResponse,
+  z,
 } from "../openapi";
 import {
   assertCallerHasCapability,
@@ -43,6 +39,7 @@ import deleteComment from "./controllers/delete-comment";
 import deleteWorkItem from "./controllers/delete-work-item";
 import detachWorkItemParent from "./controllers/detach-work-item-parent";
 import getWorkItemByKey from "./controllers/get-work-item";
+import { getWorkItemSla } from "./controllers/get-work-item-sla";
 import getWorkItemTree from "./controllers/get-work-item-tree";
 import listAssignablePeople from "./controllers/list-assignable-people";
 import listWorkItemActivity from "./controllers/list-work-item-activity";
@@ -62,6 +59,12 @@ import updateWorkItem, {
   WorkItemVersionConflictError,
 } from "./controllers/update-work-item";
 import { unwatchWorkItem, watchWorkItem } from "./controllers/watch-work-item";
+import {
+  findPersonByUserIdQuery,
+  findPersonIdByUserIdQuery,
+  findStaffPersonOnProjectRosterQuery,
+  findWorkItemAssigneeForActorQuery,
+} from "./repository";
 import { requireCommentReach } from "./require-comment-reach";
 import { requireWorkItemReach } from "./require-work-item-reach";
 import {
@@ -99,6 +102,13 @@ import {
   workItemKeyParam,
   workspaceIdParam,
 } from "./schema";
+import { collectExportPages, exportColumns, workItemsCsv } from "./search/csv";
+import {
+  SEARCH_BODY_MAX_BYTES,
+  validateWorkItemSearchQuery,
+} from "./search/query";
+import { searchWorkItems } from "./search/repository";
+import { workItemSlaSchema } from "./sla-response";
 
 /**
  * #23's first slice: minimal create + read + list for `work_item`
@@ -251,6 +261,152 @@ const listWorkItemsRoute = createRoute({
   },
 });
 
+const searchWorkItemsRoute = createRoute({
+  method: "post",
+  operationId: "searchWorkItems",
+  path: "/work-items/search",
+  tags: ["Work items"],
+  summary: "Search work items",
+  description:
+    "Bounded structured work-item filtering. See api-design.md § Work-item search v1.",
+  middleware: [
+    async (c, next) => {
+      const body = await c.req.raw.clone().arrayBuffer();
+      if (body.byteLength > SEARCH_BODY_MAX_BYTES)
+        throw new HTTPException(400, {
+          message: "Request body exceeds 32 KiB",
+        });
+      await next();
+    },
+    async (c, next) => {
+      try {
+        await workspaceAccess.fromBody("workspaceId")(c, next);
+      } catch (error) {
+        if (error instanceof HTTPException && error.status === 403) {
+          throw new HTTPException(404, { message: "Workspace not found" });
+        }
+        throw error;
+      }
+    },
+  ] as const,
+  request: {
+    body: {
+      required: true,
+      content: {
+        "application/json": {
+          schema: z
+            .object({
+              workspaceId: z.string().min(1),
+              query: z
+                .object({
+                  entity: z.string(),
+                  filter: z.unknown().optional(),
+                  sort: z
+                    .array(
+                      z
+                        .object({ field: z.string(), order: z.string() })
+                        .strict(),
+                    )
+                    .max(1)
+                    .optional(),
+                  columns: z.array(z.string()).optional(),
+                  groupBy: z.unknown().optional(),
+                  aggregate: z.unknown().optional(),
+                })
+                .strict(),
+              limit: z.number().int().min(1).max(200).optional(),
+              cursor: z.string().max(4096).nullable().optional(),
+            })
+            .strict(),
+        },
+      },
+    },
+  },
+  responses: {
+    200: jsonResponse(
+      "A page of reachable matching work items",
+      workItemListResponseSchema,
+    ),
+    400: errorResponse(
+      "Malformed or over-limit search document, scope, or cursor",
+    ),
+    403: errorResponse("Missing work_item:read permission"),
+    404: errorResponse("Workspace not found or unreachable"),
+    422: errorResponse(
+      "Unsupported entity, unavailable filter field, or unreadable field",
+    ),
+  },
+});
+
+const exportWorkItemsRoute = createRoute({
+  method: "post",
+  operationId: "exportWorkItems",
+  path: "/work-items/export",
+  tags: ["Work items"],
+  summary: "Export work items as CSV",
+  description:
+    "Exports every reachable work item matching the supplied view query.",
+  middleware: [
+    async (c, next) => {
+      const body = await c.req.raw.clone().arrayBuffer();
+      if (body.byteLength > SEARCH_BODY_MAX_BYTES)
+        throw new HTTPException(400, {
+          message: "Request body exceeds 32 KiB",
+        });
+      await next();
+    },
+    async (c, next) => {
+      try {
+        await workspaceAccess.fromBody("workspaceId")(c, next);
+      } catch (error) {
+        if (error instanceof HTTPException && error.status === 403)
+          throw new HTTPException(404, { message: "Workspace not found" });
+        throw error;
+      }
+    },
+    requireWorkspaceCapability("work_item:export"),
+  ] as const,
+  request: {
+    body: {
+      required: true,
+      content: {
+        "application/json": {
+          schema: z
+            .object({
+              workspaceId: z.string().min(1),
+              query: z
+                .object({
+                  entity: z.string(),
+                  filter: z.unknown().optional(),
+                  sort: z
+                    .array(
+                      z
+                        .object({ field: z.string(), order: z.string() })
+                        .strict(),
+                    )
+                    .max(1)
+                    .optional(),
+                  columns: z.array(z.string()).optional(),
+                })
+                .strict(),
+            })
+            .strict(),
+        },
+      },
+    },
+  },
+  responses: {
+    200: {
+      description: "CSV file",
+      content: { "text/csv": { schema: z.string() } },
+    },
+    400: errorResponse("Malformed or over-limit export request"),
+    403: errorResponse("Missing work_item:export permission"),
+    404: errorResponse("Workspace not found or unreachable"),
+    422: errorResponse("Unsupported entity or unavailable filter field"),
+  },
+});
+
 const getWorkItemRoute = createRoute({
   method: "get",
   operationId: "getWorkItem",
@@ -266,6 +422,29 @@ const getWorkItemRoute = createRoute({
     200: jsonResponse("The work item", workItemDetailSchema),
     403: errorResponse(
       "No workspace access, or missing work_item:read permission",
+    ),
+    404: errorResponse("Work item not found"),
+  },
+});
+
+const getWorkItemSlaRoute = createRoute({
+  method: "get",
+  operationId: "getWorkItemSla",
+  path: "/work-items/{key}/sla",
+  tags: ["Work items"],
+  summary: "Evaluate a work item's pinned SLA policy version",
+  middleware: [
+    requireWorkItemReach(),
+    requireWorkspaceCapability("work_item:read"),
+  ] as const,
+  request: { params: workItemKeyParam },
+  responses: {
+    200: jsonResponse(
+      "The work item's current SLA evaluation",
+      workItemSlaSchema,
+    ),
+    403: errorResponse(
+      "No workspace access or missing work_item:read permission",
     ),
     404: errorResponse("Work item not found"),
   },
@@ -900,11 +1079,87 @@ const workItem = apiRouter<
     );
     return c.json(result, 200);
   })
+  .openapi(searchWorkItemsRoute, async (c) => {
+    const body = c.req.valid("json");
+    const query = validateWorkItemSearchQuery(body.query);
+    const session = c.get("session") as
+      | { impersonatedBy?: string | null }
+      | null
+      | undefined;
+    const result = await searchWorkItems({
+      userId: c.get("userId"),
+      apiKey: c.get("apiKey"),
+      impersonatedBy: session?.impersonatedBy,
+      workspaceId: c.get("workspaceId"),
+      query,
+      limit: body.limit ?? 50,
+      cursor: body.cursor ?? undefined,
+    });
+    return c.json(result, 200);
+  })
+  .openapi(exportWorkItemsRoute, async (c) => {
+    const body = c.req.valid("json");
+    const query = validateWorkItemSearchQuery(body.query);
+    const columns = exportColumns(query);
+    const session = c.get("session") as
+      | { impersonatedBy?: string | null }
+      | null
+      | undefined;
+    const { rows, total } = await collectExportPages((cursor) =>
+      searchWorkItems({
+        userId: c.get("userId"),
+        apiKey: c.get("apiKey"),
+        impersonatedBy: session?.impersonatedBy,
+        workspaceId: c.get("workspaceId"),
+        query,
+        limit: 200,
+        cursor,
+      }),
+    );
+    const csv = workItemsCsv(
+      rows.map((row) => ({
+        key: row.key,
+        title: row.title,
+        stateName: row.stateName,
+        assigneeName: row.assigneeName,
+        priority: row.priority,
+        dueDate: row.dueDate?.toISOString().slice(0, 10) ?? null,
+      })),
+      columns,
+    );
+    const { actorId, actorType } = resolveActor(
+      c.get("userId"),
+      c.get("apiKey"),
+    );
+    await appendAuditLog(db, {
+      actorId,
+      actorType,
+      apiKeyId: c.get("apiKey")?.id ?? null,
+      impersonatorId: session?.impersonatedBy ?? null,
+      workspaceId: c.get("workspaceId"),
+      action: "work_item.exported",
+      entityType: "work_item_view",
+      entityId: "workspace",
+      after: { format: "csv", count: total, columns },
+    });
+    return new Response(csv, {
+      status: 200,
+      headers: {
+        "content-type": "text/csv; charset=utf-8",
+        "content-disposition": 'attachment; filename="work-items.csv"',
+      },
+    });
+  })
   .openapi(getWorkItemRoute, async (c) => {
     const { key } = c.req.valid("param");
     const workspaceId = c.get("workspaceId");
     const item = await getWorkItemByKey(key, workspaceId);
     return c.json(item, 200);
+  })
+  .openapi(getWorkItemSlaRoute, async (c) => {
+    const { key } = c.req.valid("param");
+    const item = await getWorkItemSla(key, c.get("workspaceId"));
+    return c.json(workItemSlaSchema.parse(item), 200);
   })
   .openapi(listWorkItemTypesRoute, async (c) => {
     const { workspaceId } = c.req.valid("param");
@@ -930,6 +1185,7 @@ const workItem = apiRouter<
         workspaceId,
         c.get("userId"),
         "work_item:set_priority",
+        c.get("apiKey"),
       );
     }
 
@@ -984,20 +1240,11 @@ const workItem = apiRouter<
     // reachable today. The resolution above is kept anyway, because it makes the id the
     // self branch uses the SAME fact the roster is built from (staff, on this roster),
     // instead of relying on a constraint defined in another file to stay deterministic.
-    const [callerPerson] = await db
-      .select({ id: personTable.id })
-      .from(personTable)
-      .innerJoin(membershipTable, eq(membershipTable.personId, personTable.id))
-      .where(
-        and(
-          eq(personTable.userId, userId),
-          eq(personTable.side, "staff"),
-          eq(membershipTable.scope, "project"),
-          eq(membershipTable.scopeId, projectId),
-        ),
-      )
-      .orderBy(personTable.createdAt)
-      .limit(1);
+    const [callerPerson] = await findStaffPersonOnProjectRosterQuery(
+      db,
+      userId,
+      projectId,
+    );
 
     // "May assign anyone" reads the caller's own role through the same
     // `builtInRoleHasCapability` predicate every other authority check uses (#318's
@@ -1043,17 +1290,14 @@ const workItem = apiRouter<
     // same mapping the identity adapter walks (#315). A caller with no person row can
     // never BE the target, so the branch is false and only `work_item:assign` carries
     // them.
-    const [callerPerson] = await db
-      .select({ id: personTable.id })
-      .from(personTable)
-      .where(eq(personTable.userId, userId))
-      .limit(1);
+    const [callerPerson] = await findPersonIdByUserIdQuery(db, userId);
     await assertCallerHasCapabilityOrSelf(
       workspaceId,
       userId,
       "work_item:assign",
       "work_item:update",
       callerPerson !== undefined && callerPerson.id === assigneeId,
+      c.get("apiKey"),
     );
 
     const { actorId, actorType } = resolveActor(
@@ -1187,6 +1431,7 @@ const workItem = apiRouter<
       workspaceId,
       userId,
       operation === "delete" ? "work_item:delete" : "work_item:assign",
+      c.get("apiKey"),
     );
 
     const { actorId, actorType } = resolveActor(
@@ -1231,26 +1476,15 @@ const workItem = apiRouter<
     // `work_item:assign` carries them. The read here is the row the predicate names;
     // the controller re-loads it (same shape as the assign route) and re-scopes its own
     // conditional write.
-    const [current] = await db
-      .select({ assigneeId: workItemTable.assigneeId })
-      .from(workItemTable)
-      .where(
-        and(
-          eq(workItemTable.key, key),
-          eq(workItemTable.workspaceId, workspaceId),
-          isNull(workItemTable.archivedAt),
-          isNull(workItemTable.deletedAt),
-        ),
-      )
-      .limit(1);
+    const [current] = await findWorkItemAssigneeForActorQuery(
+      db,
+      key,
+      workspaceId,
+    );
     if (current === undefined) {
       throw new HTTPException(404, { message: "Work item not found" });
     }
-    const [callerPerson] = await db
-      .select({ id: personTable.id })
-      .from(personTable)
-      .where(eq(personTable.userId, userId))
-      .limit(1);
+    const [callerPerson] = await findPersonIdByUserIdQuery(db, userId);
     await assertCallerHasCapabilityOrSelf(
       workspaceId,
       userId,
@@ -1259,6 +1493,7 @@ const workItem = apiRouter<
       callerPerson !== undefined &&
         current.assigneeId !== null &&
         callerPerson.id === current.assigneeId,
+      c.get("apiKey"),
     );
 
     const { actorId, actorType } = resolveActor(
@@ -1299,11 +1534,7 @@ const workItem = apiRouter<
     const { toStateTemplateId, note } = c.req.valid("json");
     const { actorId, actorType } = resolveActor(userId, c.get("apiKey"));
 
-    const [callerPerson] = await db
-      .select({ id: personTable.id })
-      .from(personTable)
-      .where(eq(personTable.userId, userId))
-      .limit(1);
+    const [callerPerson] = await findPersonIdByUserIdQuery(db, userId);
 
     try {
       const transitioned = await transitionWorkItem(
@@ -1333,14 +1564,11 @@ const workItem = apiRouter<
   .openapi(listWorkItemTransitionsRoute, async (c) => {
     const workItemId = c.get("workItemId");
     const userId = c.get("userId");
-    const [callerPerson] = await db
-      .select({ id: personTable.id })
-      .from(personTable)
-      .where(eq(personTable.userId, userId))
-      .limit(1);
+    const callerPerson = await findPersonByUserIdQuery(db, userId);
     const offers = await listWorkItemTransitions(
       workItemId,
       callerPerson?.id ?? null,
+      callerPerson?.side ?? null,
     );
     return c.json(offers, 200);
   })

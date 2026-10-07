@@ -3,7 +3,7 @@ import { and, eq, isNull, sql } from "drizzle-orm";
 import { HTTPException } from "hono/http-exception";
 import { appendAuditLog } from "../../audit/audit-writer";
 import db from "../../database";
-import { projectTable, workItemTable } from "../../database/schema";
+import { workItemTable } from "../../database/schema";
 import { publishEvent } from "../../events";
 import {
   type ActivityActorType,
@@ -16,6 +16,10 @@ import {
 } from "../assert-work-item-live";
 import { resolveAssigneeEligibility } from "../assignee-eligibility";
 import { publishWorkItemHint, recordWorkItemEvent } from "../native-event";
+import {
+  findAssignableWorkItemQuery,
+  findCurrentWorkItemAssigneeQuery,
+} from "../repository";
 
 /**
  * `POST /api/work-items/{key}/assign` (`docs/03-features/assignment.md` § API,
@@ -95,27 +99,7 @@ export async function assignWorkItem(
   // `findFirst`, since no relations are declared on these tables) so every caller
   // -- including bulk -- is covered regardless of which middleware chain it went
   // through.
-  const [item] = await db
-    .select({
-      id: workItemTable.id,
-      key: workItemTable.key,
-      workspaceId: workItemTable.workspaceId,
-      projectId: workItemTable.projectId,
-      assigneeId: workItemTable.assigneeId,
-      version: workItemTable.version,
-    })
-    .from(workItemTable)
-    .innerJoin(projectTable, eq(workItemTable.projectId, projectTable.id))
-    .where(
-      and(
-        eq(workItemTable.key, key),
-        isNull(workItemTable.archivedAt),
-        isNull(workItemTable.deletedAt),
-        isNull(projectTable.archivedAt),
-        isNull(projectTable.deletedAt),
-      ),
-    )
-    .limit(1);
+  const [item] = await findAssignableWorkItemQuery(db, key);
 
   if (!item || item.workspaceId !== workspaceId) {
     throw new HTTPException(404, { message: "Work item not found" });
@@ -215,11 +199,7 @@ export async function assignWorkItem(
       });
 
     if (!updated) {
-      const [current] = await tx
-        .select({ assigneeId: workItemTable.assigneeId })
-        .from(workItemTable)
-        .where(eq(workItemTable.id, item.id))
-        .limit(1);
+      const [current] = await findCurrentWorkItemAssigneeQuery(tx, item.id);
       throw new WorkItemAssigneeConflictError(key, current?.assigneeId ?? null);
     }
 

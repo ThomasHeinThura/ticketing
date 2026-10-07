@@ -32,10 +32,38 @@ export type SchemaDefect = {
     | "show_if_invalid_condition"
     | "show_if_chained_condition"
     | "maps_to_empty"
-    | "maps_to_missing_native_field";
+    | "maps_to_missing_native_field"
+    | "maps_to_invalid_priority_value";
 };
 
 const VISIBILITY_OPS = new Set(["eq", "neq", "in", "is_set"]);
+
+/** Canonical RT-5 operator evaluation shared by domain and portal surfaces. */
+export function isVisibilityConditionSatisfied(
+  condition: VisibilityCondition,
+  actual: FormValue,
+): boolean {
+  const wanted = condition.value ?? null;
+  switch (condition.op) {
+    case "eq":
+      return valuesEqual(actual, wanted);
+    case "neq":
+      return !valuesEqual(actual, wanted);
+    case "in":
+      return (
+        Array.isArray(condition.value) &&
+        condition.value.some((value) => valuesEqual(actual, value))
+      );
+    case "is_set":
+      return (
+        actual !== null &&
+        actual !== undefined &&
+        !(typeof actual === "string" && actual.trim() === "")
+      );
+    default:
+      return false;
+  }
+}
 
 /** Whether a `showIf` condition is well-formed: known op, `field_key` set, `in`'s value an array. */
 function isConditionWellFormed(condition: VisibilityCondition): boolean {
@@ -122,6 +150,21 @@ export function validateFormSchema(
         // declares the native set, an unknown target is a publish defect.
         defects.push({ key, problem: "maps_to_missing_native_field" });
       }
+      if (field.mapsTo.field === "priority") {
+        const allowed = new Set(["low", "medium", "high", "urgent"]);
+        const invalidPriorityMapping =
+          (field.type !== "select" && field.type !== "combobox") ||
+          !field.options?.length ||
+          (field.options ?? []).some((option) => {
+            const mapped =
+              field.mapsTo?.map && Object.hasOwn(field.mapsTo.map, option)
+                ? field.mapsTo.map[option]
+                : option;
+            return !allowed.has(mapped ?? "");
+          });
+        if (invalidPriorityMapping)
+          defects.push({ key, problem: "maps_to_invalid_priority_value" });
+      }
     }
   }
   return defects;
@@ -155,13 +198,14 @@ function valuesEqual(a: FormValue, b: FormValue): boolean {
  * `validateFormSchema` should already have rejected, fails **closed**: the field counts
  * as visible, so its `required` is still enforced rather than silently skippable (H1).
  */
-function resolveVisibility(
+export function resolveFormVisibility(
   schema: FormSchema,
   data: Readonly<Record<string, FormValue>>,
 ): ReadonlyMap<string, boolean> {
   const byKey = new Map(schema.fields.map((f) => [f.key, f]));
   const cache = new Map<string, boolean>();
-  const resolving = new Set<string>();
+  const resolving = new Map<string, number>();
+  const path: string[] = [];
 
   function resolve(field: FormField): boolean {
     const cached = cache.get(field.key);
@@ -172,43 +216,32 @@ function resolveVisibility(
       cache.set(field.key, true);
       return true;
     }
-    if (resolving.has(field.key) || !isConditionWellFormed(condition)) {
+    if (!isConditionWellFormed(condition)) {
       cache.set(field.key, true);
       return true;
     }
+    const cycleStart = resolving.get(field.key);
+    if (cycleStart !== undefined) {
+      for (const key of path.slice(cycleStart)) cache.set(key, true);
+      return true;
+    }
 
-    resolving.add(field.key);
+    resolving.set(field.key, path.length);
+    path.push(field.key);
     const controller = byKey.get(condition.field_key);
     const controllerVisible = controller === undefined || resolve(controller);
+    path.pop();
     resolving.delete(field.key);
+
+    // A cycle member stays fail-closed/visible even after recursion unwinds.
+    if (cache.has(field.key)) return true;
 
     // N1: a hidden controller's answer never decides another field's visibility.
     const actual: FormValue =
       controllerVisible && Object.hasOwn(data, condition.field_key)
         ? (data[condition.field_key] ?? null)
         : null;
-    const wanted: FormValue = condition.value ?? null;
-
-    let visible: boolean;
-    switch (condition.op) {
-      case "eq":
-        visible = valuesEqual(actual, wanted);
-        break;
-      case "neq":
-        visible = !valuesEqual(actual, wanted);
-        break;
-      case "in":
-        visible =
-          Array.isArray(condition.value) &&
-          condition.value.some((v) => valuesEqual(actual, v));
-        break;
-      case "is_set":
-        visible =
-          actual !== null &&
-          actual !== undefined &&
-          !(typeof actual === "string" && actual.trim() === "");
-        break;
-    }
+    const visible = isVisibilityConditionSatisfied(condition, actual);
     cache.set(field.key, visible);
     return visible;
   }
@@ -223,7 +256,7 @@ export function isFieldVisible(
   field: FormField,
   data: Readonly<Record<string, FormValue>>,
 ): boolean {
-  return resolveVisibility(schema, data).get(field.key) ?? true;
+  return resolveFormVisibility(schema, data).get(field.key) ?? true;
 }
 
 /** The fields a customer actually sees for the data so far — required checks apply only here. */
@@ -231,7 +264,7 @@ export function visibleFields(
   schema: FormSchema,
   data: Readonly<Record<string, FormValue>>,
 ): readonly FormField[] {
-  const visibility = resolveVisibility(schema, data);
+  const visibility = resolveFormVisibility(schema, data);
   return schema.fields.filter((f) => visibility.get(f.key) ?? true);
 }
 

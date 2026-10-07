@@ -5,6 +5,7 @@ import {
   jsonResponse,
 } from "../openapi";
 import { setShadowLegacyAuthorization } from "../permissions/shadow-context";
+import { requireSessionOnly } from "../utils/require-session-only";
 import { notificationPreferenceSchema } from "./response";
 import {
   updatePreferencesBody,
@@ -42,6 +43,7 @@ const updatePreferencesRoute = createRoute({
   summary: "Update notification preferences",
   description:
     "Update the global delivery settings. Omitted fields are left unchanged; a secret sent as null is cleared.",
+  middleware: [requireSessionOnly()] as const,
   request: {
     body: {
       required: true,
@@ -51,6 +53,7 @@ const updatePreferencesRoute = createRoute({
   responses: {
     200: preferencesResponse("The updated preferences"),
     400: errorResponse("Invalid request"),
+    403: errorResponse("A browser session is required"),
   },
 });
 
@@ -62,6 +65,7 @@ const upsertWorkspaceRuleRoute = createRoute({
   summary: "Upsert workspace rule",
   description:
     "Create or replace the notification rule for one workspace, overriding the global settings there.",
+  middleware: [requireSessionOnly()] as const,
   request: {
     params: workspaceIdParam,
     body: {
@@ -84,6 +88,7 @@ const deleteWorkspaceRuleRoute = createRoute({
   summary: "Delete workspace rule",
   description:
     "Remove a workspace's rule so the workspace falls back to the global settings.",
+  middleware: [requireSessionOnly()] as const,
   request: { params: workspaceIdParam },
   responses: {
     200: preferencesResponse("The updated preferences"),

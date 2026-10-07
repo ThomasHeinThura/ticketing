@@ -1,17 +1,8 @@
-import { eq } from "drizzle-orm";
 import { HTTPException } from "hono/http-exception";
-import db from "../../database";
-import { workflowTable } from "../../database/schema";
+import { getWorkflowQuery } from "../repository";
 
 async function getWorkflow(id: string) {
-  const workflow = await db.query.workflowTable.findFirst({
-    where: eq(workflowTable.id, id),
-    with: {
-      versions: {
-        with: { transitions: true },
-      },
-    },
-  });
+  const workflow = await getWorkflowQuery(id);
 
   if (!workflow) {
     throw new HTTPException(404, { message: "Workflow not found" });

@@ -17,6 +17,7 @@ import {
   notifyCurrentInstanceAdminsOfAuditFailure,
 } from "./observability/audit-failure-notifier";
 import { recordAuditWriteFailure } from "./observability/runtime";
+import { getUserForMfaReset, lockUserTwoFactorEnabled } from "./repository";
 
 const requestSchema = z
   .object({ verificationNote: z.string().trim().min(12).max(1000) })
@@ -74,8 +75,7 @@ const resetMfa = apiRouter().openapi(resetRoute, async (c) => {
     impersonatedBy?: string | null;
   } | null;
   if (
-    !session ||
-    session.portal !== "agent" ||
+    session?.portal !== "agent" ||
     session.impersonatedBy ||
     !(await isCurrentInstanceAdmin(c.get("userId")))
   ) {
@@ -89,16 +89,7 @@ const resetMfa = apiRouter().openapi(resetRoute, async (c) => {
 
   const { id } = c.req.valid("param");
   const { verificationNote } = c.req.valid("json");
-  const [target] = await db
-    .select({
-      id: schema.userTable.id,
-      email: schema.userTable.email,
-      name: schema.userTable.name,
-      locale: schema.userTable.locale,
-    })
-    .from(schema.userTable)
-    .where(eq(schema.userTable.id, id))
-    .limit(1);
+  const [target] = await getUserForMfaReset(id);
   if (!target) throw new HTTPException(404, { message: "User not found" });
   let actorFactor: LocalFactorState;
   try {
@@ -137,12 +128,7 @@ const resetMfa = apiRouter().openapi(resetRoute, async (c) => {
       ) {
         throw new StepUpRejection(403, "step_up_unavailable");
       }
-      const [current] = await tx
-        .select({ enabled: schema.userTable.twoFactorEnabled })
-        .from(schema.userTable)
-        .where(eq(schema.userTable.id, id))
-        .for("update")
-        .limit(1);
+      const [current] = await lockUserTwoFactorEnabled(tx, id);
       if (!current?.enabled)
         throw new StepUpRejection(409, "factor_reset_unavailable");
       await tx

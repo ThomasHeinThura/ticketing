@@ -1,9 +1,9 @@
-import { and, eq, isNull } from "drizzle-orm";
 import type { Context, Next } from "hono";
 import { HTTPException } from "hono/http-exception";
-import db, { schema } from "../database";
+import db from "../database";
 import { rejectNulByte } from "../utils/reject-nul-byte";
 import { validateWorkspaceAccess } from "../utils/validate-workspace-access";
+import { findCommentReachQuery } from "./repository";
 
 /**
  * `PATCH|DELETE /api/comments/{id}` middleware -- resolves the addressed `comment` row
@@ -50,31 +50,7 @@ export function requireCommentReach(idKey = "id") {
     // only its project's -- same gap `require-work-item-reach.ts` closed for #276, here
     // for the comment-reach path, which has its own local lookup rather than going
     // through that middleware.
-    const [comment] = await db
-      .select({
-        id: schema.commentTable.id,
-        workItemId: schema.commentTable.workItemId,
-        workspaceId: schema.commentTable.workspaceId,
-        authorId: schema.commentTable.authorId,
-      })
-      .from(schema.commentTable)
-      .innerJoin(
-        schema.workItemTable,
-        eq(schema.commentTable.workItemId, schema.workItemTable.id),
-      )
-      .innerJoin(
-        schema.projectTable,
-        eq(schema.workItemTable.projectId, schema.projectTable.id),
-      )
-      .where(
-        and(
-          eq(schema.commentTable.id, id),
-          isNull(schema.workItemTable.deletedAt),
-          isNull(schema.workItemTable.archivedAt),
-          isNull(schema.projectTable.deletedAt),
-        ),
-      )
-      .limit(1);
+    const [comment] = await findCommentReachQuery(db, id);
 
     if (!comment) {
       throw new HTTPException(404, { message: "Comment not found" });

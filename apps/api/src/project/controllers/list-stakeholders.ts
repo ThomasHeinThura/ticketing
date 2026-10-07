@@ -1,16 +1,10 @@
-import { asc, eq } from "drizzle-orm";
-import db from "../../database";
-import { stakeholderTable } from "../../database/schema";
+import { listStakeholdersQuery } from "../repository";
 import { requireActiveProject } from "../require-active-project";
 
 async function listStakeholders(projectId: string, workspaceId: string) {
   await requireActiveProject(projectId, workspaceId);
 
-  return db
-    .select()
-    .from(stakeholderTable)
-    .where(eq(stakeholderTable.projectId, projectId))
-    .orderBy(asc(stakeholderTable.escalationOrder));
+  return listStakeholdersQuery(projectId);
 }
 
 export default listStakeholders;

@@ -9,6 +9,7 @@ import {
   assertProjectStillLive,
   assertWorkItemStillLive,
 } from "../assert-work-item-live";
+import { lockDeletableWorkItemQuery } from "../repository";
 
 // #23's fourth slice: `DELETE /api/work-items/{key}` (`work_item:delete`, plus reach).
 //
@@ -67,23 +68,7 @@ export async function deleteWorkItem(
     // The bulk route calls this controller directly with `middleware: []`, and the
     // single-item reach middleware runs before this transaction. Lock and re-check
     // both rows here so every caller is protected from project archive/delete races.
-    const [row] = await tx
-      .select({
-        id: workItemTable.id,
-        projectId: workItemTable.projectId,
-        deletedAt: workItemTable.deletedAt,
-        archivedAt: workItemTable.archivedAt,
-      })
-      .from(workItemTable)
-      .where(
-        and(
-          eq(workItemTable.key, key),
-          eq(workItemTable.workspaceId, workspaceId),
-          isNull(workItemTable.deletedAt),
-        ),
-      )
-      .limit(1)
-      .for("update");
+    const [row] = await lockDeletableWorkItemQuery(tx, key, workspaceId);
 
     assertWorkItemStillLive(row);
     await assertProjectStillLive(tx, row.projectId);

@@ -26,6 +26,10 @@ import {
   inviteWorkspaceMemberNative,
   rejectInvitationNative,
 } from "./helpers/workspace-invitation-write-http";
+import {
+  createWorkspaceRoleNative,
+  deleteWorkspaceRoleNative,
+} from "./helpers/workspace-role-write-http";
 import { createWorkspaceNative } from "./helpers/workspace-write-http";
 
 async function createWorkspace(
@@ -539,6 +543,52 @@ describe("S6a accept (POST /api/invitation/{id}/accept)", () => {
 
     expect(await membershipRole(workspaceId, invitee.user.id)).toBe("member");
     expect((await invitationRow(invitation.id))?.status).toBe("accepted");
+  });
+
+  it("leaves a pending invitation unchanged when its role was deleted before acceptance", async () => {
+    const { app } = createApp();
+    const owner = await signUpUser(app);
+    const workspaceId = await createWorkspace(
+      app,
+      owner.cookie,
+      "Removed invite role",
+    );
+    const roleResponse = await createWorkspaceRoleNative(
+      app,
+      owner.cookie,
+      workspaceId,
+      { role: "future-member", permission: { work_item: ["read"] } },
+    );
+    expect(roleResponse.status).toBe(200);
+    const roleId = ((await roleResponse.json()) as { id: string }).id;
+
+    const invited = await inviteWorkspaceMemberNative(
+      app,
+      owner.cookie,
+      workspaceId,
+      { email: "future-member@example.com", role: "future-member" },
+    );
+    expect(invited.status).toBe(200);
+    const invitationId = ((await invited.json()) as { id: string }).id;
+    const deleted = await deleteWorkspaceRoleNative(
+      app,
+      owner.cookie,
+      workspaceId,
+      roleId,
+    );
+    expect(deleted.status).toBe(200);
+
+    const invitee = await signUpUser(app, {
+      email: "future-member@example.com",
+    });
+    const accepted = await acceptInvitationNative(
+      app,
+      invitee.cookie,
+      invitationId,
+    );
+    expect(accepted.status).toBe(400);
+    expect((await invitationRow(invitationId))?.status).toBe("pending");
+    expect(await membershipRowCount(workspaceId, invitee.user.id)).toBe(0);
   });
 
   it("ISSUE #88: refuses a caller who is already a member, with 409, and writes no second membership row", async () => {

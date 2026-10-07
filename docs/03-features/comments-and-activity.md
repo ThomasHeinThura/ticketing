@@ -74,7 +74,7 @@ security-sensitive field in the product.
   | Verb / field | Visibility |
   | --- | --- |
   | `created`, `transitioned` (state change), `priority`, `due_date`, `title`, `description`, `attachment.added` (customer-visible attachment), `reopened`, `resolved`, `escalated` | `public` |
-  | `assignee`, `watcher`, `label`, `custom_field` (unless the field is `customer_visible`), `estimate`, `cycle`, `module`, `relation`, `parent`, `time_entry`, `sla_pause`, `attachment.added` (internal attachment), everything else | `internal` |
+  | `assignee`, `watcher`, `label`, `custom_field` (unless the field is `customer_visible`), `estimate`, `cycle`, `module`, `relation`, `parent`, `time_entry`, `sla_pause`, `approval.decided` (approval decision; the decision note is not copied into activity), `attachment.added` (internal attachment), everything else | `internal` |
 
   Customers therefore never see staff names as assignees; they do see the named author of a
   public comment or approval decision ([RBAC](../01-architecture/rbac.md), customer rules).

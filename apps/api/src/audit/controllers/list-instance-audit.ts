@@ -1,10 +1,9 @@
-import { desc } from "drizzle-orm";
 import type { Context } from "hono";
 import { HTTPException } from "hono/http-exception";
 import db from "../../database";
-import { auditLogTable } from "../../database/schema";
 import { setShadowLegacyAuthorization } from "../../permissions/shadow-context";
 import { isInstanceAdmin } from "../../utils/is-instance-admin";
+import { listAuditRows } from "../repository";
 import {
   type AuditQuery,
   auditListFilters,
@@ -31,12 +30,11 @@ export async function listInstanceAudit(c: Context, query: AuditQuery) {
     throw new HTTPException(403, { message: "Forbidden" });
   }
 
-  const rows = await db
-    .select()
-    .from(auditLogTable)
-    .where(combineFilters(auditListFilters(query)))
-    .orderBy(desc(auditLogTable.seq))
-    .limit(query.limit);
+  const rows = await listAuditRows(
+    db,
+    combineFilters(auditListFilters(query)),
+    query.limit,
+  );
 
   await writeAuditRead(c, { workspaceId: null });
   setShadowLegacyAuthorization(c, "allowed");

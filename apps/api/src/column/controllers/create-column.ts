@@ -1,9 +1,9 @@
-import { eq, sql } from "drizzle-orm";
 import { HTTPException } from "hono/http-exception";
 import db from "../../database";
 import { columnTable } from "../../database/schema";
 import { VIRTUAL_STATUSES } from "../../task/validate-task-fields";
 import { getProjectWorkspaceId } from "../../utils/assert-assignable-user";
+import { findColumnSlugQuery, getColumnMaxPositionQuery } from "../repository";
 
 export function toSlug(name: string): string {
   const slug = name
@@ -48,12 +48,7 @@ async function createColumn({
     });
   }
 
-  const existing = await db
-    .select({ id: columnTable.id })
-    .from(columnTable)
-    .where(
-      sql`${columnTable.projectId} = ${projectId} AND ${columnTable.slug} = ${slug}`,
-    );
+  const existing = await findColumnSlugQuery(projectId, slug);
 
   if (existing.length > 0) {
     throw new HTTPException(409, {
@@ -61,12 +56,7 @@ async function createColumn({
     });
   }
 
-  const [maxPos] = await db
-    .select({
-      maxPosition: sql<number>`COALESCE(MAX(${columnTable.position}), -1)`,
-    })
-    .from(columnTable)
-    .where(eq(columnTable.projectId, projectId));
+  const [maxPos] = await getColumnMaxPositionQuery(projectId);
 
   const position = (maxPos?.maxPosition ?? -1) + 1;
 

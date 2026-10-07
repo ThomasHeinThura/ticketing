@@ -21,7 +21,7 @@ const getCapabilitiesRoute = createRoute({
   tags: ["Capabilities"],
   summary: "Get the caller's capabilities in a workspace",
   description:
-    "One call replacing the 16-way has-permission fan-out. A session member may inspect their own map, including an all-false map for an unknown or malformed role; this endpoint grants no capability by doing so.",
+    "One call replacing the 16-way has-permission fan-out the client made against the organization() plugin. Includes the exact canonical sla_policy:manage check used to gate service-calendar authoring.",
   middleware: [requireSessionOnly(), workspaceAccess.fromQuery()] as const,
   request: { query: workspaceIdQuery },
   responses: {
@@ -37,13 +37,12 @@ const getCapabilitiesRoute = createRoute({
 const capabilities = apiRouter<
   BaseVariables & { workspaceId: string }
 >().openapi(getCapabilitiesRoute, async (c) => {
-  // Resolve the same exact membership shape as the sixteen capability checks. A single
-  // malformed role still receives its own introspection response: each capability check
-  // returns false, and no authority is granted. Missing and duplicate rows are denied.
+  // Missing and duplicate rows deny; malformed roles still receive only an all-false
+  // introspection map. Instance-admin reach through workspaceAccess is not membership.
   const membership = await callerMembershipResolution(c);
   if (
-    !membership ||
-    (!membership.ok && membership.reason !== "malformed-role")
+    membership === null ||
+    (membership.ok === false && membership.reason !== "malformed-role")
   ) {
     setShadowLegacyAuthorization(c, "denied");
     throw new HTTPException(403, { message: "No access to the workspace" });

@@ -377,6 +377,10 @@ not a scanner run, and it gets its own GPT-6 Sol security review before P0 close
    check ([ux-quality-gates.md](../02-design/ux-quality-gates.md) `G12`).
 4. Add `repository.ts` to every feature folder and `check:queries`
    ([monorepo-layout.md](../01-architecture/monorepo-layout.md)).
+   **Thomas scope decision, 2026-10-05:** the complete inherited repository refactor and
+   `check:queries` acceptance are deferred from P0 to P4. They remain required before P4
+   completion; this exception changes stage timing only. See the named decision in
+   [decision-log.md](../07-planning/decision-log.md).
 5. Route registry `lib/routes.ts` + round-trip test; policy registry + the three permission
    tests ([rbac.md](../01-architecture/rbac.md)).
 6. `docs/` — this corpus — moves in unchanged.

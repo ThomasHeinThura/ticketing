@@ -1,6 +1,5 @@
-import { asc, eq } from "drizzle-orm";
 import db from "../../database";
-import { workItemTypeTable } from "../../database/schema";
+import { listWorkItemTypesQuery } from "../repository";
 
 /**
  * `GET /api/workspace/{workspaceId}/work-item-types` (`workspace:read`).
@@ -21,19 +20,7 @@ import { workItemTypeTable } from "../../database/schema";
  * particular one, because an unstable list makes a picker jump between renders.
  */
 export async function listWorkItemTypes(workspaceId: string) {
-  return db
-    .select({
-      id: workItemTypeTable.id,
-      key: workItemTypeTable.key,
-      name: workItemTypeTable.name,
-      icon: workItemTypeTable.icon,
-      category: workItemTypeTable.category,
-      isEpic: workItemTypeTable.isEpic,
-      isChange: workItemTypeTable.isChange,
-    })
-    .from(workItemTypeTable)
-    .where(eq(workItemTypeTable.workspaceId, workspaceId))
-    .orderBy(asc(workItemTypeTable.category), asc(workItemTypeTable.name));
+  return listWorkItemTypesQuery(db, workspaceId);
 }
 
 export default listWorkItemTypes;

@@ -1,6 +1,6 @@
 import { createId } from "@paralleldrive/cuid2";
 import { DEFAULT_ROLE_NAMES, defaultRolePayloads } from "@taskdesk/permissions";
-import { eq, like, or } from "drizzle-orm";
+import { eq } from "drizzle-orm";
 import db, { schema } from "../../database";
 import { publishEvent } from "../../events";
 import { isUniqueViolation } from "../../utils/is-unique-violation";
@@ -11,6 +11,7 @@ import {
   randomSlugSuffix,
   slugifyWorkspaceName,
 } from "../../utils/workspace-slug";
+import { listWorkspaceSlugNeighboursQuery } from "../repository";
 
 export type CreateWorkspaceInput = {
   name: string;
@@ -42,15 +43,7 @@ const SLUG_RETRY_ATTEMPTS = 5;
 
 async function proposeSlug(name: string): Promise<string> {
   const base = slugifyWorkspaceName(name);
-  const neighbours = await db
-    .select({ slug: schema.workspaceTable.slug })
-    .from(schema.workspaceTable)
-    .where(
-      or(
-        eq(schema.workspaceTable.slug, base),
-        like(schema.workspaceTable.slug, `${base}-%`),
-      ),
-    );
+  const neighbours = await listWorkspaceSlugNeighboursQuery(base);
   return nextAvailableSlug(
     base,
     neighbours.map((row) => row.slug),
