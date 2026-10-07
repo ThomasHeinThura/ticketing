@@ -1,53 +1,54 @@
 ## Status First
 
-Snapshot: 2026-10-07T10:52:40.242776+00:00. Accepted main remains `3096cb044bdf6ae98488bfc385f532fa6386343a`; P0 #583 remains frozen at `5326937460b195d8e69584c0cb99305348330a95`. Parallel P0, later integration and P2 catalogue/intake work is active. No protected merge, persistent DEV refresh, release, enforcement activation or phase completion occurred.
+Snapshot: 2026-10-07T11:43:44Z. Accepted `main` remains `3096cb044bdf6ae98488bfc385f532fa6386343a`; P0 #583 remains frozen at `5326937460b195d8e69584c0cb99305348330a95`. No protected merge, persistent DEV refresh, release, enforcement activation or phase completion occurred.
 
 | Phase | Implementation | Integration | Acceptance |
 | --- | --- | --- | --- |
-| P0 | Frozen product; v12 private measurement and endpoint controls independently clear | Sole closure #583 | Actual fresh signup, persisted admin, CSRF, workspace/project/item, attachment upload/completion/list pass; five-state persistence, official installer, G11, compatibility/cutover/finalizer open |
-| P1 | Full saved-view batch in train226; complete review findings being fixed together | Sole later train #589 | Saved-URL fallback/team chooser and native assertion fixes pending; team-lead contract remains held |
-| P2 | Approval continuity in train226; substantive catalogue/intake API/UI implementation proceeds separately | Catalogue/intake leaf not yet complete/composed | Custom-field owning review and required-file contract remain held; optional submission attachments authorized |
-| P3 | OIDC mapping/validated login in train226; role-ceiling correction underway | #589 | Provider/runtime and full identity acceptance remain open |
-| P4 | Outbox and all-eight-role private seeder in train226 | #589 and #597 | Query ownership remains P4; broader governance, current CI, required reviews and user scope decisions remain open |
+| P0 | Frozen product; v12 endpoint controls and source532 five-phase local lifecycle evidence recorded | Sole closure #583 | Five phases pass 88/88/80/88/88 ledger assertions and 88 bounded HTTPS requests against the same fixtures, encrypted secret and attachment HMAC; official installer/product TLS, hosted G11, cutover and phase finalizer remain open |
+| P1 | Full saved-view batch and collected remedy continue in later train | #589 current head `59426874d37156d125fdbee40e25236d86346ad2` at refresh | Full review/CI acceptance open; hosted checks still running at refresh with registers, PR-template/security and OpenAPI failures; no merge claim |
+| P2 | Catalogue/intake API/UI implemented in frozen candidate | #598 `46512fc0a54b5775ae6f2b2d9a1f52663f4fd33f` | Offline API/web/types/lint/build/route-policy/OpenAPI/URL checks recorded; independent three-Luna panel BLOCKED and CI has nine failing checks; custom-field/required-file and AU-action-name decisions remain open |
+| P3 | OIDC mapping and validated login integrated in #589 | #589 current head above | Provider/runtime and full identity acceptance remain open |
+| P4 | Outbox and all-eight-role private seeder integrated in #589 | #589 and #597 evidence | Query ownership and broader governance remain open; current #589 CI/reviews not clear |
 
 ### What changed
 
-Current pushed integration review head is `226d059d2ac649ac04761b28b4062d770e8a81ef`. Its contrast gate passes 296 actual source-grounded light/dark pairs. The full fresh Luna panel collected six distinct findings before remediation: saved-view URL fallback, team discovery/permissions, portal error/empty exclusivity, list DTO displayed fields, transactional identity role-ceiling retirement, and CSV audit failure preservation. One complete author batch also fixes the seventh native test assertion issue. No partial fix is submitted for early review.
+Source532 private local lifecycle run `20261007T111221Z-63bfb1` completed all five phases: ledger assertion counts 88/88/80/88/88 and 88 bounded HTTPS requests, reusing identical fixtures, encrypted secret and attachment HMAC. Root cleanup recorded: 11 owned resources issued for cleanup at 11:12:21.490949Z; last measurement 11:31:02.333447Z; cleanup 11:32:16.822024Z. Ten containers, six named volumes, four networks and two aliases were removed; global sets stayed unchanged and ports4296/4297 were absent. Unknown resources were preserved. This proves the bounded local run only: its HTTPS signed-URL scheme reconstruction does not prove official installer TLS, shipped URL generation, Gate C, cutover, G11 or P0 completion.
 
-Root's isolated exact226 view test runs 1 file/21 tests:20 pass,1 fails because the test requires whitespace in Content-Type; expected422 itself passes. All owned resources are removed, global sets unchanged and55442 absent. This is not a full native-suite pass. Hosted226 checks have eight failures (OpenAPI, visual, G11, PR/security template, build, registers, PostgreSQL integration, E2E), with static/unit/domain/route-policy/axe/supply-chain/helm/CodeQL green. no cause is inferred from check state alone. No manual G11 retry occurred.
+#599 is exact head `51d151e8c2ff973c899c8b257f2fa21d9ee8fb0c`, based on frozen source532. Its ten-file canonical public-origin HTTPS fix has fresh Luna and Sol CLEAR reports. GitHub shows integration failure and G11 failure, with some cancelled checks; exact image build is still running in the private root runtime at `p0-public-origin-51d151e8-runtime/build-result.json`. Do not infer its runtime result until the owner records it. No product runtime or installer TLS claim is recorded.
 
-Private v11 review found three structural defects in phase image binding, per-phase endpoint validation and SQL row ordering. A completev12 remedy receives fresh independent Sol CLEAR at SHA256SUMS `8d4d1a2159b46c318357efc2892e7832e329851001ed4b4769dc548a9015ba61`; source75/54/21 checks and offline suites pass. This is static admission clearance only.
+#589 bulk source was pushed at `53bf` and the author is finishing the three-test remedy from local `00ac`; root's isolation diagnostic is attributed separately. Original combined native run `train53-combined-native-20261007T110307Z-367674` is 139 pass, 1 fail and 23 not executed across two failing files. A new diagnostic against exact original source records 162/163 pass, one SCIM fixture constraint failure; outbox's 23 tests passed in actual JSON suite order. No original offending row was recovered, final projection is zero, and no product cause is proven. Cleanup removed zero clients, one container and one named volume; global sets were unchanged, port55442 absent and credentials removed. This is an isolation diagnosis, not a gate waiver.
 
-Actual v12 run `20261007T104737Z-563ccc` proves both-host JSON health, signup/session/persisted admin/CSRF, fixture workspace/project/item, attachment presign/upload204/complete200/list200/redirect302. Root's operator validator still used the old download path despite the plan's correct `/api` path, failing before download. Root incorrectly continued dependent preference calls; the write returns400 because the source service requires an endpoint URL whenever a secret is supplied, even with delivery disabled; ingress stops and the later read fails. These operator mistakes and originals remain recorded. Final cleanup removes only5owned containers/3named volumes/2networks/2aliases, restores global sets, leaves4296/4297 absent and preserves the unknown volume. No secret measurement, repeat, upgrade or rollback proof is claimed. The complete next private fixture correction traces service preconditions, not only DTO shapes.
+#598 remains frozen at exact `46512fc0a54b5775ae6f2b2d9a1f52663f4fd33f` based on `a15b5b11`. The complete P2 catalogue/intake API/UI candidate passed its recorded offline checks: 12 Turbo tasks, web130/571, types, lint, build, route-policy88, OpenAPI270, URL38. Native/browser/image acceptance is absent. Three fresh Luna reviews are complete and BLOCKED; reports are `/tmp/taskdesk-pr598-review-46512fc0.md`, `/tmp/taskdesk-pr598-ui-review-46512fc0.md`, and `/tmp/taskdesk-pr598-authority-review-46512fc0.md`. Deduplicated findings have one author remediation underway; custom-field owner clearance, required-file behavior and AU-action names remain unresolved. Private CFv3 packet's 14-format validator passes, with its bundled question still pending Thomas.
+
+Hosted #583 G11 remains FAIL; no manual retry occurred. DEV088 and accepted main309 remain unchanged. Live GitHub refresh at this snapshot: #599 head `51d151e8c2ff973c899c8b257f2fa21d9ee8fb0c`; #598 head `46512fc0a54b5775ae6f2b2d9a1f52663f4fd33f`; #589 head `59426874d37156d125fdbee40e25236d86346ad2`. #589 has current checks in progress and failures in registers, PR-template/security and OpenAPI; no result is treated as green.
 
 ### What is being worked on now
 
-P0 completes the whole fixture precondition correction and then resumes actual local persistence; central Luna fixes the full seven-finding integration batch; separate Luna completes catalogue/intake API/UI/lifecycle tests using existing DDL. A custom-fields owner reconciliation packet is prepared without self-clearing its nonempty review. Required file collection has no defined pre-submit upload contract; the proposed optional-now/required-P4 decision is pending Thomas, not inferred approval.
+P0 public-origin candidate awaits its already-running private image-build result and then its bounded runtime adjudication; #589 author finishes the three-test remedy and publishes the actual resulting head; #598 author completes the deduplicated review-finding remediation. P2 custom-field ownership, required-file semantics and AU-action names still require Thomas's decisions. No lane may claim another lane's unrecorded outcome.
 
 ### Critical path
 
-1. Complete actual five-state owned P0 persistence and resolve the frozen G11 failure.
-2. Resolve official installer source ordering and actual provenance/TLS evidence.
-3. Resolve strict public-config evidence, eligible cutover and the separate Sol finalizer.
-4. Finish the whole integration remedy, current-head independent reviews and required CI.
-5. Complete catalogue/intake and resolve its genuine custom-field/required-file dependencies.
+1. Keep #583 blocked on its actual G11 failure; no manual retry.
+2. Record #599's exact image/runtime outcome and preserve the bounded local-only TLS limitation.
+3. Freeze and review the actual #589 successor after the three-test remedy is pushed; current checks and required reviews must clear on that exact head.
+4. Resolve #598 owning custom-field, required-file and AU-action decisions, then review/test its complete successor.
+5. Complete official installer/provenance, cutover eligibility and the separate P0 Sol phase finalizer before any P0 claim.
 
 ### Misalignment / drift
 
-Elapsed dates and partial captures do not establish72hours. Completed static private plans do not establish runtime persistence. Old review/native evidence stays tied to its tested SHA. SQL0000–0117 plus sole0118 remain canonical; no0119 is allocated. The persistent reviewed DEV deployment is unchanged.
+The five-phase local run is not official product/installer TLS or Gate C evidence. Static and scheme-reconstruction evidence does not establish shipped signed-URL correctness. A diagnostic failure in an SCIM fixture does not prove a product defect. #589 current head differs from the older snapshot; the pushed #53bf report and local `00ac` remedy are not to be conflated until live head refresh confirms the push. P0 remains frozen; DEV088/main309 and historical snapshots are unchanged.
 
 ### Concerns
 
-Repeated fixture failures now require complete service/controller precondition tracing. Root's API batch continuation after a validation failure is an operator error; future actions must stop immediately and close the window. Review findings remain open until the full structural remedy is tested and independently cleared.
+#599 GitHub has failing and cancelled checks while its private image build remains in progress; runtime must not be claimed from check status. #589 has current hosted failures and in-progress checks; #598 independent panel and CI block acceptance. The unresolved #598 contract questions remain true decision dependencies rather than implementation assumptions.
 
 ### Decisions needed from Thomas
 
-Existing questions remain pending: bounded public-config evidence, unchanged-source G11 confirmation, official installer ordering, team-lead saved-view contract, undefined development HTTP exception, exact OpenAPI breaks, and required-file scope. No duplicate question or new waiver is created by this snapshot.
+The #598 bundled question remains pending, including custom-field owning clearance, required-file behavior and AU-action names. Existing P0 public-config/strict-cutover and official installer ordering decisions remain pending. No elapsed time, implementation, review packet or test failure answers these choices.
 
 ### Next merge candidates
 
-#583 remains P0 closure; #589 remains later integration, with #597 seeder evidence carried into it. None is currently declared merge-ready.
-
+#583 remains the sole P0 closure candidate and is not merge-ready. #589 is the later integration train and is not merge-ready. #599 and #598 are leaves with open checks/reviews/decisions. No merge or phase completion is claimed.
 ---
 
 ## Status First
