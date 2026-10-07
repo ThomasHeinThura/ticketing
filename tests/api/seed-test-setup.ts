@@ -1,5 +1,5 @@
 import { vi } from "vitest";
-import { configureSeedTestOrigins } from "./seed-test-origins";
+import { configureSeedTestOrigins } from "../../apps/api/scripts/seed-test-origins";
 
 vi.mock("dotenv-mono", () => ({ config: () => {} }));
 
