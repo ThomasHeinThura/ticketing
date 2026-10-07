@@ -44,6 +44,16 @@ and written up. Workstreams may be working on P2, P3 and P4 concurrently; each o
 stages is claimed only when its own gate passes. That is why the gate is the control and
 sequencing is not.
 
+### Parallel implementation and staged acceptance
+
+Implementation can proceed across independent stages or workstreams when documented
+dependencies permit. Acceptance is per stage and exact candidate: an integrated later-stage
+branch does not make an earlier stage complete, and a prior hosted result does not transfer
+to a changed head. After an earlier stage is accepted into `main`, rebuild dependent
+integration candidates from that accepted source and rerun their applicable review and
+acceptance gates. Preserve prior runs as historical evidence with their original source
+identity and counts.
+
 ---
 
 ## P0 · Foundation

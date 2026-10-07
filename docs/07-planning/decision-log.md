@@ -1,3 +1,42 @@
+### 2026-10-07 · Keep P0 reconstruction separate from #599 and rebuild later integration after acceptance
+
+Thomas's current instruction is to keep the attachment/public-origin work in #599 outside
+P0 and to use frozen PR #583 head
+`5326937460b195d8e69584c0cb99305348330a95` as the P0 reconstruction base. The read-only
+scope audit at
+`/Users/heinthura/.codex/taskdesk-evidence/2026-10-07/p0-pr583-readonly-scope/scope-audit.md`
+identifies the #599 commits and paths, confirms no overlap with later P0 product paths,
+and provides the minimal ordered P0 replay set. Do not replay #599's `51d151e8`,
+`9abb6013` or `7c5ae58c` into the P0 successor. Do not carry forward the contaminated
+`359353cf` review record; regenerate P0 review material against the reconstructed exact
+candidate. Hold `a50ae92a` until its exact-head hosted G11 result and root classification.
+
+The audited ordered product replay set is `a0ec2679c95c6de91e7a17196e62566cbcd45a28`,
+`9bced3e3178a70b3a1984837836824e4a193c89f`,
+`bae2b3fdeeb458f059d71e7519a0aa8ab87b0cd2`,
+`5a493671a6eca00268eec9323565ff8953d244cb`,
+`0dd9a861318040ed3ba4038152724e8521e4e10c`,
+`d76fc71c4b03d3b2275bce62439022c4e784f8e5`,
+`343b45bc9dbb40baef7df5a84881553f810abf59`, and
+`4bc5259882d2d7eb510ece6f3e3b57a5173f9dc9`. This is a scope record, not an instruction
+to bypass exact-head review or acceptance.
+
+The accepted #579 source `f10f9a8fd383044926136cb0c233888e087d2ef9` remains the exact-head
+hosted 22/22 G11 comparison baseline; it is not acceptance evidence for a changed P0
+candidate. The audit also corrects source attribution: #583 exact head had a 19/22 result;
+the 16/22 result belongs to later product snapshot `bae2b3fd` and must remain attributed
+there.
+
+The current #589 `dfa0324` source/build and 339.1/350 KB work-list graph results do not make
+its integrated train final. Its earlier hosted Postgres run at `27fb81fe` (154 files / 1804
+tests passed) is historical. After P0 is accepted into `main`, rebuild the dependent
+integration candidate from that accepted source and rerun exact-head review and applicable
+acceptance gates. This records sequencing and evidence attribution; it does not claim any
+PR, stage or runtime acceptance, change thresholds, waive a gate or authorize a merge.
+
+**Recorded:** documentation author at `2026-10-07T16:50:58Z` from Thomas's current
+instruction, live GitHub heads/checks and the cited read-only scope audit.
+
 ### 2026-10-07 · Refresh live blockers and preserve exact evidence boundaries
 
 Live GitHub readback at `2026-10-07T15:56:20Z` records accepted `main` at

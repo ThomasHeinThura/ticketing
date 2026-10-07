@@ -110,7 +110,13 @@ Tracked in [risks.md](risks.md).
 
 ## The one thing that must not happen
 
-**Do not start a stage before the previous one is finished.**
+**Do not claim a stage before its exit criteria are met.**
+
+Implementation workstreams may advance in parallel when the dependency graph allows it;
+stage acceptance remains gated by each stage's own complete evidence. A later integration
+train is a candidate snapshot, not a substitute for accepting the prior stage. When an
+earlier stage is accepted into `main`, rebuild dependent integration candidates from that
+accepted source and rerun the applicable gates on the resulting exact head.
 
 v1 had twenty-five screens at roughly sixty per cent each, and it died of it. Fifteen
 screens at a hundred per cent would have been a product. Every pressure in a project pushes
