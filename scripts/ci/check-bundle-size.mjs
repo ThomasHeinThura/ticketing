@@ -98,18 +98,20 @@ export function collectInitialModules(manifest, entryKey) {
   return seen;
 }
 
-export function assertDynamicModuleOutsideInitialGraph(
+export function assertDynamicModuleOutsideInitialGraphs(
   manifest,
-  entryKey,
+  entryKeys,
   moduleKey,
 ) {
   const module = manifest[moduleKey];
   if (!module?.isDynamicEntry)
     throw new Error(`${moduleKey} is not a dynamic build entry.`);
-  if (collectInitialModules(manifest, entryKey).has(moduleKey))
-    throw new Error(
-      `${moduleKey} entered the ${entryKey} initial static graph.`,
-    );
+  for (const entryKey of entryKeys) {
+    if (collectInitialModules(manifest, entryKey).has(moduleKey))
+      throw new Error(
+        `${moduleKey} entered the ${entryKey} initial static graph.`,
+      );
+  }
 }
 
 export async function measureAssets(assets, outputDir) {
@@ -193,9 +195,9 @@ export async function checkBundleSizes({
           throw new Error(
             "G11 create-work-item dialog form is missing from the agent build manifest.",
           );
-        assertDynamicModuleOutsideInitialGraph(
+        assertDynamicModuleOutsideInitialGraphs(
           manifest,
-          workRouteKey,
+          [key, workRouteKey],
           createFormKey,
         );
         const workListAssets = new Set([

@@ -4,7 +4,7 @@ import os from "node:os";
 import path from "node:path";
 import test from "node:test";
 import {
-  assertDynamicModuleOutsideInitialGraph,
+  assertDynamicModuleOutsideInitialGraphs,
   BUDGETS_KB,
   checkBundleSizes,
   collectInitialAssets,
@@ -109,10 +109,17 @@ test("G11: initial graph includes static imports and CSS but excludes dynamic im
   ]);
 });
 
-test("G11: create dialog form must remain a dynamic module outside route startup", () => {
+test("G11: create dialog form is dynamic and outside agent-entry and route startup graphs", () => {
+  const agentEntryKey = "src/entry.agent.tsx";
   const routeKey = `src${WORK_LIST_COMPONENT_SUFFIX}`;
   const formKey = "src/components/work-item/create-work-item-dialog-form.tsx";
   const graph = {
+    [agentEntryKey]: {
+      file: "assets/agent.js",
+      isEntry: true,
+      imports: ["chunks/app-shell.js"],
+    },
+    "chunks/app-shell.js": { file: "assets/app-shell.js" },
     [routeKey]: {
       file: "assets/work.js",
       imports: ["chunks/dialog-shell.js"],
@@ -122,28 +129,55 @@ test("G11: create dialog form must remain a dynamic module outside route startup
   };
 
   assert.doesNotThrow(() =>
-    assertDynamicModuleOutsideInitialGraph(graph, routeKey, formKey),
+    assertDynamicModuleOutsideInitialGraphs(
+      graph,
+      [agentEntryKey, routeKey],
+      formKey,
+    ),
   );
   assert.throws(
     () =>
-      assertDynamicModuleOutsideInitialGraph(
+      assertDynamicModuleOutsideInitialGraphs(
         {
           ...graph,
           [routeKey]: {
             ...graph[routeKey],
-            imports: [...graph[routeKey].imports, formKey],
+            imports: [...graph[routeKey].imports, "chunks/route-form.js"],
+          },
+          "chunks/route-form.js": {
+            file: "assets/route-form.js",
+            imports: [formKey],
           },
         },
-        routeKey,
+        [agentEntryKey, routeKey],
         formKey,
       ),
-    /initial static graph/,
+    (error) => error.message.includes(`${routeKey} initial static graph`),
   );
   assert.throws(
     () =>
-      assertDynamicModuleOutsideInitialGraph(
+      assertDynamicModuleOutsideInitialGraphs(
+        {
+          ...graph,
+          [agentEntryKey]: {
+            ...graph[agentEntryKey],
+            imports: [...graph[agentEntryKey].imports, "chunks/entry-form.js"],
+          },
+          "chunks/entry-form.js": {
+            file: "assets/entry-form.js",
+            imports: [formKey],
+          },
+        },
+        [agentEntryKey, routeKey],
+        formKey,
+      ),
+    /src\/entry\.agent\.tsx initial static graph/,
+  );
+  assert.throws(
+    () =>
+      assertDynamicModuleOutsideInitialGraphs(
         { ...graph, [formKey]: { file: "assets/create-form.js" } },
-        routeKey,
+        [agentEntryKey, routeKey],
         formKey,
       ),
     /not a dynamic build entry/,
