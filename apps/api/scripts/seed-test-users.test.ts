@@ -146,7 +146,7 @@ describe("test-user seed contract", () => {
     const emails = Array.from({ length: 8 }, generateTestUserEmail);
     expect(new Set(emails).size).toBe(8);
     for (const email of emails) {
-      expect(email).toMatch(/^seed-[0-9a-f]{48}@test\.invalid$/u);
+      expect(/^seed-[0-9a-f]{48}@test\.invalid$/u.test(email)).toBe(true);
       expect(
         SUPPORTED_TEST_USER_ROLES.some((role) => email.includes(role)),
       ).toBe(false);
@@ -190,10 +190,10 @@ describe("test-user seed contract", () => {
       "taskdesk_test",
       expectedTestUserCredentials(["viewer", "customer"], false),
     );
-    expect(loaded).toEqual(manifest);
+    expect(JSON.stringify(loaded) === JSON.stringify(manifest)).toBe(true);
     await expect(writeCredentialFile(target, manifest)).rejects.toThrow();
     const contents = await readFile(target, "utf8");
-    expect(contents).toContain(credentials[0]?.password);
+    expect(contents.includes(credentials[0]?.password ?? "")).toBe(true);
   });
 
   it("rejects malformed or duplicate identities in a reused private manifest", async () => {
@@ -323,9 +323,11 @@ describe("test-user seed contract", () => {
       "preserve this unrelated file",
     );
     await writeCredentialFile(target, manifest);
-    expect(await readCredentialFile(target, "taskdesk_test", expected)).toEqual(
-      manifest,
-    );
+    expect(
+      JSON.stringify(
+        await readCredentialFile(target, "taskdesk_test", expected),
+      ) === JSON.stringify(manifest),
+    ).toBe(true);
 
     const publishedStage = credentialStagingFilePath(
       target,
@@ -334,9 +336,11 @@ describe("test-user seed contract", () => {
       "a".repeat(32),
     );
     await link(target, publishedStage);
-    expect(await readCredentialFile(target, "taskdesk_test", expected)).toEqual(
-      manifest,
-    );
+    expect(
+      JSON.stringify(
+        await readCredentialFile(target, "taskdesk_test", expected),
+      ) === JSON.stringify(manifest),
+    ).toBe(true);
     const handle = await open(target, "r");
     try {
       expect((await handle.stat()).nlink).toBe(1);
@@ -351,9 +355,11 @@ describe("test-user seed contract", () => {
       "b".repeat(32),
     );
     await link(target, activePublisherStage);
-    expect(await readCredentialFile(target, "taskdesk_test", expected)).toEqual(
-      manifest,
-    );
+    expect(
+      JSON.stringify(
+        await readCredentialFile(target, "taskdesk_test", expected),
+      ) === JSON.stringify(manifest),
+    ).toBe(true);
     const activePublisherHandle = await open(target, "r");
     try {
       expect((await activePublisherHandle.stat()).nlink).toBe(1);
@@ -363,14 +369,29 @@ describe("test-user seed contract", () => {
     await expect(lstat(activePublisherStage)).rejects.toThrow();
   });
 
-  it("keeps the success output independent from password values", () => {
+  it("keeps the success output independent from generated login credentials", () => {
     const password = generateTestUserPassword();
+    const email = generateTestUserEmail();
     const output = formatTestUserSeedResult(
       8,
       "taskdesk_local_test",
       "/private/test-users.json",
     );
-    expect(output).not.toContain(password);
+    expect(output.includes(password)).toBe(false);
+    expect(output.includes(email)).toBe(false);
     expect(output).toContain("8 test users");
+  });
+
+  it("keeps deliberate assertion failure diagnostics free of synthetic secrets", () => {
+    const syntheticSecret = `throwaway-${generateTestUserPassword()}`;
+    let failureMessage = "";
+    try {
+      expect(JSON.stringify({ credential: syntheticSecret }) === "{}").toBe(
+        true,
+      );
+    } catch (error) {
+      failureMessage = String(error);
+    }
+    expect(failureMessage.includes(syntheticSecret)).toBe(false);
   });
 });
