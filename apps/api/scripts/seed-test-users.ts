@@ -174,6 +174,7 @@ async function findCanonicalCustomerRole(
       ),
     )
     .limit(1);
+  if (!role) return undefined;
   assertCanonicalCustomerRole(role);
   return role;
 }
@@ -202,7 +203,9 @@ async function ensureCanonicalCustomerRole(
     })
     .onConflictDoNothing();
 
-  return findCanonicalCustomerRole(executor);
+  const role = await findCanonicalCustomerRole(executor);
+  assertCanonicalCustomerRole(role);
+  return role;
 }
 
 async function existingUsers(roles: readonly SupportedRole[]) {
