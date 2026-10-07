@@ -1,3 +1,7 @@
+### 2026-10-07 · Correct operational record timestamp
+
+The preceding bulk-verdict entry's drafted00:31UTC label was incorrect. Its actual Git commit timestamp is 2026-10-07 00:30:27 UTC. This is a recording correction, not a runtime capture or another observation date. Original entry/history remains retained.
+
 ### 2026-10-07 · Apply complete bulk findings as structural implementation batches
 
 **Orchestrator application, no gate waiver.** Complete dialog8f078830 clears two fresh ordinary Luna contexts and independent Sol; notes-only7d86b0a8 preserves source and records original verdicts including the security-path correction. It remains a post-P0 leaf, not a frozenP0 change. P0 PR scope is narrowed to its actual owning contracts under the existing independent Sol adjudication; supporting P4 references remain explicitly separate and owning P4 findings stay open. Latest hosted register succeeds at unchanged532; performance19/22 and template/readiness remain red.
