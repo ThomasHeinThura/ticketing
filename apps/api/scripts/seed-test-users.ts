@@ -4,7 +4,8 @@ import {
   DEFAULT_ROLE_NAMES,
 } from "@taskdesk/permissions";
 import bcrypt from "bcryptjs";
-import { and, eq, inArray, or } from "drizzle-orm";
+import { and, eq, inArray, isNull, or } from "drizzle-orm";
+import { getCustomerPortalIdentityRow } from "../src/auth/repository";
 import db, { getDatabasePool, schema } from "../src/database";
 import { seedDefaultWorkspaceRolesForWorkspace } from "../src/utils/seed-default-workspace-roles";
 import { seed } from "./seed-profile";
@@ -138,6 +139,72 @@ function assertCustomerOrganisation(
   }
 }
 
+function assertCanonicalCustomerRole(
+  row: typeof schema.roleTable.$inferSelect | undefined,
+): asserts row is typeof schema.roleTable.$inferSelect {
+  const customerRole = BUILT_IN_ROLES.customer;
+  if (
+    !row ||
+    row.scope !== customerRole.scope ||
+    row.workspaceId !== null ||
+    row.key !== customerRole.key ||
+    row.name !== "Customer" ||
+    row.description !== customerRole.intent ||
+    row.rank !== customerRole.rank ||
+    JSON.stringify(row.capabilities) !==
+      JSON.stringify(customerRole.capabilities) ||
+    !row.isSystem ||
+    row.isEditable !== customerRole.isEditable
+  ) {
+    throw new Error("Test customer role conflicts with the canonical role.");
+  }
+}
+
+async function findCanonicalCustomerRole(
+  executor: Pick<typeof db, "select"> = db,
+) {
+  const [role] = await executor
+    .select()
+    .from(schema.roleTable)
+    .where(
+      and(
+        eq(schema.roleTable.scope, BUILT_IN_ROLES.customer.scope),
+        isNull(schema.roleTable.workspaceId),
+        eq(schema.roleTable.key, BUILT_IN_ROLES.customer.key),
+      ),
+    )
+    .limit(1);
+  assertCanonicalCustomerRole(role);
+  return role;
+}
+
+async function ensureCanonicalCustomerRole(
+  executor: Pick<typeof db, "select" | "insert">,
+  now: Date,
+) {
+  const existing = await findCanonicalCustomerRole(executor);
+  if (existing) return existing;
+
+  await executor
+    .insert(schema.roleTable)
+    .values({
+      scope: BUILT_IN_ROLES.customer.scope,
+      workspaceId: null,
+      key: BUILT_IN_ROLES.customer.key,
+      name: "Customer",
+      description: BUILT_IN_ROLES.customer.intent,
+      rank: BUILT_IN_ROLES.customer.rank,
+      capabilities: [...BUILT_IN_ROLES.customer.capabilities],
+      isSystem: true,
+      isEditable: BUILT_IN_ROLES.customer.isEditable,
+      createdAt: now,
+      updatedAt: now,
+    })
+    .onConflictDoNothing();
+
+  return findCanonicalCustomerRole(executor);
+}
+
 async function existingUsers(roles: readonly SupportedRole[]) {
   const expectations = expectedTestUserCredentials(roles, false);
   const ids = roles.map(userId);
@@ -180,6 +247,13 @@ async function verifyExistingFixture(
     .select()
     .from(schema.workspaceUserTable)
     .where(inArray(schema.workspaceUserTable.userId, roles.map(userId)));
+  const scopedMemberships = await db
+    .select()
+    .from(schema.membershipTable)
+    .where(inArray(schema.membershipTable.personId, roles.map(personId)));
+  const customerRole = roles.includes("customer")
+    ? await findCanonicalCustomerRole()
+    : undefined;
 
   const expectedAccountCount = credentials.filter(
     (credential) => credential.authentication === "local_password",
@@ -196,6 +270,12 @@ async function verifyExistingFixture(
   if (memberships.length !== workspaceRoles.length) {
     throw new Error(
       "Existing test users have unexpected workspace memberships.",
+    );
+  }
+  const expectedScopedMembershipCount = roles.includes("customer") ? 1 : 0;
+  if (scopedMemberships.length !== expectedScopedMembershipCount) {
+    throw new Error(
+      "Existing test users have missing or unexpected scoped memberships.",
     );
   }
   const nonDefaultBuiltInRoles = roles.filter(
@@ -271,6 +351,28 @@ async function verifyExistingFixture(
         "Non-workspace test user has an unexpected workspace membership.",
       );
     }
+
+    if (role === "customer") {
+      const customerMembership = scopedMemberships.find(
+        (row) => row.personId === person.id,
+      );
+      const [portalIdentity] = await getCustomerPortalIdentityRow(user.id);
+      if (
+        !customerRole ||
+        !customerMembership ||
+        customerMembership.scope !== BUILT_IN_ROLES.customer.scope ||
+        customerMembership.scopeId !== CUSTOMER_ORGANISATION.id ||
+        customerMembership.roleId !== customerRole.id ||
+        customerMembership.seesAll ||
+        customerMembership.inheritedFrom !== null ||
+        customerMembership.derivedFrom !== null ||
+        portalIdentity?.personId !== person.id
+      ) {
+        throw new Error(
+          "Existing customer role membership does not match the portal identity contract.",
+        );
+      }
+    }
   }
 }
 
@@ -305,6 +407,9 @@ async function createFixture(
 
   await db.transaction(async (tx) => {
     await seedDefaultWorkspaceRolesForWorkspace(workspaceId, tx);
+    const customerRole = roles.includes("customer")
+      ? await ensureCanonicalCustomerRole(tx, now)
+      : undefined;
     for (const role of roles) {
       if (role !== "manager" && role !== "lead") continue;
       const [existingRole] = await tx
@@ -408,6 +513,20 @@ async function createFixture(
         createdAt: now,
         updatedAt: now,
       });
+      if (role === "customer") {
+        if (!customerRole)
+          throw new Error("Canonical customer role was not prepared.");
+        await tx.insert(schema.membershipTable).values({
+          id: `${id}-organisation-membership`,
+          personId: person,
+          scope: BUILT_IN_ROLES.customer.scope,
+          scopeId: CUSTOMER_ORGANISATION.id,
+          roleId: customerRole.id,
+          seesAll: false,
+          createdAt: now,
+          updatedAt: now,
+        });
+      }
       if (workspaceRoles.includes(role as (typeof workspaceRoles)[number])) {
         await tx.insert(schema.workspaceUserTable).values({
           id: `${id}-workspace-membership`,
@@ -523,6 +642,18 @@ export async function seedTestUsers(
     }
     try {
       await createFixture(parsed.roles, credentials);
+      const [internal] = await db
+        .select({ id: schema.organisationTable.id })
+        .from(schema.organisationTable)
+        .where(eq(schema.organisationTable.isInternal, true))
+        .limit(1);
+      if (!internal) throw new Error("Internal test organisation is missing.");
+      await verifyExistingFixture(
+        parsed.roles,
+        credentials,
+        "taskdesk-seed-minimal-workspace",
+        internal.id,
+      );
     } catch {
       throw new Error(
         "Test-user fixture could not be created; no credentials were written to process output.",
