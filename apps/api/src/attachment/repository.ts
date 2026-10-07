@@ -12,6 +12,28 @@ import {
 
 type Executor = typeof db | Parameters<Parameters<typeof db.transaction>[0]>[0];
 
+// The schema DSL includes SQL-owned nullable fields that are not part of the
+// work-item attachment API contract. Keep these selects stable as the persisted
+// row grows; submission-specific metadata is not serialized by work-item routes.
+export const attachmentRecordColumns = {
+  id: attachmentTable.id,
+  workspaceId: attachmentTable.workspaceId,
+  organisationId: attachmentTable.organisationId,
+  workItemId: attachmentTable.workItemId,
+  commentId: attachmentTable.commentId,
+  submissionId: attachmentTable.submissionId,
+  objectKey: attachmentTable.objectKey,
+  filename: attachmentTable.filename,
+  mimeType: attachmentTable.mimeType,
+  size: attachmentTable.size,
+  state: attachmentTable.state,
+  customerVisible: attachmentTable.customerVisible,
+  uploadedBy: attachmentTable.uploadedBy,
+  deletedAt: attachmentTable.deletedAt,
+  createdAt: attachmentTable.createdAt,
+  updatedAt: attachmentTable.updatedAt,
+};
+
 export function lockWorkItemForShare(
   executor: Executor,
   workItemId: string,
@@ -51,7 +73,7 @@ export function lockWorkItemForAttachmentCompletion(
 
 export function getAttachment(executor: Executor, attachmentId: string) {
   return executor
-    .select()
+    .select(attachmentRecordColumns)
     .from(attachmentTable)
     .where(eq(attachmentTable.id, attachmentId))
     .limit(1);
@@ -140,6 +162,7 @@ export function listAttachmentsForWorkItem(
   workItemId: string,
 ) {
   return executor.query.attachmentTable.findMany({
+    columns: { submissionFieldKey: false },
     where: (attachment, { and, eq, isNull, ne }) =>
       and(
         eq(attachment.workItemId, workItemId),

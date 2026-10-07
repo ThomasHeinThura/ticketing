@@ -13,6 +13,7 @@ import {
   numeric,
   pgTable,
   primaryKey,
+  serial,
   text,
   timestamp,
   unique,
@@ -34,6 +35,7 @@ export const userTable = pgTable("user", {
   email: text("email").notNull().unique(),
   emailVerified: boolean("email_verified")
     .$defaultFn(() => false)
+    .default(false)
     .notNull(),
   image: text("image"),
   locale: text("locale"),
@@ -80,7 +82,9 @@ export const sessionTable = pgTable(
     index("session_userId_idx").on(table.userId),
     check(
       "session_portal_allowed",
-      sql`${table.portal} is null or ${table.portal} in ('agent', 'customer')`,
+      sql.raw(
+        "(portal IS NULL) OR (portal = ANY (ARRAY['agent'::text, 'customer'::text]))",
+      ),
     ),
   ],
 );
@@ -179,7 +183,7 @@ export const twoFactorTable = pgTable(
     uniqueIndex("two_factor_user_id_unique").on(table.userId),
     check(
       "two_factor_failed_count_nonnegative",
-      sql`${table.failedVerificationCount} >= 0`,
+      sql.raw("failed_verification_count >= 0"),
     ),
   ],
 );
@@ -189,6 +193,15 @@ function slaPolicyWorkspaceColumn(): AnyPgColumn {
 }
 function slaPolicyIdColumn(): AnyPgColumn {
   return slaPolicyTable.id;
+}
+function slaPolicyVersionWorkspaceColumn(): AnyPgColumn {
+  return slaPolicyVersionTable.workspaceId;
+}
+function slaPolicyVersionPolicyIdColumn(): AnyPgColumn {
+  return slaPolicyVersionTable.policyId;
+}
+function slaPolicyVersionIdColumn(): AnyPgColumn {
+  return slaPolicyVersionTable.id;
 }
 
 export const workspaceTable = pgTable(
@@ -268,6 +281,12 @@ export const workspaceUserTable = pgTable(
   (table) => [
     index("workspace_member_workspaceId_idx").on(table.workspaceId),
     index("workspace_member_userId_idx").on(table.userId),
+    check(
+      "workspace_member_role_single_value",
+      sql.raw(
+        "(POSITION((','::text) IN (role)) = 0) AND (role = btrim(role, ((((((((((((((((((((' \t\n\r\f'::text || chr(11)) || chr(160)) || chr(5760)) || chr(8192)) || chr(8193)) || chr(8194)) || chr(8195)) || chr(8196)) || chr(8197)) || chr(8198)) || chr(8199)) || chr(8200)) || chr(8201)) || chr(8202)) || chr(8232)) || chr(8233)) || chr(8239)) || chr(8287)) || chr(12288)) || chr(65279)))) AND (btrim(role, ((((((((((((((((((((' \t\n\r\f'::text || chr(11)) || chr(160)) || chr(5760)) || chr(8192)) || chr(8193)) || chr(8194)) || chr(8195)) || chr(8196)) || chr(8197)) || chr(8198)) || chr(8199)) || chr(8200)) || chr(8201)) || chr(8202)) || chr(8232)) || chr(8233)) || chr(8239)) || chr(8287)) || chr(12288)) || chr(65279))) <> ''::text)",
+      ),
+    ),
   ],
 );
 
@@ -466,23 +485,31 @@ export const projectTable = pgTable(
     ),
     check(
       "project_default_comment_visibility_allowed",
-      sql`${table.defaultCommentVisibility} in ('public', 'internal')`,
+      sql.raw(
+        "default_comment_visibility = ANY (ARRAY['public'::text, 'internal'::text])",
+      ),
     ),
     check(
       "project_kind_allowed",
-      sql`${table.kind} in ('project', 'managed_service')`,
+      sql.raw("kind = ANY (ARRAY['project'::text, 'managed_service'::text])"),
     ),
     check(
       "project_health_allowed",
-      sql`${table.health} is null or ${table.health} in ('red', 'amber', 'green')`,
+      sql.raw(
+        "(health IS NULL) OR (health = ANY (ARRAY['red'::text, 'amber'::text, 'green'::text]))",
+      ),
     ),
     check(
       "project_support_level_allowed",
-      sql`${table.supportLevel} is null or ${table.supportLevel} in ('L1', 'L2', 'L3')`,
+      sql.raw(
+        "(support_level IS NULL) OR (support_level = ANY (ARRAY['L1'::text, 'L2'::text, 'L3'::text]))",
+      ),
     ),
     check(
       "project_managed_service_complete",
-      sql`${table.kind} <> 'managed_service' or (${table.supportLevel} is not null and ${table.serviceCalendarId} is not null)`,
+      sql.raw(
+        "(kind <> 'managed_service'::text) OR ((support_level IS NOT NULL) AND (service_calendar_id IS NOT NULL))",
+      ),
     ),
     // #261 F1: instance-wide, not scoped to workspace -- see the `slug` column's own
     // comment above for why. Migration 0064 resolves any pre-existing collision by
@@ -529,31 +556,35 @@ export const instancePluginConfigTable = pgTable(
     ),
     check(
       "instance_plugin_config_scope_check",
-      sql`${table.scope} in ('instance', 'workspace')`,
+      sql.raw("scope = ANY (ARRAY['instance'::text, 'workspace'::text])"),
     ),
     check(
       "instance_plugin_config_workspace_scope_check",
-      sql`(${table.scope} = 'instance' and ${table.workspaceId} is null) or (${table.scope} = 'workspace' and ${table.workspaceId} is not null)`,
+      sql.raw(
+        "((scope = 'instance'::text) AND (workspace_id IS NULL)) OR ((scope = 'workspace'::text) AND (workspace_id IS NOT NULL))",
+      ),
     ),
     check(
       "instance_plugin_config_portal_scope_check",
-      sql`${table.portalScope} is null or ${table.portalScope} in ('agent', 'customer', 'both')`,
+      sql.raw(
+        "(portal_scope IS NULL) OR (portal_scope = ANY (ARRAY['agent'::text, 'customer'::text, 'both'::text]))",
+      ),
     ),
     check(
       "instance_plugin_config_auth_portal_scope_required",
-      sql`${table.pluginId} not like 'auth.%' or ${table.portalScope} is not null`,
+      sql.raw("(plugin_id !~~ 'auth.%'::text) OR (portal_scope IS NOT NULL)"),
     ),
     check(
       "instance_plugin_config_non_auth_portal_scope_null",
-      sql`${table.pluginId} like 'auth.%' or ${table.portalScope} is null`,
+      sql.raw("(plugin_id ~~ 'auth.%'::text) OR (portal_scope IS NULL)"),
     ),
     check(
       "instance_plugin_config_version_positive",
-      sql`${table.configVersion} > 0`,
+      sql.raw("config_version > 0"),
     ),
     index("instance_plugin_config_auth_version_idx")
       .on(table.configVersion)
-      .where(sql`${table.pluginId} like 'auth.%'`),
+      .where(sql.raw("(plugin_id ~~ 'auth.%'::text)")),
   ],
 );
 
@@ -575,12 +606,14 @@ export const instanceFeatureFlagTable = pgTable(
       .defaultNow()
       .notNull(),
   },
-  (table) => [
+  (_table) => [
     check(
       "instance_feature_flag_key_check",
-      sql`${table.featureKey} in ('feature.cycles', 'feature.modules', 'feature.estimates', 'feature.intake', 'feature.sla', 'feature.approvals', 'feature.time_tracking', 'feature.cost_tracking', 'feature.knowledge_base', 'feature.service_catalogue', 'feature.customer_portal', 'feature.reports', 'feature.automations', 'feature.timeline', 'feature.calendar', 'feature.pages', 'feature.mcp', 'feature.scim', 'feature.import', 'feature.public_boards', 'feature.dev_links')`,
+      sql.raw(
+        "feature_key = ANY (ARRAY['feature.cycles'::text, 'feature.modules'::text, 'feature.estimates'::text, 'feature.intake'::text, 'feature.sla'::text, 'feature.approvals'::text, 'feature.time_tracking'::text, 'feature.cost_tracking'::text, 'feature.knowledge_base'::text, 'feature.service_catalogue'::text, 'feature.customer_portal'::text, 'feature.reports'::text, 'feature.automations'::text, 'feature.timeline'::text, 'feature.calendar'::text, 'feature.pages'::text, 'feature.mcp'::text, 'feature.scim'::text, 'feature.import'::text, 'feature.public_boards'::text, 'feature.dev_links'::text])",
+      ),
     ),
-    check("instance_feature_flag_version_positive", sql`${table.version} > 0`),
+    check("instance_feature_flag_version_positive", sql.raw("version > 0")),
   ],
 );
 
@@ -605,9 +638,11 @@ export const workspaceFeatureFlagTable = pgTable(
     primaryKey({ columns: [table.workspaceId, table.featureKey] }),
     check(
       "workspace_feature_flag_key_check",
-      sql`${table.featureKey} in ('feature.cycles', 'feature.modules', 'feature.estimates', 'feature.intake', 'feature.sla', 'feature.approvals', 'feature.time_tracking', 'feature.cost_tracking', 'feature.knowledge_base', 'feature.service_catalogue', 'feature.customer_portal', 'feature.reports', 'feature.automations', 'feature.timeline', 'feature.calendar', 'feature.pages', 'feature.mcp', 'feature.scim', 'feature.import', 'feature.public_boards', 'feature.dev_links')`,
+      sql.raw(
+        "feature_key = ANY (ARRAY['feature.cycles'::text, 'feature.modules'::text, 'feature.estimates'::text, 'feature.intake'::text, 'feature.sla'::text, 'feature.approvals'::text, 'feature.time_tracking'::text, 'feature.cost_tracking'::text, 'feature.knowledge_base'::text, 'feature.service_catalogue'::text, 'feature.customer_portal'::text, 'feature.reports'::text, 'feature.automations'::text, 'feature.timeline'::text, 'feature.calendar'::text, 'feature.pages'::text, 'feature.mcp'::text, 'feature.scim'::text, 'feature.import'::text, 'feature.public_boards'::text, 'feature.dev_links'::text])",
+      ),
     ),
-    check("workspace_feature_flag_version_positive", sql`${table.version} > 0`),
+    check("workspace_feature_flag_version_positive", sql.raw("version > 0")),
   ],
 );
 
@@ -632,9 +667,11 @@ export const projectFeatureFlagTable = pgTable(
     primaryKey({ columns: [table.projectId, table.featureKey] }),
     check(
       "project_feature_flag_key_check",
-      sql`${table.featureKey} in ('feature.cycles', 'feature.modules', 'feature.estimates', 'feature.intake', 'feature.sla', 'feature.approvals', 'feature.time_tracking', 'feature.cost_tracking', 'feature.knowledge_base', 'feature.service_catalogue', 'feature.customer_portal', 'feature.reports', 'feature.automations', 'feature.timeline', 'feature.calendar', 'feature.pages', 'feature.mcp', 'feature.scim', 'feature.import', 'feature.public_boards', 'feature.dev_links')`,
+      sql.raw(
+        "feature_key = ANY (ARRAY['feature.cycles'::text, 'feature.modules'::text, 'feature.estimates'::text, 'feature.intake'::text, 'feature.sla'::text, 'feature.approvals'::text, 'feature.time_tracking'::text, 'feature.cost_tracking'::text, 'feature.knowledge_base'::text, 'feature.service_catalogue'::text, 'feature.customer_portal'::text, 'feature.reports'::text, 'feature.automations'::text, 'feature.timeline'::text, 'feature.calendar'::text, 'feature.pages'::text, 'feature.mcp'::text, 'feature.scim'::text, 'feature.import'::text, 'feature.public_boards'::text, 'feature.dev_links'::text])",
+      ),
     ),
-    check("project_feature_flag_version_positive", sql`${table.version} > 0`),
+    check("project_feature_flag_version_positive", sql.raw("version > 0")),
   ],
 );
 
@@ -776,7 +813,9 @@ export const prerequisiteTable = pgTable(
     index("prerequisite_projectId_idx").on(table.projectId),
     check(
       "prerequisite_owner_side_allowed",
-      sql`${table.ownerSide} in ('us', 'customer', 'both')`,
+      sql.raw(
+        "owner_side = ANY (ARRAY['us'::text, 'customer'::text, 'both'::text])",
+      ),
     ),
   ],
 );
@@ -984,18 +1023,20 @@ export const instanceSettingTable = pgTable(
     attachmentAllowedExtensions: text("attachment_allowed_extensions")
       .array()
       .notNull()
-      .default(sql`ARRAY[
+      .default(
+        sql.raw(`ARRAY[
         'jpg','jpeg','png','gif','webp','heic','heif','bmp','tiff',
         'pdf','doc','docx','xls','xlsx','ppt','pptx','odt','ods','odp',
         'txt','csv','md','json','log','rtf'
       ]::text[]`),
+      ),
     createdAt: timestamp("created_at", { mode: "date" }).defaultNow().notNull(),
     updatedAt: timestamp("updated_at", { mode: "date" })
       .defaultNow()
       .$onUpdate(() => new Date())
       .notNull(),
   },
-  (table) => [
+  (_table) => [
     // #18 security review (F3): `id`'s DEFAULT makes "singleton" the row every
     // writer here intends, but a bare PRIMARY KEY never actually forbids a second
     // row with a different id -- and every read in setup-token.ts is a `LIMIT 1`
@@ -1003,41 +1044,34 @@ export const instanceSettingTable = pgTable(
     // forgets the id) can silently become the one this code reads, with no test
     // going red. This CHECK makes the single-row invariant the comment above
     // already claims into something Postgres actually enforces.
-    check("instance_setting_id_singleton", sql`${table.id} = 'singleton'`),
+    check("instance_setting_id_singleton", sql.raw("id = 'singleton'::text")),
     check(
       "instance_setting_observability_version_positive",
-      sql`${table.observabilityConfigVersion} >= 1`,
+      sql.raw("observability_config_version >= 1"),
     ),
     check(
       "instance_setting_metrics_token_pair",
-      sql`(${table.metricsTokenHash} is null) = (${table.metricsTokenRotatedAt} is null)`,
+      sql.raw(
+        "(metrics_token_hash IS NULL) = (metrics_token_rotated_at IS NULL)",
+      ),
     ),
     check(
       "instance_setting_metrics_token_hash_length",
-      sql`${table.metricsTokenHash} is null or octet_length(${table.metricsTokenHash}) = 32`,
+      sql.raw(
+        "(metrics_token_hash IS NULL) OR (octet_length(metrics_token_hash) = 32)",
+      ),
     ),
     check(
       "instance_setting_observability_log_levels_shape",
-      sql`case
-        when jsonb_typeof(${table.observabilityLogLevels}) = 'object' then
-          (${table.observabilityLogLevels} ?& array['default', 'modules'])
-          and ((${table.observabilityLogLevels} - array['default', 'modules']::text[]) = '{}'::jsonb)
-          and jsonb_typeof(${table.observabilityLogLevels}->'default') = 'string'
-          and ${table.observabilityLogLevels}->>'default' in ('error', 'warn', 'info', 'debug')
-          and jsonb_typeof(${table.observabilityLogLevels}->'modules') = 'object'
-          and not (((${table.observabilityLogLevels}->'modules') - array['http', 'auth', 'database', 'jobs', 'audit', 'plugins', 'realtime']::text[]) <> '{}'::jsonb)
-          and not jsonb_path_exists(${table.observabilityLogLevels}, '$.modules.* ? (@ != \"error\" && @ != \"warn\" && @ != \"info\" && @ != \"debug\")')
-        else false
-      end`,
+      sql.raw(
+        "CHECK (\nCASE\n    WHEN (jsonb_typeof(observability_log_levels) = 'object'::text) THEN ((observability_log_levels ?& ARRAY['default'::text, 'modules'::text]) AND ((observability_log_levels - ARRAY['default'::text, 'modules'::text]) = '{}'::jsonb) AND (jsonb_typeof((observability_log_levels -> 'default'::text)) = 'string'::text) AND ((observability_log_levels ->> 'default'::text) = ANY (ARRAY['error'::text, 'warn'::text, 'info'::text, 'debug'::text])) AND (jsonb_typeof((observability_log_levels -> 'modules'::text)) = 'object'::text) AND (NOT (((observability_log_levels -> 'modules'::text) - ARRAY['http'::text, 'auth'::text, 'database'::text, 'jobs'::text, 'audit'::text, 'plugins'::text, 'realtime'::text]) <> '{}'::jsonb)) AND (NOT jsonb_path_exists(observability_log_levels, '$.\"modules\".*?(((@ != \"error\" && @ != \"warn\") && @ != \"info\") && @ != \"debug\")'::jsonpath)))\n    ELSE false\nEND)",
+      ),
     ),
     check(
       "instance_setting_local_factor_policy_shape",
-      sql`jsonb_typeof(${table.localFactorPolicy}) = 'object'
-        and ${table.localFactorPolicy} ?& array['mode', 'requiredRoleId']
-        and (${table.localFactorPolicy} - array['mode', 'requiredRoleId']::text[]) = '{}'::jsonb
-        and ${table.localFactorPolicy}->>'mode' in ('off', 'optional', 'required_staff', 'required_role', 'required_everyone')
-        and (((${table.localFactorPolicy}->>'mode') = 'required_role' and jsonb_typeof(${table.localFactorPolicy}->'requiredRoleId') = 'string' and length(${table.localFactorPolicy}->>'requiredRoleId') > 0)
-          or ((${table.localFactorPolicy}->>'mode') <> 'required_role' and jsonb_typeof(${table.localFactorPolicy}->'requiredRoleId') = 'null'))`,
+      sql.raw(
+        "(jsonb_typeof(local_factor_policy) = 'object'::text) AND (local_factor_policy ?& ARRAY['mode'::text, 'requiredRoleId'::text]) AND ((local_factor_policy - ARRAY['mode'::text, 'requiredRoleId'::text]) = '{}'::jsonb) AND ((local_factor_policy ->> 'mode'::text) = ANY (ARRAY['off'::text, 'optional'::text, 'required_staff'::text, 'required_role'::text, 'required_everyone'::text])) AND ((((local_factor_policy ->> 'mode'::text) = 'required_role'::text) AND (jsonb_typeof((local_factor_policy -> 'requiredRoleId'::text)) = 'string'::text) AND (length((local_factor_policy ->> 'requiredRoleId'::text)) > 0)) OR (((local_factor_policy ->> 'mode'::text) <> 'required_role'::text) AND (jsonb_typeof((local_factor_policy -> 'requiredRoleId'::text)) = 'null'::text)))",
+      ),
     ),
   ],
 );
@@ -1213,10 +1247,12 @@ export const labelTable = pgTable(
       onDelete: "cascade",
       onUpdate: "cascade",
     }),
-    workspaceId: text("workspace_id").references(() => workspaceTable.id, {
-      onDelete: "cascade",
-      onUpdate: "cascade",
-    }),
+    workspaceId: text("workspace_id")
+      .notNull()
+      .references(() => workspaceTable.id, {
+        onDelete: "cascade",
+        onUpdate: "cascade",
+      }),
   },
   (table) => [
     index("label_task_id_idx").on(table.taskId),
@@ -1224,7 +1260,7 @@ export const labelTable = pgTable(
     unique("label_task_name_unique").on(table.taskId, table.name),
     uniqueIndex("label_workspace_name_unique")
       .on(table.workspaceId, table.name)
-      .where(sql`${table.taskId} is null`),
+      .where(sql.raw("(task_id IS NULL)")),
   ],
 );
 
@@ -1270,7 +1306,7 @@ export const notificationTable = pgTable(
     index("notification_person_id_idx").on(table.personId),
     uniqueIndex("notification_event_person_unique")
       .on(table.eventId, table.personId)
-      .where(sql`${table.eventId} is not null`),
+      .where(sql.raw("(event_id IS NOT NULL)")),
   ],
 );
 
@@ -1303,20 +1339,24 @@ export const outboxTable = pgTable(
   (table) => [
     check(
       "outbox_state_check",
-      sql`${table.state} in ('pending', 'delivered', 'dead')`,
+      sql.raw(
+        "state = ANY (ARRAY['pending'::text, 'delivered'::text, 'dead'::text])",
+      ),
     ),
     check(
       "outbox_scope_check",
-      sql`${table.workspaceId} is not null or (${table.organisationId} is null and ${table.kind} in ('pending_action.requested', 'pending_action.decided', 'pending_action.executed', 'identity.deprovisioned'))`,
+      sql.raw(
+        "(workspace_id IS NOT NULL) OR ((organisation_id IS NULL) AND (kind = ANY (ARRAY['pending_action.requested'::text, 'pending_action.decided'::text, 'pending_action.executed'::text, 'identity.deprovisioned'::text])))",
+      ),
     ),
-    check("outbox_attempts_nonnegative", sql`${table.attempts} >= 0`),
+    check("outbox_attempts_nonnegative", sql.raw("attempts >= 0")),
     index("outbox_state_next_attempt_idx")
       .on(table.state, table.nextAttemptAt)
-      .where(sql`${table.state} = 'pending'`),
+      .where(sql.raw("(state = 'pending'::text)")),
     index("outbox_workspace_state_idx").on(table.workspaceId, table.state),
     index("outbox_dedupe_key_idx")
       .on(table.dedupeKey)
-      .where(sql`${table.dedupeKey} is not null`),
+      .where(sql.raw("(dedupe_key IS NOT NULL)")),
   ],
 );
 
@@ -1575,9 +1615,7 @@ export const apikeyTable = pgTable(
     configId: text("config_id").default("default").notNull(),
     name: text("name"),
     start: text("start"),
-    referenceId: text("reference_id")
-      .notNull()
-      .references(() => userTable.id, { onDelete: "cascade" }),
+    referenceId: text("reference_id"),
     prefix: text("prefix"),
     key: text("key").notNull(),
     userId: text("user_id").references(() => userTable.id, {
@@ -1642,7 +1680,7 @@ export const organisationTable = pgTable(
     // unique index enforces at most one; the seed is what makes it exactly one.
     uniqueIndex("organisation_is_internal_unique")
       .on(table.isInternal)
-      .where(sql`${table.isInternal} = true`),
+      .where(sql.raw("(is_internal = true)")),
   ],
 );
 
@@ -1696,10 +1734,10 @@ export const legalHoldTable = pgTable(
     // therefore always possible; two simultaneous open holds on one scope never are.
     uniqueIndex("legal_hold_scope_scope_id_open_unique")
       .on(table.scope, table.scopeId)
-      .where(sql`${table.liftedAt} is null`),
+      .where(sql.raw("(lifted_at IS NULL)")),
     check(
       "legal_hold_scope_check",
-      sql`${table.scope} in ('organisation', 'person')`,
+      sql.raw("scope = ANY (ARRAY['organisation'::text, 'person'::text])"),
     ),
   ],
 );
@@ -1760,7 +1798,7 @@ export const personTable = pgTable(
     // two DIFFERENT `user` rows, not about one `user_id` appearing in two `person` rows.
     uniqueIndex("person_user_unique")
       .on(table.userId)
-      .where(sql`${table.userId} is not null`),
+      .where(sql.raw("(user_id IS NOT NULL)")),
   ],
 );
 
@@ -1783,15 +1821,19 @@ export const notificationPreferenceTable = pgTable(
   (table) => [
     check(
       "notification_preference_scope_check",
-      sql`(${table.scope} = 'global' and ${table.scopeId} is null) or (${table.scope} in ('workspace', 'project') and ${table.scopeId} is not null)`,
+      sql.raw(
+        "((scope = 'global'::text) AND (scope_id IS NULL)) OR ((scope = ANY (ARRAY['workspace'::text, 'project'::text])) AND (scope_id IS NOT NULL))",
+      ),
     ),
     check(
       "notification_preference_channel_check",
-      sql`${table.channel} = 'in_app' or ${table.channel} like 'notify.%'`,
+      sql.raw("(channel = 'in_app'::text) OR (channel ~~ 'notify.%'::text)"),
     ),
     check(
       "notification_preference_digest_check",
-      sql`${table.digest} in ('off', 'hourly', 'daily')`,
+      sql.raw(
+        "digest = ANY (ARRAY['off'::text, 'hourly'::text, 'daily'::text])",
+      ),
     ),
     unique("notification_preference_person_scope_channel_event_unique")
       .on(
@@ -1859,13 +1901,15 @@ export const notificationDeliveryTable = pgTable(
   (table) => [
     check(
       "notification_delivery_channel_check",
-      sql`${table.channel} like 'notify.%'`,
+      sql.raw("channel ~~ 'notify.%'::text"),
     ),
     check(
       "notification_delivery_state_check",
-      sql`${table.state} in ('pending', 'delivered', 'dead', 'suppressed')`,
+      sql.raw(
+        "state = ANY (ARRAY['pending'::text, 'delivered'::text, 'dead'::text, 'suppressed'::text])",
+      ),
     ),
-    check("notification_delivery_attempts_check", sql`${table.attempts} >= 0`),
+    check("notification_delivery_attempts_check", sql.raw("attempts >= 0")),
     unique("notification_delivery_event_recipient_channel_unique").on(
       table.eventId,
       table.recipientPersonId,
@@ -1873,7 +1917,7 @@ export const notificationDeliveryTable = pgTable(
     ),
     index("notification_delivery_state_next_attempt_idx")
       .on(table.state, table.nextAttemptAt)
-      .where(sql`${table.state} = 'pending' and ${table.digestId} is null`),
+      .where(sql.raw("((state = 'pending'::text) AND (digest_id IS NULL))")),
     index("notification_delivery_workspace_state_idx").on(
       table.workspaceId,
       table.state,
@@ -1886,7 +1930,7 @@ export const notificationDeliveryTable = pgTable(
         table.dedupeKey,
         table.deliveredAt,
       )
-      .where(sql`${table.deliveredAt} is not null`),
+      .where(sql.raw("(delivered_at IS NOT NULL)")),
   ],
 );
 
@@ -1936,17 +1980,19 @@ export const notificationDigestTable = pgTable(
   (table) => [
     check(
       "notification_digest_channel_check",
-      sql`${table.channel} like 'notify.%'`,
+      sql.raw("channel ~~ 'notify.%'::text"),
     ),
     check(
       "notification_digest_cadence_check",
-      sql`${table.cadence} in ('hourly', 'daily')`,
+      sql.raw("cadence = ANY (ARRAY['hourly'::text, 'daily'::text])"),
     ),
     check(
       "notification_digest_state_check",
-      sql`${table.state} in ('collecting', 'pending', 'delivered', 'dead', 'suppressed')`,
+      sql.raw(
+        "state = ANY (ARRAY['collecting'::text, 'pending'::text, 'delivered'::text, 'dead'::text, 'suppressed'::text])",
+      ),
     ),
-    check("notification_digest_attempts_check", sql`${table.attempts} >= 0`),
+    check("notification_digest_attempts_check", sql.raw("attempts >= 0")),
     unique("notification_digest_partition_unique")
       .on(
         table.recipientPersonId,
@@ -1960,7 +2006,9 @@ export const notificationDigestTable = pgTable(
       .nullsNotDistinct(),
     index("notification_digest_due_idx")
       .on(table.state, table.nextAttemptAt)
-      .where(sql`${table.state} in ('collecting', 'pending')`),
+      .where(
+        sql.raw("(state = ANY (ARRAY['collecting'::text, 'pending'::text]))"),
+      ),
   ],
 );
 
@@ -1988,7 +2036,7 @@ export const outboxDedupeReservationTable = pgTable(
   (table) => [
     check(
       "outbox_dedupe_reservation_key_length",
-      sql`octet_length(${table.reservationKey}) = 32`,
+      sql.raw("octet_length(reservation_key) = 32"),
     ),
     unique("outbox_dedupe_reservation_tuple_unique").on(
       table.recipientPersonId,
@@ -2016,7 +2064,7 @@ export const organisationQuotaTable = pgTable(
     maxWorkItems: integer("max_work_items").default(500_000).notNull(),
     // 20 GiB in bytes exceeds Postgres `integer`'s ~2.1B range, hence bigint.
     maxStorageBytes: bigint("max_storage_bytes", { mode: "number" })
-      .default(21_474_836_480)
+      .default(sql.raw("21474836480"))
       .notNull(),
     maxPortalUsers: integer("max_portal_users").default(500).notNull(),
     maxApiRequestsPerMinute: integer("max_api_requests_per_minute")
@@ -2077,9 +2125,9 @@ export const roleTable = pgTable(
     // ever equal closes that gap -- confirmed by a regression test that a plain composite
     // unique constraint does not (found while writing this PR's own tests).
     uniqueIndex("role_scope_workspace_key_unique").on(
-      table.scope,
-      sql`coalesce(${table.workspaceId}, '')`,
-      table.key,
+      sql.raw("scope"),
+      sql.raw("COALESCE(workspace_id, ''::text)"),
+      sql.raw("key"),
     ),
   ],
 );
@@ -2166,7 +2214,7 @@ export const identityConnectionTable = pgTable(
     domainBindings: text("domain_bindings")
       .array()
       .notNull()
-      .default(sql`'{}'::text[]`),
+      .default(sql.raw("'{}'::text[]")),
     jitPolicy: jsonb("jit_policy").notNull(),
     maxRoleRank: integer("max_role_rank"),
     mfaUpstreamMode: text("mfa_upstream_mode").notNull().default("off"),
@@ -2193,39 +2241,49 @@ export const identityConnectionTable = pgTable(
   (table) => [
     check(
       "identity_connection_provider_type_check",
-      sql`${table.providerType} in ('entra')`,
+      sql.raw("provider_type = 'entra'::text"),
     ),
     check(
       "identity_connection_portal_scope_check",
-      sql`${table.portalScope} in ('agent', 'customer')`,
+      sql.raw("portal_scope = ANY (ARRAY['agent'::text, 'customer'::text])"),
     ),
     check(
       "identity_connection_portal_organisation_check",
-      sql`(${table.portalScope} = 'customer' and ${table.organisationId} is not null) or (${table.portalScope} = 'agent' and ${table.organisationId} is null)`,
+      sql.raw(
+        "((portal_scope = 'customer'::text) AND (organisation_id IS NOT NULL)) OR ((portal_scope = 'agent'::text) AND (organisation_id IS NULL))",
+      ),
     ),
     check(
       "identity_connection_customer_default_workspace_check",
-      sql`${table.portalScope} <> 'customer' or ${table.defaultWorkspaceId} is null`,
+      sql.raw(
+        "(portal_scope <> 'customer'::text) OR (default_workspace_id IS NULL)",
+      ),
     ),
     check(
       "identity_connection_rank_check",
-      sql`(${table.portalScope} = 'customer' and ${table.maxRoleRank} is null) or (${table.portalScope} = 'agent' and ${table.maxRoleRank} >= 0)`,
+      sql.raw(
+        "((portal_scope = 'customer'::text) AND (max_role_rank IS NULL)) OR ((portal_scope = 'agent'::text) AND (max_role_rank >= 0))",
+      ),
     ),
     check(
       "identity_connection_config_version_check",
-      sql`${table.configVersion} >= 1`,
+      sql.raw("config_version >= 1"),
     ),
     check(
       "identity_connection_mfa_mode_check",
-      sql`${table.mfaUpstreamMode} in ('claim', 'static', 'off')`,
+      sql.raw(
+        "mfa_upstream_mode = ANY (ARRAY['claim'::text, 'static'::text, 'off'::text])",
+      ),
     ),
     check(
       "identity_connection_health_state_check",
-      sql`${table.healthState} in ('unknown', 'healthy', 'degraded', 'invalid')`,
+      sql.raw(
+        "health_state = ANY (ARRAY['unknown'::text, 'healthy'::text, 'degraded'::text, 'invalid'::text])",
+      ),
     ),
     uniqueIndex("identity_connection_organisation_unique")
       .on(table.organisationId)
-      .where(sql`${table.organisationId} is not null`),
+      .where(sql.raw("(organisation_id IS NOT NULL)")),
     index("identity_connection_portal_enabled_idx").on(
       table.portalScope,
       table.enabled,
@@ -2255,12 +2313,12 @@ export const scimConnectionTable = pgTable(
     allowedResources: text("allowed_resources")
       .array()
       .notNull()
-      .default(sql`ARRAY['users']::text[]`),
+      .default(sql.raw("ARRAY['users']::text[]")),
     attributeMapping: jsonb("attribute_mapping"),
     matchAttributes: text("match_attributes")
       .array()
       .notNull()
-      .default(sql`ARRAY['externalId', 'userName']::text[]`),
+      .default(sql.raw("ARRAY['externalId', 'userName']::text[]")),
     lifecyclePolicy: text("lifecycle_policy")
       .notNull()
       .default("end_memberships"),
@@ -2269,39 +2327,38 @@ export const scimConnectionTable = pgTable(
     lastSyncOutcome: text("last_sync_outcome"),
     lastFailure: jsonb("last_failure"),
   },
-  (table) => [
+  (_table) => [
     check(
       "scim_connection_token_hash_shape",
-      sql`${table.tokenHash} is null or octet_length(${table.tokenHash}) = 32`,
+      sql.raw("(token_hash IS NULL) OR (octet_length(token_hash) = 32)"),
     ),
     check(
       "scim_connection_token_pair_shape",
-      sql`(${table.tokenHash} is null and ${table.tokenPrefix} is null) or (${table.tokenHash} is not null and ${table.tokenPrefix} is not null)`,
+      sql.raw(
+        "((token_hash IS NULL) AND (token_prefix IS NULL)) OR ((token_hash IS NOT NULL) AND (token_prefix IS NOT NULL))",
+      ),
     ),
     check(
       "scim_connection_enabled_token_check",
-      sql`not ${table.enabled} or ${table.tokenHash} is not null`,
+      sql.raw("(NOT enabled) OR (token_hash IS NOT NULL)"),
     ),
     check(
       "scim_connection_allowed_resources_check",
-      sql`'users' = any(${table.allowedResources}) and ${table.allowedResources} <@ ARRAY['users', 'groups']::text[]`,
+      sql.raw(
+        "('users'::text = ANY (allowed_resources)) AND (allowed_resources <@ ARRAY['users'::text, 'groups'::text])",
+      ),
     ),
     check(
       "scim_connection_lifecycle_policy_check",
-      sql`${table.lifecyclePolicy} in ('end_memberships', 'keep_memberships')`,
+      sql.raw(
+        "lifecycle_policy = ANY (ARRAY['end_memberships'::text, 'keep_memberships'::text])",
+      ),
     ),
     check(
       "scim_connection_match_attributes_check",
-      sql`array_lower(${table.matchAttributes}, 1) = 1
-        and ${table.matchAttributes}[1:2] = ARRAY['externalId', 'userName']::text[]
-        and ${table.matchAttributes} <@ ARRAY['externalId', 'userName', 'displayName', 'name.formatted', 'title', 'preferredLanguage']::text[]
-        and cardinality(array_positions(${table.matchAttributes}, 'displayName')) <= 1
-        and cardinality(array_positions(${table.matchAttributes}, 'name.formatted')) <= 1
-        and cardinality(array_positions(${table.matchAttributes}, 'title')) <= 1
-        and cardinality(array_positions(${table.matchAttributes}, 'preferredLanguage')) <= 1
-        and (array_position(${table.matchAttributes}, 'displayName') is null or array_position(${table.matchAttributes}, 'name.formatted') is null or array_position(${table.matchAttributes}, 'displayName') < array_position(${table.matchAttributes}, 'name.formatted'))
-        and (array_position(${table.matchAttributes}, 'name.formatted') is null or array_position(${table.matchAttributes}, 'title') is null or array_position(${table.matchAttributes}, 'name.formatted') < array_position(${table.matchAttributes}, 'title'))
-        and (array_position(${table.matchAttributes}, 'title') is null or array_position(${table.matchAttributes}, 'preferredLanguage') is null or array_position(${table.matchAttributes}, 'title') < array_position(${table.matchAttributes}, 'preferredLanguage'))`,
+      sql.raw(
+        "(array_lower(match_attributes, 1) = 1) AND (match_attributes[1:2] = ARRAY['externalId'::text, 'userName'::text]) AND (match_attributes <@ ARRAY['externalId'::text, 'userName'::text, 'displayName'::text, 'name.formatted'::text, 'title'::text, 'preferredLanguage'::text]) AND (cardinality(array_positions(match_attributes, 'displayName'::text)) <= 1) AND (cardinality(array_positions(match_attributes, 'name.formatted'::text)) <= 1) AND (cardinality(array_positions(match_attributes, 'title'::text)) <= 1) AND (cardinality(array_positions(match_attributes, 'preferredLanguage'::text)) <= 1) AND ((array_position(match_attributes, 'displayName'::text) IS NULL) OR (array_position(match_attributes, 'name.formatted'::text) IS NULL) OR (array_position(match_attributes, 'displayName'::text) < array_position(match_attributes, 'name.formatted'::text))) AND ((array_position(match_attributes, 'name.formatted'::text) IS NULL) OR (array_position(match_attributes, 'title'::text) IS NULL) OR (array_position(match_attributes, 'name.formatted'::text) < array_position(match_attributes, 'title'::text))) AND ((array_position(match_attributes, 'title'::text) IS NULL) OR (array_position(match_attributes, 'preferredLanguage'::text) IS NULL) OR (array_position(match_attributes, 'title'::text) < array_position(match_attributes, 'preferredLanguage'::text)))",
+      ),
     ),
   ],
 );
@@ -2335,7 +2392,9 @@ export const scimGroupTable = pgTable(
   (table) => [
     check(
       "scim_group_active_timestamp_shape",
-      sql`(${table.active} and ${table.deactivatedAt} is null) or (not ${table.active} and ${table.deactivatedAt} is not null)`,
+      sql.raw(
+        "(active AND (deactivated_at IS NULL)) OR ((NOT active) AND (deactivated_at IS NOT NULL))",
+      ),
     ),
     unique("scim_group_connection_id_unique").on(
       table.scimConnectionId,
@@ -2399,7 +2458,9 @@ export const externalIdentityTable = pgTable(
   (table) => [
     check(
       "external_identity_provisioned_via_check",
-      sql`${table.provisionedVia} in ('jit', 'scim', 'invite')`,
+      sql.raw(
+        "provisioned_via = ANY (ARRAY['jit'::text, 'scim'::text, 'invite'::text])",
+      ),
     ),
     uniqueIndex("external_identity_connection_id_unique").on(
       table.identityConnectionId,
@@ -2411,7 +2472,7 @@ export const externalIdentityTable = pgTable(
     ),
     uniqueIndex("external_identity_connection_scim_external_id_unique")
       .on(table.identityConnectionId, table.scimExternalId)
-      .where(sql`${table.scimExternalId} is not null`),
+      .where(sql.raw("(scim_external_id IS NOT NULL)")),
     index("external_identity_person_active_idx").on(
       table.personId,
       table.active,
@@ -2445,7 +2506,9 @@ export const scimGroupDirectoryMemberTable = pgTable(
   (table) => [
     check(
       "scim_group_directory_member_active_timestamp_shape",
-      sql`(${table.active} and ${table.removedAt} is null) or (not ${table.active} and ${table.removedAt} is not null)`,
+      sql.raw(
+        "(active AND (removed_at IS NULL)) OR ((NOT active) AND (removed_at IS NOT NULL))",
+      ),
     ),
     foreignKey({
       name: "scim_group_directory_member_group_same_connection_fk",
@@ -2466,7 +2529,7 @@ export const scimGroupDirectoryMemberTable = pgTable(
       .onUpdate("cascade"),
     uniqueIndex("scim_group_directory_member_active_unique")
       .on(table.scimGroupId, table.externalIdentityId)
-      .where(sql`${table.active} is true`),
+      .where(sql.raw("(active IS TRUE)")),
     index("scim_group_directory_member_connection_group_idx").on(
       table.scimConnectionId,
       table.scimGroupId,
@@ -2511,7 +2574,7 @@ export const oidcGroupMappingTable = pgTable(
   (table) => [
     check(
       "oidc_group_mapping_scope_check",
-      sql`${table.scope} in ('organisation', 'workspace')`,
+      sql.raw("scope = ANY (ARRAY['organisation'::text, 'workspace'::text])"),
     ),
     unique("oidc_group_mapping_connection_group_unique").on(
       table.identityConnectionId,
@@ -2557,7 +2620,7 @@ export const scimGroupMappingTable = pgTable(
   (table) => [
     check(
       "scim_group_mapping_scope_check",
-      sql`${table.scope} in ('organisation', 'workspace')`,
+      sql.raw("scope = ANY (ARRAY['organisation'::text, 'workspace'::text])"),
     ),
     unique("scim_group_mapping_connection_group_unique").on(
       table.scimConnectionId,
@@ -2630,49 +2693,60 @@ export const membershipGrantTable = pgTable(
   (table) => [
     check(
       "membership_grant_source_kind_check",
-      sql`${table.sourceKind} in ('direct', 'jit_default', 'oidc_group', 'scim_group')`,
+      sql.raw(
+        "source_kind = ANY (ARRAY['direct'::text, 'jit_default'::text, 'oidc_group'::text, 'scim_group'::text])",
+      ),
     ),
     check(
       "membership_grant_direct_origin_check",
-      sql`${table.directOrigin} is null or ${table.directOrigin} in ('admin', 'system_backfill')`,
+      sql.raw(
+        "(direct_origin IS NULL) OR (direct_origin = ANY (ARRAY['admin'::text, 'system_backfill'::text]))",
+      ),
     ),
     check(
       "membership_grant_revocation_reason_check",
-      sql`${table.revocationReason} is null or ${table.revocationReason} in ('claim_removed', 'claim_missing', 'claim_overage', 'admission_failed', 'mapping_disabled', 'mapping_changed', 'role_deleted', 'connection_disabled', 'scim_group_removed', 'scim_deactivated', 'direct_removed', 'person_deactivated')`,
+      sql.raw(
+        "(revocation_reason IS NULL) OR (revocation_reason = ANY (ARRAY['claim_removed'::text, 'claim_missing'::text, 'claim_overage'::text, 'admission_failed'::text, 'mapping_disabled'::text, 'mapping_changed'::text, 'role_deleted'::text, 'connection_disabled'::text, 'scim_group_removed'::text, 'scim_deactivated'::text, 'direct_removed'::text, 'person_deactivated'::text]))",
+      ),
     ),
     check(
       "membership_grant_source_shape_check",
-      sql`(${table.sourceKind} = 'direct' and ${table.directOrigin} is not null and ((${table.directOrigin} = 'admin' and ${table.grantedByPersonId} is not null) or (${table.directOrigin} = 'system_backfill' and ${table.grantedByPersonId} is null)) and ${table.externalIdentityId} is null and ${table.identityConnectionId} is null and ${table.oidcGroupMappingId} is null and ${table.scimGroupMappingId} is null)
-        or (${table.sourceKind} = 'jit_default' and ${table.directOrigin} is null and ${table.grantedByPersonId} is null and ${table.externalIdentityId} is not null and ${table.identityConnectionId} is not null and ${table.oidcGroupMappingId} is null and ${table.scimGroupMappingId} is null and ${table.seesAll} = false)
-        or (${table.sourceKind} = 'oidc_group' and ${table.directOrigin} is null and ${table.grantedByPersonId} is null and ${table.externalIdentityId} is not null and ${table.identityConnectionId} is not null and ${table.oidcGroupMappingId} is not null and ${table.scimGroupMappingId} is null and ${table.seesAll} = false)
-        or (${table.sourceKind} = 'scim_group' and ${table.directOrigin} is null and ${table.grantedByPersonId} is null and ${table.externalIdentityId} is not null and ${table.identityConnectionId} is not null and ${table.oidcGroupMappingId} is null and ${table.scimGroupMappingId} is not null and ${table.seesAll} = false)`,
+      sql.raw(
+        "((source_kind = 'direct'::text) AND (direct_origin IS NOT NULL) AND (((direct_origin = 'admin'::text) AND (granted_by_person_id IS NOT NULL)) OR ((direct_origin = 'system_backfill'::text) AND (granted_by_person_id IS NULL))) AND (external_identity_id IS NULL) AND (identity_connection_id IS NULL) AND (oidc_group_mapping_id IS NULL) AND (scim_group_mapping_id IS NULL)) OR ((source_kind = 'jit_default'::text) AND (direct_origin IS NULL) AND (granted_by_person_id IS NULL) AND (external_identity_id IS NOT NULL) AND (identity_connection_id IS NOT NULL) AND (oidc_group_mapping_id IS NULL) AND (scim_group_mapping_id IS NULL) AND (sees_all = false)) OR ((source_kind = 'oidc_group'::text) AND (direct_origin IS NULL) AND (granted_by_person_id IS NULL) AND (external_identity_id IS NOT NULL) AND (identity_connection_id IS NOT NULL) AND (oidc_group_mapping_id IS NOT NULL) AND (scim_group_mapping_id IS NULL) AND (sees_all = false)) OR ((source_kind = 'scim_group'::text) AND (direct_origin IS NULL) AND (granted_by_person_id IS NULL) AND (external_identity_id IS NOT NULL) AND (identity_connection_id IS NOT NULL) AND (oidc_group_mapping_id IS NULL) AND (scim_group_mapping_id IS NOT NULL) AND (sees_all = false))",
+      ),
     ),
     index("membership_grant_person_scope_idx")
       .on(table.personId, table.scope, table.scopeId)
-      .where(sql`${table.revokedAt} is null`),
+      .where(sql.raw("(revoked_at IS NULL)")),
     uniqueIndex("membership_grant_direct_active_unique")
       .on(table.personId, table.scope, table.scopeId)
       .where(
-        sql`${table.revokedAt} is null and ${table.sourceKind} = 'direct'`,
+        sql.raw("((revoked_at IS NULL) AND (source_kind = 'direct'::text))"),
       ),
     uniqueIndex("membership_grant_jit_active_unique")
       .on(table.externalIdentityId, table.scope, table.scopeId)
       .where(
-        sql`${table.revokedAt} is null and ${table.sourceKind} = 'jit_default'`,
+        sql.raw(
+          "((revoked_at IS NULL) AND (source_kind = 'jit_default'::text))",
+        ),
       ),
     uniqueIndex("membership_grant_oidc_active_unique")
       .on(table.externalIdentityId, table.oidcGroupMappingId)
       .where(
-        sql`${table.revokedAt} is null and ${table.sourceKind} = 'oidc_group'`,
+        sql.raw(
+          "((revoked_at IS NULL) AND (source_kind = 'oidc_group'::text))",
+        ),
       ),
     uniqueIndex("membership_grant_scim_active_unique")
       .on(table.externalIdentityId, table.scimGroupMappingId)
       .where(
-        sql`${table.revokedAt} is null and ${table.sourceKind} = 'scim_group'`,
+        sql.raw(
+          "((revoked_at IS NULL) AND (source_kind = 'scim_group'::text))",
+        ),
       ),
     index("membership_grant_connection_active_idx")
       .on(table.identityConnectionId)
-      .where(sql`${table.revokedAt} is null`),
+      .where(sql.raw("(revoked_at IS NULL)")),
     index("membership_grant_role_idx").on(table.roleId),
   ],
 );
@@ -2711,7 +2785,7 @@ export const scimGroupMemberTable = pgTable(
   (table) => [
     uniqueIndex("scim_group_member_active_unique")
       .on(table.externalIdentityId, table.scimGroupMappingId)
-      .where(sql`${table.revokedAt} is null`),
+      .where(sql.raw("(revoked_at IS NULL)")),
     index("scim_group_member_mapping_active_idx").on(
       table.scimGroupMappingId,
       table.revokedAt,
@@ -2751,7 +2825,9 @@ export const provisioningEventTable = pgTable(
   (table) => [
     check(
       "provisioning_event_kind_check",
-      sql`${table.kind} in ('user.created', 'user.updated', 'user.deactivated', 'user.reactivated', 'group.directory_changed', 'group.mapping_changed', 'group.member_added', 'group.member_removed', 'request.denied', 'auth.failed', 'token.rotated', 'token.revoked', 'connection.changed', 'sync.failed')`,
+      sql.raw(
+        "kind = ANY (ARRAY['user.created'::text, 'user.updated'::text, 'user.deactivated'::text, 'user.reactivated'::text, 'group.directory_changed'::text, 'group.mapping_changed'::text, 'group.member_added'::text, 'group.member_removed'::text, 'request.denied'::text, 'auth.failed'::text, 'token.rotated'::text, 'token.revoked'::text, 'connection.changed'::text, 'sync.failed'::text])",
+      ),
     ),
     index("provisioning_event_connection_created_idx").on(
       table.identityConnectionId,
@@ -2841,7 +2917,7 @@ export const workItemTypeTable = pgTable(
     // vocabulary this migration constrains uses one mechanism.
     check(
       "work_item_type_category_allowed",
-      sql`${table.category} in ('service', 'delivery')`,
+      sql.raw("category = ANY (ARRAY['service'::text, 'delivery'::text])"),
     ),
   ],
 );
@@ -2884,7 +2960,9 @@ export const stateTemplateTable = pgTable(
     // identifier it emits, so the literal column name is enough.
     check(
       "state_template_group_allowed",
-      sql`${table.group} in ('backlog', 'unstarted', 'started', 'completed', 'cancelled')`,
+      sql.raw(
+        "\"group\" = ANY (ARRAY['backlog'::text, 'unstarted'::text, 'started'::text, 'completed'::text, 'cancelled'::text])",
+      ),
     ),
   ],
 );
@@ -2950,7 +3028,7 @@ export const stateTable = pgTable(
     // it against the narrower `and archived_at is null` form.
     uniqueIndex("state_project_default_unique")
       .on(table.projectId)
-      .where(sql`${table.isDefault}`),
+      .where(sql.raw("is_default")),
   ],
 );
 
@@ -3121,20 +3199,26 @@ export const workflowTransitionTable = pgTable(
     // `WF-21`: "at most one per workflow version."
     uniqueIndex("workflow_transition_version_reopen_unique")
       .on(table.versionId)
-      .where(sql`${table.isReopen}`),
+      .where(sql.raw("is_reopen")),
     check(
       "workflow_transition_note_policy_allowed",
-      sql`${table.notePolicy} in ('none', 'optional', 'required')`,
+      sql.raw(
+        "note_policy = ANY (ARRAY['none'::text, 'optional'::text, 'required'::text])",
+      ),
     ),
     check(
       "workflow_transition_note_visibility_allowed",
-      sql`${table.noteVisibility} in ('public', 'internal')`,
+      sql.raw(
+        "note_visibility = ANY (ARRAY['public'::text, 'internal'::text])",
+      ),
     ),
     // Nullable -- NULL passes (Postgres treats a NULL CHECK result as passing), matching
     // this schema's existing convention for a nullable enum column (`work_item.priority`).
     check(
       "workflow_transition_approval_policy_allowed",
-      sql`${table.approvalPolicy} is null or ${table.approvalPolicy} in ('any', 'all')`,
+      sql.raw(
+        "(approval_policy IS NULL) OR (approval_policy = ANY (ARRAY['any'::text, 'all'::text]))",
+      ),
     ),
   ],
 );
@@ -3185,10 +3269,15 @@ export const approvalTable = pgTable(
     ),
     index("approval_requester_state_idx").on(table.requestedBy, table.state),
     index("approval_transition_state_idx").on(table.transitionId, table.state),
-    check("approval_kind_allowed", sql`${table.kind} in ('customer', 'cab')`),
+    check(
+      "approval_kind_allowed",
+      sql.raw("kind = ANY (ARRAY['customer'::text, 'cab'::text])"),
+    ),
     check(
       "approval_state_allowed",
-      sql`${table.state} in ('pending', 'approved', 'rejected', 'expired', 'withdrawn')`,
+      sql.raw(
+        "state = ANY (ARRAY['pending'::text, 'approved'::text, 'rejected'::text, 'expired'::text, 'withdrawn'::text])",
+      ),
     ),
   ],
 );
@@ -3235,11 +3324,13 @@ export const scheduledTransitionTable = pgTable(
     // own scan predicate.
     index("scheduled_transition_dueAt_pending_idx")
       .on(table.dueAt)
-      .where(sql`${table.state} = 'pending'`),
+      .where(sql.raw("(state = 'pending'::text)")),
     index("scheduled_transition_workItemId_idx").on(table.workItemId),
     check(
       "scheduled_transition_state_allowed",
-      sql`${table.state} in ('pending', 'fired', 'cancelled')`,
+      sql.raw(
+        "state = ANY (ARRAY['pending'::text, 'fired'::text, 'cancelled'::text])",
+      ),
     ),
     // #186 S2's own lesson, applied here: a plain single-column FK on `from_state_id`/
     // `to_state_id` alone cannot see which project a `state` row belongs to, so it cannot
@@ -3640,11 +3731,11 @@ export const workItemTable = pgTable(
     // and deleted_at is null;
     index("work_item_assigneeId_idx")
       .on(table.assigneeId)
-      .where(sql`${table.archivedAt} is null and ${table.deletedAt} is null`),
+      .where(sql.raw("((archived_at IS NULL) AND (deleted_at IS NULL))")),
     // "## Indexing": create index on work_item (due_date) where resolved_at is null;
     index("work_item_dueDate_idx")
       .on(table.dueDate)
-      .where(sql`${table.resolvedAt} is null`),
+      .where(sql.raw("(resolved_at IS NULL)")),
     // Global key uniqueness -- see the `key` column comment above.
     uniqueIndex("work_item_key_unique").on(table.key),
     index("work_item_typeId_idx").on(table.typeId),
@@ -3654,11 +3745,13 @@ export const workItemTable = pgTable(
     index("work_item_workspaceId_idx").on(table.workspaceId),
     index("work_item_requesterId_idx").on(table.requesterId),
     index("work_item_parentId_idx").on(table.parentId),
-    // Deliberately NOT added here: the "## Indexing" GIN trigram title index and the
-    // generated `search_vector` column (`create extension pg_trgm`, `... using gin
-    // (title gin_trgm_ops)`, the `tsvector generated always as (...) stored` column) --
-    // full-text search is a separate P1 core work item (search), not part of #23's
-    // first-slice schema. Add these when that work lands.
+    // The frozen 0103 migration already creates this GIN trigram index. Keep it in the
+    // generation schema so future Drizzle diffs preserve the existing SQL-owned index;
+    // the generated search_vector column remains outside this table definition.
+    index("work_item_title_trgm_idx").using(
+      "gin",
+      table.title.op("gin_trgm_ops"),
+    ),
 
     // #186 S2 -- composite-FK target for the self-referencing `parent_id` composite FK
     // below, same `(scope_id, id)` technique as `state_project_id_id_unique` above and
@@ -3763,7 +3856,7 @@ export const workItemTable = pgTable(
     // `work_item_reject_parent_cycle` trigger (hand-written SQL in the migration).
     check(
       "work_item_parent_not_self",
-      sql`${table.parentId} is distinct from ${table.id}`,
+      sql.raw("parent_id IS DISTINCT FROM id"),
     ),
     // #191 O2 -- the claim-table FK described on `work_item_key_claim` above and the
     // `key` column comment. `onUpdate("no action")`: claim rows are never updated in
@@ -3793,7 +3886,9 @@ export const workItemTable = pgTable(
     // passing. Any non-NULL value, however, must be one of the four.
     check(
       "work_item_priority_allowed",
-      sql`${table.priority} in ('low', 'medium', 'high', 'urgent')`,
+      sql.raw(
+        "priority = ANY (ARRAY['low'::text, 'medium'::text, 'high'::text, 'urgent'::text])",
+      ),
     ),
     // #189 S7 -- `data-model.md` §4 states `customer_visibility`
     // (`private`|`organisation`) verbatim. The column is NOT NULL DEFAULT 'private'
@@ -3801,7 +3896,9 @@ export const workItemTable = pgTable(
     // pass the NOT NULL check and read as neither `private` nor `organisation`.
     check(
       "work_item_customer_visibility_allowed",
-      sql`${table.customerVisibility} in ('private', 'organisation')`,
+      sql.raw(
+        "customer_visibility = ANY (ARRAY['private'::text, 'organisation'::text])",
+      ),
     ),
     // #189 S9 -- `position numeric(20,10)` accepted `NaN`, which Postgres sorts greater
     // than every non-NaN value, so one bad row would head every `ORDER BY position desc`
@@ -3815,7 +3912,7 @@ export const workItemTable = pgTable(
     // does reject it is `<> 'NaN'::numeric`.
     check(
       "work_item_position_not_nan",
-      sql`${table.position} <> 'NaN'::numeric`,
+      sql.raw("\"position\" <> 'NaN'::numeric"),
     ),
     // #189 S9 -- `number` was a bare `integer NOT NULL` with no positivity constraint,
     // and no trigger assigns it yet (`work_item.key`'s assignment trigger is #23's later
@@ -3827,7 +3924,7 @@ export const workItemTable = pgTable(
     // from kaneo and still named for the v1 concept; #23 owns introducing the v2 name
     // and the assignment. Either way the first assignment is 1. The rendered key is
     // `{project.key}-{number}`, which must never be `...-0` or `...--1`.
-    check("work_item_number_positive", sql`${table.number} > 0`),
+    check("work_item_number_positive", sql.raw("number > 0")),
   ],
 );
 
@@ -3896,7 +3993,7 @@ export const activityTable = pgTable(
     unique("activity_seq_unique").on(table.seq),
     check(
       "activity_visibility_allowed",
-      sql`${table.visibility} in ('public', 'internal')`,
+      sql.raw("visibility = ANY (ARRAY['public'::text, 'internal'::text])"),
     ),
     // Decision log 2026-09-23, "Activity addendum: ON DELETE CASCADE, and Postgres 16
     // stays supported" (S1 of PR #275's mandatory Opus 5.5 security review,
@@ -4008,7 +4105,7 @@ export const commentTable = pgTable(
     index("comment_workspaceId_idx").on(table.workspaceId),
     check(
       "comment_visibility_allowed",
-      sql`${table.visibility} in ('public', 'internal')`,
+      sql.raw("visibility = ANY (ARRAY['public'::text, 'internal'::text])"),
     ),
     // Same composite-FK technique as `activityTable.workspaceId`/`.workItemId` above,
     // for the identical cross-tenant reason (a plain single-column FK on `work_item_id`
@@ -4086,7 +4183,9 @@ export const cannedResponseTable = pgTable(
     ),
     check(
       "canned_response_visibility_default_allowed",
-      sql`${table.visibilityDefault} in ('public', 'internal')`,
+      sql.raw(
+        "visibility_default = ANY (ARRAY['public'::text, 'internal'::text])",
+      ),
     ),
   ],
 );
@@ -4158,7 +4257,16 @@ export const slaPolicyTable = pgTable(
   },
   (table) => [
     unique("sla_policy_workspace_id_id_unique").on(table.workspaceId, table.id),
-    check("sla_policy_version_positive", sql`${table.version} > 0`),
+    foreignKey({
+      name: "sla_policy_active_version_workspace_policy_fk",
+      columns: [table.workspaceId, table.id, table.activeVersionId],
+      foreignColumns: [
+        slaPolicyVersionWorkspaceColumn(),
+        slaPolicyVersionPolicyIdColumn(),
+        slaPolicyVersionIdColumn(),
+      ],
+    }),
+    check("sla_policy_version_positive", sql.raw("version > 0")),
   ],
 );
 
@@ -4211,11 +4319,11 @@ export const slaPolicyVersionTable = pgTable(
     ),
     uniqueIndex("sla_policy_version_one_draft_unique")
       .on(table.policyId)
-      .where(sql`${table.effectiveFrom} is null`),
-    check("sla_policy_version_number_positive", sql`${table.number} > 0`),
+      .where(sql.raw("(effective_from IS NULL)")),
+    check("sla_policy_version_number_positive", sql.raw("number > 0")),
     check(
       "sla_policy_version_threshold_allowed",
-      sql`${table.atRiskThresholdPct} between 1 and 99`,
+      sql.raw("(at_risk_threshold_pct >= 1) AND (at_risk_threshold_pct <= 99)"),
     ),
   ],
 );
@@ -4257,14 +4365,18 @@ export const slaGoalTable = pgTable(
       table.workItemTypeId,
       table.priority,
     ),
-    check("sla_goal_target_minutes_positive", sql`${table.targetMinutes} > 0`),
+    check("sla_goal_target_minutes_positive", sql.raw("target_minutes > 0")),
     check(
       "sla_goal_metric_allowed",
-      sql`${table.metric} in ('first_response', 'resolution')`,
+      sql.raw(
+        "metric = ANY (ARRAY['first_response'::text, 'resolution'::text])",
+      ),
     ),
     check(
       "sla_goal_priority_allowed",
-      sql`${table.priority} in ('low', 'medium', 'high', 'urgent')`,
+      sql.raw(
+        "priority = ANY (ARRAY['low'::text, 'medium'::text, 'high'::text, 'urgent'::text])",
+      ),
     ),
   ],
 );
@@ -4367,7 +4479,7 @@ export const watcherTable = pgTable(
     // #189 S7 -- `data-model.md` §4 states `source` (`explicit`|`implicit`) verbatim.
     check(
       "watcher_source_allowed",
-      sql`${table.source} in ('explicit', 'implicit')`,
+      sql.raw("source = ANY (ARRAY['explicit'::text, 'implicit'::text])"),
     ),
   ],
 );
@@ -4439,8 +4551,8 @@ export const requestTypeTable = pgTable(
       table.workspaceId,
       table.id,
     ),
-    check("request_type_version_positive", sql`${table.version} > 0`),
-    check("request_type_position_nonnegative", sql`${table.position} >= 0`),
+    check("request_type_version_positive", sql.raw("version > 0")),
+    check("request_type_position_nonnegative", sql.raw('"position" >= 0')),
   ],
 );
 
@@ -4462,6 +4574,7 @@ export const requestTypeVersionTable = pgTable(
     workItemTypeId: text("work_item_type_id").notNull(),
     defaultProjectId: text("default_project_id"),
     slaPolicyId: text("sla_policy_id"),
+    autoAccept: boolean("auto_accept").notNull().default(false),
     defaultAssigneeId: text("default_assignee_id").references(
       () => personTable.id,
       { onDelete: "restrict", onUpdate: "cascade" },
@@ -4540,7 +4653,7 @@ export const submissionTable = pgTable(
     id: text("id")
       .$defaultFn(() => createId())
       .primaryKey(),
-    number: integer("number").notNull().unique("submission_number_unique"),
+    number: serial("number").notNull().unique("submission_number_unique"),
     organisationId: text("organisation_id")
       .notNull()
       .references(() => organisationTable.id, {
@@ -4557,6 +4670,10 @@ export const submissionTable = pgTable(
     requestTypeVersionId: text("request_type_version_id").notNull(),
     formData: jsonb("form_data").notNull(),
     state: text("state").notNull().default("new"),
+    submittedAt: timestamp("submitted_at", {
+      mode: "date",
+      withTimezone: true,
+    }),
     claimedBy: text("claimed_by").references(() => personTable.id, {
       onDelete: "restrict",
       onUpdate: "cascade",
@@ -4599,19 +4716,29 @@ export const submissionTable = pgTable(
       table.state,
       table.createdAt.desc(),
     ),
-    check("submission_number_positive", sql`${table.number} > 0`),
-    check("submission_version_positive", sql`${table.version} > 0`),
+    check("submission_number_positive", sql.raw("number > 0")),
+    check("submission_version_positive", sql.raw("version > 0")),
     check(
       "submission_state_allowed",
-      sql`${table.state} in ('new', 'clarifying', 'accepted', 'declined', 'duplicate', 'withdrawn')`,
+      sql.raw(
+        "state = ANY (ARRAY['draft'::text, 'new'::text, 'clarifying'::text, 'accepted'::text, 'declined'::text, 'duplicate'::text, 'withdrawn'::text])",
+      ),
+    ),
+    check(
+      "submission_submitted_at_state_consistent",
+      sql.raw(
+        "((state = 'draft'::text) AND (submitted_at IS NULL)) OR ((state <> 'draft'::text) AND (submitted_at IS NOT NULL))",
+      ),
     ),
     check(
       "submission_customer_visibility_allowed",
-      sql`${table.customerVisibility} in ('private', 'organisation')`,
+      sql.raw(
+        "customer_visibility = ANY (ARRAY['private'::text, 'organisation'::text])",
+      ),
     ),
     check(
       "submission_claim_pair",
-      sql`(${table.claimedBy} is null) = (${table.claimedAt} is null)`,
+      sql.raw("(claimed_by IS NULL) = (claimed_at IS NULL)"),
     ),
   ],
 );
@@ -4648,7 +4775,7 @@ export const submissionMessageTable = pgTable(
     ),
     check(
       "submission_message_actor_type_allowed",
-      sql`${table.actorType} in ('customer', 'triager')`,
+      sql.raw("actor_type = ANY (ARRAY['customer'::text, 'triager'::text])"),
     ),
   ],
 );
@@ -4687,13 +4814,13 @@ export const requestParticipantTable = pgTable(
     index("request_participant_person_idx").on(table.personId),
     uniqueIndex("request_participant_work_item_person_unique")
       .on(table.workItemId, table.personId)
-      .where(sql`${table.workItemId} is not null`),
+      .where(sql.raw("(work_item_id IS NOT NULL)")),
     uniqueIndex("request_participant_submission_person_unique")
       .on(table.submissionId, table.personId)
-      .where(sql`${table.submissionId} is not null`),
+      .where(sql.raw("(submission_id IS NOT NULL)")),
     check(
       "request_participant_one_parent",
-      sql`(${table.workItemId} is null) <> (${table.submissionId} is null)`,
+      sql.raw("(work_item_id IS NULL) <> (submission_id IS NULL)"),
     ),
   ],
 );
@@ -4729,6 +4856,7 @@ export const attachmentTable = pgTable(
       onDelete: "cascade",
       onUpdate: "cascade",
     }),
+    submissionFieldKey: text("submission_field_key"),
     objectKey: text("object_key").notNull(),
     filename: text("filename").notNull(),
     mimeType: text("mime_type").notNull(),
@@ -4753,7 +4881,7 @@ export const attachmentTable = pgTable(
     // cleanup" (`attachment-pending-cleanup`, background-jobs.md).
     index("attachment_pending_idx")
       .on(table.state)
-      .where(sql`${table.state} = 'pending'`),
+      .where(sql.raw("(state = 'pending'::text)")),
     // `data-model.md`'s own "Indexing" section for `attachment`: a `(workspace_id,
     // state)` composite (workspace-scoped state listing) and `(organisation_id)` partial
     // (the per-organisation storage-quota sum).
@@ -4763,20 +4891,20 @@ export const attachmentTable = pgTable(
     ),
     index("attachment_organisationId_idx")
       .on(table.organisationId)
-      .where(sql`${table.organisationId} is not null`),
+      .where(sql.raw("(organisation_id IS NOT NULL)")),
     check(
       "attachment_state_allowed",
-      sql`${table.state} in ('pending', 'ready', 'deleted')`,
+      sql.raw(
+        "state = ANY (ARRAY['pending'::text, 'ready'::text, 'deleted'::text])",
+      ),
     ),
     // `attachments.md`'s data section: "`work_item_id` | `comment_id` | `submission_id`
     // (CHECK exactly one)".
     check(
       "attachment_exactly_one_parent",
-      sql`(
-        (case when ${table.workItemId} is not null then 1 else 0 end) +
-        (case when ${table.commentId} is not null then 1 else 0 end) +
-        (case when ${table.submissionId} is not null then 1 else 0 end)
-      ) = 1`,
+      sql.raw(
+        "((\nCASE\n    WHEN (work_item_id IS NOT NULL) THEN 1\n    ELSE 0\nEND +\nCASE\n    WHEN (comment_id IS NOT NULL) THEN 1\n    ELSE 0\nEND) +\nCASE\n    WHEN (submission_id IS NOT NULL) THEN 1\n    ELSE 0\nEND) = 1",
+      ),
     ),
     // Tenant-safe composite FK, same `(workspace_id, id)` technique `activityTable`
     // uses against the same target unique index (`work_item_workspace_id_id_unique`).
@@ -4957,9 +5085,12 @@ export const auditLogTable = pgTable(
     ),
     check(
       "audit_log_prev_hash_shape",
-      sql`${table.prevHash} ~ '^[0-9a-f]{64}$'`,
+      sql.raw("prev_hash ~ '^[0-9a-f]{64}$'::text"),
     ),
-    check("audit_log_row_hash_shape", sql`${table.rowHash} ~ '^[0-9a-f]{64}$'`),
+    check(
+      "audit_log_row_hash_shape",
+      sql.raw("row_hash ~ '^[0-9a-f]{64}$'::text"),
+    ),
     unique("audit_log_seq_unique").on(table.seq),
     // Opus security review of PR #291, S3: under an isolation level stronger than the
     // codebase's own default (READ COMMITTED) -- REPEATABLE READ or SERIALIZABLE, which
@@ -5030,35 +5161,45 @@ export const pendingActionTable = pgTable(
   (table) => [
     check(
       "pending_action_credential_type_check",
-      sql`${table.credentialType} in ('session', 'api_key')`,
+      sql.raw(
+        "credential_type = ANY (ARRAY['session'::text, 'api_key'::text])",
+      ),
     ),
     check(
       "pending_action_origin_check",
-      sql`${table.origin} in ('web', 'api', 'mcp')`,
+      sql.raw("origin = ANY (ARRAY['web'::text, 'api'::text, 'mcp'::text])"),
     ),
     check(
       "pending_action_action_check",
-      sql`${table.action} in ('delete', 'bulk_delete', 'purge', 'mcp_destructive', 'user_deactivation')`,
+      sql.raw(
+        "action = ANY (ARRAY['delete'::text, 'bulk_delete'::text, 'purge'::text, 'mcp_destructive'::text, 'user_deactivation'::text])",
+      ),
     ),
     check(
       "pending_action_confirmation_check",
-      sql`${table.confirmationRequired} in ('click', 'typed_name', 'typed_count', 'typed_count_step_up', 'typed_name_step_up')`,
+      sql.raw(
+        "confirmation_required = ANY (ARRAY['click'::text, 'typed_name'::text, 'typed_count'::text, 'typed_count_step_up'::text, 'typed_name_step_up'::text])",
+      ),
     ),
     check(
       "pending_action_state_check",
-      sql`${table.state} in ('pending', 'approved', 'denied', 'cancelled', 'expired', 'invalidated', 'executed', 'failed')`,
+      sql.raw(
+        "state = ANY (ARRAY['pending'::text, 'approved'::text, 'denied'::text, 'cancelled'::text, 'expired'::text, 'invalidated'::text, 'executed'::text, 'failed'::text])",
+      ),
     ),
     check(
       "pending_action_invalidation_reason_check",
-      sql`${table.invalidationReason} is null or ${table.invalidationReason} in ('credential_revoked', 'requester_deactivated', 'reach_lost', 'capability_removed', 'version_changed', 'scope_changed')`,
+      sql.raw(
+        "(invalidation_reason IS NULL) OR (invalidation_reason = ANY (ARRAY['credential_revoked'::text, 'requester_deactivated'::text, 'reach_lost'::text, 'capability_removed'::text, 'version_changed'::text, 'scope_changed'::text]))",
+      ),
     ),
     check(
       "pending_action_payload_hash_check",
-      sql`${table.payloadHash} ~ '^[0-9a-f]{64}$'`,
+      sql.raw("payload_hash ~ '^[0-9a-f]{64}$'::text"),
     ),
     check(
       "pending_action_targets_nonempty",
-      sql`cardinality(${table.targetIds}) > 0`,
+      sql.raw("cardinality(target_ids) > 0"),
     ),
     index("pending_action_requester_state_expires_idx").on(
       table.requestedByPersonId,
@@ -5067,11 +5208,11 @@ export const pendingActionTable = pgTable(
     ),
     index("pending_action_workspace_created_idx").on(
       table.workspaceId,
-      table.createdAt.desc(),
+      table.createdAt.desc().nullsFirst(),
     ),
     uniqueIndex("pending_action_one_pending_target_unique")
-      .on(table.requestedByPersonId, table.action, table.targetIds)
-      .where(sql`${table.state} = 'pending'`),
+      .on(table.requestedByPersonId, table.action, table.targetIds, table.state)
+      .where(sql.raw("(state = 'pending'::text)")),
   ],
 );
 
@@ -5124,37 +5265,25 @@ export const stepUpConfirmationTable = pgTable(
   (table) => [
     check(
       "step_up_binding_shape",
-      sql`(${table.bindingKind} = 'pending_action' and ${table.pendingActionId} is not null
-          and ${table.operationKey} is null and ${table.routeKey} is null
-          and ${table.expectedVersion} is null and ${table.bodyHash} is null)
-        or (${table.bindingKind} = 'operation' and ${table.pendingActionId} is null
-          and ${table.operationKey} is not null and ${table.routeKey} is not null
-          and ${table.expectedVersion} is not null and ${table.expectedVersion} >= 1
-          and ${table.bodyHash} is not null and octet_length(${table.bodyHash}) = 32)`,
+      sql.raw(
+        "((binding_kind = 'pending_action'::text) AND (pending_action_id IS NOT NULL) AND (operation_key IS NULL) AND (route_key IS NULL) AND (expected_version IS NULL) AND (body_hash IS NULL)) OR ((binding_kind = 'operation'::text) AND (pending_action_id IS NULL) AND (operation_key IS NOT NULL) AND (route_key IS NOT NULL) AND (expected_version IS NOT NULL) AND (expected_version >= 1) AND (body_hash IS NOT NULL) AND (octet_length(body_hash) = 32))",
+      ),
     ),
     check(
       "step_up_operation_route",
-      sql`${table.operationKey} is null
-        or (${table.operationKey} = 'metrics_token_rotate' and ${table.routeKey} = 'POST /api/instance/observability/metrics-token/rotate')
-        or (${table.operationKey} = 'identity_connection_create' and ${table.routeKey} = 'POST /api/instance/identity-connections')
-        or (${table.operationKey} = 'identity_connection_configure' and ${table.routeKey} = 'PATCH /api/instance/identity-connections/{id}')
-        or (${table.operationKey} = 'oidc_group_mapping_create' and ${table.routeKey} = 'POST /api/instance/identity-connections/{id}/oidc-group-mappings')
-        or (${table.operationKey} = 'oidc_group_mapping_update' and ${table.routeKey} = 'PATCH /api/instance/identity-connections/{id}/oidc-group-mappings/{mappingId}')
-        or (${table.operationKey} = 'scim_admin_update' and ${table.routeKey} = 'PATCH /api/instance/identity-connections/{id}/scim')
-        or (${table.operationKey} = 'scim_token_rotate' and ${table.routeKey} = 'POST /api/instance/identity-connections/{id}/scim/rotate-token')
-        or (${table.operationKey} = 'scim_token_revoke' and ${table.routeKey} = 'POST /api/instance/identity-connections/{id}/scim/revoke-token')
-        or (${table.operationKey} = 'mfa_reset' and ${table.routeKey} = 'POST /api/instance/users/{id}/reset-mfa')
-        or (${table.operationKey} = 'instance_admin_grant' and ${table.routeKey} = 'POST /api/instance/users/{id}/grant-admin')`,
+      sql.raw(
+        "(operation_key IS NULL) OR ((operation_key = 'metrics_token_rotate'::text) AND (route_key = 'POST /api/instance/observability/metrics-token/rotate'::text)) OR ((operation_key = 'identity_connection_create'::text) AND (route_key = 'POST /api/instance/identity-connections'::text)) OR ((operation_key = 'identity_connection_configure'::text) AND (route_key = 'PATCH /api/instance/identity-connections/{id}'::text)) OR ((operation_key = 'oidc_group_mapping_create'::text) AND (route_key = 'POST /api/instance/identity-connections/{id}/oidc-group-mappings'::text)) OR ((operation_key = 'oidc_group_mapping_update'::text) AND (route_key = 'PATCH /api/instance/identity-connections/{id}/oidc-group-mappings/{mappingId}'::text)) OR ((operation_key = 'scim_admin_update'::text) AND (route_key = 'PATCH /api/instance/identity-connections/{id}/scim'::text)) OR ((operation_key = 'scim_token_rotate'::text) AND (route_key = 'POST /api/instance/identity-connections/{id}/scim/rotate-token'::text)) OR ((operation_key = 'scim_token_revoke'::text) AND (route_key = 'POST /api/instance/identity-connections/{id}/scim/revoke-token'::text)) OR ((operation_key = 'mfa_reset'::text) AND (route_key = 'POST /api/instance/users/{id}/reset-mfa'::text)) OR ((operation_key = 'instance_admin_grant'::text) AND (route_key = 'POST /api/instance/users/{id}/grant-admin'::text))",
+      ),
     ),
     check(
       "step_up_state_shape",
-      sql`(${table.state} = 'challenge' and ${table.tokenHash} is null and ${table.authMethod} is null and ${table.authenticatedAt} is null and ${table.issuedAt} is null and ${table.consumedAt} is null and ${table.tokenExpiresAt} is null)
-        or (${table.state} = 'issued' and ${table.tokenHash} is not null and octet_length(${table.tokenHash}) = 32 and ${table.authMethod} is not null and ${table.authMethod} in ('password','totp','backup_code','sso_prompt_login') and ${table.authenticatedAt} is not null and ${table.issuedAt} is not null and ${table.consumedAt} is null and ${table.tokenExpiresAt} is not null)
-        or (${table.state} = 'consumed' and ${table.tokenHash} is not null and octet_length(${table.tokenHash}) = 32 and ${table.authMethod} is not null and ${table.authMethod} in ('password','totp','backup_code','sso_prompt_login') and ${table.authenticatedAt} is not null and ${table.issuedAt} is not null and ${table.consumedAt} is not null and ${table.tokenExpiresAt} is not null)`,
+      sql.raw(
+        "((state = 'challenge'::text) AND (token_hash IS NULL) AND (auth_method IS NULL) AND (authenticated_at IS NULL) AND (issued_at IS NULL) AND (consumed_at IS NULL) AND (token_expires_at IS NULL)) OR ((state = 'issued'::text) AND (token_hash IS NOT NULL) AND (octet_length(token_hash) = 32) AND (auth_method IS NOT NULL) AND (auth_method = ANY (ARRAY['password'::text, 'totp'::text, 'backup_code'::text, 'sso_prompt_login'::text])) AND (authenticated_at IS NOT NULL) AND (issued_at IS NOT NULL) AND (consumed_at IS NULL) AND (token_expires_at IS NOT NULL)) OR ((state = 'consumed'::text) AND (token_hash IS NOT NULL) AND (octet_length(token_hash) = 32) AND (auth_method IS NOT NULL) AND (auth_method = ANY (ARRAY['password'::text, 'totp'::text, 'backup_code'::text, 'sso_prompt_login'::text])) AND (authenticated_at IS NOT NULL) AND (issued_at IS NOT NULL) AND (consumed_at IS NOT NULL) AND (token_expires_at IS NOT NULL))",
+      ),
     ),
     check(
       "step_up_nonce_hash_length",
-      sql`octet_length(${table.challengeNonceHash}) = 32`,
+      sql.raw("octet_length(challenge_nonce_hash) = 32"),
     ),
     index("step_up_session_state_expiry_idx").on(
       table.sessionId,
@@ -5168,7 +5297,7 @@ export const stepUpConfirmationTable = pgTable(
     ),
     uniqueIndex("step_up_token_hash_unique")
       .on(table.tokenHash)
-      .where(sql`${table.tokenHash} is not null`),
+      .where(sql.raw("(token_hash IS NOT NULL)")),
   ],
 );
 

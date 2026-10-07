@@ -1,5 +1,5 @@
 {
-	"id": "0dfb58b1-aecf-4107-9dab-37ee00c7402a",
+	"id": "fa13d1e6-33b2-42d6-9d4c-049322684148",
 	"prevId": "094ceeec-d7b2-4dac-960d-82b2cbb3311e",
 	"version": "7",
 	"dialect": "postgresql",
@@ -291,7 +291,7 @@
 			"checkConstraints": {
 				"activity_visibility_allowed": {
 					"name": "activity_visibility_allowed",
-					"value": "\"activity\".\"visibility\" in ('public', 'internal')"
+					"value": "visibility = ANY (ARRAY['public'::text, 'internal'::text])"
 				}
 			},
 			"isRLSEnabled": false
@@ -329,7 +329,7 @@
 					"name": "reference_id",
 					"type": "text",
 					"primaryKey": false,
-					"notNull": true
+					"notNull": false
 				},
 				"prefix": {
 					"name": "prefix",
@@ -508,15 +508,6 @@
 				}
 			},
 			"foreignKeys": {
-				"apikey_reference_id_user_id_fk": {
-					"name": "apikey_reference_id_user_id_fk",
-					"tableFrom": "apikey",
-					"tableTo": "user",
-					"columnsFrom": ["reference_id"],
-					"columnsTo": ["id"],
-					"onDelete": "cascade",
-					"onUpdate": "no action"
-				},
 				"apikey_user_id_user_id_fk": {
 					"name": "apikey_user_id_user_id_fk",
 					"tableFrom": "apikey",
@@ -754,11 +745,11 @@
 			"checkConstraints": {
 				"approval_kind_allowed": {
 					"name": "approval_kind_allowed",
-					"value": "\"approval\".\"kind\" in ('customer', 'cab')"
+					"value": "kind = ANY (ARRAY['customer'::text, 'cab'::text])"
 				},
 				"approval_state_allowed": {
 					"name": "approval_state_allowed",
-					"value": "\"approval\".\"state\" in ('pending', 'approved', 'rejected', 'expired', 'withdrawn')"
+					"value": "state = ANY (ARRAY['pending'::text, 'approved'::text, 'rejected'::text, 'expired'::text, 'withdrawn'::text])"
 				}
 			},
 			"isRLSEnabled": false
@@ -1025,6 +1016,12 @@
 					"primaryKey": false,
 					"notNull": false
 				},
+				"submission_field_key": {
+					"name": "submission_field_key",
+					"type": "text",
+					"primaryKey": false,
+					"notNull": false
+				},
 				"object_key": {
 					"name": "object_key",
 					"type": "text",
@@ -1132,7 +1129,7 @@
 						}
 					],
 					"isUnique": false,
-					"where": "\"attachment\".\"state\" = 'pending'",
+					"where": "(state = 'pending'::text)",
 					"concurrently": false,
 					"method": "btree",
 					"with": {}
@@ -1169,7 +1166,7 @@
 						}
 					],
 					"isUnique": false,
-					"where": "\"attachment\".\"organisation_id\" is not null",
+					"where": "(organisation_id IS NOT NULL)",
 					"concurrently": false,
 					"method": "btree",
 					"with": {}
@@ -1228,11 +1225,11 @@
 			"checkConstraints": {
 				"attachment_state_allowed": {
 					"name": "attachment_state_allowed",
-					"value": "\"attachment\".\"state\" in ('pending', 'ready', 'deleted')"
+					"value": "state = ANY (ARRAY['pending'::text, 'ready'::text, 'deleted'::text])"
 				},
 				"attachment_exactly_one_parent": {
 					"name": "attachment_exactly_one_parent",
-					"value": "(\n        (case when \"attachment\".\"work_item_id\" is not null then 1 else 0 end) +\n        (case when \"attachment\".\"comment_id\" is not null then 1 else 0 end) +\n        (case when \"attachment\".\"submission_id\" is not null then 1 else 0 end)\n      ) = 1"
+					"value": "((\nCASE\n    WHEN (work_item_id IS NOT NULL) THEN 1\n    ELSE 0\nEND +\nCASE\n    WHEN (comment_id IS NOT NULL) THEN 1\n    ELSE 0\nEND) +\nCASE\n    WHEN (submission_id IS NOT NULL) THEN 1\n    ELSE 0\nEND) = 1"
 				}
 			},
 			"isRLSEnabled": false
@@ -1452,11 +1449,11 @@
 			"checkConstraints": {
 				"audit_log_prev_hash_shape": {
 					"name": "audit_log_prev_hash_shape",
-					"value": "\"audit_log\".\"prev_hash\" ~ '^[0-9a-f]{64}$'"
+					"value": "prev_hash ~ '^[0-9a-f]{64}$'::text"
 				},
 				"audit_log_row_hash_shape": {
 					"name": "audit_log_row_hash_shape",
-					"value": "\"audit_log\".\"row_hash\" ~ '^[0-9a-f]{64}$'"
+					"value": "row_hash ~ '^[0-9a-f]{64}$'::text"
 				}
 			},
 			"isRLSEnabled": false
@@ -1557,7 +1554,7 @@
 			"checkConstraints": {
 				"canned_response_visibility_default_allowed": {
 					"name": "canned_response_visibility_default_allowed",
-					"value": "\"canned_response\".\"visibility_default\" in ('public', 'internal')"
+					"value": "visibility_default = ANY (ARRAY['public'::text, 'internal'::text])"
 				}
 			},
 			"isRLSEnabled": false
@@ -1815,7 +1812,7 @@
 			"checkConstraints": {
 				"comment_visibility_allowed": {
 					"name": "comment_visibility_allowed",
-					"value": "\"comment\".\"visibility\" in ('public', 'internal')"
+					"value": "visibility = ANY (ARRAY['public'::text, 'internal'::text])"
 				}
 			},
 			"isRLSEnabled": false
@@ -2130,7 +2127,7 @@
 						}
 					],
 					"isUnique": true,
-					"where": "\"external_identity\".\"scim_external_id\" is not null",
+					"where": "(scim_external_id IS NOT NULL)",
 					"concurrently": false,
 					"method": "btree",
 					"with": {}
@@ -2192,7 +2189,7 @@
 			"checkConstraints": {
 				"external_identity_provisioned_via_check": {
 					"name": "external_identity_provisioned_via_check",
-					"value": "\"external_identity\".\"provisioned_via\" in ('jit', 'scim', 'invite')"
+					"value": "provisioned_via = ANY (ARRAY['jit'::text, 'scim'::text, 'invite'::text])"
 				}
 			},
 			"isRLSEnabled": false
@@ -2496,7 +2493,7 @@
 						}
 					],
 					"isUnique": true,
-					"where": "\"identity_connection\".\"organisation_id\" is not null",
+					"where": "(organisation_id IS NOT NULL)",
 					"concurrently": false,
 					"method": "btree",
 					"with": {}
@@ -2567,35 +2564,35 @@
 			"checkConstraints": {
 				"identity_connection_provider_type_check": {
 					"name": "identity_connection_provider_type_check",
-					"value": "\"identity_connection\".\"provider_type\" in ('entra')"
+					"value": "provider_type = 'entra'::text"
 				},
 				"identity_connection_portal_scope_check": {
 					"name": "identity_connection_portal_scope_check",
-					"value": "\"identity_connection\".\"portal_scope\" in ('agent', 'customer')"
+					"value": "portal_scope = ANY (ARRAY['agent'::text, 'customer'::text])"
 				},
 				"identity_connection_portal_organisation_check": {
 					"name": "identity_connection_portal_organisation_check",
-					"value": "(\"identity_connection\".\"portal_scope\" = 'customer' and \"identity_connection\".\"organisation_id\" is not null) or (\"identity_connection\".\"portal_scope\" = 'agent' and \"identity_connection\".\"organisation_id\" is null)"
+					"value": "((portal_scope = 'customer'::text) AND (organisation_id IS NOT NULL)) OR ((portal_scope = 'agent'::text) AND (organisation_id IS NULL))"
 				},
 				"identity_connection_customer_default_workspace_check": {
 					"name": "identity_connection_customer_default_workspace_check",
-					"value": "\"identity_connection\".\"portal_scope\" <> 'customer' or \"identity_connection\".\"default_workspace_id\" is null"
+					"value": "(portal_scope <> 'customer'::text) OR (default_workspace_id IS NULL)"
 				},
 				"identity_connection_rank_check": {
 					"name": "identity_connection_rank_check",
-					"value": "(\"identity_connection\".\"portal_scope\" = 'customer' and \"identity_connection\".\"max_role_rank\" is null) or (\"identity_connection\".\"portal_scope\" = 'agent' and \"identity_connection\".\"max_role_rank\" >= 0)"
+					"value": "((portal_scope = 'customer'::text) AND (max_role_rank IS NULL)) OR ((portal_scope = 'agent'::text) AND (max_role_rank >= 0))"
 				},
 				"identity_connection_config_version_check": {
 					"name": "identity_connection_config_version_check",
-					"value": "\"identity_connection\".\"config_version\" >= 1"
+					"value": "config_version >= 1"
 				},
 				"identity_connection_mfa_mode_check": {
 					"name": "identity_connection_mfa_mode_check",
-					"value": "\"identity_connection\".\"mfa_upstream_mode\" in ('claim', 'static', 'off')"
+					"value": "mfa_upstream_mode = ANY (ARRAY['claim'::text, 'static'::text, 'off'::text])"
 				},
 				"identity_connection_health_state_check": {
 					"name": "identity_connection_health_state_check",
-					"value": "\"identity_connection\".\"health_state\" in ('unknown', 'healthy', 'degraded', 'invalid')"
+					"value": "health_state = ANY (ARRAY['unknown'::text, 'healthy'::text, 'degraded'::text, 'invalid'::text])"
 				}
 			},
 			"isRLSEnabled": false
@@ -2662,11 +2659,11 @@
 			"checkConstraints": {
 				"instance_feature_flag_key_check": {
 					"name": "instance_feature_flag_key_check",
-					"value": "\"instance_feature_flag\".\"feature_key\" in ('feature.cycles', 'feature.modules', 'feature.estimates', 'feature.intake', 'feature.sla', 'feature.approvals', 'feature.time_tracking', 'feature.cost_tracking', 'feature.knowledge_base', 'feature.service_catalogue', 'feature.customer_portal', 'feature.reports', 'feature.automations', 'feature.timeline', 'feature.calendar', 'feature.pages', 'feature.mcp', 'feature.scim', 'feature.import', 'feature.public_boards', 'feature.dev_links')"
+					"value": "feature_key = ANY (ARRAY['feature.cycles'::text, 'feature.modules'::text, 'feature.estimates'::text, 'feature.intake'::text, 'feature.sla'::text, 'feature.approvals'::text, 'feature.time_tracking'::text, 'feature.cost_tracking'::text, 'feature.knowledge_base'::text, 'feature.service_catalogue'::text, 'feature.customer_portal'::text, 'feature.reports'::text, 'feature.automations'::text, 'feature.timeline'::text, 'feature.calendar'::text, 'feature.pages'::text, 'feature.mcp'::text, 'feature.scim'::text, 'feature.import'::text, 'feature.public_boards'::text, 'feature.dev_links'::text])"
 				},
 				"instance_feature_flag_version_positive": {
 					"name": "instance_feature_flag_version_positive",
-					"value": "\"instance_feature_flag\".\"version\" > 0"
+					"value": "version > 0"
 				}
 			},
 			"isRLSEnabled": false
@@ -2774,7 +2771,7 @@
 						}
 					],
 					"isUnique": false,
-					"where": "\"instance_plugin_config\".\"plugin_id\" like 'auth.%'",
+					"where": "(plugin_id ~~ 'auth.%'::text)",
 					"concurrently": false,
 					"method": "btree",
 					"with": {}
@@ -2812,27 +2809,27 @@
 			"checkConstraints": {
 				"instance_plugin_config_scope_check": {
 					"name": "instance_plugin_config_scope_check",
-					"value": "\"instance_plugin_config\".\"scope\" in ('instance', 'workspace')"
+					"value": "scope = ANY (ARRAY['instance'::text, 'workspace'::text])"
 				},
 				"instance_plugin_config_workspace_scope_check": {
 					"name": "instance_plugin_config_workspace_scope_check",
-					"value": "(\"instance_plugin_config\".\"scope\" = 'instance' and \"instance_plugin_config\".\"workspace_id\" is null) or (\"instance_plugin_config\".\"scope\" = 'workspace' and \"instance_plugin_config\".\"workspace_id\" is not null)"
+					"value": "((scope = 'instance'::text) AND (workspace_id IS NULL)) OR ((scope = 'workspace'::text) AND (workspace_id IS NOT NULL))"
 				},
 				"instance_plugin_config_portal_scope_check": {
 					"name": "instance_plugin_config_portal_scope_check",
-					"value": "\"instance_plugin_config\".\"portal_scope\" is null or \"instance_plugin_config\".\"portal_scope\" in ('agent', 'customer', 'both')"
+					"value": "(portal_scope IS NULL) OR (portal_scope = ANY (ARRAY['agent'::text, 'customer'::text, 'both'::text]))"
 				},
 				"instance_plugin_config_auth_portal_scope_required": {
 					"name": "instance_plugin_config_auth_portal_scope_required",
-					"value": "\"instance_plugin_config\".\"plugin_id\" not like 'auth.%' or \"instance_plugin_config\".\"portal_scope\" is not null"
+					"value": "(plugin_id !~~ 'auth.%'::text) OR (portal_scope IS NOT NULL)"
 				},
 				"instance_plugin_config_non_auth_portal_scope_null": {
 					"name": "instance_plugin_config_non_auth_portal_scope_null",
-					"value": "\"instance_plugin_config\".\"plugin_id\" like 'auth.%' or \"instance_plugin_config\".\"portal_scope\" is null"
+					"value": "(plugin_id ~~ 'auth.%'::text) OR (portal_scope IS NULL)"
 				},
 				"instance_plugin_config_version_positive": {
 					"name": "instance_plugin_config_version_positive",
-					"value": "\"instance_plugin_config\".\"config_version\" > 0"
+					"value": "config_version > 0"
 				}
 			},
 			"isRLSEnabled": false
@@ -2950,27 +2947,27 @@
 			"checkConstraints": {
 				"instance_setting_id_singleton": {
 					"name": "instance_setting_id_singleton",
-					"value": "\"instance_setting\".\"id\" = 'singleton'"
+					"value": "id = 'singleton'::text"
 				},
 				"instance_setting_observability_version_positive": {
 					"name": "instance_setting_observability_version_positive",
-					"value": "\"instance_setting\".\"observability_config_version\" >= 1"
+					"value": "observability_config_version >= 1"
 				},
 				"instance_setting_metrics_token_pair": {
 					"name": "instance_setting_metrics_token_pair",
-					"value": "(\"instance_setting\".\"metrics_token_hash\" is null) = (\"instance_setting\".\"metrics_token_rotated_at\" is null)"
+					"value": "(metrics_token_hash IS NULL) = (metrics_token_rotated_at IS NULL)"
 				},
 				"instance_setting_metrics_token_hash_length": {
 					"name": "instance_setting_metrics_token_hash_length",
-					"value": "\"instance_setting\".\"metrics_token_hash\" is null or octet_length(\"instance_setting\".\"metrics_token_hash\") = 32"
+					"value": "(metrics_token_hash IS NULL) OR (octet_length(metrics_token_hash) = 32)"
 				},
 				"instance_setting_observability_log_levels_shape": {
 					"name": "instance_setting_observability_log_levels_shape",
-					"value": "case\n        when jsonb_typeof(\"instance_setting\".\"observability_log_levels\") = 'object' then\n          (\"instance_setting\".\"observability_log_levels\" ?& array['default', 'modules'])\n          and ((\"instance_setting\".\"observability_log_levels\" - array['default', 'modules']::text[]) = '{}'::jsonb)\n          and jsonb_typeof(\"instance_setting\".\"observability_log_levels\"->'default') = 'string'\n          and \"instance_setting\".\"observability_log_levels\"->>'default' in ('error', 'warn', 'info', 'debug')\n          and jsonb_typeof(\"instance_setting\".\"observability_log_levels\"->'modules') = 'object'\n          and not (((\"instance_setting\".\"observability_log_levels\"->'modules') - array['http', 'auth', 'database', 'jobs', 'audit', 'plugins', 'realtime']::text[]) <> '{}'::jsonb)\n          and not jsonb_path_exists(\"instance_setting\".\"observability_log_levels\", '$.modules.* ? (@ != \"error\" && @ != \"warn\" && @ != \"info\" && @ != \"debug\")')\n        else false\n      end"
+					"value": "CHECK (\nCASE\n    WHEN (jsonb_typeof(observability_log_levels) = 'object'::text) THEN ((observability_log_levels ?& ARRAY['default'::text, 'modules'::text]) AND ((observability_log_levels - ARRAY['default'::text, 'modules'::text]) = '{}'::jsonb) AND (jsonb_typeof((observability_log_levels -> 'default'::text)) = 'string'::text) AND ((observability_log_levels ->> 'default'::text) = ANY (ARRAY['error'::text, 'warn'::text, 'info'::text, 'debug'::text])) AND (jsonb_typeof((observability_log_levels -> 'modules'::text)) = 'object'::text) AND (NOT (((observability_log_levels -> 'modules'::text) - ARRAY['http'::text, 'auth'::text, 'database'::text, 'jobs'::text, 'audit'::text, 'plugins'::text, 'realtime'::text]) <> '{}'::jsonb)) AND (NOT jsonb_path_exists(observability_log_levels, '$.\"modules\".*?(((@ != \"error\" && @ != \"warn\") && @ != \"info\") && @ != \"debug\")'::jsonpath)))\n    ELSE false\nEND)"
 				},
 				"instance_setting_local_factor_policy_shape": {
 					"name": "instance_setting_local_factor_policy_shape",
-					"value": "jsonb_typeof(\"instance_setting\".\"local_factor_policy\") = 'object'\n        and \"instance_setting\".\"local_factor_policy\" ?& array['mode', 'requiredRoleId']\n        and (\"instance_setting\".\"local_factor_policy\" - array['mode', 'requiredRoleId']::text[]) = '{}'::jsonb\n        and \"instance_setting\".\"local_factor_policy\"->>'mode' in ('off', 'optional', 'required_staff', 'required_role', 'required_everyone')\n        and (((\"instance_setting\".\"local_factor_policy\"->>'mode') = 'required_role' and jsonb_typeof(\"instance_setting\".\"local_factor_policy\"->'requiredRoleId') = 'string' and length(\"instance_setting\".\"local_factor_policy\"->>'requiredRoleId') > 0)\n          or ((\"instance_setting\".\"local_factor_policy\"->>'mode') <> 'required_role' and jsonb_typeof(\"instance_setting\".\"local_factor_policy\"->'requiredRoleId') = 'null'))"
+					"value": "(jsonb_typeof(local_factor_policy) = 'object'::text) AND (local_factor_policy ?& ARRAY['mode'::text, 'requiredRoleId'::text]) AND ((local_factor_policy - ARRAY['mode'::text, 'requiredRoleId'::text]) = '{}'::jsonb) AND ((local_factor_policy ->> 'mode'::text) = ANY (ARRAY['off'::text, 'optional'::text, 'required_staff'::text, 'required_role'::text, 'required_everyone'::text])) AND ((((local_factor_policy ->> 'mode'::text) = 'required_role'::text) AND (jsonb_typeof((local_factor_policy -> 'requiredRoleId'::text)) = 'string'::text) AND (length((local_factor_policy ->> 'requiredRoleId'::text)) > 0)) OR (((local_factor_policy ->> 'mode'::text) <> 'required_role'::text) AND (jsonb_typeof((local_factor_policy -> 'requiredRoleId'::text)) = 'null'::text)))"
 				}
 			},
 			"isRLSEnabled": false
@@ -3186,7 +3183,7 @@
 					"name": "workspace_id",
 					"type": "text",
 					"primaryKey": false,
-					"notNull": false
+					"notNull": true
 				}
 			},
 			"indexes": {
@@ -3237,7 +3234,7 @@
 						}
 					],
 					"isUnique": true,
-					"where": "\"label\".\"task_id\" is null",
+					"where": "(task_id IS NULL)",
 					"concurrently": false,
 					"method": "btree",
 					"with": {}
@@ -3347,7 +3344,7 @@
 						}
 					],
 					"isUnique": true,
-					"where": "\"legal_hold\".\"lifted_at\" is null",
+					"where": "(lifted_at IS NULL)",
 					"concurrently": false,
 					"method": "btree",
 					"with": {}
@@ -3360,7 +3357,7 @@
 			"checkConstraints": {
 				"legal_hold_scope_check": {
 					"name": "legal_hold_scope_check",
-					"value": "\"legal_hold\".\"scope\" in ('organisation', 'person')"
+					"value": "scope = ANY (ARRAY['organisation'::text, 'person'::text])"
 				}
 			},
 			"isRLSEnabled": false
@@ -3511,7 +3508,7 @@
 						}
 					],
 					"isUnique": false,
-					"where": "\"membership_grant\".\"revoked_at\" is null",
+					"where": "(revoked_at IS NULL)",
 					"concurrently": false,
 					"method": "btree",
 					"with": {}
@@ -3539,7 +3536,7 @@
 						}
 					],
 					"isUnique": true,
-					"where": "\"membership_grant\".\"revoked_at\" is null and \"membership_grant\".\"source_kind\" = 'direct'",
+					"where": "((revoked_at IS NULL) AND (source_kind = 'direct'::text))",
 					"concurrently": false,
 					"method": "btree",
 					"with": {}
@@ -3567,7 +3564,7 @@
 						}
 					],
 					"isUnique": true,
-					"where": "\"membership_grant\".\"revoked_at\" is null and \"membership_grant\".\"source_kind\" = 'jit_default'",
+					"where": "((revoked_at IS NULL) AND (source_kind = 'jit_default'::text))",
 					"concurrently": false,
 					"method": "btree",
 					"with": {}
@@ -3589,7 +3586,7 @@
 						}
 					],
 					"isUnique": true,
-					"where": "\"membership_grant\".\"revoked_at\" is null and \"membership_grant\".\"source_kind\" = 'oidc_group'",
+					"where": "((revoked_at IS NULL) AND (source_kind = 'oidc_group'::text))",
 					"concurrently": false,
 					"method": "btree",
 					"with": {}
@@ -3611,7 +3608,7 @@
 						}
 					],
 					"isUnique": true,
-					"where": "\"membership_grant\".\"revoked_at\" is null and \"membership_grant\".\"source_kind\" = 'scim_group'",
+					"where": "((revoked_at IS NULL) AND (source_kind = 'scim_group'::text))",
 					"concurrently": false,
 					"method": "btree",
 					"with": {}
@@ -3627,7 +3624,7 @@
 						}
 					],
 					"isUnique": false,
-					"where": "\"membership_grant\".\"revoked_at\" is null",
+					"where": "(revoked_at IS NULL)",
 					"concurrently": false,
 					"method": "btree",
 					"with": {}
@@ -3728,19 +3725,19 @@
 			"checkConstraints": {
 				"membership_grant_source_kind_check": {
 					"name": "membership_grant_source_kind_check",
-					"value": "\"membership_grant\".\"source_kind\" in ('direct', 'jit_default', 'oidc_group', 'scim_group')"
+					"value": "source_kind = ANY (ARRAY['direct'::text, 'jit_default'::text, 'oidc_group'::text, 'scim_group'::text])"
 				},
 				"membership_grant_direct_origin_check": {
 					"name": "membership_grant_direct_origin_check",
-					"value": "\"membership_grant\".\"direct_origin\" is null or \"membership_grant\".\"direct_origin\" in ('admin', 'system_backfill')"
+					"value": "(direct_origin IS NULL) OR (direct_origin = ANY (ARRAY['admin'::text, 'system_backfill'::text]))"
 				},
 				"membership_grant_revocation_reason_check": {
 					"name": "membership_grant_revocation_reason_check",
-					"value": "\"membership_grant\".\"revocation_reason\" is null or \"membership_grant\".\"revocation_reason\" in ('claim_removed', 'claim_missing', 'claim_overage', 'admission_failed', 'mapping_disabled', 'mapping_changed', 'role_deleted', 'connection_disabled', 'scim_group_removed', 'scim_deactivated', 'direct_removed', 'person_deactivated')"
+					"value": "(revocation_reason IS NULL) OR (revocation_reason = ANY (ARRAY['claim_removed'::text, 'claim_missing'::text, 'claim_overage'::text, 'admission_failed'::text, 'mapping_disabled'::text, 'mapping_changed'::text, 'role_deleted'::text, 'connection_disabled'::text, 'scim_group_removed'::text, 'scim_deactivated'::text, 'direct_removed'::text, 'person_deactivated'::text]))"
 				},
 				"membership_grant_source_shape_check": {
 					"name": "membership_grant_source_shape_check",
-					"value": "(\"membership_grant\".\"source_kind\" = 'direct' and \"membership_grant\".\"direct_origin\" is not null and ((\"membership_grant\".\"direct_origin\" = 'admin' and \"membership_grant\".\"granted_by_person_id\" is not null) or (\"membership_grant\".\"direct_origin\" = 'system_backfill' and \"membership_grant\".\"granted_by_person_id\" is null)) and \"membership_grant\".\"external_identity_id\" is null and \"membership_grant\".\"identity_connection_id\" is null and \"membership_grant\".\"oidc_group_mapping_id\" is null and \"membership_grant\".\"scim_group_mapping_id\" is null)\n        or (\"membership_grant\".\"source_kind\" = 'jit_default' and \"membership_grant\".\"direct_origin\" is null and \"membership_grant\".\"granted_by_person_id\" is null and \"membership_grant\".\"external_identity_id\" is not null and \"membership_grant\".\"identity_connection_id\" is not null and \"membership_grant\".\"oidc_group_mapping_id\" is null and \"membership_grant\".\"scim_group_mapping_id\" is null and \"membership_grant\".\"sees_all\" = false)\n        or (\"membership_grant\".\"source_kind\" = 'oidc_group' and \"membership_grant\".\"direct_origin\" is null and \"membership_grant\".\"granted_by_person_id\" is null and \"membership_grant\".\"external_identity_id\" is not null and \"membership_grant\".\"identity_connection_id\" is not null and \"membership_grant\".\"oidc_group_mapping_id\" is not null and \"membership_grant\".\"scim_group_mapping_id\" is null and \"membership_grant\".\"sees_all\" = false)\n        or (\"membership_grant\".\"source_kind\" = 'scim_group' and \"membership_grant\".\"direct_origin\" is null and \"membership_grant\".\"granted_by_person_id\" is null and \"membership_grant\".\"external_identity_id\" is not null and \"membership_grant\".\"identity_connection_id\" is not null and \"membership_grant\".\"oidc_group_mapping_id\" is null and \"membership_grant\".\"scim_group_mapping_id\" is not null and \"membership_grant\".\"sees_all\" = false)"
+					"value": "((source_kind = 'direct'::text) AND (direct_origin IS NOT NULL) AND (((direct_origin = 'admin'::text) AND (granted_by_person_id IS NOT NULL)) OR ((direct_origin = 'system_backfill'::text) AND (granted_by_person_id IS NULL))) AND (external_identity_id IS NULL) AND (identity_connection_id IS NULL) AND (oidc_group_mapping_id IS NULL) AND (scim_group_mapping_id IS NULL)) OR ((source_kind = 'jit_default'::text) AND (direct_origin IS NULL) AND (granted_by_person_id IS NULL) AND (external_identity_id IS NOT NULL) AND (identity_connection_id IS NOT NULL) AND (oidc_group_mapping_id IS NULL) AND (scim_group_mapping_id IS NULL) AND (sees_all = false)) OR ((source_kind = 'oidc_group'::text) AND (direct_origin IS NULL) AND (granted_by_person_id IS NULL) AND (external_identity_id IS NOT NULL) AND (identity_connection_id IS NOT NULL) AND (oidc_group_mapping_id IS NOT NULL) AND (scim_group_mapping_id IS NULL) AND (sees_all = false)) OR ((source_kind = 'scim_group'::text) AND (direct_origin IS NULL) AND (granted_by_person_id IS NULL) AND (external_identity_id IS NOT NULL) AND (identity_connection_id IS NOT NULL) AND (oidc_group_mapping_id IS NULL) AND (scim_group_mapping_id IS NOT NULL) AND (sees_all = false))"
 				}
 			},
 			"isRLSEnabled": false
@@ -4105,7 +4102,7 @@
 						}
 					],
 					"isUnique": false,
-					"where": "\"notification_delivery\".\"state\" = 'pending' and \"notification_delivery\".\"digest_id\" is null",
+					"where": "((state = 'pending'::text) AND (digest_id IS NULL))",
 					"concurrently": false,
 					"method": "btree",
 					"with": {}
@@ -4175,7 +4172,7 @@
 						}
 					],
 					"isUnique": false,
-					"where": "\"notification_delivery\".\"delivered_at\" is not null",
+					"where": "(delivered_at IS NOT NULL)",
 					"concurrently": false,
 					"method": "btree",
 					"with": {}
@@ -4240,15 +4237,15 @@
 			"checkConstraints": {
 				"notification_delivery_channel_check": {
 					"name": "notification_delivery_channel_check",
-					"value": "\"notification_delivery\".\"channel\" like 'notify.%'"
+					"value": "channel ~~ 'notify.%'::text"
 				},
 				"notification_delivery_state_check": {
 					"name": "notification_delivery_state_check",
-					"value": "\"notification_delivery\".\"state\" in ('pending', 'delivered', 'dead', 'suppressed')"
+					"value": "state = ANY (ARRAY['pending'::text, 'delivered'::text, 'dead'::text, 'suppressed'::text])"
 				},
 				"notification_delivery_attempts_check": {
 					"name": "notification_delivery_attempts_check",
-					"value": "\"notification_delivery\".\"attempts\" >= 0"
+					"value": "attempts >= 0"
 				}
 			},
 			"isRLSEnabled": false
@@ -4395,7 +4392,7 @@
 						}
 					],
 					"isUnique": false,
-					"where": "\"notification_digest\".\"state\" in ('collecting', 'pending')",
+					"where": "(state = ANY (ARRAY['collecting'::text, 'pending'::text]))",
 					"concurrently": false,
 					"method": "btree",
 					"with": {}
@@ -4450,19 +4447,19 @@
 			"checkConstraints": {
 				"notification_digest_channel_check": {
 					"name": "notification_digest_channel_check",
-					"value": "\"notification_digest\".\"channel\" like 'notify.%'"
+					"value": "channel ~~ 'notify.%'::text"
 				},
 				"notification_digest_cadence_check": {
 					"name": "notification_digest_cadence_check",
-					"value": "\"notification_digest\".\"cadence\" in ('hourly', 'daily')"
+					"value": "cadence = ANY (ARRAY['hourly'::text, 'daily'::text])"
 				},
 				"notification_digest_state_check": {
 					"name": "notification_digest_state_check",
-					"value": "\"notification_digest\".\"state\" in ('collecting', 'pending', 'delivered', 'dead', 'suppressed')"
+					"value": "state = ANY (ARRAY['collecting'::text, 'pending'::text, 'delivered'::text, 'dead'::text, 'suppressed'::text])"
 				},
 				"notification_digest_attempts_check": {
 					"name": "notification_digest_attempts_check",
-					"value": "\"notification_digest\".\"attempts\" >= 0"
+					"value": "attempts >= 0"
 				}
 			},
 			"isRLSEnabled": false
@@ -4561,15 +4558,15 @@
 			"checkConstraints": {
 				"notification_preference_scope_check": {
 					"name": "notification_preference_scope_check",
-					"value": "(\"notification_preference\".\"scope\" = 'global' and \"notification_preference\".\"scope_id\" is null) or (\"notification_preference\".\"scope\" in ('workspace', 'project') and \"notification_preference\".\"scope_id\" is not null)"
+					"value": "((scope = 'global'::text) AND (scope_id IS NULL)) OR ((scope = ANY (ARRAY['workspace'::text, 'project'::text])) AND (scope_id IS NOT NULL))"
 				},
 				"notification_preference_channel_check": {
 					"name": "notification_preference_channel_check",
-					"value": "\"notification_preference\".\"channel\" = 'in_app' or \"notification_preference\".\"channel\" like 'notify.%'"
+					"value": "(channel = 'in_app'::text) OR (channel ~~ 'notify.%'::text)"
 				},
 				"notification_preference_digest_check": {
 					"name": "notification_preference_digest_check",
-					"value": "\"notification_preference\".\"digest\" in ('off', 'hourly', 'daily')"
+					"value": "digest = ANY (ARRAY['off'::text, 'hourly'::text, 'daily'::text])"
 				}
 			},
 			"isRLSEnabled": false
@@ -4727,7 +4724,7 @@
 						}
 					],
 					"isUnique": true,
-					"where": "\"notification\".\"event_id\" is not null",
+					"where": "(event_id IS NOT NULL)",
 					"concurrently": false,
 					"method": "btree",
 					"with": {}
@@ -4891,7 +4888,7 @@
 			"checkConstraints": {
 				"oidc_group_mapping_scope_check": {
 					"name": "oidc_group_mapping_scope_check",
-					"value": "\"oidc_group_mapping\".\"scope\" in ('organisation', 'workspace')"
+					"value": "scope = ANY (ARRAY['organisation'::text, 'workspace'::text])"
 				}
 			},
 			"isRLSEnabled": false
@@ -4931,7 +4928,7 @@
 					"type": "bigint",
 					"primaryKey": false,
 					"notNull": true,
-					"default": 21474836480
+					"default": "21474836480"
 				},
 				"max_portal_users": {
 					"name": "max_portal_users",
@@ -5184,7 +5181,7 @@
 						}
 					],
 					"isUnique": true,
-					"where": "\"organisation\".\"is_internal\" = true",
+					"where": "(is_internal = true)",
 					"concurrently": false,
 					"method": "btree",
 					"with": {}
@@ -5389,7 +5386,7 @@
 			"checkConstraints": {
 				"outbox_dedupe_reservation_key_length": {
 					"name": "outbox_dedupe_reservation_key_length",
-					"value": "octet_length(\"outbox_dedupe_reservation\".\"reservation_key\") = 32"
+					"value": "octet_length(reservation_key) = 32"
 				}
 			},
 			"isRLSEnabled": false
@@ -5494,7 +5491,7 @@
 						}
 					],
 					"isUnique": false,
-					"where": "\"outbox\".\"state\" = 'pending'",
+					"where": "(state = 'pending'::text)",
 					"concurrently": false,
 					"method": "btree",
 					"with": {}
@@ -5531,7 +5528,7 @@
 						}
 					],
 					"isUnique": false,
-					"where": "\"outbox\".\"dedupe_key\" is not null",
+					"where": "(dedupe_key IS NOT NULL)",
 					"concurrently": false,
 					"method": "btree",
 					"with": {}
@@ -5544,15 +5541,15 @@
 			"checkConstraints": {
 				"outbox_state_check": {
 					"name": "outbox_state_check",
-					"value": "\"outbox\".\"state\" in ('pending', 'delivered', 'dead')"
+					"value": "state = ANY (ARRAY['pending'::text, 'delivered'::text, 'dead'::text])"
 				},
 				"outbox_scope_check": {
 					"name": "outbox_scope_check",
-					"value": "\"outbox\".\"workspace_id\" is not null or (\"outbox\".\"organisation_id\" is null and \"outbox\".\"kind\" in ('pending_action.requested', 'pending_action.decided', 'pending_action.executed', 'identity.deprovisioned'))"
+					"value": "(workspace_id IS NOT NULL) OR ((organisation_id IS NULL) AND (kind = ANY (ARRAY['pending_action.requested'::text, 'pending_action.decided'::text, 'pending_action.executed'::text, 'identity.deprovisioned'::text])))"
 				},
 				"outbox_attempts_nonnegative": {
 					"name": "outbox_attempts_nonnegative",
-					"value": "\"outbox\".\"attempts\" >= 0"
+					"value": "attempts >= 0"
 				}
 			},
 			"isRLSEnabled": false
@@ -5779,7 +5776,7 @@
 							"expression": "created_at",
 							"isExpression": false,
 							"asc": false,
-							"nulls": "last"
+							"nulls": "first"
 						}
 					],
 					"isUnique": false,
@@ -5807,10 +5804,16 @@
 							"isExpression": false,
 							"asc": true,
 							"nulls": "last"
+						},
+						{
+							"expression": "state",
+							"isExpression": false,
+							"asc": true,
+							"nulls": "last"
 						}
 					],
 					"isUnique": true,
-					"where": "\"pending_action\".\"state\" = 'pending'",
+					"where": "(state = 'pending'::text)",
 					"concurrently": false,
 					"method": "btree",
 					"with": {}
@@ -5823,35 +5826,35 @@
 			"checkConstraints": {
 				"pending_action_credential_type_check": {
 					"name": "pending_action_credential_type_check",
-					"value": "\"pending_action\".\"credential_type\" in ('session', 'api_key')"
+					"value": "credential_type = ANY (ARRAY['session'::text, 'api_key'::text])"
 				},
 				"pending_action_origin_check": {
 					"name": "pending_action_origin_check",
-					"value": "\"pending_action\".\"origin\" in ('web', 'api', 'mcp')"
+					"value": "origin = ANY (ARRAY['web'::text, 'api'::text, 'mcp'::text])"
 				},
 				"pending_action_action_check": {
 					"name": "pending_action_action_check",
-					"value": "\"pending_action\".\"action\" in ('delete', 'bulk_delete', 'purge', 'mcp_destructive', 'user_deactivation')"
+					"value": "action = ANY (ARRAY['delete'::text, 'bulk_delete'::text, 'purge'::text, 'mcp_destructive'::text, 'user_deactivation'::text])"
 				},
 				"pending_action_confirmation_check": {
 					"name": "pending_action_confirmation_check",
-					"value": "\"pending_action\".\"confirmation_required\" in ('click', 'typed_name', 'typed_count', 'typed_count_step_up', 'typed_name_step_up')"
+					"value": "confirmation_required = ANY (ARRAY['click'::text, 'typed_name'::text, 'typed_count'::text, 'typed_count_step_up'::text, 'typed_name_step_up'::text])"
 				},
 				"pending_action_state_check": {
 					"name": "pending_action_state_check",
-					"value": "\"pending_action\".\"state\" in ('pending', 'approved', 'denied', 'cancelled', 'expired', 'invalidated', 'executed', 'failed')"
+					"value": "state = ANY (ARRAY['pending'::text, 'approved'::text, 'denied'::text, 'cancelled'::text, 'expired'::text, 'invalidated'::text, 'executed'::text, 'failed'::text])"
 				},
 				"pending_action_invalidation_reason_check": {
 					"name": "pending_action_invalidation_reason_check",
-					"value": "\"pending_action\".\"invalidation_reason\" is null or \"pending_action\".\"invalidation_reason\" in ('credential_revoked', 'requester_deactivated', 'reach_lost', 'capability_removed', 'version_changed', 'scope_changed')"
+					"value": "(invalidation_reason IS NULL) OR (invalidation_reason = ANY (ARRAY['credential_revoked'::text, 'requester_deactivated'::text, 'reach_lost'::text, 'capability_removed'::text, 'version_changed'::text, 'scope_changed'::text]))"
 				},
 				"pending_action_payload_hash_check": {
 					"name": "pending_action_payload_hash_check",
-					"value": "\"pending_action\".\"payload_hash\" ~ '^[0-9a-f]{64}$'"
+					"value": "payload_hash ~ '^[0-9a-f]{64}$'::text"
 				},
 				"pending_action_targets_nonempty": {
 					"name": "pending_action_targets_nonempty",
-					"value": "cardinality(\"pending_action\".\"target_ids\") > 0"
+					"value": "cardinality(target_ids) > 0"
 				}
 			},
 			"isRLSEnabled": false
@@ -5991,7 +5994,7 @@
 						}
 					],
 					"isUnique": true,
-					"where": "\"person\".\"user_id\" is not null",
+					"where": "(user_id IS NOT NULL)",
 					"concurrently": false,
 					"method": "btree",
 					"with": {}
@@ -6119,7 +6122,7 @@
 			"checkConstraints": {
 				"prerequisite_owner_side_allowed": {
 					"name": "prerequisite_owner_side_allowed",
-					"value": "\"prerequisite\".\"owner_side\" in ('us', 'customer', 'both')"
+					"value": "owner_side = ANY (ARRAY['us'::text, 'customer'::text, 'both'::text])"
 				}
 			},
 			"isRLSEnabled": false
@@ -6199,11 +6202,11 @@
 			"checkConstraints": {
 				"project_feature_flag_key_check": {
 					"name": "project_feature_flag_key_check",
-					"value": "\"project_feature_flag\".\"feature_key\" in ('feature.cycles', 'feature.modules', 'feature.estimates', 'feature.intake', 'feature.sla', 'feature.approvals', 'feature.time_tracking', 'feature.cost_tracking', 'feature.knowledge_base', 'feature.service_catalogue', 'feature.customer_portal', 'feature.reports', 'feature.automations', 'feature.timeline', 'feature.calendar', 'feature.pages', 'feature.mcp', 'feature.scim', 'feature.import', 'feature.public_boards', 'feature.dev_links')"
+					"value": "feature_key = ANY (ARRAY['feature.cycles'::text, 'feature.modules'::text, 'feature.estimates'::text, 'feature.intake'::text, 'feature.sla'::text, 'feature.approvals'::text, 'feature.time_tracking'::text, 'feature.cost_tracking'::text, 'feature.knowledge_base'::text, 'feature.service_catalogue'::text, 'feature.customer_portal'::text, 'feature.reports'::text, 'feature.automations'::text, 'feature.timeline'::text, 'feature.calendar'::text, 'feature.pages'::text, 'feature.mcp'::text, 'feature.scim'::text, 'feature.import'::text, 'feature.public_boards'::text, 'feature.dev_links'::text])"
 				},
 				"project_feature_flag_version_positive": {
 					"name": "project_feature_flag_version_positive",
-					"value": "\"project_feature_flag\".\"version\" > 0"
+					"value": "version > 0"
 				}
 			},
 			"isRLSEnabled": false
@@ -6479,23 +6482,23 @@
 			"checkConstraints": {
 				"project_default_comment_visibility_allowed": {
 					"name": "project_default_comment_visibility_allowed",
-					"value": "\"project\".\"default_comment_visibility\" in ('public', 'internal')"
+					"value": "default_comment_visibility = ANY (ARRAY['public'::text, 'internal'::text])"
 				},
 				"project_kind_allowed": {
 					"name": "project_kind_allowed",
-					"value": "\"project\".\"kind\" in ('project', 'managed_service')"
+					"value": "kind = ANY (ARRAY['project'::text, 'managed_service'::text])"
 				},
 				"project_health_allowed": {
 					"name": "project_health_allowed",
-					"value": "\"project\".\"health\" is null or \"project\".\"health\" in ('red', 'amber', 'green')"
+					"value": "(health IS NULL) OR (health = ANY (ARRAY['red'::text, 'amber'::text, 'green'::text]))"
 				},
 				"project_support_level_allowed": {
 					"name": "project_support_level_allowed",
-					"value": "\"project\".\"support_level\" is null or \"project\".\"support_level\" in ('L1', 'L2', 'L3')"
+					"value": "(support_level IS NULL) OR (support_level = ANY (ARRAY['L1'::text, 'L2'::text, 'L3'::text]))"
 				},
 				"project_managed_service_complete": {
 					"name": "project_managed_service_complete",
-					"value": "\"project\".\"kind\" <> 'managed_service' or (\"project\".\"support_level\" is not null and \"project\".\"service_calendar_id\" is not null)"
+					"value": "(kind <> 'managed_service'::text) OR ((support_level IS NOT NULL) AND (service_calendar_id IS NOT NULL))"
 				}
 			},
 			"isRLSEnabled": false
@@ -6646,7 +6649,7 @@
 			"checkConstraints": {
 				"provisioning_event_kind_check": {
 					"name": "provisioning_event_kind_check",
-					"value": "\"provisioning_event\".\"kind\" in ('user.created', 'user.updated', 'user.deactivated', 'user.reactivated', 'group.directory_changed', 'group.mapping_changed', 'group.member_added', 'group.member_removed', 'request.denied', 'auth.failed', 'token.rotated', 'token.revoked', 'connection.changed', 'sync.failed')"
+					"value": "kind = ANY (ARRAY['user.created'::text, 'user.updated'::text, 'user.deactivated'::text, 'user.reactivated'::text, 'group.directory_changed'::text, 'group.mapping_changed'::text, 'group.member_added'::text, 'group.member_removed'::text, 'request.denied'::text, 'auth.failed'::text, 'token.rotated'::text, 'token.revoked'::text, 'connection.changed'::text, 'sync.failed'::text])"
 				}
 			},
 			"isRLSEnabled": false
@@ -6726,7 +6729,7 @@
 						}
 					],
 					"isUnique": true,
-					"where": "\"request_participant\".\"work_item_id\" is not null",
+					"where": "(work_item_id IS NOT NULL)",
 					"concurrently": false,
 					"method": "btree",
 					"with": {}
@@ -6748,7 +6751,7 @@
 						}
 					],
 					"isUnique": true,
-					"where": "\"request_participant\".\"submission_id\" is not null",
+					"where": "(submission_id IS NOT NULL)",
 					"concurrently": false,
 					"method": "btree",
 					"with": {}
@@ -6798,7 +6801,7 @@
 			"checkConstraints": {
 				"request_participant_one_parent": {
 					"name": "request_participant_one_parent",
-					"value": "(\"request_participant\".\"work_item_id\" is null) <> (\"request_participant\".\"submission_id\" is null)"
+					"value": "(work_item_id IS NULL) <> (submission_id IS NULL)"
 				}
 			},
 			"isRLSEnabled": false
@@ -7029,11 +7032,11 @@
 			"checkConstraints": {
 				"request_type_version_positive": {
 					"name": "request_type_version_positive",
-					"value": "\"request_type\".\"version\" > 0"
+					"value": "version > 0"
 				},
 				"request_type_position_nonnegative": {
 					"name": "request_type_position_nonnegative",
-					"value": "\"request_type\".\"position\" >= 0"
+					"value": "\"position\" >= 0"
 				}
 			},
 			"isRLSEnabled": false
@@ -7089,6 +7092,13 @@
 					"type": "text",
 					"primaryKey": false,
 					"notNull": false
+				},
+				"auto_accept": {
+					"name": "auto_accept",
+					"type": "boolean",
+					"primaryKey": false,
+					"notNull": true,
+					"default": false
 				},
 				"default_assignee_id": {
 					"name": "default_assignee_id",
@@ -7310,20 +7320,20 @@
 					"columns": [
 						{
 							"expression": "scope",
-							"isExpression": false,
 							"asc": true,
+							"isExpression": true,
 							"nulls": "last"
 						},
 						{
-							"expression": "coalesce(\"workspace_id\", '')",
+							"expression": "COALESCE(workspace_id, ''::text)",
 							"asc": true,
 							"isExpression": true,
 							"nulls": "last"
 						},
 						{
 							"expression": "key",
-							"isExpression": false,
 							"asc": true,
+							"isExpression": true,
 							"nulls": "last"
 						}
 					],
@@ -7602,7 +7612,7 @@
 						}
 					],
 					"isUnique": false,
-					"where": "\"scheduled_transition\".\"state\" = 'pending'",
+					"where": "(state = 'pending'::text)",
 					"concurrently": false,
 					"method": "btree",
 					"with": {}
@@ -7676,7 +7686,7 @@
 			"checkConstraints": {
 				"scheduled_transition_state_allowed": {
 					"name": "scheduled_transition_state_allowed",
-					"value": "\"scheduled_transition\".\"state\" in ('pending', 'fired', 'cancelled')"
+					"value": "state = ANY (ARRAY['pending'::text, 'fired'::text, 'cancelled'::text])"
 				}
 			},
 			"isRLSEnabled": false
@@ -7786,27 +7796,27 @@
 			"checkConstraints": {
 				"scim_connection_token_hash_shape": {
 					"name": "scim_connection_token_hash_shape",
-					"value": "\"scim_connection\".\"token_hash\" is null or octet_length(\"scim_connection\".\"token_hash\") = 32"
+					"value": "(token_hash IS NULL) OR (octet_length(token_hash) = 32)"
 				},
 				"scim_connection_token_pair_shape": {
 					"name": "scim_connection_token_pair_shape",
-					"value": "(\"scim_connection\".\"token_hash\" is null and \"scim_connection\".\"token_prefix\" is null) or (\"scim_connection\".\"token_hash\" is not null and \"scim_connection\".\"token_prefix\" is not null)"
+					"value": "((token_hash IS NULL) AND (token_prefix IS NULL)) OR ((token_hash IS NOT NULL) AND (token_prefix IS NOT NULL))"
 				},
 				"scim_connection_enabled_token_check": {
 					"name": "scim_connection_enabled_token_check",
-					"value": "not \"scim_connection\".\"enabled\" or \"scim_connection\".\"token_hash\" is not null"
+					"value": "(NOT enabled) OR (token_hash IS NOT NULL)"
 				},
 				"scim_connection_allowed_resources_check": {
 					"name": "scim_connection_allowed_resources_check",
-					"value": "'users' = any(\"scim_connection\".\"allowed_resources\") and \"scim_connection\".\"allowed_resources\" <@ ARRAY['users', 'groups']::text[]"
+					"value": "('users'::text = ANY (allowed_resources)) AND (allowed_resources <@ ARRAY['users'::text, 'groups'::text])"
 				},
 				"scim_connection_lifecycle_policy_check": {
 					"name": "scim_connection_lifecycle_policy_check",
-					"value": "\"scim_connection\".\"lifecycle_policy\" in ('end_memberships', 'keep_memberships')"
+					"value": "lifecycle_policy = ANY (ARRAY['end_memberships'::text, 'keep_memberships'::text])"
 				},
 				"scim_connection_match_attributes_check": {
 					"name": "scim_connection_match_attributes_check",
-					"value": "array_lower(\"scim_connection\".\"match_attributes\", 1) = 1\n        and \"scim_connection\".\"match_attributes\"[1:2] = ARRAY['externalId', 'userName']::text[]\n        and \"scim_connection\".\"match_attributes\" <@ ARRAY['externalId', 'userName', 'displayName', 'name.formatted', 'title', 'preferredLanguage']::text[]\n        and cardinality(array_positions(\"scim_connection\".\"match_attributes\", 'displayName')) <= 1\n        and cardinality(array_positions(\"scim_connection\".\"match_attributes\", 'name.formatted')) <= 1\n        and cardinality(array_positions(\"scim_connection\".\"match_attributes\", 'title')) <= 1\n        and cardinality(array_positions(\"scim_connection\".\"match_attributes\", 'preferredLanguage')) <= 1\n        and (array_position(\"scim_connection\".\"match_attributes\", 'displayName') is null or array_position(\"scim_connection\".\"match_attributes\", 'name.formatted') is null or array_position(\"scim_connection\".\"match_attributes\", 'displayName') < array_position(\"scim_connection\".\"match_attributes\", 'name.formatted'))\n        and (array_position(\"scim_connection\".\"match_attributes\", 'name.formatted') is null or array_position(\"scim_connection\".\"match_attributes\", 'title') is null or array_position(\"scim_connection\".\"match_attributes\", 'name.formatted') < array_position(\"scim_connection\".\"match_attributes\", 'title'))\n        and (array_position(\"scim_connection\".\"match_attributes\", 'title') is null or array_position(\"scim_connection\".\"match_attributes\", 'preferredLanguage') is null or array_position(\"scim_connection\".\"match_attributes\", 'title') < array_position(\"scim_connection\".\"match_attributes\", 'preferredLanguage'))"
+					"value": "(array_lower(match_attributes, 1) = 1) AND (match_attributes[1:2] = ARRAY['externalId'::text, 'userName'::text]) AND (match_attributes <@ ARRAY['externalId'::text, 'userName'::text, 'displayName'::text, 'name.formatted'::text, 'title'::text, 'preferredLanguage'::text]) AND (cardinality(array_positions(match_attributes, 'displayName'::text)) <= 1) AND (cardinality(array_positions(match_attributes, 'name.formatted'::text)) <= 1) AND (cardinality(array_positions(match_attributes, 'title'::text)) <= 1) AND (cardinality(array_positions(match_attributes, 'preferredLanguage'::text)) <= 1) AND ((array_position(match_attributes, 'displayName'::text) IS NULL) OR (array_position(match_attributes, 'name.formatted'::text) IS NULL) OR (array_position(match_attributes, 'displayName'::text) < array_position(match_attributes, 'name.formatted'::text))) AND ((array_position(match_attributes, 'name.formatted'::text) IS NULL) OR (array_position(match_attributes, 'title'::text) IS NULL) OR (array_position(match_attributes, 'name.formatted'::text) < array_position(match_attributes, 'title'::text))) AND ((array_position(match_attributes, 'title'::text) IS NULL) OR (array_position(match_attributes, 'preferredLanguage'::text) IS NULL) OR (array_position(match_attributes, 'title'::text) < array_position(match_attributes, 'preferredLanguage'::text)))"
 				}
 			},
 			"isRLSEnabled": false
@@ -7885,7 +7895,7 @@
 						}
 					],
 					"isUnique": true,
-					"where": "\"scim_group_directory_member\".\"active\" is true",
+					"where": "(active IS TRUE)",
 					"concurrently": false,
 					"method": "btree",
 					"with": {}
@@ -7953,7 +7963,7 @@
 			"checkConstraints": {
 				"scim_group_directory_member_active_timestamp_shape": {
 					"name": "scim_group_directory_member_active_timestamp_shape",
-					"value": "(\"scim_group_directory_member\".\"active\" and \"scim_group_directory_member\".\"removed_at\" is null) or (not \"scim_group_directory_member\".\"active\" and \"scim_group_directory_member\".\"removed_at\" is not null)"
+					"value": "(active AND (removed_at IS NULL)) OR ((NOT active) AND (removed_at IS NOT NULL))"
 				}
 			},
 			"isRLSEnabled": false
@@ -8090,7 +8100,7 @@
 			"checkConstraints": {
 				"scim_group_mapping_scope_check": {
 					"name": "scim_group_mapping_scope_check",
-					"value": "\"scim_group_mapping\".\"scope\" in ('organisation', 'workspace')"
+					"value": "scope = ANY (ARRAY['organisation'::text, 'workspace'::text])"
 				}
 			},
 			"isRLSEnabled": false
@@ -8154,7 +8164,7 @@
 						}
 					],
 					"isUnique": true,
-					"where": "\"scim_group_member\".\"revoked_at\" is null",
+					"where": "(revoked_at IS NULL)",
 					"concurrently": false,
 					"method": "btree",
 					"with": {}
@@ -8338,7 +8348,7 @@
 			"checkConstraints": {
 				"scim_group_active_timestamp_shape": {
 					"name": "scim_group_active_timestamp_shape",
-					"value": "(\"scim_group\".\"active\" and \"scim_group\".\"deactivated_at\" is null) or (not \"scim_group\".\"active\" and \"scim_group\".\"deactivated_at\" is not null)"
+					"value": "(active AND (deactivated_at IS NULL)) OR ((NOT active) AND (deactivated_at IS NOT NULL))"
 				}
 			},
 			"isRLSEnabled": false
@@ -8590,7 +8600,7 @@
 			"checkConstraints": {
 				"session_portal_allowed": {
 					"name": "session_portal_allowed",
-					"value": "\"session\".\"portal\" is null or \"session\".\"portal\" in ('agent', 'customer')"
+					"value": "(portal IS NULL) OR (portal = ANY (ARRAY['agent'::text, 'customer'::text]))"
 				}
 			},
 			"isRLSEnabled": false
@@ -8675,15 +8685,15 @@
 			"checkConstraints": {
 				"sla_goal_target_minutes_positive": {
 					"name": "sla_goal_target_minutes_positive",
-					"value": "\"sla_goal\".\"target_minutes\" > 0"
+					"value": "target_minutes > 0"
 				},
 				"sla_goal_metric_allowed": {
 					"name": "sla_goal_metric_allowed",
-					"value": "\"sla_goal\".\"metric\" in ('first_response', 'resolution')"
+					"value": "metric = ANY (ARRAY['first_response'::text, 'resolution'::text])"
 				},
 				"sla_goal_priority_allowed": {
 					"name": "sla_goal_priority_allowed",
-					"value": "\"sla_goal\".\"priority\" in ('low', 'medium', 'high', 'urgent')"
+					"value": "priority = ANY (ARRAY['low'::text, 'medium'::text, 'high'::text, 'urgent'::text])"
 				}
 			},
 			"isRLSEnabled": false
@@ -8763,6 +8773,15 @@
 					"columnsTo": ["id"],
 					"onDelete": "restrict",
 					"onUpdate": "no action"
+				},
+				"sla_policy_active_version_workspace_policy_fk": {
+					"name": "sla_policy_active_version_workspace_policy_fk",
+					"tableFrom": "sla_policy",
+					"tableTo": "sla_policy_version",
+					"columnsFrom": ["workspace_id", "id", "active_version_id"],
+					"columnsTo": ["workspace_id", "policy_id", "id"],
+					"onDelete": "no action",
+					"onUpdate": "no action"
 				}
 			},
 			"compositePrimaryKeys": {},
@@ -8777,7 +8796,7 @@
 			"checkConstraints": {
 				"sla_policy_version_positive": {
 					"name": "sla_policy_version_positive",
-					"value": "\"sla_policy\".\"version\" > 0"
+					"value": "version > 0"
 				}
 			},
 			"isRLSEnabled": false
@@ -8848,7 +8867,7 @@
 						}
 					],
 					"isUnique": true,
-					"where": "\"sla_policy_version\".\"effective_from\" is null",
+					"where": "(effective_from IS NULL)",
 					"concurrently": false,
 					"method": "btree",
 					"with": {}
@@ -8901,11 +8920,11 @@
 			"checkConstraints": {
 				"sla_policy_version_number_positive": {
 					"name": "sla_policy_version_number_positive",
-					"value": "\"sla_policy_version\".\"number\" > 0"
+					"value": "number > 0"
 				},
 				"sla_policy_version_threshold_allowed": {
 					"name": "sla_policy_version_threshold_allowed",
-					"value": "\"sla_policy_version\".\"at_risk_threshold_pct\" between 1 and 99"
+					"value": "(at_risk_threshold_pct >= 1) AND (at_risk_threshold_pct <= 99)"
 				}
 			},
 			"isRLSEnabled": false
@@ -9130,7 +9149,7 @@
 						}
 					],
 					"isUnique": true,
-					"where": "\"state\".\"is_default\"",
+					"where": "is_default",
 					"concurrently": false,
 					"method": "btree",
 					"with": {}
@@ -9284,7 +9303,7 @@
 			"checkConstraints": {
 				"state_template_group_allowed": {
 					"name": "state_template_group_allowed",
-					"value": "\"state_template\".\"group\" in ('backlog', 'unstarted', 'started', 'completed', 'cancelled')"
+					"value": "\"group\" = ANY (ARRAY['backlog'::text, 'unstarted'::text, 'started'::text, 'completed'::text, 'cancelled'::text])"
 				}
 			},
 			"isRLSEnabled": false
@@ -9475,7 +9494,7 @@
 						}
 					],
 					"isUnique": true,
-					"where": "\"step_up_confirmation\".\"token_hash\" is not null",
+					"where": "(token_hash IS NOT NULL)",
 					"concurrently": false,
 					"method": "btree",
 					"with": {}
@@ -9516,19 +9535,19 @@
 			"checkConstraints": {
 				"step_up_binding_shape": {
 					"name": "step_up_binding_shape",
-					"value": "(\"step_up_confirmation\".\"binding_kind\" = 'pending_action' and \"step_up_confirmation\".\"pending_action_id\" is not null\n          and \"step_up_confirmation\".\"operation_key\" is null and \"step_up_confirmation\".\"route_key\" is null\n          and \"step_up_confirmation\".\"expected_version\" is null and \"step_up_confirmation\".\"body_hash\" is null)\n        or (\"step_up_confirmation\".\"binding_kind\" = 'operation' and \"step_up_confirmation\".\"pending_action_id\" is null\n          and \"step_up_confirmation\".\"operation_key\" is not null and \"step_up_confirmation\".\"route_key\" is not null\n          and \"step_up_confirmation\".\"expected_version\" is not null and \"step_up_confirmation\".\"expected_version\" >= 1\n          and \"step_up_confirmation\".\"body_hash\" is not null and octet_length(\"step_up_confirmation\".\"body_hash\") = 32)"
+					"value": "((binding_kind = 'pending_action'::text) AND (pending_action_id IS NOT NULL) AND (operation_key IS NULL) AND (route_key IS NULL) AND (expected_version IS NULL) AND (body_hash IS NULL)) OR ((binding_kind = 'operation'::text) AND (pending_action_id IS NULL) AND (operation_key IS NOT NULL) AND (route_key IS NOT NULL) AND (expected_version IS NOT NULL) AND (expected_version >= 1) AND (body_hash IS NOT NULL) AND (octet_length(body_hash) = 32))"
 				},
 				"step_up_operation_route": {
 					"name": "step_up_operation_route",
-					"value": "\"step_up_confirmation\".\"operation_key\" is null\n        or (\"step_up_confirmation\".\"operation_key\" = 'metrics_token_rotate' and \"step_up_confirmation\".\"route_key\" = 'POST /api/instance/observability/metrics-token/rotate')\n        or (\"step_up_confirmation\".\"operation_key\" = 'identity_connection_create' and \"step_up_confirmation\".\"route_key\" = 'POST /api/instance/identity-connections')\n        or (\"step_up_confirmation\".\"operation_key\" = 'identity_connection_configure' and \"step_up_confirmation\".\"route_key\" = 'PATCH /api/instance/identity-connections/{id}')\n        or (\"step_up_confirmation\".\"operation_key\" = 'oidc_group_mapping_create' and \"step_up_confirmation\".\"route_key\" = 'POST /api/instance/identity-connections/{id}/oidc-group-mappings')\n        or (\"step_up_confirmation\".\"operation_key\" = 'oidc_group_mapping_update' and \"step_up_confirmation\".\"route_key\" = 'PATCH /api/instance/identity-connections/{id}/oidc-group-mappings/{mappingId}')\n        or (\"step_up_confirmation\".\"operation_key\" = 'scim_admin_update' and \"step_up_confirmation\".\"route_key\" = 'PATCH /api/instance/identity-connections/{id}/scim')\n        or (\"step_up_confirmation\".\"operation_key\" = 'scim_token_rotate' and \"step_up_confirmation\".\"route_key\" = 'POST /api/instance/identity-connections/{id}/scim/rotate-token')\n        or (\"step_up_confirmation\".\"operation_key\" = 'scim_token_revoke' and \"step_up_confirmation\".\"route_key\" = 'POST /api/instance/identity-connections/{id}/scim/revoke-token')\n        or (\"step_up_confirmation\".\"operation_key\" = 'mfa_reset' and \"step_up_confirmation\".\"route_key\" = 'POST /api/instance/users/{id}/reset-mfa')\n        or (\"step_up_confirmation\".\"operation_key\" = 'instance_admin_grant' and \"step_up_confirmation\".\"route_key\" = 'POST /api/instance/users/{id}/grant-admin')"
+					"value": "(operation_key IS NULL) OR ((operation_key = 'metrics_token_rotate'::text) AND (route_key = 'POST /api/instance/observability/metrics-token/rotate'::text)) OR ((operation_key = 'identity_connection_create'::text) AND (route_key = 'POST /api/instance/identity-connections'::text)) OR ((operation_key = 'identity_connection_configure'::text) AND (route_key = 'PATCH /api/instance/identity-connections/{id}'::text)) OR ((operation_key = 'oidc_group_mapping_create'::text) AND (route_key = 'POST /api/instance/identity-connections/{id}/oidc-group-mappings'::text)) OR ((operation_key = 'oidc_group_mapping_update'::text) AND (route_key = 'PATCH /api/instance/identity-connections/{id}/oidc-group-mappings/{mappingId}'::text)) OR ((operation_key = 'scim_admin_update'::text) AND (route_key = 'PATCH /api/instance/identity-connections/{id}/scim'::text)) OR ((operation_key = 'scim_token_rotate'::text) AND (route_key = 'POST /api/instance/identity-connections/{id}/scim/rotate-token'::text)) OR ((operation_key = 'scim_token_revoke'::text) AND (route_key = 'POST /api/instance/identity-connections/{id}/scim/revoke-token'::text)) OR ((operation_key = 'mfa_reset'::text) AND (route_key = 'POST /api/instance/users/{id}/reset-mfa'::text)) OR ((operation_key = 'instance_admin_grant'::text) AND (route_key = 'POST /api/instance/users/{id}/grant-admin'::text))"
 				},
 				"step_up_state_shape": {
 					"name": "step_up_state_shape",
-					"value": "(\"step_up_confirmation\".\"state\" = 'challenge' and \"step_up_confirmation\".\"token_hash\" is null and \"step_up_confirmation\".\"auth_method\" is null and \"step_up_confirmation\".\"authenticated_at\" is null and \"step_up_confirmation\".\"issued_at\" is null and \"step_up_confirmation\".\"consumed_at\" is null and \"step_up_confirmation\".\"token_expires_at\" is null)\n        or (\"step_up_confirmation\".\"state\" = 'issued' and \"step_up_confirmation\".\"token_hash\" is not null and octet_length(\"step_up_confirmation\".\"token_hash\") = 32 and \"step_up_confirmation\".\"auth_method\" is not null and \"step_up_confirmation\".\"auth_method\" in ('password','totp','backup_code','sso_prompt_login') and \"step_up_confirmation\".\"authenticated_at\" is not null and \"step_up_confirmation\".\"issued_at\" is not null and \"step_up_confirmation\".\"consumed_at\" is null and \"step_up_confirmation\".\"token_expires_at\" is not null)\n        or (\"step_up_confirmation\".\"state\" = 'consumed' and \"step_up_confirmation\".\"token_hash\" is not null and octet_length(\"step_up_confirmation\".\"token_hash\") = 32 and \"step_up_confirmation\".\"auth_method\" is not null and \"step_up_confirmation\".\"auth_method\" in ('password','totp','backup_code','sso_prompt_login') and \"step_up_confirmation\".\"authenticated_at\" is not null and \"step_up_confirmation\".\"issued_at\" is not null and \"step_up_confirmation\".\"consumed_at\" is not null and \"step_up_confirmation\".\"token_expires_at\" is not null)"
+					"value": "((state = 'challenge'::text) AND (token_hash IS NULL) AND (auth_method IS NULL) AND (authenticated_at IS NULL) AND (issued_at IS NULL) AND (consumed_at IS NULL) AND (token_expires_at IS NULL)) OR ((state = 'issued'::text) AND (token_hash IS NOT NULL) AND (octet_length(token_hash) = 32) AND (auth_method IS NOT NULL) AND (auth_method = ANY (ARRAY['password'::text, 'totp'::text, 'backup_code'::text, 'sso_prompt_login'::text])) AND (authenticated_at IS NOT NULL) AND (issued_at IS NOT NULL) AND (consumed_at IS NULL) AND (token_expires_at IS NOT NULL)) OR ((state = 'consumed'::text) AND (token_hash IS NOT NULL) AND (octet_length(token_hash) = 32) AND (auth_method IS NOT NULL) AND (auth_method = ANY (ARRAY['password'::text, 'totp'::text, 'backup_code'::text, 'sso_prompt_login'::text])) AND (authenticated_at IS NOT NULL) AND (issued_at IS NOT NULL) AND (consumed_at IS NOT NULL) AND (token_expires_at IS NOT NULL))"
 				},
 				"step_up_nonce_hash_length": {
 					"name": "step_up_nonce_hash_length",
-					"value": "octet_length(\"step_up_confirmation\".\"challenge_nonce_hash\") = 32"
+					"value": "octet_length(challenge_nonce_hash) = 32"
 				}
 			},
 			"isRLSEnabled": false
@@ -9630,7 +9649,7 @@
 			"checkConstraints": {
 				"submission_message_actor_type_allowed": {
 					"name": "submission_message_actor_type_allowed",
-					"value": "\"submission_message\".\"actor_type\" in ('customer', 'triager')"
+					"value": "actor_type = ANY (ARRAY['customer'::text, 'triager'::text])"
 				}
 			},
 			"isRLSEnabled": false
@@ -9647,7 +9666,7 @@
 				},
 				"number": {
 					"name": "number",
-					"type": "integer",
+					"type": "serial",
 					"primaryKey": false,
 					"notNull": true
 				},
@@ -9687,6 +9706,12 @@
 					"primaryKey": false,
 					"notNull": true,
 					"default": "'new'"
+				},
+				"submitted_at": {
+					"name": "submitted_at",
+					"type": "timestamp with time zone",
+					"primaryKey": false,
+					"notNull": false
 				},
 				"claimed_by": {
 					"name": "claimed_by",
@@ -9859,23 +9884,27 @@
 			"checkConstraints": {
 				"submission_number_positive": {
 					"name": "submission_number_positive",
-					"value": "\"submission\".\"number\" > 0"
+					"value": "number > 0"
 				},
 				"submission_version_positive": {
 					"name": "submission_version_positive",
-					"value": "\"submission\".\"version\" > 0"
+					"value": "version > 0"
 				},
 				"submission_state_allowed": {
 					"name": "submission_state_allowed",
-					"value": "\"submission\".\"state\" in ('new', 'clarifying', 'accepted', 'declined', 'duplicate', 'withdrawn')"
+					"value": "state = ANY (ARRAY['draft'::text, 'new'::text, 'clarifying'::text, 'accepted'::text, 'declined'::text, 'duplicate'::text, 'withdrawn'::text])"
+				},
+				"submission_submitted_at_state_consistent": {
+					"name": "submission_submitted_at_state_consistent",
+					"value": "((state = 'draft'::text) AND (submitted_at IS NULL)) OR ((state <> 'draft'::text) AND (submitted_at IS NOT NULL))"
 				},
 				"submission_customer_visibility_allowed": {
 					"name": "submission_customer_visibility_allowed",
-					"value": "\"submission\".\"customer_visibility\" in ('private', 'organisation')"
+					"value": "customer_visibility = ANY (ARRAY['private'::text, 'organisation'::text])"
 				},
 				"submission_claim_pair": {
 					"name": "submission_claim_pair",
-					"value": "(\"submission\".\"claimed_by\" is null) = (\"submission\".\"claimed_at\" is null)"
+					"value": "(claimed_by IS NULL) = (claimed_at IS NULL)"
 				}
 			},
 			"isRLSEnabled": false
@@ -10896,7 +10925,7 @@
 			"checkConstraints": {
 				"two_factor_failed_count_nonnegative": {
 					"name": "two_factor_failed_count_nonnegative",
-					"value": "\"two_factor\".\"failed_verification_count\" >= 0"
+					"value": "failed_verification_count >= 0"
 				}
 			},
 			"isRLSEnabled": false
@@ -10927,7 +10956,8 @@
 					"name": "email_verified",
 					"type": "boolean",
 					"primaryKey": false,
-					"notNull": true
+					"notNull": true,
+					"default": false
 				},
 				"image": {
 					"name": "image",
@@ -11901,7 +11931,7 @@
 			"checkConstraints": {
 				"watcher_source_allowed": {
 					"name": "watcher_source_allowed",
-					"value": "\"watcher\".\"source\" in ('explicit', 'implicit')"
+					"value": "source = ANY (ARRAY['explicit'::text, 'implicit'::text])"
 				}
 			},
 			"isRLSEnabled": false
@@ -12305,7 +12335,7 @@
 						}
 					],
 					"isUnique": false,
-					"where": "\"work_item\".\"archived_at\" is null and \"work_item\".\"deleted_at\" is null",
+					"where": "((archived_at IS NULL) AND (deleted_at IS NULL))",
 					"concurrently": false,
 					"method": "btree",
 					"with": {}
@@ -12321,7 +12351,7 @@
 						}
 					],
 					"isUnique": false,
-					"where": "\"work_item\".\"resolved_at\" is null",
+					"where": "(resolved_at IS NULL)",
 					"concurrently": false,
 					"method": "btree",
 					"with": {}
@@ -12414,6 +12444,22 @@
 					"isUnique": false,
 					"concurrently": false,
 					"method": "btree",
+					"with": {}
+				},
+				"work_item_title_trgm_idx": {
+					"name": "work_item_title_trgm_idx",
+					"columns": [
+						{
+							"expression": "title",
+							"isExpression": false,
+							"asc": true,
+							"nulls": "last",
+							"opclass": "gin_trgm_ops"
+						}
+					],
+					"isUnique": false,
+					"concurrently": false,
+					"method": "gin",
 					"with": {}
 				}
 			},
@@ -12517,23 +12563,23 @@
 			"checkConstraints": {
 				"work_item_parent_not_self": {
 					"name": "work_item_parent_not_self",
-					"value": "\"work_item\".\"parent_id\" is distinct from \"work_item\".\"id\""
+					"value": "parent_id IS DISTINCT FROM id"
 				},
 				"work_item_priority_allowed": {
 					"name": "work_item_priority_allowed",
-					"value": "\"work_item\".\"priority\" in ('low', 'medium', 'high', 'urgent')"
+					"value": "priority = ANY (ARRAY['low'::text, 'medium'::text, 'high'::text, 'urgent'::text])"
 				},
 				"work_item_customer_visibility_allowed": {
 					"name": "work_item_customer_visibility_allowed",
-					"value": "\"work_item\".\"customer_visibility\" in ('private', 'organisation')"
+					"value": "customer_visibility = ANY (ARRAY['private'::text, 'organisation'::text])"
 				},
 				"work_item_position_not_nan": {
 					"name": "work_item_position_not_nan",
-					"value": "\"work_item\".\"position\" <> 'NaN'::numeric"
+					"value": "\"position\" <> 'NaN'::numeric"
 				},
 				"work_item_number_positive": {
 					"name": "work_item_number_positive",
-					"value": "\"work_item\".\"number\" > 0"
+					"value": "number > 0"
 				}
 			},
 			"isRLSEnabled": false
@@ -12698,7 +12744,7 @@
 			"checkConstraints": {
 				"work_item_type_category_allowed": {
 					"name": "work_item_type_category_allowed",
-					"value": "\"work_item_type\".\"category\" in ('service', 'delivery')"
+					"value": "category = ANY (ARRAY['service'::text, 'delivery'::text])"
 				}
 			},
 			"isRLSEnabled": false
@@ -13091,7 +13137,7 @@
 						}
 					],
 					"isUnique": true,
-					"where": "\"workflow_transition\".\"is_reopen\"",
+					"where": "is_reopen",
 					"concurrently": false,
 					"method": "btree",
 					"with": {}
@@ -13141,15 +13187,15 @@
 			"checkConstraints": {
 				"workflow_transition_note_policy_allowed": {
 					"name": "workflow_transition_note_policy_allowed",
-					"value": "\"workflow_transition\".\"note_policy\" in ('none', 'optional', 'required')"
+					"value": "note_policy = ANY (ARRAY['none'::text, 'optional'::text, 'required'::text])"
 				},
 				"workflow_transition_note_visibility_allowed": {
 					"name": "workflow_transition_note_visibility_allowed",
-					"value": "\"workflow_transition\".\"note_visibility\" in ('public', 'internal')"
+					"value": "note_visibility = ANY (ARRAY['public'::text, 'internal'::text])"
 				},
 				"workflow_transition_approval_policy_allowed": {
 					"name": "workflow_transition_approval_policy_allowed",
-					"value": "\"workflow_transition\".\"approval_policy\" is null or \"workflow_transition\".\"approval_policy\" in ('any', 'all')"
+					"value": "(approval_policy IS NULL) OR (approval_policy = ANY (ARRAY['any'::text, 'all'::text]))"
 				}
 			},
 			"isRLSEnabled": false
@@ -13446,11 +13492,11 @@
 			"checkConstraints": {
 				"workspace_feature_flag_key_check": {
 					"name": "workspace_feature_flag_key_check",
-					"value": "\"workspace_feature_flag\".\"feature_key\" in ('feature.cycles', 'feature.modules', 'feature.estimates', 'feature.intake', 'feature.sla', 'feature.approvals', 'feature.time_tracking', 'feature.cost_tracking', 'feature.knowledge_base', 'feature.service_catalogue', 'feature.customer_portal', 'feature.reports', 'feature.automations', 'feature.timeline', 'feature.calendar', 'feature.pages', 'feature.mcp', 'feature.scim', 'feature.import', 'feature.public_boards', 'feature.dev_links')"
+					"value": "feature_key = ANY (ARRAY['feature.cycles'::text, 'feature.modules'::text, 'feature.estimates'::text, 'feature.intake'::text, 'feature.sla'::text, 'feature.approvals'::text, 'feature.time_tracking'::text, 'feature.cost_tracking'::text, 'feature.knowledge_base'::text, 'feature.service_catalogue'::text, 'feature.customer_portal'::text, 'feature.reports'::text, 'feature.automations'::text, 'feature.timeline'::text, 'feature.calendar'::text, 'feature.pages'::text, 'feature.mcp'::text, 'feature.scim'::text, 'feature.import'::text, 'feature.public_boards'::text, 'feature.dev_links'::text])"
 				},
 				"workspace_feature_flag_version_positive": {
 					"name": "workspace_feature_flag_version_positive",
-					"value": "\"workspace_feature_flag\".\"version\" > 0"
+					"value": "version > 0"
 				}
 			},
 			"isRLSEnabled": false
@@ -13546,7 +13592,936 @@
 			"compositePrimaryKeys": {},
 			"uniqueConstraints": {},
 			"policies": {},
-			"checkConstraints": {},
+			"checkConstraints": {
+				"workspace_member_role_single_value": {
+					"name": "workspace_member_role_single_value",
+					"value": "(POSITION((','::text) IN (role)) = 0) AND (role = btrim(role, ((((((((((((((((((((' \t\n\r\f'::text || chr(11)) || chr(160)) || chr(5760)) || chr(8192)) || chr(8193)) || chr(8194)) || chr(8195)) || chr(8196)) || chr(8197)) || chr(8198)) || chr(8199)) || chr(8200)) || chr(8201)) || chr(8202)) || chr(8232)) || chr(8233)) || chr(8239)) || chr(8287)) || chr(12288)) || chr(65279)))) AND (btrim(role, ((((((((((((((((((((' \t\n\r\f'::text || chr(11)) || chr(160)) || chr(5760)) || chr(8192)) || chr(8193)) || chr(8194)) || chr(8195)) || chr(8196)) || chr(8197)) || chr(8198)) || chr(8199)) || chr(8200)) || chr(8201)) || chr(8202)) || chr(8232)) || chr(8233)) || chr(8239)) || chr(8287)) || chr(12288)) || chr(65279))) <> ''::text)"
+				}
+			},
+			"isRLSEnabled": false
+		},
+		"public.custom_field_section": {
+			"name": "custom_field_section",
+			"schema": "",
+			"columns": {
+				"id": {
+					"name": "id",
+					"type": "text",
+					"primaryKey": true,
+					"notNull": true
+				},
+				"workspace_id": {
+					"name": "workspace_id",
+					"type": "text",
+					"primaryKey": false,
+					"notNull": true
+				},
+				"name": {
+					"name": "name",
+					"type": "text",
+					"primaryKey": false,
+					"notNull": true
+				},
+				"position": {
+					"name": "position",
+					"type": "integer",
+					"primaryKey": false,
+					"notNull": true,
+					"default": 0
+				},
+				"created_at": {
+					"name": "created_at",
+					"type": "timestamp with time zone",
+					"primaryKey": false,
+					"notNull": true,
+					"default": "now()"
+				},
+				"updated_at": {
+					"name": "updated_at",
+					"type": "timestamp with time zone",
+					"primaryKey": false,
+					"notNull": true,
+					"default": "now()"
+				}
+			},
+			"indexes": {
+				"custom_field_section_workspace_position_idx": {
+					"name": "custom_field_section_workspace_position_idx",
+					"columns": [
+						{
+							"expression": "workspace_id",
+							"isExpression": false,
+							"asc": true,
+							"nulls": "last"
+						},
+						{
+							"expression": "position",
+							"isExpression": false,
+							"asc": true,
+							"nulls": "last"
+						},
+						{
+							"expression": "id",
+							"isExpression": false,
+							"asc": true,
+							"nulls": "last"
+						}
+					],
+					"isUnique": false,
+					"concurrently": false,
+					"method": "btree",
+					"with": {}
+				}
+			},
+			"foreignKeys": {
+				"custom_field_section_workspace_id_workspace_id_fk": {
+					"name": "custom_field_section_workspace_id_workspace_id_fk",
+					"tableFrom": "custom_field_section",
+					"tableTo": "workspace",
+					"columnsFrom": ["workspace_id"],
+					"columnsTo": ["id"],
+					"onDelete": "cascade",
+					"onUpdate": "cascade"
+				}
+			},
+			"compositePrimaryKeys": {},
+			"uniqueConstraints": {
+				"custom_field_section_workspace_id_id_unique": {
+					"name": "custom_field_section_workspace_id_id_unique",
+					"nullsNotDistinct": false,
+					"columns": ["workspace_id", "id"]
+				},
+				"custom_field_section_workspace_name_unique": {
+					"name": "custom_field_section_workspace_name_unique",
+					"nullsNotDistinct": false,
+					"columns": ["workspace_id", "name"]
+				}
+			},
+			"policies": {},
+			"checkConstraints": {
+				"custom_field_section_position_nonnegative": {
+					"name": "custom_field_section_position_nonnegative",
+					"value": "\"position\" >= 0"
+				}
+			},
+			"isRLSEnabled": false
+		},
+		"public.custom_field": {
+			"name": "custom_field",
+			"schema": "",
+			"columns": {
+				"id": {
+					"name": "id",
+					"type": "text",
+					"primaryKey": true,
+					"notNull": true
+				},
+				"workspace_id": {
+					"name": "workspace_id",
+					"type": "text",
+					"primaryKey": false,
+					"notNull": true
+				},
+				"section_id": {
+					"name": "section_id",
+					"type": "text",
+					"primaryKey": false,
+					"notNull": true
+				},
+				"entity_type": {
+					"name": "entity_type",
+					"type": "text",
+					"primaryKey": false,
+					"notNull": true,
+					"default": "'work_item'"
+				},
+				"key": {
+					"name": "key",
+					"type": "text",
+					"primaryKey": false,
+					"notNull": true
+				},
+				"name": {
+					"name": "name",
+					"type": "text",
+					"primaryKey": false,
+					"notNull": true
+				},
+				"format": {
+					"name": "format",
+					"type": "text",
+					"primaryKey": false,
+					"notNull": true
+				},
+				"options": {
+					"name": "options",
+					"type": "jsonb",
+					"primaryKey": false,
+					"notNull": true,
+					"default": "'[]'::jsonb"
+				},
+				"default_value": {
+					"name": "default_value",
+					"type": "jsonb",
+					"primaryKey": false,
+					"notNull": false
+				},
+				"help_text": {
+					"name": "help_text",
+					"type": "text",
+					"primaryKey": false,
+					"notNull": false
+				},
+				"customer_visible": {
+					"name": "customer_visible",
+					"type": "boolean",
+					"primaryKey": false,
+					"notNull": true,
+					"default": false
+				},
+				"visibility_condition": {
+					"name": "visibility_condition",
+					"type": "jsonb",
+					"primaryKey": false,
+					"notNull": false
+				},
+				"position": {
+					"name": "position",
+					"type": "integer",
+					"primaryKey": false,
+					"notNull": true,
+					"default": 0
+				},
+				"deleted_at": {
+					"name": "deleted_at",
+					"type": "timestamp with time zone",
+					"primaryKey": false,
+					"notNull": false
+				},
+				"created_at": {
+					"name": "created_at",
+					"type": "timestamp with time zone",
+					"primaryKey": false,
+					"notNull": true,
+					"default": "now()"
+				},
+				"updated_at": {
+					"name": "updated_at",
+					"type": "timestamp with time zone",
+					"primaryKey": false,
+					"notNull": true,
+					"default": "now()"
+				}
+			},
+			"indexes": {
+				"custom_field_workspace_active_idx": {
+					"name": "custom_field_workspace_active_idx",
+					"columns": [
+						{
+							"expression": "workspace_id",
+							"isExpression": false,
+							"asc": true,
+							"nulls": "last"
+						},
+						{
+							"expression": "deleted_at",
+							"isExpression": false,
+							"asc": true,
+							"nulls": "last"
+						},
+						{
+							"expression": "position",
+							"isExpression": false,
+							"asc": true,
+							"nulls": "last"
+						},
+						{
+							"expression": "id",
+							"isExpression": false,
+							"asc": true,
+							"nulls": "last"
+						}
+					],
+					"isUnique": false,
+					"concurrently": false,
+					"method": "btree",
+					"with": {}
+				}
+			},
+			"foreignKeys": {
+				"custom_field_workspace_section_fk": {
+					"name": "custom_field_workspace_section_fk",
+					"tableFrom": "custom_field",
+					"tableTo": "custom_field_section",
+					"columnsFrom": ["workspace_id", "section_id"],
+					"columnsTo": ["workspace_id", "id"],
+					"onDelete": "restrict",
+					"onUpdate": "no action"
+				}
+			},
+			"compositePrimaryKeys": {},
+			"uniqueConstraints": {
+				"custom_field_workspace_id_id_unique": {
+					"name": "custom_field_workspace_id_id_unique",
+					"nullsNotDistinct": false,
+					"columns": ["workspace_id", "id"]
+				},
+				"custom_field_workspace_key_unique": {
+					"name": "custom_field_workspace_key_unique",
+					"nullsNotDistinct": false,
+					"columns": ["workspace_id", "key"]
+				}
+			},
+			"policies": {},
+			"checkConstraints": {
+				"custom_field_entity_type_allowed": {
+					"name": "custom_field_entity_type_allowed",
+					"value": "entity_type = 'work_item'::text"
+				},
+				"custom_field_format_allowed": {
+					"name": "custom_field_format_allowed",
+					"value": "format = ANY (ARRAY['text'::text, 'long_text'::text, 'number'::text, 'decimal'::text, 'currency'::text, 'date'::text, 'datetime'::text, 'boolean'::text, 'select'::text, 'multi_select'::text, 'user'::text, 'multi_user'::text, 'url'::text, 'email'::text])"
+				},
+				"custom_field_key_nonempty": {
+					"name": "custom_field_key_nonempty",
+					"value": "length(key) > 0"
+				},
+				"custom_field_position_nonnegative": {
+					"name": "custom_field_position_nonnegative",
+					"value": "\"position\" >= 0"
+				}
+			},
+			"isRLSEnabled": false
+		},
+		"public.custom_field_type_visibility": {
+			"name": "custom_field_type_visibility",
+			"schema": "",
+			"columns": {
+				"custom_field_id": {
+					"name": "custom_field_id",
+					"type": "text",
+					"primaryKey": false,
+					"notNull": true
+				},
+				"work_item_type_id": {
+					"name": "work_item_type_id",
+					"type": "text",
+					"primaryKey": false,
+					"notNull": true
+				},
+				"visible": {
+					"name": "visible",
+					"type": "boolean",
+					"primaryKey": false,
+					"notNull": true,
+					"default": false
+				},
+				"required": {
+					"name": "required",
+					"type": "boolean",
+					"primaryKey": false,
+					"notNull": true,
+					"default": false
+				}
+			},
+			"indexes": {
+				"custom_field_type_visibility_type_idx": {
+					"name": "custom_field_type_visibility_type_idx",
+					"columns": [
+						{
+							"expression": "work_item_type_id",
+							"isExpression": false,
+							"asc": true,
+							"nulls": "last"
+						},
+						{
+							"expression": "custom_field_id",
+							"isExpression": false,
+							"asc": true,
+							"nulls": "last"
+						}
+					],
+					"isUnique": false,
+					"concurrently": false,
+					"method": "btree",
+					"with": {}
+				}
+			},
+			"foreignKeys": {
+				"custom_field_type_visibility_custom_field_id_custom_field_id_fk": {
+					"name": "custom_field_type_visibility_custom_field_id_custom_field_id_fk",
+					"tableFrom": "custom_field_type_visibility",
+					"tableTo": "custom_field",
+					"columnsFrom": ["custom_field_id"],
+					"columnsTo": ["id"],
+					"onDelete": "cascade",
+					"onUpdate": "cascade"
+				},
+				"custom_field_type_visibility_work_item_type_id_work_item_type_i": {
+					"name": "custom_field_type_visibility_work_item_type_id_work_item_type_i",
+					"tableFrom": "custom_field_type_visibility",
+					"tableTo": "work_item_type",
+					"columnsFrom": ["work_item_type_id"],
+					"columnsTo": ["id"],
+					"onDelete": "restrict",
+					"onUpdate": "cascade"
+				}
+			},
+			"compositePrimaryKeys": {
+				"custom_field_type_visibility_custom_field_id_work_item_type_id_": {
+					"name": "custom_field_type_visibility_custom_field_id_work_item_type_id_",
+					"columns": ["custom_field_id", "work_item_type_id"]
+				}
+			},
+			"uniqueConstraints": {},
+			"policies": {},
+			"checkConstraints": {
+				"custom_field_type_visibility_required_visible": {
+					"name": "custom_field_type_visibility_required_visible",
+					"value": "(NOT required) OR visible"
+				}
+			},
+			"isRLSEnabled": false
+		},
+		"public.custom_field_value": {
+			"name": "custom_field_value",
+			"schema": "",
+			"columns": {
+				"id": {
+					"name": "id",
+					"type": "text",
+					"primaryKey": true,
+					"notNull": true
+				},
+				"custom_field_id": {
+					"name": "custom_field_id",
+					"type": "text",
+					"primaryKey": false,
+					"notNull": true
+				},
+				"entity_type": {
+					"name": "entity_type",
+					"type": "text",
+					"primaryKey": false,
+					"notNull": true,
+					"default": "'work_item'"
+				},
+				"entity_id": {
+					"name": "entity_id",
+					"type": "text",
+					"primaryKey": false,
+					"notNull": true
+				},
+				"value": {
+					"name": "value",
+					"type": "jsonb",
+					"primaryKey": false,
+					"notNull": true
+				},
+				"project_id": {
+					"name": "project_id",
+					"type": "text",
+					"primaryKey": false,
+					"notNull": false
+				},
+				"organisation_id": {
+					"name": "organisation_id",
+					"type": "text",
+					"primaryKey": false,
+					"notNull": false
+				},
+				"created_at": {
+					"name": "created_at",
+					"type": "timestamp with time zone",
+					"primaryKey": false,
+					"notNull": true,
+					"default": "now()"
+				},
+				"updated_at": {
+					"name": "updated_at",
+					"type": "timestamp with time zone",
+					"primaryKey": false,
+					"notNull": true,
+					"default": "now()"
+				}
+			},
+			"indexes": {
+				"custom_field_value_project_reach_idx": {
+					"name": "custom_field_value_project_reach_idx",
+					"columns": [
+						{
+							"expression": "project_id",
+							"isExpression": false,
+							"asc": true,
+							"nulls": "last"
+						},
+						{
+							"expression": "custom_field_id",
+							"isExpression": false,
+							"asc": true,
+							"nulls": "last"
+						},
+						{
+							"expression": "entity_id",
+							"isExpression": false,
+							"asc": true,
+							"nulls": "last"
+						}
+					],
+					"isUnique": false,
+					"concurrently": false,
+					"method": "btree",
+					"with": {}
+				},
+				"custom_field_value_organisation_reach_idx": {
+					"name": "custom_field_value_organisation_reach_idx",
+					"columns": [
+						{
+							"expression": "organisation_id",
+							"isExpression": false,
+							"asc": true,
+							"nulls": "last"
+						},
+						{
+							"expression": "custom_field_id",
+							"isExpression": false,
+							"asc": true,
+							"nulls": "last"
+						},
+						{
+							"expression": "entity_id",
+							"isExpression": false,
+							"asc": true,
+							"nulls": "last"
+						}
+					],
+					"isUnique": false,
+					"concurrently": false,
+					"method": "btree",
+					"with": {}
+				}
+			},
+			"foreignKeys": {
+				"custom_field_value_custom_field_id_custom_field_id_fk": {
+					"name": "custom_field_value_custom_field_id_custom_field_id_fk",
+					"tableFrom": "custom_field_value",
+					"tableTo": "custom_field",
+					"columnsFrom": ["custom_field_id"],
+					"columnsTo": ["id"],
+					"onDelete": "cascade",
+					"onUpdate": "cascade"
+				},
+				"custom_field_value_project_id_project_id_fk": {
+					"name": "custom_field_value_project_id_project_id_fk",
+					"tableFrom": "custom_field_value",
+					"tableTo": "project",
+					"columnsFrom": ["project_id"],
+					"columnsTo": ["id"],
+					"onDelete": "restrict",
+					"onUpdate": "no action"
+				},
+				"custom_field_value_organisation_id_organisation_id_fk": {
+					"name": "custom_field_value_organisation_id_organisation_id_fk",
+					"tableFrom": "custom_field_value",
+					"tableTo": "organisation",
+					"columnsFrom": ["organisation_id"],
+					"columnsTo": ["id"],
+					"onDelete": "restrict",
+					"onUpdate": "no action"
+				}
+			},
+			"compositePrimaryKeys": {},
+			"uniqueConstraints": {
+				"custom_field_value_field_entity_unique": {
+					"name": "custom_field_value_field_entity_unique",
+					"nullsNotDistinct": false,
+					"columns": ["custom_field_id", "entity_type", "entity_id"]
+				}
+			},
+			"policies": {},
+			"checkConstraints": {
+				"custom_field_value_entity_type_allowed": {
+					"name": "custom_field_value_entity_type_allowed",
+					"value": "entity_type = 'work_item'::text"
+				}
+			},
+			"isRLSEnabled": false
+		},
+		"public.sla_pause": {
+			"name": "sla_pause",
+			"schema": "",
+			"columns": {
+				"work_item_id": {
+					"name": "work_item_id",
+					"type": "text",
+					"primaryKey": false,
+					"notNull": true
+				},
+				"metric": {
+					"name": "metric",
+					"type": "text",
+					"primaryKey": false,
+					"notNull": true
+				},
+				"started_at": {
+					"name": "started_at",
+					"type": "timestamp with time zone",
+					"primaryKey": false,
+					"notNull": true,
+					"default": "now()"
+				},
+				"ended_at": {
+					"name": "ended_at",
+					"type": "timestamp with time zone",
+					"primaryKey": false,
+					"notNull": false
+				},
+				"reason": {
+					"name": "reason",
+					"type": "text",
+					"primaryKey": false,
+					"notNull": true
+				}
+			},
+			"indexes": {
+				"sla_pause_one_open_per_work_item_metric_unique": {
+					"name": "sla_pause_one_open_per_work_item_metric_unique",
+					"columns": [
+						{
+							"expression": "work_item_id",
+							"isExpression": false,
+							"asc": true,
+							"nulls": "last"
+						},
+						{
+							"expression": "metric",
+							"isExpression": false,
+							"asc": true,
+							"nulls": "last"
+						}
+					],
+					"isUnique": true,
+					"where": "(ended_at IS NULL)",
+					"concurrently": false,
+					"method": "btree",
+					"with": {}
+				}
+			},
+			"foreignKeys": {
+				"sla_pause_work_item_id_work_item_id_fk": {
+					"name": "sla_pause_work_item_id_work_item_id_fk",
+					"tableFrom": "sla_pause",
+					"tableTo": "work_item",
+					"columnsFrom": ["work_item_id"],
+					"columnsTo": ["id"],
+					"onDelete": "cascade",
+					"onUpdate": "cascade"
+				}
+			},
+			"compositePrimaryKeys": {
+				"sla_pause_work_item_metric_started_at_pk": {
+					"name": "sla_pause_work_item_metric_started_at_pk",
+					"columns": ["work_item_id", "metric", "started_at"]
+				}
+			},
+			"uniqueConstraints": {},
+			"policies": {},
+			"checkConstraints": {
+				"sla_pause_metric_allowed": {
+					"name": "sla_pause_metric_allowed",
+					"value": "metric = ANY (ARRAY['first_response'::text, 'resolution'::text])"
+				},
+				"sla_pause_reason_allowed": {
+					"name": "sla_pause_reason_allowed",
+					"value": "reason = ANY (ARRAY['waiting_customer'::text, 'resolved'::text, 'manual'::text])"
+				},
+				"sla_pause_ended_after_started": {
+					"name": "sla_pause_ended_after_started",
+					"value": "(ended_at IS NULL) OR (ended_at >= started_at)"
+				}
+			},
+			"isRLSEnabled": false
+		},
+		"public.policy_shadow_event": {
+			"name": "policy_shadow_event",
+			"schema": "",
+			"columns": {
+				"id": {
+					"name": "id",
+					"type": "text",
+					"primaryKey": true,
+					"notNull": true
+				},
+				"day": {
+					"name": "day",
+					"type": "date",
+					"primaryKey": false,
+					"notNull": true
+				},
+				"route_key": {
+					"name": "route_key",
+					"type": "text",
+					"primaryKey": false,
+					"notNull": true
+				},
+				"router_group": {
+					"name": "router_group",
+					"type": "text",
+					"primaryKey": false,
+					"notNull": true
+				},
+				"policy_kind": {
+					"name": "policy_kind",
+					"type": "text",
+					"primaryKey": false,
+					"notNull": false
+				},
+				"policy_capability": {
+					"name": "policy_capability",
+					"type": "text",
+					"primaryKey": false,
+					"notNull": false
+				},
+				"outcome": {
+					"name": "outcome",
+					"type": "text",
+					"primaryKey": false,
+					"notNull": true
+				},
+				"reason_code": {
+					"name": "reason_code",
+					"type": "text",
+					"primaryKey": false,
+					"notNull": false
+				},
+				"legacy_allowed": {
+					"name": "legacy_allowed",
+					"type": "boolean",
+					"primaryKey": false,
+					"notNull": false
+				},
+				"legacy_status": {
+					"name": "legacy_status",
+					"type": "integer",
+					"primaryKey": false,
+					"notNull": false
+				},
+				"policy_allowed": {
+					"name": "policy_allowed",
+					"type": "boolean",
+					"primaryKey": false,
+					"notNull": false
+				},
+				"policy_status": {
+					"name": "policy_status",
+					"type": "integer",
+					"primaryKey": false,
+					"notNull": false
+				},
+				"policy_code": {
+					"name": "policy_code",
+					"type": "text",
+					"primaryKey": false,
+					"notNull": false
+				},
+				"diagnostic": {
+					"name": "diagnostic",
+					"type": "text",
+					"primaryKey": false,
+					"notNull": false
+				},
+				"identity_kind": {
+					"name": "identity_kind",
+					"type": "text",
+					"primaryKey": false,
+					"notNull": false
+				},
+				"workspace_id": {
+					"name": "workspace_id",
+					"type": "text",
+					"primaryKey": false,
+					"notNull": false
+				},
+				"trace_id": {
+					"name": "trace_id",
+					"type": "text",
+					"primaryKey": false,
+					"notNull": false
+				},
+				"created_at": {
+					"name": "created_at",
+					"type": "timestamp with time zone",
+					"primaryKey": false,
+					"notNull": true,
+					"default": "now()"
+				}
+			},
+			"indexes": {
+				"policy_shadow_event_route_key_created_at_idx": {
+					"name": "policy_shadow_event_route_key_created_at_idx",
+					"columns": [
+						{
+							"expression": "route_key",
+							"isExpression": false,
+							"asc": true,
+							"nulls": "last"
+						},
+						{
+							"expression": "created_at",
+							"isExpression": false,
+							"asc": false,
+							"nulls": "first"
+						}
+					],
+					"isUnique": false,
+					"concurrently": false,
+					"method": "btree",
+					"with": {}
+				},
+				"policy_shadow_event_bucket_idx": {
+					"name": "policy_shadow_event_bucket_idx",
+					"columns": [
+						{
+							"expression": "day",
+							"isExpression": false,
+							"asc": true,
+							"nulls": "last"
+						},
+						{
+							"expression": "route_key",
+							"isExpression": false,
+							"asc": true,
+							"nulls": "last"
+						},
+						{
+							"expression": "outcome",
+							"isExpression": false,
+							"asc": true,
+							"nulls": "last"
+						},
+						{
+							"expression": "reason_code",
+							"isExpression": false,
+							"asc": true,
+							"nulls": "last"
+						}
+					],
+					"isUnique": false,
+					"concurrently": false,
+					"method": "btree",
+					"with": {}
+				}
+			},
+			"foreignKeys": {},
+			"compositePrimaryKeys": {},
+			"uniqueConstraints": {},
+			"policies": {},
+			"checkConstraints": {
+				"policy_shadow_event_outcome_check": {
+					"name": "policy_shadow_event_outcome_check",
+					"value": "outcome = ANY (ARRAY['legacy_allow_policy_deny'::text, 'legacy_deny_policy_allow'::text, 'unevaluated'::text, 'evaluator_error'::text])"
+				}
+			},
+			"isRLSEnabled": false
+		},
+		"public.policy_shadow_tally": {
+			"name": "policy_shadow_tally",
+			"schema": "",
+			"columns": {
+				"id": {
+					"name": "id",
+					"type": "text",
+					"primaryKey": true,
+					"notNull": true
+				},
+				"day": {
+					"name": "day",
+					"type": "date",
+					"primaryKey": false,
+					"notNull": true
+				},
+				"route_key": {
+					"name": "route_key",
+					"type": "text",
+					"primaryKey": false,
+					"notNull": true
+				},
+				"router_group": {
+					"name": "router_group",
+					"type": "text",
+					"primaryKey": false,
+					"notNull": true
+				},
+				"outcome": {
+					"name": "outcome",
+					"type": "text",
+					"primaryKey": false,
+					"notNull": true
+				},
+				"reason_code": {
+					"name": "reason_code",
+					"type": "text",
+					"primaryKey": false,
+					"notNull": false
+				},
+				"count": {
+					"name": "count",
+					"type": "bigint",
+					"primaryKey": false,
+					"notNull": true,
+					"default": 1
+				},
+				"last_seen_at": {
+					"name": "last_seen_at",
+					"type": "timestamp with time zone",
+					"primaryKey": false,
+					"notNull": true,
+					"default": "now()"
+				}
+			},
+			"indexes": {
+				"policy_shadow_tally_route_key_day_idx": {
+					"name": "policy_shadow_tally_route_key_day_idx",
+					"columns": [
+						{
+							"expression": "route_key",
+							"isExpression": false,
+							"asc": true,
+							"nulls": "last"
+						},
+						{
+							"expression": "day",
+							"isExpression": false,
+							"asc": true,
+							"nulls": "last"
+						}
+					],
+					"isUnique": false,
+					"concurrently": false,
+					"method": "btree",
+					"with": {}
+				}
+			},
+			"foreignKeys": {},
+			"compositePrimaryKeys": {},
+			"uniqueConstraints": {
+				"policy_shadow_tally_bucket_unique": {
+					"name": "policy_shadow_tally_bucket_unique",
+					"nullsNotDistinct": true,
+					"columns": ["day", "route_key", "outcome", "reason_code"]
+				}
+			},
+			"policies": {},
+			"checkConstraints": {
+				"policy_shadow_tally_outcome_check": {
+					"name": "policy_shadow_tally_outcome_check",
+					"value": "outcome = ANY (ARRAY['agree'::text, 'legacy_allow_policy_deny'::text, 'legacy_deny_policy_allow'::text, 'unevaluated'::text, 'evaluator_error'::text])"
+				},
+				"policy_shadow_tally_count_positive": {
+					"name": "policy_shadow_tally_count_positive",
+					"value": "count > 0"
+				}
+			},
 			"isRLSEnabled": false
 		}
 	},
