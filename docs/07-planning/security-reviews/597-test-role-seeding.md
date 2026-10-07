@@ -1,10 +1,10 @@
 # Test-role seeding — independent review evidence
 
-**Reviewed head:** `345371be911e1752985eb10c95116a5f7a69ff3b`
+**Reviewed head:** `55b087696a11c06a5acb42efd4a9ca2aff49b5be`
 
 **Model:** GPT-6 Sol
 **Reviewer:** independent `/root/p0_v9_frozen_full_sol`
-**Verdict:** CLEAR, full producer/control review followed by exact changed-head deltas.
+**Verdict:** CLEAR — full producer/control review at345371be followed by independent exact tooling-relocation confirmation at55b08769.
 **Base:** `7d86b0a84b47a35065e389ef5e4216c12832e77f`
 
 The orchestrator transcribes actual independent verdicts here; this is not self-review. No usable login identity, password, token, database URL, private manifest or credential Markdown is included.
@@ -21,13 +21,21 @@ The recurring diagnostics class receives a structural boolean-only assertion bou
 
 - Complete dedicated `pnpm test:seed` at3230feab: **4 files / 35 passed**, against one explicitly named isolated PostgreSQL test database. Covers all eight canonical role fixtures, actual local-password sign-in, positive enabled-customer portal session/identity, preservation/idempotence and origin/target harness behavior.
 - Root independently verifies zero remaining clients, full container/image/mount/label identity and no other volume references; removes only the bound container/named volume; proves absence, unchanged global container/volume sets and released port. Raw logs and generated credentials stay private; test credential directories are removed.
-- The producer, credential publication, explicit-database harness and customer repository helper are byte-unchanged from3230feab to the reviewed final code head. The native result remains attributed to3230feab; no native run at345371be is invented.
+- The producer, credential publication and customer repository helper are byte-unchanged from3230feab through55b08769. The explicit-database harness is byte-unchanged through345371be, then moved with import/config paths at55b08769; its target, origin and diagnostic behavior is independently confirmed unchanged. The native result remains attributed to3230feab; no later native run is invented.
 - Structural diagnostics focused suite at86234f56: **2 files / 16 passed**; meaningful synthetic-secret assertion-failure regression verifies the shared boundary. API typecheck, Biome and diff checks pass.
 - Final customer-only correction: author **13 focused tests**, API typecheck, Biome and diff checks pass. Sol performs direct exact-delta/source inspection and diff check, not a fabricated native test.
 
 ## Collected findings and disposition
 
 Customer membership/portal role, deterministic usable login names, raw credential-bearing failure diagnostics and customer authority cardinality are resolved. Earlier failed candidates and review reports remain preserved privately. One ordinary nonblocking note asks for a dedicated email-collision regression; collision rejection itself was inspected and is not a blocker.
+
+## Exact tooling-relocation successor
+
+Candidate55b08769 resolves the actual `check:env` failure by placing test-only Vitest setup under `tests/api` rather than the application tree. Five files change: two setup paths, their imports, dedicated Vitest configuration and test TypeScript configuration. No producer, environment gate, baseline, production authority or registered bootstrap setting changes.
+
+Fresh independent ordinary GPT-6 Luna `/root/p1_fcf_bulk_luna_a` clears this exact delta. It runs `check:env` (1,521 application/package files, 47 attributable reads; 52 inherited deviations unchanged), three files/22 no-database seed tests, test TypeScript and test discovery. Independent GPT-6 Sol `/root/p0_v9_frozen_full_sol` clears the exact current-head narrow security confirmation after inspecting the complete delta and the explicit PostgreSQL `_test` guard, contradictory URL checks, configured origin helper, default Testcontainers path, explicit no-Testcontainers path and diagnostic boundaries. It independently runs environment, test TypeScript, discovery (four files) and diff checks. Neither reviewer authors/fixes this candidate or runs native resources. Root verifies clean source and remote exact55b08769 before recording these actual verdicts.
+
+This current-source confirmation carries the earlier full producer review with explicit inspected delta, not a relabeled full review or native result. Original source345371be full Sol record and every prior blocked finding remain in this record/history.
 
 ## Limits
 
