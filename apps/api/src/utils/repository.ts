@@ -554,6 +554,16 @@ export function listWorkspaceRoleKeys(workspaceIds: string[], roles: string[]) {
     );
 }
 
+export async function listWorkspaceRolesForWorkspace(
+  executor: Pick<typeof db, "select">,
+  workspaceId: string,
+) {
+  return executor
+    .select()
+    .from(schema.workspaceRoleTable)
+    .where(eq(schema.workspaceRoleTable.workspaceId, workspaceId));
+}
+
 export function getWorkspaceRoleSystemFlag(
   executor: Pick<typeof db, "select">,
   workspaceId: string,
