@@ -991,6 +991,7 @@ describe("explicit test-user seed batch", () => {
       const customerAuthority = customerIdentity?.authority[0];
       expectSafeSeedCondition(
         customerIdentity?.side === "customer" &&
+          customerIdentity.authority.length === 1 &&
           customerIdentity.portal === "customer" &&
           customerIdentity.organisationId ===
             "taskdesk-test-user-customer-organisation" &&
