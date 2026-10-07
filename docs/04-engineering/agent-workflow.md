@@ -272,8 +272,11 @@ Prefer a skill over freehand work — it encodes decisions already made.
 - At the end of a session, update [status.md](../07-planning/status.md) with where things
   stand and what is blocked.
 - Long-running context goes in the pull request description, not in the conversation.
-- **The working tree stays uncommitted until Thomas says "commit"** ([AGENTS.md](../../AGENTS.md)
-  do-not 16). Finish, write the report, stop. A report is not approval; neither is silence.
+- **Use the standing protected pull-request flow in [AGENTS.md](../../AGENTS.md).** Thomas
+  authorizes routine branch, implementation, commit, push, independent review, exact-head
+  verification and eligible protected merge. Continue dependency-safe work without a
+  separate per-commit prompt. A report never substitutes for required review or a green gate;
+  genuine undefined product/security decisions and gate waivers remain Thomas-only.
 - Public review artifacts should identify public test vectors descriptively rather than
   embedding credential-shaped fixture URIs. If redaction is needed, label it transparently,
   preserve the unredacted original in private evidence, and retain the finding's substance.

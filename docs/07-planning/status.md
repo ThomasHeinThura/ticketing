@@ -1,3 +1,21 @@
+## Status first — verified 2026-10-07 18:00 UTC
+
+Accepted main remains `3096cb044bdf6ae98488bfc385f532fa6386343a`; persistent DEV remains revision `08842235047a3ab2714427edce80331b94558150` / image `sha256:75b153d7d9583993127e1be8c06453159e4fe7319abfcd8431f093c9ca002bcf`. P0–P7 remain open. No merge, persistent deployment, strict cutover, release or finalizer occurred.
+
+**P0:** isolated successor #602 now owns the correction scope on `01e509c531a8b31fe9fa2ae0f701c806ff486740`, based directly on #583 and excluding #599. #600 is closed as superseded; its source-bound history remains. Prior successor source `eedf45e681c68936c8062a29704501d6d75b69c0` passed hosted PostgreSQL **137 files / 1659 tests** and G11 **20/22**, failing LCP **2536/2500 ms** and board **637.6/500 ms**. The current gate batch fixes raw test JSX, stale contrast occurrences and a transient fixture-copy race, and makes the thin static shell / dynamic form test claim precise. Author results: **13 Vitest tests**, **63 checker tests**, types/build/static contrast/UI/bundle checks passed; fresh hosted and independent review are pending. These results do not establish current G11 or acceptance. Root is preparing an exact-source geometry comparison against accepted #579 `f10f9a8f`, preserving all benchmark budgets and workloads.
+
+**P1–P4:** historical #589 remains `2350397b18f83ed417bf63d73970daacdbaae49c`, with scoped root browser **15/15** passed; it remains independent and must be recreated from accepted post-P0 main. #598 remains `3fecb75`, with historical PostgreSQL **155 files / 1807 tests** passed and other gates open. Required-file draft and explicit custom-field mapping product contracts remain pending; those decision paths wait while independent work continues.
+
+**Private all-role runtime:** V12's actual native suite passed **4 files / 39 tests** on disposable PG18.6. The corrected existing guarded CLI (`scripts/seed-test-users.ts`) generated all eight canonical role credentials privately. The actual API report contains **18 planned probes plus three auth/CSRF controls**: **7 passed / 1 failed / 13 blocked**. Thirteen probes were blocked by genuine sign-in rate limits (HTTP 429); the instance-admin workspace-capabilities probe expected 200 but returned 403 on pinned older source `99528ca`. That failure remains open and must be retested on corrected source; no expected outcome is relaxed. Fixture setup and checked API session provenance passed for reached identities. A private request-pacing operator is being prepared/reviewed to avoid setup bursts, without changing application rate limits or retrying denied requests.
+
+The earlier producer exit-0 receipt loaded a library without invoking the CLI and did **not** create usable credentials; it is superseded by the actual corrected CLI run, not relabelled as seeding acceptance. One diagnostic wrapper failed its ESM preflight and remains a failed operator attempt. All disposable containers, database data, temporary credentials and owned API/PG listeners were removed; global resource sets and source cleanliness were preserved. The redacted report and original failures remain private. No seeder code, passwords, MFA values, cookies, credential Markdown or database URLs enter Git/GitHub. No all-role API pass or persistent DEV seeding is claimed.
+
+**Critical path:** resolve the remaining actual LCP/board failures; freeze one P0 SHA; exact hosted 22/22 and required independent reviews; exact installer/image/runtime/rollback plus observation compatibility; protected merge and fresh GPT-6.1 Sol phase finalizer. No later-stage source enters P0. No candidate is currently merge-ready.
+
+Historical snapshots below preserve their original source identities and dates.
+
+---
+
 ## Status first — verified 2026-10-07 17:35 UTC
 
 - **Accepted main:** `3096cb044bdf6ae98488bfc385f532fa6386343a`, refreshed from live GitHub. **Persistent DEV:** OCI revision `08842235047a3ab2714427edce80331b94558150`, image `sha256:75b153d7d9583993127e1be8c06453159e4fe7319abfcd8431f093c9ca002bcf`. No deployment, protected merge, enforcement activation or stage completion occurred in this cycle.
