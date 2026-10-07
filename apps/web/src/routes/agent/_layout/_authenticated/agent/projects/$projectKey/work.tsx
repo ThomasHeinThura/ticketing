@@ -10,7 +10,6 @@ import {
 } from "react";
 import { useTranslation } from "react-i18next";
 import PageTitle from "@/components/page-title";
-import WorkItemCreateDialogShell from "@/components/work-item/work-item-create-dialog-shell";
 import WorkItemListLoading from "@/components/work-item/work-item-list-loading";
 import type { WorkItemsResult } from "@/fetchers/work-item/get-work-items";
 import useGetProjects from "@/hooks/queries/project/use-get-projects";
@@ -40,6 +39,9 @@ function preloadWorkItemsPanel() {
 }
 
 const WorkItemsPanel = lazy(loadWorkItemsPanel);
+const WorkItemCreateDialogShell = lazy(
+  () => import("@/components/work-item/work-item-create-dialog-shell"),
+);
 const WorkItemCreateTrigger = lazy(
   () => import("@/components/work-item/work-item-create-trigger"),
 );
@@ -266,11 +268,13 @@ function ProjectWorkItemsRoute({ projectKey }: { projectKey: string }) {
           />
         </Suspense>
         {project && isCreateOpenForProject ? (
-          <WorkItemCreateDialogShell
-            projectId={project.id}
-            workspaceId={workspace?.id}
-            onClose={closeCreateDialog}
-          />
+          <Suspense fallback={null}>
+            <WorkItemCreateDialogShell
+              projectId={project.id}
+              workspaceId={workspace?.id}
+              onClose={closeCreateDialog}
+            />
+          </Suspense>
         ) : null}
       </div>
     </>
