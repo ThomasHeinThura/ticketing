@@ -286,6 +286,7 @@ test("command preflight passes without ripgrep and fails before setup for a miss
     assert.ok(requiredText);
     const required = requiredText.trim().split(/\s+/);
     assert.ok(!required.includes("rg"));
+    const symlinkTargets = new Map();
     for (const commandName of required) {
       const found = spawnSync(
         "/bin/bash",
@@ -293,6 +294,7 @@ test("command preflight passes without ripgrep and fails before setup for a miss
         { encoding: "utf8" },
       );
       const target = found.status === 0 ? found.stdout.trim() : "/bin/echo";
+      symlinkTargets.set(commandName, target);
       await symlink(target, path.join(bin, commandName));
     }
     const preflight = `source "${commandPreflight.pathname}"; preflight_required_commands || exit; if command -v rg >/dev/null 2>&1; then exit 7; fi; printf 'preflight-ok\\n'`;
@@ -302,13 +304,24 @@ test("command preflight passes without ripgrep and fails before setup for a miss
     });
     assert.equal(noRg.status, 0, noRg.stderr);
     assert.match(noRg.stdout, /preflight-ok/);
-    await rm(path.join(bin, "sha256sum"));
-    const missing = spawnSync("/bin/bash", ["-c", preflight], {
-      encoding: "utf8",
-      env: { ...process.env, PATH: bin },
-    });
-    assert.notEqual(missing.status, 0);
-    assert.match(missing.stderr, /sha256sum/);
+    for (const commandName of required) {
+      await rm(path.join(bin, commandName));
+      const missing = spawnSync("/bin/bash", ["-c", preflight], {
+        encoding: "utf8",
+        env: { ...process.env, PATH: bin },
+      });
+      assert.notEqual(missing.status, 0, `${commandName} should be required`);
+      assert.match(
+        missing.stderr,
+        new RegExp(
+          `Missing required diagnostic commands before setup: .*\\b${commandName}\\b`,
+        ),
+      );
+      await symlink(
+        symlinkTargets.get(commandName),
+        path.join(bin, commandName),
+      );
+    }
   } finally {
     await rm(fixture, { recursive: true, force: true });
   }

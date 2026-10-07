@@ -4,7 +4,8 @@ preflight_required_commands() {
   local command_name
   local -a missing=()
   local -a required=(
-    awk bash cat chmod date dirname find git lscpu mkdir node pnpm realpath rm rmdir
+    awk basename bash cat chmod date dirname find git lscpu mkdir node pnpm realpath
+    rm rmdir
     sha256sum sort uname
   )
 
