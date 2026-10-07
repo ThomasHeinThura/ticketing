@@ -1,4 +1,8 @@
-import { and, asc, count, eq, like, sql } from "drizzle-orm";
+import { chmod, mkdtemp, readFile, rm, stat } from "node:fs/promises";
+import os from "node:os";
+import path from "node:path";
+import { verifyPassword } from "better-auth/crypto";
+import { and, asc, count, eq, inArray, like, sql } from "drizzle-orm";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { resetTestDatabase } from "../../../tests/api-integration/helpers/database";
 import {
@@ -14,6 +18,8 @@ import { ensureInternalOrganisation } from "../src/utils/seed-internal-organisat
 import { seedProjectStates } from "../src/utils/seed-project-states";
 import { seedWorkspaceDefaults } from "../src/utils/seed-workspace-defaults";
 import { seed } from "./seed-profile";
+import { SUPPORTED_TEST_USER_ROLES, seedTestUsers } from "./seed-test-users";
+import { generateTestUserPassword } from "./test-user-credentials";
 
 const unrelatedUser = {
   id: "seed-test-unrelated-user",
@@ -561,3 +567,270 @@ async function expectNoProfileRows(namespace: string) {
   expect(people).toHaveLength(0);
   expect(items).toHaveLength(0);
 }
+
+describe("explicit test-user seed batch", () => {
+  const databaseName = new URL(
+    process.env.TASKDESK_DATABASE_URL ?? "",
+  ).pathname.replace(/^\//, "");
+
+  afterAll(async () => {
+    await resetTestDatabase();
+  });
+
+  it("refuses an email collision without seeding unrelated accounts or workspaces", async () => {
+    await resetTestDatabase();
+    const expectedEmail = "taskdesk-test-user+owner@taskdesk-test.invalid";
+    const preserved = {
+      id: "unrelated-colliding-test-user",
+      name: "Preserve this account",
+      email: expectedEmail,
+    };
+    await db.insert(schema.userTable).values(preserved);
+
+    const directory = await mkdtemp(
+      path.join(os.tmpdir(), "taskdesk-test-users-collision-"),
+    );
+    await chmod(directory, 0o700);
+    const credentialFile = path.join(directory, "credentials.json");
+    const args = [
+      "--test-database",
+      databaseName,
+      "--credentials-file",
+      credentialFile,
+    ];
+    try {
+      await expect(seedTestUsers(databaseName, args)).rejects.toThrow(
+        /partial or collide/,
+      );
+      const [unchanged] = await db
+        .select()
+        .from(schema.userTable)
+        .where(eq(schema.userTable.id, preserved.id))
+        .limit(1);
+      expect(unchanged?.name).toBe(preserved.name);
+      const [workspace] = await db
+        .select()
+        .from(schema.workspaceTable)
+        .where(eq(schema.workspaceTable.id, "taskdesk-seed-minimal-workspace"))
+        .limit(1);
+      expect(workspace).toBeUndefined();
+      await expect(stat(credentialFile)).rejects.toThrow();
+    } finally {
+      await rm(directory, { recursive: true, force: true });
+    }
+  });
+
+  it("is additive and idempotent, assigns each supported role at its real scope, and authenticates by Better Auth's credential hash", async () => {
+    await resetTestDatabase();
+    const directory = await mkdtemp(
+      path.join(os.tmpdir(), "taskdesk-test-users-batch-"),
+    );
+    await chmod(directory, 0o700);
+    const credentialFile = path.join(directory, "credentials.json");
+    const args = [
+      "--test-database",
+      databaseName,
+      "--credentials-file",
+      credentialFile,
+    ];
+    try {
+      const firstSummary = await seedTestUsers(databaseName, args);
+      const manifest = JSON.parse(await readFile(credentialFile, "utf8")) as {
+        formatVersion: number;
+        targetDatabase: string;
+        users: Array<{
+          role: string;
+          email: string;
+          password: string | null;
+          authentication: string;
+          scope: { kind: string; scopeId: string | null };
+        }>;
+      };
+      const credentials = manifest.users;
+      expect(manifest.formatVersion).toBe(1);
+      expect(manifest.targetDatabase).toBe(databaseName);
+      expect(credentials.map(({ role }) => role)).toEqual(
+        SUPPORTED_TEST_USER_ROLES,
+      );
+      expect(credentials.map(({ role, scope }) => [role, scope.kind])).toEqual([
+        ["instance_admin", "instance"],
+        ["owner", "workspace"],
+        ["admin", "workspace"],
+        ["member", "workspace"],
+        ["viewer", "workspace"],
+        ["customer", "organisation"],
+      ]);
+      expect((await stat(directory)).mode & 0o777).toBe(0o700);
+      expect((await stat(credentialFile)).mode & 0o777).toBe(0o600);
+      const credentialBytes = await readFile(credentialFile);
+      const savedUsers = await db
+        .select()
+        .from(schema.userTable)
+        .where(
+          inArray(
+            schema.userTable.id,
+            SUPPORTED_TEST_USER_ROLES.map(
+              (role) => `taskdesk-test-user-${role}`,
+            ),
+          ),
+        );
+      const savedAccounts = await db
+        .select()
+        .from(schema.accountTable)
+        .where(
+          inArray(
+            schema.accountTable.userId,
+            SUPPORTED_TEST_USER_ROLES.map(
+              (role) => `taskdesk-test-user-${role}`,
+            ),
+          ),
+        );
+      const savedPeople = await db
+        .select()
+        .from(schema.personTable)
+        .where(
+          inArray(
+            schema.personTable.userId,
+            SUPPORTED_TEST_USER_ROLES.map(
+              (role) => `taskdesk-test-user-${role}`,
+            ),
+          ),
+        );
+      const savedMemberships = await db
+        .select()
+        .from(schema.workspaceUserTable)
+        .where(
+          inArray(
+            schema.workspaceUserTable.userId,
+            SUPPORTED_TEST_USER_ROLES.map(
+              (role) => `taskdesk-test-user-${role}`,
+            ),
+          ),
+        );
+
+      expect(savedUsers).toHaveLength(6);
+      expect(savedAccounts).toHaveLength(5);
+      expect(savedPeople).toHaveLength(6);
+      expect(
+        savedMemberships
+          .map((row) => [row.userId, row.role])
+          .sort(([left], [right]) => String(left).localeCompare(String(right))),
+      ).toEqual([
+        ["taskdesk-test-user-owner", "owner"],
+        ["taskdesk-test-user-admin", "admin"],
+        ["taskdesk-test-user-member", "member"],
+        ["taskdesk-test-user-viewer", "viewer"],
+      ]);
+      for (const credential of credentials) {
+        const account = savedAccounts.find(
+          (row) => row.userId === `taskdesk-test-user-${credential.role}`,
+        );
+        if (credential.authentication === "local_password") {
+          expect(account?.providerId).toBe("credential");
+          expect(account?.password).toBeTruthy();
+          expect(credential.password).toBeTruthy();
+          expect(
+            await verifyPassword({
+              hash: account?.password ?? "",
+              password: credential.password ?? "",
+            }),
+          ).toBe(true);
+        } else {
+          expect(credential.role).toBe("customer");
+          expect(credential.password).toBeNull();
+          expect(account).toBeUndefined();
+        }
+        const person = savedPeople.find(
+          (row) => row.userId === `taskdesk-test-user-${credential.role}`,
+        );
+        expect(person?.side).toBe(
+          credential.role === "customer" ? "customer" : "staff",
+        );
+        if (credential.role === "instance_admin") {
+          expect(
+            savedUsers.find(
+              (row) => row.id === `taskdesk-test-user-${credential.role}`,
+            )?.role,
+          ).toBe("admin");
+        }
+      }
+      const customer = savedPeople.find(
+        (row) => row.userId === "taskdesk-test-user-customer",
+      );
+      expect(customer?.organisationId).toBe(
+        "taskdesk-test-user-customer-organisation",
+      );
+      const customerOrg = await db
+        .select()
+        .from(schema.organisationTable)
+        .where(
+          eq(
+            schema.organisationTable.id,
+            "taskdesk-test-user-customer-organisation",
+          ),
+        );
+      expect(customerOrg[0]?.portalAccess).toBe(true);
+
+      const secondSummary = await seedTestUsers(databaseName, args);
+      expect(secondSummary).toBe(firstSummary);
+      expect(await readFile(credentialFile)).toEqual(credentialBytes);
+      expect(
+        await db
+          .select()
+          .from(schema.userTable)
+          .where(
+            inArray(
+              schema.userTable.id,
+              SUPPORTED_TEST_USER_ROLES.map(
+                (role) => `taskdesk-test-user-${role}`,
+              ),
+            ),
+          ),
+      ).toHaveLength(6);
+
+      const { auth, portalAuth } = await import("../src/auth");
+      for (const credential of credentials) {
+        if (credential.authentication !== "local_password") continue;
+        const selectedAuth = credential.role === "customer" ? portalAuth : auth;
+        const origin =
+          credential.role === "customer"
+            ? "http://localhost:5174"
+            : "http://localhost:5173";
+        const response = await selectedAuth.handler(
+          new Request(`${origin}/api/auth/sign-in/email`, {
+            method: "POST",
+            headers: { "content-type": "application/json", origin },
+            body: JSON.stringify({
+              email: credential.email,
+              password: credential.password,
+            }),
+          }),
+        );
+        expect(response.status, credential.role).toBe(200);
+      }
+      const customerCredential = credentials.find(
+        ({ role }) => role === "customer",
+      );
+      expect(customerCredential?.authentication).toBe(
+        "external_provider_required",
+      );
+      expect(customerCredential?.password).toBeNull();
+      const customerPasswordAttempt = await portalAuth.handler(
+        new Request("http://localhost:5174/api/auth/sign-in/email", {
+          method: "POST",
+          headers: {
+            "content-type": "application/json",
+            origin: "http://localhost:5174",
+          },
+          body: JSON.stringify({
+            email: customerCredential?.email,
+            password: generateTestUserPassword(),
+          }),
+        }),
+      );
+      expect(customerPasswordAttempt.status).not.toBe(200);
+    } finally {
+      await rm(directory, { recursive: true, force: true });
+    }
+  });
+});

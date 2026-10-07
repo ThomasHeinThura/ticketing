@@ -42,6 +42,7 @@
 		"scripts/seed-cli.ts",
 		"scripts/seed-cli.test.ts",
 		"scripts/seed-postgres.test.ts",
+		"scripts/seed-test-users.test.ts",
 		"scripts/seed-test-global-setup.ts",
 		"scripts/seed-test-setup.ts",
 		"vitest.seed.config.ts",
