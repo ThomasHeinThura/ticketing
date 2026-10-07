@@ -453,7 +453,9 @@ and records each user's effective canonical scope and sign-in method. Staff and 
 fixtures use distinct generated random passwords. The customer fixture has no local credential
 by default; it records provider-required sign-in. If the target already has an enabled
 `auth.password` provider scoped to the customer portal, the seeder records and uses that
-existing configuration without changing it. Credentials are never printed or checked in. No
+existing configuration without changing it. The native integration case enables the provider
+only in its isolated `_test` database and verifies customer sign-in plus the portal session
+identity gate; the seeder never changes provider configuration. Credentials are never printed or checked in. No
 new environment variable or fixed password is introduced. Existing manifests must be singly
 linked. New manifests are fully written and synced to a private temporary file, then published
 atomically without replacing an existing file; failed writes clean up their staging file. A
@@ -462,8 +464,11 @@ and target database whose writer process has exited, while preserving unrelated 
 
 The complete fixture set is generated from canonical `BUILT_IN_ROLES`. `instance_admin` uses
 the existing Better Auth `user.role = 'admin'` source; `customer` uses an active
-customer-side person in its dedicated test organisation (customer authority comes from person
-side and organisation scope); and all six workspace roles use workspace membership. `owner`
+customer-side person in its dedicated test organisation plus one organisation-scoped
+membership linked to the canonical system `role` row (`scope = 'organisation'`, `key =
+'customer'`, no workspace). That membership is required by the actual customer-portal session
+identity gate, while the resolved customer authority remains fixed by the canonical customer
+role; all six workspace roles use workspace membership. `owner`
 continues to use its existing special path without a `workspace_role` row. For `admin`,
 `manager`, `lead`, `member`, and `viewer`, the test-owned workspace receives the same genuine
 `workspace_role` backing row (`is_system = true`) used by existing authorization integration

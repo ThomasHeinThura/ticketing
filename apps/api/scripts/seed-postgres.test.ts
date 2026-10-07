@@ -3,7 +3,7 @@ import os from "node:os";
 import path from "node:path";
 import { BUILT_IN_ROLES } from "@taskdesk/permissions";
 import bcrypt from "bcryptjs";
-import { and, asc, count, eq, inArray, like, sql } from "drizzle-orm";
+import { and, asc, count, eq, inArray, isNull, like, sql } from "drizzle-orm";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { resetTestDatabase } from "../../../tests/api-integration/helpers/database";
 import {
@@ -13,6 +13,7 @@ import {
   SEED_PROFILE_COUNTS,
   type SeedProfile,
 } from "../../../tests/fixtures/seed-profiles";
+import { getCustomerPortalIdentityRow } from "../src/auth/repository";
 import db, { schema } from "../src/database";
 import { resolveIdentity } from "../src/permissions/resolve-identity";
 import { DEFAULT_PROJECT_COLUMNS } from "../src/project/controllers/create-project";
@@ -21,7 +22,6 @@ import { seedProjectStates } from "../src/utils/seed-project-states";
 import { seedWorkspaceDefaults } from "../src/utils/seed-workspace-defaults";
 import { seed } from "./seed-profile";
 import { SUPPORTED_TEST_USER_ROLES, seedTestUsers } from "./seed-test-users";
-import { generateTestUserPassword } from "./test-user-credentials";
 
 const unrelatedUser = {
   id: "seed-test-unrelated-user",
@@ -29,6 +29,7 @@ const unrelatedUser = {
   email: "seed-test-unrelated@example.test",
   emailVerified: true,
 };
+const customerPasswordProviderConfigId = "seed-test-customer-password-provider";
 
 async function profileCounts(profile: SeedProfile) {
   const namespace = `taskdesk-seed-${profile}`;
@@ -624,6 +625,21 @@ describe("explicit test-user seed batch", () => {
 
   it("is additive and idempotent, assigns each supported role at its real scope, and authenticates by Better Auth's credential hash", async () => {
     await resetTestDatabase();
+    const providerNow = new Date();
+    await db.insert(schema.instancePluginConfigTable).values({
+      id: customerPasswordProviderConfigId,
+      pluginId: "auth.password",
+      instanceKey: "test-customer-password",
+      displayName: "Test customer password provider",
+      enabled: true,
+      config: {},
+      scope: "instance",
+      workspaceId: null,
+      portalScope: "customer",
+      configVersion: 1,
+      createdAt: providerNow,
+      updatedAt: providerNow,
+    });
     const directory = await realpath(
       await mkdtemp(path.join(os.tmpdir(), "taskdesk-test-users-batch-")),
     );
@@ -635,6 +651,7 @@ describe("explicit test-user seed batch", () => {
       "--credentials-file",
       credentialFile,
     ];
+    let authModule: typeof import("../src/auth") | undefined;
     try {
       const firstSummary = await seedTestUsers(databaseName, args);
       const manifest = JSON.parse(await readFile(credentialFile, "utf8")) as {
@@ -711,10 +728,52 @@ describe("explicit test-user seed batch", () => {
             ),
           ),
         );
+      const savedScopedMemberships = await db
+        .select()
+        .from(schema.membershipTable)
+        .where(
+          inArray(
+            schema.membershipTable.personId,
+            SUPPORTED_TEST_USER_ROLES.map(
+              (role) => `taskdesk-test-user-${role}-person`,
+            ),
+          ),
+        );
+      const [customerRole] = await db
+        .select()
+        .from(schema.roleTable)
+        .where(
+          and(
+            eq(schema.roleTable.scope, "organisation"),
+            eq(schema.roleTable.key, "customer"),
+            isNull(schema.roleTable.workspaceId),
+          ),
+        );
 
       expect(savedUsers).toHaveLength(8);
-      expect(savedAccounts).toHaveLength(7);
+      expect(savedAccounts).toHaveLength(8);
       expect(savedPeople).toHaveLength(8);
+      expect(savedScopedMemberships).toHaveLength(1);
+      expect(customerRole).toMatchObject({
+        scope: "organisation",
+        workspaceId: null,
+        key: "customer",
+        name: "Customer",
+        description: BUILT_IN_ROLES.customer.intent,
+        rank: BUILT_IN_ROLES.customer.rank,
+        capabilities: BUILT_IN_ROLES.customer.capabilities,
+        isSystem: true,
+        isEditable: false,
+      });
+      expect(savedScopedMemberships[0]).toMatchObject({
+        personId: "taskdesk-test-user-customer-person",
+        scope: "organisation",
+        scopeId: "taskdesk-test-user-customer-organisation",
+        roleId: customerRole?.id,
+        seesAll: false,
+        inheritedFrom: null,
+        derivedFrom: null,
+      });
       expect(
         savedMemberships
           .map((row) => [row.userId, row.role])
@@ -776,6 +835,12 @@ describe("explicit test-user seed batch", () => {
           ),
         );
       expect(customerOrg[0]?.portalAccess).toBe(true);
+      const [customerPortalIdentity] = await getCustomerPortalIdentityRow(
+        "taskdesk-test-user-customer",
+      );
+      expect(customerPortalIdentity?.personId).toBe(
+        "taskdesk-test-user-customer-person",
+      );
 
       for (const role of ["manager", "lead"] as const) {
         const identity = await resolveIdentity({
@@ -795,6 +860,42 @@ describe("explicit test-user seed batch", () => {
         });
       }
 
+      const customerMembership = savedScopedMemberships[0];
+      if (!customerMembership)
+        throw new Error("customer membership fixture was not created");
+      await db
+        .delete(schema.membershipTable)
+        .where(eq(schema.membershipTable.id, customerMembership.id));
+      await expect(seedTestUsers(databaseName, args)).rejects.toThrow(
+        /scoped memberships/,
+      );
+      await db.insert(schema.membershipTable).values(customerMembership);
+
+      await db
+        .update(schema.membershipTable)
+        .set({ scopeId: "taskdesk-test-user-foreign-organisation" })
+        .where(eq(schema.membershipTable.id, customerMembership.id));
+      await expect(seedTestUsers(databaseName, args)).rejects.toThrow(
+        /customer role membership/,
+      );
+      await db
+        .update(schema.membershipTable)
+        .set({
+          scope: "workspace",
+          scopeId: "taskdesk-seed-minimal-workspace",
+        })
+        .where(eq(schema.membershipTable.id, customerMembership.id));
+      await expect(seedTestUsers(databaseName, args)).rejects.toThrow(
+        /customer role membership/,
+      );
+      await db
+        .update(schema.membershipTable)
+        .set({
+          scope: customerMembership.scope,
+          scopeId: customerMembership.scopeId,
+        })
+        .where(eq(schema.membershipTable.id, customerMembership.id));
+
       const secondSummary = await seedTestUsers(databaseName, args);
       expect(secondSummary).toBe(firstSummary);
       expect(await readFile(credentialFile)).toEqual(credentialBytes);
@@ -812,27 +913,44 @@ describe("explicit test-user seed batch", () => {
           ),
       ).toHaveLength(8);
 
-      const { auth, portalAuth } = await import("../src/auth");
+      authModule = await import("../src/auth");
+      await authModule.reloadAuthConfiguration();
+      const { createApp } = await import("../src/index");
+      const portalApp = createApp();
       const localPasswordCredentials = credentials.filter(
         ({ authentication }) => authentication === "local_password",
       );
+      let customerSessionCookie: string | undefined;
       for (const [index, credential] of localPasswordCredentials.entries()) {
-        const selectedAuth = credential.role === "customer" ? portalAuth : auth;
         const origin =
           credential.role === "customer"
             ? "http://localhost:5174"
             : "http://localhost:5173";
-        const response = await selectedAuth.handler(
-          new Request(`${origin}/api/auth/sign-in/email`, {
-            method: "POST",
-            headers: { "content-type": "application/json", origin },
-            body: JSON.stringify({
-              email: credential.email,
-              password: credential.password,
-            }),
+        const request = {
+          method: "POST",
+          headers: { "content-type": "application/json", origin },
+          body: JSON.stringify({
+            email: credential.email,
+            password: credential.password,
           }),
-        );
+        };
+        const response =
+          credential.role === "customer"
+            ? await portalApp.app.request(
+                `${origin}/api/auth/sign-in/email`,
+                request,
+              )
+            : await authModule.auth.handler(
+                new Request(`${origin}/api/auth/sign-in/email`, request),
+              );
         expect(response.status, credential.role).toBe(200);
+        if (credential.role === "customer") {
+          const customerCookie = response.headers
+            .getSetCookie()
+            .find((value) => value.startsWith("__Host-tdk_portal_session="));
+          expect(customerCookie).toBeDefined();
+          customerSessionCookie = customerCookie?.split(";", 1)[0];
+        }
         // Better Auth permits three sign-in attempts per client bucket in ten
         // seconds. The direct handler has no trusted client IP in this harness,
         // so space batches instead of weakening or bypassing that protection.
@@ -846,25 +964,60 @@ describe("explicit test-user seed batch", () => {
       const customerCredential = credentials.find(
         ({ role }) => role === "customer",
       );
-      expect(customerCredential?.authentication).toBe(
-        "external_provider_required",
+      expect(customerCredential?.authentication).toBe("local_password");
+      expect(customerCredential?.password).toBeTruthy();
+      const customerUserId = "taskdesk-test-user-customer";
+      const [portalIdentityRow] =
+        await getCustomerPortalIdentityRow(customerUserId);
+      expect(portalIdentityRow?.personId).toBe(
+        "taskdesk-test-user-customer-person",
       );
-      expect(customerCredential?.password).toBeNull();
-      const customerPasswordAttempt = await portalAuth.handler(
-        new Request("http://localhost:5174/api/auth/sign-in/email", {
-          method: "POST",
+      const customerIdentity = await resolveIdentity({
+        userId: customerUserId,
+        credential: "session",
+      });
+      expect(customerIdentity).toMatchObject({
+        side: "customer",
+        portal: "customer",
+        organisationId: "taskdesk-test-user-customer-organisation",
+        authority: [
+          {
+            roleKey: "customer",
+            scope: "organisation",
+            scopeId: "taskdesk-test-user-customer-organisation",
+            rank: BUILT_IN_ROLES.customer.rank,
+            capabilities: BUILT_IN_ROLES.customer.capabilities,
+          },
+        ],
+      });
+
+      expect(customerSessionCookie).toBeTruthy();
+      const customerSessionResponse = await portalApp.app.request(
+        "http://localhost:5174/api/auth/get-session",
+        {
           headers: {
-            "content-type": "application/json",
+            cookie: customerSessionCookie ?? "",
             origin: "http://localhost:5174",
           },
-          body: JSON.stringify({
-            email: customerCredential?.email,
-            password: generateTestUserPassword(),
-          }),
-        }),
+        },
       );
-      expect(customerPasswordAttempt.status).not.toBe(200);
+      expect(customerSessionResponse.status).toBe(200);
+      const session = (await customerSessionResponse.json()) as {
+        session?: { portal?: string };
+        user?: { id?: string };
+      };
+      expect(session.user?.id).toBe(customerUserId);
+      expect(session.session?.portal).toBe("customer");
     } finally {
+      await db
+        .delete(schema.instancePluginConfigTable)
+        .where(
+          eq(
+            schema.instancePluginConfigTable.id,
+            customerPasswordProviderConfigId,
+          ),
+        );
+      if (authModule) await authModule.reloadAuthConfiguration();
       await rm(directory, { recursive: true, force: true });
     }
   });
