@@ -23,6 +23,13 @@ import {
 } from "./helpers/fixtures";
 import { raceProjectArchive } from "./helpers/race-soft-delete";
 
+const originalAgentUrl = process.env.TASKDESK_AGENT_URL;
+
+function restoreAgentUrl() {
+  if (originalAgentUrl === undefined) delete process.env.TASKDESK_AGENT_URL;
+  else process.env.TASKDESK_AGENT_URL = originalAgentUrl;
+}
+
 /**
  * A `person` row for a user (`presign-attachment.ts`/`delete-attachment.ts`'s own
  * comments: there is no reliable session->person resolver anywhere in `apps/api` yet,
@@ -153,26 +160,34 @@ describe("API integration: work-item attachments (#28, attachments.md)", () => {
     } else {
       process.env.TASKDESK_STORAGE_FILESYSTEM_ROOT = originalRoot;
     }
+    restoreAgentUrl();
     await rm(root, { recursive: true, force: true });
   });
 
   it("AT-2: presigns, uploads and completes a genuine PNG, and it appears in the work item's list", async () => {
+    process.env.TASKDESK_AGENT_URL = "https://ticket.public.test";
     const { creator, workspace, project, type } = await setupProject();
     mockAuthenticatedSession(creator);
     const { app } = createApp();
     const { key } = await createWorkItem(app, project.id, type.id);
 
     const presignResponse = await app.request(
-      `/api/work-items/${key}/attachments/presign`,
-      {
-        method: "POST",
-        headers: { "content-type": "application/json" },
-        body: JSON.stringify({
-          filename: "photo.png",
-          contentType: "image/png",
-          size: PNG_BYTES.length,
-        }),
-      },
+      new Request(
+        `http://ticket.public.test/api/work-items/${key}/attachments/presign`,
+        {
+          method: "POST",
+          headers: {
+            "content-type": "application/json",
+            "x-forwarded-host": "attacker.example",
+            "x-forwarded-proto": "http",
+          },
+          body: JSON.stringify({
+            filename: "photo.png",
+            contentType: "image/png",
+            size: PNG_BYTES.length,
+          }),
+        },
+      ),
     );
     expect(presignResponse.status).toBe(200);
     const presigned = (await presignResponse.json()) as {
@@ -181,6 +196,15 @@ describe("API integration: work-item attachments (#28, attachments.md)", () => {
       uploadHeaders: Record<string, string>;
     };
     expect(presigned.attachmentId).toBeTruthy();
+    expect(presigned.uploadUrl).toMatch(
+      /^https:\/\/ticket\.public\.test\/api\/storage\/filesystem-attachment-upload\?/u,
+    );
+    expect(presigned.uploadUrl.match(/\/api\//gu)).toHaveLength(1);
+    expect(new URL(presigned.uploadUrl).searchParams.get("key")).toBeTruthy();
+    expect(
+      new URL(presigned.uploadUrl).searchParams.get("expires"),
+    ).toBeTruthy();
+    expect(new URL(presigned.uploadUrl).searchParams.get("token")).toBeTruthy();
 
     const [pendingRow] = await db
       .select()
@@ -210,6 +234,28 @@ describe("API integration: work-item attachments (#28, attachments.md)", () => {
     expect(listResponse.status).toBe(200);
     const list = (await listResponse.json()) as Array<{ id: string }>;
     expect(list.map((a) => a.id)).toContain(presigned.attachmentId);
+
+    const downloadResponse = await app.request(
+      new Request(
+        `http://ticket.public.test/api/attachments/${presigned.attachmentId}`,
+        {
+          headers: {
+            "x-forwarded-host": "attacker.example",
+            "x-forwarded-proto": "http",
+          },
+        },
+      ),
+    );
+    expect(downloadResponse.status).toBe(302);
+    const downloadUrl = downloadResponse.headers.get("location");
+    expect(downloadUrl).toMatch(
+      /^https:\/\/ticket\.public\.test\/api\/storage\/filesystem-download\?/u,
+    );
+    if (!downloadUrl) throw new Error("Missing signed download URL");
+    expect(downloadUrl.match(/\/api\//gu)).toHaveLength(1);
+    expect(new URL(downloadUrl).searchParams.get("key")).toBeTruthy();
+    expect(new URL(downloadUrl).searchParams.get("expires")).toBeTruthy();
+    expect(new URL(downloadUrl).searchParams.get("token")).toBeTruthy();
 
     const activityRows = await db
       .select()

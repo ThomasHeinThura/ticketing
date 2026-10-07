@@ -5,6 +5,7 @@ import {
   errorResponse,
   jsonResponse,
 } from "../openapi";
+import { requirePublicAppOrigin } from "../utils/request-origin";
 import { requireWorkspacePermission } from "../utils/require-workspace-permission";
 import { requireWorkItemReach } from "../work-item/require-work-item-reach";
 import completeAttachment from "./controllers/complete-attachment";
@@ -192,7 +193,7 @@ const attachment = apiRouter<
       size: body.size,
       customerVisible: body.customerVisible ?? false,
       userId: c.get("userId"),
-      apiBaseUrl: new URL(c.req.url).origin,
+      apiBaseUrl: requirePublicAppOrigin(c.get("appPublicOrigin")),
     });
 
     return c.json(result, 200);
@@ -234,7 +235,7 @@ const attachment = apiRouter<
       actorId,
       actorType,
       apiKeyId: apiKey?.id ?? null,
-      apiBaseUrl: new URL(c.req.url).origin,
+      apiBaseUrl: requirePublicAppOrigin(c.get("appPublicOrigin")),
     });
 
     return c.redirect(downloadUrl, 302);
