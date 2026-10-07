@@ -146,6 +146,7 @@ function TaskCard({
     Boolean(taskItemStats?.total) ||
     Boolean(dueDateStatus) ||
     pullRequests.length > 0;
+  const canSkipMetadataRow = pullRequests.length === 0;
 
   function handleTaskCardClick(
     e: React.MouseEvent<HTMLDivElement> | React.KeyboardEvent<HTMLDivElement>,
@@ -244,7 +245,12 @@ function TaskCard({
       )}
 
       {hasMetadataRow && (
-        <div className="flex items-center gap-1.5">
+        <div
+          className={cn(
+            "flex items-center gap-1.5",
+            canSkipMetadataRow && "h-5.5 kanban-board-metadata-row-skippable",
+          )}
+        >
           {showPriority && (
             <span className="inline-flex items-center gap-1 rounded border border-border/70 bg-muted/55 px-2 py-1 text-[10px] font-medium text-muted-foreground h-5.5">
               {getPriorityIcon(task.priority ?? "")}
