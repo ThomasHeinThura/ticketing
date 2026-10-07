@@ -1,5 +1,55 @@
 ## Status First
 
+Snapshot: 2026-10-07 00:31 UTC. Accepted main3096cb04 and reviewed DEV08842235 are unchanged; shadow on, enforcement empty. No protected merge, deployment refresh, strict cutover or completed phase.
+
+| Phase | Implementation | Integration | Acceptance |
+| --- | --- | --- | --- |
+| P0 | Frozen53269374; full local Compose lifecycle driver implemented offline | Sole closure#583; latest register check passes, template/readiness remains intentionally red | HostedG1119/22; driver review BLOCK on redaction, measured lifecycle comparisons and cleanup proof; full remediation underway; signed installer/current strict/cutover/finalizer open |
+| P1 | Saved views/CSV plus complete CI correctionfd8d8274 | #591;0118 provisional after preceding train freezes | Delta has no findings; inherited migration/generation blockers and composed acceptance open |
+| P2 | Approval continuity/withdrawal plus complete SDK/fixture/browser placement | #586 notes-onlyb67a865a; placement source12cac9c1 Luna/Sol clear | Whole phase/liveAPI/image/OpenAPI/G11 acceptance open |
+| P3 | Mapping/login plus complete repository relocation | #595 then#596 notes-only08c162d7; source reviews clear | Health/provider and composed acceptance open |
+| P4 | Complete outbox eligibility/fencing/binding8baeb622 | #594 notes-only359d60bd; source reviews clear | Shared fixture composition and broad image/provider/phase acceptance open |
+
+### What changed
+
+Complete create-dialog8f078830 clears two fresh Luna contexts and fresh independent Sol. Notes-only7d86b0a8 commits the original reports with explicit correction of A's mistaken security-path classification; source equivalence verified and branch pushed. Author11unit/6browser cases pass; mocked API and absent hosted/image acceptance remain limits. The leaf is queued for the single post-P0 train, not added to frozenP0.
+
+Central complete metadata batchb977e53b is pushed: thirty0088–0117 snapshots plus one all-prefix regression. Actual30prefix/118finalmigration comparison and API types pass; frozen SQL30,accepted snapshots78 and journal remain identical. Three independent ordinary contexts review the whole batch. B clears its scope; A blocks configured generation omitting existing SQL-created tables; C separately blocks32 reordered unique-constraint tuples masked by FK-only catalog normalization. C retains complete fresh generation output; the earlier lost diagnostic bytes remain unrecoverable. Whole candidate stays blocked, with one structural remedy collecting both classes before fresh review.
+
+The complete private local-image driver has eight passing offline tests, compile/plan/hash checks. Strong independent Luna blocks three systemic classes: output persisted without enforced redaction; cleanup claims without definitive absence/unrelated inventory comparison; lifecycle report values not all measured and compared. No actual runtime or real-secret acquisition occurred. Original bundle/report preserved; one complete v2 remedy adds structural boundaries and full lifecycle negative regressions before review. This tests local Compose, not signed installer/deploy.sh acceptance.
+
+### What is being worked on now
+
+Luna completes all migration metadata/generation defects together, including catalog ordinal fidelity and existing SQL/DSL reconciliation. Root grants the sole bounded owned PG window for actual catalog ordering and one final prefix gate; P0 driver remains offline. Separate Luna completes all private driver findings in one immutable successor batch. No blocked candidate is sent to Sol before ordinary clearance.
+
+### Critical path
+
+1. Resolve frozenP0 hostedG11 under the no-extra-retry rule.
+2. Complete reviewed measured lifecycle/preservation/upgrade/rollback and approved signed release order.
+3. Prove current strict behavior and independent compatibility of original partial UTC observations.
+4. Resolve public-config evidence criterion and perform eligible reversible cutover.
+5. Protected exact-head merge, official installer verification and fresh Sol finalizer.
+
+### Misalignment / drift
+
+The report's old17/22 and48-request figures are superseded by current19/22 and actual130 expectation matches followed by preserved renderer failure. No offline replay turns a failed acquisition into acceptance. #583 is soleP0, #589 solepostP0train, #581 superseded, #587 diagnostic only. P1–P4 source implementation continues independently; their migration repair is not P0 scope.
+
+### Concerns
+
+A metadata snapshot can match an introspector while still changing ordered key semantics; real catalog ordinality must control the structural fix. Destructive generator proposals are diagnostic, never applied. Driver planner tests do not prove full measured lifecycle or cleanup. Local22/22 is not hosted acceptance, and original seconds-long dates are not full days/72hours.
+
+### Decisions needed from Thomas
+
+Existing public-config criterion, one unchanged-source hosted confirmation, signed installer release ordering and P1 current-team lead rule remain pending. No duplicate asks, elapsed-time approval or gate waiver. Independent Sol confirms the public-config criterion question is genuine under current authority.
+
+### Next merge candidates
+
+#583 after actual P0 gates. Complete reviewed slices, dialog and corrected metadata compose through#589 on acceptedP0. Neitherb977 nor the first private lifecycle bundle is accepted or merge-ready.
+
+---
+
+## Status First
+
 Snapshot: 2026-10-07 00:11 UTC. Accepted main remains3096cb04; reviewed DEV remains08842235 with shadow enabled and enforcement empty. No protected merge, DEV refresh, strict activation or phase completion.
 
 | Phase | Implementation | Integration | Acceptance |
