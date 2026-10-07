@@ -646,23 +646,52 @@ describe("API integration: approval lifecycle", () => {
       instanceAdmin.user.id,
       { approval: ["request"] },
     );
-    const scopedAdminKeyWithdrawal = await app.request(
+    const adminKeyOnRequesterRoute = await app.request(
       `/api/approvals/${scopedAdminWithdrawalApproval.id}/withdraw`,
       {
         method: "POST",
         headers: { "x-api-key": adminKeyWithRequestScope },
       },
     );
-    expect(
-      scopedAdminKeyWithdrawal.status,
-      await scopedAdminKeyWithdrawal.clone().text(),
-    ).toBe(200);
-    expect((await scopedAdminKeyWithdrawal.json()).state).toBe("withdrawn");
+    expect(adminKeyOnRequesterRoute.status).toBe(403);
+    const scopedAdminEffectsBeforeDenial =
+      await approvalEffectCounts("approval.withdrawn");
+    const scopedAdminKeyWithdrawal = await app.request(
+      `/api/admin/approvals/${scopedAdminWithdrawalApproval.id}/withdraw`,
+      {
+        method: "POST",
+        headers: { "x-api-key": adminKeyWithRequestScope },
+      },
+    );
+    expect(scopedAdminKeyWithdrawal.status).toBe(403);
+    const [stillPendingAfterScopedAdminKey] = await db
+      .select({ state: schema.approvalTable.state })
+      .from(schema.approvalTable)
+      .where(eq(schema.approvalTable.id, scopedAdminWithdrawalApproval.id));
+    expect(stillPendingAfterScopedAdminKey?.state).toBe("pending");
+    expect(await approvalEffectCounts("approval.withdrawn")).toEqual(
+      scopedAdminEffectsBeforeDenial,
+    );
 
     const sessionAdminWithdrawalApproval = await createAdditionalApproval();
     mockAuthenticatedSession({ ...instanceAdmin.user, role: "admin" });
-    const adminSessionWithdrawal = await app.request(
+    const targetWorkspaceAdminMembership = await db
+      .select({ userId: schema.workspaceUserTable.userId })
+      .from(schema.workspaceUserTable)
+      .where(
+        and(
+          eq(schema.workspaceUserTable.userId, instanceAdmin.user.id),
+          eq(schema.workspaceUserTable.workspaceId, requester.workspace.id),
+        ),
+      );
+    expect(targetWorkspaceAdminMembership).toHaveLength(0);
+    const adminOnRequesterRoute = await app.request(
       `/api/approvals/${sessionAdminWithdrawalApproval.id}/withdraw`,
+      { method: "POST" },
+    );
+    expect(adminOnRequesterRoute.status).toBe(403);
+    const adminSessionWithdrawal = await app.request(
+      `/api/admin/approvals/${sessionAdminWithdrawalApproval.id}/withdraw`,
       { method: "POST" },
     );
     expect(
@@ -670,6 +699,37 @@ describe("API integration: approval lifecycle", () => {
       await adminSessionWithdrawal.clone().text(),
     ).toBe(200);
     expect((await adminSessionWithdrawal.json()).state).toBe("withdrawn");
+
+    const disabledFeatureAdminApproval = await createAdditionalApproval();
+    await db
+      .update(schema.projectFeatureFlagTable)
+      .set({ enabled: false })
+      .where(
+        and(
+          eq(schema.projectFeatureFlagTable.projectId, project.id),
+          eq(schema.projectFeatureFlagTable.featureKey, "feature.approvals"),
+        ),
+      );
+    const adminWithdrawalWhileFeatureDisabled = await app.request(
+      `/api/admin/approvals/${disabledFeatureAdminApproval.id}/withdraw`,
+      { method: "POST" },
+    );
+    expect(
+      adminWithdrawalWhileFeatureDisabled.status,
+      await adminWithdrawalWhileFeatureDisabled.clone().text(),
+    ).toBe(200);
+    expect((await adminWithdrawalWhileFeatureDisabled.json()).state).toBe(
+      "withdrawn",
+    );
+    await db
+      .update(schema.projectFeatureFlagTable)
+      .set({ enabled: true })
+      .where(
+        and(
+          eq(schema.projectFeatureFlagTable.projectId, project.id),
+          eq(schema.projectFeatureFlagTable.featureKey, "feature.approvals"),
+        ),
+      );
 
     const rejectedApproval = await createAdditionalApproval();
     mockAuthenticatedSession(approver.user);
@@ -706,6 +766,35 @@ describe("API integration: approval lifecycle", () => {
       .from(schema.approvalTable)
       .where(eq(schema.approvalTable.id, withdrawnApproval.id));
     expect(withdrawnRow?.state).toBe("withdrawn");
+
+    const racedWithdrawalApproval = await createAdditionalApproval();
+    mockAuthenticatedSession({ ...instanceAdmin.user, role: "admin" });
+    const withdrawalEffectsBeforeRace =
+      await approvalEffectCounts("approval.withdrawn");
+    const concurrentAdminWithdrawals = await Promise.all([
+      app.request(
+        `/api/admin/approvals/${racedWithdrawalApproval.id}/withdraw`,
+        { method: "POST" },
+      ),
+      app.request(
+        `/api/admin/approvals/${racedWithdrawalApproval.id}/withdraw`,
+        { method: "POST" },
+      ),
+    ]);
+    expect(
+      concurrentAdminWithdrawals.map((response) => response.status).sort(),
+    ).toEqual([200, 409]);
+    const [racedWithdrawalRow] = await db
+      .select({ state: schema.approvalTable.state })
+      .from(schema.approvalTable)
+      .where(eq(schema.approvalTable.id, racedWithdrawalApproval.id));
+    expect(racedWithdrawalRow?.state).toBe("withdrawn");
+    const withdrawalEffectsAfterRace =
+      await approvalEffectCounts("approval.withdrawn");
+    expect(withdrawalEffectsAfterRace).toEqual({
+      events: withdrawalEffectsBeforeRace.events + 1,
+      audit: withdrawalEffectsBeforeRace.audit + 1,
+    });
 
     const expiredApproval = await createAdditionalApproval();
     await db
@@ -763,16 +852,16 @@ describe("API integration: approval lifecycle", () => {
 
       mockAuthenticatedSession({ ...instanceAdmin.user, role: "admin" });
       const sessionAdminRetry = await app.request(
-        `/api/approvals/${terminal.id}/withdraw`,
+        `/api/admin/approvals/${terminal.id}/withdraw`,
         { method: "POST" },
       );
       expect(sessionAdminRetry.status).toBe(409);
 
       const adminKeyRetry = await app.request(
-        `/api/approvals/${terminal.id}/withdraw`,
+        `/api/admin/approvals/${terminal.id}/withdraw`,
         { method: "POST", headers: { "x-api-key": scopedAdminKey } },
       );
-      expect(adminKeyRetry.status).toBe(409);
+      expect(adminKeyRetry.status).toBe(403);
 
       mockAuthenticatedSession(approver.user);
       const unauthorizedRetry = await app.request(

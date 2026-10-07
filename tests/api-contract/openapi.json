@@ -22694,6 +22694,192 @@
         }
       }
     },
+    "/admin/approvals/{id}/withdraw": {
+      "post": {
+        "operationId": "withdrawApprovalAsInstanceAdmin",
+        "tags": [
+          "Approvals"
+        ],
+        "summary": "Withdraw an approval as an instance administrator",
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "minLength": 1
+            },
+            "required": true,
+            "name": "id",
+            "in": "path"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Approval withdrawn",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "id": {
+                      "type": "string"
+                    },
+                    "workItemId": {
+                      "type": "string"
+                    },
+                    "workItemKey": {
+                      "type": "string"
+                    },
+                    "workItemTitle": {
+                      "type": "string"
+                    },
+                    "transitionId": {
+                      "type": "string"
+                    },
+                    "kind": {
+                      "type": "string",
+                      "enum": [
+                        "customer",
+                        "cab"
+                      ]
+                    },
+                    "state": {
+                      "type": "string",
+                      "enum": [
+                        "pending",
+                        "approved",
+                        "rejected",
+                        "expired",
+                        "withdrawn"
+                      ]
+                    },
+                    "requester": {
+                      "type": "object",
+                      "properties": {
+                        "id": {
+                          "type": "string"
+                        },
+                        "displayName": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        }
+                      },
+                      "required": [
+                        "id",
+                        "displayName"
+                      ]
+                    },
+                    "approver": {
+                      "type": "object",
+                      "properties": {
+                        "id": {
+                          "type": "string"
+                        },
+                        "displayName": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        }
+                      },
+                      "required": [
+                        "id",
+                        "displayName"
+                      ]
+                    },
+                    "createdAt": {
+                      "type": "string",
+                      "format": "date-time"
+                    },
+                    "expiresAt": {
+                      "type": "string",
+                      "format": "date-time"
+                    },
+                    "decidedAt": {
+                      "type": [
+                        "string",
+                        "null"
+                      ],
+                      "format": "date-time"
+                    },
+                    "decisionNote": {
+                      "type": [
+                        "string",
+                        "null"
+                      ]
+                    },
+                    "approverReachLost": {
+                      "type": "boolean"
+                    },
+                    "canWithdraw": {
+                      "type": "boolean"
+                    }
+                  },
+                  "required": [
+                    "id",
+                    "workItemId",
+                    "workItemKey",
+                    "workItemTitle",
+                    "transitionId",
+                    "kind",
+                    "state",
+                    "requester",
+                    "approver",
+                    "createdAt",
+                    "expiresAt",
+                    "decidedAt",
+                    "decisionNote",
+                    "approverReachLost",
+                    "canWithdraw"
+                  ]
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Authentication required",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Instance administrator session required",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Approval not found",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Approval is no longer pending",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/me/approvals": {
       "get": {
         "operationId": "listMyApprovals",

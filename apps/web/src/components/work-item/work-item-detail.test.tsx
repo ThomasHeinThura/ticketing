@@ -27,6 +27,7 @@ const mocks = vi.hoisted(() => ({
     ],
   },
   withdraw: vi.fn(),
+  sessionRole: undefined as string | undefined,
 }));
 
 afterEach(() => {
@@ -36,6 +37,7 @@ afterEach(() => {
     ...approval,
     canWithdraw: true,
   }));
+  mocks.sessionRole = undefined;
 });
 
 vi.mock("@tanstack/react-router", () => ({
@@ -45,6 +47,16 @@ vi.mock("@tanstack/react-router", () => ({
   }: React.PropsWithChildren<Record<string, unknown>>) => (
     <a {...props}>{children}</a>
   ),
+}));
+
+vi.mock("@/lib/auth-client", () => ({
+  authClient: {
+    useSession: () => ({
+      data: mocks.sessionRole
+        ? { user: { role: mocks.sessionRole } }
+        : undefined,
+    }),
+  },
 }));
 
 vi.mock("react-i18next", () => ({
@@ -179,7 +191,20 @@ describe("WorkItemDetail", () => {
     render(<WorkItemDetail {...baseProps} item={makeItem()} />);
     expect(screen.getByText("Customer approval for Casey")).toBeInTheDocument();
     fireEvent.click(screen.getByRole("button", { name: "Withdraw request" }));
-    expect(mocks.withdraw).toHaveBeenCalledWith("approval-1");
+    expect(mocks.withdraw).toHaveBeenCalledWith({
+      id: "approval-1",
+      asInstanceAdmin: false,
+    });
+  });
+
+  it("routes instance-admin withdrawals through the session-only admin endpoint", () => {
+    mocks.sessionRole = "admin";
+    render(<WorkItemDetail {...baseProps} item={makeItem()} />);
+    fireEvent.click(screen.getByRole("button", { name: "Withdraw request" }));
+    expect(mocks.withdraw).toHaveBeenCalledWith({
+      id: "approval-1",
+      asInstanceAdmin: true,
+    });
   });
 
   it("AP-6 hides withdrawal when the server denies the current viewer", () => {

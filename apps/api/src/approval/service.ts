@@ -330,8 +330,9 @@ export async function withdrawApproval(input: {
   identity: ResolvedIdentity;
   actorType: ActorType;
   target: Awaited<ReturnType<typeof loadApprovalTargetByKey>>;
+  /** True only for the dedicated admin route; current authority is rechecked under lock. */
+  isInstanceAdmin: boolean;
 }) {
-  const isInstanceAdmin = input.identity.reach.kind === "all";
   const name = await loadApprovalActorName(input.identity.personId);
   return db.transaction(async (tx) => {
     const lockedItem = await lockLiveWorkItem(tx, input.target.workItemId);
@@ -343,6 +344,28 @@ export async function withdrawApproval(input: {
       input.target.workItemId,
     );
     if (!row) throw new HTTPException(404, { message: "Approval not found" });
+    let isInstanceAdmin = false;
+    if (input.isInstanceAdmin && input.identity.credential === "session") {
+      const [admin] = await tx
+        .select({ id: schema.userTable.id })
+        .from(schema.userTable)
+        .innerJoin(
+          schema.personTable,
+          and(
+            eq(schema.personTable.userId, schema.userTable.id),
+            eq(schema.personTable.side, "staff"),
+            eq(schema.personTable.active, true),
+          ),
+        )
+        .where(
+          and(
+            eq(schema.userTable.id, input.identity.userId),
+            eq(schema.userTable.role, "admin"),
+          ),
+        )
+        .limit(1);
+      isInstanceAdmin = admin !== undefined;
+    }
     const withdrawal = evaluateApprovalWithdrawalDecision({
       approval: toDomainApproval(row),
       actingPersonId: input.identity.personId,

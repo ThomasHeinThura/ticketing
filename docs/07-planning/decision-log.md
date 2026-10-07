@@ -1,3 +1,17 @@
+### 2026-10-07 · Separate instance-admin approval withdrawal from requester withdrawal
+
+**Decision:** Thomas explicitly approves a separate session-only
+`POST /api/admin/approvals/{id}/withdraw` route for AP-7 instance-admin withdrawals.
+It requires current `instance:admin` authority, rejects API-key credentials, and writes the
+same atomic approval state change, `approval.withdrawn` outbox event, and audit row as
+requester withdrawal. Keep `POST /api/approvals/{id}/withdraw` scoped to the actual
+requester with current work-item reach and `approval:request`; API keys remain supported
+there only when the owner's current authority, the key's frozen capability subset, route
+policy and reach all allow it. The work-item detail selects the admin route for an
+instance-admin session. No cross-scope policy branch or new capability is introduced.
+
+**Recorded:** orchestrator, Thomas's explicit approval in this task, 2026-10-07.
+
 ### 2026-10-07 · Keep test role seeding private-only
 
 **Decision:** Thomas explicitly instructs: “make sure seeder and credentials md are not

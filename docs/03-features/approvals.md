@@ -72,7 +72,11 @@ on a workflow transition.
 **Deciding**
 
 - `AP-7` Only the named approver may decide. Not their manager, not an admin.
-  An instance admin may *withdraw* on their behalf, which is audited.
+  An instance admin may *withdraw* on their behalf through the session-only
+  `POST /api/admin/approvals/{id}/withdraw` route, which is audited. This route requires
+  current `instance:admin` authority and rejects API keys. The requester route remains
+  available to the actual requester, including scoped API keys that hold
+  `approval:request` and have current work-item reach.
 - `AP-8` **Nobody may approve a request they raised.** Enforced in the domain layer,
   independent of capabilities.
 - `AP-9` A decision requires a note when rejecting. Approving may be noteless.
@@ -126,7 +130,8 @@ Recorded explicitly, because they are easy to reintroduce.
 | Request a CAB approval | `approval:request_cab` | Staff only, `work_item_type.is_change` only |
 | Decide | `approval:decide` | Must be the named approver, and not the requester |
 | Decide a CAB approval | `approval:decide_cab` | Must also be a `team_member` of the `team` flagged `is_cab` (`team.is_cab`, [data-model.md](../01-architecture/data-model.md)) — capability and membership are both required, not either alone |
-| Withdraw | `approval:request` | Requester, or instance admin (audited) |
+| Withdraw as requester | `approval:request` | Actual requester, with current work-item reach; API keys also need the capability in their frozen key scope |
+| Withdraw as instance admin | `instance:admin` | Session-only `POST /api/admin/approvals/{id}/withdraw`; audited |
 | See approvals on an item | `work_item:read` | Customers see only approvals addressed to them or that they raised |
 | List my approvals | `{ authenticated: true, self: true }` | `GET /api/me/approvals` — [rbac.md](../01-architecture/rbac.md) policy kind 2, own rows only |
 | List portal approvals | `{ portal: 'customer', predicate: 'addressed_approval' }` | `GET /api/portal/approvals` — [rbac.md](../01-architecture/rbac.md) policy kind 3, scoped to approvals addressed to the caller |
@@ -143,17 +148,20 @@ not have to learn the product first.
 ## API
 
 Approval responses include `canWithdraw`, computed for the current caller from AP-6/AP-7,
-the current work-item reach and authority rules, and the effective `approval:request` scope
-(including an API key's frozen capability ceiling). It is an affordance only; the withdraw
-route rechecks the same rule when called. Requester withdrawal is surfaced on work-item
-detail (AP-20); the `/api/me/approvals` and `/api/portal/approvals` lists are addressed-approver
-lists (Permissions) and do not list requester-owned approvals.
+current work-item reach and authority, and the effective requester `approval:request` scope
+(including an API key's frozen capability ceiling). A current instance admin session also
+gets the affordance for the session-only admin route. It is an affordance only; each route
+rechecks its own authority when called. The work-item detail chooses the admin route for an
+instance-admin session and the requester route for other sessions and scoped API keys.
+The `/api/me/approvals` and `/api/portal/approvals` lists are addressed-approver lists
+(Permissions) and do not list requester-owned approvals.
 
 ```
 GET    /api/work-items/{key}/approvals        work_item:read
 POST   /api/work-items/{key}/approvals        approval:request  (approval:request_cab for kind = cab)
 POST   /api/approvals/{id}/decide             approval:decide
 POST   /api/approvals/{id}/withdraw           approval:request
+POST   /api/admin/approvals/{id}/withdraw     instance:admin (session-only)
 GET    /api/me/approvals                      { authenticated: true, self: true }              — rbac.md kind 2
 GET    /api/portal/approvals                  { portal: 'customer', predicate: 'addressed_approval' } — rbac.md kind 3
 POST   /api/portal/approvals/{id}/decide      approval:decide

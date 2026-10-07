@@ -18,6 +18,7 @@ import { ChevronDown, Info, TriangleAlert } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import useWithdrawApproval from "@/hooks/mutations/approval/use-withdraw-approval";
 import useGetWorkItemApprovals from "@/hooks/queries/approval/use-get-work-item-approvals";
+import { authClient } from "@/lib/auth-client";
 import { formatDateMedium, formatDateTime } from "@/lib/format";
 import { getPriorityIcon } from "@/lib/priority";
 import { routes } from "@/lib/routes";
@@ -106,6 +107,7 @@ function WorkItemDetail({
   onRetry,
 }: WorkItemDetailProps) {
   const { t } = useTranslation();
+  const { data: session } = authClient.useSession();
   const approvalsQuery = useGetWorkItemApprovals({
     key: workItemKey,
     enabled: Boolean(item),
@@ -327,7 +329,12 @@ function WorkItemDetail({
                     variant="outline"
                     size="sm"
                     disabled={withdraw.isPending}
-                    onClick={() => withdraw.mutate(approval.id)}
+                    onClick={() =>
+                      withdraw.mutate({
+                        id: approval.id,
+                        asInstanceAdmin: session?.user?.role === "admin",
+                      })
+                    }
                   >
                     Withdraw request
                   </Button>

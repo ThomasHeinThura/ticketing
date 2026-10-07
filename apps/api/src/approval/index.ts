@@ -1,11 +1,13 @@
 import type { Capability } from "@taskdesk/permissions";
 import { HTTPException } from "hono/http-exception";
+import { isCurrentInstanceAdmin } from "../instance/observability/audit-failure-notifier";
 import {
   apiRouter,
   createRoute,
   errorResponse,
   jsonResponse,
 } from "../openapi";
+import { requireSessionOnly } from "../utils/require-session-only";
 import {
   canWithdrawApproval,
   hasApprovalCapability,
@@ -91,12 +93,45 @@ async function formatApproval(
   const approverReachLost =
     row.state === "pending" &&
     (!approverIdentity || !(await hasWorkItemReach(approverIdentity, target)));
-  const withdrawal = await canWithdrawApproval(row, viewer, target);
+  const withdrawal = await canWithdrawApproval(row, viewer, target, {
+    allowInstanceAdmin: true,
+  });
   return responseRow({
     ...row,
     approverReachLost,
     canWithdraw: withdrawal.actionable,
   });
+}
+
+async function withdrawApprovalForIdentity(input: {
+  id: string;
+  identity: Awaited<ReturnType<typeof resolveApprovalIdentity>>;
+  actorType: "person" | "api_key";
+  allowInstanceAdmin: boolean;
+}) {
+  const target = await loadApprovalTargetByApprovalId(input.id);
+  if (!target) throw new HTTPException(404, { message: "Approval not found" });
+  const row = (await listApprovalRows(target.workItemId)).find(
+    (item) => item.id === input.id,
+  );
+  if (!row) throw new HTTPException(404, { message: "Approval not found" });
+  const withdrawal = await canWithdrawApproval(row, input.identity, target, {
+    allowInstanceAdmin: input.allowInstanceAdmin,
+  });
+  if (!withdrawal.authorized)
+    throw new HTTPException(403, { message: "Insufficient permissions" });
+  const updated = await withdrawApproval({
+    approvalId: input.id,
+    identity: input.identity,
+    actorType: input.actorType,
+    target,
+    isInstanceAdmin: input.allowInstanceAdmin,
+  });
+  const fresh = (await listApprovalRows(target.workItemId)).find(
+    (item) => item.id === updated.id,
+  );
+  if (!fresh) throw new Error("Withdrawn approval could not be reloaded");
+  return formatApproval(fresh, input.identity, target);
 }
 
 const listWorkItemApprovalsRoute = createRoute({
@@ -183,6 +218,26 @@ const withdrawApprovalRoute = createRoute({
     ),
     401: errorResponse("Authentication required"),
     403: errorResponse("Caller may not withdraw this approval"),
+    404: errorResponse("Approval not found"),
+    409: errorResponse("Approval is no longer pending"),
+  },
+});
+
+const withdrawApprovalAsAdminRoute = createRoute({
+  method: "post",
+  operationId: "withdrawApprovalAsInstanceAdmin",
+  path: "/admin/approvals/{id}/withdraw",
+  tags: ["Approvals"],
+  summary: "Withdraw an approval as an instance administrator",
+  middleware: [requireSessionOnly()] as const,
+  request: { params: approvalIdParam },
+  responses: {
+    200: jsonResponse(
+      "Approval withdrawn",
+      approvalListResponseSchema.shape.approvals.element,
+    ),
+    401: errorResponse("Authentication required"),
+    403: errorResponse("Instance administrator session required"),
     404: errorResponse("Approval not found"),
     409: errorResponse("Approval is no longer pending"),
   },
@@ -376,29 +431,28 @@ function approvalRouter() {
         c.get("userId"),
         c.get("apiKey"),
       );
-      const id = c.req.valid("param").id;
-      const target = await loadApprovalTargetByApprovalId(id);
-      if (!target)
-        throw new HTTPException(404, { message: "Approval not found" });
-      const row = (await listApprovalRows(target.workItemId)).find(
-        (item) => item.id === id,
-      );
-      if (!row) throw new HTTPException(404, { message: "Approval not found" });
-      const withdrawal = await canWithdrawApproval(row, identity, target);
-      if (!withdrawal.authorized) {
-        throw new HTTPException(403, { message: "Insufficient permissions" });
-      }
-      const updated = await withdrawApproval({
-        approvalId: id,
+      const approval = await withdrawApprovalForIdentity({
+        id: c.req.valid("param").id,
         identity,
         actorType: actorType(c.get("apiKey")),
-        target,
+        allowInstanceAdmin: false,
       });
-      const fresh = (await listApprovalRows(target.workItemId)).find(
-        (item) => item.id === updated.id,
-      );
-      if (!fresh) throw new Error("Withdrawn approval could not be reloaded");
-      return c.json(await formatApproval(fresh, identity, target), 200);
+      return c.json(approval, 200);
+    })
+    .openapi(withdrawApprovalAsAdminRoute, async (c) => {
+      const userId = c.get("userId");
+      if (!(await isCurrentInstanceAdmin(userId)))
+        throw new HTTPException(403, {
+          message: "Instance administrator session required",
+        });
+      const identity = await resolveApprovalIdentity(userId);
+      const approval = await withdrawApprovalForIdentity({
+        id: c.req.valid("param").id,
+        identity,
+        actorType: "person",
+        allowInstanceAdmin: true,
+      });
+      return c.json(approval, 200);
     })
     .openapi(listMyApprovalsRoute, async (c) => {
       const identity = await resolveApprovalIdentity(

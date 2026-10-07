@@ -1035,7 +1035,18 @@ describe("identity connection administration", () => {
     const invalidateAuthorization = vi
       .spyOn(nativeAuthorization, "invalidateNativeAuthorization")
       .mockResolvedValue();
-    const ceilingRequest = { configVersion: 1, maxRoleRank: 1 };
+    const [currentConnection] = await db
+      .select({ configVersion: schema.identityConnectionTable.configVersion })
+      .from(schema.identityConnectionTable)
+      .where(eq(schema.identityConnectionTable.id, connectionId))
+      .limit(1);
+    if (!currentConnection)
+      throw new Error("Identity connection fixture is missing");
+    expect(currentConnection.configVersion).toBeGreaterThan(1);
+    const ceilingRequest = {
+      configVersion: currentConnection.configVersion,
+      maxRoleRank: 1,
+    };
     const ceilingProof = await stepUp(app, sessionCookie, {
       kind: "operation",
       operation: "identity_connection_configure",

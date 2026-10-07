@@ -607,8 +607,14 @@ export async function canWithdrawApproval(
   },
   identity: Awaited<ReturnType<typeof resolveApprovalIdentity>>,
   target: ApprovalTarget,
+  options: { allowInstanceAdmin?: boolean } = {},
 ): Promise<{ authorized: boolean; actionable: boolean }> {
-  const isInstanceAdmin = identity.reach.kind === "all";
+  // The requester route leaves this false. The affordance calculation and the dedicated
+  // session-only admin route may opt in; key credentials never inherit the admin exception.
+  const isInstanceAdmin =
+    options.allowInstanceAdmin === true &&
+    identity.credential === "session" &&
+    can(identity, "instance:admin", "instance", { instance: true });
   const withdrawal = evaluateApprovalWithdrawalDecision({
     approval: {
       id: row.id,

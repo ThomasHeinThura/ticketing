@@ -29,6 +29,17 @@ export const approvalPolicies = {
     scopeSource: "row",
     reach: "required",
   },
+  "POST /api/admin/approvals/{id}/withdraw": {
+    capability: "instance:admin",
+    scope: "instance",
+    scopeSource: "instance",
+    reach: {
+      exempt: "no_single_resource",
+      reason: "instance administrator withdrawal across workspaces",
+    },
+    elevated: true,
+    sessionOnly: true,
+  },
   "GET /api/me/approvals": {
     authenticated: true,
     self: true,
