@@ -1,3 +1,33 @@
+## Status first — verified 2026-10-07 21:31 UTC (8 October MMT)
+
+**P0 remains open.** #558 and #575 are closed with their historical branches and evidence
+preserved; their old results do not transfer to current source. #602 remains unmerged and
+blocked by hosted acceptance/runtime gates. No P0 completion, waiver, deployment or phase
+finalizer is claimed.
+
+**Hosted diagnostic #604:** source `2336223639d1895d21d98312132ac824f8fb52b2` was built on the
+same Ubuntu 24.04 runner family as the accepted reference. Its two-case LCP/board diagnostic
+run `37689530996` failed before measurements: both installs passed and the accepted-source
+build passed all six tasks, but asset fingerprinting expected `apps/web/dist/assets` while
+Vite emits `dist/agent/assets` and `dist/portal/assets`. Owned cleanup completed. There are no
+LCP/board measurements from this attempt, and it is not the unchanged 22-case acceptance.
+Fresh independent Luna session `01a1183e-9310-7b81-b3b4-faefac2b0cd4` and Sol session
+`01a11840-3b8c-7213-8f1e-1cb8715d4cae` cleared the diagnostic source after each ran **4/4
+Node tests** and `bash -n`; neither ran broader reviewer tests. A bounded fingerprint-layout
+correction is pending. It must preserve the failed run and fail closed on missing or unsafe
+asset paths.
+
+**Unresolved scanner finding:** historical status content triggered a generic API-key rule.
+The matched value has not been established as a public source or fixture identifier, so no
+allowlist or dismissal is recorded. The value is not reproduced here. Dependency advisories
+from the older baseline were addressed in the isolated P0 source; this documentation change
+does not alter dependencies.
+
+This snapshot adds the current #558/#575 disposition and #604 evidence without rewriting the
+dated records below.
+
+---
+
 ## Status first — verified 2026-10-07 21:15 UTC (8 October MMT)
 
 **Accepted main:** `3096cb044bdf6ae98488bfc385f532fa6386343a`. **Persistent OrbStack DEV:** revision `08842235047a3ab2714427edce80331b94558150`, image `sha256:75b153d7d9583993127e1be8c06453159e4fe7319abfcd8431f093c9ca002bcf`, running as taskdesk. Rechecked live; no protected merge, persistent deployment, release, strict cutover or phase finalizer occurred.
