@@ -52,7 +52,7 @@ function WorkItemDetailRouteComponent() {
   return (
     <>
       <PageTitle title={item?.title ? `${item.title} · ${key}` : key} />
-      <div className="flex h-full flex-col gap-4 overflow-y-auto p-6">
+      <div className="flex h-full flex-col gap-4 overflow-y-auto bg-background p-6">
         {item && isRealtimeUnavailable && (
           <Alert
             variant="warning"

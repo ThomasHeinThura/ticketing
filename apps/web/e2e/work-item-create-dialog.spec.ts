@@ -111,6 +111,9 @@ test("create dialog shell opens while the list and form load independently", asy
     await page.goto(WORK_LIST_PATH);
     const trigger = page.getByTestId("create-work-item-trigger");
     await expect(trigger).toBeVisible();
+    await expect(
+      page.locator("[data-testid=work-item-list-populated] tbody tr"),
+    ).toHaveCount(0);
     await trigger.click();
     const dialog = page.getByRole("dialog");
     await expect(dialog).toBeVisible();
@@ -121,6 +124,9 @@ test("create dialog shell opens while the list and form load independently", asy
     await expect(
       dialog.getByTestId("create-work-item-dialog-loading"),
     ).toBeVisible();
+    await expect(
+      page.locator("[data-testid=work-item-list-populated] tbody tr"),
+    ).toHaveCount(0);
     await page.keyboard.press("Escape");
     await expect(dialog).toHaveCount(0);
     await expect(trigger).toBeFocused();

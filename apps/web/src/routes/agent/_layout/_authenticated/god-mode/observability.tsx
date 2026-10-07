@@ -219,7 +219,7 @@ function ObservabilitySettings() {
   return (
     <>
       <PageTitle title="Observability" />
-      <main className="mx-auto max-w-4xl space-y-6">
+      <main className="mx-auto max-w-4xl space-y-6 bg-background">
         <header className="space-y-2">
           <h1 className="text-2xl font-semibold">Observability</h1>
           <p className="text-muted-foreground">

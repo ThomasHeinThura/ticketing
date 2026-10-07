@@ -22,6 +22,8 @@ vi.mock("./create-work-item-dialog", async () => {
         },
         React.createElement(DelayedForm),
       ),
+    CreateWorkItemDialogLoadError: () =>
+      React.createElement("div", { role: "alert" }, "Failed to load form"),
   };
 });
 
@@ -32,11 +34,15 @@ afterEach(cleanup);
 describe("WorkItemCreateDialogShell", () => {
   it("opens the dialog while the intent-lazy form is still loading", () => {
     render(
-      <WorkItemCreateDialogShell
-        onClose={vi.fn()}
-        projectId="project-1"
-        workspaceId="workspace-1"
-      />,
+      <>
+        <button type="button">Trigger</button>
+        <WorkItemCreateDialogShell
+          onClose={vi.fn()}
+          projectId="project-1"
+          workspaceId="workspace-1"
+          finalFocus={() => false}
+        />
+      </>,
     );
 
     expect(screen.getByRole("dialog")).toBeVisible();

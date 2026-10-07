@@ -127,7 +127,11 @@ export default function TaskStatusPopover({
   return (
     <Popover open={open} onOpenChange={setOpen}>
       <PopoverTrigger asChild>{children}</PopoverTrigger>
-      <PopoverContent className="w-48 p-0" align="start">
+      <PopoverContent
+        className="w-48 p-0"
+        align="start"
+        disableAnchorTracking={!open}
+      >
         <div>
           {isLoading ? (
             <div className="p-3 text-center text-sm text-muted-foreground">

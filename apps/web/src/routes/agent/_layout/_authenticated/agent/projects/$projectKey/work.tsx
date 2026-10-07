@@ -84,6 +84,13 @@ function ProjectWorkItemsRoute({ projectKey }: { projectKey: string }) {
     useState<string>();
   const createTriggerRef = useRef<HTMLButtonElement>(null);
   const focusRestoreGenerationRef = useRef(0);
+  const pendingFocusRestoreRef = useRef<
+    | {
+        generation: number;
+        projectContext: string | undefined;
+      }
+    | undefined
+  >(undefined);
   const [realtimeProjectId, setRealtimeProjectId] = useState<string>();
   const [realtimeStatus, setRealtimeStatus] = useState<{
     projectId: string;
@@ -106,7 +113,9 @@ function ProjectWorkItemsRoute({ projectKey }: { projectKey: string }) {
   const projectNotFound =
     !isWorkspaceLoading && !isProjectsLoading && !!projects && !project;
   const projectContext =
-    workspace?.id && project?.id ? `${workspace.id}:${project.id}` : undefined;
+    project?.workspaceId && project.id
+      ? `${project.workspaceId}:${project.id}`
+      : undefined;
   const projectContextRef = useRef(projectContext);
   const isCreateOpenForProject =
     isCreateOpen && createIntentProjectContext === projectContext;
@@ -115,6 +124,7 @@ function ProjectWorkItemsRoute({ projectKey }: { projectKey: string }) {
     if (projectContextRef.current === projectContext) return;
     projectContextRef.current = projectContext;
     focusRestoreGenerationRef.current += 1;
+    pendingFocusRestoreRef.current = undefined;
     setIsCreateOpen(false);
     setCreateIntentProjectContext(undefined);
   }, [projectContext]);
@@ -128,27 +138,35 @@ function ProjectWorkItemsRoute({ projectKey }: { projectKey: string }) {
 
   const closeCreateDialog = useCallback(() => {
     const closedProjectContext = projectContextRef.current;
-    const restoreGeneration = ++focusRestoreGenerationRef.current;
+    const generation = ++focusRestoreGenerationRef.current;
+    pendingFocusRestoreRef.current = {
+      generation,
+      projectContext: closedProjectContext,
+    };
     setIsCreateOpen(false);
     setCreateIntentProjectContext(undefined);
-    requestAnimationFrame(() => {
-      const trigger = createTriggerRef.current;
-      if (
-        focusRestoreGenerationRef.current !== restoreGeneration ||
-        projectContextRef.current !== closedProjectContext ||
-        !trigger?.isConnected
-      ) {
-        return;
-      }
-      trigger.focus();
-    });
+  }, []);
+  const getCreateDialogFinalFocus = useCallback(() => {
+    const pending = pendingFocusRestoreRef.current;
+    const trigger = createTriggerRef.current;
+    if (
+      !pending ||
+      pending.generation !== focusRestoreGenerationRef.current ||
+      pending.projectContext !== projectContextRef.current ||
+      !trigger?.isConnected
+    ) {
+      return false;
+    }
+    pendingFocusRestoreRef.current = undefined;
+    return trigger;
   }, []);
   const openCreateDialog = useCallback(() => {
-    if (!projectContext) return;
+    if (!project?.id || !projectContext) return;
     focusRestoreGenerationRef.current += 1;
+    pendingFocusRestoreRef.current = undefined;
     setIsCreateOpen(true);
     setCreateIntentProjectContext(projectContext);
-  }, [projectContext]);
+  }, [project?.id, projectContext]);
 
   const {
     data: workItemsResult,
@@ -176,19 +194,6 @@ function ProjectWorkItemsRoute({ projectKey }: { projectKey: string }) {
     setRealtimeProjectId(project.id);
     setRealtimeStatus({ projectId: project.id, status: "connecting" });
   }, [project?.id]);
-
-  useEffect(() => {
-    if (!isCreateOpenForProject) return;
-
-    const cancelPendingOpen = (event: KeyboardEvent) => {
-      if (event.key !== "Escape") return;
-      event.preventDefault();
-      closeCreateDialog();
-    };
-
-    window.addEventListener("keydown", cancelPendingOpen);
-    return () => window.removeEventListener("keydown", cancelPendingOpen);
-  }, [closeCreateDialog, isCreateOpenForProject]);
 
   const handleRealtimeAvailabilityChange = useCallback(
     (projectId: string, status: WorkItemRealtimeStatus) => {
@@ -268,8 +273,9 @@ function ProjectWorkItemsRoute({ projectKey }: { projectKey: string }) {
         {project && isCreateOpenForProject ? (
           <WorkItemCreateDialogShell
             projectId={project.id}
-            workspaceId={workspace?.id}
+            workspaceId={project.workspaceId}
             onClose={closeCreateDialog}
+            finalFocus={getCreateDialogFinalFocus}
           />
         ) : null}
       </div>

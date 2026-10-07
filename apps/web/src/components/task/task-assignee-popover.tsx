@@ -194,7 +194,11 @@ export default function TaskAssigneePopover({
   return (
     <Popover open={open} onOpenChange={handleOpenChange}>
       <PopoverTrigger asChild>{children}</PopoverTrigger>
-      <PopoverContent className="w-56 p-0" align="start">
+      <PopoverContent
+        className="w-56 p-0"
+        align="start"
+        disableAnchorTracking={!open}
+      >
         <div
           className="max-h-80 space-y-1 overflow-y-auto p-1"
           onScroll={handleListScroll}

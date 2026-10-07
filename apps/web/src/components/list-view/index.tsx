@@ -51,9 +51,11 @@ import BulkToolbar from "../bulk-selection/bulk-toolbar";
 import type { TaskCardWorkspaceUser } from "../kanban-board/task-card";
 import TaskCardContextMenuContent from "../kanban-board/task-card-context-menu/task-card-context-menu-content";
 import { ArchiveTasksModal } from "../shared/modals/archive-tasks-modal";
-import CreateTaskModal from "../shared/modals/create-task-modal";
 import TaskRow from "./task-row";
 
+const CreateTaskModal = lazy(
+  () => import("../shared/modals/create-task-modal"),
+);
 const TaskCardDeleteConfirmation = lazy(
   () => import("../kanban-board/task-card-delete-confirmation"),
 );
@@ -265,6 +267,7 @@ function ListView({ project, disableDragDrop = false }: ListViewProps) {
     return sections;
   });
   const [isTaskModalOpen, setIsTaskModalOpen] = useState(false);
+  const [hasOpenedTaskModal, setHasOpenedTaskModal] = useState(false);
   const [activeColumn, setActiveColumn] = useState<string | null>(null);
   const [isArchiveModalOpen, setIsArchiveModalOpen] = useState(false);
   const [columnToArchive, setColumnToArchive] = useState<
@@ -442,6 +445,7 @@ function ListView({ project, disableDragDrop = false }: ListViewProps) {
 
   const handleAddTask = useCallback((columnId: string) => {
     setIsTaskModalOpen(true);
+    setHasOpenedTaskModal(true);
     setActiveColumn(columnId);
   }, []);
 
@@ -601,12 +605,16 @@ function ListView({ project, disableDragDrop = false }: ListViewProps) {
         )}
       </DragOverlay>
 
-      <CreateTaskModal
-        open={isTaskModalOpen}
-        projectId={project.id}
-        onClose={() => setIsTaskModalOpen(false)}
-        status={activeColumn ?? "done"}
-      />
+      {hasOpenedTaskModal && (
+        <Suspense fallback={null}>
+          <CreateTaskModal
+            open={isTaskModalOpen}
+            projectId={project.id}
+            onClose={() => setIsTaskModalOpen(false)}
+            status={activeColumn ?? "done"}
+          />
+        </Suspense>
+      )}
       <ArchiveTasksModal
         open={isArchiveModalOpen}
         onClose={() => {

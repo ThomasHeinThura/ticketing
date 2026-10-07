@@ -1,5 +1,4 @@
 import {
-  Button,
   Dialog,
   DialogContent,
   DialogDescription,
@@ -8,16 +7,21 @@ import {
   ErrorBoundary,
 } from "@taskdesk/ui";
 import { useTranslation } from "react-i18next";
-import { CreateWorkItemDialogContent } from "./create-work-item-dialog";
+import {
+  CreateWorkItemDialogContent,
+  CreateWorkItemDialogLoadError,
+} from "./create-work-item-dialog";
 
 export default function WorkItemCreateDialogShell({
   projectId,
   workspaceId,
   onClose,
+  finalFocus,
 }: {
   projectId: string;
   workspaceId: string | undefined;
   onClose: () => void;
+  finalFocus: () => HTMLElement | false;
 }) {
   const { t } = useTranslation();
 
@@ -33,6 +37,7 @@ export default function WorkItemCreateDialogShell({
         showCloseButton
         closeLabel={t("workItems:create.close")}
         data-testid="create-work-item-dialog"
+        finalFocus={finalFocus}
       >
         <DialogHeader>
           <DialogTitle>{t("workItems:create.title")}</DialogTitle>
@@ -40,20 +45,7 @@ export default function WorkItemCreateDialogShell({
             {t("workItems:create.description")}
           </DialogDescription>
         </DialogHeader>
-        <ErrorBoundary
-          fallback={() => (
-            <div role="alert">
-              <p>{t("common:error.title")}</p>
-              <Button
-                size="sm"
-                variant="outline"
-                onClick={() => window.location.reload()}
-              >
-                {t("common:error.tryAgain")}
-              </Button>
-            </div>
-          )}
-        >
+        <ErrorBoundary fallback={CreateWorkItemDialogLoadError}>
           <CreateWorkItemDialogContent
             onClose={onClose}
             projectId={projectId}
