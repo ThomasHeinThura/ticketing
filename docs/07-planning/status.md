@@ -1,5 +1,57 @@
 ## Status First
 
+Snapshot: 2026-10-07 01:02:47 UTC. Live GitHub confirms frozen P0#583 at53269374 and the sole post-P0 train#589 at publishedb977e53b. Accepted main3096cb04 and reviewed DEV08842235 remain unchanged; no protected merge, refresh, strict activation or phase completion.
+
+| Phase | Implementation | Integration | Acceptance |
+| --- | --- | --- | --- |
+| P0 | Frozen53269374; product reviews clear; runnable private lifecycle successor being completed | Sole closure#583, separate from all later slices | HostedG1119/22; exact installer lifecycle/TLS, strict compatibility/cutover and finalizer open |
+| P1 | Saved views/CSV and CI correctionfd8d8274 complete | #591;0118 provisional until canonical migration repair freezes | Whole-candidate metadata and composed acceptance open |
+| P2 | Approval continuity/withdrawal and browser placement complete | #586 notes-onlyb67a865a; current source Luna/Sol clear | LiveAPI/image/OpenAPI/G11 and full phase acceptance open |
+| P3 | Mapping/login and repository relocation complete | #595 then#596 notes-only08c162d7; current source reviews clear | Health/provider and composed acceptance open |
+| P4 | Outbox eligibility, canonical binding and fencing complete | #594 notes-only359d60bd; current source reviews clear | Shared composition, provider/image and phase acceptance open |
+
+### What changed
+
+Complete create-dialog source8f078830 has two ordinary clear verdicts and full independent Sol clearance, committed on source-equivalent notes-only7d86b0a8. Its complete11unit/6browser author evidence remains distinct from image/hosted acceptance. It is queued for the post-P0 train.
+
+Central metadata's full ordinary panel identifies two structural classes: omitted existing SQL tables in configured generation and ordered unique-key drift. The author is fixing the whole mechanism, including actual catalog tuple order, NULLS NOT DISTINCT, physical identifier truncation and default index-opclass representation. No SQL/journal/accepted snapshot rewrite or new allocation is authorized. Publishedb977 remains blocked while the complete successor is uncommitted.
+
+The lifecycle driver's v3 ordinary delta clears, but full Sol blocks stale/mismatched operator authority and a certificate fingerprint unrelated to served TLS. Original bundles/reports are preserved. The v4 truthful planning-only successor is not a completed runnable driver. A complete v5 adds a valid executable authorization path and meaningful positive/negative orchestration tests; TLS remains separately unproven.
+
+### What is being worked on now
+
+One Luna author completes canonical migration/generation fidelity and one final prefix regression. Root independently bound the new named PostgreSQL container/volume and granted database-only use at actual00:50:22UTC. Root alone will remove those exact resources after fresh ownership readback. A separate Luna completes the private lifecycle driver offline; it has no runtime authorization window and may not reuse the central database grant.
+
+### Critical path
+
+1. Resolve frozenP0 hostedG11 under the no-extra-retry rule.
+2. Complete reviewed measured lifecycle/TLS/preservation/upgrade/rollback and signed release ordering.
+3. Prove current strict behavior and independently establish compatibility of original partial observations.
+4. Resolve public-config's evidence criterion and perform eligible reversible cutover.
+5. Protected exact-head merge, official installer verification and fresh Sol finalizer.
+
+### Misalignment / drift
+
+The pasted drift report's17/22 and48-request figures are historical. Current hostedG11 is19/22; actual off/shadow acquisition matched130 expectations before its preserved renderer failure. Offline replay does not change that acquisition's acceptance. #581 is superseded;#587 diagnostic only;#583 soleP0;#589 solelater train. Later metadata and dialog corrections do not expand P0.
+
+### Concerns
+
+The earlier anonymous PostgreSQL volume removal remains irreversible with unproven ownership. Empty event history and healthy DEV do not prove that removed volume belonged to the test. Incident receipts remain preserved; new named-resource ownership is independent and does not resolve the old incident. Author Docker mutations remain prohibited, and root owns subsequent cleanup.
+
+A generator must preserve actual ordered and NULL semantics, not just pass an introspector equality test. A lifecycle driver must execute under genuine bounded authority and measure persistence/cleanup; offline tests and local Compose do not prove signed installer or served TLS acceptance.
+
+### Decisions needed from Thomas
+
+Previously requested public-config criterion, one unchanged-source hosted confirmation, signed installer release ordering and P1 current-team lead behavior remain pending. No duplicate asks or elapsed-time approval.
+
+### Next merge candidates
+
+#583 after its actual gates. Mature later slices, reviewed dialog and the completed metadata remedy then compose through#589 on acceptedP0. No currently blocked candidate is merge-ready.
+
+---
+
+## Status First
+
 Snapshot: 2026-10-07 00:30:27 UTC. Accepted main3096cb04 and reviewed DEV08842235 are unchanged; shadow on, enforcement empty. No protected merge, deployment refresh, strict cutover or completed phase.
 
 | Phase | Implementation | Integration | Acceptance |
