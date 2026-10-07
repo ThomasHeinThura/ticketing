@@ -6,7 +6,7 @@ import {
   screen,
   waitFor,
 } from "@testing-library/react";
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import {
   default as CreateWorkItemDialog,
@@ -30,14 +30,20 @@ describe("CreateWorkItemDialog shared shell", () => {
   it("opens the native dialog immediately and restores focus when closed", async () => {
     function Harness() {
       const [open, setOpen] = useState(false);
+      const triggerRef = useRef<HTMLButtonElement>(null);
       return (
         <>
-          <Button onClick={() => setOpen(true)}>Open create dialog</Button>
+          <Button ref={triggerRef} onClick={() => setOpen(true)}>
+            Open create dialog
+          </Button>
           <CreateWorkItemDialog
             open={open}
             onClose={() => setOpen(false)}
             projectId="project-1"
             workspaceId="workspace-1"
+            finalFocus={() =>
+              triggerRef.current?.isConnected ? triggerRef.current : false
+            }
           />
         </>
       );

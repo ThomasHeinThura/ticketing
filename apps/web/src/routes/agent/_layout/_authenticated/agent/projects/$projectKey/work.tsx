@@ -84,6 +84,13 @@ function ProjectWorkItemsRoute({ projectKey }: { projectKey: string }) {
     useState<string>();
   const createTriggerRef = useRef<HTMLButtonElement>(null);
   const focusRestoreGenerationRef = useRef(0);
+  const pendingFocusRestoreRef = useRef<
+    | {
+        generation: number;
+        projectContext: string | undefined;
+      }
+    | undefined
+  >(undefined);
   const [realtimeProjectId, setRealtimeProjectId] = useState<string>();
   const [realtimeStatus, setRealtimeStatus] = useState<{
     projectId: string;
@@ -117,6 +124,7 @@ function ProjectWorkItemsRoute({ projectKey }: { projectKey: string }) {
     if (projectContextRef.current === projectContext) return;
     projectContextRef.current = projectContext;
     focusRestoreGenerationRef.current += 1;
+    pendingFocusRestoreRef.current = undefined;
     setIsCreateOpen(false);
     setCreateIntentProjectContext(undefined);
   }, [projectContext]);
@@ -130,24 +138,32 @@ function ProjectWorkItemsRoute({ projectKey }: { projectKey: string }) {
 
   const closeCreateDialog = useCallback(() => {
     const closedProjectContext = projectContextRef.current;
-    const restoreGeneration = ++focusRestoreGenerationRef.current;
+    const generation = ++focusRestoreGenerationRef.current;
+    pendingFocusRestoreRef.current = {
+      generation,
+      projectContext: closedProjectContext,
+    };
     setIsCreateOpen(false);
     setCreateIntentProjectContext(undefined);
-    requestAnimationFrame(() => {
-      const trigger = createTriggerRef.current;
-      if (
-        focusRestoreGenerationRef.current !== restoreGeneration ||
-        projectContextRef.current !== closedProjectContext ||
-        !trigger?.isConnected
-      ) {
-        return;
-      }
-      trigger.focus();
-    });
+  }, []);
+  const getCreateDialogFinalFocus = useCallback(() => {
+    const pending = pendingFocusRestoreRef.current;
+    const trigger = createTriggerRef.current;
+    if (
+      !pending ||
+      pending.generation !== focusRestoreGenerationRef.current ||
+      pending.projectContext !== projectContextRef.current ||
+      !trigger?.isConnected
+    ) {
+      return false;
+    }
+    pendingFocusRestoreRef.current = undefined;
+    return trigger;
   }, []);
   const openCreateDialog = useCallback(() => {
     if (!project?.id || !projectContext) return;
     focusRestoreGenerationRef.current += 1;
+    pendingFocusRestoreRef.current = undefined;
     setIsCreateOpen(true);
     setCreateIntentProjectContext(projectContext);
   }, [project?.id, projectContext]);
@@ -260,6 +276,7 @@ function ProjectWorkItemsRoute({ projectKey }: { projectKey: string }) {
             projectId={project.id}
             workspaceId={project.workspaceId}
             onClose={closeCreateDialog}
+            finalFocus={getCreateDialogFinalFocus}
           />
         )}
       </div>

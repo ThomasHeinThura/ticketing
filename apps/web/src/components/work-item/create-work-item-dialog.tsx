@@ -12,7 +12,10 @@ import { lazy, Suspense } from "react";
 import { useTranslation } from "react-i18next";
 import type { CreateWorkItemDialogProps } from "./create-work-item-dialog-form";
 
-type Props = CreateWorkItemDialogProps & { open: boolean };
+type Props = CreateWorkItemDialogProps & {
+  open: boolean;
+  finalFocus: () => HTMLElement | false;
+};
 
 const DefaultCreateWorkItemDialogForm = lazy(
   () => import("./create-work-item-dialog-form"),
@@ -55,6 +58,7 @@ export default function CreateWorkItemDialog({
   onClose,
   projectId,
   workspaceId,
+  finalFocus,
 }: Props) {
   const { t } = useTranslation();
 
@@ -70,6 +74,7 @@ export default function CreateWorkItemDialog({
         showCloseButton
         closeLabel={t("workItems:create.close")}
         data-testid="create-work-item-dialog"
+        finalFocus={finalFocus}
       >
         <DialogHeader>
           <DialogTitle>{t("workItems:create.title")}</DialogTitle>
