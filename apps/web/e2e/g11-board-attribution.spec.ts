@@ -140,7 +140,16 @@ test("diagnostic: attribute board render through the 200th card paint", async ({
   expect(layoutEvents.some((event) => event.name === "Layout")).toBe(true);
   expect(captureResult.paint.cardCount).toBe(200);
 
-  const assetsDirectory = path.resolve(process.cwd(), "dist/agent/assets");
+  const sourceRoot = process.env.TASKDESK_G11_SOURCE_ROOT;
+  if (!sourceRoot) {
+    throw new Error(
+      "TASKDESK_G11_SOURCE_ROOT is required for board attribution",
+    );
+  }
+  const assetsDirectory = path.resolve(
+    sourceRoot,
+    "apps/web/dist/agent/assets",
+  );
   const mapsDirectory = path.join(outputDirectory, "source-maps");
   await mkdir(mapsDirectory, { recursive: false, mode: 0o700 });
   const mapManifest: Array<{

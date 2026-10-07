@@ -169,6 +169,15 @@ test("setup follows the repository action and artifact paths exclude worktrees a
   assert.match(runner, /chromium_version=/);
   assert.match(runner, /chromium_sha256=/);
   assert.match(runner, /selected Chromium executable differs/);
+  assert.match(runner, /attribution_playwright=.*playwright --version/);
+  assert.match(
+    runner,
+    /accepted_playwright.*current_playwright.*attribution_playwright/,
+  );
+  assert.match(
+    runner,
+    /Playwright version differs between source contexts or the attribution CLI/,
+  );
   assert.match(runner, /lscpu/);
   assert.match(runner, /fc-list/);
   assert.match(assetCollectorSource, /bundled_css_and_fonts_sha256/);
@@ -213,6 +222,18 @@ test("board tracing is separate from canonical metrics and uses each exact pinne
     runner,
     /--config "\$REPO\/apps\/web\/playwright\.board-attribution\.config\.ts"/,
   );
+  const attributionRunner = runner
+    .split("run_board_attribution() {")[1]
+    .split(
+      "# Run tracing only after both unchanged canonical measurements have completed.",
+    )[0];
+  assert.match(attributionRunner, /cd "\$REPO\/apps\/web"/);
+  assert.match(
+    attributionRunner,
+    /\.\/node_modules\/\.bin\/playwright test --config/,
+  );
+  assert.match(attributionRunner, /TASKDESK_G11_SOURCE_ROOT="\$tree"/);
+  assert.doesNotMatch(attributionRunner, /cd "\$tree\/apps\/web"/);
   assert.match(runner, /board-attribution-exit-code\.txt/);
   assert.match(boardTraceConfig, /performanceConfig/);
   assert.match(boardTraceConfig, /g11-board-attribution\.spec\.ts/);
@@ -236,6 +257,10 @@ test("board tracing is separate from canonical metrics and uses each exact pinne
   );
   assert.match(boardTraceSpec, /UpdateLayoutTree/);
   assert.match(boardTraceSpec, /"Layout"/);
+  assert.match(
+    boardTraceSpec,
+    /sourceRoot,[\s\S]*?apps\/web\/dist\/agent\/assets/,
+  );
   assert.match(boardTraceSpec, /diagnosticOnly: true/);
   assert.match(boardTraceSpec, /acceptance: false/);
   assert.match(workflow, /board-cpu-profile\.json/);
@@ -252,6 +277,40 @@ test("board tracing is separate from canonical metrics and uses each exact pinne
     runner,
     /apps\/web\/e2e\/performance\.bench\.ts.*(?:write|sed|perl)/,
   );
+});
+
+test("board attribution CLI registers the test from a separate source cwd", async () => {
+  const cwd = await mkdtemp(path.join(tmpdir(), "taskdesk-playwright-cwd-"));
+  try {
+    const result = spawnSync(
+      path.join(
+        new URL("apps/web/node_modules/.bin/playwright", root).pathname,
+      ),
+      [
+        "test",
+        "--config",
+        new URL("apps/web/playwright.board-attribution.config.ts", root)
+          .pathname,
+        "--list",
+      ],
+      {
+        cwd,
+        encoding: "utf8",
+        env: {
+          ...process.env,
+          TASKDESK_G11_SOURCE_ROOT: cwd,
+        },
+      },
+    );
+    assert.equal(result.status, 0, result.stderr || result.stdout);
+    assert.match(result.stdout, /Total: 1 test in 1 file/);
+    assert.match(
+      result.stdout,
+      /diagnostic: attribute board render through the 200th card paint/,
+    );
+  } finally {
+    await rm(cwd, { recursive: true, force: true });
+  }
 });
 
 test("asset collector fingerprints the actual agent and portal Vite output trees", async () => {

@@ -314,8 +314,16 @@ accepted_browser_path="$(node "$REPO/scripts/ci/lib/diagnostic-g11-ab-utils.mjs"
 current_browser_path="$(node "$REPO/scripts/ci/lib/diagnostic-g11-ab-utils.mjs" metadata "$EVIDENCE/current-10034/environment.txt" chromium_path)"
 accepted_browser_version="$(node "$REPO/scripts/ci/lib/diagnostic-g11-ab-utils.mjs" metadata "$EVIDENCE/accepted-f10/environment.txt" chromium_version)"
 current_browser_version="$(node "$REPO/scripts/ci/lib/diagnostic-g11-ab-utils.mjs" metadata "$EVIDENCE/current-10034/environment.txt" chromium_version)"
+accepted_playwright="$(node "$REPO/scripts/ci/lib/diagnostic-g11-ab-utils.mjs" metadata "$EVIDENCE/accepted-f10/environment.txt" playwright)"
+current_playwright="$(node "$REPO/scripts/ci/lib/diagnostic-g11-ab-utils.mjs" metadata "$EVIDENCE/current-10034/environment.txt" playwright)"
+attribution_playwright="$(cd "$REPO/apps/web" && ./node_modules/.bin/playwright --version)"
+printf 'attribution_playwright=%s\n' "$attribution_playwright" >> "$EVIDENCE/run-metadata.txt"
 if [[ "$accepted_browser" != "$current_browser" || "$accepted_browser_path" != "$current_browser_path" || "$accepted_browser_version" != "$current_browser_version" ]]; then
   printf 'The selected Chromium executable differs between source contexts.\n' >&2
+  exit 6
+fi
+if [[ "$accepted_playwright" != "$current_playwright" || "$accepted_playwright" != "$attribution_playwright" ]]; then
+  printf 'The Playwright version differs between source contexts or the attribution CLI.\n' >&2
   exit 6
 fi
 
@@ -339,12 +347,15 @@ run_board_attribution() {
     node "$REPO/scripts/ci/lib/board-trace-evidence.mjs" preflight "$output" "$name" >/dev/null
   set +e
   (
-    cd "$tree/apps/web"
+    # Keep the CLI, config, test imports, and @playwright/test module on this
+    # workflow checkout's single installed graph. The pinned source tree is
+    # only the preview/build target selected by TASKDESK_G11_SOURCE_ROOT.
+    cd "$REPO/apps/web"
     TASKDESK_G11_SOURCE_NAME="$name" \
     TASKDESK_G11_SOURCE_ROOT="$tree" \
     TASKDESK_G11_BOARD_TRACE_DIR="$output" \
       TASKDESK_G11_SOURCE_SHA="$sha" \
-      pnpm exec playwright test --config "$REPO/apps/web/playwright.board-attribution.config.ts"
+      ./node_modules/.bin/playwright test --config "$REPO/apps/web/playwright.board-attribution.config.ts"
   ) > "$EVIDENCE/$name/board-attribution.log" 2>&1
   status=$?
   set -e
