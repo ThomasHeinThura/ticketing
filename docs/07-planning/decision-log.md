@@ -1,3 +1,13 @@
+### 2026-10-07 · Record complete role-fixture source and full P1 batch; retain actual test limits
+
+**Operational evidence, no waiver or new behavior approval.** All-eight-role seed source345 clears final independent Sol after runtime-random private login aliases/passwords and structural boolean diagnostic boundaries. Notes-onlya73 binds actualsource345; dedicated native35 is attributed to323 with unchanged producer/harness, not relabeled current. Root owns and verifies all temporary PG18 parent-volume cleanups. New seed CI environment findings stay open for a complete tooling correction; no application environment register or quality gate is weakened.
+
+Full defined P1 `fcf2a97a` freezes before the fresh three-context bulk review. Exact-head views native18 passes; nonexistent export selector means export did not run. Prior636 export proof stays separate. First reviewer finds the shared user-preference pin concurrency defect; collect the whole panel before one structural remedy. Team-lead-dependent behavior remains held.
+
+P0 v5 actual TLS/health/signup/persisted admin/session/CSRF succeeds locally, then erroneous trailing slash404 stops before fixtures. Unsupported signup DTO role assertion and initial cleanup mount ordering comparison are root test defects, not product authorization or ownership waivers. Ingress-first captures and full mount-set/full-ID/label/reference checks yield exact cleanup; unbound anonymous volume remains preserved. Independent v6 Sol blocks baseline CSRF incompatibility and signed HTTP URL expectation. Complete v7 audits both source versions and permits only explicitly verified local HTTPS reconstruction of signed path/query while keeping shipped URL correctness separate. No current runtime window, source extension, signed release, G11 retry, cutover, protected merge, date carry or phase acceptance is authorized by this record.
+
+**Recorded:** root at actual 2026-10-07T06:14:20.333654+00:00 under standing batch implementation and verification authority.
+
 ### 2026-10-07 · Testing usernames are private runtime credentials; preserve failed ingress evidence
 
 Thomas explicitly requires role test seeding and forbids usable usernames, passwords and credential Markdown in GitHub. Apply this literally: generate actual login usernames at runtime, alongside strong random passwords, retain them only in the external private manifest and reuse that manifest for additive/idempotent seeding. Public code may contain role keys and non-login fixture identifiers; it must not construct a fixed usable login username. No production provider defaults or role grants change. This supersedes the narrower interpretation that only passwords were private.

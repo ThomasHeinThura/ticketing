@@ -1,5 +1,57 @@
 ## Status First
 
+Snapshot: 2026-10-07T06:14:20.333654+00:00. Accepted main remains `3096cb044bdf6ae98488bfc385f532fa6386343a`; sole P0 closure #583 stays frozen at `5326937460b195d8e69584c0cb99305348330a95`. No protected merge, persistent DEV refresh, release, cutover or phase completion occurred.
+
+| Phase | Implementation | Integration | Acceptance |
+| --- | --- | --- | --- |
+| P0 | Frozen product; stock Traefik actual TLS/health/bootstrap/session/CSRF pass | Sole #583 | Local persistence lifecycle still open; v6 whole fixture audit blocks baseline CSRF and signed-URL scheme expectations; official installer, hosted G11, compatibility/cutover/finalizer open |
+| P1 | Full defined saved-view API/UI batch frozen at `fcf2a97a0ca883a2999a2abca14cd2bb882cfeae` | Canonical614 + sole0118; full ordinary panel underway | Exact-head native views 1file/18 pass; first bulk reviewer finds concurrent shared pin preference lost-update defect; team-lead/transfer remains held |
+| P2 | Selected approval continuity/withdrawal/browser batch reviewed | #586 through sole later train #589 | Composed/live API/image/finalizer open |
+| P3 | Selected mapping/login/query relocation reviewed | #595/#596 through #589 | Provider/Health/image/finalizer open |
+| P4 | All-eight-role test seeder source345 cleared independent Sol; notes-onlya73 binds source | Draft #597 test-infrastructure leaf; #594 through #589 | Dedicated native35 retained at323; exact final privacy/source delta cleared; CI exposes new tooling environment reads alongside inherited/composed failures; no persistent test accounts |
+
+### What changed
+
+The seeder now generates both usable login identifiers and strong passwords at runtime in an external create-only private target-bound manifest; no usable credentials or credential Markdown enter GitHub. Source `345371be911e1752985eb10c95116a5f7a69ff3b` clears final independent Sol after the complete structural diagnostic-boundary fix and restored exact customer authority assertion. Notes-only `a73f7184a0ca8eaaef00d1b90abbc72ca3bd6c5a` records actual review provenance; machine binding is `bound`, with no drift/self-attestation. Dedicated native runner actually passes four files/35 tests at producer/harness323, not345; producer/auth/harness equivalence is explicit. Its isolated PG18 parent-mounted container and named volume are removed after zero-client/full-identity checks; global sets and port55442 return to prior state. Seed CI is not green: new harness environment-read classification needs a complete remedy; inherited token/dependency/OpenAPI and incomplete template/performance acceptance remain separate, not waived.
+
+P1 full `fcf2a97a` implements defined create/edit/clone/run/count/pin/navigation and detail URL controls, current-viewer/project-scoped API reach and configured-Valkey count caching. Offline type, policy88, API/web53, mocked browser1, OpenAPI/i18n/UI gates pass; token gate retains concrete existing findings. Root independently runs the current views integration against an isolated owned PG18: one file/18 pass, including the new project-scoped run/count case. The supplied `export.test.ts` selector was nonexistent; the actual `work-item-export.test.ts` was not selected, so this is not a two-file/export pass. Prior636 export evidence stays attributed to636. Root removes the captured container/named parent volume after zero clients and full identity/mount checks; global sets unchanged and port absent. Full ordinary review collects findings before one remediation batch; A reports concurrent pin updates can lose shared user-preference state.
+
+P0 actual v5 transport run `20261007T053726Z-57a9e9` establishes live sole loopback TLS, both health origins and signup; root's extra signup DTO role assertion fails because first-admin promotion is an after-create database hook. Read-only persisted admin/session verification disproves a product authorization defect; the unsupported DTO assertion is retained as a root test error. Fresh run `20261007T054758Z-d8dcb3` passes these plus actual persisted admin/session and CSRF, then wrong trailing-slash workspace path returns plain404 and stops subsequent writes. Both runs stop ingress first and preserve logs before exact cleanup. Mount list ordering initially rejects cleanup before removals; sorted complete mount-tuple identity fixes the comparison without relaxing ownership. Final cleanup independently proves five containers/three named volumes/two networks/two aliases removed, global sets unchanged, ports absent and the unbound anonymous volume preserved. No project/item/attachment/secret persistence proof is claimed.
+
+Whole private v6 fixture audit binds43 candidate sources and11 bundle files but independent Sol blocks two complete-execution contradictions: baselineb80 has no candidate CSRF endpoint; filesystem signed URLs derive HTTP origin behind TLS termination. V7 is a complete version-specific baseline/candidate flow audit plus explicit validated local HTTPS path/query reconstruction, with shipped URL-generation correctness retained as a separate residual. No new runtime window exists.
+
+### What is being worked on now
+
+P0 one Luna completes the whole v7 source-bound lifecycle contract; P1 fresh independent reviewers collect the complete feature findings before its sole author fixes them together. Seed tooling CI findings will be remediated in one batch when a slot frees. No repeated unchanged-head comfort review, new performance run or official publication is authorized.
+
+### Critical path
+
+1. Resolve frozen hosted G11 under the existing no-extra-retry rule.
+2. Complete actual owned local persistence lifecycle and official installer/TLS proof.
+3. Establish strict behavior and original partial-date compatibility.
+4. Resolve public-config criterion and perform eligible reversible cutover.
+5. Exact-head protected merge, official acceptance and fresh Sol finalizer.
+
+### Misalignment / drift
+
+#583 remains sole P0; #589 sole later train. Seeder#597 and P1 features do not become P0 dependencies. Three partial UTC buckets are not full-day/72-hour coverage. Bootstrap DTO state, persisted role, configured port requests and actual served/published behavior are distinct evidence. Lifecycle transport reconstruction will not establish shipped HTTPS attachment URL correctness.
+
+### Concerns
+
+Full P1 is source-complete for defined behavior but now has a concrete concurrent-pin blocker; fix the shared preference invariant after panel completion. Seed CI tooling findings need correction without gate exclusions. Runtime lifecycle is not yet measured across fresh/repeat/upgrade/rollback. Prior lost migration logs and irreversible anonymous-volume incident remain preserved; later cleanup passes do not erase them.
+
+### Decisions needed from Thomas
+
+Existing public-config criterion, unchanged-source hosted confirmation, official release ordering and P1 team-lead behavior questions remain pending. No duplicate request or gate waiver is inferred.
+
+### Next merge candidates
+
+#583 only after actual gates clear. Full P1 and reviewed P2/P3/P4/seeder leaves compose through #589 after their actual blockers, required exact-head reviews, image/runtime and CI clear. No candidate is declared merge-ready or phase-complete.
+
+---
+
+## Status First
+
 Snapshot: 2026-10-07T05:25:08.613310+00:00. Accepted main remains `3096cb044bdf6ae98488bfc385f532fa6386343a`; sole P0 closure #583 remains `5326937460b195d8e69584c0cb99305348330a95`. No protected merge, persistent DEV refresh, official release, enforcement activation or phase completion occurred.
 
 | Phase | Implementation | Integration | Acceptance |
