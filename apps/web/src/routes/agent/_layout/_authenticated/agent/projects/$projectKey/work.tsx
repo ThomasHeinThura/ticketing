@@ -308,6 +308,11 @@ function ProjectWorkItemsRoute({ projectKey }: { projectKey: string }) {
             projectId={project.id}
             workspaceId={workspace?.id}
             onClose={closeCreateDialog}
+            finalFocus={() =>
+              createTriggerRef.current?.isConnected
+                ? createTriggerRef.current
+                : false
+            }
           />
         ) : null}
       </div>

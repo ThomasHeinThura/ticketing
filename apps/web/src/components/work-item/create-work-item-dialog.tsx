@@ -37,19 +37,15 @@ export function CreateWorkItemDialogContent({
   projectId,
   workspaceId,
 }: ContentProps) {
-  const [Form, setForm] = useState(() => lazy(loadCreateWorkItemDialogForm));
-  const [attempt, setAttempt] = useState(0);
+  const [Form] = useState(() => lazy(loadCreateWorkItemDialogForm));
   const { t } = useTranslation();
 
   const retry = () => {
-    formModulePromise = undefined;
-    setForm(() => lazy(loadCreateWorkItemDialogForm));
-    setAttempt((current) => current + 1);
+    window.location.reload();
   };
 
   return (
     <ErrorBoundary
-      key={attempt}
       fallback={() => (
         <div role="alert" className="flex flex-col gap-3">
           <p>{t("common:error.title")}</p>

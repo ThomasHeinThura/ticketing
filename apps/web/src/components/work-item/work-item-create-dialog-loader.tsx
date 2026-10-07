@@ -41,24 +41,20 @@ export default function WorkItemCreateDialogLoader(props: Props) {
   const { t } = useTranslation();
   const { canCreateTasks, isCheckingPermissions } = useWorkspacePermission();
   const canCreate = !isCheckingPermissions && canCreateTasks();
-  const [DialogShell, setDialogShell] = useState(() => lazy(loadDialog));
-  const [attempt, setAttempt] = useState(0);
+  const [DialogShell] = useState(() => lazy(loadDialog));
 
   useEffect(() => {
     if (!canCreate) props.onClose();
   }, [canCreate, props.onClose]);
 
   const retry = () => {
-    dialogModulePromise = undefined;
-    setDialogShell(() => lazy(loadDialog));
-    setAttempt((current) => current + 1);
+    window.location.reload();
   };
 
   if (!canCreate) return null;
 
   return (
     <ErrorBoundary
-      key={attempt}
       fallback={() => (
         <div role="alert" className="flex flex-col gap-3">
           <p>{t("common:error.title")}</p>

@@ -173,6 +173,7 @@ test("create dialog shell opens immediately while the list and form load indepen
     });
     await page.keyboard.press("Escape");
     await expect(page.getByRole("dialog")).toHaveCount(0);
+    await expect(trigger).toBeFocused();
     await expect(
       page.getByTestId("create-work-item-dialog-loading"),
     ).toHaveCount(0);
@@ -401,7 +402,7 @@ test("leaving the work route cancels a pending create intent on unmount", async 
   }
 });
 
-test("a failed form chunk retries in place and restores focus to its trigger", async ({
+test("a failed form chunk reloads the page before the create dialog can retry", async ({
   page,
 }, testInfo) => {
   await page.setViewportSize({ width: 1280, height: 720 });
@@ -433,7 +434,11 @@ test("a failed form chunk retries in place and restores focus to its trigger", a
   await page.screenshot({
     path: testInfo.outputPath("create-dialog-load-error.png"),
   });
+  const reload = page.waitForNavigation({ waitUntil: "domcontentloaded" });
   await page.getByRole("button", { name: /try again/i }).click();
+  await reload;
+  await expect(page.getByRole("dialog")).toHaveCount(0);
+  await trigger.click();
   await expect(dialog).toBeVisible();
   await expect(dialog.getByTestId("create-work-item-title")).toBeVisible();
   expect(formRequestCount).toBeGreaterThanOrEqual(2);

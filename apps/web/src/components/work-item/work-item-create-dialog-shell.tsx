@@ -12,11 +12,13 @@ export default function WorkItemCreateDialogShell({
   projectId,
   workspaceId,
   onClose,
+  finalFocus,
   open = true,
 }: {
   projectId: string;
   workspaceId: string | undefined;
   onClose: () => void;
+  finalFocus: () => HTMLElement | false;
   open?: boolean;
 }) {
   const { t } = useTranslation();
@@ -33,6 +35,7 @@ export default function WorkItemCreateDialogShell({
         showCloseButton
         closeLabel={t("workItems:create.close")}
         data-testid="create-work-item-dialog"
+        finalFocus={finalFocus}
       >
         <DialogHeader>
           <DialogTitle>{t("workItems:create.title")}</DialogTitle>
