@@ -1,7 +1,9 @@
 import { randomBytes } from "node:crypto";
 import { PostgreSqlContainer } from "@testcontainers/postgresql";
+import { configureSeedTestOrigins } from "./seed-test-origins";
 
 export default async function setup() {
+  configureSeedTestOrigins(process.env);
   const password = randomBytes(24).toString("base64url");
   const container = await new PostgreSqlContainer("postgres:18-alpine")
     .withDatabase("taskdesk_seed_test")
