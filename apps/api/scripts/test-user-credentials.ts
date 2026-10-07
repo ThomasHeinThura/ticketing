@@ -1,5 +1,5 @@
 import { execFileSync } from "node:child_process";
-import { randomBytes } from "node:crypto";
+import { createHash, randomBytes } from "node:crypto";
 import { constants } from "node:fs";
 import {
   link,
@@ -29,6 +29,36 @@ export type TestUserCredentialManifest = {
 
 export function generateTestUserPassword(): string {
   return randomBytes(32).toString("base64url");
+}
+
+function credentialStagingPrefix(filePath: string, targetDatabase: string) {
+  const binding = createHash("sha256")
+    .update(path.resolve(filePath))
+    .update("\0")
+    .update(targetDatabase)
+    .digest("hex");
+  return `.${path.basename(filePath)}.pending.${binding}.`;
+}
+
+export function credentialStagingFilePath(
+  filePath: string,
+  targetDatabase: string,
+  processId: number,
+  nonce: string,
+): string {
+  if (
+    !path.isAbsolute(filePath) ||
+    path.resolve(filePath) !== filePath ||
+    !Number.isSafeInteger(processId) ||
+    processId <= 0 ||
+    !/^[0-9a-f]{32}$/.test(nonce)
+  ) {
+    throw new Error("Credential staging identity is invalid.");
+  }
+  return path.join(
+    path.dirname(filePath),
+    `${credentialStagingPrefix(filePath, targetDatabase)}${processId}.${nonce}`,
+  );
 }
 
 function isWithin(parent: string, candidate: string): boolean {
@@ -162,7 +192,11 @@ export async function readCredentialFile(
       );
     }
     if (info.nlink !== 1) {
-      const pending = await findPublishedTemporaryLink(filePath, info);
+      const pending = await findPublishedTemporaryLink(
+        filePath,
+        info,
+        targetDatabase,
+      );
       if (info.nlink !== 2 || !pending) {
         throw new Error("Existing credential file must not be hard-linked.");
       }
@@ -173,9 +207,13 @@ export async function readCredentialFile(
         throw new Error("Existing credential file must not be hard-linked.");
       }
     }
+    await cleanStaleCredentialStages(filePath, targetDatabase);
     content = await credentialHandle.readFile("utf8");
   } catch (error) {
-    if ((error as NodeJS.ErrnoException).code === "ENOENT") return null;
+    if ((error as NodeJS.ErrnoException).code === "ENOENT") {
+      await cleanStaleCredentialStages(filePath, targetDatabase);
+      return null;
+    }
     throw error;
   } finally {
     await credentialHandle?.close();
@@ -245,6 +283,7 @@ export async function writeCredentialFile(
       "Credential directory must be owned by the current user and mode 0700.",
     );
   }
+  await cleanStaleCredentialStages(filePath, manifest.targetDatabase);
 
   try {
     await lstat(filePath);
@@ -253,9 +292,11 @@ export async function writeCredentialFile(
     if ((error as NodeJS.ErrnoException).code !== "ENOENT") throw error;
   }
 
-  const temporaryPath = path.join(
-    parent,
-    `.${path.basename(filePath)}.pending.${process.pid}.${randomBytes(16).toString("hex")}`,
+  const temporaryPath = credentialStagingFilePath(
+    filePath,
+    manifest.targetDatabase,
+    process.pid,
+    randomBytes(16).toString("hex"),
   );
   let handle: Awaited<ReturnType<typeof open>> | undefined;
   let temporaryIdentity: { dev: number; ino: number } | undefined;
@@ -263,6 +304,7 @@ export async function writeCredentialFile(
   try {
     handle = await open(temporaryPath, "wx", 0o600);
     const temporaryInfo = await handle.stat();
+    temporaryIdentity = { dev: temporaryInfo.dev, ino: temporaryInfo.ino };
     if (
       !temporaryInfo.isFile() ||
       (temporaryInfo.mode & 0o777) !== 0o600 ||
@@ -270,7 +312,6 @@ export async function writeCredentialFile(
     ) {
       throw new Error("Private credential staging file could not be verified.");
     }
-    temporaryIdentity = { dev: temporaryInfo.dev, ino: temporaryInfo.ino };
     await handle.writeFile(`${JSON.stringify(manifest, null, 2)}\n`, "utf8");
     await handle.sync();
     await handle.close();
@@ -306,9 +347,10 @@ export async function writeCredentialFile(
 async function findPublishedTemporaryLink(
   filePath: string,
   targetInfo: Awaited<ReturnType<typeof lstat>>,
+  targetDatabase: string,
 ): Promise<string | undefined> {
   const parent = path.dirname(filePath);
-  const prefix = `.${path.basename(filePath)}.pending.`;
+  const prefix = credentialStagingPrefix(filePath, targetDatabase);
   const names = await readdir(parent);
   for (const name of names) {
     if (!name.startsWith(prefix)) continue;
@@ -327,6 +369,56 @@ async function findPublishedTemporaryLink(
     }
   }
   return undefined;
+}
+
+async function cleanStaleCredentialStages(
+  filePath: string,
+  targetDatabase: string,
+): Promise<void> {
+  const parent = path.dirname(filePath);
+  const prefix = credentialStagingPrefix(filePath, targetDatabase);
+  const names = await readdir(parent);
+  let removed = false;
+  for (const name of names) {
+    if (!name.startsWith(prefix)) continue;
+    const match = /^(\d+)\.([0-9a-f]{32})$/.exec(name.slice(prefix.length));
+    if (!match?.[1]) continue;
+    const processId = Number(match[1]);
+    if (!Number.isSafeInteger(processId) || processId <= 0) continue;
+    const stagedPath = path.join(parent, name);
+    let info: Awaited<ReturnType<typeof lstat>>;
+    try {
+      info = await lstat(stagedPath);
+    } catch (error) {
+      if ((error as NodeJS.ErrnoException).code === "ENOENT") continue;
+      throw error;
+    }
+    if (isProcessAlive(processId)) continue;
+    if (
+      info.isSymbolicLink() ||
+      !info.isFile() ||
+      (info.mode & 0o777) !== 0o600 ||
+      (process.getuid && info.uid !== process.getuid()) ||
+      info.nlink !== 1
+    ) {
+      throw new Error(
+        "Stale credential staging file failed private-file verification.",
+      );
+    }
+    await unlink(stagedPath);
+    removed = true;
+  }
+  if (removed) await syncDirectory(parent);
+}
+
+function isProcessAlive(processId: number): boolean {
+  try {
+    process.kill(processId, 0);
+    return true;
+  } catch (error) {
+    const code = (error as NodeJS.ErrnoException).code;
+    return code !== "ESRCH" && code !== "EINVAL";
+  }
 }
 
 async function cleanupIfOwned(

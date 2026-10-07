@@ -86,6 +86,12 @@ export function expectedTestUserCredentials(
   }));
 }
 
+export function workspaceScopedTestUserRoles(
+  roles: readonly SupportedRole[],
+): SupportedRole[] {
+  return roles.filter((role) => BUILT_IN_ROLES[role].scope === "workspace");
+}
+
 async function isCustomerPasswordProviderEnabled(): Promise<boolean> {
   const configured = await db
     .select({
@@ -186,15 +192,7 @@ async function verifyExistingFixture(
       "Existing test users do not have the complete account/person foundation.",
     );
   }
-  const workspaceRoles = roles.filter(
-    (role) =>
-      role === "owner" ||
-      role === "admin" ||
-      role === "manager" ||
-      role === "lead" ||
-      role === "member" ||
-      role === "viewer",
-  );
+  const workspaceRoles = workspaceScopedTestUserRoles(roles);
   if (memberships.length !== workspaceRoles.length) {
     throw new Error(
       "Existing test users have unexpected workspace memberships.",
@@ -265,14 +263,7 @@ async function verifyExistingFixture(
     const workspaceMembership = memberships.find(
       (row) => row.userId === user.id && row.workspaceId === workspaceId,
     );
-    if (
-      role === "owner" ||
-      role === "admin" ||
-      role === "manager" ||
-      role === "lead" ||
-      role === "member" ||
-      role === "viewer"
-    ) {
+    if (BUILT_IN_ROLES[role].scope === "workspace") {
       if (workspaceMembership?.role !== role) {
         throw new Error(
           "Existing workspace test role does not match the seed contract.",
@@ -307,18 +298,7 @@ async function createFixture(
     assertCustomerOrganisation(existingCustomerOrganisation);
 
   const now = new Date();
-  const workspaceRoles = roles.filter(
-    (
-      role,
-    ): role is Extract<
-      SupportedRole,
-      "owner" | "admin" | "member" | "viewer"
-    > =>
-      role === "owner" ||
-      role === "admin" ||
-      role === "member" ||
-      role === "viewer",
-  );
+  const workspaceRoles = workspaceScopedTestUserRoles(roles);
   const [internal] = await db
     .select({ id: schema.organisationTable.id })
     .from(schema.organisationTable)
