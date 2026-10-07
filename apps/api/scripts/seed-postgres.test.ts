@@ -813,8 +813,10 @@ describe("explicit test-user seed batch", () => {
       ).toHaveLength(8);
 
       const { auth, portalAuth } = await import("../src/auth");
-      for (const credential of credentials) {
-        if (credential.authentication !== "local_password") continue;
+      const localPasswordCredentials = credentials.filter(
+        ({ authentication }) => authentication === "local_password",
+      );
+      for (const [index, credential] of localPasswordCredentials.entries()) {
         const selectedAuth = credential.role === "customer" ? portalAuth : auth;
         const origin =
           credential.role === "customer"
@@ -831,6 +833,15 @@ describe("explicit test-user seed batch", () => {
           }),
         );
         expect(response.status, credential.role).toBe(200);
+        // Better Auth permits three sign-in attempts per client bucket in ten
+        // seconds. The direct handler has no trusted client IP in this harness,
+        // so space batches instead of weakening or bypassing that protection.
+        if (
+          (index + 1) % 3 === 0 &&
+          index + 1 < localPasswordCredentials.length
+        ) {
+          await new Promise((resolve) => setTimeout(resolve, 10_100));
+        }
       }
       const customerCredential = credentials.find(
         ({ role }) => role === "customer",
