@@ -50,6 +50,18 @@ const abUtilsSource = await readFile(
   new URL("scripts/ci/lib/diagnostic-g11-ab-utils.mjs", root),
   "utf8",
 );
+const boardTraceSource = await readFile(
+  new URL("scripts/ci/lib/board-trace-evidence.mjs", root),
+  "utf8",
+);
+const boardTraceSpec = await readFile(
+  new URL("apps/web/e2e/g11-board-attribution.spec.ts", root),
+  "utf8",
+);
+const boardTraceConfig = await readFile(
+  new URL("apps/web/playwright.board-attribution.config.ts", root),
+  "utf8",
+);
 
 async function createBuildTree() {
   const rootDir = await mkdtemp(path.join(tmpdir(), "taskdesk-build-assets-"));
@@ -176,6 +188,59 @@ test("setup follows the repository action and artifact paths exclude worktrees a
   assert.match(runner, /root_entries.*OWNER_MARKER/);
   assert.match(runner, /127\.0\.0\.1.*4178/);
   assert.match(runner, /Port 4178 is already accepting connections/);
+});
+
+test("board tracing is separate from canonical metrics and uses each exact pinned source", () => {
+  const acceptedMeasurement = runner.indexOf(
+    'run_measurement "$WORKTREE_ROOT/accepted-f10"',
+  );
+  const currentMeasurement = runner.indexOf(
+    'run_measurement "$WORKTREE_ROOT/current-10034"',
+  );
+  const acceptedTrace = runner.indexOf(
+    'run_board_attribution "$WORKTREE_ROOT/accepted-f10"',
+  );
+  const currentTrace = runner.indexOf(
+    'run_board_attribution "$WORKTREE_ROOT/current-10034"',
+  );
+  assert.ok(
+    acceptedMeasurement >= 0 && currentMeasurement > acceptedMeasurement,
+  );
+  assert.ok(acceptedTrace > currentMeasurement && currentTrace > acceptedTrace);
+  assert.match(runner, /TASKDESK_G11_SOURCE_SHA=/);
+  assert.match(runner, /TASKDESK_G11_SOURCE_ROOT=/);
+  assert.match(
+    runner,
+    /--config "\$REPO\/apps\/web\/playwright\.board-attribution\.config\.ts"/,
+  );
+  assert.match(runner, /board-attribution-exit-code\.txt/);
+  assert.match(boardTraceConfig, /performanceConfig/);
+  assert.match(boardTraceConfig, /g11-board-attribution\.spec\.ts/);
+  assert.match(boardTraceConfig, /cwd: sourceRoot/);
+  assert.match(boardTraceSpec, /installPerformanceApiFixture/);
+  assert.match(boardTraceSpec, /installLastItemPaintRecorder/);
+  assert.match(boardTraceSpec, /Seeded legacy task 200/);
+  assert.match(boardTraceSpec, /Profiler\.start/);
+  assert.match(boardTraceSpec, /Tracing\.start/);
+  assert.match(boardTraceSpec, /Profiler\.stop/);
+  assert.match(boardTraceSpec, /UpdateLayoutTree/);
+  assert.match(boardTraceSpec, /"Layout"/);
+  assert.match(boardTraceSpec, /diagnosticOnly: true/);
+  assert.match(boardTraceSpec, /acceptance: false/);
+  assert.match(workflow, /board-cpu-profile\.json/);
+  assert.match(workflow, /board-trace-events\.json/);
+  assert.match(workflow, /source-maps\/\*\.map/);
+  assert.doesNotMatch(
+    workflow,
+    /board-attribution\/\.\.\.|node_modules|\.npmrc|GITHUB_TOKEN/i,
+  );
+  assert.match(boardTraceSource, /requireCpuParentGraph/);
+  assert.match(boardTraceSource, /parentEdgeCount/);
+  assert.match(boardTraceSource, /resolveOwnedTraceDirectory/);
+  assert.doesNotMatch(
+    runner,
+    /apps\/web\/e2e\/performance\.bench\.ts.*(?:write|sed|perl)/,
+  );
 });
 
 test("asset collector fingerprints the actual agent and portal Vite output trees", async () => {

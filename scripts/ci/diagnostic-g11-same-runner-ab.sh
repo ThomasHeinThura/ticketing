@@ -14,6 +14,11 @@ readonly EVIDENCE="${RUNNER_TEMP_DIR}/taskdesk-g11-ab-${RUN_ID}"
 readonly WORKTREE_ROOT="${RUNNER_TEMP_DIR}/taskdesk-g11-ab-${RUN_ID}.worktrees"
 readonly OWNER_MARKER="${WORKTREE_ROOT}/.taskdesk-owned-run"
 readonly WORKTREES=(accepted-f10 current-10034)
+readonly DIAGNOSTIC_FILES=(
+  apps/web/playwright.board-attribution.config.ts
+  apps/web/e2e/g11-board-attribution.spec.ts
+  scripts/ci/lib/board-trace-evidence.mjs
+)
 readonly CANONICAL_FILES=(
   apps/web/e2e/performance.bench.ts
   apps/web/playwright.perf.config.ts
@@ -43,6 +48,7 @@ accepted_source_sha=$ACCEPTED_SHA
 current_source_sha=$CURRENT_SHA
 test_selection=$TEST_GREP
 diagnostic_only=true
+board_attribution=separate_unthrottled_browser_trace_not_acceptance
 EOF
 }
 write_run_metadata
@@ -276,6 +282,12 @@ run_measurement() {
 
 capture_source "$WORKTREE_ROOT/accepted-f10" "$EVIDENCE/accepted-f10/source-fingerprint.txt"
 capture_source "$WORKTREE_ROOT/current-10034" "$EVIDENCE/current-10034/source-fingerprint.txt"
+{
+  printf '\nboard_attribution_harness_sha256\n'
+  for file in "${DIAGNOSTIC_FILES[@]}"; do
+    sha256sum "$REPO/$file"
+  done
+} >> "$EVIDENCE/run-metadata.txt"
 
 install_source "$WORKTREE_ROOT/accepted-f10" accepted-f10
 install_source "$WORKTREE_ROOT/current-10034" current-10034
@@ -310,10 +322,39 @@ list_expected_tests "$WORKTREE_ROOT/current-10034" current-10034
 run_measurement "$WORKTREE_ROOT/accepted-f10" accepted-f10
 run_measurement "$WORKTREE_ROOT/current-10034" current-10034
 
+run_board_attribution() {
+  local tree="$1"
+  local name="$2"
+  local sha="$3"
+  local output="$EVIDENCE/$name/board-attribution"
+  local status
+  mkdir -m 700 "$output"
+  node "$REPO/scripts/ci/lib/board-trace-evidence.mjs" preflight "$output" >/dev/null
+  set +e
+  (
+    cd "$tree/apps/web"
+    TASKDESK_G11_SOURCE_ROOT="$tree" \
+    TASKDESK_G11_BOARD_TRACE_DIR="$output" \
+      TASKDESK_G11_SOURCE_SHA="$sha" \
+      pnpm exec playwright test --config "$REPO/apps/web/playwright.board-attribution.config.ts"
+  ) > "$EVIDENCE/$name/board-attribution.log" 2>&1
+  status=$?
+  set -e
+  printf '%s\n' "$status" > "$EVIDENCE/$name/board-attribution-exit-code.txt"
+}
+
+# Run tracing only after both unchanged canonical measurements have completed.
+run_board_attribution "$WORKTREE_ROOT/accepted-f10" accepted-f10 "$ACCEPTED_SHA"
+run_board_attribution "$WORKTREE_ROOT/current-10034" current-10034 "$CURRENT_SHA"
+
 failed=0
 for name in accepted-f10 current-10034; do
   code="$(cat "$EVIDENCE/$name/exit-code.txt")"
   if [[ "$code" != "0" ]]; then
+    failed=1
+  fi
+  attribution_code="$(cat "$EVIDENCE/$name/board-attribution-exit-code.txt")"
+  if [[ "$attribution_code" != "0" ]]; then
     failed=1
   fi
 done

@@ -44,11 +44,25 @@ jobs:
             ${{ runner.temp }}/taskdesk-g11-ab-${{ github.run_id }}/accepted-f10/test-list.log
             ${{ runner.temp }}/taskdesk-g11-ab-${{ github.run_id }}/accepted-f10/playwright.log
             ${{ runner.temp }}/taskdesk-g11-ab-${{ github.run_id }}/accepted-f10/exit-code.txt
+            ${{ runner.temp }}/taskdesk-g11-ab-${{ github.run_id }}/accepted-f10/board-attribution.log
+            ${{ runner.temp }}/taskdesk-g11-ab-${{ github.run_id }}/accepted-f10/board-attribution-exit-code.txt
+            ${{ runner.temp }}/taskdesk-g11-ab-${{ github.run_id }}/accepted-f10/board-attribution/capture.json
+            ${{ runner.temp }}/taskdesk-g11-ab-${{ github.run_id }}/accepted-f10/board-attribution/board-cpu-profile.json
+            ${{ runner.temp }}/taskdesk-g11-ab-${{ github.run_id }}/accepted-f10/board-attribution/board-trace-events.json
+            ${{ runner.temp }}/taskdesk-g11-ab-${{ github.run_id }}/accepted-f10/board-attribution/board-source-maps.json
+            ${{ runner.temp }}/taskdesk-g11-ab-${{ github.run_id }}/accepted-f10/board-attribution/source-maps/*.map
             ${{ runner.temp }}/taskdesk-g11-ab-${{ github.run_id }}/current-10034/environment.txt
             ${{ runner.temp }}/taskdesk-g11-ab-${{ github.run_id }}/current-10034/source-fingerprint.txt
             ${{ runner.temp }}/taskdesk-g11-ab-${{ github.run_id }}/current-10034/build-assets.txt
             ${{ runner.temp }}/taskdesk-g11-ab-${{ github.run_id }}/current-10034/test-list.log
             ${{ runner.temp }}/taskdesk-g11-ab-${{ github.run_id }}/current-10034/playwright.log
             ${{ runner.temp }}/taskdesk-g11-ab-${{ github.run_id }}/current-10034/exit-code.txt
+            ${{ runner.temp }}/taskdesk-g11-ab-${{ github.run_id }}/current-10034/board-attribution.log
+            ${{ runner.temp }}/taskdesk-g11-ab-${{ github.run_id }}/current-10034/board-attribution-exit-code.txt
+            ${{ runner.temp }}/taskdesk-g11-ab-${{ github.run_id }}/current-10034/board-attribution/capture.json
+            ${{ runner.temp }}/taskdesk-g11-ab-${{ github.run_id }}/current-10034/board-attribution/board-cpu-profile.json
+            ${{ runner.temp }}/taskdesk-g11-ab-${{ github.run_id }}/current-10034/board-attribution/board-trace-events.json
+            ${{ runner.temp }}/taskdesk-g11-ab-${{ github.run_id }}/current-10034/board-attribution/board-source-maps.json
+            ${{ runner.temp }}/taskdesk-g11-ab-${{ github.run_id }}/current-10034/board-attribution/source-maps/*.map
           if-no-files-found: error
           retention-days: 14
