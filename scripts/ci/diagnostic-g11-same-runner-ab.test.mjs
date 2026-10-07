@@ -12,6 +12,11 @@ import {
 import { tmpdir } from "node:os";
 import path from "node:path";
 import test from "node:test";
+import {
+  countG11Diagnostics,
+  readMetadataValue,
+  requireExactlyOneOfEach,
+} from "./lib/diagnostic-g11-ab-utils.mjs";
 
 const root = new URL("../../", import.meta.url);
 const workflow = await readFile(
@@ -36,6 +41,15 @@ const perfConfig = await readFile(
 );
 const assetCollector = new URL("scripts/ci/lib/capture-build-assets.sh", root);
 const assetCollectorSource = await readFile(assetCollector, "utf8");
+const commandPreflight = new URL(
+  "scripts/ci/lib/diagnostic-g11-preflight.sh",
+  root,
+);
+const commandPreflightSource = await readFile(commandPreflight, "utf8");
+const abUtilsSource = await readFile(
+  new URL("scripts/ci/lib/diagnostic-g11-ab-utils.mjs", root),
+  "utf8",
+);
 
 async function createBuildTree() {
   const rootDir = await mkdtemp(path.join(tmpdir(), "taskdesk-build-assets-"));
@@ -96,7 +110,11 @@ test("source pair and canonical benchmark files are exact and preflighted", () =
   assert.match(runner, /--grep.*TEST_GREP/);
   assert.match(runner, /G11: work-list LCP/);
   assert.match(runner, /G11: board render, 200 tasks/);
-  assert.match(runner, /lcp_count.*"1".*board_count.*"1"/s);
+  assert.match(
+    runner,
+    /diagnostic-g11-ab-utils\.mjs" count-tests "\$list_file/,
+  );
+  assert.match(abUtilsSource, /counts\[key\] !== 1/);
 });
 
 test("diagnostic preserves red results and does not change the required G11 gate", () => {
@@ -119,6 +137,11 @@ test("diagnostic preserves red results and does not change the required G11 gate
   assert.doesNotMatch(requiredWorkflow, /diagnostic-g11-ab\.yml/);
   assert.doesNotMatch(workflow, /continue-on-error:\s*true/);
   assert.doesNotMatch(runner, /--retries|--timeout|--workers/);
+  assert.doesNotMatch(runner, /\brg\b/);
+  assert.ok(
+    runner.indexOf("preflight_required_commands") <
+      runner.indexOf('install_source "$WORKTREE_ROOT/accepted-f10"'),
+  );
 });
 
 test("setup follows the repository action and artifact paths exclude worktrees and credentials", () => {
@@ -226,5 +249,91 @@ test("asset collector rejects an entry directory that escapes through a symlink"
   } finally {
     await rm(tree, { recursive: true, force: true });
     await rm(outside, { recursive: true, force: true });
+  }
+});
+
+test("portable parser accepts exactly one selected case each and rejects missing or duplicate cases", () => {
+  const listed = [
+    "Listing tests:",
+    "  [chromium] › e2e/performance.bench.ts:100:3 › G11: work-list LCP",
+    "  [chromium] › e2e/performance.bench.ts:140:3 › G11: board render, 200 tasks",
+    "Total: 2 tests in 1 file",
+  ].join("\n");
+  const counts = countG11Diagnostics(listed);
+  assert.deepEqual(counts, { lcp: 1, board: 1 });
+  assert.doesNotThrow(() => requireExactlyOneOfEach(counts));
+  assert.throws(
+    () =>
+      requireExactlyOneOfEach(
+        countG11Diagnostics(`${listed}\nG11: work-list LCP`),
+      ),
+    /G11: work-list LCP: expected 1, got 2/,
+  );
+  assert.throws(
+    () => requireExactlyOneOfEach(countG11Diagnostics("Listing tests:\n")),
+    /expected 1, got 0/,
+  );
+});
+
+test("command preflight passes without ripgrep and fails before setup for a missing required tool", async () => {
+  const fixture = await mkdtemp(path.join(tmpdir(), "taskdesk-command-path-"));
+  const bin = path.join(fixture, "bin");
+  await mkdir(bin);
+  try {
+    const requiredText = /required=\(([\s\S]*?)\)/.exec(
+      commandPreflightSource,
+    )?.[1];
+    assert.ok(requiredText);
+    const required = requiredText.trim().split(/\s+/);
+    assert.ok(!required.includes("rg"));
+    for (const commandName of required) {
+      const found = spawnSync(
+        "/bin/bash",
+        ["-c", 'command -v "$1"', "command-probe", commandName],
+        { encoding: "utf8" },
+      );
+      const target = found.status === 0 ? found.stdout.trim() : "/bin/echo";
+      await symlink(target, path.join(bin, commandName));
+    }
+    const preflight = `source "${commandPreflight.pathname}"; preflight_required_commands || exit; if command -v rg >/dev/null 2>&1; then exit 7; fi; printf 'preflight-ok\\n'`;
+    const noRg = spawnSync("/bin/bash", ["-c", preflight], {
+      encoding: "utf8",
+      env: { ...process.env, PATH: bin },
+    });
+    assert.equal(noRg.status, 0, noRg.stderr);
+    assert.match(noRg.stdout, /preflight-ok/);
+    await rm(path.join(bin, "sha256sum"));
+    const missing = spawnSync("/bin/bash", ["-c", preflight], {
+      encoding: "utf8",
+      env: { ...process.env, PATH: bin },
+    });
+    assert.notEqual(missing.status, 0);
+    assert.match(missing.stderr, /sha256sum/);
+  } finally {
+    await rm(fixture, { recursive: true, force: true });
+  }
+});
+
+test("metadata parser requires a single populated exact key", async () => {
+  const fixture = await mkdtemp(path.join(tmpdir(), "taskdesk-metadata-"));
+  const file = path.join(fixture, "environment.txt");
+  try {
+    await writeFile(
+      file,
+      "chromium_path=/opt/browser/chrome\nchromium_sha256=abc123\n",
+    );
+    assert.equal(await readMetadataValue(file, "chromium_sha256"), "abc123");
+    await writeFile(file, "chromium_sha256=abc123\nchromium_sha256=def456\n");
+    await assert.rejects(
+      readMetadataValue(file, "chromium_sha256"),
+      /exactly one/,
+    );
+    await writeFile(file, "chromium_sha256=\n");
+    await assert.rejects(
+      readMetadataValue(file, "chromium_sha256"),
+      /non-empty/,
+    );
+  } finally {
+    await rm(fixture, { recursive: true, force: true });
   }
 });

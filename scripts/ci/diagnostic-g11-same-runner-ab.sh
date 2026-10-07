@@ -55,6 +55,8 @@ if [[ "$(git -C "$REPO" rev-parse HEAD)" != "$RUN_SHA" ]]; then
   printf 'Checkout HEAD does not match GITHUB_SHA.\n' >&2
   exit 2
 fi
+source "$REPO/scripts/ci/lib/diagnostic-g11-preflight.sh"
+preflight_required_commands
 
 if [[ -e "$WORKTREE_ROOT" || -L "$WORKTREE_ROOT" ]]; then
   printf 'Owned worktree path already exists; refusing to reuse it.\n' >&2
@@ -221,7 +223,7 @@ capture_environment() {
     printf 'chromium_path=%s\nchromium_version=%s\nchromium_sha256=%s\n' \
       "$browser_path" "$browser_version" "$browser_hash"
     printf '\nCPU_MODEL_LINES\n'
-    rg -m 1 '^(model name|Hardware)[[:space:]]*:' /proc/cpuinfo || true
+    node "$REPO/scripts/ci/lib/diagnostic-g11-ab-utils.mjs" cpu-model /proc/cpuinfo || true
     printf '\nFONT_PACKAGES\n'
     dpkg-query -W -f='${binary:Package}\t${Version}\n' 'fonts-*' 2>/dev/null | LC_ALL=C sort || true
     if command -v fc-list >/dev/null 2>&1; then
@@ -253,12 +255,9 @@ list_expected_tests() {
   local name="$2"
   local list_file="$EVIDENCE/$name/test-list.log"
   (cd "$tree/apps/web" && pnpm exec playwright test --config playwright.perf.config.ts --list --grep "$TEST_GREP") > "$list_file" 2>&1
-  local lcp_count board_count
-  lcp_count="$(rg -F -o 'G11: work-list LCP' "$list_file" | wc -l | tr -d ' ')"
-  board_count="$(rg -F -o 'G11: board render, 200 tasks' "$list_file" | wc -l | tr -d ' ')"
-  if [[ "$lcp_count" != "1" || "$board_count" != "1" ]]; then
+  if ! node "$REPO/scripts/ci/lib/diagnostic-g11-ab-utils.mjs" count-tests "$list_file"; then
     cat "$list_file" >&2
-    printf 'Expected exactly one LCP and one board diagnostic for %s; got %s and %s.\n' "$name" "$lcp_count" "$board_count" >&2
+    printf 'Expected exactly one LCP and one board diagnostic for %s.\n' "$name" >&2
     return 5
   fi
 }
@@ -294,12 +293,12 @@ printf 'chromium_install=passed\n' >> "$EVIDENCE/run-metadata.txt"
   cd "$WORKTREE_ROOT/current-10034"
   capture_environment "$WORKTREE_ROOT/current-10034" "$EVIDENCE/current-10034/environment.txt"
 )
-accepted_browser="$(rg '^chromium_sha256=' "$EVIDENCE/accepted-f10/environment.txt" | cut -d= -f2-)"
-current_browser="$(rg '^chromium_sha256=' "$EVIDENCE/current-10034/environment.txt" | cut -d= -f2-)"
-accepted_browser_path="$(rg '^chromium_path=' "$EVIDENCE/accepted-f10/environment.txt" | cut -d= -f2-)"
-current_browser_path="$(rg '^chromium_path=' "$EVIDENCE/current-10034/environment.txt" | cut -d= -f2-)"
-accepted_browser_version="$(rg '^chromium_version=' "$EVIDENCE/accepted-f10/environment.txt" | cut -d= -f2-)"
-current_browser_version="$(rg '^chromium_version=' "$EVIDENCE/current-10034/environment.txt" | cut -d= -f2-)"
+accepted_browser="$(node "$REPO/scripts/ci/lib/diagnostic-g11-ab-utils.mjs" metadata "$EVIDENCE/accepted-f10/environment.txt" chromium_sha256)"
+current_browser="$(node "$REPO/scripts/ci/lib/diagnostic-g11-ab-utils.mjs" metadata "$EVIDENCE/current-10034/environment.txt" chromium_sha256)"
+accepted_browser_path="$(node "$REPO/scripts/ci/lib/diagnostic-g11-ab-utils.mjs" metadata "$EVIDENCE/accepted-f10/environment.txt" chromium_path)"
+current_browser_path="$(node "$REPO/scripts/ci/lib/diagnostic-g11-ab-utils.mjs" metadata "$EVIDENCE/current-10034/environment.txt" chromium_path)"
+accepted_browser_version="$(node "$REPO/scripts/ci/lib/diagnostic-g11-ab-utils.mjs" metadata "$EVIDENCE/accepted-f10/environment.txt" chromium_version)"
+current_browser_version="$(node "$REPO/scripts/ci/lib/diagnostic-g11-ab-utils.mjs" metadata "$EVIDENCE/current-10034/environment.txt" chromium_version)"
 if [[ "$accepted_browser" != "$current_browser" || "$accepted_browser_path" != "$current_browser_path" || "$accepted_browser_version" != "$current_browser_version" ]]; then
   printf 'The selected Chromium executable differs between source contexts.\n' >&2
   exit 6
