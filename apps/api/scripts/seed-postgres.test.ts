@@ -580,13 +580,12 @@ describe("explicit test-user seed batch", () => {
     await resetTestDatabase();
   });
 
-  it("refuses an email collision without seeding unrelated accounts or workspaces", async () => {
+  it("refuses a fixture identity collision without changing unrelated accounts or workspaces", async () => {
     await resetTestDatabase();
-    const expectedEmail = "taskdesk-test-user+owner@taskdesk-test.invalid";
     const preserved = {
-      id: "unrelated-colliding-test-user",
+      id: "taskdesk-test-user-owner",
       name: "Preserve this account",
-      email: expectedEmail,
+      email: "preserved-fixture-collision@example.test",
     };
     await db.insert(schema.userTable).values(preserved);
 

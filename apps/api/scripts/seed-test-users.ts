@@ -10,6 +10,7 @@ import db, { getDatabasePool, schema } from "../src/database";
 import { seedDefaultWorkspaceRolesForWorkspace } from "../src/utils/seed-default-workspace-roles";
 import { seed } from "./seed-profile";
 import {
+  generateTestUserEmail,
   generateTestUserPassword,
   readCredentialFile,
   type TestUserCredential,
@@ -70,7 +71,7 @@ export function expectedTestUserCredentials(
 ): Pick<TestUserCredential, "role" | "email" | "scope" | "authentication">[] {
   return roles.map((role) => ({
     role,
-    email: `${FIXTURE_NAMESPACE}+${role}@taskdesk-test.invalid`,
+    email: generateTestUserEmail(),
     authentication:
       role !== "customer" || customerPasswordEnabled
         ? "local_password"
@@ -208,10 +209,11 @@ async function ensureCanonicalCustomerRole(
   return role;
 }
 
-async function existingUsers(roles: readonly SupportedRole[]) {
-  const expectations = expectedTestUserCredentials(roles, false);
+async function existingUsers(
+  roles: readonly SupportedRole[],
+  emails: readonly string[],
+) {
   const ids = roles.map(userId);
-  const emails = expectations.map(({ email }) => email);
   return db
     .select()
     .from(schema.userTable)
@@ -229,7 +231,10 @@ async function verifyExistingFixture(
   workspaceId: string,
   internalOrganisationId: string,
 ) {
-  const users = await existingUsers(roles);
+  const users = await existingUsers(
+    roles,
+    credentials.map(({ email }) => email),
+  );
   if (users.length !== roles.length) {
     throw new Error(
       "Existing test users are partial or collide with unrelated accounts.",
@@ -599,7 +604,11 @@ export async function seedTestUsers(
     expected,
   );
   let credentials = existingManifest?.users;
-  const preexisting = await existingUsers(parsed.roles);
+  const preexisting = await existingUsers(
+    parsed.roles,
+    existingManifest?.users.map(({ email }) => email) ??
+      expected.map(({ email }) => email),
+  );
   if (preexisting.length > 0) {
     if (preexisting.length !== parsed.roles.length || !credentials) {
       throw new Error(

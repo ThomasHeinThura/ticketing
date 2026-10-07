@@ -11,6 +11,7 @@ export default defineConfig({
       "scripts/seed-cli.test.ts",
       "scripts/seed-test-users.test.ts",
       "scripts/seed-postgres.test.ts",
+      "../../tests/api/seed-test-origins.test.ts",
     ],
     globalSetup: ["scripts/seed-test-global-setup.ts"],
     setupFiles: ["scripts/seed-test-setup.ts"],
