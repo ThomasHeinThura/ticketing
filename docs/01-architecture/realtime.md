@@ -157,15 +157,28 @@ useRealtime({
   onMessage: (msg) => {
     if (seenEventIds.has(msg.eventId)) return;
     seenEventIds.add(msg.eventId);
-    queryClient.invalidateQueries({ queryKey: ['work-items', projectId] });
-    if (msg.payload.key) {
-      queryClient.invalidateQueries({ queryKey: ['work-item', msg.payload.key] });
+    if (msg.topic.startsWith('project:') && msg.type !== 'work_item.commented') {
+      queryClient.invalidateQueries({ queryKey: ['work-items', projectId] });
+    }
+    const key = msg.topic.startsWith('work_item:') ? msg.payload.key : undefined;
+    if (key && msg.type !== 'work_item.created' && msg.type !== 'work_item.commented') {
+      queryClient.invalidateQueries({ queryKey: ['work-items', 'detail', key] });
+    }
+    if (key && ['work_item.escalated', 'work_item.unblocked', 'work_item.mentioned', 'work_item.commented', 'work_item.deleted'].includes(msg.type)) {
+      queryClient.invalidateQueries({ queryKey: ['work-items', 'activity', key] });
     }
   },
 });
 ```
 
-Invalidation is debounced at 150 ms so a bulk update produces one refetch, not fifty.
+The native client tracks processed query keys per event ID and socket, then debounces affected
+query invalidation for 150 ms. If one event arrives under more than one subscribed topic, a
+later frame can contribute an affected key that was absent from the first; duplicate keys are
+still invalidated only once on that connection. The key-only envelope lets a project-topic
+frame refresh item detail or activity when the event type calls for it. Independent sockets do
+not suppress each other's events. Comment events refresh activity, while item mutations refresh
+detail and the project list when its projection may change. Reconnect/outage polling remains
+active until subscription acknowledgement and while the socket is unavailable.
 
 ## Scaling across replicas
 
