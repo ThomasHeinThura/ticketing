@@ -1,5 +1,57 @@
 ## Status First
 
+Snapshot: 2026-10-07T02:04:02.983140+00:00. Remote main independently remains3096cb04; reviewed DEV container4ecd200a8e07 remains running/healthy on image75b153d7. P0#583 remains frozen53269374. No protected merge, DEV refresh, strict cutover, release publication or phase completion.
+
+| Phase | Implementation | Integration | Acceptance |
+| --- | --- | --- | --- |
+| P0 | Frozen product532; private lifecyclev6 offline mechanism Sol clear,33tests | Sole closure#583; two actual local lifecycle runs failed and preserved | HostedG1119/22; installer/runtime/TLS/strict/cutover/finalizer open |
+| P1 | Saved views/CSVfd8 complete; visual filter-builder batch in progress,38focused author tests pass | #591; separate isolated builder leaf;0118 still provisional | Current whole-candidate metadata/composed/browser/live acceptance open |
+| P2 | Selected approval continuity/withdrawal and browser-placement slices complete | #586b67a865a, current source Luna/Sol clear | Phase/liveAPI/image/OpenAPI/G11 acceptance open |
+| P3 | Selected mapping/login/relocation slices complete | #595 then#59608c162d7, source reviews clear | Health/provider and composed phase acceptance open |
+| P4 | Selected outbox eligibility/fencing/binding slice complete | #594359d60bd, source reviews clear | Shared composition/image/provider/full phase acceptance open |
+
+### What changed
+
+Complete metadata structural batchb51c3d0d is pushed clean. Final actual gate passes all30prefixes with98tables1043columns204FKs56uniques5PKs185indexes128checks; accepted78snapshots,allocated30SQL,journal/IDs remain unchanged. Full ordinary panel A clears; B/C block configured generation deleting two existing columns and a broader unguarded column/type/null/default/FK/index semantic-drift class. One full inventory invariant and DSL reconciliation replaces further special cases. Full Sol is not queued on blocked source.
+
+Lifecyclev6 closes absolute-expiry findings under independent Sol and33offline tests. Root independently closed the prior exact named PG resource window with definitive absence and unchanged unrelated inventory; its first case-sensitive absence assertion failed after container removal and is retained with successful fresh completion readback.
+
+Root issued genuine externally pinned disposable-only grants and executed two actual v6 runs. Run20261007T015354Z-23c939d8 fails before creation on bare/prefixed candidate-image mismatch; root confirms no project resources. Run20261007T015642Z-a5f5b739 uses canonical images, creates the isolated stack, then migrate exits1 before app readiness. Precleanup migrate logs are missing, so the cause is unknown. Driver cleanup marksFAIL; independent root confirms all8capturedownedIDs absent but one added anonymous PG18 parent volume remains unbound. Both failures remain failed; no offline replay, lifecycle success or GateC claim.
+
+### What is being worked on now
+
+Luna completes a full configured-schema semantic inventory remedy at#589, offline on retained catalog evidence. A separate Luna completes private lifecyclev7: canonical image input, real Docker absence responses, full ownership/mount capture, anonymous-parent-volume prevention and redacted failure logs before cleanup. No v7 runtime grant exists. Another isolated Luna completes SV-11 visual/text filter switching with sort/columns/URL fidelity and mocked browser coverage on root-approved4316; no API/PG/Docker/performance access.
+
+### Critical path
+
+1. Resolve frozenP0 hostedG11 under the no-extra-retry rule.
+2. Complete actual local lifecycle/TLS/preservation/upgrade/rollback and signed release ordering.
+3. Prove current strict behavior and independently establish original partial-date compatibility.
+4. Resolve public-config criterion and perform eligible reversible cutover.
+5. Protected exact-head merge, official installer verification and fresh Sol finalizer.
+
+### Misalignment / drift
+
+The older pasted17/22 and48-request figures remain historical; actual currentG11 is19/22 and off/shadow130expectations match before a retained renderer failure. #583 is soleP0;#589 solelater train;#581 superseded;#587 diagnostic. No later feature is added to P0. Some remaining delay is caused by incomplete runtime and generation tooling, not newly invented product scope. Full-batch findings are collected before structural remedies; unchanged source does not receive comfort reviews.
+
+### Concerns
+
+Earlier anonymous-volume removal remains irreversible/unproven. New anonymous volume3cdc71ba8cc620aa1bf92ea39b479c322bdacc3d409a77d068d492577d6ebcc0 is preserved, not deleted; empty events cannot bind it. Root proves no original inventory identity disappeared in run2, while the extra volume remains. DEV health does not resolve historical ownership. Future private runner must prevent/capture all mount-created resources before any removal.
+
+Snapshot fidelity does not prove safe future generation. Column/type/null/default and relation/index changes must fail closed unless exact semantic equivalence is established. Current b51generation SQL is unapplied and not a no-op. Migrate exit1 cannot be diagnosed from lost logs or treated as a confirmed product defect yet.
+
+### Decisions needed from Thomas
+
+Previously requested public-config criterion, one unchanged-source hosted confirmation, signed installer release ordering and P1 current-team lead behavior remain pending. No duplicate asks, implied expiry approval, release-order waiver or retired review tooling.
+
+### Next merge candidates
+
+#583 only after its actual gates. Mature later slices/dialog, complete semantic metadata remedy and full filter-builder batch then compose through#589 on acceptedP0. No blocked head or failed runtime is merge-ready.
+
+---
+
+## Status First
+
 Snapshot: 2026-10-07 01:02:47 UTC. Live GitHub confirms frozen P0#583 at53269374 and the sole post-P0 train#589 at publishedb977e53b. Accepted main3096cb04 and reviewed DEV08842235 remain unchanged; no protected merge, refresh, strict activation or phase completion.
 
 | Phase | Implementation | Integration | Acceptance |
