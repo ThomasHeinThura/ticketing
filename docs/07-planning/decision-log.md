@@ -1,3 +1,15 @@
+### 2026-10-07 · Actual all-role sign-in and P1 migration verification; preserve authority limits
+
+**Operational evidence, no waiver.** Root issues a genuinely owned PG18 database-only window to the two named implementation lanes, with independent full container/image/named-parent-mount binding. Seeder uses only `taskdesk_role_seed_test`; P1 only `taskdesk_p1_composite_test`; no Testcontainers, persistent DEV or performance overlap. Source amendments remain within the same bounded testing scope. Both release connections; root proves zero clients, exact ownership/no other references and actual resource/port absence after cleanup. Original binding/window and cleanup receipt are retained privately; no password/URL is included in GitHub or this record.
+
+Final all-eight testing seeder `cb081b8a005995d58ce9cbc437bbf5efe359912c` passes actual native14 tests, including application sign-in. Correct default-hash mismatch by using existing configured bcrypt, preserve actual sign-in throttling by honest pacing, and correct only native temporary-path/expected-message harness defects. Prior failures remain. OrdinaryA/B exact-head clearances precede fresh full Sol; no live account creation or phase acceptance is implied.
+
+P1 complete canonical `636a9788` applies the full chain through provisional0118 and passes actual28 view/export tests. Its final catalog is retained; raw renderer inequality and unrun per-prefix comparisons stay explicit, never silently normalized into a PASS. No0119 allocation or metadata-prefix mutation is authorized. Full composition receives the required panel.
+
+Private P0 v9 full Sol blocks one collected proxy authority/cleanup class despite52 positive-smoke tests. V10 must structurally bound incoming and upstream I/O, recheck before forwarding and revoke owned listeners/sockets/threads on every failure. Unit grant is closed; no actual runtime authority or GateC acceptance follows. No comfort Luna rounds are added for the same structural class.
+
+**Recorded:** root at actual 2026-10-07T04:36:34.098560+00:00; P0/main/persistent DEV unchanged.
+
 ### 2026-10-07 · Freeze semantic predecessor; fulfil all eight testing roles
 
 **Correction and operational application, not a waiver.** Root verifies canonical `6148976e68fa5945218beb9d58d3bf866ff8ab70` and its independent full Sol/freshness delta clearance. The generator must supply genuinely fresh SQL/snapshot/journal evidence; no copied successor or no-change fallback is accepted. Root freezes a separately hashed 227-file allocation manifest for P1 composition. SQL0000–0117 remain fixed, sole provisional0118 owns saved-view/user-preference intent, and no0119 is allocated. No database window or new actual prefix replay is implied.

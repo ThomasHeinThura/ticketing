@@ -1,5 +1,57 @@
 ## Status First
 
+Snapshot: 2026-10-07T04:36:34.098560+00:00. P0 #583 stays frozen at `5326937460b195d8e69584c0cb99305348330a95`; accepted main remains `3096cb04`. No protected merge, persistent DEV refresh, strict activation, signed publication or phase completion is claimed.
+
+| Phase | Implementation | Integration | Acceptance |
+| --- | --- | --- | --- |
+| P0 | Frozen product; full private v9 implemented and reviewed, v10 proxy invariant remedy underway | Sole closure #583 | G11 19/22; actual lifecycle/official installer/TLS, strict compatibility/cutover/finalizer open |
+| P1 | Complete canonical batch `636a9788` pushed | Composed on frozen `6148976e`, sole provisional0118 | Actual view/export28 pass and chain0000–0118 applied; full panel, prefix catalog and image/live acceptance open |
+| P2 | Selected continuity/withdrawal/browser placement implemented and reviewed | #586 into #589 | Composed/live API/image/phase acceptance open |
+| P3 | Selected mapping/login/query relocation implemented and reviewed | #595 then #596 into #589 | Real provider/Health/phase acceptance open |
+| P4 | Selected outbox reviewed; all-eight testing seeder `cb081b8a` implemented | #594 and test infrastructure leaf into #589 | Actual seeder/login14 pass; ordinaryA/B clear, full Sol pending; no live users seeded |
+
+### What changed
+
+The full seeder candidate `cb081b8a005995d58ce9cbc437bbf5efe359912c` is clean and pushed. Actual native integration passes one file/14 tests in27.21s: genuine role fixtures, resolver authority, additive/idempotent preservation and real Better Auth password sign-in. Native verification found defects that earlier offline tests missed: macOS temporary-path aliasing, a stale collision expectation, default Better Auth hashes incompatible with the application's configured bcrypt, and unpaced requests exceeding the actual three-per-ten-second sign-in limit. The complete fix uses real-path private test directories, exact source-bound collision assertions, application bcrypt10/compare and honest request pacing; auth controls are unchanged. Original failed receipts remain. Two independent Luna exact-head delta reviews are CLEAR, each independently runs nine focused tests. Fresh full Sol is underway. Credential files are generated privately outside Git and removed by native test cleanup; no usable credential Markdown or password is committed or printed.
+
+P1 `636a9788b691cc0aa8db03726fb7baface0436c3` is now independently remote-verified. Actual isolated PostgreSQL runs view/export integration: two files/28 pass. SQL0000–0118 applies, with119 migration entries and100 public tables. The feature live catalog is retained; raw object equality differs on documented renderer forms, so no unperformed semantic-prefix comparison is claimed. The repository per-prefix harness creates a second database beyond this grant and remains open. Complete bulk ordinary review starts from canonical614, not a four-line delta.
+
+Root creates one uniquely named, labeled PG18 resource with a single named mount at `/var/lib/postgresql`, separate test databases and an actual20-minute DB-only window. Both lanes release their pools. Root independently verifies full container/image/mount/labels, zero client connections and no other volume references, removes only the bound resource, and proves container/volume/55442 absence. Cleanup PASS is retained privately. No anonymous inferred deletion or persistent DEV access occurs.
+
+Private P0 v9 frozen manifest `db558d2c4233f065f5989823b16d01a92f373ee18f83518431f657100ee66c55` passes52 author tests and13 file hashes. Fresh full Sol independently passes51 no-bind tests but blocks the proxy's expiry and failure-shutdown invariant. V10 collects bounded body/upstream I/O, forwarding rechecks and guaranteed owned listener/socket/thread revocation into one structural fix. No actual runtime grant is issued. The prior unit transport window is closed with independent socket absence; its original grant and receipt remain unchanged.
+
+### What is being worked on now
+
+P0 v10 structural proxy repair has priority. Fresh Sol reviews the complete role seeder after two ordinary clearances. A full P1 ordinary panel begins on the composed source and actual native evidence. No database, TLS unit or Docker runtime window remains open.
+
+### Critical path
+
+1. Resolve frozen P0 hosted G11 under the existing no-extra-retry rule.
+2. Complete reviewed actual lifecycle and official installer/TLS proof.
+3. Establish exact-source strict behavior and original partial-date compatibility.
+4. Resolve the public-config criterion and perform eligible reversible cutover.
+5. Protected exact-head merge, official acceptance and fresh Sol finalizer.
+
+### Misalignment / drift
+
+#583 is sole P0, #589 sole later train. Full actual tests precede final seeder review; hash-only assertions do not prove sign-in. The all-eight test-only producer is already supported and does not require a new role ADR. Later implementation and native verification proceed while P0's blocked private runner is repaired.
+
+### Concerns
+
+V9 cannot receive actual runtime authority until the whole proxy invariant clears. P1's actual per-prefix catalog proof and image acceptance remain open. Earlier failed v6 logs/unknown cause and anonymous-volume incidents are preserved; the new verified named cleanup does not resolve them.
+
+### Decisions needed from Thomas
+
+Only existing public-config criterion, unchanged-source hosted confirmation, signed-installer release ordering and P1 current-team lead questions remain pending; no duplicate asks.
+
+### Next merge candidates
+
+#583 after actual required gates clear. Later complete slices and test infrastructure compose through #589 after eligible P0 integration and their exact-head reviews/CI. No current phase or merge-ready claim.
+
+---
+
+## Status First
+
 Snapshot: 2026-10-07T04:03:26.768252+00:00. Fresh live GitHub readback keeps accepted main at `3096cb044bdf6ae98488bfc385f532fa6386343a` and sole P0 closure #583 at `5326937460b195d8e69584c0cb99305348330a95`. No merge, actual lifecycle retry, DEV refresh, strict activation, signed publication or phase closure occurred.
 
 | Phase | Implementation | Integration | Acceptance |
