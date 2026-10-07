@@ -1,5 +1,55 @@
 ## Status First
 
+Snapshot: 2026-10-07T04:03:26.768252+00:00. Fresh live GitHub readback keeps accepted main at `3096cb044bdf6ae98488bfc385f532fa6386343a` and sole P0 closure #583 at `5326937460b195d8e69584c0cb99305348330a95`. No merge, actual lifecycle retry, DEV refresh, strict activation, signed publication or phase closure occurred.
+
+| Phase | Implementation | Integration | Acceptance |
+| --- | --- | --- | --- |
+| P0 | Frozen product; private v9 full executable smoke being completed | Sole closure #583 | Hosted G11 19/22; actual lifecycle, official installer/TLS, strict compatibility/cutover and Sol finalizer open |
+| P1 | Saved views/CSV/filter builder implemented; composite 0118 regenerated | Full canonical integration composing frozen `6148976e` | Full composed review, actual new-prefix/catalog and live API/image acceptance open |
+| P2 | Selected continuity/withdrawal/browser placement implemented and reviewed | #586 into #589 | Composed/live API/image and phase acceptance open |
+| P3 | Selected OIDC mapping/login/query relocation implemented and reviewed | #595 then #596 into #589 | Real provider, Health and phase acceptance open |
+| P4 | Selected outbox slice reviewed; all-eight-role testing seeder implemented | #594 and test infrastructure leaf into #589 | Seeder bulk review, actual DB/login, provider/image and phase acceptance open |
+
+### What changed
+
+Central metadata and configured-schema safeguard is frozen clean at `6148976e68fa5945218beb9d58d3bf866ff8ab70`. The complete semantic comparator is exercised by realistic negative inventories; fresh generator evidence must include a new successor SQL/snapshot, new ID, correct predecessor and exactly one preserved-prefix journal append. Five focused tests and four-project type checks pass. Independent full Sol plus exact changed-head freshness delta is CLEAR. SQL0000–0117 and accepted metadata remain unchanged. The retained actual 30-prefix replay was not rerun after offline fixes.
+
+P1 composes that canonical predecessor before final review. Root separately freezes its 227-file allocation manifest at `536fc3cc1e772c7dff60d608ecce04171040e8544c0e6dd2d8902905b5894345`. Sole provisional 0118 contains the 12 saved-view/user-preference feature statements; the complete generated 57-statement output is retained, and only the exact reviewed 20 FK-name pairs and five same-default statements are removed. No0119 is allocated. Seven mocked browser journeys pass and owned4316 is stopped; commit formatting and the complete packet remain in progress.
+
+The all-eight-role testing seeder is committed and pushed at `28c6c64d2979148de7af961ffc35b817f3393056`. It includes manager/lead through the existing same-workspace genuine legacy test fixture mechanism. This corrects the earlier unsupported-role claim: absence of a production writer was not a ban on the authorized test-only producer. No production role defaults or authentication flags change. Credentials are generated at runtime and stored only in private external files; unrelated hard links are rejected, and publication is atomic/create-only with crash-window recovery. API unit tests pass102files/718tests, with type/style checks. Real database login and live seeding have not run. Fresh bulk review is underway.
+
+### What is being worked on now
+
+Private P0 v9 exercises actual lifecycle orchestration, file persistence and cleanup with mocked Docker/API transport and genuinely authorized temporary unit TLS. Root's restricted unit window expires at04:14:06UTC; it grants no actual product/Docker runtime. Full smoke exposed and corrected an actual macOS temporary-path canonicalization mismatch. P1 finishes its complete composite candidate; the seeder receives full-batch independent review.
+
+### Critical path
+
+1. Resolve frozen hosted G11 under the existing no-extra-retry rule.
+2. Complete reviewed actual local lifecycle and official installer/TLS proof.
+3. Establish exact-source strict behavior and original partial-date compatibility.
+4. Resolve the public-config criterion and perform eligible reversible cutover.
+5. Protected exact-head merge, official acceptance and fresh Sol finalizer.
+
+### Misalignment / drift
+
+#583 remains sole P0; #589 is sole later train and is not a P0 prerequisite. No tiny source/review cycle replaces full implementation. Manager/lead role-foundation approval is not required for the existing test fixture producer. Mocked browser/offline tests are not actual DB, deployment or phase acceptance.
+
+### Concerns
+
+Failed v6 runs, missing migrate logs and preserved unbound volume `3cdc71ba8cc620aa1bf92ea39b479c322bdacc3d409a77d068d492577d6ebcc0` remain unchanged. The earlier anonymous-volume deletion remains irreversible and unproven. No database/resource window is open. No usable credentials or credential Markdown belongs in GitHub.
+
+### Decisions needed from Thomas
+
+Only the existing public-config criterion, unchanged-source hosted confirmation, signed-installer release ordering and P1 current-team lead behavior questions remain pending. No duplicate asks or elapsed-time approvals.
+
+### Next merge candidates
+
+#583 after its actual required gates clear. Fully composed and reviewed later slices proceed through #589 after eligible P0 integration; no current candidate is declared merge-ready.
+
+---
+
+## Status First
+
 Snapshot: 2026-10-07T03:29:44.647294+00:00. P0 #583 stays frozen at `5326937460b195d8e69584c0cb99305348330a95`; accepted main remains `3096cb04`. No runtime retry, deployment refresh, strict activation, signed release or phase closure is claimed.
 
 | Phase | Implementation | Integration | Acceptance |
