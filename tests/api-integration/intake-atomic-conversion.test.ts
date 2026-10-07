@@ -1,7 +1,9 @@
 /** IQ-14/16a regression: acceptance is a single durable conversion and two acceptors
  * racing the same submitted version can create exactly one work item. */
 import { randomUUID } from "node:crypto";
+import type { FormSchema, FormValue } from "@taskdesk/domain";
 import { and, eq } from "drizzle-orm";
+import { Client } from "pg";
 import { beforeEach, describe, expect, it } from "vitest";
 import db, { schema } from "../../apps/api/src/database";
 import {
@@ -52,6 +54,129 @@ async function makeDefaultState(workspaceId: string, projectId: string) {
       .returning(),
     "project state",
   );
+}
+
+async function createManualAcceptanceFixture(
+  formSchema: FormSchema,
+  formData: Record<string, FormValue>,
+) {
+  const member = await createWorkspaceMember({ role: "admin" });
+  const staff = requireRow(
+    await db
+      .select()
+      .from(schema.personTable)
+      .where(
+        and(
+          eq(schema.personTable.userId, member.user.id),
+          eq(schema.personTable.side, "staff"),
+        ),
+      ),
+    "staff actor",
+  );
+  const organisation = requireRow(
+    await db
+      .insert(schema.organisationTable)
+      .values({ key: `customer-${randomUUID()}`, name: "Customer" })
+      .returning(),
+    "organisation",
+  );
+  const requester = requireRow(
+    await db
+      .insert(schema.personTable)
+      .values({
+        organisationId: organisation.id,
+        side: "customer",
+        displayName: "Requester",
+      })
+      .returning(),
+    "requester",
+  );
+  const { project } = await createProjectFixture({
+    workspaceId: member.workspace.id,
+  });
+  await db
+    .update(schema.projectTable)
+    .set({ organisationId: organisation.id })
+    .where(eq(schema.projectTable.id, project.id));
+  const type = await makeWorkItemType(member.workspace.id);
+  await makeDefaultState(member.workspace.id, project.id);
+  const requestType = requireRow(
+    await db
+      .insert(schema.requestTypeTable)
+      .values({
+        workspaceId: member.workspace.id,
+        key: `req-${randomUUID()}`,
+        name: "Help",
+        group: "General",
+        workItemTypeId: type.id,
+        defaultProjectId: project.id,
+        formSchema,
+      })
+      .returning(),
+    "request type",
+  );
+  const version = requireRow(
+    await db
+      .insert(schema.requestTypeVersionTable)
+      .values({
+        workspaceId: member.workspace.id,
+        requestTypeId: requestType.id,
+        number: 1,
+        formSchema,
+        workItemTypeId: type.id,
+        defaultProjectId: project.id,
+      })
+      .returning(),
+    "request type version",
+  );
+  const submission = requireRow(
+    await db
+      .insert(schema.submissionTable)
+      .values({
+        organisationId: organisation.id,
+        requesterId: requester.id,
+        requestTypeId: requestType.id,
+        requestTypeVersionId: version.id,
+        formData,
+        state: "new",
+      })
+      .returning(),
+    "submission",
+  );
+  return {
+    staff,
+    workspace: member.workspace,
+    project,
+    type,
+    submission,
+  };
+}
+
+async function waitForBlockedProjectShare(
+  observer: Client,
+  blockerPid: number,
+): Promise<boolean> {
+  const deadline = Date.now() + 5_000;
+  while (Date.now() < deadline) {
+    await observer.query("SELECT pg_stat_clear_snapshot()");
+    const result = await observer.query<{ pid: number }>(
+      `
+        SELECT pid
+        FROM pg_stat_activity
+        WHERE datname = current_database()
+          AND pid <> pg_backend_pid()
+          AND wait_event_type = 'Lock'
+          AND $1 = ANY(pg_blocking_pids(pid))
+          AND query ILIKE '%from "project"%'
+          AND query ILIKE '%for share%'
+        LIMIT 1
+      `,
+      [blockerPid],
+    );
+    if (result.rows[0]?.pid !== undefined) return true;
+    await new Promise((resolve) => setTimeout(resolve, 25));
+  }
+  return false;
 }
 
 describe("intake atomic conversion", () => {
@@ -121,6 +246,188 @@ describe("intake atomic conversion", () => {
       .where(eq(schema.requestTypeVersionTable.requestTypeId, requestType.id));
     expect(unchanged?.published).toBe(false);
     expect(versions).toHaveLength(0);
+  });
+
+  it("does not convert forged answers for hidden mapped fields", async () => {
+    const formSchema: FormSchema = {
+      fields: [
+        {
+          key: "summary",
+          type: "text",
+          label: "Summary",
+          required: true,
+          mapsTo: { field: "title" },
+        },
+        { key: "gate", type: "text", label: "Gate" },
+        {
+          key: "impact",
+          type: "select",
+          label: "Impact",
+          options: ["Everyone"],
+          mapsTo: { field: "priority", map: { Everyone: "urgent" } },
+          showIf: { field_key: "gate", op: "eq", value: "on" },
+        },
+        {
+          key: "internal_note",
+          type: "text",
+          label: "Internal note",
+          mapsTo: { field: "description" },
+          showIf: { field_key: "gate", op: "eq", value: "on" },
+        },
+      ],
+    };
+    const fixture = await createManualAcceptanceFixture(formSchema, {
+      summary: "Hidden mapping request",
+      gate: "off",
+      impact: "Everyone",
+      internal_note: "forged hidden description",
+    });
+
+    const converted = await acceptSubmission(
+      `SUB-${fixture.submission.number}`,
+      fixture.workspace.id,
+      fixture.staff.id,
+      fixture.project.id,
+      fixture.type.id,
+    );
+    const [item] = await db
+      .select()
+      .from(schema.workItemTable)
+      .where(eq(schema.workItemTable.id, converted.workItem.id));
+
+    expect(item?.priority).toBeNull();
+    expect(JSON.stringify(item?.description)).not.toContain(
+      "forged hidden description",
+    );
+
+    const visibleSubmission = requireRow(
+      await db
+        .insert(schema.submissionTable)
+        .values({
+          organisationId: fixture.submission.organisationId,
+          requesterId: fixture.submission.requesterId,
+          requestTypeId: fixture.submission.requestTypeId,
+          requestTypeVersionId: fixture.submission.requestTypeVersionId,
+          formData: {
+            summary: "Visible mapping request",
+            gate: "on",
+            impact: "Everyone",
+            internal_note: "visible description",
+          },
+          state: "new",
+        })
+        .returning(),
+      "visible mapping submission",
+    );
+    const visibleConversion = await acceptSubmission(
+      `SUB-${visibleSubmission.number}`,
+      fixture.workspace.id,
+      fixture.staff.id,
+      fixture.project.id,
+      fixture.type.id,
+    );
+    const [visibleItem] = await db
+      .select()
+      .from(schema.workItemTable)
+      .where(eq(schema.workItemTable.id, visibleConversion.workItem.id));
+
+    expect(visibleItem?.priority).toBe("urgent");
+    expect(JSON.stringify(visibleItem?.description)).toContain(
+      "visible description",
+    );
+  });
+
+  it("serializes manual acceptance with project archival", async () => {
+    const formSchema: FormSchema = {
+      fields: [
+        {
+          key: "summary",
+          type: "text",
+          label: "Summary",
+          required: true,
+          mapsTo: { field: "title" },
+        },
+      ],
+    };
+    const fixture = await createManualAcceptanceFixture(formSchema, {
+      summary: "Archive race",
+    });
+    const blocker = new Client({
+      connectionString: process.env.TASKDESK_DATABASE_URL,
+    });
+    const observer = new Client({
+      connectionString: process.env.TASKDESK_DATABASE_URL,
+    });
+    let transactionOpen = false;
+    let acceptance: Promise<
+      | {
+          status: "fulfilled";
+          value: Awaited<ReturnType<typeof acceptSubmission>>;
+        }
+      | { status: "rejected"; error: unknown }
+    > | null = null;
+
+    await blocker.connect();
+    await observer.connect();
+    try {
+      await blocker.query("BEGIN");
+      transactionOpen = true;
+      await blocker.query('SELECT id FROM "project" WHERE id = $1 FOR UPDATE', [
+        fixture.project.id,
+      ]);
+      const { rows } = await blocker.query<{ pid: number }>(
+        "SELECT pg_backend_pid() AS pid",
+      );
+      const blockerPid = rows[0]?.pid;
+      if (blockerPid === undefined)
+        throw new Error("Could not read project-lock backend PID");
+
+      acceptance = acceptSubmission(
+        `SUB-${fixture.submission.number}`,
+        fixture.workspace.id,
+        fixture.staff.id,
+        fixture.project.id,
+        fixture.type.id,
+      ).then(
+        (value) => ({ status: "fulfilled" as const, value }),
+        (error: unknown) => ({ status: "rejected" as const, error }),
+      );
+
+      const waitsForShare = await waitForBlockedProjectShare(
+        observer,
+        blockerPid,
+      );
+      await blocker.query(
+        'UPDATE "project" SET archived_at = now() WHERE id = $1',
+        [fixture.project.id],
+      );
+      await blocker.query("COMMIT");
+      transactionOpen = false;
+
+      expect(waitsForShare).toBe(true);
+      const outcome = await acceptance;
+      expect(outcome.status).toBe("rejected");
+      if (outcome.status !== "rejected")
+        throw new Error(
+          "Acceptance unexpectedly succeeded after project archival",
+        );
+      expect(outcome.error).toMatchObject({ status: 422 });
+      const [submission] = await db
+        .select()
+        .from(schema.submissionTable)
+        .where(eq(schema.submissionTable.id, fixture.submission.id));
+      const createdItems = await db
+        .select({ id: schema.workItemTable.id })
+        .from(schema.workItemTable)
+        .where(eq(schema.workItemTable.projectId, fixture.project.id));
+      expect(submission?.workItemId).toBeNull();
+      expect(createdItems).toHaveLength(0);
+    } finally {
+      if (transactionOpen) await blocker.query("ROLLBACK");
+      if (acceptance) await acceptance;
+      await observer.end();
+      await blocker.end();
+    }
   });
 
   it("races acceptors and atomically transfers comments, attachments, watcher, and submission SLA time", async () => {

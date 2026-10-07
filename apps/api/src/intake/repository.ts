@@ -5,6 +5,7 @@ import {
   parseSubmissionReference,
   renderUnmappedIntoDescription,
   transitionSubmission,
+  translateMapsTo,
   validateFormSchema,
   validateSubmissionData,
   visibleFields,
@@ -887,6 +888,8 @@ async function convertSubmissionInTransaction(
         isNull(schema.projectTable.archivedAt),
       ),
     )
+    // Serialize acceptance against archive and soft-delete through the insert.
+    .for("share")
     .limit(1);
   if (!project || project.organisationId !== submission.organisationId)
     throw new HTTPException(422, {
@@ -936,35 +939,24 @@ async function convertSubmissionInTransaction(
     });
   const form = version.formSchema as FormSchema;
   const data = submission.formData as Record<string, unknown>;
-  const titleField = form.fields.find(
-    (field) => field.mapsTo?.field === "title",
-  );
-  const title = titleField ? String(data[titleField.key] ?? "").trim() : "";
+  const mappedFields = translateMapsTo(form, data as Record<string, FormValue>);
+  const title =
+    typeof mappedFields.title === "string" ? mappedFields.title.trim() : "";
   if (!title || title.length > 500)
     throw new HTTPException(422, {
       message: "Submission title is missing or too long",
     });
-  const descriptionField = form.fields.find(
-    (field) => field.mapsTo?.field === "description",
-  );
   const unmapped = renderUnmappedIntoDescription(
     form,
     data as Record<string, FormValue>,
   );
   const description = [
-    descriptionField ? String(data[descriptionField.key] ?? "") : "",
+    mappedFields.description == null ? "" : String(mappedFields.description),
     unmapped,
   ]
     .filter(Boolean)
     .join("\n\n");
-  const priorityField = form.fields.find(
-    (field) => field.mapsTo?.field === "priority",
-  );
-  const rawPriority = priorityField ? data[priorityField.key] : null;
-  const mappedPriority =
-    priorityField?.mapsTo?.map && typeof rawPriority === "string"
-      ? priorityField.mapsTo.map[rawPriority]
-      : rawPriority;
+  const mappedPriority = mappedFields.priority ?? null;
   if (
     mappedPriority !== null &&
     mappedPriority !== undefined &&
