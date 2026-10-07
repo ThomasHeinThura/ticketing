@@ -67,7 +67,7 @@ export const customFieldSectionTable = pgTable(
     ),
     check(
       "custom_field_section_position_nonnegative",
-      sql`${table.position} >= 0`,
+      sql.raw('"position" >= 0'),
     ),
     index("custom_field_section_workspace_position_idx").on(
       table.workspaceId,
@@ -129,14 +129,16 @@ export const customFieldTable = pgTable(
     ),
     check(
       "custom_field_entity_type_allowed",
-      sql`${table.entityType} = 'work_item'`,
+      sql.raw("entity_type = 'work_item'::text"),
     ),
     check(
       "custom_field_format_allowed",
-      sql`${table.format} in ('text', 'long_text', 'number', 'decimal', 'currency', 'date', 'datetime', 'boolean', 'select', 'multi_select', 'user', 'multi_user', 'url', 'email')`,
+      sql.raw(
+        "format = ANY (ARRAY['text'::text, 'long_text'::text, 'number'::text, 'decimal'::text, 'currency'::text, 'date'::text, 'datetime'::text, 'boolean'::text, 'select'::text, 'multi_select'::text, 'user'::text, 'multi_user'::text, 'url'::text, 'email'::text])",
+      ),
     ),
-    check("custom_field_key_nonempty", sql`length(${table.key}) > 0`),
-    check("custom_field_position_nonnegative", sql`${table.position} >= 0`),
+    check("custom_field_key_nonempty", sql.raw("length(key) > 0")),
+    check("custom_field_position_nonnegative", sql.raw('"position" >= 0')),
     index("custom_field_workspace_active_idx").on(
       table.workspaceId,
       table.deletedAt,
@@ -176,7 +178,7 @@ export const customFieldTypeVisibilityTable = pgTable(
     }),
     check(
       "custom_field_type_visibility_required_visible",
-      sql`not ${table.required} or ${table.visible}`,
+      sql.raw("(NOT required) OR visible"),
     ),
     index("custom_field_type_visibility_type_idx").on(
       table.workItemTypeId,
@@ -233,7 +235,7 @@ export const customFieldValueTable = pgTable(
     ),
     check(
       "custom_field_value_entity_type_allowed",
-      sql`${table.entityType} = 'work_item'`,
+      sql.raw("entity_type = 'work_item'::text"),
     ),
     index("custom_field_value_project_reach_idx").on(
       table.projectId,
@@ -276,18 +278,22 @@ export const slaPauseTable = pgTable(
     }),
     check(
       "sla_pause_metric_allowed",
-      sql`${table.metric} in ('first_response', 'resolution')`,
+      sql.raw(
+        "metric = ANY (ARRAY['first_response'::text, 'resolution'::text])",
+      ),
     ),
     check(
       "sla_pause_reason_allowed",
-      sql`${table.reason} in ('waiting_customer', 'resolved', 'manual')`,
+      sql.raw(
+        "reason = ANY (ARRAY['waiting_customer'::text, 'resolved'::text, 'manual'::text])",
+      ),
     ),
     check(
       "sla_pause_ended_after_started",
-      sql`${table.endedAt} is null or ${table.endedAt} >= ${table.startedAt}`,
+      sql.raw("(ended_at IS NULL) OR (ended_at >= started_at)"),
     ),
     uniqueIndex("sla_pause_one_open_per_work_item_metric_unique")
       .on(table.workItemId, table.metric)
-      .where(sql`${table.endedAt} is null`),
+      .where(sql.raw("(ended_at IS NULL)")),
   ],
 );

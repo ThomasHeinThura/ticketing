@@ -15,6 +15,7 @@ import {
 } from "../../work-item/assert-work-item-live";
 import { magicBytesMatchDeclaredMime } from "../magic-bytes";
 import {
+  attachmentRecordColumns,
   getAttachment,
   getAttachmentMaxBytes,
   lockWorkItemForAttachmentCompletion,
@@ -177,7 +178,10 @@ export async function completeAttachment(input: CompleteAttachmentInput) {
     });
   }
 
-  let updatedRows: (typeof attachmentTable.$inferSelect)[];
+  let updatedRows: Pick<
+    typeof attachmentTable.$inferSelect,
+    keyof typeof attachmentRecordColumns
+  >[];
   try {
     updatedRows = await db.transaction(async (tx) => {
       // Issue #493: this route had NO in-transaction liveness re-check at all before
@@ -209,7 +213,7 @@ export async function completeAttachment(input: CompleteAttachmentInput) {
             eq(attachmentTable.state, "pending"),
           ),
         )
-        .returning();
+        .returning(attachmentRecordColumns);
 
       if (rows.length > 0) {
         await recordWorkItemActivity(tx, [

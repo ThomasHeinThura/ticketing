@@ -21,6 +21,189 @@ const apiDir = join(repoRoot, "apps/api");
 const migrationsFolder = join(apiDir, "drizzle");
 const drizzleKitBin = join(apiDir, "node_modules/.bin/drizzle-kit");
 
+type ColumnMetadata = {
+  type: string;
+  notNull: boolean;
+  primaryKey: boolean;
+  default?: string | number | null;
+};
+type IndexColumnMetadata = {
+  expression: string;
+  asc: boolean;
+  nulls: "first" | "last";
+  isExpression: boolean;
+  opclass?: string;
+};
+type IndexMetadata = {
+  name: string;
+  columns: IndexColumnMetadata[];
+  isUnique: boolean;
+  concurrently: boolean;
+  method: string;
+  where?: string;
+  with: Record<string, unknown>;
+};
+type KeyMetadata = { name: string; columns: string[]; [key: string]: unknown };
+type ForeignKeyMetadata = {
+  name: string;
+  tableFrom: string;
+  tableTo: string;
+  schemaTo?: string;
+  columnsFrom: string[];
+  columnsTo: string[];
+  onDelete: string;
+  onUpdate: string;
+};
+type CheckMetadata = { name: string; value: string };
+type SnapshotTable = {
+  name: string;
+  columns: Record<string, ColumnMetadata>;
+  indexes: Record<string, IndexMetadata>;
+  foreignKeys: Record<string, ForeignKeyMetadata>;
+  compositePrimaryKeys: Record<string, KeyMetadata>;
+  uniqueConstraints: Record<string, KeyMetadata>;
+  checkConstraints: Record<string, CheckMetadata>;
+};
+type MigrationSnapshot = { tables: Record<string, SnapshotTable> };
+
+function stableJson(value: unknown): string {
+  if (Array.isArray(value)) return `[${value.map(stableJson).join(",")}]`;
+  if (value && typeof value === "object") {
+    return `{${Object.entries(value)
+      .sort(([left], [right]) => left.localeCompare(right))
+      .map(([key, child]) => `${JSON.stringify(key)}:${stableJson(child)}`)
+      .join(",")}}`;
+  }
+  return JSON.stringify(value) ?? "undefined";
+}
+
+function expressionTokens(value: string): string[] {
+  const result: string[] = [];
+  const tokenPattern =
+    /(?:E)?'(?:''|[^'])*'|"(?:""|[^"])*"|::|[A-Za-z_][\w$]*|[0-9]+|<=|>=|<>|!=|@>|<@|!~~\*|~~\*|!~~|!~|~~|~|->>|->|\?&|\|\||&&|[()[\],.:=<>+*/-]/giu;
+  let offset = 0;
+  for (const match of value.matchAll(tokenPattern)) {
+    const token = match[0];
+    if (value.slice(offset, match.index).trim()) {
+      throw new Error(
+        `Unsupported SQL expression syntax near ${value.slice(Math.max(0, offset - 30), (match.index ?? offset) + 30)}`,
+      );
+    }
+    offset = (match.index ?? 0) + token.length;
+    if (token.startsWith('"'))
+      result.push(token.slice(1, -1).replaceAll('""', '"'));
+    else if (/^(?:E)?'/u.test(token)) result.push(token);
+    else result.push(token.toLowerCase());
+  }
+  if (value.slice(offset).trim()) {
+    throw new Error(
+      `Unsupported SQL expression syntax near ${value.slice(offset)}`,
+    );
+  }
+  return result;
+}
+
+type InventoryValue<K extends keyof SnapshotTable> = K extends "columns"
+  ? ColumnMetadata
+  : K extends "indexes"
+    ? IndexMetadata
+    : K extends "foreignKeys"
+      ? ForeignKeyMetadata
+      : K extends "compositePrimaryKeys" | "uniqueConstraints"
+        ? KeyMetadata
+        : K extends "checkConstraints"
+          ? CheckMetadata
+          : never;
+
+function inventoryEntries<K extends keyof SnapshotTable>(
+  snapshot: MigrationSnapshot,
+  category: K,
+): Array<[string, string, InventoryValue<K>]> {
+  return Object.entries(snapshot.tables).flatMap(([tableName, table]) =>
+    Object.entries(
+      table[category] as unknown as Record<string, SnapshotTable[K]>,
+    ).map(([name, value]) => [
+      tableName,
+      name,
+      value as unknown as InventoryValue<K>,
+    ]),
+  );
+}
+
+function sourceColumnDefault(
+  directory: string,
+  tableName: string,
+  columnName: string,
+): string {
+  let latest: string | undefined;
+  for (const fileName of readdirSync(directory)
+    .filter((name) => name.endsWith(".sql"))
+    .sort()) {
+    const source = readFileSync(join(directory, fileName), "utf8");
+    for (const statement of source.split("--> statement-breakpoint")) {
+      const isTableDefinition = new RegExp(
+        `CREATE TABLE "${tableName}"(?:\\s|\\()`,
+        "iu",
+      ).test(statement);
+      const isAddedColumn = new RegExp(
+        `ALTER TABLE "${tableName}" ADD COLUMN "${columnName}"\\s`,
+        "iu",
+      ).test(statement);
+      const isAlteredDefault = new RegExp(
+        `ALTER TABLE "${tableName}" ALTER COLUMN "${columnName}" SET DEFAULT\\b`,
+        "iu",
+      ).test(statement);
+      if (isTableDefinition || isAddedColumn) {
+        const columnOffset = statement.indexOf(`"${columnName}"`);
+        if (columnOffset < 0) continue;
+        const defaultOffset = statement.indexOf("DEFAULT", columnOffset);
+        if (defaultOffset < 0) continue;
+        const endOffset = statement.indexOf("NOT NULL", defaultOffset);
+        if (endOffset >= 0) {
+          latest = statement
+            .slice(defaultOffset + "DEFAULT".length, endOffset)
+            .trim();
+        }
+      } else if (isAlteredDefault) {
+        const defaultOffset =
+          statement.indexOf("SET DEFAULT") + "SET DEFAULT".length;
+        const endOffset = statement.indexOf(";", defaultOffset);
+        if (endOffset >= 0) {
+          latest = statement.slice(defaultOffset, endOffset).trim();
+        }
+      }
+    }
+  }
+  if (!latest)
+    throw new Error(
+      `No frozen SQL default found for ${tableName}.${columnName}`,
+    );
+  return latest;
+}
+
+function generatedColumnDefault(
+  sql: string,
+  tableName: string,
+  columnName: string,
+): string {
+  const statement = sql.match(
+    new RegExp(
+      `ALTER TABLE "${tableName}" ALTER COLUMN "${columnName}" SET DEFAULT([\\s\\S]*?);`,
+      "iu",
+    ),
+  );
+  if (!statement?.[1]) {
+    throw new Error(
+      `No generated SQL default found for ${tableName}.${columnName}`,
+    );
+  }
+  return statement[1].trim();
+}
+
+function canonicalDefault(value: string): string {
+  return expressionTokens(value).join(" ");
+}
+
 function hashesIn(directory: string): Record<string, string> {
   const hashes: Record<string, string> = {};
   const visit = (current: string) => {
@@ -96,28 +279,112 @@ it("keeps SQL-owned tables and ordered keys safe during configured generation", 
     );
     const generatedSnapshot = JSON.parse(
       readFileSync(generatedSnapshotPath, "utf8"),
-    ) as {
-      tables: Record<
-        string,
-        {
-          foreignKeys?: Record<string, unknown>;
-          uniqueConstraints?: Record<string, { columns: string[] }>;
-          compositePrimaryKeys?: Record<string, { columns: string[] }>;
-          checkConstraints?: Record<string, unknown>;
-          indexes?: Record<
-            string,
-            {
-              columns: Array<{ expression: string }>;
-              isUnique: boolean;
-              method: string;
-            }
-          >;
-        }
-      >;
-    };
+    ) as MigrationSnapshot;
     const frozenSnapshot = JSON.parse(
       readFileSync(join(migrationsFolder, "meta/0117_snapshot.json"), "utf8"),
-    ) as typeof generatedSnapshot;
+    ) as MigrationSnapshot;
+    expect(Object.keys(generatedSnapshot.tables).sort()).toEqual(
+      Object.keys(frozenSnapshot.tables).sort(),
+    );
+
+    const snapshotColumns = (snapshot: MigrationSnapshot) =>
+      Object.entries(snapshot.tables).flatMap(([tableName, table]) =>
+        Object.entries(table.columns).map(
+          ([columnName, column]) => [tableName, columnName, column] as const,
+        ),
+      );
+    const frozenColumns = snapshotColumns(frozenSnapshot);
+    const generatedColumns = snapshotColumns(generatedSnapshot);
+    const generatedColumnsByKey = new Map(
+      generatedColumns.map(([table, column, definition]) => [
+        `${table}.${column}`,
+        definition,
+      ]),
+    );
+    expect(
+      generatedColumns.map(([table, column]) => `${table}.${column}`).sort(),
+    ).toEqual(
+      frozenColumns.map(([table, column]) => `${table}.${column}`).sort(),
+    );
+    const expectedDefaultRenderings = new Set([
+      "public.identity_connection.domain_bindings",
+      "public.instance_setting.attachment_allowed_extensions",
+      "public.organisation_quota.max_storage_bytes",
+      "public.scim_connection.allowed_resources",
+      "public.scim_connection.match_attributes",
+    ]);
+    const defaultDifferences: string[] = [];
+    for (const [tableName, columnName, frozenColumn] of frozenColumns) {
+      const key = `${tableName}.${columnName}`;
+      const proposed = generatedColumnsByKey.get(key);
+      expect(proposed, `${key} must remain in configured schema`).toBeDefined();
+      expect(proposed?.type, `${key} PostgreSQL type`).toBe(frozenColumn.type);
+      expect(proposed?.notNull, `${key} nullability`).toBe(
+        frozenColumn.notNull,
+      );
+      expect(proposed?.primaryKey, `${key} primary-key membership`).toBe(
+        frozenColumn.primaryKey,
+      );
+      if (stableJson(proposed?.default) !== stableJson(frozenColumn.default)) {
+        defaultDifferences.push(key);
+      }
+    }
+    expect(new Set(defaultDifferences)).toEqual(expectedDefaultRenderings);
+
+    const compareForeignKeys = (snapshot: MigrationSnapshot) =>
+      inventoryEntries(snapshot, "foreignKeys")
+        .map(([tableName, name, foreignKey]) => {
+          const { name: _metadataName, ...foreignKeyFields } = foreignKey;
+          return stableJson({
+            tableName,
+            ...foreignKeyFields,
+            name: name.slice(0, 63),
+            schemaTo: foreignKey.schemaTo ?? "public",
+          });
+        })
+        .sort();
+    expect(compareForeignKeys(generatedSnapshot)).toEqual(
+      compareForeignKeys(frozenSnapshot),
+    );
+
+    for (const category of [
+      "uniqueConstraints",
+      "compositePrimaryKeys",
+    ] as const) {
+      const constraints = (snapshot: MigrationSnapshot) =>
+        inventoryEntries(snapshot, category)
+          .map(([tableName, name, constraint]) => {
+            const { name: _metadataName, ...constraintFields } = constraint;
+            return stableJson({ tableName, name, ...constraintFields });
+          })
+          .sort();
+      expect(
+        constraints(generatedSnapshot),
+        `${category} complete inventory`,
+      ).toEqual(constraints(frozenSnapshot));
+    }
+
+    const canonicalIndexes = (snapshot: MigrationSnapshot) =>
+      inventoryEntries(snapshot, "indexes")
+        .map(([tableName, name, index]) => {
+          const { name: _metadataName, ...indexFields } = index;
+          return stableJson({ tableName, name, ...indexFields });
+        })
+        .sort();
+    expect(canonicalIndexes(generatedSnapshot)).toEqual(
+      canonicalIndexes(frozenSnapshot),
+    );
+
+    const canonicalChecks = (snapshot: MigrationSnapshot) =>
+      inventoryEntries(snapshot, "checkConstraints")
+        .map(([tableName, name, check]) =>
+          stableJson({ tableName, name, value: check.value }),
+        )
+        .sort();
+    expect(
+      canonicalChecks(generatedSnapshot),
+      "all configured check expressions must preserve applied catalog semantics",
+    ).toEqual(canonicalChecks(frozenSnapshot));
     expect(
       generatedSnapshot.tables["public.custom_field_section"],
     ).toBeDefined();
@@ -160,6 +427,31 @@ it("keeps SQL-owned tables and ordered keys safe during configured generation", 
       );
       expect(generatedSql).not.toMatch(/\bDROP\s+TABLE\b/iu);
       expect(generatedSql).not.toMatch(/\bCREATE\s+TABLE\b/iu);
+      expect(generatedSql).not.toMatch(/\bDROP\s+COLUMN\b/iu);
+      expect(generatedSql).not.toMatch(/\bALTER\s+COLUMN\b[^;]*\bTYPE\b/iu);
+      expect(generatedSql).not.toMatch(
+        /\bALTER\s+COLUMN\b[^;]*\b(?:SET|DROP)\s+NOT\s+NULL\b/iu,
+      );
+      expect(generatedSql).not.toMatch(
+        /\bALTER\s+COLUMN\b[^;]*\bDROP\s+DEFAULT\b/iu,
+      );
+      for (const key of expectedDefaultRenderings) {
+        const [, tableName, columnName] =
+          key.match(/^public\.([^.]+)\.([^.]+)$/u) ?? [];
+        if (!tableName || !columnName) {
+          throw new Error(`Invalid default key ${key}`);
+        }
+        expect(
+          canonicalDefault(
+            generatedColumnDefault(generatedSql, tableName, columnName),
+          ),
+          `${key} configured SQL default must match its applied migration default`,
+        ).toBe(
+          canonicalDefault(
+            sourceColumnDefault(migrationsFolder, tableName, columnName),
+          ),
+        );
+      }
 
       const constraints = (snapshot: typeof frozenSnapshot) =>
         Object.values(snapshot.tables).flatMap((table) => [
@@ -176,24 +468,45 @@ it("keeps SQL-owned tables and ordered keys safe during configured generation", 
         ),
       ).toEqual([]);
 
-      const frozenConstraints = new Set(
-        Object.values(frozenSnapshot.tables).flatMap((table) => [
-          ...Object.keys(table.foreignKeys ?? {}),
-          ...Object.keys(table.uniqueConstraints ?? {}),
-          ...Object.keys(table.compositePrimaryKeys ?? {}),
-          ...Object.keys(table.checkConstraints ?? {}),
-        ]),
-      );
       const physicalConstraintName = (name: string) => name.slice(0, 63);
       const addedConstraints = [
         ...generatedSql.matchAll(/ADD CONSTRAINT "([^"]+)"/giu),
       ].flatMap((match) => (match[1] ? [match[1]] : []));
-      const unexpectedConstraintAdds = addedConstraints.filter(
-        (name) => !frozenConstraints.has(physicalConstraintName(name)),
+      const droppedPhysicalNames = droppedConstraints
+        .map(physicalConstraintName)
+        .sort();
+      expect(addedConstraints.map(physicalConstraintName).sort()).toEqual(
+        droppedPhysicalNames,
       );
-      expect(unexpectedConstraintAdds).toEqual([
-        "apikey_reference_id_user_id_fk",
+      const frozenPhysicalConstraints = new Set([
+        ...inventoryEntries(frozenSnapshot, "foreignKeys").map(([, name]) =>
+          physicalConstraintName(name),
+        ),
+        ...inventoryEntries(frozenSnapshot, "checkConstraints").map(
+          ([, name]) => physicalConstraintName(name),
+        ),
       ]);
+      expect(
+        droppedPhysicalNames.every((name) =>
+          frozenPhysicalConstraints.has(name),
+        ),
+      ).toBe(true);
+      const expectedPhysicalNameTruncations = addedConstraints
+        .filter((name) => name.length > 63)
+        .map(physicalConstraintName)
+        .sort();
+      expect(droppedPhysicalNames).toEqual(expectedPhysicalNameTruncations);
+      const frozenCheckNames = inventoryEntries(
+        frozenSnapshot,
+        "checkConstraints",
+      ).map(([, name]) => physicalConstraintName(name));
+      const generatedCheckConstraintRewrites = droppedPhysicalNames.filter(
+        (name) => frozenCheckNames.includes(name),
+      ).length;
+      expect(
+        generatedCheckConstraintRewrites,
+        "configured check expressions must not be rebuilt during generation",
+      ).toBe(0);
       const addedPhysicalNames = new Set(
         addedConstraints.map(physicalConstraintName),
       );
@@ -207,9 +520,34 @@ it("keeps SQL-owned tables and ordered keys safe during configured generation", 
           physicalNameTruncationReplacements: addedConstraints.filter(
             (name) => name.length > 63,
           ).length,
-          unmatchedConstraintAdds: unexpectedConstraintAdds,
+          generatedCheckConstraintRewrites,
         })}\n`,
       );
+
+      const generatedDefaults = [
+        ...generatedSql.matchAll(
+          /ALTER TABLE "([^"]+)" ALTER COLUMN "([^"]+)" SET DEFAULT/giu,
+        ),
+      ]
+        .map((match) => `public.${match[1]}.${match[2]}`)
+        .sort();
+      expect(generatedDefaults).toEqual([...expectedDefaultRenderings].sort());
+
+      const droppedIndexNames = [
+        ...generatedSql.matchAll(/DROP INDEX "([^"]+)"/giu),
+      ]
+        .flatMap((match) => (match[1] ? [match[1]] : []))
+        .sort();
+      const createdIndexNames = [
+        ...generatedSql.matchAll(/CREATE (?:UNIQUE )?INDEX "([^"]+)"/giu),
+      ]
+        .flatMap((match) => (match[1] ? [match[1]] : []))
+        .sort();
+      expect(createdIndexNames).toEqual(droppedIndexNames);
+      expect(
+        droppedIndexNames,
+        "equivalent catalog indexes must not be rebuilt",
+      ).toEqual([]);
 
       const tupleResiduals: string[] = [];
       const compareConstraintTuples = (
@@ -378,4 +716,78 @@ it("fails closed when PostgreSQL and Drizzle tuple inventories differ", () => {
       "fixture foreign key",
     ),
   ).toThrow("catalog tuple key missing is not introspected");
+});
+
+it("fails closed on column, check, tuple, foreign-key, and index semantic drift", () => {
+  const columnSignature = (column: ColumnMetadata) =>
+    stableJson({
+      type: column.type,
+      notNull: column.notNull,
+      primaryKey: column.primaryKey,
+      default: column.default,
+    });
+  const column: ColumnMetadata = {
+    type: "text",
+    notNull: true,
+    primaryKey: false,
+    default: "'initial'::text",
+  };
+  expect(columnSignature(column)).not.toBe(
+    columnSignature({ ...column, type: "integer" }),
+  );
+  expect(columnSignature(column)).not.toBe(
+    columnSignature({ ...column, notNull: false }),
+  );
+  expect(columnSignature(column)).not.toBe(
+    columnSignature({ ...column, default: "'changed'::text" }),
+  );
+  expect(columnSignature(column)).not.toBe(
+    columnSignature({ ...column, primaryKey: true }),
+  );
+
+  const check = "value = 'one'::text";
+  expect(check).not.toBe("value = 'two'::text");
+  expect("\"Mixed\" = 'one'").not.toBe("mixed = 'one'");
+  expect("(a = 1 OR b = 2) AND c = 3").not.toBe("a = 1 OR b = 2 AND c = 3");
+  expect("value = 'one'::integer").not.toBe("value = 'one'::text");
+
+  const keyTuple = ["workspace_id", "id"];
+  expect(stableJson(keyTuple)).not.toBe(stableJson([...keyTuple].reverse()));
+  const index = {
+    name: "fixture_idx",
+    columns: [
+      { expression: "value", asc: true, nulls: "last", isExpression: false },
+    ],
+    isUnique: true,
+    concurrently: false,
+    method: "btree",
+    where: "enabled is true",
+    with: {},
+  };
+  const signature = (candidate: typeof index) => stableJson(candidate);
+  const indexColumn = index.columns[0];
+  if (!indexColumn) throw new Error("Index fixture must include a key column");
+  expect(signature(index)).not.toBe(
+    signature({ ...index, columns: [{ ...indexColumn, asc: false }] }),
+  );
+  expect(signature(index)).not.toBe(
+    signature({ ...index, columns: [{ ...indexColumn, nulls: "first" }] }),
+  );
+  expect(signature(index)).not.toBe(signature({ ...index, isUnique: false }));
+  expect(signature(index)).not.toBe(signature({ ...index, method: "gin" }));
+  expect(signature(index)).not.toBe(
+    signature({ ...index, where: "enabled is false" }),
+  );
+
+  const foreignKey = {
+    tableFrom: "fixture",
+    tableTo: "parent",
+    columnsFrom: ["value"],
+    columnsTo: ["id"],
+    onDelete: "cascade",
+    onUpdate: "no action",
+  };
+  expect(stableJson(foreignKey)).not.toBe(
+    stableJson({ ...foreignKey, onDelete: "restrict" }),
+  );
 });
