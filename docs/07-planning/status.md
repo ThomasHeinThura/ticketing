@@ -1,3 +1,34 @@
+## Status first — verified 2026-10-07 19:33 UTC
+
+**Accepted main:** `3096cb044bdf6ae98488bfc385f532fa6386343a`. **Persistent DEV:** revision `08842235047a3ab2714427edce80331b94558150`, image `sha256:75b153d7d9583993127e1be8c06453159e4fe7319abfcd8431f093c9ca002bcf`, container running as taskdesk. These identities were rechecked live. No protected merge, persistent deployment, release, strict cutover or finalizer occurred.
+
+| Stage | Current formal status |
+| --- | --- |
+| P0 | Open — isolated closure #602; performance and final runtime/acceptance gates remain |
+| P1 | Open — mature core/views/attachment slices in independent later train; integrated acceptance pending |
+| P2 | Open — approvals and intake/SLA implementation; two intake product contracts pending |
+| P3 | Open — identity/portal slices; real-provider and integrated acceptance pending |
+| P4 | Open — governance/outbox/query ownership slices; integrated acceptance pending |
+| P5–P7 | Open — no completion claim |
+
+**P0 closure:** #602 is now `00b347f1948cddfc1f8b9957233984cac6cf4bbe`, a bounded CI installation correction on the isolated P0 source. It normalizes the exact blocked Ubuntu HTTP mirror before the five existing Playwright dependency installs, preserving repositories/options and rejecting unsafe paths. Author reports **174 focused Node tests**, Biome, syntax and diff checks passed. Fresh ordinary and security review are pending. It changes no benchmark, product behavior, budget, fixture, browser version or retry setting. #599 remains excluded; no FINAL_P0_SHA is frozen.
+
+The original db15 hosted G11 attempt stopped during Chromium dependency installation, without measurements. Its single restarted cancelled job (`37667984584` / `112968981754`) installed successfully and completed **19/22**: LCP **2540/2500 ms**, task-state interaction **256.6/200 ms**, board **690/500 ms** failed. List passed at **494.6/500 ms**. Hosted checkout `67eb7bca4e425f25f8ace46fec506704dafb07bd` and db15 have the same complete tree `80fe26a2212e2ad375a8cb92d7c0dcb551f10c93`. The raw failed run remains retained. This supersedes the last completed c36 **20/22** result as the latest timing result, without relabelling either source. Accepted #579's historical **22/22** remains the comparison reference. No further unchanged performance retry is planned.
+
+**P1–P4 integration:** historical #589 remains `2350397b18f83ed417bf63d73970daacdbaae49c`, independent of P0; its scoped root browser batch passed **15/15**. Recreate the final train from accepted post-P0 main and centrally reconcile migrations. Bounded P4 leaf #603 moved the three remaining approval/default-role reads into repositories at `eaa516a10875cb7c2e83df0acc7d72806d8e610b`. Independent Luna ordinary and lightweight Sol security confirmation are **CLEAR**, with no authority change; both ran query/diff checks and zero tests. Author four focused tests and nine-package types passed. Note-only descendant `9ed99f24` records these verdicts. Integrated OpenAPI/visual/performance failures and runtime/image acceptance remain blocking; #603 is not merge-ready and never enters P0. #598 remains `3fecb75`; required-file draft/final-submit and explicit custom-field mapping contracts remain pending.
+
+**Private all-role testing:** canonical RBAC requires an exact persisted workspace membership for capability self-introspection. Therefore the old instance-admin-without-membership **403 was correct**; V12's expectation of 200 was a fixture error, not a product authority defect. The corrected fixture first proves 403 with no membership, then uses the seeded owner's canonical API to grant that same instance-admin a viewer membership, verifies the actual persisted row, and compares the admin's exact capability map with viewer. The original **18 matrix probes plus three auth/CSRF controls** remain unchanged; two separate fixture controls bring the total to **23 outcomes**.
+
+The rejected V15 harness could record a premature PASS before its database postcheck. Its inventory also recorded target modes for symlinks instead of actual link modes. Both failures and the original manifest remain preserved. Frozen V16 corrects terminal outcome accounting and uses actual lstat modes; root independently verified **97,758 entries**, all hashes/modes/targets, no extra/missing/escaping paths. Manifest `4366cbb229130c12c20309e535e14adcf8284b6802d92a967289006dcc697fbb` pins exact #589 source/tree. Author **six files / 44 offline tests** and focused types passed; fresh independent review and actual eight-role/API runtime remain pending. Sign-in pacing preserves production rate limits and native timeouts; no retry or status masking. Previous disposable resources and credentials were cleaned. Private seeders, passwords, tokens, credential Markdown and database URLs remain outside Git/GitHub. No persistent DEV users or all-role API pass are claimed.
+
+**Blocking gates/security:** real G11 failures; current-head full CI/reviews; frozen exact image/installer/migration/runtime/rollback; strict authorization proof and independent Oct 4/5/6 compatibility; fresh GPT-6.1 Sol phase finalizer after protected merge. #8/#592/#593 remain open. The old geometry workaround is unsafe and will not be restored without correct layout evidence. The new performance investigation produced no justified patch; source-bound task-state attribution is the next concrete diagnostic.
+
+**Critical path:** one justified performance batch; unchanged hosted 22/22 and remaining exact-head gates; exact installer/image/rollback plus reversible authorization proof; observation compatibility adjudication; protected merge and fresh phase finalizer. No new Thomas decision is needed for the role-fixture correction or CI mirror transport. Existing P2 questions stay on their original decision paths.
+
+Historical snapshots follow.
+
+---
+
 ## Status first — verified 2026-10-07 18:45 UTC
 
 **Accepted main:** `3096cb044bdf6ae98488bfc385f532fa6386343a`. **Persistent DEV:** revision `08842235047a3ab2714427edce80331b94558150`, image `sha256:75b153d7d9583993127e1be8c06453159e4fe7319abfcd8431f093c9ca002bcf`. P0–P7 remain formally open. No protected merge, persistent deployment, release, strict cutover or phase finalizer occurred.
