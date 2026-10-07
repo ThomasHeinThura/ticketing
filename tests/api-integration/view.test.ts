@@ -17,6 +17,18 @@ import {
   requireRow,
 } from "./helpers/fixtures";
 
+async function expectPlainText422(response: Response, message: string) {
+  expect(response.status).toBe(422);
+  const contentType = response.headers.get("content-type") ?? "";
+  const [mediaType, ...parameters] = contentType.split(";");
+  expect(mediaType?.trim().toLowerCase()).toBe("text/plain");
+  const charset = parameters
+    .map((parameter) => parameter.trim().split("=", 2))
+    .find(([name]) => name?.toLowerCase() === "charset")?.[1];
+  expect(charset?.replace(/^"|"$/gu, "").toLowerCase()).toBe("utf-8");
+  expect(await response.text()).toBe(message);
+}
+
 function hashApiKey(rawKey: string): string {
   return createHash("sha256")
     .update(rawKey)
@@ -1546,11 +1558,14 @@ describe("API integration: saved views", () => {
     const response = await app.request(`/api/views/${created.id}/run`, {
       method: "POST",
     });
-    expect(response.status).toBe(422);
-    await expect(response.json()).resolves.toMatchObject({
-      message: "Saved view query contains unsupported properties",
-    });
+    await expectPlainText422(
+      response,
+      "Saved view query contains unsupported properties",
+    );
     const countResponse = await app.request(`/api/views/${created.id}/count`);
-    expect(countResponse.status).toBe(422);
+    await expectPlainText422(
+      countResponse,
+      "Saved view query contains unsupported properties",
+    );
   });
 });
