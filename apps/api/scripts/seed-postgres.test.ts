@@ -947,7 +947,14 @@ describe("explicit test-user seed batch", () => {
             : await authModule.auth.handler(
                 new Request(`${origin}/api/auth/sign-in/email`, request),
               );
-        expect(response.status, credential.role).toBe(200);
+        const responseBody = await response
+          .clone()
+          .json()
+          .catch(() => null);
+        expect(
+          response.status,
+          `${credential.role}: ${JSON.stringify(responseBody)}`,
+        ).toBe(200);
         if (credential.role === "customer") {
           const customerCookie = response.headers
             .getSetCookie()
