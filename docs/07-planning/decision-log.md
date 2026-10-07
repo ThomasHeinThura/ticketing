@@ -1,3 +1,13 @@
+### 2026-10-07 · Record completed bulk corrections and normative P0 adjudication
+
+**Evidence record; no waiver or new Thomas approval.** P2's complete browser-test placement12cac9c1 clears fresh ordinary Luna and independent Sol; notes-onlyb67a865a is published on actual#586 after source equivalence. P3's complete relocationb78a0ff4 likewise retains clear reviews on notes-only08c162d7. The complete later-phase dialog8f078830 passes authored11unit/6browser tests and is frozen for the required ordinary panel then Sol. Its ordinary A no-findings verdict is retained, but A's security-path classification is wrong: apps/web/e2e/** requires the independent Sol tier. This record does not turn an ordinary verdict into a security waiver.
+
+Fresh Sol's public-config normative adjudication concludes that actual200/pre-guard proof explains missing tally but does not replace the written shadow-before-strict criterion. The existing Thomas question stays pending; an explicit bounded criterion decision or genuine comparable shadow implementation is needed before including that source in strict cutover. No early human design review, partial-date carry, strict activation, merge, signed release, or phase claim is supplied.
+
+Central actual SQL prefixes0088–0117 all execute. Snapshot repair additionally needs actual catalog ordinal pairing because locked-tool introspection emits unstable composite foreign-key order. This is generated metadata correctness within the frozen allocation, not authorization to change SQL, accepted migrations, journal numbering, schema intent, or P0 source. Preserve failed harness runs and original files; review the complete batch once frozen. A separate Luna prepares the complete local-image lifecycle driver offline; runtime and official signed publication remain subject to their existing boundaries.
+
+**Recorded:** orchestrator at actual00:11UTC under standing implementation/realignment authorization.
+
 ### 2026-10-06 · Freeze provisional train allocation for SQL-bound snapshot reconciliation
 
 **Decision:** The orchestrator applies Thomas's realignment instruction to centralize migration allocation and regenerate metadata only after the preceding train freezes. The preceding migration train is frozen at canonical #589 source `f4789aefd3c3d08595642414dda63770d8973f64` for this bounded reconciliation: existing 0088–0117 SQL, numbers, journal order and schema intent are the frozen inputs; no lane may allocate or renumber that range concurrently. Saved-view0118 remains provisional until the reconciled predecessor is composed. No0119 is allocated.

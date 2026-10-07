@@ -1,5 +1,57 @@
 ## Status First
 
+Snapshot: 2026-10-07 00:11 UTC. Accepted main remains3096cb04; reviewed DEV remains08842235 with shadow enabled and enforcement empty. No protected merge, DEV refresh, strict activation or phase completion.
+
+| Phase | Implementation | Integration | Acceptance |
+| --- | --- | --- | --- |
+| P0 | Frozen53269374; product and offline runner reviews clear | Sole closure#583; complete local lifecycle driver preparation underway | HostedG11 remains19/22; signed installer/runtime preservation and rollback, eligible strict evidence/cutover and Sol finalizer open |
+| P1 | Saved views/CSV/shared key identity plus complete CI correctionfd8d8274 | #591 targets sole post-P0 train#589;0118 provisional | Ordinary delta has no findings; whole candidate blocked by inherited migration metadata; composed acceptance open |
+| P2 | Approval continuity/withdrawal plus reviewed fixture/SDK correction and browser-test placement12cac9c1 | Actual#586 now notes-onlyb67a865a; current placement Luna/Sol CLEAR | Ordinary browser journey1/1 and visual gate pass; OpenAPI/G11/liveAPI/image and phase acceptance open |
+| P3 | Mapping and login reconciliation plus reviewed nine-read repository relocation | #595 then stacked#596 at notes-only08c162d7 | Current source reviews clear; Health warning/provider and composed acceptance open |
+| P4 | Complete outbox eligibility/fencing and canonical event binding8baeb622 | #594 at notes-only359d60bd; reviews clear | Shared fixture fixes await train composition; broad CI/image/provider and phase acceptance open |
+
+### What changed
+
+P2's full withdrawal journey moved from the restricted visual fixture into its ordinary E2E file with every interaction, response, refresh and screenshot assertion preserved. Fresh Luna and Sol clear12cac9c1; published notes-onlyb67 preserves source equivalence. The canonical#589 visual gate already passed: the failure belonged to P2's misplaced journey, not a broken train gate.
+
+The complete later-phase create-dialog mechanism is frozen at8f078830: immediate accessible shared shell, separately lazy form, loading/error/retry, live capability and project/URL checks, cancellation, focus and navigation behavior. Author units11 and browser6 pass. Ordinary A finds no defects; B is reviewing the full batch. A's statement that no security tier applies is incorrect because apps/web/e2e/** is security scope; the original report is retained and required fresh Sol review follows ordinary clearance. This source is not added to P0.
+
+Central SQL replay succeeds for every0088–0117 prefix. Ten snapshots0100–0109 are absent and remaining provisional metadata diverges from actual prefixes. Existing-tool composite foreign-key introspection also emits unstable column order; canonical catalog ordinality must bind generated pairs before the completed batch is reviewed. Accepted0000–0087, SQL and journal allocations remain unchanged; no0119.
+
+Independent Sol adjudication confirms public-config's actual200/pre-guard records explain missing tally but do not satisfy the written shadow-before-strict criterion. This is a genuine pending criterion decision or implementation obligation, not an early human design review. No old partial observation is silently accepted or backfilled.
+
+### What is being worked on now
+
+One Luna author completes all central migration metadata against actual SQL prefixes in the exclusive private PG window. A separate fresh Luna reviews the complete dialog batch; Sol follows at the required tier. Another Luna implements the full private local-image lifecycle driver offline using existing reviewed ownership/fixture contracts, with official signed installer acceptance expressly separate and runtime execution held. P0 source remains frozen.
+
+### Critical path
+
+1. Resolve actual hostedG11 failure without an unauthorized extra retry or budget/workload change.
+2. Complete exact-image preservation, upgrade, idempotency and rollback proof in the approved release order.
+3. Establish current strict evidence and independent compatibility of the original partial UTC records.
+4. Resolve public-config's evidence criterion and perform eligible reviewed reversible cutover.
+5. Protected exact-head merge, official signed installer verification and fresh Sol phase finalizer.
+
+### Misalignment / drift
+
+The pasted report's17/22 and48-request runtime figures are historical; current hostedG11 is19/22 and actual off/shadow acquisition matched130 expectations before report rendering failed. Its full offline derivative replay is clear, but the failed acquisitions remain failed. #583 is the only P0 closure vehicle;#589 the only post-P0 train;#581 superseded and#587 diagnostic only. Later implementation does not depend on P0 acceptance.
+
+### Concerns
+
+Signed release publication currently requires source already onmain. The existing five-test validator is partial; new lifecycle implementation is not yet reviewed or executed. No local22/22 replaces red hosted19/22. Metadata IDs alone cannot prove schema history. OpenAPI versioned compatibility and P3 Health/provider evidence remain explicit integration residuals.
+
+### Decisions needed from Thomas
+
+The previously requested public-config criterion, one unchanged-source hosted confirmation, official installer release order and separate P1 current-team lead rule remain unanswered. The public-config Sol adjudication verifies the question is necessary under the written criterion. No duplicate requests or elapsed-time approval.
+
+### Next merge candidates
+
+#583 after actual P0 gates. Complete P1–P4 slices and reviewed dialog/metadata batches then compose through#589 on accepted P0. No current red or missing gate is called merge-ready.
+
+---
+
+## Status First
+
 Snapshot: 2026-10-06 23:44 UTC (7 October in Yangon). Accepted main remains3096cb04; reviewed DEV remains08842235, shadow on and enforcement off. No protected merge, DEV refresh, strict activation or completed phase.
 
 | Phase | Implementation | Integration | Acceptance / operational closure |
