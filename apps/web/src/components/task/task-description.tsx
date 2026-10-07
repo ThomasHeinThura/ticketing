@@ -64,6 +64,7 @@ import {
 import { useTranslation } from "react-i18next";
 import type { Highlighter } from "shiki";
 import { useUpdateTaskDescription } from "@/hooks/mutations/task/use-update-task-description";
+import { selectTaskDescription } from "@/hooks/queries/task/select-task-description";
 import useGetTask from "@/hooks/queries/task/use-get-task";
 import { useShikiHighlighterForCode } from "@/hooks/use-shiki-highlighter-for-code";
 import { useWorkspacePermission } from "@/hooks/use-workspace-permission";
@@ -302,7 +303,11 @@ const SLASH_COMMANDS: SlashCommand[] = [
 
 function TaskDescription({ taskId, task: providedTask }: TaskDescriptionProps) {
   const { t } = useTranslation();
-  const { data: fetchedTask } = useGetTask(taskId, undefined, !providedTask);
+  const { data: fetchedTask } = useGetTask(
+    taskId,
+    selectTaskDescription,
+    !providedTask,
+  );
   const task = providedTask ?? fetchedTask;
   const description = task?.description;
   const queryClient = useQueryClient();
