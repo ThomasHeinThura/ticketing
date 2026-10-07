@@ -1,3 +1,72 @@
+### 2026-10-07 · Approve audited session-only admin withdrawal and record current evidence boundaries
+
+Thomas explicitly resolves the admin-initiated withdrawal behavior question raised against
+central #589: the operation requires a browser session and current `instance:admin` authority,
+is audited, and has an explicit elevation exemption because withdrawal grants no authority.
+This is a narrow implementation contract for the admin-withdrawal route. It adds no capability,
+role grant, membership change, or exemption for another operation. It does not waive ordinary
+review, security review, hosted checks or the exact-current-head requirement. The author must
+reflect this answer in the canonical feature/policy contract before treating the source fix as
+contract-complete.
+
+P0 PR #600 source `9bced3e3178a70b3a1984837836824e4a193c89f` has two independent Luna CLEAR
+reviews and an exact-source GPT-6 Sol CLEAR review; its current PR head is the later review-note
+commit `359353cf28784870890505e777112ede581c357d`. Browser evidence covers the legacy desktop
+and mobile case plus the modern one-file/five-test canonical case. The private exact-image
+receipt records stock-Traefik TLS boot and four JSON health checks for image
+`sha256:171d2ca2038dd26a3e41a712fa5e889bfd56b0157609911a7b10986d1af473a2` at source `9bced3e`.
+Cleanup removed five containers, three volumes, two networks and two aliases, with global
+resource sets unchanged, ports 4296/4297 absent and an unknown volume preserved. That receipt
+explicitly has `persistenceAccepted:false` and `installerAcceptance:false`; it is not persistence,
+official-installer, G11 or P0 acceptance. Hosted #600 G11 and PR-template/security-review checks
+are red and Postgres integration is running at the snapshot; no gate is waived.
+
+The admin-withdrawal author inadvertently started native integration despite an offline-only
+assignment. Root stopped the activity. The initial inactive-user request returned 503 and its
+retry stalled at DB setup; preserve both results as failures, not acceptance. The root audit at
+`2026-10-07T13:44:18.977587Z` shows no extra Docker containers, volumes or networks versus the
+closed boot baseline. It does not identify the database target or process; those remain under
+verification. Do not infer database integrity, complete cleanup or successful persistent
+all-role seeding. Persistent DEV remains at `08842235047a3ab2714427edce80331b94558150`.
+
+**Operational correction:** the three commands used `CI=true env -uTASKDESK_DATABASE_URL`; source
+inspection confirms global setup selects fresh Testcontainers Postgres 18 and assigns its URL
+before test workers. The historical container/DB target identities were not captured, so this
+mechanism does not retroactively prove which resource was reached. The root process audit now
+shows zero active integration invocations and no root process kills; current Docker global sets
+remain at zero extra objects. Preserve unknown historical provenance. The current #589 head
+`314ca3636ad9a514e1e80d64f5e3ad6b64b7a58e` has an author-reported broadened 403-or-503
+inactive-user regression/failure class; keep it open for ordinary review. The author reports
+offline checks passed, but no current-head review or integration acceptance is claimed.
+
+Separate source-alignment evidence at current #598 head `2dc62db3d6ab41f4fde044e8316cde2844a13058`
+finds inherited test-only role-seeder files still tracked at
+`apps/api/scripts/seed-test-users.ts`, its test, and `scripts/seed-test-users.ts`, along with the
+public #597 review note. The owner must remove this inherited seeder batch without rewriting
+history; retain canonical generic seed-default-workspace-roles behavior. No usable credentials
+were detected. The private all-eight-role tooling has not been executed, and no persistent test
+users are asserted.
+
+At the live refresh `2026-10-07T13:46:26Z`, accepted `main` is
+`3096cb044bdf6ae98488bfc385f532fa6386343a`; #589 is `314ca3636ad9a514e1e80d64f5e3ad6b64b7a58e`,
+#598 is `2dc62db3d6ab41f4fde044e8316cde2844a13058`, #600 is
+`359353cf28784870890505e777112ede581c357d`, and #599 is
+`7c5ae58c67c3572b2f4f52864788f78e726daa0d`. #589 advanced after its ordinary auth report at
+`411f672`; that report is not a current-head verdict. The admin decision resolves the behavior
+question only. #598's previous review panel also predates its current remediation head. No
+protected merge, release, enforcement activation, persistent DEV refresh or phase completion is
+claimed by this record.
+
+**Recorded:** root at actual `2026-10-07T13:46:26Z`; user answer is Thomas's explicit approval,
+not an inferred decision or quality-gate waiver.
+
+The final documentation refresh at `2026-10-07T13:53:14Z` re-read `main` and the #589/#598/#600/#599
+heads; all matched the values above. A follow-up root process audit reports zero active
+integration invocations, no root process kills and zero extra Docker objects at audit time. It
+does not supply the missing historical Testcontainers identity or DB target, so the provenance
+and acceptance limits above remain unchanged. CI state is the earlier 13:46:26Z rollup; no
+check was rerun for this documentation update.
+
 ### 2026-10-07 · Record complete P0 local evidence and current candidate blockers
 
 **Evidence update; no waiver, merge or phase claim.** The frozen source532 local lifecycle run `20261007T111221Z-63bfb1` passes all five phases with ledger assertions 88/88/80/88/88 and 88 bounded HTTPS requests using the same fixtures, encrypted secret and attachment HMAC. Cleanup's actual sequence was: 11 resources issued at 11:12:21.490949Z, last measurement at 11:31:02.333447Z, cleanup at 11:32:16.822024Z; ten containers, six named volumes, four networks and two aliases removed, global resource sets unchanged, ports4296/4297 absent and unknown resources preserved. Scheme-only signed-URL TLS reconstruction is not official installer/product TLS, Gate C, cutover, G11 or P0 acceptance.
