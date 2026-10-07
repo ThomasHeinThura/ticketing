@@ -456,8 +456,9 @@ by default; it records provider-required sign-in. If the target already has an e
 existing configuration without changing it. Credentials are never printed or checked in. No
 new environment variable or fixed password is introduced. Existing manifests must be singly
 linked. New manifests are fully written and synced to a private temporary file, then published
-atomically without replacing an existing file; failed writes clean up their staging file, and a
-retry can recover an interruption around publication.
+atomically without replacing an existing file; failed writes clean up their staging file. A
+retry removes only stale, mode-`0600`, singly linked staging files bound to the same output path
+and target database whose writer process has exited, while preserving unrelated files.
 
 The complete fixture set is generated from canonical `BUILT_IN_ROLES`. `instance_admin` uses
 the existing Better Auth `user.role = 'admin'` source; `customer` uses an active

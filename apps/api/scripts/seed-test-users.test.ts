@@ -9,11 +9,10 @@ import {
   realpath,
   rm,
   symlink,
-  writeFile,
 } from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
-import { BUILT_IN_ROLE_KEYS } from "@taskdesk/permissions";
+import { BUILT_IN_ROLE_KEYS, BUILT_IN_ROLES } from "@taskdesk/permissions";
 import { hashPassword, verifyPassword } from "better-auth/crypto";
 import { afterEach, describe, expect, it } from "vitest";
 import {
@@ -22,8 +21,10 @@ import {
   parseTestUserRoles,
   SUPPORTED_TEST_USER_ROLES,
   supportedRoleInventory,
+  workspaceScopedTestUserRoles,
 } from "./seed-test-users";
 import {
+  credentialStagingFilePath,
   generateTestUserPassword,
   readCredentialFile,
   validateCredentialFilePath,
@@ -49,13 +50,35 @@ afterEach(async () => {
   );
 });
 
+function exitedProcessId(): number {
+  for (
+    let candidate = 2_000_000_000;
+    candidate < 2_000_000_100;
+    candidate += 1
+  ) {
+    try {
+      process.kill(candidate, 0);
+    } catch (error) {
+      const code = (error as NodeJS.ErrnoException).code;
+      if (code === "ESRCH" || code === "EINVAL") return candidate;
+    }
+  }
+  throw new Error("Could not find an exited process id for the recovery test.");
+}
+
 describe("test-user seed contract", () => {
   it("covers the canonical roles and exposes only real current grant sources", () => {
     const inventory = supportedRoleInventory();
     expect(inventory.canonical).toEqual(BUILT_IN_ROLE_KEYS);
     expect(inventory.supported).toEqual(SUPPORTED_TEST_USER_ROLES);
+    expect(inventory.supported).toEqual(BUILT_IN_ROLE_KEYS);
     expect(inventory.unavailable).toEqual([]);
     expect(inventory.planned).toEqual([]);
+    expect(workspaceScopedTestUserRoles(SUPPORTED_TEST_USER_ROLES)).toEqual(
+      BUILT_IN_ROLE_KEYS.filter(
+        (role) => BUILT_IN_ROLES[role].scope === "workspace",
+      ),
+    );
   });
 
   it("accepts every canonical role and rejects duplicate role requests", () => {
@@ -194,7 +217,7 @@ describe("test-user seed contract", () => {
     ).rejects.toThrow(/must not be hard-linked/);
   });
 
-  it("recovers interrupted staging and a crash after atomic publication", async () => {
+  it("recovers a synced prepublication manifest and a crash after atomic publication", async () => {
     const directory = await privateTempDirectory();
     const target = path.join(directory, "roles.json");
     const expected = expectedTestUserCredentials(["viewer"], false);
@@ -212,19 +235,44 @@ describe("test-user seed contract", () => {
       ],
     };
 
-    const partialStage = path.join(
-      directory,
-      ".roles.json.pending.interrupted",
+    const crashedWriter = exitedProcessId();
+    const staleStage = credentialStagingFilePath(
+      target,
+      "taskdesk_test",
+      crashedWriter,
+      "c".repeat(32),
     );
-    await writeFile(partialStage, "{ partial", { mode: 0o600 });
+    const staleStageHandle = await open(staleStage, "wx", 0o600);
+    await staleStageHandle.writeFile(JSON.stringify(manifest), "utf8");
+    await staleStageHandle.sync();
+    await staleStageHandle.close();
+
+    const unrelatedTargetStage = credentialStagingFilePath(
+      target,
+      "another_test",
+      crashedWriter,
+      "d".repeat(32),
+    );
+    const unrelatedHandle = await open(unrelatedTargetStage, "wx", 0o600);
+    await unrelatedHandle.writeFile("preserve this unrelated file", "utf8");
+    await unrelatedHandle.close();
+    expect(
+      await readCredentialFile(target, "taskdesk_test", expected),
+    ).toBeNull();
+    await expect(lstat(staleStage)).rejects.toThrow();
+    await expect(readFile(unrelatedTargetStage, "utf8")).resolves.toBe(
+      "preserve this unrelated file",
+    );
     await writeCredentialFile(target, manifest);
     expect(await readCredentialFile(target, "taskdesk_test", expected)).toEqual(
       manifest,
     );
 
-    const publishedStage = path.join(
-      directory,
-      `.roles.json.pending.${process.pid}.${"a".repeat(32)}`,
+    const publishedStage = credentialStagingFilePath(
+      target,
+      "taskdesk_test",
+      crashedWriter,
+      "a".repeat(32),
     );
     await link(target, publishedStage);
     expect(await readCredentialFile(target, "taskdesk_test", expected)).toEqual(
@@ -237,9 +285,11 @@ describe("test-user seed contract", () => {
       await handle.close();
     }
 
-    const activePublisherStage = path.join(
-      directory,
-      `.roles.json.pending.${process.pid}.${"b".repeat(32)}`,
+    const activePublisherStage = credentialStagingFilePath(
+      target,
+      "taskdesk_test",
+      process.pid,
+      "b".repeat(32),
     );
     await link(target, activePublisherStage);
     expect(await readCredentialFile(target, "taskdesk_test", expected)).toEqual(
