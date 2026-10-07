@@ -192,21 +192,7 @@ capture_source() {
 capture_build_assets() {
   local tree="$1"
   local output="$2"
-  local assets="$tree/apps/web/dist/assets"
-  if [[ ! -d "$assets" ]]; then
-    printf 'Missing expected web build assets: %s\n' "$assets" >&2
-    return 1
-  fi
-  {
-    printf 'bundled_css_and_fonts_sha256\n'
-    find "$assets" -maxdepth 1 -type f \( -name '*.css' -o -name '*.woff2' \) -print0 \
-      | LC_ALL=C sort -z \
-      | while IFS= read -r -d '' file; do sha256sum "$file"; done
-    printf '\nasset_directory_manifest_sha256\n'
-    find "$assets" -maxdepth 1 -type f -print0 \
-      | LC_ALL=C sort -z \
-      | while IFS= read -r -d '' file; do sha256sum "$file"; done
-  } > "$output"
+  bash "$REPO/scripts/ci/lib/capture-build-assets.sh" "$tree" "$output"
 }
 
 capture_environment() {

@@ -1,5 +1,16 @@
 import assert from "node:assert/strict";
-import { readFile } from "node:fs/promises";
+import { spawnSync } from "node:child_process";
+import { createHash } from "node:crypto";
+import {
+  mkdir,
+  mkdtemp,
+  readFile,
+  rm,
+  symlink,
+  writeFile,
+} from "node:fs/promises";
+import { tmpdir } from "node:os";
+import path from "node:path";
 import test from "node:test";
 
 const root = new URL("../../", import.meta.url);
@@ -23,6 +34,20 @@ const perfConfig = await readFile(
   new URL("apps/web/playwright.perf.config.ts", root),
   "utf8",
 );
+const assetCollector = new URL("scripts/ci/lib/capture-build-assets.sh", root);
+const assetCollectorSource = await readFile(assetCollector, "utf8");
+
+async function createBuildTree() {
+  const rootDir = await mkdtemp(path.join(tmpdir(), "taskdesk-build-assets-"));
+  for (const entry of ["agent", "portal"]) {
+    const assets = path.join(rootDir, "apps/web/dist", entry, "assets");
+    await mkdir(assets, { recursive: true });
+    await writeFile(path.join(assets, `${entry}.css`), `${entry} css\n`);
+    await writeFile(path.join(assets, `${entry}.woff2`), `${entry} font\n`);
+    await writeFile(path.join(assets, `${entry}.js`), `${entry} bundle\n`);
+  }
+  return rootDir;
+}
 
 test("diagnostic is triggered only by the dedicated run ref with read-only access", () => {
   assert.match(
@@ -111,8 +136,8 @@ test("setup follows the repository action and artifact paths exclude worktrees a
   assert.match(runner, /selected Chromium executable differs/);
   assert.match(runner, /lscpu/);
   assert.match(runner, /fc-list/);
-  assert.match(runner, /bundled_css_and_fonts_sha256/);
-  assert.match(runner, /asset_directory_manifest_sha256/);
+  assert.match(assetCollectorSource, /bundled_css_and_fonts_sha256/);
+  assert.match(assetCollectorSource, /asset_directory_manifest_sha256/);
   assert.match(workflow, /retention-days: 14/);
   assert.doesNotMatch(
     workflow,
@@ -128,4 +153,78 @@ test("setup follows the repository action and artifact paths exclude worktrees a
   assert.match(runner, /root_entries.*OWNER_MARKER/);
   assert.match(runner, /127\.0\.0\.1.*4178/);
   assert.match(runner, /Port 4178 is already accepting connections/);
+});
+
+test("asset collector fingerprints the actual agent and portal Vite output trees", async () => {
+  const tree = await createBuildTree();
+  const output = path.join(tree, "evidence", "asset-fingerprint.txt");
+  await mkdir(path.dirname(output));
+  try {
+    const result = spawnSync("bash", [assetCollector.pathname, tree, output], {
+      encoding: "utf8",
+    });
+    assert.equal(result.status, 0, result.stderr);
+    const fingerprint = await readFile(output, "utf8");
+    assert.match(fingerprint, /bundled_css_and_fonts_sha256/);
+    assert.match(fingerprint, /asset_directory_manifest_sha256/);
+    for (const entry of ["agent", "portal"]) {
+      for (const extension of ["css", "woff2", "js"]) {
+        const contents = `${entry} ${extension === "css" ? "css" : extension === "woff2" ? "font" : "bundle"}\n`;
+        const hash = createHash("sha256").update(contents).digest("hex");
+        assert.ok(
+          fingerprint.includes(hash),
+          `missing hash for ${entry}.${extension}`,
+        );
+        assert.ok(fingerprint.includes(`${entry}.${extension}`));
+      }
+    }
+  } finally {
+    await rm(tree, { recursive: true, force: true });
+  }
+});
+
+test("asset collector fails closed when either built entry is missing", async () => {
+  const tree = await createBuildTree();
+  const output = path.join(tree, "evidence.txt");
+  await rm(path.join(tree, "apps/web/dist/portal"), {
+    recursive: true,
+    force: true,
+  });
+  try {
+    const result = spawnSync("bash", [assetCollector.pathname, tree, output], {
+      encoding: "utf8",
+    });
+    assert.notEqual(result.status, 0);
+    assert.match(
+      result.stderr,
+      /Missing or unsafe portal build asset directory/,
+    );
+  } finally {
+    await rm(tree, { recursive: true, force: true });
+  }
+});
+
+test("asset collector rejects an entry directory that escapes through a symlink", async () => {
+  const tree = await createBuildTree();
+  const outside = await mkdtemp(
+    path.join(tmpdir(), "taskdesk-outside-assets-"),
+  );
+  const output = path.join(tree, "evidence.txt");
+  const portal = path.join(tree, "apps/web/dist/portal");
+  await mkdir(path.join(outside, "assets"));
+  await rm(portal, { recursive: true, force: true });
+  await symlink(outside, portal, "dir");
+  try {
+    const result = spawnSync("bash", [assetCollector.pathname, tree, output], {
+      encoding: "utf8",
+    });
+    assert.notEqual(result.status, 0);
+    assert.match(
+      result.stderr,
+      /Missing or unsafe portal build asset directory/,
+    );
+  } finally {
+    await rm(tree, { recursive: true, force: true });
+    await rm(outside, { recursive: true, force: true });
+  }
 });
