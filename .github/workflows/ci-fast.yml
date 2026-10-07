@@ -116,6 +116,8 @@ jobs:
         run: pnpm lint:ci
       - name: pnpm typecheck
         run: pnpm typecheck
+      - name: Normalize Ubuntu APT mirror for Chromium dependencies
+        run: sudo -- "$(command -v node)" scripts/ci/normalize-ubuntu-apt-mirror.mjs
       - name: Install Chromium for G3
         run: ./apps/web/node_modules/.bin/playwright install --with-deps chromium
       - name: pnpm check:tokens

@@ -105,6 +105,14 @@ setup prerequisite before `pnpm check:tokens`; the check builds the stylesheet a
 the declared contrast pairs in that browser. The browser install is setup, not an independent
 quality gate: a missing browser makes `check:tokens` fail.
 
+Before each GitHub-hosted Ubuntu Playwright `install --with-deps` step, CI runs
+`scripts/ci/normalize-ubuntu-apt-mirror.mjs` with `sudo`. It changes only the exact blocked
+`http://azure.archive.ubuntu.com/ubuntu` URI to the official HTTPS archive URI in active APT
+source files and `/etc/apt/apt-mirrors.txt`. Suites, components, priorities, `Signed-By`
+keys, and all other repositories remain intact. The helper skips non-Ubuntu runners and
+missing APT configuration, which is valid for the existing Playwright container. The
+Playwright browser and OS dependency install command and browser version are unchanged.
+
 The G3 source inventory covers every colored text occurrence, including semantic color
 utilities and foreground-only utilities. A foreground is measured against its nearest
 opaque surface in the same JSX tree, an imported shared component whose implementation

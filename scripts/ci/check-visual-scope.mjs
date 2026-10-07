@@ -142,6 +142,8 @@ const expectedVisualJobLines = [
   "      - uses: ./.github/actions/setup",
   "      - name: Build the permissions package used by the web bundle",
   "        run: pnpm --filter @taskdesk/permissions build",
+  "      - name: Normalize Ubuntu APT mirror for Chromium dependencies",
+  '        run: sudo -- "$(command -v node)" scripts/ci/normalize-ubuntu-apt-mirror.mjs',
   "      - name: Install Chromium",
   "        run: apps/web/node_modules/.bin/playwright install --with-deps chromium",
   `      - name: ${expectedVisualStepName}`,
