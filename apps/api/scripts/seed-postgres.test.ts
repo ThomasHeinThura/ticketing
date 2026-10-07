@@ -21,6 +21,7 @@ import { ensureInternalOrganisation } from "../src/utils/seed-internal-organisat
 import { seedProjectStates } from "../src/utils/seed-project-states";
 import { seedWorkspaceDefaults } from "../src/utils/seed-workspace-defaults";
 import { seed } from "./seed-profile";
+import { expectSafeSeedCondition } from "./seed-test-safe-assertion";
 import { SUPPORTED_TEST_USER_ROLES, seedTestUsers } from "./seed-test-users";
 
 const unrelatedUser = {
@@ -749,10 +750,10 @@ describe("explicit test-user seed batch", () => {
           ),
         );
 
-      expect(savedUsers).toHaveLength(8);
-      expect(savedAccounts).toHaveLength(8);
-      expect(savedPeople).toHaveLength(8);
-      expect(savedScopedMemberships).toHaveLength(1);
+      expectSafeSeedCondition(savedUsers.length === 8);
+      expectSafeSeedCondition(savedAccounts.length === 8);
+      expectSafeSeedCondition(savedPeople.length === 8);
+      expectSafeSeedCondition(savedScopedMemberships.length === 1);
       expect(customerRole).toMatchObject({
         scope: "organisation",
         workspaceId: null,
@@ -801,8 +802,8 @@ describe("explicit test-user seed batch", () => {
           ).toBe(true);
         } else {
           expect(credential.role).toBe("customer");
-          expect(credential.password).toBeNull();
-          expect(account).toBeUndefined();
+          expectSafeSeedCondition(credential.password === null);
+          expectSafeSeedCondition(account === undefined);
         }
         const person = savedPeople.find(
           (row) => row.userId === `taskdesk-test-user-${credential.role}`,
@@ -849,14 +850,15 @@ describe("explicit test-user seed batch", () => {
         const authority = identity?.authority.find(
           (entry) => entry.roleKey === role,
         );
-        expect(identity?.side, role).toBe("staff");
-        expect(authority).toMatchObject({
-          roleKey: role,
-          scope: "workspace",
-          scopeId: "taskdesk-seed-minimal-workspace",
-          rank: BUILT_IN_ROLES[role].rank,
-          capabilities: BUILT_IN_ROLES[role].capabilities,
-        });
+        expectSafeSeedCondition(identity?.side === "staff");
+        expectSafeSeedCondition(
+          authority?.roleKey === role &&
+            authority.scope === "workspace" &&
+            authority.scopeId === "taskdesk-seed-minimal-workspace" &&
+            authority.rank === BUILT_IN_ROLES[role].rank &&
+            JSON.stringify(authority.capabilities) ===
+              JSON.stringify(BUILT_IN_ROLES[role].capabilities),
+        );
       }
 
       const customerMembership = savedScopedMemberships[0];
@@ -897,22 +899,21 @@ describe("explicit test-user seed batch", () => {
 
       const secondSummary = await seedTestUsers(databaseName, args);
       expect(secondSummary).toBe(firstSummary);
-      expect((await readFile(credentialFile)).equals(credentialBytes)).toBe(
-        true,
+      expectSafeSeedCondition(
+        (await readFile(credentialFile)).equals(credentialBytes),
       );
-      expect(
-        await db
-          .select()
-          .from(schema.userTable)
-          .where(
-            inArray(
-              schema.userTable.id,
-              SUPPORTED_TEST_USER_ROLES.map(
-                (role) => `taskdesk-test-user-${role}`,
-              ),
+      const idempotentUsers = await db
+        .select()
+        .from(schema.userTable)
+        .where(
+          inArray(
+            schema.userTable.id,
+            SUPPORTED_TEST_USER_ROLES.map(
+              (role) => `taskdesk-test-user-${role}`,
             ),
           ),
-      ).toHaveLength(8);
+        );
+      expectSafeSeedCondition(idempotentUsers.length === 8);
 
       authModule = await import("../src/auth");
       await authModule.reloadAuthConfiguration();
@@ -951,22 +952,14 @@ describe("explicit test-user seed batch", () => {
             : await authModule.auth.handler(
                 new Request(`${origin}/api/auth/sign-in/email`, request),
               );
-        const responseBody = await response
-          .clone()
-          .json()
-          .catch(() => null);
-        expect(
-          response.status,
-          `${credential.role}: ${JSON.stringify({
-            message: responseBody?.message,
-            code: responseBody?.code,
-          })}`,
-        ).toBe(200);
+        expect(response.status, `${credential.role} sign-in response`).toBe(
+          200,
+        );
         if (credential.role === "customer") {
           const customerCookie = response.headers
             .getSetCookie()
             .find((value) => value.startsWith("__Host-tdk_portal_session="));
-          expect(customerCookie).toBeDefined();
+          expectSafeSeedCondition(Boolean(customerCookie));
           customerSessionCookie = customerCookie?.split(";", 1)[0];
         }
         // Better Auth permits three sign-in attempts per client bucket in ten
@@ -994,22 +987,22 @@ describe("explicit test-user seed batch", () => {
         userId: customerUserId,
         credential: "session",
       });
-      expect(customerIdentity).toMatchObject({
-        side: "customer",
-        portal: "customer",
-        organisationId: "taskdesk-test-user-customer-organisation",
-        authority: [
-          {
-            roleKey: "customer",
-            scope: "organisation",
-            scopeId: "taskdesk-test-user-customer-organisation",
-            rank: BUILT_IN_ROLES.customer.rank,
-            capabilities: BUILT_IN_ROLES.customer.capabilities,
-          },
-        ],
-      });
+      const customerAuthority = customerIdentity?.authority[0];
+      expectSafeSeedCondition(
+        customerIdentity?.side === "customer" &&
+          customerIdentity.portal === "customer" &&
+          customerIdentity.organisationId ===
+            "taskdesk-test-user-customer-organisation" &&
+          customerAuthority?.roleKey === "customer" &&
+          customerAuthority.scope === "organisation" &&
+          customerAuthority.scopeId ===
+            "taskdesk-test-user-customer-organisation" &&
+          customerAuthority.rank === BUILT_IN_ROLES.customer.rank &&
+          JSON.stringify(customerAuthority.capabilities) ===
+            JSON.stringify(BUILT_IN_ROLES.customer.capabilities),
+      );
 
-      expect(customerSessionCookie).toBeTruthy();
+      expectSafeSeedCondition(Boolean(customerSessionCookie));
       const customerSessionResponse = await portalApp.app.request(
         `${customerOrigin}/api/auth/get-session`,
         {
