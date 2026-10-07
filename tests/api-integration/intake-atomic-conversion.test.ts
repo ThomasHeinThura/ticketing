@@ -458,7 +458,7 @@ describe("intake atomic conversion", () => {
     }
   });
 
-  it("serializes two acceptances for one project before a queued archive", async () => {
+  it("serializes three acceptances for one project before a queued archive", async () => {
     const formSchema: FormSchema = {
       fields: [
         {
@@ -637,7 +637,7 @@ describe("intake atomic conversion", () => {
       const archiveOutcome = await archive;
       expect(archiveOutcome.status).toBe("fulfilled");
       if (archiveOutcome.status !== "fulfilled")
-        throw new Error("Project archive failed after both acceptances");
+        throw new Error("Project archive failed after all three acceptances");
 
       const submissions = await db
         .select({ workItemId: schema.submissionTable.workItemId })
@@ -664,10 +664,35 @@ describe("intake atomic conversion", () => {
       expect(autoRows).toHaveLength(1);
       expect(autoRows[0]?.workItemId).toBeTruthy();
       const createdItems = await db
-        .select({ id: schema.workItemTable.id })
+        .select({
+          id: schema.workItemTable.id,
+          number: schema.workItemTable.number,
+        })
         .from(schema.workItemTable)
         .where(eq(schema.workItemTable.projectId, fixture.project.id));
-      expect(createdItems).toHaveLength(2);
+      expect(createdItems).toHaveLength(3);
+      const linkedItemIds = [
+        submissions[0]?.workItemId,
+        secondRows[0]?.workItemId,
+        autoRows[0]?.workItemId,
+      ];
+      expect(new Set(linkedItemIds).size).toBe(3);
+      expect(new Set(createdItems.map(({ id }) => id))).toEqual(
+        new Set(linkedItemIds),
+      );
+      const itemNumbers = createdItems
+        .map(({ number }) => number)
+        .sort((left, right) => left - right);
+      const [firstItemNumber, secondItemNumber, thirdItemNumber] = itemNumbers;
+      if (
+        firstItemNumber === undefined ||
+        secondItemNumber === undefined ||
+        thirdItemNumber === undefined
+      ) {
+        throw new Error("Expected three converted work item numbers");
+      }
+      expect(secondItemNumber).toBe(firstItemNumber + 1);
+      expect(thirdItemNumber).toBe(secondItemNumber + 1);
       const [project] = await db
         .select({ archivedAt: schema.projectTable.archivedAt })
         .from(schema.projectTable)
