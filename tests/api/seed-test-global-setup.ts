@@ -1,6 +1,6 @@
 import { randomBytes } from "node:crypto";
 import { PostgreSqlContainer } from "@testcontainers/postgresql";
-import { configureSeedTestOrigins } from "./seed-test-origins";
+import { configureSeedTestOrigins } from "../../apps/api/scripts/seed-test-origins";
 
 export function validateExplicitSeedTestDatabaseUrl(value: string): string {
   let url: URL;
@@ -28,10 +28,9 @@ export default async function setup() {
   const explicitUrl = process.env.TASKDESK_DATABASE_URL;
   if (explicitUrl) {
     validateExplicitSeedTestDatabaseUrl(explicitUrl);
-    for (const alternate of [
-      process.env.DATABASE_URL,
-      process.env.TEST_DATABASE_URL,
-    ]) {
+    const alternateNames = ["DATABASE_URL", "TEST_DATABASE_URL"] as const;
+    for (const name of alternateNames) {
+      const alternate = process.env[name];
       if (alternate && alternate !== explicitUrl) {
         throw new Error(
           "Seed test database URLs must identify the same explicit target.",

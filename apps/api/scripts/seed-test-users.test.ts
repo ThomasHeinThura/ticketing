@@ -14,7 +14,7 @@ import os from "node:os";
 import path from "node:path";
 import { BUILT_IN_ROLE_KEYS, BUILT_IN_ROLES } from "@taskdesk/permissions";
 import { afterEach, describe, expect, it } from "vitest";
-import { validateExplicitSeedTestDatabaseUrl } from "./seed-test-global-setup";
+import { validateExplicitSeedTestDatabaseUrl } from "../../../tests/api/seed-test-global-setup";
 import { expectSafeSeedCondition } from "./seed-test-safe-assertion";
 import {
   expectedTestUserCredentials,
