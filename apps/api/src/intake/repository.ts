@@ -540,9 +540,10 @@ export async function portalCatalogue(organisationId: string, query = "") {
   const latestPublished = db
     .select({
       requestTypeId: schema.requestTypeVersionTable.requestTypeId,
-      number: sql<number>`max(${schema.requestTypeVersionTable.number})`.as(
-        "number",
-      ),
+      number:
+        sql<number>`max(${sql.identifier("request_type_version")}.${sql.identifier("number")})`.as(
+          "number",
+        ),
     })
     .from(schema.requestTypeVersionTable)
     .groupBy(schema.requestTypeVersionTable.requestTypeId)
@@ -572,7 +573,10 @@ export async function portalCatalogue(organisationId: string, query = "") {
           schema.requestTypeVersionTable.requestTypeId,
           latestPublished.requestTypeId,
         ),
-        eq(schema.requestTypeVersionTable.number, latestPublished.number),
+        eq(
+          schema.requestTypeVersionTable.number,
+          sql<number>`${sql.identifier("latest_published")}.${sql.identifier("number")}`,
+        ),
       ),
     )
     .where(
@@ -1739,7 +1743,7 @@ export async function suggestDuplicateWorkItems(
     : "";
   if (title.length < 2) return [];
   const cutoff = new Date(Date.now() - 90 * 24 * 60 * 60 * 1000);
-  const score = sql<number>`similarity(${schema.workItemTable.title}, ${title})`;
+  const score = sql<number>`similarity(${sql.identifier("work_item")}.${sql.identifier("title")}, ${title})`;
   return db
     .select({
       id: schema.workItemTable.id,

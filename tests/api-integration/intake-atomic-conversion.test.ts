@@ -139,6 +139,7 @@ async function createManualAcceptanceFixture(
         requestTypeVersionId: version.id,
         formData,
         state: "new",
+        submittedAt: new Date(),
       })
       .returning(),
     "submission",
@@ -342,6 +343,7 @@ describe("intake atomic conversion", () => {
             internal_note: "visible description",
           },
           state: "new",
+          submittedAt: new Date(),
         })
         .returning(),
       "visible mapping submission",
@@ -483,6 +485,7 @@ describe("intake atomic conversion", () => {
           requestTypeVersionId: fixture.submission.requestTypeVersionId,
           formData: { summary: "Second concurrent request" },
           state: "new",
+          submittedAt: new Date(),
         })
         .returning(),
       "second concurrent submission",
@@ -977,6 +980,7 @@ describe("intake atomic conversion", () => {
           requestTypeVersionId: version.id,
           formData: { summary: "Another request" },
           state: "new",
+          submittedAt: new Date(),
         })
         .returning(),
       "second submission",
