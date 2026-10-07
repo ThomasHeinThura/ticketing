@@ -179,19 +179,6 @@ function ProjectWorkItemsRoute({ projectKey }: { projectKey: string }) {
     setRealtimeStatus({ projectId: project.id, status: "connecting" });
   }, [project?.id]);
 
-  useEffect(() => {
-    if (!isCreateOpenForProject) return;
-
-    const cancelPendingOpen = (event: KeyboardEvent) => {
-      if (event.key !== "Escape") return;
-      event.preventDefault();
-      closeCreateDialog();
-    };
-
-    window.addEventListener("keydown", cancelPendingOpen);
-    return () => window.removeEventListener("keydown", cancelPendingOpen);
-  }, [closeCreateDialog, isCreateOpenForProject]);
-
   const handleRealtimeAvailabilityChange = useCallback(
     (projectId: string, status: WorkItemRealtimeStatus) => {
       if (projectId !== project?.id) return;

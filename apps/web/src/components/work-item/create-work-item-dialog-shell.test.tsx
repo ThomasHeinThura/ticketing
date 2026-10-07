@@ -1,3 +1,4 @@
+import { Button } from "@taskdesk/ui";
 import {
   cleanup,
   fireEvent,
@@ -31,9 +32,7 @@ describe("CreateWorkItemDialog shared shell", () => {
       const [open, setOpen] = useState(false);
       return (
         <>
-          <button type="button" onClick={() => setOpen(true)}>
-            Open create dialog
-          </button>
+          <Button onClick={() => setOpen(true)}>Open create dialog</Button>
           <CreateWorkItemDialog
             open={open}
             onClose={() => setOpen(false)}
