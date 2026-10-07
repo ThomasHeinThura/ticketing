@@ -1,5 +1,57 @@
 ## Status First
 
+Snapshot: 2026-10-07T03:29:44.647294+00:00. P0 #583 stays frozen at `5326937460b195d8e69584c0cb99305348330a95`; accepted main remains `3096cb04`. No runtime retry, deployment refresh, strict activation, signed release or phase closure is claimed.
+
+| Phase | Implementation | Integration | Acceptance |
+| --- | --- | --- | --- |
+| P0 | Frozen product; full private lifecycle v8 implemented, v9 correcting collected executable/security findings | Sole closure #583 | G11 19/22; actual lifecycle/TLS/signed installer, strict compatibility/cutover and finalizer open |
+| P1 | Full filter-builder successor `c4745ea5` pushed; saved views/CSV implemented | #591 and separate builder leaf; 0118 provisional | Successor delta review and shared composition acceptance open |
+| P2 | Selected approval/withdrawal and browser placement complete | #586 | Phase/live API/image/composed acceptance open |
+| P3 | Selected mapping/login and query relocation complete | #595 then #596 | Real provider, Health and phase acceptance open |
+| P4 | Selected outbox eligibility/fencing/binding complete; explicit private test-role seeder implementation underway | #594 and separate test infrastructure leaf | Shared composition/provider/image/phase acceptance open |
+
+### What changed
+
+P1 successor `c4745ea5028e58af18469381d45a9d58c8447f6e` collects and fixes all three ordinary findings in one batch: effective partial-sort consistency, strict list/field/operator/value/date validation, and exact unary/nested group AST preservation through documented AND/OR text. Author evidence passes 77 focused tests and six mocked browser journeys, plus type/build/style checks; 400 deterministic generated trees exercise exact round-trip. Browser 4316 is stopped. The failed initial browser expectation is recorded, but its replaced transient trace was not preserved; no fake failure artifact is claimed.
+
+Central complete schema/generation candidate `89242d350e91356798f862692b432cf92f92a285` is pushed clean. All inventory categories match frozen catalog; generator emits no index/check rewrites. Twenty physical FK-name pairs and five verified same-expression defaults remain explicitly reported. Fresh strong ordinary delta review finds no additional runtime projection defect, but blocks negative tests that only compare synthetic serialization rather than invoke the actual acceptance gate. One complete shared-comparator mutation remedy is underway; no new PG replay or allocation is authorized.
+
+Private lifecycle v8 manifest `e70fc14774fd6045ec60b2525fa7048519ac8160c2acba749f93fa289688d0ed` passes 47 offline tests but full independent Sol is BLOCKED. Collected findings cover corrupted generated owner labels, rejected binary fingerprint input, malformed escaped credential leakage, unsafe credential suffix/recursive-owner exemptions and saved-byte hash mismatches. Root also verifies that Secure session cookies require HTTPS and the documented first-user bootstrap path; these are now included in one executable v9 structural batch before freeze. No v8 resource grant or actual execution occurred.
+
+Thomas explicitly requests role-complete testing accounts and prohibits credential notes in GitHub. A separate Luna owns the opt-in seeder and private-output boundary. Existing seed profiles only have placeholder persons. Sanitized tracked-path/content audit identifies no concrete test-user credential-note exposure; broad false positives are not treated as leaks. Canonical legacy support is explicit: manager/lead still lack genuine provisioning producers, and proposed ADR 0015 is not silently approved. Supported account/role seeding continues; eight-role completion remains tied to its real role foundation.
+
+### What is being worked on now
+
+Luna implements the private P0 runner's complete trusted-input/untrusted-output, HTTPS/bootstrap and real-file orchestration remedy. Another Luna completes the actual central inventory-gate mutation tests. A third Luna implements supported test-role accounts with fresh strong random credentials in external 0700/0600 local storage, collision/idempotency and safe target/path handling. No lane may touch persistent DEV or create/remove Docker resources under an expired or absent grant.
+
+### Critical path
+
+1. Resolve frozen P0 hosted G11 under the existing no-extra-retry rule.
+2. Finish reviewed actual local lifecycle and official signed-installer/TLS proof.
+3. Establish current strict behavior and compatibility of original partial UTC captures.
+4. Resolve public-config criterion and perform eligible reversible cutover.
+5. Protected merge, official installer acceptance and fresh Sol phase finalizer.
+
+### Misalignment / drift
+
+#583 is the sole P0 closure vehicle; #589 is the sole post-P0 train; #581 is superseded; #587 remains diagnostic. New test-user tooling and migration repair do not become P0 prerequisites. Offline test totals do not prove a runnable driver, real provider acceptance or served TLS. Full implementation precedes review; all findings from a completed review are collected before one structural fix, without unchanged-head comfort reruns.
+
+### Concerns
+
+Trust-boundary separation must preserve validated operational inputs while failing closed on unsafe diagnostic persistence. The full mock smoke must use actual file writes rather than bypass the mechanism under test. The schema mutation tests must actually reject realistic defective inventories through the same acceptance function. Failed v6 receipts, unknown migrate cause, irreversible prior deletion and preserved unbound volume `3cdc71ba8cc620aa1bf92ea39b479c322bdacc3d409a77d068d492577d6ebcc0` remain unchanged.
+
+### Decisions needed from Thomas
+
+Previously requested public-config criterion, unchanged-source hosted confirmation, signed-installer release ordering and P1 current-team lead behavior remain pending. No duplicate asks. Pending role-foundation/ADR ownership is recorded, without treating the seeding request as architecture approval; safe supported seeder implementation continues.
+
+### Next merge candidates
+
+#583 after actual required gates clear. Mature later slices, corrected filter builder, full schema semantic safeguard, reviewed dialog and eligible test seeding compose through #589 on accepted P0. No blocked head is merge-ready.
+
+---
+
+## Status First
+
 Snapshot: 2026-10-07T02:26:10.911238+00:00. Remote main remains `3096cb044bdf6ae98488bfc385f532fa6386343a` by fresh live readback. P0 #583 remains frozen at `5326937460b195d8e69584c0cb99305348330a95`. No merge, runtime retry, DEV refresh, release publication or phase acceptance occurred in this update.
 
 | Phase | Implementation | Integration | Acceptance |
