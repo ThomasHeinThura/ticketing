@@ -1,3 +1,32 @@
+## Status first — verified 2026-10-07 22:48 UTC
+
+**Accepted main:** `3096cb044bdf6ae98488bfc385f532fa6386343a`. **Persistent OrbStack DEV:** revision `08842235047a3ab2714427edce80331b94558150`, image `sha256:75b153d7d9583993127e1be8c06453159e4fe7319abfcd8431f093c9ca002bcf`. Actual UID is **10001**; both local hosts answer readiness **200** with the retained public CA on **8443**. Standard **443** is unavailable. No deployment, protected merge, strict activation or phase finalizer occurred.
+
+| Stage | Formal status |
+| --- | --- |
+| P0 | Open — sole closure candidate #602; hosted G11 19/22; final runtime and acceptance pending |
+| P1 | Open — core/views/attachments lanes; team-lead saved-view contract decision pending |
+| P2 | Open — approvals/intake/SLA lanes; two intake contracts pending |
+| P3 | Open — portal/identity lanes; real-provider and integrated acceptance pending |
+| P4 | Open — governance/outbox/query lanes; custom-field runtime/UI absent and contract reconciliation underway |
+| P5–P7 | Open — no completion claim |
+
+**P0 source:** #602 remains `10034a893b83ef0eba1d801b77d6e81f1e5a0e2e`; full source-bound run `37676234529` is **19/22** (list, LCP, board fail). PostgreSQL **137 files / 1659 tests**, G4, G8 and E2E passed. No FINAL_P0_SHA exists. #599 is excluded. Installer #583 is now closed as superseded; exact installer source `5326937460b195d8e69584c0cb99305348330a95` is retained in #602 ancestry. #558/#575/#590/#587/#600 remain closed with history preserved. Additional calendar waiting is not the blocker.
+
+**Diagnostic #604:** independently cleared b7 source `b7d65f266af9594802ed59e8a165a7da80a8c4c5` ran as `37696611044`. Reference f10 LCP **2632 ms**, board **682.3 ms**; current source LCP **2548 ms**, board **682.7 ms**. Both unchanged selected cases failed for both sources. Attribution executed **zero tests** because two physical Playwright modules were loaded. Owned cleanup completed; raw failures remain retained. Successor `d5c114b2933444b06d7dfac637707a388723e1ee` uses a single CLI/config/spec package graph, target-owned source maps, and matching version guards. Root combined checks **19/19** passed. Its first Luna review found no source defect but remained BLOCKED for incomplete review coverage; a bounded independent addendum is pending, followed by required Sol admission before a hosted run. This diagnostic cannot replace 22-case acceptance or be merged into P0 product source.
+
+**Private eight-role proof completed:** immutable V7 manifest `9a242f7c07b318a4999bfa13b1d92a191dfdd142b531ff2a6edc3174ce825456` cleared independent full Sol. Actual disposable execution passed **4 files / 39 native tests**, plus **3 named supplemental native cases**. Eight roles were seeded with random strong passwords, then the actual API harness recorded **23 PASS / 0 FAIL / 1 BLOCKED of 24**. The blocked customer audit HTTP probe receives the upstream portal **404** mask; the native matrix and audit boundary cases passed. Composite boundary/matrix acceptance is satisfied, but **not all 24 HTTP probes passed**. Cleanup at **2026-10-07 22:28:11 UTC** removed owned users/data/container/processes and temporary credentials, preserved unrelated resources and left pinned source clean. All seeders, credentials and credential Markdown remain outside Git/GitHub. No persistent DEV testing users were created. Proof source is historical #589 `2350397b`, not the P0 candidate.
+
+**Authorization evidence:** canonical column policy masks missing/out-of-reach projects as **404**; malformed identifiers remain distinct. The retained partial October 6 off/shadow record actually contains a matching 404. The stale uncertainty note does not change that contract. That historical run failed shadow event reconciliation and is not current/final acceptance. Fresh final-source off → shadow → strict → rollback and independent October 4/5/6 compatibility remain required.
+
+**Later integration:** historical #589 stays frozen at `2350397b18f83ed417bf63d73970daacdbaae49c`; recreate the train from accepted post-P0 main with central migration allocation. #603 remains a later query-ownership slice. P4 custom fields have tables but no runtime/UI; a separate docs reconciliation lane is identifying genuinely undefined contracts before implementation. Team-lead assignment/view semantics, P2 intake contracts and the pending-action API version remain pending human decisions. No later source enters P0.
+
+**Active security/acceptance limits:** #8/#592/#593 remain open until accepted-source proof and finalizer. The historical generic-secret scan finding remains unresolved; no secret value, scanner suppression or history rewrite was published. #601 records these facts but is not itself accepted main. Candidate reviews/checks remain source-bound.
+
+**Critical path:** obtain usable hosted attribution; implement only a proven P0 correction; freeze one source and achieve unchanged 22/22 plus all hosted gates; prove exact image/installer/runtime/rollback and observation compatibility; protected merge followed by fresh independent GPT-6.1 Sol phase finalizer. No phase is closed.
+
+---
+
 ## Status first — verified 2026-10-07 22:14 UTC (8 October MMT)
 
 **Accepted main:** `3096cb044bdf6ae98488bfc385f532fa6386343a`. **Persistent OrbStack DEV:** revision `08842235047a3ab2714427edce80331b94558150`, image `sha256:75b153d7d9583993127e1be8c06453159e4fe7319abfcd8431f093c9ca002bcf`, running as taskdesk. No protected merge, persistent deployment, strict activation or phase finalizer occurred.
