@@ -280,7 +280,11 @@ function WorkItemList({
   if (isError) {
     return (
       <div className="bg-background">
-        <Alert variant="error" data-testid="work-item-list-error">
+        <Alert
+          variant="error"
+          data-testid="work-item-list-error"
+          data-primary-content-ready="true"
+        >
           <TriangleAlert />
           <AlertTitle>{t("workItems:list.errorTitle")}</AlertTitle>
           <AlertDescription>
@@ -300,7 +304,10 @@ function WorkItemList({
 
   if (!workItems || workItems.length === 0) {
     return (
-      <Empty data-testid="work-item-list-empty">
+      <Empty
+        data-testid="work-item-list-empty"
+        data-primary-content-ready="true"
+      >
         <EmptyHeader>
           <EmptyMedia variant="icon">
             <ListTodo />
@@ -330,6 +337,7 @@ function WorkItemList({
       )}
       <Table
         data-testid="work-item-list-populated"
+        data-primary-content-ready="true"
         className="table-fixed bg-background"
         onMouseOver={handleListMouseOver}
         onFocusCapture={handleListFocus}
