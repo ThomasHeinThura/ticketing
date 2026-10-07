@@ -3,6 +3,7 @@ import { createHash } from "node:crypto";
 import {
   cpSync,
   existsSync,
+  mkdirSync,
   mkdtempSync,
   readdirSync,
   readFileSync,
@@ -70,7 +71,115 @@ type SnapshotTable = {
   uniqueConstraints: Record<string, KeyMetadata>;
   checkConstraints: Record<string, CheckMetadata>;
 };
-type MigrationSnapshot = { tables: Record<string, SnapshotTable> };
+type MigrationSnapshot = {
+  id?: string;
+  prevId?: string;
+  version?: string;
+  dialect?: string;
+  tables: Record<string, SnapshotTable>;
+};
+
+type JournalEntry = { idx: number; tag: string; [key: string]: unknown };
+
+function requireFreshGeneratedSnapshot(args: {
+  outputFolder: string;
+  beforeHashes: Record<string, string>;
+  generatorOutput: string;
+  previousSnapshot: MigrationSnapshot;
+  previousJournalEntries: JournalEntry[];
+}): { snapshot: MigrationSnapshot; sqlPath: string } {
+  const { outputFolder, beforeHashes, generatorOutput, previousSnapshot } =
+    args;
+  if (
+    !generatorOutput.trim() ||
+    /No schema changes, nothing to migrate/iu.test(generatorOutput)
+  ) {
+    throw new Error(
+      "Configured-schema generation did not produce validated change output",
+    );
+  }
+  const sqlFiles = readdirSync(outputFolder).filter(
+    (name) => name.startsWith("0118_") && name.endsWith(".sql"),
+  );
+  if (sqlFiles.length !== 1) {
+    throw new Error(
+      `Expected exactly one fresh 0118 SQL output, found ${sqlFiles.length}`,
+    );
+  }
+  const sqlName = sqlFiles[0];
+  if (!sqlName) throw new Error("Fresh SQL artifact was not identified");
+  const sqlPath = join(outputFolder, sqlName);
+  const relativeSqlPath = relative(outputFolder, sqlPath);
+  if (beforeHashes[relativeSqlPath] !== undefined) {
+    throw new Error(
+      "Generated 0118 SQL output was present before this generator run",
+    );
+  }
+
+  const snapshotRelativePath = "meta/0118_snapshot.json";
+  const snapshotPath = join(outputFolder, snapshotRelativePath);
+  if (
+    !existsSync(snapshotPath) ||
+    beforeHashes[snapshotRelativePath] !== undefined
+  ) {
+    throw new Error(
+      "Configured-schema generation did not produce a fresh 0118 snapshot",
+    );
+  }
+  let snapshot: MigrationSnapshot;
+  try {
+    snapshot = JSON.parse(
+      readFileSync(snapshotPath, "utf8"),
+    ) as MigrationSnapshot;
+  } catch {
+    throw new Error("Fresh 0118 snapshot is malformed JSON");
+  }
+  if (
+    typeof snapshot.id !== "string" ||
+    !/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/iu.test(
+      snapshot.id,
+    ) ||
+    snapshot.id === previousSnapshot.id ||
+    snapshot.prevId !== previousSnapshot.id ||
+    snapshot.version !== previousSnapshot.version ||
+    snapshot.dialect !== "postgresql" ||
+    !snapshot.tables ||
+    typeof snapshot.tables !== "object" ||
+    Object.keys(snapshot.tables).length === 0
+  ) {
+    throw new Error(
+      "Fresh 0118 snapshot has stale identity, wrong predecessor, or invalid schema provenance",
+    );
+  }
+
+  let journal: { entries: JournalEntry[] };
+  try {
+    journal = JSON.parse(
+      readFileSync(join(outputFolder, "meta/_journal.json"), "utf8"),
+    ) as { entries: JournalEntry[] };
+  } catch {
+    throw new Error(
+      "Configured-schema generation produced a malformed journal",
+    );
+  }
+  const beforeEntries = args.previousJournalEntries;
+  const lastBefore = beforeEntries.at(-1);
+  const lastAfter = journal.entries.at(-1);
+  if (
+    stableJson(journal.entries.slice(0, beforeEntries.length)) !==
+      stableJson(beforeEntries) ||
+    journal.entries.length !== beforeEntries.length + 1 ||
+    !lastBefore ||
+    !lastAfter ||
+    lastAfter.idx !== lastBefore.idx + 1 ||
+    lastAfter.tag !== sqlFiles[0]?.slice(0, -4)
+  ) {
+    throw new Error(
+      "Configured-schema generation did not append exactly one matching journal entry",
+    );
+  }
+  return { snapshot, sqlPath };
+}
 
 type DefaultRenderingPair = { expected: unknown; proposed: unknown };
 
@@ -367,22 +476,18 @@ it("keeps SQL-owned tables and ordered keys safe during configured generation", 
       beforeJournal.entries,
     );
 
-    const generatedSqlPath = readdirSync(outputFolder).find(
-      (name) => name.startsWith("0118_") && name.endsWith(".sql"),
-    );
-    const generatedSnapshotPath = join(
-      outputFolder,
-      "meta",
-      existsSync(join(outputFolder, "meta/0118_snapshot.json"))
-        ? "0118_snapshot.json"
-        : "0117_snapshot.json",
-    );
-    const generatedSnapshot = JSON.parse(
-      readFileSync(generatedSnapshotPath, "utf8"),
-    ) as MigrationSnapshot;
     const frozenSnapshot = JSON.parse(
       readFileSync(join(migrationsFolder, "meta/0117_snapshot.json"), "utf8"),
     ) as MigrationSnapshot;
+    const generatedEvidence = requireFreshGeneratedSnapshot({
+      outputFolder,
+      beforeHashes: before,
+      generatorOutput: output,
+      previousSnapshot: frozenSnapshot,
+      previousJournalEntries: beforeJournal.entries as JournalEntry[],
+    });
+    const generatedSnapshot = generatedEvidence.snapshot;
+    const generatedSqlPath = relative(outputFolder, generatedEvidence.sqlPath);
     const expectedDefaultRenderings = new Set([
       "public.identity_connection.domain_bindings",
       "public.instance_setting.attachment_allowed_extensions",
@@ -463,7 +568,7 @@ it("keeps SQL-owned tables and ordered keys safe during configured generation", 
       "name",
     ]);
 
-    if (generatedSqlPath) {
+    {
       const generatedSql = readFileSync(
         join(outputFolder, generatedSqlPath),
         "utf8",
@@ -591,8 +696,6 @@ it("keeps SQL-owned tables and ordered keys safe during configured generation", 
         droppedIndexNames,
         "equivalent catalog indexes must not be rebuilt",
       ).toEqual([]);
-    } else {
-      expect(output).toContain("No schema changes, nothing to migrate");
     }
     succeeded = true;
   } finally {
@@ -629,6 +732,153 @@ it("reorders arbitrary catalog tuples without losing index metadata", () => {
     "epsilon",
   ]);
   expect(result.every((column) => column.opclass === "text_ops")).toBe(true);
+});
+
+it("requires independently generated snapshot evidence before inventory acceptance", () => {
+  const previousSnapshot: MigrationSnapshot = {
+    id: "11111111-1111-4111-8111-111111111111",
+    prevId: "00000000-0000-4000-8000-000000000000",
+    version: "7",
+    dialect: "postgresql",
+    tables: {
+      "public.fixture": {
+        name: "fixture",
+        columns: {
+          id: { type: "integer", notNull: true, primaryKey: true },
+        },
+        indexes: {},
+        foreignKeys: {},
+        compositePrimaryKeys: {},
+        uniqueConstraints: {},
+        checkConstraints: {},
+      },
+    },
+  };
+  const previousJournalEntries: JournalEntry[] = [
+    { idx: 117, version: "7", when: 1, tag: "0117_frozen", breakpoints: true },
+  ];
+  const makeOutput = (
+    options: {
+      snapshot?: MigrationSnapshot | string;
+      journalEntries?: JournalEntry[];
+    } = {},
+  ) => {
+    const outputFolder = mkdtempSync(
+      join(tmpdir(), "taskdesk-fresh-snapshot-"),
+    );
+    mkdirSync(join(outputFolder, "meta"));
+    writeFileSync(
+      join(outputFolder, "meta/0117_snapshot.json"),
+      JSON.stringify(previousSnapshot),
+    );
+    writeFileSync(
+      join(outputFolder, "meta/_journal.json"),
+      JSON.stringify({ entries: previousJournalEntries }),
+    );
+    const beforeHashes = hashesIn(outputFolder);
+    writeFileSync(join(outputFolder, "0118_fixture.sql"), "-- generated SQL\n");
+    if (options.snapshot !== undefined) {
+      writeFileSync(
+        join(outputFolder, "meta/0118_snapshot.json"),
+        typeof options.snapshot === "string"
+          ? options.snapshot
+          : JSON.stringify(options.snapshot),
+      );
+    }
+    writeFileSync(
+      join(outputFolder, "meta/_journal.json"),
+      JSON.stringify({
+        entries: options.journalEntries ?? [
+          ...previousJournalEntries,
+          {
+            idx: 118,
+            version: "7",
+            when: 2,
+            tag: "0118_fixture",
+            breakpoints: true,
+          },
+        ],
+      }),
+    );
+    return { outputFolder, beforeHashes };
+  };
+  const validSnapshot: MigrationSnapshot = {
+    ...previousSnapshot,
+    id: "22222222-2222-4222-8222-222222222222",
+    prevId: previousSnapshot.id,
+  };
+  const invoke = (
+    fixture: ReturnType<typeof makeOutput>,
+    generatorOutput = "Generated migration 0118_fixture",
+  ) =>
+    requireFreshGeneratedSnapshot({
+      ...fixture,
+      generatorOutput,
+      previousSnapshot,
+      previousJournalEntries,
+    });
+
+  const validFixture = makeOutput({ snapshot: validSnapshot });
+  try {
+    expect(invoke(validFixture).snapshot).toEqual(validSnapshot);
+    expect(
+      inventoryDifferences(previousSnapshot, invoke(validFixture).snapshot),
+    ).toEqual([]);
+  } finally {
+    rmSync(validFixture.outputFolder, { recursive: true, force: true });
+  }
+
+  const missing = makeOutput();
+  try {
+    expect(() => invoke(missing)).toThrow(
+      "did not produce a fresh 0118 snapshot",
+    );
+  } finally {
+    rmSync(missing.outputFolder, { recursive: true, force: true });
+  }
+
+  const malformed = makeOutput({ snapshot: "{" });
+  try {
+    expect(() => invoke(malformed)).toThrow("malformed JSON");
+  } finally {
+    rmSync(malformed.outputFolder, { recursive: true, force: true });
+  }
+
+  for (const [label, snapshot] of [
+    ["same identity", { ...validSnapshot, id: previousSnapshot.id }],
+    [
+      "wrong predecessor",
+      { ...validSnapshot, prevId: previousSnapshot.prevId },
+    ],
+  ] as const) {
+    const stale = makeOutput({ snapshot });
+    try {
+      expect(() => invoke(stale), label).toThrow(
+        "stale identity, wrong predecessor",
+      );
+    } finally {
+      rmSync(stale.outputFolder, { recursive: true, force: true });
+    }
+  }
+
+  const copiedStale = makeOutput({ snapshot: validSnapshot });
+  copiedStale.beforeHashes["meta/0118_snapshot.json"] = "preexisting";
+  try {
+    expect(() => invoke(copiedStale)).toThrow(
+      "did not produce a fresh 0118 snapshot",
+    );
+  } finally {
+    rmSync(copiedStale.outputFolder, { recursive: true, force: true });
+  }
+
+  const noChange = makeOutput({ snapshot: validSnapshot });
+  try {
+    expect(() =>
+      invoke(noChange, "No schema changes, nothing to migrate"),
+    ).toThrow("did not produce validated change output");
+  } finally {
+    rmSync(noChange.outputFolder, { recursive: true, force: true });
+  }
 });
 
 it("fails closed when PostgreSQL and Drizzle tuple inventories differ", () => {
