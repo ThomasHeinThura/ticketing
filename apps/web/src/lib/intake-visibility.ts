@@ -1,24 +1,22 @@
-type IntakeVisibilityCondition = {
+import {
+  type FormValue,
+  isVisibilityConditionSatisfied,
+  type VisibilityCondition,
+} from "@taskdesk/domain";
+
+type PortalVisibilityCondition = {
   field_key: string;
   op: string;
   value?: unknown;
 };
 
-/** Shared portal/editor semantics for request-type conditional visibility. */
+/** Use the domain's RT-5 operator semantics for every portal visibility surface. */
 export function isIntakeConditionSatisfied(
-  condition: IntakeVisibilityCondition,
+  condition: PortalVisibilityCondition,
   value: unknown,
 ): boolean {
-  switch (condition.op) {
-    case "is_set":
-      return value !== undefined && value !== null && value !== "";
-    case "eq":
-      return value === condition.value;
-    case "neq":
-      return value !== condition.value;
-    case "in":
-      return Array.isArray(condition.value) && condition.value.includes(value);
-    default:
-      return false;
-  }
+  return isVisibilityConditionSatisfied(
+    condition as VisibilityCondition,
+    value as FormValue,
+  );
 }

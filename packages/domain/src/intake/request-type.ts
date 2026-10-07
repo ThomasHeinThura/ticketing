@@ -38,6 +38,33 @@ export type SchemaDefect = {
 
 const VISIBILITY_OPS = new Set(["eq", "neq", "in", "is_set"]);
 
+/** Canonical RT-5 operator evaluation shared by domain and portal surfaces. */
+export function isVisibilityConditionSatisfied(
+  condition: VisibilityCondition,
+  actual: FormValue,
+): boolean {
+  const wanted = condition.value ?? null;
+  switch (condition.op) {
+    case "eq":
+      return valuesEqual(actual, wanted);
+    case "neq":
+      return !valuesEqual(actual, wanted);
+    case "in":
+      return (
+        Array.isArray(condition.value) &&
+        condition.value.some((value) => valuesEqual(actual, value))
+      );
+    case "is_set":
+      return (
+        actual !== null &&
+        actual !== undefined &&
+        !(typeof actual === "string" && actual.trim() === "")
+      );
+    default:
+      return false;
+  }
+}
+
 /** Whether a `showIf` condition is well-formed: known op, `field_key` set, `in`'s value an array. */
 function isConditionWellFormed(condition: VisibilityCondition): boolean {
   if (
@@ -203,28 +230,7 @@ function resolveVisibility(
       controllerVisible && Object.hasOwn(data, condition.field_key)
         ? (data[condition.field_key] ?? null)
         : null;
-    const wanted: FormValue = condition.value ?? null;
-
-    let visible: boolean;
-    switch (condition.op) {
-      case "eq":
-        visible = valuesEqual(actual, wanted);
-        break;
-      case "neq":
-        visible = !valuesEqual(actual, wanted);
-        break;
-      case "in":
-        visible =
-          Array.isArray(condition.value) &&
-          condition.value.some((v) => valuesEqual(actual, v));
-        break;
-      case "is_set":
-        visible =
-          actual !== null &&
-          actual !== undefined &&
-          !(typeof actual === "string" && actual.trim() === "");
-        break;
-    }
+    const visible = isVisibilityConditionSatisfied(condition, actual);
     cache.set(field.key, visible);
     return visible;
   }

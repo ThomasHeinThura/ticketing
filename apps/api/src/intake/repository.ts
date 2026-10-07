@@ -152,6 +152,22 @@ export async function updateRequestType(
       throw new HTTPException(409, {
         message: "Request type changed; reload before saving",
       });
+    if (current.published && input.customerVisible === true) {
+      const [latest] = await tx
+        .select()
+        .from(schema.requestTypeVersionTable)
+        .where(eq(schema.requestTypeVersionTable.requestTypeId, id))
+        .orderBy(desc(schema.requestTypeVersionTable.number))
+        .limit(1)
+        .for("share");
+      if (latest)
+        await requireAutoAcceptAudienceBinding(tx, {
+          requestTypeId: id,
+          autoAccept: latest.autoAccept,
+          workspaceId: current.workspaceId,
+          projectId: latest.defaultProjectId,
+        });
+    }
     const [row] = await tx
       .update(schema.requestTypeTable)
       .set({ ...input, version: current.version + 1, updatedAt: new Date() })
@@ -199,6 +215,7 @@ async function requireAutoAcceptProject(
     workspaceId: string;
     projectId: string | null;
     organisationId?: string;
+    audienceOrganisationIds?: readonly string[];
   },
 ) {
   if (!input.autoAccept) return;
@@ -225,11 +242,44 @@ async function requireAutoAcceptProject(
   if (
     !project?.organisationId ||
     (input.organisationId !== undefined &&
-      project?.organisationId !== input.organisationId)
+      project.organisationId !== input.organisationId) ||
+    (input.audienceOrganisationIds?.some(
+      (organisationId) => organisationId !== project.organisationId,
+    ) ??
+      false)
   )
     throw new HTTPException(422, {
       message: "Auto-accept project is unavailable for this organisation",
     });
+}
+
+/** Validate every configured portal audience while the caller holds the request-type lock. */
+async function requireAutoAcceptAudienceBinding(
+  tx: DbTransaction,
+  input: {
+    requestTypeId: string;
+    autoAccept: boolean;
+    workspaceId: string;
+    projectId: string | null;
+  },
+) {
+  if (!input.autoAccept) return;
+  const audience = await tx
+    .select({
+      organisationId: schema.organisationRequestTypeTable.organisationId,
+    })
+    .from(schema.organisationRequestTypeTable)
+    .where(
+      eq(
+        schema.organisationRequestTypeTable.requestTypeId,
+        input.requestTypeId,
+      ),
+    )
+    .for("share");
+  await requireAutoAcceptProject(tx, {
+    ...input,
+    audienceOrganisationIds: audience.map((row) => row.organisationId),
+  });
 }
 
 export async function publishRequestType(id: string, actorId: string) {
@@ -243,7 +293,8 @@ export async function publishRequestType(id: string, actorId: string) {
     if (!type)
       throw new HTTPException(404, { message: "Request type not found" });
     const formSchema = type.formSchema as FormSchema;
-    await requireAutoAcceptProject(tx, {
+    await requireAutoAcceptAudienceBinding(tx, {
+      requestTypeId: id,
       autoAccept: type.autoAccept,
       workspaceId: type.workspaceId,
       projectId: type.defaultProjectId,
@@ -377,6 +428,22 @@ export async function setRequestTypePublished(
     if (!current)
       throw new HTTPException(404, { message: "Request type not found" });
     if (current.published === published) return current;
+    if (published) {
+      const [latest] = await tx
+        .select()
+        .from(schema.requestTypeVersionTable)
+        .where(eq(schema.requestTypeVersionTable.requestTypeId, id))
+        .orderBy(desc(schema.requestTypeVersionTable.number))
+        .limit(1)
+        .for("share");
+      if (latest)
+        await requireAutoAcceptAudienceBinding(tx, {
+          requestTypeId: id,
+          autoAccept: latest.autoAccept,
+          workspaceId: current.workspaceId,
+          projectId: latest.defaultProjectId,
+        });
+    }
     const [row] = await tx
       .update(schema.requestTypeTable)
       .set({

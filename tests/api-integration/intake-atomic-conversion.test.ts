@@ -57,6 +57,72 @@ async function makeDefaultState(workspaceId: string, projectId: string) {
 describe("intake atomic conversion", () => {
   beforeEach(async () => resetTestDatabase());
 
+  it("refuses to publish auto-accept to an organisation the pinned project cannot serve", async () => {
+    const { workspace } = await createWorkspaceMember({ role: "admin" });
+    const organisations = await db
+      .insert(schema.organisationTable)
+      .values([
+        { key: `customer-a-${randomUUID()}`, name: "Customer A" },
+        { key: `customer-b-${randomUUID()}`, name: "Customer B" },
+      ])
+      .returning();
+    const projectOrganisation = requireRow([organisations[0]], "project org");
+    const otherOrganisation = requireRow([organisations[1]], "other org");
+    const { project } = await createProjectFixture({
+      workspaceId: workspace.id,
+    });
+    await db
+      .update(schema.projectTable)
+      .set({ organisationId: projectOrganisation.id })
+      .where(eq(schema.projectTable.id, project.id));
+    const workItemType = await makeWorkItemType(workspace.id);
+    const requestType = requireRow(
+      await db
+        .insert(schema.requestTypeTable)
+        .values({
+          workspaceId: workspace.id,
+          key: `audience-${randomUUID()}`,
+          name: "Automatic request",
+          group: "General",
+          workItemTypeId: workItemType.id,
+          defaultProjectId: project.id,
+          formSchema: {
+            fields: [
+              {
+                key: "summary",
+                type: "text",
+                label: "Summary",
+                required: true,
+                mapsTo: { field: "title" },
+              },
+            ],
+          },
+          autoAccept: true,
+          customerVisible: true,
+        })
+        .returning(),
+      "request type",
+    );
+    await db.insert(schema.organisationRequestTypeTable).values([
+      { organisationId: projectOrganisation.id, requestTypeId: requestType.id },
+      { organisationId: otherOrganisation.id, requestTypeId: requestType.id },
+    ]);
+
+    await expect(
+      publishRequestType(requestType.id, "test-actor"),
+    ).rejects.toMatchObject({ status: 422 });
+    const [unchanged] = await db
+      .select()
+      .from(schema.requestTypeTable)
+      .where(eq(schema.requestTypeTable.id, requestType.id));
+    const versions = await db
+      .select()
+      .from(schema.requestTypeVersionTable)
+      .where(eq(schema.requestTypeVersionTable.requestTypeId, requestType.id));
+    expect(unchanged?.published).toBe(false);
+    expect(versions).toHaveLength(0);
+  });
+
   it("races acceptors and atomically transfers comments, attachments, watcher, and submission SLA time", async () => {
     const member = await createWorkspaceMember({ role: "admin" });
     const { workspace } = member;

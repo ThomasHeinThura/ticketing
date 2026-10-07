@@ -147,6 +147,12 @@ here, to avoid two specs each defining the same write path differently.
   the server never chooses an arbitrary project (decision log, 2026-10-04,
   “Request-type default project and auto-accept binding”). Manual acceptance remains
   governed by `IQ-7`.
+  Every organisation mapping that advertises a published auto-accept request type must
+  match that pinned project's single `organisation_id`; a project serving one organisation
+  cannot advertise the type to another. Publication validates all configured mappings in
+  the same transaction as the request-type/version/project checks. The God Mode catalogue
+  assignment writer must serialize against that validation and enforce the same binding
+  before changing mappings; its route is specified in `god-mode.md`, not implemented here.
   Its `submission.accepted` audit and outbox event use the `system` actor with no person
   actor id and display name `Request type auto-accept`; the customer remains the requester
   and initiator. Manual acceptance uses the acting staff person's identity and name.
@@ -165,6 +171,14 @@ here, to avoid two specs each defining the same write path differently.
 | Submit | `{ portal: 'customer', predicate: 'own_organisation' }` |
 | Create, edit, publish, unpublish, delete a request type | `request_type:manage` |
 | Assign a catalogue to an organisation | `instance:admin` — via God Mode, not this spec's API ([god-mode.md](god-mode.md)) |
+
+**Auto-accept catalogue binding:** For a published auto-accept type, every configured
+organisation mapping must be the organisation served by its pinned default project. The
+publication transaction reads and share-locks all current mapping rows while holding the
+request-type row lock. A catalogue assignment writer must take the request-type lock before
+changing mappings and apply the same project/org check; concurrent publication and mapping
+changes therefore serialize through the request-type row. There is no multi-organisation
+project behavior in this contract.
 
 ## Screens
 

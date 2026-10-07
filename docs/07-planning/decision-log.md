@@ -1,3 +1,16 @@
+### 2026-10-07 · Reuse canonical domain visibility in the portal
+
+**Decision:** Add the existing `@taskdesk/domain` package as a direct workspace dependency
+of `@taskdesk/web` and call its canonical request-type visibility evaluator from the portal.
+The evaluator owns `eq`, `neq`, `in`, and trimmed `is_set` semantics; do not maintain a
+second frontend operator switch. This adds no package or runtime dependency beyond the
+already existing workspace package.
+
+**Approval:** Thomas explicitly approved adding the existing workspace dependency in the
+PR #598 bulk-remediation task, 2026-10-07.
+
+**Recorded:** orchestrator, 2026-10-07.
+
 ### 2026-10-07 · Auto-accept actor attribution for intake acceptance
 
 **Decision:** Thomas explicitly approves auto-accept attribution as a `system` action with no

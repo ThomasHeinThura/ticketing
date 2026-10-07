@@ -1,5 +1,6 @@
 import { useMutation, useQuery } from "@tanstack/react-query";
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
+import type { FormSchema } from "@taskdesk/domain";
 import {
   Alert,
   AlertDescription,
@@ -15,20 +16,10 @@ import {
 import { useEffect, useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { getPortalCatalogue, submitPortalRequest } from "@/fetchers/intake";
+import { missingRequiredIntakeFields } from "@/lib/intake-validation";
 import { isIntakeConditionSatisfied } from "@/lib/intake-visibility";
 import { parsePortalCatalogueSearch, routes } from "@/lib/routes";
 
-type Field = {
-  key: string;
-  type: string;
-  label: string;
-  required?: boolean;
-  options?: string[];
-  help?: string;
-  multiple?: boolean;
-  mapsTo?: { field: string };
-  showIf?: { field_key: string; op: string; value?: unknown } | null;
-};
 type Entry = {
   key: string;
   name: string;
@@ -37,7 +28,7 @@ type Entry = {
   group: string;
   position: number;
   forcePrivate: boolean;
-  formSchema: { fields: Field[] };
+  formSchema: FormSchema;
   version: number;
 };
 
@@ -60,6 +51,7 @@ function PortalCatalogue() {
     ? `taskdesk:intake-draft:${selected.key}:${selected.version}`
     : null;
   const [answers, setAnswers] = useState<Record<string, unknown>>({});
+  const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
   const [visibility, setVisibility] = useState<{
     key: string;
     value: "private" | "organisation";
@@ -86,6 +78,7 @@ function PortalCatalogue() {
     },
   });
   useEffect(() => {
+    setFieldErrors({});
     if (!storageKey) {
       setAnswers({});
       return;
@@ -106,7 +99,7 @@ function PortalCatalogue() {
     () => [...new Set(entries.map((entry) => entry.group))],
     [entries],
   );
-  const visible = (field: Field) => {
+  const visible = (field: FormSchema["fields"][number]) => {
     const condition = field.showIf;
     if (!condition) return true;
     const value = answers[condition.field_key];
@@ -166,8 +159,29 @@ function PortalCatalogue() {
           {selected.description && <p>{selected.description}</p>}
           <form
             className="flex flex-col gap-4"
+            noValidate
             onSubmit={(event) => {
               event.preventDefault();
+              const missingRequired = missingRequiredIntakeFields(
+                selected.formSchema,
+                answers,
+              );
+              if (missingRequired.length > 0) {
+                const nextErrors = Object.fromEntries(
+                  missingRequired.map((key) => [
+                    key,
+                    t("portal:intake.fieldRequired", {
+                      defaultValue: "This field is required.",
+                    }),
+                  ]),
+                );
+                setFieldErrors(nextErrors);
+                document
+                  .getElementById(`request-field-${missingRequired[0]}`)
+                  ?.focus();
+                return;
+              }
+              setFieldErrors({});
               submit.mutate();
             }}
           >
@@ -193,29 +207,61 @@ function PortalCatalogue() {
                   <Textarea
                     id={`request-field-${field.key}`}
                     aria-label={field.label}
+                    aria-invalid={Boolean(fieldErrors[field.key])}
+                    aria-describedby={
+                      fieldErrors[field.key]
+                        ? `request-field-error-${field.key}`
+                        : undefined
+                    }
                     required={field.required}
                     value={String(answers[field.key] ?? "")}
-                    onChange={(event) =>
+                    onChange={(event) => {
                       setAnswers((old) => ({
                         ...old,
                         [field.key]: event.target.value,
-                      }))
-                    }
+                      }));
+                      setFieldErrors((old) => {
+                        const next = { ...old };
+                        delete next[field.key];
+                        return next;
+                      });
+                    }}
                   />
                 ) : field.type === "select" || field.type === "combobox" ? (
                   <Select
                     value={String(answers[field.key] ?? "") || null}
-                    onValueChange={(value) =>
+                    onValueChange={(value) => {
                       setAnswers((old) => ({
                         ...old,
                         [field.key]: value ?? "",
-                      }))
-                    }
+                      }));
+                      setFieldErrors((old) => {
+                        const next = { ...old };
+                        delete next[field.key];
+                        return next;
+                      });
+                    }}
                   >
                     <SelectTrigger
                       id={`request-field-${field.key}`}
                       aria-label={field.label}
                       aria-required={field.required}
+                      aria-invalid={Boolean(fieldErrors[field.key])}
+                      aria-describedby={
+                        fieldErrors[field.key]
+                          ? `request-field-error-${field.key}`
+                          : undefined
+                      }
+                      onBlur={() => {
+                        if (field.required && !answers[field.key]) {
+                          setFieldErrors((old) => ({
+                            ...old,
+                            [field.key]: t("portal:intake.fieldRequired", {
+                              defaultValue: "This field is required.",
+                            }),
+                          }));
+                        }
+                      }}
                     >
                       <SelectValue
                         placeholder={t("common:empty.select", {
@@ -235,19 +281,36 @@ function PortalCatalogue() {
                   <Input
                     id={`request-field-${field.key}`}
                     aria-label={field.label}
+                    aria-invalid={Boolean(fieldErrors[field.key])}
+                    aria-describedby={
+                      fieldErrors[field.key]
+                        ? `request-field-error-${field.key}`
+                        : undefined
+                    }
                     type="checkbox"
                     checked={Boolean(answers[field.key])}
-                    onChange={(event) =>
+                    onChange={(event) => {
                       setAnswers((old) => ({
                         ...old,
                         [field.key]: event.target.checked,
-                      }))
-                    }
+                      }));
+                      setFieldErrors((old) => {
+                        const next = { ...old };
+                        delete next[field.key];
+                        return next;
+                      });
+                    }}
                   />
                 ) : (
                   <Input
                     id={`request-field-${field.key}`}
                     aria-label={field.label}
+                    aria-invalid={Boolean(fieldErrors[field.key])}
+                    aria-describedby={
+                      fieldErrors[field.key]
+                        ? `request-field-error-${field.key}`
+                        : undefined
+                    }
                     type={
                       field.type === "number" || field.type === "date"
                         ? field.type
@@ -255,13 +318,27 @@ function PortalCatalogue() {
                     }
                     required={field.required}
                     value={String(answers[field.key] ?? "")}
-                    onChange={(event) =>
+                    onChange={(event) => {
                       setAnswers((old) => ({
                         ...old,
                         [field.key]: event.target.value,
-                      }))
-                    }
+                      }));
+                      setFieldErrors((old) => {
+                        const next = { ...old };
+                        delete next[field.key];
+                        return next;
+                      });
+                    }}
                   />
+                )}
+                {fieldErrors[field.key] && (
+                  <p
+                    className="text-destructive text-sm"
+                    id={`request-field-error-${field.key}`}
+                    role="alert"
+                  >
+                    {fieldErrors[field.key]}
+                  </p>
                 )}
               </div>
             ))}

@@ -500,6 +500,9 @@ describe("showIf — spec's field_key/op/value shape, verbatim (H1)", () => {
     expect(
       isFieldVisible(schemaFor("is_set"), field("is_set"), { x: "" }),
     ).toBe(false);
+    expect(
+      isFieldVisible(schemaFor("is_set"), field("is_set"), { x: " \t\n " }),
+    ).toBe(false);
     expect(isFieldVisible(schemaFor("is_set"), field("is_set"), {})).toBe(
       false,
     );
