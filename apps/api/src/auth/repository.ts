@@ -50,6 +50,19 @@ export function getActivePersonFactorState(userId: string) {
     .limit(1);
 }
 
+export function hasInactivePersonFactorIdentity(userId: string) {
+  return db
+    .select({ id: schema.personTable.id })
+    .from(schema.personTable)
+    .where(
+      and(
+        eq(schema.personTable.userId, userId),
+        eq(schema.personTable.active, false),
+      ),
+    )
+    .limit(1);
+}
+
 export function listPersonRoleMemberships(personId: string) {
   return db
     .select({ roleId: schema.membershipTable.roleId })

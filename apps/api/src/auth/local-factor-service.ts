@@ -7,6 +7,7 @@ import {
   getActivePersonFactorState,
   getLocalFactorPolicyRow,
   getRoleById,
+  hasInactivePersonFactorIdentity,
   listPersonRoleMemberships,
 } from "./repository";
 
@@ -18,6 +19,13 @@ export type LocalFactorState = {
   personSide: "staff" | "customer";
 };
 
+export class InactiveFactorIdentityError extends Error {
+  constructor() {
+    super("Identity is inactive for factor policy evaluation");
+    this.name = "InactiveFactorIdentityError";
+  }
+}
+
 export async function loadLocalFactorState(
   userId: string,
 ): Promise<LocalFactorState> {
@@ -27,6 +35,8 @@ export async function loadLocalFactorState(
 
   const [person] = await getActivePersonFactorState(userId);
   if (!person || (person.side !== "staff" && person.side !== "customer")) {
+    const [inactivePerson] = await hasInactivePersonFactorIdentity(userId);
+    if (inactivePerson) throw new InactiveFactorIdentityError();
     throw new Error(
       "Active identity is unavailable for factor policy evaluation",
     );
