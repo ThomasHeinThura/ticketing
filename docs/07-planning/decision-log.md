@@ -45,6 +45,29 @@ task, 2026-10-07.
 
 **Recorded:** orchestrator, 2026-10-07.
 
+### 2026-10-07 · Keep test role seeding private-only
+
+**Decision:** Thomas explicitly instructs: “make sure seeder and credentials md are not
+store in code or in repo. just seeded and check ... setup api rbac”. Remove the test-only
+role-user seeder, its credential-manifest writer, wrappers, dedicated tests/configuration,
+and public documentation from the repository delivery candidate. Role-specific test users
+may be prepared only through private operator-managed tooling, then checked through the API
+for identity scope and RBAC behavior. Do not store generated user credentials or a usable
+credential manifest in source control.
+
+Keep ordinary `minimal` / `realistic` / `hostile` data profiles, canonical default-role
+provisioning, production role defaults, and existing generic API/RBAC coverage. The
+role-seeder source, tests, and review evidence are preserved as an immutable mode-0700/0600
+private archive outside the repository at
+`/Users/heinthura/.codex/taskdesk-evidence/2026-10-07/private-role-seeding-tooling/`;
+that archive contains no generated credentials or operational secrets. This is a
+user-directed scope change, not a test-gate waiver. The general seed-profile test suite
+remains in place.
+
+**P2 scope provenance:** This leaf mirrors the already approved private-only decision recorded in central commit `99528ca562c22ffee9e926bfe0879785f1385322`. It does not add behavior or change the preserved generic seed/RBAC coverage.
+
+**Recorded:** orchestrator, Thomas's explicit instruction relayed for this task, 2026-10-07.
+
 ### 2026-10-06 · Keep self-only personal writes session-only until explicit API-key scopes exist
 
 **Decision:** Thomas explicitly approves “Make self writes session-only (recommended)” for
