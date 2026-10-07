@@ -17,7 +17,7 @@ import {
 } from "../../apps/api/src/notification/outbox-drain";
 import { deleteExpiredNotificationReservations } from "../../apps/api/src/scheduler/session-cleanup";
 import { seedDefaultWorkspaceRoles } from "../../apps/api/src/utils/seed-default-workspace-roles";
-import { ensureTestDatabaseMigrated } from "./helpers/database";
+import { resetTestDatabase } from "./helpers/database";
 import { createProjectFixture, grantProjectRole } from "./helpers/fixtures";
 
 const suffix = randomUUID().replaceAll("-", "");
@@ -85,7 +85,10 @@ describe("outbox notification direct-delivery persistence", () => {
         "Refusing notification delivery integration test outside *_test database",
       );
     }
-    await ensureTestDatabaseMigrated();
+    // Integration files share a database, while some fixture setup writes effective
+    // memberships directly. Reset this suite's database before the cutover verifier
+    // checks that every existing membership has a matching provenance projection.
+    await resetTestDatabase();
     await db.execute(
       sql`INSERT INTO organisation (id, key, name) VALUES (${ids.organisation}, ${suffix}, 'Notification test')`,
     );

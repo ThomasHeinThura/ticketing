@@ -5,6 +5,7 @@ import { SavedViewRoute } from "./views/$id";
 const mocks = vi.hoisted(() => ({
   directQuery: vi.fn(),
   infiniteOptions: undefined as unknown,
+  snapshotComplete: true,
 }));
 
 vi.mock("@tanstack/react-router", () => ({
@@ -14,7 +15,7 @@ vi.mock("@tanstack/react-router", () => ({
     useSearch: () => ({
       workspaceId: "workspace-1",
       scope: "workspace",
-      scopeId: "workspace-1",
+      scopeId: mocks.snapshotComplete ? "workspace-1" : undefined,
       layout: "list",
       filter: "status:open",
     }),
@@ -108,6 +109,7 @@ describe("SavedViewRoute shared URL fallback", () => {
   beforeEach(() => {
     mocks.directQuery.mockReset();
     mocks.infiniteOptions = undefined;
+    mocks.snapshotComplete = true;
   });
   afterEach(cleanup);
 
@@ -123,9 +125,13 @@ describe("SavedViewRoute shared URL fallback", () => {
     expect(screen.getByText("Reachable shared result")).toBeInTheDocument();
     expect(screen.queryByText("loadError")).toBeNull();
     const options = mocks.infiniteOptions as
-      | { queryFn: (context: { pageParam: undefined }) => Promise<unknown> }
+      | {
+          enabled: boolean;
+          queryFn: (context: { pageParam: undefined }) => Promise<unknown>;
+        }
       | undefined;
     expect(options).toBeDefined();
+    expect(options?.enabled).toBe(true);
     await options?.queryFn({ pageParam: undefined });
     expect(mocks.directQuery).toHaveBeenCalledWith(
       expect.objectContaining({
@@ -133,5 +139,12 @@ describe("SavedViewRoute shared URL fallback", () => {
         filter: "status:open",
       }),
     );
+  });
+
+  it("does not enable the URL query for an incomplete snapshot when the saved view is unreadable", () => {
+    mocks.snapshotComplete = false;
+    render(<SavedViewRoute />);
+    const options = mocks.infiniteOptions as { enabled: boolean } | undefined;
+    expect(options?.enabled).toBe(false);
   });
 });

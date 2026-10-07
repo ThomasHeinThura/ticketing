@@ -964,9 +964,14 @@ describe("identity connection administration", () => {
       .limit(1);
     if (!projectedMembership)
       throw new Error("Projected membership fixture is missing");
-    await db
-      .insert(schema.scimConnectionTable)
-      .values({ identityConnectionId: connectionId, enabled: true });
+    const scimToken = randomUUID();
+    await db.insert(schema.scimConnectionTable).values({
+      identityConnectionId: connectionId,
+      tokenHash: createHash("sha256").update(scimToken).digest(),
+      tokenPrefix: scimToken.slice(0, 8),
+      tokenCreatedAt: new Date(),
+      enabled: true,
+    });
     const scimMappingId = `ceiling-scim-mapping-${randomUUID()}`;
     const scimGrantId = `ceiling-scim-grant-${randomUUID()}`;
     await db.insert(schema.scimGroupMappingTable).values({
@@ -1078,6 +1083,26 @@ describe("identity connection administration", () => {
       postCeilingGrants.find((grant) => grant.id === scimGrantId)
         ?.revocationReason,
     ).toBe("mapping_changed");
+    const [effectiveMembership] = await db
+      .select({ roleId: schema.membershipTable.roleId })
+      .from(schema.membershipTable)
+      .where(eq(schema.membershipTable.id, projectedMembership.id))
+      .limit(1);
+    expect(effectiveMembership?.roleId).toBe(directRoleId);
+    const [retiredScimMember] = await db
+      .select({
+        membershipId: schema.scimGroupMemberTable.membershipId,
+        membershipGrantId: schema.scimGroupMemberTable.membershipGrantId,
+        revokedAt: schema.scimGroupMemberTable.revokedAt,
+      })
+      .from(schema.scimGroupMemberTable)
+      .where(eq(schema.scimGroupMemberTable.membershipGrantId, scimGrantId))
+      .limit(1);
+    expect(retiredScimMember).toMatchObject({
+      membershipId: null,
+      membershipGrantId: scimGrantId,
+    });
+    expect(retiredScimMember?.revokedAt).toBeInstanceOf(Date);
     invalidateAuthorization.mockRestore();
   });
 
