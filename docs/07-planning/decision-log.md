@@ -1,3 +1,15 @@
+### 2026-10-07 · Prove positive customer sessions; stop custom proxy expansion
+
+**Operational application, not a gate waiver.** Full seeder Sol correctly rejects the earlier customer person/organisation-only fixture. Complete successor `2cb1275d` creates genuine canonical customer role plus materialized organisation membership, validates exact retry provenance and tests actual configured portal login/session. One isolated DB-only native suite passes14; test provider state and private credentials are cleaned. Root verifies ownership/zero clients and removes only the bound named PG18 resource with absence evidence. Draft#597 contains reusable code/contract and sanitized test claims, no usable credentials. Final current-head review remains open.
+
+The Native Host-only explanation is disproven by the rerun. The confirmed cause is the harness hardcoding localhost instead of the integration-configured portal.localhost; require actual registered origins and matching Host. Preserve all failed candidate/run receipts; do not call the former disabled-provider negative test positive customer acceptance.
+
+After v10 repeats the proxy authority/cleanup class, root changes altitude: stop bespoke Python proxy remediation and use existing pinned stock Traefik with explicit bounded manual root commands. Preserve blocked versions/reviews. Complete private static-plan v2 fixes all collected headless-route/CSRF, proxy/port and cleanup-order findings. It still needs exact independent Sol clearance and a fresh genuine runtime window; no official installer/TLS/signature/strict/date-carry/phase gate is waived.
+
+All P1 ordinary findings are collected before one complete successor batch. Root explicitly hands sole worktree ownership from the paused partial author to the Luna completing the full UI/API/cache/URL implementation. Missing team-lead-dependent behavior stays blocked by the existing decision path; no new schema/migration or fallback is invented. No0119 is allocated.
+
+**Recorded:** root at actual 2026-10-07T05:02:37.599656+00:00; P0/main/persistent DEV unchanged.
+
 ### 2026-10-07 · Actual all-role sign-in and P1 migration verification; preserve authority limits
 
 **Operational evidence, no waiver.** Root issues a genuinely owned PG18 database-only window to the two named implementation lanes, with independent full container/image/named-parent-mount binding. Seeder uses only `taskdesk_role_seed_test`; P1 only `taskdesk_p1_composite_test`; no Testcontainers, persistent DEV or performance overlap. Source amendments remain within the same bounded testing scope. Both release connections; root proves zero clients, exact ownership/no other references and actual resource/port absence after cleanup. Original binding/window and cleanup receipt are retained privately; no password/URL is included in GitHub or this record.

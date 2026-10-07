@@ -1,5 +1,57 @@
 ## Status First
 
+Snapshot: 2026-10-07T05:02:37.599656+00:00. Sole P0 closure #583 remains frozen at `5326937460b195d8e69584c0cb99305348330a95`; accepted main remains `3096cb04`. No protected merge, persistent DEV refresh, strict cutover, official release or phase completion is claimed.
+
+| Phase | Implementation | Integration | Acceptance |
+| --- | --- | --- | --- |
+| P0 | Frozen product; existing stock Traefik manual test plan v2 implemented | Sole closure #583; bespoke v9/v10 runners retained blocked | Hosted G11 19/22; reviewed actual lifecycle, official installer/TLS, strict compatibility/cutover/finalizer open |
+| P1 | Canonical `636a9788` implemented; full saved-view completion successor underway | Canonical614 + provisional0118; partial run/count policies preserved for sole successor author | Native28 pass at636; ordinary panel blocks UI/run/count/pin/ownership completion; team-lead decision remains open |
+| P2 | Selected continuity/withdrawal/browser placement reviewed | #586 into #589 | Composed/live API/image/phase acceptance open |
+| P3 | Selected mapping/login/query relocation reviewed | #595 then #596 into #589 | Provider/Health/phase acceptance open |
+| P4 | Complete all-eight seeder `2cb1275d` with positive customer portal path | Draft #597 based on reviewed dialog leaf; #594 outbox into #589 | Actual native14 pass; final customer delta Luna/Sol pending; no persistent test accounts created |
+
+### What changed
+
+Draft #597 freezes `2cb1275dc82a36536dda45a5745d18c25d3645d0`. Earlier native14 atcb081b8a did not prove an enabled customer login: the full Sol review correctly found missing organisation membership/customer role. The complete successor supplies canonical role backing and materialized organisation membership, verifies exact reuse scope/flags and the actual portal identity, and exercises positive login plus portal get-session. It also fixes absent-role lookup and requires test origins/Host from the registered integration configuration. The initial Host-only hypothesis was disproven and retained. Final native PostgreSQL suite passes one file/14 tests, including the positive customer portal2xx/session/resolver path; unit9/type/style pass. The isolated provider setting is removed/reloaded, test database reset and private credentials removed. Production provider defaults remain unchanged; usable credentials are never included in GitHub or Markdown.
+
+Root independently captures the second named PG18 parent-mounted resource, scoped DB-only window and source amendments. After the lane releases, zero client connections and exact full container/image/mount/label identity are verified; only the owned container and named volume are removed, and port55442 absence is proven. Cleanup PASS is retained. No database/resource window remains open. This verified cleanup does not resolve prior anonymous-volume incidents.
+
+P0 changes approach after recurring custom proxy authority/shutdown findings: preserve v9/v10 blocked bundles and use existing pinned Traefik3.6.7 with one root-controlled bounded command at a time. The complete private v2 static plan has manifest `33a8b31fdabf9aa7c9b7dbb24769c5c79c540b39674d9887b981a2f80a3b8b68`; it binds25 frozen source hashes, exact headless signup/workspace/project/CSRF/fixture routes, two loopback ports, no-proxy CA curl and capture-before-owned-ingress-stop cleanup. Synthetic Compose/YAML/JSON/bash checks pass. Independent Sol exact delta is underway. No actual runtime, official signature or GateC acceptance is inferred.
+
+P1's whole three-context ordinary panel completes at636. It confirms saved-view UI/open/run/count/pin completion gaps and known team-lead/ownership seams; no additional migration/filter/CSV defect class is confirmed by panelC. Full successor implementation starts after all findings are collected. Partial API/policy edits are handed off explicitly to one Luna; no two lanes edit this source concurrently. The team-lead-dependent ownership decision path remains held rather than guessed.
+
+### What is being worked on now
+
+P0 static v2 plan receives independent Sol delta review before an actual root test window. A Luna independently reviews the seeder's complete customer delta. Another Luna implements the full separable P1 saved-view UI/API/cache/URL batch. No tiny source-review loop or unchanged-SHA comfort round is queued.
+
+### Critical path
+
+1. Resolve frozen hosted G11 under the existing no-extra-retry rule.
+2. Execute reviewed exact-image local lifecycle and official installer/TLS proof.
+3. Establish current strict behavior and original partial-date compatibility.
+4. Resolve public-config criterion and perform eligible reversible cutover.
+5. Protected exact-head merge, official acceptance and fresh Sol finalizer.
+
+### Misalignment / drift
+
+#583 stays sole P0 and #589 sole later train. #597 is a test-infrastructure leaf, not a second train or P0 prerequisite. Positive customer sessions, not disabled-provider rejection, establish customer fixture usability. The bespoke TLS proxy is removed from the proposed execution path; all original blocked records remain preserved.
+
+### Concerns
+
+P1 partial changes remain in progress and are not reviewed or complete. Team-lead-dependent transfer/editing and exact phase acceptance remain open. Private static validation cannot establish actual migration/boot/rollback or official TLS preservation. Prior lost migrate logs, unbound preserved volume and earlier irreversible deletion remain unchanged.
+
+### Decisions needed from Thomas
+
+Existing public-config criterion, unchanged-source hosted confirmation, official installer release ordering and P1 team-lead behavior questions remain pending; no duplicate asks.
+
+### Next merge candidates
+
+#583 after actual gates clear. Later completed slices and draft#597 compose through #589 once dependencies, exact-head review and required CI clear. No current candidate or phase is declared accepted.
+
+---
+
+## Status First
+
 Snapshot: 2026-10-07T04:36:34.098560+00:00. P0 #583 stays frozen at `5326937460b195d8e69584c0cb99305348330a95`; accepted main remains `3096cb04`. No protected merge, persistent DEV refresh, strict activation, signed publication or phase completion is claimed.
 
 | Phase | Implementation | Integration | Acceptance |
