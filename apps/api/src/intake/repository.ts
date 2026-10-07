@@ -238,7 +238,8 @@ async function requireAutoAcceptProject(
         isNull(schema.projectTable.archivedAt),
       ),
     )
-    .for("share")
+    // Conversion later increments this same project row's work-item counter.
+    .for("no key update")
     .limit(1);
   if (
     !project?.organisationId ||
@@ -888,8 +889,8 @@ async function convertSubmissionInTransaction(
         isNull(schema.projectTable.archivedAt),
       ),
     )
-    // Serialize acceptance against archive and soft-delete through the insert.
-    .for("share")
+    // Match the counter UPDATE's lock mode so concurrent acceptors serialize without upgrades.
+    .for("no key update")
     .limit(1);
   if (!project || project.organisationId !== submission.organisationId)
     throw new HTTPException(422, {

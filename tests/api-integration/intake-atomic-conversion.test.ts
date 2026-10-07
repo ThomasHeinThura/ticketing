@@ -152,28 +152,55 @@ async function createManualAcceptanceFixture(
   };
 }
 
-async function waitForBlockedProjectShare(
+async function waitForBlockedProjectAcceptances(
   observer: Client,
   blockerPid: number,
+  expectedCount: number,
 ): Promise<boolean> {
   const deadline = Date.now() + 5_000;
   while (Date.now() < deadline) {
     await observer.query("SELECT pg_stat_clear_snapshot()");
-    const result = await observer.query<{ pid: number }>(
+    const result = await observer.query<{ count: string }>(
       `
-        SELECT pid
+        SELECT count(*)::text AS count
         FROM pg_stat_activity
         WHERE datname = current_database()
           AND pid <> pg_backend_pid()
           AND wait_event_type = 'Lock'
           AND $1 = ANY(pg_blocking_pids(pid))
           AND query ILIKE '%from "project"%'
-          AND query ILIKE '%for share%'
-        LIMIT 1
+          AND query ILIKE '%for no key update%'
       `,
       [blockerPid],
     );
-    if (result.rows[0]?.pid !== undefined) return true;
+    if (Number(result.rows[0]?.count ?? 0) >= expectedCount) return true;
+    await new Promise((resolve) => setTimeout(resolve, 25));
+  }
+  return false;
+}
+
+async function waitForBlockedProjectArchive(
+  observer: Client,
+  blockerPid: number,
+): Promise<boolean> {
+  const deadline = Date.now() + 5_000;
+  while (Date.now() < deadline) {
+    await observer.query("SELECT pg_stat_clear_snapshot()");
+    const result = await observer.query<{ waiting: boolean }>(
+      `
+        SELECT EXISTS (
+          SELECT 1
+          FROM pg_stat_activity
+          WHERE datname = current_database()
+            AND pid <> pg_backend_pid()
+            AND wait_event_type = 'Lock'
+            AND $1 = ANY(pg_blocking_pids(pid))
+            AND query ILIKE 'update "project"%'
+        ) AS waiting
+      `,
+      [blockerPid],
+    );
+    if (result.rows[0]?.waiting === true) return true;
     await new Promise((resolve) => setTimeout(resolve, 25));
   }
   return false;
@@ -393,9 +420,10 @@ describe("intake atomic conversion", () => {
         (error: unknown) => ({ status: "rejected" as const, error }),
       );
 
-      const waitsForShare = await waitForBlockedProjectShare(
+      const waitsForProjectLock = await waitForBlockedProjectAcceptances(
         observer,
         blockerPid,
+        1,
       );
       await blocker.query(
         'UPDATE "project" SET archived_at = now() WHERE id = $1',
@@ -404,7 +432,7 @@ describe("intake atomic conversion", () => {
       await blocker.query("COMMIT");
       transactionOpen = false;
 
-      expect(waitsForShare).toBe(true);
+      expect(waitsForProjectLock).toBe(true);
       const outcome = await acceptance;
       expect(outcome.status).toBe("rejected");
       if (outcome.status !== "rejected")
@@ -425,6 +453,231 @@ describe("intake atomic conversion", () => {
     } finally {
       if (transactionOpen) await blocker.query("ROLLBACK");
       if (acceptance) await acceptance;
+      await observer.end();
+      await blocker.end();
+    }
+  });
+
+  it("serializes two acceptances for one project before a queued archive", async () => {
+    const formSchema: FormSchema = {
+      fields: [
+        {
+          key: "summary",
+          type: "text",
+          label: "Summary",
+          required: true,
+          mapsTo: { field: "title" },
+        },
+      ],
+    };
+    const fixture = await createManualAcceptanceFixture(formSchema, {
+      summary: "First concurrent request",
+    });
+    const secondSubmission = requireRow(
+      await db
+        .insert(schema.submissionTable)
+        .values({
+          organisationId: fixture.submission.organisationId,
+          requesterId: fixture.submission.requesterId,
+          requestTypeId: fixture.submission.requestTypeId,
+          requestTypeVersionId: fixture.submission.requestTypeVersionId,
+          formData: { summary: "Second concurrent request" },
+          state: "new",
+        })
+        .returning(),
+      "second concurrent submission",
+    );
+    const customerUser = requireRow(
+      await db
+        .insert(schema.userTable)
+        .values({
+          id: `customer-user-${randomUUID()}`,
+          name: "Portal Requester",
+          email: `${randomUUID()}@example.com`,
+          emailVerified: true,
+        })
+        .returning(),
+      "customer user",
+    );
+    await db.insert(schema.personTable).values({
+      userId: customerUser.id,
+      organisationId: fixture.submission.organisationId,
+      side: "customer",
+      displayName: "Portal Requester",
+    });
+    const autoType = await makeWorkItemType(fixture.workspace.id);
+    const autoRequestType = requireRow(
+      await db
+        .insert(schema.requestTypeTable)
+        .values({
+          workspaceId: fixture.workspace.id,
+          key: `auto-${randomUUID()}`,
+          name: "Automatic request",
+          group: "General",
+          workItemTypeId: autoType.id,
+          defaultProjectId: fixture.project.id,
+          formSchema,
+          autoAccept: true,
+          customerVisible: true,
+          published: true,
+        })
+        .returning(),
+      "auto-accept request type",
+    );
+    await db.insert(schema.requestTypeVersionTable).values({
+      workspaceId: fixture.workspace.id,
+      requestTypeId: autoRequestType.id,
+      number: 1,
+      formSchema,
+      workItemTypeId: autoType.id,
+      defaultProjectId: fixture.project.id,
+      autoAccept: true,
+    });
+    await db.insert(schema.organisationRequestTypeTable).values({
+      organisationId: fixture.submission.organisationId,
+      requestTypeId: autoRequestType.id,
+    });
+    await db
+      .insert(schema.instanceFeatureFlagTable)
+      .values({ featureKey: "feature.intake", enabled: true })
+      .onConflictDoNothing();
+    const blocker = new Client({
+      connectionString: process.env.TASKDESK_DATABASE_URL,
+    });
+    const observer = new Client({
+      connectionString: process.env.TASKDESK_DATABASE_URL,
+    });
+    const archiver = new Client({
+      connectionString: process.env.TASKDESK_DATABASE_URL,
+    });
+    let transactionOpen = false;
+    const operations: Array<
+      Promise<{ status: "fulfilled" } | { status: "rejected"; error: unknown }>
+    > = [];
+    let archive: Promise<
+      { status: "fulfilled" } | { status: "rejected"; error: unknown }
+    > | null = null;
+
+    await blocker.connect();
+    await observer.connect();
+    await archiver.connect();
+    try {
+      await blocker.query("BEGIN");
+      transactionOpen = true;
+      await blocker.query('SELECT id FROM "project" WHERE id = $1 FOR UPDATE', [
+        fixture.project.id,
+      ]);
+      const { rows } = await blocker.query<{ pid: number }>(
+        "SELECT pg_backend_pid() AS pid",
+      );
+      const blockerPid = rows[0]?.pid;
+      if (blockerPid === undefined)
+        throw new Error("Could not read project-lock backend PID");
+
+      for (const submission of [fixture.submission, secondSubmission]) {
+        operations.push(
+          acceptSubmission(
+            `SUB-${submission.number}`,
+            fixture.workspace.id,
+            fixture.staff.id,
+            fixture.project.id,
+            fixture.type.id,
+          ).then(
+            () => ({ status: "fulfilled" as const }),
+            (error: unknown) => ({ status: "rejected" as const, error }),
+          ),
+        );
+      }
+      operations.push(
+        createSubmission({
+          userId: customerUser.id,
+          key: autoRequestType.key,
+          formData: { summary: "Concurrent auto-accepted request" },
+        }).then(
+          (result) =>
+            result.state === "accepted"
+              ? { status: "fulfilled" as const }
+              : {
+                  status: "rejected" as const,
+                  error: new Error("Auto-accept did not accept the submission"),
+                },
+          (error: unknown) => ({ status: "rejected" as const, error }),
+        ),
+      );
+      const acceptorsQueued = await waitForBlockedProjectAcceptances(
+        observer,
+        blockerPid,
+        3,
+      );
+      archive = archiver
+        .query(
+          'UPDATE "project" SET archived_at = now() WHERE id = $1 AND deleted_at IS NULL RETURNING id',
+          [fixture.project.id],
+        )
+        .then(
+          () => ({ status: "fulfilled" as const }),
+          (error: unknown) => ({ status: "rejected" as const, error }),
+        );
+      const archiveQueued = await waitForBlockedProjectArchive(
+        observer,
+        blockerPid,
+      );
+      await blocker.query("COMMIT");
+      transactionOpen = false;
+
+      expect(acceptorsQueued).toBe(true);
+      expect(archiveQueued).toBe(true);
+      const outcomes = await Promise.all(operations);
+      expect(
+        outcomes.filter((outcome) => outcome.status === "fulfilled"),
+      ).toHaveLength(3);
+      expect(
+        outcomes.filter((outcome) => outcome.status === "rejected"),
+      ).toHaveLength(0);
+      const archiveOutcome = await archive;
+      expect(archiveOutcome.status).toBe("fulfilled");
+      if (archiveOutcome.status !== "fulfilled")
+        throw new Error("Project archive failed after both acceptances");
+
+      const submissions = await db
+        .select({ workItemId: schema.submissionTable.workItemId })
+        .from(schema.submissionTable)
+        .where(
+          and(
+            eq(schema.submissionTable.id, fixture.submission.id),
+            eq(
+              schema.submissionTable.requestTypeId,
+              fixture.submission.requestTypeId,
+            ),
+          ),
+        );
+      const secondRows = await db
+        .select({ workItemId: schema.submissionTable.workItemId })
+        .from(schema.submissionTable)
+        .where(eq(schema.submissionTable.id, secondSubmission.id));
+      expect(submissions[0]?.workItemId).toBeTruthy();
+      expect(secondRows[0]?.workItemId).toBeTruthy();
+      const autoRows = await db
+        .select({ workItemId: schema.submissionTable.workItemId })
+        .from(schema.submissionTable)
+        .where(eq(schema.submissionTable.requestTypeId, autoRequestType.id));
+      expect(autoRows).toHaveLength(1);
+      expect(autoRows[0]?.workItemId).toBeTruthy();
+      const createdItems = await db
+        .select({ id: schema.workItemTable.id })
+        .from(schema.workItemTable)
+        .where(eq(schema.workItemTable.projectId, fixture.project.id));
+      expect(createdItems).toHaveLength(2);
+      const [project] = await db
+        .select({ archivedAt: schema.projectTable.archivedAt })
+        .from(schema.projectTable)
+        .where(eq(schema.projectTable.id, fixture.project.id));
+      expect(project?.archivedAt).not.toBeNull();
+    } finally {
+      if (transactionOpen) await blocker.query("ROLLBACK");
+      await Promise.allSettled(operations);
+      if (archive) await archive;
+      await archiver.end();
       await observer.end();
       await blocker.end();
     }
