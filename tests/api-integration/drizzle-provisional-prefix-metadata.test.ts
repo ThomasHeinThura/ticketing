@@ -16,6 +16,7 @@ import { drizzle } from "drizzle-orm/node-postgres";
 import { migrate } from "drizzle-orm/node-postgres/migrator";
 import { Client, Pool } from "pg";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
+import { reorderTupleByCatalogKeys } from "./helpers/drizzle-catalog-order";
 
 type MigrationEntry = {
   idx: number;
@@ -43,6 +44,29 @@ type ForeignKeyColumns = {
   constraint_name: string;
   columns_from: string[];
   columns_to: string[];
+};
+
+type OrderedConstraintColumns = {
+  table_key: string;
+  constraint_name: string;
+  constraint_type: "p" | "u";
+  columns: string[];
+  nulls_not_distinct: boolean;
+};
+
+type OrderedIndexColumn = {
+  table_key: string;
+  index_name: string;
+  position: number;
+  attnum: number;
+  expression: string;
+  opclass: string;
+  default_opclass: boolean;
+  access_method: string;
+  is_unique: boolean;
+  predicate: string | null;
+  descending: boolean;
+  nulls_first: boolean;
 };
 
 const currentDir = dirname(fileURLToPath(import.meta.url));
@@ -113,11 +137,15 @@ function schemaWithoutIdentity(snapshot: Snapshot) {
   return schema;
 }
 
-async function restoreForeignKeyColumnOrder(
+function normalizeIdentifierQuotes(expression: string): string {
+  return expression.replace(/"([^"]+)"/gu, "$1").trim();
+}
+
+async function restoreCatalogColumnOrder(
   snapshot: Snapshot,
   pool: Pool,
 ): Promise<void> {
-  const result = await pool.query<ForeignKeyColumns>(`
+  const foreignKeys = await pool.query<ForeignKeyColumns>(`
     SELECT
       source_namespace.nspname || '.' || source_table.relname AS table_key,
       constraint_row.conname AS constraint_name,
@@ -148,15 +176,220 @@ async function restoreForeignKeyColumnOrder(
     GROUP BY source_namespace.nspname, source_table.relname, constraint_row.conname
   `);
 
-  for (const row of result.rows) {
+  for (const row of foreignKeys.rows) {
     const table = snapshot.tables[row.table_key];
-    const foreignKeys = table?.["foreignKeys"] as
+    const tableForeignKeys = table?.foreignKeys as
       | Record<string, { columnsFrom: string[]; columnsTo: string[] }>
       | undefined;
-    const foreignKey = foreignKeys?.[row.constraint_name];
+    const foreignKey = tableForeignKeys?.[row.constraint_name];
     if (foreignKey) {
-      foreignKey.columnsFrom = row.columns_from;
-      foreignKey.columnsTo = row.columns_to;
+      foreignKey.columnsFrom = reorderTupleByCatalogKeys(
+        foreignKey.columnsFrom,
+        row.columns_from,
+        (column) => column,
+        `${row.table_key}.${row.constraint_name} source columns`,
+      );
+      foreignKey.columnsTo = reorderTupleByCatalogKeys(
+        foreignKey.columnsTo,
+        row.columns_to,
+        (column) => column,
+        `${row.table_key}.${row.constraint_name} target columns`,
+      );
+    } else {
+      throw new Error(
+        `Drizzle introspection omitted catalog foreign key ${row.table_key}.${row.constraint_name}`,
+      );
+    }
+  }
+
+  const constraints = await pool.query<OrderedConstraintColumns>(`
+    SELECT
+      source_namespace.nspname || '.' || source_table.relname AS table_key,
+      constraint_row.conname AS constraint_name,
+      constraint_row.contype AS constraint_type,
+      array_agg(source_column.attname ORDER BY key.position)::text[] AS columns,
+      COALESCE(bool_or(index_row.indnullsnotdistinct), false) AS nulls_not_distinct
+    FROM pg_constraint AS constraint_row
+    LEFT JOIN pg_index AS index_row
+      ON index_row.indexrelid = constraint_row.conindid
+    JOIN pg_class AS source_table
+      ON source_table.oid = constraint_row.conrelid
+    JOIN pg_namespace AS source_namespace
+      ON source_namespace.oid = source_table.relnamespace
+    CROSS JOIN LATERAL unnest(constraint_row.conkey)
+      WITH ORDINALITY AS key(source_attnum, position)
+    JOIN pg_attribute AS source_column
+      ON source_column.attrelid = source_table.oid
+      AND source_column.attnum = key.source_attnum
+    WHERE constraint_row.contype IN ('p', 'u')
+      AND (
+        constraint_row.contype = 'u'
+        OR cardinality(constraint_row.conkey) > 1
+      )
+      AND source_namespace.nspname = 'public'
+    GROUP BY
+      source_namespace.nspname,
+      source_table.relname,
+      constraint_row.conname,
+      constraint_row.contype
+  `);
+
+  for (const row of constraints.rows) {
+    const table = snapshot.tables[row.table_key];
+    const category =
+      row.constraint_type === "u"
+        ? "uniqueConstraints"
+        : "compositePrimaryKeys";
+    const items = table?.[category] as
+      | Record<string, { columns: string[]; nullsNotDistinct?: boolean }>
+      | undefined;
+    const constraint = items?.[row.constraint_name];
+    if (constraint) {
+      constraint.columns = reorderTupleByCatalogKeys(
+        constraint.columns,
+        row.columns,
+        (column) => column,
+        `${row.table_key}.${row.constraint_name}`,
+      );
+      if (row.constraint_type === "u") {
+        constraint.nullsNotDistinct = row.nulls_not_distinct;
+      }
+    } else {
+      throw new Error(
+        `Drizzle introspection omitted catalog ${row.constraint_type === "u" ? "unique constraint" : "composite primary key"} ${row.table_key}.${row.constraint_name}`,
+      );
+    }
+  }
+
+  const indexes = await pool.query<OrderedIndexColumn>(`
+    SELECT
+      table_namespace.nspname || '.' || source_table.relname AS table_key,
+      index_table.relname AS index_name,
+      index_key.position::int AS position,
+      index_key.attnum::int AS attnum,
+      CASE
+        WHEN index_key.attnum > 0 THEN key_column.attname
+        ELSE pg_get_indexdef(index_row.indexrelid, index_key.position::int, true)
+      END AS expression,
+      operator_class_row.opcname AS opclass,
+      operator_class_row.opcdefault AS default_opclass,
+      access_method.amname AS access_method,
+      index_row.indisunique AS is_unique,
+      pg_get_expr(index_row.indpred, index_row.indrelid) AS predicate,
+      COALESCE((index_option.option_bits & 1) <> 0, false) AS descending,
+      COALESCE((index_option.option_bits & 2) <> 0, false) AS nulls_first
+    FROM pg_index AS index_row
+    JOIN pg_class AS source_table
+      ON source_table.oid = index_row.indrelid
+    JOIN pg_namespace AS table_namespace
+      ON table_namespace.oid = source_table.relnamespace
+    JOIN pg_class AS index_table
+      ON index_table.oid = index_row.indexrelid
+    CROSS JOIN LATERAL unnest(index_row.indkey)
+      WITH ORDINALITY AS index_key(attnum, position)
+    JOIN LATERAL unnest(index_row.indclass)
+      WITH ORDINALITY AS operator_class(opclass_oid, position)
+      ON operator_class.position = index_key.position
+    JOIN pg_opclass AS operator_class_row
+      ON operator_class_row.oid = operator_class.opclass_oid
+    JOIN pg_am AS access_method
+      ON access_method.oid = operator_class_row.opcmethod
+    LEFT JOIN LATERAL unnest(index_row.indoption)
+      WITH ORDINALITY AS index_option(option_bits, position)
+      ON index_option.position = index_key.position
+    LEFT JOIN pg_attribute AS key_column
+      ON key_column.attrelid = index_row.indrelid
+      AND key_column.attnum = index_key.attnum
+    WHERE table_namespace.nspname = 'public'
+      AND index_key.position <= index_row.indnkeyatts
+      AND NOT EXISTS (
+        SELECT 1
+        FROM pg_constraint AS backing_constraint
+        WHERE backing_constraint.conindid = index_row.indexrelid
+          AND backing_constraint.contype IN ('p', 'u', 'x')
+      )
+    ORDER BY table_namespace.nspname, source_table.relname, index_table.relname, index_key.position
+  `);
+  const indexGroups = new Map<string, OrderedIndexColumn[]>();
+  for (const row of indexes.rows) {
+    const key = `${row.table_key}.${row.index_name}`;
+    indexGroups.set(key, [...(indexGroups.get(key) ?? []), row]);
+  }
+  for (const [key, orderedColumns] of indexGroups) {
+    const separator = key.lastIndexOf(".");
+    const tableKey = key.slice(0, separator);
+    const indexName = key.slice(separator + 1);
+    const table = snapshot.tables[tableKey];
+    const tableIndexes = table?.indexes as
+      | Record<
+          string,
+          {
+            columns: Array<{
+              expression: string;
+              opclass?: string;
+              asc?: boolean;
+              nulls?: string;
+            }>;
+          }
+        >
+      | undefined;
+    const index = tableIndexes?.[indexName] ?? {
+      name: indexName,
+      columns: [],
+      isUnique: orderedColumns[0]?.is_unique ?? false,
+      concurrently: false,
+      method: orderedColumns[0]?.access_method ?? "btree",
+      with: {},
+      ...(orderedColumns[0]?.predicate
+        ? { where: orderedColumns[0].predicate }
+        : {}),
+    };
+    if (!tableIndexes) {
+      throw new Error(
+        `Drizzle introspection omitted catalog table ${tableKey}`,
+      );
+    }
+    tableIndexes[indexName] = index;
+    if (index.columns.length === 0) {
+      index.columns = orderedColumns.map((column) => ({
+        expression: column.expression,
+        isExpression: column.attnum <= 0,
+        ...(column.access_method === "btree"
+          ? {
+              asc: !column.descending,
+              nulls: column.nulls_first ? "first" : "last",
+            }
+          : {}),
+        ...(column.default_opclass ? {} : { opclass: column.opclass }),
+      }));
+      continue;
+    }
+    index.columns = reorderTupleByCatalogKeys(
+      index.columns,
+      orderedColumns.map((column) =>
+        normalizeIdentifierQuotes(column.expression),
+      ),
+      (item) => normalizeIdentifierQuotes(item.expression),
+      key,
+    );
+    const columnsByExpression = new Map(
+      orderedColumns.map((column) => [
+        normalizeIdentifierQuotes(column.expression),
+        column,
+      ]),
+    );
+    for (const item of index.columns) {
+      const catalog = columnsByExpression.get(
+        normalizeIdentifierQuotes(item.expression),
+      );
+      if (!catalog)
+        throw new Error(`Catalog index tuple key missing for ${key}`);
+      if (catalog.default_opclass) delete item.opclass;
+      else item.opclass = catalog.opclass;
+      if (catalog.access_method === "btree") {
+        item.asc = !catalog.descending;
+        item.nulls = catalog.nulls_first ? "first" : "last";
+      }
     }
   }
 }
@@ -164,7 +397,7 @@ async function restoreForeignKeyColumnOrder(
 describe("provisional migration snapshot metadata", () => {
   const baseUrl = requireDatabaseUrl();
   const parentName = new URL(baseUrl).pathname.replace(/^\//u, "");
-  const testDatabaseName = `taskdesk_snapshot_prefix_${randomUUID().replaceAll("-", "")}`;
+  const testDatabaseName = `taskdesk_snapshot_prefix_${randomUUID().replaceAll("-", "")}_test`;
   const testDatabaseUrl = withDatabaseName(baseUrl, testDatabaseName);
   let tempRoot: string | undefined;
   let createdDatabase = false;
@@ -183,6 +416,9 @@ describe("provisional migration snapshot metadata", () => {
     try {
       await admin.query(`CREATE DATABASE ${quoteIdentifier(testDatabaseName)}`);
       createdDatabase = true;
+      process.stdout.write(
+        `Owned migration-prefix test database: ${testDatabaseName}\n`,
+      );
     } finally {
       await admin.end();
     }
@@ -206,6 +442,15 @@ describe("provisional migration snapshot metadata", () => {
       await admin.query(
         `DROP DATABASE IF EXISTS ${quoteIdentifier(testDatabaseName)}`,
       );
+      const remaining = await admin.query(
+        "SELECT 1 FROM pg_database WHERE datname = $1",
+        [testDatabaseName],
+      );
+      if ((remaining.rowCount ?? 0) > 0) {
+        throw new Error(
+          `Owned migration-prefix test database remains after cleanup: ${testDatabaseName}`,
+        );
+      }
     } finally {
       await admin.end();
     }
@@ -308,7 +553,7 @@ describe("provisional migration snapshot metadata", () => {
         const actual = JSON.parse(
           readFileSync(join(outputFolder, "meta/0000_snapshot.json"), "utf8"),
         ) as Snapshot;
-        await restoreForeignKeyColumnOrder(actual, pool);
+        await restoreCatalogColumnOrder(actual, pool);
         const recorded = JSON.parse(
           readFileSync(join(metadataFolder, `${prefix}_snapshot.json`), "utf8"),
         ) as Snapshot;
@@ -334,6 +579,55 @@ describe("provisional migration snapshot metadata", () => {
           expect(actual.tables["public.workspace"]?.columns).toHaveProperty(
             "default_sla_policy_id",
           );
+        }
+        if (index === LAST_PROVISIONAL_PREFIX) {
+          const taskConstraints = actual.tables["public.task"]
+            ?.uniqueConstraints as Record<string, { columns: string[] }>;
+          expect(taskConstraints.task_project_number_unique?.columns).toEqual([
+            "project_id",
+            "number",
+          ]);
+          const pluginConfigConstraints = actual.tables[
+            "public.instance_plugin_config"
+          ]?.uniqueConstraints as Record<string, { columns: string[] }>;
+          expect(
+            pluginConfigConstraints.instance_plugin_config_instance_unique
+              ?.columns,
+          ).toEqual(["plugin_id", "instance_key"]);
+          const labelConstraints = actual.tables["public.label"]
+            ?.uniqueConstraints as Record<string, { columns: string[] }>;
+          expect(labelConstraints.label_task_name_unique?.columns).toEqual([
+            "task_id",
+            "name",
+          ]);
+          const nullsNotDistinctConstraints = [
+            actual.tables["public.notification_digest"]?.uniqueConstraints as
+              | Record<string, { nullsNotDistinct?: boolean }>
+              | undefined,
+            actual.tables["public.notification_preference"]
+              ?.uniqueConstraints as
+              | Record<string, { nullsNotDistinct?: boolean }>
+              | undefined,
+            actual.tables["public.policy_shadow_tally"]?.uniqueConstraints as
+              | Record<string, { nullsNotDistinct?: boolean }>
+              | undefined,
+          ];
+          expect(
+            nullsNotDistinctConstraints.map((constraints) =>
+              Object.values(constraints ?? {}).some(
+                (constraint) => constraint.nullsNotDistinct === true,
+              ),
+            ),
+          ).toEqual([true, true, true]);
+          expect(
+            actual.tables["public.custom_field_type_visibility"]
+              ?.compositePrimaryKeys,
+          ).toHaveProperty(
+            "custom_field_type_visibility_custom_field_id_work_item_type_id_",
+          );
+          expect(
+            actual.tables["public.external_identity"]?.indexes,
+          ).toHaveProperty("external_identity_connection_id_unique");
         }
       }
     } finally {

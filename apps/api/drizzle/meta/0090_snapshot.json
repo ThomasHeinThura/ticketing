@@ -55,7 +55,6 @@
 							"expression": "identifier",
 							"asc": true,
 							"nulls": "last",
-							"opclass": "text_ops",
 							"isExpression": false
 						}
 					],
@@ -164,7 +163,6 @@
 							"expression": "user_id",
 							"asc": true,
 							"nulls": "last",
-							"opclass": "text_ops",
 							"isExpression": false
 						}
 					],
@@ -235,7 +233,6 @@
 							"expression": "workspace_id",
 							"asc": true,
 							"nulls": "last",
-							"opclass": "text_ops",
 							"isExpression": false
 						}
 					],
@@ -300,7 +297,6 @@
 							"expression": "team_id",
 							"asc": true,
 							"nulls": "last",
-							"opclass": "text_ops",
 							"isExpression": false
 						}
 					],
@@ -316,7 +312,6 @@
 							"expression": "user_id",
 							"asc": true,
 							"nulls": "last",
-							"opclass": "text_ops",
 							"isExpression": false
 						}
 					],
@@ -423,7 +418,6 @@
 							"expression": "email",
 							"asc": true,
 							"nulls": "last",
-							"opclass": "text_ops",
 							"isExpression": false
 						}
 					],
@@ -439,7 +433,6 @@
 							"expression": "inviter_id",
 							"asc": true,
 							"nulls": "last",
-							"opclass": "text_ops",
 							"isExpression": false
 						}
 					],
@@ -455,7 +448,6 @@
 							"expression": "workspace_id",
 							"asc": true,
 							"nulls": "last",
-							"opclass": "text_ops",
 							"isExpression": false
 						}
 					],
@@ -466,22 +458,22 @@
 				}
 			},
 			"foreignKeys": {
-				"invitation_inviter_id_user_id_fk": {
-					"name": "invitation_inviter_id_user_id_fk",
-					"tableFrom": "invitation",
-					"tableTo": "user",
-					"schemaTo": "public",
-					"columnsFrom": ["inviter_id"],
-					"columnsTo": ["id"],
-					"onDelete": "cascade",
-					"onUpdate": "no action"
-				},
 				"invitation_workspace_id_workspace_id_fk": {
 					"name": "invitation_workspace_id_workspace_id_fk",
 					"tableFrom": "invitation",
 					"tableTo": "workspace",
 					"schemaTo": "public",
 					"columnsFrom": ["workspace_id"],
+					"columnsTo": ["id"],
+					"onDelete": "cascade",
+					"onUpdate": "no action"
+				},
+				"invitation_inviter_id_user_id_fk": {
+					"name": "invitation_inviter_id_user_id_fk",
+					"tableFrom": "invitation",
+					"tableTo": "user",
+					"schemaTo": "public",
+					"columnsFrom": ["inviter_id"],
 					"columnsTo": ["id"],
 					"onDelete": "cascade",
 					"onUpdate": "no action"
@@ -562,7 +554,6 @@
 							"expression": "external_id",
 							"asc": true,
 							"nulls": "last",
-							"opclass": "text_ops",
 							"isExpression": false
 						}
 					],
@@ -578,7 +569,6 @@
 							"expression": "resource_type",
 							"asc": true,
 							"nulls": "last",
-							"opclass": "text_ops",
 							"isExpression": false
 						}
 					],
@@ -594,7 +584,6 @@
 							"expression": "task_id",
 							"asc": true,
 							"nulls": "last",
-							"opclass": "text_ops",
 							"isExpression": false
 						}
 					],
@@ -699,7 +688,6 @@
 							"expression": "project_id",
 							"asc": true,
 							"nulls": "last",
-							"opclass": "text_ops",
 							"isExpression": false
 						}
 					],
@@ -784,7 +772,6 @@
 							"expression": "column_id",
 							"asc": true,
 							"nulls": "last",
-							"opclass": "text_ops",
 							"isExpression": false
 						}
 					],
@@ -800,7 +787,6 @@
 							"expression": "project_id",
 							"asc": true,
 							"nulls": "last",
-							"opclass": "text_ops",
 							"isExpression": false
 						}
 					],
@@ -811,22 +797,22 @@
 				}
 			},
 			"foreignKeys": {
-				"workflow_rule_column_id_column_id_fk": {
-					"name": "workflow_rule_column_id_column_id_fk",
-					"tableFrom": "workflow_rule",
-					"tableTo": "column",
-					"schemaTo": "public",
-					"columnsFrom": ["column_id"],
-					"columnsTo": ["id"],
-					"onDelete": "cascade",
-					"onUpdate": "cascade"
-				},
 				"workflow_rule_project_id_project_id_fk": {
 					"name": "workflow_rule_project_id_project_id_fk",
 					"tableFrom": "workflow_rule",
 					"tableTo": "project",
 					"schemaTo": "public",
 					"columnsFrom": ["project_id"],
+					"columnsTo": ["id"],
+					"onDelete": "cascade",
+					"onUpdate": "cascade"
+				},
+				"workflow_rule_column_id_column_id_fk": {
+					"name": "workflow_rule_column_id_column_id_fk",
+					"tableFrom": "workflow_rule",
+					"tableTo": "column",
+					"schemaTo": "public",
+					"columnsFrom": ["column_id"],
 					"columnsTo": ["id"],
 					"onDelete": "cascade",
 					"onUpdate": "cascade"
@@ -995,7 +981,6 @@
 							"expression": "config_id",
 							"asc": true,
 							"nulls": "last",
-							"opclass": "text_ops",
 							"isExpression": false
 						}
 					],
@@ -1011,7 +996,6 @@
 							"expression": "key",
 							"asc": true,
 							"nulls": "last",
-							"opclass": "text_ops",
 							"isExpression": false
 						}
 					],
@@ -1027,7 +1011,6 @@
 							"expression": "reference_id",
 							"asc": true,
 							"nulls": "last",
-							"opclass": "text_ops",
 							"isExpression": false
 						}
 					],
@@ -1043,7 +1026,6 @@
 							"expression": "user_id",
 							"asc": true,
 							"nulls": "last",
-							"opclass": "text_ops",
 							"isExpression": false
 						}
 					],
@@ -1165,7 +1147,6 @@
 							"expression": "activity_id",
 							"asc": true,
 							"nulls": "last",
-							"opclass": "text_ops",
 							"isExpression": false
 						}
 					],
@@ -1181,7 +1162,6 @@
 							"expression": "created_by",
 							"asc": true,
 							"nulls": "last",
-							"opclass": "text_ops",
 							"isExpression": false
 						}
 					],
@@ -1197,7 +1177,6 @@
 							"expression": "project_id",
 							"asc": true,
 							"nulls": "last",
-							"opclass": "text_ops",
 							"isExpression": false
 						}
 					],
@@ -1213,7 +1192,6 @@
 							"expression": "task_id",
 							"asc": true,
 							"nulls": "last",
-							"opclass": "text_ops",
 							"isExpression": false
 						}
 					],
@@ -1229,7 +1207,6 @@
 							"expression": "workspace_id",
 							"asc": true,
 							"nulls": "last",
-							"opclass": "text_ops",
 							"isExpression": false
 						}
 					],
@@ -1240,24 +1217,14 @@
 				}
 			},
 			"foreignKeys": {
-				"asset_activity_id_task_activity_id_fk": {
-					"name": "asset_activity_id_task_activity_id_fk",
+				"asset_workspace_id_workspace_id_fk": {
+					"name": "asset_workspace_id_workspace_id_fk",
 					"tableFrom": "asset",
-					"tableTo": "task_activity",
+					"tableTo": "workspace",
 					"schemaTo": "public",
-					"columnsFrom": ["activity_id"],
+					"columnsFrom": ["workspace_id"],
 					"columnsTo": ["id"],
 					"onDelete": "cascade",
-					"onUpdate": "cascade"
-				},
-				"asset_created_by_user_id_fk": {
-					"name": "asset_created_by_user_id_fk",
-					"tableFrom": "asset",
-					"tableTo": "user",
-					"schemaTo": "public",
-					"columnsFrom": ["created_by"],
-					"columnsTo": ["id"],
-					"onDelete": "set null",
 					"onUpdate": "cascade"
 				},
 				"asset_project_id_project_id_fk": {
@@ -1280,12 +1247,22 @@
 					"onDelete": "cascade",
 					"onUpdate": "cascade"
 				},
-				"asset_workspace_id_workspace_id_fk": {
-					"name": "asset_workspace_id_workspace_id_fk",
+				"asset_created_by_user_id_fk": {
+					"name": "asset_created_by_user_id_fk",
 					"tableFrom": "asset",
-					"tableTo": "workspace",
+					"tableTo": "user",
 					"schemaTo": "public",
-					"columnsFrom": ["workspace_id"],
+					"columnsFrom": ["created_by"],
+					"columnsTo": ["id"],
+					"onDelete": "set null",
+					"onUpdate": "cascade"
+				},
+				"asset_activity_id_task_activity_id_fk": {
+					"name": "asset_activity_id_task_activity_id_fk",
+					"tableFrom": "asset",
+					"tableTo": "task_activity",
+					"schemaTo": "public",
+					"columnsFrom": ["activity_id"],
 					"columnsTo": ["id"],
 					"onDelete": "cascade",
 					"onUpdate": "cascade"
@@ -1347,7 +1324,6 @@
 							"expression": "source_task_id",
 							"asc": true,
 							"nulls": "last",
-							"opclass": "text_ops",
 							"isExpression": false
 						}
 					],
@@ -1363,7 +1339,6 @@
 							"expression": "target_task_id",
 							"asc": true,
 							"nulls": "last",
-							"opclass": "text_ops",
 							"isExpression": false
 						}
 					],
@@ -1458,7 +1433,6 @@
 							"expression": "task_id",
 							"asc": true,
 							"nulls": "last",
-							"opclass": "text_ops",
 							"isExpression": false
 						}
 					],
@@ -1474,7 +1448,6 @@
 							"expression": "workspace_id",
 							"asc": true,
 							"nulls": "last",
-							"opclass": "text_ops",
 							"isExpression": false
 						}
 					],
@@ -1490,14 +1463,12 @@
 							"expression": "workspace_id",
 							"asc": true,
 							"nulls": "last",
-							"opclass": "text_ops",
 							"isExpression": false
 						},
 						{
 							"expression": "name",
 							"asc": true,
 							"nulls": "last",
-							"opclass": "text_ops",
 							"isExpression": false
 						}
 					],
@@ -1533,7 +1504,7 @@
 			"compositePrimaryKeys": {},
 			"uniqueConstraints": {
 				"label_task_name_unique": {
-					"columns": ["name", "task_id"],
+					"columns": ["task_id", "name"],
 					"nullsNotDistinct": false,
 					"name": "label_task_name_unique"
 				}
@@ -1593,14 +1564,12 @@
 							"expression": "workspace_id",
 							"asc": true,
 							"nulls": "last",
-							"opclass": "text_ops",
 							"isExpression": false
 						},
 						{
 							"expression": "workspace_rule_id",
 							"asc": true,
 							"nulls": "last",
-							"opclass": "text_ops",
 							"isExpression": false
 						}
 					],
@@ -1616,7 +1585,6 @@
 							"expression": "project_id",
 							"asc": true,
 							"nulls": "last",
-							"opclass": "text_ops",
 							"isExpression": false
 						}
 					],
@@ -1632,7 +1600,6 @@
 							"expression": "workspace_rule_id",
 							"asc": true,
 							"nulls": "last",
-							"opclass": "text_ops",
 							"isExpression": false
 						}
 					],
@@ -1648,14 +1615,12 @@
 							"expression": "workspace_id",
 							"asc": true,
 							"nulls": "last",
-							"opclass": "text_ops",
 							"isExpression": false
 						},
 						{
 							"expression": "project_id",
 							"asc": true,
 							"nulls": "last",
-							"opclass": "text_ops",
 							"isExpression": false
 						}
 					],
@@ -1666,16 +1631,6 @@
 				}
 			},
 			"foreignKeys": {
-				"user_notification_workspace_project_workspace_id_project_id_pro": {
-					"name": "user_notification_workspace_project_workspace_id_project_id_pro",
-					"tableFrom": "user_notification_workspace_project",
-					"tableTo": "project",
-					"schemaTo": "public",
-					"columnsFrom": ["workspace_id", "project_id"],
-					"columnsTo": ["workspace_id", "id"],
-					"onDelete": "cascade",
-					"onUpdate": "cascade"
-				},
 				"user_notification_workspace_project_workspace_id_workspace_id_f": {
 					"name": "user_notification_workspace_project_workspace_id_workspace_id_f",
 					"tableFrom": "user_notification_workspace_project",
@@ -1695,12 +1650,22 @@
 					"columnsTo": ["workspace_id", "id"],
 					"onDelete": "cascade",
 					"onUpdate": "cascade"
+				},
+				"user_notification_workspace_project_workspace_id_project_id_pro": {
+					"name": "user_notification_workspace_project_workspace_id_project_id_pro",
+					"tableFrom": "user_notification_workspace_project",
+					"tableTo": "project",
+					"schemaTo": "public",
+					"columnsFrom": ["workspace_id", "project_id"],
+					"columnsTo": ["workspace_id", "id"],
+					"onDelete": "cascade",
+					"onUpdate": "cascade"
 				}
 			},
 			"compositePrimaryKeys": {},
 			"uniqueConstraints": {
 				"user_notification_workspace_project_rule_project_unique": {
-					"columns": ["project_id", "workspace_rule_id"],
+					"columns": ["workspace_rule_id", "project_id"],
 					"nullsNotDistinct": false,
 					"name": "user_notification_workspace_project_rule_project_unique"
 				}
@@ -1796,7 +1761,6 @@
 							"expression": "user_id",
 							"asc": true,
 							"nulls": "last",
-							"opclass": "text_ops",
 							"isExpression": false
 						}
 					],
@@ -1812,7 +1776,6 @@
 							"expression": "workspace_id",
 							"asc": true,
 							"nulls": "last",
-							"opclass": "text_ops",
 							"isExpression": false
 						}
 					],
@@ -1852,7 +1815,7 @@
 					"name": "user_notification_workspace_rule_user_workspace_unique"
 				},
 				"user_notification_workspace_rule_workspace_id_id_unique": {
-					"columns": ["id", "workspace_id"],
+					"columns": ["workspace_id", "id"],
 					"nullsNotDistinct": false,
 					"name": "user_notification_workspace_rule_workspace_id_id_unique"
 				}
@@ -1906,7 +1869,6 @@
 							"expression": "task_id",
 							"asc": true,
 							"nulls": "last",
-							"opclass": "text_ops",
 							"isExpression": false
 						}
 					],
@@ -1931,7 +1893,7 @@
 			"compositePrimaryKeys": {},
 			"uniqueConstraints": {
 				"task_reminder_sent_task_type_unique": {
-					"columns": ["reminder_type", "task_id"],
+					"columns": ["task_id", "reminder_type"],
 					"nullsNotDistinct": false,
 					"name": "task_reminder_sent_task_type_unique"
 				}
@@ -2023,7 +1985,6 @@
 							"expression": "user_id",
 							"asc": true,
 							"nulls": "last",
-							"opclass": "text_ops",
 							"isExpression": false
 						}
 					],
@@ -2121,7 +2082,6 @@
 							"expression": "task_id",
 							"asc": true,
 							"nulls": "last",
-							"opclass": "text_ops",
 							"isExpression": false
 						}
 					],
@@ -2137,7 +2097,6 @@
 							"expression": "user_id",
 							"asc": true,
 							"nulls": "last",
-							"opclass": "text_ops",
 							"isExpression": false
 						}
 					],
@@ -2393,7 +2352,6 @@
 							"expression": "user_id",
 							"asc": true,
 							"nulls": "last",
-							"opclass": "text_ops",
 							"isExpression": false
 						}
 					],
@@ -2502,7 +2460,6 @@
 							"expression": "user_id",
 							"asc": true,
 							"nulls": "last",
-							"opclass": "text_ops",
 							"isExpression": false
 						}
 					],
@@ -2518,7 +2475,6 @@
 							"expression": "workspace_id",
 							"asc": true,
 							"nulls": "last",
-							"opclass": "text_ops",
 							"isExpression": false
 						}
 					],
@@ -2656,7 +2612,6 @@
 							"expression": "organisation_id",
 							"asc": true,
 							"nulls": "last",
-							"opclass": "text_ops",
 							"isExpression": false
 						}
 					],
@@ -2672,7 +2627,6 @@
 							"expression": "user_id",
 							"asc": true,
 							"nulls": "last",
-							"opclass": "text_ops",
 							"isExpression": false
 						}
 					],
@@ -2688,7 +2642,6 @@
 							"expression": "user_id",
 							"asc": true,
 							"nulls": "last",
-							"opclass": "text_ops",
 							"isExpression": false
 						}
 					],
@@ -2700,16 +2653,6 @@
 				}
 			},
 			"foreignKeys": {
-				"person_organisation_id_organisation_id_fk": {
-					"name": "person_organisation_id_organisation_id_fk",
-					"tableFrom": "person",
-					"tableTo": "organisation",
-					"schemaTo": "public",
-					"columnsFrom": ["organisation_id"],
-					"columnsTo": ["id"],
-					"onDelete": "cascade",
-					"onUpdate": "cascade"
-				},
 				"person_user_id_user_id_fk": {
 					"name": "person_user_id_user_id_fk",
 					"tableFrom": "person",
@@ -2718,6 +2661,16 @@
 					"columnsFrom": ["user_id"],
 					"columnsTo": ["id"],
 					"onDelete": "set null",
+					"onUpdate": "cascade"
+				},
+				"person_organisation_id_organisation_id_fk": {
+					"name": "person_organisation_id_organisation_id_fk",
+					"tableFrom": "person",
+					"tableTo": "organisation",
+					"schemaTo": "public",
+					"columnsFrom": ["organisation_id"],
+					"columnsTo": ["id"],
+					"onDelete": "cascade",
 					"onUpdate": "cascade"
 				}
 			},
@@ -2803,21 +2756,18 @@
 							"expression": "person_id",
 							"asc": true,
 							"nulls": "last",
-							"opclass": "text_ops",
 							"isExpression": false
 						},
 						{
 							"expression": "scope",
 							"asc": true,
 							"nulls": "last",
-							"opclass": "text_ops",
 							"isExpression": false
 						},
 						{
 							"expression": "scope_id",
 							"asc": true,
 							"nulls": "last",
-							"opclass": "text_ops",
 							"isExpression": false
 						}
 					],
@@ -2833,7 +2783,6 @@
 							"expression": "role_id",
 							"asc": true,
 							"nulls": "last",
-							"opclass": "text_ops",
 							"isExpression": false
 						}
 					],
@@ -2849,14 +2798,12 @@
 							"expression": "scope",
 							"asc": true,
 							"nulls": "last",
-							"opclass": "text_ops",
 							"isExpression": false
 						},
 						{
 							"expression": "scope_id",
 							"asc": true,
 							"nulls": "last",
-							"opclass": "text_ops",
 							"isExpression": false
 						}
 					],
@@ -2984,21 +2931,18 @@
 							"expression": "scope",
 							"asc": true,
 							"nulls": "last",
-							"opclass": "text_ops",
 							"isExpression": true
 						},
 						{
 							"expression": "COALESCE(workspace_id, ''::text)",
 							"asc": true,
 							"nulls": "last",
-							"opclass": "text_ops",
 							"isExpression": true
 						},
 						{
 							"expression": "key",
 							"asc": true,
 							"nulls": "last",
-							"opclass": "text_ops",
 							"isExpression": true
 						}
 					],
@@ -3014,7 +2958,6 @@
 							"expression": "workspace_id",
 							"asc": true,
 							"nulls": "last",
-							"opclass": "text_ops",
 							"isExpression": false
 						}
 					],
@@ -3133,7 +3076,6 @@
 							"expression": "is_internal",
 							"asc": true,
 							"nulls": "last",
-							"opclass": "bool_ops",
 							"isExpression": false
 						}
 					],
@@ -3244,7 +3186,6 @@
 							"expression": "organisation_id",
 							"asc": true,
 							"nulls": "last",
-							"opclass": "text_ops",
 							"isExpression": false
 						}
 					],
@@ -3353,7 +3294,6 @@
 							"expression": "project_id",
 							"asc": true,
 							"nulls": "last",
-							"opclass": "text_ops",
 							"isExpression": false
 						}
 					],
@@ -3369,7 +3309,6 @@
 							"expression": "project_id",
 							"asc": true,
 							"nulls": "last",
-							"opclass": "text_ops",
 							"isExpression": false
 						}
 					],
@@ -3386,7 +3325,6 @@
 							"expression": "state_template_id",
 							"asc": true,
 							"nulls": "last",
-							"opclass": "text_ops",
 							"isExpression": false
 						}
 					],
@@ -3421,7 +3359,7 @@
 			"compositePrimaryKeys": {},
 			"uniqueConstraints": {
 				"state_project_id_id_unique": {
-					"columns": ["id", "project_id"],
+					"columns": ["project_id", "id"],
 					"nullsNotDistinct": false,
 					"name": "state_project_id_id_unique"
 				}
@@ -3475,7 +3413,6 @@
 							"expression": "old_key",
 							"asc": true,
 							"nulls": "last",
-							"opclass": "text_ops",
 							"isExpression": false
 						}
 					],
@@ -3491,7 +3428,6 @@
 							"expression": "work_item_id",
 							"asc": true,
 							"nulls": "last",
-							"opclass": "text_ops",
 							"isExpression": false
 						}
 					],
@@ -3502,16 +3438,6 @@
 				}
 			},
 			"foreignKeys": {
-				"work_item_key_alias_old_key_work_item_id_work_item_key_claim_ke": {
-					"name": "work_item_key_alias_old_key_work_item_id_work_item_key_claim_ke",
-					"tableFrom": "work_item_key_alias",
-					"tableTo": "work_item_key_claim",
-					"schemaTo": "public",
-					"columnsFrom": ["old_key", "work_item_id"],
-					"columnsTo": ["key", "work_item_id"],
-					"onDelete": "restrict",
-					"onUpdate": "no action"
-				},
 				"work_item_key_alias_work_item_id_work_item_id_fk": {
 					"name": "work_item_key_alias_work_item_id_work_item_id_fk",
 					"tableFrom": "work_item_key_alias",
@@ -3521,6 +3447,16 @@
 					"columnsTo": ["id"],
 					"onDelete": "cascade",
 					"onUpdate": "cascade"
+				},
+				"work_item_key_alias_old_key_work_item_id_work_item_key_claim_ke": {
+					"name": "work_item_key_alias_old_key_work_item_id_work_item_key_claim_ke",
+					"tableFrom": "work_item_key_alias",
+					"tableTo": "work_item_key_claim",
+					"schemaTo": "public",
+					"columnsFrom": ["old_key", "work_item_id"],
+					"columnsTo": ["key", "work_item_id"],
+					"onDelete": "restrict",
+					"onUpdate": "no action"
 				}
 			},
 			"compositePrimaryKeys": {},
@@ -3727,7 +3663,6 @@
 							"expression": "assignee_id",
 							"asc": true,
 							"nulls": "last",
-							"opclass": "text_ops",
 							"isExpression": false
 						}
 					],
@@ -3744,7 +3679,6 @@
 							"expression": "due_date",
 							"asc": true,
 							"nulls": "last",
-							"opclass": "timestamp_ops",
 							"isExpression": false
 						}
 					],
@@ -3761,7 +3695,6 @@
 							"expression": "key",
 							"asc": true,
 							"nulls": "last",
-							"opclass": "text_ops",
 							"isExpression": false
 						}
 					],
@@ -3777,7 +3710,6 @@
 							"expression": "parent_id",
 							"asc": true,
 							"nulls": "last",
-							"opclass": "text_ops",
 							"isExpression": false
 						}
 					],
@@ -3793,21 +3725,18 @@
 							"expression": "project_id",
 							"asc": true,
 							"nulls": "last",
-							"opclass": "numeric_ops",
 							"isExpression": false
 						},
 						{
 							"expression": "state_id",
 							"asc": true,
 							"nulls": "last",
-							"opclass": "text_ops",
 							"isExpression": false
 						},
 						{
 							"expression": "position",
 							"asc": true,
 							"nulls": "last",
-							"opclass": "text_ops",
 							"isExpression": false
 						}
 					],
@@ -3823,14 +3752,12 @@
 							"expression": "project_id",
 							"asc": true,
 							"nulls": "last",
-							"opclass": "text_ops",
 							"isExpression": false
 						},
 						{
 							"expression": "number",
 							"asc": true,
 							"nulls": "last",
-							"opclass": "int4_ops",
 							"isExpression": false
 						}
 					],
@@ -3846,7 +3773,6 @@
 							"expression": "requester_id",
 							"asc": true,
 							"nulls": "last",
-							"opclass": "text_ops",
 							"isExpression": false
 						}
 					],
@@ -3862,7 +3788,6 @@
 							"expression": "state_id",
 							"asc": true,
 							"nulls": "last",
-							"opclass": "text_ops",
 							"isExpression": false
 						}
 					],
@@ -3878,7 +3803,6 @@
 							"expression": "type_id",
 							"asc": true,
 							"nulls": "last",
-							"opclass": "text_ops",
 							"isExpression": false
 						}
 					],
@@ -3894,7 +3818,6 @@
 							"expression": "workspace_id",
 							"asc": true,
 							"nulls": "last",
-							"opclass": "text_ops",
 							"isExpression": false
 						}
 					],
@@ -3905,6 +3828,16 @@
 				}
 			},
 			"foreignKeys": {
+				"work_item_project_id_project_id_fk": {
+					"name": "work_item_project_id_project_id_fk",
+					"tableFrom": "work_item",
+					"tableTo": "project",
+					"schemaTo": "public",
+					"columnsFrom": ["project_id"],
+					"columnsTo": ["id"],
+					"onDelete": "cascade",
+					"onUpdate": "cascade"
+				},
 				"work_item_assignee_id_person_id_fk": {
 					"name": "work_item_assignee_id_person_id_fk",
 					"tableFrom": "work_item",
@@ -3915,13 +3848,23 @@
 					"onDelete": "restrict",
 					"onUpdate": "cascade"
 				},
-				"work_item_key_id_work_item_key_claim_key_work_item_id_fk": {
-					"name": "work_item_key_id_work_item_key_claim_key_work_item_id_fk",
+				"work_item_requester_id_person_id_fk": {
+					"name": "work_item_requester_id_person_id_fk",
 					"tableFrom": "work_item",
-					"tableTo": "work_item_key_claim",
+					"tableTo": "person",
 					"schemaTo": "public",
-					"columnsFrom": ["key", "id"],
-					"columnsTo": ["key", "work_item_id"],
+					"columnsFrom": ["requester_id"],
+					"columnsTo": ["id"],
+					"onDelete": "restrict",
+					"onUpdate": "cascade"
+				},
+				"work_item_project_id_state_id_state_project_id_id_fk": {
+					"name": "work_item_project_id_state_id_state_project_id_id_fk",
+					"tableFrom": "work_item",
+					"tableTo": "state",
+					"schemaTo": "public",
+					"columnsFrom": ["project_id", "state_id"],
+					"columnsTo": ["project_id", "id"],
 					"onDelete": "restrict",
 					"onUpdate": "no action"
 				},
@@ -3935,43 +3878,13 @@
 					"onDelete": "restrict",
 					"onUpdate": "no action"
 				},
-				"work_item_project_id_project_id_fk": {
-					"name": "work_item_project_id_project_id_fk",
+				"work_item_key_id_work_item_key_claim_key_work_item_id_fk": {
+					"name": "work_item_key_id_work_item_key_claim_key_work_item_id_fk",
 					"tableFrom": "work_item",
-					"tableTo": "project",
+					"tableTo": "work_item_key_claim",
 					"schemaTo": "public",
-					"columnsFrom": ["project_id"],
-					"columnsTo": ["id"],
-					"onDelete": "cascade",
-					"onUpdate": "cascade"
-				},
-				"work_item_project_id_state_id_state_project_id_id_fk": {
-					"name": "work_item_project_id_state_id_state_project_id_id_fk",
-					"tableFrom": "work_item",
-					"tableTo": "state",
-					"schemaTo": "public",
-					"columnsFrom": ["project_id", "state_id"],
-					"columnsTo": ["project_id", "id"],
-					"onDelete": "restrict",
-					"onUpdate": "no action"
-				},
-				"work_item_requester_id_person_id_fk": {
-					"name": "work_item_requester_id_person_id_fk",
-					"tableFrom": "work_item",
-					"tableTo": "person",
-					"schemaTo": "public",
-					"columnsFrom": ["requester_id"],
-					"columnsTo": ["id"],
-					"onDelete": "restrict",
-					"onUpdate": "cascade"
-				},
-				"work_item_sla_policy_version_id_sla_policy_version_id_fk": {
-					"name": "work_item_sla_policy_version_id_sla_policy_version_id_fk",
-					"tableFrom": "work_item",
-					"tableTo": "sla_policy_version",
-					"schemaTo": "public",
-					"columnsFrom": ["sla_policy_version_id"],
-					"columnsTo": ["id"],
+					"columnsFrom": ["key", "id"],
+					"columnsTo": ["key", "work_item_id"],
 					"onDelete": "restrict",
 					"onUpdate": "no action"
 				},
@@ -3994,41 +3907,51 @@
 					"columnsTo": ["workspace_id", "id"],
 					"onDelete": "restrict",
 					"onUpdate": "no action"
+				},
+				"work_item_sla_policy_version_id_sla_policy_version_id_fk": {
+					"name": "work_item_sla_policy_version_id_sla_policy_version_id_fk",
+					"tableFrom": "work_item",
+					"tableTo": "sla_policy_version",
+					"schemaTo": "public",
+					"columnsFrom": ["sla_policy_version_id"],
+					"columnsTo": ["id"],
+					"onDelete": "restrict",
+					"onUpdate": "no action"
 				}
 			},
 			"compositePrimaryKeys": {},
 			"uniqueConstraints": {
 				"work_item_project_id_id_unique": {
-					"columns": ["id", "project_id"],
+					"columns": ["project_id", "id"],
 					"nullsNotDistinct": false,
 					"name": "work_item_project_id_id_unique"
 				},
 				"work_item_workspace_id_id_unique": {
-					"columns": ["id", "workspace_id"],
+					"columns": ["workspace_id", "id"],
 					"nullsNotDistinct": false,
 					"name": "work_item_workspace_id_id_unique"
 				}
 			},
 			"checkConstraints": {
-				"work_item_customer_visibility_allowed": {
-					"name": "work_item_customer_visibility_allowed",
-					"value": "customer_visibility = ANY (ARRAY['private'::text, 'organisation'::text])"
-				},
-				"work_item_number_positive": {
-					"name": "work_item_number_positive",
-					"value": "number > 0"
-				},
 				"work_item_parent_not_self": {
 					"name": "work_item_parent_not_self",
 					"value": "parent_id IS DISTINCT FROM id"
+				},
+				"work_item_priority_allowed": {
+					"name": "work_item_priority_allowed",
+					"value": "priority = ANY (ARRAY['low'::text, 'medium'::text, 'high'::text, 'urgent'::text])"
+				},
+				"work_item_customer_visibility_allowed": {
+					"name": "work_item_customer_visibility_allowed",
+					"value": "customer_visibility = ANY (ARRAY['private'::text, 'organisation'::text])"
 				},
 				"work_item_position_not_nan": {
 					"name": "work_item_position_not_nan",
 					"value": "\"position\" <> 'NaN'::numeric"
 				},
-				"work_item_priority_allowed": {
-					"name": "work_item_priority_allowed",
-					"value": "priority = ANY (ARRAY['low'::text, 'medium'::text, 'high'::text, 'urgent'::text])"
+				"work_item_number_positive": {
+					"name": "work_item_number_positive",
+					"value": "number > 0"
 				}
 			},
 			"policies": {},
@@ -4066,7 +3989,6 @@
 							"expression": "work_item_id",
 							"asc": true,
 							"nulls": "last",
-							"opclass": "text_ops",
 							"isExpression": false
 						}
 					],
@@ -4150,22 +4072,22 @@
 			},
 			"indexes": {},
 			"foreignKeys": {
-				"workspace_default_sla_policy_id_sla_policy_id_fk": {
-					"name": "workspace_default_sla_policy_id_sla_policy_id_fk",
-					"tableFrom": "workspace",
-					"tableTo": "sla_policy",
-					"schemaTo": "public",
-					"columnsFrom": ["default_sla_policy_id"],
-					"columnsTo": ["id"],
-					"onDelete": "restrict",
-					"onUpdate": "cascade"
-				},
 				"workspace_organisation_id_organisation_id_fk": {
 					"name": "workspace_organisation_id_organisation_id_fk",
 					"tableFrom": "workspace",
 					"tableTo": "organisation",
 					"schemaTo": "public",
 					"columnsFrom": ["organisation_id"],
+					"columnsTo": ["id"],
+					"onDelete": "restrict",
+					"onUpdate": "cascade"
+				},
+				"workspace_default_sla_policy_id_sla_policy_id_fk": {
+					"name": "workspace_default_sla_policy_id_sla_policy_id_fk",
+					"tableFrom": "workspace",
+					"tableTo": "sla_policy",
+					"schemaTo": "public",
+					"columnsFrom": ["default_sla_policy_id"],
 					"columnsTo": ["id"],
 					"onDelete": "restrict",
 					"onUpdate": "cascade"
@@ -4245,14 +4167,12 @@
 							"expression": "scope",
 							"asc": true,
 							"nulls": "last",
-							"opclass": "text_ops",
 							"isExpression": false
 						},
 						{
 							"expression": "scope_id",
 							"asc": true,
 							"nulls": "last",
-							"opclass": "text_ops",
 							"isExpression": false
 						}
 					],
@@ -4344,7 +4264,6 @@
 							"expression": "workspace_id",
 							"asc": true,
 							"nulls": "last",
-							"opclass": "text_ops",
 							"isExpression": false
 						}
 					],
@@ -4360,14 +4279,12 @@
 							"expression": "workspace_id",
 							"asc": true,
 							"nulls": "last",
-							"opclass": "text_ops",
 							"isExpression": false
 						},
 						{
 							"expression": "key",
 							"asc": true,
 							"nulls": "last",
-							"opclass": "text_ops",
 							"isExpression": false
 						}
 					],
@@ -4458,7 +4375,6 @@
 							"expression": "person_id",
 							"asc": true,
 							"nulls": "last",
-							"opclass": "text_ops",
 							"isExpression": false
 						}
 					],
@@ -4474,14 +4390,12 @@
 							"expression": "work_item_id",
 							"asc": true,
 							"nulls": "last",
-							"opclass": "text_ops",
 							"isExpression": false
 						},
 						{
 							"expression": "person_id",
 							"asc": true,
 							"nulls": "last",
-							"opclass": "text_ops",
 							"isExpression": false
 						}
 					],
@@ -4492,22 +4406,22 @@
 				}
 			},
 			"foreignKeys": {
-				"watcher_person_id_person_id_fk": {
-					"name": "watcher_person_id_person_id_fk",
-					"tableFrom": "watcher",
-					"tableTo": "person",
-					"schemaTo": "public",
-					"columnsFrom": ["person_id"],
-					"columnsTo": ["id"],
-					"onDelete": "cascade",
-					"onUpdate": "cascade"
-				},
 				"watcher_work_item_id_work_item_id_fk": {
 					"name": "watcher_work_item_id_work_item_id_fk",
 					"tableFrom": "watcher",
 					"tableTo": "work_item",
 					"schemaTo": "public",
 					"columnsFrom": ["work_item_id"],
+					"columnsTo": ["id"],
+					"onDelete": "cascade",
+					"onUpdate": "cascade"
+				},
+				"watcher_person_id_person_id_fk": {
+					"name": "watcher_person_id_person_id_fk",
+					"tableFrom": "watcher",
+					"tableTo": "person",
+					"schemaTo": "public",
+					"columnsFrom": ["person_id"],
 					"columnsTo": ["id"],
 					"onDelete": "cascade",
 					"onUpdate": "cascade"
@@ -4613,7 +4527,6 @@
 							"expression": "workspace_id",
 							"asc": true,
 							"nulls": "last",
-							"opclass": "text_ops",
 							"isExpression": false
 						}
 					],
@@ -4629,14 +4542,12 @@
 							"expression": "workspace_id",
 							"asc": true,
 							"nulls": "last",
-							"opclass": "text_ops",
 							"isExpression": false
 						},
 						{
 							"expression": "key",
 							"asc": true,
 							"nulls": "last",
-							"opclass": "text_ops",
 							"isExpression": false
 						}
 					],
@@ -4647,14 +4558,14 @@
 				}
 			},
 			"foreignKeys": {
-				"work_item_type_sla_policy_id_sla_policy_id_fk": {
-					"name": "work_item_type_sla_policy_id_sla_policy_id_fk",
+				"work_item_type_workspace_id_workspace_id_fk": {
+					"name": "work_item_type_workspace_id_workspace_id_fk",
 					"tableFrom": "work_item_type",
-					"tableTo": "sla_policy",
+					"tableTo": "workspace",
 					"schemaTo": "public",
-					"columnsFrom": ["sla_policy_id"],
+					"columnsFrom": ["workspace_id"],
 					"columnsTo": ["id"],
-					"onDelete": "restrict",
+					"onDelete": "cascade",
 					"onUpdate": "cascade"
 				},
 				"work_item_type_workflow_id_workflow_id_fk": {
@@ -4667,21 +4578,21 @@
 					"onDelete": "restrict",
 					"onUpdate": "cascade"
 				},
-				"work_item_type_workspace_id_workspace_id_fk": {
-					"name": "work_item_type_workspace_id_workspace_id_fk",
+				"work_item_type_sla_policy_id_sla_policy_id_fk": {
+					"name": "work_item_type_sla_policy_id_sla_policy_id_fk",
 					"tableFrom": "work_item_type",
-					"tableTo": "workspace",
+					"tableTo": "sla_policy",
 					"schemaTo": "public",
-					"columnsFrom": ["workspace_id"],
+					"columnsFrom": ["sla_policy_id"],
 					"columnsTo": ["id"],
-					"onDelete": "cascade",
+					"onDelete": "restrict",
 					"onUpdate": "cascade"
 				}
 			},
 			"compositePrimaryKeys": {},
 			"uniqueConstraints": {
 				"work_item_type_workspace_id_id_unique": {
-					"columns": ["id", "workspace_id"],
+					"columns": ["workspace_id", "id"],
 					"nullsNotDistinct": false,
 					"name": "work_item_type_workspace_id_id_unique"
 				}
@@ -4814,7 +4725,6 @@
 							"expression": "task_id",
 							"asc": true,
 							"nulls": "last",
-							"opclass": "text_ops",
 							"isExpression": false
 						}
 					],
@@ -4830,7 +4740,6 @@
 							"expression": "user_id",
 							"asc": true,
 							"nulls": "last",
-							"opclass": "text_ops",
 							"isExpression": false
 						}
 					],
@@ -4865,7 +4774,7 @@
 			"compositePrimaryKeys": {},
 			"uniqueConstraints": {
 				"task_activity_task_external_source_external_url_unique": {
-					"columns": ["external_source", "external_url", "task_id"],
+					"columns": ["task_id", "external_source", "external_url"],
 					"nullsNotDistinct": false,
 					"name": "task_activity_task_external_source_external_url_unique"
 				}
@@ -4984,21 +4893,18 @@
 							"expression": "work_item_id",
 							"asc": true,
 							"nulls": "last",
-							"opclass": "int8_ops",
 							"isExpression": false
 						},
 						{
 							"expression": "created_at",
 							"asc": false,
 							"nulls": "last",
-							"opclass": "int8_ops",
 							"isExpression": false
 						},
 						{
 							"expression": "seq",
 							"asc": false,
 							"nulls": "last",
-							"opclass": "int8_ops",
 							"isExpression": false
 						}
 					],
@@ -5014,7 +4920,6 @@
 							"expression": "workspace_id",
 							"asc": true,
 							"nulls": "last",
-							"opclass": "text_ops",
 							"isExpression": false
 						}
 					],
@@ -5111,7 +5016,6 @@
 							"expression": "role",
 							"asc": true,
 							"nulls": "last",
-							"opclass": "text_ops",
 							"isExpression": false
 						}
 					],
@@ -5136,7 +5040,7 @@
 			"compositePrimaryKeys": {},
 			"uniqueConstraints": {
 				"workspace_role_workspace_id_role_unique": {
-					"columns": ["role", "workspace_id"],
+					"columns": ["workspace_id", "role"],
 					"nullsNotDistinct": false,
 					"name": "workspace_role_workspace_id_role_unique"
 				}
@@ -5208,14 +5112,12 @@
 							"expression": "route_key",
 							"asc": true,
 							"nulls": "last",
-							"opclass": "date_ops",
 							"isExpression": false
 						},
 						{
 							"expression": "day",
 							"asc": true,
 							"nulls": "last",
-							"opclass": "date_ops",
 							"isExpression": false
 						}
 					],
@@ -5229,19 +5131,19 @@
 			"compositePrimaryKeys": {},
 			"uniqueConstraints": {
 				"policy_shadow_tally_bucket_unique": {
-					"columns": ["day", "outcome", "reason_code", "route_key"],
-					"nullsNotDistinct": false,
+					"columns": ["day", "route_key", "outcome", "reason_code"],
+					"nullsNotDistinct": true,
 					"name": "policy_shadow_tally_bucket_unique"
 				}
 			},
 			"checkConstraints": {
-				"policy_shadow_tally_count_positive": {
-					"name": "policy_shadow_tally_count_positive",
-					"value": "count > 0"
-				},
 				"policy_shadow_tally_outcome_check": {
 					"name": "policy_shadow_tally_outcome_check",
 					"value": "outcome = ANY (ARRAY['agree'::text, 'legacy_allow_policy_deny'::text, 'legacy_deny_policy_allow'::text, 'unevaluated'::text, 'evaluator_error'::text])"
+				},
+				"policy_shadow_tally_count_positive": {
+					"name": "policy_shadow_tally_count_positive",
+					"value": "count > 0"
 				}
 			},
 			"policies": {},
@@ -5369,28 +5271,24 @@
 							"expression": "day",
 							"asc": true,
 							"nulls": "last",
-							"opclass": "text_ops",
 							"isExpression": false
 						},
 						{
 							"expression": "route_key",
 							"asc": true,
 							"nulls": "last",
-							"opclass": "text_ops",
 							"isExpression": false
 						},
 						{
 							"expression": "outcome",
 							"asc": true,
 							"nulls": "last",
-							"opclass": "text_ops",
 							"isExpression": false
 						},
 						{
 							"expression": "reason_code",
 							"asc": true,
 							"nulls": "last",
-							"opclass": "text_ops",
 							"isExpression": false
 						}
 					],
@@ -5406,14 +5304,12 @@
 							"expression": "route_key",
 							"asc": true,
 							"nulls": "last",
-							"opclass": "timestamptz_ops",
 							"isExpression": false
 						},
 						{
 							"expression": "created_at",
 							"asc": false,
 							"nulls": "first",
-							"opclass": "text_ops",
 							"isExpression": false
 						}
 					],
@@ -5580,21 +5476,18 @@
 							"expression": "entity_type",
 							"asc": true,
 							"nulls": "last",
-							"opclass": "text_ops",
 							"isExpression": false
 						},
 						{
 							"expression": "entity_id",
 							"asc": true,
 							"nulls": "last",
-							"opclass": "timestamptz_ops",
 							"isExpression": false
 						},
 						{
 							"expression": "created_at",
 							"asc": false,
 							"nulls": "last",
-							"opclass": "timestamptz_ops",
 							"isExpression": false
 						}
 					],
@@ -5610,14 +5503,12 @@
 							"expression": "workspace_id",
 							"asc": true,
 							"nulls": "last",
-							"opclass": "text_ops",
 							"isExpression": false
 						},
 						{
 							"expression": "created_at",
 							"asc": false,
 							"nulls": "last",
-							"opclass": "text_ops",
 							"isExpression": false
 						}
 					],
@@ -5716,7 +5607,6 @@
 							"expression": "project_id",
 							"asc": true,
 							"nulls": "last",
-							"opclass": "text_ops",
 							"isExpression": false
 						}
 					],
@@ -5801,7 +5691,6 @@
 							"expression": "project_id",
 							"asc": true,
 							"nulls": "last",
-							"opclass": "text_ops",
 							"isExpression": false
 						}
 					],
@@ -5899,7 +5788,6 @@
 							"expression": "project_id",
 							"asc": true,
 							"nulls": "last",
-							"opclass": "text_ops",
 							"isExpression": false
 						}
 					],
@@ -6003,7 +5891,6 @@
 							"expression": "person_id",
 							"asc": true,
 							"nulls": "last",
-							"opclass": "text_ops",
 							"isExpression": false
 						}
 					],
@@ -6019,7 +5906,6 @@
 							"expression": "project_id",
 							"asc": true,
 							"nulls": "last",
-							"opclass": "text_ops",
 							"isExpression": false
 						}
 					],
@@ -6030,22 +5916,22 @@
 				}
 			},
 			"foreignKeys": {
-				"stakeholder_person_id_person_id_fk": {
-					"name": "stakeholder_person_id_person_id_fk",
-					"tableFrom": "stakeholder",
-					"tableTo": "person",
-					"schemaTo": "public",
-					"columnsFrom": ["person_id"],
-					"columnsTo": ["id"],
-					"onDelete": "cascade",
-					"onUpdate": "cascade"
-				},
 				"stakeholder_project_id_project_id_fk": {
 					"name": "stakeholder_project_id_project_id_fk",
 					"tableFrom": "stakeholder",
 					"tableTo": "project",
 					"schemaTo": "public",
 					"columnsFrom": ["project_id"],
+					"columnsTo": ["id"],
+					"onDelete": "cascade",
+					"onUpdate": "cascade"
+				},
+				"stakeholder_person_id_person_id_fk": {
+					"name": "stakeholder_person_id_person_id_fk",
+					"tableFrom": "stakeholder",
+					"tableTo": "person",
+					"schemaTo": "public",
+					"columnsFrom": ["person_id"],
 					"columnsTo": ["id"],
 					"onDelete": "cascade",
 					"onUpdate": "cascade"
@@ -6126,7 +6012,6 @@
 							"expression": "due_at",
 							"asc": true,
 							"nulls": "last",
-							"opclass": "timestamp_ops",
 							"isExpression": false
 						}
 					],
@@ -6143,7 +6028,6 @@
 							"expression": "work_item_id",
 							"asc": true,
 							"nulls": "last",
-							"opclass": "text_ops",
 							"isExpression": false
 						}
 					],
@@ -6154,16 +6038,6 @@
 				}
 			},
 			"foreignKeys": {
-				"scheduled_transition_project_id_from_state_id_state_project_id_": {
-					"name": "scheduled_transition_project_id_from_state_id_state_project_id_",
-					"tableFrom": "scheduled_transition",
-					"tableTo": "state",
-					"schemaTo": "public",
-					"columnsFrom": ["project_id", "from_state_id"],
-					"columnsTo": ["project_id", "id"],
-					"onDelete": "restrict",
-					"onUpdate": "no action"
-				},
 				"scheduled_transition_project_id_project_id_fk": {
 					"name": "scheduled_transition_project_id_project_id_fk",
 					"tableFrom": "scheduled_transition",
@@ -6173,6 +6047,26 @@
 					"columnsTo": ["id"],
 					"onDelete": "cascade",
 					"onUpdate": "cascade"
+				},
+				"scheduled_transition_transition_id_workflow_transition_id_fk": {
+					"name": "scheduled_transition_transition_id_workflow_transition_id_fk",
+					"tableFrom": "scheduled_transition",
+					"tableTo": "workflow_transition",
+					"schemaTo": "public",
+					"columnsFrom": ["transition_id"],
+					"columnsTo": ["id"],
+					"onDelete": "cascade",
+					"onUpdate": "cascade"
+				},
+				"scheduled_transition_project_id_from_state_id_state_project_id_": {
+					"name": "scheduled_transition_project_id_from_state_id_state_project_id_",
+					"tableFrom": "scheduled_transition",
+					"tableTo": "state",
+					"schemaTo": "public",
+					"columnsFrom": ["project_id", "from_state_id"],
+					"columnsTo": ["project_id", "id"],
+					"onDelete": "restrict",
+					"onUpdate": "no action"
 				},
 				"scheduled_transition_project_id_to_state_id_state_project_id_id": {
 					"name": "scheduled_transition_project_id_to_state_id_state_project_id_id",
@@ -6193,16 +6087,6 @@
 					"columnsTo": ["project_id", "id"],
 					"onDelete": "cascade",
 					"onUpdate": "no action"
-				},
-				"scheduled_transition_transition_id_workflow_transition_id_fk": {
-					"name": "scheduled_transition_transition_id_workflow_transition_id_fk",
-					"tableFrom": "scheduled_transition",
-					"tableTo": "workflow_transition",
-					"schemaTo": "public",
-					"columnsFrom": ["transition_id"],
-					"columnsTo": ["id"],
-					"onDelete": "cascade",
-					"onUpdate": "cascade"
 				}
 			},
 			"compositePrimaryKeys": {},
@@ -6328,7 +6212,6 @@
 							"expression": "from_state_template_id",
 							"asc": true,
 							"nulls": "last",
-							"opclass": "text_ops",
 							"isExpression": false
 						}
 					],
@@ -6344,7 +6227,6 @@
 							"expression": "to_state_template_id",
 							"asc": true,
 							"nulls": "last",
-							"opclass": "text_ops",
 							"isExpression": false
 						}
 					],
@@ -6360,7 +6242,6 @@
 							"expression": "version_id",
 							"asc": true,
 							"nulls": "last",
-							"opclass": "text_ops",
 							"isExpression": false
 						}
 					],
@@ -6376,7 +6257,6 @@
 							"expression": "version_id",
 							"asc": true,
 							"nulls": "last",
-							"opclass": "text_ops",
 							"isExpression": false
 						}
 					],
@@ -6388,22 +6268,22 @@
 				}
 			},
 			"foreignKeys": {
+				"workflow_transition_version_id_workflow_version_id_fk": {
+					"name": "workflow_transition_version_id_workflow_version_id_fk",
+					"tableFrom": "workflow_transition",
+					"tableTo": "workflow_version",
+					"schemaTo": "public",
+					"columnsFrom": ["version_id"],
+					"columnsTo": ["id"],
+					"onDelete": "cascade",
+					"onUpdate": "cascade"
+				},
 				"workflow_transition_from_state_template_id_state_template_id_fk": {
 					"name": "workflow_transition_from_state_template_id_state_template_id_fk",
 					"tableFrom": "workflow_transition",
 					"tableTo": "state_template",
 					"schemaTo": "public",
 					"columnsFrom": ["from_state_template_id"],
-					"columnsTo": ["id"],
-					"onDelete": "restrict",
-					"onUpdate": "cascade"
-				},
-				"workflow_transition_role_id_role_id_fk": {
-					"name": "workflow_transition_role_id_role_id_fk",
-					"tableFrom": "workflow_transition",
-					"tableTo": "role",
-					"schemaTo": "public",
-					"columnsFrom": ["role_id"],
 					"columnsTo": ["id"],
 					"onDelete": "restrict",
 					"onUpdate": "cascade"
@@ -6418,24 +6298,20 @@
 					"onDelete": "restrict",
 					"onUpdate": "cascade"
 				},
-				"workflow_transition_version_id_workflow_version_id_fk": {
-					"name": "workflow_transition_version_id_workflow_version_id_fk",
+				"workflow_transition_role_id_role_id_fk": {
+					"name": "workflow_transition_role_id_role_id_fk",
 					"tableFrom": "workflow_transition",
-					"tableTo": "workflow_version",
+					"tableTo": "role",
 					"schemaTo": "public",
-					"columnsFrom": ["version_id"],
+					"columnsFrom": ["role_id"],
 					"columnsTo": ["id"],
-					"onDelete": "cascade",
+					"onDelete": "restrict",
 					"onUpdate": "cascade"
 				}
 			},
 			"compositePrimaryKeys": {},
 			"uniqueConstraints": {},
 			"checkConstraints": {
-				"workflow_transition_approval_policy_allowed": {
-					"name": "workflow_transition_approval_policy_allowed",
-					"value": "(approval_policy IS NULL) OR (approval_policy = ANY (ARRAY['any'::text, 'all'::text]))"
-				},
 				"workflow_transition_note_policy_allowed": {
 					"name": "workflow_transition_note_policy_allowed",
 					"value": "note_policy = ANY (ARRAY['none'::text, 'optional'::text, 'required'::text])"
@@ -6443,6 +6319,10 @@
 				"workflow_transition_note_visibility_allowed": {
 					"name": "workflow_transition_note_visibility_allowed",
 					"value": "note_visibility = ANY (ARRAY['public'::text, 'internal'::text])"
+				},
+				"workflow_transition_approval_policy_allowed": {
+					"name": "workflow_transition_approval_policy_allowed",
+					"value": "(approval_policy IS NULL) OR (approval_policy = ANY (ARRAY['any'::text, 'all'::text]))"
 				}
 			},
 			"policies": {},
@@ -6512,7 +6392,6 @@
 							"expression": "workspace_id",
 							"asc": true,
 							"nulls": "last",
-							"opclass": "text_ops",
 							"isExpression": false
 						}
 					],
@@ -6528,14 +6407,12 @@
 							"expression": "workspace_id",
 							"asc": true,
 							"nulls": "last",
-							"opclass": "text_ops",
 							"isExpression": false
 						},
 						{
 							"expression": "key",
 							"asc": true,
 							"nulls": "last",
-							"opclass": "text_ops",
 							"isExpression": false
 						}
 					],
@@ -6546,16 +6423,6 @@
 				}
 			},
 			"foreignKeys": {
-				"workflow_active_version_id_workflow_version_id_fk": {
-					"name": "workflow_active_version_id_workflow_version_id_fk",
-					"tableFrom": "workflow",
-					"tableTo": "workflow_version",
-					"schemaTo": "public",
-					"columnsFrom": ["active_version_id"],
-					"columnsTo": ["id"],
-					"onDelete": "set null",
-					"onUpdate": "cascade"
-				},
 				"workflow_workspace_id_workspace_id_fk": {
 					"name": "workflow_workspace_id_workspace_id_fk",
 					"tableFrom": "workflow",
@@ -6564,6 +6431,16 @@
 					"columnsFrom": ["workspace_id"],
 					"columnsTo": ["id"],
 					"onDelete": "cascade",
+					"onUpdate": "cascade"
+				},
+				"workflow_active_version_id_workflow_version_id_fk": {
+					"name": "workflow_active_version_id_workflow_version_id_fk",
+					"tableFrom": "workflow",
+					"tableTo": "workflow_version",
+					"schemaTo": "public",
+					"columnsFrom": ["active_version_id"],
+					"columnsTo": ["id"],
+					"onDelete": "set null",
 					"onUpdate": "cascade"
 				}
 			},
@@ -6630,7 +6507,6 @@
 							"expression": "workflow_id",
 							"asc": true,
 							"nulls": "last",
-							"opclass": "text_ops",
 							"isExpression": false
 						}
 					],
@@ -6646,14 +6522,12 @@
 							"expression": "workflow_id",
 							"asc": true,
 							"nulls": "last",
-							"opclass": "int4_ops",
 							"isExpression": false
 						},
 						{
 							"expression": "number",
 							"asc": true,
 							"nulls": "last",
-							"opclass": "int4_ops",
 							"isExpression": false
 						}
 					],
@@ -6664,16 +6538,6 @@
 				}
 			},
 			"foreignKeys": {
-				"workflow_version_published_by_person_id_fk": {
-					"name": "workflow_version_published_by_person_id_fk",
-					"tableFrom": "workflow_version",
-					"tableTo": "person",
-					"schemaTo": "public",
-					"columnsFrom": ["published_by"],
-					"columnsTo": ["id"],
-					"onDelete": "restrict",
-					"onUpdate": "cascade"
-				},
 				"workflow_version_workflow_id_workflow_id_fk": {
 					"name": "workflow_version_workflow_id_workflow_id_fk",
 					"tableFrom": "workflow_version",
@@ -6682,6 +6546,16 @@
 					"columnsFrom": ["workflow_id"],
 					"columnsTo": ["id"],
 					"onDelete": "cascade",
+					"onUpdate": "cascade"
+				},
+				"workflow_version_published_by_person_id_fk": {
+					"name": "workflow_version_published_by_person_id_fk",
+					"tableFrom": "workflow_version",
+					"tableTo": "person",
+					"schemaTo": "public",
+					"columnsFrom": ["published_by"],
+					"columnsTo": ["id"],
+					"onDelete": "restrict",
 					"onUpdate": "cascade"
 				}
 			},
@@ -6742,7 +6616,6 @@
 							"expression": "task_id",
 							"asc": true,
 							"nulls": "last",
-							"opclass": "text_ops",
 							"isExpression": false
 						}
 					],
@@ -6758,7 +6631,6 @@
 							"expression": "user_id",
 							"asc": true,
 							"nulls": "last",
-							"opclass": "text_ops",
 							"isExpression": false
 						}
 					],
@@ -6860,7 +6732,6 @@
 							"expression": "workspace_id",
 							"asc": true,
 							"nulls": "last",
-							"opclass": "text_ops",
 							"isExpression": false
 						}
 					],
@@ -6885,7 +6756,7 @@
 			"compositePrimaryKeys": {},
 			"uniqueConstraints": {
 				"canned_response_workspace_id_name_unique": {
-					"columns": ["name", "workspace_id"],
+					"columns": ["workspace_id", "name"],
 					"nullsNotDistinct": false,
 					"name": "canned_response_workspace_id_name_unique"
 				}
@@ -6993,14 +6864,12 @@
 							"expression": "work_item_id",
 							"asc": true,
 							"nulls": "last",
-							"opclass": "text_ops",
 							"isExpression": false
 						},
 						{
 							"expression": "created_at",
 							"asc": true,
 							"nulls": "last",
-							"opclass": "text_ops",
 							"isExpression": false
 						}
 					],
@@ -7016,7 +6885,6 @@
 							"expression": "workspace_id",
 							"asc": true,
 							"nulls": "last",
-							"opclass": "text_ops",
 							"isExpression": false
 						}
 					],
@@ -7109,7 +6977,6 @@
 							"expression": "comment_id",
 							"asc": true,
 							"nulls": "last",
-							"opclass": "text_ops",
 							"isExpression": false
 						}
 					],
@@ -7256,7 +7123,6 @@
 							"expression": "organisation_id",
 							"asc": true,
 							"nulls": "last",
-							"opclass": "text_ops",
 							"isExpression": false
 						}
 					],
@@ -7273,7 +7139,6 @@
 							"expression": "state",
 							"asc": true,
 							"nulls": "last",
-							"opclass": "text_ops",
 							"isExpression": false
 						}
 					],
@@ -7290,7 +7155,6 @@
 							"expression": "work_item_id",
 							"asc": true,
 							"nulls": "last",
-							"opclass": "text_ops",
 							"isExpression": false
 						}
 					],
@@ -7306,7 +7170,6 @@
 							"expression": "workspace_id",
 							"asc": true,
 							"nulls": "last",
-							"opclass": "text_ops",
 							"isExpression": false
 						}
 					],
@@ -7322,14 +7185,12 @@
 							"expression": "workspace_id",
 							"asc": true,
 							"nulls": "last",
-							"opclass": "text_ops",
 							"isExpression": false
 						},
 						{
 							"expression": "state",
 							"asc": true,
 							"nulls": "last",
-							"opclass": "text_ops",
 							"isExpression": false
 						}
 					],
@@ -7374,13 +7235,13 @@
 			"compositePrimaryKeys": {},
 			"uniqueConstraints": {},
 			"checkConstraints": {
-				"attachment_exactly_one_parent": {
-					"name": "attachment_exactly_one_parent",
-					"value": "((\nCASE\n    WHEN (work_item_id IS NOT NULL) THEN 1\n    ELSE 0\nEND +\nCASE\n    WHEN (comment_id IS NOT NULL) THEN 1\n    ELSE 0\nEND) +\nCASE\n    WHEN (submission_id IS NOT NULL) THEN 1\n    ELSE 0\nEND) = 1"
-				},
 				"attachment_state_allowed": {
 					"name": "attachment_state_allowed",
 					"value": "state = ANY (ARRAY['pending'::text, 'ready'::text, 'deleted'::text])"
+				},
+				"attachment_exactly_one_parent": {
+					"name": "attachment_exactly_one_parent",
+					"value": "((\nCASE\n    WHEN (work_item_id IS NOT NULL) THEN 1\n    ELSE 0\nEND +\nCASE\n    WHEN (comment_id IS NOT NULL) THEN 1\n    ELSE 0\nEND) +\nCASE\n    WHEN (submission_id IS NOT NULL) THEN 1\n    ELSE 0\nEND) = 1"
 				}
 			},
 			"policies": {},
@@ -7462,7 +7323,6 @@
 							"expression": "dedupe_key",
 							"asc": true,
 							"nulls": "last",
-							"opclass": "text_ops",
 							"isExpression": false
 						}
 					],
@@ -7479,14 +7339,12 @@
 							"expression": "state",
 							"asc": true,
 							"nulls": "last",
-							"opclass": "timestamptz_ops",
 							"isExpression": false
 						},
 						{
 							"expression": "next_attempt_at",
 							"asc": true,
 							"nulls": "last",
-							"opclass": "text_ops",
 							"isExpression": false
 						}
 					],
@@ -7503,14 +7361,12 @@
 							"expression": "workspace_id",
 							"asc": true,
 							"nulls": "last",
-							"opclass": "text_ops",
 							"isExpression": false
 						},
 						{
 							"expression": "state",
 							"asc": true,
 							"nulls": "last",
-							"opclass": "text_ops",
 							"isExpression": false
 						}
 					],
@@ -7524,13 +7380,13 @@
 			"compositePrimaryKeys": {},
 			"uniqueConstraints": {},
 			"checkConstraints": {
-				"outbox_attempts_nonnegative": {
-					"name": "outbox_attempts_nonnegative",
-					"value": "attempts >= 0"
-				},
 				"outbox_state_check": {
 					"name": "outbox_state_check",
 					"value": "state = ANY (ARRAY['pending'::text, 'delivered'::text, 'dead'::text])"
+				},
+				"outbox_attempts_nonnegative": {
+					"name": "outbox_attempts_nonnegative",
+					"value": "attempts >= 0"
 				}
 			},
 			"policies": {},
@@ -7646,7 +7502,6 @@
 							"expression": "assignee_id",
 							"asc": true,
 							"nulls": "last",
-							"opclass": "text_ops",
 							"isExpression": false
 						}
 					],
@@ -7662,7 +7517,6 @@
 							"expression": "column_id",
 							"asc": true,
 							"nulls": "last",
-							"opclass": "text_ops",
 							"isExpression": false
 						}
 					],
@@ -7678,7 +7532,6 @@
 							"expression": "due_date",
 							"asc": true,
 							"nulls": "last",
-							"opclass": "timestamp_ops",
 							"isExpression": false
 						}
 					],
@@ -7694,7 +7547,6 @@
 							"expression": "project_id",
 							"asc": true,
 							"nulls": "last",
-							"opclass": "text_ops",
 							"isExpression": false
 						}
 					],
@@ -7705,14 +7557,14 @@
 				}
 			},
 			"foreignKeys": {
-				"task_assignee_id_user_id_fk": {
-					"name": "task_assignee_id_user_id_fk",
+				"task_project_id_project_id_fk": {
+					"name": "task_project_id_project_id_fk",
 					"tableFrom": "task",
-					"tableTo": "user",
+					"tableTo": "project",
 					"schemaTo": "public",
-					"columnsFrom": ["assignee_id"],
+					"columnsFrom": ["project_id"],
 					"columnsTo": ["id"],
-					"onDelete": "set null",
+					"onDelete": "cascade",
 					"onUpdate": "cascade"
 				},
 				"task_column_id_column_id_fk": {
@@ -7725,21 +7577,21 @@
 					"onDelete": "set null",
 					"onUpdate": "cascade"
 				},
-				"task_project_id_project_id_fk": {
-					"name": "task_project_id_project_id_fk",
+				"task_assignee_id_user_id_fk": {
+					"name": "task_assignee_id_user_id_fk",
 					"tableFrom": "task",
-					"tableTo": "project",
+					"tableTo": "user",
 					"schemaTo": "public",
-					"columnsFrom": ["project_id"],
+					"columnsFrom": ["assignee_id"],
 					"columnsTo": ["id"],
-					"onDelete": "cascade",
+					"onDelete": "set null",
 					"onUpdate": "cascade"
 				}
 			},
 			"compositePrimaryKeys": {},
 			"uniqueConstraints": {
 				"task_project_number_unique": {
-					"columns": ["number", "project_id"],
+					"columns": ["project_id", "number"],
 					"nullsNotDistinct": false,
 					"name": "task_project_number_unique"
 				}
@@ -7834,7 +7686,6 @@
 							"expression": "user_id",
 							"asc": true,
 							"nulls": "last",
-							"opclass": "text_ops",
 							"isExpression": false
 						}
 					],
@@ -7943,21 +7794,18 @@
 							"expression": "workspace_id",
 							"asc": true,
 							"nulls": "last",
-							"opclass": "text_ops",
 							"isExpression": false
 						},
 						{
 							"expression": "name",
 							"asc": true,
 							"nulls": "last",
-							"opclass": "text_ops",
 							"isExpression": false
 						},
 						{
 							"expression": "id",
 							"asc": true,
 							"nulls": "last",
-							"opclass": "text_ops",
 							"isExpression": false
 						}
 					],
@@ -7982,7 +7830,7 @@
 			"compositePrimaryKeys": {},
 			"uniqueConstraints": {
 				"service_calendar_workspace_id_id_unique": {
-					"columns": ["id", "workspace_id"],
+					"columns": ["workspace_id", "id"],
 					"nullsNotDistinct": false,
 					"name": "service_calendar_workspace_id_id_unique"
 				}
@@ -8093,14 +7941,12 @@
 							"expression": "workspace_id",
 							"asc": true,
 							"nulls": "last",
-							"opclass": "int4_ops",
 							"isExpression": false
 						},
 						{
 							"expression": "position",
 							"asc": true,
 							"nulls": "last",
-							"opclass": "int4_ops",
 							"isExpression": false
 						}
 					],
@@ -8111,16 +7957,6 @@
 				}
 			},
 			"foreignKeys": {
-				"project_sla_policy_id_sla_policy_id_fk": {
-					"name": "project_sla_policy_id_sla_policy_id_fk",
-					"tableFrom": "project",
-					"tableTo": "sla_policy",
-					"schemaTo": "public",
-					"columnsFrom": ["sla_policy_id"],
-					"columnsTo": ["id"],
-					"onDelete": "restrict",
-					"onUpdate": "cascade"
-				},
 				"project_workspace_id_workspace_id_fk": {
 					"name": "project_workspace_id_workspace_id_fk",
 					"tableFrom": "project",
@@ -8130,12 +7966,22 @@
 					"columnsTo": ["id"],
 					"onDelete": "cascade",
 					"onUpdate": "cascade"
+				},
+				"project_sla_policy_id_sla_policy_id_fk": {
+					"name": "project_sla_policy_id_sla_policy_id_fk",
+					"tableFrom": "project",
+					"tableTo": "sla_policy",
+					"schemaTo": "public",
+					"columnsFrom": ["sla_policy_id"],
+					"columnsTo": ["id"],
+					"onDelete": "restrict",
+					"onUpdate": "cascade"
 				}
 			},
 			"compositePrimaryKeys": {},
 			"uniqueConstraints": {
 				"project_workspace_id_id_unique": {
-					"columns": ["id", "workspace_id"],
+					"columns": ["workspace_id", "id"],
 					"nullsNotDistinct": false,
 					"name": "project_workspace_id_id_unique"
 				},
@@ -8452,28 +8298,24 @@
 							"expression": "requested_by_person_id",
 							"asc": true,
 							"nulls": "last",
-							"opclass": "text_ops",
 							"isExpression": false
 						},
 						{
 							"expression": "action",
 							"asc": true,
 							"nulls": "last",
-							"opclass": "array_ops",
 							"isExpression": false
 						},
 						{
 							"expression": "target_ids",
 							"asc": true,
 							"nulls": "last",
-							"opclass": "array_ops",
 							"isExpression": false
 						},
 						{
 							"expression": "state",
 							"asc": true,
 							"nulls": "last",
-							"opclass": "text_ops",
 							"isExpression": false
 						}
 					],
@@ -8490,21 +8332,18 @@
 							"expression": "requested_by_person_id",
 							"asc": true,
 							"nulls": "last",
-							"opclass": "text_ops",
 							"isExpression": false
 						},
 						{
 							"expression": "state",
 							"asc": true,
 							"nulls": "last",
-							"opclass": "timestamptz_ops",
 							"isExpression": false
 						},
 						{
 							"expression": "expires_at",
 							"asc": true,
 							"nulls": "last",
-							"opclass": "text_ops",
 							"isExpression": false
 						}
 					],
@@ -8520,14 +8359,12 @@
 							"expression": "workspace_id",
 							"asc": true,
 							"nulls": "last",
-							"opclass": "text_ops",
 							"isExpression": false
 						},
 						{
 							"expression": "created_at",
 							"asc": false,
 							"nulls": "first",
-							"opclass": "text_ops",
 							"isExpression": false
 						}
 					],
@@ -8541,6 +8378,14 @@
 			"compositePrimaryKeys": {},
 			"uniqueConstraints": {},
 			"checkConstraints": {
+				"pending_action_credential_type_check": {
+					"name": "pending_action_credential_type_check",
+					"value": "credential_type = ANY (ARRAY['session'::text, 'api_key'::text])"
+				},
+				"pending_action_origin_check": {
+					"name": "pending_action_origin_check",
+					"value": "origin = ANY (ARRAY['web'::text, 'api'::text, 'mcp'::text])"
+				},
 				"pending_action_action_check": {
 					"name": "pending_action_action_check",
 					"value": "action = ANY (ARRAY['delete'::text, 'bulk_delete'::text, 'purge'::text, 'mcp_destructive'::text])"
@@ -8549,25 +8394,17 @@
 					"name": "pending_action_confirmation_check",
 					"value": "confirmation_required = ANY (ARRAY['click'::text, 'typed_name'::text, 'typed_count'::text, 'typed_count_step_up'::text, 'typed_name_step_up'::text])"
 				},
-				"pending_action_credential_type_check": {
-					"name": "pending_action_credential_type_check",
-					"value": "credential_type = ANY (ARRAY['session'::text, 'api_key'::text])"
+				"pending_action_state_check": {
+					"name": "pending_action_state_check",
+					"value": "state = ANY (ARRAY['pending'::text, 'approved'::text, 'denied'::text, 'cancelled'::text, 'expired'::text, 'invalidated'::text, 'executed'::text, 'failed'::text])"
 				},
 				"pending_action_invalidation_reason_check": {
 					"name": "pending_action_invalidation_reason_check",
 					"value": "(invalidation_reason IS NULL) OR (invalidation_reason = ANY (ARRAY['credential_revoked'::text, 'requester_deactivated'::text, 'reach_lost'::text, 'capability_removed'::text, 'version_changed'::text, 'scope_changed'::text]))"
 				},
-				"pending_action_origin_check": {
-					"name": "pending_action_origin_check",
-					"value": "origin = ANY (ARRAY['web'::text, 'api'::text, 'mcp'::text])"
-				},
 				"pending_action_payload_hash_check": {
 					"name": "pending_action_payload_hash_check",
 					"value": "payload_hash ~ '^[0-9a-f]{64}$'::text"
-				},
-				"pending_action_state_check": {
-					"name": "pending_action_state_check",
-					"value": "state = ANY (ARRAY['pending'::text, 'approved'::text, 'denied'::text, 'cancelled'::text, 'expired'::text, 'invalidated'::text, 'executed'::text, 'failed'::text])"
 				},
 				"pending_action_targets_nonempty": {
 					"name": "pending_action_targets_nonempty",
@@ -8634,7 +8471,6 @@
 							"expression": "secret",
 							"asc": true,
 							"nulls": "last",
-							"opclass": "text_ops",
 							"isExpression": false
 						}
 					],
@@ -8650,7 +8486,6 @@
 							"expression": "user_id",
 							"asc": true,
 							"nulls": "last",
-							"opclass": "text_ops",
 							"isExpression": false
 						}
 					],
@@ -8666,7 +8501,6 @@
 							"expression": "user_id",
 							"asc": true,
 							"nulls": "last",
-							"opclass": "text_ops",
 							"isExpression": false
 						}
 					],
@@ -8827,14 +8661,12 @@
 							"expression": "pending_action_id",
 							"asc": true,
 							"nulls": "last",
-							"opclass": "text_ops",
 							"isExpression": false
 						},
 						{
 							"expression": "state",
 							"asc": true,
 							"nulls": "last",
-							"opclass": "text_ops",
 							"isExpression": false
 						}
 					],
@@ -8850,28 +8682,24 @@
 							"expression": "session_id",
 							"asc": true,
 							"nulls": "last",
-							"opclass": "text_ops",
 							"isExpression": false
 						},
 						{
 							"expression": "state",
 							"asc": true,
 							"nulls": "last",
-							"opclass": "text_ops",
 							"isExpression": false
 						},
 						{
 							"expression": "challenge_expires_at",
 							"asc": true,
 							"nulls": "last",
-							"opclass": "timestamptz_ops",
 							"isExpression": false
 						},
 						{
 							"expression": "token_expires_at",
 							"asc": true,
 							"nulls": "last",
-							"opclass": "timestamptz_ops",
 							"isExpression": false
 						}
 					],
@@ -8887,7 +8715,6 @@
 							"expression": "token_hash",
 							"asc": true,
 							"nulls": "last",
-							"opclass": "bytea_ops",
 							"isExpression": false
 						}
 					],
@@ -8899,16 +8726,6 @@
 				}
 			},
 			"foreignKeys": {
-				"step_up_confirmation_pending_action_id_pending_action_id_fk": {
-					"name": "step_up_confirmation_pending_action_id_pending_action_id_fk",
-					"tableFrom": "step_up_confirmation",
-					"tableTo": "pending_action",
-					"schemaTo": "public",
-					"columnsFrom": ["pending_action_id"],
-					"columnsTo": ["id"],
-					"onDelete": "cascade",
-					"onUpdate": "no action"
-				},
 				"step_up_confirmation_person_id_person_id_fk": {
 					"name": "step_up_confirmation_person_id_person_id_fk",
 					"tableFrom": "step_up_confirmation",
@@ -8928,6 +8745,16 @@
 					"columnsTo": ["id"],
 					"onDelete": "cascade",
 					"onUpdate": "no action"
+				},
+				"step_up_confirmation_pending_action_id_pending_action_id_fk": {
+					"name": "step_up_confirmation_pending_action_id_pending_action_id_fk",
+					"tableFrom": "step_up_confirmation",
+					"tableTo": "pending_action",
+					"schemaTo": "public",
+					"columnsFrom": ["pending_action_id"],
+					"columnsTo": ["id"],
+					"onDelete": "cascade",
+					"onUpdate": "no action"
 				}
 			},
 			"compositePrimaryKeys": {},
@@ -8937,6 +8764,10 @@
 					"name": "step_up_binding_shape",
 					"value": "((binding_kind = 'pending_action'::text) AND (pending_action_id IS NOT NULL) AND (operation_key IS NULL) AND (route_key IS NULL) AND (expected_version IS NULL) AND (body_hash IS NULL)) OR ((binding_kind = 'operation'::text) AND (pending_action_id IS NULL) AND (operation_key IS NOT NULL) AND (route_key IS NOT NULL) AND (expected_version IS NOT NULL) AND (expected_version >= 1) AND (body_hash IS NOT NULL) AND (octet_length(body_hash) = 32))"
 				},
+				"step_up_state_shape": {
+					"name": "step_up_state_shape",
+					"value": "((state = 'challenge'::text) AND (token_hash IS NULL) AND (auth_method IS NULL) AND (authenticated_at IS NULL) AND (issued_at IS NULL) AND (consumed_at IS NULL) AND (token_expires_at IS NULL)) OR ((state = 'issued'::text) AND (token_hash IS NOT NULL) AND (octet_length(token_hash) = 32) AND (auth_method IS NOT NULL) AND (auth_method = ANY (ARRAY['password'::text, 'totp'::text, 'backup_code'::text, 'sso_prompt_login'::text])) AND (authenticated_at IS NOT NULL) AND (issued_at IS NOT NULL) AND (consumed_at IS NULL) AND (token_expires_at IS NOT NULL)) OR ((state = 'consumed'::text) AND (token_hash IS NOT NULL) AND (octet_length(token_hash) = 32) AND (auth_method IS NOT NULL) AND (auth_method = ANY (ARRAY['password'::text, 'totp'::text, 'backup_code'::text, 'sso_prompt_login'::text])) AND (authenticated_at IS NOT NULL) AND (issued_at IS NOT NULL) AND (consumed_at IS NOT NULL) AND (token_expires_at IS NOT NULL))"
+				},
 				"step_up_nonce_hash_length": {
 					"name": "step_up_nonce_hash_length",
 					"value": "octet_length(challenge_nonce_hash) = 32"
@@ -8944,10 +8775,6 @@
 				"step_up_operation_route": {
 					"name": "step_up_operation_route",
 					"value": "(operation_key IS NULL) OR ((operation_key = 'metrics_token_rotate'::text) AND (route_key = 'POST /api/instance/observability/metrics-token/rotate'::text)) OR ((operation_key = 'oidc_group_mapping_create'::text) AND (route_key = 'POST /api/instance/identity-connections/{id}/oidc-group-mappings'::text)) OR ((operation_key = 'oidc_group_mapping_update'::text) AND (route_key = 'PATCH /api/instance/identity-connections/{id}/oidc-group-mappings/{mappingId}'::text)) OR ((operation_key = 'mfa_reset'::text) AND (route_key = 'POST /api/instance/users/{id}/reset-mfa'::text))"
-				},
-				"step_up_state_shape": {
-					"name": "step_up_state_shape",
-					"value": "((state = 'challenge'::text) AND (token_hash IS NULL) AND (auth_method IS NULL) AND (authenticated_at IS NULL) AND (issued_at IS NULL) AND (consumed_at IS NULL) AND (token_expires_at IS NULL)) OR ((state = 'issued'::text) AND (token_hash IS NOT NULL) AND (octet_length(token_hash) = 32) AND (auth_method IS NOT NULL) AND (auth_method = ANY (ARRAY['password'::text, 'totp'::text, 'backup_code'::text, 'sso_prompt_login'::text])) AND (authenticated_at IS NOT NULL) AND (issued_at IS NOT NULL) AND (consumed_at IS NULL) AND (token_expires_at IS NOT NULL)) OR ((state = 'consumed'::text) AND (token_hash IS NOT NULL) AND (octet_length(token_hash) = 32) AND (auth_method IS NOT NULL) AND (auth_method = ANY (ARRAY['password'::text, 'totp'::text, 'backup_code'::text, 'sso_prompt_login'::text])) AND (authenticated_at IS NOT NULL) AND (issued_at IS NOT NULL) AND (consumed_at IS NOT NULL) AND (token_expires_at IS NOT NULL))"
 				}
 			},
 			"policies": {},
@@ -9060,25 +8887,25 @@
 					"name": "instance_setting_id_singleton",
 					"value": "id = 'singleton'::text"
 				},
-				"instance_setting_local_factor_policy_shape": {
-					"name": "instance_setting_local_factor_policy_shape",
-					"value": "(jsonb_typeof(local_factor_policy) = 'object'::text) AND (local_factor_policy ?& ARRAY['mode'::text, 'requiredRoleId'::text]) AND ((local_factor_policy - ARRAY['mode'::text, 'requiredRoleId'::text]) = '{}'::jsonb) AND ((local_factor_policy ->> 'mode'::text) = ANY (ARRAY['off'::text, 'optional'::text, 'required_staff'::text, 'required_role'::text, 'required_everyone'::text])) AND ((((local_factor_policy ->> 'mode'::text) = 'required_role'::text) AND (jsonb_typeof((local_factor_policy -> 'requiredRoleId'::text)) = 'string'::text) AND (length((local_factor_policy ->> 'requiredRoleId'::text)) > 0)) OR (((local_factor_policy ->> 'mode'::text) <> 'required_role'::text) AND (jsonb_typeof((local_factor_policy -> 'requiredRoleId'::text)) = 'null'::text)))"
-				},
-				"instance_setting_metrics_token_hash_length": {
-					"name": "instance_setting_metrics_token_hash_length",
-					"value": "(metrics_token_hash IS NULL) OR (octet_length(metrics_token_hash) = 32)"
+				"instance_setting_observability_version_positive": {
+					"name": "instance_setting_observability_version_positive",
+					"value": "observability_config_version >= 1"
 				},
 				"instance_setting_metrics_token_pair": {
 					"name": "instance_setting_metrics_token_pair",
 					"value": "(metrics_token_hash IS NULL) = (metrics_token_rotated_at IS NULL)"
 				},
+				"instance_setting_metrics_token_hash_length": {
+					"name": "instance_setting_metrics_token_hash_length",
+					"value": "(metrics_token_hash IS NULL) OR (octet_length(metrics_token_hash) = 32)"
+				},
+				"instance_setting_local_factor_policy_shape": {
+					"name": "instance_setting_local_factor_policy_shape",
+					"value": "(jsonb_typeof(local_factor_policy) = 'object'::text) AND (local_factor_policy ?& ARRAY['mode'::text, 'requiredRoleId'::text]) AND ((local_factor_policy - ARRAY['mode'::text, 'requiredRoleId'::text]) = '{}'::jsonb) AND ((local_factor_policy ->> 'mode'::text) = ANY (ARRAY['off'::text, 'optional'::text, 'required_staff'::text, 'required_role'::text, 'required_everyone'::text])) AND ((((local_factor_policy ->> 'mode'::text) = 'required_role'::text) AND (jsonb_typeof((local_factor_policy -> 'requiredRoleId'::text)) = 'string'::text) AND (length((local_factor_policy ->> 'requiredRoleId'::text)) > 0)) OR (((local_factor_policy ->> 'mode'::text) <> 'required_role'::text) AND (jsonb_typeof((local_factor_policy -> 'requiredRoleId'::text)) = 'null'::text)))"
+				},
 				"instance_setting_observability_log_levels_shape": {
 					"name": "instance_setting_observability_log_levels_shape",
 					"value": "CHECK (\nCASE\n    WHEN (jsonb_typeof(observability_log_levels) = 'object'::text) THEN ((observability_log_levels ?& ARRAY['default'::text, 'modules'::text]) AND ((observability_log_levels - ARRAY['default'::text, 'modules'::text]) = '{}'::jsonb) AND (jsonb_typeof((observability_log_levels -> 'default'::text)) = 'string'::text) AND ((observability_log_levels ->> 'default'::text) = ANY (ARRAY['error'::text, 'warn'::text, 'info'::text, 'debug'::text])) AND (jsonb_typeof((observability_log_levels -> 'modules'::text)) = 'object'::text) AND (NOT (((observability_log_levels -> 'modules'::text) - ARRAY['http'::text, 'auth'::text, 'database'::text, 'jobs'::text, 'audit'::text, 'plugins'::text, 'realtime'::text]) <> '{}'::jsonb)) AND (NOT jsonb_path_exists(observability_log_levels, '$.\"modules\".*?(((@ != \"error\" && @ != \"warn\") && @ != \"info\") && @ != \"debug\")'::jsonpath)))\n    ELSE false\nEND)"
-				},
-				"instance_setting_observability_version_positive": {
-					"name": "instance_setting_observability_version_positive",
-					"value": "observability_config_version >= 1"
 				}
 			},
 			"policies": {},
@@ -9146,7 +8973,6 @@
 							"expression": "policy_id",
 							"asc": true,
 							"nulls": "last",
-							"opclass": "text_ops",
 							"isExpression": false
 						}
 					],
@@ -9158,16 +8984,6 @@
 				}
 			},
 			"foreignKeys": {
-				"sla_policy_version_workspace_calendar_fk": {
-					"name": "sla_policy_version_workspace_calendar_fk",
-					"tableFrom": "sla_policy_version",
-					"tableTo": "service_calendar",
-					"schemaTo": "public",
-					"columnsFrom": ["workspace_id", "calendar_id"],
-					"columnsTo": ["workspace_id", "id"],
-					"onDelete": "restrict",
-					"onUpdate": "no action"
-				},
 				"sla_policy_version_workspace_policy_fk": {
 					"name": "sla_policy_version_workspace_policy_fk",
 					"tableFrom": "sla_policy_version",
@@ -9177,27 +8993,37 @@
 					"columnsTo": ["workspace_id", "id"],
 					"onDelete": "cascade",
 					"onUpdate": "no action"
+				},
+				"sla_policy_version_workspace_calendar_fk": {
+					"name": "sla_policy_version_workspace_calendar_fk",
+					"tableFrom": "sla_policy_version",
+					"tableTo": "service_calendar",
+					"schemaTo": "public",
+					"columnsFrom": ["workspace_id", "calendar_id"],
+					"columnsTo": ["workspace_id", "id"],
+					"onDelete": "restrict",
+					"onUpdate": "no action"
 				}
 			},
 			"compositePrimaryKeys": {},
 			"uniqueConstraints": {
 				"sla_policy_version_policy_id_unique": {
-					"columns": ["id", "policy_id"],
+					"columns": ["policy_id", "id"],
 					"nullsNotDistinct": false,
 					"name": "sla_policy_version_policy_id_unique"
 				},
 				"sla_policy_version_policy_number_unique": {
-					"columns": ["number", "policy_id"],
+					"columns": ["policy_id", "number"],
 					"nullsNotDistinct": false,
 					"name": "sla_policy_version_policy_number_unique"
 				},
 				"sla_policy_version_workspace_policy_id_unique": {
-					"columns": ["id", "policy_id", "workspace_id"],
+					"columns": ["workspace_id", "policy_id", "id"],
 					"nullsNotDistinct": false,
 					"name": "sla_policy_version_workspace_policy_id_unique"
 				},
 				"sla_policy_version_workspace_id_unique": {
-					"columns": ["id", "workspace_id"],
+					"columns": ["workspace_id", "id"],
 					"nullsNotDistinct": false,
 					"name": "sla_policy_version_workspace_id_unique"
 				}
@@ -9264,16 +9090,6 @@
 			},
 			"indexes": {},
 			"foreignKeys": {
-				"sla_goal_workspace_type_fk": {
-					"name": "sla_goal_workspace_type_fk",
-					"tableFrom": "sla_goal",
-					"tableTo": "work_item_type",
-					"schemaTo": "public",
-					"columnsFrom": ["workspace_id", "work_item_type_id"],
-					"columnsTo": ["workspace_id", "id"],
-					"onDelete": "restrict",
-					"onUpdate": "no action"
-				},
 				"sla_goal_workspace_version_fk": {
 					"name": "sla_goal_workspace_version_fk",
 					"tableFrom": "sla_goal",
@@ -9283,17 +9099,31 @@
 					"columnsTo": ["workspace_id", "id"],
 					"onDelete": "cascade",
 					"onUpdate": "no action"
+				},
+				"sla_goal_workspace_type_fk": {
+					"name": "sla_goal_workspace_type_fk",
+					"tableFrom": "sla_goal",
+					"tableTo": "work_item_type",
+					"schemaTo": "public",
+					"columnsFrom": ["workspace_id", "work_item_type_id"],
+					"columnsTo": ["workspace_id", "id"],
+					"onDelete": "restrict",
+					"onUpdate": "no action"
 				}
 			},
 			"compositePrimaryKeys": {},
 			"uniqueConstraints": {
 				"sla_goal_version_metric_type_priority_unique": {
-					"columns": ["metric", "priority", "version_id", "work_item_type_id"],
+					"columns": ["version_id", "metric", "work_item_type_id", "priority"],
 					"nullsNotDistinct": false,
 					"name": "sla_goal_version_metric_type_priority_unique"
 				}
 			},
 			"checkConstraints": {
+				"sla_goal_target_minutes_positive": {
+					"name": "sla_goal_target_minutes_positive",
+					"value": "target_minutes > 0"
+				},
 				"sla_goal_metric_allowed": {
 					"name": "sla_goal_metric_allowed",
 					"value": "metric = ANY (ARRAY['first_response'::text, 'resolution'::text])"
@@ -9301,10 +9131,6 @@
 				"sla_goal_priority_allowed": {
 					"name": "sla_goal_priority_allowed",
 					"value": "priority = ANY (ARRAY['low'::text, 'medium'::text, 'high'::text, 'urgent'::text])"
-				},
-				"sla_goal_target_minutes_positive": {
-					"name": "sla_goal_target_minutes_positive",
-					"value": "target_minutes > 0"
 				}
 			},
 			"policies": {},
@@ -9368,6 +9194,16 @@
 			},
 			"indexes": {},
 			"foreignKeys": {
+				"sla_policy_workspace_id_workspace_id_fk": {
+					"name": "sla_policy_workspace_id_workspace_id_fk",
+					"tableFrom": "sla_policy",
+					"tableTo": "workspace",
+					"schemaTo": "public",
+					"columnsFrom": ["workspace_id"],
+					"columnsTo": ["id"],
+					"onDelete": "cascade",
+					"onUpdate": "cascade"
+				},
 				"sla_policy_active_version_id_sla_policy_version_id_fk": {
 					"name": "sla_policy_active_version_id_sla_policy_version_id_fk",
 					"tableFrom": "sla_policy",
@@ -9387,22 +9223,12 @@
 					"columnsTo": ["workspace_id", "policy_id", "id"],
 					"onDelete": "no action",
 					"onUpdate": "no action"
-				},
-				"sla_policy_workspace_id_workspace_id_fk": {
-					"name": "sla_policy_workspace_id_workspace_id_fk",
-					"tableFrom": "sla_policy",
-					"tableTo": "workspace",
-					"schemaTo": "public",
-					"columnsFrom": ["workspace_id"],
-					"columnsTo": ["id"],
-					"onDelete": "cascade",
-					"onUpdate": "cascade"
 				}
 			},
 			"compositePrimaryKeys": {},
 			"uniqueConstraints": {
 				"sla_policy_workspace_id_id_unique": {
-					"columns": ["id", "workspace_id"],
+					"columns": ["workspace_id", "id"],
 					"nullsNotDistinct": false,
 					"name": "sla_policy_workspace_id_id_unique"
 				}
@@ -9580,7 +9406,6 @@
 							"expression": "organisation_id",
 							"asc": true,
 							"nulls": "last",
-							"opclass": "text_ops",
 							"isExpression": false
 						}
 					],
@@ -9597,14 +9422,12 @@
 							"expression": "portal_scope",
 							"asc": true,
 							"nulls": "last",
-							"opclass": "text_ops",
 							"isExpression": false
 						},
 						{
 							"expression": "enabled",
 							"asc": true,
 							"nulls": "last",
-							"opclass": "text_ops",
 							"isExpression": false
 						}
 					],
@@ -9615,16 +9438,6 @@
 				}
 			},
 			"foreignKeys": {
-				"identity_connection_created_by_person_id_fk": {
-					"name": "identity_connection_created_by_person_id_fk",
-					"tableFrom": "identity_connection",
-					"tableTo": "person",
-					"schemaTo": "public",
-					"columnsFrom": ["created_by"],
-					"columnsTo": ["id"],
-					"onDelete": "set null",
-					"onUpdate": "no action"
-				},
 				"identity_connection_organisation_id_organisation_id_fk": {
 					"name": "identity_connection_organisation_id_organisation_id_fk",
 					"tableFrom": "identity_connection",
@@ -9634,6 +9447,16 @@
 					"columnsTo": ["id"],
 					"onDelete": "restrict",
 					"onUpdate": "cascade"
+				},
+				"identity_connection_created_by_person_id_fk": {
+					"name": "identity_connection_created_by_person_id_fk",
+					"tableFrom": "identity_connection",
+					"tableTo": "person",
+					"schemaTo": "public",
+					"columnsFrom": ["created_by"],
+					"columnsTo": ["id"],
+					"onDelete": "set null",
+					"onUpdate": "no action"
 				},
 				"identity_connection_updated_by_person_id_fk": {
 					"name": "identity_connection_updated_by_person_id_fk",
@@ -9649,33 +9472,33 @@
 			"compositePrimaryKeys": {},
 			"uniqueConstraints": {},
 			"checkConstraints": {
-				"identity_connection_config_version_check": {
-					"name": "identity_connection_config_version_check",
-					"value": "config_version >= 1"
-				},
-				"identity_connection_health_state_check": {
-					"name": "identity_connection_health_state_check",
-					"value": "health_state = ANY (ARRAY['unknown'::text, 'healthy'::text, 'degraded'::text, 'invalid'::text])"
-				},
-				"identity_connection_mfa_mode_check": {
-					"name": "identity_connection_mfa_mode_check",
-					"value": "mfa_upstream_mode = ANY (ARRAY['claim'::text, 'static'::text, 'off'::text])"
-				},
-				"identity_connection_portal_organisation_check": {
-					"name": "identity_connection_portal_organisation_check",
-					"value": "((portal_scope = 'customer'::text) AND (organisation_id IS NOT NULL)) OR ((portal_scope = 'agent'::text) AND (organisation_id IS NULL))"
+				"identity_connection_provider_type_check": {
+					"name": "identity_connection_provider_type_check",
+					"value": "provider_type = 'entra'::text"
 				},
 				"identity_connection_portal_scope_check": {
 					"name": "identity_connection_portal_scope_check",
 					"value": "portal_scope = ANY (ARRAY['agent'::text, 'customer'::text])"
 				},
-				"identity_connection_provider_type_check": {
-					"name": "identity_connection_provider_type_check",
-					"value": "provider_type = 'entra'::text"
+				"identity_connection_portal_organisation_check": {
+					"name": "identity_connection_portal_organisation_check",
+					"value": "((portal_scope = 'customer'::text) AND (organisation_id IS NOT NULL)) OR ((portal_scope = 'agent'::text) AND (organisation_id IS NULL))"
 				},
 				"identity_connection_rank_check": {
 					"name": "identity_connection_rank_check",
 					"value": "((portal_scope = 'customer'::text) AND (max_role_rank IS NULL)) OR ((portal_scope = 'agent'::text) AND (max_role_rank >= 0))"
+				},
+				"identity_connection_config_version_check": {
+					"name": "identity_connection_config_version_check",
+					"value": "config_version >= 1"
+				},
+				"identity_connection_mfa_mode_check": {
+					"name": "identity_connection_mfa_mode_check",
+					"value": "mfa_upstream_mode = ANY (ARRAY['claim'::text, 'static'::text, 'off'::text])"
+				},
+				"identity_connection_health_state_check": {
+					"name": "identity_connection_health_state_check",
+					"value": "health_state = ANY (ARRAY['unknown'::text, 'healthy'::text, 'degraded'::text, 'invalid'::text])"
 				}
 			},
 			"policies": {},
@@ -9780,14 +9603,12 @@
 							"expression": "identity_connection_id",
 							"asc": true,
 							"nulls": "last",
-							"opclass": "text_ops",
 							"isExpression": false
 						},
 						{
 							"expression": "scim_external_id",
 							"asc": true,
 							"nulls": "last",
-							"opclass": "text_ops",
 							"isExpression": false
 						}
 					],
@@ -9804,14 +9625,12 @@
 							"expression": "identity_connection_id",
 							"asc": true,
 							"nulls": "last",
-							"opclass": "text_ops",
 							"isExpression": false
 						},
 						{
 							"expression": "subject",
 							"asc": true,
 							"nulls": "last",
-							"opclass": "text_ops",
 							"isExpression": false
 						}
 					],
@@ -9827,14 +9646,12 @@
 							"expression": "person_id",
 							"asc": true,
 							"nulls": "last",
-							"opclass": "bool_ops",
 							"isExpression": false
 						},
 						{
 							"expression": "active",
 							"asc": true,
 							"nulls": "last",
-							"opclass": "bool_ops",
 							"isExpression": false
 						}
 					],
@@ -10017,7 +9834,6 @@
 							"expression": "identity_connection_id",
 							"asc": true,
 							"nulls": "last",
-							"opclass": "text_ops",
 							"isExpression": false
 						}
 					],
@@ -10034,21 +9850,18 @@
 							"expression": "person_id",
 							"asc": true,
 							"nulls": "last",
-							"opclass": "text_ops",
 							"isExpression": false
 						},
 						{
 							"expression": "scope",
 							"asc": true,
 							"nulls": "last",
-							"opclass": "text_ops",
 							"isExpression": false
 						},
 						{
 							"expression": "scope_id",
 							"asc": true,
 							"nulls": "last",
-							"opclass": "text_ops",
 							"isExpression": false
 						}
 					],
@@ -10065,21 +9878,18 @@
 							"expression": "external_identity_id",
 							"asc": true,
 							"nulls": "last",
-							"opclass": "text_ops",
 							"isExpression": false
 						},
 						{
 							"expression": "scope",
 							"asc": true,
 							"nulls": "last",
-							"opclass": "text_ops",
 							"isExpression": false
 						},
 						{
 							"expression": "scope_id",
 							"asc": true,
 							"nulls": "last",
-							"opclass": "text_ops",
 							"isExpression": false
 						}
 					],
@@ -10096,14 +9906,12 @@
 							"expression": "external_identity_id",
 							"asc": true,
 							"nulls": "last",
-							"opclass": "text_ops",
 							"isExpression": false
 						},
 						{
 							"expression": "oidc_group_mapping_id",
 							"asc": true,
 							"nulls": "last",
-							"opclass": "text_ops",
 							"isExpression": false
 						}
 					],
@@ -10120,21 +9928,18 @@
 							"expression": "person_id",
 							"asc": true,
 							"nulls": "last",
-							"opclass": "text_ops",
 							"isExpression": false
 						},
 						{
 							"expression": "scope",
 							"asc": true,
 							"nulls": "last",
-							"opclass": "text_ops",
 							"isExpression": false
 						},
 						{
 							"expression": "scope_id",
 							"asc": true,
 							"nulls": "last",
-							"opclass": "text_ops",
 							"isExpression": false
 						}
 					],
@@ -10151,7 +9956,6 @@
 							"expression": "role_id",
 							"asc": true,
 							"nulls": "last",
-							"opclass": "text_ops",
 							"isExpression": false
 						}
 					],
@@ -10167,14 +9971,12 @@
 							"expression": "external_identity_id",
 							"asc": true,
 							"nulls": "last",
-							"opclass": "text_ops",
 							"isExpression": false
 						},
 						{
 							"expression": "scim_group_mapping_id",
 							"asc": true,
 							"nulls": "last",
-							"opclass": "text_ops",
 							"isExpression": false
 						}
 					],
@@ -10186,36 +9988,6 @@
 				}
 			},
 			"foreignKeys": {
-				"membership_grant_external_identity_id_external_identity_id_fk": {
-					"name": "membership_grant_external_identity_id_external_identity_id_fk",
-					"tableFrom": "membership_grant",
-					"tableTo": "external_identity",
-					"schemaTo": "public",
-					"columnsFrom": ["external_identity_id"],
-					"columnsTo": ["id"],
-					"onDelete": "restrict",
-					"onUpdate": "cascade"
-				},
-				"membership_grant_granted_by_person_id_person_id_fk": {
-					"name": "membership_grant_granted_by_person_id_person_id_fk",
-					"tableFrom": "membership_grant",
-					"tableTo": "person",
-					"schemaTo": "public",
-					"columnsFrom": ["granted_by_person_id"],
-					"columnsTo": ["id"],
-					"onDelete": "set null",
-					"onUpdate": "cascade"
-				},
-				"membership_grant_identity_connection_id_identity_connection_id_": {
-					"name": "membership_grant_identity_connection_id_identity_connection_id_",
-					"tableFrom": "membership_grant",
-					"tableTo": "identity_connection",
-					"schemaTo": "public",
-					"columnsFrom": ["identity_connection_id"],
-					"columnsTo": ["id"],
-					"onDelete": "restrict",
-					"onUpdate": "cascade"
-				},
 				"membership_grant_membership_id_membership_id_fk": {
 					"name": "membership_grant_membership_id_membership_id_fk",
 					"tableFrom": "membership_grant",
@@ -10224,16 +9996,6 @@
 					"columnsFrom": ["membership_id"],
 					"columnsTo": ["id"],
 					"onDelete": "set null",
-					"onUpdate": "cascade"
-				},
-				"membership_grant_oidc_group_mapping_id_oidc_group_mapping_id_fk": {
-					"name": "membership_grant_oidc_group_mapping_id_oidc_group_mapping_id_fk",
-					"tableFrom": "membership_grant",
-					"tableTo": "oidc_group_mapping",
-					"schemaTo": "public",
-					"columnsFrom": ["oidc_group_mapping_id"],
-					"columnsTo": ["id"],
-					"onDelete": "restrict",
 					"onUpdate": "cascade"
 				},
 				"membership_grant_person_id_person_id_fk": {
@@ -10256,6 +10018,36 @@
 					"onDelete": "restrict",
 					"onUpdate": "cascade"
 				},
+				"membership_grant_external_identity_id_external_identity_id_fk": {
+					"name": "membership_grant_external_identity_id_external_identity_id_fk",
+					"tableFrom": "membership_grant",
+					"tableTo": "external_identity",
+					"schemaTo": "public",
+					"columnsFrom": ["external_identity_id"],
+					"columnsTo": ["id"],
+					"onDelete": "restrict",
+					"onUpdate": "cascade"
+				},
+				"membership_grant_identity_connection_id_identity_connection_id_": {
+					"name": "membership_grant_identity_connection_id_identity_connection_id_",
+					"tableFrom": "membership_grant",
+					"tableTo": "identity_connection",
+					"schemaTo": "public",
+					"columnsFrom": ["identity_connection_id"],
+					"columnsTo": ["id"],
+					"onDelete": "restrict",
+					"onUpdate": "cascade"
+				},
+				"membership_grant_oidc_group_mapping_id_oidc_group_mapping_id_fk": {
+					"name": "membership_grant_oidc_group_mapping_id_oidc_group_mapping_id_fk",
+					"tableFrom": "membership_grant",
+					"tableTo": "oidc_group_mapping",
+					"schemaTo": "public",
+					"columnsFrom": ["oidc_group_mapping_id"],
+					"columnsTo": ["id"],
+					"onDelete": "restrict",
+					"onUpdate": "cascade"
+				},
 				"membership_grant_scim_group_mapping_id_scim_group_mapping_id_fk": {
 					"name": "membership_grant_scim_group_mapping_id_scim_group_mapping_id_fk",
 					"tableFrom": "membership_grant",
@@ -10265,11 +10057,25 @@
 					"columnsTo": ["id"],
 					"onDelete": "restrict",
 					"onUpdate": "cascade"
+				},
+				"membership_grant_granted_by_person_id_person_id_fk": {
+					"name": "membership_grant_granted_by_person_id_person_id_fk",
+					"tableFrom": "membership_grant",
+					"tableTo": "person",
+					"schemaTo": "public",
+					"columnsFrom": ["granted_by_person_id"],
+					"columnsTo": ["id"],
+					"onDelete": "set null",
+					"onUpdate": "cascade"
 				}
 			},
 			"compositePrimaryKeys": {},
 			"uniqueConstraints": {},
 			"checkConstraints": {
+				"membership_grant_source_kind_check": {
+					"name": "membership_grant_source_kind_check",
+					"value": "source_kind = ANY (ARRAY['direct'::text, 'jit_default'::text, 'oidc_group'::text, 'scim_group'::text])"
+				},
 				"membership_grant_direct_origin_check": {
 					"name": "membership_grant_direct_origin_check",
 					"value": "(direct_origin IS NULL) OR (direct_origin = ANY (ARRAY['admin'::text, 'system_backfill'::text]))"
@@ -10277,10 +10083,6 @@
 				"membership_grant_revocation_reason_check": {
 					"name": "membership_grant_revocation_reason_check",
 					"value": "(revocation_reason IS NULL) OR (revocation_reason = ANY (ARRAY['claim_removed'::text, 'claim_missing'::text, 'claim_overage'::text, 'admission_failed'::text, 'mapping_disabled'::text, 'mapping_changed'::text, 'role_deleted'::text, 'connection_disabled'::text, 'scim_group_removed'::text, 'scim_deactivated'::text, 'direct_removed'::text]))"
-				},
-				"membership_grant_source_kind_check": {
-					"name": "membership_grant_source_kind_check",
-					"value": "source_kind = ANY (ARRAY['direct'::text, 'jit_default'::text, 'oidc_group'::text, 'scim_group'::text])"
 				},
 				"membership_grant_source_shape_check": {
 					"name": "membership_grant_source_shape_check",
@@ -10372,7 +10174,6 @@
 							"expression": "role_id",
 							"asc": true,
 							"nulls": "last",
-							"opclass": "text_ops",
 							"isExpression": false
 						}
 					],
@@ -10383,16 +10184,6 @@
 				}
 			},
 			"foreignKeys": {
-				"oidc_group_mapping_created_by_person_id_fk": {
-					"name": "oidc_group_mapping_created_by_person_id_fk",
-					"tableFrom": "oidc_group_mapping",
-					"tableTo": "person",
-					"schemaTo": "public",
-					"columnsFrom": ["created_by"],
-					"columnsTo": ["id"],
-					"onDelete": "set null",
-					"onUpdate": "no action"
-				},
 				"oidc_group_mapping_identity_connection_id_identity_connection_i": {
 					"name": "oidc_group_mapping_identity_connection_id_identity_connection_i",
 					"tableFrom": "oidc_group_mapping",
@@ -10412,12 +10203,22 @@
 					"columnsTo": ["id"],
 					"onDelete": "restrict",
 					"onUpdate": "cascade"
+				},
+				"oidc_group_mapping_created_by_person_id_fk": {
+					"name": "oidc_group_mapping_created_by_person_id_fk",
+					"tableFrom": "oidc_group_mapping",
+					"tableTo": "person",
+					"schemaTo": "public",
+					"columnsFrom": ["created_by"],
+					"columnsTo": ["id"],
+					"onDelete": "set null",
+					"onUpdate": "no action"
 				}
 			},
 			"compositePrimaryKeys": {},
 			"uniqueConstraints": {
 				"oidc_group_mapping_connection_group_unique": {
-					"columns": ["external_group_id", "identity_connection_id"],
+					"columns": ["identity_connection_id", "external_group_id"],
 					"nullsNotDistinct": false,
 					"name": "oidc_group_mapping_connection_group_unique"
 				}
@@ -10513,7 +10314,6 @@
 							"expression": "role_id",
 							"asc": true,
 							"nulls": "last",
-							"opclass": "text_ops",
 							"isExpression": false
 						}
 					],
@@ -10524,15 +10324,15 @@
 				}
 			},
 			"foreignKeys": {
-				"scim_group_mapping_created_by_person_id_fk": {
-					"name": "scim_group_mapping_created_by_person_id_fk",
+				"scim_group_mapping_scim_connection_id_scim_connection_identity_": {
+					"name": "scim_group_mapping_scim_connection_id_scim_connection_identity_",
 					"tableFrom": "scim_group_mapping",
-					"tableTo": "person",
+					"tableTo": "scim_connection",
 					"schemaTo": "public",
-					"columnsFrom": ["created_by"],
-					"columnsTo": ["id"],
-					"onDelete": "set null",
-					"onUpdate": "no action"
+					"columnsFrom": ["scim_connection_id"],
+					"columnsTo": ["identity_connection_id"],
+					"onDelete": "restrict",
+					"onUpdate": "cascade"
 				},
 				"scim_group_mapping_role_id_role_id_fk": {
 					"name": "scim_group_mapping_role_id_role_id_fk",
@@ -10544,21 +10344,21 @@
 					"onDelete": "restrict",
 					"onUpdate": "cascade"
 				},
-				"scim_group_mapping_scim_connection_id_scim_connection_identity_": {
-					"name": "scim_group_mapping_scim_connection_id_scim_connection_identity_",
+				"scim_group_mapping_created_by_person_id_fk": {
+					"name": "scim_group_mapping_created_by_person_id_fk",
 					"tableFrom": "scim_group_mapping",
-					"tableTo": "scim_connection",
+					"tableTo": "person",
 					"schemaTo": "public",
-					"columnsFrom": ["scim_connection_id"],
-					"columnsTo": ["identity_connection_id"],
-					"onDelete": "restrict",
-					"onUpdate": "cascade"
+					"columnsFrom": ["created_by"],
+					"columnsTo": ["id"],
+					"onDelete": "set null",
+					"onUpdate": "no action"
 				}
 			},
 			"compositePrimaryKeys": {},
 			"uniqueConstraints": {
 				"scim_group_mapping_connection_group_unique": {
-					"columns": ["external_group_id", "scim_connection_id"],
+					"columns": ["scim_connection_id", "external_group_id"],
 					"nullsNotDistinct": false,
 					"name": "scim_group_mapping_connection_group_unique"
 				}
@@ -10647,14 +10447,12 @@
 							"expression": "identity_connection_id",
 							"asc": true,
 							"nulls": "last",
-							"opclass": "text_ops",
 							"isExpression": false
 						},
 						{
 							"expression": "created_at",
 							"asc": false,
 							"nulls": "last",
-							"opclass": "timestamptz_ops",
 							"isExpression": false
 						}
 					],
@@ -10670,14 +10468,12 @@
 							"expression": "scim_connection_id",
 							"asc": true,
 							"nulls": "last",
-							"opclass": "text_ops",
 							"isExpression": false
 						},
 						{
 							"expression": "created_at",
 							"asc": false,
 							"nulls": "last",
-							"opclass": "text_ops",
 							"isExpression": false
 						}
 					],
@@ -10688,16 +10484,6 @@
 				}
 			},
 			"foreignKeys": {
-				"provisioning_event_external_identity_id_external_identity_id_fk": {
-					"name": "provisioning_event_external_identity_id_external_identity_id_fk",
-					"tableFrom": "provisioning_event",
-					"tableTo": "external_identity",
-					"schemaTo": "public",
-					"columnsFrom": ["external_identity_id"],
-					"columnsTo": ["id"],
-					"onDelete": "set null",
-					"onUpdate": "cascade"
-				},
 				"provisioning_event_identity_connection_id_identity_connection_i": {
 					"name": "provisioning_event_identity_connection_id_identity_connection_i",
 					"tableFrom": "provisioning_event",
@@ -10715,6 +10501,16 @@
 					"schemaTo": "public",
 					"columnsFrom": ["scim_connection_id"],
 					"columnsTo": ["identity_connection_id"],
+					"onDelete": "set null",
+					"onUpdate": "cascade"
+				},
+				"provisioning_event_external_identity_id_external_identity_id_fk": {
+					"name": "provisioning_event_external_identity_id_external_identity_id_fk",
+					"tableFrom": "provisioning_event",
+					"tableTo": "external_identity",
+					"schemaTo": "public",
+					"columnsFrom": ["external_identity_id"],
+					"columnsTo": ["id"],
 					"onDelete": "set null",
 					"onUpdate": "cascade"
 				}
@@ -10826,14 +10622,6 @@
 			"compositePrimaryKeys": {},
 			"uniqueConstraints": {},
 			"checkConstraints": {
-				"scim_connection_allowed_resources_check": {
-					"name": "scim_connection_allowed_resources_check",
-					"value": "('users'::text = ANY (allowed_resources)) AND (allowed_resources <@ ARRAY['users'::text, 'groups'::text])"
-				},
-				"scim_connection_lifecycle_policy_check": {
-					"name": "scim_connection_lifecycle_policy_check",
-					"value": "lifecycle_policy = ANY (ARRAY['end_memberships'::text, 'keep_memberships'::text])"
-				},
 				"scim_connection_token_hash_shape": {
 					"name": "scim_connection_token_hash_shape",
 					"value": "(token_hash IS NULL) OR (octet_length(token_hash) = 32)"
@@ -10841,6 +10629,14 @@
 				"scim_connection_token_pair_shape": {
 					"name": "scim_connection_token_pair_shape",
 					"value": "((token_hash IS NULL) AND (token_prefix IS NULL)) OR ((token_hash IS NOT NULL) AND (token_prefix IS NOT NULL))"
+				},
+				"scim_connection_allowed_resources_check": {
+					"name": "scim_connection_allowed_resources_check",
+					"value": "('users'::text = ANY (allowed_resources)) AND (allowed_resources <@ ARRAY['users'::text, 'groups'::text])"
+				},
+				"scim_connection_lifecycle_policy_check": {
+					"name": "scim_connection_lifecycle_policy_check",
+					"value": "lifecycle_policy = ANY (ARRAY['end_memberships'::text, 'keep_memberships'::text])"
 				}
 			},
 			"policies": {},
@@ -10895,14 +10691,12 @@
 							"expression": "external_identity_id",
 							"asc": true,
 							"nulls": "last",
-							"opclass": "text_ops",
 							"isExpression": false
 						},
 						{
 							"expression": "scim_group_mapping_id",
 							"asc": true,
 							"nulls": "last",
-							"opclass": "text_ops",
 							"isExpression": false
 						}
 					],
@@ -10919,14 +10713,12 @@
 							"expression": "scim_group_mapping_id",
 							"asc": true,
 							"nulls": "last",
-							"opclass": "text_ops",
 							"isExpression": false
 						},
 						{
 							"expression": "revoked_at",
 							"asc": true,
 							"nulls": "last",
-							"opclass": "timestamptz_ops",
 							"isExpression": false
 						}
 					],
@@ -10937,22 +10729,22 @@
 				}
 			},
 			"foreignKeys": {
+				"scim_group_member_scim_group_mapping_id_scim_group_mapping_id_f": {
+					"name": "scim_group_member_scim_group_mapping_id_scim_group_mapping_id_f",
+					"tableFrom": "scim_group_member",
+					"tableTo": "scim_group_mapping",
+					"schemaTo": "public",
+					"columnsFrom": ["scim_group_mapping_id"],
+					"columnsTo": ["id"],
+					"onDelete": "restrict",
+					"onUpdate": "cascade"
+				},
 				"scim_group_member_external_identity_id_external_identity_id_fk": {
 					"name": "scim_group_member_external_identity_id_external_identity_id_fk",
 					"tableFrom": "scim_group_member",
 					"tableTo": "external_identity",
 					"schemaTo": "public",
 					"columnsFrom": ["external_identity_id"],
-					"columnsTo": ["id"],
-					"onDelete": "restrict",
-					"onUpdate": "cascade"
-				},
-				"scim_group_member_membership_grant_id_membership_grant_id_fk": {
-					"name": "scim_group_member_membership_grant_id_membership_grant_id_fk",
-					"tableFrom": "scim_group_member",
-					"tableTo": "membership_grant",
-					"schemaTo": "public",
-					"columnsFrom": ["membership_grant_id"],
 					"columnsTo": ["id"],
 					"onDelete": "restrict",
 					"onUpdate": "cascade"
@@ -10967,12 +10759,12 @@
 					"onDelete": "set null",
 					"onUpdate": "cascade"
 				},
-				"scim_group_member_scim_group_mapping_id_scim_group_mapping_id_f": {
-					"name": "scim_group_member_scim_group_mapping_id_scim_group_mapping_id_f",
+				"scim_group_member_membership_grant_id_membership_grant_id_fk": {
+					"name": "scim_group_member_membership_grant_id_membership_grant_id_fk",
 					"tableFrom": "scim_group_member",
-					"tableTo": "scim_group_mapping",
+					"tableTo": "membership_grant",
 					"schemaTo": "public",
-					"columnsFrom": ["scim_group_mapping_id"],
+					"columnsFrom": ["membership_grant_id"],
 					"columnsTo": ["id"],
 					"onDelete": "restrict",
 					"onUpdate": "cascade"

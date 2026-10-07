@@ -190,6 +190,15 @@ function slaPolicyWorkspaceColumn(): AnyPgColumn {
 function slaPolicyIdColumn(): AnyPgColumn {
   return slaPolicyTable.id;
 }
+function slaPolicyVersionWorkspaceColumn(): AnyPgColumn {
+  return slaPolicyVersionTable.workspaceId;
+}
+function slaPolicyVersionPolicyIdColumn(): AnyPgColumn {
+  return slaPolicyVersionTable.policyId;
+}
+function slaPolicyVersionIdColumn(): AnyPgColumn {
+  return slaPolicyVersionTable.id;
+}
 
 export const workspaceTable = pgTable(
   "workspace",
@@ -268,6 +277,14 @@ export const workspaceUserTable = pgTable(
   (table) => [
     index("workspace_member_workspaceId_idx").on(table.workspaceId),
     index("workspace_member_userId_idx").on(table.userId),
+    check(
+      "workspace_member_role_single_value",
+      sql`
+        position(',' in ${table.role}) = 0
+        and ${table.role} = btrim(${table.role}, E' \\t\\n\\r\\f' || chr(11) || chr(160) || chr(5760) || chr(8192) || chr(8193) || chr(8194) || chr(8195) || chr(8196) || chr(8197) || chr(8198) || chr(8199) || chr(8200) || chr(8201) || chr(8202) || chr(8232) || chr(8233) || chr(8239) || chr(8287) || chr(12288) || chr(65279))
+        and btrim(${table.role}, E' \\t\\n\\r\\f' || chr(11) || chr(160) || chr(5760) || chr(8192) || chr(8193) || chr(8194) || chr(8195) || chr(8196) || chr(8197) || chr(8198) || chr(8199) || chr(8200) || chr(8201) || chr(8202) || chr(8232) || chr(8233) || chr(8239) || chr(8287) || chr(12288) || chr(65279)) <> ''
+      `,
+    ),
   ],
 );
 
@@ -3654,11 +3671,13 @@ export const workItemTable = pgTable(
     index("work_item_workspaceId_idx").on(table.workspaceId),
     index("work_item_requesterId_idx").on(table.requesterId),
     index("work_item_parentId_idx").on(table.parentId),
-    // Deliberately NOT added here: the "## Indexing" GIN trigram title index and the
-    // generated `search_vector` column (`create extension pg_trgm`, `... using gin
-    // (title gin_trgm_ops)`, the `tsvector generated always as (...) stored` column) --
-    // full-text search is a separate P1 core work item (search), not part of #23's
-    // first-slice schema. Add these when that work lands.
+    // The frozen 0103 migration already creates this GIN trigram index. Keep it in the
+    // generation schema so future Drizzle diffs preserve the existing SQL-owned index;
+    // the generated search_vector column remains outside this table definition.
+    index("work_item_title_trgm_idx").using(
+      "gin",
+      table.title.op("gin_trgm_ops"),
+    ),
 
     // #186 S2 -- composite-FK target for the self-referencing `parent_id` composite FK
     // below, same `(scope_id, id)` technique as `state_project_id_id_unique` above and
@@ -4158,6 +4177,15 @@ export const slaPolicyTable = pgTable(
   },
   (table) => [
     unique("sla_policy_workspace_id_id_unique").on(table.workspaceId, table.id),
+    foreignKey({
+      name: "sla_policy_active_version_workspace_policy_fk",
+      columns: [table.workspaceId, table.id, table.activeVersionId],
+      foreignColumns: [
+        slaPolicyVersionWorkspaceColumn(),
+        slaPolicyVersionPolicyIdColumn(),
+        slaPolicyVersionIdColumn(),
+      ],
+    }),
     check("sla_policy_version_positive", sql`${table.version} > 0`),
   ],
 );
@@ -4557,6 +4585,10 @@ export const submissionTable = pgTable(
     requestTypeVersionId: text("request_type_version_id").notNull(),
     formData: jsonb("form_data").notNull(),
     state: text("state").notNull().default("new"),
+    submittedAt: timestamp("submitted_at", {
+      mode: "date",
+      withTimezone: true,
+    }),
     claimedBy: text("claimed_by").references(() => personTable.id, {
       onDelete: "restrict",
       onUpdate: "cascade",
@@ -4603,7 +4635,11 @@ export const submissionTable = pgTable(
     check("submission_version_positive", sql`${table.version} > 0`),
     check(
       "submission_state_allowed",
-      sql`${table.state} in ('new', 'clarifying', 'accepted', 'declined', 'duplicate', 'withdrawn')`,
+      sql`${table.state} in ('draft', 'new', 'clarifying', 'accepted', 'declined', 'duplicate', 'withdrawn')`,
+    ),
+    check(
+      "submission_submitted_at_state_consistent",
+      sql`(${table.state} = 'draft' and ${table.submittedAt} is null) or (${table.state} <> 'draft' and ${table.submittedAt} is not null)`,
     ),
     check(
       "submission_customer_visibility_allowed",
@@ -5070,7 +5106,7 @@ export const pendingActionTable = pgTable(
       table.createdAt.desc(),
     ),
     uniqueIndex("pending_action_one_pending_target_unique")
-      .on(table.requestedByPersonId, table.action, table.targetIds)
+      .on(table.requestedByPersonId, table.action, table.targetIds, table.state)
       .where(sql`${table.state} = 'pending'`),
   ],
 );

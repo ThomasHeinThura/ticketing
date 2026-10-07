@@ -55,7 +55,6 @@
 							"expression": "identifier",
 							"asc": true,
 							"nulls": "last",
-							"opclass": "text_ops",
 							"isExpression": false
 						}
 					],
@@ -164,7 +163,6 @@
 							"expression": "user_id",
 							"asc": true,
 							"nulls": "last",
-							"opclass": "text_ops",
 							"isExpression": false
 						}
 					],
@@ -235,7 +233,6 @@
 							"expression": "workspace_id",
 							"asc": true,
 							"nulls": "last",
-							"opclass": "text_ops",
 							"isExpression": false
 						}
 					],
@@ -300,7 +297,6 @@
 							"expression": "team_id",
 							"asc": true,
 							"nulls": "last",
-							"opclass": "text_ops",
 							"isExpression": false
 						}
 					],
@@ -316,7 +312,6 @@
 							"expression": "user_id",
 							"asc": true,
 							"nulls": "last",
-							"opclass": "text_ops",
 							"isExpression": false
 						}
 					],
@@ -423,7 +418,6 @@
 							"expression": "email",
 							"asc": true,
 							"nulls": "last",
-							"opclass": "text_ops",
 							"isExpression": false
 						}
 					],
@@ -439,7 +433,6 @@
 							"expression": "inviter_id",
 							"asc": true,
 							"nulls": "last",
-							"opclass": "text_ops",
 							"isExpression": false
 						}
 					],
@@ -455,7 +448,6 @@
 							"expression": "workspace_id",
 							"asc": true,
 							"nulls": "last",
-							"opclass": "text_ops",
 							"isExpression": false
 						}
 					],
@@ -562,7 +554,6 @@
 							"expression": "external_id",
 							"asc": true,
 							"nulls": "last",
-							"opclass": "text_ops",
 							"isExpression": false
 						}
 					],
@@ -578,7 +569,6 @@
 							"expression": "resource_type",
 							"asc": true,
 							"nulls": "last",
-							"opclass": "text_ops",
 							"isExpression": false
 						}
 					],
@@ -594,7 +584,6 @@
 							"expression": "task_id",
 							"asc": true,
 							"nulls": "last",
-							"opclass": "text_ops",
 							"isExpression": false
 						}
 					],
@@ -699,7 +688,6 @@
 							"expression": "project_id",
 							"asc": true,
 							"nulls": "last",
-							"opclass": "text_ops",
 							"isExpression": false
 						}
 					],
@@ -784,7 +772,6 @@
 							"expression": "column_id",
 							"asc": true,
 							"nulls": "last",
-							"opclass": "text_ops",
 							"isExpression": false
 						}
 					],
@@ -800,7 +787,6 @@
 							"expression": "project_id",
 							"asc": true,
 							"nulls": "last",
-							"opclass": "text_ops",
 							"isExpression": false
 						}
 					],
@@ -995,7 +981,6 @@
 							"expression": "config_id",
 							"asc": true,
 							"nulls": "last",
-							"opclass": "text_ops",
 							"isExpression": false
 						}
 					],
@@ -1011,7 +996,6 @@
 							"expression": "key",
 							"asc": true,
 							"nulls": "last",
-							"opclass": "text_ops",
 							"isExpression": false
 						}
 					],
@@ -1027,7 +1011,6 @@
 							"expression": "reference_id",
 							"asc": true,
 							"nulls": "last",
-							"opclass": "text_ops",
 							"isExpression": false
 						}
 					],
@@ -1043,7 +1026,6 @@
 							"expression": "user_id",
 							"asc": true,
 							"nulls": "last",
-							"opclass": "text_ops",
 							"isExpression": false
 						}
 					],
@@ -1165,7 +1147,6 @@
 							"expression": "activity_id",
 							"asc": true,
 							"nulls": "last",
-							"opclass": "text_ops",
 							"isExpression": false
 						}
 					],
@@ -1181,7 +1162,6 @@
 							"expression": "created_by",
 							"asc": true,
 							"nulls": "last",
-							"opclass": "text_ops",
 							"isExpression": false
 						}
 					],
@@ -1197,7 +1177,6 @@
 							"expression": "project_id",
 							"asc": true,
 							"nulls": "last",
-							"opclass": "text_ops",
 							"isExpression": false
 						}
 					],
@@ -1213,7 +1192,6 @@
 							"expression": "task_id",
 							"asc": true,
 							"nulls": "last",
-							"opclass": "text_ops",
 							"isExpression": false
 						}
 					],
@@ -1229,7 +1207,6 @@
 							"expression": "workspace_id",
 							"asc": true,
 							"nulls": "last",
-							"opclass": "text_ops",
 							"isExpression": false
 						}
 					],
@@ -1347,7 +1324,6 @@
 							"expression": "source_task_id",
 							"asc": true,
 							"nulls": "last",
-							"opclass": "text_ops",
 							"isExpression": false
 						}
 					],
@@ -1363,7 +1339,6 @@
 							"expression": "target_task_id",
 							"asc": true,
 							"nulls": "last",
-							"opclass": "text_ops",
 							"isExpression": false
 						}
 					],
@@ -1458,7 +1433,6 @@
 							"expression": "task_id",
 							"asc": true,
 							"nulls": "last",
-							"opclass": "text_ops",
 							"isExpression": false
 						}
 					],
@@ -1474,7 +1448,6 @@
 							"expression": "workspace_id",
 							"asc": true,
 							"nulls": "last",
-							"opclass": "text_ops",
 							"isExpression": false
 						}
 					],
@@ -1490,14 +1463,12 @@
 							"expression": "workspace_id",
 							"asc": true,
 							"nulls": "last",
-							"opclass": "text_ops",
 							"isExpression": false
 						},
 						{
 							"expression": "name",
 							"asc": true,
 							"nulls": "last",
-							"opclass": "text_ops",
 							"isExpression": false
 						}
 					],
@@ -1533,7 +1504,7 @@
 			"compositePrimaryKeys": {},
 			"uniqueConstraints": {
 				"label_task_name_unique": {
-					"columns": ["name", "task_id"],
+					"columns": ["task_id", "name"],
 					"nullsNotDistinct": false,
 					"name": "label_task_name_unique"
 				}
@@ -1593,14 +1564,12 @@
 							"expression": "workspace_id",
 							"asc": true,
 							"nulls": "last",
-							"opclass": "text_ops",
 							"isExpression": false
 						},
 						{
 							"expression": "workspace_rule_id",
 							"asc": true,
 							"nulls": "last",
-							"opclass": "text_ops",
 							"isExpression": false
 						}
 					],
@@ -1616,7 +1585,6 @@
 							"expression": "project_id",
 							"asc": true,
 							"nulls": "last",
-							"opclass": "text_ops",
 							"isExpression": false
 						}
 					],
@@ -1632,7 +1600,6 @@
 							"expression": "workspace_rule_id",
 							"asc": true,
 							"nulls": "last",
-							"opclass": "text_ops",
 							"isExpression": false
 						}
 					],
@@ -1648,14 +1615,12 @@
 							"expression": "workspace_id",
 							"asc": true,
 							"nulls": "last",
-							"opclass": "text_ops",
 							"isExpression": false
 						},
 						{
 							"expression": "project_id",
 							"asc": true,
 							"nulls": "last",
-							"opclass": "text_ops",
 							"isExpression": false
 						}
 					],
@@ -1700,7 +1665,7 @@
 			"compositePrimaryKeys": {},
 			"uniqueConstraints": {
 				"user_notification_workspace_project_rule_project_unique": {
-					"columns": ["project_id", "workspace_rule_id"],
+					"columns": ["workspace_rule_id", "project_id"],
 					"nullsNotDistinct": false,
 					"name": "user_notification_workspace_project_rule_project_unique"
 				}
@@ -1796,7 +1761,6 @@
 							"expression": "user_id",
 							"asc": true,
 							"nulls": "last",
-							"opclass": "text_ops",
 							"isExpression": false
 						}
 					],
@@ -1812,7 +1776,6 @@
 							"expression": "workspace_id",
 							"asc": true,
 							"nulls": "last",
-							"opclass": "text_ops",
 							"isExpression": false
 						}
 					],
@@ -1852,7 +1815,7 @@
 					"name": "user_notification_workspace_rule_user_workspace_unique"
 				},
 				"user_notification_workspace_rule_workspace_id_id_unique": {
-					"columns": ["id", "workspace_id"],
+					"columns": ["workspace_id", "id"],
 					"nullsNotDistinct": false,
 					"name": "user_notification_workspace_rule_workspace_id_id_unique"
 				}
@@ -1906,7 +1869,6 @@
 							"expression": "task_id",
 							"asc": true,
 							"nulls": "last",
-							"opclass": "text_ops",
 							"isExpression": false
 						}
 					],
@@ -1931,7 +1893,7 @@
 			"compositePrimaryKeys": {},
 			"uniqueConstraints": {
 				"task_reminder_sent_task_type_unique": {
-					"columns": ["reminder_type", "task_id"],
+					"columns": ["task_id", "reminder_type"],
 					"nullsNotDistinct": false,
 					"name": "task_reminder_sent_task_type_unique"
 				}
@@ -2023,7 +1985,6 @@
 							"expression": "user_id",
 							"asc": true,
 							"nulls": "last",
-							"opclass": "text_ops",
 							"isExpression": false
 						}
 					],
@@ -2121,7 +2082,6 @@
 							"expression": "task_id",
 							"asc": true,
 							"nulls": "last",
-							"opclass": "text_ops",
 							"isExpression": false
 						}
 					],
@@ -2137,7 +2097,6 @@
 							"expression": "user_id",
 							"asc": true,
 							"nulls": "last",
-							"opclass": "text_ops",
 							"isExpression": false
 						}
 					],
@@ -2393,7 +2352,6 @@
 							"expression": "user_id",
 							"asc": true,
 							"nulls": "last",
-							"opclass": "text_ops",
 							"isExpression": false
 						}
 					],
@@ -2502,7 +2460,6 @@
 							"expression": "user_id",
 							"asc": true,
 							"nulls": "last",
-							"opclass": "text_ops",
 							"isExpression": false
 						}
 					],
@@ -2518,7 +2475,6 @@
 							"expression": "workspace_id",
 							"asc": true,
 							"nulls": "last",
-							"opclass": "text_ops",
 							"isExpression": false
 						}
 					],
@@ -2656,7 +2612,6 @@
 							"expression": "organisation_id",
 							"asc": true,
 							"nulls": "last",
-							"opclass": "text_ops",
 							"isExpression": false
 						}
 					],
@@ -2672,7 +2627,6 @@
 							"expression": "user_id",
 							"asc": true,
 							"nulls": "last",
-							"opclass": "text_ops",
 							"isExpression": false
 						}
 					],
@@ -2688,7 +2642,6 @@
 							"expression": "user_id",
 							"asc": true,
 							"nulls": "last",
-							"opclass": "text_ops",
 							"isExpression": false
 						}
 					],
@@ -2803,21 +2756,18 @@
 							"expression": "person_id",
 							"asc": true,
 							"nulls": "last",
-							"opclass": "text_ops",
 							"isExpression": false
 						},
 						{
 							"expression": "scope",
 							"asc": true,
 							"nulls": "last",
-							"opclass": "text_ops",
 							"isExpression": false
 						},
 						{
 							"expression": "scope_id",
 							"asc": true,
 							"nulls": "last",
-							"opclass": "text_ops",
 							"isExpression": false
 						}
 					],
@@ -2833,7 +2783,6 @@
 							"expression": "role_id",
 							"asc": true,
 							"nulls": "last",
-							"opclass": "text_ops",
 							"isExpression": false
 						}
 					],
@@ -2849,14 +2798,12 @@
 							"expression": "scope",
 							"asc": true,
 							"nulls": "last",
-							"opclass": "text_ops",
 							"isExpression": false
 						},
 						{
 							"expression": "scope_id",
 							"asc": true,
 							"nulls": "last",
-							"opclass": "text_ops",
 							"isExpression": false
 						}
 					],
@@ -2984,21 +2931,18 @@
 							"expression": "scope",
 							"asc": true,
 							"nulls": "last",
-							"opclass": "text_ops",
 							"isExpression": true
 						},
 						{
 							"expression": "COALESCE(workspace_id, ''::text)",
 							"asc": true,
 							"nulls": "last",
-							"opclass": "text_ops",
 							"isExpression": true
 						},
 						{
 							"expression": "key",
 							"asc": true,
 							"nulls": "last",
-							"opclass": "text_ops",
 							"isExpression": true
 						}
 					],
@@ -3014,7 +2958,6 @@
 							"expression": "workspace_id",
 							"asc": true,
 							"nulls": "last",
-							"opclass": "text_ops",
 							"isExpression": false
 						}
 					],
@@ -3133,7 +3076,6 @@
 							"expression": "is_internal",
 							"asc": true,
 							"nulls": "last",
-							"opclass": "bool_ops",
 							"isExpression": false
 						}
 					],
@@ -3244,7 +3186,6 @@
 							"expression": "organisation_id",
 							"asc": true,
 							"nulls": "last",
-							"opclass": "text_ops",
 							"isExpression": false
 						}
 					],
@@ -3353,7 +3294,6 @@
 							"expression": "project_id",
 							"asc": true,
 							"nulls": "last",
-							"opclass": "text_ops",
 							"isExpression": false
 						}
 					],
@@ -3369,7 +3309,6 @@
 							"expression": "project_id",
 							"asc": true,
 							"nulls": "last",
-							"opclass": "text_ops",
 							"isExpression": false
 						}
 					],
@@ -3386,7 +3325,6 @@
 							"expression": "state_template_id",
 							"asc": true,
 							"nulls": "last",
-							"opclass": "text_ops",
 							"isExpression": false
 						}
 					],
@@ -3421,7 +3359,7 @@
 			"compositePrimaryKeys": {},
 			"uniqueConstraints": {
 				"state_project_id_id_unique": {
-					"columns": ["id", "project_id"],
+					"columns": ["project_id", "id"],
 					"nullsNotDistinct": false,
 					"name": "state_project_id_id_unique"
 				}
@@ -3475,7 +3413,6 @@
 							"expression": "old_key",
 							"asc": true,
 							"nulls": "last",
-							"opclass": "text_ops",
 							"isExpression": false
 						}
 					],
@@ -3491,7 +3428,6 @@
 							"expression": "work_item_id",
 							"asc": true,
 							"nulls": "last",
-							"opclass": "text_ops",
 							"isExpression": false
 						}
 					],
@@ -3727,7 +3663,6 @@
 							"expression": "assignee_id",
 							"asc": true,
 							"nulls": "last",
-							"opclass": "text_ops",
 							"isExpression": false
 						}
 					],
@@ -3744,7 +3679,6 @@
 							"expression": "due_date",
 							"asc": true,
 							"nulls": "last",
-							"opclass": "timestamp_ops",
 							"isExpression": false
 						}
 					],
@@ -3761,7 +3695,6 @@
 							"expression": "key",
 							"asc": true,
 							"nulls": "last",
-							"opclass": "text_ops",
 							"isExpression": false
 						}
 					],
@@ -3777,7 +3710,6 @@
 							"expression": "parent_id",
 							"asc": true,
 							"nulls": "last",
-							"opclass": "text_ops",
 							"isExpression": false
 						}
 					],
@@ -3793,21 +3725,18 @@
 							"expression": "project_id",
 							"asc": true,
 							"nulls": "last",
-							"opclass": "numeric_ops",
 							"isExpression": false
 						},
 						{
 							"expression": "state_id",
 							"asc": true,
 							"nulls": "last",
-							"opclass": "text_ops",
 							"isExpression": false
 						},
 						{
 							"expression": "position",
 							"asc": true,
 							"nulls": "last",
-							"opclass": "text_ops",
 							"isExpression": false
 						}
 					],
@@ -3823,14 +3752,12 @@
 							"expression": "project_id",
 							"asc": true,
 							"nulls": "last",
-							"opclass": "text_ops",
 							"isExpression": false
 						},
 						{
 							"expression": "number",
 							"asc": true,
 							"nulls": "last",
-							"opclass": "int4_ops",
 							"isExpression": false
 						}
 					],
@@ -3846,7 +3773,6 @@
 							"expression": "requester_id",
 							"asc": true,
 							"nulls": "last",
-							"opclass": "text_ops",
 							"isExpression": false
 						}
 					],
@@ -3862,7 +3788,6 @@
 							"expression": "state_id",
 							"asc": true,
 							"nulls": "last",
-							"opclass": "text_ops",
 							"isExpression": false
 						}
 					],
@@ -3878,7 +3803,6 @@
 							"expression": "type_id",
 							"asc": true,
 							"nulls": "last",
-							"opclass": "text_ops",
 							"isExpression": false
 						}
 					],
@@ -3894,7 +3818,6 @@
 							"expression": "workspace_id",
 							"asc": true,
 							"nulls": "last",
-							"opclass": "text_ops",
 							"isExpression": false
 						}
 					],
@@ -3999,12 +3922,12 @@
 			"compositePrimaryKeys": {},
 			"uniqueConstraints": {
 				"work_item_project_id_id_unique": {
-					"columns": ["id", "project_id"],
+					"columns": ["project_id", "id"],
 					"nullsNotDistinct": false,
 					"name": "work_item_project_id_id_unique"
 				},
 				"work_item_workspace_id_id_unique": {
-					"columns": ["id", "workspace_id"],
+					"columns": ["workspace_id", "id"],
 					"nullsNotDistinct": false,
 					"name": "work_item_workspace_id_id_unique"
 				}
@@ -4066,7 +3989,6 @@
 							"expression": "work_item_id",
 							"asc": true,
 							"nulls": "last",
-							"opclass": "text_ops",
 							"isExpression": false
 						}
 					],
@@ -4245,14 +4167,12 @@
 							"expression": "scope",
 							"asc": true,
 							"nulls": "last",
-							"opclass": "text_ops",
 							"isExpression": false
 						},
 						{
 							"expression": "scope_id",
 							"asc": true,
 							"nulls": "last",
-							"opclass": "text_ops",
 							"isExpression": false
 						}
 					],
@@ -4344,7 +4264,6 @@
 							"expression": "workspace_id",
 							"asc": true,
 							"nulls": "last",
-							"opclass": "text_ops",
 							"isExpression": false
 						}
 					],
@@ -4360,14 +4279,12 @@
 							"expression": "workspace_id",
 							"asc": true,
 							"nulls": "last",
-							"opclass": "text_ops",
 							"isExpression": false
 						},
 						{
 							"expression": "key",
 							"asc": true,
 							"nulls": "last",
-							"opclass": "text_ops",
 							"isExpression": false
 						}
 					],
@@ -4458,7 +4375,6 @@
 							"expression": "person_id",
 							"asc": true,
 							"nulls": "last",
-							"opclass": "text_ops",
 							"isExpression": false
 						}
 					],
@@ -4474,14 +4390,12 @@
 							"expression": "work_item_id",
 							"asc": true,
 							"nulls": "last",
-							"opclass": "text_ops",
 							"isExpression": false
 						},
 						{
 							"expression": "person_id",
 							"asc": true,
 							"nulls": "last",
-							"opclass": "text_ops",
 							"isExpression": false
 						}
 					],
@@ -4613,7 +4527,6 @@
 							"expression": "workspace_id",
 							"asc": true,
 							"nulls": "last",
-							"opclass": "text_ops",
 							"isExpression": false
 						}
 					],
@@ -4629,14 +4542,12 @@
 							"expression": "workspace_id",
 							"asc": true,
 							"nulls": "last",
-							"opclass": "text_ops",
 							"isExpression": false
 						},
 						{
 							"expression": "key",
 							"asc": true,
 							"nulls": "last",
-							"opclass": "text_ops",
 							"isExpression": false
 						}
 					],
@@ -4681,7 +4592,7 @@
 			"compositePrimaryKeys": {},
 			"uniqueConstraints": {
 				"work_item_type_workspace_id_id_unique": {
-					"columns": ["id", "workspace_id"],
+					"columns": ["workspace_id", "id"],
 					"nullsNotDistinct": false,
 					"name": "work_item_type_workspace_id_id_unique"
 				}
@@ -4814,7 +4725,6 @@
 							"expression": "task_id",
 							"asc": true,
 							"nulls": "last",
-							"opclass": "text_ops",
 							"isExpression": false
 						}
 					],
@@ -4830,7 +4740,6 @@
 							"expression": "user_id",
 							"asc": true,
 							"nulls": "last",
-							"opclass": "text_ops",
 							"isExpression": false
 						}
 					],
@@ -4865,7 +4774,7 @@
 			"compositePrimaryKeys": {},
 			"uniqueConstraints": {
 				"task_activity_task_external_source_external_url_unique": {
-					"columns": ["external_source", "external_url", "task_id"],
+					"columns": ["task_id", "external_source", "external_url"],
 					"nullsNotDistinct": false,
 					"name": "task_activity_task_external_source_external_url_unique"
 				}
@@ -4984,21 +4893,18 @@
 							"expression": "work_item_id",
 							"asc": true,
 							"nulls": "last",
-							"opclass": "int8_ops",
 							"isExpression": false
 						},
 						{
 							"expression": "created_at",
 							"asc": false,
 							"nulls": "last",
-							"opclass": "int8_ops",
 							"isExpression": false
 						},
 						{
 							"expression": "seq",
 							"asc": false,
 							"nulls": "last",
-							"opclass": "int8_ops",
 							"isExpression": false
 						}
 					],
@@ -5014,7 +4920,6 @@
 							"expression": "workspace_id",
 							"asc": true,
 							"nulls": "last",
-							"opclass": "text_ops",
 							"isExpression": false
 						}
 					],
@@ -5111,7 +5016,6 @@
 							"expression": "role",
 							"asc": true,
 							"nulls": "last",
-							"opclass": "text_ops",
 							"isExpression": false
 						}
 					],
@@ -5136,7 +5040,7 @@
 			"compositePrimaryKeys": {},
 			"uniqueConstraints": {
 				"workspace_role_workspace_id_role_unique": {
-					"columns": ["role", "workspace_id"],
+					"columns": ["workspace_id", "role"],
 					"nullsNotDistinct": false,
 					"name": "workspace_role_workspace_id_role_unique"
 				}
@@ -5208,14 +5112,12 @@
 							"expression": "route_key",
 							"asc": true,
 							"nulls": "last",
-							"opclass": "date_ops",
 							"isExpression": false
 						},
 						{
 							"expression": "day",
 							"asc": true,
 							"nulls": "last",
-							"opclass": "date_ops",
 							"isExpression": false
 						}
 					],
@@ -5229,8 +5131,8 @@
 			"compositePrimaryKeys": {},
 			"uniqueConstraints": {
 				"policy_shadow_tally_bucket_unique": {
-					"columns": ["day", "outcome", "reason_code", "route_key"],
-					"nullsNotDistinct": false,
+					"columns": ["day", "route_key", "outcome", "reason_code"],
+					"nullsNotDistinct": true,
 					"name": "policy_shadow_tally_bucket_unique"
 				}
 			},
@@ -5369,28 +5271,24 @@
 							"expression": "day",
 							"asc": true,
 							"nulls": "last",
-							"opclass": "text_ops",
 							"isExpression": false
 						},
 						{
 							"expression": "route_key",
 							"asc": true,
 							"nulls": "last",
-							"opclass": "text_ops",
 							"isExpression": false
 						},
 						{
 							"expression": "outcome",
 							"asc": true,
 							"nulls": "last",
-							"opclass": "text_ops",
 							"isExpression": false
 						},
 						{
 							"expression": "reason_code",
 							"asc": true,
 							"nulls": "last",
-							"opclass": "text_ops",
 							"isExpression": false
 						}
 					],
@@ -5406,14 +5304,12 @@
 							"expression": "route_key",
 							"asc": true,
 							"nulls": "last",
-							"opclass": "timestamptz_ops",
 							"isExpression": false
 						},
 						{
 							"expression": "created_at",
 							"asc": false,
 							"nulls": "first",
-							"opclass": "text_ops",
 							"isExpression": false
 						}
 					],
@@ -5580,21 +5476,18 @@
 							"expression": "entity_type",
 							"asc": true,
 							"nulls": "last",
-							"opclass": "text_ops",
 							"isExpression": false
 						},
 						{
 							"expression": "entity_id",
 							"asc": true,
 							"nulls": "last",
-							"opclass": "timestamptz_ops",
 							"isExpression": false
 						},
 						{
 							"expression": "created_at",
 							"asc": false,
 							"nulls": "last",
-							"opclass": "timestamptz_ops",
 							"isExpression": false
 						}
 					],
@@ -5610,14 +5503,12 @@
 							"expression": "workspace_id",
 							"asc": true,
 							"nulls": "last",
-							"opclass": "text_ops",
 							"isExpression": false
 						},
 						{
 							"expression": "created_at",
 							"asc": false,
 							"nulls": "last",
-							"opclass": "text_ops",
 							"isExpression": false
 						}
 					],
@@ -5716,7 +5607,6 @@
 							"expression": "project_id",
 							"asc": true,
 							"nulls": "last",
-							"opclass": "text_ops",
 							"isExpression": false
 						}
 					],
@@ -5801,7 +5691,6 @@
 							"expression": "project_id",
 							"asc": true,
 							"nulls": "last",
-							"opclass": "text_ops",
 							"isExpression": false
 						}
 					],
@@ -5899,7 +5788,6 @@
 							"expression": "project_id",
 							"asc": true,
 							"nulls": "last",
-							"opclass": "text_ops",
 							"isExpression": false
 						}
 					],
@@ -6003,7 +5891,6 @@
 							"expression": "person_id",
 							"asc": true,
 							"nulls": "last",
-							"opclass": "text_ops",
 							"isExpression": false
 						}
 					],
@@ -6019,7 +5906,6 @@
 							"expression": "project_id",
 							"asc": true,
 							"nulls": "last",
-							"opclass": "text_ops",
 							"isExpression": false
 						}
 					],
@@ -6126,7 +6012,6 @@
 							"expression": "due_at",
 							"asc": true,
 							"nulls": "last",
-							"opclass": "timestamp_ops",
 							"isExpression": false
 						}
 					],
@@ -6143,7 +6028,6 @@
 							"expression": "work_item_id",
 							"asc": true,
 							"nulls": "last",
-							"opclass": "text_ops",
 							"isExpression": false
 						}
 					],
@@ -6328,7 +6212,6 @@
 							"expression": "from_state_template_id",
 							"asc": true,
 							"nulls": "last",
-							"opclass": "text_ops",
 							"isExpression": false
 						}
 					],
@@ -6344,7 +6227,6 @@
 							"expression": "to_state_template_id",
 							"asc": true,
 							"nulls": "last",
-							"opclass": "text_ops",
 							"isExpression": false
 						}
 					],
@@ -6360,7 +6242,6 @@
 							"expression": "version_id",
 							"asc": true,
 							"nulls": "last",
-							"opclass": "text_ops",
 							"isExpression": false
 						}
 					],
@@ -6376,7 +6257,6 @@
 							"expression": "version_id",
 							"asc": true,
 							"nulls": "last",
-							"opclass": "text_ops",
 							"isExpression": false
 						}
 					],
@@ -6512,7 +6392,6 @@
 							"expression": "workspace_id",
 							"asc": true,
 							"nulls": "last",
-							"opclass": "text_ops",
 							"isExpression": false
 						}
 					],
@@ -6528,14 +6407,12 @@
 							"expression": "workspace_id",
 							"asc": true,
 							"nulls": "last",
-							"opclass": "text_ops",
 							"isExpression": false
 						},
 						{
 							"expression": "key",
 							"asc": true,
 							"nulls": "last",
-							"opclass": "text_ops",
 							"isExpression": false
 						}
 					],
@@ -6630,7 +6507,6 @@
 							"expression": "workflow_id",
 							"asc": true,
 							"nulls": "last",
-							"opclass": "text_ops",
 							"isExpression": false
 						}
 					],
@@ -6646,14 +6522,12 @@
 							"expression": "workflow_id",
 							"asc": true,
 							"nulls": "last",
-							"opclass": "int4_ops",
 							"isExpression": false
 						},
 						{
 							"expression": "number",
 							"asc": true,
 							"nulls": "last",
-							"opclass": "int4_ops",
 							"isExpression": false
 						}
 					],
@@ -6742,7 +6616,6 @@
 							"expression": "task_id",
 							"asc": true,
 							"nulls": "last",
-							"opclass": "text_ops",
 							"isExpression": false
 						}
 					],
@@ -6758,7 +6631,6 @@
 							"expression": "user_id",
 							"asc": true,
 							"nulls": "last",
-							"opclass": "text_ops",
 							"isExpression": false
 						}
 					],
@@ -6860,7 +6732,6 @@
 							"expression": "workspace_id",
 							"asc": true,
 							"nulls": "last",
-							"opclass": "text_ops",
 							"isExpression": false
 						}
 					],
@@ -6885,7 +6756,7 @@
 			"compositePrimaryKeys": {},
 			"uniqueConstraints": {
 				"canned_response_workspace_id_name_unique": {
-					"columns": ["name", "workspace_id"],
+					"columns": ["workspace_id", "name"],
 					"nullsNotDistinct": false,
 					"name": "canned_response_workspace_id_name_unique"
 				}
@@ -6993,14 +6864,12 @@
 							"expression": "work_item_id",
 							"asc": true,
 							"nulls": "last",
-							"opclass": "text_ops",
 							"isExpression": false
 						},
 						{
 							"expression": "created_at",
 							"asc": true,
 							"nulls": "last",
-							"opclass": "text_ops",
 							"isExpression": false
 						}
 					],
@@ -7016,7 +6885,6 @@
 							"expression": "workspace_id",
 							"asc": true,
 							"nulls": "last",
-							"opclass": "text_ops",
 							"isExpression": false
 						}
 					],
@@ -7109,7 +6977,6 @@
 							"expression": "comment_id",
 							"asc": true,
 							"nulls": "last",
-							"opclass": "text_ops",
 							"isExpression": false
 						}
 					],
@@ -7256,7 +7123,6 @@
 							"expression": "organisation_id",
 							"asc": true,
 							"nulls": "last",
-							"opclass": "text_ops",
 							"isExpression": false
 						}
 					],
@@ -7273,7 +7139,6 @@
 							"expression": "state",
 							"asc": true,
 							"nulls": "last",
-							"opclass": "text_ops",
 							"isExpression": false
 						}
 					],
@@ -7290,7 +7155,6 @@
 							"expression": "work_item_id",
 							"asc": true,
 							"nulls": "last",
-							"opclass": "text_ops",
 							"isExpression": false
 						}
 					],
@@ -7306,7 +7170,6 @@
 							"expression": "workspace_id",
 							"asc": true,
 							"nulls": "last",
-							"opclass": "text_ops",
 							"isExpression": false
 						}
 					],
@@ -7322,14 +7185,12 @@
 							"expression": "workspace_id",
 							"asc": true,
 							"nulls": "last",
-							"opclass": "text_ops",
 							"isExpression": false
 						},
 						{
 							"expression": "state",
 							"asc": true,
 							"nulls": "last",
-							"opclass": "text_ops",
 							"isExpression": false
 						}
 					],
@@ -7462,7 +7323,6 @@
 							"expression": "dedupe_key",
 							"asc": true,
 							"nulls": "last",
-							"opclass": "text_ops",
 							"isExpression": false
 						}
 					],
@@ -7479,14 +7339,12 @@
 							"expression": "state",
 							"asc": true,
 							"nulls": "last",
-							"opclass": "timestamptz_ops",
 							"isExpression": false
 						},
 						{
 							"expression": "next_attempt_at",
 							"asc": true,
 							"nulls": "last",
-							"opclass": "text_ops",
 							"isExpression": false
 						}
 					],
@@ -7503,14 +7361,12 @@
 							"expression": "workspace_id",
 							"asc": true,
 							"nulls": "last",
-							"opclass": "text_ops",
 							"isExpression": false
 						},
 						{
 							"expression": "state",
 							"asc": true,
 							"nulls": "last",
-							"opclass": "text_ops",
 							"isExpression": false
 						}
 					],
@@ -7646,7 +7502,6 @@
 							"expression": "assignee_id",
 							"asc": true,
 							"nulls": "last",
-							"opclass": "text_ops",
 							"isExpression": false
 						}
 					],
@@ -7662,7 +7517,6 @@
 							"expression": "column_id",
 							"asc": true,
 							"nulls": "last",
-							"opclass": "text_ops",
 							"isExpression": false
 						}
 					],
@@ -7678,7 +7532,6 @@
 							"expression": "due_date",
 							"asc": true,
 							"nulls": "last",
-							"opclass": "timestamp_ops",
 							"isExpression": false
 						}
 					],
@@ -7694,7 +7547,6 @@
 							"expression": "project_id",
 							"asc": true,
 							"nulls": "last",
-							"opclass": "text_ops",
 							"isExpression": false
 						}
 					],
@@ -7739,7 +7591,7 @@
 			"compositePrimaryKeys": {},
 			"uniqueConstraints": {
 				"task_project_number_unique": {
-					"columns": ["number", "project_id"],
+					"columns": ["project_id", "number"],
 					"nullsNotDistinct": false,
 					"name": "task_project_number_unique"
 				}
@@ -7834,7 +7686,6 @@
 							"expression": "user_id",
 							"asc": true,
 							"nulls": "last",
-							"opclass": "text_ops",
 							"isExpression": false
 						}
 					],
@@ -7943,21 +7794,18 @@
 							"expression": "workspace_id",
 							"asc": true,
 							"nulls": "last",
-							"opclass": "text_ops",
 							"isExpression": false
 						},
 						{
 							"expression": "name",
 							"asc": true,
 							"nulls": "last",
-							"opclass": "text_ops",
 							"isExpression": false
 						},
 						{
 							"expression": "id",
 							"asc": true,
 							"nulls": "last",
-							"opclass": "text_ops",
 							"isExpression": false
 						}
 					],
@@ -7982,7 +7830,7 @@
 			"compositePrimaryKeys": {},
 			"uniqueConstraints": {
 				"service_calendar_workspace_id_id_unique": {
-					"columns": ["id", "workspace_id"],
+					"columns": ["workspace_id", "id"],
 					"nullsNotDistinct": false,
 					"name": "service_calendar_workspace_id_id_unique"
 				}
@@ -8093,14 +7941,12 @@
 							"expression": "workspace_id",
 							"asc": true,
 							"nulls": "last",
-							"opclass": "int4_ops",
 							"isExpression": false
 						},
 						{
 							"expression": "position",
 							"asc": true,
 							"nulls": "last",
-							"opclass": "int4_ops",
 							"isExpression": false
 						}
 					],
@@ -8135,7 +7981,7 @@
 			"compositePrimaryKeys": {},
 			"uniqueConstraints": {
 				"project_workspace_id_id_unique": {
-					"columns": ["id", "workspace_id"],
+					"columns": ["workspace_id", "id"],
 					"nullsNotDistinct": false,
 					"name": "project_workspace_id_id_unique"
 				},
@@ -8452,28 +8298,24 @@
 							"expression": "requested_by_person_id",
 							"asc": true,
 							"nulls": "last",
-							"opclass": "text_ops",
 							"isExpression": false
 						},
 						{
 							"expression": "action",
 							"asc": true,
 							"nulls": "last",
-							"opclass": "array_ops",
 							"isExpression": false
 						},
 						{
 							"expression": "target_ids",
 							"asc": true,
 							"nulls": "last",
-							"opclass": "array_ops",
 							"isExpression": false
 						},
 						{
 							"expression": "state",
 							"asc": true,
 							"nulls": "last",
-							"opclass": "text_ops",
 							"isExpression": false
 						}
 					],
@@ -8490,21 +8332,18 @@
 							"expression": "requested_by_person_id",
 							"asc": true,
 							"nulls": "last",
-							"opclass": "text_ops",
 							"isExpression": false
 						},
 						{
 							"expression": "state",
 							"asc": true,
 							"nulls": "last",
-							"opclass": "timestamptz_ops",
 							"isExpression": false
 						},
 						{
 							"expression": "expires_at",
 							"asc": true,
 							"nulls": "last",
-							"opclass": "text_ops",
 							"isExpression": false
 						}
 					],
@@ -8520,14 +8359,12 @@
 							"expression": "workspace_id",
 							"asc": true,
 							"nulls": "last",
-							"opclass": "text_ops",
 							"isExpression": false
 						},
 						{
 							"expression": "created_at",
 							"asc": false,
 							"nulls": "first",
-							"opclass": "text_ops",
 							"isExpression": false
 						}
 					],
@@ -8634,7 +8471,6 @@
 							"expression": "secret",
 							"asc": true,
 							"nulls": "last",
-							"opclass": "text_ops",
 							"isExpression": false
 						}
 					],
@@ -8650,7 +8486,6 @@
 							"expression": "user_id",
 							"asc": true,
 							"nulls": "last",
-							"opclass": "text_ops",
 							"isExpression": false
 						}
 					],
@@ -8666,7 +8501,6 @@
 							"expression": "user_id",
 							"asc": true,
 							"nulls": "last",
-							"opclass": "text_ops",
 							"isExpression": false
 						}
 					],
@@ -8827,14 +8661,12 @@
 							"expression": "pending_action_id",
 							"asc": true,
 							"nulls": "last",
-							"opclass": "text_ops",
 							"isExpression": false
 						},
 						{
 							"expression": "state",
 							"asc": true,
 							"nulls": "last",
-							"opclass": "text_ops",
 							"isExpression": false
 						}
 					],
@@ -8850,28 +8682,24 @@
 							"expression": "session_id",
 							"asc": true,
 							"nulls": "last",
-							"opclass": "text_ops",
 							"isExpression": false
 						},
 						{
 							"expression": "state",
 							"asc": true,
 							"nulls": "last",
-							"opclass": "text_ops",
 							"isExpression": false
 						},
 						{
 							"expression": "challenge_expires_at",
 							"asc": true,
 							"nulls": "last",
-							"opclass": "timestamptz_ops",
 							"isExpression": false
 						},
 						{
 							"expression": "token_expires_at",
 							"asc": true,
 							"nulls": "last",
-							"opclass": "timestamptz_ops",
 							"isExpression": false
 						}
 					],
@@ -8887,7 +8715,6 @@
 							"expression": "token_hash",
 							"asc": true,
 							"nulls": "last",
-							"opclass": "bytea_ops",
 							"isExpression": false
 						}
 					],
@@ -9146,7 +8973,6 @@
 							"expression": "policy_id",
 							"asc": true,
 							"nulls": "last",
-							"opclass": "text_ops",
 							"isExpression": false
 						}
 					],
@@ -9182,22 +9008,22 @@
 			"compositePrimaryKeys": {},
 			"uniqueConstraints": {
 				"sla_policy_version_policy_id_unique": {
-					"columns": ["id", "policy_id"],
+					"columns": ["policy_id", "id"],
 					"nullsNotDistinct": false,
 					"name": "sla_policy_version_policy_id_unique"
 				},
 				"sla_policy_version_policy_number_unique": {
-					"columns": ["number", "policy_id"],
+					"columns": ["policy_id", "number"],
 					"nullsNotDistinct": false,
 					"name": "sla_policy_version_policy_number_unique"
 				},
 				"sla_policy_version_workspace_policy_id_unique": {
-					"columns": ["id", "policy_id", "workspace_id"],
+					"columns": ["workspace_id", "policy_id", "id"],
 					"nullsNotDistinct": false,
 					"name": "sla_policy_version_workspace_policy_id_unique"
 				},
 				"sla_policy_version_workspace_id_unique": {
-					"columns": ["id", "workspace_id"],
+					"columns": ["workspace_id", "id"],
 					"nullsNotDistinct": false,
 					"name": "sla_policy_version_workspace_id_unique"
 				}
@@ -9288,7 +9114,7 @@
 			"compositePrimaryKeys": {},
 			"uniqueConstraints": {
 				"sla_goal_version_metric_type_priority_unique": {
-					"columns": ["metric", "priority", "version_id", "work_item_type_id"],
+					"columns": ["version_id", "metric", "work_item_type_id", "priority"],
 					"nullsNotDistinct": false,
 					"name": "sla_goal_version_metric_type_priority_unique"
 				}
@@ -9402,7 +9228,7 @@
 			"compositePrimaryKeys": {},
 			"uniqueConstraints": {
 				"sla_policy_workspace_id_id_unique": {
-					"columns": ["id", "workspace_id"],
+					"columns": ["workspace_id", "id"],
 					"nullsNotDistinct": false,
 					"name": "sla_policy_workspace_id_id_unique"
 				}
