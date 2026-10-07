@@ -12,16 +12,18 @@ export default function WorkItemCreateDialogShell({
   projectId,
   workspaceId,
   onClose,
+  open = true,
 }: {
   projectId: string;
   workspaceId: string | undefined;
   onClose: () => void;
+  open?: boolean;
 }) {
   const { t } = useTranslation();
 
   return (
     <Dialog
-      open
+      open={open}
       onOpenChange={(next) => {
         if (!next) onClose();
       }}
