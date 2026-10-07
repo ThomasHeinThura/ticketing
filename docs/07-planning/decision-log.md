@@ -1,3 +1,48 @@
+### 2026-10-07 · Refresh live blockers and preserve exact evidence boundaries
+
+Live GitHub readback at `2026-10-07T15:56:20Z` records accepted `main` at
+`3096cb044bdf6ae98488bfc385f532fa6386343a`, reviewed DEV at
+`08842235047a3ab2714427edce80331b94558150`, and frozen P0 closure #583 at
+`5326937460b195d8e69584c0cb99305348330a95`. Current heads are #600
+`343b45bc9dbb40baef7df5a84881553f810abf59`, #599
+`7c5ae58c67c3572b2f4f52864788f78e726daa0d`, #598
+`3fecb75ccd4a1fcbfce5414de6d222c46bb5e94e`, and #589
+`27fb81fe7d4a2f02d50c0f0f4db8b7bd9720697a`. None is claimed merged or accepted.
+
+Current #600 hosted G11 is 18/22 with four failures: LCP 2668/2500 ms, palette 215/200 ms,
+state 249.3/200 ms, and board 670.3/500 ms. Thresholds are unchanged. The PR-template/security-
+review check is also red; the current hosted Postgres integration, protected-route E2E, G8,
+registers, static, unit, OpenAPI and build checks pass. Root separately reports a six-browser
+pass, cleanup pass, and image `03d22ca62f1c3d8e3a2df404ce38f38d54b319d794bed30368af3e9922f86584`
+pass. Two independent Luna contexts cleared the complete 23-file batch. Causal analysis remains
+underway. The earlier 5a493 G11 22/22 result is historical and does not clear the current 343
+failure.
+
+Current #598 checks fail for static, protected-route E2E, registers, PR-template/security-review,
+G8, G11, OpenAPI drift and build. Postgres integration and the listed policy, a11y, red-probe,
+unit, domain-coverage, supply-chain, Helm and CI-match checks pass. The `cde1` native result was
+1/6, `8cde` was 3/6, and `a9686` was 6/6 with cleanup. The current `3fec` change is a canonical
+plain-text test delta only; no runtime result is inferred from it. #589 has current Postgres
+integration pass but fails protected-route E2E, registers, PR-template/security-review, G8, G11,
+OpenAPI drift and build. Its prior 154-file/1804-test result (1799 pass, 5 fail) remains historical.
+The four OpenAPI deactivation enums and WH12 remain owner-pending.
+
+Private v8 remains outside Git and unexecuted against API/database/Docker by its author. Its
+operator batch manifest SHA-256 is
+`99dfe3f623f4f9a53edf9a5f0b697a18a689006c531f3a8dd455c89ec3d2d648`; offline checks cover two
+files and seven tests. Independent ordinary/Sol review and root-owned PG18/all-role/API runtime
+remain pending. The prior root-owned v6 native attempt completed migration but stopped before
+tests or user creation because Vite/Vitest lacks `import.meta.resolve`; cleanup passed. No
+all-role users have been persisted and the private credential root is empty.
+
+The frozen #583 hosted G11 record remains 16/22 with six failures. The current #600 G11 fails;
+therefore P0 remains blocked. No quality gate was waived, no private runtime or persistent DEV
+change is authorized by this record, and no phase completion, cutover, release or protected merge
+is claimed.
+
+**Recorded:** documentation author at `2026-10-07T15:56:20Z` after live GitHub readback and
+root-provided private evidence.
+
 ### 2026-10-07 · Record central source fixes, current failures, and private v6 boundary
 
 **Operational update; no waiver or acceptance claim.** Live readback at 15:02Z keeps `main` at
