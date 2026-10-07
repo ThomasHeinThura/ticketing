@@ -31,6 +31,10 @@ export function generateTestUserPassword(): string {
   return randomBytes(32).toString("base64url");
 }
 
+export function generateTestUserEmail(): string {
+  return `seed-${randomBytes(24).toString("hex")}@test.invalid`;
+}
+
 function credentialStagingPrefix(filePath: string, targetDatabase: string) {
   const binding = createHash("sha256")
     .update(path.resolve(filePath))
@@ -174,7 +178,7 @@ export async function readCredentialFile(
   targetDatabase: string,
   expected: readonly Pick<
     TestUserCredential,
-    "role" | "email" | "scope" | "authentication"
+    "role" | "scope" | "authentication"
   >[],
 ): Promise<TestUserCredentialManifest | null> {
   const parent = path.dirname(filePath);
@@ -248,7 +252,8 @@ export async function readCredentialFile(
       !item ||
       typeof item !== "object" ||
       item.role !== target.role ||
-      item.email !== target.email ||
+      typeof item.email !== "string" ||
+      !/^seed-[0-9a-f]{48}@test\.invalid$/u.test(item.email) ||
       item.authentication !== target.authentication ||
       item.scope?.kind !== target.scope.kind ||
       item.scope?.scopeId !== target.scope.scopeId ||
@@ -261,6 +266,12 @@ export async function readCredentialFile(
         "Existing credential file does not match the requested test users.",
       );
     }
+  }
+  if (
+    new Set(manifest.users.map((item) => item.email)).size !==
+    manifest.users.length
+  ) {
+    throw new Error("Existing credential file contains duplicate identities.");
   }
   return manifest;
 }

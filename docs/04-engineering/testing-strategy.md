@@ -450,7 +450,10 @@ pre-existing file is reused only when it is a valid matching private manifest wi
 link; the command never replaces it. The credentials
 artifact is created with mode `0600` in a `0700` directory, names the exact target database,
 and records each user's effective canonical scope and sign-in method. Staff and instance
-fixtures use distinct generated random passwords. The customer fixture has no local credential
+fixtures use distinct generated random passwords. Login email identities are generated with
+high entropy for each new manifest and appear only in that private file; source, test names,
+and command output contain no usable fixture usernames. Retries reuse the manifest's exact
+identities and reject malformed, duplicate, colliding, or mismatched entries. The customer fixture has no local credential
 by default; it records provider-required sign-in. If the target already has an enabled
 `auth.password` provider scoped to the customer portal, the seeder records and uses that
 existing configuration without changing it. The native integration case enables the provider
@@ -490,6 +493,12 @@ role drift, or missing credentials fail closed. Every password uses Better Auth'
 password hasher, and the generated credential is checked against the stored hash by the
 authentication password verifier in tests. This seeder is a manual test aid, not production
 bootstrap or an authorization bypass. It does not run automatically or run migrations.
+
+The dedicated `pnpm test:seed` suite uses a disposable Testcontainers PostgreSQL database when
+`TASKDESK_DATABASE_URL` is unset. For an operator-authorized isolated native run, it can use an
+explicit `TASKDESK_DATABASE_URL` only when its database name ends in `_test`; any additionally
+set `DATABASE_URL` or `TEST_DATABASE_URL` must match that exact URL. It refuses malformed or
+non-test explicit targets and does not start or manage containers in explicit-target mode.
 
 Three sizes: **minimal** (one org, one project, ten items — for fast tests),
 **realistic** (as above, for manual and performance), **hostile** (empty strings, 500-

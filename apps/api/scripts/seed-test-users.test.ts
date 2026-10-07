@@ -14,6 +14,7 @@ import os from "node:os";
 import path from "node:path";
 import { BUILT_IN_ROLE_KEYS, BUILT_IN_ROLES } from "@taskdesk/permissions";
 import { afterEach, describe, expect, it } from "vitest";
+import { validateExplicitSeedTestDatabaseUrl } from "./seed-test-global-setup";
 import {
   expectedTestUserCredentials,
   formatTestUserSeedResult,
@@ -24,6 +25,7 @@ import {
 } from "./seed-test-users";
 import {
   credentialStagingFilePath,
+  generateTestUserEmail,
   generateTestUserPassword,
   readCredentialFile,
   validateCredentialFilePath,
@@ -66,6 +68,22 @@ function exitedProcessId(): number {
 }
 
 describe("test-user seed contract", () => {
+  it("accepts only explicit PostgreSQL URLs targeting a *_test database", () => {
+    expect(
+      validateExplicitSeedTestDatabaseUrl(
+        "postgresql://tester:secret@127.0.0.1:5432/taskdesk_test",
+      ),
+    ).toBe("taskdesk_test");
+    expect(() =>
+      validateExplicitSeedTestDatabaseUrl(
+        "postgresql://tester:secret@127.0.0.1:5432/taskdesk",
+      ),
+    ).toThrow(/\*_test/);
+    expect(() =>
+      validateExplicitSeedTestDatabaseUrl("not-a-database-url"),
+    ).toThrow(/invalid/);
+  });
+
   it("covers the canonical roles and exposes only real current grant sources", () => {
     const inventory = supportedRoleInventory();
     expect(inventory.canonical).toEqual(BUILT_IN_ROLE_KEYS);
@@ -124,13 +142,24 @@ describe("test-user seed contract", () => {
     }
   });
 
+  it("generates unique login identities without encoding role names", () => {
+    const emails = Array.from({ length: 8 }, generateTestUserEmail);
+    expect(new Set(emails).size).toBe(8);
+    for (const email of emails) {
+      expect(email).toMatch(/^seed-[0-9a-f]{48}@test\.invalid$/u);
+      expect(
+        SUPPORTED_TEST_USER_ROLES.some((role) => email.includes(role)),
+      ).toBe(false);
+    }
+  });
+
   it("writes and reuses credentials only in a private create-only file", async () => {
     const directory = await privateTempDirectory();
     const target = path.join(directory, "roles.json");
     const credentials = [
       {
         role: "viewer",
-        email: "taskdesk-test-user+viewer@taskdesk-test.invalid",
+        email: generateTestUserEmail(),
         password: generateTestUserPassword(),
         authentication: "local_password" as const,
         scope: {
@@ -140,7 +169,7 @@ describe("test-user seed contract", () => {
       },
       {
         role: "customer",
-        email: "taskdesk-test-user+customer@taskdesk-test.invalid",
+        email: generateTestUserEmail(),
         password: null,
         authentication: "external_provider_required" as const,
         scope: {
@@ -159,12 +188,46 @@ describe("test-user seed contract", () => {
     const loaded = await readCredentialFile(
       target,
       "taskdesk_test",
-      credentials,
+      expectedTestUserCredentials(["viewer", "customer"], false),
     );
     expect(loaded).toEqual(manifest);
     await expect(writeCredentialFile(target, manifest)).rejects.toThrow();
     const contents = await readFile(target, "utf8");
     expect(contents).toContain(credentials[0]?.password);
+  });
+
+  it("rejects malformed or duplicate identities in a reused private manifest", async () => {
+    const directory = await privateTempDirectory();
+    const target = path.join(directory, "roles.json");
+    const profile = expectedTestUserCredentials(["viewer", "customer"], false);
+    const [viewer, customer] = profile;
+    if (!viewer || !customer)
+      throw new Error("Expected role identities are missing.");
+    const manifest = {
+      formatVersion: 1 as const,
+      targetDatabase: "taskdesk_test",
+      users: [
+        { ...viewer, password: generateTestUserPassword() },
+        { ...customer, password: null },
+      ],
+    };
+    const viewerUser = manifest.users[0];
+    const customerUser = manifest.users[1];
+    if (!viewerUser || !customerUser)
+      throw new Error("Expected credential entries are missing.");
+    const duplicate = {
+      ...manifest,
+      users: [viewerUser, { ...customerUser, email: viewerUser.email }],
+    };
+    await expect(
+      readCredentialFile(target, "taskdesk_test", profile),
+    ).resolves.toBeNull();
+    const duplicateHandle = await open(target, "wx", 0o600);
+    await duplicateHandle.writeFile(JSON.stringify(duplicate), "utf8");
+    await duplicateHandle.close();
+    await expect(
+      readCredentialFile(target, "taskdesk_test", profile),
+    ).rejects.toThrow(/duplicate identities/);
   });
 
   it("rejects paths inside the repository and any symlinked credential path", async () => {
