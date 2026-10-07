@@ -1,4 +1,16 @@
-import { chmod, mkdir, mkdtemp, readFile, rm, symlink } from "node:fs/promises";
+import {
+  chmod,
+  link,
+  lstat,
+  mkdir,
+  mkdtemp,
+  open,
+  readFile,
+  realpath,
+  rm,
+  symlink,
+  writeFile,
+} from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
 import { BUILT_IN_ROLE_KEYS } from "@taskdesk/permissions";
@@ -26,7 +38,7 @@ async function privateTempDirectory() {
   );
   temporaryDirectories.push(directory);
   await chmod(directory, 0o700);
-  return directory;
+  return realpath(directory);
 }
 
 afterEach(async () => {
@@ -42,17 +54,18 @@ describe("test-user seed contract", () => {
     const inventory = supportedRoleInventory();
     expect(inventory.canonical).toEqual(BUILT_IN_ROLE_KEYS);
     expect(inventory.supported).toEqual(SUPPORTED_TEST_USER_ROLES);
-    expect(inventory.unavailable).toEqual(["manager", "lead"]);
-    expect(inventory.planned).toEqual(["manager", "lead"]);
+    expect(inventory.unavailable).toEqual([]);
+    expect(inventory.planned).toEqual([]);
   });
 
-  it("rejects roles without current producers and duplicate role requests", () => {
-    expect(() => parseTestUserRoles("manager")).toThrow(
-      /no supported test-user grant source/,
-    );
-    expect(() => parseTestUserRoles("lead")).toThrow(
-      /no supported test-user grant source/,
-    );
+  it("accepts every canonical role and rejects duplicate role requests", () => {
+    expect(parseTestUserRoles(undefined)).toEqual(BUILT_IN_ROLE_KEYS);
+    expect(parseTestUserRoles("manager,lead")).toEqual(["manager", "lead"]);
+    expect(
+      parseTestUserRoles(
+        "customer,viewer,lead,manager,member,admin,owner,instance_admin",
+      ),
+    ).toEqual(BUILT_IN_ROLE_KEYS);
     expect(() => parseTestUserRoles("viewer,viewer")).toThrow(/duplicate/);
   });
 
@@ -81,9 +94,9 @@ describe("test-user seed contract", () => {
 
   it("creates distinct random passwords accepted by Better Auth's password verifier", async () => {
     const passwords = new Set(
-      Array.from({ length: 6 }, generateTestUserPassword),
+      Array.from({ length: 8 }, generateTestUserPassword),
     );
-    expect(passwords.size).toBe(6);
+    expect(passwords.size).toBe(8);
     for (const password of passwords) {
       expect(password.length).toBeGreaterThanOrEqual(32);
       expect(
@@ -156,14 +169,99 @@ describe("test-user seed contract", () => {
     ).rejects.toThrow(/symlinks/);
   });
 
+  it("rejects existing manifests with an unrelated hard link", async () => {
+    const directory = await privateTempDirectory();
+    const target = path.join(directory, "roles.json");
+    const linkedCopy = path.join(directory, "linked-copy.json");
+    const expected = expectedTestUserCredentials(["viewer"], false);
+    const [expectedViewer] = expected;
+    if (!expectedViewer)
+      throw new Error("Expected viewer credential is missing.");
+    const manifest = {
+      formatVersion: 1 as const,
+      targetDatabase: "taskdesk_test",
+      users: [
+        {
+          ...expectedViewer,
+          password: generateTestUserPassword(),
+        },
+      ],
+    };
+    await writeCredentialFile(target, manifest);
+    await link(target, linkedCopy);
+    await expect(
+      readCredentialFile(target, "taskdesk_test", expected),
+    ).rejects.toThrow(/must not be hard-linked/);
+  });
+
+  it("recovers interrupted staging and a crash after atomic publication", async () => {
+    const directory = await privateTempDirectory();
+    const target = path.join(directory, "roles.json");
+    const expected = expectedTestUserCredentials(["viewer"], false);
+    const [expectedViewer] = expected;
+    if (!expectedViewer)
+      throw new Error("Expected viewer credential is missing.");
+    const manifest = {
+      formatVersion: 1 as const,
+      targetDatabase: "taskdesk_test",
+      users: [
+        {
+          ...expectedViewer,
+          password: generateTestUserPassword(),
+        },
+      ],
+    };
+
+    const partialStage = path.join(
+      directory,
+      ".roles.json.pending.interrupted",
+    );
+    await writeFile(partialStage, "{ partial", { mode: 0o600 });
+    await writeCredentialFile(target, manifest);
+    expect(await readCredentialFile(target, "taskdesk_test", expected)).toEqual(
+      manifest,
+    );
+
+    const publishedStage = path.join(
+      directory,
+      `.roles.json.pending.${process.pid}.${"a".repeat(32)}`,
+    );
+    await link(target, publishedStage);
+    expect(await readCredentialFile(target, "taskdesk_test", expected)).toEqual(
+      manifest,
+    );
+    const handle = await open(target, "r");
+    try {
+      expect((await handle.stat()).nlink).toBe(1);
+    } finally {
+      await handle.close();
+    }
+
+    const activePublisherStage = path.join(
+      directory,
+      `.roles.json.pending.${process.pid}.${"b".repeat(32)}`,
+    );
+    await link(target, activePublisherStage);
+    expect(await readCredentialFile(target, "taskdesk_test", expected)).toEqual(
+      manifest,
+    );
+    const activePublisherHandle = await open(target, "r");
+    try {
+      expect((await activePublisherHandle.stat()).nlink).toBe(1);
+    } finally {
+      await activePublisherHandle.close();
+    }
+    await expect(lstat(activePublisherStage)).rejects.toThrow();
+  });
+
   it("keeps the success output independent from password values", () => {
     const password = generateTestUserPassword();
     const output = formatTestUserSeedResult(
-      6,
+      8,
       "taskdesk_local_test",
       "/private/test-users.json",
     );
     expect(output).not.toContain(password);
-    expect(output).toContain("6 test users");
+    expect(output).toContain("8 test users");
   });
 });

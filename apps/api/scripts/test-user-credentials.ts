@@ -1,6 +1,16 @@
 import { execFileSync } from "node:child_process";
 import { randomBytes } from "node:crypto";
-import { lstat, mkdir, open, readFile, realpath, stat } from "node:fs/promises";
+import { constants } from "node:fs";
+import {
+  link,
+  lstat,
+  mkdir,
+  open,
+  readdir,
+  realpath,
+  stat,
+  unlink,
+} from "node:fs/promises";
 import path from "node:path";
 
 export type TestUserCredential = {
@@ -137,25 +147,43 @@ export async function readCredentialFile(
     "role" | "email" | "scope" | "authentication"
   >[],
 ): Promise<TestUserCredentialManifest | null> {
+  const parent = path.dirname(filePath);
+  let credentialHandle: Awaited<ReturnType<typeof open>> | undefined;
+  let content: string;
   try {
-    const info = await lstat(filePath);
-    if (
-      info.isSymbolicLink() ||
-      !info.isFile() ||
-      (info.mode & 0o777) !== 0o600
-    ) {
+    credentialHandle = await open(
+      filePath,
+      constants.O_RDONLY | (constants.O_NOFOLLOW ?? 0),
+    );
+    let info = await credentialHandle.stat();
+    if (!info.isFile() || (info.mode & 0o777) !== 0o600) {
       throw new Error(
         "Existing credential file must be a regular mode-0600 file.",
       );
     }
+    if (info.nlink !== 1) {
+      const pending = await findPublishedTemporaryLink(filePath, info);
+      if (info.nlink !== 2 || !pending) {
+        throw new Error("Existing credential file must not be hard-linked.");
+      }
+      await unlink(pending);
+      await syncDirectory(parent);
+      info = await credentialHandle.stat();
+      if (info.nlink !== 1) {
+        throw new Error("Existing credential file must not be hard-linked.");
+      }
+    }
+    content = await credentialHandle.readFile("utf8");
   } catch (error) {
     if ((error as NodeJS.ErrnoException).code === "ENOENT") return null;
     throw error;
+  } finally {
+    await credentialHandle?.close();
   }
 
   let value: unknown;
   try {
-    value = JSON.parse(await readFile(filePath, "utf8"));
+    value = JSON.parse(content);
   } catch {
     throw new Error("Existing credential file is invalid.");
   }
@@ -203,9 +231,127 @@ export async function writeCredentialFile(
   filePath: string,
   manifest: TestUserCredentialManifest,
 ): Promise<void> {
-  const handle = await open(filePath, "wx", 0o600);
+  const validatedPath = await validateCredentialFilePath(filePath);
+  if (validatedPath !== filePath) {
+    throw new Error("Credential file path must be absolute and normalized.");
+  }
+  const parent = path.dirname(filePath);
+  const parentInfo = await stat(parent);
+  if (
+    (parentInfo.mode & 0o777) !== 0o700 ||
+    (process.getuid && parentInfo.uid !== process.getuid())
+  ) {
+    throw new Error(
+      "Credential directory must be owned by the current user and mode 0700.",
+    );
+  }
+
   try {
+    await lstat(filePath);
+    throw new Error("Credential file already exists; it will not be replaced.");
+  } catch (error) {
+    if ((error as NodeJS.ErrnoException).code !== "ENOENT") throw error;
+  }
+
+  const temporaryPath = path.join(
+    parent,
+    `.${path.basename(filePath)}.pending.${process.pid}.${randomBytes(16).toString("hex")}`,
+  );
+  let handle: Awaited<ReturnType<typeof open>> | undefined;
+  let temporaryIdentity: { dev: number; ino: number } | undefined;
+  let published = false;
+  try {
+    handle = await open(temporaryPath, "wx", 0o600);
+    const temporaryInfo = await handle.stat();
+    if (
+      !temporaryInfo.isFile() ||
+      (temporaryInfo.mode & 0o777) !== 0o600 ||
+      (process.getuid && temporaryInfo.uid !== process.getuid())
+    ) {
+      throw new Error("Private credential staging file could not be verified.");
+    }
+    temporaryIdentity = { dev: temporaryInfo.dev, ino: temporaryInfo.ino };
     await handle.writeFile(`${JSON.stringify(manifest, null, 2)}\n`, "utf8");
+    await handle.sync();
+    await handle.close();
+    handle = undefined;
+
+    // `link` publishes the already-complete file atomically and fails with
+    // EEXIST instead of replacing a credential file another process created.
+    await link(temporaryPath, filePath);
+    published = true;
+    try {
+      await unlink(temporaryPath);
+    } catch (error) {
+      if ((error as NodeJS.ErrnoException).code !== "ENOENT") throw error;
+      const targetInfo = await lstat(filePath);
+      if (
+        !temporaryIdentity ||
+        targetInfo.dev !== temporaryIdentity.dev ||
+        targetInfo.ino !== temporaryIdentity.ino ||
+        targetInfo.nlink !== 1
+      ) {
+        throw error;
+      }
+    }
+    await syncDirectory(parent);
+  } catch (error) {
+    if (handle) await handle.close().catch(() => undefined);
+    await cleanupIfOwned(temporaryPath, temporaryIdentity);
+    if (published) await cleanupIfOwned(filePath, temporaryIdentity);
+    throw error;
+  }
+}
+
+async function findPublishedTemporaryLink(
+  filePath: string,
+  targetInfo: Awaited<ReturnType<typeof lstat>>,
+): Promise<string | undefined> {
+  const parent = path.dirname(filePath);
+  const prefix = `.${path.basename(filePath)}.pending.`;
+  const names = await readdir(parent);
+  for (const name of names) {
+    if (!name.startsWith(prefix)) continue;
+    if (!/^\d+\.[0-9a-f]{32}$/.test(name.slice(prefix.length))) continue;
+    const candidate = path.join(parent, name);
+    const info = await lstat(candidate);
+    if (
+      info.isFile() &&
+      !info.isSymbolicLink() &&
+      (info.mode & 0o777) === 0o600 &&
+      (!process.getuid || info.uid === process.getuid()) &&
+      info.dev === targetInfo.dev &&
+      info.ino === targetInfo.ino
+    ) {
+      return candidate;
+    }
+  }
+  return undefined;
+}
+
+async function cleanupIfOwned(
+  filePath: string,
+  identity: { dev: number; ino: number } | undefined,
+): Promise<void> {
+  if (!identity) return;
+  try {
+    const info = await lstat(filePath);
+    if (
+      info.isFile() &&
+      !info.isSymbolicLink() &&
+      info.dev === identity.dev &&
+      info.ino === identity.ino
+    ) {
+      await unlink(filePath);
+    }
+  } catch (error) {
+    if ((error as NodeJS.ErrnoException).code !== "ENOENT") throw error;
+  }
+}
+
+async function syncDirectory(directoryPath: string): Promise<void> {
+  const handle = await open(directoryPath, "r");
+  try {
     await handle.sync();
   } finally {
     await handle.close();

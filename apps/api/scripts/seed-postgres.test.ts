@@ -1,6 +1,7 @@
 import { chmod, mkdtemp, readFile, rm, stat } from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
+import { BUILT_IN_ROLES } from "@taskdesk/permissions";
 import { verifyPassword } from "better-auth/crypto";
 import { and, asc, count, eq, inArray, like, sql } from "drizzle-orm";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
@@ -13,6 +14,7 @@ import {
   type SeedProfile,
 } from "../../../tests/fixtures/seed-profiles";
 import db, { schema } from "../src/database";
+import { resolveIdentity } from "../src/permissions/resolve-identity";
 import { DEFAULT_PROJECT_COLUMNS } from "../src/project/controllers/create-project";
 import { ensureInternalOrganisation } from "../src/utils/seed-internal-organisation";
 import { seedProjectStates } from "../src/utils/seed-project-states";
@@ -656,6 +658,8 @@ describe("explicit test-user seed batch", () => {
         ["instance_admin", "instance"],
         ["owner", "workspace"],
         ["admin", "workspace"],
+        ["manager", "workspace"],
+        ["lead", "workspace"],
         ["member", "workspace"],
         ["viewer", "workspace"],
         ["customer", "organisation"],
@@ -708,17 +712,19 @@ describe("explicit test-user seed batch", () => {
           ),
         );
 
-      expect(savedUsers).toHaveLength(6);
-      expect(savedAccounts).toHaveLength(5);
-      expect(savedPeople).toHaveLength(6);
+      expect(savedUsers).toHaveLength(8);
+      expect(savedAccounts).toHaveLength(7);
+      expect(savedPeople).toHaveLength(8);
       expect(
         savedMemberships
           .map((row) => [row.userId, row.role])
           .sort(([left], [right]) => String(left).localeCompare(String(right))),
       ).toEqual([
-        ["taskdesk-test-user-owner", "owner"],
         ["taskdesk-test-user-admin", "admin"],
+        ["taskdesk-test-user-lead", "lead"],
+        ["taskdesk-test-user-manager", "manager"],
         ["taskdesk-test-user-member", "member"],
+        ["taskdesk-test-user-owner", "owner"],
         ["taskdesk-test-user-viewer", "viewer"],
       ]);
       for (const credential of credentials) {
@@ -771,6 +777,24 @@ describe("explicit test-user seed batch", () => {
         );
       expect(customerOrg[0]?.portalAccess).toBe(true);
 
+      for (const role of ["manager", "lead"] as const) {
+        const identity = await resolveIdentity({
+          userId: `taskdesk-test-user-${role}`,
+          credential: "session",
+        });
+        const authority = identity?.authority.find(
+          (entry) => entry.roleKey === role,
+        );
+        expect(identity?.side, role).toBe("staff");
+        expect(authority).toMatchObject({
+          roleKey: role,
+          scope: "workspace",
+          scopeId: "taskdesk-seed-minimal-workspace",
+          rank: BUILT_IN_ROLES[role].rank,
+          capabilities: BUILT_IN_ROLES[role].capabilities,
+        });
+      }
+
       const secondSummary = await seedTestUsers(databaseName, args);
       expect(secondSummary).toBe(firstSummary);
       expect(await readFile(credentialFile)).toEqual(credentialBytes);
@@ -786,7 +810,7 @@ describe("explicit test-user seed batch", () => {
               ),
             ),
           ),
-      ).toHaveLength(6);
+      ).toHaveLength(8);
 
       const { auth, portalAuth } = await import("../src/auth");
       for (const credential of credentials) {

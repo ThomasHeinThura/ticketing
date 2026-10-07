@@ -445,26 +445,30 @@ explicit `test-users` seed command provisions role fixtures only when the operat
 exact configured database with `--test-database <name>` and that database name ends in `_test`.
 It requires `--credentials-file <absolute-path>`; the command refuses paths inside
 the current repository or any registered Git worktree, tracked paths, symlinked path
-components, existing files, and directories that cannot be held private. The credentials
+components, arbitrary existing files, and directories that cannot be held private. A
+pre-existing file is reused only when it is a valid matching private manifest with one hard
+link; the command never replaces it. The credentials
 artifact is created with mode `0600` in a `0700` directory, names the exact target database,
 and records each user's effective canonical scope and sign-in method. Staff and instance
 fixtures use distinct generated random passwords. The customer fixture has no local credential
 by default; it records provider-required sign-in. If the target already has an enabled
 `auth.password` provider scoped to the customer portal, the seeder records and uses that
 existing configuration without changing it. Credentials are never printed or checked in. No
-new environment variable or fixed password is introduced.
+new environment variable or fixed password is introduced. Existing manifests must be singly
+linked. New manifests are fully written and synced to a private temporary file, then published
+atomically without replacing an existing file; failed writes clean up their staging file, and a
+retry can recover an interruption around publication.
 
-The initial role set is generated from canonical `BUILT_IN_ROLES`. The current supported
-fixture mappings are `instance_admin` through the existing Better Auth `user.role = 'admin'`
-source; `customer` through an active customer-side person in its dedicated test organisation
-(customer authority comes from person side and organisation scope); `owner` through the
-existing workspace membership path; and `admin`, `member`, and `viewer` through the legacy
-workspace membership/default-role rows. The
-canonical `manager` and `lead` names remain visible in the inventory but are rejected before
-any writes because the current application has no genuine producer for those role values.
-They must not be created by setting `workspace_role.is_system` or by using the proposed
-membership-grant contract as if it were accepted. All eight become seedable only after the
-role foundation is accepted and a supported producer exists.
+The complete fixture set is generated from canonical `BUILT_IN_ROLES`. `instance_admin` uses
+the existing Better Auth `user.role = 'admin'` source; `customer` uses an active
+customer-side person in its dedicated test organisation (customer authority comes from person
+side and organisation scope); and all six workspace roles use workspace membership. `owner`
+continues to use its existing special path without a `workspace_role` row. For `admin`,
+`manager`, `lead`, `member`, and `viewer`, the test-owned workspace receives the same genuine
+`workspace_role` backing row (`is_system = true`) used by existing authorization integration
+fixtures, so the resolver derives each role's canonical capabilities. This is a test-only
+producer: it does not change production workspace defaults, add capabilities or schema, or use
+the proposed membership-grant contract.
 
 Example, with the database already configured to `taskdesk_seed_test`:
 

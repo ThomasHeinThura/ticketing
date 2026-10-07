@@ -4,7 +4,7 @@ import {
   DEFAULT_ROLE_NAMES,
 } from "@taskdesk/permissions";
 import { hashPassword, verifyPassword } from "better-auth/crypto";
-import { eq, inArray, or } from "drizzle-orm";
+import { and, eq, inArray, or } from "drizzle-orm";
 import db, { getDatabasePool, schema } from "../src/database";
 import { seedDefaultWorkspaceRolesForWorkspace } from "../src/utils/seed-default-workspace-roles";
 import { seed } from "./seed-profile";
@@ -28,6 +28,8 @@ export const SUPPORTED_TEST_USER_ROLES = [
   "instance_admin",
   "owner",
   "admin",
+  "manager",
+  "lead",
   "member",
   "viewer",
   "customer",
@@ -55,15 +57,10 @@ export function parseTestUserRoles(value: string | undefined): SupportedRole[] {
     ) {
       throw new Error("Requested role is not canonical.");
     }
-    if (!SUPPORTED_TEST_USER_ROLES.includes(role as SupportedRole)) {
-      throw new Error(
-        "Requested canonical role has no supported test-user grant source.",
-      );
-    }
     if (seen.has(role)) throw new Error("Role list contains a duplicate.");
     seen.add(role);
   }
-  return requested as SupportedRole[];
+  return SUPPORTED_TEST_USER_ROLES.filter((role) => seen.has(role));
 }
 
 export function expectedTestUserCredentials(
@@ -193,12 +190,38 @@ async function verifyExistingFixture(
     (role) =>
       role === "owner" ||
       role === "admin" ||
+      role === "manager" ||
+      role === "lead" ||
       role === "member" ||
       role === "viewer",
   );
   if (memberships.length !== workspaceRoles.length) {
     throw new Error(
       "Existing test users have unexpected workspace memberships.",
+    );
+  }
+  const nonDefaultBuiltInRoles = roles.filter(
+    (role) => role === "manager" || role === "lead",
+  );
+  const backedRoleRows = nonDefaultBuiltInRoles.length
+    ? await db
+        .select()
+        .from(schema.workspaceRoleTable)
+        .where(
+          and(
+            eq(schema.workspaceRoleTable.workspaceId, workspaceId),
+            inArray(schema.workspaceRoleTable.role, nonDefaultBuiltInRoles),
+          ),
+        )
+    : [];
+  if (
+    backedRoleRows.length !== nonDefaultBuiltInRoles.length ||
+    backedRoleRows.some(
+      (row) => !row.isSystem || row.permission !== JSON.stringify({}),
+    )
+  ) {
+    throw new Error(
+      "Existing manager/lead role backing does not match the test fixture contract.",
     );
   }
   for (const [index, role] of roles.entries()) {
@@ -245,6 +268,8 @@ async function verifyExistingFixture(
     if (
       role === "owner" ||
       role === "admin" ||
+      role === "manager" ||
+      role === "lead" ||
       role === "member" ||
       role === "viewer"
     ) {
@@ -303,6 +328,57 @@ async function createFixture(
 
   await db.transaction(async (tx) => {
     await seedDefaultWorkspaceRolesForWorkspace(workspaceId, tx);
+    for (const role of roles) {
+      if (role !== "manager" && role !== "lead") continue;
+      const [existingRole] = await tx
+        .select()
+        .from(schema.workspaceRoleTable)
+        .where(
+          and(
+            eq(schema.workspaceRoleTable.workspaceId, workspaceId),
+            eq(schema.workspaceRoleTable.role, role),
+          ),
+        )
+        .limit(1);
+      if (
+        existingRole &&
+        (!existingRole.isSystem || existingRole.permission !== "{}")
+      ) {
+        throw new Error(`Test workspace ${role} role conflicts with fixture.`);
+      }
+      await tx
+        .insert(schema.workspaceRoleTable)
+        .values({
+          workspaceId,
+          role,
+          permission: JSON.stringify({}),
+          isSystem: true,
+          createdAt: now,
+          updatedAt: now,
+        })
+        .onConflictDoNothing({
+          target: [
+            schema.workspaceRoleTable.workspaceId,
+            schema.workspaceRoleTable.role,
+          ],
+        });
+      const [verifiedRole] = await tx
+        .select()
+        .from(schema.workspaceRoleTable)
+        .where(
+          and(
+            eq(schema.workspaceRoleTable.workspaceId, workspaceId),
+            eq(schema.workspaceRoleTable.role, role),
+          ),
+        )
+        .limit(1);
+      if (
+        !verifiedRole?.isSystem ||
+        verifiedRole.permission !== JSON.stringify({})
+      ) {
+        throw new Error(`Test workspace ${role} role could not be verified.`);
+      }
+    }
     if (!existingCustomerOrganisation && roles.includes("customer")) {
       await tx.insert(schema.organisationTable).values({
         ...CUSTOMER_ORGANISATION,
@@ -502,6 +578,6 @@ export function supportedRoleInventory() {
       (role) => !SUPPORTED_TEST_USER_ROLES.includes(role as SupportedRole),
     ),
     workspaceDefaults: [...DEFAULT_ROLE_NAMES],
-    planned: ["manager", "lead"],
+    planned: [],
   } as const;
 }
