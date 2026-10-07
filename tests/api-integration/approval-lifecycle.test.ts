@@ -700,6 +700,47 @@ describe("API integration: approval lifecycle", () => {
     ).toBe(200);
     expect((await adminSessionWithdrawal.json()).state).toBe("withdrawn");
 
+    const inactiveAdminApproval = await createAdditionalApproval();
+    const inactiveAdmin = await createWorkspaceMember({ role: "owner" });
+    await db
+      .update(schema.userTable)
+      .set({ role: "admin" })
+      .where(eq(schema.userTable.id, inactiveAdmin.user.id));
+    const adminPerson = requireRow(
+      await db
+        .select({ id: schema.personTable.id })
+        .from(schema.personTable)
+        .where(
+          and(
+            eq(schema.personTable.userId, inactiveAdmin.user.id),
+            eq(schema.personTable.side, "staff"),
+          ),
+        )
+        .limit(1),
+      "approval lifecycle inactive admin person",
+    );
+    await db
+      .update(schema.personTable)
+      .set({ active: false })
+      .where(eq(schema.personTable.id, adminPerson.id));
+    const effectsBeforeInactiveAdminDenial =
+      await approvalEffectCounts("approval.withdrawn");
+    mockAuthenticatedSession({ ...inactiveAdmin.user, role: "admin" });
+    const inactiveAdminWithdrawal = await app.request(
+      `/api/admin/approvals/${inactiveAdminApproval.id}/withdraw`,
+      { method: "POST" },
+    );
+    expect([403, 503]).toContain(inactiveAdminWithdrawal.status);
+    const [stillPendingForInactiveAdmin] = await db
+      .select({ state: schema.approvalTable.state })
+      .from(schema.approvalTable)
+      .where(eq(schema.approvalTable.id, inactiveAdminApproval.id));
+    expect(stillPendingForInactiveAdmin?.state).toBe("pending");
+    expect(await approvalEffectCounts("approval.withdrawn")).toEqual(
+      effectsBeforeInactiveAdminDenial,
+    );
+    mockAuthenticatedSession({ ...instanceAdmin.user, role: "admin" });
+
     const disabledFeatureAdminApproval = await createAdditionalApproval();
     await db
       .update(schema.projectFeatureFlagTable)

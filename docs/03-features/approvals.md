@@ -74,7 +74,9 @@ on a workflow transition.
 - `AP-7` Only the named approver may decide. Not their manager, not an admin.
   An instance admin may *withdraw* on their behalf through the session-only
   `POST /api/admin/approvals/{id}/withdraw` route, which is audited. This route requires
-  current `instance:admin` authority and rejects API keys. The requester route remains
+  current `instance:admin` authority and rejects API keys. It is session-only without
+  step-up: withdrawal changes approval state but grants no authority, so its route policy
+  carries an explicit elevation exemption. The requester route remains
   available to the actual requester, including scoped API keys that hold
   `approval:request` and have current work-item reach.
 - `AP-8` **Nobody may approve a request they raised.** Enforced in the domain layer,

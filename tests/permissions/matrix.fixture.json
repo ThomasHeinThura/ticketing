@@ -5624,8 +5624,8 @@
 		},
 		"POST /api/admin/approvals/{id}/withdraw": {
 			"instance_admin": {
-				"inReach": "allow (step-up)",
-				"outOfReach": "allow (step-up)"
+				"inReach": "allow",
+				"outOfReach": "allow"
 			},
 			"owner": {
 				"inReach": "403 forbidden",

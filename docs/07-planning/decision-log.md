@@ -12,6 +12,14 @@ instance-admin session. No cross-scope policy branch or new capability is introd
 
 **Recorded:** orchestrator, Thomas's explicit approval in this task, 2026-10-07.
 
+**Policy resolution:** Thomas explicitly selected session-only, audited withdrawal with an
+explicit step-up exemption. The admin withdrawal policy declares `elevated: false` with a
+written reason: changing approval state grants no authority. The route still rejects API keys,
+checks current `instance:admin` before dispatch and again inside the locked transaction, and
+keeps state, event, and audit writes atomic. No step-up proof or new capability is introduced.
+
+**Recorded:** orchestrator, Thomas's explicit answer to the L1 contract mismatch, 2026-10-07.
+
 ### 2026-10-07 · Keep test role seeding private-only
 
 **Decision:** Thomas explicitly instructs: “make sure seeder and credentials md are not

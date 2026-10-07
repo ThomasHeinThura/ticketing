@@ -37,7 +37,9 @@ export const approvalPolicies = {
       exempt: "no_single_resource",
       reason: "instance administrator withdrawal across workspaces",
     },
-    elevated: true,
+    elevated: false,
+    elevationExemptionReason:
+      "audited approval withdrawal changes no authority and grants none",
     sessionOnly: true,
   },
   "GET /api/me/approvals": {
