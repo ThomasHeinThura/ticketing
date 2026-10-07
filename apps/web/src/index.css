@@ -25,10 +25,6 @@ input:-webkit-autofill:active {
     contain-intrinsic-block-size: calc(var(--spacing) * 4.5);
   }
 
-  .kanban-board-metadata-row-skippable {
-    content-visibility: auto;
-  }
-
 }
 
 @custom-variant dark (&:is(.dark *));

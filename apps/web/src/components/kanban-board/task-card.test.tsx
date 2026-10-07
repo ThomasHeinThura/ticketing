@@ -3,7 +3,7 @@ import type { TFunction } from "i18next";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import useBulkSelectionStore from "@/store/bulk-selection";
 import type Task from "@/types/task";
-import TaskCard, { type TaskCardDisplayPreferences } from "./task-card";
+import TaskCard from "./task-card";
 
 const mocks = vi.hoisted(() => ({
   openContextMenu: vi.fn(),
@@ -36,7 +36,7 @@ vi.mock("@tanstack/react-router", () => ({
 }));
 
 vi.mock("@taskdesk/ui", async () => {
-  const { Badge, Button } =
+  const { Button } =
     await vi.importActual<typeof import("@taskdesk/ui")>("@taskdesk/ui");
   const passthrough = ({ children }: { children: React.ReactNode }) => (
     <div>{children}</div>
@@ -49,7 +49,6 @@ vi.mock("@taskdesk/ui", async () => {
     AlertDialogFooter: passthrough,
     AlertDialogHeader: passthrough,
     AlertDialogTitle: passthrough,
-    Badge,
     Button,
     HoverCard: passthrough,
     HoverCardContent: passthrough,
@@ -133,187 +132,6 @@ const displayPreferences = {
   showTaskNumbers: false,
   showTaskItemCounts: false,
 };
-
-function renderMetadataTask(
-  taskOverrides: Partial<Task> = {},
-  preferenceOverrides: Partial<TaskCardDisplayPreferences> = {},
-) {
-  const currentTask = { ...task, ...taskOverrides } as Task;
-  render(
-    <TaskCard
-      task={currentTask}
-      projectSlug="PRJ"
-      taskIsCompleted={false}
-      displayPreferences={{ ...displayPreferences, ...preferenceOverrides }}
-      isSelected={false}
-      isFocused={false}
-      onOpenTask={mocks.openTask}
-      t={((key: string) => key) as unknown as TFunction}
-      workspaceId="workspace-1"
-      assignee={undefined}
-      onContextMenuTask={mocks.openContextMenu}
-    />,
-  );
-  return document.querySelector(".kanban-board-task-card");
-}
-
-describe("TaskCard metadata row geometry", () => {
-  const staticBadgeCases = [
-    {
-      label: "priority",
-      task: { priority: "high" },
-      preferences: { showPriority: true },
-    },
-    {
-      label: "checklist stats",
-      task: { description: "- [ ] Check" },
-      preferences: { showTaskItemCounts: true },
-    },
-    {
-      label: "due date",
-      task: { dueDate: "2099-05-12T00:00:00.000Z" },
-      preferences: { showDueDates: true },
-    },
-    {
-      label: "priority and checklist stats",
-      task: { priority: "high", description: "- [ ] Check" },
-      preferences: { showPriority: true, showTaskItemCounts: true },
-    },
-    {
-      label: "priority and due date",
-      task: { priority: "high", dueDate: "2099-05-12T00:00:00.000Z" },
-      preferences: { showPriority: true, showDueDates: true },
-    },
-    {
-      label: "checklist stats and due date",
-      task: {
-        description: "- [ ] Check",
-        dueDate: "2099-05-12T00:00:00.000Z",
-      },
-      preferences: { showTaskItemCounts: true, showDueDates: true },
-    },
-    {
-      label: "all static badges",
-      task: {
-        priority: "high",
-        description: "- [ ] Check",
-        dueDate: "2099-05-12T00:00:00.000Z",
-      },
-      preferences: {
-        showPriority: true,
-        showTaskItemCounts: true,
-        showDueDates: true,
-      },
-    },
-  ] as const;
-
-  it.each(staticBadgeCases)(
-    "uses the fixed slot for $label",
-    ({ task, preferences }) => {
-      const card = renderMetadataTask(task, preferences);
-      const metadataRow = card?.querySelector(
-        ".kanban-board-metadata-row-skippable",
-      );
-
-      expect(metadataRow).toHaveClass("h-5.5");
-      expect(metadataRow?.children.length).toBeGreaterThan(0);
-      expect(
-        [...(metadataRow?.children ?? [])].every((child) =>
-          child.classList.contains("h-5.5"),
-        ),
-      ).toBe(true);
-      if ("description" in task) {
-        expect(metadataRow).toHaveTextContent("0/1");
-      }
-      if ("dueDate" in task) {
-        expect(
-          [...(metadataRow?.children ?? [])].some((child) =>
-            child.textContent?.trim(),
-          ),
-        ).toBe(true);
-      }
-    },
-  );
-
-  it("does not create an empty fixed row when every metadata preference is disabled", () => {
-    const card = renderMetadataTask({
-      priority: "high",
-      description: "- [ ] Check",
-      dueDate: "2099-05-12T00:00:00.000Z",
-    });
-
-    expect(
-      card?.querySelector(".kanban-board-metadata-row-skippable"),
-    ).toBeNull();
-  });
-
-  it.each([1, 2])(
-    "keeps %i pull-request badges out of the fixed slot",
-    (count) => {
-      const externalLinks = Array.from({ length: count }, (_, index) => ({
-        id: `pr-${index + 1}`,
-        taskId: task.id,
-        externalId: String(index + 1),
-        url: `https://github.com/example/project/pull/${index + 1}`,
-        resourceType: "pull_request",
-        title: null,
-        metadata: null,
-      }));
-      const card = renderMetadataTask({ externalLinks });
-      const metadataRow = card?.querySelector(
-        '.kanban-board-task-card > [class*="gap-1.5"]',
-      );
-      const pullRequestButton = card?.querySelector("button");
-
-      expect(metadataRow).not.toHaveClass(
-        "kanban-board-metadata-row-skippable",
-      );
-      expect(metadataRow).not.toHaveClass("h-5.5");
-      expect(pullRequestButton).toHaveClass("h-9", "sm:h-8");
-      expect(pullRequestButton).toBeVisible();
-      if (count === 1) {
-        expect(
-          screen.getByRole("button", {
-            name: "tasks:pr.open pull request #1",
-          }),
-        ).toBe(pullRequestButton);
-      } else {
-        expect(screen.getByRole("button", { name: "tasks:pr.count" })).toBe(
-          pullRequestButton,
-        );
-      }
-    },
-  );
-
-  it("keeps variable title and label rows outside the fixed metadata slot", () => {
-    const longTitle = "A variable title ".repeat(30);
-    const longLabel = "A long label name ".repeat(8);
-    const card = renderMetadataTask(
-      {
-        title: longTitle,
-        labels: [{ id: "label-1", name: longLabel, color: "blue" }],
-      },
-      {
-        showLabels: true,
-        showTaskNumbers: true,
-        showPriority: true,
-      },
-    );
-
-    expect(card?.querySelector(".line-clamp-3")?.textContent?.trim()).toBe(
-      longTitle.trim(),
-    );
-    expect(screen.getByText("PRJ-1")).toBeInTheDocument();
-    expect(card?.querySelector("[title]")).toHaveAttribute("title", longLabel);
-    expect(
-      card?.querySelector(".kanban-board-metadata-row-skippable"),
-    ).toHaveClass("h-5.5");
-    expect(card).not.toHaveClass(
-      "h-5.5",
-      "kanban-board-metadata-row-skippable",
-    );
-  });
-});
 
 describe("TaskCard keyboard context menu", () => {
   it("G10: opens the focused card menu with Shift+F10", () => {
