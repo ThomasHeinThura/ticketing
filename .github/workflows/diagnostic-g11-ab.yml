@@ -1,0 +1,54 @@
+name: Diagnostic - G11 same-runner A/B
+
+on:
+  push:
+    branches:
+      - codex/p0-hosted-ab-run
+
+permissions:
+  contents: read
+
+concurrency:
+  group: diagnostic-g11-ab-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  compare:
+    name: diagnostic only - accepted and current G11 paths
+    runs-on: ubuntu-24.04
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5.1.0
+        with:
+          fetch-depth: 0
+
+      - uses: ./.github/actions/setup
+
+      - name: Normalize Ubuntu APT mirror for Chromium dependencies
+        run: sudo -- "$(command -v node)" scripts/ci/normalize-ubuntu-apt-mirror.mjs
+
+      - name: Run exact-source same-runner diagnostic
+        run: bash scripts/ci/diagnostic-g11-same-runner-ab.sh
+
+      - name: Upload diagnostic evidence only
+        if: always()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: p0-g11-same-runner-ab-${{ github.run_id }}
+          path: |
+            ${{ runner.temp }}/taskdesk-g11-ab-${{ github.run_id }}/run-metadata.txt
+            ${{ runner.temp }}/taskdesk-g11-ab-${{ github.run_id }}/cleanup-receipt.txt
+            ${{ runner.temp }}/taskdesk-g11-ab-${{ github.run_id }}/accepted-f10/environment.txt
+            ${{ runner.temp }}/taskdesk-g11-ab-${{ github.run_id }}/accepted-f10/source-fingerprint.txt
+            ${{ runner.temp }}/taskdesk-g11-ab-${{ github.run_id }}/accepted-f10/build-assets.txt
+            ${{ runner.temp }}/taskdesk-g11-ab-${{ github.run_id }}/accepted-f10/test-list.log
+            ${{ runner.temp }}/taskdesk-g11-ab-${{ github.run_id }}/accepted-f10/playwright.log
+            ${{ runner.temp }}/taskdesk-g11-ab-${{ github.run_id }}/accepted-f10/exit-code.txt
+            ${{ runner.temp }}/taskdesk-g11-ab-${{ github.run_id }}/current-10034/environment.txt
+            ${{ runner.temp }}/taskdesk-g11-ab-${{ github.run_id }}/current-10034/source-fingerprint.txt
+            ${{ runner.temp }}/taskdesk-g11-ab-${{ github.run_id }}/current-10034/build-assets.txt
+            ${{ runner.temp }}/taskdesk-g11-ab-${{ github.run_id }}/current-10034/test-list.log
+            ${{ runner.temp }}/taskdesk-g11-ab-${{ github.run_id }}/current-10034/playwright.log
+            ${{ runner.temp }}/taskdesk-g11-ab-${{ github.run_id }}/current-10034/exit-code.txt
+          if-no-files-found: error
+          retention-days: 14
