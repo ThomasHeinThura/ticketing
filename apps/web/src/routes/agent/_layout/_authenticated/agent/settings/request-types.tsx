@@ -1,17 +1,23 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { createFileRoute } from "@tanstack/react-router";
+import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import {
   Alert,
   AlertDescription,
   Button,
+  Checkbox,
   Empty,
   EmptyDescription,
   EmptyHeader,
   EmptyTitle,
   Input,
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
   Textarea,
 } from "@taskdesk/ui";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 import PageTitle from "@/components/page-title";
 import {
@@ -24,10 +30,14 @@ import {
 } from "@/fetchers/intake";
 import useGetWorkItemTypes from "@/hooks/queries/work-item/use-get-work-item-types";
 import useActiveWorkspace from "@/hooks/queries/workspace/use-active-workspace";
+import { parseRequestTypeEditorSearch } from "@/lib/routes";
 
 export const Route = createFileRoute(
   "/_layout/_authenticated/agent/settings/request-types",
-)({ component: RequestTypesPage });
+)({
+  validateSearch: parseRequestTypeEditorSearch,
+  component: RequestTypesPage,
+});
 
 type Field = {
   key: string;
@@ -90,6 +100,10 @@ function RequestTypesPage() {
   const { t } = useTranslation("requestTypes");
   const workspace = useActiveWorkspace();
   const queryClient = useQueryClient();
+  const navigate = useNavigate({ from: Route.fullPath });
+  const selected = Route.useSearch().requestTypeId ?? null;
+  const setSelected = (id: string | null) =>
+    void navigate({ search: { requestTypeId: id ?? undefined } });
   const types = useQuery({
     queryKey: ["request-types", workspace.data?.id],
     queryFn: () => getRequestTypes(workspace.data?.id ?? ""),
@@ -98,16 +112,34 @@ function RequestTypesPage() {
   const workItemTypes = useGetWorkItemTypes({
     workspaceId: workspace.data?.id,
   });
-  const [selected, setSelected] = useState<string | null>(null);
   const [draft, setDraft] = useState<
     Omit<RequestType, "id" | "version" | "published" | "key">
   >(blank());
   const [dragged, setDragged] = useState<number | null>(null);
+  const [previewValues, setPreviewValues] = useState<Record<string, unknown>>(
+    {},
+  );
   const detail = useQuery({
     queryKey: ["request-type", selected],
     queryFn: () => getRequestType(selected ?? ""),
     enabled: Boolean(selected),
   });
+  useEffect(() => {
+    const response = detail.data as unknown as RequestType | undefined;
+    if (!response) return;
+    setDraft({
+      name: response.name,
+      description: response.description,
+      group: response.group,
+      workItemTypeId: response.workItemTypeId,
+      defaultProjectId: response.defaultProjectId,
+      formSchema: response.formSchema,
+      autoAccept: response.autoAccept,
+      customerVisible: response.customerVisible,
+      forcePrivate: response.forcePrivate,
+      position: response.position,
+    });
+  }, [detail.data]);
   const save = useMutation({
     mutationFn: () =>
       saveRequestType({
@@ -140,25 +172,9 @@ function RequestTypesPage() {
         });
     },
   });
-  const choose = async (id: string | null) => {
+  const choose = (id: string | null) => {
     setSelected(id);
-    if (!id) {
-      setDraft(blank());
-      return;
-    }
-    const response = (await getRequestType(id)) as unknown as RequestType;
-    setDraft({
-      name: response.name,
-      description: response.description,
-      group: response.group,
-      workItemTypeId: response.workItemTypeId,
-      defaultProjectId: response.defaultProjectId,
-      formSchema: response.formSchema,
-      autoAccept: response.autoAccept,
-      customerVisible: response.customerVisible,
-      forcePrivate: response.forcePrivate,
-      position: response.position,
-    });
+    if (!id) setDraft(blank());
   };
   const fields = draft.formSchema.fields;
   const updateField = (index: number, patch: Partial<Field>) =>
@@ -294,21 +310,23 @@ function RequestTypesPage() {
                 htmlFor="request-type-work-item-type"
               >
                 Work item type
-                <select
-                  id="request-type-work-item-type"
-                  className="h-10 rounded border bg-background px-3"
-                  value={draft.workItemTypeId}
-                  onChange={(e) =>
-                    setDraft({ ...draft, workItemTypeId: e.target.value })
+                <Select
+                  value={draft.workItemTypeId || null}
+                  onValueChange={(value) =>
+                    setDraft({ ...draft, workItemTypeId: value ?? "" })
                   }
                 >
-                  <option value="">Choose a type</option>
-                  {workItemTypes.data?.map((type) => (
-                    <option key={type.id} value={type.id}>
-                      {type.name}
-                    </option>
-                  ))}
-                </select>
+                  <SelectTrigger id="request-type-work-item-type">
+                    <SelectValue placeholder="Choose a type" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {workItemTypes.data?.map((type) => (
+                      <SelectItem key={type.id} value={type.id}>
+                        {type.name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
               </label>
               <label
                 className="flex flex-col gap-1"
@@ -346,32 +364,32 @@ function RequestTypesPage() {
               </label>
             </div>
             <div className="flex flex-wrap gap-4 text-sm">
-              <label>
-                <input
-                  type="checkbox"
+              <label htmlFor="request-type-customer-visible">
+                <Checkbox
+                  id="request-type-customer-visible"
                   checked={draft.customerVisible}
-                  onChange={(e) =>
-                    setDraft({ ...draft, customerVisible: e.target.checked })
+                  onCheckedChange={(checked) =>
+                    setDraft({ ...draft, customerVisible: Boolean(checked) })
                   }
                 />{" "}
                 Visible to customers
               </label>
-              <label>
-                <input
-                  type="checkbox"
+              <label htmlFor="request-type-auto-accept">
+                <Checkbox
+                  id="request-type-auto-accept"
                   checked={draft.autoAccept}
-                  onChange={(e) =>
-                    setDraft({ ...draft, autoAccept: e.target.checked })
+                  onCheckedChange={(checked) =>
+                    setDraft({ ...draft, autoAccept: Boolean(checked) })
                   }
                 />{" "}
                 Auto accept
               </label>
-              <label>
-                <input
-                  type="checkbox"
+              <label htmlFor="request-type-force-private">
+                <Checkbox
+                  id="request-type-force-private"
                   checked={draft.forcePrivate}
-                  onChange={(e) =>
-                    setDraft({ ...draft, forcePrivate: e.target.checked })
+                  onCheckedChange={(checked) =>
+                    setDraft({ ...draft, forcePrivate: Boolean(checked) })
                   }
                 />{" "}
                 Keep submissions private
@@ -435,29 +453,34 @@ function RequestTypesPage() {
                 </label>
                 <label htmlFor={`field-type-${index}`}>
                   Type
-                  <select
-                    id={`field-type-${index}`}
-                    className="h-10 rounded border bg-background px-3"
+                  <Select
                     value={field.type}
-                    onChange={(e) =>
-                      updateField(index, {
-                        type: e.target.value as Field["type"],
-                      })
+                    onValueChange={(value) =>
+                      value &&
+                      updateField(index, { type: value as Field["type"] })
                     }
                   >
-                    <option value="text">Text</option>
-                    <option value="textarea">Long text</option>
-                    <option value="select">Select</option>
-                    <option value="checkbox">Checkbox</option>
-                    <option value="file">File</option>
-                  </select>
+                    <SelectTrigger id={`field-type-${index}`}>
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="text">Text</SelectItem>
+                      <SelectItem value="textarea">Long text</SelectItem>
+                      <SelectItem value="select">Select</SelectItem>
+                      <SelectItem value="checkbox">Checkbox</SelectItem>
+                      <SelectItem value="file">File</SelectItem>
+                    </SelectContent>
+                  </Select>
                 </label>
-                <label className="flex items-center gap-2">
-                  <input
-                    type="checkbox"
+                <label
+                  className="flex items-center gap-2"
+                  htmlFor={`field-required-${index}`}
+                >
+                  <Checkbox
+                    id={`field-required-${index}`}
                     checked={field.required}
-                    onChange={(e) =>
-                      updateField(index, { required: e.target.checked })
+                    onCheckedChange={(checked) =>
+                      updateField(index, { required: Boolean(checked) })
                     }
                   />{" "}
                   Required
@@ -493,47 +516,98 @@ function RequestTypesPage() {
                 </label>
                 <label htmlFor={`field-maps-to-${index}`}>
                   Maps to
-                  <select
-                    id={`field-maps-to-${index}`}
-                    className="h-10 rounded border bg-background px-3"
-                    value={field.mapsTo?.field ?? ""}
-                    onChange={(e) =>
+                  <Select
+                    value={field.mapsTo?.field ?? null}
+                    onValueChange={(value) =>
                       updateField(index, {
-                        mapsTo: e.target.value
-                          ? { field: e.target.value }
-                          : undefined,
+                        mapsTo: value ? { field: value } : undefined,
                       })
                     }
                   >
-                    <option value="">Keep in request data</option>
-                    <option value="title">Work item title</option>
-                    <option value="description">Work item description</option>
-                    <option value="priority">Work item priority</option>
-                  </select>
+                    <SelectTrigger id={`field-maps-to-${index}`}>
+                      <SelectValue placeholder="Keep in request data" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="title">Work item title</SelectItem>
+                      <SelectItem value="description">
+                        Work item description
+                      </SelectItem>
+                      <SelectItem value="priority">
+                        Work item priority
+                      </SelectItem>
+                    </SelectContent>
+                  </Select>
                 </label>
+                {field.type === "select" &&
+                  field.mapsTo?.field === "priority" && (
+                    <fieldset className="flex flex-col gap-2 sm:col-span-2">
+                      <legend className="font-medium">
+                        Priority value mapping
+                      </legend>
+                      {field.options?.map((option) => (
+                        <label
+                          key={option}
+                          className="grid gap-2 sm:grid-cols-2"
+                          htmlFor={`field-map-${index}-${option}`}
+                        >
+                          <span>{option}</span>
+                          <Select
+                            value={
+                              field.mapsTo?.map?.[option] ??
+                              (["low", "medium", "high", "urgent"].includes(
+                                option,
+                              )
+                                ? option
+                                : null)
+                            }
+                            onValueChange={(value) => {
+                              const map = { ...(field.mapsTo?.map ?? {}) };
+                              if (value) map[option] = value;
+                              else delete map[option];
+                              updateField(index, {
+                                mapsTo: { field: "priority", map },
+                              });
+                            }}
+                          >
+                            <SelectTrigger id={`field-map-${index}-${option}`}>
+                              <SelectValue placeholder="Choose priority" />
+                            </SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="low">Low</SelectItem>
+                              <SelectItem value="medium">Medium</SelectItem>
+                              <SelectItem value="high">High</SelectItem>
+                              <SelectItem value="urgent">Urgent</SelectItem>
+                            </SelectContent>
+                          </Select>
+                        </label>
+                      ))}
+                    </fieldset>
+                  )}
                 <label htmlFor={`field-show-when-${index}`}>
                   Show when
-                  <select
-                    id={`field-show-when-${index}`}
-                    className="h-10 rounded border bg-background px-3"
-                    value={field.showIf?.field_key ?? ""}
-                    onChange={(e) =>
+                  <Select
+                    value={field.showIf?.field_key ?? null}
+                    onValueChange={(value) =>
                       updateField(index, {
-                        showIf: e.target.value
-                          ? { field_key: e.target.value, op: "eq", value: "" }
+                        showIf: value
+                          ? { field_key: value, op: "eq", value: "" }
                           : undefined,
                       })
                     }
                   >
-                    <option value="">Always visible</option>
-                    {fields
-                      .filter((candidate) => candidate.key !== field.key)
-                      .map((candidate) => (
-                        <option key={candidate.key} value={candidate.key}>
-                          {candidate.label}
-                        </option>
-                      ))}
-                  </select>
+                    <SelectTrigger id={`field-show-when-${index}`}>
+                      <SelectValue placeholder="Always visible" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {fields
+                        .filter((candidate) => candidate.key !== field.key)
+                        .map((candidate) => (
+                          <SelectItem key={candidate.key} value={candidate.key}>
+                            {candidate.label}
+                          </SelectItem>
+                        ))}
+                    </SelectContent>
+                  </Select>
                 </label>
                 {field.showIf && (
                   <label htmlFor={`field-show-value-${index}`}>
@@ -556,12 +630,15 @@ function RequestTypesPage() {
                   </label>
                 )}
                 {field.type === "file" && (
-                  <label className="flex items-center gap-2">
-                    <input
-                      type="checkbox"
+                  <label
+                    className="flex items-center gap-2"
+                    htmlFor={`field-multiple-${index}`}
+                  >
+                    <Checkbox
+                      id={`field-multiple-${index}`}
                       checked={field.multiple ?? false}
-                      onChange={(e) =>
-                        updateField(index, { multiple: e.target.checked })
+                      onCheckedChange={(checked) =>
+                        updateField(index, { multiple: Boolean(checked) })
                       }
                     />{" "}
                     Allow multiple files
@@ -606,30 +683,87 @@ function RequestTypesPage() {
                 {draft.description || "Request form description"}
               </p>
               <div className="mt-3 grid gap-3">
-                {fields.map((field) => (
-                  <div key={field.key} className="flex flex-col gap-1">
-                    {field.label}
-                    {field.required ? " *" : ""}
-                    {field.type === "textarea" ? (
-                      <Textarea disabled placeholder={field.help} />
-                    ) : field.type === "select" ? (
-                      <select
-                        disabled
-                        className="h-10 rounded border bg-background px-3"
-                      >
-                        <option>Choose…</option>
-                        {field.options?.map((option) => (
-                          <option key={option}>{option}</option>
-                        ))}
-                      </select>
-                    ) : (
-                      <Input
-                        disabled
-                        type={field.type === "checkbox" ? "checkbox" : "text"}
-                      />
-                    )}
-                  </div>
-                ))}
+                {fields
+                  .filter((field) => {
+                    if (!field.showIf) return true;
+                    const actual = previewValues[field.showIf.field_key];
+                    if (field.showIf.op === "is_set")
+                      return (
+                        actual !== undefined &&
+                        actual !== "" &&
+                        actual !== false
+                      );
+                    if (field.showIf.op === "neq")
+                      return actual !== field.showIf.value;
+                    if (field.showIf.op === "in")
+                      return (
+                        Array.isArray(field.showIf.value) &&
+                        field.showIf.value.includes(actual)
+                      );
+                    return actual === field.showIf.value;
+                  })
+                  .map((field) => (
+                    <div key={field.key} className="flex flex-col gap-1">
+                      {field.label}
+                      {field.required ? " *" : ""}
+                      {field.type === "textarea" ? (
+                        <Textarea
+                          placeholder={field.help}
+                          value={String(previewValues[field.key] ?? "")}
+                          onChange={(event) =>
+                            setPreviewValues({
+                              ...previewValues,
+                              [field.key]: event.target.value,
+                            })
+                          }
+                        />
+                      ) : field.type === "select" ? (
+                        <Select
+                          value={String(previewValues[field.key] ?? "") || null}
+                          onValueChange={(value) =>
+                            setPreviewValues({
+                              ...previewValues,
+                              [field.key]: value ?? "",
+                            })
+                          }
+                        >
+                          <SelectTrigger>
+                            <SelectValue placeholder="Choose…" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {field.options?.map((option) => (
+                              <SelectItem key={option} value={option}>
+                                {option}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      ) : field.type === "file" ? (
+                        <Input type="file" multiple={field.multiple} />
+                      ) : field.type === "checkbox" ? (
+                        <Checkbox
+                          checked={Boolean(previewValues[field.key])}
+                          onCheckedChange={(checked) =>
+                            setPreviewValues({
+                              ...previewValues,
+                              [field.key]: Boolean(checked),
+                            })
+                          }
+                        />
+                      ) : (
+                        <Input
+                          type="text"
+                          value={String(previewValues[field.key] ?? "")}
+                          onChange={(event) =>
+                            setPreviewValues({
+                              ...previewValues,
+                              [field.key]: event.target.value,
+                            })
+                          }
+                        />
+                      )}
+                    </div>
+                  ))}
               </div>
             </section>
             <p

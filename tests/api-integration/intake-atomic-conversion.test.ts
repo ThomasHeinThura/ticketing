@@ -1,10 +1,14 @@
 /** IQ-14/16a regression: acceptance is a single durable conversion and two acceptors
  * racing the same submitted version can create exactly one work item. */
 import { randomUUID } from "node:crypto";
-import { eq } from "drizzle-orm";
+import { and, eq } from "drizzle-orm";
 import { beforeEach, describe, expect, it } from "vitest";
 import db, { schema } from "../../apps/api/src/database";
-import { acceptSubmission } from "../../apps/api/src/intake/repository";
+import {
+  acceptSubmission,
+  createSubmission,
+  findPortalSubmission,
+} from "../../apps/api/src/intake/repository";
 import { resetTestDatabase } from "./helpers/database";
 import {
   createProjectFixture,
@@ -53,7 +57,20 @@ describe("intake atomic conversion", () => {
   beforeEach(async () => resetTestDatabase());
 
   it("races acceptors and atomically transfers comments, attachments, watcher, and submission SLA time", async () => {
-    const { workspace } = await createWorkspaceMember({ role: "admin" });
+    const member = await createWorkspaceMember({ role: "admin" });
+    const { workspace } = member;
+    const staff = requireRow(
+      await db
+        .select()
+        .from(schema.personTable)
+        .where(
+          and(
+            eq(schema.personTable.userId, member.user.id),
+            eq(schema.personTable.side, "staff"),
+          ),
+        ),
+      "staff actor",
+    );
     const organisation = requireRow(
       await db
         .insert(schema.organisationTable)
@@ -183,18 +200,27 @@ describe("intake atomic conversion", () => {
       "submission attachment",
     );
 
+    const portalView = await findPortalSubmission(
+      `SUB-${submission.number}`,
+      person.id,
+    );
+    const serializedPortalView = JSON.stringify(portalView);
+    expect(serializedPortalView).not.toContain("defaultAssigneeId");
+    expect(serializedPortalView).not.toContain("workItemTypeId");
+    expect(serializedPortalView).not.toContain("workspaceId");
+
     const outcomes = await Promise.allSettled([
       acceptSubmission(
         `SUB-${submission.number}`,
         workspace.id,
-        person.id,
+        staff.id,
         project.id,
         chosenType.id,
       ),
       acceptSubmission(
         `SUB-${submission.number}`,
         workspace.id,
-        person.id,
+        staff.id,
         project.id,
         chosenType.id,
       ),
@@ -248,6 +274,40 @@ describe("intake atomic conversion", () => {
       .from(schema.requestParticipantTable)
       .where(eq(schema.requestParticipantTable.workItemId, item.id));
     expect(participant?.personId).toBe(person.id);
+    const acceptedEvents = await db
+      .select({ payload: schema.outboxTable.payload })
+      .from(schema.outboxTable)
+      .where(
+        and(
+          eq(schema.outboxTable.kind, "submission.accepted"),
+          eq(schema.outboxTable.organisationId, organisation.id),
+        ),
+      );
+    expect(
+      acceptedEvents.filter(
+        (event) =>
+          (event.payload as { ref?: string }).ref ===
+          `SUB-${submission.number}`,
+      ),
+    ).toHaveLength(1);
+    const claimAudits = await db
+      .select({
+        id: schema.auditLogTable.id,
+        actorId: schema.auditLogTable.actorId,
+        actorType: schema.auditLogTable.actorType,
+      })
+      .from(schema.auditLogTable)
+      .where(
+        and(
+          eq(schema.auditLogTable.action, "submission.claimed"),
+          eq(schema.auditLogTable.entityId, submission.id),
+        ),
+      );
+    expect(claimAudits).toHaveLength(1);
+    expect(claimAudits[0]).toMatchObject({
+      actorId: staff.id,
+      actorType: "person",
+    });
 
     // IQ-7 permits a triager to override the pinned type, but only with a type in the
     // submission workspace. A foreign-workspace id fails closed before any item is made.
@@ -273,7 +333,7 @@ describe("intake atomic conversion", () => {
       acceptSubmission(
         `SUB-${secondSubmission.number}`,
         workspace.id,
-        person.id,
+        staff.id,
         project.id,
         foreignType.id,
       ),
@@ -284,5 +344,152 @@ describe("intake atomic conversion", () => {
       .where(eq(schema.submissionTable.id, secondSubmission.id));
     expect(notConverted?.state).toBe("new");
     expect(notConverted?.workItemId).toBeNull();
+  });
+
+  it("attributes auto-accept conversion to the system while retaining the customer requester", async () => {
+    const { workspace } = await createWorkspaceMember({ role: "admin" });
+    const organisation = requireRow(
+      await db
+        .insert(schema.organisationTable)
+        .values({ key: `customer-${randomUUID()}`, name: "Customer" })
+        .returning(),
+      "organisation",
+    );
+    const customerUser = requireRow(
+      await db
+        .insert(schema.userTable)
+        .values({
+          id: `customer-user-${randomUUID()}`,
+          name: "Portal Requester",
+          email: `${randomUUID()}@example.com`,
+          emailVerified: true,
+        })
+        .returning(),
+      "customer user",
+    );
+    const requester = requireRow(
+      await db
+        .insert(schema.personTable)
+        .values({
+          userId: customerUser.id,
+          organisationId: organisation.id,
+          side: "customer",
+          displayName: "Portal Requester",
+        })
+        .returning(),
+      "requester",
+    );
+    const { project } = await createProjectFixture({
+      workspaceId: workspace.id,
+    });
+    await db
+      .update(schema.projectTable)
+      .set({ organisationId: organisation.id })
+      .where(eq(schema.projectTable.id, project.id));
+    const type = await makeWorkItemType(workspace.id);
+    await makeDefaultState(workspace.id, project.id);
+    const formSchema = {
+      fields: [
+        {
+          key: "summary",
+          type: "text",
+          label: "Summary",
+          required: true,
+          mapsTo: { field: "title" },
+        },
+      ],
+    };
+    const requestType = requireRow(
+      await db
+        .insert(schema.requestTypeTable)
+        .values({
+          workspaceId: workspace.id,
+          key: `auto-${randomUUID()}`,
+          name: "Automatic request",
+          group: "General",
+          workItemTypeId: type.id,
+          defaultProjectId: project.id,
+          formSchema,
+          autoAccept: true,
+          customerVisible: true,
+          published: true,
+        })
+        .returning(),
+      "request type",
+    );
+    await db.insert(schema.requestTypeVersionTable).values({
+      workspaceId: workspace.id,
+      requestTypeId: requestType.id,
+      number: 1,
+      formSchema,
+      workItemTypeId: type.id,
+      defaultProjectId: project.id,
+      autoAccept: true,
+    });
+    await db.insert(schema.organisationRequestTypeTable).values({
+      organisationId: organisation.id,
+      requestTypeId: requestType.id,
+    });
+    await db.insert(schema.instanceFeatureFlagTable).values({
+      featureKey: "feature.intake",
+      enabled: true,
+    });
+
+    const result = await createSubmission({
+      userId: customerUser.id,
+      key: requestType.key,
+      formData: { summary: "Reset access" },
+    });
+    expect(result.state).toBe("accepted");
+    expect(result.workItemId).toBeTruthy();
+    const [item] = await db
+      .select()
+      .from(schema.workItemTable)
+      .where(eq(schema.workItemTable.id, result.workItemId ?? ""));
+    expect(item?.requesterId).toBe(requester.id);
+
+    const ref = `SUB-${result.number}`;
+    const events = await db
+      .select({
+        kind: schema.outboxTable.kind,
+        payload: schema.outboxTable.payload,
+      })
+      .from(schema.outboxTable);
+    const accepted = events
+      .filter((event) => event.kind === "submission.accepted")
+      .map(
+        (event) =>
+          event.payload as { actor?: unknown; payload?: { ref?: string } },
+      )
+      .filter((event) => event.payload?.ref === ref);
+    expect(accepted).toHaveLength(1);
+    expect(accepted[0]?.actor).toEqual({
+      type: "system",
+      id: null,
+      name: "Request type auto-accept",
+    });
+    const workItemCreated = events
+      .filter((event) => event.kind === "work_item.created")
+      .map(
+        (event) =>
+          event.payload as {
+            actor?: unknown;
+            payload?: { requesterId?: string };
+          },
+      )
+      .find((event) => event.payload?.requesterId === requester.id);
+    expect(workItemCreated?.actor).toEqual({
+      type: "system",
+      id: null,
+      name: "Request type auto-accept",
+    });
+    const activity = await db
+      .select({
+        actorId: schema.activityTable.actorId,
+        actorType: schema.activityTable.actorType,
+      })
+      .from(schema.activityTable)
+      .where(eq(schema.activityTable.workItemId, item?.id ?? ""));
+    expect(activity[0]).toMatchObject({ actorId: null, actorType: "system" });
   });
 });

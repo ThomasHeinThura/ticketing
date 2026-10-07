@@ -83,10 +83,11 @@ function PortalSubmissionPage() {
     | {
         submission?: {
           state?: string;
-          claimedBy?: string | null;
           formData?: Record<string, unknown>;
           workItemId?: string | null;
         };
+        canWithdraw?: boolean;
+        workItem?: { key: string; title: string; state: string } | null;
         requestType?: { name?: string };
         version?: {
           formSchema?: {
@@ -107,9 +108,8 @@ function PortalSubmissionPage() {
       }
     | undefined;
   const state = record?.submission?.state;
-  const canWithdraw =
-    (state === "new" || state === "clarifying") &&
-    !record?.submission?.claimedBy;
+  const canWithdraw = record?.canWithdraw === true;
+  const canUpload = state === "new" || state === "clarifying";
   return (
     <main className="mx-auto flex min-h-svh w-full max-w-3xl flex-col gap-6 p-6">
       <header>
@@ -139,21 +139,33 @@ function PortalSubmissionPage() {
       )}
       {record && (
         <>
-          <section className="rounded-md border p-4">
-            <h2 className="font-medium">
-              {t("portal:intake.answers", { defaultValue: "Your answers" })}
-            </h2>
-            <dl className="mt-3 grid gap-2 sm:grid-cols-2">
-              {Object.entries(record.submission?.formData ?? {}).map(
-                ([key, value]) => (
-                  <div key={key}>
-                    <dt className="text-muted-foreground text-sm">{key}</dt>
-                    <dd>{String(value)}</dd>
-                  </div>
-                ),
-              )}
-            </dl>
-          </section>
+          {state === "accepted" && record.workItem ? (
+            <section
+              className="rounded-md border p-4"
+              aria-label="Accepted work item"
+            >
+              <h2 className="font-medium">{record.workItem.title}</h2>
+              <p className="text-muted-foreground">
+                {record.workItem.key} · {record.workItem.state}
+              </p>
+            </section>
+          ) : (
+            <section className="rounded-md border p-4">
+              <h2 className="font-medium">
+                {t("portal:intake.answers", { defaultValue: "Your answers" })}
+              </h2>
+              <dl className="mt-3 grid gap-2 sm:grid-cols-2">
+                {Object.entries(record.submission?.formData ?? {}).map(
+                  ([key, value]) => (
+                    <div key={key}>
+                      <dt className="text-muted-foreground text-sm">{key}</dt>
+                      <dd>{String(value)}</dd>
+                    </div>
+                  ),
+                )}
+              </dl>
+            </section>
+          )}
           {state === "accepted" && (
             <Alert variant="info">
               <AlertDescription>
@@ -232,7 +244,7 @@ function PortalSubmissionPage() {
               </div>
             ))}
             {record.version?.formSchema?.fields
-              ?.filter((field) => field.type === "file" && canWithdraw)
+              ?.filter((field) => field.type === "file" && canUpload)
               .map((field) => (
                 <label
                   className="flex flex-col gap-2"

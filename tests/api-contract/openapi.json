@@ -24863,6 +24863,25 @@
           "Portal submissions"
         ],
         "summary": "List the caller's submissions",
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "maxLength": 2048
+            },
+            "required": false,
+            "name": "cursor",
+            "in": "query"
+          },
+          {
+            "schema": {
+              "type": "string"
+            },
+            "required": false,
+            "name": "limit",
+            "in": "query"
+          }
+        ],
         "responses": {
           "200": {
             "description": "Submissions",
@@ -24873,11 +24892,69 @@
                   "properties": {
                     "submissions": {
                       "type": "array",
-                      "items": {}
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "ref": {
+                            "type": "string"
+                          },
+                          "state": {
+                            "type": "string"
+                          },
+                          "createdAt": {
+                            "type": "string",
+                            "format": "date-time"
+                          },
+                          "customerVisibility": {
+                            "type": "string"
+                          },
+                          "requestTypeName": {
+                            "type": "string"
+                          }
+                        },
+                        "required": [
+                          "ref",
+                          "state",
+                          "createdAt",
+                          "customerVisibility",
+                          "requestTypeName"
+                        ]
+                      }
+                    },
+                    "page": {
+                      "type": "object",
+                      "properties": {
+                        "nextCursor": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "hasMore": {
+                          "type": "boolean"
+                        }
+                      },
+                      "required": [
+                        "nextCursor",
+                        "hasMore"
+                      ]
+                    },
+                    "meta": {
+                      "type": "object",
+                      "properties": {
+                        "total": {
+                          "type": "number"
+                        }
+                      },
+                      "required": [
+                        "total"
+                      ]
                     }
                   },
                   "required": [
-                    "submissions"
+                    "submissions",
+                    "page",
+                    "meta"
                   ]
                 }
               }
@@ -24922,6 +24999,23 @@
             "required": false,
             "name": "state",
             "in": "query"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "maxLength": 2048
+            },
+            "required": false,
+            "name": "cursor",
+            "in": "query"
+          },
+          {
+            "schema": {
+              "type": "string"
+            },
+            "required": false,
+            "name": "limit",
+            "in": "query"
           }
         ],
         "responses": {
@@ -24935,10 +25029,41 @@
                     "submissions": {
                       "type": "array",
                       "items": {}
+                    },
+                    "page": {
+                      "type": "object",
+                      "properties": {
+                        "nextCursor": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "hasMore": {
+                          "type": "boolean"
+                        }
+                      },
+                      "required": [
+                        "nextCursor",
+                        "hasMore"
+                      ]
+                    },
+                    "meta": {
+                      "type": "object",
+                      "properties": {
+                        "total": {
+                          "type": "number"
+                        }
+                      },
+                      "required": [
+                        "total"
+                      ]
                     }
                   },
                   "required": [
-                    "submissions"
+                    "submissions",
+                    "page",
+                    "meta"
                   ]
                 }
               }
@@ -25587,18 +25712,135 @@
                 "schema": {
                   "type": "object",
                   "properties": {
-                    "submission": {},
-                    "requestType": {},
-                    "version": {},
+                    "ref": {
+                      "type": "string"
+                    },
+                    "submission": {
+                      "type": "object",
+                      "properties": {
+                        "state": {
+                          "type": "string"
+                        },
+                        "formData": {
+                          "type": "object",
+                          "additionalProperties": {}
+                        },
+                        "customerVisibility": {
+                          "type": "string"
+                        },
+                        "createdAt": {
+                          "type": "string",
+                          "format": "date-time"
+                        }
+                      },
+                      "required": [
+                        "state",
+                        "formData",
+                        "customerVisibility",
+                        "createdAt"
+                      ]
+                    },
+                    "canWithdraw": {
+                      "type": "boolean"
+                    },
+                    "requestType": {
+                      "type": "object",
+                      "properties": {
+                        "name": {
+                          "type": "string"
+                        },
+                        "description": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "icon": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "group": {
+                          "type": "string"
+                        }
+                      },
+                      "required": [
+                        "name",
+                        "description",
+                        "icon",
+                        "group"
+                      ]
+                    },
+                    "version": {
+                      "type": "object",
+                      "properties": {
+                        "formSchema": {
+                          "type": "object",
+                          "properties": {
+                            "fields": {
+                              "type": "array",
+                              "items": {
+                                "type": "object",
+                                "properties": {
+                                  "key": {
+                                    "type": "string"
+                                  },
+                                  "type": {
+                                    "type": "string"
+                                  },
+                                  "label": {
+                                    "type": "string"
+                                  },
+                                  "multiple": {
+                                    "type": "boolean"
+                                  }
+                                },
+                                "required": [
+                                  "key",
+                                  "type",
+                                  "label"
+                                ]
+                              }
+                            }
+                          },
+                          "required": [
+                            "fields"
+                          ]
+                        }
+                      },
+                      "required": [
+                        "formSchema"
+                      ]
+                    },
+                    "workItem": {
+                      "type": [
+                        "object",
+                        "null"
+                      ],
+                      "properties": {
+                        "key": {
+                          "type": "string"
+                        },
+                        "title": {
+                          "type": "string"
+                        },
+                        "state": {
+                          "type": "string"
+                        }
+                      },
+                      "required": [
+                        "key",
+                        "title",
+                        "state"
+                      ]
+                    },
                     "messages": {
                       "type": "array",
                       "items": {
                         "type": "object",
                         "properties": {
                           "id": {
-                            "type": "string"
-                          },
-                          "authorId": {
                             "type": "string"
                           },
                           "actorType": {
@@ -25614,20 +25856,21 @@
                         },
                         "required": [
                           "id",
-                          "authorId",
                           "actorType",
                           "body",
                           "createdAt"
                         ]
                       }
-                    },
-                    "ref": {
-                      "type": "string"
                     }
                   },
                   "required": [
-                    "messages",
-                    "ref"
+                    "ref",
+                    "submission",
+                    "canWithdraw",
+                    "requestType",
+                    "version",
+                    "workItem",
+                    "messages"
                   ]
                 }
               }

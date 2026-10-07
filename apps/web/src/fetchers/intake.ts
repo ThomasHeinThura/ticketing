@@ -1,6 +1,10 @@
 import { client } from "@taskdesk/libs";
 
-export async function getSubmissions(workspaceId: string, state?: string) {
+export async function getSubmissions(
+  workspaceId: string,
+  state?: string,
+  cursor?: string,
+) {
   const response = await client.submissions.$get({
     query: {
       workspaceId,
@@ -15,6 +19,8 @@ export async function getSubmissions(workspaceId: string, state?: string) {
               | "withdrawn",
           }
         : {}),
+      ...(cursor ? { cursor } : {}),
+      limit: "50",
     },
   });
   if (!response.ok)

@@ -1,3 +1,37 @@
+### 2026-10-07 · Auto-accept actor attribution for intake acceptance
+
+**Decision:** Thomas explicitly approves auto-accept attribution as a `system` action with no
+person actor id and display name `Request type auto-accept`; the customer remains the
+requester and initiator. Manual acceptance retains the actual staff actor id and name. Use the
+existing outbox actor shape (`type: "system"`, `id: null`, `name: "Request type auto-accept"`);
+do not invent a job or automation key. Canonical behavior is recorded in `RT-15`, `IQ-4`, and
+the audit actor contract before source changes.
+
+This settles attribution only. It adds no event key, actor identifier, or phase/merge claim.
+
+**Approval:** Thomas explicitly approved this rule in the PR #598 bulk-remediation task,
+2026-10-07.
+
+**Recorded:** orchestrator, 2026-10-07.
+
+### 2026-10-07 · Register request-type and intake triage audit actions
+
+**Decision:** Thomas approves the audit-only actions `request_type.created`,
+`request_type.updated`, `request_type.published`, `request_type.unpublished`,
+`request_type.deleted`, `submission.claimed`, and `submission.duplicate`. These actions are
+registered in the audit-trail catalogue and written in the same transaction as their
+mutation. They do not add domain events or outbox rows. Existing `submission.accepted`
+continues to be emitted by the shared conversion path for both manual and auto-accept.
+
+This resolves only the canonical vocabulary gap identified during PR #598 bulk remediation.
+It does not clear the custom-field mapping hold, the required-file serialization contract,
+the review ledger, independent review, or any P2 acceptance gate.
+
+**Approval:** Thomas explicitly approved the exact actions and no-new-event boundary in this
+task, 2026-10-07.
+
+**Recorded:** orchestrator, 2026-10-07.
+
 ### 2026-10-06 · Keep self-only personal writes session-only until explicit API-key scopes exist
 
 **Decision:** Thomas explicitly approves “Make self writes session-only (recommended)” for

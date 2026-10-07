@@ -21,6 +21,7 @@ import {
   createSubmission,
   declineSubmission,
   deleteRequestType,
+  findPortalSubmission,
   findSubmission,
   getRequestType,
   listOwnSubmissions,
@@ -97,6 +98,59 @@ const submissionResponseSchema = z.object({
   messages: z.array(submissionMessageSchema),
   ref: z.string(),
 });
+const portalSubmissionResponseSchema = z.object({
+  ref: z.string(),
+  submission: z.object({
+    state: z.string(),
+    formData: z.record(z.string(), z.unknown()),
+    customerVisibility: z.string(),
+    createdAt: z.string().datetime(),
+  }),
+  canWithdraw: z.boolean(),
+  requestType: z.object({
+    name: z.string(),
+    description: z.string().nullable(),
+    icon: z.string().nullable(),
+    group: z.string(),
+  }),
+  version: z.object({
+    formSchema: z.object({
+      fields: z.array(
+        z.object({
+          key: z.string(),
+          type: z.string(),
+          label: z.string(),
+
+          multiple: z.boolean().optional(),
+        }),
+      ),
+    }),
+  }),
+  workItem: z
+    .object({ key: z.string(), title: z.string(), state: z.string() })
+    .nullable(),
+  messages: z.array(
+    z.object({
+      id: z.string(),
+      actorType: z.string(),
+      body: z.string(),
+      createdAt: z.string().datetime(),
+    }),
+  ),
+});
+const portalSubmissionListResponseSchema = z.object({
+  submissions: z.array(
+    z.object({
+      ref: z.string(),
+      state: z.string(),
+      createdAt: z.string().datetime(),
+      customerVisibility: z.string(),
+      requestTypeName: z.string(),
+    }),
+  ),
+  page: z.object({ nextCursor: z.string().nullable(), hasMore: z.boolean() }),
+  meta: z.object({ total: z.number() }),
+});
 const createdSubmissionSchema = z.object({
   id: z.string(),
   number: z.number(),
@@ -115,11 +169,27 @@ const queryList = workspaceQuery.extend({
       "withdrawn",
     ])
     .optional(),
+  cursor: z.string().max(2048).optional(),
+  limit: z.string().optional(),
+});
+const portalListQuery = z.object({
+  cursor: z.string().max(2048).optional(),
+  limit: z.string().optional(),
 });
 const searchQuery = z.object({ q: z.string().trim().max(200).default("") });
 
 function notFound(message: string): never {
   throw new HTTPException(404, { message });
+}
+
+function parseCollectionLimit(value?: string) {
+  if (value === undefined) return 50;
+  const limit = Number(value);
+  if (!Number.isInteger(limit) || limit < 1 || limit > 200)
+    throw new HTTPException(400, {
+      message: "Limit must be an integer from 1 to 200",
+    });
+  return limit;
 }
 
 function requestTypeResponse(
@@ -476,7 +546,14 @@ const listSubmissionsRoute = createRoute({
   responses: {
     200: jsonResponse(
       "Submission queue",
-      z.object({ submissions: z.array(z.unknown()) }),
+      z.object({
+        submissions: z.array(z.unknown()),
+        page: z.object({
+          nextCursor: z.string().nullable(),
+          hasMore: z.boolean(),
+        }),
+        meta: z.object({ total: z.number() }),
+      }),
     ),
     403: errorResponse("Missing triage capability"),
   },
@@ -678,12 +755,9 @@ const portalListRoute = createRoute({
   tags: ["Portal submissions"],
   summary: "List the caller's submissions",
   middleware: [portalOrganisation] as const,
-  request: {},
+  request: { query: portalListQuery },
   responses: {
-    200: jsonResponse(
-      "Submissions",
-      z.object({ submissions: z.array(z.unknown()) }),
-    ),
+    200: jsonResponse("Submissions", portalSubmissionListResponseSchema),
   },
 });
 const portalDetailRoute = createRoute({
@@ -695,7 +769,7 @@ const portalDetailRoute = createRoute({
   middleware: [portalOwnSubmission] as const,
   request: { params: submissionRefParam },
   responses: {
-    200: jsonResponse("Submission page", submissionResponseSchema),
+    200: jsonResponse("Submission page", portalSubmissionResponseSchema),
     404: errorResponse("Submission not found"),
   },
 });
@@ -743,7 +817,7 @@ const withdrawRoute = createRoute({
   },
 });
 
-const router = apiRouter<IntakeVariables>()
+const requestTypeRouter = apiRouter<IntakeVariables>()
   .openapi(listRoute, async (c) =>
     c.json(
       {
@@ -757,10 +831,13 @@ const router = apiRouter<IntakeVariables>()
   .openapi(createRouteDef, async (c) =>
     c.json(
       requestTypeResponse(
-        await createRequestType({
-          ...c.req.valid("json"),
-          workspaceId: c.req.valid("query").workspaceId,
-        } as Parameters<typeof createRequestType>[0]),
+        await createRequestType(
+          {
+            ...c.req.valid("json"),
+            workspaceId: c.req.valid("query").workspaceId,
+          } as Parameters<typeof createRequestType>[0],
+          c.get("userId"),
+        ),
       ),
       200,
     ),
@@ -780,13 +857,17 @@ const router = apiRouter<IntakeVariables>()
           c.req.valid("param").id,
           body as Parameters<typeof updateRequestType>[1],
           version,
+          c.get("userId"),
         ),
       ),
       200,
     );
   })
   .openapi(publishRoute, async (c) => {
-    const published = await publishRequestType(c.req.valid("param").id);
+    const published = await publishRequestType(
+      c.req.valid("param").id,
+      c.get("userId"),
+    );
     return c.json(
       {
         requestType: requestTypeResponse(published.requestType),
@@ -798,13 +879,20 @@ const router = apiRouter<IntakeVariables>()
   .openapi(unpublishRoute, async (c) =>
     c.json(
       requestTypeResponse(
-        await setRequestTypePublished(c.req.valid("param").id, false),
+        await setRequestTypePublished(
+          c.req.valid("param").id,
+          false,
+          c.get("userId"),
+        ),
       ),
       200,
     ),
   )
   .openapi(deleteRoute, async (c) =>
-    c.json(await deleteRequestType(c.req.valid("param").id), 200),
+    c.json(
+      await deleteRequestType(c.req.valid("param").id, c.get("userId")),
+      200,
+    ),
   )
   .openapi(catalogueRoute, async (c) => {
     const identity = await portalIdentity(c.get("userId"));
@@ -864,20 +952,21 @@ const router = apiRouter<IntakeVariables>()
       await createSubmission({ userId: c.get("userId"), ...body }),
       200,
     );
-  })
-  .openapi(listSubmissionsRoute, async (c) =>
-    c.json(
-      {
-        submissions: await listSubmissions(
-          c.req.valid("query").workspaceId,
-          c.req.valid("query").state
-            ? [c.req.valid("query").state as string]
-            : undefined,
-        ),
-      },
+  });
+
+const intakeSubmissionRouter = apiRouter<IntakeVariables>()
+  .openapi(listSubmissionsRoute, async (c) => {
+    const query = c.req.valid("query");
+    return c.json(
+      await listSubmissions(
+        query.workspaceId,
+        query.state ? [query.state] : undefined,
+        query.cursor,
+        parseCollectionLimit(query.limit),
+      ),
       200,
-    ),
-  )
+    );
+  })
   .openapi(submissionDetailRoute, async (c) =>
     c.json(
       await findSubmission(c.req.valid("param").ref, c.get("workspaceId")),
@@ -905,7 +994,9 @@ const router = apiRouter<IntakeVariables>()
       ),
       200,
     ),
-  )
+  );
+
+const triageActionRouter = apiRouter<IntakeVariables>()
   .openapi(duplicateRoute, async (c) =>
     c.json(
       await markSubmissionDuplicate(
@@ -950,22 +1041,49 @@ const router = apiRouter<IntakeVariables>()
       }),
       200,
     ),
-  )
-  .openapi(portalListRoute, async (c) =>
-    c.json({ submissions: await listOwnSubmissions(c.get("userId")) }, 200),
-  )
-  .openapi(portalDetailRoute, async (c) => {
-    const identity = await portalIdentity(c.get("userId"));
+  );
+
+const portalSubmissionRouter = apiRouter<IntakeVariables>().openapi(
+  portalListRoute,
+  async (c) => {
+    const query = c.req.valid("query");
+    const result = await listOwnSubmissions(
+      c.get("userId"),
+      query.cursor,
+      parseCollectionLimit(query.limit),
+    );
     return c.json(
-      await findSubmission(
-        c.req.valid("param").ref,
-        undefined,
-        identity.personId,
-      ),
+      {
+        ...result,
+        submissions: result.submissions.map(
+          ({ submission, requestType, ref }) => ({
+            ref,
+            state: submission.state,
+            createdAt: submission.createdAt.toISOString(),
+            customerVisibility: submission.customerVisibility,
+            requestTypeName: requestType.name,
+          }),
+        ),
+      },
       200,
     );
-  })
-  .openapi(portalMessageRoute, async (c) => {
+  },
+);
+
+const portalDetailRouter = apiRouter<IntakeVariables>().openapi(
+  portalDetailRoute,
+  async (c) => {
+    const identity = await portalIdentity(c.get("userId"));
+    return c.json(
+      await findPortalSubmission(c.req.valid("param").ref, identity.personId),
+      200,
+    );
+  },
+);
+
+const portalMessageRouter = apiRouter<IntakeVariables>().openapi(
+  portalMessageRoute,
+  async (c) => {
     const identity = await portalIdentity(c.get("userId"));
     return c.json(
       await postSubmissionMessage({
@@ -977,13 +1095,26 @@ const router = apiRouter<IntakeVariables>()
       }),
       200,
     );
-  })
-  .openapi(withdrawRoute, async (c) => {
+  },
+);
+
+const portalWithdrawRouter = apiRouter<IntakeVariables>().openapi(
+  withdrawRoute,
+  async (c) => {
     const identity = await portalIdentity(c.get("userId"));
     return c.json(
       await withdrawSubmission(c.req.valid("param").ref, identity.personId),
       200,
     );
-  });
+  },
+);
+
+const router = requestTypeRouter
+  .route("/", intakeSubmissionRouter)
+  .route("/", triageActionRouter)
+  .route("/", portalSubmissionRouter)
+  .route("/", portalDetailRouter)
+  .route("/", portalMessageRouter)
+  .route("/", portalWithdrawRouter);
 
 export default router;

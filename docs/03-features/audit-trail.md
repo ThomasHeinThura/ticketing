@@ -239,6 +239,9 @@ them; a new audit-only action is added here first ([AGENTS.md](../../AGENTS.md) 
 | `sla_policy.created` | SLA policy created; record only `policyId` and its initial `versionId` as safe identifiers. The raw policy body is never audited. |
 | `sla_policy.updated` | SLA policy draft changed; record `policyId`, `versionId`, a closed `changedFields` list (`name`, `description`, `calendarId`, `atRiskThresholdPct`, `goals`), and only the safe scalar values `calendarId` and `atRiskThresholdPct` when changed. Never record names/descriptions, goal matrices, or a raw request body. Published versions are immutable; an edit creates or updates a draft version and never rewrites a published one. |
 | `sla_policy.published` | SLA policy version published; record `policyId`, `versionId`, prior active version id when present, and the canonical `effectiveFrom` scalar. A publish never mutates an already-published version. |
+| `request_type.created` · `request_type.updated` · `request_type.published` · `request_type.unpublished` · `request_type.deleted` | Request-type lifecycle. Record safe request type/workspace identifiers and a closed changed-field list; never store the form schema, labels, customer answers, or raw request body. Audit-only; no outbox event. |
+| `submission.claimed` | A triager claims a submission; record submission reference and the actor id. Audit-only; no outbox event. |
+| `submission.duplicate` | A triager links a submission to a same-organisation work item; record submission reference and linked work-item id/key. Audit-only; no outbox event. |
 | `invitation.sent` · `invitation.redeemed` · `invitation.revoked` | Invitations |
 | `plugin.changed` · `plugin.tested` · `secrets.rekeyed` | Plugin configuration (keys only, never values), a `test()` call even when unsaved, key rotation |
 | `feature_flag.changed` | Any level |

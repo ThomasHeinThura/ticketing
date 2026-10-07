@@ -7,6 +7,25 @@ const id = z
   .refine((value) => !value.includes("\u0000"));
 
 export const workspaceQuery = z.object({ workspaceId: id });
+export const submissionListQuery = z.object({
+  workspaceId: id,
+  state: z
+    .enum([
+      "new",
+      "clarifying",
+      "accepted",
+      "declined",
+      "duplicate",
+      "withdrawn",
+    ])
+    .optional(),
+  cursor: z.string().max(2048).optional(),
+  limit: z.coerce.number().int().min(1).max(200).default(50),
+});
+export const portalSubmissionListQuery = z.object({
+  cursor: z.string().max(2048).optional(),
+  limit: z.coerce.number().int().min(1).max(200).default(50),
+});
 export const requestTypeIdParam = z.object({ id });
 export const requestTypeKeyParam = z.object({ key: id });
 export const submissionRefParam = z.object({

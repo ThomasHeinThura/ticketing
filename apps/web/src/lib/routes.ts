@@ -143,7 +143,18 @@ export type IntakeQueueSearch = {
     | "duplicate"
     | "withdrawn";
   ref?: string;
+  cursor?: string;
 };
+export type RequestTypeEditorSearch = { requestTypeId?: string };
+export function parseRequestTypeEditorSearch(
+  raw: unknown,
+): RequestTypeEditorSearch {
+  const value = (raw ?? {}) as Record<string, unknown>;
+  return typeof value.requestTypeId === "string" &&
+    value.requestTypeId.length <= 200
+    ? { requestTypeId: value.requestTypeId }
+    : {};
+}
 export type PortalCatalogueSearch = { q?: string; key?: string };
 
 export function parseIntakeSearch(raw: unknown): IntakeQueueSearch {
@@ -161,7 +172,11 @@ export function parseIntakeSearch(raw: unknown): IntakeQueueSearch {
     typeof value.ref === "string" && /^SUB-[1-9]\d{0,9}$/u.test(value.ref)
       ? value.ref
       : undefined;
-  return { state, ...(ref ? { ref } : {}) };
+  const cursor =
+    typeof value.cursor === "string" && value.cursor.length <= 2048
+      ? value.cursor
+      : undefined;
+  return { state, ...(ref ? { ref } : {}), ...(cursor ? { cursor } : {}) };
 }
 
 export function parsePortalCatalogueSearch(
@@ -381,7 +396,12 @@ export function toggleWorkItemSortDirection(
 export const routes = {
   requestTypes: {
     path: "/agent/settings/request-types" as const,
-    build: () => "/agent/settings/request-types",
+    build: (search: RequestTypeEditorSearch = {}) => {
+      const resolved = parseRequestTypeEditorSearch(search);
+      return resolved.requestTypeId
+        ? `/agent/settings/request-types?requestTypeId=${encodeURIComponent(resolved.requestTypeId)}`
+        : "/agent/settings/request-types";
+    },
   },
   /** `docs/02-design/screen-inventory.md` intake queue; filters and selected submission are URL state. */
   intakeQueue: {
@@ -390,6 +410,7 @@ export const routes = {
       const resolved = parseIntakeSearch(search);
       const query = new URLSearchParams({ state: resolved.state });
       if (resolved.ref) query.set("ref", resolved.ref);
+      if (resolved.cursor) query.set("cursor", resolved.cursor);
       return `/agent/triage?${query.toString()}`;
     },
   },

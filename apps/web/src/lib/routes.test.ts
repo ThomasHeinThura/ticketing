@@ -261,6 +261,19 @@ describe("routes.intakeQueue", () => {
     expect(parsed).toEqual({ state: "clarifying", ref: "SUB-42" });
   });
 
+  it("round-trips the selected queue cursor", () => {
+    const url = routes.intakeQueue.build({
+      state: "new",
+      cursor: "opaque.cursor",
+    });
+    expect(url).toBe("/agent/triage?state=new&cursor=opaque.cursor");
+    expect(
+      parseIntakeSearch(
+        Object.fromEntries(new URLSearchParams(url.split("?")[1])),
+      ),
+    ).toEqual({ state: "new", cursor: "opaque.cursor" });
+  });
+
   it("fails closed to the new queue for malformed filter values", () => {
     expect(parseIntakeSearch({ state: "all", ref: "SUB-0" })).toEqual({
       state: "new",
@@ -271,6 +284,9 @@ describe("routes.intakeQueue", () => {
 describe("routes.requestTypes and portalCatalogue", () => {
   it("keeps request type administration registered and round-trips customer catalogue search and selection", () => {
     expect(routes.requestTypes.build()).toBe("/agent/settings/request-types");
+    expect(routes.requestTypes.build({ requestTypeId: "rt_1" })).toBe(
+      "/agent/settings/request-types?requestTypeId=rt_1",
+    );
     expect(generatedRouteMetadata.agent).toContain(routes.requestTypes.path);
     const url = routes.portalCatalogue.build({
       q: "access / laptop",

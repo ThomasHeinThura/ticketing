@@ -42,7 +42,7 @@ function IntakeRoute() {
     workspaceId: workspace.data?.id,
   });
   const projects = useGetProjects({ workspaceId: workspace.data?.id ?? "" });
-  const { state, ref } = Route.useSearch();
+  const { state, ref, cursor } = Route.useSearch();
   const navigate = useNavigate({ from: Route.fullPath });
   const cache = useQueryClient();
   const [projectId, setProjectId] = useState("");
@@ -50,8 +50,8 @@ function IntakeRoute() {
   const [declineReason, setDeclineReason] = useState("");
   const [message, setMessage] = useState("");
   const queue = useQuery({
-    queryKey: ["intake", workspace.data?.id, state],
-    queryFn: () => getSubmissions(workspace.data?.id ?? "", state),
+    queryKey: ["intake", workspace.data?.id, state, cursor],
+    queryFn: () => getSubmissions(workspace.data?.id ?? "", state, cursor),
     enabled: Boolean(workspace.data?.id),
   });
   const detail = useQuery({
@@ -182,7 +182,13 @@ function IntakeRoute() {
             key={value}
             variant={state === value ? "default" : "outline"}
             onClick={() =>
-              void navigate({ search: { state: value as typeof state, ref } })
+              void navigate({
+                search: {
+                  state: value as typeof state,
+                  ref,
+                  cursor: undefined,
+                },
+              })
             }
           >
             {value}
@@ -225,6 +231,18 @@ function IntakeRoute() {
             </li>
           ))}
         </ul>
+      )}
+      {queue.data?.page?.hasMore && (
+        <Button
+          variant="outline"
+          onClick={() =>
+            void navigate({
+              search: { state, ref, cursor: queue.data?.page.nextCursor },
+            })
+          }
+        >
+          {t("nextPage", { defaultValue: "Next page" })}
+        </Button>
       )}
       {ref && (
         <section

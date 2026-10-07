@@ -11,6 +11,7 @@ export type WorkItemEventInput = {
   projectId: string;
   actorId: string | null;
   actorType: ActivityActorType;
+  actorName?: string;
   payload: Record<string, unknown>;
   customerVisible: boolean;
   occurredAt?: Date;
@@ -29,7 +30,9 @@ export async function recordWorkItemEvent(
     actor: {
       type: input.actorType === "api_key" ? "api_key" : input.actorType,
       id: input.actorId,
-      name: input.actorType === "api_key" ? "API key actor" : "TaskDesk actor",
+      name:
+        input.actorName ??
+        (input.actorType === "api_key" ? "API key actor" : "TaskDesk actor"),
     },
     scope: {
       workspaceId: input.workspaceId,

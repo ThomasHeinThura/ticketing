@@ -1217,6 +1217,11 @@ describe("P0 #557: real Node HTTP and WebSocket adapter", () => {
         workspaceId: member.workspace.id,
         projectId: project.project.id,
       },
+      actor: {
+        type: "person",
+        id: member.user.id,
+        name: "TaskDesk actor",
+      },
       payload: input.payload,
     });
   });
