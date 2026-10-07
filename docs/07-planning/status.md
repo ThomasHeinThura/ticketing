@@ -1,3 +1,38 @@
+## Status first — verified 2026-10-07 20:27 UTC (8 October MMT)
+
+**Accepted main:** `3096cb044bdf6ae98488bfc385f532fa6386343a`. **Persistent OrbStack DEV:** revision `08842235047a3ab2714427edce80331b94558150`, image `sha256:75b153d7d9583993127e1be8c06453159e4fe7319abfcd8431f093c9ca002bcf`, running as taskdesk. Rechecked live; no protected merge, persistent deployment, release, strict cutover or phase finalizer occurred.
+
+| Stage | Formal status |
+| --- | --- |
+| P0 | Open — isolated #602; performance, final runtime and acceptance gates remain |
+| P1 | Open — core/views/attachments matured independently; integrated acceptance pending |
+| P2 | Open — approvals/intake/SLA implemented in later lanes; two intake contracts pending |
+| P3 | Open — identity/portal lanes; real-provider and integrated acceptance pending |
+| P4 | Open — governance/outbox/query ownership lanes; integrated acceptance pending |
+| P5–P7 | Open — no completion claim |
+
+**P0 closure:** #602 exact head `10034a893b83ef0eba1d801b77d6e81f1e5a0e2e` is a review-note-only descendant of CI source `6510d552d489c4126e4d819f9f9c9aea1e923dcb`; production UI remains `4459af21`. #599 attachment source stays excluded. The mirror installation correction preserves benchmark/product/budgets/fixtures/browser/retries. Its sole Luna blocker (sudo in the root visual container) was fixed as one executor-aware batch; fresh full independent GPT-6 Sol review on 651 is CLEAR, with parser/job/visual-scope checks. The known-mechanism review tier closed under AGENTS.md's structural rule; no new Luna verdict is fabricated. No FINAL_P0_SHA is frozen.
+
+Completed full run **37676234529** on 651 passed PostgreSQL **137 files / 1659 tests**, G4, G8 and protected-route E2E. G11 remains **19/22**: list **533.6/500 ms**, LCP **2588/2500 ms**, board **713.3/500 ms** failed. Hosted checkout `84edae007776a0d0499564fb40fa02ec32a5a1e1` has the same complete tree `8ae50bd66ee3f1e0a68d78e1c0259a14696dbfb6` as 651. Historical results remain source-bound; current-note-head checks do not inherit a green full-suite claim.
+
+The separate board-preload experiment `d0fd4729a1bdbc211becd489d9c9df2576680a18` completed full run **37677764081**: PostgreSQL **137/1659**, G4/G8/E2E passed; G11 **20/22**, LCP **2552/2500** and board **652.6/500** failed. It is not composed into #602 or accepted. A narrower static-metadata rendering experiment `2740fd4725512c22cb24f3650f63959d765cf3d5` is pushed on the same isolated experiment branch: only rows containing existing 22px noninteractive chips can skip offscreen rendering; PR buttons retain natural geometry. Author reports focused tests/types/both builds/bundles passed; hosted **37681292471** and actual varied-layout browser verification remain in progress. No threshold, fixture, workload, retry or assertion is weakened. Accepted #579's historical **22/22** remains the comparison reference.
+
+**Private testing users:** frozen V16 and its producer/execution overlays received independent Luna/full Sol/delta clearance. The latest execution-path correction compiles commands from a bound manifest rather than hand-copying version paths; fresh independent Sol structural delta is CLEAR, with eight offline tests and strict types passed. The actual fresh disposable run on pinned #589 source `2350397b18f83ed417bf63d73970daacdbaae49c` passed **4 native files / 39 tests** and generated all **eight** roles with expected scopes: instance_admin, owner, admin, manager, lead, member, viewer, customer.
+
+Actual API proof is **17 passed / 2 failed / 4 blocked**, accounting for all **23 outcomes**. Customer sign-in returned 403; the no-membership admin control got the expected 403 but failed its response/postcheck invariant, so the owner grant and downstream fixture were blocked. These are being adjudicated against the canonical contract before any behavior change. No all-role API acceptance is claimed. Actual cleanup at **20:25:20 UTC** passed: owned API/PG resources, data and temporary credentials removed; global resource sets, ports and clean pinned source preserved. Private seeder source/passwords/tokens/credential Markdown/database URLs remain outside Git/GitHub. No persistent DEV test users were created.
+
+**P1–P4 integration:** historical #589 remains pinned and separate; its scoped mocked-API browser batch passed **15/15**. Recreate the final train from accepted post-P0 main with one migration ledger. P4 leaf #603 `9ed99f24` records independent Luna and lightweight Sol CLEAR for source `eaa516a1`; query/diff checks passed, reviewer runtime count zero, author four focused tests and nine-package types passed. Inherited integrated OpenAPI/G8/G11 failures and runtime/image gates prevent merge; it never enters P0. #598 `3fecb75` retains historical PostgreSQL **155/1807**; required-file draft/final-submit and explicit custom-field mapping contracts remain pending.
+
+**Blocking gates / active findings:** real hosted G11 failures; exact-head required CI/reviews; frozen exact image, installer, migration, upgrade and rollback proof; reversible strict authorization runtime proof; independent Oct 4/5/6 observation compatibility; protected merge and fresh GPT-6.1 Sol phase finalizer. #8/#592/#593 remain open. No calendar-based closure or automatic observation reuse is authorized.
+
+**Critical path:** (1) retain only a proven net-positive performance batch; (2) freeze one P0 SHA and pass unchanged hosted 22/22 plus all exact-head gates; (3) exact installer/image/rollback and authorization proof; (4) observation compatibility; (5) protected merge and fresh phase finalizer.
+
+**Misalignment / action:** keep #599 and historical mixed #589 out of P0; preserve failed experiments and reject net-negative source; resolve private fixture/operator defects structurally. **Thomas decisions:** only the two already-pending P2 contracts; P0 does not wait on them. **Next merge candidates:** none currently eligible; #602 first after its actual blockers clear, then accepted-main recomposition of mature later slices.
+
+Historical snapshots below preserve their original identities and outcomes.
+
+---
+
 ## Status first — verified 2026-10-07 19:33 UTC
 
 **Accepted main:** `3096cb044bdf6ae98488bfc385f532fa6386343a`. **Persistent DEV:** revision `08842235047a3ab2714427edce80331b94558150`, image `sha256:75b153d7d9583993127e1be8c06453159e4fe7319abfcd8431f093c9ca002bcf`, container running as taskdesk. These identities were rechecked live. No protected merge, persistent deployment, release, strict cutover or finalizer occurred.
