@@ -791,8 +791,8 @@ describe("explicit test-user seed batch", () => {
         );
         if (credential.authentication === "local_password") {
           expect(account?.providerId).toBe("credential");
-          expect(account?.password).toBeTruthy();
-          expect(credential.password).toBeTruthy();
+          expect(Boolean(account?.password)).toBe(true);
+          expect(Boolean(credential.password)).toBe(true);
           expect(
             await bcrypt.compare(
               credential.password ?? "",
@@ -897,7 +897,9 @@ describe("explicit test-user seed batch", () => {
 
       const secondSummary = await seedTestUsers(databaseName, args);
       expect(secondSummary).toBe(firstSummary);
-      expect(await readFile(credentialFile)).toEqual(credentialBytes);
+      expect((await readFile(credentialFile)).equals(credentialBytes)).toBe(
+        true,
+      );
       expect(
         await db
           .select()
@@ -981,7 +983,7 @@ describe("explicit test-user seed batch", () => {
         ({ role }) => role === "customer",
       );
       expect(customerCredential?.authentication).toBe("local_password");
-      expect(customerCredential?.password).toBeTruthy();
+      expect(Boolean(customerCredential?.password)).toBe(true);
       const customerUserId = "taskdesk-test-user-customer";
       const [portalIdentityRow] =
         await getCustomerPortalIdentityRow(customerUserId);
