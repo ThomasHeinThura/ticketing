@@ -1,5 +1,5 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { Button, Input, Skeleton } from "@taskdesk/ui";
+import { Button, Skeleton } from "@taskdesk/ui";
 import { saveAs } from "file-saver";
 import { Download, Loader2 } from "lucide-react";
 import {
@@ -13,6 +13,7 @@ import {
 } from "react";
 import { useTranslation } from "react-i18next";
 import PageTitle from "@/components/page-title";
+import WorkItemFilterEditor from "@/components/work-item/work-item-filter-editor";
 import WorkItemListLoading from "@/components/work-item/work-item-list-loading";
 import { exportWorkItems } from "@/fetchers/work-item/export-work-items";
 import type { WorkItemsResult } from "@/fetchers/work-item/get-work-items";
@@ -20,6 +21,7 @@ import useGetProjects from "@/hooks/queries/project/use-get-projects";
 import useGetWorkItems from "@/hooks/queries/work-item/use-get-work-items";
 import useActiveWorkspace from "@/hooks/queries/workspace/use-active-workspace";
 import type { WorkItemRealtimeStatus } from "@/hooks/use-native-work-item-realtime";
+import { HttpError } from "@/lib/http-error";
 import { toast } from "@/lib/toast";
 
 type WorkItemsPanelModule =
@@ -105,11 +107,13 @@ function WorkItemsRouteComponent() {
 
 function ProjectWorkItemsRoute({ projectKey }: { projectKey: string }) {
   const { t } = useTranslation();
-  const { sort, dir, filter } = Route.useSearch();
+  const { sort, dir, filter, filterMode, columns } = Route.useSearch();
+  const activeSort = sort ?? "key";
+  const activeDir = dir ?? "asc";
+  const querySort = sort && dir ? [{ field: sort, order: dir }] : undefined;
   const navigate = Route.useNavigate();
   const [isCreateOpen, setIsCreateOpen] = useState(false);
   const [isExporting, setIsExporting] = useState(false);
-  const [filterDraft, setFilterDraft] = useState(filter ?? "");
   const [isCreateDialogReady, setIsCreateDialogReady] = useState(false);
   const [isCreateDialogLoadError, setIsCreateDialogLoadError] = useState(false);
   const [createIntentProjectContext, setCreateIntentProjectContext] =
@@ -201,21 +205,23 @@ function ProjectWorkItemsRoute({ projectKey }: { projectKey: string }) {
     data: workItemsResult,
     isLoading: isWorkItemsLoading,
     isError: isWorkItemsError,
+    error: workItemsError,
     refetch: refetchWorkItems,
   } = useGetWorkItems({
     projectId: project?.id,
     projectSlug: project?.slug,
     workspaceId: workspace?.id,
     filter,
-    sort,
-    dir,
+    sort: activeSort,
+    dir: activeDir,
+    columns,
+    querySort,
     realtimeStatus:
       realtimeStatus && realtimeStatus.projectId === project?.id
         ? realtimeStatus.status
         : "connecting",
   });
 
-  useEffect(() => setFilterDraft(filter ?? ""), [filter]);
   const isLoading =
     isWorkspaceLoading ||
     isProjectsLoading ||
@@ -282,8 +288,8 @@ function ProjectWorkItemsRoute({ projectKey }: { projectKey: string }) {
         workspaceId: workspace.id,
         projectSlug: project.slug,
         filter: filter ?? "",
-        sort: sort ?? "key",
-        dir: dir ?? "asc",
+        sort: activeSort,
+        dir: activeDir,
       });
       saveAs(
         new Blob([csv], { type: "text/csv;charset=utf-8" }),
@@ -294,7 +300,7 @@ function ProjectWorkItemsRoute({ projectKey }: { projectKey: string }) {
     } finally {
       setIsExporting(false);
     }
-  }, [dir, filter, isExporting, project, sort, t, workspace?.id]);
+  }, [activeDir, activeSort, filter, isExporting, project, t, workspace?.id]);
 
   const handleRetry = useCallback(() => {
     handleRetryProjects();
@@ -358,32 +364,34 @@ function ProjectWorkItemsRoute({ projectKey }: { projectKey: string }) {
             </Button>
           </div>
         ) : null}
-        <form
-          className="flex gap-2"
-          onSubmit={(event) => {
-            event.preventDefault();
+        <WorkItemFilterEditor
+          filter={filter ?? ""}
+          mode={filterMode ?? "visual"}
+          apiError={
+            workItemsError instanceof HttpError &&
+            [400, 403, 422].includes(workItemsError.status)
+              ? `${workItemsError.status}: ${workItemsError.message}`
+              : undefined
+          }
+          onModeChange={(nextMode) =>
             navigate({
               search: (prev: WorkItemListSearch) => ({
                 ...prev,
-                ...(filterDraft.trim()
-                  ? { filter: filterDraft.trim() }
+                filterMode: nextMode,
+              }),
+            })
+          }
+          onApply={(nextFilter) =>
+            navigate({
+              search: (prev: WorkItemListSearch) => ({
+                ...prev,
+                ...(nextFilter
+                  ? { filter: nextFilter }
                   : { filter: undefined }),
               }),
-              replace: true,
-            });
-          }}
-        >
-          <Input
-            aria-label={t("workItems:list.searchLabel", "Filter work items")}
-            placeholder="assignee:@me state:started OR priority:>=high"
-            value={filterDraft}
-            maxLength={8192}
-            onChange={(event) => setFilterDraft(event.target.value)}
-          />
-          <Button type="submit" size="sm" variant="outline">
-            {t("workItems:list.searchAction", "Filter")}
-          </Button>
-        </form>
+            })
+          }
+        />
         <Suspense fallback={<WorkItemListLoading />}>
           <WorkItemsPanel
             project={project}
@@ -392,8 +400,8 @@ function ProjectWorkItemsRoute({ projectKey }: { projectKey: string }) {
             isError={isError}
             realtimeProjectId={realtimeProjectId}
             realtimeStatus={realtimeStatus}
-            sort={sort}
-            dir={dir}
+            sort={activeSort}
+            dir={activeDir}
             onSortChange={handleSortChange}
             onRealtimeAvailabilityChange={handleRealtimeAvailabilityChange}
             onRetry={handleRetry}

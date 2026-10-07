@@ -75,9 +75,11 @@ an explicit `422` until those foundations exist. P1 also rejects non-work-item e
 `groupBy`/`aggregate` with `422`; it does not silently return unfiltered or partial results.
 The work-item list carries the text filter in its existing route's `filter` query parameter,
 alongside its `layout`, `sort`, and `dir` state, so reloading or sharing the URL reproduces
-the same query. This slice implements the text editor on that list; the visual filter builder,
-global search, saved-view persistence/sharing, and saved-view screens remain outside this
-core work-item search slice, so the feature status above remains incomplete.
+the same query. The work-item list now provides visual and text filter editing with the same
+filter AST, keeps editor mode in the URL, and forwards optional sort/column metadata without
+adding defaults when those query properties were absent. Global search, saved-view
+persistence/sharing, and saved-view screens remain outside this core work-item search slice,
+so the feature status above remains incomplete.
 
 ## Saved views
 

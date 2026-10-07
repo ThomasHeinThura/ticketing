@@ -1,4 +1,4 @@
-import { expect, test } from "@playwright/test";
+import { expect, type TestInfo, test } from "@playwright/test";
 import { withMfaCsrfApp } from "../../../tests/e2e/helpers/mfa-csrf-app-fixture";
 import {
   installPerformanceApiFixture,
@@ -36,11 +36,15 @@ const row = (number: number, priority: "high" | "low") => ({
   updatedAt: "2026-09-30T00:00:00.000Z",
 });
 
+function apiOrigin(testInfo: TestInfo) {
+  return testInfo.project.use.baseURL as string;
+}
+
 test("structured work-item filter is applied and restored from the worklist URL", async ({
   page,
 }, testInfo) => {
   await page.setViewportSize({ width: 1280, height: 720 });
-  await installPerformanceApiFixture(page);
+  await installPerformanceApiFixture(page, { apiOrigin: apiOrigin(testInfo) });
   const requests: Array<Record<string, unknown>> = [];
   await page.route("**/api/work-items/search", async (route) => {
     const request = route.request().postDataJSON() as Record<string, unknown>;
@@ -66,9 +70,10 @@ test("structured work-item filter is applied and restored from the worklist URL"
   });
 
   await page.goto(WORK_LIST_PATH);
+  await page.getByRole("button", { name: "Text" }).click();
   const filter = page.getByRole("textbox", { name: "Filter work items" });
   await filter.fill("priority:high");
-  await page.getByRole("button", { name: "Filter", exact: true }).click();
+  await page.getByRole("button", { name: "Apply filter" }).click();
   await expect(page).toHaveURL(/filter=priority%3Ahigh/u);
   await expect(page.getByText("Matching high priority item")).toBeVisible();
   await expect(page.getByText("Nonmatching low priority item")).toHaveCount(0);
@@ -102,10 +107,65 @@ test("structured work-item filter is applied and restored from the worklist URL"
   await expect(page.getByText("Matching high priority item")).toBeVisible();
 });
 
+test("visual and text modes retain query URL state through history and reload", async ({
+  page,
+}, testInfo) => {
+  await installPerformanceApiFixture(page, { apiOrigin: apiOrigin(testInfo) });
+  const requests: Array<Record<string, unknown>> = [];
+  await page.route("**/api/work-items/search", async (route) => {
+    const request = route.request().postDataJSON() as Record<string, unknown>;
+    requests.push(request);
+    return route.fulfill({
+      status: 200,
+      contentType: "application/json",
+      body: JSON.stringify({
+        data: [row(1, "high")],
+        page: { hasMore: false, nextCursor: null },
+        meta: { total: 1 },
+      }),
+    });
+  });
+
+  await page.goto(
+    `${WORK_LIST_PATH}&sort=priority&dir=desc&columns=%5B%22key%22%2C%22priority%22%5D`,
+  );
+  const textMode = page.getByRole("button", { name: "Text" });
+  await textMode.click();
+  await expect(page).toHaveURL(/filterMode=text/u);
+  const filter = page.getByRole("textbox", { name: "Filter work items" });
+  await filter.fill("(priority:high OR assignee:@me) AND due:>=7d");
+  await page.getByRole("button", { name: "Apply filter" }).click();
+  await expect(page).toHaveURL(/filter=%28priority%3Ahigh/u);
+  await expect(page).toHaveURL(/sort=priority/u);
+  await expect(page).toHaveURL(/dir=desc/u);
+  await expect(page).toHaveURL(/columns=/u);
+  await expect
+    .poll(() => requests.at(-1)?.query)
+    .toMatchObject({
+      sort: [{ field: "priority", order: "desc" }],
+      columns: ["key", "priority"],
+    });
+
+  await page.getByRole("button", { name: "Visual" }).click();
+  await expect(page).toHaveURL(/filterMode=visual/u);
+  await expect(
+    page.getByRole("combobox", { name: "Group operator" }).first(),
+  ).toBeVisible();
+  await page.goBack();
+  await expect(page).toHaveURL(/filterMode=text/u);
+  await expect(filter).toHaveValue(
+    "(priority:high OR assignee:@me) AND due:>=7d",
+  );
+  await page.reload();
+  await expect(filter).toHaveValue(
+    "(priority:high OR assignee:@me) AND due:>=7d",
+  );
+});
+
 test("invalid structured filter shows the worklist error state", async ({
   page,
-}) => {
-  await installPerformanceApiFixture(page);
+}, testInfo) => {
+  await installPerformanceApiFixture(page, { apiOrigin: apiOrigin(testInfo) });
   await page.route("**/api/work-items/search", async (route) =>
     route.fulfill({
       status: 400,
@@ -114,10 +174,11 @@ test("invalid structured filter shows the worklist error state", async ({
     }),
   );
   await page.goto(WORK_LIST_PATH);
+  await page.getByRole("button", { name: "Text" }).click();
   await page
     .getByRole("textbox", { name: "Filter work items" })
     .fill("priority:bad");
-  await page.getByRole("button", { name: "Filter", exact: true }).click();
+  await page.getByRole("button", { name: "Apply filter" }).click();
   await expect(page).toHaveURL(/filter=priority%3Abad/u);
   await expect(page.getByTestId("work-item-list-error")).toBeVisible();
 });
@@ -200,7 +261,7 @@ test("fixture-backed structured search renders real scoped work items", async ({
     ).toBeVisible();
     const filter = page.getByRole("textbox", { name: "Filter work items" });
     await filter.fill("priority:high");
-    await page.getByRole("button", { name: "Filter", exact: true }).click();
+    await page.getByRole("button", { name: "Apply filter" }).click();
     await expect(page).toHaveURL(/filter=priority%3Ahigh/u);
     await expect(page.getByText("Fixture high priority result")).toBeVisible();
     await expect(page.getByText("Fixture low priority excluded")).toHaveCount(

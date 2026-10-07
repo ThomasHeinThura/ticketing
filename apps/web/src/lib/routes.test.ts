@@ -19,7 +19,10 @@ import {
   WORK_ITEM_SORT_FIELDS,
 } from "./routes";
 import { parseCalendarEditorSearch } from "./service-calendar-form";
-import { parseWorkItemFilterText } from "./work-item-filter";
+import {
+  parseWorkItemFilterText,
+  printWorkItemFilterText,
+} from "./work-item-filter";
 
 describe("routes.workItemList", () => {
   it("round-trips every sort field and direction through build -> parse", () => {
@@ -46,7 +49,7 @@ describe("routes.workItemList", () => {
     expect(url.startsWith("/agent/projects/a%2Fb%20c/work?")).toBe(true);
   });
 
-  it("defaults to layout=list, sort=key, dir=asc when no search is given", () => {
+  it("defaults only the built list layout when no search is given", () => {
     const url = routes.workItemList.build({ projectKey: "PROJ" });
     const [, queryString] = url.split("?");
     expect(parseWorkItemListSearchFromQueryString(queryString)).toEqual(
@@ -86,6 +89,40 @@ describe("routes.workItemList", () => {
     });
   });
 
+  it("round-trips editor mode and explicit empty columns without adding absent sort state", () => {
+    const search = {
+      filter: "assignee:@me",
+      filterMode: "text" as const,
+      columns: [],
+    };
+    const url = routes.workItemList.build({ projectKey: "PROJ" }, search);
+    const [, queryString] = url.split("?");
+    const parsed = parseWorkItemListSearchFromQueryString(queryString);
+    expect(parsed).toEqual({ layout: "list", ...search });
+    expect(parsed).not.toHaveProperty("sort");
+    expect(parsed).not.toHaveProperty("dir");
+    expect(routes.workItemList.build({ projectKey: "PROJ" }, parsed)).toBe(url);
+  });
+
+  it("keeps the work-list filter state when navigating to another project key", () => {
+    const search = {
+      filter: "due:<7d AND assignee:@me",
+      filterMode: "visual" as const,
+      sort: "priority" as const,
+      dir: "desc" as const,
+      columns: ["key", "priority"] as ("key" | "priority")[],
+    };
+    const first = routes.workItemList.build({ projectKey: "OPS" }, search);
+    const second = routes.workItemList.build({ projectKey: "APP" }, search);
+    expect(first.replace("OPS", "APP")).toBe(second);
+    expect(
+      parseWorkItemListSearchFromQueryString(second.split("?")[1]),
+    ).toEqual({
+      layout: "list",
+      ...search,
+    });
+  });
+
   it("parses nested text filters to the endpoint AST", () => {
     expect(
       parseWorkItemFilterText(
@@ -104,6 +141,36 @@ describe("routes.workItemList", () => {
         },
       ],
     });
+  });
+
+  it("SV-11: prints and reparses nested groups, @me, and relative date values losslessly", () => {
+    const ast = parseWorkItemFilterText(
+      "(state:in(started,completed) OR (assignee:@me AND due:>=7d)) AND created:>2026-01-01",
+    );
+    const printed = printWorkItemFilterText(ast);
+    expect(parseWorkItemFilterText(printed)).toEqual(ast);
+    expect(printed).toContain("assignee:@me");
+    expect(printed).toContain("due:>=7d");
+  });
+
+  it("SV-11: preserves an explicit single-child nested group", () => {
+    const ast = {
+      op: "or" as const,
+      clauses: [
+        {
+          op: "and" as const,
+          clauses: [{ field: "assignee", op: "eq", value: "@me" }],
+        },
+        { field: "priority", op: "eq", value: "high" },
+      ],
+    };
+    expect(parseWorkItemFilterText(printWorkItemFilterText(ast))).toEqual(ast);
+  });
+
+  it("SV-11: rejects text that would silently lose a contains argument", () => {
+    expect(() =>
+      parseWorkItemFilterText("watcher:contains(@me,other)"),
+    ).toThrow("The contains operator requires one value.");
   });
 
   describe("parseWorkItemListSearch", () => {

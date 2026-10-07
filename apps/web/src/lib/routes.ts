@@ -70,6 +70,17 @@ export type WorkItemSortField = (typeof WORK_ITEM_SORT_FIELDS)[number];
 export const WORK_ITEM_SORT_DIRECTIONS = ["asc", "desc"] as const;
 export type WorkItemSortDirection = (typeof WORK_ITEM_SORT_DIRECTIONS)[number];
 
+export const WORK_ITEM_SEARCH_COLUMNS = [
+  "key",
+  "title",
+  "state",
+  "assignee",
+  "priority",
+  "dueDate",
+] as const;
+export type WorkItemSearchColumn = (typeof WORK_ITEM_SEARCH_COLUMNS)[number];
+export type WorkItemFilterMode = "visual" | "text";
+
 // The screen inventory names three `layout` values on this one route
 // (`/agent/projects/{key}/work?layout=board|list|table`). Only `list` is built by this
 // slice -- board and table are separate, not-yet-built P1 rows in
@@ -81,9 +92,11 @@ export type WorkItemListLayout = (typeof WORK_ITEM_LIST_LAYOUTS)[number];
 
 export type WorkItemListSearch = {
   layout: WorkItemListLayout;
-  sort: WorkItemSortField;
-  dir: WorkItemSortDirection;
+  sort?: WorkItemSortField;
+  dir?: WorkItemSortDirection;
   filter?: string;
+  filterMode?: WorkItemFilterMode;
+  columns?: WorkItemSearchColumn[];
 };
 
 export const WORK_ITEM_FILTER_URL_MAX_LENGTH = 8192;
@@ -177,8 +190,6 @@ export function parseServiceCalendarListSearchFromQueryString(
 
 export const DEFAULT_WORK_ITEM_LIST_SEARCH: WorkItemListSearch = {
   layout: "list",
-  sort: "key",
-  dir: "asc",
 };
 
 function isWorkItemSortField(value: unknown): value is WorkItemSortField {
@@ -211,16 +222,29 @@ function isWorkItemListLayout(value: unknown): value is WorkItemListLayout {
  */
 export function parseWorkItemListSearch(raw: unknown): WorkItemListSearch {
   const candidate = (raw ?? {}) as Record<string, unknown>;
+  let columns: unknown = candidate.columns;
+  if (typeof columns === "string") {
+    try {
+      columns = JSON.parse(columns) as unknown;
+    } catch {
+      columns = undefined;
+    }
+  }
+  const validColumns =
+    Array.isArray(columns) &&
+    columns.length <= WORK_ITEM_SEARCH_COLUMNS.length &&
+    columns.every(
+      (column) =>
+        typeof column === "string" &&
+        (WORK_ITEM_SEARCH_COLUMNS as readonly string[]).includes(column),
+    ) &&
+    new Set(columns).size === columns.length;
   return {
     layout: isWorkItemListLayout(candidate.layout)
       ? candidate.layout
       : DEFAULT_WORK_ITEM_LIST_SEARCH.layout,
-    sort: isWorkItemSortField(candidate.sort)
-      ? candidate.sort
-      : DEFAULT_WORK_ITEM_LIST_SEARCH.sort,
-    dir: isWorkItemSortDirection(candidate.dir)
-      ? candidate.dir
-      : DEFAULT_WORK_ITEM_LIST_SEARCH.dir,
+    ...(isWorkItemSortField(candidate.sort) ? { sort: candidate.sort } : {}),
+    ...(isWorkItemSortDirection(candidate.dir) ? { dir: candidate.dir } : {}),
     ...(typeof candidate.filter === "string" &&
     candidate.filter.length > 0 &&
     candidate.filter.length <= WORK_ITEM_FILTER_URL_MAX_LENGTH &&
@@ -230,6 +254,10 @@ export function parseWorkItemListSearch(raw: unknown): WorkItemListSearch {
     })
       ? { filter: candidate.filter }
       : {}),
+    ...(candidate.filterMode === "visual" || candidate.filterMode === "text"
+      ? { filterMode: candidate.filterMode }
+      : {}),
+    ...(validColumns ? { columns: columns as WorkItemSearchColumn[] } : {}),
   };
 }
 
@@ -334,12 +362,13 @@ export const routes = {
       search: Partial<WorkItemListSearch> = {},
     ) => {
       const resolved = parseWorkItemListSearch(search);
-      const query = new URLSearchParams({
-        layout: resolved.layout,
-        sort: resolved.sort,
-        dir: resolved.dir,
-      });
+      const query = new URLSearchParams({ layout: resolved.layout });
+      if (resolved.sort) query.set("sort", resolved.sort);
+      if (resolved.dir) query.set("dir", resolved.dir);
       if (resolved.filter) query.set("filter", resolved.filter);
+      if (resolved.filterMode) query.set("filterMode", resolved.filterMode);
+      if (resolved.columns)
+        query.set("columns", JSON.stringify(resolved.columns));
       return `/agent/projects/${encodeURIComponent(params.projectKey)}/work?${query.toString()}`;
     },
   },
@@ -445,5 +474,7 @@ export function parseWorkItemListSearchFromQueryString(
     sort: params.get("sort") ?? undefined,
     dir: params.get("dir") ?? undefined,
     filter: params.get("filter") ?? undefined,
+    filterMode: params.get("filterMode") ?? undefined,
+    columns: params.get("columns") ?? undefined,
   });
 }
