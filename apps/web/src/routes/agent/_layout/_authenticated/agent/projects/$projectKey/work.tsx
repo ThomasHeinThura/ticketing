@@ -38,11 +38,7 @@ function loadWorkItemsPanel(): Promise<WorkItemsPanelModule> {
 }
 
 function preloadWorkItemsPanel() {
-  void Promise.all([
-    loadWorkItemsPanel(),
-    import("@/components/work-item/work-item-list"),
-    import("@/components/work-item/work-item-create-trigger"),
-  ]).catch(() => undefined);
+  void loadWorkItemsPanel().catch(() => undefined);
 }
 
 const WorkItemsPanel = lazy(loadWorkItemsPanel);
