@@ -61,3 +61,17 @@ Fresh independent GPT-6 Sol / OpenAI context `01a117e2-77b9-7d52-8c3c-d56fa7e5c0
 Sol independently passed three syntax checks, Biome on three scripts, diff checks, four parser assertions, five invocation checks and the G8 scope checker. Author evidence: initial 174 focused Node tests plus eight corrected normalizer tests passed. Neither reviewer performed apt, Docker, API, browser or hosted runtime execution. Nonblocking documentation wording still says all helper invocations use sudo; the actual G8 invocation is direct root execution, as explicitly recorded here.
 
 Latest completed timing evidence remains db15 hosted run `37667984584`, restarted cancelled job `112968981754`: **19/22**, failing LCP 2540/2500 ms, task-state 256.6/200 ms and board 690/500 ms. The prior attempt cancelled during installation without measurements. Its synthetic merge `67eb7bca4e425f25f8ace46fec506704dafb07bd` has the same complete tree as db15. Current 651 hosted acceptance remains separate and pending. No final P0 freeze, merge readiness or phase acceptance is claimed.
+
+## Final bounded scheduling correction — current independent reviews
+
+**Reviewed head:** `01de3c09c3ef6038f0cfda5244ac710f1c59b453`
+
+Complete delta from reviewed6510 contains a historical review note and five UI files. Closed palette warming waits for existing primary readiness/two frames, then browser idle; explicit intent still imports immediately, unsupported browsers retain the prior two-frame fallback and disposal cancels scheduled work. Work-list readiness marks resolved error/empty/populated output, not its separately ready project header. API, domain, permissions, migrations, dependencies, CI gate semantics, benchmarks, fixtures, workloads, budgets and retries are unchanged.
+
+Two fresh independent GPT-6 Luna / OpenAI contexts, `01a118b1-c7fc-7b62-8123-77b2451191ec` (scheduling) and `01a118b1-c7fc-7ff1-9f11-ca6d20c5852a` (readiness), each inspected the complete bounded delta and ran **2 files / 18 tests**, PASS. Both returned **CLEAR**, no blockers; neither authored, directed or remediated the source.
+
+Fresh independent GPT-6 Sol / OpenAI context `01a118b6-67c0-7c21-b446-2da70142c3ad` inspected the complete6510-to-current delta, relevant callers, ordinary verdicts and retained prior review chain. **CLEAR**, no security blockers. It independently ran diff checks and **2 files / 18 tests**, PASS. It did not author, direct or remediate the candidate. No runtime/image/date-adjudication/finalizer approval is inferred.
+
+Root retrieved complete hosted run `37700952445`: unchanged G11 **22/22**, list300.4ms, LCP2328ms, board424.4ms; PostgreSQL **137 files / 1659 tests**, G4/G8 and E2E **27 tests** pass. Its tested synthetic merge `3df8e1e361baf412bee545b52c0c7e4c88e985fe` has the same full tree `b8605194d12e31b308e20e1f56d93b8465f5de60` as reviewed01de. Non-gating profile capture exceeded its event bound; that failure is retained and is not relabelled successful diagnostic evidence. The complete canonical performance suite is unchanged and passed.
+
+This appended review-only record preserves all original blocked reviews and failed experiments. No source correction beyond a concrete failing P0 gate is authorized after the final note-only freeze. Frozen image/installer/migration/upgrade/rollback, authorization runtime proof, observation compatibility, all current required hosted checks, protected merge and fresh independent GPT-6.1 Sol phase finalizer remain open.
