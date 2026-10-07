@@ -1,3 +1,13 @@
+### 2026-10-07 · Testing usernames are private runtime credentials; preserve failed ingress evidence
+
+Thomas explicitly requires role test seeding and forbids usable usernames, passwords and credential Markdown in GitHub. Apply this literally: generate actual login usernames at runtime, alongside strong random passwords, retain them only in the external private manifest and reuse that manifest for additive/idempotent seeding. Public code may contain role keys and non-login fixture identifiers; it must not construct a fixed usable login username. No production provider defaults or role grants change. This supersedes the narrower interpretation that only passwords were private.
+
+Complete seeder3bd has narrow ordinary bootstrap CLEAR/12 offline tests, while its full Sol blocks the fixed login-username class. The prior positive enabled-customer integration14 at2cb remains valid for that unchanged producer, but does not establish the dedicated runner: its global setup still starts Testcontainers. Collect the complete privacy/manifest/harness fix before one changed-head review and actual root-owned disposable DB run.
+
+P0 stock-Traefik v3 is actually executed in new window/run20261007T051455Z-70b41b. Candidate image/boot, migrate exit0/ledger88, UID10001 and mount ownership pass. First CA curl fails connection refusal before fixture writes; requested port exists in HostConfig but live443 mapping is null. Stop bound ingress first, preserve all logs/inspections, then independently remove exact owned resources. Cleanup PASS/global sets unchanged/unknown volume preserved are recorded privately. No persistence/official TLS/GateC/performance/phase claim follows. Prepare one complete ingress-network/publication successor; do not retry failed identity or infer an OrbStack defect from incomplete evidence.
+
+**Recorded:** 2026-10-07T05:25:08.613310+00:00; main/source/DEV unchanged.
+
 ### 2026-10-07 · Prove positive customer sessions; stop custom proxy expansion
 
 **Operational application, not a gate waiver.** Full seeder Sol correctly rejects the earlier customer person/organisation-only fixture. Complete successor `2cb1275d` creates genuine canonical customer role plus materialized organisation membership, validates exact retry provenance and tests actual configured portal login/session. One isolated DB-only native suite passes14; test provider state and private credentials are cleaned. Root verifies ownership/zero clients and removes only the bound named PG18 resource with absence evidence. Draft#597 contains reusable code/contract and sanitized test claims, no usable credentials. Final current-head review remains open.

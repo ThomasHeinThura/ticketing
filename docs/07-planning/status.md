@@ -1,5 +1,55 @@
 ## Status First
 
+Snapshot: 2026-10-07T05:25:08.613310+00:00. Accepted main remains `3096cb044bdf6ae98488bfc385f532fa6386343a`; sole P0 closure #583 remains `5326937460b195d8e69584c0cb99305348330a95`. No protected merge, persistent DEV refresh, official release, enforcement activation or phase completion occurred.
+
+| Phase | Implementation | Integration | Acceptance |
+| --- | --- | --- | --- |
+| P0 | Frozen product; reviewed stock-Traefik v3 actually booted; complete ingress-plan successor underway | Sole closure #583 | Exact image/migration88/UID10001/mounts pass; TLS host publication fails; persistence lifecycle, official installer, G11 and cutover/finalizer open |
+| P1 | Canonical636 plus saved-view full successor partially implemented | Canonical614 + sole0118 | Native28 at636 retained; full completion and team-lead behavior remain open |
+| P2 | Selected continuity/withdrawal/browser placement reviewed | #586 through #589 | Composed/live API/image/phase acceptance open |
+| P3 | Selected mapping/login/query relocation reviewed | #595/#596 through #589 | Provider/Health/image/phase acceptance open |
+| P4 | All-eight-role seeder at3bd; complete private-username successor underway | Draft #597 test-infrastructure leaf; #594 through #589 | Customer native14 at2cb retained; current harness12 offline pass; usable usernames in source block final Sol; dedicated native/CI open |
+
+### What changed
+
+Root admits a fresh bounded local-only window against the full Sol-cleared stock Traefik v3 plan, manifest `c6e161c53de291e26722d64ec8a6a5fcf409a9c38cfa9044c81c5cd7144bab68`. Actual run `20261007T051455Z-70b41b` creates one fresh candidate project. Compose up succeeds; one-shot migrations exit0 with ledger88, application UID10001 and exact candidate image, and all expected PG18 tmpfs/named-child mounts pass. The first CA-validated TLS request fails immediately with curl7/connection refusal. No signup or application fixture writes occur. Root stops the bound ingress first, captures all five service logs and full inspections before removal, independently verifies ownership/references, and removes only five captured containers, three named volumes, one private network and two temporary aliases. Global container/volume/network sets are unchanged, both admitted ports are absent, and the pre-existing unknown anonymous volume is preserved. Private operational secrets/keys are removed after fingerprints; original records remain private.
+
+Retained inspection proves requested HostConfig publication existed but live `NetworkSettings.Ports` reported `443/tcp: null`. Internal-only networking is the leading configuration hypothesis, not a proven vendor cause. A complete successor introduces a uniquely owned Traefik-only ingress network and gates on actual host publication while keeping app/DB/cache isolated. Fresh/repeat/baseline/upgrade/rollback persistence and official installer/TLS remain unproved; boot is not lifecycle acceptance.
+
+Seeder `3bd6a4d77ddf01a21f8249615e6f1329a926dad6` corrects the standalone origin bootstrap. Independent narrow Luna review is CLEAR with two files/12 offline tests. Full Sol confirms the earlier customer-role/materialized-membership defect is resolved, but blocks the remaining deterministic login usernames in source under Thomas's latest literal credential boundary. Passwords remain generated/private. The whole successor moves usernames into the private runtime manifest, preserves idempotent reuse and adds explicit disposable-database support for the dedicated runner. The dedicated runner currently always creates Testcontainers; prior integration14 cannot be called a dedicated-runner pass. No persistent DEV test users are created.
+
+### What is being worked on now
+
+Parallel complete batches: one Luna prepares the P0 ingress execution-plan successor; another finishes the seeder's whole username/manifest/harness fix before resuming its sole P1 successor ownership. No early partial review or unchanged-SHA comfort round is queued.
+
+### Critical path
+
+1. Resolve frozen hosted G11 under the existing no-extra-retry rule.
+2. Complete actual persistence lifecycle and official installer/TLS proof.
+3. Establish strict behavior and original partial-date compatibility.
+4. Resolve public-config criterion and perform eligible reversible cutover.
+5. Protected exact-head merge, official acceptance and fresh Sol finalizer.
+
+### Misalignment / drift
+
+#583 remains sole P0, #589 sole later train, and #597 a test-infrastructure leaf. Three actual partial UTC observations are not full-day/72-hour evidence. All eight role records existing does not prove every enabled login path; customer positive native evidence is retained separately from current dedicated harness acceptance. Requested Docker ports do not prove host publication.
+
+### Concerns
+
+Current seed CI has red checks and its source remains blocked until the complete private-username successor clears. P1 completion is paused briefly for the latest testing-user requirement, with one owner and no concurrent edits. Prior lost migration logs and anonymous-volume incidents remain preserved and unresolved; this new verified cleanup does not erase them.
+
+### Decisions needed from Thomas
+
+Existing public-config criterion, unchanged-source hosted confirmation, official installer release ordering and P1 team-lead behavior questions remain pending. No duplicate permission request or gate waiver is inferred.
+
+### Next merge candidates
+
+#583 only after actual gates clear. Complete later slices and draft#597 compose through #589 after dependencies, exact-head reviews and required CI clear. No current phase or merge-ready claim.
+
+---
+
+## Status First
+
 Snapshot: 2026-10-07T05:02:37.599656+00:00. Sole P0 closure #583 remains frozen at `5326937460b195d8e69584c0cb99305348330a95`; accepted main remains `3096cb04`. No protected merge, persistent DEV refresh, strict cutover, official release or phase completion is claimed.
 
 | Phase | Implementation | Integration | Acceptance |
