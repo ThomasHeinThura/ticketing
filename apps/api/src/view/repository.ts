@@ -138,6 +138,23 @@ export async function listSavedViewsForWorkspace(
   return { views, pinnedValue: preference?.value };
 }
 
+export async function listShareableViewTeamsForWorkspace(
+  workspaceId: string,
+  userId: string,
+) {
+  return db
+    .select({ id: teamTable.id, name: teamTable.name })
+    .from(teamMemberTable)
+    .innerJoin(teamTable, eq(teamMemberTable.teamId, teamTable.id))
+    .where(
+      and(
+        eq(teamTable.workspaceId, workspaceId),
+        eq(teamMemberTable.userId, userId),
+      ),
+    )
+    .orderBy(teamTable.name, teamTable.id);
+}
+
 export async function findTeamMembership(teamId: string, userId: string) {
   const [membership] = await db
     .select({ id: teamMemberTable.id })

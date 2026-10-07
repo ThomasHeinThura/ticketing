@@ -17,6 +17,18 @@ import {
   requireRow,
 } from "./helpers/fixtures";
 
+async function expectPlainText422(response: Response, message: string) {
+  expect(response.status).toBe(422);
+  const contentType = response.headers.get("content-type") ?? "";
+  const [mediaType, ...parameters] = contentType.split(";");
+  expect(mediaType?.trim().toLowerCase()).toBe("text/plain");
+  const charset = parameters
+    .map((parameter) => parameter.trim().split("=", 2))
+    .find(([name]) => name?.toLowerCase() === "charset")?.[1];
+  expect(charset?.replace(/^"|"$/gu, "").toLowerCase()).toBe("utf-8");
+  expect(await response.text()).toBe(message);
+}
+
 function hashApiKey(rawKey: string): string {
   return createHash("sha256")
     .update(rawKey)
@@ -71,6 +83,41 @@ async function addPerson(userId: string) {
 describe("API integration: saved views", () => {
   beforeEach(async () => {
     await resetTestDatabase();
+  });
+
+  it("lists only same-workspace teams the authorized caller can share with", async () => {
+    const owner = await createWorkspaceMember({ role: "owner" });
+    const visibleId = `team-share-visible-${randomUUID()}`;
+    const hiddenId = `team-share-hidden-${randomUUID()}`;
+    await db.insert(schema.teamTable).values([
+      {
+        id: visibleId,
+        name: "Visible service team",
+        workspaceId: owner.workspace.id,
+        createdAt: new Date(),
+      },
+      {
+        id: hiddenId,
+        name: "Hidden service team",
+        workspaceId: owner.workspace.id,
+        createdAt: new Date(),
+      },
+    ]);
+    await db.insert(schema.teamMemberTable).values({
+      id: `team-member-visible-${randomUUID()}`,
+      teamId: visibleId,
+      userId: owner.user.id,
+      createdAt: new Date(),
+    });
+    mockAuthenticatedSession(owner.user);
+    const { app } = createApp();
+    const response = await app.request(
+      `/api/views/team-audiences?workspaceId=${owner.workspace.id}`,
+    );
+    expect(response.status).toBe(200);
+    expect(await response.json()).toEqual({
+      data: [{ id: visibleId, name: "Visible service team" }],
+    });
   });
 
   it("rejects unauthenticated access", async () => {
@@ -1546,19 +1593,13 @@ describe("API integration: saved views", () => {
     const response = await app.request(`/api/views/${created.id}/run`, {
       method: "POST",
     });
-    expect(response.status).toBe(422);
-    expect(response.headers.get("content-type")).toBe(
-      "text/plain; charset=UTF-8",
-    );
-    await expect(response.text()).resolves.toBe(
+    await expectPlainText422(
+      response,
       "Saved view query contains unsupported properties",
     );
     const countResponse = await app.request(`/api/views/${created.id}/count`);
-    expect(countResponse.status).toBe(422);
-    expect(countResponse.headers.get("content-type")).toBe(
-      "text/plain; charset=UTF-8",
-    );
-    await expect(countResponse.text()).resolves.toBe(
+    await expectPlainText422(
+      countResponse,
       "Saved view query contains unsupported properties",
     );
   });

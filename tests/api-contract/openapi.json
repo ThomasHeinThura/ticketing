@@ -170,6 +170,12 @@
           },
           "manageServiceCalendars": {
             "type": "boolean"
+          },
+          "shareSavedViews": {
+            "type": "boolean"
+          },
+          "manageWorkspaceSettings": {
+            "type": "boolean"
           }
         },
         "required": [
@@ -189,7 +195,9 @@
           "inviteUsers",
           "manageTeam",
           "removeMembers",
-          "manageServiceCalendars"
+          "manageServiceCalendars",
+          "shareSavedViews",
+          "manageWorkspaceSettings"
         ]
       },
       "ProjectListItem": {
@@ -23638,6 +23646,84 @@
           },
           "403": {
             "description": "A browser session is required",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/views/team-audiences": {
+      "get": {
+        "operationId": "listViewTeamAudiences",
+        "tags": [
+          "Views"
+        ],
+        "summary": "List teams the caller can share views with",
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "minLength": 1
+            },
+            "required": true,
+            "name": "workspaceId",
+            "in": "query"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Teams the caller belongs to in this workspace",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "id": {
+                            "type": "string"
+                          },
+                          "name": {
+                            "type": "string"
+                          }
+                        },
+                        "required": [
+                          "id",
+                          "name"
+                        ]
+                      }
+                    }
+                  },
+                  "required": [
+                    "data"
+                  ]
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "workspaceId could not be determined",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing or invalid credentials"
+          },
+          "403": {
+            "description": "Missing saved_view:share permission",
             "content": {
               "text/plain": {
                 "schema": {

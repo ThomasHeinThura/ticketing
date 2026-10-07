@@ -80,7 +80,7 @@ export function PortalApprovalsPage() {
       )}
       {query.isLoading ? (
         <p role="status">Loading approvals…</p>
-      ) : approvals.length === 0 ? (
+      ) : query.isError && !query.data ? null : approvals.length === 0 ? (
         <Empty>
           <EmptyHeader>
             <EmptyTitle>No approvals waiting</EmptyTitle>

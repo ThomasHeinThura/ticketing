@@ -3,6 +3,9 @@ import { z } from "../openapi";
 export const savedViewIdParam = z.object({ id: z.string() });
 
 export const listViewsQuery = z.object({ workspaceId: z.string().min(1) });
+export const listViewTeamAudiencesQuery = z.object({
+  workspaceId: z.string().min(1),
+});
 
 export const SAVED_VIEW_SCOPES = ["workspace", "project"] as const;
 export const SAVED_VIEW_VISIBILITIES = [

@@ -90,6 +90,8 @@ const FIELD_LABEL_KEYS: Record<WorkItemField, string> = {
   title: "workItems:list.columnTitle",
   priority: "workItems:list.columnPriority",
   dueDate: "workItems:list.columnDueDate",
+  stateName: "workItems:list.columnState",
+  assigneeName: "workItems:list.columnAssignee",
 };
 
 /** Renders a field marked unavailable by `parseWorkItemRow` -- a visible "Unavailable"
@@ -256,7 +258,13 @@ function WorkItemList({
         noDueDateLabel
       );
     if (column === "state")
-      return <Badge variant="outline">{item.stateName}</Badge>;
+      return item.unavailableFields.includes("stateName") ? (
+        <UnavailableField field="stateName" t={t} />
+      ) : (
+        <Badge variant="outline">{item.stateName}</Badge>
+      );
+    if (item.unavailableFields.includes("assigneeName"))
+      return <UnavailableField field="assigneeName" t={t} />;
     return assigneeLabel(item, assigneeLabels);
   }
 

@@ -66,6 +66,8 @@ function fullCapabilityMap(overrides: Partial<Record<string, boolean>> = {}) {
     manageTeam: false,
     removeMembers: false,
     manageServiceCalendars: false,
+    shareSavedViews: false,
+    manageWorkspaceSettings: false,
     ...overrides,
   };
 }
@@ -164,6 +166,25 @@ describe("useWorkspacePermission", () => {
     });
 
     expect(result.current.canManageServiceCalendars()).toBe(true);
+  });
+
+  it("exposes saved-view audience permissions from the canonical response", async () => {
+    capabilitiesGet.mockResolvedValue({
+      ok: true,
+      json: async () =>
+        fullCapabilityMap({
+          shareSavedViews: true,
+          manageWorkspaceSettings: false,
+        }),
+    });
+    const { result } = renderHook(() => useWorkspacePermission(), {
+      wrapper: createWrapper(),
+    });
+    await waitFor(() =>
+      expect(result.current.isCheckingPermissions).toBe(false),
+    );
+    expect(result.current.canShareSavedViews()).toBe(true);
+    expect(result.current.canManageWorkspaceSettings()).toBe(false);
   });
 
   it("keeps service-calendar authoring unavailable when the capability is denied", async () => {

@@ -1,7 +1,10 @@
 import { createHash, randomUUID } from "node:crypto";
-import { beforeEach, describe, expect, it } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import * as auditWriter from "../../apps/api/src/audit/audit-writer";
 import db, { schema } from "../../apps/api/src/database";
 import { createApp } from "../../apps/api/src/index";
+import * as auditNotifier from "../../apps/api/src/instance/observability/audit-failure-notifier";
+import * as auditRuntime from "../../apps/api/src/instance/observability/runtime";
 import { mockAuthenticatedSession } from "./helpers/auth";
 import { resetTestDatabase } from "./helpers/database";
 import {
@@ -66,6 +69,7 @@ async function exportWithKey(
 
 describe("POST /api/work-items/export", () => {
   beforeEach(async () => resetTestDatabase());
+  afterEach(() => vi.restoreAllMocks());
 
   it("requires work_item:export and records no audit row on denial", async () => {
     const member = await createWorkspaceMember({ role: "member" });
@@ -127,6 +131,31 @@ describe("POST /api/work-items/export", () => {
       count: 0,
       columns: ["key", "title"],
     });
+  });
+
+  it("AU-14: preserves a completed CSV when its audit append fails", async () => {
+    const owner = await createWorkspaceMember({ role: "owner" });
+    mockAuthenticatedSession(owner.user);
+    vi.spyOn(auditWriter, "appendAuditLog").mockRejectedValueOnce(
+      new Error("audit unavailable"),
+    );
+    const failureMetric = vi.spyOn(auditRuntime, "recordAuditWriteFailure");
+    const notifyAdmins = vi
+      .spyOn(auditNotifier, "notifyCurrentInstanceAdminsOfAuditFailure")
+      .mockResolvedValue();
+    const { app } = createApp();
+    const response = await app.request("/api/work-items/export", {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({
+        workspaceId: owner.workspace.id,
+        query: { entity: "work_item", columns: ["key", "title"] },
+      }),
+    });
+    expect(response.status).toBe(200);
+    expect(await response.text()).toBe('"Key","Title"\r\n');
+    expect(failureMetric).toHaveBeenCalledWith("mutation");
+    expect(notifyAdmins).toHaveBeenCalledWith("mutation");
   });
 
   it("exports real reached rows for an owner API key with an explicit export scope", async () => {

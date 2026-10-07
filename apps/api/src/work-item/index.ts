@@ -1,6 +1,8 @@
 import { HTTPException } from "hono/http-exception";
 import { appendAuditLog } from "../audit/audit-writer";
 import db from "../database";
+import { notifyCurrentInstanceAdminsOfAuditFailure } from "../instance/observability/audit-failure-notifier";
+import { recordAuditWriteFailure } from "../instance/observability/runtime";
 import {
   type ApiKey,
   apiRouter,
@@ -1131,17 +1133,22 @@ const workItem = apiRouter<
       c.get("userId"),
       c.get("apiKey"),
     );
-    await appendAuditLog(db, {
-      actorId,
-      actorType,
-      apiKeyId: c.get("apiKey")?.id ?? null,
-      impersonatorId: session?.impersonatedBy ?? null,
-      workspaceId: c.get("workspaceId"),
-      action: "work_item.exported",
-      entityType: "work_item_view",
-      entityId: "workspace",
-      after: { format: "csv", count: total, columns },
-    });
+    try {
+      await appendAuditLog(db, {
+        actorId,
+        actorType,
+        apiKeyId: c.get("apiKey")?.id ?? null,
+        impersonatorId: session?.impersonatedBy ?? null,
+        workspaceId: c.get("workspaceId"),
+        action: "work_item.exported",
+        entityType: "work_item_view",
+        entityId: "workspace",
+        after: { format: "csv", count: total, columns },
+      });
+    } catch {
+      recordAuditWriteFailure("mutation");
+      await notifyCurrentInstanceAdminsOfAuditFailure("mutation");
+    }
     return new Response(csv, {
       status: 200,
       headers: {

@@ -31,10 +31,12 @@ import {
   countSavedView,
   createSavedView,
   getSavedViews,
+  getShareableViewTeams,
   requestSavedViewDeletion,
   toggleSavedViewPin,
 } from "@/fetchers/saved-views";
 import useActiveWorkspace from "@/hooks/queries/workspace/use-active-workspace";
+import { useWorkspacePermission } from "@/hooks/use-workspace-permission";
 import { parseSavedViewsSearch, routes } from "@/lib/routes";
 
 export const Route = createFileRoute("/_layout/_authenticated/agent/views")({
@@ -58,6 +60,7 @@ function SavedViewsIndexRoute() {
   const { user } = useAuth();
   const { data: workspace, isLoading: isWorkspaceLoading } =
     useActiveWorkspace();
+  const permissions = useWorkspacePermission(workspace?.id ?? null);
   const queryClient = useQueryClient();
   const [newName, setNewName] = useState("");
   const [newVisibility, setNewVisibility] = useState<
@@ -70,6 +73,16 @@ function SavedViewsIndexRoute() {
     queryKey: ["saved-views", workspace?.id, user?.id],
     queryFn: () => getSavedViews(workspace?.id ?? ""),
     enabled: Boolean(workspace?.id),
+  });
+  const teamAudiences = useQuery({
+    queryKey: ["saved-view-team-audiences", workspace?.id, user?.id],
+    queryFn: () => getShareableViewTeams(workspace?.id ?? ""),
+    enabled: Boolean(
+      workspace?.id &&
+        user?.id &&
+        permissions.canShareSavedViews() &&
+        newVisibility === "team",
+    ),
   });
   const deletion = useMutation({
     mutationFn: requestSavedViewDeletion,
@@ -170,7 +183,17 @@ function SavedViewsIndexRoute() {
               <SelectValue />
             </SelectTrigger>
             <SelectPopup>
-              {(["private", "team", "workspace"] as const).map((value) => (
+              {(
+                [
+                  "private",
+                  ...(permissions.canShareSavedViews()
+                    ? ["team" as const]
+                    : []),
+                  ...(permissions.canManageWorkspaceSettings()
+                    ? ["workspace" as const]
+                    : []),
+                ] as const
+              ).map((value) => (
                 <SelectItem key={value} value={value}>
                   {t("visibility", { visibility: value })}
                 </SelectItem>
@@ -179,16 +202,31 @@ function SavedViewsIndexRoute() {
           </Select>
         </div>
         {newVisibility === "team" ? (
-          <Input
-            aria-label={t("visibility", { visibility: "team audience ID" })}
-            placeholder={t("visibility", { visibility: "team audience ID" })}
-            value={newTeamId}
-            onChange={(event) => setNewTeamId(event.target.value)}
-          />
+          <Select
+            value={newTeamId || undefined}
+            onValueChange={(value) => setNewTeamId(value ?? "")}
+          >
+            <SelectTrigger
+              aria-label={t("visibility", { visibility: "team" })}
+              disabled={teamAudiences.isLoading || teamAudiences.isError}
+            >
+              <SelectValue
+                placeholder={t("visibility", { visibility: "team" })}
+              />
+            </SelectTrigger>
+            <SelectPopup>
+              {(teamAudiences.data ?? []).map((team) => (
+                <SelectItem key={team.id} value={team.id}>
+                  {team.name}
+                </SelectItem>
+              ))}
+            </SelectPopup>
+          </Select>
         ) : null}
         <Button
           disabled={
             !workspace?.id ||
+            permissions.isCheckingPermissions ||
             !newName.trim() ||
             (newVisibility === "team" && !newTeamId.trim()) ||
             create.isPending

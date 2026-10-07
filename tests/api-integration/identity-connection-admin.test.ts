@@ -18,6 +18,7 @@ import {
   ensureInternalOrganisation,
   ensureStaffPersonForUser,
 } from "../../apps/api/src/utils/seed-internal-organisation";
+import * as nativeAuthorization from "../../apps/api/src/ws";
 import { mockAuthenticatedSession } from "./helpers/auth";
 import { csrfRequest } from "./helpers/csrf";
 import { resetTestDatabase } from "./helpers/database";
@@ -952,6 +953,132 @@ describe("identity connection administration", () => {
         },
       }),
     );
+    roles = ["TaskDesk.User"];
+    groupOverage = false;
+    groups = [groupId];
+    expect((await login()).status).toBe(302);
+    const [projectedMembership] = await db
+      .select({ id: schema.membershipTable.id })
+      .from(schema.membershipTable)
+      .where(eq(schema.membershipTable.personId, person.id))
+      .limit(1);
+    if (!projectedMembership)
+      throw new Error("Projected membership fixture is missing");
+    await db
+      .insert(schema.scimConnectionTable)
+      .values({ identityConnectionId: connectionId, enabled: true });
+    const scimMappingId = `ceiling-scim-mapping-${randomUUID()}`;
+    const scimGrantId = `ceiling-scim-grant-${randomUUID()}`;
+    await db.insert(schema.scimGroupMappingTable).values({
+      id: scimMappingId,
+      scimConnectionId: connectionId,
+      externalGroupId: `ceiling-group-${randomUUID()}`,
+      roleId,
+      scope: "workspace",
+      scopeId: workspaceId,
+    });
+    await db.insert(schema.membershipGrantTable).values({
+      id: scimGrantId,
+      membershipId: projectedMembership.id,
+      personId: person.id,
+      scope: "workspace",
+      scopeId: workspaceId,
+      roleId,
+      sourceKind: "scim_group",
+      externalIdentityId: externalIdentity.id,
+      identityConnectionId: connectionId,
+      scimGroupMappingId: scimMappingId,
+    });
+    await db.insert(schema.scimGroupMemberTable).values({
+      id: `ceiling-scim-member-${randomUUID()}`,
+      scimGroupMappingId: scimMappingId,
+      externalIdentityId: externalIdentity.id,
+      membershipId: projectedMembership.id,
+      membershipGrantId: scimGrantId,
+    });
+    const otherConnectionId = "native-oidc-ceiling-other-connection";
+    await createConnection(otherConnectionId, true);
+    const [otherIdentity] = await db
+      .insert(schema.externalIdentityTable)
+      .values({
+        identityConnectionId: otherConnectionId,
+        personId: person.id,
+        userId: user.id,
+        issuer: `https://login.microsoftonline.com/${TENANT_ID}/v2.0`,
+        subject: "other-connection-subject",
+        active: true,
+        provisionedVia: "jit",
+      })
+      .returning();
+    if (!otherIdentity)
+      throw new Error("Other connection identity fixture was not created");
+    const [otherGrant] = await db
+      .insert(schema.membershipGrantTable)
+      .values({
+        personId: person.id,
+        scope: "workspace",
+        scopeId: workspaceId,
+        roleId,
+        sourceKind: "jit_default",
+        externalIdentityId: otherIdentity.id,
+        identityConnectionId: otherConnectionId,
+        seesAll: false,
+      })
+      .returning({ id: schema.membershipGrantTable.id });
+    if (!otherGrant)
+      throw new Error("Other connection grant fixture was not created");
+    const invalidateAuthorization = vi
+      .spyOn(nativeAuthorization, "invalidateNativeAuthorization")
+      .mockResolvedValue();
+    const ceilingRequest = { configVersion: 1, maxRoleRank: 1 };
+    const ceilingProof = await stepUp(app, sessionCookie, {
+      kind: "operation",
+      operation: "identity_connection_configure",
+      connectionId,
+      request: ceilingRequest,
+    });
+    const ceilingResponse = await csrfRequest(
+      app,
+      `/api/instance/identity-connections/${connectionId}`,
+      {
+        method: "PATCH",
+        headers: {
+          "content-type": "application/json",
+          "x-taskdesk-step-up-token": ceilingProof.token,
+        },
+        body: JSON.stringify(ceilingRequest),
+      },
+      sessionCookie,
+    );
+    expect(ceilingResponse.status).toBe(200);
+    expect(invalidateAuthorization).toHaveBeenCalledWith({ userId: user.id });
+    const postCeilingGrants = await db
+      .select()
+      .from(schema.membershipGrantTable)
+      .where(eq(schema.membershipGrantTable.personId, person.id));
+    expect(
+      postCeilingGrants.filter(
+        (grant) =>
+          ["jit_default", "oidc_group", "scim_group"].includes(
+            grant.sourceKind,
+          ) &&
+          grant.identityConnectionId === connectionId &&
+          grant.revokedAt === null,
+      ),
+    ).toHaveLength(0);
+    expect(
+      postCeilingGrants.some(
+        (grant) => grant.sourceKind === "direct" && grant.revokedAt === null,
+      ),
+    ).toBe(true);
+    expect(
+      postCeilingGrants.find((grant) => grant.id === otherGrant.id)?.revokedAt,
+    ).toBeNull();
+    expect(
+      postCeilingGrants.find((grant) => grant.id === scimGrantId)
+        ?.revocationReason,
+    ).toBe("mapping_changed");
+    invalidateAuthorization.mockRestore();
   });
 
   it("carries exact connection provenance through the native pending-2FA challenge", async () => {

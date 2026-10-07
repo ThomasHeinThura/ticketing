@@ -16,6 +16,10 @@ export type SavedViewRecord = InferResponseType<
   (typeof views)[":id"]["$get"],
   200
 >;
+export type ShareableViewTeam = InferResponseType<
+  (typeof views)["team-audiences"]["$get"],
+  200
+>["data"][number];
 export type SavedViewRun = InferResponseType<
   (typeof views)[":id"]["run"]["$post"],
   200
@@ -50,6 +54,17 @@ export async function getSavedView(id: string): Promise<SavedViewRecord> {
   const response = await views[":id"].$get({ param: { id } });
   if (!response.ok) throw new HttpError(response.status, "Unable to load view");
   return response.json();
+}
+
+export async function getShareableViewTeams(
+  workspaceId: string,
+): Promise<ShareableViewTeam[]> {
+  const response = await views["team-audiences"].$get({
+    query: { workspaceId },
+  });
+  if (!response.ok)
+    throw new HttpError(response.status, "Unable to load shareable teams");
+  return (await response.json()).data;
 }
 
 export async function runSavedView(input: {

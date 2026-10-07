@@ -3692,6 +3692,19 @@
 				"outOfReach": "403 forbidden"
 			}
 		},
+		"GET /api/views/team-audiences": {
+			"instance_admin": {
+				"inReach": "403 forbidden",
+				"outOfReach": "403 forbidden"
+			},
+			"owner": { "inReach": "allow", "outOfReach": "allow" },
+			"admin": { "inReach": "allow", "outOfReach": "allow" },
+			"manager": { "inReach": "allow", "outOfReach": "allow" },
+			"lead": { "inReach": "allow", "outOfReach": "allow" },
+			"member": { "inReach": "403 forbidden", "outOfReach": "403 forbidden" },
+			"viewer": { "inReach": "403 forbidden", "outOfReach": "403 forbidden" },
+			"customer": { "inReach": "403 forbidden", "outOfReach": "403 forbidden" }
+		},
 		"GET /api/views/{id}": {
 			"instance_admin": {
 				"inReach": "403 forbidden",

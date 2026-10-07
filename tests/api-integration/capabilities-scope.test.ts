@@ -100,6 +100,27 @@ describe("GET /api/capabilities", () => {
     expect((await response.json()).manageServiceCalendars).toBe(false);
   });
 
+  it("reports the canonical saved-view audience capabilities", async () => {
+    const owner = await createWorkspaceMember({ role: "owner" });
+    mockAuthenticatedSession(owner.user);
+    const { app } = createApp();
+    const ownerResponse = await app.request(
+      `/api/capabilities?workspaceId=${owner.workspace.id}`,
+    );
+    const ownerCapabilities = await ownerResponse.json();
+    expect(ownerCapabilities.shareSavedViews).toBe(true);
+    expect(ownerCapabilities.manageWorkspaceSettings).toBe(true);
+
+    const viewer = await createWorkspaceMember({ role: "viewer" });
+    mockAuthenticatedSession(viewer.user);
+    const viewerResponse = await app.request(
+      `/api/capabilities?workspaceId=${viewer.workspace.id}`,
+    );
+    const viewerCapabilities = await viewerResponse.json();
+    expect(viewerCapabilities.shareSavedViews).toBe(false);
+    expect(viewerCapabilities.manageWorkspaceSettings).toBe(false);
+  });
+
   it("scopes to the requested workspace -- same user, different roles in two workspaces, different answers (A1-P4)", async () => {
     const owner = await createWorkspaceMember({
       workspaceName: "Workspace Owner-side",

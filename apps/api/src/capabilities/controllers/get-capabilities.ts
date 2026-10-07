@@ -6,6 +6,8 @@ import { CAPABILITY_CHECKS, type CapabilityName } from "../capability-checks";
 
 export type CapabilityMap = Record<CapabilityName, boolean> & {
   manageServiceCalendars: boolean;
+  shareSavedViews: boolean;
+  manageWorkspaceSettings: boolean;
 };
 
 /**
@@ -18,7 +20,12 @@ async function getCapabilities(c: Context): Promise<CapabilityMap> {
   const entries = Object.entries(CAPABILITY_CHECKS) as Array<
     [CapabilityName, Record<string, string[]>]
   >;
-  const [results, manageServiceCalendars] = await Promise.all([
+  const [
+    results,
+    manageServiceCalendars,
+    shareSavedViews,
+    manageWorkspaceSettings,
+  ] = await Promise.all([
     Promise.all(
       entries.map(
         async ([name, permissions]) =>
@@ -26,11 +33,31 @@ async function getCapabilities(c: Context): Promise<CapabilityMap> {
       ),
     ),
     hasServiceCalendarManageCapability(c),
+    hasCanonicalCapability(c, "saved_view:share"),
+    hasCanonicalCapability(c, "workspace:manage_settings"),
   ]);
   return {
     ...Object.fromEntries(results),
     manageServiceCalendars,
+    shareSavedViews,
+    manageWorkspaceSettings,
   } as CapabilityMap;
+}
+
+async function hasCanonicalCapability(
+  c: Context,
+  capability: "saved_view:share" | "workspace:manage_settings",
+): Promise<boolean> {
+  const workspaceId = c.get("workspaceId");
+  const userId = c.get("userId");
+  if (!workspaceId || !userId) return false;
+  try {
+    await assertCallerHasCapability(workspaceId, userId, capability);
+    return true;
+  } catch (error) {
+    if (error instanceof HTTPException && error.status === 403) return false;
+    throw error;
+  }
 }
 
 async function hasServiceCalendarManageCapability(

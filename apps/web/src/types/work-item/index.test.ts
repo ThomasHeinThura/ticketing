@@ -59,6 +59,23 @@ describe("parseWorkItemRow", () => {
     expect(row.dueDate).toBeNull();
   });
 
+  it("flags an absent state label instead of rendering a blank badge", () => {
+    const row = parseWorkItemRow(makeItem({ stateName: "   " }));
+    expect(row.unavailableFields).toEqual(["stateName"]);
+    expect(row.stateName).toBe("");
+  });
+
+  it("preserves an unresolved assignee but flags a malformed assignee label", () => {
+    const unresolved = parseWorkItemRow(
+      makeItem({ assigneeId: "person_1", assigneeName: null }),
+    );
+    expect(unresolved.unavailableFields).toEqual([]);
+    // biome-ignore lint/suspicious/noExplicitAny: malformed wire payload fixture
+    const malformed = parseWorkItemRow(makeItem({ assigneeName: 42 as any }));
+    expect(malformed.unavailableFields).toEqual(["assigneeName"]);
+    expect(malformed.assigneeName).toBeNull();
+  });
+
   describe("title", () => {
     it("flags a blank title", () => {
       const row = parseWorkItemRow(makeItem({ title: "" }));

@@ -21,6 +21,7 @@ import listViews from "./controllers/list-views";
 import pinView from "./controllers/pin-view";
 import { countSavedView, runSavedView } from "./controllers/run-view";
 import updateView from "./controllers/update-view";
+import { listShareableViewTeamsForWorkspace } from "./repository";
 import { resolveCallerPersonId } from "./resolve-person-id";
 import {
   pinnedViewIdsSchema,
@@ -30,6 +31,7 @@ import {
 import {
   createViewBody,
   listViewsQuery,
+  listViewTeamAudiencesQuery,
   savedViewIdParam,
   updateViewBody,
 } from "./schema";
@@ -72,6 +74,29 @@ const listViewsRoute = createRoute({
     ),
     400: errorResponse("workspaceId could not be determined"),
     403: errorResponse("Missing saved_view:read permission"),
+  },
+});
+
+const listViewTeamAudiencesRoute = createRoute({
+  method: "get",
+  operationId: "listViewTeamAudiences",
+  path: "/team-audiences",
+  tags: ["Views"],
+  summary: "List teams the caller can share views with",
+  middleware: [
+    workspaceAccess.fromQuery(),
+    requireWorkspaceCapability("saved_view:share"),
+  ] as const,
+  request: { query: listViewTeamAudiencesQuery },
+  responses: {
+    200: jsonResponse(
+      "Teams the caller belongs to in this workspace",
+      z.object({
+        data: z.array(z.object({ id: z.string(), name: z.string() })),
+      }),
+    ),
+    400: errorResponse("workspaceId could not be determined"),
+    403: errorResponse("Missing saved_view:share permission"),
   },
 });
 
@@ -257,6 +282,14 @@ const deleteViewRoute = createRoute({
 });
 
 const view = apiRouter()
+  .openapi(listViewTeamAudiencesRoute, async (c) => {
+    const { workspaceId } = c.req.valid("query");
+    const data = await listShareableViewTeamsForWorkspace(
+      workspaceId,
+      c.get("userId"),
+    );
+    return c.json({ data }, 200);
+  })
   .openapi(listViewsRoute, async (c) => {
     const { workspaceId } = c.req.valid("query");
     const personId = await resolveCallerPersonId(c.get("userId"));

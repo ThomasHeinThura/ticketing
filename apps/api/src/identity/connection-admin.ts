@@ -23,6 +23,7 @@ import { requireCurrentInstanceAdmin } from "../instance/require-instance-admin"
 import { apiRouter, createRoute, jsonResponse, z } from "../openapi";
 import { setShadowLegacyAuthorization } from "../permissions/shadow-context";
 import { requireSessionOnly } from "../utils/require-session-only";
+import { invalidateNativeAuthorization } from "../ws";
 import { encryptIdentityClientSecret } from "./client-secret";
 import {
   type IdentityConnectionConfigureRequest,
@@ -33,6 +34,7 @@ import {
 import {
   lockScimGrantClosure,
   retireConnectionGrantSources,
+  retireConnectionGrantsAboveRoleRank,
   retryIdentityGrantClosure,
 } from "./membership-projection";
 import { loadEntraDiscovery } from "./oidc-provider";
@@ -833,7 +835,7 @@ router.openapi(configureConnectionRoute, async (c) => {
       const currentJit = parseIdentityJitPolicy(before?.jitPolicy);
       const candidateJit =
         request.jitPolicy ?? (currentJit.ok ? currentJit.value : null);
-      await lockScimGrantClosure(tx, {
+      const grantClosure = await lockScimGrantClosure(tx, {
         connectionId: id,
         sourceKinds: ["jit_default", "oidc_group", "scim_group"],
         proposedRoleId: candidateJit?.default_role_id ?? undefined,
@@ -938,6 +940,7 @@ router.openapi(configureConnectionRoute, async (c) => {
       if (!updated)
         return { kind: "conflict" as const, version: current.configVersion };
       const disabling = current.enabled && request.enabled === false;
+      let affectedUserIds: string[] = [];
       if (disabling) {
         await retireConnectionGrantSources(tx, id);
         await tx
@@ -947,6 +950,19 @@ router.openapi(configureConnectionRoute, async (c) => {
           .update(schema.scimConnectionTable)
           .set({ enabled: false })
           .where(eq(schema.scimConnectionTable.identityConnectionId, id));
+      } else if (
+        request.maxRoleRank !== undefined &&
+        request.maxRoleRank !== null &&
+        (current.maxRoleRank === null ||
+          request.maxRoleRank < current.maxRoleRank)
+      ) {
+        const retired = await retireConnectionGrantsAboveRoleRank(
+          tx,
+          id,
+          request.maxRoleRank,
+          grantClosure,
+        );
+        affectedUserIds = retired.userIds;
       }
       const changedKeys = Object.keys(request).filter(
         (key) => key !== "configVersion",
@@ -974,7 +990,7 @@ router.openapi(configureConnectionRoute, async (c) => {
         operation: IDENTITY_CONNECTION_CONFIGURE_OPERATION,
         traceId: c.req.header("x-request-id"),
       });
-      return { kind: "updated" as const, auditOk };
+      return { kind: "updated" as const, auditOk, affectedUserIds };
     }),
   );
   if (result.kind === "not_found")
@@ -991,6 +1007,8 @@ router.openapi(configureConnectionRoute, async (c) => {
     throw new HTTPException(403, { message: "step_up_unavailable" });
   }
   if (!result.auditOk) await reportAuditFailure();
+  for (const affectedUserId of result.affectedUserIds)
+    await invalidateNativeAuthorization({ userId: affectedUserId });
   setShadowLegacyAuthorization(c, "allowed");
   const [updated] = await getIdentityConnection(id);
   if (!updated)

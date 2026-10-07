@@ -4,6 +4,7 @@ export {
   lockScimGrantClosure,
   projectMembershipKeys,
   retireConnectionGrantSources,
+  retireConnectionGrantsAboveRoleRank,
   retireScimGroupGrants,
   retryIdentityGrantClosure,
 } from "./repository";

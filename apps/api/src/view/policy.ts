@@ -49,6 +49,16 @@ export const viewPolicies = {
     },
   },
 
+  "GET /api/views/team-audiences": {
+    capability: "saved_view:share",
+    scope: "workspace",
+    scopeSource: "request",
+    reach: {
+      exempt: "no_single_resource",
+      reason: "A filtered collection of teams the caller can share with",
+    },
+  },
+
   "POST /api/views": {
     capability: "saved_view:create",
     scope: "workspace",

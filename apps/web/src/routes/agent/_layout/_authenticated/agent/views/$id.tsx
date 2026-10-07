@@ -28,11 +28,13 @@ import {
   createSavedView,
   getSavedView,
   getSavedViews,
+  getShareableViewTeams,
   runSavedView,
   runSavedViewUrlQuery,
   toggleSavedViewPin,
   updateSavedView,
 } from "@/fetchers/saved-views";
+import { useWorkspacePermission } from "@/hooks/use-workspace-permission";
 import {
   parseSavedViewUrlSearch,
   routes,
@@ -129,7 +131,7 @@ function queryFor(search: Partial<SavedViewUrlSearch>) {
   };
 }
 
-function SavedViewRoute() {
+export function SavedViewRoute() {
   const { t } = useTranslation("savedViews");
   const { id } = Route.useParams();
   const search = Route.useSearch();
@@ -155,10 +157,21 @@ function SavedViewRoute() {
     viewQuery.data && !isExecutableSavedViewQuery(viewQuery.data.query),
   );
   const workspaceId = search.workspaceId ?? viewQuery.data?.workspaceId;
+  const permissions = useWorkspacePermission(workspaceId ?? null);
   const workspaceViews = useQuery({
     queryKey: ["saved-views", workspaceId, user?.id],
     queryFn: () => getSavedViews(workspaceId ?? ""),
     enabled: Boolean(workspaceId && user?.id),
+  });
+  const teamAudiencesQuery = useQuery({
+    queryKey: ["saved-view-team-audiences", workspaceId, user?.id],
+    queryFn: () => getShareableViewTeams(workspaceId ?? ""),
+    enabled: Boolean(
+      workspaceId &&
+        user?.id &&
+        visibility === "team" &&
+        permissions.canShareSavedViews(),
+    ),
   });
   const isPinned =
     workspaceViews.data?.find((view) => view.id === id)?.isPinned ?? false;
@@ -188,27 +201,35 @@ function SavedViewRoute() {
       setVisibility(viewQuery.data.visibility);
     }
     setTeamAudienceId(viewQuery.data.sharedWithTeamId ?? "");
-    if (!snapshotComplete) {
+    if (
+      !snapshotComplete ||
+      !savedViewUrlContextMatches(viewQuery.data, search, snapshotComplete)
+    ) {
       setFilter(snapshot.filter ?? "");
       void navigate({ search: snapshot, replace: true });
       return;
     }
     setFilter(search.filter ?? "");
-  }, [navigate, search.filter, snapshotComplete, viewQuery.data]);
+  }, [navigate, search, snapshotComplete, viewQuery.data]);
 
   const effectiveSearch = snapshotComplete
     ? search
     : viewQuery.data
       ? storedSearch(viewQuery.data)
       : search;
-  const savedViewContextMatches = Boolean(
-    viewQuery.data &&
-      savedViewUrlContextMatches(viewQuery.data, search, snapshotComplete),
-  );
+  const savedViewContextMatches =
+    !viewQuery.data ||
+    savedViewUrlContextMatches(viewQuery.data, search, snapshotComplete);
   const unsupportedStoredQuery = Boolean(
     storedQueryIsUnsupported ||
       (viewQuery.data &&
         (!savedViewContextMatches || effectiveSearch.layout !== "list")),
+  );
+  const canRenderWorkItems = Boolean(
+    (viewQuery.data || snapshotComplete) &&
+      !unsupportedStoredQuery &&
+      effectiveSearch.layout === "list" &&
+      (effectiveSearch.scope !== "project" || project),
   );
   const sort = effectiveSearch.sort ?? "key";
   const dir = effectiveSearch.dir ?? "asc";
@@ -246,7 +267,7 @@ function SavedViewRoute() {
   const results = useInfiniteQuery({
     queryKey,
     enabled: Boolean(
-      viewQuery.data &&
+      (viewQuery.data || snapshotComplete) &&
         !unsupportedStoredQuery &&
         effectiveSearch.layout === "list" &&
         effectiveSearch.workspaceId &&
@@ -373,13 +394,15 @@ function SavedViewRoute() {
           </p>
         </div>
         <div className="flex flex-wrap gap-2">
-          <Button
-            variant="outline"
-            disabled={pin.isPending}
-            onClick={() => pin.mutate()}
-          >
-            {isPinned ? t("unpin") : t("pin")}
-          </Button>
+          {viewQuery.data ? (
+            <Button
+              variant="outline"
+              disabled={pin.isPending}
+              onClick={() => pin.mutate()}
+            >
+              {isPinned ? t("unpin") : t("pin")}
+            </Button>
+          ) : null}
           <Button
             variant="outline"
             disabled={
@@ -457,7 +480,19 @@ function SavedViewRoute() {
                   <SelectValue />
                 </SelectTrigger>
                 <SelectPopup>
-                  {(["private", "team", "workspace"] as const).map((value) => (
+                  {(
+                    [
+                      "private",
+                      ...(permissions.canShareSavedViews() ||
+                      viewQuery.data?.visibility === "team"
+                        ? ["team" as const]
+                        : []),
+                      ...(permissions.canManageWorkspaceSettings() ||
+                      viewQuery.data?.visibility === "workspace"
+                        ? ["workspace" as const]
+                        : []),
+                    ] as const
+                  ).map((value) => (
                     <SelectItem key={value} value={value}>
                       {t("visibility", { visibility: value })}
                     </SelectItem>
@@ -466,14 +501,33 @@ function SavedViewRoute() {
               </Select>
             </div>
             {visibility === "team" ? (
-              <Input
-                aria-label={t("visibility", { visibility: "team audience ID" })}
-                placeholder={t("visibility", {
-                  visibility: "team audience ID",
-                })}
-                value={teamAudienceId}
-                onChange={(event) => setTeamAudienceId(event.target.value)}
-              />
+              <Select
+                value={teamAudienceId || undefined}
+                onValueChange={(value) => setTeamAudienceId(value ?? "")}
+              >
+                <SelectTrigger
+                  aria-label={t("visibility", { visibility: "team" })}
+                  disabled={
+                    !permissions.canShareSavedViews() ||
+                    teamAudiencesQuery.isLoading ||
+                    teamAudiencesQuery.isError
+                  }
+                >
+                  <SelectValue
+                    placeholder={t("visibility", { visibility: "team" })}
+                  />
+                </SelectTrigger>
+                <SelectPopup>
+                  {(teamAudiencesQuery.data ?? []).map((team) => (
+                    <SelectItem key={team.id} value={team.id}>
+                      {team.name}
+                    </SelectItem>
+                  ))}
+                </SelectPopup>
+              </Select>
+            ) : null}
+            {visibility === "team" && teamAudiencesQuery.isError ? (
+              <p role="alert">{t("saveError")}</p>
             ) : null}
             <div className="flex flex-wrap gap-3">
               <Select
@@ -576,20 +630,21 @@ function SavedViewRoute() {
           </CardContent>
         </Card>
       ) : null}
-      {results.isError ? <p role="alert">{t("runError")}</p> : null}
-      <WorkItemList
-        workItems={allItems}
-        hasPartialFailure={
-          results.data?.pages.some((page) => page.hasPartialFailure) ?? false
-        }
-        isLoading={results.isLoading}
-        isError={false}
-        sort={sort}
-        dir={dir}
-        onSortChange={handleSortChange}
-        onRetry={() => void results.refetch()}
-        columns={effectiveSearch.columns}
-      />
+      {canRenderWorkItems ? (
+        <WorkItemList
+          workItems={allItems}
+          hasPartialFailure={
+            results.data?.pages.some((page) => page.hasPartialFailure) ?? false
+          }
+          isLoading={viewQuery.isLoading || results.isLoading}
+          isError={results.isError}
+          sort={sort}
+          dir={dir}
+          onSortChange={handleSortChange}
+          onRetry={() => void results.refetch()}
+          columns={effectiveSearch.columns}
+        />
+      ) : null}
       {results.hasNextPage ? (
         <Button
           variant="outline"

@@ -1920,6 +1920,66 @@ export async function retireConnectionGrantSources(
   return { retiredGrantCount: grants.length, projectionKeys: keys };
 }
 
+/** Retire only this connection's active external grants above its new ceiling. */
+export async function retireConnectionGrantsAboveRoleRank(
+  tx: IdentityTransaction,
+  connectionId: string,
+  maxRoleRank: number,
+  projectionKeys: readonly MembershipProjectionKey[],
+) {
+  const grants = await tx
+    .select({
+      id: schema.membershipGrantTable.id,
+      userId: schema.personTable.userId,
+    })
+    .from(schema.membershipGrantTable)
+    .innerJoin(
+      schema.roleTable,
+      eq(schema.roleTable.id, schema.membershipGrantTable.roleId),
+    )
+    .innerJoin(
+      schema.personTable,
+      eq(schema.personTable.id, schema.membershipGrantTable.personId),
+    )
+    .where(
+      and(
+        eq(schema.membershipGrantTable.identityConnectionId, connectionId),
+        inArray(schema.membershipGrantTable.sourceKind, [
+          "jit_default",
+          "oidc_group",
+          "scim_group",
+        ]),
+        isNull(schema.membershipGrantTable.revokedAt),
+        gt(schema.roleTable.rank, maxRoleRank),
+      ),
+    )
+    .for("update", { of: schema.membershipGrantTable });
+  const now = new Date();
+  if (grants.length) {
+    const grantIds = grants.map(({ id }) => id);
+    await tx
+      .update(schema.scimGroupMemberTable)
+      .set({ revokedAt: now, membershipId: null })
+      .where(inArray(schema.scimGroupMemberTable.membershipGrantId, grantIds));
+    await tx
+      .update(schema.membershipGrantTable)
+      .set({
+        revokedAt: now,
+        revocationReason: "mapping_changed",
+        membershipId: null,
+        updatedAt: now,
+      })
+      .where(inArray(schema.membershipGrantTable.id, grantIds));
+  }
+  await projectMembershipKeys(tx, projectionKeys);
+  return {
+    retiredGrantCount: grants.length,
+    userIds: [
+      ...new Set(grants.flatMap(({ userId }) => (userId ? [userId] : []))),
+    ],
+  };
+}
+
 /**
  * Recompute the one-role effective membership from the current active provenance rows.
  * Callers must acquire the IP-22 parent/person/role/source locks before invoking this

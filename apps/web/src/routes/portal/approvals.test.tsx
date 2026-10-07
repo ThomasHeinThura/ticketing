@@ -48,11 +48,14 @@ vi.mock("@/hooks/mutations/approval/use-decide-portal-approval", () => ({
   default: () => ({ mutate: mocks.mutate, isPending: false, isError: false }),
 }));
 
+const initialData = mocks.query.data;
+
 afterEach(() => {
   cleanup();
   mocks.mutate.mockClear();
   mocks.query.error = null;
   mocks.query.isError = false;
+  Object.assign(mocks.query, { data: initialData });
 });
 
 describe("PortalApprovalsPage", () => {
@@ -71,6 +74,7 @@ describe("PortalApprovalsPage", () => {
   });
 
   it("offers sign-in guidance without redirecting to the agent login when session is absent", () => {
+    Object.assign(mocks.query, { data: undefined });
     mocks.query.error = new HttpError(401, "unauthorized");
     mocks.query.isError = true;
     render(<PortalApprovalsPage />);
@@ -81,5 +85,17 @@ describe("PortalApprovalsPage", () => {
       "href",
       "/sign-in",
     );
+    expect(screen.queryByText("No approvals waiting")).toBeNull();
+  });
+
+  it("does not show the empty state when a non-authentication request fails", () => {
+    Object.assign(mocks.query, { data: undefined });
+    mocks.query.error = new HttpError(503, "unavailable");
+    mocks.query.isError = true;
+    render(<PortalApprovalsPage />);
+    expect(
+      screen.getByText("Approvals could not be loaded"),
+    ).toBeInTheDocument();
+    expect(screen.queryByText("No approvals waiting")).toBeNull();
   });
 });
