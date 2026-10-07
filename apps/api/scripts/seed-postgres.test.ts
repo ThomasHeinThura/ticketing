@@ -928,7 +928,11 @@ describe("explicit test-user seed batch", () => {
             : "http://localhost:5173";
         const request = {
           method: "POST",
-          headers: { "content-type": "application/json", origin },
+          headers: {
+            "content-type": "application/json",
+            host: new URL(origin).host,
+            origin,
+          },
           body: JSON.stringify({
             email: credential.email,
             password: credential.password,
@@ -997,6 +1001,7 @@ describe("explicit test-user seed batch", () => {
         {
           headers: {
             cookie: customerSessionCookie ?? "",
+            host: "localhost:5174",
             origin: "http://localhost:5174",
           },
         },
