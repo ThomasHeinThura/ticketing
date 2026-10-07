@@ -42,8 +42,14 @@ type IndexMetadata = {
   method: string;
   where?: string;
   with: Record<string, unknown>;
+  nullsNotDistinct?: boolean;
 };
-type KeyMetadata = { name: string; columns: string[]; [key: string]: unknown };
+type KeyMetadata = {
+  name: string;
+  columns: string[];
+  nullsNotDistinct?: boolean;
+  [key: string]: unknown;
+};
 type ForeignKeyMetadata = {
   name: string;
   tableFrom: string;
@@ -65,6 +71,100 @@ type SnapshotTable = {
   checkConstraints: Record<string, CheckMetadata>;
 };
 type MigrationSnapshot = { tables: Record<string, SnapshotTable> };
+
+type DefaultRenderingPair = { expected: unknown; proposed: unknown };
+
+/** The same fail-closed inventory gate is used by generation and mutation tests. */
+function inventoryDifferences(
+  expected: MigrationSnapshot,
+  proposed: MigrationSnapshot,
+  allowedDefaultRenderings: Readonly<Record<string, DefaultRenderingPair>> = {},
+): string[] {
+  const differences: string[] = [];
+  const expectedTables = Object.keys(expected.tables).sort();
+  const proposedTables = Object.keys(proposed.tables).sort();
+  if (stableJson(expectedTables) !== stableJson(proposedTables)) {
+    differences.push("tables:inventory");
+  }
+
+  for (const tableName of [
+    ...new Set([...expectedTables, ...proposedTables]),
+  ].sort()) {
+    const left = expected.tables[tableName];
+    const right = proposed.tables[tableName];
+    if (!left || !right) continue;
+    if (left.name !== right.name) {
+      differences.push(`tables:${tableName}:name`);
+    }
+    const leftColumns = Object.keys(left.columns).sort();
+    const rightColumns = Object.keys(right.columns).sort();
+    if (stableJson(leftColumns) !== stableJson(rightColumns)) {
+      differences.push(`columns:${tableName}:inventory`);
+    }
+    for (const columnName of [
+      ...new Set([...leftColumns, ...rightColumns]),
+    ].sort()) {
+      const oldColumn = left.columns[columnName];
+      const newColumn = right.columns[columnName];
+      const key = `${tableName}.${columnName}`;
+      if (!oldColumn || !newColumn) continue;
+      const oldWithoutDefault = { ...oldColumn, default: undefined };
+      const newWithoutDefault = { ...newColumn, default: undefined };
+      if (stableJson(oldWithoutDefault) !== stableJson(newWithoutDefault)) {
+        differences.push(`columns:${key}:type-nullability-primary-key`);
+      }
+      if (stableJson(oldColumn.default) !== stableJson(newColumn.default)) {
+        const permitted = allowedDefaultRenderings[key];
+        if (
+          !permitted ||
+          stableJson(permitted.expected) !== stableJson(oldColumn.default) ||
+          stableJson(permitted.proposed) !== stableJson(newColumn.default)
+        ) {
+          differences.push(`columns:${key}:default`);
+        }
+      }
+    }
+
+    const entries = (category: keyof SnapshotTable) =>
+      Object.entries(left[category] as Record<string, unknown>).map(
+        ([name, value]) => [name, value] as const,
+      );
+    const proposedEntries = (category: keyof SnapshotTable) =>
+      Object.entries(right[category] as Record<string, unknown>).map(
+        ([name, value]) => [name, value] as const,
+      );
+    for (const category of [
+      "foreignKeys",
+      "uniqueConstraints",
+      "compositePrimaryKeys",
+      "indexes",
+      "checkConstraints",
+    ] as const) {
+      const normalize = (values: readonly (readonly [string, unknown])[]) =>
+        values
+          .map(([name, raw]) => {
+            const value = raw as Record<string, unknown>;
+            if (category === "foreignKeys") {
+              return stableJson({
+                ...value,
+                name: name.slice(0, 63),
+                schemaTo: value.schemaTo ?? "public",
+              });
+            }
+            const { name: _name, ...fields } = value;
+            return stableJson({ name, ...fields });
+          })
+          .sort();
+      if (
+        stableJson(normalize(entries(category))) !==
+        stableJson(normalize(proposedEntries(category)))
+      ) {
+        differences.push(`${category}:${tableName}:inventory-or-semantics`);
+      }
+    }
+  }
+  return differences;
+}
 
 function stableJson(value: unknown): string {
   if (Array.isArray(value)) return `[${value.map(stableJson).join(",")}]`;
@@ -283,29 +383,6 @@ it("keeps SQL-owned tables and ordered keys safe during configured generation", 
     const frozenSnapshot = JSON.parse(
       readFileSync(join(migrationsFolder, "meta/0117_snapshot.json"), "utf8"),
     ) as MigrationSnapshot;
-    expect(Object.keys(generatedSnapshot.tables).sort()).toEqual(
-      Object.keys(frozenSnapshot.tables).sort(),
-    );
-
-    const snapshotColumns = (snapshot: MigrationSnapshot) =>
-      Object.entries(snapshot.tables).flatMap(([tableName, table]) =>
-        Object.entries(table.columns).map(
-          ([columnName, column]) => [tableName, columnName, column] as const,
-        ),
-      );
-    const frozenColumns = snapshotColumns(frozenSnapshot);
-    const generatedColumns = snapshotColumns(generatedSnapshot);
-    const generatedColumnsByKey = new Map(
-      generatedColumns.map(([table, column, definition]) => [
-        `${table}.${column}`,
-        definition,
-      ]),
-    );
-    expect(
-      generatedColumns.map(([table, column]) => `${table}.${column}`).sort(),
-    ).toEqual(
-      frozenColumns.map(([table, column]) => `${table}.${column}`).sort(),
-    );
     const expectedDefaultRenderings = new Set([
       "public.identity_connection.domain_bindings",
       "public.instance_setting.attachment_allowed_extensions",
@@ -313,78 +390,44 @@ it("keeps SQL-owned tables and ordered keys safe during configured generation", 
       "public.scim_connection.allowed_resources",
       "public.scim_connection.match_attributes",
     ]);
-    const defaultDifferences: string[] = [];
-    for (const [tableName, columnName, frozenColumn] of frozenColumns) {
-      const key = `${tableName}.${columnName}`;
-      const proposed = generatedColumnsByKey.get(key);
-      expect(proposed, `${key} must remain in configured schema`).toBeDefined();
-      expect(proposed?.type, `${key} PostgreSQL type`).toBe(frozenColumn.type);
-      expect(proposed?.notNull, `${key} nullability`).toBe(
-        frozenColumn.notNull,
-      );
-      expect(proposed?.primaryKey, `${key} primary-key membership`).toBe(
-        frozenColumn.primaryKey,
-      );
-      if (stableJson(proposed?.default) !== stableJson(frozenColumn.default)) {
-        defaultDifferences.push(key);
+    const frozenColumns = Object.entries(frozenSnapshot.tables).flatMap(
+      ([tableName, table]) =>
+        Object.entries(table.columns).map(
+          ([columnName, column]) =>
+            [`${tableName}.${columnName}`, column] as const,
+        ),
+    );
+    const generatedColumnsByKey = new Map(
+      Object.entries(generatedSnapshot.tables).flatMap(([tableName, table]) =>
+        Object.entries(table.columns).map(
+          ([columnName, column]) =>
+            [`${tableName}.${columnName}`, column] as const,
+        ),
+      ),
+    );
+    const defaultPairs: Record<string, DefaultRenderingPair> = {};
+    for (const [key, frozenColumn] of frozenColumns) {
+      const generatedColumn = generatedColumnsByKey.get(key);
+      if (
+        generatedColumn &&
+        stableJson(frozenColumn.default) !==
+          stableJson(generatedColumn.default) &&
+        expectedDefaultRenderings.has(key)
+      ) {
+        defaultPairs[key] = {
+          expected: frozenColumn.default,
+          proposed: generatedColumn.default,
+        };
       }
     }
-    expect(new Set(defaultDifferences)).toEqual(expectedDefaultRenderings);
-
-    const compareForeignKeys = (snapshot: MigrationSnapshot) =>
-      inventoryEntries(snapshot, "foreignKeys")
-        .map(([tableName, name, foreignKey]) => {
-          const { name: _metadataName, ...foreignKeyFields } = foreignKey;
-          return stableJson({
-            tableName,
-            ...foreignKeyFields,
-            name: name.slice(0, 63),
-            schemaTo: foreignKey.schemaTo ?? "public",
-          });
-        })
-        .sort();
-    expect(compareForeignKeys(generatedSnapshot)).toEqual(
-      compareForeignKeys(frozenSnapshot),
+    expect(Object.keys(defaultPairs).sort()).toEqual(
+      [...expectedDefaultRenderings].sort(),
     );
-
-    for (const category of [
-      "uniqueConstraints",
-      "compositePrimaryKeys",
-    ] as const) {
-      const constraints = (snapshot: MigrationSnapshot) =>
-        inventoryEntries(snapshot, category)
-          .map(([tableName, name, constraint]) => {
-            const { name: _metadataName, ...constraintFields } = constraint;
-            return stableJson({ tableName, name, ...constraintFields });
-          })
-          .sort();
-      expect(
-        constraints(generatedSnapshot),
-        `${category} complete inventory`,
-      ).toEqual(constraints(frozenSnapshot));
-    }
-
-    const canonicalIndexes = (snapshot: MigrationSnapshot) =>
-      inventoryEntries(snapshot, "indexes")
-        .map(([tableName, name, index]) => {
-          const { name: _metadataName, ...indexFields } = index;
-          return stableJson({ tableName, name, ...indexFields });
-        })
-        .sort();
-    expect(canonicalIndexes(generatedSnapshot)).toEqual(
-      canonicalIndexes(frozenSnapshot),
-    );
-
-    const canonicalChecks = (snapshot: MigrationSnapshot) =>
-      inventoryEntries(snapshot, "checkConstraints")
-        .map(([tableName, name, check]) =>
-          stableJson({ tableName, name, value: check.value }),
-        )
-        .sort();
     expect(
-      canonicalChecks(generatedSnapshot),
-      "all configured check expressions must preserve applied catalog semantics",
-    ).toEqual(canonicalChecks(frozenSnapshot));
+      inventoryDifferences(frozenSnapshot, generatedSnapshot, defaultPairs),
+      "configured generation must preserve complete applied table and constraint semantics",
+    ).toEqual([]);
+
     expect(
       generatedSnapshot.tables["public.custom_field_section"],
     ).toBeDefined();
@@ -548,117 +591,6 @@ it("keeps SQL-owned tables and ordered keys safe during configured generation", 
         droppedIndexNames,
         "equivalent catalog indexes must not be rebuilt",
       ).toEqual([]);
-
-      const tupleResiduals: string[] = [];
-      const compareConstraintTuples = (
-        category: "uniqueConstraints" | "compositePrimaryKeys",
-      ) => {
-        for (const [tableName, frozenTable] of Object.entries(
-          frozenSnapshot.tables,
-        )) {
-          const generatedTable = generatedSnapshot.tables[tableName];
-          const frozenItems = frozenTable[category] ?? {};
-          const generatedItems = generatedTable?.[category] ?? {};
-          for (const [name, frozenItem] of Object.entries(frozenItems)) {
-            const generatedItem = generatedItems[name];
-            if (!generatedItem) {
-              tupleResiduals.push(`${category}:${tableName}.${name}:missing`);
-              continue;
-            }
-            const normalize = (columns: string[]) =>
-              columns.map((column) => column.toLowerCase());
-            const previous = normalize(frozenItem.columns);
-            const proposed = normalize(generatedItem.columns);
-            if (
-              previous.length === proposed.length &&
-              previous.every((column) => proposed.includes(column))
-            ) {
-              expect(
-                proposed,
-                `${category}:${tableName}.${name} key order`,
-              ).toEqual(previous);
-            } else if (previous.join("\0") !== proposed.join("\0")) {
-              tupleResiduals.push(
-                `${category}:${tableName}.${name}:key-inventory`,
-              );
-            }
-          }
-        }
-      };
-      compareConstraintTuples("uniqueConstraints");
-      compareConstraintTuples("compositePrimaryKeys");
-
-      const normalizeTuple = (index: {
-        columns: Array<{ expression: string }>;
-      }) =>
-        index.columns.map((column) =>
-          column.expression
-            .replace(/"([^"]+)"/gu, "$1")
-            .replace(/'([^']*)'::text/giu, "'$1'")
-            .replace(/\s+/gu, " ")
-            .trim()
-            .toLowerCase(),
-        );
-      const indexesByName = (snapshot: typeof frozenSnapshot) => {
-        const indexes = new Map<
-          string,
-          {
-            columns: Array<{ expression: string }>;
-            isUnique: boolean;
-            method: string;
-          }
-        >();
-        for (const [tableName, table] of Object.entries(snapshot.tables)) {
-          for (const [name, index] of Object.entries(table.indexes ?? {})) {
-            indexes.set(`${tableName}.${name}`, index);
-          }
-        }
-        return indexes;
-      };
-      const frozenIndexes = indexesByName(frozenSnapshot);
-      const generatedIndexes = indexesByName(generatedSnapshot);
-      for (const [key, previous] of frozenIndexes) {
-        const proposed = generatedIndexes.get(key);
-        if (!proposed) {
-          tupleResiduals.push(`indexes:${key}:missing`);
-          continue;
-        }
-        const previousTuple = normalizeTuple(previous);
-        const proposedTuple = normalizeTuple(proposed);
-        if (
-          previousTuple.length === proposedTuple.length &&
-          previousTuple.every((column) => proposedTuple.includes(column))
-        ) {
-          expect(proposedTuple, `${key} ordered index key tuple`).toEqual(
-            previousTuple,
-          );
-        } else if (previousTuple.join("\0") !== proposedTuple.join("\0")) {
-          tupleResiduals.push(`indexes:${key}:key-inventory`);
-        }
-      }
-      const droppedIndexes = [
-        ...generatedSql.matchAll(/DROP INDEX "([^"]+)"/giu),
-      ].flatMap((match) => (match[1] ? [match[1]] : []));
-      for (const name of droppedIndexes) {
-        const oldEntry = [...frozenIndexes].find(([key]) =>
-          key.endsWith(`.${name}`),
-        );
-        const newEntry = [...generatedIndexes].find(([key]) =>
-          key.endsWith(`.${name}`),
-        );
-        if (!oldEntry || !newEntry) continue;
-        expect(newEntry[1].isUnique, `${name} uniqueness`).toBe(
-          oldEntry[1].isUnique,
-        );
-        expect(newEntry[1].method, `${name} access method`).toBe(
-          oldEntry[1].method,
-        );
-      }
-      if (tupleResiduals.length > 0) {
-        process.stderr.write(
-          `Configured-schema tuple inventory residuals: ${JSON.stringify(tupleResiduals)}\n`,
-        );
-      }
     } else {
       expect(output).toContain("No schema changes, nothing to migrate");
     }
@@ -718,76 +650,370 @@ it("fails closed when PostgreSQL and Drizzle tuple inventories differ", () => {
   ).toThrow("catalog tuple key missing is not introspected");
 });
 
-it("fails closed on column, check, tuple, foreign-key, and index semantic drift", () => {
-  const columnSignature = (column: ColumnMetadata) =>
-    stableJson({
-      type: column.type,
-      notNull: column.notNull,
-      primaryKey: column.primaryKey,
-      default: column.default,
-    });
-  const column: ColumnMetadata = {
-    type: "text",
-    notNull: true,
-    primaryKey: false,
-    default: "'initial'::text",
-  };
-  expect(columnSignature(column)).not.toBe(
-    columnSignature({ ...column, type: "integer" }),
-  );
-  expect(columnSignature(column)).not.toBe(
-    columnSignature({ ...column, notNull: false }),
-  );
-  expect(columnSignature(column)).not.toBe(
-    columnSignature({ ...column, default: "'changed'::text" }),
-  );
-  expect(columnSignature(column)).not.toBe(
-    columnSignature({ ...column, primaryKey: true }),
-  );
+it("rejects every semantic inventory mutation through the generation acceptance gate", () => {
+  const trusted = (): MigrationSnapshot => ({
+    tables: {
+      "public.parent": {
+        name: "parent",
+        columns: {
+          id: { type: "integer", notNull: true, primaryKey: true },
+        },
+        indexes: {},
+        foreignKeys: {},
+        compositePrimaryKeys: {},
+        uniqueConstraints: {},
+        checkConstraints: {},
+      },
+      "public.child": {
+        name: "child",
+        columns: {
+          id: { type: "integer", notNull: true, primaryKey: true },
+          parent_a: { type: "integer", notNull: true, primaryKey: false },
+          parent_b: { type: "integer", notNull: true, primaryKey: false },
+          value: {
+            type: "text",
+            notNull: false,
+            primaryKey: false,
+            default: "'initial'::text",
+          },
+        },
+        indexes: {
+          child_value_idx: {
+            name: "child_value_idx",
+            columns: [
+              {
+                expression: "parent_a",
+                asc: true,
+                nulls: "last",
+                isExpression: false,
+              },
+              {
+                expression: "value",
+                asc: false,
+                nulls: "first",
+                isExpression: false,
+              },
+            ],
+            isUnique: true,
+            concurrently: false,
+            method: "btree",
+            where: "value IS NOT NULL",
+            with: {},
+            nullsNotDistinct: false,
+          },
+        },
+        foreignKeys: {
+          ["f".repeat(63)]: {
+            name: "f".repeat(63),
+            tableFrom: "child",
+            tableTo: "parent",
+            schemaTo: "public",
+            columnsFrom: ["parent_a", "parent_b"],
+            columnsTo: ["id", "id"],
+            onDelete: "cascade",
+            onUpdate: "no action",
+          },
+        },
+        compositePrimaryKeys: {
+          child_pk: { name: "child_pk", columns: ["parent_a", "parent_b"] },
+        },
+        uniqueConstraints: {
+          child_value_unique: {
+            name: "child_value_unique",
+            columns: ["parent_a", "parent_b"],
+            nullsNotDistinct: false,
+          },
+        },
+        checkConstraints: {
+          child_value_check: {
+            name: "child_value_check",
+            value: "value <> 'blocked'::text",
+          },
+        },
+      },
+    },
+  });
+  const baseline = trusted();
+  const clone = (snapshot: MigrationSnapshot): MigrationSnapshot =>
+    JSON.parse(JSON.stringify(snapshot)) as MigrationSnapshot;
+  const accept = (candidate: MigrationSnapshot) =>
+    inventoryDifferences(baseline, candidate);
+  expect(accept(clone(baseline))).toEqual([]);
 
-  const check = "value = 'one'::text";
-  expect(check).not.toBe("value = 'two'::text");
-  expect("\"Mixed\" = 'one'").not.toBe("mixed = 'one'");
-  expect("(a = 1 OR b = 2) AND c = 3").not.toBe("a = 1 OR b = 2 AND c = 3");
-  expect("value = 'one'::integer").not.toBe("value = 'one'::text");
-
-  const keyTuple = ["workspace_id", "id"];
-  expect(stableJson(keyTuple)).not.toBe(stableJson([...keyTuple].reverse()));
-  const index = {
-    name: "fixture_idx",
-    columns: [
-      { expression: "value", asc: true, nulls: "last", isExpression: false },
+  const mutations: Array<[string, (candidate: MigrationSnapshot) => void]> = [
+    [
+      "table inventory",
+      (candidate) => {
+        delete candidate.tables["public.parent"];
+      },
     ],
-    isUnique: true,
-    concurrently: false,
-    method: "btree",
-    where: "enabled is true",
-    with: {},
-  };
-  const signature = (candidate: typeof index) => stableJson(candidate);
-  const indexColumn = index.columns[0];
-  if (!indexColumn) throw new Error("Index fixture must include a key column");
-  expect(signature(index)).not.toBe(
-    signature({ ...index, columns: [{ ...indexColumn, asc: false }] }),
-  );
-  expect(signature(index)).not.toBe(
-    signature({ ...index, columns: [{ ...indexColumn, nulls: "first" }] }),
-  );
-  expect(signature(index)).not.toBe(signature({ ...index, isUnique: false }));
-  expect(signature(index)).not.toBe(signature({ ...index, method: "gin" }));
-  expect(signature(index)).not.toBe(
-    signature({ ...index, where: "enabled is false" }),
-  );
+    [
+      "table name",
+      (candidate) => {
+        const table = candidate.tables["public.child"];
+        if (table) table.name = "other_child";
+      },
+    ],
+    [
+      "column inventory",
+      (candidate) => {
+        delete candidate.tables["public.child"]?.columns.parent_b;
+      },
+    ],
+    [
+      "column type",
+      (candidate) => {
+        const column = candidate.tables["public.child"]?.columns.value;
+        if (column) column.type = "integer";
+      },
+    ],
+    [
+      "column nullability",
+      (candidate) => {
+        const column = candidate.tables["public.child"]?.columns.value;
+        if (column) column.notNull = true;
+      },
+    ],
+    [
+      "column default",
+      (candidate) => {
+        const column = candidate.tables["public.child"]?.columns.value;
+        if (column) column.default = "'changed'::text";
+      },
+    ],
+    [
+      "column primary key",
+      (candidate) => {
+        const column = candidate.tables["public.child"]?.columns.value;
+        if (column) column.primaryKey = true;
+      },
+    ],
+    [
+      "foreign key columns",
+      (candidate) => {
+        const fk = Object.values(
+          candidate.tables["public.child"]?.foreignKeys ?? {},
+        )[0];
+        if (fk) fk.columnsFrom.reverse();
+      },
+    ],
+    [
+      "foreign key action",
+      (candidate) => {
+        const fk = Object.values(
+          candidate.tables["public.child"]?.foreignKeys ?? {},
+        )[0];
+        if (fk) fk.onDelete = "restrict";
+      },
+    ],
+    [
+      "missing foreign key",
+      (candidate) => {
+        const foreignKeys = candidate.tables["public.child"]?.foreignKeys;
+        if (foreignKeys) delete foreignKeys[Object.keys(foreignKeys)[0] ?? ""];
+      },
+    ],
+    [
+      "unique tuple order",
+      (candidate) => {
+        candidate.tables[
+          "public.child"
+        ]?.uniqueConstraints.child_value_unique?.columns.reverse();
+      },
+    ],
+    [
+      "missing unique constraint",
+      (candidate) => {
+        const constraints = candidate.tables["public.child"]?.uniqueConstraints;
+        if (constraints) delete constraints.child_value_unique;
+      },
+    ],
+    [
+      "unique NULLS NOT DISTINCT",
+      (candidate) => {
+        const key =
+          candidate.tables["public.child"]?.uniqueConstraints
+            .child_value_unique;
+        if (key) key.nullsNotDistinct = true;
+      },
+    ],
+    [
+      "missing composite primary key",
+      (candidate) => {
+        const keys = candidate.tables["public.child"]?.compositePrimaryKeys;
+        if (keys) delete keys.child_pk;
+      },
+    ],
+    [
+      "primary key tuple order",
+      (candidate) => {
+        candidate.tables[
+          "public.child"
+        ]?.compositePrimaryKeys.child_pk?.columns.reverse();
+      },
+    ],
+    [
+      "index key order",
+      (candidate) => {
+        candidate.tables[
+          "public.child"
+        ]?.indexes.child_value_idx?.columns.reverse();
+      },
+    ],
+    [
+      "missing index",
+      (candidate) => {
+        const indexes = candidate.tables["public.child"]?.indexes;
+        if (indexes) delete indexes.child_value_idx;
+      },
+    ],
+    [
+      "index direction",
+      (candidate) => {
+        const index = candidate.tables["public.child"]?.indexes.child_value_idx;
+        if (index?.columns[0]) index.columns[0].asc = false;
+      },
+    ],
+    [
+      "index null ordering",
+      (candidate) => {
+        const index = candidate.tables["public.child"]?.indexes.child_value_idx;
+        if (index?.columns[0]) index.columns[0].nulls = "first";
+      },
+    ],
+    [
+      "index expression marker",
+      (candidate) => {
+        const index = candidate.tables["public.child"]?.indexes.child_value_idx;
+        if (index?.columns[0]) index.columns[0].isExpression = true;
+      },
+    ],
+    [
+      "index uniqueness",
+      (candidate) => {
+        const index = candidate.tables["public.child"]?.indexes.child_value_idx;
+        if (index) index.isUnique = false;
+      },
+    ],
+    [
+      "index concurrency",
+      (candidate) => {
+        const index = candidate.tables["public.child"]?.indexes.child_value_idx;
+        if (index) index.concurrently = true;
+      },
+    ],
+    [
+      "index method",
+      (candidate) => {
+        const index = candidate.tables["public.child"]?.indexes.child_value_idx;
+        if (index) index.method = "gin";
+      },
+    ],
+    [
+      "index predicate",
+      (candidate) => {
+        const index = candidate.tables["public.child"]?.indexes.child_value_idx;
+        if (index) index.where = "value IS NULL";
+      },
+    ],
+    [
+      "index expression",
+      (candidate) => {
+        const index = candidate.tables["public.child"]?.indexes.child_value_idx;
+        if (index?.columns[0]) index.columns[0].expression = "lower(value)";
+      },
+    ],
+    [
+      "index option",
+      (candidate) => {
+        const index = candidate.tables["public.child"]?.indexes.child_value_idx;
+        if (index) index.with.fillfactor = 80;
+      },
+    ],
+    [
+      "index opclass",
+      (candidate) => {
+        const index = candidate.tables["public.child"]?.indexes.child_value_idx;
+        if (index?.columns[0]) index.columns[0].opclass = "text_pattern_ops";
+      },
+    ],
+    [
+      "index NULLS NOT DISTINCT",
+      (candidate) => {
+        const index = candidate.tables["public.child"]?.indexes.child_value_idx;
+        if (index) index.nullsNotDistinct = true;
+      },
+    ],
+    [
+      "check expression",
+      (candidate) => {
+        const check =
+          candidate.tables["public.child"]?.checkConstraints.child_value_check;
+        if (check) check.value = "value <> 'allowed'::text";
+      },
+    ],
+    [
+      "missing check constraint",
+      (candidate) => {
+        const checks = candidate.tables["public.child"]?.checkConstraints;
+        if (checks) delete checks.child_value_check;
+      },
+    ],
+    [
+      "mixed structural changes",
+      (candidate) => {
+        const column = candidate.tables["public.child"]?.columns.value;
+        const index = candidate.tables["public.child"]?.indexes.child_value_idx;
+        const check =
+          candidate.tables["public.child"]?.checkConstraints.child_value_check;
+        if (column) column.type = "integer";
+        if (index) index.where = "value IS NULL";
+        if (check) check.value = "value = 'allowed'::text";
+      },
+    ],
+  ];
+  for (const [label, mutate] of mutations) {
+    const candidate = clone(baseline);
+    mutate(candidate);
+    expect(
+      accept(candidate),
+      `${label} must be rejected by the shared gate`,
+    ).not.toEqual([]);
+  }
 
-  const foreignKey = {
-    tableFrom: "fixture",
-    tableTo: "parent",
-    columnsFrom: ["value"],
-    columnsTo: ["id"],
-    onDelete: "cascade",
-    onUpdate: "no action",
+  const physicalNameDifference = clone(baseline);
+  const physicalKey = "f".repeat(63);
+  const generatedForeignKey =
+    physicalNameDifference.tables["public.child"]?.foreignKeys[physicalKey];
+  const candidateForeignKeys =
+    physicalNameDifference.tables["public.child"]?.foreignKeys;
+  if (generatedForeignKey && candidateForeignKeys) {
+    delete candidateForeignKeys[physicalKey];
+    candidateForeignKeys[`${physicalKey}generated_suffix`] = {
+      ...generatedForeignKey,
+      name: `${physicalKey}generated_suffix`,
+    };
+  }
+  expect(
+    accept(physicalNameDifference),
+    "PostgreSQL's physical identifier truncation is equivalent",
+  ).toEqual([]);
+
+  const catalogDefaults = clone(baseline);
+  const renderedDefaults = clone(baseline);
+  const renderedColumn = renderedDefaults.tables["public.child"]?.columns.value;
+  if (renderedColumn) renderedColumn.default = "'initial'";
+  const defaultAllowlist = {
+    "public.child.value": {
+      expected: catalogDefaults.tables["public.child"]?.columns.value?.default,
+      proposed: renderedDefaults.tables["public.child"]?.columns.value?.default,
+    },
   };
-  expect(stableJson(foreignKey)).not.toBe(
-    stableJson({ ...foreignKey, onDelete: "restrict" }),
-  );
+  expect(
+    inventoryDifferences(catalogDefaults, renderedDefaults, defaultAllowlist),
+  ).toEqual([]);
+  if (renderedColumn) renderedColumn.default = "'tampered'";
+  expect(
+    inventoryDifferences(catalogDefaults, renderedDefaults, defaultAllowlist),
+  ).not.toEqual([]);
 });
