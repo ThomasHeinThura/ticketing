@@ -852,7 +852,8 @@ describe("explicit test-user seed batch", () => {
         );
         expectSafeSeedCondition(identity?.side === "staff");
         expectSafeSeedCondition(
-          authority?.roleKey === role &&
+          identity?.authority.length === 1 &&
+            authority?.roleKey === role &&
             authority.scope === "workspace" &&
             authority.scopeId === "taskdesk-seed-minimal-workspace" &&
             authority.rank === BUILT_IN_ROLES[role].rank &&
