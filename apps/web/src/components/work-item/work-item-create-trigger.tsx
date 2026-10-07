@@ -4,11 +4,9 @@ import { useTranslation } from "react-i18next";
 import { useWorkspacePermission } from "@/hooks/use-workspace-permission";
 
 export default function WorkItemCreateTrigger({
-  onPreload,
   onClick,
   buttonRef,
 }: {
-  onPreload: () => void;
   onClick: () => void;
   buttonRef?: Ref<HTMLButtonElement>;
 }) {
@@ -21,8 +19,6 @@ export default function WorkItemCreateTrigger({
     <Button
       ref={buttonRef}
       size="sm"
-      onPointerEnter={onPreload}
-      onFocus={onPreload}
       onClick={onClick}
       data-testid="create-work-item-trigger"
     >

@@ -65,9 +65,60 @@ test("work-list create dialog shell opens, closes, and reopens independently of 
   await expect(dialog.getByTestId("create-work-item-title")).toBeVisible();
 });
 
-test("create dialog opens while the list, wrapper, and form load independently", async ({
+test("a denied create capability never mounts the dialog form", async ({
   page,
 }) => {
+  await installPerformanceApiFixture(page);
+  let formChunkRequestCount = 0;
+  page.on("request", (request) => {
+    if (
+      new URL(request.url()).pathname.includes("create-work-item-dialog-form")
+    ) {
+      formChunkRequestCount += 1;
+    }
+  });
+  await page.route("**/api/capabilities**", (route) =>
+    route.fulfill({
+      status: 200,
+      contentType: "application/json",
+      body: JSON.stringify({
+        manageProjects: false,
+        createProjects: false,
+        updateProjects: false,
+        deleteProjects: false,
+        updateTasks: true,
+        createTasks: false,
+        deleteTasks: false,
+        assignTasks: false,
+        createLabels: false,
+        updateLabels: false,
+        deleteLabels: false,
+        manageWorkspace: false,
+        deleteWorkspace: false,
+        inviteUsers: false,
+        manageTeam: false,
+        removeMembers: false,
+        manageServiceCalendars: false,
+      }),
+    }),
+  );
+
+  const capabilitiesResponse = page.waitForResponse(
+    (response) => new URL(response.url()).pathname === "/api/capabilities",
+  );
+  await page.goto(WORK_LIST_PATH);
+  expect((await capabilitiesResponse).ok()).toBe(true);
+  await expect(
+    page.locator("[data-testid=work-item-list-populated] tbody tr"),
+  ).toHaveCount(500);
+  await expect(page.getByTestId("create-work-item-trigger")).toHaveCount(0);
+  await expect(page.getByRole("dialog")).toHaveCount(0);
+  expect(formChunkRequestCount).toBe(0);
+});
+
+test("create dialog shell opens immediately while the list and form load independently", async ({
+  page,
+}, testInfo) => {
   await page.setViewportSize({ width: 1280, height: 720 });
   await installPerformanceApiFixture(page);
 
@@ -81,33 +132,6 @@ test("create dialog opens while the list, wrapper, and form load independently",
     async (route) => {
       await listRelease;
       await route.continue();
-    },
-  );
-
-  let releaseWrapper!: () => void;
-  let wrapperRequested!: () => void;
-  let wrapperContinued!: () => void;
-  let wrapperRequestCount = 0;
-  const wrapperRequest = new Promise<void>((resolve) => {
-    wrapperRequested = resolve;
-  });
-  const wrapperRelease = new Promise<void>((resolve) => {
-    releaseWrapper = resolve;
-  });
-  const wrapperFinished = new Promise<void>((resolve) => {
-    wrapperContinued = resolve;
-  });
-  await page.route(
-    (url) =>
-      url.pathname.includes("work-item-create-dialog-shell-") &&
-      !url.pathname.includes("-form-") &&
-      url.pathname.endsWith(".js"),
-    async (route) => {
-      wrapperRequestCount += 1;
-      wrapperRequested();
-      await wrapperRelease;
-      await route.continue();
-      wrapperContinued();
     },
   );
 
@@ -135,19 +159,25 @@ test("create dialog opens while the list, wrapper, and form load independently",
     const trigger = page.getByTestId("create-work-item-trigger");
     await expect(trigger).toBeVisible();
     await trigger.click();
-    await wrapperRequest;
-    expect(wrapperRequestCount).toBe(1);
+    const dialog = page.getByRole("dialog");
+    await expect(dialog).toBeVisible();
     await expect(
-      page.getByTestId("create-work-item-dialog-loading"),
+      dialog.getByRole("heading", { name: /create/i }),
     ).toBeVisible();
+    await formRequest;
+    await expect(
+      dialog.getByTestId("create-work-item-dialog-loading"),
+    ).toBeVisible();
+    await page.screenshot({
+      path: testInfo.outputPath("create-work-item-dialog-loading.png"),
+    });
     await page.keyboard.press("Escape");
     await expect(page.getByRole("dialog")).toHaveCount(0);
     await expect(
       page.getByTestId("create-work-item-dialog-loading"),
     ).toHaveCount(0);
     await expect(trigger).toBeFocused();
-    releaseWrapper();
-    await wrapperFinished;
+    releaseForm();
     await page.evaluate(
       () =>
         new Promise<void>((resolve) =>
@@ -161,13 +191,10 @@ test("create dialog opens while the list, wrapper, and form load independently",
 
     await trigger.click();
 
-    const dialog = page.getByRole("dialog");
     await expect(dialog).toBeVisible();
     await expect(
       dialog.getByRole("heading", { name: /create/i }),
     ).toBeVisible();
-    await formRequest;
-    await expect(dialog.locator('[aria-busy="true"]')).toBeVisible();
     expect(
       await page
         .locator("[data-testid=work-item-list-populated] tbody tr")
@@ -183,7 +210,6 @@ test("create dialog opens while the list, wrapper, and form load independently",
     await expect(dialog).toBeVisible();
     await expect(dialog.getByTestId("create-work-item-title")).toBeVisible();
   } finally {
-    releaseWrapper();
     releaseForm();
     releaseList();
   }
@@ -228,27 +254,27 @@ test("a pending create intent is cancelled across project changes and browser ba
     },
   );
 
-  let releaseShell!: () => void;
-  let shellRequested!: () => void;
-  let shellContinued!: () => void;
-  const shellRequest = new Promise<void>((resolve) => {
-    shellRequested = resolve;
+  let releaseForm!: () => void;
+  let formRequested!: () => void;
+  let formContinued!: () => void;
+  const formRequest = new Promise<void>((resolve) => {
+    formRequested = resolve;
   });
-  const shellRelease = new Promise<void>((resolve) => {
-    releaseShell = resolve;
+  const formRelease = new Promise<void>((resolve) => {
+    releaseForm = resolve;
   });
-  const shellFinished = new Promise<void>((resolve) => {
-    shellContinued = resolve;
+  const formFinished = new Promise<void>((resolve) => {
+    formContinued = resolve;
   });
   await page.route(
     (url) =>
-      url.pathname.includes("work-item-create-dialog-shell-") &&
+      url.pathname.includes("create-work-item-dialog-form") &&
       url.pathname.endsWith(".js"),
     async (route) => {
-      shellRequested();
-      await shellRelease;
+      formRequested();
+      await formRelease;
       await route.continue();
-      shellContinued();
+      formContinued();
     },
   );
 
@@ -257,7 +283,9 @@ test("a pending create intent is cancelled across project changes and browser ba
     const triggerA = page.getByTestId("create-work-item-trigger");
     await expect(triggerA).toBeVisible();
     await triggerA.click();
-    await shellRequest;
+    const dialogA = page.getByRole("dialog");
+    await expect(dialogA).toBeVisible();
+    await formRequest;
     await expect(
       page.getByTestId("create-work-item-dialog-loading"),
     ).toBeVisible();
@@ -275,8 +303,8 @@ test("a pending create intent is cancelled across project changes and browser ba
     ).toBeVisible();
     await expect(page.getByTestId("create-work-item-trigger")).toBeVisible();
     await expect(page.getByRole("dialog")).toHaveCount(0);
-    releaseShell();
-    await shellFinished;
+    releaseForm();
+    await formFinished;
     await page.evaluate(
       () =>
         new Promise<void>((resolve) =>
@@ -312,7 +340,7 @@ test("a pending create intent is cancelled across project changes and browser ba
     await page.getByTestId("create-work-item-trigger").click();
     await expect(page.getByRole("dialog")).toBeVisible();
   } finally {
-    releaseShell();
+    releaseForm();
   }
 });
 
@@ -322,38 +350,44 @@ test("leaving the work route cancels a pending create intent on unmount", async 
   await page.setViewportSize({ width: 1280, height: 720 });
   await installPerformanceApiFixture(page);
 
-  let releaseShell!: () => void;
-  let shellRequested!: () => void;
-  let shellContinued!: () => void;
-  const shellRequest = new Promise<void>((resolve) => {
-    shellRequested = resolve;
+  let releaseForm!: () => void;
+  let formRequested!: () => void;
+  let formContinued!: () => void;
+  const formRequest = new Promise<void>((resolve) => {
+    formRequested = resolve;
   });
-  const shellRelease = new Promise<void>((resolve) => {
-    releaseShell = resolve;
+  const formRelease = new Promise<void>((resolve) => {
+    releaseForm = resolve;
   });
-  const shellFinished = new Promise<void>((resolve) => {
-    shellContinued = resolve;
+  const formFinished = new Promise<void>((resolve) => {
+    formContinued = resolve;
   });
   await page.route(
     (url) =>
-      url.pathname.includes("work-item-create-dialog-shell-") &&
+      url.pathname.includes("create-work-item-dialog-form") &&
       url.pathname.endsWith(".js"),
     async (route) => {
-      shellRequested();
-      await shellRelease;
+      formRequested();
+      await formRelease;
       await route.continue();
-      shellContinued();
+      formContinued();
     },
   );
 
   try {
     await page.goto(WORK_LIST_PATH);
     await page.getByTestId("create-work-item-trigger").click();
-    await shellRequest;
-    await page.getByRole("link", { name: "WLP-1", exact: true }).click();
+    await expect(page.getByRole("dialog")).toBeVisible();
+    await formRequest;
+    await page.evaluate((nextPath) => {
+      window.history.pushState({}, "", nextPath);
+      window.dispatchEvent(
+        new PopStateEvent("popstate", { state: history.state }),
+      );
+    }, "/agent/work-items/WLP-1");
     await expect(page).toHaveURL(/\/agent\/work-items\/WLP-1/u);
-    releaseShell();
-    await shellFinished;
+    releaseForm();
+    await formFinished;
     await page.evaluate(
       () =>
         new Promise<void>((resolve) =>
@@ -363,25 +397,24 @@ test("leaving the work route cancels a pending create intent on unmount", async 
     await expect(page.getByRole("dialog")).toHaveCount(0);
     await expect(page).toHaveURL(/\/agent\/work-items\/WLP-1/u);
   } finally {
-    releaseShell();
+    releaseForm();
   }
 });
 
-test("a failed dialog shell load shows a retry state and recovers after reload", async ({
+test("a failed form chunk shows a retry state and recovers after reload", async ({
   page,
 }, testInfo) => {
   await page.setViewportSize({ width: 1280, height: 720 });
   await installPerformanceApiFixture(page);
 
-  let wrapperRequestCount = 0;
+  let formRequestCount = 0;
   await page.route(
     (url) =>
-      url.pathname.includes("work-item-create-dialog-shell-") &&
-      !url.pathname.includes("-form-") &&
+      url.pathname.includes("create-work-item-dialog-form") &&
       url.pathname.endsWith(".js"),
     async (route) => {
-      wrapperRequestCount += 1;
-      if (wrapperRequestCount === 1) {
+      formRequestCount += 1;
+      if (formRequestCount === 1) {
         await route.abort("failed");
         return;
       }
@@ -395,8 +428,8 @@ test("a failed dialog shell load shows a retry state and recovers after reload",
   await trigger.click();
 
   const dialog = page.getByRole("dialog");
-  await expect(dialog).toHaveCount(0);
-  await expect(page.getByRole("alert")).toBeVisible();
+  await expect(dialog).toBeVisible();
+  await expect(dialog.getByRole("alert")).toBeVisible();
   await page.screenshot({
     path: testInfo.outputPath("create-dialog-load-error.png"),
   });
@@ -405,7 +438,7 @@ test("a failed dialog shell load shows a retry state and recovers after reload",
   await page.getByTestId("create-work-item-trigger").click();
   await expect(dialog).toBeVisible();
   await expect(dialog.getByTestId("create-work-item-title")).toBeVisible();
-  expect(wrapperRequestCount).toBeGreaterThanOrEqual(2);
+  expect(formRequestCount).toBeGreaterThanOrEqual(2);
   await page.keyboard.press("Escape");
   await expect(dialog).toBeHidden();
   await page.getByTestId("create-work-item-trigger").focus();
