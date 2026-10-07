@@ -3,6 +3,72 @@ import { and, eq, inArray, sql } from "drizzle-orm";
 import db, { schema } from "../database";
 import { listAllWorkspaceIds, listWorkspaceRoleKeys } from "./repository";
 
+/** Add the canonical legacy built-in rows to one already-created workspace. */
+export async function seedDefaultWorkspaceRolesForWorkspace(
+  workspaceId: string,
+  executor: Pick<typeof db, "select" | "insert"> = db,
+) {
+  const existingRows = await executor
+    .select()
+    .from(schema.workspaceRoleTable)
+    .where(eq(schema.workspaceRoleTable.workspaceId, workspaceId));
+  const existingByName = new Map(existingRows.map((row) => [row.role, row]));
+  for (const role of DEFAULT_ROLE_NAMES) {
+    const existing = existingByName.get(role);
+    if (
+      existing &&
+      (!existing.isSystem ||
+        existing.permission !== JSON.stringify(defaultRolePayloads[role]))
+    ) {
+      throw new Error(
+        `Default workspace role conflict: ${workspaceId}/${role}`,
+      );
+    }
+  }
+
+  const now = new Date();
+  const missingRoles = DEFAULT_ROLE_NAMES.filter(
+    (role) => !existingByName.has(role),
+  );
+  if (missingRoles.length > 0) {
+    await executor
+      .insert(schema.workspaceRoleTable)
+      .values(
+        missingRoles.map((role) => ({
+          workspaceId,
+          role,
+          permission: JSON.stringify(defaultRolePayloads[role]),
+          isSystem: true,
+          createdAt: now,
+          updatedAt: now,
+        })),
+      )
+      .onConflictDoNothing({
+        target: [
+          schema.workspaceRoleTable.workspaceId,
+          schema.workspaceRoleTable.role,
+        ],
+      });
+  }
+
+  const finalRows = await executor
+    .select()
+    .from(schema.workspaceRoleTable)
+    .where(eq(schema.workspaceRoleTable.workspaceId, workspaceId));
+  const finalByName = new Map(finalRows.map((row) => [row.role, row]));
+  for (const role of DEFAULT_ROLE_NAMES) {
+    const row = finalByName.get(role);
+    if (
+      !row?.isSystem ||
+      row.permission !== JSON.stringify(defaultRolePayloads[role])
+    ) {
+      throw new Error(
+        `Default workspace role conflict: ${workspaceId}/${role}`,
+      );
+    }
+  }
+}
+
 /**
  * Backfill the editable default roles (viewer/member/admin) for every
  * workspace that's missing them. Runs on API startup after Drizzle

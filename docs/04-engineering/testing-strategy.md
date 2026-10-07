@@ -438,6 +438,49 @@ default columns and concrete states against the existing code defaults, includin
 order, default selection, and template references. It retains database-generated row IDs;
 any conflicting or incomplete default set fails the seed transaction without rewriting it.
 
+### Opt-in sign-in users for manual role testing
+
+The ordinary `minimal`, `realistic`, and `hostile` profiles remain login-free. A separate,
+explicit `test-users` seed command provisions role fixtures only when the operator names the
+exact configured database with `--test-database <name>` and that database name ends in `_test`.
+It requires `--credentials-file <absolute-path>`; the command refuses paths inside
+the current repository or any registered Git worktree, tracked paths, symlinked path
+components, existing files, and directories that cannot be held private. The credentials
+artifact is created with mode `0600` in a `0700` directory, names the exact target database,
+and records each user's effective canonical scope and sign-in method. Staff and instance
+fixtures use distinct generated random passwords. The customer fixture has no local credential
+by default; it records provider-required sign-in. If the target already has an enabled
+`auth.password` provider scoped to the customer portal, the seeder records and uses that
+existing configuration without changing it. Credentials are never printed or checked in. No
+new environment variable or fixed password is introduced.
+
+The initial role set is generated from canonical `BUILT_IN_ROLES`. The current supported
+fixture mappings are `instance_admin` through the existing Better Auth `user.role = 'admin'`
+source; `customer` through an active customer-side person in its dedicated test organisation
+(customer authority comes from person side and organisation scope); `owner` through the
+existing workspace membership path; and `admin`, `member`, and `viewer` through the legacy
+workspace membership/default-role rows. The
+canonical `manager` and `lead` names remain visible in the inventory but are rejected before
+any writes because the current application has no genuine producer for those role values.
+They must not be created by setting `workspace_role.is_system` or by using the proposed
+membership-grant contract as if it were accepted. All eight become seedable only after the
+role foundation is accepted and a supported producer exists.
+
+Example, with the database already configured to `taskdesk_seed_test`:
+
+```bash
+pnpm seed:test-users -- --test-database taskdesk_seed_test \
+  --credentials-file /tmp/taskdesk-role-users/credentials.json
+```
+
+The command is additive and idempotent for its own fixed test namespace. It never resets or
+changes an existing account or privilege. Existing complete accounts must match the fixture
+contract and have the matching private credential artifact; partial rows, email collisions,
+role drift, or missing credentials fail closed. Every password uses Better Auth's actual
+password hasher, and the generated credential is checked against the stored hash by the
+authentication password verifier in tests. This seeder is a manual test aid, not production
+bootstrap or an authorization bypass. It does not run automatically or run migrations.
+
 Three sizes: **minimal** (one org, one project, ten items — for fast tests),
 **realistic** (as above, for manual and performance), **hostile** (empty strings, 500-
 character titles, non-Latin scripts, emoji, right-to-left text, null-heavy records,
