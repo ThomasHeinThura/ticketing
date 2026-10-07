@@ -31,6 +31,7 @@ vi.mock("@/fetchers/work-item/get-work-item", () => ({
 import WorkItemListRealtime from "@/components/work-item/work-item-list-realtime";
 import useGetWorkItem from "@/hooks/queries/work-item/use-get-work-item";
 import useGetWorkItems from "@/hooks/queries/work-item/use-get-work-items";
+import { useNativeWorkItemRealtime } from "@/hooks/use-native-work-item-realtime";
 
 class MockWebSocket {
   static OPEN = 1;
@@ -185,6 +186,45 @@ function ComposedWorkItemActivity({ workItemKey }: { workItemKey: string }) {
   );
 }
 
+function ComposedWorkItemTopics({
+  projectId,
+  workItemKey,
+}: {
+  projectId: string;
+  workItemKey: string;
+}) {
+  const realtime = useNativeWorkItemRealtime([
+    `project:${projectId}`,
+    `work_item:${workItemKey}`,
+  ]);
+  const list = useQuery({
+    queryKey: ["work-items", projectId],
+    queryFn: () => mocks.getWorkItems(projectId),
+  });
+  const detail = useQuery({
+    queryKey: ["work-items", "detail", workItemKey],
+    queryFn: () => mocks.getWorkItem(workItemKey),
+  });
+  const activity = useQuery({
+    queryKey: ["work-items", "activity", workItemKey],
+    queryFn: () => mocks.getActivity(workItemKey),
+  });
+  return (
+    <>
+      <output data-testid="combined-realtime-state">{realtime.status}</output>
+      <output data-testid="combined-list-state">
+        {list.data?.items[0]?.id ?? "loading"}
+      </output>
+      <output data-testid="combined-detail-state">
+        {detail.data ? `${detail.data.key}:${detail.data.version}` : "loading"}
+      </output>
+      <output data-testid="combined-activity-state">
+        {activity.data?.version ?? "loading"}
+      </output>
+    </>
+  );
+}
+
 function wrapperFor(client: QueryClient) {
   return function Wrapper({ children }: { children: ReactNode }) {
     return (
@@ -221,6 +261,98 @@ afterEach(() => {
 });
 
 describe("work-item list realtime composition", () => {
+  it.each(["project-first", "item-first"] as const)(
+    "invalidates all affected query keys for a duplicate event in %s topic order",
+    async (topicOrder) => {
+      const client = new QueryClient({
+        defaultOptions: {
+          queries: { retry: false, refetchOnWindowFocus: false },
+        },
+      });
+      render(
+        <ComposedWorkItemTopics
+          projectId="project-multitopic"
+          workItemKey="WI-MULTITOPIC"
+        />,
+        { wrapper: wrapperFor(client) },
+      );
+      await waitFor(() => expect(MockWebSocket.instances).toHaveLength(1));
+      await waitFor(() => {
+        expect(screen.getByTestId("combined-list-state")).toHaveTextContent(
+          "project-multitopic-item:1",
+        );
+        expect(screen.getByTestId("combined-detail-state")).toHaveTextContent(
+          "WI-MULTITOPIC:1",
+        );
+        expect(screen.getByTestId("combined-activity-state")).toHaveTextContent(
+          "1",
+        );
+      });
+      const socket = MockWebSocket.instances[0];
+      if (!socket) throw new Error("Expected the combined subscription socket");
+      act(() => {
+        socket.open();
+        socket.frame({
+          type: "subscribed",
+          topic: "project:project-multitopic",
+        });
+        socket.frame({
+          type: "subscribed",
+          topic: "work_item:WI-MULTITOPIC",
+        });
+      });
+      await waitFor(() =>
+        expect(screen.getByTestId("combined-realtime-state")).toHaveTextContent(
+          "available",
+        ),
+      );
+      await waitFor(() =>
+        expect(
+          client
+            .getQueryCache()
+            .getAll()
+            .every((query) => query.state.fetchStatus === "idle"),
+        ).toBe(true),
+      );
+      mocks.getWorkItems.mockClear();
+      mocks.getWorkItem.mockClear();
+      mocks.getActivity.mockClear();
+      mocks.state = { listVersion: 2, detailVersion: 2, activityVersion: 2 };
+
+      const projectFrame = {
+        type: "work_item.updated",
+        topic: "project:project-multitopic",
+        eventId: `evt-${topicOrder}`,
+        payload: { key: "WI-MULTITOPIC" },
+      };
+      const itemFrame = {
+        ...projectFrame,
+        topic: "work_item:WI-MULTITOPIC",
+      };
+      act(() => {
+        for (const frame of topicOrder === "project-first"
+          ? [projectFrame, itemFrame]
+          : [itemFrame, projectFrame]) {
+          socket.frame(frame);
+        }
+      });
+      await waitFor(
+        () => {
+          expect(screen.getByTestId("combined-list-state")).toHaveTextContent(
+            "project-multitopic-item:2",
+          );
+          expect(screen.getByTestId("combined-detail-state")).toHaveTextContent(
+            "WI-MULTITOPIC:2",
+          );
+        },
+        { timeout: 1_000 },
+      );
+      expect(mocks.getWorkItems).toHaveBeenCalledTimes(1);
+      expect(mocks.getWorkItem).toHaveBeenCalledTimes(1);
+      expect(mocks.getActivity).not.toHaveBeenCalled();
+    },
+  );
+
   it("refreshes active list, detail, and activity queries once per socket event burst", async () => {
     const client = new QueryClient({
       defaultOptions: {
@@ -311,7 +443,9 @@ describe("work-item list realtime composition", () => {
       { timeout: 1_000 },
     );
     expect(mocks.getWorkItems).toHaveBeenCalledTimes(1);
-    expect(mocks.getWorkItem).toHaveBeenCalledTimes(1);
+    // Each independent socket owns its own event deduplication state; both
+    // authorized deliveries therefore invalidate the active item query.
+    expect(mocks.getWorkItem).toHaveBeenCalledTimes(2);
     expect(mocks.getActivity).not.toHaveBeenCalled();
   });
 
@@ -322,47 +456,147 @@ describe("work-item list realtime composition", () => {
       },
     });
     render(
-      <>
-        <ComposedWorkItemDetail workItemKey="WI-COMMENT" />
-        <ComposedWorkItemActivity workItemKey="WI-COMMENT" />
-      </>,
+      <ComposedWorkItemTopics
+        projectId="project-comment"
+        workItemKey="WI-COMMENT"
+      />,
       { wrapper: wrapperFor(client) },
     );
     await waitFor(() => expect(MockWebSocket.instances).toHaveLength(1));
     await waitFor(() =>
-      expect(screen.getByTestId("activity-query-state")).toHaveTextContent("1"),
+      expect(screen.getByTestId("combined-activity-state")).toHaveTextContent(
+        "1",
+      ),
     );
     const socket = MockWebSocket.instances[0];
     if (!socket) throw new Error("Expected item socket");
     act(() => {
       socket.open();
+      socket.frame({
+        type: "subscribed",
+        topic: "project:project-comment",
+      });
       socket.frame({ type: "subscribed", topic: "work_item:WI-COMMENT" });
     });
     await waitFor(() =>
-      expect(screen.getByTestId("detail-realtime-state")).toHaveTextContent(
+      expect(screen.getByTestId("combined-realtime-state")).toHaveTextContent(
         "available",
       ),
     );
+    await waitFor(() =>
+      expect(
+        client
+          .getQueryCache()
+          .getAll()
+          .every((query) => query.state.fetchStatus === "idle"),
+      ).toBe(true),
+    );
+    mocks.getWorkItems.mockClear();
     mocks.getWorkItem.mockClear();
     mocks.getActivity.mockClear();
     mocks.state.activityVersion = 2;
     act(() =>
       socket.frame({
         type: "work_item.commented",
-        topic: "work_item:WI-COMMENT",
+        topic: "project:project-comment",
         eventId: "evt-visible-comment",
         payload: { key: "WI-COMMENT" },
       }),
     );
     await waitFor(
       () =>
-        expect(screen.getByTestId("activity-query-state")).toHaveTextContent(
+        expect(screen.getByTestId("combined-activity-state")).toHaveTextContent(
           "2",
         ),
       { timeout: 1_000 },
     );
     expect(mocks.getActivity).toHaveBeenCalledTimes(1);
     expect(mocks.getWorkItem).not.toHaveBeenCalled();
+    expect(mocks.getWorkItems).not.toHaveBeenCalled();
+    expect(screen.getByTestId("combined-detail-state")).toHaveTextContent(
+      "WI-COMMENT:1",
+    );
+  });
+
+  it("marks received query keys stale without refetch on cleanup and ignores late frames", async () => {
+    const client = new QueryClient({
+      defaultOptions: {
+        queries: { retry: false, refetchOnWindowFocus: false },
+      },
+    });
+    const invalidate = vi.spyOn(client, "invalidateQueries");
+    const view = render(
+      <ComposedWorkItemTopics
+        projectId="project-cleanup"
+        workItemKey="WI-CLEANUP"
+      />,
+      { wrapper: wrapperFor(client) },
+    );
+    await waitFor(() => expect(MockWebSocket.instances).toHaveLength(1));
+    await waitFor(() =>
+      expect(screen.getByTestId("combined-detail-state")).toHaveTextContent(
+        "WI-CLEANUP:1",
+      ),
+    );
+    const socket = MockWebSocket.instances[0];
+    if (!socket) throw new Error("Expected combined subscription socket");
+    act(() => {
+      socket.open();
+      socket.frame({ type: "subscribed", topic: "project:project-cleanup" });
+      socket.frame({ type: "subscribed", topic: "work_item:WI-CLEANUP" });
+    });
+    await waitFor(() =>
+      expect(screen.getByTestId("combined-realtime-state")).toHaveTextContent(
+        "available",
+      ),
+    );
+    await waitFor(() =>
+      expect(
+        client
+          .getQueryCache()
+          .getAll()
+          .every((query) => query.state.fetchStatus === "idle"),
+      ).toBe(true),
+    );
+    mocks.getWorkItems.mockClear();
+    mocks.getWorkItem.mockClear();
+    mocks.getActivity.mockClear();
+    invalidate.mockClear();
+    act(() =>
+      socket.frame({
+        type: "work_item.updated",
+        topic: "project:project-cleanup",
+        eventId: "evt-cleanup-before-debounce",
+        payload: { key: "WI-CLEANUP" },
+      }),
+    );
+
+    view.unmount();
+    expect(invalidate).toHaveBeenCalledWith({
+      queryKey: ["work-items", "project-cleanup"],
+      refetchType: "none",
+    });
+    expect(invalidate).toHaveBeenCalledWith({
+      queryKey: ["work-items", "detail", "WI-CLEANUP"],
+      refetchType: "none",
+    });
+    act(() =>
+      socket.frame({
+        type: "work_item.updated",
+        topic: "project:project-cleanup",
+        eventId: "evt-late-after-cleanup",
+        payload: { key: "WI-CLEANUP" },
+      }),
+    );
+    await new Promise((resolve) => setTimeout(resolve, 175));
+    expect(invalidate).toHaveBeenCalledTimes(2);
+    expect(mocks.getWorkItems).not.toHaveBeenCalled();
+    expect(mocks.getWorkItem).not.toHaveBeenCalled();
+    expect(mocks.getActivity).not.toHaveBeenCalled();
+    expect(
+      client.getQueryState(["work-items", "detail", "WI-CLEANUP"])
+        ?.isInvalidated,
+    ).toBe(true);
   });
 
   it("starts the project subscription while the first work-item query is pending", async () => {
@@ -468,6 +702,18 @@ describe("work-item list realtime composition", () => {
     );
     expect(queryInterval(client, "project-1")).toBe(false);
     expect(screen.queryByTestId("realtime-warning")).not.toBeInTheDocument();
+
+    mocks.getWorkItems.mockClear();
+    act(() =>
+      first.frame({
+        type: "work_item.updated",
+        topic: "project:project-1",
+        eventId: "evt-late-from-replaced-socket",
+        payload: { key: "project-1-item" },
+      }),
+    );
+    await new Promise((resolve) => setTimeout(resolve, 175));
+    expect(mocks.getWorkItems).not.toHaveBeenCalled();
 
     const secondProject = deferred<WorkItemsResult>();
     mocks.getWorkItems.mockImplementation((projectId: string) =>

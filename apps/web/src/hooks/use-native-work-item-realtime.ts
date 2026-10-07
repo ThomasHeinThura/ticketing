@@ -19,16 +19,6 @@ export type WorkItemRealtimeStatus =
   | "unavailable"
   | "idle";
 
-function hasSeenEvent(seenEventIds: Set<string>, eventId: string) {
-  if (seenEventIds.has(eventId)) return true;
-  seenEventIds.add(eventId);
-  if (seenEventIds.size > MAX_SEEN_EVENTS) {
-    const oldest = seenEventIds.values().next().value;
-    if (oldest) seenEventIds.delete(oldest);
-  }
-  return false;
-}
-
 function realtimeUrl() {
   return toWebSocketBase(getApiUrl("ws"));
 }
@@ -63,16 +53,20 @@ export function useNativeWorkItemRealtime(topics: readonly string[]) {
     let invalidationTimer: ReturnType<typeof setTimeout> | null = null;
     const pendingInvalidations = new Map<string, readonly unknown[]>();
 
-    function flushInvalidations() {
+    function flushInvalidations(refetchType: "active" | "none" = "active") {
       invalidationTimer = null;
       const queryKeys = [...pendingInvalidations.values()];
       pendingInvalidations.clear();
       for (const queryKey of queryKeys) {
-        void queryClient.invalidateQueries({ queryKey });
+        void queryClient.invalidateQueries({ queryKey, refetchType });
       }
     }
 
-    function queueInvalidation(queryKey: readonly unknown[]) {
+    function queueInvalidation(
+      sourceSocket: WebSocket,
+      queryKey: readonly unknown[],
+    ) {
+      if (isDisposed || socketRef.current !== sourceSocket) return;
       pendingInvalidations.set(JSON.stringify(queryKey), queryKey);
       if (invalidationTimer) clearTimeout(invalidationTimer);
       invalidationTimer = setTimeout(
@@ -92,7 +86,8 @@ export function useNativeWorkItemRealtime(topics: readonly string[]) {
       }
     }
 
-    function invalidateAffected(frame: NativeFrame) {
+    function affectedQueryKeys(frame: NativeFrame) {
+      const queryKeys: (readonly unknown[])[] = [];
       const projectId = frame.topic?.startsWith("project:")
         ? frame.topic.slice("project:".length)
         : undefined;
@@ -108,13 +103,15 @@ export function useNativeWorkItemRealtime(topics: readonly string[]) {
         type === "work_item.mentioned" ||
         type === "work_item.deleted";
       if (projectId && listProjectionMayChange) {
-        queueInvalidation(["work-items", projectId]);
+        queryKeys.push(["work-items", projectId]);
       }
 
-      const key = frame.topic?.startsWith("work_item:")
-        ? frame.payload?.key
-        : undefined;
-      if (!key) return;
+      // The server delivers one matching topic per connection. A project topic
+      // can therefore be the only frame for an event even when the socket also
+      // subscribed to the work-item topic; the authorized key-only envelope is
+      // enough to refresh the corresponding item queries.
+      const key = frame.payload?.key;
+      if (!key) return queryKeys;
       if (
         type === "work_item.updated" ||
         type === "work_item.transitioned" ||
@@ -125,7 +122,7 @@ export function useNativeWorkItemRealtime(topics: readonly string[]) {
         type === "work_item.mentioned" ||
         type === "work_item.deleted"
       ) {
-        queueInvalidation(["work-items", "detail", key]);
+        queryKeys.push(["work-items", "detail", key]);
       }
       if (
         type === "work_item.escalated" ||
@@ -134,13 +131,14 @@ export function useNativeWorkItemRealtime(topics: readonly string[]) {
         type === "work_item.commented" ||
         type === "work_item.deleted"
       ) {
-        queueInvalidation(["work-items", "activity", key]);
+        queryKeys.push(["work-items", "activity", key]);
       }
+      return queryKeys;
     }
 
     function connect() {
       if (isDisposed) return;
-      const seenEventIds = new Set<string>();
+      const processedEventInvalidations = new Map<string, Set<string>>();
       const unacknowledgedTopics = new Set(selectedTopics);
       const nextSocket = new WebSocket(realtimeUrl());
       socket = nextSocket;
@@ -148,7 +146,7 @@ export function useNativeWorkItemRealtime(topics: readonly string[]) {
       if (!hasOutage) setStatus("connecting");
 
       nextSocket.onopen = () => {
-        if (isDisposed) return;
+        if (isDisposed || socketRef.current !== nextSocket) return;
         retriesRef.current = 0;
         for (const topic of selectedTopics) {
           nextSocket.send(JSON.stringify({ type: "subscribe", topic }));
@@ -163,6 +161,7 @@ export function useNativeWorkItemRealtime(topics: readonly string[]) {
       };
 
       nextSocket.onmessage = (event) => {
+        if (isDisposed || socketRef.current !== nextSocket) return;
         let frame: NativeFrame;
         try {
           frame = JSON.parse(String(event.data)) as NativeFrame;
@@ -183,17 +182,37 @@ export function useNativeWorkItemRealtime(topics: readonly string[]) {
           void queryClient.invalidateQueries({ queryKey: ["work-items"] });
           return;
         }
-        if (!frame.eventId || hasSeenEvent(seenEventIds, frame.eventId)) return;
-        invalidateAffected(frame);
+        if (!frame.eventId) return;
+        const processedKeys =
+          processedEventInvalidations.get(frame.eventId) ?? new Set<string>();
+        const newKeys = affectedQueryKeys(frame).filter((queryKey) => {
+          const serializedKey = JSON.stringify(queryKey);
+          if (processedKeys.has(serializedKey)) return false;
+          processedKeys.add(serializedKey);
+          return true;
+        });
+        if (newKeys.length > 0) {
+          processedEventInvalidations.delete(frame.eventId);
+          processedEventInvalidations.set(frame.eventId, processedKeys);
+          if (processedEventInvalidations.size > MAX_SEEN_EVENTS) {
+            const oldest = processedEventInvalidations.keys().next().value;
+            if (oldest) processedEventInvalidations.delete(oldest);
+          }
+          for (const queryKey of newKeys) {
+            queueInvalidation(nextSocket, queryKey);
+          }
+        }
       };
 
       nextSocket.onerror = () => {
+        if (isDisposed || socketRef.current !== nextSocket) return;
         hasOutage = true;
         setStatus("unavailable");
       };
       nextSocket.onclose = () => {
+        if (socketRef.current !== nextSocket) return;
         stopPing();
-        if (socketRef.current === nextSocket) socketRef.current = null;
+        socketRef.current = null;
         if (isDisposed) return;
         hasOutage = true;
         setStatus("unavailable");
@@ -210,7 +229,7 @@ export function useNativeWorkItemRealtime(topics: readonly string[]) {
       stopPing();
       if (invalidationTimer) clearTimeout(invalidationTimer);
       invalidationTimer = null;
-      pendingInvalidations.clear();
+      flushInvalidations("none");
       if (retryTimerRef.current) clearTimeout(retryTimerRef.current);
       retryTimerRef.current = null;
       if (socketRef.current === socket) socketRef.current = null;

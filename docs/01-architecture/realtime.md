@@ -171,12 +171,14 @@ useRealtime({
 });
 ```
 
-The native client deduplicates event IDs for each socket and debounces affected-query
-invalidation for 150 ms. A bulk update therefore coalesces duplicate query keys on that
-connection; independent sockets do not suppress each other's events. Comment events refresh
-the activity key, while item mutations refresh detail and the project list when its projection
-may change. Reconnect/outage polling remains active until subscription acknowledgement and
-while the socket is unavailable.
+The native client tracks processed query keys per event ID and socket, then debounces affected
+query invalidation for 150 ms. If one event arrives under more than one subscribed topic, a
+later frame can contribute an affected key that was absent from the first; duplicate keys are
+still invalidated only once on that connection. The key-only envelope lets a project-topic
+frame refresh item detail or activity when the event type calls for it. Independent sockets do
+not suppress each other's events. Comment events refresh activity, while item mutations refresh
+detail and the project list when its projection may change. Reconnect/outage polling remains
+active until subscription acknowledgement and while the socket is unavailable.
 
 ## Scaling across replicas
 
