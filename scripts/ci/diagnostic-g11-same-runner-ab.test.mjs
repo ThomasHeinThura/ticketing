@@ -220,9 +220,20 @@ test("board tracing is separate from canonical metrics and uses each exact pinne
   assert.match(boardTraceSpec, /installPerformanceApiFixture/);
   assert.match(boardTraceSpec, /installLastItemPaintRecorder/);
   assert.match(boardTraceSpec, /Seeded legacy task 200/);
-  assert.match(boardTraceSpec, /Profiler\.start/);
-  assert.match(boardTraceSpec, /Tracing\.start/);
-  assert.match(boardTraceSpec, /Profiler\.stop/);
+  assert.match(boardTraceSpec, /withCdpTraceLifecycle/);
+  assert.match(boardTraceSource, /Profiler\.start/);
+  assert.match(boardTraceSource, /Tracing\.start/);
+  assert.match(boardTraceSource, /Profiler\.stop/);
+  assert.match(boardTraceSource, /Tracing\.end/);
+  assert.match(boardTraceSource, /session\.detach\(\)/);
+  assert.match(
+    boardTraceSource,
+    /Evidence ownership marker does not match this run/,
+  );
+  assert.match(
+    boardTraceSpec,
+    /sourceName: process\.env\.TASKDESK_G11_SOURCE_NAME/,
+  );
   assert.match(boardTraceSpec, /UpdateLayoutTree/);
   assert.match(boardTraceSpec, /"Layout"/);
   assert.match(boardTraceSpec, /diagnosticOnly: true/);

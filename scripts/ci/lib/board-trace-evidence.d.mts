@@ -45,8 +45,32 @@ export function readSafeSourceMap(
   sourceCount: number;
 }>;
 
-export function resolveOwnedTraceDirectory(rawPath: string): Promise<string>;
+export type EvidenceOwnership = {
+  runnerTemp: string;
+  runId: string;
+  runSha: string;
+  repo: string;
+  sourceName: "accepted-f10" | "current-10034";
+};
+
+export function resolveOwnedTraceDirectory(
+  rawPath: string,
+  ownership: EvidenceOwnership,
+): Promise<string>;
 
 export function requireCpuParentGraph(
   profile: Record<string, unknown>,
 ): ReturnType<typeof summarizeCpuProfile>;
+
+export function withCdpTraceLifecycle<T>(
+  session: {
+    send(command: string, params?: Record<string, unknown>): Promise<unknown>;
+    once(event: string, listener: (value: unknown) => void): unknown;
+    detach(): Promise<void>;
+  },
+  captureBody: () => Promise<T>,
+): Promise<{
+  result: T;
+  profile: Record<string, unknown>;
+  traceCompletion: unknown;
+}>;

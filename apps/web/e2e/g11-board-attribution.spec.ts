@@ -8,6 +8,7 @@ import {
   requireCpuParentGraph,
   resolveOwnedTraceDirectory,
   summarizeLayoutEvents,
+  withCdpTraceLifecycle,
 } from "../../../scripts/ci/lib/board-trace-evidence.mjs";
 import {
   installPerformanceApiFixture,
@@ -21,10 +22,22 @@ test("diagnostic: attribute board render through the 200th card paint", async ({
 }) => {
   const outputDirectory = await resolveOwnedTraceDirectory(
     process.env.TASKDESK_G11_BOARD_TRACE_DIR ?? "",
+    {
+      runnerTemp: process.env.RUNNER_TEMP ?? "",
+      runId: process.env.GITHUB_RUN_ID ?? "",
+      runSha: process.env.GITHUB_SHA ?? "",
+      repo: process.env.GITHUB_WORKSPACE ?? "",
+      sourceName: process.env.TASKDESK_G11_SOURCE_NAME ?? "",
+    },
   );
   const baseUrl = "http://127.0.0.1:4178";
-  const context = page.context();
-  const session = await context.newCDPSession(page);
+  await installPerformanceApiFixture(page);
+  await installLastItemPaintRecorder(page, {
+    kind: "board",
+    expectedCount: 200,
+    metric: "boardPaint",
+  });
+  const session = await page.context().newCDPSession(page);
   const traceEvents: Array<Record<string, unknown>> = [];
   const parsedScripts = new Map<
     string,
@@ -61,69 +74,53 @@ test("diagnostic: attribute board render through the 200th card paint", async ({
     }
   });
 
-  await installPerformanceApiFixture(page);
-  await installLastItemPaintRecorder(page, {
-    kind: "board",
-    expectedCount: 200,
-    metric: "boardPaint",
-  });
-  await session.send("Debugger.enable");
-  await session.send("Profiler.enable");
-  await session.send("Profiler.setSamplingInterval", { interval: 100 });
-  await session.send("Tracing.start", {
-    categories:
-      "devtools.timeline,disabled-by-default-devtools.timeline,disabled-by-default-v8.cpu_profiler,disabled-by-default-v8.cpu_profiler.hires,blink.user_timing",
-    transferMode: "ReportEvents",
-  });
-  await session.send("Profiler.start");
   const captureStart = new Date().toISOString();
-  await page.goto(
-    `/dashboard/workspace/${WORKSPACE_ID}/project/${PROJECT_ID}/board`,
+  const { result: captureResult, profile } = await withCdpTraceLifecycle(
+    session,
+    async () => {
+      await page.goto(
+        `/dashboard/workspace/${WORKSPACE_ID}/project/${PROJECT_ID}/board`,
+      );
+      await expect(
+        page.getByText("Seeded legacy task 200", { exact: true }),
+      ).toHaveCount(1, { timeout: 30_000 });
+      await expect(page.locator('[data-task-id^="legacy-task-"]')).toHaveCount(
+        200,
+        { timeout: 30_000 },
+      );
+      await page.waitForFunction(
+        () =>
+          (window as Window & { __g11Metrics?: { boardPaint: number } })
+            .__g11Metrics?.boardPaint > 0,
+        undefined,
+        { timeout: 10_000 },
+      );
+      await page.evaluate(
+        () =>
+          new Promise<void>((resolve) =>
+            requestAnimationFrame(() => requestAnimationFrame(() => resolve())),
+          ),
+      );
+      const paint = await page.evaluate(() => {
+        const metrics = (
+          window as Window & {
+            __g11Metrics?: { boardPaint: number; documentStart: number };
+          }
+        ).__g11Metrics;
+        return {
+          elapsedFromDocumentStart: metrics
+            ? metrics.boardPaint - metrics.documentStart
+            : null,
+          boardPaint: metrics?.boardPaint ?? null,
+          now: performance.now(),
+          cardCount: document.querySelectorAll('[data-task-id^="legacy-task-"]')
+            .length,
+          viewport: { width: window.innerWidth, height: window.innerHeight },
+        };
+      });
+      return { paint, completedAt: new Date().toISOString() };
+    },
   );
-  await expect(
-    page.getByText("Seeded legacy task 200", { exact: true }),
-  ).toHaveCount(1, { timeout: 30_000 });
-  await expect(page.locator('[data-task-id^="legacy-task-"]')).toHaveCount(
-    200,
-    { timeout: 30_000 },
-  );
-  await page.waitForFunction(
-    () =>
-      (window as Window & { __g11Metrics?: { boardPaint: number } })
-        .__g11Metrics?.boardPaint > 0,
-    undefined,
-    { timeout: 10_000 },
-  );
-  await page.evaluate(
-    () =>
-      new Promise<void>((resolve) =>
-        requestAnimationFrame(() => requestAnimationFrame(() => resolve())),
-      ),
-  );
-  const paint = await page.evaluate(() => {
-    const metrics = (
-      window as Window & {
-        __g11Metrics?: { boardPaint: number; documentStart: number };
-      }
-    ).__g11Metrics;
-    return {
-      elapsedFromDocumentStart: metrics
-        ? metrics.boardPaint - metrics.documentStart
-        : null,
-      boardPaint: metrics?.boardPaint ?? null,
-      now: performance.now(),
-      cardCount: document.querySelectorAll('[data-task-id^="legacy-task-"]')
-        .length,
-      viewport: { width: window.innerWidth, height: window.innerHeight },
-    };
-  });
-  const { profile } = await session.send("Profiler.stop");
-  const complete = new Promise<{ stream?: string }>((resolve) =>
-    session.once("Tracing.tracingComplete", resolve),
-  );
-  await session.send("Tracing.end");
-  await complete;
-  const captureEnd = new Date().toISOString();
 
   const cpuProfile = requireCpuParentGraph(profile);
   const layoutEvents = summarizeLayoutEvents(
@@ -141,7 +138,7 @@ test("diagnostic: attribute board render through the 200th card paint", async ({
     true,
   );
   expect(layoutEvents.some((event) => event.name === "Layout")).toBe(true);
-  expect(paint.cardCount).toBe(200);
+  expect(captureResult.paint.cardCount).toBe(200);
 
   const assetsDirectory = path.resolve(process.cwd(), "dist/agent/assets");
   const mapsDirectory = path.join(outputDirectory, "source-maps");
@@ -224,8 +221,8 @@ test("diagnostic: attribute board render through the 200th card paint", async ({
       ),
     ),
     startedAt: captureStart,
-    completedAt: captureEnd,
-    paint,
+    completedAt: captureResult.completedAt,
+    paint: captureResult.paint,
     cpuProfile: {
       nodeCount: cpuProfile.nodeCount,
       parentEdgeCount: cpuProfile.parentEdgeCount,
@@ -258,5 +255,4 @@ test("diagnostic: attribute board render through the 200th card paint", async ({
     JSON.stringify(capture, null, 2),
     { mode: 0o600, flag: "wx" },
   );
-  await session.detach();
 });

@@ -1,6 +1,8 @@
 import assert from "node:assert/strict";
 import { spawnSync } from "node:child_process";
+import { EventEmitter } from "node:events";
 import {
+  chmod,
   mkdir,
   mkdtemp,
   realpath,
@@ -18,6 +20,7 @@ import {
   requireCpuParentGraph,
   resolveOwnedTraceDirectory,
   summarizeLayoutEvents,
+  withCdpTraceLifecycle,
 } from "./board-trace-evidence.mjs";
 
 test("layout trace summary retains only paint and layout event timing", () => {
@@ -112,6 +115,18 @@ test("script URL mapping requires the exact preview origin and safe asset name",
     ),
     null,
   );
+  for (const scriptUrl of [
+    "relative.js",
+    "not a URL",
+    "",
+    "/assets/board.js",
+  ]) {
+    assert.equal(
+      assetMapPathFromScriptUrl(scriptUrl, "http://127.0.0.1:4178", assets),
+      null,
+      `unexpected map path for ${JSON.stringify(scriptUrl)}`,
+    );
+  }
 });
 
 test("source-map reads fail closed for missing, malformed and symlink assets", async () => {
@@ -150,63 +165,244 @@ test("source-map reads fail closed for missing, malformed and symlink assets", a
   }
 });
 
-test("trace output requires an owned private evidence directory and rejects unsafe paths", async () => {
-  const root = await realpath(
-    await mkdtemp(path.join(tmpdir(), "taskdesk-g11-ab-12345-")),
-  );
-  const output = path.join(
-    root,
-    "taskdesk-g11-ab-12345",
-    "accepted-f10",
-    "board-attribution",
-  );
+async function createOwnedEvidence(root, { sourceName = "accepted-f10" } = {}) {
+  const runnerTemp = await realpath(root);
+  const runId = "12345";
+  const runSha = "a".repeat(40);
+  const repo = path.join(runnerTemp, "repo");
+  const evidenceRoot = path.join(runnerTemp, `taskdesk-g11-ab-${runId}`);
+  const output = path.join(evidenceRoot, sourceName, "board-attribution");
   await mkdir(output, { recursive: true, mode: 0o700 });
+  await chmod(evidenceRoot, 0o700);
+  await chmod(path.dirname(output), 0o700);
+  await chmod(output, 0o700);
+  const markerPath = path.join(evidenceRoot, ".taskdesk-owned-evidence");
+  await writeFile(
+    markerPath,
+    `run_id=${runId}\nworkflow_sha=${runSha}\nrepo=${path.resolve(repo)}\n`,
+    { mode: 0o600 },
+  );
+  await chmod(markerPath, 0o600);
+  return {
+    runnerTemp,
+    runId,
+    runSha,
+    repo,
+    sourceName,
+    evidenceRoot,
+    markerPath,
+    output,
+  };
+}
+
+test("trace output is bound to the private run marker and exact source path", async () => {
+  const root = await mkdtemp(path.join(tmpdir(), "taskdesk-g11-owner-"));
   try {
-    assert.equal(await resolveOwnedTraceDirectory(output), output);
+    const owner = await createOwnedEvidence(root);
+    assert.equal(
+      await resolveOwnedTraceDirectory(owner.output, owner),
+      owner.output,
+    );
     const cli = spawnSync(
       process.execPath,
       [
         fileURLToPath(new URL("./board-trace-evidence.mjs", import.meta.url)),
         "preflight",
-        output,
+        owner.output,
+        owner.sourceName,
       ],
-      { encoding: "utf8" },
+      {
+        encoding: "utf8",
+        env: {
+          ...process.env,
+          RUNNER_TEMP: owner.runnerTemp,
+          GITHUB_RUN_ID: owner.runId,
+          GITHUB_SHA: owner.runSha,
+          GITHUB_WORKSPACE: owner.repo,
+        },
+      },
     );
     assert.equal(cli.status, 0, cli.stderr);
     assert.match(cli.stdout, /trace_output_dir=/);
+
     const invalid = spawnSync(
       process.execPath,
       [
         fileURLToPath(new URL("./board-trace-evidence.mjs", import.meta.url)),
         "preflight",
-        path.join(root, "outside"),
+        owner.output,
+        "current-10034",
       ],
-      { encoding: "utf8" },
+      {
+        encoding: "utf8",
+        env: {
+          ...process.env,
+          RUNNER_TEMP: owner.runnerTemp,
+          GITHUB_RUN_ID: owner.runId,
+          GITHUB_SHA: owner.runSha,
+          GITHUB_WORKSPACE: owner.repo,
+        },
+      },
     );
     assert.notEqual(invalid.status, 0);
-    assert.match(invalid.stderr, /owned evidence layout/);
+    assert.match(invalid.stderr, /outside the run-owned evidence path/);
+
     await assert.rejects(
-      resolveOwnedTraceDirectory(path.join(root, "outside")),
-      /owned evidence layout/,
+      resolveOwnedTraceDirectory(owner.output, {
+        ...owner,
+        runId: "12346",
+      }),
+      /outside the run-owned evidence path/,
     );
+    await assert.rejects(
+      resolveOwnedTraceDirectory(owner.output, {
+        ...owner,
+        runSha: "b".repeat(40),
+      }),
+      /ownership marker does not match/,
+    );
+    await assert.rejects(
+      resolveOwnedTraceDirectory(owner.output, {
+        ...owner,
+        runnerTemp: path.join(root, "elsewhere"),
+      }),
+      /outside the run-owned evidence path/,
+    );
+    await rm(owner.markerPath);
+    await assert.rejects(
+      resolveOwnedTraceDirectory(owner.output, owner),
+      /ownership marker is missing or unsafe/,
+    );
+    await writeFile(owner.markerPath, "wrong owner\n", { mode: 0o600 });
+    await assert.rejects(
+      resolveOwnedTraceDirectory(owner.output, owner),
+      /ownership marker does not match/,
+    );
+    await rm(owner.markerPath);
+    const outsideMarker = path.join(root, "outside-marker");
+    await writeFile(outsideMarker, "not used\n", { mode: 0o600 });
+    await symlink(outsideMarker, owner.markerPath);
+    await assert.rejects(
+      resolveOwnedTraceDirectory(owner.output, owner),
+      /ownership marker is missing or unsafe/,
+    );
+
     const linked = path.join(
-      root,
-      "taskdesk-g11-ab-12345",
+      owner.evidenceRoot,
       "current-10034",
       "board-attribution",
     );
-    await rm(path.dirname(linked), { recursive: true, force: true });
-    await mkdir(path.dirname(linked), { recursive: true, mode: 0o700 });
-    await symlink(output, linked, "dir");
+    await symlink(owner.output, path.dirname(linked), "dir");
     await assert.rejects(
-      resolveOwnedTraceDirectory(linked),
+      resolveOwnedTraceDirectory(linked, {
+        ...owner,
+        sourceName: "current-10034",
+      }),
       /missing or unsafe/,
     );
     await assert.rejects(
-      resolveOwnedTraceDirectory("relative/path"),
+      resolveOwnedTraceDirectory("relative/path", owner),
       /absolute path/,
     );
   } finally {
     await rm(root, { recursive: true, force: true });
   }
+});
+
+class FakeCdpSession extends EventEmitter {
+  calls = [];
+  fail = new Set();
+
+  async send(command) {
+    this.calls.push(command);
+    if (this.fail.has(command)) throw new Error(`${command} failed`);
+    if (command === "Profiler.stop") {
+      return {
+        profile: {
+          nodes: [
+            { id: 1, children: [2] },
+            { id: 2, children: [] },
+          ],
+          samples: [2],
+        },
+      };
+    }
+    if (command === "Tracing.end") {
+      queueMicrotask(() => this.emit("Tracing.tracingComplete", { value: [] }));
+    }
+    return {};
+  }
+
+  async detach() {
+    this.calls.push("detach");
+    if (this.fail.has("detach")) throw new Error("detach failed");
+  }
+}
+
+test("CDP trace lifecycle stops, ends and detaches after successful capture", async () => {
+  const session = new FakeCdpSession();
+  const result = await withCdpTraceLifecycle(session, async () => "captured");
+  assert.equal(result.result, "captured");
+  assert.deepEqual(result.profile.nodes[0].children, [2]);
+  assert.deepEqual(result.traceCompletion, { value: [] });
+  assert.deepEqual(session.calls.slice(-3), [
+    "Profiler.stop",
+    "Tracing.end",
+    "detach",
+  ]);
+});
+
+test("CDP lifecycle cleans up after capture and individual cleanup failures", async () => {
+  const failedCapture = new FakeCdpSession();
+  await assert.rejects(
+    withCdpTraceLifecycle(failedCapture, async () => {
+      throw new Error("navigation failed");
+    }),
+    /navigation failed/,
+  );
+  assert.deepEqual(failedCapture.calls.slice(-3), [
+    "Profiler.stop",
+    "Tracing.end",
+    "detach",
+  ]);
+
+  const failedStop = new FakeCdpSession();
+  failedStop.fail.add("Profiler.stop");
+  await assert.rejects(
+    withCdpTraceLifecycle(failedStop, async () => "captured"),
+    /CDP capture cleanup failed/,
+  );
+  assert.deepEqual(failedStop.calls.slice(-3), [
+    "Profiler.stop",
+    "Tracing.end",
+    "detach",
+  ]);
+
+  const failedStart = new FakeCdpSession();
+  failedStart.fail.add("Tracing.start");
+  await assert.rejects(
+    withCdpTraceLifecycle(failedStart, async () => "unreachable"),
+    /Tracing.start failed/,
+  );
+  assert.equal(failedStart.calls.at(-1), "detach");
+  assert.equal(failedStart.calls.includes("Tracing.end"), false);
+
+  const failedProfilerStart = new FakeCdpSession();
+  failedProfilerStart.fail.add("Profiler.start");
+  await assert.rejects(
+    withCdpTraceLifecycle(failedProfilerStart, async () => "unreachable"),
+    /Profiler.start failed/,
+  );
+  assert.deepEqual(failedProfilerStart.calls.slice(-2), [
+    "Tracing.end",
+    "detach",
+  ]);
+
+  const failedTraceEnd = new FakeCdpSession();
+  failedTraceEnd.fail.add("Tracing.end");
+  await assert.rejects(
+    withCdpTraceLifecycle(failedTraceEnd, async () => "captured"),
+    /CDP capture cleanup failed/,
+  );
+  assert.deepEqual(failedTraceEnd.calls.slice(-2), ["Tracing.end", "detach"]);
 });

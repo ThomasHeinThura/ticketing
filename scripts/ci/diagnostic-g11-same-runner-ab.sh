@@ -52,6 +52,9 @@ board_attribution=separate_unthrottled_browser_trace_not_acceptance
 EOF
 }
 write_run_metadata
+printf 'run_id=%s\nworkflow_sha=%s\nrepo=%s\n' \
+  "$RUN_ID" "$RUN_SHA" "$REPO" > "$EVIDENCE/.taskdesk-owned-evidence"
+chmod 600 "$EVIDENCE/.taskdesk-owned-evidence"
 
 if [[ "${GITHUB_REF:-}" != "$RUN_REF" ]]; then
   printf 'Refusing unexpected workflow ref: %s\n' "${GITHUB_REF:-unset}" >&2
@@ -329,10 +332,15 @@ run_board_attribution() {
   local output="$EVIDENCE/$name/board-attribution"
   local status
   mkdir -m 700 "$output"
-  node "$REPO/scripts/ci/lib/board-trace-evidence.mjs" preflight "$output" >/dev/null
+  RUNNER_TEMP="$RUNNER_TEMP_DIR" \
+    GITHUB_RUN_ID="$RUN_ID" \
+    GITHUB_SHA="$RUN_SHA" \
+    GITHUB_WORKSPACE="$REPO" \
+    node "$REPO/scripts/ci/lib/board-trace-evidence.mjs" preflight "$output" "$name" >/dev/null
   set +e
   (
     cd "$tree/apps/web"
+    TASKDESK_G11_SOURCE_NAME="$name" \
     TASKDESK_G11_SOURCE_ROOT="$tree" \
     TASKDESK_G11_BOARD_TRACE_DIR="$output" \
       TASKDESK_G11_SOURCE_SHA="$sha" \

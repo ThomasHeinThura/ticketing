@@ -44,7 +44,12 @@ export function summarizeCpuProfile(profile) {
 }
 
 export function assetMapPathFromScriptUrl(scriptUrl, baseUrl, assetsDirectory) {
-  const parsed = new URL(scriptUrl);
+  let parsed;
+  try {
+    parsed = new URL(scriptUrl);
+  } catch {
+    return null;
+  }
   const expectedOrigin = new URL(baseUrl).origin;
   if (
     parsed.origin !== expectedOrigin ||
@@ -89,24 +94,57 @@ export async function readSafeSourceMap(mapPath, assetsDirectory) {
   };
 }
 
-export async function resolveOwnedTraceDirectory(rawPath) {
+export async function resolveOwnedTraceDirectory(rawPath, ownership) {
+  const { runnerTemp, runId, runSha, repo, sourceName } = ownership ?? {};
   if (!rawPath || !path.isAbsolute(rawPath)) {
     throw new Error("Trace output directory must be an absolute path");
   }
-  const candidate = path.resolve(rawPath);
   if (
-    !/taskdesk-g11-ab-[0-9]+\/(?:accepted-f10|current-10034)\/board-attribution$/.test(
-      candidate,
-    )
+    typeof runnerTemp !== "string" ||
+    typeof repo !== "string" ||
+    !/^\d+$/.test(runId ?? "") ||
+    !/^[a-f0-9]{40}$/.test(runSha ?? "") ||
+    !["accepted-f10", "current-10034"].includes(sourceName)
   ) {
     throw new Error(
-      "Trace output directory is outside the owned evidence layout",
+      "Trace directory ownership metadata is incomplete or invalid",
     );
   }
-  const runRoot = path.dirname(path.dirname(candidate));
-  const sourceDirectory = path.dirname(candidate);
-  for (const directory of [runRoot, sourceDirectory, candidate]) {
-    const details = await lstat(directory);
+  const candidate = path.resolve(rawPath);
+  const evidenceRoot = path.resolve(runnerTemp, `taskdesk-g11-ab-${runId}`);
+  const expected = path.join(evidenceRoot, sourceName, "board-attribution");
+  if (candidate !== expected) {
+    throw new Error(
+      "Trace output directory is outside the run-owned evidence path",
+    );
+  }
+
+  const markerPath = path.join(evidenceRoot, ".taskdesk-owned-evidence");
+  let marker;
+  try {
+    marker = await lstat(markerPath);
+  } catch {
+    throw new Error("Evidence ownership marker is missing or unsafe");
+  }
+  if (
+    marker.isSymbolicLink() ||
+    !marker.isFile() ||
+    (marker.mode & 0o077) !== 0
+  ) {
+    throw new Error("Evidence ownership marker is missing or unsafe");
+  }
+  const expectedMarker = `run_id=${runId}\nworkflow_sha=${runSha}\nrepo=${path.resolve(repo)}\n`;
+  if ((await readFile(markerPath, "utf8")) !== expectedMarker) {
+    throw new Error("Evidence ownership marker does not match this run");
+  }
+
+  for (const directory of [evidenceRoot, path.dirname(candidate), candidate]) {
+    let details;
+    try {
+      details = await lstat(directory);
+    } catch {
+      throw new Error("Trace output directory is missing or unsafe");
+    }
     if (details.isSymbolicLink() || !details.isDirectory()) {
       throw new Error("Trace output directory is missing or unsafe");
     }
@@ -130,15 +168,89 @@ export function requireCpuParentGraph(profile) {
   return summary;
 }
 
+export async function withCdpTraceLifecycle(session, captureBody) {
+  let tracingStarted = false;
+  let profilerStarted = false;
+  let result;
+  let profile;
+  let traceCompletion;
+  let captureError;
+  const cleanupErrors = [];
+
+  try {
+    await session.send("Debugger.enable");
+    await session.send("Profiler.enable");
+    await session.send("Profiler.setSamplingInterval", { interval: 100 });
+    await session.send("Tracing.start", {
+      categories:
+        "devtools.timeline,disabled-by-default-devtools.timeline,disabled-by-default-v8.cpu_profiler,disabled-by-default-v8.cpu_profiler.hires,blink.user_timing",
+      transferMode: "ReportEvents",
+    });
+    tracingStarted = true;
+    await session.send("Profiler.start");
+    profilerStarted = true;
+    result = await captureBody();
+  } catch (error) {
+    captureError = error;
+  }
+
+  if (profilerStarted) {
+    try {
+      ({ profile } = await session.send("Profiler.stop"));
+    } catch (error) {
+      cleanupErrors.push(error);
+    }
+  }
+  if (tracingStarted) {
+    try {
+      const completion = new Promise((resolve) =>
+        session.once("Tracing.tracingComplete", resolve),
+      );
+      await session.send("Tracing.end");
+      traceCompletion = await completion;
+    } catch (error) {
+      cleanupErrors.push(error);
+    }
+  }
+  try {
+    await session.detach();
+  } catch (error) {
+    cleanupErrors.push(error);
+  }
+
+  if (captureError && cleanupErrors.length > 0) {
+    throw new AggregateError(
+      [captureError, ...cleanupErrors],
+      "CDP capture and cleanup both failed.",
+    );
+  }
+  if (captureError) throw captureError;
+  if (cleanupErrors.length > 0) {
+    throw new AggregateError(cleanupErrors, "CDP capture cleanup failed.");
+  }
+  if (!profile || !traceCompletion) {
+    throw new Error(
+      "CDP capture did not return the CPU profile and trace completion",
+    );
+  }
+  return { result, profile, traceCompletion };
+}
+
 async function main(args) {
-  const [command, outputPath] = args;
-  if (command === "preflight" && args.length === 2) {
-    const output = await resolveOwnedTraceDirectory(outputPath);
+  const [command, outputPath, sourceName] = args;
+  if (command === "preflight" && args.length === 3) {
+    const output = await resolveOwnedTraceDirectory(outputPath, {
+      runnerTemp: process.env.RUNNER_TEMP,
+      runId: process.env.GITHUB_RUN_ID,
+      runSha: process.env.GITHUB_SHA,
+      repo: process.env.GITHUB_WORKSPACE,
+      sourceName,
+    });
     process.stdout.write(`trace_output_dir=${output}\n`);
     return;
   }
   throw new Error(
-    "Usage: board-trace-evidence.mjs preflight <owned-output-directory>",
+    "Usage: board-trace-evidence.mjs preflight <output-directory> <source-name>",
   );
 }
 
