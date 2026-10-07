@@ -10,6 +10,8 @@ import {
 } from "react";
 import { useTranslation } from "react-i18next";
 import PageTitle from "@/components/page-title";
+// Keep the small dialog composition available so create intent opens synchronously;
+// its query-heavy form is a separate dynamic module verified by the G11 route graph.
 import WorkItemCreateDialogShell from "@/components/work-item/work-item-create-dialog-shell";
 import WorkItemListLoading from "@/components/work-item/work-item-list-loading";
 import type { WorkItemsResult } from "@/fetchers/work-item/get-work-items";

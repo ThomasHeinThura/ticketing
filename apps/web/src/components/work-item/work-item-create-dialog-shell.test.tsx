@@ -1,3 +1,4 @@
+import { Button } from "@taskdesk/ui";
 import { cleanup, render, screen } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
@@ -35,7 +36,7 @@ describe("WorkItemCreateDialogShell", () => {
   it("opens the dialog while the intent-lazy form is still loading", () => {
     render(
       <>
-        <button type="button">Trigger</button>
+        <Button type="button">Trigger</Button>
         <WorkItemCreateDialogShell
           onClose={vi.fn()}
           projectId="project-1"

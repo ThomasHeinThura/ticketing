@@ -18570,17 +18570,6 @@
         "surfaceContext": "caller-chain",
         "category": "body",
         "chain": [
-          "apps/web/src/components/work-item/create-work-item-dialog.tsx:CreateWorkItemDialog",
-          "DialogContent->packages/ui/src/components/dialog.tsx:DialogPopup"
-        ],
-        "backdropLayers": []
-      },
-      {
-        "id": "packages/ui/src/components/dialog.tsx::DialogDescription::DialogPrimitive.Description[0]::text-muted-foreground#0",
-        "usage": "packages/ui/src/components/dialog.tsx",
-        "surfaceContext": "caller-chain",
-        "category": "body",
-        "chain": [
           "apps/web/src/components/work-item/work-item-create-dialog-shell.tsx:WorkItemCreateDialogShell",
           "DialogContent->packages/ui/src/components/dialog.tsx:DialogPopup"
         ],
@@ -21486,17 +21475,6 @@
         "category": "body",
         "chain": [
           "apps/web/src/components/shared/modals/create-workspace-modal.tsx:CreateWorkspaceModal",
-          "DialogContent->packages/ui/src/components/dialog.tsx:DialogPopup"
-        ],
-        "backdropLayers": []
-      },
-      {
-        "id": "packages/ui/src/components/dialog.tsx::DialogDescription::DialogPrimitive.Description[0]::text-muted-foreground#0",
-        "usage": "packages/ui/src/components/dialog.tsx",
-        "surfaceContext": "caller-chain",
-        "category": "body",
-        "chain": [
-          "apps/web/src/components/work-item/create-work-item-dialog.tsx:CreateWorkItemDialog",
           "DialogContent->packages/ui/src/components/dialog.tsx:DialogPopup"
         ],
         "backdropLayers": []

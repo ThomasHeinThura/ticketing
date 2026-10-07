@@ -4,6 +4,7 @@ import os from "node:os";
 import path from "node:path";
 import test from "node:test";
 import {
+  assertDynamicModuleOutsideInitialGraph,
   BUDGETS_KB,
   checkBundleSizes,
   collectInitialAssets,
@@ -58,6 +59,10 @@ test("G11: direct work-list budget includes its early-preloaded static graph", a
       "../../i18n/el-GR.json": { file: "assets/el-GR.js" },
       "chunks/route-only.js": { file: "assets/route-only.js" },
       "chunks/later.js": { file: "assets/later.js" },
+      "src/components/work-item/create-work-item-dialog-form.tsx": {
+        file: "assets/create-work-item-dialog-form.js",
+        isDynamicEntry: true,
+      },
     };
     await writeFile(manifestPath, JSON.stringify(routeManifest));
     await mkdir(path.join(dir, "assets"));
@@ -102,6 +107,47 @@ test("G11: initial graph includes static imports and CSS but excludes dynamic im
     "assets/main.css",
     "assets/shared.js",
   ]);
+});
+
+test("G11: create dialog form must remain a dynamic module outside route startup", () => {
+  const routeKey = `src${WORK_LIST_COMPONENT_SUFFIX}`;
+  const formKey = "src/components/work-item/create-work-item-dialog-form.tsx";
+  const graph = {
+    [routeKey]: {
+      file: "assets/work.js",
+      imports: ["chunks/dialog-shell.js"],
+    },
+    "chunks/dialog-shell.js": { file: "assets/dialog-shell.js" },
+    [formKey]: { file: "assets/create-form.js", isDynamicEntry: true },
+  };
+
+  assert.doesNotThrow(() =>
+    assertDynamicModuleOutsideInitialGraph(graph, routeKey, formKey),
+  );
+  assert.throws(
+    () =>
+      assertDynamicModuleOutsideInitialGraph(
+        {
+          ...graph,
+          [routeKey]: {
+            ...graph[routeKey],
+            imports: [...graph[routeKey].imports, formKey],
+          },
+        },
+        routeKey,
+        formKey,
+      ),
+    /initial static graph/,
+  );
+  assert.throws(
+    () =>
+      assertDynamicModuleOutsideInitialGraph(
+        { ...graph, [formKey]: { file: "assets/create-form.js" } },
+        routeKey,
+        formKey,
+      ),
+    /not a dynamic build entry/,
+  );
 });
 
 test("G11: unclassified additional entries fail closed", () => {
@@ -187,6 +233,10 @@ test("G11: independently built agent and portal roots are measured from separate
         },
         "chunks/shared.js": { file: "assets/shared.js" },
         [workKey]: { file: "assets/work.js", imports: ["chunks/shared.js"] },
+        "src/components/work-item/create-work-item-dialog-form.tsx": {
+          file: "assets/create-work-item-dialog-form.js",
+          isDynamicEntry: true,
+        },
         "../../i18n/en-US.json": { file: "assets/en-US.js" },
       }),
     );

@@ -41,6 +41,17 @@ const NODE = process.execPath;
 
 const created = [];
 
+// Contrast tests create short-lived TSX fixtures; scratch checkers must not traverse
+// those files while another test is deleting them.
+export function shouldCopyCheckerSource(source) {
+  const basename = path.basename(source);
+  return (
+    !source.endsWith(".test.mjs") &&
+    !source.includes(`${path.sep}probes`) &&
+    !basename.startsWith(".contrast-")
+  );
+}
+
 /** A fresh temporary directory, removed by `cleanUpScratchRepos()`. */
 export function scratchDir(prefix) {
   const dir = mkdtempSync(path.join(tmpdir(), `taskdesk-${prefix}-`));
@@ -108,8 +119,7 @@ export function setOriginMain(dir, sha) {
 export function installCheckers(dir) {
   cpSync(path.join(repoRoot, "scripts/ci"), path.join(dir, "scripts/ci"), {
     recursive: true,
-    filter: (source) =>
-      !source.endsWith(".test.mjs") && !source.includes(`${path.sep}probes`),
+    filter: shouldCopyCheckerSource,
   });
 
   // A5: `check-skips`, `check-env`, `check-vocabulary` and `check-overrides` derive the
