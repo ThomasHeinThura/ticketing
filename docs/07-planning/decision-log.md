@@ -8,6 +8,16 @@ P0 v5 actual TLS/health/signup/persisted admin/session/CSRF succeeds locally, th
 
 **Recorded:** root at actual 2026-10-07T06:14:20.333654+00:00 under standing batch implementation and verification authority.
 
+### 2026-10-07 · Restart parallel execution and correct route-measurement provenance
+
+**Decision the orchestrator made:** restart bounded parallel P0 execution-plan repair, complete later-train implementation and actual-source gap inventory. Keep one author per source tree; implement the collected class before bulk review. This changes scheduling, not review tiers, gate semantics, phase scope or protected-merge authority.
+
+**Explanation:** actual fresh P0 attempts expose wrong fully mounted paths, including a root health probe that returned SPA HTML200. Preserve those failures and replace individual path guesses with one exact-source route/mount matrix for all phases. Clear static v10 measurement is not live persistence or phase acceptance. Both owned runs are fully cleaned; no existing DEV resource is restarted or modified.
+
+**Authorization and limits:** Thomas requested restart/continue all tasks and P0 priority. Existing decisions remain in force, including query acceptance deferred toP4 and private all-role fixtures. Pending human choices remain unanswered. No gate is waived, credential published, unreviewed source deployed, enforcement activated or phase completed. Scheduling can be reversed by stopping a lane; original evidence remains immutable.
+
+**Recorded by:** root orchestrator, 2026-10-07T10:11:27.558320+00:00.
+
 ### 2026-10-07 · Testing usernames are private runtime credentials; preserve failed ingress evidence
 
 Thomas explicitly requires role test seeding and forbids usable usernames, passwords and credential Markdown in GitHub. Apply this literally: generate actual login usernames at runtime, alongside strong random passwords, retain them only in the external private manifest and reuse that manifest for additive/idempotent seeding. Public code may contain role keys and non-login fixture identifiers; it must not construct a fixed usable login username. No production provider defaults or role grants change. This supersedes the narrower interpretation that only passwords were private.

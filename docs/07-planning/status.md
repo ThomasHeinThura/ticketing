@@ -1,5 +1,59 @@
 ## Status First
 
+Snapshot: 2026-10-07T10:11:27.558320+00:00. Accepted main remains `3096cb044bdf6ae98488bfc385f532fa6386343a`; #583 remains frozen at `5326937460b195d8e69584c0cb99305348330a95`. Parallel lanes were restarted after no prior subagent remained live. No protected merge, persistent DEV refresh, official release, enforcement activation or phase completion occurred.
+
+| Phase | Implementation | Integration | Acceptance |
+| --- | --- | --- | --- |
+| P0 | Frozen product; v10 measurement delta independently clear | Sole closure #583 | Actual fresh boot, JSON health both hosts, signup/session/admin/CSRF and workspace/project/work-item/presign pass; local full persistence, official installer, G11, compatibility/cutover/finalizer remain open |
+| P1 | Full defined saved-view source9b7 includes collected concurrency/edit/audience fixes | Composed #589a5; current deterministic gate remedy underway | Combined scoped native 160/161 at a5; unsupported-query test wrongly parses documented plain-text422 as JSON; required full candidate browser/image/review/CI remain open |
+| P2 | Selected approval continuity/withdrawal source reviewed | Composed #589a5 | Current whole-train acceptance and calendar/SLA broader obligations remain open |
+| P3 | Selected OIDC mapping/validated-login source reviewed | Composed #589a5 | Real provider/Health and broader identity acceptance remain open |
+| P4 | Selected outbox fixes and all-eight-role private seeder source reviewed | Composed #589a5; fb9 note carried at a15b5b11 | Tokens/source contexts, owning webhook review/undefined HTTP exception, exact contract-break approval, current train acceptance and broader governance remain open |
+
+### What changed
+
+The full selected later batch was pushed at `a5f8f6c42b1dad992f21a3c819f8d4e9bcf65550`: P1 source9b7, P2#586, P3#595/#596, P4#594 and the seeder through55. Canonical SQL0000–0117 and sole0118 are preserved, with no0119. Actual offline results are API108files/784, web130/568, permissions14/88, workspace types9/9 and OpenAPI242 operations. These are offline results, not required hosted acceptance. The generator scratch configuration now includes its actual three canonical schema inputs rather than generating false dropped tables; meaningful no-op assertions remain intact.
+
+Root's combined PostgreSQL window at a5 runs 12 selected files: 11 pass, one fails, with160passed/1failed. The sole failure is an unsupported persisted-query test invoking JSON parsing on its documented plain-text422; fail-closed status passes. Schema-generation secondary-database testing was explicitly excluded from this single-database grant. Zero clients, full identity/mount checks and cleanup prove the container/named volume removed, prior global sets restored and55442 absent. No full integration-suite or later-head native pass is claimed.
+
+Seeder source55 receives fresh independent Luna and Sol exact tooling-relocation confirmation, with unchanged producer/target/origin/diagnostic semantics. Current notes-onlyfb9 has actual machine binding to55, with no drift/self-attestation. PR#597 body now identifies these actual heads and current evidence. Native4files/35 stays attributed to323; no usable credentials or credential Markdown enter GitHub, and no persistent DEV users exist. Central note-onlya15b5b11 carries that actual note.
+
+P0 v9 measurement review finds explicit role/database binding, quiet machine output and exact-successor checklist flaws. One completev10 fix receives independent Sol CLEAR:16/16 bundle checksums,75candidate/54baseline present source pins plus21absences,9synthetic output cases, least-privilege SELECT grants verified at both revisions. This is static measurement clearance only.
+
+Actual v10 run `20261007T100242Z-d48d45` uses wrong root health paths: agent200 responses were SPA fallback and are not health proof; portal404 stops the run. A fresh corrected run `20261007T100616Z-7ddf10` verifies the actual `/api/public/health/live` and `/api/public/health/ready` JSON200 endpoints on both hosts, secure signup/session, actual persisted admin, CSRF, workspace/type/project/work-item creation and attachment presign200. Returned signed upload URL includes `/api/storage/filesystem-attachment-upload`, while the plan omitted `/api`; strict validation stops before upload. No attachment completion, encrypted-secret measurement, repeat, upgrade or rollback proof occurs. Both runs stop ingress first, preserve originals and remove only owned5containers/3named volumes/2networks/2aliases. Global sets return unchanged, ports4296/4297 are absent and the unrelated anonymous volume is preserved. The next batch replaces individual path patches with one source-proven fully mounted route authority across every phase.
+
+### What is being worked on now
+
+P0 Luna completes the entire mounted-route execution matrix; the later-train sole Luna author resolves actual token/context/contrast and plain-text test issues as one batch. A separate read-only source audit identifies significant missing P2 features against composed source rather than duplicating already implemented work. Existing OrbStack TaskDesk app/Traefik/PostgreSQL/Valkey were healthy at10:01UTC; no new deployment is claimed.
+
+### Critical path
+
+1. Complete actual local persistence lifecycle with fully mounted source-proven requests.
+2. Resolve hosted G11 under the existing no-extra-retry rule.
+3. Establish strict behavior and original partial-date compatibility/cutover eligibility.
+4. Complete eligible official installer/release acceptance and exact protected merge.
+5. Fresh additional Sol phase finalizer before any P0 completion claim.
+
+### Misalignment / drift
+
+Primary checkout status is stale; its four dirty files remain untouched. Prior6:14OPS concurrency/tooling blockers have since been remedied in source and are not current implementation gaps. #589's historical PR-body description needs one coherent refresh after the full batch freezes; actual source composition is authoritative. Three partial UTC buckets do not establish full-day/72-hour coverage. Local signed-URL HTTPS reconstruction does not prove shipped URL-generation correctness.
+
+### Concerns
+
+Hosted #589 checks remain red. Log acquisition exposed CLI escape-sequence rejection; allowing private capture reaches a redirected blob TLS handshake timeout, so complete hosted failure logs remain unavailable. No hosted cause is invented from empty logs, and no workflow rerun is requested. Actual token analysis finds stale/missing manifest identities and unresolved source surface contexts; the author must establish real paired-token contracts before canonical regeneration, without weakening the gate. Original root path mistakes remain failed evidence.
+
+### Decisions needed from Thomas
+
+Existing public-config criterion, one unchanged-source hosted confirmation, official release ordering and P1 team-lead/transfer questions remain pending. The already-submitted P4 HTTPS-everywhere proposal and four exact OpenAPI enum additions remain unanswered. No elapsed-time approval or gate waiver is inferred; independent implementation continues.
+
+### Next merge candidates
+
+#583 only after its actual gates clear. #589 receives the full current-source panel/security/image/browser/CI after its implementation batch freezes. #597 remains a reviewed source leaf with open CI/integration/image acceptance. No candidate is declared merge-ready or phase-complete.
+
+---
+
+## Status First
+
 Snapshot: 2026-10-07T06:14:20.333654+00:00. Accepted main remains `3096cb044bdf6ae98488bfc385f532fa6386343a`; sole P0 closure #583 stays frozen at `5326937460b195d8e69584c0cb99305348330a95`. No protected merge, persistent DEV refresh, release, cutover or phase completion occurred.
 
 | Phase | Implementation | Integration | Acceptance |
