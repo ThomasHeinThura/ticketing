@@ -7,7 +7,10 @@ import {
 } from "@testing-library/react";
 import { useState } from "react";
 import { afterEach, describe, expect, it, vi } from "vitest";
-import CreateWorkItemDialog from "./create-work-item-dialog";
+import {
+  default as CreateWorkItemDialog,
+  CreateWorkItemDialogLoadError,
+} from "./create-work-item-dialog";
 
 vi.mock("react-i18next", () => ({
   useTranslation: () => ({ t: (key: string) => key }),
@@ -53,5 +56,14 @@ describe("CreateWorkItemDialog shared shell", () => {
       screen.getByRole("button", { name: "workItems:create.close" }),
     );
     await waitFor(() => expect(trigger).toHaveFocus());
+  });
+
+  it("offers page reload recovery when the lazy form fails", () => {
+    render(<CreateWorkItemDialogLoadError />);
+
+    expect(screen.getByRole("alert")).toHaveTextContent("common:error.title");
+    expect(
+      screen.getByRole("button", { name: "common:error.tryAgain" }),
+    ).toBeVisible();
   });
 });

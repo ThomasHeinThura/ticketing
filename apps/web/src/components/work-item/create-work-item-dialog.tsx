@@ -8,26 +8,13 @@ import {
   ErrorBoundary,
   Skeleton,
 } from "@taskdesk/ui";
-import {
-  type ComponentType,
-  type LazyExoticComponent,
-  lazy,
-  Suspense,
-  useState,
-} from "react";
+import { lazy, Suspense } from "react";
 import { useTranslation } from "react-i18next";
 import type { CreateWorkItemDialogProps } from "./create-work-item-dialog-form";
 
 type Props = CreateWorkItemDialogProps & { open: boolean };
 
-type FormComponent = LazyExoticComponent<
-  ComponentType<CreateWorkItemDialogProps>
->;
-type ContentProps = CreateWorkItemDialogProps & {
-  Form?: FormComponent;
-};
-
-const DefaultCreateWorkItemDialogForm: FormComponent = lazy(
+const DefaultCreateWorkItemDialogForm = lazy(
   () => import("./create-work-item-dialog-form"),
 );
 
@@ -35,8 +22,7 @@ export function CreateWorkItemDialogContent({
   onClose,
   projectId,
   workspaceId,
-  Form = DefaultCreateWorkItemDialogForm,
-}: ContentProps) {
+}: CreateWorkItemDialogProps) {
   return (
     <Suspense
       fallback={
@@ -53,7 +39,11 @@ export function CreateWorkItemDialogContent({
         </div>
       }
     >
-      <Form onClose={onClose} projectId={projectId} workspaceId={workspaceId} />
+      <DefaultCreateWorkItemDialogForm
+        onClose={onClose}
+        projectId={projectId}
+        workspaceId={workspaceId}
+      />
     </Suspense>
   );
 }
@@ -67,27 +57,6 @@ export default function CreateWorkItemDialog({
   workspaceId,
 }: Props) {
   const { t } = useTranslation();
-  const [Form, setForm] = useState<FormComponent>(() =>
-    lazy(() => import("./create-work-item-dialog-form")),
-  );
-
-  function FormLoadError({ resetError }: { resetError: () => void }) {
-    return (
-      <div role="alert" className="flex flex-col gap-3">
-        <p>{t("common:error.title")}</p>
-        <Button
-          size="sm"
-          variant="outline"
-          onClick={() => {
-            setForm(() => lazy(() => import("./create-work-item-dialog-form")));
-            resetError();
-          }}
-        >
-          {t("common:error.tryAgain")}
-        </Button>
-      </div>
-    );
-  }
 
   return (
     <Dialog
@@ -109,16 +78,31 @@ export default function CreateWorkItemDialog({
           </DialogDescription>
         </DialogHeader>
         {open ? (
-          <ErrorBoundary fallback={FormLoadError}>
+          <ErrorBoundary fallback={CreateWorkItemDialogLoadError}>
             <CreateWorkItemDialogContent
               onClose={onClose}
               projectId={projectId}
               workspaceId={workspaceId}
-              Form={Form}
             />
           </ErrorBoundary>
         ) : null}
       </DialogContent>
     </Dialog>
+  );
+}
+
+export function CreateWorkItemDialogLoadError() {
+  const { t } = useTranslation();
+  return (
+    <div role="alert" className="flex flex-col gap-3">
+      <p>{t("common:error.title")}</p>
+      <Button
+        size="sm"
+        variant="outline"
+        onClick={() => window.location.reload()}
+      >
+        {t("common:error.tryAgain")}
+      </Button>
+    </div>
   );
 }
