@@ -163,14 +163,22 @@ async function waitForBlockedProjectAcceptances(
     await observer.query("SELECT pg_stat_clear_snapshot()");
     const result = await observer.query<{ count: string }>(
       `
-        SELECT count(*)::text AS count
-        FROM pg_stat_activity
-        WHERE datname = current_database()
-          AND pid <> pg_backend_pid()
-          AND wait_event_type = 'Lock'
-          AND $1 = ANY(pg_blocking_pids(pid))
-          AND query ILIKE '%from "project"%'
-          AND query ILIKE '%for no key update%'
+        WITH RECURSIVE blocking_chain(waiter_pid, blocker_pid) AS (
+          SELECT activity.pid, unnest(pg_blocking_pids(activity.pid))
+          FROM pg_stat_activity AS activity
+          WHERE activity.datname = current_database()
+            AND activity.pid <> pg_backend_pid()
+            AND activity.wait_event_type = 'Lock'
+            AND activity.query ILIKE '%from "project"%'
+            AND activity.query ILIKE '%for no key update%'
+          UNION
+          SELECT chain.waiter_pid, unnest(pg_blocking_pids(chain.blocker_pid))
+          FROM blocking_chain AS chain
+          WHERE chain.blocker_pid <> $1
+        )
+        SELECT count(DISTINCT waiter_pid)::text AS count
+        FROM blocking_chain
+        WHERE blocker_pid = $1
       `,
       [blockerPid],
     );
@@ -189,14 +197,20 @@ async function waitForBlockedProjectArchive(
     await observer.query("SELECT pg_stat_clear_snapshot()");
     const result = await observer.query<{ waiting: boolean }>(
       `
+        WITH RECURSIVE blocking_chain(waiter_pid, blocker_pid) AS (
+          SELECT activity.pid, unnest(pg_blocking_pids(activity.pid))
+          FROM pg_stat_activity AS activity
+          WHERE activity.datname = current_database()
+            AND activity.pid <> pg_backend_pid()
+            AND activity.wait_event_type = 'Lock'
+            AND activity.query ILIKE 'update "project"%'
+          UNION
+          SELECT chain.waiter_pid, unnest(pg_blocking_pids(chain.blocker_pid))
+          FROM blocking_chain AS chain
+          WHERE chain.blocker_pid <> $1
+        )
         SELECT EXISTS (
-          SELECT 1
-          FROM pg_stat_activity
-          WHERE datname = current_database()
-            AND pid <> pg_backend_pid()
-            AND wait_event_type = 'Lock'
-            AND $1 = ANY(pg_blocking_pids(pid))
-            AND query ILIKE 'update "project"%'
+          SELECT 1 FROM blocking_chain WHERE blocker_pid = $1
         ) AS waiting
       `,
       [blockerPid],
@@ -941,8 +955,11 @@ describe("intake atomic conversion", () => {
     expect(
       acceptedEvents.filter(
         (event) =>
-          (event.payload as { ref?: string }).ref ===
-          `SUB-${submission.number}`,
+          (
+            event.payload as {
+              payload?: { ref?: string };
+            }
+          ).payload?.ref === `SUB-${submission.number}`,
       ),
     ).toHaveLength(1);
     const claimAudits = await db
@@ -1098,6 +1115,17 @@ describe("intake atomic conversion", () => {
     });
     expect(result.state).toBe("accepted");
     expect(result.workItemId).toBeTruthy();
+    const [acceptedSubmission] = await db
+      .select({
+        claimedBy: schema.submissionTable.claimedBy,
+        claimedAt: schema.submissionTable.claimedAt,
+      })
+      .from(schema.submissionTable)
+      .where(eq(schema.submissionTable.id, result.id));
+    expect(acceptedSubmission).toMatchObject({
+      claimedBy: null,
+      claimedAt: null,
+    });
     const portalPage = await findPortalSubmission(
       `SUB-${result.number}`,
       requester.id,
@@ -1155,7 +1183,10 @@ describe("intake atomic conversion", () => {
       .filter((event) => event.kind === "submission.accepted")
       .map(
         (event) =>
-          event.payload as { actor?: unknown; payload?: { ref?: string } },
+          event.payload as {
+            actor?: unknown;
+            payload?: { ref?: string };
+          },
       )
       .filter((event) => event.payload?.ref === ref);
     expect(accepted).toHaveLength(1);

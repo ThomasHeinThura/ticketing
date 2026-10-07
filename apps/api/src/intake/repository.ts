@@ -1119,8 +1119,8 @@ async function convertSubmissionInTransaction(
       workItemId: item.id,
       updatedAt: now,
       version: submission.version + 1,
-      claimedBy: submission.claimedBy ?? actorId,
-      claimedAt: submission.claimedAt ?? now,
+      claimedBy: submission.claimedBy,
+      claimedAt: submission.claimedAt,
     })
     .where(
       and(
