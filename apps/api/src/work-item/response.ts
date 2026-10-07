@@ -66,6 +66,10 @@ export const workItemDetailSchema = workItemShape
       description:
         "state_template.group: one of backlog, unstarted, started, completed, cancelled.",
     }),
+    defaultCommentVisibility: z.enum(["public", "internal"]).openapi({
+      description:
+        "The project's CA-2 default for the comment composer; comments still require an explicit visibility on create.",
+    }),
     assigneeName: z.string().nullable(),
   })
   .openapi("WorkItemDetail");

@@ -188,6 +188,7 @@ function makeDetail(overrides: Partial<WorkItemDetail> = {}): WorkItemDetail {
     ...makeItem(),
     stateName: "Backlog",
     stateCategory: "backlog",
+    defaultCommentVisibility: "internal",
     assigneeName: null,
     ...overrides,
   } as WorkItemDetail;
@@ -199,6 +200,7 @@ describe("parseWorkItemDetailRow", () => {
     expect(row.unavailableFields).toEqual([]);
     expect(row.stateName).toBe("Backlog");
     expect(row.key).toBe("PROJ-123");
+    expect(row.defaultCommentVisibility).toBe("internal");
   });
 
   it("flags stateName alongside the list-level fields it shares with parseWorkItemRow", () => {
@@ -217,6 +219,21 @@ describe("parseWorkItemDetailRow", () => {
     // biome-ignore lint/suspicious/noExplicitAny: exercising a malformed wire value
     const row = parseWorkItemDetailRow(makeDetail({ stateName: 42 as any }));
     expect(row.unavailableFields).toEqual(["stateName"]);
+  });
+
+  it("uses Internal as a fail-closed fallback for an unknown visibility value", () => {
+    const row = parseWorkItemDetailRow(
+      // biome-ignore lint/suspicious/noExplicitAny: malformed wire payload fixture
+      makeDetail({ defaultCommentVisibility: "unknown" as any }),
+    );
+    expect(row.defaultCommentVisibility).toBe("internal");
+  });
+
+  it("preserves a configured public comment visibility", () => {
+    const row = parseWorkItemDetailRow(
+      makeDetail({ defaultCommentVisibility: "public" }),
+    );
+    expect(row.defaultCommentVisibility).toBe("public");
   });
 
   it("treats a null assigneeName as valid and unflagged", () => {

@@ -5,7 +5,12 @@ import type { WorkItemDetailRow } from "@/types/work-item";
 import WorkItemDetail, { type WorkItemDetailProps } from "./work-item-detail";
 
 vi.mock("./work-item-activity", () => ({
-  default: () => <section data-testid="work-item-activity" />,
+  default: ({ defaultVisibility }: { defaultVisibility: string }) => (
+    <section
+      data-testid="work-item-activity"
+      data-default={defaultVisibility}
+    />
+  ),
 }));
 
 const mocks = vi.hoisted(() => ({
@@ -98,6 +103,7 @@ function makeItem(
     stateId: "state_1",
     stateName: "Backlog",
     stateCategory: "backlog",
+    defaultCommentVisibility: "internal",
     priority: "high",
     assigneeId: null,
     assigneeName: null,
@@ -179,6 +185,10 @@ describe("WorkItemDetail", () => {
     ).toBeInTheDocument();
     expect(screen.getByText("Real Teammate")).toBeInTheDocument();
     expect(screen.getByText("Investigate the login bug")).toBeInTheDocument();
+    expect(screen.getByTestId("work-item-activity")).toHaveAttribute(
+      "data-default",
+      "internal",
+    );
     expect(screen.queryByTestId("work-item-detail-partial-notice")).toBeNull();
 
     // The details section is a real disclosure: closed, then openable.
@@ -189,6 +199,19 @@ describe("WorkItemDetail", () => {
     fireEvent.click(detailsTrigger);
     expect(detailsTrigger).toHaveAttribute("aria-expanded", "true");
     expect(screen.getByText("Worklist")).toBeInTheDocument();
+  });
+
+  it("passes the configured project default to the comment composer", () => {
+    render(
+      <WorkItemDetail
+        {...baseProps}
+        item={makeItem({ defaultCommentVisibility: "public" })}
+      />,
+    );
+    expect(screen.getByTestId("work-item-activity")).toHaveAttribute(
+      "data-default",
+      "public",
+    );
   });
 
   it("AP-6 keeps an authorized pending request withdrawable", () => {

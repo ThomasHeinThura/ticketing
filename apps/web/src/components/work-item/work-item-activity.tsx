@@ -93,11 +93,13 @@ function isTiptapDocument(value: unknown): value is Record<string, unknown> {
 function WorkItemActivity({
   workItemKey,
   workspaceId,
+  defaultVisibility,
   filter,
   onFilterChange,
 }: {
   workItemKey: string;
   workspaceId: string;
+  defaultVisibility: "public" | "internal";
   filter: ActivityFilter;
   onFilterChange: (filter: ActivityFilter) => void;
 }) {
@@ -119,7 +121,7 @@ function WorkItemActivity({
     content: [{ type: "paragraph" }],
   });
   const [visibility, setVisibility] = useState<"public" | "internal">(
-    "internal",
+    defaultVisibility,
   );
   const [editing, setEditing] = useState<string | null>(null);
   const [editText, setEditText] = useState("");
@@ -141,7 +143,7 @@ function WorkItemActivity({
   useEffect(() => {
     setDraftText("");
     setDraftDocument({ type: "doc", content: [{ type: "paragraph" }] });
-    setVisibility("internal");
+    setVisibility(defaultVisibility);
     try {
       const saved = window.localStorage.getItem(draftStorageKey);
       if (!saved) return;
@@ -162,7 +164,7 @@ function WorkItemActivity({
         // Storage can be disabled; the in-memory draft still works.
       }
     }
-  }, [draftStorageKey]);
+  }, [defaultVisibility, draftStorageKey]);
 
   const submit = async () => {
     if (!draftText.trim() || !draftDocument) return;

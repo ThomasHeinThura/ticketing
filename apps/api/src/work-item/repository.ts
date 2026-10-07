@@ -428,6 +428,7 @@ export async function getWorkItemByKeyQuery(executor: Executor, key: string) {
       workItem: workItemTable,
       stateName: stateTemplateTable.name,
       stateCategory: stateTemplateTable.group,
+      defaultCommentVisibility: projectTable.defaultCommentVisibility,
       assigneeName: userTable.name,
       assigneeIsWorkspaceMember: workspaceUserTable.id,
     })
@@ -437,6 +438,7 @@ export async function getWorkItemByKeyQuery(executor: Executor, key: string) {
       stateTemplateTable,
       eq(stateTable.stateTemplateId, stateTemplateTable.id),
     )
+    .innerJoin(projectTable, eq(workItemTable.projectId, projectTable.id))
     .leftJoin(personTable, eq(workItemTable.assigneeId, personTable.id))
     .leftJoin(userTable, eq(personTable.userId, userTable.id))
     .leftJoin(

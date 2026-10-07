@@ -3870,6 +3870,14 @@
             "type": "string",
             "description": "state_template.group: one of backlog, unstarted, started, completed, cancelled."
           },
+          "defaultCommentVisibility": {
+            "type": "string",
+            "enum": [
+              "public",
+              "internal"
+            ],
+            "description": "The project's CA-2 default for the comment composer; comments still require an explicit visibility on create."
+          },
           "assigneeName": {
             "type": [
               "string",
@@ -3901,6 +3909,7 @@
           "updatedAt",
           "stateName",
           "stateCategory",
+          "defaultCommentVisibility",
           "assigneeName"
         ]
       },
@@ -20224,7 +20233,7 @@
           "Work items"
         ],
         "summary": "Get work item",
-        "description": "Get a single work item by its permanent key, e.g. PROJ-123.",
+        "description": "Get a single work item by its permanent key, e.g. PROJ-123, including its project's CA-2 comment visibility default.",
         "parameters": [
           {
             "schema": {

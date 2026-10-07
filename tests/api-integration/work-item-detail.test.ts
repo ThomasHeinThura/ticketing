@@ -155,11 +155,33 @@ describe("API integration: work item detail resolution (#23)", () => {
     expect(body.id).toBe(createdBody.id);
     expect(body.stateName).toBe("Backlog");
     expect(body.stateCategory).toBe("backlog");
+    expect(body.defaultCommentVisibility).toBe("internal");
     // The raw ids stay in the response; the resolved fields are additive.
     expect(typeof body.stateId).toBe("string");
     // Unassigned: `assigneeName` is null AND consistent with the raw column.
     expect(body.assigneeId).toBeNull();
     expect(body.assigneeName).toBeNull();
+  });
+
+  it("returns the configured project comment visibility", async () => {
+    const { creator, project, type } = await setupProjectWithDefaultState();
+    await db
+      .update(schema.projectTable)
+      .set({ defaultCommentVisibility: "public" })
+      .where(eq(schema.projectTable.id, project.id));
+    mockAuthenticatedSession(creator.user);
+    const { app } = createApp();
+
+    const created = await createWorkItemRequest(app, project.id, {
+      typeId: type.id,
+      title: "Configured visibility",
+    });
+    const createdBody = (await created.json()) as { key: string };
+    const response = await app.request(`/api/work-items/${createdBody.key}`);
+
+    expect(response.status).toBe(200);
+    const body = (await response.json()) as Record<string, unknown>;
+    expect(body.defaultCommentVisibility).toBe("public");
   });
 
   it("resolves assigneeName when the assignee's user is a member of this workspace", async () => {

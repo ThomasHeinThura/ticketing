@@ -415,7 +415,8 @@ const getWorkItemRoute = createRoute({
   path: "/work-items/{key}",
   tags: ["Work items"],
   summary: "Get work item",
-  description: "Get a single work item by its permanent key, e.g. PROJ-123.",
+  description:
+    "Get a single work item by its permanent key, e.g. PROJ-123, including its project's CA-2 comment visibility default.",
   middleware: [
     requireWorkItemReach("key", { requireProjectReach: true }),
   ] as const,

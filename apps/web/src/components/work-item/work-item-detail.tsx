@@ -355,6 +355,7 @@ function WorkItemDetail({
       <WorkItemActivity
         workItemKey={workItemKey}
         workspaceId={item.workspaceId}
+        defaultVisibility={item.defaultCommentVisibility}
         filter={activityFilter}
         onFilterChange={onActivityFilterChange}
       />
