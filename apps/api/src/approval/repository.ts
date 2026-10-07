@@ -121,6 +121,28 @@ export async function lockApproval(
   return row ?? null;
 }
 
+export async function isActiveInstanceAdmin(
+  tx: Transaction,
+  userId: string,
+): Promise<boolean> {
+  const [admin] = await tx
+    .select({ id: schema.userTable.id })
+    .from(schema.userTable)
+    .innerJoin(
+      schema.personTable,
+      and(
+        eq(schema.personTable.userId, schema.userTable.id),
+        eq(schema.personTable.side, "staff"),
+        eq(schema.personTable.active, true),
+      ),
+    )
+    .where(
+      and(eq(schema.userTable.id, userId), eq(schema.userTable.role, "admin")),
+    )
+    .limit(1);
+  return admin !== undefined;
+}
+
 export async function resolveApprovalIdentity(userId: string, apiKey?: ApiKey) {
   const identity = await resolveApprovalIdentityIfActive(userId, apiKey);
   if (!identity) {

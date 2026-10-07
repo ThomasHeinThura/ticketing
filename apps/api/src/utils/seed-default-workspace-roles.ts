@@ -1,17 +1,21 @@
 import { DEFAULT_ROLE_NAMES, defaultRolePayloads } from "@taskdesk/permissions";
 import { and, eq, inArray, sql } from "drizzle-orm";
 import db, { schema } from "../database";
-import { listAllWorkspaceIds, listWorkspaceRoleKeys } from "./repository";
+import {
+  listAllWorkspaceIds,
+  listWorkspaceRoleKeys,
+  listWorkspaceRolesForWorkspace,
+} from "./repository";
 
 /** Add the canonical legacy built-in rows to one already-created workspace. */
 export async function seedDefaultWorkspaceRolesForWorkspace(
   workspaceId: string,
   executor: Pick<typeof db, "select" | "insert"> = db,
 ) {
-  const existingRows = await executor
-    .select()
-    .from(schema.workspaceRoleTable)
-    .where(eq(schema.workspaceRoleTable.workspaceId, workspaceId));
+  const existingRows = await listWorkspaceRolesForWorkspace(
+    executor,
+    workspaceId,
+  );
   const existingByName = new Map(existingRows.map((row) => [row.role, row]));
   for (const role of DEFAULT_ROLE_NAMES) {
     const existing = existingByName.get(role);
@@ -51,10 +55,7 @@ export async function seedDefaultWorkspaceRolesForWorkspace(
       });
   }
 
-  const finalRows = await executor
-    .select()
-    .from(schema.workspaceRoleTable)
-    .where(eq(schema.workspaceRoleTable.workspaceId, workspaceId));
+  const finalRows = await listWorkspaceRolesForWorkspace(executor, workspaceId);
   const finalByName = new Map(finalRows.map((row) => [row.role, row]));
   for (const role of DEFAULT_ROLE_NAMES) {
     const row = finalByName.get(role);
