@@ -15,6 +15,7 @@ import path from "node:path";
 import { BUILT_IN_ROLE_KEYS, BUILT_IN_ROLES } from "@taskdesk/permissions";
 import { afterEach, describe, expect, it } from "vitest";
 import { validateExplicitSeedTestDatabaseUrl } from "./seed-test-global-setup";
+import { expectSafeSeedCondition } from "./seed-test-safe-assertion";
 import {
   expectedTestUserCredentials,
   formatTestUserSeedResult,
@@ -146,10 +147,11 @@ describe("test-user seed contract", () => {
     const emails = Array.from({ length: 8 }, generateTestUserEmail);
     expect(new Set(emails).size).toBe(8);
     for (const email of emails) {
-      expect(/^seed-[0-9a-f]{48}@test\.invalid$/u.test(email)).toBe(true);
-      expect(
+      expectSafeSeedCondition(/^seed-[0-9a-f]{48}@test\.invalid$/u.test(email));
+      expectSafeSeedCondition(
         SUPPORTED_TEST_USER_ROLES.some((role) => email.includes(role)),
-      ).toBe(false);
+        false,
+      );
     }
   });
 
@@ -190,10 +192,12 @@ describe("test-user seed contract", () => {
       "taskdesk_test",
       expectedTestUserCredentials(["viewer", "customer"], false),
     );
-    expect(JSON.stringify(loaded) === JSON.stringify(manifest)).toBe(true);
+    expectSafeSeedCondition(
+      JSON.stringify(loaded) === JSON.stringify(manifest),
+    );
     await expect(writeCredentialFile(target, manifest)).rejects.toThrow();
     const contents = await readFile(target, "utf8");
-    expect(contents.includes(credentials[0]?.password ?? "")).toBe(true);
+    expectSafeSeedCondition(contents.includes(credentials[0]?.password ?? ""));
   });
 
   it("rejects malformed or duplicate identities in a reused private manifest", async () => {
@@ -377,8 +381,8 @@ describe("test-user seed contract", () => {
       "taskdesk_local_test",
       "/private/test-users.json",
     );
-    expect(output.includes(password)).toBe(false);
-    expect(output.includes(email)).toBe(false);
+    expectSafeSeedCondition(output.includes(password), false);
+    expectSafeSeedCondition(output.includes(email), false);
     expect(output).toContain("8 test users");
   });
 
@@ -386,12 +390,12 @@ describe("test-user seed contract", () => {
     const syntheticSecret = `throwaway-${generateTestUserPassword()}`;
     let failureMessage = "";
     try {
-      expect(JSON.stringify({ credential: syntheticSecret }) === "{}").toBe(
-        true,
+      expectSafeSeedCondition(
+        JSON.stringify({ credential: syntheticSecret }) === "{}",
       );
     } catch (error) {
       failureMessage = String(error);
     }
-    expect(failureMessage.includes(syntheticSecret)).toBe(false);
+    expectSafeSeedCondition(failureMessage.includes(syntheticSecret), false);
   });
 });
