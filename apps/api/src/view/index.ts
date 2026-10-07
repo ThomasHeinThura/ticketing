@@ -18,6 +18,7 @@ import createView from "./controllers/create-view";
 import getView from "./controllers/get-view";
 import listViews from "./controllers/list-views";
 import pinView from "./controllers/pin-view";
+import { countSavedView, runSavedView } from "./controllers/run-view";
 import updateView from "./controllers/update-view";
 import { resolveCallerPersonId } from "./resolve-person-id";
 import {
@@ -31,6 +32,11 @@ import {
   savedViewIdParam,
   updateViewBody,
 } from "./schema";
+
+const runViewQuery = z.object({
+  limit: z.coerce.number().int().min(1).max(200).default(50),
+  cursor: z.string().max(4096).optional(),
+});
 
 function savedViewAuditActor(
   userId: string,
@@ -170,6 +176,49 @@ const pinViewRoute = createRoute({
   },
 });
 
+const runViewRoute = createRoute({
+  method: "post",
+  operationId: "runSavedView",
+  path: "/{id}/run",
+  tags: ["Views"],
+  summary: "Run a saved view for the current viewer",
+  description:
+    "Executes the stored query with current work-item reach and field permissions.",
+  middleware: [
+    workspaceAccess.fromSavedView(),
+    requireWorkspaceCapability("saved_view:read"),
+  ] as const,
+  request: { params: savedViewIdParam, query: runViewQuery },
+  responses: {
+    200: jsonResponse("A page of reachable matching work items", z.unknown()),
+    404: errorResponse("Saved view not found or out of reach"),
+    422: errorResponse("Saved query contains unsupported filters"),
+  },
+});
+
+const countViewRoute = createRoute({
+  method: "get",
+  operationId: "countSavedView",
+  path: "/{id}/count",
+  tags: ["Views"],
+  summary: "Count reachable work items matching a saved view",
+  description:
+    "The count uses the current viewer's work-item reach. When Valkey is configured, an authorized count may be cached for up to 30 seconds.",
+  middleware: [
+    workspaceAccess.fromSavedView(),
+    requireWorkspaceCapability("saved_view:read"),
+  ] as const,
+  request: { params: savedViewIdParam },
+  responses: {
+    200: jsonResponse(
+      "Reachable matching work-item count",
+      z.object({ count: z.number().int().nonnegative() }),
+    ),
+    404: errorResponse("Saved view not found or out of reach"),
+    422: errorResponse("Saved query contains unsupported filters"),
+  },
+});
+
 const deleteViewRoute = createRoute({
   method: "delete",
   operationId: "requestDeleteView",
@@ -255,6 +304,41 @@ const view = apiRouter()
     const personId = await resolveCallerPersonId(userId);
     const actor = savedViewAuditActor(userId, c.get("apiKey")?.id);
     return c.json(await pinView(id, personId, userId, actor), 200);
+  })
+  .openapi(runViewRoute, async (c) => {
+    const { id } = c.req.valid("param");
+    const query = c.req.valid("query");
+    const userId = c.get("userId") as string;
+    const session = c.get("session") as {
+      impersonatedBy?: string | null;
+    } | null;
+    const personId = await resolveCallerPersonId(userId);
+    const result = await runSavedView({
+      id,
+      personId,
+      userId,
+      apiKey: c.get("apiKey") as ApiKey | undefined,
+      impersonatedBy: session?.impersonatedBy,
+      limit: query.limit,
+      cursor: query.cursor,
+    });
+    return c.json(result, 200);
+  })
+  .openapi(countViewRoute, async (c) => {
+    const { id } = c.req.valid("param");
+    const userId = c.get("userId") as string;
+    const session = c.get("session") as {
+      impersonatedBy?: string | null;
+    } | null;
+    const personId = await resolveCallerPersonId(userId);
+    const result = await countSavedView({
+      id,
+      personId,
+      userId,
+      apiKey: c.get("apiKey") as ApiKey | undefined,
+      impersonatedBy: session?.impersonatedBy,
+    });
+    return c.json(result, 200);
   })
   .openapi(deleteViewRoute, async (c) => {
     const { id } = c.req.valid("param");

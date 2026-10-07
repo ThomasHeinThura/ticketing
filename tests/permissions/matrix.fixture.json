@@ -3692,6 +3692,19 @@
 				"outOfReach": "404 not_found"
 			}
 		},
+		"GET /api/views/{id}/count": {
+			"instance_admin": {
+				"inReach": "403 forbidden",
+				"outOfReach": "404 not_found"
+			},
+			"owner": { "inReach": "allow", "outOfReach": "404 not_found" },
+			"admin": { "inReach": "allow", "outOfReach": "404 not_found" },
+			"manager": { "inReach": "allow", "outOfReach": "404 not_found" },
+			"lead": { "inReach": "allow", "outOfReach": "404 not_found" },
+			"member": { "inReach": "allow", "outOfReach": "404 not_found" },
+			"viewer": { "inReach": "allow", "outOfReach": "404 not_found" },
+			"customer": { "inReach": "403 forbidden", "outOfReach": "404 not_found" }
+		},
 		"GET /api/work-items/{key}": {
 			"instance_admin": {
 				"inReach": "403 forbidden",
@@ -6989,6 +7002,19 @@
 				"inReach": "allow",
 				"outOfReach": "allow"
 			}
+		},
+		"POST /api/views/{id}/run": {
+			"instance_admin": {
+				"inReach": "403 forbidden",
+				"outOfReach": "404 not_found"
+			},
+			"owner": { "inReach": "allow", "outOfReach": "404 not_found" },
+			"admin": { "inReach": "allow", "outOfReach": "404 not_found" },
+			"manager": { "inReach": "allow", "outOfReach": "404 not_found" },
+			"lead": { "inReach": "allow", "outOfReach": "404 not_found" },
+			"member": { "inReach": "allow", "outOfReach": "404 not_found" },
+			"viewer": { "inReach": "allow", "outOfReach": "404 not_found" },
+			"customer": { "inReach": "403 forbidden", "outOfReach": "404 not_found" }
 		},
 		"POST /api/work-items/{key}/approvals": {
 			"instance_admin": {

@@ -10,7 +10,12 @@ import * as observabilityRuntime from "../../apps/api/src/instance/observability
 import { ensureInternalOrganisation } from "../../apps/api/src/utils/seed-internal-organisation";
 import { mockAnonymousSession, mockAuthenticatedSession } from "./helpers/auth";
 import { resetTestDatabase } from "./helpers/database";
-import { createWorkspaceMember, requireRow } from "./helpers/fixtures";
+import {
+  createProjectFixture,
+  createWorkspaceMember,
+  grantProjectRole,
+  requireRow,
+} from "./helpers/fixtures";
 
 function hashApiKey(rawKey: string): string {
   return createHash("sha256")
@@ -135,6 +140,114 @@ describe("API integration: saved views", () => {
       visibility: "private",
       sharedWithTeamId: null,
     });
+  });
+
+  it("runs and counts a project view within its required project scope", async () => {
+    const member = await createWorkspaceMember({ role: "member" });
+    await addPerson(member.user.id);
+    const target = await createProjectFixture({
+      workspaceId: member.workspace.id,
+      slug: "saved-view-target",
+    });
+    const other = await createProjectFixture({
+      workspaceId: member.workspace.id,
+      slug: "saved-view-other",
+    });
+    await grantProjectRole(member.user.id, target.project.id, [
+      "work_item:read",
+      "project:read",
+    ]);
+    await grantProjectRole(member.user.id, other.project.id, [
+      "work_item:read",
+      "project:read",
+    ]);
+
+    const now = new Date();
+    const type = requireRow(
+      await db
+        .insert(schema.workItemTypeTable)
+        .values({
+          workspaceId: member.workspace.id,
+          key: `saved-view-${randomUUID()}`,
+          name: "Saved view task",
+          category: "delivery",
+          createdAt: now,
+          updatedAt: now,
+        })
+        .returning(),
+      "saved-view work-item type",
+    );
+    const template = requireRow(
+      await db
+        .insert(schema.stateTemplateTable)
+        .values({
+          workspaceId: member.workspace.id,
+          key: `saved-view-${randomUUID()}`,
+          name: "Started",
+          group: "started",
+          createdAt: now,
+          updatedAt: now,
+        })
+        .returning(),
+      "saved-view state template",
+    );
+
+    mockAuthenticatedSession(member.user);
+    const { app } = createApp();
+    const createItem = async (projectId: string, title: string) => {
+      await db.insert(schema.stateTable).values({
+        projectId,
+        stateTemplateId: template.id,
+        isDefault: true,
+        createdAt: now,
+        updatedAt: now,
+      });
+      const response = await app.request(
+        `/api/projects/${projectId}/work-items`,
+        {
+          method: "POST",
+          headers: { "content-type": "application/json" },
+          body: JSON.stringify({ typeId: type.id, title, priority: "high" }),
+        },
+      );
+      expect(response.status).toBe(200);
+      return (await response.json()) as { id: string };
+    };
+    const targetItem = await createItem(target.project.id, "Target queue item");
+    await createItem(other.project.id, "Other project item");
+
+    const created = await app.request("/api/views", {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({
+        workspaceId: member.workspace.id,
+        name: "Target project queue",
+        scope: "project",
+        scopeId: target.project.id,
+        layout: "list",
+        query: {
+          entity: "work_item",
+          filter: { field: "priority", op: "eq", value: "high" },
+        },
+      }),
+    });
+    expect(created.status).toBe(200);
+    const view = (await created.json()) as { id: string };
+
+    const count = await app.request(`/api/views/${view.id}/count`);
+    expect(count.status).toBe(200);
+    await expect(count.json()).resolves.toEqual({ count: 1 });
+
+    const run = await app.request(`/api/views/${view.id}/run?limit=50`, {
+      method: "POST",
+    });
+    expect(run.status).toBe(200);
+    const result = (await run.json()) as {
+      data: { id: string }[];
+      meta: { total: number };
+    };
+    expect(result.data.map((item) => item.id)).toEqual([targetItem.id]);
+    expect(result.meta.total).toBe(1);
   });
 
   it("keeps create successful and reports an AU-14 audit append failure", async () => {

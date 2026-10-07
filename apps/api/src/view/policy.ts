@@ -35,11 +35,8 @@ import type { PolicyMap } from "@taskdesk/permissions";
  * `{ exempt: "no_person_parameter" }` because the route addresses the CALLER, not a named
  * person in a param.
  *
- * `GET /api/views/{id}/count` is NOT declared here -- disclosed in this PR's "Not done"
- * section: it would run the view's stored filter against work items, which needs the
- * structured search grammar `POST /api/work-items/search` (api-design.md, SV-11/SV-12),
- * and that route does not exist in this codebase yet (only `GET
- * /api/projects/{projectId}/work-items`'s basic sort/pagination does, #306/#310).
+ * Run/count always re-evaluate the stored query as the current viewer through the
+ * canonical work-item search repository, which applies reach and field policy.
  */
 export const viewPolicies = {
   "GET /api/views": {
@@ -63,6 +60,20 @@ export const viewPolicies = {
   },
 
   "GET /api/views/{id}": {
+    capability: "saved_view:read",
+    scope: "workspace",
+    scopeSource: "row",
+    reach: "required",
+  },
+
+  "GET /api/views/{id}/count": {
+    capability: "saved_view:read",
+    scope: "workspace",
+    scopeSource: "row",
+    reach: "required",
+  },
+
+  "POST /api/views/{id}/run": {
     capability: "saved_view:read",
     scope: "workspace",
     scopeSource: "row",

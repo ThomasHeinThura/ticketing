@@ -1,11 +1,27 @@
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
+import {
+  useMutation,
+  useQueries,
+  useQuery,
+  useQueryClient,
+} from "@tanstack/react-query";
+import {
+  createFileRoute,
+  Link,
+  Outlet,
+  useNavigate,
+  useRouterState,
+} from "@tanstack/react-router";
 import { Button, Card, CardContent, Input, Skeleton } from "@taskdesk/ui";
+import { useState } from "react";
 import { useTranslation } from "react-i18next";
 import PageTitle from "@/components/page-title";
+import useAuth from "@/components/providers/auth-provider/hooks/use-auth";
 import {
+  countSavedView,
+  createSavedView,
   getSavedViews,
   requestSavedViewDeletion,
+  toggleSavedViewPin,
 } from "@/fetchers/saved-views";
 import useActiveWorkspace from "@/hooks/queries/workspace/use-active-workspace";
 import { parseSavedViewsSearch, routes } from "@/lib/routes";
@@ -16,14 +32,27 @@ export const Route = createFileRoute("/_layout/_authenticated/agent/views")({
 });
 
 function SavedViewsRoute() {
+  const pathname = useRouterState({
+    select: (state) => state.location.pathname,
+  });
+  return pathname.startsWith(`${routes.savedViews.path}/`) ? (
+    <Outlet />
+  ) : (
+    <SavedViewsIndexRoute />
+  );
+}
+
+function SavedViewsIndexRoute() {
   const { t } = useTranslation("savedViews");
+  const { user } = useAuth();
   const { data: workspace, isLoading: isWorkspaceLoading } =
     useActiveWorkspace();
   const queryClient = useQueryClient();
+  const [newName, setNewName] = useState("");
   const navigate = useNavigate({ from: Route.fullPath });
   const { query } = Route.useSearch();
   const views = useQuery({
-    queryKey: ["saved-views", workspace?.id],
+    queryKey: ["saved-views", workspace?.id, user?.id],
     queryFn: () => getSavedViews(workspace?.id ?? ""),
     enabled: Boolean(workspace?.id),
   });
@@ -32,10 +61,39 @@ function SavedViewsRoute() {
     onSuccess: async () =>
       queryClient.invalidateQueries({ queryKey: ["me", "pending-actions"] }),
   });
+  const create = useMutation({
+    mutationFn: () =>
+      createSavedView({
+        workspaceId: workspace?.id ?? "",
+        name: newName.trim(),
+        scope: "workspace",
+        scopeId: workspace?.id ?? "",
+        visibility: "private",
+        layout: "list",
+        query: { entity: "work_item" },
+      }),
+    onSuccess: async (view) => {
+      setNewName("");
+      await queryClient.invalidateQueries({ queryKey: ["saved-views"] });
+      await navigate({ to: routes.savedView.path, params: { id: view.id } });
+    },
+  });
+  const pin = useMutation({
+    mutationFn: toggleSavedViewPin,
+    onSuccess: () =>
+      queryClient.invalidateQueries({ queryKey: ["saved-views"] }),
+  });
 
   const visibleViews = (views.data ?? []).filter((view) =>
     view.name.toLocaleLowerCase().includes(query?.toLocaleLowerCase() ?? ""),
   );
+  const counts = useQueries({
+    queries: visibleViews.map((view) => ({
+      queryKey: ["saved-view-count", user?.id, view.id, view.updatedAt],
+      queryFn: () => countSavedView(view.id),
+      staleTime: 30_000,
+    })),
+  });
 
   return (
     <main className="flex min-h-full flex-col gap-5 p-5 lg:p-8">
@@ -55,6 +113,30 @@ function SavedViewsRoute() {
           })
         }
       />
+      <form
+        className="flex flex-wrap gap-2"
+        onSubmit={(event) => {
+          event.preventDefault();
+          if (newName.trim()) create.mutate();
+        }}
+      >
+        <Input
+          aria-label={t("name")}
+          placeholder={t("name")}
+          value={newName}
+          onChange={(event) => setNewName(event.target.value)}
+        />
+        <Button
+          disabled={!workspace?.id || !newName.trim() || create.isPending}
+        >
+          {create.isPending ? t("creating") : t("create")}
+        </Button>
+      </form>
+      {create.isError && (
+        <p role="alert" className="text-sm text-destructive">
+          {t("createError")}
+        </p>
+      )}
       {isWorkspaceLoading || views.isLoading ? (
         <div className="space-y-3" role="status" aria-label={t("title")}>
           <Skeleton className="h-20 w-full" />
@@ -66,17 +148,31 @@ function SavedViewsRoute() {
         </p>
       ) : visibleViews.length ? (
         <section className="grid gap-3" aria-label={t("title")}>
-          {visibleViews.map((view) => (
+          {visibleViews.map((view, index) => (
             <Card key={view.id}>
               <CardContent className="flex flex-wrap items-center justify-between gap-4 py-4">
                 <div className="space-y-1">
-                  <h2 className="font-medium">{view.name}</h2>
+                  <h2 className="font-medium">
+                    <Link to={routes.savedView.path} params={{ id: view.id }}>
+                      {view.name}
+                    </Link>
+                  </h2>
                   <p className="text-sm text-muted-foreground">
                     {view.isPinned
                       ? t("pinned")
                       : t("visibility", { visibility: view.visibility })}
+                    {counts[index]?.data === undefined
+                      ? ""
+                      : ` · ${t("count", { count: counts[index]?.data })}`}
                   </p>
                 </div>
+                <Button
+                  variant="outline"
+                  disabled={pin.isPending}
+                  onClick={() => pin.mutate(view.id)}
+                >
+                  {view.isPinned ? t("unpin") : t("pin")}
+                </Button>
                 <Button
                   variant="outline"
                   disabled={deletion.isPending}

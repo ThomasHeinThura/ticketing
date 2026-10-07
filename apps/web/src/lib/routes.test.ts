@@ -9,12 +9,14 @@ import {
   parseMyWorkSearch,
   parsePendingActionsSearch,
   parseSavedViewsSearch,
+  parseSavedViewUrlSearchFromQueryString,
   parseServiceCalendarListSearchFromQueryString,
   parseSlaPolicyListSearch,
   parseWorkItemListSearch,
   parseWorkItemListSearchFromQueryString,
   resolveWorkItemListSort,
   routes,
+  type SavedViewUrlSearch,
   toggleWorkItemSortDirection,
   WORK_ITEM_SORT_DIRECTIONS,
   WORK_ITEM_SORT_FIELDS,
@@ -241,6 +243,28 @@ describe("routes.workItemList", () => {
       expect(toggleWorkItemSortDirection("asc")).toBe("desc");
       expect(toggleWorkItemSortDirection("desc")).toBe("asc");
     });
+  });
+});
+
+describe("routes.savedView", () => {
+  it("SV-19: round-trips full query and presentation state in a shareable URL", () => {
+    const search = {
+      workspaceId: "workspace/one",
+      scope: "project" as const,
+      scopeId: "project one",
+      layout: "list",
+      filter: "AND(state:started,priority:in(high,urgent))",
+      filterMode: "text" as const,
+      sort: "priority" as const,
+      dir: "desc" as const,
+      columns: ["key", "title", "priority"],
+    } satisfies SavedViewUrlSearch;
+    const url = routes.savedView.build({ id: "view/one" }, search);
+    const parsed = parseSavedViewUrlSearchFromQueryString(
+      url.split("?")[1] ?? "",
+    );
+    expect(url).toContain("/agent/views/view%2Fone?");
+    expect(parsed).toEqual({ ...search, columns: [...search.columns] });
   });
 });
 

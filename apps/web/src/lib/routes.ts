@@ -121,6 +121,18 @@ export type SlaPolicyListSearch = { cursor?: string };
 export type IdentityConnectionEventsSearch = { eventsCursor?: string };
 export type PendingActionsSearch = { cursor?: string };
 export type SavedViewsSearch = { query?: string };
+export type SavedViewUrlSearch = {
+  workspaceId: string;
+  scope: "workspace" | "project";
+  scopeId: string;
+  layout: string;
+  filter?: string;
+  filterMode?: WorkItemFilterMode;
+  sort?: WorkItemSortField;
+  dir?: WorkItemSortDirection;
+  columns?: WorkItemSearchColumn[];
+  cursor?: string;
+};
 export type MyWorkSearch = { lens: "approvals" };
 
 export function parseMyWorkSearch(raw: unknown): MyWorkSearch {
@@ -146,6 +158,48 @@ export function parseSavedViewsSearch(raw: unknown): SavedViewsSearch {
       ? { query: value.query.trim().slice(0, 200) }
       : {}),
   };
+}
+
+export function parseSavedViewUrlSearch(
+  raw: unknown,
+): Partial<SavedViewUrlSearch> {
+  const value = (raw ?? {}) as Record<string, unknown>;
+  const { layout: _listLayout, ...filterState } =
+    parseWorkItemListSearch(value);
+  return {
+    ...(typeof value.workspaceId === "string" && value.workspaceId.length <= 200
+      ? { workspaceId: value.workspaceId }
+      : {}),
+    ...(value.scope === "workspace" || value.scope === "project"
+      ? { scope: value.scope }
+      : {}),
+    ...(typeof value.scopeId === "string" && value.scopeId.length <= 200
+      ? { scopeId: value.scopeId }
+      : {}),
+    ...(typeof value.layout === "string" && value.layout.length <= 32
+      ? { layout: value.layout }
+      : {}),
+    ...filterState,
+    ...(typeof value.cursor === "string" && value.cursor.length <= 4096
+      ? { cursor: value.cursor }
+      : {}),
+  };
+}
+
+export function parseSavedViewUrlSearchFromQueryString(queryString: string) {
+  const params = new URLSearchParams(queryString);
+  return parseSavedViewUrlSearch({
+    workspaceId: params.get("workspaceId"),
+    scope: params.get("scope"),
+    scopeId: params.get("scopeId"),
+    layout: params.get("layout"),
+    filter: params.get("filter"),
+    filterMode: params.get("filterMode"),
+    sort: params.get("sort"),
+    dir: params.get("dir"),
+    columns: params.get("columns"),
+    cursor: params.get("cursor"),
+  });
 }
 
 export function parseIdentityConnectionEventsSearch(
@@ -437,6 +491,26 @@ export const routes = {
       if (resolved.query) query.set("query", resolved.query);
       const suffix = query.toString();
       return suffix ? `/agent/views?${suffix}` : "/agent/views";
+    },
+  },
+  savedView: {
+    path: "/agent/views/$id" as const,
+    build: (params: { id: string }, search: SavedViewUrlSearch) => {
+      const resolved = parseSavedViewUrlSearch(search) as SavedViewUrlSearch;
+      const query = new URLSearchParams({
+        workspaceId: resolved.workspaceId,
+        scope: resolved.scope,
+        scopeId: resolved.scopeId,
+        layout: resolved.layout,
+      });
+      if (resolved.filter) query.set("filter", resolved.filter);
+      if (resolved.filterMode) query.set("filterMode", resolved.filterMode);
+      if (resolved.sort) query.set("sort", resolved.sort);
+      if (resolved.dir) query.set("dir", resolved.dir);
+      if (resolved.columns)
+        query.set("columns", JSON.stringify(resolved.columns));
+      if (resolved.cursor) query.set("cursor", resolved.cursor);
+      return `/agent/views/${encodeURIComponent(params.id)}?${query.toString()}`;
     },
   },
   pendingAction: {

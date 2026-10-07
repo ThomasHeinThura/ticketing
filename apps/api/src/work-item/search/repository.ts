@@ -212,8 +212,188 @@ export async function searchWorkItems(input: {
   query: WorkItemSearchQuery;
   limit: number;
   cursor?: string;
+  /** A saved view's project context is an additional mandatory scope. */
+  projectScopeId?: string;
+  /** Counts use the same query/reach checks without loading a result page. */
+  countOnly?: boolean;
 }) {
   const { userId, workspaceId, query, limit } = input;
+  const access = await resolveWorkItemSearchAccess(input);
+  const { personId, projectIds } = access;
+  const hash = createHash("sha256")
+    .update(
+      JSON.stringify({ query, projectScopeId: input.projectScopeId ?? null }),
+    )
+    .digest("hex");
+  const field = query.sort?.[0]?.field ?? "key";
+  const order = query.sort?.[0]?.order ?? "asc";
+  const cursorExpected = {
+    actor: userId,
+    workspace: workspaceId,
+    hash,
+    limit,
+    field,
+    order,
+  };
+  const decoded = input.cursor
+    ? decodeCursor(input.cursor, cursorExpected)
+    : undefined;
+  const w = schema.workItemTable;
+  const p = schema.projectTable;
+  const s = schema.stateTable;
+  const st = schema.stateTemplateTable;
+  const personTable = schema.personTable;
+  const conditions: SQL[] = [
+    eq(w.workspaceId, workspaceId),
+    isNull(w.deletedAt),
+    isNull(w.archivedAt),
+    isNull(p.deletedAt),
+    isNull(p.archivedAt),
+    projectIds.length ? inArray(w.projectId, projectIds) : sql`false`,
+  ];
+  if (input.projectScopeId)
+    conditions.push(eq(w.projectId, input.projectScopeId));
+  if (query.filter)
+    conditions.push(filterSql(query.filter, personId, new Date()));
+  if (decoded) {
+    const expr = sortExpr(field);
+    const value = decoded.value;
+    const cursorValue =
+      field === "dueDate" && typeof value === "string"
+        ? new Date(value)
+        : value;
+    let tieCondition: SQL;
+    if (decoded.isNull)
+      tieCondition = and(
+        field === "priority" ? isNull(w.priority) : isNull(w.dueDate),
+        gt(w.id, decoded.id),
+      )!;
+    else {
+      const valueCondition =
+        order === "asc"
+          ? gt(expr, cursorValue as never)
+          : lt(expr, cursorValue as never);
+      tieCondition = or(
+        valueCondition,
+        and(eq(expr, cursorValue as never), gt(w.id, decoded.id)),
+        field === "dueDate" || field === "priority"
+          ? isNull(field === "dueDate" ? w.dueDate : w.priority)
+          : undefined,
+      )!;
+    }
+    conditions.push(tieCondition!);
+  }
+  const baseConditions = decoded ? conditions.slice(0, -1) : conditions;
+  const totalQuery = db
+    .select({ total: sql<number>`count(*)::int` })
+    .from(w)
+    .innerJoin(p, eq(p.id, w.projectId))
+    .innerJoin(s, eq(s.id, w.stateId))
+    .innerJoin(st, eq(st.id, s.stateTemplateId))
+    .where(and(...baseConditions));
+  if (input.countOnly) {
+    const [totals] = await Promise.all([totalQuery]);
+    return {
+      data: [],
+      page: { nextCursor: null, hasMore: false },
+      meta: { total: totals[0]?.total ?? 0 },
+    };
+  }
+
+  const sortColumn = sortExpr(field);
+  const orderExpr =
+    field === "dueDate"
+      ? [
+          sql`case when ${w.dueDate} is null then 1 else 0 end asc`,
+          order === "asc" ? asc(w.dueDate) : desc(w.dueDate),
+          asc(w.id),
+        ]
+      : field === "priority"
+        ? [
+            sql`case when ${w.priority} is null then 1 else 0 end asc`,
+            order === "asc" ? asc(sortColumn) : desc(sortColumn),
+            asc(w.id),
+          ]
+        : [order === "asc" ? asc(sortColumn) : desc(sortColumn), asc(w.id)];
+  const rowQuery = db
+    .select({
+      workItem: w,
+      stateName: st.name,
+      stateCategory: st.group,
+      assigneeName: schema.userTable.name,
+      assigneeWorkspaceMemberId: schema.workspaceUserTable.id,
+    })
+    .from(w)
+    .innerJoin(p, eq(p.id, w.projectId))
+    .innerJoin(s, eq(s.id, w.stateId))
+    .innerJoin(st, eq(st.id, s.stateTemplateId))
+    .leftJoin(personTable, eq(personTable.id, w.assigneeId))
+    .leftJoin(schema.userTable, eq(schema.userTable.id, personTable.userId))
+    .leftJoin(
+      schema.workspaceUserTable,
+      and(
+        eq(schema.workspaceUserTable.userId, personTable.userId),
+        eq(schema.workspaceUserTable.workspaceId, w.workspaceId),
+      ),
+    )
+    .where(and(...conditions))
+    .orderBy(...orderExpr)
+    .limit(limit + 1);
+  const [rows, totals] = await Promise.all([rowQuery, totalQuery]);
+  const hasMore = rows.length > limit;
+  const pageRows = rows.slice(0, limit);
+  const last = pageRows.at(-1)?.workItem;
+  const value = last
+    ? field === "key"
+      ? last.key
+      : field === "priority"
+        ? last.priority === null
+          ? null
+          : priorityRankValue(last.priority)
+        : field === "dueDate"
+          ? (last.dueDate?.toISOString() ?? null)
+          : last.title
+    : null;
+  const boundaryNull =
+    !!last &&
+    (field === "dueDate"
+      ? last.dueDate === null
+      : field === "priority"
+        ? last.priority === null
+        : false);
+  const nextCursor =
+    hasMore && last
+      ? Buffer.from(
+          JSON.stringify({
+            ...cursorExpected,
+            value,
+            isNull: boundaryNull,
+            id: last.id,
+          }),
+          "utf8",
+        ).toString("base64url")
+      : null;
+  return {
+    data: pageRows.map((row) => ({
+      ...row.workItem,
+      stateName: row.stateName,
+      stateCategory: row.stateCategory,
+      assigneeName: row.assigneeWorkspaceMemberId ? row.assigneeName : null,
+    })),
+    page: { nextCursor, hasMore },
+    meta: { total: totals[0]?.total ?? 0 },
+  };
+}
+
+/** Re-evaluates search identity, project reach, and filter-field access. */
+export async function resolveWorkItemSearchAccess(input: {
+  userId: string;
+  apiKey?: AuthenticatedApiKey;
+  impersonatedBy?: string | null;
+  workspaceId: string;
+  query: WorkItemSearchQuery;
+}) {
+  const { userId, workspaceId, query } = input;
   const identity = await resolveRequestIdentity({
     userId,
     apiKey: input.apiKey,
@@ -292,154 +472,9 @@ export async function searchWorkItems(input: {
     !can(identity, "workspace:read", "workspace", { workspaceId })
   )
     throw new HTTPException(422, { message: "Filter field unavailable: type" });
-  const hash = createHash("sha256").update(JSON.stringify(query)).digest("hex");
-  const field = query.sort?.[0]?.field ?? "key";
-  const order = query.sort?.[0]?.order ?? "asc";
-  const cursorExpected = {
-    actor: userId,
-    workspace: workspaceId,
-    hash,
-    limit,
-    field,
-    order,
-  };
-  const decoded = input.cursor
-    ? decodeCursor(input.cursor, cursorExpected)
-    : undefined;
-  const w = schema.workItemTable;
-  const p = schema.projectTable;
-  const s = schema.stateTable;
-  const st = schema.stateTemplateTable;
-  const personTable = schema.personTable;
-  const conditions: SQL[] = [
-    eq(w.workspaceId, workspaceId),
-    isNull(w.deletedAt),
-    isNull(w.archivedAt),
-    isNull(p.deletedAt),
-    isNull(p.archivedAt),
-    projectIds.length ? inArray(w.projectId, projectIds) : sql`false`,
-  ];
-  if (query.filter)
-    conditions.push(filterSql(query.filter, person.id, new Date()));
-  if (decoded) {
-    const expr = sortExpr(field);
-    const value = decoded.value;
-    const cursorValue =
-      field === "dueDate" && typeof value === "string"
-        ? new Date(value)
-        : value;
-    let tieCondition: SQL;
-    if (decoded.isNull)
-      tieCondition = and(
-        field === "priority" ? isNull(w.priority) : isNull(w.dueDate),
-        gt(w.id, decoded.id),
-      )!;
-    else {
-      const valueCondition =
-        order === "asc"
-          ? gt(expr, cursorValue as never)
-          : lt(expr, cursorValue as never);
-      tieCondition = or(
-        valueCondition,
-        and(eq(expr, cursorValue as never), gt(w.id, decoded.id)),
-        field === "dueDate" || field === "priority"
-          ? isNull(field === "dueDate" ? w.dueDate : w.priority)
-          : undefined,
-      )!;
-    }
-    conditions.push(tieCondition!);
-  }
-  const sortColumn = sortExpr(field);
-  const orderExpr =
-    field === "dueDate"
-      ? [
-          sql`case when ${w.dueDate} is null then 1 else 0 end asc`,
-          order === "asc" ? asc(w.dueDate) : desc(w.dueDate),
-          asc(w.id),
-        ]
-      : field === "priority"
-        ? [
-            sql`case when ${w.priority} is null then 1 else 0 end asc`,
-            order === "asc" ? asc(sortColumn) : desc(sortColumn),
-            asc(w.id),
-          ]
-        : [order === "asc" ? asc(sortColumn) : desc(sortColumn), asc(w.id)];
-  const rowQuery = db
-    .select({
-      workItem: w,
-      stateName: st.name,
-      stateCategory: st.group,
-      assigneeName: schema.userTable.name,
-      assigneeWorkspaceMemberId: schema.workspaceUserTable.id,
-    })
-    .from(w)
-    .innerJoin(p, eq(p.id, w.projectId))
-    .innerJoin(s, eq(s.id, w.stateId))
-    .innerJoin(st, eq(st.id, s.stateTemplateId))
-    .leftJoin(personTable, eq(personTable.id, w.assigneeId))
-    .leftJoin(schema.userTable, eq(schema.userTable.id, personTable.userId))
-    .leftJoin(
-      schema.workspaceUserTable,
-      and(
-        eq(schema.workspaceUserTable.userId, personTable.userId),
-        eq(schema.workspaceUserTable.workspaceId, w.workspaceId),
-      ),
-    )
-    .where(and(...conditions))
-    .orderBy(...orderExpr)
-    .limit(limit + 1);
-  const baseConditions = decoded ? conditions.slice(0, -1) : conditions;
-  const [rows, totals] = await Promise.all([
-    rowQuery,
-    db
-      .select({ total: sql<number>`count(*)::int` })
-      .from(w)
-      .innerJoin(p, eq(p.id, w.projectId))
-      .innerJoin(s, eq(s.id, w.stateId))
-      .innerJoin(st, eq(st.id, s.stateTemplateId))
-      .where(and(...baseConditions)),
-  ]);
-  const hasMore = rows.length > limit;
-  const pageRows = rows.slice(0, limit);
-  const last = pageRows.at(-1)?.workItem;
-  const value = last
-    ? field === "key"
-      ? last.key
-      : field === "priority"
-        ? last.priority === null
-          ? null
-          : priorityRankValue(last.priority)
-        : field === "dueDate"
-          ? (last.dueDate?.toISOString() ?? null)
-          : last.title
-    : null;
-  const boundaryNull =
-    !!last &&
-    (field === "dueDate"
-      ? last.dueDate === null
-      : field === "priority"
-        ? last.priority === null
-        : false);
-  const nextCursor =
-    hasMore && last
-      ? Buffer.from(
-          JSON.stringify({
-            ...cursorExpected,
-            value,
-            isNull: boundaryNull,
-            id: last.id,
-          }),
-          "utf8",
-        ).toString("base64url")
-      : null;
   return {
-    data: pageRows.map((row) => ({
-      ...row.workItem,
-      stateName: row.stateName,
-      stateCategory: row.stateCategory,
-      assigneeName: row.assigneeWorkspaceMemberId ? row.assigneeName : null,
-    })),
-    page: { nextCursor, hasMore },
-    meta: { total: totals[0]?.total ?? 0 },
+    identity,
+    personId: person.id,
+    projectIds,
   };
 }

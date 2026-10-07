@@ -80,9 +80,8 @@ The work-item list carries the text filter in its existing route's `filter` quer
 alongside its `layout`, `sort`, and `dir` state, so reloading or sharing the URL reproduces
 the same query. The work-item list now provides visual and text filter editing with the same
 filter AST, keeps editor mode in the URL, and forwards optional sort/column metadata without
-adding defaults when those query properties were absent. Global search, saved-view
-persistence/sharing, and saved-view screens remain outside this core work-item search slice,
-so the feature status above remains incomplete.
+adding defaults when those query properties were absent. Saved-view execution uses the same
+search validator, current viewer reach, and field permissions as direct work-item search.
 
 ## Saved views
 
@@ -146,8 +145,16 @@ GET  /api/views/{id}                           saved_view:read — the view's ow
 PATCH /api/views/{id}                          workspace:manage_settings · orOwner(created_by, saved_view:create)
 DELETE /api/views/{id}                         workspace:manage_settings · orOwner(created_by, saved_view:create) → 202 pending action
 POST /api/views/{id}/pin                       self (kind 2 — the caller's own `user_preference` row)
+POST /api/views/{id}/run                       saved_view:read (re-evaluated work-item reach and field permissions)
 GET  /api/views/{id}/count                     saved_view:read (cached 30 s)
 ```
+
+P1's saved-view screen currently renders the list layout. Other stored layout values remain
+round-trippable but show an explicit unsupported-layout state in this screen. A pinned view
+appears in agent navigation with its current-viewer work-item count; pinning and count queries
+are keyed by viewer identity, and the server rechecks view and work-item permissions before
+returning each count. Team-view owner transfer and team-lead behavior remain governed by the
+existing team foundation and are not implemented by this saved-view screen.
 
 ## Edge cases
 

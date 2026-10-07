@@ -404,6 +404,7 @@ function ProjectWorkItemsRoute({ projectKey }: { projectKey: string }) {
             realtimeStatus={realtimeStatus}
             sort={activeSort}
             dir={activeDir}
+            columns={columns}
             onSortChange={handleSortChange}
             onRealtimeAvailabilityChange={handleRealtimeAvailabilityChange}
             onRetry={handleRetry}

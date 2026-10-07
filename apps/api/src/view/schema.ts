@@ -19,15 +19,10 @@ export const SAVED_VIEW_LAYOUTS = [
   "chart",
 ] as const;
 
-// SV-14's envelope. Every field is optional here because a saved view can capture any
-// subset of it -- `columns`/`aggregate` only make sense for a table/report layout, and a
-// board layout has no `columns` at all. Kept as a permissive `record`/`array` shape
-// rather than a fully-typed filter grammar -- `POST /api/work-items/search`'s structured
-// filter grammar (api-design.md, SV-11/SV-12) does not exist in this codebase yet (this
-// PR's own "Not done" section discloses that), so there is nothing to validate the
-// `filter` shape strictly against today. Storing it opaquely now, and tightening this
-// once that grammar lands, is the honest sequencing -- inventing a filter shape here
-// would be guessing at a spec that isn't written down.
+// SV-14's storage envelope. The work-item search endpoint owns the filter grammar and
+// validates it when a saved view runs; keeping this envelope forward-compatible allows
+// layouts that P1 does not yet execute to be stored and round-tripped without claiming
+// support for their grouping, aggregation, or presentation semantics.
 export const savedViewQueryEnvelope = z.object({
   entity: z.string().default("work_item"),
   filter: z.record(z.string(), z.unknown()).optional(),

@@ -30,3 +30,7 @@ export const reachableSavedViewListSchema = z.array(reachableSavedViewSchema);
 export const pinnedViewIdsSchema = z
   .object({ pinnedViewIds: z.array(z.string()) })
   .openapi("PinnedViewIds");
+
+export const savedViewCountSchema = z.object({
+  count: z.number().int().nonnegative(),
+});
