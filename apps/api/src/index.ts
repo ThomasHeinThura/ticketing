@@ -139,6 +139,7 @@ import { assertCallerHasCapability } from "./utils/require-workspace-capability"
 import { seedDefaultWorkspaceRoles } from "./utils/seed-default-workspace-roles";
 import { seedInternalOrganisationAndStaffPersons } from "./utils/seed-internal-organisation";
 import { reachableWorkspacePredicate } from "./utils/workspace-access-middleware";
+import view from "./view";
 import workItem from "./work-item";
 import workflow from "./workflow";
 import workflowRule from "./workflow-rule";
@@ -1356,6 +1357,7 @@ export function createApp(
   const approvalApi = api.route("/", approval);
   const attachmentApi = api.route("/", attachment);
   const userApi = api.route("/user", user);
+  const viewApi = api.route("/views", view);
   const factorStatusApi = api.route("/me", factorStatus);
   const csrfTokenApi = api.route("/me", csrfToken);
   const stepUpApi = api.route("/me", stepUp);
@@ -1680,6 +1682,7 @@ export function createApp(
     taskRelationApi,
     timeEntryApi,
     userApi,
+    viewApi,
     workflowApi,
     workflowRuleApi,
     workItemApi,
@@ -2061,6 +2064,7 @@ const {
   taskRelationApi,
   timeEntryApi,
   userApi,
+  viewApi,
   workflowApi,
   workflowRuleApi,
   workItemApi,
@@ -2141,6 +2145,7 @@ export type AppType =
   | typeof workItemApi
   | typeof invitationApi
   | typeof workspaceApi
+  | typeof viewApi
   | typeof userApi
   | typeof invitationPublicApi
   | typeof oauthApi

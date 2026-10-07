@@ -1,3 +1,4 @@
+import { useQueries, useQuery } from "@tanstack/react-query";
 import { useNavigate } from "@tanstack/react-router";
 import {
   Collapsible,
@@ -12,14 +13,31 @@ import {
 } from "@taskdesk/ui";
 import { ChevronRight } from "lucide-react";
 import { useTranslation } from "react-i18next";
+import useAuth from "@/components/providers/auth-provider/hooks/use-auth";
+import { countSavedView, getSavedViews } from "@/fetchers/saved-views";
 import { usePendingInvitations } from "@/hooks/queries/invitation/use-pending-invitations";
 import useActiveWorkspace from "@/hooks/queries/workspace/use-active-workspace";
+import { routes } from "@/lib/routes";
 
 export function NavMain() {
   const { t } = useTranslation();
   const { data: workspace } = useActiveWorkspace();
+  const { user } = useAuth();
   const navigate = useNavigate();
   const { data: invitations = [] } = usePendingInvitations();
+  const savedViews = useQuery({
+    queryKey: ["saved-views", workspace?.id, user?.id],
+    queryFn: () => getSavedViews(workspace?.id ?? ""),
+    enabled: Boolean(workspace?.id && user?.id),
+  });
+  const pinnedViews = (savedViews.data ?? []).filter((view) => view.isPinned);
+  const pinnedCounts = useQueries({
+    queries: pinnedViews.map((view) => ({
+      queryKey: ["saved-view-count", user?.id, view.id, view.updatedAt],
+      queryFn: () => countSavedView(view.id),
+      staleTime: 30_000,
+    })),
+  });
 
   if (!workspace) return null;
 
@@ -39,6 +57,12 @@ export function NavMain() {
       isActive:
         window.location.pathname ===
         `/dashboard/workspace/${workspace.id}/members`,
+      badge: null,
+    },
+    {
+      title: t("navigation:sidebar.savedViews"),
+      url: routes.savedViews.path,
+      isActive: window.location.pathname === routes.savedViews.path,
       badge: null,
     },
     {
@@ -77,6 +101,31 @@ export function NavMain() {
                     {item.badge !== null && (
                       <span className="ml-auto flex h-5 min-w-5 items-center justify-center rounded-sm border border-sidebar-border/60 px-1 text-[11px] font-medium text-sidebar-foreground">
                         {item.badge}
+                      </span>
+                    )}
+                  </SidebarMenuButton>
+                </SidebarMenuItem>
+              ))}
+              {pinnedViews.map((view, index) => (
+                <SidebarMenuItem key={view.id}>
+                  <SidebarMenuButton
+                    tooltip={view.name}
+                    isActive={
+                      window.location.pathname === `/agent/views/${view.id}`
+                    }
+                    size="default"
+                    className="h-8 ps-6 text-sm hover:bg-transparent hover:text-sidebar-accent-foreground active:bg-transparent"
+                    onClick={() =>
+                      navigate({
+                        to: routes.savedView.path,
+                        params: { id: view.id },
+                      })
+                    }
+                  >
+                    <span className="truncate">{view.name}</span>
+                    {pinnedCounts[index]?.data !== undefined && (
+                      <span className="ml-auto flex h-5 min-w-5 items-center justify-center rounded-sm border border-sidebar-border/60 px-1 text-[11px] font-medium text-sidebar-foreground">
+                        {pinnedCounts[index]?.data}
                       </span>
                     )}
                   </SidebarMenuButton>

@@ -1,5 +1,7 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { Button, Input } from "@taskdesk/ui";
+import { Button } from "@taskdesk/ui";
+import { saveAs } from "file-saver";
+import { Download, Loader2 } from "lucide-react";
 import {
   lazy,
   Suspense,
@@ -12,13 +14,17 @@ import {
 import { useTranslation } from "react-i18next";
 import PageTitle from "@/components/page-title";
 import WorkItemCreateDialogShell from "@/components/work-item/work-item-create-dialog-shell";
+import WorkItemFilterEditor from "@/components/work-item/work-item-filter-editor";
 import WorkItemListLoading from "@/components/work-item/work-item-list-loading";
+import { exportWorkItems } from "@/fetchers/work-item/export-work-items";
 import type { WorkItemsResult } from "@/fetchers/work-item/get-work-items";
 import useGetProjects from "@/hooks/queries/project/use-get-projects";
 import useGetWorkItems from "@/hooks/queries/work-item/use-get-work-items";
 import useActiveWorkspace from "@/hooks/queries/workspace/use-active-workspace";
 import type { WorkItemRealtimeStatus } from "@/hooks/use-native-work-item-realtime";
 import { useWorkspacePermission } from "@/hooks/use-workspace-permission";
+import { HttpError } from "@/lib/http-error";
+import { toast } from "@/lib/toast";
 
 type WorkItemsPanelModule =
   typeof import("@/components/work-item/work-items-panel");
@@ -48,6 +54,7 @@ const WorkItemCreateTrigger = lazy(
 
 import {
   parseWorkItemListSearch,
+  resolveWorkItemListSort,
   type WorkItemListSearch,
   type WorkItemSortDirection,
   type WorkItemSortField,
@@ -79,10 +86,14 @@ function WorkItemsRouteComponent() {
 
 function ProjectWorkItemsRoute({ projectKey }: { projectKey: string }) {
   const { t } = useTranslation();
-  const { sort, dir, filter } = Route.useSearch();
+  const { sort, dir, filter, filterMode, columns } = Route.useSearch();
+  const effectiveSort = resolveWorkItemListSort({ sort, dir });
+  const activeSort = effectiveSort.field;
+  const activeDir = effectiveSort.order;
+  const querySort = effectiveSort.querySort;
   const navigate = Route.useNavigate();
   const [isCreateOpen, setIsCreateOpen] = useState(false);
-  const [filterDraft, setFilterDraft] = useState(filter ?? "");
+  const [isExporting, setIsExporting] = useState(false);
   const [createIntentProjectContext, setCreateIntentProjectContext] =
     useState<string>();
   const createTriggerRef = useRef<HTMLButtonElement>(null);
@@ -96,6 +107,7 @@ function ProjectWorkItemsRoute({ projectKey }: { projectKey: string }) {
     isLoading: isWorkspaceLoading,
     isError: isWorkspaceError,
   } = useActiveWorkspace();
+
   const { canCreateTasks, isCheckingPermissions } = useWorkspacePermission();
   const canOpenCreateDialog = !isCheckingPermissions && canCreateTasks();
 
@@ -142,21 +154,23 @@ function ProjectWorkItemsRoute({ projectKey }: { projectKey: string }) {
     data: workItemsResult,
     isLoading: isWorkItemsLoading,
     isError: isWorkItemsError,
+    error: workItemsError,
     refetch: refetchWorkItems,
   } = useGetWorkItems({
     projectId: project?.id,
     projectSlug: project?.slug,
     workspaceId: workspace?.id,
     filter,
-    sort,
-    dir,
+    sort: activeSort,
+    dir: activeDir,
+    columns,
+    querySort,
     realtimeStatus:
       realtimeStatus && realtimeStatus.projectId === project?.id
         ? realtimeStatus.status
         : "connecting",
   });
 
-  useEffect(() => setFilterDraft(filter ?? ""), [filter]);
   const isLoading =
     isWorkspaceLoading ||
     isProjectsLoading ||
@@ -196,6 +210,28 @@ function ProjectWorkItemsRoute({ projectKey }: { projectKey: string }) {
     refetchProjects();
   }, [refetchProjects]);
 
+  const handleExport = useCallback(async () => {
+    if (!workspace?.id || !project || isExporting) return;
+    setIsExporting(true);
+    try {
+      const csv = await exportWorkItems({
+        workspaceId: workspace.id,
+        projectSlug: project.slug,
+        filter: filter ?? "",
+        sort: activeSort,
+        dir: activeDir,
+      });
+      saveAs(
+        new Blob([csv], { type: "text/csv;charset=utf-8" }),
+        `${project.slug}-work-items.csv`,
+      );
+    } catch {
+      toast.error(t("common:error.title"));
+    } finally {
+      setIsExporting(false);
+    }
+  }, [activeDir, activeSort, filter, isExporting, project, t, workspace?.id]);
+
   const handleRetry = useCallback(() => {
     handleRetryProjects();
     if (project) refetchWorkItems();
@@ -221,41 +257,60 @@ function ProjectWorkItemsRoute({ projectKey }: { projectKey: string }) {
             {project ? project.name : projectKey} ·{" "}
             {t("workItems:list.heading")}
           </h1>
-          {project && canOpenCreateDialog ? (
-            <Suspense fallback={null}>
-              <WorkItemCreateTrigger
-                buttonRef={createTriggerRef}
-                onClick={openCreateDialog}
-              />
-            </Suspense>
+          {project ? (
+            <div className="flex items-center gap-2">
+              <Button
+                size="sm"
+                variant="outline"
+                onClick={() => void handleExport()}
+                disabled={isExporting || !workspace?.id}
+              >
+                {isExporting ? (
+                  <Loader2 className="animate-spin" />
+                ) : (
+                  <Download />
+                )}
+                {t("workItems:list.export")}
+              </Button>
+              {canOpenCreateDialog ? (
+                <Suspense fallback={null}>
+                  <WorkItemCreateTrigger
+                    buttonRef={createTriggerRef}
+                    onClick={openCreateDialog}
+                  />
+                </Suspense>
+              ) : null}
+            </div>
           ) : null}
         </div>
-        <form
-          className="flex gap-2"
-          onSubmit={(event) => {
-            event.preventDefault();
+        <WorkItemFilterEditor
+          filter={filter ?? ""}
+          mode={filterMode ?? "visual"}
+          apiError={
+            workItemsError instanceof HttpError &&
+            [400, 403, 422].includes(workItemsError.status)
+              ? `${workItemsError.status}: ${workItemsError.message}`
+              : undefined
+          }
+          onModeChange={(nextMode) =>
             navigate({
               search: (prev: WorkItemListSearch) => ({
                 ...prev,
-                ...(filterDraft.trim()
-                  ? { filter: filterDraft.trim() }
+                filterMode: nextMode,
+              }),
+            })
+          }
+          onApply={(nextFilter) =>
+            navigate({
+              search: (prev: WorkItemListSearch) => ({
+                ...prev,
+                ...(nextFilter
+                  ? { filter: nextFilter }
                   : { filter: undefined }),
               }),
-              replace: true,
-            });
-          }}
-        >
-          <Input
-            aria-label={t("workItems:list.searchLabel", "Filter work items")}
-            placeholder="assignee:@me state:started OR priority:>=high"
-            value={filterDraft}
-            maxLength={8192}
-            onChange={(event) => setFilterDraft(event.target.value)}
-          />
-          <Button type="submit" size="sm" variant="outline">
-            {t("workItems:list.searchAction", "Filter")}
-          </Button>
-        </form>
+            })
+          }
+        />
         <Suspense fallback={<WorkItemListLoading />}>
           <WorkItemsPanel
             project={project}
@@ -264,8 +319,9 @@ function ProjectWorkItemsRoute({ projectKey }: { projectKey: string }) {
             isError={isError}
             realtimeProjectId={realtimeProjectId}
             realtimeStatus={realtimeStatus}
-            sort={sort}
-            dir={dir}
+            sort={activeSort}
+            dir={activeDir}
+            columns={columns}
             onSortChange={handleSortChange}
             onRealtimeAvailabilityChange={handleRealtimeAvailabilityChange}
             onRetry={handleRetry}

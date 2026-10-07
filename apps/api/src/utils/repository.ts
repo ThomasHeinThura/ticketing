@@ -24,7 +24,8 @@ type WorkspaceLookupResource =
   | "column"
   | "workflowRule"
   | "workflow"
-  | "workflowVersion";
+  | "workflowVersion"
+  | "savedView";
 
 export type WorkspaceLookupRow = {
   workspaceId: string | null;
@@ -269,6 +270,21 @@ export async function lookupWorkspaceResource(
               and(
                 eq(schema.workflowVersionTable.id, id),
                 reach(schema.workflowTable.workspaceId),
+              ),
+            )
+            .limit(1)
+        )[0] ?? null
+      );
+    case "savedView":
+      return (
+        (
+          await db
+            .select({ workspaceId: schema.savedViewTable.workspaceId })
+            .from(schema.savedViewTable)
+            .where(
+              and(
+                eq(schema.savedViewTable.id, id),
+                reach(schema.savedViewTable.workspaceId),
               ),
             )
             .limit(1)

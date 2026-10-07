@@ -8,6 +8,7 @@ import {
   readdirSync,
   readFileSync,
   rmSync,
+  unlinkSync,
   writeFileSync,
 } from "node:fs";
 import { tmpdir } from "node:os";
@@ -442,6 +443,28 @@ it("keeps SQL-owned tables and ordered keys safe during configured generation", 
       recursive: true,
       dereference: true,
     });
+    // 0118 is the provisional P1 candidate; regenerate it from the frozen 0117 prefix.
+    for (const name of readdirSync(outputFolder)) {
+      if (name.startsWith("0118_") && name.endsWith(".sql")) {
+        unlinkSync(join(outputFolder, name));
+      }
+    }
+    unlinkSync(join(outputFolder, "meta/0118_snapshot.json"));
+    const copiedJournalPath = join(outputFolder, "meta/_journal.json");
+    const copiedJournal = JSON.parse(
+      readFileSync(copiedJournalPath, "utf8"),
+    ) as { entries: JournalEntry[] };
+    writeFileSync(
+      copiedJournalPath,
+      `${JSON.stringify(
+        {
+          ...copiedJournal,
+          entries: copiedJournal.entries.filter((entry) => entry.idx <= 117),
+        },
+        null,
+        2,
+      )}\n`,
+    );
     const config = [
       "import { defineConfig } from 'drizzle-kit';",
       `export default defineConfig({out:${JSON.stringify(relative(apiDir, outputFolder))},schema:['./src/database/schema.ts','./src/database/migration-schema.ts','./src/permissions/shadow-schema.ts'],dialect:'postgresql',dbCredentials:{url:'postgresql://unused:unused@localhost:5432/unused'}});`,
@@ -528,9 +551,143 @@ it("keeps SQL-owned tables and ordered keys safe during configured generation", 
     expect(Object.keys(defaultPairs).sort()).toEqual(
       [...expectedDefaultRenderings].sort(),
     );
+    const generatedExistingTables: MigrationSnapshot = {
+      ...generatedSnapshot,
+      tables: Object.fromEntries(
+        Object.entries(generatedSnapshot.tables).filter(
+          ([tableName]) => frozenSnapshot.tables[tableName],
+        ),
+      ),
+    };
     expect(
-      inventoryDifferences(frozenSnapshot, generatedSnapshot, defaultPairs),
+      Object.keys(generatedSnapshot.tables)
+        .filter((tableName) => !frozenSnapshot.tables[tableName])
+        .sort(),
+    ).toEqual(["public.saved_view", "public.user_preference"]);
+    const savedViewInventory = generatedSnapshot.tables["public.saved_view"];
+    const preferenceInventory =
+      generatedSnapshot.tables["public.user_preference"];
+    if (!savedViewInventory || !preferenceInventory) {
+      throw new Error("P1 saved-view tables are missing from generated schema");
+    }
+    expect(Object.keys(savedViewInventory.columns).sort()).toEqual(
+      [
+        "created_at",
+        "created_by",
+        "id",
+        "layout",
+        "name",
+        "query",
+        "scope",
+        "scope_id",
+        "shared_with_team_id",
+        "updated_at",
+        "visibility",
+        "workspace_id",
+      ].sort(),
+    );
+    expect(savedViewInventory.columns.visibility).toMatchObject({
+      type: "text",
+      notNull: true,
+      default: "'private'",
+    });
+    expect(Object.keys(savedViewInventory.indexes).sort()).toEqual(
+      [
+        "saved_view_created_by_idx",
+        "saved_view_shared_with_team_id_idx",
+        "saved_view_workspace_id_idx",
+      ].sort(),
+    );
+    expect(Object.keys(savedViewInventory.foreignKeys).sort()).toEqual(
+      [
+        "saved_view_created_by_person_id_fk",
+        "saved_view_shared_with_team_id_team_id_fk",
+        "saved_view_workspace_id_workspace_id_fk",
+      ].sort(),
+    );
+    expect(
+      Object.values(savedViewInventory.checkConstraints)
+        .map(({ name }) => name)
+        .sort(),
+    ).toEqual(
+      [
+        "saved_view_layout_allowed",
+        "saved_view_scope_allowed",
+        "saved_view_team_visibility_consistency",
+        "saved_view_visibility_allowed",
+      ].sort(),
+    );
+    expect(savedViewInventory.checkConstraints).toMatchObject({
+      saved_view_scope_allowed: {
+        value: "\"saved_view\".\"scope\" in ('workspace', 'project')",
+      },
+      saved_view_visibility_allowed: {
+        value:
+          "\"saved_view\".\"visibility\" in ('private', 'team', 'workspace')",
+      },
+      saved_view_layout_allowed: {
+        value:
+          "\"saved_view\".\"layout\" in ('board', 'list', 'table', 'calendar', 'timeline', 'chart')",
+      },
+    });
+    expect(Object.keys(preferenceInventory.columns).sort()).toEqual(
+      [
+        "created_at",
+        "id",
+        "key",
+        "person_id",
+        "scope",
+        "scope_id",
+        "updated_at",
+        "value",
+      ].sort(),
+    );
+    expect(Object.keys(preferenceInventory.indexes).sort()).toEqual(
+      [
+        "user_preference_global_key_unique",
+        "user_preference_person_id_idx",
+        "user_preference_scoped_key_unique",
+      ].sort(),
+    );
+    expect(Object.keys(preferenceInventory.foreignKeys)).toEqual([
+      "user_preference_person_id_person_id_fk",
+    ]);
+    expect(
+      Object.values(preferenceInventory.checkConstraints).map(
+        ({ name, value }) => [name, value],
+      ),
+    ).toEqual([
+      [
+        "user_preference_scope_allowed",
+        "\"user_preference\".\"scope\" in ('global', 'workspace', 'project')",
+      ],
+    ]);
+    expect(
+      preferenceInventory.indexes.user_preference_global_key_unique,
+    ).toMatchObject({
+      isUnique: true,
+      where: '"user_preference"."scope_id" is null',
+    });
+    expect(
+      preferenceInventory.indexes.user_preference_scoped_key_unique,
+    ).toMatchObject({
+      isUnique: true,
+      where: '"user_preference"."scope_id" is not null',
+    });
+    expect(
+      inventoryDifferences(
+        frozenSnapshot,
+        generatedExistingTables,
+        defaultPairs,
+      ),
       "configured generation must preserve complete applied table and constraint semantics",
+    ).toEqual([]);
+    const committedSnapshot = JSON.parse(
+      readFileSync(join(migrationsFolder, "meta/0118_snapshot.json"), "utf8"),
+    ) as MigrationSnapshot;
+    expect(
+      inventoryDifferences(generatedSnapshot, committedSnapshot),
+      "provisional 0118 snapshot must match independently generated configured schema",
     ).toEqual([]);
 
     expect(
@@ -574,7 +731,11 @@ it("keeps SQL-owned tables and ordered keys safe during configured generation", 
         "utf8",
       );
       expect(generatedSql).not.toMatch(/\bDROP\s+TABLE\b/iu);
-      expect(generatedSql).not.toMatch(/\bCREATE\s+TABLE\b/iu);
+      expect(
+        [...generatedSql.matchAll(/CREATE TABLE "([^"]+)"/giu)]
+          .map((match) => match[1])
+          .sort(),
+      ).toEqual(["saved_view", "user_preference"]);
       expect(generatedSql).not.toMatch(/\bDROP\s+COLUMN\b/iu);
       expect(generatedSql).not.toMatch(/\bALTER\s+COLUMN\b[^;]*\bTYPE\b/iu);
       expect(generatedSql).not.toMatch(
@@ -623,9 +784,12 @@ it("keeps SQL-owned tables and ordered keys safe during configured generation", 
       const droppedPhysicalNames = droppedConstraints
         .map(physicalConstraintName)
         .sort();
-      expect(addedConstraints.map(physicalConstraintName).sort()).toEqual(
-        droppedPhysicalNames,
-      );
+      expect(
+        addedConstraints
+          .filter((name) => name.length > 63)
+          .map(physicalConstraintName)
+          .sort(),
+      ).toEqual(droppedPhysicalNames);
       const frozenPhysicalConstraints = new Set([
         ...inventoryEntries(frozenSnapshot, "foreignKeys").map(([, name]) =>
           physicalConstraintName(name),
@@ -644,6 +808,7 @@ it("keeps SQL-owned tables and ordered keys safe during configured generation", 
         .map(physicalConstraintName)
         .sort();
       expect(droppedPhysicalNames).toEqual(expectedPhysicalNameTruncations);
+      expect(expectedPhysicalNameTruncations).toHaveLength(20);
       const frozenCheckNames = inventoryEntries(
         frozenSnapshot,
         "checkConstraints",
@@ -681,6 +846,50 @@ it("keeps SQL-owned tables and ordered keys safe during configured generation", 
         .sort();
       expect(generatedDefaults).toEqual([...expectedDefaultRenderings].sort());
 
+      const removedDefaultStatements = new Set(
+        generatedDefaults.map((key) => {
+          const [, tableName, columnName] =
+            key.match(/^public\.([^.]+)\.([^.]+)$/u) ?? [];
+          if (!tableName || !columnName) {
+            throw new Error(`Invalid default key ${key}`);
+          }
+          return `ALTER TABLE "${tableName}" ALTER COLUMN "${columnName}" SET DEFAULT`;
+        }),
+      );
+      const replacementPhysicalNames = new Set(expectedPhysicalNameTruncations);
+      const normalizedStatements = (sql: string) =>
+        sql
+          .split("--> statement-breakpoint")
+          .map((statement) => statement.trim().replaceAll(/\s+/gu, " "))
+          .filter(Boolean);
+      const retainedGeneratedStatements = normalizedStatements(
+        generatedSql,
+      ).filter((statement) => {
+        const dropped = statement.match(/DROP CONSTRAINT "([^"]+)"/iu)?.[1];
+        const added = statement.match(/ADD CONSTRAINT "([^"]+)"/iu)?.[1];
+        if (
+          (dropped && replacementPhysicalNames.has(dropped.slice(0, 63))) ||
+          (added && replacementPhysicalNames.has(added.slice(0, 63)))
+        ) {
+          return false;
+        }
+        return ![...removedDefaultStatements].some((prefix) =>
+          statement.startsWith(prefix),
+        );
+      });
+      const committedMigration = readdirSync(migrationsFolder).find(
+        (name) => name.startsWith("0118_") && name.endsWith(".sql"),
+      );
+      if (!committedMigration) {
+        throw new Error("Provisional 0118 migration is missing");
+      }
+      expect(
+        normalizedStatements(
+          readFileSync(join(migrationsFolder, committedMigration), "utf8"),
+        ),
+        "0118 may contain only saved-view intent after proven catalog-equivalent churn is removed",
+      ).toEqual(retainedGeneratedStatements);
+
       const droppedIndexNames = [
         ...generatedSql.matchAll(/DROP INDEX "([^"]+)"/giu),
       ]
@@ -691,7 +900,16 @@ it("keeps SQL-owned tables and ordered keys safe during configured generation", 
       ]
         .flatMap((match) => (match[1] ? [match[1]] : []))
         .sort();
-      expect(createdIndexNames).toEqual(droppedIndexNames);
+      expect(createdIndexNames).toEqual(
+        [
+          "saved_view_created_by_idx",
+          "saved_view_shared_with_team_id_idx",
+          "saved_view_workspace_id_idx",
+          "user_preference_global_key_unique",
+          "user_preference_person_id_idx",
+          "user_preference_scoped_key_unique",
+        ].sort(),
+      );
       expect(
         droppedIndexNames,
         "equivalent catalog indexes must not be rebuilt",

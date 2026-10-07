@@ -4585,6 +4585,95 @@
         "required": [
           "deleted"
         ]
+      },
+      "ReachableSavedView": {
+        "allOf": [
+          {
+            "$ref": "#/components/schemas/SavedView"
+          },
+          {
+            "type": "object",
+            "properties": {
+              "isPinned": {
+                "type": "boolean"
+              }
+            },
+            "required": [
+              "isPinned"
+            ]
+          }
+        ]
+      },
+      "SavedView": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "workspaceId": {
+            "type": "string"
+          },
+          "createdBy": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "scope": {
+            "type": "string"
+          },
+          "scopeId": {
+            "type": "string"
+          },
+          "visibility": {
+            "type": "string"
+          },
+          "sharedWithTeamId": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "layout": {
+            "type": "string"
+          },
+          "query": {},
+          "createdAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "updatedAt": {
+            "type": "string",
+            "format": "date-time"
+          }
+        },
+        "required": [
+          "id",
+          "workspaceId",
+          "createdBy",
+          "name",
+          "scope",
+          "scopeId",
+          "visibility",
+          "sharedWithTeamId",
+          "layout",
+          "createdAt",
+          "updatedAt"
+        ]
+      },
+      "PinnedViewIds": {
+        "type": "object",
+        "properties": {
+          "pinnedViewIds": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        },
+        "required": [
+          "pinnedViewIds"
+        ]
       }
     },
     "parameters": {}
@@ -19995,6 +20084,131 @@
         }
       }
     },
+    "/work-items/export": {
+      "post": {
+        "operationId": "exportWorkItems",
+        "tags": [
+          "Work items"
+        ],
+        "summary": "Export work items as CSV",
+        "description": "Exports every reachable work item matching the supplied view query.",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "workspaceId": {
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  "query": {
+                    "type": "object",
+                    "properties": {
+                      "entity": {
+                        "type": "string"
+                      },
+                      "filter": {},
+                      "sort": {
+                        "type": "array",
+                        "items": {
+                          "type": "object",
+                          "properties": {
+                            "field": {
+                              "type": "string"
+                            },
+                            "order": {
+                              "type": "string"
+                            }
+                          },
+                          "required": [
+                            "field",
+                            "order"
+                          ],
+                          "additionalProperties": false
+                        },
+                        "maxItems": 1
+                      },
+                      "columns": {
+                        "type": "array",
+                        "items": {
+                          "type": "string"
+                        }
+                      }
+                    },
+                    "required": [
+                      "entity"
+                    ],
+                    "additionalProperties": false
+                  }
+                },
+                "required": [
+                  "workspaceId",
+                  "query"
+                ],
+                "additionalProperties": false
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "CSV file",
+            "content": {
+              "text/csv": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Malformed or over-limit export request",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing or invalid credentials"
+          },
+          "403": {
+            "description": "Missing work_item:export permission",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Workspace not found or unreachable",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Unsupported entity or unavailable filter field",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/work-items/{key}": {
       "get": {
         "operationId": "getWorkItem",
@@ -23424,6 +23638,721 @@
           },
           "403": {
             "description": "A browser session is required",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/views": {
+      "get": {
+        "operationId": "listViews",
+        "tags": [
+          "Views"
+        ],
+        "summary": "List saved views",
+        "description": "Every saved view the caller can reach in this workspace: their own, workspace-visible views, and team views for teams they belong to (search-and-saved-views.md SV-15..18). Each result includes the caller's restored pin state; pinned views are first (SV-20).",
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "minLength": 1
+            },
+            "required": true,
+            "name": "workspaceId",
+            "in": "query"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Reachable saved views with caller pin state",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/ReachableSavedView"
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "workspaceId could not be determined",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing or invalid credentials"
+          },
+          "403": {
+            "description": "Missing saved_view:read permission",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "operationId": "createView",
+        "tags": [
+          "Views"
+        ],
+        "summary": "Create saved view",
+        "description": "A saved view is a stored search plus a presentation choice (search-and-saved-views.md). A workspace-visible view additionally requires workspace:manage_settings (SV-18); publishing a team view requires saved_view:share and membership in that team.",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "workspaceId": {
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  "name": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 200
+                  },
+                  "scope": {
+                    "type": "string",
+                    "enum": [
+                      "workspace",
+                      "project"
+                    ]
+                  },
+                  "scopeId": {
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  "visibility": {
+                    "type": "string",
+                    "enum": [
+                      "private",
+                      "team",
+                      "workspace"
+                    ],
+                    "default": "private"
+                  },
+                  "sharedWithTeamId": {
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  "layout": {
+                    "type": "string",
+                    "enum": [
+                      "board",
+                      "list",
+                      "table",
+                      "calendar",
+                      "timeline",
+                      "chart"
+                    ]
+                  },
+                  "query": {
+                    "type": "object",
+                    "properties": {
+                      "entity": {
+                        "type": "string",
+                        "default": "work_item"
+                      },
+                      "filter": {
+                        "type": "object",
+                        "additionalProperties": {}
+                      },
+                      "sort": {
+                        "type": "array",
+                        "items": {
+                          "type": "object",
+                          "properties": {
+                            "field": {
+                              "type": "string"
+                            },
+                            "direction": {
+                              "type": "string",
+                              "enum": [
+                                "asc",
+                                "desc"
+                              ]
+                            }
+                          },
+                          "required": [
+                            "field",
+                            "direction"
+                          ]
+                        }
+                      },
+                      "groupBy": {
+                        "type": "string"
+                      },
+                      "columns": {
+                        "type": "array",
+                        "items": {
+                          "type": "string"
+                        }
+                      },
+                      "aggregate": {
+                        "type": "object",
+                        "additionalProperties": {}
+                      }
+                    }
+                  }
+                },
+                "required": [
+                  "workspaceId",
+                  "name",
+                  "scope",
+                  "scopeId",
+                  "layout",
+                  "query"
+                ]
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Saved view created",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SavedView"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid body, workspaceId could not be determined, or scopeId does not belong to it",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing or invalid credentials"
+          },
+          "403": {
+            "description": "Missing saved_view:create, saved_view:share, or workspace:manage_settings permission, or missing membership in the target team",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/views/{id}": {
+      "get": {
+        "operationId": "getView",
+        "tags": [
+          "Views"
+        ],
+        "summary": "Get saved view",
+        "parameters": [
+          {
+            "schema": {
+              "type": "string"
+            },
+            "required": true,
+            "name": "id",
+            "in": "path"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "The saved view",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SavedView"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "id must not contain a NUL (\\u0000) byte",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing or invalid credentials"
+          },
+          "403": {
+            "description": "Missing saved_view:read permission",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Saved view not found, or out of reach for this viewer",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          }
+        }
+      },
+      "patch": {
+        "operationId": "updateView",
+        "tags": [
+          "Views"
+        ],
+        "summary": "Update saved view",
+        "description": "The owner, or a caller with workspace:manage_settings, may edit a view. Changing a view's team audience additionally requires saved_view:share and membership in the target team.",
+        "parameters": [
+          {
+            "schema": {
+              "type": "string"
+            },
+            "required": true,
+            "name": "id",
+            "in": "path"
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "name": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 200
+                  },
+                  "visibility": {
+                    "type": "string",
+                    "enum": [
+                      "private",
+                      "team",
+                      "workspace"
+                    ]
+                  },
+                  "sharedWithTeamId": {
+                    "type": [
+                      "string",
+                      "null"
+                    ],
+                    "minLength": 1
+                  },
+                  "layout": {
+                    "type": "string",
+                    "enum": [
+                      "board",
+                      "list",
+                      "table",
+                      "calendar",
+                      "timeline",
+                      "chart"
+                    ]
+                  },
+                  "query": {
+                    "type": "object",
+                    "properties": {
+                      "entity": {
+                        "type": "string",
+                        "default": "work_item"
+                      },
+                      "filter": {
+                        "type": "object",
+                        "additionalProperties": {}
+                      },
+                      "sort": {
+                        "type": "array",
+                        "items": {
+                          "type": "object",
+                          "properties": {
+                            "field": {
+                              "type": "string"
+                            },
+                            "direction": {
+                              "type": "string",
+                              "enum": [
+                                "asc",
+                                "desc"
+                              ]
+                            }
+                          },
+                          "required": [
+                            "field",
+                            "direction"
+                          ]
+                        }
+                      },
+                      "groupBy": {
+                        "type": "string"
+                      },
+                      "columns": {
+                        "type": "array",
+                        "items": {
+                          "type": "string"
+                        }
+                      },
+                      "aggregate": {
+                        "type": "object",
+                        "additionalProperties": {}
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "The updated saved view",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SavedView"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid body",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing or invalid credentials"
+          },
+          "403": {
+            "description": "Not the view's owner, missing workspace:manage_settings, or missing saved_view:share permission / membership in the target team",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Saved view not found",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          }
+        }
+      },
+      "delete": {
+        "operationId": "requestDeleteView",
+        "tags": [
+          "Views"
+        ],
+        "summary": "Request saved-view deletion",
+        "description": "Creates a pending action and returns 202. The saved view remains available until the requester approves it in a browser session (pending-actions.md PA-1..PA-6).",
+        "parameters": [
+          {
+            "schema": {
+              "type": "string"
+            },
+            "required": true,
+            "name": "id",
+            "in": "path"
+          }
+        ],
+        "responses": {
+          "202": {
+            "description": "Pending approval; no saved-view data is deleted yet",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "pendingActionId": {
+                      "type": "string"
+                    },
+                    "action": {
+                      "type": "string",
+                      "enum": [
+                        "delete"
+                      ]
+                    },
+                    "summary": {
+                      "type": "object",
+                      "additionalProperties": {}
+                    },
+                    "confirmation": {
+                      "type": "string",
+                      "enum": [
+                        "click"
+                      ]
+                    },
+                    "expiresAt": {
+                      "type": "string",
+                      "format": "date-time"
+                    },
+                    "approveUrl": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "pendingActionId",
+                    "action",
+                    "summary",
+                    "confirmation",
+                    "expiresAt",
+                    "approveUrl"
+                  ]
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing or invalid credentials"
+          },
+          "403": {
+            "description": "Missing saved_view:create or workspace:manage_settings",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Saved view not found",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "A pending saved-view deletion already exists",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/views/{id}/pin": {
+      "post": {
+        "operationId": "pinView",
+        "tags": [
+          "Views"
+        ],
+        "summary": "Toggle pinning a saved view",
+        "description": "SV-20. Toggles: pinning an already-pinned view unpins it.",
+        "parameters": [
+          {
+            "schema": {
+              "type": "string"
+            },
+            "required": true,
+            "name": "id",
+            "in": "path"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "The caller's pinned view ids for this workspace",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PinnedViewIds"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing or invalid credentials"
+          },
+          "404": {
+            "description": "Saved view not found",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/views/{id}/run": {
+      "post": {
+        "operationId": "runSavedView",
+        "tags": [
+          "Views"
+        ],
+        "summary": "Run a saved view for the current viewer",
+        "description": "Executes the stored query with current work-item reach and field permissions.",
+        "parameters": [
+          {
+            "schema": {
+              "type": "string"
+            },
+            "required": true,
+            "name": "id",
+            "in": "path"
+          },
+          {
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 200,
+              "default": 50
+            },
+            "required": false,
+            "name": "limit",
+            "in": "query"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "maxLength": 4096
+            },
+            "required": false,
+            "name": "cursor",
+            "in": "query"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "A page of reachable matching work items",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/WorkItemListResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing or invalid credentials"
+          },
+          "404": {
+            "description": "Saved view not found or out of reach",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Saved query contains unsupported filters",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/views/{id}/count": {
+      "get": {
+        "operationId": "countSavedView",
+        "tags": [
+          "Views"
+        ],
+        "summary": "Count reachable work items matching a saved view",
+        "description": "The count uses the current viewer's work-item reach. When Valkey is configured, an authorized count may be cached for up to 30 seconds.",
+        "parameters": [
+          {
+            "schema": {
+              "type": "string"
+            },
+            "required": true,
+            "name": "id",
+            "in": "path"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Reachable matching work-item count",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "count": {
+                      "type": "integer",
+                      "minimum": 0
+                    }
+                  },
+                  "required": [
+                    "count"
+                  ]
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing or invalid credentials"
+          },
+          "404": {
+            "description": "Saved view not found or out of reach",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Saved query contains unsupported filters",
             "content": {
               "text/plain": {
                 "schema": {

@@ -24,6 +24,7 @@ import {
   projectTable,
   provisioningEventTable,
   roleTable,
+  savedViewTable,
   scheduledTransitionTable,
   scimConnectionTable,
   scimGroupDirectoryMemberTable,
@@ -51,6 +52,7 @@ import {
   userNotificationPreferenceTable,
   userNotificationWorkspaceProjectTable,
   userNotificationWorkspaceRuleTable,
+  userPreferenceTable,
   userTable,
   verificationTable,
   watcherTable,
@@ -1011,3 +1013,28 @@ export const slaGoalTableRelations = relations(slaGoalTable, ({ one }) => ({
     references: [workItemTypeTable.workspaceId, workItemTypeTable.id],
   }),
 }));
+
+export const savedViewTableRelations = relations(savedViewTable, ({ one }) => ({
+  workspace: one(workspaceTable, {
+    fields: [savedViewTable.workspaceId],
+    references: [workspaceTable.id],
+  }),
+  createdByPerson: one(personTable, {
+    fields: [savedViewTable.createdBy],
+    references: [personTable.id],
+  }),
+  sharedWithTeam: one(teamTable, {
+    fields: [savedViewTable.sharedWithTeamId],
+    references: [teamTable.id],
+  }),
+}));
+
+export const userPreferenceTableRelations = relations(
+  userPreferenceTable,
+  ({ one }) => ({
+    person: one(personTable, {
+      fields: [userPreferenceTable.personId],
+      references: [personTable.id],
+    }),
+  }),
+);

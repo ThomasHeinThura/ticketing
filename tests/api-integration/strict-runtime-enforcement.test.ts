@@ -1,5 +1,5 @@
 import { createHash, randomUUID } from "node:crypto";
-import { eq } from "drizzle-orm";
+import { and, eq } from "drizzle-orm";
 import {
   afterAll,
   afterEach,
@@ -24,6 +24,7 @@ import { resetTestDatabase } from "./helpers/database";
 import {
   createProjectFixture,
   createWorkspaceMember,
+  grantProjectRole,
   prepareAuthenticatedApiFixture,
   requireRow,
 } from "./helpers/fixtures";
@@ -624,6 +625,161 @@ describe("strict policy runtime enforcement against the production API graph", (
       .from(schema.workItemTable)
       .where(eq(schema.workItemTable.key, key));
     expect(item?.assigneeId).toBeNull();
+  });
+
+  it("keeps strict API-key export aligned with the exact stored scope and project reach", async () => {
+    const owner = await createWorkspaceMember({ role: "owner" });
+    const reachable = await createProjectFixture({
+      workspaceId: owner.workspace.id,
+    });
+    const unreachable = await createProjectFixture({
+      workspaceId: owner.workspace.id,
+    });
+    await grantProjectRole(owner.user.id, reachable.project.id, [
+      "work_item:create",
+      "work_item:export",
+      "project:read",
+    ]);
+    await grantProjectRole(owner.user.id, unreachable.project.id, [
+      "work_item:create",
+      "work_item:export",
+      "project:read",
+    ]);
+    const type = await createWorkItemType(owner.workspace.id);
+    await createDefaultState(owner.workspace.id, reachable.project.id);
+    await createDefaultState(owner.workspace.id, unreachable.project.id);
+
+    mockAuthenticatedSession(owner.user);
+    const { app } = await createStrictApp();
+    const createReachable = await app.request(
+      `/api/projects/${reachable.project.id}/work-items`,
+      {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({
+          typeId: type.id,
+          title: "Strict reached export",
+        }),
+      },
+    );
+    expect(createReachable.status, await createReachable.clone().text()).toBe(
+      200,
+    );
+    const createUnreachable = await app.request(
+      `/api/projects/${unreachable.project.id}/work-items`,
+      {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({
+          typeId: type.id,
+          title: "Strict hidden export",
+        }),
+      },
+    );
+    expect(
+      createUnreachable.status,
+      await createUnreachable.clone().text(),
+    ).toBe(200);
+    const person = requireRow(
+      await db
+        .select({ id: schema.personTable.id })
+        .from(schema.personTable)
+        .where(eq(schema.personTable.userId, owner.user.id))
+        .limit(1),
+      "strict export owner person",
+    );
+    await db
+      .delete(schema.membershipTable)
+      .where(
+        and(
+          eq(schema.membershipTable.personId, person.id),
+          eq(schema.membershipTable.scope, "project"),
+          eq(schema.membershipTable.scopeId, unreachable.project.id),
+        ),
+      );
+
+    const createKey = async (permissions: string) => {
+      const rawKey = `taskdesk_test_${randomUUID()}`;
+      await db.insert(schema.apikeyTable).values({
+        referenceId: owner.user.id,
+        userId: owner.user.id,
+        key: hashApiKey(rawKey),
+        name: "strict work-item export key",
+        start: rawKey.slice(0, 12),
+        prefix: "taskdesk",
+        permissions,
+        createdAt: new Date(),
+        updatedAt: new Date(),
+      });
+      return rawKey;
+    };
+    const exportRequest = (rawKey: string, query: Record<string, unknown>) =>
+      app.request("/api/work-items/export", {
+        method: "POST",
+        headers: {
+          authorization: `Bearer ${rawKey}`,
+          "content-type": "application/json",
+        },
+        body: JSON.stringify({ workspaceId: owner.workspace.id, query }),
+      });
+    const allRowsKey = await createKey(
+      JSON.stringify({ work_item: ["export"] }),
+    );
+    const allRows = await exportRequest(allRowsKey, {
+      entity: "work_item",
+      columns: ["key", "title"],
+    });
+    expect(allRows.status, await allRows.clone().text()).toBe(200);
+    const allRowsCsv = await allRows.text();
+    expect(allRowsCsv).toContain("Strict reached export");
+    expect(allRowsCsv).not.toContain("Strict hidden export");
+
+    const projectFilter = {
+      entity: "work_item",
+      filter: { field: "project", op: "eq", value: reachable.project.slug },
+      columns: ["key", "title"],
+    };
+    const filteredKey = await createKey(
+      JSON.stringify({ work_item: ["export"], project: ["read"] }),
+    );
+    const filtered = await exportRequest(filteredKey, projectFilter);
+    expect(filtered.status, await filtered.clone().text()).toBe(200);
+    expect(await filtered.text()).toContain("Strict reached export");
+
+    const exportOnlyFilteredKey = await createKey(
+      JSON.stringify({ work_item: ["export"] }),
+    );
+    const exportOnlyFiltered = await exportRequest(
+      exportOnlyFilteredKey,
+      projectFilter,
+    );
+    expect(exportOnlyFiltered.status).toBe(422);
+
+    const member = await createWorkspaceMember({ role: "member" });
+    const memberKey = await createKey(
+      JSON.stringify({ work_item: ["export"], project: ["read"] }),
+    );
+    await db
+      .update(schema.apikeyTable)
+      .set({ referenceId: member.user.id, userId: member.user.id })
+      .where(eq(schema.apikeyTable.key, hashApiKey(memberKey)));
+    const roleDenied = await app.request("/api/work-items/export", {
+      method: "POST",
+      headers: {
+        authorization: `Bearer ${memberKey}`,
+        "content-type": "application/json",
+      },
+      body: JSON.stringify({
+        workspaceId: member.workspace.id,
+        query: { entity: "work_item", columns: ["key", "title"] },
+      }),
+    });
+    expect(roleDenied.status).toBe(403);
+    expect(
+      (await db.select().from(schema.auditLogTable)).filter(
+        (audit) => audit.action === "work_item.exported",
+      ),
+    ).toHaveLength(2);
   });
 
   it("evaluates the legacy task table row on the final task-source cutover path", async () => {

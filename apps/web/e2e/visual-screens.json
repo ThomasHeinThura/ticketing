@@ -37,6 +37,13 @@
 		"screenshot": "my-work-approvals.png"
 	},
 	{
+		"name": "saved-views-index",
+		"inventoryRoute": "/agent/views",
+		"applicationRoute": "/agent/views",
+		"test": "Saved views index screen @visual",
+		"screenshot": "saved-views-index.png"
+	},
+	{
 		"name": "account-security",
 		"inventoryRoute": "/dashboard/settings/account/security",
 		"applicationRoute": "/dashboard/settings/account/security",

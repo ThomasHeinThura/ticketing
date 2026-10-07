@@ -14,7 +14,7 @@ search plus a presentation choice.
 
 ## Data
 
-`saved_view` (`owner_id`, `scope`/`scope_id` — the query's own context, a workspace or a
+`saved_view` (`workspace_id`, `created_by`, `scope`/`scope_id` — the query's own context, a workspace or a
 project — `visibility`, `shared_with_team_id`, `name`, `query`, `layout`), `user_preference`
 (kind 2 — pinned views, `SV-20`). See [data model](../01-architecture/data-model.md).
 
@@ -58,7 +58,10 @@ priority:>=high created:>2026-01-01 watcher:contains(@me)
 - `SV-11` The text syntax and visual builder are two lossless renderings of the filter AST.
   Parentheses preserve nested `and`/`or`; adjacent text terms mean `and`; explicit `AND`
   and `OR` are supported. Sort and columns remain in the surrounding query document when
-  the user switches filter-editing modes.
+  the user switches filter-editing modes. The canonical text rendering writes every group
+  explicitly as `AND(clause,...)` or `OR(clause,...)`, using the existing Boolean operators
+  and comma/parenthesis delimiters. This preserves group operator, arity (including one
+  child), nesting, and clause order; ordinary infix and parenthesized input remains accepted.
 - `SV-12` Field names and operators are whitelisted. The P1 work-item set, value types,
   bounds, parser, scope wrapper, pagination and response contract are defined in
   [API design](../01-architecture/api-design.md#work-item-search-v1-post-api-work-itemssearch).
@@ -75,9 +78,10 @@ an explicit `422` until those foundations exist. P1 also rejects non-work-item e
 `groupBy`/`aggregate` with `422`; it does not silently return unfiltered or partial results.
 The work-item list carries the text filter in its existing route's `filter` query parameter,
 alongside its `layout`, `sort`, and `dir` state, so reloading or sharing the URL reproduces
-the same query. This slice implements the text editor on that list; the visual filter builder,
-global search, saved-view persistence/sharing, and saved-view screens remain outside this
-core work-item search slice, so the feature status above remains incomplete.
+the same query. The work-item list now provides visual and text filter editing with the same
+filter AST, keeps editor mode in the URL, and forwards optional sort/column metadata without
+adding defaults when those query properties were absent. Saved-view execution uses the same
+search validator, current viewer reach, and field permissions as direct work-item search.
 
 ## Saved views
 
@@ -115,7 +119,7 @@ triage. See [intake queue](intake-queue.md).
 | --- | --- |
 | Search | Any authenticated session; scoped to reach |
 | Create a private view | Any authenticated session |
-| Create a team view | Team membership |
+| Create or publish a team view | `saved_view:share` **and** membership in the target team |
 | Create a workspace view | `workspace:manage_settings` |
 | Edit a shared view | Owner, or `workspace:manage_settings` |
 
@@ -125,8 +129,8 @@ triage. See [intake queue](intake-queue.md).
 | --- | --- |
 | Command palette | `⌘K` overlay — global search, navigation, actions (`SV-1`) |
 | Global search results | The full results list, for a query the palette alone can't hold |
-| Saved views index | Every view the actor can reach, pinned ones first |
-| Saved view | One view, rendered in its stored layout |
+| Saved views index | Every view the actor can reach, pinned ones first; create a private view by default or choose team/workspace visibility |
+| Saved view | One view, rendered in its stored layout; the editor can change its name, query, visibility, and team audience |
 
 Routes and status in the [screen inventory](../02-design/screen-inventory.md).
 
@@ -135,14 +139,22 @@ Routes and status in the [screen inventory](../02-design/screen-inventory.md).
 ```
 POST /api/work-items/search                    work_item:read
 GET  /api/search?q=…&kinds=…                   work_item:read (scope workspace via `X-Workspace-Id`; results reach-filtered)
-GET  /api/views                                saved_view:read (scope workspace)
+GET  /api/views                                saved_view:read (scope workspace; each reachable view includes the caller's `isPinned` state, pinned views first)
 POST /api/views                                saved_view:create (scope workspace)
 GET  /api/views/{id}                           saved_view:read — the view's own workspace; shared-with is part of reach
 PATCH /api/views/{id}                          workspace:manage_settings · orOwner(created_by, saved_view:create)
 DELETE /api/views/{id}                         workspace:manage_settings · orOwner(created_by, saved_view:create) → 202 pending action
 POST /api/views/{id}/pin                       self (kind 2 — the caller's own `user_preference` row)
+POST /api/views/{id}/run                       saved_view:read (re-evaluated work-item reach and field permissions)
 GET  /api/views/{id}/count                     saved_view:read (cached 30 s)
 ```
+
+P1's saved-view screen currently renders the list layout. Other stored layout values remain
+round-trippable but show an explicit unsupported-layout state in this screen. A pinned view
+appears in agent navigation with its current-viewer work-item count; pinning and count queries
+are keyed by viewer identity, and the server rechecks view and work-item permissions before
+returning each count. Team-view owner transfer and team-lead behavior remain governed by the
+existing team foundation and are not implemented by this saved-view screen.
 
 ## Edge cases
 

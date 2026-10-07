@@ -827,6 +827,13 @@
 			"when": 1791287362449,
 			"tag": "0117_instance_plugin_config",
 			"breakpoints": true
+		},
+		{
+			"idx": 118,
+			"version": "7",
+			"when": 1791344327180,
+			"tag": "0118_fair_kabuki",
+			"breakpoints": true
 		}
 	]
 }

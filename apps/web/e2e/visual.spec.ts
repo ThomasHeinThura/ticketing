@@ -162,6 +162,22 @@ const visualPendingAction = {
   invalidationReason: null,
 };
 
+const visualSavedView = {
+  id: "visual-saved-view",
+  workspaceId: workspace.id,
+  createdBy: "visual-user",
+  name: "Escalations",
+  scope: "workspace",
+  scopeId: workspace.id,
+  visibility: "team",
+  sharedWithTeamId: "visual-team",
+  layout: "list",
+  query: { entity: "work_item", filter: "state:started" },
+  createdAt: "2026-10-01T00:00:00.000Z",
+  updatedAt: "2026-10-02T00:00:00.000Z",
+  isPinned: true,
+};
+
 async function installAuthenticatedFixture(page: Page) {
   await page.route("**/api/**", async (route) => {
     const url = new URL(route.request().url());
@@ -188,6 +204,7 @@ async function installAuthenticatedFixture(page: Page) {
       };
     } else if (path.endsWith("/api/workspace")) body = [workspace];
     else if (path.endsWith("/api/project")) body = [project];
+    else if (path.endsWith("/api/views")) body = [visualSavedView];
     else if (path.endsWith("/api/workspace/visual-workspace/members")) {
       body = [
         {
@@ -444,6 +461,30 @@ test("my approvals inbox screen @visual", async ({ page }) => {
   ).toBeVisible();
   await expect(page.getByRole("button", { name: "Approve" })).toBeVisible();
   await expect(page).toHaveScreenshot("my-work-approvals.png", {
+    animations: "disabled",
+    caret: "hide",
+    fullPage: true,
+    scale: "css",
+    maxDiffPixels: 0,
+    threshold: 0,
+    includeAA: true,
+  });
+});
+
+test("Saved views index screen @visual", async ({ page }) => {
+  await installAuthenticatedFixture(page);
+  await page.goto("/agent/views");
+  await expect(
+    page.getByRole("heading", { name: "Saved views", exact: true }),
+  ).toBeVisible();
+  await expect(
+    page.getByRole("heading", { name: "Escalations", exact: true }),
+  ).toBeVisible();
+  await expect(page.getByText("Pinned", { exact: true })).toBeVisible();
+  await expect(
+    page.getByRole("button", { name: "Request deletion" }),
+  ).toBeVisible();
+  await expect(page).toHaveScreenshot("saved-views-index.png", {
     animations: "disabled",
     caret: "hide",
     fullPage: true,

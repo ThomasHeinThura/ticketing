@@ -1,4 +1,4 @@
-import type { Capability } from "@taskdesk/permissions";
+import { type Capability, isCapability } from "@taskdesk/permissions";
 import type { Context, Next } from "hono";
 import { HTTPException } from "hono/http-exception";
 import { setShadowLegacyAuthorization } from "../permissions/shadow-context";
@@ -8,6 +8,64 @@ type PermissionMap = Record<string, readonly string[]>;
 export type ApiKeyPermissionScope = {
   permissions?: Record<string, string[]> | null;
 };
+
+/** Project the stored Better Auth scope onto exact registered capability names only. */
+export function apiKeyCapabilitySubset(
+  apiKey: ApiKeyPermissionScope | undefined,
+): readonly Capability[] {
+  const permissions = apiKey?.permissions;
+  if (
+    !permissions ||
+    typeof permissions !== "object" ||
+    Array.isArray(permissions)
+  ) {
+    return [];
+  }
+
+  const capabilities: Capability[] = [];
+  for (const [resource, actions] of Object.entries(permissions)) {
+    if (
+      !Array.isArray(actions) ||
+      actions.some((action) => typeof action !== "string")
+    ) {
+      return [];
+    }
+    for (const action of actions) {
+      const candidate = `${resource}:${action}`;
+      if (isCapability(candidate)) capabilities.push(candidate);
+    }
+  }
+  return [...new Set(capabilities)];
+}
+
+/** Parse the persisted Better Auth permission JSON with the same fail-closed shape as a request key. */
+export function parseApiKeyPermissionScope(
+  raw: string | null,
+): ApiKeyPermissionScope {
+  if (raw === null) return { permissions: null };
+
+  let value: unknown;
+  try {
+    value = JSON.parse(raw);
+  } catch {
+    return { permissions: {} };
+  }
+  if (!value || typeof value !== "object" || Array.isArray(value)) {
+    return { permissions: {} };
+  }
+
+  const permissions: Record<string, string[]> = {};
+  for (const [resource, actions] of Object.entries(value)) {
+    if (
+      !Array.isArray(actions) ||
+      actions.some((action) => typeof action !== "string")
+    ) {
+      return { permissions: {} };
+    }
+    permissions[resource] = actions;
+  }
+  return { permissions };
+}
 
 /**
  * The one API-key narrowing predicate shared by legacy permissions, canonical

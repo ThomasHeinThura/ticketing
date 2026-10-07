@@ -8,17 +8,24 @@ import {
   parseIdentityConnectionEventsSearchFromQueryString,
   parseMyWorkSearch,
   parsePendingActionsSearch,
+  parseSavedViewsSearch,
+  parseSavedViewUrlSearchFromQueryString,
   parseServiceCalendarListSearchFromQueryString,
   parseSlaPolicyListSearch,
   parseWorkItemListSearch,
   parseWorkItemListSearchFromQueryString,
+  resolveWorkItemListSort,
   routes,
+  type SavedViewUrlSearch,
   toggleWorkItemSortDirection,
   WORK_ITEM_SORT_DIRECTIONS,
   WORK_ITEM_SORT_FIELDS,
 } from "./routes";
 import { parseCalendarEditorSearch } from "./service-calendar-form";
-import { parseWorkItemFilterText } from "./work-item-filter";
+import {
+  parseWorkItemFilterText,
+  printWorkItemFilterText,
+} from "./work-item-filter";
 
 describe("routes.workItemList", () => {
   it("round-trips every sort field and direction through build -> parse", () => {
@@ -45,13 +52,39 @@ describe("routes.workItemList", () => {
     expect(url.startsWith("/agent/projects/a%2Fb%20c/work?")).toBe(true);
   });
 
-  it("defaults to layout=list, sort=key, dir=asc when no search is given", () => {
+  it("defaults only the built list layout when no search is given", () => {
     const url = routes.workItemList.build({ projectKey: "PROJ" });
     const [, queryString] = url.split("?");
     expect(parseWorkItemListSearchFromQueryString(queryString)).toEqual(
       DEFAULT_WORK_ITEM_LIST_SEARCH,
     );
   });
+
+  it.each([
+    [{}, "key", "asc", undefined],
+    [
+      { sort: "priority" },
+      "priority",
+      "asc",
+      [{ field: "priority", order: "asc" }],
+    ],
+    [{ dir: "desc" }, "key", "desc", [{ field: "key", order: "desc" }]],
+    [
+      { sort: "dueDate", dir: "desc" },
+      "dueDate",
+      "desc",
+      [{ field: "dueDate", order: "desc" }],
+    ],
+  ] as const)(
+    "uses one effective list sort for display and search for %o",
+    (search, field, order, querySort) => {
+      expect(resolveWorkItemListSort(search)).toEqual({
+        field,
+        order,
+        querySort,
+      });
+    },
+  );
 
   it("survives a reload: parsing the exact query string build() produced is idempotent", () => {
     const url = routes.workItemList.build(
@@ -85,6 +118,40 @@ describe("routes.workItemList", () => {
     });
   });
 
+  it("round-trips editor mode and explicit empty columns without adding absent sort state", () => {
+    const search = {
+      filter: "assignee:@me",
+      filterMode: "text" as const,
+      columns: [],
+    };
+    const url = routes.workItemList.build({ projectKey: "PROJ" }, search);
+    const [, queryString] = url.split("?");
+    const parsed = parseWorkItemListSearchFromQueryString(queryString);
+    expect(parsed).toEqual({ layout: "list", ...search });
+    expect(parsed).not.toHaveProperty("sort");
+    expect(parsed).not.toHaveProperty("dir");
+    expect(routes.workItemList.build({ projectKey: "PROJ" }, parsed)).toBe(url);
+  });
+
+  it("keeps the work-list filter state when navigating to another project key", () => {
+    const search = {
+      filter: "due:<7d AND assignee:@me",
+      filterMode: "visual" as const,
+      sort: "priority" as const,
+      dir: "desc" as const,
+      columns: ["key", "priority"] as ("key" | "priority")[],
+    };
+    const first = routes.workItemList.build({ projectKey: "OPS" }, search);
+    const second = routes.workItemList.build({ projectKey: "APP" }, search);
+    expect(first.replace("OPS", "APP")).toBe(second);
+    expect(
+      parseWorkItemListSearchFromQueryString(second.split("?")[1]),
+    ).toEqual({
+      layout: "list",
+      ...search,
+    });
+  });
+
   it("parses nested text filters to the endpoint AST", () => {
     expect(
       parseWorkItemFilterText(
@@ -103,6 +170,36 @@ describe("routes.workItemList", () => {
         },
       ],
     });
+  });
+
+  it("SV-11: prints and reparses nested groups, @me, and relative date values losslessly", () => {
+    const ast = parseWorkItemFilterText(
+      "(state:in(started,completed) OR (assignee:@me AND due:>=7d)) AND created:>2026-01-01",
+    );
+    const printed = printWorkItemFilterText(ast);
+    expect(parseWorkItemFilterText(printed)).toEqual(ast);
+    expect(printed).toContain("assignee:@me");
+    expect(printed).toContain("due:>=7d");
+  });
+
+  it("SV-11: preserves an explicit single-child nested group", () => {
+    const ast = {
+      op: "or" as const,
+      clauses: [
+        {
+          op: "and" as const,
+          clauses: [{ field: "assignee", op: "eq", value: "@me" }],
+        },
+        { field: "priority", op: "eq", value: "high" },
+      ],
+    };
+    expect(parseWorkItemFilterText(printWorkItemFilterText(ast))).toEqual(ast);
+  });
+
+  it("SV-11: rejects text that would silently lose a contains argument", () => {
+    expect(() =>
+      parseWorkItemFilterText("watcher:contains(@me,other)"),
+    ).toThrow("The contains operator requires one value.");
   });
 
   describe("parseWorkItemListSearch", () => {
@@ -146,6 +243,28 @@ describe("routes.workItemList", () => {
       expect(toggleWorkItemSortDirection("asc")).toBe("desc");
       expect(toggleWorkItemSortDirection("desc")).toBe("asc");
     });
+  });
+});
+
+describe("routes.savedView", () => {
+  it("SV-19: round-trips full query and presentation state in a shareable URL", () => {
+    const search = {
+      workspaceId: "workspace/one",
+      scope: "project" as const,
+      scopeId: "project one",
+      layout: "list",
+      filter: "AND(state:started,priority:in(high,urgent))",
+      filterMode: "text" as const,
+      sort: "priority" as const,
+      dir: "desc" as const,
+      columns: ["key", "title", "priority"],
+    } satisfies SavedViewUrlSearch;
+    const url = routes.savedView.build({ id: "view/one" }, search);
+    const parsed = parseSavedViewUrlSearchFromQueryString(
+      url.split("?")[1] ?? "",
+    );
+    expect(url).toContain("/agent/views/view%2Fone?");
+    expect(parsed).toEqual({ ...search, columns: [...search.columns] });
   });
 });
 
@@ -267,6 +386,24 @@ describe("routes.serviceCalendars", () => {
     expect(routes.serviceCalendarEditor.build({ id: "new" })).toBe(
       "/agent/settings/calendars/new",
     );
+  });
+});
+
+describe("routes.savedViews", () => {
+  it("round-trips view filtering in the URL and bounds untrusted query text", () => {
+    const url = routes.savedViews.build({ query: "  my / view  " });
+    expect(url).toBe("/agent/views?query=my+%2F+view");
+    expect(
+      parseSavedViewsSearch({
+        query: new URL(url, "https://taskdesk.invalid").searchParams.get(
+          "query",
+        ),
+      }),
+    ).toEqual({ query: "my / view" });
+    expect(
+      parseSavedViewsSearch({ query: "x".repeat(201) }).query,
+    ).toHaveLength(200);
+    expect(generatedRouteMetadata.agent).toContain(routes.savedViews.path);
   });
 });
 

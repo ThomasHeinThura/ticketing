@@ -1355,7 +1355,8 @@
 			"members": "सदस्य",
 			"invitations": "निमंत्रण",
 			"more": "और",
-			"backToBoard": "बोर्ड पर वापस जाएँ"
+			"backToBoard": "बोर्ड पर वापस जाएँ",
+			"savedViews": "Saved views"
 		},
 		"projectList": {
 			"viewProject": "प्रोजेक्ट देखें",
@@ -2278,7 +2279,8 @@
 			"unassigned": "Unassigned",
 			"unavailable": "Unavailable",
 			"unavailableFieldLabel": "{{field}} unavailable",
-			"assigneeInactive": "(inactive)"
+			"assigneeInactive": "(inactive)",
+			"export": "Export CSV"
 		},
 		"create": {
 			"cancel": "Cancel",
@@ -2976,7 +2978,47 @@
 			"expires": "समाप्ति",
 			"calendarDeletionApproved": "Calendar deletion approved. The calendar and its audit record were removed.",
 			"approveCalendarDeletion": "Approve deletion of {{name}}? This cannot be undone.",
-			"deleteServiceCalendar": "Delete service calendar {{name}}"
+			"deleteServiceCalendar": "Delete service calendar {{name}}",
+			"savedViewDeletionApproved": "Saved view deletion approved.",
+			"approveAction": "Approve and execute"
 		}
+	},
+	"savedViews": {
+		"approveDelete": "Approve deletion of {{name}}? This permanently removes the saved view and clears its pins.",
+		"deleteError": "A deletion request could not be created.",
+		"deleteNamed": "Delete saved view: {{name}}",
+		"description": "Views available to you in this workspace.",
+		"empty": "No saved views are available.",
+		"loadError": "Saved views could not be loaded. Try again.",
+		"pinned": "Pinned",
+		"requestCreated": "Deletion request created. Review it in pending actions.",
+		"requestDelete": "Request deletion",
+		"requesting": "Requesting…",
+		"search": "Filter saved views",
+		"title": "Saved views",
+		"visibility": "Visibility: {{visibility}}",
+		"cancelEdit": "Cancel editing",
+		"clone": "Clone as private view",
+		"count": "{{count}} matching work items",
+		"countLoading": "Loading matching work items…",
+		"create": "Create view",
+		"createError": "The saved view could not be created.",
+		"creating": "Creating…",
+		"direction": "Sort direction",
+		"edit": "Edit view",
+		"layoutUnavailable": "This view uses a layout that is not supported here.",
+		"loadingMore": "Loading more…",
+		"loadingView": "Loading saved view…",
+		"loadMore": "Load more",
+		"name": "View name",
+		"pin": "Pin",
+		"projectUnavailable": "This project is unavailable to your account.",
+		"runError": "Work items could not be loaded. Try again.",
+		"save": "Save view",
+		"saveError": "The saved view could not be updated.",
+		"sort": "Sort work items",
+		"togglePin": "Toggle pin",
+		"unpin": "Unpin",
+		"columns": "Visible columns"
 	}
 }

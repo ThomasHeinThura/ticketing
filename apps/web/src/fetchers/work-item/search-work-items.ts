@@ -1,6 +1,10 @@
 import { client } from "@taskdesk/libs";
 import { HttpError } from "@/lib/http-error";
-import type { WorkItemSortDirection, WorkItemSortField } from "@/lib/routes";
+import type {
+  WorkItemSearchColumn,
+  WorkItemSortDirection,
+  WorkItemSortField,
+} from "@/lib/routes";
 import { parseWorkItemFilterText } from "@/lib/work-item-filter";
 import { parseWorkItemRow, type WorkItemRow } from "@/types/work-item";
 
@@ -16,6 +20,8 @@ export default async function searchWorkItems(input: {
   filter: string;
   sort: WorkItemSortField;
   dir: WorkItemSortDirection;
+  columns?: WorkItemSearchColumn[];
+  querySort?: { field: WorkItemSortField; order: WorkItemSortDirection }[];
 }): Promise<StructuredWorkItemsResult> {
   const filter = parseWorkItemFilterText(input.filter);
   const projectFilter = {
@@ -32,12 +38,21 @@ export default async function searchWorkItems(input: {
       query: {
         entity: "work_item",
         filter: scopedFilter,
-        sort: [{ field: input.sort, order: input.dir }],
+        ...(input.querySort ? { sort: input.querySort } : {}),
+        ...(input.columns ? { columns: input.columns } : {}),
       },
     },
   });
-  if (!response.ok)
-    throw new HttpError(response.status, "Failed to search work items");
+  if (!response.ok) {
+    const body = (await response.json().catch(() => undefined)) as
+      | { message?: unknown }
+      | undefined;
+    const message =
+      typeof body?.message === "string" && body.message.length <= 512
+        ? body.message
+        : "Failed to search work items";
+    throw new HttpError(response.status, message);
+  }
   const { data, page } = await response.json();
   const items = data.map(parseWorkItemRow);
   return {

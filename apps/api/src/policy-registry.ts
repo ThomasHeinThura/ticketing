@@ -58,6 +58,7 @@ import { taskPolicies } from "./task/policy";
 import { taskRelationPolicies } from "./task-relation/policy";
 import { timeEntryPolicies } from "./time-entry/policy";
 import { userPolicies } from "./user/policy";
+import { viewPolicies } from "./view/policy";
 import { workItemPolicies } from "./work-item/policy";
 import { workflowPolicies } from "./workflow/policy";
 import { workflowRulePolicies } from "./workflow-rule/policy";
@@ -375,6 +376,7 @@ export const POLICY_SOURCES = [
     name: "apps/api/src/sla-policy/policy.ts",
     policies: slaPolicyPolicies,
   },
+  { name: "apps/api/src/view/policy.ts", policies: viewPolicies },
   { name: "apps/api/src/attachment/policy.ts", policies: attachmentPolicies },
   { name: "apps/api/src/workflow/policy.ts", policies: workflowPolicies },
 ];
