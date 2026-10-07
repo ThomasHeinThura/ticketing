@@ -9,7 +9,6 @@ import ProjectLayout from "@/components/common/project-layout";
 import KanbanBoard from "@/components/kanban-board";
 import ListView from "@/components/list-view";
 import PageTitle from "@/components/page-title";
-import CreateTaskModal from "@/components/shared/modals/create-task-modal";
 import TaskDetailsSheet from "@/components/task/task-details-sheet";
 import { shortcuts } from "@/constants/shortcuts";
 import { hasPendingTaskUpdate } from "@/hooks/mutations/task/use-update-task";
@@ -88,7 +87,6 @@ function RouteComponent() {
   const queryClient = useQueryClient();
   const { project, setProject } = useProjectStore();
   const { viewMode, setViewMode } = useUserPreferencesStore();
-  const [isTaskModalOpen, setIsTaskModalOpen] = useState(false);
   const [boardSearchQuery, setBoardSearchQuery] = useState("");
   const [isBoardSearchMounted, setIsBoardSearchMounted] = useState(false);
   const [isBoardSearchVisible, setIsBoardSearchVisible] = useState(false);
@@ -276,12 +274,6 @@ function RouteComponent() {
             <BoardSkeleton />
           )}
         </div>
-
-        <CreateTaskModal
-          open={isTaskModalOpen}
-          projectId={projectId}
-          onClose={() => setIsTaskModalOpen(false)}
-        />
 
         <TaskDetailsSheet
           taskId={taskId}
