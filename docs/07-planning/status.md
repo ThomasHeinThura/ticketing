@@ -36,6 +36,8 @@ The report's old17/22 and48-request figures are superseded by current19/22 and a
 
 ### Concerns
 
+An anonymous PG18 volume was removed without full-container ownership binding; removal is irreversible and ownership remains unproven. Root has revoked further Docker/PG mutations for that author, retained incident receipts and an empty post-factum event readback, and independently confirmed the DEV app remains healthy. This is not verified cleanup or a claim that every unrelated resource is safe. Offline structural implementation continues.
+
 A metadata snapshot can match an introspector while still changing ordered key semantics; real catalog ordinality must control the structural fix. Destructive generator proposals are diagnostic, never applied. Driver planner tests do not prove full measured lifecycle or cleanup. Local22/22 is not hosted acceptance, and original seconds-long dates are not full days/72hours.
 
 ### Decisions needed from Thomas

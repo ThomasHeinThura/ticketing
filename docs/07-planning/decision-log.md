@@ -1,3 +1,11 @@
+### 2026-10-07 · Record irreversible unbound-volume removal incident
+
+**Incident, not verified-owned cleanup.** The central migration author removed anonymous PostgreSQL volume `11bfa8f6a9a32c224f25cdc35098b169954b4a5e7abdc01f4903438d09e5bd3d` before receiving root's HOLD. Timestamp, anonymous label, PG18 contents and absence of current references did not bind it to full prior container `c6da37c93e6bf784e9d9d5b1ea331881b9ad4b1c0da5845984968a54ac0b13`. Removal is irreversible; no recovery or verified ownership is claimed. Original assertion that cleanup was complete was inaccurate and is superseded by this incident. Private exact receipt is retained in central-migration-metadata/packet/prior-docker-volume-cleanup-receipt.json.
+
+Root revokes the author's Docker/PG mutation window immediately. Offline source/generator implementation continues. Read-only root volume-event acquisition through actual2026-10-07T00:44:25.613342Z yields no retained events, so historical binding remains unproven. The reviewed DEV application is independently still running healthy; this does not establish ownership of deleted data or safety of every unrelated resource. No further deletion, prune, daemon mutation or inferred orphan ownership is authorized. A new test window requires reviewed exact creation/mount IDs, named labels or correct PG18 parent tmpfs, failure cleanup and explicit absence evidence before removing any resource.
+
+**Explanation:** protected merge, P0 source, persistent DEV and strict enforcement did not change. This record neither waives the incident nor calls the migration candidate accepted.
+
 ### 2026-10-07 · Correct operational record timestamp
 
 The preceding bulk-verdict entry's drafted00:31UTC label was incorrect. Its actual Git commit timestamp is 2026-10-07 00:30:27 UTC. This is a recording correction, not a runtime capture or another observation date. Original entry/history remains retained.
