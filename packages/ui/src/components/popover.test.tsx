@@ -32,6 +32,17 @@ describe("Popover", () => {
     expect(screen.getByText("Popup content")).toBeInTheDocument();
   });
 
+  it("accepts anchor tracking control for the positioner", () => {
+    render(
+      <Popover open>
+        <PopoverTrigger>Open</PopoverTrigger>
+        <PopoverPopup disableAnchorTracking>Popup content</PopoverPopup>
+      </Popover>,
+    );
+
+    expect(screen.getByText("Popup content")).toBeInTheDocument();
+  });
+
   it("has no accessibility violations when open", async () => {
     const { baseElement } = render(
       <Popover open>

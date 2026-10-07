@@ -108,7 +108,9 @@ function ProjectWorkItemsRoute({ projectKey }: { projectKey: string }) {
   const projectNotFound =
     !isWorkspaceLoading && !isProjectsLoading && !!projects && !project;
   const projectContext =
-    workspace?.id && project?.id ? `${workspace.id}:${project.id}` : undefined;
+    project?.workspaceId && project.id
+      ? `${project.workspaceId}:${project.id}`
+      : undefined;
   const projectContextRef = useRef(projectContext);
   const isCreateOpenForProject =
     isCreateOpen && createIntentProjectContext === projectContext;
@@ -146,11 +148,11 @@ function ProjectWorkItemsRoute({ projectKey }: { projectKey: string }) {
     });
   }, []);
   const openCreateDialog = useCallback(() => {
-    if (!projectContext) return;
+    if (!project?.id || !projectContext) return;
     focusRestoreGenerationRef.current += 1;
     setIsCreateOpen(true);
     setCreateIntentProjectContext(projectContext);
-  }, [projectContext]);
+  }, [project?.id, projectContext]);
 
   const {
     data: workItemsResult,
@@ -271,7 +273,7 @@ function ProjectWorkItemsRoute({ projectKey }: { projectKey: string }) {
           <Suspense fallback={null}>
             <WorkItemCreateDialogShell
               projectId={project.id}
-              workspaceId={workspace?.id}
+              workspaceId={project.workspaceId}
               onClose={closeCreateDialog}
             />
           </Suspense>
