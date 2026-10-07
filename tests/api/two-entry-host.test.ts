@@ -154,6 +154,17 @@ describe("P0 host and static isolation", () => {
         headers: { host: "unknown.example.test" },
       });
       expect(unknownApi.status).toBe(404);
+
+      const spoofedHost = await app.request(
+        new Request("http://attacker.example.test/api/workspaces", {
+          headers: {
+            "x-forwarded-host": "localhost:5173",
+            "x-forwarded-proto": "https",
+          },
+        }),
+      );
+      expect(spoofedHost.status).toBe(404);
+
       const unknownUpgrade = await app.request("/api/public/health/live", {
         headers: {
           host: "unknown.example.test",
