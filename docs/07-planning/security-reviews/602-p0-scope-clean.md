@@ -46,3 +46,18 @@ The source-bound local attribution capture is diagnostic only and changes timing
 
 Full private reports/logs and failed evidence remain outside Git under the 2026-10-07 evidence directory. This public note contains no seeder, credentials, database URLs, cookies or tokens.
 
+## Ubuntu installation correction — exact current CI delta
+
+**Reviewed head:** `6510d552d489c4126e4d819f9f9c9aea1e923dcb`
+
+Comparison base: `db15b664e903e8ca5c19bea6856d8c00da3b1058`. Six files change: fast/full workflows, a fixed-path Ubuntu APT mirror normalizer and tests, the visual-scope gate, and CI documentation. Product source, benchmark budgets/workloads/fixtures/retries and browser versions remain unchanged.
+
+Fresh GPT-6 Luna / OpenAI context `01a117da-573e-7af2-85db-33bee8850308` inspected the complete initial `00b347f1948cddfc1f8b9957233984cac6cf4bbe` delta. Its sole blocker was using sudo in the root-running Playwright container, which has no sudo. Parser/syntax, visual-scope and diff checks passed; writable tests were not independently run. The verdict on 00b remains BLOCKED, not relabelled.
+
+The 651 correction structurally classifies all five installation sites: G8 runs Node directly as container root, while the four hosted-runner jobs retain sudo. Tests enumerate the expected jobs and reject unclassified invocations; the visual-scope gate pins the actual G8 sequence.
+
+Fresh independent GPT-6 Sol / OpenAI context `01a117e2-77b9-7d52-8c3c-d56fa7e5c072` reviewed the complete six-file net CI delta at exact 651. **CLEAR**, no blocker. It confirms the prior sole ordinary blocker resolved and checks fixed paths, ownership, symlink/hardlink rejection, no-follow reads, atomic writes, narrow URI parsing, retained repository options and all five executor contexts. This current full Sol pass closes the known corrected mechanism's tier under AGENTS.md's structural review rule; no new Luna verdict is fabricated.
+
+Sol independently passed three syntax checks, Biome on three scripts, diff checks, four parser assertions, five invocation checks and the G8 scope checker. Author evidence: initial 174 focused Node tests plus eight corrected normalizer tests passed. Neither reviewer performed apt, Docker, API, browser or hosted runtime execution. Nonblocking documentation wording still says all helper invocations use sudo; the actual G8 invocation is direct root execution, as explicitly recorded here.
+
+Latest completed timing evidence remains db15 hosted run `37667984584`, restarted cancelled job `112968981754`: **19/22**, failing LCP 2540/2500 ms, task-state 256.6/200 ms and board 690/500 ms. The prior attempt cancelled during installation without measurements. Its synthetic merge `67eb7bca4e425f25f8ace46fec506704dafb07bd` has the same complete tree as db15. Current 651 hosted acceptance remains separate and pending. No final P0 freeze, merge readiness or phase acceptance is claimed.
