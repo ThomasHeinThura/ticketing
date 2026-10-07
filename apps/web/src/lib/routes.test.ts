@@ -1,11 +1,13 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import { generatedRouteMetadata } from "./generated-route-metadata";
 import {
   buildGeneratedRouteUrl,
   DEFAULT_WORK_ITEM_LIST_SEARCH,
+  getInitialBoardRoutePreload,
   parseGeneratedRouteUrl,
   parseWorkItemListSearch,
   parseWorkItemListSearchFromQueryString,
+  preloadInitialBoardRoute,
   routes,
   toggleWorkItemSortDirection,
   WORK_ITEM_SORT_DIRECTIONS,
@@ -97,6 +99,112 @@ describe("routes.workItemList", () => {
       expect(toggleWorkItemSortDirection("asc")).toBe("desc");
       expect(toggleWorkItemSortDirection("desc")).toBe("asc");
     });
+  });
+});
+
+describe("initial board route preload hint", () => {
+  it("matches only a complete direct board path and accepts the router trailing slash", () => {
+    expect(
+      getInitialBoardRoutePreload(
+        "/dashboard/workspace/ws-1/project/pr-1/board",
+        "",
+      ),
+    ).toEqual({
+      to: "/dashboard/workspace/$workspaceId/project/$projectId/board",
+      params: { workspaceId: "ws-1", projectId: "pr-1" },
+      search: {},
+    });
+    expect(
+      getInitialBoardRoutePreload(
+        "/dashboard/workspace/ws-1/project/pr-1/board/",
+        "",
+      ),
+    ).toEqual(
+      getInitialBoardRoutePreload(
+        "/dashboard/workspace/ws-1/project/pr-1/board",
+        "",
+      ),
+    );
+    for (const pathname of [
+      "/dashboard/workspace/ws-1/project/pr-1/board/task/42",
+      "/dashboard/workspace/ws-1/project/pr-1/board-extra",
+      "/dashboard/workspace/ws-1/project/pr-1/backlog",
+      "/agent/projects/ws-1/work",
+    ]) {
+      expect(getInitialBoardRoutePreload(pathname, "")).toBeUndefined();
+    }
+  });
+
+  it("decodes each path parameter once and retains board task selection state", () => {
+    expect(
+      getInitialBoardRoutePreload(
+        "/dashboard/workspace/ws%2Fone/project/pr%20two/board",
+        "?taskId=task%2F42&unrelated=ignored",
+      ),
+    ).toEqual({
+      to: "/dashboard/workspace/$workspaceId/project/$projectId/board",
+      params: { workspaceId: "ws/one", projectId: "pr two" },
+      search: { taskId: "task/42" },
+    });
+  });
+
+  it("preserves an explicitly empty taskId and ignores malformed path encodings", () => {
+    expect(
+      getInitialBoardRoutePreload(
+        "/dashboard/workspace/ws/project/pr/board",
+        "?taskId=",
+      )?.search,
+    ).toEqual({ taskId: "" });
+    expect(
+      getInitialBoardRoutePreload(
+        "/dashboard/workspace/ws%ZZ/project/pr/board",
+        "?taskId=task-1",
+      ),
+    ).toBeUndefined();
+  });
+
+  it("calls only the matched router preload, without leaking query state", () => {
+    const preloadRoute = vi.fn().mockResolvedValue(undefined);
+    preloadInitialBoardRoute(
+      "/dashboard/workspace/ws-1/project/pr-1/board",
+      "?taskId=task-1&ignored=yes",
+      preloadRoute,
+    );
+    expect(preloadRoute).toHaveBeenCalledExactlyOnceWith({
+      to: "/dashboard/workspace/$workspaceId/project/$projectId/board",
+      params: { workspaceId: "ws-1", projectId: "pr-1" },
+      search: { taskId: "task-1" },
+    });
+    preloadRoute.mockClear();
+    preloadInitialBoardRoute(
+      "/dashboard/workspace/ws-1/project/pr-1/board/extra",
+      "?taskId=task-1",
+      preloadRoute,
+    );
+    expect(preloadRoute).not.toHaveBeenCalled();
+  });
+
+  it("leaves synchronous and asynchronous speculative preload failures to router navigation", async () => {
+    const rejectPreload = vi.fn().mockRejectedValue(new Error("chunk failure"));
+    expect(() =>
+      preloadInitialBoardRoute(
+        "/dashboard/workspace/ws/project/pr/board",
+        "",
+        rejectPreload,
+      ),
+    ).not.toThrow();
+    await Promise.resolve();
+
+    const throwPreload = vi.fn(() => {
+      throw new Error("router preload failure");
+    });
+    expect(() =>
+      preloadInitialBoardRoute(
+        "/dashboard/workspace/ws/project/pr/board",
+        "",
+        throwPreload,
+      ),
+    ).not.toThrow();
   });
 });
 

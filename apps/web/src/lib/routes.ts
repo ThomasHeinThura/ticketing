@@ -85,6 +85,53 @@ export type WorkItemListSearch = {
   dir: WorkItemSortDirection;
 };
 
+export type InitialBoardRoutePreload = {
+  to: "/dashboard/workspace/$workspaceId/project/$projectId/board";
+  params: { workspaceId: string; projectId: string };
+  search: { taskId?: string };
+};
+
+/** Returns only the board route's typed parameters and validated search state. */
+export function getInitialBoardRoutePreload(
+  pathname: string,
+  search: string,
+): InitialBoardRoutePreload | undefined {
+  const match =
+    /^\/dashboard\/workspace\/([^/]+)\/project\/([^/]+)\/board\/?$/u.exec(
+      pathname,
+    );
+  if (!match) return undefined;
+
+  try {
+    const taskId = new URLSearchParams(search).get("taskId");
+    return {
+      to: "/dashboard/workspace/$workspaceId/project/$projectId/board",
+      params: {
+        workspaceId: decodeURIComponent(match[1]),
+        projectId: decodeURIComponent(match[2]),
+      },
+      search: taskId === null ? {} : { taskId },
+    };
+  } catch {
+    return undefined;
+  }
+}
+
+/** A failed speculative route hint must not replace normal router errors. */
+export function preloadInitialBoardRoute(
+  pathname: string,
+  search: string,
+  preloadRoute: (options: InitialBoardRoutePreload) => Promise<unknown>,
+): void {
+  const options = getInitialBoardRoutePreload(pathname, search);
+  if (!options) return;
+  try {
+    void preloadRoute(options).catch(() => {});
+  } catch {
+    // Preload is only a hint; normal route matching still owns visible failures.
+  }
+}
+
 export const DEFAULT_WORK_ITEM_LIST_SEARCH: WorkItemListSearch = {
   layout: "list",
   sort: "key",

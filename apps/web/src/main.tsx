@@ -14,7 +14,10 @@ import { ThemeProvider } from "./components/providers/theme-provider";
 import { KeyboardShortcutsProvider } from "./hooks/use-keyboard-shortcuts";
 import { captureCheckoutIntent } from "./lib/checkout-intent";
 import { AppI18nProvider } from "./lib/i18n/provider";
-import { parseWorkItemListSearchFromQueryString } from "./lib/routes";
+import {
+  parseWorkItemListSearchFromQueryString,
+  preloadInitialBoardRoute,
+} from "./lib/routes";
 import { routeTree } from "./routeTree.agent.gen";
 
 // Capture a pricing-page `?checkout=<plan>-<interval>` deep link before the
@@ -75,6 +78,10 @@ if (workRoute) {
     // Leave malformed percent-encoding to normal router error handling.
   }
 }
+
+preloadInitialBoardRoute(location.pathname, location.search, (options) =>
+  router.preloadRoute(options),
+);
 
 function App() {
   const { user } = useAuth();
