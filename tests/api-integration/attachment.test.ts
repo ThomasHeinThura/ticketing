@@ -165,7 +165,10 @@ describe("API integration: work-item attachments (#28, attachments.md)", () => {
   });
 
   it("AT-2: presigns, uploads and completes a genuine PNG, and it appears in the work item's list", async () => {
-    process.env.TASKDESK_AGENT_URL = "https://ticket.public.test";
+    // The integration harness initializes Better Auth for localhost:1337.
+    // Keep that authority while changing only the configured public scheme so
+    // this request exercises HTTPS URL generation without inventing a host.
+    process.env.TASKDESK_AGENT_URL = "https://localhost:1337";
     const { creator, workspace, project, type } = await setupProject();
     mockAuthenticatedSession(creator);
     const { app } = createApp();
@@ -173,11 +176,12 @@ describe("API integration: work-item attachments (#28, attachments.md)", () => {
 
     const presignResponse = await app.request(
       new Request(
-        `http://ticket.public.test/api/work-items/${key}/attachments/presign`,
+        `http://localhost:1337/api/work-items/${key}/attachments/presign`,
         {
           method: "POST",
           headers: {
             "content-type": "application/json",
+            host: "localhost:1337",
             "x-forwarded-host": "attacker.example",
             "x-forwarded-proto": "http",
           },
@@ -197,7 +201,7 @@ describe("API integration: work-item attachments (#28, attachments.md)", () => {
     };
     expect(presigned.attachmentId).toBeTruthy();
     expect(presigned.uploadUrl).toMatch(
-      /^https:\/\/ticket\.public\.test\/api\/storage\/filesystem-attachment-upload\?/u,
+      /^https:\/\/localhost:1337\/api\/storage\/filesystem-attachment-upload\?/u,
     );
     expect(presigned.uploadUrl.match(/\/api\//gu)).toHaveLength(1);
     expect(new URL(presigned.uploadUrl).searchParams.get("key")).toBeTruthy();
@@ -237,9 +241,10 @@ describe("API integration: work-item attachments (#28, attachments.md)", () => {
 
     const downloadResponse = await app.request(
       new Request(
-        `http://ticket.public.test/api/attachments/${presigned.attachmentId}`,
+        `http://localhost:1337/api/attachments/${presigned.attachmentId}`,
         {
           headers: {
+            host: "localhost:1337",
             "x-forwarded-host": "attacker.example",
             "x-forwarded-proto": "http",
           },
@@ -249,7 +254,7 @@ describe("API integration: work-item attachments (#28, attachments.md)", () => {
     expect(downloadResponse.status).toBe(302);
     const downloadUrl = downloadResponse.headers.get("location");
     expect(downloadUrl).toMatch(
-      /^https:\/\/ticket\.public\.test\/api\/storage\/filesystem-download\?/u,
+      /^https:\/\/localhost:1337\/api\/storage\/filesystem-download\?/u,
     );
     if (!downloadUrl) throw new Error("Missing signed download URL");
     expect(downloadUrl.match(/\/api\//gu)).toHaveLength(1);

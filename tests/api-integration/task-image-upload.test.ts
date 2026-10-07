@@ -59,7 +59,9 @@ describe("API integration: task image upload finalize", () => {
   });
 
   it("uses the configured HTTPS origin for task image URLs behind internal HTTP", async () => {
-    process.env.TASKDESK_AGENT_URL = "https://ticket.public.test";
+    // Match the host captured by the integration auth setup while changing
+    // only the public scheme. This models HTTPS at the proxy and internal HTTP.
+    process.env.TASKDESK_AGENT_URL = "https://localhost:1337";
     process.env.TASKDESK_STORAGE_DRIVER = "filesystem";
 
     const member = await createWorkspaceMember();
@@ -88,28 +90,26 @@ describe("API integration: task image upload finalize", () => {
     const { app } = createApp();
 
     const uploadResponse = await app.request(
-      new Request(
-        `http://ticket.public.test/api/task/image-upload/${task.id}`,
-        {
-          method: "PUT",
-          headers: {
-            "content-type": "application/json",
-            "x-forwarded-host": "attacker.example",
-            "x-forwarded-proto": "http",
-          },
-          body: JSON.stringify({
-            filename: "test-image.png",
-            contentType: "image/png",
-            size: 12345,
-            surface: "description",
-          }),
+      new Request(`http://localhost:1337/api/task/image-upload/${task.id}`, {
+        method: "PUT",
+        headers: {
+          "content-type": "application/json",
+          host: "localhost:1337",
+          "x-forwarded-host": "attacker.example",
+          "x-forwarded-proto": "http",
         },
-      ),
+        body: JSON.stringify({
+          filename: "test-image.png",
+          contentType: "image/png",
+          size: 12345,
+          surface: "description",
+        }),
+      }),
     );
     expect(uploadResponse.status).toBe(200);
     const upload = (await uploadResponse.json()) as { uploadUrl: string };
     expect(upload.uploadUrl).toMatch(
-      /^https:\/\/ticket\.public\.test\/api\/storage\/filesystem-upload\?/u,
+      /^https:\/\/localhost:1337\/api\/storage\/filesystem-upload\?/u,
     );
     expect(upload.uploadUrl.match(/\/api\//gu)).toHaveLength(1);
 
@@ -117,11 +117,12 @@ describe("API integration: task image upload finalize", () => {
 
     const response = await app.request(
       new Request(
-        `http://ticket.public.test/api/task/image-upload/${task.id}/finalize`,
+        `http://localhost:1337/api/task/image-upload/${task.id}/finalize`,
         {
           method: "POST",
           headers: {
             "content-type": "application/json",
+            host: "localhost:1337",
             "x-forwarded-host": "attacker.example",
             "x-forwarded-proto": "http",
           },
@@ -140,14 +141,12 @@ describe("API integration: task image upload finalize", () => {
     const payload = (await response.json()) as { id: string; url: string };
     expect(payload).toHaveProperty("id");
     expect(payload).toHaveProperty("url");
-    expect(payload.url).toBe(
-      `https://ticket.public.test/api/asset/${payload.id}`,
-    );
+    expect(payload.url).toBe(`https://localhost:1337/api/asset/${payload.id}`);
     expect(payload.url.match(/\/api\//gu)).toHaveLength(1);
   });
 
   it("does not use a forwarded or spoofed Host value as a public origin", async () => {
-    process.env.TASKDESK_AGENT_URL = "https://ticket.public.test";
+    process.env.TASKDESK_AGENT_URL = "https://localhost:1337";
     const { app } = createApp();
     const response = await app.request(
       new Request(
@@ -156,7 +155,8 @@ describe("API integration: task image upload finalize", () => {
           method: "POST",
           headers: {
             "content-type": "application/json",
-            "x-forwarded-host": "ticket.public.test",
+            host: "attacker.example",
+            "x-forwarded-host": "localhost:1337",
             "x-forwarded-proto": "https",
           },
           body: JSON.stringify({
