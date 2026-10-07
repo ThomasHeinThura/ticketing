@@ -1,3 +1,34 @@
+## Status first — verified 2026-10-07 17:35 UTC
+
+- **Accepted main:** `3096cb044bdf6ae98488bfc385f532fa6386343a`, refreshed from live GitHub. **Persistent DEV:** OCI revision `08842235047a3ab2714427edce80331b94558150`, image `sha256:75b153d7d9583993127e1be8c06453159e4fe7319abfcd8431f093c9ca002bcf`. No deployment, protected merge, enforcement activation or stage completion occurred in this cycle.
+- **Formal stages:** P0–P7 remain open. P1–P4 implementation continues independently; each stage requires its own acceptance and finalizer.
+- **P0 closure:** #600 `a50ae92a7075a3446d7c89f4ab245be16c30ec9d` hosted G11 passed **20/22**, failing LCP **2540/2500 ms** and board **666.3/500 ms**. PostgreSQL integration passed **137 files / 1659 tests**. These are source-bound results, not completion. #600 still inherits P1 #599, so the legitimate successor is being composed directly from #583 `5326937460b195d8e69584c0cb99305348330a95`, excluding all three #599 commits and stale review records. The selected final UI delta is staged; no final P0 SHA is frozen yet. Accepted #579 `f10f9a8fd383044926136cb0c233888e087d2ef9` remains the historical hosted **22/22** reference.
+- **Integration train:** historical #589 is now `2350397b18f83ed417bf63d73970daacdbaae49c`. The five-file dialog lifecycle batch passes **16 focused tests**, web typecheck, changed-file Biome, both builds and bundle/purity checks. Root's exact-head mocked-API browser run passed **15/15**, with zero skips, failures or flakes (17:35:22–17:36:09 UTC); owned process/listener cleanup passed. This is scoped browser evidence, not full hosted or native integration acceptance. Recreate the final train from accepted post-P0 main, with central migration allocation.
+- **Blocking gates and security:** P0 still requires exact-head full hosted acceptance, independent ordinary/security review, frozen image and installer/upgrade/rollback proof, authorization runtime proof, independent October 4/5/6 observation compatibility adjudication and a fresh **GPT-6.1 Sol** phase finalizer on accepted main. #8, #592 and #593 remain open until accepted-source criteria and the finalizer pass. Neither historical green checks nor elapsed time authorize closure.
+- **Latest runtime evidence:** three controlled OrbStack G11 runs on exact #583 source each passed **18/22** and failed list-500, LCP, palette and board. Actual UTC intervals were 16:58:38–17:07:52, 17:07:52–17:17:29 and 17:17:30–17:26:07 on October 7. Median list-500 was 1586.8 ms, LCP 3448 ms and board 1693.6 ms. The arm64 Mac/OrbStack used an amd64 Playwright image through emulation; Docker Desktop is absent. These are local diagnostics, not hosted acceptance or proof that OrbStack caused hosted failures. Owned-container cleanup passed at 17:26:11 UTC; global resource sets were preserved.
+- **Private all-role testing:** v11 source received independent Luna and Sol static clearance. A corrected-cwd offline run passed **32/34**, with two fixture paths incorrectly inside the protected private code archive; types passed. The immutable v12 fixture/operator batch passes **5 files / 34 offline tests**, zero skips, and typecheck; its manifest is `463eb45c2cb0749476bc0183469b8bb0c8290647731348434c462b7a22c37271`. Independent delta review is underway without relaxing credential guards. Native all-eight-role/API testing remains pending; no persistent users or credential files are claimed. Seeder source and credentials remain outside Git/GitHub.
+- **P2:** #598 `3fecb75ccd4a1fcbfce5414de6d222c46bb5e94e` retains hosted PostgreSQL **155 files / 1807 tests** passed, with other required checks still failing. Required-file draft/final-submit behavior and explicit custom-field mapping remain genuine pending product contracts; dependent implementation waits while independent work continues.
+
+### What changed
+
+#590 was closed as superseded, retaining its history and evidence. #587 was closed after its diagnostic attribution became sufficient; it is not performance acceptance. #599 is preserved as P1 source and excluded from the new P0 ancestry. The OrbStack comparison is complete. The central dialog batch is pushed and undergoing browser verification.
+
+### Critical path
+
+1. Complete the isolated P0 correction batch for the two actual hosted G11 failures, preserving all budgets and workloads.
+2. Freeze one exact P0 SHA and obtain the required reviews and full hosted gates, including G11 22/22.
+3. Prove the exact image, installer, migration history, runtime authorization and reversible deployment.
+4. Independently adjudicate the prior observation compatibility; recollect only invalidated evidence.
+5. Protected merge, fresh GPT-6.1 Sol P0 finalizer, then reconcile issues and declare closure only if it passes.
+
+### Misalignment, concerns and next candidates
+
+#600's P1 ancestry is being removed; historical #589 will be recomposed after P0 acceptance. #601 remains a draft documentation candidate with red hosted checks, including an inherited dependency graph and a secret-scanner finding on public route-count prose. No finding is ignored or gate waived. There is currently no merge-ready P0 or later-stage candidate. Scope separation and the two remaining performance failures take priority over further diagnostics or cleanup.
+
+Private source-bound receipts remain under the local `taskdesk-evidence/2026-10-07` directory. No private seeder, credential, database URL or password is included in this repository record. Historical snapshots below retain their original dates and claims.
+
+---
+
 ## Blocked — 2026-10-07T16:50:58Z
 
 - **P0 remains blocked.** Live GitHub confirms accepted `main` `3096cb044bdf6ae98488bfc385f532fa6386343a`, reviewed DEV `08842235047a3ab2714427edce80331b94558150`, and frozen P0 PR #583 at exact head `5326937460b195d8e69584c0cb99305348330a95`. The read-only scope audit distinguishes #583's exact-head hosted G11 result (19/22) from the later `bae2b3fd` product snapshot (16/22); preserve both under their actual source identities. Accepted #579 head `f10f9a8fd383044926136cb0c233888e087d2ef9` is the hosted 22/22 G11 comparison baseline (job 37300050276), not proof for a changed source. #599 remains a separate open P1 attachment/public-origin leaf. Its three commits and 11 touched paths are excluded from P0. Reconstruct P0 minimally from exact #583, replay only the audited P0 product commits, regenerate contaminated review records against the rebuilt exact candidate, and hold #600's current `a50ae92a7075a3446d7c89f4ab245be16c30ec9d` until its exact-head G11 result and root classification. #600's G11 and Postgres integration are currently in progress; its PR-template/security-review check is red. The prior #600 `4bc52598` run is 19/22 and is not current-head acceptance. No threshold, retry rule or gate has changed.
