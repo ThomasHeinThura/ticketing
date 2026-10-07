@@ -1,3 +1,37 @@
+### 2026-10-07 · Record central source fixes, current failures, and private v6 boundary
+
+**Operational update; no waiver or acceptance claim.** Live readback at 15:02Z keeps `main` at
+`3096cb044bdf6ae98488bfc385f532fa6386343a` and reviewed DEV at
+`08842235047a3ab2714427edce80331b94558150`. #589 is now `047cf99f39ad0beeb25aa2597c544b6e0bda3225`,
+#598 `8cde2b37d7814a3d462e894c08dc06b888bbda92`, and #600
+`5a493671a6eca00268eec9323565ff8953d244cb`. Current hosted rollups remain failed or in progress;
+consult the dated status snapshot for their names and current heads. No merge, DEV refresh, release,
+enforcement activation, cutover, or phase completion occurred.
+
+The pushed #589 source batch contains the authorized session-only audited withdrawal correction,
+with current `instance:admin` authority and the explicit elevation exemption; it also corrects the
+admin fixture restoration after a helper resets the authenticated session to the requester. The
+batch preserves the exact 19-capability response and dormant-JIT behavior when the maximum role
+ceiling is lowered. The earlier hosted result (154 files, 1804 tests, 1799 pass and 5 fail) remains
+historical and has not been replaced by a post-fix hosted result. Four OpenAPI deactivation enums
+and WH12 remain owner-pending. No waiver or broadened status acceptance is recorded.
+
+P2 #598's root-owned native result is 3/6, with the claim-pair auto-system, indirect-blocking graph,
+and event-envelope reference assertions failing. Prior `cde1` 6/6 and cleanup evidence are retained
+without relabeling the current result. The author remediation is pending. P0's hosted G11 record
+remains 16/22 with six failures and unchanged thresholds; the canonical Linux baseline's 145-story
+run exited 1 only because the new baseline file was missing, with no other diffs and unchanged
+cleanup sets. Neither result clears G11.
+
+Private tooling v6 remains immutable and outside Git. Its offline 34 tests and independent Luna/Sol
+reviews are CLEAR, but actual all-eight-role API-backed runtime has not been executed. The v5 owned
+PG18 attempt stopped at the verifier before migration/user/API work because PostgreSQL reported
+`127.0.0.1/32`; cleanup passed, zero users were created and the credential root is empty. V6 uses
+canonical `host(inet_server_addr())` formatting and awaits root-owned runtime verification. No
+credentials, private manifest, or source tooling is included in this record or repository.
+
+**Recorded:** documentation author at 2026-10-07T15:02:23Z after live GitHub head/check readback.
+
 ### 2026-10-07 · Approve audited session-only admin withdrawal and record current evidence boundaries
 
 Thomas explicitly resolves the admin-initiated withdrawal behavior question raised against
