@@ -1,3 +1,24 @@
+## Status first — verified 2026-10-07 18:45 UTC
+
+**Accepted main:** `3096cb044bdf6ae98488bfc385f532fa6386343a`. **Persistent DEV:** revision `08842235047a3ab2714427edce80331b94558150`, image `sha256:75b153d7d9583993127e1be8c06453159e4fe7319abfcd8431f093c9ca002bcf`. P0–P7 remain formally open. No protected merge, persistent deployment, release, strict cutover or phase finalizer occurred.
+
+**P0 closure:** #602's production/checker source is `4459af21208577264d219a36f4505e05a150e93b`; its review-note-only descendant is `db15b664`. #599 is excluded. The initial-entry lazy-form check now covers both agent and route static graphs. Its ten author tests pass; fresh Luna and Sol delta reviews are clear. Prior c36 Sol's sole blocker is resolved. The public review chain is in [602-p0-scope-clean.md](security-reviews/602-p0-scope-clean.md).
+
+Exact prior c36 hosted run `37665076268` passed PostgreSQL **137 files / 1659 tests**, accessibility and visual checks; G11 passed **20/22**, failing LCP **2524/2500 ms** and board **658.8/500 ms**. The hosted synthetic merge `8513062a8f6b2ac84cc75067436293fadf09e3e8` has a full tree identical to c36. Those runs remain c36 evidence; current-head hosted acceptance is open. Root's c36 mocked-API browser batch passed **six tests**, with zero skipped, unexpected or flaky cases, and cleaned its owned listener.
+
+**Runtime/performance evidence:** the accepted #579 comparison exposes why restoring the old whole-card estimate is unsafe: its offscreen outer height was 122 px versus the actual 101 px, moving the terminal card about 300 px when revealed. Current production showed no card-height/terminal-offset changes in the same canonical fixture at desktop/mobile sizes; keyboard cancellation and versioned drop writes were exercised separately. This is geometry evidence, not G11 acceptance. The root source-bound Chrome trace retains full CPU parent edges, network/timing events and 47 JS/source-map pairs. Its profiler changes timing; the flattened hosted CPU importer is unsuitable for hierarchical cost attribution. No speculative source change or performance budget adjustment is authorized by these results.
+
+**P1–P4:** historical #589 remains `2350397b18f83ed417bf63d73970daacdbaae49c`, with scoped root browser **15/15** passed. It remains independent of P0 and will be recreated from accepted post-P0 main. #598 remains `3fecb75`; required-file draft and explicit custom-field mapping decisions are pending on their existing decision paths. No later-stage acceptance is claimed.
+
+**Private all-role setup:** V13's complete frozen inventory independently verified **97,748 entries**, with zero missing/extra paths, wrong modes/hashes or escaping symlinks; it pins current #589 source 235 and its tree. Its author reports **six files / 37 offline tests** and focused types passed. The packet's mistaken library entry was detected before execution; a separate corrected operator packet must name the actual guarded root CLI. Fresh ordinary/Sol review and actual current-source eight-role runtime remain pending. The rejected global timeout override never ran. Prior V12's actual **39 native tests**, eight private seeded roles and redacted API **7 pass / 1 fail / 13 blocked** remain historical, including the old-source instance-admin 403 and sign-in 429s. No result is masked or transferred to current source. All prior disposable resources/credentials were cleaned. No private seeder, credential file, password, token or database URL is stored in Git/GitHub.
+
+**Active blockers/security findings:** hosted LCP/board budgets; current-head full CI; exact installer/image/migration/runtime/rollback; strict-authorization proof and independent Oct 4/5/6 compatibility; fresh P0 finalizer after protected merge. #8/#592/#593 remain open until accepted-source criteria pass. There is no final frozen P0 SHA or merge-ready candidate.
+
+**Critical path:** one demonstrated performance correction; unchanged hosted 22/22 plus remaining exact-head gates; exact image/installer/rollback and reversible authorization proof; compatibility adjudication; protected merge and GPT-6.1 Sol finalizer. Later-stage implementation and private all-role verification continue independently.
+
+Historical snapshots follow.
+
+---
 ## Status first — verified 2026-10-07 18:00 UTC
 
 Accepted main remains `3096cb044bdf6ae98488bfc385f532fa6386343a`; persistent DEV remains revision `08842235047a3ab2714427edce80331b94558150` / image `sha256:75b153d7d9583993127e1be8c06453159e4fe7319abfcd8431f093c9ca002bcf`. P0–P7 remain open. No merge, persistent deployment, strict cutover, release or finalizer occurred.
