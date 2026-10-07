@@ -38,6 +38,33 @@ import { WEEKDAYS } from "./types.js";
 
 const OFFSET_FORMATTER_CACHE = new Map<string, Intl.DateTimeFormat>();
 
+/** Rejects numeric offsets, which Intl accepts even though CAL-6 requires an IANA zone. */
+export function isIanaTimeZone(timeZone: string): boolean {
+  try {
+    const canonicalTimeZone = new Intl.DateTimeFormat("en-US", {
+      timeZone,
+    }).resolvedOptions().timeZone;
+    return !/^[+-]/.test(canonicalTimeZone);
+  } catch {
+    return false;
+  }
+}
+
+/** Creates a UTC timestamp without Date.UTC's special remapping of years 0–99. */
+function utcEpochMilliseconds(
+  year: number,
+  month: number,
+  day: number,
+  hour = 0,
+  minute = 0,
+  second = 0,
+): number {
+  const date = new Date(0);
+  date.setUTCFullYear(year, month - 1, day);
+  date.setUTCHours(hour, minute, second, 0);
+  return date.getTime();
+}
+
 function offsetFormatter(timeZone: string): Intl.DateTimeFormat {
   let formatter = OFFSET_FORMATTER_CACHE.get(timeZone);
   if (!formatter) {
@@ -61,9 +88,9 @@ function offsetMinutesAt(timeZone: string, instant: Date): number {
   const parts = offsetFormatter(timeZone).formatToParts(instant);
   const value = (type: string) =>
     Number(parts.find((p) => p.type === type)?.value);
-  const asUtc = Date.UTC(
+  const asUtc = utcEpochMilliseconds(
     value("year"),
-    value("month") - 1,
+    value("month"),
     value("day"),
     value("hour"),
     value("minute"),
@@ -109,9 +136,9 @@ export function zonedDateTimeToInstant(
   const remainder = minuteOfDay - dayOverflow * 1440;
   const hour = Math.floor(remainder / 60);
   const minute = remainder % 60;
-  const naiveUtc = Date.UTC(
+  const naiveUtc = utcEpochMilliseconds(
     date.year,
-    date.month - 1,
+    date.month,
     date.day + dayOverflow,
     hour,
     minute,
@@ -126,26 +153,130 @@ export function zonedDateTimeToInstant(
   return new Date(instantMs);
 }
 
-/** The covered minutes of one window occurrence, correct across a DST transition (`CAL-7`). */
-function windowInstanceCoveredMinutes(
+type OffsetSegment = {
+  startMs: number;
+  endMs: number;
+  offsetMs: number;
+};
+
+type TimeInterval = {
+  startMs: number;
+  endMs: number;
+};
+
+/** Finds the constant-offset UTC segments within one calendar-local day. */
+function offsetSegmentsForLocalDay(
   timeZone: string,
   date: LocalDate,
-  startMinute: number,
-  endMinute: number,
-): number {
-  const nominalMinutes = endMinute - startMinute;
-  if (nominalMinutes <= 0) {
-    return 0;
+): OffsetSegment[] {
+  const dayStart = zonedDateTimeToInstant(timeZone, date, 0).getTime();
+  const dayEnd = zonedDateTimeToInstant(timeZone, date, 1440).getTime();
+  const probeMs = 60 * 60_000;
+  const segments: OffsetSegment[] = [];
+  let cursor = dayStart;
+
+  while (cursor < dayEnd) {
+    const offsetMs = offsetMinutesAt(timeZone, new Date(cursor)) * 60_000;
+    const probeEnd = Math.min(cursor + probeMs, dayEnd);
+    const probeOffsetMs =
+      offsetMinutesAt(timeZone, new Date(probeEnd)) * 60_000;
+
+    if (probeOffsetMs === offsetMs) {
+      const previous = segments.at(-1);
+      if (previous?.offsetMs === offsetMs) previous.endMs = probeEnd;
+      else segments.push({ startMs: cursor, endMs: probeEnd, offsetMs });
+      cursor = probeEnd;
+      continue;
+    }
+
+    // Offset changes are second-aligned in the IANA database. Find the first
+    // second using the new offset so the mapped wall-clock ranges meet exactly.
+    let low = cursor;
+    let high = probeEnd;
+    while (high - low > 1000) {
+      const middle = Math.floor((low + high) / 2000) * 1000;
+      const middleOffsetMs =
+        offsetMinutesAt(timeZone, new Date(middle)) * 60_000;
+      if (middleOffsetMs === offsetMs) low = middle;
+      else high = middle;
+    }
+
+    segments.push({ startMs: cursor, endMs: high, offsetMs });
+    cursor = high;
   }
-  const startInstant = zonedDateTimeToInstant(timeZone, date, startMinute);
-  const endInstant = zonedDateTimeToInstant(timeZone, date, endMinute);
-  const realElapsedMinutes =
-    (endInstant.getTime() - startInstant.getTime()) / 60_000;
-  // Spring-forward: the skipped hour reduces real elapsed time below nominal — take it,
-  // an hour that never happened is never covered. Autumn fall-back: the repeated hour
-  // inflates real elapsed time above nominal — capped at nominal, so it is "counted
-  // once" (CAL-7) rather than credited twice.
-  return Math.min(nominalMinutes, realElapsedMinutes);
+
+  return segments;
+}
+
+/** Returns the part of a wall-clock interval not already covered by earlier occurrences. */
+function subtractCoveredWallIntervals(
+  startMs: number,
+  endMs: number,
+  covered: readonly TimeInterval[],
+): TimeInterval[] {
+  let cursor = startMs;
+  const uncovered: TimeInterval[] = [];
+  for (const interval of covered) {
+    if (interval.endMs <= cursor) continue;
+    if (interval.startMs >= endMs) break;
+    if (interval.startMs > cursor) {
+      uncovered.push({
+        startMs: cursor,
+        endMs: Math.min(interval.startMs, endMs),
+      });
+    }
+    cursor = Math.max(cursor, interval.endMs);
+    if (cursor >= endMs) break;
+  }
+  if (cursor < endMs) uncovered.push({ startMs: cursor, endMs });
+  return uncovered;
+}
+
+/**
+ * Converts a local day’s windows to real intervals, keeping the first occurrence
+ * of any repeated wall-clock time and omitting nonexistent spring-forward time.
+ */
+function coveredIntervalsForLocalDay(
+  timeZone: string,
+  date: LocalDate,
+  windows: readonly CalendarWindow[],
+): TimeInterval[] {
+  const localMidnightMs = utcEpochMilliseconds(date.year, date.month, date.day);
+  const segments = offsetSegmentsForLocalDay(timeZone, date);
+  const intervals: TimeInterval[] = [];
+
+  for (const window of windows) {
+    const wallStartMs = localMidnightMs + window.from * 60_000;
+    const wallEndMs = localMidnightMs + window.to * 60_000;
+    const coveredWall: TimeInterval[] = [];
+
+    for (const segment of segments) {
+      const localStartMs = segment.startMs + segment.offsetMs;
+      const localEndMs = segment.endMs + segment.offsetMs;
+      const overlapStartMs = Math.max(wallStartMs, localStartMs);
+      const overlapEndMs = Math.min(wallEndMs, localEndMs);
+      if (overlapEndMs <= overlapStartMs) continue;
+
+      const uncoveredWall = subtractCoveredWallIntervals(
+        overlapStartMs,
+        overlapEndMs,
+        coveredWall,
+      );
+      for (const interval of uncoveredWall) {
+        intervals.push({
+          startMs: interval.startMs - segment.offsetMs,
+          endMs: interval.endMs - segment.offsetMs,
+        });
+      }
+      coveredWall.push({
+        startMs: overlapStartMs,
+        endMs: overlapEndMs,
+      });
+      coveredWall.sort((a, b) => a.startMs - b.startMs);
+    }
+  }
+
+  return intervals;
 }
 
 // ---------------------------------------------------------------------------
@@ -155,7 +286,7 @@ function windowInstanceCoveredMinutes(
 /** The day-of-week a `LocalDate` falls on. A pure calendar fact, independent of any zone. */
 export function weekdayOf(date: LocalDate): Weekday {
   const index = new Date(
-    Date.UTC(date.year, date.month - 1, date.day),
+    utcEpochMilliseconds(date.year, date.month, date.day),
   ).getUTCDay();
   // biome-ignore lint/style/noNonNullAssertion: index is 0..6, WEEKDAYS has exactly 7 entries
   return WEEKDAYS[index]!;
@@ -163,7 +294,7 @@ export function weekdayOf(date: LocalDate): Weekday {
 
 function addDays(date: LocalDate, days: number): LocalDate {
   const shifted = new Date(
-    Date.UTC(date.year, date.month - 1, date.day + days),
+    utcEpochMilliseconds(date.year, date.month, date.day + days),
   );
   return {
     year: shifted.getUTCFullYear(),
@@ -190,7 +321,7 @@ function pad2(n: number): string {
 
 /** `YYYY-MM-DD`, matching `DatedHoliday.date`'s own format. */
 export function formatLocalDate(date: LocalDate): string {
-  return `${date.year}-${pad2(date.month)}-${pad2(date.day)}`;
+  return `${String(date.year).padStart(4, "0")}-${pad2(date.month)}-${pad2(date.day)}`;
 }
 
 // ---------------------------------------------------------------------------
@@ -239,6 +370,10 @@ export function validateCalendar(
   calendar: ServiceCalendar,
 ): CalendarValidationResult {
   const errors: string[] = [];
+
+  if (!isIanaTimeZone(calendar.timezone)) {
+    errors.push(`timezone ${calendar.timezone} is not an IANA timezone`);
+  }
 
   for (const weekday of WEEKDAYS) {
     const windows = calendar.windows[weekday] ?? [];
@@ -291,8 +426,8 @@ export function calendarHasCover(calendar: ServiceCalendar): boolean {
  * excluding holidays (`CAL-4`). `from`/`to` are real instants; `to <= from` (including a
  * zero-length interval) covers zero minutes.
  *
- * DST correctness (`CAL-6`/`CAL-7`) is handled per window-occurrence, not per whole day:
- * see `windowInstanceCoveredMinutes`.
+ * DST correctness (`CAL-6`/`CAL-7`) is handled per real interval: repeated local
+ * times map only to their first occurrence, and skipped times have no interval.
  */
 export function coveredMinutesBetween(
   calendar: ServiceCalendar,
@@ -305,6 +440,8 @@ export function coveredMinutesBetween(
 
   const fromLocal = instantToLocalDateTime(calendar.timezone, from);
   const toLocal = instantToLocalDateTime(calendar.timezone, to);
+  const fromMs = from.getTime();
+  const toMs = to.getTime();
 
   let total = 0;
   let cursor: LocalDate = {
@@ -321,26 +458,20 @@ export function coveredMinutesBetween(
   // Bound the loop defensively — a calendar and a range are both finite in every real
   // case; this only ever protects against a caller passing a malformed multi-year range.
   for (let guard = 0; guard < 100_000; guard++) {
-    const isFirstDay = sameLocalDate(cursor, fromLocal);
     const isLastDay = sameLocalDate(cursor, lastDate);
 
     if (!isHoliday(calendar, cursor)) {
       const windows = calendar.windows[weekdayOf(cursor)] ?? [];
-      for (const window of windows) {
-        const start = isFirstDay
-          ? Math.max(window.from, fromLocal.minuteOfDay)
-          : window.from;
-        const end = isLastDay
-          ? Math.min(window.to, toLocal.minuteOfDay)
-          : window.to;
-        if (end > start) {
-          total += windowInstanceCoveredMinutes(
-            calendar.timezone,
-            cursor,
-            start,
-            end,
-          );
-        }
+      for (const interval of coveredIntervalsForLocalDay(
+        calendar.timezone,
+        cursor,
+        windows,
+      )) {
+        total +=
+          Math.max(
+            0,
+            Math.min(toMs, interval.endMs) - Math.max(fromMs, interval.startMs),
+          ) / 60_000;
       }
     }
 
@@ -373,7 +504,7 @@ export function nextWindowOpening(
     month: cursor.month,
     day: cursor.day,
   };
-  let minuteFloor = cursor.minuteOfDay;
+  const instantMs = instant.getTime();
 
   // A year plus slack is far beyond any real holiday run; this only guards against an
   // unreachable calendar (e.g. every weekday holidayed out forever), which is not a
@@ -383,23 +514,23 @@ export function nextWindowOpening(
       const windows = [...(calendar.windows[weekdayOf(cursorDate)] ?? [])].sort(
         (a, b) => a.from - b.from,
       );
-      for (const window of windows) {
-        if (window.to <= minuteFloor) {
+      for (const interval of coveredIntervalsForLocalDay(
+        calendar.timezone,
+        cursorDate,
+        windows,
+      )) {
+        if (interval.endMs <= instantMs) {
           continue;
         }
-        if (window.from <= minuteFloor) {
-          // Already inside this window.
+        if (interval.startMs <= instantMs) {
+          // Already inside real covered time. This also rejects the second occurrence
+          // of an ambiguous wall-clock minute, which is intentionally uncovered (CAL-7).
           return instant;
         }
-        return zonedDateTimeToInstant(
-          calendar.timezone,
-          cursorDate,
-          window.from,
-        );
+        return new Date(interval.startMs);
       }
     }
     cursorDate = addDays(cursorDate, 1);
-    minuteFloor = 0;
   }
 
   return null;

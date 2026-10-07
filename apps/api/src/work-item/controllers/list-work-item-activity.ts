@@ -1,20 +1,12 @@
-import {
-  and,
-  desc,
-  eq,
-  lt,
-  or,
-  type SQL,
-  type SQLWrapper,
-  sql,
-} from "drizzle-orm";
+import { and, eq, lt, or, type SQL, type SQLWrapper, sql } from "drizzle-orm";
 import { HTTPException } from "hono/http-exception";
 import db from "../../database";
+import { activityTable, commentTable } from "../../database/schema";
 import {
-  activityTable,
-  commentTable,
-  workItemTable,
-} from "../../database/schema";
+  findActivityWorkItemByKeyQuery,
+  listWorkItemActivityRowsQuery,
+  listWorkItemCommentRowsQuery,
+} from "../repository";
 
 // #23's fourth slice: `GET /api/work-items/{key}/activity` (`work_item:read`, plus
 // reach). Issue #292 / the merged `activity.ts` module already built the WRITE side
@@ -206,9 +198,7 @@ export async function listWorkItemActivity(
   workspaceId: string,
   options: { cursor?: string; limit?: number },
 ) {
-  const item = await db.query.workItemTable.findFirst({
-    where: eq(workItemTable.key, key),
-  });
+  const item = await findActivityWorkItemByKeyQuery(db, key);
   if (!item || item.workspaceId !== workspaceId) {
     throw new HTTPException(404, { message: "Work item not found" });
   }
@@ -243,43 +233,13 @@ export async function listWorkItemActivity(
   }
 
   const [activityRows, commentRows] = await Promise.all([
-    db
-      .select({
-        id: activityTable.id,
-        workItemId: activityTable.workItemId,
-        actorId: activityTable.actorId,
-        actorType: activityTable.actorType,
-        verb: activityTable.verb,
-        field: activityTable.field,
-        oldValue: activityTable.oldValue,
-        newValue: activityTable.newValue,
-        payload: activityTable.payload,
-        visibility: activityTable.visibility,
-        workflowVersionId: activityTable.workflowVersionId,
-        createdAt: activityTable.createdAt,
-      })
-      .from(activityTable)
-      .where(and(...activityConditions))
-      .orderBy(desc(activityTable.createdAt), desc(activityTable.id))
-      .limit(fetchLimit),
-    db
-      .select({
-        id: commentTable.id,
-        workItemId: commentTable.workItemId,
-        authorId: commentTable.authorId,
-        actorType: commentTable.actorType,
-        body: commentTable.body,
-        visibility: commentTable.visibility,
-        activityId: commentTable.activityId,
-        editedAt: commentTable.editedAt,
-        deletedAt: commentTable.deletedAt,
-        createdAt: commentTable.createdAt,
-        updatedAt: commentTable.updatedAt,
-      })
-      .from(commentTable)
-      .where(and(...commentConditions))
-      .orderBy(desc(commentCreatedAtMs), desc(commentTable.id))
-      .limit(fetchLimit),
+    listWorkItemActivityRowsQuery(db, activityConditions, fetchLimit),
+    listWorkItemCommentRowsQuery(
+      db,
+      commentConditions,
+      commentCreatedAtMs,
+      fetchLimit,
+    ),
   ]);
 
   const merged: ActivityStreamRow[] = [

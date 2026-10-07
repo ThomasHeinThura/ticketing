@@ -1,7 +1,5 @@
-import { eq } from "drizzle-orm";
 import type { Context } from "hono";
-import db from "../database";
-import { userTable } from "../database/schema";
+import { getUserRole } from "./repository";
 
 export async function isInstanceAdmin(c: Context): Promise<boolean> {
   const user = c.get("user") as { role?: string | null } | null | undefined;
@@ -12,11 +10,7 @@ export async function isInstanceAdmin(c: Context): Promise<boolean> {
   const userId = c.get("userId");
   if (!userId) return false;
 
-  const [row] = await db
-    .select({ role: userTable.role })
-    .from(userTable)
-    .where(eq(userTable.id, userId))
-    .limit(1);
+  const [row] = await getUserRole(userId);
 
   return row?.role === "admin";
 }

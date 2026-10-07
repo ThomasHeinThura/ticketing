@@ -7,8 +7,7 @@ import { serveStatic } from "@hono/node-server/serve-static";
 import { OpenAPIHono } from "@hono/zod-openapi";
 import { normaliseRouteKey } from "@taskdesk/permissions";
 import type { Session, User } from "better-auth/types";
-import { and, eq, sql } from "drizzle-orm";
-import { migrate } from "drizzle-orm/node-postgres/migrator";
+import { sql } from "drizzle-orm";
 import type { Context, Next } from "hono";
 import { Hono } from "hono";
 import { compress } from "hono/compress";
@@ -16,16 +15,24 @@ import { cors } from "hono/cors";
 import { HTTPException } from "hono/http-exception";
 import { WebSocketServer } from "ws";
 import activity from "./activity";
+import approval from "./approval";
 import attachment from "./attachment";
 import audit from "./audit";
 import {
   assertCookieDomainIsNotConfiguredForHostIsolation,
   authForHost,
+  hasCustomerPortalIdentity,
+  isCustomerLocalAuthEndpoint,
   portalForHost,
+  startAuthConfigRuntime,
+  stopAuthConfigRuntime,
 } from "./auth";
 import csrfToken from "./auth/csrf-token-api";
 import factorStatus from "./auth/factor-status-api";
-import { loadLocalFactorState } from "./auth/local-factor-service";
+import {
+  InactiveFactorIdentityError,
+  loadLocalFactorState,
+} from "./auth/local-factor-service";
 import stepUp from "./auth/step-up-api";
 import cannedResponse from "./canned-response";
 import capabilities from "./capabilities";
@@ -36,16 +43,22 @@ import db, {
   closeMigrationPool,
   getDatabase,
   getMigrationDatabase,
+  getMigrationDatabasePool,
   schema,
 } from "./database";
 import { assertApplicationRoleIsNotPrivileged } from "./database/assert-application-role-is-not-privileged";
 import { assertNoMigrationUrlInApiProcess } from "./database/assert-no-migration-url-in-api-process";
 import { ensureApplicationRole } from "./database/ensure-application-role";
+import { migrateWithMembershipProvenanceCutover } from "./database/migrate-membership-provenance";
 import { prepareDatabaseStartup } from "./database/prepare-database-startup";
 import { resolveMigrationDatabaseConfig } from "./database/resolve-database-url";
 import { waitForDatabase } from "./database/wait-for-database";
 import { eventContext } from "./events";
 import externalLink from "./external-link";
+import identityConnectionAdmin from "./identity/connection-admin";
+import { oidcGroupMappingAdminRouter } from "./identity/oidc-group-mapping-admin";
+import scimAdmin from "./identity/scim-admin";
+import scimProtocol from "./identity/scim-protocol";
 import getInstanceStatus from "./instance/controllers/get-instance-status";
 import localFactorPolicy from "./instance/local-factor-policy";
 import observability from "./instance/observability";
@@ -64,6 +77,7 @@ import {
 } from "./instance/observability/runtime";
 import resetMfa from "./instance/reset-mfa";
 import { ensureSetupToken } from "./instance/setup-token";
+import users from "./instance/users";
 import invitation from "./invitation";
 import label from "./label";
 import { migrateColumns } from "./migrations/column-migration";
@@ -88,8 +102,11 @@ import { initializePlugins } from "./plugins";
 // the bundler drops it and the check silently stops running.
 import { policyRegistry } from "./policy-registry";
 import project from "./project";
+import { findProjectWorkspaceUnderReach } from "./project/repository";
 import { initializeScheduler, shutdownScheduler } from "./scheduler";
 import search from "./search";
+import serviceCalendar from "./service-calendar";
+import slaPolicy from "./sla-policy";
 import { getPrivateObject, getStorageDriver } from "./storage";
 import {
   readAttachmentDownloadObject,
@@ -125,6 +142,7 @@ import { assertCallerHasCapability } from "./utils/require-workspace-capability"
 import { seedDefaultWorkspaceRoles } from "./utils/seed-default-workspace-roles";
 import { seedInternalOrganisationAndStaffPersons } from "./utils/seed-internal-organisation";
 import { reachableWorkspacePredicate } from "./utils/workspace-access-middleware";
+import view from "./view";
 import workItem from "./work-item";
 import workflow from "./workflow";
 import workflowRule from "./workflow-rule";
@@ -181,7 +199,13 @@ async function enforceLocalFactorEnrollment(c: Context<ApiVariables>) {
   let state: Awaited<ReturnType<typeof loadLocalFactorState>>;
   try {
     state = await loadLocalFactorState(userId);
-  } catch {
+  } catch (error) {
+    // Inactive identities are denied by authorization, not treated as a broken
+    // factor-policy store. Keep missing identities and policy/database failures
+    // fail-closed as unavailable.
+    if (error instanceof InactiveFactorIdentityError) {
+      throw new HTTPException(403, { message: "Forbidden" });
+    }
     throw new HTTPException(503, { message: "factor_policy_unavailable" });
   }
   if (state.required && !state.enabled) {
@@ -276,6 +300,45 @@ function isApiRequestPath(path: string): boolean {
   return path === "/api" || path.startsWith("/api/");
 }
 
+const CUSTOMER_AUTH_ENDPOINTS = new Set([
+  "GET /api/auth/get-session",
+  "POST /api/auth/sign-out",
+  "POST /api/auth/two-factor/verify-totp",
+  "POST /api/auth/two-factor/verify-backup-code",
+]);
+
+function matchesPortalPolicyRoute(method: string, path: string): boolean {
+  const pathParts = path.split("/");
+  return policyRegistry.entries.some((entry) => {
+    if (entry.kind !== "portal") return false;
+    const separator = entry.routeKey.indexOf(" ");
+    if (separator < 0 || entry.routeKey.slice(0, separator) !== method)
+      return false;
+    const routeParts = entry.routeKey.slice(separator + 1).split("/");
+    return (
+      routeParts.length === pathParts.length &&
+      routeParts.every(
+        (part, index) => /^\{[^/]+\}$/u.test(part) || part === pathParts[index],
+      )
+    );
+  });
+}
+
+function isCustomerAuthEndpoint(method: string, path: string): boolean {
+  if (CUSTOMER_AUTH_ENDPOINTS.has(`${method} ${path}`)) return true;
+  if (isCustomerLocalAuthEndpoint(method, path)) return true;
+  if (method !== "GET") return false;
+  const parts = path.split("/");
+  return (
+    parts.length === 6 &&
+    parts[1] === "api" &&
+    parts[2] === "auth" &&
+    parts[3] === "identity" &&
+    Boolean(parts[4]) &&
+    (parts[5] === "start" || parts[5] === "callback")
+  );
+}
+
 function authForRequest(c: Context) {
   const selected = authForHost(c.req.header("Host"));
   if (!selected) throw new HTTPException(403, { message: "Forbidden" });
@@ -300,8 +363,13 @@ async function handleAuthRequest(c: Context, headers?: Headers) {
   const session = await selected.api.getSession({
     headers: c.req.raw.headers,
   });
-  if (session?.session && session.session.portal !== portal) {
-    throw new HTTPException(403, { message: "Forbidden" });
+  if (
+    session?.session &&
+    (session.session.portal !== portal ||
+      (portal === "customer" &&
+        !(await hasCustomerPortalIdentity(session.user.id))))
+  ) {
+    throw new HTTPException(401, { message: "Unauthorized" });
   }
 
   return selected.handler(buildAuthRequest(c, headers));
@@ -467,6 +535,7 @@ export function createApp(
       c.req.path === "/api/health" ||
       c.req.path === "/api/public/health/live" ||
       c.req.path === "/api/public/health/ready";
+    const isScimPath = c.req.path.startsWith("/scim/v2/");
     const isHealthRequest =
       isHealthPath && (c.req.method === "GET" || c.req.method === "HEAD");
     const upgrade = c.req.header("upgrade")?.toLowerCase();
@@ -475,6 +544,7 @@ export function createApp(
       upgrade === "websocket" && connection.includes("upgrade");
 
     if (selected === "invalid") return denyByHost(c);
+    if (isScimPath && selected !== "agent") return denyByHost(c);
     if (isWebSocketUpgrade && (selected !== "agent" || isHealthPath))
       return denyByHost(c);
     if (isHealthRequest) {
@@ -491,9 +561,20 @@ export function createApp(
     if (selected === "unknown") return denyByHost(c);
     c.set("appOrigin", selected);
     if (selected === "portal") {
-      if (isApiRequestPath(c.req.path)) return denyByHost(c);
+      if (isApiRequestPath(c.req.path)) {
+        if (
+          !isCustomerAuthEndpoint(c.req.method, c.req.path) &&
+          !matchesPortalPolicyRoute(c.req.method, c.req.path)
+        )
+          return denyByHost(c);
+      }
       if (c.req.method !== "GET" && c.req.method !== "HEAD")
-        return denyByHost(c);
+        if (
+          !isApiRequestPath(c.req.path) ||
+          (!isCustomerAuthEndpoint(c.req.method, c.req.path) &&
+            !matchesPortalPolicyRoute(c.req.method, c.req.path))
+        )
+          return denyByHost(c);
     }
     return next();
   };
@@ -551,6 +632,11 @@ export function createApp(
   const compressMiddleware = compress();
   declareCatchAllMiddleware(compressMiddleware);
   app.use(compressMiddleware);
+
+  // SCIM lives at the protocol's documented agent-origin path, outside `/api` and
+  // therefore outside the session/API-key guard. The host-routing guard above admits
+  // this path only on the agent origin; scimProtocol authenticates its dedicated bearer.
+  const scimProtocolApi = app.route("/scim/v2", scimProtocol);
 
   const api = installStrictPolicyRegistration(new OpenAPIHono<ApiVariables>());
 
@@ -917,6 +1003,11 @@ export function createApp(
     scheme: "bearer",
     description: "API key or session token (Bearer)",
   });
+  api.openAPIRegistry.registerComponent("securitySchemes", "scimBearerAuth", {
+    type: "http",
+    scheme: "bearer",
+    description: "Per-connection SCIM bearer token",
+  });
 
   api.get("/openapi", (c) => {
     const document = api.getOpenAPI31Document({
@@ -940,6 +1031,40 @@ export function createApp(
       ],
       security: [{ bearerAuth: [] }],
     });
+
+    const scimDocument = scimProtocol.getOpenAPI31Document({
+      openapi: "3.1.0",
+      info: { title: "TaskDesk SCIM API", version: "1.0.0" },
+    });
+    for (const [path, pathItem] of Object.entries(scimDocument.paths ?? {})) {
+      if (!pathItem) continue;
+      const scimPathItem: Record<string, unknown> = { ...pathItem };
+      for (const method of [
+        "get",
+        "post",
+        "put",
+        "patch",
+        "delete",
+        "options",
+        "head",
+        "trace",
+      ] as const) {
+        const operation = scimPathItem[method];
+        if (operation && typeof operation === "object")
+          scimPathItem[method] = {
+            ...(operation as Record<string, unknown>),
+            security: [{ scimBearerAuth: [] }],
+          };
+      }
+      document.paths ??= {};
+      document.paths[`/scim/v2${path}`] = {
+        // SCIM is mounted at the agent origin root, while the rest of the API
+        // inherits the `/api` server above. A path-level relative root keeps
+        // SCIM clients on the same origin without incorrectly prefixing `/api`.
+        servers: [{ url: "/", description: "TaskDesk SCIM API Server" }],
+        ...scimPathItem,
+      } as NonNullable<typeof document.paths>[string];
+    }
 
     // Every authenticated route sits behind the same app-wide
     // authenticateApiRequest middleware, so the shared 401 is injected here
@@ -1161,6 +1286,7 @@ export function createApp(
           asset.workspaceId,
           c.get("userId"),
           "workspace:read",
+          c.get("apiKey"),
         );
       } catch (error) {
         if (error instanceof HTTPException && error.status === 403) {
@@ -1224,6 +1350,8 @@ export function createApp(
   );
   const pendingActionApi = api.route("/me", pendingAction);
   const searchApi = api.route("/search", search);
+  const serviceCalendarApi = api.route("/service-calendars", serviceCalendar);
+  const slaPolicyApi = api.route("/sla-policies", slaPolicy);
   const taskRelationApi = api.route("/task-relation", taskRelation);
   const externalLinkApi = api.route("/external-link", externalLink);
   const workflowRuleApi = api.route("/workflow-rule", workflowRule);
@@ -1235,8 +1363,10 @@ export function createApp(
   // `/work-items/{key}`), which `workItem`'s own routes already declare in full. See
   // `work-item/index.ts`'s file comment.
   const workItemApi = api.route("/", workItem);
+  const approvalApi = api.route("/", approval);
   const attachmentApi = api.route("/", attachment);
   const userApi = api.route("/user", user);
+  const viewApi = api.route("/views", view);
   const factorStatusApi = api.route("/me", factorStatus);
   const csrfTokenApi = api.route("/me", csrfToken);
   const stepUpApi = api.route("/me", stepUp);
@@ -1244,6 +1374,16 @@ export function createApp(
   const metricsTokenRotationApi = api.route("/instance", metricsTokenRotation);
   const localFactorPolicyApi = api.route("/instance", localFactorPolicy);
   const resetMfaApi = api.route("/instance", resetMfa);
+  const usersApi = api.route("/instance", users);
+  const identityConnectionAdminApi = api.route(
+    "/instance",
+    identityConnectionAdmin,
+  );
+  const oidcGroupMappingAdminApi = api.route(
+    "/instance",
+    oidcGroupMappingAdminRouter,
+  );
+  const scimAdminApi = api.route("/instance", scimAdmin);
 
   // User-scoped WebSocket endpoint; MUST be registered before /ws/:projectId
   // so the literal path "user" isn't consumed by the param route.
@@ -1451,20 +1591,15 @@ export function createApp(
         // query distinguishing "out of reach" (403, remapped) from "unknown"
         // (401).
         const apiKeyId = c.get("apiKey")?.id;
-        const [project] = await db
-          .select({ workspaceId: schema.projectTable.workspaceId })
-          .from(schema.projectTable)
-          .where(
-            and(
-              eq(schema.projectTable.id, projectId),
-              reachableWorkspacePredicate(
-                schema.projectTable.workspaceId,
-                userId,
-                apiKeyId,
-              ),
-            ),
-          )
-          .limit(1);
+        const [project] = await findProjectWorkspaceUnderReach(
+          db,
+          projectId,
+          reachableWorkspacePredicate(
+            schema.projectTable.workspaceId,
+            userId,
+            apiKeyId,
+          ),
+        );
 
         if (!project) {
           throw new HTTPException(401, { message: "Unauthorized" });
@@ -1519,6 +1654,7 @@ export function createApp(
     app,
     api,
     activityApi,
+    approvalApi,
     attachmentApi,
     auditApi,
     cannedResponseApi,
@@ -1534,6 +1670,11 @@ export function createApp(
     metricsTokenRotationApi,
     localFactorPolicyApi,
     resetMfaApi,
+    usersApi,
+    identityConnectionAdminApi,
+    oidcGroupMappingAdminApi,
+    scimAdminApi,
+    scimProtocolApi,
     invitationApi,
     invitationPublicApi,
     oauthApi,
@@ -1543,11 +1684,14 @@ export function createApp(
     pendingActionApi,
     projectApi,
     searchApi,
+    serviceCalendarApi,
+    slaPolicyApi,
     taskApi,
     taskV2Api,
     taskRelationApi,
     timeEntryApi,
     userApi,
+    viewApi,
     workflowApi,
     workflowRuleApi,
     workItemApi,
@@ -1612,7 +1756,9 @@ export async function runMigrationStep(): Promise<void> {
       await migrateSessionColumn(migrationDb);
 
       console.log("🔄 Migrating database...");
-      await migrate(migrationDb, {
+      await migrateWithMembershipProvenanceCutover({
+        database: migrationDb,
+        pool: getMigrationDatabasePool(),
         migrationsFolder: `${currentDir}/../drizzle`,
       });
       console.log("✅ Database migrated successfully!");
@@ -1658,6 +1804,7 @@ export async function runApiBootTasks(): Promise<void> {
   console.log(`🔐 ${policyRegistry.entries.length} policies loaded`);
 
   await migrateColumns();
+  await startAuthConfigRuntime();
   await seedDefaultWorkspaceRoles();
   await seedInternalOrganisationAndStaffPersons();
 
@@ -1726,6 +1873,7 @@ export function createNodeServer(
   let closePromise: Promise<ShutdownResult> | null = null;
   const close = () => {
     if (closePromise) return closePromise;
+    stopAuthConfigRuntime();
 
     let resolveClose!: (result: ShutdownResult) => void;
     closePromise = new Promise<ShutdownResult>((resolve) => {
@@ -1888,6 +2036,7 @@ const createdApp = createApp();
 const {
   app,
   activityApi,
+  approvalApi,
   attachmentApi,
   auditApi,
   cannedResponseApi,
@@ -1903,6 +2052,11 @@ const {
   metricsTokenRotationApi,
   localFactorPolicyApi,
   resetMfaApi,
+  usersApi,
+  identityConnectionAdminApi,
+  oidcGroupMappingAdminApi,
+  scimAdminApi,
+  scimProtocolApi,
   invitationApi,
   invitationPublicApi,
   oauthApi,
@@ -1912,11 +2066,14 @@ const {
   pendingActionApi,
   projectApi,
   searchApi,
+  serviceCalendarApi,
+  slaPolicyApi,
   taskApi,
   taskV2Api,
   taskRelationApi,
   timeEntryApi,
   userApi,
+  viewApi,
   workflowApi,
   workflowRuleApi,
   workItemApi,
@@ -1965,6 +2122,7 @@ export type AppType =
   | typeof taskV2Api
   | typeof columnApi
   | typeof activityApi
+  | typeof approvalApi
   | typeof attachmentApi
   | typeof auditApi
   | typeof cannedResponseApi
@@ -1975,6 +2133,8 @@ export type AppType =
   | typeof notificationPreferencesApi
   | typeof pendingActionApi
   | typeof searchApi
+  | typeof serviceCalendarApi
+  | typeof slaPolicyApi
   | typeof taskRelationApi
   | typeof externalLinkApi
   | typeof factorStatusApi
@@ -1984,11 +2144,17 @@ export type AppType =
   | typeof metricsTokenRotationApi
   | typeof localFactorPolicyApi
   | typeof resetMfaApi
+  | typeof usersApi
+  | typeof identityConnectionAdminApi
+  | typeof oidcGroupMappingAdminApi
+  | typeof scimAdminApi
+  | typeof scimProtocolApi
   | typeof workflowApi
   | typeof workflowRuleApi
   | typeof workItemApi
   | typeof invitationApi
   | typeof workspaceApi
+  | typeof viewApi
   | typeof userApi
   | typeof invitationPublicApi
   | typeof oauthApi

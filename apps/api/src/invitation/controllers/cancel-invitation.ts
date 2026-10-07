@@ -1,5 +1,6 @@
 import { and, eq } from "drizzle-orm";
 import db, { schema } from "../../database";
+import { getInvitationForCancellation } from "../repository";
 import {
   InvitationNotFoundError,
   InvitationNotPendingError,
@@ -31,14 +32,7 @@ export type CanceledInvitation = {
 async function cancelInvitation(
   invitationId: string,
 ): Promise<CanceledInvitation> {
-  const [invitation] = await db
-    .select({
-      id: schema.invitationTable.id,
-      status: schema.invitationTable.status,
-    })
-    .from(schema.invitationTable)
-    .where(eq(schema.invitationTable.id, invitationId))
-    .limit(1);
+  const [invitation] = await getInvitationForCancellation(db, invitationId);
   if (!invitation) {
     throw new InvitationNotFoundError();
   }

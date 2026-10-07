@@ -1,23 +1,9 @@
 import { CLOSED_STATE_GROUPS } from "@taskdesk/domain";
-import {
-  and,
-  count,
-  eq,
-  inArray,
-  isNotNull,
-  isNull,
-  notInArray,
-} from "drizzle-orm";
 import db from "../../database";
 import {
-  membershipTable,
-  personTable,
-  roleTable,
-  stateTable,
-  stateTemplateTable,
-  userTable,
-  workItemTable,
-} from "../../database/schema";
+  listAssignableLoadQuery,
+  listAssignableRosterQuery,
+} from "../repository";
 
 /**
  * `GET /api/projects/{projectId}/assignable` (`docs/03-features/assignment.md` § API) --
@@ -86,30 +72,7 @@ export async function listAssignablePeople({
   callerCanAssignAnyone: boolean;
   callerCanSelfAssign: boolean;
 }): Promise<AssignablePerson[]> {
-  const rosterRows = await db
-    .select({
-      personId: membershipTable.personId,
-      roleName: roleTable.name,
-      roleRank: roleTable.rank,
-      name: userTable.name,
-    })
-    .from(membershipTable)
-    .innerJoin(personTable, eq(personTable.id, membershipTable.personId))
-    .innerJoin(roleTable, eq(roleTable.id, membershipTable.roleId))
-    .leftJoin(userTable, eq(userTable.id, personTable.userId))
-    .where(
-      and(
-        eq(membershipTable.scope, "project"),
-        eq(membershipTable.scopeId, projectId),
-        eq(personTable.active, true),
-        // Review L3: the two rules `data-model.md` states but no constraint enforces --
-        // a placeholder can never be assigned, and customer-side people hold only
-        // organisation-scoped memberships. Stated here so a future writer that breaks
-        // either rule cannot leak such a person into the picker.
-        eq(personTable.side, "staff"),
-        eq(personTable.isPlaceholder, false),
-      ),
-    );
+  const rosterRows = await listAssignableRosterQuery(db, projectId);
 
   // One row per person, carrying their most privileged role on this project. `rank` is
   // "higher wins" (roles.ts/rbac.md: "You cannot edit or mint a role whose rank is >=
@@ -138,34 +101,12 @@ export async function listAssignablePeople({
     return [];
   }
 
-  const loadRows = await db
-    .select({ assigneeId: workItemTable.assigneeId, open: count() })
-    .from(workItemTable)
-    .innerJoin(stateTable, eq(stateTable.id, workItemTable.stateId))
-    .innerJoin(
-      stateTemplateTable,
-      eq(stateTemplateTable.id, stateTable.stateTemplateId),
-    )
-    .where(
-      and(
-        isNotNull(workItemTable.assigneeId),
-        // Review L2: restrict the aggregate to the people this response can actually
-        // name. Without this the query groups the instance's whole assigned backlog and
-        // discards all but a handful -- cheap load amplification for anyone who can
-        // open the picker.
-        inArray(workItemTable.assigneeId, [...allowed.keys()]),
-        // Review L1: the count is "who is already loaded" WITHIN this workspace, never
-        // across every workspace the person works in.
-        eq(workItemTable.workspaceId, workspaceId),
-        isNull(workItemTable.archivedAt),
-        isNull(workItemTable.deletedAt),
-        // The closed-group vocabulary's single source (`isClosedGroup`'s own set): the
-        // SQL cannot call the pure predicate, so it names the same list -- never a
-        // second, drifting idea of "closed".
-        notInArray(stateTemplateTable.group, [...CLOSED_STATE_GROUPS]),
-      ),
-    )
-    .groupBy(workItemTable.assigneeId);
+  const loadRows = await listAssignableLoadQuery(
+    db,
+    workspaceId,
+    [...allowed.keys()],
+    [...CLOSED_STATE_GROUPS],
+  );
 
   const loadByPerson = new Map(
     loadRows.map((row) => [row.assigneeId as string, Number(row.open)]),

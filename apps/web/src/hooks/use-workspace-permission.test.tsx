@@ -43,7 +43,7 @@ function createWrapper() {
   };
 }
 
-// One full CapabilityMap, matching capabilitiesResponseSchema's 16 keys
+// One full CapabilityMap, matching capabilitiesResponseSchema's keys
 // exactly. Callers below start from this and only flip the keys a given
 // test cares about, so an accidental typo in an unrelated key still
 // produces a real (defined) boolean rather than `undefined`.
@@ -65,6 +65,9 @@ function fullCapabilityMap(overrides: Partial<Record<string, boolean>> = {}) {
     inviteUsers: false,
     manageTeam: false,
     removeMembers: false,
+    manageServiceCalendars: false,
+    shareSavedViews: false,
+    manageWorkspaceSettings: false,
     ...overrides,
   };
 }
@@ -124,17 +127,33 @@ describe("useWorkspacePermission", () => {
     });
   });
 
-  it("exposes every one of the 16 capabilitiesResponseSchema keys, not a subset", async () => {
+  it("resolves an explicitly row-scoped workspace instead of the active workspace", async () => {
+    capabilitiesGet.mockResolvedValue({
+      ok: true,
+      json: async () => fullCapabilityMap({ manageServiceCalendars: true }),
+    });
+
+    const { result } = renderHook(
+      () => useWorkspacePermission("calendar-owner-workspace"),
+      { wrapper: createWrapper() },
+    );
+
+    await waitFor(() => {
+      expect(result.current.isCheckingPermissions).toBe(false);
+    });
+
+    expect(capabilitiesGet).toHaveBeenCalledWith({
+      query: { workspaceId: "calendar-owner-workspace" },
+    });
+    expect(result.current.canManageServiceCalendars()).toBe(true);
+  });
+
+  it("exposes service-calendar management from its exact canonical capability", async () => {
     capabilitiesGet.mockResolvedValue({
       ok: true,
       json: async () =>
         fullCapabilityMap({
-          manageProjects: true,
-          manageWorkspace: true,
-          deleteWorkspace: true,
-          inviteUsers: true,
-          manageTeam: true,
-          removeMembers: true,
+          manageServiceCalendars: true,
         }),
     });
 
@@ -146,16 +165,43 @@ describe("useWorkspacePermission", () => {
       expect(result.current.isCheckingPermissions).toBe(false);
     });
 
-    expect(result.current.canManageProjects()).toBe(true);
-    expect(result.current.canCreateProjects()).toBe(false);
-    expect(result.current.canUpdateProjects()).toBe(false);
-    expect(result.current.canDeleteProjects()).toBe(false);
-    expect(result.current.canAssignTasks()).toBe(false);
-    expect(result.current.canManageWorkspace()).toBe(true);
-    expect(result.current.canDeleteWorkspace()).toBe(true);
-    expect(result.current.canInviteUsers()).toBe(true);
-    expect(result.current.canManageTeam()).toBe(true);
-    expect(result.current.canRemoveMembers()).toBe(true);
+    expect(result.current.canManageServiceCalendars()).toBe(true);
+  });
+
+  it("exposes saved-view audience permissions from the canonical response", async () => {
+    capabilitiesGet.mockResolvedValue({
+      ok: true,
+      json: async () =>
+        fullCapabilityMap({
+          shareSavedViews: true,
+          manageWorkspaceSettings: false,
+        }),
+    });
+    const { result } = renderHook(() => useWorkspacePermission(), {
+      wrapper: createWrapper(),
+    });
+    await waitFor(() =>
+      expect(result.current.isCheckingPermissions).toBe(false),
+    );
+    expect(result.current.canShareSavedViews()).toBe(true);
+    expect(result.current.canManageWorkspaceSettings()).toBe(false);
+  });
+
+  it("keeps service-calendar authoring unavailable when the capability is denied", async () => {
+    capabilitiesGet.mockResolvedValue({
+      ok: true,
+      json: async () => fullCapabilityMap(),
+    });
+
+    const { result } = renderHook(() => useWorkspacePermission(), {
+      wrapper: createWrapper(),
+    });
+
+    await waitFor(() => {
+      expect(result.current.isCheckingPermissions).toBe(false);
+    });
+
+    expect(result.current.canManageServiceCalendars()).toBe(false);
   });
 
   it("defaults every capability to false while the request is pending, never undefined", () => {
@@ -168,6 +214,7 @@ describe("useWorkspacePermission", () => {
     expect(result.current.isCheckingPermissions).toBe(true);
     expect(result.current.canManageProjects()).toBe(false);
     expect(result.current.canRemoveMembers()).toBe(false);
+    expect(result.current.canManageServiceCalendars()).toBe(false);
   });
 
   it("surfaces isOwner/isAdmin from the resolved active member's role", async () => {

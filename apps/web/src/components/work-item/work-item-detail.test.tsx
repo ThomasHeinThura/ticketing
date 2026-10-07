@@ -4,9 +4,40 @@ import { formatDateMedium } from "@/lib/format";
 import type { WorkItemDetailRow } from "@/types/work-item";
 import WorkItemDetail, { type WorkItemDetailProps } from "./work-item-detail";
 
+const mocks = vi.hoisted(() => ({
+  approvals: {
+    approvals: [
+      {
+        id: "approval-1",
+        workItemId: "wi_1",
+        workItemKey: "PROJ-123",
+        workItemTitle: "Fix the thing",
+        transitionId: "transition-1",
+        kind: "customer",
+        state: "pending",
+        requester: { id: "person-requester", displayName: "Riley" },
+        approver: { id: "person-approver", displayName: "Casey" },
+        createdAt: "2026-10-01T00:00:00.000Z",
+        expiresAt: "2026-10-08T00:00:00.000Z",
+        decidedAt: null,
+        decisionNote: null,
+        approverReachLost: false,
+        canWithdraw: true,
+      },
+    ],
+  },
+  withdraw: vi.fn(),
+  sessionRole: undefined as string | undefined,
+}));
+
 afterEach(() => {
   cleanup();
   vi.clearAllMocks();
+  mocks.approvals.approvals = mocks.approvals.approvals.map((approval) => ({
+    ...approval,
+    canWithdraw: true,
+  }));
+  mocks.sessionRole = undefined;
 });
 
 vi.mock("@tanstack/react-router", () => ({
@@ -18,11 +49,34 @@ vi.mock("@tanstack/react-router", () => ({
   ),
 }));
 
+vi.mock("@/lib/auth-client", () => ({
+  authClient: {
+    useSession: () => ({
+      data: mocks.sessionRole
+        ? { user: { role: mocks.sessionRole } }
+        : undefined,
+    }),
+  },
+}));
+
 vi.mock("react-i18next", () => ({
   useTranslation: () => ({
     t: (key: string, fallback?: string) => fallback ?? key,
   }),
   initReactI18next: { type: "3rdParty", init: () => {} },
+}));
+
+vi.mock("@/hooks/queries/approval/use-get-work-item-approvals", () => ({
+  default: () => ({
+    data: mocks.approvals,
+    isError: false,
+    isLoading: false,
+    refetch: vi.fn(),
+  }),
+}));
+
+vi.mock("@/hooks/mutations/approval/use-withdraw-approval", () => ({
+  default: () => ({ mutate: mocks.withdraw, isPending: false, isError: false }),
 }));
 
 function makeItem(
@@ -131,6 +185,38 @@ describe("WorkItemDetail", () => {
     fireEvent.click(detailsTrigger);
     expect(detailsTrigger).toHaveAttribute("aria-expanded", "true");
     expect(screen.getByText("Worklist")).toBeInTheDocument();
+  });
+
+  it("AP-6 keeps an authorized pending request withdrawable", () => {
+    render(<WorkItemDetail {...baseProps} item={makeItem()} />);
+    expect(screen.getByText("Customer approval for Casey")).toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: "Withdraw request" }));
+    expect(mocks.withdraw).toHaveBeenCalledWith({
+      id: "approval-1",
+      asInstanceAdmin: false,
+    });
+  });
+
+  it("routes instance-admin withdrawals through the session-only admin endpoint", () => {
+    mocks.sessionRole = "admin";
+    render(<WorkItemDetail {...baseProps} item={makeItem()} />);
+    fireEvent.click(screen.getByRole("button", { name: "Withdraw request" }));
+    expect(mocks.withdraw).toHaveBeenCalledWith({
+      id: "approval-1",
+      asInstanceAdmin: true,
+    });
+  });
+
+  it("AP-6 hides withdrawal when the server denies the current viewer", () => {
+    mocks.approvals.approvals = mocks.approvals.approvals.map((approval) => ({
+      ...approval,
+      canWithdraw: false,
+    }));
+    render(<WorkItemDetail {...baseProps} item={makeItem()} />);
+    expect(screen.getByText("Customer approval for Casey")).toBeInTheDocument();
+    expect(
+      screen.queryByRole("button", { name: "Withdraw request" }),
+    ).toBeNull();
   });
 
   it("renders Unassigned for an unassigned item, and (inactive) when the assignee has no resolvable name", () => {

@@ -1,6 +1,4 @@
-import { and, count, eq, isNull, min, sql } from "drizzle-orm";
-import db from "../../database";
-import { projectTable, taskTable } from "../../database/schema";
+import { getProjectStatsQuery, listProjectsQuery } from "../repository";
 
 type ProjectStatistics = {
   completionPercentage: number;
@@ -26,33 +24,7 @@ async function getProjectStatistics(
   // with the number of tasks in the workspace. Scoping by workspaceId through
   // a join (rather than an `IN (...projectIds)` list) keeps the statement size
   // constant regardless of how many projects the workspace has.
-  const rows = await db
-    .select({
-      projectId: taskTable.projectId,
-      totalTasks: count(),
-      completedTasks: count(
-        sql`case when ${taskTable.status} in ('done', 'archived') then 1 end`,
-      ),
-      dueDate: min(taskTable.dueDate),
-    })
-    .from(taskTable)
-    .innerJoin(projectTable, eq(taskTable.projectId, projectTable.id))
-    .where(
-      // #187: a soft-deleted project's statistics never surface, `includeArchived` or
-      // not -- `archivedAt` and `deletedAt` are independent (PR-16), and there is no
-      // "show deleted" toggle to extend `includeArchived` into.
-      includeArchived
-        ? and(
-            eq(projectTable.workspaceId, workspaceId),
-            isNull(projectTable.deletedAt),
-          )
-        : and(
-            eq(projectTable.workspaceId, workspaceId),
-            isNull(projectTable.archivedAt),
-            isNull(projectTable.deletedAt),
-          ),
-    )
-    .groupBy(taskTable.projectId);
+  const rows = await getProjectStatsQuery(workspaceId, includeArchived);
 
   for (const row of rows) {
     const totalTasks = Number(row.totalTasks);
@@ -70,27 +42,7 @@ async function getProjectStatistics(
 }
 
 async function getProjects(workspaceId: string, includeArchived = false) {
-  const projects = await db.query.projectTable.findMany({
-    // #187: same reasoning as `getProjectStatistics` above -- `deletedAt` is always
-    // excluded, `includeArchived` only ever controls `archivedAt`.
-    where: includeArchived
-      ? and(
-          eq(projectTable.workspaceId, workspaceId),
-          isNull(projectTable.deletedAt),
-        )
-      : and(
-          eq(projectTable.workspaceId, workspaceId),
-          isNull(projectTable.archivedAt),
-          isNull(projectTable.deletedAt),
-        ),
-    // `id` is the deterministic tie-breaker: without it, rows sharing both a
-    // position and a createdAt come back in an unspecified order.
-    orderBy: (project, { asc }) => [
-      asc(project.position),
-      asc(project.createdAt),
-      asc(project.id),
-    ],
-  });
+  const projects = await listProjectsQuery(workspaceId, includeArchived);
 
   const statisticsByProject = await getProjectStatistics(
     workspaceId,

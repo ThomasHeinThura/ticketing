@@ -1,11 +1,10 @@
-import { and, eq } from "drizzle-orm";
 import type { Context, Next } from "hono";
 import { HTTPException } from "hono/http-exception";
-import db, { schema } from "../database";
 import {
   markShadowLegacyAuthorizationUnknown,
   setShadowLegacyAuthorization,
 } from "../permissions/shadow-context";
+import { getWorkspaceMembershipRole } from "./repository";
 
 /**
  * Require an actual workspace membership for routes whose contract requires membership in
@@ -24,16 +23,7 @@ export async function requireWorkspaceMembership(c: Context, next: Next) {
     });
   }
 
-  const [membership] = await db
-    .select({ role: schema.workspaceUserTable.role })
-    .from(schema.workspaceUserTable)
-    .where(
-      and(
-        eq(schema.workspaceUserTable.userId, userId),
-        eq(schema.workspaceUserTable.workspaceId, workspaceId),
-      ),
-    )
-    .limit(1);
+  const [membership] = await getWorkspaceMembershipRole(userId, workspaceId);
 
   if (!membership) {
     setShadowLegacyAuthorization(c, "denied");

@@ -1,6 +1,4 @@
-import { and, eq, gt } from "drizzle-orm";
 import { HTTPException } from "hono/http-exception";
-import db, { schema } from "../database";
 import { apiRouter, createRoute, jsonResponse, z } from "../openapi";
 import { setShadowLegacyAuthorization } from "../permissions/shadow-context";
 import {
@@ -8,6 +6,7 @@ import {
   requireSameOriginIssuer,
 } from "../utils/csrf-protection";
 import { requireSessionOnly } from "../utils/require-session-only";
+import { getActiveAgentSession } from "./repository";
 
 const csrfTokenResponse = z.object({
   token: z.string().min(1).max(2048),
@@ -58,18 +57,7 @@ export default apiRouter().openapi(route, async (c) => {
   ) {
     throw new HTTPException(401, { message: "Unauthorized" });
   }
-  const [active] = await db
-    .select({ id: schema.sessionTable.id })
-    .from(schema.sessionTable)
-    .where(
-      and(
-        eq(schema.sessionTable.id, session.id),
-        eq(schema.sessionTable.userId, userId),
-        eq(schema.sessionTable.portal, "agent"),
-        gt(schema.sessionTable.expiresAt, new Date()),
-      ),
-    )
-    .limit(1);
+  const [active] = await getActiveAgentSession(session.id, userId, new Date());
   if (!active) throw new HTTPException(401, { message: "Unauthorized" });
 
   setShadowLegacyAuthorization(c, "allowed");

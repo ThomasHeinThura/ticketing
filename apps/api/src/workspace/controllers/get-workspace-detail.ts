@@ -1,7 +1,5 @@
-import { eq } from "drizzle-orm";
 import { HTTPException } from "hono/http-exception";
-import db from "../../database";
-import { workspaceTable } from "../../database/schema";
+import { getWorkspaceDetailQuery } from "../repository";
 import getWorkspaceInvitations from "./get-workspace-invitations";
 import getWorkspaceMembers from "./get-workspace-members";
 
@@ -19,18 +17,7 @@ import getWorkspaceMembers from "./get-workspace-members";
  * leak.
  */
 async function getWorkspaceDetail(workspaceId: string) {
-  const [workspace] = await db
-    .select({
-      id: workspaceTable.id,
-      name: workspaceTable.name,
-      slug: workspaceTable.slug,
-      logo: workspaceTable.logo,
-      description: workspaceTable.description,
-      createdAt: workspaceTable.createdAt,
-    })
-    .from(workspaceTable)
-    .where(eq(workspaceTable.id, workspaceId))
-    .limit(1);
+  const [workspace] = await getWorkspaceDetailQuery(workspaceId);
 
   if (!workspace) {
     throw new HTTPException(404, { message: "Workspace not found" });

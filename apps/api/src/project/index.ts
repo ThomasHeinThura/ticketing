@@ -1,4 +1,7 @@
+import { and, eq, isNull } from "drizzle-orm";
 import { HTTPException } from "hono/http-exception";
+import db from "../database";
+import { projectTable } from "../database/schema";
 import {
   apiRouter,
   type BaseVariables,
@@ -36,6 +39,10 @@ import updatePrerequisiteCtrl from "./controllers/update-prerequisite";
 import updateProjectCtrl from "./controllers/update-project";
 import updateStakeholderCtrl from "./controllers/update-stakeholder";
 import {
+  getProjectConfigurationQuery,
+  getServiceCalendarByWorkspaceQuery,
+} from "./repository";
+import {
   documentLinkSchema,
   milestoneSchema,
   prerequisiteSchema,
@@ -59,9 +66,41 @@ import {
   updateMilestoneBody,
   updatePrerequisiteBody,
   updateProjectBody,
+  updateProjectHealthBody,
   updateStakeholderBody,
   workspaceIdQuery,
 } from "./schema";
+
+async function assertProjectCalendar(
+  workspaceId: string,
+  calendarId: string | null | undefined,
+) {
+  if (calendarId == null) return;
+  const [calendar] = await getServiceCalendarByWorkspaceQuery(
+    calendarId,
+    workspaceId,
+  );
+  if (!calendar)
+    throw new HTTPException(422, {
+      message: "service_calendar_must_belong_to_workspace",
+    });
+}
+
+function assertManagedServiceConfiguration(value: {
+  kind: "project" | "managed_service";
+  supportLevel: "L1" | "L2" | "L3" | null | undefined;
+  serviceCalendarId: string | null | undefined;
+}) {
+  if (
+    value.kind === "managed_service" &&
+    (!value.supportLevel || !value.serviceCalendarId)
+  ) {
+    throw new HTTPException(422, {
+      message:
+        "PR-9: managed services require a support level and service calendar",
+    });
+  }
+}
 
 const listProjectsRoute = createRoute({
   method: "get",
@@ -106,6 +145,9 @@ const createProjectRoute = createRoute({
     400: errorResponse("Invalid body, or workspace ID could not be determined"),
     403: errorResponse(
       "No workspace access, or missing project:create permission",
+    ),
+    422: errorResponse(
+      "PR-9 or same-workspace service calendar validation failed",
     ),
     409: errorResponse("That project slug is already taken"),
   },
@@ -189,7 +231,56 @@ const updateProjectRoute = createRoute({
     404: errorResponse(
       "Project doesn't exist or doesn't belong to the specified workspace",
     ),
+    422: errorResponse(
+      "PR-9 or same-workspace service calendar validation failed",
+    ),
     409: errorResponse("That project slug is already taken"),
+  },
+});
+
+const projectHealthSchema = z.object({
+  health: z.enum(["red", "amber", "green"]).nullable(),
+});
+
+const getProjectHealthRoute = createRoute({
+  method: "get",
+  operationId: "getProjectHealth",
+  path: "/{id}/health",
+  tags: ["Projects"],
+  summary: "Get project health",
+  middleware: [
+    workspaceAccess.fromProject("id", { requireProjectReach: true }),
+  ] as const,
+  request: { params: projectParam },
+  responses: {
+    200: jsonResponse("Project health", projectHealthSchema),
+    400: errorResponse("Unknown or unreachable project"),
+    404: errorResponse("Project not found"),
+  },
+});
+
+const updateProjectHealthRoute = createRoute({
+  method: "patch",
+  operationId: "updateProjectHealth",
+  path: "/{id}/health",
+  tags: ["Projects"],
+  summary: "Set project health",
+  middleware: [
+    workspaceAccess.fromProject(),
+    requireWorkspacePermission({ project: ["update"] }),
+  ] as const,
+  request: {
+    params: projectParam,
+    body: {
+      required: true,
+      content: { "application/json": { schema: updateProjectHealthBody } },
+    },
+  },
+  responses: {
+    200: jsonResponse("Updated project health", projectHealthSchema),
+    400: errorResponse("Invalid body or unknown project"),
+    403: errorResponse("Missing project:update permission"),
+    404: errorResponse("Project not found"),
   },
 });
 
@@ -641,10 +732,27 @@ const project = apiRouter<BaseVariables & { workspaceId: string }>()
     return c.json(projects, 200);
   })
   .openapi(createProjectRoute, async (c) => {
-    const { name, icon, slug } = c.req.valid("json");
+    const { name, icon, slug, kind, supportLevel, serviceCalendarId } =
+      c.req.valid("json");
     const workspaceId = c.get("workspaceId");
+    assertManagedServiceConfiguration({
+      kind,
+      supportLevel,
+      serviceCalendarId,
+    });
+    await assertProjectCalendar(workspaceId, serviceCalendarId);
     try {
-      const newProject = await createProjectCtrl(workspaceId, name, icon, slug);
+      const newProject = await createProjectCtrl(
+        workspaceId,
+        name,
+        icon,
+        slug,
+        {
+          kind,
+          supportLevel: supportLevel ?? null,
+          serviceCalendarId: serviceCalendarId ?? null,
+        },
+      );
       return c.json(newProject, 200);
     } catch (error) {
       if (error instanceof ProjectSlugTakenError) {
@@ -661,6 +769,29 @@ const project = apiRouter<BaseVariables & { workspaceId: string }>()
     const projectData = await getProjectCtrl(id, workspaceId);
     return c.json(projectData, 200);
   })
+  .openapi(getProjectHealthRoute, async (c) => {
+    const { id } = c.req.valid("param");
+    const row = await getProjectCtrl(id, c.get("workspaceId"));
+    return c.json(projectHealthSchema.parse({ health: row.health }), 200);
+  })
+  .openapi(updateProjectHealthRoute, async (c) => {
+    const { id } = c.req.valid("param");
+    const { health } = c.req.valid("json");
+    const [updated] = await db
+      .update(projectTable)
+      .set({ health })
+      .where(
+        and(
+          eq(projectTable.id, id),
+          eq(projectTable.workspaceId, c.get("workspaceId")),
+          isNull(projectTable.deletedAt),
+        ),
+      )
+      .returning({ health: projectTable.health });
+    if (!updated)
+      throw new HTTPException(404, { message: "Project not found" });
+    return c.json(projectHealthSchema.parse(updated), 200);
+  })
   .openapi(reorderProjectsRoute, async (c) => {
     const workspaceId = c.get("workspaceId");
     const { projects } = c.req.valid("json");
@@ -669,8 +800,25 @@ const project = apiRouter<BaseVariables & { workspaceId: string }>()
   })
   .openapi(updateProjectRoute, async (c) => {
     const { id } = c.req.valid("param");
-    const { name, icon, slug, description } = c.req.valid("json");
+    const body = c.req.valid("json");
+    const { name, icon, slug, description } = body;
     const workspaceId = c.get("workspaceId");
+    const [current] = await getProjectConfigurationQuery(id, workspaceId);
+    if (!current)
+      throw new HTTPException(404, { message: "Project not found" });
+    const configuration = {
+      kind: body.kind ?? (current.kind as "project" | "managed_service"),
+      supportLevel:
+        body.supportLevel === undefined
+          ? (current.supportLevel as "L1" | "L2" | "L3" | null)
+          : body.supportLevel,
+      serviceCalendarId:
+        body.serviceCalendarId === undefined
+          ? current.serviceCalendarId
+          : body.serviceCalendarId,
+    };
+    assertManagedServiceConfiguration(configuration);
+    await assertProjectCalendar(workspaceId, configuration.serviceCalendarId);
     try {
       const updatedProject = await updateProjectCtrl(
         id,
@@ -679,6 +827,7 @@ const project = apiRouter<BaseVariables & { workspaceId: string }>()
         slug,
         description,
         workspaceId,
+        configuration,
       );
       return c.json(updatedProject, 200);
     } catch (error) {

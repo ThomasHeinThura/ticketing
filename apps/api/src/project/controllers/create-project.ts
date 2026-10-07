@@ -1,4 +1,4 @@
-import { eq, max, sql } from "drizzle-orm";
+import { sql } from "drizzle-orm";
 import db from "../../database";
 import {
   columnTable,
@@ -7,6 +7,10 @@ import {
 } from "../../database/schema";
 import { isUniqueViolation } from "../../utils/is-unique-violation";
 import { seedProjectStates } from "../../utils/seed-project-states";
+import {
+  findProjectSlugClaimQuery,
+  getProjectMaxPositionQuery,
+} from "../repository";
 
 export const DEFAULT_PROJECT_COLUMNS = [
   { name: "To Do", slug: "to-do", position: 0, isFinal: false },
@@ -41,9 +45,14 @@ async function createProject(
   name: string,
   icon: string,
   slug: string,
+  configuration: {
+    kind: "project" | "managed_service";
+    supportLevel: "L1" | "L2" | "L3" | null;
+    serviceCalendarId: string | null;
+  },
 ) {
   try {
-    return await createProjectRow(workspaceId, name, icon, slug);
+    return await createProjectRow(workspaceId, name, icon, slug, configuration);
   } catch (error) {
     // Exact constraint names, not a substring match on `"slug"` (issue #269): this
     // transaction's own inserts can raise EITHER `project`'s `project_slug_unique`
@@ -68,6 +77,11 @@ async function createProjectRow(
   name: string,
   icon: string,
   slug: string,
+  configuration: {
+    kind: "project" | "managed_service";
+    supportLevel: "L1" | "L2" | "L3" | null;
+    serviceCalendarId: string | null;
+  },
 ) {
   return db.transaction(async (tx) => {
     // Serialize ordering writes per workspace: without this, two concurrent
@@ -85,20 +99,14 @@ async function createProjectRow(
     // here, ahead of the insert, for a clean 409 in the common case; the claim table's own
     // PRIMARY KEY (inserted below) is the real arbiter of the race between this check and
     // the write, same idiom `project_slug_unique` already uses one layer up.
-    const [existingClaim] = await tx
-      .select({ slug: projectSlugClaimTable.slug })
-      .from(projectSlugClaimTable)
-      .where(eq(projectSlugClaimTable.slug, slug))
-      .limit(1);
+    const [existingClaim] = await findProjectSlugClaimQuery(slug, tx);
     if (existingClaim) {
       throw new ProjectSlugTakenError(slug);
     }
 
     // New projects go to the bottom of the workspace's ordering.
-    const [{ maxPosition } = { maxPosition: null }] = await tx
-      .select({ maxPosition: max(projectTable.position) })
-      .from(projectTable)
-      .where(eq(projectTable.workspaceId, workspaceId));
+    const [{ maxPosition } = { maxPosition: null }] =
+      await getProjectMaxPositionQuery(workspaceId, tx);
 
     const [createdProject] = await tx
       .insert(projectTable)
@@ -107,6 +115,9 @@ async function createProjectRow(
         name,
         icon,
         slug,
+        kind: configuration.kind,
+        supportLevel: configuration.supportLevel,
+        serviceCalendarId: configuration.serviceCalendarId,
         position: maxPosition === null ? 0 : maxPosition + 1,
       })
       .returning();

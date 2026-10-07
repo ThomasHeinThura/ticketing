@@ -229,7 +229,10 @@ workspace_feature_flag  (workspace_id, feature_key, enabled)
 project_feature_flag    (project_id,   feature_key, enabled)
 ```
 
-Resolution: project → workspace → instance → built-in default.
+Resolution: project → workspace → instance → built-in default. All registered flags default
+off except `feature.scim` and `feature.import`, which default on; import is locked on at the
+instance level. Intake remains off until an administrator enables it through the feature
+settings API/UI. An instance lock short-circuits lower-level values in either direction.
 `locked` at instance level prevents lower levels from overriding — this is how a vendor
 sells tiers without shipping different images.
 
@@ -238,27 +241,27 @@ rendered; [configuration-reference.md](../05-operations/configuration-reference.
 every feature spec link here rather than restating it, and a CI test asserts the code enum
 equals this list.
 
-| Flag | Hides | Stage |
-| --- | --- | --- |
-| `feature.cycles` | Cycles/sprints | P5 |
-| `feature.modules` | Modules | P5 |
-| `feature.estimates` | Story points / estimates | P5 |
-| `feature.intake` | Intake queue, request types, catalogue | P2 |
-| `feature.sla` | SLA policies, service calendars, SLA badges, SLA reports | P2 |
-| `feature.approvals` | Approvals and CAB | P2 |
-| `feature.time_tracking` | Timesheets, time entries, timer | P5 |
-| `feature.cost_tracking` | Rates, budgets, cost reports | P5 |
-| `feature.knowledge_base` | KB, deflection | P5 |
-| `feature.service_catalogue` | Services, changes, freezes, releases | P5 |
-| `feature.customer_portal` | The portal router returns 404 and the portal host serves a disabled notice — a flag cannot unbind a hostname from Traefik | P3 |
-| `feature.reports` | Reports index, dashboards, tier 2/3 reports | P5 |
-| `feature.automations` | Automation rules (the engine is inherited from kaneo; flagged off until spec-aligned) | P4 |
-| `feature.timeline` · `feature.calendar` · `feature.pages` | Those views. *(`feature.timeline` was `feature.gantt`; the UI says Timeline everywhere)* | P5 |
-| `feature.mcp` | MCP-flagged API keys are refused with 404 | P4 |
-| `feature.scim` | The `/scim/v2/*` endpoint answers; off ⇒ 404 for every SCIM call. Default **on** from P3; a connection must also be enabled ([identity-provisioning.md](../03-features/identity-provisioning.md)) | P3 |
-| `feature.import` | Import runs and the import UI; locked on for administrators by default | P6 |
-| `feature.public_boards` | **Reserved, no code behind it.** kaneo's anonymous public boards are *removed* at fork ([inherited-features.md](inherited-features.md)); the flag exists so a future spec'd, security-reviewed re-implementation has its switch | reserved |
-| `feature.dev_links` | **Reserved, no code behind it.** Developer-tool linking (GitHub → GitLab → Gitea → Bitbucket → Azure DevOps) is future scope; kaneo's GitHub/Gitea routers are removed at fork | reserved |
+| Flag | Hides | Stage | Built-in default |
+| --- | --- | --- | --- |
+| `feature.cycles` | Cycles/sprints | P5 | `false` |
+| `feature.modules` | Modules | P5 | `false` |
+| `feature.estimates` | Story points / estimates | P5 | `false` |
+| `feature.intake` | Intake queue, request types, catalogue | P2 | `false` |
+| `feature.sla` | SLA policies, service calendars, SLA badges, SLA reports | P2 | `false` |
+| `feature.approvals` | Approval request creation and CAB requests; existing requests remain actionable per [approvals.md](../03-features/approvals.md) | P2 | `false` |
+| `feature.time_tracking` | Timesheets, time entries, timer | P5 | `false` |
+| `feature.cost_tracking` | Rates, budgets, cost reports | P5 | `false` |
+| `feature.knowledge_base` | KB, deflection | P5 | `false` |
+| `feature.service_catalogue` | Services, changes, freezes, releases | P5 | `false` |
+| `feature.customer_portal` | The portal router returns 404 and the portal host serves a disabled notice — a flag cannot unbind a hostname from Traefik | P3 | `false` |
+| `feature.reports` | Reports index, dashboards, tier 2/3 reports | P5 | `false` |
+| `feature.automations` | Automation rules (the engine is inherited from kaneo; flagged off until spec-aligned) | P4 | `false` |
+| `feature.timeline` · `feature.calendar` · `feature.pages` | Those views. *(`feature.timeline` was `feature.gantt`; the UI says Timeline everywhere)* | P5 | `false` |
+| `feature.mcp` | MCP-flagged API keys are refused with 404 | P4 | `false` |
+| `feature.scim` | The `/scim/v2/*` endpoint answers; off ⇒ 404 for every SCIM call. A connection must also be enabled ([identity-provisioning.md](../03-features/identity-provisioning.md)) | P3 | `true` |
+| `feature.import` | Import runs and the import UI; locked on for administrators by default | P6 | `true`, locked |
+| `feature.public_boards` | **Reserved, no code behind it.** kaneo's anonymous public boards are *removed* at fork ([inherited-features.md](inherited-features.md)); the flag exists so a future spec'd, security-reviewed re-implementation has its switch | reserved | `false` |
+| `feature.dev_links` | **Reserved, no code behind it.** Developer-tool linking (GitHub → GitLab → Gitea → Bitbucket → Azure DevOps) is future scope; kaneo's GitHub/Gitea routers are removed at fork | reserved | `false` |
 
 The UI reads flags from a single `useFeature('cycles')` hook. Navigation, routes and
 API endpoints all respect them — a disabled feature returns `404` from the API, not just
@@ -266,6 +269,10 @@ a hidden menu item. Resolution is `project → workspace → instance → built-
 with an instance `locked` flag short-circuiting the chain, over the three tables
 `instance_feature_flag`, `workspace_feature_flag`, `project_feature_flag`
 ([data model](data-model.md)).
+Settings APIs are the canonical read/write path. Instance changes require `instance:admin`;
+workspace/project changes require their respective settings capabilities. Writes are
+version-checked and audit atomically. A lower-level write against a locked instance flag
+returns `409`. Flag state never grants a permission.
 
 ## Branding
 

@@ -1,5 +1,6 @@
 import { and, eq } from "drizzle-orm";
 import db, { schema } from "../../database";
+import { getInvitationForRejection } from "../repository";
 import {
   InvitationNotFoundError,
   InvitationNotPendingError,
@@ -43,15 +44,7 @@ async function rejectInvitation(
   invitationId: string,
   callerEmail: string,
 ): Promise<RejectedInvitation> {
-  const [invitation] = await db
-    .select({
-      id: schema.invitationTable.id,
-      email: schema.invitationTable.email,
-      status: schema.invitationTable.status,
-    })
-    .from(schema.invitationTable)
-    .where(eq(schema.invitationTable.id, invitationId))
-    .limit(1);
+  const [invitation] = await getInvitationForRejection(db, invitationId);
   if (!invitation) {
     throw new InvitationNotFoundError();
   }

@@ -42,8 +42,9 @@ afterEach(async () => {
 
 /**
  * A throwaway copy of `apps/api/drizzle/` (migrations + `meta/` snapshots) plus a config
- * that points `schema` at the REAL, unmodified `schema.ts` and `out` at the copy. `generate`
- * only ever writes into `out`, so the real migration history is never touched.
+ * that points `schema` at the same REAL, unmodified source list as `drizzle.config.ts` and
+ * `out` at the copy. `generate` only ever writes into `out`, so the real migration history
+ * is never touched. Omitting migration/shadow schemas would create false DROP migrations.
  */
 async function scratchDrizzleConfig(): Promise<string> {
   scratchDir = await mkdtemp(join(tmpdir(), "schema-drift-251-"));
@@ -61,7 +62,11 @@ async function scratchDrizzleConfig(): Promise<string> {
     `import { defineConfig } from "drizzle-kit";
 export default defineConfig({
   out: "./drizzle",
-  schema: ${JSON.stringify(resolve(apiDir, "src/database/schema.ts"))},
+  schema: [
+    ${JSON.stringify(resolve(apiDir, "src/database/schema.ts"))},
+    ${JSON.stringify(resolve(apiDir, "src/database/migration-schema.ts"))},
+    ${JSON.stringify(resolve(apiDir, "src/permissions/shadow-schema.ts"))},
+  ],
   dialect: "postgresql",
   dbCredentials: { url: "postgresql://user:pass@localhost:5432/unused" },
 });

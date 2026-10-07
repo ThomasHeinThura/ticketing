@@ -97,11 +97,11 @@ calls `holder.reload()`. Adding, editing, disabling or deleting an identity conn
 publishes on the same channel — `identity_connection.changed` ([events.md](events.md)) is
 the event; `auth.reload` is the control message.
 
-**Pub/sub is an accelerator, not the source of truth.** Every replica also polls
-`greatest(max(instance_plugin_config.config_version) where plugin_id like 'auth.%',
-max(identity_connection.config_version))` every **10 seconds** and reloads when it
-differs from `holder.configVersion()`. Both maxima are in the polled value, so a connection
-change converges on exactly the same terms as a plugin change. A deployment with no Valkey converges within 10 s;
+**Pub/sub is an accelerator, not the source of truth.** Every replica also polls the stable
+set of `(row id, config_version)` pairs from both auth tables every **10 seconds** and reloads
+when that version vector changes. The row identity matters because each row owns an independent
+counter: one row's increment can otherwise be hidden by another row with a larger counter.
+A deployment with no Valkey converges within 10 s;
 a deployment with Valkey converges within a second and the poll is a no-op. No replica can
 silently run a stale configuration for longer than the poll interval — which is the
 property the two-replica-no-Valkey case previously lacked.

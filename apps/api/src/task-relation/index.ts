@@ -1,8 +1,6 @@
-import { eq } from "drizzle-orm";
 import type { Context, Next } from "hono";
 import { HTTPException } from "hono/http-exception";
 import db from "../database";
-import { projectTable, taskRelationTable, taskTable } from "../database/schema";
 import {
   apiRouter,
   type BaseVariables,
@@ -17,6 +15,7 @@ import { workspaceAccess } from "../utils/workspace-access-middleware";
 import createTaskRelation from "./controllers/create-task-relation";
 import deleteTaskRelation from "./controllers/delete-task-relation";
 import getTaskRelations from "./controllers/get-task-relations";
+import { findRelationSource, findTaskWorkspace } from "./repository";
 import {
   taskRelationSchema,
   taskRelationWithTasksListSchema,
@@ -28,12 +27,7 @@ import {
 } from "./schema";
 
 async function workspaceIdOfTask(taskId: string) {
-  const [task] = await db
-    .select({ workspaceId: projectTable.workspaceId })
-    .from(taskTable)
-    .innerJoin(projectTable, eq(taskTable.projectId, projectTable.id))
-    .where(eq(taskTable.id, taskId))
-    .limit(1);
+  const [task] = await findTaskWorkspace(db, taskId);
   return task?.workspaceId ?? null;
 }
 
@@ -98,11 +92,7 @@ async function scopeToRelation(c: Context, next: Next) {
   if (id) {
     rejectNulByte(id, "Task relation id");
   }
-  const [rel] = await db
-    .select({ sourceTaskId: taskRelationTable.sourceTaskId })
-    .from(taskRelationTable)
-    .where(eq(taskRelationTable.id, id ?? ""))
-    .limit(1);
+  const [rel] = await findRelationSource(db, id ?? "");
   if (!rel) {
     throw new HTTPException(404, { message: "Task relation not found" });
   }

@@ -18,10 +18,10 @@
  * `tests/api-integration/helpers/auth.ts`) is applied per dynamically-imported instance, not
  * the statically-imported one this file also uses for the "off" baseline.
  */
-import { randomUUID } from "node:crypto";
+import { createHash, randomUUID } from "node:crypto";
 import { and, eq } from "drizzle-orm";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import db from "../../apps/api/src/database";
+import db, { schema } from "../../apps/api/src/database";
 import type { createApp } from "../../apps/api/src/index";
 import {
   policyShadowEventTable,
@@ -33,6 +33,7 @@ import { resetTestDatabase } from "./helpers/database";
 import {
   createProjectFixture,
   createWorkspaceMember,
+  grantProjectRole,
   prepareAuthenticatedApiFixture,
 } from "./helpers/fixtures";
 
@@ -147,6 +148,16 @@ async function waitForShadowEvidence<T>(
     await new Promise((resolve) => setTimeout(resolve, 25));
   }
   throw new Error("shadow evidence was not written within 5 seconds");
+}
+
+function hashApiKey(key: string): string {
+  return createHash("sha256")
+    .update(key)
+    .digest()
+    .toString("base64")
+    .replace(/\+/g, "-")
+    .replace(/\//g, "_")
+    .replace(/=+$/, "");
 }
 
 beforeEach(async () => {
@@ -327,6 +338,132 @@ describe("shadow mode off (default): true no-op", () => {
     expect(events).toHaveLength(0);
     const tallies = await shadowTalliesFor(UPDATE_LABEL_ROUTE_KEY);
     expect(tallies).toHaveLength(0);
+  });
+});
+
+describe("API-key work-item export identity in shadow mode", () => {
+  it("records agreement for a scoped key exporting only currently reachable rows", {
+    timeout: 60_000,
+  }, async () => {
+    const owner = await createWorkspaceMember({ role: "owner" });
+    const reachable = await createProjectFixture({
+      workspaceId: owner.workspace.id,
+    });
+    const unreachable = await createProjectFixture({
+      workspaceId: owner.workspace.id,
+    });
+    for (const project of [reachable.project, unreachable.project]) {
+      await grantProjectRole(owner.user.id, project.id, [
+        "work_item:create",
+        "work_item:export",
+        "project:read",
+      ]);
+    }
+    const now = new Date();
+    const [type] = await db
+      .insert(schema.workItemTypeTable)
+      .values({
+        workspaceId: owner.workspace.id,
+        key: `type-${randomUUID()}`,
+        name: "Task",
+        category: "delivery",
+        createdAt: now,
+        updatedAt: now,
+      })
+      .returning();
+    const [template] = await db
+      .insert(schema.stateTemplateTable)
+      .values({
+        workspaceId: owner.workspace.id,
+        key: `state-${randomUUID()}`,
+        name: "Started",
+        group: "started",
+        createdAt: now,
+        updatedAt: now,
+      })
+      .returning();
+    if (!type || !template)
+      throw new Error("Shadow export fixture setup failed");
+    await db.insert(schema.stateTable).values([
+      ...[reachable.project.id, unreachable.project.id].map((projectId) => ({
+        projectId,
+        stateTemplateId: template.id,
+        isDefault: true,
+        createdAt: now,
+        updatedAt: now,
+      })),
+    ]);
+
+    const fresh = await createAppWithShadow("on");
+    fresh.mockUser(owner.user);
+    for (const [project, title] of [
+      [reachable.project, "Shadow reached export"],
+      [unreachable.project, "Shadow hidden export"],
+    ] as const) {
+      const created = await fresh.app.request(
+        `/api/projects/${project.id}/work-items`,
+        {
+          method: "POST",
+          headers: { "content-type": "application/json" },
+          body: JSON.stringify({ typeId: type.id, title }),
+        },
+      );
+      expect(created.status, await created.clone().text()).toBe(200);
+    }
+    const personRows = await db
+      .select({ id: schema.personTable.id })
+      .from(schema.personTable)
+      .where(eq(schema.personTable.userId, owner.user.id))
+      .limit(1);
+    const person = personRows[0];
+    if (!person) throw new Error("Shadow export owner person is missing");
+    await db
+      .delete(schema.membershipTable)
+      .where(
+        and(
+          eq(schema.membershipTable.personId, person.id),
+          eq(schema.membershipTable.scope, "project"),
+          eq(schema.membershipTable.scopeId, unreachable.project.id),
+        ),
+      );
+    const rawKey = `taskdesk_test_${randomUUID()}`;
+    await db.insert(schema.apikeyTable).values({
+      referenceId: owner.user.id,
+      userId: owner.user.id,
+      key: hashApiKey(rawKey),
+      name: "shadow work-item export key",
+      start: rawKey.slice(0, 12),
+      prefix: "taskdesk",
+      permissions: JSON.stringify({ work_item: ["export"] }),
+      createdAt: now,
+      updatedAt: now,
+    });
+
+    const response = await fresh.app.request("/api/work-items/export", {
+      method: "POST",
+      headers: {
+        authorization: `Bearer ${rawKey}`,
+        "content-type": "application/json",
+      },
+      body: JSON.stringify({
+        workspaceId: owner.workspace.id,
+        query: { entity: "work_item", columns: ["key", "title"] },
+      }),
+    });
+    expect(response.status, await response.clone().text()).toBe(200);
+    const csv = await response.text();
+    expect(csv).toContain("Shadow reached export");
+    expect(csv).not.toContain("Shadow hidden export");
+
+    const tally = await waitForShadowEvidence(async () => {
+      const rows = await shadowTalliesFor("POST /api/work-items/export");
+      return rows.find((row) => row.outcome === "agree");
+    });
+    expect(tally).toMatchObject({
+      routeKey: "POST /api/work-items/export",
+      outcome: "agree",
+      reasonCode: null,
+    });
   });
 });
 

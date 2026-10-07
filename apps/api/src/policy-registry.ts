@@ -32,6 +32,7 @@ import {
   type PolicyRegistry,
 } from "@taskdesk/permissions";
 import { activityPolicies } from "./activity/policy";
+import { approvalPolicies } from "./approval/policy";
 import { assetPolicies } from "./asset/policy";
 import { attachmentPolicies } from "./attachment/policy";
 import { auditPolicies } from "./audit/policy";
@@ -51,10 +52,13 @@ import { oauthPolicies } from "./oauth/policy";
 import { pendingActionPolicies } from "./pending-action/policy";
 import { projectPolicies } from "./project/policy";
 import { searchPolicies } from "./search/policy";
+import { serviceCalendarPolicies } from "./service-calendar/policy";
+import { slaPolicyPolicies } from "./sla-policy/policy";
 import { taskPolicies } from "./task/policy";
 import { taskRelationPolicies } from "./task-relation/policy";
 import { timeEntryPolicies } from "./time-entry/policy";
 import { userPolicies } from "./user/policy";
+import { viewPolicies } from "./view/policy";
 import { workItemPolicies } from "./work-item/policy";
 import { workflowPolicies } from "./workflow/policy";
 import { workflowRulePolicies } from "./workflow-rule/policy";
@@ -95,6 +99,69 @@ export const platformPolicies = {
     delegated: "better-auth",
     reason:
       "better-auth owns authentication; its endpoint set is the approved plugin list",
+  },
+
+  // SCIM is an explicitly delegated mount. Its middleware accepts only the dedicated
+  // per-connection bearer and establishes a fixed connection/tenant context.
+  "GET /scim/v2/ServiceProviderConfig": {
+    delegated: "scim",
+    reason: "SCIM bearer middleware authenticates the configured connection",
+  },
+  "GET /scim/v2/ResourceTypes": {
+    delegated: "scim",
+    reason: "SCIM bearer middleware authenticates the configured connection",
+  },
+  "GET /scim/v2/Schemas": {
+    delegated: "scim",
+    reason: "SCIM bearer middleware authenticates the configured connection",
+  },
+  "GET /scim/v2/Users": {
+    delegated: "scim",
+    reason: "SCIM bearer middleware authenticates the configured connection",
+  },
+  "GET /scim/v2/Users/{id}": {
+    delegated: "scim",
+    reason: "SCIM bearer middleware authenticates the configured connection",
+  },
+  "POST /scim/v2/Users": {
+    delegated: "scim",
+    reason: "SCIM bearer middleware authenticates the configured connection",
+  },
+  "PUT /scim/v2/Users/{id}": {
+    delegated: "scim",
+    reason: "SCIM bearer middleware authenticates the configured connection",
+  },
+  "PATCH /scim/v2/Users/{id}": {
+    delegated: "scim",
+    reason: "SCIM bearer middleware authenticates the configured connection",
+  },
+  "DELETE /scim/v2/Users/{id}": {
+    delegated: "scim",
+    reason: "SCIM bearer middleware authenticates the configured connection",
+  },
+  "GET /scim/v2/Groups": {
+    delegated: "scim",
+    reason: "SCIM bearer middleware authenticates the configured connection",
+  },
+  "GET /scim/v2/Groups/{id}": {
+    delegated: "scim",
+    reason: "SCIM bearer middleware authenticates the configured connection",
+  },
+  "POST /scim/v2/Groups": {
+    delegated: "scim",
+    reason: "SCIM bearer middleware authenticates the configured connection",
+  },
+  "PUT /scim/v2/Groups/{id}": {
+    delegated: "scim",
+    reason: "SCIM bearer middleware authenticates the configured connection",
+  },
+  "PATCH /scim/v2/Groups/{id}": {
+    delegated: "scim",
+    reason: "SCIM bearer middleware authenticates the configured connection",
+  },
+  "DELETE /scim/v2/Groups/{id}": {
+    delegated: "scim",
+    reason: "SCIM bearer middleware authenticates the configured connection",
   },
 
   // The websocket surface. The upgrade handler authenticates the request itself before the
@@ -273,6 +340,7 @@ export const POLICY_SOURCES = [
   },
   { name: "apps/api/src/comment/policy.ts", policies: commentPolicies },
   { name: "apps/api/src/activity/policy.ts", policies: activityPolicies },
+  { name: "apps/api/src/approval/policy.ts", policies: approvalPolicies },
   {
     name: "apps/api/src/canned-response/policy.ts",
     policies: cannedResponsePolicies,
@@ -300,6 +368,15 @@ export const POLICY_SOURCES = [
   { name: "apps/api/src/audit/policy.ts", policies: auditPolicies },
   { name: "apps/api/src/label/policy.ts", policies: labelPolicies },
   { name: "apps/api/src/asset/policy.ts", policies: assetPolicies },
+  {
+    name: "apps/api/src/service-calendar/policy.ts",
+    policies: serviceCalendarPolicies,
+  },
+  {
+    name: "apps/api/src/sla-policy/policy.ts",
+    policies: slaPolicyPolicies,
+  },
+  { name: "apps/api/src/view/policy.ts", policies: viewPolicies },
   { name: "apps/api/src/attachment/policy.ts", policies: attachmentPolicies },
   { name: "apps/api/src/workflow/policy.ts", policies: workflowPolicies },
 ];

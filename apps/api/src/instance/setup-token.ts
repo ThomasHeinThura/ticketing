@@ -2,6 +2,7 @@ import { createHash, randomBytes } from "node:crypto";
 import { and, eq, gt, isNull } from "drizzle-orm";
 import db from "../database";
 import { instanceSettingTable } from "../database/schema";
+import { getSetupCompletionRow } from "./repository";
 
 /**
  * Issue #18 — the setup-token flow specified in
@@ -39,16 +40,7 @@ function generateRawSetupToken(): string {
  * zero-user bootstrap window after the fact.
  */
 export async function isSetupCompleted(): Promise<boolean> {
-  const [row] = await db
-    .select({ setupCompletedAt: instanceSettingTable.setupCompletedAt })
-    .from(instanceSettingTable)
-    // #18 security review (F3): scoped explicitly to the one row this whole
-    // module means, on top of (not instead of) the table's own
-    // instance_setting_id_singleton CHECK constraint -- belt and suspenders,
-    // since a `LIMIT 1` with no WHERE returns whichever row Postgres happens
-    // to return first if a second one ever existed.
-    .where(eq(instanceSettingTable.id, SETUP_TOKEN_SINGLETON_ID))
-    .limit(1);
+  const [row] = await getSetupCompletionRow(SETUP_TOKEN_SINGLETON_ID);
   return row?.setupCompletedAt != null;
 }
 

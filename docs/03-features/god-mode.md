@@ -149,15 +149,18 @@ The most important screen. See [auth and identity](../01-architecture/auth-and-i
 - **Provisioning panel** per connection: OIDC group mappings use immutable group object ids
   with display-name snapshots; the separate SCIM panel holds endpoint URL, bearer token
   create / rotate / revoke (shown once; rotation invalidates the old token at once), allowed
-  resources, attribute mapping and SCIM group mappings. Every create/edit/enable validates
+  resources, the closed profile-only attribute-mapping editor and SCIM group mappings. Its
+  grammar and operation-bound writer are specified in the
+  [SCIM administration contract](../01-architecture/api-design.md#scim-administration-patch--issue-561-owner-contract).
+  Every create/edit/enable validates
   the connection portal and persisted organisation, target scope ownership, role side/rank,
   and forbidden capabilities. Every OIDC mapping create/edit/enable/disable is elevated,
   session-only and audited; its separate connection-scoped API uses a five-minute,
   single-use PA-15 operation binding. OIDC mapping selection/open state is represented in
-  the screen URL. Every SCIM administration PATCH is proposed as route-wide elevated and
-  session-only, but is not usable until issue [#561](https://github.com/ThomasHeinThura/ticketing/issues/561)
-  defines its strict DTO, parent-version CAS and dedicated PA-15 binding; a mounted write
-  fails closed with `403 step_up_unavailable` meanwhile. Disabling/changing an
+  the screen URL. Every SCIM administration PATCH is route-wide elevated, session-only and
+  bound to the strict [SCIM administration contract](../01-architecture/api-design.md#scim-administration-patch--issue-561-owner-contract),
+  parent-version CAS and dedicated PA-15 proof. A mounted route without the verifier fails
+  closed with `403 step_up_unavailable`. Disabling/changing an
   OIDC mapping retires only its grants and invalidates authority after
   commit. Re-enabling an OIDC mapping requires a later validated OIDC login through that
   connection with complete matching groups and current admission; SCIM cannot restore OIDC
@@ -251,6 +254,8 @@ inspectable. This is where "SMTP has been down for hours" is visible.
 Instance-wide feature flags, with a **lock** switch that prevents workspaces and projects
 from overriding. This is how editions are sold from one image. The flag list is
 [plugin-architecture.md § Feature toggles](../01-architecture/plugin-architecture.md#feature-toggles).
+The `GET/PATCH /api/instance/features` surface requires `instance:admin` and uses
+version-checked writes with an atomic audit record.
 
 ### Jobs
 
@@ -283,9 +288,70 @@ Which keys, how many calls, which tools, error rates, auto-disabled keys
 ### Users
 
 Every account on the instance, across organisations. Search, view, suspend, unsuspend,
-force sign-out, reset MFA (planned; unavailable until a factor adapter exists), delete
-(deactivate — people are never hard-deleted), export a person's data, anonymise a person,
-and **impersonate**.
+force sign-out, reset MFA, grant instance administrator, deactivate, export a person's data,
+anonymise a person, and **impersonate**.
+
+Person deactivation is a separate IP-15 lifecycle transition. It is requested as a server-owned
+pending action (`action = 'user_deactivation'`, `target_type = 'person'`) on
+`POST /api/instance/users/{id}/deactivate`; the request changes no account state. The server
+binds the target person id and route in the pending-action payload and sets
+`typed_name_step_up`. Approval requires the exact current account email and a PA-15 token
+bound to that pending action. In the execution transaction the server re-reads and locks the
+target person/user, confirms the same target id is active and the supplied email exactly
+matches the current email, re-evaluates the route's current `instance:admin` policy, and
+consumes the single-use step-up token. Any stale target, changed email, lost authority, or
+invalid proof fails closed without a lifecycle mutation. A successful action invokes IP-15
+with server-selected `end_memberships`; it revokes current sessions and all existing personal
+API keys, retires external and direct grants, recomputes effective membership, and preserves
+authored history. It never hard-deletes the person or user. SCIM retains its configured
+lifecycle policy; IP-16 reactivation does not restore retired grants. No last-administrator
+guardrail is introduced.
+
+The directory uses `GET /api/instance/users` with opaque cursor pagination (`limit` defaults
+to 50 and is capped at 200). `q` is trimmed and searched as a case-insensitive substring of
+name or email. Optional `side`, `active` and `organisationId` filters are exact matches.
+Results are ordered by account creation time descending, then user id descending; the cursor
+is bound to the normalized query and filters. The response is `{data, page:{nextCursor,
+hasMore}}` with no total count. Each `data` item contains only `id`, `name`, `email`,
+`emailVerified`, `createdAt`, `locale`, `isInstanceAdmin`, `isSuspended`,
+`suspensionExpiresAt`, `twoFactorEnabled`, and `person`. `person` is null for an unlinked
+account; otherwise it contains only `id`, `side`, `organisationId`, `organisationName`,
+`active`, and `isPlaceholder`. `isSuspended` reflects a current ban (not a ban whose expiry
+has passed). `GET /api/instance/users/{id}` returns the same allowlisted shape. Responses
+never include credentials, session identifiers, IP or user-agent data, raw auth roles, or
+ban reasons.
+
+Granting `instance:admin` remains available only after first-run setup is complete. A request
+made while setup is incomplete returns `409` with the current workflow reason; the grant
+transaction rechecks setup while holding the instance-admin serialization lock.
+
+Suspension is reversible and distinct from person deactivation. Suspending sets the existing
+`user.banned` fields, records a bounded reason and optional expiry, revokes all current
+sessions, and revokes all personal keys in the current native Better Auth `apikey` store.
+There is no separate MCP credential store in this implementation. Unsuspending clears the
+ban fields; it does not recreate sessions or keys. Deactivation sets `person.active = false` and follows
+`identity-provisioning.md` IP-15, including its membership and external-grant lifecycle.
+There is no God Mode unsuspend for a deactivated person; reactivation follows IP-16.
+Force sign-out deletes all current target sessions, including impersonation sessions, and
+does not change keys or account status. It is safe to repeat and reports only the count of
+revoked sessions.
+
+The suspension request is strict JSON `{ reason?: string, expiresAt?: string | null }`.
+When present, `reason` is trimmed, must be non-empty, and is limited to 500 Unicode
+codepoints. `expiresAt`, when a string, must be a valid ISO timestamp strictly later than
+the server's current time. Omission or `null` means an indefinite suspension. The reason is
+used only in the existing Better Auth ban field; it is never returned by the Users API or
+written to audit/security-alert payloads. Expired bans are reported as not currently
+suspended and do not trigger credential restoration.
+
+Granting `instance:admin` uses the recovery contract's existing eligibility and concurrency
+invariants: the target is an existing non-anonymous, unbanned user with exactly one active
+staff person. The operation changes only `user.role`, uses the shared promotion lock and
+re-reads eligibility while holding the user/person rows. Already-admin is an audited
+idempotent result. The browser operation requires a current agent session and one-use
+PA-15 step-up bound to the acting user/person/session, target id, exact route, and canonical
+request body. The grant, audit append, and durable security alerts commit in one transaction;
+email is not required by this route.
 
 ### Audit
 
@@ -316,6 +382,13 @@ Import runs and their history. See [import strategy](../06-data-import/import-st
   the server chooses the confirmation level, and for God Mode targets — organisations,
   identity connections, auth plugins, hard purge — that level is **typed exact name +
   step-up**. The client cannot lower it.
+- `GM-15` God Mode person deactivation uses the dedicated `user_deactivation` pending-action
+  kind (not a deletion). Its fixed target type is `person`, the route is
+  `POST /api/instance/users/{id}/deactivate`, and the one confirmation is
+  `typed_name_step_up`: the requester types the target's exact current account email and
+  supplies the pending-action-bound PA-15 token. The server revalidates current email,
+  active state, instance-admin authority, target id, and proof while executing the action.
+  It selects `end_memberships` for the administrative IP-15 lifecycle transition.
 
 **Impersonation**
 
@@ -414,7 +487,7 @@ POST   /api/instance/identity-connections/{id}/oidc-group-mappings instance:admi
 PATCH  /api/instance/identity-connections/{id}/oidc-group-mappings/{mappingId} instance:admin E (session-only; PA-15 operation-bound step-up)
 POST   /api/instance/identity-connections/{id}/test               instance:admin      (audited even unsaved)
 POST   /api/instance/identity-connections/{id}/scim               instance:admin  E
-PATCH  /api/instance/identity-connections/{id}/scim               instance:admin  E  (route-wide; unusable until strict DTO/CAS/dedicated PA-15 contract in issue #561)
+PATCH  /api/instance/identity-connections/{id}/scim               instance:admin  E  (route-wide, session-only, dedicated PA-15 contract; design only until implemented)
 POST   /api/instance/identity-connections/{id}/scim/rotate-token  instance:admin  E
 POST   /api/instance/identity-connections/{id}/scim/revoke-token  instance:admin  E
 POST   /api/instance/identity-connections/{id}/scim/test          instance:admin
@@ -424,9 +497,9 @@ GET    /api/instance/users                            instance:admin
 POST   /api/instance/users/{id}/suspend               instance:admin
 POST   /api/instance/users/{id}/unsuspend             instance:admin
 POST   /api/instance/users/{id}/sign-out              instance:admin
-POST   /api/instance/users/{id}/reset-mfa             instance:admin  E  (planned; unavailable until the factor adapter exists)
+POST   /api/instance/users/{id}/reset-mfa             instance:admin  E
 POST   /api/instance/users/{id}/grant-admin           instance:admin  E
-POST   /api/instance/users/{id}/deactivate            instance:admin
+POST   /api/instance/users/{id}/deactivate            instance:admin  session-only (creates `user_deactivation`; execution requires exact current email + PA-15)
 GET    /api/instance/users/{id}/export                instance:admin  E
 POST   /api/instance/users/{id}/anonymise             instance:admin  E
 POST   /api/instance/users/{id}/impersonate           instance:admin  E

@@ -1,6 +1,4 @@
-import { eq } from "drizzle-orm";
-import db from "../../database";
-import { workspaceTable, workspaceUserTable } from "../../database/schema";
+import { listUserWorkspacesQuery } from "../repository";
 
 /**
  * The caller's own workspaces -- and ONLY the caller's own. This is the
@@ -12,22 +10,7 @@ import { workspaceTable, workspaceUserTable } from "../../database/schema";
  * is a God Mode concern, not this route's.
  */
 async function getUserWorkspaces(userId: string) {
-  return db
-    .select({
-      id: workspaceTable.id,
-      name: workspaceTable.name,
-      slug: workspaceTable.slug,
-      logo: workspaceTable.logo,
-      description: workspaceTable.description,
-      createdAt: workspaceTable.createdAt,
-      role: workspaceUserTable.role,
-    })
-    .from(workspaceUserTable)
-    .innerJoin(
-      workspaceTable,
-      eq(workspaceUserTable.workspaceId, workspaceTable.id),
-    )
-    .where(eq(workspaceUserTable.userId, userId));
+  return listUserWorkspacesQuery(userId);
 }
 
 export default getUserWorkspaces;

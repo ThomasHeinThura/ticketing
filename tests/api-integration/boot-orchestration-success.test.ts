@@ -35,6 +35,39 @@ function randomSuffix(): string {
   return randomUUID().replaceAll("-", "").slice(0, 16);
 }
 
+async function clearPriorTestRows(connectionString: string): Promise<void> {
+  const databaseName = new URL(connectionString).pathname.replace(/^\//, "");
+  if (!databaseName.endsWith("_test")) {
+    throw new Error(
+      "Boot orchestration integration requires an isolated _test database",
+    );
+  }
+
+  const owner = new Client({ connectionString });
+  await owner.connect();
+  try {
+    const tables = await owner.query<{ table_name: string }>(
+      `SELECT table_name FROM information_schema.tables
+       WHERE table_schema = 'public' AND table_type = 'BASE TABLE'
+       ORDER BY table_name`,
+    );
+    if (tables.rows.length === 0) return;
+
+    const names = tables.rows
+      .map((row) => quoteIdentifier(row.table_name))
+      .join(", ");
+    await owner.query("BEGIN");
+    await owner.query("SET LOCAL session_replication_role = replica");
+    await owner.query(`TRUNCATE TABLE ${names} RESTART IDENTITY CASCADE`);
+    await owner.query("COMMIT");
+  } catch (error) {
+    await owner.query("ROLLBACK").catch(() => undefined);
+    throw error;
+  } finally {
+    await owner.end();
+  }
+}
+
 describe("boot orchestration (issue #296, S1) — runApiBootTasks succeeds as the app role", () => {
   let roleName: string | undefined;
   let originalDatabaseUrl: string | undefined;
@@ -99,6 +132,9 @@ describe("boot orchestration (issue #296, S1) — runApiBootTasks succeeds as th
     if (!originalDatabaseUrl) {
       throw new Error("TASKDESK_DATABASE_URL must be set for this test");
     }
+
+    // Keep this boot-path test isolated from legacy membership fixtures left by prior files.
+    await clearPriorTestRows(originalDatabaseUrl);
 
     roleName = `taskdesk_app_bootsuccess_${randomSuffix()}`;
     const password = randomHex64();

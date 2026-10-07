@@ -1,6 +1,10 @@
-import { eq, sql } from "drizzle-orm";
+import { sql } from "drizzle-orm";
 import db from "../database";
-import { columnTable, projectTable, taskTable } from "../database/schema";
+import { columnTable, taskTable } from "../database/schema";
+import {
+  listProjectColumnsForMigration,
+  listProjectsForColumnMigration,
+} from "./repository";
 
 const DEFAULT_COLUMNS = [
   { name: "To Do", slug: "to-do", position: 0, isFinal: false },
@@ -32,7 +36,7 @@ export const COLUMN_SEED_LOCK_NAMESPACE = 4_004;
 export async function migrateColumns() {
   console.log("🔄 Starting column migration...");
 
-  const projects = await db.select().from(projectTable);
+  const projects = await listProjectsForColumnMigration();
 
   if (projects.length === 0) {
     console.log("No projects found, skipping column migration");
@@ -48,13 +52,10 @@ export async function migrateColumns() {
         sql`SELECT pg_advisory_xact_lock(${COLUMN_SEED_LOCK_NAMESPACE}, hashtext(${project.id}))`,
       );
 
-      const projectColumns = await tx
-        .select({
-          id: columnTable.id,
-          slug: columnTable.slug,
-        })
-        .from(columnTable)
-        .where(eq(columnTable.projectId, project.id));
+      const projectColumns = await listProjectColumnsForMigration(
+        tx,
+        project.id,
+      );
 
       const map = new Map<string, string>(
         projectColumns.map((column) => [column.slug, column.id]),

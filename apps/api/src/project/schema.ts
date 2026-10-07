@@ -245,6 +245,9 @@ export const createProjectBody = z.object({
   workspaceId: z.string(),
   icon: z.string(),
   slug: z.string(),
+  kind: z.enum(["project", "managed_service"]).default("project"),
+  supportLevel: z.enum(["L1", "L2", "L3"]).nullable().optional(),
+  serviceCalendarId: nulSafeId.nullable().optional(),
 });
 
 export const updateProjectBody = z.object({
@@ -252,6 +255,13 @@ export const updateProjectBody = z.object({
   icon: z.string(),
   slug: z.string(),
   description: z.string(),
+  kind: z.enum(["project", "managed_service"]).optional(),
+  supportLevel: z.enum(["L1", "L2", "L3"]).nullable().optional(),
+  serviceCalendarId: nulSafeId.nullable().optional(),
+});
+
+export const updateProjectHealthBody = z.object({
+  health: z.enum(["red", "amber", "green"]).nullable(),
 });
 
 export const reorderProjectsBody = z.object({

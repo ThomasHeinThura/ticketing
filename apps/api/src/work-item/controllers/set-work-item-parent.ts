@@ -19,6 +19,11 @@ import { ancestorChain, descendantDepth } from "../hierarchy";
 import { WORK_ITEM_HIERARCHY_LOCK_NAMESPACE } from "../hierarchy-lock";
 import { publishWorkItemHint, recordWorkItemEvent } from "../native-event";
 import { runWithParentWriteDeadlockRetry } from "../parent-write-deadlock-retry";
+import {
+  findWorkItemProjectByKeyQuery,
+  lockParentByKeyQuery,
+  lockWorkItemByKeyQuery,
+} from "../repository";
 
 /**
  * `POST /api/work-items/{key}/parent` (`work_item:update`, required on both ends --
@@ -88,16 +93,7 @@ export async function setWorkItemParent(
   // taken on stale data would protect nothing, but there is no live path that makes this
   // one stale. The second read (the existing `.for("update")` select below, now running
   // AFTER the lock is held) is the one every check in this function is against.
-  const [pre] = await db
-    .select({ projectId: workItemTable.projectId })
-    .from(workItemTable)
-    .where(
-      and(
-        eq(workItemTable.key, key),
-        eq(workItemTable.workspaceId, workspaceId),
-      ),
-    )
-    .limit(1);
+  const [pre] = await findWorkItemProjectByKeyQuery(db, key, workspaceId);
 
   if (!pre) {
     throw new HTTPException(404, { message: "Work item not found" });
@@ -109,16 +105,7 @@ export async function setWorkItemParent(
         sql`SELECT pg_advisory_xact_lock(${WORK_ITEM_HIERARCHY_LOCK_NAMESPACE}, hashtext(${pre.projectId}))`,
       );
 
-      const [item] = await tx
-        .select()
-        .from(workItemTable)
-        .where(
-          and(
-            eq(workItemTable.key, key),
-            eq(workItemTable.workspaceId, workspaceId),
-          ),
-        )
-        .for("update");
+      const [item] = await lockWorkItemByKeyQuery(tx, key, workspaceId);
 
       // Issue #486: the same TOCTOU class #276 closed for `update-work-item.ts`.
       // `require-work-item-reach.ts` already checks `archivedAt`/`deletedAt` on this same
@@ -129,16 +116,7 @@ export async function setWorkItemParent(
       assertWorkItemStillLive(item);
       await assertProjectStillLive(tx, item.projectId);
 
-      const [parent] = await tx
-        .select()
-        .from(workItemTable)
-        .where(
-          and(
-            eq(workItemTable.key, parentKey),
-            eq(workItemTable.workspaceId, workspaceId),
-          ),
-        )
-        .for("share");
+      const [parent] = await lockParentByKeyQuery(tx, parentKey, workspaceId);
 
       assertWorkItemStillLive(parent, "Parent work item not found");
 

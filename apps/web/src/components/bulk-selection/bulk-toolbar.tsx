@@ -32,7 +32,6 @@ import {
   Fragment,
   type ReactNode,
   useCallback,
-  useEffect,
   useMemo,
   useState,
 } from "react";
@@ -42,6 +41,7 @@ import { useBulkOperations } from "@/hooks/mutations/task/use-bulk-operations";
 import useGetLabelsByWorkspace from "@/hooks/queries/label/use-get-labels-by-workspace";
 import useActiveWorkspace from "@/hooks/queries/workspace/use-active-workspace";
 import { useGetActiveWorkspaceUsers } from "@/hooks/queries/workspace-users/use-get-active-workspace-users";
+import { useBulkSelectionKeyboardShortcuts } from "@/hooks/use-bulk-selection-keyboard-shortcuts";
 import { useWorkspacePermission } from "@/hooks/use-workspace-permission";
 import { getColumnIcon } from "@/lib/column";
 import { getInitials } from "@/lib/get-initials";
@@ -66,11 +66,14 @@ type BulkActionGroup = {
   items: BulkActionItem[];
 };
 
-function BulkToolbar() {
+function BulkToolbar({
+  keyboardShortcutsEnabled = true,
+}: {
+  keyboardShortcutsEnabled?: boolean;
+}) {
   const { t } = useTranslation();
   const weekStartsOn = useUserPreferencesStore((state) => state.weekStartsOn);
-  const { selectedTaskIds, clearSelection, selectAll } =
-    useBulkSelectionStore();
+  const { selectedTaskIds, clearSelection } = useBulkSelectionStore();
   const selectedCount = selectedTaskIds.size;
 
   const priorityOptions = useMemo(
@@ -123,30 +126,7 @@ function BulkToolbar() {
     return Array.from(labelMap.values());
   }, [workspaceLabels]);
 
-  useEffect(() => {
-    const handleKeyDown = (e: KeyboardEvent) => {
-      const target = e.target as HTMLElement | null;
-      const isTypingContext = Boolean(
-        target?.closest(
-          "input, textarea, [contenteditable='true'], .ProseMirror",
-        ),
-      );
-
-      if ((e.metaKey || e.ctrlKey) && e.key === "a") {
-        if (isTypingContext) return;
-        e.preventDefault();
-        selectAll();
-      }
-
-      if (e.key === "Escape") {
-        e.preventDefault();
-        clearSelection();
-      }
-    };
-
-    document.addEventListener("keydown", handleKeyDown);
-    return () => document.removeEventListener("keydown", handleKeyDown);
-  }, [selectAll, clearSelection]);
+  useBulkSelectionKeyboardShortcuts(keyboardShortcutsEnabled);
 
   const handleMoveToBacklog = useCallback(async () => {
     try {

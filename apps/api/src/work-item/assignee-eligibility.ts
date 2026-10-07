@@ -1,7 +1,6 @@
 import { evaluateAssigneeEligibility } from "@taskdesk/domain";
-import { and, eq } from "drizzle-orm";
 import type db from "../database";
-import { membershipTable, personTable } from "../database/schema";
+import { findAssigneeEligibilityQuery } from "./repository";
 
 type DbOrTx = typeof db | Parameters<Parameters<typeof db.transaction>[0]>[0];
 
@@ -23,18 +22,11 @@ export async function resolveAssigneeEligibility(
   projectId: string,
   personId: string,
 ): Promise<ReturnType<typeof evaluateAssigneeEligibility>> {
-  const [roster] = await dbOrTx
-    .select({ active: personTable.active })
-    .from(membershipTable)
-    .innerJoin(personTable, eq(personTable.id, membershipTable.personId))
-    .where(
-      and(
-        eq(membershipTable.scope, "project"),
-        eq(membershipTable.scopeId, projectId),
-        eq(membershipTable.personId, personId),
-      ),
-    )
-    .limit(1);
+  const [roster] = await findAssigneeEligibilityQuery(
+    dbOrTx,
+    projectId,
+    personId,
+  );
 
   return evaluateAssigneeEligibility({
     onRoster: roster !== undefined,

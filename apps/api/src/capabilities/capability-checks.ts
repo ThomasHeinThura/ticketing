@@ -1,5 +1,5 @@
 /**
- * The 16 capability checks the client's `useWorkspacePermission` hook fans
+ * The 16 legacy capability checks the client's `useWorkspacePermission` hook fans
  * out, one HTTP round trip each, to the better-auth `organization()`
  * plugin's `has-permission` route
  * (`apps/web/src/hooks/use-workspace-permission.ts:15-32`). `GET

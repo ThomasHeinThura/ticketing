@@ -1,16 +1,17 @@
 import { and, eq, ne } from "drizzle-orm";
 import { HTTPException } from "hono/http-exception";
 import db from "../../database";
-import {
-  attachmentTable,
-  personTable,
-  workItemTable,
-} from "../../database/schema";
+import { attachmentTable } from "../../database/schema";
 import { recordWorkItemActivity } from "../../work-item/activity";
 import {
   assertProjectStillLive,
   assertWorkItemStillLive,
 } from "../../work-item/assert-work-item-live";
+import {
+  getAttachment,
+  getUploaderPerson,
+  lockWorkItemForShare,
+} from "../repository";
 
 export type DeleteAttachmentInput = {
   attachmentId: string;
@@ -37,17 +38,9 @@ export async function deleteAttachment(input: DeleteAttachmentInput) {
   const { attachmentId, workspaceId, workItemId, userId, actorId, actorType } =
     input;
 
-  const [person] = await db
-    .select({ id: personTable.id })
-    .from(personTable)
-    .where(eq(personTable.userId, userId))
-    .limit(1);
+  const [person] = await getUploaderPerson(db, userId);
 
-  const [attachment] = await db
-    .select()
-    .from(attachmentTable)
-    .where(eq(attachmentTable.id, attachmentId))
-    .limit(1);
+  const [attachment] = await getAttachment(db, attachmentId);
 
   if (
     !attachment ||
@@ -70,21 +63,11 @@ export async function deleteAttachment(input: DeleteAttachmentInput) {
   }
 
   const [updated] = await db.transaction(async (tx) => {
-    const [lockedWorkItem] = await tx
-      .select({
-        id: workItemTable.id,
-        projectId: workItemTable.projectId,
-        deletedAt: workItemTable.deletedAt,
-        archivedAt: workItemTable.archivedAt,
-      })
-      .from(workItemTable)
-      .where(
-        and(
-          eq(workItemTable.id, workItemId),
-          eq(workItemTable.workspaceId, workspaceId),
-        ),
-      )
-      .for("share");
+    const [lockedWorkItem] = await lockWorkItemForShare(
+      tx,
+      workItemId,
+      workspaceId,
+    );
     assertWorkItemStillLive(lockedWorkItem);
     await assertProjectStillLive(tx, lockedWorkItem.projectId);
 
@@ -143,11 +126,7 @@ export async function deleteAttachment(input: DeleteAttachmentInput) {
     // ownership). Re-check the current row and, if it's already deleted, treat it the same
     // idempotent no-op as the early check above -- not a 403, which would misreport a losing
     // racer's own valid delete as a permissions failure.
-    const [current] = await db
-      .select()
-      .from(attachmentTable)
-      .where(eq(attachmentTable.id, attachmentId))
-      .limit(1);
+    const [current] = await getAttachment(db, attachmentId);
     if (current?.state === "deleted") {
       return current;
     }

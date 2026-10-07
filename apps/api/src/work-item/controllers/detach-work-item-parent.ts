@@ -15,6 +15,7 @@ import {
 } from "../assert-work-item-live";
 import { publishWorkItemHint, recordWorkItemEvent } from "../native-event";
 import { runWithParentWriteDeadlockRetry } from "../parent-write-deadlock-retry";
+import { lockWorkItemByKeyQuery } from "../repository";
 
 /**
  * `DELETE /api/work-items/{key}/parent` (`work_item:update`, required on both ends,
@@ -48,16 +49,7 @@ export async function detachWorkItemParent(
   const { updated, oldParentId, changed, realtimeEvent } =
     await runWithParentWriteDeadlockRetry(() =>
       db.transaction(async (tx) => {
-        const [item] = await tx
-          .select()
-          .from(workItemTable)
-          .where(
-            and(
-              eq(workItemTable.key, key),
-              eq(workItemTable.workspaceId, workspaceId),
-            ),
-          )
-          .for("update");
+        const [item] = await lockWorkItemByKeyQuery(tx, key, workspaceId);
 
         // Issue #488: the same TOCTOU class #486 closed for `set-work-item-parent.ts`'s
         // subject-item re-read. `delete-work-item.ts` sets `deletedAt` without bumping

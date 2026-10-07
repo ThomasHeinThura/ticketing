@@ -1,8 +1,9 @@
-import { and, eq, isNull, sql } from "drizzle-orm";
+import { eq, sql } from "drizzle-orm";
 import { HTTPException } from "hono/http-exception";
 import db from "../../database";
 import { workItemTable } from "../../database/schema";
 import { assertProjectStillLive } from "../assert-work-item-live";
+import { listRankNeighboursQuery, lockWorkItemByKeyQuery } from "../repository";
 
 // #23's fourth slice: `POST /api/work-items/{key}/rank` (`work_item:rank`, plus reach).
 //
@@ -69,16 +70,7 @@ export async function rankWorkItem(
   }
 
   return db.transaction(async (tx) => {
-    const [target] = await tx
-      .select()
-      .from(workItemTable)
-      .where(
-        and(
-          eq(workItemTable.key, key),
-          eq(workItemTable.workspaceId, workspaceId),
-        ),
-      )
-      .for("update");
+    const [target] = await lockWorkItemByKeyQuery(tx, key, workspaceId);
 
     if (!target || target.archivedAt || target.deletedAt) {
       throw new HTTPException(404, { message: "Work item not found" });
@@ -93,19 +85,7 @@ export async function rankWorkItem(
     );
     const neighbours =
       neighbourIds.length > 0
-        ? await tx
-            .select({
-              id: workItemTable.id,
-              position: workItemTable.position,
-            })
-            .from(workItemTable)
-            .where(
-              and(
-                eq(workItemTable.projectId, target.projectId),
-                eq(workItemTable.stateId, target.stateId),
-                isNull(workItemTable.deletedAt),
-              ),
-            )
+        ? await listRankNeighboursQuery(tx, target.projectId, target.stateId)
         : [];
     const byId = new Map(neighbours.map((row) => [row.id, row.position]));
 

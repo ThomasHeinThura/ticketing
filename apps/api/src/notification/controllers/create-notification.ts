@@ -3,6 +3,7 @@ import db from "../../database";
 import { notificationTable } from "../../database/schema";
 import { publishEvent } from "../../events";
 import { deliverNotification } from "../../notification-preferences/delivery";
+import { getNotificationPreference } from "../repository";
 
 async function createNotification({
   userId,
@@ -33,11 +34,7 @@ async function createNotification({
             : null;
 
   if (preferenceKey) {
-    const preference = await db.query.userNotificationPreferenceTable.findFirst(
-      {
-        where: (table, { eq }) => eq(table.userId, userId),
-      },
-    );
+    const preference = await getNotificationPreference(userId);
 
     if (preference?.[preferenceKey] === false) {
       return null;

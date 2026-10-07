@@ -9,18 +9,20 @@ import {
   type StateTemplateId,
   type WorkflowTransition,
 } from "@taskdesk/domain";
-import { and, eq, isNull } from "drizzle-orm";
 import db from "../database";
 import {
-  membershipTable,
-  stateTable,
-  stateTemplateTable,
-  workflowTable,
-  workflowTransitionTable,
-  workflowVersionTable,
-  workItemTable,
-  workItemTypeTable,
-} from "../database/schema";
+  getWorkflowActiveVersionQuery,
+  getWorkflowCurrentStateQuery,
+  getWorkflowVersionQuery,
+  getWorkflowWorkItemQuery,
+  getWorkItemTypeWorkflowQuery,
+  listProjectAdoptedStatesQuery,
+  listProjectMembershipRolesQuery,
+  listUnarchivedChildrenStateTemplatesQuery,
+  listWorkflowTransitionsQuery,
+  listWorkspaceMembershipRolesQuery,
+  listWorkspaceStateTemplateGroupsQuery,
+} from "./repository";
 
 /**
  * Issue #442's shared loader: everything `POST /api/work-items/{key}/transition` and
@@ -73,38 +75,12 @@ export type WorkflowTransitionContext = {
 export async function loadWorkflowTransitionContext(
   workItemId: string,
 ): Promise<WorkflowTransitionContext | null> {
-  const [item] = await db
-    .select({
-      id: workItemTable.id,
-      key: workItemTable.key,
-      workspaceId: workItemTable.workspaceId,
-      projectId: workItemTable.projectId,
-      typeId: workItemTable.typeId,
-      stateId: workItemTable.stateId,
-      assigneeId: workItemTable.assigneeId,
-      parentId: workItemTable.parentId,
-      version: workItemTable.version,
-      resolvedAt: workItemTable.resolvedAt,
-    })
-    .from(workItemTable)
-    .where(eq(workItemTable.id, workItemId))
-    .limit(1);
+  const [item] = await getWorkflowWorkItemQuery(db, workItemId);
   if (!item) {
     return null;
   }
 
-  const [currentState] = await db
-    .select({
-      stateTemplateId: stateTable.stateTemplateId,
-      group: stateTemplateTable.group,
-    })
-    .from(stateTable)
-    .innerJoin(
-      stateTemplateTable,
-      eq(stateTable.stateTemplateId, stateTemplateTable.id),
-    )
-    .where(eq(stateTable.id, item.stateId))
-    .limit(1);
+  const [currentState] = await getWorkflowCurrentStateQuery(db, item.stateId);
   if (!currentState) {
     // A work item whose own `state_id` no longer resolves to a `state` row is a data
     // fault (the FK forbids it in normal operation) -- represented as "nothing to offer"
@@ -112,19 +88,12 @@ export async function loadWorkflowTransitionContext(
     return null;
   }
 
-  const [type] = await db
-    .select({
-      workflowId: workItemTypeTable.workflowId,
-      isChange: workItemTypeTable.isChange,
-    })
-    .from(workItemTypeTable)
-    .where(eq(workItemTypeTable.id, item.typeId))
-    .limit(1);
+  const [type] = await getWorkItemTypeWorkflowQuery(db, item.typeId);
 
-  const templateRows = await db
-    .select({ id: stateTemplateTable.id, group: stateTemplateTable.group })
-    .from(stateTemplateTable)
-    .where(eq(stateTemplateTable.workspaceId, item.workspaceId));
+  const templateRows = await listWorkspaceStateTemplateGroupsQuery(
+    db,
+    item.workspaceId,
+  );
   const templateGroups = new Map<StateTemplateId, StateGroup>(
     templateRows.map((row) => [
       asStateTemplateId(row.id),
@@ -132,15 +101,7 @@ export async function loadWorkflowTransitionContext(
     ]),
   );
 
-  const stateRows = await db
-    .select({ id: stateTable.id, stateTemplateId: stateTable.stateTemplateId })
-    .from(stateTable)
-    .where(
-      and(
-        eq(stateTable.projectId, item.projectId),
-        isNull(stateTable.archivedAt),
-      ),
-    );
+  const stateRows = await listProjectAdoptedStatesQuery(db, item.projectId);
   const adoptedStates: ProjectStateAdoption = new Map(
     stateRows.map((row) => [
       asStateTemplateId(row.stateTemplateId),
@@ -174,31 +135,17 @@ export async function loadWorkflowTransitionContext(
     return { ...base, activeVersion: null, transitions: [] };
   }
 
-  const [workflow] = await db
-    .select({ activeVersionId: workflowTable.activeVersionId })
-    .from(workflowTable)
-    .where(eq(workflowTable.id, type.workflowId))
-    .limit(1);
+  const [workflow] = await getWorkflowActiveVersionQuery(db, type.workflowId);
   if (!workflow?.activeVersionId) {
     return { ...base, activeVersion: null, transitions: [] };
   }
 
-  const [version] = await db
-    .select({
-      id: workflowVersionTable.id,
-      number: workflowVersionTable.number,
-    })
-    .from(workflowVersionTable)
-    .where(eq(workflowVersionTable.id, workflow.activeVersionId))
-    .limit(1);
+  const [version] = await getWorkflowVersionQuery(db, workflow.activeVersionId);
   if (!version) {
     return { ...base, activeVersion: null, transitions: [] };
   }
 
-  const transitionRows = await db
-    .select()
-    .from(workflowTransitionTable)
-    .where(eq(workflowTransitionTable.versionId, version.id));
+  const transitionRows = await listWorkflowTransitionsQuery(db, version.id);
 
   const transitions: WorkflowTransition[] = transitionRows.map((row) => ({
     id: row.id,
@@ -249,26 +196,12 @@ export async function resolveActorRoleIds(
   if (personId === null) {
     return [];
   }
-  const rows = await db
-    .select({ roleId: membershipTable.roleId })
-    .from(membershipTable)
-    .where(
-      and(
-        eq(membershipTable.personId, personId),
-        // `membership.scope_id` is polymorphic (project id or workspace id) -- this
-        // reads both scopes for this one person in one query rather than one per scope.
-        eq(membershipTable.scopeId, projectId),
-      ),
-    );
-  const workspaceRows = await db
-    .select({ roleId: membershipTable.roleId })
-    .from(membershipTable)
-    .where(
-      and(
-        eq(membershipTable.personId, personId),
-        eq(membershipTable.scopeId, workspaceId),
-      ),
-    );
+  const rows = await listProjectMembershipRolesQuery(db, personId, projectId);
+  const workspaceRows = await listWorkspaceMembershipRolesQuery(
+    db,
+    personId,
+    workspaceId,
+  );
   return [...new Set([...rows, ...workspaceRows].map((r) => r.roleId))];
 }
 
@@ -291,17 +224,10 @@ export async function resolveActorRoleIds(
 export async function buildGuardContext(
   ctx: WorkflowTransitionContext,
 ): Promise<GuardContext> {
-  const children = await db
-    .select({ stateTemplateId: stateTable.stateTemplateId })
-    .from(workItemTable)
-    .innerJoin(stateTable, eq(workItemTable.stateId, stateTable.id))
-    .where(
-      and(
-        eq(workItemTable.parentId, ctx.workItem.id),
-        isNull(workItemTable.archivedAt),
-        isNull(workItemTable.deletedAt),
-      ),
-    );
+  const children = await listUnarchivedChildrenStateTemplatesQuery(
+    db,
+    ctx.workItem.id,
+  );
   const allChildrenClosed = children.every((child) => {
     const group = ctx.templateGroups.get(
       asStateTemplateId(child.stateTemplateId),

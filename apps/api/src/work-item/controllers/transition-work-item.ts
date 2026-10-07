@@ -2,6 +2,7 @@ import {
   asStateTemplateId,
   type BlockReason,
   filterOfferableForType,
+  isGateSatisfied,
   legalTransitions,
   offerTransition,
   resolveAutomaticEffects,
@@ -9,15 +10,14 @@ import {
   resolveStateTemplateForProject,
   type TransitionOfferContext,
 } from "@taskdesk/domain";
-import { and, eq, inArray, isNull, sql } from "drizzle-orm";
+import { and, eq, isNull, sql } from "drizzle-orm";
 import { HTTPException } from "hono/http-exception";
+import { lockApprovalsForWorkItemTransition } from "../../approval/repository";
 import { appendAuditLog } from "../../audit/audit-writer";
 import db from "../../database";
 import {
   commentTable,
   scheduledTransitionTable,
-  stateTable,
-  stateTemplateTable,
   workItemTable,
 } from "../../database/schema";
 import { publishEvent } from "../../events";
@@ -28,6 +28,12 @@ import {
 } from "../assert-work-item-live";
 import { resolveAssigneeEligibility } from "../assignee-eligibility";
 import { publishWorkItemHint, recordWorkItemEvent } from "../native-event";
+import {
+  findCurrentTransitionStateQuery,
+  listTransitionChildStateGroupsQuery,
+  lockTransitionChildrenQuery,
+  lockTransitionWorkItemQuery,
+} from "../repository";
 import {
   loadWorkflowTransitionContext,
   resolveActorRoleIds,
@@ -53,8 +59,14 @@ export type TransitionedWorkItem = {
  * fails `AS-5`'s roster/active eligibility check blocks the whole transition the same way
  * an unsatisfied guard does, rather than silently writing an ineligible assignee.
  */
+export type PendingApprovalBlockDetail = {
+  approverName: string | null;
+  requestedAt: string;
+  expiresAt: string;
+};
+
 export type TransitionBlockReason =
-  | BlockReason
+  | (BlockReason & { pendingApprovals?: PendingApprovalBlockDetail[] })
   | {
       kind: "assignee";
       reasonCode: `assignee.${"not_on_roster" | "not_active"}`;
@@ -72,8 +84,8 @@ export class NoMatchingTransitionError extends Error {
 }
 
 /** Thrown for the 422 "the edge exists but is not available right now" case: a guard,
- * the (always-unsatisfied, interim) approval/CAB gate, a missing required note, or an
- * ineligible `set_assignee` target (B2). */
+ * an unsatisfied approval/CAB gate, a missing required note, or an ineligible
+ * `set_assignee` target (B2). */
 export class TransitionBlockedError extends Error {
   constructor(public readonly blockedBy: TransitionBlockReason[]) {
     super("This transition is not currently available");
@@ -202,12 +214,11 @@ function resolveSetAssigneePersonId(
  * with the same activity/audit/event shape `assign-work-item.ts`'s own write path uses
  * (`work_item.assigned`/`work_item.unassigned`), not a narrower inline copy.
  *
- * INTERIM, until #36 (approvals) lands: `requiresApproval`/`requiresCab` are read
- * correctly from the transition row, but `approvalSatisfied`/`cabSatisfied` are always
- * `false` when either flag is set -- there is no `approval` table yet to check against.
- * A transition carrying either flag can never complete through this route today. This is
- * a documented interim state (issue #442's own instruction), not a design decision made
- * here.
+ * APPROVAL GATES (AP-5, AP-15, AP-16): while the work item is locked, this route loads
+ * the approvals for that item and evaluates only rows whose transition id matches the
+ * selected immutable transition. The approval mutation routes take the same work-item
+ * lock first, so a decision or withdrawal cannot race the gate between its read and the
+ * state write. `requires_cab` evaluates the same policy against CAB approvals only.
  *
  * EFFECTS THIS FUNCTION CANNOT EXECUTE, DISCLOSED (no schema to write to yet):
  * `pause_sla`/`resume_sla` (no `sla_pause` table) and `set_field` (no custom-field/
@@ -324,17 +335,7 @@ export async function transitionWorkItem(
     db.transaction(async (tx) => {
       // B1: lock the row FIRST, before deciding anything guard-shaped. Every fact below is
       // read from THIS locked row, never from `ctx`'s earlier, unlocked read.
-      const [locked] = await tx
-        .select({
-          stateId: workItemTable.stateId,
-          assigneeId: workItemTable.assigneeId,
-          projectId: workItemTable.projectId,
-          deletedAt: workItemTable.deletedAt,
-          archivedAt: workItemTable.archivedAt,
-        })
-        .from(workItemTable)
-        .where(eq(workItemTable.id, ctx.workItem.id))
-        .for("update");
+      const [locked] = await lockTransitionWorkItemQuery(tx, ctx.workItem.id);
 
       // Issue #490: the same TOCTOU class #276/#486/#488 closed elsewhere.
       // `require-work-item-reach.ts` already checked `deletedAt`/`archivedAt` on this same
@@ -366,34 +367,17 @@ export async function transitionWorkItem(
       // the `stateId` this step reads back is the true, post-commit value; state templates
       // are effectively static reference data, so resolving THEIR group in a second,
       // unlocked query is safe.
-      const lockedChildren = await tx
-        .select({ id: workItemTable.id, stateId: workItemTable.stateId })
-        .from(workItemTable)
-        .where(
-          and(
-            eq(workItemTable.parentId, ctx.workItem.id),
-            isNull(workItemTable.archivedAt),
-            isNull(workItemTable.deletedAt),
-          ),
-        )
-        .for("share");
+      const lockedChildren = await lockTransitionChildrenQuery(
+        tx,
+        ctx.workItem.id,
+      );
       const childStateIds = [...new Set(lockedChildren.map((c) => c.stateId))];
       const childStateGroups =
         childStateIds.length === 0
           ? new Map<string, string>()
           : new Map(
               (
-                await tx
-                  .select({
-                    id: stateTable.id,
-                    group: stateTemplateTable.group,
-                  })
-                  .from(stateTable)
-                  .innerJoin(
-                    stateTemplateTable,
-                    eq(stateTable.stateTemplateId, stateTemplateTable.id),
-                  )
-                  .where(inArray(stateTable.id, childStateIds))
+                await listTransitionChildStateGroupsQuery(tx, childStateIds)
               ).map((row) => [row.id, row.group]),
             );
       const allChildrenClosed = lockedChildren.every((child) => {
@@ -418,9 +402,64 @@ export async function transitionWorkItem(
         cabSatisfied: false,
         hasNote,
       };
+      let approvalRows: Awaited<
+        ReturnType<typeof lockApprovalsForWorkItemTransition>
+      > = [];
+      if (match.requiresApproval || match.requiresCab) {
+        // The work-item row is already locked FOR UPDATE. Approval mutations take the
+        // same parent-first lock, so a concurrent decision/withdrawal cannot change the
+        // gate between this read and the transition write.
+        approvalRows = await lockApprovalsForWorkItemTransition(
+          tx,
+          ctx.workItem.id,
+        );
+        const approvals = approvalRows.map((row) => ({
+          ...row,
+          kind: row.kind as "customer" | "cab",
+          state: row.state as
+            | "pending"
+            | "approved"
+            | "rejected"
+            | "expired"
+            | "withdrawn",
+        }));
+        const approvalPolicy = match.approvalPolicy ?? "any";
+        offerContext.approvalSatisfied = match.requiresApproval
+          ? isGateSatisfied(approvals, {
+              transitionId: match.id,
+              policy: approvalPolicy,
+            })
+          : true;
+        offerContext.cabSatisfied = match.requiresCab
+          ? isGateSatisfied(approvals, {
+              transitionId: match.id,
+              kind: "cab",
+              policy: approvalPolicy,
+            })
+          : true;
+      }
       const offer = offerTransition(match, offerContext);
       if (!offer.available) {
-        throw new TransitionBlockedError(offer.blockedBy);
+        const blockedBy = offer.blockedBy.map((reason) => {
+          if (reason.kind !== "approval" && reason.kind !== "cab")
+            return reason;
+          const pendingApprovals = approvalRows
+            .filter(
+              (row) =>
+                row.transitionId === match.id &&
+                row.state === "pending" &&
+                (reason.kind !== "cab" || row.kind === "cab"),
+            )
+            .map((row) => ({
+              approverName: row.approverName,
+              requestedAt: row.createdAt.toISOString(),
+              expiresAt: row.expiresAt.toISOString(),
+            }));
+          return pendingApprovals.length > 0
+            ? { ...reason, pendingApprovals }
+            : reason;
+        });
+        throw new TransitionBlockedError(blockedBy);
       }
 
       // B2: a `set_assignee` target must pass the SAME roster/active eligibility check
@@ -485,11 +524,10 @@ export async function transitionWorkItem(
         // Defence in depth only -- the `FOR UPDATE` lock above already makes this
         // unreachable in practice, since nothing can change `state_id` between that lock
         // and this write without first taking the same lock.
-        const [current] = await tx
-          .select({ stateId: workItemTable.stateId })
-          .from(workItemTable)
-          .where(eq(workItemTable.id, ctx.workItem.id))
-          .limit(1);
+        const [current] = await findCurrentTransitionStateQuery(
+          tx,
+          ctx.workItem.id,
+        );
         throw new TransitionConflictError(current?.stateId ?? fromStateId);
       }
 

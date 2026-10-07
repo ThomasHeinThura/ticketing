@@ -1,17 +1,14 @@
 import { createHmac } from "node:crypto";
 import { sendNotificationEmail } from "@taskdesk/email";
-import { and, eq } from "drizzle-orm";
-import db from "../database";
-import {
-  notificationTable,
-  projectTable,
-  taskTable,
-  userNotificationPreferenceTable,
-  userNotificationWorkspaceRuleTable,
-  userTable,
-  workspaceTable,
-} from "../database/schema";
 import { assertPublicWebhookDestination } from "../utils/assert-public-destination";
+import {
+  getDeliveryWorkspaceRule,
+  getNotification,
+  getNotificationRecipient,
+  getPreference,
+  getTaskNotificationContext,
+  getWorkspaceNotificationContext,
+} from "./repository";
 import { decryptSecret } from "./secrets";
 
 const DEFAULT_OUTBOUND_FETCH_TIMEOUT_MS = 15_000;
@@ -227,23 +224,7 @@ async function resolveNotificationContext(notification: {
   }
 
   if (notification.resourceType === "task") {
-    const [task] = await db
-      .select({
-        taskId: taskTable.id,
-        taskTitle: taskTable.title,
-        projectId: projectTable.id,
-        projectName: projectTable.name,
-        workspaceId: workspaceTable.id,
-        workspaceName: workspaceTable.name,
-      })
-      .from(taskTable)
-      .innerJoin(projectTable, eq(taskTable.projectId, projectTable.id))
-      .innerJoin(
-        workspaceTable,
-        eq(projectTable.workspaceId, workspaceTable.id),
-      )
-      .where(eq(taskTable.id, notification.resourceId))
-      .limit(1);
+    const [task] = await getTaskNotificationContext(notification.resourceId);
 
     if (!task) {
       return null;
@@ -261,14 +242,9 @@ async function resolveNotificationContext(notification: {
   }
 
   if (notification.resourceType === "workspace") {
-    const [workspace] = await db
-      .select({
-        workspaceId: workspaceTable.id,
-        workspaceName: workspaceTable.name,
-      })
-      .from(workspaceTable)
-      .where(eq(workspaceTable.id, notification.resourceId))
-      .limit(1);
+    const [workspace] = await getWorkspaceNotificationContext(
+      notification.resourceId,
+    );
 
     if (!workspace) {
       return null;
@@ -398,9 +374,7 @@ async function sendWebhookNotification(input: {
 export async function deliverNotification(
   notificationId: string,
 ): Promise<void> {
-  const notification = await db.query.notificationTable.findFirst({
-    where: eq(notificationTable.id, notificationId),
-  });
+  const notification = await getNotification(notificationId);
 
   if (!notification) {
     return;
@@ -419,23 +393,13 @@ export async function deliverNotification(
     return;
   }
 
-  const [user] = await db
-    .select({
-      email: userTable.email,
-      name: userTable.name,
-      locale: userTable.locale,
-    })
-    .from(userTable)
-    .where(eq(userTable.id, notification.userId))
-    .limit(1);
+  const [user] = await getNotificationRecipient(notification.userId);
 
   if (!user) {
     return;
   }
 
-  const preference = await db.query.userNotificationPreferenceTable.findFirst({
-    where: eq(userNotificationPreferenceTable.userId, notification.userId),
-  });
+  const preference = await getPreference(notification.userId);
 
   if (!preference) {
     return;
@@ -448,15 +412,10 @@ export async function deliverNotification(
     webhookSecret: decryptSecret(preference.webhookSecret),
   };
 
-  const rule = await db.query.userNotificationWorkspaceRuleTable.findFirst({
-    where: and(
-      eq(userNotificationWorkspaceRuleTable.userId, notification.userId),
-      eq(userNotificationWorkspaceRuleTable.workspaceId, context.workspaceId),
-    ),
-    with: {
-      selectedProjects: true,
-    },
-  });
+  const rule = await getDeliveryWorkspaceRule(
+    notification.userId,
+    context.workspaceId,
+  );
 
   if (!rule?.isActive) {
     return;

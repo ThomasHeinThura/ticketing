@@ -277,17 +277,29 @@ export function evaluateApprovalDecision(input: ApprovalDecisionInput):
 export function evaluateApprovalWithdrawal(
   input: ApprovalWithdrawalInput,
 ): { ok: true } | { ok: false; reasons: ApprovalWithdrawalRefusalReason[] } {
+  const decision = evaluateApprovalWithdrawalDecision(input);
+  if (!decision.authorized || !decision.actionable) {
+    const reasons: ApprovalWithdrawalRefusalReason[] = [];
+    if (!decision.actionable && input.approval.state !== "pending") {
+      reasons.push("not_pending");
+    }
+    if (!decision.authorized) reasons.push("not_permitted");
+    return { ok: false, reasons };
+  }
+  return { ok: true };
+}
+
+/** Keeps actor authorization distinct from state actionability so callers can authorize
+ * before returning a terminal-state conflict without disclosing it to an unauthorized actor. */
+export function evaluateApprovalWithdrawalDecision(
+  input: ApprovalWithdrawalInput,
+): { authorized: boolean; actionable: boolean } {
   const { approval, actingPersonId, isInstanceAdmin } = input;
-  const reasons: ApprovalWithdrawalRefusalReason[] = [];
-
-  if (approval.state !== "pending") {
-    reasons.push("not_pending");
-  }
-  if (approval.requestedBy !== actingPersonId && !isInstanceAdmin) {
-    reasons.push("not_permitted");
-  }
-
-  return reasons.length === 0 ? { ok: true } : { ok: false, reasons };
+  const authorized = approval.requestedBy === actingPersonId || isInstanceAdmin;
+  return {
+    authorized,
+    actionable: authorized && approval.state === "pending",
+  };
 }
 
 // ---------------------------------------------------------------------------

@@ -27,10 +27,10 @@ prerequisite-based scope follows the [2026-09-28 gate-scope decision](../07-plan
 | Accept invitation | `/agent/invite` | route | P3 | ⬜ |
 | Workspace home (default dashboard) | `/agent` | route | P1 | ⬜ |
 | Inbox | `/agent/inbox` | route | P1 | ⬜ |
-| My work | `/agent/my-work` | route | P1 | ⬜ |
+| My work | `/agent/my-work` | route | P1 | 🟡 |
 | Triage | `/agent/triage` | route | P2 | ⬜ |
 | Command palette | — | overlay | P1 | ⬜ |
-| Pending action approval (every deletion — [pending-actions.md](../01-architecture/pending-actions.md)) | — | dialog | P1 | ⬜ |
+| Pending action approval (every deletion — [pending-actions.md](../01-architecture/pending-actions.md)) | — | dialog | P1 | 🟡 |
 | Global search results | `/agent/search` | route | P1 | ⬜ |
 | Not found (agent origin) | `*` | route | P0 | ⬜ |
 | Error boundary | — | overlay | P0 | ⬜ |
@@ -94,7 +94,7 @@ prerequisite-based scope follows the [2026-09-28 gate-scope decision](../07-plan
 | Dashboard | `/agent/dashboard` | route | P5 | ⬜ |
 | Dashboard editor | `/agent/dashboard/edit` | route | P5 | ⬜ |
 | Timesheet | `/agent/timesheet` | route | P5 | ⬜ |
-| Saved views index | `/agent/views` | route | P1 | ⬜ |
+| Saved views index | `/agent/views` | route | P1 | 🟡 |
 | Saved view | `/agent/views/{id}` | route | P1 | ⬜ |
 
 ## Agent — settings
@@ -105,7 +105,8 @@ prerequisite-based scope follows the [2026-09-28 gate-scope decision](../07-plan
 | Profile — appearance | `/agent/settings/profile/appearance` | route | P1 | ⬜ |
 | Profile — notifications | `/agent/settings/profile/notifications` | route | P4 | ⬜ |
 | Profile — security & sessions | `/agent/settings/profile/security` | route | P3 | ⬜ |
-| Profile — pending actions (API/MCP-originated deletions awaiting my approval) | `/agent/settings/profile/pending-actions` | route | P4 | ⬜ |
+| Profile — pending actions (my registered approvals, including God Mode person deactivation) | `/agent/settings/profile/pending-actions` | route | P4 | 🟡 |
+| Profile — pending action detail and approval | `/agent/settings/profile/pending-actions/{id}` | route | P4 | 🟡 |
 | Profile — API keys | `/agent/settings/profile/api-keys` | route | P4 | ⬜ |
 | Workspace — general | `/agent/settings` | route | P1 | ⬜ |
 | Workspace — terminology | `/agent/settings/terminology` | route | P4 | ⬜ |
@@ -118,9 +119,10 @@ prerequisite-based scope follows the [2026-09-28 gate-scope decision](../07-plan
 | Workspace — states | `/agent/settings/states` | route | P1 | ⬜ |
 | Workspace — workflows | `/agent/settings/workflows` | route | P2 | ⬜ |
 | Workflow editor | `/agent/settings/workflows/{id}` | route | P2 | ⬜ |
-| Workspace — SLA policies | `/agent/settings/sla-policies` | route | P2 | ⬜ |
-| SLA policy editor | `/agent/settings/sla-policies/{id}` | route | P2 | ⬜ |
-| Workspace — service calendars | `/agent/settings/calendars` | route | P2 | ⬜ |
+| Workspace — SLA policies | `/agent/settings/sla-policies` | route | P2 | 🟡 |
+| SLA policy editor | `/agent/settings/sla-policies/{id}` | route | P2 | 🟡 |
+| Workspace — service calendars | `/agent/settings/calendars` | route | P2 | 🟡 |
+| Service calendar editor | `/agent/settings/calendars/{id}` | route | P2 | 🟡 |
 | Workspace — request types | `/agent/settings/request-types` | route | P2 | ⬜ |
 | Request type editor / form builder | `/agent/settings/request-types/{id}` | route | P2 | ⬜ |
 | Workspace — custom fields (incl. sections) | `/agent/settings/custom-fields` | route | P4 | ⬜ |
@@ -170,7 +172,7 @@ prerequisite-based scope follows the [2026-09-28 gate-scope decision](../07-plan
 | MCP usage | `/agent/god-mode/mcp` | route | P4 | ⬜ |
 | Audit log | `/agent/god-mode/audit` | route | P2 | ⬜ |
 | Import runs | `/agent/god-mode/import` | route | P6 | ⬜ |
-| Users | `/agent/god-mode/users` | route | P4 | ⬜ |
+| Users | `/god-mode/users` | route | P4 | 🟡 |
 
 ## Portal
 
@@ -203,14 +205,14 @@ build if it drifts.
 
 | Stage | Screens |
 | --- | --- |
-| P0 Foundation | 7 |
+| P0 Foundation | 8 |
 | P1 Core work | 33 |
-| P2 Service desk | 18 |
+| P2 Service desk | 19 |
 | P3 Portal & identity | 21 |
 | P4 Governance | 29 |
 | P5 Insight & agile | 28 |
 | P6 Import | 2 |
-| **Total** | **138** |
+| **Total** | **140** |
 
 For comparison, v1 had roughly 25 screens, each at perhaps 60% quality. The target here is
 more screens at 100%, delivered a stage at a time — see

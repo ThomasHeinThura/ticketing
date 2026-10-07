@@ -1,17 +1,18 @@
-import { and, eq, sql } from "drizzle-orm";
+import { and, eq } from "drizzle-orm";
 import db, { schema } from "../../database";
 import {
   anyRoleIsOwner,
   roleGrantsOwner,
   workspaceMemberRoles,
 } from "../../utils/workspace-member-roles";
+import { getWorkspaceRoleQuery } from "../repository";
 import {
   CannotChangeOwnerRoleHereError,
   MemberNotFoundError,
   OwnerRoleNotAssignableHereError,
   WorkspaceRoleNotFoundError,
 } from "./workspace-membership-errors";
-import { WORKSPACE_MEMBERSHIP_LOCK_NAMESPACE } from "./workspace-membership-lock";
+import { lockWorkspaceRoleAssignment } from "./workspace-role-assignment-lock";
 
 /**
  * Change a member's assigned role.
@@ -61,9 +62,7 @@ async function updateWorkspaceMemberRole(
   }
 
   return db.transaction(async (tx) => {
-    await tx.execute(
-      sql`SELECT pg_advisory_xact_lock(${WORKSPACE_MEMBERSHIP_LOCK_NAMESPACE}, hashtext(${workspaceId}))`,
-    );
+    await lockWorkspaceRoleAssignment(tx, workspaceId);
 
     const targetRoles = await workspaceMemberRoles(tx, workspaceId, userId);
     if (targetRoles.length === 0) {
@@ -73,16 +72,7 @@ async function updateWorkspaceMemberRole(
       throw new CannotChangeOwnerRoleHereError();
     }
 
-    const [roleRow] = await tx
-      .select({ role: schema.workspaceRoleTable.role })
-      .from(schema.workspaceRoleTable)
-      .where(
-        and(
-          eq(schema.workspaceRoleTable.workspaceId, workspaceId),
-          eq(schema.workspaceRoleTable.role, role),
-        ),
-      )
-      .limit(1);
+    const [roleRow] = await getWorkspaceRoleQuery(tx, workspaceId, role);
     if (!roleRow) {
       throw new WorkspaceRoleNotFoundError(role);
     }

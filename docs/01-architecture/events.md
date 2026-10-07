@@ -26,7 +26,9 @@ interface DomainEvent<K extends EventKey, P> {
   kind: K;                  // one of the keys below
   occurredAt: string;       // ISO 8601, UTC
   actor: { type: 'person' | 'automation' | 'system' | 'api_key'; id: string | null; name: string };
-  scope: { organisationId?: string; workspaceId: string; projectId?: string };
+  scope:
+    | { organisationId?: string; workspaceId: string; projectId?: string }
+    | {};
   payload: P;               // per kind, below; always carries the entity's key and url
   causationId: string | null;   // the event that caused this one, if any
   depth: number;                // automation chain depth — AM-5 caps it at 5
@@ -38,6 +40,12 @@ The webhook envelope in [webhooks-and-api-keys.md](../03-features/webhooks-and-a
 is a projection of this: `id`, `event` (= `kind`), `occurredAt`, `instance`, `actor`,
 `data` (= `payload`). The internal-only fields (`causationId`, `depth`,
 `originAutomationId`) are never sent outward.
+
+Instance-scoped envelopes use an empty `scope`. Only `pending_action.requested`,
+`pending_action.decided`, `pending_action.executed`, and `identity.deprovisioned` may use it;
+all other event keys require a workspace scope. This lets person deactivation and its
+approval lifecycle remain instance-scoped even when the target has no workspace
+memberships. Instance-scoped events are not visible to workspace-scoped consumers.
 
 `actor.type` is the reason [`activity`](data-model.md) and [`audit_log`](data-model.md)
 carry `actor_type`: an automation acting, a scheduled job acting and an API key acting are
@@ -75,6 +83,14 @@ Columns: **A** — available as an automation trigger · **W** — deliverable b
 | `sla.met` | The **transition into a `completed`-group state** (`WF-17`) finds the goal satisfied before its due time. Not `sla-scan` — an item that has just met its goal has `resolved_at` set and is outside the scan's candidate set | — | ✅ | — | `metric`, `metAt`, `marginMinutes` |
 | `sla.missed` | The same transition finds the goal already past its due time — "closed after target" ([sla.md](../03-features/sla.md)). The `missed` half of the pair `sla.met` completes; without it the sixth SLA state fires nothing | — | ✅ | — | `metric`, `dueAt`, `missedByMinutes` |
 
+### Service calendars
+
+| Key | Emitted when | A | W | N | Payload |
+| --- | --- | :-: | :-: | :-: | --- |
+| `service_calendar.created` | A calendar is created; its event envelope is inserted into `outbox` in the same transaction | — | — | — | `calendarId`, `workspaceId`, `name`, `url` |
+| `service_calendar.updated` | A calendar is updated; its event envelope is inserted into `outbox` in the same transaction | — | — | — | `calendarId`, `workspaceId`, `name`, `changedFields: [name\|timezone\|windows\|holidays]`, `url` |
+| `service_calendar.deleted` | A service calendar is deleted after its pending-action approval rechecks that no project, SLA version, or work item references it; the event envelope is inserted into `outbox` in the same transaction | — | — | — | `calendarId`, `workspaceId`, `name`, `url` |
+
 ### Approvals
 
 | Key | Emitted when | A | W | N | Payload |
@@ -104,6 +120,20 @@ Columns: **A** — available as an automation trigger · **W** — deliverable b
 | `prerequisite.overdue` | The reminders job finds a blocking prerequisite past due | — | ✅ | ✅ | `prerequisiteId`, `dueDate` |
 | `budget.threshold_reached` | Actual + committed crosses 75 % or 90 % of planned | — | ✅ | ✅ | `budgetId`, `threshold`, `currency` |
 
+### Views
+
+| Key | Emitted when | A | W | N | Payload |
+| --- | --- | :-: | :-: | :-: | --- |
+| `saved_view.created` | A saved view is created (search-and-saved-views.md SV-14) | — | — | — | `savedViewId`, `workspaceId`, `visibility` |
+| `saved_view.updated` | A saved view's name, visibility, sharing, layout or query changes | — | — | — | `savedViewId`, `workspaceId` |
+| `saved_view.deleted` | A saved view is deleted | — | — | — | `savedViewId`, `workspaceId` |
+| `saved_view.pinned` | A person pins or unpins a view to their sidebar (SV-20) | — | — | — | `savedViewId`, `workspaceId`, `pinned` |
+
+Not yet an automation trigger, webhook event or notification source — nothing in
+[automations.md](../03-features/automations.md) or
+[webhooks-and-api-keys.md](../03-features/webhooks-and-api-keys.md) names a saved-view
+trigger today, so all three columns are `—` until one does.
+
 ### Workspace
 
 **Current canon, not inherited.** Unlike every `task.*` / `comment.*` key in the
@@ -121,11 +151,11 @@ it needs no rename and no migration.
 | --- | --- | :-: | :-: | :-: | --- |
 | `webhook.auto_disabled` | A webhook fails continuously for 24 h (`WH-7`) | — | — | ✅ | `webhookId`, `lastError` |
 | `api_key.auto_disabled` | A key exceeds its burst threshold (MCP edge case) | — | — | ✅ | `apiKeyId`, `reason` |
-| `pending_action.requested` | A deletion or destructive MCP call was requested and is awaiting human approval (`PA-2`) | — | — | ✅ (the requester, when `origin` is `api` or `mcp`) | `key` (= `pendingActionId`), `url` (`/agent/settings/profile/pending-actions/{id}`), `pendingActionId`, `action`, `origin`, `targetType`, `targetCount`, `expiresAt` |
+| `pending_action.requested` | A deletion, God Mode `user_deactivation`, or destructive MCP call was requested and is awaiting human approval (`PA-2`) | — | — | ✅ (the requester, when `origin` is `api` or `mcp`) | `key` (= `pendingActionId`), `url` (`/agent/settings/profile/pending-actions/{id}`), `pendingActionId`, `action`, `origin`, `targetType`, `targetCount`, `expiresAt` |
 | `pending_action.decided` | Approved, denied, cancelled, expired or invalidated (`PA-6`–`PA-9`) | — | ✅ | — | `key` (= `pendingActionId`), `url` (`/agent/settings/profile/pending-actions/{id}`), `pendingActionId`, `outcome: approved\|denied\|cancelled\|expired\|invalidated` |
 | `pending_action.executed` | The approved action ran, or failed (`PA-6` step 5) | ✅ | ✅ | ✅ (on failure, the requester) | `pendingActionId`, `action`, `targetIds`, `outcome: executed\|failed`, `error?` |
 | `identity.provisioned` | SCIM or JIT created or reactivated a person (`IP-10`, `IP-16`, `IP-19`) | — | ✅ | — | `identityConnectionId`, `personId`, `via: scim\|jit`, `organisationId?` |
-| `identity.deprovisioned` | SCIM `active=false` or `DELETE /Users/{id}` deactivated a person (`IP-15`) | — | ✅ | ✅ (instance administrators) | `identityConnectionId`, `personId`, `sessionsRevoked`, `keysRevoked`, `membershipsEnded` |
+| `identity.deprovisioned` | SCIM `active=false` / `DELETE /Users/{id}`, or the God Mode `user_deactivation` pending action deactivated a person (`IP-15`) | — | ✅ | ✅ (instance administrators) | `source: scim\|god_mode`, `identityConnectionId?`, `personId`, `sessionsRevoked`, `keysRevoked`, `membershipsEnded`; `identityConnectionId` is present only for SCIM |
 | `identity.request_denied` | A SCIM or OIDC request was refused — forbidden attribute, cross-organisation, failed auth (`IP-4`, `IP-14`, `IP-18`) | — | — | ✅ (instance administrators) | `identityConnectionId`, `reason`, `resource?` |
 | `identity_connection.changed` | A connection or its SCIM settings changed; a token was rotated or revoked (`IP-6`) | — | ✅ | ✅ (instance administrators) | `identityConnectionId`, `changes[]` (keys only, never values) |
 | `import.chunk_completed` | An `import-run` job finished one chunk ([background-jobs.md](background-jobs.md)); a progress frame on the `instance` WebSocket topic, never delivered outward | — | — | — | `importRunId`, `chunk`, `chunks`, `rowsDone`, `rowsTotal` |

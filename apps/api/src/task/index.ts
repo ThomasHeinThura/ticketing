@@ -2,7 +2,7 @@ import { eq } from "drizzle-orm";
 import type { MiddlewareHandler } from "hono";
 import { HTTPException } from "hono/http-exception";
 import db from "../database";
-import { assetTable, projectTable, workspaceTable } from "../database/schema";
+import { assetTable } from "../database/schema";
 import {
   apiRouter,
   type BaseVariables,
@@ -47,6 +47,10 @@ import updateTaskDueDate from "./controllers/update-task-due-date";
 import updateTaskPriority from "./controllers/update-task-priority";
 import updateTaskStatus from "./controllers/update-task-status";
 import updateTaskTitle from "./controllers/update-task-title";
+import {
+  findTaskAssetByObjectKeyQuery,
+  findTaskAssetContextQuery,
+} from "./repository";
 import {
   boardSchema,
   bulkResultSchema,
@@ -868,14 +872,7 @@ const task = apiRouter<BaseVariables & { workspaceId: string }>()
                 : "Invalid image upload request",
           });
         }
-        const [context] = await tx
-          .select({ workspaceId: workspaceTable.id })
-          .from(projectTable)
-          .innerJoin(
-            workspaceTable,
-            eq(projectTable.workspaceId, workspaceTable.id),
-          )
-          .where(eq(projectTable.id, task.projectId));
+        const [context] = await findTaskAssetContextQuery(tx, task.projectId);
         if (!context)
           throw new HTTPException(404, { message: "Task not found" });
         return createTaskImageUploadUrl({
@@ -918,14 +915,7 @@ const task = apiRouter<BaseVariables & { workspaceId: string }>()
               : "Invalid image upload request",
         });
       }
-      const [context] = await tx
-        .select({ workspaceId: workspaceTable.id })
-        .from(projectTable)
-        .innerJoin(
-          workspaceTable,
-          eq(projectTable.workspaceId, workspaceTable.id),
-        )
-        .where(eq(projectTable.id, task.projectId));
+      const [context] = await findTaskAssetContextQuery(tx, task.projectId);
       if (!context) throw new HTTPException(404, { message: "Task not found" });
       if (
         !assertTaskImageKeyMatchesContext(normalizedKey, {
@@ -940,11 +930,10 @@ const task = apiRouter<BaseVariables & { workspaceId: string }>()
         });
       }
 
-      const [existingAsset] = await tx
-        .select({ id: assetTable.id })
-        .from(assetTable)
-        .where(eq(assetTable.objectKey, normalizedKey))
-        .limit(1);
+      const [existingAsset] = await findTaskAssetByObjectKeyQuery(
+        tx,
+        normalizedKey,
+      );
       const values = {
         workspaceId: context.workspaceId,
         projectId: task.projectId,

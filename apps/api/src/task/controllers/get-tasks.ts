@@ -1,26 +1,16 @@
-import {
-  and,
-  asc,
-  desc,
-  eq,
-  gte,
-  inArray,
-  isNull,
-  lte,
-  type SQL,
-  sql,
-} from "drizzle-orm";
+import { and, asc, desc, eq, gte, lte, type SQL, sql } from "drizzle-orm";
 import { HTTPException } from "hono/http-exception";
 import db from "../../database";
-import {
-  columnTable,
-  externalLinkTable,
-  labelTable,
-  projectTable,
-  taskTable,
-  userTable,
-} from "../../database/schema";
+import { taskTable } from "../../database/schema";
 import { rejectNulByte } from "../../utils/reject-nul-byte";
+import {
+  countTasksQuery,
+  findLiveProjectQuery,
+  listTaskColumnsQuery,
+  listTaskExternalLinksQuery,
+  listTaskLabelsForTasksQuery,
+  listTaskRowsQuery,
+} from "../repository";
 
 type GetTasksOptions = {
   assigneeId?: string;
@@ -71,11 +61,7 @@ function buildOrderBy(
 }
 
 async function getTasks(projectId: string, options: GetTasksOptions = {}) {
-  const project = await db.query.projectTable.findFirst({
-    // #187: a soft-deleted project is treated as gone everywhere in ordinary use,
-    // matching `get-project.ts`'s convention.
-    where: and(eq(projectTable.id, projectId), isNull(projectTable.deletedAt)),
-  });
+  const project = await findLiveProjectQuery(db, projectId);
 
   if (!project) {
     throw new HTTPException(404, {
@@ -121,66 +107,26 @@ async function getTasks(projectId: string, options: GetTasksOptions = {}) {
     options.sortOrder ?? "asc",
   );
 
-  const [taskCount] = await db
-    .select({ count: sql<number>`count(*)` })
-    .from(taskTable)
-    .where(whereClause);
+  const [taskCount] = await countTasksQuery(db, whereClause);
 
   const total = Number(taskCount?.count ?? 0);
 
-  const taskSelection = {
-    id: taskTable.id,
-    title: taskTable.title,
-    number: taskTable.number,
-    description: taskTable.description,
-    status: taskTable.status,
-    priority: taskTable.priority,
-    startDate: taskTable.startDate,
-    dueDate: taskTable.dueDate,
-    position: taskTable.position,
-    createdAt: taskTable.createdAt,
-    version: taskTable.version,
-    userId: taskTable.userId,
-    assigneeName: userTable.name,
-    assigneeId: userTable.id,
-    assigneeImage: userTable.image,
-    projectId: taskTable.projectId,
-  };
-
-  const query = db
-    .select(taskSelection)
-    .from(taskTable)
-    .leftJoin(userTable, eq(taskTable.userId, userTable.id))
-    .leftJoin(projectTable, eq(taskTable.projectId, projectTable.id))
-    .where(whereClause)
-    .orderBy(orderByClause);
-
-  const paginatedTasks = usePagination
-    ? await query.limit(pageSize).offset(offset)
-    : await query;
+  const paginatedTasks = await listTaskRowsQuery(
+    db,
+    whereClause,
+    orderByClause,
+    usePagination,
+    pageSize,
+    offset,
+  );
 
   const taskIds = paginatedTasks.map((task) => task.id);
 
   const labelsData =
-    taskIds.length > 0
-      ? await db
-          .select({
-            id: labelTable.id,
-            name: labelTable.name,
-            color: labelTable.color,
-            taskId: labelTable.taskId,
-          })
-          .from(labelTable)
-          .where(inArray(labelTable.taskId, taskIds))
-      : [];
+    taskIds.length > 0 ? await listTaskLabelsForTasksQuery(db, taskIds) : [];
 
   const externalLinksData =
-    taskIds.length > 0
-      ? await db
-          .select()
-          .from(externalLinkTable)
-          .where(inArray(externalLinkTable.taskId, taskIds))
-      : [];
+    taskIds.length > 0 ? await listTaskExternalLinksQuery(db, taskIds) : [];
 
   const taskLabelsMap = new Map<
     string,
@@ -230,11 +176,7 @@ async function getTasks(projectId: string, options: GetTasksOptions = {}) {
     });
   }
 
-  const projectColumns = await db
-    .select()
-    .from(columnTable)
-    .where(eq(columnTable.projectId, projectId))
-    .orderBy(asc(columnTable.position));
+  const projectColumns = await listTaskColumnsQuery(db, projectId);
 
   const columns = projectColumns.map((column) => ({
     id: column.slug,

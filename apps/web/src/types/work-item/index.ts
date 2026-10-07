@@ -10,10 +10,8 @@ import type { InferResponseType } from "hono/client";
  * no resolved name" gaps this comment used to flag are closed: `stateName`/
  * `stateCategory` are always present, and `assigneeName` is `null` exactly when
  * `assigneeId` is `null` OR the assignee has no linked display name (`response.ts`'s own
- * comment). This screen (`components/work-item/work-item-list.tsx`) does not switch its
- * State/Assignee columns over to the resolved names in this change -- out of scope here,
- * left for a follow-up -- it only needed this type to keep compiling against the new
- * envelope.
+ * comment). The list validates both resolved names at its response boundary and marks
+ * malformed names unavailable while preserving the API's valid null assignee semantics.
  */
 export type WorkItem = InferResponseType<
   (typeof client)["projects"][":projectId"]["work-items"]["$get"],
@@ -55,7 +53,13 @@ const VALID_PRIORITIES: ReadonlySet<string> = new Set([
  * field -- a key whose trailing number doesn't match `row.number` is exactly as
  * untrustworthy as one with no trailing number at all.
  */
-export type WorkItemField = "key" | "title" | "priority" | "dueDate";
+export type WorkItemField =
+  | "key"
+  | "title"
+  | "priority"
+  | "dueDate"
+  | "stateName"
+  | "assigneeName";
 
 export type WorkItemRow = WorkItem & {
   unavailableFields: WorkItemField[];
@@ -118,12 +122,24 @@ export function parseWorkItemRow(raw: WorkItem): WorkItemRow {
   const validDueDate = hasValidDueDate(raw.dueDate);
   if (!validDueDate) unavailableFields.push("dueDate");
 
+  const validStateName =
+    typeof raw.stateName === "string" && raw.stateName.trim().length > 0;
+  if (!validStateName) unavailableFields.push("stateName");
+
+  const validAssigneeName =
+    raw.assigneeName === null ||
+    (typeof raw.assigneeName === "string" &&
+      raw.assigneeName.trim().length > 0);
+  if (!validAssigneeName) unavailableFields.push("assigneeName");
+
   return {
     ...raw,
     key: validKey ? raw.key : "",
     title: validTitle ? raw.title : "",
     priority: validPriority ? raw.priority : null,
     dueDate: validDueDate ? raw.dueDate : null,
+    stateName: validStateName ? raw.stateName : "",
+    assigneeName: validAssigneeName ? raw.assigneeName : null,
     unavailableFields,
   };
 }

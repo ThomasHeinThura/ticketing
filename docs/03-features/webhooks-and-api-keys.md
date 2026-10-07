@@ -165,6 +165,15 @@ does with a webhook is build a link back.
   them, rather than off the flag. The flag remains useful for the ceilings, the "Use with an AI
   agent" UX, the untrusted-content warning and the audit trail; it is not relied on to keep
   anyone out. *Decided 2026-09-06 (Claude Code, reversible).*
+
+  **Self-row ownership is not a write opt-in.** Until a per-user resource has an explicitly
+  registered API-key capability and scope, its self-only mutations require a browser session.
+  This includes creating/marking/deleting in-app notifications, changing notification
+  preferences or workspace rules, and uploading/deleting the caller's avatar. Their `self`
+  route policy continues to constrain whose row is touched; it does not grant a key mutation
+  right. Read-only self routes remain available under the key's stored read capability subset.
+  Reopening these writes requires a separate capability and policy decision, not an arbitrary
+  stored permission string. *Approved by Thomas 2026-10-06; see decision log.*
 - `AK-10` **A service key can never be an MCP key** — `CHECK (NOT is_mcp OR person_id IS
   NOT NULL)`. An MCP key is always a personal key owned by a named human (`MC-20`, `MC-21`).
 - `AK-12` **Renaming or removing a capability is a two-phase change, because capability names

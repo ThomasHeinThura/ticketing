@@ -1,15 +1,16 @@
-import { and, eq } from "drizzle-orm";
+import { eq } from "drizzle-orm";
 import { HTTPException } from "hono/http-exception";
 import db from "../../database";
-import {
-  personTable,
-  watcherTable,
-  workItemTable,
-} from "../../database/schema";
+import { watcherTable } from "../../database/schema";
 import {
   assertProjectStillLive,
   assertWorkItemStillLive,
 } from "../assert-work-item-live";
+import {
+  findPersonByUserIdQuery,
+  findWatcherQuery,
+  findWorkItemForShareQuery,
+} from "../repository";
 
 // #23's fourth slice: `POST`/`DELETE /api/work-items/{key}/watch` (`work_item:read` --
 // deliberate, `work-items.md` § Permissions: "WI-28 already lets anyone with read access
@@ -60,20 +61,14 @@ async function resolveCallerPersonAndItem(
   workspaceId: string,
   userId: string,
 ) {
-  const [item] = await tx
-    .select()
-    .from(workItemTable)
-    .where(eq(workItemTable.key, key))
-    .for("share");
+  const [item] = await findWorkItemForShareQuery(tx, key);
   if (!item || item.workspaceId !== workspaceId) {
     throw new HTTPException(404, { message: "Work item not found" });
   }
   assertWorkItemStillLive(item);
   await assertProjectStillLive(tx, item.projectId);
 
-  const person = await tx.query.personTable.findFirst({
-    where: eq(personTable.userId, userId),
-  });
+  const person = await findPersonByUserIdQuery(tx, userId);
   if (!person) {
     throw new HTTPException(400, {
       message: "No person profile for this account -- cannot watch a work item",
@@ -127,16 +122,7 @@ export async function unwatchWorkItem(
       userId,
     );
 
-    const [existing] = await tx
-      .select()
-      .from(watcherTable)
-      .where(
-        and(
-          eq(watcherTable.workItemId, item.id),
-          eq(watcherTable.personId, person.id),
-        ),
-      )
-      .limit(1);
+    const [existing] = await findWatcherQuery(tx, item.id, person.id);
 
     if (!existing) {
       // Never watching: idempotent no-op.

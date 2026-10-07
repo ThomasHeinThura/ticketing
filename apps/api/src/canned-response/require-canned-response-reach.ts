@@ -1,9 +1,8 @@
-import { eq } from "drizzle-orm";
 import type { Context, Next } from "hono";
 import { HTTPException } from "hono/http-exception";
-import db, { schema } from "../database";
 import { rejectNulByte } from "../utils/reject-nul-byte";
 import { validateWorkspaceAccess } from "../utils/validate-workspace-access";
+import { getCannedResponseWorkspaceQuery } from "./repository";
 
 /**
  * `PATCH|DELETE /api/canned-responses/{id}` middleware -- resolves the row's own
@@ -26,11 +25,7 @@ export function requireCannedResponseReach(idKey = "id") {
     }
     rejectNulByte(id, "Canned response id");
 
-    const [row] = await db
-      .select({ workspaceId: schema.cannedResponseTable.workspaceId })
-      .from(schema.cannedResponseTable)
-      .where(eq(schema.cannedResponseTable.id, id))
-      .limit(1);
+    const [row] = await getCannedResponseWorkspaceQuery(id);
 
     if (!row) {
       throw new HTTPException(404, { message: "Canned response not found" });

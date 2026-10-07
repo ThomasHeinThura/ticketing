@@ -14,6 +14,10 @@ import {
   projectNotDeletedClause,
 } from "../assert-work-item-live";
 import { publishWorkItemHint, recordWorkItemEvent } from "../native-event";
+import {
+  findCurrentWorkItemAssigneeQuery,
+  findUnassignableWorkItemQuery,
+} from "../repository";
 // The 409 shape is the assign route's own (`assignment.md`'s conditional-write conflict:
 // "the assignee changed while this request was in flight"). One class, two action routes
 // that clear or move the same field -- the extraction the reviewers asked for when the
@@ -73,13 +77,7 @@ export async function unassignWorkItem(
    */
   expectedAssigneeId: string | null,
 ): Promise<UnassignedWorkItem> {
-  const item = await db.query.workItemTable.findFirst({
-    where: and(
-      eq(workItemTable.key, key),
-      isNull(workItemTable.archivedAt),
-      isNull(workItemTable.deletedAt),
-    ),
-  });
+  const item = await findUnassignableWorkItemQuery(db, key);
 
   if (!item || item.workspaceId !== workspaceId) {
     throw new HTTPException(404, { message: "Work item not found" });
@@ -145,11 +143,7 @@ export async function unassignWorkItem(
       });
 
     if (!updated) {
-      const [current] = await tx
-        .select({ assigneeId: workItemTable.assigneeId })
-        .from(workItemTable)
-        .where(eq(workItemTable.id, item.id))
-        .limit(1);
+      const [current] = await findCurrentWorkItemAssigneeQuery(tx, item.id);
       throw new WorkItemAssigneeConflictError(key, current?.assigneeId ?? null);
     }
 

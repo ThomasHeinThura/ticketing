@@ -166,11 +166,15 @@ misconfigured away through the role editor.
   database, audit, event or websocket handling, except plain `GET` and `HEAD` requests
   for exactly `/api/health`, `/api/public/health/live` and
   `/api/public/health/ready`. Those existing health handlers remain independent of which
-  origin received the request. A syntactically valid unknown Host is accepted only for
-  these exact `GET`/`HEAD` health requests, preserving loopback Docker and deploy readiness
-  probes; malformed, missing, duplicate, or upgraded authorities are rejected, and `HEAD`
-  returns the matching status and headers without a body. The portal serves files only from its own output root; a missing asset
-  is 404, unmatched portal paths are 404, and it never falls back to agent files or the
+  origin received the request. Once the two-instance identity boundary is configured, the
+  portal host admits only its exact Better Auth sign-in/session/OIDC endpoints and the
+  registered `kind: portal` API policies. The agent API stays unreachable there, and every
+  websocket upgrade on the portal host remains denied until its own reviewed policy exists.
+  A syntactically valid unknown Host is accepted only for these exact `GET`/`HEAD` health
+  requests, preserving loopback Docker and deploy readiness probes; malformed, missing,
+  duplicate, or upgraded authorities are rejected, and `HEAD` returns the matching status
+  and headers without a body. The portal serves files only from its own output root; a
+  missing asset is 404, unmatched portal paths are 404, and it never falls back to agent files or the
   agent SPA. If the selected output root or its `index.html` is missing, that origin
   returns 503. The request authority selects one configured origin only after strict
   validation: exactly one raw Host (or a consistent HTTP/2 `:authority` and Host),
@@ -345,7 +349,22 @@ approve, rate.
 
 ## Open questions
 
-*(None. Per-request visibility was decided 2026-09-05 — `CP-16`; organisation SSO — `CP-17`.)*
+`CP-11`/`CP-12` still need a normative adapter contract between the legacy workspace
+invitation API and organisation-scoped customer admission. Until the customer admission
+transaction, token lifecycle, provider binding, route policy and audit/event vocabulary are
+specified, invitation acceptance and public customer registration remain unavailable. See
+the [P3 portal admission adapter proposal](../07-planning/p3-portal-admission-contract-proposal.md).
+The provider table and `portal_scope` semantics are defined by
+[data-model.md](../01-architecture/data-model.md) and
+[auth-runtime-reconfiguration.md](../01-architecture/auth-runtime-reconfiguration.md); the
+P3 implementation adds the Drizzle table/migration and reloadable, portal-scoped auth pair.
+Customer local sign-in is enabled only by stored customer-scope provider rows and remains
+closed without an already admitted active customer identity. Account creation and invitation
+acceptance remain closed pending the CP-11/CP-12 adapter contract. CP-18/IP-29 also need an
+exact email-first discovery route contract before the UI can route typed domains to
+organisation SSO without inventing a public endpoint.
+Per-request visibility was decided 2026-09-05 (`CP-16`); organisation SSO is specified by
+`CP-17` and `IP-29`.
 
 ## Related
 

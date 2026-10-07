@@ -1,8 +1,13 @@
-import { and, eq, isNull, ne } from "drizzle-orm";
+import { eq } from "drizzle-orm";
 import { HTTPException } from "hono/http-exception";
 import db from "../../database";
 import { projectSlugClaimTable, projectTable } from "../../database/schema";
 import { isUniqueViolation } from "../../utils/is-unique-violation";
+import {
+  findProjectLiveSlugConflictQuery,
+  getActiveProjectQuery,
+  getProjectClaimOwnerQuery,
+} from "../repository";
 import { ProjectSlugTakenError } from "./create-project";
 
 async function updateProject(
@@ -12,6 +17,11 @@ async function updateProject(
   slug: string,
   description: string,
   workspaceId: string,
+  configuration: {
+    kind?: "project" | "managed_service";
+    supportLevel?: "L1" | "L2" | "L3" | null;
+    serviceCalendarId?: string | null;
+  },
 ) {
   // #23's mandatory Opus security review of PR #261, F1's delta-confirmation (D1,
   // 2026-09-22): the claim check and the claim write for the NEW slug now have to commit
@@ -20,19 +30,7 @@ async function updateProject(
   // unclaimed after a rename that did succeed). Wrapped in a transaction for exactly that
   // reason -- `create-project.ts`'s own create path is the same shape.
   return db.transaction(async (tx) => {
-    const [existingProject] = await tx
-      .select()
-      .from(projectTable)
-      .where(
-        and(
-          eq(projectTable.id, id),
-          eq(projectTable.workspaceId, workspaceId),
-          // #202: a soft-deleted project is gone for ordinary use during its 30-day
-          // recovery window (#187, PR-16), so it cannot be renamed, re-iconed or
-          // re-described while "deleted". Same exclusion `get-project.ts` applies.
-          isNull(projectTable.deletedAt),
-        ),
-      );
+    const [existingProject] = await getActiveProjectQuery(id, workspaceId, tx);
 
     const isProjectExisting = Boolean(existingProject);
 
@@ -47,11 +45,7 @@ async function updateProject(
     // before attempting the write where we can, so the common case is a clean 409 rather
     // than a caught driver error. Mirrors `update-workspace.ts`'s own pre-check exactly.
     // The catch below still covers the race between this read and the update.
-    const [clash] = await tx
-      .select({ id: projectTable.id })
-      .from(projectTable)
-      .where(and(eq(projectTable.slug, slug), ne(projectTable.id, id)))
-      .limit(1);
+    const [clash] = await findProjectLiveSlugConflictQuery(tx, slug, id);
     if (clash) {
       throw new ProjectSlugTakenError(slug);
     }
@@ -62,11 +56,7 @@ async function updateProject(
     // held by THIS SAME project (i.e. renaming back to a slug it once claimed itself) is
     // not a collision -- the claim table's own guarantee is per-slug, not per-holder, and
     // this project is already its holder of record.
-    const [existingClaim] = await tx
-      .select({ projectId: projectSlugClaimTable.projectId })
-      .from(projectSlugClaimTable)
-      .where(eq(projectSlugClaimTable.slug, slug))
-      .limit(1);
+    const [existingClaim] = await getProjectClaimOwnerQuery(tx, slug);
     if (existingClaim && existingClaim.projectId !== id) {
       throw new ProjectSlugTakenError(slug);
     }
@@ -79,6 +69,15 @@ async function updateProject(
           icon,
           slug,
           description,
+          ...(configuration.kind !== undefined
+            ? { kind: configuration.kind }
+            : {}),
+          ...(configuration.supportLevel !== undefined
+            ? { supportLevel: configuration.supportLevel }
+            : {}),
+          ...(configuration.serviceCalendarId !== undefined
+            ? { serviceCalendarId: configuration.serviceCalendarId }
+            : {}),
         })
         .where(eq(projectTable.id, id))
         .returning();
@@ -102,11 +101,10 @@ async function updateProject(
           .returning({ projectId: projectSlugClaimTable.projectId });
 
         if (!claimed) {
-          const [claimAfterConflict] = await tx
-            .select({ projectId: projectSlugClaimTable.projectId })
-            .from(projectSlugClaimTable)
-            .where(eq(projectSlugClaimTable.slug, slug))
-            .limit(1);
+          const [claimAfterConflict] = await getProjectClaimOwnerQuery(
+            tx,
+            slug,
+          );
 
           if (claimAfterConflict?.projectId !== id) {
             throw new ProjectSlugTakenError(slug);

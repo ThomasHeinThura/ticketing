@@ -1,13 +1,17 @@
-import { and, eq, sql } from "drizzle-orm";
 import db, { schema } from "../../database";
 import { roleGrantsOwner } from "../../utils/workspace-member-roles";
+import {
+  getUserProfileQuery,
+  getWorkspaceMemberQuery,
+  getWorkspaceRoleQuery,
+} from "../repository";
 import {
   OwnerRoleNotAssignableHereError,
   TargetUserNotFoundError,
   UserAlreadyMemberError,
   WorkspaceRoleNotFoundError,
 } from "./workspace-membership-errors";
-import { WORKSPACE_MEMBERSHIP_LOCK_NAMESPACE } from "./workspace-membership-lock";
+import { lockWorkspaceRoleAssignment } from "./workspace-role-assignment-lock";
 
 export type AddWorkspaceMemberInput = {
   workspaceId: string;
@@ -56,48 +60,27 @@ async function addWorkspaceMember(
   }
 
   return db.transaction(async (tx) => {
-    await tx.execute(
-      sql`SELECT pg_advisory_xact_lock(${WORKSPACE_MEMBERSHIP_LOCK_NAMESPACE}, hashtext(${input.workspaceId}))`,
-    );
+    await lockWorkspaceRoleAssignment(tx, input.workspaceId);
 
-    const [roleRow] = await tx
-      .select({ role: schema.workspaceRoleTable.role })
-      .from(schema.workspaceRoleTable)
-      .where(
-        and(
-          eq(schema.workspaceRoleTable.workspaceId, input.workspaceId),
-          eq(schema.workspaceRoleTable.role, input.role),
-        ),
-      )
-      .limit(1);
+    const [roleRow] = await getWorkspaceRoleQuery(
+      tx,
+      input.workspaceId,
+      input.role,
+    );
     if (!roleRow) {
       throw new WorkspaceRoleNotFoundError(input.role);
     }
 
-    const [user] = await tx
-      .select({
-        id: schema.userTable.id,
-        name: schema.userTable.name,
-        email: schema.userTable.email,
-        image: schema.userTable.image,
-      })
-      .from(schema.userTable)
-      .where(eq(schema.userTable.id, input.userId))
-      .limit(1);
+    const [user] = await getUserProfileQuery(tx, input.userId);
     if (!user) {
       throw new TargetUserNotFoundError();
     }
 
-    const [existing] = await tx
-      .select({ userId: schema.workspaceUserTable.userId })
-      .from(schema.workspaceUserTable)
-      .where(
-        and(
-          eq(schema.workspaceUserTable.workspaceId, input.workspaceId),
-          eq(schema.workspaceUserTable.userId, input.userId),
-        ),
-      )
-      .limit(1);
+    const [existing] = await getWorkspaceMemberQuery(
+      tx,
+      input.workspaceId,
+      input.userId,
+    );
     if (existing) {
       throw new UserAlreadyMemberError();
     }

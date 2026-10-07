@@ -1,12 +1,7 @@
-import { eq } from "drizzle-orm";
-import db from "../../database";
-import { labelTable } from "../../database/schema";
+import { listLabelsByWorkspaceQuery } from "../repository";
 
 function getLabelsByWorkspaceId(workspaceId: string) {
-  return db
-    .select()
-    .from(labelTable)
-    .where(eq(labelTable.workspaceId, workspaceId));
+  return listLabelsByWorkspaceQuery(workspaceId);
 }
 
 export default getLabelsByWorkspaceId;

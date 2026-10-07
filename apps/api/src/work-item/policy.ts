@@ -37,6 +37,20 @@ import type { PolicyMap } from "@taskdesk/permissions";
  * work item mints no fresh authority.
  */
 export const workItemPolicies = {
+  "POST /api/work-items/export": {
+    capability: "work_item:export",
+    scope: "workspace",
+    scopeSource: "request",
+    reach: "required",
+  },
+  // Bounded structured search is workspace-addressed for scope validation, then each
+  // candidate row is evaluated against the same work_item:read project reach as detail.
+  "POST /api/work-items/search": {
+    capability: "work_item:read",
+    scope: "work_item",
+    scopeSource: "row",
+    reach: "required",
+  },
   // Create a work item in a project. There is no `work_item` row yet -- the scope id is
   // the project the item is being created IN, read from the request path
   // (`scopeSource: "request"`), the same shape `POST /api/workspace/{workspaceId}/members`
@@ -66,6 +80,13 @@ export const workItemPolicies = {
   // `work_item.key` before the handler runs, and the controller (`get-work-item.ts`)
   // re-loads it itself -- `scopeSource: "row"`.
   "GET /api/work-items/{key}": {
+    capability: "work_item:read",
+    scope: "work_item",
+    scopeSource: "row",
+    reach: "required",
+  },
+
+  "GET /api/work-items/{key}/sla": {
     capability: "work_item:read",
     scope: "work_item",
     scopeSource: "row",
