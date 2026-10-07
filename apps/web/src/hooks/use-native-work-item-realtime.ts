@@ -11,7 +11,7 @@ type NativeFrame = {
 };
 
 const MAX_SEEN_EVENTS = 512;
-const seenEventIds = new Set<string>();
+const INVALIDATION_DEBOUNCE_MS = 150;
 
 export type WorkItemRealtimeStatus =
   | "connecting"
@@ -19,7 +19,7 @@ export type WorkItemRealtimeStatus =
   | "unavailable"
   | "idle";
 
-function hasSeenEvent(eventId: string) {
+function hasSeenEvent(seenEventIds: Set<string>, eventId: string) {
   if (seenEventIds.has(eventId)) return true;
   seenEventIds.add(eventId);
   if (seenEventIds.size > MAX_SEEN_EVENTS) {
@@ -60,6 +60,26 @@ export function useNativeWorkItemRealtime(topics: readonly string[]) {
     let hasOutage = false;
     let isDisposed = false;
     let socket: WebSocket | null = null;
+    let invalidationTimer: ReturnType<typeof setTimeout> | null = null;
+    const pendingInvalidations = new Map<string, readonly unknown[]>();
+
+    function flushInvalidations() {
+      invalidationTimer = null;
+      const queryKeys = [...pendingInvalidations.values()];
+      pendingInvalidations.clear();
+      for (const queryKey of queryKeys) {
+        void queryClient.invalidateQueries({ queryKey });
+      }
+    }
+
+    function queueInvalidation(queryKey: readonly unknown[]) {
+      pendingInvalidations.set(JSON.stringify(queryKey), queryKey);
+      if (invalidationTimer) clearTimeout(invalidationTimer);
+      invalidationTimer = setTimeout(
+        flushInvalidations,
+        INVALIDATION_DEBOUNCE_MS,
+      );
+    }
 
     function setStatus(nextStatus: WorkItemRealtimeStatus) {
       setConnection({ connectionKey, status: nextStatus });
@@ -76,25 +96,51 @@ export function useNativeWorkItemRealtime(topics: readonly string[]) {
       const projectId = frame.topic?.startsWith("project:")
         ? frame.topic.slice("project:".length)
         : undefined;
-      if (projectId) {
-        void queryClient.invalidateQueries({
-          queryKey: ["work-items", projectId],
-        });
-      } else {
-        void queryClient.invalidateQueries({ queryKey: ["work-items"] });
+      const type = frame.type;
+      const listProjectionMayChange =
+        type === "work_item.created" ||
+        type === "work_item.updated" ||
+        type === "work_item.transitioned" ||
+        type === "work_item.assigned" ||
+        type === "work_item.unassigned" ||
+        type === "work_item.escalated" ||
+        type === "work_item.unblocked" ||
+        type === "work_item.mentioned" ||
+        type === "work_item.deleted";
+      if (projectId && listProjectionMayChange) {
+        queueInvalidation(["work-items", projectId]);
       }
-      if (frame.payload?.key) {
-        void queryClient.invalidateQueries({
-          queryKey: ["work-items", "detail", frame.payload.key],
-        });
-        void queryClient.invalidateQueries({
-          queryKey: ["work-items", "activity", frame.payload.key],
-        });
+
+      const key = frame.topic?.startsWith("work_item:")
+        ? frame.payload?.key
+        : undefined;
+      if (!key) return;
+      if (
+        type === "work_item.updated" ||
+        type === "work_item.transitioned" ||
+        type === "work_item.assigned" ||
+        type === "work_item.unassigned" ||
+        type === "work_item.escalated" ||
+        type === "work_item.unblocked" ||
+        type === "work_item.mentioned" ||
+        type === "work_item.deleted"
+      ) {
+        queueInvalidation(["work-items", "detail", key]);
+      }
+      if (
+        type === "work_item.escalated" ||
+        type === "work_item.unblocked" ||
+        type === "work_item.mentioned" ||
+        type === "work_item.commented" ||
+        type === "work_item.deleted"
+      ) {
+        queueInvalidation(["work-items", "activity", key]);
       }
     }
 
     function connect() {
       if (isDisposed) return;
+      const seenEventIds = new Set<string>();
       const unacknowledgedTopics = new Set(selectedTopics);
       const nextSocket = new WebSocket(realtimeUrl());
       socket = nextSocket;
@@ -137,7 +183,7 @@ export function useNativeWorkItemRealtime(topics: readonly string[]) {
           void queryClient.invalidateQueries({ queryKey: ["work-items"] });
           return;
         }
-        if (!frame.eventId || hasSeenEvent(frame.eventId)) return;
+        if (!frame.eventId || hasSeenEvent(seenEventIds, frame.eventId)) return;
         invalidateAffected(frame);
       };
 
@@ -162,6 +208,9 @@ export function useNativeWorkItemRealtime(topics: readonly string[]) {
     return () => {
       isDisposed = true;
       stopPing();
+      if (invalidationTimer) clearTimeout(invalidationTimer);
+      invalidationTimer = null;
+      pendingInvalidations.clear();
       if (retryTimerRef.current) clearTimeout(retryTimerRef.current);
       retryTimerRef.current = null;
       if (socketRef.current === socket) socketRef.current = null;

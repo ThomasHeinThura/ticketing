@@ -157,15 +157,26 @@ useRealtime({
   onMessage: (msg) => {
     if (seenEventIds.has(msg.eventId)) return;
     seenEventIds.add(msg.eventId);
-    queryClient.invalidateQueries({ queryKey: ['work-items', projectId] });
-    if (msg.payload.key) {
-      queryClient.invalidateQueries({ queryKey: ['work-item', msg.payload.key] });
+    if (msg.topic.startsWith('project:') && msg.type !== 'work_item.commented') {
+      queryClient.invalidateQueries({ queryKey: ['work-items', projectId] });
+    }
+    const key = msg.topic.startsWith('work_item:') ? msg.payload.key : undefined;
+    if (key && msg.type !== 'work_item.created' && msg.type !== 'work_item.commented') {
+      queryClient.invalidateQueries({ queryKey: ['work-items', 'detail', key] });
+    }
+    if (key && ['work_item.escalated', 'work_item.unblocked', 'work_item.mentioned', 'work_item.commented', 'work_item.deleted'].includes(msg.type)) {
+      queryClient.invalidateQueries({ queryKey: ['work-items', 'activity', key] });
     }
   },
 });
 ```
 
-Invalidation is debounced at 150 ms so a bulk update produces one refetch, not fifty.
+The native client deduplicates event IDs for each socket and debounces affected-query
+invalidation for 150 ms. A bulk update therefore coalesces duplicate query keys on that
+connection; independent sockets do not suppress each other's events. Comment events refresh
+the activity key, while item mutations refresh detail and the project list when its projection
+may change. Reconnect/outage polling remains active until subscription acknowledgement and
+while the socket is unavailable.
 
 ## Scaling across replicas
 

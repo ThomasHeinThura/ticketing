@@ -1,4 +1,8 @@
-import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import {
+  QueryClient,
+  QueryClientProvider,
+  useQuery,
+} from "@tanstack/react-query";
 import { act, cleanup, render, screen, waitFor } from "@testing-library/react";
 import type { ReactNode } from "react";
 import { useCallback, useState } from "react";
@@ -10,6 +14,8 @@ const mocks = vi.hoisted(() => ({
   useSession: vi.fn(() => ({ data: { user: { id: "person-1" } } })),
   getWorkItems: vi.fn(),
   getWorkItem: vi.fn(),
+  getActivity: vi.fn(),
+  state: { listVersion: 1, detailVersion: 1, activityVersion: 1 },
 }));
 
 vi.mock("@/lib/auth-client", () => ({
@@ -159,9 +165,23 @@ function ComposedWorkItemDetail({ workItemKey }: { workItemKey: string }) {
         </div>
       ) : null}
       <output data-testid="detail-query-state">
-        {query.isLoading ? "loading" : (query.data?.key ?? "empty")}
+        {query.isLoading
+          ? "loading"
+          : `${query.data?.key ?? "empty"}:${query.data?.version ?? 0}`}
       </output>
     </>
+  );
+}
+
+function ComposedWorkItemActivity({ workItemKey }: { workItemKey: string }) {
+  const query = useQuery({
+    queryKey: ["work-items", "activity", workItemKey],
+    queryFn: () => mocks.getActivity(workItemKey),
+  });
+  return (
+    <output data-testid="activity-query-state">
+      {query.isLoading ? "loading" : query.data?.version}
+    </output>
   );
 }
 
@@ -177,11 +197,20 @@ beforeEach(() => {
   vi.stubGlobal("WebSocket", MockWebSocket);
   MockWebSocket.instances = [];
   mocks.getWorkItems.mockReset();
-  mocks.getWorkItems.mockImplementation(async (projectId: string) =>
-    makeResult(`${projectId}-item`),
-  );
+  mocks.state = { listVersion: 1, detailVersion: 1, activityVersion: 1 };
+  mocks.getWorkItems.mockImplementation(async (projectId: string) => ({
+    ...makeResult(`${projectId}-item`),
+    items: [{ id: `${projectId}-item:${mocks.state.listVersion}` } as never],
+  }));
   mocks.getWorkItem.mockReset();
-  mocks.getWorkItem.mockImplementation(async (key: string) => ({ key }));
+  mocks.getWorkItem.mockImplementation(async (key: string) => ({
+    key,
+    version: mocks.state.detailVersion,
+  }));
+  mocks.getActivity.mockReset();
+  mocks.getActivity.mockImplementation(async () => ({
+    version: mocks.state.activityVersion,
+  }));
 });
 
 afterEach(() => {
@@ -192,6 +221,150 @@ afterEach(() => {
 });
 
 describe("work-item list realtime composition", () => {
+  it("refreshes active list, detail, and activity queries once per socket event burst", async () => {
+    const client = new QueryClient({
+      defaultOptions: {
+        queries: { retry: false, refetchOnWindowFocus: false },
+      },
+    });
+    render(
+      <>
+        <ComposedWorkItemList projectId="project-refresh" realtimeMounted />
+        <ComposedWorkItemDetail workItemKey="WI-REFRESH" />
+        <ComposedWorkItemActivity workItemKey="WI-REFRESH" />
+      </>,
+      { wrapper: wrapperFor(client) },
+    );
+    await waitFor(() => expect(MockWebSocket.instances).toHaveLength(2));
+    await waitFor(() => {
+      expect(screen.getByTestId("query-state")).toHaveTextContent(
+        "project-refresh-item:1",
+      );
+      expect(screen.getByTestId("detail-query-state")).toHaveTextContent(
+        "WI-REFRESH:1",
+      );
+      expect(screen.getByTestId("activity-query-state")).toHaveTextContent("1");
+    });
+    const [projectSocket, itemSocket] = MockWebSocket.instances;
+    if (!projectSocket || !itemSocket) throw new Error("Expected both sockets");
+    act(() => {
+      projectSocket.open();
+      itemSocket.open();
+      projectSocket.frame({
+        type: "subscribed",
+        topic: "project:project-refresh",
+      });
+      itemSocket.frame({ type: "subscribed", topic: "work_item:WI-REFRESH" });
+    });
+    await waitFor(() => {
+      expect(screen.getByTestId("realtime-state")).toHaveTextContent(
+        "available",
+      );
+      expect(screen.getByTestId("detail-realtime-state")).toHaveTextContent(
+        "available",
+      );
+    });
+    await waitFor(() =>
+      expect(
+        client
+          .getQueryCache()
+          .getAll()
+          .every((query) => query.state.fetchStatus === "idle"),
+      ).toBe(true),
+    );
+
+    mocks.getWorkItems.mockClear();
+    mocks.getWorkItem.mockClear();
+    mocks.getActivity.mockClear();
+    mocks.state = { listVersion: 2, detailVersion: 2, activityVersion: 2 };
+    act(() => {
+      projectSocket.frame({
+        type: "work_item.updated",
+        topic: "project:project-refresh",
+        eventId: "evt-shared-across-connections",
+        payload: { key: "WI-REFRESH" },
+      });
+      itemSocket.frame({
+        type: "work_item.updated",
+        topic: "work_item:WI-REFRESH",
+        eventId: "evt-shared-across-connections",
+        payload: { key: "WI-REFRESH" },
+      });
+      projectSocket.frame({
+        type: "work_item.updated",
+        topic: "project:project-refresh",
+        eventId: "evt-second-in-burst",
+        payload: { key: "WI-REFRESH" },
+      });
+    });
+    expect(mocks.getWorkItems).not.toHaveBeenCalled();
+    expect(mocks.getWorkItem).not.toHaveBeenCalled();
+    await waitFor(
+      () => {
+        expect(screen.getByTestId("query-state")).toHaveTextContent(
+          "project-refresh-item:2",
+        );
+        expect(screen.getByTestId("detail-query-state")).toHaveTextContent(
+          "WI-REFRESH:2",
+        );
+      },
+      { timeout: 1_000 },
+    );
+    expect(mocks.getWorkItems).toHaveBeenCalledTimes(1);
+    expect(mocks.getWorkItem).toHaveBeenCalledTimes(1);
+    expect(mocks.getActivity).not.toHaveBeenCalled();
+  });
+
+  it("refreshes visible activity for a committed comment without refetching item detail", async () => {
+    const client = new QueryClient({
+      defaultOptions: {
+        queries: { retry: false, refetchOnWindowFocus: false },
+      },
+    });
+    render(
+      <>
+        <ComposedWorkItemDetail workItemKey="WI-COMMENT" />
+        <ComposedWorkItemActivity workItemKey="WI-COMMENT" />
+      </>,
+      { wrapper: wrapperFor(client) },
+    );
+    await waitFor(() => expect(MockWebSocket.instances).toHaveLength(1));
+    await waitFor(() =>
+      expect(screen.getByTestId("activity-query-state")).toHaveTextContent("1"),
+    );
+    const socket = MockWebSocket.instances[0];
+    if (!socket) throw new Error("Expected item socket");
+    act(() => {
+      socket.open();
+      socket.frame({ type: "subscribed", topic: "work_item:WI-COMMENT" });
+    });
+    await waitFor(() =>
+      expect(screen.getByTestId("detail-realtime-state")).toHaveTextContent(
+        "available",
+      ),
+    );
+    mocks.getWorkItem.mockClear();
+    mocks.getActivity.mockClear();
+    mocks.state.activityVersion = 2;
+    act(() =>
+      socket.frame({
+        type: "work_item.commented",
+        topic: "work_item:WI-COMMENT",
+        eventId: "evt-visible-comment",
+        payload: { key: "WI-COMMENT" },
+      }),
+    );
+    await waitFor(
+      () =>
+        expect(screen.getByTestId("activity-query-state")).toHaveTextContent(
+          "2",
+        ),
+      { timeout: 1_000 },
+    );
+    expect(mocks.getActivity).toHaveBeenCalledTimes(1);
+    expect(mocks.getWorkItem).not.toHaveBeenCalled();
+  });
+
   it("starts the project subscription while the first work-item query is pending", async () => {
     const pendingItems = deferred<WorkItemsResult>();
     mocks.getWorkItems.mockReturnValueOnce(pendingItems.promise);

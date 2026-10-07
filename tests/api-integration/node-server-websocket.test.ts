@@ -1146,8 +1146,55 @@ describe("P0 #557: real Node HTTP and WebSocket adapter", () => {
       expect(Date.parse(message.at as string)).not.toBeNaN();
       expect(message.payload).toEqual({ key: created.key });
     }
-    expect(firstEvents).toHaveLength(2);
-    expect(secondEvents).toHaveLength(2);
+
+    const firstCommented = nextMessage(firstSocket);
+    const secondCommented = nextMessage(secondSocket);
+    const commentResponse = await csrfRequest(
+      app,
+      `/api/work-items/${encodeURIComponent(created.key)}/comments`,
+      {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({
+          body: { type: "doc", content: [] },
+          visibility: "public",
+        }),
+      },
+      headers.cookie,
+    );
+    expect(commentResponse.status).toBe(200);
+    const createdComment = (await commentResponse.json()) as {
+      id: string;
+      visibility: string;
+    };
+    expect(createdComment.visibility).toBe("public");
+    const [firstCommentEnvelope, secondCommentEnvelope] = await Promise.all([
+      firstCommented,
+      secondCommented,
+    ]);
+    for (const envelope of [firstCommentEnvelope, secondCommentEnvelope]) {
+      const message = envelope as Record<string, unknown>;
+      expect(Object.keys(message).sort()).toEqual([
+        "at",
+        "eventId",
+        "payload",
+        "topic",
+        "type",
+      ]);
+      expect(message.type).toBe("work_item.commented");
+      expect(message.topic).toBe(`project:${project.project.id}`);
+      expect(message.eventId).toEqual(expect.stringMatching(/^evt_/));
+      expect(message.payload).toEqual({ key: created.key });
+      expect(JSON.stringify(message)).not.toContain(createdComment.id);
+      expect(JSON.stringify(message)).not.toContain("visibility");
+    }
+    const persistedComment = await db
+      .select({ visibility: schema.commentTable.visibility })
+      .from(schema.commentTable)
+      .where(eq(schema.commentTable.id, createdComment.id));
+    expect(persistedComment).toEqual([{ visibility: "public" }]);
+    expect(firstEvents).toHaveLength(3);
+    expect(secondEvents).toHaveLength(3);
     expect(secondEvents).toEqual(firstEvents);
 
     const persistedResponse = await app.request(
