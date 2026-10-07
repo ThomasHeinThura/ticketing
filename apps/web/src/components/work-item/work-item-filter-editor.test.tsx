@@ -52,7 +52,7 @@ describe("work-item filter editor", () => {
     expect(screen.getByLabelText("Value for Due date")).toHaveValue("7d");
     fireEvent.click(screen.getByRole("button", { name: "Text" }));
     expect(screen.getByLabelText("Filter work items")).toHaveValue(
-      "(assignee:@me AND due:>=7d)",
+      "AND(assignee:@me,due:>=7d)",
     );
     expect(
       parseWorkItemFilterText(

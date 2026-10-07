@@ -99,6 +99,21 @@ export type WorkItemListSearch = {
   columns?: WorkItemSearchColumn[];
 };
 
+export function resolveWorkItemListSort(
+  search: Pick<WorkItemListSearch, "sort" | "dir">,
+) {
+  const field = search.sort ?? "key";
+  const order = search.dir ?? "asc";
+  return {
+    field,
+    order,
+    querySort:
+      search.sort !== undefined || search.dir !== undefined
+        ? [{ field, order }]
+        : undefined,
+  };
+}
+
 export const WORK_ITEM_FILTER_URL_MAX_LENGTH = 8192;
 
 export type ServiceCalendarListSearch = { cursor?: string };

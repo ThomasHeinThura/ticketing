@@ -72,6 +72,7 @@ const WorkItemCreateDialogShell = lazy(loadCreateWorkItemDialog);
 
 import {
   parseWorkItemListSearch,
+  resolveWorkItemListSort,
   type WorkItemListSearch,
   type WorkItemSortDirection,
   type WorkItemSortField,
@@ -108,9 +109,10 @@ function WorkItemsRouteComponent() {
 function ProjectWorkItemsRoute({ projectKey }: { projectKey: string }) {
   const { t } = useTranslation();
   const { sort, dir, filter, filterMode, columns } = Route.useSearch();
-  const activeSort = sort ?? "key";
-  const activeDir = dir ?? "asc";
-  const querySort = sort && dir ? [{ field: sort, order: dir }] : undefined;
+  const effectiveSort = resolveWorkItemListSort({ sort, dir });
+  const activeSort = effectiveSort.field;
+  const activeDir = effectiveSort.order;
+  const querySort = effectiveSort.querySort;
   const navigate = Route.useNavigate();
   const [isCreateOpen, setIsCreateOpen] = useState(false);
   const [isExporting, setIsExporting] = useState(false);

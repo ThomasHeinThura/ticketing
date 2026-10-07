@@ -162,7 +162,108 @@ test("visual and text modes retain query URL state through history and reload", 
   );
 });
 
-test("invalid structured filter shows the worklist error state", async ({
+for (const scenario of [
+  {
+    name: "sort-only",
+    parameter: "sort=priority",
+    header: "Priority",
+    ariaSort: "ascending",
+    field: "priority",
+    order: "asc",
+  },
+  {
+    name: "direction-only",
+    parameter: "dir=desc",
+    header: "Key",
+    ariaSort: "descending",
+    field: "key",
+    order: "desc",
+  },
+]) {
+  test(`partial ${scenario.name} URL uses the same effective display and request sort`, async ({
+    page,
+  }, testInfo) => {
+    await installPerformanceApiFixture(page, {
+      apiOrigin: apiOrigin(testInfo),
+    });
+    const requests: Array<Record<string, unknown>> = [];
+    await page.route("**/api/work-items/search", async (route) => {
+      const request = route.request().postDataJSON() as Record<string, unknown>;
+      requests.push(request);
+      return route.fulfill({
+        status: 200,
+        contentType: "application/json",
+        body: JSON.stringify({
+          data: [row(1, "high")],
+          page: { hasMore: false, nextCursor: null },
+          meta: { total: 1 },
+        }),
+      });
+    });
+
+    await page.goto(
+      `${WORK_LIST_PATH}&filter=assignee%3A%40me&${scenario.parameter}`,
+    );
+    const header = page.getByRole("columnheader", { name: scenario.header });
+    await expect(header).toHaveAttribute("aria-sort", scenario.ariaSort);
+    await expect
+      .poll(
+        () => (requests.at(-1)?.query as { sort?: unknown } | undefined)?.sort,
+      )
+      .toEqual([{ field: scenario.field, order: scenario.order }]);
+
+    await page.getByRole("button", { name: "Text" }).click();
+    await expect(page).toHaveURL(new RegExp(`${scenario.parameter}`, "u"));
+    await page.goBack();
+    await expect(
+      page.getByRole("columnheader", { name: scenario.header }),
+    ).toHaveAttribute("aria-sort", scenario.ariaSort);
+    await page.reload();
+    await expect(
+      page.getByRole("columnheader", { name: scenario.header }),
+    ).toHaveAttribute("aria-sort", scenario.ariaSort);
+    await expect
+      .poll(
+        () => (requests.at(-1)?.query as { sort?: unknown } | undefined)?.sort,
+      )
+      .toEqual([{ field: scenario.field, order: scenario.order }]);
+  });
+}
+
+test("invalid text input stays local and does not submit a malformed query", async ({
+  page,
+}, testInfo) => {
+  await installPerformanceApiFixture(page, { apiOrigin: apiOrigin(testInfo) });
+  const filters: unknown[] = [];
+  await page.route("**/api/work-items/search", async (route) => {
+    const request = route.request().postDataJSON() as {
+      query?: { filter?: unknown };
+    };
+    filters.push(request.query?.filter);
+    return route.fulfill({
+      status: 200,
+      contentType: "application/json",
+      body: JSON.stringify({
+        data: [],
+        page: { hasMore: false, nextCursor: null },
+        meta: { total: 0 },
+      }),
+    });
+  });
+  await page.goto(WORK_LIST_PATH);
+  await page.getByRole("button", { name: "Text" }).click();
+  await page
+    .getByRole("textbox", { name: "Filter work items" })
+    .fill("priority:bad");
+  await page.getByRole("button", { name: "Apply filter" }).click();
+  await expect(page.getByRole("alert")).toContainText("priority");
+  await expect(page).not.toHaveURL(/filter=/u);
+  expect(
+    filters.every((filter) => !JSON.stringify(filter).includes('"bad"')),
+  ).toBe(true);
+});
+
+test("recognized unavailable filter shows the worklist API error state", async ({
   page,
 }, testInfo) => {
   await installPerformanceApiFixture(page, { apiOrigin: apiOrigin(testInfo) });
@@ -170,16 +271,16 @@ test("invalid structured filter shows the worklist error state", async ({
     route.fulfill({
       status: 400,
       contentType: "application/json",
-      body: JSON.stringify({ message: "Invalid priority value" }),
+      body: JSON.stringify({ message: "Filter field unavailable: label" }),
     }),
   );
   await page.goto(WORK_LIST_PATH);
   await page.getByRole("button", { name: "Text" }).click();
   await page
     .getByRole("textbox", { name: "Filter work items" })
-    .fill("priority:bad");
+    .fill("label:urgent");
   await page.getByRole("button", { name: "Apply filter" }).click();
-  await expect(page).toHaveURL(/filter=priority%3Abad/u);
+  await expect(page).toHaveURL(/filter=label%3Aurgent/u);
   await expect(page.getByTestId("work-item-list-error")).toBeVisible();
 });
 

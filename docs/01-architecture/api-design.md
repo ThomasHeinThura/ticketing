@@ -742,8 +742,13 @@ tie-break. Response shape is `{ data, page: { nextCursor, hasMore }, meta: { tot
 exclusion, and filter predicates. The page rows use the explicit work-item list response
 schema, never raw Drizzle rows.
 
-The P1 text syntax is a filter-only rendering of the same AST. Adjacent terms are `and`;
-`AND` is explicit conjunction; `OR` is disjunction; parentheses preserve nesting. Field
+The work-item list's P1 text syntax is a filter-only rendering of the same AST. Adjacent
+terms are `and`; `AND` is explicit conjunction; `OR` is disjunction; parentheses preserve
+infix-expression nesting. The canonical printer renders every AST group explicitly as
+`AND(clause,...)` or `OR(clause,...)`, reusing the existing Boolean operators with the
+grammar's comma and parenthesis delimiters so operator, arity (including one-child groups),
+nested same-operator groups, and clause order round-trip exactly. The text parser also accepts
+the infix forms below. Field
 aliases in the existing examples are canonical (`state` → `state.group`, `due` → `dueDate`,
 `created` → `createdAt`). Examples include `assignee:@me state:started`,
 `priority:>=high`, `due:<7d`, `project:SUP`, `type:incident`,

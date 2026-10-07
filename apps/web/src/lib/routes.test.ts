@@ -13,6 +13,7 @@ import {
   parseSlaPolicyListSearch,
   parseWorkItemListSearch,
   parseWorkItemListSearchFromQueryString,
+  resolveWorkItemListSort,
   routes,
   toggleWorkItemSortDirection,
   WORK_ITEM_SORT_DIRECTIONS,
@@ -56,6 +57,32 @@ describe("routes.workItemList", () => {
       DEFAULT_WORK_ITEM_LIST_SEARCH,
     );
   });
+
+  it.each([
+    [{}, "key", "asc", undefined],
+    [
+      { sort: "priority" },
+      "priority",
+      "asc",
+      [{ field: "priority", order: "asc" }],
+    ],
+    [{ dir: "desc" }, "key", "desc", [{ field: "key", order: "desc" }]],
+    [
+      { sort: "dueDate", dir: "desc" },
+      "dueDate",
+      "desc",
+      [{ field: "dueDate", order: "desc" }],
+    ],
+  ] as const)(
+    "uses one effective list sort for display and search for %o",
+    (search, field, order, querySort) => {
+      expect(resolveWorkItemListSort(search)).toEqual({
+        field,
+        order,
+        querySort,
+      });
+    },
+  );
 
   it("survives a reload: parsing the exact query string build() produced is idempotent", () => {
     const url = routes.workItemList.build(

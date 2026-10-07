@@ -58,7 +58,10 @@ priority:>=high created:>2026-01-01 watcher:contains(@me)
 - `SV-11` The text syntax and visual builder are two lossless renderings of the filter AST.
   Parentheses preserve nested `and`/`or`; adjacent text terms mean `and`; explicit `AND`
   and `OR` are supported. Sort and columns remain in the surrounding query document when
-  the user switches filter-editing modes.
+  the user switches filter-editing modes. The canonical text rendering writes every group
+  explicitly as `AND(clause,...)` or `OR(clause,...)`, using the existing Boolean operators
+  and comma/parenthesis delimiters. This preserves group operator, arity (including one
+  child), nesting, and clause order; ordinary infix and parenthesized input remains accepted.
 - `SV-12` Field names and operators are whitelisted. The P1 work-item set, value types,
   bounds, parser, scope wrapper, pagination and response contract are defined in
   [API design](../01-architecture/api-design.md#work-item-search-v1-post-api-work-itemssearch).
