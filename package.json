@@ -25,7 +25,6 @@
     "typecheck": "turbo typecheck",
     "prepare": "husky",
     "seed": "pnpm --filter @taskdesk/api exec tsx ../../scripts/seed.ts",
-    "seed:test-users": "pnpm --filter @taskdesk/api exec tsx ../../scripts/seed-test-users.ts",
     "check:dockerfile-deps": "node ./scripts/ci/check-dockerfile-deps.mjs",
     "check:bundle-size": "node ./scripts/ci/check-bundle-size.mjs",
     "check:bundle-purity": "node ./scripts/ci/check-bundle-purity.mjs",

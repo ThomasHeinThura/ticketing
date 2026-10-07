@@ -433,72 +433,20 @@ database must already have the current schema. The fast API suite covers the CLI
 configuration preflight without connecting to PostgreSQL. The disposable PostgreSQL
 integration suite verifies profile counts, a repeated run, and preservation of an unrelated
 row. The command does not create login credentials or grant memberships/roles.
+Run `pnpm test:seed` for the disposable PostgreSQL regression suite covering these ordinary
+data profiles.
 The CLI verifies the complete fixture-owned default type/template sets and each project's
 default columns and concrete states against the existing code defaults, including state
 order, default selection, and template references. It retains database-generated row IDs;
 any conflicting or incomplete default set fails the seed transaction without rewriting it.
 
-### Opt-in sign-in users for manual role testing
+### Manual role verification
 
-The ordinary `minimal`, `realistic`, and `hostile` profiles remain login-free. A separate,
-explicit `test-users` seed command provisions role fixtures only when the operator names the
-exact configured database with `--test-database <name>` and that database name ends in `_test`.
-It requires `--credentials-file <absolute-path>`; the command refuses paths inside
-the current repository or any registered Git worktree, tracked paths, symlinked path
-components, arbitrary existing files, and directories that cannot be held private. A
-pre-existing file is reused only when it is a valid matching private manifest with one hard
-link; the command never replaces it. The credentials
-artifact is created with mode `0600` in a `0700` directory, names the exact target database,
-and records each user's effective canonical scope and sign-in method. Staff and instance
-fixtures use distinct generated random passwords. Login email identities are generated with
-high entropy for each new manifest and appear only in that private file; source, test names,
-and command output contain no usable fixture usernames. Retries reuse the manifest's exact
-identities and reject malformed, duplicate, colliding, or mismatched entries. The customer fixture has no local credential
-by default; it records provider-required sign-in. If the target already has an enabled
-`auth.password` provider scoped to the customer portal, the seeder records and uses that
-existing configuration without changing it. The native integration case enables the provider
-only in its isolated `_test` database and verifies customer sign-in plus the portal session
-identity gate; the seeder never changes provider configuration. Credentials are never printed or checked in. No
-new environment variable or fixed password is introduced. Existing manifests must be singly
-linked. New manifests are fully written and synced to a private temporary file, then published
-atomically without replacing an existing file; failed writes clean up their staging file. A
-retry removes only stale, mode-`0600`, singly linked staging files bound to the same output path
-and target database whose writer process has exited, while preserving unrelated files.
-
-The complete fixture set is generated from canonical `BUILT_IN_ROLES`. `instance_admin` uses
-the existing Better Auth `user.role = 'admin'` source; `customer` uses an active
-customer-side person in its dedicated test organisation plus one organisation-scoped
-membership linked to the canonical system `role` row (`scope = 'organisation'`, `key =
-'customer'`, no workspace). That membership is required by the actual customer-portal session
-identity gate, while the resolved customer authority remains fixed by the canonical customer
-role; all six workspace roles use workspace membership. `owner`
-continues to use its existing special path without a `workspace_role` row. For `admin`,
-`manager`, `lead`, `member`, and `viewer`, the test-owned workspace receives the same genuine
-`workspace_role` backing row (`is_system = true`) used by existing authorization integration
-fixtures, so the resolver derives each role's canonical capabilities. This is a test-only
-producer: it does not change production workspace defaults, add capabilities or schema, or use
-the proposed membership-grant contract.
-
-Example, with the database already configured to `taskdesk_seed_test`:
-
-```bash
-pnpm seed:test-users -- --test-database taskdesk_seed_test \
-  --credentials-file /tmp/taskdesk-role-users/credentials.json
-```
-
-The command is additive and idempotent for its own fixed test namespace. It never resets or
-changes an existing account or privilege. Existing complete accounts must match the fixture
-contract and have the matching private credential artifact; partial rows, email collisions,
-role drift, or missing credentials fail closed. Every password uses Better Auth's actual
-password hasher, and the generated credential is checked against the stored hash by the
-authentication password verifier in tests. This seeder is a manual test aid, not production
-bootstrap or an authorization bypass. It does not run automatically or run migrations.
-
-The dedicated `pnpm test:seed` suite uses a disposable Testcontainers PostgreSQL database when
-`TASKDESK_DATABASE_URL` is unset. For an operator-authorized isolated native run, it can use an
-explicit `TASKDESK_DATABASE_URL` only when its database name ends in `_test`; any additionally
-set `DATABASE_URL` or `TEST_DATABASE_URL` must match that exact URL. It refuses malformed or
-non-test explicit targets and does not start or manage containers in explicit-target mode.
+The ordinary `minimal`, `realistic`, and `hostile` profiles remain login-free. Role-specific
+test accounts are provisioned only through private, operator-managed tooling; this repository
+does not contain a role-user seeder or generated credential manifest. Verify the resulting
+identity scope and role-based access through the API against an explicitly isolated test
+database. Never commit test login identities, credentials, or credential instructions.
 
 Three sizes: **minimal** (one org, one project, ten items — for fast tests),
 **realistic** (as above, for manual and performance), **hostile** (empty strings, 500-

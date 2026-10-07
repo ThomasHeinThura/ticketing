@@ -7,14 +7,9 @@ const appRoot = dirname(fileURLToPath(import.meta.url));
 export default defineConfig({
   test: {
     environment: "node",
-    include: [
-      "scripts/seed-cli.test.ts",
-      "scripts/seed-test-users.test.ts",
-      "scripts/seed-postgres.test.ts",
-      "../../tests/api/seed-test-origins.test.ts",
-    ],
+    include: ["scripts/seed-cli.test.ts", "scripts/seed-postgres.test.ts"],
     globalSetup: ["../../tests/api/seed-test-global-setup.ts"],
-    setupFiles: ["../../tests/api/seed-test-setup.ts"],
+    setupFiles: ["../../tests/api/setup.ts"],
     fileParallelism: false,
     maxWorkers: 1,
     hookTimeout: 120_000,
