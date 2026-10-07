@@ -1,5 +1,57 @@
 ## Status First
 
+Snapshot: 2026-10-07T10:52:40.242776+00:00. Accepted main remains `3096cb044bdf6ae98488bfc385f532fa6386343a`; P0 #583 remains frozen at `5326937460b195d8e69584c0cb99305348330a95`. Parallel P0, later integration and P2 catalogue/intake work is active. No protected merge, persistent DEV refresh, release, enforcement activation or phase completion occurred.
+
+| Phase | Implementation | Integration | Acceptance |
+| --- | --- | --- | --- |
+| P0 | Frozen product; v12 private measurement and endpoint controls independently clear | Sole closure #583 | Actual fresh signup, persisted admin, CSRF, workspace/project/item, attachment upload/completion/list pass; five-state persistence, official installer, G11, compatibility/cutover/finalizer open |
+| P1 | Full saved-view batch in train226; complete review findings being fixed together | Sole later train #589 | Saved-URL fallback/team chooser and native assertion fixes pending; team-lead contract remains held |
+| P2 | Approval continuity in train226; substantive catalogue/intake API/UI implementation proceeds separately | Catalogue/intake leaf not yet complete/composed | Custom-field owning review and required-file contract remain held; optional submission attachments authorized |
+| P3 | OIDC mapping/validated login in train226; role-ceiling correction underway | #589 | Provider/runtime and full identity acceptance remain open |
+| P4 | Outbox and all-eight-role private seeder in train226 | #589 and #597 | Query ownership remains P4; broader governance, current CI, required reviews and user scope decisions remain open |
+
+### What changed
+
+Current pushed integration review head is `226d059d2ac649ac04761b28b4062d770e8a81ef`. Its contrast gate passes 296 actual source-grounded light/dark pairs. The full fresh Luna panel collected six distinct findings before remediation: saved-view URL fallback, team discovery/permissions, portal error/empty exclusivity, list DTO displayed fields, transactional identity role-ceiling retirement, and CSV audit failure preservation. One complete author batch also fixes the seventh native test assertion issue. No partial fix is submitted for early review.
+
+Root's isolated exact226 view test runs 1 file/21 tests:20 pass,1 fails because the test requires whitespace in Content-Type; expected422 itself passes. All owned resources are removed, global sets unchanged and55442 absent. This is not a full native-suite pass. Hosted226 checks have eight failures (OpenAPI, visual, G11, PR/security template, build, registers, PostgreSQL integration, E2E), with static/unit/domain/route-policy/axe/supply-chain/helm/CodeQL green. no cause is inferred from check state alone. No manual G11 retry occurred.
+
+Private v11 review found three structural defects in phase image binding, per-phase endpoint validation and SQL row ordering. A completev12 remedy receives fresh independent Sol CLEAR at SHA256SUMS `8d4d1a2159b46c318357efc2892e7832e329851001ed4b4769dc548a9015ba61`; source75/54/21 checks and offline suites pass. This is static admission clearance only.
+
+Actual v12 run `20261007T104737Z-563ccc` proves both-host JSON health, signup/session/persisted admin/CSRF, fixture workspace/project/item, attachment presign/upload204/complete200/list200/redirect302. Root's operator validator still used the old download path despite the plan's correct `/api` path, failing before download. Root incorrectly continued dependent preference calls; the write returns400 because the source service requires an endpoint URL whenever a secret is supplied, even with delivery disabled; ingress stops and the later read fails. These operator mistakes and originals remain recorded. Final cleanup removes only5owned containers/3named volumes/2networks/2aliases, restores global sets, leaves4296/4297 absent and preserves the unknown volume. No secret measurement, repeat, upgrade or rollback proof is claimed. The complete next private fixture correction traces service preconditions, not only DTO shapes.
+
+### What is being worked on now
+
+P0 completes the whole fixture precondition correction and then resumes actual local persistence; central Luna fixes the full seven-finding integration batch; separate Luna completes catalogue/intake API/UI/lifecycle tests using existing DDL. A custom-fields owner reconciliation packet is prepared without self-clearing its nonempty review. Required file collection has no defined pre-submit upload contract; the proposed optional-now/required-P4 decision is pending Thomas, not inferred approval.
+
+### Critical path
+
+1. Complete actual five-state owned P0 persistence and resolve the frozen G11 failure.
+2. Resolve official installer source ordering and actual provenance/TLS evidence.
+3. Resolve strict public-config evidence, eligible cutover and the separate Sol finalizer.
+4. Finish the whole integration remedy, current-head independent reviews and required CI.
+5. Complete catalogue/intake and resolve its genuine custom-field/required-file dependencies.
+
+### Misalignment / drift
+
+Elapsed dates and partial captures do not establish72hours. Completed static private plans do not establish runtime persistence. Old review/native evidence stays tied to its tested SHA. SQL0000–0117 plus sole0118 remain canonical; no0119 is allocated. The persistent reviewed DEV deployment is unchanged.
+
+### Concerns
+
+Repeated fixture failures now require complete service/controller precondition tracing. Root's API batch continuation after a validation failure is an operator error; future actions must stop immediately and close the window. Review findings remain open until the full structural remedy is tested and independently cleared.
+
+### Decisions needed from Thomas
+
+Existing questions remain pending: bounded public-config evidence, unchanged-source G11 confirmation, official installer ordering, team-lead saved-view contract, undefined development HTTP exception, exact OpenAPI breaks, and required-file scope. No duplicate question or new waiver is created by this snapshot.
+
+### Next merge candidates
+
+#583 remains P0 closure; #589 remains later integration, with #597 seeder evidence carried into it. None is currently declared merge-ready.
+
+---
+
+## Status First
+
 Snapshot: 2026-10-07T10:11:27.558320+00:00. Accepted main remains `3096cb044bdf6ae98488bfc385f532fa6386343a`; #583 remains frozen at `5326937460b195d8e69584c0cb99305348330a95`. Parallel lanes were restarted after no prior subagent remained live. No protected merge, persistent DEV refresh, official release, enforcement activation or phase completion occurred.
 
 | Phase | Implementation | Integration | Acceptance |

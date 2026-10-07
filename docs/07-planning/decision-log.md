@@ -6502,3 +6502,10 @@ by startup, although operators use registry order for staged rollout. This chang
 control to describe existing behavior; no parser, source set, authorization or pass/fail result
 is relaxed. The corrected documentation joins the complete P0 acceptance batch for required
 review; the config evidence exception remains independently pending Thomas.
+
+
+### 2026-10-07 · Full integration findings and actual P0 fixture stop retained
+
+Collect all three train226 ordinary reviewer reports before one seven-finding remedy. Keep current native20/21 attributed to226; its MIME assertion failure does not establish API failure. Continue the independent catalogue/intake implementation in parallel, using existing DDL and defined submission attachment reach. Custom-field owning findings and required-file creation sequencing remain unresolved; proposed scope is not approval.
+
+P0 v12 exact private manifest receives independent Sol static clearance. Actual fresh runtime passes bootstrap/admin/CSRF and attachment upload/completion, but root's download helper has an old path and the notification fixture misses a service-required URL. Root wrongly continues dependent requests after the first validation failure; preserve that operational error. Stop ingress and clean every exact owned resource before any successor. Complete service/controller preconditions together; no runtime success, gate waiver, release or phase closure is inferred from static clearance or elapsed dates.
