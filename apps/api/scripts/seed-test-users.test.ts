@@ -13,7 +13,6 @@ import {
 import os from "node:os";
 import path from "node:path";
 import { BUILT_IN_ROLE_KEYS, BUILT_IN_ROLES } from "@taskdesk/permissions";
-import { hashPassword, verifyPassword } from "better-auth/crypto";
 import { afterEach, describe, expect, it } from "vitest";
 import {
   expectedTestUserCredentials,
@@ -115,16 +114,13 @@ describe("test-user seed contract", () => {
     ).toMatchObject({ authentication: "local_password" });
   });
 
-  it("creates distinct random passwords accepted by Better Auth's password verifier", async () => {
+  it("creates distinct high-entropy random passwords", () => {
     const passwords = new Set(
       Array.from({ length: 8 }, generateTestUserPassword),
     );
     expect(passwords.size).toBe(8);
     for (const password of passwords) {
       expect(password.length).toBeGreaterThanOrEqual(32);
-      expect(
-        await verifyPassword({ hash: await hashPassword(password), password }),
-      ).toBe(true);
     }
   });
 

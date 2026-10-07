@@ -1,8 +1,8 @@
-import { chmod, mkdtemp, readFile, rm, stat } from "node:fs/promises";
+import { chmod, mkdtemp, readFile, realpath, rm, stat } from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
 import { BUILT_IN_ROLES } from "@taskdesk/permissions";
-import { verifyPassword } from "better-auth/crypto";
+import bcrypt from "bcryptjs";
 import { and, asc, count, eq, inArray, like, sql } from "drizzle-orm";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { resetTestDatabase } from "../../../tests/api-integration/helpers/database";
@@ -589,8 +589,8 @@ describe("explicit test-user seed batch", () => {
     };
     await db.insert(schema.userTable).values(preserved);
 
-    const directory = await mkdtemp(
-      path.join(os.tmpdir(), "taskdesk-test-users-collision-"),
+    const directory = await realpath(
+      await mkdtemp(path.join(os.tmpdir(), "taskdesk-test-users-collision-")),
     );
     await chmod(directory, 0o700);
     const credentialFile = path.join(directory, "credentials.json");
@@ -602,7 +602,7 @@ describe("explicit test-user seed batch", () => {
     ];
     try {
       await expect(seedTestUsers(databaseName, args)).rejects.toThrow(
-        /partial or collide/,
+        /partial or their private credentials are missing/,
       );
       const [unchanged] = await db
         .select()
@@ -624,8 +624,8 @@ describe("explicit test-user seed batch", () => {
 
   it("is additive and idempotent, assigns each supported role at its real scope, and authenticates by Better Auth's credential hash", async () => {
     await resetTestDatabase();
-    const directory = await mkdtemp(
-      path.join(os.tmpdir(), "taskdesk-test-users-batch-"),
+    const directory = await realpath(
+      await mkdtemp(path.join(os.tmpdir(), "taskdesk-test-users-batch-")),
     );
     await chmod(directory, 0o700);
     const credentialFile = path.join(directory, "credentials.json");
@@ -736,10 +736,10 @@ describe("explicit test-user seed batch", () => {
           expect(account?.password).toBeTruthy();
           expect(credential.password).toBeTruthy();
           expect(
-            await verifyPassword({
-              hash: account?.password ?? "",
-              password: credential.password ?? "",
-            }),
+            await bcrypt.compare(
+              credential.password ?? "",
+              account?.password ?? "",
+            ),
           ).toBe(true);
         } else {
           expect(credential.role).toBe("customer");
