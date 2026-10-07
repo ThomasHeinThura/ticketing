@@ -4,6 +4,10 @@ import { formatDateMedium } from "@/lib/format";
 import type { WorkItemDetailRow } from "@/types/work-item";
 import WorkItemDetail, { type WorkItemDetailProps } from "./work-item-detail";
 
+vi.mock("./work-item-activity", () => ({
+  default: () => <section data-testid="work-item-activity" />,
+}));
+
 const mocks = vi.hoisted(() => ({
   approvals: {
     approvals: [

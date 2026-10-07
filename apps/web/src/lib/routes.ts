@@ -87,6 +87,15 @@ export type SavedViewUrlSearch = {
   cursor?: string;
 };
 export type MyWorkSearch = { lens: "approvals" };
+export type WorkItemActivityFilter = "everything" | "comments" | "public";
+export type WorkItemDetailSearch = { activity?: WorkItemActivityFilter };
+
+export function parseWorkItemDetailSearch(raw: unknown): WorkItemDetailSearch {
+  const candidate = (raw ?? {}) as Record<string, unknown>;
+  return candidate.activity === "comments" || candidate.activity === "public"
+    ? { activity: candidate.activity }
+    : {};
+}
 
 export function parseMyWorkSearch(raw: unknown): MyWorkSearch {
   const candidate = (raw ?? {}) as Record<string, unknown>;
@@ -323,8 +332,16 @@ export const routes = {
    */
   workItemDetail: {
     path: "/agent/work-items/$key" as const,
-    build: (params: { key: string }) =>
-      `/agent/work-items/${encodeURIComponent(params.key)}`,
+    build: (
+      params: { key: string },
+      search: Partial<WorkItemDetailSearch> = {},
+    ) => {
+      const resolved = parseWorkItemDetailSearch(search);
+      const query = new URLSearchParams();
+      if (resolved.activity) query.set("activity", resolved.activity);
+      const suffix = query.toString();
+      return `/agent/work-items/${encodeURIComponent(params.key)}${suffix ? `?${suffix}` : ""}`;
+    },
   },
   /** God Mode Users directory and its query-string-backed selection/filters. */
   godModeUsers: {

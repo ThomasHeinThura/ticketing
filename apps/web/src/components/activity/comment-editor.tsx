@@ -10,7 +10,7 @@ import {
   DropdownMenuTrigger,
   Input,
 } from "@taskdesk/ui";
-import type { Editor } from "@tiptap/core";
+import type { Editor, JSONContent } from "@tiptap/core";
 import Image from "@tiptap/extension-image";
 import Placeholder from "@tiptap/extension-placeholder";
 import { Table } from "@tiptap/extension-table";
@@ -94,6 +94,11 @@ type CommentEditorProps = {
   ensureTaskId?: () => Promise<string | null>;
   showQuickAttachButton?: boolean;
   onAttachActionChange?: (attach: (() => void) | null) => void;
+  /** Native work-item comments store the editor's Tiptap document, not Markdown. */
+  documentValue?: unknown;
+  onDocumentChange?: (value: unknown) => void;
+  /** Hide mention insertion when the API surface cannot notify or update watchers. */
+  enableMentions?: boolean;
 };
 
 type SlashRange = { from: number; to: number };
@@ -188,6 +193,9 @@ export default function CommentEditor({
   ensureTaskId,
   showQuickAttachButton = true,
   onAttachActionChange,
+  documentValue,
+  onDocumentChange,
+  enableMentions = true,
 }: CommentEditorProps) {
   const { t } = useTranslation();
   const resolvedPlaceholder =
@@ -577,13 +585,16 @@ export default function CommentEditor({
 
   const filteredSlashCommands = useMemo(() => {
     const query = slashMenu?.query.trim().toLowerCase() || "";
-    if (!query) return slashCommands;
-    return slashCommands.filter(
+    const availableCommands = canUploadFiles
+      ? slashCommands
+      : slashCommands.filter((command) => command.id !== "file");
+    if (!query) return availableCommands;
+    return availableCommands.filter(
       (command) =>
         command.label.toLowerCase().includes(query) ||
         command.search.includes(query),
     );
-  }, [slashCommands, slashMenu?.query]);
+  }, [canUploadFiles, slashCommands, slashMenu?.query]);
 
   const editor = useEditor(
     {
@@ -617,9 +628,13 @@ export default function CommentEditor({
         AttachmentCard,
         TaskDeskIssueLink,
         TaskDeskMention,
-        MentionSuggestion.configure({
-          getMembers: () => mentionMembersRef.current,
-        }),
+        ...(enableMentions
+          ? [
+              MentionSuggestion.configure({
+                getMembers: () => mentionMembersRef.current,
+              }),
+            ]
+          : []),
         TaskList,
         Image.configure({
           HTMLAttributes: {
@@ -654,6 +669,7 @@ export default function CommentEditor({
           const pastedFile = pastedFiles[0];
 
           if (pastedFile) {
+            if (!canUploadFiles) return false;
             event.preventDefault();
             void handleAssetFileUpload(pastedFile, editor);
             return true;
@@ -733,7 +749,7 @@ export default function CommentEditor({
           return false;
         },
         handleDrop: (view, event) => {
-          if (readOnly || disabled) return false;
+          if (readOnly || disabled || !canUploadFiles) return false;
 
           const droppedFiles = Array.from(event.dataTransfer?.files || []);
           const droppedFile = droppedFiles[0];
@@ -886,13 +902,19 @@ export default function CommentEditor({
         },
       },
       onUpdate: ({ editor: activeEditor }) => {
-        if (readOnly || disabled || !onChange || isSyncingRef.current) return;
+        if (readOnly || disabled || isSyncingRef.current) return;
         const markdown = normalizeMarkdown(activeEditor.getMarkdown());
         latestValueRef.current = markdown;
-        onChange(markdown);
+        onChange?.(markdown);
+        onDocumentChange?.(activeEditor.getJSON());
       },
     },
-    [handleAssetFileUpload, resolvedPlaceholder, toShikiLanguage],
+    [
+      enableMentions,
+      handleAssetFileUpload,
+      resolvedPlaceholder,
+      toShikiLanguage,
+    ],
   );
 
   const shikiHighlighter = useShikiHighlighterForCode(editor);
@@ -1066,6 +1088,23 @@ export default function CommentEditor({
       isSyncingRef.current = false;
     });
   }, [editor, value]);
+
+  useEffect(() => {
+    if (!editor || documentValue === undefined) return;
+    if (!documentValue || typeof documentValue !== "object") return;
+    if (JSON.stringify(editor.getJSON()) === JSON.stringify(documentValue))
+      return;
+    isSyncingRef.current = true;
+    editor.commands.setContent(documentValue as JSONContent, {
+      emitUpdate: false,
+    });
+    const markdown = normalizeMarkdown(editor.getMarkdown());
+    latestValueRef.current = markdown;
+    onChange?.(markdown);
+    queueMicrotask(() => {
+      isSyncingRef.current = false;
+    });
+  }, [documentValue, editor, onChange]);
 
   const setLink = useCallback(() => {
     if (readOnly || disabled || !editor) return;

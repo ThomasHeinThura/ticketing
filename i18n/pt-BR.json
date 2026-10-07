@@ -1617,6 +1617,34 @@
 					"renderFailed": "Mermaid diagram couldn't be rendered"
 				}
 			}
+		},
+		"timeline": {
+			"cancel": "Cancel",
+			"cannedResponses": "Canned responses",
+			"comments": "Comments only",
+			"deleted": "Comment deleted on {{date}}",
+			"edit": "Edit",
+			"edited": "Edited",
+			"empty": "No activity matches this filter.",
+			"everything": "Everything",
+			"filterLabel": "Filter activity",
+			"groupedChanges": "{{count}} changes",
+			"heading": "Activity & comments",
+			"insertCannedResponse": "Insert a saved response",
+			"internal": "Internal",
+			"internalNotice": "Internal note — customers cannot see this.",
+			"loadFailed": "Activity could not be loaded.",
+			"loading": "Loading activity…",
+			"loadMore": "Load older activity",
+			"mutationFailed": "The action failed. Your permissions or the work item may have changed; retry or reload.",
+			"public": "Public",
+			"publicNotice": "Public comment — visible to customers with access.",
+			"publicOnly": "Public only",
+			"retry": "Retry",
+			"save": "Save changes",
+			"send": "Send comment",
+			"sending": "Sending…",
+			"visibilityLabel": "Who can see this comment?"
 		}
 	},
 	"tasks": {

@@ -27,12 +27,15 @@ import {
   type WorkItemDetailField,
   type WorkItemDetailRow,
 } from "@/types/work-item";
+import WorkItemActivity, { type ActivityFilter } from "./work-item-activity";
 import WorkItemDetailLoading from "./work-item-detail-loading";
 
 export type WorkItemDetailProps = {
   item: WorkItemDetailRow | undefined;
   /** The `{key}` from the URL -- shown by the not-found state, where there is no row. */
   workItemKey: string;
+  activityFilter?: ActivityFilter;
+  onActivityFilterChange?: (filter: ActivityFilter) => void;
   /** Best-effort: resolved client-side from the workspace's project list. Absent until
    * that list loads; the details section simply omits the row rather than showing a raw
    * project id. */
@@ -77,12 +80,13 @@ function UnavailableField({
 
 /**
  * The work-item detail page (`docs/02-design/screen-inventory.md` "Work item — full
- * page", `/agent/work-items/{key}`). Read-only first slice, per the spec's own
+ * page", `/agent/work-items/{key}`). The work-item fields follow the spec's
  * progressive-disclosure rule (`docs/03-features/work-items.md` § Screens): state,
- * assignee, priority and due date in the header; the description in the body; everything
- * else in a collapsible section. The spec's remaining sections (activity and comments,
- * relations, attachments, approvals, SLA, time entries) are separate
- * `screen-inventory.md` rows and separate slices; editing is likewise later work.
+ * assignee, priority and due date in the header; the description in the body; details in
+ * a collapsible section. The combined activity/comment stream is rendered below
+ * approvals using the native work-item activity API. Relations, attachments, SLA and
+ * time entries remain separate `screen-inventory.md` slices; work-item editing is also
+ * separate.
  *
  * Four states, matching G6 with a record view's own shape of them: loading (skeleton),
  * error (retryable alert), not-found (the 404 the route deliberately distinguishes --
@@ -100,6 +104,8 @@ function UnavailableField({
 function WorkItemDetail({
   item,
   workItemKey,
+  activityFilter = "everything",
+  onActivityFilterChange = () => {},
   project,
   isLoading,
   isNotFound,
@@ -344,6 +350,14 @@ function WorkItemDetail({
           </ul>
         )}
       </section>
+
+      <Separator />
+      <WorkItemActivity
+        workItemKey={workItemKey}
+        workspaceId={item.workspaceId}
+        filter={activityFilter}
+        onFilterChange={onActivityFilterChange}
+      />
 
       <Separator />
 
