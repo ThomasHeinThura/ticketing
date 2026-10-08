@@ -355,7 +355,7 @@ describe("work item comment editor lifecycle and CA-16 drafts", () => {
     view.unmount();
   });
 
-  it("resolves new person ids and legacy user ids without inventing an actor", async () => {
+  it("retains the legacy tombstone actor and withholds comment history", async () => {
     mocks.rows = [
       {
         id: "comment-tombstone",
@@ -376,35 +376,6 @@ describe("work item comment editor lifecycle and CA-16 drafts", () => {
         editedAt: "2026-10-08T10:02:00.000Z",
         deletedAt: "2026-10-08T10:03:00.000Z",
         deletedBy: "legacy-user",
-        versions: [
-          {
-            number: 1,
-            body: {
-              type: "doc",
-              content: [{ type: "paragraph" }],
-            },
-            editedBy: "person-1",
-            createdAt: "2026-10-08T10:01:00.000Z",
-          },
-          {
-            number: 2,
-            body: {
-              type: "doc",
-              content: [{ type: "paragraph" }],
-            },
-            editedBy: null,
-            createdAt: "2026-10-08T10:02:00.000Z",
-          },
-          {
-            number: 3,
-            body: {
-              type: "doc",
-              content: [{ type: "paragraph" }],
-            },
-            editedBy: "unlinked-person",
-            createdAt: "2026-10-08T10:02:30.000Z",
-          },
-        ],
       },
     ];
     renderActivity();
@@ -414,10 +385,8 @@ describe("work item comment editor lifecycle and CA-16 drafts", () => {
         /Comment deleted by Legacy actor/,
       ),
     ).toBeInTheDocument();
-    const historyTrigger = screen.getAllByRole("button", { name: "Edited" })[0];
-    if (!historyTrigger) throw new Error("History trigger is missing");
-    fireEvent.mouseEnter(historyTrigger);
-    await waitFor(() => expect(screen.getAllByText("Alice")).toHaveLength(2));
-    expect(screen.getAllByText("Unknown")).toHaveLength(1);
+    expect(
+      screen.queryByRole("button", { name: "Edited" }),
+    ).not.toBeInTheDocument();
   });
 });

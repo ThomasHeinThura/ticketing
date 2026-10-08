@@ -113,6 +113,17 @@ function activityRequest(
   return app.request(`/api/work-items/${key}/activity${query}`);
 }
 
+function commentVersionsRequest(
+  app: ReturnType<typeof createApp>["app"],
+  key: string,
+  commentId: string,
+  query = "",
+) {
+  return app.request(
+    `/api/work-items/${key}/comments/${commentId}/versions${query}`,
+  );
+}
+
 function postCommentRequest(
   app: ReturnType<typeof createApp>["app"],
   key: string,
@@ -141,6 +152,18 @@ function updateCommentRequest(
     method: "PATCH",
     headers: { "content-type": "application/json" },
     body: JSON.stringify({ body }),
+  });
+}
+
+function patchCommentPayloadRequest(
+  app: ReturnType<typeof createApp>["app"],
+  id: string,
+  payload: Record<string, unknown>,
+) {
+  return app.request(`/api/comments/${id}`, {
+    method: "PATCH",
+    headers: { "content-type": "application/json" },
+    body: JSON.stringify(payload),
   });
 }
 
@@ -503,21 +526,29 @@ describe("API integration: work item activity read (#23 fourth slice)", () => {
           deletedAt?: string | null;
           deletedBy?: string | null;
           visibility: string;
-          versions?: Array<{
-            number: number;
-            body: unknown;
-            editedBy: string | null;
-            createdAt: string;
-          }>;
         }>;
       };
       const liveComment = live.data.find((row) => row.id === comment.id);
       expect(liveComment?.body).toEqual(finalBody);
       expect(liveComment?.visibility).toBe("internal");
-      expect(liveComment?.versions?.map((version) => version.number)).toEqual([
-        1, 2,
-      ]);
-      expect(liveComment?.versions?.map((version) => version.body)).toEqual([
+      expect(liveComment).not.toHaveProperty("versions");
+      const versionsResponse = await commentVersionsRequest(
+        app,
+        created.key,
+        comment.id,
+      );
+      expect(versionsResponse.status).toBe(200);
+      const versionPage = (await versionsResponse.json()) as {
+        data: Array<{
+          number: number;
+          body: unknown;
+          editedBy: string | null;
+          createdAt: string;
+        }>;
+        page: { nextCursor: string | null; hasMore: boolean };
+      };
+      expect(versionPage.data.map((version) => version.number)).toEqual([1, 2]);
+      expect(versionPage.data.map((version) => version.body)).toEqual([
         firstBody,
         secondBody,
       ]);
@@ -526,12 +557,11 @@ describe("API integration: work item activity read (#23 fourth slice)", () => {
         .from(schema.personTable)
         .where(eq(schema.personTable.userId, creator.user.id));
       expect(creatorPerson).toBeDefined();
-      expect(liveComment?.versions?.map((version) => version.editedBy)).toEqual(
-        [creatorPerson?.id, creatorPerson?.id],
-      );
-      expect(liveComment?.versions?.every((version) => version.createdAt)).toBe(
-        true,
-      );
+      expect(versionPage.data.map((version) => version.editedBy)).toEqual([
+        creatorPerson?.id,
+        creatorPerson?.id,
+      ]);
+      expect(versionPage.data.every((version) => version.createdAt)).toBe(true);
 
       expect((await deleteCommentRequest(app, comment.id)).status).toBe(200);
       const deletedResponse = await activityRequest(app, created.key);
@@ -542,6 +572,182 @@ describe("API integration: work item activity read (#23 fourth slice)", () => {
       expect(tombstone?.body).toBeNull();
       expect(tombstone?.deletedBy).toBe(creator.user.id);
       expect(tombstone).not.toHaveProperty("versions");
+      expect(
+        (await commentVersionsRequest(app, created.key, comment.id)).status,
+      ).toBe(404);
+    });
+
+    it("bounds each history response and pages all versions in stable number/id order", async () => {
+      const { creator, project, type } = await setupProjectWithDefaultState();
+      mockAuthenticatedSession(creator.user);
+      const { app } = createApp();
+      const created = (await (
+        await createWorkItemRequest(app, project.id, {
+          typeId: type.id,
+          title: "Long comment history",
+        })
+      ).json()) as { key: string };
+      const commentResponse = await postCommentRequest(app, created.key, {
+        body: { type: "doc", content: [{ type: "paragraph" }] },
+        visibility: "internal",
+      });
+      const comment = (await commentResponse.json()) as { id: string };
+      const [person] = await db
+        .select({ id: schema.personTable.id })
+        .from(schema.personTable)
+        .where(eq(schema.personTable.userId, creator.user.id));
+      await db.insert(schema.commentVersionTable).values(
+        Array.from({ length: 37 }, (_, index) => ({
+          commentId: comment.id,
+          number: index + 1,
+          body: {
+            type: "doc",
+            content: [{ type: "paragraph", text: `old-${index + 1}` }],
+          },
+          editedBy: person?.id ?? null,
+        })),
+      );
+
+      const activity = (await (
+        await activityRequest(app, created.key)
+      ).json()) as { data: Array<Record<string, unknown>> };
+      expect(
+        activity.data.find((row) => row.id === comment.id),
+      ).not.toHaveProperty("versions");
+
+      const all: number[] = [];
+      let cursor: string | null = null;
+      let pageCount = 0;
+      do {
+        const query = cursor ? `?cursor=${encodeURIComponent(cursor)}` : "";
+        const response = await commentVersionsRequest(
+          app,
+          created.key,
+          comment.id,
+          query,
+        );
+        expect(response.status).toBe(200);
+        const page = (await response.json()) as {
+          data: Array<{ number: number }>;
+          page: { nextCursor: string | null; hasMore: boolean };
+        };
+        expect(page.data.length).toBeLessThanOrEqual(10);
+        all.push(...page.data.map((row) => row.number));
+        cursor = page.page.nextCursor;
+        expect(page.page.hasMore).toBe(Boolean(cursor));
+        pageCount += 1;
+      } while (cursor);
+      expect(pageCount).toBe(4);
+      expect(all).toEqual(Array.from({ length: 37 }, (_, index) => index + 1));
+    });
+
+    it("masks missing, cross-work-item, and tombstoned history parents", async () => {
+      const { creator, project, type } = await setupProjectWithDefaultState();
+      mockAuthenticatedSession(creator.user);
+      const { app } = createApp();
+      const makeItem = async (title: string) =>
+        (await (
+          await createWorkItemRequest(app, project.id, {
+            typeId: type.id,
+            title,
+          })
+        ).json()) as { key: string };
+      const first = await makeItem("History parent one");
+      const second = await makeItem("History parent two");
+      const created = await postCommentRequest(app, first.key, {
+        body: { type: "doc", content: [{ type: "paragraph" }] },
+        visibility: "internal",
+      });
+      const comment = (await created.json()) as { id: string };
+      const otherResponse = await postCommentRequest(app, first.key, {
+        body: { type: "doc", content: [{ type: "paragraph" }] },
+        visibility: "internal",
+      });
+      const other = (await otherResponse.json()) as { id: string };
+      await updateCommentRequest(app, comment.id, { type: "doc", content: [] });
+      await updateCommentRequest(app, comment.id, {
+        type: "doc",
+        content: [{ type: "paragraph" }],
+      });
+      const firstPage = await commentVersionsRequest(
+        app,
+        first.key,
+        comment.id,
+        "?limit=1",
+      );
+      const firstPageBody = (await firstPage.json()) as {
+        page: { nextCursor: string | null };
+      };
+      expect(firstPageBody.page.nextCursor).toBeTruthy();
+      expect(
+        (
+          await commentVersionsRequest(
+            app,
+            first.key,
+            other.id,
+            `?cursor=${encodeURIComponent(firstPageBody.page.nextCursor ?? "")}`,
+          )
+        ).status,
+      ).toBe(400);
+      expect(
+        (await commentVersionsRequest(app, second.key, comment.id)).status,
+      ).toBe(404);
+      expect(
+        (await commentVersionsRequest(app, first.key, "missing-comment"))
+          .status,
+      ).toBe(404);
+      const malformed = await commentVersionsRequest(
+        app,
+        first.key,
+        comment.id,
+        "?cursor=not-a-cursor",
+      );
+      expect(malformed.status).toBe(400);
+    });
+
+    it("rejects a missing PATCH body without changing the comment or its history", async () => {
+      const { creator, project, type } = await setupProjectWithDefaultState();
+      mockAuthenticatedSession(creator.user);
+      const { app } = createApp();
+      const created = (await (
+        await createWorkItemRequest(app, project.id, {
+          typeId: type.id,
+          title: "Required comment body",
+        })
+      ).json()) as { key: string };
+      const commentResponse = await postCommentRequest(app, created.key, {
+        body: {
+          type: "doc",
+          content: [{ type: "paragraph", text: "original" }],
+        },
+        visibility: "internal",
+      });
+      const comment = (await commentResponse.json()) as { id: string };
+      const before = await db
+        .select({ id: schema.commentVersionTable.id })
+        .from(schema.commentVersionTable)
+        .where(eq(schema.commentVersionTable.commentId, comment.id));
+
+      const response = await patchCommentPayloadRequest(app, comment.id, {});
+      expect(response.status).toBe(400);
+
+      const after = await db
+        .select({ id: schema.commentVersionTable.id })
+        .from(schema.commentVersionTable)
+        .where(eq(schema.commentVersionTable.commentId, comment.id));
+      const activity = (await (
+        await activityRequest(app, created.key)
+      ).json()) as {
+        data: Array<{ id: string; body: unknown; editedAt: string | null }>;
+      };
+      expect(after).toEqual(before);
+      expect(activity.data.find((row) => row.id === comment.id)).toMatchObject({
+        body: {
+          type: "doc",
+          content: [{ type: "paragraph", text: "original" }],
+        },
+        editedAt: null,
+      });
     });
 
     it("pagination: limit=1 pages through a mix of activity and comment rows without duplicates or gaps", async () => {

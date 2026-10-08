@@ -390,24 +390,6 @@ export const workItemActivityRowSchema = z
     updatedAt: responseTimestamp.optional().openapi({
       description: "Comment rows only.",
     }),
-    versions: z
-      .array(
-        z.object({
-          number: z.number().int().positive(),
-          body: z.unknown(),
-          editedBy: z.string().nullable().openapi({
-            description: "The editor's person.id, or null if unavailable.",
-          }),
-          createdAt: responseTimestamp,
-        }),
-      )
-      .optional()
-      .openapi({
-        description:
-          "Comment rows only: prior CA-17 bodies, ordered by version number. " +
-          "Omitted for unedited comments and tombstones; each version inherits " +
-          "the comment's visibility and work-item reach.",
-      }),
   })
   .openapi("WorkItemActivityRow");
 
@@ -417,6 +399,35 @@ export const workItemActivityListResponseSchema = z
     page: workItemPageSchema,
   })
   .openapi("WorkItemActivityListResponse");
+
+const commentJsonValueSchema = z.union([
+  z.string(),
+  z.number(),
+  z.boolean(),
+  z.null(),
+  z.array(z.unknown()),
+  z.record(z.string(), z.unknown()),
+]);
+
+export const commentVersionSchema = z
+  .object({
+    number: z.number().int().positive(),
+    body: commentJsonValueSchema.openapi({
+      description: "The immutable JSON body for this prior comment version.",
+    }),
+    editedBy: z.string().nullable().openapi({
+      description: "The editor's person.id, or null if unavailable.",
+    }),
+    createdAt: responseTimestamp,
+  })
+  .openapi("CommentVersion");
+
+export const commentVersionPageResponseSchema = z
+  .object({
+    data: z.array(commentVersionSchema),
+    page: workItemPageSchema,
+  })
+  .openapi("CommentVersionPage");
 
 // `assignment.md` § API: `DELETE /api/work-items/{key}/assign`. The assignment as
 // cleared. `assigneeId` is null BY TYPE -- a client cannot mistake "cleared" for "field

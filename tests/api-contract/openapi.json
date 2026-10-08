@@ -4313,36 +4313,6 @@
             "type": "string",
             "format": "date-time",
             "description": "Comment rows only."
-          },
-          "versions": {
-            "type": "array",
-            "items": {
-              "type": "object",
-              "properties": {
-                "number": {
-                  "type": "integer",
-                  "exclusiveMinimum": 0
-                },
-                "body": {},
-                "editedBy": {
-                  "type": [
-                    "string",
-                    "null"
-                  ],
-                  "description": "The editor's person.id, or null if unavailable."
-                },
-                "createdAt": {
-                  "type": "string",
-                  "format": "date-time"
-                }
-              },
-              "required": [
-                "number",
-                "editedBy",
-                "createdAt"
-              ]
-            },
-            "description": "Comment rows only: prior CA-17 bodies, ordered by version number. Omitted for unedited comments and tombstones; each version inherits the comment's visibility and work-item reach."
           }
         },
         "required": [
@@ -4534,6 +4504,75 @@
           "isReopen",
           "available",
           "blockedBy"
+        ]
+      },
+      "CommentVersionPage": {
+        "type": "object",
+        "properties": {
+          "data": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/CommentVersion"
+            }
+          },
+          "page": {
+            "$ref": "#/components/schemas/WorkItemPage"
+          }
+        },
+        "required": [
+          "data",
+          "page"
+        ]
+      },
+      "CommentVersion": {
+        "type": "object",
+        "properties": {
+          "number": {
+            "type": "integer",
+            "exclusiveMinimum": 0
+          },
+          "body": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "number"
+              },
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              },
+              {
+                "type": "array",
+                "items": {}
+              },
+              {
+                "type": "object",
+                "additionalProperties": {}
+              }
+            ],
+            "description": "The immutable JSON body for this prior comment version."
+          },
+          "editedBy": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "The editor's person.id, or null if unavailable."
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time"
+          }
+        },
+        "required": [
+          "number",
+          "body",
+          "editedBy",
+          "createdAt"
         ]
       },
       "AttachmentPresignResult": {
@@ -21455,7 +21494,7 @@
           "Work items"
         ],
         "summary": "List work item activity",
-        "description": "The work item's combined activity/comment stream (`WI-6`, `comments-and-activity.md`'s \"one stream showing everything\"), newest first, cursor-paginated. Each row in `data` carries `kind`: `\"activity\"` for an `activity` table row (issue #292) or `\"comment\"` for a posted `comment` row (issue #452) -- merged and sorted together, not two separate lists. Every row is returned regardless of `visibility` -- see the controller's own doc comment for why no caller-type filtering is applied yet. A live comment with prior edits may include an optional `versions` array (`number`, `body`, `editedBy`, `createdAt`) ordered by version number (`editedBy` is the editor's person id); unedited comments and tombstones omit it. A tombstone includes its `deletedBy` actor id. The projection uses this route's existing work_item:read and work-item reach checks.",
+        "description": "The work item's combined activity/comment stream (`WI-6`, `comments-and-activity.md`'s \"one stream showing everything\"), newest first, cursor-paginated. Each row in `data` carries `kind`: `\"activity\"` for an `activity` table row (issue #292) or `\"comment\"` for a posted `comment` row (issue #452) -- merged and sorted together, not two separate lists. Every row is returned regardless of `visibility` -- see the controller's own doc comment for why no caller-type filtering is applied yet. A tombstone includes its `deletedBy` actor id. Version history uses a separate bounded route, fetched only when expanded. The projection uses this route's existing work_item:read and work-item reach checks.",
         "parameters": [
           {
             "schema": {
@@ -21813,7 +21852,10 @@
                 "type": "object",
                 "properties": {
                   "body": {}
-                }
+                },
+                "required": [
+                  "body"
+                ]
               }
             }
           }
@@ -21908,6 +21950,100 @@
           },
           "404": {
             "description": "Comment not found",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/work-items/{key}/comments/{id}/versions": {
+      "get": {
+        "operationId": "listWorkItemCommentVersions",
+        "tags": [
+          "Comments"
+        ],
+        "summary": "List comment edit history",
+        "description": "Returns a bounded cursor page of a live comment's CA-17 versions in ascending (number, id) order. The comment must belong to the addressed work item. Uses the same work_item:read, project reach, and immutable comment visibility as activity; tombstones and unavailable parents return 404. This agent-side route is not exposed through the portal router.",
+        "parameters": [
+          {
+            "schema": {
+              "type": "string"
+            },
+            "required": true,
+            "name": "key",
+            "in": "path"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "minLength": 1
+            },
+            "required": true,
+            "name": "id",
+            "in": "path"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 512
+            },
+            "required": false,
+            "name": "cursor",
+            "in": "query"
+          },
+          {
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 10
+            },
+            "required": false,
+            "name": "limit",
+            "in": "query"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "A bounded page of comment versions",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CommentVersionPage"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid comment-version cursor or limit",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing or invalid credentials"
+          },
+          "403": {
+            "description": "No workspace access, or missing work_item:read permission",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Work item or comment not found",
             "content": {
               "text/plain": {
                 "schema": {

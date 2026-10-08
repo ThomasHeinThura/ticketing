@@ -4,7 +4,6 @@ import db from "../../database";
 import { activityTable, commentTable } from "../../database/schema";
 import {
   findActivityWorkItemByKeyQuery,
-  listCommentVersionsByCommentIdsQuery,
   listWorkItemActivityRowsQuery,
   listWorkItemCommentRowsQuery,
 } from "../repository";
@@ -148,12 +147,6 @@ type ActivityStreamRow = {
   deletedAt: Date | null;
   deletedBy: string | null;
   updatedAt?: Date;
-  versions?: Array<{
-    number: number;
-    body: unknown;
-    editedBy: string | null;
-    createdAt: Date;
-  }>;
 };
 
 // `createdAtExpr` accepts either a plain column (activity's own, already
@@ -297,40 +290,8 @@ export async function listWorkItemActivity(
   const hasMore = merged.length > limit;
   const page = hasMore ? merged.slice(0, limit) : merged;
   const lastRow = page.at(-1);
-  const liveCommentIds = page
-    .filter(
-      (row) =>
-        row.kind === "comment" &&
-        row.deletedAt === null &&
-        row.editedAt !== null,
-    )
-    .map((row) => row.id);
-  const versionRows = await listCommentVersionsByCommentIdsQuery(
-    db,
-    liveCommentIds,
-  );
-  const versionsByCommentId = new Map<
-    string,
-    NonNullable<ActivityStreamRow["versions"]>
-  >();
-  for (const version of versionRows) {
-    const commentVersions = versionsByCommentId.get(version.commentId) ?? [];
-    commentVersions.push({
-      number: version.number,
-      body: version.body,
-      editedBy: version.editedBy,
-      createdAt: version.createdAt,
-    });
-    versionsByCommentId.set(version.commentId, commentVersions);
-  }
-  const data = page.map((row) => {
-    if (row.kind !== "comment" || row.deletedAt !== null) return row;
-    const versions = versionsByCommentId.get(row.id);
-    return versions?.length ? { ...row, versions } : row;
-  });
-
   return {
-    data,
+    data: page,
     page: {
       hasMore,
       nextCursor:

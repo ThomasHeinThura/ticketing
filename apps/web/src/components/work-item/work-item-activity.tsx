@@ -256,6 +256,9 @@ function WorkItemActivity({
       await updateComment.mutateAsync({ id: editing, body: editDocument });
       setEditing(null);
       await queryClient.invalidateQueries({ queryKey: activityKey });
+      await queryClient.invalidateQueries({
+        queryKey: ["work-items", "comment-versions", workItemKey, editing],
+      });
     } catch {
       // Keep the editor open so a failed edit can be retried or cancelled.
     }
@@ -348,19 +351,14 @@ function WorkItemActivity({
                       ? t("activity:timeline.public")
                       : t("activity:timeline.internal")}
                   </span>
-                  {row.editedAt && row.versions?.length ? (
+                  {row.editedAt && !row.deletedAt ? (
                     <CommentVersionHistory
+                      workItemKey={workItemKey}
+                      commentId={row.id}
                       label={t("activity:timeline.edited")}
                       editorName={displayPersonName}
-                      versions={row.versions}
                     />
-                  ) : (
-                    row.editedAt && (
-                      <span className="text-muted-foreground">
-                        {t("activity:timeline.edited")}
-                      </span>
-                    )
-                  )}
+                  ) : null}
                   {!isDeleted && editing !== row.id && (
                     <Button
                       size="xs"

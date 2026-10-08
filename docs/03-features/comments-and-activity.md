@@ -106,18 +106,18 @@ security-sensitive field in the product.
   `localStorage`, and therefore per device: a draft started on one device is not visible
   on another.
 - `CA-17` Editing is allowed for 15 minutes by the author. After that window, editing is
-  **refused** — a 403 — unless the actor holds `comment:update_any`. Each edit writes a new
+  **refused** — a 403 — unless the actor holds `comment:update_any`. The PATCH request
+  supplies the complete `body` value; omitting the property is rejected before any write.
+  The existing opaque JSON/legacy-string body contract is unchanged. Each edit writes a new
   `comment_version (comment_id, number, body, edited_by, created_at)` row, where new
   `edited_by` values are the linked editor `person.id` (null when no person is linked)
   ([data-model.md](../01-architecture/data-model.md) §4). Older rows may contain the
   user id stored by earlier builds; they remain unchanged and readers resolve both forms.
-  The comment shows "edited" with a hover-revealed history built from those versions. On the existing
-  `GET /api/work-items/{key}/activity` response, a live comment row with versions may
-  include `versions: [{ number, body, editedBy, createdAt }]`, ordered by ascending
-  `number`. The field is omitted when there are no versions and omitted entirely for a
-  tombstone. History inherits the parent comment's immutable visibility and the existing
-  work-item reach/read policy; it never gives a caller access to a comment they could not
-  already read.
+  The comment shows "edited" with an expandable history built from those versions. History
+  is fetched only when opened, in bounded cursor pages, so one activity page never expands
+  every prior body. See the read contract below. History inherits the parent comment's
+  immutable visibility and the existing work-item reach/read policy; it never gives a caller
+  access to a comment they could not already read.
 - `CA-18` Deleting sets `comment.deleted_at` / `deleted_by` and clears the body; the row and
   its activity stay, and the tombstone renders from those two columns — "Comment deleted by
   Jane, 2 March" — never a
@@ -180,13 +180,38 @@ PATCH  /api/canned-responses/{id}              workspace:manage_settings
 DELETE /api/canned-responses/{id}              workspace:manage_settings
 ```
 
-The activity response keeps its existing `{ data, page }` envelope and flat row shape.
-Comment rows with edit history add the optional `versions` array defined in CA-17; activity
-rows, unedited comments, and tombstones omit it. The array carries only the persisted
-version number, body document, editor person id (nullable), and creation timestamp. It is
-returned under the same `work_item:read` + work-item reach check as the parent comment, and
-uses the comment's unchanged `public` or `internal` visibility. No separate history route
-or capability is introduced.
+The activity response keeps its existing `{ data, page }` envelope and flat row shape. It
+does not embed comment versions. An edited live comment exposes its history through the
+agent-side `GET /api/work-items/{key}/comments/{id}/versions` read below; no portal history
+route exists. The route uses the existing `work_item:read` capability and the same
+project/work-item reach check as activity. It confirms that the live comment belongs to the
+path work item before reading versions; missing, mismatched, deleted, archived, or
+out-of-reach parents return the same `404`. A tombstone never exposes versions. Each returned
+row contains only the persisted version number, body document, editor person id (nullable),
+and creation timestamp. The immutable parent visibility is unchanged. The separate portal
+activity projection continues to return public comments only and does not call this agent
+history route.
+
+### CA-17 comment-version read pagination
+
+`GET /api/work-items/{key}/comments/{id}/versions` returns `{ data, page: { nextCursor,
+hasMore } }`; it returns no total count. `limit` defaults to 5 and must be 1–10. This
+per-comment bound is intentionally below the general collection ceiling because each
+version body may be 256 KiB under CA-11; even a maximum page is therefore bounded to ten
+version bodies. The UI requests the first page when the user expands history and follows
+`nextCursor` only when the user asks to load earlier versions. It keeps every fetched page
+and renders all fetched rows in ascending `(number, id)` order; no history is silently
+truncated or replaced by a summary.
+
+The cursor is opaque, versioned, and keyset-based. It binds the work-item key, comment id,
+and last `(number, id)` tuple. A malformed cursor or one bound to a different path parent
+returns `400`; it never widens the query. The next page uses strict lexicographic
+continuation and the same ascending `(number, id)` order, so concurrent edits do not shift
+already-read rows. The database's existing unique `(comment_id, number)` constraint is
+preserved; `id` remains the deterministic tie-break. Parent lookup, workspace/project
+reach, `work_item:read`, and live-comment checks occur before reading version rows. The
+route is not mounted in the customer-portal router; the portal's public-only projection is
+unchanged.
 
 The portal endpoint is a separate handler, not the same handler with a filter, so it is
 impossible to leak internal content through a forgotten branch.

@@ -6119,6 +6119,155 @@
 				"created": {
 					"type": "string"
 				},
+				"timeline": {
+					"type": "object",
+					"additionalProperties": false,
+					"properties": {
+						"heading": {
+							"type": "string"
+						},
+						"filterLabel": {
+							"type": "string"
+						},
+						"everything": {
+							"type": "string"
+						},
+						"comments": {
+							"type": "string"
+						},
+						"publicOnly": {
+							"type": "string"
+						},
+						"public": {
+							"type": "string"
+						},
+						"internal": {
+							"type": "string"
+						},
+						"visibilityLabel": {
+							"type": "string"
+						},
+						"internalNotice": {
+							"type": "string"
+						},
+						"publicNotice": {
+							"type": "string"
+						},
+						"cannedResponses": {
+							"type": "string"
+						},
+						"insertCannedResponse": {
+							"type": "string"
+						},
+						"loading": {
+							"type": "string"
+						},
+						"loadFailed": {
+							"type": "string"
+						},
+						"retry": {
+							"type": "string"
+						},
+						"empty": {
+							"type": "string"
+						},
+						"loadMore": {
+							"type": "string"
+						},
+						"edited": {
+							"type": "string"
+						},
+						"historyLabel": {
+							"type": "string"
+						},
+						"historyLoading": {
+							"type": "string"
+						},
+						"historyLoadFailed": {
+							"type": "string"
+						},
+						"historyEmpty": {
+							"type": "string"
+						},
+						"loadEarlierVersions": {
+							"type": "string"
+						},
+						"edit": {
+							"type": "string"
+						},
+						"cancel": {
+							"type": "string"
+						},
+						"save": {
+							"type": "string"
+						},
+						"send": {
+							"type": "string"
+						},
+						"sending": {
+							"type": "string"
+						},
+						"mutationFailed": {
+							"type": "string"
+						},
+						"groupedChanges": {
+							"type": "string"
+						},
+						"groupedChanges_zero": {
+							"type": "string"
+						},
+						"groupedChanges_one": {
+							"type": "string"
+						},
+						"groupedChanges_two": {
+							"type": "string"
+						},
+						"groupedChanges_few": {
+							"type": "string"
+						},
+						"groupedChanges_many": {
+							"type": "string"
+						},
+						"groupedChanges_other": {
+							"type": "string"
+						},
+						"deleted": {
+							"type": "string"
+						}
+					},
+					"required": [
+						"heading",
+						"filterLabel",
+						"everything",
+						"comments",
+						"publicOnly",
+						"public",
+						"internal",
+						"visibilityLabel",
+						"internalNotice",
+						"publicNotice",
+						"cannedResponses",
+						"insertCannedResponse",
+						"loading",
+						"loadFailed",
+						"retry",
+						"empty",
+						"loadMore",
+						"edited",
+						"historyLabel",
+						"historyLoading",
+						"historyLoadFailed",
+						"historyEmpty",
+						"loadEarlierVersions",
+						"edit",
+						"cancel",
+						"save",
+						"send",
+						"sending",
+						"mutationFailed",
+						"deleted"
+					]
+				},
 				"githubUser": {
 					"type": "string"
 				},
@@ -6533,6 +6682,7 @@
 				"changedTitle",
 				"moved",
 				"created",
+				"timeline",
 				"githubUser",
 				"comment"
 			]
@@ -9178,6 +9328,9 @@
 						"heading": {
 							"type": "string"
 						},
+						"export": {
+							"type": "string"
+						},
 						"columnKey": {
 							"type": "string"
 						},
@@ -9262,6 +9415,7 @@
 						"pageTitle",
 						"pageTitleWithProject",
 						"heading",
+						"export",
 						"columnKey",
 						"columnTitle",
 						"columnPriority",
@@ -11424,6 +11578,93 @@
 				"search": {
 					"type": "string"
 				},
+				"name": {
+					"type": "string"
+				},
+				"create": {
+					"type": "string"
+				},
+				"creating": {
+					"type": "string"
+				},
+				"createError": {
+					"type": "string"
+				},
+				"countLoading": {
+					"type": "string"
+				},
+				"count": {
+					"type": "string"
+				},
+				"count_zero": {
+					"type": "string"
+				},
+				"count_one": {
+					"type": "string"
+				},
+				"count_two": {
+					"type": "string"
+				},
+				"count_few": {
+					"type": "string"
+				},
+				"count_many": {
+					"type": "string"
+				},
+				"count_other": {
+					"type": "string"
+				},
+				"togglePin": {
+					"type": "string"
+				},
+				"pin": {
+					"type": "string"
+				},
+				"unpin": {
+					"type": "string"
+				},
+				"clone": {
+					"type": "string"
+				},
+				"cancelEdit": {
+					"type": "string"
+				},
+				"edit": {
+					"type": "string"
+				},
+				"save": {
+					"type": "string"
+				},
+				"loadingView": {
+					"type": "string"
+				},
+				"projectUnavailable": {
+					"type": "string"
+				},
+				"layoutUnavailable": {
+					"type": "string"
+				},
+				"sort": {
+					"type": "string"
+				},
+				"direction": {
+					"type": "string"
+				},
+				"columns": {
+					"type": "string"
+				},
+				"runError": {
+					"type": "string"
+				},
+				"loadingMore": {
+					"type": "string"
+				},
+				"loadMore": {
+					"type": "string"
+				},
+				"saveError": {
+					"type": "string"
+				},
 				"empty": {
 					"type": "string"
 				},
@@ -11459,6 +11700,28 @@
 				"title",
 				"description",
 				"search",
+				"name",
+				"create",
+				"creating",
+				"createError",
+				"countLoading",
+				"togglePin",
+				"pin",
+				"unpin",
+				"clone",
+				"cancelEdit",
+				"edit",
+				"save",
+				"loadingView",
+				"projectUnavailable",
+				"layoutUnavailable",
+				"sort",
+				"direction",
+				"columns",
+				"runError",
+				"loadingMore",
+				"loadMore",
+				"saveError",
 				"empty",
 				"requestDelete",
 				"requesting",

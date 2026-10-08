@@ -486,3 +486,15 @@ export const listWorkItemActivityQuery = z.object({
     .optional(),
   limit: z.coerce.number().int().min(1).max(200).optional(),
 });
+
+// `GET /api/work-items/{key}/comments/{id}/versions` -- deliberately smaller than
+// ordinary collection pages because each body may be 256 KiB (`CA-11`).
+export const listCommentVersionsQuery = z.object({
+  cursor: z
+    .string()
+    .min(1)
+    .max(512)
+    .refine((value) => !containsNulByte(value), NO_NUL_BYTE_MESSAGE)
+    .optional(),
+  limit: z.coerce.number().int().min(1).max(10).optional(),
+});

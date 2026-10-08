@@ -834,10 +834,8 @@ const listWorkItemActivityRoute = createRoute({
     'table row (issue #292) or `"comment"` for a posted `comment` row (issue #452) -- ' +
     "merged and sorted together, not two separate lists. Every row is returned " +
     "regardless of `visibility` -- see the controller's own doc comment for why no " +
-    "caller-type filtering is applied yet. A live comment with prior edits may include " +
-    "an optional `versions` array (`number`, `body`, `editedBy`, `createdAt`) ordered " +
-    "by version number (`editedBy` is the editor's person id); unedited comments " +
-    "and tombstones omit it. A tombstone includes its `deletedBy` actor id. The " +
+    "caller-type filtering is applied yet. A tombstone includes its `deletedBy` actor id. " +
+    "Version history uses a separate bounded route, fetched only when expanded. The " +
     "projection uses this route's existing work_item:read and work-item reach checks.",
   middleware: [
     requireWorkItemReach("key", { requireProjectReach: true }),

@@ -619,6 +619,7 @@ POST   /api/work-items/{key}/assign
 POST   /api/work-items/{key}/watch
 DELETE /api/work-items/{key}/watch
 GET    /api/work-items/{key}/activity
+GET    /api/work-items/{key}/comments/{id}/versions
 POST   /api/work-items/{key}/comments
 GET    /api/work-items/{key}/sla             ← computed fresh, never stored
 ```
@@ -654,6 +655,20 @@ GET /api/projects/{projectId}/work-items
 ```
 
 `meta.total` is an estimate for large sets and is documented as such.
+
+### Comment edit history
+
+`GET /api/work-items/{key}/comments/{id}/versions` is the CA-17 agent-side read for one
+live comment's immutable edit history. It uses cursor pagination, never offsets, and returns
+`{ data, page: { nextCursor, hasMore } }` without a total. `limit` defaults to 5 and is
+bounded to 1–10 because CA-11 permits each persisted body to reach 256 KiB. Rows sort by
+ascending `(number, id)`; the opaque version-1 cursor binds the parent work-item key,
+comment id, and last `(number, id)` tuple. Malformed and cross-parent cursors return `400`.
+The existing `work_item:read` capability and parent work-item/project reach apply. The
+comment must be live and belong to the path work item; missing, mismatched, deleted, or
+out-of-reach parents return the same `404`. Comment visibility is inherited unchanged, and
+the route is not exposed through the customer-portal router. Activity pages omit embedded
+version arrays; the client fetches version pages only when history is expanded.
 
 ## Query grammar — filters, sort, grouping, aggregation
 

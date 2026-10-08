@@ -144,6 +144,7 @@ import { seedInternalOrganisationAndStaffPersons } from "./utils/seed-internal-o
 import { reachableWorkspacePredicate } from "./utils/workspace-access-middleware";
 import view from "./view";
 import workItem from "./work-item";
+import workItemCommentVersions from "./work-item/comment-versions";
 import workflow from "./workflow";
 import workflowRule from "./workflow-rule";
 import workspace from "./workspace";
@@ -1363,6 +1364,7 @@ export function createApp(
   // `/work-items/{key}`), which `workItem`'s own routes already declare in full. See
   // `work-item/index.ts`'s file comment.
   const workItemApi = api.route("/", workItem);
+  const workItemCommentVersionsApi = api.route("/", workItemCommentVersions);
   const approvalApi = api.route("/", approval);
   const attachmentApi = api.route("/", attachment);
   const userApi = api.route("/user", user);
@@ -1695,6 +1697,7 @@ export function createApp(
     workflowApi,
     workflowRuleApi,
     workItemApi,
+    workItemCommentVersionsApi,
     workspaceApi,
   };
 }
@@ -2077,6 +2080,7 @@ const {
   workflowApi,
   workflowRuleApi,
   workItemApi,
+  workItemCommentVersionsApi,
   workspaceApi,
 } = createdApp;
 
@@ -2152,6 +2156,7 @@ export type AppType =
   | typeof workflowApi
   | typeof workflowRuleApi
   | typeof workItemApi
+  | typeof workItemCommentVersionsApi
   | typeof invitationApi
   | typeof workspaceApi
   | typeof viewApi

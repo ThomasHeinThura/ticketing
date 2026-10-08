@@ -4,11 +4,13 @@ import {
   count,
   desc,
   eq,
+  gt,
   inArray,
   isNotNull,
   isNull,
   lte,
   notInArray,
+  or,
   type SQL,
   sql,
 } from "drizzle-orm";
@@ -817,25 +819,53 @@ export async function countCommentVersionsQuery(
     .where(eq(commentVersionTable.commentId, commentId));
 }
 
-export async function listCommentVersionsByCommentIdsQuery(
+export async function findLiveCommentVersionParentQuery(
   executor: Executor,
-  commentIds: string[],
+  commentId: string,
+  workItemId: string,
 ) {
-  if (commentIds.length === 0) return [];
+  return executor
+    .select({ id: commentTable.id })
+    .from(commentTable)
+    .where(
+      and(
+        eq(commentTable.id, commentId),
+        eq(commentTable.workItemId, workItemId),
+        isNull(commentTable.deletedAt),
+      ),
+    )
+    .limit(1);
+}
+
+export async function listCommentVersionPageQuery(
+  executor: Executor,
+  commentId: string,
+  after: { number: number; id: string } | undefined,
+  limit: number,
+) {
+  const conditions: SQL[] = [eq(commentVersionTable.commentId, commentId)];
+  if (after) {
+    const continuation = or(
+      gt(commentVersionTable.number, after.number),
+      and(
+        eq(commentVersionTable.number, after.number),
+        gt(commentVersionTable.id, after.id),
+      ),
+    );
+    if (continuation) conditions.push(continuation);
+  }
   return executor
     .select({
-      commentId: commentVersionTable.commentId,
+      id: commentVersionTable.id,
       number: commentVersionTable.number,
       body: commentVersionTable.body,
       editedBy: commentVersionTable.editedBy,
       createdAt: commentVersionTable.createdAt,
     })
     .from(commentVersionTable)
-    .where(inArray(commentVersionTable.commentId, commentIds))
-    .orderBy(
-      asc(commentVersionTable.commentId),
-      asc(commentVersionTable.number),
-    );
+    .where(and(...conditions))
+    .orderBy(asc(commentVersionTable.number), asc(commentVersionTable.id))
+    .limit(limit);
 }
 
 export async function lockWorkItemByKeyQuery(

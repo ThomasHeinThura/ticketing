@@ -21,14 +21,6 @@ export type WorkItemActivityRow = {
   deletedAt?: string | null;
   deletedBy?: string | null;
   updatedAt?: string;
-  versions?: CommentVersion[];
-};
-
-export type CommentVersion = {
-  number: number;
-  body: unknown;
-  editedBy: string | null;
-  createdAt: string;
 };
 
 export type WorkItemActivityPage = {
