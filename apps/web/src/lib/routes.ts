@@ -107,6 +107,8 @@ const PROJECT_BOARD_PATH =
   "/dashboard/workspace/$workspaceId/project/$projectId/board";
 const PROJECT_CALENDAR_PATH =
   "/dashboard/workspace/$workspaceId/project/$projectId/calendar";
+const PROJECT_GANTT_PATH =
+  "/dashboard/workspace/$workspaceId/project/$projectId/gantt";
 
 export function parseWorkItemDetailSearch(raw: unknown): WorkItemDetailSearch {
   const candidate = (raw ?? {}) as Record<string, unknown>;
@@ -335,6 +337,36 @@ export const routes = {
           month: query.get("month"),
           taskId: query.get("taskId"),
         }),
+      };
+    },
+  },
+  /** Project Gantt task-panel URL state. */
+  projectGantt: {
+    path: PROJECT_GANTT_PATH,
+    build: (params: ProjectRouteParams, search: { taskId?: string } = {}) => {
+      const pathname = buildGeneratedRouteUrl(
+        "agent",
+        PROJECT_GANTT_PATH,
+        params,
+      );
+      const taskId =
+        typeof search.taskId === "string" && search.taskId.length > 0
+          ? search.taskId
+          : undefined;
+      const query = new URLSearchParams();
+      if (taskId) query.set("taskId", taskId);
+      const suffix = query.toString();
+      return `${pathname}${suffix ? `?${suffix}` : ""}`;
+    },
+    parse: (input: string) => {
+      const match = parseGeneratedRouteUrl("agent", PROJECT_GANTT_PATH, input);
+      if (!match) return undefined;
+      const taskId = new URL(input, "https://route.invalid").searchParams.get(
+        "taskId",
+      );
+      return {
+        params: match.params as ProjectRouteParams,
+        search: taskId ? { taskId } : {},
       };
     },
   },
