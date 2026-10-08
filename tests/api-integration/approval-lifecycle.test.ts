@@ -282,6 +282,23 @@ describe("API integration: approval lifecycle", () => {
       .update(schema.workItemTable)
       .set({ customerVisibility: "private" })
       .where(eq(schema.workItemTable.key, workItem.key));
+
+    // Private visibility limits customer colleagues to the requester and explicitly
+    // added participants; it does not override staff project reach (CP-16 / RBAC § Reach).
+    const staffViewer = await createWorkspaceMember({ role: "member" });
+    await grantProjectRole(staffViewer.user.id, project.id, [
+      "project:read",
+      "work_item:read",
+    ]);
+    mockAuthenticatedSession(staffViewer.user);
+    const staffPrivateItemApprovals = await app.request(
+      `/api/work-items/${workItem.key}/approvals`,
+    );
+    expect(
+      staffPrivateItemApprovals.status,
+      await staffPrivateItemApprovals.clone().text(),
+    ).toBe(200);
+
     await db.insert(schema.requestParticipantTable).values([
       {
         workItemId: workItemRow?.id ?? "",

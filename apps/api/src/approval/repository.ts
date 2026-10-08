@@ -199,15 +199,13 @@ export async function loadApprovalTargetByKey(
 
   if (!row) throw new HTTPException(404, { message: "Work item not found" });
 
-  const visibleToPersonIds =
-    row.customerVisibility === "private" && row.requesterId
-      ? [row.requesterId]
-      : null;
   const reachFacts: ProjectReachFacts = {
     projectId: row.projectId,
     workspaceId: row.workspaceId,
     organisationId: row.organisationId,
-    visibleToPersonIds,
+    // Customer-only private visibility is applied in `hasWorkItemReach`, where the
+    // caller side is known. Staff visibility continues to follow current project reach.
+    visibleToPersonIds: null,
   };
   return {
     workItemId: row.workItemId,
@@ -563,7 +561,11 @@ export async function hasWorkItemReach(
   target: ApprovalTarget,
 ): Promise<boolean> {
   let reachFacts = target.reachFacts;
-  if (target.isPrivate) {
+  // `customer_visibility` constrains customer-organisation reach (CP-16); it does not
+  // hide a work item from staff who already have canonical project reach. Applying the
+  // requester/participant list to staff made a private item with no requester appear
+  // nonexistent even to its authorized project members.
+  if (target.isPrivate && identity.side === "customer") {
     const participants = await db
       .select({ personId: schema.requestParticipantTable.personId })
       .from(schema.requestParticipantTable)

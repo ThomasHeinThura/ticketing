@@ -13,6 +13,7 @@ import { eq, sql } from "drizzle-orm";
 import { beforeEach, describe, expect, it } from "vitest";
 import db, { schema } from "../../apps/api/src/database";
 import { createApp } from "../../apps/api/src/index";
+import { encodeCommentVersionCursor } from "../../apps/api/src/work-item/controllers/list-comment-versions";
 import { mockAuthenticatedSession } from "./helpers/auth";
 import { resetTestDatabase } from "./helpers/database";
 import {
@@ -728,6 +729,21 @@ describe("API integration: work item activity read (#23 fourth slice)", () => {
         "?cursor=not-a-cursor",
       );
       expect(malformed.status).toBe(400);
+
+      const outOfRange = encodeCommentVersionCursor({
+        v: 1,
+        workItemKey: first.key,
+        commentId: comment.id,
+        number: 2_147_483_648,
+        id: "version-overflow",
+      });
+      const outOfRangeResponse = await commentVersionsRequest(
+        app,
+        first.key,
+        comment.id,
+        `?cursor=${encodeURIComponent(outOfRange)}`,
+      );
+      expect(outOfRangeResponse.status).toBe(400);
     });
 
     it("rejects a missing PATCH body without changing the comment or its history", async () => {
