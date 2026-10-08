@@ -450,6 +450,19 @@ describe("API integration: approval lifecycle", () => {
       expect.objectContaining({ id: approval.id, canWithdraw: true }),
     ]);
 
+    // Remove actual current staff project reach for this negative case. A customer-only
+    // private participant list must not stand in for staff reach.
+    const [approverProjectMembership] = await db
+      .select()
+      .from(schema.membershipTable)
+      .where(
+        and(
+          eq(schema.membershipTable.personId, approverPerson.id),
+          eq(schema.membershipTable.scope, "project"),
+          eq(schema.membershipTable.scopeId, project.id),
+        ),
+      );
+    expect(approverProjectMembership).toBeDefined();
     await db
       .delete(schema.requestParticipantTable)
       .where(
@@ -457,6 +470,11 @@ describe("API integration: approval lifecycle", () => {
           eq(schema.requestParticipantTable.workItemId, workItemRow?.id ?? ""),
           eq(schema.requestParticipantTable.personId, approverPerson.id),
         ),
+      );
+    await db
+      .delete(schema.membershipTable)
+      .where(
+        eq(schema.membershipTable.id, approverProjectMembership?.id ?? ""),
       );
     mockAuthenticatedSession(approver.user);
     const myApprovals = await app.request("/api/me/approvals");
@@ -475,6 +493,8 @@ describe("API integration: approval lifecycle", () => {
         canWithdraw: false,
       }),
     ]);
+    const lostReachEffectsBeforeDenial =
+      await approvalEffectCounts("approval.decided");
     const lostReachDecision = await app.request(
       `/api/approvals/${approval.id}/decide`,
       {
@@ -484,6 +504,14 @@ describe("API integration: approval lifecycle", () => {
       },
     );
     expect(lostReachDecision.status).toBe(403);
+    const [pendingAfterLostReachDenial] = await db
+      .select({ state: schema.approvalTable.state })
+      .from(schema.approvalTable)
+      .where(eq(schema.approvalTable.id, approval.id));
+    expect(pendingAfterLostReachDenial?.state).toBe("pending");
+    expect(await approvalEffectCounts("approval.decided")).toEqual(
+      lostReachEffectsBeforeDenial,
+    );
 
     await db.insert(schema.requestParticipantTable).values({
       workItemId: workItemRow?.id ?? "",
@@ -491,6 +519,9 @@ describe("API integration: approval lifecycle", () => {
       addedBy: requesterPerson.id,
       createdAt: now,
     });
+    if (approverProjectMembership) {
+      await db.insert(schema.membershipTable).values(approverProjectMembership);
+    }
     const decided = await app.request(`/api/approvals/${approval.id}/decide`, {
       method: "POST",
       headers: { "content-type": "application/json" },
