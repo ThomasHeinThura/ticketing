@@ -1,3 +1,28 @@
+## Status first — verified 2026-10-08 15:27 UTC
+
+**Accepted main:** `3096cb044bdf6ae98488bfc385f532fa6386343a`. **Frozen P0:** #602 `23a01a62ece3ca7d17105626f64ad78641435ec1`, unchanged. **Persistent DEV:** source08842235/image75b153d7 remains preserved in OrbStack through local Traefik443. No protected merge, new persistent deployment, registry publication, strict activation or phase closure occurred.
+
+| Stage | Formal status |
+| --- | --- |
+| P0 | Open — hosted G11/full product checks pass; independently adjudicated current-source off→shadow→off runtime passes; actual October9 subset, explicit config/task prerequisites, strict sequence, current metadata/protected merge, signed release proof and finalizer remain |
+| P1 | Open — existing navigationf06 has two independent clears and image/119 migration proof; existing saved-view/history slices retained for bounded final composition |
+| P2 | Open — existing approvals/intake retained; integrated acceptance remains |
+| P3 | Open — identity slices retained; integrated and real-provider acceptance remains |
+| P4 | Open — Users76 ordinary panel/full Sol clear and image/113 migration proof; central migration/integration acceptance remains |
+| P5–P7 | Open and held under feature freeze |
+
+**Registry direction changed by Thomas:** keep images in **GHCR**, GitHub release tags/assets and packages; **do not publish to Docker Hub**. This supersedes earlier `bimdevops/taskdesk` selection. #610 was closed as no longer required, preserving source/reviews/branch and its original red G8 evidence. No source merged or image pushed; no gate waiver. Existing signed/scanned accepted-source GitHub release flow and local Traefik443 SIT target remain. #447 was separately closed as superseded with full ancestry retained in #591/#589; issue#24 remains open.
+
+**P0 runtime outcome:** admitted privateV19 manifest8805cd3787fb03dab360c41c71b3fdff18d4a6315eadb6fe67c147e92513d6e8 executed15:16:57.679952–15:17:31.770701UTC, exit0, on exact23/image9e935. Actual representative acquisition15:17:19.920355–15:17:26.722840UTC only. Fresh independent Sol adjudication recounts140 unique expected-status requests;134 policy evaluations across47 tally rows; four event rows/five occurrences;27/27 selected sources; six exact source-bound pre-shadow exclusions; zero unexplained/uncovered. The complete raw record is preserved separately from the strict typed final DTO, which validates, replays and publishes through the shared production gate. API-key scope/expiry/session-only and denied-write persistence witnesses, observability CAS/token/metrics, persisted reach, missing-row masking, WebSocket delegation and empty-enforcement rollback/health checks pass within the recorded scope. Root independently verified10 owned resource IDs, including all historical API instances, absent and original five DEV containers present; source23 remains clean.
+
+**Limits and compatibility:** this is bounded **off→shadow→off**, never off→shadow→strict→rollback. Strict was not activated; config/task remain separately deferred. Independently compared API/domain/permissions, lockfile and Dockerfile Git objects match retained October6/V6 source behaviors, so scoped prior observations remain compatible. There are still only October6 and October8 qualifying distinct buckets for the nine changed eligible404 behaviors; October9 remains required. No full-day/72-hour or third-date claim. Historical V16/V18 failures remain failed; V19's earlier machine-receipt preflight failed before acquisition and remains retained. A separately issued exact-schema independent receipt plus fresh root records passed before the successful run.129 offline tests and five final-contract regressions pass. Installer regression20/20 and hosted G11 **22/22** remain; real signed installer/upgrade/rollback runs after an otherwise eligible protected merge and before phase finalizer/closure per Thomas's approved sequence.
+
+**Integration findings assigned:** #609’s five OpenAPI failures are unchanged from its predecessor and belong to existing comments/P4 deactivation API owners. Its one browser timeout belongs to unchanged MFA/observability source; the preceding head passed, so no navigation defect is established by that failure alone. Preserve failure evidence and reconcile only owned source during final composition. Central migration ledger must allocate one tail, replay duplicate semantic units once and preserve accepted0000–0087. Incomplete/schema-only capabilities remain held.
+
+**Critical path:** remaining actual October9 scoped observation/explicit config-task prerequisites and strict runtime proof; current review metadata/required green checks then protected P0 merge; real signed-release proof and fresh accepted-main Sol finalizer; bounded existing-source composition/central migration replay and exact-head gates; verified GHCR/GitHub release package deployment to local SIT, real acceptance/fresh audit/report, then stop awaiting Thomas's next roadmap.
+
+---
+
 ## Status first — verified 2026-10-08 14:35 UTC
 
 Accepted main remains `3096cb044bdf6ae98488bfc385f532fa6386343a`; frozen P0 source remains `23a01a62ece3ca7d17105626f64ad78641435ec1`. Original OrbStack DEV source088/image75b153 remains preserved. No protected merge, final SIT deployment, image publication, strict activation or phase closure occurred. P0–P4 remain open; P5–P7 remain held under the final feature freeze.

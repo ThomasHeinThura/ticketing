@@ -1,3 +1,9 @@
+### 2026-10-08 · Retain GitHub release/package publication; cancel Docker Hub target
+
+**Decision (Thomas, direct instruction):** GitHub already has the release image. Keep TaskDesk publication in GitHub Container Registry (GHCR), GitHub release tags/assets and packages. Do not push to `bimdevops/taskdesk` or any Docker Hub repository. Continue eligible pull-request merging through the existing protected review/CI flow.
+
+This supersedes the earlier Docker Hub destination selection; it does not authorize merging red or unreviewed candidates, unsigned publication, arbitrary release tags, enforcement activation, or phase closure. Existing GHCR signing/scanning/provenance and immutable accepted-source requirements remain. Local SIT remains the existing Traefik443 `ticketing.localhost` / `portal.localhost` stack. Registry-override PR#610 is no longer needed for this destination and is closed with its exact source, branch, reviews/tests and original G8 failure preserved; no merge, deletion or gate waiver. No Docker Hub push occurred. Historical destination decisions remain below.
+
 ### 2026-10-08 · Signed installer release proof after protected merge, before P0 closure
 
 **Decision — Thomas explicitly approved in this task:** “Approve signed-release proof after merge, before P0 closure (recommended)”.
