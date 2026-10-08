@@ -4604,7 +4604,7 @@ export const pendingActionTable = pgTable(
     ),
     check(
       "pending_action_action_check",
-      sql`${table.action} in ('delete', 'bulk_delete', 'purge', 'mcp_destructive')`,
+      sql`${table.action} in ('delete', 'bulk_delete', 'purge', 'mcp_destructive', 'user_deactivation')`,
     ),
     check(
       "pending_action_confirmation_check",

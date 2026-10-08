@@ -407,6 +407,13 @@ thing that is hashed or executed.
   state, audit rows, and outbox event. A target/email/authority mismatch leaves the action
   unexecuted and requires a fresh request when its stored target is stale.
 
+  The database retains `user_deactivation` as a read-only compatibility value for durable
+  rows written by migration 0109. New requests use only `delete`/`user`, and the canonical
+  approval path rejects a legacy row before target lookup or step-up consumption. Historical
+  pending and terminal rows, their person-id targets, payload hashes, and proof bindings are
+  preserved. Approval remains unavailable for a pending legacy row; its requester can use
+  the existing cancel action, then submit a fresh request through the canonical flow.
+
 ## Confirmation levels
 
 The server decides the required confirmation from `target_type` and `action`; the client

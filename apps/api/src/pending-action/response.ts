@@ -1,11 +1,20 @@
 import { z } from "../openapi";
 
 const pendingActionSummarySchema = z.record(z.string(), z.unknown());
+// This legacy kind is response-only compatibility for durable 0109 rows. The
+// request path and approval implementation still accept canonical action kinds only.
+const pendingActionReadKindSchema = z.enum([
+  "delete",
+  "bulk_delete",
+  "purge",
+  "mcp_destructive",
+  "user_deactivation",
+]);
 
 export const pendingActionReadSchema = z
   .object({
     id: z.string(),
-    action: z.enum(["delete", "bulk_delete", "purge", "mcp_destructive"]),
+    action: pendingActionReadKindSchema,
     origin: z.enum(["web", "api", "mcp"]),
     targetType: z.string(),
     targetIds: z.array(z.string()),
@@ -63,7 +72,7 @@ export const pendingActionListResponseSchema = z
 export const pendingActionDecisionSchema = z
   .object({
     id: z.string(),
-    action: z.enum(["delete", "bulk_delete", "purge", "mcp_destructive"]),
+    action: pendingActionReadKindSchema,
     origin: z.enum(["web", "api", "mcp"]),
     targetType: z.string(),
     targetIds: z.array(z.string()),

@@ -1,4 +1,5 @@
 import { createHash } from "node:crypto";
+import { readFileSync } from "node:fs";
 import { createRequire } from "node:module";
 import { and, eq, inArray, sql } from "drizzle-orm";
 import { beforeEach, describe, expect, it } from "vitest";
@@ -127,6 +128,284 @@ async function createGrantToken(
 }
 
 describe("God Mode Users API", () => {
+  it("replays the canonical-vocabulary migration over legacy rows and refuses legacy execution", async () => {
+    const admin = await seedUser("users-legacy-deactivation-admin", "admin");
+    await ensureStaffPersonForUser(admin.id);
+    const [adminPerson] = await db
+      .select()
+      .from(schema.personTable)
+      .where(eq(schema.personTable.userId, admin.id));
+    const sessionId = await seedSession(admin.id);
+    const intendedTarget = await seedUser("users-legacy-deactivation-target");
+    await ensureStaffPersonForUser(intendedTarget.id);
+    const [intendedPerson] = await db
+      .select()
+      .from(schema.personTable)
+      .where(eq(schema.personTable.userId, intendedTarget.id));
+    const wrongTarget = await seedUser(
+      "users-legacy-deactivation-wrong-target",
+    );
+    await ensureStaffPersonForUser(wrongTarget.id);
+    const [wrongPerson] = await db
+      .select()
+      .from(schema.personTable)
+      .where(eq(schema.personTable.userId, wrongTarget.id));
+    if (!adminPerson || !intendedPerson || !wrongPerson)
+      throw new Error("legacy migration identities were not created");
+    await db
+      .update(schema.personTable)
+      .set({ active: false })
+      .where(eq(schema.personTable.id, wrongPerson.id));
+    const now = new Date();
+    const pendingId = "users-legacy-deactivation-pending";
+    const terminalId = "users-legacy-deactivation-terminal";
+    const legacyPayload = {
+      action: "user_deactivation",
+      route_key: "POST /api/instance/users/{id}/deactivate",
+      target_type: "person",
+      target_ids: [intendedPerson.id],
+      workspace_id: null,
+      project_id: null,
+      organisation_id: null,
+      confirmation_required: "typed_name_step_up",
+    };
+
+    // Recreate the 0109 constraint, seed both durable row classes, then replay
+    // the shipped 0112 migration exactly as the migration runner splits it.
+    await db.execute(
+      "ALTER TABLE pending_action DROP CONSTRAINT pending_action_action_check",
+    );
+    await db.execute(
+      `ALTER TABLE pending_action ADD CONSTRAINT pending_action_action_check CHECK (action in ('delete', 'bulk_delete', 'purge', 'mcp_destructive', 'user_deactivation'))`,
+    );
+    await db.insert(schema.pendingActionTable).values([
+      {
+        id: pendingId,
+        requestedByPersonId: adminPerson.id,
+        credentialType: "session",
+        credentialId: sessionId,
+        origin: "web",
+        action: "user_deactivation",
+        targetType: "person",
+        targetIds: [intendedPerson.id],
+        payload: legacyPayload,
+        routeKey: legacyPayload.route_key,
+        payloadHash: "a".repeat(64),
+        payloadSummary: {
+          personId: intendedPerson.id,
+          email: intendedTarget.email,
+        },
+        confirmationRequired: "typed_name_step_up",
+        state: "pending",
+        traceId: "trace-users-legacy-pending",
+        expiresAt: new Date(now.getTime() + 60_000),
+      },
+      {
+        id: terminalId,
+        requestedByPersonId: adminPerson.id,
+        credentialType: "session",
+        credentialId: sessionId,
+        origin: "web",
+        action: "user_deactivation",
+        targetType: "person",
+        targetIds: [wrongPerson.id],
+        payload: { ...legacyPayload, target_ids: [wrongPerson.id] },
+        routeKey: legacyPayload.route_key,
+        payloadHash: "b".repeat(64),
+        payloadSummary: { personId: wrongPerson.id, email: wrongTarget.email },
+        confirmationRequired: "typed_name_step_up",
+        state: "executed",
+        decidedByPersonId: adminPerson.id,
+        decisionSessionId: sessionId,
+        decidedAt: now,
+        executedAt: now,
+        stepUpTokenId: "users-legacy-deactivation-terminal-step-up",
+        traceId: "trace-users-legacy-terminal",
+        expiresAt: new Date(now.getTime() + 60_000),
+      },
+    ]);
+    const migration = readFileSync(
+      new URL(
+        "../../apps/api/drizzle/0112_users_pending_action_canonical_vocabulary.sql",
+        import.meta.url,
+      ),
+      "utf8",
+    );
+    for (const statement of migration.split("--> statement-breakpoint")) {
+      if (statement.trim()) await db.execute(statement.trim());
+    }
+
+    const preserved = await db
+      .select({
+        id: schema.pendingActionTable.id,
+        action: schema.pendingActionTable.action,
+        state: schema.pendingActionTable.state,
+        targetIds: schema.pendingActionTable.targetIds,
+        payload: schema.pendingActionTable.payload,
+        payloadHash: schema.pendingActionTable.payloadHash,
+      })
+      .from(schema.pendingActionTable)
+      .where(inArray(schema.pendingActionTable.id, [pendingId, terminalId]));
+    expect(preserved).toHaveLength(2);
+    expect(preserved.find((row) => row.id === pendingId)).toMatchObject({
+      action: "user_deactivation",
+      state: "pending",
+      targetIds: [intendedPerson.id],
+      payload: legacyPayload,
+      payloadHash: "a".repeat(64),
+    });
+    expect(preserved.find((row) => row.id === terminalId)).toMatchObject({
+      action: "user_deactivation",
+      state: "executed",
+      targetIds: [wrongPerson.id],
+      payload: { ...legacyPayload, target_ids: [wrongPerson.id] },
+      payloadHash: "b".repeat(64),
+    });
+
+    const legacyToken = createHash("sha256")
+      .update("expired-legacy-proof")
+      .digest("base64url");
+    const terminalToken = createHash("sha256")
+      .update("consumed-legacy-proof")
+      .digest("base64url");
+    await db.insert(schema.stepUpConfirmationTable).values([
+      {
+        id: "users-legacy-deactivation-step-up",
+        personId: adminPerson.id,
+        sessionId,
+        bindingKind: "pending_action",
+        pendingActionId: pendingId,
+        challengeNonceHash: createHash("sha256").update("nonce").digest(),
+        state: "issued",
+        tokenHash: createHash("sha256").update(legacyToken).digest(),
+        authMethod: "password",
+        authenticatedAt: new Date(now.getTime() - 120_000),
+        issuedAt: new Date(now.getTime() - 120_000),
+        challengeExpiresAt: new Date(now.getTime() - 120_000),
+        tokenExpiresAt: new Date(now.getTime() - 60_000),
+      },
+      {
+        id: "users-legacy-deactivation-terminal-step-up",
+        personId: adminPerson.id,
+        sessionId,
+        bindingKind: "pending_action",
+        pendingActionId: terminalId,
+        challengeNonceHash: createHash("sha256")
+          .update("nonce-terminal")
+          .digest(),
+        state: "consumed",
+        tokenHash: createHash("sha256").update(terminalToken).digest(),
+        authMethod: "password",
+        authenticatedAt: new Date(now.getTime() - 120_000),
+        issuedAt: new Date(now.getTime() - 120_000),
+        consumedAt: new Date(now.getTime() - 60_000),
+        challengeExpiresAt: new Date(now.getTime() - 120_000),
+        tokenExpiresAt: new Date(now.getTime() - 60_000),
+      },
+    ]);
+    mockAuthenticatedSession(admin);
+    const { app } = createApp();
+    const response = await agentRequest(
+      app,
+      `/api/me/pending-actions/${pendingId}/approve`,
+      {
+        method: "POST",
+        headers: {
+          "content-type": "application/json",
+          "x-taskdesk-step-up-token": legacyToken,
+        },
+        body: JSON.stringify({ typedName: "stale@example.test" }),
+      },
+    );
+    expect(response.status).toBe(409);
+    expect(await response.text()).toBe("pending_action_kind_unsupported");
+    const readable = await agentRequest(
+      app,
+      `/api/me/pending-actions/${pendingId}`,
+    );
+    expect(readable.status).toBe(200);
+    expect(await readable.json()).toMatchObject({
+      id: pendingId,
+      action: "user_deactivation",
+      targetType: "person",
+      targetIds: [intendedPerson.id],
+      state: "pending",
+    });
+    expect(
+      await db
+        .select({
+          userId: schema.personTable.userId,
+          active: schema.personTable.active,
+        })
+        .from(schema.personTable)
+        .where(
+          inArray(schema.personTable.userId, [
+            intendedTarget.id,
+            wrongTarget.id,
+          ]),
+        )
+        .orderBy(schema.personTable.userId),
+    ).toEqual([
+      { userId: intendedTarget.id, active: true },
+      { userId: wrongTarget.id, active: false },
+    ]);
+    expect(
+      await db
+        .select({ state: schema.pendingActionTable.state })
+        .from(schema.pendingActionTable)
+        .where(eq(schema.pendingActionTable.id, pendingId)),
+    ).toEqual([{ state: "pending" }]);
+    expect(
+      await db
+        .select({ state: schema.stepUpConfirmationTable.state })
+        .from(schema.stepUpConfirmationTable)
+        .where(
+          eq(
+            schema.stepUpConfirmationTable.id,
+            "users-legacy-deactivation-step-up",
+          ),
+        ),
+    ).toEqual([{ state: "issued" }]);
+    expect(
+      await db
+        .select({ state: schema.stepUpConfirmationTable.state })
+        .from(schema.stepUpConfirmationTable)
+        .where(
+          eq(
+            schema.stepUpConfirmationTable.id,
+            "users-legacy-deactivation-terminal-step-up",
+          ),
+        ),
+    ).toEqual([{ state: "consumed" }]);
+    const cancelled = await agentRequest(
+      app,
+      `/api/me/pending-actions/${pendingId}/cancel`,
+      { method: "POST" },
+    );
+    expect(cancelled.status).toBe(200);
+    expect(await cancelled.json()).toMatchObject({
+      id: pendingId,
+      state: "cancelled",
+    });
+    expect(
+      await db
+        .select({ state: schema.pendingActionTable.state })
+        .from(schema.pendingActionTable)
+        .where(eq(schema.pendingActionTable.id, pendingId)),
+    ).toEqual([{ state: "cancelled" }]);
+    expect(
+      await db
+        .select({ state: schema.stepUpConfirmationTable.state })
+        .from(schema.stepUpConfirmationTable)
+        .where(
+          eq(
+            schema.stepUpConfirmationTable.id,
+            "users-legacy-deactivation-step-up",
+          ),
+        ),
+    ).toEqual([{ state: "issued" }]);
+  });
+
   it("returns an allowlisted stable cursor directory and refuses a cursor under changed filters", async () => {
     const admin = await seedUser("users-directory-admin", "admin");
     await ensureStaffPersonForUser(admin.id);

@@ -4650,7 +4650,7 @@
 				},
 				"pending_action_action_check": {
 					"name": "pending_action_action_check",
-					"value": "\"pending_action\".\"action\" in ('delete', 'bulk_delete', 'purge', 'mcp_destructive')"
+					"value": "\"pending_action\".\"action\" in ('delete', 'bulk_delete', 'purge', 'mcp_destructive', 'user_deactivation')"
 				},
 				"pending_action_confirmation_check": {
 					"name": "pending_action_confirmation_check",

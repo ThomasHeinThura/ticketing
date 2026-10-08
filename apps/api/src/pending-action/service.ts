@@ -421,6 +421,13 @@ export async function decideOwnPendingAction(input: {
       throw new HTTPException(409, { message: "pending_action_not_pending" });
     }
     const outcome = row.expiresAt <= now ? "expired" : input.outcome;
+    const legacyInstanceUserDeactivation =
+      row.action === "user_deactivation" &&
+      row.targetType === "person" &&
+      row.routeKey === "POST /api/instance/users/{id}/deactivate" &&
+      row.workspaceId === null &&
+      row.projectId === null &&
+      row.organisationId === null;
     const [actor] = await tx
       .select({
         userId: personTable.userId,
@@ -437,7 +444,8 @@ export async function decideOwnPendingAction(input: {
           row.action === "delete" &&
           row.targetType === "user" &&
           row.routeKey === "POST /api/instance/users/{id}/deactivate"
-        ))
+        ) &&
+        !legacyInstanceUserDeactivation)
     ) {
       throw new HTTPException(403, {
         message: "Pending-action requester is unavailable",
