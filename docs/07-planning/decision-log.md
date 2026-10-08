@@ -6,6 +6,16 @@
 
 ---
 
+### 2026-10-08 · Constrained instance-event outbox scope for complete Users deactivation
+
+**Decided by:** Thomas, explicit approval in this task: “Approve the constrained instance-event schema correction (recommended)”.
+
+**Conflict resolved:** pending-actions.md requires instance-scoped user deactivation and its registered request/decision/execution events; events.md registers the existing event keys. The prior data-model/outbox constraint requires every event row to have a workspace. No fabricated tenant scope may stand in for an instance event.
+
+**Decision:** permit a null outbox workspace only for documented instance-scoped event types. Tenant events remain workspace-bound, with the invariant enforced in the schema and exercised by meaningful positive/negative regressions. Implement the required migration together with the complete P4 Users/deactivation/pending-action UI and API slice. Canonical pending-action vocabulary remains `action='delete'`, `target_type='user'`; this approval does not register `user_deactivation`/`person` or any new event key.
+
+**Integration:** allocate a provisional feature-branch migration through the central ledger; reconcile final numbering in the post-P0 integration freeze, preserve accepted applied migration history, and obtain the required independent ordinary/security reviews and exact-head checks. This is P4 feature authority, not P0 scope expansion, a gate waiver, or deployment/enforcement approval. Credentials and test seeders stay outside Git.
+
 ### 2026-10-08 · Reconcile current performance, runtime report failure and concurrent SDLC entry
 
 Thomas's realignment directive authorizes concurrent dependency-safe P1–P4 implementation
