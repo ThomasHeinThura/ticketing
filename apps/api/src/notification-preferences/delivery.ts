@@ -11,6 +11,7 @@ import {
   userTable,
   workspaceTable,
 } from "../database/schema";
+import { userCanReachTask } from "../notification/task-reach";
 import { assertPublicWebhookDestination } from "../utils/assert-public-destination";
 import { decryptSecret } from "./secrets";
 
@@ -219,6 +220,7 @@ function buildDeliveryContent(notification: {
 }
 
 async function resolveNotificationContext(notification: {
+  userId: string;
   resourceType: string | null;
   resourceId: string | null;
 }): Promise<ResolvedNotificationContext | null> {
@@ -227,6 +229,12 @@ async function resolveNotificationContext(notification: {
   }
 
   if (notification.resourceType === "task") {
+    if (
+      !notification.resourceId ||
+      !(await userCanReachTask(notification.userId, notification.resourceId))
+    ) {
+      return null;
+    }
     const [task] = await db
       .select({
         taskId: taskTable.id,
@@ -481,6 +489,14 @@ export async function deliverNotification(
         ? (notification.eventData as Record<string, unknown>)
         : null,
   });
+
+  if (
+    notification.resourceType === "task" &&
+    (!notification.resourceId ||
+      !(await userCanReachTask(notification.userId, notification.resourceId)))
+  ) {
+    return;
+  }
 
   const webhookPayload = {
     notification: {
