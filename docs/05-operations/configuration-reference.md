@@ -334,3 +334,7 @@ there behind `--profile s3` for anyone who wants to exercise the S3 path locally
 
 - [Plugin architecture](../01-architecture/plugin-architecture.md) · [God Mode](../03-features/god-mode.md)
 - [Deployment](deployment.md) · [Proxy topology evidence](proxy-topology-evidence.md) · [Backup and restore](backup-and-restore.md)
+
+### Public-config strict-cutover proof exception
+
+Thomas's [2026-10-08 bounded decision](../07-planning/decision-log.md#2026-10-08--bounded-public-config-cutover-criterion-substitute) permits only public `GET /api/config` / `apps/api/src/config/policy.ts` to substitute exact-source public-response/source-ordering plus reviewed disposable strict-selection/health/rollback proof for its unavailable pre-guard shadow tally. All other `TASKDESK_POLICY_ENFORCE` source eligibility requirements remain; task remains last after fresh re-key proof. This changes no environment default, source parsing, permission, deployment exposure or runtime product behavior.

@@ -1,3 +1,17 @@
+### 2026-10-08 · Bounded public-config cutover criterion substitute
+
+**Decision — Thomas explicitly approved in this chat:** “Approve the bounded public-config criterion substitute (recommended)”. The approved question named public `GET /api/config` before the shadow guard and proposed proving its unchanged public response/source ordering and verifying config-source selection in the disposable strict/rollback test, while preserving every other source's shadow requirement.
+
+**Exact exception:** only `GET /api/config`, owned by `apps/api/src/config/policy.ts`, may use source-bound public-response/source-ordering proof in place of an impossible shadow tally/comparison: `apps/api/src/index.ts` mounts this bootstrap endpoint before the authenticated shadow guard. Verify its registered public contract, unchanged response/ordering, exact API/policy/image identity, and source selection plus health and reversible rollback in the independently reviewed disposable 28-source config stage. Preserve actual dated public observations when available; do not fabricate a shadow row, full-day coverage or elapsed-time approval. The exception does not turn a raw HTTP200 into proof of all strict behavior.
+
+The existing exact-source review, eligibility and required CI/runtime gates remain. Every other policy source retains its documented shadow/coverage/date predicate. In particular the nine changed eligible nonmember404 behaviors still need their remaining actual October9 observation, and `apps/api/src/task/policy.ts` remains last after every preceding source and fresh zero-legacy-only role/API-key re-key proof. Retain the legacy key for rolling upgrade/rollback. No source, strict setting, persistent DEV or production state is changed by this record. New runner/receipt bindings, if needed, require their own appropriate independent review; a machine receipt cannot grant Thomas approval.
+
+This bounded decision supersedes the earlier public-config hold only to the extent stated. It is not a G11 waiver, a general pre-guard/public-route exception, a permission expansion, a task activation, a protected merge approval outside normal gates, or phase completion. Signed release operational proof remains after otherwise eligible protected merge and before P0 finalizer/closure.
+
+**Recorded:** root at 2026-10-08T16:21:59.295073+00:00 from Thomas's explicit question reply, with the independent prerequisite packet retained privately.
+
+---
+
 ### 2026-10-08 · Retain GitHub release/package publication; cancel Docker Hub target
 
 **Decision (Thomas, direct instruction):** GitHub already has the release image. Keep TaskDesk publication in GitHub Container Registry (GHCR), GitHub release tags/assets and packages. Do not push to `bimdevops/taskdesk` or any Docker Hub repository. Continue eligible pull-request merging through the existing protected review/CI flow.

@@ -341,6 +341,8 @@ registered set must precede `apps/api/src/task/policy.ts`, which is required to 
 enable the task router until the role re-key prerequisite is verified and every preceding
 source is already enforced. This staged setting does not authorize production promotion.
 
+**Bounded public-config criterion (Thomas, 2026-10-08):** public `GET /api/config` is mounted before the authenticated shadow guard and cannot produce that guard's tally. For this route/source only, use exact-source public-response/source-ordering proof and the independently reviewed disposable config-source strict selection/health/rollback proof as the substitute; preserve actual dated public observations rather than inventing shadow rows. Every other source keeps the shadow/coverage/date requirements above. Config precedes task; the task re-key and last-source prerequisites remain. See the [bounded decision](../07-planning/decision-log.md#2026-10-08--bounded-public-config-cutover-criterion-substitute). This does not authorize persistent or production cutover by itself.
+
 **Rollback:** remove the affected exact source path from the setting and restart the API. If
 the task path is selected, remove it first before removing any preceding source. Setting the
 value to empty and restarting returns all routes to their existing authorization plus shadow
