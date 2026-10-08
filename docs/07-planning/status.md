@@ -1,3 +1,32 @@
+## Status first — verified 2026-10-08 09:50 UTC
+
+**Accepted main:** `3096cb044bdf6ae98488bfc385f532fa6386343a`, reverified through GitHub. **Persistent OrbStack DEV:** `08842235047a3ab2714427edce80331b94558150`, image `sha256:75b153d7d9583993127e1be8c06453159e4fe7319abfcd8431f093c9ca002bcf`. No protected merge, persistent deployment, strict activation, official release or phase closure. Private supported-role users and their credentials/seeders remain outside Git/GitHub. Chrome trust handoff remains pending.
+
+| Stage | Formal status |
+| --- | --- |
+| P0 | Open — isolated #602 experiment8af2; prior equivalent source0a867 hosted20/22; no FINAL_P0_SHA |
+| P1 | Open — #606 completed Alert/G3 correction independently clear, hosted G8/G4/PG pass; E2E/G11 remain failed |
+| P2 | Open — retained approvals/intake slices; contracts and integrated acceptance remain |
+| P3 | Open — #596 fixture delta independently clear, hosted1741 PG tests pass; provider/inherited gates remain |
+| P4 | Open — MCP register not-ready; governance/query/outbox and central migration reconciliation remain |
+| P5–P7 | Open — no completion claim |
+
+**P0 source convergence:** the66ba95 containment-removal experiment gave20/22 but did not improve the intended board metric (647.2/500ms versus649.2 on reverted equivalent source); it was rejected and normally reverted at `0a867bf2080ab0b3f365caf53f5200eb14e1f3ae`. Its tree equals30aef; original failed results remain retained. Hosted0a867 full37755540685 passes G8/G4/E2E/PostgreSQL and fails G11 **20/22**: LCP2516/2500ms and board649.2/500ms. No historical green is relabeled current.
+
+Complete new candidate `8af2a77a673966fed025b0ac1f8740b5f174d039` changes only TaskCard and its tests. It memoizes unchanged child markup/derived work while keeping sortable root/ref/style/listeners/ARIA/keyboard/focus live and recomputing due-date status outside the memo. Focused12tests, web types and Biome pass. Automatic full37758914038 has G8/G4/E2E pass; PostgreSQL/G11 remain in progress at verification. Fast37758914225 fails the contrast inventory after JSX relocation and honestly pending review/template metadata. A bounded independent review is inspecting semantic dependencies and source-bound paint provenance. No performance benefit, retention, review clearance or final source is claimed.
+
+**#606 completed acceptance improvement:** `e20c1124f7c1ddfb8f227ce87690e871aa9782ca` completes the lexical binding and Alert story correction. A fresh independent full Sol pass clears this bounded structural delta:52 contrast tests,152 story accessibility tests,3 Alert tests and316/316 source-bound pairs pass. Prior Luna/Sol BLOCK reports remain historical. Conservative binding resolution rejects imports, sibling/local shadows, forward bindings and ambiguous spreads; Object.freeze inference is removed. Six stories use explicit semantic canvases with unchanged thresholds/pair identities; their six intentional Linux baselines are retained.
+
+Hosted full37755391943 passes **G8** (17 application cases and143 enumerated Storybook stories), **G4**, and **PostgreSQL154files/1813tests**. E2E55/56 fails solely at the MFA journey's original realtime-log-level restoration step after its primary flow; one targeted isolated reproduction is assigned. G11 remains18/22: LCP2852/2500ms, create visibility, assignment220.8/200ms and board641.2/500ms. Fast build/unit/policy/static/supply-chain gates pass; OpenAPI and incomplete acceptance metadata remain failed. No merge eligibility or full P1 acceptance is inferred.
+
+Exact e20 image `sha256:7546b06a613dd5928fc3c115e319e7f786ef1c5a79286612c518927451e9787c` built/booted09:26:28–09:27:14UTC: OCI revision exact,UID10001,live/ready200. Owned containers/volumes/network are absent after cleanup; persistent DEV's five network members remain. This is isolated candidate boot proof, not persistent deployment/TLS/rollback. API/permission/domain/deployment source is unchanged from reviewed a4; that specific review scope is retained without claiming a new whole-candidate security review.
+
+**Other lanes/integration:** #596103dc9 fixture-only Luna/Sol clearance and hosted150files/1741tests PG pass are recorded in PR comment6056349586; real Entra and inherited gates remain. #605024 has ordinary reviews and exact boot proof but inherited gates remain failed. Live GitHub lists21 open PRs; #599 stays P1, #589 remains frozen until recreation from accepted post-P0 main. #585 migration snapshots still omit seven tables versus matching #589/#598 SQL lineage; no accepted history is rewritten. #607953 is a not-ready two-file MCP reconciliation, not authorization to implement undefined contracts. Existing unclassified secret finding remains open and unsuppressed. Private role smoke remains36/36 for the four supported roles, not all-role/provider acceptance.
+
+**Critical path:** (1) retain only a proven-positive P0 correction and obtain unchanged hosted22/22; (2) remaining actual October9 eligible observation bucket; (3) frozen exact-source gates/image/installer/off-shadow-strict-rollback; (4) protected P0 merge; (5) fresh accepted-main Sol finalizer and reconciliation. No elapsed-time cutover, full-day/72-hour claim or waiver. Dependency-safe implementation continues in parallel; no new Thomas-only question was introduced in this cycle.
+
+---
+
 ## Status first — verified 2026-10-08 08:57 UTC
 
 **Accepted main:** `3096cb044bdf6ae98488bfc385f532fa6386343a`, reverified through GitHub. **Persistent OrbStack DEV:** `08842235047a3ab2714427edce80331b94558150`, image `sha256:75b153d7d9583993127e1be8c06453159e4fe7319abfcd8431f093c9ca002bcf`. No persistent source/image change, protected merge, strict activation, official release or phase closure. Private supported-role users remain retained; credentials, credential Markdown and seeders remain outside Git/GitHub. Chrome trust handoff remains pending.
