@@ -17,11 +17,11 @@ import { sendNotificationEmail } from "./send-email";
 
 beforeEach(() => {
   smtp.sendMail.mockClear();
-  process.env.SMTP_FROM = "notifications@example.test";
+  vi.stubEnv("SMTP_FROM", "notifications@example.test");
 });
 
 afterEach(() => {
-  delete process.env.SMTP_FROM;
+  vi.unstubAllEnvs();
 });
 
 describe("sendNotificationEmail authorization boundary", () => {
