@@ -1,3 +1,28 @@
+## Status first — verified 2026-10-08 17:09 UTC
+
+**Accepted `main`:** `3096cb044bdf6ae98488bfc385f532fa6386343a`. **Current documentation branch:** PR #601 exact live head `717d4413c8196901b6deddb4f7c2aa7ed7273f00`; this final cycle update is local and awaits orchestrator review before push. Live GitHub shows 20 open PRs and 442 remote branches. **Persistent DEV:** source `08842235047a3ab2714427edce80331b94558150` remains preserved. No new deployment, protected merge, release, strict activation or phase closure occurred. GHCR/GitHub release packages remain the approved publication direction; Docker Hub is canceled.
+
+**P0 notification candidate:** corrected product source `650edd447899f5d9e52c50c718abef0f7aad91b2` now has two fresh independent GPT-6 Luna credential-delta CLEAR reports and a fresh full GPT-6 Sol CLEAR (`notification-5712-sol-security.md`, private evidence). The Sol review is against exact source 650; it does not review the later documentation-only candidate. The actual task-reach integration evidence is one file/eight tests; keep separate from the earlier broad email suite of seven files/18 tests. The formerly blocked `5ec7727` and complete local `b890c86` lineage (including the old blocked review) remain recorded. The structural SMTP render-to-send correction was pushed in the PR #602 branch lineage at `650edd4`; its reviews remain bound to that source. Note-only successor `c55010e004e9f3becd226936ab2d2b4af5776108` changes only the review note and is the frozen #602 candidate, pushed to the same PR branch. Do not transfer the historical `23a01a6` 22/22 or `2b7192e` 20/22 G11 result to `c55010e`.
+
+**#602 current live state:** exact head `c55010e`, base `main@3096cb0`, GitHub BLOCKED/MERGEABLE, no review entries on the current head. At 17:09 UTC, current checks include 18 successes, two failures (`registers - env, vocabulary, reviews, skips, overrides` and `pull request template + security review`), and two in progress (Postgres 18 integration and G11). Hosted CI runs `37813776017` (full) and `37813776014` (fast) remain active; current G11 has no result yet. The current canonical private Linux/arm64 OCI build for frozen `c55010e` passed at 17:07:29 UTC (image digest `sha256:6f74c8b2596699648ae87d381c2bea9d48c993f290ff119c6bb6d38ba5f4cfda`). Earlier root diagnostic image `d6738f68...` with label `2.22.0` is superseded by canonical version `0.0.0-dev`; its record is retained. A disposable off-only image boot is active; no persistent deployment occurred. No independent review or check result has been transferred to c550 merely because the source correction at 650 cleared.
+
+**Preserved DEV browser readback:** root's private manifest records a signed-in, read-only smoke over 14 screens/flows with four seeded roles visually confirmed on the existing DEV. This is not candidate acceptance or broad RBAC verification. `portal.localhost` TLS works, but the preserved DEV renders customer portal unavailable; customer workflows were not tested. PR #609 remains owner of the existing month-URL-state correction. Do not start new features.
+
+**Disposition and migration records:** [live PR disposition ledger](pr-disposition-ledger.md) records the current 20-PR snapshot with all four required disposition labels. [Remote branch conservation inventory](branch-conservation-inventory.md) lists all 442 live remote refs at this capture with exact SHA and conservative ownership labels; accepted-main ancestry is only credited from matching captured accounting, active PR heads follow their PR dispositions, and unmatched historical branches remain HOLD for source-ownership verification. [Central migration replay ledger](migration-replay-ledger.md) keeps accepted 0000–0087 immutable and candidate units provisional. No final migration allocation or applied-prefix rewrite is authorized.
+
+**No strict or date-qualifying runtime was run today; a disposable off-only image boot is active and is not acceptance.** V20 final manifest `e51bf0cb343cddd922c426bf78784b22e400bc34c47780a753132c1a8eb554f2` and scoped Sol CLEAR remain historical witnesses only. Preserve all current owners, freeze new features, and reconstruct the post-P0 train from accepted main; do not blindly merge #589. No strict/protected merge/release/phase-finalizer claim follows from these documentation updates.
+
+| Stage | Formal status |
+| --- | --- |
+| P0 | Open — notification correction is source-reviewed at 650; frozen note-only candidate c550 still awaits its own current exact-head review, hosted checks (including G11), and protected acceptance. Image build is private only; DEV smoke has portal/customer-workflow limits. Runtime, signed release proof and fresh finalizer remain. |
+| P1 | Open — retain existing reviewed slices; bounded post-P0 composition, current checks and integrated browser acceptance remain. |
+| P2 | Open — retain existing catalogue/intake, SLA and approval owners; incomplete capabilities are held and migrations await central replay. |
+| P3 | Open — retain existing identity owners; exact composed security review and provider acceptance remain. |
+| P4 | Open — retain existing Users, notification and query owners; #607 is held on MCP contract/review-register questions; integrated acceptance remains. |
+| P5–P7 | Open and held under the feature freeze. |
+
+---
+
 ## Status first — verified 2026-10-08 16:56 UTC
 
 **Accepted `main`:** `3096cb044bdf6ae98488bfc385f532fa6386343a`. **Current worktree:** PR #601

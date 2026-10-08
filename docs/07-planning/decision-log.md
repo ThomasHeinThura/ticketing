@@ -1,3 +1,25 @@
+### 2026-10-08 · Freeze current P0 documentation candidate and preserve review boundaries
+
+At 17:09 UTC, live GitHub showed 20 open PRs and 442 remote branches; accepted main remained
+`3096cb044bdf6ae98488bfc385f532fa6386343a`. PR #602's frozen note-only candidate is
+`c55010e004e9f3becd226936ab2d2b4af5776108`. The corrected notification product source
+`650edd447899f5d9e52c50c718abef0f7aad91b2` has two independent credential-delta Luna CLEAR
+reports and a fresh full Sol CLEAR. Its later note-only successor has no current GitHub review
+entries; neither the historical `23a01a6` 22/22 nor `2b7192e` 20/22 G11 result transfers.
+At 17:09 UTC, c550 had 18 successful checks, two failures (registers and PR metadata/security review),
+and two checks in progress (Postgres 18 integration and G11); no current G11 verdict was available. Hosted runs `37813776017`/`37813776014`
+were active. The current canonical private Linux/arm64 OCI image build passed at 17:07:29 UTC with digest `sha256:6f74c8b2596699648ae87d381c2bea9d48c993f290ff119c6bb6d38ba5f4cfda`; the earlier diagnostic image was superseded by canonical `0.0.0-dev`. A disposable off-only image boot is active; there was no persistent deployment or publication.
+
+The private preserved-DEV readback documents 14 signed-in screens/flows and four visually
+confirmed seeded roles; portal TLS succeeds but the customer portal remains unavailable and
+customer workflows were not tested. PR #609 retains the existing month URL-state owner. Keep
+the feature freeze. Preserve all branch owners, reconstruct the post-P0 train from accepted
+main, and do not merge #589 wholesale. The current PR and 442-branch records are in the
+[disposition ledger](pr-disposition-ledger.md) and [branch inventory](branch-conservation-inventory.md).
+The central migration ledger remains provisional beyond accepted 0000–0087; no final IDs,
+applied-prefix rewrite, strict activation, protected merge, release or phase closure is
+authorized by this record. No strict or date-qualifying runtime was run today; the disposable off-only image boot is active and does not establish acceptance or a new date.
+
 ### 2026-10-08 · Preserve live PR dispositions and centralize post-P0 migration replay
 
 The 16:56 UTC operational reconciliation records 20 live open PRs and their heads/dispositions
