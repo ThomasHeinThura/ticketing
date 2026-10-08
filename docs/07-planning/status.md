@@ -1,3 +1,32 @@
+## Status first — verified 2026-10-08 08:57 UTC
+
+**Accepted main:** `3096cb044bdf6ae98488bfc385f532fa6386343a`, reverified through GitHub. **Persistent OrbStack DEV:** `08842235047a3ab2714427edce80331b94558150`, image `sha256:75b153d7d9583993127e1be8c06453159e4fe7319abfcd8431f093c9ca002bcf`. No persistent source/image change, protected merge, strict activation, official release or phase closure. Private supported-role users remain retained; credentials, credential Markdown and seeders remain outside Git/GitHub. Chrome trust handoff remains pending.
+
+| Stage | Formal status |
+| --- | --- |
+| P0 | Open — isolated #602 at30aef; hosted19/22; no FINAL_P0_SHA |
+| P1 | Open — #606 eight-visual/Alert batch implemented; structural G3 binding correction follows Sol blocker; #605 separate |
+| P2 | Open — approvals/intake slices retained; contract and integrated acceptance remain |
+| P3 | Open — #596 explicit fixture scopes103dc9 independently cleared; hosted PostgreSQL1741PASS; real provider acceptance remains |
+| P4 | Open — #607 MCP owning register not-ready; governance/query/outbox and migration lineage remain |
+| P5–P7 | Open — no completion claim |
+
+**P0 actual bounded diagnostic:** independent Sol cleared exact V9 seal `f378979e6c62a8b89799f4b8de8496fd30d39785e4258c6a5941f72cfba0e949` (719files) for one three-case diagnostic, not acceptance. Exact30aef ran at08:45:41–08:47:24UTC on owned loopback52546: local LCP2264ms, state184.6ms, board409.3ms,3/3PASS. All18recorded owned processes/listener/profiles are absent; unowned4178 preview is preserved; source and packet seal remain exact. The supervisor's final redundant killpg returned EPERM after TERM; explicit PID identity verification established cleanup, and the original exception is retained. No blanket cleanup success is inferred from a zero exit.
+
+All nine attribution receipts remain **incomplete**. Although boundary/clock joins pass, the trace sanitizer conflates unretained events with malformed events and discards invalid CPU profiles under one combined reason. Raw rejected profile data cannot be recovered. No authored TaskDesk owner costs were established, and the postprocessor correctly refuses attribution. No product patch or V9 recapture follows from those invalid receipts. Existing hosted artifacts are the next bounded evidence route. Hosted30aef remains19/22: LCP2532/2500ms, state200.9/200ms, board623.1/500ms. Earlier V3 wrong-origin attribution, V6 absent stacks and V7/V8 review BLOCK records remain preserved and are not relabeled.
+
+**#606 implementation and reviews:** ba14dda2 completes eight existing Linux visual baseline corrections; unchanged assertions compare8/8PASS. The shared Alert foreground/variant pair coverage grows from306 to316 proven source/manifest pairs as caller-specific backdrops are introduced at9be3. Exact ba14 image `sha256:fdc21955f57b8482f3e4ee7fe6681da2468450120b32897414f12b558a17db8b` built and booted07:51:23–07:55:29UTC with OCI exact,UID10001,live/ready200,isolated cleanup and original DEV network preserved. That image is not relabeled as a later source.
+
+Latest pushed PR head `1b75a467b7880fe37fc6d22ff37007e029429716` restores the typed null-variant foreground contract and models ordered known/absent/unknown variant/class/style spread effects. Focused contrast52/52, Alert3/3, UI typecheck/Biome and static316-pair bindings pass. Fresh independent Sol nevertheless reproduced a lexical binding fail-open: a sibling const or shadowed Object.freeze can be mistaken for the actual use binding. This remains BLOCKED and prompts one structural binding correction across identifier consumers; no additional ordinary comfort round is queued. Prior Luna backdrop/spread BLOCKs retain their historical SHA identities. Current fast37752744434/full37752744517 are in progress on1b75; no current full hosted acceptance is claimed. Root corrected the publication branch: actual #606 branch is codex/p1-native-activity-comments-20261008. No product source was lost or rewritten.
+
+**P3 actual convergence:** #596 exact `103dc906052852c246f9f7f6660a6b7f8d7d931c` fixes only test fixtures and AK-3 documentation. Fresh independent Luna and lightweight Sol clear this three-file delta; NULL/malformed denial and current-role authority are unchanged. Focused2files/20testsPASS; hosted37741291133 PostgreSQL150files/1741testsPASS on GitHub's synthetic merge4f09f2c of this candidate into197b19f. Original identities are preserved; this is not relabeled as a direct source-only run. Review evidence is recorded in PR596 comment6056349586. Inherited register/OpenAPI/dependency/metadata/G11 failures and real Entra acceptance remain open.
+
+**Integration and residuals:** live audit lists21 open PRs. #599 stays outside P0; #589 remains frozen until recreation from accepted post-P0 main. No stale PR is closed without unique-source preservation. #585 migration snapshots still omit seven tables versus matching #589/#598 SQL lineage; central integration reconciliation remains required. #607953d remains a two-file not-ready specification reconciliation, with inherited dependency/register/metadata failures; it does not authorize MCP implementation. Existing unclassified secret finding stays open and unsuppressed. Private role smoke remains36/36 for owner/admin/member/viewer only.
+
+**Critical path:** (1) proven P0 performance correction and unchanged hosted22/22; (2) remaining actual October9 bucket for the changed eligible nine-read subset; (3) frozen exact-source gates/image/installer/off-shadow-strict-rollback; (4) protected P0 merge; (5) fresh accepted-main Sol phase finalizer and issue reconciliation. No full-day/72-hour claim or elapsed-time cutover. Later-stage dependency-safe implementation continues independently; genuine pending product decisions are not guessed.
+
+---
+
 ## Status first — verified 2026-10-08 07:12 UTC
 
 **Accepted main:** `3096cb044bdf6ae98488bfc385f532fa6386343a`. **Persistent OrbStack DEV:** `08842235047a3ab2714427edce80331b94558150`, image `sha256:75b153d7d9583993127e1be8c06453159e4fe7319abfcd8431f093c9ca002bcf`. App/image unchanged. Four supported-role test accounts remain retained privately; credentials/seeders stay outside Git/GitHub. Chrome trust handoff remains pending. No protected merge, strict activation, official release or phase closure.
