@@ -3316,6 +3316,13 @@
           "id": {
             "type": "string"
           },
+          "personId": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "The workspace member's linked TaskDesk person identity, if one exists."
+          },
           "name": {
             "type": "string"
           },
@@ -4295,6 +4302,13 @@
             "format": "date-time",
             "description": "Comment rows only (CA-18 tombstone)."
           },
+          "deletedBy": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "Comment rows only: the deleting actor id for a CA-18 tombstone."
+          },
           "updatedAt": {
             "type": "string",
             "format": "date-time",
@@ -4314,7 +4328,8 @@
                   "type": [
                     "string",
                     "null"
-                  ]
+                  ],
+                  "description": "The editor's person.id, or null if unavailable."
                 },
                 "createdAt": {
                   "type": "string",
@@ -21440,7 +21455,7 @@
           "Work items"
         ],
         "summary": "List work item activity",
-        "description": "The work item's combined activity/comment stream (`WI-6`, `comments-and-activity.md`'s \"one stream showing everything\"), newest first, cursor-paginated. Each row in `data` carries `kind`: `\"activity\"` for an `activity` table row (issue #292) or `\"comment\"` for a posted `comment` row (issue #452) -- merged and sorted together, not two separate lists. Every row is returned regardless of `visibility` -- see the controller's own doc comment for why no caller-type filtering is applied yet. A live comment with prior edits may include an optional `versions` array (`number`, `body`, `editedBy`, `createdAt`) ordered by version number; unedited comments and tombstones omit it. The projection uses this route's existing work_item:read and work-item reach checks.",
+        "description": "The work item's combined activity/comment stream (`WI-6`, `comments-and-activity.md`'s \"one stream showing everything\"), newest first, cursor-paginated. Each row in `data` carries `kind`: `\"activity\"` for an `activity` table row (issue #292) or `\"comment\"` for a posted `comment` row (issue #452) -- merged and sorted together, not two separate lists. Every row is returned regardless of `visibility` -- see the controller's own doc comment for why no caller-type filtering is applied yet. A live comment with prior edits may include an optional `versions` array (`number`, `body`, `editedBy`, `createdAt`) ordered by version number (`editedBy` is the editor's person id); unedited comments and tombstones omit it. A tombstone includes its `deletedBy` actor id. The projection uses this route's existing work_item:read and work-item reach checks.",
         "parameters": [
           {
             "schema": {

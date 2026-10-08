@@ -1113,6 +1113,7 @@ export async function listWorkItemCommentRowsQuery(
       activityId: commentTable.activityId,
       editedAt: commentTable.editedAt,
       deletedAt: commentTable.deletedAt,
+      deletedBy: commentTable.deletedBy,
       createdAt: commentTable.createdAt,
       updatedAt: commentTable.updatedAt,
     })

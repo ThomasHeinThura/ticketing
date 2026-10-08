@@ -9,9 +9,11 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@taskdesk/ui";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
-import CommentEditor from "@/components/activity/comment-editor";
+import CommentEditor, {
+  type CommentContentSnapshot,
+} from "@/components/activity/comment-editor";
 import CommentVersionHistory from "@/components/activity/comment-version-history";
 import { useAuth } from "@/components/providers/auth-provider/hooks/use-auth";
 import listCannedResponses from "@/fetchers/canned-response/list-canned-responses";
@@ -23,6 +25,10 @@ import { useGetActiveWorkspaceUsers } from "@/hooks/queries/workspace-users/use-
 import { formatDateTime, formatRelativeTime } from "@/lib/format";
 
 export type ActivityFilter = "everything" | "comments" | "public";
+const EMPTY_COMMENT_DOCUMENT = {
+  type: "doc",
+  content: [{ type: "paragraph" }],
+};
 
 function effectiveVisibility(row: WorkItemActivityRow): "public" | "internal" {
   return row.visibility === "public" ? "public" : "internal";
@@ -47,7 +53,12 @@ export function groupConsecutiveActivity(
   for (const row of chronological) {
     const previous = groups.at(-1);
     const previousRow = previous?.at(-1);
-    const sameActor = previousRow?.actorId === row.actorId;
+    const sameActor =
+      previousRow?.actorId !== null &&
+      previousRow?.actorId !== undefined &&
+      row.actorId !== null &&
+      previousRow.actorId === row.actorId &&
+      previousRow.actorType === row.actorType;
     const withinWindow =
       previousRow !== undefined &&
       new Date(row.createdAt).getTime() -
@@ -116,17 +127,22 @@ function WorkItemActivity({
   const queryClient = useQueryClient();
   const createComment = useCreateWorkItemComment();
   const updateComment = useUpdateWorkItemComment();
-  const [draftText, setDraftText] = useState("");
-  const [draftDocument, setDraftDocument] = useState<unknown>({
-    type: "doc",
-    content: [{ type: "paragraph" }],
+  const [draft, setDraft] = useState<CommentContentSnapshot>({
+    text: "",
+    document: EMPTY_COMMENT_DOCUMENT,
   });
+  const draftText = draft.text;
+  const draftDocument = draft.document;
   const [visibility, setVisibility] = useState<"public" | "internal">(
     defaultVisibility,
   );
   const [editing, setEditing] = useState<string | null>(null);
-  const [editText, setEditText] = useState("");
-  const [editDocument, setEditDocument] = useState<unknown>();
+  const [editDraft, setEditDraft] = useState<CommentContentSnapshot>({
+    text: "",
+    document: undefined,
+  });
+  const editText = editDraft.text;
+  const editDocument = editDraft.document;
   const rows = activity.data?.pages.flatMap((page) => page.data) ?? [];
   // The API returns newest first; grouping reverses once so the rendered list
   // reads chronologically with the newest entry at the bottom.
@@ -138,12 +154,49 @@ function WorkItemActivity({
     const person = users.find((entry) => entry.userId === id);
     return person?.user?.name ?? person?.user?.email ?? "Former member";
   };
+  const displayPersonName = (personId: string | null) => {
+    if (!personId) return t("common:unknown");
+    // New versions store person.id. Pre-correction rows stored user.id; keep
+    // resolving that exact historical value without rewriting it on read.
+    const person = users.find(
+      (entry) => entry.personId === personId || entry.userId === personId,
+    );
+    return person?.user?.name ?? person?.user?.email ?? t("common:unknown");
+  };
   const activityKey = ["work-items", "activity", workItemKey] as const;
   const draftStorageKey = `taskdesk:comment-draft:${user?.id ?? ""}:${workItemKey}`;
+  const [loadedDraftKey, setLoadedDraftKey] = useState<string | null>(null);
+  const persistedDraftRef = useRef(draft);
+  const visibilityRef = useRef(visibility);
+  visibilityRef.current = visibility;
+
+  const persistDraft = (
+    snapshot: CommentContentSnapshot,
+    nextVisibility = visibilityRef.current,
+  ) => {
+    if (loadedDraftKey !== draftStorageKey) return;
+    persistedDraftRef.current = snapshot;
+    try {
+      window.localStorage.setItem(
+        draftStorageKey,
+        JSON.stringify({ ...snapshot, visibility: nextVisibility }),
+      );
+    } catch {
+      // A full or disabled localStorage must not block comment composition.
+    }
+  };
+
+  const updateVisibility = (nextVisibility: "public" | "internal") => {
+    visibilityRef.current = nextVisibility;
+    setVisibility(nextVisibility);
+    persistDraft(persistedDraftRef.current, nextVisibility);
+  };
 
   useEffect(() => {
-    setDraftText("");
-    setDraftDocument({ type: "doc", content: [{ type: "paragraph" }] });
+    const emptyDraft = { text: "", document: EMPTY_COMMENT_DOCUMENT };
+    persistedDraftRef.current = emptyDraft;
+    setDraft(emptyDraft);
+    visibilityRef.current = defaultVisibility;
     setVisibility(defaultVisibility);
     try {
       const saved = window.localStorage.getItem(draftStorageKey);
@@ -151,11 +204,17 @@ function WorkItemActivity({
       const parsed: unknown = JSON.parse(saved);
       if (!parsed || typeof parsed !== "object") return;
       const record = parsed as Record<string, unknown>;
-      if (typeof record.text === "string") setDraftText(record.text);
-      if (record.document && typeof record.document === "object") {
-        setDraftDocument(record.document);
-      }
+      const savedDraft = {
+        text: typeof record.text === "string" ? record.text : "",
+        document:
+          record.document && typeof record.document === "object"
+            ? record.document
+            : EMPTY_COMMENT_DOCUMENT,
+      };
+      persistedDraftRef.current = savedDraft;
+      setDraft(savedDraft);
       if (record.visibility === "public" || record.visibility === "internal") {
+        visibilityRef.current = record.visibility;
         setVisibility(record.visibility);
       }
     } catch {
@@ -164,6 +223,8 @@ function WorkItemActivity({
       } catch {
         // Storage can be disabled; the in-memory draft still works.
       }
+    } finally {
+      setLoadedDraftKey(draftStorageKey);
     }
   }, [defaultVisibility, draftStorageKey]);
 
@@ -175,8 +236,9 @@ function WorkItemActivity({
         body: draftDocument,
         visibility,
       });
-      setDraftText("");
-      setDraftDocument({ type: "doc", content: [{ type: "paragraph" }] });
+      const emptyDraft = { text: "", document: EMPTY_COMMENT_DOCUMENT };
+      persistedDraftRef.current = emptyDraft;
+      setDraft(emptyDraft);
       try {
         window.localStorage.removeItem(draftStorageKey);
       } catch {
@@ -289,7 +351,7 @@ function WorkItemActivity({
                   {row.editedAt && row.versions?.length ? (
                     <CommentVersionHistory
                       label={t("activity:timeline.edited")}
-                      editorName={(personId) => displayName(personId, "person")}
+                      editorName={displayPersonName}
                       versions={row.versions}
                     />
                   ) : (
@@ -305,8 +367,10 @@ function WorkItemActivity({
                       variant="ghost"
                       onClick={() => {
                         setEditing(row.id);
-                        setEditDocument(body);
-                        setEditText("");
+                        setEditDraft({
+                          text: typeof body === "string" ? body : "",
+                          document: isTiptapDocument(body) ? body : undefined,
+                        });
                       }}
                     >
                       {t("activity:timeline.edit")}
@@ -316,6 +380,9 @@ function WorkItemActivity({
                 {isDeleted ? (
                   <p className="mt-2 text-sm text-muted-foreground">
                     {t("activity:timeline.deleted", {
+                      actor: row.deletedBy
+                        ? displayName(row.deletedBy, "person")
+                        : t("common:unknown"),
                       date: formatDateTime(row.deletedAt ?? row.createdAt),
                     })}
                   </p>
@@ -324,9 +391,8 @@ function WorkItemActivity({
                     {/* Native comments do not yet have mention notification or attachment-linkage endpoints. */}
                     <CommentEditor
                       value={editText}
-                      onChange={setEditText}
                       documentValue={editDocument}
-                      onDocumentChange={setEditDocument}
+                      onContentChange={setEditDraft}
                       uploadSurface="comment"
                       showQuickAttachButton={false}
                       enableMentions={false}
@@ -362,9 +428,15 @@ function WorkItemActivity({
                         readOnly
                         showBubbleMenu={false}
                       />
+                    ) : typeof body === "string" ? (
+                      <CommentEditor
+                        value={body}
+                        readOnly
+                        showBubbleMenu={false}
+                      />
                     ) : (
                       <p className="whitespace-pre-wrap text-sm">
-                        {typeof body === "string" ? body : jsonText(body)}
+                        {jsonText(body)}
                       </p>
                     )}
                   </div>
@@ -444,19 +516,7 @@ function WorkItemActivity({
           value={visibility}
           onValueChange={(value) => {
             const next = value as "public" | "internal";
-            setVisibility(next);
-            try {
-              window.localStorage.setItem(
-                draftStorageKey,
-                JSON.stringify({
-                  text: draftText,
-                  document: draftDocument,
-                  visibility: next,
-                }),
-              );
-            } catch {
-              // A full or disabled localStorage must not block comment composition.
-            }
+            updateVisibility(next);
           }}
         >
           <SelectTrigger
@@ -487,12 +547,15 @@ function WorkItemActivity({
                 (entry) => entry.id === id,
               );
               if (!response || !isTiptapDocument(response.body)) return;
-              setDraftDocument(response.body);
+              setDraft((current) => ({
+                ...current,
+                document: response.body,
+              }));
               if (
                 response.visibilityDefault === "public" ||
                 response.visibilityDefault === "internal"
               ) {
-                setVisibility(response.visibilityDefault);
+                updateVisibility(response.visibilityDefault);
               }
             }}
           >
@@ -516,36 +579,10 @@ function WorkItemActivity({
         {/* Do not imply mention notifications or attachment linkage the native API does not provide. */}
         <CommentEditor
           value={draftText}
-          onChange={(value) => {
-            setDraftText(value);
-            try {
-              window.localStorage.setItem(
-                draftStorageKey,
-                JSON.stringify({
-                  text: value,
-                  document: draftDocument,
-                  visibility,
-                }),
-              );
-            } catch {
-              // A full or disabled localStorage must not block comment composition.
-            }
-          }}
           documentValue={draftDocument}
-          onDocumentChange={(document) => {
-            setDraftDocument(document);
-            try {
-              window.localStorage.setItem(
-                draftStorageKey,
-                JSON.stringify({
-                  text: draftText,
-                  document,
-                  visibility,
-                }),
-              );
-            } catch {
-              // A full or disabled localStorage must not block comment composition.
-            }
+          onContentChange={(snapshot) => {
+            setDraft(snapshot);
+            persistDraft(snapshot);
           }}
           uploadSurface="comment"
           showQuickAttachButton={false}

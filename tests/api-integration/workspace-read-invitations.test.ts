@@ -135,3 +135,29 @@ describe("GET /api/workspace/{id}/invitations", () => {
     expect(row?.status).toBe("canceled");
   });
 });
+
+describe("GET /api/workspace/{id}/members identity mapping", () => {
+  it("returns the linked person id without changing the member user id", async () => {
+    const { user, workspace } = await createWorkspaceMember({
+      role: "owner",
+    });
+    const [person] = await db
+      .select({ id: schema.personTable.id })
+      .from(schema.personTable)
+      .where(eq(schema.personTable.userId, user.id));
+    mockAuthenticatedSession(user);
+    const { app } = createApp();
+
+    const response = await app.request(
+      `/api/workspace/${workspace.id}/members`,
+    );
+    expect(response.status).toBe(200);
+    const members = (await response.json()) as Array<{
+      id: string;
+      personId?: string | null;
+    }>;
+    expect(members.find((member) => member.id === user.id)?.personId).toBe(
+      person?.id,
+    );
+  });
+});

@@ -1539,7 +1539,7 @@
 			"sending": "Sending…",
 			"mutationFailed": "The action failed. Your permissions or the work item may have changed; retry or reload.",
 			"groupedChanges": "{{count}} changes",
-			"deleted": "Comment deleted on {{date}}"
+			"deleted": "Comment deleted by {{actor}} on {{date}}"
 		},
 		"githubUser": "GitHub User",
 		"comment": {

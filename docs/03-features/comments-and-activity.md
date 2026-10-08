@@ -20,8 +20,10 @@ is usually in a comment three lines above the change, and splitting them destroy
 - `comment` — `work_item_id`, `author_id`, `actor_type`, `body jsonb`, `visibility`
   (`public`\|`internal`), `activity_id` null, `edited_at`, `deleted_at`/`deleted_by` (the
   `CA-18` tombstone).
-- `comment_version` — `comment_id`, `number`, `body jsonb`, `edited_by`, `created_at` — the
-  edit history `CA-17` renders.
+- `comment_version` — `comment_id`, `number`, `body jsonb`, `edited_by` (the editor's
+  `person.id`, nullable when no linked person exists), `created_at` — the edit history
+  `CA-17` renders. Historical rows may still contain the user id written by older builds;
+  readers resolve either stored id without rewriting the row.
 - `activity` — `work_item_id`, `actor_id`, `actor_type`, `verb`, `field`, `old_value`,
   `new_value`, `payload jsonb`, `visibility`, `workflow_version_id` null, `created_at`.
 - `canned_response` — `workspace_id`, `name`, `body jsonb`, `visibility_default`,
@@ -105,9 +107,11 @@ security-sensitive field in the product.
   on another.
 - `CA-17` Editing is allowed for 15 minutes by the author. After that window, editing is
   **refused** — a 403 — unless the actor holds `comment:update_any`. Each edit writes a new
-  `comment_version (comment_id, number, body, edited_by, created_at)` row
-  ([data-model.md](../01-architecture/data-model.md) §4); the comment shows "edited" with a
-  hover-revealed history built from those versions. On the existing
+  `comment_version (comment_id, number, body, edited_by, created_at)` row, where new
+  `edited_by` values are the linked editor `person.id` (null when no person is linked)
+  ([data-model.md](../01-architecture/data-model.md) §4). Older rows may contain the
+  user id stored by earlier builds; they remain unchanged and readers resolve both forms.
+  The comment shows "edited" with a hover-revealed history built from those versions. On the existing
   `GET /api/work-items/{key}/activity` response, a live comment row with versions may
   include `versions: [{ number, body, editedBy, createdAt }]`, ordered by ascending
   `number`. The field is omitted when there are no versions and omitted entirely for a

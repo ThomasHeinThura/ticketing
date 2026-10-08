@@ -97,8 +97,15 @@ type CommentEditorProps = {
   /** Native work-item comments store the editor's Tiptap document, not Markdown. */
   documentValue?: unknown;
   onDocumentChange?: (value: unknown) => void;
+  /** A text/document pair emitted together for callers that persist a draft. */
+  onContentChange?: (value: CommentContentSnapshot) => void;
   /** Hide mention insertion when the API surface cannot notify or update watchers. */
   enableMentions?: boolean;
+};
+
+export type CommentContentSnapshot = {
+  text: string;
+  document: unknown;
 };
 
 type SlashRange = { from: number; to: number };
@@ -201,6 +208,7 @@ export default function CommentEditor({
   onAttachActionChange,
   documentValue,
   onDocumentChange,
+  onContentChange,
   enableMentions = true,
 }: CommentEditorProps) {
   const { t } = useTranslation();
@@ -226,7 +234,11 @@ export default function CommentEditor({
   const isSyncingRef = useRef(false);
   const hasHydratedRef = useRef(false);
   const latestValueRef = useRef(normalizeMarkdown(value || ""));
+  const onContentChangeRef = useRef(onContentChange);
+  onContentChangeRef.current = onContentChange;
   const lastEditorRef = useRef<Editor | null>(null);
+  const disposedEditorRef = useRef<Editor | null>(null);
+  const [editorGeneration, setEditorGeneration] = useState(0);
   const syncGenerationRef = useRef(0);
   const taskIdRef = useRef(taskId);
   const ensureTaskIdRef = useRef(ensureTaskId);
@@ -912,18 +924,36 @@ export default function CommentEditor({
       onUpdate: ({ editor: activeEditor }) => {
         if (readOnly || disabled || isSyncingRef.current) return;
         const markdown = normalizeMarkdown(activeEditor.getMarkdown());
+        const document = activeEditor.getJSON();
         latestValueRef.current = markdown;
         onChange?.(markdown);
-        onDocumentChange?.(activeEditor.getJSON());
+        onDocumentChange?.(document);
+        onContentChangeRef.current?.({ text: markdown, document });
       },
     },
     [
       enableMentions,
+      editorGeneration,
       handleAssetFileUpload,
       resolvedPlaceholder,
       toShikiLanguage,
     ],
   );
+
+  // Tiptap can dispose an instance during a React layout transition before the
+  // editor's passive hydration effects run. Recreate that instance once so the
+  // editor does not remain a permanently inert shell after being disposed.
+  useEffect(() => {
+    if (!editor) return;
+    if (editor.isDestroyed) {
+      if (disposedEditorRef.current !== editor) {
+        disposedEditorRef.current = editor;
+        setEditorGeneration((generation) => generation + 1);
+      }
+      return;
+    }
+    disposedEditorRef.current = null;
+  }, [editor]);
 
   const shikiHighlighter = useShikiHighlighterForCode(editor);
   shikiHighlighterRef.current = shikiHighlighter;
@@ -1078,6 +1108,10 @@ export default function CommentEditor({
         emitUpdate: false,
         contentType: "markdown",
       });
+      onContentChangeRef.current?.({
+        text: incoming,
+        document: editor.getJSON(),
+      });
       hasHydratedRef.current = true;
       const generation = ++syncGenerationRef.current;
       queueMicrotask(() => {
@@ -1095,6 +1129,10 @@ export default function CommentEditor({
       contentType: "markdown",
     });
     latestValueRef.current = incoming;
+    onContentChangeRef.current?.({
+      text: incoming,
+      document: editor.getJSON(),
+    });
     const generation = ++syncGenerationRef.current;
     queueMicrotask(() => {
       if (generation === syncGenerationRef.current) {
@@ -1115,6 +1153,10 @@ export default function CommentEditor({
     const markdown = normalizeMarkdown(editor.getMarkdown());
     latestValueRef.current = markdown;
     onChange?.(markdown);
+    onContentChangeRef.current?.({
+      text: markdown,
+      document: editor.getJSON(),
+    });
     const generation = ++syncGenerationRef.current;
     queueMicrotask(() => {
       if (generation === syncGenerationRef.current) {

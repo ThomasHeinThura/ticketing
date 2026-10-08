@@ -414,6 +414,7 @@ describe("API integration: work-item comments (#27)", () => {
     expect(response.status).toBe(200);
     const deleted = (await response.json()) as Record<string, unknown>;
     expect(deleted.deletedAt).not.toBeNull();
+    expect(deleted.deletedBy).toBeTruthy();
     expect(deleted.body).toBeNull();
 
     // Idempotent: deleting again re-returns the same tombstoned row, not an error.

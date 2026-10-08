@@ -19,6 +19,7 @@ export type WorkItemActivityRow = {
   activityId?: string | null;
   editedAt?: string | null;
   deletedAt?: string | null;
+  deletedBy?: string | null;
   updatedAt?: string;
   versions?: CommentVersion[];
 };

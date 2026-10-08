@@ -9,7 +9,7 @@
  * unchanged from #292.
  */
 import { randomUUID } from "node:crypto";
-import { sql } from "drizzle-orm";
+import { eq, sql } from "drizzle-orm";
 import { beforeEach, describe, expect, it } from "vitest";
 import db, { schema } from "../../apps/api/src/database";
 import { createApp } from "../../apps/api/src/index";
@@ -447,6 +447,7 @@ describe("API integration: work item activity read (#23 fourth slice)", () => {
       expect(commentRow?.kind).toBe("comment");
       expect(commentRow?.body).toBeNull();
       expect(commentRow?.deletedAt).not.toBeNull();
+      expect(commentRow?.deletedBy).toBeTruthy();
     });
 
     it("returns ordered prior bodies for a live comment and omits history after tombstoning", async () => {
@@ -500,6 +501,7 @@ describe("API integration: work item activity read (#23 fourth slice)", () => {
           id: string;
           body?: unknown;
           deletedAt?: string | null;
+          deletedBy?: string | null;
           visibility: string;
           versions?: Array<{
             number: number;
@@ -519,8 +521,13 @@ describe("API integration: work item activity read (#23 fourth slice)", () => {
         firstBody,
         secondBody,
       ]);
+      const [creatorPerson] = await db
+        .select({ id: schema.personTable.id })
+        .from(schema.personTable)
+        .where(eq(schema.personTable.userId, creator.user.id));
+      expect(creatorPerson).toBeDefined();
       expect(liveComment?.versions?.map((version) => version.editedBy)).toEqual(
-        [creator.user.id, creator.user.id],
+        [creatorPerson?.id, creatorPerson?.id],
       );
       expect(liveComment?.versions?.every((version) => version.createdAt)).toBe(
         true,
@@ -533,6 +540,7 @@ describe("API integration: work item activity read (#23 fourth slice)", () => {
       };
       const tombstone = deleted.data.find((row) => row.id === comment.id);
       expect(tombstone?.body).toBeNull();
+      expect(tombstone?.deletedBy).toBe(creator.user.id);
       expect(tombstone).not.toHaveProperty("versions");
     });
 

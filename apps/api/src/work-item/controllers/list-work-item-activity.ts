@@ -146,6 +146,7 @@ type ActivityStreamRow = {
   activityId: string | null;
   editedAt: Date | null;
   deletedAt: Date | null;
+  deletedBy: string | null;
   updatedAt?: Date;
   versions?: Array<{
     number: number;
@@ -257,6 +258,7 @@ export async function listWorkItemActivity(
       activityId: null,
       editedAt: null,
       deletedAt: null,
+      deletedBy: null,
       updatedAt: undefined,
     })),
     // `verb: "commented"` is a real, honest description of what happened -- matching
@@ -282,6 +284,7 @@ export async function listWorkItemActivity(
       activityId: row.activityId,
       editedAt: row.editedAt,
       deletedAt: row.deletedAt,
+      deletedBy: row.deletedBy,
       updatedAt: row.updatedAt,
     })),
   ].sort((a, b) => {

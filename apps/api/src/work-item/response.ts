@@ -383,6 +383,10 @@ export const workItemActivityRowSchema = z
     deletedAt: nullableResponseTimestamp.optional().openapi({
       description: "Comment rows only (CA-18 tombstone).",
     }),
+    deletedBy: z.string().nullable().optional().openapi({
+      description:
+        "Comment rows only: the deleting actor id for a CA-18 tombstone.",
+    }),
     updatedAt: responseTimestamp.optional().openapi({
       description: "Comment rows only.",
     }),
@@ -391,7 +395,9 @@ export const workItemActivityRowSchema = z
         z.object({
           number: z.number().int().positive(),
           body: z.unknown(),
-          editedBy: z.string().nullable(),
+          editedBy: z.string().nullable().openapi({
+            description: "The editor's person.id, or null if unavailable.",
+          }),
           createdAt: responseTimestamp,
         }),
       )

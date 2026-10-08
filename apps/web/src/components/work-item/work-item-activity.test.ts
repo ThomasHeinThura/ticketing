@@ -55,6 +55,18 @@ describe("groupConsecutiveActivity", () => {
       ),
     ).toEqual([["before-comment"], ["comment"], ["old"], ["newest"]]);
   });
+
+  it("does not group consecutive rows when their actor identity is unknown", () => {
+    const rows = [
+      row("newest-unknown", null, "2026-10-08T10:01:00Z"),
+      row("older-unknown", null, "2026-10-08T10:00:00Z"),
+    ];
+    expect(
+      groupConsecutiveActivity(rows).map((group) =>
+        group.map((entry) => entry.id),
+      ),
+    ).toEqual([["older-unknown"], ["newest-unknown"]]);
+  });
 });
 
 describe("filterActivityRows", () => {

@@ -35,6 +35,7 @@ async function getActiveWorkspaceUsers({
   return {
     members: members.map((member) => ({
       userId: member.id,
+      personId: member.personId,
       role: member.role,
       user: {
         id: member.id,

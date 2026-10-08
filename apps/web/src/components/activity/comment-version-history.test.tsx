@@ -6,9 +6,23 @@ import type { CommentVersion } from "@/fetchers/work-item/get-work-item-activity
 import CommentVersionHistory from "./comment-version-history";
 
 vi.mock("@/components/activity/comment-editor", () => ({
-  default: ({ documentValue }: { documentValue: unknown }) => {
-    const text = JSON.stringify(documentValue);
-    return <div>{text.includes("prior version") ? "prior version" : text}</div>;
+  default: ({
+    documentValue,
+    value,
+  }: {
+    documentValue?: unknown;
+    value: string;
+  }) => {
+    const text = `${value} ${JSON.stringify(documentValue)}`;
+    return (
+      <div>
+        {text.includes("prior version")
+          ? "prior version"
+          : text.includes("legacy transition")
+            ? "legacy transition"
+            : text}
+      </div>
+    );
   },
 }));
 
@@ -85,6 +99,12 @@ const versions: CommentVersion[] = [
     editedBy: "person-1",
     createdAt: "2026-10-08T12:00:00.000Z",
   },
+  {
+    number: 2,
+    body: "legacy transition note",
+    editedBy: "person-1",
+    createdAt: "2026-10-08T12:01:00.000Z",
+  },
 ];
 
 describe("CommentVersionHistory", () => {
@@ -100,7 +120,8 @@ describe("CommentVersionHistory", () => {
     const trigger = screen.getByRole("button", { name: "Edited" });
     fireEvent.mouseEnter(trigger);
     expect(await screen.findByText("prior version")).toBeInTheDocument();
-    expect(screen.getByText("Editor")).toBeInTheDocument();
+    expect(screen.getByText("legacy transition")).toBeInTheDocument();
+    expect(screen.getAllByText("Editor")).toHaveLength(2);
     expect(screen.getByText("2026-10-08T12:00:00.000Z")).toBeInTheDocument();
 
     fireEvent.mouseLeave(trigger);

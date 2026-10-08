@@ -1,4 +1,10 @@
-import { act, render, screen, waitFor } from "@testing-library/react";
+import {
+  act,
+  fireEvent,
+  render,
+  screen,
+  waitFor,
+} from "@testing-library/react";
 import { StrictMode } from "react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
@@ -80,5 +86,48 @@ describe("CommentEditor lifecycle", () => {
     );
 
     unmount();
+  });
+
+  it("keeps legacy Markdown editable and emits text with its matching Tiptap document", async () => {
+    const onContentChange = vi.fn();
+    const { container } = render(
+      <CommentEditor
+        value="**workflow transition note**"
+        onContentChange={onContentChange}
+        showQuickAttachButton={false}
+      />,
+    );
+
+    const editor = await waitFor(() => {
+      const editable = container.querySelector<HTMLElement>(
+        '.ProseMirror[contenteditable="true"]',
+      );
+      expect(editable).not.toBeNull();
+      return editable as HTMLElement;
+    });
+    expect(editor).toHaveAttribute("contenteditable", "true");
+    expect(screen.getByText("workflow transition note")).toBeInTheDocument();
+    await waitFor(() =>
+      expect(onContentChange).toHaveBeenCalledWith(
+        expect.objectContaining({
+          text: "**workflow transition note**",
+          document: expect.objectContaining({ type: "doc" }),
+        }),
+      ),
+    );
+
+    editor.querySelector("p")?.append(" updated");
+    fireEvent.input(editor, {
+      inputType: "insertText",
+      data: " updated",
+    });
+    await waitFor(() =>
+      expect(onContentChange).toHaveBeenLastCalledWith(
+        expect.objectContaining({
+          text: expect.stringContaining("updated"),
+          document: expect.objectContaining({ type: "doc" }),
+        }),
+      ),
+    );
   });
 });

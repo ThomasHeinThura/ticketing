@@ -836,8 +836,9 @@ const listWorkItemActivityRoute = createRoute({
     "regardless of `visibility` -- see the controller's own doc comment for why no " +
     "caller-type filtering is applied yet. A live comment with prior edits may include " +
     "an optional `versions` array (`number`, `body`, `editedBy`, `createdAt`) ordered " +
-    "by version number; unedited comments and tombstones omit it. The projection uses " +
-    "this route's existing work_item:read and work-item reach checks.",
+    "by version number (`editedBy` is the editor's person id); unedited comments " +
+    "and tombstones omit it. A tombstone includes its `deletedBy` actor id. The " +
+    "projection uses this route's existing work_item:read and work-item reach checks.",
   middleware: [
     requireWorkItemReach("key", { requireProjectReach: true }),
   ] as const,
@@ -1604,7 +1605,15 @@ const workItem = apiRouter<
     const { id } = c.req.valid("param");
     const workspaceId = c.get("workspaceId");
     const { body } = c.req.valid("json");
-    const updated = await updateComment(id, workspaceId, c.get("userId"), body);
+    const userId = c.get("userId");
+    const [person] = await findPersonIdByUserIdQuery(db, userId);
+    const updated = await updateComment(
+      id,
+      workspaceId,
+      userId,
+      body,
+      person?.id ?? null,
+    );
     return c.json(updated, 200);
   })
   .openapi(deleteCommentRoute, async (c) => {

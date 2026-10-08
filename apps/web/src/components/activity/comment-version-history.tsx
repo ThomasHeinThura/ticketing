@@ -52,15 +52,33 @@ export default function CommentVersionHistory({
                     {editorName(version.editedBy)}
                   </span>
                 )}
-                <CommentEditor
-                  className="rounded-md bg-background p-2"
-                  contentClassName="max-h-40 overflow-y-auto"
-                  documentValue={version.body}
-                  readOnly
-                  showBubbleMenu={false}
-                  showQuickAttachButton={false}
-                  value=""
-                />
+                {version.body &&
+                typeof version.body === "object" &&
+                !Array.isArray(version.body) &&
+                (version.body as Record<string, unknown>).type === "doc" ? (
+                  <CommentEditor
+                    className="rounded-md bg-background p-2"
+                    contentClassName="max-h-40 overflow-y-auto"
+                    documentValue={version.body}
+                    readOnly
+                    showBubbleMenu={false}
+                    showQuickAttachButton={false}
+                    value=""
+                  />
+                ) : typeof version.body === "string" ? (
+                  <CommentEditor
+                    className="rounded-md bg-background p-2"
+                    contentClassName="max-h-40 overflow-y-auto"
+                    readOnly
+                    showBubbleMenu={false}
+                    showQuickAttachButton={false}
+                    value={version.body}
+                  />
+                ) : (
+                  <pre className="max-h-40 overflow-y-auto whitespace-pre-wrap">
+                    {JSON.stringify(version.body)}
+                  </pre>
+                )}
               </li>
             ))}
           </ol>

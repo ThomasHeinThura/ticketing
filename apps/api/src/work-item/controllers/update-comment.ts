@@ -39,6 +39,7 @@ export async function updateComment(
   workspaceId: string,
   actorId: string,
   newBody: unknown,
+  editorPersonId: string | null,
 ) {
   return db.transaction(async (tx) => {
     const [locked] = await lockCommentForMutationQuery(
@@ -103,7 +104,7 @@ export async function updateComment(
       commentId,
       number: (existing?.value ?? 0) + 1,
       body: locked.body,
-      editedBy: actorId,
+      editedBy: editorPersonId,
     });
 
     const [updated] = await tx
