@@ -1,3 +1,30 @@
+## Status first — verified 2026-10-08 13:39 UTC
+
+**Mode:** feature freeze, existing-source consolidation and local SIT acceptance. Accepted main remains `3096cb044bdf6ae98488bfc385f532fa6386343a`. No protected merge, new application deployment, strict activation or phase closure occurred.
+
+| Stage | Formal status |
+| --- | --- |
+| P0 | Open — frozen #602 `23a01a62ece3ca7d17105626f64ad78641435ec1`; hosted full/G11 22/22 pass; runtime, installer, remaining actual October9 observation and finalizer remain |
+| P1 | Open — existing navigation correction #609 remains under remediation after independent review found task selection lost by the shared desktop/mobile view switcher |
+| P2 | Open — existing approvals/intake retained for bounded composition; incomplete new composition features held |
+| P3 | Open — existing identity slices retained; integrated and real provider acceptance unverified |
+| P4 | Open — #608 final `76b833be5b46589229a630738c5b436365eba409` ordinary panel and independent Sol security clear; candidate image/boot/migrations pass; integrated CI/browser acceptance remains |
+| P5–P7 | Open — held under feature freeze; no completion or new development claim |
+
+**Local runtime restored:** Docker Desktop is installed/running with no containers in its own endpoint. OrbStack was stopped; starting it recovered the original five TaskDesk containers and retained named volumes. Global Docker context remains `desktop-linux`; TaskDesk operations explicitly select `orbstack`. CA-verified HTTPS returns ticketing readiness200 and portal200 through Traefik443. Source08842235/image75b153d7 remain unchanged. Signed-in browser reload shows the retained DEV-3 task and submitted comment. This is restoration of existing DEV, not final integrated SIT deployment.
+
+**Registry destination resolved:** Thomas selected `bimdevops/taskdesk` and local Traefik443 testing. Secret-safe credential verification confirms Docker Hub pull/push authority for that repository. No image was published. Final publication must retain accepted-source identity, scanning, signing and provenance; local connected credentials do not replace those gates.
+
+**Users exact-source evidence:** final76 image `sha256:268ded4e768068da27622442b709ea65db0fef3051c52ca8798c69cb60fd807d` built13:34:51–13:35:11UTC and booted13:36:42–13:36:57UTC. OCI revision exact, UID10001, live/ready200, all113 ordered source/database migration hashes match. Owned resources are absent and original DEV network membership is preserved. Three fresh Luna contexts clear final76; independent full Sol clears it with three files/ten unit tests. Author's two-file/seventeen PostgreSQL regressions remain source-bound. These proofs do not resolve the historical train conflict or transfer to a later integrated source.
+
+**P0 actual partial proof retained:** corrected six-key independent receipt and fresh root records passed the offline binding guard. V13 executed once13:31:25–13:31:50UTC on exact23. Boot/migrations/metrics and earlier representative traffic passed, then the missing-versus-foreign404 witness failed at runner line166. Root identifies a JSON-only message adapter despite source HTTPException responses using the default text response; exact behavior and the remaining query/DTO boundaries are being corrected together offline. This is not complete runtime acceptance or another qualifying UTC date. Original failure, receipts and partial traffic are preserved. Independent cleanup verifies all owned Docker containers/volumes/network absent. A preceding image-proof operator tag typo acquired no resources; its failed record is also retained.
+
+**Migration reconciliation:** #589/#598 provisional0088–0118 SQL is byte-identical and must replay once. #585 delivery SQL matches but its snapshots omit seven tables. #608 provisional0112 has a different SQL body from the train's0112 and needs centralized numbering. Accepted0000–0087 remains immutable. Existing custom-fields source has schema-only evidence and no complete runtime/UI owner; it remains held. The private replay manifest records SQL/snapshot hashes, collisions, owners and required replay checks.
+
+**Critical path:** (1) finish source-bound authorization runtime/installer proof; (2) actual remaining October9 scoped observation and compatibility adjudication; (3) exact-head protected P0 acceptance/finalizer; (4) compose existing owner slices with one migration tail and integrated CI/reviews; (5) publish accepted image to Docker Hub, deploy local SIT, complete real acceptance/fresh Sol audit, then stop awaiting Thomas's roadmap.
+
+---
+
 ## Status first — verified 2026-10-08 13:27 UTC
 
 **Feature freeze:** Thomas's final integration directive is active. Stop all new feature work and feature branches. Permitted source work is limited to existing integration and acceptance defects: conflicts, security/correctness defects, failing functional tests, migration compatibility, build/package/SIT compatibility, and acceptance-blocking accessibility or UI issues. After the final accepted-source SIT audit and report, stop and wait for Thomas's next roadmap; do not generate one or resume implementation automatically.
