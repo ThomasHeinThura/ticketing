@@ -120,7 +120,8 @@ read by the server process.**
 | --- | --- | --- |
 | `DOMAIN` | Compose, at file-parse time | Substituted into every Traefik router rule — the `Host(...)` matcher for `ticket.`, `portal.` and, when deployed, `files.` ([traefik-and-domains.md](traefik-and-domains.md)). A wrong value produces a 404 from Traefik, never an application error |
 | `TASKDESK_AGENT_HOST` · `TASKDESK_PORTAL_HOST` · `TASKDESK_FILES_HOST` | Compose, at file-parse time | Optional exact Traefik router hostnames. Empty values derive `ticket.`, `portal.` and `files.` from `DOMAIN`; `TASKDESK_FILES_HOST` matters only when the S3 profile is enabled |
-| `TASKDESK_IMAGE_TAG` · `TASKDESK_IMAGE_DIGEST` | Compose | Which image the `taskdesk` service pulls. Rollback is editing the digest here and bringing the service back up ([runbook](runbook.md)) |
+| `TASKDESK_IMAGE_REPOSITORY` | Compose and `scripts/deploy.sh` | Image repository used by both the `migrate` and `taskdesk` services and by signature verification. Defaults to `ghcr.io/thomasheinthura/taskdesk`; changing it requires a mirror that preserves the signed digest and its verifiable release signature |
+| `TASKDESK_IMAGE_TAG` · `TASKDESK_IMAGE_DIGEST` | Compose and `scripts/deploy.sh` | Which signed image the services pull. The deploy script resolves a tag to a digest, verifies that digest in `TASKDESK_IMAGE_REPOSITORY`, then passes the same digest to Compose. Rollback is editing the digest here and bringing the service back up ([runbook](runbook.md)) |
 | `TASKDESK_HSTS_PRELOAD` | Compose, into the Traefik headers middleware | Opt-in `includeSubDomains; preload` on `Strict-Transport-Security`. Off unless the operator sets it, because both are commitments about someone else's apex domain ([traefik-and-domains.md](traefik-and-domains.md)) |
 | `TASKDESK_LOCAL_HTTP_PORT` · `TASKDESK_LOCAL_HTTPS_PORT` | Compose, `deploy/compose.traefik.yml` (`local` mode only) | Host ports for the bundled local Traefik. Default 80/443; override when the host already runs another reverse proxy on those ports. `scripts/deploy.sh local` checks both are free before starting anything ([traefik-and-domains.md](traefik-and-domains.md)) |
 | `TASKDESK_API_URL` · `TASKDESK_API_KEY` | `@taskdesk/mcp`, on the user's own machine | The MCP client package's own configuration ([mcp-server.md](../03-features/mcp-server.md)). It talks to an instance over HTTP like any other API consumer; the server never reads either name |
@@ -318,6 +319,7 @@ POSTGRES_PASSWORD=taskdesk
 # taskdesk_app role and sets this password on it at boot.
 TASKDESK_APP_DB_PASSWORD=taskdesk
 DOMAIN=localhost
+TASKDESK_IMAGE_REPOSITORY=ghcr.io/thomasheinthura/taskdesk
 TASKDESK_IMAGE_TAG=v2.0.0
 TASKDESK_IMAGE_DIGEST=
 TASKDESK_HSTS_PRELOAD=

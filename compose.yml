@@ -32,7 +32,7 @@ services:
   # `taskdesk` service. `restart: "no"`: a failed migration must surface as a
   # failed `docker compose up`, not silently retry forever.
   migrate:
-    image: ghcr.io/thomasheinthura/taskdesk:${TASKDESK_IMAGE_TAG:-v2.0.0}${TASKDESK_IMAGE_DIGEST:+@}${TASKDESK_IMAGE_DIGEST:-}
+    image: ${TASKDESK_IMAGE_REPOSITORY:-ghcr.io/thomasheinthura/taskdesk}:${TASKDESK_IMAGE_TAG:-v2.0.0}${TASKDESK_IMAGE_DIGEST:+@}${TASKDESK_IMAGE_DIGEST:-}
     restart: "no"
     environment:
       TASKDESK_ROLE: migrate
@@ -60,7 +60,7 @@ services:
     # `repo:tag` normally; `repo:tag@sha256:…` when TASKDESK_IMAGE_DIGEST is set,
     # in which case the digest is what Docker actually pulls. Promotion and
     # rollback are both "edit the digest and bring the service back up".
-    image: ghcr.io/thomasheinthura/taskdesk:${TASKDESK_IMAGE_TAG:-v2.0.0}${TASKDESK_IMAGE_DIGEST:+@}${TASKDESK_IMAGE_DIGEST:-}
+    image: ${TASKDESK_IMAGE_REPOSITORY:-ghcr.io/thomasheinthura/taskdesk}:${TASKDESK_IMAGE_TAG:-v2.0.0}${TASKDESK_IMAGE_DIGEST:+@}${TASKDESK_IMAGE_DIGEST:-}
     restart: unless-stopped
     # No `ports:`. See the header.
     environment:

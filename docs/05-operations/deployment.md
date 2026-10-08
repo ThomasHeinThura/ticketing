@@ -245,9 +245,13 @@ scripts/deploy.sh upgrade            # verify the cosign signature → pull → 
 
 **The signature check is the point.** The stack table promises the image is verified against
 its cosign signature before start, and [ci-cd.md](../04-engineering/ci-cd.md) signs it
-against an exact workflow identity; a bare `docker compose pull` verifies nothing and
-silently drops that control. The raw commands below are the **no-verification fallback**,
-for a host that cannot reach the transparency log — label it as such when you use it:
+against an exact workflow identity. `TASKDESK_IMAGE_REPOSITORY` selects one repository for
+both Compose application services and the verifier; its default is the canonical GHCR
+repository. A mirror is usable only when its copied digest and release signature remain
+verifiable under that same identity and tag annotation. A bare `docker compose pull` verifies
+nothing and silently drops that control. The raw commands below are the
+**no-verification fallback**, for a host that cannot reach the transparency log — label it
+as such when you use it:
 
 ```bash
 docker compose pull                  # no signature verification

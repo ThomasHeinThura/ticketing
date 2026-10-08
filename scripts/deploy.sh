@@ -73,7 +73,7 @@ case "$MODE" in
     ROLLBACK_DIGEST="$1"; shift
     ROLLBACK_TAG="$1"; shift
     case "$ROLLBACK_DIGEST" in
-      sha256:*) ;;
+      sha256:*) [[ "$ROLLBACK_DIGEST" =~ ^sha256:[0-9a-f]{64}$ ]] || die "digest must be a full lowercase sha256 digest" ;;
       *) die "digest must look like sha256:…  (got '$ROLLBACK_DIGEST')" ;;
     esac
     [[ "$ROLLBACK_TAG" =~ ^[A-Za-z0-9_][A-Za-z0-9_.-]{0,127}$ ]] \
@@ -124,6 +124,30 @@ if [ ! -f "$ENV_FILE" ]; then
   chmod 0600 "$ENV_FILE"
 fi
 
+validate_image_inputs() {
+  IMAGE_REPOSITORY="${TASKDESK_IMAGE_REPOSITORY:-ghcr.io/thomasheinthura/taskdesk}"
+  [[ "$IMAGE_REPOSITORY" =~ ^[a-z0-9]+([.-][a-z0-9]+)*(:[1-9][0-9]{0,4})?(/[a-z0-9]+([._-][a-z0-9]+)*)+$ ]] \
+    || die "TASKDESK_IMAGE_REPOSITORY must be a lowercase registry/repository reference"
+  local registry="${IMAGE_REPOSITORY%%/*}"
+  if [[ "$registry" == *:* ]]; then
+    local registry_port="${registry##*:}"
+    (( 10#$registry_port <= 65535 )) \
+      || die "TASKDESK_IMAGE_REPOSITORY registry port must be between 1 and 65535"
+  fi
+  [[ "${TASKDESK_IMAGE_TAG:-v2.0.0}" =~ ^[A-Za-z0-9_][A-Za-z0-9_.-]{0,127}$ ]] \
+    || die "TASKDESK_IMAGE_TAG must be a valid container tag"
+  if [ -n "${TASKDESK_IMAGE_DIGEST:-}" ]; then
+    [[ "$TASKDESK_IMAGE_DIGEST" =~ ^sha256:[0-9a-f]{64}$ ]] \
+      || die "TASKDESK_IMAGE_DIGEST must be a full lowercase sha256 digest"
+  fi
+  TASKDESK_IMAGE_REPOSITORY="$IMAGE_REPOSITORY"
+  export TASKDESK_IMAGE_REPOSITORY
+}
+
+# Reject malformed image inputs before generating or changing deployment secrets.
+set -a; . "$ENV_FILE"; set +a
+validate_image_inputs
+
 # Replace `NAME=` with `NAME=<generated>` only when the value is empty. An
 # existing value is never touched: regenerating TASKDESK_AUTH_SECRET signs
 # everyone out, and regenerating TASKDESK_ENCRYPTION_KEY makes every stored
@@ -156,6 +180,7 @@ generate_if_empty TASKDESK_APP_DB_PASSWORD
 
 # shellcheck disable=SC1090
 set -a; . "$ENV_FILE"; set +a
+validate_image_inputs
 
 # Compose has no boolean. Any non-empty TASKDESK_HSTS_PRELOAD — `0` included —
 # selects the preload middleware, which commits the whole apex domain. Fail
@@ -271,8 +296,6 @@ fi
 # Image signature — resolve a mutable tag once, then verify and pull only the
 # immutable digest. Compose receives the digest through the exported variable.
 # ---------------------------------------------------------------------------
-IMAGE_REPOSITORY="ghcr.io/thomasheinthura/taskdesk"
-
 image_ref() {
   local tag="${TASKDESK_IMAGE_TAG:-v2.0.0}"
   local digest="${1:-${TASKDESK_IMAGE_DIGEST:-}}"
