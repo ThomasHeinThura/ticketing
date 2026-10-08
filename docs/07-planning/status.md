@@ -1,4 +1,4 @@
-## Status first — verified 2026-10-08 16:51 UTC
+## Status first — verified 2026-10-08 16:56 UTC
 
 **Accepted `main`:** `3096cb044bdf6ae98488bfc385f532fa6386343a`. **Current worktree:** PR #601
 documentation branch baseline `ad22ef8b1e9ac5ec8c7d2a2a93ea78fa7d1b2508`; this ledger batch
@@ -13,16 +13,20 @@ has a later G11 result of 20/22: LCP 2,520/2,500 ms and 200-task board 614.1/500
 current failure is not cleared by the earlier frozen-source pass. The local notification
 task-reach candidate `5ec772771497e5883ff4c55f272cd34df737b585` has preserved blocked review
 findings. Its complete local remediation `b890c86a0feaba018d298273527d86058cb56921` (parent
-`5ec7727`) has author-reported one-file/seven-test, API typecheck and Biome passes. Fresh
-independent exact-head reviews are active; no verdict is recorded yet. `b890c86` is unpushed
-and undeployed. The scoped Sol CLEAR and final manifest
+`5ec7727`) has author-reported one-file/seven-test, API typecheck and Biome passes. Two fresh
+independent exact-head ordinary reports are recorded: one CLEAR and one BLOCKED solely because
+email template rendering can occur between the reach check and SMTP send. The owner assigned
+the final structural boundary change to `packages/email`; implementation and a new review are
+pending. `b890c86` is unpushed and undeployed. The scoped Sol CLEAR and final manifest
 `e51bf0cb343cddd922c426bf78784b22e400bc34c47780a753132c1a8eb554f2` cover historical witnesses
 only; they do not establish strict-runtime admission or activation.
 
-**Disposition and migration records:** [live PR disposition ledger](pr-disposition-ledger.md)
+**Disposition and conservation records:** [live PR disposition ledger](pr-disposition-ledger.md)
 captures exact heads and current holds, including #555's accepted-main absorption, #550's
 accepted-main source-conservation closure, #607's MCP contract/review-register hold, and #589's
-rebuild-only role. [Central migration replay
+rebuild-only role. [Remote branch conservation inventory](branch-conservation-inventory.md)
+lists all 442 exact refs with conservative ancestry/ownership status; 244 unmatched historical
+or non-ancestor branches remain on HOLD. [Central migration replay
 ledger](migration-replay-ledger.md) preserves accepted 0000–0087 and maps candidate semantic
 units without assigning final IDs or rewriting applied history.
 

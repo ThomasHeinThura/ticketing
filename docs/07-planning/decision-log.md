@@ -1,15 +1,22 @@
 ### 2026-10-08 · Preserve live PR dispositions and centralize post-P0 migration replay
 
-The 16:51 UTC operational reconciliation records 20 live open PRs and their heads/dispositions
+The 16:56 UTC operational reconciliation records 20 live open PRs and their heads/dispositions
 in the [PR disposition ledger](pr-disposition-ledger.md), including #555's absorbed-by-accepted-
 main source conservation, #550's accepted-main semantic-audit closure, #607's MCP
 contract/review-register hold, and #602's current 20/22 G11 failure. The earlier #602 22/22
 result remains bound to frozen source `23a01a62ece3ca7d17105626f64ad78641435ec1` and does not
-clear the later review-note head. The local notification candidate `5ec7727` remains a
-blocked predecessor; its complete local successor `b890c86a0feaba018d298273527d86058cb56921`
-has author-reported checks, while fresh independent exact-head reviews are active. It remains
-unpublished and no review verdict is claimed. No review, check, or source-conservation result
-is transferred to a different SHA.
+clear the later review-note head. The local notification candidate `5ec7727` remains a blocked
+predecessor; its complete local successor `b890c86a0feaba018d298273527d86058cb56921` has
+author-reported checks and two fresh ordinary reviews: one CLEAR, one BLOCKED solely on the
+SMTP adapter render-to-send gap. The owner assigned the final structural boundary change to
+`packages/email`; implementation and a new review are pending. It remains unpublished. No
+review, check, or source-conservation result is transferred to a different SHA.
+
+The [branch conservation inventory](branch-conservation-inventory.md) lists all 442 live
+remote refs with exact heads. Accepted-main ancestry is credited only where the exact branch
+head matches captured ancestry data. Active heads follow the PR disposition ledger; unmatched
+or non-ancestor historical branches remain HOLD for source-ownership verification. This
+inventory is not a semantic audit of every branch and authorizes no deletion.
 
 The [central migration replay ledger](migration-replay-ledger.md) records accepted migration
 history 0000–0087 as immutable and candidate post-0087 SQL as provisional owner material.
