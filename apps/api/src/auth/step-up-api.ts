@@ -500,6 +500,7 @@ const routes = apiRouter()
       const [action] = await db
         .select({
           action: schema.pendingActionTable.action,
+          targetType: schema.pendingActionTable.targetType,
           confirmation: schema.pendingActionTable.confirmationRequired,
           routeKey: schema.pendingActionTable.routeKey,
         })
@@ -517,7 +518,8 @@ const routes = apiRouter()
         )
         .limit(1);
       if (
-        action?.action !== "user_deactivation" ||
+        action?.action !== "delete" ||
+        action.targetType !== "user" ||
         action.confirmation !== "typed_name_step_up" ||
         action.routeKey !== "POST /api/instance/users/{id}/deactivate"
       ) {
@@ -1164,6 +1166,7 @@ const routes = apiRouter()
       const [action] = await db
         .select({
           action: schema.pendingActionTable.action,
+          targetType: schema.pendingActionTable.targetType,
           confirmation: schema.pendingActionTable.confirmationRequired,
           routeKey: schema.pendingActionTable.routeKey,
         })
@@ -1181,7 +1184,8 @@ const routes = apiRouter()
         )
         .limit(1);
       if (
-        action?.action !== "user_deactivation" ||
+        action?.action !== "delete" ||
+        action.targetType !== "user" ||
         action.confirmation !== "typed_name_step_up" ||
         action.routeKey !== "POST /api/instance/users/{id}/deactivate"
       ) {

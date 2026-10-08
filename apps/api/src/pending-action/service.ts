@@ -432,7 +432,12 @@ export async function decideOwnPendingAction(input: {
       .limit(1);
     if (
       !actor?.userId ||
-      (!row.workspaceId && row.action !== "user_deactivation")
+      (!row.workspaceId &&
+        !(
+          row.action === "delete" &&
+          row.targetType === "user" &&
+          row.routeKey === "POST /api/instance/users/{id}/deactivate"
+        ))
     ) {
       throw new HTTPException(403, {
         message: "Pending-action requester is unavailable",
@@ -507,7 +512,7 @@ export async function decideOwnPendingAction(input: {
   return toPublicPendingAction(result.updated);
 }
 
-export async function approvePersonDeactivation(input: {
+export async function approveUserDeactivation(input: {
   id: string;
   requesterPersonId: string;
   userId: string;
@@ -534,7 +539,11 @@ export async function approvePersonDeactivation(input: {
       throw new HTTPException(404, { message: "Pending action not found" });
     if (row.state !== "pending")
       throw new HTTPException(409, { message: "pending_action_not_pending" });
-    if (row.action !== "user_deactivation" || row.targetType !== "person")
+    if (
+      row.action !== "delete" ||
+      row.targetType !== "user" ||
+      row.routeKey !== "POST /api/instance/users/{id}/deactivate"
+    )
       throw new HTTPException(409, {
         message: "pending_action_kind_unsupported",
       });
@@ -562,7 +571,7 @@ export async function approvePersonDeactivation(input: {
         .returning();
       if (!expired)
         throw new HTTPException(409, { message: "pending_action_not_pending" });
-      await writePersonDeactivationTransition(tx, {
+      await writeUserDeactivationTransition(tx, {
         row,
         actorPersonId: input.requesterPersonId,
         actorName: expiredBy?.name ?? "Unknown user",
@@ -611,7 +620,7 @@ export async function approvePersonDeactivation(input: {
       actor.banned ||
       actor.role !== "admin"
     ) {
-      const invalidated = await invalidatePersonDeactivation(tx, {
+      const invalidated = await invalidateUserDeactivation(tx, {
         row,
         actorPersonId: input.requesterPersonId,
         actorName: actor?.name ?? "TaskDesk",
@@ -650,9 +659,9 @@ export async function approvePersonDeactivation(input: {
     }
     if (
       hashPendingActionPayload(payload) !== row.payloadHash ||
-      payload.action !== "user_deactivation" ||
+      payload.action !== "delete" ||
       payload.route_key !== row.routeKey ||
-      payload.target_type !== "person" ||
+      payload.target_type !== "user" ||
       payload.target_ids.length !== 1 ||
       payload.target_ids[0] !== row.targetIds[0] ||
       payload.confirmation_required !== "typed_name_step_up" ||
@@ -665,8 +674,8 @@ export async function approvePersonDeactivation(input: {
         message: "pending_action_payload_invalid",
       });
     }
-    const personId = payload.target_ids[0];
-    if (!personId)
+    const userId = payload.target_ids[0];
+    if (!userId)
       throw new HTTPException(409, {
         message: "pending_action_target_invalid",
       });
@@ -674,17 +683,19 @@ export async function approvePersonDeactivation(input: {
       .select({
         id: personTable.id,
         userId: personTable.userId,
+        targetUserId: userTable.id,
         active: personTable.active,
+        organisationId: personTable.organisationId,
         email: userTable.email,
         name: userTable.name,
       })
       .from(personTable)
       .innerJoin(userTable, eq(userTable.id, personTable.userId))
-      .where(eq(personTable.id, personId))
+      .where(eq(userTable.id, userId))
       .for("update")
       .limit(1);
-    if (!target?.userId || !target.active) {
-      const invalidated = await invalidatePersonDeactivation(tx, {
+    if (!target?.userId || target.targetUserId !== userId || !target.active) {
+      const invalidated = await invalidateUserDeactivation(tx, {
         row,
         actorPersonId: input.requesterPersonId,
         actorName: actor.name,
@@ -701,7 +712,7 @@ export async function approvePersonDeactivation(input: {
     }
     const summary = row.payloadSummary as { email?: unknown };
     if (summary.email !== target.email) {
-      const invalidated = await invalidatePersonDeactivation(tx, {
+      const invalidated = await invalidateUserDeactivation(tx, {
         row,
         actorPersonId: input.requesterPersonId,
         actorName: actor.name,
@@ -782,6 +793,10 @@ export async function approvePersonDeactivation(input: {
         {
           source: "god_mode",
           personId: target.id,
+          organisationId: target.organisationId,
+          externalIdentityIds: lifecycle.externalIdentityIds,
+          previousState: { active: true },
+          resultingAction: "deactivated",
           sessionsRevoked: lifecycle.sessionsRevoked,
           keysRevoked: lifecycle.keysRevoked,
           membershipsEnded: lifecycle.membershipsEnded,
@@ -873,7 +888,7 @@ export async function approvePersonDeactivation(input: {
   return toPublicPendingAction(result.row);
 }
 
-async function invalidatePersonDeactivation(
+async function invalidateUserDeactivation(
   tx: PendingActionTransaction,
   input: {
     row: typeof pendingActionTable.$inferSelect;
@@ -903,7 +918,7 @@ async function invalidatePersonDeactivation(
     .returning();
   if (!updated)
     throw new HTTPException(409, { message: "pending_action_not_pending" });
-  await writePersonDeactivationTransition(tx, {
+  await writeUserDeactivationTransition(tx, {
     row: input.row,
     actorPersonId: input.actorPersonId,
     actorName: input.actorName,
@@ -915,7 +930,7 @@ async function invalidatePersonDeactivation(
   return updated;
 }
 
-async function writePersonDeactivationTransition(
+async function writeUserDeactivationTransition(
   tx: PendingActionTransaction,
   input: {
     row: typeof pendingActionTable.$inferSelect;
@@ -1096,11 +1111,12 @@ async function resolveRequestScope(
   input: CreatePendingActionInput,
 ): Promise<ResolvedRequestScope> {
   if (
-    input.action === "user_deactivation" &&
-    input.targetType === "person" &&
+    input.action === "delete" &&
+    input.targetType === "user" &&
+    input.routeKey === "POST /api/instance/users/{id}/deactivate" &&
     input.targetIds.length === 1
   ) {
-    return resolvePersonDeactivationScope(tx, input);
+    return resolveUserDeactivationScope(tx, input);
   }
   if (
     input.targetType !== "work_item" ||
@@ -1265,11 +1281,13 @@ async function resolveRequestScope(
   };
 }
 
-async function resolvePersonDeactivationScope(
+async function resolveUserDeactivationScope(
   tx: PendingActionTransaction,
   input: CreatePendingActionInput,
 ): Promise<ResolvedRequestScope> {
   if (
+    input.action !== "delete" ||
+    input.targetType !== "user" ||
     input.credentialType !== "session" ||
     input.origin !== "web" ||
     input.routeKey !== "POST /api/instance/users/{id}/deactivate" ||
@@ -1279,12 +1297,13 @@ async function resolvePersonDeactivationScope(
   }
   const targetIds = [...new Set(input.targetIds)];
   if (targetIds.length !== 1 || targetIds.length !== input.targetIds.length) {
-    throw new TypeError("Person deactivation requires one unique person id");
+    throw new TypeError("User deactivation requires one unique user id");
   }
   const [target] = await tx
     .select({
       personId: personTable.id,
       userId: personTable.userId,
+      targetUserId: userTable.id,
       active: personTable.active,
       isAnonymous: userTable.isAnonymous,
       email: userTable.email,
@@ -1293,7 +1312,7 @@ async function resolvePersonDeactivationScope(
     .from(personTable)
     .innerJoin(userTable, eq(userTable.id, personTable.userId))
     .where(
-      and(eq(personTable.id, targetIds[0] ?? ""), eq(personTable.active, true)),
+      and(eq(userTable.id, targetIds[0] ?? ""), eq(personTable.active, true)),
     )
     .for("update")
     .limit(1);
@@ -1349,7 +1368,7 @@ async function resolvePersonDeactivationScope(
     route.policy.capability !== "instance:admin"
   ) {
     throw new TypeError(
-      "Person deactivation requires its registered instance-admin route",
+      "User deactivation requires its registered instance-admin route",
     );
   }
   return {
@@ -1358,6 +1377,7 @@ async function resolvePersonDeactivationScope(
     organisationId: null,
     actorName: requester.actorName,
     summary: {
+      userId: target.targetUserId,
       personId: target.personId,
       name: target.name,
       email: target.email,

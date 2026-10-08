@@ -235,6 +235,13 @@ export async function transitionPersonLifecycleInTransaction(
   let sessionsRevoked = 0;
   let keysRevoked = 0;
   let membershipsEnded = 0;
+  const externalIdentityIds = [
+    ...new Set(
+      discovered.flatMap((grant) =>
+        grant.externalIdentityId ? [grant.externalIdentityId] : [],
+      ),
+    ),
+  ].sort();
   await tx
     .update(schema.personTable)
     .set({ active, updatedAt: now })
@@ -299,5 +306,10 @@ export async function transitionPersonLifecycleInTransaction(
         .where(inArray(schema.scimGroupMemberTable.membershipGrantId, grants));
   }
   await projectMembershipKeys(tx, keys);
-  return { sessionsRevoked, keysRevoked, membershipsEnded };
+  return {
+    sessionsRevoked,
+    keysRevoked,
+    membershipsEnded,
+    externalIdentityIds,
+  };
 }

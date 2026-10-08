@@ -395,17 +395,17 @@ thing that is hashed or executed.
   replay. Never record proof, nonce, token/hash, or arbitrary body.
   `pending_action.step_up_token_id` records the consumed confirmation row id, not its secret.
 
-  God Mode person deactivation uses the dedicated `user_deactivation` action on exactly one
-  `person` target. Its server-selected confirmation is `typed_name_step_up`; the typed value
-  is the target account's exact current email, supplied as `typedName` to approval, while the
-  PA-15 token is sent in `X-TaskDesk-Step-Up-Token`. The action payload binds the person id
-  and fixed route `POST /api/instance/users/{id}/deactivate`; the allowlisted summary carries
-  the current email for confirmation. Requesting creates no lifecycle mutation. Approval
-  re-reads and locks the current person/user, requires the same active person and exact
-  unchanged email, re-evaluates current instance-admin authority, and consumes the token
-  bound to this pending-action id in the same transaction as IP-15 `end_memberships`, the
-  terminal action state, audit rows, and outbox event. A target/email/authority mismatch
-  leaves the action unexecuted and requires a fresh request when its stored target is stale.
+  God Mode user deactivation uses the canonical `delete` action on exactly one `user` target.
+  Its server-selected confirmation is `typed_name_step_up`; the typed value is the target
+  account's exact current email, supplied as `typedName` to approval, while the PA-15 token
+  is sent in `X-TaskDesk-Step-Up-Token`. The action payload binds the user id and fixed route
+  `POST /api/instance/users/{id}/deactivate`; the allowlisted summary carries the current
+  email for confirmation. Requesting creates no lifecycle mutation. Approval re-reads and
+  locks the current person/user, requires the same active person and exact unchanged email,
+  re-evaluates current instance-admin authority, and consumes the token bound to this
+  pending-action id in the same transaction as IP-15 `end_memberships`, the terminal action
+  state, audit rows, and outbox event. A target/email/authority mismatch leaves the action
+  unexecuted and requires a fresh request when its stored target is stale.
 
 ## Confirmation levels
 

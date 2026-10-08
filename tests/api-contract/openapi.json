@@ -1943,8 +1943,7 @@
               "delete",
               "bulk_delete",
               "purge",
-              "mcp_destructive",
-              "user_deactivation"
+              "mcp_destructive"
             ]
           },
           "origin": {
@@ -2101,8 +2100,7 @@
               "delete",
               "bulk_delete",
               "purge",
-              "mcp_destructive",
-              "user_deactivation"
+              "mcp_destructive"
             ]
           },
           "origin": {
@@ -26160,7 +26158,7 @@
         "tags": [
           "Instance"
         ],
-        "summary": "Request person deactivation",
+        "summary": "Request user deactivation",
         "parameters": [
           {
             "schema": {
@@ -26187,7 +26185,7 @@
         },
         "responses": {
           "202": {
-            "description": "Person deactivation pending action",
+            "description": "User deactivation pending action",
             "content": {
               "application/json": {
                 "schema": {
@@ -26199,7 +26197,7 @@
                     "action": {
                       "type": "string",
                       "enum": [
-                        "user_deactivation"
+                        "delete"
                       ]
                     },
                     "confirmation": {

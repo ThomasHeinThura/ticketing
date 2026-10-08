@@ -118,10 +118,10 @@ test("God Mode users directory supports filters and audited account actions", as
             ? [
                 {
                   id: "pending-deactivation-1",
-                  action: "user_deactivation",
+                  action: "delete",
                   origin: "web",
-                  targetType: "person",
-                  targetIds: ["person-1"],
+                  targetType: "user",
+                  targetIds: ["staff-user-1"],
                   summary: { email: "taylor@example.test" },
                   confirmation: "typed_name_step_up",
                   state: "pending",
@@ -139,10 +139,10 @@ test("God Mode users directory supports filters and audited account actions", as
     ) {
       return json({
         id: "pending-deactivation-1",
-        action: "user_deactivation",
+        action: "delete",
         origin: "web",
-        targetType: "person",
-        targetIds: ["person-1"],
+        targetType: "user",
+        targetIds: ["staff-user-1"],
         summary: { email: "taylor@example.test" },
         confirmation: "typed_name_step_up",
         state: pendingActionState,
@@ -190,7 +190,7 @@ test("God Mode users directory supports filters and audited account actions", as
       return json(
         {
           pendingActionId: "pending-deactivation-1",
-          action: "user_deactivation",
+          action: "delete",
           confirmation: "typed_name_step_up",
           summary: { personId: "person-1", email: user.email },
           expiresAt: "2026-10-05T00:15:00.000Z",
