@@ -16,7 +16,14 @@ import {
   workspaceTable,
 } from "../database/schema";
 import { enqueueOutboxEvent, eventScope } from "../events/outbox";
-import { transitionPersonLifecycleInTransaction } from "../identity/person-lifecycle";
+import {
+  IdentityGrantClosureChangedError,
+  retryIdentityGrantClosure,
+} from "../identity/membership-projection";
+import {
+  lockPersonLifecycleClosureInTransaction,
+  transitionPersonLifecycleInTransaction,
+} from "../identity/person-lifecycle";
 import { notifyCurrentInstanceAdminsOfAuditFailure } from "../instance/observability/audit-failure-notifier";
 import { recordAuditWriteFailure } from "../instance/observability/runtime";
 import { resolveIdentity } from "../permissions/resolve-identity";
@@ -529,46 +536,262 @@ export async function approveUserDeactivation(input: {
   stepUpToken: string;
   traceId: string;
 }) {
-  const now = new Date();
-  let auditFailure = false;
-  const result = await db.transaction(async (tx) => {
-    const [row] = await tx
-      .select()
-      .from(pendingActionTable)
-      .where(
-        and(
-          eq(pendingActionTable.id, input.id),
-          eq(pendingActionTable.requestedByPersonId, input.requesterPersonId),
-        ),
+  const result = await retryIdentityGrantClosure(() =>
+    db.transaction(async (tx) => {
+      const now = new Date();
+      let auditFailure = false;
+      const [row] = await tx
+        .select()
+        .from(pendingActionTable)
+        .where(
+          and(
+            eq(pendingActionTable.id, input.id),
+            eq(pendingActionTable.requestedByPersonId, input.requesterPersonId),
+          ),
+        )
+        .for("update")
+        .limit(1);
+      if (!row)
+        throw new HTTPException(404, { message: "Pending action not found" });
+      if (row.state !== "pending")
+        throw new HTTPException(409, { message: "pending_action_not_pending" });
+      if (
+        row.action !== "delete" ||
+        row.targetType !== "user" ||
+        row.routeKey !== "POST /api/instance/users/{id}/deactivate"
       )
-      .for("update")
-      .limit(1);
-    if (!row)
-      throw new HTTPException(404, { message: "Pending action not found" });
-    if (row.state !== "pending")
-      throw new HTTPException(409, { message: "pending_action_not_pending" });
-    if (
-      row.action !== "delete" ||
-      row.targetType !== "user" ||
-      row.routeKey !== "POST /api/instance/users/{id}/deactivate"
-    )
-      throw new HTTPException(409, {
-        message: "pending_action_kind_unsupported",
-      });
-    if (row.expiresAt <= now) {
-      const [expiredBy] = await tx
-        .select({ name: userTable.name })
+        throw new HTTPException(409, {
+          message: "pending_action_kind_unsupported",
+        });
+      if (row.expiresAt <= now) {
+        const [expiredBy] = await tx
+          .select({ name: userTable.name })
+          .from(personTable)
+          .innerJoin(userTable, eq(userTable.id, personTable.userId))
+          .where(eq(personTable.id, input.requesterPersonId))
+          .limit(1);
+        const [expired] = await tx
+          .update(pendingActionTable)
+          .set({
+            state: "expired",
+            decidedByPersonId: input.requesterPersonId,
+            decisionSessionId: input.sessionId,
+            decidedAt: now,
+          })
+          .where(
+            and(
+              eq(pendingActionTable.id, row.id),
+              eq(pendingActionTable.state, "pending"),
+            ),
+          )
+          .returning();
+        if (!expired)
+          throw new HTTPException(409, {
+            message: "pending_action_not_pending",
+          });
+        await writeUserDeactivationTransition(tx, {
+          row,
+          actorPersonId: input.requesterPersonId,
+          actorName: expiredBy?.name ?? "Unknown user",
+          traceId: input.traceId,
+          state: "expired",
+          occurredAt: now,
+        });
+        return { row: expired, state: "expired" as const, auditFailure: false };
+      }
+      const route = policyRegistry.get(row.routeKey);
+      if (
+        row.routeKey !== "POST /api/instance/users/{id}/deactivate" ||
+        route?.kind !== "capability" ||
+        !("capability" in route.policy) ||
+        route.policy.scope !== "instance" ||
+        route.policy.capability !== "instance:admin"
+      ) {
+        throw new HTTPException(409, {
+          message: "pending_action_policy_changed",
+        });
+      }
+      let payload: ReturnType<typeof canonicalPendingActionPayload>;
+      try {
+        payload = canonicalPendingActionPayload(
+          row.payload as Parameters<typeof canonicalPendingActionPayload>[0],
+        );
+      } catch {
+        throw new HTTPException(409, {
+          message: "pending_action_payload_invalid",
+        });
+      }
+      if (
+        hashPendingActionPayload(payload) !== row.payloadHash ||
+        payload.action !== "delete" ||
+        payload.route_key !== row.routeKey ||
+        payload.target_type !== "user" ||
+        payload.target_ids.length !== 1 ||
+        payload.target_ids[0] !== row.targetIds[0] ||
+        payload.confirmation_required !== "typed_name_step_up" ||
+        payload.workspace_id !== null ||
+        payload.project_id !== null ||
+        payload.organisation_id !== null ||
+        row.confirmationRequired !== "typed_name_step_up"
+      ) {
+        throw new HTTPException(409, {
+          message: "pending_action_payload_invalid",
+        });
+      }
+      const userId = payload.target_ids[0];
+      if (!userId)
+        throw new HTTPException(409, {
+          message: "pending_action_target_invalid",
+        });
+      const [targetCandidate] = await tx
+        .select({ id: personTable.id })
+        .from(personTable)
+        .innerJoin(userTable, eq(userTable.id, personTable.userId))
+        .where(eq(userTable.id, userId))
+        .limit(1);
+      const closure = await lockPersonLifecycleClosureInTransaction(
+        tx,
+        [
+          input.requesterPersonId,
+          ...(targetCandidate ? [targetCandidate.id] : []),
+        ],
+        { kind: "administrative" },
+      );
+      const [actor] = await tx
+        .select({
+          personId: personTable.id,
+          userId: personTable.userId,
+          active: personTable.active,
+          side: personTable.side,
+          role: userTable.role,
+          banned: userTable.banned,
+          name: userTable.name,
+        })
         .from(personTable)
         .innerJoin(userTable, eq(userTable.id, personTable.userId))
         .where(eq(personTable.id, input.requesterPersonId))
+        .for("update", { of: userTable })
         .limit(1);
-      const [expired] = await tx
+      const [session] = await tx
+        .select({ id: schema.sessionTable.id })
+        .from(schema.sessionTable)
+        .where(
+          and(
+            eq(schema.sessionTable.id, input.sessionId),
+            eq(schema.sessionTable.userId, input.userId),
+            eq(schema.sessionTable.portal, "agent"),
+            gt(schema.sessionTable.expiresAt, sql`now()`),
+          ),
+        )
+        .for("update")
+        .limit(1);
+      if (!session) {
+        throw new HTTPException(403, { message: "Forbidden" });
+      }
+      if (
+        !actor?.userId ||
+        actor.userId !== input.userId ||
+        actor.active !== true ||
+        actor.side !== "staff" ||
+        actor.banned ||
+        actor.role !== "admin"
+      ) {
+        const invalidated = await invalidateUserDeactivation(tx, {
+          row,
+          actorPersonId: input.requesterPersonId,
+          actorName: actor?.name ?? "TaskDesk",
+          traceId: input.traceId,
+          reason: "capability_removed",
+          now,
+          sessionId: input.sessionId,
+        });
+        return {
+          row: invalidated,
+          state: "invalidated" as const,
+          auditFailure: false,
+        };
+      }
+      const [target] = await tx
+        .select({
+          id: personTable.id,
+          userId: personTable.userId,
+          targetUserId: userTable.id,
+          active: personTable.active,
+          organisationId: personTable.organisationId,
+          email: userTable.email,
+          name: userTable.name,
+        })
+        .from(personTable)
+        .innerJoin(userTable, eq(userTable.id, personTable.userId))
+        .where(eq(userTable.id, userId))
+        .for("update", { of: userTable })
+        .limit(1);
+      if (target?.id !== targetCandidate?.id)
+        throw new IdentityGrantClosureChangedError();
+      if (!target?.userId || target.targetUserId !== userId || !target.active) {
+        const invalidated = await invalidateUserDeactivation(tx, {
+          row,
+          actorPersonId: input.requesterPersonId,
+          actorName: actor.name,
+          traceId: input.traceId,
+          reason: "version_changed",
+          now,
+          sessionId: input.sessionId,
+        });
+        return {
+          row: invalidated,
+          state: "invalidated" as const,
+          auditFailure: false,
+        };
+      }
+      const summary = row.payloadSummary as { email?: unknown };
+      if (summary.email !== target.email) {
+        const invalidated = await invalidateUserDeactivation(tx, {
+          row,
+          actorPersonId: input.requesterPersonId,
+          actorName: actor.name,
+          traceId: input.traceId,
+          reason: "version_changed",
+          now,
+          sessionId: input.sessionId,
+        });
+        return {
+          row: invalidated,
+          state: "invalidated" as const,
+          auditFailure: false,
+        };
+      }
+      if (input.typedName !== target.email)
+        throw new HTTPException(400, { message: "confirmation_mismatch" });
+      const proof = await consumePendingActionProof(tx, {
+        token: input.stepUpToken,
+        personId: input.requesterPersonId,
+        sessionId: input.sessionId,
+        pendingActionId: row.id,
+      });
+      if (!proof) throw new HTTPException(403, { message: "step_up_expired" });
+      const lifecycle = await transitionPersonLifecycleInTransaction(
+        tx,
+        target.id,
+        false,
+        "end_memberships",
+        { kind: "administrative" },
+        closure,
+      );
+      if (!lifecycle)
+        throw new HTTPException(409, {
+          message: "pending_action_target_changed",
+        });
+      const [executed] = await tx
         .update(pendingActionTable)
         .set({
-          state: "expired",
+          state: "executed",
+          confirmationSupplied: { typedNameMatched: true, stepUp: true },
+          stepUpTokenId: proof.id,
           decidedByPersonId: input.requesterPersonId,
           decisionSessionId: input.sessionId,
           decidedAt: now,
+          executedAt: now,
         })
         .where(
           and(
@@ -577,315 +800,120 @@ export async function approveUserDeactivation(input: {
           ),
         )
         .returning();
-      if (!expired)
+      if (!executed)
         throw new HTTPException(409, { message: "pending_action_not_pending" });
-      await writeUserDeactivationTransition(tx, {
-        row,
-        actorPersonId: input.requesterPersonId,
-        actorName: expiredBy?.name ?? "Unknown user",
-        traceId: input.traceId,
-        state: "expired",
-        occurredAt: now,
-      });
-      return { row: expired, state: "expired" as const, auditFailure: false };
-    }
-    const [actor] = await tx
-      .select({
-        personId: personTable.id,
-        userId: personTable.userId,
-        active: personTable.active,
-        side: personTable.side,
-        role: userTable.role,
-        banned: userTable.banned,
-        name: userTable.name,
-      })
-      .from(personTable)
-      .innerJoin(userTable, eq(userTable.id, personTable.userId))
-      .where(eq(personTable.id, input.requesterPersonId))
-      .for("update")
-      .limit(1);
-    const [session] = await tx
-      .select({ id: schema.sessionTable.id })
-      .from(schema.sessionTable)
-      .where(
-        and(
-          eq(schema.sessionTable.id, input.sessionId),
-          eq(schema.sessionTable.userId, input.userId),
-          eq(schema.sessionTable.portal, "agent"),
-          gt(schema.sessionTable.expiresAt, sql`now()`),
-        ),
-      )
-      .for("update")
-      .limit(1);
-    if (!session) {
-      throw new HTTPException(403, { message: "Forbidden" });
-    }
-    if (
-      !actor?.userId ||
-      actor.userId !== input.userId ||
-      actor.active !== true ||
-      actor.side !== "staff" ||
-      actor.banned ||
-      actor.role !== "admin"
-    ) {
-      const invalidated = await invalidateUserDeactivation(tx, {
-        row,
-        actorPersonId: input.requesterPersonId,
-        actorName: actor?.name ?? "TaskDesk",
-        traceId: input.traceId,
-        reason: "capability_removed",
-        now,
-        sessionId: input.sessionId,
-      });
-      return {
-        row: invalidated,
-        state: "invalidated" as const,
-        auditFailure: false,
-      };
-    }
-    const route = policyRegistry.get(row.routeKey);
-    if (
-      row.routeKey !== "POST /api/instance/users/{id}/deactivate" ||
-      route?.kind !== "capability" ||
-      !("capability" in route.policy) ||
-      route.policy.scope !== "instance" ||
-      route.policy.capability !== "instance:admin"
-    ) {
-      throw new HTTPException(409, {
-        message: "pending_action_policy_changed",
-      });
-    }
-    let payload: ReturnType<typeof canonicalPendingActionPayload>;
-    try {
-      payload = canonicalPendingActionPayload(
-        row.payload as Parameters<typeof canonicalPendingActionPayload>[0],
-      );
-    } catch {
-      throw new HTTPException(409, {
-        message: "pending_action_payload_invalid",
-      });
-    }
-    if (
-      hashPendingActionPayload(payload) !== row.payloadHash ||
-      payload.action !== "delete" ||
-      payload.route_key !== row.routeKey ||
-      payload.target_type !== "user" ||
-      payload.target_ids.length !== 1 ||
-      payload.target_ids[0] !== row.targetIds[0] ||
-      payload.confirmation_required !== "typed_name_step_up" ||
-      payload.workspace_id !== null ||
-      payload.project_id !== null ||
-      payload.organisation_id !== null ||
-      row.confirmationRequired !== "typed_name_step_up"
-    ) {
-      throw new HTTPException(409, {
-        message: "pending_action_payload_invalid",
-      });
-    }
-    const userId = payload.target_ids[0];
-    if (!userId)
-      throw new HTTPException(409, {
-        message: "pending_action_target_invalid",
-      });
-    const [target] = await tx
-      .select({
-        id: personTable.id,
-        userId: personTable.userId,
-        targetUserId: userTable.id,
-        active: personTable.active,
-        organisationId: personTable.organisationId,
-        email: userTable.email,
-        name: userTable.name,
-      })
-      .from(personTable)
-      .innerJoin(userTable, eq(userTable.id, personTable.userId))
-      .where(eq(userTable.id, userId))
-      .for("update")
-      .limit(1);
-    if (!target?.userId || target.targetUserId !== userId || !target.active) {
-      const invalidated = await invalidateUserDeactivation(tx, {
-        row,
-        actorPersonId: input.requesterPersonId,
-        actorName: actor.name,
-        traceId: input.traceId,
-        reason: "version_changed",
-        now,
-        sessionId: input.sessionId,
-      });
-      return {
-        row: invalidated,
-        state: "invalidated" as const,
-        auditFailure: false,
-      };
-    }
-    const summary = row.payloadSummary as { email?: unknown };
-    if (summary.email !== target.email) {
-      const invalidated = await invalidateUserDeactivation(tx, {
-        row,
-        actorPersonId: input.requesterPersonId,
-        actorName: actor.name,
-        traceId: input.traceId,
-        reason: "version_changed",
-        now,
-        sessionId: input.sessionId,
-      });
-      return {
-        row: invalidated,
-        state: "invalidated" as const,
-        auditFailure: false,
-      };
-    }
-    if (input.typedName !== target.email)
-      throw new HTTPException(400, { message: "confirmation_mismatch" });
-    const proof = await consumePendingActionProof(tx, {
-      token: input.stepUpToken,
-      personId: input.requesterPersonId,
-      sessionId: input.sessionId,
-      pendingActionId: row.id,
-    });
-    if (!proof) throw new HTTPException(403, { message: "step_up_expired" });
-    const lifecycle = await transitionPersonLifecycleInTransaction(
-      tx,
-      target.id,
-      false,
-      "end_memberships",
-      { kind: "administrative" },
-    );
-    if (!lifecycle)
-      throw new HTTPException(409, {
-        message: "pending_action_target_changed",
-      });
-    const [executed] = await tx
-      .update(pendingActionTable)
-      .set({
-        state: "executed",
-        confirmationSupplied: { typedNameMatched: true, stepUp: true },
-        stepUpTokenId: proof.id,
-        decidedByPersonId: input.requesterPersonId,
-        decisionSessionId: input.sessionId,
-        decidedAt: now,
-        executedAt: now,
-      })
-      .where(
-        and(
-          eq(pendingActionTable.id, row.id),
-          eq(pendingActionTable.state, "pending"),
-        ),
-      )
-      .returning();
-    if (!executed)
-      throw new HTTPException(409, { message: "pending_action_not_pending" });
-    const scope = {};
-    const occurredAt = now.toISOString();
-    for (const [kind, payload] of [
-      [
-        "pending_action.decided",
-        {
-          key: row.id,
-          url: `/agent/settings/profile/pending-actions/${row.id}`,
-          pendingActionId: row.id,
-          outcome: "approved",
-        },
-      ],
-      [
-        "pending_action.executed",
-        {
-          pendingActionId: row.id,
-          action: row.action,
-          targetIds: row.targetIds,
-          outcome: "executed",
-        },
-      ],
-      [
-        "identity.deprovisioned",
-        {
-          source: "god_mode",
-          personId: target.id,
-          organisationId: target.organisationId,
-          externalIdentityIds: lifecycle.externalIdentityIds,
-          previousState: { active: true },
-          resultingAction: "deactivated",
-          sessionsRevoked: lifecycle.sessionsRevoked,
-          keysRevoked: lifecycle.keysRevoked,
-          membershipsEnded: lifecycle.membershipsEnded,
-        },
-      ],
-    ] as const) {
-      await enqueueOutboxEvent(tx, {
-        id: `evt_${createId()}`,
-        kind,
-        occurredAt,
-        actor: {
-          type: "person",
-          id: input.requesterPersonId,
-          name: actor.name,
-        },
-        scope,
-        payload,
-        causationId: null,
-        depth: 0,
-        originAutomationId: null,
-      });
-    }
-    const audits: Array<{
-      action: string;
-      entityType: string;
-      entityId: string;
-      before: JsonValue | null;
-      after: JsonValue;
-    }> = [
-      {
-        action: "pending_action.decided",
-        entityType: "pending_action",
-        entityId: row.id,
-        before: { state: "pending" },
-        after: { outcome: "approved" },
-      },
-      {
-        action: "pending_action.executed",
-        entityType: "pending_action",
-        entityId: row.id,
-        before: null,
-        after: {
-          outcome: "executed",
-          action: row.action,
-          targetCount: row.targetIds.length,
-        },
-      },
-      {
-        action: "identity.deprovisioned",
-        entityType: "person",
-        entityId: target.id,
-        before: null,
-        after: {
-          source: "god_mode",
-          sessionsRevoked: lifecycle.sessionsRevoked,
-          keysRevoked: lifecycle.keysRevoked,
-          membershipsEnded: lifecycle.membershipsEnded,
-        },
-      },
-    ];
-    for (const audit of audits) {
-      try {
-        await tx.transaction(async (auditTx) =>
-          appendAuditLog(auditTx, {
-            actorId: input.requesterPersonId,
-            actorType: "person",
-            traceId: input.traceId,
-            workspaceId: null,
-            action: audit.action,
-            entityType: audit.entityType,
-            entityId: audit.entityId,
-            before: audit.before,
-            after: audit.after,
-          }),
-        );
-      } catch {
-        auditFailure = true;
+      const scope = {};
+      const occurredAt = now.toISOString();
+      for (const [kind, payload] of [
+        [
+          "pending_action.decided",
+          {
+            key: row.id,
+            url: `/agent/settings/profile/pending-actions/${row.id}`,
+            pendingActionId: row.id,
+            outcome: "approved",
+          },
+        ],
+        [
+          "pending_action.executed",
+          {
+            pendingActionId: row.id,
+            action: row.action,
+            targetIds: row.targetIds,
+            outcome: "executed",
+          },
+        ],
+        [
+          "identity.deprovisioned",
+          {
+            source: "god_mode",
+            personId: target.id,
+            organisationId: target.organisationId,
+            externalIdentityIds: lifecycle.externalIdentityIds,
+            previousState: { active: true },
+            resultingAction: "deactivated",
+            sessionsRevoked: lifecycle.sessionsRevoked,
+            keysRevoked: lifecycle.keysRevoked,
+            membershipsEnded: lifecycle.membershipsEnded,
+          },
+        ],
+      ] as const) {
+        await enqueueOutboxEvent(tx, {
+          id: `evt_${createId()}`,
+          kind,
+          occurredAt,
+          actor: {
+            type: "person",
+            id: input.requesterPersonId,
+            name: actor.name,
+          },
+          scope,
+          payload,
+          causationId: null,
+          depth: 0,
+          originAutomationId: null,
+        });
       }
-    }
-    return { row: executed, state: "executed" as const, auditFailure };
-  });
+      const audits: Array<{
+        action: string;
+        entityType: string;
+        entityId: string;
+        before: JsonValue | null;
+        after: JsonValue;
+      }> = [
+        {
+          action: "pending_action.decided",
+          entityType: "pending_action",
+          entityId: row.id,
+          before: { state: "pending" },
+          after: { outcome: "approved" },
+        },
+        {
+          action: "pending_action.executed",
+          entityType: "pending_action",
+          entityId: row.id,
+          before: null,
+          after: {
+            outcome: "executed",
+            action: row.action,
+            targetCount: row.targetIds.length,
+          },
+        },
+        {
+          action: "identity.deprovisioned",
+          entityType: "person",
+          entityId: target.id,
+          before: null,
+          after: {
+            source: "god_mode",
+            sessionsRevoked: lifecycle.sessionsRevoked,
+            keysRevoked: lifecycle.keysRevoked,
+            membershipsEnded: lifecycle.membershipsEnded,
+          },
+        },
+      ];
+      for (const audit of audits) {
+        try {
+          await tx.transaction(async (auditTx) =>
+            appendAuditLog(auditTx, {
+              actorId: input.requesterPersonId,
+              actorType: "person",
+              traceId: input.traceId,
+              workspaceId: null,
+              action: audit.action,
+              entityType: audit.entityType,
+              entityId: audit.entityId,
+              before: audit.before,
+              after: audit.after,
+            }),
+          );
+        } catch {
+          auditFailure = true;
+        }
+      }
+      return { row: executed, state: "executed" as const, auditFailure };
+    }),
+  );
   if (result.state === "invalidated") {
     throw new HTTPException(409, { message: "pending_action_target_changed" });
   }

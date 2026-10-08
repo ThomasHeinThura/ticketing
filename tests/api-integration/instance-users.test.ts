@@ -2,6 +2,7 @@ import { createHash } from "node:crypto";
 import { readFileSync } from "node:fs";
 import { createRequire } from "node:module";
 import { and, eq, inArray, sql } from "drizzle-orm";
+import { Client } from "pg";
 import { beforeEach, describe, expect, it } from "vitest";
 import {
   canonicalInstanceAdminGrantBody,
@@ -23,6 +24,25 @@ const apiRequire = createRequire(
 const bcrypt = apiRequire("bcryptjs") as {
   hash(value: string, rounds: number): Promise<string>;
 };
+
+async function waitForBlockedPid(client: Client, blockerPid: number) {
+  const deadline = Date.now() + 5_000;
+  while (Date.now() < deadline) {
+    const result = await client.query<{ pid: number }>(
+      `SELECT pid FROM pg_stat_activity
+       WHERE datname = current_database()
+         AND pid <> pg_backend_pid()
+         AND wait_event_type = 'Lock'
+         AND $1 = ANY(pg_blocking_pids(pid))
+       LIMIT 1`,
+      [blockerPid],
+    );
+    const pid = result.rows[0]?.pid;
+    if (pid !== undefined) return pid;
+    await new Promise((resolve) => setTimeout(resolve, 20));
+  }
+  throw new Error(`No PostgreSQL session blocked by pid ${blockerPid}`);
+}
 
 function agentRequest(
   app: ReturnType<typeof createApp>["app"],
@@ -996,23 +1016,76 @@ describe("God Mode Users API", () => {
         .where(eq(schema.pendingActionTable.id, pending.pendingActionId)),
     ).toEqual([{ state: "pending" }]);
 
-    const approved = await agentRequest(
-      app,
-      `/api/me/pending-actions/${pending.pendingActionId}/approve`,
-      {
-        method: "POST",
-        headers: {
-          "content-type": "application/json",
-          "x-taskdesk-step-up-token": token,
-        },
-        body: JSON.stringify({ typedName: target.email }),
-      },
-    );
-    expect(approved.status).toBe(200);
-    expect(await approved.json()).toEqual({
-      id: pending.pendingActionId,
-      state: "executed",
+    const targetPerson = await db
+      .select({
+        id: schema.personTable.id,
+        organisationId: schema.personTable.organisationId,
+      })
+      .from(schema.personTable)
+      .where(eq(schema.personTable.userId, target.id))
+      .limit(1);
+    const targetPersonRow = targetPerson[0];
+    const requesterPerson = await db
+      .select({ id: schema.personTable.id })
+      .from(schema.personTable)
+      .where(eq(schema.personTable.userId, admin.id))
+      .limit(1);
+    expect(targetPersonRow?.organisationId).toBeTruthy();
+    expect(requesterPerson).toHaveLength(1);
+    const blocker = new Client({
+      connectionString: process.env.TASKDESK_DATABASE_URL,
     });
+    const probe = new Client({
+      connectionString: process.env.TASKDESK_DATABASE_URL,
+    });
+    await blocker.connect();
+    await probe.connect();
+    let blockerOpen = false;
+    try {
+      await blocker.query("BEGIN");
+      blockerOpen = true;
+      await blocker.query(
+        "SELECT id FROM organisation WHERE id = $1 FOR UPDATE",
+        [targetPersonRow?.organisationId],
+      );
+      const blockerPid = Number(
+        (await blocker.query("SELECT pg_backend_pid() AS pid")).rows[0]?.pid,
+      );
+      const approveRequest = agentRequest(
+        app,
+        `/api/me/pending-actions/${pending.pendingActionId}/approve`,
+        {
+          method: "POST",
+          headers: {
+            "content-type": "application/json",
+            "x-taskdesk-step-up-token": token,
+          },
+          body: JSON.stringify({ typedName: target.email }),
+        },
+      );
+      await waitForBlockedPid(blocker, blockerPid);
+      // While approval is blocked on its organisation anchor, no requester or target
+      // person row may already be held: that would invert the IP-22 parent-first order.
+      await probe.query("BEGIN");
+      const unlockedPeople = await probe.query(
+        "SELECT id FROM person WHERE id = ANY($1::text[]) FOR UPDATE NOWAIT",
+        [[targetPersonRow?.id, requesterPerson[0]?.id]],
+      );
+      expect(unlockedPeople.rowCount).toBe(2);
+      await probe.query("ROLLBACK");
+      await blocker.query("COMMIT");
+      blockerOpen = false;
+      const approved = await approveRequest;
+      expect(approved.status).toBe(200);
+      expect(await approved.json()).toEqual({
+        id: pending.pendingActionId,
+        state: "executed",
+      });
+    } finally {
+      if (blockerOpen) await blocker.query("ROLLBACK");
+      await Promise.allSettled([blocker.end(), probe.end()]);
+    }
+
     expect(
       await db
         .select({ active: schema.personTable.active })

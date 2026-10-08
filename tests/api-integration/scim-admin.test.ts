@@ -352,7 +352,12 @@ describe("SCIM administration API", () => {
         { kind: "administrative" },
       ),
     );
-    expect(changed).toBe(true);
+    expect(changed).toMatchObject({
+      sessionsRevoked: 1,
+      keysRevoked: 1,
+      membershipsEnded: 2,
+      externalIdentityIds: ["person-lifecycle-other-identity"],
+    });
     const retired = await db
       .select({
         id: schema.membershipGrantTable.id,
