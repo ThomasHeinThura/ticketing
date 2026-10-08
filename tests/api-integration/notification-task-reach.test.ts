@@ -1,7 +1,8 @@
-import { randomUUID } from "node:crypto";
+import { createHash, randomUUID } from "node:crypto";
 import { and, eq, sql } from "drizzle-orm";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import db, { schema } from "../../apps/api/src/database";
+import { createApp } from "../../apps/api/src/index";
 import clearNotifications from "../../apps/api/src/notification/controllers/clear-notifications";
 import createNotification from "../../apps/api/src/notification/controllers/create-notification";
 import getNotifications from "../../apps/api/src/notification/controllers/get-notifications";
@@ -9,6 +10,7 @@ import markAllNotificationsAsRead from "../../apps/api/src/notification/controll
 import markNotificationAsRead from "../../apps/api/src/notification/controllers/mark-notification-as-read";
 import { userCanReachTask } from "../../apps/api/src/notification/task-reach";
 import { deliverNotification } from "../../apps/api/src/notification-preferences/delivery";
+import { mockAuthenticatedSession } from "./helpers/auth";
 import { resetTestDatabase } from "./helpers/database";
 import {
   createProjectFixture,
@@ -52,6 +54,33 @@ async function fixture() {
     "notification reach task",
   );
   return { user, workspace, project, task };
+}
+
+function hashApiKey(key: string) {
+  return createHash("sha256")
+    .update(key)
+    .digest()
+    .toString("base64")
+    .replace(/\+/g, "-")
+    .replace(/\//g, "_")
+    .replace(/=+$/, "");
+}
+
+async function insertApiKey(userId: string, permissions: string | null) {
+  const rawKey = `taskdesk_notification_test_${randomUUID()}`;
+  await db.insert(schema.apikeyTable).values({
+    referenceId: userId,
+    userId,
+    key: hashApiKey(rawKey),
+    name: "notification reach test key",
+    start: rawKey.slice(0, 12),
+    prefix: "taskdesk",
+    enabled: true,
+    permissions,
+    createdAt: new Date(),
+    updatedAt: new Date(),
+  });
+  return rawKey;
 }
 
 async function plantTaskNotification(input: {
@@ -121,7 +150,7 @@ describe("notification task reach (security-model §2; NO edge cases)", () => {
 
     expect(await userCanReachTask(user.id, task.id)).toBe(true);
     expect(await userCanReachTask(user.id, hiddenTask.id)).toBe(false);
-    const listed = await getNotifications(user.id);
+    const listed = await getNotifications(user.id, true);
     expect(listed.map((row) => row.id)).toEqual([visible.id]);
 
     await revokeProjectReach(user.id, project.id);
@@ -198,15 +227,15 @@ describe("notification task reach (security-model §2; NO edge cases)", () => {
       resourceType: "task",
     });
     expect(inserted).not.toBeNull();
-    expect((await getNotifications(user.id)).map((row) => row.id)).toContain(
-      inserted?.id,
-    );
+    expect(
+      (await getNotifications(user.id, true)).map((row) => row.id),
+    ).toContain(inserted?.id);
 
     expect(await userCanReachTask(user.id, randomUUID())).toBe(false);
     await db.delete(schema.taskTable).where(eq(schema.taskTable.id, task.id));
     expect(await userCanReachTask(user.id, task.id)).toBe(false);
     expect(
-      (await getNotifications(user.id)).map((row) => row.id),
+      (await getNotifications(user.id, true)).map((row) => row.id),
     ).not.toContain(inserted?.id);
 
     const second = await fixture();
@@ -247,7 +276,7 @@ describe("notification task reach (security-model §2; NO edge cases)", () => {
       taskId: task.id,
     });
     expect(await userCanReachTask(user.id, task.id)).toBe(false);
-    expect(await getNotifications(user.id)).toHaveLength(0);
+    expect(await getNotifications(user.id, true)).toHaveLength(0);
     expect(
       await createNotification({
         userId: user.id,
@@ -334,7 +363,7 @@ describe("notification task reach (security-model §2; NO edge cases)", () => {
       userId: user.id,
       taskId: task.id,
     });
-    expect(await getNotifications(user.id)).toHaveLength(0);
+    expect(await getNotifications(user.id, true)).toHaveLength(0);
     expect(
       await createNotification({
         userId: user.id,
@@ -374,7 +403,7 @@ describe("notification task reach (security-model §2; NO edge cases)", () => {
       userId: user.id,
       taskId: task.id,
     });
-    expect(await getNotifications(user.id)).toHaveLength(0);
+    expect(await getNotifications(user.id, true)).toHaveLength(0);
     expect(
       await createNotification({
         userId: user.id,
@@ -415,6 +444,113 @@ describe("notification task reach (security-model §2; NO edge cases)", () => {
     await deliverNotification(revokedNotification.id);
 
     expect(emailProvider.sendNotificationEmail).toHaveBeenCalledTimes(1);
+  });
+
+  it("clamps task notification rows to the active API key and current role", async () => {
+    const { user, project, task } = await fixture();
+    const taskNotification = await plantTaskNotification({
+      userId: user.id,
+      taskId: task.id,
+    });
+    const generalNotification = requireRow(
+      await db
+        .insert(schema.notificationTable)
+        .values({
+          userId: user.id,
+          title: "General notification",
+          content: "Self scoped content",
+          type: "workspace_created",
+        })
+        .returning(),
+      "general notification",
+    );
+    const { app } = createApp();
+    const requestWithKey = async (permissions: string | null) => {
+      const key = await insertApiKey(user.id, permissions);
+      const response = await app.request("/api/notification", {
+        headers: { "x-api-key": key },
+      });
+      expect(response.status).toBe(200);
+      return (await response.json()) as Array<{ id: string }>;
+    };
+
+    const auditBefore = await db
+      .select({ id: schema.auditLogTable.id })
+      .from(schema.auditLogTable);
+    const activityBefore = await db
+      .select({ id: schema.activityTable.id })
+      .from(schema.activityTable);
+    const [projectMembership] = await db
+      .select({ roleId: schema.membershipTable.roleId })
+      .from(schema.membershipTable)
+      .innerJoin(
+        schema.personTable,
+        eq(schema.personTable.id, schema.membershipTable.personId),
+      )
+      .where(
+        and(
+          eq(schema.personTable.userId, user.id),
+          eq(schema.membershipTable.scope, "project"),
+          eq(schema.membershipTable.scopeId, project.id),
+        ),
+      )
+      .limit(1);
+    if (!projectMembership) throw new Error("Expected project membership");
+    await db
+      .update(schema.roleTable)
+      .set({ capabilities: ["project:read"] })
+      .where(eq(schema.roleTable.id, projectMembership.roleId));
+    const roleOnlyDenied = await requestWithKey(
+      JSON.stringify({ work_item: ["read"] }),
+    );
+    expect(roleOnlyDenied.map((row) => row.id)).toContain(
+      generalNotification.id,
+    );
+    expect(roleOnlyDenied.map((row) => row.id)).not.toContain(
+      taskNotification.id,
+    );
+
+    await db
+      .update(schema.roleTable)
+      .set({ capabilities: ["work_item:update"] })
+      .where(eq(schema.roleTable.id, projectMembership.roleId));
+    const validKeyRows = await requestWithKey(
+      JSON.stringify({ work_item: ["read"] }),
+    );
+    expect(validKeyRows.map((row) => row.id)).toContain(taskNotification.id);
+    const impliedReadRows = await requestWithKey(
+      JSON.stringify({ work_item: ["update"] }),
+    );
+    expect(impliedReadRows.map((row) => row.id)).toContain(taskNotification.id);
+
+    for (const permissions of [
+      null,
+      "{malformed",
+      JSON.stringify({ work_item: [] }),
+      JSON.stringify({ work_item: ["unknown-action"] }),
+      JSON.stringify({ future_resource: ["read"] }),
+    ]) {
+      const rows = await requestWithKey(permissions);
+      expect(rows.map((row) => row.id)).not.toContain(taskNotification.id);
+      expect(rows.map((row) => row.id)).toContain(generalNotification.id);
+    }
+
+    mockAuthenticatedSession(user);
+    const sessionResponse = await app.request("/api/notification");
+    expect(sessionResponse.status).toBe(200);
+    const sessionRows = (await sessionResponse.json()) as Array<{ id: string }>;
+    expect(sessionRows.map((row) => row.id)).toContain(taskNotification.id);
+
+    expect(
+      await db
+        .select({ id: schema.auditLogTable.id })
+        .from(schema.auditLogTable),
+    ).toEqual(auditBefore);
+    expect(
+      await db
+        .select({ id: schema.activityTable.id })
+        .from(schema.activityTable),
+    ).toEqual(activityBefore);
   });
 
   it("rechecks independently after every async network-provider preflight", async () => {

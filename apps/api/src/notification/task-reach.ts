@@ -279,8 +279,11 @@ function taskReachPredicate(userId: string) {
   );
 }
 
-export function reachableTaskNotificationPredicate(userId: string) {
-  return taskReachPredicate(userId);
+export function reachableTaskNotificationPredicate(
+  userId: string,
+  credentialCanReadTask = true,
+) {
+  return credentialCanReadTask ? taskReachPredicate(userId) : sql`false`;
 }
 
 export async function userCanReachTask(

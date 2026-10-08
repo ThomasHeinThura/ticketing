@@ -1,3 +1,4 @@
+import { expandCapabilities } from "@taskdesk/permissions";
 import { eq } from "drizzle-orm";
 import db from "../database";
 import { projectTable, taskTable } from "../database/schema";
@@ -9,6 +10,7 @@ import {
   jsonResponse,
 } from "../openapi";
 import { setShadowLegacyAuthorization } from "../permissions/shadow-context";
+import { apiKeyCapabilitySubset } from "../utils/require-api-key-permission-scope";
 import { requireSessionOnly } from "../utils/require-session-only";
 import clearNotifications from "./controllers/clear-notifications";
 import createNotification from "./controllers/create-notification";
@@ -107,7 +109,14 @@ const clearAllRoute = createRoute({
 
 const notification = apiRouter()
   .openapi(listNotificationsRoute, async (c) => {
-    const notifications = await getNotifications(c.get("userId"));
+    const apiKey = c.get("apiKey");
+    const credentialCanReadTask =
+      !apiKey ||
+      expandCapabilities(apiKeyCapabilitySubset(apiKey)).has("work_item:read");
+    const notifications = await getNotifications(
+      c.get("userId"),
+      credentialCanReadTask,
+    );
     // This route's completed query filters by the authenticated caller's userId.
     // Record only this proven self-read boundary; a failed query remains unknown.
     setShadowLegacyAuthorization(c, "allowed");

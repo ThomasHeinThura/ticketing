@@ -9,7 +9,10 @@ import {
 import { isCurrentInstanceAdmin } from "../../instance/observability/audit-failure-notifier";
 import { reachableTaskNotificationPredicate } from "../task-reach";
 
-async function getNotifications(userId: string) {
+async function getNotifications(
+  userId: string,
+  credentialCanReadTask: boolean,
+) {
   const canReadInstanceAlerts = await isCurrentInstanceAdmin(userId);
   const visibleToUser = canReadInstanceAlerts
     ? eq(notificationTable.userId, userId)
@@ -39,7 +42,7 @@ async function getNotifications(userId: string) {
         or(
           isNull(notificationTable.resourceType),
           ne(notificationTable.resourceType, "task"),
-          reachableTaskNotificationPredicate(userId),
+          reachableTaskNotificationPredicate(userId, credentialCanReadTask),
         ),
       ),
     )
