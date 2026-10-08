@@ -359,6 +359,37 @@ function classNameLiteralGroups(source) {
   return groups;
 }
 
+function cvaClassLiteralGroups(source) {
+  const groups = [];
+  for (const call of source.matchAll(/\bcva\s*\(/gu)) {
+    const open = source.indexOf("(", call.index);
+    let depth = 1;
+    let quote = "";
+    let escaped = false;
+    for (let index = open + 1; index < source.length; index += 1) {
+      const character = source[index];
+      if (quote) {
+        if (escaped) escaped = false;
+        else if (character === "\\") escaped = true;
+        else if (character === quote) quote = "";
+        continue;
+      }
+      if (character === '"' || character === "'" || character === "`") {
+        quote = character;
+      } else if (character === "(") {
+        depth += 1;
+      } else if (character === ")") {
+        depth -= 1;
+        if (depth === 0) {
+          groups.push(...classLiteralGroups(source.slice(open + 1, index)));
+          break;
+        }
+      }
+    }
+  }
+  return groups;
+}
+
 function wrappedFunctionInitializer(initializer) {
   if (ts.isArrowFunction(initializer) || ts.isFunctionExpression(initializer))
     return initializer;
@@ -378,7 +409,12 @@ function wrappedFunctionInitializer(initializer) {
 }
 
 function sourceUsesPair(source, foregroundClass, backgroundClass, theme) {
-  for (const classText of classNameLiteralGroups(source)) {
+  for (const classText of [
+    ...classNameLiteralGroups(source),
+    ...(/const alertVariants\s*=\s*cva\s*\(/u.test(source)
+      ? cvaClassLiteralGroups(source)
+      : []),
+  ]) {
     const classes = classText.split(/\s+/).map(parseClassToken);
     const foregroundFound = classes.some((parsed) => {
       const darkScoped = parsed.variants.includes("dark");
@@ -608,7 +644,12 @@ export function validatePairManifest(pairs, readUsage, observedPairs) {
       const tokenMatch = backgroundClass?.match(
         /(?:^|:)bg-([a-z0-9-]+)(?:\/\d+)?$/,
       );
-      const actualBg = tokenMatch ? `--color-${tokenMatch[1]}` : "";
+      const actualBg =
+        backgroundClass === "bg-transparent"
+          ? pair.backdrop
+          : tokenMatch
+            ? `--color-${tokenMatch[1]}`
+            : "";
       if (actualBg !== pair.bg) {
         failures.push(
           violation(
@@ -780,10 +821,32 @@ export function observedPairsInSources(
   const observed = new Set();
   observed.pairDetails = new Map();
   observed.pairUses = new Map();
+  observed.occurrences = new Map();
   observed.unsupportedForegrounds = [];
+  const alertStoryHasOpaqueBackdrop = sourcePaths.some(
+    (sourcePath, index) =>
+      sourcePath === "packages/ui/src/components/alert.stories.tsx" &&
+      /className\s*=\s*["']bg-background["']/u.test(sources[index] ?? ""),
+  );
   for (const [sourceIndex, source] of sources.entries()) {
-    for (const classText of classNameLiteralGroups(source)) {
+    // CVA variant strings are the rendered class source for shared primitives,
+    // even though they are not JSX `className` attributes. Keep translucent
+    // surfaces there observable when their foreground is declared alongside
+    // the surface in the same variant string. JSX alpha surfaces continue to
+    // be resolved through the source-bound ancestor/caller pass below.
+    const cvaGroups =
+      sourcePaths[sourceIndex] === "packages/ui/src/components/alert.tsx" &&
+      alertStoryHasOpaqueBackdrop
+        ? cvaClassLiteralGroups(source).filter((group) =>
+            group
+              .split(/\s+/u)
+              .some((className) => className === "text-card-foreground"),
+          )
+        : [];
+    const classGroups = [...classNameLiteralGroups(source), ...cvaGroups];
+    for (const [classGroupIndex, classText] of classGroups.entries()) {
       const classes = classText.split(/\s+/).map(parseClassToken);
+      const cvaGroupIndex = cvaGroups.indexOf(classText);
       const textNames = classes
         .map((parsed) => {
           const foreground = parseForegroundUtility(parsed, foregrounds);
@@ -802,21 +865,35 @@ export function observedPairsInSources(
               }
             : undefined;
         })
-        .filter(Boolean);
+        .filter(Boolean)
+        .filter(
+          (foreground) =>
+            !cvaGroups.includes(classText) ||
+            foreground.className === "text-card-foreground",
+        );
       const backgroundEntries = classes
         .map((parsed) => ({
           ...parsed,
-          name: parsed.utility.match(/^bg-([a-z0-9-]+)(?:\/\d+)?$/)?.[1],
+          name:
+            cvaGroups.includes(classText) && parsed.utility === "bg-transparent"
+              ? "background"
+              : parsed.utility.match(/^bg-([a-z0-9-]+)(?:\/\d+)?$/)?.[1],
           darkScoped: parsed.variants.includes("dark"),
         }))
         .filter(
           ({ name, className }) =>
             name &&
             backgroundTokens.has(name) &&
-            !isTranslucentBackgroundUtility(
+            (!isTranslucentBackgroundUtility(
               className,
               translucentBackgroundTokens,
-            ),
+            ) ||
+              className === "bg-transparent" ||
+              (cvaGroups.includes(classText) &&
+                isTranslucentBackgroundUtility(
+                  className,
+                  translucentBackgroundTokens,
+                ))),
         );
       const groups = new Map();
       for (const entry of backgroundEntries) {
@@ -897,8 +974,25 @@ export function observedPairsInSources(
                 entry.className,
                 theme,
                 foreground.className,
+                cvaGroups.includes(classText) ? ["bg-background"] : [],
               );
               observed.add(key);
+              if (cvaGroupIndex >= 0) {
+                const occurrenceId = `${sourcePaths[sourceIndex]}::alertVariants::CVA[${cvaGroupIndex}]::${foreground.className}#${entry.className}`;
+                const occurrences = observed.occurrences.get(key) ?? [];
+                occurrences.push({
+                  id: occurrenceId,
+                  usage: sourcePaths[sourceIndex],
+                  surfaceContext: "same-element",
+                  category: "body",
+                  chain: [
+                    `${sourcePaths[sourceIndex]}:alertVariants`,
+                    `cva:${classGroupIndex}>${classText.trim()}`,
+                  ],
+                  backdropLayers: ["bg-background"],
+                });
+                observed.occurrences.set(key, occurrences);
+              }
               const usages = observed.pairUses.get(key) ?? new Set();
               usages.add(sourcePaths[sourceIndex]);
               observed.pairUses.set(key, usages);
@@ -3524,7 +3618,13 @@ async function main() {
   observedPairs.routeUses = inherited.routeUses;
   observedPairs.callerUses = inherited.callerUses;
   observedPairs.directOccurrenceUses = inherited.directOccurrenceUses;
-  observedPairs.occurrences = inherited.uses.occurrences;
+  const sourceOccurrences = observedPairs.occurrences;
+  observedPairs.occurrences = new Map(inherited.uses.occurrences);
+  for (const [key, occurrences] of sourceOccurrences) {
+    const combined = observedPairs.occurrences.get(key) ?? [];
+    combined.push(...occurrences);
+    observedPairs.occurrences.set(key, combined);
+  }
   const failures = validatePairManifest(
     pairs,
     (file) => {
@@ -3760,7 +3860,11 @@ async function main() {
             };
           });
         const background = parseColor(values.bg);
-        if (pair.backgroundClass?.[theme] && background[3] === 0) {
+        if (
+          pair.backgroundClass?.[theme] &&
+          background[3] === 0 &&
+          surfaceClass !== "bg-transparent"
+        ) {
           failures.push(
             violation(
               manifestPath,

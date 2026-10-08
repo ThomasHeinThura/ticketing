@@ -4,6 +4,13 @@ import { Alert, AlertAction, AlertDescription, AlertTitle } from "./alert";
 const meta = {
   title: "Primitives/Alert",
   component: Alert,
+  decorators: [
+    (Story) => (
+      <div className="bg-background">
+        <Story />
+      </div>
+    ),
+  ],
 } satisfies Meta<typeof Alert>;
 
 export default meta;

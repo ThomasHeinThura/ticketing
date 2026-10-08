@@ -43654,5 +43654,365 @@
         "backdropLayers": []
       }
     ]
+  },
+  {
+    "fg": "--color-card-foreground",
+    "bg": "--color-background",
+    "category": "body",
+    "minRatio": 4.5,
+    "themes": [
+      "light"
+    ],
+    "usage": "packages/ui/src/components/alert.tsx",
+    "backdrop": "--color-background",
+    "foregroundClass": "text-card-foreground",
+    "backgroundClass": {
+      "light": "bg-transparent"
+    },
+    "backdropLayers": [
+      "bg-background"
+    ],
+    "occurrenceIds": [
+      "packages/ui/src/components/alert.tsx::alertVariants::CVA[0]::text-card-foreground#bg-transparent"
+    ],
+    "occurrences": [
+      {
+        "id": "packages/ui/src/components/alert.tsx::alertVariants::CVA[0]::text-card-foreground#bg-transparent",
+        "usage": "packages/ui/src/components/alert.tsx",
+        "surfaceContext": "same-element",
+        "category": "body",
+        "chain": [
+          "packages/ui/src/components/alert.tsx:alertVariants",
+          "cva:3>text-card-foreground bg-transparent dark:bg-input/32 [&>svg]:text-muted-foreground"
+        ],
+        "backdropLayers": [
+          "bg-background"
+        ]
+      }
+    ]
+  },
+  {
+    "fg": "--color-card-foreground",
+    "bg": "--color-input",
+    "category": "body",
+    "minRatio": 4.5,
+    "themes": [
+      "dark"
+    ],
+    "usage": "packages/ui/src/components/alert.tsx",
+    "backdrop": "--color-background",
+    "foregroundClass": "text-card-foreground",
+    "backgroundClass": {
+      "dark": "dark:bg-input/32"
+    },
+    "backdropLayers": [
+      "bg-background"
+    ],
+    "occurrenceIds": [
+      "packages/ui/src/components/alert.tsx::alertVariants::CVA[0]::text-card-foreground#dark:bg-input/32"
+    ],
+    "occurrences": [
+      {
+        "id": "packages/ui/src/components/alert.tsx::alertVariants::CVA[0]::text-card-foreground#dark:bg-input/32",
+        "usage": "packages/ui/src/components/alert.tsx",
+        "surfaceContext": "same-element",
+        "category": "body",
+        "chain": [
+          "packages/ui/src/components/alert.tsx:alertVariants",
+          "cva:3>text-card-foreground bg-transparent dark:bg-input/32 [&>svg]:text-muted-foreground"
+        ],
+        "backdropLayers": [
+          "bg-background"
+        ]
+      }
+    ]
+  },
+  {
+    "fg": "--color-card-foreground",
+    "bg": "--color-destructive",
+    "category": "body",
+    "minRatio": 4.5,
+    "themes": [
+      "light"
+    ],
+    "usage": "packages/ui/src/components/alert.tsx",
+    "backdrop": "--color-background",
+    "foregroundClass": "text-card-foreground",
+    "backgroundClass": {
+      "light": "bg-destructive/4"
+    },
+    "backdropLayers": [
+      "bg-background"
+    ],
+    "occurrenceIds": [
+      "packages/ui/src/components/alert.tsx::alertVariants::CVA[1]::text-card-foreground#bg-destructive/4"
+    ],
+    "occurrences": [
+      {
+        "id": "packages/ui/src/components/alert.tsx::alertVariants::CVA[1]::text-card-foreground#bg-destructive/4",
+        "usage": "packages/ui/src/components/alert.tsx",
+        "surfaceContext": "same-element",
+        "category": "body",
+        "chain": [
+          "packages/ui/src/components/alert.tsx:alertVariants",
+          "cva:4>text-card-foreground border-destructive/32 bg-destructive/4 [&>svg]:text-destructive"
+        ],
+        "backdropLayers": [
+          "bg-background"
+        ]
+      }
+    ]
+  },
+  {
+    "fg": "--color-card-foreground",
+    "bg": "--color-destructive",
+    "category": "body",
+    "minRatio": 4.5,
+    "themes": [
+      "dark"
+    ],
+    "usage": "packages/ui/src/components/alert.tsx",
+    "backdrop": "--color-background",
+    "foregroundClass": "text-card-foreground",
+    "backgroundClass": {
+      "dark": "bg-destructive/4"
+    },
+    "backdropLayers": [
+      "bg-background"
+    ],
+    "occurrenceIds": [
+      "packages/ui/src/components/alert.tsx::alertVariants::CVA[1]::text-card-foreground#bg-destructive/4"
+    ],
+    "occurrences": [
+      {
+        "id": "packages/ui/src/components/alert.tsx::alertVariants::CVA[1]::text-card-foreground#bg-destructive/4",
+        "usage": "packages/ui/src/components/alert.tsx",
+        "surfaceContext": "same-element",
+        "category": "body",
+        "chain": [
+          "packages/ui/src/components/alert.tsx:alertVariants",
+          "cva:4>text-card-foreground border-destructive/32 bg-destructive/4 [&>svg]:text-destructive"
+        ],
+        "backdropLayers": [
+          "bg-background"
+        ]
+      }
+    ]
+  },
+  {
+    "fg": "--color-card-foreground",
+    "bg": "--color-info",
+    "category": "body",
+    "minRatio": 4.5,
+    "themes": [
+      "light"
+    ],
+    "usage": "packages/ui/src/components/alert.tsx",
+    "backdrop": "--color-background",
+    "foregroundClass": "text-card-foreground",
+    "backgroundClass": {
+      "light": "bg-info/4"
+    },
+    "backdropLayers": [
+      "bg-background"
+    ],
+    "occurrenceIds": [
+      "packages/ui/src/components/alert.tsx::alertVariants::CVA[2]::text-card-foreground#bg-info/4"
+    ],
+    "occurrences": [
+      {
+        "id": "packages/ui/src/components/alert.tsx::alertVariants::CVA[2]::text-card-foreground#bg-info/4",
+        "usage": "packages/ui/src/components/alert.tsx",
+        "surfaceContext": "same-element",
+        "category": "body",
+        "chain": [
+          "packages/ui/src/components/alert.tsx:alertVariants",
+          "cva:5>text-card-foreground border-info/32 bg-info/4 [&>svg]:text-info"
+        ],
+        "backdropLayers": [
+          "bg-background"
+        ]
+      }
+    ]
+  },
+  {
+    "fg": "--color-card-foreground",
+    "bg": "--color-info",
+    "category": "body",
+    "minRatio": 4.5,
+    "themes": [
+      "dark"
+    ],
+    "usage": "packages/ui/src/components/alert.tsx",
+    "backdrop": "--color-background",
+    "foregroundClass": "text-card-foreground",
+    "backgroundClass": {
+      "dark": "bg-info/4"
+    },
+    "backdropLayers": [
+      "bg-background"
+    ],
+    "occurrenceIds": [
+      "packages/ui/src/components/alert.tsx::alertVariants::CVA[2]::text-card-foreground#bg-info/4"
+    ],
+    "occurrences": [
+      {
+        "id": "packages/ui/src/components/alert.tsx::alertVariants::CVA[2]::text-card-foreground#bg-info/4",
+        "usage": "packages/ui/src/components/alert.tsx",
+        "surfaceContext": "same-element",
+        "category": "body",
+        "chain": [
+          "packages/ui/src/components/alert.tsx:alertVariants",
+          "cva:5>text-card-foreground border-info/32 bg-info/4 [&>svg]:text-info"
+        ],
+        "backdropLayers": [
+          "bg-background"
+        ]
+      }
+    ]
+  },
+  {
+    "fg": "--color-card-foreground",
+    "bg": "--color-success",
+    "category": "body",
+    "minRatio": 4.5,
+    "themes": [
+      "light"
+    ],
+    "usage": "packages/ui/src/components/alert.tsx",
+    "backdrop": "--color-background",
+    "foregroundClass": "text-card-foreground",
+    "backgroundClass": {
+      "light": "bg-success/4"
+    },
+    "backdropLayers": [
+      "bg-background"
+    ],
+    "occurrenceIds": [
+      "packages/ui/src/components/alert.tsx::alertVariants::CVA[3]::text-card-foreground#bg-success/4"
+    ],
+    "occurrences": [
+      {
+        "id": "packages/ui/src/components/alert.tsx::alertVariants::CVA[3]::text-card-foreground#bg-success/4",
+        "usage": "packages/ui/src/components/alert.tsx",
+        "surfaceContext": "same-element",
+        "category": "body",
+        "chain": [
+          "packages/ui/src/components/alert.tsx:alertVariants",
+          "cva:6>text-card-foreground border-success/32 bg-success/4 [&>svg]:text-success"
+        ],
+        "backdropLayers": [
+          "bg-background"
+        ]
+      }
+    ]
+  },
+  {
+    "fg": "--color-card-foreground",
+    "bg": "--color-success",
+    "category": "body",
+    "minRatio": 4.5,
+    "themes": [
+      "dark"
+    ],
+    "usage": "packages/ui/src/components/alert.tsx",
+    "backdrop": "--color-background",
+    "foregroundClass": "text-card-foreground",
+    "backgroundClass": {
+      "dark": "bg-success/4"
+    },
+    "backdropLayers": [
+      "bg-background"
+    ],
+    "occurrenceIds": [
+      "packages/ui/src/components/alert.tsx::alertVariants::CVA[3]::text-card-foreground#bg-success/4"
+    ],
+    "occurrences": [
+      {
+        "id": "packages/ui/src/components/alert.tsx::alertVariants::CVA[3]::text-card-foreground#bg-success/4",
+        "usage": "packages/ui/src/components/alert.tsx",
+        "surfaceContext": "same-element",
+        "category": "body",
+        "chain": [
+          "packages/ui/src/components/alert.tsx:alertVariants",
+          "cva:6>text-card-foreground border-success/32 bg-success/4 [&>svg]:text-success"
+        ],
+        "backdropLayers": [
+          "bg-background"
+        ]
+      }
+    ]
+  },
+  {
+    "fg": "--color-card-foreground",
+    "bg": "--color-warning",
+    "category": "body",
+    "minRatio": 4.5,
+    "themes": [
+      "light"
+    ],
+    "usage": "packages/ui/src/components/alert.tsx",
+    "backdrop": "--color-background",
+    "foregroundClass": "text-card-foreground",
+    "backgroundClass": {
+      "light": "bg-warning/4"
+    },
+    "backdropLayers": [
+      "bg-background"
+    ],
+    "occurrenceIds": [
+      "packages/ui/src/components/alert.tsx::alertVariants::CVA[4]::text-card-foreground#bg-warning/4"
+    ],
+    "occurrences": [
+      {
+        "id": "packages/ui/src/components/alert.tsx::alertVariants::CVA[4]::text-card-foreground#bg-warning/4",
+        "usage": "packages/ui/src/components/alert.tsx",
+        "surfaceContext": "same-element",
+        "category": "body",
+        "chain": [
+          "packages/ui/src/components/alert.tsx:alertVariants",
+          "cva:7>text-card-foreground border-warning/32 bg-warning/4 [&>svg]:text-warning"
+        ],
+        "backdropLayers": [
+          "bg-background"
+        ]
+      }
+    ]
+  },
+  {
+    "fg": "--color-card-foreground",
+    "bg": "--color-warning",
+    "category": "body",
+    "minRatio": 4.5,
+    "themes": [
+      "dark"
+    ],
+    "usage": "packages/ui/src/components/alert.tsx",
+    "backdrop": "--color-background",
+    "foregroundClass": "text-card-foreground",
+    "backgroundClass": {
+      "dark": "bg-warning/4"
+    },
+    "backdropLayers": [
+      "bg-background"
+    ],
+    "occurrenceIds": [
+      "packages/ui/src/components/alert.tsx::alertVariants::CVA[4]::text-card-foreground#bg-warning/4"
+    ],
+    "occurrences": [
+      {
+        "id": "packages/ui/src/components/alert.tsx::alertVariants::CVA[4]::text-card-foreground#bg-warning/4",
+        "usage": "packages/ui/src/components/alert.tsx",
+        "surfaceContext": "same-element",
+        "category": "body",
+        "chain": [
+          "packages/ui/src/components/alert.tsx:alertVariants",
+          "cva:7>text-card-foreground border-warning/32 bg-warning/4 [&>svg]:text-warning"
+        ],
+        "backdropLayers": [
+          "bg-background"
+        ]
+      }
+    ]
   }
 ]

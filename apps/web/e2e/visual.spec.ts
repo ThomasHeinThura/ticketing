@@ -511,7 +511,9 @@ test("Saved views index screen @visual", async ({ page }) => {
   await expect(
     page.getByRole("heading", { name: "Escalations", exact: true }),
   ).toBeVisible();
-  await expect(page.getByText("Pinned", { exact: true })).toBeVisible();
+  await expect(
+    page.getByText("Pinned · 1 matching work items", { exact: true }),
+  ).toBeVisible();
   await expect(
     page.getByRole("button", { name: "Request deletion" }),
   ).toBeVisible();

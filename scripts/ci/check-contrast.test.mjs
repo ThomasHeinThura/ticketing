@@ -114,6 +114,59 @@ describe("G3 contrast inventory and math", () => {
     );
   });
 
+  it("observes translucent CVA variant surfaces only with their own foreground", () => {
+    const tokens = new Set(["card-foreground", "info"]);
+    const observed = observedPairsInSources(
+      [
+        'const variants = cva("base", { variants: { variant: { info: "text-card-foreground bg-info/4" } } });',
+        '<div className="bg-background" />',
+      ],
+      tokens,
+      [
+        "packages/ui/src/components/alert.tsx",
+        "packages/ui/src/components/alert.stories.tsx",
+      ],
+    );
+    assert.ok(
+      observed.has(
+        "--color-card-foreground|--color-info|bg-info/4|light|backdrop:bg-background",
+      ),
+    );
+    assert.ok(
+      observed.has(
+        "--color-card-foreground|--color-info|bg-info/4|dark|backdrop:bg-background",
+      ),
+    );
+
+    const splitClasses = observedPairsInSources(
+      [
+        'const variants = cva("text-card-foreground", { variants: { variant: { info: "bg-info/4" } } });',
+      ],
+      tokens,
+      ["fixture.tsx"],
+    );
+    assert.equal(
+      splitClasses.has("--color-card-foreground|--color-info|bg-info/4|light"),
+      false,
+      "a foreground in the CVA base is not assumed for every surface variant",
+    );
+
+    const withoutCanvas = observedPairsInSources(
+      [
+        'const variants = cva("base", { variants: { variant: { info: "text-card-foreground bg-info/4" } } });',
+      ],
+      tokens,
+      ["packages/ui/src/components/alert.tsx"],
+    );
+    assert.equal(
+      withoutCanvas.has(
+        "--color-card-foreground|--color-info|bg-info/4|light|backdrop:bg-background",
+      ),
+      false,
+      "translucent CVA pairs require the story's explicit opaque canvas",
+    );
+  });
+
   it("measures a colored descendant against its nearest opaque ancestor", async () => {
     const fixture = `scripts/ci/.contrast-inheritance-${randomUUID()}.tsx`;
     await writeFile(
