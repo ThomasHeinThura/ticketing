@@ -1,3 +1,19 @@
+### 2026-10-08 · Freeze new features and complete final integration/SIT acceptance, then stop
+
+**Decision — Thomas, explicit final integration directive:** stop all new feature implementation and feature branches. Continue only existing-work integration and acceptance corrections: conflict resolution, security/correctness defects, failing functional tests, migration compatibility, build/packaging/SIT compatibility, and acceptance-blocking accessibility/UI defects. Do not expand a feature because its specification contains later requirements. Account for every PR and branch, preserve useful history, and reconstruct the cumulative #589/#598 integration trees as reviewable owner-source units rather than merging their enormous displayed diffs blindly. Preserve accepted migration history.
+
+The required final path is protected integration, current-head review and CI, verified immutable image publication to the existing Docker Hub repository `bimdevops/taskdesk`, deployment and functional/security acceptance in the existing SIT environment, a fresh post-integration audit, reconciled records, and the final report. Thomas also named local Traefik TLS on port 443 for current local SIT testing. Root has recovered OrbStack's existing local runtime: original five TaskDesk containers and named volumes remain present/running; unrelated WSO2 workers were preserved. This recovery is not an accepted image publication or a new SIT deployment. The separate Docker Desktop `desktop-linux` context had appeared empty before OrbStack was started; no data-loss claim, Docker reinstall, or global-context change follows.
+
+**Current evidence boundaries:** inventory captured `2026-10-08T13:14:47.800345Z` records 23 open PRs, 441 GitHub branches, 198 local branch heads, accepted `main` `3096cb044bdf6ae98488bfc385f532fa6386343a`, and no exact-head independent approval in its captured GitHub review records. Counts are capture-time only. #602 `23a01a62` has hosted full/G11 22/22 evidence, while P0 operational acceptance is not complete. V13's 114 offline checks do not establish runtime: its guard refused before acquisition at 13:12 UTC with required authorization/review bindings pending; preserve the V12 failure. Actual October 9 evidence remains pending where the three-date contract requires it. Do not run more performance experiments or change budgets.
+
+#608 current source is `76b833be`; its focused 2-file/17-test result is current. Earlier 32-test and image/migration evidence belongs to the earlier source and does not transfer. #609 `da4e0f62` focused 3-file/45-test route correction is recorded, with final reviews/hosted acceptance pending. No PR is accepted or merged by this record. Credentials and seeders stay private.
+
+After final accepted-source SIT audit and report, **STOP all implementation and wait for Thomas's next roadmap**. Do not generate a roadmap or automatically resume. This is a freeze and sequencing decision, not a gate waiver, product completion, deployment acceptance, or approval of any held behavior.
+
+**Recorded:** top-level orchestrator at `2026-10-08T13:27Z` from Thomas's attached final integration directive, read-only consolidation inventory/slice reconciliation, exact-source evidence, and root's runtime recovery report.
+
+---
+
 ### 2026-10-08 · Native mention composition access and mute continuity
 
 **Decision — Thomas approved in this chat:** use a permissioned workspace-scoped preflight for composition warnings; recheck recipient access when saving. Accessible mentioned people become watchers without being unmuted. Preserve every explicit notification mute; people without current access receive no notification. Public customer mentions retain existing CA12 public-comment/reach requirements; internal comments exclude customers. This authorization adds no cross-tenant directory or identity-derived authority.
