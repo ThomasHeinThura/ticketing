@@ -172,7 +172,11 @@ const visualSavedView = {
   visibility: "team",
   sharedWithTeamId: "visual-team",
   layout: "list",
-  query: { entity: "work_item", filter: "state:started" },
+  query: {
+    entity: "work_item",
+    filter: { field: "priority", op: "eq", value: "high" },
+    sort: [{ field: "key", direction: "asc" }],
+  },
   createdAt: "2026-10-01T00:00:00.000Z",
   updatedAt: "2026-10-02T00:00:00.000Z",
   isPinned: true,
@@ -182,6 +186,21 @@ async function installAuthenticatedFixture(page: Page) {
   await page.route("**/api/**", async (route) => {
     const url = new URL(route.request().url());
     const path = url.pathname;
+    if (path.endsWith("/api/me/csrf-token")) {
+      await route.fulfill({
+        status: 200,
+        contentType: "application/json",
+        headers: {
+          "set-cookie":
+            "tdk_csrf_dev=visual-csrf-token; Path=/; SameSite=Strict; HttpOnly",
+        },
+        body: JSON.stringify({
+          token: "visual-csrf-token",
+          expiresAt: "2030-01-01T00:00:00.000Z",
+        }),
+      });
+      return;
+    }
     // Authenticated shells mount several optional picker queries globally (labels,
     // work item types, members). Empty collections are their deterministic baseline.
     let body: unknown = [];
@@ -204,7 +223,17 @@ async function installAuthenticatedFixture(page: Page) {
       };
     } else if (path.endsWith("/api/workspace")) body = [workspace];
     else if (path.endsWith("/api/project")) body = [project];
-    else if (path.endsWith("/api/views")) body = [visualSavedView];
+    else if (path.endsWith("/api/views/visual-saved-view/run")) {
+      body = {
+        data: [workItem],
+        page: { hasMore: false, nextCursor: null },
+        meta: { total: 1 },
+      };
+    } else if (path.endsWith("/api/views/visual-saved-view/count")) {
+      body = { count: 1 };
+    } else if (path.endsWith("/api/views/visual-saved-view")) {
+      body = visualSavedView;
+    } else if (path.endsWith("/api/views")) body = [visualSavedView];
     else if (path.endsWith("/api/workspace/visual-workspace/members")) {
       body = [
         {
@@ -487,6 +516,27 @@ test("Saved views index screen @visual", async ({ page }) => {
     page.getByRole("button", { name: "Request deletion" }),
   ).toBeVisible();
   await expect(page).toHaveScreenshot("saved-views-index.png", {
+    animations: "disabled",
+    caret: "hide",
+    fullPage: true,
+    scale: "css",
+    maxDiffPixels: 0,
+    threshold: 0,
+    includeAA: true,
+  });
+});
+
+test("Saved view detail screen @visual", async ({ page }) => {
+  await installAuthenticatedFixture(page);
+  await page.goto("/agent/views/visual-saved-view");
+  await expect(
+    page.getByRole("heading", { name: "Escalations", exact: true }),
+  ).toBeVisible();
+  await expect(
+    page.getByText("Customer cannot reset their password", { exact: true }),
+  ).toBeVisible();
+  await expect(page.getByRole("button", { name: "Unpin" })).toBeVisible();
+  await expect(page).toHaveScreenshot("saved-view-detail.png", {
     animations: "disabled",
     caret: "hide",
     fullPage: true,

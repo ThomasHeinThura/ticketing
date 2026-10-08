@@ -95,7 +95,7 @@ prerequisite-based scope follows the [2026-09-28 gate-scope decision](../07-plan
 | Dashboard editor | `/agent/dashboard/edit` | route | P5 | ⬜ |
 | Timesheet | `/agent/timesheet` | route | P5 | ⬜ |
 | Saved views index | `/agent/views` | route | P1 | 🟡 |
-| Saved view | `/agent/views/{id}` | route | P1 | ⬜ |
+| Saved view | `/agent/views/{id}` | route | P1 | 🟡 |
 
 ## Agent — settings
 
