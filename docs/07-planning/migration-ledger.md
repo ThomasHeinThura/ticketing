@@ -6,7 +6,7 @@ Verified 2026-10-08 12:10 UTC. Final numbering is allocated centrally during pos
 | --- | --- | --- | --- | --- |
 | 0000–0087 | accepted main | accepted foundation | 3096cb044bdf6ae98488bfc385f532fa6386343a | Accepted journal; preserve applied history |
 | 0000–0087 | #602 | P0 | 23a01a62ece3ca7d17105626f64ad78641435ec1 | Frozen candidate journal; exact88 insertion-order hashes verified |
-| 0112, branch-local provisional | isolated Users canonical batch, PR pending | P4 | eefce14642dbe85384701d694e1ea4008a292caf (base) | Allocated for the approved canonical Users/instance-event constraint correction if required; not created/accepted yet; NOT a final integration reservation |
+| 0112, branch-local provisional | #608 canonical Users batch | P4 | 92bd177baca9c9dd415521cbb36414484055acf0 | Created for canonical pending-action correction; focused Users DB 7/7 passes. NOT a final integration reservation; no acceptance or applied-history rewrite |
 | final numbers unallocated | historical #589 | P1–P4 integration | 2350397b18f83ed417bf63d73970daacdbaae49c | Frozen historical train; recreate from accepted post-P0 main before final allocation |
 | final numbers unallocated | #598 | P2 | 3fecb75ccd4a1fcbfce5414de6d222c46bb5e94e | Feature history; reconcile centrally with integration train |
 | final numbers unallocated | #585 | P4 | 5a371451d2d05777a8815639b18cd2ac8085578b | Feature history; existing snapshot conflicts stay open |
