@@ -1,6 +1,10 @@
-## Status first — verified 2026-10-08 15:27 UTC
+## Status first — verified 2026-10-08 15:54 UTC
 
 **Accepted main:** `3096cb044bdf6ae98488bfc385f532fa6386343a`. **Frozen P0:** #602 `23a01a62ece3ca7d17105626f64ad78641435ec1`, unchanged. **Persistent DEV:** source08842235/image75b153d7 remains preserved in OrbStack through local Traefik443. No protected merge, new persistent deployment, registry publication, strict activation or phase closure occurred.
+
+**Current review reconciliation:** #602 review-note-only head `2b7192eb5181d50085f8734d2c5da226e301453e` records two actual exact23 Luna clears and fresh independent full Sol source CLEAR (3 files/17 tests; zero blockers). The earlier retained lightweight Sol source report was also recovered and is distinguished from runner-only evidence and from the new full review. All non-note files remain identical to frozen23; hosted23 measurements keep their original identity. New-head CI is queued; no green/merge claim. The strict/date/config/task, signed release and finalizer gates remain.
+
+**#601 scanner classification:** the historical generic-api-key finding at40224279/status.md:6 is reproduced and extracts only documented public prose `route-policy88`, adjacent to `OpenAPI230 operations`. It is a lexical false positive, not a credential. No suppression, gate waiver, rotation or history rewrite was applied. The exact finding stays retained, together with inherited baseline lint/dependency failures; the docs candidate is still blocked.
 
 | Stage | Formal status |
 | --- | --- |
