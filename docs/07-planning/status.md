@@ -1,3 +1,28 @@
+## Status first — verified 2026-10-08 12:05 UTC
+
+**Accepted main:** `3096cb044bdf6ae98488bfc385f532fa6386343a`. **Persistent OrbStack DEV:** `08842235047a3ab2714427edce80331b94558150`, image `sha256:75b153d7d9583993127e1be8c06453159e4fe7319abfcd8431f093c9ca002bcf`. Source/image unchanged. No protected merge, strict activation, release or phase closure. Credentials and seeders stay private outside Git/GitHub.
+
+| Stage | Formal status |
+| --- | --- |
+| P0 | Open — frozen23a01a product; hosted full and G11 22/22 pass; required operational acceptance remains |
+| P1 | Open — native feature batches retained; actual DEV task/comment writes pass; candidate integration gates remain |
+| P2 | Open — approvals/intake slices retained; integrated acceptance remains |
+| P3 | Open — reviewed fixture delta and hosted1741 PG tests pass; real provider acceptance remains |
+| P4 | Open — complete Users/pending-action feature correction in progress; canonical dependencies must be reconciled |
+| P5–P7 | Open — no completion claim |
+
+**Visible DEV testing:** the user completed sign-in; root verified original admin identity and opened project board, backlog, work-item detail, calendar, Gantt, members, invitations, project overview, account information/notifications/preferences/API keys, workspace general/roles/labels and project general/workflow settings. Rendering/navigation evidence is distinct from write/provider acceptance. Root created its own clearly labelled test task **DEV-3 — UAT UI smoke — 2026-10-08**, then submitted a comment: both success toasts and persisted rendered card/comment were visible. The task is retained for user review; existing tasks and credentials were preserved. Private screenshots and result ledger: `2026-10-08/deployed-dev-ui-walkthrough`.
+
+**Actual visible failures:** project settings Visibility and Project Integrations links navigate to Not Found on deployed088. Calendar month changes leave the URL unchanged; this needs classification against the owning URL-state contract. These are feature follow-up findings, not new performance experiments or evidence of a defect in the frozen candidate. No all-pages/all-features pass is claimed.
+
+**DEV API batch:**173 documented operations;58 distinct exercised,115 unexercised. Of144 role checks,128 match actual policy/source expectations and16 remain unexpected404s: four project-scoped reads across four seeded workspace roles on a valid listed retained project. These need persisted reach/membership investigation before source remediation. Sixteen probe sessions signed out200. CSRF negative write403 and unchanged readback pass; tokenized same-value workspace updates owner/admin200, member/viewer403. No key/provider/access changes. The two corrected audit expectations retain their original raw mismatches. API report/inventory remain private in `2026-10-08/deployed-dev-api-bulk-tests`.
+
+**Implementation cadence:** no more P0 performance experiments. Frozen23a01a hosted22/22 and exact image evidence remain as recorded below. A complete private runtime witness batch was reviewed and concrete proof-query/status defects are being corrected together in an immutable successor; no runtime release is issued while its review blocks. Actual October9 eligibility is still pending; October8 cannot create another date bucket. In parallel, the isolated P4 Users branch1210e3b7 is completing keyboard/primitive/localization/cache/recovery behavior plus its documented pending-action dependencies. Historical a34 cannot be blindly imported: its user_deactivation/person vocabulary and migration diverge from canonical delete/user. Implementation follows existing authoritative contracts; no invented migration/event is accepted.
+
+**Critical path:** (1) completed admitted runtime proof batch; (2) remaining actual eligible bucket and reversible authorization evidence; (3) installer/deployment/upgrade/rollback acceptance; (4) exact-head metadata and protected merge; (5) fresh accepted-main Sol phase finalizer. Later-stage visible feature work proceeds independently. No gate waiver or completion claim.
+
+---
+
 ## Status first — verified 2026-10-08 10:14 UTC
 
 **Accepted main:** `3096cb044bdf6ae98488bfc385f532fa6386343a`. **Persistent OrbStack DEV:** `08842235047a3ab2714427edce80331b94558150`, image `sha256:75b153d7d9583993127e1be8c06453159e4fe7319abfcd8431f093c9ca002bcf`. No protected merge, persistent redeployment, strict activation, release or phase closure. Credentials/seeders remain private outside Git/GitHub.
