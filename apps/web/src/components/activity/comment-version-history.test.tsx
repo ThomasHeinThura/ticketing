@@ -53,40 +53,8 @@ vi.mock("@/components/activity/comment-editor", () => ({
 vi.mock("@/lib/format", () => ({ formatDateTime: (value: string) => value }));
 
 vi.mock("@taskdesk/ui", async (importOriginal) => {
-  const React = await import("react");
-  const Context = React.createContext({
-    open: false,
-    setOpen: (_value: boolean) => {},
-  });
-  function Popover({
-    children,
-    open,
-    onOpenChange,
-  }: {
-    children: React.ReactNode;
-    open: boolean;
-    onOpenChange: (value: boolean) => void;
-  }) {
-    return (
-      <Context.Provider value={{ open, setOpen: onOpenChange }}>
-        {children}
-      </Context.Provider>
-    );
-  }
-  function PopoverTrigger({ children }: { children: React.ReactElement }) {
-    const state = React.useContext(Context);
-    return React.cloneElement(
-      children as React.ReactElement<{ onClick?: () => void }>,
-      { onClick: () => state.setOpen(!state.open) },
-    );
-  }
-  function PopoverContent({ children }: { children: React.ReactNode }) {
-    return React.useContext(Context).open ? (
-      <div role="dialog">{children}</div>
-    ) : null;
-  }
   const actual = await importOriginal<typeof import("@taskdesk/ui")>();
-  return { ...actual, Popover, PopoverTrigger, PopoverContent };
+  return actual;
 });
 
 vi.mock("react-i18next", () => ({
@@ -94,7 +62,7 @@ vi.mock("react-i18next", () => ({
 }));
 
 describe("CommentVersionHistory", () => {
-  it("loads pages only after opening and preserves version order and legacy bodies", () => {
+  it("opens by keyboard with a named history control and preserves loaded versions", async () => {
     query.current = {
       data: {
         pages: [
@@ -140,7 +108,20 @@ describe("CommentVersionHistory", () => {
     );
     expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
     expect(query.options.at(-1)?.enabled).toBe(false);
-    fireEvent.click(screen.getByRole("button", { name: "Edited" }));
+    const trigger = screen.getByRole("button", {
+      name: "activity:timeline.historyLabel",
+    });
+    expect(trigger).toHaveTextContent("Edited");
+    trigger.focus();
+    expect(trigger).toHaveFocus();
+    fireEvent.keyDown(trigger, { key: "Enter" });
+    // jsdom does not synthesize the native button click that browsers emit for Enter.
+    fireEvent.click(trigger);
+    expect(
+      await screen.findByRole("dialog", {
+        name: "activity:timeline.historyLabel",
+      }),
+    ).toBeInTheDocument();
     expect(screen.getByText("legacy transition")).toBeInTheDocument();
     expect(screen.getByText('{"type":"doc","content":[]}')).toBeInTheDocument();
     expect(screen.getByText("Alice")).toBeInTheDocument();
@@ -171,7 +152,11 @@ describe("CommentVersionHistory", () => {
         label="Edited"
       />,
     );
-    fireEvent.click(screen.getByRole("button", { name: "Edited" }));
+    fireEvent.click(
+      screen.getByRole("button", {
+        name: "activity:timeline.historyLabel",
+      }),
+    );
     fireEvent.click(
       screen.getByRole("button", { name: "activity:timeline.retry" }),
     );
@@ -211,10 +196,14 @@ describe("CommentVersionHistory", () => {
         label="Edited"
       />,
     );
-    fireEvent.click(screen.getByRole("button", { name: "Edited" }));
     fireEvent.click(
       screen.getByRole("button", {
-        name: "activity:timeline.loadEarlierVersions",
+        name: "activity:timeline.historyLabel",
+      }),
+    );
+    fireEvent.click(
+      screen.getByRole("button", {
+        name: "activity:timeline.loadMoreVersions",
       }),
     );
     expect(fetchNextPage).toHaveBeenCalledOnce();

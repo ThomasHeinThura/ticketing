@@ -1536,7 +1536,7 @@
 			"historyLoading": "Loading comment history…",
 			"historyLoadFailed": "Comment history could not be loaded.",
 			"historyEmpty": "No earlier versions are available.",
-			"loadEarlierVersions": "Load earlier versions",
+			"loadMoreVersions": "Load more versions",
 			"edit": "Edit",
 			"cancel": "Cancel",
 			"save": "Save changes",

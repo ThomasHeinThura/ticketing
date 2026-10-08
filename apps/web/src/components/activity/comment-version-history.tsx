@@ -1,4 +1,10 @@
-import { Button, Popover, PopoverContent, PopoverTrigger } from "@taskdesk/ui";
+import {
+  Button,
+  Popover,
+  PopoverContent,
+  PopoverTitle,
+  PopoverTrigger,
+} from "@taskdesk/ui";
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
 import CommentEditor from "@/components/activity/comment-editor";
@@ -27,6 +33,7 @@ export default function CommentVersionHistory({
   editorName: (id: string | null) => string;
 }) {
   const { t } = useTranslation();
+  const historyLabel = t("activity:timeline.historyLabel");
   const [open, setOpen] = useState(false);
   const history = useGetCommentVersionHistory({
     key: workItemKey,
@@ -38,15 +45,16 @@ export default function CommentVersionHistory({
   return (
     <Popover open={open} onOpenChange={setOpen}>
       <PopoverTrigger asChild>
-        <Button size="xs" variant="ghost">
+        <Button aria-label={historyLabel} size="xs" variant="ghost">
           {label}
         </Button>
       </PopoverTrigger>
-      <PopoverContent className="max-h-96 w-[min(32rem,calc(100vw-2rem))] overflow-y-auto">
-        <ol
-          aria-label={t("activity:timeline.historyLabel")}
-          className="flex flex-col gap-3"
-        >
+      <PopoverContent
+        aria-label={historyLabel}
+        className="max-h-96 w-[min(32rem,calc(100vw-2rem))] overflow-y-auto"
+      >
+        <PopoverTitle className="mb-3 text-sm">{historyLabel}</PopoverTitle>
+        <ol aria-label={historyLabel} className="flex flex-col gap-3">
           {versions.map((version: CommentVersion) => (
             <li className="border-b pb-3 last:border-0" key={version.number}>
               <div className="mb-2 flex items-center justify-between gap-3 text-xs text-muted-foreground">
@@ -113,7 +121,7 @@ export default function CommentVersionHistory({
           >
             {history.isFetchingNextPage
               ? t("activity:timeline.historyLoading")
-              : t("activity:timeline.loadEarlierVersions")}
+              : t("activity:timeline.loadMoreVersions")}
           </Button>
         )}
       </PopoverContent>

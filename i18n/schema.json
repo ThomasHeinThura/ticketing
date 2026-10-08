@@ -6189,7 +6189,7 @@
 						"historyEmpty": {
 							"type": "string"
 						},
-						"loadEarlierVersions": {
+						"loadMoreVersions": {
 							"type": "string"
 						},
 						"edit": {
@@ -6258,7 +6258,7 @@
 						"historyLoading",
 						"historyLoadFailed",
 						"historyEmpty",
-						"loadEarlierVersions",
+						"loadMoreVersions",
 						"edit",
 						"cancel",
 						"save",
