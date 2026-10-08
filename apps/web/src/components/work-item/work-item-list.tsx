@@ -340,7 +340,10 @@ function WorkItemList({
   }
 
   function handleListFocus(event: FocusEvent<HTMLDivElement>) {
-    const key = getDetailLink(event.target)?.dataset.workItemKey;
+    const anchor = getDetailLink(event.target);
+    if (!anchor) return;
+    anchor.closest("tr")?.scrollIntoView({ block: "nearest" });
+    const key = anchor.dataset.workItemKey;
     if (key) prefetchDetail(key);
   }
 
