@@ -24,7 +24,7 @@ vi.mock("./index", () => {
     }) => (
       <div
         data-testid="palette-instance"
-        data-kept-mounted={keepMounted ? "true" : undefined}
+        data-warmed={keepMounted ? "true" : undefined}
         data-open={open ? "true" : "false"}
       />
     ),
@@ -65,8 +65,8 @@ function runNextFrame(frames: FrameRequestCallback[]) {
   act(() => frames.shift()?.(0));
 }
 
-describe("CommandPaletteLauncher warm import", () => {
-  it("preloads after primary content, paint frames, and browser idle without mounting the palette", async () => {
+describe("CommandPaletteLauncher warm mount", () => {
+  it("waits for primary content, paint frames, and browser idle before importing", async () => {
     window.history.replaceState({}, "", "/agent/projects/OPS/work");
     const frames = mockFrames();
     const idleCallbacks = new Map<number, () => void>();
@@ -101,23 +101,11 @@ describe("CommandPaletteLauncher warm import", () => {
 
     act(() => idleCallbacks.get(1)?.());
 
-    await waitFor(() => expect(mocks.moduleLoaded).toHaveBeenCalledOnce());
-    expect(screen.queryByTestId("palette-instance")).not.toBeInTheDocument();
-
-    const openPalette =
-      mocks.registered?.modifierShortcuts?.[shortcuts.palette.prefix]?.[
-        shortcuts.palette.open
-      ];
-    act(() => openPalette?.());
     await waitFor(() =>
       expect(screen.getByTestId("palette-instance")).toHaveAttribute(
-        "data-open",
+        "data-warmed",
         "true",
       ),
-    );
-    expect(screen.getByTestId("palette-instance")).toHaveAttribute(
-      "data-kept-mounted",
-      "true",
     );
     expect(mocks.moduleLoaded).toHaveBeenCalledOnce();
   });
@@ -173,7 +161,7 @@ describe("CommandPaletteLauncher warm import", () => {
     expect(cancelIdleCallback).toHaveBeenCalledWith(9);
   });
 
-  it("keeps the existing paint-frame preload when idle callbacks are unsupported", async () => {
+  it("keeps the existing paint-frame warm-up when idle callbacks are unsupported", async () => {
     window.history.replaceState({}, "", "/agent/projects/OPS/work");
     const frames = mockFrames();
     render(<CommandPaletteLauncher />);
@@ -187,7 +175,12 @@ describe("CommandPaletteLauncher warm import", () => {
     expect(mocks.moduleLoaded).not.toHaveBeenCalled();
     runNextFrame(frames);
 
-    expect(screen.queryByTestId("palette-instance")).not.toBeInTheDocument();
+    await waitFor(() =>
+      expect(screen.getByTestId("palette-instance")).toHaveAttribute(
+        "data-warmed",
+        "true",
+      ),
+    );
   });
 
   it("loads immediately on explicit shortcut intent without waiting for content", async () => {
