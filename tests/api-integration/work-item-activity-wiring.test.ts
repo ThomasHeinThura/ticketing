@@ -153,13 +153,17 @@ function hashApiKeyForTest(key: string): string {
  * Same idiom as `api-key-bearer.test.ts`: a real row in `apikey`, resolved by
  * `authenticate-api-request.ts`'s own `verifyApiKey` -- not a mock of authentication.
  */
-async function createApiKeyFor(userId: string): Promise<string> {
+async function createApiKeyFor(
+  userId: string,
+  permissions: Record<string, string[]>,
+): Promise<string> {
   const rawKey = `taskdesk_test_${randomUUID()}`;
   const now = new Date();
   await db.insert(schema.apikeyTable).values({
     referenceId: userId,
     userId,
     key: hashApiKeyForTest(rawKey),
+    permissions: JSON.stringify(permissions),
     name: "work-item activity wiring test key",
     start: rawKey.slice(0, 12),
     prefix: "taskdesk",
@@ -606,7 +610,9 @@ describe("API integration: work-item activity wiring (#23 third slice, WI-6)", (
 
   it("an API-key-authenticated create records actor_type api_key and the key owner's id, in both the activity row and the event", async () => {
     const { creator, project, type } = await setupProjectWithDefaultState();
-    const rawKey = await createApiKeyFor(creator.user.id);
+    const rawKey = await createApiKeyFor(creator.user.id, {
+      work_item: ["create"],
+    });
     const { app } = createApp();
 
     const response = await createWorkItemRequest(
@@ -654,7 +660,9 @@ describe("API integration: work-item activity wiring (#23 third slice, WI-6)", (
       version: number;
     };
 
-    const rawKey = await createApiKeyFor(creator.user.id);
+    const rawKey = await createApiKeyFor(creator.user.id, {
+      work_item: ["update"],
+    });
     const response = await updateWorkItemRequest(
       app,
       createdBody.key,
@@ -844,7 +852,9 @@ describe("API integration: work-item activity wiring (#23 third slice, WI-6)", (
 
   it("S2 (#298): an API-key-authenticated create derives work_item.created's source as api from resolveActor", async () => {
     const { creator, project, type } = await setupProjectWithDefaultState();
-    const rawKey = await createApiKeyFor(creator.user.id);
+    const rawKey = await createApiKeyFor(creator.user.id, {
+      work_item: ["create"],
+    });
     const { app } = createApp();
 
     const response = await createWorkItemRequest(
