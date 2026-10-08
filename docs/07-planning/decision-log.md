@@ -32,9 +32,9 @@ The private branch-owner ancestry inventory captured all 442 exact remote heads 
 `2026-10-08T17:31:48.692762Z`: 177 accepted-main ancestors, 54 retained by active-PR ancestry,
 and 211 unassigned for semantic comparison. PR references are appended to the retained-owner
 rows; ancestry is not semantic completeness or acceptance. Keep all source/branch history.
-Central migration state remains unchanged and provisional after accepted 0000–0087. The pending
-Thomas API question (absent-body no-op versus legacy serialization) remains a decision, not
-approval. Preserve owners, feature freeze, and post-P0 reconstruction from accepted main; do not
+Central migration state remains unchanged and provisional after accepted 0000–0087. Thomas has two API compatibility-rule decisions pending reply: preserve absent-body no-op
+behavior, and preserve legacy serialization behavior. Both remain unanswered; neither is
+approved. Preserve owners, feature freeze, and post-P0 reconstruction from accepted main; do not
 merge #589 wholesale.
 
 ### 2026-10-08 · Freeze current P0 documentation candidate and preserve review boundaries
@@ -57,7 +57,7 @@ main, and do not merge #589 wholesale. The current PR and 442-branch records are
 [disposition ledger](pr-disposition-ledger.md) and [branch inventory](branch-conservation-inventory.md).
 The central migration ledger remains provisional beyond accepted 0000–0087; no final IDs,
 applied-prefix rewrite, strict activation, protected merge, release or phase closure is
-authorized by this record. The earlier Oct 8 V19 off→shadow→off run had already occurred; the disposable off-only image boot is separate and does not establish acceptance or a new date.
+authorized by this record. No strict or date-qualifying runtime was run today; the disposable off-only image boot is active and does not establish acceptance or a new date.
 
 ### 2026-10-08 · Preserve live PR dispositions and centralize post-P0 migration replay
 
@@ -90,8 +90,7 @@ allocation, applied-prefix rewrite, deployment, merge, gate waiver, strict activ
 closure. The GHCR/GitHub release direction and feature freeze remain as previously recorded.
 The existing October 9 automation preserves historical V19 evidence bound to source
 `23a01a62ece3ca7d17105626f64ad78641435ec1` and requires corrected-candidate
-rebind/adjudication. **Correction entered at 17:34 UTC:** V19 did run earlier on Oct 8 in bounded
-off→shadow→off mode; it establishes no strict activation or Oct 9 UTC date bucket.
+rebind/adjudication; V19 is immutable and no runtime was run today.
 
 ### 2026-10-08 · Bounded public-config cutover criterion substitute
 
