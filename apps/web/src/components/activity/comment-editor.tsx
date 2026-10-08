@@ -128,6 +128,12 @@ type HoveredCodeBlock = {
   left: number;
 };
 
+/** React layout cleanup can destroy the Tiptap editor before passive effects for
+ * the same commit run. Its command manager and view are no longer usable then. */
+function isLiveEditor(editor: Editor | null | undefined): editor is Editor {
+  return Boolean(editor && !editor.isDestroyed);
+}
+
 const CODE_LANG_VALUES = [
   "bash",
   "csharp",
@@ -221,6 +227,7 @@ export default function CommentEditor({
   const hasHydratedRef = useRef(false);
   const latestValueRef = useRef(normalizeMarkdown(value || ""));
   const lastEditorRef = useRef<Editor | null>(null);
+  const syncGenerationRef = useRef(0);
   const taskIdRef = useRef(taskId);
   const ensureTaskIdRef = useRef(ensureTaskId);
   const uploadSurfaceRef = useRef(uploadSurface);
@@ -310,6 +317,7 @@ export default function CommentEditor({
       asset: Awaited<ReturnType<typeof uploadTaskImage>>,
       range?: SlashRange,
     ) => {
+      if (!isLiveEditor(activeEditor)) return;
       const chain = activeEditor.chain().focus();
 
       if (range) {
@@ -352,7 +360,7 @@ export default function CommentEditor({
       const resolvedTaskId =
         taskIdRef.current ?? (await ensureTaskIdRef.current?.());
 
-      if (!activeEditor || !resolvedTaskId) {
+      if (!isLiveEditor(activeEditor) || !resolvedTaskId) {
         toast.error(t("activity:comment.editor.uploadsOnlyOnSavedTasks"));
         return;
       }
@@ -838,7 +846,7 @@ export default function CommentEditor({
               filteredSlashCommands.length
             ) {
               event.preventDefault();
-              if (!editor) return true;
+              if (!isLiveEditor(editor)) return true;
               const command =
                 filteredSlashCommands[
                   Math.min(
@@ -931,14 +939,14 @@ export default function CommentEditor({
   }, [editor, onAttachActionChange, openImagePicker]);
 
   useEffect(() => {
-    if (!editor || !shikiHighlighter) return;
+    if (!isLiveEditor(editor) || !shikiHighlighter) return;
     editor.view.dispatch(
       editor.state.tr.setMeta(SHIKI_CODEBLOCK_REFRESH_META, true),
     );
   }, [editor, shikiHighlighter]);
 
   useEffect(() => {
-    if (!editor || typeof document === "undefined") return;
+    if (!isLiveEditor(editor) || typeof document === "undefined") return;
 
     const root = document.documentElement;
     const refreshShikiTheme = () => {
@@ -963,7 +971,7 @@ export default function CommentEditor({
   }, [editor]);
 
   useEffect(() => {
-    if (!editor) return;
+    if (!isLiveEditor(editor)) return;
 
     const handleImagePreviewClick = (event: MouseEvent) => {
       const target = event.target as HTMLElement | null;
@@ -987,7 +995,7 @@ export default function CommentEditor({
 
   const updateSlashMenu = useCallback(
     (activeEditor: Editor) => {
-      if (readOnly || disabled) {
+      if (!isLiveEditor(activeEditor) || readOnly || disabled) {
         setSlashMenu(null);
         return;
       }
@@ -1039,7 +1047,7 @@ export default function CommentEditor({
   );
 
   useEffect(() => {
-    if (!editor) return;
+    if (!isLiveEditor(editor)) return;
     const syncSlash = () => updateSlashMenu(editor);
     editor.on("selectionUpdate", syncSlash);
     editor.on("update", syncSlash);
@@ -1051,12 +1059,12 @@ export default function CommentEditor({
   }, [editor, updateSlashMenu]);
 
   useEffect(() => {
-    if (!editor) return;
+    if (!isLiveEditor(editor)) return;
     editor.setEditable(!readOnly && !disabled);
   }, [disabled, editor, readOnly]);
 
   useEffect(() => {
-    if (!editor) return;
+    if (!isLiveEditor(editor)) return;
     if (lastEditorRef.current !== editor) {
       hasHydratedRef.current = false;
       lastEditorRef.current = editor;
@@ -1071,8 +1079,11 @@ export default function CommentEditor({
         contentType: "markdown",
       });
       hasHydratedRef.current = true;
+      const generation = ++syncGenerationRef.current;
       queueMicrotask(() => {
-        isSyncingRef.current = false;
+        if (generation === syncGenerationRef.current) {
+          isSyncingRef.current = false;
+        }
       });
       return;
     }
@@ -1084,13 +1095,16 @@ export default function CommentEditor({
       contentType: "markdown",
     });
     latestValueRef.current = incoming;
+    const generation = ++syncGenerationRef.current;
     queueMicrotask(() => {
-      isSyncingRef.current = false;
+      if (generation === syncGenerationRef.current) {
+        isSyncingRef.current = false;
+      }
     });
   }, [editor, value]);
 
   useEffect(() => {
-    if (!editor || documentValue === undefined) return;
+    if (!isLiveEditor(editor) || documentValue === undefined) return;
     if (!documentValue || typeof documentValue !== "object") return;
     if (JSON.stringify(editor.getJSON()) === JSON.stringify(documentValue))
       return;
@@ -1101,13 +1115,16 @@ export default function CommentEditor({
     const markdown = normalizeMarkdown(editor.getMarkdown());
     latestValueRef.current = markdown;
     onChange?.(markdown);
+    const generation = ++syncGenerationRef.current;
     queueMicrotask(() => {
-      isSyncingRef.current = false;
+      if (generation === syncGenerationRef.current) {
+        isSyncingRef.current = false;
+      }
     });
   }, [documentValue, editor, onChange]);
 
   const setLink = useCallback(() => {
-    if (readOnly || disabled || !editor) return;
+    if (readOnly || disabled || !isLiveEditor(editor)) return;
     const previousUrl = editor.getAttributes("link").href as string | undefined;
     const url = window.prompt(
       t("activity:comment.editor.enterUrl"),
@@ -1123,7 +1140,7 @@ export default function CommentEditor({
 
   const resolveCodeBlockNodeData = useCallback(
     (pos: number) => {
-      if (!editor) return null;
+      if (!isLiveEditor(editor)) return null;
       const resolvedPos = editor.state.doc.resolve(
         Math.max(0, Math.min(pos, editor.state.doc.content.size)),
       );
@@ -1144,7 +1161,7 @@ export default function CommentEditor({
 
   const updateHoveredCodeBlockFromElement = useCallback(
     (element: HTMLElement | null) => {
-      if (!editor || !element) {
+      if (!isLiveEditor(editor) || !element) {
         if (!isCodeLanguageMenuOpen) {
           hoveredCodeBlockElementRef.current = null;
           setHoveredCodeBlock(null);
@@ -1191,7 +1208,7 @@ export default function CommentEditor({
 
   const setCodeLanguage = useCallback(
     (language: string) => {
-      if (!editor || !hoveredCodeBlock) return;
+      if (!isLiveEditor(editor) || !hoveredCodeBlock) return;
       const resolvedLanguage = language === "auto" ? "" : language;
       const { nodePos } = hoveredCodeBlock;
       const node = editor.state.doc.nodeAt(nodePos);
@@ -1274,7 +1291,7 @@ export default function CommentEditor({
 
   const submitEmbedComposer = useCallback(
     (mode: "embed" | "link") => {
-      if (!editor || !embedComposer) return;
+      if (!isLiveEditor(editor) || !embedComposer) return;
       const url = normalizeUrl(embedComposer.url);
       if (!url) {
         setEmbedComposerError("embedErrorInvalidUrl");
@@ -1440,7 +1457,7 @@ export default function CommentEditor({
   }, []);
 
   const copyHoveredCodeBlock = useCallback(async () => {
-    if (!editor || !hoveredCodeBlock) return;
+    if (!isLiveEditor(editor) || !hoveredCodeBlock) return;
     const node = editor.state.doc.nodeAt(hoveredCodeBlock.nodePos);
     if (node?.type.name !== "codeBlock") return;
 
@@ -1829,7 +1846,7 @@ export default function CommentEditor({
                         }
                         onMouseDown={(event) => {
                           event.preventDefault();
-                          if (!editor) return;
+                          if (!isLiveEditor(editor)) return;
                           command.run(editor, {
                             from: slashMenu.from,
                             to: slashMenu.to,
