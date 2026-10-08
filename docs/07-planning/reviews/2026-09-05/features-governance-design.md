@@ -159,29 +159,67 @@ Data references: `webhook`, `webhook_delivery`, `outbox` present ✓ but under-c
 
 ## 8. `mcp-server.md`
 
-**Verdict: not-ready.** The core architectural claim — "a thin client over the public API…
-there is **one** authorization surface, not two" — is right and is the single most valuable
-sentence in the document. But the spec omits three of the template's required sections
-(Permissions, API, Data, Open questions), specifies an entire alternative auth flow in one
-sentence, and its feature flag is not enforceable as described.
+**Verdict: not-ready for implementation.** The spec-only ambiguities that can be settled
+from existing authority are now recorded in `mcp-server.md`: API-key-only setup, the `is_mcp`
+flag contract, the route-inherited permission model, rate-limit composition, the complete MC
+tool list with owner references, and the existing data and pending-action records. This is a
+documentation reconciliation, not evidence that the client, routes, or authorization are
+implemented. At the accepted source `3096cb044bdf6ae98488bfc385f532fa6386343a`, the MCP
+client auth service is API-key-only, but its tool registry remains the inherited project/task
+surface; the API key schema/resolver do not yet carry `is_mcp`, and the MCP-specific API and
+route-policy integration are not implemented. Keep this section open until the questions and
+implementation dependencies below are resolved and verified.
 
-| Severity | Issue | Concrete fix |
+### Findings reconciled against existing authority
+
+| Finding | Evidence-based disposition |
+| --- | --- |
+| `MC-3` device flow is underspecified | **Spec resolved:** OAuth device authorization is explicitly out of P4; the API key is the only credential. Accepted source `packages/mcp/src/auth/auth-service.ts` follows this rule. Package README/tool-registry agreement remains an implementation/documentation task. |
+| `MC-14` `feature.mcp` has no request marker | **Contract specified, implementation open:** `api_key.is_mcp`, `feature.mcp` refusal, the warned read-only default, and the write ceiling are already named in `mcp-server.md`, `webhooks-and-api-keys.md`, `plugin-architecture.md`, `data-model.md` and `api-design.md`. At accepted source, `apps/api/src/database/schema.ts` and `apps/api/src/permissions/resolve-identity.ts` still document the missing `is_mcp` column/identity distinction; no runtime enforcement claim follows from the docs. |
+| `MC-4` audit identity and MCP origin | **Partly specified; remains open:** `audit_log` already has `actor_type` and `api_key_id`, and the audit-trail contract audits mutations. It has no durable origin field and does not promise to audit reads. The spec now makes this gap explicit rather than claiming the existing columns prove MCP origin. |
+| Missing API, Permissions and Data sections | **Template gap resolved:** those sections now exist. The API table keeps all MC tools and links each established route/capability to its owning contract. Five routes remain unowned or incompatible with the API-key client; see Open questions. The `CAPABILITIES` registry contains the named capabilities used by the already-owned rows; no MCP capability is added. |
+| Rate-limit contradiction | **Base rule resolved; bulk details open:** existing `api-design.md` defines the per-key and route-class limits plus the additional MCP write ceiling. No numeric ceiling is invented. A distinct bulk cap/rate window remains unspecified. |
+| God Mode MCP-usage screen absent | **Spec finding resolved:** `god-mode.md` defines MCP usage and `GET /api/instance/mcp/usage`; `screen-inventory.md` registers `/agent/god-mode/mcp`. This does not claim the screen or endpoint is implemented. |
+| Burst threshold/event/notification missing | **Names resolved; trigger rule open:** `instance_setting.api_key_burst_threshold`, `api_key.auto_disabled`, and the key-owner notification are present in the data, event and notification contracts. Unit, window and precise trigger semantics remain unspecified. |
+| Required Out of scope/Open questions sections absent | **Template gap resolved:** both sections now record the device-flow boundary and unresolved product/API contracts. |
+| MC-7 delete tool missing | **Stale finding resolved:** `delete_work_item` is in the complete MC tool list and maps to the work-item pending-action rule. No purge tool is permitted (`PA-13`). |
+| Idempotency store absent from data model | **Stale finding resolved:** `idempotency_key` exists in `data-model.md`; its authoritative columns and 24-hour retention remain owned there and in `api-design.md`. |
+| Import link parent/mapping ambiguity | **Spec resolved:** the tool contract uses `import_run` plus `import_record_link`; `import-strategy.md` owns `POST /api/imports`, records and link endpoints, with `plugin_id = 'import.mcp'`. No `import_mapping` table is introduced. |
+
+### Remaining product questions
+
+These need one answer from the product owner; the MCP spec must not guess:
+
+1. **Workspace/read tool routes:** Should `list_workspaces`, `list_people`, `list_states` and
+   `list_my_work` keep their proposed MC paths, and what are their exact response and policy
+   contracts? At the accepted source, workspace listing and member reads are under singular
+   `/api/workspace` paths with browser-session guards. MCP uses an API key and `MC-19` forbids
+   bypassing those guards. The canonical work-item-type route is already corrected in the
+   table to the singular path from `work-items.md`.
+2. **Submission actor:** Is `create_submission` a staff operation on behalf of a customer?
+   If yes, define how requester and organisation are selected and which actor is recorded in
+   audit/activity. Neither the intake nor customer-portal contract specifies the proposed
+   staff-side `POST /api/submissions` behavior.
+3. **Audit:** Does `MC-4` require rows for reads, in addition to mutations? What durable
+   authority identifies MCP origin after its API key is revoked or deleted?
+4. **Limits:** What per-call cap and rate window apply specifically to
+   `bulk_create_work_items`? What unit, observation window and trigger rule define
+   `api_key_burst_threshold`? The import chunk size of 500 and the MC-7 approval threshold
+   of more than 50 are different controls and cannot answer these questions.
+
+### Implementation dependencies after contract closure
+
+| Dependency | Accepted-source evidence at `3096cb0` | Required evidence before the finding can close |
 | --- | --- | --- |
-| high | **`MC-14`'s feature flag cannot be enforced.** "The instance can be disabled from serving MCP entirely with `feature.mcp`." But by `MC`-architecture the MCP server is an external npm package holding a normal API key and calling ordinary `/api/*` routes — there is no MCP-specific request for the flag to reject, and `plugin-architecture.md`'s rule is that "a disabled feature returns `404` from the API". As written the flag does nothing. | Either (a) require MCP clients to send `X-TaskDesk-Client: mcp` and mark the API key `is_mcp`, rejecting those requests with `404` when the flag is off, or (b) mark the key itself as MCP-scoped at creation and reject the key. State which, and add the marker to the API key extension table (§7). |
-| high | **`MC-3` "OAuth device flow is offered as an alternative for interactive setup" is a whole authentication mechanism in one sentence** — no endpoints, no grant, no token lifetime, no relationship to better-auth, no statement of whether the resulting credential is an API key (`AK-8`: `Bearer tdk_…`) or an OAuth access token, and no mention in `god-mode.md`'s Authentication section or in the auth architecture. | Either specify it fully (device authorization endpoint, verification URI, poll interval, code TTL, what capability subset the issued credential gets, and where an admin disables it) or move it to `## Out of scope` for P4 with a pointer to the phase that owns it. |
-| high | **`MC-4` has no storage.** "Every MCP request is audited with the key's identity, and **the audit row is marked as agent-originated**." `audit_log` is `(actor_id, actor_ip, action, entity_type, entity_id, before, after, created_at)` — no origin, no key id, no actor type. Same root cause as `AU-4` in §6. | Add `actor_type` and `api_key_id` to `audit_log` per the §6 fix, and state that every MCP-originated write writes one. |
-| medium | **No `## API` section.** ~30 tools are listed with no mapping to routes, and several have no route anywhere in the corpus: `bulk_create_work_items`, `get_sla_status`, `create_import_mapping`/`get_import_mapping`, `list_saved_views`. `testing-strategy.md` promises a "tool-to-route parity" test (`pnpm test:mcp`) which cannot be written without this table. | Add a two-column table: tool → route → policy. It is also the fixture the parity test consumes. |
-| medium | **No `## Permissions` table** and **no `## Data` section**, both required by the template. | Add them; Permissions can be short ("every tool inherits its route's policy; the key's capability subset is intersected first"). |
-| medium | **`MC-10` and `api-design.md` disagree on rate limiting.** `MC-10`: "Rate limited per key, **more strictly than the human API**." `api-design.md`'s table: "API keys — **Configurable per key**", and `AK-4` says the same. So is the MCP limit a fixed stricter ceiling or the key's configured limit? No numbers are given for either. | State the rule: `min(key.rate_limit, mcp_ceiling)` with `mcp_ceiling` a God Mode setting (default e.g. 60 writes/minute), and add it to `api-design.md`'s table. |
-| medium | **"In God Mode: MCP usage — which keys, how many calls, which tools, error rates" is a screen that does not exist.** `god-mode.md` has no MCP section and asserts "Fifteen screens"; the inventory's God Mode section has no MCP row and no MCP anywhere. | Add a `God Mode — MCP usage` screen row and section, plus `GET /api/instance/mcp/usage` (`instance:admin`), and update the "fifteen" count — or delete the claim from this spec. |
-| medium | The edge case "a burst above threshold disables the key and notifies the owner" names no threshold, no notification event, and key auto-disable is not in the canonical event list. | Define the threshold as a God Mode setting and add `api_key.auto_disabled` to the event catalogue (§6). |
-| medium | **No `## Open questions` and no `## Out of scope` section.** Given `MC-3` and the `MC-14` problem, an empty Open questions here would be untrue rather than merely missing. | Add both; `MC-3` belongs in one of them until it is specified. |
-| low | `MC-7` gates "destructive tools — **delete**, bulk operations above 50 items" behind `confirm: true`, but no delete tool appears in the tool list. | Either add the delete tools or reword to "bulk operations above 50 items". |
-| low | The `Idempotency-Key` store `MC-5` calls mandatory is specified in `api-design.md` ("key, request hash and response are stored for 24 hours") and swept by the `session-cleanup` job, but **has no table in `data-model.md`**. | Add `idempotency_key (key, person_id, request_hash, response jsonb, status_code, expires_at)` to `data-model.md` §11. |
-| low | `create_import_mapping` writes `import_mapping`, whose `import_run_id` implies a parent `import_run` row that an ad-hoc agent session never creates. | State that an MCP-driven import opens an `import_run` with `plugin_id = 'import.mcp'` on first mapping write. |
+| MCP client tool parity | `packages/mcp/src/tools/register.ts` still registers legacy project/task tool names and routes; it does not implement the 29-tool MC contract. | Tool schemas and descriptions match the full MC list, and a focused parity suite verifies each route/method against its owning contract. |
+| MCP key and feature enforcement | `apps/api/src/database/schema.ts`, API-key resolution and policy middleware do not implement the documented `is_mcp` field/identity or `feature.mcp` refusal. | Approved schema/permission implementation, route-policy coverage and focused API/permission regressions; then source-level security review. |
+| API route availability and source parity | The accepted API has no MCP router. `apps/api/src/index.ts` mounts the project router at `/api/project`, while the project owner contract and MC table use `/api/projects`; the source project list also requires workspace context. The MC-only workspace/read/submission routes lack owner contracts, and import/submission MCP behavior is not implemented by this lane. | Resolve the workspace/read and submission product questions above. Reconcile or update the project route source against its owner contract through the owning API lane; then implement through the public API and demonstrate all mapped routes exist and use their registered policy. |
+| Audit semantics | `audit_log` stores `actor_type` and `api_key_id`; source audit writers do not establish the requested MCP-origin/read coverage. | Close the audit question, then demonstrate the required rows and durable provenance without adding undocumented fields. |
+| Prompt-injection and idempotency acceptance | The normative `tests/mcp/injection.test.ts` and tool-to-route parity obligations are specified, but `tests/mcp` is absent at this accepted source. | Add the specified tests and record actual focused results; no claim follows from the contract alone. |
 
-Capabilities: the spec names none directly, relying on route inheritance — acceptable given
-the architecture, but the missing API table makes it unverifiable.
+Until the product questions are answered and the listed dependencies are demonstrated, keep
+the section **not-ready for implementation**. Do not close it because a requirement is now
+written down.
 
 ---
 
