@@ -454,6 +454,11 @@ describe("API integration: work-item comments (#27)", () => {
       .from(schema.notificationTable)
       .where(eq(schema.notificationTable.personId, foreignCustomer.person.id));
     expect(foreignNotifications).toEqual([]);
+    const foreignWatchers = await db
+      .select({ personId: schema.watcherTable.personId })
+      .from(schema.watcherTable)
+      .where(eq(schema.watcherTable.personId, foreignCustomer.person.id));
+    expect(foreignWatchers).toEqual([]);
 
     const internalPreflight = await app.request(
       `/api/work-items/${workItem.key}/comments/mention-preflight`,
