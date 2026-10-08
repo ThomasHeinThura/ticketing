@@ -358,9 +358,9 @@ describe("API integration: work-item comments (#27)", () => {
       throw new Error("expected customer organisation");
     const customer = await addCustomerIdentity(customerOrganisation.id);
     await db
-      .update(schema.workspaceTable)
+      .update(schema.projectTable)
       .set({ organisationId: customerOrganisation.id })
-      .where(eq(schema.workspaceTable.id, creator.workspace.id));
+      .where(eq(schema.projectTable.id, project.id));
     await db
       .update(schema.workItemTable)
       .set({ customerVisibility: "organisation" })

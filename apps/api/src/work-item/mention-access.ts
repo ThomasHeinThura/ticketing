@@ -53,7 +53,7 @@ export async function findWorkItemMentionContext(
       key: workItemTable.key,
       workspaceId: workItemTable.workspaceId,
       projectId: workItemTable.projectId,
-      organisationId: workspaceTable.organisationId,
+      organisationId: projectTable.organisationId,
       customerVisibility: workItemTable.customerVisibility,
       requesterId: workItemTable.requesterId,
     })
@@ -187,7 +187,13 @@ export async function classifyWorkItemMentionPeople(
       tx,
     );
     if (!identity || identity.personId !== row.personId) continue;
-    const reachable = reaches(identity, reachFacts);
+    const reachable = reaches(identity, {
+      ...reachFacts,
+      // `customer_visibility` constrains customer organisation reach. It does not
+      // restrict staff with canonical project reach (CP-16 / RBAC § Reach).
+      visibleToPersonIds:
+        identity.side === "customer" ? reachFacts.visibleToPersonIds : null,
+    });
     if (row.side === "customer" && !reachable) continue;
     result.push({
       personId: row.personId,

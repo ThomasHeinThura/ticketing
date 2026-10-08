@@ -332,7 +332,7 @@ export async function findWorkItemReachQuery(
         id: workItemTable.id,
         projectId: workItemTable.projectId,
         workspaceId: workItemTable.workspaceId,
-        organisationId: workspaceTable.organisationId,
+        organisationId: projectTable.organisationId,
       })
       .from(workItemTable)
       .innerJoin(projectTable, eq(workItemTable.projectId, projectTable.id))

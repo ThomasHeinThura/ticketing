@@ -207,7 +207,9 @@ export async function evaluateCurrentNotificationReachAndPreference(
       projectId: resource.projectId,
       workspaceId: resource.workspaceId,
       organisationId: resource.organisationId,
-      visibleToPersonIds: resource.visibleToPersonIds,
+      // Private customer visibility does not remove staff project reach.
+      visibleToPersonIds:
+        identity.side === "customer" ? resource.visibleToPersonIds : null,
     };
     if (!reaches(identity, reachFacts))
       return { kind: "suppress", reason: "reach_lost" };
