@@ -1,3 +1,30 @@
+## Status first — verified 2026-10-08 02:59 UTC
+
+**Accepted main:** `3096cb044bdf6ae98488bfc385f532fa6386343a`. **Persistent OrbStack DEV:** exact `08842235047a3ab2714427edce80331b94558150`, image `sha256:75b153d7d9583993127e1be8c06453159e4fe7319abfcd8431f093c9ca002bcf`; Docker OCI/image and clean pinned checkout reverified. CA-verified standard ticketing HTTPS config200 and existing admin sign-in/session200 were checked without logging credentials. The old October1 credential failed401; the newer private October3 credential succeeded. Originals remain preserved; no password reset or deployment occurred. Chrome trust handoff remains pending.
+
+| Stage | Formal status |
+| --- | --- |
+| P0 | Open — #602 exact30aef; hosted19/22, authorization/installer/rollback/finalizer acceptance outstanding |
+| P1 | Open — #606 completed creation/preflight/history/fixture batch pushed; browser and bulk reviews in progress; #605 realtime separate |
+| P2 | Open — matured service-desk lanes, contract and integration obligations remain |
+| P3 | Open — portal/identity lanes; real Entra acceptance outstanding |
+| P4 | Open — query ownership/governance lanes; no phase acceptance |
+| P5–P7 | Open — no completion claim |
+
+**What changed:** #606 now pushed at `843e99692c4c0e8bfffc5f3687a3d01c10c1b2bb`. The completed batch composes scoped native mention creation/preflight, staff/customer reach distinctions, canonical project serving-organisation facts, recipient/delivery rechecks, existing mute preservation, the semantically unchanged admin lookup repository extraction and two stale paginated-activity E2E fixtures. Root built API and both web entries on exact843 successfully. Root exact frozenaf796 PostgreSQL18 comments suite passes23/23, including public same-org customer, internal exclusion, foreign-org no-watcher/no-notification and staff watcher/mute cases. Author focused notification eligibility units pass48/48. Original failed and source-moved runs remain failed/diagnostic; none is relabeled current843 acceptance. The root source-moved four-file attempt had66PASS/1FAIL (response body read twice in newly added test); the subsequent exactaf796 run fixes that fixture failure. Owned resources were removed and originals preserved.
+
+**Browser evidence:** actual843 built-UI mock-API journey ran02:55:34–02:55:43UTC and failed a private text assertion because avatar initials precede candidate names. The popup rendered three expected candidates; later selection/save is not yet proven. The failed trace/receipt remains private; a separate corrected harness is being prepared without product, retry or timeout changes. This is UI fixture proof, distinct from actual PostgreSQL API proof and persistent DEV browser verification. The current843 bulk ordinary/security reviews are not yet cleared. The earlierb6 and c573 reviews retain their exact scope/head only.
+
+**Hosted gates:** historical exactb6d3 full37716564199 is19/22: LCP2816/2500ms, create-work-item visibility check and board598.6/500ms fail. Its E2E withdrawal crash was traced to an array fallback for the newly paginated activity endpoint; the visual detail fixture had the same class and both were corrected. Zoom-last-row failure remains separate. Token12-context drift, five OpenAPI changes, inventory and review metadata remain honest blockers; no waiver. Fresh843 checks belong to843 only. Historical #589 remains2350397b until post-P0 recreation; #599 stays outside P0.
+
+**P0 attribution:** current30aef product/CI source remains unchanged. Retained V3 initial/board captures have small spread-out mapped application self costs; layout lacks source initiators. Offline network followup shows dialog-family transfers overlap LCP but does not prove their initiating import or paint dependency. No product correction or savings claim is justified by these captures, and the overallV3 run remainsFAIL. No new unchanged performance retry, speculative source patch, FINAL_P0_SHA or historical22/22 carry-forward claim.
+
+**Private seeding:** four supported workspace roles (owner/admin/member/viewer) now have a private API-based preparation packet. Originalv1 was blocked by independent Sol: missing atomic-write import and invitation-acceptance recovery, plus ownership/source-path issues. All were addressed together in immutablev2 with14 offline tests; v2 independent delta review is running. No test accounts have been provisioned yet. Existing instance-admin is preserved; manager/lead/customer provisioning lacks canonical paths on deployed088 and remains an explicit later-source gap. Seeders, session files and future credentials remain outside Git/GitHub with0700/0600 modes. No all-eight-role completion claim.
+
+**Critical path (P0):** unchanged22/22 and remaining exact-head gates; exact installer/image/migrations/rollback; eligible reversible strict runtime proof and scoped October9 observation; protected merge; fresh accepted-main Sol finalizer and issue reconciliation. Exactly one further qualifying actual UTC bucket remains for the nine changed nonmember reads; no full-day/72-hour claim, blanket recollection or elapsed-time cutover. No protected merge, strict activation, official candidate release or phase completion occurred. Genuine previously raised decisions remain pending; engineering corrections continue autonomously.
+
+---
+
 ## Status first — verified 2026-10-08 02:23 UTC
 
 **Accepted main:** `3096cb044bdf6ae98488bfc385f532fa6386343a`. **Persistent OrbStack DEV:** revision `08842235047a3ab2714427edce80331b94558150`, image `sha256:75b153d7d9583993127e1be8c06453159e4fe7319abfcd8431f093c9ca002bcf`. Standard ticketing/portal HTTPS has the retained 8/8 CA-verified readiness proof; application/data/secrets unchanged. Chrome trust handoff remains pending: the user's intent to handle the warnings is not a completed browser verification.
