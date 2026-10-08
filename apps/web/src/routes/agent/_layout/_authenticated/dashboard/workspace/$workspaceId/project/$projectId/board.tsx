@@ -19,21 +19,22 @@ import { useGetActiveWorkspaceUsers } from "@/hooks/queries/workspace-users/use-
 import { useBoardSort } from "@/hooks/use-board-sort";
 import { useRegisterShortcuts } from "@/hooks/use-keyboard-shortcuts";
 import { useTaskFiltersWithLabelsSupport } from "@/hooks/use-task-filters-with-labels-support";
+import {
+  type ProjectBoardSearch,
+  parseProjectBoardSearch,
+  resolveProjectBoardLayout,
+  withProjectBoardLayout,
+  withProjectBoardTask,
+} from "@/lib/project-board-search";
 import { sortTasks } from "@/lib/sort-tasks";
 import useProjectStore from "@/store/project";
 import { useUserPreferencesStore } from "@/store/user-preferences";
-
-type BoardSearchParams = {
-  taskId?: string;
-};
 
 export const Route = createFileRoute(
   "/_layout/_authenticated/dashboard/workspace/$workspaceId/project/$projectId/board",
 )({
   component: RouteComponent,
-  validateSearch: (search: Record<string, unknown>): BoardSearchParams => ({
-    taskId: typeof search.taskId === "string" ? search.taskId : undefined,
-  }),
+  validateSearch: parseProjectBoardSearch,
 });
 
 const skeletonColumns = [
@@ -82,12 +83,14 @@ function BoardSkeleton() {
 function RouteComponent() {
   const { t } = useTranslation();
   const { projectId, workspaceId } = Route.useParams();
-  const { taskId } = Route.useSearch();
+  const { taskId, layout } = Route.useSearch();
   const navigate = useNavigate();
   const { data } = useGetTasks(projectId);
   const queryClient = useQueryClient();
   const { project, setProject } = useProjectStore();
-  const { viewMode, setViewMode } = useUserPreferencesStore();
+  const { viewMode: preferredViewMode, setViewMode } =
+    useUserPreferencesStore();
+  const viewMode = resolveProjectBoardLayout(layout, preferredViewMode);
   const [isTaskModalOpen, setIsTaskModalOpen] = useState(false);
   const [boardSearchQuery, setBoardSearchQuery] = useState("");
   const [isBoardSearchMounted, setIsBoardSearchMounted] = useState(false);
@@ -96,13 +99,40 @@ function RouteComponent() {
     useState<HTMLInputElement | null>(null);
   const { sort, setSort } = useBoardSort(projectId);
 
+  const handleViewModeChange = useCallback(
+    (nextLayout: "board" | "list") => {
+      setViewMode(nextLayout);
+      navigate({
+        to: ".",
+        search: (previous: ProjectBoardSearch) =>
+          withProjectBoardLayout(previous, nextLayout),
+      });
+    },
+    [navigate, setViewMode],
+  );
+
+  useEffect(() => {
+    if (layout && layout !== preferredViewMode) setViewMode(layout);
+  }, [layout, preferredViewMode, setViewMode]);
+
+  useEffect(() => {
+    if (layout) return;
+    navigate({
+      to: ".",
+      search: (previous: ProjectBoardSearch) =>
+        withProjectBoardLayout(previous, viewMode),
+      replace: true,
+    });
+  }, [layout, navigate, viewMode]);
+
   const { data: users } = useGetActiveWorkspaceUsers(workspaceId);
   const { data: workspaceLabels = [] } = useGetLabelsByWorkspace(workspaceId);
 
   const handleCloseTaskSheet = useCallback(() => {
     navigate({
       to: ".",
-      search: {},
+      search: (previous: ProjectBoardSearch) =>
+        withProjectBoardTask(previous, undefined),
       replace: true,
     });
   }, [navigate]);
@@ -110,8 +140,8 @@ function RouteComponent() {
   useRegisterShortcuts({
     sequentialShortcuts: {
       [shortcuts.view.prefix]: {
-        [shortcuts.view.board]: () => setViewMode("board"),
-        [shortcuts.view.list]: () => setViewMode("list"),
+        [shortcuts.view.board]: () => handleViewModeChange("board"),
+        [shortcuts.view.list]: () => handleViewModeChange("list"),
         [shortcuts.view.calendar]: () =>
           navigate({
             to: "/dashboard/workspace/$workspaceId/project/$projectId/calendar",
@@ -248,7 +278,7 @@ function RouteComponent() {
           users={users}
           workspaceLabels={workspaceLabels}
           viewMode={viewMode}
-          setViewMode={setViewMode}
+          setViewMode={handleViewModeChange}
           sort={sort}
           onSortChange={setSort}
         />

@@ -36,6 +36,10 @@ import type { useGetActiveWorkspaceUsers } from "@/hooks/queries/workspace-users
 import { useBulkSelectionKeyboardShortcuts } from "@/hooks/use-bulk-selection-keyboard-shortcuts";
 import { useRegisterShortcuts } from "@/hooks/use-keyboard-shortcuts";
 import { isTaskCompleted } from "@/lib/due-date-status";
+import {
+  type ProjectBoardSearch,
+  withProjectBoardTask,
+} from "@/lib/project-board-search";
 import useBulkSelectionStore from "@/store/bulk-selection";
 import useProjectStore from "@/store/project";
 import { useUserPreferencesStore } from "@/store/user-preferences";
@@ -142,7 +146,11 @@ function KanbanBoard({
       );
       navigate({
         to: ".",
-        search: currentTaskId === taskId ? {} : { taskId },
+        search: (previous: ProjectBoardSearch) =>
+          withProjectBoardTask(
+            previous,
+            currentTaskId === taskId ? undefined : taskId,
+          ),
       });
     },
     [navigate],
@@ -201,14 +209,22 @@ function KanbanBoard({
         focusNext();
         const state = useBulkSelectionStore.getState();
         if (state.focusedTaskId) {
-          navigate({ to: ".", search: { taskId: state.focusedTaskId } });
+          navigate({
+            to: ".",
+            search: (previous: ProjectBoardSearch) =>
+              withProjectBoardTask(previous, state.focusedTaskId ?? undefined),
+          });
         }
       },
       k: () => {
         focusPrevious();
         const state = useBulkSelectionStore.getState();
         if (state.focusedTaskId) {
-          navigate({ to: ".", search: { taskId: state.focusedTaskId } });
+          navigate({
+            to: ".",
+            search: (previous: ProjectBoardSearch) =>
+              withProjectBoardTask(previous, state.focusedTaskId ?? undefined),
+          });
         }
       },
       Enter: () => {

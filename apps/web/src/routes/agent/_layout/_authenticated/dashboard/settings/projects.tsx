@@ -17,7 +17,6 @@ import {
   SidebarMenu,
   SidebarMenuItem,
 } from "@taskdesk/ui";
-import { Eye, GitBranch, Plug, Settings } from "lucide-react";
 import { useEffect } from "react";
 import { useTranslation } from "react-i18next";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/avatar";
@@ -26,6 +25,7 @@ import useGetProjects from "@/hooks/queries/project/use-get-projects";
 import { useWorkspacePermission } from "@/hooks/use-workspace-permission";
 import { cn } from "@/lib/cn";
 import { getInitials } from "@/lib/get-initials";
+import { getProjectSettingsMenuItems } from "@/lib/project-settings-navigation";
 
 export const Route = createFileRoute(
   "/_layout/_authenticated/dashboard/settings/projects",
@@ -38,28 +38,7 @@ function RouteComponent() {
   const { workspace, role } = useWorkspacePermission();
   const location = useLocation();
   const navigate = useNavigate();
-  const menuItems = [
-    {
-      title: t("settings:projectGeneral.title"),
-      icon: Settings,
-      segment: "general",
-    },
-    {
-      title: t("settings:projectVisibility.title"),
-      icon: Eye,
-      segment: "visibility",
-    },
-    {
-      title: t("settings:projectIntegrations.title"),
-      icon: Plug,
-      segment: "integrations",
-    },
-    {
-      title: t("settings:projectWorkflow.title"),
-      icon: GitBranch,
-      segment: "workflow",
-    },
-  ];
+  const menuItems = getProjectSettingsMenuItems(t);
   const { data: projects } = useGetProjects({
     workspaceId: workspace?.id || "",
   });
