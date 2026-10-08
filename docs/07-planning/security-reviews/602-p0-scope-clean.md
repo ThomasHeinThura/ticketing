@@ -129,3 +129,63 @@ An earlier retained private source report, `sol-security-23.md` in that evidence
 At reconciliation, the live PR head was 23a; GitHub had no submitted review records (`reviews: []`, `reviewDecision: ""`). The exact-head written reviews above are retained independent evidence, not GitHub review events. The hosted `pull request template + security review` check was still failing on stale-note and PR-body metadata and must pass on the pushed note-only successor before merge eligibility can be reconsidered.
 
 Independent adjudication of retained V19 evidence records a pass for the bounded disposable off→shadow→off witness only. It does not establish strict cutover or full runtime acceptance. The actual Oct 9 observation remains pending. Config and task prerequisites, strict activation/rollback, signed-release installer/upgrade/rollback, and the fresh accepted-main P0 phase finalizer remain pending. Image publication policy for this lane is GHCR only; no Docker Hub publication or fallback is authorized or claimed. No production deployment, merge, waiver, or phase completion is claimed here.
+
+## Notification task-read security correction — exact 650 source
+
+**Reviewed source head:** `650edd447899f5d9e52c50c718abef0f7aad91b2`, based on
+`2b7192eb5181d50085f8734d2c5da226e301453e` through the notification corrections
+`5ec772771497e5883ff4c55f272cd34df737b585`,
+`b890c86a0feaba018d298273527d86058cb56921`,
+`5712b967a428d5275edf19aaeaa6f69203e949d3`, and exact candidate `650edd44`. This later
+source correction addresses concrete P0 security findings; it does not revise the frozen
+palette/source history above. The notification product source reviewed here is exact 650. This
+section is a source-bound record, not current PR/check status.
+
+The retained review history stays attached to its own exact heads:
+
+| Candidate | Independent review record | Verdict and disposition |
+| --- | --- | --- |
+| `5ec772771497e5883ff4c55f272cd34df737b585` | `notification-5ec-luna-authority.md`, `notification-5ec-luna-lifecycle.md`, `notification-5ec-luna-contract.md` | One authority review was **CLEAR** by inspection; two reviews were **BLOCKED** for missing effective `work_item:read`, unsupported same-organisation customer task reach, and missing per-provider rechecks. Those verdicts remain historical. |
+| `b890c86a0feaba018d298273527d86058cb56921` | `notification-b890-luna-authority.md`, `notification-b890-luna-lifecycle.md`, `notification-b890-luna-contract.md` | Lifecycle was **CLEAR**. Authority and contract were **BLOCKED**: API-key capability-clamp bypass in the self GET, and stale email reach during adapter rendering. Earlier task-read/customer and network-provider blockers were addressed in this source. |
+| `650edd447899f5d9e52c50c718abef0f7aad91b2` | `notification-650-luna-authority.md`, `notification-650-luna-lifecycle.md` | Two fresh independent GPT-6 Luna contexts were **CLEAR**. They inspected the credential delta and source/tests and ran `git diff --check`; they did not run tests or database probes. |
+| `650edd447899f5d9e52c50c718abef0f7aad91b2` | `notification-5712-sol-security.md` | Fresh independent GPT-6 Sol security review **CLEAR** on the complete consolidated 13-file notification correction from `2b7192eb` to exact 650. The email-after-render issue was a narrower instance of the already-repeated stale-reach/provider-boundary class; the structural adapter callback and real render/transport regression close it, so no extra same-class Luna round is claimed. |
+
+Private reports are retained outside Git under
+`/Users/heinthura/.codex/taskdesk-evidence/2026-10-08/`. Historical blocked reports have not
+been edited or relabelled.
+
+### Correction and source-bound evidence
+
+The legacy `task` notification path correlates recipient, task and live project; requires
+current staff reach plus canonical effective `work_item:read`; denies customer task visibility
+where the legacy row cannot prove NO-18/NO-19 requester entitlement; and filters before the
+inbox limit or applies the same predicate to writes. Role implications and project/workspace
+scope precedence use canonical permission helpers. For the self-scoped GET, task rows also
+require the authenticated API key's existing parsed permission subset to expand to
+`work_item:read`; current owner role/reach and key scope are intersected, while non-task self
+notifications and browser-session behavior remain available. Each outbound provider rechecks
+current reach at its final I/O boundary, including after asynchronous destination validation and
+after email template rendering immediately before `sendMail`. Notification mutations remain
+session-only. No new route, capability, key mapping, migration, dependency or provider behavior
+was added.
+
+The Sol reviewer independently ran:
+
+- Isolated PostgreSQL 18 Testcontainers: **1 file / 8 tests passed** for
+  `notification-task-reach.test.ts`.
+- Targeted email wrapper test: **1 file / 2 tests passed**. It renders the real notification
+  template, controls the async authorization check during simulated revocation, and verifies the
+  transport is suppressed on denial while the allowed case sends rendered HTML.
+- `pnpm --filter @taskdesk/email build` and `git diff --check`: passed.
+
+The author's exact-650 local run additionally passed API typecheck, two focused PostgreSQL
+files **/ 10 tests** (notification reach plus the audit-failure notification caller), Biome on
+the five touched API/test files, and `git diff --check`. An earlier author email-package
+invocation passed **7 files / 18 tests**; a separate direct targeted run passed **1 file / 2
+tests**. The broader count is not represented as the targeted email count. These counts are
+separate from b890 (**1 file / 7 tests**) and 5712 checks.
+
+This review chain and its runs are source-bound to exact 650. They do not establish hosted CI,
+Docker image build/boot, performance or browser acceptance, production-provider delivery, merge
+readiness, or the additive fresh GPT-6.1 Sol P0 phase finalizer. Frozen install/upgrade/rollback
+and runtime acceptance remain separate gates.
