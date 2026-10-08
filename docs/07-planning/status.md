@@ -1,3 +1,30 @@
+## Status first — verified 2026-10-08 00:14 UTC
+
+**Accepted main:** `3096cb044bdf6ae98488bfc385f532fa6386343a`. **Accepted deployment:** persistent OrbStack DEV remains revision `08842235047a3ab2714427edce80331b94558150`, image `sha256:75b153d7d9583993127e1be8c06453159e4fe7319abfcd8431f093c9ca002bcf`. Last actual CA-verified readiness200 was on both hosts at8443; standard443 remains unavailable. No protected merge, persistent redeployment, strict activation or phase finalizer occurred.
+
+| Stage | Formal status |
+| --- | --- |
+| P0 | Open — sole closure PR #602; latest completed hosted G11 **19/22**, reviewed correction now running |
+| P1 | Open — reviewed realtime #605; complete activity/comments/history batch #606 under bulk review and runtime verification |
+| P2 | Open — approvals/intake/SLA implementation; two intake contracts and integration acceptance pending |
+| P3 | Open — portal/identity implementation; real-provider and integrated acceptance pending |
+| P4 | Open — query ownership branch complete; settings/custom-field/lead contracts and runtime gaps remain |
+| P5–P7 | Open — no completion claim |
+
+**P0 convergence:** previous product01de full run `37700952445` passed22/22. Review-note-only frozen descendant `1878d6f17d46908885b36c45dddd069a19e5004b` then failed full run `37703108224`: **19/22**, LCP2552/2500ms, task-state207.1/200ms and board687.3/500ms; list497.5/500ms passed. PostgreSQL137files/1659tests, G4/G8/E2E passed. Both raw results are retained; no cause or transferable green acceptance is asserted. Mandatory two-file UI correction `670442d820d3569fefb024120d2929ff6296668c` warms palette code without mounting closed controls. Two fresh Luna reviews each independently passed1file/5tests; separate Sol UI confirmation is CLEAR with no tests run. Note-only descendant **`d4eb84035d3c4368b2ad5adf7af47bfecefa0fda`** now owns sole #602. Full hosted `37706535532` and fast `37706535974` are queued/running. Benchmarks, fixtures, budgets, retries and assertions are unchanged. Its performance disposition is pending; it is not yet a final accepted freeze.
+
+**Runtime/security:** exact1878 image built successfully: `sha256:7d561d72598d86d1cc7ba5a5ef911f341aba488286a0db50a67d494bb076967f`, arm64, OCI1878, actualUID10001; installer20/20 tests passed. Reviewed private runner-v2 manifest `92423a3e34aaab1d521e6f17a2c27a0dceba996232407268c5772ad3a192c1ae` cleared focused Luna and full independent Sol. Actual disposable off/shadow execution **stopped before acquisition**, because its generic absence check rejected the intentionally prebuilt external image. Original resources were preserved, no new container/volume/network remains; no runtime API pass is claimed. A structural ownership-aware correction is being prepared. Official signed installer sequencing has a pending product decision because current release workflow signs main-reachable source only. Off/shadow/strict/rollback, exact upgrade/migrations/rollback, independent Oct4/5/6 compatibility, all hosted acceptance and accepted-main phase finalizer remain outstanding. #8/#592/#593 stay open; no additional calendar wait is required or used.
+
+**P1 accepted capability progress:** #605 remains024, two Luna8/8, actual native17/17 with explicit source equivalence and current-source browser1/1; image/integrated acceptance pending. #606 now **`6aed1e69b95f7c04e99b37c66d3c3ce6b800880d`** includes native activity/comment pagination, URL filters, JSON composer/edit/drafts/canned insertion, project default visibility and live-comment version history. Root actual60cc browser found editor-null lifecycle crash; completed1e00 structural guards and rendered regressions address it, but current6aed browser is not yet proven. Three fresh independent Luna contexts are reviewing the completed batch, followed by required independent Sol. New DB-backed default-visibility/history regressions await root execution. Four inherited pending-action closed-enum contract errors remain open. Mentions/watchers, attachment linkage, governed deletion and the authorized actor's approvals404 remain explicit later-stage residuals.
+
+**Scope/integration:** #599 stays outside P0. #558/#575/#583/#590/#587/#600/#604 are closed/superseded with history/evidence preserved. Historical #589 stays235 until recreation from accepted post-P0 main with central migration allocation. #603 has zero unowned reads on its branch, not accepted P4. OrbStack nativearm64 audit found no emulation in app/data images; Docker Desktop is absent, so no A/B claim. Hosted timing is authoritative.
+
+**Private seeding:** prior eight-role private proof remains39 native +3 supplemental tests and23PASS/0FAIL/1BLOCKED HTTP probes. No all24HTTP-pass or persistent seeded-user claim. Seeders, random credentials and credential Markdown stay outside Git/GitHub; owned temporary credentials/resources were removed. Historical secret finding remains unresolved, not suppressed.
+
+**Critical path:** (1) unchanged hosted22/22 on one reviewed P0 source; (2) exact image/installer/migration/upgrade/rollback; (3) reversible authorization runtime and observation compatibility; (4) protected merge; (5) fresh independent GPT-6.1 Sol phase finalizer and P0 issue reconciliation. Next merge candidate is #602 only after those gates; later-stage implementation continues. Historical snapshots follow.
+
+---
+
 ## Status first — verified 2026-10-07 23:34 UTC
 
 **Accepted main:** `3096cb044bdf6ae98488bfc385f532fa6386343a`. **Persistent OrbStack DEV:** revision `08842235047a3ab2714427edce80331b94558150`, image `sha256:75b153d7d9583993127e1be8c06453159e4fe7319abfcd8431f093c9ca002bcf`; actual UID10001, CA-verified readiness200 on both hosts at8443. Standard443 remains unavailable. No new persistent deployment, protected merge, strict activation or phase finalizer occurred.
