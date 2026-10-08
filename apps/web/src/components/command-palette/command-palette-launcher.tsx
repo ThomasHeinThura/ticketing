@@ -26,7 +26,6 @@ type IdleWindow = Window & {
 export default function CommandPaletteLauncher() {
   const [requested, setRequested] = useState(false);
   const [open, setOpen] = useState(false);
-  const [hasOpened, setHasOpened] = useState(false);
   const [request, setRequest] = useState<CommandPaletteRequest | null>(null);
   const [keepMounted, setKeepMounted] = useState(false);
   const requestedRef = useRef(false);
@@ -49,10 +48,6 @@ export default function CommandPaletteLauncher() {
     [cancelIdleMount],
   );
   const togglePalette = useCallback(() => {
-    // The first palette shortcut is always an open from the initial closed
-    // state. Remember that intent so the expensive command descendants stay
-    // mounted across subsequent close/reopen cycles.
-    setHasOpened(true);
     setOpen((current) => {
       const next = !current;
       dispatch(next ? "open" : "close");
@@ -158,7 +153,6 @@ export default function CommandPaletteLauncher() {
         request={request}
         onRequestHandled={onRequestHandled}
         keepMounted={keepMounted}
-        hasOpened={hasOpened}
       />
     </Suspense>
   );

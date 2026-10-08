@@ -80,14 +80,12 @@ export function CommandPalette({
   request,
   onRequestHandled,
   keepMounted,
-  hasOpened,
 }: {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   request: CommandPaletteRequest | null;
   onRequestHandled: (id: number) => void;
   keepMounted: boolean;
-  hasOpened: boolean;
 }) {
   const { t } = useTranslation();
   const { setTheme } = useUserPreferencesStore();
@@ -353,80 +351,76 @@ export function CommandPalette({
           keepMounted={keepMounted}
           blurBackdrop={false}
         >
-          {hasOpened || open ? (
-            <Command
-              items={groupedItems}
-              onItemHighlighted={handleItemHighlighted}
-            >
-              <CommandInput
-                autoFocus={false}
-                placeholder={t("navigation:commandPalette.inputPlaceholder")}
-              />
-              <CommandPanel>
-                <CommandEmpty>
-                  {t("navigation:commandPalette.empty")}
-                </CommandEmpty>
-                <CommandList>
-                  {(group: PaletteGroup, groupIndex: number) => (
-                    <Fragment key={group.value}>
-                      <CommandGroup items={group.items}>
-                        <CommandGroupLabel>{group.label}</CommandGroupLabel>
-                        <CommandCollection>
-                          {(item: PaletteActionItem) => {
-                            return (
-                              <CommandItem
-                                key={item.value}
-                                value={item.value}
-                                onClick={() => runCommand(item.onRun)}
-                                className="px-3"
-                              >
-                                <span className="flex-1">{item.label}</span>
-                                {item.shortcut && (
-                                  <CommandShortcut>
-                                    {item.shortcut}
-                                  </CommandShortcut>
-                                )}
-                              </CommandItem>
-                            );
-                          }}
-                        </CommandCollection>
-                      </CommandGroup>
-                      {groupIndex < groupedItems.length - 1 && (
-                        <CommandSeparator />
-                      )}
-                    </Fragment>
-                  )}
-                </CommandList>
-              </CommandPanel>
-              <CommandFooter>
-                <div className="flex items-center gap-4">
-                  <div className="flex items-center gap-2">
-                    <KbdGroup>
-                      <Kbd>
-                        <ArrowUpIcon />
-                      </Kbd>
-                      <Kbd>
-                        <ArrowDownIcon />
-                      </Kbd>
-                    </KbdGroup>
-                    <span>
-                      {t("navigation:commandPalette.footer.navigate")}
-                    </span>
-                  </div>
-                  <div className="flex items-center gap-2">
+          <Command
+            items={groupedItems}
+            onItemHighlighted={handleItemHighlighted}
+          >
+            <CommandInput
+              autoFocus={false}
+              placeholder={t("navigation:commandPalette.inputPlaceholder")}
+            />
+            <CommandPanel>
+              <CommandEmpty>
+                {t("navigation:commandPalette.empty")}
+              </CommandEmpty>
+              <CommandList>
+                {(group: PaletteGroup, groupIndex: number) => (
+                  <Fragment key={group.value}>
+                    <CommandGroup items={group.items}>
+                      <CommandGroupLabel>{group.label}</CommandGroupLabel>
+                      <CommandCollection>
+                        {(item: PaletteActionItem) => {
+                          return (
+                            <CommandItem
+                              key={item.value}
+                              value={item.value}
+                              onClick={() => runCommand(item.onRun)}
+                              className="px-3"
+                            >
+                              <span className="flex-1">{item.label}</span>
+                              {item.shortcut && (
+                                <CommandShortcut>
+                                  {item.shortcut}
+                                </CommandShortcut>
+                              )}
+                            </CommandItem>
+                          );
+                        }}
+                      </CommandCollection>
+                    </CommandGroup>
+                    {groupIndex < groupedItems.length - 1 && (
+                      <CommandSeparator />
+                    )}
+                  </Fragment>
+                )}
+              </CommandList>
+            </CommandPanel>
+            <CommandFooter>
+              <div className="flex items-center gap-4">
+                <div className="flex items-center gap-2">
+                  <KbdGroup>
                     <Kbd>
-                      <CornerDownLeftIcon />
+                      <ArrowUpIcon />
                     </Kbd>
-                    <span>{t("navigation:commandPalette.footer.open")}</span>
-                  </div>
+                    <Kbd>
+                      <ArrowDownIcon />
+                    </Kbd>
+                  </KbdGroup>
+                  <span>{t("navigation:commandPalette.footer.navigate")}</span>
                 </div>
                 <div className="flex items-center gap-2">
-                  <Kbd>Esc</Kbd>
-                  <span>{t("navigation:commandPalette.footer.close")}</span>
+                  <Kbd>
+                    <CornerDownLeftIcon />
+                  </Kbd>
+                  <span>{t("navigation:commandPalette.footer.open")}</span>
                 </div>
-              </CommandFooter>
-            </Command>
-          ) : null}
+              </div>
+              <div className="flex items-center gap-2">
+                <Kbd>Esc</Kbd>
+                <span>{t("navigation:commandPalette.footer.close")}</span>
+              </div>
+            </CommandFooter>
+          </Command>
         </CommandDialogPopup>
       </CommandDialog>
 
