@@ -8,6 +8,16 @@ export { generatedRouteMetadata } from "./generated-route-metadata";
 
 import { generatedRouteMetadata } from "./generated-route-metadata";
 import {
+  type ProjectBacklogSearch,
+  type ProjectBoardSearch,
+  parseProjectBacklogSearch,
+  parseProjectBoardSearch,
+} from "./project-board-search";
+import {
+  type ProjectCalendarSearch,
+  parseProjectCalendarSearch,
+} from "./project-calendar-search";
+import {
   parseWorkItemListSearch,
   type WorkItemFilterMode,
   type WorkItemListSearch,
@@ -89,6 +99,14 @@ export type SavedViewUrlSearch = {
 export type MyWorkSearch = { lens: "approvals" };
 export type WorkItemActivityFilter = "everything" | "comments" | "public";
 export type WorkItemDetailSearch = { activity?: WorkItemActivityFilter };
+export type ProjectRouteParams = { workspaceId: string; projectId: string };
+
+const PROJECT_BACKLOG_PATH =
+  "/dashboard/workspace/$workspaceId/project/$projectId/backlog";
+const PROJECT_BOARD_PATH =
+  "/dashboard/workspace/$workspaceId/project/$projectId/board";
+const PROJECT_CALENDAR_PATH =
+  "/dashboard/workspace/$workspaceId/project/$projectId/calendar";
 
 export function parseWorkItemDetailSearch(raw: unknown): WorkItemDetailSearch {
   const candidate = (raw ?? {}) as Record<string, unknown>;
@@ -220,6 +238,106 @@ export function parseServiceCalendarListSearchFromQueryString(
 }
 
 export const routes = {
+  /** Project backlog and its task-panel URL state. */
+  projectBacklog: {
+    path: PROJECT_BACKLOG_PATH,
+    build: (
+      params: ProjectRouteParams,
+      search: Partial<ProjectBacklogSearch> = {},
+    ) => {
+      const pathname = buildGeneratedRouteUrl(
+        "agent",
+        PROJECT_BACKLOG_PATH,
+        params,
+      );
+      const { taskId } = parseProjectBacklogSearch(search);
+      const query = new URLSearchParams();
+      if (taskId) query.set("taskId", taskId);
+      const suffix = query.toString();
+      return `${pathname}${suffix ? `?${suffix}` : ""}`;
+    },
+    parse: (input: string) => {
+      const match = parseGeneratedRouteUrl(
+        "agent",
+        PROJECT_BACKLOG_PATH,
+        input,
+      );
+      if (!match) return undefined;
+      const query = new URL(input, "https://route.invalid").searchParams;
+      return {
+        params: match.params as ProjectRouteParams,
+        search: parseProjectBacklogSearch({ taskId: query.get("taskId") }),
+      };
+    },
+  },
+  /** Project Board/List layout and task-panel URL state. */
+  projectBoard: {
+    path: PROJECT_BOARD_PATH,
+    build: (
+      params: ProjectRouteParams,
+      search: Partial<ProjectBoardSearch> = {},
+    ) => {
+      const pathname = buildGeneratedRouteUrl(
+        "agent",
+        PROJECT_BOARD_PATH,
+        params,
+      );
+      const resolved = parseProjectBoardSearch(search);
+      const query = new URLSearchParams();
+      if (resolved.layout) query.set("layout", resolved.layout);
+      if (resolved.taskId) query.set("taskId", resolved.taskId);
+      const suffix = query.toString();
+      return `${pathname}${suffix ? `?${suffix}` : ""}`;
+    },
+    parse: (input: string) => {
+      const match = parseGeneratedRouteUrl("agent", PROJECT_BOARD_PATH, input);
+      if (!match) return undefined;
+      const query = new URL(input, "https://route.invalid").searchParams;
+      return {
+        params: match.params as ProjectRouteParams,
+        search: parseProjectBoardSearch({
+          layout: query.get("layout"),
+          taskId: query.get("taskId"),
+        }),
+      };
+    },
+  },
+  /** Project calendar month and task-panel URL state. */
+  projectCalendar: {
+    path: PROJECT_CALENDAR_PATH,
+    build: (
+      params: ProjectRouteParams,
+      search: Partial<ProjectCalendarSearch> = {},
+    ) => {
+      const pathname = buildGeneratedRouteUrl(
+        "agent",
+        PROJECT_CALENDAR_PATH,
+        params,
+      );
+      const resolved = parseProjectCalendarSearch(search);
+      const query = new URLSearchParams();
+      if (resolved.month) query.set("month", resolved.month);
+      if (resolved.taskId) query.set("taskId", resolved.taskId);
+      const suffix = query.toString();
+      return `${pathname}${suffix ? `?${suffix}` : ""}`;
+    },
+    parse: (input: string) => {
+      const match = parseGeneratedRouteUrl(
+        "agent",
+        PROJECT_CALENDAR_PATH,
+        input,
+      );
+      if (!match) return undefined;
+      const query = new URL(input, "https://route.invalid").searchParams;
+      return {
+        params: match.params as ProjectRouteParams,
+        search: parseProjectCalendarSearch({
+          month: query.get("month"),
+          taskId: query.get("taskId"),
+        }),
+      };
+    },
+  },
   /** `docs/02-design/screen-inventory.md` "Approvals inbox". */
   myWork: {
     path: "/agent/my-work" as const,

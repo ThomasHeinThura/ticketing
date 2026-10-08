@@ -26,6 +26,7 @@ import {
   withProjectBoardLayout,
   withProjectBoardTask,
 } from "@/lib/project-board-search";
+import { routes } from "@/lib/routes";
 import { sortTasks } from "@/lib/sort-tasks";
 import useProjectStore from "@/store/project";
 import { useUserPreferencesStore } from "@/store/user-preferences";
@@ -101,12 +102,13 @@ function RouteComponent() {
   const handleViewModeChange = useCallback(
     (nextLayout: "board" | "list") => {
       navigate({
-        to: ".",
+        to: routes.projectBoard.path,
+        params: { workspaceId, projectId },
         search: (previous: ProjectBoardSearch) =>
           withProjectBoardLayout(previous, nextLayout),
       });
     },
-    [navigate],
+    [navigate, projectId, workspaceId],
   );
 
   const { data: users } = useGetActiveWorkspaceUsers(workspaceId);
@@ -114,12 +116,13 @@ function RouteComponent() {
 
   const handleCloseTaskSheet = useCallback(() => {
     navigate({
-      to: ".",
+      to: routes.projectBoard.path,
+      params: { workspaceId, projectId },
       search: (previous: ProjectBoardSearch) =>
         withProjectBoardTask(previous, undefined),
       replace: true,
     });
-  }, [navigate]);
+  }, [navigate, projectId, workspaceId]);
 
   useRegisterShortcuts({
     sequentialShortcuts: {
@@ -128,8 +131,9 @@ function RouteComponent() {
         [shortcuts.view.list]: () => handleViewModeChange("list"),
         [shortcuts.view.calendar]: () =>
           navigate({
-            to: "/dashboard/workspace/$workspaceId/project/$projectId/calendar",
+            to: routes.projectCalendar.path,
             params: { workspaceId, projectId },
+            search: { taskId },
           }),
         [shortcuts.view.gantt]: () =>
           navigate({
@@ -138,8 +142,9 @@ function RouteComponent() {
           }),
         [shortcuts.view.backlog]: () =>
           navigate({
-            to: "/dashboard/workspace/$workspaceId/project/$projectId/backlog",
+            to: routes.projectBacklog.path,
             params: { workspaceId, projectId },
+            search: { taskId },
           }),
       },
     },

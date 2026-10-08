@@ -36,23 +36,19 @@ import { getInitials } from "@/lib/get-initials";
 import { getPriorityLabel } from "@/lib/i18n/domain";
 import { resolveLabelColor } from "@/lib/label-color";
 import { getPriorityIcon } from "@/lib/priority";
+import { parseProjectBacklogSearch } from "@/lib/project-board-search";
+import { routes } from "@/lib/routes";
 import type { SortConfig } from "@/lib/sort-tasks";
 import { sortTasks } from "@/lib/sort-tasks";
 import { toast } from "@/lib/toast";
 import useProjectStore from "@/store/project";
 import type Task from "@/types/task";
 
-type BacklogSearchParams = {
-  taskId?: string;
-};
-
 export const Route = createFileRoute(
   "/_layout/_authenticated/dashboard/workspace/$workspaceId/project/$projectId/backlog",
 )({
   component: RouteComponent,
-  validateSearch: (search: Record<string, unknown>): BacklogSearchParams => ({
-    taskId: typeof search.taskId === "string" ? search.taskId : undefined,
-  }),
+  validateSearch: parseProjectBacklogSearch,
 });
 
 function RouteComponent() {
@@ -86,22 +82,23 @@ function RouteComponent() {
       [shortcuts.view.prefix]: {
         [shortcuts.view.board]: () => {
           navigate({
-            to: "/dashboard/workspace/$workspaceId/project/$projectId/board",
+            to: routes.projectBoard.path,
             params: { workspaceId, projectId },
-            search: { layout: "board" },
+            search: { layout: "board", taskId },
           });
         },
         [shortcuts.view.list]: () => {
           navigate({
-            to: "/dashboard/workspace/$workspaceId/project/$projectId/board",
+            to: routes.projectBoard.path,
             params: { workspaceId, projectId },
-            search: { layout: "list" },
+            search: { layout: "list", taskId },
           });
         },
         [shortcuts.view.calendar]: () => {
           navigate({
-            to: "/dashboard/workspace/$workspaceId/project/$projectId/calendar",
+            to: routes.projectCalendar.path,
             params: { workspaceId, projectId },
+            search: { taskId },
           });
         },
         [shortcuts.view.gantt]: () => {

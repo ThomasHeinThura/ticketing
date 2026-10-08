@@ -20,6 +20,7 @@ import {
   withCalendarMonth,
   withCalendarTask,
 } from "@/lib/project-calendar-search";
+import { routes } from "@/lib/routes";
 import { toScheduledTasks } from "@/lib/task-schedule";
 import { useUserPreferencesStore } from "@/store/user-preferences";
 
@@ -58,70 +59,76 @@ function RouteComponent() {
 
   const handlePreviousMonth = useCallback(() => {
     navigate({
-      to: ".",
+      to: routes.projectCalendar.path,
+      params: { workspaceId, projectId },
       search: (previous: ProjectCalendarSearch) =>
         shiftCalendarMonthSearch(previous, visibleMonth, -1),
     });
-  }, [navigate, visibleMonth]);
+  }, [navigate, projectId, visibleMonth, workspaceId]);
 
   const handleNextMonth = useCallback(() => {
     navigate({
-      to: ".",
+      to: routes.projectCalendar.path,
+      params: { workspaceId, projectId },
       search: (previous: ProjectCalendarSearch) =>
         shiftCalendarMonthSearch(previous, visibleMonth, 1),
     });
-  }, [navigate, visibleMonth]);
+  }, [navigate, projectId, visibleMonth, workspaceId]);
 
   const handleToday = useCallback(() => {
     navigate({
-      to: ".",
+      to: routes.projectCalendar.path,
+      params: { workspaceId, projectId },
       search: (previous: ProjectCalendarSearch) =>
         withCalendarMonth(previous, undefined),
     });
-  }, [navigate]);
+  }, [navigate, projectId, workspaceId]);
 
   const handleOpenTask = useCallback(
     (nextTaskId: string) => {
       navigate({
-        to: ".",
+        to: routes.projectCalendar.path,
+        params: { workspaceId, projectId },
         search: (previous: ProjectCalendarSearch) =>
           withCalendarTask(previous, nextTaskId),
         replace: true,
       });
     },
-    [navigate],
+    [navigate, projectId, workspaceId],
   );
 
   const handleCloseTaskSheet = useCallback(() => {
     navigate({
-      to: ".",
+      to: routes.projectCalendar.path,
+      params: { workspaceId, projectId },
       search: (previous: ProjectCalendarSearch) =>
         withCalendarTask(previous, undefined),
       replace: true,
     });
-  }, [navigate]);
+  }, [navigate, projectId, workspaceId]);
 
   useRegisterShortcuts({
     sequentialShortcuts: {
       [shortcuts.view.prefix]: {
         [shortcuts.view.board]: () => {
           navigate({
-            to: "/dashboard/workspace/$workspaceId/project/$projectId/board",
+            to: routes.projectBoard.path,
             params: { workspaceId, projectId },
-            search: { layout: "board" },
+            search: { layout: "board", taskId },
           });
         },
         [shortcuts.view.list]: () => {
           navigate({
-            to: "/dashboard/workspace/$workspaceId/project/$projectId/board",
+            to: routes.projectBoard.path,
             params: { workspaceId, projectId },
-            search: { layout: "list" },
+            search: { layout: "list", taskId },
           });
         },
         [shortcuts.view.backlog]: () => {
           navigate({
-            to: "/dashboard/workspace/$workspaceId/project/$projectId/backlog",
+            to: routes.projectBacklog.path,
             params: { workspaceId, projectId },
+            search: { taskId },
           });
         },
         [shortcuts.view.gantt]: () => {

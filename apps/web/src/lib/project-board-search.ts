@@ -5,6 +5,8 @@ export type ProjectBoardSearch = {
   layout?: ProjectBoardLayout;
 };
 
+export type ProjectBacklogSearch = { taskId?: string };
+
 export function resolveProjectBoardLayout(
   urlLayout: ProjectBoardLayout | undefined,
   preferredLayout: ProjectBoardLayout,
@@ -21,6 +23,14 @@ export function parseProjectBoardSearch(raw: Record<string, unknown>) {
       ? { layout: raw.layout }
       : {}),
   } satisfies ProjectBoardSearch;
+}
+
+export function parseProjectBacklogSearch(raw: Record<string, unknown>) {
+  return {
+    ...(typeof raw.taskId === "string" && raw.taskId.length > 0
+      ? { taskId: raw.taskId }
+      : {}),
+  } satisfies ProjectBacklogSearch;
 }
 
 export function withProjectBoardLayout(
