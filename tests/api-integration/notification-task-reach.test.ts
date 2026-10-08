@@ -21,9 +21,18 @@ const emailProvider = vi.hoisted(() => ({
   sendNotificationEmail: vi.fn(async () => undefined),
 }));
 vi.mock("@taskdesk/email", () => emailProvider);
+const destinationCheck = vi.hoisted(() => ({
+  assertPublicWebhookDestination: vi.fn(async () => undefined),
+}));
+vi.mock(
+  "../../apps/api/src/utils/assert-public-destination",
+  () => destinationCheck,
+);
 
 beforeEach(async () => {
   emailProvider.sendNotificationEmail.mockClear();
+  destinationCheck.assertPublicWebhookDestination.mockReset();
+  destinationCheck.assertPublicWebhookDestination.mockResolvedValue(undefined);
   await resetTestDatabase();
 });
 
@@ -34,7 +43,7 @@ afterEach(() => {
 async function fixture() {
   const { user, workspace } = await createWorkspaceMember();
   const { project } = await createProjectFixture({ workspaceId: workspace.id });
-  await grantProjectRole(user.id, project.id, ["project:read"]);
+  await grantProjectRole(user.id, project.id, ["work_item:update"]);
   const task = requireRow(
     await db
       .insert(schema.taskTable)
@@ -257,6 +266,128 @@ describe("notification task reach (security-model §2; NO edge cases)", () => {
     expect(unchanged?.isRead).toBe(false);
   });
 
+  it("requires effective work_item:read, including project override and capability implications", async () => {
+    const { user, workspace, project, task } = await fixture();
+    // work_item:update is not itself the required capability; the canonical evaluator's
+    // implication expansion grants work_item:read.
+    const [person] = await db
+      .select({ id: schema.personTable.id })
+      .from(schema.personTable)
+      .where(eq(schema.personTable.userId, user.id))
+      .limit(1);
+    if (!person) throw new Error("Expected seeded person");
+    expect(await userCanReachTask(user.id, task.id)).toBe(true);
+
+    const [membership] = await db
+      .select()
+      .from(schema.membershipTable)
+      .where(
+        and(
+          eq(schema.membershipTable.personId, person.id),
+          eq(schema.membershipTable.scope, "project"),
+          eq(schema.membershipTable.scopeId, project.id),
+        ),
+      )
+      .limit(1);
+    if (!membership) throw new Error("Expected project membership");
+    const workspaceRole = requireRow(
+      await db
+        .insert(schema.roleTable)
+        .values({
+          scope: "workspace",
+          workspaceId: workspace.id,
+          key: "notification-read-inherited",
+          name: "Notification read inherited",
+          rank: 1,
+          capabilities: ["work_item:update"],
+        })
+        .returning(),
+      "workspace notification role",
+    );
+    await db
+      .delete(schema.membershipTable)
+      .where(eq(schema.membershipTable.id, membership.id));
+    await db.insert(schema.membershipTable).values({
+      personId: person.id,
+      scope: "workspace",
+      scopeId: workspace.id,
+      roleId: workspaceRole.id,
+      seesAll: true,
+    });
+    expect(await userCanReachTask(user.id, task.id)).toBe(true);
+
+    await db
+      .update(schema.roleTable)
+      .set({ capabilities: [] })
+      .where(eq(schema.roleTable.id, membership.roleId));
+    await db.insert(schema.membershipTable).values({
+      personId: person.id,
+      scope: membership.scope,
+      scopeId: membership.scopeId,
+      roleId: membership.roleId,
+      seesAll: membership.seesAll,
+      inheritedFrom: membership.inheritedFrom,
+      derivedFrom: membership.derivedFrom,
+    });
+    expect(await userCanReachTask(user.id, task.id)).toBe(false);
+    const notification = await plantTaskNotification({
+      userId: user.id,
+      taskId: task.id,
+    });
+    expect(await getNotifications(user.id)).toHaveLength(0);
+    expect(
+      await createNotification({
+        userId: user.id,
+        type: "task_status_changed",
+        resourceId: task.id,
+        resourceType: "task",
+      }),
+    ).toBeNull();
+    await expect(
+      markNotificationAsRead(notification.id, user.id),
+    ).rejects.toMatchObject({ status: 404 });
+    const [unchanged] = await db
+      .select({ isRead: schema.notificationTable.isRead })
+      .from(schema.notificationTable)
+      .where(eq(schema.notificationTable.id, notification.id));
+    expect(unchanged?.isRead).toBe(false);
+  });
+
+  it("does not infer legacy customer task visibility from same-organisation membership", async () => {
+    const { user, workspace, task } = await fixture();
+    const organisationId = randomUUID();
+    await db.insert(schema.organisationTable).values({
+      id: organisationId,
+      key: `customer-${organisationId}`,
+      name: "Same organisation",
+    });
+    await db
+      .update(schema.workspaceTable)
+      .set({ organisationId })
+      .where(eq(schema.workspaceTable.id, workspace.id));
+    await db
+      .update(schema.personTable)
+      .set({ side: "customer", organisationId })
+      .where(eq(schema.personTable.userId, user.id));
+    expect(await userCanReachTask(user.id, task.id)).toBe(false);
+    const row = await plantTaskNotification({
+      userId: user.id,
+      taskId: task.id,
+    });
+    expect(await getNotifications(user.id)).toHaveLength(0);
+    expect(
+      await createNotification({
+        userId: user.id,
+        type: "task_status_changed",
+        resourceId: task.id,
+        resourceType: "task",
+      }),
+    ).toBeNull();
+    await expect(markNotificationAsRead(row.id, user.id)).rejects.toMatchObject(
+      { status: 404 },
+    );
+  });
+
   it("rechecks recipient reach immediately before the controlled email provider seam", async () => {
     const { user, workspace, project, task } = await fixture();
     await db.insert(schema.userNotificationPreferenceTable).values({
@@ -284,5 +415,45 @@ describe("notification task reach (security-model §2; NO edge cases)", () => {
     await deliverNotification(revokedNotification.id);
 
     expect(emailProvider.sendNotificationEmail).toHaveBeenCalledTimes(1);
+  });
+
+  it("rechecks independently after every async network-provider preflight", async () => {
+    const { user, workspace, project, task } = await fixture();
+    const fetchProvider = vi.fn(
+      async () => new Response("ok", { status: 200 }),
+    );
+    vi.stubGlobal("fetch", fetchProvider);
+    await db.insert(schema.userNotificationPreferenceTable).values({
+      userId: user.id,
+      ntfyEnabled: true,
+      ntfyServerUrl: "https://notify.example",
+      ntfyTopic: "topic",
+      webhookEnabled: true,
+      webhookUrl: "https://hooks.example/notify",
+    });
+    await db.insert(schema.userNotificationWorkspaceRuleTable).values({
+      userId: user.id,
+      workspaceId: workspace.id,
+      ntfyEnabled: true,
+      webhookEnabled: true,
+    });
+    const notification = await plantTaskNotification({
+      userId: user.id,
+      taskId: task.id,
+    });
+    let revoke: Promise<void> | undefined;
+    destinationCheck.assertPublicWebhookDestination.mockImplementation(
+      async () => {
+        revoke ??= revokeProjectReach(user.id, project.id);
+        await revoke;
+      },
+    );
+
+    await deliverNotification(notification.id);
+
+    expect(
+      destinationCheck.assertPublicWebhookDestination,
+    ).toHaveBeenCalledTimes(2);
+    expect(fetchProvider).not.toHaveBeenCalled();
   });
 });

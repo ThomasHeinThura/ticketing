@@ -303,8 +303,10 @@ async function sendNtfyNotification(input: {
   title: string;
   body: string;
   clickUrl?: string | null;
+  canSend?: () => Promise<boolean>;
 }) {
   await assertPublicWebhookDestination(input.serverUrl);
+  if (input.canSend && !(await input.canSend())) return;
 
   const response = await fetchWithTimeout(
     `${input.serverUrl.replace(/\/+$/, "")}/${encodeURIComponent(input.topic)}`,
@@ -332,8 +334,10 @@ async function sendGotifyNotification(input: {
   title: string;
   body: string;
   clickUrl?: string | null;
+  canSend?: () => Promise<boolean>;
 }) {
   await assertPublicWebhookDestination(input.serverUrl);
+  if (input.canSend && !(await input.canSend())) return;
 
   // Gotify expects the app token in the query string; that can surface in logs, proxies, and browser history, so factor this into Gotify placement and log handling.
   const response = await fetchWithTimeout(
@@ -376,8 +380,10 @@ async function sendWebhookNotification(input: {
   webhookUrl: string;
   secret?: string | null;
   payload: Record<string, unknown>;
+  canSend?: () => Promise<boolean>;
 }) {
   await assertPublicWebhookDestination(input.webhookUrl);
+  if (input.canSend && !(await input.canSend())) return;
 
   const body = JSON.stringify(input.payload);
   const headers: Record<string, string> = {
@@ -533,18 +539,28 @@ export async function deliverNotification(
     },
   };
 
+  const canSendToTask = async () =>
+    notification.resourceType !== "task" ||
+    (Boolean(notification.resourceId) &&
+      (await userCanReachTask(
+        notification.userId,
+        notification.resourceId as string,
+      )));
+
   const deliveries: Array<Promise<void>> = [];
 
   if (decryptedPreference.emailEnabled && rule.emailEnabled && user.email) {
-    deliveries.push(
-      sendNotificationEmail(user.email, content.title, {
-        title: content.title,
-        message: content.body,
-        actionUrl: context.taskUrl,
-        actionLabel: context.taskUrl ? "Open in TaskDesk" : undefined,
-        locale: user.locale ?? null,
-      }).then(() => undefined),
-    );
+    if (await canSendToTask()) {
+      deliveries.push(
+        sendNotificationEmail(user.email, content.title, {
+          title: content.title,
+          message: content.body,
+          actionUrl: context.taskUrl,
+          actionLabel: context.taskUrl ? "Open in TaskDesk" : undefined,
+          locale: user.locale ?? null,
+        }).then(() => undefined),
+      );
+    }
   }
 
   if (
@@ -561,6 +577,7 @@ export async function deliverNotification(
         title: content.title,
         body: content.body,
         clickUrl: context.taskUrl,
+        canSend: canSendToTask,
       }),
     );
   }
@@ -578,6 +595,7 @@ export async function deliverNotification(
         title: content.title,
         body: content.body,
         clickUrl: context.taskUrl,
+        canSend: canSendToTask,
       }),
     );
   }
@@ -592,6 +610,7 @@ export async function deliverNotification(
         webhookUrl: decryptedPreference.webhookUrl,
         secret: decryptedPreference.webhookSecret,
         payload: webhookPayload,
+        canSend: canSendToTask,
       }),
     );
   }
