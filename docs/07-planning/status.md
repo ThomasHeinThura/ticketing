@@ -1,3 +1,36 @@
+## Status first — verified 2026-10-08 07:12 UTC
+
+**Accepted main:** `3096cb044bdf6ae98488bfc385f532fa6386343a`. **Persistent OrbStack DEV:** `08842235047a3ab2714427edce80331b94558150`, image `sha256:75b153d7d9583993127e1be8c06453159e4fe7319abfcd8431f093c9ca002bcf`. App/image unchanged. Four supported-role test accounts remain retained privately; credentials/seeders stay outside Git/GitHub. Chrome trust handoff remains pending. No protected merge, strict activation, official release or phase closure.
+
+| Stage | Formal status |
+| --- | --- |
+| P0 | Open — isolated #602 source30aef, hosted19/22; no FINAL_P0_SHA |
+| P1 | Open — #606 native visual/zoom batch reviewed clear; current integrated gates still fail; #605 realtime separate |
+| P2 | Open — retained approvals/intake slices; undefined contracts and integration remain |
+| P3 | Open — #596 NULL-scope fixture correction pushed103dc9; provider acceptance remains |
+| P4 | Open — #607 MCP spec reconciliation preserves not-ready status; query/governance/outbox and migration lineage remain |
+| P5–P7 | Open — no completion claim |
+
+**P0 source/evidence correction:** hosted source30aef still fails LCP2532/2500ms, state200.9/200ms and board623.1/500ms. Prior V3 caller attribution is ineligible: its fixture used the unowned historical port4178 preview instead of the pinned candidate. Its mapped owner/cost conclusions must not support product changes; originals remain preserved. Hosted30aef and the separate authorization V6 evidence are unaffected.
+
+**P0 diagnostic outcome:** V4 origin mismatch and V5 unsealed runnable-file inventory were blocked before runtime. The repaired706-file V6 packet cleared independent Sol, then ran once against exact30aef on unique loopback port53155 at05:14:13–05:23:57UTC. Local instrumented outcome20/22, failing detail navigation and palette keyboard navigation; this is not hosted G11 acceptance. Cleanup verified recorded9descendants, owned browser profile, process groups and port absent; unowned preview preserved; packet seal/source exact. The34 streamed files contain926582 retained events but zero source-stack frames. The list reporter discarded in-memory boundary/loss/network receipts; worker restart reused appended filenames. These outputs are insufficient for causal source attribution. No product patch or further capture follows from them. The next bounded task analyzes source deltas against accepted #579 rather than repeating the collector.
+
+**#606 completed implementation batch:** ordinary Luna and full narrow Sol clear badb055 visual/zoom delta. Focused components13/13; visual-scope17cases/16active routes; Linux saved-view detail baseline generation/comparison each1PASS; unchanged500-row200% zoom journeyPASS with owning row fully visible. Exact0a7212 product image a463ea67 built/booted05:03:02–05:03:41UTC,OCI exact,UID10001,live/ready200,owned cleanup/original DEV preserved. badb changes only its component test; image identity remains0a. Hosted badb full37730574097: PostgreSQL154files/1813testsPASS,E2E/G4PASS,G8 9/17,G11 18/22. Eight existing visuals fail; new detail case passes. G11 fails LCP2796,create visibility,assignment235.1,board652.7. Fast37730574034 build/unit/static/policy/supply-chainPASS; OpenAPI/acceptance metadataFAIL. These exact-source checks do not transfer automatically to later documentation descendants. Versioned strict-comment edit, edit mentions and pending-action enum decisions remain pending.
+
+**#605 deployability:** exact024788 image ce784885 built and booted04:44:45–04:45:00UTC with UID10001,live/ready200 and owned-resource cleanup. Two independent ordinary reviews clear its bounded realtime delta; it changes no security-scope authority and requires no per-PR Sol. Inherited full gates remain failed; no merge or persistent deployment.
+
+**P3 bounded correction:** #596's four historical synthetic-merge403s came from keys inserted with NULL permissions. Test fixtures now serialize only registered read/create/update scopes, adding set_priority solely for a priority PATCH. No runtime authority changed. Pushed103dc906; focused PostgreSQL2files/20testsPASS on the matching precommit inputs, current hosted verification and source-bound review packet continue. Earlier failed/canceled checks remain historical; no OIDC defect inferred from stale activity fixtures.
+
+**P4 readiness:** draft #607 at953d8138 maps all29 MCP tools to existing authorities and exposes accepted `/api/project` versus specified `/api/projects` mismatch. Owning §8 remains not-ready. Read-tool route/policy/results, submission attribution, read audit/origin and rate-window contracts remain genuine questions; no implementation invents them. MCP tool parity, route integration and injection tests remain missing implementation dependencies. Ordinary docs review pending.
+
+**Private testing:** four owner/admin/member/viewer accounts seeded through canonical APIs;36/36 login/session/read/admin/write/CSRF smoke passes. Passwords/credential Markdown/seeders remain0600 outside repo. Unsupported manager/lead/customer provisioning remains explicit; no fabricated role grants/all-role acceptance.
+
+**Integration alignment:** #599 remains outside P0; historical #589 frozen until accepted post-P0 recreation. #585 migration snapshots omit seven tables versus matching #589/#598 SQL lineage; central reconciliation remains required. Existing unclassified secret finding remains open and unsuppressed. No gate waiver or competing broad train.
+
+**Critical path:** (1) restore P0 unchanged hosted22/22 with a proven source correction; (2) remaining actual October9 bucket for changed nine-read subset; (3) freeze exact-source gates/image/installer/runtime/rollback; (4) protected P0 merge; (5) fresh accepted-main Sol finalizer and issue reconciliation. No full-day/72-hour claim or elapsed-time cutover. Independent later-stage implementation continues.
+
+---
+
 ## Status first — verified 2026-10-08 04:32 UTC
 
 **Accepted main:** `3096cb044bdf6ae98488bfc385f532fa6386343a`. **Persistent OrbStack DEV:** `08842235047a3ab2714427edce80331b94558150`, image `sha256:75b153d7d9583993127e1be8c06453159e4fe7319abfcd8431f093c9ca002bcf`. Application source/image unchanged. Four supported-role test accounts and their project are intentionally retained; credentials and seeders remain private outside Git/GitHub. Chrome certificate handoff remains pending. No protected merge, strict activation, official release or phase closure.
