@@ -1,5 +1,6 @@
 import assert from "node:assert/strict";
 import { randomUUID } from "node:crypto";
+import { readFileSync } from "node:fs";
 import { readFile, rm, writeFile } from "node:fs/promises";
 import path from "node:path";
 import { describe, it } from "node:test";
@@ -114,7 +115,7 @@ describe("G3 contrast inventory and math", () => {
     );
   });
 
-  it("observes translucent CVA variant surfaces only with their own foreground", () => {
+  it("does not infer Alert caller backdrops from a Storybook canvas", () => {
     const tokens = new Set(["card-foreground", "info"]);
     const observed = observedPairsInSources(
       [
@@ -127,15 +128,11 @@ describe("G3 contrast inventory and math", () => {
         "packages/ui/src/components/alert.stories.tsx",
       ],
     );
-    assert.ok(
+    assert.equal(
       observed.has(
         "--color-card-foreground|--color-info|bg-info/4|light|backdrop:bg-background",
       ),
-    );
-    assert.ok(
-      observed.has(
-        "--color-card-foreground|--color-info|bg-info/4|dark|backdrop:bg-background",
-      ),
+      false,
     );
 
     const splitClasses = observedPairsInSources(
@@ -159,12 +156,161 @@ describe("G3 contrast inventory and math", () => {
       ["packages/ui/src/components/alert.tsx"],
     );
     assert.equal(
-      withoutCanvas.has(
-        "--color-card-foreground|--color-info|bg-info/4|light|backdrop:bg-background",
-      ),
-      false,
-      "translucent CVA pairs require the story's explicit opaque canvas",
+      withoutCanvas.size,
+      0,
+      "shared Alert variant strings carry no application backdrop evidence",
     );
+  });
+
+  it("binds each Alert use to its opaque caller and fails closed for missing or conflicting backdrops", async () => {
+    const fixture = `apps/web/src/components/.contrast-alert-callers-${randomUUID()}.tsx`;
+    const theme = await readFile(
+      path.join(process.cwd(), "packages/ui/src/styles/theme.css"),
+      "utf8",
+    );
+    const tokenNames = new Set(
+      [...theme.matchAll(/--color-([a-z0-9-]+)\s*:/gu)].map(
+        (match) => match[1],
+      ),
+    );
+    try {
+      await writeFile(
+        fixture,
+        `import { Alert } from "@taskdesk/ui";
+export function CardAlert(){ return <div className="bg-card"><Alert variant="info" /></div>; }
+export function PopoverAlert(){ return <div className="bg-popover"><Alert variant="warning" /></div>; }
+export function MissingAlert(){ return <Alert variant="error" />; }
+export function ConflictingAlert(){ return <div className="bg-card bg-popover"><Alert variant="error" /></div>; }`,
+      );
+      const result = observeInheritedForegroundSurfaces(
+        ["packages/ui/src/components/alert.tsx", fixture],
+        tokenNames,
+      );
+      const occurrences = [...(result.uses.occurrences?.values() ?? [])].flat();
+      const card = occurrences.find(
+        (item) =>
+          item.component === "Alert" &&
+          item.usage === fixture &&
+          item.id.includes("CardAlert"),
+      );
+      const popover = occurrences.find(
+        (item) =>
+          item.component === "Alert" &&
+          item.usage === fixture &&
+          item.id.includes("PopoverAlert"),
+      );
+      assert.equal(card?.backdropClass, "bg-card");
+      assert.equal(popover?.backdropClass, "bg-popover");
+      assert.notDeepEqual(card?.backdropLayers, popover?.backdropLayers);
+      const unresolved = [...result.unresolved.values()].filter(
+        (item) => item.component === "Alert" && item.usage === fixture,
+      );
+      assert.equal(unresolved.length, 4);
+      assert.ok(
+        unresolved.every(
+          (item) =>
+            item.reason.includes("no source-bound opaque caller backdrop") ||
+            item.reason.includes("unresolved or translucent"),
+        ),
+        "missing and conflicting caller surfaces remain a gate failure",
+      );
+
+      const shippedPaths = await collectContrastSourcePaths();
+      const shipped = observeInheritedForegroundSurfaces(
+        shippedPaths.filter((sourcePath) => sourcePath !== fixture),
+        tokenNames,
+      );
+      const shippedAlerts = [...(shipped.uses.occurrences?.values() ?? [])]
+        .flat()
+        .filter((item) => item.component === "Alert");
+      const dialogAlert = shippedAlerts.find(
+        (item) =>
+          item.usage ===
+          "apps/web/src/components/work-item/create-work-item-dialog-form.tsx",
+      );
+      const holidayAlert = shippedAlerts.find(
+        (item) =>
+          item.usage ===
+          "apps/web/src/components/service-calendar/holiday-import-panel.tsx",
+      );
+      assert.equal(dialogAlert?.backdropClass, "bg-popover");
+      assert.ok(
+        dialogAlert?.chain.some((part) => part.includes("DialogContent")),
+      );
+      assert.equal(holidayAlert?.backdropClass, "bg-card");
+      assert.equal(
+        [...shipped.unresolved.values()].some(
+          (item) => item.component === "Alert",
+        ),
+        false,
+        "every shipped Alert caller has a concrete opaque paint chain",
+      );
+      const manifest = JSON.parse(
+        await readFile(
+          path.join(process.cwd(), "packages/ui/src/styles/pairs.json"),
+          "utf8",
+        ),
+      );
+      const alertRows = manifest.filter((pair) =>
+        pair.occurrenceIds?.some((id) => id.includes("::Alert[")),
+      );
+      const alertKeys = new Set();
+      const alertOccurrences = new Map();
+      for (const [key, contexts] of shipped.uses.occurrences ?? []) {
+        const occurrences = contexts.filter(
+          (item) => item.component === "Alert",
+        );
+        if (occurrences.length) {
+          alertKeys.add(key);
+          alertOccurrences.set(key, occurrences);
+        }
+      }
+      const boundAlerts = new Set(
+        alertRows.flatMap((pair) => pair.occurrenceIds),
+      );
+      assert.ok(
+        shippedAlerts.every((item) => boundAlerts.has(item.id)),
+        "every real Alert caller occurrence is represented in the manifest",
+      );
+      const alertObserved = alertKeys;
+      alertObserved.occurrences = alertOccurrences;
+      alertObserved.callerUses = shipped.callerUses;
+      const alertFailures = validatePairManifest(
+        alertRows,
+        (sourcePath) => {
+          try {
+            return readFileSync(path.join(process.cwd(), sourcePath), "utf8");
+          } catch {
+            return "";
+          }
+        },
+        alertObserved,
+      );
+      assert.deepEqual(alertFailures, []);
+      const omittedKey = [...alertKeys][0];
+      const omittedRow = alertRows.find((pair) => {
+        const theme = pair.themes[0];
+        const background = pair.backgroundClass[theme];
+        return (
+          `${pair.fg}|${pair.bg}|${background}|${theme}${pair.backdropLayers.length ? `|backdrop:${pair.backdropLayers.join(">")}` : ""}` ===
+          omittedKey
+        );
+      });
+      assert.ok(omittedRow, "the selected live pair has a manifest row");
+      const omittedFailures = validatePairManifest(
+        alertRows.filter((pair) => pair !== omittedRow),
+        () => "",
+        alertObserved,
+      );
+      assert.ok(
+        omittedFailures.some((failure) =>
+          failure.includes(`used pair ${omittedKey} has no manifest entry`),
+        ),
+        "the exact live caller/surface omission is rejected",
+      );
+    } finally {
+      await rm(fixture, { force: true });
+    }
   });
 
   it("measures a colored descendant against its nearest opaque ancestor", async () => {

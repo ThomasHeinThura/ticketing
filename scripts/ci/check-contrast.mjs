@@ -36,6 +36,7 @@ function parseClassToken(className) {
 
 function isTranslucentBackgroundUtility(className, tokenNames = new Set()) {
   const utility = parseClassToken(className).utility;
+  if (utility === "bg-transparent") return true;
   const match = utility.match(/^bg-([a-z0-9-]+)(?:\/(\d+))?$/u);
   if (!match) return false;
   const opacity = Number(match[2] ?? 100);
@@ -823,30 +824,14 @@ export function observedPairsInSources(
   observed.pairUses = new Map();
   observed.occurrences = new Map();
   observed.unsupportedForegrounds = [];
-  const alertStoryHasOpaqueBackdrop = sourcePaths.some(
-    (sourcePath, index) =>
-      sourcePath === "packages/ui/src/components/alert.stories.tsx" &&
-      /className\s*=\s*["']bg-background["']/u.test(sources[index] ?? ""),
-  );
   for (const [sourceIndex, source] of sources.entries()) {
-    // CVA variant strings are the rendered class source for shared primitives,
-    // even though they are not JSX `className` attributes. Keep translucent
-    // surfaces there observable when their foreground is declared alongside
-    // the surface in the same variant string. JSX alpha surfaces continue to
-    // be resolved through the source-bound ancestor/caller pass below.
-    const cvaGroups =
-      sourcePaths[sourceIndex] === "packages/ui/src/components/alert.tsx" &&
-      alertStoryHasOpaqueBackdrop
-        ? cvaClassLiteralGroups(source).filter((group) =>
-            group
-              .split(/\s+/u)
-              .some((className) => className === "text-card-foreground"),
-          )
-        : [];
-    const classGroups = [...classNameLiteralGroups(source), ...cvaGroups];
-    for (const [classGroupIndex, classText] of classGroups.entries()) {
+    // Alert's CVA strings describe the foreground and translucent color wash,
+    // but not the opaque surface behind it. Caller evidence is collected by
+    // the source-bound JSX pass below; a Storybook canvas cannot stand in for
+    // application callers.
+    const classGroups = classNameLiteralGroups(source);
+    for (const classText of classGroups) {
       const classes = classText.split(/\s+/).map(parseClassToken);
-      const cvaGroupIndex = cvaGroups.indexOf(classText);
       const textNames = classes
         .map((parsed) => {
           const foreground = parseForegroundUtility(parsed, foregrounds);
@@ -865,35 +850,21 @@ export function observedPairsInSources(
               }
             : undefined;
         })
-        .filter(Boolean)
-        .filter(
-          (foreground) =>
-            !cvaGroups.includes(classText) ||
-            foreground.className === "text-card-foreground",
-        );
+        .filter(Boolean);
       const backgroundEntries = classes
         .map((parsed) => ({
           ...parsed,
-          name:
-            cvaGroups.includes(classText) && parsed.utility === "bg-transparent"
-              ? "background"
-              : parsed.utility.match(/^bg-([a-z0-9-]+)(?:\/\d+)?$/)?.[1],
+          name: parsed.utility.match(/^bg-([a-z0-9-]+)(?:\/\d+)?$/)?.[1],
           darkScoped: parsed.variants.includes("dark"),
         }))
         .filter(
           ({ name, className }) =>
             name &&
             backgroundTokens.has(name) &&
-            (!isTranslucentBackgroundUtility(
+            !isTranslucentBackgroundUtility(
               className,
               translucentBackgroundTokens,
-            ) ||
-              className === "bg-transparent" ||
-              (cvaGroups.includes(classText) &&
-                isTranslucentBackgroundUtility(
-                  className,
-                  translucentBackgroundTokens,
-                ))),
+            ),
         );
       const groups = new Map();
       for (const entry of backgroundEntries) {
@@ -974,25 +945,8 @@ export function observedPairsInSources(
                 entry.className,
                 theme,
                 foreground.className,
-                cvaGroups.includes(classText) ? ["bg-background"] : [],
               );
               observed.add(key);
-              if (cvaGroupIndex >= 0) {
-                const occurrenceId = `${sourcePaths[sourceIndex]}::alertVariants::CVA[${cvaGroupIndex}]::${foreground.className}#${entry.className}`;
-                const occurrences = observed.occurrences.get(key) ?? [];
-                occurrences.push({
-                  id: occurrenceId,
-                  usage: sourcePaths[sourceIndex],
-                  surfaceContext: "same-element",
-                  category: "body",
-                  chain: [
-                    `${sourcePaths[sourceIndex]}:alertVariants`,
-                    `cva:${classGroupIndex}>${classText.trim()}`,
-                  ],
-                  backdropLayers: ["bg-background"],
-                });
-                observed.occurrences.set(key, occurrences);
-              }
               const usages = observed.pairUses.get(key) ?? new Set();
               usages.add(sourcePaths[sourceIndex]);
               observed.pairUses.set(key, usages);
@@ -2274,6 +2228,83 @@ export function observeInheritedForegroundSurfaces(sourcePaths, tokenNames) {
       for (const [callerPath, sourceFile] of sourceFilesByPath) {
         if (/\.(?:test|spec)\.(?:tsx|jsx)$/u.test(callerPath)) continue;
         const imports = importsByPath.get(callerPath) ?? new Map();
+        let lazyTargets;
+        function lazyImportedTarget(localName) {
+          if (!lazyTargets) {
+            lazyTargets = new Map();
+            const declarations = [];
+            function findVariableDeclarations(node) {
+              if (ts.isVariableDeclaration(node)) declarations.push(node);
+              node.forEachChild(findVariableDeclarations);
+            }
+            findVariableDeclarations(sourceFile);
+            const loaders = new Map();
+            for (const statement of sourceFile.statements) {
+              if (!ts.isFunctionDeclaration(statement) || !statement.name)
+                continue;
+              const specifiers = [];
+              function findDynamicImport(node) {
+                if (
+                  ts.isCallExpression(node) &&
+                  node.expression.kind === ts.SyntaxKind.ImportKeyword &&
+                  node.arguments.length === 1 &&
+                  ts.isStringLiteral(node.arguments[0])
+                )
+                  specifiers.push(node.arguments[0].text);
+                node.forEachChild(findDynamicImport);
+              }
+              if (statement.body) findDynamicImport(statement.body);
+              if (specifiers.length === 1) {
+                const resolved = path
+                  .relative(
+                    repoRoot,
+                    path.resolve(
+                      path.dirname(path.join(repoRoot, callerPath)),
+                      specifiers[0],
+                    ),
+                  )
+                  .replaceAll(path.sep, "/");
+                const targetPath = [
+                  resolved,
+                  `${resolved}.tsx`,
+                  `${resolved}.ts`,
+                ].find((candidate) => sourceFilesByPath.has(candidate));
+                if (targetPath)
+                  loaders.set(statement.name.text, {
+                    file: targetPath,
+                    symbol: "default",
+                  });
+              }
+            }
+            for (const declaration of declarations) {
+              if (!declaration.initializer) continue;
+              const foundLoaders = new Set();
+              function findLazyLoader(node) {
+                if (
+                  ts.isCallExpression(node) &&
+                  ts.isIdentifier(node.expression) &&
+                  node.expression.text === "lazy" &&
+                  node.arguments[0] &&
+                  ts.isIdentifier(node.arguments[0])
+                )
+                  foundLoaders.add(node.arguments[0].text);
+                node.forEachChild(findLazyLoader);
+              }
+              findLazyLoader(declaration.initializer);
+              if (foundLoaders.size !== 1) continue;
+              const target = loaders.get([...foundLoaders][0]);
+              if (!target) continue;
+              const names = [];
+              function collectNames(node) {
+                if (ts.isIdentifier(node)) names.push(node.text);
+                node.forEachChild(collectNames);
+              }
+              collectNames(declaration.name);
+              for (const name of names) lazyTargets.set(name, target);
+            }
+          }
+          return lazyTargets.get(localName);
+        }
         function find(
           node,
           ancestors,
@@ -2308,7 +2339,7 @@ export function observeInheritedForegroundSurfaces(sourcePaths, tokenNames) {
               ? node.openingElement.tagName.getText(sourceFile)
               : node.tagName.getText(sourceFile);
             nextPath = [...currentPath, `${tag}[${siblingIndex}]`];
-            const imported = imports.get(tag);
+            const imported = imports.get(tag) ?? lazyImportedTarget(tag);
             const attributes = ts.isJsxElement(node)
               ? node.openingElement.attributes
               : node.attributes;
@@ -2333,7 +2364,10 @@ export function observeInheritedForegroundSurfaces(sourcePaths, tokenNames) {
           const calledImport =
             ts.isCallExpression(node) &&
             ts.isIdentifier(node.expression) &&
-            matchesTarget(imports.get(node.expression.text));
+            matchesTarget(
+              imports.get(node.expression.text) ??
+                lazyImportedTarget(node.expression.text),
+            );
           const calledLocalFunction =
             callerPath === target.file &&
             ts.isCallExpression(node) &&
@@ -3319,6 +3353,216 @@ export function observeInheritedForegroundSurfaces(sourcePaths, tokenNames) {
         }
       }
       unresolved.delete(occurrenceId);
+    }
+    {
+      const alertPath = "packages/ui/src/components/alert.tsx";
+      const alertSourceFile = sourceFilesByPath.get(alertPath);
+      if (alertSourceFile) {
+        const variantClasses = new Map();
+        function findAlertVariants(node) {
+          if (
+            ts.isVariableDeclaration(node) &&
+            ts.isIdentifier(node.name) &&
+            node.name.text === "alertVariants" &&
+            node.initializer &&
+            ts.isCallExpression(node.initializer)
+          ) {
+            const config = node.initializer.arguments[1];
+            if (!config || !ts.isObjectLiteralExpression(config)) return;
+            const variantsProperty = config.properties.find(
+              (property) =>
+                ts.isPropertyAssignment(property) &&
+                property.name.getText(alertSourceFile).replaceAll('"', "") ===
+                  "variants",
+            );
+            if (
+              !variantsProperty ||
+              !ts.isPropertyAssignment(variantsProperty) ||
+              !ts.isObjectLiteralExpression(variantsProperty.initializer)
+            )
+              return;
+            const variantProperty =
+              variantsProperty.initializer.properties.find(
+                (property) =>
+                  ts.isPropertyAssignment(property) &&
+                  property.name.getText(alertSourceFile).replaceAll('"', "") ===
+                    "variant",
+              );
+            if (
+              !variantProperty ||
+              !ts.isPropertyAssignment(variantProperty) ||
+              !ts.isObjectLiteralExpression(variantProperty.initializer)
+            )
+              return;
+            for (const property of variantProperty.initializer.properties) {
+              if (
+                ts.isPropertyAssignment(property) &&
+                (ts.isIdentifier(property.name) ||
+                  ts.isStringLiteral(property.name)) &&
+                ts.isStringLiteral(property.initializer)
+              )
+                variantClasses.set(
+                  property.name.text,
+                  property.initializer.text,
+                );
+            }
+          }
+          node.forEachChild(findAlertVariants);
+        }
+        findAlertVariants(alertSourceFile);
+        const alertCalls = componentCallSites({
+          file: alertPath,
+          symbol: "Alert",
+        });
+        for (const call of alertCalls) {
+          const callerFile = sourceFilesByPath.get(call.callerPath);
+          const attributes = ts.isJsxElement(call.node)
+            ? call.node.openingElement.attributes
+            : call.node.attributes;
+          const variantAttribute = attributes.properties.find(
+            (attribute) =>
+              ts.isJsxAttribute(attribute) &&
+              attribute.name.getText(callerFile) === "variant",
+          );
+          const variant = variantAttribute
+            ? variantAttribute.initializer &&
+              ts.isStringLiteral(variantAttribute.initializer)
+              ? variantAttribute.initializer.text
+              : undefined
+            : "default";
+          const classText = variant && variantClasses.get(variant);
+          const entries =
+            classText
+              ?.split(/\s+/u)
+              .map(parseClassToken)
+              .filter((token) => token.utility.startsWith("bg-")) ?? [];
+          const foreground = classText
+            ?.split(/\s+/u)
+            .map(parseClassToken)
+            .map((token) => parseForegroundUtility(token, tokenNames))
+            .find(Boolean);
+          const occurrenceId = `${call.callerPath}::${call.owner ?? "<module>"}::Alert[${call.path.join("/")}]`;
+          if (!variant || !classText || entries.length === 0 || !foreground) {
+            unresolved.set(occurrenceId, {
+              id: occurrenceId,
+              usage: call.callerPath,
+              component: "Alert",
+              ancestry: call.path,
+              foregroundClass: foreground?.className ?? "text-card-foreground",
+              reason:
+                "Alert variant must resolve to a literal supported surface.",
+            });
+            continue;
+          }
+          for (const theme of ["light", "dark"]) {
+            const darkOverride =
+              theme === "dark" &&
+              entries.some((item) => item.variants.includes("dark"));
+            const activeEntries = entries.filter(
+              (item) => item.variants.includes("dark") === darkOverride,
+            );
+            for (const entry of activeEntries) {
+              const rawSurfaceName = entry.utility.match(
+                /^bg-([a-z0-9-]+)(?:\/\d+)?$/u,
+              )?.[1];
+              if (!rawSurfaceName) {
+                unresolved.set(`${occurrenceId}|${theme}`, {
+                  id: `${occurrenceId}|${theme}`,
+                  usage: call.callerPath,
+                  component: "Alert",
+                  ancestry: call.path,
+                  foregroundClass: foreground.className,
+                  reason: "Alert surface token is not registered.",
+                });
+                continue;
+              }
+              const backgroundClass = entry.className;
+              const pending = [
+                {
+                  className: backgroundClass,
+                  themes: [theme],
+                  backdropLayers: [],
+                  chain: [
+                    `${alertPath}:alertVariants[${variant}]`,
+                    `${call.callerPath}:${call.owner ?? "<module>"}`,
+                    `jsx:${call.path.join("/")}`,
+                  ],
+                },
+              ];
+              const surfaces = callerSurface(call, new Set(), 0, pending);
+              if (!surfaces || surfaces.length === 0) {
+                unresolved.set(`${occurrenceId}|${theme}`, {
+                  id: `${occurrenceId}|${theme}`,
+                  usage: call.callerPath,
+                  component: "Alert",
+                  ancestry: call.path,
+                  foregroundClass: foreground.className,
+                  reason: `Alert ${variant} has no source-bound opaque caller backdrop in ${theme} mode.`,
+                });
+                continue;
+              }
+              for (const surface of surfaces) {
+                const backdrop = surface.backdropClass;
+                if (!backdrop || !opaqueBackground(parseClassToken(backdrop))) {
+                  unresolved.set(`${occurrenceId}|${theme}`, {
+                    id: `${occurrenceId}|${theme}`,
+                    usage: call.callerPath,
+                    component: "Alert",
+                    ancestry: call.path,
+                    foregroundClass: foreground.className,
+                    reason: `Alert ${variant} caller backdrop is unresolved or translucent in ${theme} mode.`,
+                  });
+                  continue;
+                }
+                const surfaceName =
+                  rawSurfaceName === "transparent"
+                    ? backdrop.match(/^bg-([a-z0-9-]+)(?:\/\d+)?$/u)?.[1]
+                    : rawSurfaceName;
+                if (!surfaceName || !tokenNames.has(surfaceName)) {
+                  unresolved.set(`${occurrenceId}|${theme}`, {
+                    id: `${occurrenceId}|${theme}`,
+                    usage: call.callerPath,
+                    component: "Alert",
+                    ancestry: call.path,
+                    foregroundClass: foreground.className,
+                    reason: "Alert effective surface token is not registered.",
+                  });
+                  continue;
+                }
+                const key = contrastPairKey(
+                  `--color-${foreground.name}`,
+                  `--color-${surfaceName}`,
+                  backgroundClass,
+                  theme,
+                  foreground.className,
+                  surface.backdropLayers ?? [backdrop],
+                );
+                pairs.add(key);
+                uses.add(`${call.callerPath}|${key}`);
+                callerUses.add(`${occurrenceId}|${key}`);
+                const contexts = uses.occurrences?.get(key) ?? [];
+                contexts.push({
+                  id: occurrenceId,
+                  usage: call.callerPath,
+                  component: "Alert",
+                  foregroundClass: foreground.className,
+                  backgroundClass,
+                  backdropClass: backdrop,
+                  backdropLayers: surface.backdropLayers ?? [backdrop],
+                  surfaceContext: call.callerPath.endsWith(".stories.tsx")
+                    ? "storybook-body"
+                    : "caller-chain",
+                  category: "body",
+                  chain: surface.chain,
+                });
+                const occurrenceUses = uses.occurrences ?? new Map();
+                occurrenceUses.set(key, contexts);
+                uses.occurrences = occurrenceUses;
+              }
+            }
+          }
+        }
+      }
     }
   } finally {
     snapshot.dispose();

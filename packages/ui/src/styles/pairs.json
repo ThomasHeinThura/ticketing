@@ -43663,7 +43663,7 @@
     "themes": [
       "light"
     ],
-    "usage": "packages/ui/src/components/alert.tsx",
+    "usage": "apps/web/src/components/god-mode/identity-connection-editor.tsx",
     "backdrop": "--color-background",
     "foregroundClass": "text-card-foreground",
     "backgroundClass": {
@@ -43673,95 +43673,176 @@
       "bg-background"
     ],
     "occurrenceIds": [
-      "packages/ui/src/components/alert.tsx::alertVariants::CVA[0]::text-card-foreground#bg-transparent"
+      "apps/web/src/components/god-mode/identity-connection-editor.tsx::IdentityConnectionEditor::Alert[section[0]/Alert[0]]",
+      "apps/web/src/routes/agent/_layout/_authenticated/god-mode/observability.tsx::ObservabilitySettings::Alert[main[0]/Alert[0]]",
+      "apps/web/src/routes/agent/auth/sign-in.tsx::SignIn::Alert[AuthLayout[0]/div[0]/Alert[0]]",
+      "apps/web/src/routes/agent/auth/sign-up.tsx::SignUp::Alert[AuthLayout[0]/div[0]/Alert[0]]",
+      "apps/web/src/routes/agent/auth/verify-otp.tsx::VerifyOtp::Alert[AuthLayout[0]/div[0]/Alert[0]]",
+      "packages/ui/src/components/alert.stories.tsx::<module>::Alert[Alert[0]]"
     ],
     "occurrences": [
       {
-        "id": "packages/ui/src/components/alert.tsx::alertVariants::CVA[0]::text-card-foreground#bg-transparent",
-        "usage": "packages/ui/src/components/alert.tsx",
-        "surfaceContext": "same-element",
+        "id": "apps/web/src/components/god-mode/identity-connection-editor.tsx::IdentityConnectionEditor::Alert[section[0]/Alert[0]]",
+        "usage": "apps/web/src/components/god-mode/identity-connection-editor.tsx",
+        "surfaceContext": "caller-chain",
         "category": "body",
         "chain": [
-          "packages/ui/src/components/alert.tsx:alertVariants",
-          "cva:3>text-card-foreground bg-transparent dark:bg-input/32 [&>svg]:text-muted-foreground"
+          "packages/ui/src/components/alert.tsx:alertVariants[default]",
+          "apps/web/src/components/god-mode/identity-connection-editor.tsx:IdentityConnectionEditor",
+          "jsx:section[0]/Alert[0]",
+          "apps/web/src/routes/agent/_layout/_authenticated/god-mode/authentication/$id.tsx:/_layout/_authenticated/god-mode/authentication/$id",
+          "apps/web/src/routes/agent/_layout/_authenticated/god-mode/authentication.tsx:/_layout/_authenticated/god-mode/authentication",
+          "apps/web/src/routes/agent/_layout/_authenticated.tsx:/_layout/_authenticated",
+          "apps/web/src/routes/agent/_layout.tsx:/_layout",
+          "apps/web/src/index.css:body>@apply bg-background"
+        ],
+        "backdropLayers": [
+          "bg-background"
+        ]
+      },
+      {
+        "id": "apps/web/src/routes/agent/_layout/_authenticated/god-mode/observability.tsx::ObservabilitySettings::Alert[main[0]/Alert[0]]",
+        "usage": "apps/web/src/routes/agent/_layout/_authenticated/god-mode/observability.tsx",
+        "surfaceContext": "caller-chain",
+        "category": "body",
+        "chain": [
+          "packages/ui/src/components/alert.tsx:alertVariants[default]",
+          "apps/web/src/routes/agent/_layout/_authenticated/god-mode/observability.tsx:ObservabilitySettings",
+          "jsx:main[0]/Alert[0]",
+          "apps/web/src/routes/agent/_layout/_authenticated/god-mode/observability.tsx:/_layout/_authenticated/god-mode/observability",
+          "apps/web/src/routes/agent/_layout/_authenticated.tsx:/_layout/_authenticated",
+          "apps/web/src/routes/agent/_layout.tsx:/_layout",
+          "apps/web/src/index.css:body>@apply bg-background"
+        ],
+        "backdropLayers": [
+          "bg-background"
+        ]
+      },
+      {
+        "id": "apps/web/src/routes/agent/auth/sign-in.tsx::SignIn::Alert[AuthLayout[0]/div[0]/Alert[0]]",
+        "usage": "apps/web/src/routes/agent/auth/sign-in.tsx",
+        "surfaceContext": "caller-chain",
+        "category": "body",
+        "chain": [
+          "packages/ui/src/components/alert.tsx:alertVariants[default]",
+          "apps/web/src/routes/agent/auth/sign-in.tsx:SignIn",
+          "jsx:AuthLayout[0]/div[0]/Alert[0]",
+          "apps/web/src/routes/agent/auth/sign-in.tsx:SignIn",
+          "AuthLayout->apps/web/src/components/auth/layout.tsx:AuthLayout"
+        ],
+        "backdropLayers": [
+          "bg-background"
+        ]
+      },
+      {
+        "id": "apps/web/src/routes/agent/auth/sign-up.tsx::SignUp::Alert[AuthLayout[0]/div[0]/Alert[0]]",
+        "usage": "apps/web/src/routes/agent/auth/sign-up.tsx",
+        "surfaceContext": "caller-chain",
+        "category": "body",
+        "chain": [
+          "packages/ui/src/components/alert.tsx:alertVariants[default]",
+          "apps/web/src/routes/agent/auth/sign-up.tsx:SignUp",
+          "jsx:AuthLayout[0]/div[0]/Alert[0]",
+          "apps/web/src/routes/agent/auth/sign-up.tsx:SignUp",
+          "AuthLayout->apps/web/src/components/auth/layout.tsx:AuthLayout"
+        ],
+        "backdropLayers": [
+          "bg-background"
+        ]
+      },
+      {
+        "id": "apps/web/src/routes/agent/auth/verify-otp.tsx::VerifyOtp::Alert[AuthLayout[0]/div[0]/Alert[0]]",
+        "usage": "apps/web/src/routes/agent/auth/verify-otp.tsx",
+        "surfaceContext": "caller-chain",
+        "category": "body",
+        "chain": [
+          "packages/ui/src/components/alert.tsx:alertVariants[default]",
+          "apps/web/src/routes/agent/auth/verify-otp.tsx:VerifyOtp",
+          "jsx:AuthLayout[0]/div[0]/Alert[0]",
+          "apps/web/src/routes/agent/auth/verify-otp.tsx:VerifyOtp",
+          "AuthLayout->apps/web/src/components/auth/layout.tsx:AuthLayout"
+        ],
+        "backdropLayers": [
+          "bg-background"
+        ]
+      },
+      {
+        "id": "packages/ui/src/components/alert.stories.tsx::<module>::Alert[Alert[0]]",
+        "usage": "packages/ui/src/components/alert.stories.tsx",
+        "surfaceContext": "storybook-body",
+        "category": "body",
+        "chain": [
+          "packages/ui/src/components/alert.stories.tsx:<story>",
+          "packages/ui/src/components/alert.tsx:alertVariants[default]",
+          "packages/ui/src/components/alert.stories.tsx:<module>",
+          "jsx:Alert[0]",
+          "packages/ui/.storybook/preview.ts:imports tailwind.css",
+          "packages/ui/.storybook/tailwind.css:#storybook-root.background-color:var(--background)"
         ],
         "backdropLayers": [
           "bg-background"
         ]
       }
-    ]
+    ],
+    "surfaceContext": "caller-chain"
   },
   {
     "fg": "--color-card-foreground",
-    "bg": "--color-input",
-    "category": "body",
-    "minRatio": 4.5,
-    "themes": [
-      "dark"
-    ],
-    "usage": "packages/ui/src/components/alert.tsx",
-    "backdrop": "--color-background",
-    "foregroundClass": "text-card-foreground",
-    "backgroundClass": {
-      "dark": "dark:bg-input/32"
-    },
-    "backdropLayers": [
-      "bg-background"
-    ],
-    "occurrenceIds": [
-      "packages/ui/src/components/alert.tsx::alertVariants::CVA[0]::text-card-foreground#dark:bg-input/32"
-    ],
-    "occurrences": [
-      {
-        "id": "packages/ui/src/components/alert.tsx::alertVariants::CVA[0]::text-card-foreground#dark:bg-input/32",
-        "usage": "packages/ui/src/components/alert.tsx",
-        "surfaceContext": "same-element",
-        "category": "body",
-        "chain": [
-          "packages/ui/src/components/alert.tsx:alertVariants",
-          "cva:3>text-card-foreground bg-transparent dark:bg-input/32 [&>svg]:text-muted-foreground"
-        ],
-        "backdropLayers": [
-          "bg-background"
-        ]
-      }
-    ]
-  },
-  {
-    "fg": "--color-card-foreground",
-    "bg": "--color-destructive",
+    "bg": "--color-card",
     "category": "body",
     "minRatio": 4.5,
     "themes": [
       "light"
     ],
-    "usage": "packages/ui/src/components/alert.tsx",
-    "backdrop": "--color-background",
+    "usage": "apps/web/src/routes/agent/_layout/_authenticated/agent/settings/profile/pending-actions/$id.tsx",
+    "backdrop": "--color-card",
     "foregroundClass": "text-card-foreground",
     "backgroundClass": {
-      "light": "bg-destructive/4"
+      "light": "bg-transparent"
     },
     "backdropLayers": [
-      "bg-background"
+      "bg-card"
     ],
     "occurrenceIds": [
-      "packages/ui/src/components/alert.tsx::alertVariants::CVA[1]::text-card-foreground#bg-destructive/4"
+      "apps/web/src/routes/agent/_layout/_authenticated/agent/settings/profile/pending-actions/$id.tsx::PendingActionDetailRoute::Alert[main[0]/Card[0]/CardContent[0]/Alert[0]]",
+      "apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings/account/security.tsx::AccountSecurity::Alert[main[0]/Alert[0]]"
     ],
     "occurrences": [
       {
-        "id": "packages/ui/src/components/alert.tsx::alertVariants::CVA[1]::text-card-foreground#bg-destructive/4",
-        "usage": "packages/ui/src/components/alert.tsx",
-        "surfaceContext": "same-element",
+        "id": "apps/web/src/routes/agent/_layout/_authenticated/agent/settings/profile/pending-actions/$id.tsx::PendingActionDetailRoute::Alert[main[0]/Card[0]/CardContent[0]/Alert[0]]",
+        "usage": "apps/web/src/routes/agent/_layout/_authenticated/agent/settings/profile/pending-actions/$id.tsx",
+        "surfaceContext": "caller-chain",
         "category": "body",
         "chain": [
-          "packages/ui/src/components/alert.tsx:alertVariants",
-          "cva:4>text-card-foreground border-destructive/32 bg-destructive/4 [&>svg]:text-destructive"
+          "packages/ui/src/components/alert.tsx:alertVariants[default]",
+          "apps/web/src/routes/agent/_layout/_authenticated/agent/settings/profile/pending-actions/$id.tsx:PendingActionDetailRoute",
+          "jsx:main[0]/Card[0]/CardContent[0]/Alert[0]",
+          "apps/web/src/routes/agent/_layout/_authenticated/agent/settings/profile/pending-actions/$id.tsx:PendingActionDetailRoute",
+          "Card->packages/ui/src/components/card.tsx:Card"
         ],
         "backdropLayers": [
-          "bg-background"
+          "bg-card"
+        ]
+      },
+      {
+        "id": "apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings/account/security.tsx::AccountSecurity::Alert[main[0]/Alert[0]]",
+        "usage": "apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings/account/security.tsx",
+        "surfaceContext": "caller-chain",
+        "category": "body",
+        "chain": [
+          "packages/ui/src/components/alert.tsx:alertVariants[default]",
+          "apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings/account/security.tsx:AccountSecurity",
+          "jsx:main[0]/Alert[0]",
+          "apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings/account/security.tsx:/_layout/_authenticated/dashboard/settings/account/security",
+          "apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings/account.tsx:/_layout/_authenticated/dashboard/settings/account",
+          "apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings.tsx:Outlet>bg-card"
+        ],
+        "backdropLayers": [
+          "bg-card"
         ]
       }
-    ]
+    ],
+    "surfaceContext": "caller-chain"
   },
   {
     "fg": "--color-card-foreground",
@@ -43771,7 +43852,7 @@
     "themes": [
       "dark"
     ],
-    "usage": "packages/ui/src/components/alert.tsx",
+    "usage": "apps/web/src/components/god-mode/identity-connection-editor.tsx",
     "backdrop": "--color-background",
     "foregroundClass": "text-card-foreground",
     "backgroundClass": {
@@ -43781,59 +43862,1313 @@
       "bg-background"
     ],
     "occurrenceIds": [
-      "packages/ui/src/components/alert.tsx::alertVariants::CVA[1]::text-card-foreground#bg-destructive/4"
+      "apps/web/src/components/god-mode/identity-connection-editor.tsx::IdentityConnectionEditor::Alert[section[0]/Alert[0]]",
+      "apps/web/src/components/god-mode/identity-connection-events.tsx::IdentityConnectionEvents::Alert[section[0]/Alert[0]]",
+      "apps/web/src/components/god-mode/scim-group-mappings-settings.tsx::ScimGroupMappingsSettings::Alert[section[0]/Alert[0]]",
+      "apps/web/src/components/god-mode/scim-group-mappings-settings.tsx::ScimGroupMappingsSettings::Alert[section[0]/form[0]/Alert[0]]",
+      "apps/web/src/components/god-mode/scim-match-attributes-settings.tsx::ScimMatchAttributesSettings::Alert[Alert[0]]",
+      "apps/web/src/components/god-mode/scim-match-attributes-settings.tsx::ScimMatchAttributesSettings::Alert[section[0]/form[0]/Alert[0]]",
+      "apps/web/src/components/god-mode/scim-token-settings.tsx::ScimTokenSettings::Alert[section[0]/Alert[0]]",
+      "apps/web/src/components/service-calendar/service-calendar-editor-view.tsx::ServiceCalendarEditorView::Alert[main[0]/Alert[0]]",
+      "apps/web/src/components/sla-policy/sla-policy-editor.tsx::SlaPolicyEditor::Alert[main[0]/Alert[0]]",
+      "apps/web/src/components/work-item/work-item-activity.tsx::WorkItemActivity::Alert[section[0]/Alert[0]]",
+      "apps/web/src/components/work-item/work-item-detail.tsx::WorkItemDetail::Alert[Alert[0]]",
+      "apps/web/src/components/work-item/work-item-detail.tsx::WorkItemDetail::Alert[div[0]/section[1]/Alert[0]]",
+      "apps/web/src/components/work-item/work-item-list.tsx::WorkItemList::Alert[div[0]/Alert[0]]",
+      "apps/web/src/routes/agent/_layout/_authenticated/agent/my-work.tsx::MyApprovalsRoute::Alert[main[0]/Alert[0]]",
+      "apps/web/src/routes/agent/_layout/_authenticated/agent/settings/calendars.tsx::ServiceCalendarsRoute::Alert[main[0]/Alert[0]]",
+      "apps/web/src/routes/agent/_layout/_authenticated/agent/settings/sla-policies.tsx::SlaPoliciesRoute::Alert[main[0]/Alert[0]]",
+      "apps/web/src/routes/agent/_layout/_authenticated/god-mode/authentication.tsx::IdentityConnectionsRoute::Alert[main[0]/Alert[0]]",
+      "apps/web/src/routes/agent/_layout/_authenticated/god-mode/observability.tsx::ObservabilitySettings::Alert[main[0]/Alert[0]]",
+      "apps/web/src/routes/agent/_layout/_authenticated/god-mode/users.tsx::InstanceUsersPage::Alert[main[0]/Alert[0]]",
+      "apps/web/src/routes/agent/_layout/_authenticated/god-mode/users.tsx::UserDetails::Alert[Alert[0]]",
+      "apps/web/src/routes/agent/auth/sign-in.tsx::SignIn::Alert[AuthLayout[0]/div[0]/Alert[0]]",
+      "apps/web/src/routes/agent/auth/two-factor.tsx::TwoFactorChallenge::Alert[AuthLayout[0]/form[0]/Alert[0]]",
+      "apps/web/src/routes/agent/invitation/accept.$inviteId.tsx::AcceptInvitation::Alert[AuthLayout[0]/div[0]/Alert[0]]",
+      "apps/web/src/routes/portal/__root.tsx::PortalError::Alert[PortalFrame[0]/Alert[0]]",
+      "apps/web/src/routes/portal/approvals.tsx::PortalApprovalsPage::Alert[main[0]/Alert[0]]",
+      "packages/ui/src/components/alert.stories.tsx::<module>::Alert[Alert[0]]"
     ],
     "occurrences": [
       {
-        "id": "packages/ui/src/components/alert.tsx::alertVariants::CVA[1]::text-card-foreground#bg-destructive/4",
-        "usage": "packages/ui/src/components/alert.tsx",
-        "surfaceContext": "same-element",
+        "id": "apps/web/src/components/god-mode/identity-connection-editor.tsx::IdentityConnectionEditor::Alert[section[0]/Alert[0]]",
+        "usage": "apps/web/src/components/god-mode/identity-connection-editor.tsx",
+        "surfaceContext": "caller-chain",
         "category": "body",
         "chain": [
-          "packages/ui/src/components/alert.tsx:alertVariants",
-          "cva:4>text-card-foreground border-destructive/32 bg-destructive/4 [&>svg]:text-destructive"
+          "packages/ui/src/components/alert.tsx:alertVariants[error]",
+          "apps/web/src/components/god-mode/identity-connection-editor.tsx:IdentityConnectionEditor",
+          "jsx:section[0]/Alert[0]",
+          "apps/web/src/routes/agent/_layout/_authenticated/god-mode/authentication/$id.tsx:/_layout/_authenticated/god-mode/authentication/$id",
+          "apps/web/src/routes/agent/_layout/_authenticated/god-mode/authentication.tsx:/_layout/_authenticated/god-mode/authentication",
+          "apps/web/src/routes/agent/_layout/_authenticated.tsx:/_layout/_authenticated",
+          "apps/web/src/routes/agent/_layout.tsx:/_layout",
+          "apps/web/src/index.css:body>@apply bg-background"
+        ],
+        "backdropLayers": [
+          "bg-background"
+        ]
+      },
+      {
+        "id": "apps/web/src/components/god-mode/identity-connection-events.tsx::IdentityConnectionEvents::Alert[section[0]/Alert[0]]",
+        "usage": "apps/web/src/components/god-mode/identity-connection-events.tsx",
+        "surfaceContext": "caller-chain",
+        "category": "body",
+        "chain": [
+          "packages/ui/src/components/alert.tsx:alertVariants[error]",
+          "apps/web/src/components/god-mode/identity-connection-events.tsx:IdentityConnectionEvents",
+          "jsx:section[0]/Alert[0]",
+          "apps/web/src/routes/agent/_layout/_authenticated/god-mode/authentication/$id.tsx:/_layout/_authenticated/god-mode/authentication/$id",
+          "apps/web/src/routes/agent/_layout/_authenticated/god-mode/authentication.tsx:/_layout/_authenticated/god-mode/authentication",
+          "apps/web/src/routes/agent/_layout/_authenticated.tsx:/_layout/_authenticated",
+          "apps/web/src/routes/agent/_layout.tsx:/_layout",
+          "apps/web/src/index.css:body>@apply bg-background"
+        ],
+        "backdropLayers": [
+          "bg-background"
+        ]
+      },
+      {
+        "id": "apps/web/src/components/god-mode/scim-group-mappings-settings.tsx::ScimGroupMappingsSettings::Alert[section[0]/Alert[0]]",
+        "usage": "apps/web/src/components/god-mode/scim-group-mappings-settings.tsx",
+        "surfaceContext": "caller-chain",
+        "category": "body",
+        "chain": [
+          "packages/ui/src/components/alert.tsx:alertVariants[error]",
+          "apps/web/src/components/god-mode/scim-group-mappings-settings.tsx:ScimGroupMappingsSettings",
+          "jsx:section[0]/Alert[0]",
+          "apps/web/src/routes/agent/_layout/_authenticated/god-mode/authentication/$id.tsx:/_layout/_authenticated/god-mode/authentication/$id",
+          "apps/web/src/routes/agent/_layout/_authenticated/god-mode/authentication.tsx:/_layout/_authenticated/god-mode/authentication",
+          "apps/web/src/routes/agent/_layout/_authenticated.tsx:/_layout/_authenticated",
+          "apps/web/src/routes/agent/_layout.tsx:/_layout",
+          "apps/web/src/index.css:body>@apply bg-background"
+        ],
+        "backdropLayers": [
+          "bg-background"
+        ]
+      },
+      {
+        "id": "apps/web/src/components/god-mode/scim-group-mappings-settings.tsx::ScimGroupMappingsSettings::Alert[section[0]/form[0]/Alert[0]]",
+        "usage": "apps/web/src/components/god-mode/scim-group-mappings-settings.tsx",
+        "surfaceContext": "caller-chain",
+        "category": "body",
+        "chain": [
+          "packages/ui/src/components/alert.tsx:alertVariants[error]",
+          "apps/web/src/components/god-mode/scim-group-mappings-settings.tsx:ScimGroupMappingsSettings",
+          "jsx:section[0]/form[0]/Alert[0]",
+          "apps/web/src/routes/agent/_layout/_authenticated/god-mode/authentication/$id.tsx:/_layout/_authenticated/god-mode/authentication/$id",
+          "apps/web/src/routes/agent/_layout/_authenticated/god-mode/authentication.tsx:/_layout/_authenticated/god-mode/authentication",
+          "apps/web/src/routes/agent/_layout/_authenticated.tsx:/_layout/_authenticated",
+          "apps/web/src/routes/agent/_layout.tsx:/_layout",
+          "apps/web/src/index.css:body>@apply bg-background"
+        ],
+        "backdropLayers": [
+          "bg-background"
+        ]
+      },
+      {
+        "id": "apps/web/src/components/god-mode/scim-match-attributes-settings.tsx::ScimMatchAttributesSettings::Alert[Alert[0]]",
+        "usage": "apps/web/src/components/god-mode/scim-match-attributes-settings.tsx",
+        "surfaceContext": "caller-chain",
+        "category": "body",
+        "chain": [
+          "packages/ui/src/components/alert.tsx:alertVariants[error]",
+          "apps/web/src/components/god-mode/scim-match-attributes-settings.tsx:ScimMatchAttributesSettings",
+          "jsx:Alert[0]",
+          "apps/web/src/routes/agent/_layout/_authenticated/god-mode/authentication/$id.tsx:/_layout/_authenticated/god-mode/authentication/$id",
+          "apps/web/src/routes/agent/_layout/_authenticated/god-mode/authentication.tsx:/_layout/_authenticated/god-mode/authentication",
+          "apps/web/src/routes/agent/_layout/_authenticated.tsx:/_layout/_authenticated",
+          "apps/web/src/routes/agent/_layout.tsx:/_layout",
+          "apps/web/src/index.css:body>@apply bg-background"
+        ],
+        "backdropLayers": [
+          "bg-background"
+        ]
+      },
+      {
+        "id": "apps/web/src/components/god-mode/scim-match-attributes-settings.tsx::ScimMatchAttributesSettings::Alert[section[0]/form[0]/Alert[0]]",
+        "usage": "apps/web/src/components/god-mode/scim-match-attributes-settings.tsx",
+        "surfaceContext": "caller-chain",
+        "category": "body",
+        "chain": [
+          "packages/ui/src/components/alert.tsx:alertVariants[error]",
+          "apps/web/src/components/god-mode/scim-match-attributes-settings.tsx:ScimMatchAttributesSettings",
+          "jsx:section[0]/form[0]/Alert[0]",
+          "apps/web/src/routes/agent/_layout/_authenticated/god-mode/authentication/$id.tsx:/_layout/_authenticated/god-mode/authentication/$id",
+          "apps/web/src/routes/agent/_layout/_authenticated/god-mode/authentication.tsx:/_layout/_authenticated/god-mode/authentication",
+          "apps/web/src/routes/agent/_layout/_authenticated.tsx:/_layout/_authenticated",
+          "apps/web/src/routes/agent/_layout.tsx:/_layout",
+          "apps/web/src/index.css:body>@apply bg-background"
+        ],
+        "backdropLayers": [
+          "bg-background"
+        ]
+      },
+      {
+        "id": "apps/web/src/components/god-mode/scim-token-settings.tsx::ScimTokenSettings::Alert[section[0]/Alert[0]]",
+        "usage": "apps/web/src/components/god-mode/scim-token-settings.tsx",
+        "surfaceContext": "caller-chain",
+        "category": "body",
+        "chain": [
+          "packages/ui/src/components/alert.tsx:alertVariants[error]",
+          "apps/web/src/components/god-mode/scim-token-settings.tsx:ScimTokenSettings",
+          "jsx:section[0]/Alert[0]",
+          "apps/web/src/routes/agent/_layout/_authenticated/god-mode/authentication/$id.tsx:/_layout/_authenticated/god-mode/authentication/$id",
+          "apps/web/src/routes/agent/_layout/_authenticated/god-mode/authentication.tsx:/_layout/_authenticated/god-mode/authentication",
+          "apps/web/src/routes/agent/_layout/_authenticated.tsx:/_layout/_authenticated",
+          "apps/web/src/routes/agent/_layout.tsx:/_layout",
+          "apps/web/src/index.css:body>@apply bg-background"
+        ],
+        "backdropLayers": [
+          "bg-background"
+        ]
+      },
+      {
+        "id": "apps/web/src/components/service-calendar/service-calendar-editor-view.tsx::ServiceCalendarEditorView::Alert[main[0]/Alert[0]]",
+        "usage": "apps/web/src/components/service-calendar/service-calendar-editor-view.tsx",
+        "surfaceContext": "caller-chain",
+        "category": "body",
+        "chain": [
+          "packages/ui/src/components/alert.tsx:alertVariants[error]",
+          "apps/web/src/components/service-calendar/service-calendar-editor-view.tsx:ServiceCalendarEditorView",
+          "jsx:main[0]/Alert[0]",
+          "apps/web/src/routes/agent/_layout/_authenticated/agent/settings/calendars/$id.tsx:/_layout/_authenticated/agent/settings/calendars/$id",
+          "apps/web/src/routes/agent/_layout/_authenticated/agent/settings/calendars.tsx:/_layout/_authenticated/agent/settings/calendars",
+          "apps/web/src/routes/agent/_layout/_authenticated.tsx:/_layout/_authenticated",
+          "apps/web/src/routes/agent/_layout.tsx:/_layout",
+          "apps/web/src/index.css:body>@apply bg-background"
+        ],
+        "backdropLayers": [
+          "bg-background"
+        ]
+      },
+      {
+        "id": "apps/web/src/components/sla-policy/sla-policy-editor.tsx::SlaPolicyEditor::Alert[main[0]/Alert[0]]",
+        "usage": "apps/web/src/components/sla-policy/sla-policy-editor.tsx",
+        "surfaceContext": "caller-chain",
+        "category": "body",
+        "chain": [
+          "packages/ui/src/components/alert.tsx:alertVariants[error]",
+          "apps/web/src/components/sla-policy/sla-policy-editor.tsx:SlaPolicyEditor",
+          "jsx:main[0]/Alert[0]",
+          "apps/web/src/routes/agent/_layout/_authenticated/agent/settings/sla-policies/$id.tsx:/_layout/_authenticated/agent/settings/sla-policies/$id",
+          "apps/web/src/routes/agent/_layout/_authenticated/agent/settings/sla-policies.tsx:/_layout/_authenticated/agent/settings/sla-policies",
+          "apps/web/src/routes/agent/_layout/_authenticated.tsx:/_layout/_authenticated",
+          "apps/web/src/routes/agent/_layout.tsx:/_layout",
+          "apps/web/src/index.css:body>@apply bg-background"
+        ],
+        "backdropLayers": [
+          "bg-background"
+        ]
+      },
+      {
+        "id": "apps/web/src/components/work-item/work-item-activity.tsx::WorkItemActivity::Alert[section[0]/Alert[0]]",
+        "usage": "apps/web/src/components/work-item/work-item-activity.tsx",
+        "surfaceContext": "caller-chain",
+        "category": "body",
+        "chain": [
+          "packages/ui/src/components/alert.tsx:alertVariants[error]",
+          "apps/web/src/components/work-item/work-item-activity.tsx:WorkItemActivity",
+          "jsx:section[0]/Alert[0]",
+          "apps/web/src/routes/agent/_layout/_authenticated/agent/work-items/$key.tsx:/_layout/_authenticated/agent/work-items/$key",
+          "apps/web/src/routes/agent/_layout/_authenticated.tsx:/_layout/_authenticated",
+          "apps/web/src/routes/agent/_layout.tsx:/_layout",
+          "apps/web/src/index.css:body>@apply bg-background"
+        ],
+        "backdropLayers": [
+          "bg-background"
+        ]
+      },
+      {
+        "id": "apps/web/src/components/work-item/work-item-detail.tsx::WorkItemDetail::Alert[Alert[0]]",
+        "usage": "apps/web/src/components/work-item/work-item-detail.tsx",
+        "surfaceContext": "caller-chain",
+        "category": "body",
+        "chain": [
+          "packages/ui/src/components/alert.tsx:alertVariants[error]",
+          "apps/web/src/components/work-item/work-item-detail.tsx:WorkItemDetail",
+          "jsx:Alert[0]",
+          "apps/web/src/routes/agent/_layout/_authenticated/agent/work-items/$key.tsx:/_layout/_authenticated/agent/work-items/$key",
+          "apps/web/src/routes/agent/_layout/_authenticated.tsx:/_layout/_authenticated",
+          "apps/web/src/routes/agent/_layout.tsx:/_layout",
+          "apps/web/src/index.css:body>@apply bg-background"
+        ],
+        "backdropLayers": [
+          "bg-background"
+        ]
+      },
+      {
+        "id": "apps/web/src/components/work-item/work-item-detail.tsx::WorkItemDetail::Alert[div[0]/section[1]/Alert[0]]",
+        "usage": "apps/web/src/components/work-item/work-item-detail.tsx",
+        "surfaceContext": "caller-chain",
+        "category": "body",
+        "chain": [
+          "packages/ui/src/components/alert.tsx:alertVariants[error]",
+          "apps/web/src/components/work-item/work-item-detail.tsx:WorkItemDetail",
+          "jsx:div[0]/section[1]/Alert[0]",
+          "apps/web/src/routes/agent/_layout/_authenticated/agent/work-items/$key.tsx:/_layout/_authenticated/agent/work-items/$key",
+          "apps/web/src/routes/agent/_layout/_authenticated.tsx:/_layout/_authenticated",
+          "apps/web/src/routes/agent/_layout.tsx:/_layout",
+          "apps/web/src/index.css:body>@apply bg-background"
+        ],
+        "backdropLayers": [
+          "bg-background"
+        ]
+      },
+      {
+        "id": "apps/web/src/components/work-item/work-item-list.tsx::WorkItemList::Alert[div[0]/Alert[0]]",
+        "usage": "apps/web/src/components/work-item/work-item-list.tsx",
+        "surfaceContext": "caller-chain",
+        "category": "body",
+        "chain": [
+          "packages/ui/src/components/alert.tsx:alertVariants[error]",
+          "apps/web/src/components/work-item/work-item-list.tsx:WorkItemList",
+          "jsx:div[0]/Alert[0]",
+          "apps/web/src/components/work-item/work-item-list.tsx:WorkItemList",
+          "jsx:div[0]/Alert[0]",
+          "opaque-backdrop:bg-background"
+        ],
+        "backdropLayers": [
+          "bg-background"
+        ]
+      },
+      {
+        "id": "apps/web/src/routes/agent/_layout/_authenticated/agent/my-work.tsx::MyApprovalsRoute::Alert[main[0]/Alert[0]]",
+        "usage": "apps/web/src/routes/agent/_layout/_authenticated/agent/my-work.tsx",
+        "surfaceContext": "caller-chain",
+        "category": "body",
+        "chain": [
+          "packages/ui/src/components/alert.tsx:alertVariants[error]",
+          "apps/web/src/routes/agent/_layout/_authenticated/agent/my-work.tsx:MyApprovalsRoute",
+          "jsx:main[0]/Alert[0]",
+          "apps/web/src/routes/agent/_layout/_authenticated/agent/my-work.tsx:/_layout/_authenticated/agent/my-work",
+          "apps/web/src/routes/agent/_layout/_authenticated.tsx:/_layout/_authenticated",
+          "apps/web/src/routes/agent/_layout.tsx:/_layout",
+          "apps/web/src/index.css:body>@apply bg-background"
+        ],
+        "backdropLayers": [
+          "bg-background"
+        ]
+      },
+      {
+        "id": "apps/web/src/routes/agent/_layout/_authenticated/agent/settings/calendars.tsx::ServiceCalendarsRoute::Alert[main[0]/Alert[0]]",
+        "usage": "apps/web/src/routes/agent/_layout/_authenticated/agent/settings/calendars.tsx",
+        "surfaceContext": "caller-chain",
+        "category": "body",
+        "chain": [
+          "packages/ui/src/components/alert.tsx:alertVariants[error]",
+          "apps/web/src/routes/agent/_layout/_authenticated/agent/settings/calendars.tsx:ServiceCalendarsRoute",
+          "jsx:main[0]/Alert[0]",
+          "apps/web/src/routes/agent/_layout/_authenticated/agent/settings/calendars.tsx:/_layout/_authenticated/agent/settings/calendars",
+          "apps/web/src/routes/agent/_layout/_authenticated.tsx:/_layout/_authenticated",
+          "apps/web/src/routes/agent/_layout.tsx:/_layout",
+          "apps/web/src/index.css:body>@apply bg-background"
+        ],
+        "backdropLayers": [
+          "bg-background"
+        ]
+      },
+      {
+        "id": "apps/web/src/routes/agent/_layout/_authenticated/agent/settings/sla-policies.tsx::SlaPoliciesRoute::Alert[main[0]/Alert[0]]",
+        "usage": "apps/web/src/routes/agent/_layout/_authenticated/agent/settings/sla-policies.tsx",
+        "surfaceContext": "caller-chain",
+        "category": "body",
+        "chain": [
+          "packages/ui/src/components/alert.tsx:alertVariants[error]",
+          "apps/web/src/routes/agent/_layout/_authenticated/agent/settings/sla-policies.tsx:SlaPoliciesRoute",
+          "jsx:main[0]/Alert[0]",
+          "apps/web/src/routes/agent/_layout/_authenticated/agent/settings/sla-policies.tsx:/_layout/_authenticated/agent/settings/sla-policies",
+          "apps/web/src/routes/agent/_layout/_authenticated.tsx:/_layout/_authenticated",
+          "apps/web/src/routes/agent/_layout.tsx:/_layout",
+          "apps/web/src/index.css:body>@apply bg-background"
+        ],
+        "backdropLayers": [
+          "bg-background"
+        ]
+      },
+      {
+        "id": "apps/web/src/routes/agent/_layout/_authenticated/god-mode/authentication.tsx::IdentityConnectionsRoute::Alert[main[0]/Alert[0]]",
+        "usage": "apps/web/src/routes/agent/_layout/_authenticated/god-mode/authentication.tsx",
+        "surfaceContext": "caller-chain",
+        "category": "body",
+        "chain": [
+          "packages/ui/src/components/alert.tsx:alertVariants[error]",
+          "apps/web/src/routes/agent/_layout/_authenticated/god-mode/authentication.tsx:IdentityConnectionsRoute",
+          "jsx:main[0]/Alert[0]",
+          "apps/web/src/routes/agent/_layout/_authenticated/god-mode/authentication.tsx:/_layout/_authenticated/god-mode/authentication",
+          "apps/web/src/routes/agent/_layout/_authenticated.tsx:/_layout/_authenticated",
+          "apps/web/src/routes/agent/_layout.tsx:/_layout",
+          "apps/web/src/index.css:body>@apply bg-background"
+        ],
+        "backdropLayers": [
+          "bg-background"
+        ]
+      },
+      {
+        "id": "apps/web/src/routes/agent/_layout/_authenticated/god-mode/observability.tsx::ObservabilitySettings::Alert[main[0]/Alert[0]]",
+        "usage": "apps/web/src/routes/agent/_layout/_authenticated/god-mode/observability.tsx",
+        "surfaceContext": "caller-chain",
+        "category": "body",
+        "chain": [
+          "packages/ui/src/components/alert.tsx:alertVariants[error]",
+          "apps/web/src/routes/agent/_layout/_authenticated/god-mode/observability.tsx:ObservabilitySettings",
+          "jsx:main[0]/Alert[0]",
+          "apps/web/src/routes/agent/_layout/_authenticated/god-mode/observability.tsx:/_layout/_authenticated/god-mode/observability",
+          "apps/web/src/routes/agent/_layout/_authenticated.tsx:/_layout/_authenticated",
+          "apps/web/src/routes/agent/_layout.tsx:/_layout",
+          "apps/web/src/index.css:body>@apply bg-background"
+        ],
+        "backdropLayers": [
+          "bg-background"
+        ]
+      },
+      {
+        "id": "apps/web/src/routes/agent/_layout/_authenticated/god-mode/users.tsx::InstanceUsersPage::Alert[main[0]/Alert[0]]",
+        "usage": "apps/web/src/routes/agent/_layout/_authenticated/god-mode/users.tsx",
+        "surfaceContext": "caller-chain",
+        "category": "body",
+        "chain": [
+          "packages/ui/src/components/alert.tsx:alertVariants[error]",
+          "apps/web/src/routes/agent/_layout/_authenticated/god-mode/users.tsx:InstanceUsersPage",
+          "jsx:main[0]/Alert[0]",
+          "apps/web/src/routes/agent/_layout/_authenticated/god-mode/users.tsx:/_layout/_authenticated/god-mode/users",
+          "apps/web/src/routes/agent/_layout/_authenticated.tsx:/_layout/_authenticated",
+          "apps/web/src/routes/agent/_layout.tsx:/_layout",
+          "apps/web/src/index.css:body>@apply bg-background"
+        ],
+        "backdropLayers": [
+          "bg-background"
+        ]
+      },
+      {
+        "id": "apps/web/src/routes/agent/_layout/_authenticated/god-mode/users.tsx::UserDetails::Alert[Alert[0]]",
+        "usage": "apps/web/src/routes/agent/_layout/_authenticated/god-mode/users.tsx",
+        "surfaceContext": "caller-chain",
+        "category": "body",
+        "chain": [
+          "packages/ui/src/components/alert.tsx:alertVariants[error]",
+          "apps/web/src/routes/agent/_layout/_authenticated/god-mode/users.tsx:UserDetails",
+          "jsx:Alert[0]",
+          "apps/web/src/routes/agent/_layout/_authenticated/god-mode/users.tsx:/_layout/_authenticated/god-mode/users",
+          "apps/web/src/routes/agent/_layout/_authenticated.tsx:/_layout/_authenticated",
+          "apps/web/src/routes/agent/_layout.tsx:/_layout",
+          "apps/web/src/index.css:body>@apply bg-background"
+        ],
+        "backdropLayers": [
+          "bg-background"
+        ]
+      },
+      {
+        "id": "apps/web/src/routes/agent/auth/sign-in.tsx::SignIn::Alert[AuthLayout[0]/div[0]/Alert[0]]",
+        "usage": "apps/web/src/routes/agent/auth/sign-in.tsx",
+        "surfaceContext": "caller-chain",
+        "category": "body",
+        "chain": [
+          "packages/ui/src/components/alert.tsx:alertVariants[error]",
+          "apps/web/src/routes/agent/auth/sign-in.tsx:SignIn",
+          "jsx:AuthLayout[0]/div[0]/Alert[0]",
+          "apps/web/src/routes/agent/auth/sign-in.tsx:SignIn",
+          "AuthLayout->apps/web/src/components/auth/layout.tsx:AuthLayout"
+        ],
+        "backdropLayers": [
+          "bg-background"
+        ]
+      },
+      {
+        "id": "apps/web/src/routes/agent/auth/two-factor.tsx::TwoFactorChallenge::Alert[AuthLayout[0]/form[0]/Alert[0]]",
+        "usage": "apps/web/src/routes/agent/auth/two-factor.tsx",
+        "surfaceContext": "caller-chain",
+        "category": "body",
+        "chain": [
+          "packages/ui/src/components/alert.tsx:alertVariants[error]",
+          "apps/web/src/routes/agent/auth/two-factor.tsx:TwoFactorChallenge",
+          "jsx:AuthLayout[0]/form[0]/Alert[0]",
+          "apps/web/src/routes/agent/auth/two-factor.tsx:TwoFactorChallenge",
+          "AuthLayout->apps/web/src/components/auth/layout.tsx:AuthLayout"
+        ],
+        "backdropLayers": [
+          "bg-background"
+        ]
+      },
+      {
+        "id": "apps/web/src/routes/agent/invitation/accept.$inviteId.tsx::AcceptInvitation::Alert[AuthLayout[0]/div[0]/Alert[0]]",
+        "usage": "apps/web/src/routes/agent/invitation/accept.$inviteId.tsx",
+        "surfaceContext": "caller-chain",
+        "category": "body",
+        "chain": [
+          "packages/ui/src/components/alert.tsx:alertVariants[error]",
+          "apps/web/src/routes/agent/invitation/accept.$inviteId.tsx:AcceptInvitation",
+          "jsx:AuthLayout[0]/div[0]/Alert[0]",
+          "apps/web/src/routes/agent/invitation/accept.$inviteId.tsx:AcceptInvitation",
+          "AuthLayout->apps/web/src/components/auth/layout.tsx:AuthLayout"
+        ],
+        "backdropLayers": [
+          "bg-background"
+        ]
+      },
+      {
+        "id": "apps/web/src/routes/portal/__root.tsx::PortalError::Alert[PortalFrame[0]/Alert[0]]",
+        "usage": "apps/web/src/routes/portal/__root.tsx",
+        "surfaceContext": "caller-chain",
+        "category": "body",
+        "chain": [
+          "packages/ui/src/components/alert.tsx:alertVariants[error]",
+          "apps/web/src/routes/portal/__root.tsx:PortalError",
+          "jsx:PortalFrame[0]/Alert[0]",
+          "apps/web/src/routes/portal/__root.tsx:PortalError",
+          "PortalFrame->apps/web/src/routes/portal/__root.tsx:PortalFrame"
+        ],
+        "backdropLayers": [
+          "bg-background"
+        ]
+      },
+      {
+        "id": "apps/web/src/routes/portal/approvals.tsx::PortalApprovalsPage::Alert[main[0]/Alert[0]]",
+        "usage": "apps/web/src/routes/portal/approvals.tsx",
+        "surfaceContext": "caller-chain",
+        "category": "body",
+        "chain": [
+          "packages/ui/src/components/alert.tsx:alertVariants[error]",
+          "apps/web/src/routes/portal/approvals.tsx:PortalApprovalsPage",
+          "jsx:main[0]/Alert[0]",
+          "apps/web/src/routes/portal/approvals.tsx:PortalApprovalsPage",
+          "jsx:main[0]/Alert[0]",
+          "opaque-backdrop:bg-background"
+        ],
+        "backdropLayers": [
+          "bg-background"
+        ]
+      },
+      {
+        "id": "packages/ui/src/components/alert.stories.tsx::<module>::Alert[Alert[0]]",
+        "usage": "packages/ui/src/components/alert.stories.tsx",
+        "surfaceContext": "storybook-body",
+        "category": "body",
+        "chain": [
+          "packages/ui/src/components/alert.stories.tsx:<story>",
+          "packages/ui/src/components/alert.tsx:alertVariants[error]",
+          "packages/ui/src/components/alert.stories.tsx:<module>",
+          "jsx:Alert[0]",
+          "packages/ui/.storybook/preview.ts:imports tailwind.css",
+          "packages/ui/.storybook/tailwind.css:#storybook-root.background-color:var(--background)"
         ],
         "backdropLayers": [
           "bg-background"
         ]
       }
-    ]
+    ],
+    "surfaceContext": "caller-chain"
   },
   {
     "fg": "--color-card-foreground",
-    "bg": "--color-info",
+    "bg": "--color-destructive",
+    "category": "body",
+    "minRatio": 4.5,
+    "themes": [
+      "dark"
+    ],
+    "usage": "apps/web/src/components/service-calendar/holiday-import-panel.tsx",
+    "backdrop": "--color-card",
+    "foregroundClass": "text-card-foreground",
+    "backgroundClass": {
+      "dark": "bg-destructive/4"
+    },
+    "backdropLayers": [
+      "bg-card"
+    ],
+    "occurrenceIds": [
+      "apps/web/src/components/service-calendar/holiday-import-panel.tsx::HolidayImportPanel::Alert[section[0]/Alert[0]]",
+      "apps/web/src/routes/agent/_layout/_authenticated/agent/settings/profile/pending-actions/$id.tsx::PendingActionDetailRoute::Alert[main[0]/Card[0]/CardContent[0]/div[0]/Alert[0]]",
+      "apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings/account/security.tsx::AccountSecurity::Alert[main[0]/Alert[0]]"
+    ],
+    "occurrences": [
+      {
+        "id": "apps/web/src/components/service-calendar/holiday-import-panel.tsx::HolidayImportPanel::Alert[section[0]/Alert[0]]",
+        "usage": "apps/web/src/components/service-calendar/holiday-import-panel.tsx",
+        "surfaceContext": "caller-chain",
+        "category": "body",
+        "chain": [
+          "packages/ui/src/components/alert.tsx:alertVariants[error]",
+          "apps/web/src/components/service-calendar/holiday-import-panel.tsx:HolidayImportPanel",
+          "jsx:section[0]/Alert[0]",
+          "apps/web/src/components/service-calendar/holiday-list-card.tsx:HolidayListCard",
+          "Card->packages/ui/src/components/card.tsx:Card"
+        ],
+        "backdropLayers": [
+          "bg-card"
+        ]
+      },
+      {
+        "id": "apps/web/src/routes/agent/_layout/_authenticated/agent/settings/profile/pending-actions/$id.tsx::PendingActionDetailRoute::Alert[main[0]/Card[0]/CardContent[0]/div[0]/Alert[0]]",
+        "usage": "apps/web/src/routes/agent/_layout/_authenticated/agent/settings/profile/pending-actions/$id.tsx",
+        "surfaceContext": "caller-chain",
+        "category": "body",
+        "chain": [
+          "packages/ui/src/components/alert.tsx:alertVariants[error]",
+          "apps/web/src/routes/agent/_layout/_authenticated/agent/settings/profile/pending-actions/$id.tsx:PendingActionDetailRoute",
+          "jsx:main[0]/Card[0]/CardContent[0]/div[0]/Alert[0]",
+          "apps/web/src/routes/agent/_layout/_authenticated/agent/settings/profile/pending-actions/$id.tsx:PendingActionDetailRoute",
+          "Card->packages/ui/src/components/card.tsx:Card"
+        ],
+        "backdropLayers": [
+          "bg-card"
+        ]
+      },
+      {
+        "id": "apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings/account/security.tsx::AccountSecurity::Alert[main[0]/Alert[0]]",
+        "usage": "apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings/account/security.tsx",
+        "surfaceContext": "caller-chain",
+        "category": "body",
+        "chain": [
+          "packages/ui/src/components/alert.tsx:alertVariants[error]",
+          "apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings/account/security.tsx:AccountSecurity",
+          "jsx:main[0]/Alert[0]",
+          "apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings/account/security.tsx:/_layout/_authenticated/dashboard/settings/account/security",
+          "apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings/account.tsx:/_layout/_authenticated/dashboard/settings/account",
+          "apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings.tsx:Outlet>bg-card"
+        ],
+        "backdropLayers": [
+          "bg-card"
+        ]
+      }
+    ],
+    "surfaceContext": "caller-chain"
+  },
+  {
+    "fg": "--color-card-foreground",
+    "bg": "--color-destructive",
+    "category": "body",
+    "minRatio": 4.5,
+    "themes": [
+      "dark"
+    ],
+    "usage": "apps/web/src/components/work-item/create-work-item-dialog-form.tsx",
+    "backdrop": "--color-popover",
+    "foregroundClass": "text-card-foreground",
+    "backgroundClass": {
+      "dark": "bg-destructive/4"
+    },
+    "backdropLayers": [
+      "bg-popover"
+    ],
+    "occurrenceIds": [
+      "apps/web/src/components/work-item/create-work-item-dialog-form.tsx::CreateWorkItemDialogForm::Alert[form[0]/Alert[0]]",
+      "apps/web/src/routes/agent/_layout/_authenticated/god-mode/users.tsx::UserActionDialog::Alert[Dialog[0]/DialogContent[0]/div[0]/Alert[0]]"
+    ],
+    "occurrences": [
+      {
+        "id": "apps/web/src/components/work-item/create-work-item-dialog-form.tsx::CreateWorkItemDialogForm::Alert[form[0]/Alert[0]]",
+        "usage": "apps/web/src/components/work-item/create-work-item-dialog-form.tsx",
+        "surfaceContext": "caller-chain",
+        "category": "body",
+        "chain": [
+          "packages/ui/src/components/alert.tsx:alertVariants[error]",
+          "apps/web/src/components/work-item/create-work-item-dialog-form.tsx:CreateWorkItemDialogForm",
+          "jsx:form[0]/Alert[0]",
+          "apps/web/src/components/work-item/create-work-item-dialog.tsx:CreateWorkItemDialog",
+          "DialogContent->packages/ui/src/components/dialog.tsx:DialogPopup"
+        ],
+        "backdropLayers": [
+          "bg-popover"
+        ]
+      },
+      {
+        "id": "apps/web/src/components/work-item/create-work-item-dialog-form.tsx::CreateWorkItemDialogForm::Alert[form[0]/Alert[0]]",
+        "usage": "apps/web/src/components/work-item/create-work-item-dialog-form.tsx",
+        "surfaceContext": "caller-chain",
+        "category": "body",
+        "chain": [
+          "packages/ui/src/components/alert.tsx:alertVariants[error]",
+          "apps/web/src/components/work-item/create-work-item-dialog-form.tsx:CreateWorkItemDialogForm",
+          "jsx:form[0]/Alert[0]",
+          "apps/web/src/components/work-item/work-item-create-dialog-shell.tsx:WorkItemCreateDialogShell",
+          "DialogContent->packages/ui/src/components/dialog.tsx:DialogPopup"
+        ],
+        "backdropLayers": [
+          "bg-popover"
+        ]
+      },
+      {
+        "id": "apps/web/src/routes/agent/_layout/_authenticated/god-mode/users.tsx::UserActionDialog::Alert[Dialog[0]/DialogContent[0]/div[0]/Alert[0]]",
+        "usage": "apps/web/src/routes/agent/_layout/_authenticated/god-mode/users.tsx",
+        "surfaceContext": "caller-chain",
+        "category": "body",
+        "chain": [
+          "packages/ui/src/components/alert.tsx:alertVariants[error]",
+          "apps/web/src/routes/agent/_layout/_authenticated/god-mode/users.tsx:UserActionDialog",
+          "jsx:Dialog[0]/DialogContent[0]/div[0]/Alert[0]",
+          "apps/web/src/routes/agent/_layout/_authenticated/god-mode/users.tsx:UserActionDialog",
+          "DialogContent->packages/ui/src/components/dialog.tsx:DialogPopup"
+        ],
+        "backdropLayers": [
+          "bg-popover"
+        ]
+      }
+    ],
+    "surfaceContext": "caller-chain"
+  },
+  {
+    "fg": "--color-card-foreground",
+    "bg": "--color-destructive",
     "category": "body",
     "minRatio": 4.5,
     "themes": [
       "light"
     ],
-    "usage": "packages/ui/src/components/alert.tsx",
+    "usage": "apps/web/src/components/god-mode/identity-connection-editor.tsx",
     "backdrop": "--color-background",
     "foregroundClass": "text-card-foreground",
     "backgroundClass": {
-      "light": "bg-info/4"
+      "light": "bg-destructive/4"
     },
     "backdropLayers": [
       "bg-background"
     ],
     "occurrenceIds": [
-      "packages/ui/src/components/alert.tsx::alertVariants::CVA[2]::text-card-foreground#bg-info/4"
+      "apps/web/src/components/god-mode/identity-connection-editor.tsx::IdentityConnectionEditor::Alert[section[0]/Alert[0]]",
+      "apps/web/src/components/god-mode/identity-connection-events.tsx::IdentityConnectionEvents::Alert[section[0]/Alert[0]]",
+      "apps/web/src/components/god-mode/scim-group-mappings-settings.tsx::ScimGroupMappingsSettings::Alert[section[0]/Alert[0]]",
+      "apps/web/src/components/god-mode/scim-group-mappings-settings.tsx::ScimGroupMappingsSettings::Alert[section[0]/form[0]/Alert[0]]",
+      "apps/web/src/components/god-mode/scim-match-attributes-settings.tsx::ScimMatchAttributesSettings::Alert[Alert[0]]",
+      "apps/web/src/components/god-mode/scim-match-attributes-settings.tsx::ScimMatchAttributesSettings::Alert[section[0]/form[0]/Alert[0]]",
+      "apps/web/src/components/god-mode/scim-token-settings.tsx::ScimTokenSettings::Alert[section[0]/Alert[0]]",
+      "apps/web/src/components/service-calendar/service-calendar-editor-view.tsx::ServiceCalendarEditorView::Alert[main[0]/Alert[0]]",
+      "apps/web/src/components/sla-policy/sla-policy-editor.tsx::SlaPolicyEditor::Alert[main[0]/Alert[0]]",
+      "apps/web/src/components/work-item/work-item-activity.tsx::WorkItemActivity::Alert[section[0]/Alert[0]]",
+      "apps/web/src/components/work-item/work-item-detail.tsx::WorkItemDetail::Alert[Alert[0]]",
+      "apps/web/src/components/work-item/work-item-detail.tsx::WorkItemDetail::Alert[div[0]/section[1]/Alert[0]]",
+      "apps/web/src/components/work-item/work-item-list.tsx::WorkItemList::Alert[div[0]/Alert[0]]",
+      "apps/web/src/routes/agent/_layout/_authenticated/agent/my-work.tsx::MyApprovalsRoute::Alert[main[0]/Alert[0]]",
+      "apps/web/src/routes/agent/_layout/_authenticated/agent/settings/calendars.tsx::ServiceCalendarsRoute::Alert[main[0]/Alert[0]]",
+      "apps/web/src/routes/agent/_layout/_authenticated/agent/settings/sla-policies.tsx::SlaPoliciesRoute::Alert[main[0]/Alert[0]]",
+      "apps/web/src/routes/agent/_layout/_authenticated/god-mode/authentication.tsx::IdentityConnectionsRoute::Alert[main[0]/Alert[0]]",
+      "apps/web/src/routes/agent/_layout/_authenticated/god-mode/observability.tsx::ObservabilitySettings::Alert[main[0]/Alert[0]]",
+      "apps/web/src/routes/agent/_layout/_authenticated/god-mode/users.tsx::InstanceUsersPage::Alert[main[0]/Alert[0]]",
+      "apps/web/src/routes/agent/_layout/_authenticated/god-mode/users.tsx::UserDetails::Alert[Alert[0]]",
+      "apps/web/src/routes/agent/auth/sign-in.tsx::SignIn::Alert[AuthLayout[0]/div[0]/Alert[0]]",
+      "apps/web/src/routes/agent/auth/two-factor.tsx::TwoFactorChallenge::Alert[AuthLayout[0]/form[0]/Alert[0]]",
+      "apps/web/src/routes/agent/invitation/accept.$inviteId.tsx::AcceptInvitation::Alert[AuthLayout[0]/div[0]/Alert[0]]",
+      "apps/web/src/routes/portal/__root.tsx::PortalError::Alert[PortalFrame[0]/Alert[0]]",
+      "apps/web/src/routes/portal/approvals.tsx::PortalApprovalsPage::Alert[main[0]/Alert[0]]",
+      "packages/ui/src/components/alert.stories.tsx::<module>::Alert[Alert[0]]"
     ],
     "occurrences": [
       {
-        "id": "packages/ui/src/components/alert.tsx::alertVariants::CVA[2]::text-card-foreground#bg-info/4",
-        "usage": "packages/ui/src/components/alert.tsx",
-        "surfaceContext": "same-element",
+        "id": "apps/web/src/components/god-mode/identity-connection-editor.tsx::IdentityConnectionEditor::Alert[section[0]/Alert[0]]",
+        "usage": "apps/web/src/components/god-mode/identity-connection-editor.tsx",
+        "surfaceContext": "caller-chain",
         "category": "body",
         "chain": [
-          "packages/ui/src/components/alert.tsx:alertVariants",
-          "cva:5>text-card-foreground border-info/32 bg-info/4 [&>svg]:text-info"
+          "packages/ui/src/components/alert.tsx:alertVariants[error]",
+          "apps/web/src/components/god-mode/identity-connection-editor.tsx:IdentityConnectionEditor",
+          "jsx:section[0]/Alert[0]",
+          "apps/web/src/routes/agent/_layout/_authenticated/god-mode/authentication/$id.tsx:/_layout/_authenticated/god-mode/authentication/$id",
+          "apps/web/src/routes/agent/_layout/_authenticated/god-mode/authentication.tsx:/_layout/_authenticated/god-mode/authentication",
+          "apps/web/src/routes/agent/_layout/_authenticated.tsx:/_layout/_authenticated",
+          "apps/web/src/routes/agent/_layout.tsx:/_layout",
+          "apps/web/src/index.css:body>@apply bg-background"
+        ],
+        "backdropLayers": [
+          "bg-background"
+        ]
+      },
+      {
+        "id": "apps/web/src/components/god-mode/identity-connection-events.tsx::IdentityConnectionEvents::Alert[section[0]/Alert[0]]",
+        "usage": "apps/web/src/components/god-mode/identity-connection-events.tsx",
+        "surfaceContext": "caller-chain",
+        "category": "body",
+        "chain": [
+          "packages/ui/src/components/alert.tsx:alertVariants[error]",
+          "apps/web/src/components/god-mode/identity-connection-events.tsx:IdentityConnectionEvents",
+          "jsx:section[0]/Alert[0]",
+          "apps/web/src/routes/agent/_layout/_authenticated/god-mode/authentication/$id.tsx:/_layout/_authenticated/god-mode/authentication/$id",
+          "apps/web/src/routes/agent/_layout/_authenticated/god-mode/authentication.tsx:/_layout/_authenticated/god-mode/authentication",
+          "apps/web/src/routes/agent/_layout/_authenticated.tsx:/_layout/_authenticated",
+          "apps/web/src/routes/agent/_layout.tsx:/_layout",
+          "apps/web/src/index.css:body>@apply bg-background"
+        ],
+        "backdropLayers": [
+          "bg-background"
+        ]
+      },
+      {
+        "id": "apps/web/src/components/god-mode/scim-group-mappings-settings.tsx::ScimGroupMappingsSettings::Alert[section[0]/Alert[0]]",
+        "usage": "apps/web/src/components/god-mode/scim-group-mappings-settings.tsx",
+        "surfaceContext": "caller-chain",
+        "category": "body",
+        "chain": [
+          "packages/ui/src/components/alert.tsx:alertVariants[error]",
+          "apps/web/src/components/god-mode/scim-group-mappings-settings.tsx:ScimGroupMappingsSettings",
+          "jsx:section[0]/Alert[0]",
+          "apps/web/src/routes/agent/_layout/_authenticated/god-mode/authentication/$id.tsx:/_layout/_authenticated/god-mode/authentication/$id",
+          "apps/web/src/routes/agent/_layout/_authenticated/god-mode/authentication.tsx:/_layout/_authenticated/god-mode/authentication",
+          "apps/web/src/routes/agent/_layout/_authenticated.tsx:/_layout/_authenticated",
+          "apps/web/src/routes/agent/_layout.tsx:/_layout",
+          "apps/web/src/index.css:body>@apply bg-background"
+        ],
+        "backdropLayers": [
+          "bg-background"
+        ]
+      },
+      {
+        "id": "apps/web/src/components/god-mode/scim-group-mappings-settings.tsx::ScimGroupMappingsSettings::Alert[section[0]/form[0]/Alert[0]]",
+        "usage": "apps/web/src/components/god-mode/scim-group-mappings-settings.tsx",
+        "surfaceContext": "caller-chain",
+        "category": "body",
+        "chain": [
+          "packages/ui/src/components/alert.tsx:alertVariants[error]",
+          "apps/web/src/components/god-mode/scim-group-mappings-settings.tsx:ScimGroupMappingsSettings",
+          "jsx:section[0]/form[0]/Alert[0]",
+          "apps/web/src/routes/agent/_layout/_authenticated/god-mode/authentication/$id.tsx:/_layout/_authenticated/god-mode/authentication/$id",
+          "apps/web/src/routes/agent/_layout/_authenticated/god-mode/authentication.tsx:/_layout/_authenticated/god-mode/authentication",
+          "apps/web/src/routes/agent/_layout/_authenticated.tsx:/_layout/_authenticated",
+          "apps/web/src/routes/agent/_layout.tsx:/_layout",
+          "apps/web/src/index.css:body>@apply bg-background"
+        ],
+        "backdropLayers": [
+          "bg-background"
+        ]
+      },
+      {
+        "id": "apps/web/src/components/god-mode/scim-match-attributes-settings.tsx::ScimMatchAttributesSettings::Alert[Alert[0]]",
+        "usage": "apps/web/src/components/god-mode/scim-match-attributes-settings.tsx",
+        "surfaceContext": "caller-chain",
+        "category": "body",
+        "chain": [
+          "packages/ui/src/components/alert.tsx:alertVariants[error]",
+          "apps/web/src/components/god-mode/scim-match-attributes-settings.tsx:ScimMatchAttributesSettings",
+          "jsx:Alert[0]",
+          "apps/web/src/routes/agent/_layout/_authenticated/god-mode/authentication/$id.tsx:/_layout/_authenticated/god-mode/authentication/$id",
+          "apps/web/src/routes/agent/_layout/_authenticated/god-mode/authentication.tsx:/_layout/_authenticated/god-mode/authentication",
+          "apps/web/src/routes/agent/_layout/_authenticated.tsx:/_layout/_authenticated",
+          "apps/web/src/routes/agent/_layout.tsx:/_layout",
+          "apps/web/src/index.css:body>@apply bg-background"
+        ],
+        "backdropLayers": [
+          "bg-background"
+        ]
+      },
+      {
+        "id": "apps/web/src/components/god-mode/scim-match-attributes-settings.tsx::ScimMatchAttributesSettings::Alert[section[0]/form[0]/Alert[0]]",
+        "usage": "apps/web/src/components/god-mode/scim-match-attributes-settings.tsx",
+        "surfaceContext": "caller-chain",
+        "category": "body",
+        "chain": [
+          "packages/ui/src/components/alert.tsx:alertVariants[error]",
+          "apps/web/src/components/god-mode/scim-match-attributes-settings.tsx:ScimMatchAttributesSettings",
+          "jsx:section[0]/form[0]/Alert[0]",
+          "apps/web/src/routes/agent/_layout/_authenticated/god-mode/authentication/$id.tsx:/_layout/_authenticated/god-mode/authentication/$id",
+          "apps/web/src/routes/agent/_layout/_authenticated/god-mode/authentication.tsx:/_layout/_authenticated/god-mode/authentication",
+          "apps/web/src/routes/agent/_layout/_authenticated.tsx:/_layout/_authenticated",
+          "apps/web/src/routes/agent/_layout.tsx:/_layout",
+          "apps/web/src/index.css:body>@apply bg-background"
+        ],
+        "backdropLayers": [
+          "bg-background"
+        ]
+      },
+      {
+        "id": "apps/web/src/components/god-mode/scim-token-settings.tsx::ScimTokenSettings::Alert[section[0]/Alert[0]]",
+        "usage": "apps/web/src/components/god-mode/scim-token-settings.tsx",
+        "surfaceContext": "caller-chain",
+        "category": "body",
+        "chain": [
+          "packages/ui/src/components/alert.tsx:alertVariants[error]",
+          "apps/web/src/components/god-mode/scim-token-settings.tsx:ScimTokenSettings",
+          "jsx:section[0]/Alert[0]",
+          "apps/web/src/routes/agent/_layout/_authenticated/god-mode/authentication/$id.tsx:/_layout/_authenticated/god-mode/authentication/$id",
+          "apps/web/src/routes/agent/_layout/_authenticated/god-mode/authentication.tsx:/_layout/_authenticated/god-mode/authentication",
+          "apps/web/src/routes/agent/_layout/_authenticated.tsx:/_layout/_authenticated",
+          "apps/web/src/routes/agent/_layout.tsx:/_layout",
+          "apps/web/src/index.css:body>@apply bg-background"
+        ],
+        "backdropLayers": [
+          "bg-background"
+        ]
+      },
+      {
+        "id": "apps/web/src/components/service-calendar/service-calendar-editor-view.tsx::ServiceCalendarEditorView::Alert[main[0]/Alert[0]]",
+        "usage": "apps/web/src/components/service-calendar/service-calendar-editor-view.tsx",
+        "surfaceContext": "caller-chain",
+        "category": "body",
+        "chain": [
+          "packages/ui/src/components/alert.tsx:alertVariants[error]",
+          "apps/web/src/components/service-calendar/service-calendar-editor-view.tsx:ServiceCalendarEditorView",
+          "jsx:main[0]/Alert[0]",
+          "apps/web/src/routes/agent/_layout/_authenticated/agent/settings/calendars/$id.tsx:/_layout/_authenticated/agent/settings/calendars/$id",
+          "apps/web/src/routes/agent/_layout/_authenticated/agent/settings/calendars.tsx:/_layout/_authenticated/agent/settings/calendars",
+          "apps/web/src/routes/agent/_layout/_authenticated.tsx:/_layout/_authenticated",
+          "apps/web/src/routes/agent/_layout.tsx:/_layout",
+          "apps/web/src/index.css:body>@apply bg-background"
+        ],
+        "backdropLayers": [
+          "bg-background"
+        ]
+      },
+      {
+        "id": "apps/web/src/components/sla-policy/sla-policy-editor.tsx::SlaPolicyEditor::Alert[main[0]/Alert[0]]",
+        "usage": "apps/web/src/components/sla-policy/sla-policy-editor.tsx",
+        "surfaceContext": "caller-chain",
+        "category": "body",
+        "chain": [
+          "packages/ui/src/components/alert.tsx:alertVariants[error]",
+          "apps/web/src/components/sla-policy/sla-policy-editor.tsx:SlaPolicyEditor",
+          "jsx:main[0]/Alert[0]",
+          "apps/web/src/routes/agent/_layout/_authenticated/agent/settings/sla-policies/$id.tsx:/_layout/_authenticated/agent/settings/sla-policies/$id",
+          "apps/web/src/routes/agent/_layout/_authenticated/agent/settings/sla-policies.tsx:/_layout/_authenticated/agent/settings/sla-policies",
+          "apps/web/src/routes/agent/_layout/_authenticated.tsx:/_layout/_authenticated",
+          "apps/web/src/routes/agent/_layout.tsx:/_layout",
+          "apps/web/src/index.css:body>@apply bg-background"
+        ],
+        "backdropLayers": [
+          "bg-background"
+        ]
+      },
+      {
+        "id": "apps/web/src/components/work-item/work-item-activity.tsx::WorkItemActivity::Alert[section[0]/Alert[0]]",
+        "usage": "apps/web/src/components/work-item/work-item-activity.tsx",
+        "surfaceContext": "caller-chain",
+        "category": "body",
+        "chain": [
+          "packages/ui/src/components/alert.tsx:alertVariants[error]",
+          "apps/web/src/components/work-item/work-item-activity.tsx:WorkItemActivity",
+          "jsx:section[0]/Alert[0]",
+          "apps/web/src/routes/agent/_layout/_authenticated/agent/work-items/$key.tsx:/_layout/_authenticated/agent/work-items/$key",
+          "apps/web/src/routes/agent/_layout/_authenticated.tsx:/_layout/_authenticated",
+          "apps/web/src/routes/agent/_layout.tsx:/_layout",
+          "apps/web/src/index.css:body>@apply bg-background"
+        ],
+        "backdropLayers": [
+          "bg-background"
+        ]
+      },
+      {
+        "id": "apps/web/src/components/work-item/work-item-detail.tsx::WorkItemDetail::Alert[Alert[0]]",
+        "usage": "apps/web/src/components/work-item/work-item-detail.tsx",
+        "surfaceContext": "caller-chain",
+        "category": "body",
+        "chain": [
+          "packages/ui/src/components/alert.tsx:alertVariants[error]",
+          "apps/web/src/components/work-item/work-item-detail.tsx:WorkItemDetail",
+          "jsx:Alert[0]",
+          "apps/web/src/routes/agent/_layout/_authenticated/agent/work-items/$key.tsx:/_layout/_authenticated/agent/work-items/$key",
+          "apps/web/src/routes/agent/_layout/_authenticated.tsx:/_layout/_authenticated",
+          "apps/web/src/routes/agent/_layout.tsx:/_layout",
+          "apps/web/src/index.css:body>@apply bg-background"
+        ],
+        "backdropLayers": [
+          "bg-background"
+        ]
+      },
+      {
+        "id": "apps/web/src/components/work-item/work-item-detail.tsx::WorkItemDetail::Alert[div[0]/section[1]/Alert[0]]",
+        "usage": "apps/web/src/components/work-item/work-item-detail.tsx",
+        "surfaceContext": "caller-chain",
+        "category": "body",
+        "chain": [
+          "packages/ui/src/components/alert.tsx:alertVariants[error]",
+          "apps/web/src/components/work-item/work-item-detail.tsx:WorkItemDetail",
+          "jsx:div[0]/section[1]/Alert[0]",
+          "apps/web/src/routes/agent/_layout/_authenticated/agent/work-items/$key.tsx:/_layout/_authenticated/agent/work-items/$key",
+          "apps/web/src/routes/agent/_layout/_authenticated.tsx:/_layout/_authenticated",
+          "apps/web/src/routes/agent/_layout.tsx:/_layout",
+          "apps/web/src/index.css:body>@apply bg-background"
+        ],
+        "backdropLayers": [
+          "bg-background"
+        ]
+      },
+      {
+        "id": "apps/web/src/components/work-item/work-item-list.tsx::WorkItemList::Alert[div[0]/Alert[0]]",
+        "usage": "apps/web/src/components/work-item/work-item-list.tsx",
+        "surfaceContext": "caller-chain",
+        "category": "body",
+        "chain": [
+          "packages/ui/src/components/alert.tsx:alertVariants[error]",
+          "apps/web/src/components/work-item/work-item-list.tsx:WorkItemList",
+          "jsx:div[0]/Alert[0]",
+          "apps/web/src/components/work-item/work-item-list.tsx:WorkItemList",
+          "jsx:div[0]/Alert[0]",
+          "opaque-backdrop:bg-background"
+        ],
+        "backdropLayers": [
+          "bg-background"
+        ]
+      },
+      {
+        "id": "apps/web/src/routes/agent/_layout/_authenticated/agent/my-work.tsx::MyApprovalsRoute::Alert[main[0]/Alert[0]]",
+        "usage": "apps/web/src/routes/agent/_layout/_authenticated/agent/my-work.tsx",
+        "surfaceContext": "caller-chain",
+        "category": "body",
+        "chain": [
+          "packages/ui/src/components/alert.tsx:alertVariants[error]",
+          "apps/web/src/routes/agent/_layout/_authenticated/agent/my-work.tsx:MyApprovalsRoute",
+          "jsx:main[0]/Alert[0]",
+          "apps/web/src/routes/agent/_layout/_authenticated/agent/my-work.tsx:/_layout/_authenticated/agent/my-work",
+          "apps/web/src/routes/agent/_layout/_authenticated.tsx:/_layout/_authenticated",
+          "apps/web/src/routes/agent/_layout.tsx:/_layout",
+          "apps/web/src/index.css:body>@apply bg-background"
+        ],
+        "backdropLayers": [
+          "bg-background"
+        ]
+      },
+      {
+        "id": "apps/web/src/routes/agent/_layout/_authenticated/agent/settings/calendars.tsx::ServiceCalendarsRoute::Alert[main[0]/Alert[0]]",
+        "usage": "apps/web/src/routes/agent/_layout/_authenticated/agent/settings/calendars.tsx",
+        "surfaceContext": "caller-chain",
+        "category": "body",
+        "chain": [
+          "packages/ui/src/components/alert.tsx:alertVariants[error]",
+          "apps/web/src/routes/agent/_layout/_authenticated/agent/settings/calendars.tsx:ServiceCalendarsRoute",
+          "jsx:main[0]/Alert[0]",
+          "apps/web/src/routes/agent/_layout/_authenticated/agent/settings/calendars.tsx:/_layout/_authenticated/agent/settings/calendars",
+          "apps/web/src/routes/agent/_layout/_authenticated.tsx:/_layout/_authenticated",
+          "apps/web/src/routes/agent/_layout.tsx:/_layout",
+          "apps/web/src/index.css:body>@apply bg-background"
+        ],
+        "backdropLayers": [
+          "bg-background"
+        ]
+      },
+      {
+        "id": "apps/web/src/routes/agent/_layout/_authenticated/agent/settings/sla-policies.tsx::SlaPoliciesRoute::Alert[main[0]/Alert[0]]",
+        "usage": "apps/web/src/routes/agent/_layout/_authenticated/agent/settings/sla-policies.tsx",
+        "surfaceContext": "caller-chain",
+        "category": "body",
+        "chain": [
+          "packages/ui/src/components/alert.tsx:alertVariants[error]",
+          "apps/web/src/routes/agent/_layout/_authenticated/agent/settings/sla-policies.tsx:SlaPoliciesRoute",
+          "jsx:main[0]/Alert[0]",
+          "apps/web/src/routes/agent/_layout/_authenticated/agent/settings/sla-policies.tsx:/_layout/_authenticated/agent/settings/sla-policies",
+          "apps/web/src/routes/agent/_layout/_authenticated.tsx:/_layout/_authenticated",
+          "apps/web/src/routes/agent/_layout.tsx:/_layout",
+          "apps/web/src/index.css:body>@apply bg-background"
+        ],
+        "backdropLayers": [
+          "bg-background"
+        ]
+      },
+      {
+        "id": "apps/web/src/routes/agent/_layout/_authenticated/god-mode/authentication.tsx::IdentityConnectionsRoute::Alert[main[0]/Alert[0]]",
+        "usage": "apps/web/src/routes/agent/_layout/_authenticated/god-mode/authentication.tsx",
+        "surfaceContext": "caller-chain",
+        "category": "body",
+        "chain": [
+          "packages/ui/src/components/alert.tsx:alertVariants[error]",
+          "apps/web/src/routes/agent/_layout/_authenticated/god-mode/authentication.tsx:IdentityConnectionsRoute",
+          "jsx:main[0]/Alert[0]",
+          "apps/web/src/routes/agent/_layout/_authenticated/god-mode/authentication.tsx:/_layout/_authenticated/god-mode/authentication",
+          "apps/web/src/routes/agent/_layout/_authenticated.tsx:/_layout/_authenticated",
+          "apps/web/src/routes/agent/_layout.tsx:/_layout",
+          "apps/web/src/index.css:body>@apply bg-background"
+        ],
+        "backdropLayers": [
+          "bg-background"
+        ]
+      },
+      {
+        "id": "apps/web/src/routes/agent/_layout/_authenticated/god-mode/observability.tsx::ObservabilitySettings::Alert[main[0]/Alert[0]]",
+        "usage": "apps/web/src/routes/agent/_layout/_authenticated/god-mode/observability.tsx",
+        "surfaceContext": "caller-chain",
+        "category": "body",
+        "chain": [
+          "packages/ui/src/components/alert.tsx:alertVariants[error]",
+          "apps/web/src/routes/agent/_layout/_authenticated/god-mode/observability.tsx:ObservabilitySettings",
+          "jsx:main[0]/Alert[0]",
+          "apps/web/src/routes/agent/_layout/_authenticated/god-mode/observability.tsx:/_layout/_authenticated/god-mode/observability",
+          "apps/web/src/routes/agent/_layout/_authenticated.tsx:/_layout/_authenticated",
+          "apps/web/src/routes/agent/_layout.tsx:/_layout",
+          "apps/web/src/index.css:body>@apply bg-background"
+        ],
+        "backdropLayers": [
+          "bg-background"
+        ]
+      },
+      {
+        "id": "apps/web/src/routes/agent/_layout/_authenticated/god-mode/users.tsx::InstanceUsersPage::Alert[main[0]/Alert[0]]",
+        "usage": "apps/web/src/routes/agent/_layout/_authenticated/god-mode/users.tsx",
+        "surfaceContext": "caller-chain",
+        "category": "body",
+        "chain": [
+          "packages/ui/src/components/alert.tsx:alertVariants[error]",
+          "apps/web/src/routes/agent/_layout/_authenticated/god-mode/users.tsx:InstanceUsersPage",
+          "jsx:main[0]/Alert[0]",
+          "apps/web/src/routes/agent/_layout/_authenticated/god-mode/users.tsx:/_layout/_authenticated/god-mode/users",
+          "apps/web/src/routes/agent/_layout/_authenticated.tsx:/_layout/_authenticated",
+          "apps/web/src/routes/agent/_layout.tsx:/_layout",
+          "apps/web/src/index.css:body>@apply bg-background"
+        ],
+        "backdropLayers": [
+          "bg-background"
+        ]
+      },
+      {
+        "id": "apps/web/src/routes/agent/_layout/_authenticated/god-mode/users.tsx::UserDetails::Alert[Alert[0]]",
+        "usage": "apps/web/src/routes/agent/_layout/_authenticated/god-mode/users.tsx",
+        "surfaceContext": "caller-chain",
+        "category": "body",
+        "chain": [
+          "packages/ui/src/components/alert.tsx:alertVariants[error]",
+          "apps/web/src/routes/agent/_layout/_authenticated/god-mode/users.tsx:UserDetails",
+          "jsx:Alert[0]",
+          "apps/web/src/routes/agent/_layout/_authenticated/god-mode/users.tsx:/_layout/_authenticated/god-mode/users",
+          "apps/web/src/routes/agent/_layout/_authenticated.tsx:/_layout/_authenticated",
+          "apps/web/src/routes/agent/_layout.tsx:/_layout",
+          "apps/web/src/index.css:body>@apply bg-background"
+        ],
+        "backdropLayers": [
+          "bg-background"
+        ]
+      },
+      {
+        "id": "apps/web/src/routes/agent/auth/sign-in.tsx::SignIn::Alert[AuthLayout[0]/div[0]/Alert[0]]",
+        "usage": "apps/web/src/routes/agent/auth/sign-in.tsx",
+        "surfaceContext": "caller-chain",
+        "category": "body",
+        "chain": [
+          "packages/ui/src/components/alert.tsx:alertVariants[error]",
+          "apps/web/src/routes/agent/auth/sign-in.tsx:SignIn",
+          "jsx:AuthLayout[0]/div[0]/Alert[0]",
+          "apps/web/src/routes/agent/auth/sign-in.tsx:SignIn",
+          "AuthLayout->apps/web/src/components/auth/layout.tsx:AuthLayout"
+        ],
+        "backdropLayers": [
+          "bg-background"
+        ]
+      },
+      {
+        "id": "apps/web/src/routes/agent/auth/two-factor.tsx::TwoFactorChallenge::Alert[AuthLayout[0]/form[0]/Alert[0]]",
+        "usage": "apps/web/src/routes/agent/auth/two-factor.tsx",
+        "surfaceContext": "caller-chain",
+        "category": "body",
+        "chain": [
+          "packages/ui/src/components/alert.tsx:alertVariants[error]",
+          "apps/web/src/routes/agent/auth/two-factor.tsx:TwoFactorChallenge",
+          "jsx:AuthLayout[0]/form[0]/Alert[0]",
+          "apps/web/src/routes/agent/auth/two-factor.tsx:TwoFactorChallenge",
+          "AuthLayout->apps/web/src/components/auth/layout.tsx:AuthLayout"
+        ],
+        "backdropLayers": [
+          "bg-background"
+        ]
+      },
+      {
+        "id": "apps/web/src/routes/agent/invitation/accept.$inviteId.tsx::AcceptInvitation::Alert[AuthLayout[0]/div[0]/Alert[0]]",
+        "usage": "apps/web/src/routes/agent/invitation/accept.$inviteId.tsx",
+        "surfaceContext": "caller-chain",
+        "category": "body",
+        "chain": [
+          "packages/ui/src/components/alert.tsx:alertVariants[error]",
+          "apps/web/src/routes/agent/invitation/accept.$inviteId.tsx:AcceptInvitation",
+          "jsx:AuthLayout[0]/div[0]/Alert[0]",
+          "apps/web/src/routes/agent/invitation/accept.$inviteId.tsx:AcceptInvitation",
+          "AuthLayout->apps/web/src/components/auth/layout.tsx:AuthLayout"
+        ],
+        "backdropLayers": [
+          "bg-background"
+        ]
+      },
+      {
+        "id": "apps/web/src/routes/portal/__root.tsx::PortalError::Alert[PortalFrame[0]/Alert[0]]",
+        "usage": "apps/web/src/routes/portal/__root.tsx",
+        "surfaceContext": "caller-chain",
+        "category": "body",
+        "chain": [
+          "packages/ui/src/components/alert.tsx:alertVariants[error]",
+          "apps/web/src/routes/portal/__root.tsx:PortalError",
+          "jsx:PortalFrame[0]/Alert[0]",
+          "apps/web/src/routes/portal/__root.tsx:PortalError",
+          "PortalFrame->apps/web/src/routes/portal/__root.tsx:PortalFrame"
+        ],
+        "backdropLayers": [
+          "bg-background"
+        ]
+      },
+      {
+        "id": "apps/web/src/routes/portal/approvals.tsx::PortalApprovalsPage::Alert[main[0]/Alert[0]]",
+        "usage": "apps/web/src/routes/portal/approvals.tsx",
+        "surfaceContext": "caller-chain",
+        "category": "body",
+        "chain": [
+          "packages/ui/src/components/alert.tsx:alertVariants[error]",
+          "apps/web/src/routes/portal/approvals.tsx:PortalApprovalsPage",
+          "jsx:main[0]/Alert[0]",
+          "apps/web/src/routes/portal/approvals.tsx:PortalApprovalsPage",
+          "jsx:main[0]/Alert[0]",
+          "opaque-backdrop:bg-background"
+        ],
+        "backdropLayers": [
+          "bg-background"
+        ]
+      },
+      {
+        "id": "packages/ui/src/components/alert.stories.tsx::<module>::Alert[Alert[0]]",
+        "usage": "packages/ui/src/components/alert.stories.tsx",
+        "surfaceContext": "storybook-body",
+        "category": "body",
+        "chain": [
+          "packages/ui/src/components/alert.stories.tsx:<story>",
+          "packages/ui/src/components/alert.tsx:alertVariants[error]",
+          "packages/ui/src/components/alert.stories.tsx:<module>",
+          "jsx:Alert[0]",
+          "packages/ui/.storybook/preview.ts:imports tailwind.css",
+          "packages/ui/.storybook/tailwind.css:#storybook-root.background-color:var(--background)"
         ],
         "backdropLayers": [
           "bg-background"
         ]
       }
-    ]
+    ],
+    "surfaceContext": "caller-chain"
+  },
+  {
+    "fg": "--color-card-foreground",
+    "bg": "--color-destructive",
+    "category": "body",
+    "minRatio": 4.5,
+    "themes": [
+      "light"
+    ],
+    "usage": "apps/web/src/components/service-calendar/holiday-import-panel.tsx",
+    "backdrop": "--color-card",
+    "foregroundClass": "text-card-foreground",
+    "backgroundClass": {
+      "light": "bg-destructive/4"
+    },
+    "backdropLayers": [
+      "bg-card"
+    ],
+    "occurrenceIds": [
+      "apps/web/src/components/service-calendar/holiday-import-panel.tsx::HolidayImportPanel::Alert[section[0]/Alert[0]]",
+      "apps/web/src/routes/agent/_layout/_authenticated/agent/settings/profile/pending-actions/$id.tsx::PendingActionDetailRoute::Alert[main[0]/Card[0]/CardContent[0]/div[0]/Alert[0]]",
+      "apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings/account/security.tsx::AccountSecurity::Alert[main[0]/Alert[0]]"
+    ],
+    "occurrences": [
+      {
+        "id": "apps/web/src/components/service-calendar/holiday-import-panel.tsx::HolidayImportPanel::Alert[section[0]/Alert[0]]",
+        "usage": "apps/web/src/components/service-calendar/holiday-import-panel.tsx",
+        "surfaceContext": "caller-chain",
+        "category": "body",
+        "chain": [
+          "packages/ui/src/components/alert.tsx:alertVariants[error]",
+          "apps/web/src/components/service-calendar/holiday-import-panel.tsx:HolidayImportPanel",
+          "jsx:section[0]/Alert[0]",
+          "apps/web/src/components/service-calendar/holiday-list-card.tsx:HolidayListCard",
+          "Card->packages/ui/src/components/card.tsx:Card"
+        ],
+        "backdropLayers": [
+          "bg-card"
+        ]
+      },
+      {
+        "id": "apps/web/src/routes/agent/_layout/_authenticated/agent/settings/profile/pending-actions/$id.tsx::PendingActionDetailRoute::Alert[main[0]/Card[0]/CardContent[0]/div[0]/Alert[0]]",
+        "usage": "apps/web/src/routes/agent/_layout/_authenticated/agent/settings/profile/pending-actions/$id.tsx",
+        "surfaceContext": "caller-chain",
+        "category": "body",
+        "chain": [
+          "packages/ui/src/components/alert.tsx:alertVariants[error]",
+          "apps/web/src/routes/agent/_layout/_authenticated/agent/settings/profile/pending-actions/$id.tsx:PendingActionDetailRoute",
+          "jsx:main[0]/Card[0]/CardContent[0]/div[0]/Alert[0]",
+          "apps/web/src/routes/agent/_layout/_authenticated/agent/settings/profile/pending-actions/$id.tsx:PendingActionDetailRoute",
+          "Card->packages/ui/src/components/card.tsx:Card"
+        ],
+        "backdropLayers": [
+          "bg-card"
+        ]
+      },
+      {
+        "id": "apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings/account/security.tsx::AccountSecurity::Alert[main[0]/Alert[0]]",
+        "usage": "apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings/account/security.tsx",
+        "surfaceContext": "caller-chain",
+        "category": "body",
+        "chain": [
+          "packages/ui/src/components/alert.tsx:alertVariants[error]",
+          "apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings/account/security.tsx:AccountSecurity",
+          "jsx:main[0]/Alert[0]",
+          "apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings/account/security.tsx:/_layout/_authenticated/dashboard/settings/account/security",
+          "apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings/account.tsx:/_layout/_authenticated/dashboard/settings/account",
+          "apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings.tsx:Outlet>bg-card"
+        ],
+        "backdropLayers": [
+          "bg-card"
+        ]
+      }
+    ],
+    "surfaceContext": "caller-chain"
+  },
+  {
+    "fg": "--color-card-foreground",
+    "bg": "--color-destructive",
+    "category": "body",
+    "minRatio": 4.5,
+    "themes": [
+      "light"
+    ],
+    "usage": "apps/web/src/components/work-item/create-work-item-dialog-form.tsx",
+    "backdrop": "--color-popover",
+    "foregroundClass": "text-card-foreground",
+    "backgroundClass": {
+      "light": "bg-destructive/4"
+    },
+    "backdropLayers": [
+      "bg-popover"
+    ],
+    "occurrenceIds": [
+      "apps/web/src/components/work-item/create-work-item-dialog-form.tsx::CreateWorkItemDialogForm::Alert[form[0]/Alert[0]]",
+      "apps/web/src/routes/agent/_layout/_authenticated/god-mode/users.tsx::UserActionDialog::Alert[Dialog[0]/DialogContent[0]/div[0]/Alert[0]]"
+    ],
+    "occurrences": [
+      {
+        "id": "apps/web/src/components/work-item/create-work-item-dialog-form.tsx::CreateWorkItemDialogForm::Alert[form[0]/Alert[0]]",
+        "usage": "apps/web/src/components/work-item/create-work-item-dialog-form.tsx",
+        "surfaceContext": "caller-chain",
+        "category": "body",
+        "chain": [
+          "packages/ui/src/components/alert.tsx:alertVariants[error]",
+          "apps/web/src/components/work-item/create-work-item-dialog-form.tsx:CreateWorkItemDialogForm",
+          "jsx:form[0]/Alert[0]",
+          "apps/web/src/components/work-item/create-work-item-dialog.tsx:CreateWorkItemDialog",
+          "DialogContent->packages/ui/src/components/dialog.tsx:DialogPopup"
+        ],
+        "backdropLayers": [
+          "bg-popover"
+        ]
+      },
+      {
+        "id": "apps/web/src/components/work-item/create-work-item-dialog-form.tsx::CreateWorkItemDialogForm::Alert[form[0]/Alert[0]]",
+        "usage": "apps/web/src/components/work-item/create-work-item-dialog-form.tsx",
+        "surfaceContext": "caller-chain",
+        "category": "body",
+        "chain": [
+          "packages/ui/src/components/alert.tsx:alertVariants[error]",
+          "apps/web/src/components/work-item/create-work-item-dialog-form.tsx:CreateWorkItemDialogForm",
+          "jsx:form[0]/Alert[0]",
+          "apps/web/src/components/work-item/work-item-create-dialog-shell.tsx:WorkItemCreateDialogShell",
+          "DialogContent->packages/ui/src/components/dialog.tsx:DialogPopup"
+        ],
+        "backdropLayers": [
+          "bg-popover"
+        ]
+      },
+      {
+        "id": "apps/web/src/routes/agent/_layout/_authenticated/god-mode/users.tsx::UserActionDialog::Alert[Dialog[0]/DialogContent[0]/div[0]/Alert[0]]",
+        "usage": "apps/web/src/routes/agent/_layout/_authenticated/god-mode/users.tsx",
+        "surfaceContext": "caller-chain",
+        "category": "body",
+        "chain": [
+          "packages/ui/src/components/alert.tsx:alertVariants[error]",
+          "apps/web/src/routes/agent/_layout/_authenticated/god-mode/users.tsx:UserActionDialog",
+          "jsx:Dialog[0]/DialogContent[0]/div[0]/Alert[0]",
+          "apps/web/src/routes/agent/_layout/_authenticated/god-mode/users.tsx:UserActionDialog",
+          "DialogContent->packages/ui/src/components/dialog.tsx:DialogPopup"
+        ],
+        "backdropLayers": [
+          "bg-popover"
+        ]
+      }
+    ],
+    "surfaceContext": "caller-chain"
   },
   {
     "fg": "--color-card-foreground",
@@ -43843,7 +45178,7 @@
     "themes": [
       "dark"
     ],
-    "usage": "packages/ui/src/components/alert.tsx",
+    "usage": "apps/web/src/components/service-calendar/service-calendar-editor-view.tsx",
     "backdrop": "--color-background",
     "foregroundClass": "text-card-foreground",
     "backgroundClass": {
@@ -43853,59 +45188,682 @@
       "bg-background"
     ],
     "occurrenceIds": [
-      "packages/ui/src/components/alert.tsx::alertVariants::CVA[2]::text-card-foreground#bg-info/4"
+      "apps/web/src/components/service-calendar/service-calendar-editor-view.tsx::ServiceCalendarEditorView::Alert[main[0]/Alert[0]]",
+      "apps/web/src/components/service-calendar/service-calendar-editor-view.tsx::EditorNotices::Alert[Alert[1]]",
+      "apps/web/src/components/sla-policy/sla-policy-editor.tsx::SlaPolicyEditor::Alert[main[0]/Alert[0]]",
+      "apps/web/src/routes/agent/_layout/_authenticated/agent/settings/calendars.tsx::ServiceCalendarsRoute::Alert[main[0]/Alert[0]]",
+      "apps/web/src/routes/agent/_layout/_authenticated/agent/settings/sla-policies.tsx::SlaPoliciesRoute::Alert[main[0]/Alert[0]]",
+      "apps/web/src/routes/portal/__root.tsx::PortalNotFound::Alert[PortalFrame[0]/Alert[0]]",
+      "apps/web/src/routes/portal/__root.tsx::PortalUnavailableNotice::Alert[PortalFrame[0]/Alert[0]]",
+      "packages/ui/src/components/alert.stories.tsx::<module>::Alert[Alert[0]]"
     ],
     "occurrences": [
       {
-        "id": "packages/ui/src/components/alert.tsx::alertVariants::CVA[2]::text-card-foreground#bg-info/4",
-        "usage": "packages/ui/src/components/alert.tsx",
-        "surfaceContext": "same-element",
+        "id": "apps/web/src/components/service-calendar/service-calendar-editor-view.tsx::ServiceCalendarEditorView::Alert[main[0]/Alert[0]]",
+        "usage": "apps/web/src/components/service-calendar/service-calendar-editor-view.tsx",
+        "surfaceContext": "caller-chain",
         "category": "body",
         "chain": [
-          "packages/ui/src/components/alert.tsx:alertVariants",
-          "cva:5>text-card-foreground border-info/32 bg-info/4 [&>svg]:text-info"
+          "packages/ui/src/components/alert.tsx:alertVariants[info]",
+          "apps/web/src/components/service-calendar/service-calendar-editor-view.tsx:ServiceCalendarEditorView",
+          "jsx:main[0]/Alert[0]",
+          "apps/web/src/routes/agent/_layout/_authenticated/agent/settings/calendars/$id.tsx:/_layout/_authenticated/agent/settings/calendars/$id",
+          "apps/web/src/routes/agent/_layout/_authenticated/agent/settings/calendars.tsx:/_layout/_authenticated/agent/settings/calendars",
+          "apps/web/src/routes/agent/_layout/_authenticated.tsx:/_layout/_authenticated",
+          "apps/web/src/routes/agent/_layout.tsx:/_layout",
+          "apps/web/src/index.css:body>@apply bg-background"
+        ],
+        "backdropLayers": [
+          "bg-background"
+        ]
+      },
+      {
+        "id": "apps/web/src/components/service-calendar/service-calendar-editor-view.tsx::EditorNotices::Alert[Alert[1]]",
+        "usage": "apps/web/src/components/service-calendar/service-calendar-editor-view.tsx",
+        "surfaceContext": "caller-chain",
+        "category": "body",
+        "chain": [
+          "packages/ui/src/components/alert.tsx:alertVariants[info]",
+          "apps/web/src/components/service-calendar/service-calendar-editor-view.tsx:EditorNotices",
+          "jsx:Alert[1]",
+          "apps/web/src/routes/agent/_layout/_authenticated/agent/settings/calendars/$id.tsx:/_layout/_authenticated/agent/settings/calendars/$id",
+          "apps/web/src/routes/agent/_layout/_authenticated/agent/settings/calendars.tsx:/_layout/_authenticated/agent/settings/calendars",
+          "apps/web/src/routes/agent/_layout/_authenticated.tsx:/_layout/_authenticated",
+          "apps/web/src/routes/agent/_layout.tsx:/_layout",
+          "apps/web/src/index.css:body>@apply bg-background"
+        ],
+        "backdropLayers": [
+          "bg-background"
+        ]
+      },
+      {
+        "id": "apps/web/src/components/sla-policy/sla-policy-editor.tsx::SlaPolicyEditor::Alert[main[0]/Alert[0]]",
+        "usage": "apps/web/src/components/sla-policy/sla-policy-editor.tsx",
+        "surfaceContext": "caller-chain",
+        "category": "body",
+        "chain": [
+          "packages/ui/src/components/alert.tsx:alertVariants[info]",
+          "apps/web/src/components/sla-policy/sla-policy-editor.tsx:SlaPolicyEditor",
+          "jsx:main[0]/Alert[0]",
+          "apps/web/src/routes/agent/_layout/_authenticated/agent/settings/sla-policies/$id.tsx:/_layout/_authenticated/agent/settings/sla-policies/$id",
+          "apps/web/src/routes/agent/_layout/_authenticated/agent/settings/sla-policies.tsx:/_layout/_authenticated/agent/settings/sla-policies",
+          "apps/web/src/routes/agent/_layout/_authenticated.tsx:/_layout/_authenticated",
+          "apps/web/src/routes/agent/_layout.tsx:/_layout",
+          "apps/web/src/index.css:body>@apply bg-background"
+        ],
+        "backdropLayers": [
+          "bg-background"
+        ]
+      },
+      {
+        "id": "apps/web/src/routes/agent/_layout/_authenticated/agent/settings/calendars.tsx::ServiceCalendarsRoute::Alert[main[0]/Alert[0]]",
+        "usage": "apps/web/src/routes/agent/_layout/_authenticated/agent/settings/calendars.tsx",
+        "surfaceContext": "caller-chain",
+        "category": "body",
+        "chain": [
+          "packages/ui/src/components/alert.tsx:alertVariants[info]",
+          "apps/web/src/routes/agent/_layout/_authenticated/agent/settings/calendars.tsx:ServiceCalendarsRoute",
+          "jsx:main[0]/Alert[0]",
+          "apps/web/src/routes/agent/_layout/_authenticated/agent/settings/calendars.tsx:/_layout/_authenticated/agent/settings/calendars",
+          "apps/web/src/routes/agent/_layout/_authenticated.tsx:/_layout/_authenticated",
+          "apps/web/src/routes/agent/_layout.tsx:/_layout",
+          "apps/web/src/index.css:body>@apply bg-background"
+        ],
+        "backdropLayers": [
+          "bg-background"
+        ]
+      },
+      {
+        "id": "apps/web/src/routes/agent/_layout/_authenticated/agent/settings/sla-policies.tsx::SlaPoliciesRoute::Alert[main[0]/Alert[0]]",
+        "usage": "apps/web/src/routes/agent/_layout/_authenticated/agent/settings/sla-policies.tsx",
+        "surfaceContext": "caller-chain",
+        "category": "body",
+        "chain": [
+          "packages/ui/src/components/alert.tsx:alertVariants[info]",
+          "apps/web/src/routes/agent/_layout/_authenticated/agent/settings/sla-policies.tsx:SlaPoliciesRoute",
+          "jsx:main[0]/Alert[0]",
+          "apps/web/src/routes/agent/_layout/_authenticated/agent/settings/sla-policies.tsx:/_layout/_authenticated/agent/settings/sla-policies",
+          "apps/web/src/routes/agent/_layout/_authenticated.tsx:/_layout/_authenticated",
+          "apps/web/src/routes/agent/_layout.tsx:/_layout",
+          "apps/web/src/index.css:body>@apply bg-background"
+        ],
+        "backdropLayers": [
+          "bg-background"
+        ]
+      },
+      {
+        "id": "apps/web/src/routes/portal/__root.tsx::PortalNotFound::Alert[PortalFrame[0]/Alert[0]]",
+        "usage": "apps/web/src/routes/portal/__root.tsx",
+        "surfaceContext": "caller-chain",
+        "category": "body",
+        "chain": [
+          "packages/ui/src/components/alert.tsx:alertVariants[info]",
+          "apps/web/src/routes/portal/__root.tsx:PortalNotFound",
+          "jsx:PortalFrame[0]/Alert[0]",
+          "apps/web/src/routes/portal/__root.tsx:PortalNotFound",
+          "PortalFrame->apps/web/src/routes/portal/__root.tsx:PortalFrame"
+        ],
+        "backdropLayers": [
+          "bg-background"
+        ]
+      },
+      {
+        "id": "apps/web/src/routes/portal/__root.tsx::PortalUnavailableNotice::Alert[PortalFrame[0]/Alert[0]]",
+        "usage": "apps/web/src/routes/portal/__root.tsx",
+        "surfaceContext": "caller-chain",
+        "category": "body",
+        "chain": [
+          "packages/ui/src/components/alert.tsx:alertVariants[info]",
+          "apps/web/src/routes/portal/__root.tsx:PortalUnavailableNotice",
+          "jsx:PortalFrame[0]/Alert[0]",
+          "apps/web/src/routes/portal/__root.tsx:PortalUnavailableNotice",
+          "PortalFrame->apps/web/src/routes/portal/__root.tsx:PortalFrame"
+        ],
+        "backdropLayers": [
+          "bg-background"
+        ]
+      },
+      {
+        "id": "packages/ui/src/components/alert.stories.tsx::<module>::Alert[Alert[0]]",
+        "usage": "packages/ui/src/components/alert.stories.tsx",
+        "surfaceContext": "storybook-body",
+        "category": "body",
+        "chain": [
+          "packages/ui/src/components/alert.stories.tsx:<story>",
+          "packages/ui/src/components/alert.tsx:alertVariants[info]",
+          "packages/ui/src/components/alert.stories.tsx:<module>",
+          "jsx:Alert[0]",
+          "packages/ui/.storybook/preview.ts:imports tailwind.css",
+          "packages/ui/.storybook/tailwind.css:#storybook-root.background-color:var(--background)"
         ],
         "backdropLayers": [
           "bg-background"
         ]
       }
-    ]
+    ],
+    "surfaceContext": "caller-chain"
   },
   {
     "fg": "--color-card-foreground",
-    "bg": "--color-success",
+    "bg": "--color-info",
+    "category": "body",
+    "minRatio": 4.5,
+    "themes": [
+      "dark"
+    ],
+    "usage": "apps/web/src/components/service-calendar/holiday-import-panel.tsx",
+    "backdrop": "--color-card",
+    "foregroundClass": "text-card-foreground",
+    "backgroundClass": {
+      "dark": "bg-info/4"
+    },
+    "backdropLayers": [
+      "bg-card"
+    ],
+    "occurrenceIds": [
+      "apps/web/src/components/service-calendar/holiday-import-panel.tsx::HolidayImportPanel::Alert[section[0]/Alert[0]]"
+    ],
+    "occurrences": [
+      {
+        "id": "apps/web/src/components/service-calendar/holiday-import-panel.tsx::HolidayImportPanel::Alert[section[0]/Alert[0]]",
+        "usage": "apps/web/src/components/service-calendar/holiday-import-panel.tsx",
+        "surfaceContext": "caller-chain",
+        "category": "body",
+        "chain": [
+          "packages/ui/src/components/alert.tsx:alertVariants[info]",
+          "apps/web/src/components/service-calendar/holiday-import-panel.tsx:HolidayImportPanel",
+          "jsx:section[0]/Alert[0]",
+          "apps/web/src/components/service-calendar/holiday-list-card.tsx:HolidayListCard",
+          "Card->packages/ui/src/components/card.tsx:Card"
+        ],
+        "backdropLayers": [
+          "bg-card"
+        ]
+      }
+    ],
+    "surfaceContext": "caller-chain"
+  },
+  {
+    "fg": "--color-card-foreground",
+    "bg": "--color-info",
     "category": "body",
     "minRatio": 4.5,
     "themes": [
       "light"
     ],
-    "usage": "packages/ui/src/components/alert.tsx",
+    "usage": "apps/web/src/components/service-calendar/service-calendar-editor-view.tsx",
     "backdrop": "--color-background",
     "foregroundClass": "text-card-foreground",
     "backgroundClass": {
-      "light": "bg-success/4"
+      "light": "bg-info/4"
     },
     "backdropLayers": [
       "bg-background"
     ],
     "occurrenceIds": [
-      "packages/ui/src/components/alert.tsx::alertVariants::CVA[3]::text-card-foreground#bg-success/4"
+      "apps/web/src/components/service-calendar/service-calendar-editor-view.tsx::ServiceCalendarEditorView::Alert[main[0]/Alert[0]]",
+      "apps/web/src/components/service-calendar/service-calendar-editor-view.tsx::EditorNotices::Alert[Alert[1]]",
+      "apps/web/src/components/sla-policy/sla-policy-editor.tsx::SlaPolicyEditor::Alert[main[0]/Alert[0]]",
+      "apps/web/src/routes/agent/_layout/_authenticated/agent/settings/calendars.tsx::ServiceCalendarsRoute::Alert[main[0]/Alert[0]]",
+      "apps/web/src/routes/agent/_layout/_authenticated/agent/settings/sla-policies.tsx::SlaPoliciesRoute::Alert[main[0]/Alert[0]]",
+      "apps/web/src/routes/portal/__root.tsx::PortalNotFound::Alert[PortalFrame[0]/Alert[0]]",
+      "apps/web/src/routes/portal/__root.tsx::PortalUnavailableNotice::Alert[PortalFrame[0]/Alert[0]]",
+      "packages/ui/src/components/alert.stories.tsx::<module>::Alert[Alert[0]]"
     ],
     "occurrences": [
       {
-        "id": "packages/ui/src/components/alert.tsx::alertVariants::CVA[3]::text-card-foreground#bg-success/4",
-        "usage": "packages/ui/src/components/alert.tsx",
-        "surfaceContext": "same-element",
+        "id": "apps/web/src/components/service-calendar/service-calendar-editor-view.tsx::ServiceCalendarEditorView::Alert[main[0]/Alert[0]]",
+        "usage": "apps/web/src/components/service-calendar/service-calendar-editor-view.tsx",
+        "surfaceContext": "caller-chain",
         "category": "body",
         "chain": [
-          "packages/ui/src/components/alert.tsx:alertVariants",
-          "cva:6>text-card-foreground border-success/32 bg-success/4 [&>svg]:text-success"
+          "packages/ui/src/components/alert.tsx:alertVariants[info]",
+          "apps/web/src/components/service-calendar/service-calendar-editor-view.tsx:ServiceCalendarEditorView",
+          "jsx:main[0]/Alert[0]",
+          "apps/web/src/routes/agent/_layout/_authenticated/agent/settings/calendars/$id.tsx:/_layout/_authenticated/agent/settings/calendars/$id",
+          "apps/web/src/routes/agent/_layout/_authenticated/agent/settings/calendars.tsx:/_layout/_authenticated/agent/settings/calendars",
+          "apps/web/src/routes/agent/_layout/_authenticated.tsx:/_layout/_authenticated",
+          "apps/web/src/routes/agent/_layout.tsx:/_layout",
+          "apps/web/src/index.css:body>@apply bg-background"
+        ],
+        "backdropLayers": [
+          "bg-background"
+        ]
+      },
+      {
+        "id": "apps/web/src/components/service-calendar/service-calendar-editor-view.tsx::EditorNotices::Alert[Alert[1]]",
+        "usage": "apps/web/src/components/service-calendar/service-calendar-editor-view.tsx",
+        "surfaceContext": "caller-chain",
+        "category": "body",
+        "chain": [
+          "packages/ui/src/components/alert.tsx:alertVariants[info]",
+          "apps/web/src/components/service-calendar/service-calendar-editor-view.tsx:EditorNotices",
+          "jsx:Alert[1]",
+          "apps/web/src/routes/agent/_layout/_authenticated/agent/settings/calendars/$id.tsx:/_layout/_authenticated/agent/settings/calendars/$id",
+          "apps/web/src/routes/agent/_layout/_authenticated/agent/settings/calendars.tsx:/_layout/_authenticated/agent/settings/calendars",
+          "apps/web/src/routes/agent/_layout/_authenticated.tsx:/_layout/_authenticated",
+          "apps/web/src/routes/agent/_layout.tsx:/_layout",
+          "apps/web/src/index.css:body>@apply bg-background"
+        ],
+        "backdropLayers": [
+          "bg-background"
+        ]
+      },
+      {
+        "id": "apps/web/src/components/sla-policy/sla-policy-editor.tsx::SlaPolicyEditor::Alert[main[0]/Alert[0]]",
+        "usage": "apps/web/src/components/sla-policy/sla-policy-editor.tsx",
+        "surfaceContext": "caller-chain",
+        "category": "body",
+        "chain": [
+          "packages/ui/src/components/alert.tsx:alertVariants[info]",
+          "apps/web/src/components/sla-policy/sla-policy-editor.tsx:SlaPolicyEditor",
+          "jsx:main[0]/Alert[0]",
+          "apps/web/src/routes/agent/_layout/_authenticated/agent/settings/sla-policies/$id.tsx:/_layout/_authenticated/agent/settings/sla-policies/$id",
+          "apps/web/src/routes/agent/_layout/_authenticated/agent/settings/sla-policies.tsx:/_layout/_authenticated/agent/settings/sla-policies",
+          "apps/web/src/routes/agent/_layout/_authenticated.tsx:/_layout/_authenticated",
+          "apps/web/src/routes/agent/_layout.tsx:/_layout",
+          "apps/web/src/index.css:body>@apply bg-background"
+        ],
+        "backdropLayers": [
+          "bg-background"
+        ]
+      },
+      {
+        "id": "apps/web/src/routes/agent/_layout/_authenticated/agent/settings/calendars.tsx::ServiceCalendarsRoute::Alert[main[0]/Alert[0]]",
+        "usage": "apps/web/src/routes/agent/_layout/_authenticated/agent/settings/calendars.tsx",
+        "surfaceContext": "caller-chain",
+        "category": "body",
+        "chain": [
+          "packages/ui/src/components/alert.tsx:alertVariants[info]",
+          "apps/web/src/routes/agent/_layout/_authenticated/agent/settings/calendars.tsx:ServiceCalendarsRoute",
+          "jsx:main[0]/Alert[0]",
+          "apps/web/src/routes/agent/_layout/_authenticated/agent/settings/calendars.tsx:/_layout/_authenticated/agent/settings/calendars",
+          "apps/web/src/routes/agent/_layout/_authenticated.tsx:/_layout/_authenticated",
+          "apps/web/src/routes/agent/_layout.tsx:/_layout",
+          "apps/web/src/index.css:body>@apply bg-background"
+        ],
+        "backdropLayers": [
+          "bg-background"
+        ]
+      },
+      {
+        "id": "apps/web/src/routes/agent/_layout/_authenticated/agent/settings/sla-policies.tsx::SlaPoliciesRoute::Alert[main[0]/Alert[0]]",
+        "usage": "apps/web/src/routes/agent/_layout/_authenticated/agent/settings/sla-policies.tsx",
+        "surfaceContext": "caller-chain",
+        "category": "body",
+        "chain": [
+          "packages/ui/src/components/alert.tsx:alertVariants[info]",
+          "apps/web/src/routes/agent/_layout/_authenticated/agent/settings/sla-policies.tsx:SlaPoliciesRoute",
+          "jsx:main[0]/Alert[0]",
+          "apps/web/src/routes/agent/_layout/_authenticated/agent/settings/sla-policies.tsx:/_layout/_authenticated/agent/settings/sla-policies",
+          "apps/web/src/routes/agent/_layout/_authenticated.tsx:/_layout/_authenticated",
+          "apps/web/src/routes/agent/_layout.tsx:/_layout",
+          "apps/web/src/index.css:body>@apply bg-background"
+        ],
+        "backdropLayers": [
+          "bg-background"
+        ]
+      },
+      {
+        "id": "apps/web/src/routes/portal/__root.tsx::PortalNotFound::Alert[PortalFrame[0]/Alert[0]]",
+        "usage": "apps/web/src/routes/portal/__root.tsx",
+        "surfaceContext": "caller-chain",
+        "category": "body",
+        "chain": [
+          "packages/ui/src/components/alert.tsx:alertVariants[info]",
+          "apps/web/src/routes/portal/__root.tsx:PortalNotFound",
+          "jsx:PortalFrame[0]/Alert[0]",
+          "apps/web/src/routes/portal/__root.tsx:PortalNotFound",
+          "PortalFrame->apps/web/src/routes/portal/__root.tsx:PortalFrame"
+        ],
+        "backdropLayers": [
+          "bg-background"
+        ]
+      },
+      {
+        "id": "apps/web/src/routes/portal/__root.tsx::PortalUnavailableNotice::Alert[PortalFrame[0]/Alert[0]]",
+        "usage": "apps/web/src/routes/portal/__root.tsx",
+        "surfaceContext": "caller-chain",
+        "category": "body",
+        "chain": [
+          "packages/ui/src/components/alert.tsx:alertVariants[info]",
+          "apps/web/src/routes/portal/__root.tsx:PortalUnavailableNotice",
+          "jsx:PortalFrame[0]/Alert[0]",
+          "apps/web/src/routes/portal/__root.tsx:PortalUnavailableNotice",
+          "PortalFrame->apps/web/src/routes/portal/__root.tsx:PortalFrame"
+        ],
+        "backdropLayers": [
+          "bg-background"
+        ]
+      },
+      {
+        "id": "packages/ui/src/components/alert.stories.tsx::<module>::Alert[Alert[0]]",
+        "usage": "packages/ui/src/components/alert.stories.tsx",
+        "surfaceContext": "storybook-body",
+        "category": "body",
+        "chain": [
+          "packages/ui/src/components/alert.stories.tsx:<story>",
+          "packages/ui/src/components/alert.tsx:alertVariants[info]",
+          "packages/ui/src/components/alert.stories.tsx:<module>",
+          "jsx:Alert[0]",
+          "packages/ui/.storybook/preview.ts:imports tailwind.css",
+          "packages/ui/.storybook/tailwind.css:#storybook-root.background-color:var(--background)"
         ],
         "backdropLayers": [
           "bg-background"
         ]
       }
-    ]
+    ],
+    "surfaceContext": "caller-chain"
+  },
+  {
+    "fg": "--color-card-foreground",
+    "bg": "--color-info",
+    "category": "body",
+    "minRatio": 4.5,
+    "themes": [
+      "light"
+    ],
+    "usage": "apps/web/src/components/service-calendar/holiday-import-panel.tsx",
+    "backdrop": "--color-card",
+    "foregroundClass": "text-card-foreground",
+    "backgroundClass": {
+      "light": "bg-info/4"
+    },
+    "backdropLayers": [
+      "bg-card"
+    ],
+    "occurrenceIds": [
+      "apps/web/src/components/service-calendar/holiday-import-panel.tsx::HolidayImportPanel::Alert[section[0]/Alert[0]]"
+    ],
+    "occurrences": [
+      {
+        "id": "apps/web/src/components/service-calendar/holiday-import-panel.tsx::HolidayImportPanel::Alert[section[0]/Alert[0]]",
+        "usage": "apps/web/src/components/service-calendar/holiday-import-panel.tsx",
+        "surfaceContext": "caller-chain",
+        "category": "body",
+        "chain": [
+          "packages/ui/src/components/alert.tsx:alertVariants[info]",
+          "apps/web/src/components/service-calendar/holiday-import-panel.tsx:HolidayImportPanel",
+          "jsx:section[0]/Alert[0]",
+          "apps/web/src/components/service-calendar/holiday-list-card.tsx:HolidayListCard",
+          "Card->packages/ui/src/components/card.tsx:Card"
+        ],
+        "backdropLayers": [
+          "bg-card"
+        ]
+      }
+    ],
+    "surfaceContext": "caller-chain"
+  },
+  {
+    "fg": "--color-card-foreground",
+    "bg": "--color-input",
+    "category": "body",
+    "minRatio": 4.5,
+    "themes": [
+      "dark"
+    ],
+    "usage": "apps/web/src/components/god-mode/identity-connection-editor.tsx",
+    "backdrop": "--color-background",
+    "foregroundClass": "text-card-foreground",
+    "backgroundClass": {
+      "dark": "dark:bg-input/32"
+    },
+    "backdropLayers": [
+      "bg-background"
+    ],
+    "occurrenceIds": [
+      "apps/web/src/components/god-mode/identity-connection-editor.tsx::IdentityConnectionEditor::Alert[section[0]/Alert[0]]",
+      "apps/web/src/routes/agent/_layout/_authenticated/god-mode/observability.tsx::ObservabilitySettings::Alert[main[0]/Alert[0]]",
+      "apps/web/src/routes/agent/auth/sign-in.tsx::SignIn::Alert[AuthLayout[0]/div[0]/Alert[0]]",
+      "apps/web/src/routes/agent/auth/sign-up.tsx::SignUp::Alert[AuthLayout[0]/div[0]/Alert[0]]",
+      "apps/web/src/routes/agent/auth/verify-otp.tsx::VerifyOtp::Alert[AuthLayout[0]/div[0]/Alert[0]]",
+      "packages/ui/src/components/alert.stories.tsx::<module>::Alert[Alert[0]]"
+    ],
+    "occurrences": [
+      {
+        "id": "apps/web/src/components/god-mode/identity-connection-editor.tsx::IdentityConnectionEditor::Alert[section[0]/Alert[0]]",
+        "usage": "apps/web/src/components/god-mode/identity-connection-editor.tsx",
+        "surfaceContext": "caller-chain",
+        "category": "body",
+        "chain": [
+          "packages/ui/src/components/alert.tsx:alertVariants[default]",
+          "apps/web/src/components/god-mode/identity-connection-editor.tsx:IdentityConnectionEditor",
+          "jsx:section[0]/Alert[0]",
+          "apps/web/src/routes/agent/_layout/_authenticated/god-mode/authentication/$id.tsx:/_layout/_authenticated/god-mode/authentication/$id",
+          "apps/web/src/routes/agent/_layout/_authenticated/god-mode/authentication.tsx:/_layout/_authenticated/god-mode/authentication",
+          "apps/web/src/routes/agent/_layout/_authenticated.tsx:/_layout/_authenticated",
+          "apps/web/src/routes/agent/_layout.tsx:/_layout",
+          "apps/web/src/index.css:body>@apply bg-background"
+        ],
+        "backdropLayers": [
+          "bg-background"
+        ]
+      },
+      {
+        "id": "apps/web/src/routes/agent/_layout/_authenticated/god-mode/observability.tsx::ObservabilitySettings::Alert[main[0]/Alert[0]]",
+        "usage": "apps/web/src/routes/agent/_layout/_authenticated/god-mode/observability.tsx",
+        "surfaceContext": "caller-chain",
+        "category": "body",
+        "chain": [
+          "packages/ui/src/components/alert.tsx:alertVariants[default]",
+          "apps/web/src/routes/agent/_layout/_authenticated/god-mode/observability.tsx:ObservabilitySettings",
+          "jsx:main[0]/Alert[0]",
+          "apps/web/src/routes/agent/_layout/_authenticated/god-mode/observability.tsx:/_layout/_authenticated/god-mode/observability",
+          "apps/web/src/routes/agent/_layout/_authenticated.tsx:/_layout/_authenticated",
+          "apps/web/src/routes/agent/_layout.tsx:/_layout",
+          "apps/web/src/index.css:body>@apply bg-background"
+        ],
+        "backdropLayers": [
+          "bg-background"
+        ]
+      },
+      {
+        "id": "apps/web/src/routes/agent/auth/sign-in.tsx::SignIn::Alert[AuthLayout[0]/div[0]/Alert[0]]",
+        "usage": "apps/web/src/routes/agent/auth/sign-in.tsx",
+        "surfaceContext": "caller-chain",
+        "category": "body",
+        "chain": [
+          "packages/ui/src/components/alert.tsx:alertVariants[default]",
+          "apps/web/src/routes/agent/auth/sign-in.tsx:SignIn",
+          "jsx:AuthLayout[0]/div[0]/Alert[0]",
+          "apps/web/src/routes/agent/auth/sign-in.tsx:SignIn",
+          "AuthLayout->apps/web/src/components/auth/layout.tsx:AuthLayout"
+        ],
+        "backdropLayers": [
+          "bg-background"
+        ]
+      },
+      {
+        "id": "apps/web/src/routes/agent/auth/sign-up.tsx::SignUp::Alert[AuthLayout[0]/div[0]/Alert[0]]",
+        "usage": "apps/web/src/routes/agent/auth/sign-up.tsx",
+        "surfaceContext": "caller-chain",
+        "category": "body",
+        "chain": [
+          "packages/ui/src/components/alert.tsx:alertVariants[default]",
+          "apps/web/src/routes/agent/auth/sign-up.tsx:SignUp",
+          "jsx:AuthLayout[0]/div[0]/Alert[0]",
+          "apps/web/src/routes/agent/auth/sign-up.tsx:SignUp",
+          "AuthLayout->apps/web/src/components/auth/layout.tsx:AuthLayout"
+        ],
+        "backdropLayers": [
+          "bg-background"
+        ]
+      },
+      {
+        "id": "apps/web/src/routes/agent/auth/verify-otp.tsx::VerifyOtp::Alert[AuthLayout[0]/div[0]/Alert[0]]",
+        "usage": "apps/web/src/routes/agent/auth/verify-otp.tsx",
+        "surfaceContext": "caller-chain",
+        "category": "body",
+        "chain": [
+          "packages/ui/src/components/alert.tsx:alertVariants[default]",
+          "apps/web/src/routes/agent/auth/verify-otp.tsx:VerifyOtp",
+          "jsx:AuthLayout[0]/div[0]/Alert[0]",
+          "apps/web/src/routes/agent/auth/verify-otp.tsx:VerifyOtp",
+          "AuthLayout->apps/web/src/components/auth/layout.tsx:AuthLayout"
+        ],
+        "backdropLayers": [
+          "bg-background"
+        ]
+      },
+      {
+        "id": "packages/ui/src/components/alert.stories.tsx::<module>::Alert[Alert[0]]",
+        "usage": "packages/ui/src/components/alert.stories.tsx",
+        "surfaceContext": "storybook-body",
+        "category": "body",
+        "chain": [
+          "packages/ui/src/components/alert.stories.tsx:<story>",
+          "packages/ui/src/components/alert.tsx:alertVariants[default]",
+          "packages/ui/src/components/alert.stories.tsx:<module>",
+          "jsx:Alert[0]",
+          "packages/ui/.storybook/preview.ts:imports tailwind.css",
+          "packages/ui/.storybook/tailwind.css:#storybook-root.background-color:var(--background)"
+        ],
+        "backdropLayers": [
+          "bg-background"
+        ]
+      }
+    ],
+    "surfaceContext": "caller-chain"
+  },
+  {
+    "fg": "--color-card-foreground",
+    "bg": "--color-input",
+    "category": "body",
+    "minRatio": 4.5,
+    "themes": [
+      "dark"
+    ],
+    "usage": "apps/web/src/routes/agent/_layout/_authenticated/agent/settings/profile/pending-actions/$id.tsx",
+    "backdrop": "--color-card",
+    "foregroundClass": "text-card-foreground",
+    "backgroundClass": {
+      "dark": "dark:bg-input/32"
+    },
+    "backdropLayers": [
+      "bg-card"
+    ],
+    "occurrenceIds": [
+      "apps/web/src/routes/agent/_layout/_authenticated/agent/settings/profile/pending-actions/$id.tsx::PendingActionDetailRoute::Alert[main[0]/Card[0]/CardContent[0]/Alert[0]]",
+      "apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings/account/security.tsx::AccountSecurity::Alert[main[0]/Alert[0]]"
+    ],
+    "occurrences": [
+      {
+        "id": "apps/web/src/routes/agent/_layout/_authenticated/agent/settings/profile/pending-actions/$id.tsx::PendingActionDetailRoute::Alert[main[0]/Card[0]/CardContent[0]/Alert[0]]",
+        "usage": "apps/web/src/routes/agent/_layout/_authenticated/agent/settings/profile/pending-actions/$id.tsx",
+        "surfaceContext": "caller-chain",
+        "category": "body",
+        "chain": [
+          "packages/ui/src/components/alert.tsx:alertVariants[default]",
+          "apps/web/src/routes/agent/_layout/_authenticated/agent/settings/profile/pending-actions/$id.tsx:PendingActionDetailRoute",
+          "jsx:main[0]/Card[0]/CardContent[0]/Alert[0]",
+          "apps/web/src/routes/agent/_layout/_authenticated/agent/settings/profile/pending-actions/$id.tsx:PendingActionDetailRoute",
+          "Card->packages/ui/src/components/card.tsx:Card"
+        ],
+        "backdropLayers": [
+          "bg-card"
+        ]
+      },
+      {
+        "id": "apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings/account/security.tsx::AccountSecurity::Alert[main[0]/Alert[0]]",
+        "usage": "apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings/account/security.tsx",
+        "surfaceContext": "caller-chain",
+        "category": "body",
+        "chain": [
+          "packages/ui/src/components/alert.tsx:alertVariants[default]",
+          "apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings/account/security.tsx:AccountSecurity",
+          "jsx:main[0]/Alert[0]",
+          "apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings/account/security.tsx:/_layout/_authenticated/dashboard/settings/account/security",
+          "apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings/account.tsx:/_layout/_authenticated/dashboard/settings/account",
+          "apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings.tsx:Outlet>bg-card"
+        ],
+        "backdropLayers": [
+          "bg-card"
+        ]
+      }
+    ],
+    "surfaceContext": "caller-chain"
+  },
+  {
+    "fg": "--color-card-foreground",
+    "bg": "--color-input",
+    "category": "body",
+    "minRatio": 4.5,
+    "themes": [
+      "dark"
+    ],
+    "usage": "apps/web/src/components/settings/api-key-created-modal.tsx",
+    "backdrop": "--color-popover",
+    "foregroundClass": "text-card-foreground",
+    "backgroundClass": {
+      "dark": "dark:bg-input/32"
+    },
+    "backdropLayers": [
+      "bg-popover"
+    ],
+    "occurrenceIds": [
+      "apps/web/src/components/settings/api-key-created-modal.tsx::ApiKeyCreatedModal::Alert[Dialog[0]/DialogContent[0]/div[0]/Alert[0]]"
+    ],
+    "occurrences": [
+      {
+        "id": "apps/web/src/components/settings/api-key-created-modal.tsx::ApiKeyCreatedModal::Alert[Dialog[0]/DialogContent[0]/div[0]/Alert[0]]",
+        "usage": "apps/web/src/components/settings/api-key-created-modal.tsx",
+        "surfaceContext": "caller-chain",
+        "category": "body",
+        "chain": [
+          "packages/ui/src/components/alert.tsx:alertVariants[default]",
+          "apps/web/src/components/settings/api-key-created-modal.tsx:ApiKeyCreatedModal",
+          "jsx:Dialog[0]/DialogContent[0]/div[0]/Alert[0]",
+          "apps/web/src/components/settings/api-key-created-modal.tsx:ApiKeyCreatedModal",
+          "DialogContent->packages/ui/src/components/dialog.tsx:DialogPopup"
+        ],
+        "backdropLayers": [
+          "bg-popover"
+        ]
+      }
+    ],
+    "surfaceContext": "caller-chain"
+  },
+  {
+    "fg": "--color-card-foreground",
+    "bg": "--color-popover",
+    "category": "body",
+    "minRatio": 4.5,
+    "themes": [
+      "light"
+    ],
+    "usage": "apps/web/src/components/settings/api-key-created-modal.tsx",
+    "backdrop": "--color-popover",
+    "foregroundClass": "text-card-foreground",
+    "backgroundClass": {
+      "light": "bg-transparent"
+    },
+    "backdropLayers": [
+      "bg-popover"
+    ],
+    "occurrenceIds": [
+      "apps/web/src/components/settings/api-key-created-modal.tsx::ApiKeyCreatedModal::Alert[Dialog[0]/DialogContent[0]/div[0]/Alert[0]]"
+    ],
+    "occurrences": [
+      {
+        "id": "apps/web/src/components/settings/api-key-created-modal.tsx::ApiKeyCreatedModal::Alert[Dialog[0]/DialogContent[0]/div[0]/Alert[0]]",
+        "usage": "apps/web/src/components/settings/api-key-created-modal.tsx",
+        "surfaceContext": "caller-chain",
+        "category": "body",
+        "chain": [
+          "packages/ui/src/components/alert.tsx:alertVariants[default]",
+          "apps/web/src/components/settings/api-key-created-modal.tsx:ApiKeyCreatedModal",
+          "jsx:Dialog[0]/DialogContent[0]/div[0]/Alert[0]",
+          "apps/web/src/components/settings/api-key-created-modal.tsx:ApiKeyCreatedModal",
+          "DialogContent->packages/ui/src/components/dialog.tsx:DialogPopup"
+        ],
+        "backdropLayers": [
+          "bg-popover"
+        ]
+      }
+    ],
+    "surfaceContext": "caller-chain"
   },
   {
     "fg": "--color-card-foreground",
@@ -43915,7 +45873,7 @@
     "themes": [
       "dark"
     ],
-    "usage": "packages/ui/src/components/alert.tsx",
+    "usage": "apps/web/src/components/god-mode/scim-token-settings.tsx",
     "backdrop": "--color-background",
     "foregroundClass": "text-card-foreground",
     "backgroundClass": {
@@ -43925,59 +45883,109 @@
       "bg-background"
     ],
     "occurrenceIds": [
-      "packages/ui/src/components/alert.tsx::alertVariants::CVA[3]::text-card-foreground#bg-success/4"
+      "apps/web/src/components/god-mode/scim-token-settings.tsx::ScimTokenSettings::Alert[section[0]/Alert[0]]",
+      "packages/ui/src/components/alert.stories.tsx::<module>::Alert[Alert[0]]"
     ],
     "occurrences": [
       {
-        "id": "packages/ui/src/components/alert.tsx::alertVariants::CVA[3]::text-card-foreground#bg-success/4",
-        "usage": "packages/ui/src/components/alert.tsx",
-        "surfaceContext": "same-element",
+        "id": "apps/web/src/components/god-mode/scim-token-settings.tsx::ScimTokenSettings::Alert[section[0]/Alert[0]]",
+        "usage": "apps/web/src/components/god-mode/scim-token-settings.tsx",
+        "surfaceContext": "caller-chain",
         "category": "body",
         "chain": [
-          "packages/ui/src/components/alert.tsx:alertVariants",
-          "cva:6>text-card-foreground border-success/32 bg-success/4 [&>svg]:text-success"
+          "packages/ui/src/components/alert.tsx:alertVariants[success]",
+          "apps/web/src/components/god-mode/scim-token-settings.tsx:ScimTokenSettings",
+          "jsx:section[0]/Alert[0]",
+          "apps/web/src/routes/agent/_layout/_authenticated/god-mode/authentication/$id.tsx:/_layout/_authenticated/god-mode/authentication/$id",
+          "apps/web/src/routes/agent/_layout/_authenticated/god-mode/authentication.tsx:/_layout/_authenticated/god-mode/authentication",
+          "apps/web/src/routes/agent/_layout/_authenticated.tsx:/_layout/_authenticated",
+          "apps/web/src/routes/agent/_layout.tsx:/_layout",
+          "apps/web/src/index.css:body>@apply bg-background"
+        ],
+        "backdropLayers": [
+          "bg-background"
+        ]
+      },
+      {
+        "id": "packages/ui/src/components/alert.stories.tsx::<module>::Alert[Alert[0]]",
+        "usage": "packages/ui/src/components/alert.stories.tsx",
+        "surfaceContext": "storybook-body",
+        "category": "body",
+        "chain": [
+          "packages/ui/src/components/alert.stories.tsx:<story>",
+          "packages/ui/src/components/alert.tsx:alertVariants[success]",
+          "packages/ui/src/components/alert.stories.tsx:<module>",
+          "jsx:Alert[0]",
+          "packages/ui/.storybook/preview.ts:imports tailwind.css",
+          "packages/ui/.storybook/tailwind.css:#storybook-root.background-color:var(--background)"
         ],
         "backdropLayers": [
           "bg-background"
         ]
       }
-    ]
+    ],
+    "surfaceContext": "caller-chain"
   },
   {
     "fg": "--color-card-foreground",
-    "bg": "--color-warning",
+    "bg": "--color-success",
     "category": "body",
     "minRatio": 4.5,
     "themes": [
       "light"
     ],
-    "usage": "packages/ui/src/components/alert.tsx",
+    "usage": "apps/web/src/components/god-mode/scim-token-settings.tsx",
     "backdrop": "--color-background",
     "foregroundClass": "text-card-foreground",
     "backgroundClass": {
-      "light": "bg-warning/4"
+      "light": "bg-success/4"
     },
     "backdropLayers": [
       "bg-background"
     ],
     "occurrenceIds": [
-      "packages/ui/src/components/alert.tsx::alertVariants::CVA[4]::text-card-foreground#bg-warning/4"
+      "apps/web/src/components/god-mode/scim-token-settings.tsx::ScimTokenSettings::Alert[section[0]/Alert[0]]",
+      "packages/ui/src/components/alert.stories.tsx::<module>::Alert[Alert[0]]"
     ],
     "occurrences": [
       {
-        "id": "packages/ui/src/components/alert.tsx::alertVariants::CVA[4]::text-card-foreground#bg-warning/4",
-        "usage": "packages/ui/src/components/alert.tsx",
-        "surfaceContext": "same-element",
+        "id": "apps/web/src/components/god-mode/scim-token-settings.tsx::ScimTokenSettings::Alert[section[0]/Alert[0]]",
+        "usage": "apps/web/src/components/god-mode/scim-token-settings.tsx",
+        "surfaceContext": "caller-chain",
         "category": "body",
         "chain": [
-          "packages/ui/src/components/alert.tsx:alertVariants",
-          "cva:7>text-card-foreground border-warning/32 bg-warning/4 [&>svg]:text-warning"
+          "packages/ui/src/components/alert.tsx:alertVariants[success]",
+          "apps/web/src/components/god-mode/scim-token-settings.tsx:ScimTokenSettings",
+          "jsx:section[0]/Alert[0]",
+          "apps/web/src/routes/agent/_layout/_authenticated/god-mode/authentication/$id.tsx:/_layout/_authenticated/god-mode/authentication/$id",
+          "apps/web/src/routes/agent/_layout/_authenticated/god-mode/authentication.tsx:/_layout/_authenticated/god-mode/authentication",
+          "apps/web/src/routes/agent/_layout/_authenticated.tsx:/_layout/_authenticated",
+          "apps/web/src/routes/agent/_layout.tsx:/_layout",
+          "apps/web/src/index.css:body>@apply bg-background"
+        ],
+        "backdropLayers": [
+          "bg-background"
+        ]
+      },
+      {
+        "id": "packages/ui/src/components/alert.stories.tsx::<module>::Alert[Alert[0]]",
+        "usage": "packages/ui/src/components/alert.stories.tsx",
+        "surfaceContext": "storybook-body",
+        "category": "body",
+        "chain": [
+          "packages/ui/src/components/alert.stories.tsx:<story>",
+          "packages/ui/src/components/alert.tsx:alertVariants[success]",
+          "packages/ui/src/components/alert.stories.tsx:<module>",
+          "jsx:Alert[0]",
+          "packages/ui/.storybook/preview.ts:imports tailwind.css",
+          "packages/ui/.storybook/tailwind.css:#storybook-root.background-color:var(--background)"
         ],
         "backdropLayers": [
           "bg-background"
         ]
       }
-    ]
+    ],
+    "surfaceContext": "caller-chain"
   },
   {
     "fg": "--color-card-foreground",
@@ -43987,7 +45995,7 @@
     "themes": [
       "dark"
     ],
-    "usage": "packages/ui/src/components/alert.tsx",
+    "usage": "apps/web/src/components/service-calendar/service-calendar-editor-view.tsx",
     "backdrop": "--color-background",
     "foregroundClass": "text-card-foreground",
     "backgroundClass": {
@@ -43997,22 +46005,330 @@
       "bg-background"
     ],
     "occurrenceIds": [
-      "packages/ui/src/components/alert.tsx::alertVariants::CVA[4]::text-card-foreground#bg-warning/4"
+      "apps/web/src/components/service-calendar/service-calendar-editor-view.tsx::EditorNotices::Alert[Alert[0]]",
+      "apps/web/src/components/work-item/work-item-activity.tsx::WorkItemActivity::Alert[section[0]/div[1]/Alert[0]]",
+      "apps/web/src/components/work-item/work-item-detail.tsx::WorkItemDetail::Alert[div[0]/Alert[0]]",
+      "apps/web/src/components/work-item/work-item-list.tsx::WorkItemList::Alert[div[0]/div[0]/Alert[0]]",
+      "apps/web/src/components/work-item/work-items-panel.tsx::WorkItemsPanel::Alert[div[0]/Alert[0]]",
+      "apps/web/src/routes/agent/_layout/_authenticated/agent/my-work.tsx::MyApprovalsRoute::Alert[main[0]/ul[0]/li[0]/Alert[0]]",
+      "apps/web/src/routes/agent/_layout/_authenticated/agent/work-items/$key.tsx::WorkItemDetailRouteComponent::Alert[div[0]/Alert[0]]",
+      "packages/ui/src/components/alert.stories.tsx::<module>::Alert[Alert[0]]"
     ],
     "occurrences": [
       {
-        "id": "packages/ui/src/components/alert.tsx::alertVariants::CVA[4]::text-card-foreground#bg-warning/4",
-        "usage": "packages/ui/src/components/alert.tsx",
-        "surfaceContext": "same-element",
+        "id": "apps/web/src/components/service-calendar/service-calendar-editor-view.tsx::EditorNotices::Alert[Alert[0]]",
+        "usage": "apps/web/src/components/service-calendar/service-calendar-editor-view.tsx",
+        "surfaceContext": "caller-chain",
         "category": "body",
         "chain": [
-          "packages/ui/src/components/alert.tsx:alertVariants",
-          "cva:7>text-card-foreground border-warning/32 bg-warning/4 [&>svg]:text-warning"
+          "packages/ui/src/components/alert.tsx:alertVariants[warning]",
+          "apps/web/src/components/service-calendar/service-calendar-editor-view.tsx:EditorNotices",
+          "jsx:Alert[0]",
+          "apps/web/src/routes/agent/_layout/_authenticated/agent/settings/calendars/$id.tsx:/_layout/_authenticated/agent/settings/calendars/$id",
+          "apps/web/src/routes/agent/_layout/_authenticated/agent/settings/calendars.tsx:/_layout/_authenticated/agent/settings/calendars",
+          "apps/web/src/routes/agent/_layout/_authenticated.tsx:/_layout/_authenticated",
+          "apps/web/src/routes/agent/_layout.tsx:/_layout",
+          "apps/web/src/index.css:body>@apply bg-background"
+        ],
+        "backdropLayers": [
+          "bg-background"
+        ]
+      },
+      {
+        "id": "apps/web/src/components/work-item/work-item-activity.tsx::WorkItemActivity::Alert[section[0]/div[1]/Alert[0]]",
+        "usage": "apps/web/src/components/work-item/work-item-activity.tsx",
+        "surfaceContext": "caller-chain",
+        "category": "body",
+        "chain": [
+          "apps/web/src/components/work-item/work-item-activity.tsx:WorkItemActivity",
+          "jsx:section[0]/div[1]/Alert[0]",
+          "apps/web/src/routes/agent/_layout/_authenticated/agent/work-items/$key.tsx:/_layout/_authenticated/agent/work-items/$key",
+          "apps/web/src/routes/agent/_layout/_authenticated.tsx:/_layout/_authenticated",
+          "apps/web/src/routes/agent/_layout.tsx:/_layout",
+          "apps/web/src/index.css:body>@apply bg-background"
+        ],
+        "backdropLayers": [
+          "bg-background"
+        ]
+      },
+      {
+        "id": "apps/web/src/components/work-item/work-item-detail.tsx::WorkItemDetail::Alert[div[0]/Alert[0]]",
+        "usage": "apps/web/src/components/work-item/work-item-detail.tsx",
+        "surfaceContext": "caller-chain",
+        "category": "body",
+        "chain": [
+          "packages/ui/src/components/alert.tsx:alertVariants[warning]",
+          "apps/web/src/components/work-item/work-item-detail.tsx:WorkItemDetail",
+          "jsx:div[0]/Alert[0]",
+          "apps/web/src/routes/agent/_layout/_authenticated/agent/work-items/$key.tsx:/_layout/_authenticated/agent/work-items/$key",
+          "apps/web/src/routes/agent/_layout/_authenticated.tsx:/_layout/_authenticated",
+          "apps/web/src/routes/agent/_layout.tsx:/_layout",
+          "apps/web/src/index.css:body>@apply bg-background"
+        ],
+        "backdropLayers": [
+          "bg-background"
+        ]
+      },
+      {
+        "id": "apps/web/src/components/work-item/work-item-list.tsx::WorkItemList::Alert[div[0]/div[0]/Alert[0]]",
+        "usage": "apps/web/src/components/work-item/work-item-list.tsx",
+        "surfaceContext": "caller-chain",
+        "category": "body",
+        "chain": [
+          "packages/ui/src/components/alert.tsx:alertVariants[warning]",
+          "apps/web/src/components/work-item/work-item-list.tsx:WorkItemList",
+          "jsx:div[0]/div[0]/Alert[0]",
+          "apps/web/src/components/work-item/work-item-list.tsx:WorkItemList",
+          "jsx:div[0]/div[0]/Alert[0]",
+          "opaque-backdrop:bg-background"
+        ],
+        "backdropLayers": [
+          "bg-background"
+        ]
+      },
+      {
+        "id": "apps/web/src/components/work-item/work-items-panel.tsx::WorkItemsPanel::Alert[div[0]/Alert[0]]",
+        "usage": "apps/web/src/components/work-item/work-items-panel.tsx",
+        "surfaceContext": "caller-chain",
+        "category": "body",
+        "chain": [
+          "packages/ui/src/components/alert.tsx:alertVariants[warning]",
+          "apps/web/src/components/work-item/work-items-panel.tsx:WorkItemsPanel",
+          "jsx:div[0]/Alert[0]",
+          "apps/web/src/components/work-item/work-items-panel.tsx:WorkItemsPanel",
+          "jsx:div[0]/Alert[0]",
+          "opaque-backdrop:bg-background"
+        ],
+        "backdropLayers": [
+          "bg-background"
+        ]
+      },
+      {
+        "id": "apps/web/src/routes/agent/_layout/_authenticated/agent/my-work.tsx::MyApprovalsRoute::Alert[main[0]/ul[0]/li[0]/Alert[0]]",
+        "usage": "apps/web/src/routes/agent/_layout/_authenticated/agent/my-work.tsx",
+        "surfaceContext": "caller-chain",
+        "category": "body",
+        "chain": [
+          "packages/ui/src/components/alert.tsx:alertVariants[warning]",
+          "apps/web/src/routes/agent/_layout/_authenticated/agent/my-work.tsx:MyApprovalsRoute",
+          "jsx:main[0]/ul[0]/li[0]/Alert[0]",
+          "apps/web/src/routes/agent/_layout/_authenticated/agent/my-work.tsx:/_layout/_authenticated/agent/my-work",
+          "apps/web/src/routes/agent/_layout/_authenticated.tsx:/_layout/_authenticated",
+          "apps/web/src/routes/agent/_layout.tsx:/_layout",
+          "apps/web/src/index.css:body>@apply bg-background"
+        ],
+        "backdropLayers": [
+          "bg-background"
+        ]
+      },
+      {
+        "id": "apps/web/src/routes/agent/_layout/_authenticated/agent/work-items/$key.tsx::WorkItemDetailRouteComponent::Alert[div[0]/Alert[0]]",
+        "usage": "apps/web/src/routes/agent/_layout/_authenticated/agent/work-items/$key.tsx",
+        "surfaceContext": "caller-chain",
+        "category": "body",
+        "chain": [
+          "packages/ui/src/components/alert.tsx:alertVariants[warning]",
+          "apps/web/src/routes/agent/_layout/_authenticated/agent/work-items/$key.tsx:WorkItemDetailRouteComponent",
+          "jsx:div[0]/Alert[0]",
+          "apps/web/src/routes/agent/_layout/_authenticated/agent/work-items/$key.tsx:/_layout/_authenticated/agent/work-items/$key",
+          "apps/web/src/routes/agent/_layout/_authenticated.tsx:/_layout/_authenticated",
+          "apps/web/src/routes/agent/_layout.tsx:/_layout",
+          "apps/web/src/index.css:body>@apply bg-background"
+        ],
+        "backdropLayers": [
+          "bg-background"
+        ]
+      },
+      {
+        "id": "packages/ui/src/components/alert.stories.tsx::<module>::Alert[Alert[0]]",
+        "usage": "packages/ui/src/components/alert.stories.tsx",
+        "surfaceContext": "storybook-body",
+        "category": "body",
+        "chain": [
+          "packages/ui/src/components/alert.stories.tsx:<story>",
+          "packages/ui/src/components/alert.tsx:alertVariants[warning]",
+          "packages/ui/src/components/alert.stories.tsx:<module>",
+          "jsx:Alert[0]",
+          "packages/ui/.storybook/preview.ts:imports tailwind.css",
+          "packages/ui/.storybook/tailwind.css:#storybook-root.background-color:var(--background)"
         ],
         "backdropLayers": [
           "bg-background"
         ]
       }
-    ]
+    ],
+    "surfaceContext": "caller-chain"
+  },
+  {
+    "fg": "--color-card-foreground",
+    "bg": "--color-warning",
+    "category": "body",
+    "minRatio": 4.5,
+    "themes": [
+      "light"
+    ],
+    "usage": "apps/web/src/components/service-calendar/service-calendar-editor-view.tsx",
+    "backdrop": "--color-background",
+    "foregroundClass": "text-card-foreground",
+    "backgroundClass": {
+      "light": "bg-warning/4"
+    },
+    "backdropLayers": [
+      "bg-background"
+    ],
+    "occurrenceIds": [
+      "apps/web/src/components/service-calendar/service-calendar-editor-view.tsx::EditorNotices::Alert[Alert[0]]",
+      "apps/web/src/components/work-item/work-item-activity.tsx::WorkItemActivity::Alert[section[0]/div[1]/Alert[0]]",
+      "apps/web/src/components/work-item/work-item-detail.tsx::WorkItemDetail::Alert[div[0]/Alert[0]]",
+      "apps/web/src/components/work-item/work-item-list.tsx::WorkItemList::Alert[div[0]/div[0]/Alert[0]]",
+      "apps/web/src/components/work-item/work-items-panel.tsx::WorkItemsPanel::Alert[div[0]/Alert[0]]",
+      "apps/web/src/routes/agent/_layout/_authenticated/agent/my-work.tsx::MyApprovalsRoute::Alert[main[0]/ul[0]/li[0]/Alert[0]]",
+      "apps/web/src/routes/agent/_layout/_authenticated/agent/work-items/$key.tsx::WorkItemDetailRouteComponent::Alert[div[0]/Alert[0]]",
+      "packages/ui/src/components/alert.stories.tsx::<module>::Alert[Alert[0]]"
+    ],
+    "occurrences": [
+      {
+        "id": "apps/web/src/components/service-calendar/service-calendar-editor-view.tsx::EditorNotices::Alert[Alert[0]]",
+        "usage": "apps/web/src/components/service-calendar/service-calendar-editor-view.tsx",
+        "surfaceContext": "caller-chain",
+        "category": "body",
+        "chain": [
+          "packages/ui/src/components/alert.tsx:alertVariants[warning]",
+          "apps/web/src/components/service-calendar/service-calendar-editor-view.tsx:EditorNotices",
+          "jsx:Alert[0]",
+          "apps/web/src/routes/agent/_layout/_authenticated/agent/settings/calendars/$id.tsx:/_layout/_authenticated/agent/settings/calendars/$id",
+          "apps/web/src/routes/agent/_layout/_authenticated/agent/settings/calendars.tsx:/_layout/_authenticated/agent/settings/calendars",
+          "apps/web/src/routes/agent/_layout/_authenticated.tsx:/_layout/_authenticated",
+          "apps/web/src/routes/agent/_layout.tsx:/_layout",
+          "apps/web/src/index.css:body>@apply bg-background"
+        ],
+        "backdropLayers": [
+          "bg-background"
+        ]
+      },
+      {
+        "id": "apps/web/src/components/work-item/work-item-activity.tsx::WorkItemActivity::Alert[section[0]/div[1]/Alert[0]]",
+        "usage": "apps/web/src/components/work-item/work-item-activity.tsx",
+        "surfaceContext": "caller-chain",
+        "category": "body",
+        "chain": [
+          "apps/web/src/components/work-item/work-item-activity.tsx:WorkItemActivity",
+          "jsx:section[0]/div[1]/Alert[0]",
+          "apps/web/src/routes/agent/_layout/_authenticated/agent/work-items/$key.tsx:/_layout/_authenticated/agent/work-items/$key",
+          "apps/web/src/routes/agent/_layout/_authenticated.tsx:/_layout/_authenticated",
+          "apps/web/src/routes/agent/_layout.tsx:/_layout",
+          "apps/web/src/index.css:body>@apply bg-background"
+        ],
+        "backdropLayers": [
+          "bg-background"
+        ]
+      },
+      {
+        "id": "apps/web/src/components/work-item/work-item-detail.tsx::WorkItemDetail::Alert[div[0]/Alert[0]]",
+        "usage": "apps/web/src/components/work-item/work-item-detail.tsx",
+        "surfaceContext": "caller-chain",
+        "category": "body",
+        "chain": [
+          "packages/ui/src/components/alert.tsx:alertVariants[warning]",
+          "apps/web/src/components/work-item/work-item-detail.tsx:WorkItemDetail",
+          "jsx:div[0]/Alert[0]",
+          "apps/web/src/routes/agent/_layout/_authenticated/agent/work-items/$key.tsx:/_layout/_authenticated/agent/work-items/$key",
+          "apps/web/src/routes/agent/_layout/_authenticated.tsx:/_layout/_authenticated",
+          "apps/web/src/routes/agent/_layout.tsx:/_layout",
+          "apps/web/src/index.css:body>@apply bg-background"
+        ],
+        "backdropLayers": [
+          "bg-background"
+        ]
+      },
+      {
+        "id": "apps/web/src/components/work-item/work-item-list.tsx::WorkItemList::Alert[div[0]/div[0]/Alert[0]]",
+        "usage": "apps/web/src/components/work-item/work-item-list.tsx",
+        "surfaceContext": "caller-chain",
+        "category": "body",
+        "chain": [
+          "packages/ui/src/components/alert.tsx:alertVariants[warning]",
+          "apps/web/src/components/work-item/work-item-list.tsx:WorkItemList",
+          "jsx:div[0]/div[0]/Alert[0]",
+          "apps/web/src/components/work-item/work-item-list.tsx:WorkItemList",
+          "jsx:div[0]/div[0]/Alert[0]",
+          "opaque-backdrop:bg-background"
+        ],
+        "backdropLayers": [
+          "bg-background"
+        ]
+      },
+      {
+        "id": "apps/web/src/components/work-item/work-items-panel.tsx::WorkItemsPanel::Alert[div[0]/Alert[0]]",
+        "usage": "apps/web/src/components/work-item/work-items-panel.tsx",
+        "surfaceContext": "caller-chain",
+        "category": "body",
+        "chain": [
+          "packages/ui/src/components/alert.tsx:alertVariants[warning]",
+          "apps/web/src/components/work-item/work-items-panel.tsx:WorkItemsPanel",
+          "jsx:div[0]/Alert[0]",
+          "apps/web/src/components/work-item/work-items-panel.tsx:WorkItemsPanel",
+          "jsx:div[0]/Alert[0]",
+          "opaque-backdrop:bg-background"
+        ],
+        "backdropLayers": [
+          "bg-background"
+        ]
+      },
+      {
+        "id": "apps/web/src/routes/agent/_layout/_authenticated/agent/my-work.tsx::MyApprovalsRoute::Alert[main[0]/ul[0]/li[0]/Alert[0]]",
+        "usage": "apps/web/src/routes/agent/_layout/_authenticated/agent/my-work.tsx",
+        "surfaceContext": "caller-chain",
+        "category": "body",
+        "chain": [
+          "packages/ui/src/components/alert.tsx:alertVariants[warning]",
+          "apps/web/src/routes/agent/_layout/_authenticated/agent/my-work.tsx:MyApprovalsRoute",
+          "jsx:main[0]/ul[0]/li[0]/Alert[0]",
+          "apps/web/src/routes/agent/_layout/_authenticated/agent/my-work.tsx:/_layout/_authenticated/agent/my-work",
+          "apps/web/src/routes/agent/_layout/_authenticated.tsx:/_layout/_authenticated",
+          "apps/web/src/routes/agent/_layout.tsx:/_layout",
+          "apps/web/src/index.css:body>@apply bg-background"
+        ],
+        "backdropLayers": [
+          "bg-background"
+        ]
+      },
+      {
+        "id": "apps/web/src/routes/agent/_layout/_authenticated/agent/work-items/$key.tsx::WorkItemDetailRouteComponent::Alert[div[0]/Alert[0]]",
+        "usage": "apps/web/src/routes/agent/_layout/_authenticated/agent/work-items/$key.tsx",
+        "surfaceContext": "caller-chain",
+        "category": "body",
+        "chain": [
+          "packages/ui/src/components/alert.tsx:alertVariants[warning]",
+          "apps/web/src/routes/agent/_layout/_authenticated/agent/work-items/$key.tsx:WorkItemDetailRouteComponent",
+          "jsx:div[0]/Alert[0]",
+          "apps/web/src/routes/agent/_layout/_authenticated/agent/work-items/$key.tsx:/_layout/_authenticated/agent/work-items/$key",
+          "apps/web/src/routes/agent/_layout/_authenticated.tsx:/_layout/_authenticated",
+          "apps/web/src/routes/agent/_layout.tsx:/_layout",
+          "apps/web/src/index.css:body>@apply bg-background"
+        ],
+        "backdropLayers": [
+          "bg-background"
+        ]
+      },
+      {
+        "id": "packages/ui/src/components/alert.stories.tsx::<module>::Alert[Alert[0]]",
+        "usage": "packages/ui/src/components/alert.stories.tsx",
+        "surfaceContext": "storybook-body",
+        "category": "body",
+        "chain": [
+          "packages/ui/src/components/alert.stories.tsx:<story>",
+          "packages/ui/src/components/alert.tsx:alertVariants[warning]",
+          "packages/ui/src/components/alert.stories.tsx:<module>",
+          "jsx:Alert[0]",
+          "packages/ui/.storybook/preview.ts:imports tailwind.css",
+          "packages/ui/.storybook/tailwind.css:#storybook-root.background-color:var(--background)"
+        ],
+        "backdropLayers": [
+          "bg-background"
+        ]
+      }
+    ],
+    "surfaceContext": "caller-chain"
   }
 ]
