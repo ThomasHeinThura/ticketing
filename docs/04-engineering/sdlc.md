@@ -19,7 +19,10 @@ and later never came.
 
 **Purpose** — decide what to build and why, before anyone opens an editor.
 
-**Entry** — a stage is active and its previous stage is closed.
+**Entry** — the workstream is authorized and its dependencies are available. Implementation
+workstreams may run concurrently across stages. Stage acceptance remains independent and
+ordered by each stage's exit criteria; a stage is claimed complete only after its own gate
+and phase finalizer pass.
 
 **Do**
 

@@ -1,3 +1,33 @@
+### 2026-10-08 · Reconcile current performance, runtime report failure and concurrent SDLC entry
+
+Thomas's realignment directive authorizes concurrent dependency-safe P1–P4 implementation
+while preserving independent staged acceptance. The SDLC Plan entry still required the
+previous stage to be closed; it now matches the already updated roadmap and canonical
+AGENTS/phases rule. This changes execution sequencing only, not acceptance, reviews,
+security, CI or finalizer gates.
+
+Current P0 source6fe restores the product/CI source of01de/1878 after rejecting670/d4.
+Automatic full run37708668475 passed20/22, failing LCP2548/2500ms and board656.8/500ms.
+Historical green evidence is not relabeled. A bounded real-popup-preserving correction
+is authorized by those failing existing gates; benchmark contracts remain unchanged.
+
+Freshly admitted private V5 executed on clean1878 in an owned disposable environment
+at00:51:51.875–00:52:22.220UTC. Live/ready200 and UID10001 passed, but report binding
+validation failed after acquisition. Original partial records stay retained; no complete
+runtime, strict activation or phase acceptance is claimed. Every original Docker resource
+was preserved and no acquired resource ID remains. Root diagnosis identifies tuple runtime
+journeys versus list-only validation; structural regression and independent adjudication
+remain required. The independent date addenda admit nine changed eligible read cases from
+the original actual October6 raw observation, preserve its later harness failure, correct
+the two admin reads to unchanged403, and prohibit blanket/full-day evidence claims.
+
+P1 current3cb native43 tests and browser1 passed after one complete remediation batch.
+Previous6aed blocker reports remain historical and current delta/security review remains
+required. No product contract question, gate or secret-scanner finding is waived.
+
+**Recorded:** top-level orchestrator at 2026-10-08 00:54 UTC; status snapshot links the exact sources,
+private evidence and current acceptance limits. No merge, release, DEV mutation or cutover.
+
 ### 2026-10-07 · Keep P0 reconstruction separate from #599 and rebuild later integration after acceptance
 
 Thomas's current instruction is to keep the attachment/public-origin work in #599 outside
