@@ -1,3 +1,13 @@
+### 2026-10-08 · Signed installer release proof after protected merge, before P0 closure
+
+**Decision — Thomas explicitly approved in this task:** “Approve signed-release proof after merge, before P0 closure (recommended)”.
+
+The new signed-archive release workflow validates that its selected source is already reachable from accepted `main`. Running the real signed release before accepting that source would conflict with this trust boundary. Preserve all pre-merge independent reviews, required exact-head CI, installer regression tests and exact-image boot checks. After eligible protected merge, immediately run the real signed installer, upgrade and rollback proof from the protected-main release workflow; complete those proofs before the additional fresh P0 phase finalizer and any P0 closure claim.
+
+This decision changes the timing of the real signed-release operational proof only. It does not bypass branch protection, source eligibility, certificate/workflow identity checks, signature/provenance verification, performance or security gates; it authorizes no unsigned fallback or invented signature identity. Installer/runtime failures remain blockers to P0 closure. Deployment and final SIT acceptance must use verified accepted source.
+
+---
+
 ### 2026-10-08 · Freeze new features and complete final integration/SIT acceptance, then stop
 
 **Decision — Thomas, explicit final integration directive:** stop all new feature implementation and feature branches. Continue only existing-work integration and acceptance corrections: conflict resolution, security/correctness defects, failing functional tests, migration compatibility, build/packaging/SIT compatibility, and acceptance-blocking accessibility/UI defects. Do not expand a feature because its specification contains later requirements. Account for every PR and branch, preserve useful history, and reconstruct the cumulative #589/#598 integration trees as reviewable owner-source units rather than merging their enormous displayed diffs blindly. Preserve accepted migration history.
