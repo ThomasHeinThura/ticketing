@@ -12,6 +12,7 @@ import {
 import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 import CommentEditor from "@/components/activity/comment-editor";
+import CommentVersionHistory from "@/components/activity/comment-version-history";
 import { useAuth } from "@/components/providers/auth-provider/hooks/use-auth";
 import listCannedResponses from "@/fetchers/canned-response/list-canned-responses";
 import type { WorkItemActivityRow } from "@/fetchers/work-item/get-work-item-activity";
@@ -285,10 +286,18 @@ function WorkItemActivity({
                       ? t("activity:timeline.public")
                       : t("activity:timeline.internal")}
                   </span>
-                  {row.editedAt && (
-                    <span className="text-muted-foreground">
-                      {t("activity:timeline.edited")}
-                    </span>
+                  {row.editedAt && row.versions?.length ? (
+                    <CommentVersionHistory
+                      label={t("activity:timeline.edited")}
+                      editorName={(personId) => displayName(personId, "person")}
+                      versions={row.versions}
+                    />
+                  ) : (
+                    row.editedAt && (
+                      <span className="text-muted-foreground">
+                        {t("activity:timeline.edited")}
+                      </span>
+                    )
                   )}
                   {!isDeleted && editing !== row.id && (
                     <Button

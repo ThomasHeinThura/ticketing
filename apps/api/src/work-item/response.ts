@@ -386,6 +386,22 @@ export const workItemActivityRowSchema = z
     updatedAt: responseTimestamp.optional().openapi({
       description: "Comment rows only.",
     }),
+    versions: z
+      .array(
+        z.object({
+          number: z.number().int().positive(),
+          body: z.unknown(),
+          editedBy: z.string().nullable(),
+          createdAt: responseTimestamp,
+        }),
+      )
+      .optional()
+      .openapi({
+        description:
+          "Comment rows only: prior CA-17 bodies, ordered by version number. " +
+          "Omitted for unedited comments and tombstones; each version inherits " +
+          "the comment's visibility and work-item reach.",
+      }),
   })
   .openapi("WorkItemActivityRow");
 

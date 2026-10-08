@@ -132,6 +132,18 @@ function deleteCommentRequest(
   return app.request(`/api/comments/${id}`, { method: "DELETE" });
 }
 
+function updateCommentRequest(
+  app: ReturnType<typeof createApp>["app"],
+  id: string,
+  body: unknown,
+) {
+  return app.request(`/api/comments/${id}`, {
+    method: "PATCH",
+    headers: { "content-type": "application/json" },
+    body: JSON.stringify({ body }),
+  });
+}
+
 // Pages through the whole stream at `limit=1`, asserting no id repeats across pages
 // (a repeat is exactly as real a bug as a skip), and returns every id seen in order.
 // Shared by the #452 B1/B2 regression tests below, which both need this exact walk.
@@ -378,6 +390,7 @@ describe("API integration: work item activity read (#23 fourth slice)", () => {
       expect(commentRow?.kind).toBe("comment");
       expect(commentRow?.workItemId).toBe(created.id);
       expect(commentRow?.visibility).toBe("internal");
+      expect(commentRow).not.toHaveProperty("versions");
 
       // Wire-compatibility shape (issue #452 v2, post-CI oasdiff finding): a
       // comment-kind row is a flat extension of the pre-existing `WorkItemActivityRow`
@@ -397,6 +410,7 @@ describe("API integration: work item activity read (#23 fourth slice)", () => {
       // populated -- either absent or null, never leaking a stray value).
       const activityRow = body.data.find((row) => row.kind === "activity");
       expect(activityRow).toBeDefined();
+      expect(activityRow).not.toHaveProperty("versions");
       expect(activityRow?.body ?? null).toBeNull();
       expect(activityRow?.activityId ?? null).toBeNull();
 
@@ -433,6 +447,93 @@ describe("API integration: work item activity read (#23 fourth slice)", () => {
       expect(commentRow?.kind).toBe("comment");
       expect(commentRow?.body).toBeNull();
       expect(commentRow?.deletedAt).not.toBeNull();
+    });
+
+    it("returns ordered prior bodies for a live comment and omits history after tombstoning", async () => {
+      const { creator, project, type } = await setupProjectWithDefaultState();
+      mockAuthenticatedSession(creator.user);
+      const { app } = createApp();
+
+      const created = (await (
+        await createWorkItemRequest(app, project.id, {
+          typeId: type.id,
+          title: "Comment version history",
+        })
+      ).json()) as { key: string };
+
+      const firstBody = {
+        type: "doc",
+        content: [
+          { type: "paragraph", content: [{ type: "text", text: "first" }] },
+        ],
+      };
+      const secondBody = {
+        type: "doc",
+        content: [
+          { type: "paragraph", content: [{ type: "text", text: "second" }] },
+        ],
+      };
+      const finalBody = {
+        type: "doc",
+        content: [
+          { type: "paragraph", content: [{ type: "text", text: "final" }] },
+        ],
+      };
+      const commentResponse = await postCommentRequest(app, created.key, {
+        body: firstBody,
+        visibility: "internal",
+      });
+      expect(commentResponse.status).toBe(200);
+      const comment = (await commentResponse.json()) as { id: string };
+
+      expect(
+        (await updateCommentRequest(app, comment.id, secondBody)).status,
+      ).toBe(200);
+      expect(
+        (await updateCommentRequest(app, comment.id, finalBody)).status,
+      ).toBe(200);
+
+      const liveResponse = await activityRequest(app, created.key);
+      expect(liveResponse.status).toBe(200);
+      const live = (await liveResponse.json()) as {
+        data: Array<{
+          id: string;
+          body?: unknown;
+          deletedAt?: string | null;
+          visibility: string;
+          versions?: Array<{
+            number: number;
+            body: unknown;
+            editedBy: string | null;
+            createdAt: string;
+          }>;
+        }>;
+      };
+      const liveComment = live.data.find((row) => row.id === comment.id);
+      expect(liveComment?.body).toEqual(finalBody);
+      expect(liveComment?.visibility).toBe("internal");
+      expect(liveComment?.versions?.map((version) => version.number)).toEqual([
+        1, 2,
+      ]);
+      expect(liveComment?.versions?.map((version) => version.body)).toEqual([
+        firstBody,
+        secondBody,
+      ]);
+      expect(liveComment?.versions?.map((version) => version.editedBy)).toEqual(
+        [creator.user.id, creator.user.id],
+      );
+      expect(liveComment?.versions?.every((version) => version.createdAt)).toBe(
+        true,
+      );
+
+      expect((await deleteCommentRequest(app, comment.id)).status).toBe(200);
+      const deletedResponse = await activityRequest(app, created.key);
+      const deleted = (await deletedResponse.json()) as {
+        data: Array<Record<string, unknown>>;
+      };
+      const tombstone = deleted.data.find((row) => row.id === comment.id);
+      expect(tombstone?.body).toBeNull();
+      expect(tombstone).not.toHaveProperty("versions");
     });
 
     it("pagination: limit=1 pages through a mix of activity and comment rows without duplicates or gaps", async () => {

@@ -20,6 +20,14 @@ export type WorkItemActivityRow = {
   editedAt?: string | null;
   deletedAt?: string | null;
   updatedAt?: string;
+  versions?: CommentVersion[];
+};
+
+export type CommentVersion = {
+  number: number;
+  body: unknown;
+  editedBy: string | null;
+  createdAt: string;
 };
 
 export type WorkItemActivityPage = {

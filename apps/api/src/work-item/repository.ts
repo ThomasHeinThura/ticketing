@@ -817,6 +817,27 @@ export async function countCommentVersionsQuery(
     .where(eq(commentVersionTable.commentId, commentId));
 }
 
+export async function listCommentVersionsByCommentIdsQuery(
+  executor: Executor,
+  commentIds: string[],
+) {
+  if (commentIds.length === 0) return [];
+  return executor
+    .select({
+      commentId: commentVersionTable.commentId,
+      number: commentVersionTable.number,
+      body: commentVersionTable.body,
+      editedBy: commentVersionTable.editedBy,
+      createdAt: commentVersionTable.createdAt,
+    })
+    .from(commentVersionTable)
+    .where(inArray(commentVersionTable.commentId, commentIds))
+    .orderBy(
+      asc(commentVersionTable.commentId),
+      asc(commentVersionTable.number),
+    );
+}
+
 export async function lockWorkItemByKeyQuery(
   executor: Executor,
   key: string,

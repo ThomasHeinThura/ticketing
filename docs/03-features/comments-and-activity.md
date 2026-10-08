@@ -107,7 +107,13 @@ security-sensitive field in the product.
   **refused** — a 403 — unless the actor holds `comment:update_any`. Each edit writes a new
   `comment_version (comment_id, number, body, edited_by, created_at)` row
   ([data-model.md](../01-architecture/data-model.md) §4); the comment shows "edited" with a
-  hover-revealed history built from those versions.
+  hover-revealed history built from those versions. On the existing
+  `GET /api/work-items/{key}/activity` response, a live comment row with versions may
+  include `versions: [{ number, body, editedBy, createdAt }]`, ordered by ascending
+  `number`. The field is omitted when there are no versions and omitted entirely for a
+  tombstone. History inherits the parent comment's immutable visibility and the existing
+  work-item reach/read policy; it never gives a caller access to a comment they could not
+  already read.
 - `CA-18` Deleting sets `comment.deleted_at` / `deleted_by` and clears the body; the row and
   its activity stay, and the tombstone renders from those two columns — "Comment deleted by
   Jane, 2 March" — never a
@@ -169,6 +175,14 @@ POST   /api/canned-responses                   workspace:manage_settings
 PATCH  /api/canned-responses/{id}              workspace:manage_settings
 DELETE /api/canned-responses/{id}              workspace:manage_settings
 ```
+
+The activity response keeps its existing `{ data, page }` envelope and flat row shape.
+Comment rows with edit history add the optional `versions` array defined in CA-17; activity
+rows, unedited comments, and tombstones omit it. The array carries only the persisted
+version number, body document, editor person id (nullable), and creation timestamp. It is
+returned under the same `work_item:read` + work-item reach check as the parent comment, and
+uses the comment's unchanged `public` or `internal` visibility. No separate history route
+or capability is introduced.
 
 The portal endpoint is a separate handler, not the same handler with a filter, so it is
 impossible to leak internal content through a forgotten branch.

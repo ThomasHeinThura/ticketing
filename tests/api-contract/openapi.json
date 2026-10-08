@@ -4299,6 +4299,35 @@
             "type": "string",
             "format": "date-time",
             "description": "Comment rows only."
+          },
+          "versions": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "number": {
+                  "type": "integer",
+                  "exclusiveMinimum": 0
+                },
+                "body": {},
+                "editedBy": {
+                  "type": [
+                    "string",
+                    "null"
+                  ]
+                },
+                "createdAt": {
+                  "type": "string",
+                  "format": "date-time"
+                }
+              },
+              "required": [
+                "number",
+                "editedBy",
+                "createdAt"
+              ]
+            },
+            "description": "Comment rows only: prior CA-17 bodies, ordered by version number. Omitted for unedited comments and tombstones; each version inherits the comment's visibility and work-item reach."
           }
         },
         "required": [
@@ -21411,7 +21440,7 @@
           "Work items"
         ],
         "summary": "List work item activity",
-        "description": "The work item's combined activity/comment stream (`WI-6`, `comments-and-activity.md`'s \"one stream showing everything\"), newest first, cursor-paginated. Each row in `data` carries `kind`: `\"activity\"` for an `activity` table row (issue #292) or `\"comment\"` for a posted `comment` row (issue #452) -- merged and sorted together, not two separate lists. Every row is returned regardless of `visibility` -- see the controller's own doc comment for why no caller-type filtering is applied yet.",
+        "description": "The work item's combined activity/comment stream (`WI-6`, `comments-and-activity.md`'s \"one stream showing everything\"), newest first, cursor-paginated. Each row in `data` carries `kind`: `\"activity\"` for an `activity` table row (issue #292) or `\"comment\"` for a posted `comment` row (issue #452) -- merged and sorted together, not two separate lists. Every row is returned regardless of `visibility` -- see the controller's own doc comment for why no caller-type filtering is applied yet. A live comment with prior edits may include an optional `versions` array (`number`, `body`, `editedBy`, `createdAt`) ordered by version number; unedited comments and tombstones omit it. The projection uses this route's existing work_item:read and work-item reach checks.",
         "parameters": [
           {
             "schema": {
