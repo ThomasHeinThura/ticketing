@@ -1,3 +1,28 @@
+## Status first — verified 2026-10-08 00:29 UTC
+
+**Accepted main:** `3096cb044bdf6ae98488bfc385f532fa6386343a`. **Persistent OrbStack DEV:** revision `08842235047a3ab2714427edce80331b94558150`, image `sha256:75b153d7d9583993127e1be8c06453159e4fe7319abfcd8431f093c9ca002bcf`. No protected merge, persistent redeployment, strict activation or phase finalizer. Last actual CA readiness200 is on both hosts8443; standard443 remains unavailable.
+
+| Stage | Formal status |
+| --- | --- |
+| P0 | Open — sole #602; latest candidate d4 is rejected at17/22, revert/correction underway |
+| P1 | Open — #605 reviewed realtime; #606 full activity/comments/history batch in combined remediation |
+| P2 | Open — service-desk lanes and integration/contract residuals |
+| P3 | Open — portal/identity lanes; real-provider and integrated acceptance pending |
+| P4 | Open — query ownership branch complete; governance contracts/runtime gaps remain |
+| P5–P7 | Open — no completion claim |
+
+**P0 new facts:** exactd4 `d4eb84035d3c4368b2ad5adf7af47bfecefa0fda` full hosted `37706535532` finished **17/22**, against predecessor1878 **19/22**. LCP2532/2500ms and board624.9/500ms still fail. Three new failures (ProjectsCLS and both palette interactions) require the genuine hidden shared popup before first intent; importing code alone removed it. The complete unchanged suite, not faster individual metrics, decides disposition: **REJECT**. No threshold, fixture, workload, retry or assertion changes. Author is reverting the failed670 product delta and investigating a bounded genuine-popup-preserving correction. PostgreSQL137files/1659tests, G4/G8/E2E passed. Exactd4 image built: `sha256:25d73225566dbaee8a0ccb61c084ceeb12d2b29514d9201f7e639f816477f16a`, OCI d4, arm64, actualUID10001. This rejected image is not deployed or accepted.
+
+**Runtime/date proof:** v3 private preflight classification passed independent Luna4/4, but Sol **BLOCKED** its inconsistent inherited output directory. No v3 runtime occurred. One structural output/source-binding correction is underway; v1/v2/v3 failures stay retained. Prior actual1878 off/shadow attempt stopped before acquisition; original resources preserved. Independent d4 observation adjudication is **mixed**: 11 project-read nonmember cases and two bootstrap admin cases have changed masking outcomes, needing fresh exact-source evidence. Other observed behavior remains historically compatible within its session/target scope. A normative addendum is resolving representative partial UTC-bucket eligibility precisely; no automatic all-date carry/restart, full-day/72h claim or strict eligibility. Current source/API equivalence must be proven when the final correction freezes. Exact signed installer sequencing remains a genuine pending contract decision because release signing currently requires main-reachable source.
+
+**P1 full-batch verification:** root exact6aed API/web builds passed; native activity/history/default-detail tests **2files/18tests** passed. Actual browser passed both comment creations and visibility/URL filters, then **failed** on unusable inline edit before save and draft/reload. All owned resources settled absent at00:17:11UTC, unrelated resources preserved. Three completed independent Luna contexts each passed **8files/97tests** but returned BLOCK: string-bodied edit/history, atomic draft persistence, deleting-actor attribution, unknown-actor grouping and editedBy identifier consistency. OpenAPI version body requiredness is also being fixed. Author is handling the complete family in one batch, including rendered editable recovery; no per-line review cycle. Canned-response placeholder syntax/missing-value contract is newly pending, isolated from other fixes. Mentions/watchers, attachment linkage, pending-action deletion and approvals404 remain explicit residuals. Separate exact-head Sol follows ordinary clearance; no current P1 acceptance claim.
+
+**Integration/security:** #599 is outside P0; superseded performance/diagnostic PRs are closed with history preserved. Historical #589 stays235 until recreated from accepted post-P0 main with central migrations. #603 zero unowned reads is branch-only P4 progress. Existing P2/P4 product decisions remain pending; later implementation continues where defined. Eight-role private proof remains39native+3supplemental,23PASS/0FAIL/1BLOCKED HTTP; no persistent DEV seeded-user or all24HTTP-pass claim. Seeders/passwords/credential Markdown remain outside Git/GitHub and temporary credentials were removed. Historical secret finding remains open; no suppression.
+
+**Critical path:** one minimal reviewed P0 source with unchanged22/22; exact installer/image/migration/upgrade/rollback; reversible authorization and observation compatibility; protected merge; fresh independent GPT-6.1 Sol phase finalizer then issue reconciliation. #8/#592/#593/#582 remain open pending acceptance. P0 is not blocked by a new blanket calendar wait. No candidate is presently merge-ready. Historical snapshots follow.
+
+---
+
 ## Status first — verified 2026-10-08 00:14 UTC
 
 **Accepted main:** `3096cb044bdf6ae98488bfc385f532fa6386343a`. **Accepted deployment:** persistent OrbStack DEV remains revision `08842235047a3ab2714427edce80331b94558150`, image `sha256:75b153d7d9583993127e1be8c06453159e4fe7319abfcd8431f093c9ca002bcf`. Last actual CA-verified readiness200 was on both hosts at8443; standard443 remains unavailable. No protected merge, persistent redeployment, strict activation or phase finalizer occurred.
