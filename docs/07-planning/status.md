@@ -1,3 +1,32 @@
+## Status first — verified 2026-10-08 10:14 UTC
+
+**Accepted main:** `3096cb044bdf6ae98488bfc385f532fa6386343a`. **Persistent OrbStack DEV:** `08842235047a3ab2714427edce80331b94558150`, image `sha256:75b153d7d9583993127e1be8c06453159e4fe7319abfcd8431f093c9ca002bcf`. No protected merge, persistent redeployment, strict activation, release or phase closure. Credentials/seeders remain private outside Git/GitHub.
+
+| Stage | Formal status |
+| --- | --- |
+| P0 | Open — #602 product source23a01a frozen; hosted G11 **22/22**, full suite green; operational/final acceptance remains |
+| P1 | Open — #606 e20 G8/G4/PG pass; hosted E2E timeout and G11 failures remain; CI-matched targeted MFA1/1 passes |
+| P2 | Open — retained approvals/intake implementation; contracts and integrated acceptance remain |
+| P3 | Open — #596 fixture delta reviewed, hosted1741 PG tests pass; provider/inherited gates remain |
+| P4 | Open — MCP register not-ready; query/governance/outbox and migration reconciliation remain |
+| P5–P7 | Open — no completion claim |
+
+**P0 performance gate cleared:** current `23a01a62ece3ca7d17105626f64ad78641435ec1` is the normal revert of the rejected8af2 memo experiment. Its product tree equals0a867/30aef. Automatic hosted full **37760096010** passes every job: PostgreSQL137files/1659tests, E2E, G4, G8 and unchanged **G11 22/22**. Actual LCP2392/2500ms,500-row list365/500ms,200-card board497.1/500ms,assignment114/200ms and dragp9516.8/20ms. Budgets, fixture/workload, assertions and retry rules are unchanged. Earlier identical-source red outcomes remain retained; no causal source-improvement claim is made. Product source is frozen: no further performance experiment, cleanup or later-stage composition.
+
+The rejected8af2 measured19/22 (LCP2572,assignment203.1,board670.2) and introduced a contrast provenance mismatch. It was normally reverted; no checker repair or manifest exemption was applied. Both current independent Luna reviews clear the complete landed history/reversions; focused card9tests, scanner52tests and the second review's2files/14tests plus contrast check pass. A fresh independent Sol lightweight security confirmation clears exact23 and proves no new authority or gate-semantic changes. These are PR reviews, not the phase finalizer. Public committed review-note/template metadata remains stale and failed until the final acceptance records are composed; no false pass is claimed.
+
+**Exact frozen image:** `sha256:9e935c405925b735f0e69d2c2522db18dae7ebab25a3d3ce874ac32e028018e6`, OCI revision23a01a,UID10001,live/ready200. Actual isolated proof10:12:40–10:12:56UTC matches all88 migration hashes in journal/application insertion order. Original first proof's timestamp-order mismatch remains retained: three historical descending journal timestamp boundaries made that comparison inappropriate; no SQL/history was changed. Both attempts clean all owned containers/volumes/networks and preserve the original five-member DEV network. This is boot/migration proof, not persistent deployment/TLS/installer/upgrade/rollback acceptance.
+
+**Authorization/release critical path:** a complete private source-bound23 runtime/rollback packet is being prepared from the existing reviewed runner. The changed eligible nine-read subset still needs the actual October9 UTC bucket after admitted October6/8 observations. No partial capture is called full-day/72-hour coverage; no elapsed-time strict activation. Exact installer/signed-release sequencing, eligible off→shadow→strict→rollback proof, accepted-main phase finalizer and issue reconciliation remain required. Stable hosting/promotion remains P7; no new customer release is published under the P0 bootstrap issue.
+
+**P1 real diagnosis:** exact e20 targeted MFA/observability passes1/1 in12.7s using CI's Node24.21.0 and explicit existing same-origin VITE_API_URL build value. Auth and observability writes reach the owned fixture origin; final restoration PATCH200 and trigger returns to info. Two earlier local signup timeouts were misconfigured diagnostic builds, not product reproductions. Their failed receipts remain private; the first credential-bearing screenshot was removed rather than published. No product/test/timeout change is justified by non-reproduction. The hosted55/56 failure remains open; local success does not relabel that run. All owned diagnostic resources are absent and unowned4178 preview is preserved.
+
+**Integration:**21 open PRs; #599 remains P1; historical #589 stays frozen until recreation from accepted post-P0 main. #585's seven missing migration snapshot tables require central reconciliation; no applied history rewrite. #607 remains not-ready; its private contract packet retains existing audit requirements instead of inventing rate caps or reducing audit scope. Existing unclassified secret finding remains open. Four supported-role users retain36/36 smoke evidence privately; unsupported roles/provider acceptance are not claimed.
+
+**Critical path:** (1) final source-bound acceptance record/metadata; (2) remaining actual eligible bucket and reversible authorization proof; (3) installer/upgrade/rollback and exact deployment proof; (4) protected P0 merge; (5) fresh accepted-main Sol phase finalizer and closure. Later-stage dependency-safe work continues. No new Thomas-only question, gate waiver or phase claim.
+
+---
+
 ## Status first — verified 2026-10-08 09:50 UTC
 
 **Accepted main:** `3096cb044bdf6ae98488bfc385f532fa6386343a`, reverified through GitHub. **Persistent OrbStack DEV:** `08842235047a3ab2714427edce80331b94558150`, image `sha256:75b153d7d9583993127e1be8c06453159e4fe7319abfcd8431f093c9ca002bcf`. No protected merge, persistent deployment, strict activation, official release or phase closure. Private supported-role users and their credentials/seeders remain outside Git/GitHub. Chrome trust handoff remains pending.
