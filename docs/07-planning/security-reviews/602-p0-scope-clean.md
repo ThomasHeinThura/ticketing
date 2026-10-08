@@ -75,3 +75,20 @@ Fresh independent GPT-6 Sol / OpenAI context `01a118b6-67c0-7c21-b446-2da70142c3
 Root retrieved complete hosted run `37700952445`: unchanged G11 **22/22**, list300.4ms, LCP2328ms, board424.4ms; PostgreSQL **137 files / 1659 tests**, G4/G8 and E2E **27 tests** pass. Its tested synthetic merge `3df8e1e361baf412bee545b52c0c7e4c88e985fe` has the same full tree `b8605194d12e31b308e20e1f56d93b8465f5de60` as reviewed01de. Non-gating profile capture exceeded its event bound; that failure is retained and is not relabelled successful diagnostic evidence. The complete canonical performance suite is unchanged and passed.
 
 This appended review-only record preserves all original blocked reviews and failed experiments. No source correction beyond a concrete failing P0 gate is authorized after the final note-only freeze. Frozen image/installer/migration/upgrade/rollback, authorization runtime proof, observation compatibility, all current required hosted checks, protected merge and fresh independent GPT-6.1 Sol phase finalizer remain open.
+
+## Palette preload correction — independent review at exact 670
+
+**Reviewed head:** `670442d820d3569fefb024120d2929ff6296668c`, based on frozen source `1878d6f17d46908885b36c45dddd069a19e5004b`. This is a separate candidate after the 1878 freeze, not a mutation of that frozen source. The two-file UI delta changes closed-palette idle warming from mounting `CommandPalette` to importing its module. The component and its closed dialog/list are rendered only after explicit intent; the existing idle/RAF schedule, intent cancellation, no-idle fallback, and kept-mounted behavior after first intent remain. No API, domain, permission, schema, dependency, CI, benchmark, fixture, workload, budget, or retry changes.
+
+Two fresh independent GPT-6 Luna contexts reviewed the exact two-file delta and its launcher lifecycle:
+
+| Context | Actual check | Verdict |
+| --- | --- | --- |
+| `p0-palette-reduction-6704/luna-intent` | Launcher test file: **1 file / 5 tests passed**; no preload, first-intent, error, or unmount-ordering regression found | Clear |
+| `p0-palette-reduction-6704/luna-lifecycle` | Launcher test file: **5 tests passed**; no actionable lifecycle regression found | Clear |
+
+Fresh independent GPT-6 Sol security confirmation at the same exact head verified the two-file delta and a passing `git diff --check`. It found no security authority or gate change and did not run tests. This was a scoped UI lifecycle confirmation, not the P0 phase finalizer.
+
+Author verification is recorded separately: the launcher test command passed **1 file / 5 tests**; the full command-palette directory passed **3 files / 9 tests**. Focused Biome passed on both changed files, web typecheck passed after building local workspace dependencies, and agent and portal production builds passed. The previously reported `9/9` was the directory-wide author run; it was not the count from the reviewers' launcher-only command. The exact reviewer records and prompts remain outside Git under `/Users/heinthura/.codex/taskdesk-evidence/2026-10-08/p0-palette-reduction-6704/`.
+
+**Performance remains unverified for 670.** The latest supplied full G11 remains red at **19/22** (LCP 2552/2500 ms, task-state 207.1/200 ms, board 687.3/500 ms; list 497.5 ms passed). The earlier 01de run passed 22/22, but these results do not establish this delta as the cause of either outcome. Root owns the unchanged full G11 rerun and the retain/revert disposition. No merge readiness or phase completion is inferred.
