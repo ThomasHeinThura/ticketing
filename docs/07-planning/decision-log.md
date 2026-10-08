@@ -1,3 +1,23 @@
+### 2026-10-08 · Preserve live PR dispositions and centralize post-P0 migration replay
+
+The 16:48 UTC operational reconciliation records the live open-PR heads and dispositions in
+the [PR disposition ledger](pr-disposition-ledger.md), including #555's absorbed-by-accepted-
+main source conservation, #607's MCP contract/review-register hold, #602's current 20/22 G11
+failure, and the local notification correction's blocked ordinary review. The earlier #602
+22/22 result remains bound to frozen source `23a01a62ece3ca7d17105626f64ad78641435ec1` and
+does not clear the later review-note head. No review, check, or source-conservation result is
+transferred to a different SHA.
+
+The [central migration replay ledger](migration-replay-ledger.md) records accepted migration
+history 0000–0087 as immutable and candidate post-0087 SQL as provisional owner material.
+Compose selected existing feature owners from accepted `main` only after P0 acceptance, replay
+each semantic SQL unit once, assign one contiguous tail after selection/order freeze, and
+regenerate snapshots and journal from the composed schema. #589/#598 remain comparison trees,
+not whole-train merge candidates; the #608 provisional 0112 body is distinct from the train's
+0112 and requires separate final numbering if selected. This record authorizes no migration
+allocation, applied-prefix rewrite, deployment, merge, gate waiver, strict activation, or phase
+closure. The GHCR/GitHub release direction and feature freeze remain as previously recorded.
+
 ### 2026-10-08 · Bounded public-config cutover criterion substitute
 
 **Decision — Thomas explicitly approved in this chat:** “Approve the bounded public-config criterion substitute (recommended)”. The approved question named public `GET /api/config` before the shadow guard and proposed proving its unchanged public response/source ordering and verifying config-source selection in the disposable strict/rollback test, while preserving every other source's shadow requirement.

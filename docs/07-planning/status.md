@@ -1,3 +1,50 @@
+## Status first — verified 2026-10-08 16:48 UTC
+
+**Accepted `main`:** `3096cb044bdf6ae98488bfc385f532fa6386343a`. **Current worktree:** PR #601
+documentation branch baseline `ad22ef8b1e9ac5ec8c7d2a2a93ea78fa7d1b2508`; this ledger batch
+is local and not yet pushed. Live GitHub lists 21 open PRs. **Persistent DEV:** source
+`08842235047a3ab2714427edce80331b94558150` remains preserved. No new deployment, protected
+merge, release, strict activation or phase closure occurred. Docker Hub publication is
+canceled; the approved publication direction is GHCR and GitHub release packages.
+
+**P0:** Frozen product source is `23a01a62ece3ca7d17105626f64ad78641435ec1`. Its hosted full
+run `37760096010` passed 22/22. Review-note head `2b7192eb5181d50085f8734d2c5da226e301453e`
+has a later G11 result of 20/22: LCP 2,520/2,500 ms and 200-task board 614.1/500 ms. This
+current failure is not cleared by the earlier frozen-source pass. The local notification
+task-reach correction `5ec772771497e5883ff4c55f272cd34df737b585` is blocked by fresh ordinary
+review findings, is not pushed and is not deployed. The scoped Sol CLEAR and final manifest
+`e51bf0cb343cddd922c426bf78784b22e400bc34c47780a753132c1a8eb554f2` cover historical witnesses
+only; they do not establish strict-runtime admission or activation.
+
+**Disposition and migration records:** [live PR disposition ledger](pr-disposition-ledger.md)
+captures exact heads and current holds, including #555's accepted-main absorption, #607's MCP
+contract/review-register hold, and #589's rebuild-only role. [Central migration replay
+ledger](migration-replay-ledger.md) preserves accepted 0000–0087 and maps candidate semantic
+units without assigning final IDs or rewriting applied history.
+
+| Stage | Formal status |
+| --- | --- |
+| P0 | Open — frozen-source 22/22 evidence remains historical; current review-note head has G11 failures, notification correction is under remediation/review, and runtime/config/task, protected acceptance, signed release proof and finalizer gates remain. |
+| P1 | Open — retain existing reviewed slices; bounded post-P0 composition, current checks and integrated browser acceptance remain. |
+| P2 | Open — retain existing catalogue/intake, SLA and approval owners; incomplete capabilities are held and migrations await central replay. |
+| P3 | Open — retain existing identity owners; exact composed security review and provider acceptance remain. |
+| P4 | Open — retain existing Users, notification and query owners; #607 is held on MCP contract/review-register questions; integrated acceptance remains. |
+| P5–P7 | Open and held under the feature freeze. |
+
+**#555 reconciliation:** GitHub has closed PR #555 as absorbed by accepted main after the
+16:41 UTC source-conservation check. The Avatar primitive, app adapter, resolver, tests and
+accepted replacement visual baselines are covered. The PR branch/history are preserved; no
+source was deleted. This closure does not convert the historical red CI into a pass or claim a
+fresh test run.
+
+**Operational boundaries:** maintain the existing feature freeze and owners. Recreate the
+post-P0 integration train from accepted `main`; do not merge #589 wholesale. Keep credentials
+and seeders private. The signed release/installer flow, GHCR/GitHub package target and local
+SIT acceptance remain future gates. Nothing in this documentation batch authorizes deployment,
+merge, final migration numbering, applied-prefix rewrite or phase completion.
+
+---
+
 ## Status first — verified 2026-10-08 15:49 UTC
 
 **Accepted main:** `3096cb044bdf6ae98488bfc385f532fa6386343a`. **Frozen P0:** #602 `23a01a62ece3ca7d17105626f64ad78641435ec1`, unchanged. **Persistent DEV:** source08842235/image75b153d7 remains preserved in OrbStack through local Traefik443. No protected merge, new persistent deployment, registry publication, strict activation or phase closure occurred.
