@@ -132,6 +132,8 @@ Independent adjudication of retained V19 evidence records a pass for the bounded
 
 ## Notification task-read security correction — exact 650 source
 
+**Reviewed head:** `650edd447899f5d9e52c50c718abef0f7aad91b2`
+
 **Reviewed source head:** `650edd447899f5d9e52c50c718abef0f7aad91b2`, based on
 `2b7192eb5181d50085f8734d2c5da226e301453e` through the notification corrections
 `5ec772771497e5883ff4c55f272cd34df737b585`,
@@ -189,3 +191,20 @@ This review chain and its runs are source-bound to exact 650. They do not establ
 Docker image build/boot, performance or browser acceptance, production-provider delivery, merge
 readiness, or the additive fresh GPT-6.1 Sol P0 phase finalizer. Frozen install/upgrade/rollback
 and runtime acceptance remain separate gates.
+
+## Notification email test-fixture correction — exact 8b792 source
+
+**Reviewed head:** `8b792d0fd382dfe76d84c4ccc4ca52e9880ed281`
+
+Fresh independent GPT-6 Luna and GPT-6 Sol reviews of exact 8b792 were **CLEAR** for the
+test-only change. The targeted email test passed **1 file / 2 tests**; `pnpm check:env` passed.
+The test now uses Vitest `stubEnv`/`unstubAllEnvs` rather than direct environment assignment
+and deletion. No production email code, environment registration, checker behavior, baseline,
+or assertion was changed. These reviews bind only the test-fixture correction; the full product
+security review remains bound to exact 650 above.
+
+Hosted fast run `37813776014` found the direct environment access in the email test. Its failure
+is retained; the full hosted run was still in progress when this note was updated, so no full-run
+result is claimed. The corrected source passes the local email test, `check:env`, Biome, and
+`git diff --check`. This test-only fix does not establish the remaining hosted CI, image, runtime,
+performance, browser, merge, or phase-finalizer gates.
