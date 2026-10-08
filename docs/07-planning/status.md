@@ -1,3 +1,26 @@
+## Status first — verified 2026-10-08 12:31 UTC
+
+**Accepted main:** `3096cb044bdf6ae98488bfc385f532fa6386343a`. **Persistent OrbStack DEV:** `08842235047a3ab2714427edce80331b94558150`, image `sha256:75b153d7d9583993127e1be8c06453159e4fe7319abfcd8431f093c9ca002bcf`. No protected merge, persistent redeployment, enforcement activation or phase closure. Private credential Markdown and test seeders remain outside Git/GitHub.
+
+| Stage | Formal status |
+| --- | --- |
+| P0 | Open — frozen #602 source23a01a; hosted full and G11 22/22 pass; operational acceptance remains |
+| P1 | Open — actual DEV task/comment writes and Board/List rendering pass; linked project settings and URL-state follow-up remain |
+| P2 | Open — #586 b67 existing decisions/withdrawal implemented; request-composition approver contract awaits the already asked decision |
+| P3 | Open — #596 reviewed fixture correction retained; real provider/integrated acceptance remains |
+| P4 | Open — complete canonical Users/deactivation correction implemented; focused database journey 1 file/7 tests passes |
+| P5–P7 | Open — no completion claim |
+
+**New accepted implementation evidence:** the isolated Users branch based at eefce146 with UI foundation bc372a8 aligns deactivation pending actions with canonical `delete`/`user` account IDs. Its full request, email/step-up, approval and real identity deactivation database journey passes seven tests. Tests verify persisted payload and identity lifecycle envelope, all four allowlisted instance events with null workspace, and rejection of wrong organisation scope or an unrelated tenant event lacking workspace. API/web types, OpenAPI225 operations, route-policy88 tests, i18n, vocabulary and focused payload4 tests pass. Full CI, independent reviews, candidate browser verification and deployability remain required; source publication is in progress. This is feature evidence, not formal P4 acceptance. Provisional0112 remains branch-local under the central migration ledger.
+
+**Browser correction:** visual inspection confirms the List control renders grouped horizontal rows, and Board renders cards. The accessibility representations were similar; there is no confirmed broken List control. Switching layout leaves the URL unchanged, which remains a URL-state follow-up alongside calendar month selection. The two settings links previously observed as Not Found remain open. The user-facing DEV-3 test task and submitted comment are retained for review. No all-pages/all-API acceptance is claimed.
+
+**P0 operational failure retained:** independently admitted V11 ran once on source23a01a at12:18:22–12:18:41UTC in an owned disposable off/shadow environment. Boot, health, UID and migration checks passed; representative fixture creation stopped because a new finite SQL-witness diagnostic identifier was not registered. This is a runner failure, not evidence of a product authorization failure or complete runtime proof. Original run and failure records remain private and immutable. Root independently confirms owned containers, volumes, network and proxy absent; the original five DEV containers remain. A complete catalogue/callsite invariant correction is being prepared offline as one batch. Product source is unchanged; no performance experimentation or date capture follows.
+
+**Critical path:** (1) complete source-bound runtime proof; (2) actual remaining eligible October9 bucket and reversible authorization evidence; (3) installer/deployment/upgrade/rollback proof; (4) exact-head acceptance metadata and protected merge; (5) fresh accepted-main Sol phase finalizer. Later-stage full implementation continues independently. No new gate waiver or stage completion.
+
+---
+
 ## Status first — verified 2026-10-08 12:05 UTC
 
 **Accepted main:** `3096cb044bdf6ae98488bfc385f532fa6386343a`. **Persistent OrbStack DEV:** `08842235047a3ab2714427edce80331b94558150`, image `sha256:75b153d7d9583993127e1be8c06453159e4fe7319abfcd8431f093c9ca002bcf`. Source/image unchanged. No protected merge, strict activation, release or phase closure. Credentials and seeders stay private outside Git/GitHub.
