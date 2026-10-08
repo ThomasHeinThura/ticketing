@@ -17,14 +17,17 @@ vi.mock("./index", () => {
   return {
     CommandPalette: ({
       keepMounted,
+      hasOpened,
       open,
     }: {
       keepMounted: boolean;
+      hasOpened: boolean;
       open: boolean;
     }) => (
       <div
         data-testid="palette-instance"
         data-warmed={keepMounted ? "true" : undefined}
+        data-has-opened={hasOpened ? "true" : "false"}
         data-open={open ? "true" : "false"}
       />
     ),
@@ -107,6 +110,10 @@ describe("CommandPaletteLauncher warm mount", () => {
         "true",
       ),
     );
+    expect(screen.getByTestId("palette-instance")).toHaveAttribute(
+      "data-has-opened",
+      "false",
+    );
     expect(mocks.moduleLoaded).toHaveBeenCalledOnce();
   });
 
@@ -140,6 +147,10 @@ describe("CommandPaletteLauncher warm mount", () => {
         "data-open",
         "true",
       ),
+    );
+    expect(screen.getByTestId("palette-instance")).toHaveAttribute(
+      "data-has-opened",
+      "true",
     );
   });
 

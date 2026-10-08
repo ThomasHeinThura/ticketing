@@ -3,6 +3,7 @@ import type { PropsWithChildren } from "react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { KeyboardShortcutsProvider } from "@/hooks/use-keyboard-shortcuts";
 import CommandPaletteLauncher from "./command-palette-launcher";
+import { CommandPalette } from "./index";
 
 const mocks = vi.hoisted(() => ({
   projectsPageModule: vi.fn(),
@@ -70,7 +71,9 @@ vi.mock("@/components/shared/modals/create-project-modal", () => ({
 // out so the test isn't coupled to unrelated rendering, same approach the
 // #294 regression test (command-palette/index.test.tsx on that branch)
 // uses.
-vi.mock("@taskdesk/ui", () => {
+vi.mock("@taskdesk/ui", async () => {
+  const React = await import("react");
+  const DialogOpenContext = React.createContext(false);
   const Null = ({ children }: PropsWithChildren) => <>{children}</>;
   return {
     Command: ({
@@ -79,7 +82,7 @@ vi.mock("@taskdesk/ui", () => {
     }: PropsWithChildren<{
       onItemHighlighted?: (value: unknown, details: { reason: string }) => void;
     }>) => (
-      <>
+      <div data-testid="command-content">
         {(() => {
           return (
             // ui-exempt: this test control triggers the command palette's keyboard callback.
@@ -98,22 +101,37 @@ vi.mock("@taskdesk/ui", () => {
           );
         })()}
         {children}
-      </>
+      </div>
     ),
     CommandCollection: Null,
     CommandDialog: ({
       open,
       children,
-    }: PropsWithChildren<{ open: boolean }>) =>
-      open ? <div data-testid="command-dialog">{children}</div> : null,
-    CommandDialogPopup: Null,
+    }: PropsWithChildren<{ open: boolean }>) => (
+      <DialogOpenContext.Provider value={open}>
+        <div data-testid="command-dialog">{children}</div>
+      </DialogOpenContext.Provider>
+    ),
+    CommandDialogPopup: ({
+      keepMounted,
+      children,
+    }: PropsWithChildren<{ keepMounted?: boolean }>) => {
+      const open = React.useContext(DialogOpenContext);
+      return keepMounted || open ? (
+        <div data-slot="command-dialog-popup" hidden={!open}>
+          {children}
+        </div>
+      ) : null;
+    },
     CommandEmpty: Null,
     CommandFooter: Null,
     CommandGroup: Null,
     CommandGroupLabel: Null,
-    CommandInput: () => null,
+    CommandInput: ({ placeholder }: { placeholder?: string }) => (
+      <input aria-label="command search" placeholder={placeholder} />
+    ),
     CommandItem: Null,
-    CommandList: () => null,
+    CommandList: () => <div data-testid="command-list" />,
     CommandPanel: Null,
     CommandSeparator: () => null,
     CommandShortcut: Null,
@@ -129,6 +147,50 @@ afterEach(() => {
 });
 
 describe("CommandPalette (#407)", () => {
+  it("keeps the hidden dialog shell warm and mounts command descendants on first open", () => {
+    const onOpenChange = vi.fn();
+    const props = {
+      onOpenChange,
+      request: null,
+      onRequestHandled: vi.fn(),
+      keepMounted: true,
+    };
+    const { container, rerender } = render(
+      <CommandPalette {...props} open={false} hasOpened={false} />,
+    );
+
+    const popup = container.querySelector('[data-slot="command-dialog-popup"]');
+    expect(popup).toBeDefined();
+    expect(popup).not.toBeVisible();
+    expect(screen.queryByTestId("command-content")).not.toBeInTheDocument();
+    expect(
+      screen.queryByRole("textbox", { name: "command search" }),
+    ).not.toBeInTheDocument();
+
+    rerender(<CommandPalette {...props} open hasOpened={false} />);
+    expect(
+      container.querySelector('[data-slot="command-dialog-popup"]'),
+    ).toBeVisible();
+    expect(screen.getByTestId("command-content")).toBeInTheDocument();
+    expect(
+      screen.getByRole("textbox", { name: "command search" }),
+    ).toBeInTheDocument();
+    expect(screen.getByTestId("command-list")).toBeInTheDocument();
+
+    rerender(<CommandPalette {...props} open={false} hasOpened />);
+    expect(
+      container.querySelector('[data-slot="command-dialog-popup"]'),
+    ).not.toBeVisible();
+    expect(screen.getByTestId("command-content")).toBeInTheDocument();
+    rerender(<CommandPalette {...props} open hasOpened />);
+    expect(
+      container.querySelector('[data-slot="command-dialog-popup"]'),
+    ).toBeVisible();
+    expect(
+      screen.getByRole("textbox", { name: "command search" }),
+    ).toBeInTheDocument();
+  });
+
   it("mounts inside the real KeyboardShortcutsProvider without hanging or OOMing", () => {
     render(
       <KeyboardShortcutsProvider>
