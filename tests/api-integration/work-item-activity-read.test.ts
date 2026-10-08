@@ -615,30 +615,55 @@ describe("API integration: work item activity read (#23 fourth slice)", () => {
         activity.data.find((row) => row.id === comment.id),
       ).not.toHaveProperty("versions");
 
-      const all: number[] = [];
-      let cursor: string | null = null;
-      let pageCount = 0;
-      do {
-        const query = cursor ? `?cursor=${encodeURIComponent(cursor)}` : "";
-        const response = await commentVersionsRequest(
-          app,
-          created.key,
-          comment.id,
-          query,
+      const readAllPages = async (limit?: number) => {
+        const all: number[] = [];
+        let cursor: string | null = null;
+        let pageCount = 0;
+        do {
+          const params = new URLSearchParams();
+          if (limit !== undefined) params.set("limit", String(limit));
+          if (cursor) params.set("cursor", cursor);
+          const encodedParams = params.toString();
+          const query = encodedParams ? `?${encodedParams}` : "";
+          const response = await commentVersionsRequest(
+            app,
+            created.key,
+            comment.id,
+            query,
+          );
+          expect(response.status).toBe(200);
+          const page = (await response.json()) as {
+            data: Array<{ number: number }>;
+            page: { nextCursor: string | null; hasMore: boolean };
+          };
+          expect(page.data.length).toBeLessThanOrEqual(limit ?? 5);
+          all.push(...page.data.map((row) => row.number));
+          cursor = page.page.nextCursor;
+          expect(page.page.hasMore).toBe(Boolean(cursor));
+          pageCount += 1;
+        } while (cursor);
+        expect(all).toEqual(
+          Array.from({ length: 37 }, (_, index) => index + 1),
         );
-        expect(response.status).toBe(200);
-        const page = (await response.json()) as {
-          data: Array<{ number: number }>;
-          page: { nextCursor: string | null; hasMore: boolean };
-        };
-        expect(page.data.length).toBeLessThanOrEqual(10);
-        all.push(...page.data.map((row) => row.number));
-        cursor = page.page.nextCursor;
-        expect(page.page.hasMore).toBe(Boolean(cursor));
-        pageCount += 1;
-      } while (cursor);
-      expect(pageCount).toBe(4);
-      expect(all).toEqual(Array.from({ length: 37 }, (_, index) => index + 1));
+        return pageCount;
+      };
+
+      expect(await readAllPages()).toBe(8);
+      expect(await readAllPages(10)).toBe(4);
+      expect(
+        (await commentVersionsRequest(app, created.key, comment.id, "?limit=0"))
+          .status,
+      ).toBe(400);
+      expect(
+        (
+          await commentVersionsRequest(
+            app,
+            created.key,
+            comment.id,
+            "?limit=11",
+          )
+        ).status,
+      ).toBe(400);
     });
 
     it("masks missing, cross-work-item, and tombstoned history parents", async () => {
