@@ -38,11 +38,15 @@ export type IdentityConnectionContext = Pick<
   identityConnectionId: string;
 };
 
+export type EntraGroupClaimEvidence =
+  | { kind: "complete"; objectIds: readonly string[] }
+  | { kind: "missing" | "malformed" | "overage" };
+
 export type NormalisedEntraIdentity = {
   subject: { oid: string; tid: string };
   address: string;
   addressUsed: "email" | "preferred_username" | "upn";
-  groupObjectIds: readonly string[] | "overage";
+  groupObjectIds: EntraGroupClaimEvidence;
   displayName?: string;
 };
 

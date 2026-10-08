@@ -2,6 +2,7 @@ import {
   DEFAULT_IDENTITY_CLAIM_MAPPING,
   mapIdentityProfile,
 } from "./claim-mapping.js";
+import { canonicalEntraGroupObjectId } from "./group-object-id.js";
 import { validateEntraAdmission } from "./jit-policy.js";
 import type {
   AllowedRole,
@@ -96,7 +97,11 @@ export function normaliseEntraClaims(
   claims: VerifiedEntraClaims,
   connection: IdentityConnectionContext,
   domainOwners: readonly IdentityDomainOwner[],
-  options: { claimMapping?: unknown; jitPolicy: unknown },
+  options: {
+    claimMapping?: unknown;
+    jitPolicy: unknown;
+    enforceAdmission?: boolean;
+  },
 ): IdentityClaimResult {
   const profile = mapIdentityProfile(
     claims,
@@ -107,15 +112,17 @@ export function normaliseEntraClaims(
     return { ok: false, reason: "tenant_mismatch" };
   if (claims.iss !== connection.issuer)
     return { ok: false, reason: "issuer_mismatch" };
-  const admission = validateEntraAdmission(claims, options.jitPolicy);
-  if (!admission.ok) {
-    return {
-      ok: false,
-      reason:
-        admission.reason === "invalid_policy"
-          ? "invalid_admission_policy"
-          : admission.reason,
-    };
+  if (options.enforceAdmission !== false) {
+    const admission = validateEntraAdmission(claims, options.jitPolicy);
+    if (!admission.ok) {
+      return {
+        ok: false,
+        reason:
+          admission.reason === "invalid_policy"
+            ? "invalid_admission_policy"
+            : admission.reason,
+      };
+    }
   }
   if (typeof claims.oid !== "string" || claims.oid.length === 0) {
     return { ok: false, reason: "invalid_subject" };
@@ -173,19 +180,25 @@ export function normaliseEntraClaims(
     return { ok: false, reason: "domain_bound_elsewhere" };
   }
 
-  let groupObjectIds: readonly string[] | "overage" = [];
-  if (hasInvalidGroupOverageMarker(claims)) {
-    return { ok: false, reason: "invalid_groups" };
-  }
-  if (isGroupOverage(claims)) {
-    groupObjectIds = "overage";
+  let groupObjectIds: import("./types.js").EntraGroupClaimEvidence;
+  if (isGroupOverage(claims) || hasInvalidGroupOverageMarker(claims)) {
+    groupObjectIds = { kind: "overage" };
+  } else if (claims.groups === undefined) {
+    groupObjectIds = { kind: "missing" };
   } else if (
     Array.isArray(claims.groups) &&
-    claims.groups.every((group) => typeof group === "string")
+    claims.groups.every(
+      (group) => canonicalEntraGroupObjectId(group) !== undefined,
+    )
   ) {
-    groupObjectIds = [...new Set(claims.groups)];
-  } else if (claims.groups !== undefined) {
-    return { ok: false, reason: "invalid_groups" };
+    groupObjectIds = {
+      kind: "complete",
+      objectIds: [
+        ...new Set(claims.groups.map(canonicalEntraGroupObjectId)),
+      ].filter((group): group is string => group !== undefined),
+    };
+  } else {
+    groupObjectIds = { kind: "malformed" };
   }
 
   return {

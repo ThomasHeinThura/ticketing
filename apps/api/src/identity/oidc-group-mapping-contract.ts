@@ -1,3 +1,4 @@
+import { canonicalEntraGroupObjectId } from "@taskdesk/domain";
 import { z } from "../openapi";
 
 export const oidcGroupMappingCreateRequestSchema = z
@@ -5,7 +6,18 @@ export const oidcGroupMappingCreateRequestSchema = z
     configVersion: z.number().int().positive().safe(),
     externalGroupId: z
       .string()
-      .regex(/^[0-9a-f]{8}(?:-[0-9a-f]{4}){3}-[0-9a-f]{12}$/u),
+      .regex(/^[0-9a-fA-F]{8}(?:-[0-9a-fA-F]{4}){3}-[0-9a-fA-F]{12}$/u)
+      .transform((value, context) => {
+        const canonical = canonicalEntraGroupObjectId(value);
+        if (!canonical) {
+          context.addIssue({
+            code: "custom",
+            message: "Expected an Entra group object UUID",
+          });
+          return z.NEVER;
+        }
+        return canonical;
+      }),
     externalGroupNameSnapshot: z.string().max(255).nullable().default(null),
     roleId: z.string().min(1).max(128),
     scope: z.enum(["organisation", "workspace"]),

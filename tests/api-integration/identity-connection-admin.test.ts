@@ -1,4 +1,4 @@
-import { createHash } from "node:crypto";
+import { createHash, randomUUID } from "node:crypto";
 import { createRequire } from "node:module";
 import { eq, sql } from "drizzle-orm";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
@@ -454,6 +454,504 @@ describe("identity connection administration", () => {
       .from(schema.sessionTable)
       .where(eq(schema.sessionTable.userId, ssoUser.id));
     expect(issued).toEqual([{ source: connectionId, portal: "agent" }]);
+  });
+
+  it("reconciles only the linked identity's OIDC and JIT grants from current login evidence", async () => {
+    const { sessionCookie } = await setupAdmin();
+    const app = createApp().app;
+    const connectionId = "native-oidc-reconcile-connection";
+    await createConnection(connectionId, true);
+    const portalOrigin = new URL(
+      process.env.TASKDESK_AGENT_URL || "http://localhost:5173",
+    ).origin;
+    await db
+      .update(schema.identityConnectionTable)
+      .set({
+        redirectUri: `${portalOrigin}/api/auth/identity/${connectionId}/callback`,
+      })
+      .where(eq(schema.identityConnectionTable.id, connectionId));
+    const internal = await ensureInternalOrganisation();
+    const workspaceId = "native-oidc-reconcile-workspace";
+    await db.insert(schema.workspaceTable).values({
+      id: workspaceId,
+      organisationId: internal.id,
+      name: "OIDC Reconcile Workspace",
+      slug: `oidc-reconcile-${randomUUID()}`,
+      createdAt: new Date(),
+    });
+    const roleId = "native-oidc-reconcile-role";
+    const directRoleId = "native-oidc-reconcile-direct-role";
+    await db.insert(schema.roleTable).values({
+      id: roleId,
+      scope: "workspace",
+      workspaceId,
+      key: "oidc-reconcile-role",
+      name: "OIDC Reconcile Role",
+      rank: 2,
+      capabilities: [],
+    });
+    await db.insert(schema.roleTable).values({
+      id: directRoleId,
+      scope: "workspace",
+      workspaceId,
+      key: "oidc-reconcile-direct-role",
+      name: "OIDC Reconcile Direct Role",
+      rank: 1,
+      capabilities: [],
+    });
+    await db
+      .update(schema.identityConnectionTable)
+      .set({
+        defaultWorkspaceId: workspaceId,
+        jitPolicy: {
+          enabled: true,
+          default_role_id: roleId,
+          required_entra_app_role: "TaskDesk.User",
+        },
+      })
+      .where(eq(schema.identityConnectionTable.id, connectionId));
+    const groupId = "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa";
+    const mappingId = "native-oidc-reconcile-mapping";
+    await db.insert(schema.oidcGroupMappingTable).values({
+      id: mappingId,
+      identityConnectionId: connectionId,
+      externalGroupId: groupId,
+      externalGroupNameSnapshot: "Support staff",
+      roleId,
+      scope: "workspace",
+      scopeId: workspaceId,
+      enabled: true,
+    });
+    const [user] = await db
+      .insert(schema.userTable)
+      .values({
+        id: "native-oidc-reconcile-user",
+        name: "Reconcile User",
+        email: "direct-oidc@example.test",
+      })
+      .returning();
+    if (!user) throw new Error("OIDC reconcile user fixture was not created");
+    const [person] = await db
+      .insert(schema.personTable)
+      .values({
+        userId: user.id,
+        organisationId: internal.id,
+        side: "staff",
+      })
+      .returning();
+    if (!person)
+      throw new Error("OIDC reconcile person fixture was not created");
+    const [externalIdentity] = await db
+      .insert(schema.externalIdentityTable)
+      .values({
+        identityConnectionId: connectionId,
+        personId: person.id,
+        userId: user.id,
+        issuer: `https://login.microsoftonline.com/${TENANT_ID}/v2.0`,
+        subject: "direct-oidc-subject",
+        userNameSnapshot: "direct-oidc@example.test",
+        emailSnapshot: "direct-oidc@example.test",
+        active: true,
+        provisionedVia: "jit",
+      })
+      .returning();
+    if (!externalIdentity)
+      throw new Error("OIDC reconcile identity fixture was not created");
+    await db.insert(schema.membershipGrantTable).values({
+      personId: person.id,
+      scope: "workspace",
+      scopeId: workspaceId,
+      roleId: directRoleId,
+      sourceKind: "direct",
+      directOrigin: "system_backfill",
+      seesAll: false,
+      createdAt: new Date(),
+      updatedAt: new Date(),
+    });
+
+    let groups: unknown = [groupId.toUpperCase()];
+    let groupOverage = false;
+    let tokenValid = true;
+    let roles: unknown = ["TaskDesk.User"];
+    const acct: unknown = 0;
+    vi.mocked(oidcToken.validateEntraIdToken).mockImplementation(
+      (_token, _jwks, expectation) => {
+        if (!tokenValid)
+          return { ok: false as const, reason: "invalid_signature" as const };
+        return {
+          ok: true as const,
+          claims: {
+            iss: expectation.issuer,
+            tid: expectation.tenantId,
+            oid: "direct-oidc-subject",
+            email: "direct-oidc@example.test",
+            email_verified: true,
+            name: "Direct OIDC User",
+            groups,
+            ...(groupOverage
+              ? {
+                  _claim_names: { groups: "src1" },
+                  _claim_sources: {
+                    src1: { endpoint: "https://invalid.test" },
+                  },
+                }
+              : {}),
+            acct,
+            roles,
+          },
+        };
+      },
+    );
+
+    const login = async () => {
+      const start = await app.request(
+        `/api/auth/identity/${connectionId}/start`,
+        {
+          method: "GET",
+          redirect: "manual",
+        },
+      );
+      const authorizeUrl = new URL(start.headers.get("location") ?? "");
+      const state = authorizeUrl.searchParams.get("state");
+      const stateCookie = start.headers
+        .get("set-cookie")
+        ?.match(/(?:^|;\s*)tdk_oidc_state=([^;]+)/u)?.[1];
+      const response = await app.request(
+        `/api/auth/identity/${connectionId}/callback?code=single-use-test-code&state=${encodeURIComponent(state ?? "")}`,
+        {
+          method: "GET",
+          headers: { cookie: `tdk_oidc_state=${stateCookie}` },
+          redirect: "manual",
+        },
+      );
+      return response;
+    };
+    const expectLatestOidcRetirement = async (
+      reason:
+        | "claim_missing"
+        | "claim_removed"
+        | "claim_overage"
+        | "mapping_changed"
+        | "admission_failed",
+    ) => {
+      const grantRows = await db
+        .select()
+        .from(schema.membershipGrantTable)
+        .where(
+          eq(
+            schema.membershipGrantTable.externalIdentityId,
+            externalIdentity.id,
+          ),
+        );
+      const latestGrant = grantRows
+        .filter(
+          (grant) =>
+            grant.sourceKind === "oidc_group" &&
+            grant.oidcGroupMappingId === mappingId &&
+            grant.revokedAt !== null,
+        )
+        .sort(
+          (left, right) =>
+            (right.revokedAt?.getTime() ?? 0) -
+            (left.revokedAt?.getTime() ?? 0),
+        )[0];
+      expect(latestGrant?.revocationReason).toBe(reason);
+      const events = await db
+        .select()
+        .from(schema.provisioningEventTable)
+        .where(
+          eq(
+            schema.provisioningEventTable.externalIdentityId,
+            externalIdentity.id,
+          ),
+        );
+      const latestEvent = events
+        .filter((event) => event.kind === "group.member_removed")
+        .sort(
+          (left, right) => right.createdAt.getTime() - left.createdAt.getTime(),
+        )[0];
+      expect(latestEvent?.detail).toMatchObject({ reason });
+      const audits = await db
+        .select()
+        .from(schema.auditLogTable)
+        .where(eq(schema.auditLogTable.entityId, person.id));
+      const latestAudit = audits.sort(
+        (left, right) => right.createdAt.getTime() - left.createdAt.getTime(),
+      )[0];
+      if (reason === "admission_failed") {
+        expect(latestAudit?.after).toMatchObject({ reason });
+      } else {
+        expect(latestAudit?.after).toMatchObject({
+          revocationReasons: { [reason]: expect.any(Number) },
+        });
+      }
+      const direct = await db
+        .select()
+        .from(schema.membershipGrantTable)
+        .where(eq(schema.membershipGrantTable.personId, person.id));
+      expect(
+        direct.some(
+          (grant) => grant.sourceKind === "direct" && grant.revokedAt === null,
+        ),
+      ).toBe(true);
+    };
+
+    const first = await login();
+    expect(first.status).toBe(302);
+    expect(first.headers.get("location")).toContain("/agent");
+    let grants = await db
+      .select()
+      .from(schema.membershipGrantTable)
+      .where(
+        eq(schema.membershipGrantTable.externalIdentityId, externalIdentity.id),
+      );
+    expect(
+      grants.filter(
+        (grant) =>
+          grant.sourceKind === "jit_default" && grant.revokedAt === null,
+      ),
+    ).toHaveLength(1);
+    expect(
+      grants.filter(
+        (grant) =>
+          grant.sourceKind === "oidc_group" && grant.revokedAt === null,
+      ),
+    ).toHaveLength(1);
+
+    const originalOidcGrant = grants.find(
+      (grant) => grant.sourceKind === "oidc_group" && grant.revokedAt === null,
+    );
+    if (!originalOidcGrant) throw new Error("OIDC grant fixture is missing");
+    const metadataPatch = {
+      configVersion: 1,
+      externalGroupNameSnapshot: "Renamed support group",
+    };
+    const metadataProof = await stepUp(app, sessionCookie, {
+      kind: "operation",
+      operation: "oidc_group_mapping_update",
+      connectionId,
+      mappingId,
+      request: metadataPatch,
+    });
+    const metadataResponse = await csrfRequest(
+      app,
+      `/api/instance/identity-connections/${connectionId}/oidc-group-mappings/${mappingId}`,
+      {
+        method: "PATCH",
+        headers: {
+          "content-type": "application/json",
+          "x-taskdesk-step-up-token": metadataProof.token,
+        },
+        body: JSON.stringify(metadataPatch),
+      },
+      sessionCookie,
+    );
+    expect(metadataResponse.status).toBe(200);
+    const grantAfterMetadataPatch = await db
+      .select()
+      .from(schema.membershipGrantTable)
+      .where(eq(schema.membershipGrantTable.id, originalOidcGrant.id));
+    expect(grantAfterMetadataPatch[0]).toMatchObject({
+      revokedAt: null,
+      revocationReason: null,
+      roleId,
+      scope: "workspace",
+      scopeId: workspaceId,
+    });
+
+    groups = [];
+    expect((await login()).status).toBe(302);
+    await expectLatestOidcRetirement("claim_removed");
+
+    groups = [groupId];
+    expect((await login()).status).toBe(302);
+    groups = undefined;
+    expect((await login()).status).toBe(302);
+    await expectLatestOidcRetirement("claim_missing");
+    grants = await db
+      .select()
+      .from(schema.membershipGrantTable)
+      .where(
+        eq(schema.membershipGrantTable.externalIdentityId, externalIdentity.id),
+      );
+    expect(
+      grants.filter(
+        (grant) =>
+          grant.sourceKind === "oidc_group" && grant.revokedAt === null,
+      ),
+    ).toHaveLength(0);
+    expect(
+      grants.filter(
+        (grant) =>
+          grant.sourceKind === "jit_default" && grant.revokedAt === null,
+      ),
+    ).toHaveLength(1);
+
+    groups = [groupId];
+    expect((await login()).status).toBe(302);
+    groups = "malformed-group-payload";
+    expect((await login()).status).toBe(302);
+    await expectLatestOidcRetirement("claim_missing");
+    groups = [groupId];
+    expect((await login()).status).toBe(302);
+    groups = [];
+    expect((await login()).status).toBe(302);
+    await expectLatestOidcRetirement("claim_removed");
+    groups = [groupId];
+    expect((await login()).status).toBe(302);
+    await db
+      .update(schema.oidcGroupMappingTable)
+      .set({ roleId: directRoleId, updatedAt: new Date(Date.now() + 1000) })
+      .where(eq(schema.oidcGroupMappingTable.id, mappingId));
+    expect((await login()).status).toBe(302);
+    await expectLatestOidcRetirement("mapping_changed");
+    await db
+      .update(schema.oidcGroupMappingTable)
+      .set({ roleId, updatedAt: new Date(Date.now() + 2000) })
+      .where(eq(schema.oidcGroupMappingTable.id, mappingId));
+    expect((await login()).status).toBe(302);
+    await expectLatestOidcRetirement("mapping_changed");
+    await db
+      .update(schema.oidcGroupMappingTable)
+      .set({ enabled: false, updatedAt: new Date(Date.now() + 3000) })
+      .where(eq(schema.oidcGroupMappingTable.id, mappingId));
+    expect((await login()).status).toBe(302);
+    await expectLatestOidcRetirement("mapping_changed");
+    await db
+      .update(schema.oidcGroupMappingTable)
+      .set({ enabled: true, updatedAt: new Date(Date.now() + 4000) })
+      .where(eq(schema.oidcGroupMappingTable.id, mappingId));
+    expect((await login()).status).toBe(302);
+    const activeBeforeInvalidToken = await db
+      .select({
+        id: schema.membershipGrantTable.id,
+        revokedAt: schema.membershipGrantTable.revokedAt,
+        revocationReason: schema.membershipGrantTable.revocationReason,
+        updatedAt: schema.membershipGrantTable.updatedAt,
+        lastConfirmedAt: schema.membershipGrantTable.lastConfirmedAt,
+      })
+      .from(schema.membershipGrantTable)
+      .where(
+        eq(schema.membershipGrantTable.externalIdentityId, externalIdentity.id),
+      );
+    tokenValid = false;
+    expect((await login()).status).toBe(302);
+    tokenValid = true;
+    const activeAfterInvalidToken = await db
+      .select({
+        id: schema.membershipGrantTable.id,
+        revokedAt: schema.membershipGrantTable.revokedAt,
+        revocationReason: schema.membershipGrantTable.revocationReason,
+        updatedAt: schema.membershipGrantTable.updatedAt,
+        lastConfirmedAt: schema.membershipGrantTable.lastConfirmedAt,
+      })
+      .from(schema.membershipGrantTable)
+      .where(
+        eq(schema.membershipGrantTable.externalIdentityId, externalIdentity.id),
+      );
+    expect(
+      activeAfterInvalidToken.sort((left, right) =>
+        left.id.localeCompare(right.id),
+      ),
+    ).toEqual(
+      activeBeforeInvalidToken.sort((left, right) =>
+        left.id.localeCompare(right.id),
+      ),
+    );
+    groupOverage = true;
+    expect((await login()).status).toBe(302);
+    await expectLatestOidcRetirement("claim_overage");
+    grants = await db
+      .select()
+      .from(schema.membershipGrantTable)
+      .where(
+        eq(schema.membershipGrantTable.externalIdentityId, externalIdentity.id),
+      );
+    expect(
+      grants.filter(
+        (grant) =>
+          grant.sourceKind === "oidc_group" && grant.revokedAt === null,
+      ),
+    ).toHaveLength(0);
+    expect(
+      grants.find(
+        (grant) =>
+          grant.sourceKind === "oidc_group" &&
+          grant.revocationReason === "claim_overage",
+      ),
+    ).toBeDefined();
+    expect(
+      grants.filter(
+        (grant) =>
+          grant.sourceKind === "jit_default" && grant.revokedAt === null,
+      ),
+    ).toHaveLength(1);
+    groupOverage = false;
+    groups = [groupId];
+    expect((await login()).status).toBe(302);
+    const sessionCount = await db
+      .select({ id: schema.sessionTable.id })
+      .from(schema.sessionTable)
+      .where(eq(schema.sessionTable.userId, user.id));
+    roles = ["other"];
+    const denied = await login();
+    expect(denied.status).toBe(302);
+    expect(denied.headers.get("location")).toContain(
+      "/auth/sign-in?identity_error=sign_in_failed",
+    );
+    const sessionsAfterDenial = await db
+      .select({ id: schema.sessionTable.id })
+      .from(schema.sessionTable)
+      .where(eq(schema.sessionTable.userId, user.id));
+    expect(sessionsAfterDenial).toHaveLength(sessionCount.length);
+    await expectLatestOidcRetirement("admission_failed");
+    grants = await db
+      .select()
+      .from(schema.membershipGrantTable)
+      .where(
+        eq(schema.membershipGrantTable.externalIdentityId, externalIdentity.id),
+      );
+    expect(
+      grants.filter(
+        (grant) =>
+          grant.sourceKind === "jit_default" && grant.revokedAt === null,
+      ),
+    ).toHaveLength(0);
+    expect(
+      grants.filter(
+        (grant) =>
+          grant.sourceKind === "oidc_group" && grant.revokedAt === null,
+      ),
+    ).toHaveLength(0);
+    expect(
+      grants.some(
+        (grant) => grant.sourceKind === "direct" && grant.revokedAt === null,
+      ),
+    ).toBe(false);
+    const directGrant = await db
+      .select()
+      .from(schema.membershipGrantTable)
+      .where(eq(schema.membershipGrantTable.personId, person.id));
+    expect(
+      directGrant.filter(
+        (grant) => grant.sourceKind === "direct" && grant.revokedAt === null,
+      ),
+    ).toHaveLength(1);
+    vi.mocked(oidcToken.validateEntraIdToken).mockImplementation(
+      (_token, _jwks, expectation) => ({
+        ok: true,
+        claims: {
+          iss: expectation.issuer,
+          tid: expectation.tenantId,
+          oid: "direct-oidc-subject",
+          email: "direct-oidc@example.test",
+          email_verified: true,
+          name: "Direct OIDC User",
+          acct: 0,
+          roles: ["TaskDesk.User"],
+        },
+      }),
+    );
   });
 
   it("carries exact connection provenance through the native pending-2FA challenge", async () => {

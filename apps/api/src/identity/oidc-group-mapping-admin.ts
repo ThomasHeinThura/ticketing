@@ -1,5 +1,5 @@
 import { createId } from "@paralleldrive/cuid2";
-import { and, eq, inArray } from "drizzle-orm";
+import { and, eq } from "drizzle-orm";
 import { HTTPException } from "hono/http-exception";
 import { appendAuditLog } from "../audit/audit-writer";
 import { appendStepUpAudit } from "../auth/step-up-audit";
@@ -33,7 +33,9 @@ import {
   getCurrentInstanceAdminPersonInTransaction,
   getIdentityConnection,
   getIdentityPersonForUser,
+  getOidcGroupMappingSnapshot,
   listOidcGroupMappings,
+  listOidcMappingAffectedUserIds,
   lockFullIdentityConnection,
   lockOidcGroupMappingById,
   retireOidcGroupGrants,
@@ -425,16 +427,7 @@ const routes = apiRouter()
     const result = await retryIdentityGrantClosure(() =>
       db.transaction(async (tx) => {
         auditFailed = false;
-        const [initial] = await db
-          .select()
-          .from(schema.oidcGroupMappingTable)
-          .where(
-            and(
-              eq(schema.oidcGroupMappingTable.identityConnectionId, id),
-              eq(schema.oidcGroupMappingTable.id, mappingId),
-            ),
-          )
-          .limit(1);
+        const [initial] = await getOidcGroupMappingSnapshot(id, mappingId);
         if (!initial) return { kind: "not_found" as const };
         const [connectionSnapshot] = await getIdentityConnection(id);
         if (!connectionSnapshot) return { kind: "not_found" as const };
@@ -537,12 +530,9 @@ const routes = apiRouter()
         const affectedUserIds = personIds.length
           ? [
               ...new Set(
-                (
-                  await tx
-                    .select({ userId: schema.personTable.userId })
-                    .from(schema.personTable)
-                    .where(inArray(schema.personTable.id, personIds))
-                ).flatMap(({ userId }) => (userId ? [userId] : [])),
+                (await listOidcMappingAffectedUserIds(tx, personIds)).flatMap(
+                  ({ userId }) => (userId ? [userId] : []),
+                ),
               ),
             ]
           : [];

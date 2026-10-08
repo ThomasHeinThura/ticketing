@@ -123,8 +123,10 @@ does with a webhook is build a link back.
   identification.
 - `AK-3` A **personal** key carries an explicit capability subset and **can never exceed its
   owner's current authority**: it is clamped against the owner's live capabilities on **every
-  request**, so a demotion takes effect on the next call. This clamping rule is personal keys
-  only — a service key is not a person and is evaluated differently (`AK-7`).
+  request**, so a demotion takes effect on the next call. The stored `permissions` scope is a
+  resource-to-action map. A request must be allowed by both that stored subset and the owner's
+  current role; a missing or malformed scope grants no access. This clamping rule is personal
+  keys only — a service key is not a person and is evaluated differently (`AK-7`).
 - `AK-4` Optional expiry, optional IP allowlist, per-key rate limit.
 - `AK-5` Every request records last-used time and IP, so unused keys are visible and
   revocable.

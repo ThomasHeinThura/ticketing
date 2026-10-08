@@ -741,6 +741,32 @@ export function getOidcGroupMappingById(
     .limit(1);
 }
 
+export function getOidcGroupMappingSnapshot(
+  connectionId: string,
+  mappingId: string,
+) {
+  return db
+    .select()
+    .from(schema.oidcGroupMappingTable)
+    .where(
+      and(
+        eq(schema.oidcGroupMappingTable.identityConnectionId, connectionId),
+        eq(schema.oidcGroupMappingTable.id, mappingId),
+      ),
+    )
+    .limit(1);
+}
+
+export function listOidcMappingAffectedUserIds(
+  tx: IdentityTransaction,
+  personIds: readonly string[],
+) {
+  return tx
+    .select({ userId: schema.personTable.userId })
+    .from(schema.personTable)
+    .where(inArray(schema.personTable.id, [...personIds]));
+}
+
 export function findOidcGroupMapping(
   tx: IdentityTransaction,
   connectionId: string,
@@ -976,6 +1002,8 @@ export async function lockScimGrantClosure(
     connectionId: string;
     sourceKinds?: readonly ("jit_default" | "oidc_group" | "scim_group")[];
     actorPersonId?: string;
+    additionalPersonIds?: readonly string[];
+    additionalIdentityIds?: readonly string[];
     proposedRoleId?: string;
     proposedScope?: string;
     proposedScopeId?: string;
@@ -1081,6 +1109,8 @@ export async function lockScimGrantClosure(
   const oidcMappings = await tx
     .select({
       id: schema.oidcGroupMappingTable.id,
+      externalGroupId: schema.oidcGroupMappingTable.externalGroupId,
+      enabled: schema.oidcGroupMappingTable.enabled,
       roleId: schema.oidcGroupMappingTable.roleId,
       scope: schema.oidcGroupMappingTable.scope,
       scopeId: schema.oidcGroupMappingTable.scopeId,
@@ -1096,6 +1126,7 @@ export async function lockScimGrantClosure(
     ...new Set([
       ...discovered.map((grant) => grant.personId),
       ...(input.additionalProjectionKeys ?? []).map((grant) => grant.personId),
+      ...(input.additionalPersonIds ?? []),
       ...(input.actorPersonId ? [input.actorPersonId] : []),
     ]),
   ].sort();
@@ -1108,9 +1139,35 @@ export async function lockScimGrantClosure(
         .from(schema.personTable)
         .where(inArray(schema.personTable.id, personIds))
     : [];
+  const workspaceIds = [
+    ...new Set([
+      ...projectionGrants
+        .filter((grant) => grant.scope === "workspace")
+        .map((grant) => grant.scopeId),
+      ...projectionKeys
+        .filter((key) => key.scope === "workspace")
+        .map((key) => key.scopeId),
+      ...mappings
+        .filter((mapping) => mapping.scope === "workspace")
+        .map((mapping) => mapping.scopeId),
+      ...oidcMappings
+        .filter((mapping) => mapping.scope === "workspace")
+        .map((mapping) => mapping.scopeId),
+      ...(proposedScope === "workspace" && input.proposedScopeId
+        ? [input.proposedScopeId]
+        : []),
+    ]),
+  ].sort();
+  const workspaceOwners = workspaceIds.length
+    ? await tx
+        .select({ organisationId: schema.workspaceTable.organisationId })
+        .from(schema.workspaceTable)
+        .where(inArray(schema.workspaceTable.id, workspaceIds))
+    : [];
   const organisationIds = [
     ...new Set([
       ...people.map((person) => person.organisationId),
+      ...workspaceOwners.map((workspace) => workspace.organisationId),
       ...connections.flatMap((row) =>
         row.organisationId ? [row.organisationId] : [],
       ),
@@ -1134,25 +1191,6 @@ export async function lockScimGrantClosure(
       .orderBy(schema.organisationTable.id)
       .for("update");
   }
-  const workspaceIds = [
-    ...new Set([
-      ...projectionGrants
-        .filter((grant) => grant.scope === "workspace")
-        .map((grant) => grant.scopeId),
-      ...projectionKeys
-        .filter((key) => key.scope === "workspace")
-        .map((key) => key.scopeId),
-      ...mappings
-        .filter((mapping) => mapping.scope === "workspace")
-        .map((mapping) => mapping.scopeId),
-      ...oidcMappings
-        .filter((mapping) => mapping.scope === "workspace")
-        .map((mapping) => mapping.scopeId),
-      ...(proposedScope === "workspace" && input.proposedScopeId
-        ? [input.proposedScopeId]
-        : []),
-    ]),
-  ].sort();
   if (workspaceIds.length) {
     await tx
       .select({ id: schema.workspaceTable.id })
@@ -1275,6 +1313,8 @@ export async function lockScimGrantClosure(
   const currentOidcMappings = await tx
     .select({
       id: schema.oidcGroupMappingTable.id,
+      externalGroupId: schema.oidcGroupMappingTable.externalGroupId,
+      enabled: schema.oidcGroupMappingTable.enabled,
       roleId: schema.oidcGroupMappingTable.roleId,
       scope: schema.oidcGroupMappingTable.scope,
       scopeId: schema.oidcGroupMappingTable.scopeId,
@@ -1285,7 +1325,14 @@ export async function lockScimGrantClosure(
     )
     .orderBy(schema.oidcGroupMappingTable.id);
   const oidcMappingKey = (mapping: (typeof oidcMappings)[number]) =>
-    [mapping.id, mapping.roleId, mapping.scope, mapping.scopeId].join("\0");
+    [
+      mapping.id,
+      mapping.externalGroupId,
+      mapping.enabled,
+      mapping.roleId,
+      mapping.scope,
+      mapping.scopeId,
+    ].join("\0");
   const discoveredOidcMappingKeys = oidcMappings.map(oidcMappingKey).sort();
   const currentOidcMappingKeys = currentOidcMappings.map(oidcMappingKey).sort();
   if (
@@ -1303,6 +1350,7 @@ export async function lockScimGrantClosure(
       ...(input.additionalProjectionKeys ?? []).map(
         (grant) => grant.externalIdentityId,
       ),
+      ...(input.additionalIdentityIds ?? []),
     ]),
   ].sort();
   if (identityIds.length) {
@@ -1613,6 +1661,143 @@ export function getOidcIdentityForSignIn(
       ),
     )
     .for("update", { of: schema.externalIdentityTable })
+    .limit(1);
+}
+
+export function getOidcConnectionSnapshot(
+  tx: IdentityTransaction,
+  connectionId: string,
+) {
+  return tx
+    .select()
+    .from(schema.identityConnectionTable)
+    .where(eq(schema.identityConnectionTable.id, connectionId))
+    .limit(1);
+}
+
+export function findOidcIdentityForClosure(
+  tx: IdentityTransaction,
+  input: { connectionId: string; issuer: string; subject: string },
+) {
+  return tx
+    .select({
+      id: schema.externalIdentityTable.id,
+      personId: schema.externalIdentityTable.personId,
+    })
+    .from(schema.externalIdentityTable)
+    .where(
+      and(
+        eq(
+          schema.externalIdentityTable.identityConnectionId,
+          input.connectionId,
+        ),
+        eq(schema.externalIdentityTable.issuer, input.issuer),
+        eq(schema.externalIdentityTable.subject, input.subject),
+      ),
+    )
+    .limit(1);
+}
+
+export function listActiveOidcGrantsForSignIn(
+  tx: IdentityTransaction,
+  input: { personId: string; connectionId: string; externalIdentityId: string },
+) {
+  return tx
+    .select({
+      id: schema.membershipGrantTable.id,
+      roleId: schema.membershipGrantTable.roleId,
+      scope: schema.membershipGrantTable.scope,
+      scopeId: schema.membershipGrantTable.scopeId,
+      sourceKind: schema.membershipGrantTable.sourceKind,
+      oidcGroupMappingId: schema.membershipGrantTable.oidcGroupMappingId,
+    })
+    .from(schema.membershipGrantTable)
+    .where(
+      and(
+        eq(schema.membershipGrantTable.personId, input.personId),
+        eq(
+          schema.membershipGrantTable.identityConnectionId,
+          input.connectionId,
+        ),
+        eq(
+          schema.membershipGrantTable.externalIdentityId,
+          input.externalIdentityId,
+        ),
+        inArray(schema.membershipGrantTable.sourceKind, [
+          "jit_default",
+          "oidc_group",
+        ]),
+        isNull(schema.membershipGrantTable.revokedAt),
+      ),
+    )
+    .orderBy(schema.membershipGrantTable.id)
+    .for("update");
+}
+
+export function listAdmissionFailedOidcGrants(
+  tx: IdentityTransaction,
+  input: { personId: string; externalIdentityId: string; connectionId: string },
+) {
+  return tx
+    .select({
+      id: schema.membershipGrantTable.id,
+      scope: schema.membershipGrantTable.scope,
+      scopeId: schema.membershipGrantTable.scopeId,
+      sourceKind: schema.membershipGrantTable.sourceKind,
+    })
+    .from(schema.membershipGrantTable)
+    .where(
+      and(
+        eq(schema.membershipGrantTable.personId, input.personId),
+        eq(
+          schema.membershipGrantTable.externalIdentityId,
+          input.externalIdentityId,
+        ),
+        eq(
+          schema.membershipGrantTable.identityConnectionId,
+          input.connectionId,
+        ),
+        inArray(schema.membershipGrantTable.sourceKind, [
+          "jit_default",
+          "oidc_group",
+        ]),
+        isNull(schema.membershipGrantTable.revokedAt),
+      ),
+    )
+    .orderBy(schema.membershipGrantTable.id)
+    .for("update");
+}
+
+export function getOidcPersonForSignIn(
+  tx: IdentityTransaction,
+  personId: string,
+) {
+  return tx
+    .select()
+    .from(schema.personTable)
+    .where(eq(schema.personTable.id, personId))
+    .limit(1);
+}
+
+export function listOidcMappingsForReconciliation(
+  tx: IdentityTransaction,
+  connectionId: string,
+) {
+  return tx
+    .select()
+    .from(schema.oidcGroupMappingTable)
+    .where(eq(schema.oidcGroupMappingTable.identityConnectionId, connectionId))
+    .orderBy(schema.oidcGroupMappingTable.id);
+}
+
+export function getOidcRoleForReconciliation(
+  tx: IdentityTransaction,
+  roleId: string,
+) {
+  return tx
+    .select()
+    .from(schema.roleTable)
+    .where(eq(schema.roleTable.id, roleId))
     .limit(1);
 }
 
