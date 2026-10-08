@@ -14,6 +14,8 @@ const { mocks, translate } = vi.hoisted(() => ({
   mocks: {
     createComment: vi.fn(),
     updateComment: vi.fn(),
+    preflightRefetch: vi.fn(),
+    mentionCandidates: [] as Array<Record<string, unknown>>,
     rows: [] as Array<Record<string, unknown>>,
     cannedResponses: [] as Array<Record<string, unknown>>,
   },
@@ -128,7 +130,24 @@ vi.mock("react-i18next", async (importOriginal) => {
   return { ...actual, useTranslation: () => ({ t: translate }) };
 });
 vi.mock("@tanstack/react-query", () => ({
-  useQuery: () => ({ data: mocks.cannedResponses }),
+  useQuery: ({ queryKey }: { queryKey: readonly unknown[] }) => {
+    if (queryKey[1] === "comment-mention-candidates") {
+      return {
+        data: mocks.mentionCandidates,
+        isLoading: false,
+        isError: false,
+      };
+    }
+    if (queryKey[1] === "comment-mention-preflight") {
+      return {
+        data: { reachablePersonIds: [], unreachablePersonIds: [] },
+        isLoading: false,
+        isError: false,
+        refetch: mocks.preflightRefetch,
+      };
+    }
+    return { data: mocks.cannedResponses, isLoading: false, isError: false };
+  },
   useQueryClient: () => ({ invalidateQueries: vi.fn() }),
 }));
 vi.mock("@/components/providers/auth-provider/hooks/use-auth", () => ({
@@ -208,8 +227,15 @@ describe("work item comment editor lifecycle and CA-16 drafts", () => {
     window.localStorage.clear();
     mocks.createComment.mockReset().mockResolvedValue({});
     mocks.updateComment.mockReset().mockResolvedValue({});
+    mocks.preflightRefetch.mockReset().mockResolvedValue({
+      data: {
+        reachablePersonIds: ["person-mention"],
+        unreachablePersonIds: [],
+      },
+    });
     mocks.rows = [];
     mocks.cannedResponses = [];
+    mocks.mentionCandidates = [];
   });
 
   afterEach(() => {
@@ -353,6 +379,108 @@ describe("work item comment editor lifecycle and CA-16 drafts", () => {
       ),
     ).toBe(true);
     view.unmount();
+  });
+
+  it("locks the mentioned draft from preflight through comment save", async () => {
+    let resolvePreflight: (value: unknown) => void = () => undefined;
+    let resolveCreate: (value: unknown) => void = () => undefined;
+    mocks.preflightRefetch.mockImplementation(
+      () =>
+        new Promise((resolve) => {
+          resolvePreflight = resolve;
+        }),
+    );
+    mocks.createComment.mockImplementation(
+      () =>
+        new Promise((resolve) => {
+          resolveCreate = resolve;
+        }),
+    );
+    mocks.mentionCandidates = [
+      {
+        personId: "person-mention",
+        name: "Reachable teammate",
+        image: null,
+      },
+    ];
+    const document = {
+      type: "doc",
+      content: [
+        {
+          type: "paragraph",
+          content: [
+            { type: "text", text: "Please review " },
+            {
+              type: "taskdeskMention",
+              attrs: { id: "person-mention", label: "Reachable teammate" },
+            },
+          ],
+        },
+      ],
+    };
+    window.localStorage.setItem(
+      "taskdesk:comment-draft:user-1:OPS-17",
+      JSON.stringify({ text: "Please review @Reachable teammate", document }),
+    );
+    const view = renderActivity();
+    const send = within(view.container).getByRole("button", {
+      name: "Send comment",
+    });
+    const editor = await waitFor(() => {
+      const node = editable(view.container);
+      expect(node).not.toBeNull();
+      return node as HTMLElement;
+    });
+
+    fireEvent.click(send);
+    await waitFor(() => expect(mocks.preflightRefetch).toHaveBeenCalledOnce());
+    expect(send).toBeDisabled();
+    expect(editor).toHaveAttribute("contenteditable", "false");
+    expect(
+      JSON.parse(
+        window.localStorage.getItem("taskdesk:comment-draft:user-1:OPS-17") ??
+          "null",
+      ),
+    ).toMatchObject({ text: expect.stringContaining("person-mention") });
+    fireEvent.click(send);
+    expect(mocks.preflightRefetch).toHaveBeenCalledOnce();
+    expect(mocks.createComment).not.toHaveBeenCalled();
+
+    resolvePreflight({
+      data: {
+        reachablePersonIds: ["person-mention"],
+        unreachablePersonIds: [],
+      },
+    });
+    await waitFor(() => expect(mocks.createComment).toHaveBeenCalledOnce());
+    expect(send).toBeDisabled();
+    expect(editor).toHaveAttribute("contenteditable", "false");
+    expect(
+      JSON.parse(
+        window.localStorage.getItem("taskdesk:comment-draft:user-1:OPS-17") ??
+          "null",
+      ),
+    ).toMatchObject({ text: expect.stringContaining("person-mention") });
+    fireEvent.click(send);
+    expect(mocks.createComment).toHaveBeenCalledOnce();
+    expect(JSON.stringify(mocks.createComment.mock.calls[0]?.[0])).toContain(
+      "person-mention",
+    );
+
+    resolveCreate({});
+    await waitFor(() =>
+      expect(editable(view.container)).toHaveAttribute(
+        "contenteditable",
+        "true",
+      ),
+    );
+    expect(mocks.createComment).toHaveBeenCalledOnce();
+    const saved = JSON.parse(
+      window.localStorage.getItem("taskdesk:comment-draft:user-1:OPS-17") ??
+        "null",
+    ) as { text?: string; document?: unknown } | null;
+    expect(saved?.text).toBe("");
+    expect(JSON.stringify(saved?.document)).not.toContain("person-mention");
   });
 
   it("retains the legacy tombstone actor and withholds comment history", async () => {

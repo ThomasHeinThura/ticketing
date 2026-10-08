@@ -22,6 +22,7 @@ import {
   membershipTable,
   personTable,
   projectTable,
+  requestParticipantTable,
   roleTable,
   slaPolicyTable,
   slaPolicyVersionTable,
@@ -37,6 +38,124 @@ import {
   workspaceTable,
   workspaceUserTable,
 } from "../database/schema";
+
+export type WorkItemMentionContext = {
+  id: string;
+  key: string;
+  workspaceId: string;
+  projectId: string;
+  organisationId: string | null;
+  customerVisibility: string;
+  requesterId: string | null;
+};
+
+export type WorkItemMentionPersonRow = {
+  personId: string;
+  userId: string | null;
+  side: string;
+  name: string | null;
+  email: string;
+  image: string | null;
+};
+
+export async function findWorkItemMentionContextQuery(
+  executor: Executor,
+  workItemId: string,
+): Promise<WorkItemMentionContext | null> {
+  const [row] = await executor
+    .select({
+      id: workItemTable.id,
+      key: workItemTable.key,
+      workspaceId: workItemTable.workspaceId,
+      projectId: workItemTable.projectId,
+      organisationId: projectTable.organisationId,
+      customerVisibility: workItemTable.customerVisibility,
+      requesterId: workItemTable.requesterId,
+    })
+    .from(workItemTable)
+    .innerJoin(projectTable, eq(projectTable.id, workItemTable.projectId))
+    .innerJoin(workspaceTable, eq(workspaceTable.id, workItemTable.workspaceId))
+    .where(
+      and(
+        eq(workItemTable.id, workItemId),
+        isNull(workItemTable.deletedAt),
+        isNull(workItemTable.archivedAt),
+        isNull(projectTable.deletedAt),
+        isNull(projectTable.archivedAt),
+        isNull(workspaceTable.deletedAt),
+      ),
+    )
+    .limit(1);
+  return row ?? null;
+}
+
+export async function listWorkItemMentionParticipantIdsQuery(
+  executor: Executor,
+  workItemId: string,
+) {
+  return executor
+    .select({ personId: requestParticipantTable.personId })
+    .from(requestParticipantTable)
+    .where(eq(requestParticipantTable.workItemId, workItemId));
+}
+
+export async function listWorkItemMentionPeopleQuery(
+  executor: Executor,
+  context: WorkItemMentionContext,
+  options: {
+    personIds?: readonly string[];
+    visibility: "public" | "internal";
+    includeUnreachableCustomers?: boolean;
+    privateCustomerIds: readonly string[];
+  },
+): Promise<WorkItemMentionPersonRow[]> {
+  const staffScope = and(
+    eq(personTable.side, "staff"),
+    eq(workspaceUserTable.workspaceId, context.workspaceId),
+  );
+  const customerScope =
+    options.visibility === "public" &&
+    context.organisationId !== null &&
+    (context.customerVisibility !== "private" ||
+      options.includeUnreachableCustomers)
+      ? and(
+          eq(personTable.side, "customer"),
+          eq(personTable.organisationId, context.organisationId),
+          ...(context.customerVisibility === "private" &&
+          !options.includeUnreachableCustomers
+            ? [inArray(personTable.id, [...options.privateCustomerIds])]
+            : []),
+        )
+      : undefined;
+  const scope = customerScope ? or(staffScope, customerScope) : staffScope;
+  const predicates = [
+    scope,
+    eq(personTable.active, true),
+    eq(personTable.isPlaceholder, false),
+    eq(userTable.banned, false),
+  ];
+  if (options.personIds)
+    predicates.push(inArray(personTable.id, [...options.personIds]));
+  return executor
+    .select({
+      personId: personTable.id,
+      userId: personTable.userId,
+      side: personTable.side,
+      name: userTable.name,
+      email: userTable.email,
+      image: userTable.image,
+    })
+    .from(personTable)
+    .innerJoin(userTable, eq(userTable.id, personTable.userId))
+    .leftJoin(
+      workspaceUserTable,
+      and(
+        eq(workspaceUserTable.userId, personTable.userId),
+        eq(workspaceUserTable.workspaceId, context.workspaceId),
+      ),
+    )
+    .where(and(...predicates));
+}
 
 export type WorkItemQueryExecutor =
   | Pick<typeof db, "select">

@@ -162,6 +162,8 @@ function WorkItemActivity({
     defaultVisibility,
   );
   const [editing, setEditing] = useState<string | null>(null);
+  const [submitInProgress, setSubmitInProgress] = useState(false);
+  const submitInProgressRef = useRef(false);
   const [editDraft, setEditDraft] = useState<CommentContentSnapshot>({
     text: "",
     document: undefined,
@@ -285,7 +287,10 @@ function WorkItemActivity({
   }, [defaultVisibility, draftStorageKey]);
 
   const submit = async () => {
-    if (!draftText.trim() || !draftDocument) return;
+    if (submitInProgressRef.current || !draftText.trim() || !draftDocument)
+      return;
+    submitInProgressRef.current = true;
+    setSubmitInProgress(true);
     try {
       if (mentionPersonIds.length > 0) {
         await mentionPreflight.refetch();
@@ -309,6 +314,9 @@ function WorkItemActivity({
       await queryClient.invalidateQueries({ queryKey: activityKey });
     } catch {
       // Server capability checks are authoritative; the composer remains intact on 403/422.
+    } finally {
+      submitInProgressRef.current = false;
+      setSubmitInProgress(false);
     }
   };
 
@@ -574,6 +582,7 @@ function WorkItemActivity({
         </label>
         <Select
           value={visibility}
+          disabled={submitInProgress}
           onValueChange={(value) => {
             const next = value as "public" | "internal";
             updateVisibility(next);
@@ -615,13 +624,14 @@ function WorkItemActivity({
             </AlertDescription>
           </Alert>
         ) : mentionPreflight.isError ? (
-          <p className="mb-2 text-sm text-warning" role="status">
+          <p className="mb-2 text-sm text-warning-foreground" role="status">
             {t("activity:timeline.mentionCheckFailed")}
           </p>
         ) : null}
         {cannedResponses.data && cannedResponses.data.length > 0 && (
           <Select
             value=""
+            disabled={submitInProgress}
             onValueChange={(id) => {
               const response = cannedResponses.data?.find(
                 (entry) => entry.id === id,
@@ -666,6 +676,7 @@ function WorkItemActivity({
           uploadSurface="comment"
           showQuickAttachButton={false}
           enableMentions
+          disabled={submitInProgress}
           mentionMembers={(mentionCandidates.data ?? []).map((candidate) => ({
             id: candidate.personId,
             label: candidate.name,
@@ -675,7 +686,9 @@ function WorkItemActivity({
         />
         <div className="mt-2 flex justify-end">
           <Button
-            disabled={!draftText.trim() || createComment.isPending}
+            disabled={
+              !draftText.trim() || createComment.isPending || submitInProgress
+            }
             onClick={() => void submit()}
           >
             {createComment.isPending

@@ -1866,6 +1866,21 @@
         "chain": [
           "packages/ui/src/components/select.tsx:SelectItem",
           "jsx:SelectPrimitive.Item[0]>data-highlighted:bg-accent",
+          "apps/web/src/components/work-item/work-item-activity.tsx:WorkItemActivity",
+          "SelectContent->packages/ui/src/components/select.tsx:SelectPopup"
+        ],
+        "backdropLayers": [
+          "bg-popover"
+        ]
+      },
+      {
+        "id": "packages/ui/src/components/select.tsx::SelectItem::SelectPrimitive.Item[0]::data-highlighted:text-accent-foreground#0",
+        "usage": "packages/ui/src/components/select.tsx",
+        "surfaceContext": "caller-chain",
+        "category": "body",
+        "chain": [
+          "packages/ui/src/components/select.tsx:SelectItem",
+          "jsx:SelectPrimitive.Item[0]>data-highlighted:bg-accent",
           "apps/web/src/components/work-item/work-item-filter-editor.tsx:FilterNodeEditor",
           "SelectPopup->packages/ui/src/components/select.tsx:SelectPopup"
         ],
@@ -2871,6 +2886,21 @@
           "packages/ui/src/components/select.tsx:SelectItem",
           "jsx:SelectPrimitive.Item[0]>data-highlighted:bg-accent",
           "apps/web/src/components/work-item/create-work-item-dialog-form.tsx:CreateWorkItemDialogForm",
+          "SelectContent->packages/ui/src/components/select.tsx:SelectPopup"
+        ],
+        "backdropLayers": [
+          "bg-popover"
+        ]
+      },
+      {
+        "id": "packages/ui/src/components/select.tsx::SelectItem::SelectPrimitive.Item[0]::data-highlighted:text-accent-foreground#0",
+        "usage": "packages/ui/src/components/select.tsx",
+        "surfaceContext": "caller-chain",
+        "category": "body",
+        "chain": [
+          "packages/ui/src/components/select.tsx:SelectItem",
+          "jsx:SelectPrimitive.Item[0]>data-highlighted:bg-accent",
+          "apps/web/src/components/work-item/work-item-activity.tsx:WorkItemActivity",
           "SelectContent->packages/ui/src/components/select.tsx:SelectPopup"
         ],
         "backdropLayers": [
@@ -5031,6 +5061,8 @@
       "apps/web/src/components/service-calendar/coverage-preview-card.tsx::CoveragePreviewCard::Card[0]/CardContent[0]/div[0]/p[0]::text-destructive#0",
       "apps/web/src/components/service-calendar/weekly-cover-card.tsx::WeeklyCoverCard::Card[0]/CardContent[0]/p[0]::text-destructive#0",
       "apps/web/src/components/sla-policy/sla-policy-editor.tsx::SlaPolicyEditor::main[0]/form[0]/Card[0]/CardContent[0]/fieldset[0]/p[0]::text-destructive#0",
+      "apps/web/src/components/work-item/work-item-activity.tsx::WorkItemActivity::section[0]/ol[0]/li[0]/div[0]/p[0]::text-destructive#0",
+      "apps/web/src/components/work-item/work-item-activity.tsx::WorkItemActivity::section[0]/div[1]/p[0]::text-destructive#0",
       "apps/web/src/routes/agent/_layout/_authenticated/agent/settings/profile/pending-actions/$id.tsx::PendingActionDetailRoute::main[0]/Card[0]/CardContent[0]/p[0]::text-destructive#0",
       "apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings/workspace/labels.tsx::RouteComponent::div[0]/CardFrame[0]/Card[1]/CardPanel[0]/div[0]/div[0]/div[0]/Button[0]::text-destructive#0",
       "apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings/workspace/labels.tsx::RouteComponent::div[0]/CardFrame[0]/Card[1]/CardPanel[0]/div[0]/div[0]/div[0]/Button[0]::hover:text-destructive#0",
@@ -5103,6 +5135,28 @@
           "apps/web/src/components/sla-policy/sla-policy-editor.tsx:SlaPolicyEditor",
           "jsx:main[0]/form[0]/Card[0]/CardContent[0]/fieldset[0]/p[0]",
           "Card->packages/ui/src/components/card.tsx:Card>bg-card"
+        ],
+        "backdropLayers": []
+      },
+      {
+        "id": "apps/web/src/components/work-item/work-item-activity.tsx::WorkItemActivity::section[0]/ol[0]/li[0]/div[0]/p[0]::text-destructive#0",
+        "usage": "apps/web/src/components/work-item/work-item-activity.tsx",
+        "surfaceContext": "nearest-opaque-ancestor",
+        "category": "body",
+        "chain": [
+          "apps/web/src/components/work-item/work-item-activity.tsx:WorkItemActivity",
+          "jsx:section[0]/ol[0]/li[0]/div[0]/p[0]>bg-card"
+        ],
+        "backdropLayers": []
+      },
+      {
+        "id": "apps/web/src/components/work-item/work-item-activity.tsx::WorkItemActivity::section[0]/div[1]/p[0]::text-destructive#0",
+        "usage": "apps/web/src/components/work-item/work-item-activity.tsx",
+        "surfaceContext": "nearest-opaque-ancestor",
+        "category": "body",
+        "chain": [
+          "apps/web/src/components/work-item/work-item-activity.tsx:WorkItemActivity",
+          "jsx:section[0]/div[1]/p[0]>bg-card"
         ],
         "backdropLayers": []
       },
@@ -5320,6 +5374,8 @@
       "apps/web/src/components/service-calendar/coverage-preview-card.tsx::CoveragePreviewCard::Card[0]/CardContent[0]/div[0]/p[0]::text-destructive#0",
       "apps/web/src/components/service-calendar/weekly-cover-card.tsx::WeeklyCoverCard::Card[0]/CardContent[0]/p[0]::text-destructive#0",
       "apps/web/src/components/sla-policy/sla-policy-editor.tsx::SlaPolicyEditor::main[0]/form[0]/Card[0]/CardContent[0]/fieldset[0]/p[0]::text-destructive#0",
+      "apps/web/src/components/work-item/work-item-activity.tsx::WorkItemActivity::section[0]/ol[0]/li[0]/div[0]/p[0]::text-destructive#0",
+      "apps/web/src/components/work-item/work-item-activity.tsx::WorkItemActivity::section[0]/div[1]/p[0]::text-destructive#0",
       "apps/web/src/routes/agent/_layout/_authenticated/agent/settings/profile/pending-actions/$id.tsx::PendingActionDetailRoute::main[0]/Card[0]/CardContent[0]/p[0]::text-destructive#0",
       "apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings/workspace/labels.tsx::RouteComponent::div[0]/CardFrame[0]/Card[1]/CardPanel[0]/div[0]/div[0]/div[0]/Button[0]::text-destructive#0",
       "apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings/workspace/labels.tsx::RouteComponent::div[0]/CardFrame[0]/Card[1]/CardPanel[0]/div[0]/div[0]/div[0]/Button[0]::hover:text-destructive#0",
@@ -5392,6 +5448,28 @@
           "apps/web/src/components/sla-policy/sla-policy-editor.tsx:SlaPolicyEditor",
           "jsx:main[0]/form[0]/Card[0]/CardContent[0]/fieldset[0]/p[0]",
           "Card->packages/ui/src/components/card.tsx:Card>bg-card"
+        ],
+        "backdropLayers": []
+      },
+      {
+        "id": "apps/web/src/components/work-item/work-item-activity.tsx::WorkItemActivity::section[0]/ol[0]/li[0]/div[0]/p[0]::text-destructive#0",
+        "usage": "apps/web/src/components/work-item/work-item-activity.tsx",
+        "surfaceContext": "nearest-opaque-ancestor",
+        "category": "body",
+        "chain": [
+          "apps/web/src/components/work-item/work-item-activity.tsx:WorkItemActivity",
+          "jsx:section[0]/ol[0]/li[0]/div[0]/p[0]>bg-card"
+        ],
+        "backdropLayers": []
+      },
+      {
+        "id": "apps/web/src/components/work-item/work-item-activity.tsx::WorkItemActivity::section[0]/div[1]/p[0]::text-destructive#0",
+        "usage": "apps/web/src/components/work-item/work-item-activity.tsx",
+        "surfaceContext": "nearest-opaque-ancestor",
+        "category": "body",
+        "chain": [
+          "apps/web/src/components/work-item/work-item-activity.tsx:WorkItemActivity",
+          "jsx:section[0]/div[1]/p[0]>bg-card"
         ],
         "backdropLayers": []
       },
@@ -9970,6 +10048,17 @@
         "surfaceContext": "caller-chain",
         "category": "body",
         "chain": [
+          "apps/web/src/components/work-item/work-item-activity.tsx:WorkItemActivity",
+          "Select->packages/ui/src/components/select.tsx:Select"
+        ],
+        "backdropLayers": []
+      },
+      {
+        "id": "packages/ui/src/components/select.tsx::SelectPopup::SelectPrimitive.Portal[0]/SelectPrimitive.Positioner[0]/SelectPrimitive.Popup[0]::text-foreground#0",
+        "usage": "packages/ui/src/components/select.tsx",
+        "surfaceContext": "caller-chain",
+        "category": "body",
+        "chain": [
           "apps/web/src/components/work-item/work-item-filter-editor.tsx:FilterNodeEditor",
           "Select->packages/ui/src/components/select.tsx:Select"
         ],
@@ -11312,6 +11401,17 @@
         "category": "body",
         "chain": [
           "apps/web/src/components/work-item/create-work-item-dialog-form.tsx:CreateWorkItemDialogForm",
+          "Select->packages/ui/src/components/select.tsx:Select"
+        ],
+        "backdropLayers": []
+      },
+      {
+        "id": "packages/ui/src/components/select.tsx::SelectPopup::SelectPrimitive.Portal[0]/SelectPrimitive.Positioner[0]/SelectPrimitive.Popup[0]::text-foreground#0",
+        "usage": "packages/ui/src/components/select.tsx",
+        "surfaceContext": "caller-chain",
+        "category": "body",
+        "chain": [
+          "apps/web/src/components/work-item/work-item-activity.tsx:WorkItemActivity",
           "Select->packages/ui/src/components/select.tsx:Select"
         ],
         "backdropLayers": []
@@ -19250,6 +19350,17 @@
         "surfaceContext": "caller-chain",
         "category": "body",
         "chain": [
+          "apps/web/src/components/work-item/work-item-activity.tsx:WorkItemActivity",
+          "Select->packages/ui/src/components/select.tsx:Select"
+        ],
+        "backdropLayers": []
+      },
+      {
+        "id": "packages/ui/src/components/select.tsx::SelectValue::SelectPrimitive.Value[0]::data-placeholder:text-muted-foreground#0",
+        "usage": "packages/ui/src/components/select.tsx",
+        "surfaceContext": "caller-chain",
+        "category": "body",
+        "chain": [
           "apps/web/src/components/work-item/work-item-filter-editor.tsx:FilterNodeEditor",
           "Select->packages/ui/src/components/select.tsx:Select"
         ],
@@ -21138,6 +21249,17 @@
         "surfaceContext": "caller-chain",
         "category": "body",
         "chain": [
+          "apps/web/src/components/work-item/work-item-activity.tsx:WorkItemActivity",
+          "Select->packages/ui/src/components/select.tsx:Select"
+        ],
+        "backdropLayers": []
+      },
+      {
+        "id": "packages/ui/src/components/select.tsx::SelectValue::SelectPrimitive.Value[0]::data-placeholder:text-muted-foreground#0",
+        "usage": "packages/ui/src/components/select.tsx",
+        "surfaceContext": "caller-chain",
+        "category": "body",
+        "chain": [
           "apps/web/src/components/work-item/work-item-filter-editor.tsx:FilterNodeEditor",
           "Select->packages/ui/src/components/select.tsx:Select"
         ],
@@ -22040,6 +22162,9 @@
       "apps/web/src/components/sla-policy/sla-policy-editor.tsx::SlaPolicyEditor::main[0]/form[0]/Card[1]/CardContent[0]/p[0]::text-muted-foreground#1",
       "apps/web/src/components/team/delete-team-member-modal.tsx::DeleteTeamMemberModal::Dialog[0]/DialogPopup[0]/div[0]/div[0]/DialogClose[0]::text-muted-foreground#0",
       "apps/web/src/components/team/delete-team-member-modal.tsx::DeleteTeamMemberModal::Dialog[0]/DialogPopup[0]/div[0]/div[1]/p[0]::text-muted-foreground#0",
+      "apps/web/src/components/work-item/work-item-activity.tsx::WorkItemActivity::section[0]/ol[0]/li[0]/div[0]/span[0]::text-muted-foreground#0",
+      "apps/web/src/components/work-item/work-item-activity.tsx::WorkItemActivity::section[0]/ol[0]/li[0]/p[0]::text-muted-foreground#0",
+      "apps/web/src/components/work-item/work-item-activity.tsx::WorkItemActivity::section[0]/div[1]/p[0]::text-muted-foreground#0",
       "apps/web/src/components/work-item/work-item-filter-editor.tsx::FilterNodeEditor::div[0]/span[0]::text-muted-foreground#0",
       "apps/web/src/components/work-item/work-item-filter-editor.tsx::FilterNodeEditor::div[0]/span[0]::text-muted-foreground#1",
       "apps/web/src/routes/agent/_layout/_authenticated/agent/settings/profile/pending-actions.tsx::PendingActionsList::main[0]/Card[0]/CardContent[0]::text-muted-foreground#0",
@@ -22510,6 +22635,39 @@
         "chain": [
           "apps/web/src/components/team/delete-team-member-modal.tsx:DeleteTeamMemberModal",
           "jsx:Dialog[0]/DialogPopup[0]/div[0]/div[1]/p[0]>bg-card"
+        ],
+        "backdropLayers": []
+      },
+      {
+        "id": "apps/web/src/components/work-item/work-item-activity.tsx::WorkItemActivity::section[0]/ol[0]/li[0]/div[0]/span[0]::text-muted-foreground#0",
+        "usage": "apps/web/src/components/work-item/work-item-activity.tsx",
+        "surfaceContext": "nearest-opaque-ancestor",
+        "category": "body",
+        "chain": [
+          "apps/web/src/components/work-item/work-item-activity.tsx:WorkItemActivity",
+          "jsx:section[0]/ol[0]/li[0]/div[0]/span[0]>bg-card"
+        ],
+        "backdropLayers": []
+      },
+      {
+        "id": "apps/web/src/components/work-item/work-item-activity.tsx::WorkItemActivity::section[0]/ol[0]/li[0]/p[0]::text-muted-foreground#0",
+        "usage": "apps/web/src/components/work-item/work-item-activity.tsx",
+        "surfaceContext": "nearest-opaque-ancestor",
+        "category": "body",
+        "chain": [
+          "apps/web/src/components/work-item/work-item-activity.tsx:WorkItemActivity",
+          "jsx:section[0]/ol[0]/li[0]/p[0]>bg-card"
+        ],
+        "backdropLayers": []
+      },
+      {
+        "id": "apps/web/src/components/work-item/work-item-activity.tsx::WorkItemActivity::section[0]/div[1]/p[0]::text-muted-foreground#0",
+        "usage": "apps/web/src/components/work-item/work-item-activity.tsx",
+        "surfaceContext": "nearest-opaque-ancestor",
+        "category": "body",
+        "chain": [
+          "apps/web/src/components/work-item/work-item-activity.tsx:WorkItemActivity",
+          "jsx:section[0]/div[1]/p[0]>bg-card"
         ],
         "backdropLayers": []
       },
@@ -24396,6 +24554,9 @@
       "apps/web/src/components/sla-policy/sla-policy-editor.tsx::SlaPolicyEditor::main[0]/form[0]/Card[1]/CardContent[0]/p[0]::text-muted-foreground#1",
       "apps/web/src/components/team/delete-team-member-modal.tsx::DeleteTeamMemberModal::Dialog[0]/DialogPopup[0]/div[0]/div[0]/DialogClose[0]::text-muted-foreground#0",
       "apps/web/src/components/team/delete-team-member-modal.tsx::DeleteTeamMemberModal::Dialog[0]/DialogPopup[0]/div[0]/div[1]/p[0]::text-muted-foreground#0",
+      "apps/web/src/components/work-item/work-item-activity.tsx::WorkItemActivity::section[0]/ol[0]/li[0]/div[0]/span[0]::text-muted-foreground#0",
+      "apps/web/src/components/work-item/work-item-activity.tsx::WorkItemActivity::section[0]/ol[0]/li[0]/p[0]::text-muted-foreground#0",
+      "apps/web/src/components/work-item/work-item-activity.tsx::WorkItemActivity::section[0]/div[1]/p[0]::text-muted-foreground#0",
       "apps/web/src/components/work-item/work-item-filter-editor.tsx::FilterNodeEditor::div[0]/span[0]::text-muted-foreground#0",
       "apps/web/src/components/work-item/work-item-filter-editor.tsx::FilterNodeEditor::div[0]/span[0]::text-muted-foreground#1",
       "apps/web/src/routes/agent/_layout/_authenticated/agent/settings/profile/pending-actions.tsx::PendingActionsList::main[0]/Card[0]/CardContent[0]::text-muted-foreground#0",
@@ -24866,6 +25027,39 @@
         "chain": [
           "apps/web/src/components/team/delete-team-member-modal.tsx:DeleteTeamMemberModal",
           "jsx:Dialog[0]/DialogPopup[0]/div[0]/div[1]/p[0]>bg-card"
+        ],
+        "backdropLayers": []
+      },
+      {
+        "id": "apps/web/src/components/work-item/work-item-activity.tsx::WorkItemActivity::section[0]/ol[0]/li[0]/div[0]/span[0]::text-muted-foreground#0",
+        "usage": "apps/web/src/components/work-item/work-item-activity.tsx",
+        "surfaceContext": "nearest-opaque-ancestor",
+        "category": "body",
+        "chain": [
+          "apps/web/src/components/work-item/work-item-activity.tsx:WorkItemActivity",
+          "jsx:section[0]/ol[0]/li[0]/div[0]/span[0]>bg-card"
+        ],
+        "backdropLayers": []
+      },
+      {
+        "id": "apps/web/src/components/work-item/work-item-activity.tsx::WorkItemActivity::section[0]/ol[0]/li[0]/p[0]::text-muted-foreground#0",
+        "usage": "apps/web/src/components/work-item/work-item-activity.tsx",
+        "surfaceContext": "nearest-opaque-ancestor",
+        "category": "body",
+        "chain": [
+          "apps/web/src/components/work-item/work-item-activity.tsx:WorkItemActivity",
+          "jsx:section[0]/ol[0]/li[0]/p[0]>bg-card"
+        ],
+        "backdropLayers": []
+      },
+      {
+        "id": "apps/web/src/components/work-item/work-item-activity.tsx::WorkItemActivity::section[0]/div[1]/p[0]::text-muted-foreground#0",
+        "usage": "apps/web/src/components/work-item/work-item-activity.tsx",
+        "surfaceContext": "nearest-opaque-ancestor",
+        "category": "body",
+        "chain": [
+          "apps/web/src/components/work-item/work-item-activity.tsx:WorkItemActivity",
+          "jsx:section[0]/div[1]/p[0]>bg-card"
         ],
         "backdropLayers": []
       },
@@ -30032,6 +30226,8 @@
       "apps/web/src/components/activity/comment-card.tsx::CommentCard::TooltipProvider[0]/div[0]/div[0]/HoverCard[0]/HoverCardContent[0]/div[0]/div[0]/div[0]/GithubIcon[0]::text-muted-foreground#0",
       "apps/web/src/components/activity/comment-card.tsx::CommentCard::TooltipProvider[0]/div[0]/div[0]/HoverCard[0]/HoverCardContent[0]/div[0]/div[0]/div[0]/span[0]::text-muted-foreground#0",
       "apps/web/src/components/activity/comment-card.tsx::CommentCard::TooltipProvider[0]/div[0]/div[0]/HoverCard[0]/HoverCardContent[0]/a[0]::text-muted-foreground#0",
+      "apps/web/src/components/activity/comment-version-history.tsx::CommentVersionHistory::Popover[0]/PopoverContent[0]/ol[0]/li[0]/div[0]::text-muted-foreground#0",
+      "apps/web/src/components/activity/comment-version-history.tsx::CommentVersionHistory::Popover[0]/PopoverContent[0]/p[0]::text-muted-foreground#0",
       "apps/web/src/components/activity/index.tsx::UserHoverName::HoverCard[0]/HoverCardContent[0]/div[0]/div[0]/p[1]::text-muted-foreground#0",
       "apps/web/src/components/board/board-toolbar.tsx::BoardToolbar::div[0]/div[0]/div[0]/div[0]/DropdownMenu[0]/DropdownMenuContent[0]/DropdownMenuSub[4]/DropdownMenuSubContent[0]/DropdownMenuItem[0]::text-muted-foreground#0",
       "apps/web/src/components/board/board-toolbar.tsx::BoardToolbar::div[0]/div[0]/div[0]/div[0]/DropdownMenu[0]/DropdownMenuContent[0]/DropdownMenuItem[0]::text-muted-foreground#0",
@@ -30237,6 +30433,30 @@
           "apps/web/src/components/activity/comment-card.tsx:CommentCard",
           "jsx:TooltipProvider[0]/div[0]/div[0]/HoverCard[0]/HoverCardContent[0]/a[0]",
           "HoverCardContent->packages/ui/src/components/preview-card.tsx:PreviewCardPopup>bg-popover"
+        ],
+        "backdropLayers": []
+      },
+      {
+        "id": "apps/web/src/components/activity/comment-version-history.tsx::CommentVersionHistory::Popover[0]/PopoverContent[0]/ol[0]/li[0]/div[0]::text-muted-foreground#0",
+        "usage": "apps/web/src/components/activity/comment-version-history.tsx",
+        "surfaceContext": "imported-opaque-wrapper",
+        "category": "body",
+        "chain": [
+          "apps/web/src/components/activity/comment-version-history.tsx:CommentVersionHistory",
+          "jsx:Popover[0]/PopoverContent[0]/ol[0]/li[0]/div[0]",
+          "PopoverContent->packages/ui/src/components/popover.tsx:PopoverPopup>bg-popover"
+        ],
+        "backdropLayers": []
+      },
+      {
+        "id": "apps/web/src/components/activity/comment-version-history.tsx::CommentVersionHistory::Popover[0]/PopoverContent[0]/p[0]::text-muted-foreground#0",
+        "usage": "apps/web/src/components/activity/comment-version-history.tsx",
+        "surfaceContext": "imported-opaque-wrapper",
+        "category": "body",
+        "chain": [
+          "apps/web/src/components/activity/comment-version-history.tsx:CommentVersionHistory",
+          "jsx:Popover[0]/PopoverContent[0]/p[0]",
+          "PopoverContent->packages/ui/src/components/popover.tsx:PopoverPopup>bg-popover"
         ],
         "backdropLayers": []
       },
@@ -32950,6 +33170,8 @@
       "apps/web/src/components/activity/comment-card.tsx::CommentCard::TooltipProvider[0]/div[0]/div[0]/HoverCard[0]/HoverCardContent[0]/div[0]/div[0]/div[0]/GithubIcon[0]::text-muted-foreground#0",
       "apps/web/src/components/activity/comment-card.tsx::CommentCard::TooltipProvider[0]/div[0]/div[0]/HoverCard[0]/HoverCardContent[0]/div[0]/div[0]/div[0]/span[0]::text-muted-foreground#0",
       "apps/web/src/components/activity/comment-card.tsx::CommentCard::TooltipProvider[0]/div[0]/div[0]/HoverCard[0]/HoverCardContent[0]/a[0]::text-muted-foreground#0",
+      "apps/web/src/components/activity/comment-version-history.tsx::CommentVersionHistory::Popover[0]/PopoverContent[0]/ol[0]/li[0]/div[0]::text-muted-foreground#0",
+      "apps/web/src/components/activity/comment-version-history.tsx::CommentVersionHistory::Popover[0]/PopoverContent[0]/p[0]::text-muted-foreground#0",
       "apps/web/src/components/activity/index.tsx::UserHoverName::HoverCard[0]/HoverCardContent[0]/div[0]/div[0]/p[1]::text-muted-foreground#0",
       "apps/web/src/components/board/board-toolbar.tsx::BoardToolbar::div[0]/div[0]/div[0]/div[0]/DropdownMenu[0]/DropdownMenuContent[0]/DropdownMenuSub[4]/DropdownMenuSubContent[0]/DropdownMenuItem[0]::text-muted-foreground#0",
       "apps/web/src/components/board/board-toolbar.tsx::BoardToolbar::div[0]/div[0]/div[0]/div[0]/DropdownMenu[0]/DropdownMenuContent[0]/DropdownMenuItem[0]::text-muted-foreground#0",
@@ -33155,6 +33377,30 @@
           "apps/web/src/components/activity/comment-card.tsx:CommentCard",
           "jsx:TooltipProvider[0]/div[0]/div[0]/HoverCard[0]/HoverCardContent[0]/a[0]",
           "HoverCardContent->packages/ui/src/components/preview-card.tsx:PreviewCardPopup>bg-popover"
+        ],
+        "backdropLayers": []
+      },
+      {
+        "id": "apps/web/src/components/activity/comment-version-history.tsx::CommentVersionHistory::Popover[0]/PopoverContent[0]/ol[0]/li[0]/div[0]::text-muted-foreground#0",
+        "usage": "apps/web/src/components/activity/comment-version-history.tsx",
+        "surfaceContext": "imported-opaque-wrapper",
+        "category": "body",
+        "chain": [
+          "apps/web/src/components/activity/comment-version-history.tsx:CommentVersionHistory",
+          "jsx:Popover[0]/PopoverContent[0]/ol[0]/li[0]/div[0]",
+          "PopoverContent->packages/ui/src/components/popover.tsx:PopoverPopup>bg-popover"
+        ],
+        "backdropLayers": []
+      },
+      {
+        "id": "apps/web/src/components/activity/comment-version-history.tsx::CommentVersionHistory::Popover[0]/PopoverContent[0]/p[0]::text-muted-foreground#0",
+        "usage": "apps/web/src/components/activity/comment-version-history.tsx",
+        "surfaceContext": "imported-opaque-wrapper",
+        "category": "body",
+        "chain": [
+          "apps/web/src/components/activity/comment-version-history.tsx:CommentVersionHistory",
+          "jsx:Popover[0]/PopoverContent[0]/p[0]",
+          "PopoverContent->packages/ui/src/components/popover.tsx:PopoverPopup>bg-popover"
         ],
         "backdropLayers": []
       },
@@ -43250,7 +43496,8 @@
       "dark": "bg-card"
     },
     "occurrenceIds": [
-      "apps/web/src/components/service-calendar/coverage-preview-card.tsx::CoveragePreviewCard::Card[0]/CardContent[0]/div[0]/p[0]::text-warning-foreground#0"
+      "apps/web/src/components/service-calendar/coverage-preview-card.tsx::CoveragePreviewCard::Card[0]/CardContent[0]/div[0]/p[0]::text-warning-foreground#0",
+      "apps/web/src/components/work-item/work-item-activity.tsx::WorkItemActivity::section[0]/div[1]/p[0]::text-warning-foreground#0"
     ],
     "occurrences": [
       {
@@ -43262,6 +43509,17 @@
           "apps/web/src/components/service-calendar/coverage-preview-card.tsx:CoveragePreviewCard",
           "jsx:Card[0]/CardContent[0]/div[0]/p[0]",
           "Card->packages/ui/src/components/card.tsx:Card>bg-card"
+        ],
+        "backdropLayers": []
+      },
+      {
+        "id": "apps/web/src/components/work-item/work-item-activity.tsx::WorkItemActivity::section[0]/div[1]/p[0]::text-warning-foreground#0",
+        "usage": "apps/web/src/components/work-item/work-item-activity.tsx",
+        "surfaceContext": "nearest-opaque-ancestor",
+        "category": "body",
+        "chain": [
+          "apps/web/src/components/work-item/work-item-activity.tsx:WorkItemActivity",
+          "jsx:section[0]/div[1]/p[0]>bg-card"
         ],
         "backdropLayers": []
       }
@@ -43282,7 +43540,8 @@
       "light": "bg-card"
     },
     "occurrenceIds": [
-      "apps/web/src/components/service-calendar/coverage-preview-card.tsx::CoveragePreviewCard::Card[0]/CardContent[0]/div[0]/p[0]::text-warning-foreground#0"
+      "apps/web/src/components/service-calendar/coverage-preview-card.tsx::CoveragePreviewCard::Card[0]/CardContent[0]/div[0]/p[0]::text-warning-foreground#0",
+      "apps/web/src/components/work-item/work-item-activity.tsx::WorkItemActivity::section[0]/div[1]/p[0]::text-warning-foreground#0"
     ],
     "occurrences": [
       {
@@ -43294,6 +43553,17 @@
           "apps/web/src/components/service-calendar/coverage-preview-card.tsx:CoveragePreviewCard",
           "jsx:Card[0]/CardContent[0]/div[0]/p[0]",
           "Card->packages/ui/src/components/card.tsx:Card>bg-card"
+        ],
+        "backdropLayers": []
+      },
+      {
+        "id": "apps/web/src/components/work-item/work-item-activity.tsx::WorkItemActivity::section[0]/div[1]/p[0]::text-warning-foreground#0",
+        "usage": "apps/web/src/components/work-item/work-item-activity.tsx",
+        "surfaceContext": "nearest-opaque-ancestor",
+        "category": "body",
+        "chain": [
+          "apps/web/src/components/work-item/work-item-activity.tsx:WorkItemActivity",
+          "jsx:section[0]/div[1]/p[0]>bg-card"
         ],
         "backdropLayers": []
       }
