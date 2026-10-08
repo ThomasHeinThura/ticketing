@@ -155,6 +155,8 @@ async function installApprovalWithdrawalFixture(page: Page) {
       );
     if (path.endsWith("/api/work-items/HELP-7/approvals"))
       return json({ approvals: [approval] });
+    if (path.endsWith("/api/work-items/HELP-7/activity"))
+      return json({ data: [], page: { nextCursor: null, hasMore: false } });
     if (
       path.endsWith("/api/approvals/visual-approval/withdraw") &&
       request.method() === "POST"

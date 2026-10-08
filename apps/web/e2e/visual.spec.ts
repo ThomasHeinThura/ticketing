@@ -311,6 +311,8 @@ async function installAuthenticatedFixture(page: Page) {
       };
     } else if (path.endsWith("/api/work-items/HELP-7/approvals")) {
       body = { approvals: [] };
+    } else if (path.endsWith("/api/work-items/HELP-7/activity")) {
+      body = { data: [], page: { nextCursor: null, hasMore: false } };
     } else if (path.endsWith("/api/work-items/HELP-7")) body = workItem;
     else if (path.endsWith("/api/me/security/factors")) {
       body = { enabled: false, required: false, policyMode: "optional" };
