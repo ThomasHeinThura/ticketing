@@ -43678,7 +43678,7 @@
       "apps/web/src/routes/agent/auth/sign-in.tsx::SignIn::Alert[AuthLayout[0]/div[0]/Alert[0]]",
       "apps/web/src/routes/agent/auth/sign-up.tsx::SignUp::Alert[AuthLayout[0]/div[0]/Alert[0]]",
       "apps/web/src/routes/agent/auth/verify-otp.tsx::VerifyOtp::Alert[AuthLayout[0]/div[0]/Alert[0]]",
-      "packages/ui/src/components/alert.stories.tsx::<module>::Alert[Alert[0]]"
+      "packages/ui/src/components/alert.stories.tsx::<module>::Alert[div[0]/Alert[0]]"
     ],
     "occurrences": [
       {
@@ -43767,17 +43767,17 @@
         ]
       },
       {
-        "id": "packages/ui/src/components/alert.stories.tsx::<module>::Alert[Alert[0]]",
+        "id": "packages/ui/src/components/alert.stories.tsx::<module>::Alert[div[0]/Alert[0]]",
         "usage": "packages/ui/src/components/alert.stories.tsx",
         "surfaceContext": "storybook-body",
         "category": "body",
         "chain": [
-          "packages/ui/src/components/alert.stories.tsx:<story>",
           "packages/ui/src/components/alert.tsx:alertVariants[default]",
           "packages/ui/src/components/alert.stories.tsx:<module>",
-          "jsx:Alert[0]",
-          "packages/ui/.storybook/preview.ts:imports tailwind.css",
-          "packages/ui/.storybook/tailwind.css:#storybook-root.background-color:var(--background)"
+          "jsx:div[0]/Alert[0]",
+          "packages/ui/src/components/alert.stories.tsx:<module>",
+          "jsx:div[0]/Alert[0]",
+          "opaque-backdrop:bg-background"
         ],
         "backdropLayers": [
           "bg-background"
@@ -43887,7 +43887,7 @@
       "apps/web/src/routes/agent/invitation/accept.$inviteId.tsx::AcceptInvitation::Alert[AuthLayout[0]/div[0]/Alert[0]]",
       "apps/web/src/routes/portal/__root.tsx::PortalError::Alert[PortalFrame[0]/Alert[0]]",
       "apps/web/src/routes/portal/approvals.tsx::PortalApprovalsPage::Alert[main[0]/Alert[0]]",
-      "packages/ui/src/components/alert.stories.tsx::<module>::Alert[Alert[0]]"
+      "packages/ui/src/components/alert.stories.tsx::<module>::Alert[div[0]/Alert[0]]"
     ],
     "occurrences": [
       {
@@ -44340,17 +44340,17 @@
         ]
       },
       {
-        "id": "packages/ui/src/components/alert.stories.tsx::<module>::Alert[Alert[0]]",
+        "id": "packages/ui/src/components/alert.stories.tsx::<module>::Alert[div[0]/Alert[0]]",
         "usage": "packages/ui/src/components/alert.stories.tsx",
         "surfaceContext": "storybook-body",
         "category": "body",
         "chain": [
-          "packages/ui/src/components/alert.stories.tsx:<story>",
           "packages/ui/src/components/alert.tsx:alertVariants[error]",
           "packages/ui/src/components/alert.stories.tsx:<module>",
-          "jsx:Alert[0]",
-          "packages/ui/.storybook/preview.ts:imports tailwind.css",
-          "packages/ui/.storybook/tailwind.css:#storybook-root.background-color:var(--background)"
+          "jsx:div[0]/Alert[0]",
+          "packages/ui/src/components/alert.stories.tsx:<module>",
+          "jsx:div[0]/Alert[0]",
+          "opaque-backdrop:bg-background"
         ],
         "backdropLayers": [
           "bg-background"
@@ -44550,7 +44550,7 @@
       "apps/web/src/routes/agent/invitation/accept.$inviteId.tsx::AcceptInvitation::Alert[AuthLayout[0]/div[0]/Alert[0]]",
       "apps/web/src/routes/portal/__root.tsx::PortalError::Alert[PortalFrame[0]/Alert[0]]",
       "apps/web/src/routes/portal/approvals.tsx::PortalApprovalsPage::Alert[main[0]/Alert[0]]",
-      "packages/ui/src/components/alert.stories.tsx::<module>::Alert[Alert[0]]"
+      "packages/ui/src/components/alert.stories.tsx::<module>::Alert[div[0]/Alert[0]]"
     ],
     "occurrences": [
       {
@@ -45003,17 +45003,17 @@
         ]
       },
       {
-        "id": "packages/ui/src/components/alert.stories.tsx::<module>::Alert[Alert[0]]",
+        "id": "packages/ui/src/components/alert.stories.tsx::<module>::Alert[div[0]/Alert[0]]",
         "usage": "packages/ui/src/components/alert.stories.tsx",
         "surfaceContext": "storybook-body",
         "category": "body",
         "chain": [
-          "packages/ui/src/components/alert.stories.tsx:<story>",
           "packages/ui/src/components/alert.tsx:alertVariants[error]",
           "packages/ui/src/components/alert.stories.tsx:<module>",
-          "jsx:Alert[0]",
-          "packages/ui/.storybook/preview.ts:imports tailwind.css",
-          "packages/ui/.storybook/tailwind.css:#storybook-root.background-color:var(--background)"
+          "jsx:div[0]/Alert[0]",
+          "packages/ui/src/components/alert.stories.tsx:<module>",
+          "jsx:div[0]/Alert[0]",
+          "opaque-backdrop:bg-background"
         ],
         "backdropLayers": [
           "bg-background"
@@ -45195,7 +45195,7 @@
       "apps/web/src/routes/agent/_layout/_authenticated/agent/settings/sla-policies.tsx::SlaPoliciesRoute::Alert[main[0]/Alert[0]]",
       "apps/web/src/routes/portal/__root.tsx::PortalNotFound::Alert[PortalFrame[0]/Alert[0]]",
       "apps/web/src/routes/portal/__root.tsx::PortalUnavailableNotice::Alert[PortalFrame[0]/Alert[0]]",
-      "packages/ui/src/components/alert.stories.tsx::<module>::Alert[Alert[0]]"
+      "packages/ui/src/components/alert.stories.tsx::<module>::Alert[div[0]/Alert[0]]"
     ],
     "occurrences": [
       {
@@ -45324,17 +45324,17 @@
         ]
       },
       {
-        "id": "packages/ui/src/components/alert.stories.tsx::<module>::Alert[Alert[0]]",
+        "id": "packages/ui/src/components/alert.stories.tsx::<module>::Alert[div[0]/Alert[0]]",
         "usage": "packages/ui/src/components/alert.stories.tsx",
         "surfaceContext": "storybook-body",
         "category": "body",
         "chain": [
-          "packages/ui/src/components/alert.stories.tsx:<story>",
           "packages/ui/src/components/alert.tsx:alertVariants[info]",
           "packages/ui/src/components/alert.stories.tsx:<module>",
-          "jsx:Alert[0]",
-          "packages/ui/.storybook/preview.ts:imports tailwind.css",
-          "packages/ui/.storybook/tailwind.css:#storybook-root.background-color:var(--background)"
+          "jsx:div[0]/Alert[0]",
+          "packages/ui/src/components/alert.stories.tsx:<module>",
+          "jsx:div[0]/Alert[0]",
+          "opaque-backdrop:bg-background"
         ],
         "backdropLayers": [
           "bg-background"
@@ -45408,7 +45408,7 @@
       "apps/web/src/routes/agent/_layout/_authenticated/agent/settings/sla-policies.tsx::SlaPoliciesRoute::Alert[main[0]/Alert[0]]",
       "apps/web/src/routes/portal/__root.tsx::PortalNotFound::Alert[PortalFrame[0]/Alert[0]]",
       "apps/web/src/routes/portal/__root.tsx::PortalUnavailableNotice::Alert[PortalFrame[0]/Alert[0]]",
-      "packages/ui/src/components/alert.stories.tsx::<module>::Alert[Alert[0]]"
+      "packages/ui/src/components/alert.stories.tsx::<module>::Alert[div[0]/Alert[0]]"
     ],
     "occurrences": [
       {
@@ -45537,17 +45537,17 @@
         ]
       },
       {
-        "id": "packages/ui/src/components/alert.stories.tsx::<module>::Alert[Alert[0]]",
+        "id": "packages/ui/src/components/alert.stories.tsx::<module>::Alert[div[0]/Alert[0]]",
         "usage": "packages/ui/src/components/alert.stories.tsx",
         "surfaceContext": "storybook-body",
         "category": "body",
         "chain": [
-          "packages/ui/src/components/alert.stories.tsx:<story>",
           "packages/ui/src/components/alert.tsx:alertVariants[info]",
           "packages/ui/src/components/alert.stories.tsx:<module>",
-          "jsx:Alert[0]",
-          "packages/ui/.storybook/preview.ts:imports tailwind.css",
-          "packages/ui/.storybook/tailwind.css:#storybook-root.background-color:var(--background)"
+          "jsx:div[0]/Alert[0]",
+          "packages/ui/src/components/alert.stories.tsx:<module>",
+          "jsx:div[0]/Alert[0]",
+          "opaque-backdrop:bg-background"
         ],
         "backdropLayers": [
           "bg-background"
@@ -45619,7 +45619,7 @@
       "apps/web/src/routes/agent/auth/sign-in.tsx::SignIn::Alert[AuthLayout[0]/div[0]/Alert[0]]",
       "apps/web/src/routes/agent/auth/sign-up.tsx::SignUp::Alert[AuthLayout[0]/div[0]/Alert[0]]",
       "apps/web/src/routes/agent/auth/verify-otp.tsx::VerifyOtp::Alert[AuthLayout[0]/div[0]/Alert[0]]",
-      "packages/ui/src/components/alert.stories.tsx::<module>::Alert[Alert[0]]"
+      "packages/ui/src/components/alert.stories.tsx::<module>::Alert[div[0]/Alert[0]]"
     ],
     "occurrences": [
       {
@@ -45708,17 +45708,17 @@
         ]
       },
       {
-        "id": "packages/ui/src/components/alert.stories.tsx::<module>::Alert[Alert[0]]",
+        "id": "packages/ui/src/components/alert.stories.tsx::<module>::Alert[div[0]/Alert[0]]",
         "usage": "packages/ui/src/components/alert.stories.tsx",
         "surfaceContext": "storybook-body",
         "category": "body",
         "chain": [
-          "packages/ui/src/components/alert.stories.tsx:<story>",
           "packages/ui/src/components/alert.tsx:alertVariants[default]",
           "packages/ui/src/components/alert.stories.tsx:<module>",
-          "jsx:Alert[0]",
-          "packages/ui/.storybook/preview.ts:imports tailwind.css",
-          "packages/ui/.storybook/tailwind.css:#storybook-root.background-color:var(--background)"
+          "jsx:div[0]/Alert[0]",
+          "packages/ui/src/components/alert.stories.tsx:<module>",
+          "jsx:div[0]/Alert[0]",
+          "opaque-backdrop:bg-background"
         ],
         "backdropLayers": [
           "bg-background"
@@ -45884,7 +45884,7 @@
     ],
     "occurrenceIds": [
       "apps/web/src/components/god-mode/scim-token-settings.tsx::ScimTokenSettings::Alert[section[0]/Alert[0]]",
-      "packages/ui/src/components/alert.stories.tsx::<module>::Alert[Alert[0]]"
+      "packages/ui/src/components/alert.stories.tsx::<module>::Alert[div[0]/Alert[0]]"
     ],
     "occurrences": [
       {
@@ -45907,17 +45907,17 @@
         ]
       },
       {
-        "id": "packages/ui/src/components/alert.stories.tsx::<module>::Alert[Alert[0]]",
+        "id": "packages/ui/src/components/alert.stories.tsx::<module>::Alert[div[0]/Alert[0]]",
         "usage": "packages/ui/src/components/alert.stories.tsx",
         "surfaceContext": "storybook-body",
         "category": "body",
         "chain": [
-          "packages/ui/src/components/alert.stories.tsx:<story>",
           "packages/ui/src/components/alert.tsx:alertVariants[success]",
           "packages/ui/src/components/alert.stories.tsx:<module>",
-          "jsx:Alert[0]",
-          "packages/ui/.storybook/preview.ts:imports tailwind.css",
-          "packages/ui/.storybook/tailwind.css:#storybook-root.background-color:var(--background)"
+          "jsx:div[0]/Alert[0]",
+          "packages/ui/src/components/alert.stories.tsx:<module>",
+          "jsx:div[0]/Alert[0]",
+          "opaque-backdrop:bg-background"
         ],
         "backdropLayers": [
           "bg-background"
@@ -45945,7 +45945,7 @@
     ],
     "occurrenceIds": [
       "apps/web/src/components/god-mode/scim-token-settings.tsx::ScimTokenSettings::Alert[section[0]/Alert[0]]",
-      "packages/ui/src/components/alert.stories.tsx::<module>::Alert[Alert[0]]"
+      "packages/ui/src/components/alert.stories.tsx::<module>::Alert[div[0]/Alert[0]]"
     ],
     "occurrences": [
       {
@@ -45968,17 +45968,17 @@
         ]
       },
       {
-        "id": "packages/ui/src/components/alert.stories.tsx::<module>::Alert[Alert[0]]",
+        "id": "packages/ui/src/components/alert.stories.tsx::<module>::Alert[div[0]/Alert[0]]",
         "usage": "packages/ui/src/components/alert.stories.tsx",
         "surfaceContext": "storybook-body",
         "category": "body",
         "chain": [
-          "packages/ui/src/components/alert.stories.tsx:<story>",
           "packages/ui/src/components/alert.tsx:alertVariants[success]",
           "packages/ui/src/components/alert.stories.tsx:<module>",
-          "jsx:Alert[0]",
-          "packages/ui/.storybook/preview.ts:imports tailwind.css",
-          "packages/ui/.storybook/tailwind.css:#storybook-root.background-color:var(--background)"
+          "jsx:div[0]/Alert[0]",
+          "packages/ui/src/components/alert.stories.tsx:<module>",
+          "jsx:div[0]/Alert[0]",
+          "opaque-backdrop:bg-background"
         ],
         "backdropLayers": [
           "bg-background"
@@ -46012,7 +46012,7 @@
       "apps/web/src/components/work-item/work-items-panel.tsx::WorkItemsPanel::Alert[div[0]/Alert[0]]",
       "apps/web/src/routes/agent/_layout/_authenticated/agent/my-work.tsx::MyApprovalsRoute::Alert[main[0]/ul[0]/li[0]/Alert[0]]",
       "apps/web/src/routes/agent/_layout/_authenticated/agent/work-items/$key.tsx::WorkItemDetailRouteComponent::Alert[div[0]/Alert[0]]",
-      "packages/ui/src/components/alert.stories.tsx::<module>::Alert[Alert[0]]"
+      "packages/ui/src/components/alert.stories.tsx::<module>::Alert[div[0]/Alert[0]]"
     ],
     "occurrences": [
       {
@@ -46140,17 +46140,17 @@
         ]
       },
       {
-        "id": "packages/ui/src/components/alert.stories.tsx::<module>::Alert[Alert[0]]",
+        "id": "packages/ui/src/components/alert.stories.tsx::<module>::Alert[div[0]/Alert[0]]",
         "usage": "packages/ui/src/components/alert.stories.tsx",
         "surfaceContext": "storybook-body",
         "category": "body",
         "chain": [
-          "packages/ui/src/components/alert.stories.tsx:<story>",
           "packages/ui/src/components/alert.tsx:alertVariants[warning]",
           "packages/ui/src/components/alert.stories.tsx:<module>",
-          "jsx:Alert[0]",
-          "packages/ui/.storybook/preview.ts:imports tailwind.css",
-          "packages/ui/.storybook/tailwind.css:#storybook-root.background-color:var(--background)"
+          "jsx:div[0]/Alert[0]",
+          "packages/ui/src/components/alert.stories.tsx:<module>",
+          "jsx:div[0]/Alert[0]",
+          "opaque-backdrop:bg-background"
         ],
         "backdropLayers": [
           "bg-background"
@@ -46184,7 +46184,7 @@
       "apps/web/src/components/work-item/work-items-panel.tsx::WorkItemsPanel::Alert[div[0]/Alert[0]]",
       "apps/web/src/routes/agent/_layout/_authenticated/agent/my-work.tsx::MyApprovalsRoute::Alert[main[0]/ul[0]/li[0]/Alert[0]]",
       "apps/web/src/routes/agent/_layout/_authenticated/agent/work-items/$key.tsx::WorkItemDetailRouteComponent::Alert[div[0]/Alert[0]]",
-      "packages/ui/src/components/alert.stories.tsx::<module>::Alert[Alert[0]]"
+      "packages/ui/src/components/alert.stories.tsx::<module>::Alert[div[0]/Alert[0]]"
     ],
     "occurrences": [
       {
@@ -46312,17 +46312,17 @@
         ]
       },
       {
-        "id": "packages/ui/src/components/alert.stories.tsx::<module>::Alert[Alert[0]]",
+        "id": "packages/ui/src/components/alert.stories.tsx::<module>::Alert[div[0]/Alert[0]]",
         "usage": "packages/ui/src/components/alert.stories.tsx",
         "surfaceContext": "storybook-body",
         "category": "body",
         "chain": [
-          "packages/ui/src/components/alert.stories.tsx:<story>",
           "packages/ui/src/components/alert.tsx:alertVariants[warning]",
           "packages/ui/src/components/alert.stories.tsx:<module>",
-          "jsx:Alert[0]",
-          "packages/ui/.storybook/preview.ts:imports tailwind.css",
-          "packages/ui/.storybook/tailwind.css:#storybook-root.background-color:var(--background)"
+          "jsx:div[0]/Alert[0]",
+          "packages/ui/src/components/alert.stories.tsx:<module>",
+          "jsx:div[0]/Alert[0]",
+          "opaque-backdrop:bg-background"
         ],
         "backdropLayers": [
           "bg-background"
