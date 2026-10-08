@@ -104,3 +104,28 @@ This result is worse overall than frozen 1878's hosted job `37703108224` at **19
 Commit `6623ede2dee312e29ef608b134b70bcf5739a9c2` attempted to retain the command-palette popup and descendants when explicit Ctrl+K intent arrived before the scheduled idle warm-up. The exact hosted G11 job `37710329521` completed **19/22**: LCP **2540/2500 ms**, board **652.3/500 ms**, and `G11paletteclick` **720.9/200 ms**. The preceding accepted product state at `6feadaf9e2eda80c45d24b4154d15a21483948a0` had hosted job `37708668475` at **20/22** (LCP **2548/2500 ms**, board **656.8/500 ms**). The attempted lifecycle correction therefore worsened the aggregate result; these measurements do not establish why.
 
 The 6623 product delta is reverted by normal revert commit `fa5624cf`; the four UI source/test files match 6fe exactly. The hosted logs remain preserved. No benchmark, workload, threshold, retry, or assertion changed. This experiment is rejected, and no performance acceptance or phase completion is claimed.
+
+## Exact frozen-source reconciliation — PR #602
+
+**Reviewed head:** `23a01a62ece3ca7d17105626f64ad78641435ec1`
+
+This record reconciles the final frozen product source and its complete landed history after the palette, containment, and TaskCard experiments. It preserves each earlier finding and rejected measurement as history. It does not claim review of a later note-only commit; the product tree remains the reviewed tree `085d0347a7bc0ad138625c7d400d65ab0b68ea6f`.
+
+### Independent ordinary reviews
+
+Two fresh independent GPT-6 Luna contexts reviewed the exact frozen source and bounded landed history. Their private context identities are the report filenames below; neither report records a session UUID.
+
+| Context identity and report | Range and actual checks | Verdict |
+| --- | --- | --- |
+| `luna-review-a-23.md` in `/Users/heinthura/.codex/taskdesk-evidence/2026-10-08/p0-memo-body-experiment/` | `670442d8..23a01a62`; inspected every landed commit and revert, tree equality and changed files; `check-contrast.test.mjs` 52 tests, TaskCard test 9 tests, exact revert comparisons and `git diff --check` passed. Did not run built-CSS browser measurement. | CLEAR for frozen source/history; no performance, security, merge, or phase-finalizer approval implied. |
+| `luna-review-b-23.md` in the same directory | `8af2a77a..23a01a62` and full bounded landed history; contrast check passed with 420 source-grounded pairs in both themes; focused launcher/TaskCard tests 2 files / 14 tests; `git diff --check` passed. | CLEAR for bounded landed history/delta; no full P0 finalizer or phase closure. |
+
+### Independent security reviews
+
+An earlier retained private source report, `sol-security-23.md` in that evidence directory, is now reconciled to this exact source. It records a lightweight confirmation with no focused tests run. Separately, a fresh independent GPT-6 Sol context `/root/p0_exact23_sol_source` re-reviewed the complete `670442d8..23a01a62` history and final net source. Its report is `/Users/heinthura/.codex/taskdesk-evidence/2026-10-08/p0-pr602-exact23-sol-source.md`. It records **CLEAR**, zero blocking PR-source security findings, and **3 files / 17 tests passed** across the command-palette launcher, command-palette component, and TaskCard tests; it also ran exact-history/file inspection, security-path matching, restored-tree comparisons and `git diff --check`. The full history includes the normal reverts, and the report confirms the net source after the earlier reviewed 670 state consists only of the palette launcher and its test plus review documentation. No authority or gate pass/fail behavior changes in that delta. These PR-source reviews are separate from the P0 phase finalizer and from private runner V19 evidence.
+
+### Exact-source and acceptance boundary
+
+At reconciliation, the live PR head was 23a; GitHub had no submitted review records (`reviews: []`, `reviewDecision: ""`). The exact-head written reviews above are retained independent evidence, not GitHub review events. The hosted `pull request template + security review` check was still failing on stale-note and PR-body metadata and must pass on the pushed note-only successor before merge eligibility can be reconsidered.
+
+Independent adjudication of retained V19 evidence records a pass for the bounded disposable off→shadow→off witness only. It does not establish strict cutover or full runtime acceptance. The actual Oct 9 observation remains pending. Config and task prerequisites, strict activation/rollback, signed-release installer/upgrade/rollback, and the fresh accepted-main P0 phase finalizer remain pending. Image publication policy for this lane is GHCR only; no Docker Hub publication or fallback is authorized or claimed. No production deployment, merge, waiver, or phase completion is claimed here.
