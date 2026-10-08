@@ -1644,7 +1644,10 @@
 			"save": "Save changes",
 			"send": "Send comment",
 			"sending": "Sending…",
-			"visibilityLabel": "Who can see this comment?"
+			"visibilityLabel": "Who can see this comment?",
+			"mentionWarning": "{{people}} haben keinen Zugriff auf diesen Vorgang und werden nicht benachrichtigt.",
+			"mentionUnavailable": "Eine ausgewählte Person",
+			"mentionCheckFailed": "Der Zugriff für Erwähnungen konnte nicht geprüft werden. Der Server prüft ihn erneut beim Senden."
 		}
 	},
 	"tasks": {

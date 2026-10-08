@@ -875,7 +875,10 @@
 			"save": "Save changes",
 			"send": "Send comment",
 			"sending": "Sending…",
-			"visibilityLabel": "Who can see this comment?"
+			"visibilityLabel": "Who can see this comment?",
+			"mentionWarning": "{{people}} nie mają dostępu do tego zadania i nie otrzymają powiadomienia.",
+			"mentionUnavailable": "Wybrana osoba",
+			"mentionCheckFailed": "Nie udało się sprawdzić dostępu do wzmianek. Serwer sprawdzi go ponownie podczas wysyłania."
 		}
 	},
 	"settings": {

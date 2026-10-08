@@ -185,6 +185,11 @@ export async function evaluateCurrentNotificationReachAndPreference(
     (binding.projectId !== null && resource.projectId !== binding.projectId)
   )
     return { kind: "suppress", reason: "resource_scope_changed" };
+  if (
+    delivery.eventKind === "work_item.mentioned" &&
+    binding.payload.mentionedPersonId !== identity.personId
+  )
+    return { kind: "suppress", reason: "mention_recipient_mismatch" };
   if (identity.side === "customer" && !resource.customerVisible)
     return { kind: "suppress", reason: "resource_not_customer_visible" };
 

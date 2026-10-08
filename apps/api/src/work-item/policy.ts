@@ -249,6 +249,18 @@ export const workItemPolicies = {
     scopeSource: "row",
     reach: "required",
   },
+  "GET /api/work-items/{key}/comments/mention-candidates": {
+    capability: "work_item:read",
+    scope: "work_item",
+    scopeSource: "row",
+    reach: "required",
+  },
+  "POST /api/work-items/{key}/comments/mention-preflight": {
+    capability: "work_item:read",
+    scope: "work_item",
+    scopeSource: "row",
+    reach: "required",
+  },
 
   // Re-rank a work item (`WI-11`-`WI-13`). `WI-13`'s customer-organisation-scoped
   // restriction is NOT enforced here -- see `controllers/rank-work-item.ts`'s own doc

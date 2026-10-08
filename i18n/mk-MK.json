@@ -1644,7 +1644,10 @@
 			"save": "Save changes",
 			"send": "Send comment",
 			"sending": "Sending…",
-			"visibilityLabel": "Who can see this comment?"
+			"visibilityLabel": "Who can see this comment?",
+			"mentionWarning": "{{people}} немаат пристап до оваа работна ставка и нема да добијат известување.",
+			"mentionUnavailable": "Избрано лице",
+			"mentionCheckFailed": "Пристапот за спомнувањата не можеше да се провери. Серверот ќе го провери повторно при испраќањето."
 		}
 	},
 	"tasks": {

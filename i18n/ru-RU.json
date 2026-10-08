@@ -1662,7 +1662,10 @@
 			"save": "Save changes",
 			"send": "Send comment",
 			"sending": "Sending…",
-			"visibilityLabel": "Who can see this comment?"
+			"visibilityLabel": "Who can see this comment?",
+			"mentionWarning": "У {{people}} нет доступа к этой задаче, поэтому они не получат уведомление.",
+			"mentionUnavailable": "Выбранный пользователь",
+			"mentionCheckFailed": "Не удалось проверить доступ для упоминаний. Сервер проверит его повторно при отправке."
 		}
 	},
 	"tasks": {

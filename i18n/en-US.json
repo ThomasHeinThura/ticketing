@@ -1544,7 +1544,10 @@
 			"sending": "Sending…",
 			"mutationFailed": "The action failed. Your permissions or the work item may have changed; retry or reload.",
 			"groupedChanges": "{{count}} changes",
-			"deleted": "Comment deleted by {{actor}} on {{date}}"
+			"deleted": "Comment deleted by {{actor}} on {{date}}",
+			"mentionWarning": "{{people}} cannot access this work item and will not be notified.",
+			"mentionUnavailable": "A selected person",
+			"mentionCheckFailed": "Mention access could not be checked. The server will recheck when you send."
 		},
 		"githubUser": "GitHub User",
 		"comment": {

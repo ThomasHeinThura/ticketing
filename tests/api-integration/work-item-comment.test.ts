@@ -199,6 +199,130 @@ describe("API integration: work-item comments (#27)", () => {
     expect((event.data as { visibility: string }).visibility).toBe("internal");
   });
 
+  it("CA-12: adds an accessible mention as watcher without unmuting and fans out to that person", async () => {
+    const { app, workItem, creator, project } = await setupWorkItem("member");
+    const recipient = await addWorkspaceMember(creator.workspace.id, "member");
+    const outOfReachUser = await addWorkspaceMember(
+      creator.workspace.id,
+      "member",
+    );
+    const [person] = await db
+      .select({ id: schema.personTable.id })
+      .from(schema.personTable)
+      .where(eq(schema.personTable.userId, recipient.id));
+    if (!person) throw new Error("expected recipient person");
+    const [outOfReachPerson] = await db
+      .select({ id: schema.personTable.id })
+      .from(schema.personTable)
+      .where(eq(schema.personTable.userId, outOfReachUser.id));
+    if (!outOfReachPerson) throw new Error("expected out-of-reach person");
+    const [projectRole] = await db
+      .insert(schema.roleTable)
+      .values({
+        scope: "project",
+        workspaceId: creator.workspace.id,
+        key: `mention-project-${randomUUID()}`,
+        name: "Mention project reach fixture",
+        rank: 1,
+        capabilities: ["project:read", "work_item:read"],
+      })
+      .returning();
+    if (!projectRole) throw new Error("expected project reach role");
+    await db.insert(schema.membershipTable).values({
+      personId: person.id,
+      scope: "project",
+      scopeId: project.id,
+      roleId: projectRole.id,
+    });
+
+    await db.insert(schema.watcherTable).values({
+      workItemId: workItem.id,
+      personId: person.id,
+      source: "explicit",
+      muted: true,
+    });
+
+    const candidatesResponse = await app.request(
+      `/api/work-items/${workItem.key}/comments/mention-candidates?visibility=public`,
+    );
+    expect(candidatesResponse.status).toBe(200);
+    const candidates = (await candidatesResponse.json()) as Array<{
+      personId: string;
+      reachable: boolean;
+      userId?: string;
+    }>;
+    expect(
+      candidates.find((candidate) => candidate.personId === person.id),
+    ).toMatchObject({ reachable: true });
+    expect(
+      candidates.find(
+        (candidate) => candidate.personId === outOfReachPerson.id,
+      ),
+    ).toMatchObject({ reachable: false });
+    expect(candidates.some((candidate) => candidate.userId !== undefined)).toBe(
+      false,
+    );
+
+    const preflightResponse = await app.request(
+      `/api/work-items/${workItem.key}/comments/mention-preflight`,
+      {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({
+          personIds: [person.id, outOfReachPerson.id],
+          visibility: "public",
+        }),
+      },
+    );
+    expect(preflightResponse.status).toBe(200);
+    expect(await preflightResponse.json()).toEqual({
+      reachablePersonIds: [person.id],
+      unreachablePersonIds: [outOfReachPerson.id],
+    });
+
+    const response = await postComment(app, workItem.key, {
+      body: {
+        type: "doc",
+        content: [
+          {
+            type: "paragraph",
+            content: [
+              { type: "taskdeskMention", attrs: { id: person.id } },
+              { type: "taskdeskMention", attrs: { id: outOfReachPerson.id } },
+            ],
+          },
+        ],
+      },
+      visibility: "public",
+    });
+
+    expect(response.status).toBe(200);
+    const [watcher] = await db
+      .select({
+        source: schema.watcherTable.source,
+        muted: schema.watcherTable.muted,
+      })
+      .from(schema.watcherTable)
+      .where(eq(schema.watcherTable.workItemId, workItem.id));
+    expect(watcher).toEqual({ source: "explicit", muted: true });
+
+    const notifications = await db
+      .select({
+        kind: schema.notificationTable.kind,
+        personId: schema.notificationTable.personId,
+      })
+      .from(schema.notificationTable)
+      .where(eq(schema.notificationTable.kind, "work_item.mentioned"));
+    expect(notifications).toEqual([
+      { kind: "work_item.mentioned", personId: person.id },
+    ]);
+    const outOfReachWatchers = await db
+      .select({ personId: schema.watcherTable.personId })
+      .from(schema.watcherTable)
+      .where(eq(schema.watcherTable.personId, outOfReachPerson.id));
+    expect(outOfReachWatchers).toEqual([]);
+  });
+
   it("posts a public comment when the caller holds comment:create", async () => {
     const { app, workItem } = await setupWorkItem("member");
 

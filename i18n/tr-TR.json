@@ -1644,7 +1644,10 @@
 			"save": "Save changes",
 			"send": "Send comment",
 			"sending": "Sending…",
-			"visibilityLabel": "Who can see this comment?"
+			"visibilityLabel": "Who can see this comment?",
+			"mentionWarning": "{{people}} bu iş öğesine erişemiyor ve bildirim almayacak.",
+			"mentionUnavailable": "Seçilen kişi",
+			"mentionCheckFailed": "Bahsetme erişimi denetlenemedi. Sunucu gönderim sırasında yeniden denetleyecek."
 		}
 	},
 	"tasks": {

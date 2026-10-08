@@ -99,8 +99,10 @@ type CommentEditorProps = {
   onDocumentChange?: (value: unknown) => void;
   /** A text/document pair emitted together for callers that persist a draft. */
   onContentChange?: (value: CommentContentSnapshot) => void;
-  /** Hide mention insertion when the API surface cannot notify or update watchers. */
+  /** Enable @mention insertion when the caller has a scoped candidate source. */
   enableMentions?: boolean;
+  /** Native work-item comments supply person ids from the scoped mention API. */
+  mentionMembers?: MentionMember[];
 };
 
 export type CommentContentSnapshot = {
@@ -210,6 +212,7 @@ export default function CommentEditor({
   onDocumentChange,
   onContentChange,
   enableMentions = true,
+  mentionMembers,
 }: CommentEditorProps) {
   const { t } = useTranslation();
   const resolvedPlaceholder =
@@ -219,7 +222,7 @@ export default function CommentEditor({
     activeWorkspace?.id ?? "",
   );
   const mentionMembersRef = useRef<MentionMember[]>([]);
-  mentionMembersRef.current = useMemo(
+  const defaultMentionMembers = useMemo(
     () =>
       (workspaceUsers?.members ?? []).map((member) => ({
         id: member.userId,
@@ -228,6 +231,7 @@ export default function CommentEditor({
       })),
     [workspaceUsers],
   );
+  mentionMembersRef.current = mentionMembers ?? defaultMentionMembers;
   const editorShellRef = useRef<HTMLDivElement | null>(null);
   const imageInputRef = useRef<HTMLInputElement | null>(null);
   const dragDepthRef = useRef(0);

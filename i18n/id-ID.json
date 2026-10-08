@@ -1639,7 +1639,10 @@
 			"save": "Save changes",
 			"send": "Send comment",
 			"sending": "Sending…",
-			"visibilityLabel": "Who can see this comment?"
+			"visibilityLabel": "Who can see this comment?",
+			"mentionWarning": "{{people}} tidak memiliki akses ke item kerja ini dan tidak akan menerima notifikasi.",
+			"mentionUnavailable": "Orang yang dipilih",
+			"mentionCheckFailed": "Akses penyebutan tidak dapat diperiksa. Server akan memeriksanya lagi saat Anda mengirim."
 		}
 	},
 	"tasks": {

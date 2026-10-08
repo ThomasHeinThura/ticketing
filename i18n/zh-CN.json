@@ -1639,7 +1639,10 @@
 			"save": "Save changes",
 			"send": "Send comment",
 			"sending": "Sending…",
-			"visibilityLabel": "Who can see this comment?"
+			"visibilityLabel": "Who can see this comment?",
+			"mentionWarning": "{{people}}无法访问此工作项，因此不会收到通知。",
+			"mentionUnavailable": "所选人员",
+			"mentionCheckFailed": "无法检查提及对象的访问权限。发送时服务器会重新检查。"
 		}
 	},
 	"tasks": {

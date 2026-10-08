@@ -296,6 +296,23 @@ export const workItemWatchStateSchema = z
   })
   .openapi("WorkItemWatchState");
 
+export const commentMentionCandidateSchema = z.object({
+  personId: z.string(),
+  name: z.string(),
+  image: z.string().nullable(),
+  side: z.enum(["staff", "customer"]),
+  reachable: z.boolean(),
+});
+
+export const commentMentionCandidatesSchema = z.array(
+  commentMentionCandidateSchema,
+);
+
+export const commentMentionPreflightResponseSchema = z.object({
+  reachablePersonIds: z.array(z.string()),
+  unreachablePersonIds: z.array(z.string()),
+});
+
 // `POST /api/work-items/bulk` (`WI-25`: per-item results, never an all-or-nothing
 // rollback).
 export const bulkWorkItemsResponseSchema = z

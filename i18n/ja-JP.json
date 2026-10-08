@@ -1639,7 +1639,10 @@
 			"save": "Save changes",
 			"send": "Send comment",
 			"sending": "Sending…",
-			"visibilityLabel": "Who can see this comment?"
+			"visibilityLabel": "Who can see this comment?",
+			"mentionWarning": "{{people}}はこの作業項目にアクセスできないため、通知されません。",
+			"mentionUnavailable": "選択したユーザー",
+			"mentionCheckFailed": "メンションのアクセス権を確認できませんでした。送信時にサーバーが再確認します。"
 		}
 	},
 	"tasks": {

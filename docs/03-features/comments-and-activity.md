@@ -96,8 +96,28 @@ security-sensitive field in the product.
   **10,000 nodes**; a comment over either limit is rejected with the standard 422
   validation contract ([api-design.md](../01-architecture/api-design.md) "Errors" —
   `errors[]` gives field-level detail, `path: "body"`).
-- `CA-12` `@mention` a person to notify them and add them as a watcher. Mentioning someone
-  without reach on the work item warns and does not notify.
+- `CA-12` `@mention` a person to notify them and add them as a watcher. The mention picker
+  and its preflight are scoped to the current work item's workspace and require the caller's
+  current `work_item:read` access to that work item. Before save, the composer submits the
+  selected person ids to the preflight and displays a warning for each selected person who
+  currently cannot reach the work item. The warning does not block the comment: the saved
+  body retains the mention, but the person is not added as a watcher and receives no
+  notification. The preflight is advisory; the comment write repeats recipient identity,
+  workspace, and current work-item reach checks inside the same transaction as the comment,
+  watcher and event writes. A person whose reach changed after preflight is treated as
+  unreachable at save time.
+
+  Each newly mentioned, reachable person is inserted as an explicit watcher only when no
+  watcher row already exists. An existing watcher row is preserved exactly, including its
+  `source` and `muted` value: mentioning someone never unmutes them. On comment creation,
+  the author is not notified about their own mention. Each distinct reachable mentioned
+  person gets one
+  `work_item.mentioned` event carrying `mentionedPersonId` and, for a comment mention,
+  `commentId`; that event, the comment and watcher changes commit atomically. The registered
+  event recipient is only the named person, and normal notification preference and delivery
+  checks still apply. Mention parsing reads `taskdeskMention` nodes from the stored Tiptap
+  document; text, labels, Markdown lookalikes and arbitrary JSON fields do not identify a
+  recipient.
 - `CA-13` A customer cannot be mentioned in an internal comment. The picker excludes them.
 - `CA-14` `#SUP-123` links a work item inline, rendering key, title and state.
 - `CA-15` Pasting or dropping an image uploads it as an attachment and inserts a
@@ -169,6 +189,10 @@ last being how a staff member checks what the customer has actually seen.
 ```
 GET    /api/work-items/{key}/activity          work_item:read
 POST   /api/work-items/{key}/comments          comment:create | comment:create_internal
+GET    /api/work-items/{key}/comments/mention-candidates
+                                                work_item:read, current work-item reach
+POST   /api/work-items/{key}/comments/mention-preflight
+                                                work_item:read, current work-item reach
 PATCH  /api/comments/{id}                      comment:update_any, or comment:update_own
                                                 (owner, within 15 minutes)
 DELETE /api/comments/{id}                      comment:delete_any, or comment:delete_own
@@ -191,6 +215,26 @@ row contains only the persisted version number, body document, editor person id 
 and creation timestamp. The immutable parent visibility is unchanged. The separate portal
 activity projection continues to return public comments only and does not call this agent
 history route.
+
+### CA-12 mention preflight
+
+`GET /api/work-items/{key}/comments/mention-candidates?visibility=public|internal` returns
+the permissioned picker list for the addressed work item. It includes current workspace
+staff (including those who lack this particular project's reach, so a deliberate mention
+can be warned) and only customer people whose current organisation/project reach permits
+them to see this work item. Customer people are excluded in internal mode. The response
+contains person id, display name, image, side and current `reachable` status; it never reads
+or exposes another workspace or customer organisation's directory.
+
+`POST /api/work-items/{key}/comments/mention-preflight` accepts a bounded, deduplicated list
+of person ids and returns only the ids that are current workspace people, split into
+`reachablePersonIds` and `unreachablePersonIds`. Unknown, inactive, non-member, and
+cross-workspace ids are returned as unavailable without distinguishing those cases. The
+route requires current `work_item:read` and work-item reach; it does not grant workspace
+membership or reveal people from another workspace. For an internal comment, customer-side
+people are unavailable in accordance with `CA-13`. The composition UI uses this result to
+warn before save. It is not an authorization token: comment creation re-resolves each
+mentioned person and reach under the work-item lock in the comment transaction.
 
 ### CA-17 comment-version read pagination
 
@@ -255,7 +299,9 @@ one is present in the DOM.
 
 ## Open questions
 
-None.
+- When an edit adds a new mention to a live comment, should it emit `work_item.mentioned`?
+  The API/event contract for comment-edit mentions remains pending the human decision; the
+  create-comment behavior above is defined.
 
 ## Related
 

@@ -21825,6 +21825,231 @@
         }
       }
     },
+    "/work-items/{key}/comments/mention-candidates": {
+      "get": {
+        "operationId": "listWorkItemCommentMentionCandidates",
+        "tags": [
+          "Comments"
+        ],
+        "summary": "List work-item comment mention candidates",
+        "description": "List people in this work item's workspace who can be considered for a comment mention. Customer candidates are available only for public comments and only when they currently reach this work item.",
+        "parameters": [
+          {
+            "schema": {
+              "type": "string"
+            },
+            "required": true,
+            "name": "key",
+            "in": "path"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "enum": [
+                "public",
+                "internal"
+              ]
+            },
+            "required": true,
+            "name": "visibility",
+            "in": "query"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Scoped comment mention candidates",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "type": "object",
+                    "properties": {
+                      "personId": {
+                        "type": "string"
+                      },
+                      "name": {
+                        "type": "string"
+                      },
+                      "image": {
+                        "type": [
+                          "string",
+                          "null"
+                        ]
+                      },
+                      "side": {
+                        "type": "string",
+                        "enum": [
+                          "staff",
+                          "customer"
+                        ]
+                      },
+                      "reachable": {
+                        "type": "boolean"
+                      }
+                    },
+                    "required": [
+                      "personId",
+                      "name",
+                      "image",
+                      "side",
+                      "reachable"
+                    ]
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid comment visibility",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing or invalid credentials"
+          },
+          "403": {
+            "description": "Missing work_item:read permission",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Work item not found",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/work-items/{key}/comments/mention-preflight": {
+      "post": {
+        "operationId": "preflightWorkItemCommentMentions",
+        "tags": [
+          "Comments"
+        ],
+        "summary": "Check work-item comment mention reach",
+        "description": "Return selected person ids split by current work-item reach. Unknown, inactive, non-member and out-of-scope ids are indistinguishable from inaccessible people.",
+        "parameters": [
+          {
+            "schema": {
+              "type": "string"
+            },
+            "required": true,
+            "name": "key",
+            "in": "path"
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "personIds": {
+                    "type": "array",
+                    "items": {
+                      "type": "string",
+                      "minLength": 1
+                    },
+                    "maxItems": 10000
+                  },
+                  "visibility": {
+                    "type": "string",
+                    "enum": [
+                      "public",
+                      "internal"
+                    ]
+                  }
+                },
+                "required": [
+                  "personIds",
+                  "visibility"
+                ]
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Mention reach preflight",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "reachablePersonIds": {
+                      "type": "array",
+                      "items": {
+                        "type": "string"
+                      }
+                    },
+                    "unreachablePersonIds": {
+                      "type": "array",
+                      "items": {
+                        "type": "string"
+                      }
+                    }
+                  },
+                  "required": [
+                    "reachablePersonIds",
+                    "unreachablePersonIds"
+                  ]
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid body",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing or invalid credentials"
+          },
+          "403": {
+            "description": "Missing work_item:read permission",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Work item not found",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/comments/{id}": {
       "patch": {
         "operationId": "updateWorkItemComment",

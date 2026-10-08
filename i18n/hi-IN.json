@@ -1644,7 +1644,10 @@
 			"save": "Save changes",
 			"send": "Send comment",
 			"sending": "Sending…",
-			"visibilityLabel": "Who can see this comment?"
+			"visibilityLabel": "Who can see this comment?",
+			"mentionWarning": "{{people}} को इस कार्य आइटम तक पहुँच नहीं है और उन्हें सूचना नहीं मिलेगी।",
+			"mentionUnavailable": "चुना गया व्यक्ति",
+			"mentionCheckFailed": "उल्लेखों की पहुँच जाँची नहीं जा सकी। भेजते समय सर्वर फिर से जाँच करेगा।"
 		}
 	},
 	"tasks": {

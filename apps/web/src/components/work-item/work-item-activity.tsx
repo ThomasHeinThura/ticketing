@@ -9,7 +9,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@taskdesk/ui";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import CommentEditor, {
   type CommentContentSnapshot,
@@ -17,7 +17,9 @@ import CommentEditor, {
 import CommentVersionHistory from "@/components/activity/comment-version-history";
 import { useAuth } from "@/components/providers/auth-provider/hooks/use-auth";
 import listCannedResponses from "@/fetchers/canned-response/list-canned-responses";
+import getCommentMentionCandidates from "@/fetchers/work-item/get-comment-mention-candidates";
 import type { WorkItemActivityRow } from "@/fetchers/work-item/get-work-item-activity";
+import preflightCommentMentions from "@/fetchers/work-item/preflight-comment-mentions";
 import useCreateWorkItemComment from "@/hooks/mutations/work-item/use-create-work-item-comment";
 import useUpdateWorkItemComment from "@/hooks/mutations/work-item/use-update-work-item-comment";
 import useGetWorkItemActivity from "@/hooks/queries/work-item/use-get-work-item-activity";
@@ -29,6 +31,29 @@ const EMPTY_COMMENT_DOCUMENT = {
   type: "doc",
   content: [{ type: "paragraph" }],
 };
+
+function collectMentionPersonIds(document: unknown): string[] {
+  const ids = new Set<string>();
+  const visit = (value: unknown): void => {
+    if (Array.isArray(value)) {
+      for (const item of value) visit(item);
+      return;
+    }
+    if (!value || typeof value !== "object") return;
+    const node = value as Record<string, unknown>;
+    if (
+      node.type === "taskdeskMention" &&
+      node.attrs &&
+      typeof node.attrs === "object"
+    ) {
+      const id = (node.attrs as Record<string, unknown>).id;
+      if (typeof id === "string" && id) ids.add(id);
+    }
+    visit(node.content);
+  };
+  visit(document);
+  return [...ids].sort();
+}
 
 function effectiveVisibility(row: WorkItemActivityRow): "public" | "internal" {
   return row.visibility === "public" ? "public" : "internal";
@@ -143,6 +168,37 @@ function WorkItemActivity({
   });
   const editText = editDraft.text;
   const editDocument = editDraft.document;
+  const mentionCandidates = useQuery({
+    queryKey: [
+      "work-items",
+      "comment-mention-candidates",
+      workItemKey,
+      visibility,
+    ],
+    queryFn: () =>
+      getCommentMentionCandidates({ key: workItemKey, visibility }),
+    enabled: Boolean(workItemKey),
+  });
+  const mentionPersonIds = useMemo(
+    () => collectMentionPersonIds(draftDocument),
+    [draftDocument],
+  );
+  const mentionPreflight = useQuery({
+    queryKey: [
+      "work-items",
+      "comment-mention-preflight",
+      workItemKey,
+      visibility,
+      mentionPersonIds,
+    ],
+    queryFn: () =>
+      preflightCommentMentions({
+        key: workItemKey,
+        personIds: mentionPersonIds,
+        visibility,
+      }),
+    enabled: Boolean(workItemKey) && mentionPersonIds.length > 0,
+  });
   const rows = activity.data?.pages.flatMap((page) => page.data) ?? [];
   // The API returns newest first; grouping reverses once so the rendered list
   // reads chronologically with the newest entry at the bottom.
@@ -231,6 +287,9 @@ function WorkItemActivity({
   const submit = async () => {
     if (!draftText.trim() || !draftDocument) return;
     try {
+      if (mentionPersonIds.length > 0) {
+        await mentionPreflight.refetch();
+      }
       await createComment.mutateAsync({
         key: workItemKey,
         body: draftDocument,
@@ -239,6 +298,9 @@ function WorkItemActivity({
       const emptyDraft = { text: "", document: EMPTY_COMMENT_DOCUMENT };
       persistedDraftRef.current = emptyDraft;
       setDraft(emptyDraft);
+      await queryClient.invalidateQueries({
+        queryKey: ["work-items", "comment-mention-candidates", workItemKey],
+      });
       try {
         window.localStorage.removeItem(draftStorageKey);
       } catch {
@@ -537,6 +599,26 @@ function WorkItemActivity({
             ? t("activity:timeline.internalNotice")
             : t("activity:timeline.publicNotice")}
         </p>
+        {mentionPreflight.data?.unreachablePersonIds.length ? (
+          <Alert variant="warning" role="status" className="mb-2">
+            <AlertDescription>
+              {t("activity:timeline.mentionWarning", {
+                people: mentionPreflight.data.unreachablePersonIds
+                  .map(
+                    (personId) =>
+                      mentionCandidates.data?.find(
+                        (candidate) => candidate.personId === personId,
+                      )?.name ?? t("activity:timeline.mentionUnavailable"),
+                  )
+                  .join(", "),
+              })}
+            </AlertDescription>
+          </Alert>
+        ) : mentionPreflight.isError ? (
+          <p className="mb-2 text-sm text-warning" role="status">
+            {t("activity:timeline.mentionCheckFailed")}
+          </p>
+        ) : null}
         {cannedResponses.data && cannedResponses.data.length > 0 && (
           <Select
             value=""
@@ -574,7 +656,6 @@ function WorkItemActivity({
             </SelectContent>
           </Select>
         )}
-        {/* Do not imply mention notifications or attachment linkage the native API does not provide. */}
         <CommentEditor
           value={draftText}
           documentValue={draftDocument}
@@ -584,7 +665,12 @@ function WorkItemActivity({
           }}
           uploadSurface="comment"
           showQuickAttachButton={false}
-          enableMentions={false}
+          enableMentions
+          mentionMembers={(mentionCandidates.data ?? []).map((candidate) => ({
+            id: candidate.personId,
+            label: candidate.name,
+            image: candidate.image,
+          }))}
           placeholder={t("activity:comment.leavePlaceholder")}
         />
         <div className="mt-2 flex justify-end">

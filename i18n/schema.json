@@ -6233,6 +6233,15 @@
 						},
 						"deleted": {
 							"type": "string"
+						},
+						"mentionWarning": {
+							"type": "string"
+						},
+						"mentionUnavailable": {
+							"type": "string"
+						},
+						"mentionCheckFailed": {
+							"type": "string"
 						}
 					},
 					"required": [
@@ -6265,7 +6274,10 @@
 						"send",
 						"sending",
 						"mutationFailed",
-						"deleted"
+						"deleted",
+						"mentionWarning",
+						"mentionUnavailable",
+						"mentionCheckFailed"
 					]
 				},
 				"githubUser": {

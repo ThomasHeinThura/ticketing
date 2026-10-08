@@ -1649,7 +1649,10 @@
 			"save": "Save changes",
 			"send": "Send comment",
 			"sending": "Sending…",
-			"visibilityLabel": "Who can see this comment?"
+			"visibilityLabel": "Who can see this comment?",
+			"mentionWarning": "{{people}} non possono accedere a questo elemento di lavoro e non riceveranno una notifica.",
+			"mentionUnavailable": "Una persona selezionata",
+			"mentionCheckFailed": "Impossibile verificare l’accesso alle menzioni. Il server lo verificherà di nuovo al momento dell’invio."
 		}
 	},
 	"tasks": {

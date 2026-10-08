@@ -1639,7 +1639,10 @@
 			"save": "Save changes",
 			"send": "Send comment",
 			"sending": "Sending…",
-			"visibilityLabel": "Who can see this comment?"
+			"visibilityLabel": "Who can see this comment?",
+			"mentionWarning": "{{people}} không có quyền truy cập mục công việc này và sẽ không được thông báo.",
+			"mentionUnavailable": "Người được chọn",
+			"mentionCheckFailed": "Không thể kiểm tra quyền truy cập của lượt nhắc. Máy chủ sẽ kiểm tra lại khi bạn gửi."
 		}
 	},
 	"tasks": {

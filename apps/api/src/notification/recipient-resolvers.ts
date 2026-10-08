@@ -4,6 +4,7 @@ import { resolveIdentity } from "../permissions/resolve-identity";
 import type { NotificationRecipientCandidate } from "./fanout";
 import {
   findApprovalNotificationContext,
+  findCurrentNotificationResource,
   findNotificationPerson,
   findNotificationWorkspace,
   listApprovalParticipantPersonIds,
@@ -16,6 +17,73 @@ export type EnabledNotificationChannels = (input: {
   workspaceId: string;
   eventKind: string;
 }) => Promise<readonly string[]>;
+
+/** Resolves only the person named by a native comment mention, with current reach. */
+export async function resolveMentionEventRecipient(
+  tx: DbTransaction,
+  event: DomainEventEnvelope<Record<string, unknown>>,
+): Promise<readonly NotificationRecipientCandidate[]> {
+  if (event.kind !== "work_item.mentioned") return [];
+  const { commentId, key, mentionedPersonId, workItemId } = event.payload;
+  if (
+    typeof mentionedPersonId !== "string" ||
+    typeof commentId !== "string" ||
+    typeof workItemId !== "string" ||
+    typeof key !== "string" ||
+    !("workspaceId" in event.scope) ||
+    !event.scope.workspaceId ||
+    !event.scope.projectId
+  )
+    return [];
+
+  const person = await findNotificationPerson(tx, mentionedPersonId);
+  if (
+    !person?.active ||
+    !person.userId ||
+    (event.actor.id !== null && event.actor.id === person.userId)
+  )
+    return [];
+  const identity = await resolveIdentity(
+    { userId: person.userId, credential: "session" },
+    tx,
+  );
+  if (!identity || identity.personId !== mentionedPersonId) return [];
+
+  const resource = await findCurrentNotificationResource(tx, {
+    resourceType: "comment",
+    resourceId: commentId,
+    eventKind: event.kind,
+    canonicalWorkItem: { id: workItemId, key },
+  });
+  if (
+    !resource ||
+    resource.workspaceId !== event.scope.workspaceId ||
+    resource.projectId !== event.scope.projectId ||
+    resource.organisationId !== (event.scope.organisationId ?? null)
+  )
+    return [];
+
+  if (
+    !reaches(identity, {
+      projectId: resource.projectId,
+      workspaceId: resource.workspaceId,
+      organisationId: resource.organisationId,
+      visibleToPersonIds: resource.visibleToPersonIds,
+    })
+  )
+    return [];
+
+  return [
+    {
+      personId: mentionedPersonId,
+      resourceType: "comment",
+      resourceId: commentId,
+      title: "You were mentioned",
+      body: `You were mentioned in a comment on ${key}.`,
+      channels: [],
+    },
+  ];
+}
 
 /** Current-reach, current-visibility recipient resolver for the AP approval lifecycle. */
 export async function resolveApprovalEventRecipients(

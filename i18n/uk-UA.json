@@ -1654,7 +1654,10 @@
 			"save": "Save changes",
 			"send": "Send comment",
 			"sending": "Sending…",
-			"visibilityLabel": "Who can see this comment?"
+			"visibilityLabel": "Who can see this comment?",
+			"mentionWarning": "{{people}} не мають доступу до цього робочого елемента й не отримають сповіщення.",
+			"mentionUnavailable": "Вибрана людина",
+			"mentionCheckFailed": "Не вдалося перевірити доступ для згадок. Сервер перевірить його ще раз під час надсилання."
 		}
 	},
 	"tasks": {

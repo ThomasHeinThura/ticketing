@@ -1644,7 +1644,10 @@
 			"save": "Save changes",
 			"send": "Send comment",
 			"sending": "Sending…",
-			"visibilityLabel": "Who can see this comment?"
+			"visibilityLabel": "Who can see this comment?",
+			"mentionWarning": "{{people}} δεν έχουν πρόσβαση σε αυτό το στοιχείο εργασίας και δεν θα ειδοποιηθούν.",
+			"mentionUnavailable": "Ένα επιλεγμένο άτομο",
+			"mentionCheckFailed": "Δεν ήταν δυνατός ο έλεγχος πρόσβασης για τις αναφορές. Ο διακομιστής θα τον ελέγξει ξανά κατά την αποστολή."
 		}
 	},
 	"tasks": {

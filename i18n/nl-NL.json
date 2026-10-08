@@ -1644,7 +1644,10 @@
 			"save": "Save changes",
 			"send": "Send comment",
 			"sending": "Sending…",
-			"visibilityLabel": "Who can see this comment?"
+			"visibilityLabel": "Who can see this comment?",
+			"mentionWarning": "{{people}} hebben geen toegang tot dit werkitem en krijgen geen melding.",
+			"mentionUnavailable": "Een geselecteerde persoon",
+			"mentionCheckFailed": "De toegang voor vermeldingen kon niet worden gecontroleerd. De server controleert dit opnieuw bij het verzenden."
 		}
 	},
 	"tasks": {

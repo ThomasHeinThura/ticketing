@@ -1,4 +1,5 @@
 import { z } from "../openapi";
+import { COMMENT_BODY_MAX_NODES } from "./comment-schema";
 import {
   MAX_WORK_ITEM_INSTANT_MS,
   MIN_WORK_ITEM_INSTANT_MS,
@@ -485,6 +486,15 @@ export const listWorkItemActivityQuery = z.object({
     .refine((value) => !containsNulByte(value), NO_NUL_BYTE_MESSAGE)
     .optional(),
   limit: z.coerce.number().int().min(1).max(200).optional(),
+});
+
+export const commentMentionPreflightBody = z.object({
+  personIds: z.array(z.string().min(1)).max(COMMENT_BODY_MAX_NODES),
+  visibility: z.enum(["public", "internal"]),
+});
+
+export const commentMentionCandidatesQuery = z.object({
+  visibility: z.enum(["public", "internal"]),
 });
 
 // `GET /api/work-items/{key}/comments/{id}/versions` -- deliberately smaller than
