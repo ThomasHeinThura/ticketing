@@ -388,14 +388,15 @@ describe("API integration: work-item comments (#27)", () => {
       `/api/work-items/${workItem.key}/comments/mention-candidates?visibility=public`,
     );
     expect(publicCandidates.status).toBe(200);
-    expect(await publicCandidates.json()).toContainEqual(
+    const publicCandidateBody = await publicCandidates.json();
+    expect(publicCandidateBody).toContainEqual(
       expect.objectContaining({
         personId: customer.person.id,
         side: "customer",
         reachable: true,
       }),
     );
-    expect(await publicCandidates.json()).not.toContainEqual(
+    expect(publicCandidateBody).not.toContainEqual(
       expect.objectContaining({ personId: foreignCustomer.person.id }),
     );
 
