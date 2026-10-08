@@ -117,7 +117,8 @@ export async function listWorkItemMentionPeopleQuery(
     options.visibility === "public" &&
     context.organisationId !== null &&
     (context.customerVisibility !== "private" ||
-      options.includeUnreachableCustomers)
+      options.includeUnreachableCustomers ||
+      options.privateCustomerIds.length > 0)
       ? and(
           eq(personTable.side, "customer"),
           eq(personTable.organisationId, context.organisationId),

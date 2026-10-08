@@ -5,7 +5,7 @@
  * route are NOT covered here -- see this PR's own body.
  */
 import { randomUUID } from "node:crypto";
-import { eq } from "drizzle-orm";
+import { eq, inArray } from "drizzle-orm";
 import { beforeEach, describe, expect, it } from "vitest";
 import db, { schema } from "../../apps/api/src/database";
 import { subscribeToEvent } from "../../apps/api/src/events";
@@ -339,6 +339,247 @@ describe("API integration: work-item comments (#27)", () => {
       .from(schema.watcherTable)
       .where(eq(schema.watcherTable.personId, outOfReachPerson.id));
     expect(outOfReachWatchers).toEqual([]);
+  });
+
+  it("CA-12: lists and notifies only reachable customers on private work items", async () => {
+    const { app, workItem, creator, project } = await setupWorkItem("member");
+    const organisation = await db
+      .insert(schema.organisationTable)
+      .values({
+        key: `private-mention-org-${randomUUID()}`,
+        name: "Private mention organisation",
+        isInternal: false,
+        createdAt: new Date(),
+        updatedAt: new Date(),
+      })
+      .returning()
+      .then(([row]) => row);
+    if (!organisation) throw new Error("expected serving organisation");
+    const requester = await addCustomerIdentity(organisation.id);
+    const participant = await addCustomerIdentity(organisation.id);
+    const nonparticipant = await addCustomerIdentity(organisation.id);
+    const foreignOrganisation = await db
+      .insert(schema.organisationTable)
+      .values({
+        key: `private-mention-foreign-${randomUUID()}`,
+        name: "Foreign mention organisation",
+        isInternal: false,
+        createdAt: new Date(),
+        updatedAt: new Date(),
+      })
+      .returning()
+      .then(([row]) => row);
+    if (!foreignOrganisation) throw new Error("expected foreign organisation");
+    const foreignCustomer = await addCustomerIdentity(foreignOrganisation.id);
+    const [creatorPerson] = await db
+      .select({ id: schema.personTable.id })
+      .from(schema.personTable)
+      .where(eq(schema.personTable.userId, creator.user.id));
+    if (!creatorPerson) throw new Error("expected creator person");
+
+    await db
+      .update(schema.projectTable)
+      .set({ organisationId: organisation.id })
+      .where(eq(schema.projectTable.id, project.id));
+    await db
+      .update(schema.workItemTable)
+      .set({
+        requesterId: requester.person.id,
+        customerVisibility: "private",
+      })
+      .where(eq(schema.workItemTable.id, workItem.id));
+    await db.insert(schema.requestParticipantTable).values({
+      workItemId: workItem.id,
+      personId: participant.person.id,
+      addedBy: creatorPerson.id,
+      createdAt: new Date(),
+    });
+    await grantProjectRole(creator.user.id, project.id, [
+      "project:read",
+      "work_item:read",
+    ]);
+    await db.insert(schema.watcherTable).values({
+      workItemId: workItem.id,
+      personId: requester.person.id,
+      source: "explicit",
+      muted: true,
+    });
+
+    const candidateIds = [
+      requester.person.id,
+      participant.person.id,
+      nonparticipant.person.id,
+      foreignCustomer.person.id,
+    ];
+    const candidatesResponse = await app.request(
+      `/api/work-items/${workItem.key}/comments/mention-candidates?visibility=public`,
+    );
+    expect(candidatesResponse.status).toBe(200);
+    const candidates = (await candidatesResponse.json()) as Array<{
+      personId: string;
+      side: string;
+      reachable: boolean;
+    }>;
+    expect(candidates).toContainEqual(
+      expect.objectContaining({
+        personId: requester.person.id,
+        side: "customer",
+        reachable: true,
+      }),
+    );
+    expect(candidates).toContainEqual(
+      expect.objectContaining({
+        personId: participant.person.id,
+        side: "customer",
+        reachable: true,
+      }),
+    );
+    expect(candidates.map(({ personId }) => personId)).not.toContain(
+      nonparticipant.person.id,
+    );
+    expect(candidates.map(({ personId }) => personId)).not.toContain(
+      foreignCustomer.person.id,
+    );
+
+    const internalCandidates = await app.request(
+      `/api/work-items/${workItem.key}/comments/mention-candidates?visibility=internal`,
+    );
+    expect(internalCandidates.status).toBe(200);
+    const internalCandidateIds = (
+      (await internalCandidates.json()) as Array<{ personId: string }>
+    ).map(({ personId }) => personId);
+    for (const personId of candidateIds)
+      expect(internalCandidateIds).not.toContain(personId);
+
+    const publicPreflight = await app.request(
+      `/api/work-items/${workItem.key}/comments/mention-preflight`,
+      {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ personIds: candidateIds, visibility: "public" }),
+      },
+    );
+    expect(publicPreflight.status).toBe(200);
+    expect(await publicPreflight.json()).toEqual({
+      reachablePersonIds: [requester.person.id, participant.person.id],
+      unreachablePersonIds: [
+        nonparticipant.person.id,
+        foreignCustomer.person.id,
+      ],
+    });
+    const internalPreflight = await app.request(
+      `/api/work-items/${workItem.key}/comments/mention-preflight`,
+      {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({
+          personIds: candidateIds,
+          visibility: "internal",
+        }),
+      },
+    );
+    expect(internalPreflight.status).toBe(200);
+    expect(await internalPreflight.json()).toEqual({
+      reachablePersonIds: [],
+      unreachablePersonIds: candidateIds,
+    });
+
+    const mentionDocument = {
+      type: "doc",
+      content: [
+        {
+          type: "paragraph",
+          content: candidateIds.map((id) => ({
+            type: "taskdeskMention",
+            attrs: { id },
+          })),
+        },
+      ],
+    };
+    const publicComment = await postComment(app, workItem.key, {
+      body: mentionDocument,
+      visibility: "public",
+    });
+    expect(publicComment.status).toBe(200);
+
+    const customerWatchers = await db
+      .select({
+        personId: schema.watcherTable.personId,
+        source: schema.watcherTable.source,
+        muted: schema.watcherTable.muted,
+      })
+      .from(schema.watcherTable)
+      .where(inArray(schema.watcherTable.personId, candidateIds));
+    expect(customerWatchers).toHaveLength(2);
+    expect(customerWatchers).toContainEqual({
+      personId: requester.person.id,
+      source: "explicit",
+      muted: true,
+    });
+    expect(customerWatchers).toContainEqual({
+      personId: participant.person.id,
+      source: "explicit",
+      muted: false,
+    });
+
+    const publicMentionEvents = await db
+      .select({
+        kind: schema.outboxTable.kind,
+        payload: schema.outboxTable.payload,
+      })
+      .from(schema.outboxTable)
+      .where(eq(schema.outboxTable.kind, "work_item.mentioned"));
+    expect(publicMentionEvents).toHaveLength(2);
+    expect(
+      publicMentionEvents.map(
+        ({ payload }) =>
+          (payload as { payload: { mentionedPersonId: string } }).payload
+            .mentionedPersonId,
+      ),
+    ).toEqual(
+      expect.arrayContaining([requester.person.id, participant.person.id]),
+    );
+
+    const internalComment = await postComment(app, workItem.key, {
+      body: mentionDocument,
+      visibility: "internal",
+    });
+    expect(internalComment.status).toBe(200);
+    const notifications = await db
+      .select({ personId: schema.notificationTable.personId })
+      .from(schema.notificationTable)
+      .where(eq(schema.notificationTable.kind, "work_item.mentioned"));
+    expect(notifications).toHaveLength(2);
+    expect(notifications.map(({ personId }) => personId)).toEqual(
+      expect.arrayContaining([requester.person.id, participant.person.id]),
+    );
+    const mentionEventsAfterInternalComment = await db
+      .select({
+        kind: schema.outboxTable.kind,
+        payload: schema.outboxTable.payload,
+      })
+      .from(schema.outboxTable)
+      .where(eq(schema.outboxTable.kind, "work_item.mentioned"));
+    expect(mentionEventsAfterInternalComment).toHaveLength(2);
+    const watchersAfterInternalComment = await db
+      .select({
+        personId: schema.watcherTable.personId,
+        source: schema.watcherTable.source,
+        muted: schema.watcherTable.muted,
+      })
+      .from(schema.watcherTable)
+      .where(inArray(schema.watcherTable.personId, candidateIds));
+    expect(watchersAfterInternalComment).toHaveLength(2);
+    expect(watchersAfterInternalComment).toContainEqual({
+      personId: requester.person.id,
+      source: "explicit",
+      muted: true,
+    });
+    expect(watchersAfterInternalComment).toContainEqual({
+      personId: participant.person.id,
+      source: "explicit",
+      muted: false,
+    });
   });
 
   it("CA-13: permits same-organisation customer mentions publicly and excludes them internally", async () => {
