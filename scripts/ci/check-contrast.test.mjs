@@ -177,16 +177,22 @@ describe("G3 contrast inventory and math", () => {
       await writeFile(
         fixture,
         `import { Alert } from "@taskdesk/ui";
+import { selectedVariant } from "./dynamic-variant";
 export function CardAlert(){ return <div className="bg-card"><Alert variant="info" /></div>; }
 export function PopoverAlert(){ return <div className="bg-popover"><Alert variant="warning" /></div>; }
 export function MissingAlert(){ return <Alert variant="error" />; }
 export function ConflictingAlert(){ return <div className="bg-card bg-popover"><Alert variant="error" /></div>; }
-const frozenVariant = Object.freeze({ variant: "success" as const });
+const constantVariant = { variant: "success" as const } as const;
 const safeProps = { variant: "info" as const, className: "mt-3", style: { marginTop: 4 } };
+const aliasSourceProps = { variant: "success" as const };
+const aliasProps = aliasSourceProps;
 const primitiveVariant = "error" as const;
-export function FrozenSpread(){ return <div className="bg-card"><Alert {...frozenVariant} /></div>; }
+const primitiveVariantAlias = primitiveVariant;
+export function ConstantModuleSpread(){ return <div className="bg-card"><Alert {...constantVariant} /></div>; }
 export function SafePropsSpread(){ return <div className="bg-card"><Alert {...safeProps} /></div>; }
+export function AliasSpread(){ return <div className="bg-card"><Alert {...aliasProps} /></div>; }
 export function PrimitiveVariant(){ return <div className="bg-card"><Alert variant={primitiveVariant} /></div>; }
+export function PrimitiveVariantAlias(){ return <div className="bg-card"><Alert variant={primitiveVariantAlias} /></div>; }
 export function LiteralObjectSpread(){ return <div className="bg-card"><Alert {...{ variant: "warning" }} variant="error" /></div>; }
 export function TrailingOverride(props: Record<string, unknown>){ return <div className="bg-card"><Alert {...props} variant="warning" className="mt-3" style={{ marginTop: 4 }} /></div>; }
 export function UnknownAfterVariant(props: Record<string, unknown>){ return <div className="bg-card"><Alert variant="info" {...props} className="mt-3" style={{ marginTop: 4 }} /></div>; }
@@ -195,6 +201,11 @@ const mutableVariant = { variant: "info" };
 mutableVariant.variant = "error";
 const shadowedProps = { variant: "success" as const };
 export function ShadowedBinding(shadowedProps: Record<string, unknown>){ return <div className="bg-card"><Alert {...shadowedProps} /></div>; }
+function SiblingScope(){ const selectedVariant = "info" as const; return selectedVariant; }
+export function ImportedVariantAlert(){ return <div className="bg-card"><Alert variant={selectedVariant} /></div>; }
+export function ShadowedFreeze(Object: { freeze: (value: unknown) => unknown }){ return <div className="bg-card"><Alert {...Object.freeze({ variant: "info" })} /></div>; }
+export function TDZVariant(){ return <div className="bg-card"><Alert variant={lateVariant} /></div>; }
+const lateVariant = "info" as const;
 export function UnknownSpreadPartialOverride(props: Record<string, unknown>){ return <div className="bg-card"><Alert {...props} variant="info" /></div>; }
 export function MutatedSpread(){ return <div className="bg-card"><Alert {...mutableVariant} /></div>; }
 export function ClassNamePaint(){ return <div className="bg-card"><Alert variant="info" className="text-destructive" /></div>; }
@@ -238,6 +249,10 @@ export function NullVariant(){ return <div className="bg-card"><Alert variant={n
         "ShadowedBinding",
         "UnknownSpreadPartialOverride",
         "MutatedSpread",
+        "ImportedVariantAlert",
+        "ShadowedFreeze",
+        "TDZVariant",
+        "AliasSpread",
         "ClassNamePaint",
         "ClassNameUnknownColor",
         "ClassNameArbitraryPaint",
@@ -247,9 +262,10 @@ export function NullVariant(){ return <div className="bg-card"><Alert variant={n
       ])
         assert.ok(unresolvedByOwner(owner).length > 0, `${owner} fails closed`);
       for (const owner of [
-        "FrozenSpread",
+        "ConstantModuleSpread",
         "SafePropsSpread",
         "PrimitiveVariant",
+        "PrimitiveVariantAlias",
         "LiteralObjectSpread",
         "TrailingOverride",
       ])

@@ -996,30 +996,6 @@ function staticPropertyName(name) {
   return undefined;
 }
 
-function scopeDeclaresName(name, scope) {
-  if (
-    isFunctionLikeNode(scope) &&
-    scope.parameters.some(
-      (parameter) =>
-        ts.isIdentifier(parameter.name) && parameter.name.text === name,
-    )
-  )
-    return true;
-
-  const statements =
-    ts.isSourceFile(scope) || ts.isBlock(scope) || ts.isModuleBlock(scope)
-      ? scope.statements
-      : undefined;
-  if (!statements) return false;
-  return statements.some((statement) => {
-    if (!ts.isVariableStatement(statement)) return false;
-    return statement.declarationList.declarations.some(
-      (declaration) =>
-        ts.isIdentifier(declaration.name) && declaration.name.text === name,
-    );
-  });
-}
-
 function isFunctionLikeNode(node) {
   return (
     ts.isFunctionDeclaration(node) ||
@@ -1032,57 +1008,136 @@ function isFunctionLikeNode(node) {
   );
 }
 
-function findConstBinding(name, sourceFile, useNode) {
-  const matches = [];
-  function visit(node) {
-    if (
-      ts.isVariableDeclaration(node) &&
-      ts.isIdentifier(node.name) &&
-      node.name.text === name &&
-      node.initializer &&
-      node.parent.flags & ts.NodeFlags.Const
+function bindingContainsName(bindingName, name) {
+  if (ts.isIdentifier(bindingName)) return bindingName.text === name;
+  if (
+    ts.isObjectBindingPattern(bindingName) ||
+    ts.isArrayBindingPattern(bindingName)
+  )
+    return bindingName.elements.some((element) =>
+      ts.isBindingElement(element)
+        ? bindingContainsName(element.name, name)
+        : false,
+    );
+  return false;
+}
+
+function declarationBindsName(declaration, name) {
+  return Boolean(
+    declaration.name && bindingContainsName(declaration.name, name),
+  );
+}
+
+function scopeDeclaresName(name, scope) {
+  if (
+    isFunctionLikeNode(scope) &&
+    scope.parameters.some((parameter) =>
+      bindingContainsName(parameter.name, name),
     )
-      matches.push(node);
+  )
+    return true;
+  if (
+    (ts.isFunctionExpression(scope) || ts.isFunctionDeclaration(scope)) &&
+    scope.name?.text === name
+  )
+    return true;
+  if (
+    ts.isCatchClause(scope) &&
+    scope.variableDeclaration &&
+    bindingContainsName(scope.variableDeclaration.name, name)
+  )
+    return true;
+
+  let found = false;
+  function visit(node) {
+    if (found) return;
+    if (node !== scope && isFunctionLikeNode(node)) {
+      if (ts.isFunctionDeclaration(node) && node.name?.text === name)
+        found = true;
+      return;
+    }
+    if (ts.isVariableDeclaration(node) && declarationBindsName(node, name)) {
+      found = true;
+      return;
+    }
+    if (
+      (ts.isClassDeclaration(node) ||
+        ts.isEnumDeclaration(node) ||
+        ts.isModuleDeclaration(node)) &&
+      node.name?.text === name
+    ) {
+      found = true;
+      return;
+    }
+    if (ts.isImportEqualsDeclaration(node) && node.name.text === name) {
+      found = true;
+      return;
+    }
     node.forEachChild(visit);
   }
-  visit(sourceFile);
-  if (matches.length !== 1) return undefined;
-  const binding = matches[0];
+  visit(scope);
+  return found;
+}
+
+function moduleBindingDeclarations(name, sourceFile) {
+  const matches = [];
+  for (const statement of sourceFile.statements) {
+    if (ts.isVariableStatement(statement)) {
+      for (const declaration of statement.declarationList.declarations) {
+        if (declarationBindsName(declaration, name))
+          matches.push({ kind: "variable", declaration, statement });
+      }
+      continue;
+    }
+    if (ts.isImportDeclaration(statement)) {
+      const clause = statement.importClause;
+      if (!clause) continue;
+      if (clause.name?.text === name)
+        matches.push({ kind: "import", declaration: clause.name });
+      const bindings = clause.namedBindings;
+      if (
+        bindings &&
+        ts.isNamespaceImport(bindings) &&
+        bindings.name.text === name
+      )
+        matches.push({ kind: "import", declaration: bindings.name });
+      if (bindings && ts.isNamedImports(bindings))
+        for (const element of bindings.elements)
+          if (element.name.text === name)
+            matches.push({ kind: "import", declaration: element.name });
+      continue;
+    }
+    if (statement.name && bindingContainsName(statement.name, name))
+      matches.push({ kind: "other", declaration: statement.name });
+  }
+  return matches;
+}
+
+function findConstBinding(name, sourceFile, useNode) {
   let current = useNode;
   while (current && current !== sourceFile) {
     if (
       (isFunctionLikeNode(current) ||
         ts.isBlock(current) ||
-        ts.isModuleBlock(current)) &&
+        ts.isModuleBlock(current) ||
+        ts.isCatchClause(current)) &&
       scopeDeclaresName(name, current)
-    ) {
-      const declarations = [];
-      function collectDirectDeclarations(node) {
-        if (node !== current && (ts.isBlock(node) || isFunctionLikeNode(node)))
-          return;
-        if (
-          ts.isVariableDeclaration(node) &&
-          ts.isIdentifier(node.name) &&
-          node.name.text === name
-        )
-          declarations.push(node);
-        node.forEachChild(collectDirectDeclarations);
-      }
-      if (isFunctionLikeNode(current)) {
-        for (const parameter of current.parameters) {
-          if (ts.isIdentifier(parameter.name) && parameter.name.text === name)
-            return undefined;
-        }
-      }
-      if (ts.isSourceFile(current) || ts.isBlock(current))
-        for (const statement of current.statements)
-          collectDirectDeclarations(statement);
-      if (declarations.some((declaration) => declaration !== binding))
-        return undefined;
-    }
+    )
+      return undefined;
     current = current.parent;
   }
-  return binding;
+
+  const matches = moduleBindingDeclarations(name, sourceFile);
+  if (matches.length !== 1 || matches[0].kind !== "variable") return undefined;
+  const { declaration, statement } = matches[0];
+  if (
+    !ts.isIdentifier(declaration.name) ||
+    !declaration.initializer ||
+    !(statement.declarationList.flags & ts.NodeFlags.Const) ||
+    declaration.getStart(sourceFile) > useNode.getStart(sourceFile)
+  )
+    return undefined;
+  return declaration;
 }
 
 function objectBindingIsUnmutated(binding, sourceFile) {
@@ -1113,17 +1168,6 @@ function resolveStaticObjectProperties(
   activeBindings = new Set(),
 ) {
   const value = unwrapStaticExpression(expression);
-  if (
-    ts.isCallExpression(value) &&
-    value.expression.getText(sourceFile) === "Object.freeze"
-  ) {
-    if (value.arguments.length !== 1) return { known: false, properties: [] };
-    return resolveStaticObjectProperties(
-      value.arguments[0],
-      sourceFile,
-      activeBindings,
-    );
-  }
   if (ts.isIdentifier(value)) {
     const binding = findConstBinding(value.text, sourceFile, value);
     if (
@@ -1184,7 +1228,6 @@ function resolveStaticValue(
   if (value.kind === ts.SyntaxKind.NullKeyword)
     return { known: true, value: null };
   if (ts.isIdentifier(value)) {
-    if (value.text === "undefined") return { known: true, value: undefined };
     const binding = findConstBinding(value.text, sourceFile, value);
     if (!binding || activeBindings.has(binding))
       return { known: false, value: undefined };
@@ -1202,12 +1245,6 @@ function resolveStaticValue(
       return { known: false, value: undefined };
     return resolved;
   }
-  if (
-    ts.isCallExpression(value) &&
-    value.expression.getText(sourceFile) === "Object.freeze" &&
-    value.arguments.length === 1
-  )
-    return resolveStaticValue(value.arguments[0], sourceFile, activeBindings);
   if (ts.isObjectLiteralExpression(value)) {
     const properties = resolveStaticObjectProperties(
       value,
