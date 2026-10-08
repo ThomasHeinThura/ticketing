@@ -19,10 +19,10 @@ and later never came.
 
 **Purpose** — decide what to build and why, before anyone opens an editor.
 
-**Entry** — the workstream is authorized and its dependencies are available. Implementation
-workstreams may run concurrently across stages. Stage acceptance remains independent and
-ordered by each stage's exit criteria; a stage is claimed complete only after its own gate
-and phase finalizer pass.
+**Entry** — the workstream is authorized and its dependencies are available. Authorized
+dependency-safe implementation workstreams may run concurrently across stages. Stage acceptance
+remains independent and ordered by each stage's exit criteria; a
+stage is claimed complete only after its own gate and phase finalizer pass.
 
 **Do**
 
@@ -237,20 +237,18 @@ over the whole stage's surface, not the sum of the per-feature reviews — is re
 stage review is written in `07-planning/`, including what went wrong; and every gate that was
 not run is a **recorded waiver** in the decision log, or the stage is not closed.
 
-**No stage starts before the previous one closes.** This is
-[principle 7](../00-overview/product-principles.md), and it is the discipline that prevents
-twenty-five screens at sixty per cent.
+**Authorized dependency-safe implementation workstreams may start before an earlier
+stage closes; stage acceptance remains ordered.** This preserves independent execution while
+keeping each stage accountable for its own completion evidence.
 
-**The one exception, written down so nobody has to infer it:** during an accelerated window
-in which several stages deliberately run as parallel workstreams (decision A in the
-[decision log](../07-planning/decision-log.md); the calendar in
-[accelerated-delivery-plan.md](../07-planning/accelerated-delivery-plan.md)), stage
-*sequencing* is replaced by two things — the plan's **deferral register** (what each stage
-deliberately ships thinner, in writing) and the **per-feature Definition of Done** (nothing
-is called done because a calendar says so). Each stage's gate still runs, in full, before that
-stage's features are declared done; what moves is *when* stages start, not *what* closes them.
-An agent reading only this document should neither refuse to start P3 work while P2 is open
-during such a window, nor treat the gate list as already broken.
+**During an accelerated window, planned deferrals must be explicit:** the plan's
+**deferral register** states what scope each stage deliberately ships thinner, alongside the
+**per-feature Definition of Done**. A calendar does not make incomplete work complete. Every
+stage still passes its full own exit criteria and stage-level finalizer before it is claimed
+done; this changes implementation sequencing only, not the gate or completion standard.
+An agent reading only this document should not infer that P3 implementation must wait for
+P2 closure when an authorized dependency-safe workstream is ready, nor treat any stage gate as
+already satisfied.
 
 ## Related
 

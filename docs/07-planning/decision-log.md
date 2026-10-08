@@ -1,3 +1,42 @@
+### 2026-10-08 · Correct P0 candidate, hosted gate and runtime-date record (17:34 UTC)
+
+Thomas’s Oct 7 planning direction is reflected in [SDLC § Plan](../04-engineering/sdlc.md) and its stage-gate sequencing note: authorized dependency-safe implementation may proceed concurrently, while stage acceptance, each stage’s own exit criteria and the Sol phase finalizer remain ordered and mandatory. This resolves the contradictory “no stage starts before previous closure” wording without a workflow or gate waiver.
+
+Live GitHub capture at 17:32 UTC recorded 20 open PRs, 442 refs, and exact #602 head
+`12d9f899a3437a601e0da22a3c8b25ba9a70f430` on accepted base
+`3096cb044bdf6ae98488bfc385f532fa6386343a`. It was BLOCKED/MERGEABLE with no formal review
+entries; 29 checks succeeded, three failed and three were still in progress. Full run
+`37815263198` passed Postgres 138 files/1,667 tests, E2E 27, G4 and G8; G11 failed 19/22
+(LCP 2,604/2,500 ms, task-state 261/200 ms, board 651.8/500 ms). The source-bound attribution
+found identical source, fixture and initial assets and no supported code correction. Fast run
+`37815263256` passed environment-register checks and failed only the pending PR-template
+acceptance checklists; source binding is recognized. Keep G11 red and do not change product,
+fixture, thresholds or workload speculatively.
+
+The review chain remains source-specific: full Sol and two fresh Luna CLEAR verdicts apply to
+product source `650edd4`; fresh Luna and Sol CLEAR apply only to one-file/two-test fixture delta
+`8b792d0`; `12d9f899` adds the machine-readable binding and is not a fresh product review. A
+canonical private 12d Linux/arm64 image built and passed disposable off-only boot at
+17:33:44–17:34:22 UTC (UID 10001, empty enforcement, 88/88 ordered migrations, live/ready
+200, cleanup verified, persistent resources preserved). This grants no protected acceptance,
+persistent deployment, publication or strict activation.
+
+**Correction:** earlier Oct 8 status/decision text saying no runtime was run that day was
+inaccurate. V19 actually ran `2026-10-08T15:16:57Z`–`15:17:31Z` on source `23a01a62` in bounded
+off→shadow→off mode. Its adjudicated scope is one partial Oct 8 UTC bucket; it is not strict
+activation or a full-day claim. Nine changed nonmember-404 behaviors retain Oct 6 and Oct 8
+observations and still require an actual Oct 9 UTC bucket. Public config ordering observations
+remain Oct 4/6/8. Local date in Yangon does not substitute for an Oct 9 UTC observation.
+
+The private branch-owner ancestry inventory captured all 442 exact remote heads at
+`2026-10-08T17:31:48.692762Z`: 177 accepted-main ancestors, 54 retained by active-PR ancestry,
+and 211 unassigned for semantic comparison. PR references are appended to the retained-owner
+rows; ancestry is not semantic completeness or acceptance. Keep all source/branch history.
+Central migration state remains unchanged and provisional after accepted 0000–0087. The pending
+Thomas API question (absent-body no-op versus legacy serialization) remains a decision, not
+approval. Preserve owners, feature freeze, and post-P0 reconstruction from accepted main; do not
+merge #589 wholesale.
+
 ### 2026-10-08 · Freeze current P0 documentation candidate and preserve review boundaries
 
 At 17:09 UTC, live GitHub showed 20 open PRs and 442 remote branches; accepted main remained
@@ -18,7 +57,7 @@ main, and do not merge #589 wholesale. The current PR and 442-branch records are
 [disposition ledger](pr-disposition-ledger.md) and [branch inventory](branch-conservation-inventory.md).
 The central migration ledger remains provisional beyond accepted 0000–0087; no final IDs,
 applied-prefix rewrite, strict activation, protected merge, release or phase closure is
-authorized by this record. No strict or date-qualifying runtime was run today; the disposable off-only image boot is active and does not establish acceptance or a new date.
+authorized by this record. The earlier Oct 8 V19 off→shadow→off run had already occurred; the disposable off-only image boot is separate and does not establish acceptance or a new date.
 
 ### 2026-10-08 · Preserve live PR dispositions and centralize post-P0 migration replay
 
@@ -51,7 +90,8 @@ allocation, applied-prefix rewrite, deployment, merge, gate waiver, strict activ
 closure. The GHCR/GitHub release direction and feature freeze remain as previously recorded.
 The existing October 9 automation preserves historical V19 evidence bound to source
 `23a01a62ece3ca7d17105626f64ad78641435ec1` and requires corrected-candidate
-rebind/adjudication; V19 is immutable and no runtime was run today.
+rebind/adjudication. **Correction entered at 17:34 UTC:** V19 did run earlier on Oct 8 in bounded
+off→shadow→off mode; it establishes no strict activation or Oct 9 UTC date bucket.
 
 ### 2026-10-08 · Bounded public-config cutover criterion substitute
 
