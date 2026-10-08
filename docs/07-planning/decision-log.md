@@ -1,3 +1,11 @@
+### 2026-10-08 · Native mention composition access and mute continuity
+
+**Decision — Thomas approved in this chat:** use a permissioned workspace-scoped preflight for composition warnings; recheck recipient access when saving. Accessible mentioned people become watchers without being unmuted. Preserve every explicit notification mute; people without current access receive no notification. Public customer mentions retain existing CA12 public-comment/reach requirements; internal comments exclude customers. This authorization adds no cross-tenant directory or identity-derived authority.
+
+**Implementation ownership:** the isolated CA12 lane owns its feature/API specifications and complete code/test batch. Root owns this decision and live status. Creation/preflight implementation continues; the separate question about mention notifications on edits remains unresolved and dependent behavior must wait. This is product authorization, not review, hosted CI, deployment or phase acceptance.
+
+---
+
 ### 2026-10-08 · Reconcile current performance, runtime report failure and concurrent SDLC entry
 
 Thomas's realignment directive authorizes concurrent dependency-safe P1–P4 implementation

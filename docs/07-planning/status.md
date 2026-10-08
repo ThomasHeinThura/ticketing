@@ -1,3 +1,28 @@
+## Status first — verified 2026-10-08 02:23 UTC
+
+**Accepted main:** `3096cb044bdf6ae98488bfc385f532fa6386343a`. **Persistent OrbStack DEV:** revision `08842235047a3ab2714427edce80331b94558150`, image `sha256:75b153d7d9583993127e1be8c06453159e4fe7319abfcd8431f093c9ca002bcf`. Standard ticketing/portal HTTPS has the retained 8/8 CA-verified readiness proof; application/data/secrets unchanged. Chrome trust handoff remains pending: the user's intent to handle the warnings is not a completed browser verification.
+
+| Stage | Formal status |
+| --- | --- |
+| P0 | Open — isolated #602, hosted G11 19/22; runtime, installer and finalizer acceptance outstanding |
+| P1 | Open — #605 realtime and #606 comments/history; native mentions batch implementing |
+| P2 | Open — approvals/intake/calendar lanes; contract and integration obligations remain |
+| P3 | Open — portal/identity lanes; real Entra acceptance outstanding |
+| P4 | Open — repository ownership and governance lanes; independent acceptance outstanding |
+| P5–P7 | Open — no completion claim |
+
+**P0 convergence:** #602 remains exact `30aef000956bdeafb74b497c863cf4c8af1679d2`, unchanged product/CI source. Hosted run37711430920 fails LCP2532/2500ms, state200.9/200ms and board623.1/500ms; palette187ms passes. No new product experiment, retry, threshold/fixture/workload change or FINAL_P0_SHA. Private V3 attribution acquisition ran02:19:56.748–02:20:21.060UTC after fresh independent Sol clearance. Overall **FAIL**: state paint boundary incomplete and aggregate map binding missing `priority-Df3oZaBw.js`. Four per-window captures completed (initial-load, assignment, board-render, board-detail); the failed state window and exact exceptions are retained. Preflight bound106/106 source-equivalent hosted JavaScript assets and103 maps. Completed profiles may support attribution only for proven bound assets; they are not canonical G11 acceptance. Owned preview exited and port closed; unowned4178 process preserved. V1 syntax failure and V2 assignment failure remain historical failures; no additional unchanged retry is scheduled.
+
+**P1 completed correction batch:** #606 is pushed at `b6d3f1d197677c3302b0e61cfdf37c6773274cfb`. Customer private-item restrictions now apply to customer identities while staff still require canonical project reach; history cursor overflow rejects400 before PostgreSQL. Root actual changed integration suites pass **2files/17tests**. Actual built-app browser passes **1journey/14.6s**, including approvalGET200/no alert, comments/edit/draft recovery and seven-version pagination. Its original6c0 build identity is retained with empty shipping-source delta to b6d3. Two fresh independent Luna delta reviews and a separate full independent Sol security delta are **CLEAR**. The earlier3f85 full Sol pass remains evidence for the preceding batch, not a relabeled b6d3 review. Prior fixture failures remain failed records.
+
+**P1 acceptance blockers:** recorded3f85 hosted full37714235534 is21/22 (LCP2648ms); visual saved-view inventory and two E2E cases fail. Fast CI also identifies one unowned approval read,12 token-pair contexts, five OpenAPI changes and PR metadata requirements. These results retain their actual historical SHA; current b6d3 hosted acceptance must be checked independently. A separate bounded implementation lane owns the repository-helper correction. Historical3f85 image boot proved OCI revision/UID10001/migrations/live+ready200; its private Valkey variable mistake limits that proof to single-web image health, not canonical Compose wiring. No current b6d3 image, merge or stage completion is claimed.
+
+**Parallel implementation:** native mentions has a separate b6d3-based worktree. Thomas approved workspace-scoped composition access warnings, save-time recipient rechecks, watcher addition without unmuting and preservation of every explicit mute. Public customer mentions follow existing CA12 reach requirements; internal comments exclude customers. Edit-event semantics remain the pending product decision; independent creation/preflight work continues. Historical #589 remains2350397b until recreation from accepted post-P0 main; #599 remains outside P0. No overlapping file ownership or migration allocation is introduced.
+
+**Runtime/date critical path:** retained V6 actual off/shadow evidence and independent adjudication admit the nine changed eligible nonmember-read behaviors on October6 and8. Exactly one further actual UTC bucket is needed for that subset, scheduled through the existing October9 heartbeat. No full-day/72-hour claim, blanket recollection or automatic strict activation. Critical path: net-positive unchanged22/22 source; exact installer/image/migration/rollback; eligible reversible strict runtime proof; protected merge; fresh accepted-main Sol finalizer. #8/#592/#593/#582 remain open. Seeders/credentials remain private; persistent eight-role DEV seeding remains outstanding. No gate waiver or acceptance is claimed.
+
+---
+
 ## Status first — verified 2026-10-08 01:45 UTC
 
 **Accepted main:** `3096cb044bdf6ae98488bfc385f532fa6386343a`. **Persistent OrbStack DEV:** revision `08842235047a3ab2714427edce80331b94558150`, image `sha256:75b153d7d9583993127e1be8c06453159e4fe7319abfcd8431f093c9ca002bcf`. Both standard hosts now answer CA-verified readiness 200 on 443 and 8443 over IPv4 and IPv6 (8/8 checks). Only the owned Traefik gateway was recreated; application container/image and data remain unchanged. Added 80/443 listeners bind IPv4/IPv6 loopback only. Chrome's local certificate warning still needs the already requested human trust handoff. Failed gateway attempts and rollback records are preserved privately.
