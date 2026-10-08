@@ -40,7 +40,6 @@ import type { SortConfig } from "@/lib/sort-tasks";
 import { sortTasks } from "@/lib/sort-tasks";
 import { toast } from "@/lib/toast";
 import useProjectStore from "@/store/project";
-import { useUserPreferencesStore } from "@/store/user-preferences";
 import type Task from "@/types/task";
 
 type BacklogSearchParams = {
@@ -82,23 +81,21 @@ function RouteComponent() {
     });
   }, [navigate]);
 
-  const { setViewMode } = useUserPreferencesStore();
-
   useRegisterShortcuts({
     sequentialShortcuts: {
       [shortcuts.view.prefix]: {
         [shortcuts.view.board]: () => {
-          setViewMode("board");
           navigate({
             to: "/dashboard/workspace/$workspaceId/project/$projectId/board",
             params: { workspaceId, projectId },
+            search: { layout: "board" },
           });
         },
         [shortcuts.view.list]: () => {
-          setViewMode("list");
           navigate({
             to: "/dashboard/workspace/$workspaceId/project/$projectId/board",
             params: { workspaceId, projectId },
+            search: { layout: "list" },
           });
         },
         [shortcuts.view.calendar]: () => {

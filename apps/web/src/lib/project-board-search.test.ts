@@ -33,4 +33,42 @@ describe("project board URL state", () => {
       layout: "board",
     });
   });
+
+  it("keeps explicit layout choices isolated from the profile default across projects and history", () => {
+    const profileDefault = "board" as const;
+    const projectAList = parseProjectBoardSearch({ layout: "list" });
+    const projectBDefault = parseProjectBoardSearch({});
+
+    expect(resolveProjectBoardLayout(projectAList.layout, profileDefault)).toBe(
+      "list",
+    );
+    expect(
+      resolveProjectBoardLayout(projectBDefault.layout, profileDefault),
+    ).toBe("board");
+
+    // Back/forward restores each URL's own layout; clearing a URL falls back
+    // to the unchanged profile default instead of persisting another project's choice.
+    const history = [
+      parseProjectBoardSearch({ layout: "board" }),
+      projectAList,
+      projectBDefault,
+    ];
+    expect(
+      history.map(({ layout }) =>
+        resolveProjectBoardLayout(layout, profileDefault),
+      ),
+    ).toEqual(["board", "list", "board"]);
+  });
+
+  it("preserves the current project's layout while a task panel opens and closes", () => {
+    const projectA = parseProjectBoardSearch({ layout: "list" });
+    const opened = withProjectBoardTask(projectA, "task-1");
+    const closed = withProjectBoardTask(opened, undefined);
+
+    expect(opened).toEqual({ layout: "list", taskId: "task-1" });
+    expect(closed).toEqual({ layout: "list" });
+    expect(
+      resolveProjectBoardLayout(parseProjectBoardSearch({}).layout, "board"),
+    ).toBe("board");
+  });
 });

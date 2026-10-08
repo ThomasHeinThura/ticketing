@@ -43,7 +43,6 @@ function RouteComponent() {
   const navigate = useNavigate();
   const { data: project, isLoading, isError } = useGetTasks(projectId);
   const weekStartsOn = useUserPreferencesStore((state) => state.weekStartsOn);
-  const setViewMode = useUserPreferencesStore((state) => state.setViewMode);
   const isMobile = useIsMobile();
   const visibleMonth = useMemo(
     () => dateFromCalendarMonth(month ?? "", startOfMonth(new Date())),
@@ -106,17 +105,17 @@ function RouteComponent() {
     sequentialShortcuts: {
       [shortcuts.view.prefix]: {
         [shortcuts.view.board]: () => {
-          setViewMode("board");
           navigate({
             to: "/dashboard/workspace/$workspaceId/project/$projectId/board",
             params: { workspaceId, projectId },
+            search: { layout: "board" },
           });
         },
         [shortcuts.view.list]: () => {
-          setViewMode("list");
           navigate({
             to: "/dashboard/workspace/$workspaceId/project/$projectId/board",
             params: { workspaceId, projectId },
+            search: { layout: "list" },
           });
         },
         [shortcuts.view.backlog]: () => {

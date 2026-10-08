@@ -88,8 +88,7 @@ function RouteComponent() {
   const { data } = useGetTasks(projectId);
   const queryClient = useQueryClient();
   const { project, setProject } = useProjectStore();
-  const { viewMode: preferredViewMode, setViewMode } =
-    useUserPreferencesStore();
+  const preferredViewMode = useUserPreferencesStore((state) => state.viewMode);
   const viewMode = resolveProjectBoardLayout(layout, preferredViewMode);
   const [isTaskModalOpen, setIsTaskModalOpen] = useState(false);
   const [boardSearchQuery, setBoardSearchQuery] = useState("");
@@ -101,29 +100,14 @@ function RouteComponent() {
 
   const handleViewModeChange = useCallback(
     (nextLayout: "board" | "list") => {
-      setViewMode(nextLayout);
       navigate({
         to: ".",
         search: (previous: ProjectBoardSearch) =>
           withProjectBoardLayout(previous, nextLayout),
       });
     },
-    [navigate, setViewMode],
+    [navigate],
   );
-
-  useEffect(() => {
-    if (layout && layout !== preferredViewMode) setViewMode(layout);
-  }, [layout, preferredViewMode, setViewMode]);
-
-  useEffect(() => {
-    if (layout) return;
-    navigate({
-      to: ".",
-      search: (previous: ProjectBoardSearch) =>
-        withProjectBoardLayout(previous, viewMode),
-      replace: true,
-    });
-  }, [layout, navigate, viewMode]);
 
   const { data: users } = useGetActiveWorkspaceUsers(workspaceId);
   const { data: workspaceLabels = [] } = useGetLabelsByWorkspace(workspaceId);
