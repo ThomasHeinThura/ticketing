@@ -552,13 +552,18 @@ export async function deliverNotification(
   if (decryptedPreference.emailEnabled && rule.emailEnabled && user.email) {
     if (await canSendToTask()) {
       deliveries.push(
-        sendNotificationEmail(user.email, content.title, {
-          title: content.title,
-          message: content.body,
-          actionUrl: context.taskUrl,
-          actionLabel: context.taskUrl ? "Open in TaskDesk" : undefined,
-          locale: user.locale ?? null,
-        }).then(() => undefined),
+        sendNotificationEmail(
+          user.email,
+          content.title,
+          {
+            title: content.title,
+            message: content.body,
+            actionUrl: context.taskUrl,
+            actionLabel: context.taskUrl ? "Open in TaskDesk" : undefined,
+            locale: user.locale ?? null,
+          },
+          { authorize: canSendToTask },
+        ).then(() => undefined),
       );
     }
   }
