@@ -175,10 +175,10 @@ implementation dependencies below are resolved and verified.
 | Finding | Evidence-based disposition |
 | --- | --- |
 | `MC-3` device flow is underspecified | **Spec resolved:** OAuth device authorization is explicitly out of P4; the API key is the only credential. Accepted source `packages/mcp/src/auth/auth-service.ts` follows this rule. Package README/tool-registry agreement remains an implementation/documentation task. |
-| `MC-14` `feature.mcp` has no request marker | **Contract specified, implementation open:** `api_key.is_mcp`, `feature.mcp` refusal, the warned read-only default, and the write ceiling are already named in `mcp-server.md`, `webhooks-and-api-keys.md`, `plugin-architecture.md`, `data-model.md` and `api-design.md`. At accepted source, `apps/api/src/database/schema.ts` and `apps/api/src/permissions/resolve-identity.ts` still document the missing `is_mcp` column/identity distinction; no runtime enforcement claim follows from the docs. |
-| `MC-4` audit identity and MCP origin | **Partly specified; remains open:** `audit_log` already has `actor_type` and `api_key_id`, and the audit-trail contract audits mutations. It has no durable origin field and does not promise to audit reads. The spec now makes this gap explicit rather than claiming the existing columns prove MCP origin. |
+| `MC-14` `feature.mcp` request identification | **Partly specified; implementation and product question remain open:** the existing contract refuses keys marked `api_key.is_mcp` when `feature.mcp` is off, but an ordinary personal key can still be used with the thin MCP client. The marker cannot identify every MCP request, so the spec no longer promises that the flag disables MCP entirely. At accepted source, `apps/api/src/database/schema.ts` and `apps/api/src/permissions/resolve-identity.ts` still lack the `is_mcp` column/identity distinction; no runtime enforcement claim follows from the docs. |
+| `MC-4` audit identity, coverage and MCP origin | **Normative requirement; implementation mechanism remains open:** every MCP request, including reads, must produce an audit record with key identity and agent-origin attribution. The accepted audit contract covers mutations and selected reads; `audit_log` has `actor_type` and `api_key_id` but no durable MCP-origin field. The spec preserves all-request/read coverage as a requirement while identifying the missing coverage and provenance mechanism as implementation dependencies. |
 | Missing API, Permissions and Data sections | **Template gap resolved:** those sections now exist. The API table keeps all MC tools and links each established route/capability to its owning contract. Five routes remain unowned or incompatible with the API-key client; see Open questions. The `CAPABILITIES` registry contains the named capabilities used by the already-owned rows; no MCP capability is added. |
-| Rate-limit contradiction | **Base rule resolved; bulk details open:** existing `api-design.md` defines the per-key and route-class limits plus the additional MCP write ceiling. No numeric ceiling is invented. A distinct bulk cap/rate window remains unspecified. |
+| Rate-limit contradiction | **Base rule specified; bulk control remains a required but unspecified contract:** existing `api-design.md` defines per-key and route-class limits plus the additional MCP write ceiling. MC-10 also requires an import-specific bulk cap/rate limit, but no authority defines its values or enforcement mechanism. No numeric ceiling is invented or claimed to exist. |
 | God Mode MCP-usage screen absent | **Spec finding resolved:** `god-mode.md` defines MCP usage and `GET /api/instance/mcp/usage`; `screen-inventory.md` registers `/agent/god-mode/mcp`. This does not claim the screen or endpoint is implemented. |
 | Burst threshold/event/notification missing | **Names resolved; trigger rule open:** `instance_setting.api_key_burst_threshold`, `api_key.auto_disabled`, and the key-owner notification are present in the data, event and notification contracts. Unit, window and precise trigger semantics remain unspecified. |
 | Required Out of scope/Open questions sections absent | **Template gap resolved:** both sections now record the device-flow boundary and unresolved product/API contracts. |
@@ -200,10 +200,17 @@ These need one answer from the product owner; the MCP spec must not guess:
    If yes, define how requester and organisation are selected and which actor is recorded in
    audit/activity. Neither the intake nor customer-portal contract specifies the proposed
    staff-side `POST /api/submissions` behavior.
-3. **Audit:** Does `MC-4` require rows for reads, in addition to mutations? What durable
-   authority identifies MCP origin after its API key is revoked or deleted?
-4. **Limits:** What per-call cap and rate window apply specifically to
-   `bulk_create_work_items`? What unit, observation window and trigger rule define
+3. **Audit mechanism:** MC-4 already requires rows for every MCP request, including reads.
+   What audit mechanism and durable provenance representation will satisfy that normative
+   requirement, including after a key is revoked or deleted? The current audit contract
+   lacks all-read coverage and a durable MCP-origin field; these are unresolved
+   implementation dependencies, not an open question about whether reads are required.
+4. **Complete MCP disable:** Must `feature.mcp` disable every MCP-client request, including
+   one authenticated by an ordinary personal key? If so, what documented request
+   identification mechanism will distinguish it without treating self-declared `is_mcp`
+   as proof of origin?
+5. **Limits:** What per-call cap and rate window implement MC-10's required
+   `bulk_create_work_items` control? What unit, observation window and trigger rule define
    `api_key_burst_threshold`? The import chunk size of 500 and the MC-7 approval threshold
    of more than 50 are different controls and cannot answer these questions.
 
@@ -214,7 +221,7 @@ These need one answer from the product owner; the MCP spec must not guess:
 | MCP client tool parity | `packages/mcp/src/tools/register.ts` still registers legacy project/task tool names and routes; it does not implement the 29-tool MC contract. | Tool schemas and descriptions match the full MC list, and a focused parity suite verifies each route/method against its owning contract. |
 | MCP key and feature enforcement | `apps/api/src/database/schema.ts`, API-key resolution and policy middleware do not implement the documented `is_mcp` field/identity or `feature.mcp` refusal. | Approved schema/permission implementation, route-policy coverage and focused API/permission regressions; then source-level security review. |
 | API route availability and source parity | The accepted API has no MCP router. `apps/api/src/index.ts` mounts the project router at `/api/project`, while the project owner contract and MC table use `/api/projects`; the source project list also requires workspace context. The MC-only workspace/read/submission routes lack owner contracts, and import/submission MCP behavior is not implemented by this lane. | Resolve the workspace/read and submission product questions above. Reconcile or update the project route source against its owner contract through the owning API lane; then implement through the public API and demonstrate all mapped routes exist and use their registered policy. |
-| Audit semantics | `audit_log` stores `actor_type` and `api_key_id`; source audit writers do not establish the requested MCP-origin/read coverage. | Close the audit question, then demonstrate the required rows and durable provenance without adding undocumented fields. |
+| Audit semantics | `audit_log` stores `actor_type` and `api_key_id`; source audit writers do not establish the normative all-request/read coverage or durable MCP origin. | Resolve the mechanism/provenance contract, then demonstrate the required rows and durable provenance without adding undocumented fields. |
 | Prompt-injection and idempotency acceptance | The normative `tests/mcp/injection.test.ts` and tool-to-route parity obligations are specified, but `tests/mcp` is absent at this accepted source. | Add the specified tests and record actual focused results; no claim follows from the contract alone. |
 
 Until the product questions are answered and the listed dependencies are demonstrated, keep

@@ -45,7 +45,8 @@ record (`person_id`, capability subset, per-key limit, `is_mcp`, revocation stat
 `audit_log`, and `pending_action`. Import tools use `import_run` and
 `import_record_link`; the exact columns and retention rules are in
 [data-model.md](../01-architecture/data-model.md). This section does not define new
-columns. The audit-origin and read-audit questions in MC-4 remain open below.
+columns. The normative MC-4 requirement includes read requests; its audit coverage and
+durable-provenance mechanisms remain unimplemented and unresolved below.
 
 ## Authentication
 
@@ -57,13 +58,15 @@ columns. The audit-origin and read-audit questions in MC-4 remain open below.
   verification URI, poll interval, code TTL, issued credential shape) and is not specified
   here; until it is, `taskdesk-mcp setup` pastes an API key, and the key is the only
   credential.
-- `MC-4` Every MCP request is audited with the key's identity, and the audit row is marked
-  as agent-originated. The audit model currently defines `actor_type = api_key` and
-  `api_key_id` for writes ([audit-trail.md](audit-trail.md),
-  [data-model.md](../01-architecture/data-model.md)); it does not define a durable MCP
-  origin field or say that reads are audited. The required coverage and durable origin
-  marker are an open contract question; do not infer them from the live `api_key.is_mcp`
-  row.
+- `MC-4` **Normative requirement:** every MCP request, including every read and every
+  write, produces an audit record attributable to the key's identity and marked as
+  agent-originated. This is a future contract requirement, not a claim about current
+  implementation. The existing audit contract covers mutations and selected reads; its
+  data model defines `actor_type = api_key` and `api_key_id` but no durable MCP-origin
+  field ([audit-trail.md](audit-trail.md),
+  [data-model.md](../01-architecture/data-model.md)). The instrumentation, read coverage,
+  and durable origin mechanism remain unresolved implementation dependencies. Do not infer
+  durable provenance from the live `api_key.is_mcp` row.
 
 ## Tools
 
@@ -114,9 +117,12 @@ bulk_create_work_items   create_import_link    get_import_link
   are **not** approval-gated per call. They require the key's explicit, warned write opt-in
   (`MC-16`), run under the MCP write ceiling (`MC-22`), are audited individually with
   `origin: mcp`, and any of them touching more than 50 items in one call is a bulk operation
-  under `MC-7`. The prompt-injection example below ("reassign every ticket") is therefore
-  **bounded** by the write opt-in and the ceiling, not prevented outright; a read-only key —
-  the default — cannot do it at all. Decided 2026-09-06 (Claude Code, reversible).
+  under `MC-7`. This audit-origin requirement is normative; the general audit model does
+  not currently store it, so its durable representation remains an unresolved
+  implementation dependency (MC-4). The prompt-injection example below ("reassign every
+  ticket") is therefore **bounded** by the write opt-in and the ceiling, not prevented
+  outright; a read-only key — the default — cannot do it at all. Decided 2026-09-06
+  (Claude Code, reversible).
 - `MC-8` Errors are returned as readable text, not raw JSON problem documents. An agent
   recovers better from "You can't assign work in this project — you need the assign
   permission" than from a status code.
@@ -126,9 +132,10 @@ bulk_create_work_items   create_import_link    get_import_link
 - `MC-10` API-key requests use the route-class limit and the key's configured limit;
   `is_mcp` writes use the minimum of the key limit, route-class limit and
   `instance_setting.mcp_write_ceiling_per_minute`, per
-  [api-design.md](../01-architecture/api-design.md). `bulk_create_work_items` also has
-  the MC-7 approval threshold and an import-specific cap/rate limit. The existing
-  authorities do not define that separate bulk cap or rate window; see Open questions.
+  [api-design.md](../01-architecture/api-design.md). `bulk_create_work_items` is required
+  to have the MC-7 approval threshold and an additional import-specific cap/rate limit.
+  That bulk cap/rate control is a normative future requirement, not an existing control;
+  its values and enforcement mechanism are unspecified (see Open questions).
 
 ### Prompt injection — the threat this server exists inside
 
@@ -165,10 +172,13 @@ that opens the ticket. The corpus treats this as the primary MCP threat, not an 
   recommends a dedicated read-only key per client, and refuses a `TASKDESK_API_URL` that
   is not `https://` outside development (a proxying attacker host is the obvious phish).
 - `MC-13` An interactive `taskdesk-mcp setup` walks through URL and authentication.
-- `MC-14` The instance can be disabled from serving MCP entirely with `feature.mcp`.
-  **Mechanism:** an API key created for an agent is flagged `api_key.is_mcp` at creation
-  (the "Use with an AI agent" flow sets it); when the flag is off, requests authenticated
-  by an `is_mcp` key are refused with 404 by the policy layer. MCP writes use the minimum
+- `MC-14` `feature.mcp` disables MCP access for requests authenticated by a key marked
+  `api_key.is_mcp`; the policy layer refuses those requests with 404 when the flag is off.
+  This rule does not disable every way of using the MCP client: an ordinary personal key
+  can be pasted into `@taskdesk/mcp`, and the server has no stated mechanism to identify
+  that request as MCP. Whether the product requires a complete instance-wide MCP disable,
+  and how all MCP-originated requests would then be identified, remains an open product
+  question. MCP writes use the minimum
   of the key limit, route-class limit and `instance_setting.mcp_write_ceiling_per_minute`
   ([api-design.md](../01-architecture/api-design.md)).
   **`is_mcp` is self-declared.** It is set by the creation flow, and nothing stops a person
@@ -188,7 +198,7 @@ point of "one authorization surface" ([rbac.md](../01-architecture/rbac.md#mcp--
 | --- | --- |
 | Every tool | The route's registered policy, evaluated with the owner's current identity and reach, intersected with the key's stored capability subset and current feature availability (`MC-19`). The policy and capability names in the API table below are inherited from the route owner. |
 | Personal key | Owned by a named person; never broader than the owner's current authority; read-only by default. Write capabilities require the warned opt-in (`AK-3`, `AK-9`, `MC-16`). |
-| MCP-marked key | A personal key only. `feature.mcp` off refuses an `is_mcp` key with 404; MCP writes also use the configured MCP ceiling (`MC-14`, `MC-22`). `is_mcp` is a product/configuration marker, not proof that every API-key request came from the MCP client. |
+| MCP-marked key | A personal key only. `feature.mcp` off refuses an `is_mcp` key with 404; MCP writes also use the configured MCP ceiling (`MC-14`, `MC-22`). `is_mcp` is a product/configuration marker, not proof that every API-key request came from the MCP client, so this flag alone cannot disable all MCP-client use. |
 | Workspace service key | Cannot be marked `is_mcp` (`AK-10`, `MC-21`). |
 | Self routes | Remain scoped to the authenticated key owner where the route policy is `authenticated + self`; the MCP client gains no other person's rows. |
 | Session-only or step-up protected route | A key request is refused wherever the route's policy requires a browser session or browser-bound step-up; MCP does not change that policy or turn the request into a pending action. |
@@ -309,15 +319,21 @@ second identical run creates nothing new.
   If yes, what establishes the requester and organisation, and what audit/activity actor is
   recorded? The existing intake and portal contracts do not define the proposed staff-side
   `POST /api/submissions` behavior.
-- **Audit coverage and provenance:** Does `MC-4` require an audit row for reads as well as
-  mutations? What durable field records MCP origin after its API key is revoked or deleted?
-  The current audit contract records mutations with `actor_type` and `api_key_id`, but has
-  no origin field.
-- **Bulk and burst limits:** What per-call cap and rate window apply specifically to
-  `bulk_create_work_items`, beyond the existing per-key/route-class limits, MCP write
-  ceiling and MC-7 approval threshold of more than 50 items? What unit, observation window
-  and trigger rule define `api_key_burst_threshold`? The 500-item import chunk size is not
-  a request cap.
+- **Audit mechanism:** MC-4 normatively requires a record for every MCP request, including
+  reads, with key identity and agent-origin attribution. What audit mechanism and durable
+  provenance representation will satisfy this requirement, including after key revocation
+  or deletion? The current audit contract does not cover every read and has no durable MCP
+  origin field; this is an implementation dependency, not an open question about whether
+  the normative requirement includes reads.
+- **Complete MCP disable:** Is the requirement that `feature.mcp` disable every MCP-client
+  request, including requests made with an ordinary personal key? If so, what documented
+  request-identification mechanism will distinguish those requests without treating
+  self-declared `is_mcp` as proof of origin?
+- **Bulk and burst limits:** What per-call cap and rate window will implement MC-10's
+  required additional `bulk_create_work_items` limit, beyond the existing per-key/route-class
+  limits, MCP write ceiling and MC-7 approval threshold of more than 50 items? What unit,
+  observation window and trigger rule define `api_key_burst_threshold`? The 500-item import
+  chunk size is not a request cap.
 
 ## Related
 
