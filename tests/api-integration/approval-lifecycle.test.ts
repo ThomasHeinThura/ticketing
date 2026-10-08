@@ -291,13 +291,17 @@ describe("API integration: approval lifecycle", () => {
       "work_item:read",
     ]);
     mockAuthenticatedSession(staffViewer.user);
-    const staffPrivateItemApprovals = await app.request(
-      `/api/work-items/${workItem.key}/approvals`,
-    );
-    expect(
-      staffPrivateItemApprovals.status,
-      await staffPrivateItemApprovals.clone().text(),
-    ).toBe(200);
+    try {
+      const staffPrivateItemApprovals = await app.request(
+        `/api/work-items/${workItem.key}/approvals`,
+      );
+      expect(
+        staffPrivateItemApprovals.status,
+        await staffPrivateItemApprovals.clone().text(),
+      ).toBe(200);
+    } finally {
+      mockAuthenticatedSession(requester.user);
+    }
 
     await db.insert(schema.requestParticipantTable).values([
       {
