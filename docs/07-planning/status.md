@@ -1,3 +1,30 @@
+## Status first — verified 2026-10-08 04:32 UTC
+
+**Accepted main:** `3096cb044bdf6ae98488bfc385f532fa6386343a`. **Persistent OrbStack DEV:** `08842235047a3ab2714427edce80331b94558150`, image `sha256:75b153d7d9583993127e1be8c06453159e4fe7319abfcd8431f093c9ca002bcf`. Application source/image unchanged. Four supported-role test accounts and their project are intentionally retained; credentials and seeders remain private outside Git/GitHub. Chrome certificate handoff remains pending. No protected merge, strict activation, official release or phase closure.
+
+| Stage | Formal status |
+| --- | --- |
+| P0 | Open — isolated #602 at30aef; hosted G1119/22; frozen acceptance source not selected |
+| P1 | Open — #606 completed mention/history/security batch, full hosted remediation continues; #605 separate |
+| P2 | Open — implementation slices retained; intake contracts and integrated acceptance remain |
+| P3 | Open — portal/identity slices retained; inherited auth failures and real Entra acceptance remain |
+| P4 | Open — query/governance/outbox slices; migration lineage and contracts remain |
+| P5–P7 | Open — no completion claim |
+
+**P0 critical path:** unchanged30aef G11 fails LCP2532/2500ms, state200.9/200ms and board623.1/500ms. Retained traces and source comparison do not establish a causal product correction; no speculative patch or unchanged benchmark retry was made. A bounded private attribution task targets missing layout/paint caller evidence. The duplicate PR-body heading was corrected without source or gate changes. Three-day evidence is representative UTC buckets, never full-day/72-hour coverage: the changed eligible nine-read subset has admitted October6 and October8 evidence; one further actual bucket remains. Frozen exact-source gates/image/installer/off-shadow-strict-rollback, protected merge and fresh accepted-main Sol finalizer remain required.
+
+**#606 complete batch:** current `f995abbeb2a01a9f3b5f35f61571f08d7fe64df3` is a review-note-only descendant of product source `a4c5971b2d6c470867de0a619e8db4fb6b2dcb6e`. The single-flight composer/draft, repository query ownership, token fixtures and private customer requester/participant picker corrections are implemented. Independent694 UI/authority reviews and a4 authority/Sol security delta clear; full694 blocker remains historical and is resolved by a4. Actual a4 PostgreSQL18: **1file/24tests PASS**,04:14:19–04:14:33UTC. Historical694 UI/mock-API1PASS retains only its unchanged web scope, not persistent DEV/provider acceptance. Current fast37726798767 fails five OpenAPI breaks and incomplete PR acceptance metadata; full37726798858 has G8/E2E/G11 failures, G4PASS, PostgreSQL still running at verification. One consolidated implementation remediation continues; unresolved enum and edit-notification contracts are not guessed.
+
+**Actual isolated image proof:** a4 image `sha256:935bdb60fa26e950695eb115ff2078fbf950003b2150189014aaf647ebd3ff25` built and booted at04:27:35–04:27:50UTC with exact OCI revision, UID10001 and live/ready200. Owned containers, volumes and uniquely named network were cleaned; the original DEV network's five members remain unchanged. Earlier failed private fixtures are preserved: identical agent/portal hostnames were correctly rejected, and Compose's globally named network caused colliding service aliases in a later fixture. Explicit unique network isolation fixed the fixture. This is candidate boot proof, not persistent deployment, TLS, rollback or phase acceptance.
+
+**Private role seeding complete:** final immutable V7 packet cleared independent Luna/Sol and executed04:16:38–04:17:12UTC. Owner/admin/member/viewer users, workspace and project were verified through canonical APIs; current API/RBAC smoke **36PASS/0FAIL** at04:19:02–04:19:47UTC. Probe sessions and operator session signed out200. Account passwords/credential Markdown and hash-chained ownership ledger remain mode0600 outside the repository. Manager/lead/customer and other unsupported deployed role paths are explicitly excluded, not fabricated. Historical transport, rate-limit and route fixture failures remain retained. No claim of all roles, all API keys, full setup or browser acceptance.
+
+**Integration alignment:** live GitHub lists20 open PRs; none is merge eligible. #599 stays outside P0; #589 historical train remains frozen until recreation from accepted post-P0 main. Migration SQL0088–0118 matches across #589/#598, but #585's0114/0115 snapshots omit seven tables versus that lineage; central snapshot reconciliation remains a blocker, with no accepted migration rewrite. #596's retained hosted synthetic-merge PostgreSQL failures are four API-key activity cases, while OIDC7/7 and group mapping9/9 pass; no OIDC-specific source fix is justified by those failures. Existing secret-scan finding remains open and unsuppressed.
+
+**Next work:** P0 causal attribution and unchanged hosted22/22; complete #606 hosted remediation batch; remaining actual UTC observation; frozen installer/runtime/rollback acceptance; protected P0 merge and fresh phase finalizer. No new decision request or waived gate. Original historical snapshots follow.
+
+---
+
 ## Status first — verified 2026-10-08 03:59 UTC
 
 **Accepted main:** `3096cb044bdf6ae98488bfc385f532fa6386343a`, reverified through GitHub. **Persistent OrbStack DEV:** `08842235047a3ab2714427edce80331b94558150`, image `sha256:75b153d7d9583993127e1be8c06453159e4fe7319abfcd8431f093c9ca002bcf`, Docker OCI/image reverified. Standard ticketing/portal hosts retain CA-verified HTTPS evidence. Chrome trust handoff remains pending. No application redeployment, protected merge, strict activation or phase closure occurred.
