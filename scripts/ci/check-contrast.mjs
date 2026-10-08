@@ -966,6 +966,390 @@ export function observedPairsInSources(
   return observed;
 }
 
+const alertPaintProps = ["variant", "className", "style"];
+
+function unwrapStaticExpression(expression) {
+  let current = expression;
+  while (
+    ts.isParenthesizedExpression(current) ||
+    ts.isAsExpression(current) ||
+    ts.isSatisfiesExpression(current) ||
+    ts.isNonNullExpression(current)
+  )
+    current = current.expression;
+  return current;
+}
+
+function staticPropertyName(name) {
+  if (
+    ts.isIdentifier(name) ||
+    ts.isStringLiteral(name) ||
+    ts.isNumericLiteral(name)
+  )
+    return name.text;
+  if (
+    ts.isComputedPropertyName(name) &&
+    (ts.isStringLiteral(name.expression) ||
+      ts.isNumericLiteral(name.expression))
+  )
+    return name.expression.text;
+  return undefined;
+}
+
+function scopeDeclaresName(name, scope) {
+  if (
+    isFunctionLikeNode(scope) &&
+    scope.parameters.some(
+      (parameter) =>
+        ts.isIdentifier(parameter.name) && parameter.name.text === name,
+    )
+  )
+    return true;
+
+  const statements =
+    ts.isSourceFile(scope) || ts.isBlock(scope) || ts.isModuleBlock(scope)
+      ? scope.statements
+      : undefined;
+  if (!statements) return false;
+  return statements.some((statement) => {
+    if (!ts.isVariableStatement(statement)) return false;
+    return statement.declarationList.declarations.some(
+      (declaration) =>
+        ts.isIdentifier(declaration.name) && declaration.name.text === name,
+    );
+  });
+}
+
+function isFunctionLikeNode(node) {
+  return (
+    ts.isFunctionDeclaration(node) ||
+    ts.isFunctionExpression(node) ||
+    ts.isArrowFunction(node) ||
+    ts.isMethodDeclaration(node) ||
+    ts.isConstructorDeclaration(node) ||
+    ts.isGetAccessorDeclaration(node) ||
+    ts.isSetAccessorDeclaration(node)
+  );
+}
+
+function findConstBinding(name, sourceFile, useNode) {
+  const matches = [];
+  function visit(node) {
+    if (
+      ts.isVariableDeclaration(node) &&
+      ts.isIdentifier(node.name) &&
+      node.name.text === name &&
+      node.initializer &&
+      node.parent.flags & ts.NodeFlags.Const
+    )
+      matches.push(node);
+    node.forEachChild(visit);
+  }
+  visit(sourceFile);
+  if (matches.length !== 1) return undefined;
+  const binding = matches[0];
+  let current = useNode;
+  while (current && current !== sourceFile) {
+    if (
+      (isFunctionLikeNode(current) ||
+        ts.isBlock(current) ||
+        ts.isModuleBlock(current)) &&
+      scopeDeclaresName(name, current)
+    ) {
+      const declarations = [];
+      function collectDirectDeclarations(node) {
+        if (node !== current && (ts.isBlock(node) || isFunctionLikeNode(node)))
+          return;
+        if (
+          ts.isVariableDeclaration(node) &&
+          ts.isIdentifier(node.name) &&
+          node.name.text === name
+        )
+          declarations.push(node);
+        node.forEachChild(collectDirectDeclarations);
+      }
+      if (isFunctionLikeNode(current)) {
+        for (const parameter of current.parameters) {
+          if (ts.isIdentifier(parameter.name) && parameter.name.text === name)
+            return undefined;
+        }
+      }
+      if (ts.isSourceFile(current) || ts.isBlock(current))
+        for (const statement of current.statements)
+          collectDirectDeclarations(statement);
+      if (declarations.some((declaration) => declaration !== binding))
+        return undefined;
+    }
+    current = current.parent;
+  }
+  return binding;
+}
+
+function objectBindingIsUnmutated(binding, sourceFile) {
+  const name = binding.name.text;
+  let safe = true;
+  function visit(node) {
+    if (!safe) return;
+    if (ts.isIdentifier(node) && node.text === name && node !== binding.name) {
+      const parent = node.parent;
+      const isDirectSpread =
+        (ts.isSpreadAssignment(parent) && parent.expression === node) ||
+        (ts.isJsxSpreadAttribute(parent) && parent.expression === node);
+      const isJsxValue =
+        ts.isJsxExpression(parent) &&
+        parent.expression === node &&
+        ts.isJsxAttribute(parent.parent);
+      if (!isDirectSpread && !isJsxValue) safe = false;
+    }
+    node.forEachChild(visit);
+  }
+  visit(sourceFile);
+  return safe;
+}
+
+function resolveStaticObjectProperties(
+  expression,
+  sourceFile,
+  activeBindings = new Set(),
+) {
+  const value = unwrapStaticExpression(expression);
+  if (
+    ts.isCallExpression(value) &&
+    value.expression.getText(sourceFile) === "Object.freeze"
+  ) {
+    if (value.arguments.length !== 1) return { known: false, properties: [] };
+    return resolveStaticObjectProperties(
+      value.arguments[0],
+      sourceFile,
+      activeBindings,
+    );
+  }
+  if (ts.isIdentifier(value)) {
+    const binding = findConstBinding(value.text, sourceFile, value);
+    if (
+      !binding ||
+      activeBindings.has(binding) ||
+      !objectBindingIsUnmutated(binding, sourceFile)
+    )
+      return { known: false, properties: [] };
+    return resolveStaticObjectProperties(
+      binding.initializer,
+      sourceFile,
+      new Set([...activeBindings, binding]),
+    );
+  }
+  if (!ts.isObjectLiteralExpression(value))
+    return { known: false, properties: [] };
+  const properties = [];
+  for (const property of value.properties) {
+    if (ts.isSpreadAssignment(property)) {
+      const spread = resolveStaticObjectProperties(
+        property.expression,
+        sourceFile,
+        activeBindings,
+      );
+      if (!spread.known) return { known: false, properties: [] };
+      properties.push(...spread.properties);
+      continue;
+    }
+    if (ts.isPropertyAssignment(property)) {
+      const name = staticPropertyName(property.name);
+      if (name === undefined) return { known: false, properties: [] };
+      properties.push({ name, expression: property.initializer });
+      continue;
+    }
+    if (ts.isShorthandPropertyAssignment(property)) {
+      properties.push({ name: property.name.text, expression: property.name });
+      continue;
+    }
+    return { known: false, properties: [] };
+  }
+  return { known: true, properties };
+}
+
+function resolveStaticValue(
+  expression,
+  sourceFile,
+  activeBindings = new Set(),
+) {
+  const value = unwrapStaticExpression(expression);
+  if (ts.isStringLiteral(value) || ts.isNoSubstitutionTemplateLiteral(value))
+    return { known: true, value: value.text };
+  if (ts.isNumericLiteral(value))
+    return { known: true, value: Number(value.text) };
+  if (value.kind === ts.SyntaxKind.TrueKeyword)
+    return { known: true, value: true };
+  if (value.kind === ts.SyntaxKind.FalseKeyword)
+    return { known: true, value: false };
+  if (value.kind === ts.SyntaxKind.NullKeyword)
+    return { known: true, value: null };
+  if (ts.isIdentifier(value)) {
+    if (value.text === "undefined") return { known: true, value: undefined };
+    const binding = findConstBinding(value.text, sourceFile, value);
+    if (!binding || activeBindings.has(binding))
+      return { known: false, value: undefined };
+    const resolved = resolveStaticValue(
+      binding.initializer,
+      sourceFile,
+      new Set([...activeBindings, binding]),
+    );
+    if (
+      resolved.known &&
+      resolved.value !== null &&
+      typeof resolved.value === "object" &&
+      !objectBindingIsUnmutated(binding, sourceFile)
+    )
+      return { known: false, value: undefined };
+    return resolved;
+  }
+  if (
+    ts.isCallExpression(value) &&
+    value.expression.getText(sourceFile) === "Object.freeze" &&
+    value.arguments.length === 1
+  )
+    return resolveStaticValue(value.arguments[0], sourceFile, activeBindings);
+  if (ts.isObjectLiteralExpression(value)) {
+    const properties = resolveStaticObjectProperties(
+      value,
+      sourceFile,
+      activeBindings,
+    );
+    return properties.known
+      ? {
+          known: true,
+          value: { kind: "object", properties: properties.properties },
+        }
+      : { known: false, value: undefined };
+  }
+  return { known: false, value: undefined };
+}
+
+function resolveAlertPaintProps(node, sourceFile) {
+  const state = new Map(
+    alertPaintProps.map((name) => [name, { kind: "absent" }]),
+  );
+  const attributes = ts.isJsxElement(node)
+    ? node.openingElement.attributes
+    : node.attributes;
+  function apply(name, expression) {
+    if (!alertPaintProps.includes(name)) return;
+    const result = expression
+      ? resolveStaticValue(expression, sourceFile)
+      : { known: true, value: true };
+    state.set(
+      name,
+      result.known
+        ? { kind: "known", value: result.value }
+        : { kind: "unknown" },
+    );
+  }
+  for (const attribute of attributes.properties) {
+    if (ts.isJsxSpreadAttribute(attribute)) {
+      const spread = resolveStaticObjectProperties(
+        attribute.expression,
+        sourceFile,
+      );
+      if (!spread.known) {
+        for (const name of alertPaintProps)
+          state.set(name, { kind: "unknown" });
+        continue;
+      }
+      for (const property of spread.properties)
+        apply(property.name, property.expression);
+      continue;
+    }
+    if (!ts.isJsxAttribute(attribute)) continue;
+    const name = attribute.name.getText(sourceFile);
+    if (!alertPaintProps.includes(name)) continue;
+    const initializer = attribute.initializer;
+    const expression =
+      initializer && ts.isJsxExpression(initializer)
+        ? initializer.expression
+        : initializer;
+    apply(name, expression);
+  }
+  return state;
+}
+
+function classNameMayChangeAlertPaint(className, tokenNames) {
+  if (className === null || className === undefined) return false;
+  if (typeof className !== "string") return true;
+  const nonColorTextUtilities = new Set([
+    "text-left",
+    "text-center",
+    "text-right",
+    "text-justify",
+    "text-start",
+    "text-end",
+    "text-wrap",
+    "text-nowrap",
+    "text-balance",
+    "text-pretty",
+    "text-ellipsis",
+    "text-clip",
+    "text-xs",
+    "text-sm",
+    "text-base",
+    "text-lg",
+    "text-xl",
+  ]);
+  for (const raw of className.split(/\s+/u).filter(Boolean)) {
+    const parsed = parseClassToken(raw);
+    const foreground = parseForegroundUtility(parsed, tokenNames);
+    if (foreground?.name || foreground?.unsupported) return true;
+    if (
+      parsed.utility.startsWith("text-") &&
+      !nonColorTextUtilities.has(parsed.utility) &&
+      !/^text-\d+xl$/u.test(parsed.utility) &&
+      !/^text-\[(?:length:)?-?\d+(?:\.\d+)?(?:px|rem|em|vh|vw|%)\]$/u.test(
+        parsed.utility,
+      )
+    )
+      return true;
+    if (
+      parsed.utility.startsWith("bg-") ||
+      /^\[(?:color|background(?:-color)?|opacity|mix-blend-mode|filter|--color-[^:]+):/u.test(
+        parsed.utility,
+      ) ||
+      /^(?:opacity|mix-blend|filter|brightness|contrast|invert|saturate|sepia|hue-rotate|backdrop|fill-|stroke-)/u.test(
+        parsed.utility,
+      )
+    )
+      return true;
+  }
+  return false;
+}
+
+function styleMayChangeAlertPaint(style, sourceFile) {
+  if (style === null || style === undefined) return false;
+  if (!style || typeof style !== "object" || style.kind !== "object")
+    return true;
+  for (const property of style.properties) {
+    const normalized = property.name.replaceAll("-", "").toLowerCase();
+    if (
+      property.name.startsWith("--") ||
+      normalized === "color" ||
+      normalized.startsWith("background") ||
+      [
+        "opacity",
+        "filter",
+        "mixblendmode",
+        "webkittextfillcolor",
+        "fill",
+        "stroke",
+        "textshadow",
+        "mask",
+        "maskimage",
+      ].includes(normalized)
+    ) {
+      const value = resolveStaticValue(property.expression, sourceFile);
+      if (!value.known || (value.value !== null && value.value !== undefined))
+        return true;
+    }
+  }
+  return false;
+}
+
 export function observeInheritedForegroundSurfaces(sourcePaths, tokenNames) {
   const parser = new API({ cwd: repoRoot });
   const globalCss = requireFromWeb("node:fs").readFileSync(
@@ -3359,6 +3743,7 @@ export function observeInheritedForegroundSurfaces(sourcePaths, tokenNames) {
       const alertSourceFile = sourceFilesByPath.get(alertPath);
       if (alertSourceFile) {
         const variantClasses = new Map();
+        let baseClassText;
         function findAlertVariants(node) {
           if (
             ts.isVariableDeclaration(node) &&
@@ -3368,6 +3753,8 @@ export function observeInheritedForegroundSurfaces(sourcePaths, tokenNames) {
             ts.isCallExpression(node.initializer)
           ) {
             const config = node.initializer.arguments[1];
+            const base = node.initializer.arguments[0];
+            if (base && ts.isStringLiteral(base)) baseClassText = base.text;
             if (!config || !ts.isObjectLiteralExpression(config)) return;
             const variantsProperty = config.properties.find(
               (property) =>
@@ -3416,33 +3803,60 @@ export function observeInheritedForegroundSurfaces(sourcePaths, tokenNames) {
         });
         for (const call of alertCalls) {
           const callerFile = sourceFilesByPath.get(call.callerPath);
-          const attributes = ts.isJsxElement(call.node)
-            ? call.node.openingElement.attributes
-            : call.node.attributes;
-          const variantAttribute = attributes.properties.find(
-            (attribute) =>
-              ts.isJsxAttribute(attribute) &&
-              attribute.name.getText(callerFile) === "variant",
-          );
-          const variant = variantAttribute
-            ? variantAttribute.initializer &&
-              ts.isStringLiteral(variantAttribute.initializer)
-              ? variantAttribute.initializer.text
-              : undefined
-            : "default";
-          const classText = variant && variantClasses.get(variant);
+          const props = resolveAlertPaintProps(call.node, callerFile);
+          const variantState = props.get("variant");
+          const classNameState = props.get("className");
+          const styleState = props.get("style");
+          let unresolvedProp;
+          if (variantState.kind === "unknown")
+            unresolvedProp =
+              "variant has unknown spread or expression provenance";
+          else if (
+            classNameState.kind === "unknown" ||
+            classNameMayChangeAlertPaint(classNameState.value, tokenNames)
+          )
+            unresolvedProp =
+              "className paint effects are unknown or color-affecting";
+          else if (
+            styleState.kind === "unknown" ||
+            styleMayChangeAlertPaint(styleState.value, callerFile)
+          )
+            unresolvedProp =
+              "style paint effects are unknown or color-affecting";
+          const variantValue =
+            variantState.kind === "absent" || variantState.value === undefined
+              ? "default"
+              : variantState.value;
+          const nullVariant = variantValue === null;
+          const variant = nullVariant ? "null" : variantValue;
+          const classText = nullVariant
+            ? baseClassText
+            : typeof variant === "string"
+              ? variantClasses.get(variant)
+              : undefined;
           const entries =
-            classText
-              ?.split(/\s+/u)
-              .map(parseClassToken)
-              .filter((token) => token.utility.startsWith("bg-")) ?? [];
+            !nullVariant && classText
+              ? classText
+                  .split(/\s+/u)
+                  .map(parseClassToken)
+                  .filter((token) => token.utility.startsWith("bg-"))
+              : [];
           const foreground = classText
             ?.split(/\s+/u)
             .map(parseClassToken)
             .map((token) => parseForegroundUtility(token, tokenNames))
             .find(Boolean);
           const occurrenceId = `${call.callerPath}::${call.owner ?? "<module>"}::Alert[${call.path.join("/")}]`;
-          if (!variant || !classText || entries.length === 0 || !foreground) {
+          if (
+            unresolvedProp ||
+            (!nullVariant &&
+              (typeof variant !== "string" ||
+                !classText ||
+                entries.length === 0)) ||
+            (nullVariant && !baseClassText) ||
+            !foreground ||
+            foreground.unsupported
+          ) {
             unresolved.set(occurrenceId, {
               id: occurrenceId,
               usage: call.callerPath,
@@ -3450,8 +3864,83 @@ export function observeInheritedForegroundSurfaces(sourcePaths, tokenNames) {
               ancestry: call.path,
               foregroundClass: foreground?.className ?? "text-card-foreground",
               reason:
+                unresolvedProp ??
                 "Alert variant must resolve to a literal supported surface.",
             });
+            continue;
+          }
+          if (nullVariant) {
+            const surfaces = callerSurface(call);
+            if (!surfaces || surfaces.length === 0) {
+              for (const theme of ["light", "dark"])
+                unresolved.set(`${occurrenceId}|${theme}`, {
+                  id: `${occurrenceId}|${theme}`,
+                  usage: call.callerPath,
+                  component: "Alert",
+                  ancestry: call.path,
+                  foregroundClass: foreground.className,
+                  reason: `Alert null variant has no source-bound opaque caller backdrop in ${theme} mode.`,
+                });
+              continue;
+            }
+            for (const surface of surfaces) {
+              const backgroundClass = surface.className;
+              const backgroundName = backgroundClass.match(
+                /^bg-([a-z0-9-]+)(?:\/\d+)?$/u,
+              )?.[1];
+              if (
+                !backgroundName ||
+                !tokenNames.has(backgroundName) ||
+                !opaqueBackground(parseClassToken(backgroundClass))
+              ) {
+                for (const theme of ["light", "dark"])
+                  unresolved.set(`${occurrenceId}|${theme}`, {
+                    id: `${occurrenceId}|${theme}`,
+                    usage: call.callerPath,
+                    component: "Alert",
+                    ancestry: call.path,
+                    foregroundClass: foreground.className,
+                    reason:
+                      "Alert null variant caller backdrop is unresolved or translucent.",
+                  });
+                continue;
+              }
+              for (const theme of surface.themes ?? ["light", "dark"]) {
+                if (!classAvailableInTheme(backgroundClass, theme)) continue;
+                const key = contrastPairKey(
+                  `--color-${foreground.name}`,
+                  `--color-${backgroundName}`,
+                  backgroundClass,
+                  theme,
+                  foreground.className,
+                  surface.backdropLayers ?? [],
+                );
+                pairs.add(key);
+                uses.add(`${call.callerPath}|${key}`);
+                callerUses.add(`${occurrenceId}|${key}`);
+                const contexts = uses.occurrences?.get(key) ?? [];
+                contexts.push({
+                  id: occurrenceId,
+                  usage: call.callerPath,
+                  component: "Alert",
+                  foregroundClass: foreground.className,
+                  backgroundClass,
+                  backdropClass: surface.backdropClass ?? backgroundClass,
+                  backdropLayers: surface.backdropLayers ?? [],
+                  surfaceContext: "caller-chain",
+                  category: "body",
+                  chain: [
+                    `${alertPath}:alertVariants[variant=null]`,
+                    `${call.callerPath}:${call.owner ?? "<module>"}`,
+                    `jsx:${call.path.join("/")}`,
+                    ...(surface.chain ?? []),
+                  ],
+                });
+                const occurrenceUses = uses.occurrences ?? new Map();
+                occurrenceUses.set(key, contexts);
+                uses.occurrences = occurrenceUses;
+              }
+            }
             continue;
           }
           for (const theme of ["light", "dark"]) {

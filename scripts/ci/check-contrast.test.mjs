@@ -180,7 +180,30 @@ describe("G3 contrast inventory and math", () => {
 export function CardAlert(){ return <div className="bg-card"><Alert variant="info" /></div>; }
 export function PopoverAlert(){ return <div className="bg-popover"><Alert variant="warning" /></div>; }
 export function MissingAlert(){ return <Alert variant="error" />; }
-export function ConflictingAlert(){ return <div className="bg-card bg-popover"><Alert variant="error" /></div>; }`,
+export function ConflictingAlert(){ return <div className="bg-card bg-popover"><Alert variant="error" /></div>; }
+const frozenVariant = Object.freeze({ variant: "success" as const });
+const safeProps = { variant: "info" as const, className: "mt-3", style: { marginTop: 4 } };
+const primitiveVariant = "error" as const;
+export function FrozenSpread(){ return <div className="bg-card"><Alert {...frozenVariant} /></div>; }
+export function SafePropsSpread(){ return <div className="bg-card"><Alert {...safeProps} /></div>; }
+export function PrimitiveVariant(){ return <div className="bg-card"><Alert variant={primitiveVariant} /></div>; }
+export function LiteralObjectSpread(){ return <div className="bg-card"><Alert {...{ variant: "warning" }} variant="error" /></div>; }
+export function TrailingOverride(props: Record<string, unknown>){ return <div className="bg-card"><Alert {...props} variant="warning" className="mt-3" style={{ marginTop: 4 }} /></div>; }
+export function UnknownAfterVariant(props: Record<string, unknown>){ return <div className="bg-card"><Alert variant="info" {...props} className="mt-3" style={{ marginTop: 4 }} /></div>; }
+export function UnknownVariantSpread(props: Record<string, unknown>){ return <div className="bg-card"><Alert {...props} /></div>; }
+const mutableVariant = { variant: "info" };
+mutableVariant.variant = "error";
+const shadowedProps = { variant: "success" as const };
+export function ShadowedBinding(shadowedProps: Record<string, unknown>){ return <div className="bg-card"><Alert {...shadowedProps} /></div>; }
+export function UnknownSpreadPartialOverride(props: Record<string, unknown>){ return <div className="bg-card"><Alert {...props} variant="info" /></div>; }
+export function MutatedSpread(){ return <div className="bg-card"><Alert {...mutableVariant} /></div>; }
+export function ClassNamePaint(){ return <div className="bg-card"><Alert variant="info" className="text-destructive" /></div>; }
+export function ClassNameUnknownColor(){ return <div className="bg-card"><Alert variant="info" className="text-red-500" /></div>; }
+export function ClassNameArbitraryPaint(){ return <div className="bg-card"><Alert variant="info" className="[color:red]" /></div>; }
+export function StyleColor(){ return <div className="bg-card"><Alert variant="info" style={{ color: "red" }} /></div>; }
+export function DynamicClassName({ className }: { className: string }){ return <div className="bg-card"><Alert variant="info" className={className} /></div>; }
+export function DynamicStyle({ style }: { style: React.CSSProperties }){ return <div className="bg-card"><Alert variant="info" style={style} /></div>; }
+export function NullVariant(){ return <div className="bg-card"><Alert variant={null} /></div>; }`,
       );
       const result = observeInheritedForegroundSurfaces(
         ["packages/ui/src/components/alert.tsx", fixture],
@@ -205,14 +228,54 @@ export function ConflictingAlert(){ return <div className="bg-card bg-popover"><
       const unresolved = [...result.unresolved.values()].filter(
         (item) => item.component === "Alert" && item.usage === fixture,
       );
-      assert.equal(unresolved.length, 4);
+      const unresolvedByOwner = (owner) =>
+        unresolved.filter((item) => item.id.includes(`::${owner}::Alert[`));
+      for (const owner of [
+        "MissingAlert",
+        "ConflictingAlert",
+        "UnknownAfterVariant",
+        "UnknownVariantSpread",
+        "ShadowedBinding",
+        "UnknownSpreadPartialOverride",
+        "MutatedSpread",
+        "ClassNamePaint",
+        "ClassNameUnknownColor",
+        "ClassNameArbitraryPaint",
+        "StyleColor",
+        "DynamicClassName",
+        "DynamicStyle",
+      ])
+        assert.ok(unresolvedByOwner(owner).length > 0, `${owner} fails closed`);
+      for (const owner of [
+        "FrozenSpread",
+        "SafePropsSpread",
+        "PrimitiveVariant",
+        "LiteralObjectSpread",
+        "TrailingOverride",
+      ])
+        assert.equal(unresolvedByOwner(owner).length, 0, `${owner} is known`);
       assert.ok(
-        unresolved.every(
-          (item) =>
-            item.reason.includes("no source-bound opaque caller backdrop") ||
-            item.reason.includes("unresolved or translucent"),
+        unresolvedByOwner("UnknownAfterVariant").some((item) =>
+          item.reason.includes("unknown spread"),
         ),
-        "missing and conflicting caller surfaces remain a gate failure",
+        "a later unknown spread overrides the earlier literal variant",
+      );
+
+      const nullVariantPairs = [...result.pairs].filter((key) =>
+        key.startsWith("--color-card-foreground|--color-card|bg-card|"),
+      );
+      assert.ok(
+        nullVariantPairs.some((key) => key.includes("NullVariant")) ||
+          [...(result.uses.occurrences?.values() ?? [])]
+            .flat()
+            .some(
+              (item) =>
+                item.component === "Alert" &&
+                item.usage === fixture &&
+                item.id.includes("NullVariant") &&
+                item.backgroundClass === "bg-card",
+            ),
+        "variant=null uses the base foreground against the actual caller backdrop",
       );
 
       const shippedPaths = await collectContrastSourcePaths();
