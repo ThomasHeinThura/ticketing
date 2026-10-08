@@ -1,7 +1,8 @@
 # Live pull request disposition ledger
 
-**Verified:** 2026-10-08 16:48 UTC. **Repository:** `ThomasHeinThura/ticketing`.
+**Verified:** 2026-10-08 16:51 UTC. **Repository:** `ThomasHeinThura/ticketing`.
 **Accepted `main`:** `3096cb044bdf6ae98488bfc385f532fa6386343a`.
+GitHub showed **20 open PRs** at this verification.
 
 This ledger records the live open-PR set and the disposition of each source lane. PR heads
 and CI are volatile: refresh them from GitHub before acting. A historical review or a green
@@ -19,7 +20,7 @@ protected merge.
 | 606 | `e20c1124f7c1ddfb8f227ce87690e871aa9782ca` | P1 activity, history and mentions | Preserve as an existing owner slice; integrate after P0 | Exact-head integration and browser failures remain to be repaired and reviewed; retain original evidence. |
 | 605 | `024788d8d9fe5e2aa9f63d17e1fb7c96f978fbe1` | P1 native realtime refresh | Preserve as an existing owner slice; integrate after P0 | Based on an unaccepted integration line; reconcile failures and dependency order during bounded composition. |
 | 603 | `9ed99f243e15a058419753bf1cb188d76134a0b2` | P4 approval/role query ownership | Preserve as an existing owner slice; integrate after P0 | Repair its current integration checks and compose only with the prerequisite approved sources. No migration delta is recorded in the captured plan. |
-| 602 | `2b7192eb5181d50085f8734d2c5da226e301453e` | P0 performance/closure source and review note | **BLOCKED** | The latest run on this head is G11 20/22: LCP 2,520/2,500 ms and 200-task board 614.1/500 ms. Earlier `23a01a6` 22/22 is historical source evidence and cannot clear this failure. The separate local notification correction `5ec772771497e5883ff4c55f272cd34df737b585` is blocked by ordinary review, unpushed and undeployed. |
+| 602 | `2b7192eb5181d50085f8734d2c5da226e301453e` | P0 performance/closure source and review note | **BLOCKED** | The latest run on this head is G11 20/22: LCP 2,520/2,500 ms and 200-task board 614.1/500 ms. Earlier `23a01a6` 22/22 is historical source evidence and cannot clear this failure. The local notification remediation `b890c86a0feaba018d298273527d86058cb56921` is unpushed/undeployed; its current independent reviews are active. |
 | 601 | `ad22ef8b1e9ac5ec8c7d2a2a93ea78fa7d1b2508` | P0 operational documentation | **BLOCKED** | Documentation batch is not accepted while current static, PR metadata/security-review, G11, dependency-audit and secret-scan checks fail. No review is recorded on the current head. |
 | 599 | `7c5ae58c67c3572b2f4f52864788f78e726daa0d` | P1 attachment/public-origin | Preserve outside P0; integrate only at its accepted P1 boundary | Do not absorb into frozen P0. Keep existing owner source and reconcile current exact-head checks at P1 composition. |
 | 598 | `3fecb75ccd4a1fcbfce5414de6d222c46bb5e94e` | P2 catalogue/intake | Preserve feature owner slices; **do not merge as the cumulative train** | Retain only implemented, reviewed feature scope; hold incomplete capabilities and allocate migrations in the central replay. |
@@ -30,13 +31,13 @@ protected merge.
 | 586 | `b67a865a4c798069ab26c5dba4fb6632e82d6e1e` | P2 approvals | Preserve as an existing owner slice; integrate after P0 | Provisional migration 0116 is not a final allocation. Approval authority and pending-action semantics must be accepted with the implementation. |
 | 585 | `5a371451d2d05777a8815639b18cd2ac8085578b` | P4 notification delivery | Preserve as the SQL feature owner; integrate after P0 | Its 0114/0115 SQL is duplicated in the train; replay once. Its 89-table snapshots are stale; use the reconciled composition snapshot lineage. |
 | 569 | `af6f755c7b2803136101aece8bbcc03f48a2bb75` | P4 pending-action expiry index | Preserve source for owner review; **do not reuse provisional migration 0082** | Its migration conflicts with accepted history through 0087. Reallocate only after feature inclusion and order are frozen. |
-| 550 | `2ad7e03b4cbb9041b811c33e5799097d82a83214` | P0 two-entry web split | Preserve until behavior-level replacement is proven | Path presence is not equivalence: captured comparison found 51 identical and 87 changed blobs in frozen P0. Complete the owner mapping and accepted-main verification before closure. |
 | 513 | `a319442f1804c1733c08bfb63157d6191199e801` | P2 service calendars/SLA | Preserve as an existing owner slice; integrate after P0/P1 prerequisites | Assign schema by actual owner contract, not train membership. Calendar and SLA prerequisites must be included and reviewed together. |
 | 512 | `0f24ba2c374255bf3edb36677bc6b3fb57419300` | P1 work-item journey | Preserve as an existing owner slice; rebuild bounded composition | Broad accumulated source overlaps newer P1 owners and frozen P0 lacks some journey paths. Map owned behavior and its regressions before replacing or closing. |
-| 506 | `c55b32b313d0e46b568776ec107ae30975b31d06` | P0 notification task-reach authorization | **Preserve required source; do not close as absorbed** | Its task-reach authority behavior is absent from accepted main and the frozen P0 source. The local correction is still under review; current independent ordinary review blocks it on missing effective `project:read`, customer ownership reach and per-provider dispatch rechecks. |
+| 506 | `c55b32b313d0e46b568776ec107ae30975b31d06` | P0 notification task-reach authorization | **Preserve required source; do not close as absorbed** | Its task-reach authority behavior is absent from accepted main and frozen P0. The earlier local candidate `5ec7727` has blocked review evidence. Its complete local remediation `b890c86` follows `5ec7727`; current independent exact-head reviews are active and have not cleared it. |
 
-The live open set above contains 21 PRs. PR #555 is closed, not open, and is recorded below
-as absorbed. PR #610 is closed after the registry direction changed to GHCR/GitHub release
+The live open set above contains 20 PRs. PR #555 is closed, not open, and is recorded below
+as absorbed. PR #550 is closed as superseded after accepted-main source conservation, recorded
+below. PR #610 is closed after the registry direction changed to GHCR/GitHub release
 publication; Docker Hub publication was canceled. PR #447 is closed as superseded; its branch
 and ancestry remain preserved. These are disposition facts, not permission to delete source.
 
@@ -50,13 +51,24 @@ are accepted through PR #579. No source was deleted and the #555 branch/history 
 preserved. This is a source-conservation disposition only; the old PR's red checks are not
 represented as passing and no test was freshly run for this reconciliation.
 
+## Closed as superseded: PR #550 two-entry web split
+
+PR #550 exact head `2ad7e03b4cbb9041b811c33e5799097d82a83214` was closed at 2026-10-08
+16:51:01 UTC after the accepted-main semantic audit at
+`3096cb044bdf6ae98488bfc385f532fa6386343a`. The root reconciliation verified ten core portal,
+request-origin parser, test and CI-gate blobs byte-identical to accepted main; remaining
+entry, API wiring and route/build behavior were checked against the accepted implementation.
+The two-entry capability is conserved in accepted main. This was a PR closure, not a merge,
+gate waiver or branch deletion. The #550 branch and Git history remain preserved. Evidence:
+`550-reconciliation.json` and `550-source-conservation.md` in the private dated inventory.
+
 ## P0 evidence boundaries
 
 - Frozen P0 source: `23a01a62ece3ca7d17105626f64ad78641435ec1`.
 - Review-note descendant: `2b7192eb5181d50085f8734d2c5da226e301453e`.
 - `23a01a6` hosted full run `37760096010` passed 22/22; that result belongs to `23a01a6`.
 - Latest observed #602 head run `37803812115` passed 20/22 G11 cases, with LCP 2,520 ms and board 614.1 ms exceeding their unchanged budgets.
-- Local notification correction `5ec772771497e5883ff4c55f272cd34df737b585` is not a PR head. Its fresh Luna review is BLOCKED; no tests were run by that reviewer. Do not imply the historical source23 reviews adjudicate this correction.
+- Local notification candidate `5ec772771497e5883ff4c55f272cd34df737b585` received blocked independent review findings; preserve that history. The author completed a local-only remediation at `b890c86a0feaba018d298273527d86058cb56921` (parent `5ec7727`), reporting one file, seven tests, API typecheck and Biome as passing. Current independent exact-head reviews are active; no current verdict or future CI pass is claimed. The new candidate is unpushed and undeployed. Historical source23 reviews do not adjudicate it.
 - The private V20 final manifest hash is `e51bf0cb343cddd922c426bf78784b22e400bc34c47780a753132c1a8eb554f2`. The scoped Sol CLEAR records historical witness scope only; it is not actual strict-runtime admission, activation, deployment, merge or phase closure.
 
 ## Evidence and refresh rule

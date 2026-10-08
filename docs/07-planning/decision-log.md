@@ -1,12 +1,15 @@
 ### 2026-10-08 · Preserve live PR dispositions and centralize post-P0 migration replay
 
-The 16:48 UTC operational reconciliation records the live open-PR heads and dispositions in
-the [PR disposition ledger](pr-disposition-ledger.md), including #555's absorbed-by-accepted-
-main source conservation, #607's MCP contract/review-register hold, #602's current 20/22 G11
-failure, and the local notification correction's blocked ordinary review. The earlier #602
-22/22 result remains bound to frozen source `23a01a62ece3ca7d17105626f64ad78641435ec1` and
-does not clear the later review-note head. No review, check, or source-conservation result is
-transferred to a different SHA.
+The 16:51 UTC operational reconciliation records 20 live open PRs and their heads/dispositions
+in the [PR disposition ledger](pr-disposition-ledger.md), including #555's absorbed-by-accepted-
+main source conservation, #550's accepted-main semantic-audit closure, #607's MCP
+contract/review-register hold, and #602's current 20/22 G11 failure. The earlier #602 22/22
+result remains bound to frozen source `23a01a62ece3ca7d17105626f64ad78641435ec1` and does not
+clear the later review-note head. The local notification candidate `5ec7727` remains a
+blocked predecessor; its complete local successor `b890c86a0feaba018d298273527d86058cb56921`
+has author-reported checks, while fresh independent exact-head reviews are active. It remains
+unpublished and no review verdict is claimed. No review, check, or source-conservation result
+is transferred to a different SHA.
 
 The [central migration replay ledger](migration-replay-ledger.md) records accepted migration
 history 0000–0087 as immutable and candidate post-0087 SQL as provisional owner material.
@@ -17,6 +20,9 @@ not whole-train merge candidates; the #608 provisional 0112 body is distinct fro
 0112 and requires separate final numbering if selected. This record authorizes no migration
 allocation, applied-prefix rewrite, deployment, merge, gate waiver, strict activation, or phase
 closure. The GHCR/GitHub release direction and feature freeze remain as previously recorded.
+The existing October 9 automation preserves historical V19 evidence bound to source
+`23a01a62ece3ca7d17105626f64ad78641435ec1` and requires corrected-candidate
+rebind/adjudication; V19 is immutable and no runtime was run today.
 
 ### 2026-10-08 · Bounded public-config cutover criterion substitute
 

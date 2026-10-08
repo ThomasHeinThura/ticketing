@@ -1,8 +1,8 @@
-## Status first — verified 2026-10-08 16:48 UTC
+## Status first — verified 2026-10-08 16:51 UTC
 
 **Accepted `main`:** `3096cb044bdf6ae98488bfc385f532fa6386343a`. **Current worktree:** PR #601
 documentation branch baseline `ad22ef8b1e9ac5ec8c7d2a2a93ea78fa7d1b2508`; this ledger batch
-is local and not yet pushed. Live GitHub lists 21 open PRs. **Persistent DEV:** source
+and follow-up are local and not yet pushed. Live GitHub lists 20 open PRs. **Persistent DEV:** source
 `08842235047a3ab2714427edce80331b94558150` remains preserved. No new deployment, protected
 merge, release, strict activation or phase closure occurred. Docker Hub publication is
 canceled; the approved publication direction is GHCR and GitHub release packages.
@@ -11,14 +11,18 @@ canceled; the approved publication direction is GHCR and GitHub release packages
 run `37760096010` passed 22/22. Review-note head `2b7192eb5181d50085f8734d2c5da226e301453e`
 has a later G11 result of 20/22: LCP 2,520/2,500 ms and 200-task board 614.1/500 ms. This
 current failure is not cleared by the earlier frozen-source pass. The local notification
-task-reach correction `5ec772771497e5883ff4c55f272cd34df737b585` is blocked by fresh ordinary
-review findings, is not pushed and is not deployed. The scoped Sol CLEAR and final manifest
+task-reach candidate `5ec772771497e5883ff4c55f272cd34df737b585` has preserved blocked review
+findings. Its complete local remediation `b890c86a0feaba018d298273527d86058cb56921` (parent
+`5ec7727`) has author-reported one-file/seven-test, API typecheck and Biome passes. Fresh
+independent exact-head reviews are active; no verdict is recorded yet. `b890c86` is unpushed
+and undeployed. The scoped Sol CLEAR and final manifest
 `e51bf0cb343cddd922c426bf78784b22e400bc34c47780a753132c1a8eb554f2` cover historical witnesses
 only; they do not establish strict-runtime admission or activation.
 
 **Disposition and migration records:** [live PR disposition ledger](pr-disposition-ledger.md)
-captures exact heads and current holds, including #555's accepted-main absorption, #607's MCP
-contract/review-register hold, and #589's rebuild-only role. [Central migration replay
+captures exact heads and current holds, including #555's accepted-main absorption, #550's
+accepted-main source-conservation closure, #607's MCP contract/review-register hold, and #589's
+rebuild-only role. [Central migration replay
 ledger](migration-replay-ledger.md) preserves accepted 0000–0087 and maps candidate semantic
 units without assigning final IDs or rewriting applied history.
 
@@ -31,11 +35,19 @@ units without assigning final IDs or rewriting applied history.
 | P4 | Open — retain existing Users, notification and query owners; #607 is held on MCP contract/review-register questions; integrated acceptance remains. |
 | P5–P7 | Open and held under the feature freeze. |
 
-**#555 reconciliation:** GitHub has closed PR #555 as absorbed by accepted main after the
+**Closed source lanes:** PR #555 was absorbed by accepted main after the
 16:41 UTC source-conservation check. The Avatar primitive, app adapter, resolver, tests and
 accepted replacement visual baselines are covered. The PR branch/history are preserved; no
 source was deleted. This closure does not convert the historical red CI into a pass or claim a
-fresh test run.
+fresh test run. PR #550 was closed as superseded at 16:51:01 UTC after accepted-main semantic
+audit: ten core portal/parser/test/gate blobs were byte-identical, the remaining entry and
+wiring behavior was verified against accepted source, and the two-entry capability is
+conserved. Its branch/history remain preserved; no merge or gate waiver occurred.
+
+**Runtime automation:** the existing October 9 automation was updated to preserve historical
+V19 evidence bound to source `23a01a62ece3ca7d17105626f64ad78641435ec1` and require
+corrected-candidate rebind/adjudication. V19 remains immutable. No new runtime was run today
+and no additional date was established.
 
 **Operational boundaries:** maintain the existing feature freeze and owners. Recreate the
 post-P0 integration train from accepted `main`; do not merge #589 wholesale. Keep credentials
