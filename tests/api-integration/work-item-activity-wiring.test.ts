@@ -661,7 +661,7 @@ describe("API integration: work-item activity wiring (#23 third slice, WI-6)", (
     };
 
     const rawKey = await createApiKeyFor(creator.user.id, {
-      work_item: ["update"],
+      work_item: ["update", "set_priority"],
     });
     const response = await updateWorkItemRequest(
       app,
