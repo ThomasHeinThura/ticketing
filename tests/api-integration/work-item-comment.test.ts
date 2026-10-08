@@ -357,6 +357,20 @@ describe("API integration: work-item comments (#27)", () => {
     if (!customerOrganisation)
       throw new Error("expected customer organisation");
     const customer = await addCustomerIdentity(customerOrganisation.id);
+    const foreignOrganisation = await db
+      .insert(schema.organisationTable)
+      .values({
+        key: `mention-foreign-org-${randomUUID()}`,
+        name: "Foreign customer organisation",
+        isInternal: false,
+        createdAt: new Date(),
+        updatedAt: new Date(),
+      })
+      .returning()
+      .then(([row]) => row);
+    if (!foreignOrganisation)
+      throw new Error("expected foreign customer organisation");
+    const foreignCustomer = await addCustomerIdentity(foreignOrganisation.id);
     await db
       .update(schema.projectTable)
       .set({ organisationId: customerOrganisation.id })
@@ -381,6 +395,9 @@ describe("API integration: work-item comments (#27)", () => {
         reachable: true,
       }),
     );
+    expect(await publicCandidates.json()).not.toContainEqual(
+      expect.objectContaining({ personId: foreignCustomer.person.id }),
+    );
 
     const internalCandidates = await app.request(
       `/api/work-items/${workItem.key}/comments/mention-candidates?visibility=internal`,
@@ -397,6 +414,10 @@ describe("API integration: work-item comments (#27)", () => {
           type: "paragraph",
           content: [
             { type: "taskdeskMention", attrs: { id: customer.person.id } },
+            {
+              type: "taskdeskMention",
+              attrs: { id: foreignCustomer.person.id },
+            },
           ],
         },
       ],
@@ -407,7 +428,7 @@ describe("API integration: work-item comments (#27)", () => {
         method: "POST",
         headers: { "content-type": "application/json" },
         body: JSON.stringify({
-          personIds: [customer.person.id],
+          personIds: [customer.person.id, foreignCustomer.person.id],
           visibility: "public",
         }),
       },
@@ -415,7 +436,7 @@ describe("API integration: work-item comments (#27)", () => {
     expect(publicPreflight.status).toBe(200);
     expect(await publicPreflight.json()).toEqual({
       reachablePersonIds: [customer.person.id],
-      unreachablePersonIds: [],
+      unreachablePersonIds: [foreignCustomer.person.id],
     });
 
     const publicComment = await postComment(app, workItem.key, {
@@ -428,6 +449,11 @@ describe("API integration: work-item comments (#27)", () => {
       .from(schema.notificationTable)
       .where(eq(schema.notificationTable.personId, customer.person.id));
     expect(customerNotifications).toEqual([{ kind: "work_item.mentioned" }]);
+    const foreignNotifications = await db
+      .select({ kind: schema.notificationTable.kind })
+      .from(schema.notificationTable)
+      .where(eq(schema.notificationTable.personId, foreignCustomer.person.id));
+    expect(foreignNotifications).toEqual([]);
 
     const internalPreflight = await app.request(
       `/api/work-items/${workItem.key}/comments/mention-preflight`,
