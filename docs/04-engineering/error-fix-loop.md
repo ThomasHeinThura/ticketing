@@ -180,12 +180,18 @@ conversation.
 ## When a build fails in CI
 
 1. **Read the actual error.** Not the summary — the error.
-2. Reproduce locally with the same command CI ran.
-3. If it fails locally, it is a real failure. Fix it.
-4. If it passes locally, it is an environment difference: timing, data, ordering,
-   parallelism, timezone. Those are the usual suspects, in that order.
-5. If it is flaky, **fix the flake**. Do not retry the job. A suite with known flakes
-   stops being trusted, and then a real failure gets retried too.
+2. Before comparing CI and local results, verify the tested source SHA, exact command and
+   arguments, configured tool/dependency versions, and relevant environment and data. A
+   reproduction under mismatched conditions does not identify the cause.
+3. Classify the observed failure from evidence. A local failure does not by itself prove a
+   product defect; a local pass does not prove an environment defect. Choose a correction at
+   the layer the evidence supports: product, test/fixture, environment/invocation or factual
+   review metadata.
+4. For unexplained timing variation, preserve the run and investigate under the approved
+   verification/retry policy. Do not label it a flake without evidence, or repeat an unchanged
+   acceptance run hoping for a pass.
+5. A current red required check remains blocking. A prior green result never clears it; only
+   the required checks passing on the exact current candidate can satisfy that gate.
 
 ---
 
