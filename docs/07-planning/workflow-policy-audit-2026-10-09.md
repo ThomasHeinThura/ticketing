@@ -137,6 +137,10 @@ Policy behaviour, checked by reading the governing text. No runtime or productio
 
 ## 7 · Handoff — what active agents must reload
 
+> **Superseded in part by §9 (Instruction 1):** the model assignments, the re-run allowance
+> (now approved) and merge authority (now including a delegated policy maintainer for its own
+> candidate) changed after this section was written.
+
 Reload, in order: `AGENTS.md` → `docs/07-planning/active-mission.md` →
 `docs/04-engineering/agent-workflow.md` → `CLAUDE.md` (Claude sessions; GPT agents read its
 GPT section). Specialists: `definition-of-done.md § Levels of done`, `error-fix-loop.md`.
@@ -203,8 +207,11 @@ need recording on `main` or by the direct recipient; re-run counting by unchange
 log; spawn provenance added to the note headers. **That final commit has not been reviewed by
 an Opus context**; it falls to the required reviews below.
 
-These Opus reviews are additional evidence. The required GPT-6 Luna ordinary reviews and the
-GPT-6 Sol pass are still outstanding.
+Correction after round 4 (§11): the "recorded on `main` or by the direct recipient" wording
+and the `--summary` listing named above were later replaced — the first by Instruction 1's
+verifiable-decision wording, the second by `--raw`, because `--name-status --summary` does not
+show mode changes. Under Instruction 1, Opus contexts may fill the ordinary and security
+review roles; see §11 for the review set of record.
 
 ## 9 · Instruction 1 — Opus policy-repair conductor (2026-10-09)
 
@@ -273,3 +280,28 @@ delta review → merge.
 **Executed checks on #616's tree:** `test:ci-scripts` 1,140/1,142, with the 2 failures also on
 an untouched `main` checkout (test-tree typecheck coverage); `test:all --list` reconciles;
 `check:policy` passes on this candidate's tree and fails on `main` as designed.
+
+## 11 · Review ledger — every dispatched review
+
+All reviewers below were fresh, non-forked Claude Code Agent-tool contexts
+(`general-purpose`, model `claude-opus-5-5`) dispatched by the authoring session
+`412b91f1-99f8-4ac2-8f5c-a03dce507862`. Nothing was dropped: blocked and failed runs are
+listed. Reports are published unedited in `security-reviews/615-*` and
+`security-reviews/616-*`.
+
+| Round | Agent ID | Candidate | Role / scope | Verdict |
+| --- | --- | --- | --- | --- |
+| 1 | `ab2ce0e07c89e65a8` | #615 `c0d5ef6a` | ordinary, consistency, full | BLOCKED |
+| 1 | `a731c07f89434fd9f` | #615 `c0d5ef6a` | authority / safeguards, full | BLOCKED |
+| 2 | `ab2ce0e07c89e65a8` | #615 `ed7bb516` | ordinary, consistency, delta | CLEAR WITH NON-BLOCKING |
+| 2 | `a731c07f89434fd9f` | #615 `ed7bb516` | authority, delta | BLOCKED (transport fidelity) |
+| — | both above | — | request to write their own reports to a file | stopped by a platform safeguard; no output |
+| 3 | `a49bbfaf8bdf3920a` | #615 `889daa13` | ordinary, delta | CLEAR WITH NON-BLOCKING |
+| 4 | `ab3e25fe3c42ba55a` | #615 `b617f0b8` | ordinary, complete diff vs `main` | CLEAR WITH NON-BLOCKING |
+| 4 | `a7892031e5d3927c9` | #615 `b617f0b8` | ordinary, delta from `889daa13` | CLEAR WITH NON-BLOCKING |
+| 4 | `abe5040402caed3a3` | #615 `b617f0b8` | security / authority, complete diff | BLOCKED (review-set completeness; DoD model attestation) |
+| 4 | `a34879707b9e889e2` | #616 `7e8ab217` | ordinary, correctness | BLOCKED (cancellation could skip gated checks) |
+| 4 | `a32abc363efeeecbd` | #616 `7e8ab217` | ordinary, test adequacy | BLOCKED (step-condition mutant; check:policy end-to-end) |
+| 4 | `a399c1abbc5121183` | #616 `7e8ab217` | security, full | CLEAR WITH NON-BLOCKING |
+
+Every round-4 blocking finding is fixed in the following batch and goes to delta review.

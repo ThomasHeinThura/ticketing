@@ -4,8 +4,11 @@ The single record of **what agents are currently authorized to do**. It selects 
 mode defined in [agent-workflow.md § Operating modes](../04-engineering/agent-workflow.md#operating-modes).
 Permanent policy files never restate it; they link here.
 
-Only a new explicit decision by Thomas changes this file. Record the decision in the
-[decision log](decision-log.md) in the same change. Task state does not belong here — it
+Only a new explicit decision by Thomas changes this file. The conductor or a policy maintainer
+Thomas assigned edits it, records that decision in the [decision log](decision-log.md) in the
+same change, and takes the agent-authority review tier. Replacing the mission also re-decides
+the security-review model block in
+[agent-workflow.md § Model policy](../04-engineering/agent-workflow.md#model-policy). Task state does not belong here — it
 belongs in the conductor's queue (`docs/07-planning/integration-execution-queue.md`).
 
 ---
