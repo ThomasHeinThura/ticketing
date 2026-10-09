@@ -126,8 +126,10 @@ security-sensitive field in the product.
   `localStorage`, and therefore per device: a draft started on one device is not visible
   on another.
 - `CA-17` Editing is allowed for 15 minutes by the author. After that window, editing is
-  **refused** — a 403 — unless the actor holds `comment:update_any`. The PATCH request
-  supplies the complete `body` value; omitting the property is rejected before any write.
+  **refused** — a 403 — unless the actor holds `comment:update_any`. The PATCH request may
+  omit `body`; after the normal reach, live-parent, and edit-permission checks, an omitted
+  body returns the existing comment without writing a version or changing `body` or
+  `edited_at`. Supplying `body` replaces it and writes the prior body to comment history.
   The existing opaque JSON/legacy-string body contract is unchanged. Each edit writes a new
   `comment_version (comment_id, number, body, edited_by, created_at)` row, where new
   `edited_by` values are the linked editor `person.id` (null when no person is linked)
