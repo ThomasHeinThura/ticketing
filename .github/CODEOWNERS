@@ -10,8 +10,8 @@
 # repository at large, and says in terms that CODEOWNERS is ownership metadata rather than a
 # mechanical gate. The reason recorded there: a required approving review from a one-person
 # team documents a gate rather than providing one — the control that actually keeps a bad
-# change out of `main` is the required independent review(s), the required GPT-6 Sol security
-# review where in scope, and the required status checks, not an approval count. That
+# change out of `main` is the required independent review(s), the required security review
+# where in scope (model per agent-workflow.md § Model policy), and the required status checks, not an approval count. That
 # reasoning is UNCHANGED and still governs every path not listed below.
 #
 # UPDATED 2026-09-15 (decision log, same date, "Governance reset"): merge execution is
@@ -43,10 +43,10 @@
 # didn't work.
 #
 # `docs/07-planning/status.md` and `docs/07-planning/decision-log.md` are DELIBERATELY NOT
-# listed here even though CLAUDE.md calls them orchestrator-owned: they are meant to be kept
-# current every session that changes something durable, and gating every such update behind
-# Thomas's personal approval would recreate the staleness this project spent real time fixing.
-# Their protection is process (CLAUDE.md's "control plane" section), not a file-level gate.
+# listed here even though AGENTS.md § Roles makes them conductor-owned records: they are meant
+# to be kept current every session that changes something durable, and gating every such
+# update behind Thomas's personal approval would recreate the staleness this project spent
+# real time fixing. Their protection is process (AGENTS.md § Roles), not a file-level gate.
 #
 # Agents produce branches, tested code and pull requests. They never self-approve
 # (AGENTS.md do-not 7) and never merge except the orchestrating session, through the normal
@@ -56,5 +56,5 @@
 /AGENTS.md                              @ThomasHeinThura
 /docs/04-engineering/agent-workflow.md  @ThomasHeinThura
 /docs/04-engineering/ci-cd.md           @ThomasHeinThura
-/.claude/agents/                        @ThomasHeinThura
+/docs/07-planning/active-mission.md     @ThomasHeinThura
 /.github/CODEOWNERS                     @ThomasHeinThura

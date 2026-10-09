@@ -36,6 +36,7 @@
     "check:i18n": "node ./scripts/i18n/check.mjs",
     "check:openapi": "node ./scripts/ci/check-openapi.mjs",
     "check:overrides": "node ./scripts/ci/check-overrides.mjs",
+    "check:policy": "node ./scripts/ci/check-policy.mjs",
     "check:pr-template": "node ./scripts/ci/check-pr-template.mjs",
     "check:reviews": "node ./scripts/ci/check-reviews.mjs",
     "check:route-policy": "node ./scripts/ci/route-policy-gate.mjs",

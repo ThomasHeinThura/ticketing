@@ -68,6 +68,7 @@ its source-binding limit are recorded in the
 │ pnpm check:vocabulary identifiers registered     │
 │ pnpm check:events    published keys registered   │
 │ pnpm check:skips     no .skip / .only            │
+│ pnpm check:policy    agent policy coherent       │
 │ pnpm test:ci-scripts  gate checkers + red probes │
 │ pr-template check    sections filled, tiers named│
 ├─ Test ───────────────────────────────────────────┤
@@ -152,13 +153,13 @@ breaking changes on the same route needs two entries, one per finding. Binding t
 entries only means **entries approve only the break in the PR that adds them** — an entry
 already on `origin/main` (an earlier PR's approved break, now merged) approves nothing, so
 a later PR that reintroduces the same kind of break on the same route still needs its own
-new entry and its own GPT-6 Sol security review; the gate warns (does not fail) when a merged
+new entry and its own security review; the gate warns (does not fail) when a merged
 entry is still in the file, as a prompt to delete it. A new entry that matches no finding also fails,
 as a stale or typo'd entry. oasdiff's exit code is also checked: anything other than `0` or
 `1`, or `1` with zero findings reported, fails closed. This is the reviewed-allowlist
 mechanism for an intentional pre-2.0 breaking change (decision log, 2026-09-25); see
 [api-design.md](../01-architecture/api-design.md#versioning). Each entry is added in the
-PR that makes the break, needs its own GPT-6 Sol security review there, and from the first
+PR that makes the break, needs its own security review there, and from the first
 stable `v2.0.0` (or later) release tag on the file must be empty — a non-empty file fails
 the gate. "Stable" is looked up live from `git ls-remote --tags origin` (a tag matching
 `^v?(\d+)\.(\d+)\.(\d+)$` with major >= 2, no pre-release/build suffix), never from
@@ -237,14 +238,18 @@ workflow reconciliation.
 
 The fast stage exists because a required check that takes an hour gets worked around; the
 full stage exists because the things it checks cannot be made fast. Both block a merge.
-The GPT-6 Sol **security review** is a required section of `.github/pull_request_template.md`
+The **security review** is a required section of `.github/pull_request_template.md`
 (the template is specified in [definition-of-done.md](definition-of-done.md#the-pull-request-template)).
-CI checks it non-empty, naming GPT-6 Sol, whenever the diff touches **any** of — this list is the
-authoritative scope; [sdlc.md](sdlc.md) and [security-model.md](../01-architecture/security-model.md)
-cite it and do not restate it:
+CI checks it non-empty, naming exactly one **accepted security-review model**, whenever the
+diff touches **any** of the paths below. The accepted models are the list in
+[agent-workflow.md § Model policy](agent-workflow.md#model-policy) **as it stands on the merge
+base** (`scripts/ci/lib/review-models.mjs`): a pull request cannot add a model and approve
+itself with it. Without a list at the merge base, only `GPT-6 Sol` is accepted, as before the
+list existed. This list of paths is the authoritative scope; [sdlc.md](sdlc.md) and
+[security-model.md](../01-architecture/security-model.md) cite it and do not restate it:
 
-Opus 5.5's optional sampled big review is outside this per-PR status-check gate. It does not
-satisfy or delay the required GPT-6 Sol review; when a sample is selected, follow the packet
+The optional sampled big review is outside this per-PR status-check gate. It does not
+satisfy or delay the required security review; when a sample is selected, follow the packet
 process in [agent-workflow.md](agent-workflow.md#model-policy).
 
 ```
@@ -267,6 +272,7 @@ packages/plugins-contracts/**        (path does not exist yet)
 scripts/ci/**                        **/package.json
 turbo.json                           pnpm-lock.yaml
 docs/04-engineering/ci-cd.md         pnpm-workspace.yaml
+docs/04-engineering/agent-workflow.md
                                      .npmrc
                                      .pnpmfile.cjs
 trivy.yaml                           .trivyignore
@@ -665,15 +671,20 @@ image** ([security-model.md](../01-architecture/security-model.md#threat-model))
 
 ```
 main                    always deployable, protected
+  └── <agent>/…         e.g. codex/…, claude/… — one task, one agent, one branch
   └── feat/…            one feature, one agent, one branch
   └── fix/…
   └── docs/…
 ```
 
 - No long-lived branches. A branch older than a week is a merge problem forming.
-- Squash merge, so `main` has one commit per change and the history is readable.
+- **Squash merge** is the selected method (decision log 2026-09-06, reaffirmed 2026-10-09), so
+  `main` has one commit per change and the history is readable. The `protect-main` ruleset
+  also permits merge and rebase; that permission is not a selection, and earlier merge
+  commits on `main` were a deviation, not a precedent. The pull request keeps the branch's
+  individual commits and the review notes' bound SHAs.
 - `main` requires: all checks green, up to date with `main`, required independent review(s)
-  and, where in scope, the required GPT-6 Sol security review recorded. **The orchestrating
+  and, where in scope, the required security review recorded. **The orchestrating
   session may then merge itself**, through this normal protected flow, once every one
   of those is genuinely satisfied on the exact candidate SHA (Thomas, 2026-09-15 — delegated;
   supersedes "only Thomas presses merge" — see the decision log, 2026-09-15). Design approval

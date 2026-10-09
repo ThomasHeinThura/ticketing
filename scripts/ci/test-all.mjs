@@ -144,6 +144,12 @@ const manifest = [
   },
   { gate: "pnpm check:skips", stage: "fast", run: ["pnpm", "check:skips"] },
   {
+    gate: "pnpm check:policy",
+    stage: "fast",
+    run: ["pnpm", "check:policy"],
+    note: "Agent operating policy stays coherent: links and anchors resolve, entry files carry no live state, the startup order reads the active mission first, and agent-workflow.md has exactly one well-formed security-review model block (scripts/ci/check-policy.mjs).",
+  },
+  {
     gate: "pnpm test:ci-scripts",
     stage: "fast",
     run: ["pnpm", "test:ci-scripts"],
