@@ -99,7 +99,7 @@ the hole.
 
 ## The three-attempt rule
 
-**After three failed attempts at the same problem, stop.**
+**After three failures on the same mechanism, stop speculative iterations and change altitude.**
 
 Write down:
 
@@ -109,10 +109,31 @@ Write down:
 4. What you have ruled out.
 5. Your current best hypothesis.
 
-Then ask Thomas — the five-item note above *is* the escalation, and it goes into the pull
-request description and a **Blocked** entry in [status.md](../07-planning/status.md). The
-same shape applies when a usage limit blocks a required reviewer
-([agent-workflow.md](agent-workflow.md#model-policy), the reviewer-capacity rule).
+Pause iterations on that mechanism, not unrelated authorized tasks. Put the five-item note in
+the PR, a dated **Blocked** status entry and the
+[integration queue](../07-planning/integration-execution-queue.md). Escalate to Thomas only the
+owner-only decision, waiver or unavailable external access; technical diagnosis and structural
+remediation remain authorized. A required reviewer-capacity block stays at its existing tier.
+
+Before any further runner iteration:
+
+1. Identify the root cause from preserved failure evidence; state the mechanism and what
+   remains unknown. If the cause is unknown, gather targeted diagnostic evidence first.
+2. Replace repeated special cases with the necessary structural invariant/helper/redesign.
+   Keep the repair bounded to the identified cause and its integration dependencies.
+3. Add a regression that fails before the fix and passes after through the **complete real
+   invocation path**: actual entry command/wrapper, arguments and environment/config loading,
+   process lifecycle, real runtime/service interactions, result/artifact production and exit
+   status/cleanup as applicable. A helper-only test or offline fixture is not this regression.
+4. Run that regression and applicable source-bound checks before scheduling another expensive
+   runner/acceptance pass. Preserve command, source SHA, counts, receipts and failures.
+5. Review the current candidate at the existing risk-appropriate Luna/Sol tier. Do not add
+   automatic comfort rounds; changed source still needs the required independent delta review.
+
+Do not reset this threshold with a new symptom, branch, session or reviewer. Offline
+simulation may isolate a defect, but cannot substitute for actual runtime/SIT acceptance.
+Keep the same budgets, negative assertions, suite counts, exact-source requirements and CI
+checks; disabling tests or widening thresholds to make a runner green is not convergence.
 
 This applies especially to AI agents, where the failure mode is generating variation after
 variation without new information. A fourth variation on a wrong model of the problem is

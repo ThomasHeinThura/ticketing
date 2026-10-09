@@ -1,3 +1,19 @@
+## Blocked / current mission — 2026-10-09 control-plane reconciliation
+
+The current owner mission is **Integration Freeze and SIT Consolidation**, replacing automatic
+P4 completion and new feature expansion. Active task state and the next actionable task live
+in [integration-execution-queue.md](integration-execution-queue.md); dated snapshots below
+remain historical and do not override current policy or live GitHub.
+
+Fresh remote inspection establishes accepted `main` at
+`3096cb044bdf6ae98488bfc385f532fa6386343a`. The focused control-plane PR is being prepared;
+independent reviews, exact-candidate CI and protected acceptance are not yet claimed. Resume
+the existing source inventory/integration queue immediately after its acceptance. The initial
+queue records #589 and #602 at their observed sources; runner/runtime/performance blockers
+remain and no phase, SIT, production or waiver acceptance is implied.
+
+---
+
 ## Complete public-artifact scanner correction frozen — 2026-10-05 10:51 UTC
 
 Pushed author164f2ee735b3f83417387740f6fe96647de61ef1 corrects the sole369Sol

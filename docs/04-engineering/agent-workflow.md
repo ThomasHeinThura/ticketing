@@ -3,7 +3,7 @@
 TaskDesk work is coordinated by **Thomas and AI agents**. This document describes how they
 work without producing incompatible codebases.
 
-> **If you are an AI agent picking up work here, read this document first, then
+> **Read canonical [AGENTS.md](../../AGENTS.md) first, then `CLAUDE.md` for routing, this workflow, then
 > [SDLC](sdlc.md), then [coding standards](coding-standards.md), then the feature spec.**
 
 ---
@@ -92,7 +92,8 @@ applicable known findings, while independent reviewers verify evidence and recor
 Do not self-close a ledger row. A behavior decision absent from the authorized contract remains
 a blocker for that decision path.
 
-For P0–P3, implement the full related feature set before its integrated bulk review; do not
+Within the current freeze, complete related existing-functionality integration fixes before
+their integrated review; earlier full-feature instructions grant no new scope. For P0–P3, do not
 block implementation on Thomas's spec read or H1–H6 review. Documented recommendations
 explicitly authorized by the user, including #573, are implementation contracts. Record human
 spec/design/H1 review as deferred until the integrated P4 review; never imply it has happened.
@@ -177,8 +178,8 @@ What NOT to do. This matters more than it sounds — agents expand scope helpful
 
 ### Do
 
-1. **Read the spec or authorized documented contract before writing code.** If behavior is
-   unresolved by that contract, stop that decision path and record the question; do not guess.
+1. **Read the spec before writing code.** An unresolved question blocks its dependent scope.
+   Record the decision needed and continue unrelated authorized integration tasks.
 2. **Follow the existing pattern.** Feature folders, fetchers, query hooks — the shape is
    already decided.
 3. **Write tests as you go**, citing spec rule numbers in test names.
@@ -187,13 +188,14 @@ What NOT to do. This matters more than it sounds — agents expand scope helpful
 5. **Update the spec** if implementation proved it wrong.
 6. **Say what you did not do.** An honest "I did not implement the bulk path" is far more
    useful than silence.
-7. **Ask when genuinely blocked.** Three failed attempts is the ceiling — see
-   [error fix loop](error-fix-loop.md).
+7. **Escalate the blocked scope when needed.** After repeated failure, pause iterations on
+   that mechanism and establish root cause plus a complete real-invocation-path regression
+   before another runner iteration — see [error fix loop](error-fix-loop.md).
 
 ### Do not
 
-The authoritative list is [AGENTS.md § Do not](../../AGENTS.md#do-not) — twenty items,
-including do-not 16 (commit, push or merge only through the agreed flow: branch → commit →
+The authoritative list is [AGENTS.md § Do not](../../AGENTS.md#do-not) — including
+do-not 16 (commit, push or merge only through the agreed flow: branch → commit →
 push → pull request → required review(s) → merge, with the orchestrating session merging
 once every gate is green). The items below are the ones most often broken in practice; if
 the two ever disagree, AGENTS.md wins.
@@ -272,8 +274,20 @@ Prefer a skill over freehand work — it encodes decisions already made.
 - At the end of a session, update [status.md](../07-planning/status.md) with where things
   stand and what is blocked.
 - Long-running context goes in the pull request description, not in the conversation.
-- **The working tree stays uncommitted until Thomas says "commit"** ([AGENTS.md](../../AGENTS.md)
-  do-not 16). Finish, write the report, stop. A report is not approval; neither is silence.
+- Commit and push completed authorized work to feature/integration branches under the standing
+  [AGENTS.md PR flow](../../AGENTS.md#how-work-reaches-main-and-who-may-merge), without repeated
+  owner approval. Only the top-level orchestrator may perform a protected merge after all gates.
+- Preserve the [integration queue](../07-planning/integration-execution-queue.md) before ending:
+  task state, exact branch/head, evidence, unresolved blockers, next actionable task and resume
+  command or procedure. Update the dated status snapshot when durable facts change.
+- Use an available thread continuation/heartbeat mechanism to resume this authorized mission
+  from the queue if work remains. Inspect existing continuations before creating one, avoid
+  duplicates, and save the continuation identity and scope in the handoff. Stay quiet while
+  blocked state is unchanged; notify on meaningful progress, failure or required owner action.
+  A continuation must obey the same gates and stop after final SIT acceptance and audit.
+- If continuation is unavailable, state that limitation and leave the explicit resume task.
+  Never imply that an ended session continues by itself. A report is a checkpoint, not a
+  substitute for committing, pushing, preserving state or arranging continuation.
 - Public review artifacts should identify public test vectors descriptively rather than
   embedding credential-shaped fixture URIs. If redaction is needed, label it transparently,
   preserve the unredacted original in private evidence, and retain the finding's substance.
@@ -282,7 +296,7 @@ Prefer a skill over freehand work — it encodes decisions already made.
 
 ## Review
 
-Every frozen bulk candidate gets:
+Every pull request, including this explicitly requested focused control-plane PR, gets:
 
 1. **Independent ordinary review** — a fresh GPT-6 Luna context, not the one that wrote it.
    Use the required reviewer count for the change's risk and coupling
@@ -318,19 +332,19 @@ mistake will not see it.
 
 ---
 
-## When an agent should stop
+## Task-level and orchestrator-level stopping
 
-Stop and ask when:
+Pause only the dependent task when a product contract is ambiguous, an unapproved schema or
+scope decision is required, an ADR conflicts, a required gate/reviewer is unavailable, or a
+blocking finding remains. Record the exact missing decision/evidence in the queue. After
+three failures on one mechanism, pause speculative runner iterations and follow the structural
+convergence protocol in [error-fix-loop.md](error-fix-loop.md#the-three-attempt-rule).
 
-- The spec is ambiguous or has open questions.
-- The task requires a decision about scope or priority.
-- Three attempts at the same problem have failed.
-- A schema change looks necessary and was not in the task.
-- A quality gate is failing and the fix is not obvious.
-- The task appears to conflict with an ADR.
-- Something in the codebase looks wrong in a way the task did not anticipate.
-
-Stopping is not failure. Producing 400 lines built on a wrong assumption is.
+The orchestrator continues unrelated dependency-safe authorized integration work. It stops
+only when all such work is exhausted and remaining tasks need owner-only decisions, waivers,
+unavailable capacity/credentials, or after final integrated SIT acceptance and audit. Preserve
+queue state and arrange continuation at a session boundary. Do not merge a blocked candidate,
+guess product behaviour, weaken a gate or start new feature scope to keep busy.
 
 ## Related
 

@@ -23,7 +23,8 @@ Licensed **AGPL-3.0**.
 3. [`CLAUDE.md`](CLAUDE.md) — **compatibility filename; now the OpenAI/GPT operating guide**:
    GPT-6 Luna / GPT-6 Sol routing, review independence, sampled Opus 5.5 audit, and how work
    reaches `main`.
-4. [`docs/07-planning/status.md`](docs/07-planning/status.md) — **Blocked** first, then the
+4. Read the [integration execution queue](docs/07-planning/integration-execution-queue.md) for
+   active tasks, then [`docs/07-planning/status.md`](docs/07-planning/status.md) — **Blocked** first, then the
    newest dated snapshot.
 5. [`docs/07-planning/decision-log.md`](docs/07-planning/decision-log.md) — newest entries
    first. Check it before calling anything an open question.
@@ -37,6 +38,47 @@ Full index: [`docs/README.md`](docs/README.md)
 **No sentence in this file, or in `CLAUDE.md`, may assert live PR/branch/issue-count/finding
 state.** That belongs in `status.md`'s dated snapshot or in GitHub. A durable instruction file
 must not become a dashboard.
+
+---
+
+## Authority and Integration Freeze Mode
+
+Resolve execution-policy conflicts in this order:
+
+1. Explicit current project-owner decisions and recorded approvals. Record a new owner
+   directive in the append-only decision log; current explicit instructions take effect now.
+2. `AGENTS.md`, the canonical repository execution policy.
+3. `CLAUDE.md`, for model routing and review independence.
+4. `agent-workflow.md` and SDLC documents, for implementation procedures.
+5. The [integration execution queue](docs/07-planning/integration-execution-queue.md), for
+   active task state. It cannot override policy, approved product contracts or acceptance gates.
+
+Approved specs and ADRs remain authoritative for product behaviour. An unresolved product
+question blocks only its dependent scope; do not invent behaviour or reopen settled decisions.
+
+The authorized mission is **Integration Freeze and SIT Consolidation**. Freeze new feature
+scope and automatic P4 completion. Integrate already-existing functionality and make the
+integration, acceptance, security and performance fixes needed to verify it against approved
+contracts. Do not turn an unimplemented roadmap item or a missing product decision into an
+acceptance fix. Dependency-safe preparation may run in parallel within this frozen scope;
+acceptance remains source-bound. No security, tenant-isolation, authorization, G1–G13, test,
+performance, CI or protected-branch requirement is relaxed.
+
+Use GHCR and GitHub Releases for release artifacts and SIT for runtime acceptance. No Docker
+Hub publication or production deployment is authorized. Existing local/disposable runtimes
+may be used for real verification; offline simulation is supporting evidence only, never a
+substitute for actual runtime acceptance.
+
+A valid integrated slice is not formal P0–P7 completion. Formal completion still needs every
+stage exit criterion and the additional independent GPT-6 Sol phase finalizer. Integration
+acceptance does not authorize new stage scope or automatic phase closure.
+
+Maintain the durable queue with dependencies, blockers, exact source/evidence, task owner and
+next actionable task. A blocked task does not stop unrelated authorized work. At session end,
+preserve queue state and use an available continuation mechanism as described in
+[agent-workflow.md](docs/04-engineering/agent-workflow.md#sessions-and-memory); do not claim an
+ended session is still working. After final integrated SIT acceptance and audit, stop and
+await the owner's next roadmap. Only a new explicit owner decision changes this mission.
 
 ---
 
@@ -73,9 +115,10 @@ by a round-trip test.
 
 ### 5 · Ship narrow and finished
 
-A stage is **claimed** only when it is complete. Work on later stages may proceed in parallel
-once the live throttle/dependency graph allows it. What is serial is acceptance, not all
-execution.
+A stage is **claimed** only when it is complete. Dependency-safe preparation may proceed in
+parallel only within the currently authorized mission and live throttle/dependency graph.
+What is serial is acceptance, not all execution; this does not authorize new feature scope
+during Integration Freeze Mode.
 
 A slice is not done because an endpoint exists — finish its schema, policy, tests, UI, browser
 evidence, audit/event behaviour and integration seam before calling it complete.
@@ -184,8 +227,10 @@ Full checklist: [`docs/04-engineering/definition-of-done.md`](docs/04-engineerin
 **branch → commit → push → pull request → required independent review → required GPT-6 Sol
 security review where applicable → required CI green → merge → refresh `main` → continue.**
 
-Create a branch, commit to it, push, open a pull request that says what you did and what you
-did not do.
+Agents may commit and push completed, authorized work to feature/integration branches without
+repeated owner approval. Create a branch, commit to it, push, and open a pull request that says
+what you did and what you did not do. Only the top-level orchestrator may merge; this standing
+authorization does not grant design approval, gate waivers or direct pushes to `main`.
 
 **The orchestrating session may merge a candidate itself, through the normal protected pull
 request flow, once — and only once — every required gate is genuinely green**: applicable tests
@@ -231,8 +276,10 @@ Never:
 
 ### Bulk implementation and review cadence
 
-Implement the full related feature set first, using approved contracts or documented
-recommendations explicitly authorized by the user, then conduct one integrated bulk review.
+Within Integration Freeze Mode, complete the related existing-slice integration and
+acceptance fixes first, using approved contracts or documented recommendations explicitly
+authorized by the user, then conduct one integrated bulk review. Earlier full-feature
+implementation authorization does not permit new scope during this freeze.
 Known findings in the owning review section are inputs to that implementation batch: map each
 applicable finding to source/spec evidence and address it before freezing the candidate.
 Preserve the historical review text; authors do not mark their own findings closed. Independent
@@ -374,9 +421,11 @@ Process friction is not the same as safety.
 - If the SHA did not change, the prior verdict still stands.
 - If it did change, review the delta at the tier the candidate now requires; security-scope
   candidates still need GPT-6 Sol at the current exact head.
-- Do not stop after one merge, one report, or one merge-ready PR.
+- Do not stop after one merge, one report, or one merge-ready PR while authorized integration
+  tasks remain. Resume the durable queue after control-plane PR acceptance.
 - A blocked lane blocks that lane, not the program.
-- Whole-program stop is reserved for the case where every dependency-safe authorized task is
+- Stop after final integrated SIT acceptance and audit; await the next owner roadmap.
+- Before that exit, whole-program stop is reserved for the case where every dependency-safe authorized task is
   exhausted and everything remaining needs a Thomas-only decision, waiver, irreversible
   action, or unavailable external credential.
 - Keep `status.md` and `decision-log.md` current whenever something durable changes.

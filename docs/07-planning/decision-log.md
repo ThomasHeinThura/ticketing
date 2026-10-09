@@ -1,3 +1,35 @@
+### 2026-10-09 · Owner directive: Integration Freeze and SIT Consolidation
+
+**Decision and authorization:** Thomas explicitly directed one focused, independently reviewed
+control-plane PR reconciling AGENTS.md, CLAUDE.md, agent-workflow.md, sdlc.md, error-fix-loop.md,
+definition-of-done.md and a durable integration execution queue. Current owner decisions and
+recorded approvals precede AGENTS.md, then CLAUDE.md routing/independence, then workflow/SDLC,
+then queue task state. This supersedes the P4-completion mission and obsolete repeated
+commit-approval/whole-program stop instructions, including earlier accelerated-plan scope
+where it conflicts with the freeze. Prior records below remain historical.
+
+Agents may commit/push completed authorized branch work without repeated approval. Only the
+top-level orchestrator may perform protected merges after all required exact-source checks
+and independent risk-appropriate reviews pass. Blockers and unresolved product decisions stop
+only dependent scope. Freeze new features; permit existing-functionality integration and
+acceptance fixes. Require root-cause convergence and a complete real-invocation-path regression
+before further runner iterations after repeated failure; offline simulation cannot establish
+runtime acceptance. GHCR/GitHub Releases and SIT only; no Docker Hub or production deployment.
+
+**Preserved gates:** Luna/Sol independence and review tiers, tenant isolation, authorization,
+G1–G13, current-source tests/CI/performance, security records and protected branches. No gate
+waiver, design approval, phase completion or runtime acceptance is granted by this decision.
+
+**Continuation and exit:** resume the existing integration queue automatically after the
+control-plane PR is accepted. Preserve queue state at session end and use available
+continuation; never imply an ended session continues itself. Stop after final integrated SIT
+acceptance and audit and await the next owner roadmap.
+
+**Source:** explicit project-owner Control-Plane Realignment Directive in this session.
+**Recorded by:** top-level orchestrator, 2026-10-09.
+
+---
+
 ### 2026-10-05 · Suppress the historical public TOTP test vector by exact fingerprint
 
 Add only `69e61dd56c18bdbb90149f470d9a6615a9d28272:apps/web/e2e/mfa-csrf-journey.spec.ts:generic-api-key:13` to `.gitleaksignore`. The finding is in an already-pushed historical commit; its value is an `otpauth` test URI whose Base32 secret decodes to the published RFC 6238 test-vector bytes. The current source still contains the same public deterministic test-vector literal at `apps/web/e2e/mfa-csrf-journey.spec.ts:16`; the historical commit records it at line 13. The test uses the RFC timestamp `59000` and asserts the published vector output before it provisions the test app. Preserve history and suppress this finding by its exact fingerprint only; do not ignore the path or rule.

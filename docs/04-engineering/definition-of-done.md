@@ -8,7 +8,7 @@ why, if it does not — never delete it. An unticked, unmarked box is a blocker,
 
 ## Any change
 
-- [ ] Branch named `feat/…`, `fix/…`, `docs/…`, `chore/…`
+- [ ] Branch named `codex/…` by default, or an explicitly authorized `feat/…`, `fix/…`, `docs/…`, `chore/…` branch
 - [ ] Conventional commit messages
 - [ ] `pnpm lint` green
 - [ ] `pnpm typecheck` green
@@ -125,6 +125,31 @@ Everything above, plus:
 
 ---
 
+## Existing-slice integration acceptance
+
+During [Integration Freeze Mode](../../AGENTS.md#authority-and-integration-freeze-mode),
+existing functionality may receive integration and acceptance fixes. Apply every relevant
+checklist above and the existing risk-appropriate independent Luna/Sol review tier; do not
+mark a requirement inapplicable merely because this is an integration slice.
+
+- [ ] Scope, dependencies, exact source SHA and artifact digest recorded in the integration queue
+- [ ] Applicable tests run on that source with expected suite/file/test counts and no skips
+- [ ] Required independent reviews bound to the current source; note-only evidence commits
+      follow the existing reviewed-head rule below, never a source-change exemption
+- [ ] Every required CI check green on the exact merge candidate; protected merge by top-level orchestrator
+- [ ] Image build, container boot, migrations and health verified if shipped runtime changes
+- [ ] Actual integrated SIT journeys and affected browser screens verified, with evidence;
+      offline simulation alone does not satisfy runtime acceptance
+- [ ] Applicable tenant isolation, authorization, G1–G13 and performance requirements met
+- [ ] Queue updated with accepted evidence, residual blockers and next actionable task
+
+This accepts a bounded integrated slice, **not a P0–P7 phase**. No new feature scope, Docker
+Hub publication or production deployment is authorized. Final consolidated SIT acceptance
+requires actual integrated runtime evidence for the frozen scope, the applicable acceptance
+checks and independent audit at the existing risk-appropriate tier, with no unresolved
+blocking findings. Then stop and await the next owner roadmap. Stage completion below remains
+separate and unchanged; do not claim it without all its gates and the additive Sol finalizer.
+
 ## Stage completion
 
 **This is the canonical stage-gate list.** [SDLC](sdlc.md#the-stage-gate) and
@@ -160,8 +185,9 @@ they stop colliding with the delivery-stage numbering (`P0`–`P5+`) used everyw
       linked to its [decision log](../07-planning/decision-log.md) entry — see the
       [pull request template](../../.github/pull_request_template.md)'s `## Gates` section
 
-Under the accelerated calendar, this gate carries the parallel-workstreams exception
-recorded as decision A — see [SDLC § The stage gate](sdlc.md#the-stage-gate).
+Dependency-safe preparation and integration-slice acceptance do not waive this stage gate.
+See [SDLC § The stage gate](sdlc.md#the-stage-gate); the current mission does not authorize
+automatic phase completion or later-stage feature implementation.
 
 ---
 
