@@ -1,3 +1,26 @@
+## Status first — verified 2026-10-09 02:03 UTC (08:33 Asia/Yangon)
+
+**Execution queue:** [integration execution queue](integration-execution-queue.md) is refreshed against live GitHub at this capture: 20 open PRs, 442 remote branches. The linked branch inventory still has all 442 names; only #601 and #606 heads differ from that earlier inventory capture. Preserve all refs: 177 accepted-main ancestors are conserved as history only, 54 branches are retained in active-PR ancestry but are not accepted, and 211 remain unassigned/HOLD for source ownership and semantic comparison. No blanket source completeness claim or branch cleanup is made.
+
+**#601 docs candidate:** current head at capture `de604eb2981c9fa95534f5de02e5b98a58772050`, based on `main@3096cb044bdf6ae98488bfc385f532fa6386343a`, BLOCKED/MERGEABLE. Static, PR-template/security, dependency-audit and secret-scan checks are failing; Postgres, E2E, G8, G11 and unit checks are in progress. No GitHub formal reviews are recorded on this head. The two Luna and Sol CLEAR reviews belong to exact head `00764f7a7fd3300424dcc21f5871b9180b41b61d` only and are historical for the new queue/ledger batch. Do not transfer old reviews or CI results. Wait until this complete documentation batch is pushed, then request the review tier on the resulting exact candidate.
+
+**P0 V21 runtime attempt:** run `20261009T015937Z` targeted #602 source `12d9f899a3437a601e0da22a3c8b25ba9a70f430` but failed validation: its pinned source-order proof named candidate `23a01a62` while the actual source was `12d9f899`. Preserve the 140-request record with original acquisition time `2026-10-09T02:00:00.199445Z`–`02:00:07.085361Z`. It receives no qualifying date credit. An independent GPT-6 Sol is diagnosing admission. Root verified cleanup PASS and preservation of all 19 existing resource IDs. #602 G11 remains 19/22 failed; the offline V21 manifest and reviews do not make this runtime attempt admissible or close P0.
+
+**P1 #606:** current exact head `42a63482e63753f6e54263df6a05a38751c88d52`. Two fresh independent GPT-6 Luna delta reviews (contract and atomicity) are CLEAR for this exact seven-file delta, recorded privately under `p1-606-noop-reviews`; earlier reviews on `e20c1124` remain historical. The omitted-body no-op decision is implemented after existing permission, window, parent-liveness and reach checks. PostgreSQL, G11 and other checks remain in progress; PR-template and OpenAPI checks fail; formal GitHub review entries are empty. The implementation owner still needs integrated acceptance.
+
+**P4 #608:** current GitHub head remains `76b833be5b46589229a630738c5b436365eba409`, conflicting with cumulative #589 base; GitHub has no review entries or current check rollup. Thomas’s canonical pending-action DTO decision is recorded in the decision log and migration ledger at #601 commit `de604eb2`. The implementation owner reports the focused DTO unit set passes 4/4; broader integration, publication, reviews and acceptance remain pending. Migration candidate numbers stay provisional and no replay/numbering is authorized.
+
+| Stage | Formal status |
+|---|---|
+| P0 | Open — V21 actual runtime validation failed source-order binding and receives no date credit; Sol admission diagnosis, valid runtime evidence, #602 G11/PR-template, signed release proof and fresh phase finalizer remain. Cleanup passed and 19 existing resource IDs were preserved. |
+| P1 | Open — #606 omitted-body delta reviews are clear at `42a63482`; hosted PR-template/OpenAPI failures and in-progress PostgreSQL/G11 checks and integrated acceptance remain. Preserve other source owners. |
+| P2 | Open — preserve current owners; central migration replay and integrated acceptance remain. |
+| P3 | Open — preserve current identity owners; exact composed security review and provider acceptance remain. |
+| P4 | Open — #608 DTO behavior approved and focused 4/4 owner-reported; integration, migration replay, current-source reviews and acceptance remain; #607 stays held. |
+| P5–P7 | Open and held under the feature freeze. |
+
+---
+
 ## Status first — verified 2026-10-09 01:53 UTC (08:23 Asia/Yangon)
 
 **Execution queue:** [integration execution queue](integration-execution-queue.md) is the current runnable-work index. The feature freeze remains active; it schedules existing integration, repair, CI, migration, build/package and SIT acceptance only. Live GitHub returned 20 open PRs and 442 branches. PR #601 is at exact head `00764f7a7fd3300424dcc21f5871b9180b41b61d`; the branch inventory otherwise matches live refs and has one expected stale #601 head. No protected merge occurred. GHCR/GitHub releases remain approved; Docker Hub remains prohibited.
