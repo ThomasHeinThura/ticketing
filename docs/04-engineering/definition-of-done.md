@@ -136,7 +136,8 @@ mark a requirement inapplicable merely because this is an integration slice.
 - [ ] Applicable tests run on that source with expected suite/file/test counts and no skips
 - [ ] Ordinary independent reviews recorded at the exact merge-candidate SHA. The Sol
       security-note ancestor exception below applies only to that committed security note,
-      and only when every later commit touches the security-review directory; ordinary
+      and only when every later commit touches nothing outside
+      `docs/07-planning/security-reviews/`; ordinary
       exact-candidate review is still required. No source-change exemption is introduced
 - [ ] Every required CI check green on the exact merge candidate; protected merge by top-level orchestrator
 - [ ] Image build, container boot, migrations and health verified if shipped runtime changes
