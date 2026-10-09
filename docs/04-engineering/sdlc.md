@@ -180,10 +180,13 @@ finalizer, are met.
 **Loop discipline**
 
 - After **three** failures on the same mechanism, pause speculative iterations on that task.
-  Record the five-item root-cause note and build a complete real-invocation-path regression
-  before another runner iteration, per [error-fix-loop.md](error-fix-loop.md#the-three-attempt-rule).
-  Escalate owner-only decisions; continue unrelated authorized tasks. Do not reset the count
-  by changing a symptom, session, branch or reviewer.
+  Count across versions, branches, sessions and reviewers. Assign an independent
+  whole-entrypoint diagnosis, classify the failure from evidence, and agree on a bounded
+  cause-appropriate remedy before another attempt. For a runner, preserve the five-item note
+  and complete real-invocation-path regression required by
+  [error-fix-loop.md](error-fix-loop.md#the-three-attempt-rule). Change product source only
+  when the diagnosis warrants it. Escalate owner-only decisions; continue unrelated authorized
+  tasks. Do not repeat unchanged acceptance runs.
 - Do not disable a test to make a build pass. Ever.
 - Do not waive a gate without following the waiver procedure.
 
@@ -220,6 +223,13 @@ finalizer, are met.
 - Verify migrations, health, affected authenticated journeys and applicable integration,
   security and performance requirements; record source/image digest and evidence.
 - No Docker Hub publication or production deployment is authorized during this mission.
+
+For P0, keep pre-merge and post-merge evidence distinct. Before protected merge, complete the
+required reviews, current CI, installer regression, exact-image boot and other applicable
+pre-merge runtime/authorization proofs. After an eligible merge, verify the real signed-main
+release installer, upgrade and rollback; run the fresh accepted-main phase finalizer before
+claiming P0 closed. Do not require a main-only signed release before an otherwise eligible
+candidate can merge, and do not treat merge as phase completion.
 
 **Exit** — the integrated slice meets applicable Definition of Done and actual SIT acceptance,
 with its rollback verified and evidence bound to the tested source/artifact. Offline simulation

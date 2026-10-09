@@ -80,6 +80,31 @@ preserve queue state and use an available continuation mechanism as described in
 ended session is still working. After final integrated SIT acceptance and audit, stop and
 await the owner's next roadmap. Only a new explicit owner decision changes this mission.
 
+The owner-designated conductor is the sole owner of global orchestration: durable queue,
+dependency graph, shared test windows/resources, merge order, release coordination and the
+existing continuation/scheduler. A control-plane auditor or implementation lane may deliver
+its bounded PR and handoff, but does not alter global queue ownership, scheduler, integration
+branch or shared migration/resource allocation. Keep unrelated owner-authorized work moving
+while a PR is blocked. Do not make acceptance of the control-plane PR a blanket prerequisite
+for resuming the queue; only actions that depend on its not-yet-accepted authority wait. A
+dependency must name the required source, artifact, decision or acceptance result.
+
+For a failed check, classify the evidence before selecting a remedy: product defect, test or
+fixture defect, environment/invocation defect, review/PR metadata defect, or unexplained
+timing variation. Record observation, diagnosis, change and result. Change product source only
+when the demonstrated cause warrants it; a red CI result alone does not justify a product
+edit or speculative optimization. Do not repeat unchanged acceptance suites until they pass.
+Use the existing approved retry policy for cause-specific verification; if it blocks an
+evidence-justified action, request one precise owner decision. A prior green result never
+cancels a current red required check.
+
+For P0, distinguish pre-merge evidence from release evidence. Before protected merge, require
+the assigned reviews, current required CI, installer regression, exact-image boot and other
+applicable pre-merge runtime/authorization proofs. After eligible merge, verify the real
+signed-main release installer, upgrade and rollback. Run the fresh accepted-main phase
+finalizer before P0 closure. A main-only signed release is not a prerequisite for merging an
+otherwise eligible P0 candidate; merging alone does not close P0.
+
 ---
 
 ## The five rules
@@ -422,7 +447,8 @@ Process friction is not the same as safety.
 - If it did change, review the delta at the tier the candidate now requires; security-scope
   candidates still need GPT-6 Sol at the current exact head.
 - Do not stop after one merge, one report, or one merge-ready PR while authorized integration
-  tasks remain. Resume the durable queue after control-plane PR acceptance.
+  tasks remain. The conductor continues each unblocked task under its real dependencies; do
+  not wait globally for control-plane PR acceptance.
 - A blocked lane blocks that lane, not the program.
 - Stop after final integrated SIT acceptance and audit; await the next owner roadmap.
 - Before that exit, whole-program stop is reserved for the case where every dependency-safe authorized task is
