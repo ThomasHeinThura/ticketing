@@ -113,7 +113,7 @@ prove an environment defect.
 | **Test, fixture or oracle defect** | The assertion encodes a wrong expectation, a stale fixture, or compares a nondeterministic field | Fix the test or fixture. Assertions are controls: reviewed like product code, never weakened to pass |
 | **Environment or invocation mismatch** | The runs differ in SHA, command, arguments, versions, data or environment | Correct the invocation or environment; record both runs |
 | **Review or PR metadata** | A template, note or review-binding check fails | Correct the metadata factually; no source change |
-| **Transient infrastructure** | The job failed **before the code under test started** — runner provisioning, checkout, dependency or image download, quota | The bounded re-run below |
+| **Transient infrastructure** | Retained evidence shows a transient infrastructure fault **before the affected test or checker executed** — runner provisioning, checkout, package or image download, quota. A real dependency-audit, typecheck, lint or policy result is never infrastructure, even if it comes early | The bounded re-run below |
 | **Unexplained measurement variation** | A timing metric differs across runs of identical source and assets | Preserve every run; apply the metric's own sampling policy; investigate |
 
 When the class is not established, say what is known and unknown and gather targeted
@@ -121,22 +121,24 @@ diagnostics before changing anything.
 
 ### Bounded verification policy
 
-- **Transient infrastructure:** at most **one** re-run of a failed job **per job per task**,
-  counted across SHAs (a records-only commit does not reset it), and only when the preserved
-  log shows the failure happened before the code under test started. A network error raised
-  inside a test is a test failure, not infrastructure. Record both run IDs. A second
-  infrastructure failure stops re-running: the task is `WAITING_CI` on the named
-  infrastructure owner. Any new run on unchanged product, test, build and dependency inputs — including one triggered
-  by a records-only commit — counts as a re-run. **This
-  allowance applies only once Thomas has approved it in the decision log; until then, no job
-  is re-run, and the conductor raises the approval as a `WAITING_DECISION` item.**
+- **Transient infrastructure** (approved by Thomas, decision log 2026-10-09 "Opus
+  policy-repair conductor"): **one** re-run for the same incident on equivalent job inputs,
+  only when retained evidence establishes a transient infrastructure failure before the
+  affected test or checker executed. Being early in the job is not enough. Preserve the
+  original failure, the diagnosis and both run IDs. Review-note commits, renamed branches and
+  equivalent new SHAs do not reset the allowance; a commit made only to obtain another run
+  counts as the re-run. CI that follows a genuine correction is normal verification, not a
+  re-run. A repeated infrastructure failure becomes a named blocker with an owner
+  (`WAITING_CI`) while unrelated work continues.
 - **Assertion and gate failures:** never re-run an unchanged candidate hoping for a pass.
 - **Performance measurements:** the only sampling and re-run rule is the one each metric
   defines in [UX quality gates § G11](../02-design/ux-quality-gates.md). A failing result stands
   until a changed candidate with a diagnosis, or an approved change to the sampling, produces a
   new measurement.
-- Changing sampling, retry counts, budgets or acceptance semantics is a CI/security-control
-  change: its own PR, independent review, and Thomas's approval recorded in the decision log.
+- This never authorizes retry-until-green, suppressed assertions, changed G11 sampling or
+  lower thresholds. Changing sampling, retry counts, budgets or acceptance semantics is a
+  CI/security-control change: its own PR, independent review, and Thomas's approval recorded
+  in the decision log.
 - A prior green result never clears a current red required check.
 
 ---
@@ -188,8 +190,10 @@ actual launcher → actual arguments and environment → actual artifact loading
 
 Replay the retained failures through it, including missing inputs, nullable decisions,
 unexpected events and corrupt bindings. **A helper test that injects an input the real
-invocation never supplies proves nothing about the runner.** Preserve evidence before any
-validation or cleanup step can destroy it, and keep sensitive material private.
+invocation never supplies proves nothing about the runner.** Preserve the permitted evidence
+before any interpretation, validation or cleanup step can destroy it, and keep sensitive
+material private. Never reset accepted historical observations automatically, and never
+relabel them as new-source or new-date evidence.
 
 **Preflight is not acceptance.** Offline tests, source review and a successful image boot can
 diagnose and validate a path; only the required live run establishes runtime acceptance.

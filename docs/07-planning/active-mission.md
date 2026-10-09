@@ -6,7 +6,7 @@ Permanent policy files never restate it; they link here.
 
 Only a new explicit decision by Thomas changes this file. Record the decision in the
 [decision log](decision-log.md) in the same change. Task state does not belong here — it
-belongs in the [integration execution queue](integration-execution-queue.md).
+belongs in the conductor's queue (`docs/07-planning/integration-execution-queue.md`).
 
 ---
 
@@ -41,9 +41,17 @@ a new release path, version exception or tag scheme.
 **Environments:** local and disposable runtimes for verification; SIT for runtime acceptance.
 No production.
 
-**Conductor:** the single session Thomas designated on 2026-10-09 (recorded in the decision
-log and the queue). It owns the queue, dependency graph, shared resources, migration
-allocation, merge order, release coordination and the one continuation mechanism.
+**Conductor:** the single session Thomas designates (decision log). It owns the queue,
+dependency graph, shared resources, migration allocation, merge order, release coordination
+and the one continuation mechanism. A policy maintainer Thomas assigns owns only its policy
+candidate and its handoff.
+
+**Model assignment for this mission:** Thomas authorized the available Claude Opus model to
+fill every role — implementation, orchestration, ordinary review, security review and phase
+finalization — in **separate, independent contexts**, at the review depth and counts the
+workflow requires (decision log 2026-10-09, "Opus policy-repair conductor"). GPT-6 Luna and
+GPT-6 Sol remain valid for their existing roles. See
+[agent-workflow.md § Model policy](../04-engineering/agent-workflow.md#model-policy).
 
 **Stop condition:** final integrated SIT acceptance plus independent audit are recorded and
 reported. The conductor then sets every remaining queue item to a waiting or terminal state

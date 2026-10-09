@@ -57,7 +57,7 @@ Type: **C** contradiction · **A** ambiguity · **D** duplication · **S** legit
 | 18 | C | #601 (draft, conductor-owned) rewrites `sdlc.md` stage sequencing to allow parallel stage implementation | Freeze: feature development inactive | Re-opens feature scope through an SDLC edit | Stage scope now set only by the active mission; #601's workflow hunks are superseded (F6) | Scenario 8 |
 | 19 | A | Read order put the queue above the decision log; #612's PR body states rules ("No source change or suite rerun is justified…") | Evidence vs policy | PR bodies and checkpoints become de-facto rules | Hierarchy names everything else as evidence; do-not 22 | Read-through |
 | 20 | F | "Use an available thread continuation/heartbeat" in lane-readable text; an extra observation schedule exists | Single conductor-owned continuation | Duplicate schedules; sessions promising to resume | Only the conductor owns one continuation, proven by configuration and a run receipt | Scenario 10 |
-| 21 | C | `ci-cd.md § Branching`: "Squash merge" | `main` history uses merge commits (`Merge pull request #579 …`) | Written policy ≠ practice | Not changed here (security-scope file) — F3 | `git log --merges origin/main` |
+| 21 | C | `ci-cd.md § Branching`: "Squash merge" | `main` history uses merge commits (`Merge pull request #579 …`) | Practice ≠ the recorded selection | **Corrected 2026-10-09 (Instruction 1):** the documentation was right — squash is the explicitly selected method (decision log 2026-09-06) and the ruleset permits it; merge commits were a practice deviation. Recorded in the decision log; `ci-cd.md` wording clarified in the enforcement PR | `gh api repos/…/rulesets` allows merge, squash, rebase |
 | 22 | A | DoD/SDLC branch rule "`codex/…` by default" | Provider-specific naming in permanent policy | Non-Codex agents look non-compliant | `<agent>/…` or `feat/fix/docs/chore` | No checker enforces prefixes |
 
 ---
@@ -128,12 +128,12 @@ Policy behaviour, checked by reading the governing text. No runtime or productio
 
 | # | Change | Why separate | Proposed owner |
 | --- | --- | --- | --- |
-| F1 | Path-aware required-check matrix: docs wording → links/consistency/secret scan; policy/authority → policy review + scenario checks; templates/CI checkers → structural tests and red probes; product/dependency/deployment → full applicable gates; release candidate → full release + SIT | Changes which checks apply = CI/security-control change; needs ruleset update and Thomas's approval | Conductor; security-tier review |
-| F2 | PR-template check: accept the security reviewer assigned by the model policy instead of the literal `GPT-6 Sol` | `scripts/ci/**` is security scope | Conductor; security-tier review |
-| F3 | Stale references to moved text: PR template ("CLAUDE.md's Opus 5.5 section", "AGENTS.md's Sampled big review"); `CODEOWNERS` `.claude/agents/` entry and its pointer to "CLAUDE.md's control plane section"; `check-pr-template.mjs` "GPT-6 Sol, always (AGENTS.md)"; `gate-waiver.mjs` "AGENTS.md and CLAUDE.md now both say"; `check-reviews.mjs` do-not 15 wording; `ci-cd.md § Branching` squash statement vs merge commits, and its duplicated merge authority | `.github/**`, `scripts/ci/**` and `ci-cd.md` are security scope | Conductor |
-| F4 | Queue file: move checkpoints below its title, stop duplicating `status.md`, replace its "Execution boundary and state definitions" paragraph with a link to workflow § Task states, fix the missing inventory link | Conductor-owned record | Conductor |
-| F5 | Turn this audit's link and invariant checks into a CI check | `scripts/ci/**` | Conductor |
-| F6 | #601: drop its `agent-workflow.md`/`sdlc.md` hunks (superseded here) when composing it | Conductor-owned PR | Conductor |
+| F1 | **→ enforcement PR.** Path-aware required-check matrix: docs wording → links/consistency/secret scan; policy/authority → policy review + scenario checks; templates/CI checkers → structural tests and red probes; product/dependency/deployment → full applicable gates; release candidate → full release + SIT | Changes which checks apply = CI/security-control change; needs ruleset update and Thomas's approval | Conductor; security-tier review |
+| F2 | **→ enforcement PR.** PR-template check: accept the security reviewer assigned by the model policy instead of the literal `GPT-6 Sol` | `scripts/ci/**` is security scope | Conductor; security-tier review |
+| F3 | **→ enforcement PR.** Stale references to moved text: PR template ("CLAUDE.md's Opus 5.5 section", "AGENTS.md's Sampled big review"); `CODEOWNERS` `.claude/agents/` entry and its pointer to "CLAUDE.md's control plane section"; `check-pr-template.mjs` "GPT-6 Sol, always (AGENTS.md)"; `gate-waiver.mjs` "AGENTS.md and CLAUDE.md now both say"; `check-reviews.mjs` do-not 15 wording; `ci-cd.md § Branching` squash statement vs merge commits, and its duplicated merge authority | `.github/**`, `scripts/ci/**` and `ci-cd.md` are security scope | Conductor |
+| F4 | **→ conductor, by coordinated handoff** (queue removed from this candidate; see §9). Queue file: move checkpoints below its title, stop duplicating `status.md`, replace its "Execution boundary and state definitions" paragraph with a link to workflow § Task states, fix the missing inventory link | Conductor-owned record | Conductor |
+| F5 | **→ enforcement PR.** Turn this audit's link and invariant checks into a CI check | `scripts/ci/**` | Conductor |
+| F6 | **→ conductor.** #601: drop its `agent-workflow.md`/`sdlc.md` hunks (superseded here) when composing it | Conductor-owned PR | Conductor |
 
 ## 7 · Handoff — what active agents must reload
 
@@ -205,3 +205,36 @@ an Opus context**; it falls to the required reviews below.
 
 These Opus reviews are additional evidence. The required GPT-6 Luna ordinary reviews and the
 GPT-6 Sol pass are still outstanding.
+
+## 9 · Instruction 1 — Opus policy-repair conductor (2026-10-09)
+
+Thomas authorized an Opus session to finish the repair, get it accepted, hand it over and
+stop. Recorded in the decision log ("Opus policy-repair conductor"). Changes to this candidate:
+
+- **Model policy:** Claude Opus 5.5 may fill every role in separate independent contexts; GPT
+  roles stay valid; reports carry the platform-reported model; accepted security-review
+  models live in a machine-readable block that the PR-template check will read **from the
+  merge base**.
+- **Re-run rule:** the approved one-re-run rule replaces the inactive allowance.
+- **Startup order, authority wording, yield-with-trigger, review-record scope and hash
+  caveat** aligned to the directive.
+- **Records out of the policy candidate:** #612's queue snapshot and `status.md` checkpoint
+  are removed from this tree. Preservation check against #601 (conductor's records PR, head at
+  the time of the check): its queue holds every #612 checkpoint (12:40, 03:47 and the human
+  decisions section) and its `status.md` holds the 12:40 checkpoint. #612's "Historical
+  control-plane snapshot" section exists only in #612's own commits, which this candidate
+  keeps in its history. Policy files now name the queue by path, without a link, so nothing
+  breaks before #601 lands.
+
+**Why two PRs.** The enforcement work (model-aware PR-template check, check applicability,
+executable policy check, `.github`/`scripts/ci`/`ci-cd.md` reference fixes) is security scope.
+Its checker must take the accepted reviewer models from the trusted merge base, so it can
+accept an Opus security review only after this candidate — which adds Opus to that block —
+is on `main`. That is a technical boundary, not a preference.
+
+**Merge gate today.** Every PR currently runs every required context. On this candidate the
+required `supply chain - dependency audit` (four high/critical advisories in `main`'s
+lockfile) and `performance - budgets (G11)` (board render and LCP over budget on `main`'s
+product) fail for reasons no documentation change can affect. Those failures belong to the P0
+owner (#602, with #614). The applicability change cannot clear them for itself either: it
+classifies with the classifier from the merge base, which does not exist until it merges.

@@ -92,8 +92,11 @@ Rules that hold everywhere:
   continues.
 - **CI or review completing is a transition, not a reason to end a session.** The conductor
   advances the queue.
-- **When nothing is `READY`,** do not invent work, start new scope or loosen a gate to stay
-  busy. Wait for the pending transitions; stop only under the conductor loop's stop condition.
+- **When nothing is executable** because CI, reviews or other tasks are running, checkpoint
+  and **yield with a named resumption trigger** (for example "CI run 123 completes" or "review
+  of `<sha>` returns"). Do not declare completion, cancel active work, busy-wait, invent work,
+  start new scope or loosen a gate. Resuming needs a working platform mechanism (see
+  [continuation](#sessions-handoff-and-continuation)); a prompt is not a scheduler.
 - Terminal states never authorize deleting a branch.
 
 ---
@@ -144,22 +147,40 @@ that materially authored, directed or remediated a change is not its independent
 
 ### Model policy
 
-Current assignment, decided by Thomas (decision log 2026-09-29, OpenAI model routing and the
-Opus 5.5 sampled reviewer; unchanged by the 2026-10-09 restructure):
-
-| Role | Model |
+| Role | Assigned models (any one, in its own independent context) |
 | --- | --- |
-| Implementation, context preparation, ordinary review, bounded architecture/alignment review | **GPT-6 Luna**, explicitly selected |
-| Security review, critical cross-boundary review, phase finalizer, broad or high-risk architecture review, security- or architecture-heavy context preparation | **GPT-6 Sol**, fresh exact-head context |
-| Conductor | The session Thomas designates; a top-level GPT session preferred, GPT-6 Sol for broad governance or security work |
-| Sampled auditor | **Opus 5.5**, only from a packet prepared by GPT-6 Luna or GPT-6 Sol; never replaces GPT-6 Sol |
-| Policy maintenance (authoring only) | Whichever session Thomas assigns by decision (the 2026-10-09 restructure: Opus 5.5). Its PRs still receive the independent reviews, and the GPT-6 Sol pass, their tier requires |
+| Implementation, context preparation, ordinary review, bounded architecture/alignment review | **GPT-6 Luna**; or **Claude Opus 5.5** under the current mission |
+| Security review, critical cross-boundary review, phase finalizer, broad or high-risk architecture review | **GPT-6 Sol**; or **Claude Opus 5.5** under the current mission |
+| Conductor | The session Thomas designates |
+| Sampled auditor | **Claude Opus 5.5**, only from a packet another context prepared; never replaces a required review |
+| Policy maintenance | The session Thomas assigns. Its PRs still receive the independent reviews, and the security pass, their tier requires |
 
-The PR-template check enforces `GPT-6 Sol` literally for security-scope paths. If the required
-model is unavailable the candidate waits, marked **SECURITY RE-REVIEW PENDING — GPT-6 SOL
-CAPACITY**; never downgrade. Every review names the model and context explicitly. `pal-mcp`,
-`pal-reviewer`, 9Router and their failover routes are retired, and a historical `pal-mcp`
-verdict is never current evidence for a new head.
+**Source:** decision log 2026-09-29 (GPT-6 Luna/Sol routing) and 2026-10-09 "Opus
+policy-repair conductor" (Thomas authorized Claude Opus for every role, in separate
+independent contexts, for the policy repair and the frozen-scope delivery mission). This is a
+disclosed change of **who** reviews, not of review depth, counts or independence. Models are
+not interchangeable labels: one context never fills two roles on the same change, and the
+author's context is never its reviewer.
+
+Every review records the model and version **as the platform reports it** (for example
+`Claude Opus 5.5 (claude-opus-5-5)`), its role, context, exact source, scope and verdict.
+**Never label a report with a model that did not produce it** — an Opus report is never
+recorded as GPT-6 Luna or GPT-6 Sol, and historical GPT reviews keep their original identity.
+An existing Opus review counts for a role only where its scope and source coverage are
+established; it never approves later changes.
+
+The PR-template check reads the accepted security-review models from the block below **as it
+stands on the merge base** (`main`), so a candidate cannot add a model and approve itself.
+Each line is matched exactly against the `**Model:**` field of `## Security review`:
+
+<!-- policy:security-review-models -->
+- `GPT-6 Sol`
+- `Claude Opus 5.5 (claude-opus-5-5)`
+<!-- /policy:security-review-models -->
+
+If no assigned model is available, the candidate waits, marked **SECURITY RE-REVIEW PENDING —
+CAPACITY**; never downgrade. `pal-mcp`, `pal-reviewer`, 9Router and their failover routes are
+retired, and a historical `pal-mcp` verdict is never current evidence for a new head.
 
 ### How many reviews
 
@@ -195,41 +216,45 @@ reused for a later SHA only when every commit landed in between leaves its input
 | CI/security-control verdict | `.github/**`, `scripts/ci/**` and the other control paths in ci-cd.md |
 | Required GitHub status checks | **Never reused.** They must be green on the exact candidate |
 
-**Review records** are exactly two things: lines **added** to this PR's own notes
-(`docs/07-planning/security-reviews/<this-pr>-*.md`), and the reviewer-identity and review-link
-fields of the PR body. Modifying or deleting an existing line, touching another PR's note, or
-adding a non-Markdown file under that directory is **not** a review record — it is a reviewed
-change. Historical notes are cited by product code as the rationale for live security
-decisions; they are append-only, except a transparently labelled redaction made as its own
-reviewed change.
+**Review records** cover only the authentic publication of an existing report in this
+candidate's designated review record: lines **added** to its own notes
+(`docs/07-planning/security-reviews/<this-pr>-*.md`) carrying a report whose origin is
+verified and whose verdict is unchanged, and the reviewer-identity and review-link fields of
+the PR body. They never cover rewritten findings, fabricated approval, new waivers, changed
+source attribution, or any change to another PR's note or to historical security authority.
+Historical notes are cited by product code as the rationale for live security decisions;
+they are append-only. A necessary redaction (for example of a secret) is a separately
+reviewed, labelled correction, with the original kept in restricted storage where
+appropriate. Never publish sensitive transcript content just to claim verbatim reproduction.
 
-A delta made only of review records needs **no new review of any kind** — not ordinary, not
-security — so that recording a review never demands another review. The conductor verifies it
-over **landed commits, not the net tree**, mirroring the CI note rule in
-`scripts/ci/lib/security-review-note.mjs` (a revert does not restore a clearance):
+A delta made only of review records needs **no new review of any kind**, so publishing a
+review never demands another one. The conductor checks **every intervening commit** with the
+same Git semantics `scripts/ci/lib/security-review-note.mjs` uses — merges charged per parent,
+renames and mode changes counted as touching a file, a revert never restoring a clearance. A
+final net-tree diff alone is insufficient. With plain Git:
 
 ```bash
-git merge-base --is-ancestor <reviewed> <candidate>               # reviewed head is an ancestor
-git log -m --format=%H --name-status --summary <reviewed>..<candidate>  # every entry: A/M of this PR's notes; no mode change
-git log -m --format= --numstat <reviewed>..<candidate>            # deletions column is 0
+git merge-base --is-ancestor <reviewed> <candidate>
+git log -m --format=%H --name-status --summary <reviewed>..<candidate>  # only A/M of this PR's notes
+git log -m --format= --numstat <reviewed>..<candidate>                  # deletions column is 0
 ```
-
-Both listings must pass; `--numstat` alone misses renames and mode changes, which count as
-touching a file.
 
 The conductor then states "review-record-only delta verified" in the merge record.
 
-Reviewer reports are committed verbatim with their provenance (session or spawn arguments,
-model, exact SHA). The committer does not edit a verdict. **Before relying on any review
-record, the conductor traces it to a review it dispatched or can otherwise verify** — the
-reviewer's provenance and verbatim output. A record that cannot be traced does not count. Old approval never silently covers new product changes: a delta that touches
-anything else is reviewed at the tier the delta requires.
+Reviewer reports are published with their provenance (model as reported, role, context or
+spawn identity, exact SHA). The publisher never edits a verdict or finding. **Before relying
+on any review record, the conductor traces it to a review it dispatched or can otherwise
+verify.** A record that cannot be traced does not count. A hash identifies bytes; it is not
+proof of independence or approval. Old approval never silently covers new product changes: a
+delta that touches anything else is reviewed at the tier the delta requires.
 
 ### Batching and altitude
 
 - Implement related fixes as a coherent batch, run meaningful tests as you go, freeze the
-  candidate SHA, then review once at the required tier. Fix findings as a batch and review the
-  delta. No standalone reviews for small or speculative edits; no comfort rounds.
+  candidate SHA, then review once at the required tier. After the freeze, fix **blocking**
+  findings as one bounded batch and review that delta; defer optional improvements. No
+  standalone reviews for small or speculative edits; no comfort rounds. Completed review
+  scopes are not restarted automatically.
 - Known findings in the spec's pre-build review register are inputs to the batch: map each to
   evidence. The author never closes its own finding; reviewers record the disposition.
 - **Change altitude:** when the third round on the same mechanism finds the same defect class,
@@ -246,8 +271,8 @@ have caught is also a finding about that gate.
 
 ### Sampled big review
 
-Selected only by Thomas or the conductor; never a per-PR wait. Before it runs, a GPT-6 Luna or
-GPT-6 Sol context (never the auditor itself) prepares a packet: PR/stage and exact SHAs; what changed and why; changed and highest-risk
+Selected only by Thomas or the conductor; never a per-PR wait. Before it runs, another context (never the
+auditor itself) prepares a packet: PR/stage and exact SHAs; what changed and why; changed and highest-risk
 files; specs, ADRs and rules in scope; the risk tier and why; ordinary and security verdicts
 with unresolved findings; tests actually run with counts and notable negative tests; residuals
 and `## Not done`; invariants to challenge; explicit spot-check questions. The auditor samples
