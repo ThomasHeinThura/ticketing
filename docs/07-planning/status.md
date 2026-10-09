@@ -10,7 +10,9 @@ Fresh remote inspection establishes accepted `main` at
 The ordinary panel cleared the initial source and clarified exact-head/note-only rules;
 final-candidate ordinary review and independent Sol confirmation are still required. Its
 first hosted required dependency audit failed on unchanged dependencies (three high/one
-critical, plus one low advisory); no gate is waived. Protected acceptance is not claimed. Resume
+critical, plus one low advisory). The initial PR-template check also failed with pending
+review/checklist metadata; its body/evidence repair is separate from dependency remediation.
+No gate is waived. Protected acceptance is not claimed. Resume
 the existing source inventory/integration queue immediately after its acceptance. The initial
 queue records #589 and #602 at their observed sources; runner/runtime/performance blockers
 remain and no phase, SIT, production or waiver acceptance is implied. The existing
