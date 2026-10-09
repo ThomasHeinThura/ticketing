@@ -208,3 +208,25 @@ is retained; the full hosted run was still in progress when this note was update
 result is claimed. The corrected source passes the local email test, `check:env`, Biome, and
 `git diff --check`. This test-only fix does not establish the remaining hosted CI, image, runtime,
 performance, browser, merge, or phase-finalizer gates.
+
+## Approved strict diagnostic witness — exact b757 source
+
+**Reviewed head:** `b7573671d2cafed3871d04ee52e40b79260a966b`
+
+Thomas approved the bounded diagnostic witness on 2026-10-09. It carries only a server-owned opaque request ID, registered route/source pair, finite decision category and provenance result. No authority branch, payload, credential, raw tenant or row identifier is added. Fresh independent Luna reviews of the earlier a386 and 30b predecessors found route/source pairing and unsafe caller-object serialization; those blocked reports remain historical. The complete b757 structural correction snapshots own data descriptors, rejects accessors/symbols/custom prototypes, checks finite primitive values and exact registered pair, and serializes only a fresh null-prototype safe projection. A full fresh independent GPT-6 Sol context `/root/p0_b757_structural_sol` cleared the complete b757 source and sealed V26 packet. The canonical change-altitude rule closes this repeated same-class structural remediation with that full Sol pass; no unperformed b757 Luna verdict is claimed.
+
+The Sol reviewer independently ran 2 API files / 12 tests, API typecheck (four configurations), and 155 offline proof tests; all passed. All 47 V26 file hashes/lengths matched. The exact b757 image built and booted UID 10001, live/ready 200, complete owned cleanup. The verdict does not claim actual strict-runtime PASS, current hosted performance PASS, protected merge or stage finalization. The independent unchanged 27-source guard compatibility ruling preserves original observation dates and source identities only.
+
+## Existence-oracle correlation compatibility — exact 8a27 source
+
+**Reviewed head:** `8a27bc973b42836344fb229d6bd4d1c3c0a4d46b`
+
+The sole delta from b757 is `tests/api-integration/existence-oracle-317.test.ts`. Both response request IDs must be distinct valid 32-character lowercase hexadecimal values. Only this independently random nonce is excluded from foreign-versus-missing header equality. Every other header, body, status and existing route/reach assertion remains enforced. Seven comparator probes reject malformed/missing/reflected IDs and changed cache-control, and accept valid distinct nonces; the full focused PostgreSQL file passed 17/17 on a dedicated private test database. Initial local default-credential authentication failure remains historical and was not called an authorization regression.
+
+Fresh independent GPT-6 Luna `/root/p0_oracle_delta_luna` and GPT-6 Sol `/root/p0_oracle_delta_sol` are CLEAR on exact 8a27. Both inspected the actual delta and production correlation contract; they ran no database/build/performance process during root's exclusive measurement window. The 17 passing tests are owner-provided evidence, not reviewer-run evidence. No shipped code, dependency, migration, benchmark workload, performance threshold or authorization behavior changed. Full hosted acceptance remains pending on the new exact head.
+
+Private original reports remain outside Git; these secret-free bindings preserve their identities:
+
+- `p0-b757-v26-final-sol.md`: SHA-256 `c93aa76dce4d7be4ba146a4ba38c5f150f5cae79f35bb4c02fa1fd672ea121ca`.
+- `p0-oracle-8a27-luna.md`: SHA-256 `4c9b6283e37d571268f8ae3749589ea22c6fcb1757698df5d594137a9cab7486`.
+- `p0-oracle-8a27-sol.md`: SHA-256 `9be1a280b82a86f57369eda830105f87b7c9b22f1d336bb0574d2b2b8a61a68f`.
