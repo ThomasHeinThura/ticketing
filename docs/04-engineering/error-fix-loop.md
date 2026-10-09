@@ -126,8 +126,9 @@ diagnostics before changing anything.
   log shows the failure happened before the code under test started. A network error raised
   inside a test is a test failure, not infrastructure. Record both run IDs. A second
   infrastructure failure stops re-running: the task is `WAITING_CI` on the named
-  infrastructure owner. **This allowance applies only once Thomas has approved it in the
-  decision log; until then, no job is re-run.**
+  infrastructure owner. A commit made to obtain another CI run counts as a re-run. **This
+  allowance applies only once Thomas has approved it in the decision log; until then, no job
+  is re-run, and the conductor raises the approval as a `WAITING_DECISION` item.**
 - **Assertion and gate failures:** never re-run an unchanged candidate hoping for a pass.
 - **Performance measurements:** the only sampling and re-run rule is the one each metric
   defines in [UX quality gates § G11](../02-design/ux-quality-gates.md). A failing result stands

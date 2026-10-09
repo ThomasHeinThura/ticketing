@@ -32,7 +32,9 @@ Thomas's roadmap.
   semantics — which applies to this restructure itself.
 - Failure classes each have their own remedy. A bounded verification policy would allow **one**
   re-run per job per task, only for failures before the code under test started; it applies
-  only once Thomas approves it here. G11 sampling stays exactly as defined in UX quality gates.
+  only once Thomas approves it here. **Until then no CI job is re-run**, and the conductor
+  raises the approval as a `WAITING_DECISION` item. G11 sampling stays exactly as defined in
+  UX quality gates.
 - The three-attempt rule counts per mechanism across versions, and the post-limit sequence
   ends in an end-to-end test of the actual production entry point.
 

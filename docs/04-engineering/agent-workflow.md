@@ -151,7 +151,7 @@ Opus 5.5 sampled reviewer; unchanged by the 2026-10-09 restructure):
 | --- | --- |
 | Implementation, context preparation, ordinary review, bounded architecture/alignment review | **GPT-6 Luna**, explicitly selected |
 | Security review, critical cross-boundary review, phase finalizer, broad or high-risk architecture review, security- or architecture-heavy context preparation | **GPT-6 Sol**, fresh exact-head context |
-| Conductor | A top-level GPT session; GPT-6 Sol preferred for broad governance or security work |
+| Conductor | The session Thomas designates; a top-level GPT session preferred, GPT-6 Sol for broad governance or security work |
 | Sampled auditor | **Opus 5.5**, only from a packet prepared by GPT-6 Luna or GPT-6 Sol; never replaces GPT-6 Sol |
 | Policy maintenance (authoring only) | Whichever session Thomas assigns by decision (the 2026-10-09 restructure: Opus 5.5). Its PRs still receive the independent reviews, and the GPT-6 Sol pass, their tier requires |
 
@@ -200,7 +200,8 @@ reused for a later SHA only when every commit landed in between leaves its input
 fields of the PR body. Modifying or deleting an existing line, touching another PR's note, or
 adding a non-Markdown file under that directory is **not** a review record — it is a reviewed
 change. Historical notes are cited by product code as the rationale for live security
-decisions; they are append-only.
+decisions; they are append-only, except a transparently labelled redaction made as its own
+reviewed change.
 
 A delta made only of review records needs **no new review of any kind** — not ordinary, not
 security — so that recording a review never demands another review. The conductor verifies it
@@ -212,6 +213,9 @@ git merge-base --is-ancestor <reviewed> <candidate>               # reviewed hea
 git log -m --format=%H --name-status <reviewed>..<candidate>      # every entry: A/M of this PR's notes
 git log -m --format= --numstat <reviewed>..<candidate>            # deletions column is 0
 ```
+
+Both listings must pass; `--numstat` alone misses renames and mode changes, which count as
+touching a file.
 
 The conductor then states "review-record-only delta verified" in the merge record.
 
