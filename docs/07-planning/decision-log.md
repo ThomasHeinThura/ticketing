@@ -13,6 +13,8 @@ bounded repair. Re-run the unchanged required audit and affected package checks 
 resulting exact source. This is a dependency prerequisite only, not control-plane acceptance,
 merge authorization or a gate waiver.
 
+**Tracking:** [#613](https://github.com/ThomasHeinThura/ticketing/issues/613).
+
 **Sources (verified 2026-10-09):** [proxy-addr GHSA-jqcg-44mw-7w3h](https://github.com/advisories/GHSA-jqcg-44mw-7w3h), [source-map-js GHSA-68fv-2mgg-jv7q](https://github.com/advisories/GHSA-68fv-2mgg-jv7q), [prosemirror-view GHSA-c8x8-7fp4-3x9w](https://github.com/advisories/GHSA-c8x8-7fp4-3x9w), [MCP SDK GHSA-6qxp-vccf-f47h](https://github.com/advisories/GHSA-6qxp-vccf-f47h), [KaTeX GHSA-238p-pmpm-9mq7](https://github.com/advisories/GHSA-238p-pmpm-9mq7); package versions, licenses and compatibility confirmed from official npm metadata.
 
 ---
