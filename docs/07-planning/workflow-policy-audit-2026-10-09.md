@@ -194,5 +194,14 @@ task decisions in their own PR; both landed-commit listings required; DoD pre-bu
 wording aligned to mapping and disposition. One item was not a gap: test names citing spec
 rules is already required at `sdlc.md` step 4.
 
+**Round 3** (fresh context, delta to `889daa135cfab536380382a74afadd12bd30ff25`): **CLEAR WITH
+NON-BLOCKING**; transport verified byte-identical against the original transcripts. Its six
+non-blocking items were fixed in the following commit: lane decision-log entries aligned
+with the SDLC/DoD; only owner-decision entries carry owner authority; relayed instructions
+need recording on `main` or by the direct recipient; re-run counting by unchanged inputs;
+`--summary` added to the landed-commit listing; redaction exception mirrored in the decision
+log; spawn provenance added to the note headers. **That final commit has not been reviewed by
+an Opus context**; it falls to the required reviews below.
+
 These Opus reviews are additional evidence. The required GPT-6 Luna ordinary reviews and the
 GPT-6 Sol pass are still outstanding.
