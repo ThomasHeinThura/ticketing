@@ -1,3 +1,26 @@
+## Status first — verified 2026-10-09 01:53 UTC (08:23 Asia/Yangon)
+
+**Execution queue:** [integration execution queue](integration-execution-queue.md) is the current runnable-work index. The feature freeze remains active; it schedules existing integration, repair, CI, migration, build/package and SIT acceptance only. Live GitHub returned 20 open PRs and 442 branches. PR #601 is at exact head `00764f7a7fd3300424dcc21f5871b9180b41b61d`; the branch inventory otherwise matches live refs and has one expected stale #601 head. No protected merge occurred. GHCR/GitHub releases remain approved; Docker Hub remains prohibited.
+
+**Current #601 checks:** exact live head `00764f7a7fd3300424dcc21f5871b9180b41b61d`, base `main@3096cb044bdf6ae98488bfc385f532fa6386343a`, BLOCKED/MERGEABLE. GitHub reports failures in static, protected-route E2E, PR template/security review, G11, dependency audit and secret scan. Two independent Luna CLEAR reviews and a Sol CLEAR are recorded against this exact head; GitHub’s formal review list is empty. Repair only evidenced CI/metadata defects and refresh the exact-head rollup. This snapshot does not claim CI green.
+
+**P0 exact evidence boundary:** #602 remains `12d9f899a3437a601e0da22a3c8b25ba9a70f430`; G11 remains 19/22 failed (LCP 2604/2500 ms, task-state 261/200 ms, board 651.8/500 ms). The V21 finalized manifest `eed31324f872dff8ae321499a792d262764daea4bf06b7e7f346d91dd7fc68c4` has fresh strong Luna and full Sol CLEAR for the recorded offline 130-check scope only. Root's operator receipt/resource window is still required. Do not transfer offline evidence to runtime/SIT or claim P0 complete. #602's exact-head GitHub review list is empty; PR-template and G11 blockers remain.
+
+**Human decisions now recorded:** Thomas approved for #606 that an omitted free-comment PATCH body is a no-op after existing permission/window/parent checks; and for #608 that historical pending-action DTOs serialize canonical `delete`/`user`, resolve legacy `person` to `user`, preserve stored row/hash/proofs and legacy approval refusal, and fail closed on unresolved targets. These unblock specified implementation paths, with spec/source/regression updates assigned to `existing_integration_repairs`; they waive no gate. The latest exact #606/#608 heads still have failed hosted checks and no GitHub review entries.
+
+**Queue assignment:** #606 and #608 are RUNNING with `existing_integration_repairs`; source integration preparation is RUNNING with the integration agent; P0 runtime remains with root; queue/status/metadata work is assigned to the queue agent. Other lanes retain their existing source owners and are either waiting on CI, decisions, or prerequisites as listed in the queue. Historical branch preservation is unchanged: 177 accepted-main ancestors, 54 retained in active-PR ancestry, and 211 unassigned branches remain represented in the exhaustive inventory; preserve all. No feature beyond the two explicitly recorded compatibility decisions is authorized; no dependency, migration ID, version/tag exception, release, deployment, or merge is authorized by these operational records.
+
+| Stage | Formal status |
+|---|---|
+| P0 | Open — #602 G11 and PR metadata remain blocked; V21 offline 130-check evidence only; operator receipt/resource window, required runtime/config/task evidence, protected acceptance, signed release proof and fresh phase finalizer remain. |
+| P1 | Open — preserve current owners; source composition, current exact-head checks and integrated browser acceptance remain. |
+| P2 | Open — preserve current owners; central migration replay and integrated acceptance remain. |
+| P3 | Open — preserve current identity owners; exact composed security review and provider acceptance remain. |
+| P4 | Open — #606/#608 decisions are recorded for implementation; exact source/tests/reviews, migration replay and integrated acceptance remain; #607 stays held. |
+| P5–P7 | Open and held under the feature freeze. |
+
+---
+
 ## Status first — verified 2026-10-08 17:34 UTC
 
 **Planning sequence:** per Thomas's Oct 7 direction, the SDLC now explicitly permits authorized dependency-safe concurrent implementation while preserving ordered independent stage acceptance, each stage's full exit gates and Sol finalizer. This resolves the plan-entry/stage-start contradiction; it is not a gate waiver.

@@ -1,3 +1,20 @@
+### 2026-10-09 · Resume eligible integration work with queue checkpoints; record #606/#608 answers (01:53 UTC)
+
+**Thomas’s explicit operating direction:** maintain one repository-backed execution queue for every open PR and active branch, select the next dependency-safe existing-work item automatically, and continue through execution-boundary checkpoints. Preserve the feature freeze. Checkpoints capture exact head, checks, review state, dependencies, owner, remaining action and disposition; refresh live GitHub before acting. A blocked lane does not stop other eligible existing work. This schedules work only: required independent reviews, exact-head CI, stage gates, Sol review where applicable, protected merge and finalizers remain unchanged. It does not authorize gate waiver, feature scope, deployment, release, or branch deletion.
+
+**Thomas explicitly approved two compatibility decisions:**
+
+1. **#606 free-comment PATCH:** when the body is omitted, treat the request as a no-op after existing permission, window, and parent checks. Do not mutate the comment.
+2. **#608 historical pending-action DTO:** serialize canonical `delete`/`user`; resolve legacy `person` to `user`; preserve the stored row, hash, proofs, and legacy approval refusal; fail closed when the target is unresolved.
+
+These decisions unblock only their named implementation paths. The assigned source owner must update the authoritative spec, code, and regression tests, then re-evaluate the exact candidate's ordinary/security reviews and hosted checks. No stable-v2 tag allowlist exception or new-version path was approved.
+
+The queue at [integration-execution-queue.md](integration-execution-queue.md) captures the 01:53 UTC live snapshot: 20 open PRs and 442 remote branches. #606/#608 are RUNNING under `existing_integration_repairs`; #589 source reconstruction is assigned to the integration agent; #602 remains root-owned; this queue refresh is assigned to the queue/metadata agent. All 177 accepted-main-ancestor refs, 54 refs retained by active-PR ancestry, and 211 unassigned refs remain preserved; unassigned refs stay on HOLD for source ownership/semantic comparison. The live exact heads have not thereby passed CI or review, and no PR is marked merged.
+
+**Recorded:** orchestrating session on 2026-10-09 from Thomas’s explicit answers and operating instruction, current GitHub API read, and the linked queue. Decision scope does not alter acceptance criteria.
+
+---
+
 ### 2026-10-08 · Correct P0 candidate, hosted gate and runtime-date record (17:34 UTC)
 
 Thomas’s Oct 7 planning direction is reflected in [SDLC § Plan](../04-engineering/sdlc.md) and its stage-gate sequencing note: authorized dependency-safe implementation may proceed concurrently, while stage acceptance, each stage’s own exit criteria and the Sol phase finalizer remain ordered and mandatory. This resolves the contradictory “no stage starts before previous closure” wording without a workflow or gate waiver.
