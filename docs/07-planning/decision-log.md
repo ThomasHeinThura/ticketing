@@ -1,3 +1,29 @@
+### 2026-10-09 · Owner directive: mixed-model routing for the delivery mission
+
+**Decision:** for the frozen-scope delivery mission, Thomas assigned models by role:
+- a Claude Opus session is the conductor;
+- Claude Sonnet does bounded implementation and independent ordinary review;
+- a fresh Claude Opus context does the required security and critical review and the final
+  audit;
+- Claude Haiku may do optional read-only extraction only.
+
+Reviewer counts and independence are unchanged. Labels stay truthful: a review is recorded
+under the model that produced it and never used to satisfy a checker under another label.
+
+**Relation to earlier entries:** this narrows the 2026-10-09 "Opus policy-repair conductor"
+assignment for the delivery mission — Opus no longer fills implementation and ordinary review
+there. Reviews completed under that assignment stay valid for what they covered. GPT-6 Luna
+and GPT-6 Sol keep their roles (2026-09-29). The security-review model block in
+`agent-workflow.md` is unchanged: GPT-6 Sol and Claude Opus 5.5 remain the accepted
+security-review models.
+
+**Source:** Thomas gave the instruction directly to the delivery conductor session
+(`local_49596b31-2faf-432e-885e-bfb2dcca607a`), which relayed it. Thomas then confirmed it
+directly in the policy-maintainer session that records it here, 2026-10-09.
+**Recorded by:** Claude Opus 5.5 (`claude-opus-5-5`), policy maintainer, PR #615.
+
+---
+
 ### 2026-10-09 · Owner directive: Opus policy-repair conductor
 
 **Decision and authorization:** Thomas authorized an Opus session to finish the operating-policy
