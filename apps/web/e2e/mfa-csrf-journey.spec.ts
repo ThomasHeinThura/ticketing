@@ -1,8 +1,26 @@
-import { expect, test } from "@playwright/test";
+import { expect, type Locator, type Page, test } from "@playwright/test";
 import {
   totpForUri,
   withMfaCsrfApp,
 } from "../../../tests/e2e/helpers/mfa-csrf-app-fixture";
+
+async function getControlledOption(
+  page: Page,
+  trigger: Locator,
+  name: string,
+): Promise<Locator> {
+  const listboxId = await trigger.getAttribute("aria-controls");
+  expect(listboxId).not.toBeNull();
+  if (listboxId === null) {
+    throw new Error("Opened select trigger has no controlled listbox");
+  }
+
+  const listbox = page
+    .getByRole("listbox")
+    .and(page.locator(`[id=${JSON.stringify(listboxId)}]`));
+  await expect(listbox).toHaveCount(1);
+  return listbox.getByRole("option", { name, exact: true });
+}
 
 test.use({ trace: "off", video: "off", screenshot: "off" });
 
@@ -191,10 +209,10 @@ test.describe("P0 MFA and CSRF browser journey", () => {
       };
       await test.step("observability: open default log-level options", () =>
         defaultLevel.click());
-      await test.step("observability: select changed default log level", () =>
-        page
-          .getByRole("option", { name: changedDefault, exact: true })
-          .click());
+      await test.step("observability: select changed default log level", async () =>
+        (
+          await getControlledOption(page, defaultLevel, changedDefault)
+        ).click());
       await saveLogLevels("observability: save changed default log level");
       const changedSettings = await test.step(
         "observability: read changed default setting",
@@ -206,10 +224,10 @@ test.describe("P0 MFA and CSRF browser journey", () => {
       const realtimeLevel = page.getByLabel("realtime");
       await test.step("observability: open realtime log-level options", () =>
         realtimeLevel.click());
-      await test.step("observability: select changed realtime log level", () =>
-        page
-          .getByRole("option", { name: changedRealtime, exact: true })
-          .click());
+      await test.step("observability: select changed realtime log level", async () =>
+        (
+          await getControlledOption(page, realtimeLevel, changedRealtime)
+        ).click());
       await test.step("observability: dismiss realtime log-level options", () =>
         realtimeLevel.press("Escape"));
       await saveLogLevels("observability: save changed realtime log level");
@@ -226,20 +244,21 @@ test.describe("P0 MFA and CSRF browser journey", () => {
 
       await test.step("observability: reopen default log-level options", () =>
         defaultLevel.click());
-      await test.step("observability: select original default log level", () =>
-        page
-          .getByRole("option", {
-            name: initialSettings.logLevels.default,
-            exact: true,
-          })
-          .click());
+      await test.step("observability: select original default log level", async () =>
+        (
+          await getControlledOption(
+            page,
+            defaultLevel,
+            initialSettings.logLevels.default,
+          )
+        ).click());
       await saveLogLevels("observability: save restored default log level");
       await test.step("observability: reopen realtime log-level options", () =>
         realtimeLevel.click());
-      await test.step("observability: select original realtime log level", () =>
-        page
-          .getByRole("option", { name: initialRealtime, exact: true })
-          .click());
+      await test.step("observability: select original realtime log level", async () =>
+        (
+          await getControlledOption(page, realtimeLevel, initialRealtime)
+        ).click());
       await test.step("observability: dismiss restored realtime options", () =>
         realtimeLevel.press("Escape"));
       await saveLogLevels("observability: save restored realtime log level");
