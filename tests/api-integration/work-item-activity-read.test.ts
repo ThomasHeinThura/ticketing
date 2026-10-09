@@ -746,7 +746,7 @@ describe("API integration: work item activity read (#23 fourth slice)", () => {
       expect(outOfRangeResponse.status).toBe(400);
     });
 
-    it("rejects a missing PATCH body without changing the comment or its history", async () => {
+    it("treats an omitted PATCH body as a write-free no-op", async () => {
       const { creator, project, type } = await setupProjectWithDefaultState();
       mockAuthenticatedSession(creator.user);
       const { app } = createApp();
@@ -764,24 +764,47 @@ describe("API integration: work item activity read (#23 fourth slice)", () => {
         visibility: "internal",
       });
       const comment = (await commentResponse.json()) as { id: string };
-      const before = await db
-        .select({ id: schema.commentVersionTable.id })
+      const commentBefore = await db
+        .select()
+        .from(schema.commentTable)
+        .where(eq(schema.commentTable.id, comment.id));
+      const versionsBefore = await db
+        .select()
         .from(schema.commentVersionTable)
         .where(eq(schema.commentVersionTable.commentId, comment.id));
+      const auditBefore = await db.select().from(schema.auditLogTable);
+      const outboxBefore = await db.select().from(schema.outboxTable);
 
       const response = await patchCommentPayloadRequest(app, comment.id, {});
-      expect(response.status).toBe(400);
+      expect(response.status).toBe(200);
+      expect(await response.json()).toMatchObject({
+        id: comment.id,
+        body: {
+          type: "doc",
+          content: [{ type: "paragraph", text: "original" }],
+        },
+        editedAt: null,
+      });
 
-      const after = await db
-        .select({ id: schema.commentVersionTable.id })
+      const commentAfter = await db
+        .select()
+        .from(schema.commentTable)
+        .where(eq(schema.commentTable.id, comment.id));
+      const versionsAfter = await db
+        .select()
         .from(schema.commentVersionTable)
         .where(eq(schema.commentVersionTable.commentId, comment.id));
+      const auditAfter = await db.select().from(schema.auditLogTable);
+      const outboxAfter = await db.select().from(schema.outboxTable);
       const activity = (await (
         await activityRequest(app, created.key)
       ).json()) as {
         data: Array<{ id: string; body: unknown; editedAt: string | null }>;
       };
-      expect(after).toEqual(before);
+      expect(commentAfter).toEqual(commentBefore);
+      expect(versionsAfter).toEqual(versionsBefore);
+      expect(auditAfter).toEqual(auditBefore);
+      expect(outboxAfter).toEqual(outboxBefore);
       expect(activity.data.find((row) => row.id === comment.id)).toMatchObject({
         body: {
           type: "doc",
