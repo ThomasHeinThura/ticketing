@@ -1,3 +1,11 @@
+### 2026-10-09 · Apply the frozen-P0 defect exception to strict attribution proof (03:47 UTC)
+
+The actual V24 disposable strict run failed on three unexplained shadow rows/four occurrences despite matching HTTP outcomes and reconciled event/cardinality counts. Independent Sol adjudication requires request-correlated terminal strict decision and persisted-row provenance before these outcomes can receive a finite explanation. The orchestrator assigned a bounded source/proof correction to `p0_strict_witness_batch` under Thomas's existing required-P0-gate correction authority. This does not approve a policy change, blanket exception, new audit event, later-stage feature, weakened gate or unchanged rerun. Preserve original failed records. Any changed candidate requires fresh source/image binding, applicable independent reviews, CI and scoped compatibility adjudication before new runtime proof. Existing three partial UTC bucket observations are not automatically reused or restarted.
+
+The P1 dialog batch at `1c4f1f69f29ab4ecc00ccb12c04edb77436072ed` remains independently staged and does not enter P0. No new Thomas decision or gate waiver is claimed.
+
+---
+
 ### 2026-10-09 · Reconcile queue and P0 evidence boundary (02:51 UTC)
 
 The execution queue and status snapshot were refreshed from live GitHub and the exact hosted evidence. GitHub returned 20 open PRs and 442 remote branches; accepted `main` remains `3096cb044bdf6ae98488bfc385f532fa6386343a`. All 177 accepted-main ancestor refs, 54 refs retained in active-PR ancestry, and 211 unassigned/HOLD refs remain preserved. Partial source overlap and ancestry do not close branches or PRs.
