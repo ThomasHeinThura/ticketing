@@ -369,6 +369,7 @@ describe("God Mode Users API", () => {
         action: "delete",
         targetType: "user",
         targetIds: [intendedTarget.id],
+        approvalSupported: false,
         summary: {
           personId: intendedPerson.id,
           userId: intendedTarget.id,
@@ -401,6 +402,7 @@ describe("God Mode Users API", () => {
       action: "delete",
       targetType: "user",
       targetIds: [intendedTarget.id],
+      approvalSupported: false,
       summary: {
         personId: intendedPerson.id,
         userId: intendedTarget.id,
@@ -573,6 +575,7 @@ describe("God Mode Users API", () => {
       action: "delete",
       targetType: "user",
       targetIds: [intendedTarget.id],
+      approvalSupported: false,
       summary: {
         personId: intendedPerson.id,
         userId: intendedTarget.id,
@@ -1241,6 +1244,17 @@ describe("God Mode Users API", () => {
     };
     expect(pending.action).toBe("delete");
     expect(pending.confirmation).toBe("typed_name_step_up");
+    const publicPending = await agentRequest(
+      app,
+      `/api/me/pending-actions/${pending.pendingActionId}`,
+    );
+    expect(publicPending.status).toBe(200);
+    expect(await publicPending.json()).toMatchObject({
+      action: "delete",
+      targetType: "user",
+      approvalSupported: true,
+      state: "pending",
+    });
     const [storedAction] = await db
       .select({
         action: schema.pendingActionTable.action,

@@ -1997,6 +1997,9 @@
               "typed_count_step_up"
             ]
           },
+          "approvalSupported": {
+            "type": "boolean"
+          },
           "state": {
             "type": "string",
             "enum": [
@@ -2062,6 +2065,7 @@
           "targetIds",
           "summary",
           "confirmation",
+          "approvalSupported",
           "state",
           "createdAt",
           "expiresAt",
@@ -2154,6 +2158,9 @@
               "typed_count_step_up"
             ]
           },
+          "approvalSupported": {
+            "type": "boolean"
+          },
           "state": {
             "type": "string",
             "enum": [
@@ -2179,6 +2186,7 @@
           "targetIds",
           "summary",
           "confirmation",
+          "approvalSupported",
           "state",
           "createdAt",
           "expiresAt"

@@ -126,17 +126,20 @@ function PendingActionDetailRoute() {
       : null;
   const isPending = action.data.state === "pending";
   const canApproveDeactivation =
+    action.data.approvalSupported &&
     action.data.action === "delete" &&
     action.data.targetType === "user" &&
     action.data.confirmation === "typed_name_step_up" &&
     email !== null &&
     isPending;
   const canApproveCalendarDeletion =
+    action.data.approvalSupported &&
     action.data.action === "delete" &&
     action.data.targetType === "service_calendar" &&
     action.data.confirmation === "click" &&
     isPending;
   const canApproveSavedViewDeletion =
+    action.data.approvalSupported &&
     action.data.action === "delete" &&
     action.data.targetType === "saved_view" &&
     action.data.confirmation === "click" &&
@@ -213,7 +216,11 @@ function PendingActionDetailRoute() {
       <header>
         <h1 className="text-2xl font-semibold">
           {action.data.action === "delete" && action.data.targetType === "user"
-            ? t("pendingActions:dynamic.approveDeactivation")
+            ? t(
+                action.data.approvalSupported
+                  ? "pendingActions:dynamic.approveDeactivation"
+                  : "pendingActions:dynamic.pendingAction",
+              )
             : t("pendingActions:dynamic.pendingAction")}
         </h1>
         <p className="mt-1 text-sm text-muted-foreground">
@@ -423,12 +430,21 @@ function PendingActionDetailRoute() {
             </div>
           )}
           {isPending && !canApprove && (
-            <Alert>
-              <AlertTitle>{t("pendingActions:copy.e76b511b0a44")}</AlertTitle>
-              <AlertDescription>
-                {t("pendingActions:copy.d3d84fb23a45")}
-              </AlertDescription>
-            </Alert>
+            <div className="space-y-4">
+              <Alert>
+                <AlertTitle>{t("pendingActions:copy.e76b511b0a44")}</AlertTitle>
+                <AlertDescription>
+                  {t("pendingActions:copy.d3d84fb23a45")}
+                </AlertDescription>
+              </Alert>
+              <Button
+                variant="outline"
+                disabled={cancel.isPending}
+                onClick={() => void cancelAction()}
+              >
+                {t("pendingActions:copy.84837a216817")}
+              </Button>
+            </div>
           )}
           {!isPending && (
             <Link to={routes.pendingActions.path as never}>

@@ -2092,6 +2092,7 @@ async function toPendingActionRead(
     targetIds: publicFields.targetIds,
     summary: publicFields.summary,
     confirmation: row.confirmationRequired,
+    approvalSupported: publicFields.approvalSupported,
     state: row.state,
     createdAt: row.createdAt.toISOString(),
     expiresAt: row.expiresAt.toISOString(),
@@ -2111,7 +2112,26 @@ type PublicPendingActionFields = {
   targetType: string;
   targetIds: string[];
   summary: Record<string, unknown>;
+  approvalSupported: boolean;
 };
+
+function supportsPendingActionApproval(
+  row: typeof pendingActionTable.$inferSelect,
+): boolean {
+  if (row.action !== "delete") return false;
+  if (
+    (row.targetType === "service_calendar" ||
+      row.targetType === "saved_view") &&
+    row.confirmationRequired === "click"
+  ) {
+    return true;
+  }
+  return (
+    row.targetType === "user" &&
+    row.routeKey === "POST /api/instance/users/{id}/deactivate" &&
+    row.confirmationRequired === "typed_name_step_up"
+  );
+}
 
 function isLegacyInstanceUserDeactivation(
   row: typeof pendingActionTable.$inferSelect,
@@ -2141,6 +2161,7 @@ async function publicPendingActionFields(
       targetType: row.targetType,
       targetIds: row.targetIds,
       summary: row.payloadSummary as Record<string, unknown>,
+      approvalSupported: supportsPendingActionApproval(row),
     };
   }
   if (!isLegacyInstanceUserDeactivation(row)) {
@@ -2193,6 +2214,7 @@ async function publicPendingActionFields(
     targetType: "user",
     targetIds: [target.userId],
     summary: { ...summary, userId: target.userId },
+    approvalSupported: false,
   };
 }
 
@@ -2813,6 +2835,7 @@ async function toPublicPendingAction(
     targetIds: fields.targetIds,
     summary: fields.summary,
     confirmation: row.confirmationRequired,
+    approvalSupported: fields.approvalSupported,
     state: row.state,
     createdAt: row.createdAt.toISOString(),
     expiresAt: row.expiresAt.toISOString(),
