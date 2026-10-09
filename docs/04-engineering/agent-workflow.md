@@ -147,29 +147,28 @@ that materially authored, directed or remediated a change is not its independent
 
 ### Model policy
 
-| Role | Assigned models (any one, in its own independent context) |
+| Tier and roles | Models — whichever is available, each in its own independent context |
 | --- | --- |
-| Implementation, context preparation, ordinary review, bounded architecture/alignment review | **GPT-6 Luna**, explicitly selected; or **Claude Sonnet** under the current mission |
-| Security review, critical cross-boundary review, phase finalizer and final audit, broad or high-risk architecture review, security- or architecture-heavy context preparation | **GPT-6 Sol**; or a fresh **Claude Opus 5.5** context under the current mission |
-| Conductor | The session Thomas designates — under the current mission a Claude Opus 5.5 session (a GPT conductor prefers GPT-6 Sol for broad governance or security work) |
-| Read-only extraction (optional) | **Claude Haiku** under the current mission — never an author, reviewer of record or approver; its output is data, cited only after a reviewer re-verifies it against the source |
-| Sampled auditor | **Claude Opus 5.5**, only from a packet another context prepared; never replaces a required review |
+| **Luna tier:** implementation, context preparation, ordinary review, bounded architecture/alignment review | **GPT-6 Luna**, **Claude Sonnet** or **Claude Haiku** |
+| **Sol tier:** security review, critical cross-boundary review, phase finalizer and final audit, broad or high-risk architecture review, security- or architecture-heavy context preparation | **GPT-6 Sol** / **GPT-6.1 Sol**, or a fresh **Claude Opus** context |
+| Conductor | The session Thomas designates |
+| Read-only extraction (optional) | Any model; its output is data, cited only after a reviewer re-verifies it against the source |
+| Sampled auditor | A Sol-tier model, only from a packet another context prepared; never replaces a required review |
 | Policy maintenance | The session Thomas assigns. Its PRs still receive the independent reviews, and the security pass, their tier requires |
 
-**Source:** decision log 2026-09-29 (GPT-6 Luna/Sol routing); 2026-10-09 "Opus
-policy-repair conductor" (Claude Opus for every role, in separate independent contexts, for the
-policy repair); and 2026-10-09 "Mixed-model routing for the delivery mission" (the
-Opus/Sonnet/Haiku split above). These are disclosed changes of **who** reviews, not of review
-depth, counts or independence. Models are
-not interchangeable labels: one context never fills two roles on the same change, and the
-author's context is never its reviewer.
+**Source:** decision log 2026-09-29 (GPT-6 Luna/Sol routing) and 2026-10-09 "Model tiers by
+availability" (Sol = Opus, Luna = Sonnet or Haiku, chosen by real usage limits), which
+supersedes the earlier 2026-10-09 assignments for model choice. These are disclosed changes of
+**who** reviews, not of review depth, counts or independence. Within a tier the models are
+interchangeable by availability; their **labels are not**: one context never fills two roles on
+the same change, and the author's context is never its reviewer.
 
 Every review records the model and version **as the platform reports it** (for example
 `Claude Sonnet 5.5 (claude-sonnet-5-5)`, `Claude Opus 5.5 (claude-opus-5-5)`; a table entry
 without a version means whichever version the platform reports), its role,
 context, exact source, scope and verdict. **Never label a report with a model that did not
-produce it** — a Claude report is never recorded as GPT-6 Luna or GPT-6 Sol, nor a Sonnet
-report as Opus, and historical reviews keep their original identity. An existing review counts
+produce it** — a Claude report is never recorded as a GPT model or the reverse, nor a
+Sonnet or Haiku report as Opus, and historical reviews keep their original identity. An existing review counts
 for a role only where its scope and source coverage are established; it never approves later
 changes. Reviews completed under an earlier assignment stay valid for what they covered.
 
@@ -184,6 +183,7 @@ change that replaces the active mission re-decides it in the same reviewed chang
 
 <!-- policy:security-review-models -->
 - `GPT-6 Sol`
+- `GPT-6.1 Sol`
 - `Claude Opus 5.5 (claude-opus-5-5)`
 <!-- /policy:security-review-models -->
 
