@@ -112,9 +112,11 @@ describe("check:events — the shipped tree", () => {
     // empty scan. #451 added a 30th: work_item.commented (comment POST on a work item).
     // #442/PR #457 added a 31st: work_item.transitioned (POST .../transition) --
     // events.md already documented this key, but nothing published it until this route.
+    // The request-type notification dispatcher publishes the five already-documented
+    // submission keys through literal calls, bringing the derived count to 36.
     // PR #515 persists pending_action.decided through the durable outbox, not
     // publishEvent; this checker counts only process-local publishEvent call sites.
-    assert.match(result.output, /31 published event key/);
+    assert.match(result.output, /36 published event key/);
   });
 });
 
