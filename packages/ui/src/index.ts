@@ -251,7 +251,6 @@ export {
   DialogDescription,
   DialogFooter,
   DialogHeader,
-  DialogPanel,
   DialogPopup,
   DialogPopup as DialogContent,
   DialogPortal,
@@ -259,6 +258,7 @@ export {
   DialogTrigger,
   DialogViewport,
 } from "./components/dialog";
+export { DialogPanel } from "./components/dialog-panel";
 export {
   Empty,
   EmptyContent,

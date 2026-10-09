@@ -14,6 +14,7 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "./dialog";
+import { DialogPanel } from "./dialog-panel";
 
 afterEach(() => {
   cleanup();
@@ -96,5 +97,23 @@ describe("Dialog", () => {
     );
 
     await expectNoA11yViolations(baseElement);
+  });
+
+  it("keeps the shared dialog panel scroll area available", () => {
+    render(
+      <Dialog defaultOpen>
+        <DialogPopup closeLabel="Close">
+          <DialogPanel>Scrollable dialog content</DialogPanel>
+        </DialogPopup>
+      </Dialog>,
+    );
+
+    expect(screen.getByText("Scrollable dialog content")).toHaveAttribute(
+      "data-slot",
+      "dialog-panel",
+    );
+    expect(
+      document.querySelector('[data-slot="scroll-area-viewport"]'),
+    ).toBeInTheDocument();
   });
 });
