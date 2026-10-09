@@ -1,0 +1,13 @@
+# P1 navigation URL state — exact-source review and image evidence
+
+Candidate #609 source `6054eb0a6b1a299232cf4630665e3d4502f0544e` retains the current #606 parent reconciliation and the complete URL-state/search remediation. The independent full GPT-6 Sol review at this exact source is CLEAR for the navigation URL mechanism and the repeated ordinary-review findings. Its report is retained privately at `/Users/heinthura/.codex/taskdesk-evidence/2026-10-09/p1-navigation-6054-sol-closure.md`.
+
+The Sol reviewer ran the focused web suite (8 files, 81 tests), web typecheck, Biome on the 8-file remediation delta, and `git diff --check`; all passed. The review confirmed URL-backed filters, search, sort, selection, layout, month, view transitions, clearable search on each consumer, replace-on-typing history behavior, and retained Gantt status-text matching. It did not claim full P1 acceptance or rendered browser verification.
+
+An exact-source image was built from the archived `6054eb0a6b1a299232cf4630665e3d4502f0544e` tree (archive SHA-256 `319e85f056a2949c66e27bdfbecf1b54c5fd4ad8edc23253af61973c725ded3a`). The unpublished local ARM64 image has config digest `sha256:9024e4f2dac97d06eb2ea6ca7693f4f18dd56c7a82a51844dc6b06fffadf5001`, runtime user `taskdesk`, and OCI revision equal to the source SHA. No registry digest exists because it was not published.
+
+One isolated Compose smoke on OrbStack project `tdk-p1-nav-6054-b3884fdb` passed: live and ready endpoints returned 200; the app ran as UID 10001 without the migration-owner credential; its database role had no elevated role flags or owned relations; attachment ownership was `10001:10001`; the separate migration service used its owner credential and applied all 119 source journal entries. The smoke exposed no host ports. Cleanup removed all owned containers, volumes, and network. The pre-existing Docker inventory remained 19 containers / 5 running and the global context remained `orbstack`. A first isolated attempt was fully cleaned after a verifier bookkeeping mismatch; the corrected independent project run completed all assertions successfully.
+
+Private build and smoke logs, source archive, runtime configuration, and detailed result records are retained under `/Users/heinthura/.codex/taskdesk-evidence/2026-10-09/p1-navigation-6054-image/` with private file permissions. The dynamic credentials remain outside the repository.
+
+This is source-image and isolated smoke evidence only. It does not establish accepted-base integration, production deployment, final inherited-schema migration acceptance, full CI, or browser verification. Full CI and rendered browser checks remain outstanding; browser status is `BROWSER VERIFICATION: BLOCKED`. No merge or P1 phase completion is claimed.
