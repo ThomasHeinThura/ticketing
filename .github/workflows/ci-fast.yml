@@ -45,6 +45,25 @@ env:
   DO_NOT_TRACK: "1"
 
 jobs:
+  # ── Change scope (ci-cd.md § Applicability) ─────────────────────────────────────────────
+  # Decides, from the MERGE BASE's classifier, whether this pull request is policy-only. Gate
+  # jobs below that measure the product carry `needs: scope` and run unless this job answered
+  # exactly `full == 'false'`: a failed, cancelled-mid-way or missing answer still runs them.
+  # Never conditional itself, never `needs` anything: it must always produce an answer.
+  scope:
+    name: change scope
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    outputs:
+      full: ${{ steps.classify.outputs.full }}
+    steps:
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5.1.0
+        with:
+          # The classifier reads landed commits from the merge base to the head.
+          fetch-depth: 0
+      - id: classify
+        uses: ./.github/actions/change-scope
+
   # ── The Throttle 1 boundary ────────────────────────────────────────────────────────────
   # Its own job so it can be its own required status check on the protect-main ruleset,
   # independent of everything else in this workflow. docs/07-planning/status.md § Throttle 1
@@ -52,6 +71,8 @@ jobs:
   # build. The wrapper fails closed until the suite from #7 exists.
   route-policy:
     name: route policy coverage + permission matrix
+    needs: scope
+    if: ${{ !cancelled() && needs.scope.outputs.full != 'false' }}
     runs-on: ubuntu-latest
     timeout-minutes: 20
     steps:
@@ -105,6 +126,8 @@ jobs:
 
   static:
     name: static
+    needs: scope
+    if: ${{ !cancelled() && needs.scope.outputs.full != 'false' }}
     runs-on: ubuntu-latest
     timeout-minutes: 20
     steps:
@@ -238,6 +261,8 @@ jobs:
 
   test:
     name: unit + component
+    needs: scope
+    if: ${{ !cancelled() && needs.scope.outputs.full != 'false' }}
     runs-on: ubuntu-latest
     timeout-minutes: 25
     steps:
@@ -248,6 +273,8 @@ jobs:
 
   coverage:
     name: domain coverage (90%)
+    needs: scope
+    if: ${{ !cancelled() && needs.scope.outputs.full != 'false' }}
     runs-on: ubuntu-latest
     timeout-minutes: 15
     steps:
@@ -258,6 +285,8 @@ jobs:
 
   contract:
     name: contract - OpenAPI drift
+    needs: scope
+    if: ${{ !cancelled() && needs.scope.outputs.full != 'false' }}
     runs-on: ubuntu-latest
     timeout-minutes: 20
     steps:
@@ -270,6 +299,8 @@ jobs:
 
   build:
     name: build
+    needs: scope
+    if: ${{ !cancelled() && needs.scope.outputs.full != 'false' }}
     runs-on: ubuntu-latest
     timeout-minutes: 25
     steps:
@@ -291,6 +322,8 @@ jobs:
 
   dependency-audit:
     name: supply chain - dependency audit
+    needs: scope
+    if: ${{ !cancelled() && needs.scope.outputs.full != 'false' }}
     runs-on: ubuntu-latest
     timeout-minutes: 15
     steps:
@@ -339,6 +372,8 @@ jobs:
 
   helm:
     name: helm lint + template
+    needs: scope
+    if: ${{ !cancelled() && needs.scope.outputs.full != 'false' }}
     runs-on: ubuntu-latest
     timeout-minutes: 10
     steps:

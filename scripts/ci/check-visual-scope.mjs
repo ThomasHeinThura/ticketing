@@ -130,6 +130,10 @@ const visualJobLines = visualJob.split("\n");
 const expectedVisualJobLines = [
   "  visual:",
   "    name: visual regression (G8)",
+  // The one permitted condition: run unless the merge base's classifier proved the pull
+  // request policy-only (ci-cd.md § Applicability; workflow-gates.mjs A9).
+  "    needs: scope",
+  "    if: ${{ !cancelled() && needs.scope.outputs.full != 'false' }}",
   "    runs-on: ubuntu-latest",
   "    container:",
   "      image: mcr.microsoft.com/playwright:v1.63.0-noble@sha256:eff16c30e6f3f4af0a03fa4b706120d5e9b0891c344a27d64559aff5900a4a27",
@@ -202,6 +206,8 @@ if (
     .length !== 1 ||
   !hasOnlyMappingKeys(visualJobLines, 4, [
     "name",
+    "needs",
+    "if",
     "runs-on",
     "container",
     "timeout-minutes",
@@ -213,7 +219,7 @@ if (
   !hasOnlyMappingKeys(visualStep, 8, ["run"])
 ) {
   failures.push(
-    `${ciWorkflowPath} must run pnpm test:visual exactly once in one unconditional, failure-propagating visual regression (G8) job and step`,
+    `${ciWorkflowPath} must run pnpm test:visual exactly once in one failure-propagating visual regression (G8) job and step, conditioned only by the canonical change-scope gate`,
   );
 }
 

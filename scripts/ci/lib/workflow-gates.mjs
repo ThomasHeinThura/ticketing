@@ -91,12 +91,106 @@ export const KINDS = {
   unprovenSchedule: "unproven-schedule",
   unprovenShape: "unproven-shape",
   prContext: "pr-context",
+  scopeGated: "scope-gated",
   executes: "executes",
 };
 
-/** Which kinds actually gate a pull request. Fail closed: the list is short on purpose. */
+/**
+ * Which kinds actually gate a pull request. Fail closed: the list is short on purpose.
+ *
+ * `scopeGated` is the one deliberate exception to "runs on every pull request": the gate runs
+ * on every pull request the MERGE BASE's classifier does not prove policy-only, and on every
+ * non-pull-request run (ci-cd.md § Applicability). It is accepted only in the exact shape
+ * `proveScopeJob` and SCOPE_CONDITION below define — see the A9 note there.
+ */
 export function isExecuting(kind) {
-  return kind === KINDS.executes || kind === KINDS.prContext;
+  return (
+    kind === KINDS.executes ||
+    kind === KINDS.prContext ||
+    kind === KINDS.scopeGated
+  );
+}
+
+/**
+ * **A9 — one reviewed proof model for `needs`, and only one.** A7b refuses `needs` on a
+ * gate-bearing job by presence, "until a reviewed proof model for the dependency graph
+ * exists". This is that model, for exactly one edge (Thomas, decision log 2026-10-09,
+ * "Opus policy-repair conductor": policy-only changes are not new application builds).
+ *
+ * A gate job may declare `needs: scope` and nothing else, with exactly the job condition
+ * SCOPE_CONDITION. That condition runs the job unless the scope job ANSWERED `full == 'false'`:
+ * `!cancelled()` keeps it running when `scope` failed or was skipped (its output is then empty,
+ * and empty is not 'false'), so a broken classifier cannot skip a gate. `== 'true'` would be
+ * the fail-open spelling and is refused, as is any `||`, any other job, any extra atom.
+ *
+ * The `scope` job itself must be provably unconditional and canonical (`proveScopeJob`): no
+ * `if`, `needs`, `strategy`, `continue-on-error` or job-level `uses`; a proven runner; its only
+ * output `full` wired to the `classify` step; its steps exactly a pinned checkout and
+ * `uses: ./.github/actions/change-scope` with id `classify`. That composite action runs the
+ * classifier taken from the MERGE BASE (scripts/ci/classify-change.mjs), so a pull request
+ * cannot classify itself with its own edit of the classifier — and the base classifier
+ * answers FULL for any change to `.github/**` or `scripts/ci/**`. The workflow and composite
+ * that invoke it run from the pull request, like every workflow under `pull_request`; their
+ * protection is the security-review path list, as for every other CI control here.
+ */
+export const SCOPE_JOB = "scope";
+export const SCOPE_ACTION = "./.github/actions/change-scope";
+export const SCOPE_CONDITION = "!cancelled() && needs.scope.outputs.full != 'false'";
+const SCOPE_JOB_KEYS = new Set(["name", "runs-on", "timeout-minutes", "outputs", "steps"]);
+
+/**
+ * Is this workflow's `scope` job the canonical, unconditional one?
+ *
+ * @param {string} source the workflow file
+ * @param {{job:string, keys:Record<string,string>}[]} steps parsed steps of that file
+ * @returns {{proven: boolean, reason: string}}
+ */
+export function proveScopeJob(source, steps) {
+  const lines = source.split("\n");
+  const start = lines.findIndex((line) => /^ {2}scope:\s*$/.test(line));
+  if (start === -1) return { proven: false, reason: "the workflow has no `scope` job" };
+  const block = [];
+  for (let i = start + 1; i < lines.length; i += 1) {
+    if (isBlank(lines[i])) continue;
+    if (indentOf(lines[i]) <= 2) break;
+    block.push(lines[i]);
+  }
+  const keys = block
+    .filter((line) => indentOf(line) === 4)
+    .map((line) => /^\s*([A-Za-z][\w.-]*):/.exec(line)?.[1] ?? line.trim());
+  const extra = keys.filter((key) => !SCOPE_JOB_KEYS.has(key));
+  if (extra.length > 0) {
+    return { proven: false, reason: `the \`scope\` job declares ${extra.join(", ")}; only ${[...SCOPE_JOB_KEYS].join(", ")} are allowed` };
+  }
+  for (const required of ["runs-on", "outputs", "steps"]) {
+    if (!keys.includes(required)) return { proven: false, reason: `the \`scope\` job declares no \`${required}\`` };
+  }
+  const runsOn = block.find((line) => /^ {4}runs-on:/.test(line))?.replace(/^ {4}runs-on:\s*/, "");
+  if (!runnerDefaultShellProven(runsOn)) {
+    return { proven: false, reason: `the \`scope\` job runs on \`${runsOn}\`, not a proven runner` };
+  }
+  const outputsAt = block.findIndex((line) => /^ {4}outputs:\s*$/.test(line));
+  const outputs = [];
+  for (let i = outputsAt + 1; i < block.length && indentOf(block[i]) > 4; i += 1) outputs.push(block[i].trim());
+  if (outputs.length !== 1 || outputs[0] !== "full: ${{ steps.classify.outputs.full }}") {
+    return { proven: false, reason: "the `scope` job's outputs must be exactly `full: ${{ steps.classify.outputs.full }}`" };
+  }
+  const scopeSteps = steps.filter((step) => step.job === SCOPE_JOB);
+  const strip = (value) => String(value ?? "").replace(/\s+#.*$/, "").trim();
+  const forbidden = (step) => ["if", "continue-on-error", "shell", "run"].some((key) => key in step.keys);
+  const checkout = scopeSteps.filter((step) => /^actions\/checkout@[0-9a-f]{40}$/.test(strip(step.keys.uses)));
+  const classifier = scopeSteps.filter(
+    (step) => strip(step.keys.uses) === SCOPE_ACTION && strip(step.keys.id) === "classify" && !("with" in step.keys),
+  );
+  if (scopeSteps.length !== 2 || checkout.length !== 1 || classifier.length !== 1 || scopeSteps.some(forbidden)) {
+    return {
+      proven: false,
+      reason:
+        "the `scope` job's steps must be exactly a SHA-pinned `actions/checkout` and " +
+        `\`uses: ${SCOPE_ACTION}\` with \`id: classify\`, neither conditional`,
+    };
+  }
+  return { proven: true, reason: "canonical scope job" };
 }
 
 /**
@@ -853,7 +947,17 @@ export function parseWorkflowFile(source, origin) {
       if (indent !== stepsIndent) continue;
       const pair = /^\s*([A-Za-z][\w.-]*):\s*(.*)$/.exec(lines[j]);
       if (!pair) continue;
-      if (!jobKeys.has(pair[1])) jobKeys.set(pair[1], pair[2]);
+      // A9: a repeated job key is refused, not resolved. `jobKeys` kept the first value
+      // while `jobIf` kept the last, so `if: false` above `if: <scope condition>` was read
+      // two different ways. YAML forbids duplicate keys; which one GitHub honours is not
+      // something this scanner should have to guess.
+      if (jobKeys.has(pair[1])) {
+        throw new WorkflowGatesUnavailableError(
+          `${origin}:${j + 1} repeats the job key \`${pair[1]}\` in job "${job}". A duplicate ` +
+            "key makes the job's condition ambiguous; write it once.",
+        );
+      }
+      jobKeys.set(pair[1], pair[2]);
       if (pair[1] === "if") jobIf = pair[2];
       if (pair[1] === "continue-on-error") jobContinue = pair[2];
       if (pair[1] === "name") jobName = pair[2];
@@ -890,7 +994,7 @@ export function parseWorkflowFile(source, origin) {
  * Order matters: the reasons a step cannot gate a pull request are checked before the
  * reasons it merely might not run.
  */
-function classify(step, triggers) {
+function classify(step, triggers, scopeProof = null) {
   const conditions = [
     ["job", step.jobIf],
     ["step", step.stepIf],
@@ -933,17 +1037,30 @@ function classify(step, triggers) {
   // whatever shape it is written: a scalar id, a flow list, a block list. A prerequisite
   // that is skipped or fails takes this job with it, and modelling the dependency graph
   // properly is a decision to take deliberately, not to guess at here.
+  let scoped = false;
   if (step.jobKeys?.has("needs")) {
-    return {
-      kind: KINDS.unprovenSchedule,
-      reason:
-        `job declares \`needs\` (${String(step.jobKeys.get("needs")).trim() || "block list"}), ` +
-        "so whether it participates in the required pull-request execution depends on " +
-        "prerequisite state this scanner does not model. That is the whole finding, and it " +
-        "is deliberately narrower than any claim about what branch protection then does " +
-        "with the result: NOT PROVEN is sufficient to refuse. A job carrying a required " +
-        "gate stands alone until a reviewed proof model for the dependency graph exists",
-    };
+    const needs = String(step.jobKeys.get("needs")).replace(/\s+#.*$/, "").trim();
+    const canonicalIf =
+      typeof step.jobIf === "string" && normaliseCondition(step.jobIf) === SCOPE_CONDITION;
+    if (needs === SCOPE_JOB && canonicalIf && scopeProof?.proven) {
+      scoped = true;
+    } else {
+      const why =
+        needs !== SCOPE_JOB
+          ? "so whether it participates in the required pull-request execution depends on " +
+            "prerequisite state this scanner does not model. That is the whole finding, and it " +
+            "is deliberately narrower than any claim about what branch protection then does " +
+            "with the result: NOT PROVEN is sufficient to refuse. A job carrying a required " +
+            "gate stands alone, except for the one reviewed edge A9 defines (`needs: scope`)"
+          : !canonicalIf
+            ? `but its job condition is not exactly \`\${{ ${SCOPE_CONDITION} }}\` — the only ` +
+              "condition that runs the gate whenever the scope job did not answer `false` (A9)"
+            : `but ${scopeProof?.reason ?? "the workflow's scope job could not be proven"} (A9)`;
+      return {
+        kind: KINDS.unprovenSchedule,
+        reason: `job declares \`needs\` (${needs || "block list"}), ${why}`,
+      };
+    }
   }
   if (step.jobKeys?.has("strategy")) {
     return {
@@ -1053,7 +1170,8 @@ function classify(step, triggers) {
   // A6: the default is NOT "unknown means it runs". A condition counts only when every
   // part of it is on the proven list, and the first one that is not is named.
   const unproven = conditions.filter(
-    ([, expression]) => !provenInPullRequestContext(expression),
+    ([level, expression]) =>
+      !(scoped && level === "job") && !provenInPullRequestContext(expression),
   );
   if (unproven.length > 0) {
     const [level, expression] = unproven[0];
@@ -1067,6 +1185,15 @@ function classify(step, triggers) {
         "an escape hatch all read as ordinary conditions. If this one genuinely always " +
         "holds on a pull request, add it to PR_CONTEXT_PROVEN in " +
         "scripts/ci/lib/workflow-gates.mjs with the argument for why",
+    };
+  }
+
+  if (scoped) {
+    return {
+      kind: KINDS.scopeGated,
+      reason:
+        "job runs unless the merge base's classifier proved this pull request policy-only " +
+        "(`needs: scope`, A9 — ci-cd.md § Applicability)",
     };
   }
 
@@ -1164,6 +1291,8 @@ export async function readWorkflowGates() {
     }
 
     const parsed = parseWorkflowFile(source, relative);
+    const scopeProof =
+      inheritedTriggers === null ? proveScopeJob(source, parsed.steps) : null;
     if (inheritedTriggers === null) {
       triggers.set(relative, {
         names: parsed.triggers,
@@ -1180,7 +1309,7 @@ export async function readWorkflowGates() {
     }
 
     for (const step of parsed.steps) {
-      const { kind, reason } = classify(step, effective);
+      const { kind, reason } = classify(step, effective, scopeProof);
       const entry = {
         kind,
         reason,
