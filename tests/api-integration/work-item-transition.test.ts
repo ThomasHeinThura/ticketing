@@ -978,6 +978,60 @@ describe("API integration: work item transition (#442, workflows.md)", () => {
     expect(pauses.every((pause) => pause.endedAt !== null)).toBe(true);
   });
 
+  it("SLA-11: resume_sla leaves existing manual intervals open", async () => {
+    const { creator, workspace, project } = await setupProject();
+    const backlog = await makeState(workspace.id, project.id, {
+      group: "backlog",
+      isDefault: true,
+    });
+    const active = await makeState(workspace.id, project.id, {
+      group: "started",
+    });
+    const { workflow } = await makeWorkflow(workspace.id, [
+      {
+        fromStateTemplateId: backlog.stateTemplate.id,
+        toStateTemplateId: active.stateTemplate.id,
+        roleId: null,
+        effects: [{ kind: "resume_sla" }],
+      },
+    ]);
+    const type = await makeWorkItemType(workspace.id, workflow.id);
+    mockAuthenticatedSession(creator);
+    const { app } = createApp();
+    const { key } = await createWorkItem(app, project.id, type.id);
+    const [item] = await db
+      .select({ id: schema.workItemTable.id })
+      .from(schema.workItemTable)
+      .where(eq(schema.workItemTable.key, key));
+    if (!item) throw new Error("SLA manual-resume work item not found");
+
+    const startedAt = new Date();
+    await db.insert(schema.slaPauseTable).values(
+      (["first_response", "resolution"] as const).map((metric) => ({
+        workItemId: item.id,
+        metric,
+        startedAt,
+        reason: "manual" as const,
+      })),
+    );
+
+    const response = await transitionRequest(app, key, {
+      toStateTemplateId: active.stateTemplate.id,
+    });
+    expect(response.status).toBe(200);
+
+    const pauses = await db
+      .select()
+      .from(schema.slaPauseTable)
+      .where(eq(schema.slaPauseTable.workItemId, item.id));
+    expect(pauses).toHaveLength(2);
+    expect(
+      pauses.every(
+        (pause) => pause.reason === "manual" && pause.endedAt === null,
+      ),
+    ).toBe(true);
+  });
+
   it("SLA-11: ordered pause/resume effects observe prior writes for both metrics", async () => {
     const { creator, workspace, project } = await setupProject();
     const backlog = await makeState(workspace.id, project.id, {
@@ -1197,6 +1251,48 @@ describe("API integration: work item transition (#442, workflows.md)", () => {
       "resolution",
     ]);
     expect(pauses.every((pause) => pause.reason === "manual")).toBe(true);
+  });
+
+  it("#493: manual SLA pause refuses a project deleted after reach resolution", async () => {
+    const { creator, workspace, project } = await setupProject();
+    await makeState(workspace.id, project.id, {
+      group: "backlog",
+      isDefault: true,
+    });
+    const type = await makeWorkItemType(workspace.id, null);
+    mockAuthenticatedSession(creator);
+    const { app } = createApp();
+    const { key } = await createWorkItem(app, project.id, type.id);
+    const [item] = await db
+      .select({ id: schema.workItemTable.id })
+      .from(schema.workItemTable)
+      .where(eq(schema.workItemTable.key, key));
+    if (!item) throw new Error("SLA freeze-race work item not found");
+    const writeKey = await createApiKey(
+      creator.id,
+      JSON.stringify({ work_item: ["update"] }),
+    );
+
+    const race = await raceProjectSoftDelete(
+      project.id,
+      async () =>
+        await app.request(`/api/work-items/${key}/sla/pause`, {
+          method: "POST",
+          headers: { Authorization: `Bearer ${writeKey}` },
+        }),
+    );
+    expect(race.blockedOnRowLock).toBe(true);
+    expect(race.operation.status).toBe("fulfilled");
+    if (race.operation.status !== "fulfilled") {
+      throw new Error("manual SLA pause did not return after project deletion");
+    }
+    expect(race.operation.value.status).toBe(404);
+    expect(
+      await db
+        .select()
+        .from(schema.slaPauseTable)
+        .where(eq(schema.slaPauseTable.workItemId, item.id)),
+    ).toHaveLength(0);
   });
 
   it("D1 (Opus delta review of PR #457): a concurrent child reopen cannot slip past a children_closed guard", async () => {
