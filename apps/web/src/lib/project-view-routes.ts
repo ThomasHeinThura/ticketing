@@ -3,9 +3,9 @@ import {
   type ProjectViewSearch,
   parseProjectBacklogSearch,
   parseProjectBoardSearch,
+  parseProjectCalendarSearch,
   parseProjectViewSearchFromParams,
 } from "@/lib/project-board-search";
-import { parseProjectCalendarSearch } from "@/lib/project-calendar-search";
 import {
   PROJECT_BACKLOG_PATH,
   PROJECT_BOARD_PATH,
@@ -49,7 +49,7 @@ function createProjectRoute<Search extends ProjectViewSearch>(
     build(params: ProjectRouteParams, search: Partial<Search> = {}) {
       const pathname = buildProjectPath(path, params);
       const query = new URLSearchParams();
-      appendProjectViewSearchParams(query, parseSearch(search));
+      appendProjectViewSearchParams(query, search, parseSearch);
       const suffix = query.toString();
       return `${pathname}${suffix ? `?${suffix}` : ""}`;
     },
@@ -59,7 +59,7 @@ function createProjectRoute<Search extends ProjectViewSearch>(
       const query = new URL(input, "https://route.invalid").searchParams;
       return {
         params: match.params,
-        search: parseSearch(parseProjectViewSearchFromParams(query)),
+        search: parseProjectViewSearchFromParams(query, parseSearch),
       };
     },
   };

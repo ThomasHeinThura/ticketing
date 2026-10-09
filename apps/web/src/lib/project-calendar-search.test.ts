@@ -1,11 +1,11 @@
 import { describe, expect, it } from "vitest";
+import { parseProjectCalendarSearch } from "./project-board-search";
+import { withProjectViewState } from "./project-board-search-state";
 import {
   dateFromCalendarMonth,
   formatCalendarMonth,
-  parseProjectCalendarSearch,
   shiftCalendarMonthSearch,
-  withCalendarMonth,
-} from "./project-calendar-search";
+} from "./project-calendar-state";
 
 describe("project calendar URL state", () => {
   it("parses and formats a local calendar month without changing its day", () => {
@@ -26,11 +26,17 @@ describe("project calendar URL state", () => {
       parseProjectCalendarSearch({ month: "2026-13", taskId: "" }),
     ).toEqual({});
     expect(
-      withCalendarMonth({ taskId: "task-1", month: "2026-10" }, "2026-11"),
-    ).toEqual({ taskId: "task-1", month: "2026-11" });
+      withProjectViewState(
+        { taskId: "task-1", month: "2026-10", q: "urgent" },
+        { month: "2026-11" },
+      ),
+    ).toEqual({ taskId: "task-1", month: "2026-11", q: "urgent" });
     expect(
-      withCalendarMonth({ taskId: "task-1", month: "2026-10" }, undefined),
-    ).toEqual({ taskId: "task-1" });
+      withProjectViewState(
+        { taskId: "task-1", month: "2026-10", q: "urgent" },
+        { month: undefined },
+      ),
+    ).toEqual({ taskId: "task-1", q: "urgent" });
     expect(
       shiftCalendarMonthSearch(
         { taskId: "task-1", month: "2026-01" },
@@ -38,5 +44,18 @@ describe("project calendar URL state", () => {
         -1,
       ),
     ).toEqual({ taskId: "task-1", month: "2025-12" });
+  });
+
+  it("retains the established four-digit year and month boundaries", () => {
+    expect(parseProjectCalendarSearch({ month: "0999-12" })).toEqual({});
+    expect(parseProjectCalendarSearch({ month: "0000-01" })).toEqual({});
+    expect(parseProjectCalendarSearch({ month: "1000-01" })).toEqual({
+      month: "1000-01",
+    });
+    expect(parseProjectCalendarSearch({ month: "9999-12" })).toEqual({
+      month: "9999-12",
+    });
+    expect(parseProjectCalendarSearch({ month: "2026-00" })).toEqual({});
+    expect(parseProjectCalendarSearch({ month: "2026-13" })).toEqual({});
   });
 });

@@ -20,17 +20,17 @@ import { useRegisterShortcuts } from "@/hooks/use-keyboard-shortcuts";
 import { authClient } from "@/lib/auth-client";
 import { filterProjectTasks } from "@/lib/filter-project-tasks";
 import {
+  type ProjectCalendarSearch,
+  parseProjectCalendarSearch,
+} from "@/lib/project-board-search";
+import {
   projectViewFiltersFromSearch,
   withProjectViewState,
 } from "@/lib/project-board-search-state";
 import {
   dateFromCalendarMonth,
-  type ProjectCalendarSearch,
-  parseProjectCalendarSearch,
   shiftCalendarMonthSearch,
-  withCalendarMonth,
-  withCalendarTask,
-} from "@/lib/project-calendar-search";
+} from "@/lib/project-calendar-state";
 import { createProjectViewShortcutHandlers } from "@/lib/project-layout-navigation";
 import {
   getProjectLayoutStorage,
@@ -118,7 +118,7 @@ function RouteComponent() {
       to: PROJECT_CALENDAR_PATH,
       params: { workspaceId, projectId },
       search: (previous: ProjectCalendarSearch) =>
-        withCalendarMonth(previous, undefined),
+        withProjectViewState(previous, { month: undefined }),
     });
   }, [navigate, projectId, workspaceId]);
 
@@ -141,7 +141,7 @@ function RouteComponent() {
         to: PROJECT_CALENDAR_PATH,
         params: { workspaceId, projectId },
         search: (previous: ProjectCalendarSearch) =>
-          withCalendarTask(previous, nextTaskId),
+          withProjectViewState(previous, { taskId: nextTaskId }),
         replace: true,
       });
     },
@@ -153,7 +153,7 @@ function RouteComponent() {
       to: PROJECT_CALENDAR_PATH,
       params: { workspaceId, projectId },
       search: (previous: ProjectCalendarSearch) =>
-        withCalendarTask(previous, undefined),
+        withProjectViewState(previous, { taskId: undefined }),
       replace: true,
     });
   }, [navigate, projectId, workspaceId]);

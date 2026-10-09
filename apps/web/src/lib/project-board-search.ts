@@ -35,6 +35,7 @@ export type ProjectViewSearch = ProjectViewFilters & {
 
 export type ProjectBoardSearch = ProjectViewSearch;
 export type ProjectBacklogSearch = ProjectViewSearch;
+export type ProjectCalendarSearch = ProjectViewSearch;
 
 const SORT_FIELDS: readonly SortField[] = [
   "position",
@@ -45,7 +46,6 @@ const SORT_FIELDS: readonly SortField[] = [
   "number",
 ];
 const SORT_DIRECTIONS: readonly SortDirection[] = ["asc", "desc"];
-const DUE_DATE_FILTERS = Object.values(DUE_DATE_FILTER_VALUES);
 const FILTER_KEYS = [
   "status",
   "priority",
@@ -54,62 +54,88 @@ const FILTER_KEYS = [
   "labels",
 ] as const;
 const SCALAR_KEYS = ["taskId", "month", "q", "sort", "dir"] as const;
-
-function parseStringList(value: unknown): string[] | undefined {
-  const entries = Array.isArray(value) ? value : [value];
-  const values = entries.filter(
-    (entry): entry is string => typeof entry === "string" && entry.length > 0,
-  );
-  const unique = [...new Set(values)];
-  return unique.length > 0 ? unique : undefined;
+function parseStringList(
+  value: unknown,
+  dueDate = false,
+): string[] | undefined {
+  const values = new Set<string>();
+  for (const entry of Array.isArray(value) ? value : [value]) {
+    if (
+      typeof entry === "string" &&
+      entry &&
+      (!dueDate || Object.hasOwn(DUE_DATE_FILTER_VALUES, entry))
+    )
+      values.add(entry);
+  }
+  return values.size ? [...values] : undefined;
 }
 
-export function parseProjectViewSearch(raw: unknown): ProjectViewSearch {
+export function parseProjectViewSearch(
+  raw: unknown,
+  calendar = false,
+): ProjectViewSearch {
   const candidate = (raw ?? {}) as Record<string, unknown>;
   const search: ProjectViewSearch = {};
   for (const key of SCALAR_KEYS) {
     const value = candidate[key];
     if (
       typeof value === "string" &&
-      value.length > 0 &&
+      value &&
       (key !== "sort" || SORT_FIELDS.includes(value as SortField)) &&
-      (key !== "dir" || SORT_DIRECTIONS.includes(value as SortDirection))
+      (key !== "dir" || SORT_DIRECTIONS.includes(value as SortDirection)) &&
+      (!calendar || key !== "month" || parseMonth(value))
     )
       search[key] = value as never;
   }
   if (candidate.layout === "board" || candidate.layout === "list")
     search.layout = candidate.layout;
   for (const key of FILTER_KEYS) {
-    let values = parseStringList(candidate[key]);
-    if (key === "dueDate")
-      values = values?.filter((value) =>
-        (DUE_DATE_FILTERS as readonly string[]).includes(value),
-      );
-    if (values?.length) search[key] = values;
+    const values = parseStringList(candidate[key], key === "dueDate");
+    if (values) search[key] = values;
   }
   return search;
 }
 
+export function parseMonth(value: unknown): value is string {
+  return (
+    typeof value === "string" && /^[1-9]\d{3}-(0[1-9]|1[0-2])$/u.test(value)
+  );
+}
+
+export function parseProjectCalendarSearch(
+  raw: unknown,
+): ProjectCalendarSearch {
+  return parseProjectViewSearch(raw, true);
+}
+
 export function parseProjectViewSearchFromParams(
   params: URLSearchParams,
+  parseSearch = parseProjectViewSearch,
 ): ProjectViewSearch {
-  const search: Record<string, unknown> = Object.fromEntries(params);
-  for (const key of FILTER_KEYS) search[key] = params.getAll(key);
-  return parseProjectViewSearch(search);
+  const search: Record<string, unknown> = {};
+  params.forEach((value, key) => {
+    if ((FILTER_KEYS as readonly string[]).includes(key)) {
+      const current = search[key];
+      if (Array.isArray(current)) current.push(value);
+      else search[key] = [value];
+    } else search[key] = value;
+  });
+  return parseSearch(search);
 }
 
 export function appendProjectViewSearchParams(
   params: URLSearchParams,
   raw: unknown,
+  parseSearch = parseProjectViewSearch,
 ) {
-  const search = parseProjectViewSearch(raw);
-  if (search.layout) params.set("layout", search.layout);
-  for (const key of SCALAR_KEYS) {
-    const value = search[key];
-    if (value) params.set(key, value);
-  }
-  for (const key of FILTER_KEYS) {
-    for (const value of search[key] ?? []) params.append(key, value);
+  const search = parseSearch(raw);
+  for (const [key, value] of Object.entries({
+    layout: search.layout,
+    ...search,
+  })) {
+    if (Array.isArray(value)) {
+      for (const entry of value) params.append(key, entry);
+    } else if (value) params.set(key, value);
   }
 }
 
