@@ -97,8 +97,10 @@ describe("P0 #317 response correlation witness", () => {
     "0123456789ABCDEF0123456789abcdef",
     "0123456789abcdef0123456789abcde",
   ])("rejects missing or malformed server request id %s", async (requestId) => {
-    const headers =
-      requestId === undefined ? {} : { "x-taskdesk-request-id": requestId };
+    const headers = new Headers();
+    if (requestId !== undefined) {
+      headers.set("x-taskdesk-request-id", requestId);
+    }
     await expect(
       compareResponses(
         response(headers),
