@@ -241,7 +241,9 @@ review H1–H6` (Thomas only — agents leave it blank), and `Not done`.
 
 CI checks the template mechanically: every section present; no section left both empty
 and unmarked; `Reviewed by` names a different session or model from `Implemented by`;
-`Security review`'s model is exactly `GPT-6 Sol`, with a link to the committed note at
+`Security review`'s model is exactly one accepted security-review model
+([model policy](agent-workflow.md#model-policy), read from the merge base), with a link to the
+committed note at
 `docs/07-planning/security-reviews/<pr>-<slug>.md`; `Screens opened` non-empty whenever
 `apps/web/**` changed; every checklist box ticked or marked `n/a`. See
 [ci-cd.md](ci-cd.md) for the exact check.
