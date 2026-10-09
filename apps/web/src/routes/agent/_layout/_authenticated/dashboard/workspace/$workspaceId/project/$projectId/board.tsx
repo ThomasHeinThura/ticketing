@@ -1,11 +1,14 @@
 import { useQueryClient } from "@tanstack/react-query";
-import { createFileRoute, useNavigate } from "@tanstack/react-router";
-import { Input } from "@taskdesk/ui";
-import { Search } from "lucide-react";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import {
+  createFileRoute,
+  useLocation,
+  useNavigate,
+} from "@tanstack/react-router";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import BoardToolbar from "@/components/board/board-toolbar";
 import ProjectLayout from "@/components/common/project-layout";
+import ProjectTaskSearchInput from "@/components/common/project-task-search-input";
 import KanbanBoard from "@/components/kanban-board";
 import ListView from "@/components/list-view";
 import PageTitle from "@/components/page-title";
@@ -16,24 +19,39 @@ import { hasPendingTaskUpdate } from "@/hooks/mutations/task/use-update-task";
 import useGetLabelsByWorkspace from "@/hooks/queries/label/use-get-labels-by-workspace";
 import { useGetTasks } from "@/hooks/queries/task/use-get-tasks";
 import { useGetActiveWorkspaceUsers } from "@/hooks/queries/workspace-users/use-get-active-workspace-users";
-import { useBoardSort } from "@/hooks/use-board-sort";
 import { useRegisterShortcuts } from "@/hooks/use-keyboard-shortcuts";
 import { useTaskFiltersWithLabelsSupport } from "@/hooks/use-task-filters-with-labels-support";
+import { authClient } from "@/lib/auth-client";
+import {
+  type ProjectBoardSearch,
+  parseProjectBoardSearch,
+} from "@/lib/project-board-search";
+import {
+  projectViewFiltersFromSearch,
+  projectViewSortFromSearch,
+  resolveProjectBoardLayout,
+  withProjectBoardLayout,
+  withProjectBoardTask,
+  withProjectViewFilters,
+  withProjectViewSort,
+  withProjectViewState,
+} from "@/lib/project-board-search-state";
+import { createProjectViewShortcutHandlers } from "@/lib/project-layout-navigation";
+import {
+  getProjectLayoutStorage,
+  readProjectLayoutPreference,
+  writeProjectLayoutPreference,
+} from "@/lib/project-layout-preference";
+import { PROJECT_BOARD_PATH } from "@/lib/routes";
 import { sortTasks } from "@/lib/sort-tasks";
 import useProjectStore from "@/store/project";
 import { useUserPreferencesStore } from "@/store/user-preferences";
-
-type BoardSearchParams = {
-  taskId?: string;
-};
 
 export const Route = createFileRoute(
   "/_layout/_authenticated/dashboard/workspace/$workspaceId/project/$projectId/board",
 )({
   component: RouteComponent,
-  validateSearch: (search: Record<string, unknown>): BoardSearchParams => ({
-    taskId: typeof search.taskId === "string" ? search.taskId : undefined,
-  }),
+  validateSearch: parseProjectBoardSearch,
 });
 
 const skeletonColumns = [
@@ -82,51 +100,120 @@ function BoardSkeleton() {
 function RouteComponent() {
   const { t } = useTranslation();
   const { projectId, workspaceId } = Route.useParams();
-  const { taskId } = Route.useSearch();
+  const search = Route.useSearch();
+  const { taskId, layout } = search;
   const navigate = useNavigate();
+  const location = useLocation();
+  const { data: session } = authClient.useSession();
   const { data } = useGetTasks(projectId);
   const queryClient = useQueryClient();
   const { project, setProject } = useProjectStore();
-  const { viewMode, setViewMode } = useUserPreferencesStore();
+  const profileDefaultViewMode = useUserPreferencesStore(
+    (state) => state.viewMode,
+  );
+  const savedProjectViewMode = readProjectLayoutPreference(
+    getProjectLayoutStorage(),
+    session?.user.id,
+    projectId,
+  );
+  const viewMode = resolveProjectBoardLayout(
+    layout,
+    savedProjectViewMode ?? profileDefaultViewMode,
+  );
   const [isTaskModalOpen, setIsTaskModalOpen] = useState(false);
-  const [boardSearchQuery, setBoardSearchQuery] = useState("");
-  const [isBoardSearchMounted, setIsBoardSearchMounted] = useState(false);
-  const [isBoardSearchVisible, setIsBoardSearchVisible] = useState(false);
-  const [boardSearchInput, setBoardSearchInput] =
-    useState<HTMLInputElement | null>(null);
-  const { sort, setSort } = useBoardSort(projectId);
+  const boardSearchInput = useRef<HTMLInputElement>(null);
+  const urlFilters = projectViewFiltersFromSearch(search);
+  const sort = projectViewSortFromSearch(search);
+
+  const updateViewState = useCallback(
+    (patch: Partial<ProjectBoardSearch>) => {
+      navigate({
+        to: PROJECT_BOARD_PATH,
+        params: { workspaceId, projectId },
+        search: (previous: ProjectBoardSearch) =>
+          withProjectViewState(previous, patch),
+        replace: true,
+      });
+    },
+    [navigate, projectId, workspaceId],
+  );
+
+  const handleFiltersChange = useCallback(
+    (nextFilters: ReturnType<typeof projectViewFiltersFromSearch>) => {
+      navigate({
+        to: PROJECT_BOARD_PATH,
+        params: { workspaceId, projectId },
+        search: (previous: ProjectBoardSearch) =>
+          withProjectViewFilters(previous, nextFilters),
+      });
+    },
+    [navigate, projectId, workspaceId],
+  );
+
+  const setSort = useCallback(
+    (nextSort: ReturnType<typeof projectViewSortFromSearch>) => {
+      navigate({
+        to: PROJECT_BOARD_PATH,
+        params: { workspaceId, projectId },
+        search: (previous: ProjectBoardSearch) =>
+          withProjectViewSort(previous, nextSort),
+      });
+    },
+    [navigate, projectId, workspaceId],
+  );
+
+  const handleViewModeChange = useCallback(
+    (nextLayout: "board" | "list") => {
+      writeProjectLayoutPreference(
+        typeof window === "undefined" ? undefined : window.localStorage,
+        session?.user.id,
+        projectId,
+        nextLayout,
+      );
+      navigate({
+        to: PROJECT_BOARD_PATH,
+        params: { workspaceId, projectId },
+        search: (previous: ProjectBoardSearch) =>
+          withProjectBoardLayout(previous, nextLayout),
+      });
+    },
+    [navigate, projectId, session?.user.id, workspaceId],
+  );
 
   const { data: users } = useGetActiveWorkspaceUsers(workspaceId);
   const { data: workspaceLabels = [] } = useGetLabelsByWorkspace(workspaceId);
 
   const handleCloseTaskSheet = useCallback(() => {
     navigate({
-      to: ".",
-      search: {},
+      to: PROJECT_BOARD_PATH,
+      params: { workspaceId, projectId },
+      search: (previous: ProjectBoardSearch) =>
+        withProjectBoardTask(previous, undefined),
       replace: true,
     });
-  }, [navigate]);
+  }, [navigate, projectId, workspaceId]);
+
+  const viewShortcutHandlers = createProjectViewShortcutHandlers(
+    { workspaceId, projectId },
+    location.searchStr,
+    (href) => navigate({ href }),
+    (layout) =>
+      writeProjectLayoutPreference(
+        getProjectLayoutStorage(),
+        session?.user.id,
+        projectId,
+        layout,
+      ),
+  );
 
   useRegisterShortcuts({
     sequentialShortcuts: {
       [shortcuts.view.prefix]: {
-        [shortcuts.view.board]: () => setViewMode("board"),
-        [shortcuts.view.list]: () => setViewMode("list"),
-        [shortcuts.view.calendar]: () =>
-          navigate({
-            to: "/dashboard/workspace/$workspaceId/project/$projectId/calendar",
-            params: { workspaceId, projectId },
-          }),
-        [shortcuts.view.gantt]: () =>
-          navigate({
-            to: "/dashboard/workspace/$workspaceId/project/$projectId/gantt",
-            params: { workspaceId, projectId },
-          }),
-        [shortcuts.view.backlog]: () =>
-          navigate({
-            to: "/dashboard/workspace/$workspaceId/project/$projectId/backlog",
-            params: { workspaceId, projectId },
-          }),
+        [shortcuts.view.board]: viewShortcutHandlers.board,
+        [shortcuts.view.list]: viewShortcutHandlers.list,
+        [shortcuts.view.calendar]: viewShortcutHandlers.calendar,
+        [shortcuts.view.gantt]: viewShortcutHandlers.gantt,
+        [shortcuts.view.backlog]: viewShortcutHandlers.backlog,
       },
     },
   });
@@ -136,36 +223,6 @@ function RouteComponent() {
       setProject(data);
     }
   }, [data, projectId, queryClient, setProject]);
-
-  const openBoardSearch = useCallback(() => {
-    setIsBoardSearchMounted(true);
-    window.requestAnimationFrame(() => setIsBoardSearchVisible(true));
-  }, []);
-
-  const closeBoardSearch = useCallback(() => {
-    setIsBoardSearchVisible(false);
-    window.setTimeout(() => setIsBoardSearchMounted(false), 180);
-  }, []);
-
-  useEffect(() => {
-    const onKeyDown = (event: KeyboardEvent) => {
-      const isFindShortcut =
-        (event.metaKey || event.ctrlKey) && event.key.toLowerCase() === "f";
-
-      if (!isFindShortcut) return;
-
-      event.preventDefault();
-      openBoardSearch();
-    };
-
-    window.addEventListener("keydown", onKeyDown);
-    return () => window.removeEventListener("keydown", onKeyDown);
-  }, [openBoardSearch]);
-
-  useEffect(() => {
-    if (!isBoardSearchMounted) return;
-    window.requestAnimationFrame(() => boardSearchInput?.focus());
-  }, [isBoardSearchMounted, boardSearchInput]);
 
   // The query result is renderable before the effect synchronizes the shared
   // project store. Use it for first paint when the store has no project (or a
@@ -182,8 +239,9 @@ function RouteComponent() {
     clearFilters,
   } = useTaskFiltersWithLabelsSupport(
     boardSourceProject,
-    projectId,
-    boardSearchQuery,
+    urlFilters,
+    search.q,
+    handleFiltersChange,
   );
 
   const sortedProject = useMemo(() => {
@@ -197,34 +255,15 @@ function RouteComponent() {
     };
   }, [filteredProject, sort]);
 
-  const boardHeaderSearch = isBoardSearchMounted ? (
-    <div
-      className={`relative w-[240px] origin-top transition-[translate,scale,opacity] duration-180 ease-out ${
-        isBoardSearchVisible
-          ? "translate-y-0 scale-y-100 opacity-100"
-          : "pointer-events-none -translate-y-1 scale-y-95 opacity-0"
-      }`}
-    >
-      <Search className="-translate-y-1/2 pointer-events-none absolute top-1/2 left-2.5 h-3.5 w-3.5 text-muted-foreground" />
-      <Input
-        ref={setBoardSearchInput}
-        value={boardSearchQuery}
-        onChange={(event) => setBoardSearchQuery(event.target.value)}
-        onKeyDown={(event) => {
-          if (event.key === "Escape" && !boardSearchQuery.trim()) {
-            closeBoardSearch();
-          }
-        }}
-        onBlur={() => {
-          if (!boardSearchQuery.trim()) {
-            closeBoardSearch();
-          }
-        }}
-        placeholder={t("tasks:boardSearchPlaceholder")}
-        className="h-7.5 [&_[data-slot=input]]:h-7 [&_[data-slot=input]]:leading-7 [&_[data-slot=input]]:pl-8 [&_[data-slot=input]]:text-xs [&_[data-slot=input]]:placeholder:text-xs [&_[data-slot=input]]:placeholder:leading-7"
-      />
-    </div>
-  ) : null;
+  const boardHeaderSearch = (
+    <ProjectTaskSearchInput
+      inputRef={boardSearchInput}
+      value={search.q ?? ""}
+      onValueChange={(q) => updateViewState({ q: q || undefined })}
+      placeholder={t("tasks:boardSearchPlaceholder")}
+      clearLabel={t("common:actions.clearAll")}
+    />
+  );
 
   return (
     <ProjectLayout
@@ -248,7 +287,7 @@ function RouteComponent() {
           users={users}
           workspaceLabels={workspaceLabels}
           viewMode={viewMode}
-          setViewMode={setViewMode}
+          setViewMode={handleViewModeChange}
           sort={sort}
           onSortChange={setSort}
         />

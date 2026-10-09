@@ -5,13 +5,7 @@ const pendingActionSummarySchema = z.record(z.string(), z.unknown());
 export const pendingActionReadSchema = z
   .object({
     id: z.string(),
-    action: z.enum([
-      "delete",
-      "bulk_delete",
-      "purge",
-      "mcp_destructive",
-      "user_deactivation",
-    ]),
+    action: z.enum(["delete", "bulk_delete", "purge", "mcp_destructive"]),
     origin: z.enum(["web", "api", "mcp"]),
     targetType: z.string(),
     targetIds: z.array(z.string()),
@@ -23,6 +17,7 @@ export const pendingActionReadSchema = z
       "typed_name_step_up",
       "typed_count_step_up",
     ]),
+    approvalSupported: z.boolean(),
     state: z.enum([
       "pending",
       "approved",
@@ -69,13 +64,7 @@ export const pendingActionListResponseSchema = z
 export const pendingActionDecisionSchema = z
   .object({
     id: z.string(),
-    action: z.enum([
-      "delete",
-      "bulk_delete",
-      "purge",
-      "mcp_destructive",
-      "user_deactivation",
-    ]),
+    action: z.enum(["delete", "bulk_delete", "purge", "mcp_destructive"]),
     origin: z.enum(["web", "api", "mcp"]),
     targetType: z.string(),
     targetIds: z.array(z.string()),
@@ -87,6 +76,7 @@ export const pendingActionDecisionSchema = z
       "typed_name_step_up",
       "typed_count_step_up",
     ]),
+    approvalSupported: z.boolean(),
     state: z.enum(["denied", "cancelled", "expired"]),
     createdAt: z.string().datetime(),
     expiresAt: z.string().datetime(),

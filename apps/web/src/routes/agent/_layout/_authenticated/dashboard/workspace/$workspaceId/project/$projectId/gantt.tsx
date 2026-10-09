@@ -1,5 +1,5 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
-import { Button, Input, useIsMobile } from "@taskdesk/ui";
+import { Button, useIsMobile } from "@taskdesk/ui";
 import {
   addDays,
   eachDayOfInterval,
@@ -12,7 +12,7 @@ import {
   startOfWeek,
   subDays,
 } from "date-fns";
-import { Calendar, ChevronLeft, ChevronRight, Search } from "lucide-react";
+import { Calendar, ChevronLeft, ChevronRight } from "lucide-react";
 import {
   useCallback,
   useEffect,
@@ -23,25 +23,28 @@ import {
 } from "react";
 import { useTranslation } from "react-i18next";
 import ProjectLayout from "@/components/common/project-layout";
+import ProjectTaskSearchInput from "@/components/common/project-task-search-input";
 import { GanttTaskBar } from "@/components/gantt/gantt-task-bar";
 import PageTitle from "@/components/page-title";
 import TaskDetailsSheet from "@/components/task/task-details-sheet";
 import { useGetTasks } from "@/hooks/queries/task/use-get-tasks";
 import { cn } from "@/lib/cn";
+import { filterProjectTasks } from "@/lib/filter-project-tasks";
 import { getStatusLabel } from "@/lib/i18n/domain";
+import { parseProjectBoardSearch } from "@/lib/project-board-search";
+import {
+  projectViewFiltersFromSearch,
+  withProjectBoardTask,
+  withProjectViewState,
+} from "@/lib/project-board-search-state";
+import { PROJECT_GANTT_PATH } from "@/lib/routes";
 import { useUserPreferencesStore } from "@/store/user-preferences";
-
-type GanttSearchParams = {
-  taskId?: string;
-};
 
 export const Route = createFileRoute(
   "/_layout/_authenticated/dashboard/workspace/$workspaceId/project/$projectId/gantt",
 )({
   component: RouteComponent,
-  validateSearch: (search: Record<string, unknown>): GanttSearchParams => ({
-    taskId: typeof search.taskId === "string" ? search.taskId : undefined,
-  }),
+  validateSearch: parseProjectBoardSearch,
 });
 
 function parseTaskDate(value: string | null) {
@@ -53,11 +56,13 @@ function parseTaskDate(value: string | null) {
 function RouteComponent() {
   const { t } = useTranslation();
   const { projectId, workspaceId } = Route.useParams();
-  const { taskId } = Route.useSearch();
+  const search = Route.useSearch();
+  const { taskId } = search;
   const navigate = useNavigate();
   const { data: project } = useGetTasks(projectId);
   const weekStartsOn = useUserPreferencesStore((state) => state.weekStartsOn);
-  const [searchQuery, setSearchQuery] = useState("");
+  const searchQuery = search.q ?? "";
+  const filters = projectViewFiltersFromSearch(search);
   const isMobile = useIsMobile();
   const [isTaskRailOpen, setIsTaskRailOpen] = useState(false);
 
@@ -128,20 +133,43 @@ function RouteComponent() {
       );
   }, [allTasks]);
 
-  const scheduledTasks = useMemo(() => {
-    const normalizedQuery = searchQuery.trim().toLowerCase();
-    if (!normalizedQuery) return parsedTasks;
+  const scheduledTasks = useMemo(
+    () =>
+      filterProjectTasks(parsedTasks, {
+        filters,
+        query: searchQuery,
+        projectSlug: project?.slug,
+        weekStartsOn,
+        matchStatusText: true,
+      }),
+    [filters, parsedTasks, project?.slug, searchQuery, weekStartsOn],
+  );
 
-    return parsedTasks.filter((task) => {
-      return (
-        task.title.toLowerCase().includes(normalizedQuery) ||
-        `${project?.slug ?? ""}-${task.number ?? ""}`
-          .toLowerCase()
-          .includes(normalizedQuery) ||
-        task.status.toLowerCase().includes(normalizedQuery)
-      );
-    });
-  }, [parsedTasks, project?.slug, searchQuery]);
+  const updateViewState = useCallback(
+    (patch: Parameters<typeof withProjectViewState>[1]) => {
+      navigate({
+        to: PROJECT_GANTT_PATH,
+        params: { workspaceId, projectId },
+        search: (previous: ReturnType<typeof parseProjectBoardSearch>) =>
+          withProjectViewState(previous, patch),
+        replace: true,
+      });
+    },
+    [navigate, projectId, workspaceId],
+  );
+
+  const handleOpenTask = useCallback(
+    (nextTaskId: string | undefined) => {
+      navigate({
+        to: PROJECT_GANTT_PATH,
+        params: { workspaceId, projectId },
+        search: (previous: ReturnType<typeof parseProjectBoardSearch>) =>
+          withProjectBoardTask(previous, nextTaskId),
+        replace: true,
+      });
+    },
+    [navigate, projectId, workspaceId],
+  );
 
   const timeline = useMemo(() => {
     if (parsedTasks.length === 0) return null;
@@ -264,15 +292,12 @@ function RouteComponent() {
               </h1>
             </div>
 
-            <div className="relative w-full max-w-sm">
-              <Search className="pointer-events-none absolute top-1/2 left-2.5 h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground" />
-              <Input
-                value={searchQuery}
-                onChange={(event) => setSearchQuery(event.target.value)}
-                placeholder={t("tasks:gantt.searchPlaceholder")}
-                className="h-9 min-h-11 touch-manipulation sm:h-8 sm:min-h-0 [&_[data-slot=input]]:pl-8 [&_[data-slot=input]]:text-xs"
-              />
-            </div>
+            <ProjectTaskSearchInput
+              value={searchQuery}
+              onValueChange={(q) => updateViewState({ q: q || undefined })}
+              placeholder={t("tasks:gantt.searchPlaceholder")}
+              clearLabel={t("common:actions.clearAll")}
+            />
 
             <Button
               variant="outline"
@@ -430,13 +455,7 @@ function RouteComponent() {
                             <button
                               type="button"
                               className="flex min-h-[44px] w-full min-w-0 flex-col items-start justify-center gap-0.5 px-2 py-2 text-left transition-colors hover:bg-muted sm:min-h-0 sm:px-3 sm:py-1.5"
-                              onClick={() =>
-                                navigate({
-                                  to: ".",
-                                  search: { taskId: task.id },
-                                  replace: true,
-                                })
-                              }
+                              onClick={() => handleOpenTask(task.id)}
                             >
                               <div className="flex w-full items-center gap-1.5">
                                 <span className="max-w-[7rem] truncate rounded-full bg-secondary px-1.5 py-px text-[10px] font-medium uppercase tracking-wide text-secondary-foreground sm:max-w-none">
@@ -471,13 +490,7 @@ function RouteComponent() {
                             timeline={timeline}
                             pixelsPerDay={pixelsPerDay}
                             isMobile={isMobile}
-                            onOpenTask={() =>
-                              navigate({
-                                to: ".",
-                                search: { taskId: task.id },
-                                replace: true,
-                              })
-                            }
+                            onOpenTask={() => handleOpenTask(task.id)}
                           />
                         </div>
                       </div>
@@ -493,13 +506,7 @@ function RouteComponent() {
           taskId={taskId}
           projectId={projectId}
           workspaceId={workspaceId}
-          onClose={() =>
-            navigate({
-              to: ".",
-              search: {},
-              replace: true,
-            })
-          }
+          onClose={() => handleOpenTask(undefined)}
         />
       </div>
     </ProjectLayout>

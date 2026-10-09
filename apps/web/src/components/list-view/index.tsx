@@ -42,6 +42,8 @@ import { useGetActiveWorkspaceUsers } from "@/hooks/queries/workspace-users/use-
 import { useRegisterShortcuts } from "@/hooks/use-keyboard-shortcuts";
 import { cn } from "@/lib/cn";
 import { getColumnIcon } from "@/lib/column";
+import type { ProjectBoardSearch } from "@/lib/project-board-search";
+import { withProjectBoardTask } from "@/lib/project-board-search-state";
 import { toast } from "@/lib/toast";
 import useBulkSelectionStore from "@/store/bulk-selection";
 import useProjectStore from "@/store/project";
@@ -224,7 +226,11 @@ function ListView({ project, disableDragDrop = false }: ListViewProps) {
     : undefined;
   const handleOpenTask = useCallback(
     (taskId: string) => {
-      navigate({ to: ".", search: taskId ? { taskId } : {} });
+      navigate({
+        to: ".",
+        search: (previous: ProjectBoardSearch) =>
+          withProjectBoardTask(previous, taskId || undefined),
+      });
     },
     [navigate],
   );
@@ -287,14 +293,22 @@ function ListView({ project, disableDragDrop = false }: ListViewProps) {
         focusNext();
         const state = useBulkSelectionStore.getState();
         if (state.focusedTaskId) {
-          navigate({ to: ".", search: { taskId: state.focusedTaskId } });
+          navigate({
+            to: ".",
+            search: (previous: ProjectBoardSearch) =>
+              withProjectBoardTask(previous, state.focusedTaskId ?? undefined),
+          });
         }
       },
       k: () => {
         focusPrevious();
         const state = useBulkSelectionStore.getState();
         if (state.focusedTaskId) {
-          navigate({ to: ".", search: { taskId: state.focusedTaskId } });
+          navigate({
+            to: ".",
+            search: (previous: ProjectBoardSearch) =>
+              withProjectBoardTask(previous, state.focusedTaskId ?? undefined),
+          });
         }
       },
       Enter: () => {

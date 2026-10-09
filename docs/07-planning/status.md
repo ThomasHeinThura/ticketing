@@ -1,3 +1,7 @@
+## October 9 P1 navigation source review and image proof
+
+PR #609 source `6054eb0a6b1a299232cf4630665e3d4502f0544e` has independent full GPT-6 Sol CLEAR for the URL-state navigation mechanism and an exact-source ARM64 image plus isolated OrbStack live/ready, UID, 119-entry migration, and cleanup smoke. The evidence and limits are recorded in `reviews/2026-10-09/p1-navigation-6054-closure.md`. Accepted-base integration, full CI, rendered browser verification, and P1 acceptance remain outstanding; no deployment or merge is claimed.
+
 ## Blocked — current October 6 checkpoint
 
 - **P0:** the three actual representative UTC observation dates are reconciled. Runtime

@@ -1,5 +1,9 @@
 import { QueryClientProvider } from "@tanstack/react-query";
-import { createRouter, RouterProvider } from "@tanstack/react-router";
+import {
+  createRouter,
+  defaultStringifySearch,
+  RouterProvider,
+} from "@tanstack/react-router";
 import { StrictMode } from "react";
 import { createRoot } from "react-dom/client";
 import { useTranslation } from "react-i18next";
@@ -13,6 +17,7 @@ import { ThemeProvider } from "./components/providers/theme-provider";
 import { KeyboardShortcutsProvider } from "./hooks/use-keyboard-shortcuts";
 import { captureCheckoutIntent } from "./lib/checkout-intent";
 import { AppI18nProvider } from "./lib/i18n/provider";
+import { parseProjectRouterSearch } from "./lib/project-board-search";
 import { parseWorkItemListSearchFromQueryString } from "./lib/routes";
 import { routeTree } from "./routeTree.agent.gen";
 
@@ -20,29 +25,10 @@ import { routeTree } from "./routeTree.agent.gen";
 // router runs and strips it across the sign-up → onboarding redirect chain.
 captureCheckoutIntent();
 
-console.log(`
-                     ////////  
-              /////  ////////  
-            //////// ////////  
-  //////// ///////// ///////   
-  //////// ///////// //////    
-  //////// ///////// ////      
-  //////// ///////// ///       
-  //////// ///////// /////     
-  //////// ///////// //////    
-  //////// ///////// ////////  
-  //////// ///////// ////////  
-  //////// ///////// ////////  
-  //////// ////////            
-  ////////  /////              
-  ///////                      
-                   
-  
-  All you need. Nothing you don't.
-`);
-
 const router = createRouter({
   routeTree,
+  parseSearch: parseProjectRouterSearch,
+  stringifySearch: defaultStringifySearch,
   defaultPreload: "intent",
   defaultPreloadStaleTime: 0,
   context: {

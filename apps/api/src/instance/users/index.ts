@@ -202,7 +202,7 @@ const deactivateRoute = createRoute({
   operationId: "requestInstanceUserDeactivation",
   path: "/users/{id}/deactivate",
   tags: ["Instance"],
-  summary: "Request person deactivation",
+  summary: "Request user deactivation",
   middleware: [requireSessionOnly()] as const,
   request: {
     params: idParams,
@@ -213,10 +213,10 @@ const deactivateRoute = createRoute({
   },
   responses: {
     202: jsonResponse(
-      "Person deactivation pending action",
+      "User deactivation pending action",
       z.object({
         pendingActionId: z.string(),
-        action: z.literal("user_deactivation"),
+        action: z.literal("delete"),
         confirmation: z.literal("typed_name_step_up"),
         summary: z.record(z.string(), z.unknown()),
         expiresAt: z.string().datetime(),
@@ -514,10 +514,10 @@ const routes = apiRouter()
       credentialType: "session",
       credentialId: null,
       origin: "web",
-      action: "user_deactivation",
+      action: "delete",
       routeKey: "POST /api/instance/users/{id}/deactivate",
-      targetType: "person",
-      targetIds: [target.personId],
+      targetType: "user",
+      targetIds: [id],
       workspaceId: null,
       projectId: null,
       organisationId: null,
@@ -530,7 +530,7 @@ const routes = apiRouter()
     return c.json(
       {
         ...requested,
-        action: "user_deactivation" as const,
+        action: "delete" as const,
         confirmation: "typed_name_step_up" as const,
       },
       202,

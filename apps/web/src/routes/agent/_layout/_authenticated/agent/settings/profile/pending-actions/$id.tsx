@@ -119,22 +119,27 @@ function PendingActionDetailRoute() {
   }
 
   const email =
-    action.data.action === "user_deactivation" &&
+    action.data.action === "delete" &&
+    action.data.targetType === "user" &&
     typeof action.data.summary.email === "string"
       ? action.data.summary.email
       : null;
   const isPending = action.data.state === "pending";
   const canApproveDeactivation =
-    action.data.action === "user_deactivation" &&
+    action.data.approvalSupported &&
+    action.data.action === "delete" &&
+    action.data.targetType === "user" &&
     action.data.confirmation === "typed_name_step_up" &&
     email !== null &&
     isPending;
   const canApproveCalendarDeletion =
+    action.data.approvalSupported &&
     action.data.action === "delete" &&
     action.data.targetType === "service_calendar" &&
     action.data.confirmation === "click" &&
     isPending;
   const canApproveSavedViewDeletion =
+    action.data.approvalSupported &&
     action.data.action === "delete" &&
     action.data.targetType === "saved_view" &&
     action.data.confirmation === "click" &&
@@ -210,8 +215,12 @@ function PendingActionDetailRoute() {
       <PageTitle title={t("pendingActions:copy.a93eb80c8601")} />
       <header>
         <h1 className="text-2xl font-semibold">
-          {action.data.action === "user_deactivation"
-            ? t("pendingActions:dynamic.approveDeactivation")
+          {action.data.action === "delete" && action.data.targetType === "user"
+            ? t(
+                action.data.approvalSupported
+                  ? "pendingActions:dynamic.approveDeactivation"
+                  : "pendingActions:dynamic.pendingAction",
+              )
             : t("pendingActions:dynamic.pendingAction")}
         </h1>
         <p className="mt-1 text-sm text-muted-foreground">
@@ -228,7 +237,8 @@ function PendingActionDetailRoute() {
               {t("pendingActions:copy.97c89a4d6630")}
             </dt>
             <dd>
-              {action.data.action === "user_deactivation"
+              {action.data.action === "delete" &&
+              action.data.targetType === "user"
                 ? t("pendingActions:dynamic.deactivatePerson", { email: "" })
                 : action.data.targetType === "service_calendar" && targetName
                   ? t("pendingActions:dynamic.deleteServiceCalendar", {
@@ -259,11 +269,12 @@ function PendingActionDetailRoute() {
               </>
             )}
           </dl>
-          {action.data.action === "user_deactivation" && (
-            <p className="text-sm text-muted-foreground">
-              {t("pendingActions:copy.71f269fe7eee")}
-            </p>
-          )}
+          {action.data.action === "delete" &&
+            action.data.targetType === "user" && (
+              <p className="text-sm text-muted-foreground">
+                {t("pendingActions:copy.71f269fe7eee")}
+              </p>
+            )}
           {notice && (
             <p role="status" className="text-sm">
               {notice}
@@ -274,19 +285,21 @@ function PendingActionDetailRoute() {
               {error}
             </p>
           )}
-          {action.data.action === "user_deactivation" && !isPending && (
-            <div className="space-y-2">
-              <p className="text-sm text-muted-foreground">
-                {t("pendingActions:requestFreshDeactivation")}
-              </p>
-              <Button
-                variant="outline"
-                render={<Link to={routes.godModeUsers.path as never} />}
-              >
-                {t("pendingActions:openUsers")}
-              </Button>
-            </div>
-          )}
+          {action.data.action === "delete" &&
+            action.data.targetType === "user" &&
+            !isPending && (
+              <div className="space-y-2">
+                <p className="text-sm text-muted-foreground">
+                  {t("pendingActions:requestFreshDeactivation")}
+                </p>
+                <Button
+                  variant="outline"
+                  render={<Link to={routes.godModeUsers.path as never} />}
+                >
+                  {t("pendingActions:openUsers")}
+                </Button>
+              </div>
+            )}
           {canApprove && (
             <div className="space-y-4 border-t pt-4">
               {canApproveCalendarDeletion || canApproveSavedViewDeletion ? (
@@ -417,12 +430,21 @@ function PendingActionDetailRoute() {
             </div>
           )}
           {isPending && !canApprove && (
-            <Alert>
-              <AlertTitle>{t("pendingActions:copy.e76b511b0a44")}</AlertTitle>
-              <AlertDescription>
-                {t("pendingActions:copy.d3d84fb23a45")}
-              </AlertDescription>
-            </Alert>
+            <div className="space-y-4">
+              <Alert>
+                <AlertTitle>{t("pendingActions:copy.e76b511b0a44")}</AlertTitle>
+                <AlertDescription>
+                  {t("pendingActions:copy.d3d84fb23a45")}
+                </AlertDescription>
+              </Alert>
+              <Button
+                variant="outline"
+                disabled={cancel.isPending}
+                onClick={() => void cancelAction()}
+              >
+                {t("pendingActions:copy.84837a216817")}
+              </Button>
+            </div>
           )}
           {!isPending && (
             <Link to={routes.pendingActions.path as never}>

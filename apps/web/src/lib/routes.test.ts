@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { generatedRouteMetadata } from "./generated-route-metadata";
+import { projectViewRoutes } from "./project-view-routes";
 import {
   buildGeneratedRouteUrl,
   DEFAULT_WORK_ITEM_LIST_SEARCH,
@@ -244,6 +245,221 @@ describe("routes.workItemList", () => {
       expect(toggleWorkItemSortDirection("asc")).toBe("desc");
       expect(toggleWorkItemSortDirection("desc")).toBe("asc");
     });
+  });
+});
+
+describe("projectViewRoutes.projectBoard, projectCalendar and projectBacklog", () => {
+  const params = { workspaceId: "workspace/a b", projectId: "project?one" };
+
+  it("round-trips the complete shared project view state through every canonical view", () => {
+    const search = {
+      taskId: "task/selected",
+      layout: "list" as const,
+      month: "2026-10",
+      q: "urgent follow-up",
+      sort: "priority" as const,
+      dir: "desc" as const,
+      status: ["todo", "inProgress"],
+      priority: ["high"],
+      assignee: ["user-1", "user-2"],
+      dueDate: ["dueThisWeek"],
+      labels: ["label-1", "label-2"],
+    };
+    const canonicalRoutes = [
+      projectViewRoutes.projectBacklog,
+      projectViewRoutes.projectBoard,
+      projectViewRoutes.projectCalendar,
+      projectViewRoutes.projectGantt,
+    ];
+
+    for (const route of canonicalRoutes) {
+      const url = route.build(params, search);
+      expect(route.parse(url)).toEqual({ params, search });
+    }
+  });
+
+  it("round-trips escaped workspace/project params and explicit/default/invalid board state", () => {
+    const url = projectViewRoutes.projectBoard.build(params, {
+      layout: "list",
+      taskId: "task/one?two",
+    });
+    expect(url).toBe(
+      "/dashboard/workspace/workspace%2Fa%20b/project/project%3Fone/board?layout=list&taskId=task%2Fone%3Ftwo",
+    );
+    expect(projectViewRoutes.projectBoard.parse(url)).toEqual({
+      params,
+      search: { layout: "list", taskId: "task/one?two" },
+    });
+    expect(
+      projectViewRoutes.projectBoard.parse(
+        projectViewRoutes.projectBoard.build(params),
+      ),
+    ).toEqual({ params, search: {} });
+    expect(
+      projectViewRoutes.projectBoard.parse(
+        `${projectViewRoutes.projectBoard.build(params)}?layout=calendar&taskId=`,
+      ),
+    ).toEqual({ params, search: {} });
+    expect(generatedRouteMetadata.agent).toContain(
+      projectViewRoutes.projectBoard.path,
+    );
+  });
+
+  it("round-trips calendar month and task state, including invalid/default query values", () => {
+    const url = projectViewRoutes.projectCalendar.build(params, {
+      month: "2026-10",
+      taskId: "task/a b",
+    });
+    expect(url).toBe(
+      "/dashboard/workspace/workspace%2Fa%20b/project/project%3Fone/calendar?taskId=task%2Fa+b&month=2026-10",
+    );
+    expect(projectViewRoutes.projectCalendar.parse(url)).toEqual({
+      params,
+      search: { month: "2026-10", taskId: "task/a b" },
+    });
+    expect(
+      projectViewRoutes.projectCalendar.parse(
+        projectViewRoutes.projectCalendar.build(params),
+      ),
+    ).toEqual({ params, search: {} });
+    expect(
+      projectViewRoutes.projectCalendar.parse(
+        `${projectViewRoutes.projectCalendar.build(params)}?month=2026-13&taskId=task-1`,
+      ),
+    ).toEqual({ params, search: { taskId: "task-1" } });
+    expect(generatedRouteMetadata.agent).toContain(
+      projectViewRoutes.projectCalendar.path,
+    );
+  });
+
+  it("round-trips task panel and shortcut/history transitions through registered route URLs", () => {
+    const backlogUrl = projectViewRoutes.projectBacklog.build(params, {
+      taskId: "task/backlog",
+    });
+    const listUrl = projectViewRoutes.projectBoard.build(params, {
+      layout: "list",
+    });
+    const boardUrl = projectViewRoutes.projectBoard.build(params, {
+      layout: "board",
+    });
+    const calendarUrl = projectViewRoutes.projectCalendar.build(params, {
+      month: "2026-10",
+    });
+    const calendarTaskUrl = projectViewRoutes.projectCalendar.build(params, {
+      month: "2026-10",
+      taskId: "task/calendar",
+    });
+    const boardTaskUrl = projectViewRoutes.projectBoard.build(params, {
+      layout: "list",
+      taskId: "task/shared",
+    });
+    const otherProjectParams = { ...params, projectId: "project two" };
+    const otherProjectUrl =
+      projectViewRoutes.projectBoard.build(otherProjectParams);
+    const calendarFromBoardShortcut = projectViewRoutes.projectCalendar.build(
+      params,
+      {
+        taskId:
+          projectViewRoutes.projectBoard.parse(boardTaskUrl)?.search.taskId,
+      },
+    );
+    const boardFromCalendarShortcut = projectViewRoutes.projectBoard.build(
+      params,
+      {
+        layout: "board",
+        taskId:
+          projectViewRoutes.projectCalendar.parse(calendarTaskUrl)?.search
+            .taskId,
+      },
+    );
+    const boardFromBacklogShortcut = projectViewRoutes.projectBoard.build(
+      params,
+      {
+        layout: "list",
+        taskId:
+          projectViewRoutes.projectBacklog.parse(backlogUrl)?.search.taskId,
+      },
+    );
+    const calendarFromBacklogShortcut = projectViewRoutes.projectCalendar.build(
+      params,
+      {
+        taskId:
+          projectViewRoutes.projectBacklog.parse(backlogUrl)?.search.taskId,
+      },
+    );
+
+    expect(projectViewRoutes.projectBacklog.parse(backlogUrl)).toEqual({
+      params,
+      search: { taskId: "task/backlog" },
+    });
+    expect(projectViewRoutes.projectBoard.parse(listUrl)?.search).toEqual({
+      layout: "list",
+    });
+    expect(projectViewRoutes.projectBoard.parse(boardUrl)?.search).toEqual({
+      layout: "board",
+    });
+    expect(
+      projectViewRoutes.projectCalendar.parse(calendarTaskUrl)?.search,
+    ).toEqual({
+      month: "2026-10",
+      taskId: "task/calendar",
+    });
+    expect(
+      projectViewRoutes.projectCalendar.parse(calendarFromBoardShortcut)
+        ?.search,
+    ).toEqual({ taskId: "task/shared" });
+    expect(
+      projectViewRoutes.projectBoard.parse(boardFromCalendarShortcut)?.search,
+    ).toEqual({
+      layout: "board",
+      taskId: "task/calendar",
+    });
+    expect(
+      projectViewRoutes.projectBoard.parse(boardFromBacklogShortcut)?.search,
+    ).toEqual({
+      layout: "list",
+      taskId: "task/backlog",
+    });
+    expect(
+      projectViewRoutes.projectCalendar.parse(calendarFromBacklogShortcut)
+        ?.search,
+    ).toEqual({ taskId: "task/backlog" });
+
+    // The route URLs used by calendar/backlog shortcuts and browser history
+    // are independently parseable, and calendar task open/close retains month.
+    expect(
+      [listUrl, calendarUrl, boardUrl].map(
+        (url) =>
+          projectViewRoutes.projectBoard.parse(url)?.search.layout ??
+          projectViewRoutes.projectCalendar.parse(url)?.search.month,
+      ),
+    ).toEqual(["list", "2026-10", "board"]);
+    expect(
+      projectViewRoutes.projectCalendar.build(params, {
+        ...projectViewRoutes.projectCalendar.parse(calendarTaskUrl)?.search,
+        taskId: undefined,
+      }),
+    ).toBe(calendarUrl);
+    expect(
+      projectViewRoutes.projectBoard.build(params, {
+        ...projectViewRoutes.projectBoard.parse(boardTaskUrl)?.search,
+        taskId: undefined,
+      }),
+    ).toBe(listUrl);
+
+    const browserHistory = [listUrl, boardUrl, otherProjectUrl].map((url) =>
+      projectViewRoutes.projectBoard.parse(url),
+    );
+    expect(
+      browserHistory.map((entry) => [
+        entry?.params.projectId,
+        entry?.search.layout ?? "profile-default",
+      ]),
+    ).toEqual([
+      [params.projectId, "list"],
+      [params.projectId, "board"],
+      [otherProjectParams.projectId, "profile-default"],
+    ]);
   });
 });
 

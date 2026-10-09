@@ -24,7 +24,13 @@ import CreateProjectModal from "@/components/shared/modals/create-project-modal"
 import { shortcuts } from "@/constants/shortcuts";
 import useGetProject from "@/hooks/queries/project/use-get-project";
 import { useProjectWebSocket } from "@/hooks/use-project-websocket";
+import { authClient } from "@/lib/auth-client";
 import { cn } from "@/lib/cn";
+import { buildProjectViewSwitchUrl } from "@/lib/project-layout-navigation";
+import {
+  getProjectLayoutStorage,
+  writeProjectLayoutPreference,
+} from "@/lib/project-layout-preference";
 
 type ProjectLayoutProps = {
   projectId: string;
@@ -46,6 +52,7 @@ export default function ProjectLayout({
   const { t } = useTranslation();
   const navigate = useNavigate();
   const location = useLocation();
+  const { data: session } = authClient.useSession();
   const { data: project } = useGetProject({ id: projectId, workspaceId });
   const [isCreateProjectModalOpen, setIsCreateProjectModalOpen] =
     useState(false);
@@ -61,32 +68,49 @@ export default function ProjectLayout({
         : location.pathname.includes("/gantt")
           ? "gantt"
           : "board");
-
   const handleNavigateToBacklog = () => {
     navigate({
-      to: "/dashboard/workspace/$workspaceId/project/$projectId/backlog",
-      params: { workspaceId, projectId },
+      to: buildProjectViewSwitchUrl(
+        "backlog",
+        { workspaceId, projectId },
+        location.searchStr,
+      ),
     });
   };
 
   const handleNavigateToBoard = () => {
+    writeProjectLayoutPreference(
+      getProjectLayoutStorage(),
+      session?.user.id,
+      projectId,
+      "board",
+    );
     navigate({
-      to: "/dashboard/workspace/$workspaceId/project/$projectId/board",
-      params: { workspaceId, projectId },
+      to: buildProjectViewSwitchUrl(
+        "board",
+        { workspaceId, projectId },
+        location.searchStr,
+      ),
     });
   };
 
   const handleNavigateToCalendar = () => {
     navigate({
-      to: "/dashboard/workspace/$workspaceId/project/$projectId/calendar",
-      params: { workspaceId, projectId },
+      to: buildProjectViewSwitchUrl(
+        "calendar",
+        { workspaceId, projectId },
+        location.searchStr,
+      ),
     });
   };
 
   const handleNavigateToGantt = () => {
     navigate({
-      to: "/dashboard/workspace/$workspaceId/project/$projectId/gantt",
-      params: { workspaceId, projectId },
+      to: buildProjectViewSwitchUrl(
+        "gantt",
+        { workspaceId, projectId },
+        location.searchStr,
+      ),
     });
   };
 

@@ -27,6 +27,7 @@ test("God Mode users directory supports filters and audited account actions", as
   };
   const received: string[] = [];
   let pendingActionState = "pending";
+  let legacyPendingActionState = "pending";
   await page.route("**/api/**", async (route) => {
     const request = route.request();
     const url = new URL(request.url());
@@ -118,12 +119,17 @@ test("God Mode users directory supports filters and audited account actions", as
             ? [
                 {
                   id: "pending-deactivation-1",
-                  action: "user_deactivation",
+                  action: "delete",
                   origin: "web",
-                  targetType: "person",
-                  targetIds: ["person-1"],
-                  summary: { email: "taylor@example.test" },
+                  targetType: "user",
+                  targetIds: ["staff-user-1"],
+                  summary: {
+                    personId: "person-1",
+                    userId: "staff-user-1",
+                    email: "taylor@example.test",
+                  },
                   confirmation: "typed_name_step_up",
+                  approvalSupported: true,
                   state: "pending",
                   createdAt: "2026-10-05T00:00:00.000Z",
                   expiresAt: "2026-10-05T00:15:00.000Z",
@@ -136,6 +142,7 @@ test("God Mode users directory supports filters and audited account actions", as
                   targetIds: ["person-1"],
                   summary: {},
                   confirmation: "click",
+                  approvalSupported: false,
                   state: "pending",
                   createdAt: "2026-10-05T00:00:00.000Z",
                   expiresAt: "2026-10-05T00:20:00.000Z",
@@ -151,16 +158,57 @@ test("God Mode users directory supports filters and audited account actions", as
     ) {
       return json({
         id: "pending-deactivation-1",
-        action: "user_deactivation",
+        action: "delete",
         origin: "web",
-        targetType: "person",
-        targetIds: ["person-1"],
-        summary: { email: "taylor@example.test" },
+        targetType: "user",
+        targetIds: ["staff-user-1"],
+        summary: {
+          personId: "person-1",
+          userId: "staff-user-1",
+          email: "taylor@example.test",
+        },
         confirmation: "typed_name_step_up",
+        approvalSupported: true,
         state: pendingActionState,
         createdAt: "2026-10-05T00:00:00.000Z",
         expiresAt: "2026-10-05T00:15:00.000Z",
         invalidationReason: null,
+      });
+    }
+    if (
+      path === "/api/me/pending-actions/legacy-deactivation-1" &&
+      method === "GET"
+    ) {
+      return json({
+        id: "legacy-deactivation-1",
+        action: "delete",
+        origin: "web",
+        targetType: "user",
+        targetIds: ["staff-user-1"],
+        summary: {
+          personId: "person-1",
+          userId: "staff-user-1",
+          email: "taylor@example.test",
+        },
+        confirmation: "typed_name_step_up",
+        approvalSupported: false,
+        state: legacyPendingActionState,
+        createdAt: "2026-10-05T00:00:00.000Z",
+        expiresAt: "2026-10-05T00:15:00.000Z",
+        invalidationReason: null,
+      });
+    }
+    if (
+      path === "/api/me/pending-actions/legacy-deactivation-1/cancel" &&
+      method === "POST"
+    ) {
+      legacyPendingActionState = "cancelled";
+      return json({
+        id: "legacy-deactivation-1",
+        action: "delete",
+        targetType: "user",
+        approvalSupported: false,
+        state: "cancelled",
       });
     }
     if (path === "/api/me/step-up/challenges" && method === "POST") {
@@ -202,9 +250,13 @@ test("God Mode users directory supports filters and audited account actions", as
       return json(
         {
           pendingActionId: "pending-deactivation-1",
-          action: "user_deactivation",
+          action: "delete",
           confirmation: "typed_name_step_up",
-          summary: { personId: "person-1", email: user.email },
+          summary: {
+            personId: "person-1",
+            userId: "staff-user-1",
+            email: user.email,
+          },
           expiresAt: "2026-10-05T00:15:00.000Z",
           approveUrl:
             "/agent/settings/profile/pending-actions/pending-deactivation-1",
@@ -392,4 +444,28 @@ test("God Mode users directory supports filters and audited account actions", as
   expect(received).toContain("POST /api/instance/users/staff-user-1/suspend");
   expect(received).toContain("POST /api/instance/users/staff-user-1/unsuspend");
   expect(received).toContain("POST /api/instance/users/staff-user-1/sign-out");
+
+  await page.goto(
+    "/agent/settings/profile/pending-actions/legacy-deactivation-1",
+  );
+  await expect(
+    page.getByRole("heading", { name: "Pending action" }),
+  ).toBeVisible();
+  await expect(page.getByLabel("Type the exact current email")).toHaveCount(0);
+  await expect(
+    page.getByRole("button", { name: "Approve and deactivate" }),
+  ).toHaveCount(0);
+  await page.screenshot({
+    path: testInfo.outputPath("legacy-pending-action-read-only.png"),
+    fullPage: true,
+  });
+  const legacyCancel = page.getByRole("button", { name: "Cancel request" });
+  await expect(legacyCancel).toBeVisible();
+  await legacyCancel.click();
+  await expect(page.getByRole("status")).toContainText(
+    "The pending action was cancelled.",
+  );
+  expect(received).toContain(
+    "POST /api/me/pending-actions/legacy-deactivation-1/cancel",
+  );
 });

@@ -89,6 +89,16 @@ export type SavedViewUrlSearch = {
 export type MyWorkSearch = { lens: "approvals" };
 export type WorkItemActivityFilter = "everything" | "comments" | "public";
 export type WorkItemDetailSearch = { activity?: WorkItemActivityFilter };
+export type ProjectRouteParams = { workspaceId: string; projectId: string };
+
+export const PROJECT_BACKLOG_PATH =
+  "/dashboard/workspace/$workspaceId/project/$projectId/backlog";
+export const PROJECT_BOARD_PATH =
+  "/dashboard/workspace/$workspaceId/project/$projectId/board";
+export const PROJECT_CALENDAR_PATH =
+  "/dashboard/workspace/$workspaceId/project/$projectId/calendar";
+export const PROJECT_GANTT_PATH =
+  "/dashboard/workspace/$workspaceId/project/$projectId/gantt";
 
 export function parseWorkItemDetailSearch(raw: unknown): WorkItemDetailSearch {
   const candidate = (raw ?? {}) as Record<string, unknown>;

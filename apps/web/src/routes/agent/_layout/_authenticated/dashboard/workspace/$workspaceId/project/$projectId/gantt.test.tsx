@@ -1,6 +1,14 @@
 import enUS from "@i18n/en-US.json";
-import { cleanup, fireEvent, render, screen } from "@testing-library/react";
+import {
+  act,
+  cleanup,
+  fireEvent,
+  render,
+  screen,
+  waitFor,
+} from "@testing-library/react";
 import type { ComponentType, ReactNode } from "react";
+import { useSyncExternalStore } from "react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type Task from "@/types/task";
 import { Route } from "./gantt";
@@ -18,7 +26,10 @@ vi.stubGlobal(
 const scrollIntoView = vi.fn();
 Element.prototype.scrollIntoView = scrollIntoView;
 
-const navigate = vi.fn();
+const routeState = vi.hoisted(() => ({
+  search: {} as Record<string, unknown>,
+  listeners: new Set<() => void>(),
+}));
 
 // A plain mutable object rather than a per-test vi.fn() mock: the Gantt
 // project selector swaps `projectId` on the same route (no remount), so
@@ -31,9 +42,46 @@ vi.mock("@tanstack/react-router", () => ({
   createFileRoute: () => (options: unknown) => ({
     ...(options as Record<string, unknown>),
     useParams: () => routeParams,
-    useSearch: () => ({ taskId: undefined }),
+    useSearch: () =>
+      useSyncExternalStore(
+        (listener: () => void) => {
+          routeState.listeners.add(listener);
+          return () => routeState.listeners.delete(listener);
+        },
+        () => routeState.search,
+      ),
   }),
-  useNavigate: () => navigate,
+  useNavigate:
+    () =>
+    (options: {
+      search?:
+        | Record<string, unknown>
+        | ((previous: Record<string, unknown>) => Record<string, unknown>);
+      replace?: boolean;
+    }) => {
+      const nextSearch =
+        typeof options.search === "function"
+          ? options.search(routeState.search)
+          : (options.search ?? {});
+      routeState.search = nextSearch;
+      const params = new URLSearchParams();
+      for (const [key, value] of Object.entries(nextSearch)) {
+        if (typeof value === "string") params.set(key, value);
+        else if (Array.isArray(value)) {
+          for (const item of value) {
+            if (typeof item === "string") params.append(key, item);
+          }
+        }
+      }
+      const suffix = params.toString();
+      const method = options.replace ? "replaceState" : "pushState";
+      window.history[method](
+        {},
+        "",
+        `${window.location.pathname}${suffix ? `?${suffix}` : ""}`,
+      );
+      for (const listener of routeState.listeners) listener();
+    },
 }));
 
 const useGetTasks = vi.fn();
@@ -138,6 +186,8 @@ beforeEach(() => {
   // deterministic regardless of when the suite runs.
   vi.useFakeTimers();
   vi.setSystemTime(new Date(2026, 7, 31));
+  window.history.replaceState({}, "", "/gantt");
+  routeState.search = {};
 });
 
 afterEach(() => {
@@ -146,7 +196,20 @@ afterEach(() => {
   scrollIntoView.mockClear();
   useGetTasks.mockReset();
   routeParams.projectId = "project-1";
+  window.removeEventListener("popstate", syncRouteSearchFromUrl);
+  window.history.replaceState({}, "", "/");
+  routeState.search = {};
 });
+
+function syncRouteSearchFromUrl() {
+  const params = new URLSearchParams(window.location.search);
+  routeState.search = {
+    ...(params.get("q") ? { q: params.get("q") } : {}),
+    ...(params.get("status") ? { status: params.getAll("status") } : {}),
+    ...(params.get("sort") ? { sort: params.get("sort") } : {}),
+  };
+  for (const listener of routeState.listeners) listener();
+}
 
 describe("Gantt jump-to-today", () => {
   it("centers a new project after a search stops hiding its timeline", () => {
@@ -292,10 +355,104 @@ describe("Gantt jump-to-today", () => {
       },
     );
 
+    expect(window.location.search).toBe("?q=no+such+task");
+    expect(
+      screen.getByPlaceholderText("Search scheduled tickets..."),
+    ).toHaveValue("no such task");
     expect(
       screen.getByText('No scheduled tasks match "no such task"'),
     ).toBeInTheDocument();
     expect(button).toBeDisabled();
+  });
+
+  it("shows and clears a deep-linked search while retaining other URL filters", () => {
+    window.history.replaceState({}, "", "/gantt?status=todo&q=no+such+task");
+    routeState.search = { status: ["todo"], q: "no such task" };
+    mockProjectWithTask(
+      makeTask({
+        title: "Ongoing work",
+        status: "todo",
+        startDate: "2026-08-28",
+        dueDate: "2026-09-02",
+      }),
+    );
+
+    render(<GanttRoute />);
+
+    const search = screen.getByPlaceholderText("Search scheduled tickets...");
+    expect(search).toHaveValue("no such task");
+    expect(
+      screen.getByText('No scheduled tasks match "no such task"'),
+    ).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole("button", { name: "Clear all" }));
+
+    expect(window.location.search).toBe("?status=todo");
+    expect(search).toHaveValue("");
+    expect(screen.getAllByText("Ongoing work").length).toBeGreaterThan(0);
+  });
+
+  it("replaces search keystrokes and restores the meaningful URL state with Back and Forward", async () => {
+    vi.useRealTimers();
+    window.history.replaceState({}, "", "/gantt?status=todo");
+    window.history.pushState({}, "", "/gantt?status=todo&sort=priority");
+    routeState.search = { status: ["todo"], sort: "priority" };
+    window.addEventListener("popstate", syncRouteSearchFromUrl);
+    mockProjectWithTask(
+      makeTask({
+        title: "Ongoing work",
+        status: "todo",
+        startDate: "2026-08-28",
+        dueDate: "2026-09-02",
+      }),
+    );
+
+    render(<GanttRoute />);
+    const search = screen.getByPlaceholderText("Search scheduled tickets...");
+    fireEvent.change(search, { target: { value: "no such task" } });
+
+    const typedSearch = new URLSearchParams(window.location.search);
+    expect(typedSearch.get("status")).toBe("todo");
+    expect(typedSearch.get("sort")).toBe("priority");
+    expect(typedSearch.get("q")).toBe("no such task");
+    expect(search).toHaveValue("no such task");
+
+    await act(async () => {
+      window.history.back();
+    });
+    await waitFor(() => expect(window.location.search).toBe("?status=todo"));
+    expect(search).toHaveValue("");
+    expect(screen.getAllByText("Ongoing work").length).toBeGreaterThan(0);
+
+    await act(async () => {
+      window.history.forward();
+    });
+    await waitFor(() =>
+      expect(new URLSearchParams(window.location.search).get("q")).toBe(
+        "no such task",
+      ),
+    );
+    expect(search).toHaveValue("no such task");
+  });
+
+  it("keeps Gantt's prior status-text search behavior", () => {
+    window.history.replaceState({}, "", "/gantt?q=todo");
+    routeState.search = { q: "todo" };
+    mockProjectWithTask(
+      makeTask({
+        title: "Unrelated title",
+        status: "todo",
+        startDate: "2026-08-28",
+        dueDate: "2026-09-02",
+      }),
+    );
+
+    render(<GanttRoute />);
+
+    expect(
+      screen.getByPlaceholderText("Search scheduled tickets..."),
+    ).toHaveValue("todo");
+    expect(screen.getAllByText("Unrelated title").length).toBeGreaterThan(0);
   });
 
   it("insets scroll-alignment by the task rail's width so a scrollIntoView center lands in the visible timeline", () => {

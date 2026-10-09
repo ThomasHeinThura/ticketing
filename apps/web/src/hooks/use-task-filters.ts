@@ -1,22 +1,15 @@
 import { addWeeks, endOfWeek, isWithinInterval, startOfWeek } from "date-fns";
 import { useEffect, useState } from "react";
+import {
+  type BoardFilters,
+  DUE_DATE_FILTER_VALUES,
+} from "@/lib/project-board-search";
 import { useUserPreferencesStore } from "@/store/user-preferences";
 import type { ProjectWithTasks } from "@/types/project";
 import type Task from "@/types/task";
 
-export type BoardFilters = {
-  status: string[] | null;
-  priority: string[] | null;
-  assignee: string[] | null;
-  dueDate: string[] | null;
-  labels: string[] | null;
-};
-
-export const DUE_DATE_FILTER_VALUES = {
-  dueNextWeek: "dueNextWeek",
-  dueThisWeek: "dueThisWeek",
-  noDueDate: "noDueDate",
-} as const;
+export type { BoardFilters };
+export { DUE_DATE_FILTER_VALUES };
 
 const DEFAULT_FILTERS: BoardFilters = {
   status: null,

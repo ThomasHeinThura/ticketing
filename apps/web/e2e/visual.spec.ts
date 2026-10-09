@@ -150,11 +150,15 @@ const visualInstanceUser = {
 
 const visualPendingAction = {
   id: "visual-pending-deactivation",
-  action: "user_deactivation",
+  action: "delete",
   origin: "web",
-  targetType: "person",
-  targetIds: [visualInstanceUser.person.id],
-  summary: { email: visualInstanceUser.email },
+  targetType: "user",
+  targetIds: [visualInstanceUser.id],
+  summary: {
+    personId: visualInstanceUser.person.id,
+    userId: visualInstanceUser.id,
+    email: visualInstanceUser.email,
+  },
   confirmation: "typed_name_step_up",
   state: "pending",
   createdAt: "2026-10-05T10:00:00.000Z",
