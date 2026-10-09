@@ -1,3 +1,13 @@
+### 2026-10-09 · One bounded unchanged-head P0 G11 verification
+
+**Decision:** Thomas explicitly answered “Allow one unchanged-head G11 verification” to request `call_dea38dc3148b497a9835768df4be95b1`, item0. This grants one exception to the no-job-retry rule in `error-fix-loop.md` for only the existing hosted G11 job on frozen P0 head `66c736e71c87b2372ba1cbf8250236ac37191565`.
+
+The original run37888524785/job113683981417/attempt1 remains a failed19/22 result (LCP2556/2500ms, palette202.7/200ms, board636.7/500ms). The earlier22/22 result remains historical, source-bound evidence. Re-run only that G11 job once; preserve every source, budget, fixture, workload, assertion and original failure. No other failed job, whole suite or source is rerun under this decision. If this verification fails again, stop unchanged retries and investigate the retained evidence. No performance-threshold, merge, deployment, installer, security, runtime or phase-finalizer gate is waived. A failing required gate still blocks merge.
+
+**Recorded:** root from Thomas's explicit reply on2026-10-09 before dispatch. Existing current66 runtime/config proof stays scoped; this is no full-CI or task-source acceptance.
+
+---
+
 ### 2026-10-09 · Branch-local SLA migration verification (07:00 UTC)
 
 The orchestrator permits #611 to append provisional journal idx 102/tag `0102_sla_pause_PROVISIONAL` and its snapshot to the preserved #513 parent, solely so normal owned disposable integration setup can test the defined existing SLA batch. Parent entries 0–101 remain unchanged. Accepted main migrations 0–87 remain immutable. This routine engineering allocation reserves no final central number and grants no integrated replay, release, deployment or acceptance authority; final numbering remains central after accepted P0. The owning branch and exact source are recorded in the migration ledger.
