@@ -98,9 +98,9 @@ Everything above, plus:
 - [ ] Behaviour rules numbered, and tests cite them
 - [ ] Open questions section is empty
 - [ ] **The feature's section in [reviews/2026-09-05/](../07-planning/reviews/2026-09-05/)
-      is empty** — every medium/low finding closed in the spec before the build started.
-      "Documentation exists" is not "spec is complete"; this box is what enforces the
-      difference
+      is empty**, or every finding in it is mapped to evidence and independently
+      dispositioned before merge ([batching](agent-workflow.md#batching-and-altitude)).
+      "Documentation exists" is not "spec is complete"
 - [ ] Feature flag added, and the feature is genuinely hidden when off — including its API
       routes returning 404
 - [ ] Capabilities added to `packages/permissions`
