@@ -1,3 +1,11 @@
+### 2026-10-09 · Branch-local SLA migration verification (07:00 UTC)
+
+The orchestrator permits #611 to append provisional journal idx 102/tag `0102_sla_pause_PROVISIONAL` and its snapshot to the preserved #513 parent, solely so normal owned disposable integration setup can test the defined existing SLA batch. Parent entries 0–101 remain unchanged. Accepted main migrations 0–87 remain immutable. This routine engineering allocation reserves no final central number and grants no integrated replay, release, deployment or acceptance authority; final numbering remains central after accepted P0. The owning branch and exact source are recorded in the migration ledger.
+
+**Recorded:** root engineering authorization under the existing integration directive, not a new Thomas product decision or gate waiver.
+
+---
+
 ### 2026-10-09 · Manual SLA operations affect both metrics atomically
 
 **Decision:** Thomas explicitly approved applying each specified manual SLA pause/resume operation atomically to both response and resolution metrics. Existing conflict rules must roll back the complete operation if either metric conflicts; partial mutation is forbidden.
