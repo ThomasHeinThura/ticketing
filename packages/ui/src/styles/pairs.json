@@ -44473,22 +44473,6 @@
         ]
       },
       {
-        "id": "apps/web/src/components/work-item/create-work-item-dialog-form.tsx::CreateWorkItemDialogForm::Alert[form[0]/Alert[0]]",
-        "usage": "apps/web/src/components/work-item/create-work-item-dialog-form.tsx",
-        "surfaceContext": "caller-chain",
-        "category": "body",
-        "chain": [
-          "packages/ui/src/components/alert.tsx:alertVariants[error]",
-          "apps/web/src/components/work-item/create-work-item-dialog-form.tsx:CreateWorkItemDialogForm",
-          "jsx:form[0]/Alert[0]",
-          "apps/web/src/components/work-item/work-item-create-dialog-shell.tsx:WorkItemCreateDialogShell",
-          "DialogContent->packages/ui/src/components/dialog.tsx:DialogPopup"
-        ],
-        "backdropLayers": [
-          "bg-popover"
-        ]
-      },
-      {
         "id": "apps/web/src/routes/agent/_layout/_authenticated/god-mode/users.tsx::UserActionDialog::Alert[Dialog[0]/DialogContent[0]/div[0]/Alert[0]]",
         "usage": "apps/web/src/routes/agent/_layout/_authenticated/god-mode/users.tsx",
         "surfaceContext": "caller-chain",
@@ -45129,22 +45113,6 @@
           "apps/web/src/components/work-item/create-work-item-dialog-form.tsx:CreateWorkItemDialogForm",
           "jsx:form[0]/Alert[0]",
           "apps/web/src/components/work-item/create-work-item-dialog.tsx:CreateWorkItemDialog",
-          "DialogContent->packages/ui/src/components/dialog.tsx:DialogPopup"
-        ],
-        "backdropLayers": [
-          "bg-popover"
-        ]
-      },
-      {
-        "id": "apps/web/src/components/work-item/create-work-item-dialog-form.tsx::CreateWorkItemDialogForm::Alert[form[0]/Alert[0]]",
-        "usage": "apps/web/src/components/work-item/create-work-item-dialog-form.tsx",
-        "surfaceContext": "caller-chain",
-        "category": "body",
-        "chain": [
-          "packages/ui/src/components/alert.tsx:alertVariants[error]",
-          "apps/web/src/components/work-item/create-work-item-dialog-form.tsx:CreateWorkItemDialogForm",
-          "jsx:form[0]/Alert[0]",
-          "apps/web/src/components/work-item/work-item-create-dialog-shell.tsx:WorkItemCreateDialogShell",
           "DialogContent->packages/ui/src/components/dialog.tsx:DialogPopup"
         ],
         "backdropLayers": [
