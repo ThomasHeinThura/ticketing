@@ -15,6 +15,7 @@ import {
   cleanUpScratchRepos,
   commit,
   completeBody,
+  git,
   initRepo,
   installCheckers,
   installFromRepo,
@@ -83,7 +84,11 @@ function modelBlock(models) {
   ].join("\n");
 }
 
-function reviewedScenario({ baseModels = null, headModels = null, baseRaw = null } = {}) {
+function reviewedScenario({
+  baseModels = null,
+  headModels = null,
+  baseRaw = null,
+} = {}) {
   const dir = scratchDir("security-model-exact");
   initRepo(dir);
   installCheckers(dir);
@@ -91,7 +96,8 @@ function reviewedScenario({ baseModels = null, headModels = null, baseRaw = null
   write(dir, "docs/04-engineering/ci-cd.md", CI_CD);
   write(dir, "apps/api/src/auth.ts", "export const authSurface = 1;\n");
   if (baseRaw !== null) write(dir, MODEL_POLICY, baseRaw);
-  else if (baseModels !== null) write(dir, MODEL_POLICY, modelBlock(baseModels));
+  else if (baseModels !== null)
+    write(dir, MODEL_POLICY, modelBlock(baseModels));
   const base = commit(dir, "chore: bootstrap security model probe");
   setOriginMain(dir, base);
 
@@ -141,7 +147,10 @@ describe("without a model list at the merge base, only the legacy GPT-6 Sol labe
       const result = runForModel(dir, model);
 
       assert.equal(result.status, 1, result.output);
-      assert.match(result.output, /\*\*Model:\*\* must be exactly one of "GPT-6 Sol"/);
+      assert.match(
+        result.output,
+        /\*\*Model:\*\* must be exactly one of "GPT-6 Sol"/,
+      );
       assert.match(result.output, /legacy set/);
       assert.match(result.output, /is bound to reviewed head/);
     });
@@ -154,7 +163,11 @@ describe("the accepted list is read from the merge base", () => {
   it("accepts a model the merge base lists", () => {
     const dir = reviewedScenario({ baseModels: ["GPT-6 Sol", OPUS] });
     const result = runForModel(dir, OPUS);
-    assert.equal(result.status, 0, `a listed model with valid evidence must pass:\n${result.output}`);
+    assert.equal(
+      result.status,
+      0,
+      `a listed model with valid evidence must pass:\n${result.output}`,
+    );
   });
 
   it("still accepts GPT-6 Sol when the merge base lists it", () => {
@@ -166,11 +179,17 @@ describe("the accepted list is read from the merge base", () => {
     const dir = reviewedScenario({ baseModels: [OPUS] });
     const result = runForModel(dir, "GPT-6 Sol");
     assert.equal(result.status, 1, result.output);
-    assert.match(result.output, /must be exactly one of "Claude Opus 5\.5 \(claude-opus-5-5\)"/);
+    assert.match(
+      result.output,
+      /must be exactly one of "Claude Opus 5\.5 \(claude-opus-5-5\)"/,
+    );
   });
 
   it("refuses a model that only the pull request's own HEAD adds (no self-approval)", () => {
-    const dir = reviewedScenario({ baseModels: ["GPT-6 Sol"], headModels: ["GPT-6 Sol", OPUS] });
+    const dir = reviewedScenario({
+      baseModels: ["GPT-6 Sol"],
+      headModels: ["GPT-6 Sol", OPUS],
+    });
     const result = runForModel(dir, OPUS);
     assert.equal(result.status, 1, result.output);
     assert.match(result.output, /read from the merge base/);
@@ -202,6 +221,23 @@ describe("the accepted list is read from the merge base", () => {
       assert.match(result.output, /must be exactly one of/);
     });
   }
+
+  it("refuses to judge a pull request into another branch (no retargeting to a widened list)", () => {
+    const dir = reviewedScenario({ baseModels: ["GPT-6 Sol", OPUS] });
+    git(dir, [
+      "update-ref",
+      "refs/remotes/origin/side",
+      git(dir, ["rev-parse", "refs/remotes/origin/main"]).trim(),
+    ]);
+    const body = bodyFile(
+      completeBody({ securityModel: OPUS, securityNote: NOTE_PATH }),
+    );
+    const result = runChecker(dir, "check-pr-template.mjs", ["--body", body], {
+      GITHUB_BASE_REF: "side",
+    });
+    assert.equal(result.status, 1, result.output);
+    assert.match(result.output, /targets `side`, not `main`/);
+  });
 
   it("fails closed on a malformed list at the merge base instead of falling back", () => {
     const dir = reviewedScenario({

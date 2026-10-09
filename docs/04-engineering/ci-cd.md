@@ -543,27 +543,46 @@ so it is not re-measured as one. Everything else is verified in full.
   and `docs/07-planning/**/*.md`. The executable rule is `scripts/ci/classify-change.mjs`;
   this paragraph describes it and does not override it. `ci-cd.md` itself, `.github/**`,
   `scripts/**`, any other document, any non-Markdown file, a symlink, an executable bit, a
-  rename out of product code, a merge or a reverted product commit all make the change
-  **full**. Labels, titles and PR bodies are never read.
-- **What still runs on a policy-only pull request:** the PR-template and security-review
-  check, the registers job (including `check:policy`, `check:reviews` and the identifier
-  registers), the gate checkers and red probes, `CI matches ci-cd.md`, and the secret scan.
-- **What reports skipped:** route policy, static, unit, coverage, contract, build, dependency
-  audit, Helm, integration, E2E, G4, G8 and G11. Their required contexts still report
-  (GitHub records a job skipped by its condition as successful), so the ruleset needs no
-  change. A required check is never turned green by anything but its own run or this
-  classification.
-- **How it stays trustworthy.** The `scope` job runs `.github/actions/change-scope`, which
-  executes the classifier **taken from the merge base**, not the pull request's copy, and
-  answers `full=true` on any other event, an unresolvable base, a missing or crashing
-  classifier, or any answer but exactly `policy`. Gate jobs carry `needs: scope` and
-  `if: ${{ !cancelled() && needs.scope.outputs.full != 'false' }}`, so a failed or missing
-  answer still runs them. `scripts/ci/lib/workflow-gates.mjs` (A9) accepts that edge only in
-  this exact shape; `scripts/ci/probes/change-scope.test.mjs` attacks each layer.
-- **Bootstrap and residual.** The pull request that introduces the classifier runs in full —
-  its merge base has no classifier. The workflows and the composite action run from the pull
-  request, as every workflow under `pull_request` does; changing them is security-scope
-  (`.github/**`), and the base classifier answers full for them.
+  rename out of product code, a reverted product commit, or a merge that brings in any
+  non-policy change all make the change **full**. Labels, titles and PR bodies are never
+  read. Only pull requests **into the default branch** can be policy-only.
+- **How a gated job behaves.** Every gated job still starts on every run. Its first steps
+  check out the history and run `.github/actions/change-scope` (`id: scope`); every later
+  step carries `if: ${{ steps.scope.outputs.full != 'false' }}`. On a policy-only change
+  those steps are skipped and the job **succeeds**. If the scope step fails, the job fails.
+  If the run is cancelled, the job is cancelled — exactly as before this rule existed. No
+  job-level `needs` or condition is involved, so a required check is never turned green by
+  a job that never started.
+- **Gated jobs:** route policy, static, unit, coverage, contract, build, dependency audit,
+  Helm, integration, E2E, G4, G8 and G11. **Always-run jobs** — the PR-template and
+  security-review check, the registers job (with `check:policy` and `check:reviews`), the
+  gate checkers and red probes, `CI matches ci-cd.md` and the secret scan — may never be
+  gated; `workflow-gates.mjs` refuses it.
+- **How it stays trustworthy.** The action executes the classifier **taken from the merge
+  base with the default branch**, not the pull request's copy, and answers `full=true` on any
+  other event or target branch, an unresolvable base, a missing or crashing classifier, or any
+  answer but exactly `policy`. Its log line is fenced with `::stop-commands::`, and the
+  classifier JSON-escapes file names, so a crafted path cannot inject a workflow command.
+  `scripts/ci/lib/workflow-gates.mjs` (A9) accepts a gated step only in the exact shape above:
+  one canonical scope step before it, no extra condition, no job- or workflow-level
+  environment that could redirect the action's `git` or `node`, and the action file matching
+  the SHA-256 pinned in the scanner. `scripts/ci/probes/change-scope.test.mjs` attacks each
+  layer.
+- **Known edges.**
+  - The pull request that introduces the classifier runs in full: its merge base has no
+    classifier.
+  - Updating a policy-only branch with a merge commit from `main` makes it full whenever
+    `main` gained a product change. Prefer rebasing.
+  - A red product check on `main` (for example a dependency advisory) does not appear on a
+    policy-only pull request. It stays the product owner's, and the next full run shows it.
+  - The workflows and the action run from the pull request, as every workflow under
+    `pull_request` does. Changing them is security-scope (`.github/**`, `scripts/ci/**`), the
+    base classifier answers full for such a change, and the digest pin makes an edited action
+    unprovable until the scanner is updated in the same reviewed change.
+  - The design relies on the ruleset's "require branches to be up to date" (strict) setting
+    so that the merge base equals `main` at merge time. Pinning required checks to the GitHub
+    Actions app in the ruleset would further stop statuses posted by other means; that is a
+    ruleset change for Thomas to decide.
 - **Not changed:** performance budgets, audit thresholds, benchmark sampling, and full
   verification of product, dependency, deployment, CI and mixed changes. A release candidate
   keeps full integrated acceptance; `push` to `main` and merge-queue runs are always full.

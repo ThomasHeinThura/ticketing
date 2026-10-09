@@ -69,6 +69,7 @@
  * "there was nothing there", which is the whole lesson of this file's predecessors.
  */
 
+import { createHash } from "node:crypto";
 import { readdir } from "node:fs/promises";
 import path from "node:path";
 import { readText, repoRoot } from "./repo.mjs";
@@ -101,7 +102,7 @@ export const KINDS = {
  * `scopeGated` is the one deliberate exception to "runs on every pull request": the gate runs
  * on every pull request the MERGE BASE's classifier does not prove policy-only, and on every
  * non-pull-request run (ci-cd.md § Applicability). It is accepted only in the exact shape
- * `proveScopeJob` and SCOPE_CONDITION below define — see the A9 note there.
+ * `proveScopeStep` and SCOPE_STEP_CONDITION below define — see the A9 note there.
  */
 export function isExecuting(kind) {
   return (
@@ -112,85 +113,140 @@ export function isExecuting(kind) {
 }
 
 /**
- * **A9 — one reviewed proof model for `needs`, and only one.** A7b refuses `needs` on a
- * gate-bearing job by presence, "until a reviewed proof model for the dependency graph
- * exists". This is that model, for exactly one edge (Thomas, decision log 2026-10-09,
- * "Opus policy-repair conductor": policy-only changes are not new application builds).
+ * **A9 — one reviewed, step-level shape for change-scope applicability.**
  *
- * A gate job may declare `needs: scope` and nothing else, with exactly the job condition
- * SCOPE_CONDITION. That condition runs the job unless the scope job ANSWERED `full == 'false'`:
- * `!cancelled()` keeps it running when `scope` failed or was skipped (its output is then empty,
- * and empty is not 'false'), so a broken classifier cannot skip a gate. `== 'true'` would be
- * the fail-open spelling and is refused, as is any `||`, any other job, any extra atom.
+ * Thomas authorized policy-only pull requests to skip product re-measurement (decision log
+ * 2026-10-09, "Opus policy-repair conductor"). The mechanism must not change what a required
+ * check means in any other situation, so it lives INSIDE each gated job rather than in the
+ * job graph: every gated job still starts on every run, exactly as before. Its first steps
+ * check out the history and run `uses: ./.github/actions/change-scope` with `id: scope`; every
+ * later step carries `if: ${{ steps.scope.outputs.full != 'false' }}`.
  *
- * The `scope` job itself must be provably unconditional and canonical (`proveScopeJob`): no
- * `if`, `needs`, `strategy`, `continue-on-error` or job-level `uses`; a proven runner; its only
- * output `full` wired to the `classify` step; its steps exactly a pinned checkout and
- * `uses: ./.github/actions/change-scope` with id `classify`. That composite action runs the
- * classifier taken from the MERGE BASE (scripts/ci/classify-change.mjs), so a pull request
- * cannot classify itself with its own edit of the classifier — and the base classifier
- * answers FULL for any change to `.github/**` or `scripts/ci/**`. The workflow and composite
- * that invoke it run from the pull request, like every workflow under `pull_request`; their
- * protection is the security-review path list, as for every other CI control here.
+ *   - A policy-only answer skips the job's steps and the job SUCCEEDS — the intended skip.
+ *   - A failing scope step fails the job (later steps keep the implicit `success()`), so a
+ *     broken classifier is a red required check, not a silent skip.
+ *   - A cancelled run cancels the job, which is a red required check, as it was before.
+ *     An earlier draft gated whole jobs through `needs: scope` and `!cancelled()`; whether
+ *     GitHub then reports a never-started job as skipped or cancelled is not proven, so that
+ *     shape was withdrawn. `needs` stays refused by presence (A7b).
+ *
+ * A gate step counts (`scopeGated`) only when ALL of these hold:
+ *   - its condition is exactly SCOPE_STEP_CONDITION — no extra atom, no `||`;
+ *   - its job is not one that must always run (ALWAYS_RUN_JOBS: the policy, register,
+ *     template, checker-test, reconciliation and secret-scan jobs);
+ *   - the same job has exactly one step with `id: scope`, BEFORE the gate, whose only keys
+ *     are `id`, `uses: ./.github/actions/change-scope` and optionally `name` — no `if`,
+ *     `env`, `with`, `shell`, `working-directory` or `continue-on-error`;
+ *   - neither the job nor the workflow sets environment variables beyond the inert
+ *     ALLOWED_WORKFLOW_ENV, so nothing can redirect the action's `git` or `node`;
+ *   - the action file's SHA-256 equals SCOPE_ACTION_SHA256. Changing the action therefore
+ *     means changing this scanner too, and both are on the security-review path list.
+ *
+ * The action runs the classifier taken from the MERGE BASE with the default branch and
+ * answers `full=true` on any doubt (ci-cd.md § Applicability).
  */
-export const SCOPE_JOB = "scope";
+export const SCOPE_STEP_ID = "scope";
 export const SCOPE_ACTION = "./.github/actions/change-scope";
-export const SCOPE_CONDITION = "!cancelled() && needs.scope.outputs.full != 'false'";
-const SCOPE_JOB_KEYS = new Set(["name", "runs-on", "timeout-minutes", "outputs", "steps"]);
+export const SCOPE_ACTION_PATH = ".github/actions/change-scope/action.yml";
+export const SCOPE_ACTION_SHA256 =
+  "03c31f8040b0195ceb7d416ce29c87e5a0ed8b7803c341893f591f26150f3039";
+export const SCOPE_STEP_CONDITION = "steps.scope.outputs.full != 'false'";
+export const ALWAYS_RUN_JOBS = new Set([
+  "registers",
+  "pull-request",
+  "ci-scripts",
+  "gates-declared",
+  "secret-scan",
+]);
+const ALLOWED_WORKFLOW_ENV = new Set([
+  "TURBO_TELEMETRY_DISABLED",
+  "DO_NOT_TRACK",
+]);
+const SCOPE_STEP_KEYS = new Set(["id", "uses", "name"]);
 
-/**
- * Is this workflow's `scope` job the canonical, unconditional one?
- *
- * @param {string} source the workflow file
- * @param {{job:string, keys:Record<string,string>}[]} steps parsed steps of that file
- * @returns {{proven: boolean, reason: string}}
- */
-export function proveScopeJob(source, steps) {
+/** The variable names a workflow's top-level `env:` block declares. */
+export function workflowEnvKeys(source) {
   const lines = source.split("\n");
-  const start = lines.findIndex((line) => /^ {2}scope:\s*$/.test(line));
-  if (start === -1) return { proven: false, reason: "the workflow has no `scope` job" };
-  const block = [];
+  const start = lines.findIndex((line) => /^env:\s*$/.test(line));
+  if (start === -1) return [];
+  const keys = [];
   for (let i = start + 1; i < lines.length; i += 1) {
     if (isBlank(lines[i])) continue;
-    if (indentOf(lines[i]) <= 2) break;
-    block.push(lines[i]);
+    if (indentOf(lines[i]) === 0) break;
+    const key = /^\s+([A-Za-z_][\w]*)\s*:/.exec(lines[i]);
+    keys.push(key ? key[1] : lines[i].trim());
   }
-  const keys = block
-    .filter((line) => indentOf(line) === 4)
-    .map((line) => /^\s*([A-Za-z][\w.-]*):/.exec(line)?.[1] ?? line.trim());
-  const extra = keys.filter((key) => !SCOPE_JOB_KEYS.has(key));
-  if (extra.length > 0) {
-    return { proven: false, reason: `the \`scope\` job declares ${extra.join(", ")}; only ${[...SCOPE_JOB_KEYS].join(", ")} are allowed` };
+  return keys;
+}
+
+/**
+ * Is this gate step's change-scope condition backed by the canonical scope step?
+ *
+ * @param {object} step the gate step (as collected by parseWorkflowFile)
+ * @param {{jobSteps: object[], workflowEnv: string[], actionDigest: string|null}} context
+ * @returns {{proven: boolean, reason: string}}
+ */
+export function proveScopeStep(step, context) {
+  const strip = (value) =>
+    String(value ?? "")
+      .replace(/\s+#.*$/, "")
+      .trim();
+  if (ALWAYS_RUN_JOBS.has(step.job)) {
+    return {
+      proven: false,
+      reason: `job "${step.job}" must always run; it may not be scope-gated`,
+    };
   }
-  for (const required of ["runs-on", "outputs", "steps"]) {
-    if (!keys.includes(required)) return { proven: false, reason: `the \`scope\` job declares no \`${required}\`` };
-  }
-  const runsOn = block.find((line) => /^ {4}runs-on:/.test(line))?.replace(/^ {4}runs-on:\s*/, "");
-  if (!runnerDefaultShellProven(runsOn)) {
-    return { proven: false, reason: `the \`scope\` job runs on \`${runsOn}\`, not a proven runner` };
-  }
-  const outputsAt = block.findIndex((line) => /^ {4}outputs:\s*$/.test(line));
-  const outputs = [];
-  for (let i = outputsAt + 1; i < block.length && indentOf(block[i]) > 4; i += 1) outputs.push(block[i].trim());
-  if (outputs.length !== 1 || outputs[0] !== "full: ${{ steps.classify.outputs.full }}") {
-    return { proven: false, reason: "the `scope` job's outputs must be exactly `full: ${{ steps.classify.outputs.full }}`" };
-  }
-  const scopeSteps = steps.filter((step) => step.job === SCOPE_JOB);
-  const strip = (value) => String(value ?? "").replace(/\s+#.*$/, "").trim();
-  const forbidden = (step) => ["if", "continue-on-error", "shell", "run"].some((key) => key in step.keys);
-  const checkout = scopeSteps.filter((step) => /^actions\/checkout@[0-9a-f]{40}$/.test(strip(step.keys.uses)));
-  const classifier = scopeSteps.filter(
-    (step) => strip(step.keys.uses) === SCOPE_ACTION && strip(step.keys.id) === "classify" && !("with" in step.keys),
-  );
-  if (scopeSteps.length !== 2 || checkout.length !== 1 || classifier.length !== 1 || scopeSteps.some(forbidden)) {
+  if (step.jobKeys?.has("env")) {
     return {
       proven: false,
       reason:
-        "the `scope` job's steps must be exactly a SHA-pinned `actions/checkout` and " +
-        `\`uses: ${SCOPE_ACTION}\` with \`id: classify\`, neither conditional`,
+        "the job sets `env`, which could redirect the scope action's `git` or `node`",
     };
   }
-  return { proven: true, reason: "canonical scope job" };
+  const extraEnv = (context?.workflowEnv ?? []).filter(
+    (key) => !ALLOWED_WORKFLOW_ENV.has(key),
+  );
+  if (extraEnv.length > 0) {
+    return {
+      proven: false,
+      reason: `the workflow sets env ${extraEnv.join(", ")}, beyond ${[...ALLOWED_WORKFLOW_ENV].join(", ")}`,
+    };
+  }
+  if (context?.actionDigest !== SCOPE_ACTION_SHA256) {
+    return {
+      proven: false,
+      reason: `${SCOPE_ACTION_PATH} is missing or differs from the reviewed version (SHA-256 ${context?.actionDigest ?? "none"})`,
+    };
+  }
+  const scopeSteps = (context?.jobSteps ?? []).filter(
+    (candidate) => strip(candidate.keys.id) === SCOPE_STEP_ID,
+  );
+  if (scopeSteps.length !== 1) {
+    return {
+      proven: false,
+      reason: `the job has ${scopeSteps.length} step(s) with \`id: ${SCOPE_STEP_ID}\`; exactly one is required`,
+    };
+  }
+  const [scope] = scopeSteps;
+  if (!(scope.line < step.line)) {
+    return {
+      proven: false,
+      reason: "the scope step does not come before the gate step",
+    };
+  }
+  const extraKeys = Object.keys(scope.keys).filter(
+    (key) => !SCOPE_STEP_KEYS.has(key),
+  );
+  if (extraKeys.length > 0 || strip(scope.keys.uses) !== SCOPE_ACTION) {
+    return {
+      proven: false,
+      reason:
+        `the scope step must be exactly \`id: ${SCOPE_STEP_ID}\` + \`uses: ${SCOPE_ACTION}\` ` +
+        `(optionally \`name\`)${extraKeys.length > 0 ? `; it also declares ${extraKeys.join(", ")}` : ""}`,
+    };
+  }
+  return { proven: true, reason: "canonical change-scope step" };
 }
 
 /**
@@ -589,6 +645,12 @@ function parseStepSequence(lines, stepsLine, stepsIndent, origin) {
               "whose commands it cannot see.",
           );
         }
+        if (Object.hasOwn(current.keys, pair[1])) {
+          throw new WorkflowGatesUnavailableError(
+            `${origin}:${i + 1} repeats the step key \`${pair[1]}\`. A duplicate key makes the ` +
+              "step ambiguous (A9); write it once.",
+          );
+        }
         const scalar = classifyScalar(pair[1], pair[2], origin, i + 1);
         current.keys[pair[1]] = scalar.value;
         if (pair[1] === "run") current.plainRun = scalar.kind === "plain";
@@ -640,6 +702,12 @@ function parseStepSequence(lines, stepsLine, stepsIndent, origin) {
     // that INTRODUCES it (`env`, `with`) is the one that matters, and that is recorded.
     if (keyIndent === null) keyIndent = indent;
     if (indent > keyIndent) continue;
+    if (Object.hasOwn(current.keys, pair[1])) {
+      throw new WorkflowGatesUnavailableError(
+        `${origin}:${i + 1} repeats the step key \`${pair[1]}\`. A duplicate key makes the ` +
+          "step ambiguous (A9); write it once.",
+      );
+    }
     const scalar = classifyScalar(pair[1], pair[2], origin, i + 1);
     current.keys[pair[1]] = scalar.value;
     if (pair[1] === "run") current.plainRun = scalar.kind === "plain";
@@ -994,7 +1062,7 @@ export function parseWorkflowFile(source, origin) {
  * Order matters: the reasons a step cannot gate a pull request are checked before the
  * reasons it merely might not run.
  */
-function classify(step, triggers, scopeProof = null) {
+function classify(step, triggers, scopeContext = null) {
   const conditions = [
     ["job", step.jobIf],
     ["step", step.stepIf],
@@ -1037,30 +1105,17 @@ function classify(step, triggers, scopeProof = null) {
   // whatever shape it is written: a scalar id, a flow list, a block list. A prerequisite
   // that is skipped or fails takes this job with it, and modelling the dependency graph
   // properly is a decision to take deliberately, not to guess at here.
-  let scoped = false;
   if (step.jobKeys?.has("needs")) {
-    const needs = String(step.jobKeys.get("needs")).replace(/\s+#.*$/, "").trim();
-    const canonicalIf =
-      typeof step.jobIf === "string" && normaliseCondition(step.jobIf) === SCOPE_CONDITION;
-    if (needs === SCOPE_JOB && canonicalIf && scopeProof?.proven) {
-      scoped = true;
-    } else {
-      const why =
-        needs !== SCOPE_JOB
-          ? "so whether it participates in the required pull-request execution depends on " +
-            "prerequisite state this scanner does not model. That is the whole finding, and it " +
-            "is deliberately narrower than any claim about what branch protection then does " +
-            "with the result: NOT PROVEN is sufficient to refuse. A job carrying a required " +
-            "gate stands alone, except for the one reviewed edge A9 defines (`needs: scope`)"
-          : !canonicalIf
-            ? `but its job condition is not exactly \`\${{ ${SCOPE_CONDITION} }}\` — the only ` +
-              "condition that runs the gate whenever the scope job did not answer `false` (A9)"
-            : `but ${scopeProof?.reason ?? "the workflow's scope job could not be proven"} (A9)`;
-      return {
-        kind: KINDS.unprovenSchedule,
-        reason: `job declares \`needs\` (${needs || "block list"}), ${why}`,
-      };
-    }
+    return {
+      kind: KINDS.unprovenSchedule,
+      reason:
+        `job declares \`needs\` (${String(step.jobKeys.get("needs")).trim() || "block list"}), ` +
+        "so whether it participates in the required pull-request execution depends on " +
+        "prerequisite state this scanner does not model. That is the whole finding, and it " +
+        "is deliberately narrower than any claim about what branch protection then does " +
+        "with the result: NOT PROVEN is sufficient to refuse. A job carrying a required " +
+        "gate stands alone until a reviewed proof model for the dependency graph exists",
+    };
   }
   if (step.jobKeys?.has("strategy")) {
     return {
@@ -1167,11 +1222,27 @@ function classify(step, triggers, scopeProof = null) {
     };
   }
 
+  // A9: the change-scope step condition counts only with its canonical scope step.
+  let scoped = false;
+  if (
+    typeof step.stepIf === "string" &&
+    normaliseCondition(step.stepIf) === SCOPE_STEP_CONDITION
+  ) {
+    const proof = proveScopeStep(step, scopeContext);
+    if (!proof.proven) {
+      return {
+        kind: KINDS.unprovenSchedule,
+        reason: `step condition \`${step.stepIf.trim()}\` is the change-scope condition, but ${proof.reason} (A9)`,
+      };
+    }
+    scoped = true;
+  }
+
   // A6: the default is NOT "unknown means it runs". A condition counts only when every
   // part of it is on the proven list, and the first one that is not is named.
   const unproven = conditions.filter(
     ([level, expression]) =>
-      !(scoped && level === "job") && !provenInPullRequestContext(expression),
+      !(scoped && level === "step") && !provenInPullRequestContext(expression),
   );
   if (unproven.length > 0) {
     const [level, expression] = unproven[0];
@@ -1192,8 +1263,8 @@ function classify(step, triggers, scopeProof = null) {
     return {
       kind: KINDS.scopeGated,
       reason:
-        "job runs unless the merge base's classifier proved this pull request policy-only " +
-        "(`needs: scope`, A9 — ci-cd.md § Applicability)",
+        "step runs unless the merge base's classifier proved this pull request policy-only " +
+        "(change-scope step, A9 — ci-cd.md § Applicability)",
     };
   }
 
@@ -1263,6 +1334,14 @@ export async function readWorkflowGates() {
   const occurrences = new Map();
   const triggers = new Map();
   const read = [];
+  let actionDigest = null;
+  try {
+    actionDigest = createHash("sha256")
+      .update(await readText(path.join(repoRoot, SCOPE_ACTION_PATH)))
+      .digest("hex");
+  } catch {
+    actionDigest = null; // absent: no step can be scope-gated (A9)
+  }
 
   const record = (name, entry) => {
     if (!occurrences.has(name)) occurrences.set(name, []);
@@ -1291,8 +1370,7 @@ export async function readWorkflowGates() {
     }
 
     const parsed = parseWorkflowFile(source, relative);
-    const scopeProof =
-      inheritedTriggers === null ? proveScopeJob(source, parsed.steps) : null;
+    const workflowEnv = workflowEnvKeys(source);
     if (inheritedTriggers === null) {
       triggers.set(relative, {
         names: parsed.triggers,
@@ -1309,7 +1387,13 @@ export async function readWorkflowGates() {
     }
 
     for (const step of parsed.steps) {
-      const { kind, reason } = classify(step, effective, scopeProof);
+      const { kind, reason } = classify(step, effective, {
+        jobSteps: parsed.steps.filter(
+          (candidate) => candidate.job === step.job,
+        ),
+        workflowEnv,
+        actionDigest,
+      });
       const entry = {
         kind,
         reason,

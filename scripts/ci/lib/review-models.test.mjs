@@ -6,7 +6,13 @@ import {
 } from "./review-models.mjs";
 
 const block = (lines) =>
-  ["intro", "<!-- policy:security-review-models -->", ...lines, "<!-- /policy:security-review-models -->", "outro"].join("\n");
+  [
+    "intro",
+    "<!-- policy:security-review-models -->",
+    ...lines,
+    "<!-- /policy:security-review-models -->",
+    "outro",
+  ].join("\n");
 
 describe("parseSecurityReviewModels", () => {
   it("returns null when the document carries no block (bootstrap)", () => {
@@ -15,7 +21,9 @@ describe("parseSecurityReviewModels", () => {
 
   it("reads exact labels in order", () => {
     assert.deepEqual(
-      parseSecurityReviewModels(block(["- `GPT-6 Sol`", "", "- `Claude Opus 5.5 (claude-opus-5-5)`"])),
+      parseSecurityReviewModels(
+        block(["- `GPT-6 Sol`", "", "- `Claude Opus 5.5 (claude-opus-5-5)`"]),
+      ),
       ["GPT-6 Sol", "Claude Opus 5.5 (claude-opus-5-5)"],
     );
   });
@@ -26,15 +34,22 @@ describe("parseSecurityReviewModels", () => {
     ["a padded label", ["- ` GPT-6 Sol`"]],
     ["an empty block", []],
     ["a repeated label", ["- `GPT-6 Sol`", "- `GPT-6 Sol`"]],
+    ["a zero-width space inside a label", ["- `GPT-6\u200b Sol`"]],
+    ["a non-breaking space inside a label", ["- `GPT-6\u00a0Sol`"]],
+    ["a look-alike hyphen inside a label", ["- `GPT\u20116 Sol`"]],
   ]) {
     it(`fails closed on ${name}`, () => {
-      assert.throws(() => parseSecurityReviewModels(block(lines)), ReviewModelsUnavailableError);
+      assert.throws(
+        () => parseSecurityReviewModels(block(lines)),
+        ReviewModelsUnavailableError,
+      );
     });
   }
 
   it("fails closed on a stray closing marker", () => {
     assert.throws(
-      () => parseSecurityReviewModels("<!-- /policy:security-review-models -->\n"),
+      () =>
+        parseSecurityReviewModels("<!-- /policy:security-review-models -->\n"),
       ReviewModelsUnavailableError,
     );
   });
