@@ -4,12 +4,35 @@ import {
   DialogDescription,
   DialogHeader,
   DialogTitle,
+  ErrorBoundary,
 } from "@taskdesk/ui";
-import { useEffect } from "react";
+import { lazy, Suspense, useEffect } from "react";
 import { useTranslation } from "react-i18next";
 import { ErrorDisplay } from "@/components/errors/error-display";
 import { useWorkspacePermission } from "@/hooks/use-workspace-permission";
-import { CreateWorkItemDialogContent } from "./create-work-item-dialog";
+
+type ContentModule = typeof import("./create-work-item-dialog");
+type ContentComponent = ContentModule["CreateWorkItemDialogContent"];
+
+let contentModulePromise: Promise<{ default: ContentComponent }> | undefined;
+
+function loadCreateWorkItemDialogContent(): Promise<{
+  default: ContentComponent;
+}> {
+  if (!contentModulePromise) {
+    contentModulePromise = import("./create-work-item-dialog")
+      .then(({ CreateWorkItemDialogContent }) => ({
+        default: CreateWorkItemDialogContent,
+      }))
+      .catch((error: unknown) => {
+        contentModulePromise = undefined;
+        throw error;
+      });
+  }
+  return contentModulePromise;
+}
+
+const CreateWorkItemDialogContent = lazy(loadCreateWorkItemDialogContent);
 
 export default function WorkItemCreateDialogShell({
   projectId,
@@ -39,6 +62,11 @@ export default function WorkItemCreateDialogShell({
   }, [canCreate, isCheckingPermissions, isPermissionError, onClose]);
 
   if (!isCheckingPermissions && !isPermissionError && !canCreate) return null;
+
+  const retryContent = () => {
+    contentModulePromise = undefined;
+    window.location.reload();
+  };
 
   return (
     <Dialog
@@ -71,11 +99,34 @@ export default function WorkItemCreateDialogShell({
             <span className="sr-only">{t("common:empty.loading")}</span>
           </div>
         ) : (
-          <CreateWorkItemDialogContent
-            onClose={onClose}
-            projectId={projectId}
-            workspaceId={workspaceId}
-          />
+          <ErrorBoundary
+            fallback={({ error }) => (
+              <ErrorDisplay
+                error={error}
+                onRetry={retryContent}
+                className="min-h-0 p-0"
+              />
+            )}
+          >
+            <Suspense
+              fallback={
+                <div
+                  role="status"
+                  aria-busy="true"
+                  aria-live="polite"
+                  data-testid="create-work-item-content-loading"
+                >
+                  <span className="sr-only">{t("common:empty.loading")}</span>
+                </div>
+              }
+            >
+              <CreateWorkItemDialogContent
+                onClose={onClose}
+                projectId={projectId}
+                workspaceId={workspaceId}
+              />
+            </Suspense>
+          </ErrorBoundary>
         )}
       </DialogContent>
     </Dialog>

@@ -60,7 +60,7 @@ afterEach(() => {
 });
 
 describe("WorkItemCreateDialogShell", () => {
-  it("WI-1: exposes the dialog immediately and keeps the open intent during permission loading", () => {
+  it("WI-1: exposes the dialog immediately and keeps the open intent during permission loading", async () => {
     const { rerender, onClose } = renderShell();
 
     expect(screen.getByRole("dialog")).toBeVisible();
@@ -83,7 +83,12 @@ describe("WorkItemCreateDialogShell", () => {
     );
 
     expect(screen.getByRole("dialog")).toBeVisible();
-    expect(screen.getByTestId("create-form")).toBeInTheDocument();
+    expect(
+      screen.getByTestId("create-work-item-content-loading"),
+    ).toBeVisible();
+    await waitFor(() => {
+      expect(screen.getByTestId("create-form")).toBeInTheDocument();
+    });
     expect(onClose).not.toHaveBeenCalled();
   });
 
