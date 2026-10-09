@@ -1,3 +1,7 @@
+import {
+  defaultParseSearch,
+  defaultStringifySearch,
+} from "@tanstack/react-router";
 import type { SortDirection, SortField } from "./sort-tasks";
 
 export type ProjectBoardLayout = "board" | "list";
@@ -108,19 +112,52 @@ export function parseProjectCalendarSearch(
   return parseProjectViewSearch(raw, true);
 }
 
+function parseProjectSearchValue(value: string): unknown {
+  try {
+    const parsed: unknown = JSON.parse(value);
+    return parsed === null ||
+      typeof parsed === "number" ||
+      typeof parsed === "boolean"
+      ? value
+      : parsed;
+  } catch {
+    return value;
+  }
+}
+
+export function parseProjectRouterSearch(search: string) {
+  const parsed = defaultParseSearch(search) as Record<string, unknown>;
+  const params = new URLSearchParams(search);
+  for (const key of SCALAR_KEYS) {
+    const values = params.getAll(key);
+    const value = values.at(-1);
+    if (value !== undefined) parsed[key] = parseProjectSearchValue(value);
+  }
+  const layout = params.getAll("layout");
+  const value = layout.at(-1);
+  if (value !== undefined) parsed.layout = parseProjectSearchValue(value);
+  for (const key of FILTER_KEYS) {
+    const values = params.getAll(key);
+    if (values.length) {
+      const parsedValues = values.map(parseProjectSearchValue);
+      parsed[key] = values.length === 1 ? parsedValues[0] : parsedValues;
+    }
+  }
+  return parsed;
+}
+
 export function parseProjectViewSearchFromParams(
   params: URLSearchParams,
   parseSearch = parseProjectViewSearch,
 ): ProjectViewSearch {
-  const search: Record<string, unknown> = {};
-  params.forEach((value, key) => {
-    if ((FILTER_KEYS as readonly string[]).includes(key)) {
-      const current = search[key];
-      if (Array.isArray(current)) current.push(value);
-      else search[key] = [value];
-    } else search[key] = value;
-  });
-  return parseSearch(search);
+  return parseSearch(parseProjectRouterSearch(params.toString()));
+}
+
+function stringifyProjectSearchValue(key: string, value: string): string {
+  return (
+    new URLSearchParams(defaultStringifySearch({ [key]: value })).get(key) ??
+    value
+  );
 }
 
 export function appendProjectViewSearchParams(
@@ -134,8 +171,11 @@ export function appendProjectViewSearchParams(
     ...search,
   })) {
     if (Array.isArray(value)) {
-      for (const entry of value) params.append(key, entry);
-    } else if (value) params.set(key, value);
+      for (const entry of value)
+        params.append(key, stringifyProjectSearchValue(key, entry));
+    } else if (value) {
+      params.set(key, stringifyProjectSearchValue(key, value));
+    }
   }
 }
 

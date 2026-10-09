@@ -1,8 +1,15 @@
+import {
+  createMemoryHistory,
+  createRootRoute,
+  createRouter,
+  defaultStringifySearch,
+} from "@tanstack/react-router";
 import { describe, expect, it } from "vitest";
 import {
   appendProjectViewSearchParams,
   parseProjectBacklogSearch,
   parseProjectBoardSearch,
+  parseProjectRouterSearch,
   parseProjectViewSearchFromParams,
 } from "./project-board-search";
 import {
@@ -10,8 +17,137 @@ import {
   withProjectBoardLayout,
   withProjectBoardTask,
 } from "./project-board-search-state";
+import { projectViewRoutes } from "./project-view-routes";
 
 describe("project board URL state", () => {
+  it("preserves string search through the registered TanStack URL codec", () => {
+    for (const query of [
+      "?q=123",
+      "?q=true",
+      "?q=false",
+      "?q=1e3",
+      "?q=null",
+    ]) {
+      const decoded = parseProjectRouterSearch(query);
+      expect(parseProjectBoardSearch(decoded)).toEqual({
+        q: new URLSearchParams(query).get("q"),
+      });
+    }
+    expect(
+      parseProjectBoardSearch(parseProjectRouterSearch("?q=%22123%22")),
+    ).toEqual({ q: "123" });
+    expect(
+      parseProjectBoardSearch(parseProjectRouterSearch("?q=%5B1%5D")),
+    ).toEqual({});
+    expect(
+      parseProjectBoardSearch(
+        parseProjectRouterSearch("?q=%7B%22term%22%3A%22x%22%7D"),
+      ),
+    ).toEqual({});
+    expect(
+      parseProjectBoardSearch(
+        parseProjectRouterSearch("?q=first&q=123&status=1&status=true"),
+      ),
+    ).toEqual({ q: "123", status: ["1", "true"] });
+  });
+
+  it("round-trips numeric-like text through router, keyboard links, and history URLs", () => {
+    const search = {
+      q: "123",
+      taskId: "123",
+      status: ["true", "456"],
+      labels: ["a & b"],
+    };
+    const routerUrl = defaultStringifySearch(search);
+    expect(
+      parseProjectBoardSearch(parseProjectRouterSearch(routerUrl)),
+    ).toEqual(search);
+
+    const keyboardUrl = projectViewRoutes.projectBoard.build(
+      { workspaceId: "workspace-1", projectId: "project-1" },
+      search,
+    );
+    const keyboardSearch = new URL(keyboardUrl, "https://taskdesk.test");
+    expect(
+      parseProjectBoardSearch(parseProjectRouterSearch(keyboardSearch.search)),
+    ).toEqual(search);
+    const historyUrl = `${keyboardSearch.pathname}${keyboardSearch.search}`;
+    expect(
+      parseProjectBoardSearch(
+        parseProjectRouterSearch(
+          new URL(historyUrl, "https://taskdesk.test").search,
+        ),
+      ),
+    ).toEqual(search);
+  });
+
+  it("keeps JSON-like text as strings in router and keyboard-built URLs", () => {
+    const values = [
+      "null",
+      "[]",
+      '{"a":1}',
+      '"quoted"',
+      "123",
+      "true",
+      "a & b",
+    ];
+    for (const q of values) {
+      const expected = { q, labels: [q] };
+      expect(
+        parseProjectBoardSearch(
+          parseProjectRouterSearch(defaultStringifySearch(expected)),
+        ),
+      ).toEqual(expected);
+
+      const keyboardUrl = projectViewRoutes.projectBoard.build(
+        { workspaceId: "workspace-1", projectId: "project-1" },
+        expected,
+      );
+      const url = new URL(keyboardUrl, "https://taskdesk.test");
+      expect(
+        parseProjectBoardSearch(parseProjectRouterSearch(url.search)),
+      ).toEqual(expected);
+    }
+    expect(
+      parseProjectBoardSearch(parseProjectRouterSearch("?q=%22%5B1%5D%22")),
+    ).toEqual({ q: "[1]" });
+  });
+
+  it("keeps numeric-like search through a registered router deep link and history", async () => {
+    const history = createMemoryHistory({
+      initialEntries: ["/?q=123&status=1&status=true"],
+    });
+    const routeTree = createRootRoute({
+      validateSearch: parseProjectBoardSearch,
+    });
+    const router = createRouter({
+      routeTree,
+      history,
+      parseSearch: parseProjectRouterSearch,
+      stringifySearch: defaultStringifySearch,
+    });
+    await router.load();
+    expect(router.state.location.search).toEqual({
+      q: "123",
+      status: ["1", "true"],
+    });
+
+    for (const q of ["null", "[]", '{"a":1}', '"quoted"', "123", "true"]) {
+      await router.navigate({
+        to: "/",
+        search: { q, status: [q] },
+      });
+      expect(router.state.location.search).toEqual({ q, status: [q] });
+    }
+    for (const _ of ["null", "[]", '{"a":1}', '"quoted"', "123", "true"])
+      router.history.back();
+    await router.load();
+    expect(router.state.location.search).toEqual({
+      q: "123",
+      status: ["1", "true"],
+    });
+  });
+
   it("keeps generic month values for non-calendar views", () => {
     expect(parseProjectBoardSearch({ month: "2026-13" }).month).toBe("2026-13");
   });
