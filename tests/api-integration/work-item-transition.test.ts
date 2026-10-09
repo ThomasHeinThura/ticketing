@@ -19,7 +19,6 @@ import {
   prepareAuthenticatedApiFixture,
   requireRow,
 } from "./helpers/fixtures";
-import { installProvisionalSlaPause } from "./helpers/install-provisional-sla-pause";
 import { raceProjectSoftDelete } from "./helpers/race-soft-delete";
 
 const publishEventMock = vi.hoisted(() => vi.fn());
@@ -325,7 +324,6 @@ function listTransitions(
 describe("API integration: work item transition (#442, workflows.md)", () => {
   beforeEach(async () => {
     await resetTestDatabase();
-    await installProvisionalSlaPause();
   });
 
   it("rejects a caller without work_item:transition with 403", async () => {

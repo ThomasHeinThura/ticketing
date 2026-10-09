@@ -11,7 +11,6 @@ import {
   createProjectFixture,
   createWorkspaceMember,
 } from "./helpers/fixtures";
-import { installProvisionalSlaPause } from "./helpers/install-provisional-sla-pause";
 
 const windows = {
   mon: [{ from: 540, to: 1020 }],
@@ -80,7 +79,6 @@ function fullMatrix(workItemTypeId: string) {
 describe("API integration: SLA policy authoring contract", () => {
   beforeEach(async () => {
     await resetTestDatabase();
-    await installProvisionalSlaPause();
   });
 
   afterEach(async () => {
