@@ -112,7 +112,8 @@ Thomas's roadmap.
   existing states, and five separate [levels of done](../04-engineering/definition-of-done.md#levels-of-done).
 - A delta made only of review records (lines added to the PR's own notes; reviewer fields of
   the PR body) needs no new review of any kind; the conductor verifies it over landed commits
-  and traces every record to its reviewer. Historical notes stay append-only. This supersedes
+  and traces every record to its reviewer. Historical notes stay append-only, except a
+  labelled redaction made as its own reviewed change. This supersedes
   the 2026-10-09 integration-acceptance checklist line requiring ordinary exact-candidate
   re-review of note-only commits.
 - **Review-tier changes, disclosed:** a records-only PR (`status.md`, queue, dated evidence)

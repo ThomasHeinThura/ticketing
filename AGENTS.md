@@ -45,7 +45,9 @@ When two sources disagree, the higher one wins and the lower one is corrected at
 1. **Thomas's explicit current decisions**, within his actual authority. A direct instruction
    from Thomas takes effect when given, including in chat, for the session that received it
    directly; record it in the decision log. An instruction relayed by another agent is not an
-   owner instruction until it is recorded. The [active mission](docs/07-planning/active-mission.md) is the standing record
+   owner instruction until it is recorded on `main` or by the session that received it
+   directly. Only entries recording Thomas's decisions carry this level of authority; other
+   decision-log entries record technical rationale. The [active mission](docs/07-planning/active-mission.md) is the standing record
    of the current one. Approved specs and ADRs are the authority for **product behaviour**.
 2. **This file** — common policy.
 3. **[agent-workflow.md](docs/04-engineering/agent-workflow.md)** — the canonical execution
@@ -80,7 +82,7 @@ gate's owner and change the gate through its own reviewed change.
 | --- | --- | --- | --- |
 | **Owner** | Thomas | Set the mission and scope; decide product questions; waive a gate; approve design (H1–H6); deploy to production | — |
 | **Conductor** | The one session Thomas designates ([active mission](docs/07-planning/active-mission.md)); older text calls it the *orchestrator* or *orchestrating session* | Own the queue, dependency graph, shared resources, migration allocation, merge order, release coordination and the one continuation; own the control-plane records (`status.md`, issue and board status, and decision-log entries other than those below); perform protected merges once every gate is green | Waive a gate; approve its own work; merge with a red, missing or stale gate |
-| **Lane agent** | Any agent with a bounded assigned task | Branch, commit, push and open a PR for its task without asking again; add a decision-log entry in its own PR only to record a decision Thomas made for that task, citing its source; return a handoff | Merge; edit the queue, scheduler, continuation, a control-plane file (this file, `CLAUDE.md`, the workflow, `ci-cd.md`, `CODEOWNERS`, the active mission, `status.md`) or a shared contract it was not assigned; declare the program complete |
+| **Lane agent** | Any agent with a bounded assigned task | Branch, commit, push and open a PR for its task without asking again; add decision-log entries in its own PR where the spec, SDLC or Definition of Done requires one for its task, and to record a decision Thomas made for that task citing a source received directly from him (never a relay); return a handoff | Merge; edit the queue, scheduler, continuation, a control-plane file (this file, `CLAUDE.md`, the workflow, `ci-cd.md`, `CODEOWNERS`, the active mission, `status.md`) or a shared contract it was not assigned; declare the program complete |
 | **Independent reviewer** | A fresh context that did not author, direct or remediate the change | Review the exact candidate and record a verdict | Review its own work |
 | **Policy maintainer** | A session Thomas explicitly assigns to the instruction system | Audit and rewrite policy files through a normal PR | Implement product features; take over the conductor's queue or scheduler |
 

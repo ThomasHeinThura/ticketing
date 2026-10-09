@@ -210,7 +210,7 @@ over **landed commits, not the net tree**, mirroring the CI note rule in
 
 ```bash
 git merge-base --is-ancestor <reviewed> <candidate>               # reviewed head is an ancestor
-git log -m --format=%H --name-status <reviewed>..<candidate>      # every entry: A/M of this PR's notes
+git log -m --format=%H --name-status --summary <reviewed>..<candidate>  # every entry: A/M of this PR's notes; no mode change
 git log -m --format= --numstat <reviewed>..<candidate>            # deletions column is 0
 ```
 
