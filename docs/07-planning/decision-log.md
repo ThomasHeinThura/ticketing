@@ -1,3 +1,41 @@
+### 2026-10-10 · Owner approves G11 speed-calibrated measurement
+
+**Decision:** Thomas approves fixing the G11 measurement **method** by speed calibration.
+Each G11 job runs a fixed, pinned, CPU-bound reference workload in the same browser and the
+same CPU-throttle state as each metric it normalises, derives the runner's speed factor
+relative to a recorded reference value R0, and judges every CPU-bound metric against its
+**unchanged** budget after normalising to reference speed. The CPU model, the calibration
+samples and factor, and both raw and normalised sample sets (including a retry's first set)
+are logged. The statistic stays the median of three with one retry set; best-of-N is never
+used. A factor outside 0.5–2.5, or an unstable calibration, fails the job closed. While R0 is
+absent the gate runs calibration-only and judges raw values exactly as before.
+
+**Scope:** the method only. Budgets, workloads, row/card counts, CPU and network throttling,
+sample counts and the retry rule are unchanged, and no budget is lowered or raised. This
+narrows the earlier owner P0 directive line "No … performance-threshold change" only as to
+**method**; thresholds remain Thomas-only. It supersedes the G11 sampling text that treated
+absolute millisecond medians on an uncalibrated runner as the whole measurement
+(`docs/02-design/ux-quality-gates.md` G11 harness table and the 2026-10-01 G11 failure-evidence
+entry's "does not change ... marks, throttles, fixtures, retry policy" scope as it applies to
+the judged value). It does not supersede that entry's trace and network-summary rules.
+
+**Evidence:** the variance diagnosis of PR #602 at `66c736e71c87b2372ba1cbf8250236ac37191565`
+found hosted `ubuntu-latest` in at least two speed classes (main-equivalent code passed G11 on
+8 of 11 fast-class jobs and 0 of 25 slow-class jobs; unthrottled list render correlated
+r=0.97 with LCP, r=0.94 with board render). The three #602 results (attempt 1 FAIL, rerun PASS,
+run `37967068981` FAIL) ran byte-identical code.
+
+**Historical results:** the G11 results above (66c736e7 attempt-1 FAIL, rerun PASS, run
+37967068981 FAIL) remain as measured under the old, uncalibrated method. They are not
+re-judged, relabelled, or converted to passes by this decision.
+
+**R0 status:** unpinned. No hosted measurement of the calibration workload exists, so none is
+invented. Until R0 is recorded from real hosted runs and pinned with its evidence, no
+calibrated gate is claimed and the gate behaves as before.
+
+**Recorded by:** Claude Sonnet implementation worker for the Claude Opus conductor session,
+from Thomas's direct decision to that session, 2026-10-10.
+
 ### 2026-10-09 · Permit a narrow P0 strict-terminal diagnostic witness
 
 **Decision:** Thomas explicitly approves a bounded strict-terminal diagnostic witness to

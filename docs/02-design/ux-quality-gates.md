@@ -239,6 +239,51 @@ would affect (LCP, INP, CLS, route transition); render-time and bundle-size rows
 the application's own work and are deliberately left unthrottled so a regression there is
 never masked by throttling noise.
 
+**Speed-calibrated judgment (owner decision 2026-10-10).** `Emulation.setCPUThrottlingRate` is
+relative to the host, so a slower hosted runner stays slower after throttling. To measure the
+product rather than the runner, each sample set of a CPU-bound metric is preceded by a pinned
+reference workload, and the metric is judged against its unchanged budget after normalisation
+to reference speed. Only the measurement method changes; budgets, workloads, row/card counts,
+throttling, network emulation, the three-sample median, and the single retry set do not.
+
+- **Workload.** A deterministic, CPU-bound, React-like build in the same browser: a seeded
+  virtual tree of 400 rows × 6 cells is mounted into the DOM, laid out, patched (text, class,
+  and style changes), laid out again, and removed. It runs in a fresh context of the benchmark
+  browser, with the metric's own CPU-throttle state (4× for throttled metrics, none for
+  unthrottled ones). Two warm-up runs are discarded, five runs are measured, the statistic is
+  the median, and the spread is (max − min) / median. Its source is
+  `CALIBRATION_SOURCE` in `scripts/ci/lib/performance-calibration.mjs`, pinned by a SHA-256 that the
+  bench checks before every run.
+- **Factor.** `F = calibration median / R0`, with one R0 per throttle state, recorded against the
+  pinned source hash and citing its hosted-run evidence. `F > 1` is a slower runner.
+- **Normalisation, only where CPU-bound.** Unthrottled list render and board render, and the
+  throttled interaction click-to-paint metrics (create, command palette open, command-palette
+  keyboard navigation, task state, task assignment) and route transition: `value / F`. LCP: only
+  the CPU portion after DOMContentLoaded is scaled, `DCL + (LCP − DCL) / F`; the network floor is
+  never scaled (diagnosis data: DCL is about 2.05–2.16 s on both runner classes while the
+  post-DCL portion is about 250–280 ms fast and 400–430 ms slow). Sign-in click-to-paint,
+  comment click-to-paint, board-drag p95 frame time, CLS and the G13 windows are not CPU-bound
+  on the recorded data (ratios 1.0, 0.84, 1.00 between runner classes; frame-quantised or
+  dimensionless) and are judged raw.
+- **Symmetric and fail-closed.** A runner faster than the reference makes normalised values
+  larger, so it is judged more strictly. `F` must lie in [0.5, 2.5] and the calibration spread
+  must be at most 0.35; otherwise the job fails, never passes. A present but malformed or stale
+  R0 (non-positive value, a different source hash, or no cited evidence) also fails.
+- **R0 required; calibration-only until recorded.** While R0 is absent the gate runs
+  calibration-only: calibration is measured and logged but never gated, and every metric is
+  judged raw, exactly as before this method. No calibrated gate is claimed until R0 is recorded
+  from real hosted runs and pinned.
+- **Logging.** The job prints the CPU model and `nproc`, whether R0 is pinned, and per sample
+  set the calibration runs, median, spread, and factor, and the raw and normalised samples with
+  both medians. When a retry occurs both sets are printed. Every metric is printed raw and
+  normalised.
+- **Retry rule unchanged.** The judged (normalised) median of three is compared with the
+  budget; if it is at or over budget, one more set is calibrated and sampled, and that second
+  set decides. Best-of-N is never used.
+
+Historical G11 results measured before this method (including #602's attempt-1 FAIL, rerun
+PASS, and run `37967068981` FAIL at `66c736e7`) remain as measured under the old method.
+
 ### G12 · Portal bundle purity
 
 **Fails on:** any module under `routes/agent/` or `components/god-mode/` appearing in the
