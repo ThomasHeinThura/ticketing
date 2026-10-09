@@ -10,6 +10,7 @@ import {
 } from "react";
 import { useTranslation } from "react-i18next";
 import PageTitle from "@/components/page-title";
+import WorkItemCreateDialogShell from "@/components/work-item/work-item-create-dialog-shell";
 import type { WorkItemsResult } from "@/fetchers/work-item/get-work-items";
 import useGetProjects from "@/hooks/queries/project/use-get-projects";
 import useGetWorkItems from "@/hooks/queries/work-item/use-get-work-items";
@@ -40,9 +41,6 @@ function preloadWorkItemsPanel() {
 const WorkItemsPanel = lazy(loadWorkItemsPanel);
 const WorkItemListControls = lazy(
   () => import("@/components/work-item/work-item-list-controls"),
-);
-const WorkItemCreateDialogLoader = lazy(
-  () => import("@/components/work-item/work-item-create-dialog-loader"),
 );
 
 import {
@@ -304,7 +302,7 @@ function ProjectWorkItemsRoute({ projectKey }: { projectKey: string }) {
           />
         </Suspense>
         {project && isCreateOpenForProject ? (
-          <WorkItemCreateDialogLoader
+          <WorkItemCreateDialogShell
             projectId={project.id}
             workspaceId={workspace?.id}
             onClose={closeCreateDialog}
