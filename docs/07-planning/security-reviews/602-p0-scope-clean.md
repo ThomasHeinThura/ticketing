@@ -230,3 +230,12 @@ Private original reports remain outside Git; these secret-free bindings preserve
 - `p0-b757-v26-final-sol.md`: SHA-256 `c93aa76dce4d7be4ba146a4ba38c5f150f5cae79f35bb4c02fa1fd672ea121ca`.
 - `p0-oracle-8a27-luna.md`: SHA-256 `4c9b6283e37d571268f8ae3749589ea22c6fcb1757698df5d594137a9cab7486`.
 - `p0-oracle-8a27-sol.md`: SHA-256 `9be1a280b82a86f57369eda830105f87b7c9b22f1d336bb0574d2b2b8a61a68f`.
+
+## Oracle fixture type correction — exact 9179 source
+
+**Reviewed head:** `9179d4d5d582eae9f2525ed434a2db2f65af336c`
+
+Hosted static found TS2345 in the malformed-ID test fixture: its object union was not a valid HeadersInit type. The fixture now constructs a Headers instance and conditionally sets the same header. Cases, inputs, expected results, comparator assertions and production source remain unchanged. Author API typecheck passed all four configurations after building its three workspace dependencies; focused PostgreSQL remained 17/17, with Biome and diff check passed. Fresh exact-head read-only confirmations from independent GPT-6 Luna `/root/p0_oracle_delta_luna` and GPT-6 Sol `/root/p0_oracle_delta_sol` are CLEAR and confirm the earlier assertion/security verdict still applies. They did not rerun tests; owner evidence is attributed as such. No extra substantive review panel or blanket CI acceptance is claimed.
+
+- `p0-oracle-9179-luna-confirmation.md`: SHA-256 `2e5a93f7a7b8d364661e7eb730b6df54477ddc46650472a42e98209e5a0634a8`.
+- `p0-oracle-9179-sol-confirmation.md`: SHA-256 `dbcc5d3ff2709bcff7fcce9e90af9a8db594b55da57095410f875ad61da09092`.
