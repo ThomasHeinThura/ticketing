@@ -42,10 +42,12 @@ Re-check. This repository moves too quickly for conversational memory to be auth
 
 The current authorized objective is **Integration Freeze and SIT Consolidation**, governed by
 [AGENTS.md § Authority and Integration Freeze Mode](AGENTS.md#authority-and-integration-freeze-mode).
-Resume the [integration queue](docs/07-planning/integration-execution-queue.md) after the
-control-plane PR is accepted. Integrate existing functionality and acceptance fixes; freeze
-new feature scope. Do not automatically complete P4 or claim P0–P7 closure. After final
-integrated SIT acceptance and audit, stop and await the next owner roadmap.
+Continue the existing [integration queue](docs/07-planning/integration-execution-queue.md)
+for owner-authorized work according to each task's actual dependencies, including while the
+control-plane PR is pending. Only actions that require authority introduced by that PR wait
+for its acceptance. Integrate existing functionality and acceptance fixes; freeze new
+feature scope. Do not automatically complete P4 or claim P0–P7 closure. After final integrated
+SIT acceptance and audit, stop and await the next owner roadmap.
 
 Calendar pressure changes urgency, not gates. A gate that closes a real defect does not become
 thinner because a date is near.
@@ -402,6 +404,21 @@ listed in the durable queue. The throttle does not authorize new P1–P7 feature
 Inventory existing branch sources, establish dependencies, compose authorized slices and
 prepare real runtime evidence. A shared contract gets its own bounded PR; never let two lanes
 edit it concurrently. Product decisions and formal phase closure retain their own gates.
+
+The owner-designated conductor alone owns the global queue, dependency graph, shared test
+windows/resources, merge order, release coordination and existing continuation/scheduler.
+Lanes own only their bounded deliverable and handoff; they do not create or retarget a global
+continuation, update the integration branch, or allocate shared migrations/resources. Do not
+repeat volatile PR/check statistics in this durable routing guide; keep task state in the
+conductor's queue and dated status snapshot.
+
+For failed checks, use the actual evidence to distinguish product defects, test/fixture defects,
+environment/invocation defects, review/PR metadata defects and unexplained timing variation.
+Choose a remedy at the layer the diagnosis supports. Do not alter correct product source merely
+to trigger CI or repeat unchanged acceptance runs until they pass. The approved retry policy
+still applies; when it blocks a justified action, request one precise owner decision. Repeated
+failures on one mechanism follow the cross-session, version-independent whole-entrypoint
+diagnosis in [error-fix-loop.md](docs/04-engineering/error-fix-loop.md#the-three-attempt-rule).
 
 ---
 

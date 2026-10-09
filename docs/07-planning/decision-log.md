@@ -88,6 +88,52 @@ remains immutable and is not relabeled.
 
 **Recorded:** orchestrator, Thomas's explicit approval in this task, 2026-10-09.
 
+### 2026-10-09 · Owner directive: single-conductor delivery and cause-based acceptance
+
+**Decision and authorization:** Thomas supplied the current Conductor Coordination & Delivery
+Directive. The designated conductor alone owns the durable queue, dependency graph, shared
+test windows/resources, integration branch and migration allocation, merge order, release
+coordination, and existing continuation/scheduler. The #612 control-plane auditor owns only
+its bounded policy PR and handoff; it does not become a second conductor or alter global
+continuation. The conductor continues owner-authorized work whose actual dependencies are
+satisfied while #612 is pending. Acceptance of a documentation PR is not a blanket queue
+dependency; record the specific required source, artifact, decision or acceptance result.
+
+**Failure response:** classify observed failures as product, test/fixture, environment or
+invocation, review/PR metadata, or unexplained timing before choosing a remedy. Record the
+observation, diagnosis, change and result. Change product source only when the diagnosis
+warrants it. Do not repeat unchanged acceptance runs; use the approved retry policy and raise
+one precise owner decision only if it blocks a justified action. Three failures on one
+mechanism count across versions, branches, sessions and reviewers: pause that mechanism,
+assign an independent whole-entrypoint diagnosis, and agree on a bounded cause-appropriate
+repair before another attempt. Exercise the actual CLI/arguments, artifacts and source/image
+bindings, collectors, serialization/reconciliation, and preserved failure ledger (including
+missing, nullable, unexpected and corrupt cases). Preflight is not live acceptance.
+
+**P0 evidence boundary:** pre-merge proofs are required reviews, current CI, installer
+regression, exact-image boot and applicable pre-merge runtime/authorization evidence. After
+eligible merge, verify the signed-main release installer, upgrade and rollback; run the fresh
+accepted-main phase finalizer before P0 closure. Do not require the main-only signed release
+before an otherwise eligible source merge. No existing security, CI, test, performance,
+authorization, tenant-isolation or protected-branch gate changes.
+
+**Preserved gates and scope:** existing-functionality integration and acceptance fixes only;
+no new feature scope or automatic P4 completion. Existing conductor and scheduler remain the
+single continuation. GHCR/GitHub Releases and SIT only; no Docker Hub or production. Existing
+review tiers, protected merge, and final integrated SIT audit/stop condition remain.
+
+This directive supersedes conflicting operational statements in the 2026-10-09 Integration
+Freeze owner entry below only where they impose a global wait for #612 acceptance, cede
+conductor/scheduler ownership to a lane, or require a product-source change regardless of the
+demonstrated failure cause. It does not replace the prior scope, release-target, review or
+gate decisions.
+
+**Source:** explicit owner Conductor Coordination & Delivery Directive attachment, received
+2026-10-09.
+**Recorded by:** top-level orchestrator, 2026-10-09.
+
+---
+
 ### 2026-10-09 · Owner directive: Integration Freeze and SIT Consolidation
 
 **Decision and authorization:** Thomas explicitly directed one focused, independently reviewed

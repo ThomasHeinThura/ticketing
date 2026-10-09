@@ -45,7 +45,11 @@ Ask "why?" until you reach something structural:
 The last answer is the one worth fixing. Patching the first produces a fix that works and
 teaches nothing.
 
-**Do not change code until you can say, in one sentence, why it is broken.**
+**Do not change product code until evidence supports a product cause.** A failed check may
+instead come from its test/fixture, environment or invocation, review/PR metadata, or
+unexplained timing variation. Classify the failure from its actual evidence before choosing a
+remedy. Record the observation, diagnosis, change and result. A red CI result alone does not
+justify editing correct product code to trigger another run.
 
 ## 3 · Fix
 
@@ -99,7 +103,9 @@ the hole.
 
 ## The three-attempt rule
 
-**After three failures on the same mechanism, stop speculative iterations and change altitude.**
+**After three failures on the same mechanism, pause that mechanism and diagnose the whole
+entry point before another attempt.** A new version, branch, session or reviewer does not
+reset the count. Other authorized tasks continue.
 
 Write down:
 
@@ -111,26 +117,40 @@ Write down:
 
 Pause iterations on that mechanism, not unrelated authorized tasks. Put the five-item note in
 the PR, a dated **Blocked** status entry and the
-[integration queue](../07-planning/integration-execution-queue.md). Escalate to Thomas only the
-owner-only decision, waiver or unavailable external access; technical diagnosis and structural
-remediation remain authorized. A required reviewer-capacity block stays at its existing tier.
+[integration queue](../07-planning/integration-execution-queue.md). Assign an independent
+whole-entrypoint diagnosis, then agree on a bounded, cause-appropriate repair before another
+attempt. Escalate to Thomas only the owner-only decision, waiver or unavailable external
+access; technical diagnosis remains authorized. A required reviewer-capacity block stays at
+its existing tier.
 
 Before any further runner iteration:
 
-1. Identify the root cause from preserved failure evidence; state the mechanism and what
-   remains unknown. If the cause is unknown, gather targeted diagnostic evidence first.
-2. Replace repeated special cases with the necessary structural invariant/helper/redesign.
-   Keep the repair bounded to the identified cause and its integration dependencies.
-3. Add a regression that fails before the fix and passes after through the **complete real
-   invocation path**: actual entry command/wrapper, arguments and environment/config loading,
-   process lifecycle, real runtime/service interactions, result/artifact production and exit
-   status/cleanup as applicable. A helper-only test or offline fixture is not this regression.
-4. Run that regression and applicable source-bound checks before scheduling another expensive
-   runner/acceptance pass. Preserve command, source SHA, counts, receipts and failures.
-5. Review the current candidate at the existing risk-appropriate Luna/Sol tier. Do not add
-   automatic comfort rounds; changed source still needs the required independent delta review.
+1. Classify each failure from preserved evidence: product defect; test/fixture defect;
+   environment or invocation defect; review/PR-metadata defect; or unexplained timing
+   variation. State what is established and what remains unknown. Gather targeted diagnostic
+   evidence when the cause is not established.
+2. Choose the smallest remedy that follows from that diagnosis. Repair product source only for
+   a demonstrated product defect. Correct a faulty test/fixture, environment/invocation or
+   factual metadata at its own layer. For unexplained timing, preserve evidence and investigate
+   under the approved verification/retry policy. Do not speculate on source optimization or
+   edit correct product code merely to trigger another CI run.
+3. For a runner failure, exercise and regress the **complete real invocation path**: actual
+   CLI/launcher and arguments, artifact loading and source/image bindings, collector call
+   sites, serialization and reconciliation, process lifecycle, runtime/service interactions,
+   result/artifact production and exit status/cleanup as applicable. Replay the retained
+   failure ledger, including missing inputs, unexpected events, nullable decisions and
+   corrupt bindings. Preserve evidence before validation or cleanup can discard it. Testing
+   only helpers populated with values the real runtime never supplies is insufficient.
+4. Keep preflight distinct from acceptance: offline or local preparation may diagnose and
+   validate a path, but only the required actual live run establishes runtime acceptance. Run
+   cause-specific regression and applicable source-bound checks before the next acceptance
+   attempt. Preserve command, source SHA, counts, exact receipts and failures.
+5. Follow the approved retry policy; do not repeat an unchanged acceptance suite until it
+   passes. If an evidence-justified action is prevented by that policy, raise one precise
+   owner decision rather than inventing permission. Review a changed candidate at its existing
+   risk-appropriate Luna/Sol tier; no automatic comfort rounds.
 
-Do not reset this threshold with a new symptom, branch, session or reviewer. Offline
+Do not reset this threshold with a new symptom, version, branch, session or reviewer. Offline
 simulation may isolate a defect, but cannot substitute for actual runtime/SIT acceptance.
 Keep the same budgets, negative assertions, suite counts, exact-source requirements and CI
 checks; disabling tests or widening thresholds to make a runner green is not convergence.

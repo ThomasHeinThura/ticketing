@@ -285,6 +285,13 @@ Prefer a skill over freehand work — it encodes decisions already made.
   duplicates, and save the continuation identity and scope in the handoff. Stay quiet while
   blocked state is unchanged; notify on meaningful progress, failure or required owner action.
   A continuation must obey the same gates and stop after final SIT acceptance and audit.
+- The owner-designated conductor is the sole owner of the global queue, dependencies, shared
+  test windows/resources, merge order, release coordination and existing continuation/scheduler.
+  A lane may preserve its bounded handoff but must not create or retarget a global continuation,
+  change the integration branch or allocate shared migrations/resources. Continue unrelated
+  owner-authorized tasks while another task or PR is blocked; record the exact required source,
+  artifact, decision or acceptance dependency rather than a blanket wait for documentation PR
+  acceptance.
 - If continuation is unavailable, state that limitation and leave the explicit resume task.
   Never imply that an ended session continues by itself. A report is a checkpoint, not a
   substitute for committing, pushing, preserving state or arranging continuation.
@@ -337,8 +344,13 @@ mistake will not see it.
 Pause only the dependent task when a product contract is ambiguous, an unapproved schema or
 scope decision is required, an ADR conflicts, a required gate/reviewer is unavailable, or a
 blocking finding remains. Record the exact missing decision/evidence in the queue. After
-three failures on one mechanism, pause speculative runner iterations and follow the structural
-convergence protocol in [error-fix-loop.md](error-fix-loop.md#the-three-attempt-rule).
+three failures on one mechanism (not reset by a new version, branch, session or reviewer), pause
+that mechanism and assign an independent whole-entrypoint diagnosis; agree on a bounded repair
+before another attempt, following [error-fix-loop.md](error-fix-loop.md#the-three-attempt-rule).
+Classify the failure before choosing a remedy. Product source changes only when the evidence
+supports a product cause; environment, invocation, fixture and review-metadata failures have
+their own remedies. Do not repeat unchanged acceptance runs or edit correct product code just
+to trigger CI.
 
 The orchestrator continues unrelated dependency-safe authorized integration work. It stops
 only when all such work is exhausted and remaining tasks need owner-only decisions, waivers,
