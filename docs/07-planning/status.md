@@ -1,3 +1,28 @@
+## Status first — verified 2026-10-09 02:51 UTC (09:21 Asia/Yangon)
+
+**Live queue:** [integration execution queue](integration-execution-queue.md) refreshed against GitHub at 02:42 UTC: 20 open PRs and 442 remote branches. Accepted `main` remains `3096cb044bdf6ae98488bfc385f532fa6386343a`. Preserve all branch refs and existing source owners; the 177 accepted-main ancestors are history only, 54 retained in active-PR ancestry remain unaccepted, and 211 unassigned refs remain HOLD. No PR/branch disposition follows from ancestry or a partial blob match.
+
+**#601 documentation candidate:** PR #601 was at `f56da8966a7e4337b369e57b2d6c36aec9edf028` on accepted `main`. Its observed rollup had failures in static, PR-template/security-review, G11, dependency audit and secret scan; formal GitHub reviews were empty. Earlier Luna/Sol reports at `00764f7a` are historical and do not cover this candidate. The queue/status/decision-log batch advances #601 again; refresh its exact-head checks and reviews after push.
+
+**P0 #602:** exact source remains `12d9f899a3437a601e0da22a3c8b25ba9a70f430`; G11 is still 19/22 failed. V22 `20261009T021341Z-12d9f899` passed its scoped off-shadow run, and Sol's date ruling covers only nine changed nonmember-404 behaviors across three partial UTC buckets. A third 404 bucket is partial, not a full-day observation. The 27-source admission is guard-only; notification's new privacy-sensitive category and historical reuse remain blocked. V23 Sol admission is blocked by expired receipt/future window and was never run; preserve `/2026-10-09/p0-v23-sol-admission.md`. V24 remains implementation/repair only with no strict receipt or runtime execution. The observation automation is PAUSED. G11 diagnosis and exact-source strict/config prerequisites remain; task stays last. No strict activation, P0 completion, protected merge or release.
+
+**P1 #606:** current head `81c04729eaf721f8619180b00df1f80721034eb3`. Two independent Luna delta reviews and full Sol delta review are CLEAR for the omitted-body no-op behavior. Focused owner PostgreSQL is 41/41 PASS. Exact hosted integration run `37874560831` passed 154 files / 1,814 tests (924.92s); E2E, G4, G8, unit and build checks pass. PR-template and OpenAPI drift fail. G11 is 19/22: LCP 2,800/2,500 ms, board 632/500 ms, and the create dialog is missing at `performance.bench.ts:260` after `create-work-item-trigger.click()`. Do not attribute this to all performance budgets; raw evidence is `/Users/heinthura/.codex/taskdesk-evidence/2026-10-09/p1-606-hosted-failure/81c-g11.private.log`. Next source-owner action is to inspect the create interaction in the mixed #589 descendants, including the historical #600 Escape experiment, before any source change. Preserve source identity. Exact-image isolated boot/health and owned cleanup passed; no deployment or publication. Formal GitHub review list remains empty and integrated acceptance remains.
+
+**P4 #608:** head `8f1713934cb91fb7048930ae9b776b29cb67089b`; base #589 is still unaccepted and GitHub reports `CONFLICTING`. Two Luna and full Sol delta reviews are CLEAR; corrected current DTO PostgreSQL regressions 18/18, API typecheck, OpenAPI 225-operation generation/check, and contract checks pass. Hosted gates, accepted composition, image and integrated browser acceptance remain.
+
+**P1 #609:** remains draft at `21587556d3235ec927945dbc32c474079f973aff`, parented on #606's earlier `42a63482` head. Navigation tests pass 52/52; hosted integration is failed, and PR-template/OpenAPI/G11 fail. Its base remains unaccepted. Continue normal parent reconciliation; no history rewrite or acceptance implied.
+
+| Stage | Formal status |
+|---|---|
+| P0 | Open — V22 scoped runtime only; partial date evidence, guard-only source admission, V23 never run, V24 not authorized to execute, G11 19/22 and strict/config/task prerequisites remain. Automation paused; no completion or merge. |
+| P1 | Open — #606 reviews clear for behavior delta and hosted integration passes, but PR-template/OpenAPI/G11 and integrated acceptance remain; #609 is draft on an unaccepted parent with 52/52 scoped tests and hosted failures. |
+| P2 | Open — existing owners retained; central migration replay and integrated acceptance remain. |
+| P3 | Open — existing identity owners retained; exact composed security review and provider acceptance remain. |
+| P4 | Open — #608 delta reviews/tests pass, but #589 base is unaccepted/conflicting and hosted/composed/image/browser acceptance remain; #607 remains held. |
+| P5–P7 | Open and held under the feature freeze. |
+
+---
+
 ## Status first — verified 2026-10-09 02:18 UTC (08:48 Asia/Yangon)
 
 **Execution queue:** [integration execution queue](integration-execution-queue.md) is refreshed against live GitHub at this capture: 20 open PRs, 442 remote branches. The linked branch inventory still has all 442 names; current head deltas include #601, #606, #608 and #609 against the earlier inventory capture. Preserve all refs: 177 accepted-main ancestors are conserved as history only, 54 branches are retained in active-PR ancestry but are not accepted, and 211 remain unassigned/HOLD for source ownership and semantic comparison. No blanket source completeness claim or branch cleanup is made.

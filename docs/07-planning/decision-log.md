@@ -1,3 +1,21 @@
+### 2026-10-09 · Reconcile queue and P0 evidence boundary (02:51 UTC)
+
+The execution queue and status snapshot were refreshed from live GitHub and the exact hosted evidence. GitHub returned 20 open PRs and 442 remote branches; accepted `main` remains `3096cb044bdf6ae98488bfc385f532fa6386343a`. All 177 accepted-main ancestor refs, 54 refs retained in active-PR ancestry, and 211 unassigned/HOLD refs remain preserved. Partial source overlap and ancestry do not close branches or PRs.
+
+For #606, exact head `81c04729eaf721f8619180b00df1f80721034eb3` has two independent Luna delta CLEAR reports and a full Sol security delta CLEAR report for the omitted-body no-op behavior. Focused owner PostgreSQL passed 41/41. Hosted run `37874560831`, integration job `113640040996`, passed 154 files and 1,814 tests in 924.92 seconds. E2E, G4, G8, unit and build checks pass. PR-template and OpenAPI drift fail. G11 is 19/22: LCP 2,800/2,500 ms, board 632/500 ms, and the create dialog is missing at `performance.bench.ts:260` after `create-work-item-trigger.click()`. This does not imply all performance budgets fail. Raw evidence is `/Users/heinthura/.codex/taskdesk-evidence/2026-10-09/p1-606-hosted-failure/81c-g11.private.log`. The bounded next source-owner step is to inspect the create interaction in mixed #589 descendants, including the historical #600 Escape experiment, before editing source. GitHub has no formal review entries on this head. The isolated exact-image boot/health/cleanup is not deployment or acceptance.
+
+For #608, exact head `8f1713934cb91fb7048930ae9b776b29cb67089b` retains two Luna and full Sol delta CLEAR reports and current 18/18 PostgreSQL DTO regressions, API typecheck, 225-operation OpenAPI and contract checks pass. GitHub reports the #589 base as unaccepted and conflicting. No gate or composition status is inferred from the delta reviews.
+
+For #609, exact head `21587556d3235ec927945dbc32c474079f973aff` remains draft on #606 parent `42a63482`; navigation tests pass 52/52, hosted integration is failed, PR-template/OpenAPI/G11 fail, and the base remains unaccepted. Continue normal parent reconciliation without rewriting history.
+
+P0 remains open. Exact V22 run `20261009T021341Z-12d9f899` is scoped off-shadow evidence; the third nonmember-404 observation is in a partial UTC bucket. The 27-source admission is guard-only; notification's new privacy-sensitive category and historical reuse remain blocked. V23 Sol admission is blocked by expired receipt/future window and was never executed. V24 remains implementation/repair only with no strict receipt or runtime. Keep the observation automation PAUSED, diagnose G11, establish exact-source strict/config prerequisites, and keep task proof last. No new runtime, strict activation, merge, deployment, release or stage-completion authorization is made here.
+
+The queue records a bounded next source-conservation preparation: create a path/blob-level owner manifest for already-compared #606/#598 overlaps and explicitly preserve the unapproved calendar manifest/lockfile changes. The preparation must not be used to close a branch/PR or discard any ref.
+
+**Recorded:** operational reconciliation from exact GitHub PR heads/checks, hosted run/job output, and the current P0 admission/runtime records. These statements update scheduling/evidence status and authorize no quality-gate waiver.
+
+---
+
 ### 2026-10-09 · Resume eligible integration work with queue checkpoints; record #606/#608 answers (01:53 UTC)
 
 **Thomas’s explicit operating direction:** maintain one repository-backed execution queue for every open PR and active branch, select the next dependency-safe existing-work item automatically, and continue through execution-boundary checkpoints. Preserve the feature freeze. Checkpoints capture exact head, checks, review state, dependencies, owner, remaining action and disposition; refresh live GitHub before acting. A blocked lane does not stop other eligible existing work. This schedules work only: required independent reviews, exact-head CI, stage gates, Sol review where applicable, protected merge and finalizers remain unchanged. It does not authorize gate waiver, feature scope, deployment, release, or branch deletion.
