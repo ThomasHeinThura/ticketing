@@ -14,15 +14,18 @@ Reviewer counts, independence and truthful labels do not change: every review is
 recorded under the model that produced it, and historical Sol and Luna reviews keep their
 identity. The accepted security-review model block gains `GPT-6.1 Sol`.
 
+**Fallback upward only.** Thomas confirmed two cases directly in the recording session on
+2026-10-09: "Opus may do Sonnet/Haiku work when they’re unavailable, but Sonnet or Haiku never
+does security review. yes. please." Those two cases are owner decisions. The general form
+applied in the workflow — any Sol-tier model (including GPT-6 / GPT-6.1 Sol) may fill a
+Luna-tier role when no Luna-tier model is available, and no Luna-tier model fills any Sol-tier
+role — is the policy maintainer's extension of them through the tier mapping above; Thomas may
+reverse it.
+
 **Applied to the other roles** (the policy maintainer's reading of "anything is ok";
 Thomas may reverse any of it):
 - **Conductor:** the session Thomas designates. This replaces the fixed "a Claude Opus
   session is the conductor"; the current conductor is unchanged.
-- **Fallback upward only:** when no Luna-tier model is available, a Sol-tier model may fill a
-  Luna-tier role, as Instruction 1 already allowed for Opus. A Luna-tier model never fills a
-  Sol-tier role. **Thomas confirmed this rule directly** in the recording session on
-  2026-10-09: "Opus may do Sonnet/Haiku work when they're unavailable, but Sonnet or Haiku
-  never does security review. yes." It is an owner decision, not a reading.
 - **Read-only extraction:** any assigned model in either tier, never a retired route; its
   output is data until a reviewer re-verifies it.
 - **Sampled auditor:** unchanged — a fresh Claude Opus context, working from a packet
