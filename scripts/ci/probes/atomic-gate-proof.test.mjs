@@ -62,6 +62,7 @@ function repo(name, mutate = () => {}) {
   installFromRepo(dir, ".github/workflows/ci-fast.yml");
   installFromRepo(dir, ".github/workflows/ci-full.yml");
   installFromRepo(dir, ".github/actions/setup/action.yml");
+  installFromRepo(dir, ".github/actions/change-scope/action.yml");
   mutate(dir);
   return dir;
 }

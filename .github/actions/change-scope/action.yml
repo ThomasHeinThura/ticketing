@@ -1,0 +1,54 @@
+name: Change scope
+description: >-
+  Decide whether this run must execute the full verification (full=true) or whether the pull
+  request is policy-only (full=false). Runs the classifier from the MERGE BASE, never the
+  pull request's own copy, and answers full=true on any doubt. ci-cd.md § Applicability.
+
+outputs:
+  full:
+    description: "'false' only when the merge base's classifier proved the change policy-only; otherwise 'true'."
+    value: ${{ steps.decide.outputs.full }}
+
+runs:
+  using: composite
+  steps:
+    - name: Classify with the merge base's classifier
+      id: decide
+      shell: bash
+      env:
+        EVENT_NAME: ${{ github.event_name }}
+        BASE_REF: ${{ github.base_ref }}
+        HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+      # Fail closed by construction: `full` starts true and only the exact answer `policy`
+      # from the merge base's classifier turns it false. Every other path — another event, an
+      # unresolvable merge base, no classifier at the base, a crash, any other output — keeps
+      # it true. `set -e` is deliberately off so a failing probe falls through to "full"
+      # instead of ending the step before the output is written.
+      run: |
+        set +e
+        full=true
+        reason="event ${EVENT_NAME}: always full"
+        if [ "${EVENT_NAME}" = "pull_request" ]; then
+          base=$(git merge-base "origin/${BASE_REF}" "${HEAD_SHA}" 2>/dev/null)
+          if [ -z "${base}" ]; then
+            reason="merge base of origin/${BASE_REF} and ${HEAD_SHA} unresolved: full"
+          elif ! git cat-file -e "${base}:scripts/ci/classify-change.mjs" 2>/dev/null; then
+            reason="no classifier at merge base ${base}: full"
+          else
+            classifier="${RUNNER_TEMP:-/tmp}/classify-change-${base}.mjs"
+            git show "${base}:scripts/ci/classify-change.mjs" > "${classifier}"
+            verdict=$(node "${classifier}" --repo . --base "${base}" --head "${HEAD_SHA}" 2>&1)
+            status=$?
+            if [ "${status}" -eq 0 ] && [ "${verdict}" = "policy" ]; then
+              full=false
+              reason="policy-only, decided by the classifier at merge base ${base}"
+            else
+              reason="classifier at ${base} (exit ${status}): ${verdict}"
+            fi
+          fi
+        fi
+        echo "full=${full}" >> "${GITHUB_OUTPUT}"
+        echo "change scope: full=${full} — ${reason}"
+        if [ -n "${GITHUB_STEP_SUMMARY:-}" ]; then
+          echo "change scope: full=${full} — ${reason}" >> "${GITHUB_STEP_SUMMARY}"
+        fi

@@ -531,6 +531,43 @@ sign-in screen in a real browser. The workflow job's required context is
 `a11y - accessibility (G4, axe)`. `pnpm test:perf` remains a separate Playwright project in
 the full stage; [testing-strategy.md](testing-strategy.md) describes both commands.
 
+### Applicability — policy-only pull requests
+
+Authorized by Thomas (decision log 2026-10-09, "Opus policy-repair conductor"): a change to
+nothing but the agent operating policy and planning records is not a new application build,
+so it is not re-measured as one. Everything else is verified in full.
+
+- **Policy-only** means every landed commit from the merge base to the head touches only
+  plain Markdown files among `AGENTS.md`, `CLAUDE.md`, `docs/README.md`, the four workflow
+  documents (`agent-workflow.md`, `definition-of-done.md`, `sdlc.md`, `error-fix-loop.md`)
+  and `docs/07-planning/**/*.md`. The executable rule is `scripts/ci/classify-change.mjs`;
+  this paragraph describes it and does not override it. `ci-cd.md` itself, `.github/**`,
+  `scripts/**`, any other document, any non-Markdown file, a symlink, an executable bit, a
+  rename out of product code, a merge or a reverted product commit all make the change
+  **full**. Labels, titles and PR bodies are never read.
+- **What still runs on a policy-only pull request:** the PR-template and security-review
+  check, the registers job (including `check:policy`, `check:reviews` and the identifier
+  registers), the gate checkers and red probes, `CI matches ci-cd.md`, and the secret scan.
+- **What reports skipped:** route policy, static, unit, coverage, contract, build, dependency
+  audit, Helm, integration, E2E, G4, G8 and G11. Their required contexts still report
+  (GitHub records a job skipped by its condition as successful), so the ruleset needs no
+  change. A required check is never turned green by anything but its own run or this
+  classification.
+- **How it stays trustworthy.** The `scope` job runs `.github/actions/change-scope`, which
+  executes the classifier **taken from the merge base**, not the pull request's copy, and
+  answers `full=true` on any other event, an unresolvable base, a missing or crashing
+  classifier, or any answer but exactly `policy`. Gate jobs carry `needs: scope` and
+  `if: ${{ !cancelled() && needs.scope.outputs.full != 'false' }}`, so a failed or missing
+  answer still runs them. `scripts/ci/lib/workflow-gates.mjs` (A9) accepts that edge only in
+  this exact shape; `scripts/ci/probes/change-scope.test.mjs` attacks each layer.
+- **Bootstrap and residual.** The pull request that introduces the classifier runs in full —
+  its merge base has no classifier. The workflows and the composite action run from the pull
+  request, as every workflow under `pull_request` does; changing them is security-scope
+  (`.github/**`), and the base classifier answers full for them.
+- **Not changed:** performance budgets, audit thresholds, benchmark sampling, and full
+  verification of product, dependency, deployment, CI and mixed changes. A release candidate
+  keeps full integrated acceptance; `push` to `main` and merge-queue runs are always full.
+
 ## Main pipeline
 
 On merge:

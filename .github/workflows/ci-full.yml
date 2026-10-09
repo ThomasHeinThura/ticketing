@@ -29,9 +29,31 @@ env:
   DO_NOT_TRACK: "1"
 
 jobs:
+  # ── Change scope (ci-cd.md § Applicability) ─────────────────────────────────────────────
+  # Decides, from the MERGE BASE's classifier, whether this pull request is policy-only. Gate
+  # jobs below that measure the product carry `needs: scope` and run unless this job answered
+  # exactly `full == 'false'`: a failed, cancelled-mid-way or missing answer still runs them.
+  # Never conditional itself, never `needs` anything: it must always produce an answer.
+  scope:
+    name: change scope
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    outputs:
+      full: ${{ steps.classify.outputs.full }}
+    steps:
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5.1.0
+        with:
+          # The classifier reads landed commits from the merge base to the head.
+          fetch-depth: 0
+      - id: classify
+        uses: ./.github/actions/change-scope
+
   integration:
     name: integration - Postgres 18
-    # RUNS ON EVERY PULL REQUEST. No label gate (F5).
+    needs: scope
+    if: ${{ !cancelled() && needs.scope.outputs.full != 'false' }}
+    # RUNS ON EVERY PULL REQUEST that is not policy-only (ci-cd.md § Applicability). No label
+    # gate (F5): the only skip is the merge base's classifier proving the change policy-only.
     #
     # This job used to be conditional on the `ready-for-review` label. GitHub treats a
     # SKIPPED required check as satisfied, so making it required — which `## Needs Thomas`
@@ -64,6 +86,8 @@ jobs:
 
   e2e:
     name: e2e - protected-route redirect
+    needs: scope
+    if: ${{ !cancelled() && needs.scope.outputs.full != 'false' }}
     runs-on: ubuntu-latest
     timeout-minutes: 20
     steps:
@@ -88,6 +112,8 @@ jobs:
 
   a11y:
     name: a11y - accessibility (G4, axe)
+    needs: scope
+    if: ${{ !cancelled() && needs.scope.outputs.full != 'false' }}
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5.1.0
@@ -111,6 +137,8 @@ jobs:
 
   visual:
     name: visual regression (G8)
+    needs: scope
+    if: ${{ !cancelled() && needs.scope.outputs.full != 'false' }}
     runs-on: ubuntu-latest
     # Screenshot baselines depend on browser and font rasterization. Pin the Playwright
     # browser and its Noble system fonts to the environment used to produce the checked-in
@@ -141,6 +169,8 @@ jobs:
 
   performance:
     name: performance - budgets (G11)
+    needs: scope
+    if: ${{ !cancelled() && needs.scope.outputs.full != 'false' }}
     runs-on: ubuntu-latest
     timeout-minutes: 30
     steps:
