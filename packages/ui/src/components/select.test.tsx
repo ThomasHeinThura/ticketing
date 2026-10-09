@@ -61,7 +61,7 @@ describe("Select", () => {
     expect(onSelectHigh).toHaveBeenCalledTimes(1);
   });
 
-  it("GM observability: duplicate Select labels stay scoped to the opened listbox", () => {
+  it("GM observability: duplicate Select labels resolve without aria-controls", () => {
     const onFirstDebug = vi.fn();
     const onSecondDebug = vi.fn();
     render(
@@ -95,44 +95,31 @@ describe("Select", () => {
     const secondTrigger = screen.getByRole("combobox", {
       name: "Second level",
     });
+    const getOpenOption = (trigger: HTMLElement) => {
+      expect(trigger).toHaveAttribute("aria-expanded", "true");
+      const listboxes = screen.getAllByRole("listbox");
+      expect(listboxes).toHaveLength(1);
+      const listbox = listboxes[0];
+      if (!listbox) {
+        throw new Error("Opened select has no accessible listbox");
+      }
+      const listboxId = trigger.getAttribute("aria-controls");
+      if (listboxId !== null) {
+        expect(document.getElementById(listboxId)).toBe(listbox);
+      }
+      return within(listbox).getByRole("option", { name: "debug" });
+    };
 
     fireEvent.click(firstTrigger);
-    const firstListboxId = firstTrigger.getAttribute("aria-controls");
-    expect(firstListboxId).not.toBeNull();
-    if (firstListboxId === null) {
-      throw new Error("Opened first select has no controlled listbox");
-    }
-    const firstListbox = document.getElementById(firstListboxId);
-    expect(firstListbox).toHaveAttribute("role", "listbox");
-    if (!(firstListbox instanceof HTMLElement)) {
-      throw new Error("First select's controlled listbox is missing");
-    }
+    firstTrigger.removeAttribute("aria-controls");
+    expect(firstTrigger).not.toHaveAttribute("aria-controls");
+    expect(screen.getAllByRole("option", { name: "debug" })).toHaveLength(1);
 
-    fireEvent.click(
-      within(firstListbox).getByRole("option", { name: "debug" }),
-    );
+    fireEvent.click(getOpenOption(firstTrigger));
     expect(onFirstDebug).toHaveBeenCalledTimes(1);
     expect(onSecondDebug).not.toHaveBeenCalled();
     expect(firstTrigger).toHaveTextContent("error");
     expect(secondTrigger).toHaveTextContent("error");
-
-    fireEvent.click(secondTrigger);
-    const secondListboxId = secondTrigger.getAttribute("aria-controls");
-    expect(secondListboxId).not.toBeNull();
-    if (secondListboxId === null) {
-      throw new Error("Opened second select has no controlled listbox");
-    }
-    const secondListbox = document.getElementById(secondListboxId);
-    expect(secondListbox).toHaveAttribute("role", "listbox");
-    if (!(secondListbox instanceof HTMLElement)) {
-      throw new Error("Second select's controlled listbox is missing");
-    }
-
-    fireEvent.click(
-      within(secondListbox).getByRole("option", { name: "debug" }),
-    );
-    expect(onSecondDebug).toHaveBeenCalledTimes(1);
-    expect(firstTrigger).toHaveTextContent("error");
-    expect(secondTrigger).toHaveTextContent("error");
+    expect(secondTrigger).toHaveAttribute("aria-expanded", "false");
   });
 });

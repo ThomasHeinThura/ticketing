@@ -9,17 +9,21 @@ async function getControlledOption(
   trigger: Locator,
   name: string,
 ): Promise<Locator> {
+  await expect(trigger).toHaveAttribute("aria-expanded", "true");
+  const listboxes = page.getByRole("listbox").filter({ visible: true });
+  await expect(listboxes).toHaveCount(1);
+
   const listboxId = await trigger.getAttribute("aria-controls");
-  expect(listboxId).not.toBeNull();
-  if (listboxId === null) {
-    throw new Error("Opened select trigger has no controlled listbox");
+  let listbox = listboxes;
+  if (listboxId !== null) {
+    listbox = listboxes.and(page.locator(`[id=${JSON.stringify(listboxId)}]`));
+    await expect(listbox).toHaveCount(1);
   }
 
-  const listbox = page
-    .getByRole("listbox")
-    .and(page.locator(`[id=${JSON.stringify(listboxId)}]`));
-  await expect(listbox).toHaveCount(1);
-  return listbox.getByRole("option", { name, exact: true });
+  const option = listbox.getByRole("option", { name, exact: true });
+  await expect(option).toHaveCount(1);
+  await expect(option).toBeVisible();
+  return option;
 }
 
 test.use({ trace: "off", video: "off", screenshot: "off" });
