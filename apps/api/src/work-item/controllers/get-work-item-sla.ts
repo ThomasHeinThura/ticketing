@@ -1,4 +1,4 @@
-import { and, eq } from "drizzle-orm";
+import { and, asc, eq } from "drizzle-orm";
 import { HTTPException } from "hono/http-exception";
 import db, { schema } from "../../database";
 import { evaluatePinnedWorkItemSla } from "../../sla-policy/evaluation";
@@ -28,6 +28,17 @@ export async function getWorkItemSla(key: string, workspaceId: string) {
 
   if (!item) throw new HTTPException(404, { message: "Work item not found" });
 
+  const pauses = await db
+    .select({
+      metric: schema.slaPauseTable.metric,
+      startedAt: schema.slaPauseTable.startedAt,
+      endedAt: schema.slaPauseTable.endedAt,
+      reason: schema.slaPauseTable.reason,
+    })
+    .from(schema.slaPauseTable)
+    .where(eq(schema.slaPauseTable.workItemId, item.id))
+    .orderBy(asc(schema.slaPauseTable.startedAt));
+
   const now = new Date();
   const startedAt = item.slaStartedAt ?? item.createdAt;
   const metrics = await evaluatePinnedWorkItemSla({
@@ -39,7 +50,12 @@ export async function getWorkItemSla(key: string, workspaceId: string) {
       startedAt,
       firstResponseAt: item.firstResponseAt,
       resolvedAt: item.resolvedAt,
-      pauses: [],
+      pauses: pauses.map((pause) => ({
+        metric: pause.metric as "first_response" | "resolution",
+        startedAt: pause.startedAt,
+        endedAt: pause.endedAt,
+        reason: pause.reason,
+      })),
     },
     now,
   });

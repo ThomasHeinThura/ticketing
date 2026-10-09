@@ -3,7 +3,7 @@
  * (issue #442, `docs/03-features/workflows.md`) -- the state-transition EXECUTION route
  * the persistence PR (#31/#443) deliberately left unbuilt.
  */
-import { randomUUID } from "node:crypto";
+import { createHash, randomUUID } from "node:crypto";
 import { and, eq } from "drizzle-orm";
 import { Client } from "pg";
 import { beforeEach, describe, expect, it, vi } from "vitest";
@@ -19,6 +19,7 @@ import {
   prepareAuthenticatedApiFixture,
   requireRow,
 } from "./helpers/fixtures";
+import { installProvisionalSlaPause } from "./helpers/install-provisional-sla-pause";
 import { raceProjectSoftDelete } from "./helpers/race-soft-delete";
 
 const publishEventMock = vi.hoisted(() => vi.fn());
@@ -266,6 +267,29 @@ async function setupProject() {
   return { creator, workspace, project };
 }
 
+async function createApiKey(userId: string, permissions: string | null) {
+  const rawKey = `taskdesk_test_${randomUUID()}`;
+  const now = new Date();
+  const key = createHash("sha256")
+    .update(rawKey)
+    .digest("base64")
+    .replace(/\+/g, "-")
+    .replace(/\//g, "_")
+    .replace(/=+$/, "");
+  await db.insert(schema.apikeyTable).values({
+    referenceId: userId,
+    userId,
+    key,
+    permissions,
+    name: "SLA pause read-only API key",
+    start: rawKey.slice(0, 12),
+    prefix: "taskdesk",
+    createdAt: now,
+    updatedAt: now,
+  });
+  return rawKey;
+}
+
 async function createWorkItem(
   app: ReturnType<typeof createApp>["app"],
   projectId: string,
@@ -301,6 +325,7 @@ function listTransitions(
 describe("API integration: work item transition (#442, workflows.md)", () => {
   beforeEach(async () => {
     await resetTestDatabase();
+    await installProvisionalSlaPause();
   });
 
   it("rejects a caller without work_item:transition with 403", async () => {
@@ -877,6 +902,152 @@ describe("API integration: work item transition (#442, workflows.md)", () => {
       .from(schema.workItemTable)
       .where(eq(schema.workItemTable.key, key));
     expect(workItemRow?.resolvedAt).toBeNull();
+  });
+
+  it("SLA-10/11: pause_sla opens both metric intervals and resume_sla closes waiting_customer intervals", async () => {
+    const { creator, workspace, project } = await setupProject();
+    const backlog = await makeState(workspace.id, project.id, {
+      group: "backlog",
+      isDefault: true,
+    });
+    const waiting = await makeState(workspace.id, project.id, {
+      group: "started",
+    });
+    const active = await makeState(workspace.id, project.id, {
+      group: "started",
+    });
+    const { workflow } = await makeWorkflow(workspace.id, [
+      {
+        fromStateTemplateId: backlog.stateTemplate.id,
+        toStateTemplateId: waiting.stateTemplate.id,
+        roleId: null,
+        effects: [{ kind: "pause_sla" }],
+      },
+      {
+        fromStateTemplateId: waiting.stateTemplate.id,
+        toStateTemplateId: active.stateTemplate.id,
+        roleId: null,
+        effects: [{ kind: "resume_sla" }],
+      },
+    ]);
+    const type = await makeWorkItemType(workspace.id, workflow.id);
+    mockAuthenticatedSession(creator);
+    const { app } = createApp();
+    const { key } = await createWorkItem(app, project.id, type.id);
+    const item = requireRow(
+      await db
+        .select({ id: schema.workItemTable.id })
+        .from(schema.workItemTable)
+        .where(eq(schema.workItemTable.key, key)),
+      "SLA pause test work item",
+    );
+
+    expect(
+      (
+        await transitionRequest(app, key, {
+          toStateTemplateId: waiting.stateTemplate.id,
+        })
+      ).status,
+    ).toBe(200);
+    let pauses = await db
+      .select()
+      .from(schema.slaPauseTable)
+      .where(eq(schema.slaPauseTable.workItemId, item.id));
+    expect(pauses).toHaveLength(2);
+    expect(pauses.map((pause) => pause.metric).sort()).toEqual([
+      "first_response",
+      "resolution",
+    ]);
+    expect(
+      pauses.every(
+        (pause) =>
+          pause.reason === "waiting_customer" && pause.endedAt === null,
+      ),
+    ).toBe(true);
+
+    expect(
+      (
+        await transitionRequest(app, key, {
+          toStateTemplateId: active.stateTemplate.id,
+        })
+      ).status,
+    ).toBe(200);
+    pauses = await db
+      .select()
+      .from(schema.slaPauseTable)
+      .where(eq(schema.slaPauseTable.workItemId, item.id));
+    expect(pauses).toHaveLength(2);
+    expect(pauses.every((pause) => pause.endedAt !== null)).toBe(true);
+  });
+
+  it("SLA-11: manual pause atomically targets both metrics and refuses a partial conflict", async () => {
+    const { creator, workspace, project } = await setupProject();
+    await makeState(workspace.id, project.id, {
+      group: "backlog",
+      isDefault: true,
+    });
+    const type = await makeWorkItemType(workspace.id, null);
+    mockAuthenticatedSession(creator);
+    const { app } = createApp();
+    const { key } = await createWorkItem(app, project.id, type.id);
+    const [item] = await db
+      .select({ id: schema.workItemTable.id })
+      .from(schema.workItemTable)
+      .where(eq(schema.workItemTable.key, key));
+    if (!item) throw new Error("SLA pause test work item not found");
+    for (const permissions of [null, "not-json", JSON.stringify({})]) {
+      const readOnlyKey = await createApiKey(creator.id, permissions);
+      const denied = await app.request(`/api/work-items/${key}/sla/pause`, {
+        method: "POST",
+        headers: { Authorization: `Bearer ${readOnlyKey}` },
+      });
+      expect(denied.status).toBe(403);
+      expect(
+        await db
+          .select()
+          .from(schema.slaPauseTable)
+          .where(eq(schema.slaPauseTable.workItemId, item.id)),
+      ).toHaveLength(0);
+    }
+    await db.insert(schema.slaPauseTable).values({
+      workItemId: item.id,
+      metric: "first_response",
+      startedAt: new Date(),
+      reason: "waiting_customer",
+    });
+
+    const response = await app.request(`/api/work-items/${key}/sla/pause`, {
+      method: "POST",
+    });
+    expect(response.status).toBe(409);
+    let pauses = await db
+      .select()
+      .from(schema.slaPauseTable)
+      .where(eq(schema.slaPauseTable.workItemId, item.id));
+    expect(pauses).toHaveLength(1);
+    expect(pauses[0]?.metric).toBe("first_response");
+
+    await db
+      .delete(schema.slaPauseTable)
+      .where(eq(schema.slaPauseTable.workItemId, item.id));
+    const writeKey = await createApiKey(
+      creator.id,
+      JSON.stringify({ work_item: ["update"] }),
+    );
+    const success = await app.request(`/api/work-items/${key}/sla/pause`, {
+      method: "POST",
+      headers: { Authorization: `Bearer ${writeKey}` },
+    });
+    expect(success.status).toBe(200);
+    pauses = await db
+      .select()
+      .from(schema.slaPauseTable)
+      .where(eq(schema.slaPauseTable.workItemId, item.id));
+    expect(pauses.map((pause) => pause.metric).sort()).toEqual([
+      "first_response",
+      "resolution",
+    ]);
+    expect(pauses.every((pause) => pause.reason === "manual")).toBe(true);
   });
 
   it("D1 (Opus delta review of PR #457): a concurrent child reopen cannot slip past a children_closed guard", async () => {

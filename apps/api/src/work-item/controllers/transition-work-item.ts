@@ -7,6 +7,7 @@ import {
   resolveAutomaticEffects,
   resolveEffects,
   resolveStateTemplateForProject,
+  SLA_METRICS,
   type TransitionOfferContext,
 } from "@taskdesk/domain";
 import { and, eq, inArray, isNull, sql } from "drizzle-orm";
@@ -16,6 +17,7 @@ import db from "../../database";
 import {
   commentTable,
   scheduledTransitionTable,
+  slaPauseTable,
   stateTable,
   stateTemplateTable,
   workItemTable,
@@ -209,14 +211,11 @@ function resolveSetAssigneePersonId(
  * a documented interim state (issue #442's own instruction), not a design decision made
  * here.
  *
- * EFFECTS THIS FUNCTION CANNOT EXECUTE, DISCLOSED (no schema to write to yet):
- * `pause_sla`/`resume_sla` (no `sla_pause` table) and `set_field` (no custom-field/
- * satellite value store) are silently no-ops here -- reading `transition.effects` for
- * either kind and doing nothing, rather than failing the whole transition over a gap in
- * unrelated, not-yet-built infrastructure. `WF-17`/`WF-18`'s automatic mechanism only
- * sets/clears `work_item.resolved_at` for the identical reason -- the `sla_pause` row a
- * real "resolved"/"resumed" write implies does not exist to write.
- * `set_assignee`/`clear_assignee` and `schedule_transition` ARE fully wired.
+ * `pause_sla`/`resume_sla` persist their `sla_pause` intervals in the same transaction as
+ * the state change. Automatic resolved/reopened pause rows remain a separately blocked
+ * case because SLA-11's one-open-row rule needs a product decision when another pause is
+ * already open. `set_field` remains unwired until its value store exists.
+ * `set_assignee`/`clear_assignee` and `schedule_transition` are also wired.
  *
  * `WF-21` (customer-initiated reopen, executed as a system actor): the three call sites
  * that mechanism names (a reply to a closed request, an upload to a resolved one, a
@@ -302,8 +301,7 @@ export async function transitionWorkItem(
         toStateTemplateId: effect.toStateTemplateId,
       });
     }
-    // `pause_sla`/`resume_sla`/`set_field`: no backing table yet -- disclosed no-op,
-    // see this function's own doc comment.
+    // `set_field` remains unwired until its value store exists.
   }
 
   let resolvedAtPatch: Date | null | undefined;
@@ -493,6 +491,62 @@ export async function transitionWorkItem(
         throw new TransitionConflictError(current?.stateId ?? fromStateId);
       }
 
+      const transitionAt = new Date();
+      const openPauses = await tx
+        .select({
+          id: slaPauseTable.id,
+          metric: slaPauseTable.metric,
+          reason: slaPauseTable.reason,
+        })
+        .from(slaPauseTable)
+        .where(
+          and(
+            eq(slaPauseTable.workItemId, ctx.workItem.id),
+            isNull(slaPauseTable.endedAt),
+          ),
+        );
+
+      const closePause = async (pauseId: string) => {
+        await tx
+          .update(slaPauseTable)
+          .set({ endedAt: transitionAt })
+          .where(
+            and(eq(slaPauseTable.id, pauseId), isNull(slaPauseTable.endedAt)),
+          );
+      };
+      const openPause = async (
+        metric: (typeof SLA_METRICS)[number],
+        reason: "waiting_customer",
+      ) => {
+        const sameMetric = openPauses.find((pause) => pause.metric === metric);
+        if (sameMetric) {
+          // SLA-11 and the partial unique index allow at most one open interval per
+          // metric. The transaction rolls back all metrics if any one conflicts.
+          throw new HTTPException(409, {
+            message: "An SLA pause is already open for this metric",
+          });
+        }
+        await tx.insert(slaPauseTable).values({
+          workItemId: ctx.workItem.id,
+          metric,
+          startedAt: transitionAt,
+          reason,
+        });
+      };
+
+      for (const effect of authoredEffects) {
+        if (effect.kind === "pause_sla") {
+          for (const metric of SLA_METRICS) {
+            await openPause(metric, "waiting_customer");
+          }
+        } else if (effect.kind === "resume_sla") {
+          for (const pause of openPauses) {
+            if (pause.reason === "waiting_customer") {
+              await closePause(pause.id);
+            }
+          }
+        }
+      }
       for (const schedule of scheduleEffects) {
         const scheduleResolution = resolveStateTemplateForProject(
           asStateTemplateId(schedule.toStateTemplateId),

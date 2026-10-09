@@ -11,6 +11,7 @@ import {
   createProjectFixture,
   createWorkspaceMember,
 } from "./helpers/fixtures";
+import { installProvisionalSlaPause } from "./helpers/install-provisional-sla-pause";
 
 const windows = {
   mon: [{ from: 540, to: 1020 }],
@@ -79,6 +80,7 @@ function fullMatrix(workItemTypeId: string) {
 describe("API integration: SLA policy authoring contract", () => {
   beforeEach(async () => {
     await resetTestDatabase();
+    await installProvisionalSlaPause();
   });
 
   afterEach(async () => {
@@ -531,6 +533,24 @@ describe("API integration: SLA policy authoring contract", () => {
       (metric) => metric.metric === "resolution",
     )?.dueAt;
     expect(beforeDue).toBe("2030-01-07T12:00:00.000Z");
+
+    await db.insert(schema.slaPauseTable).values({
+      workItemId: item.id,
+      metric: "resolution",
+      startedAt: new Date(startedAt.getTime() - 1),
+      reason: "waiting_customer",
+    });
+    const pausedResponse = await getEvaluation();
+    expect(pausedResponse.status).toBe(200);
+    const paused = (await pausedResponse.json()) as {
+      metrics: Array<{ metric: string; dueAt: string | null }>;
+    };
+    expect(
+      paused.metrics.find((metric) => metric.metric === "resolution")?.dueAt,
+    ).toBeNull();
+    await db
+      .delete(schema.slaPauseTable)
+      .where(eq(schema.slaPauseTable.workItemId, item.id));
 
     const changedWindows = {
       ...windows,

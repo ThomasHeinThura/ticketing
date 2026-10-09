@@ -3811,6 +3811,45 @@ export const slaGoalTable = pgTable(
   ],
 );
 
+export const slaPauseTable = pgTable(
+  "sla_pause",
+  {
+    id: text("id")
+      .$defaultFn(() => createId())
+      .primaryKey(),
+    workItemId: text("work_item_id")
+      .notNull()
+      .references(() => workItemTable.id, { onDelete: "cascade" }),
+    metric: text("metric", {
+      enum: ["first_response", "resolution"],
+    }).notNull(),
+    startedAt: timestamp("started_at", {
+      mode: "date",
+      withTimezone: true,
+    }).notNull(),
+    endedAt: timestamp("ended_at", { mode: "date", withTimezone: true }),
+    reason: text("reason").notNull(),
+  },
+  (table) => [
+    uniqueIndex("sla_pause_one_open_per_metric_unique")
+      .on(table.workItemId, table.metric)
+      .where(sql`${table.endedAt} is null`),
+    index("sla_pause_work_item_metric_started_idx").on(
+      table.workItemId,
+      table.metric,
+      table.startedAt,
+    ),
+    check(
+      "sla_pause_metric_allowed",
+      sql`${table.metric} in ('first_response', 'resolution')`,
+    ),
+    check(
+      "sla_pause_interval_valid",
+      sql`${table.endedAt} is null or ${table.endedAt} >= ${table.startedAt}`,
+    ),
+  ],
+);
+
 export const workItemKeyAliasTable = pgTable(
   "work_item_key_alias",
   {
