@@ -22,6 +22,7 @@ import { useTranslation } from "react-i18next";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/avatar";
 import BacklogListView from "@/components/backlog-list-view";
 import ProjectLayout from "@/components/common/project-layout";
+import ProjectTaskSearchInput from "@/components/common/project-task-search-input";
 import SortControl from "@/components/common/sort-control";
 import PageTitle from "@/components/page-title";
 import CreateTaskModal from "@/components/shared/modals/create-task-modal";
@@ -50,6 +51,7 @@ import {
   withProjectBoardTask,
   withProjectViewFilters,
   withProjectViewSort,
+  withProjectViewState,
 } from "@/lib/project-board-search";
 import { createProjectViewShortcutHandlers } from "@/lib/project-layout-navigation";
 import {
@@ -107,6 +109,18 @@ function RouteComponent() {
         to: ".",
         search: (previous: ProjectBacklogSearch) =>
           withProjectViewFilters(previous, nextFilters),
+      });
+    },
+    [navigate],
+  );
+
+  const updateQuery = useCallback(
+    (q: string) => {
+      navigate({
+        to: ".",
+        search: (previous: ProjectBacklogSearch) =>
+          withProjectViewState(previous, { q: q || undefined }),
+        replace: true,
       });
     },
     [navigate],
@@ -343,6 +357,14 @@ function RouteComponent() {
       projectId={projectId}
       workspaceId={workspaceId}
       activeView="backlog"
+      headerActions={
+        <ProjectTaskSearchInput
+          value={search.q ?? ""}
+          onValueChange={updateQuery}
+          placeholder={t("tasks:boardSearchPlaceholder")}
+          clearLabel={t("common:actions.clearAll")}
+        />
+      }
     >
       <PageTitle
         title={t("tasks:backlog.pageTitle", { name: project?.name })}

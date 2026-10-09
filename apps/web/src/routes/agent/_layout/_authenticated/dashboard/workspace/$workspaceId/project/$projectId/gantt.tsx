@@ -1,5 +1,5 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
-import { Button, Input, useIsMobile } from "@taskdesk/ui";
+import { Button, useIsMobile } from "@taskdesk/ui";
 import {
   addDays,
   eachDayOfInterval,
@@ -12,7 +12,7 @@ import {
   startOfWeek,
   subDays,
 } from "date-fns";
-import { Calendar, ChevronLeft, ChevronRight, Search } from "lucide-react";
+import { Calendar, ChevronLeft, ChevronRight } from "lucide-react";
 import {
   useCallback,
   useEffect,
@@ -23,6 +23,7 @@ import {
 } from "react";
 import { useTranslation } from "react-i18next";
 import ProjectLayout from "@/components/common/project-layout";
+import ProjectTaskSearchInput from "@/components/common/project-task-search-input";
 import { GanttTaskBar } from "@/components/gantt/gantt-task-bar";
 import PageTitle from "@/components/page-title";
 import TaskDetailsSheet from "@/components/task/task-details-sheet";
@@ -139,6 +140,7 @@ function RouteComponent() {
         query: searchQuery,
         projectSlug: project?.slug,
         weekStartsOn,
+        matchStatusText: true,
       }),
     [filters, parsedTasks, project?.slug, searchQuery, weekStartsOn],
   );
@@ -150,6 +152,7 @@ function RouteComponent() {
         params: { workspaceId, projectId },
         search: (previous: ReturnType<typeof parseProjectBoardSearch>) =>
           withProjectViewState(previous, patch),
+        replace: true,
       });
     },
     [navigate, projectId, workspaceId],
@@ -289,17 +292,12 @@ function RouteComponent() {
               </h1>
             </div>
 
-            <div className="relative w-full max-w-sm">
-              <Search className="pointer-events-none absolute top-1/2 left-2.5 h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground" />
-              <Input
-                value={searchQuery}
-                onChange={(event) =>
-                  updateViewState({ q: event.target.value || undefined })
-                }
-                placeholder={t("tasks:gantt.searchPlaceholder")}
-                className="h-9 min-h-11 touch-manipulation sm:h-8 sm:min-h-0 [&_[data-slot=input]]:pl-8 [&_[data-slot=input]]:text-xs"
-              />
-            </div>
+            <ProjectTaskSearchInput
+              value={searchQuery}
+              onValueChange={(q) => updateViewState({ q: q || undefined })}
+              placeholder={t("tasks:gantt.searchPlaceholder")}
+              clearLabel={t("common:actions.clearAll")}
+            />
 
             <Button
               variant="outline"

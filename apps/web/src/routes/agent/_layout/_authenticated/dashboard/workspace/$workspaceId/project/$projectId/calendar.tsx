@@ -11,6 +11,7 @@ import CalendarToolbar from "@/components/calendar/calendar-toolbar";
 import MonthGrid from "@/components/calendar/month-grid";
 import { buildMonthWeeks } from "@/components/calendar/month-grid-model";
 import ProjectLayout from "@/components/common/project-layout";
+import ProjectTaskSearchInput from "@/components/common/project-task-search-input";
 import PageTitle from "@/components/page-title";
 import TaskDetailsSheet from "@/components/task/task-details-sheet";
 import { shortcuts } from "@/constants/shortcuts";
@@ -18,7 +19,10 @@ import { useGetTasks } from "@/hooks/queries/task/use-get-tasks";
 import { useRegisterShortcuts } from "@/hooks/use-keyboard-shortcuts";
 import { authClient } from "@/lib/auth-client";
 import { filterProjectTasks } from "@/lib/filter-project-tasks";
-import { projectViewFiltersFromSearch } from "@/lib/project-board-search";
+import {
+  projectViewFiltersFromSearch,
+  withProjectViewState,
+} from "@/lib/project-board-search";
 import {
   dateFromCalendarMonth,
   type ProjectCalendarSearch,
@@ -118,6 +122,19 @@ function RouteComponent() {
     });
   }, [navigate, projectId, workspaceId]);
 
+  const updateQuery = useCallback(
+    (q: string) => {
+      navigate({
+        to: routes.projectCalendar.path,
+        params: { workspaceId, projectId },
+        search: (previous: ProjectCalendarSearch) =>
+          withProjectViewState(previous, { q: q || undefined }),
+        replace: true,
+      });
+    },
+    [navigate, projectId, workspaceId],
+  );
+
   const handleOpenTask = useCallback(
     (nextTaskId: string) => {
       navigate({
@@ -171,6 +188,14 @@ function RouteComponent() {
       projectId={projectId}
       workspaceId={workspaceId}
       activeView="calendar"
+      headerActions={
+        <ProjectTaskSearchInput
+          value={search.q ?? ""}
+          onValueChange={updateQuery}
+          placeholder={t("tasks:boardSearchPlaceholder")}
+          clearLabel={t("common:actions.clearAll")}
+        />
+      }
     >
       <PageTitle
         title={t("tasks:calendar.pageTitle", { name: project?.name })}

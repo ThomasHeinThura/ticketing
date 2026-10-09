@@ -4,12 +4,11 @@ import {
   useLocation,
   useNavigate,
 } from "@tanstack/react-router";
-import { Input } from "@taskdesk/ui";
-import { Search } from "lucide-react";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import BoardToolbar from "@/components/board/board-toolbar";
 import ProjectLayout from "@/components/common/project-layout";
+import ProjectTaskSearchInput from "@/components/common/project-task-search-input";
 import KanbanBoard from "@/components/kanban-board";
 import ListView from "@/components/list-view";
 import PageTitle from "@/components/page-title";
@@ -120,10 +119,7 @@ function RouteComponent() {
     savedProjectViewMode ?? profileDefaultViewMode,
   );
   const [isTaskModalOpen, setIsTaskModalOpen] = useState(false);
-  const [isBoardSearchMounted, setIsBoardSearchMounted] = useState(false);
-  const [isBoardSearchVisible, setIsBoardSearchVisible] = useState(false);
-  const [boardSearchInput, setBoardSearchInput] =
-    useState<HTMLInputElement | null>(null);
+  const boardSearchInput = useRef<HTMLInputElement>(null);
   const urlFilters = projectViewFiltersFromSearch(search);
   const sort = projectViewSortFromSearch(search);
 
@@ -134,6 +130,7 @@ function RouteComponent() {
         params: { workspaceId, projectId },
         search: (previous: ProjectBoardSearch) =>
           withProjectViewState(previous, patch),
+        replace: true,
       });
     },
     [navigate, projectId, workspaceId],
@@ -225,36 +222,6 @@ function RouteComponent() {
     }
   }, [data, projectId, queryClient, setProject]);
 
-  const openBoardSearch = useCallback(() => {
-    setIsBoardSearchMounted(true);
-    window.requestAnimationFrame(() => setIsBoardSearchVisible(true));
-  }, []);
-
-  const closeBoardSearch = useCallback(() => {
-    setIsBoardSearchVisible(false);
-    window.setTimeout(() => setIsBoardSearchMounted(false), 180);
-  }, []);
-
-  useEffect(() => {
-    const onKeyDown = (event: KeyboardEvent) => {
-      const isFindShortcut =
-        (event.metaKey || event.ctrlKey) && event.key.toLowerCase() === "f";
-
-      if (!isFindShortcut) return;
-
-      event.preventDefault();
-      openBoardSearch();
-    };
-
-    window.addEventListener("keydown", onKeyDown);
-    return () => window.removeEventListener("keydown", onKeyDown);
-  }, [openBoardSearch]);
-
-  useEffect(() => {
-    if (!isBoardSearchMounted) return;
-    window.requestAnimationFrame(() => boardSearchInput?.focus());
-  }, [isBoardSearchMounted, boardSearchInput]);
-
   // The query result is renderable before the effect synchronizes the shared
   // project store. Use it for first paint when the store has no project (or a
   // different route's project), while retaining same-project optimistic edits.
@@ -286,36 +253,15 @@ function RouteComponent() {
     };
   }, [filteredProject, sort]);
 
-  const boardHeaderSearch = isBoardSearchMounted ? (
-    <div
-      className={`relative w-[240px] origin-top transition-[translate,scale,opacity] duration-180 ease-out ${
-        isBoardSearchVisible
-          ? "translate-y-0 scale-y-100 opacity-100"
-          : "pointer-events-none -translate-y-1 scale-y-95 opacity-0"
-      }`}
-    >
-      <Search className="-translate-y-1/2 pointer-events-none absolute top-1/2 left-2.5 h-3.5 w-3.5 text-muted-foreground" />
-      <Input
-        ref={setBoardSearchInput}
-        value={search.q ?? ""}
-        onChange={(event) =>
-          updateViewState({ q: event.target.value || undefined })
-        }
-        onKeyDown={(event) => {
-          if (event.key === "Escape" && !search.q?.trim()) {
-            closeBoardSearch();
-          }
-        }}
-        onBlur={() => {
-          if (!search.q?.trim()) {
-            closeBoardSearch();
-          }
-        }}
-        placeholder={t("tasks:boardSearchPlaceholder")}
-        className="h-7.5 [&_[data-slot=input]]:h-7 [&_[data-slot=input]]:leading-7 [&_[data-slot=input]]:pl-8 [&_[data-slot=input]]:text-xs [&_[data-slot=input]]:placeholder:text-xs [&_[data-slot=input]]:placeholder:leading-7"
-      />
-    </div>
-  ) : null;
+  const boardHeaderSearch = (
+    <ProjectTaskSearchInput
+      inputRef={boardSearchInput}
+      value={search.q ?? ""}
+      onValueChange={(q) => updateViewState({ q: q || undefined })}
+      placeholder={t("tasks:boardSearchPlaceholder")}
+      clearLabel={t("common:actions.clearAll")}
+    />
+  );
 
   return (
     <ProjectLayout

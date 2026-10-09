@@ -13,6 +13,7 @@ export function filterProjectTasks<T extends Task>(
     query?: string;
     projectSlug?: string;
     weekStartsOn: WeekStartDay;
+    matchStatusText?: boolean;
   },
 ): T[] {
   const normalizedQuery = options.query?.trim().toLowerCase();
@@ -33,7 +34,11 @@ export function filterProjectTasks<T extends Task>(
         !description.includes(normalizedQuery) &&
         !taskNumber.includes(normalizedQuery) &&
         !taskIdentifier.startsWith(normalizedQuery) &&
-        !taskShortIdentifier.startsWith(normalizedQuery)
+        !taskShortIdentifier.startsWith(normalizedQuery) &&
+        !(
+          options.matchStatusText &&
+          task.status.toLowerCase().includes(normalizedQuery)
+        )
       ) {
         return false;
       }
