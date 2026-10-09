@@ -42,10 +42,8 @@ import { useGetActiveWorkspaceUsers } from "@/hooks/queries/workspace-users/use-
 import { useRegisterShortcuts } from "@/hooks/use-keyboard-shortcuts";
 import { cn } from "@/lib/cn";
 import { getColumnIcon } from "@/lib/column";
-import {
-  type ProjectBoardSearch,
-  withProjectBoardTask,
-} from "@/lib/project-board-search";
+import type { ProjectBoardSearch } from "@/lib/project-board-search";
+import { withProjectBoardTask } from "@/lib/project-board-search-state";
 import { toast } from "@/lib/toast";
 import useBulkSelectionStore from "@/store/bulk-selection";
 import useProjectStore from "@/store/project";

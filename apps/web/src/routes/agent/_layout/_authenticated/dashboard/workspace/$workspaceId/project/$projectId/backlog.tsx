@@ -46,13 +46,15 @@ import { getPriorityIcon } from "@/lib/priority";
 import {
   type ProjectBacklogSearch,
   parseProjectBacklogSearch,
+} from "@/lib/project-board-search";
+import {
   projectViewFiltersFromSearch,
   projectViewSortFromSearch,
   withProjectBoardTask,
   withProjectViewFilters,
   withProjectViewSort,
   withProjectViewState,
-} from "@/lib/project-board-search";
+} from "@/lib/project-board-search-state";
 import { createProjectViewShortcutHandlers } from "@/lib/project-layout-navigation";
 import {
   getProjectLayoutStorage,

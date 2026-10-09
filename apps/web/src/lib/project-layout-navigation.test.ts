@@ -4,35 +4,57 @@ import {
   createProjectViewShortcutHandlers,
   type ProjectView,
 } from "./project-layout-navigation";
-import { routes } from "./routes";
+import { projectViewRoutes } from "./project-view-routes";
 
 describe("project layout navigation", () => {
   const params = { workspaceId: "workspace-1", projectId: "project-1" };
 
   it.each([
-    ["backlog", routes.projectBacklog.build(params, { taskId: "task-1" })],
+    [
+      "backlog",
+      projectViewRoutes.projectBacklog.build(params, { taskId: "task-1" }),
+    ],
     [
       "board",
-      routes.projectBoard.build(params, { taskId: "task-1", layout: "board" }),
+      projectViewRoutes.projectBoard.build(params, {
+        taskId: "task-1",
+        layout: "board",
+      }),
     ],
-    ["calendar", routes.projectCalendar.build(params, { taskId: "task-1" })],
-    ["gantt", routes.projectGantt.build(params, { taskId: "task-1" })],
+    [
+      "calendar",
+      projectViewRoutes.projectCalendar.build(params, { taskId: "task-1" }),
+    ],
+    [
+      "gantt",
+      projectViewRoutes.projectGantt.build(params, { taskId: "task-1" }),
+    ],
     [
       "list",
-      routes.projectBoard.build(params, { taskId: "task-1", layout: "list" }),
+      projectViewRoutes.projectBoard.build(params, {
+        taskId: "task-1",
+        layout: "list",
+      }),
     ],
   ] satisfies [ProjectView, string][])(
-    "VW-4: switching to %s keeps the selected task addressable",
+    "VW-4: switching to %s preserves the complete query string",
     (view, expectedUrl) => {
-      expect(
+      const actual = new URL(
         buildProjectViewSwitchUrl(view, params, "?taskId=task-1&unused=value"),
-      ).toBe(expectedUrl);
+        "https://taskdesk.test",
+      );
+      const expected = new URL(expectedUrl, "https://taskdesk.test");
+      expect(actual.pathname).toBe(expected.pathname);
+      expect(actual.searchParams.get("taskId")).toBe("task-1");
+      expect(actual.searchParams.get("unused")).toBe("value");
+      if (view === "board" || view === "list")
+        expect(actual.searchParams.get("layout")).toBe(view);
     },
   );
 
   it("VW-4: omits task selection when no task panel is open", () => {
     expect(buildProjectViewSwitchUrl("board", params, "?layout=list")).toBe(
-      routes.projectBoard.build(params, { layout: "board" }),
+      projectViewRoutes.projectBoard.build(params, { layout: "board" }),
     );
   });
 
@@ -68,8 +90,10 @@ describe("project layout navigation", () => {
   );
 
   it("VW-4: Gantt task selection round-trips through its canonical route builder", () => {
-    const url = routes.projectGantt.build(params, { taskId: "task/one" });
-    expect(routes.projectGantt.parse(url)).toEqual({
+    const url = projectViewRoutes.projectGantt.build(params, {
+      taskId: "task/one",
+    });
+    expect(projectViewRoutes.projectGantt.parse(url)).toEqual({
       params,
       search: { taskId: "task/one" },
     });
@@ -78,14 +102,14 @@ describe("project layout navigation", () => {
   it.each([
     [
       "backlog",
-      routes.projectBacklog.build(params, {
+      projectViewRoutes.projectBacklog.build(params, {
         taskId: "task-1",
         month: "2026-10",
       }),
     ],
     [
       "board",
-      routes.projectBoard.build(params, {
+      projectViewRoutes.projectBoard.build(params, {
         taskId: "task-1",
         layout: "board",
         month: "2026-10",
@@ -93,18 +117,21 @@ describe("project layout navigation", () => {
     ],
     [
       "calendar",
-      routes.projectCalendar.build(params, {
+      projectViewRoutes.projectCalendar.build(params, {
         taskId: "task-1",
         month: "2026-10",
       }),
     ],
     [
       "gantt",
-      routes.projectGantt.build(params, { taskId: "task-1", month: "2026-10" }),
+      projectViewRoutes.projectGantt.build(params, {
+        taskId: "task-1",
+        month: "2026-10",
+      }),
     ],
     [
       "list",
-      routes.projectBoard.build(params, {
+      projectViewRoutes.projectBoard.build(params, {
         taskId: "task-1",
         layout: "list",
         month: "2026-10",
@@ -122,7 +149,16 @@ describe("project layout navigation", () => {
 
       handlers[view]();
 
-      expect(navigate).toHaveBeenCalledExactlyOnceWith(expectedUrl);
+      const href = navigate.mock.calls[0]?.[0];
+      expect(navigate).toHaveBeenCalledOnce();
+      expect(href && new URL(href, "https://taskdesk.test").pathname).toBe(
+        new URL(expectedUrl, "https://taskdesk.test").pathname,
+      );
+      const query = new URLSearchParams(href?.split("?")[1]);
+      expect(query.get("taskId")).toBe("task-1");
+      expect(query.get("month")).toBe("2026-10");
+      if (view === "board" || view === "list")
+        expect(query.get("layout")).toBe(view);
     },
   );
 });

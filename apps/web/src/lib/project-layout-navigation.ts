@@ -1,5 +1,10 @@
-import { parseProjectViewSearchFromParams } from "@/lib/project-board-search";
-import { type ProjectRouteParams, routes } from "@/lib/routes";
+import {
+  PROJECT_BACKLOG_PATH,
+  PROJECT_BOARD_PATH,
+  PROJECT_CALENDAR_PATH,
+  PROJECT_GANTT_PATH,
+  type ProjectRouteParams,
+} from "@/lib/routes";
 
 export type ProjectView = "backlog" | "board" | "calendar" | "gantt" | "list";
 
@@ -33,19 +38,36 @@ export function buildProjectViewSwitchUrl(
   params: ProjectRouteParams,
   currentSearch: string,
 ) {
-  const search = parseProjectViewSearchFromParams(
-    new URLSearchParams(currentSearch),
-  );
+  const query = new URLSearchParams(currentSearch);
+  let path: string;
   switch (view) {
     case "backlog":
-      return routes.projectBacklog.build(params, search);
+      path = PROJECT_BACKLOG_PATH;
+      break;
     case "board":
-      return routes.projectBoard.build(params, { ...search, layout: "board" });
+      path = PROJECT_BOARD_PATH;
+      query.set("layout", "board");
+      break;
     case "calendar":
-      return routes.projectCalendar.build(params, search);
+      path = PROJECT_CALENDAR_PATH;
+      break;
     case "gantt":
-      return routes.projectGantt.build(params, search);
+      path = PROJECT_GANTT_PATH;
+      break;
     case "list":
-      return routes.projectBoard.build(params, { ...search, layout: "list" });
+      path = PROJECT_BOARD_PATH;
+      query.set("layout", "list");
+      break;
   }
+  const pathname = path.replace(
+    /\$([A-Za-z0-9_]+)/g,
+    (_match, name: string) => {
+      const value = params[name as keyof ProjectRouteParams];
+      if (typeof value !== "string" || value.length === 0)
+        throw new Error(`Route ${path} requires parameter ${name}.`);
+      return encodeURIComponent(value);
+    },
+  );
+  const suffix = query.toString();
+  return `${pathname}${suffix ? `?${suffix}` : ""}`;
 }

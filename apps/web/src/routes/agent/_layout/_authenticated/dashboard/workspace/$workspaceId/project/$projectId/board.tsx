@@ -25,6 +25,8 @@ import { authClient } from "@/lib/auth-client";
 import {
   type ProjectBoardSearch,
   parseProjectBoardSearch,
+} from "@/lib/project-board-search";
+import {
   projectViewFiltersFromSearch,
   projectViewSortFromSearch,
   resolveProjectBoardLayout,
@@ -33,14 +35,14 @@ import {
   withProjectViewFilters,
   withProjectViewSort,
   withProjectViewState,
-} from "@/lib/project-board-search";
+} from "@/lib/project-board-search-state";
 import { createProjectViewShortcutHandlers } from "@/lib/project-layout-navigation";
 import {
   getProjectLayoutStorage,
   readProjectLayoutPreference,
   writeProjectLayoutPreference,
 } from "@/lib/project-layout-preference";
-import { routes } from "@/lib/routes";
+import { PROJECT_BOARD_PATH } from "@/lib/routes";
 import { sortTasks } from "@/lib/sort-tasks";
 import useProjectStore from "@/store/project";
 import { useUserPreferencesStore } from "@/store/user-preferences";
@@ -126,7 +128,7 @@ function RouteComponent() {
   const updateViewState = useCallback(
     (patch: Partial<ProjectBoardSearch>) => {
       navigate({
-        to: routes.projectBoard.path,
+        to: PROJECT_BOARD_PATH,
         params: { workspaceId, projectId },
         search: (previous: ProjectBoardSearch) =>
           withProjectViewState(previous, patch),
@@ -139,7 +141,7 @@ function RouteComponent() {
   const handleFiltersChange = useCallback(
     (nextFilters: ReturnType<typeof projectViewFiltersFromSearch>) => {
       navigate({
-        to: routes.projectBoard.path,
+        to: PROJECT_BOARD_PATH,
         params: { workspaceId, projectId },
         search: (previous: ProjectBoardSearch) =>
           withProjectViewFilters(previous, nextFilters),
@@ -151,7 +153,7 @@ function RouteComponent() {
   const setSort = useCallback(
     (nextSort: ReturnType<typeof projectViewSortFromSearch>) => {
       navigate({
-        to: routes.projectBoard.path,
+        to: PROJECT_BOARD_PATH,
         params: { workspaceId, projectId },
         search: (previous: ProjectBoardSearch) =>
           withProjectViewSort(previous, nextSort),
@@ -169,7 +171,7 @@ function RouteComponent() {
         nextLayout,
       );
       navigate({
-        to: routes.projectBoard.path,
+        to: PROJECT_BOARD_PATH,
         params: { workspaceId, projectId },
         search: (previous: ProjectBoardSearch) =>
           withProjectBoardLayout(previous, nextLayout),
@@ -183,7 +185,7 @@ function RouteComponent() {
 
   const handleCloseTaskSheet = useCallback(() => {
     navigate({
-      to: routes.projectBoard.path,
+      to: PROJECT_BOARD_PATH,
       params: { workspaceId, projectId },
       search: (previous: ProjectBoardSearch) =>
         withProjectBoardTask(previous, undefined),

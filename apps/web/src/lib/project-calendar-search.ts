@@ -9,12 +9,9 @@ export type ProjectCalendarSearch = ProjectViewSearch;
 export function parseProjectCalendarSearch(
   raw: Record<string, unknown>,
 ): ProjectCalendarSearch {
-  const month = parseMonth(raw.month) ? raw.month : undefined;
-  const { month: _month, ...shared } = parseProjectViewSearch(raw);
-  return {
-    ...shared,
-    ...(month ? { month } : {}),
-  };
+  const search = parseProjectViewSearch(raw);
+  if (!parseMonth(raw.month)) delete search.month;
+  return search;
 }
 
 export function parseMonth(value: unknown): value is string {

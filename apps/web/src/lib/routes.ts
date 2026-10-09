@@ -8,18 +8,6 @@ export { generatedRouteMetadata } from "./generated-route-metadata";
 
 import { generatedRouteMetadata } from "./generated-route-metadata";
 import {
-  appendProjectViewSearchParams,
-  type ProjectBacklogSearch,
-  type ProjectBoardSearch,
-  parseProjectBacklogSearch,
-  parseProjectBoardSearch,
-  parseProjectViewSearchFromParams,
-} from "./project-board-search";
-import {
-  type ProjectCalendarSearch,
-  parseProjectCalendarSearch,
-} from "./project-calendar-search";
-import {
   parseWorkItemListSearch,
   type WorkItemFilterMode,
   type WorkItemListSearch,
@@ -103,13 +91,13 @@ export type WorkItemActivityFilter = "everything" | "comments" | "public";
 export type WorkItemDetailSearch = { activity?: WorkItemActivityFilter };
 export type ProjectRouteParams = { workspaceId: string; projectId: string };
 
-const PROJECT_BACKLOG_PATH =
+export const PROJECT_BACKLOG_PATH =
   "/dashboard/workspace/$workspaceId/project/$projectId/backlog";
-const PROJECT_BOARD_PATH =
+export const PROJECT_BOARD_PATH =
   "/dashboard/workspace/$workspaceId/project/$projectId/board";
-const PROJECT_CALENDAR_PATH =
+export const PROJECT_CALENDAR_PATH =
   "/dashboard/workspace/$workspaceId/project/$projectId/calendar";
-const PROJECT_GANTT_PATH =
+export const PROJECT_GANTT_PATH =
   "/dashboard/workspace/$workspaceId/project/$projectId/gantt";
 
 export function parseWorkItemDetailSearch(raw: unknown): WorkItemDetailSearch {
@@ -242,129 +230,6 @@ export function parseServiceCalendarListSearchFromQueryString(
 }
 
 export const routes = {
-  /** Project backlog and its task-panel URL state. */
-  projectBacklog: {
-    path: PROJECT_BACKLOG_PATH,
-    build: (
-      params: ProjectRouteParams,
-      search: Partial<ProjectBacklogSearch> = {},
-    ) => {
-      const pathname = buildGeneratedRouteUrl(
-        "agent",
-        PROJECT_BACKLOG_PATH,
-        params,
-      );
-      const query = new URLSearchParams();
-      appendProjectViewSearchParams(query, parseProjectBacklogSearch(search));
-      const suffix = query.toString();
-      return `${pathname}${suffix ? `?${suffix}` : ""}`;
-    },
-    parse: (input: string) => {
-      const match = parseGeneratedRouteUrl(
-        "agent",
-        PROJECT_BACKLOG_PATH,
-        input,
-      );
-      if (!match) return undefined;
-      const query = new URL(input, "https://route.invalid").searchParams;
-      return {
-        params: match.params as ProjectRouteParams,
-        search: parseProjectBacklogSearch(
-          parseProjectViewSearchFromParams(query),
-        ),
-      };
-    },
-  },
-  /** Project Board/List layout and task-panel URL state. */
-  projectBoard: {
-    path: PROJECT_BOARD_PATH,
-    build: (
-      params: ProjectRouteParams,
-      search: Partial<ProjectBoardSearch> = {},
-    ) => {
-      const pathname = buildGeneratedRouteUrl(
-        "agent",
-        PROJECT_BOARD_PATH,
-        params,
-      );
-      const query = new URLSearchParams();
-      appendProjectViewSearchParams(query, parseProjectBoardSearch(search));
-      const suffix = query.toString();
-      return `${pathname}${suffix ? `?${suffix}` : ""}`;
-    },
-    parse: (input: string) => {
-      const match = parseGeneratedRouteUrl("agent", PROJECT_BOARD_PATH, input);
-      if (!match) return undefined;
-      const query = new URL(input, "https://route.invalid").searchParams;
-      return {
-        params: match.params as ProjectRouteParams,
-        search: parseProjectBoardSearch(
-          parseProjectViewSearchFromParams(query),
-        ),
-      };
-    },
-  },
-  /** Project calendar month and task-panel URL state. */
-  projectCalendar: {
-    path: PROJECT_CALENDAR_PATH,
-    build: (
-      params: ProjectRouteParams,
-      search: Partial<ProjectCalendarSearch> = {},
-    ) => {
-      const pathname = buildGeneratedRouteUrl(
-        "agent",
-        PROJECT_CALENDAR_PATH,
-        params,
-      );
-      const query = new URLSearchParams();
-      appendProjectViewSearchParams(query, parseProjectCalendarSearch(search));
-      const suffix = query.toString();
-      return `${pathname}${suffix ? `?${suffix}` : ""}`;
-    },
-    parse: (input: string) => {
-      const match = parseGeneratedRouteUrl(
-        "agent",
-        PROJECT_CALENDAR_PATH,
-        input,
-      );
-      if (!match) return undefined;
-      const query = new URL(input, "https://route.invalid").searchParams;
-      return {
-        params: match.params as ProjectRouteParams,
-        search: parseProjectCalendarSearch(
-          parseProjectViewSearchFromParams(query),
-        ),
-      };
-    },
-  },
-  /** Project Gantt task-panel URL state. */
-  projectGantt: {
-    path: PROJECT_GANTT_PATH,
-    build: (
-      params: ProjectRouteParams,
-      search: Partial<ProjectBoardSearch> = {},
-    ) => {
-      const pathname = buildGeneratedRouteUrl(
-        "agent",
-        PROJECT_GANTT_PATH,
-        params,
-      );
-      const query = new URLSearchParams();
-      appendProjectViewSearchParams(query, search);
-      const suffix = query.toString();
-      return `${pathname}${suffix ? `?${suffix}` : ""}`;
-    },
-    parse: (input: string) => {
-      const match = parseGeneratedRouteUrl("agent", PROJECT_GANTT_PATH, input);
-      if (!match) return undefined;
-      return {
-        params: match.params as ProjectRouteParams,
-        search: parseProjectViewSearchFromParams(
-          new URL(input, "https://route.invalid").searchParams,
-        ),
-      };
-    },
-  },
   /** `docs/02-design/screen-inventory.md` "Approvals inbox". */
   myWork: {
     path: "/agent/my-work" as const,

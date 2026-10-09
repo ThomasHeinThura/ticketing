@@ -1,4 +1,4 @@
-import type { SortConfig, SortDirection, SortField } from "./sort-tasks";
+import type { SortDirection, SortField } from "./sort-tasks";
 
 export type ProjectBoardLayout = "board" | "list";
 
@@ -53,6 +53,7 @@ const FILTER_KEYS = [
   "dueDate",
   "labels",
 ] as const;
+const SCALAR_KEYS = ["taskId", "month", "q", "sort", "dir"] as const;
 
 function parseStringList(value: unknown): string[] | undefined {
   const entries = Array.isArray(value) ? value : [value];
@@ -65,57 +66,36 @@ function parseStringList(value: unknown): string[] | undefined {
 
 export function parseProjectViewSearch(raw: unknown): ProjectViewSearch {
   const candidate = (raw ?? {}) as Record<string, unknown>;
-  const dueDate = parseStringList(candidate.dueDate)?.filter((value) =>
-    (DUE_DATE_FILTERS as readonly string[]).includes(value),
-  );
-  const filters: ProjectViewFilters = {};
-  for (const key of FILTER_KEYS) {
-    const values =
-      key === "dueDate" ? dueDate : parseStringList(candidate[key]);
-    if (values?.length) filters[key] = values;
+  const search: ProjectViewSearch = {};
+  for (const key of SCALAR_KEYS) {
+    const value = candidate[key];
+    if (
+      typeof value === "string" &&
+      value.length > 0 &&
+      (key !== "sort" || SORT_FIELDS.includes(value as SortField)) &&
+      (key !== "dir" || SORT_DIRECTIONS.includes(value as SortDirection))
+    )
+      search[key] = value as never;
   }
-
-  return {
-    ...(typeof candidate.taskId === "string" && candidate.taskId.length > 0
-      ? { taskId: candidate.taskId }
-      : {}),
-    ...(candidate.layout === "board" || candidate.layout === "list"
-      ? { layout: candidate.layout }
-      : {}),
-    ...(typeof candidate.month === "string" && candidate.month.length > 0
-      ? { month: candidate.month }
-      : {}),
-    ...(typeof candidate.q === "string" && candidate.q.length > 0
-      ? { q: candidate.q }
-      : {}),
-    ...(typeof candidate.sort === "string" &&
-    SORT_FIELDS.includes(candidate.sort as SortField)
-      ? { sort: candidate.sort as SortField }
-      : {}),
-    ...(typeof candidate.dir === "string" &&
-    SORT_DIRECTIONS.includes(candidate.dir as SortDirection)
-      ? { dir: candidate.dir as SortDirection }
-      : {}),
-    ...filters,
-  };
+  if (candidate.layout === "board" || candidate.layout === "list")
+    search.layout = candidate.layout;
+  for (const key of FILTER_KEYS) {
+    let values = parseStringList(candidate[key]);
+    if (key === "dueDate")
+      values = values?.filter((value) =>
+        (DUE_DATE_FILTERS as readonly string[]).includes(value),
+      );
+    if (values?.length) search[key] = values;
+  }
+  return search;
 }
 
 export function parseProjectViewSearchFromParams(
   params: URLSearchParams,
 ): ProjectViewSearch {
-  return parseProjectViewSearch({
-    taskId: params.get("taskId"),
-    layout: params.get("layout"),
-    month: params.get("month"),
-    q: params.get("q"),
-    sort: params.get("sort"),
-    dir: params.get("dir"),
-    status: params.getAll("status"),
-    priority: params.getAll("priority"),
-    assignee: params.getAll("assignee"),
-    dueDate: params.getAll("dueDate"),
-    labels: params.getAll("labels"),
-  });
+  const search: Record<string, unknown> = Object.fromEntries(params);
+  for (const key of FILTER_KEYS) search[key] = params.getAll(key);
+  return parseProjectViewSearch(search);
 }
 
 export function appendProjectViewSearchParams(
@@ -124,86 +104,13 @@ export function appendProjectViewSearchParams(
 ) {
   const search = parseProjectViewSearch(raw);
   if (search.layout) params.set("layout", search.layout);
-  if (search.taskId) params.set("taskId", search.taskId);
-  if (search.month) params.set("month", search.month);
-  if (search.q) params.set("q", search.q);
-  if (search.sort) params.set("sort", search.sort);
-  if (search.dir) params.set("dir", search.dir);
+  for (const key of SCALAR_KEYS) {
+    const value = search[key];
+    if (value) params.set(key, value);
+  }
   for (const key of FILTER_KEYS) {
     for (const value of search[key] ?? []) params.append(key, value);
   }
-}
-
-export function projectViewFiltersFromSearch(
-  search: ProjectViewSearch,
-): BoardFilters {
-  return {
-    status: search.status ?? [],
-    priority: search.priority ?? [],
-    assignee: search.assignee ?? [],
-    dueDate: search.dueDate ?? [],
-    labels: search.labels ?? [],
-  };
-}
-
-export function projectViewSortFromSearch(
-  search: ProjectViewSearch,
-): SortConfig {
-  return {
-    field: search.sort ?? "position",
-    direction: search.dir ?? "asc",
-  };
-}
-
-export function withProjectViewState(
-  current: ProjectViewSearch,
-  patch: Partial<ProjectViewSearch>,
-): ProjectViewSearch {
-  return parseProjectViewSearch({ ...current, ...patch });
-}
-
-export function withProjectBoardLayout(
-  search: ProjectViewSearch,
-  layout: ProjectBoardLayout,
-): ProjectViewSearch {
-  return withProjectViewState(search, { layout });
-}
-
-export function withProjectBoardTask(
-  search: ProjectViewSearch,
-  taskId: string | undefined,
-): ProjectViewSearch {
-  return withProjectViewState(search, { taskId });
-}
-
-export function withProjectViewFilters(
-  search: ProjectViewSearch,
-  filters: BoardFilters,
-): ProjectViewSearch {
-  return withProjectViewState(search, {
-    status: filters.status ?? undefined,
-    priority: filters.priority ?? undefined,
-    assignee: filters.assignee ?? undefined,
-    dueDate: filters.dueDate ?? undefined,
-    labels: filters.labels ?? undefined,
-  });
-}
-
-export function withProjectViewSort(
-  search: ProjectViewSearch,
-  sort: SortConfig,
-): ProjectViewSearch {
-  return withProjectViewState(search, {
-    sort: sort.field,
-    dir: sort.direction,
-  });
-}
-
-export function resolveProjectBoardLayout(
-  urlLayout: ProjectBoardLayout | undefined,
-  preferredLayout: ProjectBoardLayout,
-): ProjectBoardLayout {
-  return urlLayout ?? preferredLayout;
 }
 
 export function parseProjectBoardSearch(raw: unknown) {

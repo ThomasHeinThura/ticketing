@@ -36,10 +36,8 @@ import type { useGetActiveWorkspaceUsers } from "@/hooks/queries/workspace-users
 import { useBulkSelectionKeyboardShortcuts } from "@/hooks/use-bulk-selection-keyboard-shortcuts";
 import { useRegisterShortcuts } from "@/hooks/use-keyboard-shortcuts";
 import { isTaskCompleted } from "@/lib/due-date-status";
-import {
-  type ProjectBoardSearch,
-  withProjectBoardTask,
-} from "@/lib/project-board-search";
+import type { ProjectBoardSearch } from "@/lib/project-board-search";
+import { withProjectBoardTask } from "@/lib/project-board-search-state";
 import useBulkSelectionStore from "@/store/bulk-selection";
 import useProjectStore from "@/store/project";
 import { useUserPreferencesStore } from "@/store/user-preferences";

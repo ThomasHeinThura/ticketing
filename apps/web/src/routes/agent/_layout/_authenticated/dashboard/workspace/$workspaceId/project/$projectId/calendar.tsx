@@ -22,7 +22,7 @@ import { filterProjectTasks } from "@/lib/filter-project-tasks";
 import {
   projectViewFiltersFromSearch,
   withProjectViewState,
-} from "@/lib/project-board-search";
+} from "@/lib/project-board-search-state";
 import {
   dateFromCalendarMonth,
   type ProjectCalendarSearch,
@@ -36,7 +36,7 @@ import {
   getProjectLayoutStorage,
   writeProjectLayoutPreference,
 } from "@/lib/project-layout-preference";
-import { routes } from "@/lib/routes";
+import { PROJECT_CALENDAR_PATH } from "@/lib/routes";
 import { toScheduledTasks } from "@/lib/task-schedule";
 import { useUserPreferencesStore } from "@/store/user-preferences";
 
@@ -97,7 +97,7 @@ function RouteComponent() {
 
   const handlePreviousMonth = useCallback(() => {
     navigate({
-      to: routes.projectCalendar.path,
+      to: PROJECT_CALENDAR_PATH,
       params: { workspaceId, projectId },
       search: (previous: ProjectCalendarSearch) =>
         shiftCalendarMonthSearch(previous, visibleMonth, -1),
@@ -106,7 +106,7 @@ function RouteComponent() {
 
   const handleNextMonth = useCallback(() => {
     navigate({
-      to: routes.projectCalendar.path,
+      to: PROJECT_CALENDAR_PATH,
       params: { workspaceId, projectId },
       search: (previous: ProjectCalendarSearch) =>
         shiftCalendarMonthSearch(previous, visibleMonth, 1),
@@ -115,7 +115,7 @@ function RouteComponent() {
 
   const handleToday = useCallback(() => {
     navigate({
-      to: routes.projectCalendar.path,
+      to: PROJECT_CALENDAR_PATH,
       params: { workspaceId, projectId },
       search: (previous: ProjectCalendarSearch) =>
         withCalendarMonth(previous, undefined),
@@ -125,7 +125,7 @@ function RouteComponent() {
   const updateQuery = useCallback(
     (q: string) => {
       navigate({
-        to: routes.projectCalendar.path,
+        to: PROJECT_CALENDAR_PATH,
         params: { workspaceId, projectId },
         search: (previous: ProjectCalendarSearch) =>
           withProjectViewState(previous, { q: q || undefined }),
@@ -138,7 +138,7 @@ function RouteComponent() {
   const handleOpenTask = useCallback(
     (nextTaskId: string) => {
       navigate({
-        to: routes.projectCalendar.path,
+        to: PROJECT_CALENDAR_PATH,
         params: { workspaceId, projectId },
         search: (previous: ProjectCalendarSearch) =>
           withCalendarTask(previous, nextTaskId),
@@ -150,7 +150,7 @@ function RouteComponent() {
 
   const handleCloseTaskSheet = useCallback(() => {
     navigate({
-      to: routes.projectCalendar.path,
+      to: PROJECT_CALENDAR_PATH,
       params: { workspaceId, projectId },
       search: (previous: ProjectCalendarSearch) =>
         withCalendarTask(previous, undefined),

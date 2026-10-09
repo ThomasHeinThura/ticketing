@@ -31,13 +31,13 @@ import { useGetTasks } from "@/hooks/queries/task/use-get-tasks";
 import { cn } from "@/lib/cn";
 import { filterProjectTasks } from "@/lib/filter-project-tasks";
 import { getStatusLabel } from "@/lib/i18n/domain";
+import { parseProjectBoardSearch } from "@/lib/project-board-search";
 import {
-  parseProjectBoardSearch,
   projectViewFiltersFromSearch,
   withProjectBoardTask,
   withProjectViewState,
-} from "@/lib/project-board-search";
-import { routes } from "@/lib/routes";
+} from "@/lib/project-board-search-state";
+import { PROJECT_GANTT_PATH } from "@/lib/routes";
 import { useUserPreferencesStore } from "@/store/user-preferences";
 
 export const Route = createFileRoute(
@@ -148,7 +148,7 @@ function RouteComponent() {
   const updateViewState = useCallback(
     (patch: Parameters<typeof withProjectViewState>[1]) => {
       navigate({
-        to: routes.projectGantt.path,
+        to: PROJECT_GANTT_PATH,
         params: { workspaceId, projectId },
         search: (previous: ReturnType<typeof parseProjectBoardSearch>) =>
           withProjectViewState(previous, patch),
@@ -161,7 +161,7 @@ function RouteComponent() {
   const handleOpenTask = useCallback(
     (nextTaskId: string | undefined) => {
       navigate({
-        to: routes.projectGantt.path,
+        to: PROJECT_GANTT_PATH,
         params: { workspaceId, projectId },
         search: (previous: ReturnType<typeof parseProjectBoardSearch>) =>
           withProjectBoardTask(previous, nextTaskId),

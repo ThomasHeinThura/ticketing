@@ -1,10 +1,10 @@
 import { describe, expect, it } from "vitest";
+import { parseProjectBoardSearch } from "./project-board-search";
 import {
-  parseProjectBoardSearch,
   resolveProjectBoardLayout,
   withProjectBoardLayout,
   withProjectBoardTask,
-} from "./project-board-search";
+} from "./project-board-search-state";
 
 describe("project board URL state", () => {
   it("accepts board/list layouts and drops unknown layout values", () => {
