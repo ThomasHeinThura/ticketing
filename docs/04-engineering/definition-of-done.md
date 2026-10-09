@@ -134,8 +134,10 @@ mark a requirement inapplicable merely because this is an integration slice.
 
 - [ ] Scope, dependencies, exact source SHA and artifact digest recorded in the integration queue
 - [ ] Applicable tests run on that source with expected suite/file/test counts and no skips
-- [ ] Required independent reviews bound to the current source; note-only evidence commits
-      follow the existing reviewed-head rule below, never a source-change exemption
+- [ ] Ordinary independent reviews recorded at the exact merge-candidate SHA. The Sol
+      security-note ancestor exception below applies only to that committed security note,
+      and only when every later commit touches the security-review directory; ordinary
+      exact-candidate review is still required. No source-change exemption is introduced
 - [ ] Every required CI check green on the exact merge candidate; protected merge by top-level orchestrator
 - [ ] Image build, container boot, migrations and health verified if shipped runtime changes
 - [ ] Actual integrated SIT journeys and affected browser screens verified, with evidence;
