@@ -18,7 +18,9 @@
  * Fails closed: a policy file that cannot be read is a failure, not a skip.
  */
 
+import { realpathSync } from "node:fs";
 import path from "node:path";
+import { fileURLToPath } from "node:url";
 import { exists, finish, readText, repoRoot, violation } from "./lib/repo.mjs";
 import {
   parseSecurityReviewModels,
@@ -52,7 +54,7 @@ export function slugify(heading) {
     .trim()
     .toLowerCase()
     .replace(/\[([^\]]*)\]\([^)]*\)/g, "$1")
-    .replace(/[`*_]/g, "")
+    .replace(/[`*]/g, "")
     .replace(/[^\p{L}\p{N}\s_-]/gu, "")
     .replace(/\s/g, "-");
 }
@@ -93,7 +95,9 @@ export function linksOf(source) {
   const links = [];
   for (const { number, text } of proseLines(source)) {
     const withoutCode = text.replace(/`[^`]*`/g, "");
-    for (const match of withoutCode.matchAll(/\]\(([^)\s]+)\)/g)) {
+    for (const match of withoutCode.matchAll(
+      /\]\(([^)\s]+)(?:\s+"[^"]*")?\)/g,
+    )) {
       const target = match[1];
       if (/^[a-z][a-z0-9+.-]*:/i.test(target)) continue;
       links.push({ line: number, target });
@@ -108,8 +112,10 @@ export function liveStateIn(source) {
   for (const { number, text } of proseLines(source)) {
     if (/\*\*Reviewed head:\*\*/.test(text)) continue; // a syntax example, not a claim
     const withoutLinks = text.replace(/\]\([^)]*\)/g, "]");
-    if (/\b[0-9a-f]{40}\b/.test(withoutLinks)) found.push({ line: number, what: "a 40-character SHA" });
-    if (/(^|[^\w/&`])#[0-9]{2,5}\b/.test(withoutLinks)) found.push({ line: number, what: "a PR/issue number" });
+    if (/\b[0-9a-f]{40}\b/.test(withoutLinks))
+      found.push({ line: number, what: "a 40-character SHA" });
+    if (/(^|[^\w/&`])#[0-9]{2,5}\b/.test(withoutLinks))
+      found.push({ line: number, what: "a PR/issue number" });
   }
   return found;
 }
@@ -121,7 +127,12 @@ async function main() {
   for (const relative of POLICY_FILES) {
     const absolute = path.join(repoRoot, relative);
     if (!(await exists(absolute))) {
-      failures.push(violation(relative, "policy file is missing; the startup order points at it."));
+      failures.push(
+        violation(
+          relative,
+          "policy file is missing; the startup order points at it.",
+        ),
+      );
       continue;
     }
     sources.set(relative, await readText(absolute));
@@ -132,16 +143,32 @@ async function main() {
   for (const [relative, source] of sources) {
     for (const { line, target } of linksOf(source)) {
       const [file, fragment] = target.split("#");
-      const resolved = file === "" ? relative : path.posix.normalize(path.posix.join(path.posix.dirname(relative), file));
+      const resolved =
+        file === ""
+          ? relative
+          : path.posix.normalize(
+              path.posix.join(path.posix.dirname(relative), file),
+            );
       const absolute = path.join(repoRoot, resolved);
       if (!(await exists(absolute))) {
-        failures.push(violation(`${relative}:${line}`, `link target \`${target}\` does not exist.`));
+        failures.push(
+          violation(
+            `${relative}:${line}`,
+            `link target \`${target}\` does not exist.`,
+          ),
+        );
         continue;
       }
       if (fragment && resolved.endsWith(".md")) {
-        if (!anchorCache.has(resolved)) anchorCache.set(resolved, anchorsOf(await readText(absolute)));
+        if (!anchorCache.has(resolved))
+          anchorCache.set(resolved, anchorsOf(await readText(absolute)));
         if (!anchorCache.get(resolved).has(fragment)) {
-          failures.push(violation(`${relative}:${line}`, `anchor \`#${fragment}\` does not exist in \`${resolved}\`.`));
+          failures.push(
+            violation(
+              `${relative}:${line}`,
+              `anchor \`#${fragment}\` does not exist in \`${resolved}\`.`,
+            ),
+          );
         }
       }
     }
@@ -153,7 +180,10 @@ async function main() {
     if (source === undefined) continue;
     for (const { line, what } of liveStateIn(source)) {
       failures.push(
-        violation(`${relative}:${line}`, `${what} in a permanent policy file. Live state belongs in GitHub, the queue or a dated status snapshot.`),
+        violation(
+          `${relative}:${line}`,
+          `${what} in a permanent policy file. Live state belongs in GitHub, the queue or a dated status snapshot.`,
+        ),
       );
     }
   }
@@ -167,7 +197,10 @@ async function main() {
     const workflow = section.indexOf("agent-workflow.md");
     if (mission === -1 || workflow === -1 || mission > workflow) {
       failures.push(
-        violation("AGENTS.md § Read in this order", "must name docs/07-planning/active-mission.md before docs/04-engineering/agent-workflow.md."),
+        violation(
+          "AGENTS.md § Read in this order",
+          "must name docs/07-planning/active-mission.md before docs/04-engineering/agent-workflow.md.",
+        ),
       );
     }
   }
@@ -178,18 +211,38 @@ async function main() {
     try {
       if (parseSecurityReviewModels(workflow) === null) {
         failures.push(
-          violation("docs/04-engineering/agent-workflow.md", "has no `<!-- policy:security-review-models -->` block; the PR-template check reads it from the merge base."),
+          violation(
+            "docs/04-engineering/agent-workflow.md",
+            "has no `<!-- policy:security-review-models -->` block; the PR-template check reads it from the merge base.",
+          ),
         );
       }
     } catch (error) {
       if (!(error instanceof ReviewModelsUnavailableError)) throw error;
-      failures.push(violation("docs/04-engineering/agent-workflow.md", error.message));
+      failures.push(
+        violation("docs/04-engineering/agent-workflow.md", error.message),
+      );
     }
   }
 
-  finish({ name: NAME, failures, ok: `${sources.size} policy file(s) coherent: links, live state, startup order, model block` });
+  finish({
+    name: NAME,
+    failures,
+    ok: `${sources.size} policy file(s) coherent: links, live state, startup order, model block`,
+  });
 }
 
-if (import.meta.url === `file://${process.argv[1]}`) {
+const invokedDirectly = (() => {
+  try {
+    return (
+      realpathSync(process.argv[1]) ===
+      realpathSync(fileURLToPath(import.meta.url))
+    );
+  } catch {
+    return false;
+  }
+})();
+
+if (invokedDirectly) {
   await main();
 }

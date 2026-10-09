@@ -4,14 +4,29 @@ import { anchorsOf, linksOf, liveStateIn, slugify } from "./check-policy.mjs";
 
 describe("check:policy helpers", () => {
   it("slugs headings the way GitHub does for these files", () => {
-    assert.equal(slugify("How work reaches `main`, and who may merge"), "how-work-reaches-main-and-who-may-merge");
-    assert.equal(slugify("Sessions, handoff and continuation"), "sessions-handoff-and-continuation");
+    assert.equal(
+      slugify("How work reaches `main`, and who may merge"),
+      "how-work-reaches-main-and-who-may-merge",
+    );
+    assert.equal(
+      slugify("Sessions, handoff and continuation"),
+      "sessions-handoff-and-continuation",
+    );
     assert.equal(slugify("4 · Verify"), "4--verify");
+    assert.equal(slugify("a_b section"), "a_b-section");
   });
 
   it("collects heading anchors, duplicates and explicit ids, but not fenced headings", () => {
     const anchors = anchorsOf(
-      ["# A", "## Reviews", "## Reviews", '<a id="old-anchor"></a>', "```", "## Hidden", "```"].join("\n"),
+      [
+        "# A",
+        "## Reviews",
+        "## Reviews",
+        '<a id="old-anchor"></a>',
+        "```",
+        "## Hidden",
+        "```",
+      ].join("\n"),
     );
     assert.ok(anchors.has("reviews"));
     assert.ok(anchors.has("reviews-1"));
@@ -21,9 +36,17 @@ describe("check:policy helpers", () => {
 
   it("finds relative links, skipping schemes, inline code and fences", () => {
     const links = linksOf(
-      ["see [a](x.md#y) and [b](https://e.com) and `[c](z.md)`", "```", "[d](q.md)", "```"].join("\n"),
+      [
+        'see [a](x.md#y) and [b](https://e.com) and `[c](z.md)` and [t](w.md "title")',
+        "```",
+        "[d](q.md)",
+        "```",
+      ].join("\n"),
     );
-    assert.deepEqual(links, [{ line: 1, target: "x.md#y" }]);
+    assert.deepEqual(links, [
+      { line: 1, target: "x.md#y" },
+      { line: 1, target: "w.md" },
+    ]);
   });
 
   it("flags live state but not syntax examples or link targets", () => {

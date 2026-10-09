@@ -1042,10 +1042,14 @@ test("G8 rejects a fail-open change-scope condition on the visual job", async ()
     "utf8",
   );
   const ciWorkflow = original.replace(
-    "    name: visual regression (G8)\n    needs: scope\n    if: ${{ !cancelled() && needs.scope.outputs.full != 'false' }}",
-    "    name: visual regression (G8)\n    needs: scope\n    if: ${{ needs.scope.outputs.full == 'true' }}",
+    "        if: ${{ steps.scope.outputs.full != 'false' }}\n        run: pnpm test:visual",
+    "        if: ${{ steps.scope.outputs.full == 'true' }}\n        run: pnpm test:visual",
   );
-  assert.notEqual(ciWorkflow, original, "the harness could not find the visual job's condition");
+  assert.notEqual(
+    ciWorkflow,
+    original,
+    "the harness could not find the visual job's condition",
+  );
   const result = await runVisualScope({ ciWorkflow });
 
   assert.notEqual(result.status, 0);

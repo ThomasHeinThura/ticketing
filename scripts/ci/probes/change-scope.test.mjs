@@ -6,11 +6,13 @@
  *   1. scripts/ci/classify-change.mjs — POLICY only for landed commits that touch nothing but
  *      policy/planning Markdown as plain files. Reverts, merges, renames, symlinks, executable
  *      bits, non-Markdown and CI files all answer FULL.
- *   2. .github/actions/change-scope — runs the classifier from the MERGE BASE and answers
- *      full=true on every doubt: another event, no base, no classifier at the base, a crash,
- *      or a head-side edit of the classifier.
- *   3. lib/workflow-gates.mjs A9 — `needs: scope` counts as execution only in the exact
- *      canonical shape; the fail-open spellings are refused.
+ *   2. .github/actions/change-scope — runs the classifier from the MERGE BASE with the default
+ *      branch and answers full=true on every doubt: another event, another target branch, no
+ *      base, no classifier at the base, a crash, or a head-side edit of the classifier. Its
+ *      echo is fenced against workflow-command injection.
+ *   3. lib/workflow-gates.mjs A9 — a gate step conditioned on the scope step counts as
+ *      execution only in the exact canonical step-level shape, with the action pinned by hash,
+ *      outside the always-run jobs, and with no environment that could redirect it.
  */
 
 import assert from "node:assert/strict";
@@ -27,6 +29,7 @@ import {
   git,
   initRepo,
   installCheckers,
+  installFromRepo,
   scratchDir,
   setOriginMain,
   write,
@@ -36,12 +39,25 @@ after(cleanUpScratchRepos);
 
 const here = path.dirname(fileURLToPath(import.meta.url));
 const CLASSIFIER = path.join(here, "..", "classify-change.mjs");
-const ACTION = path.join(here, "..", "..", "..", ".github", "actions", "change-scope", "action.yml");
+const ACTION = path.join(
+  here,
+  "..",
+  "..",
+  "..",
+  ".github",
+  "actions",
+  "change-scope",
+  "action.yml",
+);
 
 function classify(dir, base, head) {
-  const result = spawnSync(process.execPath, [CLASSIFIER, "--repo", dir, "--base", base, "--head", head], {
-    encoding: "utf8",
-  });
+  const result = spawnSync(
+    process.execPath,
+    [CLASSIFIER, "--repo", dir, "--base", base, "--head", head],
+    {
+      encoding: "utf8",
+    },
+  );
   assert.equal(result.status, 0, result.stderr);
   return result.stdout.trim();
 }
@@ -67,12 +83,32 @@ describe("classify-change.mjs — landed commits, fail closed", () => {
   });
 
   const fullCases = [
-    ["a product file", (dir) => write(dir, "apps/api/src/a.ts", "export const a = 2;\n")],
-    ["ci-cd.md (a CI input)", (dir) => write(dir, "docs/04-engineering/ci-cd.md", "# CI\n")],
+    [
+      "a product file",
+      (dir) => write(dir, "apps/api/src/a.ts", "export const a = 2;\n"),
+    ],
+    [
+      "ci-cd.md (a CI input)",
+      (dir) => write(dir, "docs/04-engineering/ci-cd.md", "# CI\n"),
+    ],
     [".github", (dir) => write(dir, ".github/workflows/x.yml", "name: x\n")],
-    ["the classifier itself", (dir) => write(dir, "scripts/ci/classify-change.mjs", "process.stdout.write('policy\\n');\n")],
-    ["a non-Markdown planning file", (dir) => write(dir, "docs/07-planning/evidence/run.json", "{}\n")],
-    ["another docs folder", (dir) => write(dir, "docs/02-design/design-tokens.md", "# Tokens\n")],
+    [
+      "the classifier itself",
+      (dir) =>
+        write(
+          dir,
+          "scripts/ci/classify-change.mjs",
+          "process.stdout.write('policy\\n');\n",
+        ),
+    ],
+    [
+      "a non-Markdown planning file",
+      (dir) => write(dir, "docs/07-planning/evidence/run.json", "{}\n"),
+    ],
+    [
+      "another docs folder",
+      (dir) => write(dir, "docs/02-design/design-tokens.md", "# Tokens\n"),
+    ],
   ];
   for (const [name, change] of fullCases) {
     it(`${name} → full`, () => {
@@ -92,7 +128,10 @@ describe("classify-change.mjs — landed commits, fail closed", () => {
     commit(dir, "revert it");
     write(dir, "AGENTS.md", "# Agents\n\nnote\n");
     const head = commit(dir, "docs");
-    assert.equal(git(dir, ["diff", "--name-only", `${base}..${head}`]).trim(), "AGENTS.md");
+    assert.equal(
+      git(dir, ["diff", "--name-only", `${base}..${head}`]).trim(),
+      "AGENTS.md",
+    );
     assert.match(classify(dir, base, head), /apps\/api\/src\/a\.ts/);
   });
 
@@ -118,7 +157,10 @@ describe("classify-change.mjs — landed commits, fail closed", () => {
 
   it("a symlink at a policy path → full", () => {
     const { dir, base } = baseRepo("symlink");
-    symlinkSync("../../apps/api/src/a.ts", path.join(dir, "docs/07-planning/link.md"));
+    symlinkSync(
+      "../../apps/api/src/a.ts",
+      path.join(dir, "docs/07-planning/link.md"),
+    );
     const head = commit(dir, "symlink");
     assert.match(classify(dir, base, head), /mode .*120000/);
   });
@@ -128,6 +170,19 @@ describe("classify-change.mjs — landed commits, fail closed", () => {
     chmodSync(path.join(dir, "AGENTS.md"), 0o755);
     const head = commit(dir, "chmod");
     assert.match(classify(dir, base, head), /mode 100644→100755/);
+  });
+
+  it("a file name carrying a newline cannot forge an output line", () => {
+    const { dir, base } = baseRepo("inject");
+    write(
+      dir,
+      "apps/x\n::set-output name=full::false\npolicy.ts",
+      "export {};\n",
+    );
+    const head = commit(dir, "crafted name");
+    const verdict = classify(dir, base, head);
+    assert.equal(verdict.split("\n").length, 1, verdict);
+    assert.match(verdict, /^full: "apps\/x\\n::set-output/);
   });
 
   it("an empty range → full", () => {
@@ -159,17 +214,28 @@ function runAction(dir, env) {
   const result = spawnSync("bash", ["-c", actionScript()], {
     cwd: dir,
     encoding: "utf8",
-    env: { ...process.env, RUNNER_TEMP: temp, GITHUB_OUTPUT: output, GITHUB_STEP_SUMMARY: "", ...env },
+    env: {
+      ...process.env,
+      RUNNER_TEMP: temp,
+      GITHUB_OUTPUT: output,
+      GITHUB_STEP_SUMMARY: "",
+      DEFAULT_BRANCH: "main",
+      ...env,
+    },
   });
   assert.equal(result.status, 0, result.stderr);
   return { full: readFileSync(output, "utf8").trim(), log: result.stdout };
 }
 
-function actionRepo(name, { withClassifier = true, classifierSource = null } = {}) {
+function actionRepo(
+  name,
+  { withClassifier = true, classifierSource = null } = {},
+) {
   const dir = scratchDir(`scope-action-${name}`);
   initRepo(dir);
   if (withClassifier) installCheckers(dir);
-  if (classifierSource !== null) write(dir, "scripts/ci/classify-change.mjs", classifierSource);
+  if (classifierSource !== null)
+    write(dir, "scripts/ci/classify-change.mjs", classifierSource);
   write(dir, "AGENTS.md", "# Agents\n");
   write(dir, "apps/api/src/a.ts", "export const a = 1;\n");
   const base = commit(dir, "base");
@@ -182,16 +248,28 @@ describe(".github/actions/change-scope — merge-base classifier, full on any do
     const { dir } = actionRepo("policy");
     write(dir, "AGENTS.md", "# Agents\n\nchanged\n");
     const head = commit(dir, "policy");
-    const { full } = runAction(dir, { EVENT_NAME: "pull_request", BASE_REF: "main", HEAD_SHA: head });
+    const { full } = runAction(dir, {
+      EVENT_NAME: "pull_request",
+      BASE_REF: "main",
+      HEAD_SHA: head,
+    });
     assert.equal(full, "full=false");
   });
 
   it("a head that rewrites the classifier to say `policy` is still judged by the base copy → full=true", () => {
     const { dir } = actionRepo("tamper");
-    write(dir, "scripts/ci/classify-change.mjs", "process.stdout.write('policy\\n');\n");
+    write(
+      dir,
+      "scripts/ci/classify-change.mjs",
+      "process.stdout.write('policy\\n');\n",
+    );
     write(dir, "apps/api/src/a.ts", "export const a = 2;\n");
     const head = commit(dir, "self-classify");
-    const { full, log } = runAction(dir, { EVENT_NAME: "pull_request", BASE_REF: "main", HEAD_SHA: head });
+    const { full, log } = runAction(dir, {
+      EVENT_NAME: "pull_request",
+      BASE_REF: "main",
+      HEAD_SHA: head,
+    });
     assert.equal(full, "full=true");
     assert.match(log, /classifier at/);
   });
@@ -200,16 +278,27 @@ describe(".github/actions/change-scope — merge-base classifier, full on any do
     const { dir } = actionRepo("bootstrap", { withClassifier: false });
     write(dir, "AGENTS.md", "# Agents\n\nchanged\n");
     const head = commit(dir, "policy");
-    const { full, log } = runAction(dir, { EVENT_NAME: "pull_request", BASE_REF: "main", HEAD_SHA: head });
+    const { full, log } = runAction(dir, {
+      EVENT_NAME: "pull_request",
+      BASE_REF: "main",
+      HEAD_SHA: head,
+    });
     assert.equal(full, "full=true");
     assert.match(log, /no classifier at merge base/);
   });
 
   it("a classifier that crashes at the base → full=true", () => {
-    const { dir } = actionRepo("crash", { withClassifier: false, classifierSource: "throw new Error('boom');\n" });
+    const { dir } = actionRepo("crash", {
+      withClassifier: false,
+      classifierSource: "throw new Error('boom');\n",
+    });
     write(dir, "AGENTS.md", "# Agents\n\nchanged\n");
     const head = commit(dir, "policy");
-    const { full } = runAction(dir, { EVENT_NAME: "pull_request", BASE_REF: "main", HEAD_SHA: head });
+    const { full } = runAction(dir, {
+      EVENT_NAME: "pull_request",
+      BASE_REF: "main",
+      HEAD_SHA: head,
+    });
     assert.equal(full, "full=true");
   });
 
@@ -220,65 +309,131 @@ describe(".github/actions/change-scope — merge-base classifier, full on any do
     });
     write(dir, "AGENTS.md", "# Agents\n\nchanged\n");
     const head = commit(dir, "policy");
-    const { full } = runAction(dir, { EVENT_NAME: "pull_request", BASE_REF: "main", HEAD_SHA: head });
+    const { full } = runAction(dir, {
+      EVENT_NAME: "pull_request",
+      BASE_REF: "main",
+      HEAD_SHA: head,
+    });
     assert.equal(full, "full=true");
   });
 
   for (const event of ["push", "merge_group", "workflow_dispatch"]) {
     it(`${event} → full=true`, () => {
       const { dir, base } = actionRepo(`event-${event}`);
-      const { full } = runAction(dir, { EVENT_NAME: event, BASE_REF: "", HEAD_SHA: base });
+      const { full } = runAction(dir, {
+        EVENT_NAME: event,
+        BASE_REF: "",
+        HEAD_SHA: base,
+      });
       assert.equal(full, "full=true");
     });
   }
 
+  it("a pull request into any branch but the default one → full=true", () => {
+    const { dir } = actionRepo("retarget");
+    write(dir, "AGENTS.md", "# Agents\n\nchanged\n");
+    const head = commit(dir, "policy");
+    git(dir, ["update-ref", "refs/remotes/origin/side", head]);
+    const { full, log } = runAction(dir, {
+      EVENT_NAME: "pull_request",
+      BASE_REF: "side",
+      HEAD_SHA: head,
+    });
+    assert.equal(full, "full=true");
+    assert.match(log, /is not the default branch/);
+  });
+
+  it("an unknown default branch → full=true", () => {
+    const { dir } = actionRepo("nodefault");
+    write(dir, "AGENTS.md", "# Agents\n\nchanged\n");
+    const head = commit(dir, "policy");
+    const { full } = runAction(dir, {
+      EVENT_NAME: "pull_request",
+      BASE_REF: "main",
+      HEAD_SHA: head,
+      DEFAULT_BRANCH: "",
+    });
+    assert.equal(full, "full=true");
+  });
+
+  it("its log line is fenced with ::stop-commands:: so a crafted reason cannot run a command", () => {
+    const { dir } = actionRepo("fence");
+    write(dir, "apps/api/src/a.ts", "export const a = 5;\n");
+    const head = commit(dir, "product");
+    const { log } = runAction(dir, {
+      EVENT_NAME: "pull_request",
+      BASE_REF: "main",
+      HEAD_SHA: head,
+    });
+    const lines = log.trim().split("\n");
+    const open = lines.findIndex((line) =>
+      line.startsWith("::stop-commands::scope-"),
+    );
+    assert.notEqual(open, -1, log);
+    const token = lines[open].slice("::stop-commands::".length);
+    assert.ok(token.length > 20, token);
+    assert.match(lines[open + 1], /^change scope: full=true/);
+    assert.equal(lines[open + 2], `::${token}::`);
+  });
+
   it("an unresolvable merge base → full=true", () => {
     const { dir, base } = actionRepo("nobase");
-    const { full } = runAction(dir, { EVENT_NAME: "pull_request", BASE_REF: "does-not-exist", HEAD_SHA: base });
+    const { full } = runAction(dir, {
+      EVENT_NAME: "pull_request",
+      BASE_REF: "does-not-exist",
+      HEAD_SHA: base,
+    });
     assert.equal(full, "full=true");
   });
 });
 
-const CANONICAL_SCOPE = [
-  "  scope:",
-  "    name: change scope",
-  "    runs-on: ubuntu-latest",
-  "    timeout-minutes: 5",
-  "    outputs:",
-  "      full: ${{ steps.classify.outputs.full }}",
-  "    steps:",
+const PINNED_ACTION = readFileSync(ACTION, "utf8");
+
+const CHECKOUT = [
   `      - uses: actions/checkout@${"a".repeat(40)} # pinned`,
   "        with:",
   "          fetch-depth: 0",
-  "      - id: classify",
+];
+const SCOPE_STEP = [
+  "      - id: scope",
   "        uses: ./.github/actions/change-scope",
-  "",
+];
+const GATE_STEP = [
+  "      - name: pnpm build",
+  "        if: ${{ steps.scope.outputs.full != 'false' }}",
+  "        run: pnpm build",
 ];
 
-function workflow({ scope = CANONICAL_SCOPE, needs = "scope", condition = "${{ !cancelled() && needs.scope.outputs.full != 'false' }}" } = {}) {
+function workflow({
+  job = "build",
+  jobLines = [],
+  steps = [...CHECKOUT, ...SCOPE_STEP, ...GATE_STEP],
+  env = ['  TURBO_TELEMETRY_DISABLED: "1"', '  DO_NOT_TRACK: "1"'],
+} = {}) {
   return [
     "name: CI - fast",
     "on:",
     "  pull_request:",
+    ...(env.length > 0 ? ["env:", ...env] : []),
     "jobs:",
-    ...scope,
-    "  build:",
-    "    name: build",
-    ...(needs === null ? [] : [`    needs: ${needs}`]),
-    ...(condition === null ? [] : [`    if: ${condition}`]),
+    `  ${job}:`,
+    `    name: ${job}`,
+    ...jobLines,
     "    runs-on: ubuntu-latest",
     "    steps:",
-    "      - run: pnpm build",
+    ...steps,
     "",
   ].join("\n");
 }
 
-function kindOfBuild(source) {
+function kindOfBuild(source, action = PINNED_ACTION) {
   const dir = scratchDir("scope-a9");
   initRepo(dir);
   installCheckers(dir);
   write(dir, ".github/workflows/ci-fast.yml", source);
-  write(dir, ".github/actions/change-scope/action.yml", readFileSync(ACTION, "utf8"));
+  installFromRepo(dir, ".github/actions/setup/action.yml");
+  if (action !== null)
+    write(dir, ".github/actions/change-scope/action.yml", action);
   return evaluateInRepo(
     dir,
     `const m = await import("./scripts/ci/lib/workflow-gates.mjs");
@@ -288,33 +443,124 @@ function kindOfBuild(source) {
   );
 }
 
-describe("workflow-gates A9 — `needs: scope` only in the canonical shape", () => {
-  it("canonical scope job and condition → scope-gated, counted as executed", () => {
+const replaceGateIf = (condition) => [
+  ...CHECKOUT,
+  ...SCOPE_STEP,
+  GATE_STEP[0],
+  `        if: ${condition}`,
+  GATE_STEP[2],
+];
+
+describe("workflow-gates A9 — the step-level change-scope shape only", () => {
+  it("canonical scope step and condition → scope-gated, counted as executed", () => {
     const result = kindOfBuild(workflow());
-    assert.deepEqual(result.kinds, ["scope-gated"]);
+    assert.deepEqual(result.kinds, ["scope-gated"], JSON.stringify(result));
     assert.equal(result.executed, true);
   });
 
   const refused = [
-    ["the fail-open `== 'true'` spelling", { condition: "${{ needs.scope.outputs.full == 'true' }}" }],
-    ["no !cancelled() (a failed scope would skip the gate)", { condition: "${{ needs.scope.outputs.full != 'false' }}" }],
-    ["a disjunction", { condition: "${{ !cancelled() && needs.scope.outputs.full != 'false' || github.actor == 'x' }}" }],
-    ["needs without the condition", { condition: null }],
-    ["needs on another job", { needs: "lint" }],
-    ["needs on a list", { needs: "[scope, lint]" }],
-    ["no scope job", { scope: [] }],
-    ["a conditional scope job", { scope: [...CANONICAL_SCOPE.slice(0, 2), "    if: github.event_name == 'pull_request'", ...CANONICAL_SCOPE.slice(2)] }],
-    ["a scope job with needs", { scope: [...CANONICAL_SCOPE.slice(0, 2), "    needs: build", ...CANONICAL_SCOPE.slice(2)] }],
-    ["a scope job with continue-on-error", { scope: [...CANONICAL_SCOPE.slice(0, 2), "    continue-on-error: true", ...CANONICAL_SCOPE.slice(2)] }],
-    ["a scope job whose output is hardcoded", { scope: CANONICAL_SCOPE.map((line) => line.replace("${{ steps.classify.outputs.full }}", "'false'")) }],
-    ["a scope job running inline shell instead of the action", { scope: CANONICAL_SCOPE.map((line) => line.replace("uses: ./.github/actions/change-scope", "run: echo full=false >> $GITHUB_OUTPUT")) }],
-    ["an unpinned checkout in the scope job", { scope: CANONICAL_SCOPE.map((line) => line.replace(`@${"a".repeat(40)} # pinned`, "@v5")) }],
+    [
+      "the fail-open `== 'true'` spelling",
+      { steps: replaceGateIf("${{ steps.scope.outputs.full == 'true' }}") },
+    ],
+    [
+      "an extra atom beside the scope condition",
+      {
+        steps: replaceGateIf(
+          "${{ steps.scope.outputs.full != 'false' && github.actor == 'x' }}",
+        ),
+      },
+    ],
+    [
+      "a disjunction",
+      {
+        steps: replaceGateIf(
+          "${{ steps.scope.outputs.full != 'false' || github.actor == 'x' }}",
+        ),
+      },
+    ],
+    [
+      "an unproven step condition in a scope-gated job (W8 mutant)",
+      { steps: replaceGateIf("${{ github.event_name == 'push' }}") },
+    ],
+    ["no scope step", { steps: [...CHECKOUT, ...GATE_STEP] }],
+    [
+      "a scope step after the gate",
+      { steps: [...CHECKOUT, ...GATE_STEP, ...SCOPE_STEP] },
+    ],
+    [
+      "two scope steps",
+      { steps: [...CHECKOUT, ...SCOPE_STEP, ...SCOPE_STEP, ...GATE_STEP] },
+    ],
+    [
+      "a conditional scope step",
+      {
+        steps: [
+          ...CHECKOUT,
+          ...SCOPE_STEP,
+          "        if: github.event_name == 'pull_request'",
+          ...GATE_STEP,
+        ],
+      },
+    ],
+    [
+      "a scope step with env (PATH redirection)",
+      {
+        steps: [
+          ...CHECKOUT,
+          ...SCOPE_STEP,
+          "        env:",
+          "          PATH: ./bin",
+          ...GATE_STEP,
+        ],
+      },
+    ],
+    [
+      "a scope step with continue-on-error",
+      {
+        steps: [
+          ...CHECKOUT,
+          ...SCOPE_STEP,
+          "        continue-on-error: true",
+          ...GATE_STEP,
+        ],
+      },
+    ],
+    [
+      "a scope step using another action",
+      {
+        steps: [
+          ...CHECKOUT,
+          "      - id: scope",
+          "        uses: ./.github/actions/setup",
+          ...GATE_STEP,
+        ],
+      },
+    ],
+    [
+      "a scope step running inline shell",
+      {
+        steps: [
+          ...CHECKOUT,
+          "      - id: scope",
+          "        run: echo full=false >> $GITHUB_OUTPUT",
+          ...GATE_STEP,
+        ],
+      },
+    ],
+    ["an always-run job", { job: "registers" }],
+    ["the pull-request job", { job: "pull-request" }],
+    ["a job-level env", { jobLines: ["    env:", "      PATH: ./bin"] }],
+    [
+      "a workflow env beyond the inert pair",
+      { env: ['  TURBO_TELEMETRY_DISABLED: "1"', "  PATH: ./bin"] },
+    ],
+    ["a job that needs another job", { jobLines: ["    needs: scope"] }],
+    [
+      "an unproven job condition on a scope-gated job (mutant: exempting every level)",
+      { jobLines: ["    if: ${{ github.actor == 'x' }}"] },
+    ],
   ];
-  it("refuses a duplicate job `if` outright (first and last would be read differently)", () => {
-    const source = workflow().replace("    name: build\n", "    name: build\n    if: false\n");
-    assert.throws(() => kindOfBuild(source), /repeats the job key `if`/);
-  });
-
   for (const [name, options] of refused) {
     it(`refuses ${name}`, () => {
       const result = kindOfBuild(workflow(options));
@@ -322,4 +568,44 @@ describe("workflow-gates A9 — `needs: scope` only in the canonical shape", () 
       assert.equal(result.executed, false, JSON.stringify(result));
     });
   }
+
+  it("refuses a tampered composite action (digest pin)", () => {
+    const result = kindOfBuild(
+      workflow(),
+      PINNED_ACTION.replace("full=true\n", "full=false\n"),
+    );
+    assert.equal(result.executed, false, JSON.stringify(result));
+    assert.match(result.reasons.join(" "), /differs from the reviewed version/);
+  });
+
+  it("refuses a missing composite action", () => {
+    assert.throws(
+      () => kindOfBuild(workflow(), null),
+      /change-scope\/action\.yaml could be read/,
+    );
+  });
+
+  it("refuses a duplicate step `if` outright", () => {
+    const steps = [
+      ...CHECKOUT,
+      ...SCOPE_STEP,
+      GATE_STEP[0],
+      "        if: false",
+      ...GATE_STEP.slice(1),
+    ];
+    assert.throws(
+      () => kindOfBuild(workflow({ steps })),
+      /repeats the step key `if`/,
+    );
+  });
+
+  it("refuses a duplicate job `if` outright", () => {
+    const source = workflow({
+      jobLines: [
+        "    if: false",
+        "    if: github.event_name == 'pull_request'",
+      ],
+    });
+    assert.throws(() => kindOfBuild(source), /repeats the job key `if`/);
+  });
 });

@@ -60,8 +60,8 @@ import {
 } from "./lib/pr-body.mjs";
 import { exists, finish, readText, repoRoot, violation } from "./lib/repo.mjs";
 import {
-  readAcceptedSecurityReviewModels,
   ReviewModelsUnavailableError,
+  readAcceptedSecurityReviewModels,
 } from "./lib/review-models.mjs";
 import {
   CI_CD_RELATIVE_PATH,
@@ -391,7 +391,7 @@ async function main() {
         accepted.source === "legacy"
           ? `the legacy set — the merge base ${accepted.base.sha.slice(0, 9)} has no ` +
             "security-review model block in docs/04-engineering/agent-workflow.md"
-          : `docs/04-engineering/agent-workflow.md at the merge base ` +
+          : "docs/04-engineering/agent-workflow.md at the merge base " +
             `${accepted.base.sha.slice(0, 9)} (${accepted.base.ref})`;
       failures.push(
         violation(

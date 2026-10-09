@@ -45,34 +45,8 @@ env:
   DO_NOT_TRACK: "1"
 
 jobs:
-  # ── Change scope (ci-cd.md § Applicability) ─────────────────────────────────────────────
-  # Decides, from the MERGE BASE's classifier, whether this pull request is policy-only. Gate
-  # jobs below that measure the product carry `needs: scope` and run unless this job answered
-  # exactly `full == 'false'`: a failed, cancelled-mid-way or missing answer still runs them.
-  # Never conditional itself, never `needs` anything: it must always produce an answer.
-  scope:
-    name: change scope
-    runs-on: ubuntu-latest
-    timeout-minutes: 5
-    outputs:
-      full: ${{ steps.classify.outputs.full }}
-    steps:
-      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5.1.0
-        with:
-          # The classifier reads landed commits from the merge base to the head.
-          fetch-depth: 0
-      - id: classify
-        uses: ./.github/actions/change-scope
-
-  # ── The Throttle 1 boundary ────────────────────────────────────────────────────────────
-  # Its own job so it can be its own required status check on the protect-main ruleset,
-  # independent of everything else in this workflow. docs/07-planning/status.md § Throttle 1
-  # conditions 4 and 5: route coverage runs in CI, and a route without a policy fails the
-  # build. The wrapper fails closed until the suite from #7 exists.
   route-policy:
     name: route policy coverage + permission matrix
-    needs: scope
-    if: ${{ !cancelled() && needs.scope.outputs.full != 'false' }}
     runs-on: ubuntu-latest
     timeout-minutes: 20
     steps:
@@ -85,8 +59,12 @@ jobs:
           # like a policy failure rather than a checkout problem. The step below exists
           # to keep those two apart.
           fetch-depth: 0
+      - id: scope
+        uses: ./.github/actions/change-scope
       - uses: ./.github/actions/setup
+        if: ${{ steps.scope.outputs.full != 'false' }}
       - name: merge base is resolvable
+        if: ${{ steps.scope.outputs.full != 'false' }}
         # Fails with its OWN message, before the suite runs. A gate that cannot read its
         # own baseline must say so in those words: "the ratchet did not run" and "the
         # ratchet ran and rejected your change" are different facts, and conflating them
@@ -102,6 +80,7 @@ jobs:
           fi
           echo "merge base with origin/main: $base"
       - name: git identity for the ratchet's scratch repositories
+        if: ${{ steps.scope.outputs.full != 'false' }}
         # `tests/permissions/git-baseline.test.ts` proves the shrink-only ratchet
         # against REAL git, by initialising throwaway repositories and committing
         # into them. A GitHub runner has no committer identity, so `git commit`
@@ -114,42 +93,54 @@ jobs:
           git config --global user.email "ci@taskdesk.invalid"
           git config --global user.name "TaskDesk CI"
       - name: pnpm check:route-policy
+        if: ${{ steps.scope.outputs.full != 'false' }}
         # #19's fail-closed wrapper. It does not scan routes -- it locates #7's
         # published suite, refuses to pass without both route-coverage.test.ts and
         # matrix.test.ts, and then runs it. `pnpm test:permissions` remains #21's
         # canonical entry point and this delegates to it.
         run: pnpm check:route-policy
       - name: pnpm test:no-inherited-routes
+        if: ${{ steps.scope.outputs.full != 'false' }}
         # Keep the fork-removal assertion independently visible in the existing required
         # route-policy context. The full permissions suite above also exercises this file.
         run: pnpm test:no-inherited-routes
 
   static:
     name: static
-    needs: scope
-    if: ${{ !cancelled() && needs.scope.outputs.full != 'false' }}
     runs-on: ubuntu-latest
     timeout-minutes: 20
     steps:
       - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5.1.0
+        with:
+          # The change-scope step reads landed commits from the merge base.
+          fetch-depth: 0
+      - id: scope
+        uses: ./.github/actions/change-scope
       - uses: ./.github/actions/setup
+        if: ${{ steps.scope.outputs.full != 'false' }}
       - name: pnpm lint (biome)
+        if: ${{ steps.scope.outputs.full != 'false' }}
         # `pnpm lint` is `turbo lint`, and each package's lint script is
         # `biome check --write .`, which rewrites files. CI must report, not fix.
         run: pnpm lint:ci
       - name: pnpm typecheck
+        if: ${{ steps.scope.outputs.full != 'false' }}
         run: pnpm typecheck
       - name: Normalize Ubuntu APT mirror for Chromium dependencies
         run: sudo -- "$(command -v node)" scripts/ci/normalize-ubuntu-apt-mirror.mjs
       - name: Install Chromium for G3
+        if: ${{ steps.scope.outputs.full != 'false' }}
         run: ./apps/web/node_modules/.bin/playwright install --with-deps chromium
       - name: pnpm check:tokens
+        if: ${{ steps.scope.outputs.full != 'false' }}
         # Token parity/literals plus density-slot enforcement and built-CSS Chromium contrast.
         # The checker builds the web CSS and reuses the app's pinned Playwright tooling.
         run: pnpm check:tokens
       - name: pnpm check:i18n
+        if: ${{ steps.scope.outputs.full != 'false' }}
         run: pnpm check:i18n
       - name: pnpm check:deps
+        if: ${{ steps.scope.outputs.full != 'false' }}
         run: pnpm check:deps
 
   registers:
@@ -261,58 +252,81 @@ jobs:
 
   test:
     name: unit + component
-    needs: scope
-    if: ${{ !cancelled() && needs.scope.outputs.full != 'false' }}
     runs-on: ubuntu-latest
     timeout-minutes: 25
     steps:
       - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5.1.0
+        with:
+          # The change-scope step reads landed commits from the merge base.
+          fetch-depth: 0
+      - id: scope
+        uses: ./.github/actions/change-scope
       - uses: ./.github/actions/setup
+        if: ${{ steps.scope.outputs.full != 'false' }}
       - name: pnpm test
+        if: ${{ steps.scope.outputs.full != 'false' }}
         run: pnpm test
 
   coverage:
     name: domain coverage (90%)
-    needs: scope
-    if: ${{ !cancelled() && needs.scope.outputs.full != 'false' }}
     runs-on: ubuntu-latest
     timeout-minutes: 15
     steps:
       - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5.1.0
+        with:
+          # The change-scope step reads landed commits from the merge base.
+          fetch-depth: 0
+      - id: scope
+        uses: ./.github/actions/change-scope
       - uses: ./.github/actions/setup
+        if: ${{ steps.scope.outputs.full != 'false' }}
       - name: pnpm test:coverage
+        if: ${{ steps.scope.outputs.full != 'false' }}
         run: pnpm test:coverage
 
   contract:
     name: contract - OpenAPI drift
-    needs: scope
-    if: ${{ !cancelled() && needs.scope.outputs.full != 'false' }}
     runs-on: ubuntu-latest
     timeout-minutes: 20
     steps:
       - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5.1.0
+        with:
+          # The change-scope step reads landed commits from the merge base.
+          fetch-depth: 0
+      - id: scope
+        uses: ./.github/actions/change-scope
       - uses: ./.github/actions/setup
+        if: ${{ steps.scope.outputs.full != 'false' }}
       - name: Fetch base for breaking-change comparison
+        if: ${{ steps.scope.outputs.full != 'false' }}
         run: git fetch --no-tags origin main
       - name: pnpm test:contract
+        if: ${{ steps.scope.outputs.full != 'false' }}
         run: pnpm test:contract
 
   build:
     name: build
-    needs: scope
-    if: ${{ !cancelled() && needs.scope.outputs.full != 'false' }}
     runs-on: ubuntu-latest
     timeout-minutes: 25
     steps:
       - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5.1.0
+        with:
+          # The change-scope step reads landed commits from the merge base.
+          fetch-depth: 0
+      - id: scope
+        uses: ./.github/actions/change-scope
       - uses: ./.github/actions/setup
+        if: ${{ steps.scope.outputs.full != 'false' }}
       - name: pnpm build
+        if: ${{ steps.scope.outputs.full != 'false' }}
         run: pnpm build
         env:
           VITE_API_URL: ""
       - name: pnpm check:bundle-purity
+        if: ${{ steps.scope.outputs.full != 'false' }}
         run: pnpm check:bundle-purity
       - name: pnpm check:bundle-size
+        if: ${{ steps.scope.outputs.full != 'false' }}
         run: pnpm check:bundle-size
 
   # Deliberately two jobs, not one. As a single "supply chain" job the first failing step
@@ -322,14 +336,19 @@ jobs:
 
   dependency-audit:
     name: supply chain - dependency audit
-    needs: scope
-    if: ${{ !cancelled() && needs.scope.outputs.full != 'false' }}
     runs-on: ubuntu-latest
     timeout-minutes: 15
     steps:
       - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5.1.0
+        with:
+          # The change-scope step reads landed commits from the merge base.
+          fetch-depth: 0
+      - id: scope
+        uses: ./.github/actions/change-scope
       - uses: ./.github/actions/setup
+        if: ${{ steps.scope.outputs.full != 'false' }}
       - name: pnpm audit
+        if: ${{ steps.scope.outputs.full != 'false' }}
         # ci-cd.md: high or critical fails. GREEN — and green by fixing the graph, not by
         # narrowing the question. The inherited advisories this comment used to call
         # permanent (js-yaml via @commitlint/cli, nanoid via apps__web>postcss) are closed
@@ -372,16 +391,21 @@ jobs:
 
   helm:
     name: helm lint + template
-    needs: scope
-    if: ${{ !cancelled() && needs.scope.outputs.full != 'false' }}
     runs-on: ubuntu-latest
     timeout-minutes: 10
     steps:
       - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5.1.0
+        with:
+          # The change-scope step reads landed commits from the merge base.
+          fetch-depth: 0
+      - id: scope
+        uses: ./.github/actions/change-scope
       - name: helm lint
+        if: ${{ steps.scope.outputs.full != 'false' }}
         # helm ships on the GitHub-hosted Ubuntu runner image, so no action is needed.
         run: helm lint charts/taskdesk
       - name: helm template
+        if: ${{ steps.scope.outputs.full != 'false' }}
         # The chart fails closed on every required bootstrap value (#20, now on main), so a
         # bare `helm template` cannot render and this step was red for the right reason.
         # Supply a synthetic fixture instead of weakening the chart.
@@ -408,6 +432,7 @@ jobs:
             --set taskdesk.env.portalUrl=https://portal.ci.invalid \
             > /dev/null
       - name: helm template must FAIL without its secrets
+        if: ${{ steps.scope.outputs.full != 'false' }}
         # helm lint exits 0 even when a `fail` directive fires, so without this the
         # fail-closed behaviour the chart exists for is never actually exercised in CI.
         run: |

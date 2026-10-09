@@ -301,7 +301,9 @@ function withJobKey(source, gateLine, key) {
   const name = key.split(":")[0];
   for (let i = job + 1; i < step; i += 1) {
     if (lines[i].startsWith(`    ${name}:`)) {
-      return [...lines.slice(0, i), `    ${key}`, ...lines.slice(i + 1)].join("\n");
+      return [...lines.slice(0, i), `    ${key}`, ...lines.slice(i + 1)].join(
+        "\n",
+      );
     }
   }
   return [

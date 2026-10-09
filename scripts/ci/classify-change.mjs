@@ -25,7 +25,8 @@
  *     a submodule, or any path outside POLICY_PATHS answers FULL.
  *
  * Output: prints `policy` or `full: <reason>` on stdout and exits 0. A crash exits non-zero,
- * which the composite action also treats as FULL.
+ * which the composite action also treats as FULL. Paths in a reason are JSON-escaped, so a
+ * file name containing a newline cannot forge a line of output.
  *
  * Usage: node classify-change.mjs --repo <dir> --base <sha> --head <sha>
  */
@@ -52,14 +53,22 @@ const PLAIN_MODES = new Set(["100644", "000000"]);
 export function isPolicyPath(relative) {
   if (POLICY_EXACT.has(relative)) return true;
   return POLICY_MARKDOWN_PREFIXES.some(
-    (prefix) => relative.startsWith(prefix) && relative.endsWith(".md") && !relative.includes("/../"),
+    (prefix) =>
+      relative.startsWith(prefix) &&
+      relative.endsWith(".md") &&
+      !relative.includes("/../"),
   );
 }
 
 function git(repo, args) {
-  const result = spawnSync("git", ["-C", repo, ...args], { encoding: "utf8", maxBuffer: 256 * 1024 * 1024 });
+  const result = spawnSync("git", ["-C", repo, ...args], {
+    encoding: "utf8",
+    maxBuffer: 256 * 1024 * 1024,
+  });
   if (result.status !== 0) {
-    throw new Error(`git ${args.join(" ")} failed (${result.status}): ${(result.stderr ?? "").trim()}`);
+    throw new Error(
+      `git ${args.join(" ")} failed (${result.status}): ${(result.stderr ?? "").trim()}`,
+    );
   }
   return result.stdout;
 }
@@ -69,23 +78,40 @@ function git(repo, args) {
  * @returns {{sha:string, oldMode:string, newMode:string, path:string}[]}
  */
 export function landedEntries(repo, base, head) {
-  const listed = git(repo, ["rev-list", "--parents", "--reverse", `${base}..${head}`]);
+  const listed = git(repo, [
+    "rev-list",
+    "--parents",
+    "--reverse",
+    `${base}..${head}`,
+  ]);
   const entries = [];
   let commits = 0;
   for (const line of listed.split("\n")) {
     const [sha, ...parents] = line.trim().split(/\s+/).filter(Boolean);
     if (!sha) continue;
     commits += 1;
-    if (parents.length === 0) throw new Error(`root commit ${sha} inside the range`);
+    if (parents.length === 0)
+      throw new Error(`root commit ${sha} inside the range`);
     for (const parent of parents) {
-      const raw = git(repo, ["diff-tree", "-r", "--raw", "--no-renames", "-z", parent, sha]);
+      const raw = git(repo, [
+        "diff-tree",
+        "-r",
+        "--raw",
+        "--no-renames",
+        "-z",
+        parent,
+        sha,
+      ]);
       const fields = raw.split("\0");
       for (let i = 0; i + 1 < fields.length; i += 2) {
         const meta = fields[i];
         const file = fields[i + 1];
         if (meta === "") break;
         const match = /^:(\d{6}) (\d{6}) /.exec(meta);
-        if (!match) throw new Error(`unreadable diff-tree record ${JSON.stringify(meta)}`);
+        if (!match)
+          throw new Error(
+            `unreadable diff-tree record ${JSON.stringify(meta)}`,
+          );
         entries.push({ sha, oldMode: match[1], newMode: match[2], path: file });
       }
     }
@@ -104,23 +130,35 @@ export function classify(repo, base, head) {
   }
   for (const entry of entries) {
     if (!PLAIN_MODES.has(entry.oldMode) || !PLAIN_MODES.has(entry.newMode)) {
-      return { scope: "full", reason: `${entry.path} has mode ${entry.oldMode}→${entry.newMode} in ${entry.sha.slice(0, 9)}` };
+      return {
+        scope: "full",
+        reason: `${JSON.stringify(entry.path)} has mode ${entry.oldMode}→${entry.newMode} in ${entry.sha.slice(0, 9)}`,
+      };
     }
     if (!isPolicyPath(entry.path)) {
-      return { scope: "full", reason: `${entry.path} (${entry.sha.slice(0, 9)}) is not a policy or planning document` };
+      return {
+        scope: "full",
+        reason: `${JSON.stringify(entry.path)} (${entry.sha.slice(0, 9)}) is not a policy or planning document`,
+      };
     }
   }
-  return { scope: "policy", reason: `${entries.length} change(s), all policy or planning Markdown` };
+  return {
+    scope: "policy",
+    reason: `${entries.length} change(s), all policy or planning Markdown`,
+  };
 }
 
 function argument(name) {
   const index = process.argv.indexOf(name);
-  return index === -1 ? null : process.argv[index + 1] ?? null;
+  return index === -1 ? null : (process.argv[index + 1] ?? null);
 }
 
 const invokedDirectly = (() => {
   try {
-    return realpathSync(process.argv[1]) === realpathSync(fileURLToPath(import.meta.url));
+    return (
+      realpathSync(process.argv[1]) ===
+      realpathSync(fileURLToPath(import.meta.url))
+    );
   } catch {
     return false;
   }
@@ -131,7 +169,9 @@ if (invokedDirectly) {
   const base = argument("--base");
   const head = argument("--head");
   if (!repo || !base || !head) {
-    process.stdout.write("full: usage — --repo, --base and --head are all required\n");
+    process.stdout.write(
+      "full: usage — --repo, --base and --head are all required\n",
+    );
   } else {
     const { scope, reason } = classify(repo, base, head);
     process.stdout.write(scope === "policy" ? "policy\n" : `full: ${reason}\n`);
