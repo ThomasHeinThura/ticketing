@@ -1,9 +1,24 @@
+import { readFileSync } from "node:fs";
 import { mkdir } from "node:fs/promises";
+import os from "node:os";
 import { type Browser, expect, type Page, test } from "@playwright/test";
 import {
   median,
   medianOfThreeWithRetry,
 } from "../../../scripts/ci/lib/performance-budget.mjs";
+import {
+  assertCalibrationSourcePinned,
+  CALIBRATION_COLUMNS,
+  CALIBRATION_ROWS,
+  CALIBRATION_RUNS,
+  CALIBRATION_SOURCE,
+  CALIBRATION_WARMUP_RUNS,
+  type CalibrationSample,
+  type CalibrationScale,
+  calibratedMedianOfThreeWithRetry,
+  describeHost,
+  PERFORMANCE_REFERENCE,
+} from "../../../scripts/ci/lib/performance-calibration.mjs";
 import {
   type G11Window,
   type G13Transition,
@@ -21,6 +36,20 @@ type BudgetMetric = {
   name: string;
   budget: number;
   sample: () => Promise<number>;
+};
+
+/**
+ * How a metric is judged under the G11 speed calibration. `full` scales the whole value,
+ * `post-dcl` scales only the CPU portion after DOMContentLoaded (LCP), and the budget is
+ * unchanged either way. Metrics without a `calibration` are judged raw (not CPU-bound).
+ */
+type CalibratedBudgetMetric = Omit<BudgetMetric, "sample"> & {
+  sample: () => Promise<CalibrationSample>;
+  calibration: {
+    browser: Browser;
+    scale: Exclude<CalibrationScale, "none">;
+    throttled: boolean;
+  };
 };
 
 const SCREENSHOT_DIR = "test-results/g11-screens";
@@ -48,6 +77,67 @@ async function installFast4gAndCpuThrottle(page: Page) {
   await session.send("Emulation.setCPUThrottlingRate", { rate: 4 });
   return session;
 }
+
+/**
+ * Runs the pinned calibration workload in a fresh context of the same browser, in the same
+ * CPU-throttle state (4x, or none) as the metric it normalises, and returns the per-run
+ * durations with warm-up runs already discarded.
+ */
+async function measureCalibrationRuns(browser: Browser, throttled: boolean) {
+  assertCalibrationSourcePinned();
+  const context = await browser.newContext({
+    baseURL: PERFORMANCE_BASE_URL,
+    viewport: { width: 1280, height: 720 },
+  });
+  let session:
+    | Awaited<ReturnType<typeof installFast4gAndCpuThrottle>>
+    | undefined;
+  try {
+    const page = await context.newPage();
+    if (throttled) session = await installFast4gAndCpuThrottle(page);
+    else await page.goto("about:blank");
+    const options = {
+      warmups: CALIBRATION_WARMUP_RUNS,
+      runs: CALIBRATION_RUNS,
+      rows: CALIBRATION_ROWS,
+      columns: CALIBRATION_COLUMNS,
+    };
+    return await page.evaluate<number[]>(
+      `(${CALIBRATION_SOURCE})(${JSON.stringify(options)})`,
+    );
+  } finally {
+    await session?.detach().catch(() => undefined);
+    await context.close();
+  }
+}
+
+function readCpuinfo() {
+  try {
+    return readFileSync("/proc/cpuinfo", "utf8");
+  } catch {
+    return undefined;
+  }
+}
+
+test.beforeAll(() => {
+  const host = describeHost({
+    cpuinfoText: readCpuinfo(),
+    osCpuModel: os.cpus()[0]?.model,
+    parallelism: os.availableParallelism(),
+  });
+  console.log(
+    "G11 host: cpu model " + host.cpuModel + "; nproc " + String(host.nproc),
+  );
+  const pinned =
+    PERFORMANCE_REFERENCE.unthrottledMs !== null ||
+    PERFORMANCE_REFERENCE.throttledMs !== null;
+  console.log(
+    "G11 calibration reference R0: " +
+      (pinned
+        ? JSON.stringify(PERFORMANCE_REFERENCE)
+        : "UNPINNED; calibration-only, metrics are judged raw"),
+  );
+});
 
 async function withPerformancePage(
   browser: Browser,
@@ -182,7 +272,11 @@ async function openWorkList(page: Page) {
   }
 }
 
-async function collectNavigationMetric(page: Page, name: "lcp" | "cls") {
+async function collectNavigationMetric(
+  page: Page,
+  name: "lcp" | "cls",
+  report?: { domContentLoaded?: number },
+) {
   await openWorkList(page);
   await waitForTwoFrames(page);
   const value = await page.evaluate(
@@ -245,6 +339,8 @@ async function collectNavigationMetric(page: Page, name: "lcp" | "cls") {
         }))
         .sort((left, right) => left.start - right.start),
     }));
+    if (report)
+      report.domContentLoaded = diagnostic.navigation?.domContentLoaded;
     console.info("G11 LCP diagnostic", JSON.stringify(diagnostic));
   }
   if (name === "lcp" && value <= 0)
@@ -841,6 +937,81 @@ async function threeSamplesWithOneRetry(metric: BudgetMetric) {
   return { ...metric, result, values };
 }
 
+/**
+ * Same median-of-three rule and one retry set, but each set is preceded by the pinned
+ * calibration workload and judged normalised to reference speed. While R0 is unpinned this
+ * measures and logs the calibration and judges the raw value exactly as before.
+ */
+async function threeSamplesWithCalibratedRetry(metric: CalibratedBudgetMetric) {
+  const { browser, scale, throttled } = metric.calibration;
+  const state = throttled ? "throttled" : "unthrottled";
+  const { result, retried, sets } = await calibratedMedianOfThreeWithRetry({
+    sample: metric.sample,
+    budget: metric.budget,
+    scale,
+    state,
+    calibrate: () => measureCalibrationRuns(browser, throttled),
+  });
+  const format = (values: number[]) =>
+    values.map((value) => value.toFixed(1)).join(", ");
+  sets.forEach((set, index) => {
+    const { calibration } = set;
+    console.log(
+      "G11 calibration " +
+        metric.name +
+        " set " +
+        (index + 1) +
+        " [" +
+        state +
+        "]: mode " +
+        calibration.mode +
+        "; runs (" +
+        calibration.runs.map((value) => Number(value).toFixed(2)).join(", ") +
+        "); median " +
+        Number(calibration.medianMs).toFixed(2) +
+        "; spread " +
+        Number(calibration.spread).toFixed(3) +
+        "; R0 " +
+        (calibration.referenceMs ?? "unpinned") +
+        "; factor " +
+        (calibration.mode === "calibrated"
+          ? calibration.factor.toFixed(3)
+          : "1 (not applied)") +
+        (calibration.note ? "; note " + calibration.note : ""),
+    );
+    console.log(
+      "G11 samples " +
+        metric.name +
+        " set " +
+        (index + 1) +
+        ": raw (" +
+        format(set.raw) +
+        "); raw median " +
+        set.rawMedian.toFixed(1) +
+        "; normalised (" +
+        format(set.normalised) +
+        "); normalised median " +
+        set.result.toFixed(1),
+    );
+  });
+  console.log(
+    "Performance " +
+      metric.name +
+      ": median " +
+      result.toFixed(1) +
+      " (" +
+      format(sets[sets.length - 1].normalised) +
+      "); budget < " +
+      metric.budget +
+      (retried ? "; one retry set used" : ""),
+  );
+  expect(
+    result,
+    `${metric.name} must be strictly below ${metric.budget} (got ${result.toFixed(1)})`,
+  ).toBeLessThan(metric.budget);
+  return { ...metric, result, sets };
+}
+
 async function threeSamplesWithInclusiveRetry(metric: BudgetMetric) {
   const sampleSet = async () => {
     const values = [];
@@ -876,23 +1047,28 @@ async function threeSamplesWithInclusiveRetry(metric: BudgetMetric) {
 
 test("G11: work-list render, 500 rows", async ({ browser }) => {
   test.setTimeout(120_000);
-  await threeSamplesWithOneRetry({
+  await threeSamplesWithCalibratedRetry({
     name: "work-list render, 500 rows (ms; unthrottled)",
     budget: 500,
     sample: () =>
       withPerformancePage(browser, false, (page) => collectListRender(page)),
+    calibration: { browser, scale: "full", throttled: false },
   });
 });
 
 test("G11: work-list LCP", async ({ browser }) => {
   test.setTimeout(120_000);
-  await threeSamplesWithOneRetry({
+  await threeSamplesWithCalibratedRetry({
     name: "work-list LCP (ms)",
     budget: 2500,
-    sample: () =>
-      withPerformancePage(browser, true, (page) =>
-        collectNavigationMetric(page, "lcp"),
-      ),
+    sample: async () => {
+      const report: { domContentLoaded?: number } = {};
+      const value = await withPerformancePage(browser, true, (page) =>
+        collectNavigationMetric(page, "lcp", report),
+      );
+      return { value, floorMs: report.domContentLoaded };
+    },
+    calibration: { browser, scale: "post-dcl", throttled: true },
   });
 });
 
@@ -910,13 +1086,14 @@ test("G11: work-list CLS", async ({ browser }) => {
 
 test("G11: work-list to detail route first paint", async ({ browser }) => {
   test.setTimeout(120_000);
-  await threeSamplesWithOneRetry({
+  await threeSamplesWithCalibratedRetry({
     name: "work-list to work-item route transition (ms)",
     budget: 300,
     sample: () =>
       withPerformancePage(browser, true, (page) =>
         collectRouteTransition(page),
       ),
+    calibration: { browser, scale: "full", throttled: true },
   });
 });
 
@@ -1093,13 +1270,14 @@ test("G13 observer detects a click-initiated skeleton-to-content shift", async (
 
 test("G11: create-work-item click-to-paint", async ({ browser }) => {
   test.setTimeout(120_000);
-  await threeSamplesWithOneRetry({
+  await threeSamplesWithCalibratedRetry({
     name: "create-work-item interaction click-to-paint (ms)",
     budget: 200,
     sample: () =>
       withPerformancePage(browser, true, (page, resetFixture) =>
         collectCreateInteraction(page, resetFixture),
       ),
+    calibration: { browser, scale: "full", throttled: true },
   });
 });
 
@@ -1120,13 +1298,14 @@ test("G11: sign-in click-to-paint", async ({ browser }) => {
 
 test("G11: command-palette click-to-paint", async ({ browser }) => {
   test.setTimeout(120_000);
-  await threeSamplesWithOneRetry({
+  await threeSamplesWithCalibratedRetry({
     name: "command-palette interaction click-to-paint (ms)",
     budget: 200,
     sample: () =>
       withPerformancePage(browser, true, (page) =>
         collectCommandPaletteInteraction(page),
       ),
+    calibration: { browser, scale: "full", throttled: true },
   });
 });
 
@@ -1134,35 +1313,38 @@ test("G11: command-palette keyboard navigation click-to-paint", async ({
   browser,
 }) => {
   test.setTimeout(120_000);
-  await threeSamplesWithOneRetry({
+  await threeSamplesWithCalibratedRetry({
     name: "command-palette keyboard navigation click-to-paint (ms)",
     budget: 200,
     sample: () =>
       withPerformancePage(browser, true, (page) =>
         collectCommandPaletteInteraction(page, "navigate"),
       ),
+    calibration: { browser, scale: "full", throttled: true },
   });
 });
 
 test("G11: change task state click-to-paint", async ({ browser }) => {
   test.setTimeout(120_000);
-  await threeSamplesWithOneRetry({
+  await threeSamplesWithCalibratedRetry({
     name: "task-state interaction click-to-paint (ms)",
     budget: 200,
     sample: () =>
       withPerformancePage(browser, true, (page) =>
         collectTaskStateChange(page),
       ),
+    calibration: { browser, scale: "full", throttled: true },
   });
 });
 
 test("G11: assign task click-to-paint", async ({ browser }) => {
   test.setTimeout(120_000);
-  await threeSamplesWithOneRetry({
+  await threeSamplesWithCalibratedRetry({
     name: "task-assignment interaction click-to-paint (ms)",
     budget: 200,
     sample: () =>
       withPerformancePage(browser, true, (page) => collectTaskAssignment(page)),
+    calibration: { browser, scale: "full", throttled: true },
   });
 });
 
@@ -1178,11 +1360,12 @@ test("G11: comment click-to-paint", async ({ browser }) => {
 
 test("G11: board render, 200 tasks", async ({ browser }) => {
   test.setTimeout(120_000);
-  await threeSamplesWithOneRetry({
+  await threeSamplesWithCalibratedRetry({
     name: "board render, 200 tasks (ms; unthrottled)",
     budget: 500,
     sample: () =>
       withPerformancePage(browser, false, (page) => collectBoardRender(page)),
+    calibration: { browser, scale: "full", throttled: false },
   });
 });
 
