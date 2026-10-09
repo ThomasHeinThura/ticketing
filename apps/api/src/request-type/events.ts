@@ -72,18 +72,42 @@ export async function recordSubmissionEvent(
 
 /** The outbox is authoritative; a transient in-process notification may not fail a committed request. */
 export async function notifySubmissionEvent(
-  kind: SubmissionEvent["kind"],
-  payload: SubmissionEvent["payload"],
+  event: SubmissionEvent,
 ): Promise<void> {
+  let publication: Promise<void>;
+  switch (event.kind) {
+    case "submission.received":
+      publication = publishEvent("submission.received", event.payload);
+      break;
+    case "submission.replied":
+      publication = publishEvent("submission.replied", event.payload);
+      break;
+    case "submission.accepted":
+      publication = publishEvent("submission.accepted", event.payload);
+      break;
+    case "submission.declined":
+      publication = publishEvent("submission.declined", event.payload);
+      break;
+    case "submission.withdrawn":
+      publication = publishEvent("submission.withdrawn", event.payload);
+      break;
+    default:
+      return assertNever(event);
+  }
+
   try {
-    await publishEvent(kind, payload);
+    await publication;
   } catch (error) {
     console.error(
       "Submission event notification failed; durable event retained",
       {
-        kind,
+        kind: event.kind,
         error: error instanceof Error ? error.message : "unknown error",
       },
     );
   }
+}
+
+function assertNever(value: never): never {
+  throw new Error(`Unhandled submission event: ${JSON.stringify(value)}`);
 }
