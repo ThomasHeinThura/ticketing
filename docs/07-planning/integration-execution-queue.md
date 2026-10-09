@@ -1,3 +1,26 @@
+## Execution checkpoint — 2026-10-09 17:10 UTC (Claude Opus conductor)
+
+- **#602 task strict/rollback proof:** BLOCKED; no live window issued. The runner went through review three times:
+  - **V48** (manifest `561e56e4…`): fresh Opus review. Security CLEAR WITH NON-BLOCKING; live run NOT READY. The foreign-PUT outcome it expected is one the product cannot produce, and no test drove the real path end to end.
+  - **V49** (`f600da21…`, Sonnet `a14e6260…`): fresh Opus review, NOT READY. The independence gate was bound to the old Codex author lineage.
+  - **V50** (`de159153…`): delta review READY. A fresh Opus issuing review (`a53507f7…`) was CLEAR; report SHA-256 `d57e5a87…`, retained as `p0-v50-task-issuing-review-opus.md`.
+- **Encoder failures on real inputs:**
+  - The encoder copied forward from V47 raised a KeyError on real inputs; fixed in the `-r2` copy.
+  - The sealed prerequisite validator rejects the real retained config-run and re-key records. It compares canonical-JSON hashes where the retained pins are raw-file hashes, and its assumed schemas differ from the real files.
+  - This is the fourth instance of one defect class: validators written against assumed shapes and never run on real inputs.
+- **Structural fix (altitude change):** V51 is in progress. It uses one raw-byte hash convention, validators written against the real files' schemas, and a conformance test that loads every real retained input and runs to the execute boundary. No runtime, records or product changes were made.
+- **Next:** a fresh Opus review of V51. Then a fresh read-only re-key observation, because 2026-10-09 records expire at 00:00 UTC. Then one serialized disposable window.
+- **Known product divergence (P0 acceptance record):** at `66c736e7`, API keys on `requireProjectReach` routes get 403. The legacy reach gate and the shadow observer resolve keys with an empty capability subset, while the strict enforcer loads the subset. This fails closed. It is a P4-scope API-key issue to be tracked, not "API-key read proven".
+- **Migration ledger (draft, conductor-owned):**
+  - `main` carries 88 entries (0–87), and #602's drizzle tree is identical.
+  - The post-P0 train is a single chain, 0088–0118.
+  - CRITICAL: #513/#611 reuse idx 87 (`0087_parallel_hairball`); #569 renumbers 0080–0082; #611's `sla_pause` conflicts with the train's 0104.
+  - Allocation is resolved after #602 lands.
+- **New conductor-owned item:** the CI gate-scanner fail-open fix (quoted/explicit keys and composite calling conditions in `scripts/ci/lib/workflow-gates.mjs`). WAITING on #616 merge; branch from main afterwards; Sonnet implements; Sonnet ordinary review plus Opus security review.
+- **#615** (`e824f6d6`): review set confirmed by the conductor. **#616** (`92660ed7`): review set complete. Both WAITING on #602 for the inherited audit and G11 checks. Agreed rebase-then-squash plan with the policy maintainer.
+- **Restored:** the historical checkout `p0-palette-reduction-1878`, detached at `b7573671`, deleted by worktree cleanup at 15:48 UTC. V49+ offline tests need it.
+- **Owner question pending:** whether Thomas's direct Opus security-review routing (recorded in unmerged #615) authorizes #602's merge before #615 lands.
+
 ## Conductor handoff — 2026-10-09 15:50 UTC
 
 - **Ownership:** Thomas assigned a Claude Opus session (`claude-opus-5-5`) as delivery conductor on 2026-10-09. It now owns this queue, merge order, shared runtime windows, migration allocation and release coordination. The outgoing Codex conductor (thread `01a0f392`) last acted at 14:19 UTC. A heartbeat fired at 15:46:16 UTC and completed with no actions. Thomas then paused both Codex automations (`taskdesk-existing-integration-sprint`, `p0-remaining-evidence-dates`; `status = "PAUSED"`, verified read-only). No Codex process remains running. The outgoing root checkpoint, automation file and this queue at `d9528207` are preserved privately with SHA-256 hashes. The policy maintainer keeps #615 and #616.
