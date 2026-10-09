@@ -29,8 +29,16 @@ const routeKeys = policyRegistry.entries.flatMap(({ routeKey }) => {
   return method && pathname ? [registeredRouteKey(method, pathname)] : [];
 });
 const trustedRoutes = new Set(routeKeys);
+const trustedPolicySources = new Set(
+  policyRegistry.entries.map(({ source }) => source),
+);
 const metrics = createTaskDeskMetrics(routeKeys);
-const logger = createTaskDeskLogger(defaultLogLevels(), trustedRoutes);
+const logger = createTaskDeskLogger(
+  defaultLogLevels(),
+  trustedRoutes,
+  process.stdout,
+  trustedPolicySources,
+);
 let listener: ReturnType<typeof createMetricsListener> | undefined;
 let refreshTimer: ReturnType<typeof setInterval> | undefined;
 let refreshController:
@@ -50,6 +58,8 @@ export function observeRequest(input: {
   route?: string;
   status: number;
   durationMs: number;
+  requestId: string;
+  strictPolicyWitness?: TaskDeskLogEvent["strictPolicyWitness"];
 }): void {
   metrics.recordHttpRequest({
     method: input.method,
@@ -70,7 +80,11 @@ export function observeRequest(input: {
     statusClass:
       `${Math.floor(input.status / 100)}xx` as TaskDeskLogEvent["statusClass"],
     durationMs: input.durationMs,
-    route,
+    route: input.strictPolicyWitness?.route ?? route,
+    traceId: input.requestId,
+    ...(input.strictPolicyWitness
+      ? { strictPolicyWitness: input.strictPolicyWitness }
+      : {}),
   });
 }
 

@@ -1,6 +1,9 @@
 import { Writable } from "node:stream";
 import { describe, expect, it } from "vitest";
-import { createTaskDeskLogger } from "../../../apps/api/src/observability/logger.js";
+import {
+  createTaskDeskLogger,
+  type TaskDeskLogEvent,
+} from "../../../apps/api/src/observability/logger.js";
 import { registeredRouteKey } from "../../../apps/api/src/observability/metrics.js";
 import { defaultLogLevels } from "../../../apps/api/src/observability/settings.js";
 
@@ -207,5 +210,84 @@ describe("allowlisted structured logger", () => {
         new Set(["GET /raw?secret=x"] as never),
       ),
     ).toThrow("Invalid registered HTTP routes");
+  });
+
+  it("emits only a closed strict-policy witness on the request log", () => {
+    const sink = capture();
+    const source = "apps/api/src/asset/policy.ts";
+    const logger = createTaskDeskLogger(
+      defaultLogLevels(),
+      new Set([workspacesRoute]),
+      sink.stream,
+      new Set([source]),
+    );
+    logger.log({
+      module: "http",
+      message: "http.request",
+      level: "info",
+      traceId: "0123456789abcdef0123456789abcdef",
+      route: workspacesRoute,
+      strictPolicyWitness: {
+        requestId: "0123456789abcdef0123456789abcdef",
+        route: workspacesRoute,
+        policySource: source,
+        decisionCategory: "denied",
+        provenanceValidationResult: "complete",
+      },
+    });
+    const record = JSON.parse(sink.lines[0] as string) as Record<
+      string,
+      unknown
+    >;
+    expect(record.strictPolicyWitness).toEqual({
+      requestId: "0123456789abcdef0123456789abcdef",
+      route: workspacesRoute,
+      policySource: source,
+      decisionCategory: "denied",
+      provenanceValidationResult: "complete",
+    });
+  });
+
+  it("rejects forged, stale, or non-finite strict-policy witnesses", () => {
+    const sink = capture();
+    const source = "apps/api/src/asset/policy.ts";
+    const logger = createTaskDeskLogger(
+      defaultLogLevels(),
+      new Set([workspacesRoute]),
+      sink.stream,
+      new Set([source]),
+    );
+    const base: TaskDeskLogEvent = {
+      module: "http",
+      message: "http.request",
+      level: "info",
+      traceId: "0123456789abcdef0123456789abcdef",
+      route: workspacesRoute,
+      strictPolicyWitness: {
+        requestId: "0123456789abcdef0123456789abcdef",
+        route: workspacesRoute,
+        policySource: source,
+        decisionCategory: "denied",
+        provenanceValidationResult: "complete",
+      },
+    };
+    for (const witness of [
+      { ...base.strictPolicyWitness, requestId: "forged" },
+      {
+        ...base.strictPolicyWitness,
+        policySource: "apps/api/src/evil/policy.ts",
+      },
+      { ...base.strictPolicyWitness, route: "GET /raw/path" as never },
+      { ...base.strictPolicyWitness, decisionCategory: "maybe" as never },
+      { ...base.strictPolicyWitness, tenantId: "raw-row-id" } as never,
+    ]) {
+      expect(() =>
+        logger.log({ ...base, strictPolicyWitness: witness } as never),
+      ).toThrow("Invalid structured log event");
+    }
+    expect(() =>
+      logger.log({ ...base, route: "GET /api/raw" as never }),
+    ).toThrow("Invalid structured log event");
+    expect(sink.lines).toHaveLength(0);
   });
 });

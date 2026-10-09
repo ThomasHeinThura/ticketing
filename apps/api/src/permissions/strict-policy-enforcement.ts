@@ -2,6 +2,7 @@ import {
   evaluatePolicy,
   instanceScope,
   isCapabilityPolicy,
+  isResolvedScope,
   isSelfPolicy,
   NO_PERSON_PARAMETER,
   NO_SINGLE_RESOURCE,
@@ -25,6 +26,7 @@ import type { Context, Next } from "hono";
 import { HTTPException } from "hono/http-exception";
 import { findAssetWorkspaceScope } from "../asset/repository";
 import db, { schema } from "../database";
+import type { RegisteredHttpRoute } from "../observability/metrics.js";
 import { policyRegistry } from "../policy-registry";
 import { rejectNulByte } from "../utils/reject-nul-byte";
 import {
@@ -33,6 +35,10 @@ import {
 } from "../utils/require-api-key-permission-scope";
 import { enforcedPolicySources } from "./enforcement-config";
 import { resolveIdentity } from "./resolve-identity";
+import {
+  ensurePolicyRequestId,
+  setStrictPolicyWitness,
+} from "./shadow-context";
 import { attributedMatchedRoute } from "./shadow-middleware";
 
 type RuntimeContext = Context;
@@ -708,6 +714,38 @@ export async function enforceRegisteredPolicy(
     decision = evaluatePolicy(entry.policy, context);
   } catch {
     refuse(500);
+  }
+  const provenanceValidationResult =
+    entry.kind === "public" || entry.kind === "delegated"
+      ? "not_applicable"
+      : entry.kind === "capability" &&
+          isCapabilityPolicy(entry.policy) &&
+          (entry.policy.scope === "instance"
+            ? isResolvedScope(context.scope) &&
+              context.scope.kind === "instance"
+            : isResolvedScope(context.scope) &&
+              context.scope.kind === entry.policy.scope &&
+              !(
+                decision.allowed === false &&
+                (decision.code === "scope_source_mismatch" ||
+                  decision.code === "scope_mismatch")
+              ))
+        ? "complete"
+        : entry.kind === "self" || entry.kind === "portal"
+          ? "not_applicable"
+          : "failed";
+  if (
+    (provenanceValidationResult === "complete" ||
+      provenanceValidationResult === "not_applicable") &&
+    (decision.allowed || decision.status !== 500)
+  ) {
+    setStrictPolicyWitness(c, {
+      requestId: ensurePolicyRequestId(c),
+      route: routeKey as RegisteredHttpRoute,
+      policySource: entry.source,
+      decisionCategory: decision.allowed ? "allowed" : "denied",
+      provenanceValidationResult,
+    });
   }
   if (!decision.allowed) refuse(decision.status);
 

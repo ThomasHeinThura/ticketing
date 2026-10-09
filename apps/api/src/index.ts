@@ -76,7 +76,11 @@ import pendingAction from "./pending-action";
 // all (presence only, always on); `runNextWithPolicyShadow` is the shadow-mode ALLOW/DENY
 // comparison, off by default. See the call sites below and each file's own header comment.
 import { assertRouteIsClassified } from "./permissions/route-classification-guard";
-import { setShadowLegacyAuthorization } from "./permissions/shadow-context";
+import {
+  ensurePolicyRequestId,
+  setShadowLegacyAuthorization,
+  strictPolicyWitness,
+} from "./permissions/shadow-context";
 import {
   declareCatchAllMiddleware,
   runNextWithPolicyShadow,
@@ -421,6 +425,8 @@ export function createApp(
     c: Context<AppVariables>,
     next: Next,
   ) => {
+    const requestId = ensurePolicyRequestId(c);
+    c.header("x-taskdesk-request-id", requestId);
     const startedAt = performance.now();
     const release = beginObservedRequest();
     try {
@@ -441,6 +447,8 @@ export function createApp(
         route: registeredRoute,
         status: c.res.status,
         durationMs: Math.max(0, performance.now() - startedAt),
+        requestId,
+        strictPolicyWitness: strictPolicyWitness(c) ?? undefined,
       });
     }
   };
