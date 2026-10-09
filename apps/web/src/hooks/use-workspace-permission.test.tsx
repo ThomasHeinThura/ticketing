@@ -1,5 +1,5 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { renderHook, waitFor } from "@testing-library/react";
+import { act, renderHook, waitFor } from "@testing-library/react";
 import type { ReactNode } from "react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { useWorkspacePermission } from "./use-workspace-permission";
@@ -31,11 +31,13 @@ vi.mock("@/hooks/queries/workspace-users/use-active-workspace-user", () => ({
   useGetActiveWorkspaceUser: () => ({ data: { role: "member" } }),
 }));
 
-function createWrapper() {
-  const queryClient = new QueryClient({
+function createQueryClient() {
+  return new QueryClient({
     defaultOptions: { queries: { retry: false } },
   });
+}
 
+function createWrapper(queryClient = createQueryClient()) {
   return function Wrapper({ children }: { children: ReactNode }) {
     return (
       <QueryClientProvider client={queryClient}>{children}</QueryClientProvider>
@@ -215,6 +217,81 @@ describe("useWorkspacePermission", () => {
     expect(result.current.canManageProjects()).toBe(false);
     expect(result.current.canRemoveMembers()).toBe(false);
     expect(result.current.canManageServiceCalendars()).toBe(false);
+    expect(result.current.isPermissionError).toBe(false);
+  });
+
+  it("distinguishes terminal no-data failure from initial pending and retries to allow", async () => {
+    capabilitiesGet
+      .mockRejectedValueOnce(new Error("offline"))
+      .mockResolvedValueOnce({
+        ok: true,
+        json: async () => fullCapabilityMap({ createTasks: true }),
+      });
+    const { result } = renderHook(() => useWorkspacePermission(), {
+      wrapper: createWrapper(),
+    });
+
+    expect(result.current.isCheckingPermissions).toBe(true);
+    await waitFor(() => expect(result.current.isPermissionError).toBe(true));
+    expect(result.current.isCheckingPermissions).toBe(false);
+    expect(result.current.canCreateTasks()).toBe(false);
+
+    await act(async () => {
+      await result.current.retryPermissionCheck();
+    });
+
+    await waitFor(() => expect(result.current.isPermissionError).toBe(false));
+    expect(result.current.isCheckingPermissions).toBe(false);
+    expect(result.current.canCreateTasks()).toBe(true);
+  });
+
+  it("treats stale capability data as checking during a permission refresh", async () => {
+    let resolveRefresh!: (response: {
+      ok: boolean;
+      json: () => Promise<Record<string, boolean>>;
+    }) => void;
+    const refreshResult = new Promise<{
+      ok: boolean;
+      json: () => Promise<Record<string, boolean>>;
+    }>((resolve) => {
+      resolveRefresh = resolve;
+    });
+    capabilitiesGet
+      .mockResolvedValueOnce({
+        ok: true,
+        json: async () => fullCapabilityMap({ createTasks: true }),
+      })
+      .mockReturnValueOnce(refreshResult);
+    const queryClient = createQueryClient();
+    const { result } = renderHook(() => useWorkspacePermission(), {
+      wrapper: createWrapper(queryClient),
+    });
+
+    await waitFor(() => expect(result.current.canCreateTasks()).toBe(true));
+    await act(async () => {
+      void queryClient.invalidateQueries({
+        queryKey: ["workspace-capabilities", "workspace-1", "member"],
+      });
+    });
+
+    await waitFor(() =>
+      expect(result.current.isCheckingPermissions).toBe(true),
+    );
+    expect(result.current.canCreateTasks()).toBe(true);
+    expect(result.current.isPermissionError).toBe(false);
+
+    await act(async () => {
+      resolveRefresh({
+        ok: true,
+        json: async () => fullCapabilityMap({ createTasks: false }),
+      });
+      await refreshResult;
+    });
+
+    await waitFor(() =>
+      expect(result.current.isCheckingPermissions).toBe(false),
+    );
+    expect(result.current.canCreateTasks()).toBe(false);
   });
 
   it("surfaces isOwner/isAdmin from the resolved active member's role", async () => {

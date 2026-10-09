@@ -8,12 +8,20 @@ import {
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import WorkItemCreateDialogShell from "./work-item-create-dialog-shell";
 
-const permission = vi.hoisted(() => ({ checking: true, allowed: false }));
+const permission = vi.hoisted(() => ({
+  checking: true,
+  allowed: false,
+  error: undefined as Error | undefined,
+  retry: vi.fn(),
+}));
 
 vi.mock("@/hooks/use-workspace-permission", () => ({
   useWorkspacePermission: () => ({
     canCreateTasks: () => permission.allowed,
     isCheckingPermissions: permission.checking,
+    isPermissionError: Boolean(permission.error),
+    permissionError: permission.error,
+    retryPermissionCheck: permission.retry,
   }),
 }));
 
@@ -41,6 +49,8 @@ function renderShell(onClose = vi.fn()) {
 beforeEach(() => {
   permission.checking = true;
   permission.allowed = false;
+  permission.error = undefined;
+  permission.retry.mockReset();
 });
 
 afterEach(() => {
@@ -83,6 +93,49 @@ describe("WorkItemCreateDialogShell", () => {
 
     await waitFor(() => expect(onClose).toHaveBeenCalledTimes(1));
     expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
+    expect(screen.queryByTestId("create-form")).not.toBeInTheDocument();
+  });
+
+  it("WI-1: terminal capability failure stays fail-closed and exposes retry", () => {
+    permission.checking = false;
+    permission.error = new Error("capabilities unavailable");
+    const { onClose } = renderShell();
+
+    expect(screen.getByRole("dialog")).toBeVisible();
+    expect(screen.getByText("common:error.title")).toBeVisible();
+    expect(
+      screen.getByRole("button", { name: "common:error.tryAgain" }),
+    ).toBeVisible();
+    expect(screen.queryByTestId("create-form")).not.toBeInTheDocument();
+    expect(onClose).not.toHaveBeenCalled();
+
+    fireEvent.click(
+      screen.getByRole("button", { name: "common:error.tryAgain" }),
+    );
+    expect(permission.retry).toHaveBeenCalledTimes(1);
+  });
+
+  it("WI-1: withholds the form while refreshing even when stale data allowed creation", async () => {
+    permission.checking = true;
+    permission.allowed = true;
+    const { rerender, onClose } = renderShell();
+
+    expect(screen.getByRole("dialog")).toBeVisible();
+    expect(screen.getByRole("status")).toBeVisible();
+    expect(screen.queryByTestId("create-form")).not.toBeInTheDocument();
+    expect(onClose).not.toHaveBeenCalled();
+
+    permission.checking = false;
+    permission.allowed = false;
+    rerender(
+      <WorkItemCreateDialogShell
+        projectId="project-1"
+        workspaceId="workspace-1"
+        onClose={onClose}
+        finalFocus={() => false}
+      />,
+    );
+    await waitFor(() => expect(onClose).toHaveBeenCalledTimes(1));
     expect(screen.queryByTestId("create-form")).not.toBeInTheDocument();
   });
 
