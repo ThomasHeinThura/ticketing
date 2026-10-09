@@ -185,6 +185,28 @@ describe("classify-change.mjs — landed commits, fail closed", () => {
     assert.match(verdict, /^full: "apps\/x\\n::set-output/);
   });
 
+  it("a root commit inside the range → full", () => {
+    const { dir, base } = baseRepo("root");
+    git(dir, ["checkout", "-q", "--orphan", "orphan"]);
+    git(dir, ["rm", "-rq", "--cached", "."]);
+    write(dir, "AGENTS.md", "# orphan\n");
+    git(dir, ["add", "AGENTS.md"]);
+    git(dir, ["commit", "-q", "-m", "orphan root"]);
+    git(dir, ["checkout", "-q", "-f", "main"]);
+    git(dir, [
+      "merge",
+      "-q",
+      "--allow-unrelated-histories",
+      "-X",
+      "theirs",
+      "-m",
+      "join",
+      "orphan",
+    ]);
+    const head = git(dir, ["rev-parse", "HEAD"]).trim();
+    assert.match(classify(dir, base, head), /^full: /);
+  });
+
   it("an empty range → full", () => {
     const { dir, base } = baseRepo("empty");
     assert.match(classify(dir, base, base), /^full: history unreadable/);
@@ -302,6 +324,21 @@ describe(".github/actions/change-scope — merge-base classifier, full on any do
     assert.equal(full, "full=true");
   });
 
+  it("a classifier that prints `policy` but exits non-zero → full=true", () => {
+    const { dir } = actionRepo("exit", {
+      withClassifier: false,
+      classifierSource: "process.stdout.write('policy');\nprocess.exit(3);\n",
+    });
+    write(dir, "AGENTS.md", "# Agents\n\nchanged\n");
+    const head = commit(dir, "policy");
+    const { full } = runAction(dir, {
+      EVENT_NAME: "pull_request",
+      BASE_REF: "main",
+      HEAD_SHA: head,
+    });
+    assert.equal(full, "full=true");
+  });
+
   it("a classifier answering anything but exactly `policy` → full=true", () => {
     const { dir } = actionRepo("noisy", {
       withClassifier: false,
@@ -398,6 +435,10 @@ const SCOPE_STEP = [
   "      - id: scope",
   "        uses: ./.github/actions/change-scope",
 ];
+const SAFE_DIRECTORY = [
+  "      - name: Trust the checked-out repository inside the Playwright container",
+  '        run: git config --global --add safe.directory "$GITHUB_WORKSPACE"',
+];
 const GATE_STEP = [
   "      - name: pnpm build",
   "        if: ${{ steps.scope.outputs.full != 'false' }}",
@@ -409,12 +450,13 @@ function workflow({
   jobLines = [],
   steps = [...CHECKOUT, ...SCOPE_STEP, ...GATE_STEP],
   env = ['  TURBO_TELEMETRY_DISABLED: "1"', '  DO_NOT_TRACK: "1"'],
+  envRaw = "env:",
 } = {}) {
   return [
     "name: CI - fast",
     "on:",
     "  pull_request:",
-    ...(env.length > 0 ? ["env:", ...env] : []),
+    ...(env.length > 0 || envRaw !== "env:" ? [envRaw, ...env] : []),
     "jobs:",
     `  ${job}:`,
     `    name: ${job}`,
@@ -456,6 +498,20 @@ describe("workflow-gates A9 — the step-level change-scope shape only", () => {
     const result = kindOfBuild(workflow());
     assert.deepEqual(result.kinds, ["scope-gated"], JSON.stringify(result));
     assert.equal(result.executed, true);
+  });
+
+  it("the pinned Playwright container with its exact safe.directory step → scope-gated", () => {
+    const result = kindOfBuild(
+      workflow({
+        jobLines: [
+          "    container:",
+          "      image: mcr.microsoft.com/playwright:v1.63.0-noble@sha256:eff16c30e6f3f4af0a03fa4b706120d5e9b0891c344a27d64559aff5900a4a27",
+          "      options: --ipc=host",
+        ],
+        steps: [...CHECKOUT, ...SAFE_DIRECTORY, ...SCOPE_STEP, ...GATE_STEP],
+      }),
+    );
+    assert.deepEqual(result.kinds, ["scope-gated"], JSON.stringify(result));
   });
 
   const refused = [
@@ -559,6 +615,126 @@ describe("workflow-gates A9 — the step-level change-scope shape only", () => {
     [
       "an unproven job condition on a scope-gated job (mutant: exempting every level)",
       { jobLines: ["    if: ${{ github.actor == 'x' }}"] },
+    ],
+    [
+      "a step before the scope step that writes $GITHUB_ENV",
+      {
+        steps: [
+          ...CHECKOUT,
+          "      - run: echo NODE_OPTIONS=--require ./x.cjs >> $GITHUB_ENV",
+          ...SCOPE_STEP,
+          ...GATE_STEP,
+        ],
+      },
+    ],
+    [
+      "a step before the scope step that writes $GITHUB_PATH",
+      {
+        steps: [
+          ...CHECKOUT,
+          "      - run: echo ./bin >> $GITHUB_PATH",
+          ...SCOPE_STEP,
+          ...GATE_STEP,
+        ],
+      },
+    ],
+    [
+      "a local action before the scope step",
+      {
+        steps: [
+          ...CHECKOUT,
+          "      - uses: ./.github/actions/setup",
+          ...SCOPE_STEP,
+          ...GATE_STEP,
+        ],
+      },
+    ],
+    [
+      "a checkout of another ref",
+      {
+        steps: [
+          CHECKOUT[0],
+          "        with:",
+          "          fetch-depth: 0",
+          "          ref: other",
+          ...SCOPE_STEP,
+          ...GATE_STEP,
+        ],
+      },
+    ],
+    [
+      "a checkout without fetch-depth 0",
+      { steps: [CHECKOUT[0], ...SCOPE_STEP, ...GATE_STEP] },
+    ],
+    [
+      "an unpinned checkout",
+      {
+        steps: [
+          "      - uses: actions/checkout@v5",
+          "        with:",
+          "          fetch-depth: 0",
+          ...SCOPE_STEP,
+          ...GATE_STEP,
+        ],
+      },
+    ],
+    [
+      "no checkout before the scope step",
+      { steps: [...SCOPE_STEP, ...GATE_STEP] },
+    ],
+    [
+      "an arbitrary job container",
+      { jobLines: ["    container:", "      image: evil/image:latest"] },
+    ],
+    [
+      "the pinned container with its own env",
+      {
+        jobLines: [
+          ...[
+            "    container:",
+            "      image: mcr.microsoft.com/playwright:v1.63.0-noble@sha256:eff16c30e6f3f4af0a03fa4b706120d5e9b0891c344a27d64559aff5900a4a27",
+            "      options: --ipc=host",
+          ],
+          "      env:",
+          "        PATH: ./bin",
+        ],
+      },
+    ],
+    [
+      "the safe.directory step without the pinned container",
+      { steps: [...CHECKOUT, ...SAFE_DIRECTORY, ...SCOPE_STEP, ...GATE_STEP] },
+    ],
+    [
+      "a workflow env written as a flow mapping",
+      {
+        env: [],
+        envRaw:
+          "env: { TURBO_TELEMETRY_DISABLED: '1', NODE_OPTIONS: '--require ./x.cjs' }",
+      },
+    ],
+    [
+      "a workflow env with a comment on its key line",
+      {
+        env: [
+          '  TURBO_TELEMETRY_DISABLED: "1"',
+          '  NODE_OPTIONS: "--require ./x.cjs"',
+        ],
+        envRaw: "env: # inert",
+      },
+    ],
+    [
+      "a renamed always-run job (gate keyed, not id keyed)",
+      {
+        job: "regs",
+        steps: [
+          ...CHECKOUT,
+          ...SCOPE_STEP,
+          "      - name: pnpm check:policy",
+          "        if: ${{ steps.scope.outputs.full != 'false' }}",
+          "        run: pnpm check:policy",
+          ...GATE_STEP,
+        ],
+      },
     ],
   ];
   for (const [name, options] of refused) {

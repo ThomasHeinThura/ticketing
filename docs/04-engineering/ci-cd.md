@@ -557,17 +557,21 @@ so it is not re-measured as one. Everything else is verified in full.
   Helm, integration, E2E, G4, G8 and G11. **Always-run jobs** — the PR-template and
   security-review check, the registers job (with `check:policy` and `check:reviews`), the
   gate checkers and red probes, `CI matches ci-cd.md` and the secret scan — may never be
-  gated; `workflow-gates.mjs` refuses it.
+  gated: `workflow-gates.mjs` refuses scope-gating in those jobs and in any job that runs one
+  of their gates, whatever the job is called.
 - **How it stays trustworthy.** The action executes the classifier **taken from the merge
   base with the default branch**, not the pull request's copy, and answers `full=true` on any
   other event or target branch, an unresolvable base, a missing or crashing classifier, or any
   answer but exactly `policy`. Its log line is fenced with `::stop-commands::`, and the
   classifier JSON-escapes file names, so a crafted path cannot inject a workflow command.
-  `scripts/ci/lib/workflow-gates.mjs` (A9) accepts a gated step only in the exact shape above:
-  one canonical scope step before it, no extra condition, no job- or workflow-level
-  environment that could redirect the action's `git` or `node`, and the action file matching
-  the SHA-256 pinned in the scanner. `scripts/ci/probes/change-scope.test.mjs` attacks each
-  layer.
+  `scripts/ci/lib/workflow-gates.mjs` (A9) accepts a gated step only in an allowlisted
+  shape: the exact condition; one canonical scope step; before it, only a SHA-pinned checkout
+  whose sole input is `fetch-depth: 0` (plus, in the pinned Playwright container job, the
+  exact `safe.directory` step), so nothing can rewrite the action or change `PATH`,
+  `GITHUB_ENV` or `node` first; no job `env` or `defaults`; no container but the pinned
+  image; a workflow `env` that is a plain block of the two inert variables; and the action
+  file matching the SHA-256 pinned in the scanner. `scripts/ci/probes/change-scope.test.mjs`
+  attacks each layer.
 - **Known edges.**
   - The pull request that introduces the classifier runs in full: its merge base has no
     classifier.
@@ -575,10 +579,10 @@ so it is not re-measured as one. Everything else is verified in full.
     `main` gained a product change. Prefer rebasing.
   - A red product check on `main` (for example a dependency advisory) does not appear on a
     policy-only pull request. It stays the product owner's, and the next full run shows it.
-  - The workflows and the action run from the pull request, as every workflow under
-    `pull_request` does. Changing them is security-scope (`.github/**`, `scripts/ci/**`), the
-    base classifier answers full for such a change, and the digest pin makes an edited action
-    unprovable until the scanner is updated in the same reviewed change.
+  - The workflows, the action and the scanner run from the pull request, as every workflow
+    under `pull_request` does. Changing them is security-scope (`.github/**`, `scripts/ci/**`)
+    and the base classifier answers full for such a change. The digest pin is a tripwire for
+    review, not a boundary: the same pull request could change both the action and the pin.
   - The design relies on the ruleset's "require branches to be up to date" (strict) setting
     so that the merge base equals `main` at merge time. Pinning required checks to the GitHub
     Actions app in the ruleset would further stop statuses posted by other means; that is a
