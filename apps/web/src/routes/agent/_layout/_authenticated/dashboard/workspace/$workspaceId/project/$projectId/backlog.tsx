@@ -37,7 +37,7 @@ import { getPriorityLabel } from "@/lib/i18n/domain";
 import { resolveLabelColor } from "@/lib/label-color";
 import { getPriorityIcon } from "@/lib/priority";
 import { parseProjectBacklogSearch } from "@/lib/project-board-search";
-import { routes } from "@/lib/routes";
+import { createProjectViewShortcutHandlers } from "@/lib/project-layout-navigation";
 import type { SortConfig } from "@/lib/sort-tasks";
 import { sortTasks } from "@/lib/sort-tasks";
 import { toast } from "@/lib/toast";
@@ -77,36 +77,19 @@ function RouteComponent() {
     });
   }, [navigate]);
 
+  const viewShortcutHandlers = createProjectViewShortcutHandlers(
+    { workspaceId, projectId },
+    taskId ? new URLSearchParams({ taskId }).toString() : "",
+    (href) => navigate({ href }),
+  );
+
   useRegisterShortcuts({
     sequentialShortcuts: {
       [shortcuts.view.prefix]: {
-        [shortcuts.view.board]: () => {
-          navigate({
-            to: routes.projectBoard.path,
-            params: { workspaceId, projectId },
-            search: { layout: "board", taskId },
-          });
-        },
-        [shortcuts.view.list]: () => {
-          navigate({
-            to: routes.projectBoard.path,
-            params: { workspaceId, projectId },
-            search: { layout: "list", taskId },
-          });
-        },
-        [shortcuts.view.calendar]: () => {
-          navigate({
-            to: routes.projectCalendar.path,
-            params: { workspaceId, projectId },
-            search: { taskId },
-          });
-        },
-        [shortcuts.view.gantt]: () => {
-          navigate({
-            to: "/dashboard/workspace/$workspaceId/project/$projectId/gantt",
-            params: { workspaceId, projectId },
-          });
-        },
+        [shortcuts.view.board]: viewShortcutHandlers.board,
+        [shortcuts.view.list]: viewShortcutHandlers.list,
+        [shortcuts.view.calendar]: viewShortcutHandlers.calendar,
+        [shortcuts.view.gantt]: viewShortcutHandlers.gantt,
         [shortcuts.view.backlog]: () => {},
       },
     },

@@ -26,6 +26,7 @@ import {
   withProjectBoardLayout,
   withProjectBoardTask,
 } from "@/lib/project-board-search";
+import { createProjectViewShortcutHandlers } from "@/lib/project-layout-navigation";
 import { routes } from "@/lib/routes";
 import { sortTasks } from "@/lib/sort-tasks";
 import useProjectStore from "@/store/project";
@@ -124,28 +125,20 @@ function RouteComponent() {
     });
   }, [navigate, projectId, workspaceId]);
 
+  const viewShortcutHandlers = createProjectViewShortcutHandlers(
+    { workspaceId, projectId },
+    taskId ? new URLSearchParams({ taskId }).toString() : "",
+    (href) => navigate({ href }),
+  );
+
   useRegisterShortcuts({
     sequentialShortcuts: {
       [shortcuts.view.prefix]: {
-        [shortcuts.view.board]: () => handleViewModeChange("board"),
-        [shortcuts.view.list]: () => handleViewModeChange("list"),
-        [shortcuts.view.calendar]: () =>
-          navigate({
-            to: routes.projectCalendar.path,
-            params: { workspaceId, projectId },
-            search: { taskId },
-          }),
-        [shortcuts.view.gantt]: () =>
-          navigate({
-            to: "/dashboard/workspace/$workspaceId/project/$projectId/gantt",
-            params: { workspaceId, projectId },
-          }),
-        [shortcuts.view.backlog]: () =>
-          navigate({
-            to: routes.projectBacklog.path,
-            params: { workspaceId, projectId },
-            search: { taskId },
-          }),
+        [shortcuts.view.board]: viewShortcutHandlers.board,
+        [shortcuts.view.list]: viewShortcutHandlers.list,
+        [shortcuts.view.calendar]: viewShortcutHandlers.calendar,
+        [shortcuts.view.gantt]: viewShortcutHandlers.gantt,
+        [shortcuts.view.backlog]: viewShortcutHandlers.backlog,
       },
     },
   });

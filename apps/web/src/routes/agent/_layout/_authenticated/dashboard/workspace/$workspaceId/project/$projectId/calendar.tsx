@@ -20,6 +20,7 @@ import {
   withCalendarMonth,
   withCalendarTask,
 } from "@/lib/project-calendar-search";
+import { createProjectViewShortcutHandlers } from "@/lib/project-layout-navigation";
 import { routes } from "@/lib/routes";
 import { toScheduledTasks } from "@/lib/task-schedule";
 import { useUserPreferencesStore } from "@/store/user-preferences";
@@ -107,36 +108,19 @@ function RouteComponent() {
     });
   }, [navigate, projectId, workspaceId]);
 
+  const viewShortcutHandlers = createProjectViewShortcutHandlers(
+    { workspaceId, projectId },
+    taskId ? new URLSearchParams({ taskId }).toString() : "",
+    (href) => navigate({ href }),
+  );
+
   useRegisterShortcuts({
     sequentialShortcuts: {
       [shortcuts.view.prefix]: {
-        [shortcuts.view.board]: () => {
-          navigate({
-            to: routes.projectBoard.path,
-            params: { workspaceId, projectId },
-            search: { layout: "board", taskId },
-          });
-        },
-        [shortcuts.view.list]: () => {
-          navigate({
-            to: routes.projectBoard.path,
-            params: { workspaceId, projectId },
-            search: { layout: "list", taskId },
-          });
-        },
-        [shortcuts.view.backlog]: () => {
-          navigate({
-            to: routes.projectBacklog.path,
-            params: { workspaceId, projectId },
-            search: { taskId },
-          });
-        },
-        [shortcuts.view.gantt]: () => {
-          navigate({
-            to: "/dashboard/workspace/$workspaceId/project/$projectId/gantt",
-            params: { workspaceId, projectId },
-          });
-        },
+        [shortcuts.view.board]: viewShortcutHandlers.board,
+        [shortcuts.view.list]: viewShortcutHandlers.list,
+        [shortcuts.view.backlog]: viewShortcutHandlers.backlog,
+        [shortcuts.view.gantt]: viewShortcutHandlers.gantt,
         [shortcuts.view.calendar]: () => {},
       },
     },
