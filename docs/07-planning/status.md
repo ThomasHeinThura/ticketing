@@ -6,11 +6,16 @@ in [integration-execution-queue.md](integration-execution-queue.md); dated snaps
 remain historical and do not override current policy or live GitHub.
 
 Fresh remote inspection establishes accepted `main` at
-`3096cb044bdf6ae98488bfc385f532fa6386343a`. The focused control-plane PR is being prepared;
-independent reviews, exact-candidate CI and protected acceptance are not yet claimed. Resume
+`3096cb044bdf6ae98488bfc385f532fa6386343a`. Focused control-plane PR [#612](https://github.com/ThomasHeinThura/ticketing/pull/612) is open.
+The ordinary panel cleared the initial source and clarified exact-head/note-only rules;
+final-candidate ordinary review and independent Sol confirmation are still required. Its
+first hosted required dependency audit failed on unchanged dependencies (three high/one
+critical, plus one low advisory); no gate is waived. Protected acceptance is not claimed. Resume
 the existing source inventory/integration queue immediately after its acceptance. The initial
 queue records #589 and #602 at their observed sources; runner/runtime/performance blockers
-remain and no phase, SIT, production or waiver acceptance is implied.
+remain and no phase, SIT, production or waiver acceptance is implied. The existing
+`taskdesk-existing-integration-sprint` heartbeat now checks #612 first and resumes this
+queue after protected acceptance; the completed date-capture schedule remains paused.
 
 ---
 
