@@ -349,8 +349,8 @@ mission, the model-policy table and the security-review block (which gains `GPT-
 record this.
 
 `main`'s checker (`scripts/ci/check-pr-template.mjs:376`) still accepts only `GPT-6 Sol` for
-security-scope pull requests until #616 lands. Until then, a security-scope PR reviewed only by
-Opus waits for #615 and #616; its review is not relabelled and the check is not lifted.
+security-scope pull requests until #616 lands. Until then, a security-scope PR whose security review
+carries any other label (Claude Opus or `GPT-6.1 Sol`) waits for #615 and #616; its review is not relabelled and the check is not lifted.
 
 **Correction.** The policy maintainer first reported a circle here: #602 needing the model-aware checker, while
 #615 and #616 needed #602. Thomas chose to lift the PR-template check for #602 to break it. The

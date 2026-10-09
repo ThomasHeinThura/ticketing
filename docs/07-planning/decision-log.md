@@ -20,7 +20,9 @@ Thomas may reverse any of it):
   session is the conductor"; the current conductor is unchanged.
 - **Fallback upward only:** when no Luna-tier model is available, a Sol-tier model may fill a
   Luna-tier role, as Instruction 1 already allowed for Opus. A Luna-tier model never fills a
-  Sol-tier role.
+  Sol-tier role. **Thomas confirmed this rule directly** in the recording session on
+  2026-10-09: "Opus may do Sonnet/Haiku work when they're unavailable, but Sonnet or Haiku
+  never does security review. yes." It is an owner decision, not a reading.
 - **Read-only extraction:** any assigned model in either tier, never a retired route; its
   output is data until a reviewer re-verifies it.
 - **Sampled auditor:** unchanged — a fresh Claude Opus context, working from a packet
@@ -33,7 +35,9 @@ model or version (for example another Opus version) needs a reviewed edit of the
 mission" and "Opus policy-repair conductor" entries, including Haiku being limited to
 read-only extraction; and, in the 2026-09-29 "OpenAI model routing replaces Claude/`pal-mcp`
 routing" entry, the fixed requirement that GPT-6 Sol fills the security and finalizer roles
-and GPT-6 Luna the implementation and ordinary-review roles. Their other content stands.
+and GPT-6 Luna the implementation and ordinary-review roles; and, in the 2026-09-29 "Opus 5.5
+retained as sampled big reviewer" entry, the statement that Opus is not the per-PR security
+gate or the phase finalizer. Their other content stands.
 
 **Transition:** `main`'s PR-template check accepts only the literal `GPT-6 Sol` until the
 model-aware checker (#616) lands. Until then, a security-scope pull request whose only security
