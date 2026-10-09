@@ -40,7 +40,7 @@ gate decisions.
 
 **Source:** explicit owner Conductor Coordination & Delivery Directive attachment, received
 2026-10-09.
-**Recorded by:** top-level orchestrator, 2026-10-09.
+**Recorded by:** GPT-6 Luna control-plane implementation lane for #612, 2026-10-09.
 
 ---
 
