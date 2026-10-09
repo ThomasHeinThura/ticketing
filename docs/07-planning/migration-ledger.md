@@ -1,12 +1,13 @@
 # Migration allocation ledger
 
-Verified 2026-10-08 13:27 UTC. Final numbering is allocated centrally during post-P0 integration freeze. A branch-local provisional number is not a final reservation and must not be applied over accepted history without reconciliation.
+Live owner update verified 2026-10-09 06:17 UTC. Final numbering is allocated centrally during post-P0 integration freeze. A branch-local provisional number is not a final reservation and must not be applied over accepted history without reconciliation.
 
 | Number | PR / branch | Stage | Source SHA | Status |
 | --- | --- | --- | --- | --- |
 | 0000–0087 | accepted main | accepted foundation | 3096cb044bdf6ae98488bfc385f532fa6386343a | Accepted journal; preserve applied history |
-| 0000–0087 | #602 | P0 | 23a01a62ece3ca7d17105626f64ad78641435ec1 | Frozen candidate journal; exact88 insertion-order hashes verified |
-| 0112, branch-local provisional | #608 canonical Users batch | P4 | 76b833be5b46589229a630738c5b436365eba409 | Current exact source. Focused 2-file/17-test verification only; final reviews and integration remain pending. Earlier 32-test and image/migration evidence belongs to prior source and does not transfer. NOT a final integration reservation; preserve accepted history |
+| 0000–0087 | #602 | P0 | 66c736e71c87b2372ba1cbf8250236ac37191565 | Frozen candidate accepted-prefix journal unchanged by test/review-note descendants; exact image boot passed. No stage acceptance |
+| 0112, branch-local provisional | #608 canonical Users batch | P4 | 8f1713934cb91fb7048930ae9b776b29cb67089b | Current canonical DTO delta has two Luna and full Sol CLEAR, focused PostgreSQL 18/18 and OpenAPI 225 operations PASS. Unaccepted/conflicting #589 base, composed CI and integration acceptance remain. NOT a final integration reservation; preserve accepted history |
+| 0102_sla_pause_PROVISIONAL.sql, unjournaled branch-local filename | #611 existing SLA completion | P2 | 95927e4635f2cc2e7b66fe2ee94b82297ef7bf7e | Provisional child schema only; explicit disposable test-fixture application, 24 affected cases PASS. No final number reservation, accepted journal entry, migration replay or deployability claim; allocate and reconcile centrally after accepted P0 |
 | final numbers unallocated | historical #589 | P1–P4 integration | 2350397b18f83ed417bf63d73970daacdbaae49c | Frozen historical train; recreate from accepted post-P0 main before final allocation |
 | final numbers unallocated | #598 | P2 | 3fecb75ccd4a1fcbfce5414de6d222c46bb5e94e | Feature history; reconcile centrally with integration train |
 | final numbers unallocated | #585 | P4 | 5a371451d2d05777a8815639b18cd2ac8085578b | Feature history; existing snapshot conflicts stay open |

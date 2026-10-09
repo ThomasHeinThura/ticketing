@@ -1,5 +1,9 @@
 # Remote branch conservation inventory
 
+## Additional live capture — 2026-10-09 06:17 UTC
+
+Live `git ls-remote --heads` returned **443 refs**; GitHub returned **21 open PRs**. Added owner branch `codex/p2-sla-pause-resume-20261009` is exact `95927e4635f2cc2e7b66fe2ee94b82297ef7bf7e`, retained by draft #611 against #513. It implements existing specified SLA gaps and is not accepted source. The private complete live-ref capture is `2026-10-09/live-ref-refresh-611.json`. The 442-row ancestry inventory below remains its historical Oct8 capture; its classification counts do not automatically transfer to current443. Preserve all original refs, the new branch and source provenance. No branch deletion or semantic acceptance is authorized.
+
 **Live GitHub refs captured:** 2026-10-08 17:32 UTC (442). **Owner-ancestry capture:** `2026-10-08T17:31:48.692762Z`. **Accepted `main`:** `3096cb044bdf6ae98488bfc385f532fa6386343a`.
 
 This is a preservation and ancestry index, not a semantic audit of every branch. The 442 live refs and exact head SHAs were matched one-for-one to the private owner-ancestry inventory: 177 are accepted-main ancestors, 54 are retained by active-PR ancestry, and 211 remain unassigned for semantic comparison. Accepted-main ancestry supports **CONSERVE** of history only. For retained active-PR ancestry, the table records owner PR references; those ancestors are not accepted source. Exact active PR heads carry the four-state disposition in the [live PR ledger](pr-disposition-ledger.md). Closed #550/#555 branch histories retain their separate source-conservation audit. Every unassigned branch remains **HOLD**. No source deletion or branch deletion is authorized here.
