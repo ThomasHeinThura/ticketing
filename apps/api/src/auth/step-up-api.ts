@@ -118,77 +118,81 @@ const challengeRoute = createRoute({
       required: true,
       content: {
         "application/json": {
-          schema: z.union([
-            z.discriminatedUnion("operation", [
+          schema: z
+            .union([
+              z.discriminatedUnion("operation", [
+                z
+                  .object({
+                    kind: z.literal("operation"),
+                    operation: z.literal("metrics_token_rotate"),
+                    version: versionSchema,
+                  })
+                  .strict(),
+                z
+                  .object({
+                    kind: z.literal("operation"),
+                    operation: z.literal("mfa_reset"),
+                    userId: z.string().min(1),
+                    verificationNote: z.string().trim().min(12).max(1000),
+                  })
+                  .strict(),
+                z
+                  .object({
+                    kind: z.literal("operation"),
+                    operation: z.literal("instance_admin_grant"),
+                    targetUserId: z.string().min(1),
+                  })
+                  .strict(),
+                z
+                  .object({
+                    kind: z.literal("operation"),
+                    operation: z.literal("scim_admin_update"),
+                    connectionId: z.string().min(1),
+                    request: z.record(z.string(), z.unknown()),
+                  })
+                  .strict(),
+                z
+                  .object({
+                    kind: z.literal("operation"),
+                    operation: z.literal("scim_token_rotate"),
+                    connectionId: z.string().min(1),
+                    version: versionSchema,
+                  })
+                  .strict(),
+                z
+                  .object({
+                    kind: z.literal("operation"),
+                    operation: z.literal("scim_token_revoke"),
+                    connectionId: z.string().min(1),
+                    version: versionSchema,
+                  })
+                  .strict(),
+                z
+                  .object({
+                    kind: z.literal("operation"),
+                    operation: z.literal(IDENTITY_CONNECTION_CREATE_OPERATION),
+                    request: identityConnectionCreateRequestSchema,
+                  })
+                  .strict(),
+                z
+                  .object({
+                    kind: z.literal("operation"),
+                    operation: z.literal(
+                      IDENTITY_CONNECTION_CONFIGURE_OPERATION,
+                    ),
+                    connectionId: z.string().min(1).max(128),
+                    request: identityConnectionConfigureRequestSchema,
+                  })
+                  .strict(),
+              ]),
               z
                 .object({
-                  kind: z.literal("operation"),
-                  operation: z.literal("metrics_token_rotate"),
-                  version: versionSchema,
+                  kind: z.literal("pending_action"),
+                  pendingActionId: z.string().min(1).max(64),
                 })
                 .strict(),
-              z
-                .object({
-                  kind: z.literal("operation"),
-                  operation: z.literal("mfa_reset"),
-                  userId: z.string().min(1),
-                  verificationNote: z.string().trim().min(12).max(1000),
-                })
-                .strict(),
-              z
-                .object({
-                  kind: z.literal("operation"),
-                  operation: z.literal("instance_admin_grant"),
-                  targetUserId: z.string().min(1),
-                })
-                .strict(),
-              z
-                .object({
-                  kind: z.literal("operation"),
-                  operation: z.literal("scim_admin_update"),
-                  connectionId: z.string().min(1),
-                  request: z.record(z.string(), z.unknown()),
-                })
-                .strict(),
-              z
-                .object({
-                  kind: z.literal("operation"),
-                  operation: z.literal("scim_token_rotate"),
-                  connectionId: z.string().min(1),
-                  version: versionSchema,
-                })
-                .strict(),
-              z
-                .object({
-                  kind: z.literal("operation"),
-                  operation: z.literal("scim_token_revoke"),
-                  connectionId: z.string().min(1),
-                  version: versionSchema,
-                })
-                .strict(),
-              z
-                .object({
-                  kind: z.literal("operation"),
-                  operation: z.literal(IDENTITY_CONNECTION_CREATE_OPERATION),
-                  request: identityConnectionCreateRequestSchema,
-                })
-                .strict(),
-              z
-                .object({
-                  kind: z.literal("operation"),
-                  operation: z.literal(IDENTITY_CONNECTION_CONFIGURE_OPERATION),
-                  connectionId: z.string().min(1).max(128),
-                  request: identityConnectionConfigureRequestSchema,
-                })
-                .strict(),
-            ]),
-            z
-              .object({
-                kind: z.literal("pending_action"),
-                pendingActionId: z.string().min(1).max(64),
-              })
-              .strict(),
-          ]),
+            ])
+            .openapi({}, { unionPreferredType: "oneOf" }),
         },
       },
     },

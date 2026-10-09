@@ -6,6 +6,9 @@ type Operation = {
   summary?: string;
   responses: Record<string, unknown>;
   security?: unknown[];
+  requestBody?: {
+    content?: Record<string, { schema?: Record<string, unknown> }>;
+  };
 };
 type Spec = {
   openapi: string;
@@ -108,6 +111,29 @@ describe("TaskDesk API OpenAPI spec", () => {
     expect(runtimeSpec.paths["/scim/v2/Users"]?.servers?.[0]?.url).toBe(
       agentOrigin,
     );
+  });
+
+  it("documents the PA-15 challenge binding as one exclusive union", () => {
+    const challengeSchema =
+      spec.paths["/me/step-up/challenges"]?.post?.requestBody?.content?.[
+        "application/json"
+      ]?.schema;
+
+    expect(challengeSchema?.oneOf).toHaveLength(9);
+    const branches = challengeSchema?.oneOf as Array<{
+      properties?: { kind?: { enum?: string[] } };
+    }>;
+    expect(
+      branches.filter(
+        (branch) => branch.properties?.kind?.enum?.[0] === "operation",
+      ),
+    ).toHaveLength(8);
+    expect(
+      branches.filter(
+        (branch) => branch.properties?.kind?.enum?.[0] === "pending_action",
+      ),
+    ).toHaveLength(1);
+    expect(challengeSchema).not.toHaveProperty("anyOf");
   });
 
   it("is a valid OpenAPI 3.1 document", () => {

@@ -508,6 +508,19 @@ describe("instance local-factor policy API", () => {
 
     const verificationNote =
       "Called the listed manager and verified the account recovery request.";
+    const invalidChallenge = await app.request("/api/me/step-up/challenges", {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({
+        kind: "operation",
+        operation: "mfa_reset",
+        userId: target.id,
+        verificationNote,
+        pendingActionId: "must-not-cross-union-branches",
+      }),
+    });
+    expect(invalidChallenge.status).toBe(400);
+
     const nonceChallengeResponse = await app.request(
       "/api/me/step-up/challenges",
       {
