@@ -8,13 +8,11 @@ import {
 } from "../../../scripts/ci/lib/performance-budget.mjs";
 import {
   assertCalibrationSourcePinned,
-  CALIBRATION_COLUMNS,
-  CALIBRATION_ROWS,
-  CALIBRATION_RUNS,
+  CALIBRATED_METRICS,
+  CALIBRATION_OPTIONS,
   CALIBRATION_SOURCE,
-  CALIBRATION_WARMUP_RUNS,
+  type CalibratedMetricId,
   type CalibrationSample,
-  type CalibrationScale,
   calibratedMedianOfThreeWithRetry,
   describeHost,
   PERFORMANCE_REFERENCE,
@@ -39,17 +37,13 @@ type BudgetMetric = {
 };
 
 /**
- * How a metric is judged under the G11 speed calibration. `full` scales the whole value,
- * `post-dcl` scales only the CPU portion after DOMContentLoaded (LCP), and the budget is
- * unchanged either way. Metrics without a `calibration` are judged raw (not CPU-bound).
+ * How a metric is judged under the G11 speed calibration. `metric` names its entry in
+ * CALIBRATED_METRICS (throttle state, scale, and sensitivity k, with recorded evidence); the
+ * budget is unchanged. Metrics without a `calibration` are judged raw (not CPU-bound).
  */
 type CalibratedBudgetMetric = Omit<BudgetMetric, "sample"> & {
   sample: () => Promise<CalibrationSample>;
-  calibration: {
-    browser: Browser;
-    scale: Exclude<CalibrationScale, "none">;
-    throttled: boolean;
-  };
+  calibration: { browser: Browser; metric: CalibratedMetricId };
 };
 
 const SCREENSHOT_DIR = "test-results/g11-screens";
@@ -96,14 +90,8 @@ async function measureCalibrationRuns(browser: Browser, throttled: boolean) {
     const page = await context.newPage();
     if (throttled) session = await installFast4gAndCpuThrottle(page);
     else await page.goto("about:blank");
-    const options = {
-      warmups: CALIBRATION_WARMUP_RUNS,
-      runs: CALIBRATION_RUNS,
-      rows: CALIBRATION_ROWS,
-      columns: CALIBRATION_COLUMNS,
-    };
     return await page.evaluate<number[]>(
-      `(${CALIBRATION_SOURCE})(${JSON.stringify(options)})`,
+      `(${CALIBRATION_SOURCE})(${JSON.stringify(CALIBRATION_OPTIONS)})`,
     );
   } finally {
     await session?.detach().catch(() => undefined);
@@ -943,13 +931,13 @@ async function threeSamplesWithOneRetry(metric: BudgetMetric) {
  * measures and logs the calibration and judges the raw value exactly as before.
  */
 async function threeSamplesWithCalibratedRetry(metric: CalibratedBudgetMetric) {
-  const { browser, scale, throttled } = metric.calibration;
-  const state = throttled ? "throttled" : "unthrottled";
+  const { browser, metric: metricId } = metric.calibration;
+  const { state, k } = CALIBRATED_METRICS[metricId];
+  const throttled = state === "throttled";
   const { result, retried, sets } = await calibratedMedianOfThreeWithRetry({
     sample: metric.sample,
     budget: metric.budget,
-    scale,
-    state,
+    metric: metricId,
     calibrate: () => measureCalibrationRuns(browser, throttled),
   });
   const format = (values: number[]) =>
@@ -973,9 +961,14 @@ async function threeSamplesWithCalibratedRetry(metric: CalibratedBudgetMetric) {
         Number(calibration.spread).toFixed(3) +
         "; R0 " +
         (calibration.referenceMs ?? "unpinned") +
+        "; k " +
+        k +
         "; factor " +
         (calibration.mode === "calibrated"
-          ? calibration.factor.toFixed(3)
+          ? calibration.factor.toFixed(3) +
+            " (applied F^k " +
+            (calibration.factor ** k).toFixed(3) +
+            ")"
           : "1 (not applied)") +
         (calibration.note ? "; note " + calibration.note : ""),
     );
@@ -1052,7 +1045,7 @@ test("G11: work-list render, 500 rows", async ({ browser }) => {
     budget: 500,
     sample: () =>
       withPerformancePage(browser, false, (page) => collectListRender(page)),
-    calibration: { browser, scale: "full", throttled: false },
+    calibration: { browser, metric: "list" },
   });
 });
 
@@ -1068,7 +1061,7 @@ test("G11: work-list LCP", async ({ browser }) => {
       );
       return { value, floorMs: report.domContentLoaded };
     },
-    calibration: { browser, scale: "post-dcl", throttled: true },
+    calibration: { browser, metric: "lcp" },
   });
 });
 
@@ -1093,7 +1086,7 @@ test("G11: work-list to detail route first paint", async ({ browser }) => {
       withPerformancePage(browser, true, (page) =>
         collectRouteTransition(page),
       ),
-    calibration: { browser, scale: "full", throttled: true },
+    calibration: { browser, metric: "route" },
   });
 });
 
@@ -1277,7 +1270,7 @@ test("G11: create-work-item click-to-paint", async ({ browser }) => {
       withPerformancePage(browser, true, (page, resetFixture) =>
         collectCreateInteraction(page, resetFixture),
       ),
-    calibration: { browser, scale: "full", throttled: true },
+    calibration: { browser, metric: "create" },
   });
 });
 
@@ -1305,7 +1298,7 @@ test("G11: command-palette click-to-paint", async ({ browser }) => {
       withPerformancePage(browser, true, (page) =>
         collectCommandPaletteInteraction(page),
       ),
-    calibration: { browser, scale: "full", throttled: true },
+    calibration: { browser, metric: "palette" },
   });
 });
 
@@ -1320,7 +1313,7 @@ test("G11: command-palette keyboard navigation click-to-paint", async ({
       withPerformancePage(browser, true, (page) =>
         collectCommandPaletteInteraction(page, "navigate"),
       ),
-    calibration: { browser, scale: "full", throttled: true },
+    calibration: { browser, metric: "paletteNav" },
   });
 });
 
@@ -1333,7 +1326,7 @@ test("G11: change task state click-to-paint", async ({ browser }) => {
       withPerformancePage(browser, true, (page) =>
         collectTaskStateChange(page),
       ),
-    calibration: { browser, scale: "full", throttled: true },
+    calibration: { browser, metric: "taskState" },
   });
 });
 
@@ -1344,7 +1337,7 @@ test("G11: assign task click-to-paint", async ({ browser }) => {
     budget: 200,
     sample: () =>
       withPerformancePage(browser, true, (page) => collectTaskAssignment(page)),
-    calibration: { browser, scale: "full", throttled: true },
+    calibration: { browser, metric: "taskAssign" },
   });
 });
 
@@ -1365,7 +1358,7 @@ test("G11: board render, 200 tasks", async ({ browser }) => {
     budget: 500,
     sample: () =>
       withPerformancePage(browser, false, (page) => collectBoardRender(page)),
-    calibration: { browser, scale: "full", throttled: false },
+    calibration: { browser, metric: "board" },
   });
 });
 

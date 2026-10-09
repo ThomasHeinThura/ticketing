@@ -7,34 +7,56 @@ relative to a recorded reference value R0, and judges every CPU-bound metric aga
 **unchanged** budget after normalising to reference speed. The CPU model, the calibration
 samples and factor, and both raw and normalised sample sets (including a retry's first set)
 are logged. The statistic stays the median of three with one retry set; best-of-N is never
-used. A factor outside 0.5–2.5, or an unstable calibration, fails the job closed. While R0 is
-absent the gate runs calibration-only and judges raw values exactly as before.
+used. A speed factor or calibration spread outside its bound fails the job closed.
+
+**Source:** Thomas, directly to the Claude Opus conductor session, 2026-10-10.
 
 **Scope:** the method only. Budgets, workloads, row/card counts, CPU and network throttling,
-sample counts and the retry rule are unchanged, and no budget is lowered or raised. This
-narrows the earlier owner P0 directive line "No … performance-threshold change" only as to
+sample counts and the retry rule are unchanged, and no budget is lowered or raised. It narrows
+the earlier owner directive, Thomas's relayed P0 runtime-convergence instruction (policy
+session 412b91f1, about 17:06 UTC 2026-10-09: "No security waiver, fabricated evidence,
+performance-threshold change, production action or premature merge is authorized"), only as to
 **method**; thresholds remain Thomas-only. It supersedes the G11 sampling text that treated
 absolute millisecond medians on an uncalibrated runner as the whole measurement
-(`docs/02-design/ux-quality-gates.md` G11 harness table and the 2026-10-01 G11 failure-evidence
-entry's "does not change ... marks, throttles, fixtures, retry policy" scope as it applies to
-the judged value). It does not supersede that entry's trace and network-summary rules.
+(`docs/02-design/ux-quality-gates.md` G11 harness table, and the 2026-10-01 G11
+failure-evidence entry's "does not change ... marks, throttles, fixtures, retry policy" scope
+as it applies to the judged value). It does not supersede that entry's trace and
+network-summary rules.
 
-**Evidence:** the variance diagnosis of PR #602 at `66c736e71c87b2372ba1cbf8250236ac37191565`
-found hosted `ubuntu-latest` in at least two speed classes (main-equivalent code passed G11 on
-8 of 11 fast-class jobs and 0 of 25 slow-class jobs; unthrottled list render correlated
-r=0.97 with LCP, r=0.94 with board render). The three #602 results (attempt 1 FAIL, rerun PASS,
-run `37967068981` FAIL) ran byte-identical code.
+**Reference class (Thomas, 2026-10-10, directly to the conductor):** the unchanged G11 budgets
+refer to the **FAST** hosted runner class, so R0 is the fast-class reference. Consequence: a
+slow-class runner is judged as if it ran at fast-class speed, so its raw failures caused by
+runner speed are normalised away, while a fast-class runner is judged essentially raw and a
+faster-than-reference runner is judged more strictly. A product that only meets its budget on
+fast hardware still passes; a real regression is not hidden, because normalisation divides by
+at most `F^k` with `k ≤ 1`, F is bounded to 0.75–1.75, and the unscaled network floor is kept.
 
-**Historical results:** the G11 results above (66c736e7 attempt-1 FAIL, rerun PASS, run
+**Pinned values:** R0 unthrottled 51.65 ms and throttled 230.7 ms, each the median of all
+calibration set medians (unthrottled n = 6, throttled n = 21) from the three FAST collection
+runs, recorded against the workload source hash and a hash of the workload options (rows,
+columns, runs, warm-ups); both throttle states must be pinned together. Per-metric
+sensitivities `k = ln(r_metric)/ln(r_cal)`, clamped to [0, 1] and floored to two decimals, are
+recorded with their evidence in `scripts/ci/lib/performance-calibration.mjs` and
+`docs/02-design/ux-quality-gates.md`. The factor clamp is 0.75–1.75 and the spread bound 0.55,
+set from the observed collection distribution (spread observed up to 0.43 with two warm-ups;
+warm-ups were not raised because that would invalidate the recorded R0).
+
+**Calibration evidence (not gate evidence):** `workflow_dispatch` "CI - full" on
+`claude/g11-calibration-602` at `2c52f65c`, raw gating, calibration-only. FAST, G11 PASS: run
+37976720914 (job 113976781168), run 37977779990 (job 113980309611), run 37978934788 (job
+113984215185). SLOW, G11 FAIL, used only for the class ratio and sensitivities: run 37972321719
+(job 113961809231), run 37973730948 (job 113966606217), run 37974125393 (job 113971494970).
+The class evidence comes from the variance diagnosis of PR #602 at
+`66c736e71c87b2372ba1cbf8250236ac37191565`: main-equivalent code passed G11 on 8 of 11
+fast-class jobs and 0 of 25 slow-class jobs, and unthrottled list render correlated r=0.97 with
+LCP. None of these six runs is a calibrated gate result or a merge claim.
+
+**Historical results:** the G11 results (66c736e7 attempt-1 FAIL, rerun PASS, run
 37967068981 FAIL) remain as measured under the old, uncalibrated method. They are not
 re-judged, relabelled, or converted to passes by this decision.
 
-**R0 status:** unpinned. No hosted measurement of the calibration workload exists, so none is
-invented. Until R0 is recorded from real hosted runs and pinned with its evidence, no
-calibrated gate is claimed and the gate behaves as before.
-
 **Recorded by:** Claude Sonnet implementation worker for the Claude Opus conductor session,
-from Thomas's direct decision to that session, 2026-10-10.
+from Thomas's direct decisions to that session, 2026-10-10.
 
 ### 2026-10-09 · Permit a narrow P0 strict-terminal diagnostic witness
 

@@ -41,16 +41,17 @@ repository's active ruleset. The full-stage `integration - Postgres 18`,
 required. The G11 job's exact context is `performance - budgets (G11)` and is intended to be
 required as well; do not infer that a workflow configured to run before merge is enforced
 unless its exact context appears in the ruleset. The job's `pnpm test:perf` prints the runner's CPU model and `nproc`, then measures
-each CPU-bound metric speed-calibrated (owner decision 2026-10-10; method in
-[ux-quality-gates.md](../02-design/ux-quality-gates.md) G11): a pinned reference workload
-(`scripts/ci/lib/performance-calibration.mjs`, SHA-256 checked at run time) is run in the same
-browser and CPU-throttle state before each sample set, and the median-of-three is judged
-against the unchanged budget after normalising to a recorded reference speed R0. A speed
-factor outside 0.5–2.5 or an unstable calibration fails the job. R0 is a required recorded
-constant; while it is unpinned the job runs calibration-only and judges raw values as before.
-Both raw and normalised sample sets, including a retry's first set, are logged. The
+each CPU-bound metric speed-calibrated (owner decision 2026-10-10; method, R0 and per-metric
+sensitivities in [ux-quality-gates.md](../02-design/ux-quality-gates.md) G11): a pinned
+reference workload (`scripts/ci/lib/performance-calibration.mjs`, SHA-256 checked at run time,
+options hashed into the R0 pin) is run in the same browser and CPU-throttle state before each
+sample set, and the median-of-three is judged against the unchanged budget after normalising by
+`F^k` to the recorded FAST-class reference R0. A speed factor outside 0.75–1.75, a calibration
+spread above 0.55, or a stale, mixed, or evidence-free R0 pin fails the job. Both raw and
+normalised sample sets, including a retry's first set, are logged. The
 `scripts/ci/lib/performance-calibration.test.mjs` unit tests (in `pnpm test:ci-scripts`) cover
-the normalisation math and the negative controls. The complete local implementation run and
+the normalisation math, the pin checks, and the negative controls, including a 25% regression
+at F = 1.4 for each normalised metric. The complete local implementation run and
 its source-binding limit are recorded in the
 [G11 evidence note](../07-planning/evidence/2026-10-03-g11-7402.md).
 

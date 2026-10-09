@@ -4,6 +4,7 @@ export type CalibrationSample = number | { value: number; floorMs?: number };
 
 export type PerformanceReference = {
   readonly sourceSha256: string | null;
+  readonly optionsSha256: string | null;
   readonly unthrottledMs: number | null;
   readonly throttledMs: number | null;
   readonly evidence: string | null;
@@ -37,6 +38,37 @@ export declare const CALIBRATION_ROWS: number;
 export declare const CALIBRATION_COLUMNS: number;
 export declare const CALIBRATION_SOURCE: string;
 export declare const CALIBRATION_SOURCE_SHA256: string;
+export declare const CALIBRATION_OPTIONS_SHA256: string;
+export declare const CALIBRATION_OPTIONS: Readonly<{
+  warmups: number;
+  runs: number;
+  rows: number;
+  columns: number;
+}>;
+export type CalibratedMetricId =
+  | "list"
+  | "board"
+  | "lcp"
+  | "route"
+  | "create"
+  | "palette"
+  | "paletteNav"
+  | "taskState"
+  | "taskAssign";
+export type CalibratedMetricEntry = {
+  readonly state: CalibrationState;
+  readonly scale: Exclude<CalibrationScale, "none">;
+  readonly k: number;
+};
+export declare const CALIBRATED_METRICS: Readonly<
+  Record<CalibratedMetricId, CalibratedMetricEntry>
+>;
+export declare function calibrationOptionsSha256(options?: {
+  warmups: number;
+  runs: number;
+  rows: number;
+  columns: number;
+}): string;
 export declare const PERFORMANCE_REFERENCE: PerformanceReference;
 
 export declare function sha256Hex(text: string): string;
@@ -53,6 +85,7 @@ export declare function resolveCalibration(options: {
   state: CalibrationState;
   reference?: PerformanceReference;
   sourceSha256?: string;
+  optionsSha256?: string;
   maxSpread?: number;
   factorMin?: number;
   factorMax?: number;
@@ -61,15 +94,17 @@ export declare function normaliseSample(
   sample: CalibrationSample,
   calibration: Calibration,
   scale: CalibrationScale,
+  sensitivity: number,
 ): number;
 export declare function calibratedMedianOfThreeWithRetry(options: {
   sample: () => Promise<CalibrationSample>;
   budget: number;
-  scale: CalibrationScale;
-  state: CalibrationState;
+  metric: string;
   calibrate: () => Promise<number[]>;
+  metrics?: Readonly<Record<string, CalibratedMetricEntry>>;
   reference?: PerformanceReference;
   sourceSha256?: string;
+  optionsSha256?: string;
 }): Promise<{ result: number; retried: boolean; sets: CalibratedSet[] }>;
 export declare function describeHost(options: {
   cpuinfoText?: string;
