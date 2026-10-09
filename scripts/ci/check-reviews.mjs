@@ -3,10 +3,12 @@
  * check:reviews — a feature spec named in the diff must not still have a non-empty section
  * in docs/07-planning/reviews/2026-09-05/.
  *
- * AGENTS.md do-not 15: "Start building a feature while its section in
- * docs/07-planning/reviews/2026-09-05/ is non-empty." CLAUDE.md's spec-interaction rule
- * says open findings are closed before implementing, and that reviewers check it, not the
- * author — so it is checked here instead.
+ * AGENTS.md do-not 15: a feature does not merge while a finding in its section of the
+ * pre-build review register is not mapped to evidence and independently dispositioned —
+ * and a dispositioned finding leaves the section. Reviewers record the disposition, not the
+ * author, so the mechanical half is checked here: a spec named in the diff whose section is
+ * still non-empty fails. (Older wording said "not started"; implementation may now begin
+ * with findings as inputs to the batch — decision log 2026-10-02 — but the merge still waits.)
  *
  * ci-cd.md: "the pre-p0-check-fable/ folder is an applied audit trail and is excluded."
  *
@@ -463,8 +465,9 @@ async function main() {
         violation(
           `${rel(absolute)} — ${section.heading}`,
           `\`${section.spec}\` still has open review findings (${section.body.split("\n").length} lines). ` +
-            "Close them in the owning document first — a feature is not started while its review " +
-            "section is non-empty (AGENTS.md do-not 15).",
+            "Map each to evidence and have an independent reviewer record its disposition in the " +
+            "owning document — a feature does not merge while its review section is non-empty " +
+            "(AGENTS.md do-not 15).",
         ),
       );
     }

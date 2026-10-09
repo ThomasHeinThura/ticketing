@@ -165,6 +165,12 @@ jobs:
         run: pnpm check:reviews
       - name: pnpm check:skips
         run: pnpm check:skips
+      - name: pnpm check:policy
+        # The agent operating policy's executable invariants: links and anchors resolve,
+        # entry files hold no live state, AGENTS.md reads the active mission before the
+        # workflow, and agent-workflow.md has exactly one security-review model block — the
+        # list check-pr-template.mjs reads from the merge base. scripts/ci/check-policy.mjs.
+        run: pnpm check:policy
       - name: pnpm check:overrides
         run: pnpm check:overrides
       - name: pnpm check:dockerfile-deps

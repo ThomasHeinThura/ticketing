@@ -1,9 +1,11 @@
 /**
- * The security review model field accepts only the canonical GPT-6 Sol label.
+ * The security review model field accepts only an exact label from the accepted list, and
+ * that list is read from the MERGE BASE (lib/review-models.mjs).
  *
- * The positive case carries the same committed, current-head-bound note required of a
- * real security-scope pull request. Negative cases change only the model field, so each
- * failure is attributable to the exact-name policy.
+ * The positive cases carry the same committed, current-head-bound note required of a real
+ * security-scope pull request. Negative cases change only the model field or the list, so
+ * each failure is attributable to the model policy. Without a list at the merge base the
+ * legacy set — exactly GPT-6 Sol — applies.
  */
 
 import assert from "node:assert/strict";
@@ -68,17 +70,33 @@ const CI_CD = [
   "",
 ].join("\n");
 
-function reviewedScenario() {
+const MODEL_POLICY = "docs/04-engineering/agent-workflow.md";
+
+function modelBlock(models) {
+  return [
+    "# Agent workflow",
+    "",
+    "<!-- policy:security-review-models -->",
+    ...models.map((model) => `- \`${model}\``),
+    "<!-- /policy:security-review-models -->",
+    "",
+  ].join("\n");
+}
+
+function reviewedScenario({ baseModels = null, headModels = null, baseRaw = null } = {}) {
   const dir = scratchDir("security-model-exact");
   initRepo(dir);
   installCheckers(dir);
   installFromRepo(dir, ".github/pull_request_template.md");
   write(dir, "docs/04-engineering/ci-cd.md", CI_CD);
   write(dir, "apps/api/src/auth.ts", "export const authSurface = 1;\n");
+  if (baseRaw !== null) write(dir, MODEL_POLICY, baseRaw);
+  else if (baseModels !== null) write(dir, MODEL_POLICY, modelBlock(baseModels));
   const base = commit(dir, "chore: bootstrap security model probe");
   setOriginMain(dir, base);
 
   write(dir, "apps/api/src/auth.ts", "export const authSurface = 2;\n");
+  if (headModels !== null) write(dir, MODEL_POLICY, modelBlock(headModels));
   const reviewedHead = commit(dir, "feat: change the security surface");
 
   write(
@@ -104,7 +122,7 @@ function runForModel(dir, securityModel) {
   return runChecker(dir, "check-pr-template.mjs", ["--body", body]);
 }
 
-describe("security review model is the exact canonical GPT-6 Sol label", () => {
+describe("without a model list at the merge base, only the legacy GPT-6 Sol label passes", () => {
   it("accepts GPT-6 Sol when all other security-review evidence is valid", () => {
     const dir = reviewedScenario();
     const result = runForModel(dir, "GPT-6 Sol");
@@ -123,8 +141,88 @@ describe("security review model is the exact canonical GPT-6 Sol label", () => {
       const result = runForModel(dir, model);
 
       assert.equal(result.status, 1, result.output);
-      assert.match(result.output, /\*\*Model:\*\* must be exactly GPT-6 Sol/);
+      assert.match(result.output, /\*\*Model:\*\* must be exactly one of "GPT-6 Sol"/);
+      assert.match(result.output, /legacy set/);
       assert.match(result.output, /is bound to reviewed head/);
     });
   }
+});
+
+const OPUS = "Claude Opus 5.5 (claude-opus-5-5)";
+
+describe("the accepted list is read from the merge base", () => {
+  it("accepts a model the merge base lists", () => {
+    const dir = reviewedScenario({ baseModels: ["GPT-6 Sol", OPUS] });
+    const result = runForModel(dir, OPUS);
+    assert.equal(result.status, 0, `a listed model with valid evidence must pass:\n${result.output}`);
+  });
+
+  it("still accepts GPT-6 Sol when the merge base lists it", () => {
+    const dir = reviewedScenario({ baseModels: ["GPT-6 Sol", OPUS] });
+    assert.equal(runForModel(dir, "GPT-6 Sol").status, 0);
+  });
+
+  it("rejects a model the merge base no longer lists", () => {
+    const dir = reviewedScenario({ baseModels: [OPUS] });
+    const result = runForModel(dir, "GPT-6 Sol");
+    assert.equal(result.status, 1, result.output);
+    assert.match(result.output, /must be exactly one of "Claude Opus 5\.5 \(claude-opus-5-5\)"/);
+  });
+
+  it("refuses a model that only the pull request's own HEAD adds (no self-approval)", () => {
+    const dir = reviewedScenario({ baseModels: ["GPT-6 Sol"], headModels: ["GPT-6 Sol", OPUS] });
+    const result = runForModel(dir, OPUS);
+    assert.equal(result.status, 1, result.output);
+    assert.match(result.output, /read from the merge base/);
+  });
+
+  it("refuses a HEAD-only list when the merge base has none (legacy applies)", () => {
+    const dir = reviewedScenario({ headModels: [OPUS] });
+    const result = runForModel(dir, OPUS);
+    assert.equal(result.status, 1, result.output);
+    assert.match(result.output, /legacy set/);
+  });
+
+  for (const nearMiss of [
+    "Claude Opus 5.5",
+    "claude-opus-5-5",
+    "Opus 5.5",
+    `${OPUS} `,
+    "GPT-6 Sol (Claude Opus 5.5)",
+  ]) {
+    it(`rejects the near miss ${JSON.stringify(nearMiss)}`, () => {
+      const dir = reviewedScenario({ baseModels: ["GPT-6 Sol", OPUS] });
+      const result = runForModel(dir, nearMiss);
+      // A trailing space is trimmed by the body parser, so that one variant is the exact label.
+      if (nearMiss.trim() === OPUS) {
+        assert.equal(result.status, 0, result.output);
+        return;
+      }
+      assert.equal(result.status, 1, result.output);
+      assert.match(result.output, /must be exactly one of/);
+    });
+  }
+
+  it("fails closed on a malformed list at the merge base instead of falling back", () => {
+    const dir = reviewedScenario({
+      baseRaw: [
+        "<!-- policy:security-review-models -->",
+        "- GPT-6 Sol",
+        "<!-- /policy:security-review-models -->",
+        "",
+      ].join("\n"),
+    });
+    const result = runForModel(dir, "GPT-6 Sol");
+    assert.equal(result.status, 1, result.output);
+    assert.match(result.output, /must be a list item holding/);
+  });
+
+  it("fails closed on two blocks at the merge base", () => {
+    const dir = reviewedScenario({
+      baseRaw: `${modelBlock(["GPT-6 Sol"])}\n${modelBlock([OPUS])}`,
+    });
+    const result = runForModel(dir, OPUS);
+    assert.equal(result.status, 1, result.output);
+    assert.match(result.output, /exactly one/);
+  });
 });
