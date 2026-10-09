@@ -1,7 +1,7 @@
 # 615 — workflow policy restructure: independent consistency reviews (Opus 5.5)
 
 - **Reviewer context:** one fresh Claude Code Agent-tool subagent (`subagent_type: general-purpose`, not forked, model inherited: `claude-opus-5-5`). It did not author or remediate the change. It is not a GPT-6 Luna or GPT-6 Sol review of record and satisfies neither.
-- **Spawn:** Agent ID `ab2ce0e07c89e65a8`, parent Claude Code session `412b91f1-99f8-4ac2-8f5c-a03dce507862`. A later request asking this context to rewrite its reports ended in an API error and produced no output.
+- **Spawn:** Agent ID `ab2ce0e07c89e65a8`, parent Claude Code session `412b91f1-99f8-4ac2-8f5c-a03dce507862`. A later request asking this context to write its own reports to a file was stopped before completing by a platform safeguard; its attempted write did not run and no report was produced.
 - **Transport:** each report below is the reviewer's final message for that review round, extracted mechanically from the subagent transcript and inserted unmodified between the markers. SHA-256 of report 1: `0f2cb5f117d3efa7bb24f5774bd98e87780d264a42d4491ff8dd8cca9b9c0d10`; report 2: `bc5dd65173cf0c8f2bbd3b9be4b2b19147560db9780300b20adcde8071b658ca`.
 - **Correction:** commit `7955d7df` carried a reformatted transcription of report 1 that was labelled verbatim. The delta review (report 2) flagged it, and this file replaces it.
 

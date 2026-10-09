@@ -122,7 +122,8 @@ diagnostics before changing anything.
 ### Bounded verification policy
 
 - **Transient infrastructure** (approved by Thomas, decision log 2026-10-09 "Opus
-  policy-repair conductor"): **one** re-run for the same incident on equivalent job inputs,
+  policy-repair conductor"): **one** re-run for the same incident — the same job failing on
+  equivalent inputs —
   only when retained evidence establishes a transient infrastructure failure before the
   affected test or checker executed. Being early in the job is not enough. Preserve the
   original failure, the diagnosis and both run IDs. Review-note commits, renamed branches and
@@ -130,7 +131,8 @@ diagnostics before changing anything.
   counts as the re-run. CI that follows a genuine correction is normal verification, not a
   re-run. A repeated infrastructure failure becomes a named blocker with an owner
   (`WAITING_CI`) while unrelated work continues.
-- **Assertion and gate failures:** never re-run an unchanged candidate hoping for a pass.
+- **Assertion and gate failures:** never re-run an unchanged candidate hoping for a pass. For
+  every failure class, a commit made only to obtain another run counts as a re-run.
 - **Performance measurements:** the only sampling and re-run rule is the one each metric
   defines in [UX quality gates § G11](../02-design/ux-quality-gates.md). A failing result stands
   until a changed candidate with a diagnosis, or an approved change to the sampling, produces a

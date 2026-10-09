@@ -39,8 +39,11 @@ through authorized administration, never a bypass.
 `protect-main` ruleset permits it. Historical merge commits do not change that selection.
 
 **Supersedes:** in the 2026-10-09 "workflow and agent-policy restructure" entry, the inactive
-status of the re-run allowance and the model table that limited Opus to sampling. That
-entry's other content stands.
+status of the re-run allowance and "protected merge by the conductor alone" (now: the
+conductor, or a delegated policy maintainer for its own candidate after the conductor
+confirms its review set). In the 2026-09-29 entries "OpenAI model routing replaces
+Claude/`pal-mcp` routing" and "Opus 5.5 retained as sampled big reviewer", the limit of Opus
+to sampling, for the scope above; GPT roles stand. Those entries' other content stands.
 
 **Source:** explicit owner directive "Instruction 1 — Opus policy-repair conductor", given
 directly in the Claude Code session that records it, 2026-10-09.

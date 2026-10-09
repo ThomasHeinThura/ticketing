@@ -25,7 +25,8 @@ Every session, before acting:
    authorized **now**, the active operating mode, the model assignment and the stop condition.
 3. [`docs/04-engineering/agent-workflow.md`](docs/04-engineering/agent-workflow.md) — the one
    canonical execution workflow: tasks, states, reviews, integration, escalation, continuation.
-4. The specialist standards your task touches (listed under [Authority](#authority)), and your
+4. The specialist standards your task touches (listed under [Authority](#authority), plus
+   [coding standards](docs/04-engineering/coding-standards.md) for code), and your
    provider adapter if one applies ([`CLAUDE.md`](CLAUDE.md)).
 5. Task state: the conductor's queue (`docs/07-planning/integration-execution-queue.md`),
    then live GitHub — exact heads, reviews and checks. GitHub is newer than any file.
@@ -51,9 +52,10 @@ When two sources disagree, the higher one wins and the lower one is corrected at
 
 1. **Thomas's verifiable current decisions**, within their stated scope and his actual
    authority. A direct instruction takes effect when given, including in chat, for the session
-   that received it; that session records it in the decision log with its source. A
-   verifiable decision can be handed between agents with its original scope; an agent's
-   unsupported paraphrase or relay is not approval. **Writing a decision-log entry does not
+   that received it; that session records it in the decision log with its source (when, where,
+   exact scope). That record is what makes it **verifiable**, and a verifiable decision can be
+   handed between agents with its original scope; an agent's unsupported paraphrase or relay
+   is not approval. **Writing a decision-log entry does not
    manufacture authority** — only entries that faithfully record a decision Thomas actually
    made carry it; other entries record technical rationale. The
    [active mission](docs/07-planning/active-mission.md) is the standing record of the current
@@ -232,13 +234,17 @@ builds, the container boots and health answers. Full lists:
 
 **branch → commit → push → pull request → required independent review(s) → required security
 review where in scope → required CI green on the exact candidate → protected merge by the
-conductor → refresh `main` → continue.**
+conductor (or, for its own candidate, a delegated policy maintainer) → refresh `main` →
+continue.**
 
 - Any authorized agent commits and pushes its assigned branch work **without asking again**.
   The flow is the standing approval; a report is not a substitute for it.
-- **Only the conductor merges**, through the normal protected pull-request flow, and only when
-  every required gate is genuinely satisfied on the exact candidate SHA
-  ([merge readiness](docs/04-engineering/definition-of-done.md#levels-of-done)).
+- **Only the conductor merges** — except that a policy maintainer Thomas delegates may merge
+  its own policy candidate (see [Roles](#roles)) — through the normal protected pull-request
+  flow, and only when every required gate is genuinely satisfied on the exact candidate SHA
+  ([merge readiness](docs/04-engineering/definition-of-done.md#levels-of-done)). When the
+  merger also dispatched the candidate's reviews, the conductor first confirms the review set
+  is complete.
 - A candidate whose `## Gates` table cites any **waived** gate always needs Thomas's own action
   to merge.
 - Never: push directly to `main`; force-push or rewrite shared history as routine; bypass

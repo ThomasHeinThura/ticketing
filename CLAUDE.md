@@ -44,9 +44,8 @@ accepted version on `main`.
 
 ## Claude Code
 
-- Under the current mission a Claude Opus session may fill any role — implementation,
-  conductor, ordinary review, security review, phase finalizer, sampled audit — but **one role
-  per context per change**. Record the model as the platform reports it (for example
+- A Claude session fills whichever role the model policy and the active mission give it, one
+  role per context per change. Record the model as the platform reports it (for example
   `Claude Opus 5.5 (claude-opus-5-5)`); never record it as a GPT model.
 - Subagents started with the Agent tool without forking get a fresh context and can serve as
   independent reviewers of work the parent authored. A forked subagent inherits the parent's

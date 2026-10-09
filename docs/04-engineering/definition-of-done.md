@@ -13,7 +13,7 @@ Five different claims. Never let one stand in for another.
 | Level | Who claims it | It means | It does **not** mean |
 | --- | --- | --- | --- |
 | **Task done** | The lane, in its handoff | The assigned deliverable exists on a pushed branch with its evidence and `## Not done` | Reviewed, merged, accepted, or anything about the project |
-| **Merge-ready** | The conductor | On the **exact candidate SHA**: the applicable checklists below are complete; every required review is recorded at that SHA or carried across a verified review-record-only delta ([evidence reuse](agent-workflow.md#exact-head-and-evidence-reuse)), and each is traced to its reviewer; no blocking finding is unresolved; the applicable pre-merge runtime proofs (image build and boot, installer regression, authorization proofs) are recorded; every required status check is green; branch protection permits the merge without bypass; the `## Gates` table cites no waived gate (or Thomas is acting himself) | Runtime or SIT acceptance; stage completion |
+| **Merge-ready** | The conductor (or a delegated policy maintainer, for its own candidate) | On the **exact candidate SHA**: the applicable checklists below are complete; every dispatched review is recorded, and every required review is recorded at that SHA or carried across a verified review-record-only delta ([evidence reuse](agent-workflow.md#exact-head-and-evidence-reuse)), and each is traced to its reviewer; no blocking finding is unresolved; the applicable pre-merge runtime proofs (image build and boot, installer regression, authorization proofs) are recorded; every required status check is green; branch protection permits the merge without bypass; the `## Gates` table cites no waived gate (or Thomas is acting himself) | Runtime or SIT acceptance; stage completion |
 | **Integrated slice accepted** | The conductor, with the independent audit | Merged on `main`, published artifact digest recorded, and the slice's real workflows, migrations, health and recovery verified on SIT against that digest, with the [integration checklist](#integrated-slice-acceptance) complete | Stage completion; permission to start new scope |
 | **Stage complete** (P0–P7) | The conductor, after the phase finalizer | Every item in [Stage completion](#stage-completion), including the phase finalizer | That the next stage is authorized |
 | **Mission complete** | The conductor, reported to Thomas | The [active mission](../07-planning/active-mission.md)'s stop condition is met with no unresolved blocking finding, and reported | Anything beyond Hold |
@@ -48,8 +48,9 @@ Five different claims. Never let one stand in for another.
 - [ ] Destructive migration is two-phase
 - [ ] Domain logic lives in `packages/domain` and is pure
 - [ ] No secret is logged or serialised
-- [ ] GPT-6 Sol security review completed and recorded in the pull request's `## Security
-      review` section
+- [ ] Security review by an accepted security-review model
+      ([model policy](agent-workflow.md#model-policy)) completed and recorded in the pull
+      request's `## Security review` section
 
 ---
 
@@ -110,8 +111,9 @@ Everything above, plus:
 - [ ] Configuration reference updated if settings were added
 - [ ] i18n strings extracted; `en-US` complete
 - [ ] Status facts handed off; the conductor records them in [status.md](../07-planning/status.md) through its records PR
-- [ ] GPT-6 Sol security review completed and recorded in the pull request's `## Security
-      review` section
+- [ ] Security review by an accepted security-review model
+      ([model policy](agent-workflow.md#model-policy)) completed and recorded in the pull
+      request's `## Security review` section
 
 ---
 

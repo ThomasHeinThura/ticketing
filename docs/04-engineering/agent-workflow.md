@@ -17,7 +17,7 @@ The active mission names the mode. Each mode's boundary:
 | **Policy maintenance** | Audit and correct instruction files, templates and policy records through one owning PR | Implement product features; change the conductor's queue, scheduler or merge order | The policy PR is accepted or Thomas reassigns it |
 | **Integration freeze** | Compose existing branch work onto accepted `main`; fix conflicts, security defects, regressions and acceptance failures against approved contracts | Build an unimplemented spec; treat a missing product decision as an acceptance fix; merge a cumulative head wholesale | Every frozen-scope task is `DONE`, `SUPERSEDED` or waiting on Thomas |
 | **Feature development** | Implement explicitly authorized roadmap scope through the full [SDLC](sdlc.md) | Start scope the mission does not name | Thomas changes the mission |
-| **Release and SIT verification** | Publish the accepted artifact, deploy the exact digest to SIT, verify complete workflows and recovery, run the independent audit, report | Publish to Docker Hub; deploy to production; start roadmap work after acceptance | Acceptance and audit are reported → **Hold** |
+| **Release and SIT verification** | Publish the accepted artifact to the destinations the active mission names, deploy the exact digest to the approved test environment, verify complete workflows and recovery, run the independent audit, report | Publish anywhere else; deploy to production (Thomas only); start roadmap work after acceptance | Acceptance and audit are reported → **Hold** |
 | **Hold** | Record exact state; answer Thomas | Invent work to stay busy | Thomas issues a new mission |
 
 ---
@@ -149,9 +149,9 @@ that materially authored, directed or remediated a change is not its independent
 
 | Role | Assigned models (any one, in its own independent context) |
 | --- | --- |
-| Implementation, context preparation, ordinary review, bounded architecture/alignment review | **GPT-6 Luna**; or **Claude Opus 5.5** under the current mission |
-| Security review, critical cross-boundary review, phase finalizer, broad or high-risk architecture review | **GPT-6 Sol**; or **Claude Opus 5.5** under the current mission |
-| Conductor | The session Thomas designates |
+| Implementation, context preparation, ordinary review, bounded architecture/alignment review | **GPT-6 Luna**, explicitly selected; or **Claude Opus 5.5** under the current mission |
+| Security review, critical cross-boundary review, phase finalizer, broad or high-risk architecture review, security- or architecture-heavy context preparation | **GPT-6 Sol**; or **Claude Opus 5.5** under the current mission |
+| Conductor | The session Thomas designates (a GPT conductor prefers GPT-6 Sol for broad governance or security work) |
 | Sampled auditor | **Claude Opus 5.5**, only from a packet another context prepared; never replaces a required review |
 | Policy maintenance | The session Thomas assigns. Its PRs still receive the independent reviews, and the security pass, their tier requires |
 
@@ -170,10 +170,13 @@ An existing Opus review counts for a role only where its scope and source covera
 established; it never approves later changes.
 
 The PR-template check reads the accepted security-review models from the block below **as it
-stands on the merge base** (`main`), so a candidate cannot add a model and approve itself
-(`scripts/ci/lib/review-models.mjs`; where that reader is not yet on `main`, the check still
-accepts only `GPT-6 Sol`). Each line is matched exactly against the `**Model:**` field of
-`## Security review`, and `check:policy` keeps the block well formed:
+stands on the merge base** (`main`), so a candidate cannot edit this block and approve itself
+with the edit (`scripts/ci/lib/review-models.mjs`; where that reader is not yet on `main`, the
+check still accepts only `GPT-6 Sol`). A change to the checker itself runs its own copy under
+`pull_request`, like every CI control, and is held by the security-review path list. Each
+line is matched exactly against the `**Model:**` field of `## Security review`. Once
+installed, `check:policy` keeps the block well formed. The block follows the mission: the
+change that replaces the active mission re-decides it in the same reviewed change.
 
 <!-- policy:security-review-models -->
 - `GPT-6 Sol`
@@ -215,7 +218,7 @@ reused for a later SHA only when every commit landed in between leaves its input
 | Review verdict | Everything the review covered — i.e. anything except review records |
 | Test results | Product source, tests, build configuration, dependencies, and any document a check reads (registers, configuration reference, decision log for waivers) |
 | Image / runtime / SIT result | Product source, build configuration, dependencies, deployment |
-| CI/security-control verdict | `.github/**`, `scripts/ci/**` and the other control paths in ci-cd.md |
+| CI-script test results | `.github/**`, `scripts/ci/**` and the other control paths in ci-cd.md (a review verdict still follows the first row) |
 | Required GitHub status checks | **Never reused.** They must be green on the exact candidate |
 
 **Review records** cover only the authentic publication of an existing report in this
@@ -237,14 +240,23 @@ final net-tree diff alone is insufficient. With plain Git:
 
 ```bash
 git merge-base --is-ancestor <reviewed> <candidate>
-git log -m --format=%H --name-status --summary <reviewed>..<candidate>  # only A/M of this PR's notes
-git log -m --format= --numstat <reviewed>..<candidate>                  # deletions column is 0
+git log -m --format=%H --raw --no-abbrev --no-renames <reviewed>..<candidate>  # only A/M of this PR's notes, mode 100644
+git log -m --format= --numstat <reviewed>..<candidate>                          # deletions column is 0
 ```
 
 The conductor then states "review-record-only delta verified" in the merge record.
 
-Reviewer reports are published with their provenance (model as reported, role, context or
-spawn identity, exact SHA). The publisher never edits a verdict or finding. **Before relying
+Reviewer reports are published **unedited** with their provenance (model as reported, role,
+context or spawn identity, exact SHA); the only permitted change is a labelled, separately
+reviewed redaction.
+
+**Every dispatched review is recorded**, whatever its verdict — including blocked, abandoned
+and failed runs — in the candidate's review notes or PR. A reviewer is re-dispatched for the
+same SHA and scope only for a recorded reason unrelated to its verdict (a crash, the wrong
+SHA). The author never asks a reviewer to change its findings or verdict. A blocking finding
+from any dispatched review stays open until an independent reviewer records its disposition.
+When the same session dispatched the reviews and will merge (a delegated policy maintainer),
+the conductor confirms the review set is complete before the merge. **Before relying
 on any review record, the conductor traces it to a review it dispatched or can otherwise
 verify.** A record that cannot be traced does not count. A hash identifies bytes; it is not
 proof of independence or approval. Old approval never silently covers new product changes: a
@@ -304,8 +316,8 @@ Run what the change's risk requires before calling it done — see
 - Public review artifacts describe public test vectors instead of embedding credential-shaped
   values; any redaction is labelled, with the original kept privately.
 
-**CI today:** every pull request runs every required check, whatever it changes. Until a
-reviewed CI change says otherwise, that stays true. A required check failing for a cause
+**Which checks run** on which change is defined in [ci-cd.md](ci-cd.md), including its
+applicability rule; written policy never changes that by itself. A required check failing for a cause
 outside the change (for example, an advisory against `main`'s lockfile) is assigned to that
 cause's canonical owner; the PR is `WAITING_CI` on that named dependency and nothing unrelated
 stops. Never disable a check, fabricate a status, or add a path exclusion to hide a shipped
@@ -334,8 +346,8 @@ the bounded verification policy for infrastructure failures and variable measure
   release, installer, upgrade and rollback from the published artifact. They are verified after
   merge and before the task or stage that depends on them is closed. A main-only proof is never
   a prerequisite for merging an otherwise eligible candidate, and merging never closes a stage.
-- **Publish** only through GHCR, GitHub Releases, tags and GitHub Packages. No Docker Hub. No
-  production.
+- **Publish** only to the destinations the [active mission](../07-planning/active-mission.md)
+  names. Production deployment is Thomas's alone.
 - **SIT:** deploy the exact published digest; verify complete authenticated workflows,
   migrations, health and recovery; bind every result to source SHA and image digest. Offline
   simulation and source review are diagnostic only.
@@ -344,6 +356,10 @@ the bounded verification policy for infrastructure failures and variable measure
 ---
 
 ## Escalation and reporting
+
+**Pause the affected task** (`BLOCKED` or `WAITING_DECISION`, with the reason) when a schema
+change looks necessary that the task did not include, the task conflicts with an ADR, or the
+codebase contradicts the task's assumptions in a way nobody foresaw. Other tasks continue.
 
 Escalate to Thomas only what only Thomas can decide: product behaviour the contract does not
 settle, a gate waiver, design approval, an irreversible or production action, unavailable
