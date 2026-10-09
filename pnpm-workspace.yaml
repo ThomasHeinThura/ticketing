@@ -44,6 +44,13 @@ overrides:
   ws: '>=8.20.1'
   yaml: '>=2.8.3'
   '@babel/core': '>=7.29.6 <8'
+  # SECURITY PIN — close audited advisories without changing dependency families.
+  # proxy-addr 2.0.8 fixes GHSA-jqcg-44mw-7w3h; Express accepts this 2.x line.
+  proxy-addr: 2.0.8
+  # source-map-js 1.2.2 fixes GHSA-68fv-2mgg-jv7q; consumers use the 1.x API.
+  source-map-js: 1.2.2
+  # prosemirror-view 1.42.3 fixes GHSA-c8x8-7fp4-3x9w; Tiptap accepts this 1.x line.
+  prosemirror-view: 1.42.3
 
   # ── floors #19 must NOT drop: both were breached while this block was inert ──
   # path-to-regexp 6.x and picomatch 2.x came back into the graph at the

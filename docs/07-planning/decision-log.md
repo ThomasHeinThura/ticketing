@@ -1,3 +1,22 @@
+### 2026-10-09 · Close existing high/critical dependency audit findings
+
+Under the owner's Integration Freeze and SIT Consolidation authorization, remediate only
+already-present vulnerable dependencies that fail the required high/critical dependency
+audit. Use the smallest compatible patched versions: proxy-addr 2.0.8 (GHSA-jqcg-44mw-7w3h),
+source-map-js 1.2.2 (GHSA-68fv-2mgg-jv7q), prosemirror-view 1.42.3
+(GHSA-c8x8-7fp4-3x9w), and @modelcontextprotocol/sdk 1.31.0
+(GHSA-6qxp-vccf-f47h). Keep existing major lines and dependencies; add no package, suppress
+no advisory, change no scanner threshold, and do not alter the audit command. KaTeX 0.16.47
+has a separate low-severity advisory (GHSA-238p-pmpm-9mq7), below the documented CI failure
+threshold of high; record it as residual rather than claiming it absent or expanding this
+bounded repair. Re-run the unchanged required audit and affected package checks on the
+resulting exact source. This is a dependency prerequisite only, not control-plane acceptance,
+merge authorization or a gate waiver.
+
+**Sources (verified 2026-10-09):** [proxy-addr GHSA-jqcg-44mw-7w3h](https://github.com/advisories/GHSA-jqcg-44mw-7w3h), [source-map-js GHSA-68fv-2mgg-jv7q](https://github.com/advisories/GHSA-68fv-2mgg-jv7q), [prosemirror-view GHSA-c8x8-7fp4-3x9w](https://github.com/advisories/GHSA-c8x8-7fp4-3x9w), [MCP SDK GHSA-6qxp-vccf-f47h](https://github.com/advisories/GHSA-6qxp-vccf-f47h), [KaTeX GHSA-238p-pmpm-9mq7](https://github.com/advisories/GHSA-238p-pmpm-9mq7); package versions, licenses and compatibility confirmed from official npm metadata.
+
+---
+
 ### 2026-10-05 · Suppress the historical public TOTP test vector by exact fingerprint
 
 Add only `69e61dd56c18bdbb90149f470d9a6615a9d28272:apps/web/e2e/mfa-csrf-journey.spec.ts:generic-api-key:13` to `.gitleaksignore`. The finding is in an already-pushed historical commit; its value is an `otpauth` test URI whose Base32 secret decodes to the published RFC 6238 test-vector bytes. The current source still contains the same public deterministic test-vector literal at `apps/web/e2e/mfa-csrf-journey.spec.ts:16`; the historical commit records it at line 13. The test uses the RFC timestamp `59000` and asserts the published vector output before it provisions the test app. Preserve history and suppress this finding by its exact fingerprint only; do not ignore the path or rule.
