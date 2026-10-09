@@ -51,8 +51,13 @@ id, registered route and policy source, evaluator decision category, and finite 
 provenance validation result. It is emitted only when the strict evaluator completed. The
 request id is returned in the `x-taskdesk-request-id` response header for receipt correlation;
 an inbound id header is never trusted or reused. No row/tenant/actor identifiers or facts,
-credentials, payloads, or arbitrary text are included. The logger validates each field and
-rejects unknown nested keys. This witness does not change request processing or shadow gates.
+credentials, payloads, or arbitrary text are included. At the logger boundary, both the event
+and nested witness are snapshotted from own enumerable data properties only; accessors,
+symbols, non-enumerable fields, unknown keys, and custom prototypes are rejected without
+reading accessor values. The logger validates the captured primitive types and route/source
+pair, then serializes a fresh canonical projection of the approved fields rather than the
+caller-supplied object. This prevents inherited or custom `toJSON` behavior and later mutation
+from adding log data. This witness does not change request processing or shadow gates.
 
 **Never logged:** passwords, tokens, API keys, plugin secrets, session cookies, request
 bodies containing custom field values, attachment contents, or arbitrary exception text.

@@ -301,4 +301,112 @@ describe("allowlisted structured logger", () => {
     ).toThrow("Invalid structured log event");
     expect(sink.lines).toHaveLength(0);
   });
+
+  it("snapshots only own data fields and never serializes hostile witness objects", () => {
+    const sink = capture();
+    const source = "apps/api/src/asset/policy.ts";
+    const logger = createTaskDeskLogger(
+      defaultLogLevels(),
+      new Set([assetRoute, workspacesRoute]),
+      sink.stream,
+      new Map([
+        [assetRoute, source],
+        [workspacesRoute, "apps/api/src/workspace/policy.ts"],
+      ]),
+    );
+    const base: TaskDeskLogEvent = {
+      module: "http",
+      message: "http.request",
+      level: "info",
+      traceId: "0123456789abcdef0123456789abcdef",
+      route: assetRoute,
+      strictPolicyWitness: {
+        requestId: "0123456789abcdef0123456789abcdef",
+        route: assetRoute,
+        policySource: source,
+        decisionCategory: "denied",
+        provenanceValidationResult: "complete",
+      },
+    };
+    let serializationCalls = 0;
+    const extra = { leakedTenant: "tenant-secret" };
+    const inherited = Object.assign(
+      Object.create({
+        toJSON() {
+          serializationCalls += 1;
+          return extra;
+        },
+      }),
+      base.strictPolicyWitness,
+    );
+    const nonEnumerableToJson = { ...base.strictPolicyWitness };
+    Object.defineProperty(nonEnumerableToJson, "toJSON", {
+      enumerable: false,
+      value() {
+        serializationCalls += 1;
+        return extra;
+      },
+    });
+    const accessorWitness = { ...base.strictPolicyWitness } as Record<
+      string,
+      unknown
+    >;
+    delete accessorWitness.requestId;
+    Object.defineProperty(accessorWitness, "requestId", {
+      enumerable: true,
+      get() {
+        serializationCalls += 1;
+        return "0123456789abcdef0123456789abcdef";
+      },
+    });
+    const typedValue = {
+      toJSON() {
+        serializationCalls += 1;
+        return "apps/api/src/asset/policy.ts";
+      },
+    };
+    const missingField = { ...base.strictPolicyWitness } as Record<
+      string,
+      unknown
+    >;
+    delete missingField.provenanceValidationResult;
+
+    for (const witness of [
+      inherited,
+      nonEnumerableToJson,
+      accessorWitness,
+      { ...base.strictPolicyWitness, policySource: typedValue },
+      missingField,
+    ]) {
+      expect(() =>
+        logger.log({ ...base, strictPolicyWitness: witness } as never),
+      ).toThrow("Invalid structured log event");
+    }
+
+    let eventGetterCalls = 0;
+    const accessorEvent = { ...base } as Record<string, unknown>;
+    delete accessorEvent.module;
+    Object.defineProperty(accessorEvent, "module", {
+      enumerable: true,
+      get() {
+        eventGetterCalls += 1;
+        return "http";
+      },
+    });
+    expect(() =>
+      logger.log(accessorEvent as unknown as TaskDeskLogEvent),
+    ).toThrow("Invalid structured log event");
+    expect(serializationCalls).toBe(0);
+    expect(eventGetterCalls).toBe(0);
+    expect(sink.lines).toHaveLength(0);
+
+    logger.log(base);
+    const emitted = JSON.parse(sink.lines[0] as string) as Record<
+      string,
+      unknown
+    >;
+    expect(emitted.strictPolicyWitness).toEqual(base.strictPolicyWitness);
+    expect(sink.lines[0]).not.toContain("leakedTenant");
+    expect(sink.lines[0]).not.toContain("tenant-secret");
+  });
 });

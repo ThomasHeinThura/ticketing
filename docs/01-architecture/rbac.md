@@ -274,6 +274,9 @@ only. It is not returned in the response body, stored in the shadow event/databa
 change either authorization path or the shadow acceptance requirements. The opaque request id
 is also exposed as `x-taskdesk-request-id` so acquisition receipts can bind the log and request;
 inbound request-id headers are not trusted or reused.
+The logger accepts only own enumerable data fields, validates captured primitive values and
+the exact route/source pairing, and emits a fresh canonical projection so caller prototypes,
+accessors, `toJSON` hooks, or later mutation cannot add witness fields.
 
 ### Target membership projection from provenance grants — Proposed ADR 0015
 
