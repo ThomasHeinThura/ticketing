@@ -116,3 +116,18 @@ The private reviewer reports and controlled exporter logs are retained under
 | `p2-sla-43cd-sol-security.md` | `8be19b3f03f164088cc5aa649239c651ec16ff3d58835b853a48544db812a789` |
 | `p2-openapi-43cd-node26.log` | `c8e89285d2b21ef377889aee4bafd2d8c0202e7b4c48a8ebd37ea109c4f6611a` |
 | `p2-openapi-a319-node26.log` | `c4c9a01d0753f5d934c53c240c8e470c8f59c25f50b0233aa75daad48b4fc66f` |
+
+## Existing submission-event gate correction — 2026-10-09
+
+Implemented and independently reviewed delta head `180487c1b76a391d3279abddd929d3f3d839eea0`, based on the preceding note-only `19b089376f686cbb025b34b22b0e4fc118a93464`. The earlier SLA implementation and migration evidence retains its original source identity; this delta changes no SLA logic, schema or permissions. Normal fast-forward composition preserves both source histories.
+
+The existing correlated SubmissionEvent now dispatches the same five catalogue keys as literals. Nine callers preserve payload values, ordering and existing error handling. The scanner implementation is unchanged; its real-tree positive probe records36 existing keys instead of31. One strong independent Luna review and a further fresh full independent Sol security review both CLEAR the complete bounded correction. This is the bounded gate-fix tier, with no authority redesign.
+
+Author checks: focused7/7, event inventory36 keys/459 files, all four API TypeScript configurations, serial full CI-script suite1,066/1,066 PASS. The canonical parallel invocation encountered a transient contrast scratch-file ENOENT; that failed invocation remains preserved and is not relabelled passed. Independent Luna reran focused7/7, event inventory and complete34-probe event suite; independent Sol reran those checks and all four API typechecks.
+
+| Independent context | Report | SHA-256 | Verdict |
+| --- | --- | --- | --- |
+| `/root/event_180_luna_review` | `p2-event-180-luna-review.md` | `3e7cca0e566c64970c00538d2d178941114614c40ec97c6885e07458505dd7bf` | CLEAR exact180487 |
+| `/root/event_180_full_sol` | `p2-event-180-sol-security.md` | `0d1b89dc201e737c5513dba3e9e60999a43bd8b92ce98bcc2910cec2100c79f2` | CLEAR exact180487 |
+
+Reports remain private and credential-free. Current hosted CI, image/deployability and accepted-base integration remain outstanding. No required gate, pending SLA contract or phase acceptance is waived.
