@@ -10,8 +10,10 @@ no advisory, change no scanner threshold, and do not alter the audit command. Ka
 has a separate low-severity advisory (GHSA-238p-pmpm-9mq7), below the documented CI failure
 threshold of high; record it as residual rather than claiming it absent or expanding this
 bounded repair. Re-run the unchanged required audit and affected package checks on the
-resulting exact source. This is a dependency prerequisite only, not control-plane acceptance,
-merge authorization or a gate waiver.
+resulting exact source. A separate comment-only delta corrects the workflow and `test-all`
+descriptions to state this threshold without asserting zero lower-severity findings; it does
+not change the audit command, threshold or behavior. This is a dependency prerequisite only,
+not control-plane acceptance, merge authorization or a gate waiver.
 
 **Tracking:** [#613](https://github.com/ThomasHeinThura/ticketing/issues/613).
 

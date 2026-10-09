@@ -293,25 +293,11 @@ jobs:
       - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5.1.0
       - uses: ./.github/actions/setup
       - name: pnpm audit
-        # ci-cd.md: high or critical fails. GREEN — and green by fixing the graph, not by
-        # narrowing the question. The inherited advisories this comment used to call
-        # permanent (js-yaml via @commitlint/cli, nanoid via apps__web>postcss) are closed
-        # by the pins in pnpm-workspace.yaml, which this branch DOES own. `pnpm audit`
-        # reports no known vulnerabilities at EVERY severity, not only at high.
-        #
-        # Nothing is suppressed to get there: no --prod narrowing, no
-        # --audit-level=critical, no continue-on-error, no .pnpmfile.cjs, no
-        # auditConfig/ignoreGhsas anywhere in the repository.
-        #
-        # `.npmrc` DOES exist at the repository root and is 0 bytes — inherited, empty,
-        # and therefore suppressing nothing. An earlier version of this comment claimed
-        # there was "no .npmrc", which was false: the file is there. What IS true is that
-        # it configures nothing, and that `.npmrc` sits in ci-cd.md's security-review
-        # globs, so giving it content requires an independent review. Claiming absence
-        # was both wrong and weaker than the real position.
-        #
-        # Any of those would turn a
-        # true statement into a green tick, which is the opposite of the point.
+        # ci-cd.md: --audit-level=high fails on high and critical advisories. Lower-severity
+        # findings remain visible in the audit output but do not fail this gate. A pass
+        # therefore does not claim the dependency graph has no lower-severity findings.
+        # Keep the command and threshold unchanged; do not narrow the audit or suppress
+        # findings to obtain a pass.
         #
         # Read pnpm-workspace.yaml for what is pinned and why. Note what this gate CANNOT
         # see: removing a version FLOOR is invisible to it, because a floor sits exactly

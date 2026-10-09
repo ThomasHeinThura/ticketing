@@ -105,9 +105,9 @@ const manifest = [
     stage: "fast",
     run: ["pnpm", "audit", "--audit-level=high"],
     note:
-      "clean at EVERY severity, not only --audit-level=high. The inherited high " +
-      "advisories (js-yaml, nanoid) are closed by the pins in pnpm-workspace.yaml. " +
-      "Nothing is suppressed: no --prod, no ignoreGhsas, no continue-on-error.",
+      "--audit-level=high fails on high and critical advisories. Lower-severity " +
+      "findings remain visible in the audit output but do not fail this gate; a pass " +
+      "does not claim zero lower-severity findings. Do not narrow or suppress the audit.",
   },
   {
     gate: "gitleaks",
