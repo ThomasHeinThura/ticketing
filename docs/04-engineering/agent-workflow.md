@@ -170,8 +170,10 @@ An existing Opus review counts for a role only where its scope and source covera
 established; it never approves later changes.
 
 The PR-template check reads the accepted security-review models from the block below **as it
-stands on the merge base** (`main`), so a candidate cannot add a model and approve itself.
-Each line is matched exactly against the `**Model:**` field of `## Security review`:
+stands on the merge base** (`main`), so a candidate cannot add a model and approve itself
+(`scripts/ci/lib/review-models.mjs`; where that reader is not yet on `main`, the check still
+accepts only `GPT-6 Sol`). Each line is matched exactly against the `**Model:**` field of
+`## Security review`, and `check:policy` keeps the block well formed:
 
 <!-- policy:security-review-models -->
 - `GPT-6 Sol`

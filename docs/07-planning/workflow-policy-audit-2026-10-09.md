@@ -238,3 +238,38 @@ lockfile) and `performance - budgets (G11)` (board render and LCP over budget on
 product) fail for reasons no documentation change can affect. Those failures belong to the P0
 owner (#602, with #614). The applicability change cannot clear them for itself either: it
 classifies with the classifier from the merge base, which does not exist until it merges.
+
+## 10 · Enforcement change and validation (Instruction 1)
+
+The enforcement half is PR #616 (`claude/policy-enforcement-20261009`, based on `main`). It
+depends on this candidate: its `check:policy` and its model-aware PR-template check read files
+that exist only once this candidate is on `main`. Merge order: this candidate → rebase #616 →
+delta review → merge.
+
+| Item | Where it is now |
+| --- | --- |
+| F1 check applicability | #616: merge-base classifier, `change-scope` action, `needs: scope` gates, workflow-gates A9, ci-cd.md § Applicability |
+| F2 model-aware security review | #616: `lib/review-models.mjs`, `check-pr-template.mjs`, probes |
+| F3 stale references and merge method | #616: template, `CODEOWNERS`, `gate-waiver.mjs`, `check-reviews.mjs`, ci-cd.md |
+| F4 queue/policy separation | This candidate carries no queue; the policy names it by path. Remaining queue-schema cleanup is the conductor's, by coordinated handoff |
+| F5 executable policy checks | #616: `check:policy`, declared in ci-cd.md, `test-all.mjs` and the registers job |
+| F6 #601 overlap | Conductor; #601's other status, decision and evidence content is unaffected |
+
+**Scenario validation — executed vs read.**
+
+| Scenario | How it was checked |
+| --- | --- |
+| Authorized branch publication | **Executed:** both branches pushed and both PRs opened through the normal flow; no direct push to `main` |
+| One blocked decision with another runnable task | Read: workflow § Task states |
+| CI / review completion | Read: workflow § Task states, § Conductor loop |
+| Safe record-only publication | **Executed** by the round-2 authority reviewer: scratch-repo runs of the landed-commit listing against code-then-revert, deleted, renamed, appended, edited and merge-carried note cases |
+| Forged verdict rejection | **Executed** for model labels: probes reject HEAD-only models, near-miss labels and malformed lists. A fabricated verdict *text* cannot be machine-detected; the trace-to-reviewer rule (read) covers it |
+| Code-then-revert detection | **Executed:** change-scope probe (a reverted product commit keeps the PR full) and the reviewer's note-listing run |
+| Equivalent-SHA retry counting | Read: error-fix-loop § Bounded verification policy |
+| Actual runner invocation | Read: error-fix-loop § End-to-end validation (no runner changes here) |
+| Main-only signed-release sequencing | Read: workflow § Integration and release |
+| Final SIT stop | Read: active mission § Stop condition; DoD § Levels of done |
+
+**Executed checks on #616's tree:** `test:ci-scripts` 1,140/1,142, with the 2 failures also on
+an untouched `main` checkout (test-tree typecheck coverage); `test:all --list` reconciles;
+`check:policy` passes on this candidate's tree and fails on `main` as designed.
