@@ -574,7 +574,8 @@ const routes = apiRouter()
         new Date(),
       );
       if (
-        action?.action !== "user_deactivation" ||
+        action?.action !== "delete" ||
+        action.targetType !== "user" ||
         action.confirmation !== "typed_name_step_up" ||
         action.routeKey !== "POST /api/instance/users/{id}/deactivate"
       ) {
@@ -1344,7 +1345,8 @@ const routes = apiRouter()
         new Date(),
       );
       if (
-        action?.action !== "user_deactivation" ||
+        action?.action !== "delete" ||
+        action.targetType !== "user" ||
         action.confirmation !== "typed_name_step_up" ||
         action.routeKey !== "POST /api/instance/users/{id}/deactivate"
       ) {

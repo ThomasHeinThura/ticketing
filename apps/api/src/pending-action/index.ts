@@ -22,9 +22,9 @@ import {
   pendingActionParamSchema,
 } from "./schema";
 import {
-  approvePersonDeactivation,
   approveSavedViewDeletion,
   approveServiceCalendarDeletion,
+  approveUserDeactivation,
   decideOwnPendingAction,
   getOwnPendingAction,
   getOwnPendingActions,
@@ -229,12 +229,15 @@ const pendingAction = apiRouter()
               sessionId: session.id,
               traceId,
             })
-          : target.targetType === "person" && typedName !== undefined
+          : target.targetType === "user" &&
+              target.action === "delete" &&
+              target.routeKey === "POST /api/instance/users/{id}/deactivate" &&
+              typedName !== undefined
             ? token === undefined
               ? (() => {
                   throw new HTTPException(403, { message: "step_up_expired" });
                 })()
-              : await approvePersonDeactivation({
+              : await approveUserDeactivation({
                   id,
                   requesterPersonId,
                   userId: c.get("userId"),

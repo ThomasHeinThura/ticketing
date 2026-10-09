@@ -254,6 +254,7 @@ export async function getPendingActionExecutionTarget(input: {
     .select({
       action: pendingActionTable.action,
       targetType: pendingActionTable.targetType,
+      routeKey: pendingActionTable.routeKey,
     })
     .from(pendingActionTable)
     .where(
@@ -331,8 +332,10 @@ export async function getOwnPendingActions(
 
   const hasMore = rows.length > options.limit;
   const pageRows = hasMore ? rows.slice(0, options.limit) : rows;
-  const data = pageRows.map(({ pendingAction, requestingKeyName }) =>
-    toPendingActionRead(pendingAction, requestingKeyName),
+  const data = await Promise.all(
+    pageRows.map(({ pendingAction, requestingKeyName }) =>
+      toPendingActionRead(pendingAction, requestingKeyName),
+    ),
   );
   for (const { pendingAction } of pageRows) {
     await auditViewed(
@@ -397,7 +400,7 @@ export async function getOwnPendingAction(
     .limit(1);
   if (!result)
     throw new HTTPException(404, { message: "Pending action not found" });
-  const data = toPendingActionRead(
+  const data = await toPendingActionRead(
     result.pendingAction,
     result.requestingKeyName,
   );
@@ -451,6 +454,7 @@ export async function decideOwnPendingAction(input: {
     if (row.state !== "pending") {
       throw new HTTPException(409, { message: "pending_action_not_pending" });
     }
+    const publicFields = await publicPendingActionFields(row, tx);
     const outcome = row.expiresAt <= now ? "expired" : input.outcome;
     const [actor] = await tx
       .select({
@@ -463,7 +467,13 @@ export async function decideOwnPendingAction(input: {
       .limit(1);
     if (
       !actor?.userId ||
-      (!row.workspaceId && row.action !== "user_deactivation")
+      (!row.workspaceId &&
+        !(
+          row.action === "delete" &&
+          row.targetType === "user" &&
+          row.routeKey === "POST /api/instance/users/{id}/deactivate"
+        ) &&
+        !isLegacyInstanceUserDeactivation(row))
     ) {
       throw new HTTPException(403, {
         message: "Pending-action requester is unavailable",
@@ -527,7 +537,7 @@ export async function decideOwnPendingAction(input: {
     } catch {
       auditFailure = true;
     }
-    return { updated, auditFailure };
+    return { updated, auditFailure, publicFields };
   });
 
   if (result.auditFailure) {
@@ -535,7 +545,7 @@ export async function decideOwnPendingAction(input: {
     await notifyCurrentInstanceAdminsOfAuditFailure("pending_action_decision");
   }
 
-  return toPublicPendingAction(result.updated);
+  return toPublicPendingAction(result.updated, result.publicFields);
 }
 
 export async function approveServiceCalendarDeletion(input: {
@@ -1517,7 +1527,7 @@ async function invalidateServiceCalendarDeletion(
   return { row: invalidated, auditFailure };
 }
 
-export async function approvePersonDeactivation(input: {
+export async function approveUserDeactivation(input: {
   id: string;
   requesterPersonId: string;
   userId: string;
@@ -1544,7 +1554,11 @@ export async function approvePersonDeactivation(input: {
       throw new HTTPException(404, { message: "Pending action not found" });
     if (row.state !== "pending")
       throw new HTTPException(409, { message: "pending_action_not_pending" });
-    if (row.action !== "user_deactivation" || row.targetType !== "person")
+    if (
+      row.action !== "delete" ||
+      row.targetType !== "user" ||
+      row.routeKey !== "POST /api/instance/users/{id}/deactivate"
+    )
       throw new HTTPException(409, {
         message: "pending_action_kind_unsupported",
       });
@@ -1660,9 +1674,9 @@ export async function approvePersonDeactivation(input: {
     }
     if (
       hashPendingActionPayload(payload) !== row.payloadHash ||
-      payload.action !== "user_deactivation" ||
+      payload.action !== "delete" ||
       payload.route_key !== row.routeKey ||
-      payload.target_type !== "person" ||
+      payload.target_type !== "user" ||
       payload.target_ids.length !== 1 ||
       payload.target_ids[0] !== row.targetIds[0] ||
       payload.confirmation_required !== "typed_name_step_up" ||
@@ -1675,8 +1689,8 @@ export async function approvePersonDeactivation(input: {
         message: "pending_action_payload_invalid",
       });
     }
-    const personId = payload.target_ids[0];
-    if (!personId)
+    const userId = payload.target_ids[0];
+    if (!userId)
       throw new HTTPException(409, {
         message: "pending_action_target_invalid",
       });
@@ -1684,16 +1698,17 @@ export async function approvePersonDeactivation(input: {
       .select({
         id: personTable.id,
         userId: personTable.userId,
+        targetUserId: userTable.id,
         active: personTable.active,
         email: userTable.email,
         name: userTable.name,
       })
       .from(personTable)
       .innerJoin(userTable, eq(userTable.id, personTable.userId))
-      .where(eq(personTable.id, personId))
+      .where(eq(userTable.id, userId))
       .for("update")
       .limit(1);
-    if (!target?.userId || !target.active) {
+    if (!target?.userId || target.targetUserId !== userId || !target.active) {
       const invalidated = await invalidatePersonDeactivation(tx, {
         row,
         actorPersonId: input.requesterPersonId,
@@ -1709,8 +1724,11 @@ export async function approvePersonDeactivation(input: {
         auditFailure: false,
       };
     }
-    const summary = row.payloadSummary as { email?: unknown };
-    if (summary.email !== target.email) {
+    const summary = row.payloadSummary as {
+      email?: unknown;
+      userId?: unknown;
+    };
+    if (summary.email !== target.email || summary.userId !== userId) {
       const invalidated = await invalidatePersonDeactivation(tx, {
         row,
         actorPersonId: input.requesterPersonId,
@@ -1782,8 +1800,8 @@ export async function approvePersonDeactivation(input: {
         "pending_action.executed",
         {
           pendingActionId: row.id,
-          action: row.action,
-          targetIds: row.targetIds,
+          action: "delete",
+          targetIds: [target.userId],
           outcome: "executed",
         },
       ],
@@ -1835,7 +1853,7 @@ export async function approvePersonDeactivation(input: {
         before: null,
         after: {
           outcome: "executed",
-          action: row.action,
+          action: "delete",
           targetCount: row.targetIds.length,
         },
       },
@@ -2061,17 +2079,18 @@ function decodePendingActionCursor(value: string): PendingActionCursor {
   return { createdAt, id };
 }
 
-function toPendingActionRead(
+async function toPendingActionRead(
   row: typeof pendingActionTable.$inferSelect,
   requestingKeyName: string | null,
 ) {
+  const publicFields = await publicPendingActionFields(row);
   return pendingActionReadSchema.parse({
     id: row.id,
-    action: row.action,
+    action: publicFields.action,
     origin: row.origin,
-    targetType: row.targetType,
-    targetIds: row.targetIds,
-    summary: row.payloadSummary,
+    targetType: publicFields.targetType,
+    targetIds: publicFields.targetIds,
+    summary: publicFields.summary,
     confirmation: row.confirmationRequired,
     state: row.state,
     createdAt: row.createdAt.toISOString(),
@@ -2086,6 +2105,96 @@ function toPendingActionRead(
 type PendingActionTransaction = Parameters<
   Parameters<typeof db.transaction>[0]
 >[0];
+
+type PublicPendingActionFields = {
+  action: "delete" | "bulk_delete" | "purge" | "mcp_destructive";
+  targetType: string;
+  targetIds: string[];
+  summary: Record<string, unknown>;
+};
+
+function isLegacyInstanceUserDeactivation(
+  row: typeof pendingActionTable.$inferSelect,
+): boolean {
+  return (
+    row.action === "user_deactivation" &&
+    row.targetType === "person" &&
+    row.routeKey === "POST /api/instance/users/{id}/deactivate" &&
+    row.workspaceId === null &&
+    row.projectId === null &&
+    row.organisationId === null
+  );
+}
+
+async function publicPendingActionFields(
+  row: typeof pendingActionTable.$inferSelect,
+  executor: typeof db | PendingActionTransaction = db,
+): Promise<PublicPendingActionFields> {
+  if (
+    row.action === "delete" ||
+    row.action === "bulk_delete" ||
+    row.action === "purge" ||
+    row.action === "mcp_destructive"
+  ) {
+    return {
+      action: row.action,
+      targetType: row.targetType,
+      targetIds: row.targetIds,
+      summary: row.payloadSummary as Record<string, unknown>,
+    };
+  }
+  if (!isLegacyInstanceUserDeactivation(row)) {
+    throw new HTTPException(409, {
+      message: "pending_action_target_changed",
+    });
+  }
+
+  const payload = row.payload as Record<string, unknown>;
+  const summary = row.payloadSummary as Record<string, unknown>;
+  const personId = row.targetIds.length === 1 ? row.targetIds[0] : undefined;
+  if (
+    row.credentialType !== "session" ||
+    row.origin !== "web" ||
+    !personId ||
+    payload.action !== "user_deactivation" ||
+    payload.route_key !== row.routeKey ||
+    payload.target_type !== "person" ||
+    !Array.isArray(payload.target_ids) ||
+    payload.target_ids.length !== 1 ||
+    payload.target_ids[0] !== personId ||
+    payload.workspace_id !== null ||
+    payload.project_id !== null ||
+    payload.organisation_id !== null ||
+    payload.confirmation_required !== row.confirmationRequired ||
+    summary.personId !== personId
+  ) {
+    throw new HTTPException(409, {
+      message: "pending_action_target_changed",
+    });
+  }
+
+  const [target] = await executor
+    .select({ userId: personTable.userId })
+    .from(personTable)
+    .innerJoin(userTable, eq(userTable.id, personTable.userId))
+    .where(eq(personTable.id, personId))
+    .limit(1);
+  if (
+    !target?.userId ||
+    (summary.userId !== undefined && summary.userId !== target.userId)
+  ) {
+    throw new HTTPException(409, {
+      message: "pending_action_target_changed",
+    });
+  }
+
+  return {
+    action: "delete",
+    targetType: "user",
+    targetIds: [target.userId],
+    summary: { ...summary, userId: target.userId },
+  };
+}
 
 type ResolvedRequestScope = {
   workspaceId: string | null;
@@ -2107,11 +2216,12 @@ async function resolveRequestScope(
   input: CreatePendingActionInput,
 ): Promise<ResolvedRequestScope> {
   if (
-    input.action === "user_deactivation" &&
-    input.targetType === "person" &&
+    input.action === "delete" &&
+    input.targetType === "user" &&
+    input.routeKey === "POST /api/instance/users/{id}/deactivate" &&
     input.targetIds.length === 1
   ) {
-    return resolvePersonDeactivationScope(tx, input);
+    return resolveUserDeactivationScope(tx, input);
   }
   if (input.action === "delete" && input.targetType === "service_calendar") {
     return resolveServiceCalendarScope(tx, input);
@@ -2586,11 +2696,13 @@ async function resolveSavedViewScope(
   };
 }
 
-async function resolvePersonDeactivationScope(
+async function resolveUserDeactivationScope(
   tx: PendingActionTransaction,
   input: CreatePendingActionInput,
 ): Promise<ResolvedRequestScope> {
   if (
+    input.action !== "delete" ||
+    input.targetType !== "user" ||
     input.credentialType !== "session" ||
     input.origin !== "web" ||
     input.routeKey !== "POST /api/instance/users/{id}/deactivate" ||
@@ -2600,12 +2712,13 @@ async function resolvePersonDeactivationScope(
   }
   const targetIds = [...new Set(input.targetIds)];
   if (targetIds.length !== 1 || targetIds.length !== input.targetIds.length) {
-    throw new TypeError("Person deactivation requires one unique person id");
+    throw new TypeError("User deactivation requires one unique user id");
   }
   const [target] = await tx
     .select({
       personId: personTable.id,
       userId: personTable.userId,
+      targetUserId: userTable.id,
       active: personTable.active,
       isAnonymous: userTable.isAnonymous,
       email: userTable.email,
@@ -2614,7 +2727,7 @@ async function resolvePersonDeactivationScope(
     .from(personTable)
     .innerJoin(userTable, eq(userTable.id, personTable.userId))
     .where(
-      and(eq(personTable.id, targetIds[0] ?? ""), eq(personTable.active, true)),
+      and(eq(userTable.id, targetIds[0] ?? ""), eq(personTable.active, true)),
     )
     .for("update")
     .limit(1);
@@ -2670,7 +2783,7 @@ async function resolvePersonDeactivationScope(
     route.policy.capability !== "instance:admin"
   ) {
     throw new TypeError(
-      "Person deactivation requires its registered instance-admin route",
+      "User deactivation requires its registered instance-admin route",
     );
   }
   return {
@@ -2679,6 +2792,7 @@ async function resolvePersonDeactivationScope(
     organisationId: null,
     actorName: requester.actorName,
     summary: {
+      userId: target.targetUserId,
       personId: target.personId,
       name: target.name,
       email: target.email,
@@ -2686,14 +2800,18 @@ async function resolvePersonDeactivationScope(
   };
 }
 
-function toPublicPendingAction(row: typeof pendingActionTable.$inferSelect) {
+async function toPublicPendingAction(
+  row: typeof pendingActionTable.$inferSelect,
+  publicFields?: PublicPendingActionFields,
+) {
+  const fields = publicFields ?? (await publicPendingActionFields(row));
   return {
     id: row.id,
-    action: row.action,
+    action: fields.action,
     origin: row.origin,
-    targetType: row.targetType,
-    targetIds: row.targetIds,
-    summary: row.payloadSummary,
+    targetType: fields.targetType,
+    targetIds: fields.targetIds,
+    summary: fields.summary,
     confirmation: row.confirmationRequired,
     state: row.state,
     createdAt: row.createdAt.toISOString(),

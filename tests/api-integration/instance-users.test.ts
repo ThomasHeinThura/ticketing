@@ -1,6 +1,6 @@
 import { createHash } from "node:crypto";
 import { createRequire } from "node:module";
-import { eq, inArray } from "drizzle-orm";
+import { and, eq, inArray, sql } from "drizzle-orm";
 import { beforeEach, describe, expect, it } from "vitest";
 import {
   canonicalInstanceAdminGrantBody,
@@ -127,6 +127,647 @@ async function createGrantToken(
 }
 
 describe("God Mode Users API", () => {
+  it("projects legacy deactivation rows through the canonical DTO without rewriting them", async () => {
+    const admin = await seedUser("users-legacy-deactivation-admin", "admin");
+    await ensureStaffPersonForUser(admin.id);
+    const [adminPerson] = await db
+      .select()
+      .from(schema.personTable)
+      .where(eq(schema.personTable.userId, admin.id));
+    const sessionId = await seedSession(admin.id);
+    const intendedTarget = await seedUser("users-legacy-deactivation-target");
+    await ensureStaffPersonForUser(intendedTarget.id);
+    const [intendedPerson] = await db
+      .select()
+      .from(schema.personTable)
+      .where(eq(schema.personTable.userId, intendedTarget.id));
+    const wrongTarget = await seedUser(
+      "users-legacy-deactivation-wrong-target",
+    );
+    await ensureStaffPersonForUser(wrongTarget.id);
+    const deniedTarget = await seedUser("users-legacy-deactivation-denied");
+    await ensureStaffPersonForUser(deniedTarget.id);
+    const [wrongPerson] = await db
+      .select()
+      .from(schema.personTable)
+      .where(eq(schema.personTable.userId, wrongTarget.id));
+    const [deniedPerson] = await db
+      .select()
+      .from(schema.personTable)
+      .where(eq(schema.personTable.userId, deniedTarget.id));
+    if (!adminPerson || !intendedPerson || !wrongPerson || !deniedPerson)
+      throw new Error("legacy migration identities were not created");
+    await db
+      .update(schema.personTable)
+      .set({ active: false })
+      .where(eq(schema.personTable.id, wrongPerson.id));
+    const now = new Date();
+    const pendingId = "users-legacy-deactivation-pending";
+    const deniedId = "users-legacy-deactivation-denied";
+    const terminalId = "users-legacy-deactivation-terminal";
+    const legacyPayload = {
+      action: "user_deactivation",
+      route_key: "POST /api/instance/users/{id}/deactivate",
+      target_type: "person",
+      target_ids: [intendedPerson.id],
+      workspace_id: null,
+      project_id: null,
+      organisation_id: null,
+      confirmation_required: "typed_name_step_up",
+    };
+
+    await db.insert(schema.pendingActionTable).values([
+      {
+        id: pendingId,
+        requestedByPersonId: adminPerson.id,
+        credentialType: "session",
+        credentialId: sessionId,
+        origin: "web",
+        action: "user_deactivation",
+        targetType: "person",
+        targetIds: [intendedPerson.id],
+        payload: legacyPayload,
+        routeKey: legacyPayload.route_key,
+        payloadHash: "a".repeat(64),
+        payloadSummary: {
+          personId: intendedPerson.id,
+          email: intendedTarget.email,
+        },
+        confirmationRequired: "typed_name_step_up",
+        state: "pending",
+        traceId: "trace-users-legacy-pending",
+        expiresAt: new Date(now.getTime() + 60_000),
+      },
+      {
+        id: deniedId,
+        requestedByPersonId: adminPerson.id,
+        credentialType: "session",
+        credentialId: sessionId,
+        origin: "web",
+        action: "user_deactivation",
+        targetType: "person",
+        targetIds: [deniedPerson.id],
+        payload: { ...legacyPayload, target_ids: [deniedPerson.id] },
+        routeKey: legacyPayload.route_key,
+        payloadHash: "c".repeat(64),
+        payloadSummary: {
+          personId: deniedPerson.id,
+          email: deniedTarget.email,
+        },
+        confirmationRequired: "typed_name_step_up",
+        state: "pending",
+        traceId: "trace-users-legacy-denied",
+        expiresAt: new Date(now.getTime() + 60_000),
+      },
+      {
+        id: terminalId,
+        requestedByPersonId: adminPerson.id,
+        credentialType: "session",
+        credentialId: sessionId,
+        origin: "web",
+        action: "user_deactivation",
+        targetType: "person",
+        targetIds: [wrongPerson.id],
+        payload: { ...legacyPayload, target_ids: [wrongPerson.id] },
+        routeKey: legacyPayload.route_key,
+        payloadHash: "b".repeat(64),
+        payloadSummary: { personId: wrongPerson.id, email: wrongTarget.email },
+        confirmationRequired: "typed_name_step_up",
+        state: "executed",
+        decidedByPersonId: adminPerson.id,
+        decisionSessionId: sessionId,
+        decidedAt: now,
+        executedAt: now,
+        stepUpTokenId: "users-legacy-deactivation-terminal-step-up",
+        traceId: "trace-users-legacy-terminal",
+        expiresAt: new Date(now.getTime() + 60_000),
+      },
+    ]);
+    const preserved = await db
+      .select({
+        id: schema.pendingActionTable.id,
+        action: schema.pendingActionTable.action,
+        state: schema.pendingActionTable.state,
+        targetIds: schema.pendingActionTable.targetIds,
+        payload: schema.pendingActionTable.payload,
+        payloadHash: schema.pendingActionTable.payloadHash,
+      })
+      .from(schema.pendingActionTable)
+      .where(
+        inArray(schema.pendingActionTable.id, [
+          pendingId,
+          deniedId,
+          terminalId,
+        ]),
+      );
+    expect(preserved).toHaveLength(3);
+    expect(preserved.find((row) => row.id === pendingId)).toMatchObject({
+      action: "user_deactivation",
+      state: "pending",
+      targetIds: [intendedPerson.id],
+      payload: legacyPayload,
+      payloadHash: "a".repeat(64),
+    });
+    expect(preserved.find((row) => row.id === terminalId)).toMatchObject({
+      action: "user_deactivation",
+      state: "executed",
+      targetIds: [wrongPerson.id],
+      payload: { ...legacyPayload, target_ids: [wrongPerson.id] },
+      payloadHash: "b".repeat(64),
+    });
+    expect(preserved.find((row) => row.id === deniedId)).toMatchObject({
+      action: "user_deactivation",
+      state: "pending",
+      targetIds: [deniedPerson.id],
+      payload: { ...legacyPayload, target_ids: [deniedPerson.id] },
+      payloadHash: "c".repeat(64),
+    });
+
+    const legacyToken = createHash("sha256")
+      .update("expired-legacy-proof")
+      .digest("base64url");
+    const deniedToken = createHash("sha256")
+      .update("unused-legacy-deny-proof")
+      .digest("base64url");
+    const terminalToken = createHash("sha256")
+      .update("consumed-legacy-proof")
+      .digest("base64url");
+    await db.insert(schema.stepUpConfirmationTable).values([
+      {
+        id: "users-legacy-deactivation-step-up",
+        personId: adminPerson.id,
+        sessionId,
+        bindingKind: "pending_action",
+        pendingActionId: pendingId,
+        challengeNonceHash: createHash("sha256").update("nonce").digest(),
+        state: "issued",
+        tokenHash: createHash("sha256").update(legacyToken).digest(),
+        authMethod: "password",
+        authenticatedAt: new Date(now.getTime() - 120_000),
+        issuedAt: new Date(now.getTime() - 120_000),
+        challengeExpiresAt: new Date(now.getTime() - 120_000),
+        tokenExpiresAt: new Date(now.getTime() - 60_000),
+      },
+      {
+        id: "users-legacy-deactivation-terminal-step-up",
+        personId: adminPerson.id,
+        sessionId,
+        bindingKind: "pending_action",
+        pendingActionId: terminalId,
+        challengeNonceHash: createHash("sha256")
+          .update("nonce-terminal")
+          .digest(),
+        state: "consumed",
+        tokenHash: createHash("sha256").update(terminalToken).digest(),
+        authMethod: "password",
+        authenticatedAt: new Date(now.getTime() - 120_000),
+        issuedAt: new Date(now.getTime() - 120_000),
+        consumedAt: new Date(now.getTime() - 60_000),
+        challengeExpiresAt: new Date(now.getTime() - 120_000),
+        tokenExpiresAt: new Date(now.getTime() - 60_000),
+      },
+      {
+        id: "users-legacy-deactivation-deny-step-up",
+        personId: adminPerson.id,
+        sessionId,
+        bindingKind: "pending_action",
+        pendingActionId: deniedId,
+        challengeNonceHash: createHash("sha256").update("nonce-deny").digest(),
+        state: "issued",
+        tokenHash: createHash("sha256").update(deniedToken).digest(),
+        authMethod: "password",
+        authenticatedAt: new Date(now.getTime() - 120_000),
+        issuedAt: new Date(now.getTime() - 120_000),
+        challengeExpiresAt: new Date(now.getTime() - 120_000),
+        tokenExpiresAt: new Date(now.getTime() - 60_000),
+      },
+    ]);
+    mockAuthenticatedSession(admin);
+    const { app } = createApp();
+    const response = await agentRequest(
+      app,
+      `/api/me/pending-actions/${pendingId}/approve`,
+      {
+        method: "POST",
+        headers: {
+          "content-type": "application/json",
+          "x-taskdesk-step-up-token": legacyToken,
+        },
+        body: JSON.stringify({ typedName: "stale@example.test" }),
+      },
+    );
+    expect(response.status).toBe(409);
+    expect(await response.text()).toBe("pending_action_kind_unsupported");
+    const listed = await agentRequest(app, "/api/me/pending-actions");
+    expect(listed.status).toBe(200);
+    const listedBody = (await listed.json()) as {
+      data: Array<Record<string, unknown>>;
+    };
+    expect(listedBody.data).toContainEqual(
+      expect.objectContaining({
+        id: pendingId,
+        action: "delete",
+        targetType: "user",
+        targetIds: [intendedTarget.id],
+        summary: {
+          personId: intendedPerson.id,
+          userId: intendedTarget.id,
+          email: intendedTarget.email,
+        },
+        state: "pending",
+      }),
+    );
+    expect(listedBody.data).toContainEqual(
+      expect.objectContaining({
+        id: deniedId,
+        action: "delete",
+        targetType: "user",
+        targetIds: [deniedTarget.id],
+        summary: {
+          personId: deniedPerson.id,
+          userId: deniedTarget.id,
+          email: deniedTarget.email,
+        },
+        state: "pending",
+      }),
+    );
+    const readable = await agentRequest(
+      app,
+      `/api/me/pending-actions/${pendingId}`,
+    );
+    expect(readable.status).toBe(200);
+    expect(await readable.json()).toMatchObject({
+      id: pendingId,
+      action: "delete",
+      targetType: "user",
+      targetIds: [intendedTarget.id],
+      summary: {
+        personId: intendedPerson.id,
+        userId: intendedTarget.id,
+        email: intendedTarget.email,
+      },
+      state: "pending",
+    });
+    const beforeUnresolvedCancel = await db
+      .select({
+        state: schema.pendingActionTable.state,
+        targetIds: schema.pendingActionTable.targetIds,
+        payload: schema.pendingActionTable.payload,
+        payloadSummary: schema.pendingActionTable.payloadSummary,
+        payloadHash: schema.pendingActionTable.payloadHash,
+      })
+      .from(schema.pendingActionTable)
+      .where(eq(schema.pendingActionTable.id, pendingId));
+    const decisionAuditBefore = await db
+      .select({ id: schema.auditLogTable.id })
+      .from(schema.auditLogTable)
+      .where(
+        and(
+          eq(schema.auditLogTable.entityId, pendingId),
+          eq(schema.auditLogTable.action, "pending_action.decided"),
+        ),
+      );
+    const decisionEventsBefore = await db
+      .select({ eventId: schema.outboxTable.eventId })
+      .from(schema.outboxTable)
+      .where(
+        and(
+          eq(schema.outboxTable.kind, "pending_action.decided"),
+          sql`${schema.outboxTable.payload}->'payload'->>'pendingActionId' = ${pendingId}`,
+        ),
+      );
+    await db
+      .update(schema.pendingActionTable)
+      .set({
+        targetIds: ["missing-legacy-person"],
+        payload: { ...legacyPayload, target_ids: ["missing-legacy-person"] },
+        payloadSummary: {
+          personId: "missing-legacy-person",
+          email: intendedTarget.email,
+        },
+      })
+      .where(eq(schema.pendingActionTable.id, pendingId));
+    const unresolvedCancel = await agentRequest(
+      app,
+      `/api/me/pending-actions/${pendingId}/cancel`,
+      { method: "POST" },
+    );
+    expect(unresolvedCancel.status).toBe(409);
+    expect(await unresolvedCancel.text()).toBe("pending_action_target_changed");
+    expect(
+      await db
+        .select({ state: schema.pendingActionTable.state })
+        .from(schema.pendingActionTable)
+        .where(eq(schema.pendingActionTable.id, pendingId)),
+    ).toEqual([{ state: "pending" }]);
+    expect(
+      await db
+        .select({ state: schema.stepUpConfirmationTable.state })
+        .from(schema.stepUpConfirmationTable)
+        .where(
+          eq(
+            schema.stepUpConfirmationTable.id,
+            "users-legacy-deactivation-step-up",
+          ),
+        ),
+    ).toEqual([{ state: "issued" }]);
+    expect(
+      await db
+        .select({ id: schema.auditLogTable.id })
+        .from(schema.auditLogTable)
+        .where(
+          and(
+            eq(schema.auditLogTable.entityId, pendingId),
+            eq(schema.auditLogTable.action, "pending_action.decided"),
+          ),
+        ),
+    ).toEqual(decisionAuditBefore);
+    expect(
+      await db
+        .select({ eventId: schema.outboxTable.eventId })
+        .from(schema.outboxTable)
+        .where(
+          and(
+            eq(schema.outboxTable.kind, "pending_action.decided"),
+            sql`${schema.outboxTable.payload}->'payload'->>'pendingActionId' = ${pendingId}`,
+          ),
+        ),
+    ).toEqual(decisionEventsBefore);
+    await db
+      .update(schema.pendingActionTable)
+      .set({
+        targetIds: [intendedPerson.id],
+        payload: legacyPayload,
+        payloadSummary: {
+          personId: intendedPerson.id,
+          email: intendedTarget.email,
+        },
+      })
+      .where(eq(schema.pendingActionTable.id, pendingId));
+    expect(
+      await db
+        .select({
+          state: schema.pendingActionTable.state,
+          targetIds: schema.pendingActionTable.targetIds,
+          payload: schema.pendingActionTable.payload,
+          payloadSummary: schema.pendingActionTable.payloadSummary,
+          payloadHash: schema.pendingActionTable.payloadHash,
+        })
+        .from(schema.pendingActionTable)
+        .where(eq(schema.pendingActionTable.id, pendingId)),
+    ).toEqual(beforeUnresolvedCancel);
+    expect(
+      await db
+        .select({
+          userId: schema.personTable.userId,
+          active: schema.personTable.active,
+        })
+        .from(schema.personTable)
+        .where(
+          inArray(schema.personTable.userId, [
+            intendedTarget.id,
+            wrongTarget.id,
+          ]),
+        )
+        .orderBy(schema.personTable.userId),
+    ).toEqual([
+      { userId: intendedTarget.id, active: true },
+      { userId: wrongTarget.id, active: false },
+    ]);
+    expect(
+      await db
+        .select({ state: schema.pendingActionTable.state })
+        .from(schema.pendingActionTable)
+        .where(eq(schema.pendingActionTable.id, pendingId)),
+    ).toEqual([{ state: "pending" }]);
+    expect(
+      await db
+        .select({ state: schema.stepUpConfirmationTable.state })
+        .from(schema.stepUpConfirmationTable)
+        .where(
+          eq(
+            schema.stepUpConfirmationTable.id,
+            "users-legacy-deactivation-step-up",
+          ),
+        ),
+    ).toEqual([{ state: "issued" }]);
+    expect(
+      await db
+        .select({ state: schema.stepUpConfirmationTable.state })
+        .from(schema.stepUpConfirmationTable)
+        .where(
+          eq(
+            schema.stepUpConfirmationTable.id,
+            "users-legacy-deactivation-terminal-step-up",
+          ),
+        ),
+    ).toEqual([{ state: "consumed" }]);
+    const cancelled = await agentRequest(
+      app,
+      `/api/me/pending-actions/${pendingId}/cancel`,
+      { method: "POST" },
+    );
+    expect(cancelled.status).toBe(200);
+    expect(await cancelled.json()).toMatchObject({
+      id: pendingId,
+      action: "delete",
+      targetType: "user",
+      targetIds: [intendedTarget.id],
+      summary: {
+        personId: intendedPerson.id,
+        userId: intendedTarget.id,
+        email: intendedTarget.email,
+      },
+      state: "cancelled",
+    });
+    expect(
+      await db
+        .select({ state: schema.pendingActionTable.state })
+        .from(schema.pendingActionTable)
+        .where(eq(schema.pendingActionTable.id, pendingId)),
+    ).toEqual([{ state: "cancelled" }]);
+    expect(
+      await db
+        .select({ state: schema.stepUpConfirmationTable.state })
+        .from(schema.stepUpConfirmationTable)
+        .where(
+          eq(
+            schema.stepUpConfirmationTable.id,
+            "users-legacy-deactivation-step-up",
+          ),
+        ),
+    ).toEqual([{ state: "issued" }]);
+    expect(
+      await db
+        .select({
+          action: schema.pendingActionTable.action,
+          targetType: schema.pendingActionTable.targetType,
+          targetIds: schema.pendingActionTable.targetIds,
+          payload: schema.pendingActionTable.payload,
+          payloadHash: schema.pendingActionTable.payloadHash,
+        })
+        .from(schema.pendingActionTable)
+        .where(eq(schema.pendingActionTable.id, pendingId)),
+    ).toEqual([
+      {
+        action: "user_deactivation",
+        targetType: "person",
+        targetIds: [intendedPerson.id],
+        payload: legacyPayload,
+        payloadHash: "a".repeat(64),
+      },
+    ]);
+    const beforeUnresolvedDeny = await db
+      .select({
+        state: schema.pendingActionTable.state,
+        targetIds: schema.pendingActionTable.targetIds,
+        payload: schema.pendingActionTable.payload,
+        payloadSummary: schema.pendingActionTable.payloadSummary,
+        payloadHash: schema.pendingActionTable.payloadHash,
+      })
+      .from(schema.pendingActionTable)
+      .where(eq(schema.pendingActionTable.id, deniedId));
+    const deniedAuditBefore = await db
+      .select({ id: schema.auditLogTable.id })
+      .from(schema.auditLogTable)
+      .where(
+        and(
+          eq(schema.auditLogTable.entityId, deniedId),
+          eq(schema.auditLogTable.action, "pending_action.decided"),
+        ),
+      );
+    const deniedEventsBefore = await db
+      .select({ eventId: schema.outboxTable.eventId })
+      .from(schema.outboxTable)
+      .where(
+        and(
+          eq(schema.outboxTable.kind, "pending_action.decided"),
+          sql`${schema.outboxTable.payload}->'payload'->>'pendingActionId' = ${deniedId}`,
+        ),
+      );
+    await db
+      .update(schema.pendingActionTable)
+      .set({
+        targetIds: ["missing-legacy-person-for-deny"],
+        payload: {
+          ...legacyPayload,
+          target_ids: ["missing-legacy-person-for-deny"],
+        },
+        payloadSummary: {
+          personId: "missing-legacy-person-for-deny",
+          email: deniedTarget.email,
+        },
+      })
+      .where(eq(schema.pendingActionTable.id, deniedId));
+    const unresolvedDeny = await agentRequest(
+      app,
+      `/api/me/pending-actions/${deniedId}/deny`,
+      { method: "POST" },
+    );
+    expect(unresolvedDeny.status).toBe(409);
+    expect(await unresolvedDeny.text()).toBe("pending_action_target_changed");
+    expect(
+      await db
+        .select({ state: schema.pendingActionTable.state })
+        .from(schema.pendingActionTable)
+        .where(eq(schema.pendingActionTable.id, deniedId)),
+    ).toEqual([{ state: "pending" }]);
+    expect(
+      await db
+        .select({ state: schema.stepUpConfirmationTable.state })
+        .from(schema.stepUpConfirmationTable)
+        .where(
+          eq(
+            schema.stepUpConfirmationTable.id,
+            "users-legacy-deactivation-deny-step-up",
+          ),
+        ),
+    ).toEqual([{ state: "issued" }]);
+    expect(
+      await db
+        .select({ id: schema.auditLogTable.id })
+        .from(schema.auditLogTable)
+        .where(
+          and(
+            eq(schema.auditLogTable.entityId, deniedId),
+            eq(schema.auditLogTable.action, "pending_action.decided"),
+          ),
+        ),
+    ).toEqual(deniedAuditBefore);
+    expect(
+      await db
+        .select({ eventId: schema.outboxTable.eventId })
+        .from(schema.outboxTable)
+        .where(
+          and(
+            eq(schema.outboxTable.kind, "pending_action.decided"),
+            sql`${schema.outboxTable.payload}->'payload'->>'pendingActionId' = ${deniedId}`,
+          ),
+        ),
+    ).toEqual(deniedEventsBefore);
+    await db
+      .update(schema.pendingActionTable)
+      .set({
+        targetIds: [deniedPerson.id],
+        payload: { ...legacyPayload, target_ids: [deniedPerson.id] },
+        payloadSummary: {
+          personId: deniedPerson.id,
+          email: deniedTarget.email,
+        },
+      })
+      .where(eq(schema.pendingActionTable.id, deniedId));
+    expect(
+      await db
+        .select({
+          state: schema.pendingActionTable.state,
+          targetIds: schema.pendingActionTable.targetIds,
+          payload: schema.pendingActionTable.payload,
+          payloadSummary: schema.pendingActionTable.payloadSummary,
+          payloadHash: schema.pendingActionTable.payloadHash,
+        })
+        .from(schema.pendingActionTable)
+        .where(eq(schema.pendingActionTable.id, deniedId)),
+    ).toEqual(beforeUnresolvedDeny);
+    const denied = await agentRequest(
+      app,
+      `/api/me/pending-actions/${deniedId}/deny`,
+      { method: "POST" },
+    );
+    expect(denied.status).toBe(200);
+    expect(await denied.json()).toMatchObject({
+      id: deniedId,
+      action: "delete",
+      targetType: "user",
+      targetIds: [deniedTarget.id],
+      summary: {
+        personId: deniedPerson.id,
+        userId: deniedTarget.id,
+        email: deniedTarget.email,
+      },
+      state: "denied",
+    });
+    expect(
+      await db
+        .select({
+          action: schema.pendingActionTable.action,
+          targetType: schema.pendingActionTable.targetType,
+        })
+        .from(schema.pendingActionTable)
+        .where(eq(schema.pendingActionTable.id, deniedId)),
+    ).toEqual([{ action: "user_deactivation", targetType: "person" }]);
+    expect(
+      await db
+        .select({ state: schema.stepUpConfirmationTable.state })
+        .from(schema.stepUpConfirmationTable)
+        .where(
+          eq(
+            schema.stepUpConfirmationTable.id,
+            "users-legacy-deactivation-deny-step-up",
+          ),
+        ),
+    ).toEqual([{ state: "issued" }]);
+  });
+
   it("returns an allowlisted stable cursor directory and refuses a cursor under changed filters", async () => {
     const admin = await seedUser("users-directory-admin", "admin");
     await ensureStaffPersonForUser(admin.id);
@@ -594,10 +1235,34 @@ describe("God Mode Users API", () => {
     expect(request.status).toBe(202);
     const pending = (await request.json()) as {
       pendingActionId: string;
+      action: string;
       summary: { personId: string; email: string };
       confirmation: string;
     };
+    expect(pending.action).toBe("delete");
     expect(pending.confirmation).toBe("typed_name_step_up");
+    const [storedAction] = await db
+      .select({
+        action: schema.pendingActionTable.action,
+        targetType: schema.pendingActionTable.targetType,
+        targetIds: schema.pendingActionTable.targetIds,
+        payload: schema.pendingActionTable.payload,
+        payloadHash: schema.pendingActionTable.payloadHash,
+      })
+      .from(schema.pendingActionTable)
+      .where(eq(schema.pendingActionTable.id, pending.pendingActionId));
+    expect(storedAction).toMatchObject({
+      action: "delete",
+      targetType: "user",
+      targetIds: [target.id],
+      payload: {
+        action: "delete",
+        target_type: "user",
+        target_ids: [target.id],
+        confirmation_required: "typed_name_step_up",
+      },
+      payloadHash: expect.stringMatching(/^[a-f0-9]{64}$/),
+    });
     expect(pending.summary).toMatchObject({
       personId: expect.any(String),
       email: target.email,

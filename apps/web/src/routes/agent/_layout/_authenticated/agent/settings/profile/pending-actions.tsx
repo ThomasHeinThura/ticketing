@@ -94,7 +94,7 @@ function PendingActionsList() {
                   <div className="min-w-0 space-y-1">
                     <div className="flex flex-wrap items-center gap-2">
                       <h2 className="font-medium">
-                        {item.action === "user_deactivation"
+                        {item.action === "delete" && item.targetType === "user"
                           ? t("pendingActions:dynamic.deactivatePerson", {
                               email: email ? ` · ${email}` : "",
                             })
@@ -120,7 +120,7 @@ function PendingActionsList() {
                         timeStyle: "short",
                       }).format(new Date(item.expiresAt))}
                     </p>
-                    {item.action === "user_deactivation" && (
+                    {item.action === "delete" && item.targetType === "user" && (
                       <p className="text-sm text-muted-foreground">
                         {t("pendingActions:copy.b7bd2b2fc798")}
                       </p>
