@@ -1,3 +1,26 @@
+### 2026-10-09 · Permit a narrow P0 strict-terminal diagnostic witness
+
+**Decision:** Thomas explicitly approves a bounded strict-terminal diagnostic witness to
+resolve per-request attribution gaps in the P0 strict shadow proof. The existing
+`http.request` structured log may carry only an opaque server-generated request id, exact
+registered route and policy-source identifiers, the strict evaluator's decision category,
+and the finite persisted-scope provenance validation result. The request id may be exposed
+in `x-taskdesk-request-id` to bind immutable acquisition receipts to the matching log; inbound
+request-id headers are never trusted or reused.
+
+The witness contains no credentials, request/response payload, raw tenant/resource/row/actor
+ids or facts, reach details, or arbitrary text. It is not a new message/event key, audit or
+outbox event, database field/table, configuration, dependency, capability, or authorization
+input. It does not change authorization behavior, event/tally cardinality, acceptance rules,
+or the requirement that genuinely unexplained outcomes fail. The V25 private proof may explain
+only a one-to-one request/event match with exact source binding and independently explicit
+legacy agreement; it may not infer agreement from HTTP status. Existing V24 failed evidence
+remains immutable and is not relabeled.
+
+**Recorded:** orchestrator, Thomas's explicit approval in this task, 2026-10-09.
+
+---
+
 ### 2026-10-09 · Apply the frozen-P0 defect exception to strict attribution proof (03:47 UTC)
 
 The actual V24 disposable strict run failed on three unexplained shadow rows/four occurrences despite matching HTTP outcomes and reconciled event/cardinality counts. Independent Sol adjudication requires request-correlated terminal strict decision and persisted-row provenance before these outcomes can receive a finite explanation. The orchestrator assigned a bounded source/proof correction to `p0_strict_witness_batch` under Thomas's existing required-P0-gate correction authority. This does not approve a policy change, blanket exception, new audit event, later-stage feature, weakened gate or unchanged rerun. Preserve original failed records. Any changed candidate requires fresh source/image binding, applicable independent reviews, CI and scoped compatibility adjudication before new runtime proof. Existing three partial UTC bucket observations are not automatically reused or restarted.
