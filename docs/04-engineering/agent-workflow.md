@@ -152,8 +152,8 @@ that materially authored, directed or remediated a change is not its independent
 | **Luna tier:** implementation, context preparation, ordinary review, bounded architecture/alignment review | **GPT-6 Luna**, **Claude Sonnet** or **Claude Haiku** |
 | **Sol tier:** security review, critical cross-boundary review, phase finalizer and final audit, broad or high-risk architecture review, security- or architecture-heavy context preparation | **GPT-6 Sol** / **GPT-6.1 Sol**, or a fresh **Claude Opus** context |
 | Conductor | The session Thomas designates |
-| Read-only extraction (optional) | Any model; its output is data, cited only after a reviewer re-verifies it against the source |
-| Sampled auditor | A Sol-tier model, only from a packet another context prepared; never replaces a required review |
+| Read-only extraction (optional) | Any assigned model in either tier, never a retired route; its output is data, cited only after a reviewer re-verifies it against the source |
+| Sampled auditor | A fresh **Claude Opus** context, only from a packet another context prepared; never replaces a required review |
 | Policy maintenance | The session Thomas assigns. Its PRs still receive the independent reviews, and the security pass, their tier requires |
 
 **Source:** decision log 2026-09-29 (GPT-6 Luna/Sol routing) and 2026-10-09 "Model tiers by
@@ -161,7 +161,9 @@ availability" (Sol = Opus, Luna = Sonnet or Haiku, chosen by real usage limits),
 supersedes the earlier 2026-10-09 assignments for model choice. These are disclosed changes of
 **who** reviews, not of review depth, counts or independence. Within a tier the models are
 interchangeable by availability; their **labels are not**: one context never fills two roles on
-the same change, and the author's context is never its reviewer.
+the same change, and the author's context is never its reviewer. When no Luna-tier model is
+available, a Sol-tier model may fill a Luna-tier role; a Luna-tier model never fills a Sol-tier
+role.
 
 Every review records the model and version **as the platform reports it** (for example
 `Claude Sonnet 5.5 (claude-sonnet-5-5)`, `Claude Opus 5.5 (claude-opus-5-5)`; a table entry
@@ -175,9 +177,11 @@ changes. Reviews completed under an earlier assignment stay valid for what they 
 The PR-template check reads the accepted security-review models from the block below **as it
 stands on the merge base** (`main`), so a candidate cannot edit this block and approve itself
 with the edit (`scripts/ci/lib/review-models.mjs`; where that reader is not yet on `main`, the
-check still accepts only `GPT-6 Sol`). A change to the checker itself runs its own copy under
+check still accepts only the literal `GPT-6 Sol`, and a review under any other label waits). A change to the checker itself runs its own copy under
 `pull_request`, like every CI control, and is held by the security-review path list. Each
-line is matched exactly against the `**Model:**` field of `## Security review`. Once
+line is matched exactly against the `**Model:**` field of `## Security review`. The block, not
+the table above, decides what the check accepts: a new model or version needs a reviewed edit
+of the block. Once
 installed, `check:policy` keeps the block well formed. The block follows the mission: the
 change that replaces the active mission re-decides it in the same reviewed change.
 
