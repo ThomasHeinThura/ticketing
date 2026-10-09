@@ -492,7 +492,11 @@ export async function transitionWorkItem(
       }
 
       const transitionAt = new Date();
-      const openPauses = await tx
+      const openPauses = new Map<
+        (typeof SLA_METRICS)[number],
+        { id: string; metric: (typeof SLA_METRICS)[number]; reason: string }
+      >();
+      const persistedOpenPauses = await tx
         .select({
           id: slaPauseTable.id,
           metric: slaPauseTable.metric,
@@ -505,20 +509,30 @@ export async function transitionWorkItem(
             isNull(slaPauseTable.endedAt),
           ),
         );
+      for (const pause of persistedOpenPauses) {
+        openPauses.set(pause.metric as (typeof SLA_METRICS)[number], {
+          ...pause,
+          metric: pause.metric as (typeof SLA_METRICS)[number],
+        });
+      }
 
-      const closePause = async (pauseId: string) => {
+      const closePause = async (pause: {
+        id: string;
+        metric: (typeof SLA_METRICS)[number];
+      }) => {
         await tx
           .update(slaPauseTable)
           .set({ endedAt: transitionAt })
           .where(
-            and(eq(slaPauseTable.id, pauseId), isNull(slaPauseTable.endedAt)),
+            and(eq(slaPauseTable.id, pause.id), isNull(slaPauseTable.endedAt)),
           );
+        openPauses.delete(pause.metric);
       };
       const openPause = async (
         metric: (typeof SLA_METRICS)[number],
         reason: "waiting_customer",
       ) => {
-        const sameMetric = openPauses.find((pause) => pause.metric === metric);
+        const sameMetric = openPauses.get(metric);
         if (sameMetric) {
           // SLA-11 and the partial unique index allow at most one open interval per
           // metric. The transaction rolls back all metrics if any one conflicts.
@@ -526,12 +540,19 @@ export async function transitionWorkItem(
             message: "An SLA pause is already open for this metric",
           });
         }
-        await tx.insert(slaPauseTable).values({
-          workItemId: ctx.workItem.id,
-          metric,
-          startedAt: transitionAt,
-          reason,
-        });
+        const [inserted] = await tx
+          .insert(slaPauseTable)
+          .values({
+            workItemId: ctx.workItem.id,
+            metric,
+            startedAt: transitionAt,
+            reason,
+          })
+          .returning({ id: slaPauseTable.id, metric: slaPauseTable.metric });
+        if (!inserted) {
+          throw new Error("SLA pause insert returned no row");
+        }
+        openPauses.set(metric, { ...inserted, metric, reason });
       };
 
       for (const effect of authoredEffects) {
@@ -540,9 +561,9 @@ export async function transitionWorkItem(
             await openPause(metric, "waiting_customer");
           }
         } else if (effect.kind === "resume_sla") {
-          for (const pause of openPauses) {
+          for (const pause of [...openPauses.values()]) {
             if (pause.reason === "waiting_customer") {
-              await closePause(pause.id);
+              await closePause(pause);
             }
           }
         }

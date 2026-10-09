@@ -980,6 +980,157 @@ describe("API integration: work item transition (#442, workflows.md)", () => {
     expect(pauses.every((pause) => pause.endedAt !== null)).toBe(true);
   });
 
+  it("SLA-11: ordered pause/resume effects observe prior writes for both metrics", async () => {
+    const { creator, workspace, project } = await setupProject();
+    const backlog = await makeState(workspace.id, project.id, {
+      group: "backlog",
+      isDefault: true,
+    });
+    const waiting = await makeState(workspace.id, project.id, {
+      group: "started",
+    });
+    const active = await makeState(workspace.id, project.id, {
+      group: "started",
+    });
+    const followup = await makeState(workspace.id, project.id, {
+      group: "started",
+    });
+    const { workflow } = await makeWorkflow(workspace.id, [
+      {
+        fromStateTemplateId: backlog.stateTemplate.id,
+        toStateTemplateId: waiting.stateTemplate.id,
+        roleId: null,
+        effects: [{ kind: "pause_sla" }, { kind: "resume_sla" }],
+      },
+      {
+        fromStateTemplateId: waiting.stateTemplate.id,
+        toStateTemplateId: active.stateTemplate.id,
+        roleId: null,
+        effects: [{ kind: "pause_sla" }],
+      },
+      {
+        fromStateTemplateId: active.stateTemplate.id,
+        toStateTemplateId: followup.stateTemplate.id,
+        roleId: null,
+        effects: [{ kind: "resume_sla" }, { kind: "pause_sla" }],
+      },
+    ]);
+    const type = await makeWorkItemType(workspace.id, workflow.id);
+    mockAuthenticatedSession(creator);
+    const { app } = createApp();
+    const { key } = await createWorkItem(app, project.id, type.id);
+    const [item] = await db
+      .select({ id: schema.workItemTable.id })
+      .from(schema.workItemTable)
+      .where(eq(schema.workItemTable.key, key));
+    if (!item) throw new Error("SLA ordered-effect work item not found");
+
+    expect(
+      (
+        await transitionRequest(app, key, {
+          toStateTemplateId: waiting.stateTemplate.id,
+        })
+      ).status,
+    ).toBe(200);
+    let pauses = await db
+      .select()
+      .from(schema.slaPauseTable)
+      .where(eq(schema.slaPauseTable.workItemId, item.id));
+    expect(pauses).toHaveLength(2);
+    expect(pauses.map((pause) => pause.metric).sort()).toEqual([
+      "first_response",
+      "resolution",
+    ]);
+    expect(pauses.every((pause) => pause.endedAt !== null)).toBe(true);
+
+    expect(
+      (
+        await transitionRequest(app, key, {
+          toStateTemplateId: active.stateTemplate.id,
+        })
+      ).status,
+    ).toBe(200);
+    expect(
+      (
+        await transitionRequest(app, key, {
+          toStateTemplateId: followup.stateTemplate.id,
+        })
+      ).status,
+    ).toBe(200);
+    pauses = await db
+      .select()
+      .from(schema.slaPauseTable)
+      .where(eq(schema.slaPauseTable.workItemId, item.id));
+    expect(pauses).toHaveLength(6);
+    for (const metric of ["first_response", "resolution"] as const) {
+      const intervals = pauses.filter((pause) => pause.metric === metric);
+      expect(intervals).toHaveLength(3);
+      expect(intervals.filter((pause) => pause.endedAt !== null)).toHaveLength(
+        2,
+      );
+      expect(intervals.filter((pause) => pause.endedAt === null)).toHaveLength(
+        1,
+      );
+    }
+  });
+
+  it.each(["first_response", "resolution"] as const)(
+    "SLA-11: pause_sla conflict on %s rolls back the transition and all metric writes",
+    async (conflictingMetric) => {
+      const { creator, workspace, project } = await setupProject();
+      const backlog = await makeState(workspace.id, project.id, {
+        group: "backlog",
+        isDefault: true,
+      });
+      const waiting = await makeState(workspace.id, project.id, {
+        group: "started",
+      });
+      const { workflow } = await makeWorkflow(workspace.id, [
+        {
+          fromStateTemplateId: backlog.stateTemplate.id,
+          toStateTemplateId: waiting.stateTemplate.id,
+          roleId: null,
+          effects: [{ kind: "pause_sla" }],
+        },
+      ]);
+      const type = await makeWorkItemType(workspace.id, workflow.id);
+      mockAuthenticatedSession(creator);
+      const { app } = createApp();
+      const { key } = await createWorkItem(app, project.id, type.id);
+      const [item] = await db
+        .select({
+          id: schema.workItemTable.id,
+          stateId: schema.workItemTable.stateId,
+        })
+        .from(schema.workItemTable)
+        .where(eq(schema.workItemTable.key, key));
+      if (!item) throw new Error("SLA conflict work item not found");
+      await db.insert(schema.slaPauseTable).values({
+        workItemId: item.id,
+        metric: conflictingMetric,
+        startedAt: new Date(),
+        reason: "manual",
+      });
+
+      const response = await transitionRequest(app, key, {
+        toStateTemplateId: waiting.stateTemplate.id,
+      });
+      expect(response.status).toBe(409);
+      const [after] = await db
+        .select({ stateId: schema.workItemTable.stateId })
+        .from(schema.workItemTable)
+        .where(eq(schema.workItemTable.id, item.id));
+      expect(after?.stateId).toBe(item.stateId);
+      const pauses = await db
+        .select()
+        .from(schema.slaPauseTable)
+        .where(eq(schema.slaPauseTable.workItemId, item.id));
+      expect(pauses).toHaveLength(1);
+      expect(pauses[0]?.metric).toBe(conflictingMetric);
+      expect(pauses[0]?.reason).toBe("manual");
+    },
+  );
+
   it("SLA-11: manual pause atomically targets both metrics and refuses a partial conflict", async () => {
     const { creator, workspace, project } = await setupProject();
     await makeState(workspace.id, project.id, {
