@@ -532,6 +532,24 @@ describe("API integration: SLA policy authoring contract", () => {
     )?.dueAt;
     expect(beforeDue).toBe("2030-01-07T12:00:00.000Z");
 
+    await db.insert(schema.slaPauseTable).values({
+      workItemId: item.id,
+      metric: "resolution",
+      startedAt: new Date(startedAt.getTime() - 1),
+      reason: "waiting_customer",
+    });
+    const pausedResponse = await getEvaluation();
+    expect(pausedResponse.status).toBe(200);
+    const paused = (await pausedResponse.json()) as {
+      metrics: Array<{ metric: string; dueAt: string | null }>;
+    };
+    expect(
+      paused.metrics.find((metric) => metric.metric === "resolution")?.dueAt,
+    ).toBeNull();
+    await db
+      .delete(schema.slaPauseTable)
+      .where(eq(schema.slaPauseTable.workItemId, item.id));
+
     const changedWindows = {
       ...windows,
       mon: [{ from: 660, to: 1020 }],

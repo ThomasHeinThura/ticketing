@@ -648,15 +648,21 @@ const routes = apiRouter<
       return { submission, workItemKey: accepted.workItemKey, accepted: true };
     });
     for (const after of afterCommit) await after();
-    await notifySubmissionEvent("submission.received", {
-      ref: `SUB-${created.submission.number}`,
-      requestTypeId: type.id,
-      organisationId,
+    await notifySubmissionEvent({
+      kind: "submission.received",
+      payload: {
+        ref: `SUB-${created.submission.number}`,
+        requestTypeId: type.id,
+        organisationId,
+      },
     });
     if (created.accepted)
-      await notifySubmissionEvent("submission.accepted", {
-        ref: `SUB-${created.submission.number}`,
-        workItemKey: created.workItemKey!,
+      await notifySubmissionEvent({
+        kind: "submission.accepted",
+        payload: {
+          ref: `SUB-${created.submission.number}`,
+          workItemKey: created.workItemKey!,
+        },
       });
     setShadowLegacyAuthorization(c, "allowed");
     c.header("Cache-Control", "no-store");
@@ -933,15 +939,21 @@ const routes = apiRouter<
       };
     });
     for (const after of afterCommit) await after();
-    await notifySubmissionEvent("submission.received", {
-      ref: `SUB-${result.submission.number}`,
-      requestTypeId: result.submission.requestTypeId,
-      organisationId: result.submission.organisationId,
+    await notifySubmissionEvent({
+      kind: "submission.received",
+      payload: {
+        ref: `SUB-${result.submission.number}`,
+        requestTypeId: result.submission.requestTypeId,
+        organisationId: result.submission.organisationId,
+      },
     });
     if (result.accepted)
-      await notifySubmissionEvent("submission.accepted", {
-        ref: `SUB-${result.submission.number}`,
-        workItemKey: result.workItemKey!,
+      await notifySubmissionEvent({
+        kind: "submission.accepted",
+        payload: {
+          ref: `SUB-${result.submission.number}`,
+          workItemKey: result.workItemKey!,
+        },
       });
     setShadowLegacyAuthorization(c, "allowed");
     return c.json(
@@ -1218,9 +1230,12 @@ const routes = apiRouter<
         customerVisible: true,
       });
     } else {
-      await notifySubmissionEvent("submission.replied", {
-        ref: `SUB-${result.current.number}`,
-        by: "customer",
+      await notifySubmissionEvent({
+        kind: "submission.replied",
+        payload: {
+          ref: `SUB-${result.current.number}`,
+          by: "customer",
+        },
       });
     }
     setShadowLegacyAuthorization(c, "allowed");
@@ -1277,8 +1292,9 @@ const routes = apiRouter<
       throw new HTTPException(409, {
         message: "Submission can no longer be withdrawn",
       });
-    await notifySubmissionEvent("submission.withdrawn", {
-      ref: `SUB-${row.number}`,
+    await notifySubmissionEvent({
+      kind: "submission.withdrawn",
+      payload: { ref: `SUB-${row.number}` },
     });
     setShadowLegacyAuthorization(c, "allowed");
     return c.json(

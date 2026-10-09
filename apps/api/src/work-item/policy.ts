@@ -79,6 +79,13 @@ export const workItemPolicies = {
     reach: "required",
   },
 
+  "POST /api/work-items/{key}/sla/pause": {
+    capability: "work_item:update",
+    scope: "work_item",
+    scopeSource: "row",
+    reach: "required",
+  },
+
   // List the workspace's work-item types -- the create dialog's Type picker
   // (`WI-1`; see `./controllers/list-work-item-types.ts`). A workspace-scoped READ:
   // any member who can read the workspace can read the type catalogue the workspace

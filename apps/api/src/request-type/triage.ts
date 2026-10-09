@@ -676,9 +676,12 @@ export async function acceptSubmissionWorkItem(
     : await db.transaction(execute);
   if (!options.transaction) {
     for (const after of afterCommit) await after();
-    await notifySubmissionEvent("submission.accepted", {
-      ref: `SUB-${result.number}`,
-      workItemKey: result.workItemKey,
+    await notifySubmissionEvent({
+      kind: "submission.accepted",
+      payload: {
+        ref: `SUB-${result.number}`,
+        workItemKey: result.workItemKey,
+      },
     });
   }
   return result;
@@ -1184,9 +1187,12 @@ const routes = apiRouter<BaseVariables & { workspaceId: string }>()
       });
       return updated;
     });
-    await notifySubmissionEvent("submission.declined", {
-      ref: `SUB-${created.number}`,
-      reason,
+    await notifySubmissionEvent({
+      kind: "submission.declined",
+      payload: {
+        ref: `SUB-${created.number}`,
+        reason,
+      },
     });
     setShadowLegacyAuthorization(c, "allowed");
     return c.json(
@@ -1248,9 +1254,12 @@ const routes = apiRouter<BaseVariables & { workspaceId: string }>()
       });
       return updated;
     });
-    await notifySubmissionEvent("submission.replied", {
-      ref: `SUB-${created.number}`,
-      by: "staff",
+    await notifySubmissionEvent({
+      kind: "submission.replied",
+      payload: {
+        ref: `SUB-${created.number}`,
+        by: "staff",
+      },
     });
     setShadowLegacyAuthorization(c, "allowed");
     return c.json(

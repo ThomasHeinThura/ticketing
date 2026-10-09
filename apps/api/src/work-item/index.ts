@@ -14,6 +14,7 @@ import {
   errorResponse,
   jsonResponse,
 } from "../openapi";
+import { requireApiKeyPermissionScope } from "../utils/require-api-key-permission-scope";
 import {
   assertCallerHasCapability,
   assertCallerHasCapabilityOrSelf,
@@ -50,6 +51,7 @@ import listWorkItemActivity from "./controllers/list-work-item-activity";
 import listWorkItemTransitions from "./controllers/list-work-item-transitions";
 import listWorkItemTypes from "./controllers/list-work-item-types";
 import listWorkItems from "./controllers/list-work-items";
+import { pauseWorkItemSla } from "./controllers/pause-work-item-sla";
 import rankWorkItem from "./controllers/rank-work-item";
 import setWorkItemParent from "./controllers/set-work-item-parent";
 import transitionWorkItem, {
@@ -297,6 +299,34 @@ const getWorkItemSlaRoute = createRoute({
       "No workspace access or missing work_item:read permission",
     ),
     404: errorResponse("Work item not found"),
+  },
+});
+
+const pauseWorkItemSlaRoute = createRoute({
+  method: "post",
+  operationId: "pauseWorkItemSla",
+  path: "/work-items/{key}/sla/pause",
+  tags: ["Work items"],
+  summary: "Pause both SLA metrics manually",
+  description:
+    "Opens a manual pause for both SLA metrics atomically. If either metric already " +
+    "has an open pause, the request returns 409 without changing either metric.",
+  middleware: [
+    requireWorkItemReach(),
+    requireApiKeyPermissionScope({ work_item: ["update"] }),
+    requireWorkspaceCapability("work_item:update"),
+  ] as const,
+  request: { params: workItemKeyParam },
+  responses: {
+    200: jsonResponse(
+      "The work item's current SLA evaluation",
+      workItemSlaSchema,
+    ),
+    403: errorResponse(
+      "No workspace access, or missing work_item:update permission",
+    ),
+    404: errorResponse("Work item not found"),
+    409: errorResponse("An SLA pause is already open for at least one metric"),
   },
 });
 
@@ -755,9 +785,9 @@ const transitionWorkItemRoute = createRoute({
     "also partial today: `no_open_blockers` (no `work_item_relation` table yet), " +
     "`field_required` (no custom-field/satellite value store yet) and " +
     "`change_risk_at_most` (no change-risk column yet) always fail closed (blocked), " +
-    "never fabricated as satisfied. `pause_sla`/`resume_sla`/`set_field` effects are " +
-    "silent no-ops (no backing table yet); `set_assignee`'s `'default'` always resolves " +
-    "to no assignee (no project/type default-assignee column yet).",
+    "never fabricated as satisfied. `set_field` remains unwired until its value store " +
+    "exists; `set_assignee`'s `'default'` resolves to no assignee because no " +
+    "project/type default-assignee column exists yet.",
   middleware: [
     requireWorkItemReach(),
     requireWorkspaceCapability("work_item:transition"),
@@ -942,6 +972,13 @@ const workItem = apiRouter<
   .openapi(getWorkItemSlaRoute, async (c) => {
     const { key } = c.req.valid("param");
     const item = await getWorkItemSla(key, c.get("workspaceId"));
+    return c.json(workItemSlaSchema.parse(item), 200);
+  })
+  .openapi(pauseWorkItemSlaRoute, async (c) => {
+    const { key } = c.req.valid("param");
+    const workspaceId = c.get("workspaceId");
+    await pauseWorkItemSla(key, workspaceId);
+    const item = await getWorkItemSla(key, workspaceId);
     return c.json(workItemSlaSchema.parse(item), 200);
   })
   .openapi(listWorkItemTypesRoute, async (c) => {
