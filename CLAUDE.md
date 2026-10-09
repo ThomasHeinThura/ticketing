@@ -24,7 +24,8 @@ Read, in this order, every session:
 1. [`AGENTS.md`](AGENTS.md) — the five rules and the standing do-nots.
 2. [`docs/04-engineering/agent-workflow.md`](docs/04-engineering/agent-workflow.md) — the
    repository-wide agent workflow.
-3. [`docs/07-planning/status.md`](docs/07-planning/status.md) — **Blocked** first, then the
+3. The [integration queue](docs/07-planning/integration-execution-queue.md), then
+   [`docs/07-planning/status.md`](docs/07-planning/status.md) — **Blocked** first, then the
    newest dated snapshot.
 4. [`docs/07-planning/decision-log.md`](docs/07-planning/decision-log.md) — newest entries
    first. **Check it before calling anything an open question.**
@@ -39,9 +40,12 @@ Re-check. This repository moves too quickly for conversational memory to be auth
 
 ## Mission, and what "done for now" means
 
-Continuous verified progress through the currently authorized dependency graph, currently
-working toward **P4 complete** — a fresh deployment configurable into a customer's service desk
-without editing application source.
+The current authorized objective is **Integration Freeze and SIT Consolidation**, governed by
+[AGENTS.md § Authority and Integration Freeze Mode](AGENTS.md#authority-and-integration-freeze-mode).
+Resume the [integration queue](docs/07-planning/integration-execution-queue.md) after the
+control-plane PR is accepted. Integrate existing functionality and acceptance fixes; freeze
+new feature scope. Do not automatically complete P4 or claim P0–P7 closure. After final
+integrated SIT acceptance and audit, stop and await the next owner roadmap.
 
 Calendar pressure changes urgency, not gates. A gate that closes a real defect does not become
 thinner because a date is near.
@@ -134,8 +138,8 @@ on an inherited/default model label.
 ## Bulk implementation and review cadence
 
 Follow the canonical rule in [`AGENTS.md`](AGENTS.md#bulk-implementation-and-review-cadence):
-implement the full related P0–P3 feature set first against approved or explicitly
-user-authorized documented contracts, then freeze and review the integrated bulk candidate at
+complete the related existing-slice integration/acceptance repairs within the current freeze
+against approved or explicitly user-authorized documented contracts, then review the bulk candidate at
 its required independent Luna/Sol tiers before merge. Human spec/design/H1 review is deferred
 until the integrated P4 review; record the deferral and never claim unperformed approval.
 Map and fix applicable known findings in that implementation batch while preserving historical
@@ -350,8 +354,9 @@ For any change that affects what ships in the image:
 - boot the container;
 - verify health endpoints;
 - run the applicable deployment/config validation;
-- after merge, redeploy UAT when the change affects deployability and verify the affected
-  public paths.
+- after merge, deliver the immutable GHCR/GitHub Releases artifact to SIT when the change
+  affects deployability and verify the affected public paths; no Docker Hub or production
+  deployment is authorized by this mission.
 
 A passing unit suite does not excuse a broken image or deployment.
 
@@ -371,9 +376,14 @@ of a named control-plane change.
 
 When sources disagree, use this order:
 
-**latest Thomas decision in the decision log or authoritative spec → accepted ADR/spec →
-`AGENTS.md`/this file → issue acceptance criteria → `status.md`/board → PR body → temporary
-chat instruction.**
+**explicit current project-owner decisions and recorded approvals → `AGENTS.md` →
+`CLAUDE.md` (routing/independence) → `agent-workflow.md` and SDLC procedures → current
+integration execution queue (task state only).**
+
+Record new owner directives in the decision log without rewriting history. Approved specs
+and ADRs govern product behaviour; a queue, issue, PR body or dated snapshot cannot override
+policy, contracts or acceptance gates. A current explicit owner directive is not demoted
+because it arrived in chat.
 
 A lower source never silently overrides a higher one.
 
@@ -385,21 +395,13 @@ entries are not rewritten.
 
 ---
 
-## Parallelizing P1–P7 once the throttle allows it
+## Parallel preparation within Integration Freeze
 
-Once the live throttle conditions are genuinely satisfied, run dependency-safe lanes in
-parallel rather than serializing the whole program:
-
-- **P1 core** — work items, comments, attachments, labels, views, search, realtime.
-- **P2 domain** — SLA calendars, workflow transitions, approvals, assignment, with pure
-  functions in `packages/domain` before HTTP where the spec requires it.
-- **P3 identity internals** — OIDC claims, SCIM mapping, connection configuration,
-  provisioning state before exposed routes.
-- **P4 governance seams** — configuration schema → admin API → God Mode UI → audit trail
-  alongside the features that need configuration.
-
-A shared contract gets its own bounded PR. Never let two lanes redesign one shared contract at
-the same time.
+Use dependency-safe lanes only for existing functionality, integration and acceptance fixes
+listed in the durable queue. The throttle does not authorize new P1–P7 feature scope.
+Inventory existing branch sources, establish dependencies, compose authorized slices and
+prepare real runtime evidence. A shared contract gets its own bounded PR; never let two lanes
+edit it concurrently. Product decisions and formal phase closure retain their own gates.
 
 ---
 

@@ -88,6 +88,38 @@ remains immutable and is not relabeled.
 
 **Recorded:** orchestrator, Thomas's explicit approval in this task, 2026-10-09.
 
+### 2026-10-09 · Owner directive: Integration Freeze and SIT Consolidation
+
+**Decision and authorization:** Thomas explicitly directed one focused, independently reviewed
+control-plane PR reconciling AGENTS.md, CLAUDE.md, agent-workflow.md, sdlc.md, error-fix-loop.md,
+definition-of-done.md and a durable integration execution queue. Current owner decisions and
+recorded approvals precede AGENTS.md, then CLAUDE.md routing/independence, then workflow/SDLC,
+then queue task state. This supersedes the P4-completion mission and obsolete repeated
+commit-approval/whole-program stop instructions, including earlier accelerated-plan scope
+where it conflicts with the freeze. Prior records below remain historical.
+
+Agents may commit/push completed authorized branch work without repeated approval. Only the
+top-level orchestrator may perform protected merges after all required exact-source checks
+and independent risk-appropriate reviews pass. Blockers and unresolved product decisions stop
+only dependent scope. Freeze new features; permit existing-functionality integration and
+acceptance fixes. Require root-cause convergence and a complete real-invocation-path regression
+before further runner iterations after repeated failure; offline simulation cannot establish
+runtime acceptance. GHCR/GitHub Releases and SIT only; no Docker Hub or production deployment.
+
+**Preserved gates:** Luna/Sol independence and review tiers, tenant isolation, authorization,
+G1–G13, current-source tests/CI/performance, security records and protected branches. No gate
+waiver, design approval, phase completion or runtime acceptance is granted by this decision.
+
+**Continuation and exit:** resume the existing integration queue automatically after the
+control-plane PR is accepted. Preserve queue state at session end and use available
+continuation; never imply an ended session continues itself. Stop after final integrated SIT
+acceptance and audit and await the next owner roadmap.
+
+**Source:** explicit project-owner Control-Plane Realignment Directive in this session.
+**Recorded by:** top-level orchestrator, 2026-10-09.
+
+---
+
 ### 2026-10-06 · Keep self-only personal writes session-only until explicit API-key scopes exist
 
 **Decision:** Thomas explicitly approves “Make self writes session-only (recommended)” for

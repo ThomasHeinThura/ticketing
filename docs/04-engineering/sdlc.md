@@ -15,22 +15,33 @@ and later never came.
 
 ---
 
+## Current mission and authority
+
+[AGENTS.md](../../AGENTS.md#authority-and-integration-freeze-mode) governs execution authority;
+`CLAUDE.md` governs routing and independence. These procedures cannot override either.
+During **Integration Freeze and SIT Consolidation**, the
+[integration queue](../07-planning/integration-execution-queue.md) selects existing-slice
+integration and acceptance work. New feature scope and automatic P4 completion are frozen.
+All applicable security, test, CI, performance, G1–G13 and protected-merge gates remain.
+
 ## 1 · Plan
 
 **Purpose** — decide what to build and why, before anyone opens an editor.
 
-**Entry** — a stage is active and its previous stage is closed.
+**Entry** — an authorized task is actionable in the integration queue, with its dependencies
+identified. Dependency-safe preparation may proceed in parallel; formal stage acceptance
+remains sequenced and gated.
 
 **Do**
 
-- Pick the next item from the [stage backlog](../07-planning/phases.md).
-- Confirm it is in scope for the current stage. If it is not, it goes to the backlog, not
-  into this stage.
+- Pick the next actionable item from the integration queue, not an unimplemented roadmap item.
+- Confirm it is existing functionality or an integration/acceptance fix within the freeze.
+  New feature scope stays in the [stage backlog](../07-planning/phases.md) for owner direction.
 - Identify what it depends on and whether those exist yet.
 - Check [licensing](../00-overview/licensing-and-attribution.md) if any code is being
   taken from elsewhere.
 
-**Exit** — the item is on the stage board with a clear scope statement.
+**Exit** — the queue records scope, owner, dependencies, source and acceptance evidence needed.
 
 ---
 
@@ -84,7 +95,7 @@ implementation. Human spec/design review for P0–P3 is deferred to the integrat
 
 **Do**
 
-- Branch: `feat/<area>-<short-description>`.
+- Branch: `codex/<area>-<short-description>` by default, or the explicitly authorized branch.
 - Implement to the spec. Where the spec is wrong, **fix the spec in the same branch**.
 - Follow [coding standards](coding-standards.md).
 - Domain logic goes in `packages/domain` as pure functions.
@@ -168,9 +179,11 @@ finalizer, are met.
 
 **Loop discipline**
 
-- After **three** failed attempts at the same problem, stop. Write down what was tried and
-  what happened — the five-item note from [error-fix-loop.md](error-fix-loop.md) — and ask Thomas. Do not keep trying variations — that is how a
-  two-hour task becomes a two-day one.
+- After **three** failures on the same mechanism, pause speculative iterations on that task.
+  Record the five-item root-cause note and build a complete real-invocation-path regression
+  before another runner iteration, per [error-fix-loop.md](error-fix-loop.md#the-three-attempt-rule).
+  Escalate owner-only decisions; continue unrelated authorized tasks. Do not reset the count
+  by changing a symptom, session, branch or reviewer.
 - Do not disable a test to make a build pass. Ever.
 - Do not waive a gate without following the waiver procedure.
 
@@ -201,12 +214,16 @@ finalizer, are met.
 
 **Do**
 
-- Merge to `main` after review. CI builds and pushes the image.
-- Deploy to UAT. Smoke test.
-- Verify: migrations applied, no errors, dashboards healthy.
-- Promote to production by digest, not by tag.
+- Only the top-level orchestrator merges through the protected PR flow after required
+  exact-source reviews, tests and CI checks pass. CI publishes to GHCR/GitHub Releases.
+- Deploy the immutable accepted artifact to SIT and run actual runtime acceptance.
+- Verify migrations, health, affected authenticated journeys and applicable integration,
+  security and performance requirements; record source/image digest and evidence.
+- No Docker Hub publication or production deployment is authorized during this mission.
 
-**Exit** — running in production, monitored, with a tested rollback.
+**Exit** — the integrated slice meets applicable Definition of Done and actual SIT acceptance,
+with its rollback verified and evidence bound to the tested source/artifact. Offline simulation
+is diagnostic evidence only. This exit does not close a P0–P7 phase.
 
 ---
 
@@ -234,20 +251,15 @@ over the whole stage's surface, not the sum of the per-feature reviews — is re
 stage review is written in `07-planning/`, including what went wrong; and every gate that was
 not run is a **recorded waiver** in the decision log, or the stage is not closed.
 
-**No stage starts before the previous one closes.** This is
-[principle 7](../00-overview/product-principles.md), and it is the discipline that prevents
-twenty-five screens at sixty per cent.
+Preparation and formal closure are distinct. Dependency-safe integration preparation may run
+in parallel within the authorized freeze; the queue cannot authorize a later-stage feature.
+An accepted integration slice may cross already-existing stage surfaces without claiming any
+stage complete. Formal P0–P7 closure still requires the canonical full stage checklist and
+fresh independent GPT-6 Sol phase finalizer; neither a green slice nor SIT acceptance replaces
+it. Earlier accelerated plans do not override the current owner mission.
 
-**The one exception, written down so nobody has to infer it:** during an accelerated window
-in which several stages deliberately run as parallel workstreams (decision A in the
-[decision log](../07-planning/decision-log.md); the calendar in
-[accelerated-delivery-plan.md](../07-planning/accelerated-delivery-plan.md)), stage
-*sequencing* is replaced by two things — the plan's **deferral register** (what each stage
-deliberately ships thinner, in writing) and the **per-feature Definition of Done** (nothing
-is called done because a calendar says so). Each stage's gate still runs, in full, before that
-stage's features are declared done; what moves is *when* stages start, not *what* closes them.
-An agent reading only this document should neither refuse to start P3 work while P2 is open
-during such a window, nor treat the gate list as already broken.
+After final integrated SIT acceptance and audit, record the final queue evidence and stop.
+Await the next owner roadmap rather than automatically beginning another phase.
 
 ## Related
 
