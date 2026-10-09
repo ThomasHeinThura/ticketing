@@ -11,3 +11,9 @@ One isolated Compose smoke on OrbStack project `tdk-p1-nav-6054-b3884fdb` passed
 Private build and smoke logs, source archive, runtime configuration, and detailed result records are retained under `/Users/heinthura/.codex/taskdesk-evidence/2026-10-09/p1-navigation-6054-image/` with private file permissions. The dynamic credentials remain outside the repository.
 
 This is source-image and isolated smoke evidence only. It does not establish accepted-base integration, production deployment, final inherited-schema migration acceptance, full CI, or browser verification. Full CI and rendered browser checks remain outstanding; browser status is `BROWSER VERIFICATION: BLOCKED`. No merge or P1 phase completion is claimed.
+
+## Follow-up parser correction (`78e0e62deead50f4135c0f8a079049d9b6264e4c`)
+
+The follow-up consolidates strict calendar month parsing into the shared project-view parser, separates calendar-only date arithmetic from the shared initial route graph, and removes duplicate patch helpers in favor of the canonical project-view state updater. It adds accepted/rejected URL-value, query round-trip, and calendar-boundary regressions. The change retains calendar's four-digit `1000`–`9999` year and `01`–`12` month bounds while keeping generic views' established permissive month strings.
+
+On this exact source commit, the focused route, URL-state, project search, calendar, and actual Gantt consumer suites passed (5 files / 77 tests); web typecheck, scoped Biome, and `git diff --check` passed. Canonical Node 24.21.0 G11 measured agent work-list at 350,138 bytes across 23 assets, which fails the unchanged strict 350,000-byte limit by 138 bytes. The prior exact source measured 350,681 bytes with the same runtime. This record adds no review verdict and does not claim the feature complete.
