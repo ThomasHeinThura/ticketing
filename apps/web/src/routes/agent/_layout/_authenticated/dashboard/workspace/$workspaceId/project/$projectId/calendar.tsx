@@ -1,4 +1,8 @@
-import { createFileRoute, useNavigate } from "@tanstack/react-router";
+import {
+  createFileRoute,
+  useLocation,
+  useNavigate,
+} from "@tanstack/react-router";
 import { useIsMobile } from "@taskdesk/ui";
 import { startOfMonth } from "date-fns";
 import { useCallback, useMemo } from "react";
@@ -12,6 +16,9 @@ import TaskDetailsSheet from "@/components/task/task-details-sheet";
 import { shortcuts } from "@/constants/shortcuts";
 import { useGetTasks } from "@/hooks/queries/task/use-get-tasks";
 import { useRegisterShortcuts } from "@/hooks/use-keyboard-shortcuts";
+import { authClient } from "@/lib/auth-client";
+import { filterProjectTasks } from "@/lib/filter-project-tasks";
+import { projectViewFiltersFromSearch } from "@/lib/project-board-search";
 import {
   dateFromCalendarMonth,
   type ProjectCalendarSearch,
@@ -21,6 +28,10 @@ import {
   withCalendarTask,
 } from "@/lib/project-calendar-search";
 import { createProjectViewShortcutHandlers } from "@/lib/project-layout-navigation";
+import {
+  getProjectLayoutStorage,
+  writeProjectLayoutPreference,
+} from "@/lib/project-layout-preference";
 import { routes } from "@/lib/routes";
 import { toScheduledTasks } from "@/lib/task-schedule";
 import { useUserPreferencesStore } from "@/store/user-preferences";
@@ -43,6 +54,8 @@ function RouteComponent() {
   const search = Route.useSearch();
   const { taskId, month } = search;
   const navigate = useNavigate();
+  const location = useLocation();
+  const { data: session } = authClient.useSession();
   const { data: project, isLoading, isError } = useGetTasks(projectId);
   const weekStartsOn = useUserPreferencesStore((state) => state.weekStartsOn);
   const isMobile = useIsMobile();
@@ -51,7 +64,27 @@ function RouteComponent() {
     [month],
   );
 
-  const scheduledTasks = useMemo(() => toScheduledTasks(project), [project]);
+  const filters = projectViewFiltersFromSearch(search);
+  const scheduledTasks = useMemo(() => {
+    if (!project) return [];
+    const filterOptions = {
+      filters,
+      query: search.q,
+      projectSlug: project.slug,
+      weekStartsOn,
+    };
+    return toScheduledTasks({
+      ...project,
+      columns: project.columns.map((column) => ({
+        ...column,
+        tasks: filterProjectTasks(column.tasks, filterOptions),
+      })),
+      plannedTasks: filterProjectTasks(
+        project.plannedTasks ?? [],
+        filterOptions,
+      ),
+    });
+  }, [filters, project, search.q, weekStartsOn]);
 
   const weeks = useMemo(
     () => buildMonthWeeks(visibleMonth, weekStartsOn),
@@ -110,8 +143,15 @@ function RouteComponent() {
 
   const viewShortcutHandlers = createProjectViewShortcutHandlers(
     { workspaceId, projectId },
-    taskId ? new URLSearchParams({ taskId }).toString() : "",
+    location.searchStr,
     (href) => navigate({ href }),
+    (layout) =>
+      writeProjectLayoutPreference(
+        getProjectLayoutStorage(),
+        session?.user.id,
+        projectId,
+        layout,
+      ),
   );
 
   useRegisterShortcuts({

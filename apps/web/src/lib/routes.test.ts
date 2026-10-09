@@ -250,6 +250,33 @@ describe("routes.workItemList", () => {
 describe("routes.projectBoard, projectCalendar and projectBacklog", () => {
   const params = { workspaceId: "workspace/a b", projectId: "project?one" };
 
+  it("round-trips the complete shared project view state through every canonical view", () => {
+    const search = {
+      taskId: "task/selected",
+      layout: "list" as const,
+      month: "2026-10",
+      q: "urgent follow-up",
+      sort: "priority" as const,
+      dir: "desc" as const,
+      status: ["todo", "inProgress"],
+      priority: ["high"],
+      assignee: ["user-1", "user-2"],
+      dueDate: ["dueThisWeek"],
+      labels: ["label-1", "label-2"],
+    };
+    const canonicalRoutes = [
+      routes.projectBacklog,
+      routes.projectBoard,
+      routes.projectCalendar,
+      routes.projectGantt,
+    ];
+
+    for (const route of canonicalRoutes) {
+      const url = route.build(params, search);
+      expect(route.parse(url)).toEqual({ params, search });
+    }
+  });
+
   it("round-trips escaped workspace/project params and explicit/default/invalid board state", () => {
     const url = routes.projectBoard.build(params, {
       layout: "list",
@@ -279,7 +306,7 @@ describe("routes.projectBoard, projectCalendar and projectBacklog", () => {
       taskId: "task/a b",
     });
     expect(url).toBe(
-      "/dashboard/workspace/workspace%2Fa%20b/project/project%3Fone/calendar?month=2026-10&taskId=task%2Fa+b",
+      "/dashboard/workspace/workspace%2Fa%20b/project/project%3Fone/calendar?taskId=task%2Fa+b&month=2026-10",
     );
     expect(routes.projectCalendar.parse(url)).toEqual({
       params,

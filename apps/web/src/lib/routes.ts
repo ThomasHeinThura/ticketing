@@ -8,10 +8,12 @@ export { generatedRouteMetadata } from "./generated-route-metadata";
 
 import { generatedRouteMetadata } from "./generated-route-metadata";
 import {
+  appendProjectViewSearchParams,
   type ProjectBacklogSearch,
   type ProjectBoardSearch,
   parseProjectBacklogSearch,
   parseProjectBoardSearch,
+  parseProjectViewSearchFromParams,
 } from "./project-board-search";
 import {
   type ProjectCalendarSearch,
@@ -252,9 +254,8 @@ export const routes = {
         PROJECT_BACKLOG_PATH,
         params,
       );
-      const { taskId } = parseProjectBacklogSearch(search);
       const query = new URLSearchParams();
-      if (taskId) query.set("taskId", taskId);
+      appendProjectViewSearchParams(query, parseProjectBacklogSearch(search));
       const suffix = query.toString();
       return `${pathname}${suffix ? `?${suffix}` : ""}`;
     },
@@ -268,7 +269,9 @@ export const routes = {
       const query = new URL(input, "https://route.invalid").searchParams;
       return {
         params: match.params as ProjectRouteParams,
-        search: parseProjectBacklogSearch({ taskId: query.get("taskId") }),
+        search: parseProjectBacklogSearch(
+          parseProjectViewSearchFromParams(query),
+        ),
       };
     },
   },
@@ -284,10 +287,8 @@ export const routes = {
         PROJECT_BOARD_PATH,
         params,
       );
-      const resolved = parseProjectBoardSearch(search);
       const query = new URLSearchParams();
-      if (resolved.layout) query.set("layout", resolved.layout);
-      if (resolved.taskId) query.set("taskId", resolved.taskId);
+      appendProjectViewSearchParams(query, parseProjectBoardSearch(search));
       const suffix = query.toString();
       return `${pathname}${suffix ? `?${suffix}` : ""}`;
     },
@@ -297,10 +298,9 @@ export const routes = {
       const query = new URL(input, "https://route.invalid").searchParams;
       return {
         params: match.params as ProjectRouteParams,
-        search: parseProjectBoardSearch({
-          layout: query.get("layout"),
-          taskId: query.get("taskId"),
-        }),
+        search: parseProjectBoardSearch(
+          parseProjectViewSearchFromParams(query),
+        ),
       };
     },
   },
@@ -316,10 +316,8 @@ export const routes = {
         PROJECT_CALENDAR_PATH,
         params,
       );
-      const resolved = parseProjectCalendarSearch(search);
       const query = new URLSearchParams();
-      if (resolved.month) query.set("month", resolved.month);
-      if (resolved.taskId) query.set("taskId", resolved.taskId);
+      appendProjectViewSearchParams(query, parseProjectCalendarSearch(search));
       const suffix = query.toString();
       return `${pathname}${suffix ? `?${suffix}` : ""}`;
     },
@@ -333,40 +331,37 @@ export const routes = {
       const query = new URL(input, "https://route.invalid").searchParams;
       return {
         params: match.params as ProjectRouteParams,
-        search: parseProjectCalendarSearch({
-          month: query.get("month"),
-          taskId: query.get("taskId"),
-        }),
+        search: parseProjectCalendarSearch(
+          parseProjectViewSearchFromParams(query),
+        ),
       };
     },
   },
   /** Project Gantt task-panel URL state. */
   projectGantt: {
     path: PROJECT_GANTT_PATH,
-    build: (params: ProjectRouteParams, search: { taskId?: string } = {}) => {
+    build: (
+      params: ProjectRouteParams,
+      search: Partial<ProjectBoardSearch> = {},
+    ) => {
       const pathname = buildGeneratedRouteUrl(
         "agent",
         PROJECT_GANTT_PATH,
         params,
       );
-      const taskId =
-        typeof search.taskId === "string" && search.taskId.length > 0
-          ? search.taskId
-          : undefined;
       const query = new URLSearchParams();
-      if (taskId) query.set("taskId", taskId);
+      appendProjectViewSearchParams(query, search);
       const suffix = query.toString();
       return `${pathname}${suffix ? `?${suffix}` : ""}`;
     },
     parse: (input: string) => {
       const match = parseGeneratedRouteUrl("agent", PROJECT_GANTT_PATH, input);
       if (!match) return undefined;
-      const taskId = new URL(input, "https://route.invalid").searchParams.get(
-        "taskId",
-      );
       return {
         params: match.params as ProjectRouteParams,
-        search: taskId ? { taskId } : {},
+        search: parseProjectViewSearchFromParams(
+          new URL(input, "https://route.invalid").searchParams,
+        ),
       };
     },
   },

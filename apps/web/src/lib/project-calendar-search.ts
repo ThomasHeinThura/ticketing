@@ -1,18 +1,18 @@
 import { addMonths } from "date-fns";
+import {
+  type ProjectViewSearch,
+  parseProjectViewSearch,
+} from "./project-board-search";
 
-export type ProjectCalendarSearch = {
-  taskId?: string;
-  month?: string;
-};
+export type ProjectCalendarSearch = ProjectViewSearch;
 
 export function parseProjectCalendarSearch(
   raw: Record<string, unknown>,
 ): ProjectCalendarSearch {
   const month = parseMonth(raw.month) ? raw.month : undefined;
+  const { month: _month, ...shared } = parseProjectViewSearch(raw);
   return {
-    ...(typeof raw.taskId === "string" && raw.taskId.length > 0
-      ? { taskId: raw.taskId }
-      : {}),
+    ...shared,
     ...(month ? { month } : {}),
   };
 }

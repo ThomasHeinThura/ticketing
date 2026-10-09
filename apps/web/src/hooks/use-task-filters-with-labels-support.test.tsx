@@ -1,19 +1,17 @@
-import { renderHook, waitFor } from "@testing-library/react";
-import { afterEach, beforeEach, describe, expect, it } from "vitest";
+import { renderHook } from "@testing-library/react";
+import { describe, expect, it, vi } from "vitest";
 import type { ProjectWithTasks } from "@/types/project";
 import type Task from "@/types/task";
 import { useTaskFiltersWithLabelsSupport } from "./use-task-filters-with-labels-support";
 
 describe("useTaskFiltersWithLabelsSupport", () => {
-  const storageKey = "taskdesk:board-filters:project-1";
-
-  beforeEach(() => {
-    window.localStorage.clear();
-  });
-
-  afterEach(() => {
-    window.localStorage.clear();
-  });
+  const noFilters = {
+    status: null,
+    priority: null,
+    assignee: null,
+    dueDate: null,
+    labels: null,
+  };
 
   it("reuses the complete project when no filter or search is active", () => {
     const task = {
@@ -42,7 +40,7 @@ describe("useTaskFiltersWithLabelsSupport", () => {
     } as ProjectWithTasks;
 
     const { result } = renderHook(() =>
-      useTaskFiltersWithLabelsSupport(project, "project-1", "  "),
+      useTaskFiltersWithLabelsSupport(project, noFilters, "  ", vi.fn()),
     );
 
     expect(result.current.filteredProject).toBe(project);
@@ -51,12 +49,7 @@ describe("useTaskFiltersWithLabelsSupport", () => {
     );
   });
 
-  it("restores persisted label filters from storage and matches tasks from project data", async () => {
-    window.localStorage.setItem(
-      storageKey,
-      JSON.stringify({ labels: ["label-bug"] }),
-    );
-
+  it("applies URL-derived label filters to project tasks", () => {
     const project = {
       id: "project-1",
       name: "Project",
@@ -129,13 +122,12 @@ describe("useTaskFiltersWithLabelsSupport", () => {
       archivedTasks: [],
     };
 
+    const filters = { ...noFilters, labels: ["label-bug"] };
     const { result } = renderHook(() =>
-      useTaskFiltersWithLabelsSupport(project, "project-1"),
+      useTaskFiltersWithLabelsSupport(project, filters, undefined, vi.fn()),
     );
 
-    await waitFor(() => {
-      expect(result.current.filters.labels).toEqual(["label-bug"]);
-    });
+    expect(result.current.filters.labels).toEqual(["label-bug"]);
 
     expect(result.current.filteredProject?.columns[0]?.tasks).toHaveLength(1);
     expect(result.current.filteredProject?.columns[0]?.tasks[0]?.id).toBe(
@@ -213,7 +205,7 @@ describe("useTaskFiltersWithLabelsSupport", () => {
       };
 
       const { result } = renderHook(() =>
-        useTaskFiltersWithLabelsSupport(project, "project-1", textQuery),
+        useTaskFiltersWithLabelsSupport(project, noFilters, textQuery, vi.fn()),
       );
 
       expect(result.current.filteredProject?.columns[0]?.tasks).toEqual([

@@ -1,3 +1,4 @@
+import { parseProjectViewSearchFromParams } from "@/lib/project-board-search";
 import { type ProjectRouteParams, routes } from "@/lib/routes";
 
 export type ProjectView = "backlog" | "board" | "calendar" | "gantt" | "list";
@@ -14,11 +15,15 @@ export function createProjectViewShortcutHandlers(
   params: ProjectRouteParams,
   currentSearch: string,
   navigate: (href: string) => void,
+  onLayoutChange?: (layout: "board" | "list") => void,
 ) {
   return Object.fromEntries(
     PROJECT_VIEW_SHORTCUTS.map((view) => [
       view,
-      () => navigate(buildProjectViewSwitchUrl(view, params, currentSearch)),
+      () => {
+        if (view === "board" || view === "list") onLayoutChange?.(view);
+        navigate(buildProjectViewSwitchUrl(view, params, currentSearch));
+      },
     ]),
   ) as Record<ProjectView, () => void>;
 }
@@ -28,8 +33,9 @@ export function buildProjectViewSwitchUrl(
   params: ProjectRouteParams,
   currentSearch: string,
 ) {
-  const taskId = new URLSearchParams(currentSearch).get("taskId") ?? undefined;
-  const search = taskId ? { taskId } : {};
+  const search = parseProjectViewSearchFromParams(
+    new URLSearchParams(currentSearch),
+  );
   switch (view) {
     case "backlog":
       return routes.projectBacklog.build(params, search);

@@ -24,8 +24,13 @@ import CreateProjectModal from "@/components/shared/modals/create-project-modal"
 import { shortcuts } from "@/constants/shortcuts";
 import useGetProject from "@/hooks/queries/project/use-get-project";
 import { useProjectWebSocket } from "@/hooks/use-project-websocket";
+import { authClient } from "@/lib/auth-client";
 import { cn } from "@/lib/cn";
 import { buildProjectViewSwitchUrl } from "@/lib/project-layout-navigation";
+import {
+  getProjectLayoutStorage,
+  writeProjectLayoutPreference,
+} from "@/lib/project-layout-preference";
 
 type ProjectLayoutProps = {
   projectId: string;
@@ -47,6 +52,7 @@ export default function ProjectLayout({
   const { t } = useTranslation();
   const navigate = useNavigate();
   const location = useLocation();
+  const { data: session } = authClient.useSession();
   const { data: project } = useGetProject({ id: projectId, workspaceId });
   const [isCreateProjectModalOpen, setIsCreateProjectModalOpen] =
     useState(false);
@@ -73,6 +79,12 @@ export default function ProjectLayout({
   };
 
   const handleNavigateToBoard = () => {
+    writeProjectLayoutPreference(
+      getProjectLayoutStorage(),
+      session?.user.id,
+      projectId,
+      "board",
+    );
     navigate({
       to: buildProjectViewSwitchUrl(
         "board",

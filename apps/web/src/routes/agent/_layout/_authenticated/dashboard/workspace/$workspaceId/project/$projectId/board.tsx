@@ -1,5 +1,9 @@
 import { useQueryClient } from "@tanstack/react-query";
-import { createFileRoute, useNavigate } from "@tanstack/react-router";
+import {
+  createFileRoute,
+  useLocation,
+  useNavigate,
+} from "@tanstack/react-router";
 import { Input } from "@taskdesk/ui";
 import { Search } from "lucide-react";
 import { useCallback, useEffect, useMemo, useState } from "react";
@@ -16,17 +20,27 @@ import { hasPendingTaskUpdate } from "@/hooks/mutations/task/use-update-task";
 import useGetLabelsByWorkspace from "@/hooks/queries/label/use-get-labels-by-workspace";
 import { useGetTasks } from "@/hooks/queries/task/use-get-tasks";
 import { useGetActiveWorkspaceUsers } from "@/hooks/queries/workspace-users/use-get-active-workspace-users";
-import { useBoardSort } from "@/hooks/use-board-sort";
 import { useRegisterShortcuts } from "@/hooks/use-keyboard-shortcuts";
 import { useTaskFiltersWithLabelsSupport } from "@/hooks/use-task-filters-with-labels-support";
+import { authClient } from "@/lib/auth-client";
 import {
   type ProjectBoardSearch,
   parseProjectBoardSearch,
+  projectViewFiltersFromSearch,
+  projectViewSortFromSearch,
   resolveProjectBoardLayout,
   withProjectBoardLayout,
   withProjectBoardTask,
+  withProjectViewFilters,
+  withProjectViewSort,
+  withProjectViewState,
 } from "@/lib/project-board-search";
 import { createProjectViewShortcutHandlers } from "@/lib/project-layout-navigation";
+import {
+  getProjectLayoutStorage,
+  readProjectLayoutPreference,
+  writeProjectLayoutPreference,
+} from "@/lib/project-layout-preference";
 import { routes } from "@/lib/routes";
 import { sortTasks } from "@/lib/sort-tasks";
 import useProjectStore from "@/store/project";
@@ -85,23 +99,78 @@ function BoardSkeleton() {
 function RouteComponent() {
   const { t } = useTranslation();
   const { projectId, workspaceId } = Route.useParams();
-  const { taskId, layout } = Route.useSearch();
+  const search = Route.useSearch();
+  const { taskId, layout } = search;
   const navigate = useNavigate();
+  const location = useLocation();
+  const { data: session } = authClient.useSession();
   const { data } = useGetTasks(projectId);
   const queryClient = useQueryClient();
   const { project, setProject } = useProjectStore();
-  const preferredViewMode = useUserPreferencesStore((state) => state.viewMode);
-  const viewMode = resolveProjectBoardLayout(layout, preferredViewMode);
+  const profileDefaultViewMode = useUserPreferencesStore(
+    (state) => state.viewMode,
+  );
+  const savedProjectViewMode = readProjectLayoutPreference(
+    getProjectLayoutStorage(),
+    session?.user.id,
+    projectId,
+  );
+  const viewMode = resolveProjectBoardLayout(
+    layout,
+    savedProjectViewMode ?? profileDefaultViewMode,
+  );
   const [isTaskModalOpen, setIsTaskModalOpen] = useState(false);
-  const [boardSearchQuery, setBoardSearchQuery] = useState("");
   const [isBoardSearchMounted, setIsBoardSearchMounted] = useState(false);
   const [isBoardSearchVisible, setIsBoardSearchVisible] = useState(false);
   const [boardSearchInput, setBoardSearchInput] =
     useState<HTMLInputElement | null>(null);
-  const { sort, setSort } = useBoardSort(projectId);
+  const urlFilters = projectViewFiltersFromSearch(search);
+  const sort = projectViewSortFromSearch(search);
+
+  const updateViewState = useCallback(
+    (patch: Partial<ProjectBoardSearch>) => {
+      navigate({
+        to: routes.projectBoard.path,
+        params: { workspaceId, projectId },
+        search: (previous: ProjectBoardSearch) =>
+          withProjectViewState(previous, patch),
+      });
+    },
+    [navigate, projectId, workspaceId],
+  );
+
+  const handleFiltersChange = useCallback(
+    (nextFilters: ReturnType<typeof projectViewFiltersFromSearch>) => {
+      navigate({
+        to: routes.projectBoard.path,
+        params: { workspaceId, projectId },
+        search: (previous: ProjectBoardSearch) =>
+          withProjectViewFilters(previous, nextFilters),
+      });
+    },
+    [navigate, projectId, workspaceId],
+  );
+
+  const setSort = useCallback(
+    (nextSort: ReturnType<typeof projectViewSortFromSearch>) => {
+      navigate({
+        to: routes.projectBoard.path,
+        params: { workspaceId, projectId },
+        search: (previous: ProjectBoardSearch) =>
+          withProjectViewSort(previous, nextSort),
+      });
+    },
+    [navigate, projectId, workspaceId],
+  );
 
   const handleViewModeChange = useCallback(
     (nextLayout: "board" | "list") => {
+      writeProjectLayoutPreference(
+        typeof window === "undefined" ? undefined : window.localStorage,
+        session?.user.id,
+        projectId,
+        nextLayout,
+      );
       navigate({
         to: routes.projectBoard.path,
         params: { workspaceId, projectId },
@@ -109,7 +178,7 @@ function RouteComponent() {
           withProjectBoardLayout(previous, nextLayout),
       });
     },
-    [navigate, projectId, workspaceId],
+    [navigate, projectId, session?.user.id, workspaceId],
   );
 
   const { data: users } = useGetActiveWorkspaceUsers(workspaceId);
@@ -127,8 +196,15 @@ function RouteComponent() {
 
   const viewShortcutHandlers = createProjectViewShortcutHandlers(
     { workspaceId, projectId },
-    taskId ? new URLSearchParams({ taskId }).toString() : "",
+    location.searchStr,
     (href) => navigate({ href }),
+    (layout) =>
+      writeProjectLayoutPreference(
+        getProjectLayoutStorage(),
+        session?.user.id,
+        projectId,
+        layout,
+      ),
   );
 
   useRegisterShortcuts({
@@ -194,8 +270,9 @@ function RouteComponent() {
     clearFilters,
   } = useTaskFiltersWithLabelsSupport(
     boardSourceProject,
-    projectId,
-    boardSearchQuery,
+    urlFilters,
+    search.q,
+    handleFiltersChange,
   );
 
   const sortedProject = useMemo(() => {
@@ -220,15 +297,17 @@ function RouteComponent() {
       <Search className="-translate-y-1/2 pointer-events-none absolute top-1/2 left-2.5 h-3.5 w-3.5 text-muted-foreground" />
       <Input
         ref={setBoardSearchInput}
-        value={boardSearchQuery}
-        onChange={(event) => setBoardSearchQuery(event.target.value)}
+        value={search.q ?? ""}
+        onChange={(event) =>
+          updateViewState({ q: event.target.value || undefined })
+        }
         onKeyDown={(event) => {
-          if (event.key === "Escape" && !boardSearchQuery.trim()) {
+          if (event.key === "Escape" && !search.q?.trim()) {
             closeBoardSearch();
           }
         }}
         onBlur={() => {
-          if (!boardSearchQuery.trim()) {
+          if (!search.q?.trim()) {
             closeBoardSearch();
           }
         }}
