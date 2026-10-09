@@ -1,3 +1,52 @@
+### 2026-10-09 · Owner directive: workflow and agent-policy restructure
+
+**Decision and authorization:** Thomas assigned an Opus 5.5 session as independent workflow
+architect and policy maintainer, authorized to audit, consolidate, replace and remove
+contradictory or redundant operating instructions, superseding older text about how the
+workflow itself may be changed. It does not authorize product features, production changes,
+taking over the conductor, bypassing GitHub protections or claiming acceptance. The delivery
+mission is unchanged: freeze features → integrate valid existing work → verify accepted `main`
+→ publish through GHCR/GitHub → deploy and test SIT → independent audit → stop and await
+Thomas's roadmap.
+
+**What the restructure changes, effective when its PR merges through the protected flow:**
+
+- One hierarchy: Thomas's decisions (with the new
+  [active mission](active-mission.md) record) → `AGENTS.md` → `agent-workflow.md` →
+  specialist standards → `CLAUDE.md` provider adapter → queue task state. Status snapshots,
+  PR bodies, review packets and queue checkpoints are evidence, never policy.
+- Mission text leaves every permanent file and lives only in `active-mission.md`. Review
+  tiers, model policy, task states, evidence reuse, continuation and escalation live only in
+  `agent-workflow.md`. `CLAUDE.md` becomes a provider adapter with no policy.
+- Explicit operating modes, a `DONE`/`SUPERSEDED` terminal state alongside the queue's
+  existing states, and five separate [levels of done](../04-engineering/definition-of-done.md#levels-of-done).
+- A commit touching only review records needs no new review of any kind; the conductor
+  verifies the path list mechanically. This supersedes the 2026-10-09 integration-acceptance
+  checklist line requiring ordinary exact-candidate re-review of note-only commits.
+- Failure classes each have their own remedy. A bounded verification policy allows **one**
+  re-run of a CI job per candidate SHA only for evidenced infrastructure failure; G11
+  sampling stays exactly as defined in UX quality gates.
+- The three-attempt rule counts per mechanism across versions, and the post-limit sequence
+  ends in an end-to-end test of the actual production entry point.
+
+**Unchanged:** model assignments (2026-09-29), every review count and the security-review
+path list, every required status check, the PR-template check, protected merge by the
+conductor alone, gate waivers and design approval reserved to Thomas, the freeze, GHCR-only
+publication and the SIT stop condition. Proposed CI path scoping and a model-neutral
+PR-template check are recorded as separate reviewed changes, not made here.
+
+**Supersedes:** the operative duplicate text of the 2026-10-09 Integration Freeze and
+Conductor Coordination entries as written into `AGENTS.md`, `CLAUDE.md`, `sdlc.md`,
+`definition-of-done.md` and `agent-workflow.md`; their decisions themselves stand and are now
+expressed once. Also supersedes the 2026-10-02 bulk-cadence entry's pointer to `AGENTS.md`
+as the canonical home (now `agent-workflow.md § Reviews`).
+
+**Source:** explicit owner directive "TaskDesk — owner-authorized workflow & agent policy
+restructure", 2026-10-09.
+**Recorded by:** Opus 5.5 policy maintainer, branch `claude/workflow-policy-restructure-20261009`.
+
+---
+
 ### 2026-10-09 · Owner directive: single-conductor delivery and cause-based acceptance
 
 **Decision and authorization:** Thomas supplied the current Conductor Coordination & Delivery

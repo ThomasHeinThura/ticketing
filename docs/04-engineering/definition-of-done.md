@@ -6,9 +6,23 @@ why, if it does not — never delete it. An unticked, unmarked box is a blocker,
 
 ---
 
+## Levels of done
+
+Five different claims. Never let one stand in for another.
+
+| Level | Who claims it | It means | It does **not** mean |
+| --- | --- | --- | --- |
+| **Task done** | The lane, in its handoff | The assigned deliverable exists on a pushed branch with its evidence and `## Not done` | Reviewed, merged, accepted, or anything about the project |
+| **Merge-ready** | The conductor | On the **exact candidate SHA**: the applicable checklists below are complete; every required review is recorded at that SHA or carried across a review-record-only delta ([evidence reuse](agent-workflow.md#exact-head-and-evidence-reuse)); every required status check is green; branch protection permits the merge without bypass; the `## Gates` table cites no waived gate (or Thomas is acting himself) | Runtime or SIT acceptance; stage completion |
+| **Integrated slice accepted** | The conductor, with the independent audit | Merged on `main`, published artifact digest recorded, and the slice's real workflows, migrations, health and recovery verified on SIT against that digest, with the [integration checklist](#integrated-slice-acceptance) complete | Stage completion; permission to start new scope |
+| **Stage complete** (P0–P7) | The conductor, after the phase finalizer | Every item in [Stage completion](#stage-completion), including the phase finalizer | That the next stage is authorized |
+| **Mission complete** | The conductor, reported to Thomas | The [active mission](../07-planning/active-mission.md)'s stop condition is met and reported | Anything beyond Hold |
+
+---
+
 ## Any change
 
-- [ ] Branch named `codex/…` by default, or an explicitly authorized `feat/…`, `fix/…`, `docs/…`, `chore/…` branch
+- [ ] Branch named `<agent>/…` (for example `codex/…`, `claude/…`) or `feat/…`, `fix/…`, `docs/…`, `chore/…`
 - [ ] Conventional commit messages
 - [ ] `pnpm lint` green
 - [ ] `pnpm typecheck` green
@@ -125,33 +139,22 @@ Everything above, plus:
 
 ---
 
-## Existing-slice integration acceptance
+## Integrated slice acceptance
 
-During [Integration Freeze Mode](../../AGENTS.md#authority-and-integration-freeze-mode),
-existing functionality may receive integration and acceptance fixes. Apply every relevant
-checklist above and the existing risk-appropriate independent Luna/Sol review tier; do not
-mark a requirement inapplicable merely because this is an integration slice.
+Applies when existing functionality is integrated under an integration-freeze mission. Every
+checklist above still applies; an integration slice is not a reason to mark a requirement
+`n/a`.
 
-- [ ] Scope, dependencies, exact source SHA and artifact digest recorded in the integration queue
-- [ ] Applicable tests run on that source with expected suite/file/test counts and no skips
-- [ ] Ordinary independent reviews recorded at the exact merge-candidate SHA. The Sol
-      security-note ancestor exception below applies only to that committed security note,
-      and only when every later commit touches nothing outside
-      `docs/07-planning/security-reviews/`; ordinary
-      exact-candidate review is still required. No source-change exemption is introduced
-- [ ] Every required CI check green on the exact merge candidate; protected merge by top-level orchestrator
-- [ ] Image build, container boot, migrations and health verified if shipped runtime changes
-- [ ] Actual integrated SIT journeys and affected browser screens verified, with evidence;
-      offline simulation alone does not satisfy runtime acceptance
-- [ ] Applicable tenant isolation, authorization, G1–G13 and performance requirements met
-- [ ] Queue updated with accepted evidence, residual blockers and next actionable task
+- [ ] Scope, dependencies, exact source SHA and artifact digest recorded in the queue
+- [ ] Applicable tests run on that source, with expected suite/file/test counts and no skips
+- [ ] [Merge-ready](#levels-of-done) at the exact candidate, then merged by the conductor
+- [ ] Image build, container boot, migrations and health verified for anything that ships
+- [ ] Real SIT journeys and affected screens verified against the published digest, with
+      evidence; offline simulation alone does not count
+- [ ] Applicable tenant-isolation, authorization, G1–G13 and performance requirements met
+- [ ] Queue updated with accepted evidence, residual blockers and the next action
 
-This accepts a bounded integrated slice, **not a P0–P7 phase**. No new feature scope, Docker
-Hub publication or production deployment is authorized. Final consolidated SIT acceptance
-requires actual integrated runtime evidence for the frozen scope, the applicable acceptance
-checks and independent audit at the existing risk-appropriate tier, with no unresolved
-blocking findings. Then stop and await the next owner roadmap. Stage completion below remains
-separate and unchanged; do not claim it without all its gates and the additive Sol finalizer.
+This accepts a slice, not a stage.
 
 ## Stage completion
 
@@ -166,7 +169,7 @@ they stop colliding with the delivery-stage numbering (`P0`–`P5+`) used everyw
       review note (PG1). For P0–P3, record the human design signoff as deferred to the
       integrated P4 review; this deferral does not block technical stage closure and is not
       approval. Automated and required behavioral/browser checks, every other applicable
-      stage criterion, and the stage-level GPT-6 Sol finalizer still apply.
+      stage criterion, and the phase finalizer still apply.
 - [ ] Every screen ✅ in the [screen inventory](../02-design/screen-inventory.md)
 - [ ] Full E2E suite green, agent and portal
 - [ ] Full E2E suite green with reduced motion
@@ -177,8 +180,9 @@ they stop colliding with the delivery-stage numbering (`P0`–`P5+`) used everyw
 - [ ] Run against realistic data — 10,000 work items, 50 projects, 200 people (PG6)
 - [ ] Load test baseline recorded
 - [ ] Backup and restore verified
-- [ ] **Stage-level GPT-6 Sol security review** — a holistic pass over the whole stage's
-      surface, not only the per-feature reviews already passed
+- [ ] **Phase finalizer** — a holistic security-tier pass over the whole stage's surface,
+      not only the per-feature reviews already passed
+      ([model policy](agent-workflow.md#model-policy))
 - [ ] Written stage review in `07-planning/`, **including what went wrong**
 - [ ] [Screen inventory](../02-design/screen-inventory.md),
       [feature index](../03-features/README.md) status columns and `CHANGELOG.md`
@@ -188,9 +192,8 @@ they stop colliding with the delivery-stage numbering (`P0`–`P5+`) used everyw
       linked to its [decision log](../07-planning/decision-log.md) entry — see the
       [pull request template](../../.github/pull_request_template.md)'s `## Gates` section
 
-Dependency-safe preparation and integration-slice acceptance do not waive this stage gate.
-See [SDLC § The stage gate](sdlc.md#the-stage-gate); the current mission does not authorize
-automatic phase completion or later-stage feature implementation.
+Integration-slice acceptance does not satisfy or waive this gate. See
+[SDLC § The stage gate](sdlc.md#the-stage-gate).
 
 ---
 
