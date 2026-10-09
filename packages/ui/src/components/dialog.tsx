@@ -5,7 +5,6 @@ import { XIcon } from "lucide-react";
 import * as React from "react";
 import { cn } from "../lib/cn";
 import { Button } from "./button";
-import { ScrollArea } from "./scroll-area";
 
 const DialogCreateHandle = DialogPrimitive.createHandle;
 
@@ -216,25 +215,6 @@ function DialogDescription({
   );
 }
 
-function DialogPanel({
-  className,
-  scrollFade = true,
-  ...props
-}: React.ComponentProps<"div"> & { scrollFade?: boolean }) {
-  return (
-    <ScrollArea scrollFade={scrollFade}>
-      <div
-        className={cn(
-          "p-6 in-[[data-slot=dialog-popup]:has([data-slot=dialog-header])]:pt-1 in-[[data-slot=dialog-popup]:has([data-slot=dialog-footer]:not(.border-t))]:pb-1",
-          className,
-        )}
-        data-slot="dialog-panel"
-        {...props}
-      />
-    </ScrollArea>
-  );
-}
-
 export {
   Dialog,
   DialogBackdrop,
@@ -244,7 +224,6 @@ export {
   DialogDescription,
   DialogFooter,
   DialogHeader,
-  DialogPanel,
   DialogPopup,
   DialogPopup as DialogContent,
   DialogPortal,

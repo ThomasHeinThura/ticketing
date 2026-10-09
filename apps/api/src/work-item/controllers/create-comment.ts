@@ -1,7 +1,11 @@
+import { randomUUID } from "node:crypto";
 import { HTTPException } from "hono/http-exception";
 import db from "../../database";
-import { commentTable } from "../../database/schema";
+import { commentTable, watcherTable } from "../../database/schema";
 import { publishEvent } from "../../events";
+import { enqueueNotificationEvent } from "../../notification/fanout";
+import { resolveMentionEventRecipient } from "../../notification/recipient-resolvers";
+import { parseNativeMentionPersonIds } from "../../utils/parse-native-mentions";
 import { builtInRoleHasCapability } from "../../utils/require-workspace-capability";
 import {
   isUnambiguousMembership,
@@ -12,6 +16,10 @@ import {
   assertProjectStillLive,
   assertWorkItemStillLive,
 } from "../assert-work-item-live";
+import {
+  classifyWorkItemMentionPeople,
+  findWorkItemMentionContext,
+} from "../mention-access";
 import { publishWorkItemHint, recordWorkItemEvent } from "../native-event";
 import { lockWorkItemForCommentQuery } from "../repository";
 
@@ -63,11 +71,16 @@ export async function createComment(
   // this transaction finishes, closing the same reach-check-to-write race #276 closed for
   // `update-work-item.ts` -- read-only here (nothing about THIS row is written), so a
   // shared lock is enough.
+  const mentionIds = parseNativeMentionPersonIds(input.body);
   const { created, realtimeEvent, projectId, key } = await db.transaction(
     async (tx) => {
       const [locked] = await lockWorkItemForCommentQuery(tx, workItemId);
       assertWorkItemStillLive(locked);
       await assertProjectStillLive(tx, locked.projectId);
+      const context = await findWorkItemMentionContext(tx, workItemId);
+      if (!context || context.workspaceId !== workspaceId) {
+        throw new HTTPException(404, { message: "Work item not found" });
+      }
 
       const [row] = await tx
         .insert(commentTable)
@@ -88,6 +101,59 @@ export async function createComment(
           projectId: locked.projectId,
           key: locked.key,
         };
+
+      const mentionCandidates = await classifyWorkItemMentionPeople(
+        tx,
+        context,
+        mentionIds,
+        input.visibility,
+        { includeUnreachableCustomers: true },
+      );
+      const reachableMentionedPeople = mentionCandidates.filter(
+        (candidate) => candidate.reachable && candidate.userId !== actorId,
+      );
+      for (const candidate of reachableMentionedPeople) {
+        await tx
+          .insert(watcherTable)
+          .values({
+            workItemId,
+            personId: candidate.personId,
+            source: "explicit",
+            muted: false,
+          })
+          .onConflictDoNothing({
+            target: [watcherTable.workItemId, watcherTable.personId],
+          });
+
+        const mentionEvent = {
+          id: `evt_${randomUUID()}`,
+          kind: "work_item.mentioned",
+          occurredAt: new Date().toISOString(),
+          actor: {
+            type: actorType === "api_key" ? "api_key" : "person",
+            id: actorId,
+            name: "TaskDesk actor",
+          } as const,
+          scope: {
+            workspaceId: context.workspaceId,
+            organisationId: context.organisationId ?? undefined,
+            projectId: context.projectId,
+          },
+          payload: {
+            key: context.key,
+            url: `/agent/work-items/${encodeURIComponent(context.key)}`,
+            workItemId: context.id,
+            mentionedPersonId: candidate.personId,
+            commentId: row.id,
+          },
+          causationId: null,
+          depth: 0,
+          originAutomationId: null,
+        };
+        await enqueueNotificationEvent(tx, mentionEvent, {
+          resolveRecipients: resolveMentionEventRecipient,
+        });
+      }
       const realtimeEvent = await recordWorkItemEvent(tx, {
         kind: "work_item.commented",
         workItemId,

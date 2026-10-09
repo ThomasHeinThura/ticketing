@@ -1617,6 +1617,42 @@
 					"renderFailed": "Impossible d'afficher le diagramme Mermaid"
 				}
 			}
+		},
+		"timeline": {
+			"cancel": "Cancel",
+			"cannedResponses": "Canned responses",
+			"comments": "Comments only",
+			"deleted": "Comment deleted by {{actor}} on {{date}}",
+			"edit": "Edit",
+			"edited": "Edited",
+			"historyLabel": "Comment history",
+			"historyLoading": "Loading comment history…",
+			"historyLoadFailed": "Comment history could not be loaded.",
+			"historyEmpty": "No earlier versions are available.",
+			"loadMoreVersions": "Load more versions",
+			"empty": "No activity matches this filter.",
+			"everything": "Everything",
+			"filterLabel": "Filter activity",
+			"groupedChanges": "{{count}} changes",
+			"heading": "Activity & comments",
+			"insertCannedResponse": "Insert a saved response",
+			"internal": "Internal",
+			"internalNotice": "Internal note — customers cannot see this.",
+			"loadFailed": "Activity could not be loaded.",
+			"loading": "Loading activity…",
+			"loadMore": "Load older activity",
+			"mutationFailed": "The action failed. Your permissions or the work item may have changed; retry or reload.",
+			"public": "Public",
+			"publicNotice": "Public comment — visible to customers with access.",
+			"publicOnly": "Public only",
+			"retry": "Retry",
+			"save": "Save changes",
+			"send": "Send comment",
+			"sending": "Sending…",
+			"visibilityLabel": "Who can see this comment?",
+			"mentionWarning": "{{people}} n’ont pas accès à cet élément de travail et ne seront pas avertis.",
+			"mentionUnavailable": "Une personne sélectionnée",
+			"mentionCheckFailed": "L’accès des mentions n’a pas pu être vérifié. Le serveur le vérifiera à nouveau lors de l’envoi."
 		}
 	},
 	"tasks": {

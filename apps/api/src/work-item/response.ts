@@ -66,6 +66,10 @@ export const workItemDetailSchema = workItemShape
       description:
         "state_template.group: one of backlog, unstarted, started, completed, cancelled.",
     }),
+    defaultCommentVisibility: z.enum(["public", "internal"]).openapi({
+      description:
+        "The project's CA-2 default for the comment composer; comments still require an explicit visibility on create.",
+    }),
     assigneeName: z.string().nullable(),
   })
   .openapi("WorkItemDetail");
@@ -292,6 +296,23 @@ export const workItemWatchStateSchema = z
   })
   .openapi("WorkItemWatchState");
 
+export const commentMentionCandidateSchema = z.object({
+  personId: z.string(),
+  name: z.string(),
+  image: z.string().nullable(),
+  side: z.enum(["staff", "customer"]),
+  reachable: z.boolean(),
+});
+
+export const commentMentionCandidatesSchema = z.array(
+  commentMentionCandidateSchema,
+);
+
+export const commentMentionPreflightResponseSchema = z.object({
+  reachablePersonIds: z.array(z.string()),
+  unreachablePersonIds: z.array(z.string()),
+});
+
 // `POST /api/work-items/bulk` (`WI-25`: per-item results, never an all-or-nothing
 // rollback).
 export const bulkWorkItemsResponseSchema = z
@@ -379,6 +400,10 @@ export const workItemActivityRowSchema = z
     deletedAt: nullableResponseTimestamp.optional().openapi({
       description: "Comment rows only (CA-18 tombstone).",
     }),
+    deletedBy: z.string().nullable().optional().openapi({
+      description:
+        "Comment rows only: the deleting actor id for a CA-18 tombstone.",
+    }),
     updatedAt: responseTimestamp.optional().openapi({
       description: "Comment rows only.",
     }),
@@ -391,6 +416,35 @@ export const workItemActivityListResponseSchema = z
     page: workItemPageSchema,
   })
   .openapi("WorkItemActivityListResponse");
+
+const commentJsonValueSchema = z.union([
+  z.string(),
+  z.number(),
+  z.boolean(),
+  z.null(),
+  z.array(z.unknown()),
+  z.record(z.string(), z.unknown()),
+]);
+
+export const commentVersionSchema = z
+  .object({
+    number: z.number().int().positive(),
+    body: commentJsonValueSchema.openapi({
+      description: "The immutable JSON body for this prior comment version.",
+    }),
+    editedBy: z.string().nullable().openapi({
+      description: "The editor's person.id, or null if unavailable.",
+    }),
+    createdAt: responseTimestamp,
+  })
+  .openapi("CommentVersion");
+
+export const commentVersionPageResponseSchema = z
+  .object({
+    data: z.array(commentVersionSchema),
+    page: workItemPageSchema,
+  })
+  .openapi("CommentVersionPage");
 
 // `assignment.md` § API: `DELETE /api/work-items/{key}/assign`. The assignment as
 // cleared. `assigneeId` is null BY TYPE -- a client cannot mistake "cleared" for "field

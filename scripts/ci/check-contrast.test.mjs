@@ -1,5 +1,6 @@
 import assert from "node:assert/strict";
 import { randomUUID } from "node:crypto";
+import { readFileSync } from "node:fs";
 import { readFile, rm, writeFile } from "node:fs/promises";
 import path from "node:path";
 import { describe, it } from "node:test";
@@ -112,6 +113,283 @@ describe("G3 contrast inventory and math", () => {
         failure.includes("--color-destructive|--color-background"),
       ),
     );
+  });
+
+  it("does not infer Alert caller backdrops from a Storybook canvas", () => {
+    const tokens = new Set(["card-foreground", "info"]);
+    const observed = observedPairsInSources(
+      [
+        'const variants = cva("base", { variants: { variant: { info: "text-card-foreground bg-info/4" } } });',
+        '<div className="bg-background" />',
+      ],
+      tokens,
+      [
+        "packages/ui/src/components/alert.tsx",
+        "packages/ui/src/components/alert.stories.tsx",
+      ],
+    );
+    assert.equal(
+      observed.has(
+        "--color-card-foreground|--color-info|bg-info/4|light|backdrop:bg-background",
+      ),
+      false,
+    );
+
+    const splitClasses = observedPairsInSources(
+      [
+        'const variants = cva("text-card-foreground", { variants: { variant: { info: "bg-info/4" } } });',
+      ],
+      tokens,
+      ["fixture.tsx"],
+    );
+    assert.equal(
+      splitClasses.has("--color-card-foreground|--color-info|bg-info/4|light"),
+      false,
+      "a foreground in the CVA base is not assumed for every surface variant",
+    );
+
+    const withoutCanvas = observedPairsInSources(
+      [
+        'const variants = cva("base", { variants: { variant: { info: "text-card-foreground bg-info/4" } } });',
+      ],
+      tokens,
+      ["packages/ui/src/components/alert.tsx"],
+    );
+    assert.equal(
+      withoutCanvas.size,
+      0,
+      "shared Alert variant strings carry no application backdrop evidence",
+    );
+  });
+
+  it("binds each Alert use to its opaque caller and fails closed for missing or conflicting backdrops", async () => {
+    const fixture = `apps/web/src/components/.contrast-alert-callers-${randomUUID()}.tsx`;
+    const theme = await readFile(
+      path.join(process.cwd(), "packages/ui/src/styles/theme.css"),
+      "utf8",
+    );
+    const tokenNames = new Set(
+      [...theme.matchAll(/--color-([a-z0-9-]+)\s*:/gu)].map(
+        (match) => match[1],
+      ),
+    );
+    try {
+      await writeFile(
+        fixture,
+        `import { Alert } from "@taskdesk/ui";
+import { selectedVariant } from "./dynamic-variant";
+export function CardAlert(){ return <div className="bg-card"><Alert variant="info" /></div>; }
+export function PopoverAlert(){ return <div className="bg-popover"><Alert variant="warning" /></div>; }
+export function MissingAlert(){ return <Alert variant="error" />; }
+export function ConflictingAlert(){ return <div className="bg-card bg-popover"><Alert variant="error" /></div>; }
+const constantVariant = { variant: "success" as const } as const;
+const safeProps = { variant: "info" as const, className: "mt-3", style: { marginTop: 4 } };
+const aliasSourceProps = { variant: "success" as const };
+const aliasProps = aliasSourceProps;
+const primitiveVariant = "error" as const;
+const primitiveVariantAlias = primitiveVariant;
+export function ConstantModuleSpread(){ return <div className="bg-card"><Alert {...constantVariant} /></div>; }
+export function SafePropsSpread(){ return <div className="bg-card"><Alert {...safeProps} /></div>; }
+export function AliasSpread(){ return <div className="bg-card"><Alert {...aliasProps} /></div>; }
+export function PrimitiveVariant(){ return <div className="bg-card"><Alert variant={primitiveVariant} /></div>; }
+export function PrimitiveVariantAlias(){ return <div className="bg-card"><Alert variant={primitiveVariantAlias} /></div>; }
+export function LiteralObjectSpread(){ return <div className="bg-card"><Alert {...{ variant: "warning" }} variant="error" /></div>; }
+export function TrailingOverride(props: Record<string, unknown>){ return <div className="bg-card"><Alert {...props} variant="warning" className="mt-3" style={{ marginTop: 4 }} /></div>; }
+export function UnknownAfterVariant(props: Record<string, unknown>){ return <div className="bg-card"><Alert variant="info" {...props} className="mt-3" style={{ marginTop: 4 }} /></div>; }
+export function UnknownVariantSpread(props: Record<string, unknown>){ return <div className="bg-card"><Alert {...props} /></div>; }
+const mutableVariant = { variant: "info" };
+mutableVariant.variant = "error";
+const shadowedProps = { variant: "success" as const };
+export function ShadowedBinding(shadowedProps: Record<string, unknown>){ return <div className="bg-card"><Alert {...shadowedProps} /></div>; }
+function SiblingScope(){ const selectedVariant = "info" as const; return selectedVariant; }
+export function ImportedVariantAlert(){ return <div className="bg-card"><Alert variant={selectedVariant} /></div>; }
+export function ShadowedFreeze(Object: { freeze: (value: unknown) => unknown }){ return <div className="bg-card"><Alert {...Object.freeze({ variant: "info" })} /></div>; }
+export function TDZVariant(){ return <div className="bg-card"><Alert variant={lateVariant} /></div>; }
+const lateVariant = "info" as const;
+export function UnknownSpreadPartialOverride(props: Record<string, unknown>){ return <div className="bg-card"><Alert {...props} variant="info" /></div>; }
+export function MutatedSpread(){ return <div className="bg-card"><Alert {...mutableVariant} /></div>; }
+export function ClassNamePaint(){ return <div className="bg-card"><Alert variant="info" className="text-destructive" /></div>; }
+export function ClassNameUnknownColor(){ return <div className="bg-card"><Alert variant="info" className="text-red-500" /></div>; }
+export function ClassNameArbitraryPaint(){ return <div className="bg-card"><Alert variant="info" className="[color:red]" /></div>; }
+export function StyleColor(){ return <div className="bg-card"><Alert variant="info" style={{ color: "red" }} /></div>; }
+export function DynamicClassName({ className }: { className: string }){ return <div className="bg-card"><Alert variant="info" className={className} /></div>; }
+export function DynamicStyle({ style }: { style: React.CSSProperties }){ return <div className="bg-card"><Alert variant="info" style={style} /></div>; }
+export function NullVariant(){ return <div className="bg-card"><Alert variant={null} /></div>; }`,
+      );
+      const result = observeInheritedForegroundSurfaces(
+        ["packages/ui/src/components/alert.tsx", fixture],
+        tokenNames,
+      );
+      const occurrences = [...(result.uses.occurrences?.values() ?? [])].flat();
+      const card = occurrences.find(
+        (item) =>
+          item.component === "Alert" &&
+          item.usage === fixture &&
+          item.id.includes("CardAlert"),
+      );
+      const popover = occurrences.find(
+        (item) =>
+          item.component === "Alert" &&
+          item.usage === fixture &&
+          item.id.includes("PopoverAlert"),
+      );
+      assert.equal(card?.backdropClass, "bg-card");
+      assert.equal(popover?.backdropClass, "bg-popover");
+      assert.notDeepEqual(card?.backdropLayers, popover?.backdropLayers);
+      const unresolved = [...result.unresolved.values()].filter(
+        (item) => item.component === "Alert" && item.usage === fixture,
+      );
+      const unresolvedByOwner = (owner) =>
+        unresolved.filter((item) => item.id.includes(`::${owner}::Alert[`));
+      for (const owner of [
+        "MissingAlert",
+        "ConflictingAlert",
+        "UnknownAfterVariant",
+        "UnknownVariantSpread",
+        "ShadowedBinding",
+        "UnknownSpreadPartialOverride",
+        "MutatedSpread",
+        "ImportedVariantAlert",
+        "ShadowedFreeze",
+        "TDZVariant",
+        "AliasSpread",
+        "ClassNamePaint",
+        "ClassNameUnknownColor",
+        "ClassNameArbitraryPaint",
+        "StyleColor",
+        "DynamicClassName",
+        "DynamicStyle",
+      ])
+        assert.ok(unresolvedByOwner(owner).length > 0, `${owner} fails closed`);
+      for (const owner of [
+        "ConstantModuleSpread",
+        "SafePropsSpread",
+        "PrimitiveVariant",
+        "PrimitiveVariantAlias",
+        "LiteralObjectSpread",
+        "TrailingOverride",
+      ])
+        assert.equal(unresolvedByOwner(owner).length, 0, `${owner} is known`);
+      assert.ok(
+        unresolvedByOwner("UnknownAfterVariant").some((item) =>
+          item.reason.includes("unknown spread"),
+        ),
+        "a later unknown spread overrides the earlier literal variant",
+      );
+
+      const nullVariantPairs = [...result.pairs].filter((key) =>
+        key.startsWith("--color-card-foreground|--color-card|bg-card|"),
+      );
+      assert.ok(
+        nullVariantPairs.some((key) => key.includes("NullVariant")) ||
+          [...(result.uses.occurrences?.values() ?? [])]
+            .flat()
+            .some(
+              (item) =>
+                item.component === "Alert" &&
+                item.usage === fixture &&
+                item.id.includes("NullVariant") &&
+                item.backgroundClass === "bg-card",
+            ),
+        "variant=null uses the base foreground against the actual caller backdrop",
+      );
+
+      const shippedPaths = await collectContrastSourcePaths();
+      const shipped = observeInheritedForegroundSurfaces(
+        shippedPaths.filter((sourcePath) => sourcePath !== fixture),
+        tokenNames,
+      );
+      const shippedAlerts = [...(shipped.uses.occurrences?.values() ?? [])]
+        .flat()
+        .filter((item) => item.component === "Alert");
+      const dialogAlert = shippedAlerts.find(
+        (item) =>
+          item.usage ===
+          "apps/web/src/components/work-item/create-work-item-dialog-form.tsx",
+      );
+      const holidayAlert = shippedAlerts.find(
+        (item) =>
+          item.usage ===
+          "apps/web/src/components/service-calendar/holiday-import-panel.tsx",
+      );
+      assert.equal(dialogAlert?.backdropClass, "bg-popover");
+      assert.ok(
+        dialogAlert?.chain.some((part) => part.includes("DialogContent")),
+      );
+      assert.equal(holidayAlert?.backdropClass, "bg-card");
+      assert.equal(
+        [...shipped.unresolved.values()].some(
+          (item) => item.component === "Alert",
+        ),
+        false,
+        "every shipped Alert caller has a concrete opaque paint chain",
+      );
+      const manifest = JSON.parse(
+        await readFile(
+          path.join(process.cwd(), "packages/ui/src/styles/pairs.json"),
+          "utf8",
+        ),
+      );
+      const alertRows = manifest.filter((pair) =>
+        pair.occurrenceIds?.some((id) => id.includes("::Alert[")),
+      );
+      const alertKeys = new Set();
+      const alertOccurrences = new Map();
+      for (const [key, contexts] of shipped.uses.occurrences ?? []) {
+        const occurrences = contexts.filter(
+          (item) => item.component === "Alert",
+        );
+        if (occurrences.length) {
+          alertKeys.add(key);
+          alertOccurrences.set(key, occurrences);
+        }
+      }
+      const boundAlerts = new Set(
+        alertRows.flatMap((pair) => pair.occurrenceIds),
+      );
+      assert.ok(
+        shippedAlerts.every((item) => boundAlerts.has(item.id)),
+        "every real Alert caller occurrence is represented in the manifest",
+      );
+      const alertObserved = alertKeys;
+      alertObserved.occurrences = alertOccurrences;
+      alertObserved.callerUses = shipped.callerUses;
+      const alertFailures = validatePairManifest(
+        alertRows,
+        (sourcePath) => {
+          try {
+            return readFileSync(path.join(process.cwd(), sourcePath), "utf8");
+          } catch {
+            return "";
+          }
+        },
+        alertObserved,
+      );
+      assert.deepEqual(alertFailures, []);
+      const omittedKey = [...alertKeys][0];
+      const omittedRow = alertRows.find((pair) => {
+        const theme = pair.themes[0];
+        const background = pair.backgroundClass[theme];
+        return (
+          `${pair.fg}|${pair.bg}|${background}|${theme}${pair.backdropLayers.length ? `|backdrop:${pair.backdropLayers.join(">")}` : ""}` ===
+          omittedKey
+        );
+      });
+      assert.ok(omittedRow, "the selected live pair has a manifest row");
+      const omittedFailures = validatePairManifest(
+        alertRows.filter((pair) => pair !== omittedRow),
+        () => "",
+        alertObserved,
+      );
+      assert.ok(
+        omittedFailures.some((failure) =>
+          failure.includes(`used pair ${omittedKey} has no manifest entry`),
+        ),
+        "the exact live caller/surface omission is rejected",
+      );
+    } finally {
+      await rm(fixture, { force: true });
+    }
   });
 
   it("measures a colored descendant against its nearest opaque ancestor", async () => {

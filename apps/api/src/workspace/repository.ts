@@ -2,6 +2,7 @@ import { and, count, countDistinct, eq, gt, like, ne, or } from "drizzle-orm";
 import db from "../database";
 import {
   invitationTable,
+  personTable,
   userTable,
   workspaceRoleTable,
   workspaceTable,
@@ -83,6 +84,7 @@ export const listWorkspaceMembersQuery = (workspaceId: string) =>
   db
     .select({
       id: userTable.id,
+      personId: personTable.id,
       name: userTable.name,
       email: userTable.email,
       image: userTable.image,
@@ -90,6 +92,7 @@ export const listWorkspaceMembersQuery = (workspaceId: string) =>
     })
     .from(workspaceUserTable)
     .innerJoin(userTable, eq(workspaceUserTable.userId, userTable.id))
+    .leftJoin(personTable, eq(personTable.userId, userTable.id))
     .where(eq(workspaceUserTable.workspaceId, workspaceId));
 export const getWorkspaceRoleQuery = (
   executor: Executor,

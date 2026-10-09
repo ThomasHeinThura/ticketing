@@ -218,6 +218,8 @@ export function parseWorkItemDetailRow(raw: WorkItemDetail): WorkItemDetailRow {
     ...raw,
     key: validKey ? raw.key : "",
     title: validTitle ? raw.title : "",
+    defaultCommentVisibility:
+      raw.defaultCommentVisibility === "public" ? "public" : "internal",
     priority: validPriority ? raw.priority : null,
     dueDate: validDueDate ? raw.dueDate : null,
     startDate: validStartDate ? raw.startDate : null,

@@ -44,6 +44,13 @@
 		"screenshot": "saved-views-index.png"
 	},
 	{
+		"name": "saved-view-detail",
+		"inventoryRoute": "/agent/views/{id}",
+		"applicationRoute": "/agent/views/$id",
+		"test": "Saved view detail screen @visual",
+		"screenshot": "saved-view-detail.png"
+	},
+	{
 		"name": "account-security",
 		"inventoryRoute": "/dashboard/settings/account/security",
 		"applicationRoute": "/dashboard/settings/account/security",

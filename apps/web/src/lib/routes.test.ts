@@ -12,6 +12,7 @@ import {
   parseSavedViewUrlSearchFromQueryString,
   parseServiceCalendarListSearchFromQueryString,
   parseSlaPolicyListSearch,
+  parseWorkItemDetailSearch,
   parseWorkItemListSearch,
   parseWorkItemListSearchFromQueryString,
   resolveWorkItemListSort,
@@ -355,6 +356,18 @@ describe("routes.workItemDetail", () => {
     expect(routes.workItemDetail.build({ key: "a/b" })).toBe(
       "/agent/work-items/a%2Fb",
     );
+  });
+
+  it("round-trips a valid activity filter and discards invalid URL state", () => {
+    const url = routes.workItemDetail.build(
+      { key: "PROJ-123" },
+      { activity: "public" },
+    );
+    expect(url).toBe("/agent/work-items/PROJ-123?activity=public");
+    expect(parseWorkItemDetailSearch({ activity: "public" })).toEqual({
+      activity: "public",
+    });
+    expect(parseWorkItemDetailSearch({ activity: "invalid" })).toEqual({});
   });
 });
 

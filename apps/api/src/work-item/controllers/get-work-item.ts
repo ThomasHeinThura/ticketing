@@ -11,12 +11,12 @@ import { getWorkItemByKeyQuery } from "../repository";
  * `workspace/policy.ts` documents for `GET /api/workspace/{id}`, rather than trusting the
  * middleware's lookup as the only read.
  *
- * This route resolves `stateName`/`stateCategory`/`assigneeName` for the row it returns,
- * so the work-item detail page (`docs/02-design/screen-inventory.md` "Work item — full
- * page", `/agent/work-items/{key}`) can render the same human-readable state and assignee
- * the list screen renders on its rows -- without a second round trip and without a raw
- * foreign key. There is no state-lookup or user-lookup endpoint in this codebase for a
- * client to resolve either itself.
+ * This route resolves `stateName`/`stateCategory`/`assigneeName` and the project's
+ * `defaultCommentVisibility` for the row it returns. The detail screen can render the
+ * state/assignee without another lookup and can initialize the CA-2 comment composer
+ * from the same project setting the server stores. Comment creation still requires an
+ * explicit visibility. There is no state-lookup or user-lookup endpoint in this codebase
+ * for a client to resolve either itself.
  *
  * The resolved fields use the same names and the same null semantics as PR #320's
  * list-route resolution (unmerged when this was written; identical join, identical
@@ -39,6 +39,7 @@ export async function getWorkItemByKey(key: string, workspaceId: string) {
     ...row.workItem,
     stateName: row.stateName,
     stateCategory: row.stateCategory,
+    defaultCommentVisibility: row.defaultCommentVisibility,
     // Only ever the resolved name when the assignee is a member of THIS workspace --
     // see the `workspaceUserTable` join's own comment above. `null` otherwise: the
     // raw `assigneeId` is still returned so the caller can tell "assigned, name not

@@ -4,11 +4,13 @@ import {
   count,
   desc,
   eq,
+  gt,
   inArray,
   isNotNull,
   isNull,
   lte,
   notInArray,
+  or,
   type SQL,
   sql,
 } from "drizzle-orm";
@@ -20,6 +22,7 @@ import {
   membershipTable,
   personTable,
   projectTable,
+  requestParticipantTable,
   roleTable,
   slaPolicyTable,
   slaPolicyVersionTable,
@@ -35,6 +38,125 @@ import {
   workspaceTable,
   workspaceUserTable,
 } from "../database/schema";
+
+export type WorkItemMentionContext = {
+  id: string;
+  key: string;
+  workspaceId: string;
+  projectId: string;
+  organisationId: string | null;
+  customerVisibility: string;
+  requesterId: string | null;
+};
+
+export type WorkItemMentionPersonRow = {
+  personId: string;
+  userId: string | null;
+  side: string;
+  name: string | null;
+  email: string;
+  image: string | null;
+};
+
+export async function findWorkItemMentionContextQuery(
+  executor: Executor,
+  workItemId: string,
+): Promise<WorkItemMentionContext | null> {
+  const [row] = await executor
+    .select({
+      id: workItemTable.id,
+      key: workItemTable.key,
+      workspaceId: workItemTable.workspaceId,
+      projectId: workItemTable.projectId,
+      organisationId: projectTable.organisationId,
+      customerVisibility: workItemTable.customerVisibility,
+      requesterId: workItemTable.requesterId,
+    })
+    .from(workItemTable)
+    .innerJoin(projectTable, eq(projectTable.id, workItemTable.projectId))
+    .innerJoin(workspaceTable, eq(workspaceTable.id, workItemTable.workspaceId))
+    .where(
+      and(
+        eq(workItemTable.id, workItemId),
+        isNull(workItemTable.deletedAt),
+        isNull(workItemTable.archivedAt),
+        isNull(projectTable.deletedAt),
+        isNull(projectTable.archivedAt),
+        isNull(workspaceTable.deletedAt),
+      ),
+    )
+    .limit(1);
+  return row ?? null;
+}
+
+export async function listWorkItemMentionParticipantIdsQuery(
+  executor: Executor,
+  workItemId: string,
+) {
+  return executor
+    .select({ personId: requestParticipantTable.personId })
+    .from(requestParticipantTable)
+    .where(eq(requestParticipantTable.workItemId, workItemId));
+}
+
+export async function listWorkItemMentionPeopleQuery(
+  executor: Executor,
+  context: WorkItemMentionContext,
+  options: {
+    personIds?: readonly string[];
+    visibility: "public" | "internal";
+    includeUnreachableCustomers?: boolean;
+    privateCustomerIds: readonly string[];
+  },
+): Promise<WorkItemMentionPersonRow[]> {
+  const staffScope = and(
+    eq(personTable.side, "staff"),
+    eq(workspaceUserTable.workspaceId, context.workspaceId),
+  );
+  const customerScope =
+    options.visibility === "public" &&
+    context.organisationId !== null &&
+    (context.customerVisibility !== "private" ||
+      options.includeUnreachableCustomers ||
+      options.privateCustomerIds.length > 0)
+      ? and(
+          eq(personTable.side, "customer"),
+          eq(personTable.organisationId, context.organisationId),
+          ...(context.customerVisibility === "private" &&
+          !options.includeUnreachableCustomers
+            ? [inArray(personTable.id, [...options.privateCustomerIds])]
+            : []),
+        )
+      : undefined;
+  const scope = customerScope ? or(staffScope, customerScope) : staffScope;
+  const predicates = [
+    scope,
+    eq(personTable.active, true),
+    eq(personTable.isPlaceholder, false),
+    eq(userTable.banned, false),
+  ];
+  if (options.personIds)
+    predicates.push(inArray(personTable.id, [...options.personIds]));
+  return executor
+    .select({
+      personId: personTable.id,
+      userId: personTable.userId,
+      side: personTable.side,
+      name: userTable.name,
+      email: userTable.email,
+      image: userTable.image,
+    })
+    .from(personTable)
+    .innerJoin(userTable, eq(userTable.id, personTable.userId))
+    .leftJoin(
+      workspaceUserTable,
+      and(
+        eq(workspaceUserTable.userId, personTable.userId),
+        eq(workspaceUserTable.workspaceId, context.workspaceId),
+      ),
+    )
+    .where(and(...predicates));
+}
 
 export type WorkItemQueryExecutor =
   | Pick<typeof db, "select">
@@ -330,7 +452,7 @@ export async function findWorkItemReachQuery(
         id: workItemTable.id,
         projectId: workItemTable.projectId,
         workspaceId: workItemTable.workspaceId,
-        organisationId: workspaceTable.organisationId,
+        organisationId: projectTable.organisationId,
       })
       .from(workItemTable)
       .innerJoin(projectTable, eq(workItemTable.projectId, projectTable.id))
@@ -428,6 +550,7 @@ export async function getWorkItemByKeyQuery(executor: Executor, key: string) {
       workItem: workItemTable,
       stateName: stateTemplateTable.name,
       stateCategory: stateTemplateTable.group,
+      defaultCommentVisibility: projectTable.defaultCommentVisibility,
       assigneeName: userTable.name,
       assigneeIsWorkspaceMember: workspaceUserTable.id,
     })
@@ -437,6 +560,7 @@ export async function getWorkItemByKeyQuery(executor: Executor, key: string) {
       stateTemplateTable,
       eq(stateTable.stateTemplateId, stateTemplateTable.id),
     )
+    .innerJoin(projectTable, eq(workItemTable.projectId, projectTable.id))
     .leftJoin(personTable, eq(workItemTable.assigneeId, personTable.id))
     .leftJoin(userTable, eq(personTable.userId, userTable.id))
     .leftJoin(
@@ -815,6 +939,55 @@ export async function countCommentVersionsQuery(
     .where(eq(commentVersionTable.commentId, commentId));
 }
 
+export async function findLiveCommentVersionParentQuery(
+  executor: Executor,
+  commentId: string,
+  workItemId: string,
+) {
+  return executor
+    .select({ id: commentTable.id })
+    .from(commentTable)
+    .where(
+      and(
+        eq(commentTable.id, commentId),
+        eq(commentTable.workItemId, workItemId),
+        isNull(commentTable.deletedAt),
+      ),
+    )
+    .limit(1);
+}
+
+export async function listCommentVersionPageQuery(
+  executor: Executor,
+  commentId: string,
+  after: { number: number; id: string } | undefined,
+  limit: number,
+) {
+  const conditions: SQL[] = [eq(commentVersionTable.commentId, commentId)];
+  if (after) {
+    const continuation = or(
+      gt(commentVersionTable.number, after.number),
+      and(
+        eq(commentVersionTable.number, after.number),
+        gt(commentVersionTable.id, after.id),
+      ),
+    );
+    if (continuation) conditions.push(continuation);
+  }
+  return executor
+    .select({
+      id: commentVersionTable.id,
+      number: commentVersionTable.number,
+      body: commentVersionTable.body,
+      editedBy: commentVersionTable.editedBy,
+      createdAt: commentVersionTable.createdAt,
+    })
+    .from(commentVersionTable)
+    .where(and(...conditions))
+    .orderBy(asc(commentVersionTable.number), asc(commentVersionTable.id))
+    .limit(limit);
+}
+
 export async function lockWorkItemByKeyQuery(
   executor: Executor,
   key: string,
@@ -1090,6 +1263,7 @@ export async function listWorkItemCommentRowsQuery(
       activityId: commentTable.activityId,
       editedAt: commentTable.editedAt,
       deletedAt: commentTable.deletedAt,
+      deletedBy: commentTable.deletedBy,
       createdAt: commentTable.createdAt,
       updatedAt: commentTable.updatedAt,
     })

@@ -142,9 +142,23 @@ describe("WorkItemList", () => {
     await waitFor(() => expect(mocks.loadDetail).toHaveBeenCalledOnce());
     await waitFor(() => expect(mocks.getWorkItem).toHaveBeenCalledOnce());
 
-    fireEvent.focus(
-      screen.getByText("Fix the thing").closest("a") as HTMLElement,
-    );
+    const focusedLink = screen
+      .getByText("Fix the thing")
+      .closest<HTMLAnchorElement>("a");
+    if (!focusedLink) throw new Error("Expected the work item title link.");
+    const focusedRow = focusedLink.closest("tr");
+    if (!focusedRow) throw new Error("Expected the link's table row.");
+    const scrollIntoView = vi.fn();
+    Object.defineProperty(focusedRow, "scrollIntoView", {
+      configurable: true,
+      value: scrollIntoView,
+    });
+
+    fireEvent.focus(focusedLink);
+
+    expect(scrollIntoView).toHaveBeenCalledOnce();
+    expect(scrollIntoView).toHaveBeenCalledWith({ block: "nearest" });
+    expect(scrollIntoView.mock.contexts[0]).toBe(focusedRow);
 
     await waitFor(() => expect(mocks.loadDetail).toHaveBeenCalledTimes(2));
     expect(mocks.getWorkItem).toHaveBeenCalledOnce();

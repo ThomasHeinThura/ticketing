@@ -75,7 +75,7 @@ export const createCommentBody = z.object({
 });
 
 export const updateCommentBody = z.object({
-  body: commentBody,
+  body: commentBody.optional(),
 });
 
 export const commentIdParam = z.object({

@@ -90,6 +90,35 @@ describe("current notification reach and preference", () => {
     expect(mocks.resolveNotificationPreference).not.toHaveBeenCalled();
   });
 
+  it("rechecks mention reach for staff without applying customer-only visibility", async () => {
+    mocks.findCurrentNotificationResource.mockResolvedValue({
+      ...resource,
+      visibleToPersonIds: ["requester-person"],
+    });
+    mocks.reaches.mockReturnValue(false);
+    await expect(
+      evaluateCurrentNotificationReachAndPreference(tx, {
+        ...delivery,
+        eventKind: "work_item.mentioned",
+        payload: {
+          id: "event-1",
+          kind: "work_item.mentioned",
+          scope: { workspaceId: "workspace-1", organisationId: "org-1" },
+          payload: { workItemId: "item-1", mentionedPersonId: "person-1" },
+        },
+      }),
+    ).resolves.toEqual({ kind: "suppress", reason: "reach_lost" });
+    expect(mocks.reaches).toHaveBeenCalledWith(
+      expect.objectContaining({ side: "staff" }),
+      expect.objectContaining({
+        projectId: "project-1",
+        organisationId: "org-1",
+        visibleToPersonIds: null,
+      }),
+    );
+    expect(mocks.resolveNotificationPreference).not.toHaveBeenCalled();
+  });
+
   it("suppresses when the current channel preference is disabled", async () => {
     mocks.resolveNotificationPreference.mockResolvedValue({ enabled: false });
     await expect(
@@ -420,7 +449,7 @@ describe("current notification reach and preference", () => {
     });
   });
 
-  it("passes the current private requester/participant allowlist to canonical reach", async () => {
+  it("does not apply private customer visibility to staff project reach", async () => {
     mocks.findCurrentNotificationResource.mockResolvedValue({
       ...resource,
       visibleToPersonIds: ["person-1", "participant-2"],
@@ -429,6 +458,26 @@ describe("current notification reach and preference", () => {
     expect(mocks.reaches).toHaveBeenCalledWith(
       expect.anything(),
       expect.objectContaining({
+        projectId: "project-1",
+        visibleToPersonIds: null,
+      }),
+    );
+  });
+
+  it("keeps private visibility constraints for customer reach", async () => {
+    mocks.resolveIdentity.mockResolvedValue({
+      personId: "person-1",
+      side: "customer",
+    });
+    mocks.findCurrentNotificationResource.mockResolvedValue({
+      ...resource,
+      visibleToPersonIds: ["person-1", "participant-2"],
+    });
+    await evaluateCurrentNotificationReachAndPreference(tx, delivery);
+    expect(mocks.reaches).toHaveBeenCalledWith(
+      expect.objectContaining({ side: "customer" }),
+      expect.objectContaining({
+        organisationId: "org-1",
         visibleToPersonIds: ["person-1", "participant-2"],
       }),
     );
@@ -477,7 +526,10 @@ describe("current notification reach and preference", () => {
           workspaceId: delivery.workspaceId,
           organisationId: delivery.organisationId,
         },
-        payload: { commentId: "comment-1" },
+        payload: {
+          commentId: "comment-1",
+          mentionedPersonId: "person-1",
+        },
       },
       resourceType: "comment",
       resourceId: "comment-1",

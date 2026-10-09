@@ -36,6 +36,7 @@ function parseClassToken(className) {
 
 function isTranslucentBackgroundUtility(className, tokenNames = new Set()) {
   const utility = parseClassToken(className).utility;
+  if (utility === "bg-transparent") return true;
   const match = utility.match(/^bg-([a-z0-9-]+)(?:\/(\d+))?$/u);
   if (!match) return false;
   const opacity = Number(match[2] ?? 100);
@@ -359,6 +360,37 @@ function classNameLiteralGroups(source) {
   return groups;
 }
 
+function cvaClassLiteralGroups(source) {
+  const groups = [];
+  for (const call of source.matchAll(/\bcva\s*\(/gu)) {
+    const open = source.indexOf("(", call.index);
+    let depth = 1;
+    let quote = "";
+    let escaped = false;
+    for (let index = open + 1; index < source.length; index += 1) {
+      const character = source[index];
+      if (quote) {
+        if (escaped) escaped = false;
+        else if (character === "\\") escaped = true;
+        else if (character === quote) quote = "";
+        continue;
+      }
+      if (character === '"' || character === "'" || character === "`") {
+        quote = character;
+      } else if (character === "(") {
+        depth += 1;
+      } else if (character === ")") {
+        depth -= 1;
+        if (depth === 0) {
+          groups.push(...classLiteralGroups(source.slice(open + 1, index)));
+          break;
+        }
+      }
+    }
+  }
+  return groups;
+}
+
 function wrappedFunctionInitializer(initializer) {
   if (ts.isArrowFunction(initializer) || ts.isFunctionExpression(initializer))
     return initializer;
@@ -378,7 +410,12 @@ function wrappedFunctionInitializer(initializer) {
 }
 
 function sourceUsesPair(source, foregroundClass, backgroundClass, theme) {
-  for (const classText of classNameLiteralGroups(source)) {
+  for (const classText of [
+    ...classNameLiteralGroups(source),
+    ...(/const alertVariants\s*=\s*cva\s*\(/u.test(source)
+      ? cvaClassLiteralGroups(source)
+      : []),
+  ]) {
     const classes = classText.split(/\s+/).map(parseClassToken);
     const foregroundFound = classes.some((parsed) => {
       const darkScoped = parsed.variants.includes("dark");
@@ -608,7 +645,12 @@ export function validatePairManifest(pairs, readUsage, observedPairs) {
       const tokenMatch = backgroundClass?.match(
         /(?:^|:)bg-([a-z0-9-]+)(?:\/\d+)?$/,
       );
-      const actualBg = tokenMatch ? `--color-${tokenMatch[1]}` : "";
+      const actualBg =
+        backgroundClass === "bg-transparent"
+          ? pair.backdrop
+          : tokenMatch
+            ? `--color-${tokenMatch[1]}`
+            : "";
       if (actualBg !== pair.bg) {
         failures.push(
           violation(
@@ -780,9 +822,15 @@ export function observedPairsInSources(
   const observed = new Set();
   observed.pairDetails = new Map();
   observed.pairUses = new Map();
+  observed.occurrences = new Map();
   observed.unsupportedForegrounds = [];
   for (const [sourceIndex, source] of sources.entries()) {
-    for (const classText of classNameLiteralGroups(source)) {
+    // Alert's CVA strings describe the foreground and translucent color wash,
+    // but not the opaque surface behind it. Caller evidence is collected by
+    // the source-bound JSX pass below; a Storybook canvas cannot stand in for
+    // application callers.
+    const classGroups = classNameLiteralGroups(source);
+    for (const classText of classGroups) {
       const classes = classText.split(/\s+/).map(parseClassToken);
       const textNames = classes
         .map((parsed) => {
@@ -916,6 +964,427 @@ export function observedPairsInSources(
     }
   }
   return observed;
+}
+
+const alertPaintProps = ["variant", "className", "style"];
+
+function unwrapStaticExpression(expression) {
+  let current = expression;
+  while (
+    ts.isParenthesizedExpression(current) ||
+    ts.isAsExpression(current) ||
+    ts.isSatisfiesExpression(current) ||
+    ts.isNonNullExpression(current)
+  )
+    current = current.expression;
+  return current;
+}
+
+function staticPropertyName(name) {
+  if (
+    ts.isIdentifier(name) ||
+    ts.isStringLiteral(name) ||
+    ts.isNumericLiteral(name)
+  )
+    return name.text;
+  if (
+    ts.isComputedPropertyName(name) &&
+    (ts.isStringLiteral(name.expression) ||
+      ts.isNumericLiteral(name.expression))
+  )
+    return name.expression.text;
+  return undefined;
+}
+
+function isFunctionLikeNode(node) {
+  return (
+    ts.isFunctionDeclaration(node) ||
+    ts.isFunctionExpression(node) ||
+    ts.isArrowFunction(node) ||
+    ts.isMethodDeclaration(node) ||
+    ts.isConstructorDeclaration(node) ||
+    ts.isGetAccessorDeclaration(node) ||
+    ts.isSetAccessorDeclaration(node)
+  );
+}
+
+function bindingContainsName(bindingName, name) {
+  if (ts.isIdentifier(bindingName)) return bindingName.text === name;
+  if (
+    ts.isObjectBindingPattern(bindingName) ||
+    ts.isArrayBindingPattern(bindingName)
+  )
+    return bindingName.elements.some((element) =>
+      ts.isBindingElement(element)
+        ? bindingContainsName(element.name, name)
+        : false,
+    );
+  return false;
+}
+
+function declarationBindsName(declaration, name) {
+  return Boolean(
+    declaration.name && bindingContainsName(declaration.name, name),
+  );
+}
+
+function scopeDeclaresName(name, scope) {
+  if (
+    isFunctionLikeNode(scope) &&
+    scope.parameters.some((parameter) =>
+      bindingContainsName(parameter.name, name),
+    )
+  )
+    return true;
+  if (
+    (ts.isFunctionExpression(scope) || ts.isFunctionDeclaration(scope)) &&
+    scope.name?.text === name
+  )
+    return true;
+  if (
+    ts.isCatchClause(scope) &&
+    scope.variableDeclaration &&
+    bindingContainsName(scope.variableDeclaration.name, name)
+  )
+    return true;
+
+  let found = false;
+  function visit(node) {
+    if (found) return;
+    if (node !== scope && isFunctionLikeNode(node)) {
+      if (ts.isFunctionDeclaration(node) && node.name?.text === name)
+        found = true;
+      return;
+    }
+    if (ts.isVariableDeclaration(node) && declarationBindsName(node, name)) {
+      found = true;
+      return;
+    }
+    if (
+      (ts.isClassDeclaration(node) ||
+        ts.isEnumDeclaration(node) ||
+        ts.isModuleDeclaration(node)) &&
+      node.name?.text === name
+    ) {
+      found = true;
+      return;
+    }
+    if (ts.isImportEqualsDeclaration(node) && node.name.text === name) {
+      found = true;
+      return;
+    }
+    node.forEachChild(visit);
+  }
+  visit(scope);
+  return found;
+}
+
+function moduleBindingDeclarations(name, sourceFile) {
+  const matches = [];
+  for (const statement of sourceFile.statements) {
+    if (ts.isVariableStatement(statement)) {
+      for (const declaration of statement.declarationList.declarations) {
+        if (declarationBindsName(declaration, name))
+          matches.push({ kind: "variable", declaration, statement });
+      }
+      continue;
+    }
+    if (ts.isImportDeclaration(statement)) {
+      const clause = statement.importClause;
+      if (!clause) continue;
+      if (clause.name?.text === name)
+        matches.push({ kind: "import", declaration: clause.name });
+      const bindings = clause.namedBindings;
+      if (
+        bindings &&
+        ts.isNamespaceImport(bindings) &&
+        bindings.name.text === name
+      )
+        matches.push({ kind: "import", declaration: bindings.name });
+      if (bindings && ts.isNamedImports(bindings))
+        for (const element of bindings.elements)
+          if (element.name.text === name)
+            matches.push({ kind: "import", declaration: element.name });
+      continue;
+    }
+    if (statement.name && bindingContainsName(statement.name, name))
+      matches.push({ kind: "other", declaration: statement.name });
+  }
+  return matches;
+}
+
+function findConstBinding(name, sourceFile, useNode) {
+  let current = useNode;
+  while (current && current !== sourceFile) {
+    if (
+      (isFunctionLikeNode(current) ||
+        ts.isBlock(current) ||
+        ts.isModuleBlock(current) ||
+        ts.isCatchClause(current)) &&
+      scopeDeclaresName(name, current)
+    )
+      return undefined;
+    current = current.parent;
+  }
+
+  const matches = moduleBindingDeclarations(name, sourceFile);
+  if (matches.length !== 1 || matches[0].kind !== "variable") return undefined;
+  const { declaration, statement } = matches[0];
+  if (
+    !ts.isIdentifier(declaration.name) ||
+    !declaration.initializer ||
+    !(statement.declarationList.flags & ts.NodeFlags.Const) ||
+    declaration.getStart(sourceFile) > useNode.getStart(sourceFile)
+  )
+    return undefined;
+  return declaration;
+}
+
+function objectBindingIsUnmutated(binding, sourceFile) {
+  const name = binding.name.text;
+  let safe = true;
+  function visit(node) {
+    if (!safe) return;
+    if (ts.isIdentifier(node) && node.text === name && node !== binding.name) {
+      const parent = node.parent;
+      const isDirectSpread =
+        (ts.isSpreadAssignment(parent) && parent.expression === node) ||
+        (ts.isJsxSpreadAttribute(parent) && parent.expression === node);
+      const isJsxValue =
+        ts.isJsxExpression(parent) &&
+        parent.expression === node &&
+        ts.isJsxAttribute(parent.parent);
+      if (!isDirectSpread && !isJsxValue) safe = false;
+    }
+    node.forEachChild(visit);
+  }
+  visit(sourceFile);
+  return safe;
+}
+
+function resolveStaticObjectProperties(
+  expression,
+  sourceFile,
+  activeBindings = new Set(),
+) {
+  const value = unwrapStaticExpression(expression);
+  if (ts.isIdentifier(value)) {
+    const binding = findConstBinding(value.text, sourceFile, value);
+    if (
+      !binding ||
+      activeBindings.has(binding) ||
+      !objectBindingIsUnmutated(binding, sourceFile)
+    )
+      return { known: false, properties: [] };
+    return resolveStaticObjectProperties(
+      binding.initializer,
+      sourceFile,
+      new Set([...activeBindings, binding]),
+    );
+  }
+  if (!ts.isObjectLiteralExpression(value))
+    return { known: false, properties: [] };
+  const properties = [];
+  for (const property of value.properties) {
+    if (ts.isSpreadAssignment(property)) {
+      const spread = resolveStaticObjectProperties(
+        property.expression,
+        sourceFile,
+        activeBindings,
+      );
+      if (!spread.known) return { known: false, properties: [] };
+      properties.push(...spread.properties);
+      continue;
+    }
+    if (ts.isPropertyAssignment(property)) {
+      const name = staticPropertyName(property.name);
+      if (name === undefined) return { known: false, properties: [] };
+      properties.push({ name, expression: property.initializer });
+      continue;
+    }
+    if (ts.isShorthandPropertyAssignment(property)) {
+      properties.push({ name: property.name.text, expression: property.name });
+      continue;
+    }
+    return { known: false, properties: [] };
+  }
+  return { known: true, properties };
+}
+
+function resolveStaticValue(
+  expression,
+  sourceFile,
+  activeBindings = new Set(),
+) {
+  const value = unwrapStaticExpression(expression);
+  if (ts.isStringLiteral(value) || ts.isNoSubstitutionTemplateLiteral(value))
+    return { known: true, value: value.text };
+  if (ts.isNumericLiteral(value))
+    return { known: true, value: Number(value.text) };
+  if (value.kind === ts.SyntaxKind.TrueKeyword)
+    return { known: true, value: true };
+  if (value.kind === ts.SyntaxKind.FalseKeyword)
+    return { known: true, value: false };
+  if (value.kind === ts.SyntaxKind.NullKeyword)
+    return { known: true, value: null };
+  if (ts.isIdentifier(value)) {
+    const binding = findConstBinding(value.text, sourceFile, value);
+    if (!binding || activeBindings.has(binding))
+      return { known: false, value: undefined };
+    const resolved = resolveStaticValue(
+      binding.initializer,
+      sourceFile,
+      new Set([...activeBindings, binding]),
+    );
+    if (
+      resolved.known &&
+      resolved.value !== null &&
+      typeof resolved.value === "object" &&
+      !objectBindingIsUnmutated(binding, sourceFile)
+    )
+      return { known: false, value: undefined };
+    return resolved;
+  }
+  if (ts.isObjectLiteralExpression(value)) {
+    const properties = resolveStaticObjectProperties(
+      value,
+      sourceFile,
+      activeBindings,
+    );
+    return properties.known
+      ? {
+          known: true,
+          value: { kind: "object", properties: properties.properties },
+        }
+      : { known: false, value: undefined };
+  }
+  return { known: false, value: undefined };
+}
+
+function resolveAlertPaintProps(node, sourceFile) {
+  const state = new Map(
+    alertPaintProps.map((name) => [name, { kind: "absent" }]),
+  );
+  const attributes = ts.isJsxElement(node)
+    ? node.openingElement.attributes
+    : node.attributes;
+  function apply(name, expression) {
+    if (!alertPaintProps.includes(name)) return;
+    const result = expression
+      ? resolveStaticValue(expression, sourceFile)
+      : { known: true, value: true };
+    state.set(
+      name,
+      result.known
+        ? { kind: "known", value: result.value }
+        : { kind: "unknown" },
+    );
+  }
+  for (const attribute of attributes.properties) {
+    if (ts.isJsxSpreadAttribute(attribute)) {
+      const spread = resolveStaticObjectProperties(
+        attribute.expression,
+        sourceFile,
+      );
+      if (!spread.known) {
+        for (const name of alertPaintProps)
+          state.set(name, { kind: "unknown" });
+        continue;
+      }
+      for (const property of spread.properties)
+        apply(property.name, property.expression);
+      continue;
+    }
+    if (!ts.isJsxAttribute(attribute)) continue;
+    const name = attribute.name.getText(sourceFile);
+    if (!alertPaintProps.includes(name)) continue;
+    const initializer = attribute.initializer;
+    const expression =
+      initializer && ts.isJsxExpression(initializer)
+        ? initializer.expression
+        : initializer;
+    apply(name, expression);
+  }
+  return state;
+}
+
+function classNameMayChangeAlertPaint(className, tokenNames) {
+  if (className === null || className === undefined) return false;
+  if (typeof className !== "string") return true;
+  const nonColorTextUtilities = new Set([
+    "text-left",
+    "text-center",
+    "text-right",
+    "text-justify",
+    "text-start",
+    "text-end",
+    "text-wrap",
+    "text-nowrap",
+    "text-balance",
+    "text-pretty",
+    "text-ellipsis",
+    "text-clip",
+    "text-xs",
+    "text-sm",
+    "text-base",
+    "text-lg",
+    "text-xl",
+  ]);
+  for (const raw of className.split(/\s+/u).filter(Boolean)) {
+    const parsed = parseClassToken(raw);
+    const foreground = parseForegroundUtility(parsed, tokenNames);
+    if (foreground?.name || foreground?.unsupported) return true;
+    if (
+      parsed.utility.startsWith("text-") &&
+      !nonColorTextUtilities.has(parsed.utility) &&
+      !/^text-\d+xl$/u.test(parsed.utility) &&
+      !/^text-\[(?:length:)?-?\d+(?:\.\d+)?(?:px|rem|em|vh|vw|%)\]$/u.test(
+        parsed.utility,
+      )
+    )
+      return true;
+    if (
+      parsed.utility.startsWith("bg-") ||
+      /^\[(?:color|background(?:-color)?|opacity|mix-blend-mode|filter|--color-[^:]+):/u.test(
+        parsed.utility,
+      ) ||
+      /^(?:opacity|mix-blend|filter|brightness|contrast|invert|saturate|sepia|hue-rotate|backdrop|fill-|stroke-)/u.test(
+        parsed.utility,
+      )
+    )
+      return true;
+  }
+  return false;
+}
+
+function styleMayChangeAlertPaint(style, sourceFile) {
+  if (style === null || style === undefined) return false;
+  if (!style || typeof style !== "object" || style.kind !== "object")
+    return true;
+  for (const property of style.properties) {
+    const normalized = property.name.replaceAll("-", "").toLowerCase();
+    if (
+      property.name.startsWith("--") ||
+      normalized === "color" ||
+      normalized.startsWith("background") ||
+      [
+        "opacity",
+        "filter",
+        "mixblendmode",
+        "webkittextfillcolor",
+        "fill",
+        "stroke",
+        "textshadow",
+        "mask",
+        "maskimage",
+      ].includes(normalized)
+    ) {
+      const value = resolveStaticValue(property.expression, sourceFile);
+      if (!value.known || (value.value !== null && value.value !== undefined))
+        return true;
+    }
+  }
+  return false;
 }
 
 export function observeInheritedForegroundSurfaces(sourcePaths, tokenNames) {
@@ -2180,6 +2649,83 @@ export function observeInheritedForegroundSurfaces(sourcePaths, tokenNames) {
       for (const [callerPath, sourceFile] of sourceFilesByPath) {
         if (/\.(?:test|spec)\.(?:tsx|jsx)$/u.test(callerPath)) continue;
         const imports = importsByPath.get(callerPath) ?? new Map();
+        let lazyTargets;
+        function lazyImportedTarget(localName) {
+          if (!lazyTargets) {
+            lazyTargets = new Map();
+            const declarations = [];
+            function findVariableDeclarations(node) {
+              if (ts.isVariableDeclaration(node)) declarations.push(node);
+              node.forEachChild(findVariableDeclarations);
+            }
+            findVariableDeclarations(sourceFile);
+            const loaders = new Map();
+            for (const statement of sourceFile.statements) {
+              if (!ts.isFunctionDeclaration(statement) || !statement.name)
+                continue;
+              const specifiers = [];
+              function findDynamicImport(node) {
+                if (
+                  ts.isCallExpression(node) &&
+                  node.expression.kind === ts.SyntaxKind.ImportKeyword &&
+                  node.arguments.length === 1 &&
+                  ts.isStringLiteral(node.arguments[0])
+                )
+                  specifiers.push(node.arguments[0].text);
+                node.forEachChild(findDynamicImport);
+              }
+              if (statement.body) findDynamicImport(statement.body);
+              if (specifiers.length === 1) {
+                const resolved = path
+                  .relative(
+                    repoRoot,
+                    path.resolve(
+                      path.dirname(path.join(repoRoot, callerPath)),
+                      specifiers[0],
+                    ),
+                  )
+                  .replaceAll(path.sep, "/");
+                const targetPath = [
+                  resolved,
+                  `${resolved}.tsx`,
+                  `${resolved}.ts`,
+                ].find((candidate) => sourceFilesByPath.has(candidate));
+                if (targetPath)
+                  loaders.set(statement.name.text, {
+                    file: targetPath,
+                    symbol: "default",
+                  });
+              }
+            }
+            for (const declaration of declarations) {
+              if (!declaration.initializer) continue;
+              const foundLoaders = new Set();
+              function findLazyLoader(node) {
+                if (
+                  ts.isCallExpression(node) &&
+                  ts.isIdentifier(node.expression) &&
+                  node.expression.text === "lazy" &&
+                  node.arguments[0] &&
+                  ts.isIdentifier(node.arguments[0])
+                )
+                  foundLoaders.add(node.arguments[0].text);
+                node.forEachChild(findLazyLoader);
+              }
+              findLazyLoader(declaration.initializer);
+              if (foundLoaders.size !== 1) continue;
+              const target = loaders.get([...foundLoaders][0]);
+              if (!target) continue;
+              const names = [];
+              function collectNames(node) {
+                if (ts.isIdentifier(node)) names.push(node.text);
+                node.forEachChild(collectNames);
+              }
+              collectNames(declaration.name);
+              for (const name of names) lazyTargets.set(name, target);
+            }
+          }
+          return lazyTargets.get(localName);
+        }
         function find(
           node,
           ancestors,
@@ -2214,7 +2760,7 @@ export function observeInheritedForegroundSurfaces(sourcePaths, tokenNames) {
               ? node.openingElement.tagName.getText(sourceFile)
               : node.tagName.getText(sourceFile);
             nextPath = [...currentPath, `${tag}[${siblingIndex}]`];
-            const imported = imports.get(tag);
+            const imported = imports.get(tag) ?? lazyImportedTarget(tag);
             const attributes = ts.isJsxElement(node)
               ? node.openingElement.attributes
               : node.attributes;
@@ -2239,7 +2785,10 @@ export function observeInheritedForegroundSurfaces(sourcePaths, tokenNames) {
           const calledImport =
             ts.isCallExpression(node) &&
             ts.isIdentifier(node.expression) &&
-            matchesTarget(imports.get(node.expression.text));
+            matchesTarget(
+              imports.get(node.expression.text) ??
+                lazyImportedTarget(node.expression.text),
+            );
           const calledLocalFunction =
             callerPath === target.file &&
             ts.isCallExpression(node) &&
@@ -3226,6 +3775,321 @@ export function observeInheritedForegroundSurfaces(sourcePaths, tokenNames) {
       }
       unresolved.delete(occurrenceId);
     }
+    {
+      const alertPath = "packages/ui/src/components/alert.tsx";
+      const alertSourceFile = sourceFilesByPath.get(alertPath);
+      if (alertSourceFile) {
+        const variantClasses = new Map();
+        let baseClassText;
+        function findAlertVariants(node) {
+          if (
+            ts.isVariableDeclaration(node) &&
+            ts.isIdentifier(node.name) &&
+            node.name.text === "alertVariants" &&
+            node.initializer &&
+            ts.isCallExpression(node.initializer)
+          ) {
+            const config = node.initializer.arguments[1];
+            const base = node.initializer.arguments[0];
+            if (base && ts.isStringLiteral(base)) baseClassText = base.text;
+            if (!config || !ts.isObjectLiteralExpression(config)) return;
+            const variantsProperty = config.properties.find(
+              (property) =>
+                ts.isPropertyAssignment(property) &&
+                property.name.getText(alertSourceFile).replaceAll('"', "") ===
+                  "variants",
+            );
+            if (
+              !variantsProperty ||
+              !ts.isPropertyAssignment(variantsProperty) ||
+              !ts.isObjectLiteralExpression(variantsProperty.initializer)
+            )
+              return;
+            const variantProperty =
+              variantsProperty.initializer.properties.find(
+                (property) =>
+                  ts.isPropertyAssignment(property) &&
+                  property.name.getText(alertSourceFile).replaceAll('"', "") ===
+                    "variant",
+              );
+            if (
+              !variantProperty ||
+              !ts.isPropertyAssignment(variantProperty) ||
+              !ts.isObjectLiteralExpression(variantProperty.initializer)
+            )
+              return;
+            for (const property of variantProperty.initializer.properties) {
+              if (
+                ts.isPropertyAssignment(property) &&
+                (ts.isIdentifier(property.name) ||
+                  ts.isStringLiteral(property.name)) &&
+                ts.isStringLiteral(property.initializer)
+              )
+                variantClasses.set(
+                  property.name.text,
+                  property.initializer.text,
+                );
+            }
+          }
+          node.forEachChild(findAlertVariants);
+        }
+        findAlertVariants(alertSourceFile);
+        const alertCalls = componentCallSites({
+          file: alertPath,
+          symbol: "Alert",
+        });
+        for (const call of alertCalls) {
+          const callerFile = sourceFilesByPath.get(call.callerPath);
+          const props = resolveAlertPaintProps(call.node, callerFile);
+          const variantState = props.get("variant");
+          const classNameState = props.get("className");
+          const styleState = props.get("style");
+          let unresolvedProp;
+          if (variantState.kind === "unknown")
+            unresolvedProp =
+              "variant has unknown spread or expression provenance";
+          else if (
+            classNameState.kind === "unknown" ||
+            classNameMayChangeAlertPaint(classNameState.value, tokenNames)
+          )
+            unresolvedProp =
+              "className paint effects are unknown or color-affecting";
+          else if (
+            styleState.kind === "unknown" ||
+            styleMayChangeAlertPaint(styleState.value, callerFile)
+          )
+            unresolvedProp =
+              "style paint effects are unknown or color-affecting";
+          const variantValue =
+            variantState.kind === "absent" || variantState.value === undefined
+              ? "default"
+              : variantState.value;
+          const nullVariant = variantValue === null;
+          const variant = nullVariant ? "null" : variantValue;
+          const classText = nullVariant
+            ? baseClassText
+            : typeof variant === "string"
+              ? variantClasses.get(variant)
+              : undefined;
+          const entries =
+            !nullVariant && classText
+              ? classText
+                  .split(/\s+/u)
+                  .map(parseClassToken)
+                  .filter((token) => token.utility.startsWith("bg-"))
+              : [];
+          const foreground = classText
+            ?.split(/\s+/u)
+            .map(parseClassToken)
+            .map((token) => parseForegroundUtility(token, tokenNames))
+            .find(Boolean);
+          const occurrenceId = `${call.callerPath}::${call.owner ?? "<module>"}::Alert[${call.path.join("/")}]`;
+          if (
+            unresolvedProp ||
+            (!nullVariant &&
+              (typeof variant !== "string" ||
+                !classText ||
+                entries.length === 0)) ||
+            (nullVariant && !baseClassText) ||
+            !foreground ||
+            foreground.unsupported
+          ) {
+            unresolved.set(occurrenceId, {
+              id: occurrenceId,
+              usage: call.callerPath,
+              component: "Alert",
+              ancestry: call.path,
+              foregroundClass: foreground?.className ?? "text-card-foreground",
+              reason:
+                unresolvedProp ??
+                "Alert variant must resolve to a literal supported surface.",
+            });
+            continue;
+          }
+          if (nullVariant) {
+            const surfaces = callerSurface(call);
+            if (!surfaces || surfaces.length === 0) {
+              for (const theme of ["light", "dark"])
+                unresolved.set(`${occurrenceId}|${theme}`, {
+                  id: `${occurrenceId}|${theme}`,
+                  usage: call.callerPath,
+                  component: "Alert",
+                  ancestry: call.path,
+                  foregroundClass: foreground.className,
+                  reason: `Alert null variant has no source-bound opaque caller backdrop in ${theme} mode.`,
+                });
+              continue;
+            }
+            for (const surface of surfaces) {
+              const backgroundClass = surface.className;
+              const backgroundName = backgroundClass.match(
+                /^bg-([a-z0-9-]+)(?:\/\d+)?$/u,
+              )?.[1];
+              if (
+                !backgroundName ||
+                !tokenNames.has(backgroundName) ||
+                !opaqueBackground(parseClassToken(backgroundClass))
+              ) {
+                for (const theme of ["light", "dark"])
+                  unresolved.set(`${occurrenceId}|${theme}`, {
+                    id: `${occurrenceId}|${theme}`,
+                    usage: call.callerPath,
+                    component: "Alert",
+                    ancestry: call.path,
+                    foregroundClass: foreground.className,
+                    reason:
+                      "Alert null variant caller backdrop is unresolved or translucent.",
+                  });
+                continue;
+              }
+              for (const theme of surface.themes ?? ["light", "dark"]) {
+                if (!classAvailableInTheme(backgroundClass, theme)) continue;
+                const key = contrastPairKey(
+                  `--color-${foreground.name}`,
+                  `--color-${backgroundName}`,
+                  backgroundClass,
+                  theme,
+                  foreground.className,
+                  surface.backdropLayers ?? [],
+                );
+                pairs.add(key);
+                uses.add(`${call.callerPath}|${key}`);
+                callerUses.add(`${occurrenceId}|${key}`);
+                const contexts = uses.occurrences?.get(key) ?? [];
+                contexts.push({
+                  id: occurrenceId,
+                  usage: call.callerPath,
+                  component: "Alert",
+                  foregroundClass: foreground.className,
+                  backgroundClass,
+                  backdropClass: surface.backdropClass ?? backgroundClass,
+                  backdropLayers: surface.backdropLayers ?? [],
+                  surfaceContext: "caller-chain",
+                  category: "body",
+                  chain: [
+                    `${alertPath}:alertVariants[variant=null]`,
+                    `${call.callerPath}:${call.owner ?? "<module>"}`,
+                    `jsx:${call.path.join("/")}`,
+                    ...(surface.chain ?? []),
+                  ],
+                });
+                const occurrenceUses = uses.occurrences ?? new Map();
+                occurrenceUses.set(key, contexts);
+                uses.occurrences = occurrenceUses;
+              }
+            }
+            continue;
+          }
+          for (const theme of ["light", "dark"]) {
+            const darkOverride =
+              theme === "dark" &&
+              entries.some((item) => item.variants.includes("dark"));
+            const activeEntries = entries.filter(
+              (item) => item.variants.includes("dark") === darkOverride,
+            );
+            for (const entry of activeEntries) {
+              const rawSurfaceName = entry.utility.match(
+                /^bg-([a-z0-9-]+)(?:\/\d+)?$/u,
+              )?.[1];
+              if (!rawSurfaceName) {
+                unresolved.set(`${occurrenceId}|${theme}`, {
+                  id: `${occurrenceId}|${theme}`,
+                  usage: call.callerPath,
+                  component: "Alert",
+                  ancestry: call.path,
+                  foregroundClass: foreground.className,
+                  reason: "Alert surface token is not registered.",
+                });
+                continue;
+              }
+              const backgroundClass = entry.className;
+              const pending = [
+                {
+                  className: backgroundClass,
+                  themes: [theme],
+                  backdropLayers: [],
+                  chain: [
+                    `${alertPath}:alertVariants[${variant}]`,
+                    `${call.callerPath}:${call.owner ?? "<module>"}`,
+                    `jsx:${call.path.join("/")}`,
+                  ],
+                },
+              ];
+              const surfaces = callerSurface(call, new Set(), 0, pending);
+              if (!surfaces || surfaces.length === 0) {
+                unresolved.set(`${occurrenceId}|${theme}`, {
+                  id: `${occurrenceId}|${theme}`,
+                  usage: call.callerPath,
+                  component: "Alert",
+                  ancestry: call.path,
+                  foregroundClass: foreground.className,
+                  reason: `Alert ${variant} has no source-bound opaque caller backdrop in ${theme} mode.`,
+                });
+                continue;
+              }
+              for (const surface of surfaces) {
+                const backdrop = surface.backdropClass;
+                if (!backdrop || !opaqueBackground(parseClassToken(backdrop))) {
+                  unresolved.set(`${occurrenceId}|${theme}`, {
+                    id: `${occurrenceId}|${theme}`,
+                    usage: call.callerPath,
+                    component: "Alert",
+                    ancestry: call.path,
+                    foregroundClass: foreground.className,
+                    reason: `Alert ${variant} caller backdrop is unresolved or translucent in ${theme} mode.`,
+                  });
+                  continue;
+                }
+                const surfaceName =
+                  rawSurfaceName === "transparent"
+                    ? backdrop.match(/^bg-([a-z0-9-]+)(?:\/\d+)?$/u)?.[1]
+                    : rawSurfaceName;
+                if (!surfaceName || !tokenNames.has(surfaceName)) {
+                  unresolved.set(`${occurrenceId}|${theme}`, {
+                    id: `${occurrenceId}|${theme}`,
+                    usage: call.callerPath,
+                    component: "Alert",
+                    ancestry: call.path,
+                    foregroundClass: foreground.className,
+                    reason: "Alert effective surface token is not registered.",
+                  });
+                  continue;
+                }
+                const key = contrastPairKey(
+                  `--color-${foreground.name}`,
+                  `--color-${surfaceName}`,
+                  backgroundClass,
+                  theme,
+                  foreground.className,
+                  surface.backdropLayers ?? [backdrop],
+                );
+                pairs.add(key);
+                uses.add(`${call.callerPath}|${key}`);
+                callerUses.add(`${occurrenceId}|${key}`);
+                const contexts = uses.occurrences?.get(key) ?? [];
+                contexts.push({
+                  id: occurrenceId,
+                  usage: call.callerPath,
+                  component: "Alert",
+                  foregroundClass: foreground.className,
+                  backgroundClass,
+                  backdropClass: backdrop,
+                  backdropLayers: surface.backdropLayers ?? [backdrop],
+                  surfaceContext: call.callerPath.endsWith(".stories.tsx")
+                    ? "storybook-body"
+                    : "caller-chain",
+                  category: "body",
+                  chain: surface.chain,
+                });
+                const occurrenceUses = uses.occurrences ?? new Map();
+                occurrenceUses.set(key, contexts);
+                uses.occurrences = occurrenceUses;
+              }
+            }
+          }
+        }
+      }
+    }
   } finally {
     snapshot.dispose();
     parser.close();
@@ -3524,7 +4388,13 @@ async function main() {
   observedPairs.routeUses = inherited.routeUses;
   observedPairs.callerUses = inherited.callerUses;
   observedPairs.directOccurrenceUses = inherited.directOccurrenceUses;
-  observedPairs.occurrences = inherited.uses.occurrences;
+  const sourceOccurrences = observedPairs.occurrences;
+  observedPairs.occurrences = new Map(inherited.uses.occurrences);
+  for (const [key, occurrences] of sourceOccurrences) {
+    const combined = observedPairs.occurrences.get(key) ?? [];
+    combined.push(...occurrences);
+    observedPairs.occurrences.set(key, combined);
+  }
   const failures = validatePairManifest(
     pairs,
     (file) => {
@@ -3760,7 +4630,11 @@ async function main() {
             };
           });
         const background = parseColor(values.bg);
-        if (pair.backgroundClass?.[theme] && background[3] === 0) {
+        if (
+          pair.backgroundClass?.[theme] &&
+          background[3] === 0 &&
+          surfaceClass !== "bg-transparent"
+        ) {
           failures.push(
             violation(
               manifestPath,

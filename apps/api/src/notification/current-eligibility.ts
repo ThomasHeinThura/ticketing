@@ -185,6 +185,11 @@ export async function evaluateCurrentNotificationReachAndPreference(
     (binding.projectId !== null && resource.projectId !== binding.projectId)
   )
     return { kind: "suppress", reason: "resource_scope_changed" };
+  if (
+    delivery.eventKind === "work_item.mentioned" &&
+    binding.payload.mentionedPersonId !== identity.personId
+  )
+    return { kind: "suppress", reason: "mention_recipient_mismatch" };
   if (identity.side === "customer" && !resource.customerVisible)
     return { kind: "suppress", reason: "resource_not_customer_visible" };
 
@@ -202,7 +207,9 @@ export async function evaluateCurrentNotificationReachAndPreference(
       projectId: resource.projectId,
       workspaceId: resource.workspaceId,
       organisationId: resource.organisationId,
-      visibleToPersonIds: resource.visibleToPersonIds,
+      // Private customer visibility does not remove staff project reach.
+      visibleToPersonIds:
+        identity.side === "customer" ? resource.visibleToPersonIds : null,
     };
     if (!reaches(identity, reachFacts))
       return { kind: "suppress", reason: "reach_lost" };

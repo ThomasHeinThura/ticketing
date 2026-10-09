@@ -62,6 +62,10 @@ import updateWorkItem, {
 } from "./controllers/update-work-item";
 import { unwatchWorkItem, watchWorkItem } from "./controllers/watch-work-item";
 import {
+  classifyWorkItemMentionPeople,
+  findWorkItemMentionContext,
+} from "./mention-access";
+import {
   findPersonByUserIdQuery,
   findPersonIdByUserIdQuery,
   findStaffPersonOnProjectRosterQuery,
@@ -73,6 +77,8 @@ import {
   assignablePeopleSchema,
   assignWorkItemResponseSchema,
   bulkWorkItemsResponseSchema,
+  commentMentionCandidatesSchema,
+  commentMentionPreflightResponseSchema,
   deletedWorkItemSchema,
   rankWorkItemResponseSchema,
   transitionedWorkItemSchema,
@@ -92,6 +98,8 @@ import {
 import {
   assignWorkItemBody,
   bulkWorkItemsBody,
+  commentMentionCandidatesQuery,
+  commentMentionPreflightBody,
   createWorkItemBody,
   ifMatchHeader,
   listWorkItemActivityQuery,
@@ -415,7 +423,8 @@ const getWorkItemRoute = createRoute({
   path: "/work-items/{key}",
   tags: ["Work items"],
   summary: "Get work item",
-  description: "Get a single work item by its permanent key, e.g. PROJ-123.",
+  description:
+    "Get a single work item by its permanent key, e.g. PROJ-123, including its project's CA-2 comment visibility default.",
   middleware: [
     requireWorkItemReach("key", { requireProjectReach: true }),
   ] as const,
@@ -833,7 +842,9 @@ const listWorkItemActivityRoute = createRoute({
     'table row (issue #292) or `"comment"` for a posted `comment` row (issue #452) -- ' +
     "merged and sorted together, not two separate lists. Every row is returned " +
     "regardless of `visibility` -- see the controller's own doc comment for why no " +
-    "caller-type filtering is applied yet.",
+    "caller-type filtering is applied yet. A tombstone includes its `deletedBy` actor id. " +
+    "Version history uses a separate bounded route, fetched only when expanded. The " +
+    "projection uses this route's existing work_item:read and work-item reach checks.",
   middleware: [
     requireWorkItemReach("key", { requireProjectReach: true }),
   ] as const,
@@ -996,6 +1007,64 @@ const createCommentRoute = createRoute({
   },
 });
 
+const commentMentionCandidatesRoute = createRoute({
+  method: "get",
+  operationId: "listWorkItemCommentMentionCandidates",
+  path: "/work-items/{key}/comments/mention-candidates",
+  tags: ["Comments"],
+  summary: "List work-item comment mention candidates",
+  description:
+    "List people in this work item's workspace who can be considered for a comment mention. " +
+    "Customer candidates are available only for public comments and only when they currently " +
+    "reach this work item.",
+  middleware: [
+    requireWorkItemReach("key", { requireProjectReach: true }),
+  ] as const,
+  request: {
+    params: workItemKeyParam,
+    query: commentMentionCandidatesQuery,
+  },
+  responses: {
+    200: jsonResponse(
+      "Scoped comment mention candidates",
+      commentMentionCandidatesSchema,
+    ),
+    400: errorResponse("Invalid comment visibility"),
+    403: errorResponse("Missing work_item:read permission"),
+    404: errorResponse("Work item not found"),
+  },
+});
+
+const commentMentionPreflightRoute = createRoute({
+  method: "post",
+  operationId: "preflightWorkItemCommentMentions",
+  path: "/work-items/{key}/comments/mention-preflight",
+  tags: ["Comments"],
+  summary: "Check work-item comment mention reach",
+  description:
+    "Return selected person ids split by current work-item reach. Unknown, inactive, " +
+    "non-member and out-of-scope ids are indistinguishable from inaccessible people.",
+  middleware: [
+    requireWorkItemReach("key", { requireProjectReach: true }),
+  ] as const,
+  request: {
+    params: workItemKeyParam,
+    body: {
+      required: true,
+      content: { "application/json": { schema: commentMentionPreflightBody } },
+    },
+  },
+  responses: {
+    200: jsonResponse(
+      "Mention reach preflight",
+      commentMentionPreflightResponseSchema,
+    ),
+    400: errorResponse("Invalid body"),
+    403: errorResponse("Missing work_item:read permission"),
+    404: errorResponse("Work item not found"),
+  },
+});
+
 const updateCommentRoute = createRoute({
   method: "patch",
   operationId: "updateWorkItemComment",
@@ -1005,7 +1074,8 @@ const updateCommentRoute = createRoute({
   description:
     "Edit a comment's body (`CA-17`). The author may edit within 15 minutes of " +
     "posting (`comment:update_own`); `comment:update_any` edits anyone's, any time. " +
-    "Visibility cannot be changed (`CA-4`) -- this route has no `visibility` field.",
+    "Omitting `body` is a write-free no-op after those checks. Visibility cannot be " +
+    "changed (`CA-4`) -- this route has no `visibility` field.",
   middleware: [requireCommentReach()] as const,
   request: {
     params: commentIdParam,
@@ -1596,11 +1666,68 @@ const workItem = apiRouter<
     );
     return c.json(created, 200);
   })
+  .openapi(commentMentionCandidatesRoute, async (c) => {
+    const { visibility } = c.req.valid("query");
+    const candidates = await db.transaction(async (tx) => {
+      const context = await findWorkItemMentionContext(tx, c.get("workItemId"));
+      if (!context || context.workspaceId !== c.get("workspaceId")) {
+        throw new HTTPException(404, { message: "Work item not found" });
+      }
+      return classifyWorkItemMentionPeople(tx, context, undefined, visibility);
+    });
+    return c.json(
+      candidates.map(({ personId, name, image, side, reachable }) => ({
+        personId,
+        name,
+        image,
+        side,
+        reachable,
+      })),
+      200,
+    );
+  })
+  .openapi(commentMentionPreflightRoute, async (c) => {
+    const { personIds, visibility } = c.req.valid("json");
+    const requestedIds = [...new Set(personIds)];
+    const candidates = await db.transaction(async (tx) => {
+      const context = await findWorkItemMentionContext(tx, c.get("workItemId"));
+      if (!context || context.workspaceId !== c.get("workspaceId")) {
+        throw new HTTPException(404, { message: "Work item not found" });
+      }
+      return classifyWorkItemMentionPeople(
+        tx,
+        context,
+        requestedIds,
+        visibility,
+        { includeUnreachableCustomers: true },
+      );
+    });
+    const reachable = new Set(
+      candidates
+        .filter((candidate) => candidate.reachable)
+        .map((candidate) => candidate.personId),
+    );
+    return c.json(
+      {
+        reachablePersonIds: requestedIds.filter((id) => reachable.has(id)),
+        unreachablePersonIds: requestedIds.filter((id) => !reachable.has(id)),
+      },
+      200,
+    );
+  })
   .openapi(updateCommentRoute, async (c) => {
     const { id } = c.req.valid("param");
     const workspaceId = c.get("workspaceId");
     const { body } = c.req.valid("json");
-    const updated = await updateComment(id, workspaceId, c.get("userId"), body);
+    const userId = c.get("userId");
+    const [person] = await findPersonIdByUserIdQuery(db, userId);
+    const updated = await updateComment(
+      id,
+      workspaceId,
+      userId,
+      body,
+      person?.id ?? null,
+    );
     return c.json(updated, 200);
   })
   .openapi(deleteCommentRoute, async (c) => {

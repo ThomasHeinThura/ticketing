@@ -20,8 +20,10 @@ is usually in a comment three lines above the change, and splitting them destroy
 - `comment` — `work_item_id`, `author_id`, `actor_type`, `body jsonb`, `visibility`
   (`public`\|`internal`), `activity_id` null, `edited_at`, `deleted_at`/`deleted_by` (the
   `CA-18` tombstone).
-- `comment_version` — `comment_id`, `number`, `body jsonb`, `edited_by`, `created_at` — the
-  edit history `CA-17` renders.
+- `comment_version` — `comment_id`, `number`, `body jsonb`, `edited_by` (the editor's
+  `person.id`, nullable when no linked person exists), `created_at` — the edit history
+  `CA-17` renders. Historical rows may still contain the user id written by older builds;
+  readers resolve either stored id without rewriting the row.
 - `activity` — `work_item_id`, `actor_id`, `actor_type`, `verb`, `field`, `old_value`,
   `new_value`, `payload jsonb`, `visibility`, `workflow_version_id` null, `created_at`.
 - `canned_response` — `workspace_id`, `name`, `body jsonb`, `visibility_default`,
@@ -94,8 +96,28 @@ security-sensitive field in the product.
   **10,000 nodes**; a comment over either limit is rejected with the standard 422
   validation contract ([api-design.md](../01-architecture/api-design.md) "Errors" —
   `errors[]` gives field-level detail, `path: "body"`).
-- `CA-12` `@mention` a person to notify them and add them as a watcher. Mentioning someone
-  without reach on the work item warns and does not notify.
+- `CA-12` `@mention` a person to notify them and add them as a watcher. The mention picker
+  and its preflight are scoped to the current work item's workspace and require the caller's
+  current `work_item:read` access to that work item. Before save, the composer submits the
+  selected person ids to the preflight and displays a warning for each selected person who
+  currently cannot reach the work item. The warning does not block the comment: the saved
+  body retains the mention, but the person is not added as a watcher and receives no
+  notification. The preflight is advisory; the comment write repeats recipient identity,
+  workspace, and current work-item reach checks inside the same transaction as the comment,
+  watcher and event writes. A person whose reach changed after preflight is treated as
+  unreachable at save time.
+
+  Each newly mentioned, reachable person is inserted as an explicit watcher only when no
+  watcher row already exists. An existing watcher row is preserved exactly, including its
+  `source` and `muted` value: mentioning someone never unmutes them. On comment creation,
+  the author is not notified about their own mention. Each distinct reachable mentioned
+  person gets one
+  `work_item.mentioned` event carrying `mentionedPersonId` and, for a comment mention,
+  `commentId`; that event, the comment and watcher changes commit atomically. The registered
+  event recipient is only the named person, and normal notification preference and delivery
+  checks still apply. Mention parsing reads `taskdeskMention` nodes from the stored Tiptap
+  document; text, labels, Markdown lookalikes and arbitrary JSON fields do not identify a
+  recipient.
 - `CA-13` A customer cannot be mentioned in an internal comment. The picker excludes them.
 - `CA-14` `#SUP-123` links a work item inline, rendering key, title and state.
 - `CA-15` Pasting or dropping an image uploads it as an attachment and inserts a
@@ -104,10 +126,20 @@ security-sensitive field in the product.
   `localStorage`, and therefore per device: a draft started on one device is not visible
   on another.
 - `CA-17` Editing is allowed for 15 minutes by the author. After that window, editing is
-  **refused** — a 403 — unless the actor holds `comment:update_any`. Each edit writes a new
-  `comment_version (comment_id, number, body, edited_by, created_at)` row
-  ([data-model.md](../01-architecture/data-model.md) §4); the comment shows "edited" with a
-  hover-revealed history built from those versions.
+  **refused** — a 403 — unless the actor holds `comment:update_any`. The PATCH request may
+  omit `body`; after the normal reach, live-parent, and edit-permission checks, an omitted
+  body returns the existing comment without writing a version or changing `body` or
+  `edited_at`. Supplying `body` replaces it and writes the prior body to comment history.
+  The existing opaque JSON/legacy-string body contract is unchanged. Each edit writes a new
+  `comment_version (comment_id, number, body, edited_by, created_at)` row, where new
+  `edited_by` values are the linked editor `person.id` (null when no person is linked)
+  ([data-model.md](../01-architecture/data-model.md) §4). Older rows may contain the
+  user id stored by earlier builds; they remain unchanged and readers resolve both forms.
+  The comment shows "edited" with an expandable history built from those versions. History
+  is fetched only when opened, in bounded cursor pages, so one activity page never expands
+  every prior body. See the read contract below. History inherits the parent comment's
+  immutable visibility and the existing work-item reach/read policy; it never gives a caller
+  access to a comment they could not already read.
 - `CA-18` Deleting sets `comment.deleted_at` / `deleted_by` and clears the body; the row and
   its activity stay, and the tombstone renders from those two columns — "Comment deleted by
   Jane, 2 March" — never a
@@ -159,6 +191,10 @@ last being how a staff member checks what the customer has actually seen.
 ```
 GET    /api/work-items/{key}/activity          work_item:read
 POST   /api/work-items/{key}/comments          comment:create | comment:create_internal
+GET    /api/work-items/{key}/comments/mention-candidates
+                                                work_item:read, current work-item reach
+POST   /api/work-items/{key}/comments/mention-preflight
+                                                work_item:read, current work-item reach
 PATCH  /api/comments/{id}                      comment:update_any, or comment:update_own
                                                 (owner, within 15 minutes)
 DELETE /api/comments/{id}                      comment:delete_any, or comment:delete_own
@@ -169,6 +205,59 @@ POST   /api/canned-responses                   workspace:manage_settings
 PATCH  /api/canned-responses/{id}              workspace:manage_settings
 DELETE /api/canned-responses/{id}              workspace:manage_settings
 ```
+
+The activity response keeps its existing `{ data, page }` envelope and flat row shape. It
+does not embed comment versions. An edited live comment exposes its history through the
+agent-side `GET /api/work-items/{key}/comments/{id}/versions` read below; no portal history
+route exists. The route uses the existing `work_item:read` capability and the same
+project/work-item reach check as activity. It confirms that the live comment belongs to the
+path work item before reading versions; missing, mismatched, deleted, archived, or
+out-of-reach parents return the same `404`. A tombstone never exposes versions. Each returned
+row contains only the persisted version number, body document, editor person id (nullable),
+and creation timestamp. The immutable parent visibility is unchanged. The separate portal
+activity projection continues to return public comments only and does not call this agent
+history route.
+
+### CA-12 mention preflight
+
+`GET /api/work-items/{key}/comments/mention-candidates?visibility=public|internal` returns
+the permissioned picker list for the addressed work item. It includes current workspace
+staff (including those who lack this particular project's reach, so a deliberate mention
+can be warned) and only customer people whose current organisation/project reach permits
+them to see this work item. Customer people are excluded in internal mode. The response
+contains person id, display name, image, side and current `reachable` status; it never reads
+or exposes another workspace or customer organisation's directory.
+
+`POST /api/work-items/{key}/comments/mention-preflight` accepts a bounded, deduplicated list
+of person ids and returns only the ids that are current workspace people, split into
+`reachablePersonIds` and `unreachablePersonIds`. Unknown, inactive, non-member, and
+cross-workspace ids are returned as unavailable without distinguishing those cases. The
+route requires current `work_item:read` and work-item reach; it does not grant workspace
+membership or reveal people from another workspace. For an internal comment, customer-side
+people are unavailable in accordance with `CA-13`. The composition UI uses this result to
+warn before save. It is not an authorization token: comment creation re-resolves each
+mentioned person and reach under the work-item lock in the comment transaction.
+
+### CA-17 comment-version read pagination
+
+`GET /api/work-items/{key}/comments/{id}/versions` returns `{ data, page: { nextCursor,
+hasMore } }`; it returns no total count. `limit` defaults to 5 and must be 1–10. This
+per-comment bound is intentionally below the general collection ceiling because each
+version body may be 256 KiB under CA-11; even a maximum page is therefore bounded to ten
+version bodies. The UI requests the first page when the user expands history and follows
+`nextCursor` only when the user asks to load earlier versions. It keeps every fetched page
+and renders all fetched rows in ascending `(number, id)` order; no history is silently
+truncated or replaced by a summary.
+
+The cursor is opaque, versioned, and keyset-based. It binds the work-item key, comment id,
+and last `(number, id)` tuple. A malformed cursor or one bound to a different path parent
+returns `400`; it never widens the query. The next page uses strict lexicographic
+continuation and the same ascending `(number, id)` order, so concurrent edits do not shift
+already-read rows. The database's existing unique `(comment_id, number)` constraint is
+preserved; `id` remains the deterministic tie-break. Parent lookup, workspace/project
+reach, `work_item:read`, and live-comment checks occur before reading version rows. The
+route is not mounted in the customer-portal router; the portal's public-only projection is
+unchanged.
 
 The portal endpoint is a separate handler, not the same handler with a filter, so it is
 impossible to leak internal content through a forgotten branch.
@@ -212,7 +301,9 @@ one is present in the DOM.
 
 ## Open questions
 
-None.
+- When an edit adds a new mention to a live comment, should it emit `work_item.mentioned`?
+  The API/event contract for comment-edit mentions remains pending the human decision; the
+  create-comment behavior above is defined.
 
 ## Related
 

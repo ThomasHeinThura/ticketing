@@ -60,8 +60,10 @@ export function useWorkspacePermission(workspaceIdOverride?: string | null) {
   // existing invalidations still match this query.
   const {
     data: capabilities,
-    isLoading,
+    error: permissionError,
+    isError: isPermissionError,
     isFetching,
+    refetch: retryPermissionCheck,
   } = useQuery({
     queryKey: [
       "workspace-capabilities",
@@ -116,12 +118,13 @@ export function useWorkspacePermission(workspaceIdOverride?: string | null) {
     role,
     isOwner: role === "owner",
     isAdmin: role === "owner" || role === "admin",
-    // True while the first capability fetch is in flight. Useful for hiding
-    // action UI during the initial render instead of flashing it on then
-    // off when the server check resolves.
+    // Includes initial loads and permission refreshes so gated actions wait
+    // for the current capability result instead of trusting stale data.
     isCheckingPermissions:
-      Boolean(workspaceId && (usesWorkspaceOverride || role)) &&
-      (isLoading || !capabilities),
+      Boolean(workspaceId && (usesWorkspaceOverride || role)) && isFetching,
+    isPermissionError,
+    permissionError,
+    retryPermissionCheck,
     isRefetchingPermissions: isFetching,
   };
 }

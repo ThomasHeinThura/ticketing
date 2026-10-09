@@ -249,6 +249,18 @@ export const workItemPolicies = {
     scopeSource: "row",
     reach: "required",
   },
+  "GET /api/work-items/{key}/comments/mention-candidates": {
+    capability: "work_item:read",
+    scope: "work_item",
+    scopeSource: "row",
+    reach: "required",
+  },
+  "POST /api/work-items/{key}/comments/mention-preflight": {
+    capability: "work_item:read",
+    scope: "work_item",
+    scopeSource: "row",
+    reach: "required",
+  },
 
   // Re-rank a work item (`WI-11`-`WI-13`). `WI-13`'s customer-organisation-scoped
   // restriction is NOT enforced here -- see `controllers/rank-work-item.ts`'s own doc
@@ -307,6 +319,17 @@ export const workItemPolicies = {
   // row's visibility (`CA-7`) is filtered by this route today; see
   // `controllers/list-work-item-activity.ts`'s own doc comment for why.
   "GET /api/work-items/{key}/activity": {
+    capability: "work_item:read",
+    scope: "work_item",
+    scopeSource: "row",
+    reach: "required",
+  },
+
+  // CA-17's bounded version-history page is a read of an already-reachable live comment.
+  // It uses the parent work item's existing read/reach contract and introduces no new
+  // capability. The handler verifies comment-to-work-item ownership before selecting the
+  // keyset page; the portal uses its separate public-only activity projection.
+  "GET /api/work-items/{key}/comments/{id}/versions": {
     capability: "work_item:read",
     scope: "work_item",
     scopeSource: "row",

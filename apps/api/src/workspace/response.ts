@@ -3,6 +3,10 @@ import { responseTimestamp, z } from "../openapi";
 export const workspaceMemberSchema = z
   .object({
     id: z.string(),
+    personId: z.string().nullable().optional().openapi({
+      description:
+        "The workspace member's linked TaskDesk person identity, if one exists.",
+    }),
     name: z.string(),
     email: z.string(),
     image: z.string().nullable(),
