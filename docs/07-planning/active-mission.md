@@ -49,13 +49,14 @@ dependency graph, shared resources, migration allocation, merge order, release c
 and the one continuation mechanism. A policy maintainer Thomas assigns owns only its policy
 candidate and its handoff.
 
-**Model assignment for this mission** (decision log 2026-10-09, "Mixed-model routing for the
-delivery mission"): a Claude Opus session conducts; Claude Sonnet does bounded implementation
-and independent ordinary review; a fresh Claude Opus context does the required security and
-critical review and the final audit; Claude Haiku may do read-only extraction. Every role is a
-separate, independent context, at the review depth and counts the workflow requires. GPT-6
-Luna and GPT-6 Sol remain valid for their existing roles. Reviews completed under the earlier
-"Opus policy-repair conductor" assignment stay valid for what they covered. See
+**Model assignment for this mission** (decision log 2026-10-09, "Model tiers by
+availability"): use whichever model in the tier is available. **Sol tier** (security and
+critical review, phase finalizer, final audit): GPT-6 / GPT-6.1 Sol or a fresh Claude Opus
+context. **Luna tier** (implementation, ordinary review): GPT-6 Luna, Claude Sonnet or Claude
+Haiku. The conductor is the session Thomas designates. Every role is a separate, independent
+context, at the review depth and counts the workflow requires, labelled with the model that
+actually produced it. Reviews completed under earlier assignments stay valid for what they
+covered. See
 [agent-workflow.md § Model policy](../04-engineering/agent-workflow.md#model-policy).
 
 **Stop condition:** final integrated SIT acceptance plus independent audit are recorded and

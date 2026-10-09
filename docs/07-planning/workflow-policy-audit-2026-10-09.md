@@ -332,3 +332,22 @@ routing — which Thomas confirmed also applies to #615's remaining reviews — 
 ordinary reviews and one fresh Claude Opus security review reviewed it (§11, rows A), all
 CLEAR WITH NON-BLOCKING. The round-5 review set covers everything up to `db071e38`; the conductor confirmed that
 set and the review-record-only delta to `ea30542a`.
+
+## 13 · Model tiers by availability, and the #602 transition
+
+Thomas replaced fixed model routing with tiers chosen by availability. Sol tier is GPT-6 /
+GPT-6.1 Sol or a fresh Claude Opus context. Luna tier is GPT-6 Luna, Claude Sonnet or Claude
+Haiku. A GPT-6 Sol review is no longer specifically required. The decision log, the active
+mission, the model-policy table and the security-review block (which gains `GPT-6.1 Sol`)
+record this.
+
+`main`'s checker (`scripts/ci/check-pr-template.mjs:376`) still accepts only `GPT-6 Sol` for
+security-scope pull requests until #616 lands. Until then, a security-scope PR reviewed only by
+Opus waits for #615 and #616; its review is not relabelled and the check is not lifted.
+
+**Correction.** I first reported a circle here: #602 needing the model-aware checker, while
+#615 and #616 needed #602. Thomas chose to lift the PR-template check for #602 to break it. The
+premise was wrong. #602's security review is a genuine GPT-6 Sol chain
+(`602-p0-scope-clean.md`). The delivery conductor ran `main`'s check on #602's body and found
+five problems, none of them the model label; all five close truthfully once #602's pending
+runtime proof lands. The lift was withdrawn and the ruleset was not changed.
