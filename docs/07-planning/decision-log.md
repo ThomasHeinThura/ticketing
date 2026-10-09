@@ -1,3 +1,13 @@
+### 2026-10-09 · Manual SLA operations affect both metrics atomically
+
+**Decision:** Thomas explicitly approved applying each specified manual SLA pause/resume operation atomically to both response and resolution metrics. Existing conflict rules must roll back the complete operation if either metric conflicts; partial mutation is forbidden.
+
+This approval resolves metric selection only. It does not decide completion/manual-resume continuity, new response fields, audit/event names, migration allocation or acceptance gates. The independent existing SLA lane may implement the defined portion while those separate contract paths remain pending.
+
+**Recorded:** orchestrator from Thomas's explicit answer to `call_e05cf16ed31043d2b561c0df84e44d3a`, item 1, on 2026-10-09.
+
+---
+
 ### 2026-10-09 · Permit a narrow P0 strict-terminal diagnostic witness
 
 **Decision:** Thomas explicitly approves a bounded strict-terminal diagnostic witness to
