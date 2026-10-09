@@ -151,6 +151,38 @@ describe("check:policy end to end", () => {
     );
   });
 
+  it("an AGENTS.md startup order that omits the active mission is RED", () => {
+    const result = runChecker(
+      policyRepo("nomission", (dir) =>
+        write(
+          dir,
+          "AGENTS.md",
+          FILES["AGENTS.md"].replace(
+            "2. [active mission](docs/07-planning/active-mission.md)\n",
+            "",
+          ),
+        ),
+      ),
+      "check-policy.mjs",
+    );
+    assert.equal(result.status, 1, result.output);
+    assert.match(
+      result.output,
+      /must name docs\/07-planning\/active-mission\.md before/,
+    );
+  });
+
+  it("live state in CLAUDE.md is RED", () => {
+    const result = runChecker(
+      policyRepo("claudelive", (dir) =>
+        write(dir, "CLAUDE.md", "# CLAUDE.md\n\nSee #612 for the rest.\n"),
+      ),
+      "check-policy.mjs",
+    );
+    assert.equal(result.status, 1, result.output);
+    assert.match(result.output, /CLAUDE\.md:3/);
+  });
+
   it("no security-review model block is RED", () => {
     const result = runChecker(
       policyRepo("noblock", (dir) =>
