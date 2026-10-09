@@ -42,8 +42,8 @@ count or stage count. That belongs in GitHub, the queue or a dated `status.md` s
 
 When two sources disagree, the higher one wins and the lower one is corrected at its source:
 
-1. **Thomas's explicit current decisions**, recorded in the decision log, within his actual
-   authority. The [active mission](docs/07-planning/active-mission.md) is the standing record
+1. **Thomas's explicit current decisions**, within his actual authority. A direct instruction
+   from Thomas takes effect when given, including in chat; record it in the decision log. The [active mission](docs/07-planning/active-mission.md) is the standing record
    of the current one. Approved specs and ADRs are the authority for **product behaviour**.
 2. **This file** — common policy.
 3. **[agent-workflow.md](docs/04-engineering/agent-workflow.md)** — the canonical execution
@@ -77,8 +77,8 @@ gate's owner and change the gate through its own reviewed change.
 | Role | Who | May | May not |
 | --- | --- | --- | --- |
 | **Owner** | Thomas | Set the mission and scope; decide product questions; waive a gate; approve design (H1–H6); deploy to production | — |
-| **Conductor** | The one session Thomas designates ([active mission](docs/07-planning/active-mission.md)); older text calls it the *orchestrator* or *orchestrating session* | Own the queue, dependency graph, shared resources, migration allocation, merge order, release coordination and the one continuation; perform protected merges once every gate is green | Waive a gate; approve its own work; merge with a red, missing or stale gate |
-| **Lane agent** | Any agent with a bounded assigned task | Branch, commit, push and open a PR for its task without asking again; return a handoff | Merge; edit the queue, scheduler, continuation or a shared contract it was not assigned; declare the program complete |
+| **Conductor** | The one session Thomas designates ([active mission](docs/07-planning/active-mission.md)); older text calls it the *orchestrator* or *orchestrating session* | Own the queue, dependency graph, shared resources, migration allocation, merge order, release coordination and the one continuation; own the control-plane records (`status.md`, decision-log entries, issue and board status); perform protected merges once every gate is green | Waive a gate; approve its own work; merge with a red, missing or stale gate |
+| **Lane agent** | Any agent with a bounded assigned task | Branch, commit, push and open a PR for its task without asking again; return a handoff | Merge; edit the queue, scheduler, continuation, a control-plane file (this file, `CLAUDE.md`, the workflow, `ci-cd.md`, `CODEOWNERS`, the active mission, `status.md`) or a shared contract it was not assigned; declare the program complete |
 | **Independent reviewer** | A fresh context that did not author, direct or remediate the change | Review the exact candidate and record a verdict | Review its own work |
 | **Policy maintainer** | A session Thomas explicitly assigns to the instruction system | Audit and rewrite policy files through a normal PR | Implement product features; take over the conductor's queue or scheduler |
 
@@ -254,7 +254,7 @@ review** — an unavailable reviewer means the candidate waits, never a downgrad
 4. Add a dependency without asking.
 5. Disable, skip or focus a test to make CI pass — **ever**.
 6. Waive a quality gate — only Thomas, recorded in the decision log.
-7. Approve your own review, or call your own remediation independent.
+7. Approve your own review, call your own remediation independent, fabricate review evidence, or mark an independent review `n/a`.
 8. Refactor beyond the task without a concrete dependency reason.
 9. Paste code from an unlicensed source.
 10. Make a fourth attempt on a failing mechanism without the whole-path diagnosis in the [error fix loop](docs/04-engineering/error-fix-loop.md#the-three-attempt-rule). A new version name does not reset the count.

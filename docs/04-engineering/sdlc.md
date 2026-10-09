@@ -194,7 +194,7 @@ finalizer, are met.
 
 - Reconcile the spec with what was actually built.
 - Update the screen inventory status.
-- Update [status.md](../07-planning/status.md).
+- Hand off status facts; the conductor records them in [status.md](../07-planning/status.md).
 - Add user-facing documentation to `apps/site` if the feature is user-visible.
 - Update the configuration reference if new settings were added.
 - Add a decision log entry if a notable choice was made.

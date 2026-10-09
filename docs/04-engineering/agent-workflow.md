@@ -92,8 +92,8 @@ Rules that hold everywhere:
   continues.
 - **CI or review completing is a transition, not a reason to end a session.** The conductor
   advances the queue.
-- **When nothing is `READY`, record the waiting states and stop working** — do not invent
-  work, start new scope or loosen a gate to stay busy.
+- **When nothing is `READY`,** do not invent work, start new scope or loosen a gate to stay
+  busy. Wait for the pending transitions; stop only under the conductor loop's stop condition.
 - Terminal states never authorize deleting a branch.
 
 ---
@@ -109,13 +109,17 @@ Rules that hold everywhere:
    refresh `main` and re-evaluate dependants.
 4. **Release** when the mission's sequence reaches it (see [Integration and
    release](#integration-and-release)).
-5. **Checkpoint.** Record state, evidence and the next action in the queue.
+5. **Checkpoint.** Record state, evidence and the next action in the queue, transcribing lane
+   handoffs. Lanes do not edit the queue themselves.
 6. Repeat. Stop only in **Hold**, or when every remaining task is waiting on Thomas, an
-   external credential or capacity — and say so.
+   external credential or capacity — and say so. Tasks waiting on CI or review are not a stop
+   condition: they resolve into transitions.
 
-**Records stay out of candidates.** Queue and status checkpoints go to the conductor's records
-branch, never onto a reviewed product candidate. A status update is not an acceptance
-candidate and never forces a new product review.
+**Records stay out of candidates.** Queue and `status.md` checkpoints go in the conductor's own
+records PR (a branch carrying only those files), never onto a reviewed product candidate. A
+status update is not an acceptance candidate and never forces a new product review.
+
+Calendar pressure changes urgency, not gates.
 
 **Duplicate work** (the same change in two branches): compare semantically, preserve every
 unique commit or hunk on the surviving branch, record the preservation, then mark the other
@@ -145,28 +149,30 @@ Opus 5.5 sampled reviewer; unchanged by the 2026-10-09 restructure):
 
 | Role | Model |
 | --- | --- |
-| Implementation, context preparation, ordinary review | **GPT-6 Luna**, explicitly selected |
-| Security review, critical cross-boundary review, phase finalizer | **GPT-6 Sol**, fresh exact-head context |
-| Sampled auditor | **Opus 5.5**, only from a prepared packet; never replaces GPT-6 Sol |
-| Policy maintenance | Whichever session Thomas assigns by decision (the 2026-10-09 restructure: Opus 5.5) |
+| Implementation, context preparation, ordinary review, bounded architecture/alignment review | **GPT-6 Luna**, explicitly selected |
+| Security review, critical cross-boundary review, phase finalizer, broad or high-risk architecture review, security- or architecture-heavy context preparation | **GPT-6 Sol**, fresh exact-head context |
+| Conductor | A top-level GPT session; GPT-6 Sol preferred for broad governance or security work |
+| Sampled auditor | **Opus 5.5**, only from a packet prepared by GPT-6 Luna or GPT-6 Sol; never replaces GPT-6 Sol |
+| Policy maintenance (authoring only) | Whichever session Thomas assigns by decision (the 2026-10-09 restructure: Opus 5.5). Its PRs still receive the independent reviews, and the GPT-6 Sol pass, their tier requires |
 
 The PR-template check enforces `GPT-6 Sol` literally for security-scope paths. If the required
 model is unavailable the candidate waits, marked **SECURITY RE-REVIEW PENDING — GPT-6 SOL
 CAPACITY**; never downgrade. Every review names the model and context explicitly. `pal-mcp`,
-`pal-reviewer`, 9Router and their failover routes are retired.
+`pal-reviewer`, 9Router and their failover routes are retired, and a historical `pal-mcp`
+verdict is never current evidence for a new head.
 
 ### How many reviews
 
 | The change | Ordinary review | Security review |
 | --- | --- | --- |
-| Records only (status, queue, evidence) in their own PR | **one** independent factual check against GitHub and the evidence | — |
+| Records only, in their own PR: `status.md`, the queue, dated evidence files. **Not** review notes, decision-log entries, the active mission or any document a check reads | **one** independent factual check against GitHub and the evidence | — |
 | Ordinary substantive work | **two** independent | — |
 | Broad or high-coupling: migrations, API + UI in one change, concurrency, cross-package, stage integration | **three** | if in scope |
 | Touches a security-scope path but provably changes no authority or gate pass/fail | **one** | lightweight confirmation |
 | Bounded CI/gate or security fix of a narrow pass/fail case | **one strong** | one full pass |
 | Auth, permissions, migrations, or a security control's core semantics | **two to three** | full pass |
 | New capability, trust boundary or access-control schema | **three** plus domain review | full pass; decide on an ADR first |
-| Agent authority or workflow policy | **two** | full pass when it changes merge authority, review requirements or gate semantics |
+| Agent authority or workflow policy, including any edit to the active mission (which also needs a traceable decision by Thomas) | **two** | full pass when it changes merge authority, review requirements, evidence reuse, retry behaviour or gate semantics |
 
 The security-review path list in [ci-cd.md](ci-cd.md#pull-request-pipeline) is authoritative
 for **when** a security review is mandatory; no row exempts a path on that list. A test or
@@ -184,20 +190,35 @@ reused for a later SHA only when every commit landed in between leaves its input
 | Evidence | Its inputs (a change to any of these invalidates it) |
 | --- | --- |
 | Review verdict | Everything the review covered — i.e. anything except review records |
-| Test results | Product source, tests, build configuration, dependencies |
+| Test results | Product source, tests, build configuration, dependencies, and any document a check reads (registers, configuration reference, decision log for waivers) |
 | Image / runtime / SIT result | Product source, build configuration, dependencies, deployment |
 | CI/security-control verdict | `.github/**`, `scripts/ci/**` and the other control paths in ci-cd.md |
 | Required GitHub status checks | **Never reused.** They must be green on the exact candidate |
 
-**Review records** are `docs/07-planning/security-reviews/**` and the PR body. A commit that
-touches only review records needs **no new review of any kind** — not ordinary, not security.
-The conductor verifies the path list mechanically (`git diff --name-only <reviewed>..<candidate>`)
-and states "review-record-only delta verified" in the merge record. This is the same rule CI
-enforces for security notes ("note-only" commits), applied to every review; it exists so that
-recording a review never demands another review.
+**Review records** are exactly two things: lines **added** to this PR's own notes
+(`docs/07-planning/security-reviews/<this-pr>-*.md`), and the reviewer-identity and review-link
+fields of the PR body. Modifying or deleting an existing line, touching another PR's note, or
+adding a non-Markdown file under that directory is **not** a review record — it is a reviewed
+change. Historical notes are cited by product code as the rationale for live security
+decisions; they are append-only.
 
-Reviewer reports are committed verbatim with their provenance. The committer does not edit a
-verdict. Old approval never silently covers new product changes: a delta that touches
+A delta made only of review records needs **no new review of any kind** — not ordinary, not
+security — so that recording a review never demands another review. The conductor verifies it
+over **landed commits, not the net tree**, mirroring the CI note rule in
+`scripts/ci/lib/security-review-note.mjs` (a revert does not restore a clearance):
+
+```bash
+git merge-base --is-ancestor <reviewed> <candidate>               # reviewed head is an ancestor
+git log -m --format=%H --name-status <reviewed>..<candidate>      # every entry: A/M of this PR's notes
+git log -m --format= --numstat <reviewed>..<candidate>            # deletions column is 0
+```
+
+The conductor then states "review-record-only delta verified" in the merge record.
+
+Reviewer reports are committed verbatim with their provenance (session or spawn arguments,
+model, exact SHA). The committer does not edit a verdict. **Before relying on any review
+record, the conductor traces it to a review it dispatched or can otherwise verify** — the
+reviewer's provenance and verbatim output. A record that cannot be traced does not count. Old approval never silently covers new product changes: a delta that touches
 anything else is reviewed at the tier the delta requires.
 
 ### Batching and altitude
@@ -221,8 +242,8 @@ have caught is also a finding about that gate.
 
 ### Sampled big review
 
-Selected only by Thomas or the conductor; never a per-PR wait. Before it runs, another context
-prepares a packet: PR/stage and exact SHAs; what changed and why; changed and highest-risk
+Selected only by Thomas or the conductor; never a per-PR wait. Before it runs, a GPT-6 Luna or
+GPT-6 Sol context (never the auditor itself) prepares a packet: PR/stage and exact SHAs; what changed and why; changed and highest-risk
 files; specs, ADRs and rules in scope; the risk tier and why; ordinary and security verdicts
 with unresolved findings; tests actually run with counts and notable negative tests; residuals
 and `## Not done`; invariants to challenge; explicit spot-check questions. The auditor samples
@@ -245,8 +266,10 @@ Run what the change's risk requires before calling it done — see
   diagnose them.
 - Integration tests need a **private `*_test` Postgres database per concurrent lane**.
   Shared lane databases create false failures. Keep host load bounded.
-- Policy-shadow verification cadence for development/P0 is in the
-  [runbook](../05-operations/runbook.md#policy-shadow-summary).
+- Policy-shadow verification for development/P0 uses three issue-free UTC dates with
+  source-bound coverage; a note-only change does not restart the window, elapsed time never
+  clears a known failure, and other checks run without waiting for it
+  ([runbook](../05-operations/runbook.md#policy-shadow-summary), decision log 2026-10-02).
 - Public review artifacts describe public test vectors instead of embedding credential-shaped
   values; any redaction is labelled, with the original kept privately.
 
@@ -306,14 +329,18 @@ done. Never reopen a settled item. A report is a checkpoint, not a stopping poin
 ## Sessions, handoff and continuation
 
 - Agent memory does not persist. **The repository is the memory.** Do not act on a remembered
-  SHA or PR list; re-check.
-- Before a session ends: commit and push finished work; record in the queue the exact branch
-  and head, state, evidence, blockers and the one next action, plus how to resume.
+  SHA or PR list; re-check. Before inferring a convention, read three or four files in the
+  same area — one file may itself be wrong.
+- Before a session ends: commit and push finished work. A lane writes its handoff (exact
+  branch and head, state, evidence, blockers, the one next action, how to resume) in its PR;
+  the conductor transcribes it into the queue.
 - **Continuation is a mechanism, not a promise.** Only the conductor owns the one continuation
   (schedule, heartbeat). It exists only if its configuration can be read and it has a recorded
-  run receipt. Before creating one, inspect what exists; never create a duplicate; lanes never
-  create or retarget one. If none is verified, say so and leave an explicit resume task —
-  never imply an ended session continues by itself.
+  run receipt; record its identity and scope in the queue. Before creating one, inspect what
+  exists; never create a duplicate; lanes never create or retarget one. If none is verified,
+  say so and leave an explicit resume task — never imply an ended session continues by itself.
+  Stay quiet while blocked state is unchanged; notify on meaningful progress, failure or a
+  required owner action.
 - A continuation obeys every gate and stops at the mission's stop condition.
 
 ---

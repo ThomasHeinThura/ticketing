@@ -40,7 +40,7 @@ Type: **C** contradiction · **A** ambiguity · **D** duplication · **S** legit
 | 1 | C | `main` CLAUDE.md: "currently working toward **P4 complete** … do not stop" | Freeze directive; P4 frozen | Agents resume feature work after every checkpoint | Mission removed from every permanent file; lives only in `active-mission.md` | Invariant "no P4-completion mission" |
 | 2 | C | `main` agent-workflow: "working tree stays uncommitted until Thomas says commit" | AGENTS do-not 16 standing flow | Lanes stall waiting for a commit prompt | AGENTS roles: lanes commit/push without asking | Invariant "no commit-only-when-Thomas-says" |
 | 3 | C | Decision log 2026-10-09 freeze entry: "resume the queue **after** the control-plane PR is accepted" | Conductor directive: no global wait | Whole queue waits on a docs PR | Task-state rule: a wait blocks only named dependants | Invariant "no global wait"; scenario 2–3 |
-| 4 | C / F | DoD integration checklist: ordinary exact-candidate review still required after note-only commits | CI note-only rule exists so recording a review does not reopen it | #612 gathered 16 review notes and three rounds of note-only "re-verification" | Evidence-reuse table: review-record-only delta needs no new review; conductor checks paths mechanically | Scenario 4 |
+| 4 | C / F | DoD integration checklist: ordinary exact-candidate review still required after note-only commits | CI note-only rule exists so recording a review does not reopen it | #612 gathered 15 review notes and three rounds of note-only "re-verification" | Review-record-only delta (lines added to the PR's own notes) needs no new review; conductor verifies over landed commits and traces each record; historical notes append-only | Scenario 4 |
 | 5 | C / T | "Use the **approved retry policy**" (AGENTS, CLAUDE, error-fix-loop, decision log) | No such policy exists anywhere; only G11's per-metric sampling | Ad-hoc reruns, or stalls with nobody able to cite the rule | Bounded verification policy in error-fix-loop (one infra re-run; G11 sampling unchanged) | Scenario 6; grep shows one definition |
 | 6 | C | CLAUDE.md (auto-loaded by Claude Code) declares itself the **OpenAI** guide and limits Opus to sampling | Owner-assigned Opus policy work; Claude sessions read it as their instructions | Model files veto owner authority; provider file carries policy | CLAUDE.md is a provider adapter only; "Policy maintainer" role; model policy row | Invariant "model names only in model policy…" |
 | 7 | A | "orchestrator", "orchestrating session", "top-level orchestrator", "root", "conductor", "control-plane auditor" | One role, six names | Unclear who may merge or own continuation | "Conductor", with the older names as declared aliases | Read-through |
@@ -116,11 +116,13 @@ Policy behaviour, checked by reading the governing text. No runtime or productio
   defined once, model names confined, no global wait, no promised continuation): **10/10 pass**.
 - Register checks run locally on this tree: `check:vocabulary`, `check:env`, `check:reviews`,
   `check:skips`, `check:inventory`, `check:events` — all exit 0. No checker parses the edited
-  policy prose; CI messages citing `AGENTS.md` rule 2 and do-nots 5, 7, 11, 15, 18 still point
-  at the same-numbered items.
-- No `.github/**`, `scripts/ci/**` or `ci-cd.md` change, so no new security-review path is
-  touched. Required CI must still run on the exact published candidate; nothing here is
-  inferred from earlier results.
+  policy prose. CI messages citing `AGENTS.md` rule 2 and do-nots 5, 7, 11, 18 point at the
+  same items; do-not 15's wording now follows the 2026-10-02 decision (findings mapped and
+  dispositioned before merge) while `check-reviews.mjs` still describes the older "not started"
+  wording — see F3.
+- No `.github/**`, `scripts/ci/**` or `ci-cd.md` change, so CI will not demand a security
+  review. **The restructure's own policy row does:** it changes review requirements, evidence
+  reuse and retry behaviour, so it needs a full GPT-6 Sol pass before merge.
 
 ## 6 · Follow-ups — separate reviewed changes, not in this PR
 
@@ -128,7 +130,7 @@ Policy behaviour, checked by reading the governing text. No runtime or productio
 | --- | --- | --- | --- |
 | F1 | Path-aware required-check matrix: docs wording → links/consistency/secret scan; policy/authority → policy review + scenario checks; templates/CI checkers → structural tests and red probes; product/dependency/deployment → full applicable gates; release candidate → full release + SIT | Changes which checks apply = CI/security-control change; needs ruleset update and Thomas's approval | Conductor; security-tier review |
 | F2 | PR-template check: accept the security reviewer assigned by the model policy instead of the literal `GPT-6 Sol` | `scripts/ci/**` is security scope | Conductor; security-tier review |
-| F3 | PR template's reference to "CLAUDE.md's Opus 5.5 section"; `CODEOWNERS` `.claude/agents/` entry; `ci-cd.md § Branching` squash statement and duplicated merge authority | `.github/**` and `ci-cd.md` are security scope | Conductor |
+| F3 | Stale references to moved text: PR template ("CLAUDE.md's Opus 5.5 section", "AGENTS.md's Sampled big review"); `CODEOWNERS` `.claude/agents/` entry and its pointer to "CLAUDE.md's control plane section"; `check-pr-template.mjs` "GPT-6 Sol, always (AGENTS.md)"; `gate-waiver.mjs` "AGENTS.md and CLAUDE.md now both say"; `check-reviews.mjs` do-not 15 wording; `ci-cd.md § Branching` squash statement vs merge commits, and its duplicated merge authority | `.github/**`, `scripts/ci/**` and `ci-cd.md` are security scope | Conductor |
 | F4 | Queue file: move checkpoints below its title, stop duplicating `status.md`, replace its "Execution boundary and state definitions" paragraph with a link to workflow § Task states, fix the missing inventory link | Conductor-owned record | Conductor |
 | F5 | Turn this audit's link and invariant checks into a CI check | `scripts/ci/**` | Conductor |
 | F6 | #601: drop its `agent-workflow.md`/`sdlc.md` hunks (superseded here) when composing it | Conductor-owned PR | Conductor |
@@ -153,3 +155,30 @@ Not changed: model assignments, review counts, the security path list, every req
 merge authority, waiver and design-approval authority, the freeze, GHCR-only publication and
 the SIT stop condition. **This policy is proposed until it merges through the protected flow
 with its required reviews and CI.**
+
+## 8 · Independent review outcome
+
+Two fresh, non-forked Opus 5.5 contexts reviewed `c0d5ef6a8e76767c7e27d6636f3a61e42c1c5f12`;
+both returned **BLOCKED**. Their reports are committed verbatim as
+`security-reviews/615-workflow-policy-*-opus.md`. Every blocking finding and the substantive
+non-blocking ones were fixed as one batch:
+
+- Review records narrowed to lines added to the PR's own notes plus PR-body reviewer fields;
+  historical notes append-only (they are cited by product code).
+- Review-record-only check now over landed commits (ancestor + per-commit `name-status` and
+  `numstat`), mirroring the CI note rule rather than claiming to equal it.
+- Fabricating review evidence or marking an independent review `n/a` restored to do-not 7;
+  merge-ready requires each record to be traced to its reviewer.
+- One stop rule: waiting on CI or review is never a stop condition.
+- Independent whole-entrypoint diagnosis and an agreed bounded repair restored to the
+  three-attempt sequence; end-to-end regression applies to every runner fix.
+- Lanes hand off; only the conductor writes the queue and `status.md`.
+- Re-run allowance narrowed (per job per task, pre-test failures only) and inactive until
+  Thomas approves it.
+- Disclosed review-tier changes; merge-ready includes pre-merge runtime proofs and no
+  unresolved blocking finding; restored owner chat directives, control-plane ownership,
+  dropped Sol model rows, packet authorship, policy-shadow rules, continuation notification
+  and convention-reading guidance.
+
+These Opus reviews are additional evidence. The required GPT-6 Luna ordinary reviews and the
+GPT-6 Sol pass are still outstanding.
