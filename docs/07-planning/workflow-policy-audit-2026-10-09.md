@@ -303,8 +303,21 @@ listed. Reports are published unedited in `security-reviews/615-*` and
 | 4 | `a34879707b9e889e2` | #616 `7e8ab217` | ordinary, correctness | BLOCKED (cancellation could skip gated checks) |
 | 4 | `a32abc363efeeecbd` | #616 `7e8ab217` | ordinary, test adequacy | BLOCKED (step-condition mutant; check:policy end-to-end) |
 | 4 | `a399c1abbc5121183` | #616 `7e8ab217` | security, full | CLEAR WITH NON-BLOCKING |
+| 5 | `ab3e25fe3c42ba55a` | #615 `db071e38` | ordinary, complete-diff follow-up | CLEAR WITH NON-BLOCKING |
+| 5 | `a7892031e5d3927c9` | #615 `db071e38` | ordinary, delta | CLEAR WITH NON-BLOCKING |
+| 5 | `abe5040402caed3a3` | #615 `db071e38` | security / authority, delta (round-4 blockers dispositioned CLOSED) | CLEAR WITH NON-BLOCKING |
+| 5 | `a34879707b9e889e2` | #616 `3446fac5` | ordinary, correctness (cancellation blocker dispositioned CLOSED) | CLEAR WITH NON-BLOCKING |
+| 5 | `a32abc363efeeecbd` | #616 `3446fac5` | ordinary, test adequacy | BLOCKED (scope-step redirection) |
+| 5 | `a399c1abbc5121183` | #616 `3446fac5` | security, delta | CLEAR WITH NON-BLOCKING |
+| 6 | `a399c1abbc5121183` | #616 `c3685d9d` | security, delta | CLEAR WITH NON-BLOCKING |
+| 6 | `a32abc363efeeecbd` | #616 `c3685d9d` | ordinary, test adequacy | pending at the time of writing |
+| A | `a9fe5e0df4cb824df` (Claude Sonnet 5.5) | #615 `e6dd0ca3` | ordinary, routing amendment | CLEAR WITH NON-BLOCKING |
+| A | `a9d11e58300c3ea4b` (Claude Sonnet 5.5) | #615 `e6dd0ca3` | ordinary, routing amendment scenarios | CLEAR WITH NON-BLOCKING |
+| A | `a2d042e8432eb6e84` (Claude Opus 5.5) | #615 `e6dd0ca3` | security, routing amendment | CLEAR WITH NON-BLOCKING |
 
-Every round-4 blocking finding is fixed in the following batch and goes to delta review.
+Rows marked A are the routing-amendment round. Their models are as recorded in each
+transcript; all other rows are Claude Opus 5.5. Blocking findings are closed only when an
+independent reviewer records the disposition, as the rows above show.
 
 ## 12 · Mixed-model routing amendment
 
@@ -315,6 +328,7 @@ and reflected in the active mission and the model-policy table. The security-rev
 block is unchanged, so no checker changes.
 
 This amendment changes a review requirement, so it is a reviewed delta. Under the new
-routing, two Claude Sonnet ordinary reviews and one fresh Claude Opus security review cover
-it. The round-5 review set covers everything up to `db071e38`; the conductor confirmed that
+routing — which Thomas confirmed also applies to #615's remaining reviews — two Claude Sonnet
+ordinary reviews and one fresh Claude Opus security review reviewed it (§11, rows A), all
+CLEAR WITH NON-BLOCKING. The round-5 review set covers everything up to `db071e38`; the conductor confirmed that
 set and the review-record-only delta to `ea30542a`.

@@ -149,10 +149,10 @@ that materially authored, directed or remediated a change is not its independent
 
 | Role | Assigned models (any one, in its own independent context) |
 | --- | --- |
-| Implementation, context preparation, ordinary review, bounded architecture/alignment review | **GPT-6 Luna**, explicitly selected; or **Claude Sonnet 5.5** under the current mission |
+| Implementation, context preparation, ordinary review, bounded architecture/alignment review | **GPT-6 Luna**, explicitly selected; or **Claude Sonnet** under the current mission |
 | Security review, critical cross-boundary review, phase finalizer and final audit, broad or high-risk architecture review, security- or architecture-heavy context preparation | **GPT-6 Sol**; or a fresh **Claude Opus 5.5** context under the current mission |
 | Conductor | The session Thomas designates — under the current mission a Claude Opus 5.5 session (a GPT conductor prefers GPT-6 Sol for broad governance or security work) |
-| Read-only extraction (optional) | **Claude Haiku 5.5** under the current mission — never an author, reviewer of record or approver |
+| Read-only extraction (optional) | **Claude Haiku** under the current mission — never an author, reviewer of record or approver; its output is data, cited only after a reviewer re-verifies it against the source |
 | Sampled auditor | **Claude Opus 5.5**, only from a packet another context prepared; never replaces a required review |
 | Policy maintenance | The session Thomas assigns. Its PRs still receive the independent reviews, and the security pass, their tier requires |
 
@@ -165,7 +165,8 @@ not interchangeable labels: one context never fills two roles on the same change
 author's context is never its reviewer.
 
 Every review records the model and version **as the platform reports it** (for example
-`Claude Sonnet 5.5 (claude-sonnet-5-5)`, `Claude Opus 5.5 (claude-opus-5-5)`), its role,
+`Claude Sonnet 5.5 (claude-sonnet-5-5)`, `Claude Opus 5.5 (claude-opus-5-5)`; a table entry
+without a version means whichever version the platform reports), its role,
 context, exact source, scope and verdict. **Never label a report with a model that did not
 produce it** — a Claude report is never recorded as GPT-6 Luna or GPT-6 Sol, nor a Sonnet
 report as Opus, and historical reviews keep their original identity. An existing review counts

@@ -107,9 +107,14 @@ and GPT-6 Sol keep their roles (2026-09-29). The security-review model block in
 `agent-workflow.md` is unchanged: GPT-6 Sol and Claude Opus 5.5 remain the accepted
 security-review models.
 
+**Scope:** Thomas also confirmed directly that the routing applies to the remaining reviews
+of the policy candidate (#615), including the reviews of this entry. Earlier Opus reviews of
+#615 stay valid for what they covered.
+
 **Source:** Thomas gave the instruction directly to the delivery conductor session
-(`local_49596b31-2faf-432e-885e-bfb2dcca607a`), which relayed it. Thomas then confirmed it
-directly in the policy-maintainer session that records it here, 2026-10-09.
+(`local_49596b31-2faf-432e-885e-bfb2dcca607a`), which relayed it. Thomas then confirmed it,
+and its scope, directly in the policy-maintainer session that records it here
+(`412b91f1-99f8-4ac2-8f5c-a03dce507862`), 2026-10-09.
 **Recorded by:** Claude Opus 5.5 (`claude-opus-5-5`), policy maintainer, PR #615.
 
 ---
