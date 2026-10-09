@@ -5,19 +5,41 @@ P4 completion and new feature expansion. Active task state and the next actionab
 in [integration-execution-queue.md](integration-execution-queue.md); dated snapshots below
 remain historical and do not override current policy or live GitHub.
 
-Fresh remote inspection establishes accepted `main` at
-`3096cb044bdf6ae98488bfc385f532fa6386343a`. Focused control-plane PR [#612](https://github.com/ThomasHeinThura/ticketing/pull/612) is open.
-The ordinary panel cleared the initial source and clarified exact-head/note-only rules;
-final-candidate ordinary review and independent Sol confirmation are still required. Its
-first hosted required dependency audit failed on unchanged dependencies (three high/one
-critical, plus one low advisory). The initial PR-template check also failed with pending
-review/checklist metadata; its body/evidence repair is separate from dependency remediation.
-No gate is waived. Protected acceptance is not claimed. Resume
-the existing source inventory/integration queue immediately after its acceptance. The initial
-queue records #589 and #602 at their observed sources; runner/runtime/performance blockers
-remain and no phase, SIT, production or waiver acceptance is implied. The existing
-`taskdesk-existing-integration-sprint` heartbeat now checks #612 first and resumes this
-queue after protected acceptance; the completed date-capture schedule remains paused.
+Fresh remote inspection established accepted `main` at
+`3096cb044bdf6ae98488bfc385f532fa6386343a`. Focused control-plane PR [#612](https://github.com/ThomasHeinThura/ticketing/pull/612)
+candidate `6dddeea86260467fd93c19284e790462642c04e5` has three ordinary reviews clear on
+that exact head. The full Sol review at `da5598ee18f05d7b73a07f26e1983da2cfcd11ce` remains
+valid under the documented note-only descendant rule. All 18 required checks completed;
+only dependency audit is red. G11 is 22/22 on its recorded source. No acceptance or merge
+is claimed.
+
+The separate existing-dependency prerequisite [#614](https://github.com/ThomasHeinThura/ticketing/pull/614)
+candidate `1fbb373517abf70fdb43b65c37187069f0b6b613` has two independent Luna reviews and
+one full Sol review clear (Sol source `8d5f5c1736c4094d0b6e5d95de25e86bddf1244a`; the
+`0e068f97`→`8d5f5c17` delta contains comments/decision documentation only and shipping
+inputs were verified unchanged; `8d5f5c17`→`1fbb3735` is review notes only). Its
+high/critical audit passes, with one low KaTeX advisory disclosed. The runtime receipt is
+bound only to image source
+`0e068f97f8716c6cc2d2f599fd533d7b623d08fd`: build/boot and live/ready HTTP 200 were
+recorded, with the original five-container/global-context evidence preserved. Its current
+required CI run [37907633313](https://github.com/ThomasHeinThura/ticketing/actions/runs/37907633313)
+is red: E2E 23/24 (MFA sign-in `ERR_ABORTED`, [job 113744945366](https://github.com/ThomasHeinThura/ticketing/actions/runs/37907633313/job/113744945366))
+and G11 17/22, failing worklist 532 ms, LCP 2,644 ms, palette 206.3 ms, assignment
+326.1 ms and board 674.1 ms ([job 113744945278](https://github.com/ThomasHeinThura/ticketing/actions/runs/37907633313/job/113744945278)).
+The cause is not established. Reviewer B owns sanitized MFA diagnosis/regression; reviewer A
+owns read-only G11 triage. Preserve failed receipts; no unchanged reruns or waivers.
+
+Next: establish the cause of #614's failures and complete real-invocation regression. Change
+source only when evidence warrants a correction; do not speculate on source optimization or
+repeat an unchanged acceptance run. Then obtain green exact-head reviews, runtime evidence
+and protected CI before its merge. After that, refresh #612's live head, review
+bindings and current required checks; protected merge only when every required gate is
+green. Then refresh the frozen-source inventory and resume the authorized existing queue.
+The initial #614 runtime provenance and its later comment/review-only descendant are not to
+be conflated or relabeled. No phase completion, integrated SIT acceptance, production
+deployment or gate waiver is implied. The existing `taskdesk-existing-integration-sprint`
+heartbeat remains the continuation; it resumes the queue only after protected acceptance.
+The completed date-capture schedule remains paused.
 
 ---
 
