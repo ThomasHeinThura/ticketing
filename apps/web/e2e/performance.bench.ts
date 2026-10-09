@@ -9,13 +9,16 @@ import {
 import {
   assertCalibrationSourcePinned,
   CALIBRATED_METRICS,
+  CALIBRATION_BATCHES,
   CALIBRATION_OPTIONS,
   CALIBRATION_SOURCE,
   type CalibratedMetricId,
+  type Calibration,
   type CalibrationSample,
   calibratedMedianOfThreeWithRetry,
   describeHost,
   PERFORMANCE_REFERENCE,
+  resolveJobCalibration,
 } from "../../../scripts/ci/lib/performance-calibration.mjs";
 import {
   type G11Window,
@@ -43,7 +46,7 @@ type BudgetMetric = {
  */
 type CalibratedBudgetMetric = Omit<BudgetMetric, "sample"> & {
   sample: () => Promise<CalibrationSample>;
-  calibration: { browser: Browser; metric: CalibratedMetricId };
+  calibration: { metric: CalibratedMetricId };
 };
 
 const SCREENSHOT_DIR = "test-results/g11-screens";
@@ -107,24 +110,55 @@ function readCpuinfo() {
   }
 }
 
-test.beforeAll(() => {
+/** One calibration per throttle state per job, taken at job start and used by every set. */
+const jobCalibrations: Partial<
+  Record<"throttled" | "unthrottled", Calibration>
+> = {};
+
+test.beforeAll(async ({ browser }) => {
   const host = describeHost({
     cpuinfoText: readCpuinfo(),
     osCpuModel: os.cpus()[0]?.model,
     parallelism: os.availableParallelism(),
   });
   console.log(
-    "G11 host: cpu model " + host.cpuModel + "; nproc " + String(host.nproc),
+    `G11 host: cpu model ${host.cpuModel}; nproc ${String(host.nproc)}`,
   );
   const pinned =
     PERFORMANCE_REFERENCE.unthrottledMs !== null ||
     PERFORMANCE_REFERENCE.throttledMs !== null;
   console.log(
-    "G11 calibration reference R0: " +
-      (pinned
+    `G11 calibration reference R0: ${
+      pinned
         ? JSON.stringify(PERFORMANCE_REFERENCE)
-        : "UNPINNED; calibration-only, metrics are judged raw"),
+        : "UNPINNED; calibration-only, metrics are judged raw"
+    }`,
   );
+  for (const state of ["unthrottled", "throttled"] as const) {
+    const batches: number[][] = [];
+    for (let index = 0; index < CALIBRATION_BATCHES; index += 1)
+      batches.push(
+        await measureCalibrationRuns(browser, state === "throttled"),
+      );
+    const calibration = resolveJobCalibration({ batches, state });
+    jobCalibrations[state] = calibration;
+    calibration.batches.forEach((batch, index) => {
+      console.log(
+        `G11 calibration job batch ${index + 1} [${state}]: runs (${batch.runs
+          .map((value) => value.toFixed(2))
+          .join(
+            ", ",
+          )}); median ${batch.medianMs.toFixed(2)}; spread ${batch.spread.toFixed(3)}`,
+      );
+    });
+    console.log(
+      `G11 calibration job [${state}]: mode ${calibration.mode}; median of batch medians ${calibration.medianMs.toFixed(2)}; max spread ${calibration.spread.toFixed(3)}; R0 ${calibration.referenceMs ?? "unpinned"}; factor ${
+        calibration.mode === "calibrated"
+          ? calibration.factor.toFixed(3)
+          : "1 (not applied)"
+      }${calibration.note ? `; note ${calibration.note}` : ""}`,
+    );
+  }
 });
 
 async function withPerformancePage(
@@ -931,47 +965,31 @@ async function threeSamplesWithOneRetry(metric: BudgetMetric) {
  * measures and logs the calibration and judges the raw value exactly as before.
  */
 async function threeSamplesWithCalibratedRetry(metric: CalibratedBudgetMetric) {
-  const { browser, metric: metricId } = metric.calibration;
+  const { metric: metricId } = metric.calibration;
   const { state, k } = CALIBRATED_METRICS[metricId];
-  const throttled = state === "throttled";
+  const calibration = jobCalibrations[state];
+  if (!calibration)
+    throw new Error(`The G11 ${state} job calibration was not taken.`);
   const { result, retried, sets } = await calibratedMedianOfThreeWithRetry({
     sample: metric.sample,
     budget: metric.budget,
     metric: metricId,
-    calibrate: () => measureCalibrationRuns(browser, throttled),
+    calibration,
   });
   const format = (values: number[]) =>
     values.map((value) => value.toFixed(1)).join(", ");
+  console.log(
+    `G11 calibration ${metric.name} [${state}]: mode ${calibration.mode}; job factor ${
+      calibration.mode === "calibrated"
+        ? calibration.factor.toFixed(3)
+        : "1 (not applied)"
+    }; k ${k}${
+      calibration.mode === "calibrated"
+        ? `; applied F^k ${(calibration.factor ** k).toFixed(3)}`
+        : ""
+    }`,
+  );
   sets.forEach((set, index) => {
-    const { calibration } = set;
-    console.log(
-      "G11 calibration " +
-        metric.name +
-        " set " +
-        (index + 1) +
-        " [" +
-        state +
-        "]: mode " +
-        calibration.mode +
-        "; runs (" +
-        calibration.runs.map((value) => Number(value).toFixed(2)).join(", ") +
-        "); median " +
-        Number(calibration.medianMs).toFixed(2) +
-        "; spread " +
-        Number(calibration.spread).toFixed(3) +
-        "; R0 " +
-        (calibration.referenceMs ?? "unpinned") +
-        "; k " +
-        k +
-        "; factor " +
-        (calibration.mode === "calibrated"
-          ? calibration.factor.toFixed(3) +
-            " (applied F^k " +
-            (calibration.factor ** k).toFixed(3) +
-            ")"
-          : "1 (not applied)") +
-        (calibration.note ? "; note " + calibration.note : ""),
-    );
     console.log(
       "G11 samples " +
         metric.name +
@@ -1045,7 +1063,7 @@ test("G11: work-list render, 500 rows", async ({ browser }) => {
     budget: 500,
     sample: () =>
       withPerformancePage(browser, false, (page) => collectListRender(page)),
-    calibration: { browser, metric: "list" },
+    calibration: { metric: "list" },
   });
 });
 
@@ -1061,7 +1079,7 @@ test("G11: work-list LCP", async ({ browser }) => {
       );
       return { value, floorMs: report.domContentLoaded };
     },
-    calibration: { browser, metric: "lcp" },
+    calibration: { metric: "lcp" },
   });
 });
 
@@ -1086,7 +1104,7 @@ test("G11: work-list to detail route first paint", async ({ browser }) => {
       withPerformancePage(browser, true, (page) =>
         collectRouteTransition(page),
       ),
-    calibration: { browser, metric: "route" },
+    calibration: { metric: "route" },
   });
 });
 
@@ -1270,7 +1288,7 @@ test("G11: create-work-item click-to-paint", async ({ browser }) => {
       withPerformancePage(browser, true, (page, resetFixture) =>
         collectCreateInteraction(page, resetFixture),
       ),
-    calibration: { browser, metric: "create" },
+    calibration: { metric: "create" },
   });
 });
 
@@ -1298,7 +1316,7 @@ test("G11: command-palette click-to-paint", async ({ browser }) => {
       withPerformancePage(browser, true, (page) =>
         collectCommandPaletteInteraction(page),
       ),
-    calibration: { browser, metric: "palette" },
+    calibration: { metric: "palette" },
   });
 });
 
@@ -1313,7 +1331,7 @@ test("G11: command-palette keyboard navigation click-to-paint", async ({
       withPerformancePage(browser, true, (page) =>
         collectCommandPaletteInteraction(page, "navigate"),
       ),
-    calibration: { browser, metric: "paletteNav" },
+    calibration: { metric: "paletteNav" },
   });
 });
 
@@ -1326,7 +1344,7 @@ test("G11: change task state click-to-paint", async ({ browser }) => {
       withPerformancePage(browser, true, (page) =>
         collectTaskStateChange(page),
       ),
-    calibration: { browser, metric: "taskState" },
+    calibration: { metric: "taskState" },
   });
 });
 
@@ -1337,7 +1355,7 @@ test("G11: assign task click-to-paint", async ({ browser }) => {
     budget: 200,
     sample: () =>
       withPerformancePage(browser, true, (page) => collectTaskAssignment(page)),
-    calibration: { browser, metric: "taskAssign" },
+    calibration: { metric: "taskAssign" },
   });
 });
 
@@ -1358,7 +1376,7 @@ test("G11: board render, 200 tasks", async ({ browser }) => {
     budget: 500,
     sample: () =>
       withPerformancePage(browser, false, (page) => collectBoardRender(page)),
-    calibration: { browser, metric: "board" },
+    calibration: { metric: "board" },
   });
 });
 

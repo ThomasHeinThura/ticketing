@@ -15,7 +15,7 @@ export type Calibration = {
   state: CalibrationState;
   factor: number;
   referenceMs: number | null;
-  runs: number[];
+  batches: { runs: number[]; medianMs: number; spread: number }[];
   medianMs: number;
   spread: number;
   note?: string;
@@ -38,7 +38,7 @@ export declare const CALIBRATION_ROWS: number;
 export declare const CALIBRATION_COLUMNS: number;
 export declare const CALIBRATION_SOURCE: string;
 export declare const CALIBRATION_SOURCE_SHA256: string;
-export declare const CALIBRATION_OPTIONS_SHA256: string;
+export declare const CALIBRATION_BATCHES: number;
 export declare const CALIBRATION_OPTIONS: Readonly<{
   warmups: number;
   runs: number;
@@ -80,8 +80,8 @@ export declare function summariseCalibration(
   runs: number[],
   expectedRuns?: number,
 ): { runs: number[]; medianMs: number; spread: number };
-export declare function resolveCalibration(options: {
-  runs: number[];
+export declare function resolveJobCalibration(options: {
+  batches: number[][];
   state: CalibrationState;
   reference?: PerformanceReference;
   sourceSha256?: string;
@@ -100,11 +100,8 @@ export declare function calibratedMedianOfThreeWithRetry(options: {
   sample: () => Promise<CalibrationSample>;
   budget: number;
   metric: string;
-  calibrate: () => Promise<number[]>;
+  calibration: Calibration;
   metrics?: Readonly<Record<string, CalibratedMetricEntry>>;
-  reference?: PerformanceReference;
-  sourceSha256?: string;
-  optionsSha256?: string;
 }): Promise<{ result: number; retried: boolean; sets: CalibratedSet[] }>;
 export declare function describeHost(options: {
   cpuinfoText?: string;

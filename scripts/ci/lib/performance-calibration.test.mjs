@@ -4,28 +4,38 @@ import vm from "node:vm";
 import {
   assertCalibrationSourcePinned,
   CALIBRATED_METRICS,
+  CALIBRATION_BATCHES,
   CALIBRATION_FACTOR_MAX,
   CALIBRATION_FACTOR_MIN,
   CALIBRATION_MAX_SPREAD,
   CALIBRATION_OPTIONS,
-  CALIBRATION_OPTIONS_SHA256,
   CALIBRATION_SOURCE,
-  CALIBRATION_SOURCE_SHA256,
   calibratedMedianOfThreeWithRetry,
   calibrationOptionsSha256,
   describeHost,
   normaliseSample,
   PERFORMANCE_REFERENCE,
-  resolveCalibration,
+  resolveJobCalibration,
   sha256Hex,
   summariseCalibration,
 } from "./performance-calibration.mjs";
 
+// Literal hashes recorded with R0 (the values in force when the collection runs ran). These
+// are deliberately NOT imported: a test that compares a constant with itself proves nothing.
+const RECORDED_SOURCE_SHA256 =
+  "6b75d3e90b6a3ea297ad3ace423166e3602a185d865cb3ec9a2889bbce206ce5";
+const RECORDED_OPTIONS_SHA256 =
+  "2f4c9448c86ed2cb1ed2e62cff530dd1d4eed6b589acdf7bd58af7833d1961df";
+
+/** One job calibration from identical batches: a test shorthand for resolveJobCalibration. */
+const resolveCalibration = ({ runs, ...rest }) =>
+  resolveJobCalibration({ batches: [runs, runs, runs], ...rest });
+
 const R0_UNTHROTTLED = 100;
 const R0_THROTTLED = 400;
 const pinned = (overrides = {}) => ({
-  sourceSha256: CALIBRATION_SOURCE_SHA256,
-  optionsSha256: CALIBRATION_OPTIONS_SHA256,
+  sourceSha256: RECORDED_SOURCE_SHA256,
+  optionsSha256: RECORDED_OPTIONS_SHA256,
   unthrottledMs: R0_UNTHROTTLED,
   throttledMs: R0_THROTTLED,
   evidence: "test fixture",
@@ -52,14 +62,17 @@ async function judge({ samples, budget, metric, factor, reference, metrics }) {
     budget,
     metric,
     metrics: table,
-    calibrate: async () => runsAt(baseOf(table[metric].state) * factor),
-    reference: reference ?? pinned(),
+    calibration: resolveCalibration({
+      runs: runsAt(baseOf(table[metric].state) * factor),
+      state: table[metric].state,
+      reference: reference ?? pinned(),
+    }),
   });
 }
 
 test("calibration workload source is pinned by SHA-256", () => {
-  assert.equal(sha256Hex(CALIBRATION_SOURCE), CALIBRATION_SOURCE_SHA256);
-  assert.equal(assertCalibrationSourcePinned(), CALIBRATION_SOURCE_SHA256);
+  assert.equal(sha256Hex(CALIBRATION_SOURCE), RECORDED_SOURCE_SHA256);
+  assert.equal(assertCalibrationSourcePinned(), RECORDED_SOURCE_SHA256);
   assert.throws(
     () => assertCalibrationSourcePinned(`${CALIBRATION_SOURCE} `),
     /does not match its pinned SHA-256/,
@@ -73,7 +86,7 @@ test("calibration workload source is a self-contained function expression", () =
 });
 
 test("the calibration options are hashed into the pin and any change changes the hash", () => {
-  assert.equal(calibrationOptionsSha256(), CALIBRATION_OPTIONS_SHA256);
+  assert.equal(calibrationOptionsSha256(), RECORDED_OPTIONS_SHA256);
   assert.deepEqual(
     { ...CALIBRATION_OPTIONS },
     { warmups: 2, runs: 5, rows: 400, columns: 6 },
@@ -84,7 +97,7 @@ test("the calibration options are hashed into the pin and any change changes the
         ...CALIBRATION_OPTIONS,
         [key]: CALIBRATION_OPTIONS[key] + 1,
       }),
-      CALIBRATION_OPTIONS_SHA256,
+      RECORDED_OPTIONS_SHA256,
       key,
     );
   }
@@ -93,8 +106,8 @@ test("the calibration options are hashed into the pin and any change changes the
 test("the shipped R0 is the recorded FAST-class reference, pinned together", () => {
   assert.equal(PERFORMANCE_REFERENCE.unthrottledMs, 51.65);
   assert.equal(PERFORMANCE_REFERENCE.throttledMs, 230.7);
-  assert.equal(PERFORMANCE_REFERENCE.sourceSha256, CALIBRATION_SOURCE_SHA256);
-  assert.equal(PERFORMANCE_REFERENCE.optionsSha256, CALIBRATION_OPTIONS_SHA256);
+  assert.equal(PERFORMANCE_REFERENCE.sourceSha256, RECORDED_SOURCE_SHA256);
+  assert.equal(PERFORMANCE_REFERENCE.optionsSha256, RECORDED_OPTIONS_SHA256);
   for (const id of [
     "37976720914",
     "113976781168",
@@ -179,9 +192,10 @@ test("post-DCL normalisation scales only the CPU portion, never the network floo
         2475,
     ) < 1e-9,
   );
-  assert.equal(
-    normaliseSample({ value: 900, floorMs: 2100 }, slow, "post-dcl", 1),
-    900,
+  // LCP at or before DCL leaves no post-floor portion to scale: fail closed, never scale it all.
+  assert.throws(
+    () => normaliseSample({ value: 900, floorMs: 2100 }, slow, "post-dcl", 1),
+    /0 < floor < LCP/,
   );
 });
 
@@ -403,39 +417,66 @@ test("a mixed pin (one throttle state only) throws in both states", () => {
   }
 });
 
-test("a changed options hash invalidates R0", () => {
-  const changed = calibrationOptionsSha256({
-    ...CALIBRATION_OPTIONS,
-    warmups: 4,
-  });
+test("editing the workload fails closed even with a refreshed hash constant", () => {
+  // The shipped path computes the hash live; simulate an edited workload whose exported
+  // constant was refreshed to match. The R0 record holds the LITERAL recorded hash.
+  const edited = `${CALIBRATION_SOURCE}\n// heavier workload`;
+  const refreshed = sha256Hex(edited);
+  assert.notEqual(refreshed, RECORDED_SOURCE_SHA256);
+  for (const state of ["unthrottled", "throttled"]) {
+    assert.throws(
+      () =>
+        resolveCalibration({
+          runs: runsAt(state === "throttled" ? 230.7 : 51.65),
+          state,
+          reference: PERFORMANCE_REFERENCE,
+          sourceSha256: refreshed,
+        }),
+      /different calibration workload/,
+    );
+  }
+  // A refreshed constant does not satisfy the source assertion either.
   assert.throws(
-    () =>
-      resolveCalibration({
-        runs: runsAt(100),
-        state: "unthrottled",
-        reference: pinned(),
-        optionsSha256: changed,
-      }),
-    /different calibration options/,
+    () => assertCalibrationSourcePinned(edited),
+    /does not match its pinned SHA-256/,
   );
-  assert.throws(
-    () =>
-      resolveCalibration({
-        runs: runsAt(100),
-        state: "unthrottled",
-        reference: pinned({ optionsSha256: changed }),
-      }),
-    /different calibration options/,
-  );
-  assert.throws(
-    () =>
-      resolveCalibration({
-        runs: runsAt(100),
-        state: "unthrottled",
-        reference: pinned({ optionsSha256: null }),
-      }),
-    /different calibration options/,
-  );
+});
+
+test("editing any calibration option fails closed against the shipped R0", () => {
+  for (const key of ["warmups", "runs", "rows", "columns"]) {
+    const edited = calibrationOptionsSha256({
+      ...CALIBRATION_OPTIONS,
+      [key]: CALIBRATION_OPTIONS[key] + 1,
+    });
+    assert.throws(
+      () =>
+        resolveCalibration({
+          runs: runsAt(230.7),
+          state: "throttled",
+          reference: PERFORMANCE_REFERENCE,
+          optionsSha256: edited,
+        }),
+      /different calibration options/,
+      key,
+    );
+  }
+});
+
+test("a stale or missing recorded options hash invalidates R0", () => {
+  for (const optionsSha256 of [
+    calibrationOptionsSha256({ ...CALIBRATION_OPTIONS, warmups: 4 }),
+    null,
+  ]) {
+    assert.throws(
+      () =>
+        resolveCalibration({
+          runs: runsAt(100),
+          state: "unthrottled",
+          reference: pinned({ optionsSha256 }),
+        }),
+      /different calibration options/,
+    );
+  }
 });
 
 // Reference-speed value of each calibrated metric used by the key negative control. A runner
@@ -589,8 +630,11 @@ test("calibration-only mode gates exactly as the uncalibrated median-of-three ru
     sample: async () => samples[index++],
     budget: 500,
     metric: "list",
-    calibrate: async () => runsAt(123),
-    reference: unpinnedReference,
+    calibration: resolveCalibration({
+      runs: runsAt(123),
+      state: "unthrottled",
+      reference: unpinnedReference,
+    }),
   });
   assert.equal(measured.sets[0].calibration.mode, "calibration-only");
   assert.deepEqual(measured.sets[0].normalised, [510, 505, 520]);
@@ -610,23 +654,24 @@ test("an unstable or out-of-range calibration fails the metric before any sample
   );
 });
 
-test("the retry rule is unchanged and recalibrates each set", async () => {
-  let calibrations = 0;
+test("the job calibration is reused by every set: no per-set recalibration", async () => {
   let index = 0;
   const samples = [600, 600, 600, 400, 400, 400];
+  const calibration = resolveCalibration({
+    runs: runsAt(R0_UNTHROTTLED),
+    state: "unthrottled",
+    reference: pinned(),
+  });
   const measured = await calibratedMedianOfThreeWithRetry({
     sample: async () => samples[index++],
     budget: 500,
     metric: "list",
-    calibrate: async () => {
-      calibrations += 1;
-      return runsAt(R0_UNTHROTTLED);
-    },
-    reference: pinned(),
+    calibration,
   });
-  assert.equal(calibrations, 2);
   assert.equal(measured.retried, true);
   assert.equal(measured.sets.length, 2);
+  assert.equal(measured.sets[0].calibration, calibration);
+  assert.equal(measured.sets[1].calibration, calibration);
   assert.equal(measured.sets[0].result, 600);
   assert.equal(measured.result, 400);
   await assert.rejects(
@@ -634,7 +679,7 @@ test("the retry rule is unchanged and recalibrates each set", async () => {
       sample: async () => 1,
       budget: 0,
       metric: "list",
-      calibrate: async () => runsAt(100),
+      calibration,
     }),
     /budget must be a positive finite number/,
   );
@@ -643,9 +688,102 @@ test("the retry rule is unchanged and recalibrates each set", async () => {
       sample: async () => 1,
       budget: 500,
       metric: "sign-in",
-      calibrate: async () => runsAt(100),
+      calibration,
     }),
     /Unknown G11 calibrated metric/,
+  );
+  // A calibration for the wrong throttle state, or none, is refused.
+  await assert.rejects(
+    calibratedMedianOfThreeWithRetry({
+      sample: async () => 1,
+      budget: 500,
+      metric: "route",
+      calibration,
+    }),
+    /missing or for another throttle state/,
+  );
+});
+
+test("the retry fires at exactly the budget and not below it", async () => {
+  const atBudget = await judge({
+    samples: [500, 500, 500, 500, 500, 500],
+    budget: 500,
+    metric: "list",
+    factor: 1,
+  });
+  assert.equal(atBudget.retried, true);
+  assert.equal(atBudget.sets.length, 2);
+  assert.ok(atBudget.result >= 500);
+  const justBelow = await judge({
+    samples: [499.99, 499.99, 499.99],
+    budget: 500,
+    metric: "list",
+    factor: 1,
+  });
+  assert.equal(justBelow.retried, false);
+  assert.equal(justBelow.sets.length, 1);
+});
+
+test("job calibration is the median of three batch medians: per-batch noise cannot move the factor", () => {
+  assert.equal(CALIBRATION_BATCHES, 3);
+  // One noisy batch (±25%) around a steady 100 ms runner leaves the factor at 1.
+  for (const noisy of [75, 125]) {
+    const job = resolveJobCalibration({
+      batches: [runsAt(100), runsAt(noisy), runsAt(100)],
+      state: "unthrottled",
+      reference: pinned(),
+    });
+    assert.equal(job.factor, 1);
+    assert.equal(job.medianMs, 100);
+  }
+  const spreadOut = resolveJobCalibration({
+    batches: [runsAt(90), runsAt(100), runsAt(110)],
+    state: "unthrottled",
+    reference: pinned(),
+  });
+  assert.equal(spreadOut.factor, 1);
+  assert.equal(spreadOut.batches.length, 3);
+});
+
+test("a wrong number of batches fails closed when calibrated", () => {
+  for (const batches of [[], [runsAt(100)], [runsAt(100), runsAt(100)]]) {
+    assert.throws(
+      () =>
+        resolveJobCalibration({
+          batches,
+          state: "unthrottled",
+          reference: pinned(),
+        }),
+      /exactly 3 batches/,
+    );
+  }
+});
+
+test("each batch's spread is checked, not only the job median", () => {
+  const unstable = [86.7, 100, 100, 100, 150];
+  assert.throws(
+    () =>
+      resolveJobCalibration({
+        batches: [runsAt(100), unstable, runsAt(100)],
+        state: "unthrottled",
+        reference: pinned(),
+      }),
+    /unstable/,
+  );
+});
+
+test("post-DCL needs a floor strictly between 0 and LCP", () => {
+  const slow = calibrated(1.5, "throttled");
+  for (const floorMs of [0, -1, 2550, 2600, Number.POSITIVE_INFINITY]) {
+    assert.throws(
+      () => normaliseSample({ value: 2550, floorMs }, slow, "post-dcl", 1),
+      /0 < floor < LCP/,
+      String(floorMs),
+    );
+  }
+  assert.equal(
+    normaliseSample({ value: 2550, floorMs: 2100 }, slow, "post-dcl", 1),
+    2400,
   );
 });
 

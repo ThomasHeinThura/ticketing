@@ -241,8 +241,8 @@ never masked by throttling noise.
 
 **Speed-calibrated judgment (owner decision 2026-10-10).** `Emulation.setCPUThrottlingRate` is
 relative to the host, so a slower hosted runner stays slower after throttling. To measure the
-product rather than the runner, each sample set of a CPU-bound metric is preceded by a pinned
-reference workload, and the metric is judged against its unchanged budget after normalisation
+product rather than the runner, each job takes a pinned reference workload measurement per
+CPU-throttle state at job start, and each CPU-bound metric is judged against its unchanged budget after normalisation
 to reference speed. Only the measurement method changes; budgets, workloads, row/card counts,
 throttling, network emulation, the three-sample median, and the single retry set do not. The
 owner decision is that the unchanged budgets refer to the **FAST** hosted runner class, so the
@@ -251,17 +251,24 @@ reference R0 is the fast-class reference.
 - **Workload.** A deterministic, CPU-bound, React-like build in the same browser: a seeded
   virtual tree of 400 rows × 6 cells is mounted into the DOM, laid out, patched (text, class,
   and style changes), laid out again, and removed. It runs in a fresh context of the benchmark
-  browser, with the metric's own CPU-throttle state (4× for throttled metrics, none for
-  unthrottled ones). Two warm-up runs are discarded, five runs are measured, the statistic is
-  the median, and the spread is (max − min) / median. Its source is `CALIBRATION_SOURCE` in
+  browser, in each CPU-throttle state (4× for throttled metrics, none for unthrottled ones).
+  One batch is two discarded warm-up runs plus five measured runs; the batch statistic is the
+  median and its spread is (max − min) / median. A job takes three batches per state at job
+  start; the job median is the median of the three batch medians. That one factor is used for
+  every metric and every sample set of the job, retry sets included; it is never recalibrated
+  per set, so per-set noise cannot change it. Each batch's spread is checked. Its source is `CALIBRATION_SOURCE` in
   `scripts/ci/lib/performance-calibration.mjs`, pinned by a SHA-256 that the bench checks before
   every run. The workload options (warm-ups, runs, rows, columns) are hashed into the R0 pin.
 - **R0 (pinned).** Unthrottled 51.65 ms and throttled 230.7 ms, each the median of all
   calibration set medians from the three FAST collection runs (unthrottled n = 6, throttled
-  n = 21). They are recorded against the source hash and the options hash and cite their
-  evidence in `PERFORMANCE_REFERENCE`. Both throttle states are pinned together; a mixed pin,
-  a different source hash, different options, a non-positive value, or missing evidence throws.
-  Changing the workload or any option invalidates R0 until it is re-recorded.
+  n = 21). They are recorded in `PERFORMANCE_REFERENCE` with the workload-source SHA-256 and the options
+  SHA-256 as **literal strings** from when the collection ran, and cite their evidence. At run
+  time the job computes both hashes live from `CALIBRATION_SOURCE` and `CALIBRATION_OPTIONS` and
+  compares them with the literals, so editing the workload or any option throws even if an
+  exported hash constant is refreshed; the R0 record itself must be re-recorded. Both throttle
+  states are pinned together; a mixed pin, a different source or options hash, a non-positive
+  value, or missing evidence throws. The R0 literals can still be edited by anyone with commit
+  access; the pin makes that an explicit, reviewable edit, not an impossible one.
 - **Collection evidence (calibration evidence, not gate evidence).** `workflow_dispatch`
   "CI - full" on `claude/g11-calibration-602` at `2c52f65c`, raw gating, calibration-only.
   FAST, G11 PASS: run 37976720914 (job 113976781168), run 37977779990 (job 113980309611),
@@ -271,7 +278,7 @@ reference R0 is the fast-class reference.
   unthrottled 66.6–73.6 ms, throttled 278–386 ms. Classification rule: FAST when the job's
   unthrottled calibration median is below 60 ms (a clean gap separates the classes) and G11
   passed.
-- **Factor and per-metric sensitivity.** `F = calibration median / R0` per throttle state
+- **Factor and per-metric sensitivity.** `F = job calibration median / R0` per throttle state
   (`F > 1` is a slower runner). A metric is normalised by `F^k`, with
   `k = ln(r_metric) / ln(r_cal)` clamped to [0, 1], where `r_metric` is the metric's slow/fast
   median ratio and `r_cal` the calibration's (unthrottled 1.398, throttled 1.405). `k` is
@@ -294,25 +301,35 @@ reference R0 is the fast-class reference.
   The interaction metrics are frame-quantised and noisy, so their `k` carries that noise;
   re-recording from more hosted runs is advised before relying on a `k` below 1.
 - **Normalisation, only where CPU-bound.** The rows above are normalised: `value / F^k`. LCP:
-  only the CPU portion after DOMContentLoaded is scaled, `DCL + (LCP − DCL) / F^k`; the network
-  floor is never scaled (DCL is about 2.05–2.16 s on both runner classes while the post-DCL
+  only the CPU portion after DOMContentLoaded is scaled, `DCL + (LCP − DCL) / F^k`, and the DCL
+  floor must satisfy 0 < DCL < LCP or the job throws; the network floor is never scaled (DCL is about 2.05–2.16 s on both runner classes while the post-DCL
   portion is about 250–290 ms fast and 400–430 ms slow). Sign-in click-to-paint, comment
   click-to-paint, board-drag p95 frame time, CLS and the G13 windows are not CPU-bound on the
   recorded data (frame-quantised or dimensionless) and are judged raw.
 - **Symmetric and fail-closed.** A runner faster than the reference makes normalised values
   larger, so it is judged more strictly. `F` must lie in [0.75, 1.75] (observed per-set
-  factors 0.91–1.67) and the calibration spread must be at most 0.55; otherwise the job fails,
-  never passes. Spread was observed with this exact 2-warm-up configuration across 50 hosted
-  sets at up to 0.39 (fast) and 0.43 (slow); runs 1–2 are consistently slower, which the median
+  factors 0.91–1.67) and every batch's spread must be at most 0.55; otherwise the job fails,
+  never passes. Spread was observed with this exact 2-warm-up configuration across the 65 hosted
+  calibration sets of the six collection jobs (27 fast, 38 slow): fast median 0.344 (per-job
+  medians 0.324–0.360), maximum 0.392; slow median 0.331 (per-job medians 0.275–0.371), maximum
+  0.433. Runs 1–2 are consistently slower, which the median
   of five absorbs and which is inside R0. Raising the warm-ups would lower spread but would
   change the options hash and invalidate R0, so it is not done until R0 is re-recorded.
-- **Logging.** The job prints the CPU model and `nproc`, the R0 pin, and per sample set the
-  calibration runs, median, spread, `k`, and factor, and the raw and normalised samples with
-  both medians. When a retry occurs both sets are printed. Every metric is printed raw and
-  normalised.
+- **Bound on what normalisation can mask.** A regression can be masked by at most `F^k`
+  (`k ≤ 1`), and `F` is capped by the clamp at 1.75, so at most a 1.75× slower runner's worth
+  on a `k = 1` metric. Calibration noise within the FAST class (per-batch factors roughly
+  0.91–1.12) is reduced, not removed, by the job-level median of three batches; a regression
+  smaller than the residual calibration noise can still pass. Runner-class drift inside the clamp
+  shifts what the budgets mean, because F stays within bounds and the job passes. R0 rests on
+  three FAST jobs (unthrottled n = 6 sets, throttled n = 21 sets) and must be re-recorded if the
+  hosted runner pool changes. Per-job F is logged so drift can be monitored.
+- **Logging.** The job prints the CPU model and `nproc`, the R0 pin, each calibration batch
+  (runs, median, spread), the job median and factor per throttle state, per metric the job
+  factor, `k` and applied `F^k`, and the raw and normalised samples with both medians. When a
+  retry occurs both sets are printed. Every metric is printed raw and normalised.
 - **Retry rule unchanged.** The judged (normalised) median of three is compared with the
-  budget; if it is at or over budget, one more set is calibrated and sampled, and that second
-  set decides. Best-of-N is never used.
+  budget; if it is at or over budget (`>=`), one more set is sampled against the same job calibration,
+  and that second set decides. Best-of-N is never used.
 
 Historical G11 results measured before this method (including #602's attempt-1 FAIL, rerun
 PASS, and run `37967068981` FAIL at `66c736e7`) remain as measured under the old method.

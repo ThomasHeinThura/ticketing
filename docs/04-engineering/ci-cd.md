@@ -43,11 +43,14 @@ required as well; do not infer that a workflow configured to run before merge is
 unless its exact context appears in the ruleset. The job's `pnpm test:perf` prints the runner's CPU model and `nproc`, then measures
 each CPU-bound metric speed-calibrated (owner decision 2026-10-10; method, R0 and per-metric
 sensitivities in [ux-quality-gates.md](../02-design/ux-quality-gates.md) G11): a pinned
-reference workload (`scripts/ci/lib/performance-calibration.mjs`, SHA-256 checked at run time,
-options hashed into the R0 pin) is run in the same browser and CPU-throttle state before each
-sample set, and the median-of-three is judged against the unchanged budget after normalising by
-`F^k` to the recorded FAST-class reference R0. A speed factor outside 0.75–1.75, a calibration
-spread above 0.55, or a stale, mixed, or evidence-free R0 pin fails the job. Both raw and
+reference workload (`scripts/ci/lib/performance-calibration.mjs`) is run at job start, three batches per CPU-throttle
+state, giving one factor per state for the whole job, and the median-of-three is judged against the unchanged budget after normalising by
+`F^k` to the recorded FAST-class reference R0. R0 records the workload-source and options
+hashes as literals, compared at run time with hashes computed live, so a workload or option edit
+fails the job until R0 is re-recorded. A speed factor outside 0.75–1.75, a batch spread above
+0.55, or a stale, mixed, or evidence-free R0 pin fails the job; normalisation can mask a
+regression by at most `F^k`, and runner-class drift inside the clamp shifts what the budgets
+mean (R0 rests on three FAST jobs; re-record if the runner pool changes). Both raw and
 normalised sample sets, including a retry's first set, are logged. The
 `scripts/ci/lib/performance-calibration.test.mjs` unit tests (in `pnpm test:ci-scripts`) cover
 the normalisation math, the pin checks, and the negative controls, including a 25% regression

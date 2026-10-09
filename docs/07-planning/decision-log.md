@@ -28,18 +28,27 @@ refer to the **FAST** hosted runner class, so R0 is the fast-class reference. Co
 slow-class runner is judged as if it ran at fast-class speed, so its raw failures caused by
 runner speed are normalised away, while a fast-class runner is judged essentially raw and a
 faster-than-reference runner is judged more strictly. A product that only meets its budget on
-fast hardware still passes; a real regression is not hidden, because normalisation divides by
-at most `F^k` with `k ≤ 1`, F is bounded to 0.75–1.75, and the unscaled network floor is kept.
+fast hardware still passes. Normalisation can mask a regression by at most `F^k` (`k ≤ 1`),
+and F is capped by the clamp at 1.75; the unscaled network floor is kept. A regression smaller
+than the residual calibration noise can still pass. Runner-class drift inside the 0.75–1.75
+clamp shifts what the budgets mean, because the job still passes the clamp; the factor is
+logged per job so drift can be monitored. R0 rests on only three FAST jobs (unthrottled n = 6
+sets, throttled n = 21 sets) and must be re-recorded if the hosted runner pool changes.
 
 **Pinned values:** R0 unthrottled 51.65 ms and throttled 230.7 ms, each the median of all
 calibration set medians (unthrottled n = 6, throttled n = 21) from the three FAST collection
-runs, recorded against the workload source hash and a hash of the workload options (rows,
-columns, runs, warm-ups); both throttle states must be pinned together. Per-metric
+runs, recorded with the workload source SHA-256 and a SHA-256 of the workload options (rows,
+columns, runs, warm-ups) as literal strings, compared at run time with hashes computed live, so
+editing the workload or an option fails the gate until R0 is re-recorded; both throttle states
+must be pinned together. The factor is one per throttle state per job, from the median of three
+calibration batches taken at job start and reused for every set, retries included. The post-DCL
+floor must satisfy 0 < DCL < LCP. Per-metric
 sensitivities `k = ln(r_metric)/ln(r_cal)`, clamped to [0, 1] and floored to two decimals, are
 recorded with their evidence in `scripts/ci/lib/performance-calibration.mjs` and
-`docs/02-design/ux-quality-gates.md`. The factor clamp is 0.75–1.75 and the spread bound 0.55,
-set from the observed collection distribution (spread observed up to 0.43 with two warm-ups;
-warm-ups were not raised because that would invalidate the recorded R0).
+`docs/02-design/ux-quality-gates.md`. The factor clamp is 0.75–1.75 and the per-batch spread bound 0.55, set
+from the observed collection distribution (65 hosted calibration sets, 27 fast and 38 slow;
+spread up to 0.392 fast and 0.433 slow with two warm-ups; warm-ups were not raised because that
+would invalidate the recorded R0).
 
 **Calibration evidence (not gate evidence):** `workflow_dispatch` "CI - full" on
 `claude/g11-calibration-602` at `2c52f65c`, raw gating, calibration-only. FAST, G11 PASS: run

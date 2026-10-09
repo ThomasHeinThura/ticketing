@@ -2,11 +2,12 @@
  * G11 speed-calibrated measurement (owner decision 2026-10-10).
  *
  * Hosted runners come in at least two speed classes, so an absolute millisecond budget measures
- * the runner as much as the product. Each metric's sample set is therefore preceded by a fixed,
- * pinned, CPU-bound reference workload run in the same browser and in the same CPU-throttle state
- * as the metric. The ratio of that run's median to a recorded reference value R0 is the runner's
- * speed factor F (F > 1: slower than the reference). The metric is judged against the UNCHANGED
- * budget after normalisation to reference speed.
+ * the runner as much as the product. At job start a fixed, pinned, CPU-bound reference workload
+ * is therefore run in the same browser and in each CPU-throttle state (CALIBRATION_BATCHES batches
+ * of the recorded options, median of the batch medians). The ratio of that median to a recorded
+ * reference value R0 is the job's speed factor F per state (F > 1: slower than the reference),
+ * used for every metric and every set of the job; it is never recalibrated per set. Each metric is
+ * judged against its UNCHANGED budget after normalisation to reference speed.
  *
  * Nothing here changes a budget, a workload size, throttling, network emulation, the sample count
  * or the retry rule. The statistic is the median of three; best-of-N is never used.
@@ -15,8 +16,12 @@
  * - R0 is a required recorded constant. While it is null the gate is in calibration-only mode:
  *   the calibration is measured and logged, never gated, and every metric is judged raw, exactly
  *   as before this module existed.
- * - A present but malformed or stale R0 (wrong source hash, no evidence, non-positive value)
- *   throws. It never degrades to a silent pass.
+ * - A present but malformed or stale R0 (wrong source hash, wrong options hash, no evidence,
+ *   non-positive value) throws. The R0 record holds the source and options hashes as LITERALS
+ *   from when it was recorded; they are compared at run time with hashes computed live from
+ *   CALIBRATION_SOURCE and CALIBRATION_OPTIONS, so editing the workload or an option, even with
+ *   a refreshed exported hash constant, throws until R0 itself is re-recorded. It never degrades
+ *   to a silent pass.
  * - When calibrated, a factor outside [FACTOR_MIN, FACTOR_MAX] or an unstable calibration
  *   (spread above MAX_SPREAD) throws. The job fails; it never passes.
  */
@@ -30,10 +35,11 @@ import { createHash } from "node:crypto";
 export const CALIBRATION_FACTOR_MIN = 0.75;
 export const CALIBRATION_FACTOR_MAX = 1.75;
 /**
- * (max - min) / median across the measured calibration runs. Observed with this exact options
- * set (2 warm-ups) across 50 hosted calibration sets: fast class median 0.32-0.35, maximum
- * 0.39; slow class median 0.31-0.34, maximum 0.43. The bound is that maximum plus about a
- * quarter margin. Runs 1-2 are consistently slower and run 2 is the slowest, which the median
+ * (max - min) / median across the measured runs of one calibration batch. Observed with this
+ * exact options set (2 warm-ups) across the 65 hosted calibration sets of the six collection
+ * jobs (27 fast, 38 slow): fast median 0.344 (per-job medians 0.324-0.360), maximum 0.392; slow
+ * median 0.331 (per-job medians 0.275-0.371), maximum 0.433. The bound is that maximum plus
+ * about a quarter margin. Runs 1-2 are consistently slower and run 2 is the slowest, which the median
  * of five absorbs; the same shape is inside R0. It can only make the job fail closed.
  */
 export const CALIBRATION_MAX_SPREAD = 0.55;
@@ -48,6 +54,12 @@ export const CALIBRATION_OPTIONS = Object.freeze({
   rows: 400,
   columns: 6,
 });
+/**
+ * Calibration batches per throttle state per job. Each batch uses CALIBRATION_OPTIONS unchanged
+ * (so R0, a median of such batch medians, stays comparable); the job factor uses the median of
+ * the batch medians, so one noisy batch cannot move it.
+ */
+export const CALIBRATION_BATCHES = 3;
 export const CALIBRATION_WARMUP_RUNS = CALIBRATION_OPTIONS.warmups;
 export const CALIBRATION_RUNS = CALIBRATION_OPTIONS.runs;
 export const CALIBRATION_ROWS = CALIBRATION_OPTIONS.rows;
@@ -144,9 +156,6 @@ export const CALIBRATION_SOURCE = `function calibrationWorkload(options) {
 export const CALIBRATION_SOURCE_SHA256 =
   "6b75d3e90b6a3ea297ad3ace423166e3602a185d865cb3ec9a2889bbce206ce5";
 
-export const CALIBRATION_OPTIONS_SHA256 =
-  "2f4c9448c86ed2cb1ed2e62cff530dd1d4eed6b589acdf7bd58af7833d1961df";
-
 /** SHA-256 of the options object in fixed key order, so key order can never change the pin. */
 export function calibrationOptionsSha256(options = CALIBRATION_OPTIONS) {
   return createHash("sha256")
@@ -182,8 +191,13 @@ export function calibrationOptionsSha256(options = CALIBRATION_OPTIONS) {
  * Changing the workload or its options invalidates R0 until re-recorded.
  */
 export const PERFORMANCE_REFERENCE = Object.freeze({
-  sourceSha256: CALIBRATION_SOURCE_SHA256,
-  optionsSha256: CALIBRATION_OPTIONS_SHA256,
+  // LITERAL hashes in force when the six collection runs ran. Compared at run time with hashes
+  // computed live from CALIBRATION_SOURCE and CALIBRATION_OPTIONS; never with an exported
+  // constant, so editing the workload or an option fails closed until this record is re-made.
+  sourceSha256:
+    "6b75d3e90b6a3ea297ad3ace423166e3602a185d865cb3ec9a2889bbce206ce5",
+  optionsSha256:
+    "2f4c9448c86ed2cb1ed2e62cff530dd1d4eed6b589acdf7bd58af7833d1961df",
   unthrottledMs: 51.65,
   throttledMs: 230.7,
   evidence:
@@ -237,7 +251,7 @@ export function sha256Hex(text) {
 
 export function assertCalibrationSourcePinned(
   source = CALIBRATION_SOURCE,
-  expected = CALIBRATION_SOURCE_SHA256,
+  expected = PERFORMANCE_REFERENCE.sourceSha256 ?? CALIBRATION_SOURCE_SHA256,
 ) {
   const actual = sha256Hex(source);
   if (actual !== expected) {
@@ -309,16 +323,18 @@ function referenceFor(state, reference, sourceSha256, optionsSha256) {
 }
 
 /**
- * Turns raw calibration runs into a calibration verdict for one CPU-throttle state.
+ * Turns the calibration batches of one throttle state into the job's calibration verdict.
  * mode "calibration-only": R0 unpinned; measured and logged, never gated, factor is 1.
- * mode "calibrated": R0 pinned; factor = median / R0, bounded and stability-checked, else throws.
+ * mode "calibrated": R0 pinned; every batch is stability-checked, the job median is the median
+ *   of the batch medians, and factor = job median / R0, bounded, else throws.
+ * The source and options hashes are computed live here and compared with the R0 record.
  */
-export function resolveCalibration({
-  runs,
+export function resolveJobCalibration({
+  batches,
   state,
   reference = PERFORMANCE_REFERENCE,
-  sourceSha256 = CALIBRATION_SOURCE_SHA256,
-  optionsSha256 = CALIBRATION_OPTIONS_SHA256,
+  sourceSha256 = sha256Hex(CALIBRATION_SOURCE),
+  optionsSha256 = calibrationOptionsSha256(CALIBRATION_OPTIONS),
   maxSpread = CALIBRATION_MAX_SPREAD,
   factorMin = CALIBRATION_FACTOR_MIN,
   factorMax = CALIBRATION_FACTOR_MAX,
@@ -329,9 +345,22 @@ export function resolveCalibration({
     sourceSha256,
     optionsSha256,
   );
+  const summarise = () => {
+    if (!Array.isArray(batches) || batches.length !== CALIBRATION_BATCHES) {
+      throw new Error(
+        `A G11 job calibration must contain exactly ${CALIBRATION_BATCHES} batches.`,
+      );
+    }
+    const summaries = batches.map((runs) => summariseCalibration(runs));
+    return {
+      batches: summaries,
+      medianMs: medianOf(summaries.map((summary) => summary.medianMs)),
+      spread: Math.max(...summaries.map((summary) => summary.spread)),
+    };
+  };
   if (referenceMs === null) {
     try {
-      const summary = summariseCalibration(runs);
+      const summary = summarise();
       return {
         mode: "calibration-only",
         state,
@@ -346,17 +375,17 @@ export function resolveCalibration({
         state,
         factor: 1,
         referenceMs: null,
-        runs: Array.isArray(runs) ? [...runs] : [],
+        batches: [],
         medianMs: Number.NaN,
         spread: Number.NaN,
         note: error instanceof Error ? error.message : String(error),
       };
     }
   }
-  const summary = summariseCalibration(runs);
+  const summary = summarise();
   if (summary.spread > maxSpread) {
     throw new Error(
-      `The G11 calibration is unstable (${state} spread ${summary.spread.toFixed(3)} > ${maxSpread}); failing closed.`,
+      `The G11 calibration is unstable (${state} batch spread ${summary.spread.toFixed(3)} > ${maxSpread}); failing closed.`,
     );
   }
   const factor = summary.medianMs / referenceMs;
@@ -393,13 +422,12 @@ export function normaliseSample(sample, calibration, scale, sensitivity) {
   const factor = calibration.factor ** sensitivity;
   if (scale === "full") return value / factor;
   if (scale === "post-dcl") {
-    if (!Number.isFinite(floorMs) || floorMs < 0) {
+    if (!Number.isFinite(floorMs) || floorMs <= 0 || floorMs >= value) {
       throw new Error(
-        "A post-DCL G11 sample needs a finite DOMContentLoaded floor; failing closed.",
+        "A post-DCL G11 sample needs a finite DOMContentLoaded floor with 0 < floor < LCP; failing closed.",
       );
     }
-    const floor = Math.min(floorMs, value);
-    return floor + (value - floor) / factor;
+    return floorMs + (value - floorMs) / factor;
   }
   throw new Error(`Unknown G11 normalisation scale: ${String(scale)}`);
 }
@@ -415,18 +443,16 @@ function medianOfThree(values) {
 
 /**
  * The existing G11 rule, applied to normalised values: median of three; if that median is at or
- * over budget, take one more set of three (recalibrating first) and the second set decides.
+ * over budget (`>=`), take one more set of three and the second set decides. The job's
+ * calibration is resolved once per throttle state and reused by every set, retry included.
  * Returns every set, raw and normalised, so a retry never hides the first set.
  */
 export async function calibratedMedianOfThreeWithRetry({
   sample,
   budget,
   metric,
-  calibrate,
+  calibration,
   metrics = CALIBRATED_METRICS,
-  reference = PERFORMANCE_REFERENCE,
-  sourceSha256 = CALIBRATION_SOURCE_SHA256,
-  optionsSha256 = CALIBRATION_OPTIONS_SHA256,
 }) {
   if (!Number.isFinite(budget) || budget <= 0) {
     throw new Error("A G11 metric budget must be a positive finite number.");
@@ -435,14 +461,12 @@ export async function calibratedMedianOfThreeWithRetry({
   if (!entry)
     throw new Error(`Unknown G11 calibrated metric: ${String(metric)}`);
   const { state, scale, k } = entry;
+  if (!calibration || calibration.state !== state) {
+    throw new Error(
+      `The G11 job calibration for ${state} is missing or for another throttle state.`,
+    );
+  }
   const runSet = async () => {
-    const calibration = resolveCalibration({
-      runs: await calibrate(),
-      state,
-      reference,
-      sourceSha256,
-      optionsSha256,
-    });
     const raw = [];
     const normalised = [];
     for (let index = 0; index < 3; index += 1) {
