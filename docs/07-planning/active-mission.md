@@ -53,7 +53,8 @@ candidate and its handoff.
 availability"): use whichever model in the tier is available. **Sol tier** (security and
 critical review, phase finalizer, final audit): GPT-6 / GPT-6.1 Sol or a fresh Claude Opus
 context. **Luna tier** (implementation, ordinary review): GPT-6 Luna, Claude Sonnet or Claude
-Haiku. The conductor is the session Thomas designates. Every role is a separate, independent
+Haiku. A Sol-tier model may fill a Luna-tier role when no Luna-tier model is available, never
+the reverse. The conductor is the session Thomas designates. Every role is a separate, independent
 context, at the review depth and counts the workflow requires, labelled with the model that
 actually produced it. Reviews completed under earlier assignments stay valid for what they
 covered. See

@@ -284,7 +284,7 @@ an untouched `main` checkout (test-tree typecheck coverage); `test:all --list` r
 ## 11 · Review ledger — every dispatched review
 
 All reviewers below were fresh, non-forked Claude Code Agent-tool contexts
-(`general-purpose`, model `claude-opus-5-5`) dispatched by the authoring session
+(`general-purpose`) dispatched by the authoring session
 `412b91f1-99f8-4ac2-8f5c-a03dce507862`. Nothing was dropped: blocked and failed runs are
 listed. Reports are published unedited in `security-reviews/615-*` and
 `security-reviews/616-*`.
@@ -310,13 +310,20 @@ listed. Reports are published unedited in `security-reviews/615-*` and
 | 5 | `a32abc363efeeecbd` | #616 `3446fac5` | ordinary, test adequacy | BLOCKED (scope-step redirection) |
 | 5 | `a399c1abbc5121183` | #616 `3446fac5` | security, delta | CLEAR WITH NON-BLOCKING |
 | 6 | `a399c1abbc5121183` | #616 `c3685d9d` | security, delta | CLEAR WITH NON-BLOCKING |
-| 6 | `a32abc363efeeecbd` | #616 `c3685d9d` | ordinary, test adequacy | pending at the time of writing |
+| 6 | `a32abc363efeeecbd` | #616 `c3685d9d` | ordinary, test adequacy | CLEAR WITH NON-BLOCKING |
 | A | `a9fe5e0df4cb824df` (Claude Sonnet 5.5) | #615 `e6dd0ca3` | ordinary, routing amendment | CLEAR WITH NON-BLOCKING |
 | A | `a9d11e58300c3ea4b` (Claude Sonnet 5.5) | #615 `e6dd0ca3` | ordinary, routing amendment scenarios | CLEAR WITH NON-BLOCKING |
 | A | `a2d042e8432eb6e84` (Claude Opus 5.5) | #615 `e6dd0ca3` | security, routing amendment | CLEAR WITH NON-BLOCKING |
+| A | `a9fe5e0df4cb824df` (Claude Sonnet 5.5) | #615 `dff9a617` | ordinary, scope-paragraph delta | CLEAR WITH NON-BLOCKING |
+| A | `a9d11e58300c3ea4b` (Claude Sonnet 5.5) | #615 `dff9a617` | ordinary, scope-paragraph delta | CLEAR WITH NON-BLOCKING |
+| A | `a2d042e8432eb6e84` (Claude Opus 5.5) | #615 `dff9a617` | security, scope-paragraph delta | CLEAR WITH NON-BLOCKING |
+| T | `a9fe5e0df4cb824df` (Claude Sonnet 5.5) | #615 `9a3109c6` | ordinary, model-tiers delta | CLEAR WITH NON-BLOCKING |
+| T | `a9d11e58300c3ea4b` (Claude Sonnet 5.5) | #615 `9a3109c6` | ordinary, model-tiers delta | CLEAR WITH NON-BLOCKING |
+| T | `a2d042e8432eb6e84` (Claude Opus 5.5) | #615 `9a3109c6` | security, model-tiers delta | CLEAR WITH NON-BLOCKING |
 
-Rows marked A are the routing-amendment round. Their models are as recorded in each
-transcript; all other rows are Claude Opus 5.5. Blocking findings are closed only when an
+Rows marked A are the routing-amendment rounds and rows marked T the model-tiers round (§13).
+Their models are as recorded in each transcript; all other rows are Claude Opus 5.5
+(`claude-opus-5-5`). Blocking findings are closed only when an
 independent reviewer records the disposition, as the rows above show.
 
 ## 12 · Mixed-model routing amendment
@@ -345,7 +352,7 @@ record this.
 security-scope pull requests until #616 lands. Until then, a security-scope PR reviewed only by
 Opus waits for #615 and #616; its review is not relabelled and the check is not lifted.
 
-**Correction.** I first reported a circle here: #602 needing the model-aware checker, while
+**Correction.** The policy maintainer first reported a circle here: #602 needing the model-aware checker, while
 #615 and #616 needed #602. Thomas chose to lift the PR-template check for #602 to break it. The
 premise was wrong. #602's security review is a genuine GPT-6 Sol chain
 (`602-p0-scope-clean.md`). The delivery conductor ran `main`'s check on #602's body and found

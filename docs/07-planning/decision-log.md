@@ -98,23 +98,42 @@ luna = sonnat / haku … anything is ok because usage limit are real".
   Haiku, whichever is available.
 
 A GPT-6 Sol review is no longer specifically required ("don't need for GPT 6 sol review now
-on"). From now on, a fresh Claude Opus security review satisfies the Sol tier for merges.
+on"). From now on, a fresh Claude Opus security review satisfies the Sol tier; the merge
+check accepts it once the model-aware checker (#616) is on `main` (see Transition).
 Reviewer counts, independence and truthful labels do not change: every review is
 recorded under the model that produced it, and historical Sol and Luna reviews keep their
 identity. The accepted security-review model block gains `GPT-6.1 Sol`.
 
+**Applied to the other roles** (the policy maintainer's reading of "anything is ok";
+Thomas may reverse any of it):
+- **Conductor:** the session Thomas designates. This replaces the fixed "a Claude Opus
+  session is the conductor"; the current conductor is unchanged.
+- **Fallback upward only:** when no Luna-tier model is available, a Sol-tier model may fill a
+  Luna-tier role, as Instruction 1 already allowed for Opus. A Luna-tier model never fills a
+  Sol-tier role.
+- **Read-only extraction:** any assigned model in either tier, never a retired route; its
+  output is data until a reviewer re-verifies it.
+- **Sampled auditor:** unchanged — a fresh Claude Opus context, working from a packet
+  another context prepared.
+
+The security-review block, not the tier table, decides what the merge check accepts. A new
+model or version (for example another Opus version) needs a reviewed edit of the block.
+
 **Supersedes:** the model choice in the 2026-10-09 "Mixed-model routing for the delivery
 mission" and "Opus policy-repair conductor" entries, including Haiku being limited to
-read-only extraction. Their other content stands.
+read-only extraction; and, in the 2026-09-29 "OpenAI model routing replaces Claude/`pal-mcp`
+routing" entry, the fixed requirement that GPT-6 Sol fills the security and finalizer roles
+and GPT-6 Luna the implementation and ordinary-review roles. Their other content stands.
 
 **Transition:** `main`'s PR-template check accepts only the literal `GPT-6 Sol` until the
 model-aware checker (#616) lands. Until then, a security-scope pull request whose only security
-review is Opus-labelled waits for #615 and #616. Its review is never relabelled, and the
+review carries any other label (Claude Opus or `GPT-6.1 Sol`) waits for #615 and #616. Its review is never relabelled, and the
 required check is not lifted. #602 is unaffected: its security review is a genuine GPT-6 Sol
 chain.
 
 **Source:** Thomas, directly to the delivery conductor session
-(`local_49596b31-2faf-432e-885e-bfb2dcca607a`, ~17:10 UTC: "yes do it. don't need for GPT 6 sol
+(`local_49596b31-2faf-432e-885e-bfb2dcca607a`; relayed to the recording session at 16:56 UTC:
+"yes do it. don't need for GPT 6 sol
 review now on."), then directly in the policy-maintainer session that records it
 (`412b91f1-99f8-4ac2-8f5c-a03dce507862`), 2026-10-09: the tier mapping. Thomas also chose,
 in that session, to lift the PR-template check for #602. That choice rested on the policy
