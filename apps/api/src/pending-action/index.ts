@@ -11,6 +11,7 @@ import {
 import { setShadowLegacyAuthorization } from "../permissions/shadow-context";
 import { normaliseTraceId } from "../permissions/shadow-middleware";
 import { requireSessionOnly } from "../utils/require-session-only";
+import { resolvePendingActionApprovalContract } from "./approval-contract";
 import {
   pendingActionApprovalSchema,
   pendingActionDecisionSchema,
@@ -212,8 +213,9 @@ const pendingAction = apiRouter()
       id,
       requesterPersonId,
     });
+    const contract = resolvePendingActionApprovalContract(target);
     const result =
-      target.targetType === "service_calendar"
+      contract?.executor === "service_calendar_delete"
         ? await approveServiceCalendarDeletion({
             id,
             requesterPersonId,
@@ -221,7 +223,7 @@ const pendingAction = apiRouter()
             sessionId: session.id,
             traceId,
           })
-        : target.targetType === "saved_view"
+        : contract?.executor === "saved_view_delete"
           ? await approveSavedViewDeletion({
               id,
               requesterPersonId,
@@ -229,9 +231,7 @@ const pendingAction = apiRouter()
               sessionId: session.id,
               traceId,
             })
-          : target.targetType === "user" &&
-              target.action === "delete" &&
-              target.routeKey === "POST /api/instance/users/{id}/deactivate" &&
+          : contract?.executor === "user_deactivation" &&
               typedName !== undefined
             ? token === undefined
               ? (() => {

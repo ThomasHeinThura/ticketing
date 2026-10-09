@@ -30,6 +30,7 @@ import type { ApiKeyPermissionScope } from "../utils/require-api-key-permission-
 import { parseApiKeyPermissionScope } from "../utils/require-api-key-permission-scope";
 import { assertCallerHasCapability } from "../utils/require-workspace-capability";
 import { validateWorkspaceAccess } from "../utils/validate-workspace-access";
+import { resolvePendingActionApprovalContract } from "./approval-contract";
 import {
   type ConfirmationKind,
   canonicalPendingActionPayload,
@@ -254,6 +255,7 @@ export async function getPendingActionExecutionTarget(input: {
     .select({
       action: pendingActionTable.action,
       targetType: pendingActionTable.targetType,
+      confirmationRequired: pendingActionTable.confirmationRequired,
       routeKey: pendingActionTable.routeKey,
     })
     .from(pendingActionTable)
@@ -2115,24 +2117,6 @@ type PublicPendingActionFields = {
   approvalSupported: boolean;
 };
 
-function supportsPendingActionApproval(
-  row: typeof pendingActionTable.$inferSelect,
-): boolean {
-  if (row.action !== "delete") return false;
-  if (
-    (row.targetType === "service_calendar" ||
-      row.targetType === "saved_view") &&
-    row.confirmationRequired === "click"
-  ) {
-    return true;
-  }
-  return (
-    row.targetType === "user" &&
-    row.routeKey === "POST /api/instance/users/{id}/deactivate" &&
-    row.confirmationRequired === "typed_name_step_up"
-  );
-}
-
 function isLegacyInstanceUserDeactivation(
   row: typeof pendingActionTable.$inferSelect,
 ): boolean {
@@ -2161,7 +2145,13 @@ async function publicPendingActionFields(
       targetType: row.targetType,
       targetIds: row.targetIds,
       summary: row.payloadSummary as Record<string, unknown>,
-      approvalSupported: supportsPendingActionApproval(row),
+      approvalSupported:
+        resolvePendingActionApprovalContract({
+          action: row.action,
+          targetType: row.targetType,
+          confirmationRequired: row.confirmationRequired,
+          routeKey: row.routeKey,
+        }) !== undefined,
     };
   }
   if (!isLegacyInstanceUserDeactivation(row)) {
