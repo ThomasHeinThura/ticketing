@@ -108,7 +108,7 @@ function isRegisteredRoute(value: unknown): value is RegisteredHttpRoute {
 function validateEvent(
   event: TaskDeskLogEvent,
   registeredRoutes: ReadonlySet<RegisteredHttpRoute>,
-  registeredPolicySources: ReadonlySet<string>,
+  registeredPolicySourceByRoute: ReadonlyMap<RegisteredHttpRoute, string>,
 ): void {
   if (!event || typeof event !== "object" || Array.isArray(event)) {
     throw new TypeError("Invalid structured log event");
@@ -173,7 +173,8 @@ function validateEvent(
       event.traceId !== witness.requestId ||
       !registeredRoutes.has(witness.route) ||
       event.route !== witness.route ||
-      !registeredPolicySources.has(witness.policySource) ||
+      registeredPolicySourceByRoute.get(witness.route) !==
+        witness.policySource ||
       (witness.decisionCategory !== "allowed" &&
         witness.decisionCategory !== "denied") ||
       ![
@@ -197,7 +198,10 @@ export function createTaskDeskLogger(
   initialLevels: unknown,
   trustedRoutes: ReadonlySet<RegisteredHttpRoute>,
   destination: DestinationStream = process.stdout,
-  trustedPolicySources: ReadonlySet<string> = new Set(),
+  trustedPolicySourceByRoute: ReadonlyMap<
+    RegisteredHttpRoute,
+    string
+  > = new Map(),
 ): TaskDeskLogger {
   let levels: LogLevels = validateLogLevels(initialLevels);
   const registeredRoutes = new Set<RegisteredHttpRoute>();
@@ -210,7 +214,7 @@ export function createTaskDeskLogger(
     }
     registeredRoutes.add(route);
   }
-  const registeredPolicySources = new Set(trustedPolicySources);
+  const registeredPolicySourceByRoute = new Map(trustedPolicySourceByRoute);
   const root: Logger = pino(
     {
       level: "trace",
@@ -252,7 +256,7 @@ export function createTaskDeskLogger(
       applyLevels(next);
     },
     log(event) {
-      validateEvent(event, registeredRoutes, registeredPolicySources);
+      validateEvent(event, registeredRoutes, registeredPolicySourceByRoute);
       let logger = moduleLoggers.get(event.module);
       if (!logger) {
         logger = root.child(

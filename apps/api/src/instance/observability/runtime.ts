@@ -7,6 +7,7 @@ import {
 import {
   type AuditFailureOperation,
   createTaskDeskMetrics,
+  type RegisteredHttpRoute,
   registeredRouteKey,
   UNMATCHED_ROUTE,
 } from "../../observability/metrics.js";
@@ -19,25 +20,28 @@ import { policyRegistry } from "../../policy-registry";
 import { createObservabilityConfigRefresher } from "./config-refresh-version";
 import { parseLogLevels } from "./settings";
 
-const routeKeys = policyRegistry.entries.flatMap(({ routeKey }) => {
-  const match = /^(GET|HEAD|POST|PUT|PATCH|DELETE|OPTIONS) (\/[^?#]*)$/u.exec(
-    routeKey,
-  );
-  if (!match) return [];
-  const method = match[1];
-  const pathname = match[2];
-  return method && pathname ? [registeredRouteKey(method, pathname)] : [];
-});
-const trustedRoutes = new Set(routeKeys);
-const trustedPolicySources = new Set(
-  policyRegistry.entries.map(({ source }) => source),
+const routeSourceEntries = policyRegistry.entries.flatMap(
+  ({ routeKey, source }): Array<readonly [RegisteredHttpRoute, string]> => {
+    const match = /^(GET|HEAD|POST|PUT|PATCH|DELETE|OPTIONS) (\/[^?#]*)$/u.exec(
+      routeKey,
+    );
+    if (!match) return [];
+    const method = match[1];
+    const pathname = match[2];
+    return method && pathname
+      ? [[registeredRouteKey(method, pathname), source]]
+      : [];
+  },
 );
+const routeKeys = routeSourceEntries.map(([route]) => route);
+const trustedRoutes = new Set(routeKeys);
+const trustedPolicySourceByRoute = new Map(routeSourceEntries);
 const metrics = createTaskDeskMetrics(routeKeys);
 const logger = createTaskDeskLogger(
   defaultLogLevels(),
   trustedRoutes,
   process.stdout,
-  trustedPolicySources,
+  trustedPolicySourceByRoute,
 );
 let listener: ReturnType<typeof createMetricsListener> | undefined;
 let refreshTimer: ReturnType<typeof setInterval> | undefined;

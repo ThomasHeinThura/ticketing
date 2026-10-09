@@ -8,6 +8,7 @@ import { registeredRouteKey } from "../../../apps/api/src/observability/metrics.
 import { defaultLogLevels } from "../../../apps/api/src/observability/settings.js";
 
 const workspacesRoute = registeredRouteKey("GET", "/api/workspaces");
+const assetRoute = registeredRouteKey("GET", "/api/asset/{id}");
 const registeredRoutes = new Set([workspacesRoute]);
 
 function capture() {
@@ -217,19 +218,22 @@ describe("allowlisted structured logger", () => {
     const source = "apps/api/src/asset/policy.ts";
     const logger = createTaskDeskLogger(
       defaultLogLevels(),
-      new Set([workspacesRoute]),
+      new Set([assetRoute, workspacesRoute]),
       sink.stream,
-      new Set([source]),
+      new Map([
+        [assetRoute, source],
+        [workspacesRoute, "apps/api/src/workspace/policy.ts"],
+      ]),
     );
     logger.log({
       module: "http",
       message: "http.request",
       level: "info",
       traceId: "0123456789abcdef0123456789abcdef",
-      route: workspacesRoute,
+      route: assetRoute,
       strictPolicyWitness: {
         requestId: "0123456789abcdef0123456789abcdef",
-        route: workspacesRoute,
+        route: assetRoute,
         policySource: source,
         decisionCategory: "denied",
         provenanceValidationResult: "complete",
@@ -241,7 +245,7 @@ describe("allowlisted structured logger", () => {
     >;
     expect(record.strictPolicyWitness).toEqual({
       requestId: "0123456789abcdef0123456789abcdef",
-      route: workspacesRoute,
+      route: assetRoute,
       policySource: source,
       decisionCategory: "denied",
       provenanceValidationResult: "complete",
@@ -253,19 +257,22 @@ describe("allowlisted structured logger", () => {
     const source = "apps/api/src/asset/policy.ts";
     const logger = createTaskDeskLogger(
       defaultLogLevels(),
-      new Set([workspacesRoute]),
+      new Set([assetRoute, workspacesRoute]),
       sink.stream,
-      new Set([source]),
+      new Map([
+        [assetRoute, source],
+        [workspacesRoute, "apps/api/src/workspace/policy.ts"],
+      ]),
     );
     const base: TaskDeskLogEvent = {
       module: "http",
       message: "http.request",
       level: "info",
       traceId: "0123456789abcdef0123456789abcdef",
-      route: workspacesRoute,
+      route: assetRoute,
       strictPolicyWitness: {
         requestId: "0123456789abcdef0123456789abcdef",
-        route: workspacesRoute,
+        route: assetRoute,
         policySource: source,
         decisionCategory: "denied",
         provenanceValidationResult: "complete",
@@ -276,6 +283,10 @@ describe("allowlisted structured logger", () => {
       {
         ...base.strictPolicyWitness,
         policySource: "apps/api/src/evil/policy.ts",
+      },
+      {
+        ...base.strictPolicyWitness,
+        policySource: "apps/api/src/workspace/policy.ts",
       },
       { ...base.strictPolicyWitness, route: "GET /raw/path" as never },
       { ...base.strictPolicyWitness, decisionCategory: "maybe" as never },
