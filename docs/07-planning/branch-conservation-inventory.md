@@ -1,5 +1,18 @@
 # Remote branch conservation inventory
 
+## Additional live capture — 2026-10-09 09:29 UTC
+
+The complete remote capture contains **446 refs**. Every one of the historical442 branch names remains present; no deleted-source inference or deletion authority follows. Four new refs are preserved below. Six historical branch heads differ as recorded in the private exact-ref delta; prior hashes remain historical evidence. Current semantic review and protected merge eligibility belong to the integration queue, not ancestry alone. This capture does not reuse the historical classification counts as current acceptance.
+
+| Added remote branch | Exact live head SHA | Source owner / next action | State |
+|---|---|---|---|
+| `codex/control-plane-integration-freeze-20261009` | `f5969dfd85e39d034212affc1e2e62661cd98aa3` | Independent #612 control-plane owner; use current exact owner review/CI | `BLOCKED` |
+| `codex/p2-sla-pause-resume-20261009` | `9e32b9156c3e703b36ee1c1211981c3de0e2bc52` | #611 existing SLA owner; accepted-base/schema/CI integration | `BLOCKED` |
+| `codex/p2-submission-event-literals-20261009` | `180487c1b76a391d3279abddd929d3f3d839eea0` | Reviewed literal-event source retained in current #611; no duplicate merge candidate | `BLOCKED` |
+| `codex/security-audit-prerequisite-20261009` | `1fbb373517abf70fdb43b65c37187069f0b6b613` | Independent #614 security prerequisite owner; current required CI | `BLOCKED` |
+
+The exact current #609 source publication is `6014436e5e929b3eda3c7669430b7c3af32395be`; its original350,138-byte Node24 budget failure and inherited registered-router numeric-like query defect remain open. No source is marked accepted merely because it is conserved.
+
 ## Additional live capture — 2026-10-09 06:17 UTC
 
 Live `git ls-remote --heads` returned **443 refs**; GitHub returned **21 open PRs**. Added owner branch `codex/p2-sla-pause-resume-20261009` is exact `95927e4635f2cc2e7b66fe2ee94b82297ef7bf7e`, retained by draft #611 against #513. It implements existing specified SLA gaps and is not accepted source. The private complete live-ref capture is `2026-10-09/live-ref-refresh-611.json`. The 442-row ancestry inventory below remains its historical Oct8 capture; its classification counts do not automatically transfer to current443. Preserve all original refs, the new branch and source provenance. No branch deletion or semantic acceptance is authorized.
