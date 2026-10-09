@@ -67,7 +67,7 @@ function run(command, args) {
       // the same distinct public-origin bootstrap values used by API test setup;
       // production startup itself remains fail-closed when either value is absent.
       TASKDESK_AGENT_URL:
-        process.env.TASKDESK_AGENT_URL ?? "http://localhost:5173",
+        process.env.TASKDESK_AGENT_URL ?? "https://taskdesk.test",
       TASKDESK_PORTAL_URL:
         process.env.TASKDESK_PORTAL_URL ?? "http://portal.localhost:5174",
     },

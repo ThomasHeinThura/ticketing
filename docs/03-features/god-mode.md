@@ -305,7 +305,10 @@ with server-selected `end_memberships`; it revokes current sessions and all exis
 API keys, retires external and direct grants, recomputes effective membership, and preserves
 authored history. It never hard-deletes the person or user. SCIM retains its configured
 lifecycle policy; IP-16 reactivation does not restore retired grants. No last-administrator
-guardrail is introduced.
+guardrail is introduced. Durable pending actions from migration 0109 retain their stored
+`user_deactivation`/`person` identity and remain unapprovable; self-read DTOs expose them as
+`delete`/`user` only after the stored person id resolves to its linked user id. An unresolved
+legacy target fails closed with the existing `pending_action_target_changed` conflict.
 
 The directory uses `GET /api/instance/users` with opaque cursor pagination (`limit` defaults
 to 50 and is capped at 200). `q` is trimmed and searched as a case-insensitive substring of
@@ -388,7 +391,11 @@ Import runs and their history. See [import strategy](../06-data-import/import-st
   `typed_name_step_up`: the requester types the target's exact current account email and
   supplies the pending-action-bound PA-15 token. The server revalidates current email,
   active state, instance-admin authority, target id, and proof while executing the action.
-  It selects `end_memberships` for the administrative IP-15 lifecycle transition.
+  It selects `end_memberships` for the administrative IP-15 lifecycle transition. Durable
+  legacy `user_deactivation`/`person` rows are never rewritten or approved; list, detail,
+  cancel and deny responses normalize their public action and target only after resolving
+  the person id to its linked user id. Missing resolution returns the existing
+  `pending_action_target_changed` conflict.
 
 **Impersonation**
 

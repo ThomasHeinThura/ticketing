@@ -1943,8 +1943,7 @@
               "delete",
               "bulk_delete",
               "purge",
-              "mcp_destructive",
-              "user_deactivation"
+              "mcp_destructive"
             ]
           },
           "origin": {
@@ -2101,8 +2100,7 @@
               "delete",
               "bulk_delete",
               "purge",
-              "mcp_destructive",
-              "user_deactivation"
+              "mcp_destructive"
             ]
           },
           "origin": {
@@ -29546,7 +29544,7 @@
       },
       "servers": [
         {
-          "url": "http://localhost:5173",
+          "url": "https://taskdesk.test",
           "description": "SCIM protocol on the agent origin"
         }
       ]
@@ -29880,7 +29878,7 @@
       },
       "servers": [
         {
-          "url": "http://localhost:5173",
+          "url": "https://taskdesk.test",
           "description": "SCIM protocol on the agent origin"
         }
       ]
@@ -30031,7 +30029,7 @@
       },
       "servers": [
         {
-          "url": "http://localhost:5173",
+          "url": "https://taskdesk.test",
           "description": "SCIM protocol on the agent origin"
         }
       ]
@@ -30354,7 +30352,7 @@
       },
       "servers": [
         {
-          "url": "http://localhost:5173",
+          "url": "https://taskdesk.test",
           "description": "SCIM protocol on the agent origin"
         }
       ]
@@ -30520,7 +30518,7 @@
       },
       "servers": [
         {
-          "url": "http://localhost:5173",
+          "url": "https://taskdesk.test",
           "description": "SCIM protocol on the agent origin"
         }
       ]
@@ -30623,7 +30621,7 @@
       },
       "servers": [
         {
-          "url": "http://localhost:5173",
+          "url": "https://taskdesk.test",
           "description": "SCIM protocol on the agent origin"
         }
       ]
@@ -30689,7 +30687,7 @@
       },
       "servers": [
         {
-          "url": "http://localhost:5173",
+          "url": "https://taskdesk.test",
           "description": "SCIM protocol on the agent origin"
         }
       ]

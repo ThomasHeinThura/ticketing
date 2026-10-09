@@ -11,7 +11,10 @@ type Spec = {
   openapi: string;
   info: { title: string; version: string };
   servers: Array<{ url: string }>;
-  paths: Record<string, Record<string, Operation>>;
+  paths: Record<
+    string,
+    Record<string, Operation> & { servers?: Array<{ url: string }> }
+  >;
   security?: Array<Record<string, unknown>>;
   components: {
     schemas: Record<string, unknown>;
@@ -25,7 +28,8 @@ function operations(spec: Spec): Array<[string, string, Operation]> {
   const out: Array<[string, string, Operation]> = [];
   for (const [path, item] of Object.entries(spec.paths)) {
     for (const [method, operation] of Object.entries(item)) {
-      if (HTTP_METHODS.includes(method)) out.push([method, path, operation]);
+      if (HTTP_METHODS.includes(method))
+        out.push([method, path, operation as Operation]);
     }
   }
   return out;
@@ -89,6 +93,20 @@ describe("TaskDesk API OpenAPI spec", () => {
 
     expect(runtimeSpec.servers[0]?.url).toBe(
       "https://api.customer.example/api",
+    );
+  });
+
+  it("keeps SCIM server metadata on the configured agent origin", async () => {
+    const agentOrigin = "https://agent.taskdesk.test";
+    vi.stubEnv("TASKDESK_AGENT_URL", agentOrigin);
+
+    const { app } = createApp();
+    const response = await app.request("/api/openapi");
+    expect(response.status).toBe(200);
+    const runtimeSpec = (await response.json()) as Spec;
+
+    expect(runtimeSpec.paths["/scim/v2/Users"]?.servers?.[0]?.url).toBe(
+      agentOrigin,
     );
   });
 

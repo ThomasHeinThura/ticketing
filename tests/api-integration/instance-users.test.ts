@@ -166,11 +166,17 @@ describe("God Mode Users API", () => {
       "users-legacy-deactivation-wrong-target",
     );
     await ensureStaffPersonForUser(wrongTarget.id);
+    const deniedTarget = await seedUser("users-legacy-deactivation-denied");
+    await ensureStaffPersonForUser(deniedTarget.id);
     const [wrongPerson] = await db
       .select()
       .from(schema.personTable)
       .where(eq(schema.personTable.userId, wrongTarget.id));
-    if (!adminPerson || !intendedPerson || !wrongPerson)
+    const [deniedPerson] = await db
+      .select()
+      .from(schema.personTable)
+      .where(eq(schema.personTable.userId, deniedTarget.id));
+    if (!adminPerson || !intendedPerson || !wrongPerson || !deniedPerson)
       throw new Error("legacy migration identities were not created");
     await db
       .update(schema.personTable)
@@ -178,6 +184,7 @@ describe("God Mode Users API", () => {
       .where(eq(schema.personTable.id, wrongPerson.id));
     const now = new Date();
     const pendingId = "users-legacy-deactivation-pending";
+    const deniedId = "users-legacy-deactivation-denied";
     const terminalId = "users-legacy-deactivation-terminal";
     const legacyPayload = {
       action: "user_deactivation",
@@ -190,7 +197,7 @@ describe("God Mode Users API", () => {
       confirmation_required: "typed_name_step_up",
     };
 
-    // Recreate the 0109 constraint, seed both durable row classes, then replay
+    // Recreate the 0109 constraint, seed durable pending/terminal rows, then replay
     // the shipped 0112 migration exactly as the migration runner splits it.
     await db.execute(
       "ALTER TABLE pending_action DROP CONSTRAINT pending_action_action_check",
@@ -218,6 +225,27 @@ describe("God Mode Users API", () => {
         confirmationRequired: "typed_name_step_up",
         state: "pending",
         traceId: "trace-users-legacy-pending",
+        expiresAt: new Date(now.getTime() + 60_000),
+      },
+      {
+        id: deniedId,
+        requestedByPersonId: adminPerson.id,
+        credentialType: "session",
+        credentialId: sessionId,
+        origin: "web",
+        action: "user_deactivation",
+        targetType: "person",
+        targetIds: [deniedPerson.id],
+        payload: { ...legacyPayload, target_ids: [deniedPerson.id] },
+        routeKey: legacyPayload.route_key,
+        payloadHash: "c".repeat(64),
+        payloadSummary: {
+          personId: deniedPerson.id,
+          email: deniedTarget.email,
+        },
+        confirmationRequired: "typed_name_step_up",
+        state: "pending",
+        traceId: "trace-users-legacy-denied",
         expiresAt: new Date(now.getTime() + 60_000),
       },
       {
@@ -265,8 +293,14 @@ describe("God Mode Users API", () => {
         payloadHash: schema.pendingActionTable.payloadHash,
       })
       .from(schema.pendingActionTable)
-      .where(inArray(schema.pendingActionTable.id, [pendingId, terminalId]));
-    expect(preserved).toHaveLength(2);
+      .where(
+        inArray(schema.pendingActionTable.id, [
+          pendingId,
+          deniedId,
+          terminalId,
+        ]),
+      );
+    expect(preserved).toHaveLength(3);
     expect(preserved.find((row) => row.id === pendingId)).toMatchObject({
       action: "user_deactivation",
       state: "pending",
@@ -281,9 +315,19 @@ describe("God Mode Users API", () => {
       payload: { ...legacyPayload, target_ids: [wrongPerson.id] },
       payloadHash: "b".repeat(64),
     });
+    expect(preserved.find((row) => row.id === deniedId)).toMatchObject({
+      action: "user_deactivation",
+      state: "pending",
+      targetIds: [deniedPerson.id],
+      payload: { ...legacyPayload, target_ids: [deniedPerson.id] },
+      payloadHash: "c".repeat(64),
+    });
 
     const legacyToken = createHash("sha256")
       .update("expired-legacy-proof")
+      .digest("base64url");
+    const deniedToken = createHash("sha256")
+      .update("unused-legacy-deny-proof")
       .digest("base64url");
     const terminalToken = createHash("sha256")
       .update("consumed-legacy-proof")
@@ -322,6 +366,21 @@ describe("God Mode Users API", () => {
         challengeExpiresAt: new Date(now.getTime() - 120_000),
         tokenExpiresAt: new Date(now.getTime() - 60_000),
       },
+      {
+        id: "users-legacy-deactivation-deny-step-up",
+        personId: adminPerson.id,
+        sessionId,
+        bindingKind: "pending_action",
+        pendingActionId: deniedId,
+        challengeNonceHash: createHash("sha256").update("nonce-deny").digest(),
+        state: "issued",
+        tokenHash: createHash("sha256").update(deniedToken).digest(),
+        authMethod: "password",
+        authenticatedAt: new Date(now.getTime() - 120_000),
+        issuedAt: new Date(now.getTime() - 120_000),
+        challengeExpiresAt: new Date(now.getTime() - 120_000),
+        tokenExpiresAt: new Date(now.getTime() - 60_000),
+      },
     ]);
     mockAuthenticatedSession(admin);
     const { app } = createApp();
@@ -339,6 +398,39 @@ describe("God Mode Users API", () => {
     );
     expect(response.status).toBe(409);
     expect(await response.text()).toBe("pending_action_kind_unsupported");
+    const listed = await agentRequest(app, "/api/me/pending-actions");
+    expect(listed.status).toBe(200);
+    const listedBody = (await listed.json()) as {
+      data: Array<Record<string, unknown>>;
+    };
+    expect(listedBody.data).toContainEqual(
+      expect.objectContaining({
+        id: pendingId,
+        action: "delete",
+        targetType: "user",
+        targetIds: [intendedTarget.id],
+        summary: {
+          personId: intendedPerson.id,
+          userId: intendedTarget.id,
+          email: intendedTarget.email,
+        },
+        state: "pending",
+      }),
+    );
+    expect(listedBody.data).toContainEqual(
+      expect.objectContaining({
+        id: deniedId,
+        action: "delete",
+        targetType: "user",
+        targetIds: [deniedTarget.id],
+        summary: {
+          personId: deniedPerson.id,
+          userId: deniedTarget.id,
+          email: deniedTarget.email,
+        },
+        state: "pending",
+      }),
+    );
     const readable = await agentRequest(
       app,
       `/api/me/pending-actions/${pendingId}`,
@@ -346,11 +438,124 @@ describe("God Mode Users API", () => {
     expect(readable.status).toBe(200);
     expect(await readable.json()).toMatchObject({
       id: pendingId,
-      action: "user_deactivation",
-      targetType: "person",
-      targetIds: [intendedPerson.id],
+      action: "delete",
+      targetType: "user",
+      targetIds: [intendedTarget.id],
+      summary: {
+        personId: intendedPerson.id,
+        userId: intendedTarget.id,
+        email: intendedTarget.email,
+      },
       state: "pending",
     });
+    const beforeUnresolvedCancel = await db
+      .select({
+        state: schema.pendingActionTable.state,
+        targetIds: schema.pendingActionTable.targetIds,
+        payload: schema.pendingActionTable.payload,
+        payloadSummary: schema.pendingActionTable.payloadSummary,
+        payloadHash: schema.pendingActionTable.payloadHash,
+      })
+      .from(schema.pendingActionTable)
+      .where(eq(schema.pendingActionTable.id, pendingId));
+    const decisionAuditBefore = await db
+      .select({ id: schema.auditLogTable.id })
+      .from(schema.auditLogTable)
+      .where(
+        and(
+          eq(schema.auditLogTable.entityId, pendingId),
+          eq(schema.auditLogTable.action, "pending_action.decided"),
+        ),
+      );
+    const decisionEventsBefore = await db
+      .select({ eventId: schema.outboxTable.eventId })
+      .from(schema.outboxTable)
+      .where(
+        and(
+          eq(schema.outboxTable.kind, "pending_action.decided"),
+          sql`${schema.outboxTable.payload}->'payload'->>'pendingActionId' = ${pendingId}`,
+        ),
+      );
+    await db
+      .update(schema.pendingActionTable)
+      .set({
+        targetIds: ["missing-legacy-person"],
+        payload: { ...legacyPayload, target_ids: ["missing-legacy-person"] },
+        payloadSummary: {
+          personId: "missing-legacy-person",
+          email: intendedTarget.email,
+        },
+      })
+      .where(eq(schema.pendingActionTable.id, pendingId));
+    const unresolvedCancel = await agentRequest(
+      app,
+      `/api/me/pending-actions/${pendingId}/cancel`,
+      { method: "POST" },
+    );
+    expect(unresolvedCancel.status).toBe(409);
+    expect(await unresolvedCancel.text()).toBe("pending_action_target_changed");
+    expect(
+      await db
+        .select({ state: schema.pendingActionTable.state })
+        .from(schema.pendingActionTable)
+        .where(eq(schema.pendingActionTable.id, pendingId)),
+    ).toEqual([{ state: "pending" }]);
+    expect(
+      await db
+        .select({ state: schema.stepUpConfirmationTable.state })
+        .from(schema.stepUpConfirmationTable)
+        .where(
+          eq(
+            schema.stepUpConfirmationTable.id,
+            "users-legacy-deactivation-step-up",
+          ),
+        ),
+    ).toEqual([{ state: "issued" }]);
+    expect(
+      await db
+        .select({ id: schema.auditLogTable.id })
+        .from(schema.auditLogTable)
+        .where(
+          and(
+            eq(schema.auditLogTable.entityId, pendingId),
+            eq(schema.auditLogTable.action, "pending_action.decided"),
+          ),
+        ),
+    ).toEqual(decisionAuditBefore);
+    expect(
+      await db
+        .select({ eventId: schema.outboxTable.eventId })
+        .from(schema.outboxTable)
+        .where(
+          and(
+            eq(schema.outboxTable.kind, "pending_action.decided"),
+            sql`${schema.outboxTable.payload}->'payload'->>'pendingActionId' = ${pendingId}`,
+          ),
+        ),
+    ).toEqual(decisionEventsBefore);
+    await db
+      .update(schema.pendingActionTable)
+      .set({
+        targetIds: [intendedPerson.id],
+        payload: legacyPayload,
+        payloadSummary: {
+          personId: intendedPerson.id,
+          email: intendedTarget.email,
+        },
+      })
+      .where(eq(schema.pendingActionTable.id, pendingId));
+    expect(
+      await db
+        .select({
+          state: schema.pendingActionTable.state,
+          targetIds: schema.pendingActionTable.targetIds,
+          payload: schema.pendingActionTable.payload,
+          payloadSummary: schema.pendingActionTable.payloadSummary,
+          payloadHash: schema.pendingActionTable.payloadHash,
+        })
+        .from(schema.pendingActionTable)
+        .where(eq(schema.pendingActionTable.id, pendingId)),
+    ).toEqual(beforeUnresolvedCancel);
     expect(
       await db
         .select({
@@ -405,6 +610,14 @@ describe("God Mode Users API", () => {
     expect(cancelled.status).toBe(200);
     expect(await cancelled.json()).toMatchObject({
       id: pendingId,
+      action: "delete",
+      targetType: "user",
+      targetIds: [intendedTarget.id],
+      summary: {
+        personId: intendedPerson.id,
+        userId: intendedTarget.id,
+        email: intendedTarget.email,
+      },
       state: "cancelled",
     });
     expect(
@@ -421,6 +634,175 @@ describe("God Mode Users API", () => {
           eq(
             schema.stepUpConfirmationTable.id,
             "users-legacy-deactivation-step-up",
+          ),
+        ),
+    ).toEqual([{ state: "issued" }]);
+    expect(
+      await db
+        .select({
+          action: schema.pendingActionTable.action,
+          targetType: schema.pendingActionTable.targetType,
+          targetIds: schema.pendingActionTable.targetIds,
+          payload: schema.pendingActionTable.payload,
+          payloadHash: schema.pendingActionTable.payloadHash,
+        })
+        .from(schema.pendingActionTable)
+        .where(eq(schema.pendingActionTable.id, pendingId)),
+    ).toEqual([
+      {
+        action: "user_deactivation",
+        targetType: "person",
+        targetIds: [intendedPerson.id],
+        payload: legacyPayload,
+        payloadHash: "a".repeat(64),
+      },
+    ]);
+    const beforeUnresolvedDeny = await db
+      .select({
+        state: schema.pendingActionTable.state,
+        targetIds: schema.pendingActionTable.targetIds,
+        payload: schema.pendingActionTable.payload,
+        payloadSummary: schema.pendingActionTable.payloadSummary,
+        payloadHash: schema.pendingActionTable.payloadHash,
+      })
+      .from(schema.pendingActionTable)
+      .where(eq(schema.pendingActionTable.id, deniedId));
+    const deniedAuditBefore = await db
+      .select({ id: schema.auditLogTable.id })
+      .from(schema.auditLogTable)
+      .where(
+        and(
+          eq(schema.auditLogTable.entityId, deniedId),
+          eq(schema.auditLogTable.action, "pending_action.decided"),
+        ),
+      );
+    const deniedEventsBefore = await db
+      .select({ eventId: schema.outboxTable.eventId })
+      .from(schema.outboxTable)
+      .where(
+        and(
+          eq(schema.outboxTable.kind, "pending_action.decided"),
+          sql`${schema.outboxTable.payload}->'payload'->>'pendingActionId' = ${deniedId}`,
+        ),
+      );
+    await db
+      .update(schema.pendingActionTable)
+      .set({
+        targetIds: ["missing-legacy-person-for-deny"],
+        payload: {
+          ...legacyPayload,
+          target_ids: ["missing-legacy-person-for-deny"],
+        },
+        payloadSummary: {
+          personId: "missing-legacy-person-for-deny",
+          email: deniedTarget.email,
+        },
+      })
+      .where(eq(schema.pendingActionTable.id, deniedId));
+    const unresolvedDeny = await agentRequest(
+      app,
+      `/api/me/pending-actions/${deniedId}/deny`,
+      { method: "POST" },
+    );
+    expect(unresolvedDeny.status).toBe(409);
+    expect(await unresolvedDeny.text()).toBe("pending_action_target_changed");
+    expect(
+      await db
+        .select({ state: schema.pendingActionTable.state })
+        .from(schema.pendingActionTable)
+        .where(eq(schema.pendingActionTable.id, deniedId)),
+    ).toEqual([{ state: "pending" }]);
+    expect(
+      await db
+        .select({ state: schema.stepUpConfirmationTable.state })
+        .from(schema.stepUpConfirmationTable)
+        .where(
+          eq(
+            schema.stepUpConfirmationTable.id,
+            "users-legacy-deactivation-deny-step-up",
+          ),
+        ),
+    ).toEqual([{ state: "issued" }]);
+    expect(
+      await db
+        .select({ id: schema.auditLogTable.id })
+        .from(schema.auditLogTable)
+        .where(
+          and(
+            eq(schema.auditLogTable.entityId, deniedId),
+            eq(schema.auditLogTable.action, "pending_action.decided"),
+          ),
+        ),
+    ).toEqual(deniedAuditBefore);
+    expect(
+      await db
+        .select({ eventId: schema.outboxTable.eventId })
+        .from(schema.outboxTable)
+        .where(
+          and(
+            eq(schema.outboxTable.kind, "pending_action.decided"),
+            sql`${schema.outboxTable.payload}->'payload'->>'pendingActionId' = ${deniedId}`,
+          ),
+        ),
+    ).toEqual(deniedEventsBefore);
+    await db
+      .update(schema.pendingActionTable)
+      .set({
+        targetIds: [deniedPerson.id],
+        payload: { ...legacyPayload, target_ids: [deniedPerson.id] },
+        payloadSummary: {
+          personId: deniedPerson.id,
+          email: deniedTarget.email,
+        },
+      })
+      .where(eq(schema.pendingActionTable.id, deniedId));
+    expect(
+      await db
+        .select({
+          state: schema.pendingActionTable.state,
+          targetIds: schema.pendingActionTable.targetIds,
+          payload: schema.pendingActionTable.payload,
+          payloadSummary: schema.pendingActionTable.payloadSummary,
+          payloadHash: schema.pendingActionTable.payloadHash,
+        })
+        .from(schema.pendingActionTable)
+        .where(eq(schema.pendingActionTable.id, deniedId)),
+    ).toEqual(beforeUnresolvedDeny);
+    const denied = await agentRequest(
+      app,
+      `/api/me/pending-actions/${deniedId}/deny`,
+      { method: "POST" },
+    );
+    expect(denied.status).toBe(200);
+    expect(await denied.json()).toMatchObject({
+      id: deniedId,
+      action: "delete",
+      targetType: "user",
+      targetIds: [deniedTarget.id],
+      summary: {
+        personId: deniedPerson.id,
+        userId: deniedTarget.id,
+        email: deniedTarget.email,
+      },
+      state: "denied",
+    });
+    expect(
+      await db
+        .select({
+          action: schema.pendingActionTable.action,
+          targetType: schema.pendingActionTable.targetType,
+        })
+        .from(schema.pendingActionTable)
+        .where(eq(schema.pendingActionTable.id, deniedId)),
+    ).toEqual([{ action: "user_deactivation", targetType: "person" }]);
+    expect(
+      await db
+        .select({ state: schema.stepUpConfirmationTable.state })
+        .from(schema.stepUpConfirmationTable)
+        .where(
+          eq(
+            schema.stepUpConfirmationTable.id,
+            "users-legacy-deactivation-deny-step-up",
           ),
         ),
     ).toEqual([{ state: "issued" }]);
