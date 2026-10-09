@@ -113,7 +113,7 @@ prove an environment defect.
 | **Test, fixture or oracle defect** | The assertion encodes a wrong expectation, a stale fixture, or compares a nondeterministic field | Fix the test or fixture. Assertions are controls: reviewed like product code, never weakened to pass |
 | **Environment or invocation mismatch** | The runs differ in SHA, command, arguments, versions, data or environment | Correct the invocation or environment; record both runs |
 | **Review or PR metadata** | A template, note or review-binding check fails | Correct the metadata factually; no source change |
-| **Transient infrastructure** | The job failed before the code under test ran, or on a runner, network, registry or quota error | The bounded re-run below |
+| **Transient infrastructure** | The job failed **before the code under test started** — runner provisioning, checkout, dependency or image download, quota | The bounded re-run below |
 | **Unexplained measurement variation** | A timing metric differs across runs of identical source and assets | Preserve every run; apply the metric's own sampling policy; investigate |
 
 When the class is not established, say what is known and unknown and gather targeted
@@ -121,10 +121,13 @@ diagnostics before changing anything.
 
 ### Bounded verification policy
 
-- **Transient infrastructure:** at most **one** re-run of the failed job per candidate SHA, and
-  only when the preserved log shows the failure outside the code under test. Record both run
-  IDs. A second infrastructure failure stops re-running: the task is `WAITING_CI` on the named
-  infrastructure owner.
+- **Transient infrastructure:** at most **one** re-run of a failed job **per job per task**,
+  counted across SHAs (a records-only commit does not reset it), and only when the preserved
+  log shows the failure happened before the code under test started. A network error raised
+  inside a test is a test failure, not infrastructure. Record both run IDs. A second
+  infrastructure failure stops re-running: the task is `WAITING_CI` on the named
+  infrastructure owner. **This allowance applies only once Thomas has approved it in the
+  decision log; until then, no job is re-run.**
 - **Assertion and gate failures:** never re-run an unchanged candidate hoping for a pass.
 - **Performance measurements:** the only sampling and re-run rule is the one each metric
   defines in [UX quality gates § G11](../02-design/ux-quality-gates.md). A failing result stands
@@ -146,7 +149,7 @@ launcher, a CI job's invocation, or one approach to a defect class. Renaming it,
 next version (V35 → V36), moving it to a new branch, session or reviewer **does not reset the
 count**.
 
-Write down, in the PR, a dated **Blocked** entry and the queue:
+Write down, in the PR and the task handoff (the conductor carries it into the queue):
 
 1. What is happening, precisely.
 2. What you expected.
@@ -157,9 +160,11 @@ Write down, in the PR, a dated **Blocked** entry and the queue:
 Then, before any further live attempt:
 
 1. **Pause** live attempts on that mechanism.
-2. **Review** the complete invocation and data path, not the last helper that failed.
+2. **Assign an independent context** to diagnose the complete invocation and data path, not
+   the last helper that failed.
 3. **Reproduce** the retained failure from preserved evidence.
-4. **Correct** the underlying interface or invariant — not one more special case.
+4. **Agree a bounded, cause-appropriate repair** of the underlying interface or invariant —
+   not one more special case — before making it.
 5. **Test the actual production entry point** (below).
 6. Get the **independent review** the change requires.
 7. Run the **next authorized runtime verification**.
@@ -169,12 +174,14 @@ technical diagnosis stays with the agents.
 
 ### End-to-end validation for evidence runners
 
-The regression must drive the real path, in order:
+Every fix to an evidence runner — not only after the limit — needs a regression that drives
+the real path, in order:
 
 ```
 actual launcher → actual arguments and environment → actual artifact loading
   → source / image / authority validation → real collector call sites
-  → evidence persistence → reconciliation → acceptance verdict → cleanup
+  → evidence persistence → reconciliation → acceptance verdict
+  → process lifecycle, exit status and cleanup
 ```
 
 Replay the retained failures through it, including missing inputs, nullable decisions,

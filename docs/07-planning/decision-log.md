@@ -20,16 +20,23 @@ Thomas's roadmap.
   `agent-workflow.md`. `CLAUDE.md` becomes a provider adapter with no policy.
 - Explicit operating modes, a `DONE`/`SUPERSEDED` terminal state alongside the queue's
   existing states, and five separate [levels of done](../04-engineering/definition-of-done.md#levels-of-done).
-- A commit touching only review records needs no new review of any kind; the conductor
-  verifies the path list mechanically. This supersedes the 2026-10-09 integration-acceptance
-  checklist line requiring ordinary exact-candidate re-review of note-only commits.
-- Failure classes each have their own remedy. A bounded verification policy allows **one**
-  re-run of a CI job per candidate SHA only for evidenced infrastructure failure; G11
-  sampling stays exactly as defined in UX quality gates.
+- A delta made only of review records (lines added to the PR's own notes; reviewer fields of
+  the PR body) needs no new review of any kind; the conductor verifies it over landed commits
+  and traces every record to its reviewer. Historical notes stay append-only. This supersedes
+  the 2026-10-09 integration-acceptance checklist line requiring ordinary exact-candidate
+  re-review of note-only commits.
+- **Review-tier changes, disclosed:** a records-only PR (`status.md`, queue, dated evidence)
+  needs one independent factual check instead of two ordinary reviews; agent-authority and
+  workflow-policy changes get two ordinary reviews plus a full security-tier pass when they
+  change merge authority, review requirements, evidence reuse, retry behaviour or gate
+  semantics — which applies to this restructure itself.
+- Failure classes each have their own remedy. A bounded verification policy would allow **one**
+  re-run per job per task, only for failures before the code under test started; it applies
+  only once Thomas approves it here. G11 sampling stays exactly as defined in UX quality gates.
 - The three-attempt rule counts per mechanism across versions, and the post-limit sequence
   ends in an end-to-end test of the actual production entry point.
 
-**Unchanged:** model assignments (2026-09-29), every review count and the security-review
+**Unchanged:** model assignments (2026-09-29), every other review count, the security-review
 path list, every required status check, the PR-template check, protected merge by the
 conductor alone, gate waivers and design approval reserved to Thomas, the freeze, GHCR-only
 publication and the SIT stop condition. Proposed CI path scoping and a model-neutral
@@ -37,8 +44,9 @@ PR-template check are recorded as separate reviewed changes, not made here.
 
 **Supersedes:** the operative duplicate text of the 2026-10-09 Integration Freeze and
 Conductor Coordination entries as written into `AGENTS.md`, `CLAUDE.md`, `sdlc.md`,
-`definition-of-done.md` and `agent-workflow.md`; their decisions themselves stand and are now
-expressed once. Also supersedes the 2026-10-02 bulk-cadence entry's pointer to `AGENTS.md`
+`definition-of-done.md` and `agent-workflow.md`, and the Integration Freeze entry's ordering
+of `CLAUDE.md` second in the hierarchy (it is now a provider adapter, fifth). Their other
+decisions stand and are now expressed once. Also supersedes the 2026-10-02 bulk-cadence entry's pointer to `AGENTS.md`
 as the canonical home (now `agent-workflow.md § Reviews`).
 
 **Source:** explicit owner directive "TaskDesk — owner-authorized workflow & agent policy
