@@ -88,6 +88,56 @@ remains immutable and is not relabeled.
 
 **Recorded:** orchestrator, Thomas's explicit approval in this task, 2026-10-09.
 
+### 2026-10-09 · Owner directive: Opus policy-repair conductor
+
+**Decision and authorization:** Thomas authorized an Opus session to finish the operating-policy
+repair — including the supporting validators and references an Opus-led team needs — get it
+accepted, hand it over, and stop. It may perform the eligible protected merge of its own
+policy candidate after agreeing the merge window with the current conductor. It does not own
+product branches, shared runtimes, migration allocation or release execution, and it does not
+add features, upgrade application dependencies or diagnose P0 performance.
+
+**Model transition:** for this assignment and the following frozen-scope delivery mission, the
+available Claude Opus model may perform implementation, orchestration, ordinary review,
+security review and finalization, each in a **separate, independent context**, at the
+existing review depth, risk-based counts and independence. This changes who reviews; it does
+not claim the models are interchangeable. Reports record the model as the platform reports
+it, role, context, exact source, scope and verdict, and are never labelled GPT-6 Luna or
+GPT-6 Sol. Qualifying existing Opus reviews may satisfy a role where scope and source coverage
+are established; they do not approve later changes. Historical GPT reviews keep their
+identities. Validators must accept this truthfully — never by forged labels, fabricated
+statuses, bypass actors or weakened protection.
+
+**Infrastructure re-run (approved):** one re-run for the same incident on equivalent job
+inputs, only when retained evidence establishes a transient infrastructure failure before the
+affected test or checker executed. A real dependency-audit, typecheck or policy failure is not
+infrastructure. Preserve the original failure, diagnosis and both run IDs. Review-note
+commits, renamed branches and equivalent new SHAs do not reset it; a commit made only to rerun
+counts as the retry; CI after a genuine correction is normal verification. No
+retry-until-green, suppressed assertions, changed G11 sampling or lower thresholds.
+
+**Check applicability (authorized, to be implemented as a reviewed CI change):** policy-only
+changes keep policy/authority review, link and invariant validation, secret scanning and
+affected checker tests, without being treated as new application builds. Product,
+dependency, deployment or mixed changes keep full verification; release candidates keep full
+integrated acceptance. The classification must fail closed on unknown scope, include
+inherited commits, ignore labels and unchecked metadata, and keep required contexts reported.
+Budgets, security thresholds and benchmark sampling do not change. Any ruleset transition goes
+through authorized administration, never a bypass.
+
+**Merge method:** the explicitly selected method on record is squash (2026-09-06), and the
+`protect-main` ruleset permits it. Historical merge commits do not change that selection.
+
+**Supersedes:** in the 2026-10-09 "workflow and agent-policy restructure" entry, the inactive
+status of the re-run allowance and the model table that limited Opus to sampling. That
+entry's other content stands.
+
+**Source:** explicit owner directive "Instruction 1 — Opus policy-repair conductor", given
+directly in the Claude Code session that records it, 2026-10-09.
+**Recorded by:** Claude Opus 5.5 (`claude-opus-5-5`), policy maintainer, PR #615.
+
+---
+
 ### 2026-10-09 · Owner directive: workflow and agent-policy restructure
 
 **Decision and authorization:** Thomas assigned an Opus 5.5 session as independent workflow

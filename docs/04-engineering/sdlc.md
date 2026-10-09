@@ -26,9 +26,8 @@ the [active mission](../07-planning/active-mission.md) and its operating mode, a
 
 **Purpose** — decide what to build and why, before anyone opens an editor.
 
-**Entry** — a task is `READY` in the
-[integration execution queue](../07-planning/integration-execution-queue.md), with its
-dependencies named.
+**Entry** — a task is `READY` in the conductor's queue
+(`docs/07-planning/integration-execution-queue.md`), with its dependencies named.
 
 **Do**
 
