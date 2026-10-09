@@ -56,7 +56,10 @@ lockfile, scanner policy or CI threshold is modified by this control-plane PR. A
 dependency security repair is a necessary prerequisite with its own authorized scope,
 source-bound tests and independent security review; do not mark the check inapplicable or
 mix a dependency remediation into the focused policy change. Recheck live CI before drawing
-any conclusion about the final candidate. Other pending acceptance gates remain pending.
+any conclusion about the final candidate. The same initial run also failed the PR-template
+check while ordinary/Sol review metadata and checklist completion were pending; reconcile
+the body and authentic review evidence as a separate blocker, not a dependency fix. Do not
+call red checks pending or green. Other not-yet-completed acceptance gates remain pending.
 
 ## Next actionable task
 
