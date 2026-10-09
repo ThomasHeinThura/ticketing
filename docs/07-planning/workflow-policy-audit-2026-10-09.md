@@ -305,3 +305,16 @@ listed. Reports are published unedited in `security-reviews/615-*` and
 | 4 | `a399c1abbc5121183` | #616 `7e8ab217` | security, full | CLEAR WITH NON-BLOCKING |
 
 Every round-4 blocking finding is fixed in the following batch and goes to delta review.
+
+## 12 · Mixed-model routing amendment
+
+After round 5, the delivery conductor relayed a mixed-model routing that Thomas gave it
+directly. Following this policy's own rule, it was not recorded on the relay. Thomas then
+confirmed it in the policy-maintainer session. It is recorded as a new decision-log entry
+and reflected in the active mission and the model-policy table. The security-review model
+block is unchanged, so no checker changes.
+
+This amendment changes a review requirement, so it is a reviewed delta. Under the new
+routing, two Claude Sonnet ordinary reviews and one fresh Claude Opus security review cover
+it. The round-5 review set covers everything up to `db071e38`; the conductor confirmed that
+set and the review-record-only delta to `ea30542a`.

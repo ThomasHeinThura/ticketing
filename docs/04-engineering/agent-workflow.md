@@ -149,25 +149,28 @@ that materially authored, directed or remediated a change is not its independent
 
 | Role | Assigned models (any one, in its own independent context) |
 | --- | --- |
-| Implementation, context preparation, ordinary review, bounded architecture/alignment review | **GPT-6 Luna**, explicitly selected; or **Claude Opus 5.5** under the current mission |
-| Security review, critical cross-boundary review, phase finalizer, broad or high-risk architecture review, security- or architecture-heavy context preparation | **GPT-6 Sol**; or **Claude Opus 5.5** under the current mission |
-| Conductor | The session Thomas designates (a GPT conductor prefers GPT-6 Sol for broad governance or security work) |
+| Implementation, context preparation, ordinary review, bounded architecture/alignment review | **GPT-6 Luna**, explicitly selected; or **Claude Sonnet 5.5** under the current mission |
+| Security review, critical cross-boundary review, phase finalizer and final audit, broad or high-risk architecture review, security- or architecture-heavy context preparation | **GPT-6 Sol**; or a fresh **Claude Opus 5.5** context under the current mission |
+| Conductor | The session Thomas designates — under the current mission a Claude Opus 5.5 session (a GPT conductor prefers GPT-6 Sol for broad governance or security work) |
+| Read-only extraction (optional) | **Claude Haiku 5.5** under the current mission — never an author, reviewer of record or approver |
 | Sampled auditor | **Claude Opus 5.5**, only from a packet another context prepared; never replaces a required review |
 | Policy maintenance | The session Thomas assigns. Its PRs still receive the independent reviews, and the security pass, their tier requires |
 
-**Source:** decision log 2026-09-29 (GPT-6 Luna/Sol routing) and 2026-10-09 "Opus
-policy-repair conductor" (Thomas authorized Claude Opus for every role, in separate
-independent contexts, for the policy repair and the frozen-scope delivery mission). This is a
-disclosed change of **who** reviews, not of review depth, counts or independence. Models are
+**Source:** decision log 2026-09-29 (GPT-6 Luna/Sol routing); 2026-10-09 "Opus
+policy-repair conductor" (Claude Opus for every role, in separate independent contexts, for the
+policy repair); and 2026-10-09 "Mixed-model routing for the delivery mission" (the
+Opus/Sonnet/Haiku split above). These are disclosed changes of **who** reviews, not of review
+depth, counts or independence. Models are
 not interchangeable labels: one context never fills two roles on the same change, and the
 author's context is never its reviewer.
 
 Every review records the model and version **as the platform reports it** (for example
-`Claude Opus 5.5 (claude-opus-5-5)`), its role, context, exact source, scope and verdict.
-**Never label a report with a model that did not produce it** — an Opus report is never
-recorded as GPT-6 Luna or GPT-6 Sol, and historical GPT reviews keep their original identity.
-An existing Opus review counts for a role only where its scope and source coverage are
-established; it never approves later changes.
+`Claude Sonnet 5.5 (claude-sonnet-5-5)`, `Claude Opus 5.5 (claude-opus-5-5)`), its role,
+context, exact source, scope and verdict. **Never label a report with a model that did not
+produce it** — a Claude report is never recorded as GPT-6 Luna or GPT-6 Sol, nor a Sonnet
+report as Opus, and historical reviews keep their original identity. An existing review counts
+for a role only where its scope and source coverage are established; it never approves later
+changes. Reviews completed under an earlier assignment stay valid for what they covered.
 
 The PR-template check reads the accepted security-review models from the block below **as it
 stands on the merge base** (`main`), so a candidate cannot edit this block and approve itself
