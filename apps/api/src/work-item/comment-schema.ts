@@ -75,7 +75,7 @@ export const createCommentBody = z.object({
 });
 
 export const updateCommentBody = z.object({
-  body: commentBody.refine((value) => value !== undefined, "body is required"),
+  body: commentBody.optional(),
 });
 
 export const commentIdParam = z.object({

@@ -95,6 +95,10 @@ export async function updateComment(
       }
     }
 
+    // `CA-17`: omission is a write-free no-op, but only after the same reach, live-parent,
+    // membership, ownership, and edit-window checks as a real edit.
+    if (newBody === undefined) return locked;
+
     // `CA-17`: "Each edit writes a new `comment_version` row" -- the row this writes
     // captures the CURRENT (pre-edit) body, so the version history is every PAST body,
     // not the latest (which lives on `comment.body` itself).

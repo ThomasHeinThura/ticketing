@@ -877,6 +877,37 @@ describe("API integration: work-item comments (#27)", () => {
     expect(version?.number).toBe(1);
   });
 
+  it("CA-17: an omitted body is a write-free no-op after the normal edit checks", async () => {
+    const { app, workItem } = await setupWorkItem("member");
+    const originalBody = { type: "doc", content: [{ type: "paragraph" }] };
+    const created = await postComment(app, workItem.key, {
+      body: originalBody,
+      visibility: "internal",
+    });
+    const { id } = (await created.json()) as { id: string };
+
+    const response = await patchComment(app, id, {});
+    expect(response.status).toBe(200);
+    const returned = (await response.json()) as {
+      body: unknown;
+      editedAt: string | null;
+    };
+    expect(returned.body).toEqual(originalBody);
+    expect(returned.editedAt).toBeNull();
+
+    const [stored] = await db
+      .select()
+      .from(schema.commentTable)
+      .where(eq(schema.commentTable.id, id));
+    expect(stored?.body).toEqual(originalBody);
+    expect(stored?.editedAt).toBeNull();
+    const versions = await db
+      .select()
+      .from(schema.commentVersionTable)
+      .where(eq(schema.commentVersionTable.commentId, id));
+    expect(versions).toHaveLength(0);
+  });
+
   it("CA-17: refuses an edit outside the 15-minute window for comment:update_own", async () => {
     const { app, workItem } = await setupWorkItem("member");
     const created = await postComment(app, workItem.key, {
@@ -891,7 +922,7 @@ describe("API integration: work-item comments (#27)", () => {
       .where(eq(schema.commentTable.id, id));
 
     const response = await patchComment(app, id, {
-      body: { type: "doc", content: [{ type: "paragraph" }] },
+      body: undefined,
     });
     expect(response.status).toBe(403);
   });
