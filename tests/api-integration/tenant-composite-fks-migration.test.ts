@@ -297,6 +297,8 @@ describe("migration 0119_tenant_composite_fks -- N2 tenant-composite foreign key
     const entry = journal.entries.find((e) => e.tag === MIGRATION_TAG);
     expect(prior).toBeDefined();
     expect(entry).toBeDefined();
-    expect(entry?.when).toBeGreaterThan(prior?.when ?? Number.POSITIVE_INFINITY);
+    expect(entry?.when).toBeGreaterThan(
+      prior?.when ?? Number.POSITIVE_INFINITY,
+    );
   });
 });
