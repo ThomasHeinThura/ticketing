@@ -162,6 +162,20 @@ it needs a new column on `workflow_transition` or a trigger, which is a design c
 approvals runtime (S3) must verify that the transition belongs to the approval's workspace until
 then.
 
+**Residual: `approval.requested_by` and `approval.approver_id`.** Both are foreign keys to
+`person`, which is organisation-scoped and not workspace-anchored, so the database accepts a
+person from another organisation or workspace as requester or approver. The approvals runtime
+(S3) must derive `requested_by` from the authenticated session and validate `approver_id` against
+the workspace (an active, non-placeholder person who is a CAB-team member for `cab`, or entitled to
+the work item for `customer`) before insert. These checks are listed in
+[m0120-approval-anchor.md](security-reviews/m0120-approval-anchor.md) "S3 runtime checks".
+
+**Residual: re-homing and pre-existing rows.** `workspace_id` and `work_item_id` are mutable as a
+pair at the database level, and a row that existed before 0120 is not checked for transition
+tenancy; "no data preflight is needed" covers foreign-key validity only. The runtime treats
+`workspace_id`, `work_item_id`, `transition_id`, `kind`, `requested_by` and `approver_id` as
+immutable after insert.
+
 ## Security review N2: disposition
 
 Security review N2 (tables new in 0088-0118 lacking tenant-composite foreign keys, the

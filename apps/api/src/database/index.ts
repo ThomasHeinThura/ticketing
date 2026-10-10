@@ -72,6 +72,7 @@ import {
   accountTable,
   activityTable,
   apikeyTable,
+  approvalTable,
   assetTable,
   attachmentTable,
   auditLogTable,
@@ -151,6 +152,7 @@ import {
 config();
 
 export const schema = {
+  approvalTable,
   instanceFeatureFlagTable,
   projectFeatureFlagTable,
   requestParticipantTable,
