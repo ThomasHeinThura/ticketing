@@ -448,6 +448,51 @@ describe("API-key identity is built from the stored scope in shadow mode", () =>
   });
 });
 
+describe("shadow mode honours a key's stored scope when it denies", () => {
+  it("records an agreeing denial, not a policy allow, for a key lacking the route capability", {
+    timeout: 60_000,
+  }, async () => {
+    const fresh = await createAppWithShadow("on");
+    const member = await createWorkspaceMember({ role: "owner" });
+    await backfillPersons();
+    const rawKey = `taskdesk_test_${randomUUID()}`;
+    const now = new Date();
+    await db.insert(fresh.schema.apikeyTable).values({
+      referenceId: member.user.id,
+      userId: member.user.id,
+      key: createHash("sha256")
+        .update(rawKey)
+        .digest()
+        .toString("base64")
+        .replace(/\+/g, "-")
+        .replace(/\//g, "_")
+        .replace(/=+$/u, ""),
+      name: "shadow out-of-scope key",
+      start: rawKey.slice(0, 12),
+      prefix: "taskdesk",
+      permissions: JSON.stringify({ task: ["read"] }),
+      createdAt: now,
+      updatedAt: now,
+    });
+
+    const response = await fresh.app.request(
+      `/api/project?workspaceId=${member.workspace.id}`,
+      { headers: { authorization: `Bearer ${rawKey}` } },
+    );
+    expect(response.status).toBe(403);
+
+    await new Promise((resolve) => setTimeout(resolve, 300));
+
+    // The owner holds project:read, so an unclamped shadow identity would allow while the
+    // legacy layer denies (`legacy_deny_policy_allow`).
+    const tallies = await shadowTalliesFor(LIST_PROJECTS_ROUTE_KEY);
+    expect(tallies.find((row) => row.outcome === "agree")?.count).toBe(1);
+    expect(
+      tallies.some((row) => row.outcome === "legacy_deny_policy_allow"),
+    ).toBe(false);
+  });
+});
+
 describe("observer-only provenance for masked native read denials", () => {
   it("agrees for an active workspace member with persisted project read authority", {
     timeout: 60_000,
