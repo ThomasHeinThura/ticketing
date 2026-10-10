@@ -127,6 +127,7 @@ const visualJob =
     ? ""
     : workflowLines.slice(visualJobStart, visualJobEnd).join("\n");
 const visualJobLines = visualJob.split("\n");
+const SCOPE_IF = "${{ steps.scope.outputs.full != 'false' }}";
 const expectedVisualJobLines = [
   "  visual:",
   "    name: visual regression (G8)",
@@ -137,19 +138,30 @@ const expectedVisualJobLines = [
   "    timeout-minutes: 20",
   "    steps:",
   "      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5.1.0",
+  "        with:",
+  "          fetch-depth: 0",
   "      - name: Trust the checked-out repository inside the Playwright container",
   '        run: git config --global --add safe.directory "$GITHUB_WORKSPACE"',
+  // The one permitted condition: every later step runs unless the merge base's classifier
+  // proved the pull request policy-only (ci-cd.md § Applicability; workflow-gates.mjs A9).
+  "      - id: scope",
+  "        uses: ./.github/actions/change-scope",
   "      - uses: ./.github/actions/setup",
+  `        if: ${SCOPE_IF}`,
   "      - name: Build the permissions package used by the web bundle",
+  `        if: ${SCOPE_IF}`,
   "        run: pnpm --filter @taskdesk/permissions build",
   "      - name: Normalize Ubuntu APT mirror for Chromium dependencies",
+  "        if: ${{ steps.scope.outputs.full != 'false' }}",
   "        run: node scripts/ci/normalize-ubuntu-apt-mirror.mjs",
   "      - name: Install Chromium",
+  `        if: ${SCOPE_IF}`,
   "        run: apps/web/node_modules/.bin/playwright install --with-deps chromium",
   `      - name: ${expectedVisualStepName}`,
+  `        if: ${SCOPE_IF}`,
   "        run: pnpm test:visual",
   "      - name: Upload visual diffs",
-  "        if: always()",
+  "        if: ${{ always() && steps.scope.outputs.full != 'false' }}",
   "        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1",
   "        with:",
   "          name: playwright-visual",
@@ -210,10 +222,11 @@ if (
   workflowLines.some((line) =>
     /^(?:defaults|"defaults"|'defaults')\s*:/u.test(line),
   ) ||
-  !hasOnlyMappingKeys(visualStep, 8, ["run"])
+  !hasOnlyMappingKeys(visualStep, 8, ["if", "run"]) ||
+  visualStep.filter((line) => line === `        if: ${SCOPE_IF}`).length !== 1
 ) {
   failures.push(
-    `${ciWorkflowPath} must run pnpm test:visual exactly once in one unconditional, failure-propagating visual regression (G8) job and step`,
+    `${ciWorkflowPath} must run pnpm test:visual exactly once in one failure-propagating visual regression (G8) job and step, conditioned only by the canonical change-scope gate`,
   );
 }
 

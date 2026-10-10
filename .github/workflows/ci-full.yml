@@ -31,7 +31,8 @@ env:
 jobs:
   integration:
     name: integration - Postgres 18
-    # RUNS ON EVERY PULL REQUEST. No label gate (F5).
+    # RUNS ON EVERY PULL REQUEST. No label gate (F5). On a policy-only change its steps after
+    # the change-scope step are skipped and the job succeeds (ci-cd.md § Applicability).
     #
     # This job used to be conditional on the `ready-for-review` label. GitHub treats a
     # SKIPPED required check as satisfied, so making it required — which `## Needs Thomas`
@@ -58,8 +59,15 @@ jobs:
     timeout-minutes: 45
     steps:
       - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5.1.0
+        with:
+          # The change-scope step reads landed commits from the merge base.
+          fetch-depth: 0
+      - id: scope
+        uses: ./.github/actions/change-scope
       - uses: ./.github/actions/setup
+        if: ${{ steps.scope.outputs.full != 'false' }}
       - name: pnpm test:integration
+        if: ${{ steps.scope.outputs.full != 'false' }}
         run: pnpm test:integration
 
   e2e:
@@ -68,19 +76,29 @@ jobs:
     timeout-minutes: 20
     steps:
       - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5.1.0
+        with:
+          # The change-scope step reads landed commits from the merge base.
+          fetch-depth: 0
+      - id: scope
+        uses: ./.github/actions/change-scope
       - uses: ./.github/actions/setup
+        if: ${{ steps.scope.outputs.full != 'false' }}
       - name: Build the web app and workspace dependencies
+        if: ${{ steps.scope.outputs.full != 'false' }}
         run: pnpm build
         env:
           VITE_API_URL: ""
       - name: Normalize Ubuntu APT mirror for Chromium dependencies
+        if: ${{ steps.scope.outputs.full != 'false' }}
         run: sudo -- "$(command -v node)" scripts/ci/normalize-ubuntu-apt-mirror.mjs
       - name: Install Chromium
+        if: ${{ steps.scope.outputs.full != 'false' }}
         run: apps/web/node_modules/.bin/playwright install --with-deps chromium
       - name: Run browser smoke
+        if: ${{ steps.scope.outputs.full != 'false' }}
         run: pnpm test:e2e
       - name: Upload browser evidence
-        if: always()
+        if: ${{ always() && steps.scope.outputs.full != 'false' }}
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
           name: playwright-smoke
@@ -93,19 +111,29 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5.1.0
+        with:
+          # The change-scope step reads landed commits from the merge base.
+          fetch-depth: 0
+      - id: scope
+        uses: ./.github/actions/change-scope
       - uses: ./.github/actions/setup
+        if: ${{ steps.scope.outputs.full != 'false' }}
       - name: Build the web app and workspace dependencies
+        if: ${{ steps.scope.outputs.full != 'false' }}
         run: pnpm build
         env:
           VITE_API_URL: ""
       - name: Normalize Ubuntu APT mirror for Chromium dependencies
+        if: ${{ steps.scope.outputs.full != 'false' }}
         run: sudo -- "$(command -v node)" scripts/ci/normalize-ubuntu-apt-mirror.mjs
       - name: Install Chromium
+        if: ${{ steps.scope.outputs.full != 'false' }}
         run: apps/web/node_modules/.bin/playwright install --with-deps chromium
       - name: Scan Storybook stories and browser screens
+        if: ${{ steps.scope.outputs.full != 'false' }}
         run: pnpm test:a11y
       - name: Upload accessibility browser evidence
-        if: always()
+        if: ${{ always() && steps.scope.outputs.full != 'false' }}
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
           name: playwright-a11y
@@ -125,19 +153,29 @@ jobs:
     timeout-minutes: 20
     steps:
       - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5.1.0
+        with:
+          # The change-scope step reads landed commits from the merge base.
+          fetch-depth: 0
       - name: Trust the checked-out repository inside the Playwright container
         run: git config --global --add safe.directory "$GITHUB_WORKSPACE"
+      - id: scope
+        uses: ./.github/actions/change-scope
       - uses: ./.github/actions/setup
+        if: ${{ steps.scope.outputs.full != 'false' }}
       - name: Build the permissions package used by the web bundle
+        if: ${{ steps.scope.outputs.full != 'false' }}
         run: pnpm --filter @taskdesk/permissions build
       - name: Normalize Ubuntu APT mirror for Chromium dependencies
+        if: ${{ steps.scope.outputs.full != 'false' }}
         run: node scripts/ci/normalize-ubuntu-apt-mirror.mjs
       - name: Install Chromium
+        if: ${{ steps.scope.outputs.full != 'false' }}
         run: apps/web/node_modules/.bin/playwright install --with-deps chromium
       - name: Check inventory scope and run screen and Storybook baselines
+        if: ${{ steps.scope.outputs.full != 'false' }}
         run: pnpm test:visual
       - name: Upload visual diffs
-        if: always()
+        if: ${{ always() && steps.scope.outputs.full != 'false' }}
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
           name: playwright-visual
@@ -151,19 +189,29 @@ jobs:
     timeout-minutes: 30
     steps:
       - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5.1.0
+        with:
+          # The change-scope step reads landed commits from the merge base.
+          fetch-depth: 0
+      - id: scope
+        uses: ./.github/actions/change-scope
       - uses: ./.github/actions/setup
+        if: ${{ steps.scope.outputs.full != 'false' }}
       - name: Build the web app and workspace dependencies
+        if: ${{ steps.scope.outputs.full != 'false' }}
         run: pnpm build
         env:
           VITE_API_URL: ""
       - name: Normalize Ubuntu APT mirror for Chromium dependencies
+        if: ${{ steps.scope.outputs.full != 'false' }}
         run: sudo -- "$(command -v node)" scripts/ci/normalize-ubuntu-apt-mirror.mjs
       - name: Install Chromium
+        if: ${{ steps.scope.outputs.full != 'false' }}
         run: apps/web/node_modules/.bin/playwright install --with-deps chromium
       - name: Measure G11 performance budgets
+        if: ${{ steps.scope.outputs.full != 'false' }}
         run: pnpm test:perf
       - name: Upload performance browser evidence
-        if: always()
+        if: ${{ always() && steps.scope.outputs.full != 'false' }}
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
           name: playwright-performance
@@ -171,11 +219,11 @@ jobs:
           if-no-files-found: warn
           retention-days: 7
       - name: Capture source-bound initial-page diagnostic (non-gating)
-        if: always()
+        if: ${{ always() && steps.scope.outputs.full != 'false' }}
         continue-on-error: true
         run: pnpm --filter @taskdesk/web exec playwright test --config playwright.perf-diagnostic.config.ts
       - name: Upload initial-page diagnostic
-        if: always()
+        if: ${{ always() && steps.scope.outputs.full != 'false' }}
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
           name: g11-initial-page-diagnostic

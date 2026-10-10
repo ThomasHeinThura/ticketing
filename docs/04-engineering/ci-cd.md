@@ -84,6 +84,7 @@ its source-binding limit are recorded in the
 │ pnpm check:vocabulary identifiers registered     │
 │ pnpm check:events    published keys registered   │
 │ pnpm check:skips     no .skip / .only            │
+│ pnpm check:policy    agent policy coherent       │
 │ pnpm test:ci-scripts  gate checkers + red probes │
 │ pr-template check    sections filled, tiers named│
 ├─ Test ───────────────────────────────────────────┤
@@ -176,13 +177,13 @@ breaking changes on the same route needs two entries, one per finding. Binding t
 entries only means **entries approve only the break in the PR that adds them** — an entry
 already on `origin/main` (an earlier PR's approved break, now merged) approves nothing, so
 a later PR that reintroduces the same kind of break on the same route still needs its own
-new entry and its own GPT-6 Sol security review; the gate warns (does not fail) when a merged
+new entry and its own security review; the gate warns (does not fail) when a merged
 entry is still in the file, as a prompt to delete it. A new entry that matches no finding also fails,
 as a stale or typo'd entry. oasdiff's exit code is also checked: anything other than `0` or
 `1`, or `1` with zero findings reported, fails closed. This is the reviewed-allowlist
 mechanism for an intentional pre-2.0 breaking change (decision log, 2026-09-25); see
 [api-design.md](../01-architecture/api-design.md#versioning). Each entry is added in the
-PR that makes the break, needs its own GPT-6 Sol security review there, and from the first
+PR that makes the break, needs its own security review there, and from the first
 stable `v2.0.0` (or later) release tag on the file must be empty — a non-empty file fails
 the gate. "Stable" is looked up live from `git ls-remote --tags origin` (a tag matching
 `^v?(\d+)\.(\d+)\.(\d+)$` with major >= 2, no pre-release/build suffix), never from
@@ -261,14 +262,18 @@ workflow reconciliation.
 
 The fast stage exists because a required check that takes an hour gets worked around; the
 full stage exists because the things it checks cannot be made fast. Both block a merge.
-The GPT-6 Sol **security review** is a required section of `.github/pull_request_template.md`
+The **security review** is a required section of `.github/pull_request_template.md`
 (the template is specified in [definition-of-done.md](definition-of-done.md#the-pull-request-template)).
-CI checks it non-empty, naming GPT-6 Sol, whenever the diff touches **any** of — this list is the
-authoritative scope; [sdlc.md](sdlc.md) and [security-model.md](../01-architecture/security-model.md)
-cite it and do not restate it:
+CI checks it non-empty, naming exactly one **accepted security-review model**, whenever the
+diff touches **any** of the paths below. The accepted models are the list in
+[agent-workflow.md § Model policy](agent-workflow.md#model-policy) **as it stands on the merge
+base** (`scripts/ci/lib/review-models.mjs`): a pull request cannot add a model and approve
+itself with it. Without a list at the merge base, only `GPT-6 Sol` is accepted, as before the
+list existed. This list of paths is the authoritative scope; [sdlc.md](sdlc.md) and
+[security-model.md](../01-architecture/security-model.md) cite it and do not restate it:
 
-Opus 5.5's optional sampled big review is outside this per-PR status-check gate. It does not
-satisfy or delay the required GPT-6 Sol review; when a sample is selected, follow the packet
+The optional sampled big review is outside this per-PR status-check gate. It does not
+satisfy or delay the required security review; when a sample is selected, follow the packet
 process in [agent-workflow.md](agent-workflow.md#model-policy).
 
 ```
@@ -291,6 +296,7 @@ packages/plugins-contracts/**        (path does not exist yet)
 scripts/ci/**                        **/package.json
 turbo.json                           pnpm-lock.yaml
 docs/04-engineering/ci-cd.md         pnpm-workspace.yaml
+docs/04-engineering/agent-workflow.md
                                      .npmrc
                                      .pnpmfile.cjs
 trivy.yaml                           .trivyignore
@@ -549,6 +555,67 @@ sign-in screen in a real browser. The workflow job's required context is
 `a11y - accessibility (G4, axe)`. `pnpm test:perf` remains a separate Playwright project in
 the full stage; [testing-strategy.md](testing-strategy.md) describes both commands.
 
+### Applicability — policy-only pull requests
+
+Authorized by Thomas (decision log 2026-10-09, "Opus policy-repair conductor"): a change to
+nothing but the agent operating policy and planning records is not a new application build,
+so it is not re-measured as one. Everything else is verified in full.
+
+- **Policy-only** means every landed commit from the merge base to the head touches only
+  plain Markdown files among `AGENTS.md`, `CLAUDE.md`, `docs/README.md`, the four workflow
+  documents (`agent-workflow.md`, `definition-of-done.md`, `sdlc.md`, `error-fix-loop.md`)
+  and `docs/07-planning/**/*.md`. The executable rule is `scripts/ci/classify-change.mjs`;
+  this paragraph describes it and does not override it. `ci-cd.md` itself, `.github/**`,
+  `scripts/**`, any other document, any non-Markdown file, a symlink, an executable bit, a
+  rename out of product code, a reverted product commit, or a merge that brings in any
+  non-policy change all make the change **full**. Labels, titles and PR bodies are never
+  read. Only pull requests **into the default branch** can be policy-only.
+- **How a gated job behaves.** Every gated job still starts on every run. Its first steps
+  check out the history and run `.github/actions/change-scope` (`id: scope`); every later
+  step carries `if: ${{ steps.scope.outputs.full != 'false' }}`. On a policy-only change
+  those steps are skipped and the job **succeeds**. If the scope step fails, the job fails.
+  If the run is cancelled, the job is cancelled — exactly as before this rule existed. No
+  job-level `needs` or condition is involved, so a required check is never turned green by
+  a job that never started.
+- **Gated jobs:** route policy, static, unit, coverage, contract, build, dependency audit,
+  Helm, integration, E2E, G4, G8 and G11. **Always-run jobs** — the PR-template and
+  security-review check, the registers job (with `check:policy` and `check:reviews`), the
+  gate checkers and red probes, `CI matches ci-cd.md` and the secret scan — may never be
+  gated: `workflow-gates.mjs` refuses scope-gating in those jobs and in any job that runs one
+  of their gates, whatever the job is called.
+- **How it stays trustworthy.** The action executes the classifier **taken from the merge
+  base with the default branch**, not the pull request's copy, and answers `full=true` on any
+  other event or target branch, an unresolvable base, a missing or crashing classifier, or any
+  answer but exactly `policy`. Its log line is fenced with `::stop-commands::`, and the
+  classifier JSON-escapes file names, so a crafted path cannot inject a workflow command.
+  `scripts/ci/lib/workflow-gates.mjs` (A9) accepts a gated step only in an allowlisted
+  shape: the exact condition; one canonical scope step; before it, only `actions/checkout`
+  pinned to the one reviewed commit (another SHA could resolve to a fork), whose sole input is
+  `fetch-depth: 0` (plus, in the pinned Playwright container job, the
+  exact `safe.directory` step), so nothing can rewrite the action or change `PATH`,
+  `GITHUB_ENV` or `node` first; no job `env`, `defaults` or `services`; no container but the pinned
+  image; a workflow `env` that is a plain block of the two inert variables; and the action
+  file matching the SHA-256 pinned in the scanner. `scripts/ci/probes/change-scope.test.mjs`
+  attacks each layer.
+- **Known edges.**
+  - The pull request that introduces the classifier runs in full: its merge base has no
+    classifier.
+  - Updating a policy-only branch with a merge commit from `main` makes it full whenever
+    `main` gained a product change. Prefer rebasing.
+  - A red product check on `main` (for example a dependency advisory) does not appear on a
+    policy-only pull request. It stays the product owner's, and the next full run shows it.
+  - The workflows, the action and the scanner run from the pull request, as every workflow
+    under `pull_request` does. Changing them is security-scope (`.github/**`, `scripts/ci/**`)
+    and the base classifier answers full for such a change. The digest pin is a tripwire for
+    review, not a boundary: the same pull request could change both the action and the pin.
+  - The design relies on the ruleset's "require branches to be up to date" (strict) setting
+    so that the merge base equals `main` at merge time. Pinning required checks to the GitHub
+    Actions app in the ruleset would further stop statuses posted by other means; that is a
+    ruleset change for Thomas to decide.
+- **Not changed:** performance budgets, audit thresholds, benchmark sampling, and full
+  verification of product, dependency, deployment, CI and mixed changes. A release candidate
+  keeps full integrated acceptance; `push` to `main` and merge-queue runs are always full.
+
 ## Main pipeline
 
 On merge:
@@ -689,15 +756,20 @@ image** ([security-model.md](../01-architecture/security-model.md#threat-model))
 
 ```
 main                    always deployable, protected
+  └── <agent>/…         e.g. codex/…, claude/… — one task, one agent, one branch
   └── feat/…            one feature, one agent, one branch
   └── fix/…
   └── docs/…
 ```
 
 - No long-lived branches. A branch older than a week is a merge problem forming.
-- Squash merge, so `main` has one commit per change and the history is readable.
+- **Squash merge** is the selected method (decision log 2026-09-06, reaffirmed 2026-10-09), so
+  `main` has one commit per change and the history is readable. The `protect-main` ruleset
+  also permits merge and rebase; that permission is not a selection, and earlier merge
+  commits on `main` were a deviation, not a precedent. The pull request keeps the branch's
+  individual commits and the review notes' bound SHAs.
 - `main` requires: all checks green, up to date with `main`, required independent review(s)
-  and, where in scope, the required GPT-6 Sol security review recorded. **The orchestrating
+  and, where in scope, the required security review recorded. **The orchestrating
   session may then merge itself**, through this normal protected flow, once every one
   of those is genuinely satisfied on the exact candidate SHA (Thomas, 2026-09-15 — delegated;
   supersedes "only Thomas presses merge" — see the decision log, 2026-09-15). Design approval

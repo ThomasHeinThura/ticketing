@@ -9,7 +9,8 @@
  * left unticked and unmarked."
  *
  * And, whenever the diff touches the security paths ci-cd.md lists: `## Security review`
- * non-empty, its model exactly `GPT-6 Sol`, and a link to the committed note under
+ * non-empty, its model exactly one of the accepted security-review models (read from the
+ * merge base — lib/review-models.mjs), and a link to the committed note under
  * docs/07-planning/security-reviews/ (docs/04-engineering/definition-of-done.md
  * § The pull request template).
  *
@@ -58,6 +59,10 @@ import {
   sections,
 } from "./lib/pr-body.mjs";
 import { exists, finish, readText, repoRoot, violation } from "./lib/repo.mjs";
+import {
+  ReviewModelsUnavailableError,
+  readAcceptedSecurityReviewModels,
+} from "./lib/review-models.mjs";
 import {
   CI_CD_RELATIVE_PATH,
   looksLikeHonoRouter,
@@ -358,9 +363,9 @@ async function main() {
         "## Security review",
         `this pull request touches ${touched.length} security path(s) and carries NO ` +
           "`## Security review` section. That is not an exemption, it is the requirement " +
-          "deleted. Security review requires GPT-6 Sol, always (AGENTS.md), and it needs " +
-          "a committed note at docs/07-planning/security-reviews/<pr>-<slug>.md. Restore " +
-          "the section.",
+          "deleted. Security review is always required (agent-workflow.md § Model policy), " +
+          "and it needs a committed note at docs/07-planning/security-reviews/<pr>-<slug>.md. " +
+          "Restore the section.",
       ),
     );
   }
@@ -373,15 +378,29 @@ async function main() {
           `(${scope.removed.join(", ")})`;
 
     const model = field(securityReview.text, "Model");
-    if (model !== "GPT-6 Sol") {
+    let accepted = null;
+    try {
+      accepted = readAcceptedSecurityReviewModels();
+    } catch (error) {
+      if (!(error instanceof ReviewModelsUnavailableError)) throw error;
+      failures.push(violation("## Security review", error.message));
+    }
+    if (accepted !== null && !accepted.models.includes(model)) {
+      const list = accepted.models.map((name) => `"${name}"`).join(", ");
+      const from =
+        accepted.source === "legacy"
+          ? `the legacy set — the merge base ${accepted.base.sha.slice(0, 9)} has no ` +
+            "security-review model block in docs/04-engineering/agent-workflow.md"
+          : "docs/04-engineering/agent-workflow.md at the merge base " +
+            `${accepted.base.sha.slice(0, 9)} (${accepted.base.ref})`;
       failures.push(
         violation(
           "## Security review",
-          `this pull request ${why} — so **Model:** must be exactly GPT-6 Sol, and it names ` +
-            `"${model || "(nothing)"}". ` +
-            "Security review requires GPT-6 Sol, always (AGENTS.md). Never downgrade an " +
-            "unavailable reviewer: stop, record what is unreviewed, add a Blocked entry " +
-            "to status.md.",
+          `this pull request ${why} — so **Model:** must be exactly one of ${list} ` +
+            `(${from}), and it names "${model || "(nothing)"}". The list is read from the ` +
+            "merge base, so a pull request cannot add a model and approve itself with it. " +
+            "Record the model the platform reported; never relabel a report. Never " +
+            "downgrade an unavailable reviewer: the candidate waits.",
         ),
       );
     }
