@@ -725,3 +725,93 @@ Reviewer model: Claude Sonnet (claude-sonnet-5-5), reviewer C, rebind check
 
 Not checked: the rest of the new `origin/main` content beyond the decision log, and a full re-verification of M1 contents. The patch-identity result covers those.
 <!-- END REPORT ae0b9c994e122dd06 472ce18e -->
+
+## Delta after CI fixes (vocabulary row, drift-test schema list)
+
+**Reviewed head:** `94e27d237fd4df0f62283ff61c73583bb89791ea`
+
+The commit adds the `scim_group_directory_member` row to data-model.md, which `check:vocabulary` required. It also makes the drift test derive its schema list from `drizzle.config.ts`. The Opus section is copied verbatim from its file. The Sonnet report was extracted mechanically from its transcript.
+
+<!-- BEGIN REPORT (agent a3bc54a26659d3e77; model claude-opus-5-5; role Sol-tier delta; candidate 94e27d237fd4df0f62283ff61c73583bb89791ea; sha256 c270e969820559f7aced530f78a3968e9837b85c84a3250136fccdd0a0a39f2f) -->
+# Delta security check: #618 at 94e27d23
+
+Reviewer model: Claude Opus 5.5 (claude-opus-5-5)
+Reviewer context ID: claude-agent:a3bc54a26659d3e77 (same independent security context; did not author, direct or remediate)
+**Reviewed head:** 94e27d237fd4df0f62283ff61c73583bb89791ea
+Delta reviewed: `git diff 51461a24..94e27d23`, which changes 2 files. Between 472ce18e and 51461a24 only `docs/07-planning/security-reviews/m1-migration-spine.md` changed (+727), so that range is review-artefact-only.
+Verdict: **CLEAR**. The new oracle is strict, fails loudly on every parse failure I tried, and still detects drift in all three schema files. There is one theoretical nit, D-N1.
+
+## Commands run
+
+- `git fetch origin claude/m1-migration-spine`: origin is at 94e27d23. `git log --oneline 472ce18e..94e27d23` shows 612df8ad, 51461a24 and 94e27d23.
+- I exported 94e27d23 with `git archive` into a scratch directory and symlinked `node_modules` to the existing install. I ran the real test file there with `apps/api/node_modules/.bin/vitest run --config vitest.config.ts ../../tests/api/database/workspace-role-unique-schema-drift.test.ts`.
+- Each mutation was made on the export only and restored from a saved copy afterwards (verified with `cmp`). The export was then deleted.
+- The worktree had 0 changed lines, and there were 19 containers (none created).
+
+## (1) data-model.md
+
+This is a documentation row only. It matches `0095_p3_scim_directory_profile.sql`:
+- columns and defaults;
+- the active/`removed_at` CHECK;
+- the FK to `scim_connection` and both same-connection composite FKs, all `ON DELETE restrict`;
+- the partial unique index on active rows, and the `(scim_connection_id, scim_group_id, active)` index.
+
+It has no security impact.
+
+## (2) Drift-test oracle
+
+The baseline passes on the export (1/1, about 0.9 s).
+
+| Mutation (export copy) | Result | How it fails |
+|---|---|---|
+| Config `schema:` lists only `schema.ts` | FAIL | generate is not a no-op (it would drop the tables in the other two files) |
+| `schema:` entries written with single quotes | FAIL | throws "`schema:` lists no files" |
+| `schema: []` | FAIL | throws "lists no files" |
+| `schema:` key renamed or missing | FAIL | throws "could not find its `schema:` entry" |
+| `schema:` given as a variable reference | FAIL | throws "could not find" |
+| One entry points at a file that does not exist | FAIL | generate is not a no-op |
+| A decoy comment `// schema: "./src/database/schema.ts"` placed before the real key | FAIL | the parser takes the decoy and so gets fewer files; generate is not a no-op |
+| **Drift** in `schema.ts`: the 0051 constraint renamed | FAIL | generate is not a no-op |
+| **Drift** in `migration-schema.ts`: `sla_pause_reason_allowed` loses `'manual'` | FAIL | generate is not a no-op |
+| **Drift** in `shadow-schema.ts`: `count > 0` changed to `count > 1` | FAIL | generate is not a no-op |
+| Everything restored | PASS | — |
+
+My first attempt at the `migration-schema.ts` mutation did not change the file, so that run's pass was void. I detected this with `cmp` and re-ran with a mutation that did change the file; that run failed as expected.
+
+Why this cannot silently pass:
+- If the parse fails or finds no entries, the test throws.
+- If it yields fewer files, drizzle-kit wants to drop the tables declared in the missing files, so generate is not a no-op.
+- A path that does not exist also makes generate fail its no-op check.
+- The assertions are unchanged: exit status 0, the "No schema changes" output, and no new files in the output directory.
+
+Compared with the old oracle, the new one is strictly stronger. The old one fed drizzle-kit only `schema.ts`, so it could not see drift in `migration-schema.ts` or `shadow-schema.ts`; the new one now catches both (D2 and D3 above).
+
+## Finding
+
+- **D-N1 (nit, non-blocking).** The regex takes the first `schema:` in the file, comments included. A decoy comment listing a *superset* placed before a real key that lists a subset would make the test check the decoy's set. That needs a deliberately misleading comment in `drizzle.config.ts`. Even then, the real `pnpm db:generate` with the subset would want to drop tables, so the ledger's `drizzle-kit check` would surface it. A cheap hardening is to strip `//` and `/* */` comments before matching, or to import the config module and read `.schema`.
+
+BLOCKING: none.
+<!-- END REPORT a3bc54a26659d3e77 94e27d23 -->
+
+<!-- BEGIN REPORT (agent ae0b9c994e122dd06; model claude-sonnet-5-5; role ordinary delta; candidate 94e27d237fd4df0f62283ff61c73583bb89791ea; sha256 3d76ff499fe25e2644fd35c4a9d51c4233d0ed0bff670bea778cb904da12ea1d) -->
+Reviewed head: 94e27d237fd4df0f62283ff61c73583bb89791ea
+Reviewer model: Claude Sonnet (claude-sonnet-5-5), reviewer C
+
+**Verdict: CLEAR.** The delta `51461a24..94e27d23` touches only `data-model.md` and the drift test. I found no blocking or non-blocking issues.
+
+**data-model.md row for `scim_group_directory_member`.** It matches migration 0095 and `scimGroupDirectoryMemberTable` (`schema.ts:2484-2540`) on every point:
+- The columns, `active` defaulting to true, and the nullable `removed_at` are as stated.
+- The CHECK `active ⇔ removed_at is null` is correct.
+- The FK to `scim_connection.identity_connection_id` and both composite same-connection FKs (to `scim_group` and `external_identity`) are correct, all with ON DELETE RESTRICT.
+- The partial unique index on `(scim_group_id, external_identity_id)` where `active`, and the index on `(scim_connection_id, scim_group_id, active)`, are correct.
+- The row omits ON UPDATE cascade, which the other rows in that table also omit.
+
+**Drift test.** `realConfigSchemaFiles()` reads the `schema:` array from `apps/api/drizzle.config.ts`, which currently lists `schema.ts`, `migration-schema.ts` and `shadow-schema.ts`. It throws if it cannot parse the entry, so it cannot silently fall back.
+
+**Checks run** (in a clean export, rebuilt with a git history so the merge-base check could run; the plain export has no history):
+- `pnpm check:vocabulary` passes: 111 table declarations, all registered. It prints a prune advisory about one baselined name that is no longer declared. The baseline file is not in this delta, so I did not trace it.
+- The drift test passes: 1 test.
+- As a negative check, I added a column to `migration-schema.ts` in the scratch copy. The test failed with "expected … to match /No schema changes, nothing to migrate/". Drift in the previously unlisted file is now caught, and the test is not vacuous.
+
+Not checked: the full integration suite and the rest of the #618 branch beyond this delta.
+<!-- END REPORT ae0b9c994e122dd06 94e27d23 -->
