@@ -16,7 +16,9 @@ strictly increasing. The recorded hash is the SHA-256 of the exact `.sql` bytes.
 | 0000-0087 | accepted `main` (journal max `when` 1791107747302 at idx 87, `0087_romantic_sway`) | applied, frozen |
 | 0088-0118 | M1 post-P0 migration spine (this change) | landed by M1 |
 | 0119 | N2 tenant-composite foreign keys (forward-only) | allocated, see below |
-| 0120+ | unallocated | next allocation below |
+| 0120 | `approval` tenant anchor (forward-only) | allocated, see below |
+| 0121 | #569 pending-action expiry index (re-cut from its former slot) | reserved, not yet cut |
+| 0122+ | unallocated | next allocation below |
 
 ## 0088-0118 (M1)
 
@@ -133,6 +135,33 @@ changes and `drizzle-kit check` passes. The data-validity preflight is in the op
 [Upgrading across migration 0119](../05-operations/runbook.md#upgrading-across-migration-0119-cross-tenant-rows).
 Negative tests: `tests/api-integration/tenant-composite-fks-migration.test.ts`.
 
+## 0120 (approval tenant anchor)
+
+| idx | tag | journal `when` | SQL SHA-256 |
+| --- | --- | --- | --- |
+| 120 | `0120_approval_workspace_anchor` | 1791628167040 | `cf4bb7c041bbeb2160cf352b8102a4477cba1b3baafba0844c72bb3d6697d029` |
+
+Owner decision 2026-10-10 ([decision-log.md](decision-log.md), "Owner decisions for slice S3
+approvals"). Adds `approval.workspace_id` (NOT NULL), backfilled in the migration from the
+approval's own work item (`approval.work_item_id` is a NOT NULL FK, so every row has a parent
+and the backfill cannot leave a NULL or fail), then a FK to `workspace` (cascade) and the
+composite FK `approval_workspace_work_item_fk` `(workspace_id, work_item_id)` to
+`work_item (workspace_id, id)` (ON DELETE cascade kept, ON UPDATE no action). It replaces the
+single-column `approval_work_item_id_work_item_id_fk`. The parent key
+`work_item_workspace_id_id_unique` already exists, so no parent unique is added. No data
+preflight is needed: there is no input a valid database can hold that makes the backfill or the
+new FKs fail. Hand-edited from the generated file only to insert the backfill between
+`ADD COLUMN` and `SET NOT NULL`. Snapshot `0120_snapshot.json` chains from 0119;
+`drizzle-kit generate` then reports no changes and `drizzle-kit check` passes. Negative tests:
+`tests/api-integration/approval-workspace-anchor-migration.test.ts`.
+
+**Residual: `approval.transition_id`.** `workflow_transition` carries no `workspace_id` (its
+workspace is only reachable through `workflow_version` and `workflow`), so `approval.transition_id`
+stays a single-column FK and a cross-tenant transition is not excluded by the database. Anchoring
+it needs a new column on `workflow_transition` or a trigger, which is a design change; the
+approvals runtime (S3) must verify that the transition belongs to the approval's workspace until
+then.
+
 ## Security review N2: disposition
 
 Security review N2 (tables new in 0088-0118 lacking tenant-composite foreign keys, the
@@ -145,7 +174,7 @@ is only made composite where the child already carries `workspace_id`.
 | `0114` `notification_delivery` to its outbox event | **Done in 0119** | `notification_delivery.workspace_id` exists. New FK `notification_delivery_workspace_event_fk` `(event_id, workspace_id)` to `outbox (event_id, workspace_id)` replaces the single-column event FK (ON DELETE cascade kept; ON UPDATE changed from cascade to no action), plus parent `outbox_event_id_workspace_id_unique`. A NULL-workspace instance event can never back a delivery. |
 | `0098:64` `custom_field_type_visibility.work_item_type_id` | **Not applicable here** | The table has no `workspace_id` (columns: `custom_field_id`, `work_item_type_id`, `visible`, `required`). Anchoring needs a new column, which 0119 does not invent. Follow-up when the custom-fields runtime lands: add `workspace_id` with composite FKs to both `custom_field` and `work_item_type`, or record a waiver. Still open and gated "before any runtime slice writes the table". |
 | `0098:66` `custom_field_value.project_id` | **Not applicable here** | No `workspace_id` on the table and `project_id` is nullable. `entity_id` has no FK; today its CHECK restricts `entity_type` to `'work_item'`, so a work-item FK could be added once `workspace_id` exists. Same follow-up as above. Still open. |
-| `0116:23-24` `approval.work_item_id` / `transition_id` | **Not applicable here** | `approval` has no `workspace_id`. Same follow-up: add `workspace_id` with composite FKs to `work_item` and `workflow_transition` (each needs a `(workspace_id, id)` parent key) before the approvals runtime. Still open. |
+| `0116:23-24` `approval.work_item_id` / `transition_id` | **Done in 0120 (`work_item_id`)** | `approval.workspace_id` added and backfilled in 0120, with composite FK `approval_workspace_work_item_fk` to `work_item (workspace_id, id)`. `transition_id` remains a single-column FK (see the 0120 section: `workflow_transition` has no `workspace_id`). |
 | `0090` `membership_grant`, `oidc_group_mapping`, `scim_group_mapping` `role_id` / `scope_id` | **Not applicable** | `scope_id` is polymorphic (`scope` is `organisation` or `workspace`, no per-table workspace column) and `role.workspace_id` is nullable by scope, so no FK can express "role belongs to the scope's workspace". It is the same shape as `membership`: the resolver's `wellAnchored` filter must hold wherever these produce memberships. Recorded residual, not a waiver of the filter. |
 
 **Forward design constraint (notifications runtime).** Instance-scoped events
@@ -155,11 +184,11 @@ out through `notification_delivery`, and must not make `notification_delivery.wo
 nullable to get around it; they need a separate delivery path. Deleting a `notification_delivery`
 row also cascades to `outbox_dedupe_reservation` (0114).
 
-## Open forward items after 0119
+## Open forward items after 0120
 
 Still open, each needing a forward-only migration (or a decision-log waiver) and a negative test
-**before any runtime slice writes the table**: the three "Not applicable here" rows above
-(`custom_field_type_visibility`, `custom_field_value`, `approval`). `tests/api/database/unanchored-tables-unreferenced.test.ts` fails if any file under `apps/api/src` other than the schema declarations references them, until they are anchored. They need new `workspace_id`
+**before any runtime slice writes the table**: the two "Not applicable here" rows above
+(`custom_field_type_visibility`, `custom_field_value`). `approval` was anchored by 0120. `tests/api/database/unanchored-tables-unreferenced.test.ts` fails if any file under `apps/api/src` other than the schema declarations references them, until they are anchored. They need new `workspace_id`
 columns, so they are a design change rather than a constraint-only change.
 
 ## Notes for future allocation
@@ -182,7 +211,8 @@ columns, so they are a design change rather than a constraint-only change.
 
 ## Next allocation
 
-Next index is **0120**. Its journal `when` must be strictly greater than **1791609109777**
-(idx 119) and than any `when` any environment may already have applied. Generate it with
-`drizzle-kit generate` so its snapshot chains from `0119_snapshot.json`. The conductor
+Next index is **0122** (0121 is reserved for the #569 pending-action expiry index, which is
+re-cut after 0120). Its journal `when` must be strictly greater than **1791628167040**
+(idx 120) and than any `when` any environment may already have applied. Generate it with
+`drizzle-kit generate` so its snapshot chains from `0120_snapshot.json`. The conductor
 allocates each index to exactly one owner.

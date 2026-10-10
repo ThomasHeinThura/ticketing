@@ -1,3 +1,18 @@
+### 2026-10-10 · Owner decisions for slice S3 approvals: feature flag, approval anchoring, relayed entries
+
+**Decision:** Thomas decided three questions that block slice S3 (approvals), each chosen in the Claude Opus conductor session from concrete options.
+
+- **D5 narrow exception · approvals feature flag.** The feature-flag registry and resolver ported from #589 may land **for approvals only**, so approvals can be enabled per workspace. The approvals flag defaults to off. This narrows D5; it does not lift it: #513's `request-type/*` and its feature-flag runtime stay held, and no other feature may read the feature-flag tables without a further decision.
+- **Approval anchoring · migration 0120.** The `approval` table gets a `workspace_id` column, backfilled from its work item, and composite tenant foreign keys, following the 0119 tenant-FK pattern. It is forward-only and is allocated migration **0120**, before any runtime slice writes the table (see [migration-ledger.md](migration-ledger.md) "Still open"). The #569 pending-action expiry index re-cut moves to **0121**.
+- **Relayed approvals entries.** The three approvals decision-log entries that #589 recorded as relayed owner decisions are carried to main verbatim by S3, citing #589 and keeping their relayed label.
+
+**Not decided here:** `custom_field_type_visibility` and `custom_field_value` anchoring stay open; they need their own decision before any runtime slice uses them.
+
+**Source:** Thomas, directly to the Claude Opus delivery conductor session, 2026-10-10.
+**Recorded by:** Claude Opus 5.5 (`claude-opus-5-5`), delivery conductor.
+
+---
+
 ### 2026-10-10 · Owner decision: SCIM-provisioned first OIDC login links and activates by exact subject
 
 **Decision:** Thomas decided how the first OIDC login of a SCIM-provisioned person behaves. SCIM
