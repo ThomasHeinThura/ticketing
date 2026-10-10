@@ -1,6 +1,6 @@
-## Post-P0 consolidation checkpoint; P0 stage claim pending — 2026-10-10 12:00 UTC
+## Post-P0 consolidation checkpoint; P0 claim conditional on #624 — 2026-10-10 12:20 UTC
 
-**Main:** `954eb84094e009658943af1e294d3b8a48d17f69`. Merged on 2026-10-10, each squash-merged and pinned to its reviewed head:
+**Main:** `f4f6b0114fb20594b56e1d305c59c7efef23ec15` (#623 merged). Merged on 2026-10-10, each squash-merged and pinned to its reviewed head:
 
 | PR | Change | Merge commit |
 | --- | --- | --- |
@@ -12,24 +12,29 @@
 | #619 | public origin rebuild of #599 | `d743ae32` |
 | #620 | 0119 tenant FKs | `24a48912` |
 | #621 | deploy/install whole-path fix | `b704f707` |
-| #622 | S1 identity | `954eb840` |
+| #622 | S1 identity (post-P0; outside the P0 claim) | `954eb840` |
+| #623 | installer re-run fix, docs corrections | `f4f6b011` |
 
 Closed as absorbed or superseded: #612, #614, #599.
 
 **Releases:** signed GHCR prereleases `v2.0.0-alpha.1` (`b64f8062`), `alpha.2` (`511c917f`) and `alpha.3` (`b704f707`).
 
-**P0:** not yet claimed.
-- **Proof:** the installer upgrade/rollback proof on `alpha.3` passed in a disposable VM (schema 80 → 120 rows; data and secrets preserved; rollback; cleanup).
-- **Finalizer:** the Opus P0 phase finalizer (2026-10-10) returned NOT COMPLETE. It blocks on:
-  - B1: the installer re-run DNS defect. The fix is #623; after merge it needs a targeted VM re-proof.
-  - B2: stage-gate evidence. Thomas deferred it to before `2.0.0` on 2026-10-10; see decision log.
-  - B3: the #602 lift and the second re-run were not recorded. They are now recorded in the decision log.
-  - B4: this file was stale.
-- **Binding:** the P0 claim binds to `alpha.3` / `b704f707`, not to later main.
+**P0:** claim conditional (Opus 5.5 finalizer re-check, 2026-10-10: P0 COMPLETE CONDITIONAL ON merging this PR with its listed corrections). Not claimed unconditionally until merge is verified.
+- **Proof 3:** the installer upgrade/rollback proof on `alpha.3` passed in a disposable VM (schema 80 → 120 rows; data and secrets preserved; rollback to edge `sha-8ddb9de8`; cleanup). It found the files-host DNS re-run defect.
+- **Proof 4** (`p0-installer-proof-4-20261010T115535Z`, after #623): cases 1 to 3 PASS (fresh install then re-run; existing-customer re-run; S3 negative). Case 4, the alpha.2 to alpha.3 installer-only path, is not possible by design: alpha.2's `deploy.sh` port-check defect was fixed in #621.
+- **Finalizer first pass (NOT COMPLETE at `954eb840`):**
+  - B1: installer re-run DNS defect. Closed by #623 and proof 4.
+  - B2: stage-gate evidence. Deferred by Thomas to before `2.0.0` (2026-10-10), including P0 screen sign-off (row 15); see decision log.
+  - B3: the #602 lift and second re-run. Recorded in the decision log by this PR.
+  - B4: this file was stale. Refreshed here.
+- **Row 11:** Thomas ruled it is not part of P0. Strict policy enforcement stays off by default; each source still needs three issue-free UTC dates before activation.
+- **Written stage review:** [p0-stage-review.md](p0-stage-review.md).
+- **Binding:** the P0 claim binds to `alpha.3` / `b704f707` plus installer `f4f6b011`, not to later main.
+- **Superseded releases:** `alpha.1` and `alpha.2` cannot complete a production install. Do not install them.
 
 **In flight (post-P0 integration, feature freeze):**
 - S2 auth hardening: closure reviews at the final head.
-- 0120 approval anchor: reviews.
+- 0120 approval anchor: #625 open, in review.
 - S3 approvals: waits on S2 and 0120.
 - S4 notifications plus the #506 delta: D10 decided 2026-10-10.
 - Then S6–S9, the #512 journey, the #569 re-cut (now 0121), #601 docs and #607 (held).
