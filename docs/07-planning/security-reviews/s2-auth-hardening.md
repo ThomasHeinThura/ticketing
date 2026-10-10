@@ -4,6 +4,7 @@
 **Reviewed head:** `859d250e5b61101615cb5bc6df328f717ee93cec` (remediation closure)
 **Reviewed head:** `737e0925e4a117c1a662ca529c55ecd46748c1ed` (final)
 **Reviewed head:** `fbf38d4da227f7fa067dd0ed5d5fe3c34d6c18e4` (rebind after merging main; S2 delta byte-identical)
+**Reviewed head:** `9942b152a878390c41db30f7924d8a799716da43` (rebind after dropping the AK-9 paragraph from `webhooks-and-api-keys.md`, whose open review findings fail `check:reviews`, and merging main `f02b29d4`)
 
 ## The slice
 
@@ -25,12 +26,12 @@ Port the remaining reviewed S2 work from #589 (`2350397b`) onto main. Most S2 sc
 - `a8fc712742cc73fe3` (port fidelity): PASS at `49bc18ef`.
 - `ac15bf960665f5c7c` (runtime and tests): APPROVE at `49bc18ef`.
 - `a6a5e4b38733b04b5` (closure): CHANGES REQUIRED at `859d250e`, for a stray decision-log fragment.
-- `a6e8716d20f7cff14` (final): PASS at `737e0925`, with rebinds at `7ac604ac` and `fbf38d4d`.
+- `a6e8716d20f7cff14` (final): PASS at `737e0925`, with rebinds at `7ac604ac`, `fbf38d4d` and `9942b152`.
 
 **Security review** (Claude Opus 5.5, Sol-tier under Thomas's routing; not GPT-6 Sol):
 - `a40453c91609ae2db`: PASS at `49bc18ef`. It found the banned-owner API-key gap on main.
 - `a606ed9a5cc3af456`: PASS at `859d250e`, with C1–C4.
-- `ab8f3b6968dbb70ff`: PASS at `737e0925`, with rebinds at `7ac604ac` and `fbf38d4d`.
+- `ab8f3b6968dbb70ff`: PASS at `737e0925`, with rebinds at `7ac604ac`, `fbf38d4d` and `9942b152`.
 
 Each report is inserted unmodified, with its SHA-256. Reports that were later extended with rebind sections are inserted in their final form.
 
@@ -634,7 +635,7 @@ docker stop s2-secclose-pg                                   # --rm removed it
 - The docs-only changes, beyond C1 and C4: `testing-strategy.md` moves one paragraph and keeps its meaning.
 <!-- END REPORT (sha256 6439334651cb421a2ee8f3e76f32a3efc312624253f835ecd32a843404799e17) -->
 
-<!-- BEGIN REPORT (agent a6e8716d20f7cff14; model claude-sonnet-5-5; role ordinary final review and rebinds; candidate 737e0925e4a117c1a662ca529c55ecd46748c1ed; rebinds 7ac604ac3d2dedbf7bfe78546b1924df0c89c42c, fbf38d4da227f7fa067dd0ed5d5fe3c34d6c18e4; sha256 549115bcccbe67fd9f4590c51907de9eabfa55fe3b98556734c4a168d9a82b5c) -->
+<!-- BEGIN REPORT (agent a6e8716d20f7cff14; model claude-sonnet-5-5; role ordinary final review and rebinds; candidate 737e0925e4a117c1a662ca529c55ecd46748c1ed; rebinds 7ac604ac3d2dedbf7bfe78546b1924df0c89c42c, fbf38d4da227f7fa067dd0ed5d5fe3c34d6c18e4, 9942b152a878390c41db30f7924d8a799716da43; sha256 ed3781bfcad1d4447893d69fa578bb0eb91aa2096451836a613867ae918a073c) -->
 # S2 auth hardening: final delta review (Sonnet, Luna tier)
 
 Reviewer model: Claude Sonnet (claude-sonnet-5-5)
@@ -719,9 +720,24 @@ Verdict: PASS. Clean rebind, no interaction.
 3. No interaction with #624. Main's delta 7cf4bc1f..ba88413d is docs and records only: CHANGELOG.md, docs/02-design/screen-inventory.md, decision-log.md, p0-phase-finalizer-record.md, p0-stage-review.md, phases.md and status.md. Its only overlap with S2's changed files is decision-log.md, which merged textually clean (main's new top entry is "Owner decisions recorded late: #602 template-check ..."; S2's 26 lines are intact below it). No source, test, schema or migration file changed. Parents are 7ac604ac and ba88413d (both ancestors of fbf38d4d); worktree clean.
 
 Commands: `git rev-parse HEAD`; `git log -1 --format=%P`; `git status --short`; `git diff --numstat` for both ranges, sorted and diffed; `git diff <range> -- . ':!docs/07-planning/decision-log.md' | grep -v '^index '` for both ranges plus `cmp`; `git diff ba88413d fbf38d4d --numstat` and hunk/`+###`/`-` grep on decision-log.md; added-text extraction compared with `cmp` against the 7cf4bc1f..7ac604ac range; `git diff 7cf4bc1f ba88413d --name-only` and `comm -12` against S2's file list; `git merge-base --is-ancestor` for both parents. No tests re-run: main's delta is docs only and the code delta is byte-identical to the one fully tested at 7ac604ac (152 files, 1759 tests).
-<!-- END REPORT (sha256 549115bcccbe67fd9f4590c51907de9eabfa55fe3b98556734c4a168d9a82b5c) -->
 
-<!-- BEGIN REPORT (agent ab8f3b6968dbb70ff; model claude-opus-5-5; role Sol-tier final re-confirmation and rebinds; candidate 737e0925e4a117c1a662ca529c55ecd46748c1ed; rebinds 7ac604ac3d2dedbf7bfe78546b1924df0c89c42c, fbf38d4da227f7fa067dd0ed5d5fe3c34d6c18e4; sha256 4453bc1828d91993c6afebbf1245a5998e0503c37e82a46e669ac28510df521e) -->
+## Rebind at 9942b152
+
+Reviewer model: Claude Sonnet (claude-sonnet-5-5)
+**Reviewed head:** 9942b152a878390c41db30f7924d8a799716da43
+
+Verdict: PASS. The rebind is exact and `check:reviews` passes.
+
+1. `git diff f02b29d4 9942b152` equals the previous delta (`git diff ba88413d fbf38d4d`) minus only the webhooks spec hunk, plus the new review note. File lists: the only file in the new diff and not the old is `docs/07-planning/security-reviews/s2-auth-hardening.md` (987 insertions, the review-note file; absent from f02b29d4); the only file in the old diff and not the new is `docs/03-features/webhooks-and-api-keys.md` (old delta was 9 insertions, 0 deletions). The new diff has no entry for the webhooks spec, so it equals main byte-for-byte. With `index` and `@@` lines stripped and the decision log, the review note and the webhooks spec excluded, the two diffs are byte-identical (1237 lines, `cmp` clean). So every source, test and other doc change is unchanged.
+2. Decision log against f02b29d4: numstat `26 0` (26 insertions, 0 deletions), one hunk (@@ -450), no `-` lines, only added heading `### 2026-10-07 · Keep test role seeding private-only`. The added text is byte-identical to the previous range's.
+3. `BASE_SHA=f02b29d4 node scripts/ci/check-reviews.mjs`: exit 0. Output: "spec(s) named in this change: notifications.md" and "every spec named in this change has an empty review section". The webhooks spec is no longer in the change, which is why it passes.
+
+Other points: main's delta ba88413d..f02b29d4 (#628) is only p0-stage-review.md and status.md, so there is no overlap with S2's files. Parents are dcfa68a1 (the restore commit) and f02b29d4 (an ancestor of the head). Worktree clean. Observation, not a gate: restoring the spec drops the AK-9 paragraph from the docs, so the behaviour (owner state refused at key verification) is now documented only in the decision log, the review note and code comments. No tests re-run: the code and test delta is identical to the one fully tested at 7ac604ac (152 files, 1759 tests) and main's changes are docs only.
+
+Commands: `git rev-parse HEAD`; `git log -1 --format=%P`; `git status --short`; `git diff --name-only` for both ranges with `comm -23` and `comm -13`; `git diff <range> -- . ':!docs/07-planning/decision-log.md' ':!docs/07-planning/security-reviews/s2-auth-hardening.md' ':!docs/03-features/webhooks-and-api-keys.md' | grep -v -E '^(index |@@)'` for both ranges plus `cmp`; `git diff --numstat` on the webhooks spec, decision log and review note; hunk, `+###` and `-` grep on decision-log.md with added-text `cmp` against the old range; `git cat-file -e f02b29d4:<note path>`; `git diff ba88413d f02b29d4 --name-only`; `git merge-base --is-ancestor f02b29d4 9942b152`; `BASE_SHA=f02b29d4 node scripts/ci/check-reviews.mjs`.
+<!-- END REPORT (sha256 ed3781bfcad1d4447893d69fa578bb0eb91aa2096451836a613867ae918a073c) -->
+
+<!-- BEGIN REPORT (agent ab8f3b6968dbb70ff; model claude-opus-5-5; role Sol-tier final re-confirmation and rebinds; candidate 737e0925e4a117c1a662ca529c55ecd46748c1ed; rebinds 7ac604ac3d2dedbf7bfe78546b1924df0c89c42c, fbf38d4da227f7fa067dd0ed5d5fe3c34d6c18e4, 9942b152a878390c41db30f7924d8a799716da43; sha256 92acde23ff36c4d829a283552d0ff7af4f67314dc9ca1336726866f384d271af) -->
 Reviewer model: Claude Opus 5.5 (claude-opus-5-5)
 Reviewer context ID: claude-agent:s2-final-sec-opus@3a9e9ce4-8409-47d4-b1be-1f1544697e70 (a fresh subagent context; the ID is the parent session's, because the harness exposes no separate subagent ID)
 **Reviewed head:** 737e0925e4a117c1a662ca529c55ecd46748c1ed
@@ -984,4 +1000,70 @@ git show fbf38d4d:docs/07-planning/decision-log.md | grep -n '^### '
 - I did not re-run tests, typechecks or mutations. Runtime inputs are unchanged since 7ac604ac.
 - I did not review the content of #624's records, including its "P0 stage-gate waiver" entry. That is outside S2's security scope.
 - GitHub PR state, CI and branch protection.
-<!-- END REPORT (sha256 4453bc1828d91993c6afebbf1245a5998e0503c37e82a46e669ac28510df521e) -->
+
+## Rebind at 9942b152
+
+Reviewer model: Claude Opus 5.5 (claude-opus-5-5)
+Reviewer context ID: claude-agent:s2-final-sec-opus@3a9e9ce4-8409-47d4-b1be-1f1544697e70 (the same context as the reviews above)
+**Reviewed head:** 9942b152a878390c41db30f7924d8a799716da43
+
+**Verdict: PASS. The PASS at 737e0925 carries to 9942b152, through 7ac604ac and fbf38d4d. There are no blocking findings and no new ones.**
+
+- **Head.** I verified the head as `9942b152a878390c41db30f7924d8a799716da43`. Its parents are dcfa68a1 and `main` f02b29d4eb78ae73a45df0c42522355d88d20ed2. The worktree is clean.
+- **New S2 commits since fbf38d4d:**
+  - bc33b6fc "docs: record S2 auth hardening reviews". It adds only `docs/07-planning/security-reviews/s2-auth-hardening.md` (+987).
+  - dcfa68a1 "docs: drop AK-9 self-write paragraph from the webhooks spec". It changes only `docs/03-features/webhooks-and-api-keys.md` (−9).
+  - 9942b152, the merge of `main`.
+- **Main since the last rebind.** ba88413d is an ancestor of f02b29d4. `main` advanced by exactly one commit, f02b29d4 (#628). It changes only `docs/07-planning/p0-stage-review.md` and `status.md` (+20/−1). Neither file is in the S2 diff.
+
+### 1. The delta equals the previous one minus only the webhooks hunk: CONFIRMED
+
+- I compared two diffs with the `index` and `@@` lines removed:
+  - `git diff ba88413d fbf38d4d`, excluding `docs/03-features/webhooks-and-api-keys.md`;
+  - `git diff f02b29d4 9942b152`, excluding `docs/07-planning/security-reviews/s2-auth-hardening.md`.
+- `cmp` shows they are byte-identical.
+- **The webhooks file now matches `main`.** `git diff f02b29d4 9942b152 -- docs/03-features/webhooks-and-api-keys.md` and `git diff 954eb840 9942b152 -- …` are both empty, so the file is identical to `main`.
+- **The removed hunk was exactly one paragraph.** It was the nine-line "Self-row ownership is not a write opt-in…" paragraph, which is the AK-9 self-write text.
+
+### 2. Dropping the paragraph changes no runtime behaviour: CONFIRMED
+
+- **`apps/` and `tests/` are unchanged.** `git diff ba88413d fbf38d4d -- apps tests` and `git diff f02b29d4 9942b152 -- apps tests` are byte-identical, including their `index` lines. The executable code and tests are therefore the same blobs that passed 96/96 at 7ac604ac. The code is also identical to 737e0925, where N1d and N1e were killed.
+- **The doc is never loaded at runtime.** The only reference to `webhooks-and-api-keys` under `apps/`, `packages/`, `scripts/`, `tests/` and `.github/` is a code comment at `apps/api/src/auth.ts:403`.
+- **The paragraph described a rule; it did not enforce it.** The session-only self-write behaviour is enforced by code already on `main`, under the 2026-10-06 decision. S2 did not change that code. Removing the spec text loosens nothing.
+- **The decision itself is unaffected.** It stays recorded in the decision log as the 2026-10-06 entry (line 479).
+
+### 3. The decision log is insert-only against f02b29d4: CONFIRMED
+
+- **No removals.** `git diff f02b29d4 9942b152 -- docs/07-planning/decision-log.md` has 0 removed lines and 1 hunk, `@@ -450,6 +450,32 @@`.
+- **The S2 entry keeps its place.** "2026-10-07 · Keep test role seeding private-only" sits at line 453, between the 2026-10-09 "Integration Freeze" entry (line 421) and the 2026-10-06 entry (line 479).
+- **`main`'s newest entry is intact at the top.** The first line equals `main`'s: the 2026-10-10 "Owner decisions recorded late…" entry.
+
+### Commands
+
+```
+git -C /private/tmp/claude-501/s2 rev-parse HEAD f02b29d4 ; git log -1 --format=%P 9942b152 ; git status --short   # clean
+git merge-base --is-ancestor ba88413d f02b29d4 ; git log --oneline ba88413d..f02b29d4 ; git diff --stat ba88413d f02b29d4
+git log --oneline fbf38d4d..9942b152 --not f02b29d4                     # 9942b152, dcfa68a1, bc33b6fc
+git show --stat dcfa68a1 ; git show --stat bc33b6fc
+git diff ba88413d fbf38d4d -- . ':!docs/03-features/webhooks-and-api-keys.md' > a
+git diff f02b29d4 9942b152 -- . ':!docs/07-planning/security-reviews/s2-auth-hardening.md' > b
+grep -vE '^(index |@@)' a > a2 ; grep -vE '^(index |@@)' b > b2 ; cmp a2 b2      # IDENTICAL; diff a b is empty
+git diff f02b29d4 9942b152 -- docs/03-features/webhooks-and-api-keys.md ; git diff 954eb840 9942b152 -- (same)   # both empty
+git diff ba88413d fbf38d4d -- docs/03-features/webhooks-and-api-keys.md           # the removed paragraph
+git diff ba88413d fbf38d4d -- apps tests > ra ; git diff f02b29d4 9942b152 -- apps tests > rb ; cmp ra rb   # byte-identical
+git grep -n webhooks-and-api-keys 9942b152 -- apps packages scripts .github tests                         # auth.ts:403 comment only
+git diff f02b29d4 9942b152 -- docs/07-planning/decision-log.md                    # 0 removed, 1 hunk @450
+git show 9942b152:docs/07-planning/decision-log.md | grep -n '^### '
+```
+
+**Containers and edits:**
+- No container was started for this rebind, and no tests were re-run. The runtime blobs are byte-identical to the head that passed.
+- Nothing was edited, committed or pushed.
+
+### Not checked in this rebind
+
+- **The content of the new review note** `docs/07-planning/security-reviews/s2-auth-hardening.md` (+987). It was excluded from the comparison as instructed. In particular, I did not check that it transcribes this report verbatim. The orchestrator should verify that by SHA-256 against this file.
+- **`check:reviews`.** I did not run it. The conductor reports it passing locally.
+- **The open review findings on the webhooks spec** that caused the CI failure.
+- **GitHub PR #627 state, CI and branch protection.**
+<!-- END REPORT (sha256 92acde23ff36c4d829a283552d0ff7af4f67314dc9ca1336726866f384d271af) -->
