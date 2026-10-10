@@ -94,7 +94,7 @@ if ((DRY_RUN)); then
   say "platform: ${PLATFORM}; mode: ${MODE}; install directory: ${INSTALL_DIR}"
   say 'would resolve a stable release tag, fetch the signed release archive, verify its cosign bundles and SHA-256, unpack to a private temporary directory, preserve existing .env/runtime data, and invoke scripts/deploy.sh'
   if ((PROFILE_S3)); then say "would deploy with: scripts/deploy.sh ${MODE} --profile s3"; else say "would deploy with: scripts/deploy.sh ${MODE}"; fi
-  if [[ "$MODE" == production ]]; then say "would preflight DNS for: ${AGENT_HOST} ${PORTAL_HOST}${FILES_HOST:+ ${FILES_HOST}} and verify TCP port 5173 is free"; fi
+  if [[ "$MODE" == production ]]; then say "would preflight DNS for: ${AGENT_HOST} ${PORTAL_HOST}${FILES_HOST:+$( ((PROFILE_S3 || FILES_HOST_SET)) && printf " %s" "$FILES_HOST")} and verify TCP port 5173 is free"; fi
   if [[ -n "$VERSION" ]]; then
     requested="${VERSION#v}"
     valid_release_tag "$requested" || die 'release version must be a SemVer tag'
@@ -123,8 +123,8 @@ resolve_host() {
 }
 if [[ "$MODE" == production ]]; then
   dns_hosts=("$AGENT_HOST" "$PORTAL_HOST")
-  [[ -z "$FILES_HOST" ]] || dns_hosts+=("$FILES_HOST")
-  ((PROFILE_S3 == 0)) || [[ -n "$FILES_HOST" ]] || dns_hosts+=("files.${DOMAIN}")
+  # The files hostname is routed only by the S3 profile; a persisted default in .env must not gate a re-run.
+  if [[ -n "$FILES_HOST" ]] && ((PROFILE_S3 || FILES_HOST_SET)); then dns_hosts+=("$FILES_HOST"); fi
   for host in "${dns_hosts[@]}"; do
     resolve_host "$host" || die "DNS name ${host} does not resolve; create a record pointing to this host, then retry"
   done
