@@ -83,6 +83,14 @@ Columns: **A** — available as an automation trigger · **W** — deliverable b
 | `sla.met` | The **transition into a `completed`-group state** (`WF-17`) finds the goal satisfied before its due time. Not `sla-scan` — an item that has just met its goal has `resolved_at` set and is outside the scan's candidate set | — | ✅ | — | `metric`, `metAt`, `marginMinutes` |
 | `sla.missed` | The same transition finds the goal already past its due time — "closed after target" ([sla.md](../03-features/sla.md)). The `missed` half of the pair `sla.met` completes; without it the sixth SLA state fires nothing | — | ✅ | — | `metric`, `dueAt`, `missedByMinutes` |
 
+### Service calendars
+
+| Key | Emitted when | A | W | N | Payload |
+| --- | --- | :-: | :-: | :-: | --- |
+| `service_calendar.created` | A calendar is created; its event envelope is inserted into `outbox` in the same transaction | — | — | — | `calendarId`, `workspaceId`, `name`, `url` |
+| `service_calendar.updated` | A calendar is updated; its event envelope is inserted into `outbox` in the same transaction | — | — | — | `calendarId`, `workspaceId`, `name`, `changedFields: [name\|timezone\|windows\|holidays]`, `url` |
+| `service_calendar.deleted` | A service calendar is deleted after its pending-action approval rechecks that no project, SLA version, or work item references it; the event envelope is inserted into `outbox` in the same transaction | — | — | — | `calendarId`, `workspaceId`, `name`, `url` |
+
 ### Approvals
 
 | Key | Emitted when | A | W | N | Payload |
@@ -111,6 +119,20 @@ Columns: **A** — available as an automation trigger · **W** — deliverable b
 | `project.archived` | Archived | — | ✅ | — | `key` |
 | `prerequisite.overdue` | The reminders job finds a blocking prerequisite past due | — | ✅ | ✅ | `prerequisiteId`, `dueDate` |
 | `budget.threshold_reached` | Actual + committed crosses 75 % or 90 % of planned | — | ✅ | ✅ | `budgetId`, `threshold`, `currency` |
+
+### Views
+
+| Key | Emitted when | A | W | N | Payload |
+| --- | --- | :-: | :-: | :-: | --- |
+| `saved_view.created` | A saved view is created (search-and-saved-views.md SV-14) | — | — | — | `savedViewId`, `workspaceId`, `visibility` |
+| `saved_view.updated` | A saved view's name, visibility, sharing, layout or query changes | — | — | — | `savedViewId`, `workspaceId` |
+| `saved_view.deleted` | A saved view is deleted | — | — | — | `savedViewId`, `workspaceId` |
+| `saved_view.pinned` | A person pins or unpins a view to their sidebar (SV-20) | — | — | — | `savedViewId`, `workspaceId`, `pinned` |
+
+Not yet an automation trigger, webhook event or notification source — nothing in
+[automations.md](../03-features/automations.md) or
+[webhooks-and-api-keys.md](../03-features/webhooks-and-api-keys.md) names a saved-view
+trigger today, so all three columns are `—` until one does.
 
 ### Workspace
 

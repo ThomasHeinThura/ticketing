@@ -18,6 +18,7 @@ export {
 export * from "./audit/audit.js";
 export * from "./audit/types.js";
 export * from "./calendar/calendar.js";
+export * from "./calendar/holiday-import.js";
 export * from "./calendar/types.js";
 export * from "./hierarchy/hierarchy.js";
 export * from "./hierarchy/types.js";

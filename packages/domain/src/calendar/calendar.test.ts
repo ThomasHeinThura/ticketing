@@ -7,6 +7,7 @@ import {
   formatLocalDate,
   instantToLocalDateTime,
   isHoliday,
+  isIanaTimeZone,
   nextWindowOpening,
   validateCalendar,
   weekdayOf,
@@ -100,8 +101,24 @@ const ZERO_COVER_CALENDAR: ServiceCalendar = {
   holidays: [],
 };
 
+describe("isIanaTimeZone", () => {
+  it("CAL-6: accepts IANA zones and rejects numeric UTC offsets", () => {
+    expect(isIanaTimeZone("UTC")).toBe(true);
+    expect(isIanaTimeZone("America/New_York")).toBe(true);
+    expect(isIanaTimeZone("+05:00")).toBe(false);
+    expect(isIanaTimeZone("-03:30")).toBe(false);
+    expect(isIanaTimeZone("+05")).toBe(false);
+    expect(isIanaTimeZone("+0500")).toBe(false);
+    expect(isIanaTimeZone("-0330")).toBe(false);
+    expect(isIanaTimeZone("Not/AZone")).toBe(false);
+  });
+});
+
 function utc(y: number, m: number, d: number, h = 0, min = 0): Date {
-  return new Date(Date.UTC(y, m - 1, d, h, min));
+  const date = new Date(0);
+  date.setUTCFullYear(y, m - 1, d);
+  date.setUTCHours(h, min, 0, 0);
+  return date;
 }
 
 // ---------------------------------------------------------------------------
@@ -114,6 +131,11 @@ describe("weekdayOf", () => {
     expect(weekdayOf({ year: 2026, month: 6, day: 6 })).toBe("sat");
     expect(weekdayOf({ year: 2026, month: 6, day: 7 })).toBe("sun");
     expect(weekdayOf({ year: 2026, month: 12, day: 25 })).toBe("fri"); // 2026-12-25 is a Friday
+  });
+
+  it("handles years 1 and 99 as literal years, not 1901 and 1999", () => {
+    expect(weekdayOf({ year: 1, month: 1, day: 1 })).toBe("mon");
+    expect(weekdayOf({ year: 99, month: 1, day: 1 })).toBe("thu");
   });
 });
 
@@ -145,6 +167,47 @@ describe("formatLocalDate", () => {
     expect(formatLocalDate({ year: 2026, month: 1, day: 5 })).toBe(
       "2026-01-05",
     );
+  });
+
+  it("zero-pads years below 1000 for ISO holiday comparisons", () => {
+    expect(formatLocalDate({ year: 1, month: 1, day: 1 })).toBe("0001-01-01");
+    expect(formatLocalDate({ year: 99, month: 1, day: 1 })).toBe("0099-01-01");
+  });
+});
+
+describe("calendar dates in years 1 through 99", () => {
+  it("applies weekday windows and dated/ranged holidays across year 99", () => {
+    const calendar: ServiceCalendar = {
+      timezone: "UTC",
+      windows: {
+        mon: [{ from: 540, to: 600 }],
+        wed: [{ from: 1380, to: 1440 }],
+        thu: [
+          { from: 0, to: 60 },
+          { from: 540, to: 600 },
+        ],
+      },
+      holidays: [
+        { date: "0001-01-01", name: "First day" },
+        { from: "0098-12-31", to: "0099-01-01", name: "Year boundary" },
+      ],
+    };
+
+    expect(
+      coveredMinutesBetween(calendar, utc(1, 1, 1, 9), utc(1, 1, 1, 10)),
+    ).toBe(0);
+    expect(
+      coveredMinutesBetween(calendar, utc(99, 1, 1, 9), utc(99, 1, 1, 10)),
+    ).toBe(0);
+
+    const withoutHolidays = { ...calendar, holidays: [] };
+    expect(
+      coveredMinutesBetween(
+        withoutHolidays,
+        utc(98, 12, 31, 23, 30),
+        utc(99, 1, 1, 0, 30),
+      ),
+    ).toBe(60);
   });
 });
 
@@ -640,6 +703,52 @@ describe("coveredMinutesBetween — DST, Europe/London", () => {
     );
     expect(minutes).toBe(5 * 8 * 60);
   });
+
+  it("CAL-7: counts the first occurrence of a repeated hour and omits the second fold", () => {
+    const calendar: ServiceCalendar = {
+      timezone: "Europe/London",
+      windows: { sun: [{ from: 60, to: 120 }] },
+      holidays: [],
+    };
+
+    expect(
+      coveredMinutesBetween(
+        calendar,
+        utc(2026, 10, 25, 0, 10),
+        utc(2026, 10, 25, 0, 30),
+      ),
+    ).toBe(20);
+    expect(
+      coveredMinutesBetween(
+        calendar,
+        utc(2026, 10, 25, 1, 10),
+        utc(2026, 10, 25, 1, 30),
+      ),
+    ).toBe(0);
+  });
+
+  it("CAL-7: clips a query at both sides of the fold against first-occurrence cover", () => {
+    const calendar: ServiceCalendar = {
+      timezone: "Europe/London",
+      windows: { sun: [{ from: 105, to: 135 }] },
+      holidays: [],
+    };
+
+    expect(
+      coveredMinutesBetween(
+        calendar,
+        utc(2026, 10, 25, 0, 50),
+        utc(2026, 10, 25, 1, 10),
+      ),
+    ).toBe(10);
+    expect(
+      coveredMinutesBetween(
+        calendar,
+        utc(2026, 10, 25, 1, 50),
+        utc(2026, 10, 25, 2, 10),
+      ),
+    ).toBe(10);
+  });
 });
 
 describe("coveredMinutesBetween — DST, America/New_York", () => {
@@ -714,6 +823,21 @@ describe("nextWindowOpening", () => {
   it("returns the same instant when already inside a window", () => {
     const instant = utc(2026, 6, 1, 12, 0); // Monday noon, inside 09:00-17:00
     expect(nextWindowOpening(PRESET_8X5, instant)).toEqual(instant);
+  });
+
+  it("skips the uncovered second occurrence of a repeated wall-clock window", () => {
+    const calendar: ServiceCalendar = {
+      timezone: "Europe/London",
+      windows: { sun: [{ from: 60, to: 120 }] },
+      holidays: [],
+    };
+
+    expect(nextWindowOpening(calendar, utc(2026, 10, 25, 0, 10))).toEqual(
+      utc(2026, 10, 25, 0, 10),
+    );
+    expect(nextWindowOpening(calendar, utc(2026, 10, 25, 1, 10))).toEqual(
+      utc(2026, 11, 1, 1, 0),
+    );
   });
 
   it("finds the same day's opening when called before it", () => {

@@ -1,11 +1,14 @@
 import { and, eq, isNull } from "drizzle-orm";
 import { HTTPException } from "hono/http-exception";
+import { appendAuditLog } from "../audit/audit-writer";
 import db from "../database";
 import {
   membershipTable,
   personTable,
   workItemTable,
 } from "../database/schema";
+import { notifyCurrentInstanceAdminsOfAuditFailure } from "../instance/observability/audit-failure-notifier";
+import { recordAuditWriteFailure } from "../instance/observability/runtime";
 import {
   type ApiKey,
   apiRouter,
@@ -13,6 +16,7 @@ import {
   createRoute,
   errorResponse,
   jsonResponse,
+  z,
 } from "../openapi";
 import {
   assertCallerHasCapability,
@@ -44,6 +48,7 @@ import deleteComment from "./controllers/delete-comment";
 import deleteWorkItem from "./controllers/delete-work-item";
 import detachWorkItemParent from "./controllers/detach-work-item-parent";
 import getWorkItemByKey from "./controllers/get-work-item";
+import { getWorkItemSla } from "./controllers/get-work-item-sla";
 import getWorkItemTree from "./controllers/get-work-item-tree";
 import listAssignablePeople from "./controllers/list-assignable-people";
 import listWorkItemActivity from "./controllers/list-work-item-activity";
@@ -100,6 +105,13 @@ import {
   workItemKeyParam,
   workspaceIdParam,
 } from "./schema";
+import { collectExportPages, exportColumns, workItemsCsv } from "./search/csv";
+import {
+  SEARCH_BODY_MAX_BYTES,
+  validateWorkItemSearchQuery,
+} from "./search/query";
+import { searchWorkItems } from "./search/repository";
+import { workItemSlaSchema } from "./sla-response";
 
 /**
  * #23's first slice: minimal create + read + list for `work_item`
@@ -245,6 +257,152 @@ const listWorkItemsRoute = createRoute({
   },
 });
 
+const searchWorkItemsRoute = createRoute({
+  method: "post",
+  operationId: "searchWorkItems",
+  path: "/work-items/search",
+  tags: ["Work items"],
+  summary: "Search work items",
+  description:
+    "Bounded structured work-item filtering. See api-design.md § Work-item search v1.",
+  middleware: [
+    async (c, next) => {
+      const body = await c.req.raw.clone().arrayBuffer();
+      if (body.byteLength > SEARCH_BODY_MAX_BYTES)
+        throw new HTTPException(400, {
+          message: "Request body exceeds 32 KiB",
+        });
+      await next();
+    },
+    async (c, next) => {
+      try {
+        await workspaceAccess.fromBody("workspaceId")(c, next);
+      } catch (error) {
+        if (error instanceof HTTPException && error.status === 403) {
+          throw new HTTPException(404, { message: "Workspace not found" });
+        }
+        throw error;
+      }
+    },
+  ] as const,
+  request: {
+    body: {
+      required: true,
+      content: {
+        "application/json": {
+          schema: z
+            .object({
+              workspaceId: z.string().min(1),
+              query: z
+                .object({
+                  entity: z.string(),
+                  filter: z.unknown().optional(),
+                  sort: z
+                    .array(
+                      z
+                        .object({ field: z.string(), order: z.string() })
+                        .strict(),
+                    )
+                    .max(1)
+                    .optional(),
+                  columns: z.array(z.string()).optional(),
+                  groupBy: z.unknown().optional(),
+                  aggregate: z.unknown().optional(),
+                })
+                .strict(),
+              limit: z.number().int().min(1).max(200).optional(),
+              cursor: z.string().max(4096).nullable().optional(),
+            })
+            .strict(),
+        },
+      },
+    },
+  },
+  responses: {
+    200: jsonResponse(
+      "A page of reachable matching work items",
+      workItemListResponseSchema,
+    ),
+    400: errorResponse(
+      "Malformed or over-limit search document, scope, or cursor",
+    ),
+    403: errorResponse("Missing work_item:read permission"),
+    404: errorResponse("Workspace not found or unreachable"),
+    422: errorResponse(
+      "Unsupported entity, unavailable filter field, or unreadable field",
+    ),
+  },
+});
+
+const exportWorkItemsRoute = createRoute({
+  method: "post",
+  operationId: "exportWorkItems",
+  path: "/work-items/export",
+  tags: ["Work items"],
+  summary: "Export work items as CSV",
+  description:
+    "Exports every reachable work item matching the supplied view query.",
+  middleware: [
+    async (c, next) => {
+      const body = await c.req.raw.clone().arrayBuffer();
+      if (body.byteLength > SEARCH_BODY_MAX_BYTES)
+        throw new HTTPException(400, {
+          message: "Request body exceeds 32 KiB",
+        });
+      await next();
+    },
+    async (c, next) => {
+      try {
+        await workspaceAccess.fromBody("workspaceId")(c, next);
+      } catch (error) {
+        if (error instanceof HTTPException && error.status === 403)
+          throw new HTTPException(404, { message: "Workspace not found" });
+        throw error;
+      }
+    },
+    requireWorkspaceCapability("work_item:export"),
+  ] as const,
+  request: {
+    body: {
+      required: true,
+      content: {
+        "application/json": {
+          schema: z
+            .object({
+              workspaceId: z.string().min(1),
+              query: z
+                .object({
+                  entity: z.string(),
+                  filter: z.unknown().optional(),
+                  sort: z
+                    .array(
+                      z
+                        .object({ field: z.string(), order: z.string() })
+                        .strict(),
+                    )
+                    .max(1)
+                    .optional(),
+                  columns: z.array(z.string()).optional(),
+                })
+                .strict(),
+            })
+            .strict(),
+        },
+      },
+    },
+  },
+  responses: {
+    200: {
+      description: "CSV file",
+      content: { "text/csv": { schema: z.string() } },
+    },
+    400: errorResponse("Malformed or over-limit export request"),
+    403: errorResponse("Missing work_item:export permission"),
+    404: errorResponse("Workspace not found or unreachable"),
+    422: errorResponse("Unsupported entity or unavailable filter field"),
+  },
+});
+
 const getWorkItemRoute = createRoute({
   method: "get",
   operationId: "getWorkItem",
@@ -264,6 +422,31 @@ const getWorkItemRoute = createRoute({
     404: errorResponse("Work item not found"),
   },
 });
+
+const getWorkItemSlaRoute = createRoute({
+  method: "get",
+  operationId: "getWorkItemSla",
+  path: "/work-items/{key}/sla",
+  tags: ["Work items"],
+  summary: "Evaluate a work item's pinned SLA policy version",
+  middleware: [
+    requireWorkItemReach(),
+    requireWorkspaceCapability("work_item:read"),
+  ] as const,
+  request: { params: workItemKeyParam },
+  responses: {
+    200: jsonResponse(
+      "The work item's current SLA evaluation",
+      workItemSlaSchema,
+    ),
+    403: errorResponse(
+      "No workspace access or missing work_item:read permission",
+    ),
+    404: errorResponse("Work item not found"),
+  },
+});
+
+// The workspace's type catalogue, for the create dialog's Type picker (`WI-1`). The
 
 // The workspace's type catalogue, for the create dialog's Type picker (`WI-1`). The
 // first workspace-scoped route in this module; `workspaceAccess.fromParam` loads the
@@ -892,11 +1075,92 @@ const workItem = apiRouter<
     );
     return c.json(result, 200);
   })
+  .openapi(searchWorkItemsRoute, async (c) => {
+    const body = c.req.valid("json");
+    const query = validateWorkItemSearchQuery(body.query);
+    const session = c.get("session") as
+      | { impersonatedBy?: string | null }
+      | null
+      | undefined;
+    const result = await searchWorkItems({
+      userId: c.get("userId"),
+      apiKey: c.get("apiKey"),
+      impersonatedBy: session?.impersonatedBy,
+      workspaceId: c.get("workspaceId"),
+      query,
+      limit: body.limit ?? 50,
+      cursor: body.cursor ?? undefined,
+    });
+    return c.json(result, 200);
+  })
+  .openapi(exportWorkItemsRoute, async (c) => {
+    const body = c.req.valid("json");
+    const query = validateWorkItemSearchQuery(body.query);
+    const columns = exportColumns(query);
+    const session = c.get("session") as
+      | { impersonatedBy?: string | null }
+      | null
+      | undefined;
+    const { rows, total } = await collectExportPages((cursor) =>
+      searchWorkItems({
+        userId: c.get("userId"),
+        apiKey: c.get("apiKey"),
+        impersonatedBy: session?.impersonatedBy,
+        workspaceId: c.get("workspaceId"),
+        query,
+        limit: 200,
+        cursor,
+      }),
+    );
+    const csv = workItemsCsv(
+      rows.map((row) => ({
+        key: row.key,
+        title: row.title,
+        stateName: row.stateName,
+        assigneeName: row.assigneeName,
+        priority: row.priority,
+        dueDate: row.dueDate?.toISOString().slice(0, 10) ?? null,
+      })),
+      columns,
+    );
+    const { actorId, actorType } = resolveActor(
+      c.get("userId"),
+      c.get("apiKey"),
+    );
+    try {
+      await appendAuditLog(db, {
+        actorId,
+        actorType,
+        apiKeyId: c.get("apiKey")?.id ?? null,
+        impersonatorId: session?.impersonatedBy ?? null,
+        workspaceId: c.get("workspaceId"),
+        action: "work_item.exported",
+        entityType: "work_item_view",
+        entityId: "workspace",
+        after: { format: "csv", count: total, columns },
+      });
+    } catch {
+      recordAuditWriteFailure("mutation");
+      await notifyCurrentInstanceAdminsOfAuditFailure("mutation");
+    }
+    return new Response(csv, {
+      status: 200,
+      headers: {
+        "content-type": "text/csv; charset=utf-8",
+        "content-disposition": 'attachment; filename="work-items.csv"',
+      },
+    });
+  })
   .openapi(getWorkItemRoute, async (c) => {
     const { key } = c.req.valid("param");
     const workspaceId = c.get("workspaceId");
     const item = await getWorkItemByKey(key, workspaceId);
     return c.json(item, 200);
+  })
+  .openapi(getWorkItemSlaRoute, async (c) => {
+    const { key } = c.req.valid("param");
+    const item = await getWorkItemSla(key, c.get("workspaceId"));
+    return c.json(workItemSlaSchema.parse(item), 200);
   })
   .openapi(listWorkItemTypesRoute, async (c) => {
     const { workspaceId } = c.req.valid("param");
