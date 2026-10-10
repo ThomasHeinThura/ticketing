@@ -34,6 +34,7 @@ import {
   capabilityCredential,
 } from "../utils/require-workspace-capability";
 import { validateWorkspaceAccess } from "../utils/validate-workspace-access";
+import { resolvePendingActionApprovalContract } from "./approval-contract";
 import {
   type ConfirmationKind,
   canonicalPendingActionPayload,
@@ -1118,6 +1119,7 @@ async function toPendingActionRead(
     targetIds: publicFields.targetIds,
     summary: publicFields.summary,
     confirmation: row.confirmationRequired,
+    approvalSupported: publicFields.approvalSupported,
     state: row.state,
     createdAt: row.createdAt.toISOString(),
     expiresAt: row.expiresAt.toISOString(),
@@ -1137,6 +1139,7 @@ type PublicPendingActionFields = {
   targetType: string;
   targetIds: string[];
   summary: Record<string, unknown>;
+  approvalSupported: boolean;
 };
 
 function isLegacyInstanceUserDeactivation(
@@ -1167,6 +1170,13 @@ async function publicPendingActionFields(
       targetType: row.targetType,
       targetIds: row.targetIds,
       summary: row.payloadSummary as Record<string, unknown>,
+      approvalSupported:
+        resolvePendingActionApprovalContract({
+          action: row.action,
+          targetType: row.targetType,
+          confirmationRequired: row.confirmationRequired,
+          routeKey: row.routeKey,
+        }) !== undefined,
     };
   }
   if (row.action !== "user_deactivation") {
@@ -1220,6 +1230,7 @@ async function publicPendingActionFields(
     targetType: "user",
     targetIds: [target.userId],
     summary: { ...summary, userId: target.userId },
+    approvalSupported: false,
   };
 }
 
@@ -1547,6 +1558,7 @@ async function toPublicPendingAction(
     targetIds: fields.targetIds,
     summary: fields.summary,
     confirmation: row.confirmationRequired,
+    approvalSupported: fields.approvalSupported,
     state: row.state,
     createdAt: row.createdAt.toISOString(),
     expiresAt: row.expiresAt.toISOString(),

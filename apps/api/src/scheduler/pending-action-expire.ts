@@ -22,7 +22,8 @@ export type PendingActionExpireOutcome = {
 
 /**
  * PA-8 expiry supports workspace actions and the explicitly registered instance
- * user_deactivation/person action. Other nullable-scope actions remain degraded until
+ * canonical user-deactivation action and its legacy user_deactivation/person rows.
+ * Other nullable-scope actions remain degraded until
  * their own scope and event contract is documented. The database clock is sampled
  * after each row is locked so lock waits cannot make the decision use stale time.
  */
@@ -38,7 +39,10 @@ export async function expirePendingActions(): Promise<PendingActionExpireOutcome
           FROM pending_action
           WHERE state = 'pending'
             AND workspace_id IS NULL
-            AND NOT (action = 'user_deactivation' AND target_type = 'person')
+            AND NOT (
+              (action = 'delete' AND target_type = 'user') OR
+              (action = 'user_deactivation' AND target_type = 'person')
+            )
             AND expires_at <= clock_timestamp()
         ) AS exists
       `);
@@ -68,7 +72,11 @@ export async function expirePendingActions(): Promise<PendingActionExpireOutcome
             SELECT id, expires_at
             FROM pending_action
             WHERE state = 'pending'
-              AND (workspace_id IS NOT NULL OR (action = 'user_deactivation' AND target_type = 'person'))
+              AND (
+                workspace_id IS NOT NULL OR
+                (action = 'delete' AND target_type = 'user') OR
+                (action = 'user_deactivation' AND target_type = 'person')
+              )
               AND expires_at <= clock_timestamp()
               ${afterCursor}
             ORDER BY expires_at, id
@@ -101,8 +109,9 @@ export async function expirePendingActions(): Promise<PendingActionExpireOutcome
             if (!row) continue;
             const supportedInstanceAction =
               row.workspace_id === null &&
-              row.action === "user_deactivation" &&
-              row.target_type === "person" &&
+              ((row.action === "delete" && row.target_type === "user") ||
+                (row.action === "user_deactivation" &&
+                  row.target_type === "person")) &&
               row.project_id === null &&
               row.organisation_id === null;
             if (!row.workspace_id && !supportedInstanceAction) {

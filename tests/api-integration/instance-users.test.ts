@@ -391,6 +391,7 @@ describe("God Mode Users API", () => {
         action: "delete",
         targetType: "user",
         targetIds: [intendedTarget.id],
+        approvalSupported: false,
         summary: {
           personId: intendedPerson.id,
           userId: intendedTarget.id,
@@ -423,6 +424,7 @@ describe("God Mode Users API", () => {
       action: "delete",
       targetType: "user",
       targetIds: [intendedTarget.id],
+      approvalSupported: false,
       summary: {
         personId: intendedPerson.id,
         userId: intendedTarget.id,
@@ -595,6 +597,7 @@ describe("God Mode Users API", () => {
       action: "delete",
       targetType: "user",
       targetIds: [intendedTarget.id],
+      approvalSupported: false,
       summary: {
         personId: intendedPerson.id,
         userId: intendedTarget.id,
@@ -1264,6 +1267,17 @@ describe("God Mode Users API", () => {
     expect(pending.summary).toMatchObject({
       personId: expect.any(String),
       email: target.email,
+    });
+    const publicPending = await agentRequest(
+      app,
+      `/api/me/pending-actions/${pending.pendingActionId}`,
+    );
+    expect(publicPending.status).toBe(200);
+    expect(await publicPending.json()).toMatchObject({
+      action: "delete",
+      targetType: "user",
+      approvalSupported: true,
+      state: "pending",
     });
     const pendingRecord = await db
       .select({

@@ -25,6 +25,7 @@ export const pendingActionReadSchema = z
       "typed_name_step_up",
       "typed_count_step_up",
     ]),
+    approvalSupported: z.boolean(),
     state: z.enum([
       "pending",
       "approved",
@@ -83,6 +84,7 @@ export const pendingActionDecisionSchema = z
       "typed_name_step_up",
       "typed_count_step_up",
     ]),
+    approvalSupported: z.boolean(),
     state: z.enum(["denied", "cancelled", "expired"]),
     createdAt: z.string().datetime(),
     expiresAt: z.string().datetime(),

@@ -507,8 +507,14 @@ or foreign action. The authenticated-self policy does not require a workspace ca
 
 Both routes return the same explicit allowlisted DTO, in camel case:
 `id`, `action`, `origin`, `targetType`, `targetIds`, `summary`, `confirmation`, `state`,
-`createdAt`, `expiresAt`, `invalidationReason`, `decidedAt`, `executedAt`, and
-`requestingKeyName`. `summary` is the stored `payload_summary` and must be a JSON object.
+`approvalSupported`, `createdAt`, `expiresAt`, `invalidationReason`, `decidedAt`,
+`executedAt`, and `requestingKeyName`. `approvalSupported` is server-derived from the stored
+action, target, route, and confirmation and reports whether this API build has a registered
+approval executor for that action. It is informational UI state, not authorization: the API
+still enforces requester, session, state, current capability, target, and proof checks on
+every approval. Legacy `user_deactivation`/`person` rows project as `delete`/`user` with
+`approvalSupported: false`; the UI leaves cancellation available and does not offer approval.
+`summary` is the stored `payload_summary` and must be a JSON object.
 `confirmation` is `confirmation_required`. `requestingKeyName` is the name of the
 requesting person's API key when the credential is an API key and that key still exists;
 it is otherwise null. Reads never return the stored payload, payload hash, route key,
