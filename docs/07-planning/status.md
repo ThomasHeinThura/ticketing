@@ -1,3 +1,43 @@
+## Post-P0 consolidation checkpoint; P0 stage claim pending — 2026-10-10 12:00 UTC
+
+**Main:** `954eb84094e009658943af1e294d3b8a48d17f69`. Merged on 2026-10-10, each squash-merged and pinned to its reviewed head:
+
+| PR | Change | Merge commit |
+| --- | --- | --- |
+| #602 | P0 scope + G11 speed calibration | `b64f8062` |
+| #615 | policy restructure | `26c43def` |
+| #616 | model-aware PR-template check | `1fc04d05` |
+| #617 | deploy.sh digest parse | `511c917f` |
+| #618 | M1 migration spine 0088–0118 | `6568fc3e` |
+| #619 | public origin rebuild of #599 | `d743ae32` |
+| #620 | 0119 tenant FKs | `24a48912` |
+| #621 | deploy/install whole-path fix | `b704f707` |
+| #622 | S1 identity | `954eb840` |
+
+Closed as absorbed or superseded: #612, #614, #599.
+
+**Releases:** signed GHCR prereleases `v2.0.0-alpha.1` (`b64f8062`), `alpha.2` (`511c917f`) and `alpha.3` (`b704f707`).
+
+**P0:** not yet claimed.
+- **Proof:** the installer upgrade/rollback proof on `alpha.3` passed in a disposable VM (schema 80 → 120 rows; data and secrets preserved; rollback; cleanup).
+- **Finalizer:** the Opus P0 phase finalizer (2026-10-10) returned NOT COMPLETE. It blocks on:
+  - B1: the installer re-run DNS defect. The fix is #623; after merge it needs a targeted VM re-proof.
+  - B2: stage-gate evidence. Thomas deferred it to before `2.0.0` on 2026-10-10; see decision log.
+  - B3: the #602 lift and the second re-run were not recorded. They are now recorded in the decision log.
+  - B4: this file was stale.
+- **Binding:** the P0 claim binds to `alpha.3` / `b704f707`, not to later main.
+
+**In flight (post-P0 integration, feature freeze):**
+- S2 auth hardening: closure reviews at the final head.
+- 0120 approval anchor: reviews.
+- S3 approvals: waits on S2 and 0120.
+- S4 notifications plus the #506 delta: D10 decided 2026-10-10.
+- Then S6–S9, the #512 journey, the #569 re-cut (now 0121), #601 docs and #607 (held).
+
+**Task queue:** the execution queue named in `active-mission.md` (`integration-execution-queue.md`) lives on #601's branch until #601 merges.
+
+**Blocked:** nothing waits on Thomas right now.
+
 ## Complete public-artifact scanner correction frozen — 2026-10-05 10:51 UTC
 
 Pushed author164f2ee735b3f83417387740f6fe96647de61ef1 corrects the sole369Sol
