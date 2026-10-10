@@ -1,3 +1,20 @@
+## P0 claimed complete — 2026-10-10
+
+**Main:** `ba88413d` (#624 merged).
+
+**P0:** COMPLETE. The conductor verified #624's merged content against every condition of the Opus 5.5 finalizer re-check; the record is in [p0-stage-review.md](p0-stage-review.md).
+- **Scope:** the claim binds to `v2.0.0-alpha.3` (`b704f707`) plus installer `f4f6b011`.
+- **Deferred:** stage-gate items deferred by Thomas to before `2.0.0` are tracked in #626.
+- **Strict policy:** strict policy enforcement stays off by default, and each source still needs three issue-free UTC dates before activation.
+
+**In flight (post-P0 integration, feature freeze):**
+- S2 auth hardening: cleared, opening its PR.
+- S4 notifications: a time-zone defect (N1) is in remediation.
+- S3 approvals: rebuilding on 0120.
+- Then S6–S9, the #512 journey, the #569 re-cut (0121), #601 docs, and #607 (held).
+
+**Blocked:** nothing waits on Thomas.
+
 ## Post-P0 consolidation checkpoint; P0 claim conditional on #624 — 2026-10-10 12:20 UTC
 
 **Main:** `7cf4bc1fe756d1c9008da7c383e4d9afcd147d4e` (#623 and #625 merged). Merged on 2026-10-10, each squash-merged and pinned to its reviewed head:
