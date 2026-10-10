@@ -5,6 +5,7 @@ export {
   projectMembershipKeys,
   retireConnectionGrantSources,
   retireConnectionGrantsAboveRoleRank,
+  retireConnectionJitGrants,
   retireScimGroupGrants,
   retryIdentityGrantClosure,
 } from "./repository";

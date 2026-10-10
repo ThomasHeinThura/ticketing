@@ -802,19 +802,35 @@ export function lockOidcGroupMappingById(
     .limit(1);
 }
 
+type IdpMappingRoleInput = {
+  portalScope: string;
+  organisationId: string | null;
+  maxRoleRank: number | null;
+  scope: "organisation" | "workspace";
+  scopeId: string;
+  roleId: string;
+};
+
 export async function validateOidcMappingRole(
   tx: IdentityTransaction,
-  input: {
-    providerType: string;
-    portalScope: string;
-    organisationId: string | null;
-    maxRoleRank: number | null;
-    scope: "organisation" | "workspace";
-    scopeId: string;
-    roleId: string;
-  },
+  input: IdpMappingRoleInput & { providerType: string },
 ) {
   if (input.providerType !== "entra") return false;
+  return validateIdpMappingRole(tx, input);
+}
+
+/**
+ * The single `valid_now` role predicate for an IdP-sourced mapping or default (IP-2, IP-3,
+ * IP-21, IP-22 and ADR 0015): identical for OIDC groups, JIT defaults and SCIM groups.
+ * A customer connection maps only the global Customer role; an agent connection maps
+ * only a role anchored in the target workspace, within the connection's rank ceiling,
+ * never `admin`/`owner`, never an unregistered, `sees_all` or instance capability, and
+ * only a composition-valid capability set.
+ */
+async function validateIdpMappingRole(
+  tx: IdentityTransaction,
+  input: IdpMappingRoleInput,
+) {
   if (input.portalScope === "customer") {
     if (
       input.scope !== "organisation" ||
@@ -1918,6 +1934,61 @@ export async function retireConnectionGrantSources(
   }
   await projectMembershipKeys(tx, keys);
   return { retiredGrantCount: grants.length, projectionKeys: keys };
+}
+
+/**
+ * IP-22 JIT transition: disabling JIT or changing its default role or target workspace
+ * retires this connection's old `jit_default` grants with the existing `mapping_changed`
+ * reason and reprojects every affected key from the remaining valid sources. Re-enabling
+ * or a new default creates none; only a later validated same-connection login can.
+ */
+export async function retireConnectionJitGrants(
+  tx: IdentityTransaction,
+  connectionId: string,
+  projectionKeys: readonly MembershipProjectionKey[],
+) {
+  const grants = await tx
+    .select({
+      id: schema.membershipGrantTable.id,
+      userId: schema.personTable.userId,
+    })
+    .from(schema.membershipGrantTable)
+    .innerJoin(
+      schema.personTable,
+      eq(schema.personTable.id, schema.membershipGrantTable.personId),
+    )
+    .where(
+      and(
+        eq(schema.membershipGrantTable.identityConnectionId, connectionId),
+        eq(schema.membershipGrantTable.sourceKind, "jit_default"),
+        isNull(schema.membershipGrantTable.revokedAt),
+      ),
+    )
+    .for("update", { of: schema.membershipGrantTable });
+  const now = new Date();
+  if (grants.length) {
+    await tx
+      .update(schema.membershipGrantTable)
+      .set({
+        revokedAt: now,
+        revocationReason: "mapping_changed",
+        membershipId: null,
+        updatedAt: now,
+      })
+      .where(
+        inArray(
+          schema.membershipGrantTable.id,
+          grants.map(({ id }) => id),
+        ),
+      );
+  }
+  await projectMembershipKeys(tx, projectionKeys);
+  return {
+    retiredGrantCount: grants.length,
+    userIds: [
+      ...new Set(grants.flatMap(({ userId }) => (userId ? [userId] : []))),
+    ],
+  };
 }
 
 /** Retire only this connection's active external grants above its new ceiling. */
@@ -3081,88 +3152,14 @@ export async function writeScimGroup(input: GroupWrite) {
 
 export async function validateScimMappingRole(
   tx: IdentityTransaction,
-  input: {
-    portalScope: string;
-    organisationId: string | null;
-    maxRoleRank: number | null;
-    scope: "organisation" | "workspace";
-    scopeId?: string;
-    roleId: string;
-  },
+  input: Omit<IdpMappingRoleInput, "scopeId"> & { scopeId?: string },
 ) {
-  if (input.portalScope === "customer") {
-    if (input.scope !== "organisation" || !input.organisationId) return false;
-    const [org] = await tx
-      .select({ id: schema.organisationTable.id })
-      .from(schema.organisationTable)
-      .where(
-        and(
-          eq(schema.organisationTable.id, input.organisationId),
-          eq(schema.organisationTable.active, true),
-          eq(schema.organisationTable.portalAccess, true),
-          eq(schema.organisationTable.isInternal, false),
-          sql`${schema.organisationTable.deletedAt} is null`,
-        ),
-      )
-      .limit(1);
-    if (!org) return false;
-  } else if (input.portalScope === "agent") {
-    if (
-      input.scope !== "workspace" ||
-      !input.scopeId ||
-      input.maxRoleRank === null
-    )
-      return false;
-    const [workspace] = await tx
-      .select({ id: schema.workspaceTable.id })
-      .from(schema.workspaceTable)
-      .innerJoin(
-        schema.organisationTable,
-        eq(schema.organisationTable.id, schema.workspaceTable.organisationId),
-      )
-      .where(
-        and(
-          eq(schema.workspaceTable.id, input.scopeId),
-          sql`${schema.workspaceTable.deletedAt} is null`,
-          eq(schema.organisationTable.isInternal, true),
-          eq(schema.organisationTable.active, true),
-          sql`${schema.organisationTable.deletedAt} is null`,
-        ),
-      )
-      .limit(1);
-    if (!workspace) return false;
-  } else return false;
-
-  const [role] = await tx
-    .select({
-      scope: schema.roleTable.scope,
-      roleKey: schema.roleTable.key,
-      rank: schema.roleTable.rank,
-      capabilities: schema.roleTable.capabilities,
-      workspaceId: schema.roleTable.workspaceId,
-    })
-    .from(schema.roleTable)
-    .where(eq(schema.roleTable.id, input.roleId))
-    .limit(1);
-  if (!role || role.scope !== input.scope) return false;
-  if (input.portalScope === "customer") return role.roleKey === "customer";
-  if (input.maxRoleRank === null || role.rank > input.maxRoleRank) return false;
-  if (role.workspaceId !== null && role.workspaceId !== input.scopeId)
-    return false;
-  if (
-    !Array.isArray(role.capabilities) ||
-    !role.capabilities.every(
-      (capability): capability is string =>
-        typeof capability === "string" && isCapability(capability),
-    )
-  )
-    return false;
-  const capabilities = role.capabilities;
-  return !capabilities.some(
-    (capability) =>
-      typeof capability === "string" &&
-      (capability === "instance:admin" || capability.startsWith("instance:")),
-  );
+  // A customer mapping always targets the connection's own organisation.
+  const scopeId =
+    input.scopeId ??
+    (input.portalScope === "customer" ? input.organisationId : null);
+  if (!scopeId) return false;
+  return validateIdpMappingRole(tx, { ...input, scopeId });
 }
 
 type MappingOptionsCursor = {

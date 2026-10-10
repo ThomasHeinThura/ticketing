@@ -22,6 +22,9 @@ const ROLE = {
   owner: "guard-role-owner",
   customer: "guard-role-customer",
   notCustomer: "guard-role-not-customer",
+  global: "guard-role-null-workspace",
+  instanceTier: "guard-role-instance-capability",
+  seesAll: "guard-role-sees-all",
 };
 
 async function seed() {
@@ -87,6 +90,33 @@ async function seed() {
       capabilities: [],
     },
     {
+      id: ROLE.global,
+      scope: "workspace",
+      workspaceId: null,
+      key: "guard-global",
+      name: "Guard Global",
+      rank: 2,
+      capabilities: [],
+    },
+    {
+      id: ROLE.instanceTier,
+      scope: "workspace",
+      workspaceId: WORKSPACE_A,
+      key: "guard-instance-tier",
+      name: "Guard Instance Tier",
+      rank: 2,
+      capabilities: ["instance:admin"],
+    },
+    {
+      id: ROLE.seesAll,
+      scope: "workspace",
+      workspaceId: WORKSPACE_A,
+      key: "guard-sees-all",
+      name: "Guard Sees All",
+      rank: 2,
+      capabilities: ["sees_all"],
+    },
+    {
       id: ROLE.customer,
       scope: "organisation",
       workspaceId: null,
@@ -125,6 +155,14 @@ const oidcCustomer = (roleId: string) => ({
   scopeId: CUSTOMER_ORG,
   roleId,
 });
+const scimAgent = (roleId: string) => ({
+  portalScope: "agent",
+  organisationId: null,
+  maxRoleRank: 5,
+  scope: "workspace" as const,
+  scopeId: WORKSPACE_A,
+  roleId,
+});
 const scimCustomer = (roleId: string) => ({
   portalScope: "customer",
   organisationId: CUSTOMER_ORG,
@@ -151,6 +189,55 @@ describe("IdP mapping role guards (IP-2, IP-3, IP-21)", () => {
       expect(
         await validateScimMappingRole(tx, scimCustomer(ROLE.customer)),
       ).toBe(true);
+      expect(await validateScimMappingRole(tx, scimAgent(ROLE.member))).toBe(
+        true,
+      );
+    });
+  });
+
+  // IP-21 and IP-22: one valid_now predicate for every IdP source, so each rule the OIDC
+  // path enforces binds a SCIM agent mapping too.
+  it("refuses a SCIM agent mapping to the admin or owner role", async () => {
+    await db.transaction(async (tx) => {
+      expect(await validateScimMappingRole(tx, scimAgent(ROLE.admin))).toBe(
+        false,
+      );
+      expect(await validateScimMappingRole(tx, scimAgent(ROLE.owner))).toBe(
+        false,
+      );
+    });
+  });
+
+  it("refuses a SCIM agent mapping to a null-workspace role or one anchored elsewhere", async () => {
+    await db.transaction(async (tx) => {
+      expect(await validateScimMappingRole(tx, scimAgent(ROLE.global))).toBe(
+        false,
+      );
+      expect(await validateScimMappingRole(tx, scimAgent(ROLE.foreign))).toBe(
+        false,
+      );
+    });
+  });
+
+  it("refuses a SCIM agent mapping to a role holding instance authority or sees_all", async () => {
+    await db.transaction(async (tx) => {
+      expect(
+        await validateScimMappingRole(tx, scimAgent(ROLE.instanceTier)),
+      ).toBe(false);
+      expect(await validateScimMappingRole(tx, scimAgent(ROLE.seesAll))).toBe(
+        false,
+      );
+    });
+  });
+
+  it("refuses a SCIM customer mapping whose scope is not the connection organisation", async () => {
+    await db.transaction(async (tx) => {
+      expect(
+        await validateScimMappingRole(tx, {
+          ...scimCustomer(ROLE.customer),
+          scopeId: "some-other-organisation",
+        }),
+      ).toBe(false);
     });
   });
 

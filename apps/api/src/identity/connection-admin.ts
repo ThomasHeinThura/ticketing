@@ -35,6 +35,7 @@ import {
   lockScimGrantClosure,
   retireConnectionGrantSources,
   retireConnectionGrantsAboveRoleRank,
+  retireConnectionJitGrants,
   retryIdentityGrantClosure,
 } from "./membership-projection";
 import { loadEntraDiscovery } from "./oidc-provider";
@@ -969,6 +970,32 @@ router.openapi(configureConnectionRoute, async (c) => {
           grantClosure,
         );
         affectedUserIds = retired.userIds;
+      }
+      const nextJit = parseIdentityJitPolicy(jitPolicy);
+      const lockedJit = parseIdentityJitPolicy(current.jitPolicy);
+      const jitTransition =
+        !disabling &&
+        ((lockedJit.ok &&
+          lockedJit.value.enabled &&
+          request.jitPolicy !== undefined &&
+          nextJit.ok &&
+          !nextJit.value.enabled) ||
+          (request.jitPolicy !== undefined &&
+            lockedJit.ok &&
+            nextJit.ok &&
+            nextJit.value.default_role_id !==
+              lockedJit.value.default_role_id) ||
+          (request.defaultWorkspaceId !== undefined &&
+            request.defaultWorkspaceId !== current.defaultWorkspaceId));
+      if (jitTransition) {
+        const retiredJit = await retireConnectionJitGrants(
+          tx,
+          id,
+          grantClosure,
+        );
+        affectedUserIds = [
+          ...new Set([...affectedUserIds, ...retiredJit.userIds]),
+        ];
       }
       const changedKeys = Object.keys(request).filter(
         (key) => key !== "configVersion",
