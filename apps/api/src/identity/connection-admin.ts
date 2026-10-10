@@ -55,6 +55,7 @@ import {
   lockCustomerOrganisation,
   lockIdentityConnection,
   lockIdentityDefaultRole,
+  validateIdpMappingRole,
 } from "./repository";
 
 const connectionShape = z.object({
@@ -433,17 +434,6 @@ async function domainBindingsAreUnique(
   );
 }
 
-function safeRoleCapabilities(value: unknown): boolean {
-  return (
-    Array.isArray(value) &&
-    value.every((capability) =>
-      typeof capability === "string"
-        ? capability !== "instance:admin" && capability !== "sees_all"
-        : false,
-    )
-  );
-}
-
 async function validateConnectionReferences(
   tx: ConnectionTransaction,
   value: {
@@ -480,30 +470,35 @@ async function validateConnectionReferences(
     if (!workspace || value.portalScope !== "agent") return false;
   }
   if (!jit.value.enabled) return true;
-  const [role] = await lockIdentityDefaultRole(
-    tx,
-    jit.value.default_role_id ?? "",
-  );
+  const roleId = jit.value.default_role_id ?? "";
+  // Lock the role row, then apply the one shared IdP role predicate (IP-2, IP-3, IP-22) so a
+  // default the login and reconciliation paths would refuse can never be saved.
+  const [role] = await lockIdentityDefaultRole(tx, roleId);
   if (!role) return false;
-  if (value.portalScope === "agent")
-    return Boolean(
-      value.defaultWorkspaceId &&
-        value.maxRoleRank !== null &&
-        role.scope === "workspace" &&
-        role.workspaceId === value.defaultWorkspaceId &&
-        role.rank >= 0 &&
-        (options.allowDormantDefaultRole || role.rank <= value.maxRoleRank) &&
-        role.key !== "admin" &&
-        role.key !== "owner" &&
-        safeRoleCapabilities(role.capabilities),
-    );
-  return Boolean(
-    role.scope === "organisation" &&
-      role.workspaceId === null &&
-      role.key === "customer" &&
-      role.rank >= 0 &&
-      safeRoleCapabilities(role.capabilities),
-  );
+  if (value.portalScope === "agent") {
+    if (!value.defaultWorkspaceId || value.maxRoleRank === null) return false;
+    return validateIdpMappingRole(tx, {
+      portalScope: "agent",
+      organisationId: null,
+      // A preserved, now-over-ceiling default stays visible as dormant (IP-22); every
+      // other rule still applies to it.
+      maxRoleRank: options.allowDormantDefaultRole
+        ? Number.MAX_SAFE_INTEGER
+        : value.maxRoleRank,
+      scope: "workspace",
+      scopeId: value.defaultWorkspaceId,
+      roleId,
+    });
+  }
+  if (!value.organisationId) return false;
+  return validateIdpMappingRole(tx, {
+    portalScope: "customer",
+    organisationId: value.organisationId,
+    maxRoleRank: null,
+    scope: "organisation",
+    scopeId: value.organisationId,
+    roleId,
+  });
 }
 
 async function reportAuditFailure() {
@@ -973,20 +968,25 @@ router.openapi(configureConnectionRoute, async (c) => {
       }
       const nextJit = parseIdentityJitPolicy(jitPolicy);
       const lockedJit = parseIdentityJitPolicy(current.jitPolicy);
+      const jitDisabled =
+        lockedJit.ok &&
+        lockedJit.value.enabled &&
+        request.jitPolicy !== undefined &&
+        nextJit.ok &&
+        !nextJit.value.enabled;
+      const jitRoleChanged =
+        request.jitPolicy !== undefined &&
+        lockedJit.ok &&
+        nextJit.ok &&
+        nextJit.value.default_role_id !== lockedJit.value.default_role_id;
+      const jitWorkspaceChanged =
+        request.defaultWorkspaceId !== undefined &&
+        request.defaultWorkspaceId !== current.defaultWorkspaceId;
+      // A stored policy that cannot be read cannot prove its grants are still valid, so
+      // any configure treats it as a change and retires the connection's JIT grants.
       const jitTransition =
         !disabling &&
-        ((lockedJit.ok &&
-          lockedJit.value.enabled &&
-          request.jitPolicy !== undefined &&
-          nextJit.ok &&
-          !nextJit.value.enabled) ||
-          (request.jitPolicy !== undefined &&
-            lockedJit.ok &&
-            nextJit.ok &&
-            nextJit.value.default_role_id !==
-              lockedJit.value.default_role_id) ||
-          (request.defaultWorkspaceId !== undefined &&
-            request.defaultWorkspaceId !== current.defaultWorkspaceId));
+        (!lockedJit.ok || jitDisabled || jitRoleChanged || jitWorkspaceChanged);
       if (jitTransition) {
         const retiredJit = await retireConnectionJitGrants(
           tx,

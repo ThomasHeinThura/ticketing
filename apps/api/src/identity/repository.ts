@@ -827,7 +827,7 @@ export async function validateOidcMappingRole(
  * never `admin`/`owner`, never an unregistered, `sees_all` or instance capability, and
  * only a composition-valid capability set.
  */
-async function validateIdpMappingRole(
+export async function validateIdpMappingRole(
   tx: IdentityTransaction,
   input: IdpMappingRoleInput,
 ) {

@@ -976,38 +976,67 @@ scoped surface.
 
 ## Implementation status (2026-10-10)
 
-This records what the integrated S1 slice implements. It changes no rule text above; each item
-below is a known gap, held as unimplemented rather than specified differently.
+This records what the integrated S1 slice implements. It changes no rule text above; each
+item below is a known gap, held as unimplemented rather than specified differently.
 
-Implemented and tested: connection create and configure (IP-6), OIDC login with admission and
-reconciliation (IP-7, IP-8, IP-26, IP-27, IP-28), JIT first login and link-and-activate of a
-SCIM-provisioned identity (IP-10, IP-19, IP-30), OIDC mapping administration (IP-34), SCIM
-Users and Groups with deactivation and reactivation (IP-11, IP-13, IP-15 to IP-17, IP-20,
-IP-21), one shared role predicate for OIDC, JIT and SCIM mappings (IP-2, IP-3, IP-21), and the
-IP-22 transitions that S1's own writers own: connection disable, lowered ceiling, and JIT
-disable, default-role change and default-workspace change through the connection configure
-path (retired with `mapping_changed`).
+**Precondition.** The `IP-22` cross-module sweep (role edits and lifecycle changes
+reprojecting IdP-derived grants, see below) **MUST land before** any role editor or any
+person, workspace, organisation or `portal_access` lifecycle change can alter IdP-derived
+authority. Until then no such writer may ship.
+
+Implemented and tested: connection create and configure (`IP-6`), OIDC login admission and
+reconciliation (`IP-8`, `IP-26`, `IP-27`), JIT first login and link-and-activate of a
+SCIM-provisioned identity (`IP-10`, `IP-19`, `IP-30`), OIDC mapping administration (`IP-34`),
+SCIM Users and Groups with deactivation and reactivation (`IP-11`, `IP-13`, `IP-15` to
+`IP-17`, `IP-21`), one shared role predicate for OIDC, JIT and SCIM mappings and for the JIT
+default saved at configure (`IP-2`, `IP-3`, `IP-21`), and the `IP-22` transitions S1's own
+writers own: connection disable, lowered ceiling, and JIT disable, default-role change and
+default-workspace change through the connection configure path (retired with
+`mapping_changed`; an unreadable stored policy is treated as a change).
+
+Partially implemented:
+
+- **`IP-7`:** the protocol checks are implemented, but there are no tests for PKCE mismatch,
+  replayed state or expired state, and protocol failures are logged, not audited as
+  `auth.failed` provisioning events.
+- **`IP-28`:** group re-derivation, overage retirement and session-after-commit are
+  implemented and tested; there is no God Mode Health warning on overage.
+- **`IP-20`:** SCIM group sync and mapping are implemented; retirement with
+  `scim_group_removed` has no test.
 
 Not implemented (held):
 
-- **IP-22 cross-module sweeps.** Role edits and deletion, organisation, workspace,
+- **`IP-22` cross-module sweeps.** Role edits and deletion, organisation, workspace,
   `portal_access` and person lifecycle writers outside the identity module do not call the
   grant-closure seam, so they do not retire or reproject external grants.
-- **IP-4** `400 forbidden_attribute` code and the `request.denied` event: a forbidden SCIM
+- **`IP-22` `valid_now`** is checked when a grant is written or reconciled, not re-evaluated
+  at projection time.
+- **`IP-4`** `400 forbidden_attribute` code and the `request.denied` event: a forbidden SCIM
   attribute is refused with a generic `400`, and no provisioning event is written.
-- **IP-12 and IP-24** `auth.failed` provisioning events for a bad or rotated SCIM token.
-- **IP-14** per-connection SCIM rate limit and request body or member-count bounds.
-- **IP-25** plugin-health ping of the discovery document.
-- **IP-9, IP-29 and CP-18** typed-domain home-realm discovery endpoint.
+- **`IP-9`** domain collision: should answer `409` with a `request.denied` event and an
+  administrator notification; today it is a generic sign-in failure with no event.
+- **`IP-10`** "customer JIT off by default when SCIM is on" is not enforced.
+- **`IP-12` and `IP-24`** `auth.failed` provisioning events for a bad or rotated SCIM token.
+- **`IP-14`** per-connection SCIM rate limit and request body or member-count bounds.
+- **`IP-25`** plugin-health ping of the discovery document.
+- **`IP-9`, `IP-29` and `CP-18`** typed-domain home-realm discovery endpoint.
+- **`IP-31` and `IP-32`:** covered by domain unit tests only; the HTTP-layer SCIM tests are
+  missing.
+- **`AU-14`:** an OIDC login audit write failure is logged but raises no durable
+  administrator alert.
 - **Routes:** `POST /api/instance/identity-connections/{id}/scim` (create the SCIM child and
   its first token), `DELETE` of a connection, and the `/test` routes.
 - **The named acceptance test files** under `tests/api-integration/identity/` and a real
   Entra tenant run.
-- **Behaviour differences from the text:** a disabled connection answers SCIM with `401`
-  (bearer resolution) rather than `403 connection_disabled`; login refuses an existing
-  identity with no usable address or `email_verified === false` before admission, though the
-  text limits the address requirement to JIT creation; a wrong-portal session on the portal
-  host answers `401` rather than `403`.
+
+Behaviour that **mismatches the rule text** (implemented differently, not yet reconciled):
+
+- A disabled connection answers SCIM with `401` (bearer resolution), not
+  `403 connection_disabled`.
+- A wrong-portal session on the portal host answers `401`, not `403`.
+- Login refuses an existing identity with no usable address, or with
+  `email_verified === false`, before admission; the text limits the address requirement to
+  JIT person creation.
 
 ## Open questions
 

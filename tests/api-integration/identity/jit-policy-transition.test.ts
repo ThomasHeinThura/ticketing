@@ -30,6 +30,8 @@ const W2 = "jit-transition-workspace-2";
 const R1 = "jit-transition-role-1";
 const R2 = "jit-transition-role-2";
 const R3 = "jit-transition-role-3";
+const R_INSTANCE = "jit-transition-role-instance";
+const R_UNKNOWN = "jit-transition-role-unknown";
 const originalEncryptionKey = process.env.TASKDESK_ENCRYPTION_KEY;
 
 async function setupAdmin() {
@@ -164,6 +166,24 @@ async function seed(jit: { enabled: boolean; roleId: string | null }) {
       name: "R3",
       rank: 2,
       capabilities: [],
+    },
+    {
+      id: R_INSTANCE,
+      scope: "workspace",
+      workspaceId: W1,
+      key: "jt-instance",
+      name: "Instance tier",
+      rank: 2,
+      capabilities: ["instance:read_audit"],
+    },
+    {
+      id: R_UNKNOWN,
+      scope: "workspace",
+      workspaceId: W1,
+      key: "jt-unknown",
+      name: "Unknown capability",
+      rank: 2,
+      capabilities: ["not:a-capability"],
     },
   ]);
   await db.insert(schema.identityConnectionTable).values({
@@ -357,5 +377,38 @@ describe("IP-22 JIT policy transitions through the connection configure path", (
     const after = await state(grantId, personId);
     expect(after.grant?.revokedAt).toBeNull();
     expect(after.memberships).toHaveLength(1);
+  });
+
+  it("refuses to save a default role the shared IdP role predicate rejects", async () => {
+    const { sessionCookie, grantId, personId } = await seed(enabledJit);
+    for (const roleId of [R_INSTANCE, R_UNKNOWN]) {
+      const response = await patch(sessionCookie, {
+        jitPolicy: policy(true, roleId),
+      });
+      expect(response.status).toBe(422);
+    }
+    const [stored] = await db
+      .select({ jitPolicy: schema.identityConnectionTable.jitPolicy })
+      .from(schema.identityConnectionTable)
+      .where(eq(schema.identityConnectionTable.id, CONNECTION_ID));
+    expect(stored?.jitPolicy).toMatchObject({ default_role_id: R1 });
+    const after = await state(grantId, personId);
+    expect(after.grant?.revokedAt).toBeNull();
+  });
+
+  it("treats an unreadable stored policy as a change and retires the JIT grants", async () => {
+    const { sessionCookie, personId, grantId } = await seed(enabledJit);
+    await db
+      .update(schema.identityConnectionTable)
+      .set({ jitPolicy: { corrupt: true } })
+      .where(eq(schema.identityConnectionTable.id, CONNECTION_ID));
+    const response = await patch(sessionCookie, {
+      jitPolicy: policy(true, R2),
+    });
+    expect(response.status).toBe(200);
+    const after = await state(grantId, personId);
+    expect(after.grant?.revokedAt).toBeInstanceOf(Date);
+    expect(after.grant?.revocationReason).toBe("mapping_changed");
+    expect(after.memberships).toHaveLength(0);
   });
 });
