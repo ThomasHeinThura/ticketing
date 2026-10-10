@@ -219,6 +219,12 @@ dc down taskdesk                     # no signature verification
 dc up -d --wait taskdesk
 ```
 
+**Sessions across the cookie rename.** Releases that include #602 renamed the agent session
+cookie to `__Host-tdk_agent_session` (Secure, host-only). Sessions issued by an earlier image
+are not accepted after the upgrade, and sessions issued by the new image are not accepted after
+a rollback to that earlier image. Either way users must sign in again. Tell users before the
+change; no data is lost.
+
 **Migrations do not roll back.** If the release included a destructive migration, a code
 rollback alone will not work — restore the pre-upgrade backup. This is why destructive
 migrations are two-phase, and why the pre-upgrade backup is mandatory.

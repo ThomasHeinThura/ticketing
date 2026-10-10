@@ -191,7 +191,13 @@ fi
 exit 2
 `,
   );
-  await writeFile(path.join(bin, "getent"), "#!/usr/bin/env bash\nexit 0\n");
+  await writeFile(
+    path.join(bin, "getent"),
+    `#!/usr/bin/env bash
+for missing in \${FAKE_DNS_MISSING:-}; do [[ "$2" != "$missing" ]] || exit 2; done
+exit 0
+`,
+  );
   await writeFile(path.join(bin, "ss"), "#!/usr/bin/env bash\nexit 0\n");
   await writeFile(
     path.join(bin, "uname"),
@@ -917,6 +923,55 @@ test("Arch Docker bootstrap fails closed without a partial system upgrade", asyn
   assert.ok(archCase, "Arch must have an explicit installer path");
   assert.match(archCase, /die .*Arch Linux.*synchronized full-system update/);
   assert.doesNotMatch(archCase, /pacman\s+-Sy\b/);
+});
+
+test("production first install and re-run without a files DNS record or S3 profile both succeed", async (t) => {
+  const f = await fixture(t, { realDeployment: true });
+  const env = {
+    FAKE_DOCKER_FULL: "1",
+    FAKE_PRODUCTION_HOST: "1",
+    FAKE_RAW: RAW_MANIFEST,
+    FAKE_DOCKER_LOG: path.join(f.temp, "docker.log"),
+    FAKE_DNS_MISSING: "files.example.test",
+  };
+  const first = run(f, PROD_ARGS(f), env);
+  assert.equal(first.status, 0, first.stderr);
+  const second = run(f, PROD_ARGS(f), env);
+  assert.equal(second.status, 0, second.stderr);
+  const rerun = run(
+    f,
+    ["--env", "production", "--version", "1.2.3", "--dir", f.path, "--yes"],
+    env,
+  );
+  assert.equal(rerun.status, 0, rerun.stderr);
+  assert.doesNotMatch(`${rerun.stdout}${rerun.stderr}`, /files\.example\.test/);
+});
+
+test("production S3 profile and an explicit --files-host still require the files DNS record", async (t) => {
+  const f = await fixture(t, { realDeployment: true });
+  const env = {
+    FAKE_DOCKER_FULL: "1",
+    FAKE_PRODUCTION_HOST: "1",
+    FAKE_RAW: RAW_MANIFEST,
+    FAKE_DOCKER_LOG: path.join(f.temp, "docker.log"),
+    FAKE_DNS_MISSING: "files.example.test files.custom.test",
+  };
+  const s3 = run(f, [...PROD_ARGS(f), "--profile", "s3"], env);
+  assert.notEqual(s3.status, 0);
+  assert.match(
+    `${s3.stdout}${s3.stderr}`,
+    /DNS name files\.example\.test does not resolve/,
+  );
+  const explicit = run(
+    f,
+    [...PROD_ARGS(f), "--files-host", "files.custom.test"],
+    env,
+  );
+  assert.notEqual(explicit.status, 0);
+  assert.match(
+    `${explicit.stdout}${explicit.stderr}`,
+    /DNS name files\.custom\.test does not resolve/,
+  );
 });
 
 test("published source installer hash in the runbook matches install.sh byte-for-byte", async () => {

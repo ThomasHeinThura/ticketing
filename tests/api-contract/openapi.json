@@ -17388,6 +17388,24 @@
           "401": {
             "description": "Missing or invalid credentials"
           },
+          "403": {
+            "description": "The caller's identity is inactive",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "message": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "message"
+                  ]
+                }
+              }
+            }
+          },
           "503": {
             "description": "Factor policy could not be validated",
             "content": {

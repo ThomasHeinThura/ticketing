@@ -29,12 +29,11 @@ import db, { schema } from "../database";
 import type { RegisteredHttpRoute } from "../observability/metrics.js";
 import { policyRegistry } from "../policy-registry";
 import { rejectNulByte } from "../utils/reject-nul-byte";
-import {
-  type ApiKeyPermissionScope,
-  apiKeyCapabilitySubset,
-} from "../utils/require-api-key-permission-scope";
 import { enforcedPolicySources } from "./enforcement-config";
-import { resolveIdentity } from "./resolve-identity";
+import {
+  type AuthenticatedApiKey,
+  resolveRequestIdentity,
+} from "./resolve-request-identity";
 import {
   ensurePolicyRequestId,
   setStrictPolicyWitness,
@@ -107,31 +106,15 @@ async function identityFor(
   const userId = c.get("userId") as string | undefined;
   if (!userId) return null;
 
-  const apiKey = c.get("apiKey") as
-    | ({ id: string; userId: string; enabled: boolean } & ApiKeyPermissionScope)
-    | undefined;
+  const apiKey = c.get("apiKey") as AuthenticatedApiKey | undefined;
   const session = c.get("session") as
     | { id?: string; impersonatedBy?: string | null }
     | null
     | undefined;
-  const credential = apiKey
-    ? "api_key"
-    : session?.impersonatedBy
-      ? "impersonation"
-      : "session";
-
-  return resolveIdentity({
+  return resolveRequestIdentity({
     userId,
-    credential,
-    ...(apiKey
-      ? {
-          apiKey: {
-            enabled: apiKey.enabled,
-            ownerUserId: apiKey.userId,
-            capabilities: apiKeyCapabilitySubset(apiKey),
-          },
-        }
-      : {}),
+    apiKey,
+    impersonatedBy: session?.impersonatedBy,
   });
 }
 
