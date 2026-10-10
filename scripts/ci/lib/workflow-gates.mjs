@@ -138,12 +138,14 @@ export function isExecuting(kind) {
  *     security review, `check:policy`, the registers, the checker tests, the reconciliation,
  *     the secret scan) and is not one of ALWAYS_RUN_JOBS — keyed by gate as well as by id, so
  *     renaming a job does not move an always-run gate under the scope switch;
- *   - the job's steps BEFORE the scope step are exactly a SHA-pinned `actions/checkout` whose
+ *   - the job's steps BEFORE the scope step are exactly `actions/checkout` pinned to the one
+ *     reviewed commit (PINNED_CHECKOUT_SHA — any other SHA could resolve to a fork) whose
  *     only input is `fetch-depth: 0`, optionally followed — only in a job running the pinned
  *     Playwright container — by the one exact `git config … safe.directory` step. Nothing
  *     else can run first, so nothing can rewrite the action on disk, write `$GITHUB_ENV` or
  *     `$GITHUB_PATH`, or swap `git`/`node` before the classifier runs;
- *   - the job sets no `env` or `defaults`, and any `container` is exactly PINNED_CONTAINER;
+ *   - the job sets no `env`, `defaults` or `services` (a service container starts before any
+ *     step and could rewrite the workspace), and any `container` is exactly PINNED_CONTAINER;
  *   - the workflow's top-level `env`, if any, is one plain block mapping of the inert
  *     ALLOWED_WORKFLOW_ENV keys — a flow mapping, a commented key line or any other key is
  *     refused;
@@ -186,8 +188,9 @@ const ALLOWED_WORKFLOW_ENV = new Set([
   "DO_NOT_TRACK",
 ]);
 const SCOPE_STEP_KEYS = new Set(["id", "uses", "name"]);
+export const PINNED_CHECKOUT_SHA = "fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09";
 const PINNED_CHECKOUT = [
-  /^- uses: actions\/checkout@[0-9a-f]{40}$/,
+  new RegExp(`^- uses: actions\\/checkout@${PINNED_CHECKOUT_SHA}$`),
   /^with:$/,
   /^fetch-depth: 0$/,
 ];
@@ -286,7 +289,7 @@ export function proveScopeStep(step, context) {
       reason: `job "${step.job}" runs an always-run gate; it may not be scope-gated`,
     };
   }
-  for (const key of ["env", "defaults"]) {
+  for (const key of ["env", "defaults", "services"]) {
     if (step.jobKeys?.has(key)) {
       return {
         proven: false,
@@ -381,7 +384,7 @@ export function proveScopeStep(step, context) {
     return {
       proven: false,
       reason:
-        "the steps before the scope step must be exactly a SHA-pinned `actions/checkout` with " +
+        `the steps before the scope step must be exactly \`actions/checkout@${PINNED_CHECKOUT_SHA}\` with ` +
         "only `fetch-depth: 0` (plus, in the pinned Playwright container, the exact " +
         "`safe.directory` step); anything else could rewrite the action or redirect `git` or " +
         "`node` before it runs",

@@ -589,10 +589,11 @@ so it is not re-measured as one. Everything else is verified in full.
   answer but exactly `policy`. Its log line is fenced with `::stop-commands::`, and the
   classifier JSON-escapes file names, so a crafted path cannot inject a workflow command.
   `scripts/ci/lib/workflow-gates.mjs` (A9) accepts a gated step only in an allowlisted
-  shape: the exact condition; one canonical scope step; before it, only a SHA-pinned checkout
-  whose sole input is `fetch-depth: 0` (plus, in the pinned Playwright container job, the
+  shape: the exact condition; one canonical scope step; before it, only `actions/checkout`
+  pinned to the one reviewed commit (another SHA could resolve to a fork), whose sole input is
+  `fetch-depth: 0` (plus, in the pinned Playwright container job, the
   exact `safe.directory` step), so nothing can rewrite the action or change `PATH`,
-  `GITHUB_ENV` or `node` first; no job `env` or `defaults`; no container but the pinned
+  `GITHUB_ENV` or `node` first; no job `env`, `defaults` or `services`; no container but the pinned
   image; a workflow `env` that is a plain block of the two inert variables; and the action
   file matching the SHA-256 pinned in the scanner. `scripts/ci/probes/change-scope.test.mjs`
   attacks each layer.

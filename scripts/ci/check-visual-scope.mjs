@@ -152,6 +152,7 @@ const expectedVisualJobLines = [
   `        if: ${SCOPE_IF}`,
   "        run: pnpm --filter @taskdesk/permissions build",
   "      - name: Normalize Ubuntu APT mirror for Chromium dependencies",
+  "        if: ${{ steps.scope.outputs.full != 'false' }}",
   "        run: node scripts/ci/normalize-ubuntu-apt-mirror.mjs",
   "      - name: Install Chromium",
   `        if: ${SCOPE_IF}`,

@@ -89,6 +89,7 @@ jobs:
         env:
           VITE_API_URL: ""
       - name: Normalize Ubuntu APT mirror for Chromium dependencies
+        if: ${{ steps.scope.outputs.full != 'false' }}
         run: sudo -- "$(command -v node)" scripts/ci/normalize-ubuntu-apt-mirror.mjs
       - name: Install Chromium
         if: ${{ steps.scope.outputs.full != 'false' }}
@@ -123,6 +124,7 @@ jobs:
         env:
           VITE_API_URL: ""
       - name: Normalize Ubuntu APT mirror for Chromium dependencies
+        if: ${{ steps.scope.outputs.full != 'false' }}
         run: sudo -- "$(command -v node)" scripts/ci/normalize-ubuntu-apt-mirror.mjs
       - name: Install Chromium
         if: ${{ steps.scope.outputs.full != 'false' }}
@@ -164,6 +166,7 @@ jobs:
         if: ${{ steps.scope.outputs.full != 'false' }}
         run: pnpm --filter @taskdesk/permissions build
       - name: Normalize Ubuntu APT mirror for Chromium dependencies
+        if: ${{ steps.scope.outputs.full != 'false' }}
         run: node scripts/ci/normalize-ubuntu-apt-mirror.mjs
       - name: Install Chromium
         if: ${{ steps.scope.outputs.full != 'false' }}
@@ -199,6 +202,7 @@ jobs:
         env:
           VITE_API_URL: ""
       - name: Normalize Ubuntu APT mirror for Chromium dependencies
+        if: ${{ steps.scope.outputs.full != 'false' }}
         run: sudo -- "$(command -v node)" scripts/ci/normalize-ubuntu-apt-mirror.mjs
       - name: Install Chromium
         if: ${{ steps.scope.outputs.full != 'false' }}

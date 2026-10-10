@@ -127,6 +127,7 @@ jobs:
         if: ${{ steps.scope.outputs.full != 'false' }}
         run: pnpm typecheck
       - name: Normalize Ubuntu APT mirror for Chromium dependencies
+        if: ${{ steps.scope.outputs.full != 'false' }}
         run: sudo -- "$(command -v node)" scripts/ci/normalize-ubuntu-apt-mirror.mjs
       - name: Install Chromium for G3
         if: ${{ steps.scope.outputs.full != 'false' }}

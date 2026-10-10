@@ -426,8 +426,9 @@ describe(".github/actions/change-scope — merge-base classifier, full on any do
 
 const PINNED_ACTION = readFileSync(ACTION, "utf8");
 
+const CHECKOUT_SHA = "fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09";
 const CHECKOUT = [
-  `      - uses: actions/checkout@${"a".repeat(40)} # pinned`,
+  `      - uses: actions/checkout@${CHECKOUT_SHA} # v5.1.0`,
   "        with:",
   "          fetch-depth: 0",
 ];
@@ -721,6 +722,54 @@ describe("workflow-gates A9 — the step-level change-scope shape only", () => {
         ],
         envRaw: "env: # inert",
       },
+    ],
+    [
+      "a checkout pinned to any other commit (fork-resolvable SHA)",
+      {
+        steps: [
+          `      - uses: actions/checkout@${"a".repeat(40)} # pinned`,
+          ...CHECKOUT.slice(1),
+          ...SCOPE_STEP,
+          ...GATE_STEP,
+        ],
+      },
+    ],
+    [
+      "a job-level services block",
+      {
+        jobLines: ["    services:", "      cache:", "        image: redis:7"],
+      },
+    ],
+    [
+      "a pinned-container job whose second step is not the exact safe.directory text",
+      {
+        jobLines: [
+          "    container:",
+          "      image: mcr.microsoft.com/playwright:v1.63.0-noble@sha256:eff16c30e6f3f4af0a03fa4b706120d5e9b0891c344a27d64559aff5900a4a27",
+          "      options: --ipc=host",
+        ],
+        steps: [
+          ...CHECKOUT,
+          SAFE_DIRECTORY[0],
+          '        run: git config --global --add safe.directory "$GITHUB_WORKSPACE" && echo NODE_OPTIONS=--require ./x.cjs >> $GITHUB_ENV',
+          ...SCOPE_STEP,
+          ...GATE_STEP,
+        ],
+      },
+    ],
+    [
+      "a workflow env key written `env :` (space before the colon)",
+      {
+        env: [
+          '  TURBO_TELEMETRY_DISABLED: "1"',
+          '  NODE_OPTIONS: "--require ./x.cjs"',
+        ],
+        envRaw: "env :",
+      },
+    ],
+    [
+      "a workflow env line the inert-entry pattern cannot parse",
+      { env: ['  TURBO_TELEMETRY_DISABLED: "1"', "  NODE_OPTIONS : x"] },
     ],
     [
       "a renamed always-run job (gate keyed, not id keyed)",
