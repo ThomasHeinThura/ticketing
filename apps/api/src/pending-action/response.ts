@@ -1,14 +1,13 @@
 import { z } from "../openapi";
 
 const pendingActionSummarySchema = z.record(z.string(), z.unknown());
-// This legacy kind is response-only compatibility for durable 0109 rows. The
-// request path and approval implementation still accept canonical action kinds only.
+// Durable 0109 `user_deactivation` values remain database-only compatibility. Public
+// DTOs project a resolvable legacy row onto the canonical delete/user vocabulary.
 const pendingActionReadKindSchema = z.enum([
   "delete",
   "bulk_delete",
   "purge",
   "mcp_destructive",
-  "user_deactivation",
 ]);
 
 export const pendingActionReadSchema = z

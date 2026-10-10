@@ -412,7 +412,11 @@ thing that is hashed or executed.
   approval path rejects a legacy row before target lookup or step-up consumption. Historical
   pending and terminal rows, their person-id targets, payload hashes, and proof bindings are
   preserved. Approval remains unavailable for a pending legacy row; its requester can use
-  the existing cancel action, then submit a fresh request through the canonical flow.
+  the existing cancel action, then submit a fresh request through the canonical flow. Self-read
+  and terminal decision DTOs expose a legacy row as `delete`/`user` only after resolving its
+  single stored person-id target to the linked user id. The DTO keeps the stored summary and
+  adds that resolved `userId`; it does not rewrite the row, payload, hash, or proof binding.
+  Missing resolution returns the existing `409 pending_action_target_changed` conflict.
 
 ## Confirmation levels
 

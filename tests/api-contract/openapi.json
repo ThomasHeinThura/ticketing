@@ -1912,8 +1912,7 @@
               "delete",
               "bulk_delete",
               "purge",
-              "mcp_destructive",
-              "user_deactivation"
+              "mcp_destructive"
             ]
           },
           "origin": {
@@ -2070,8 +2069,7 @@
               "delete",
               "bulk_delete",
               "purge",
-              "mcp_destructive",
-              "user_deactivation"
+              "mcp_destructive"
             ]
           },
           "origin": {
