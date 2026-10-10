@@ -1,0 +1,2 @@
+ALTER TABLE "membership_grant" DROP CONSTRAINT "membership_grant_revocation_reason_check";--> statement-breakpoint
+ALTER TABLE "membership_grant" ADD CONSTRAINT "membership_grant_revocation_reason_check" CHECK ("membership_grant"."revocation_reason" is null or "membership_grant"."revocation_reason" in ('claim_removed', 'claim_missing', 'claim_overage', 'admission_failed', 'mapping_disabled', 'mapping_changed', 'role_deleted', 'connection_disabled', 'scim_group_removed', 'scim_deactivated', 'direct_removed', 'person_deactivated'));

@@ -82,9 +82,11 @@ export const policyShadowTallyTable = pgTable(
     ),
     check(
       "policy_shadow_tally_outcome_check",
-      sql`${table.outcome} IN ('agree', 'legacy_allow_policy_deny', 'legacy_deny_policy_allow', 'unevaluated', 'evaluator_error')`,
+      sql.raw(
+        "outcome = ANY (ARRAY['agree'::text, 'legacy_allow_policy_deny'::text, 'legacy_deny_policy_allow'::text, 'unevaluated'::text, 'evaluator_error'::text])",
+      ),
     ),
-    check("policy_shadow_tally_count_positive", sql`${table.count} > 0`),
+    check("policy_shadow_tally_count_positive", sql.raw("count > 0")),
     // `.nullsNotDistinct()` — the SQL migration declares `UNIQUE NULLS NOT DISTINCT`
     // (0069_policy_shadow_tables.sql); without this the Drizzle-side declaration would
     // describe an ordinary UNIQUE (NULLs distinct), disagreeing with the real constraint
@@ -132,7 +134,7 @@ export const policyShadowEventTable = pgTable(
   (table) => [
     index("policy_shadow_event_route_key_created_at_idx").on(
       table.routeKey,
-      table.createdAt.desc(),
+      table.createdAt.desc().nullsFirst(),
     ),
     index("policy_shadow_event_bucket_idx").on(
       table.day,
@@ -142,7 +144,9 @@ export const policyShadowEventTable = pgTable(
     ),
     check(
       "policy_shadow_event_outcome_check",
-      sql`${table.outcome} IN ('legacy_allow_policy_deny', 'legacy_deny_policy_allow', 'unevaluated', 'evaluator_error')`,
+      sql.raw(
+        "outcome = ANY (ARRAY['legacy_allow_policy_deny'::text, 'legacy_deny_policy_allow'::text, 'unevaluated'::text, 'evaluator_error'::text])",
+      ),
     ),
   ],
 );

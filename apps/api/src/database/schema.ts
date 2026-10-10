@@ -12,10 +12,13 @@ import {
   jsonb,
   numeric,
   pgTable,
+  primaryKey,
+  serial,
   text,
   timestamp,
   unique,
   uniqueIndex,
+  uuid,
 } from "drizzle-orm/pg-core";
 
 const bytea = customType<{ data: Buffer; driverData: Buffer }>({
@@ -32,6 +35,7 @@ export const userTable = pgTable("user", {
   email: text("email").notNull().unique(),
   emailVerified: boolean("email_verified")
     .$defaultFn(() => false)
+    .default(false)
     .notNull(),
   image: text("image"),
   locale: text("locale"),
@@ -69,12 +73,18 @@ export const sessionTable = pgTable(
     activeOrganizationId: text("active_organization_id"),
     activeTeamId: text("active_team_id"),
     impersonatedBy: text("impersonated_by"),
+    identityConnectionId: text("identity_connection_id").references(
+      () => identityConnectionTable.id,
+      { onDelete: "cascade", onUpdate: "cascade" },
+    ),
   },
   (table) => [
     index("session_userId_idx").on(table.userId),
     check(
       "session_portal_allowed",
-      sql`${table.portal} is null or ${table.portal} in ('agent', 'customer')`,
+      sql.raw(
+        "(portal IS NULL) OR (portal = ANY (ARRAY['agent'::text, 'customer'::text]))",
+      ),
     ),
   ],
 );
@@ -173,52 +183,81 @@ export const twoFactorTable = pgTable(
     uniqueIndex("two_factor_user_id_unique").on(table.userId),
     check(
       "two_factor_failed_count_nonnegative",
-      sql`${table.failedVerificationCount} >= 0`,
+      sql.raw("failed_verification_count >= 0"),
     ),
   ],
 );
 
-export const workspaceTable = pgTable("workspace", {
-  id: text("id")
-    .$defaultFn(() => createId())
-    .primaryKey(),
-  // #192: every workspace is scoped to exactly one organisation -- decision log
-  // 2026-09-22 "#192's tenant-attribution decision: Option A+D". NOT NULL, backfilled by
-  // this migration's own SQL to the single internal organisation the boot seed guarantees
-  // (`apps/api/src/utils/seed-internal-organisation.ts`) -- every workspace this codebase
-  // could have created before this column existed was, in effect, internal (there is no
-  // route today that creates a workspace for any other organisation), so backfilling every
-  // existing row to that one organisation is not a guess, it is what was already true.
-  // `references(() => organisationTable.id)` is a forward reference (organisationTable is
-  // declared later in this file) -- safe because Drizzle only invokes this callback lazily,
-  // after the whole module has finished evaluating.
-  //
-  // `ON DELETE RESTRICT`, not CASCADE: this codebase has no organisation-delete route yet
-  // (organisation.deleted_at/purge_after exist since PR #179 but nothing sets or purges
-  // them -- decision log 2026-09-17 "#187's fix is project-only soft-delete..."), so this
-  // never fires today. RESTRICT is the conservative default until a real purge job (#198)
-  // deliberately decides whether deleting an organisation should cascade through every
-  // workspace it owns (and, transitively, every project/work_item beneath it) -- matching
-  // this schema's general "a referenced entity in active use cannot vanish out from under
-  // its dependents" pattern rather than silently wiring a new mass-cascade path as a side
-  // effect of this migration. `ON UPDATE CASCADE`: `organisation.id` is an immutable
-  // primary key with no update route, the same as every other single-column `*_id ->
-  // *.id` reference in this file that already uses `onUpdate: "cascade"` safely -- #191's
-  // O1 lesson is specifically about a composite FK whose referenced column set includes a
-  // *mutable, non-PK* column, which does not apply here.
-  organisationId: text("organisation_id")
-    .notNull()
-    .references(() => organisationTable.id, {
-      onDelete: "restrict",
-      onUpdate: "cascade",
-    }),
-  name: text("name").notNull(),
-  slug: text("slug").notNull().unique(),
-  logo: text("logo"),
-  metadata: text("metadata"),
-  description: text("description"),
-  createdAt: timestamp("created_at", { mode: "date" }).notNull(),
-});
+function slaPolicyWorkspaceColumn(): AnyPgColumn {
+  return slaPolicyTable.workspaceId;
+}
+function slaPolicyIdColumn(): AnyPgColumn {
+  return slaPolicyTable.id;
+}
+function slaPolicyVersionWorkspaceColumn(): AnyPgColumn {
+  return slaPolicyVersionTable.workspaceId;
+}
+function slaPolicyVersionPolicyIdColumn(): AnyPgColumn {
+  return slaPolicyVersionTable.policyId;
+}
+function slaPolicyVersionIdColumn(): AnyPgColumn {
+  return slaPolicyVersionTable.id;
+}
+
+export const workspaceTable = pgTable(
+  "workspace",
+  {
+    id: text("id")
+      .$defaultFn(() => createId())
+      .primaryKey(),
+    // #192: every workspace is scoped to exactly one organisation -- decision log
+    // 2026-09-22 "#192's tenant-attribution decision: Option A+D". NOT NULL, backfilled by
+    // this migration's own SQL to the single internal organisation the boot seed guarantees
+    // (`apps/api/src/utils/seed-internal-organisation.ts`) -- every workspace this codebase
+    // could have created before this column existed was, in effect, internal (there is no
+    // route today that creates a workspace for any other organisation), so backfilling every
+    // existing row to that one organisation is not a guess, it is what was already true.
+    // `references(() => organisationTable.id)` is a forward reference (organisationTable is
+    // declared later in this file) -- safe because Drizzle only invokes this callback lazily,
+    // after the whole module has finished evaluating.
+    //
+    // `ON DELETE RESTRICT`, not CASCADE: this codebase has no organisation-delete route yet
+    // (organisation.deleted_at/purge_after exist since PR #179 but nothing sets or purges
+    // them -- decision log 2026-09-17 "#187's fix is project-only soft-delete..."), so this
+    // never fires today. RESTRICT is the conservative default until a real purge job (#198)
+    // deliberately decides whether deleting an organisation should cascade through every
+    // workspace it owns (and, transitively, every project/work_item beneath it) -- matching
+    // this schema's general "a referenced entity in active use cannot vanish out from under
+    // its dependents" pattern rather than silently wiring a new mass-cascade path as a side
+    // effect of this migration. `ON UPDATE CASCADE`: `organisation.id` is an immutable
+    // primary key with no update route, the same as every other single-column `*_id ->
+    // *.id` reference in this file that already uses `onUpdate: "cascade"` safely -- #191's
+    // O1 lesson is specifically about a composite FK whose referenced column set includes a
+    // *mutable, non-PK* column, which does not apply here.
+    organisationId: text("organisation_id")
+      .notNull()
+      .references(() => organisationTable.id, {
+        onDelete: "restrict",
+        onUpdate: "cascade",
+      }),
+    name: text("name").notNull(),
+    slug: text("slug").notNull().unique(),
+    logo: text("logo"),
+    metadata: text("metadata"),
+    description: text("description"),
+    deletedAt: timestamp("deleted_at", { mode: "date" }),
+    purgeAfter: timestamp("purge_after", { mode: "date" }),
+    defaultSlaPolicyId: text("default_sla_policy_id"),
+    createdAt: timestamp("created_at", { mode: "date" }).notNull(),
+  },
+  (table) => [
+    foreignKey({
+      name: "workspace_default_sla_policy_workspace_fk",
+      columns: [table.id, table.defaultSlaPolicyId],
+      foreignColumns: [slaPolicyWorkspaceColumn(), slaPolicyIdColumn()],
+    }).onDelete("restrict"),
+  ],
+);
 
 export const workspaceUserTable = pgTable(
   "workspace_member",
@@ -242,6 +281,12 @@ export const workspaceUserTable = pgTable(
   (table) => [
     index("workspace_member_workspaceId_idx").on(table.workspaceId),
     index("workspace_member_userId_idx").on(table.userId),
+    check(
+      "workspace_member_role_single_value",
+      sql.raw(
+        "(POSITION((','::text) IN (role)) = 0) AND (role = btrim(role, ((((((((((((((((((((' \t\n\r\f'::text || chr(11)) || chr(160)) || chr(5760)) || chr(8192)) || chr(8193)) || chr(8194)) || chr(8195)) || chr(8196)) || chr(8197)) || chr(8198)) || chr(8199)) || chr(8200)) || chr(8201)) || chr(8202)) || chr(8232)) || chr(8233)) || chr(8239)) || chr(8287)) || chr(12288)) || chr(65279)))) AND (btrim(role, ((((((((((((((((((((' \t\n\r\f'::text || chr(11)) || chr(160)) || chr(5760)) || chr(8192)) || chr(8193)) || chr(8194)) || chr(8195)) || chr(8196)) || chr(8197)) || chr(8198)) || chr(8199)) || chr(8200)) || chr(8201)) || chr(8202)) || chr(8232)) || chr(8233)) || chr(8239)) || chr(8287)) || chr(12288)) || chr(65279))) <> ''::text)",
+      ),
+    ),
   ],
 );
 
@@ -253,6 +298,7 @@ export const teamTable = pgTable(
     workspaceId: text("workspace_id")
       .notNull()
       .references(() => workspaceTable.id, { onDelete: "cascade" }),
+    isCab: boolean("is_cab").notNull().default(false),
     createdAt: timestamp("created_at").notNull(),
     updatedAt: timestamp("updated_at").$onUpdate(
       () => /* @__PURE__ */ new Date(),
@@ -370,6 +416,17 @@ export const projectTable = pgTable(
         onDelete: "cascade",
         onUpdate: "cascade",
       }),
+    organisationId: text("organisation_id").references(
+      () => organisationTable.id,
+      {
+        onDelete: "restrict",
+        onUpdate: "no action",
+      },
+    ),
+    kind: text("kind").notNull().default("project"),
+    health: text("health"),
+    supportLevel: text("support_level"),
+    serviceCalendarId: text("service_calendar_id"),
     // #261's mandatory Opus security review, F1 (decision log 2026-09-22 "#261's
     // mandatory Opus review F1: `project.slug` becomes globally unique"): this column
     // carries a real, instance-wide unique constraint (`project_slug_unique` below,
@@ -387,6 +444,7 @@ export const projectTable = pgTable(
     icon: text("icon").default("Layout"),
     name: text("name").notNull(),
     description: text("description"),
+    slaPolicyId: text("sla_policy_id"),
     defaultCommentVisibility: text("default_comment_visibility")
       .$type<"public" | "internal">()
       .notNull()
@@ -407,9 +465,51 @@ export const projectTable = pgTable(
   },
   (table) => [
     unique("project_workspace_id_id_unique").on(table.workspaceId, table.id),
+    foreignKey({
+      name: "project_workspace_service_calendar_fk",
+      columns: [table.workspaceId, table.serviceCalendarId],
+      foreignColumns: [
+        serviceCalendarTable.workspaceId,
+        serviceCalendarTable.id,
+      ],
+    }).onDelete("restrict"),
+    foreignKey({
+      name: "project_workspace_sla_policy_fk",
+      columns: [table.workspaceId, table.slaPolicyId],
+      foreignColumns: [slaPolicyWorkspaceColumn(), slaPolicyIdColumn()],
+    }).onDelete("restrict"),
+    index("project_organisation_id_idx").on(table.organisationId),
+    index("project_workspace_service_calendar_idx").on(
+      table.workspaceId,
+      table.serviceCalendarId,
+    ),
     check(
       "project_default_comment_visibility_allowed",
-      sql`${table.defaultCommentVisibility} in ('public', 'internal')`,
+      sql.raw(
+        "default_comment_visibility = ANY (ARRAY['public'::text, 'internal'::text])",
+      ),
+    ),
+    check(
+      "project_kind_allowed",
+      sql.raw("kind = ANY (ARRAY['project'::text, 'managed_service'::text])"),
+    ),
+    check(
+      "project_health_allowed",
+      sql.raw(
+        "(health IS NULL) OR (health = ANY (ARRAY['red'::text, 'amber'::text, 'green'::text]))",
+      ),
+    ),
+    check(
+      "project_support_level_allowed",
+      sql.raw(
+        "(support_level IS NULL) OR (support_level = ANY (ARRAY['L1'::text, 'L2'::text, 'L3'::text]))",
+      ),
+    ),
+    check(
+      "project_managed_service_complete",
+      sql.raw(
+        "(kind <> 'managed_service'::text) OR ((support_level IS NOT NULL) AND (service_calendar_id IS NOT NULL))",
+      ),
     ),
     // #261 F1: instance-wide, not scoped to workspace -- see the `slug` column's own
     // comment above for why. Migration 0064 resolves any pre-existing collision by
@@ -419,6 +519,159 @@ export const projectTable = pgTable(
       table.workspaceId,
       table.position,
     ),
+  ],
+);
+
+export const instancePluginConfigTable = pgTable(
+  "instance_plugin_config",
+  {
+    id: text("id").primaryKey(),
+    pluginId: text("plugin_id").notNull(),
+    instanceKey: text("instance_key").notNull(),
+    displayName: text("display_name").notNull(),
+    enabled: boolean("enabled").notNull(),
+    config: jsonb("config").notNull(),
+    secrets: bytea("secrets"),
+    scope: text("scope").notNull(),
+    workspaceId: text("workspace_id").references(() => workspaceTable.id, {
+      onDelete: "cascade",
+    }),
+    portalScope: text("portal_scope"),
+    configVersion: integer("config_version").notNull(),
+    createdAt: timestamp("created_at", { mode: "date", withTimezone: true })
+      .defaultNow()
+      .notNull(),
+    updatedAt: timestamp("updated_at", { mode: "date", withTimezone: true })
+      .defaultNow()
+      .notNull(),
+    updatedBy: text("updated_by").references(() => personTable.id, {
+      onDelete: "set null",
+      onUpdate: "cascade",
+    }),
+  },
+  (table) => [
+    unique("instance_plugin_config_instance_unique").on(
+      table.pluginId,
+      table.instanceKey,
+    ),
+    check(
+      "instance_plugin_config_scope_check",
+      sql.raw("scope = ANY (ARRAY['instance'::text, 'workspace'::text])"),
+    ),
+    check(
+      "instance_plugin_config_workspace_scope_check",
+      sql.raw(
+        "((scope = 'instance'::text) AND (workspace_id IS NULL)) OR ((scope = 'workspace'::text) AND (workspace_id IS NOT NULL))",
+      ),
+    ),
+    check(
+      "instance_plugin_config_portal_scope_check",
+      sql.raw(
+        "(portal_scope IS NULL) OR (portal_scope = ANY (ARRAY['agent'::text, 'customer'::text, 'both'::text]))",
+      ),
+    ),
+    check(
+      "instance_plugin_config_auth_portal_scope_required",
+      sql.raw("(plugin_id !~~ 'auth.%'::text) OR (portal_scope IS NOT NULL)"),
+    ),
+    check(
+      "instance_plugin_config_non_auth_portal_scope_null",
+      sql.raw("(plugin_id ~~ 'auth.%'::text) OR (portal_scope IS NULL)"),
+    ),
+    check(
+      "instance_plugin_config_version_positive",
+      sql.raw("config_version > 0"),
+    ),
+    index("instance_plugin_config_auth_version_idx")
+      .on(table.configVersion)
+      .where(sql.raw("(plugin_id ~~ 'auth.%'::text)")),
+  ],
+);
+
+// Feature flags are persisted at each inheritance level. The closed key set and
+// built-in defaults live in packages/permissions/src/features.ts; SQL checks repeat
+// that same closed enum so invalid stored values fail at the database boundary.
+export const instanceFeatureFlagTable = pgTable(
+  "instance_feature_flag",
+  {
+    featureKey: text("feature_key").primaryKey(),
+    enabled: boolean("enabled").notNull(),
+    locked: boolean("locked").notNull().default(false),
+    version: integer("version").notNull().default(1),
+    updatedBy: text("updated_by").references(() => personTable.id, {
+      onDelete: "set null",
+      onUpdate: "cascade",
+    }),
+    updatedAt: timestamp("updated_at", { mode: "date", withTimezone: true })
+      .defaultNow()
+      .notNull(),
+  },
+  (_table) => [
+    check(
+      "instance_feature_flag_key_check",
+      sql.raw(
+        "feature_key = ANY (ARRAY['feature.cycles'::text, 'feature.modules'::text, 'feature.estimates'::text, 'feature.intake'::text, 'feature.sla'::text, 'feature.approvals'::text, 'feature.time_tracking'::text, 'feature.cost_tracking'::text, 'feature.knowledge_base'::text, 'feature.service_catalogue'::text, 'feature.customer_portal'::text, 'feature.reports'::text, 'feature.automations'::text, 'feature.timeline'::text, 'feature.calendar'::text, 'feature.pages'::text, 'feature.mcp'::text, 'feature.scim'::text, 'feature.import'::text, 'feature.public_boards'::text, 'feature.dev_links'::text])",
+      ),
+    ),
+    check("instance_feature_flag_version_positive", sql.raw("version > 0")),
+  ],
+);
+
+export const workspaceFeatureFlagTable = pgTable(
+  "workspace_feature_flag",
+  {
+    workspaceId: text("workspace_id")
+      .notNull()
+      .references(() => workspaceTable.id, { onDelete: "cascade" }),
+    featureKey: text("feature_key").notNull(),
+    enabled: boolean("enabled").notNull(),
+    version: integer("version").notNull().default(1),
+    updatedBy: text("updated_by").references(() => personTable.id, {
+      onDelete: "set null",
+      onUpdate: "cascade",
+    }),
+    updatedAt: timestamp("updated_at", { mode: "date", withTimezone: true })
+      .defaultNow()
+      .notNull(),
+  },
+  (table) => [
+    primaryKey({ columns: [table.workspaceId, table.featureKey] }),
+    check(
+      "workspace_feature_flag_key_check",
+      sql.raw(
+        "feature_key = ANY (ARRAY['feature.cycles'::text, 'feature.modules'::text, 'feature.estimates'::text, 'feature.intake'::text, 'feature.sla'::text, 'feature.approvals'::text, 'feature.time_tracking'::text, 'feature.cost_tracking'::text, 'feature.knowledge_base'::text, 'feature.service_catalogue'::text, 'feature.customer_portal'::text, 'feature.reports'::text, 'feature.automations'::text, 'feature.timeline'::text, 'feature.calendar'::text, 'feature.pages'::text, 'feature.mcp'::text, 'feature.scim'::text, 'feature.import'::text, 'feature.public_boards'::text, 'feature.dev_links'::text])",
+      ),
+    ),
+    check("workspace_feature_flag_version_positive", sql.raw("version > 0")),
+  ],
+);
+
+export const projectFeatureFlagTable = pgTable(
+  "project_feature_flag",
+  {
+    projectId: text("project_id")
+      .notNull()
+      .references(() => projectTable.id, { onDelete: "cascade" }),
+    featureKey: text("feature_key").notNull(),
+    enabled: boolean("enabled").notNull(),
+    version: integer("version").notNull().default(1),
+    updatedBy: text("updated_by").references(() => personTable.id, {
+      onDelete: "set null",
+      onUpdate: "cascade",
+    }),
+    updatedAt: timestamp("updated_at", { mode: "date", withTimezone: true })
+      .defaultNow()
+      .notNull(),
+  },
+  (table) => [
+    primaryKey({ columns: [table.projectId, table.featureKey] }),
+    check(
+      "project_feature_flag_key_check",
+      sql.raw(
+        "feature_key = ANY (ARRAY['feature.cycles'::text, 'feature.modules'::text, 'feature.estimates'::text, 'feature.intake'::text, 'feature.sla'::text, 'feature.approvals'::text, 'feature.time_tracking'::text, 'feature.cost_tracking'::text, 'feature.knowledge_base'::text, 'feature.service_catalogue'::text, 'feature.customer_portal'::text, 'feature.reports'::text, 'feature.automations'::text, 'feature.timeline'::text, 'feature.calendar'::text, 'feature.pages'::text, 'feature.mcp'::text, 'feature.scim'::text, 'feature.import'::text, 'feature.public_boards'::text, 'feature.dev_links'::text])",
+      ),
+    ),
+    check("project_feature_flag_version_positive", sql.raw("version > 0")),
   ],
 );
 
@@ -560,7 +813,9 @@ export const prerequisiteTable = pgTable(
     index("prerequisite_projectId_idx").on(table.projectId),
     check(
       "prerequisite_owner_side_allowed",
-      sql`${table.ownerSide} in ('us', 'customer', 'both')`,
+      sql.raw(
+        "owner_side = ANY (ARRAY['us'::text, 'customer'::text, 'both'::text])",
+      ),
     ),
   ],
 );
@@ -731,6 +986,9 @@ export const instanceSettingTable = pgTable(
     // consumed, expired-and-regenerated, or once setup_completed_at is set.
     setupTokenHash: text("setup_token_hash"),
     setupTokenExpiresAt: timestamp("setup_token_expires_at", { mode: "date" }),
+    approvalDefaultExpiryDays: integer("approval_default_expiry_days")
+      .notNull()
+      .default(7),
     localFactorPolicy: jsonb("local_factor_policy")
       .$type<{ mode: string; requiredRoleId: string | null }>()
       .notNull()
@@ -765,18 +1023,20 @@ export const instanceSettingTable = pgTable(
     attachmentAllowedExtensions: text("attachment_allowed_extensions")
       .array()
       .notNull()
-      .default(sql`ARRAY[
+      .default(
+        sql.raw(`ARRAY[
         'jpg','jpeg','png','gif','webp','heic','heif','bmp','tiff',
         'pdf','doc','docx','xls','xlsx','ppt','pptx','odt','ods','odp',
         'txt','csv','md','json','log','rtf'
       ]::text[]`),
+      ),
     createdAt: timestamp("created_at", { mode: "date" }).defaultNow().notNull(),
     updatedAt: timestamp("updated_at", { mode: "date" })
       .defaultNow()
       .$onUpdate(() => new Date())
       .notNull(),
   },
-  (table) => [
+  (_table) => [
     // #18 security review (F3): `id`'s DEFAULT makes "singleton" the row every
     // writer here intends, but a bare PRIMARY KEY never actually forbids a second
     // row with a different id -- and every read in setup-token.ts is a `LIMIT 1`
@@ -784,41 +1044,34 @@ export const instanceSettingTable = pgTable(
     // forgets the id) can silently become the one this code reads, with no test
     // going red. This CHECK makes the single-row invariant the comment above
     // already claims into something Postgres actually enforces.
-    check("instance_setting_id_singleton", sql`${table.id} = 'singleton'`),
+    check("instance_setting_id_singleton", sql.raw("id = 'singleton'::text")),
     check(
       "instance_setting_observability_version_positive",
-      sql`${table.observabilityConfigVersion} >= 1`,
+      sql.raw("observability_config_version >= 1"),
     ),
     check(
       "instance_setting_metrics_token_pair",
-      sql`(${table.metricsTokenHash} is null) = (${table.metricsTokenRotatedAt} is null)`,
+      sql.raw(
+        "(metrics_token_hash IS NULL) = (metrics_token_rotated_at IS NULL)",
+      ),
     ),
     check(
       "instance_setting_metrics_token_hash_length",
-      sql`${table.metricsTokenHash} is null or octet_length(${table.metricsTokenHash}) = 32`,
+      sql.raw(
+        "(metrics_token_hash IS NULL) OR (octet_length(metrics_token_hash) = 32)",
+      ),
     ),
     check(
       "instance_setting_observability_log_levels_shape",
-      sql`case
-        when jsonb_typeof(${table.observabilityLogLevels}) = 'object' then
-          (${table.observabilityLogLevels} ?& array['default', 'modules'])
-          and ((${table.observabilityLogLevels} - array['default', 'modules']::text[]) = '{}'::jsonb)
-          and jsonb_typeof(${table.observabilityLogLevels}->'default') = 'string'
-          and ${table.observabilityLogLevels}->>'default' in ('error', 'warn', 'info', 'debug')
-          and jsonb_typeof(${table.observabilityLogLevels}->'modules') = 'object'
-          and not (((${table.observabilityLogLevels}->'modules') - array['http', 'auth', 'database', 'jobs', 'audit', 'plugins', 'realtime']::text[]) <> '{}'::jsonb)
-          and not jsonb_path_exists(${table.observabilityLogLevels}, '$.modules.* ? (@ != \"error\" && @ != \"warn\" && @ != \"info\" && @ != \"debug\")')
-        else false
-      end`,
+      sql.raw(
+        "CHECK (\nCASE\n    WHEN (jsonb_typeof(observability_log_levels) = 'object'::text) THEN ((observability_log_levels ?& ARRAY['default'::text, 'modules'::text]) AND ((observability_log_levels - ARRAY['default'::text, 'modules'::text]) = '{}'::jsonb) AND (jsonb_typeof((observability_log_levels -> 'default'::text)) = 'string'::text) AND ((observability_log_levels ->> 'default'::text) = ANY (ARRAY['error'::text, 'warn'::text, 'info'::text, 'debug'::text])) AND (jsonb_typeof((observability_log_levels -> 'modules'::text)) = 'object'::text) AND (NOT (((observability_log_levels -> 'modules'::text) - ARRAY['http'::text, 'auth'::text, 'database'::text, 'jobs'::text, 'audit'::text, 'plugins'::text, 'realtime'::text]) <> '{}'::jsonb)) AND (NOT jsonb_path_exists(observability_log_levels, '$.\"modules\".*?(((@ != \"error\" && @ != \"warn\") && @ != \"info\") && @ != \"debug\")'::jsonpath)))\n    ELSE false\nEND)",
+      ),
     ),
     check(
       "instance_setting_local_factor_policy_shape",
-      sql`jsonb_typeof(${table.localFactorPolicy}) = 'object'
-        and ${table.localFactorPolicy} ?& array['mode', 'requiredRoleId']
-        and (${table.localFactorPolicy} - array['mode', 'requiredRoleId']::text[]) = '{}'::jsonb
-        and ${table.localFactorPolicy}->>'mode' in ('off', 'optional', 'required_staff', 'required_role', 'required_everyone')
-        and (((${table.localFactorPolicy}->>'mode') = 'required_role' and jsonb_typeof(${table.localFactorPolicy}->'requiredRoleId') = 'string' and length(${table.localFactorPolicy}->>'requiredRoleId') > 0)
-          or ((${table.localFactorPolicy}->>'mode') <> 'required_role' and jsonb_typeof(${table.localFactorPolicy}->'requiredRoleId') = 'null'))`,
+      sql.raw(
+        "(jsonb_typeof(local_factor_policy) = 'object'::text) AND (local_factor_policy ?& ARRAY['mode'::text, 'requiredRoleId'::text]) AND ((local_factor_policy - ARRAY['mode'::text, 'requiredRoleId'::text]) = '{}'::jsonb) AND ((local_factor_policy ->> 'mode'::text) = ANY (ARRAY['off'::text, 'optional'::text, 'required_staff'::text, 'required_role'::text, 'required_everyone'::text])) AND ((((local_factor_policy ->> 'mode'::text) = 'required_role'::text) AND (jsonb_typeof((local_factor_policy -> 'requiredRoleId'::text)) = 'string'::text) AND (length((local_factor_policy ->> 'requiredRoleId'::text)) > 0)) OR (((local_factor_policy ->> 'mode'::text) <> 'required_role'::text) AND (jsonb_typeof((local_factor_policy -> 'requiredRoleId'::text)) = 'null'::text)))",
+      ),
     ),
   ],
 );
@@ -994,10 +1247,12 @@ export const labelTable = pgTable(
       onDelete: "cascade",
       onUpdate: "cascade",
     }),
-    workspaceId: text("workspace_id").references(() => workspaceTable.id, {
-      onDelete: "cascade",
-      onUpdate: "cascade",
-    }),
+    workspaceId: text("workspace_id")
+      .notNull()
+      .references(() => workspaceTable.id, {
+        onDelete: "cascade",
+        onUpdate: "cascade",
+      }),
   },
   (table) => [
     index("label_task_id_idx").on(table.taskId),
@@ -1005,7 +1260,7 @@ export const labelTable = pgTable(
     unique("label_task_name_unique").on(table.taskId, table.name),
     uniqueIndex("label_workspace_name_unique")
       .on(table.workspaceId, table.name)
-      .where(sql`${table.taskId} is null`),
+      .where(sql.raw("(task_id IS NULL)")),
   ],
 );
 
@@ -1028,6 +1283,16 @@ export const notificationTable = pgTable(
     isRead: boolean("is_read").default(false),
     resourceId: text("resource_id"),
     resourceType: text("resource_type"),
+    // Canonical event-derived inbox identity. Legacy rows may keep this null until
+    // their old user-based source can be resolved to a person.
+    personId: text("person_id").references(() => personTable.id, {
+      onDelete: "cascade",
+      onUpdate: "cascade",
+    }),
+    eventId: text("event_id"),
+    kind: text("kind"),
+    body: text("body"),
+    readAt: timestamp("read_at", { mode: "date" }),
     createdAt: timestamp("created_at", { mode: "date", withTimezone: true })
       .defaultNow()
       .notNull(),
@@ -1036,7 +1301,13 @@ export const notificationTable = pgTable(
       .$onUpdate(() => new Date())
       .notNull(),
   },
-  (table) => [index("notification_userId_idx").on(table.userId)],
+  (table) => [
+    index("notification_userId_idx").on(table.userId),
+    index("notification_person_id_idx").on(table.personId),
+    uniqueIndex("notification_event_person_unique")
+      .on(table.eventId, table.personId)
+      .where(sql.raw("(event_id IS NOT NULL)")),
+  ],
 );
 
 export const outboxTable = pgTable(
@@ -1046,7 +1317,7 @@ export const outboxTable = pgTable(
     kind: text("kind").notNull(),
     payload: jsonb("payload").notNull(),
     dedupeKey: text("dedupe_key"),
-    workspaceId: text("workspace_id").notNull(),
+    workspaceId: text("workspace_id"),
     organisationId: text("organisation_id"),
     state: text("state").notNull().default("pending"),
     attempts: integer("attempts").notNull().default(0),
@@ -1057,20 +1328,35 @@ export const outboxTable = pgTable(
       .defaultNow()
       .notNull(),
     lastError: text("last_error"),
+    createdAt: timestamp("created_at", { mode: "date", withTimezone: true })
+      .defaultNow()
+      .notNull(),
+    updatedAt: timestamp("updated_at", { mode: "date", withTimezone: true })
+      .defaultNow()
+      .$onUpdate(() => new Date())
+      .notNull(),
   },
   (table) => [
     check(
       "outbox_state_check",
-      sql`${table.state} in ('pending', 'delivered', 'dead')`,
+      sql.raw(
+        "state = ANY (ARRAY['pending'::text, 'delivered'::text, 'dead'::text])",
+      ),
     ),
-    check("outbox_attempts_nonnegative", sql`${table.attempts} >= 0`),
+    check(
+      "outbox_scope_check",
+      sql.raw(
+        "(workspace_id IS NOT NULL) OR ((organisation_id IS NULL) AND (kind = ANY (ARRAY['pending_action.requested'::text, 'pending_action.decided'::text, 'pending_action.executed'::text, 'identity.deprovisioned'::text])))",
+      ),
+    ),
+    check("outbox_attempts_nonnegative", sql.raw("attempts >= 0")),
     index("outbox_state_next_attempt_idx")
       .on(table.state, table.nextAttemptAt)
-      .where(sql`${table.state} = 'pending'`),
+      .where(sql.raw("(state = 'pending'::text)")),
     index("outbox_workspace_state_idx").on(table.workspaceId, table.state),
     index("outbox_dedupe_key_idx")
       .on(table.dedupeKey)
-      .where(sql`${table.dedupeKey} is not null`),
+      .where(sql.raw("(dedupe_key IS NOT NULL)")),
   ],
 );
 
@@ -1329,9 +1615,7 @@ export const apikeyTable = pgTable(
     configId: text("config_id").default("default").notNull(),
     name: text("name"),
     start: text("start"),
-    referenceId: text("reference_id")
-      .notNull()
-      .references(() => userTable.id, { onDelete: "cascade" }),
+    referenceId: text("reference_id"),
     prefix: text("prefix"),
     key: text("key").notNull(),
     userId: text("user_id").references(() => userTable.id, {
@@ -1396,7 +1680,7 @@ export const organisationTable = pgTable(
     // unique index enforces at most one; the seed is what makes it exactly one.
     uniqueIndex("organisation_is_internal_unique")
       .on(table.isInternal)
-      .where(sql`${table.isInternal} = true`),
+      .where(sql.raw("(is_internal = true)")),
   ],
 );
 
@@ -1450,10 +1734,10 @@ export const legalHoldTable = pgTable(
     // therefore always possible; two simultaneous open holds on one scope never are.
     uniqueIndex("legal_hold_scope_scope_id_open_unique")
       .on(table.scope, table.scopeId)
-      .where(sql`${table.liftedAt} is null`),
+      .where(sql.raw("(lifted_at IS NULL)")),
     check(
       "legal_hold_scope_check",
-      sql`${table.scope} in ('organisation', 'person')`,
+      sql.raw("scope = ANY (ARRAY['organisation'::text, 'person'::text])"),
     ),
   ],
 );
@@ -1484,6 +1768,7 @@ export const personTable = pgTable(
         onUpdate: "cascade",
       }),
     side: text("side").notNull(),
+    displayName: text("display_name"),
     jobTitle: text("job_title"),
     active: boolean("active").default(true).notNull(),
     isPlaceholder: boolean("is_placeholder").default(false).notNull(),
@@ -1513,7 +1798,252 @@ export const personTable = pgTable(
     // two DIFFERENT `user` rows, not about one `user_id` appearing in two `person` rows.
     uniqueIndex("person_user_unique")
       .on(table.userId)
-      .where(sql`${table.userId} is not null`),
+      .where(sql.raw("(user_id IS NOT NULL)")),
+  ],
+);
+
+export const notificationPreferenceTable = pgTable(
+  "notification_preference",
+  {
+    personId: text("person_id")
+      .notNull()
+      .references(() => personTable.id, {
+        onDelete: "cascade",
+        onUpdate: "cascade",
+      }),
+    scope: text("scope").notNull(),
+    scopeId: text("scope_id"),
+    channel: text("channel").notNull(),
+    eventKind: text("event_kind").notNull(),
+    enabled: boolean("enabled").notNull(),
+    digest: text("digest").notNull().default("off"),
+  },
+  (table) => [
+    check(
+      "notification_preference_scope_check",
+      sql.raw(
+        "((scope = 'global'::text) AND (scope_id IS NULL)) OR ((scope = ANY (ARRAY['workspace'::text, 'project'::text])) AND (scope_id IS NOT NULL))",
+      ),
+    ),
+    check(
+      "notification_preference_channel_check",
+      sql.raw("(channel = 'in_app'::text) OR (channel ~~ 'notify.%'::text)"),
+    ),
+    check(
+      "notification_preference_digest_check",
+      sql.raw(
+        "digest = ANY (ARRAY['off'::text, 'hourly'::text, 'daily'::text])",
+      ),
+    ),
+    unique("notification_preference_person_scope_channel_event_unique")
+      .on(
+        table.personId,
+        table.scope,
+        table.scopeId,
+        table.channel,
+        table.eventKind,
+      )
+      .nullsNotDistinct(),
+    index("notification_preference_person_event_idx").on(
+      table.personId,
+      table.eventKind,
+    ),
+  ],
+);
+
+export const notificationDeliveryTable = pgTable(
+  "notification_delivery",
+  {
+    id: text("id")
+      .$defaultFn(() => createId())
+      .primaryKey(),
+    eventId: text("event_id")
+      .notNull()
+      .references(() => outboxTable.eventId, {
+        onDelete: "cascade",
+        onUpdate: "cascade",
+      }),
+    recipientPersonId: text("recipient_person_id")
+      .notNull()
+      .references(() => personTable.id, {
+        onDelete: "cascade",
+        onUpdate: "cascade",
+      }),
+    channel: text("channel").notNull(),
+    workspaceId: text("workspace_id")
+      .notNull()
+      .references(() => workspaceTable.id, {
+        onDelete: "cascade",
+        onUpdate: "cascade",
+      }),
+    organisationId: text("organisation_id").references(
+      () => organisationTable.id,
+      {
+        onDelete: "cascade",
+        onUpdate: "cascade",
+      },
+    ),
+    dedupeKey: text("dedupe_key").notNull(),
+    digestId: text("digest_id").references(() => notificationDigestTable.id, {
+      onDelete: "restrict",
+      onUpdate: "cascade",
+    }),
+    state: text("state").notNull().default("pending"),
+    attempts: integer("attempts").notNull().default(0),
+    nextAttemptAt: timestamp("next_attempt_at", { mode: "date" })
+      .defaultNow()
+      .notNull(),
+    deliveredAt: timestamp("delivered_at", { mode: "date" }),
+    lastError: text("last_error"),
+    createdAt: timestamp("created_at", { mode: "date" }).defaultNow().notNull(),
+    updatedAt: timestamp("updated_at", { mode: "date" }).defaultNow().notNull(),
+  },
+  (table) => [
+    check(
+      "notification_delivery_channel_check",
+      sql.raw("channel ~~ 'notify.%'::text"),
+    ),
+    check(
+      "notification_delivery_state_check",
+      sql.raw(
+        "state = ANY (ARRAY['pending'::text, 'delivered'::text, 'dead'::text, 'suppressed'::text])",
+      ),
+    ),
+    check("notification_delivery_attempts_check", sql.raw("attempts >= 0")),
+    unique("notification_delivery_event_recipient_channel_unique").on(
+      table.eventId,
+      table.recipientPersonId,
+      table.channel,
+    ),
+    index("notification_delivery_state_next_attempt_idx")
+      .on(table.state, table.nextAttemptAt)
+      .where(sql.raw("((state = 'pending'::text) AND (digest_id IS NULL))")),
+    index("notification_delivery_workspace_state_idx").on(
+      table.workspaceId,
+      table.state,
+    ),
+    index("notification_delivery_digest_idx").on(table.digestId),
+    index("notification_delivery_recent_success_idx")
+      .on(
+        table.recipientPersonId,
+        table.channel,
+        table.dedupeKey,
+        table.deliveredAt,
+      )
+      .where(sql.raw("(delivered_at IS NOT NULL)")),
+  ],
+);
+
+export const notificationDigestTable = pgTable(
+  "notification_digest",
+  {
+    id: text("id")
+      .$defaultFn(() => createId())
+      .primaryKey(),
+    recipientPersonId: text("recipient_person_id")
+      .notNull()
+      .references(() => personTable.id, {
+        onDelete: "cascade",
+        onUpdate: "cascade",
+      }),
+    channel: text("channel").notNull(),
+    workspaceId: text("workspace_id")
+      .notNull()
+      .references(() => workspaceTable.id, {
+        onDelete: "cascade",
+        onUpdate: "cascade",
+      }),
+    organisationId: text("organisation_id").references(
+      () => organisationTable.id,
+      {
+        onDelete: "cascade",
+        onUpdate: "cascade",
+      },
+    ),
+    cadence: text("cadence").notNull(),
+    timezone: text("timezone").notNull(),
+    windowStartAt: timestamp("window_start_at", { mode: "date" }).notNull(),
+    windowEndAt: timestamp("window_end_at", { mode: "date" }).notNull(),
+    state: text("state").notNull().default("collecting"),
+    attempts: integer("attempts").notNull().default(0),
+    nextAttemptAt: timestamp("next_attempt_at", { mode: "date" })
+      .defaultNow()
+      .notNull(),
+    deliveredAt: timestamp("delivered_at", { mode: "date" }),
+    lastError: text("last_error"),
+    payloadHash: text("payload_hash"),
+    leaseToken: uuid("lease_token"),
+    leaseExpiresAt: timestamp("lease_expires_at", { mode: "date" }),
+    createdAt: timestamp("created_at", { mode: "date" }).defaultNow().notNull(),
+    updatedAt: timestamp("updated_at", { mode: "date" }).defaultNow().notNull(),
+  },
+  (table) => [
+    check(
+      "notification_digest_channel_check",
+      sql.raw("channel ~~ 'notify.%'::text"),
+    ),
+    check(
+      "notification_digest_cadence_check",
+      sql.raw("cadence = ANY (ARRAY['hourly'::text, 'daily'::text])"),
+    ),
+    check(
+      "notification_digest_state_check",
+      sql.raw(
+        "state = ANY (ARRAY['collecting'::text, 'pending'::text, 'delivered'::text, 'dead'::text, 'suppressed'::text])",
+      ),
+    ),
+    check("notification_digest_attempts_check", sql.raw("attempts >= 0")),
+    unique("notification_digest_partition_unique")
+      .on(
+        table.recipientPersonId,
+        table.channel,
+        table.workspaceId,
+        table.organisationId,
+        table.cadence,
+        table.windowStartAt,
+        table.windowEndAt,
+      )
+      .nullsNotDistinct(),
+    index("notification_digest_due_idx")
+      .on(table.state, table.nextAttemptAt)
+      .where(
+        sql.raw("(state = ANY (ARRAY['collecting'::text, 'pending'::text]))"),
+      ),
+  ],
+);
+
+export const outboxDedupeReservationTable = pgTable(
+  "outbox_dedupe_reservation",
+  {
+    reservationKey: bytea("reservation_key").primaryKey(),
+    recipientPersonId: text("recipient_person_id")
+      .notNull()
+      .references(() => personTable.id, {
+        onDelete: "cascade",
+        onUpdate: "cascade",
+      }),
+    channel: text("channel").notNull(),
+    dedupeKey: text("dedupe_key").notNull(),
+    ownerDeliveryId: text("owner_delivery_id")
+      .notNull()
+      .references(() => notificationDeliveryTable.id, {
+        onDelete: "cascade",
+        onUpdate: "cascade",
+      }),
+    leaseToken: uuid("lease_token").notNull(),
+    leaseExpiresAt: timestamp("lease_expires_at", { mode: "date" }).notNull(),
+  },
+  (table) => [
+    check(
+      "outbox_dedupe_reservation_key_length",
+      sql.raw("octet_length(reservation_key) = 32"),
+    ),
+    unique("outbox_dedupe_reservation_tuple_unique").on(
+      table.recipientPersonId,
+      table.channel,
+      table.dedupeKey,
+    ),
+    index("outbox_dedupe_reservation_expiry_idx").on(table.leaseExpiresAt),
   ],
 );
 
@@ -1534,7 +2064,7 @@ export const organisationQuotaTable = pgTable(
     maxWorkItems: integer("max_work_items").default(500_000).notNull(),
     // 20 GiB in bytes exceeds Postgres `integer`'s ~2.1B range, hence bigint.
     maxStorageBytes: bigint("max_storage_bytes", { mode: "number" })
-      .default(21_474_836_480)
+      .default(sql.raw("21474836480"))
       .notNull(),
     maxPortalUsers: integer("max_portal_users").default(500).notNull(),
     maxApiRequestsPerMinute: integer("max_api_requests_per_minute")
@@ -1595,9 +2125,9 @@ export const roleTable = pgTable(
     // ever equal closes that gap -- confirmed by a regression test that a plain composite
     // unique constraint does not (found while writing this PR's own tests).
     uniqueIndex("role_scope_workspace_key_unique").on(
-      table.scope,
-      sql`coalesce(${table.workspaceId}, '')`,
-      table.key,
+      sql.raw("scope"),
+      sql.raw("COALESCE(workspace_id, ''::text)"),
+      sql.raw("key"),
     ),
   ],
 );
@@ -1631,7 +2161,8 @@ export const membershipTable = pgTable(
     // to constrain it, and getting that wrong would be worse than leaving it unconstrained.
     inheritedFrom: text("inherited_from"),
     // `scim_group_member.id` when SCIM group sync created this membership. Not a DB FK:
-    // `scim_group_member` is P3 SCIM-provisioning scope and does not exist yet.
+    // the reference runs from `scim_group_member.membership_id` to this table (0090), and
+    // this column is a soft back-pointer that is not constrained.
     derivedFrom: text("derived_from"),
     createdAt: timestamp("created_at", { mode: "date" }).defaultNow().notNull(),
     updatedAt: timestamp("updated_at", { mode: "date" })
@@ -1648,12 +2179,665 @@ export const membershipTable = pgTable(
     // dropped as redundant; `membership_scope_scopeId_idx` is kept alongside it because it
     // serves the reverse lookup (all memberships for a scope/scope_id, independent of
     // person) that this composite's column order can't serve.
-    index("membership_personId_scope_scopeId_idx").on(
+    uniqueIndex("membership_person_scope_scope_id_unique").on(
       table.personId,
       table.scope,
       table.scopeId,
     ),
     index("membership_scope_scopeId_idx").on(table.scope, table.scopeId),
+  ],
+);
+
+export const identityConnectionTable = pgTable(
+  "identity_connection",
+  {
+    id: text("id")
+      .$defaultFn(() => createId())
+      .primaryKey(),
+    providerType: text("provider_type").notNull(),
+    portalScope: text("portal_scope").notNull(),
+    organisationId: text("organisation_id").references(
+      () => organisationTable.id,
+      { onDelete: "restrict", onUpdate: "cascade" },
+    ),
+    defaultWorkspaceId: text("default_workspace_id").references(
+      () => workspaceTable.id,
+      { onDelete: "restrict", onUpdate: "cascade" },
+    ),
+    displayName: text("display_name").notNull(),
+    issuer: text("issuer").notNull(),
+    tenantId: text("tenant_id"),
+    clientId: text("client_id").notNull(),
+    clientSecret: bytea("client_secret").notNull(),
+    redirectUri: text("redirect_uri").notNull(),
+    scopes: text("scopes").array().notNull(),
+    claimMapping: jsonb("claim_mapping").notNull(),
+    domainBindings: text("domain_bindings")
+      .array()
+      .notNull()
+      .default(sql.raw("'{}'::text[]")),
+    jitPolicy: jsonb("jit_policy").notNull(),
+    maxRoleRank: integer("max_role_rank"),
+    mfaUpstreamMode: text("mfa_upstream_mode").notNull().default("off"),
+    enabled: boolean("enabled").notNull().default(false),
+    configVersion: integer("config_version").notNull().default(1),
+    healthState: text("health_state").notNull().default("unknown"),
+    healthCheckedAt: timestamp("health_checked_at", {
+      mode: "date",
+      withTimezone: true,
+    }),
+    createdBy: text("created_by").references(() => personTable.id, {
+      onDelete: "set null",
+    }),
+    updatedBy: text("updated_by").references(() => personTable.id, {
+      onDelete: "set null",
+    }),
+    createdAt: timestamp("created_at", { mode: "date", withTimezone: true })
+      .defaultNow()
+      .notNull(),
+    updatedAt: timestamp("updated_at", { mode: "date", withTimezone: true })
+      .defaultNow()
+      .notNull(),
+  },
+  (table) => [
+    check(
+      "identity_connection_provider_type_check",
+      sql.raw("provider_type = 'entra'::text"),
+    ),
+    check(
+      "identity_connection_portal_scope_check",
+      sql.raw("portal_scope = ANY (ARRAY['agent'::text, 'customer'::text])"),
+    ),
+    check(
+      "identity_connection_portal_organisation_check",
+      sql.raw(
+        "((portal_scope = 'customer'::text) AND (organisation_id IS NOT NULL)) OR ((portal_scope = 'agent'::text) AND (organisation_id IS NULL))",
+      ),
+    ),
+    check(
+      "identity_connection_customer_default_workspace_check",
+      sql.raw(
+        "(portal_scope <> 'customer'::text) OR (default_workspace_id IS NULL)",
+      ),
+    ),
+    check(
+      "identity_connection_rank_check",
+      sql.raw(
+        "((portal_scope = 'customer'::text) AND (max_role_rank IS NULL)) OR ((portal_scope = 'agent'::text) AND (max_role_rank >= 0))",
+      ),
+    ),
+    check(
+      "identity_connection_config_version_check",
+      sql.raw("config_version >= 1"),
+    ),
+    check(
+      "identity_connection_mfa_mode_check",
+      sql.raw(
+        "mfa_upstream_mode = ANY (ARRAY['claim'::text, 'static'::text, 'off'::text])",
+      ),
+    ),
+    check(
+      "identity_connection_health_state_check",
+      sql.raw(
+        "health_state = ANY (ARRAY['unknown'::text, 'healthy'::text, 'degraded'::text, 'invalid'::text])",
+      ),
+    ),
+    uniqueIndex("identity_connection_organisation_unique")
+      .on(table.organisationId)
+      .where(sql.raw("(organisation_id IS NOT NULL)")),
+    index("identity_connection_portal_enabled_idx").on(
+      table.portalScope,
+      table.enabled,
+    ),
+  ],
+);
+
+export const scimConnectionTable = pgTable(
+  "scim_connection",
+  {
+    identityConnectionId: text("identity_connection_id")
+      .primaryKey()
+      .references(() => identityConnectionTable.id, {
+        onDelete: "cascade",
+        onUpdate: "cascade",
+      }),
+    tokenHash: bytea("token_hash"),
+    tokenPrefix: text("token_prefix"),
+    tokenCreatedAt: timestamp("token_created_at", {
+      mode: "date",
+      withTimezone: true,
+    }),
+    tokenRotatedAt: timestamp("token_rotated_at", {
+      mode: "date",
+      withTimezone: true,
+    }),
+    allowedResources: text("allowed_resources")
+      .array()
+      .notNull()
+      .default(sql.raw("ARRAY['users']::text[]")),
+    attributeMapping: jsonb("attribute_mapping"),
+    matchAttributes: text("match_attributes")
+      .array()
+      .notNull()
+      .default(sql.raw("ARRAY['externalId', 'userName']::text[]")),
+    lifecyclePolicy: text("lifecycle_policy")
+      .notNull()
+      .default("end_memberships"),
+    enabled: boolean("enabled").notNull().default(false),
+    lastSyncAt: timestamp("last_sync_at", { mode: "date", withTimezone: true }),
+    lastSyncOutcome: text("last_sync_outcome"),
+    lastFailure: jsonb("last_failure"),
+  },
+  (_table) => [
+    check(
+      "scim_connection_token_hash_shape",
+      sql.raw("(token_hash IS NULL) OR (octet_length(token_hash) = 32)"),
+    ),
+    check(
+      "scim_connection_token_pair_shape",
+      sql.raw(
+        "((token_hash IS NULL) AND (token_prefix IS NULL)) OR ((token_hash IS NOT NULL) AND (token_prefix IS NOT NULL))",
+      ),
+    ),
+    check(
+      "scim_connection_enabled_token_check",
+      sql.raw("(NOT enabled) OR (token_hash IS NOT NULL)"),
+    ),
+    check(
+      "scim_connection_allowed_resources_check",
+      sql.raw(
+        "('users'::text = ANY (allowed_resources)) AND (allowed_resources <@ ARRAY['users'::text, 'groups'::text])",
+      ),
+    ),
+    check(
+      "scim_connection_lifecycle_policy_check",
+      sql.raw(
+        "lifecycle_policy = ANY (ARRAY['end_memberships'::text, 'keep_memberships'::text])",
+      ),
+    ),
+    check(
+      "scim_connection_match_attributes_check",
+      sql.raw(
+        "(array_lower(match_attributes, 1) = 1) AND (match_attributes[1:2] = ARRAY['externalId'::text, 'userName'::text]) AND (match_attributes <@ ARRAY['externalId'::text, 'userName'::text, 'displayName'::text, 'name.formatted'::text, 'title'::text, 'preferredLanguage'::text]) AND (cardinality(array_positions(match_attributes, 'displayName'::text)) <= 1) AND (cardinality(array_positions(match_attributes, 'name.formatted'::text)) <= 1) AND (cardinality(array_positions(match_attributes, 'title'::text)) <= 1) AND (cardinality(array_positions(match_attributes, 'preferredLanguage'::text)) <= 1) AND ((array_position(match_attributes, 'displayName'::text) IS NULL) OR (array_position(match_attributes, 'name.formatted'::text) IS NULL) OR (array_position(match_attributes, 'displayName'::text) < array_position(match_attributes, 'name.formatted'::text))) AND ((array_position(match_attributes, 'name.formatted'::text) IS NULL) OR (array_position(match_attributes, 'title'::text) IS NULL) OR (array_position(match_attributes, 'name.formatted'::text) < array_position(match_attributes, 'title'::text))) AND ((array_position(match_attributes, 'title'::text) IS NULL) OR (array_position(match_attributes, 'preferredLanguage'::text) IS NULL) OR (array_position(match_attributes, 'title'::text) < array_position(match_attributes, 'preferredLanguage'::text)))",
+      ),
+    ),
+  ],
+);
+
+export const scimGroupTable = pgTable(
+  "scim_group",
+  {
+    id: text("id")
+      .$defaultFn(() => createId())
+      .primaryKey(),
+    scimConnectionId: text("scim_connection_id")
+      .notNull()
+      .references(() => scimConnectionTable.identityConnectionId, {
+        onDelete: "restrict",
+        onUpdate: "cascade",
+      }),
+    externalId: text("external_id").notNull(),
+    displayName: text("display_name").notNull(),
+    active: boolean("active").notNull().default(true),
+    createdAt: timestamp("created_at", { mode: "date", withTimezone: true })
+      .defaultNow()
+      .notNull(),
+    updatedAt: timestamp("updated_at", { mode: "date", withTimezone: true })
+      .defaultNow()
+      .notNull(),
+    deactivatedAt: timestamp("deactivated_at", {
+      mode: "date",
+      withTimezone: true,
+    }),
+  },
+  (table) => [
+    check(
+      "scim_group_active_timestamp_shape",
+      sql.raw(
+        "(active AND (deactivated_at IS NULL)) OR ((NOT active) AND (deactivated_at IS NOT NULL))",
+      ),
+    ),
+    unique("scim_group_connection_id_unique").on(
+      table.scimConnectionId,
+      table.id,
+    ),
+    unique("scim_group_connection_external_id_unique").on(
+      table.scimConnectionId,
+      table.externalId,
+    ),
+    index("scim_group_connection_active_idx").on(
+      table.scimConnectionId,
+      table.active,
+    ),
+  ],
+);
+
+export const externalIdentityTable = pgTable(
+  "external_identity",
+  {
+    id: text("id")
+      .$defaultFn(() => createId())
+      .primaryKey(),
+    identityConnectionId: text("identity_connection_id")
+      .notNull()
+      .references(() => identityConnectionTable.id, {
+        onDelete: "restrict",
+        onUpdate: "cascade",
+      }),
+    personId: text("person_id")
+      .notNull()
+      .references(() => personTable.id, {
+        onDelete: "restrict",
+        onUpdate: "cascade",
+      }),
+    userId: text("user_id").references(() => userTable.id, {
+      onDelete: "set null",
+      onUpdate: "cascade",
+    }),
+    issuer: text("issuer").notNull(),
+    subject: text("subject").notNull(),
+    scimExternalId: text("scim_external_id"),
+    userNameSnapshot: text("user_name_snapshot"),
+    emailSnapshot: text("email_snapshot"),
+    active: boolean("active").notNull().default(true),
+    provisionedVia: text("provisioned_via").notNull(),
+    firstSeenAt: timestamp("first_seen_at", {
+      mode: "date",
+      withTimezone: true,
+    })
+      .defaultNow()
+      .notNull(),
+    lastLoginAt: timestamp("last_login_at", {
+      mode: "date",
+      withTimezone: true,
+    }),
+    deactivatedAt: timestamp("deactivated_at", {
+      mode: "date",
+      withTimezone: true,
+    }),
+  },
+  (table) => [
+    check(
+      "external_identity_provisioned_via_check",
+      sql.raw(
+        "provisioned_via = ANY (ARRAY['jit'::text, 'scim'::text, 'invite'::text])",
+      ),
+    ),
+    uniqueIndex("external_identity_connection_id_unique").on(
+      table.identityConnectionId,
+      table.id,
+    ),
+    uniqueIndex("external_identity_connection_subject_unique").on(
+      table.identityConnectionId,
+      table.subject,
+    ),
+    uniqueIndex("external_identity_connection_scim_external_id_unique")
+      .on(table.identityConnectionId, table.scimExternalId)
+      .where(sql.raw("(scim_external_id IS NOT NULL)")),
+    index("external_identity_person_active_idx").on(
+      table.personId,
+      table.active,
+    ),
+  ],
+);
+
+export const scimGroupDirectoryMemberTable = pgTable(
+  "scim_group_directory_member",
+  {
+    id: text("id")
+      .$defaultFn(() => createId())
+      .primaryKey(),
+    scimConnectionId: text("scim_connection_id")
+      .notNull()
+      .references(() => scimConnectionTable.identityConnectionId, {
+        onDelete: "restrict",
+        onUpdate: "cascade",
+      }),
+    scimGroupId: text("scim_group_id").notNull(),
+    externalIdentityId: text("external_identity_id").notNull(),
+    active: boolean("active").notNull().default(true),
+    createdAt: timestamp("created_at", { mode: "date", withTimezone: true })
+      .defaultNow()
+      .notNull(),
+    updatedAt: timestamp("updated_at", { mode: "date", withTimezone: true })
+      .defaultNow()
+      .notNull(),
+    removedAt: timestamp("removed_at", { mode: "date", withTimezone: true }),
+  },
+  (table) => [
+    check(
+      "scim_group_directory_member_active_timestamp_shape",
+      sql.raw(
+        "(active AND (removed_at IS NULL)) OR ((NOT active) AND (removed_at IS NOT NULL))",
+      ),
+    ),
+    foreignKey({
+      name: "scim_group_directory_member_group_same_connection_fk",
+      columns: [table.scimConnectionId, table.scimGroupId],
+      foreignColumns: [scimGroupTable.scimConnectionId, scimGroupTable.id],
+    })
+      .onDelete("restrict")
+      .onUpdate("cascade"),
+    foreignKey({
+      name: "scim_group_directory_member_identity_same_connection_fk",
+      columns: [table.scimConnectionId, table.externalIdentityId],
+      foreignColumns: [
+        externalIdentityTable.identityConnectionId,
+        externalIdentityTable.id,
+      ],
+    })
+      .onDelete("restrict")
+      .onUpdate("cascade"),
+    uniqueIndex("scim_group_directory_member_active_unique")
+      .on(table.scimGroupId, table.externalIdentityId)
+      .where(sql.raw("(active IS TRUE)")),
+    index("scim_group_directory_member_connection_group_idx").on(
+      table.scimConnectionId,
+      table.scimGroupId,
+      table.active,
+    ),
+  ],
+);
+
+export const oidcGroupMappingTable = pgTable(
+  "oidc_group_mapping",
+  {
+    id: text("id")
+      .$defaultFn(() => createId())
+      .primaryKey(),
+    identityConnectionId: text("identity_connection_id")
+      .notNull()
+      .references(() => identityConnectionTable.id, {
+        onDelete: "restrict",
+        onUpdate: "cascade",
+      }),
+    externalGroupId: text("external_group_id").notNull(),
+    externalGroupNameSnapshot: text("external_group_name_snapshot"),
+    roleId: text("role_id")
+      .notNull()
+      .references(() => roleTable.id, {
+        onDelete: "restrict",
+        onUpdate: "cascade",
+      }),
+    scope: text("scope").notNull(),
+    scopeId: text("scope_id").notNull(),
+    enabled: boolean("enabled").notNull().default(true),
+    createdBy: text("created_by").references(() => personTable.id, {
+      onDelete: "set null",
+    }),
+    createdAt: timestamp("created_at", { mode: "date", withTimezone: true })
+      .defaultNow()
+      .notNull(),
+    updatedAt: timestamp("updated_at", { mode: "date", withTimezone: true })
+      .defaultNow()
+      .notNull(),
+  },
+  (table) => [
+    check(
+      "oidc_group_mapping_scope_check",
+      sql.raw("scope = ANY (ARRAY['organisation'::text, 'workspace'::text])"),
+    ),
+    unique("oidc_group_mapping_connection_group_unique").on(
+      table.identityConnectionId,
+      table.externalGroupId,
+    ),
+    index("oidc_group_mapping_role_idx").on(table.roleId),
+  ],
+);
+
+export const scimGroupMappingTable = pgTable(
+  "scim_group_mapping",
+  {
+    id: text("id")
+      .$defaultFn(() => createId())
+      .primaryKey(),
+    scimConnectionId: text("scim_connection_id")
+      .notNull()
+      .references(() => scimConnectionTable.identityConnectionId, {
+        onDelete: "restrict",
+        onUpdate: "cascade",
+      }),
+    externalGroupId: text("external_group_id").notNull(),
+    externalGroupNameSnapshot: text("external_group_name_snapshot"),
+    roleId: text("role_id")
+      .notNull()
+      .references(() => roleTable.id, {
+        onDelete: "restrict",
+        onUpdate: "cascade",
+      }),
+    scope: text("scope").notNull(),
+    scopeId: text("scope_id").notNull(),
+    enabled: boolean("enabled").notNull().default(true),
+    createdBy: text("created_by").references(() => personTable.id, {
+      onDelete: "set null",
+    }),
+    createdAt: timestamp("created_at", { mode: "date", withTimezone: true })
+      .defaultNow()
+      .notNull(),
+    updatedAt: timestamp("updated_at", { mode: "date", withTimezone: true })
+      .defaultNow()
+      .notNull(),
+  },
+  (table) => [
+    check(
+      "scim_group_mapping_scope_check",
+      sql.raw("scope = ANY (ARRAY['organisation'::text, 'workspace'::text])"),
+    ),
+    unique("scim_group_mapping_connection_group_unique").on(
+      table.scimConnectionId,
+      table.externalGroupId,
+    ),
+    index("scim_group_mapping_role_idx").on(table.roleId),
+  ],
+);
+
+export const membershipGrantTable = pgTable(
+  "membership_grant",
+  {
+    id: text("id")
+      .$defaultFn(() => createId())
+      .primaryKey(),
+    membershipId: text("membership_id").references(() => membershipTable.id, {
+      onDelete: "set null",
+      onUpdate: "cascade",
+    }),
+    personId: text("person_id")
+      .notNull()
+      .references(() => personTable.id, {
+        onDelete: "restrict",
+        onUpdate: "cascade",
+      }),
+    scope: text("scope").notNull(),
+    scopeId: text("scope_id").notNull(),
+    roleId: text("role_id")
+      .notNull()
+      .references(() => roleTable.id, {
+        onDelete: "restrict",
+        onUpdate: "cascade",
+      }),
+    sourceKind: text("source_kind").notNull(),
+    externalIdentityId: text("external_identity_id").references(
+      () => externalIdentityTable.id,
+      { onDelete: "restrict", onUpdate: "cascade" },
+    ),
+    identityConnectionId: text("identity_connection_id").references(
+      () => identityConnectionTable.id,
+      { onDelete: "restrict", onUpdate: "cascade" },
+    ),
+    oidcGroupMappingId: text("oidc_group_mapping_id").references(
+      () => oidcGroupMappingTable.id,
+      { onDelete: "restrict", onUpdate: "cascade" },
+    ),
+    scimGroupMappingId: text("scim_group_mapping_id").references(
+      () => scimGroupMappingTable.id,
+      { onDelete: "restrict", onUpdate: "cascade" },
+    ),
+    seesAll: boolean("sees_all").notNull().default(false),
+    directOrigin: text("direct_origin"),
+    grantedByPersonId: text("granted_by_person_id").references(
+      () => personTable.id,
+      { onDelete: "restrict", onUpdate: "cascade" },
+    ),
+    createdAt: timestamp("created_at", { mode: "date", withTimezone: true })
+      .defaultNow()
+      .notNull(),
+    updatedAt: timestamp("updated_at", { mode: "date", withTimezone: true })
+      .defaultNow()
+      .notNull(),
+    lastConfirmedAt: timestamp("last_confirmed_at", {
+      mode: "date",
+      withTimezone: true,
+    }),
+    revokedAt: timestamp("revoked_at", { mode: "date", withTimezone: true }),
+    revocationReason: text("revocation_reason"),
+  },
+  (table) => [
+    check(
+      "membership_grant_source_kind_check",
+      sql.raw(
+        "source_kind = ANY (ARRAY['direct'::text, 'jit_default'::text, 'oidc_group'::text, 'scim_group'::text])",
+      ),
+    ),
+    check(
+      "membership_grant_direct_origin_check",
+      sql.raw(
+        "(direct_origin IS NULL) OR (direct_origin = ANY (ARRAY['admin'::text, 'system_backfill'::text]))",
+      ),
+    ),
+    check(
+      "membership_grant_revocation_reason_check",
+      sql.raw(
+        "(revocation_reason IS NULL) OR (revocation_reason = ANY (ARRAY['claim_removed'::text, 'claim_missing'::text, 'claim_overage'::text, 'admission_failed'::text, 'mapping_disabled'::text, 'mapping_changed'::text, 'role_deleted'::text, 'connection_disabled'::text, 'scim_group_removed'::text, 'scim_deactivated'::text, 'direct_removed'::text, 'person_deactivated'::text]))",
+      ),
+    ),
+    check(
+      "membership_grant_source_shape_check",
+      sql.raw(
+        "((source_kind = 'direct'::text) AND (direct_origin IS NOT NULL) AND (((direct_origin = 'admin'::text) AND (granted_by_person_id IS NOT NULL)) OR ((direct_origin = 'system_backfill'::text) AND (granted_by_person_id IS NULL))) AND (external_identity_id IS NULL) AND (identity_connection_id IS NULL) AND (oidc_group_mapping_id IS NULL) AND (scim_group_mapping_id IS NULL)) OR ((source_kind = 'jit_default'::text) AND (direct_origin IS NULL) AND (granted_by_person_id IS NULL) AND (external_identity_id IS NOT NULL) AND (identity_connection_id IS NOT NULL) AND (oidc_group_mapping_id IS NULL) AND (scim_group_mapping_id IS NULL) AND (sees_all = false)) OR ((source_kind = 'oidc_group'::text) AND (direct_origin IS NULL) AND (granted_by_person_id IS NULL) AND (external_identity_id IS NOT NULL) AND (identity_connection_id IS NOT NULL) AND (oidc_group_mapping_id IS NOT NULL) AND (scim_group_mapping_id IS NULL) AND (sees_all = false)) OR ((source_kind = 'scim_group'::text) AND (direct_origin IS NULL) AND (granted_by_person_id IS NULL) AND (external_identity_id IS NOT NULL) AND (identity_connection_id IS NOT NULL) AND (oidc_group_mapping_id IS NULL) AND (scim_group_mapping_id IS NOT NULL) AND (sees_all = false))",
+      ),
+    ),
+    index("membership_grant_person_scope_idx")
+      .on(table.personId, table.scope, table.scopeId)
+      .where(sql.raw("(revoked_at IS NULL)")),
+    uniqueIndex("membership_grant_direct_active_unique")
+      .on(table.personId, table.scope, table.scopeId)
+      .where(
+        sql.raw("((revoked_at IS NULL) AND (source_kind = 'direct'::text))"),
+      ),
+    uniqueIndex("membership_grant_jit_active_unique")
+      .on(table.externalIdentityId, table.scope, table.scopeId)
+      .where(
+        sql.raw(
+          "((revoked_at IS NULL) AND (source_kind = 'jit_default'::text))",
+        ),
+      ),
+    uniqueIndex("membership_grant_oidc_active_unique")
+      .on(table.externalIdentityId, table.oidcGroupMappingId)
+      .where(
+        sql.raw(
+          "((revoked_at IS NULL) AND (source_kind = 'oidc_group'::text))",
+        ),
+      ),
+    uniqueIndex("membership_grant_scim_active_unique")
+      .on(table.externalIdentityId, table.scimGroupMappingId)
+      .where(
+        sql.raw(
+          "((revoked_at IS NULL) AND (source_kind = 'scim_group'::text))",
+        ),
+      ),
+    index("membership_grant_connection_active_idx")
+      .on(table.identityConnectionId)
+      .where(sql.raw("(revoked_at IS NULL)")),
+    index("membership_grant_role_idx").on(table.roleId),
+  ],
+);
+
+export const scimGroupMemberTable = pgTable(
+  "scim_group_member",
+  {
+    id: text("id")
+      .$defaultFn(() => createId())
+      .primaryKey(),
+    scimGroupMappingId: text("scim_group_mapping_id")
+      .notNull()
+      .references(() => scimGroupMappingTable.id, {
+        onDelete: "restrict",
+        onUpdate: "cascade",
+      }),
+    externalIdentityId: text("external_identity_id")
+      .notNull()
+      .references(() => externalIdentityTable.id, {
+        onDelete: "restrict",
+        onUpdate: "cascade",
+      }),
+    membershipId: text("membership_id").references(() => membershipTable.id, {
+      onDelete: "set null",
+      onUpdate: "cascade",
+    }),
+    membershipGrantId: text("membership_grant_id")
+      .notNull()
+      .unique()
+      .references(() => membershipGrantTable.id, {
+        onDelete: "restrict",
+        onUpdate: "cascade",
+      }),
+    revokedAt: timestamp("revoked_at", { mode: "date", withTimezone: true }),
+  },
+  (table) => [
+    uniqueIndex("scim_group_member_active_unique")
+      .on(table.externalIdentityId, table.scimGroupMappingId)
+      .where(sql.raw("(revoked_at IS NULL)")),
+    index("scim_group_member_mapping_active_idx").on(
+      table.scimGroupMappingId,
+      table.revokedAt,
+    ),
+  ],
+);
+
+export const provisioningEventTable = pgTable(
+  "provisioning_event",
+  {
+    id: text("id")
+      .$defaultFn(() => createId())
+      .primaryKey(),
+    identityConnectionId: text("identity_connection_id")
+      .notNull()
+      .references(() => identityConnectionTable.id, {
+        onDelete: "restrict",
+        onUpdate: "cascade",
+      }),
+    scimConnectionId: text("scim_connection_id").references(
+      () => scimConnectionTable.identityConnectionId,
+      { onDelete: "set null", onUpdate: "cascade" },
+    ),
+    externalIdentityId: text("external_identity_id").references(
+      () => externalIdentityTable.id,
+      { onDelete: "set null", onUpdate: "cascade" },
+    ),
+    kind: text("kind").notNull(),
+    outcome: text("outcome").notNull(),
+    detail: jsonb("detail").notNull().default(sql`'{}'::jsonb`),
+    actorType: text("actor_type").notNull(),
+    traceId: text("trace_id"),
+    createdAt: timestamp("created_at", { mode: "date", withTimezone: true })
+      .defaultNow()
+      .notNull(),
+  },
+  (table) => [
+    check(
+      "provisioning_event_kind_check",
+      sql.raw(
+        "kind = ANY (ARRAY['user.created'::text, 'user.updated'::text, 'user.deactivated'::text, 'user.reactivated'::text, 'group.directory_changed'::text, 'group.mapping_changed'::text, 'group.member_added'::text, 'group.member_removed'::text, 'request.denied'::text, 'auth.failed'::text, 'token.rotated'::text, 'token.revoked'::text, 'connection.changed'::text, 'sync.failed'::text])",
+      ),
+    ),
+    index("provisioning_event_connection_created_idx").on(
+      table.identityConnectionId,
+      table.createdAt.desc(),
+    ),
+    index("provisioning_event_scim_created_idx").on(
+      table.scimConnectionId,
+      table.createdAt.desc(),
+    ),
   ],
 );
 
@@ -1690,8 +2874,7 @@ export const workItemTypeTable = pgTable(
     // existing "a referenced entity in active use cannot be deleted" convention
     // (`state.state_template_id`, `membership.role_id`).
     //
-    // `sla_policy` (§7) is still P5 scope and does not exist yet -- plain nullable
-    // column, no FK, unchanged from before.
+    // Nullable source binding; SLA-1 resolves it before project/workspace defaults.
     workflowId: text("workflow_id").references(
       (): AnyPgColumn => workflowTable.id,
       { onDelete: "restrict", onUpdate: "cascade" },
@@ -1707,6 +2890,11 @@ export const workItemTypeTable = pgTable(
   },
   (table) => [
     index("work_item_type_workspaceId_idx").on(table.workspaceId),
+    foreignKey({
+      name: "work_item_type_workspace_sla_policy_fk",
+      columns: [table.workspaceId, table.slaPolicyId],
+      foreignColumns: [slaPolicyWorkspaceColumn(), slaPolicyIdColumn()],
+    }).onDelete("restrict"),
     // Not explicitly stated as unique in data-model.md's abbreviated column list --
     // inferred from this codebase's existing key-uniqueness convention
     // (`workspace.slug`, PR #179's `role.key` per (scope, workspace_id)). Flagged as a
@@ -1730,7 +2918,7 @@ export const workItemTypeTable = pgTable(
     // vocabulary this migration constrains uses one mechanism.
     check(
       "work_item_type_category_allowed",
-      sql`${table.category} in ('service', 'delivery')`,
+      sql.raw("category = ANY (ARRAY['service'::text, 'delivery'::text])"),
     ),
   ],
 );
@@ -1773,7 +2961,9 @@ export const stateTemplateTable = pgTable(
     // identifier it emits, so the literal column name is enough.
     check(
       "state_template_group_allowed",
-      sql`${table.group} in ('backlog', 'unstarted', 'started', 'completed', 'cancelled')`,
+      sql.raw(
+        "\"group\" = ANY (ARRAY['backlog'::text, 'unstarted'::text, 'started'::text, 'completed'::text, 'cancelled'::text])",
+      ),
     ),
   ],
 );
@@ -1839,7 +3029,7 @@ export const stateTable = pgTable(
     // it against the narrower `and archived_at is null` form.
     uniqueIndex("state_project_default_unique")
       .on(table.projectId)
-      .where(sql`${table.isDefault}`),
+      .where(sql.raw("is_default")),
   ],
 );
 
@@ -2010,20 +3200,85 @@ export const workflowTransitionTable = pgTable(
     // `WF-21`: "at most one per workflow version."
     uniqueIndex("workflow_transition_version_reopen_unique")
       .on(table.versionId)
-      .where(sql`${table.isReopen}`),
+      .where(sql.raw("is_reopen")),
     check(
       "workflow_transition_note_policy_allowed",
-      sql`${table.notePolicy} in ('none', 'optional', 'required')`,
+      sql.raw(
+        "note_policy = ANY (ARRAY['none'::text, 'optional'::text, 'required'::text])",
+      ),
     ),
     check(
       "workflow_transition_note_visibility_allowed",
-      sql`${table.noteVisibility} in ('public', 'internal')`,
+      sql.raw(
+        "note_visibility = ANY (ARRAY['public'::text, 'internal'::text])",
+      ),
     ),
     // Nullable -- NULL passes (Postgres treats a NULL CHECK result as passing), matching
     // this schema's existing convention for a nullable enum column (`work_item.priority`).
     check(
       "workflow_transition_approval_policy_allowed",
-      sql`${table.approvalPolicy} is null or ${table.approvalPolicy} in ('any', 'all')`,
+      sql.raw(
+        "(approval_policy IS NULL) OR (approval_policy = ANY (ARRAY['any'::text, 'all'::text]))",
+      ),
+    ),
+  ],
+);
+
+/**
+ * AP-1..AP-21 durable approval decisions. `created_at` is the request instant used by
+ * reminder-window arithmetic (AP-13) and blocked-transition context (AP-17). Work-item
+ * deletion is the only lifecycle purge that removes approvals; deleting a referenced
+ * published transition or person is restricted so an approval fact is not silently
+ * rewritten or discarded.
+ */
+export const approvalTable = pgTable(
+  "approval",
+  {
+    id: text("id")
+      .$defaultFn(() => createId())
+      .primaryKey(),
+    workItemId: text("work_item_id")
+      .notNull()
+      .references(() => workItemTable.id, { onDelete: "cascade" }),
+    transitionId: text("transition_id")
+      .notNull()
+      .references(() => workflowTransitionTable.id, { onDelete: "restrict" }),
+    kind: text("kind").notNull(),
+    requestedBy: text("requested_by")
+      .notNull()
+      .references(() => personTable.id, { onDelete: "restrict" }),
+    approverId: text("approver_id")
+      .notNull()
+      .references(() => personTable.id, { onDelete: "restrict" }),
+    state: text("state").notNull().default("pending"),
+    createdAt: timestamp("created_at", { mode: "date" }).defaultNow().notNull(),
+    expiresAt: timestamp("expires_at", { mode: "date" }).notNull(),
+    reminder50SentAt: timestamp("reminder_50_sent_at", { mode: "date" }),
+    reminder90SentAt: timestamp("reminder_90_sent_at", { mode: "date" }),
+    decidedAt: timestamp("decided_at", { mode: "date" }),
+    decisionNote: text("decision_note"),
+  },
+  (table) => [
+    index("approval_work_item_created_idx").on(
+      table.workItemId,
+      table.createdAt,
+    ),
+    index("approval_approver_state_expiry_idx").on(
+      table.approverId,
+      table.state,
+      table.expiresAt,
+    ),
+    index("approval_requester_state_idx").on(table.requestedBy, table.state),
+    index("approval_transition_state_idx").on(table.transitionId, table.state),
+    check(
+      "approval_kind_allowed",
+      sql.raw("kind = ANY (ARRAY['customer'::text, 'cab'::text])"),
+    ),
+    check(
+      "approval_state_allowed",
+      sql.raw(
+        "state = ANY (ARRAY['pending'::text, 'approved'::text, 'rejected'::text, 'expired'::text, 'withdrawn'::text])",
+      ),
     ),
   ],
 );
@@ -2070,11 +3325,13 @@ export const scheduledTransitionTable = pgTable(
     // own scan predicate.
     index("scheduled_transition_dueAt_pending_idx")
       .on(table.dueAt)
-      .where(sql`${table.state} = 'pending'`),
+      .where(sql.raw("(state = 'pending'::text)")),
     index("scheduled_transition_workItemId_idx").on(table.workItemId),
     check(
       "scheduled_transition_state_allowed",
-      sql`${table.state} in ('pending', 'fired', 'cancelled')`,
+      sql.raw(
+        "state = ANY (ARRAY['pending'::text, 'fired'::text, 'cancelled'::text])",
+      ),
     ),
     // #186 S2's own lesson, applied here: a plain single-column FK on `from_state_id`/
     // `to_state_id` alone cannot see which project a `state` row belongs to, so it cannot
@@ -2427,6 +3684,7 @@ export const workItemTable = pgTable(
     cycleId: text("cycle_id"),
     moduleId: text("module_id"),
     slaStartedAt: timestamp("sla_started_at", { mode: "date" }),
+    slaPolicyVersionId: text("sla_policy_version_id"),
     firstResponseAt: timestamp("first_response_at", { mode: "date" }),
     resolvedAt: timestamp("resolved_at", { mode: "date" }),
     // #186 S1: NOT NULL DEFAULT 'private' -- the safe default, matching
@@ -2451,6 +3709,14 @@ export const workItemTable = pgTable(
       .notNull(),
   },
   (table) => [
+    foreignKey({
+      name: "work_item_workspace_sla_policy_version_fk",
+      columns: [table.workspaceId, table.slaPolicyVersionId],
+      foreignColumns: [
+        slaPolicyVersionTable.workspaceId,
+        slaPolicyVersionTable.id,
+      ],
+    }).onDelete("restrict"),
     // "## Indexing": create index on work_item (project_id, state_id, position);
     index("work_item_projectId_stateId_position_idx").on(
       table.projectId,
@@ -2466,11 +3732,11 @@ export const workItemTable = pgTable(
     // and deleted_at is null;
     index("work_item_assigneeId_idx")
       .on(table.assigneeId)
-      .where(sql`${table.archivedAt} is null and ${table.deletedAt} is null`),
+      .where(sql.raw("((archived_at IS NULL) AND (deleted_at IS NULL))")),
     // "## Indexing": create index on work_item (due_date) where resolved_at is null;
     index("work_item_dueDate_idx")
       .on(table.dueDate)
-      .where(sql`${table.resolvedAt} is null`),
+      .where(sql.raw("(resolved_at IS NULL)")),
     // Global key uniqueness -- see the `key` column comment above.
     uniqueIndex("work_item_key_unique").on(table.key),
     index("work_item_typeId_idx").on(table.typeId),
@@ -2480,11 +3746,13 @@ export const workItemTable = pgTable(
     index("work_item_workspaceId_idx").on(table.workspaceId),
     index("work_item_requesterId_idx").on(table.requesterId),
     index("work_item_parentId_idx").on(table.parentId),
-    // Deliberately NOT added here: the "## Indexing" GIN trigram title index and the
-    // generated `search_vector` column (`create extension pg_trgm`, `... using gin
-    // (title gin_trgm_ops)`, the `tsvector generated always as (...) stored` column) --
-    // full-text search is a separate P1 core work item (search), not part of #23's
-    // first-slice schema. Add these when that work lands.
+    // The frozen 0103 migration already creates this GIN trigram index. Keep it in the
+    // generation schema so future Drizzle diffs preserve the existing SQL-owned index;
+    // the generated search_vector column remains outside this table definition.
+    index("work_item_title_trgm_idx").using(
+      "gin",
+      table.title.op("gin_trgm_ops"),
+    ),
 
     // #186 S2 -- composite-FK target for the self-referencing `parent_id` composite FK
     // below, same `(scope_id, id)` technique as `state_project_id_id_unique` above and
@@ -2589,7 +3857,7 @@ export const workItemTable = pgTable(
     // `work_item_reject_parent_cycle` trigger (hand-written SQL in the migration).
     check(
       "work_item_parent_not_self",
-      sql`${table.parentId} is distinct from ${table.id}`,
+      sql.raw("parent_id IS DISTINCT FROM id"),
     ),
     // #191 O2 -- the claim-table FK described on `work_item_key_claim` above and the
     // `key` column comment. `onUpdate("no action")`: claim rows are never updated in
@@ -2619,7 +3887,9 @@ export const workItemTable = pgTable(
     // passing. Any non-NULL value, however, must be one of the four.
     check(
       "work_item_priority_allowed",
-      sql`${table.priority} in ('low', 'medium', 'high', 'urgent')`,
+      sql.raw(
+        "priority = ANY (ARRAY['low'::text, 'medium'::text, 'high'::text, 'urgent'::text])",
+      ),
     ),
     // #189 S7 -- `data-model.md` §4 states `customer_visibility`
     // (`private`|`organisation`) verbatim. The column is NOT NULL DEFAULT 'private'
@@ -2627,7 +3897,9 @@ export const workItemTable = pgTable(
     // pass the NOT NULL check and read as neither `private` nor `organisation`.
     check(
       "work_item_customer_visibility_allowed",
-      sql`${table.customerVisibility} in ('private', 'organisation')`,
+      sql.raw(
+        "customer_visibility = ANY (ARRAY['private'::text, 'organisation'::text])",
+      ),
     ),
     // #189 S9 -- `position numeric(20,10)` accepted `NaN`, which Postgres sorts greater
     // than every non-NaN value, so one bad row would head every `ORDER BY position desc`
@@ -2641,7 +3913,7 @@ export const workItemTable = pgTable(
     // does reject it is `<> 'NaN'::numeric`.
     check(
       "work_item_position_not_nan",
-      sql`${table.position} <> 'NaN'::numeric`,
+      sql.raw("\"position\" <> 'NaN'::numeric"),
     ),
     // #189 S9 -- `number` was a bare `integer NOT NULL` with no positivity constraint,
     // and no trigger assigns it yet (`work_item.key`'s assignment trigger is #23's later
@@ -2653,7 +3925,7 @@ export const workItemTable = pgTable(
     // from kaneo and still named for the v1 concept; #23 owns introducing the v2 name
     // and the assignment. Either way the first assignment is 1. The rendered key is
     // `{project.key}-{number}`, which must never be `...-0` or `...--1`.
-    check("work_item_number_positive", sql`${table.number} > 0`),
+    check("work_item_number_positive", sql.raw("number > 0")),
   ],
 );
 
@@ -2722,7 +3994,7 @@ export const activityTable = pgTable(
     unique("activity_seq_unique").on(table.seq),
     check(
       "activity_visibility_allowed",
-      sql`${table.visibility} in ('public', 'internal')`,
+      sql.raw("visibility = ANY (ARRAY['public'::text, 'internal'::text])"),
     ),
     // Decision log 2026-09-23, "Activity addendum: ON DELETE CASCADE, and Postgres 16
     // stays supported" (S1 of PR #275's mandatory Opus 5.5 security review,
@@ -2834,7 +4106,7 @@ export const commentTable = pgTable(
     index("comment_workspaceId_idx").on(table.workspaceId),
     check(
       "comment_visibility_allowed",
-      sql`${table.visibility} in ('public', 'internal')`,
+      sql.raw("visibility = ANY (ARRAY['public'::text, 'internal'::text])"),
     ),
     // Same composite-FK technique as `activityTable.workspaceId`/`.workItemId` above,
     // for the identical cross-tenant reason (a plain single-column FK on `work_item_id`
@@ -2912,7 +4184,9 @@ export const cannedResponseTable = pgTable(
     ),
     check(
       "canned_response_visibility_default_allowed",
-      sql`${table.visibilityDefault} in ('public', 'internal')`,
+      sql.raw(
+        "visibility_default = ANY (ARRAY['public'::text, 'internal'::text])",
+      ),
     ),
   ],
 );
@@ -2947,6 +4221,163 @@ export const serviceCalendarTable = pgTable(
       table.workspaceId,
       table.name,
       table.id,
+    ),
+    unique("service_calendar_workspace_id_id_unique").on(
+      table.workspaceId,
+      table.id,
+    ),
+  ],
+);
+
+export const slaPolicyTable = pgTable(
+  "sla_policy",
+  {
+    id: text("id")
+      .$defaultFn(() => createId())
+      .primaryKey(),
+    workspaceId: text("workspace_id")
+      .notNull()
+      .references(() => workspaceTable.id, {
+        onDelete: "cascade",
+        onUpdate: "cascade",
+      }),
+    name: text("name").notNull(),
+    description: text("description"),
+    activeVersionId: text("active_version_id").references(
+      (): AnyPgColumn => slaPolicyVersionTable.id,
+      { onDelete: "restrict" },
+    ),
+    version: integer("version").notNull().default(1),
+    createdAt: timestamp("created_at", { mode: "date", withTimezone: true })
+      .defaultNow()
+      .notNull(),
+    updatedAt: timestamp("updated_at", { mode: "date", withTimezone: true })
+      .defaultNow()
+      .$onUpdate(() => new Date())
+      .notNull(),
+  },
+  (table) => [
+    unique("sla_policy_workspace_id_id_unique").on(table.workspaceId, table.id),
+    foreignKey({
+      name: "sla_policy_active_version_workspace_policy_fk",
+      columns: [table.workspaceId, table.id, table.activeVersionId],
+      foreignColumns: [
+        slaPolicyVersionWorkspaceColumn(),
+        slaPolicyVersionPolicyIdColumn(),
+        slaPolicyVersionIdColumn(),
+      ],
+    }),
+    check("sla_policy_version_positive", sql.raw("version > 0")),
+  ],
+);
+
+export const slaPolicyVersionTable = pgTable(
+  "sla_policy_version",
+  {
+    id: text("id")
+      .$defaultFn(() => createId())
+      .primaryKey(),
+    workspaceId: text("workspace_id").notNull(),
+    policyId: text("policy_id").notNull(),
+    number: integer("number").notNull(),
+    calendarId: text("calendar_id").notNull(),
+    atRiskThresholdPct: integer("at_risk_threshold_pct").notNull(),
+    effectiveFrom: timestamp("effective_from", {
+      mode: "date",
+      withTimezone: true,
+    }),
+    createdAt: timestamp("created_at", { mode: "date", withTimezone: true })
+      .defaultNow()
+      .notNull(),
+  },
+  (table) => [
+    foreignKey({
+      name: "sla_policy_version_workspace_policy_fk",
+      columns: [table.workspaceId, table.policyId],
+      foreignColumns: [slaPolicyWorkspaceColumn(), slaPolicyIdColumn()],
+    }).onDelete("cascade"),
+    foreignKey({
+      name: "sla_policy_version_workspace_calendar_fk",
+      columns: [table.workspaceId, table.calendarId],
+      foreignColumns: [
+        serviceCalendarTable.workspaceId,
+        serviceCalendarTable.id,
+      ],
+    }).onDelete("restrict"),
+    unique("sla_policy_version_workspace_policy_id_unique").on(
+      table.workspaceId,
+      table.policyId,
+      table.id,
+    ),
+    unique("sla_policy_version_workspace_id_unique").on(
+      table.workspaceId,
+      table.id,
+    ),
+    unique("sla_policy_version_policy_id_unique").on(table.policyId, table.id),
+    unique("sla_policy_version_policy_number_unique").on(
+      table.policyId,
+      table.number,
+    ),
+    uniqueIndex("sla_policy_version_one_draft_unique")
+      .on(table.policyId)
+      .where(sql.raw("(effective_from IS NULL)")),
+    check("sla_policy_version_number_positive", sql.raw("number > 0")),
+    check(
+      "sla_policy_version_threshold_allowed",
+      sql.raw("(at_risk_threshold_pct >= 1) AND (at_risk_threshold_pct <= 99)"),
+    ),
+  ],
+);
+
+export const slaGoalTable = pgTable(
+  "sla_goal",
+  {
+    id: text("id")
+      .$defaultFn(() => createId())
+      .primaryKey(),
+    workspaceId: text("workspace_id").notNull(),
+    versionId: text("version_id").notNull(),
+    metric: text("metric", {
+      enum: ["first_response", "resolution"],
+    }).notNull(),
+    workItemTypeId: text("work_item_type_id").notNull(),
+    priority: text("priority", {
+      enum: ["low", "medium", "high", "urgent"],
+    }).notNull(),
+    targetMinutes: integer("target_minutes").notNull(),
+  },
+  (table) => [
+    foreignKey({
+      name: "sla_goal_workspace_version_fk",
+      columns: [table.workspaceId, table.versionId],
+      foreignColumns: [
+        slaPolicyVersionTable.workspaceId,
+        slaPolicyVersionTable.id,
+      ],
+    }).onDelete("cascade"),
+    foreignKey({
+      name: "sla_goal_workspace_type_fk",
+      columns: [table.workspaceId, table.workItemTypeId],
+      foreignColumns: [workItemTypeTable.workspaceId, workItemTypeTable.id],
+    }).onDelete("restrict"),
+    unique("sla_goal_version_metric_type_priority_unique").on(
+      table.versionId,
+      table.metric,
+      table.workItemTypeId,
+      table.priority,
+    ),
+    check("sla_goal_target_minutes_positive", sql.raw("target_minutes > 0")),
+    check(
+      "sla_goal_metric_allowed",
+      sql.raw(
+        "metric = ANY (ARRAY['first_response'::text, 'resolution'::text])",
+      ),
+    ),
+    check(
+      "sla_goal_priority_allowed",
+      sql.raw(
+        "priority = ANY (ARRAY['low'::text, 'medium'::text, 'high'::text, 'urgent'::text])",
+      ),
     ),
   ],
 );
@@ -3049,7 +4480,348 @@ export const watcherTable = pgTable(
     // #189 S7 -- `data-model.md` §4 states `source` (`explicit`|`implicit`) verbatim.
     check(
       "watcher_source_allowed",
-      sql`${table.source} in ('explicit', 'implicit')`,
+      sql.raw("source = ANY (ARRAY['explicit'::text, 'implicit'::text])"),
+    ),
+  ],
+);
+
+// P2 request catalogue and intake persistence (request-types-and-catalogue.md;
+// intake-queue.md). The opaque `key` is independent from the database id and unique
+// across the instance because it is the portal's stable route identifier.
+export const requestTypeTable = pgTable(
+  "request_type",
+  {
+    id: text("id")
+      .$defaultFn(() => createId())
+      .primaryKey(),
+    workspaceId: text("workspace_id")
+      .notNull()
+      .references(() => workspaceTable.id, {
+        onDelete: "cascade",
+        onUpdate: "cascade",
+      }),
+    key: text("key").notNull().unique("request_type_key_unique"),
+    name: text("name").notNull(),
+    description: text("description"),
+    icon: text("icon"),
+    group: text("group").notNull(),
+    workItemTypeId: text("work_item_type_id").notNull(),
+    defaultProjectId: text("default_project_id"),
+    formSchema: jsonb("form_schema").notNull(),
+    slaPolicyId: text("sla_policy_id"),
+    defaultAssigneeId: text("default_assignee_id").references(
+      () => personTable.id,
+      { onDelete: "restrict", onUpdate: "cascade" },
+    ),
+    autoAccept: boolean("auto_accept").notNull().default(false),
+    customerVisible: boolean("customer_visible").notNull().default(false),
+    forcePrivate: boolean("force_private").notNull().default(false),
+    published: boolean("published").notNull().default(false),
+    position: integer("position").notNull().default(0),
+    version: integer("version").notNull().default(1),
+    createdAt: timestamp("created_at", { mode: "date", withTimezone: true })
+      .defaultNow()
+      .notNull(),
+    updatedAt: timestamp("updated_at", { mode: "date", withTimezone: true })
+      .defaultNow()
+      .$onUpdate(() => new Date())
+      .notNull(),
+  },
+  (table) => [
+    foreignKey({
+      name: "request_type_workspace_default_project_fk",
+      columns: [table.workspaceId, table.defaultProjectId],
+      foreignColumns: [projectTable.workspaceId, projectTable.id],
+    }).onDelete("restrict"),
+    foreignKey({
+      name: "request_type_workspace_work_item_type_fk",
+      columns: [table.workspaceId, table.workItemTypeId],
+      foreignColumns: [workItemTypeTable.workspaceId, workItemTypeTable.id],
+    }).onDelete("restrict"),
+    foreignKey({
+      name: "request_type_workspace_sla_policy_fk",
+      columns: [table.workspaceId, table.slaPolicyId],
+      foreignColumns: [slaPolicyWorkspaceColumn(), slaPolicyIdColumn()],
+    }).onDelete("restrict"),
+    index("request_type_workspace_position_idx").on(
+      table.workspaceId,
+      table.position,
+      table.id,
+    ),
+    unique("request_type_workspace_id_id_unique").on(
+      table.workspaceId,
+      table.id,
+    ),
+    check("request_type_version_positive", sql.raw("version > 0")),
+    check("request_type_position_nonnegative", sql.raw('"position" >= 0')),
+  ],
+);
+
+export const requestTypeVersionTable = pgTable(
+  "request_type_version",
+  {
+    id: text("id")
+      .$defaultFn(() => createId())
+      .primaryKey(),
+    workspaceId: text("workspace_id").notNull(),
+    requestTypeId: text("request_type_id")
+      .notNull()
+      .references(() => requestTypeTable.id, {
+        onDelete: "restrict",
+        onUpdate: "cascade",
+      }),
+    number: integer("number").notNull(),
+    formSchema: jsonb("form_schema").notNull(),
+    workItemTypeId: text("work_item_type_id").notNull(),
+    defaultProjectId: text("default_project_id"),
+    slaPolicyId: text("sla_policy_id"),
+    autoAccept: boolean("auto_accept").notNull().default(false),
+    defaultAssigneeId: text("default_assignee_id").references(
+      () => personTable.id,
+      { onDelete: "restrict", onUpdate: "cascade" },
+    ),
+    effectiveFrom: timestamp("effective_from", {
+      mode: "date",
+      withTimezone: true,
+    })
+      .defaultNow()
+      .notNull(),
+    createdAt: timestamp("created_at", { mode: "date", withTimezone: true })
+      .defaultNow()
+      .notNull(),
+  },
+  (table) => [
+    foreignKey({
+      name: "request_type_version_workspace_request_type_fk",
+      columns: [table.workspaceId, table.requestTypeId],
+      foreignColumns: [requestTypeTable.workspaceId, requestTypeTable.id],
+    }).onDelete("restrict"),
+    foreignKey({
+      name: "request_type_version_workspace_default_project_fk",
+      columns: [table.workspaceId, table.defaultProjectId],
+      foreignColumns: [projectTable.workspaceId, projectTable.id],
+    }).onDelete("restrict"),
+    foreignKey({
+      name: "request_type_version_workspace_work_item_type_fk",
+      columns: [table.workspaceId, table.workItemTypeId],
+      foreignColumns: [workItemTypeTable.workspaceId, workItemTypeTable.id],
+    }).onDelete("restrict"),
+    foreignKey({
+      name: "request_type_version_workspace_sla_policy_fk",
+      columns: [table.workspaceId, table.slaPolicyId],
+      foreignColumns: [slaPolicyWorkspaceColumn(), slaPolicyIdColumn()],
+    }).onDelete("restrict"),
+    unique("request_type_version_request_type_number_unique").on(
+      table.requestTypeId,
+      table.number,
+    ),
+    unique("request_type_version_request_type_id_unique").on(
+      table.requestTypeId,
+      table.id,
+    ),
+    index("request_type_version_effective_idx").on(
+      table.requestTypeId,
+      table.effectiveFrom.desc(),
+    ),
+  ],
+);
+
+export const organisationRequestTypeTable = pgTable(
+  "organisation_request_type",
+  {
+    organisationId: text("organisation_id")
+      .notNull()
+      .references(() => organisationTable.id, {
+        onDelete: "cascade",
+        onUpdate: "cascade",
+      }),
+    requestTypeId: text("request_type_id")
+      .notNull()
+      .references(() => requestTypeTable.id, {
+        onDelete: "cascade",
+        onUpdate: "cascade",
+      }),
+  },
+  (table) => [
+    primaryKey({ columns: [table.organisationId, table.requestTypeId] }),
+    index("organisation_request_type_request_type_idx").on(table.requestTypeId),
+  ],
+);
+
+export const submissionTable = pgTable(
+  "submission",
+  {
+    id: text("id")
+      .$defaultFn(() => createId())
+      .primaryKey(),
+    number: serial("number").notNull().unique("submission_number_unique"),
+    organisationId: text("organisation_id")
+      .notNull()
+      .references(() => organisationTable.id, {
+        onDelete: "restrict",
+        onUpdate: "cascade",
+      }),
+    requesterId: text("requester_id")
+      .notNull()
+      .references(() => personTable.id, {
+        onDelete: "restrict",
+        onUpdate: "cascade",
+      }),
+    requestTypeId: text("request_type_id").notNull(),
+    requestTypeVersionId: text("request_type_version_id").notNull(),
+    formData: jsonb("form_data").notNull(),
+    state: text("state").notNull().default("new"),
+    submittedAt: timestamp("submitted_at", {
+      mode: "date",
+      withTimezone: true,
+    }),
+    claimedBy: text("claimed_by").references(() => personTable.id, {
+      onDelete: "restrict",
+      onUpdate: "cascade",
+    }),
+    claimedAt: timestamp("claimed_at", { mode: "date", withTimezone: true }),
+    customerVisibility: text("customer_visibility")
+      .notNull()
+      .default("private"),
+    workItemId: text("work_item_id").references(() => workItemTable.id, {
+      onDelete: "restrict",
+      onUpdate: "cascade",
+    }),
+    createdAt: timestamp("created_at", { mode: "date", withTimezone: true })
+      .defaultNow()
+      .notNull(),
+    updatedAt: timestamp("updated_at", { mode: "date", withTimezone: true })
+      .defaultNow()
+      .$onUpdate(() => new Date())
+      .notNull(),
+    version: integer("version").notNull().default(1),
+  },
+  (table) => [
+    foreignKey({
+      name: "submission_request_type_version_fk",
+      columns: [table.requestTypeId, table.requestTypeVersionId],
+      foreignColumns: [
+        requestTypeVersionTable.requestTypeId,
+        requestTypeVersionTable.id,
+      ],
+    }).onDelete("restrict"),
+    index("submission_organisation_created_idx").on(
+      table.organisationId,
+      table.createdAt.desc(),
+    ),
+    index("submission_requester_created_idx").on(
+      table.requesterId,
+      table.createdAt.desc(),
+    ),
+    index("submission_state_created_idx").on(
+      table.state,
+      table.createdAt.desc(),
+    ),
+    check("submission_number_positive", sql.raw("number > 0")),
+    check("submission_version_positive", sql.raw("version > 0")),
+    check(
+      "submission_state_allowed",
+      sql.raw(
+        "state = ANY (ARRAY['draft'::text, 'new'::text, 'clarifying'::text, 'accepted'::text, 'declined'::text, 'duplicate'::text, 'withdrawn'::text])",
+      ),
+    ),
+    check(
+      "submission_submitted_at_state_consistent",
+      sql.raw(
+        "((state = 'draft'::text) AND (submitted_at IS NULL)) OR ((state <> 'draft'::text) AND (submitted_at IS NOT NULL))",
+      ),
+    ),
+    check(
+      "submission_customer_visibility_allowed",
+      sql.raw(
+        "customer_visibility = ANY (ARRAY['private'::text, 'organisation'::text])",
+      ),
+    ),
+    check(
+      "submission_claim_pair",
+      sql.raw("(claimed_by IS NULL) = (claimed_at IS NULL)"),
+    ),
+  ],
+);
+
+export const submissionMessageTable = pgTable(
+  "submission_message",
+  {
+    id: text("id")
+      .$defaultFn(() => createId())
+      .primaryKey(),
+    submissionId: text("submission_id")
+      .notNull()
+      .references(() => submissionTable.id, {
+        onDelete: "cascade",
+        onUpdate: "cascade",
+      }),
+    authorId: text("author_id")
+      .notNull()
+      .references(() => personTable.id, {
+        onDelete: "restrict",
+        onUpdate: "cascade",
+      }),
+    actorType: text("actor_type").notNull(),
+    body: text("body").notNull(),
+    createdAt: timestamp("created_at", { mode: "date", withTimezone: true })
+      .defaultNow()
+      .notNull(),
+  },
+  (table) => [
+    index("submission_message_thread_idx").on(
+      table.submissionId,
+      table.createdAt,
+      table.id,
+    ),
+    check(
+      "submission_message_actor_type_allowed",
+      sql.raw("actor_type = ANY (ARRAY['customer'::text, 'triager'::text])"),
+    ),
+  ],
+);
+
+export const requestParticipantTable = pgTable(
+  "request_participant",
+  {
+    id: text("id")
+      .$defaultFn(() => createId())
+      .primaryKey(),
+    workItemId: text("work_item_id").references(() => workItemTable.id, {
+      onDelete: "cascade",
+      onUpdate: "cascade",
+    }),
+    submissionId: text("submission_id").references(() => submissionTable.id, {
+      onDelete: "cascade",
+      onUpdate: "cascade",
+    }),
+    personId: text("person_id")
+      .notNull()
+      .references(() => personTable.id, {
+        onDelete: "cascade",
+        onUpdate: "cascade",
+      }),
+    addedBy: text("added_by")
+      .notNull()
+      .references(() => personTable.id, {
+        onDelete: "restrict",
+        onUpdate: "cascade",
+      }),
+    createdAt: timestamp("created_at", { mode: "date", withTimezone: true })
+      .defaultNow()
+      .notNull(),
+  },
+  (table) => [
+    index("request_participant_person_idx").on(table.personId),
+    uniqueIndex("request_participant_work_item_person_unique")
+      .on(table.workItemId, table.personId)
+      .where(sql.raw("(work_item_id IS NOT NULL)")),
+    uniqueIndex("request_participant_submission_person_unique")
+      .on(table.submissionId, table.personId)
+      .where(sql.raw("(submission_id IS NOT NULL)")),
+    check(
+      "request_participant_one_parent",
+      sql.raw("(work_item_id IS NULL) <> (submission_id IS NULL)"),
     ),
   ],
 );
@@ -3057,15 +4829,8 @@ export const watcherTable = pgTable(
 // Issue #28 (attachments) -- `attachments.md`/`data-model.md` §4. Additive: no existing
 // table is altered, so this table carries no data before this migration.
 //
-// `workItemId | commentId | submissionId` is the three-way exclusive CHECK
-// `attachments.md`'s data section documents, but only `work_item_id` gets a real
-// foreign key today: neither the new-model `comment` table (`data-model.md` §4:
-// `work_item_id`, `author_id`, `body jsonb`, ...) nor `submission` exist in this
-// schema yet -- only the unrelated legacy `commentTable` (kaneo's `task_id`-keyed
-// table) does. `commentId`/`submissionId` are reserved, unreferenced columns for now;
-// wiring their FKs is that table's own future migration, not this one's. This PR's
-// routes therefore only ever populate `workItemId`, and `attachments.md`'s "or to a
-// submission"/portal-attach case is out of this slice's scope (see the PR body).
+// `work_item_id | comment_id | submission_id` is the three-way exclusive attachment
+// parent. Each parent is retained with its owning history.
 export const attachmentTable = pgTable(
   "attachment",
   {
@@ -3084,8 +4849,15 @@ export const attachmentTable = pgTable(
       { onDelete: "restrict", onUpdate: "cascade" },
     ),
     workItemId: text("work_item_id"),
-    commentId: text("comment_id"),
-    submissionId: text("submission_id"),
+    commentId: text("comment_id").references(() => commentTable.id, {
+      onDelete: "cascade",
+      onUpdate: "cascade",
+    }),
+    submissionId: text("submission_id").references(() => submissionTable.id, {
+      onDelete: "cascade",
+      onUpdate: "cascade",
+    }),
+    submissionFieldKey: text("submission_field_key"),
     objectKey: text("object_key").notNull(),
     filename: text("filename").notNull(),
     mimeType: text("mime_type").notNull(),
@@ -3110,7 +4882,7 @@ export const attachmentTable = pgTable(
     // cleanup" (`attachment-pending-cleanup`, background-jobs.md).
     index("attachment_pending_idx")
       .on(table.state)
-      .where(sql`${table.state} = 'pending'`),
+      .where(sql.raw("(state = 'pending'::text)")),
     // `data-model.md`'s own "Indexing" section for `attachment`: a `(workspace_id,
     // state)` composite (workspace-scoped state listing) and `(organisation_id)` partial
     // (the per-organisation storage-quota sum).
@@ -3120,20 +4892,20 @@ export const attachmentTable = pgTable(
     ),
     index("attachment_organisationId_idx")
       .on(table.organisationId)
-      .where(sql`${table.organisationId} is not null`),
+      .where(sql.raw("(organisation_id IS NOT NULL)")),
     check(
       "attachment_state_allowed",
-      sql`${table.state} in ('pending', 'ready', 'deleted')`,
+      sql.raw(
+        "state = ANY (ARRAY['pending'::text, 'ready'::text, 'deleted'::text])",
+      ),
     ),
     // `attachments.md`'s data section: "`work_item_id` | `comment_id` | `submission_id`
     // (CHECK exactly one)".
     check(
       "attachment_exactly_one_parent",
-      sql`(
-        (case when ${table.workItemId} is not null then 1 else 0 end) +
-        (case when ${table.commentId} is not null then 1 else 0 end) +
-        (case when ${table.submissionId} is not null then 1 else 0 end)
-      ) = 1`,
+      sql.raw(
+        "((\nCASE\n    WHEN (work_item_id IS NOT NULL) THEN 1\n    ELSE 0\nEND +\nCASE\n    WHEN (comment_id IS NOT NULL) THEN 1\n    ELSE 0\nEND) +\nCASE\n    WHEN (submission_id IS NOT NULL) THEN 1\n    ELSE 0\nEND) = 1",
+      ),
     ),
     // Tenant-safe composite FK, same `(workspace_id, id)` technique `activityTable`
     // uses against the same target unique index (`work_item_workspace_id_id_unique`).
@@ -3314,9 +5086,12 @@ export const auditLogTable = pgTable(
     ),
     check(
       "audit_log_prev_hash_shape",
-      sql`${table.prevHash} ~ '^[0-9a-f]{64}$'`,
+      sql.raw("prev_hash ~ '^[0-9a-f]{64}$'::text"),
     ),
-    check("audit_log_row_hash_shape", sql`${table.rowHash} ~ '^[0-9a-f]{64}$'`),
+    check(
+      "audit_log_row_hash_shape",
+      sql.raw("row_hash ~ '^[0-9a-f]{64}$'::text"),
+    ),
     unique("audit_log_seq_unique").on(table.seq),
     // Opus security review of PR #291, S3: under an isolation level stronger than the
     // codebase's own default (READ COMMITTED) -- REPEATABLE READ or SERIALIZABLE, which
@@ -3387,35 +5162,45 @@ export const pendingActionTable = pgTable(
   (table) => [
     check(
       "pending_action_credential_type_check",
-      sql`${table.credentialType} in ('session', 'api_key')`,
+      sql.raw(
+        "credential_type = ANY (ARRAY['session'::text, 'api_key'::text])",
+      ),
     ),
     check(
       "pending_action_origin_check",
-      sql`${table.origin} in ('web', 'api', 'mcp')`,
+      sql.raw("origin = ANY (ARRAY['web'::text, 'api'::text, 'mcp'::text])"),
     ),
     check(
       "pending_action_action_check",
-      sql`${table.action} in ('delete', 'bulk_delete', 'purge', 'mcp_destructive')`,
+      sql.raw(
+        "action = ANY (ARRAY['delete'::text, 'bulk_delete'::text, 'purge'::text, 'mcp_destructive'::text, 'user_deactivation'::text])",
+      ),
     ),
     check(
       "pending_action_confirmation_check",
-      sql`${table.confirmationRequired} in ('click', 'typed_name', 'typed_count', 'typed_count_step_up', 'typed_name_step_up')`,
+      sql.raw(
+        "confirmation_required = ANY (ARRAY['click'::text, 'typed_name'::text, 'typed_count'::text, 'typed_count_step_up'::text, 'typed_name_step_up'::text])",
+      ),
     ),
     check(
       "pending_action_state_check",
-      sql`${table.state} in ('pending', 'approved', 'denied', 'cancelled', 'expired', 'invalidated', 'executed', 'failed')`,
+      sql.raw(
+        "state = ANY (ARRAY['pending'::text, 'approved'::text, 'denied'::text, 'cancelled'::text, 'expired'::text, 'invalidated'::text, 'executed'::text, 'failed'::text])",
+      ),
     ),
     check(
       "pending_action_invalidation_reason_check",
-      sql`${table.invalidationReason} is null or ${table.invalidationReason} in ('credential_revoked', 'requester_deactivated', 'reach_lost', 'capability_removed', 'version_changed', 'scope_changed')`,
+      sql.raw(
+        "(invalidation_reason IS NULL) OR (invalidation_reason = ANY (ARRAY['credential_revoked'::text, 'requester_deactivated'::text, 'reach_lost'::text, 'capability_removed'::text, 'version_changed'::text, 'scope_changed'::text]))",
+      ),
     ),
     check(
       "pending_action_payload_hash_check",
-      sql`${table.payloadHash} ~ '^[0-9a-f]{64}$'`,
+      sql.raw("payload_hash ~ '^[0-9a-f]{64}$'::text"),
     ),
     check(
       "pending_action_targets_nonempty",
-      sql`cardinality(${table.targetIds}) > 0`,
+      sql.raw("cardinality(target_ids) > 0"),
     ),
     index("pending_action_requester_state_expires_idx").on(
       table.requestedByPersonId,
@@ -3424,11 +5209,11 @@ export const pendingActionTable = pgTable(
     ),
     index("pending_action_workspace_created_idx").on(
       table.workspaceId,
-      table.createdAt.desc(),
+      table.createdAt.desc().nullsFirst(),
     ),
     uniqueIndex("pending_action_one_pending_target_unique")
-      .on(table.requestedByPersonId, table.action, table.targetIds)
-      .where(sql`${table.state} = 'pending'`),
+      .on(table.requestedByPersonId, table.action, table.targetIds, table.state)
+      .where(sql.raw("(state = 'pending'::text)")),
   ],
 );
 
@@ -3481,31 +5266,25 @@ export const stepUpConfirmationTable = pgTable(
   (table) => [
     check(
       "step_up_binding_shape",
-      sql`(${table.bindingKind} = 'pending_action' and ${table.pendingActionId} is not null
-          and ${table.operationKey} is null and ${table.routeKey} is null
-          and ${table.expectedVersion} is null and ${table.bodyHash} is null)
-        or (${table.bindingKind} = 'operation' and ${table.pendingActionId} is null
-          and ${table.operationKey} is not null and ${table.routeKey} is not null
-          and ${table.expectedVersion} is not null and ${table.expectedVersion} >= 1
-          and ${table.bodyHash} is not null and octet_length(${table.bodyHash}) = 32)`,
+      sql.raw(
+        "((binding_kind = 'pending_action'::text) AND (pending_action_id IS NOT NULL) AND (operation_key IS NULL) AND (route_key IS NULL) AND (expected_version IS NULL) AND (body_hash IS NULL)) OR ((binding_kind = 'operation'::text) AND (pending_action_id IS NULL) AND (operation_key IS NOT NULL) AND (route_key IS NOT NULL) AND (expected_version IS NOT NULL) AND (expected_version >= 1) AND (body_hash IS NOT NULL) AND (octet_length(body_hash) = 32))",
+      ),
     ),
     check(
       "step_up_operation_route",
-      sql`${table.operationKey} is null
-        or (${table.operationKey} = 'metrics_token_rotate' and ${table.routeKey} = 'POST /api/instance/observability/metrics-token/rotate')
-        or (${table.operationKey} = 'oidc_group_mapping_create' and ${table.routeKey} = 'POST /api/instance/identity-connections/{id}/oidc-group-mappings')
-        or (${table.operationKey} = 'oidc_group_mapping_update' and ${table.routeKey} = 'PATCH /api/instance/identity-connections/{id}/oidc-group-mappings/{mappingId}')
-        or (${table.operationKey} = 'mfa_reset' and ${table.routeKey} = 'POST /api/instance/users/{id}/reset-mfa')`,
+      sql.raw(
+        "(operation_key IS NULL) OR ((operation_key = 'metrics_token_rotate'::text) AND (route_key = 'POST /api/instance/observability/metrics-token/rotate'::text)) OR ((operation_key = 'identity_connection_create'::text) AND (route_key = 'POST /api/instance/identity-connections'::text)) OR ((operation_key = 'identity_connection_configure'::text) AND (route_key = 'PATCH /api/instance/identity-connections/{id}'::text)) OR ((operation_key = 'oidc_group_mapping_create'::text) AND (route_key = 'POST /api/instance/identity-connections/{id}/oidc-group-mappings'::text)) OR ((operation_key = 'oidc_group_mapping_update'::text) AND (route_key = 'PATCH /api/instance/identity-connections/{id}/oidc-group-mappings/{mappingId}'::text)) OR ((operation_key = 'scim_admin_update'::text) AND (route_key = 'PATCH /api/instance/identity-connections/{id}/scim'::text)) OR ((operation_key = 'scim_token_rotate'::text) AND (route_key = 'POST /api/instance/identity-connections/{id}/scim/rotate-token'::text)) OR ((operation_key = 'scim_token_revoke'::text) AND (route_key = 'POST /api/instance/identity-connections/{id}/scim/revoke-token'::text)) OR ((operation_key = 'mfa_reset'::text) AND (route_key = 'POST /api/instance/users/{id}/reset-mfa'::text)) OR ((operation_key = 'instance_admin_grant'::text) AND (route_key = 'POST /api/instance/users/{id}/grant-admin'::text))",
+      ),
     ),
     check(
       "step_up_state_shape",
-      sql`(${table.state} = 'challenge' and ${table.tokenHash} is null and ${table.authMethod} is null and ${table.authenticatedAt} is null and ${table.issuedAt} is null and ${table.consumedAt} is null and ${table.tokenExpiresAt} is null)
-        or (${table.state} = 'issued' and ${table.tokenHash} is not null and octet_length(${table.tokenHash}) = 32 and ${table.authMethod} is not null and ${table.authMethod} in ('password','totp','backup_code','sso_prompt_login') and ${table.authenticatedAt} is not null and ${table.issuedAt} is not null and ${table.consumedAt} is null and ${table.tokenExpiresAt} is not null)
-        or (${table.state} = 'consumed' and ${table.tokenHash} is not null and octet_length(${table.tokenHash}) = 32 and ${table.authMethod} is not null and ${table.authMethod} in ('password','totp','backup_code','sso_prompt_login') and ${table.authenticatedAt} is not null and ${table.issuedAt} is not null and ${table.consumedAt} is not null and ${table.tokenExpiresAt} is not null)`,
+      sql.raw(
+        "((state = 'challenge'::text) AND (token_hash IS NULL) AND (auth_method IS NULL) AND (authenticated_at IS NULL) AND (issued_at IS NULL) AND (consumed_at IS NULL) AND (token_expires_at IS NULL)) OR ((state = 'issued'::text) AND (token_hash IS NOT NULL) AND (octet_length(token_hash) = 32) AND (auth_method IS NOT NULL) AND (auth_method = ANY (ARRAY['password'::text, 'totp'::text, 'backup_code'::text, 'sso_prompt_login'::text])) AND (authenticated_at IS NOT NULL) AND (issued_at IS NOT NULL) AND (consumed_at IS NULL) AND (token_expires_at IS NOT NULL)) OR ((state = 'consumed'::text) AND (token_hash IS NOT NULL) AND (octet_length(token_hash) = 32) AND (auth_method IS NOT NULL) AND (auth_method = ANY (ARRAY['password'::text, 'totp'::text, 'backup_code'::text, 'sso_prompt_login'::text])) AND (authenticated_at IS NOT NULL) AND (issued_at IS NOT NULL) AND (consumed_at IS NOT NULL) AND (token_expires_at IS NOT NULL))",
+      ),
     ),
     check(
       "step_up_nonce_hash_length",
-      sql`octet_length(${table.challengeNonceHash}) = 32`,
+      sql.raw("octet_length(challenge_nonce_hash) = 32"),
     ),
     index("step_up_session_state_expiry_idx").on(
       table.sessionId,
@@ -3519,7 +5298,126 @@ export const stepUpConfirmationTable = pgTable(
     ),
     uniqueIndex("step_up_token_hash_unique")
       .on(table.tokenHash)
-      .where(sql`${table.tokenHash} is not null`),
+      .where(sql.raw("(token_hash IS NOT NULL)")),
+  ],
+);
+
+export const savedViewTable = pgTable(
+  "saved_view",
+  {
+    id: text("id")
+      .$defaultFn(() => createId())
+      .primaryKey(),
+    workspaceId: text("workspace_id")
+      .notNull()
+      .references(() => workspaceTable.id, {
+        onDelete: "cascade",
+        onUpdate: "cascade",
+      }),
+    createdBy: text("created_by")
+      .notNull()
+      .references(() => personTable.id, {
+        onDelete: "cascade",
+        onUpdate: "cascade",
+      }),
+    name: text("name").notNull(),
+    // The query's own target context -- "a workspace or a project"
+    // (search-and-saved-views.md SV-15). `scopeId` is `workspaceId` itself when
+    // `scope = 'workspace'`, or a project id (validated to belong to `workspaceId` at
+    // write time) when `scope = 'project'`.
+    scope: text("scope").notNull(),
+    scopeId: text("scope_id").notNull(),
+    visibility: text("visibility").notNull().default("private"),
+    sharedWithTeamId: text("shared_with_team_id").references(
+      () => teamTable.id,
+      // TM-7 refuses a direct team deletion while the team owns a shared view. SET NULL
+      // would violate saved_view_team_visibility_consistency because a team-visible view
+      // must retain its shared team. NO ACTION preserves that view while still allowing a
+      // workspace deletion to cascade both the team and its views in one statement.
+      { onDelete: "no action", onUpdate: "cascade" },
+    ),
+    // `{ entity, filter, sort, groupBy, columns, aggregate }` envelope (SV-14).
+    query: jsonb("query").notNull(),
+    layout: text("layout").notNull(),
+    createdAt: timestamp("created_at", { mode: "date" }).defaultNow().notNull(),
+    updatedAt: timestamp("updated_at", { mode: "date" })
+      .defaultNow()
+      .$onUpdate(() => new Date())
+      .notNull(),
+  },
+  (table) => [
+    index("saved_view_workspace_id_idx").on(table.workspaceId),
+    index("saved_view_created_by_idx").on(table.createdBy),
+    index("saved_view_shared_with_team_id_idx").on(table.sharedWithTeamId),
+    check(
+      "saved_view_scope_allowed",
+      sql`${table.scope} in ('workspace', 'project')`,
+    ),
+    check(
+      "saved_view_visibility_allowed",
+      sql`${table.visibility} in ('private', 'team', 'workspace')`,
+    ),
+    check(
+      "saved_view_layout_allowed",
+      sql`${table.layout} in ('board', 'list', 'table', 'calendar', 'timeline', 'chart')`,
+    ),
+    // A team-visibility view must name the team it's shared with, and only a
+    // team-visibility view may.
+    check(
+      "saved_view_team_visibility_consistency",
+      sql`(${table.visibility} = 'team') = (${table.sharedWithTeamId} is not null)`,
+    ),
+  ],
+);
+
+// data-model.md's `user_preference` row, keyed by `person_id` (this codebase's canonical
+// actor identity for organisation-scoped state -- `membership`, `team_member` in the
+// target schema -- as opposed to the legacy `user_id` still used by workspace-membership
+// tables mid-retrofit). "The per-user UI store: layout per project, density, chosen
+// columns, column widths, collapsed groups, pinned views, drafts." Only the pinned-views
+// use (SV-20, via `POST /api/views/{id}/pin`) is wired up in this PR; the table itself is
+// generic so a later lane can reuse it for layout/column/density persistence without a
+// second migration.
+export const userPreferenceTable = pgTable(
+  "user_preference",
+  {
+    id: text("id")
+      .$defaultFn(() => createId())
+      .primaryKey(),
+    personId: text("person_id")
+      .notNull()
+      .references(() => personTable.id, {
+        onDelete: "cascade",
+        onUpdate: "cascade",
+      }),
+    scope: text("scope").notNull(),
+    scopeId: text("scope_id"),
+    key: text("key").notNull(),
+    value: jsonb("value").notNull(),
+    createdAt: timestamp("created_at", { mode: "date" }).defaultNow().notNull(),
+    updatedAt: timestamp("updated_at", { mode: "date" })
+      .defaultNow()
+      .$onUpdate(() => new Date())
+      .notNull(),
+  },
+  (table) => [
+    index("user_preference_person_id_idx").on(table.personId),
+    check(
+      "user_preference_scope_allowed",
+      sql`${table.scope} in ('global', 'workspace', 'project')`,
+    ),
+    // `scope = 'global'` carries no `scope_id` (data-model.md: "`scope_id` null"); the
+    // other two scopes require one. Plain `UNIQUE (person_id, scope, scope_id, key)`
+    // would not actually enforce "at most one row per key" when `scope_id` is null --
+    // Postgres treats NULL as distinct from NULL in a unique constraint -- so the
+    // "at most one" rule is split across two partial unique indexes instead, one per
+    // nullability of `scope_id`.
+    uniqueIndex("user_preference_global_key_unique")
+      .on(table.personId, table.scope, table.key)
+      .where(sql`${table.scopeId} is null`),
+    uniqueIndex("user_preference_scoped_key_unique")
+      .on(table.personId, table.scope, table.scopeId, table.key)
+      .where(sql`${table.scopeId} is not null`),
   ],
 );
 

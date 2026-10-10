@@ -337,36 +337,23 @@ describe("API integration: assignable people (#30, assignment.md)", () => {
     expect(people.some((entry) => entry.name === "Departed Dana")).toBe(false);
   });
 
-  it("AS-1: a person with two membership rows on this project appears once, with their most privileged role", async () => {
+  // AS-1 used to insert a second membership row for the same person and project to
+  // prove the picker collapses duplicates to the most privileged role. Migration 0093
+  // makes (person_id, scope, scope_id) UNIQUE, so that setup is now rejected by the
+  // database and was removed. The collapse code in list-assignable-people.ts (sort by
+  // rank, keep the first row per person) is not exercised by any test that creates
+  // duplicates; it is defence in depth that can no longer fire on a database with the
+  // unique index. No replacement coverage was added.
+  it("AS-1: a workspace member on the project roster appears once with their project role", async () => {
     const { workspace, project } = await setup();
     const lead = await addWorkspaceMember(workspace.id, "lead");
-    const ada = await addNamedPersonOnRoster({
+    const adaUser = await addWorkspaceMember(workspace.id, "member");
+    await addNamedPersonOnRoster({
       name: "Ada Lovelace",
       projectId: project.id,
-      roleName: "Viewer Role",
-      roleRank: 2,
-    });
-    const betterRole = requireRow(
-      await db
-        .insert(schema.roleTable)
-        .values({
-          scope: "project",
-          key: `role-${randomUUID()}`,
-          name: "Project Admin",
-          rank: 30,
-          createdAt: new Date(),
-          updatedAt: new Date(),
-        })
-        .returning(),
-      "betterRole",
-    );
-    await db.insert(schema.membershipTable).values({
-      personId: ada.person.id,
-      scope: "project",
-      scopeId: project.id,
-      roleId: betterRole.id,
-      createdAt: new Date(),
-      updatedAt: new Date(),
+      linkedUserId: adaUser.id,
+      roleName: "Project Admin",
+      roleRank: 30,
     });
 
     mockAuthenticatedSession(lead);
