@@ -70,11 +70,16 @@ const manifest = [
     stage: "fast",
     run: ["pnpm", "check:ui"],
     note:
-      "partial. Only the Radix-tracking half of G1 is enforced so far (scripts/ci/" +
-      "check-ui.mjs) — every real @radix-ui/* / radix-ui import in the repo is listed in " +
-      "KNOWN-RADIX.md's table (today: none). 'No bespoke primitives' and 'no Radix/Base UI " +
-      "import outside packages/ui' still have nothing to be true of until the remaining " +
-      "primitives move out of apps/web/src/components/ui (#9).",
+      "G1b and G1c enforce tracked Radix imports and the empty legacy UI directory; the " +
+      "same check also rejects Base UI imports outside packages/ui.",
+  },
+  {
+    gate: "pnpm check:ui:raw-elements",
+    stage: "fast",
+    run: ["pnpm", "check:ui:raw-elements"],
+    note:
+      "G1a parses JSX in apps/web and rejects raw button/input/select/textarea/dialog " +
+      "elements outside packages/ui, with only a local reasoned ui-exempt comment.",
   },
   {
     gate: "pnpm check:deps",

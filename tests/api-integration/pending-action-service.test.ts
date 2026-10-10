@@ -438,6 +438,128 @@ describe("pending-action service persistence", () => {
     ).toHaveLength(0);
   });
 
+  it.each([null, JSON.stringify({ work_item: ["read"] })])(
+    "PA-9: refuses a personal key without the stored delete scope and writes no side effects (%s)",
+    async (permissions) => {
+      const now = new Date();
+      await db.insert(schema.apikeyTable).values({
+        id: "pending-action-under-scoped-key",
+        referenceId: "user-pending-action-test",
+        key: "test-key-secret",
+        permissions,
+        createdAt: now,
+        updatedAt: now,
+        enabled: true,
+      });
+
+      await expect(
+        createPendingAction({
+          ...requestInput(),
+          credentialType: "api_key",
+          credentialId: "pending-action-under-scoped-key",
+          origin: "api",
+          actorId: "user-pending-action-test",
+          actorType: "api_key",
+        }),
+      ).rejects.toMatchObject({ status: 403 });
+      expect(await db.select().from(schema.pendingActionTable)).toHaveLength(0);
+      expect(
+        await db
+          .select()
+          .from(schema.outboxTable)
+          .where(eq(schema.outboxTable.kind, "pending_action.requested")),
+      ).toHaveLength(0);
+      expect(
+        await db
+          .select()
+          .from(schema.auditLogTable)
+          .where(eq(schema.auditLogTable.action, "pending_action.requested")),
+      ).toHaveLength(0);
+    },
+  );
+
+  it("PA-9: accepts a live personal key only when its stored scope includes delete", async () => {
+    const now = new Date();
+    await db.insert(schema.apikeyTable).values({
+      id: "pending-action-delete-scoped-key",
+      referenceId: "user-pending-action-test",
+      key: "test-key-secret",
+      permissions: JSON.stringify({ work_item: ["delete"] }),
+      createdAt: now,
+      updatedAt: now,
+      enabled: true,
+    });
+
+    const response = await createPendingAction({
+      ...requestInput(),
+      credentialType: "api_key",
+      credentialId: "pending-action-delete-scoped-key",
+      origin: "api",
+      actorId: "user-pending-action-test",
+      actorType: "api_key",
+    });
+
+    expect(response.pendingActionId).toBeTruthy();
+    expect(await db.select().from(schema.pendingActionTable)).toHaveLength(1);
+    expect(
+      await db
+        .select()
+        .from(schema.outboxTable)
+        .where(eq(schema.outboxTable.kind, "pending_action.requested")),
+    ).toHaveLength(1);
+    expect(
+      await db
+        .select()
+        .from(schema.auditLogTable)
+        .where(eq(schema.auditLogTable.action, "pending_action.requested")),
+    ).toHaveLength(1);
+  });
+
+  it.each([
+    ["disabled", false, null],
+    ["expired", true, new Date(Date.now() - 60_000)],
+  ])(
+    "PA-9: refuses a %s API key before pending-action side effects",
+    async (state, enabled, expiresAt) => {
+      const now = new Date();
+      const credentialId = `pending-action-inactive-${state}`;
+      await db.insert(schema.apikeyTable).values({
+        id: credentialId,
+        referenceId: "user-pending-action-test",
+        key: "test-key-secret",
+        permissions: JSON.stringify({ work_item: ["delete"] }),
+        enabled,
+        expiresAt,
+        createdAt: now,
+        updatedAt: now,
+      });
+
+      await expect(
+        createPendingAction({
+          ...requestInput(),
+          credentialType: "api_key",
+          credentialId,
+          origin: "api",
+          actorId: "user-pending-action-test",
+          actorType: "api_key",
+        }),
+      ).rejects.toMatchObject({ status: 403 });
+      expect(await db.select().from(schema.pendingActionTable)).toHaveLength(0);
+      expect(
+        await db
+          .select()
+          .from(schema.outboxTable)
+          .where(eq(schema.outboxTable.kind, "pending_action.requested")),
+      ).toHaveLength(0);
+      expect(
+        await db
+          .select()
+          .from(schema.auditLogTable)
+          .where(eq(schema.auditLogTable.action, "pending_action.requested")),
+      ).toHaveLength(0);
+    },
+  );
+
   it("AU-14: commits the request and outbox when its audit insert fails", async () => {
     const input = requestInput();
     await db

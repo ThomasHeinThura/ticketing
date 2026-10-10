@@ -203,6 +203,29 @@ describe("M2 — three-way gate reconciliation", () => {
     assert.equal(result.status, 0, result.output);
   });
 
+  it("G1a: the raw-element check is declared, enabled, and required to execute", () => {
+    const shipped = repoWithWorkflows("ui-raw-elements");
+    const green = runChecker(shipped, "test-all.mjs", ["--list"]);
+    assert.equal(green.status, 0, green.output);
+
+    const missing = repoWithWorkflows("ui-raw-elements-missing", (repo) => {
+      write(
+        repo,
+        ".github/workflows/ci-fast.yml",
+        readWorkflow(repo)
+          .split("\n")
+          .filter((line) => !line.includes("check:ui:raw-elements"))
+          .join("\n"),
+      );
+    });
+    const red = runChecker(missing, "test-all.mjs", ["--list"]);
+    assert.equal(red.status, 1, red.output);
+    assert.match(
+      red.output,
+      /marks "pnpm check:ui:raw-elements" ENABLED and NO workflow executes it/,
+    );
+  });
+
   it("an unreadable workflow set fails CLOSED", () => {
     const dir = repoWithWorkflows("no-workflows", (repo) => {
       write(repo, ".github/workflows/ci-fast.yml", "# no run steps at all\n");

@@ -42,6 +42,7 @@
     "check:skips": "node ./scripts/ci/check-skips.mjs",
     "check:tokens": "node ./scripts/ci/check-tokens.mjs && node ./scripts/ci/check-contrast.mjs",
     "check:ui": "node ./scripts/ci/check-ui.mjs",
+    "check:ui:raw-elements": "node ./scripts/ci/check-ui.mjs --raw-elements",
     "check:vocabulary": "node ./scripts/ci/check-vocabulary.mjs",
     "check:visual-scope": "node ./scripts/ci/check-visual-scope.mjs",
     "lint:ci": "biome ci .",

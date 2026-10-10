@@ -1,3 +1,111 @@
+### 2026-10-10 · Owner approves G11 speed-calibrated measurement
+
+**Decision:** Thomas approves fixing the G11 measurement **method** by speed calibration.
+Each G11 job runs a fixed, pinned, CPU-bound reference workload in the same browser and the
+same CPU-throttle state as each metric it normalises, derives the runner's speed factor
+relative to a recorded reference value R0, and judges every CPU-bound metric against its
+**unchanged** budget after normalising to reference speed. The CPU model, the calibration
+samples and factor, and both raw and normalised sample sets (including a retry's first set)
+are logged. The statistic stays the median of three with one retry set; best-of-N is never
+used. A speed factor or calibration spread outside its bound fails the job closed.
+
+**Source:** Thomas, directly to the Claude Opus conductor session, 2026-10-10.
+
+**Scope:** the method only. Budgets, workloads, row/card counts, CPU and network throttling,
+sample counts and the retry rule are unchanged, and no budget is lowered or raised. It narrows
+the earlier owner directive, Thomas's relayed P0 runtime-convergence instruction (policy
+session 412b91f1, about 17:06 UTC 2026-10-09: "No security waiver, fabricated evidence,
+performance-threshold change, production action or premature merge is authorized"), only as to
+**method**; thresholds remain Thomas-only. It supersedes the G11 sampling text that treated
+absolute millisecond medians on an uncalibrated runner as the whole measurement
+(`docs/02-design/ux-quality-gates.md` G11 harness table, and the 2026-10-01 G11
+failure-evidence entry's "does not change ... marks, throttles, fixtures, retry policy" scope
+as it applies to the judged value). It does not supersede that entry's trace and
+network-summary rules.
+
+**Reference class (Thomas, 2026-10-10, directly to the conductor):** the unchanged G11 budgets
+refer to the **FAST** hosted runner class, so R0 is the fast-class reference. Consequence: a
+slow-class runner is judged as if it ran at fast-class speed, so its raw failures caused by
+runner speed are normalised away, while a fast-class runner is judged essentially raw and a
+faster-than-reference runner is judged more strictly. A product that only meets its budget on
+fast hardware still passes. Normalisation can mask a regression by at most `F^k` (`k ≤ 1`),
+and F is capped by the clamp at 1.75; the unscaled network floor is kept. A regression smaller
+than the residual calibration noise can still pass. Runner-class drift inside the 0.75–1.75
+clamp shifts what the budgets mean, because the job still passes the clamp; the factor is
+logged per job so drift can be monitored. R0 rests on only three FAST jobs (unthrottled n = 6
+sets, throttled n = 21 sets) and must be re-recorded if the hosted runner pool changes.
+
+**Pinned values:** R0 unthrottled 51.65 ms and throttled 230.7 ms, each the median of all
+calibration set medians (unthrottled n = 6, throttled n = 21) from the three FAST collection
+runs, recorded with the workload source SHA-256 and a SHA-256 of the workload options (rows,
+columns, runs, warm-ups) as literal strings, compared at run time with hashes computed live, so
+editing the workload or an option fails the gate until R0 is re-recorded; both throttle states
+must be pinned together. The factor is one per throttle state per job, from the median of three
+calibration batches taken at job start and reused for every set, retries included. The post-DCL
+floor must satisfy 0 < DCL < LCP. Per-metric
+sensitivities `k = ln(r_metric)/ln(r_cal)`, clamped to [0, 1] and floored to two decimals, are
+recorded with their evidence in `scripts/ci/lib/performance-calibration.mjs` and
+`docs/02-design/ux-quality-gates.md`. The factor clamp is 0.75–1.75 and the per-batch spread bound 0.55, set
+from the observed collection distribution (65 hosted calibration sets, 27 fast and 38 slow;
+spread up to 0.392 fast and 0.433 slow with two warm-ups; warm-ups were not raised because that
+would invalidate the recorded R0).
+
+**Calibration evidence (not gate evidence):** `workflow_dispatch` "CI - full" on
+`claude/g11-calibration-602` at `2c52f65c`, raw gating, calibration-only. FAST, G11 PASS: run
+37976720914 (job 113976781168), run 37977779990 (job 113980309611), run 37978934788 (job
+113984215185). SLOW, G11 FAIL, used only for the class ratio and sensitivities: run 37972321719
+(job 113961809231), run 37973730948 (job 113966606217), run 37974125393 (job 113971494970).
+The class evidence comes from the variance diagnosis of PR #602 at
+`66c736e71c87b2372ba1cbf8250236ac37191565`: main-equivalent code passed G11 on 8 of 11
+fast-class jobs and 0 of 25 slow-class jobs, and unthrottled list render correlated r=0.97 with
+LCP. None of these six runs is a calibrated gate result or a merge claim.
+
+**Historical results:** the G11 results (66c736e7 attempt-1 FAIL, rerun PASS, run
+37967068981 FAIL) remain as measured under the old, uncalibrated method. They are not
+re-judged, relabelled, or converted to passes by this decision.
+
+**Recorded by:** Claude Sonnet implementation worker for the Claude Opus conductor session,
+from Thomas's direct decisions to that session, 2026-10-10.
+
+### 2026-10-09 · Permit a narrow P0 strict-terminal diagnostic witness
+
+**Decision:** Thomas explicitly approves a bounded strict-terminal diagnostic witness to
+resolve per-request attribution gaps in the P0 strict shadow proof. The existing
+`http.request` structured log may carry only an opaque server-generated request id, exact
+registered route and policy-source identifiers, the strict evaluator's decision category,
+and the finite persisted-scope provenance validation result. The request id may be exposed
+in `x-taskdesk-request-id` to bind immutable acquisition receipts to the matching log; inbound
+request-id headers are never trusted or reused.
+
+The witness contains no credentials, request/response payload, raw tenant/resource/row/actor
+ids or facts, reach details, or arbitrary text. It is not a new message/event key, audit or
+outbox event, database field/table, configuration, dependency, capability, or authorization
+input. It does not change authorization behavior, event/tally cardinality, acceptance rules,
+or the requirement that genuinely unexplained outcomes fail. The V25 private proof may explain
+only a one-to-one request/event match with exact source binding and independently explicit
+legacy agreement; it may not infer agreement from HTTP status. Existing V24 failed evidence
+remains immutable and is not relabeled.
+
+**Recorded:** orchestrator, Thomas's explicit approval in this task, 2026-10-09.
+
+### 2026-10-06 · Keep self-only personal writes session-only until explicit API-key scopes exist
+
+**Decision:** Thomas explicitly approves “Make self writes session-only (recommended)” for
+the identified API self-write class. API-key and MCP-key credentials cannot create, update,
+read-mark, or delete the caller's notifications; mutate the caller's notification preferences
+or workspace notification rules; or upload/delete the caller's avatar. These mutations require
+a real browser session and use the existing `requireSessionOnly()` guard. Existing session
+behavior is preserved. Read-only self routes remain unchanged. This applies whether the key is
+personal, MCP-flagged, or otherwise; self-row ownership does not bypass AK-9's read-only default.
+
+No notification, notification-preference, or avatar capability is invented. Reopening API-key
+write access requires a separately registered capability and explicit policy/schema contract.
+This resolves the known self-write eligibility class for these endpoints; it does not change
+workspace or instance key scopes, nor claim the #592 legacy-scope remediation is independently
+reviewed or stage-complete.
+
+**Recorded:** orchestrator, Thomas's explicit approval in this task, 2026-10-06.
+
 ### 2026-10-05 · Suppress the historical public TOTP test vector by exact fingerprint
 
 Add only `69e61dd56c18bdbb90149f470d9a6615a9d28272:apps/web/e2e/mfa-csrf-journey.spec.ts:generic-api-key:13` to `.gitleaksignore`. The finding is in an already-pushed historical commit; its value is an `otpauth` test URI whose Base32 secret decodes to the published RFC 6238 test-vector bytes. The current source still contains the same public deterministic test-vector literal at `apps/web/e2e/mfa-csrf-journey.spec.ts:16`; the historical commit records it at line 13. The test uses the RFC timestamp `59000` and asserts the published vector output before it provisions the test app. Preserve history and suppress this finding by its exact fingerprint only; do not ignore the path or rule.

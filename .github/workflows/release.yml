@@ -260,6 +260,48 @@ jobs:
         with:
           cosign-release: v3.0.5
 
+      - name: Check out the selected release source for the deployment archive
+        if: needs.build-scan.outputs.is_release == 'true'
+        uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5.1.0
+        with:
+          ref: ${{ needs.build-scan.outputs.source_sha }}
+          persist-credentials: false
+
+      - name: Build the versioned deployment archive and checksum
+        if: needs.build-scan.outputs.is_release == 'true'
+        env:
+          VERSION: ${{ needs.build-scan.outputs.version }}
+          SOURCE_SHA: ${{ needs.build-scan.outputs.source_sha }}
+        run: |
+          set -Eeuo pipefail
+          tag="v${VERSION}"
+          archive="taskdesk-${tag}.tar.gz"
+          root="taskdesk-${tag}"
+          git cat-file -e "${SOURCE_SHA}^{commit}"
+          git archive --format=tar --prefix="${root}/" "${SOURCE_SHA}" \
+            compose.yml deploy scripts/deploy.sh scripts/lib/local-certificate.sh | gzip -n > "$archive"
+          [[ -s "$archive" ]]
+          sha256sum "$archive" > "${archive}.sha256"
+          [[ "$(awk 'NR == 1 { print $2 }' "${archive}.sha256")" == "$archive" ]]
+
+      - name: Sign and verify release archive and checksum bundles
+        if: needs.build-scan.outputs.is_release == 'true'
+        env:
+          VERSION: ${{ needs.build-scan.outputs.version }}
+        run: |
+          set -Eeuo pipefail
+          tag="v${VERSION}"
+          archive="taskdesk-${tag}.tar.gz"
+          checksum="${archive}.sha256"
+          identity="https://github.com/${GITHUB_REPOSITORY}/.github/workflows/release.yml@refs/heads/main"
+          for artifact in "$archive" "$checksum"; do
+            bundle="${artifact}.sigstore.json"
+            cosign sign-blob --yes --bundle "$bundle" "$artifact"
+            cosign verify-blob --bundle "$bundle" \
+              --certificate-oidc-issuer https://token.actions.githubusercontent.com \
+              --certificate-identity "$identity" "$artifact" >/dev/null
+          done
+
       # Each job has a fresh Docker config. Log in here before cosign writes
       # signatures to GHCR; build-scan's registry credentials do not carry over.
       - name: Log in to GitHub Container Registry for signing
@@ -398,5 +440,9 @@ jobs:
           fi
           gh release create "$tag" "${release_args[@]}"
           gh release upload "$tag" \
+            "taskdesk-${tag}.tar.gz" \
+            "taskdesk-${tag}.tar.gz.sha256" \
+            "taskdesk-${tag}.tar.gz.sigstore.json" \
+            "taskdesk-${tag}.tar.gz.sha256.sigstore.json" \
             "sboms/taskdesk-${VERSION}-linux-amd64.cdx.json" \
             "sboms/taskdesk-${VERSION}-linux-arm64.cdx.json"

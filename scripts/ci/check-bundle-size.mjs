@@ -75,6 +75,17 @@ export function resolveEntries(manifest, { defaultRole = "agent" } = {}) {
 }
 
 export function collectInitialAssets(manifest, entryKey) {
+  const initialModules = collectInitialModules(manifest, entryKey);
+  const assets = new Set();
+  for (const key of initialModules) {
+    const item = manifest[key];
+    assets.add(item.file);
+    for (const css of item.css ?? []) assets.add(css);
+  }
+  return [...assets];
+}
+
+export function collectInitialModules(manifest, entryKey) {
   const seen = new Set();
   const visit = (key) => {
     if (seen.has(key)) return;
@@ -84,13 +95,23 @@ export function collectInitialAssets(manifest, entryKey) {
     for (const imported of item.imports ?? []) visit(imported);
   };
   visit(entryKey);
-  const assets = new Set();
-  for (const key of seen) {
-    const item = manifest[key];
-    assets.add(item.file);
-    for (const css of item.css ?? []) assets.add(css);
+  return seen;
+}
+
+export function assertDynamicModuleOutsideInitialGraphs(
+  manifest,
+  entryKeys,
+  moduleKey,
+) {
+  const module = manifest[moduleKey];
+  if (!module?.isDynamicEntry)
+    throw new Error(`${moduleKey} is not a dynamic build entry.`);
+  for (const entryKey of entryKeys) {
+    if (collectInitialModules(manifest, entryKey).has(moduleKey))
+      throw new Error(
+        `${moduleKey} entered the ${entryKey} initial static graph.`,
+      );
   }
-  return [...assets];
 }
 
 export async function measureAssets(assets, outputDir) {
@@ -165,6 +186,20 @@ export async function checkBundleSizes({
           throw new Error(
             `G11 work-list route bundle is missing from the Vite manifest (expected a key ending in ${WORK_LIST_COMPONENT_SUFFIX}).`,
           );
+        const createFormKey = Object.keys(manifest).find((candidate) =>
+          candidate.endsWith(
+            "/components/work-item/create-work-item-dialog-form.tsx",
+          ),
+        );
+        if (!createFormKey)
+          throw new Error(
+            "G11 create-work-item dialog form is missing from the agent build manifest.",
+          );
+        assertDynamicModuleOutsideInitialGraphs(
+          manifest,
+          [key, workRouteKey],
+          createFormKey,
+        );
         const workListAssets = new Set([
           ...measurement.assets,
           ...collectInitialAssets(manifest, workRouteKey),

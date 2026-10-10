@@ -30,16 +30,8 @@ const getWorkflowRulesRoute = createRoute({
   request: { params: projectIdParam },
   responses: {
     200: jsonResponse("List of workflow rules", workflowRuleListSchema),
-    // #290: an out-of-reach project now gets this identical 400 too, not the 403
-    // `workspaceAccess.fromProject` used to answer for it (#202's own precedent).
-    400: errorResponse(
-      "Unknown project, or its workspace could not be determined",
-    ),
-    // #202: newly reachable. This route answered 200 with an empty list for a
-    // soft-deleted project until #202; it now answers 404. A *nonexistent or
-    // out-of-reach* project answers the 400 above -- `workspaceAccess.fromProject`
-    // fails before the handler runs -- so 404 on this route means "soft-deleted".
-    404: errorResponse("Project not found"),
+    400: errorResponse("Malformed project ID (including a NUL byte)"),
+    404: errorResponse("Project not found or out of reach"),
   },
 });
 

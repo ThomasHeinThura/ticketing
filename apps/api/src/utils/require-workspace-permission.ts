@@ -6,6 +6,7 @@ import {
   markShadowLegacyAuthorizationUnknown,
   setShadowLegacyAuthorization,
 } from "../permissions/shadow-context";
+import { apiKeyHasPermissionScope } from "./require-api-key-permission-scope";
 import {
   type MembershipRoleResolution,
   resolveMembershipRole,
@@ -89,12 +90,7 @@ export async function hasWorkspacePermission(
   const workspaceId = c.get("workspaceId");
   if (!workspaceId) return false;
 
-  const apiKey = c.get("apiKey") as
-    | { permissions?: Record<string, string[]> | null }
-    | undefined;
-  if (apiKey?.permissions && !satisfies(apiKey.permissions, permissions)) {
-    return false;
-  }
+  if (!apiKeyHasPermissionScope(c, permissions)) return false;
 
   const userId = c.get("userId");
   if (!userId) return false;
@@ -234,10 +230,7 @@ export function requireWorkspacePermission(permissions: PermissionMap) {
       });
     }
 
-    const apiKey = c.get("apiKey") as
-      | { permissions?: Record<string, string[]> | null }
-      | undefined;
-    if (apiKey?.permissions && !satisfies(apiKey.permissions, permissions)) {
+    if (!apiKeyHasPermissionScope(c, permissions)) {
       setShadowLegacyAuthorization(c, "denied");
       throw new HTTPException(403, { message: "Insufficient API key scope" });
     }

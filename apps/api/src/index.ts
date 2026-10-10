@@ -76,7 +76,11 @@ import pendingAction from "./pending-action";
 // all (presence only, always on); `runNextWithPolicyShadow` is the shadow-mode ALLOW/DENY
 // comparison, off by default. See the call sites below and each file's own header comment.
 import { assertRouteIsClassified } from "./permissions/route-classification-guard";
-import { setShadowLegacyAuthorization } from "./permissions/shadow-context";
+import {
+  ensurePolicyRequestId,
+  setShadowLegacyAuthorization,
+  strictPolicyWitness,
+} from "./permissions/shadow-context";
 import {
   declareCatchAllMiddleware,
   runNextWithPolicyShadow,
@@ -121,7 +125,10 @@ import {
   parseConfiguredOrigins,
   selectOriginFromContext,
 } from "./utils/request-origin";
-import { assertCallerHasCapability } from "./utils/require-workspace-capability";
+import {
+  assertCallerHasCapability,
+  capabilityCredential,
+} from "./utils/require-workspace-capability";
 import { seedDefaultWorkspaceRoles } from "./utils/seed-default-workspace-roles";
 import { seedInternalOrganisationAndStaffPersons } from "./utils/seed-internal-organisation";
 import { reachableWorkspacePredicate } from "./utils/workspace-access-middleware";
@@ -418,6 +425,8 @@ export function createApp(
     c: Context<AppVariables>,
     next: Next,
   ) => {
+    const requestId = ensurePolicyRequestId(c);
+    c.header("x-taskdesk-request-id", requestId);
     const startedAt = performance.now();
     const release = beginObservedRequest();
     try {
@@ -438,6 +447,8 @@ export function createApp(
         route: registeredRoute,
         status: c.res.status,
         durationMs: Math.max(0, performance.now() - startedAt),
+        requestId,
+        strictPolicyWitness: strictPolicyWitness(c) ?? undefined,
       });
     }
   };
@@ -1161,6 +1172,7 @@ export function createApp(
           asset.workspaceId,
           c.get("userId"),
           "workspace:read",
+          capabilityCredential(c.get("apiKey")),
         );
       } catch (error) {
         if (error instanceof HTTPException && error.status === 403) {

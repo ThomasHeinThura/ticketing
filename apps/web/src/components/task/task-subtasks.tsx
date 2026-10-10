@@ -319,7 +319,8 @@ function TaskSubtasks({
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-1.5">
             <CollapsibleTrigger asChild>
-              <button
+              <Button
+                variant="ghost"
                 type="button"
                 className="flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground transition-colors"
               >
@@ -329,7 +330,7 @@ function TaskSubtasks({
                   <ChevronRight className="size-4" />
                 )}
                 <span>{t("tasks:subtasks.title")}</span>
-              </button>
+              </Button>
             </CollapsibleTrigger>
             {totalCount > 0 && (
               <span className="flex items-center gap-1.5 ml-0.5">

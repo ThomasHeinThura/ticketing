@@ -30,6 +30,22 @@ describe("Input", () => {
     expect(screen.getByRole("textbox", { name: "Full name" })).toBeDisabled();
   });
 
+  it("applies native input classes to the input when requested", () => {
+    render(
+      <Input
+        aria-label="Task title"
+        nativeInput
+        nativeInputClassName="font-heading text-[2rem]"
+        unstyled
+      />,
+    );
+
+    expect(screen.getByRole("textbox", { name: "Task title" })).toHaveClass(
+      "font-heading",
+      "text-[2rem]",
+    );
+  });
+
   it("has no accessibility violations", async () => {
     const { baseElement } = render(
       <Input aria-label="Full name" placeholder="Jane Doe" />,

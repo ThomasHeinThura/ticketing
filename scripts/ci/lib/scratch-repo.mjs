@@ -23,7 +23,7 @@
  * a real `git fetch` leaves behind.
  */
 
-import { spawnSync } from "node:child_process";
+import { execFileSync, spawnSync } from "node:child_process";
 import {
   cpSync,
   mkdirSync,
@@ -40,6 +40,28 @@ import { repoRoot } from "./repo.mjs";
 const NODE = process.execPath;
 
 const created = [];
+
+/** Copy the tracked checker source snapshot, never transient files in the live tree. */
+export function copyTrackedCheckerSources(sourceRoot, targetRoot) {
+  const tracked = execFileSync("git", ["ls-files", "-z", "--", "scripts/ci"], {
+    cwd: sourceRoot,
+    encoding: "utf8",
+  })
+    .split("\0")
+    .filter(Boolean)
+    .filter(
+      (file) =>
+        !file.endsWith(".test.mjs") && !file.startsWith("scripts/ci/probes/"),
+    );
+
+  for (const file of tracked) {
+    const source = path.join(sourceRoot, file);
+    const target = path.join(targetRoot, file);
+    mkdirSync(path.dirname(target), { recursive: true });
+    cpSync(source, target);
+  }
+  return tracked;
+}
 
 /** A fresh temporary directory, removed by `cleanUpScratchRepos()`. */
 export function scratchDir(prefix) {
@@ -102,15 +124,11 @@ export function setOriginMain(dir, sha) {
 }
 
 /**
- * Copy `scripts/ci/` (minus the tests and the probes themselves) into the scratch repo,
- * so the checker that runs there is byte-for-byte the one this branch ships.
+ * Copy tracked `scripts/ci/` checker sources (minus tests and probes) into the scratch repo,
+ * so transient files in the live tree cannot race the copy and checker bytes stay exact.
  */
 export function installCheckers(dir) {
-  cpSync(path.join(repoRoot, "scripts/ci"), path.join(dir, "scripts/ci"), {
-    recursive: true,
-    filter: (source) =>
-      !source.endsWith(".test.mjs") && !source.includes(`${path.sep}probes`),
-  });
+  copyTrackedCheckerSources(repoRoot, dir);
 
   // A5: `check-skips`, `check-env`, `check-vocabulary` and `check-overrides` derive the
   // directories they scan from pnpm-workspace.yaml, and they FAIL CLOSED when it cannot

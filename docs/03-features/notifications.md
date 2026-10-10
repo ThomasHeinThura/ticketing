@@ -413,15 +413,15 @@ screens.
 
 ```
 GET    /api/notification                                      (self)
-POST   /api/notification                                      (self; integration notification)
-PATCH  /api/notification/{id}/read                           (self)
-PATCH  /api/notification/read-all                             (self)
+POST   /api/notification                                      (self; integration notification; browser session only)
+PATCH  /api/notification/{id}/read                           (self; browser session only)
+PATCH  /api/notification/read-all                             (self; browser session only)
 PATCH  /api/notification/{id}/unread                          (self; target route for NO-15)
-DELETE /api/notification/clear-all                            (self)
+DELETE /api/notification/clear-all                            (self; browser session only)
 GET    /api/notification-preferences                         (self)
-PUT    /api/notification-preferences                         (self)
-PUT    /api/notification-preferences/workspaces/{workspaceId} (self; workspace reach checked)
-DELETE /api/notification-preferences/workspaces/{workspaceId} (self; workspace reach checked)
+PUT    /api/notification-preferences                         (self; browser session only)
+PUT    /api/notification-preferences/workspaces/{workspaceId} (self; workspace reach checked; browser session only)
+DELETE /api/notification-preferences/workspaces/{workspaceId} (self; workspace reach checked; browser session only)
 PUT    /api/notification-preferences/projects/{projectId}    (self; project reach checked)
 DELETE /api/notification-preferences/projects/{projectId}    (self; project reach checked)
 POST   /api/public/agent/notification-preference-handoffs     (public; signed token body; short-lived server-side handoff only)
@@ -435,6 +435,18 @@ GET    /api/instance/deliveries                               instance:admin
 POST   /api/instance/deliveries/{id}/requeue                  instance:admin
 DELETE /api/instance/deliveries/{id}                          instance:admin
 ```
+
+The browser-session restriction on agent-side self writes is a key-eligibility rule:
+`self` limits the affected person but is not an API-key write capability. Reads remain
+self-scoped and follow the key's stored read-capability subset. The 2026-10-06 decision-log
+entry records this rule. Portal routes retain their separate customer session contract.
+
+Until a per-user resource has an explicitly registered API-key capability and scope, its
+self-only mutations require a browser session. This includes creating, marking and deleting
+in-app notifications, changing notification preferences or workspace rules, and uploading or
+deleting the caller's avatar. The `self` route policy continues to constrain whose row is
+touched; it does not grant a key mutation right. Reopening these writes requires a separate
+capability and policy decision, not an arbitrary stored permission string.
 
 The mark-unread route is a target route required by `NO-15`; it must use the same recipient
 and task-reach checks as mark-read. Project preference overrides use the same per-person

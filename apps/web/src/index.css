@@ -25,14 +25,6 @@ input:-webkit-autofill:active {
     contain-intrinsic-block-size: calc(var(--spacing) * 4.5);
   }
 
-  /* Keep every sortable card mounted, but let the browser defer card descendants
-     outside the board's scrollport until they approach the viewport. The intrinsic
-     estimate follows the compact single-line card geometry; once measured, `auto`
-     retains the card's actual size for later scrolls and drag measurements. */
-  .kanban-board-task-card {
-    content-visibility: auto;
-    contain-intrinsic-block-size: auto calc(var(--spacing) * 24);
-  }
 }
 
 @custom-variant dark (&:is(.dark *));

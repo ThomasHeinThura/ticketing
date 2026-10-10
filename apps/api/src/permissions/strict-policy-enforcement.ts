@@ -2,6 +2,7 @@ import {
   evaluatePolicy,
   instanceScope,
   isCapabilityPolicy,
+  isResolvedScope,
   isSelfPolicy,
   NO_PERSON_PARAMETER,
   NO_SINGLE_RESOURCE,
@@ -23,10 +24,21 @@ import {
 import { and, eq } from "drizzle-orm";
 import type { Context, Next } from "hono";
 import { HTTPException } from "hono/http-exception";
+import { findAssetWorkspaceScope } from "../asset/repository";
 import db, { schema } from "../database";
+import type { RegisteredHttpRoute } from "../observability/metrics.js";
 import { policyRegistry } from "../policy-registry";
+import { rejectNulByte } from "../utils/reject-nul-byte";
+import {
+  type ApiKeyPermissionScope,
+  apiKeyCapabilitySubset,
+} from "../utils/require-api-key-permission-scope";
 import { enforcedPolicySources } from "./enforcement-config";
 import { resolveIdentity } from "./resolve-identity";
+import {
+  ensurePolicyRequestId,
+  setStrictPolicyWitness,
+} from "./shadow-context";
 import { attributedMatchedRoute } from "./shadow-middleware";
 
 type RuntimeContext = Context;
@@ -39,6 +51,7 @@ type RegisteredRoute = {
 type ScopeEvidence = {
   readonly workspaceId?: string;
   readonly workspaceIdSource?: "row" | "request";
+  readonly reachWorkspaceId?: string;
   readonly projectId?: string;
   readonly projectIdFromRequest?: string;
   readonly workItemId?: string;
@@ -95,7 +108,7 @@ async function identityFor(
   if (!userId) return null;
 
   const apiKey = c.get("apiKey") as
-    | { id: string; userId: string; enabled: boolean }
+    | ({ id: string; userId: string; enabled: boolean } & ApiKeyPermissionScope)
     | undefined;
   const session = c.get("session") as
     | { id?: string; impersonatedBy?: string | null }
@@ -115,6 +128,7 @@ async function identityFor(
           apiKey: {
             enabled: apiKey.enabled,
             ownerUserId: apiKey.userId,
+            capabilities: apiKeyCapabilitySubset(apiKey),
           },
         }
       : {}),
@@ -361,6 +375,47 @@ async function loadAuthoritativeEvidence(
   }
 
   let evidence = initial;
+  if (
+    entry.source === "apps/api/src/asset/policy.ts" &&
+    policy.scope === "workspace" &&
+    policy.scopeSource === "row"
+  ) {
+    const assetId = c.req.param("id");
+    if (!assetId) refuse(404);
+    rejectNulByte(assetId, "Asset id");
+    const asset = await findAssetWorkspaceScope(assetId);
+    if (!asset) refuse(404);
+    evidence = {
+      ...evidence,
+      workspaceId: asset.workspaceId,
+      workspaceIdSource: "row",
+      reachWorkspaceId: asset.projectWorkspaceId,
+    };
+  }
+  if (policy.scope === "workspace" && policy.scopeSource === "row") {
+    if (!evidence.workspaceId) refuse(500);
+    if (evidence.workspaceIdSource === "request") {
+      // A path/query/body id is not row evidence by itself. The workspace
+      // access middleware has already applied the route's native reach check;
+      // load the exact addressed workspace before the strict terminal boundary
+      // so the evaluator can use the policy's declared row provenance. This
+      // also preserves the compound detail route's existing 404 for a missing
+      // workspace without allowing a request id to masquerade as a loaded row.
+      const [workspace] = await db
+        .select({ id: schema.workspaceTable.id })
+        .from(schema.workspaceTable)
+        .where(eq(schema.workspaceTable.id, evidence.workspaceId))
+        .limit(1);
+      if (!workspace) refuse(404);
+      evidence = {
+        ...evidence,
+        workspaceId: workspace.id,
+        workspaceIdSource: "row",
+      };
+    } else if (evidence.workspaceIdSource !== "row") {
+      refuse(500);
+    }
+  }
   if (policy.scope === "work_item") {
     if (
       policy.scopeSource !== "row" ||
@@ -530,8 +585,10 @@ async function buildContext(
         (identity.reach.kind === "organisation" &&
           identity.reach.ids.includes(evidence.organisationId ?? ""));
     } else if (policy.scope === "workspace") {
-      inReach = evidence.workspaceId
-        ? workspaceReach(identity, evidence.workspaceId)
+      const reachWorkspaceId =
+        evidence.reachWorkspaceId ?? evidence.workspaceId;
+      inReach = reachWorkspaceId
+        ? workspaceReach(identity, reachWorkspaceId)
         : undefined;
     } else if (policy.scope === "project" || policy.scope === "work_item") {
       inReach = await projectReach(identity, evidence, policy.scope);
@@ -657,6 +714,38 @@ export async function enforceRegisteredPolicy(
     decision = evaluatePolicy(entry.policy, context);
   } catch {
     refuse(500);
+  }
+  const provenanceValidationResult =
+    entry.kind === "public" || entry.kind === "delegated"
+      ? "not_applicable"
+      : entry.kind === "capability" &&
+          isCapabilityPolicy(entry.policy) &&
+          (entry.policy.scope === "instance"
+            ? isResolvedScope(context.scope) &&
+              context.scope.kind === "instance"
+            : isResolvedScope(context.scope) &&
+              context.scope.kind === entry.policy.scope &&
+              !(
+                decision.allowed === false &&
+                (decision.code === "scope_source_mismatch" ||
+                  decision.code === "scope_mismatch")
+              ))
+        ? "complete"
+        : entry.kind === "self" || entry.kind === "portal"
+          ? "not_applicable"
+          : "failed";
+  if (
+    (provenanceValidationResult === "complete" ||
+      provenanceValidationResult === "not_applicable") &&
+    (decision.allowed || decision.status !== 500)
+  ) {
+    setStrictPolicyWitness(c, {
+      requestId: ensurePolicyRequestId(c),
+      route: routeKey as RegisteredHttpRoute,
+      policySource: entry.source,
+      decisionCategory: decision.allowed ? "allowed" : "denied",
+      provenanceValidationResult,
+    });
   }
   if (!decision.allowed) refuse(decision.status);
 

@@ -17,6 +17,7 @@ import { requireWorkspaceCreationAllowed } from "../utils/require-session";
 import { requireSessionOnly } from "../utils/require-session-only";
 import {
   assertCallerHasCapability,
+  capabilityCredential,
   requireWorkspaceCapability,
 } from "../utils/require-workspace-capability";
 import { requireWorkspaceMembership } from "../utils/require-workspace-membership";
@@ -803,6 +804,7 @@ const workspace = apiRouter<BaseVariables & { workspaceId: string }>()
         c.get("workspaceId"),
         c.get("userId"),
         "workspace:read",
+        capabilityCredential(c.get("apiKey")),
       );
     } catch (error) {
       if (error instanceof HTTPException && error.status === 403) {

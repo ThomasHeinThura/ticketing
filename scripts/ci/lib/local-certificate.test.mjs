@@ -24,7 +24,10 @@ const helper = path.join(root, "scripts/lib/local-certificate.sh");
 function runHelper(certDir, domain, extraEnv = {}) {
   return spawnSync(
     "bash",
-    ["-euc", `. "${helper}"; prepare_local_certificate "$CERT_DIR" "$DOMAIN"`],
+    [
+      "-euc",
+      `. "${helper}"; prepare_local_certificate "$CERT_DIR" "$DOMAIN" "\${TASKDESK_AGENT_HOST:-ticket.$DOMAIN}" "\${TASKDESK_PORTAL_HOST:-portal.$DOMAIN}" "\${TASKDESK_FILES_HOST:-files.$DOMAIN}"`,
+    ],
     {
       encoding: "utf8",
       env: { ...process.env, CERT_DIR: certDir, DOMAIN: domain, ...extraEnv },
@@ -98,6 +101,52 @@ describe("local TLS certificate generation", () => {
         "local.crt",
         "local.key",
       ]);
+    } finally {
+      await rm(temp, { recursive: true, force: true });
+    }
+  });
+
+  it("includes and validates explicitly overridden route hostnames", async () => {
+    const temp = await mkdtemp(
+      path.join(os.tmpdir(), "taskdesk-local-cert-overrides-"),
+    );
+    const certDir = path.join(temp, "certs");
+    try {
+      const result = runHelper(certDir, "dev.example.test", {
+        TASKDESK_AGENT_HOST: "agent.custom.test",
+        TASKDESK_PORTAL_HOST: "portal.custom.test",
+        TASKDESK_FILES_HOST: "files.custom.test",
+      });
+      assert.equal(result.status, 0, result.stderr);
+      for (const host of [
+        "agent.custom.test",
+        "portal.custom.test",
+        "files.custom.test",
+      ]) {
+        assert.match(
+          openssl([
+            "x509",
+            "-in",
+            path.join(certDir, "local.crt"),
+            "-noout",
+            "-checkhost",
+            host,
+          ]),
+          / does match certificate/,
+        );
+      }
+      const rejected = runHelper(
+        path.join(temp, "bad-certs"),
+        "dev.example.test",
+        {
+          TASKDESK_AGENT_HOST: "bad,DNS:attacker.test",
+        },
+      );
+      assert.notEqual(rejected.status, 0);
+      assert.deepEqual(
+        await readdir(path.join(temp, "bad-certs")).catch(() => []),
+        [],
+      );
     } finally {
       await rm(temp, { recursive: true, force: true });
     }

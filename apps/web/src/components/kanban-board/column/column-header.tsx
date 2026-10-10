@@ -1,3 +1,4 @@
+import { Button } from "@taskdesk/ui";
 import type { TFunction } from "i18next";
 import { produce } from "immer";
 import { Archive, Plus } from "lucide-react";
@@ -66,24 +67,26 @@ export function ColumnHeader({ column, t, onCreateTask }: ColumnHeaderProps) {
 
       <div className="flex items-center">
         {canTask && column.isFinal && column.tasks.length > 0 && (
-          <button
+          <Button
+            variant="ghost"
             type="button"
             onClick={() => setIsArchiveModalOpen(true)}
             className="flex items-center rounded-md px-2 py-1 text-left text-muted-foreground transition-colors hover:bg-accent/50"
             title={t("tasks:listView.archiveAllTooltip")}
           >
             <Archive className="w-4 h-4 text-muted-foreground" />
-          </button>
+          </Button>
         )}
         {canCreate && (
-          <button
+          <Button
+            variant="ghost"
             type="button"
             onClick={(event) => onCreateTask(column.id, event.currentTarget)}
             className="flex items-center rounded-md px-2 py-1 text-left text-muted-foreground transition-colors hover:bg-accent/50"
             title={t("tasks:kanban.addTask")}
           >
             <Plus className="w-4 h-4 text-muted-foreground" />
-          </button>
+          </Button>
         )}
       </div>
 

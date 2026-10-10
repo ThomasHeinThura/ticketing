@@ -8,9 +8,8 @@
 # Gates that cannot exist yet — check:queries, test:mcp — have no job here
 # on purpose. `pnpm test:all --list` prints each one with the reason and the issue that unblocks it. A job that passed
 # because it found nothing to check would look like coverage and be worth less than
-# nothing. (`check:ui` is enabled, in the `registers` job below — #9's Radix-tracking
-# slice, only; its "no bespoke primitives" / "no Radix/Base UI import outside packages/ui"
-# clauses still have nothing to be true of. `check:tokens` is enabled too, in the `static`
+# nothing. (`check:ui` is enabled, in the `registers` job below — G1's raw-element and
+# primitive-import boundaries, plus the empty legacy UI directory. `check:tokens` is enabled too, in the `static`
 # job below — #9's theme-parity and hard-coded-color slice of G2 only; see
 # scripts/ci/check-tokens.mjs's own header for exactly what it does not yet cover.)
 #
@@ -117,6 +116,8 @@ jobs:
         run: pnpm lint:ci
       - name: pnpm typecheck
         run: pnpm typecheck
+      - name: Normalize Ubuntu APT mirror for Chromium dependencies
+        run: sudo -- "$(command -v node)" scripts/ci/normalize-ubuntu-apt-mirror.mjs
       - name: Install Chromium for G3
         run: ./apps/web/node_modules/.bin/playwright install --with-deps chromium
       - name: pnpm check:tokens
@@ -173,13 +174,10 @@ jobs:
         # This asserts it matches pnpm-workspace.yaml's actual discovered members.
         run: pnpm check:dockerfile-deps
       - name: pnpm check:ui
-        # #9 — the Radix-tracking half of G1 only (packages/ui has 18 of 63 primitives
-        # moved so far; "no bespoke primitives" and "no Radix/Base UI import outside
-        # packages/ui" have nothing to be true of yet). Fails if any file imports
-        # `@radix-ui/*` or the bare `radix-ui` package without a matching row in
-        # KNOWN-RADIX.md — currently zero rows, since both real Radix imports
-        # (form.tsx, timeline.tsx) were replaced by a local `Slot` in the same change.
         run: pnpm check:ui
+      - name: pnpm check:ui:raw-elements
+        # G1a: parse all JSX in apps/web and reject raw native button/form/dialog elements.
+        run: pnpm check:ui:raw-elements
       - name: pnpm check:inventory
         run: pnpm check:inventory
 

@@ -13,12 +13,16 @@ import {
 } from "./helpers/fixtures";
 
 async function responseShape(response: Response) {
+  const requestId = response.headers.get("x-taskdesk-request-id");
+  expect(requestId).toMatch(/^[0-9a-f]{32}$/);
+
   return {
     status: response.status,
     body: await response.clone().text(),
-    headers: [...response.headers.entries()].sort(([a], [b]) =>
-      a.localeCompare(b),
-    ),
+    headers: [...response.headers.entries()]
+      .sort(([a], [b]) => a.localeCompare(b))
+      .filter(([name]) => name !== "x-taskdesk-request-id"),
+    requestId,
   };
 }
 
@@ -76,8 +80,76 @@ async function compareResponses(foreign: Response, missing: Response) {
     responseShape(foreign),
     responseShape(missing),
   ]);
-  expect(foreignShape).toEqual(missingShape);
+  const { requestId: foreignRequestId, ...foreignEqualityShape } = foreignShape;
+  const { requestId: missingRequestId, ...missingEqualityShape } = missingShape;
+  expect(foreignRequestId).not.toBe(missingRequestId);
+  expect(foreignEqualityShape).toEqual(missingEqualityShape);
 }
+
+describe("P0 #317 response correlation witness", () => {
+  const response = (headers: HeadersInit = {}) =>
+    new Response("same response", { status: 404, headers });
+
+  it.each([
+    undefined,
+    "",
+    "0123456789abcdef0123456789abcdeG",
+    "0123456789ABCDEF0123456789abcdef",
+    "0123456789abcdef0123456789abcde",
+  ])("rejects missing or malformed server request id %s", async (requestId) => {
+    const headers = new Headers();
+    if (requestId !== undefined) {
+      headers.set("x-taskdesk-request-id", requestId);
+    }
+    await expect(
+      compareResponses(
+        response(headers),
+        response({
+          "x-taskdesk-request-id": "0123456789abcdef0123456789abcdef",
+        }),
+      ),
+    ).rejects.toThrow();
+  });
+
+  it("rejects a reflected request id", async () => {
+    const reflectedId = "0123456789abcdef0123456789abcdef";
+    await expect(
+      compareResponses(
+        response({ "x-taskdesk-request-id": reflectedId }),
+        response({ "x-taskdesk-request-id": reflectedId }),
+      ),
+    ).rejects.toThrow();
+  });
+
+  it("ignores only the distinct request id while preserving header equality", async () => {
+    const commonHeaders = { "cache-control": "no-store" };
+    await expect(
+      compareResponses(
+        response({
+          ...commonHeaders,
+          "x-taskdesk-request-id": "0123456789abcdef0123456789abcdef",
+        }),
+        response({
+          ...commonHeaders,
+          "x-taskdesk-request-id": "fedcba9876543210fedcba9876543210",
+        }),
+      ),
+    ).resolves.toBeUndefined();
+
+    await expect(
+      compareResponses(
+        response({
+          "cache-control": "no-store",
+          "x-taskdesk-request-id": "0123456789abcdef0123456789abcdef",
+        }),
+        response({
+          "cache-control": "public",
+          "x-taskdesk-request-id": "fedcba9876543210fedcba9876543210",
+        }),
+      ),
+    ).rejects.toThrow();
+  });
+});
 
 async function foreignAssetFixture() {
   const caller = await createWorkspaceMember();

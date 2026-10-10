@@ -1478,6 +1478,20 @@ export function observeInheritedForegroundSurfaces(sourcePaths, tokenNames) {
       target.file === "packages/ui/src/components/button.tsx" &&
       target.symbol === "Button"
     ) {
+      // Button's variant is only its fallback surface. Callers can supply a
+      // concrete opaque background in className (for example a row-like
+      // button), which overrides the variant through the shared class merge.
+      // Use that explicit source class as the backdrop for translucent state
+      // classes; refuse ambiguous base surfaces instead of guessing their
+      // Tailwind merge order here.
+      const explicitBaseBackgrounds = paintedBackgrounds(
+        ancestor,
+        sourceFile,
+      ).filter((background) => background.variants.length === 0);
+      if (explicitBaseBackgrounds.length === 1)
+        return explicitBaseBackgrounds[0].className;
+      if (explicitBaseBackgrounds.length > 1) return undefined;
+
       const variants = {
         default: "bg-primary",
         destructive: "bg-destructive-strong",
@@ -2580,6 +2594,93 @@ export function observeInheritedForegroundSurfaces(sourcePaths, tokenNames) {
               background,
             );
           }
+          const stateful = (background) =>
+            background.variants.some(
+              (variant) => variant !== "dark" && variant !== "light",
+            );
+          const baseOpaque = opaque.filter(
+            (background) => !stateful(background),
+          );
+          const statefulTranslucent = translucent.filter(stateful);
+          // State surfaces such as hover:bg-accent/50 are painted over the
+          // element's ordinary opaque surface. Preserve both contexts, and
+          // carry the exact state surface as a composited backdrop when an
+          // inner translucent control already owns the foreground surface.
+          if (baseOpaque.length === 1 && statefulTranslucent.length > 0) {
+            const base = baseOpaque[0];
+            const addStateSurface = (stateBackground) => {
+              const themes = base.themes.filter((theme) =>
+                stateBackground.themes.includes(theme),
+              );
+              if (themes.length === 0) return;
+              if (pendingOptions.length > 0) {
+                resolvedOptions.push(
+                  ...pendingOptions.map((foregroundSurface) => ({
+                    ...foregroundSurface,
+                    backdropClass: base.className,
+                    backdropLayers: [
+                      ...(foregroundSurface.backdropLayers ?? []),
+                      stateBackground.className,
+                      base.className,
+                    ],
+                    themes: foregroundSurface.themes.filter((theme) =>
+                      themes.includes(theme),
+                    ),
+                    chain: [
+                      ...foregroundSurface.chain,
+                      ...chain,
+                      `state-backdrop:${stateBackground.className}`,
+                      `opaque-backdrop:${base.className}`,
+                    ],
+                  })),
+                );
+              } else {
+                resolvedOptions.push({
+                  className: stateBackground.className,
+                  backdropClass: base.className,
+                  backdropLayers: [base.className],
+                  themes,
+                  chain: [
+                    ...chain,
+                    `state-backdrop:${stateBackground.className}`,
+                    `opaque-backdrop:${base.className}`,
+                  ],
+                });
+              }
+            };
+            for (const stateBackground of statefulTranslucent)
+              addStateSurface(stateBackground);
+            if (pendingOptions.length === 0) {
+              resolvedOptions.push({
+                className: base.className,
+                backdropClass: base.className,
+                backdropLayers: [],
+                themes: base.themes,
+                chain,
+              });
+            } else {
+              resolvedOptions.push(
+                ...pendingOptions.map((foregroundSurface) => ({
+                  ...foregroundSurface,
+                  backdropClass: base.className,
+                  backdropLayers: [
+                    ...(foregroundSurface.backdropLayers ?? []),
+                    base.className,
+                  ],
+                  themes: foregroundSurface.themes.filter((theme) =>
+                    base.themes.includes(theme),
+                  ),
+                  chain: [
+                    ...foregroundSurface.chain,
+                    ...chain,
+                    `opaque-backdrop:${base.className}`,
+                  ],
+                })),
+              );
+            }
+            pendingOptions = [];
+            continue;
+          }
           if (pendingOptions.length > 0 && opaque.length > 0) {
             resolvedOptions.push(
               ...pendingOptions.flatMap((foregroundSurface) =>
@@ -2662,7 +2763,18 @@ export function observeInheritedForegroundSurfaces(sourcePaths, tokenNames) {
         const callerBackground = classTokens(ancestor, callerFile).some(
           (entry) => /^bg-[a-z0-9-]+/u.test(entry.utility),
         );
-        if (callerBackground && !unpaintedPossible) return undefined;
+        const explicitButtonBaseBackgrounds =
+          imported.file === "packages/ui/src/components/button.tsx" &&
+          imported.symbol === "Button"
+            ? paintedBackgrounds(ancestor, callerFile).filter(
+                (background) => background.variants.length === 0,
+              )
+            : [];
+        const buttonOverrideIsBound =
+          explicitButtonBaseBackgrounds.length === 1;
+        if (buttonOverrideIsBound) continue;
+        if (callerBackground && !unpaintedPossible && !buttonOverrideIsBound)
+          return undefined;
         const surface = callerWrapperSurface(ancestor, callerFile, imported);
         if (surface) {
           const chain = [
@@ -2785,6 +2897,10 @@ export function observeInheritedForegroundSurfaces(sourcePaths, tokenNames) {
             },
           ];
       }
+      // A source-level surface on this exact call path is already bound to
+      // this use. Do not require unrelated sibling component calls in the
+      // same owner to resolve before retaining the proven context.
+      if (resolvedOptions.length > 0) return resolvedOptions;
       if (!call.owner || call.owner === "<module>") return undefined;
       const key = `${call.callerPath}|${call.owner}`;
       if (active.has(key)) return undefined;

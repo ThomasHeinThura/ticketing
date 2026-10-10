@@ -452,7 +452,7 @@ describe("API integration: assignable people (#30, assignment.md)", () => {
     mockAuthenticatedSession(creator);
     const { app } = createApp();
     const response = await assignableRequest(app, "project-does-not-exist");
-    expect(response.status).toBe(400);
+    expect(response.status).toBe(404);
   });
 
   it("L1: the open-work count never includes another workspace's items", async () => {

@@ -1,0 +1,27 @@
+# Independent GPT-6 Sol security delta review — P0 test batch
+
+**Reviewer/model:** GPT-6 Sol, fresh independent context. I did not author, direct, or remediate the candidate.  
+**Exact reviewed SHA:** `307eeea23049df4aa960bf4283d64a18d7ff8dff` (clean local checkout; not yet pushed).  
+**Comparison:** prior Sol-cleared `8f6ca5375171eb0740fae7d4eecfe56deaef2c0b..307eeea23049df4aa960bf4283d64a18d7ff8dff`.  
+**Verdict:** **CLEAR for this exact security test delta. No blocking finding.** This is a per-candidate security review, not a P0 phase finalizer, hosted CI acceptance, operational clearance, or merge authorization.
+
+## Scope and security assessment
+
+The delta changes exactly three test files: `apps/web/e2e/mfa-csrf-journey.spec.ts`, `tests/api-integration/work-item-assignable.test.ts`, and `tests/api-integration/work-item-list-sort-pagination.test.ts`. There is no runtime source, route, policy, schema, CI workflow, or permission change. I inspected the full old/new diff, the current complete browser test, the relevant MFA/CSRF and God Mode contracts, the prior independent Luna review, the prior Sol-cleared source report, the original hosted failures, and the private pointer diagnostic.
+
+- The first browser test still verifies the TOTP enrollment response, session-cookie rotation, factor-status read, sign-out, TOTP sign-in challenge, second sign-out, and backup-code sign-in challenge. All three CSRF negative PATCH cases then run with that MFA-authenticated page/request context. They retain the exact `csrf_token_missing`, `csrf_token_mismatch`, and `csrf_origin_invalid` 403 assertions. After **each** denial the test rereads the protected observability setting and asserts both unchanged version and unchanged log levels. The submitted changed default and original version keep the denial attempts meaningful.
+- The fresh-admin second test still performs the four actual God Mode UI writes: change default, change realtime, restore default, restore realtime. Each save waits for its matching PATCH 200 and the button to become enabled; API rereads verify persisted values and monotonic versions, including final restoration. There is no direct API write, auth mock, forced click, keyboard substitution, retry, timeout increase, or removed assertion. The controlled-popup helper binds each normal option click to the current trigger's `aria-controls` listbox; it checks expanded state, visible role=listbox, one exact option, selected trigger text, collapsed state and closed listbox. This tightens locator identity at the reported original-realtime option failure, but does not establish the exact hosted CSS/portal mechanism.
+- The two native integration edits only correct stale expected 400 statuses to the already implemented masked 404 for an unknown project read and a nonmember project-list read. The original hosted log reports actual 404 at both lines. Other syntax-400, reached-but-incapable-403, and mutation-400 behavior is not changed by this test-only delta; the prior source review covered those branches. The focused independent Luna PostgreSQL rerun passed **2 files / 43 tests** after these corrections.
+
+Separating the tests means the positive God Mode UI writes now use a fresh admin session rather than the preceding MFA-authenticated session. The MFA-authenticated session still performs the protected read and all three CSRF denials, which is the security relationship exercised here. I found no written P0 contract that requires this particular positive UI write to be coupled to an MFA sign-in within one test; I do not claim the combination remains directly exercised. This is a bounded coverage residual, not a blocker for the reviewed split.
+
+## Checks and evidence limits
+
+- `git rev-parse HEAD`, `git status --short`, `git diff --stat/name-only`, complete targeted diff, and `git diff --check 8f6ca537..307eeea2`: verified exact clean SHA, only the three named files, and no whitespace error.
+- Prior independent Luna reviewer ran the two focused API integration files: **43/43 passed**, web TypeScript check passed, and Biome passed on all three files. I inspected that report; I did not repeat those checks.
+- The private author source-equivalent run reports the new two-journey Playwright spec **2/2 passed** against real disposable API/PostgreSQL, with 8.8s MFA+CSRF and 10.2s observability journeys. This is author evidence, not my independent rerun. Luna's own Playwright attempt was blocked before startup because port 4178 was occupied by an unowned process.
+- Original hosted `8f6ca537` E2E was **25 passed / 1 timeout**, at selection of the original realtime level. Original hosted native integration was **1,657 passed / 2 failed**, precisely the two stale 400-vs-404 expectations. Those hosted failures remain red until a new exact-head CI run succeeds. The pointer diagnostic found an option locator that repeatedly reported not visible despite a connected, enabled option and an open popup; it did not identify computed CSS or portal ancestry. No exact hosted mechanism is claimed.
+
+**Blocking findings:** none.  
+**Nonblocking findings:** none beyond the explicit combined-positive-journey coverage residual above.  
+**Remaining gates:** new exact-head hosted CI and browser evidence, all other required acceptance checks, any separately reviewed private operational runner source pin, and the independent GPT-6 Sol P0 phase finalizer. This review does not clear them.

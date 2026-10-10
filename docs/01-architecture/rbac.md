@@ -262,6 +262,22 @@ to a row scope built from persisted facts and does not grant authority to the le
 Where the existing identity adapter lacks a required hierarchy/team/private-item fact, the
 comparison remains unevaluated until that fact can be loaded from authoritative data.
 
+**Narrow strict-terminal diagnostic witness (Thomas approval, 2026-10-09):** when the
+registered strict terminal evaluator has completed a decision, the existing `http.request`
+structured log may include a fixed-shape witness containing only a server-generated opaque
+request id, the exact registered route template and policy-source identifier, the evaluator's
+`allowed`/`denied` category, and the finite persisted-scope provenance validation result.
+This witness is not observer lookup evidence: it carries no actor, tenant, resource/row id,
+row contents, reach facts, credential, request/response payload, or arbitrary text. It is
+produced only from the completed strict evaluation, never from HTTP status, and is diagnostic
+only. It is not returned in the response body, stored in the shadow event/database, or used to
+change either authorization path or the shadow acceptance requirements. The opaque request id
+is also exposed as `x-taskdesk-request-id` so acquisition receipts can bind the log and request;
+inbound request-id headers are not trusted or reused.
+The logger accepts only own enumerable data fields, validates captured primitive values and
+the exact route/source pairing, and emits a fresh canonical projection so caller prototypes,
+accessors, `toJSON` hooks, or later mutation cannot add witness fields.
+
 ### Target membership projection from provenance grants — Proposed ADR 0015
 
 The target `membership` row remains the one effective role for a person and scope. The

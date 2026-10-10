@@ -1,6 +1,14 @@
 import { createHash, randomUUID } from "node:crypto";
 import { eq } from "drizzle-orm";
-import { afterAll, beforeEach, describe, expect, it, vi } from "vitest";
+import {
+  afterAll,
+  afterEach,
+  beforeEach,
+  describe,
+  expect,
+  it,
+  vi,
+} from "vitest";
 
 const priorEnforcementSetting = vi.hoisted(() => {
   const previous = process.env.TASKDESK_POLICY_ENFORCE;
@@ -40,11 +48,15 @@ const priorEnforcementSetting = vi.hoisted(() => {
 
 import db, { schema } from "../../apps/api/src/database";
 import { createApp } from "../../apps/api/src/index";
-import { mockAuthenticatedSession } from "./helpers/auth";
+import * as storage from "../../apps/api/src/storage";
+import { validateWorkspaceAccess } from "../../apps/api/src/utils/validate-workspace-access";
+import { verifyApiKey } from "../../apps/api/src/utils/verify-api-key";
+import { mockAnonymousSession, mockAuthenticatedSession } from "./helpers/auth";
 import { resetTestDatabase } from "./helpers/database";
 import {
   createProjectFixture,
   createWorkspaceMember,
+  prepareAuthenticatedApiFixture,
   requireRow,
 } from "./helpers/fixtures";
 
@@ -166,9 +178,14 @@ async function grantProjectReach(
     createdAt: new Date(),
     updatedAt: new Date(),
   });
+  return role;
 }
 
 describe("strict policy runtime enforcement against the production API graph", () => {
+  afterEach(() => {
+    vi.restoreAllMocks();
+  });
+
   beforeEach(async () => {
     await resetTestDatabase();
   });
@@ -186,7 +203,17 @@ describe("strict policy runtime enforcement against the production API graph", (
     const { project } = await createProjectFixture({
       workspaceId: member.workspace.id,
     });
-    await grantProjectReach(member.user.id, member.workspace.id, project.id);
+    const projectRoleCapabilities = [
+      "work_item:create",
+      "work_item:read",
+      "work_item:assign",
+    ];
+    const projectRole = await grantProjectReach(
+      member.user.id,
+      member.workspace.id,
+      project.id,
+      projectRoleCapabilities,
+    );
     const type = await createWorkItemType(member.workspace.id);
     await createDefaultState(member.workspace.id, project.id);
 
@@ -272,6 +299,84 @@ describe("strict policy runtime enforcement against the production API graph", (
     expect(afterActivities.map((row) => row.id)).toEqual(
       beforeActivities.map((row) => row.id),
     );
+
+    const selfAssignKey = `taskdesk_test_${randomUUID()}`;
+    await db.insert(schema.apikeyTable).values({
+      referenceId: member.user.id,
+      userId: member.user.id,
+      key: hashApiKey(selfAssignKey),
+      name: "strict self-assignment scope test key",
+      start: selfAssignKey.slice(0, 12),
+      prefix: "taskdesk",
+      permissions: JSON.stringify({
+        project: ["read"],
+        work_item: ["read", "update"],
+      }),
+      createdAt: new Date(),
+      updatedAt: new Date(),
+    });
+    const [storedSelfAssignKey] = await db
+      .select({ permissions: schema.apikeyTable.permissions })
+      .from(schema.apikeyTable)
+      .where(eq(schema.apikeyTable.key, hashApiKey(selfAssignKey)))
+      .limit(1);
+    expect(storedSelfAssignKey?.permissions).toBe(
+      JSON.stringify({
+        project: ["read"],
+        work_item: ["read", "update"],
+      }),
+    );
+    const verifiedSelfAssignKey = await verifyApiKey(selfAssignKey);
+    expect(verifiedSelfAssignKey?.key.permissions).toEqual({
+      project: ["read"],
+      work_item: ["read", "update"],
+    });
+    const scopedSelfAssignment = await app.request(
+      `/api/work-items/${key}/assign`,
+      {
+        method: "POST",
+        headers: {
+          authorization: `Bearer ${selfAssignKey}`,
+          "content-type": "application/json",
+        },
+        body: JSON.stringify({ assigneeId: assignee?.id }),
+      },
+    );
+    expect(scopedSelfAssignment.status).toBe(403);
+    const [afterProjectRoleDenial] = await db
+      .select({ assigneeId: schema.workItemTable.assigneeId })
+      .from(schema.workItemTable)
+      .where(eq(schema.workItemTable.key, key));
+    const afterProjectRoleDenialActivities = await db
+      .select({ id: schema.activityTable.id })
+      .from(schema.activityTable)
+      .where(eq(schema.activityTable.workItemId, before?.id ?? ""));
+    expect(afterProjectRoleDenial).toEqual({ assigneeId: before?.assigneeId });
+    expect(afterProjectRoleDenialActivities.map((row) => row.id)).toEqual(
+      beforeActivities.map((row) => row.id),
+    );
+
+    await db
+      .update(schema.roleTable)
+      .set({
+        capabilities: [...projectRoleCapabilities, "work_item:update"],
+      })
+      .where(eq(schema.roleTable.id, projectRole.id));
+    const allowedScopedSelfAssignment = await app.request(
+      `/api/work-items/${key}/assign`,
+      {
+        method: "POST",
+        headers: {
+          authorization: `Bearer ${selfAssignKey}`,
+          "content-type": "application/json",
+        },
+        body: JSON.stringify({ assigneeId: assignee?.id }),
+      },
+    );
+    expect(
+      allowedScopedSelfAssignment.status,
+      await allowedScopedSelfAssignment.clone().text(),
+    ).toBe(200);
 
     mockAuthenticatedSession(member.user);
     const allowed = await app.request(`/api/work-items/${key}/assign`, {
@@ -505,5 +610,181 @@ describe("strict policy runtime enforcement against the production API graph", (
     // customer portal journey. Participant/nonparticipant reach is tested in the shared
     // evaluator against the documented customer identity contract.
     expect(participant.person.organisationId).toBe(organisation.id);
+  });
+
+  describe("strict workspace row provenance", () => {
+    it("uses the addressed persisted workspace row for every row-scoped workspace route", async () => {
+      const owner = await createWorkspaceMember({ role: "owner" });
+      mockAuthenticatedSession(owner.user);
+      const { app } = createApp();
+      const base = `/api/workspace/${owner.workspace.id}`;
+
+      const detail = await app.request(base);
+      expect(detail.status, await detail.clone().text()).toBe(200);
+      expect((await detail.json()).workspace.id).toBe(owner.workspace.id);
+
+      const members = await app.request(`${base}/members`);
+      expect(members.status, await members.clone().text()).toBe(200);
+
+      const invitations = await app.request(`${base}/invitations`);
+      expect(invitations.status, await invitations.clone().text()).toBe(200);
+
+      const updated = await app.request(base, {
+        method: "PATCH",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ name: "Strict row scope workspace" }),
+      });
+      expect(updated.status, await updated.clone().text()).toBe(200);
+
+      const deleted = await app.request(base, { method: "DELETE" });
+      expect(deleted.status, await deleted.clone().text()).toBe(200);
+    });
+
+    it("loads persisted asset workspace scope before strict evaluation and preserves native reach responses", async () => {
+      const owner = await createWorkspaceMember({ role: "owner" });
+      const stranger = await createWorkspaceMember();
+      const outsider = await createWorkspaceMember();
+      const { project } = await createProjectFixture({
+        workspaceId: owner.workspace.id,
+      });
+      const asset = requireRow(
+        await db
+          .insert(schema.assetTable)
+          .values({
+            id: `asset-${randomUUID()}`,
+            workspaceId: owner.workspace.id,
+            projectId: project.id,
+            objectKey: `workspace/${owner.workspace.id}/strict-test.png`,
+            filename: "strict-test.png",
+            mimeType: "image/png",
+            size: 1,
+            createdBy: owner.user.id,
+          })
+          .returning(),
+        "strict runtime asset",
+      );
+      const mismatchedAsset = requireRow(
+        await db
+          .insert(schema.assetTable)
+          .values({
+            id: `asset-${randomUUID()}`,
+            workspaceId: stranger.workspace.id,
+            projectId: project.id,
+            objectKey: `workspace/${stranger.workspace.id}/mismatched-scope.png`,
+            filename: "mismatched-scope.png",
+            mimeType: "image/png",
+            size: 1,
+            createdBy: owner.user.id,
+          })
+          .returning(),
+        "strict runtime mismatched asset",
+      );
+      const getPrivateObject = vi
+        .spyOn(storage, "getPrivateObject")
+        .mockResolvedValue({
+          body: new Uint8Array([1]),
+          contentType: "image/png",
+          contentLength: 1,
+          etag: undefined,
+          lastModified: undefined,
+        });
+      const { app } = createApp();
+
+      mockAnonymousSession();
+      const unauthenticated = await app.request(`/api/asset/${asset.id}`);
+      expect(unauthenticated.status).toBe(401);
+
+      mockAuthenticatedSession(owner.user);
+      const reachable = await app.request(`/api/asset/${asset.id}`);
+      expect(reachable.status, await reachable.clone().text()).toBe(200);
+      expect(getPrivateObject).toHaveBeenCalledWith(asset.objectKey);
+
+      const admin = {
+        id: `user-${randomUUID()}`,
+        email: `strict-asset-admin-${randomUUID()}@example.com`,
+        emailVerified: true,
+        name: "Strict asset nonmember instance admin",
+        role: "admin",
+        createdAt: new Date(),
+        updatedAt: new Date(),
+      };
+      await db.insert(schema.userTable).values(admin);
+      await prepareAuthenticatedApiFixture(admin.id);
+      mockAuthenticatedSession(admin);
+      const deniedByCapability = await app.request(`/api/asset/${asset.id}`);
+      expect(
+        deniedByCapability.status,
+        await deniedByCapability.clone().text(),
+      ).toBe(403);
+      expect(getPrivateObject).toHaveBeenCalledTimes(1);
+
+      mockAuthenticatedSession(stranger.user);
+      const foreign = await app.request(`/api/asset/${asset.id}`);
+      expect(foreign.status, await foreign.clone().text()).toBe(404);
+
+      const missing = await app.request(`/api/asset/asset-${randomUUID()}`);
+      expect(missing.status, await missing.clone().text()).toBe(404);
+      expect(await foreign.clone().text()).toBe(await missing.clone().text());
+
+      mockAuthenticatedSession(outsider.user);
+      const unreachableMismatch = await app.request(
+        `/api/asset/${mismatchedAsset.id}`,
+      );
+      expect(unreachableMismatch.status).toBe(404);
+      expect(await unreachableMismatch.clone().text()).toBe(
+        await missing.clone().text(),
+      );
+      expect(getPrivateObject).toHaveBeenCalledTimes(1);
+
+      const nulByte = await app.request(
+        `/api/asset/${encodeURIComponent("\u0000x")}`,
+      );
+      expect(nulByte.status).toBe(400);
+      expect(getPrivateObject).toHaveBeenCalledTimes(1);
+    });
+
+    it("keeps the native admin bypass distinct from strict capability denial and preserves missing-row masking", async () => {
+      const owner = await createWorkspaceMember({ role: "owner" });
+      const admin = {
+        id: `user-${randomUUID()}`,
+        email: `strict-admin-${randomUUID()}@example.com`,
+        emailVerified: true,
+        name: "Strict nonmember instance admin",
+        role: "admin",
+        createdAt: new Date(),
+        updatedAt: new Date(),
+      };
+      await db.insert(schema.userTable).values(admin);
+      await prepareAuthenticatedApiFixture(admin.id);
+
+      // The native reach middleware allows an instance administrator to address this
+      // existing workspace. Strict evaluation then independently denies the missing
+      // workspace:read capability instead of failing with missing row provenance.
+      await expect(
+        validateWorkspaceAccess(admin.id, owner.workspace.id),
+      ).resolves.toBeUndefined();
+      mockAuthenticatedSession(admin);
+      const { app } = createApp();
+      const denied = await app.request(`/api/workspace/${owner.workspace.id}`);
+      expect(denied.status, await denied.clone().text()).toBe(403);
+
+      const missingWorkspaceId = `workspace-${randomUUID()}`;
+      const missingAsAdmin = await app.request(
+        `/api/workspace/${missingWorkspaceId}`,
+      );
+      expect(missingAsAdmin.status, await missingAsAdmin.clone().text()).toBe(
+        404,
+      );
+
+      const ordinary = await createWorkspaceMember({ role: "member" });
+      mockAuthenticatedSession(ordinary.user);
+      const missingAsNonmember = await app.request(
+        `/api/workspace/${missingWorkspaceId}`,
+      );
+      expect(
+        missingAsNonmember.status,
+        await missingAsNonmember.clone().text(),
+      ).toBe(403);
+    });
   });
 });

@@ -1,6 +1,6 @@
 import { createId } from "@paralleldrive/cuid2";
 import { isCapability, type PolicyMap } from "@taskdesk/permissions";
-import { and, desc, eq, inArray, isNull, lt, or, sql } from "drizzle-orm";
+import { and, desc, eq, gt, inArray, isNull, lt, or, sql } from "drizzle-orm";
 import { HTTPException } from "hono/http-exception";
 import { appendAuditLog } from "../audit/audit-writer";
 import db from "../database";
@@ -18,7 +18,11 @@ import { notifyCurrentInstanceAdminsOfAuditFailure } from "../instance/observabi
 import { recordAuditWriteFailure } from "../instance/observability/runtime";
 import { resolveIdentity } from "../permissions/resolve-identity";
 import { policyRegistry } from "../policy-registry";
-import { assertCallerHasCapability } from "../utils/require-workspace-capability";
+import { apiKeyScopeFromStoredPermissions } from "../utils/require-api-key-permission-scope";
+import {
+  assertCallerHasCapability,
+  capabilityCredential,
+} from "../utils/require-workspace-capability";
 import { validateWorkspaceAccess } from "../utils/validate-workspace-access";
 import {
   type ConfirmationKind,
@@ -718,6 +722,9 @@ async function resolveRequestScope(
     });
   }
 
+  let apiKeyScope:
+    | ReturnType<typeof apiKeyScopeFromStoredPermissions>
+    | undefined;
   if (input.credentialType === "api_key") {
     if (input.actorType !== "api_key" || input.actorId !== requester.userId) {
       throw new HTTPException(403, {
@@ -725,8 +732,9 @@ async function resolveRequestScope(
           "API-key credential does not match the pending-action requester",
       });
     }
+    const keyCheckAt = new Date();
     const [apiKey] = await tx
-      .select({ id: apikeyTable.id })
+      .select({ id: apikeyTable.id, permissions: apikeyTable.permissions })
       .from(apikeyTable)
       .where(
         and(
@@ -736,6 +744,10 @@ async function resolveRequestScope(
             eq(apikeyTable.userId, requester.userId),
           ),
           eq(apikeyTable.enabled, true),
+          or(
+            isNull(apikeyTable.expiresAt),
+            gt(apikeyTable.expiresAt, keyCheckAt),
+          ),
         ),
       )
       .for("update")
@@ -746,6 +758,7 @@ async function resolveRequestScope(
           "API-key credential does not belong to the pending-action requester",
       });
     }
+    apiKeyScope = apiKeyScopeFromStoredPermissions(apiKey.permissions);
   }
 
   const route = policyRegistry.get(input.routeKey);
@@ -769,10 +782,19 @@ async function resolveRequestScope(
       ? (input.credentialId ?? undefined)
       : undefined,
   );
+  if (input.credentialType === "api_key" && !apiKeyScope) {
+    throw new HTTPException(403, {
+      message: "API-key pending actions require a validated key scope",
+    });
+  }
   await assertCallerHasCapability(
     target.workspaceId,
     requester.userId,
     route.policy.capability,
+    input.credentialType === "api_key" && apiKeyScope
+      ? capabilityCredential(apiKeyScope)
+      : { kind: "session" },
+    tx,
   );
 
   return {

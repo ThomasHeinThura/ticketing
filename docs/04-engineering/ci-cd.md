@@ -40,7 +40,21 @@ repository's active ruleset. The full-stage `integration - Postgres 18`,
 `e2e - protected-route redirect`, and `a11y - accessibility (G4, axe)` contexts are also
 required. The G11 job's exact context is `performance - budgets (G11)` and is intended to be
 required as well; do not infer that a workflow configured to run before merge is enforced
-unless its exact context appears in the ruleset. The complete local implementation run and
+unless its exact context appears in the ruleset. The job's `pnpm test:perf` prints the runner's CPU model and `nproc`, then measures
+each CPU-bound metric speed-calibrated (owner decision 2026-10-10; method, R0 and per-metric
+sensitivities in [ux-quality-gates.md](../02-design/ux-quality-gates.md) G11): a pinned
+reference workload (`scripts/ci/lib/performance-calibration.mjs`) is run at job start, three batches per CPU-throttle
+state, giving one factor per state for the whole job, and the median-of-three is judged against the unchanged budget after normalising by
+`F^k` to the recorded FAST-class reference R0. R0 records the workload-source and options
+hashes as literals, compared at run time with hashes computed live, so a workload or option edit
+fails the job until R0 is re-recorded. A speed factor outside 0.75–1.75, a batch spread above
+0.55, or a stale, mixed, or evidence-free R0 pin fails the job; normalisation can mask a
+regression by at most `F^k`, and runner-class drift inside the clamp shifts what the budgets
+mean (R0 rests on three FAST jobs; re-record if the runner pool changes). Both raw and
+normalised sample sets, including a retry's first set, are logged. The
+`scripts/ci/lib/performance-calibration.test.mjs` unit tests (in `pnpm test:ci-scripts`) cover
+the normalisation math, the pin checks, and the negative controls, including a 25% regression
+at F = 1.4 for each normalised metric. The complete local implementation run and
 its source-binding limit are recorded in the
 [G11 evidence note](../07-planning/evidence/2026-10-03-g11-7402.md).
 
@@ -55,6 +69,8 @@ its source-binding limit are recorded in the
 │                      no Radix/Base UI import     │
 │                      outside packages/ui; Radix  │
 │                      only per KNOWN-RADIX.md     │
+│ pnpm check:ui:raw-elements G1a — no raw form     │
+│                      controls outside packages/ui│
 │ pnpm check:deps      no cycles, no boundary break│
 │ pnpm check:i18n      en-US complete              │
 │ pnpm audit           high/critical fails         │
@@ -102,6 +118,14 @@ The fast workflow installs the web workspace's pinned Playwright Chromium browse
 setup prerequisite before `pnpm check:tokens`; the check builds the stylesheet and measures
 the declared contrast pairs in that browser. The browser install is setup, not an independent
 quality gate: a missing browser makes `check:tokens` fail.
+
+Before each GitHub-hosted Ubuntu Playwright `install --with-deps` step, CI runs
+`scripts/ci/normalize-ubuntu-apt-mirror.mjs` with `sudo`. It changes only the exact blocked
+`http://azure.archive.ubuntu.com/ubuntu` URI to the official HTTPS archive URI in active APT
+source files and `/etc/apt/apt-mirrors.txt`. Suites, components, priorities, `Signed-By`
+keys, and all other repositories remain intact. The helper skips non-Ubuntu runners and
+missing APT configuration, which is valid for the existing Playwright container. The
+Playwright browser and OS dependency install command and browser version are unchanged.
 
 The G3 source inventory covers every colored text occurrence, including semantic color
 utilities and foreground-only utilities. A foreground is measured against its nearest

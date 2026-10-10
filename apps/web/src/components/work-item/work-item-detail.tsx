@@ -120,16 +120,18 @@ function WorkItemDetail({
 
   if (isError) {
     return (
-      <Alert variant="error" data-testid="work-item-detail-error">
-        <TriangleAlert />
-        <AlertTitle>{t("workItems:detail.errorTitle")}</AlertTitle>
-        <AlertDescription>
-          <p>{t("workItems:detail.errorDescription")}</p>
-          <Button variant="outline" size="sm" onClick={onRetry}>
-            {t("workItems:detail.retry")}
-          </Button>
-        </AlertDescription>
-      </Alert>
+      <div className="bg-background">
+        <Alert variant="error" data-testid="work-item-detail-error">
+          <TriangleAlert />
+          <AlertTitle>{t("workItems:detail.errorTitle")}</AlertTitle>
+          <AlertDescription>
+            <p>{t("workItems:detail.errorDescription")}</p>
+            <Button variant="outline" size="sm" onClick={onRetry}>
+              {t("workItems:detail.retry")}
+            </Button>
+          </AlertDescription>
+        </Alert>
+      </div>
     );
   }
 
@@ -151,7 +153,10 @@ function WorkItemDetail({
       : (item.assigneeName ?? t("workItems:detail.inactiveAssignee"));
 
   return (
-    <div className="flex flex-col gap-6" data-testid="work-item-detail">
+    <div
+      className="flex flex-col gap-6 bg-background"
+      data-testid="work-item-detail"
+    >
       {hasPartialFailure && (
         <Alert variant="warning" data-testid="work-item-detail-partial-notice">
           <Info />
