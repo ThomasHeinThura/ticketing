@@ -450,6 +450,32 @@ acceptance and audit and await the next owner roadmap.
 
 ---
 
+### 2026-10-07 · Keep test role seeding private-only
+
+**Decision:** Thomas explicitly instructs: “make sure seeder and credentials md are not
+store in code or in repo. just seeded and check ... setup api rbac”. Remove the test-only
+role-user seeder, its credential-manifest writer, wrappers, dedicated tests/configuration,
+and public documentation from the repository delivery candidate. Role-specific test users
+may be prepared only through private operator-managed tooling, then checked through the API
+for identity scope and RBAC behavior. Do not store generated user credentials or a usable
+credential manifest in source control.
+
+Keep ordinary `minimal` / `realistic` / `hostile` data profiles, canonical default-role
+provisioning, production role defaults, and existing generic API/RBAC coverage. The
+role-seeder source, tests, and review evidence are preserved as an immutable private
+archive outside the repository; that archive contains no generated credentials or
+operational secrets. This is a user-directed scope change, not a test-gate waiver. The
+general seed-profile test suite remains in place.
+
+**Source:** Thomas's instruction of 2026-10-07, as recorded in #589 commit `99528ca5`
+(`chore: keep manual role seeding private`).
+**Carried to main:** by the S2 auth-hardening integration slice, 2026-10-10, by Claude Sonnet
+5.5 (`claude-sonnet-5-5`) at the conductor's instruction. The "remove the seeder" clause is
+already satisfied on `main`, which never contained the seeder, its manifest writer or its
+tests. This entry carries the recorded decision forward unchanged and adds no new decision.
+
+---
+
 ### 2026-10-06 · Keep self-only personal writes session-only until explicit API-key scopes exist
 
 **Decision:** Thomas explicitly approves “Make self writes session-only (recommended)” for

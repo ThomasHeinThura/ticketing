@@ -28,7 +28,10 @@ import {
 } from "./auth";
 import csrfToken from "./auth/csrf-token-api";
 import factorStatus from "./auth/factor-status-api";
-import { loadLocalFactorState } from "./auth/local-factor-service";
+import {
+  InactiveFactorIdentityError,
+  loadLocalFactorState,
+} from "./auth/local-factor-service";
 import stepUp from "./auth/step-up-api";
 import cannedResponse from "./canned-response";
 import capabilities from "./capabilities";
@@ -199,7 +202,13 @@ async function enforceLocalFactorEnrollment(c: Context<ApiVariables>) {
   let state: Awaited<ReturnType<typeof loadLocalFactorState>>;
   try {
     state = await loadLocalFactorState(userId);
-  } catch {
+  } catch (error) {
+    // Inactive identities are denied by authorization, not treated as a broken
+    // factor-policy store. Keep missing identities and policy/database failures
+    // fail-closed as unavailable.
+    if (error instanceof InactiveFactorIdentityError) {
+      throw new HTTPException(403, { message: "Forbidden" });
+    }
     throw new HTTPException(503, { message: "factor_policy_unavailable" });
   }
   if (state.required && !state.enabled) {

@@ -392,6 +392,203 @@ describe("strict policy runtime enforcement against the production API graph", (
     expect(afterAllowed?.assigneeId).toBe(assignee?.id);
   });
 
+  it("intersects legacy project writes with API-key scope and the current role", async () => {
+    // `admin` holds `project:create` in the canonical built-in role set; `member` does not, and
+    // the strict evaluator intersects the key scope with the canonical role, never the legacy
+    // default-role payload.
+    const member = await createWorkspaceMember({ role: "admin" });
+    const viewer = await createWorkspaceMember({ role: "viewer" });
+    const { app } = createApp();
+
+    async function issueKey(
+      userId: string,
+      name: string,
+      permissions: string | null,
+    ) {
+      const rawKey = `taskdesk_test_${randomUUID()}`;
+      await db.insert(schema.apikeyTable).values({
+        referenceId: userId,
+        userId,
+        key: hashApiKey(rawKey),
+        name,
+        start: rawKey.slice(0, 12),
+        prefix: "taskdesk",
+        permissions,
+        createdAt: new Date(),
+        updatedAt: new Date(),
+      });
+      return rawKey;
+    }
+
+    async function createProjectWithKey(
+      workspaceId: string,
+      rawKey: string,
+      slug: string,
+    ) {
+      return app.request("/api/project", {
+        method: "POST",
+        headers: {
+          authorization: `Bearer ${rawKey}`,
+          "content-type": "application/json",
+        },
+        body: JSON.stringify({
+          name: `API key scope ${slug}`,
+          workspaceId,
+          slug,
+          icon: "Folder",
+        }),
+      });
+    }
+
+    const [projectsBefore] = await db
+      .select({ id: schema.projectTable.id })
+      .from(schema.projectTable)
+      .where(eq(schema.projectTable.workspaceId, member.workspace.id));
+    expect(projectsBefore).toBeUndefined();
+
+    const nullScopeKey = await issueKey(
+      member.user.id,
+      "legacy null-scope key",
+      null,
+    );
+    const nullScope = await createProjectWithKey(
+      member.workspace.id,
+      nullScopeKey,
+      "null-scope",
+    );
+    expect(nullScope.status, await nullScope.clone().text()).toBe(403);
+
+    const malformedScopeKey = await issueKey(
+      member.user.id,
+      "legacy malformed-scope key",
+      "{",
+    );
+    const malformedScope = await createProjectWithKey(
+      member.workspace.id,
+      malformedScopeKey,
+      "malformed-scope",
+    );
+    expect(malformedScope.status, await malformedScope.clone().text()).toBe(
+      403,
+    );
+
+    const validScopeKey = await issueKey(
+      member.user.id,
+      "legacy explicitly scoped key",
+      JSON.stringify({ project: ["create"] }),
+    );
+    const validScope = await createProjectWithKey(
+      member.workspace.id,
+      validScopeKey,
+      "scoped-create",
+    );
+    expect(validScope.status, await validScope.clone().text()).toBe(200);
+
+    const roleDeniedKey = await issueKey(
+      viewer.user.id,
+      "scope cannot widen viewer role",
+      JSON.stringify({ project: ["create"] }),
+    );
+    const roleDenied = await createProjectWithKey(
+      viewer.workspace.id,
+      roleDeniedKey,
+      "role-denied-create",
+    );
+    expect(roleDenied.status, await roleDenied.clone().text()).toBe(403);
+
+    const memberProjects = await db
+      .select({ id: schema.projectTable.id })
+      .from(schema.projectTable)
+      .where(eq(schema.projectTable.workspaceId, member.workspace.id));
+    expect(memberProjects).toHaveLength(1);
+    const viewerProjects = await db
+      .select({ id: schema.projectTable.id })
+      .from(schema.projectTable)
+      .where(eq(schema.projectTable.workspaceId, viewer.workspace.id));
+    expect(viewerProjects).toHaveLength(0);
+  });
+
+  it("clamps a key to its stored scope in the strict evaluator on a route whose legacy layer has no key-scope check", async () => {
+    const owner = await createWorkspaceMember({ role: "owner" });
+    const { project, columns } = await createProjectFixture({
+      workspaceId: owner.workspace.id,
+    });
+    await grantProjectReach(owner.user.id, owner.workspace.id, project.id, [
+      "project:read",
+      "work_item:read",
+      "work_item:update",
+      "comment:create_internal",
+      "comment:update_own",
+    ]);
+    const [task] = await db
+      .insert(schema.taskTable)
+      .values({
+        projectId: project.id,
+        title: "Strict comment clamp",
+        status: "to-do",
+        columnId: columns.todo.id,
+        priority: "medium",
+        number: 1,
+        position: 1,
+      })
+      .returning();
+    if (!task) throw new Error("task fixture was not created");
+    mockAuthenticatedSession(owner.user);
+    const { app } = createApp();
+    const created = await app.request("/api/activity/comment", {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ taskId: task.id, comment: "original" }),
+    });
+    expect(created.status, await created.clone().text()).toBe(200);
+    const comment = (await created.json()) as { id: string };
+
+    const issueKey = async (permissions: Record<string, string[]>) => {
+      const rawKey = `taskdesk_test_${randomUUID()}`;
+      await db.insert(schema.apikeyTable).values({
+        referenceId: owner.user.id,
+        userId: owner.user.id,
+        key: hashApiKey(rawKey),
+        name: "strict clamp key",
+        start: rawKey.slice(0, 12),
+        prefix: "taskdesk",
+        permissions: JSON.stringify(permissions),
+        createdAt: new Date(),
+        updatedAt: new Date(),
+      });
+      return rawKey;
+    };
+    const edit = (rawKey: string, text: string) =>
+      app.request("/api/activity/comment", {
+        method: "PUT",
+        headers: {
+          authorization: `Bearer ${rawKey}`,
+          "content-type": "application/json",
+        },
+        body: JSON.stringify({ activityId: comment.id, comment: text }),
+      });
+
+    // The legacy comment-edit route checks only reach and authorship, never the key's scope,
+    // and the owner holds comment:update_own. Only the strict evaluator's clamp can refuse an
+    // out-of-scope key here.
+    const outOfScope = await edit(
+      await issueKey({ work_item: ["read"] }),
+      "should not apply",
+    );
+    expect(outOfScope.status, await outOfScope.clone().text()).toBe(403);
+    const [afterDenied] = await db
+      .select({ content: schema.taskActivityTable.content })
+      .from(schema.taskActivityTable)
+      .where(eq(schema.taskActivityTable.id, comment.id));
+    expect(afterDenied?.content).toBe("original");
+
+    const inScope = await edit(
+      await issueKey({ comment: ["update_own"] }),
+      "applied",
+    );
+    expect(inScope.status, await inScope.clone().text()).toBe(200);
+  });
+
   it("uses the addressed row's workspace and refuses a caller query hint for another workspace", async () => {
     const owner = await createWorkspaceMember({ role: "admin" });
     const foreign = await createWorkspaceMember({ role: "admin" });

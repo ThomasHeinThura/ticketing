@@ -1,6 +1,9 @@
 import { apiRouter, createRoute, jsonResponse, z } from "../openapi";
 import { setShadowLegacyAuthorization } from "../permissions/shadow-context";
-import { loadLocalFactorState } from "./local-factor-service";
+import {
+  InactiveFactorIdentityError,
+  loadLocalFactorState,
+} from "./local-factor-service";
 
 const factorStatusResponse = z.object({
   enabled: z.boolean(),
@@ -24,6 +27,10 @@ const statusRoute = createRoute({
     "Returns the current user's local factor enrollment state and whether instance policy requires a factor. Never returns factor secrets or recovery codes.",
   responses: {
     200: jsonResponse("Current local factor state", factorStatusResponse),
+    403: jsonResponse(
+      "The caller's identity is inactive",
+      z.object({ message: z.string() }),
+    ),
     503: jsonResponse(
       "Factor policy could not be validated",
       z.object({ message: z.string() }),
@@ -44,7 +51,11 @@ const factorStatus = apiRouter().openapi(statusRoute, async (c) => {
       },
       200,
     );
-  } catch {
+  } catch (error) {
+    if (error instanceof InactiveFactorIdentityError) {
+      setShadowLegacyAuthorization(c, "denied");
+      return c.json({ message: "Forbidden" }, 403);
+    }
     return c.json({ message: "Factor policy is unavailable" }, 503);
   }
 });
