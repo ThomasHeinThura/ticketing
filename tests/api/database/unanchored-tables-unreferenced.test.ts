@@ -1,10 +1,10 @@
 /**
  * Structural guard for the open N2 forward item (docs/07-planning/migration-ledger.md,
- * "Open forward items after 0119").
+ * "Open forward items after 0120").
  *
- * `custom_field_type_visibility`, `custom_field_value` and `approval` carry no
- * `workspace_id`, so the database cannot stop a cross-tenant reference on them. They are
- * inert until a runtime writes them. This test fails as soon as any file under
+ * `custom_field_type_visibility` and `custom_field_value` carry no `workspace_id`, so the
+ * database cannot stop a cross-tenant reference on them. They are inert until a runtime
+ * writes them. (`approval` was anchored by migration 0120 and is no longer guarded.) This test fails as soon as any file under
  * `apps/api/src` other than the two schema declaration files references one of them, so
  * the tenant-anchoring work cannot be skipped by a runtime slice that just starts using
  * the tables.
@@ -26,7 +26,7 @@ const SRC = fileURLToPath(new URL("../../../apps/api/src", import.meta.url));
 const ALLOWED = new Set(["database/schema.ts", "database/migration-schema.ts"]);
 
 const REFERENCE =
-  /\b(customFieldTypeVisibility(Table)?|customFieldValue(Table)?|approvalTable|custom_field_type_visibility|custom_field_value)\b|\b(from|into|update|join)\s+"?approval"?(?![\w-])/i;
+  /\b(customFieldTypeVisibility(Table)?|customFieldValue(Table)?|custom_field_type_visibility|custom_field_value)\b/i;
 
 export function findUnanchoredTableReferences(root: string): string[] {
   const hits: string[] = [];
@@ -48,8 +48,8 @@ export function findUnanchoredTableReferences(root: string): string[] {
 }
 
 const GUIDANCE =
-  "custom_field_type_visibility, custom_field_value and approval have no workspace_id and no tenant-composite FK. " +
-  'Do not reference them from runtime code until they are anchored: see "Open forward items after 0119" in docs/07-planning/migration-ledger.md.';
+  "custom_field_type_visibility and custom_field_value have no workspace_id and no tenant-composite FK. " +
+  'Do not reference them from runtime code until they are anchored: see "Open forward items after 0120" in docs/07-planning/migration-ledger.md.';
 
 describe("N2 forward item: unanchored tables are not used by runtime code", () => {
   it("no file under apps/api/src references them outside the schema declarations", () => {
@@ -66,16 +66,16 @@ describe("N2 forward item: unanchored tables are not used by runtime code", () =
       mkdirSync(join(root, "feature"), { recursive: true });
       writeFileSync(
         join(root, "database", "schema.ts"),
-        "export const approvalTable = 1;\n",
+        "export const customFieldValueTable = 1;\n",
       );
       writeFileSync(
         join(root, "feature", "ok.ts"),
-        "// approval gates are described here\nexport const a = 1;\n",
+        '// custom field gates are described here\nexport const a = 1;\nconst approvalTable = 1;\nconst q = "insert into approval (id) values (1)";\n',
       );
       expect(findUnanchoredTableReferences(root)).toEqual([]);
       writeFileSync(
         join(root, "feature", "bad.ts"),
-        'import { approvalTable } from "../database/schema";\n',
+        'import { customFieldValueTable } from "../database/schema";\n',
       );
       writeFileSync(
         join(root, "feature", "bad2.ts"),
@@ -83,7 +83,7 @@ describe("N2 forward item: unanchored tables are not used by runtime code", () =
       );
       writeFileSync(
         join(root, "feature", "bad3.ts"),
-        "const q = sql`insert into approval (id) values (1)`;\n",
+        "const q = sql`insert into custom_field_type_visibility (id) values (1)`;\n",
       );
       expect(findUnanchoredTableReferences(root)).toEqual([
         "feature/bad.ts",
