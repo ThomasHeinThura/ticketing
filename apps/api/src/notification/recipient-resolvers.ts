@@ -3,8 +3,12 @@ import type { DbTransaction, DomainEventEnvelope } from "../events/outbox";
 import { resolveIdentity } from "../permissions/resolve-identity";
 import type { NotificationRecipientCandidate } from "./fanout";
 import {
+  findApprovalNotificationContext,
   findNotificationPerson,
   findNotificationWorkspace,
+  isApprovalApproverStillValid,
+  listApprovalParticipantPersonIds,
+  listApprovalWatcherPersonIds,
 } from "./repository";
 
 export type EnabledNotificationChannels = (input: {
@@ -13,6 +17,117 @@ export type EnabledNotificationChannels = (input: {
   workspaceId: string;
   eventKind: string;
 }) => Promise<readonly string[]>;
+
+/**
+ * Current-reach, current-visibility recipient resolver for the approval lifecycle. The
+ * event's own workspace scopes the lookup (an approval of another workspace is never read),
+ * recipients are only the approval's requester, approver and, for a decision, the work
+ * item's staff watchers, and a named approver must still be a valid approver of the workspace.
+ */
+export async function resolveApprovalEventRecipients(
+  tx: DbTransaction,
+  event: DomainEventEnvelope<Record<string, unknown>>,
+): Promise<readonly NotificationRecipientCandidate[]> {
+  if (!event.kind.startsWith("approval.")) return [];
+  const approvalId = event.payload.approvalId;
+  if (typeof approvalId !== "string" || !approvalId) return [];
+  if (!("workspaceId" in event.scope) || !event.scope.workspaceId) return [];
+  const row = await findApprovalNotificationContext(
+    tx,
+    approvalId,
+    event.scope.workspaceId,
+  );
+  if (!row || row.workspaceId !== event.scope.workspaceId) return [];
+
+  let personIds: string[];
+  switch (event.kind) {
+    case "approval.requested":
+    case "approval.expiring":
+    case "approval.withdrawn":
+      personIds = [row.approverId];
+      break;
+    case "approval.expired":
+      personIds = [row.requestedBy];
+      break;
+    case "approval.decided": {
+      const watchers = await listApprovalWatcherPersonIds(tx, row.workItemId);
+      personIds = [
+        row.requestedBy,
+        ...watchers.map(({ personId }) => personId),
+      ];
+      break;
+    }
+    default:
+      return [];
+  }
+
+  const visibleToPersonIds =
+    row.customerVisibility === "private"
+      ? [
+          ...(row.requesterId ? [row.requesterId] : []),
+          ...(await listApprovalParticipantPersonIds(tx, row.workItemId)).map(
+            ({ personId }) => personId,
+          ),
+        ]
+      : null;
+  const reachFacts: ProjectReachFacts = {
+    projectId: row.projectId,
+    workspaceId: row.workspaceId,
+    organisationId: row.organisationId,
+    visibleToPersonIds,
+  };
+  const candidates: NotificationRecipientCandidate[] = [];
+  for (const personId of new Set(personIds)) {
+    const person = await findNotificationPerson(tx, personId);
+    if (!person?.active || !person.userId) continue;
+    // Customers are notified only about approvals directly addressed to or raised by them.
+    if (
+      person.side === "customer" &&
+      personId !== row.approverId &&
+      personId !== row.requestedBy
+    )
+      continue;
+    // A named approver must still be valid for this workspace (0120 check 4).
+    if (
+      personId === row.approverId &&
+      !(await isApprovalApproverStillValid(tx, row))
+    )
+      continue;
+    const identity = await resolveIdentity(
+      { userId: person.userId, credential: "session" },
+      tx,
+    );
+    if (!identity || !reaches(identity, reachFacts)) continue;
+    candidates.push({
+      personId,
+      resourceType: "approval",
+      resourceId: row.id,
+      title:
+        event.kind === "approval.requested"
+          ? "Approval requested"
+          : event.kind === "approval.expiring"
+            ? "Approval expiring soon"
+            : event.kind === "approval.expired"
+              ? "Approval expired"
+              : event.kind === "approval.withdrawn"
+                ? "Approval withdrawn"
+                : "Approval decision recorded",
+      body:
+        event.kind === "approval.requested"
+          ? "A work item needs your approval."
+          : event.kind === "approval.expiring"
+            ? "An approval request is nearing its expiry."
+            : event.kind === "approval.expired"
+              ? "An approval request has expired."
+              : event.kind === "approval.withdrawn"
+                ? "An approval request was withdrawn."
+                : "An approval request was decided.",
+      // External channel adapters and their registry stay with the notification worker slice.
+      channels: [],
+    });
+  }
+  return candidates;
+}
 
 /**
  * Canonical recipient/resource resolver for `workspace.created` (NO-8). The

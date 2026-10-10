@@ -5,7 +5,7 @@
  * check removed from the approvals code makes at least one case here fail.
  */
 import { randomUUID } from "node:crypto";
-import { and, eq, sql } from "drizzle-orm";
+import { and, eq } from "drizzle-orm";
 import { beforeEach, describe, expect, it } from "vitest";
 import { scanApprovalReminders } from "../../apps/api/src/approval/reminder-scan";
 import {
@@ -330,7 +330,7 @@ describe("approvals: 0120 tenant runtime checks (S3)", () => {
     }
   });
 
-  it("check 8: approval events carry the approval's workspace and no notification is delivered before S4", async () => {
+  it("check 8: approval events carry the approval's workspace and notify only validated people of that workspace", async () => {
     const a = await buildTenant("a");
     const b = await buildTenant("b");
     const approval = await createApproval(a);
@@ -365,16 +365,18 @@ describe("approvals: 0120 tenant runtime checks (S3)", () => {
         .where(eq(schema.approvalTable.id, payload.payload.approvalId));
       expect(row?.workspaceId).toBe(event.workspaceId);
     }
-    // Fail closed: S4 owns delivery, so nothing is written to the inbox or delivery ledger.
-    expect(
-      (await db.select().from(schema.notificationTable)).filter(
-        (n) => n.kind?.startsWith("approval.") ?? false,
-      ),
-    ).toEqual([]);
-    const deliveries = await db.execute(
-      sql`select count(*)::int as n from notification_delivery`,
+    // Recipients are only the validated requester/approver of this workspace; nobody from
+    // workspace B is ever notified.
+    const inbox = (await db.select().from(schema.notificationTable)).filter(
+      (n) => n.kind?.startsWith("approval.") ?? false,
     );
-    expect(deliveries.rows[0]).toEqual({ n: 0 });
+    expect(inbox.length).toBeGreaterThan(0);
+    const allowed = new Set([a.requesterPerson.id, a.approverPerson.id]);
+    for (const row of inbox) expect(allowed.has(row.personId ?? "")).toBe(true);
+    for (const row of await db.select().from(schema.notificationTable)) {
+      expect(row.personId).not.toBe(b.requesterPerson.id);
+      expect(row.personId).not.toBe(b.approverPerson.id);
+    }
   });
 
   it("check 9: the approvals flag is resolved per the approval's workspace", async () => {

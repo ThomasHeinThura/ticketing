@@ -11,7 +11,9 @@ import { and, eq } from "drizzle-orm";
 import { HTTPException } from "hono/http-exception";
 import { appendAuditLog } from "../audit/audit-writer";
 import db, { schema } from "../database";
-import { enqueueOutboxEvent, eventScope } from "../events/outbox";
+import { eventScope } from "../events/outbox";
+import { enqueueNotificationEvent } from "../notification/fanout";
+import { resolveApprovalEventRecipients } from "../notification/recipient-resolvers";
 import { recordWorkItemActivity } from "../work-item/activity";
 import {
   hasWorkItemReach,
@@ -164,26 +166,30 @@ export async function createApproval(input: {
     if (!row) throw new Error("Approval request did not persist");
 
     const eventId = createId();
-    await enqueueOutboxEvent(tx, {
-      id: `evt_${eventId}`,
-      kind: "approval.requested",
-      occurredAt: now.toISOString(),
-      actor: { type: input.actorType, id: input.identity.personId, name },
-      scope: eventScope({
-        workspaceId: target.workspaceId,
-        organisationId: target.organisationId,
-        projectId: target.projectId,
-      }),
-      payload: {
-        approvalId: id,
-        approverId: input.approverId,
-        kind: input.kind,
-        expiresAt: expiresAt.toISOString(),
+    await enqueueNotificationEvent(
+      tx,
+      {
+        id: `evt_${eventId}`,
+        kind: "approval.requested",
+        occurredAt: now.toISOString(),
+        actor: { type: input.actorType, id: input.identity.personId, name },
+        scope: eventScope({
+          workspaceId: target.workspaceId,
+          organisationId: target.organisationId,
+          projectId: target.projectId,
+        }),
+        payload: {
+          approvalId: id,
+          approverId: input.approverId,
+          kind: input.kind,
+          expiresAt: expiresAt.toISOString(),
+        },
+        causationId: null,
+        depth: 0,
+        originAutomationId: null,
       },
-      causationId: null,
-      depth: 0,
-      originAutomationId: null,
-    });
+      { resolveRecipients: resolveApprovalEventRecipients },
+    );
     await appendAuditLog(tx, {
       actorId: input.identity.personId,
       actorType: input.actorType,
@@ -300,28 +306,32 @@ export async function decideApproval(input: {
       },
     ]);
     const eventId = createId();
-    await enqueueOutboxEvent(tx, {
-      id: `evt_${eventId}`,
-      kind: "approval.decided",
-      occurredAt: now.toISOString(),
-      actor: {
-        type: input.actorType,
-        id: input.identity.personId,
-        name: actorNameValue,
+    await enqueueNotificationEvent(
+      tx,
+      {
+        id: `evt_${eventId}`,
+        kind: "approval.decided",
+        occurredAt: now.toISOString(),
+        actor: {
+          type: input.actorType,
+          id: input.identity.personId,
+          name: actorNameValue,
+        },
+        scope: eventScope({
+          workspaceId: input.target.workspaceId,
+          organisationId: input.target.organisationId,
+          projectId: input.target.projectId,
+        }),
+        payload: {
+          approvalId: row.id,
+          decision: decision.nextState,
+        },
+        causationId: null,
+        depth: 0,
+        originAutomationId: null,
       },
-      scope: eventScope({
-        workspaceId: input.target.workspaceId,
-        organisationId: input.target.organisationId,
-        projectId: input.target.projectId,
-      }),
-      payload: {
-        approvalId: row.id,
-        decision: decision.nextState,
-      },
-      causationId: null,
-      depth: 0,
-      originAutomationId: null,
-    });
+      { resolveRecipients: resolveApprovalEventRecipients },
+    );
     await appendAuditLog(tx, {
       actorId: input.identity.personId,
       actorType: input.actorType,
@@ -398,21 +408,25 @@ export async function withdrawApproval(input: {
         message: "Approval is no longer pending",
       });
     const eventId = createId();
-    await enqueueOutboxEvent(tx, {
-      id: `evt_${eventId}`,
-      kind: "approval.withdrawn",
-      occurredAt: now.toISOString(),
-      actor: { type: input.actorType, id: input.identity.personId, name },
-      scope: eventScope({
-        workspaceId: input.target.workspaceId,
-        organisationId: input.target.organisationId,
-        projectId: input.target.projectId,
-      }),
-      payload: { approvalId: row.id, withdrawnBy: input.identity.personId },
-      causationId: null,
-      depth: 0,
-      originAutomationId: null,
-    });
+    await enqueueNotificationEvent(
+      tx,
+      {
+        id: `evt_${eventId}`,
+        kind: "approval.withdrawn",
+        occurredAt: now.toISOString(),
+        actor: { type: input.actorType, id: input.identity.personId, name },
+        scope: eventScope({
+          workspaceId: input.target.workspaceId,
+          organisationId: input.target.organisationId,
+          projectId: input.target.projectId,
+        }),
+        payload: { approvalId: row.id, withdrawnBy: input.identity.personId },
+        causationId: null,
+        depth: 0,
+        originAutomationId: null,
+      },
+      { resolveRecipients: resolveApprovalEventRecipients },
+    );
     await appendAuditLog(tx, {
       actorId: input.identity.personId,
       actorType: input.actorType,

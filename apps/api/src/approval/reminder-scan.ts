@@ -3,7 +3,9 @@ import { dueReminder, isApprovalOverdue } from "@taskdesk/domain";
 import { and, eq } from "drizzle-orm";
 import { appendAuditLog } from "../audit/audit-writer";
 import { schema } from "../database";
-import { enqueueOutboxEvent, eventScope } from "../events/outbox";
+import { eventScope } from "../events/outbox";
+import { enqueueNotificationEvent } from "../notification/fanout";
+import { resolveApprovalEventRecipients } from "../notification/recipient-resolvers";
 import { withJobLease } from "../scheduler/leader-lock";
 import { withDueApprovalRows } from "./repository";
 
@@ -65,21 +67,25 @@ export async function scanApprovalReminders(): Promise<ApprovalReminderOutcome> 
                 .returning({ id: schema.approvalTable.id });
               if (!updated) return "unchanged" as const;
               const occurredAt = now.toISOString();
-              await enqueueOutboxEvent(tx, {
-                id: `evt_${createId()}`,
-                kind: "approval.expired",
-                occurredAt,
-                actor: { type: "system", id: null, name: "TaskDesk system" },
-                scope: eventScope({
-                  workspaceId: row.workspaceId,
-                  organisationId: row.organisationId,
-                  projectId: row.projectId,
-                }),
-                payload: { approvalId: row.id },
-                causationId: null,
-                depth: 0,
-                originAutomationId: null,
-              });
+              await enqueueNotificationEvent(
+                tx,
+                {
+                  id: `evt_${createId()}`,
+                  kind: "approval.expired",
+                  occurredAt,
+                  actor: { type: "system", id: null, name: "TaskDesk system" },
+                  scope: eventScope({
+                    workspaceId: row.workspaceId,
+                    organisationId: row.organisationId,
+                    projectId: row.projectId,
+                  }),
+                  payload: { approvalId: row.id },
+                  causationId: null,
+                  depth: 0,
+                  originAutomationId: null,
+                },
+                { resolveRecipients: resolveApprovalEventRecipients },
+              );
               await appendAuditLog(tx, {
                 actorId: null,
                 actorType: "system",
@@ -114,25 +120,29 @@ export async function scanApprovalReminders(): Promise<ApprovalReminderOutcome> 
               )
               .returning({ id: schema.approvalTable.id });
             if (!updated) return "unchanged" as const;
-            await enqueueOutboxEvent(tx, {
-              id: `evt_${createId()}`,
-              kind: "approval.expiring",
-              occurredAt: now.toISOString(),
-              actor: { type: "system", id: null, name: "TaskDesk system" },
-              scope: eventScope({
-                workspaceId: row.workspaceId,
-                organisationId: row.organisationId,
-                projectId: row.projectId,
-              }),
-              payload: {
-                approvalId: row.id,
-                expiresAt: row.expiresAt.toISOString(),
-                pctElapsed,
+            await enqueueNotificationEvent(
+              tx,
+              {
+                id: `evt_${createId()}`,
+                kind: "approval.expiring",
+                occurredAt: now.toISOString(),
+                actor: { type: "system", id: null, name: "TaskDesk system" },
+                scope: eventScope({
+                  workspaceId: row.workspaceId,
+                  organisationId: row.organisationId,
+                  projectId: row.projectId,
+                }),
+                payload: {
+                  approvalId: row.id,
+                  expiresAt: row.expiresAt.toISOString(),
+                  pctElapsed,
+                },
+                causationId: null,
+                depth: 0,
+                originAutomationId: null,
               },
-              causationId: null,
-              depth: 0,
-              originAutomationId: null,
-            });
+              { resolveRecipients: resolveApprovalEventRecipients },
+            );
             return "reminded" as const;
           },
         );

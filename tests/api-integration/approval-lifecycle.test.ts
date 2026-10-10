@@ -352,9 +352,7 @@ describe("API integration: approval lifecycle", () => {
           eq(schema.notificationTable.kind, "approval.requested"),
         ),
       );
-    // Notification delivery for approval events is owned by S4 and fails closed until it
-    // lands: the event is committed to the outbox but no inbox row is written.
-    expect(requestInbox).toHaveLength(0);
+    expect(requestInbox).toHaveLength(1);
     const requestAudit = await db
       .select()
       .from(schema.auditLogTable)

@@ -5,8 +5,11 @@ import { resolveIdentity } from "../permissions/resolve-identity";
 import type { NotificationProjection } from "./outbox-drain";
 import { resolveNotificationPreference } from "./preferences";
 import {
+  findApprovalNotificationContext,
   findCurrentNotificationResource,
   findNotificationPerson,
+  isApprovalApproverStillValid,
+  listApprovalWatcherPersonIds,
 } from "./repository";
 import { isSupportedNotificationResourceEvent } from "./resource-contract";
 
@@ -120,6 +123,12 @@ function canonicalBinding(
     };
   }
   if (
+    delivery.resourceType === "approval" &&
+    isSupportedNotificationResourceEvent("approval", delivery.eventKind) &&
+    payload.approvalId === delivery.resourceId
+  )
+    return { payload, projectId };
+  if (
     delivery.resourceType === "workspace" &&
     isSupportedNotificationResourceEvent("workspace", delivery.eventKind) &&
     payload.workspaceId === delivery.resourceId
@@ -163,6 +172,7 @@ export async function evaluateCurrentNotificationReachAndPreference(
     resourceType: delivery.resourceType,
     resourceId: delivery.resourceId,
     eventKind: delivery.eventKind,
+    workspaceId: delivery.workspaceId,
     canonicalWorkItem: {
       ...(binding.workItemId ? { id: binding.workItemId } : {}),
       ...(binding.workItemKey ? { key: binding.workItemKey } : {}),
@@ -200,15 +210,70 @@ export async function evaluateCurrentNotificationReachAndPreference(
       return { kind: "suppress", reason: "reach_lost" };
     // Reach and authority are separate axes (rbac.md section 2): the recipient must also
     // currently hold work_item:read, the same rule as GET /api/work-items/{key}.
+    // A customer's role is organisation-scoped, so for an approval addressed to or raised
+    // by a customer the read authority is evaluated at the organisation, not at work-item
+    // scope where no organisation grant applies.
+    const canRead =
+      delivery.resourceType === "approval" && identity.side === "customer"
+        ? can(identity, "work_item:read", "organisation", {
+            organisationId: resource.organisationId ?? undefined,
+          })
+        : can(identity, "work_item:read", "work_item", {
+            workspaceId: resource.workspaceId,
+            organisationId: resource.organisationId ?? undefined,
+            workItemProjectId: resource.projectId,
+            projectId: resource.projectId,
+          });
+    if (!canRead) return { kind: "suppress", reason: "read_authority_lost" };
+  }
+
+  if (delivery.resourceType === "approval") {
+    const approval = await findApprovalNotificationContext(
+      tx,
+      delivery.resourceId,
+      delivery.workspaceId,
+    );
+    if (!approval || approval.workspaceId !== delivery.workspaceId)
+      return { kind: "suppress", reason: "resource_unavailable" };
+    let currentRecipient = false;
+    switch (delivery.eventKind) {
+      case "approval.requested":
+      case "approval.expiring":
+        // Only a still-pending approval needs the approver's attention.
+        if (approval.state !== "pending")
+          return { kind: "suppress", reason: "approval_not_pending" };
+        currentRecipient = identity.personId === approval.approverId;
+        break;
+      case "approval.withdrawn":
+        currentRecipient = identity.personId === approval.approverId;
+        break;
+      case "approval.expired":
+        currentRecipient = identity.personId === approval.requestedBy;
+        break;
+      case "approval.decided":
+        currentRecipient = identity.personId === approval.requestedBy;
+        if (!currentRecipient && identity.side === "staff") {
+          const watchers = await listApprovalWatcherPersonIds(
+            tx,
+            approval.workItemId,
+          );
+          currentRecipient = watchers.some(
+            ({ personId }) => personId === identity.personId,
+          );
+        }
+        break;
+    }
+    if (!currentRecipient)
+      return {
+        kind: "suppress",
+        reason: "approval_not_addressed_to_recipient",
+      };
+    // A named approver must still be valid for this workspace at send time.
     if (
-      !can(identity, "work_item:read", "work_item", {
-        workspaceId: resource.workspaceId,
-        organisationId: resource.organisationId ?? undefined,
-        workItemProjectId: resource.projectId,
-        projectId: resource.projectId,
-      })
+      identity.personId === approval.approverId &&
+      !(await isApprovalApproverStillValid(tx, approval))
     )
-      return { kind: "suppress", reason: "read_authority_lost" };
+      return { kind: "suppress", reason: "approver_no_longer_valid" };
   }
 
   const preference = await resolveNotificationPreference(tx, {
