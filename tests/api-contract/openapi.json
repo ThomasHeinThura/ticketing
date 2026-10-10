@@ -2089,6 +2089,25 @@
           "hasMore"
         ]
       },
+      "PendingActionApproval": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "state": {
+            "type": "string",
+            "enum": [
+              "executed",
+              "expired"
+            ]
+          }
+        },
+        "required": [
+          "id",
+          "state"
+        ]
+      },
       "PendingActionDecision": {
         "type": "object",
         "properties": {
@@ -12307,6 +12326,97 @@
           },
           "404": {
             "description": "Pending action not found",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/me/pending-actions/{id}/approve": {
+      "post": {
+        "operationId": "approveOwnPendingAction",
+        "tags": [
+          "Pending actions"
+        ],
+        "summary": "Approve a pending action",
+        "description": "Executes a pending action owned by the authenticated requester after its server-selected confirmation.",
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 64
+            },
+            "required": true,
+            "name": "id",
+            "in": "path"
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "typedName": {
+                    "type": "string",
+                    "maxLength": 320
+                  }
+                },
+                "additionalProperties": false
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Approved pending action executed",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PendingActionApproval"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "The current session is unavailable",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Current authority is unavailable",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Pending action not found",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Pending action is stale, terminal, or unsupported",
             "content": {
               "text/plain": {
                 "schema": {

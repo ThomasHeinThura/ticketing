@@ -80,3 +80,7 @@ export const pendingActionDecisionSchema = z
     expiresAt: z.string().datetime(),
   })
   .openapi("PendingActionDecision");
+
+export const pendingActionApprovalSchema = z
+  .object({ id: z.string(), state: z.enum(["executed", "expired"]) })
+  .openapi("PendingActionApproval");

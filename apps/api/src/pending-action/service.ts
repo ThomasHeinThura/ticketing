@@ -13,7 +13,7 @@ import {
   workItemTable,
   workspaceTable,
 } from "../database/schema";
-import { enqueueOutboxEvent } from "../events/outbox";
+import { enqueueOutboxEvent, eventScope } from "../events/outbox";
 import { notifyCurrentInstanceAdminsOfAuditFailure } from "../instance/observability/audit-failure-notifier";
 import { recordAuditWriteFailure } from "../instance/observability/runtime";
 import { resolveIdentity } from "../permissions/resolve-identity";
@@ -25,6 +25,13 @@ import {
 } from "../utils/require-workspace-capability";
 import { validateWorkspaceAccess } from "../utils/validate-workspace-access";
 import {
+  approveSavedViewDeletion,
+  approveServiceCalendarDeletion,
+  getPendingActionExecutionTarget,
+  resolveSavedViewScope,
+  resolveServiceCalendarScope,
+} from "./deletion-targets";
+import {
   type ConfirmationKind,
   canonicalPendingActionPayload,
   hashPendingActionPayload,
@@ -32,6 +39,12 @@ import {
   requiredConfirmation,
 } from "./payload";
 import { pendingActionReadSchema } from "./response";
+
+export {
+  approveSavedViewDeletion,
+  approveServiceCalendarDeletion,
+  getPendingActionExecutionTarget,
+};
 
 const ACTION_TTL_MS = 15 * 60 * 1000;
 
@@ -114,7 +127,7 @@ export async function createPendingAction(input: CreatePendingActionInput) {
             action: input.action,
             targetType: input.targetType,
             targetIds: payload.target_ids,
-            targetVersions: null,
+            targetVersions: scope.targetVersions ?? null,
             payload,
             routeKey: input.routeKey,
             payloadHash,
@@ -140,11 +153,7 @@ export async function createPendingAction(input: CreatePendingActionInput) {
             id: input.requesterPersonId,
             name: scope.actorName,
           },
-          scope: {
-            workspaceId: scope.workspaceId,
-            organisationId: scope.organisationId,
-            projectId: scope.projectId,
-          },
+          scope: eventScope(scope),
           payload: {
             key: id,
             url: `/agent/settings/profile/pending-actions/${id}`,
@@ -608,16 +617,18 @@ function toPendingActionRead(
   });
 }
 
-type PendingActionTransaction = Parameters<
+export type PendingActionTransaction = Parameters<
   Parameters<typeof db.transaction>[0]
 >[0];
 
-type ResolvedRequestScope = {
+export type ResolvedRequestScope = {
   workspaceId: string;
-  projectId: string;
-  organisationId: string;
+  projectId: string | null;
+  organisationId: string | null;
   actorName: string;
   summary: Record<string, unknown>;
+  /** Resolver-derived target versions (never caller-supplied), recorded for PA-6 rechecks. */
+  targetVersions?: Record<string, unknown>;
 };
 
 /**
@@ -630,6 +641,12 @@ async function resolveRequestScope(
   tx: PendingActionTransaction,
   input: CreatePendingActionInput,
 ): Promise<ResolvedRequestScope> {
+  if (input.action === "delete" && input.targetType === "service_calendar") {
+    return resolveServiceCalendarScope(tx, input);
+  }
+  if (input.action === "delete" && input.targetType === "saved_view") {
+    return resolveSavedViewScope(tx, input);
+  }
   if (
     input.targetType !== "work_item" ||
     input.action !== "delete" ||
@@ -811,7 +828,9 @@ async function resolveRequestScope(
   };
 }
 
-function toPublicPendingAction(row: typeof pendingActionTable.$inferSelect) {
+export function toPublicPendingAction(
+  row: typeof pendingActionTable.$inferSelect,
+) {
   return {
     id: row.id,
     action: row.action,

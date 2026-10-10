@@ -1,15 +1,18 @@
 import type { Context } from "hono";
+import { HTTPException } from "hono/http-exception";
 import {
   type ApiKey,
   apiRouter,
   createRoute,
   errorResponse,
   jsonResponse,
+  z,
 } from "../openapi";
 import { setShadowLegacyAuthorization } from "../permissions/shadow-context";
 import { normaliseTraceId } from "../permissions/shadow-middleware";
 import { requireSessionOnly } from "../utils/require-session-only";
 import {
+  pendingActionApprovalSchema,
   pendingActionDecisionSchema,
   pendingActionListResponseSchema,
   pendingActionReadSchema,
@@ -19,9 +22,12 @@ import {
   pendingActionParamSchema,
 } from "./schema";
 import {
+  approveSavedViewDeletion,
+  approveServiceCalendarDeletion,
   decideOwnPendingAction,
   getOwnPendingAction,
   getOwnPendingActions,
+  getPendingActionExecutionTarget,
   requirePendingActionRequesterIdentity,
 } from "./service";
 
@@ -89,6 +95,40 @@ const denyPendingActionRoute = createRoute({
   },
 });
 
+const approvePendingActionRoute = createRoute({
+  method: "post",
+  operationId: "approveOwnPendingAction",
+  path: "/pending-actions/{id}/approve",
+  tags: ["Pending actions"],
+  summary: "Approve a pending action",
+  description:
+    "Executes a pending action owned by the authenticated requester after its server-selected confirmation.",
+  middleware: [requireSessionOnly()] as const,
+  request: {
+    params: pendingActionParamSchema,
+    body: {
+      required: true,
+      content: {
+        "application/json": {
+          schema: z
+            .object({ typedName: z.string().max(320).optional() })
+            .strict(),
+        },
+      },
+    },
+  },
+  responses: {
+    200: jsonResponse(
+      "Approved pending action executed",
+      pendingActionApprovalSchema,
+    ),
+    401: errorResponse("The current session is unavailable"),
+    403: errorResponse("Current authority is unavailable"),
+    404: errorResponse("Pending action not found"),
+    409: errorResponse("Pending action is stale, terminal, or unsupported"),
+  },
+});
+
 const cancelPendingActionRoute = createRoute({
   method: "post",
   operationId: "cancelOwnPendingAction",
@@ -151,6 +191,43 @@ const pendingAction = apiRouter()
       200,
     ),
   )
+  .openapi(approvePendingActionRoute, async (c) => {
+    const apiKey = c.get("apiKey") as ApiKey | undefined;
+    const requesterPersonId = await requirePendingActionRequesterIdentity(
+      c.get("userId"),
+      apiKey,
+    );
+    const session = c.get("session") as { id?: string } | null;
+    if (!session?.id) throw new HTTPException(401, { message: "Unauthorized" });
+    const id = c.req.valid("param").id;
+    const traceId = normaliseTraceId(c.req.header("x-request-id"));
+    const target = await getPendingActionExecutionTarget({
+      id,
+      requesterPersonId,
+    });
+    const approval = {
+      id,
+      requesterPersonId,
+      userId: c.get("userId"),
+      sessionId: session.id,
+      traceId,
+    };
+    const result =
+      target.targetType === "service_calendar"
+        ? await approveServiceCalendarDeletion(approval)
+        : target.targetType === "saved_view"
+          ? await approveSavedViewDeletion(approval)
+          : (() => {
+              throw new HTTPException(409, {
+                message: "pending_action_kind_unsupported",
+              });
+            })();
+    setShadowLegacyAuthorization(c, "allowed");
+    return c.json(
+      { id: result.id, state: result.state as "executed" | "expired" },
+      200,
+    );
+  })
   .openapi(denyPendingActionRoute, (c) =>
     decidePendingAction(c, c.req.valid("param").id, "denied"),
   )
