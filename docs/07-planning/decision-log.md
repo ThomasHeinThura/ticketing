@@ -1,3 +1,23 @@
+### 2026-10-10 · Owner decisions recorded late: #602 template-check lift, second infrastructure re-run, P0 stage-gate waiver
+
+**Why this entry exists:** the P0 phase finalizer (Claude Opus 5.5, 2026-10-10) found that #602 merged through a lifted required check, and that neither owner decision behind it was recorded here. The 2026-10-09 "Model tiers by availability" entry says an earlier proposed lift was withdrawn and the ruleset was not changed. That was true when it was written. The later lift below is a separate decision. This entry records both decisions after the fact; the conductor should have recorded them before the merge.
+
+- **#602 one-time lift of `pull request template + security review`.** Thomas chose this on 2026-10-09 at 17:56 UTC, in the Claude Opus delivery conductor session, from concrete options. The reason: #602's G11-method commit unbound its GPT-6 Sol review note. Main's template check then accepted only a review labelled literally `GPT-6 Sol`. The truthfully labelled Opus review could pass only through #616's model-aware check, and #616 could merge only after #602. Thomas edited ruleset `protect-main` (22365005) himself; no agent edited it:
+  - v52653414 at 02:13:05 UTC on 2026-10-10 removed that one context (18 → 17);
+  - #602 merged at 02:13:44 UTC as `b64f8062`, squash-merged and pinned to its reviewed head;
+  - v52653571 at 02:15:37 UTC restored it (17 → 18).
+
+  The ruleset JSON before, during and after is kept as private evidence (`protect-main-{before-602-lift,during-602-lift,after-602-restore}.json`). The other 17 required contexts stayed in the ruleset during the lift, so branch protection still enforced them at the merge. #602's security review is a fresh Claude Opus 5.5 review, labelled truthfully. **This is a gate waiver.** #602's `## Gates` table says no gate was waived, which is wrong; the waiver row below corrects the record. #602's body is not edited.
+- **Second failed-job re-run for #602 (Docker Hub HTTP 500).** On 2026-10-10 at 01:28 UTC, Thomas authorized one more failed-job re-run of integration and e2e. Both had failed twice, the original run and the one re-run allowed per incident, on the same pre-test infrastructure error: Docker Hub auth returned HTTP 500 while pulling `postgres:18-alpine`. This is an owner exception to the one-re-run rule for that incident only. It does not change the rule.
+- **P0 stage-gate activities deferred to before `2.0.0`.** Thomas confirmed the 2026-09-05 waiver below, which runs the manual accessibility pass, fresh-eyes test, four-browser check and k6 baseline once before `2.0.0`. He widened it to also cover PG3, PG6, the 10k-row data test, full and reduced-motion E2E, and backup restore. Each of these runs once over the whole surface before `2.0.0`, not before an alpha. P0 may be claimed for `v2.0.0-alpha.3` (`b704f707`) with this waiver named in the P0 stage review. The stage review and CHANGELOG records are still required.
+- **P0 screen sign-off (Definition of Done row 15) deferred too.** Asked whether the missing ✅ marks in the screen inventory are also covered, Thomas answered on 2026-10-10: "Yes, defer row 15 too." P0 screen sign-off moves to the same once-before-`2.0.0` pass as PG2 to PG6. No P0 screen row is marked ✅ until then.
+- **Row 11 (three issue-free UTC dates of policy-shadow evidence) is not part of P0.** Asked whether persistent strict policy cutover belongs to P0, Thomas answered on 2026-10-10: "Not part of P0." P0 closes with strict enforcement off by default (`TASKDESK_POLICY_ENFORCE` empty). No strict policy source is persistently activated by the P0 claim. Each source still needs three issue-free UTC dates before it can be activated later, per the 2026-10-04 entry.
+
+**Source:** Thomas, directly to the Claude Opus delivery conductor session. Lift: 2026-10-09 17:56 UTC; ruleset edits announced as "lifted. now go." (02:13 UTC) and "added again restored." (02:16 UTC). Re-run: 2026-10-10 01:28 UTC. Stage-gate deferral, row 15 deferral and row 11 ruling: 2026-10-10.
+**Recorded by:** Claude Opus 5.5 (`claude-opus-5-5`), delivery conductor.
+
+---
+
 ### 2026-10-10 · Owner decisions for slice S3 approvals: feature flag, approval anchoring, relayed entries
 
 **Decision:** Thomas decided three questions that block slice S3 (approvals), each chosen in the Claude Opus conductor session from concrete options.
@@ -6563,6 +6583,20 @@ Gate waivers, recorded per [UX quality gates](../02-design/ux-quality-gates.md).
 **Reason:** [release-plan.md](release-plan.md) runs these four **once, before `2.0.0`**, over the whole surface instead of once per stage. That is a gate waiver granted by a planning document; the waiver procedure ([ux-quality-gates.md](../02-design/ux-quality-gates.md)) was not followed when it was written, so it is recorded here to be visible
 **Follow-up:** confirm or revert — if confirmed, the stage-gate list in [definition-of-done.md](../04-engineering/definition-of-done.md) says so; if reverted, release-plan.md is corrected
 **Approved by:** *pending — Thomas*
+
+### 2026-10-10 · Waived the `pull request template + security review` required check for the #602 merge
+**Waives gate:** `pull request template + security review` · **PR:** #602 · **Follow-up:** #616
+**Gate:** required status check `pull request template + security review` (ruleset `protect-main`)
+**Reason:** a deadlock between a truthfully labelled Opus security review and main's literal `GPT-6 Sol` label check. The model-aware check (#616) could merge only after #602. Owner-approved one-time lift, 02:13:05–02:15:37 UTC; see the 2026-10-10 entry "Owner decisions recorded late".
+**Follow-up:** #616 merged as `1fc04d05` (model-aware check); the check was restored and is enforced for every later PR.
+**Approved by:** Thomas, 2026-10-09
+
+### 2026-10-10 · P0 stage-gate activities deferred to before `2.0.0`
+**Waives gate:** P0 stage-gate activities · **PR:** #624 · **Follow-up:** #626
+**Gate:** stage-gate activities PG2–PG6 (2026-09-05 waiver: PG2/PG4/PG5 and k6; widened: PG3, PG6), P0 screen sign-off (DoD row 15, ✅ in the screen inventory), k6 baseline, 10k-row data test, full and reduced-motion E2E, backup restore ([sdlc.md](../04-engineering/sdlc.md), [definition-of-done.md](../04-engineering/definition-of-done.md))
+**Reason:** confirms and widens the 2026-09-05 consolidation waiver; each runs once over the whole surface before `2.0.0`
+**Follow-up:** #626 (the `2.0.0` release gate)
+**Approved by:** Thomas, 2026-10-10
 
 ```markdown
 ### YYYY-MM-DD · Waived <gate> in PR #n
