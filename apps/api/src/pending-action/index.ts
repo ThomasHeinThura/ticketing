@@ -22,7 +22,7 @@ import {
   pendingActionParamSchema,
 } from "./schema";
 import {
-  approvePersonDeactivation,
+  approveUserDeactivation,
   decideOwnPendingAction,
   getOwnPendingAction,
   getOwnPendingActions,
@@ -194,7 +194,7 @@ const pendingAction = apiRouter()
     );
     const session = c.get("session") as { id?: string } | null;
     if (!session?.id) throw new HTTPException(401, { message: "Unauthorized" });
-    const result = await approvePersonDeactivation({
+    const result = await approveUserDeactivation({
       id: c.req.valid("param").id,
       requesterPersonId,
       userId: c.get("userId"),

@@ -5,13 +5,7 @@ const pendingActionSummarySchema = z.record(z.string(), z.unknown());
 export const pendingActionReadSchema = z
   .object({
     id: z.string(),
-    action: z.enum([
-      "delete",
-      "bulk_delete",
-      "purge",
-      "mcp_destructive",
-      "user_deactivation",
-    ]),
+    action: z.enum(["delete", "bulk_delete", "purge", "mcp_destructive"]),
     origin: z.enum(["web", "api", "mcp"]),
     targetType: z.string(),
     targetIds: z.array(z.string()),
@@ -69,13 +63,7 @@ export const pendingActionListResponseSchema = z
 export const pendingActionDecisionSchema = z
   .object({
     id: z.string(),
-    action: z.enum([
-      "delete",
-      "bulk_delete",
-      "purge",
-      "mcp_destructive",
-      "user_deactivation",
-    ]),
+    action: z.enum(["delete", "bulk_delete", "purge", "mcp_destructive"]),
     origin: z.enum(["web", "api", "mcp"]),
     targetType: z.string(),
     targetIds: z.array(z.string()),

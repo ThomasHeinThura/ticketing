@@ -290,9 +290,9 @@ force sign-out, reset MFA, grant instance administrator, deactivate, export a pe
 anonymise a person, and **impersonate**.
 
 Person deactivation is a separate IP-15 lifecycle transition. It is requested as a server-owned
-pending action (`action = 'user_deactivation'`, `target_type = 'person'`) on
+pending action (`action = 'delete'`, `target_type = 'user'`) on
 `POST /api/instance/users/{id}/deactivate`; the request changes no account state. The server
-binds the target person id and route in the pending-action payload and sets
+binds the target account id and route in the pending-action payload and sets
 `typed_name_step_up`. Approval requires the exact current account email and a PA-15 token
 bound to that pending action. In the execution transaction the server re-reads and locks the
 target person/user, confirms the same target id is active and the supplied email exactly
@@ -380,8 +380,8 @@ Import runs and their history. See [import strategy](../06-data-import/import-st
   the server chooses the confirmation level, and for God Mode targets — organisations,
   identity connections, auth plugins, hard purge — that level is **typed exact name +
   step-up**. The client cannot lower it.
-- `GM-15` God Mode person deactivation uses the dedicated `user_deactivation` pending-action
-  kind (not a deletion). Its fixed target type is `person`, the route is
+- `GM-15` God Mode user deactivation uses the canonical `delete` action with the
+  fixed target type `user` (the account id). The route is
   `POST /api/instance/users/{id}/deactivate`, and the one confirmation is
   `typed_name_step_up`: the requester types the target's exact current account email and
   supplies the pending-action-bound PA-15 token. The server revalidates current email,
@@ -497,7 +497,7 @@ POST   /api/instance/users/{id}/unsuspend             instance:admin
 POST   /api/instance/users/{id}/sign-out              instance:admin
 POST   /api/instance/users/{id}/reset-mfa             instance:admin  E
 POST   /api/instance/users/{id}/grant-admin           instance:admin  E
-POST   /api/instance/users/{id}/deactivate            instance:admin  session-only (creates `user_deactivation`; execution requires exact current email + PA-15)
+POST   /api/instance/users/{id}/deactivate            instance:admin  session-only (creates `delete` for `user`; execution requires exact current email + PA-15)
 GET    /api/instance/users/{id}/export                instance:admin  E
 POST   /api/instance/users/{id}/anonymise             instance:admin  E
 POST   /api/instance/users/{id}/impersonate           instance:admin  E

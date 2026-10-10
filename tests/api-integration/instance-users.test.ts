@@ -1,6 +1,6 @@
 import { createHash } from "node:crypto";
 import { createRequire } from "node:module";
-import { eq, inArray } from "drizzle-orm";
+import { and, eq, inArray, sql } from "drizzle-orm";
 import { beforeEach, describe, expect, it } from "vitest";
 import {
   canonicalInstanceAdminGrantBody,
@@ -602,6 +602,39 @@ describe("God Mode Users API", () => {
       personId: expect.any(String),
       email: target.email,
     });
+    const pendingRecord = await db
+      .select({
+        action: schema.pendingActionTable.action,
+        targetType: schema.pendingActionTable.targetType,
+        targetIds: schema.pendingActionTable.targetIds,
+        routeKey: schema.pendingActionTable.routeKey,
+        payload: schema.pendingActionTable.payload,
+        workspaceId: schema.pendingActionTable.workspaceId,
+        projectId: schema.pendingActionTable.projectId,
+        organisationId: schema.pendingActionTable.organisationId,
+        confirmationRequired: schema.pendingActionTable.confirmationRequired,
+      })
+      .from(schema.pendingActionTable)
+      .where(eq(schema.pendingActionTable.id, pending.pendingActionId));
+    expect(pendingRecord).toEqual([
+      {
+        action: "delete",
+        targetType: "user",
+        targetIds: [target.id],
+        routeKey: "POST /api/instance/users/{id}/deactivate",
+        payload: expect.objectContaining({
+          action: "delete",
+          target_type: "user",
+          target_ids: [target.id],
+          route_key: "POST /api/instance/users/{id}/deactivate",
+          confirmation_required: "typed_name_step_up",
+        }),
+        workspaceId: null,
+        projectId: null,
+        organisationId: null,
+        confirmationRequired: "typed_name_step_up",
+      },
+    ]);
     expect(
       await db
         .select({ active: schema.personTable.active })
@@ -752,6 +785,32 @@ describe("God Mode Users API", () => {
       { kind: "pending_action.executed", workspaceId: null },
       { kind: "identity.deprovisioned", workspaceId: null },
     ]);
+    const [deprovisionedEvent] = await db
+      .select({ payload: schema.outboxTable.payload })
+      .from(schema.outboxTable)
+      .where(
+        and(
+          eq(schema.outboxTable.kind, "identity.deprovisioned"),
+          sql`${schema.outboxTable.payload}->'payload'->>'personId' = ${pending.summary.personId}`,
+        ),
+      );
+    expect(deprovisionedEvent?.payload).toEqual(
+      expect.objectContaining({
+        kind: "identity.deprovisioned",
+        scope: {},
+        payload: expect.objectContaining({
+          source: "god_mode",
+          personId: expect.any(String),
+          organisationId: expect.any(String),
+          externalIdentityIds: [],
+          previousState: { active: true },
+          resultingAction: "deactivated",
+          sessionsRevoked: expect.any(Number),
+          keysRevoked: expect.any(Number),
+          membershipsEnded: expect.any(Number),
+        }),
+      }),
+    );
     // Workspace consumers select by workspace_id. SQL equality does not match
     // NULL, so these instance lifecycle events cannot enter a workspace feed.
     expect(
@@ -768,6 +827,32 @@ describe("God Mode Users API", () => {
         dedupeKey: null,
         workspaceId: null,
         organisationId: "org-out-of-scope",
+        state: "pending",
+        attempts: 0,
+        lastError: null,
+      }),
+    ).rejects.toThrow();
+    await expect(
+      db.insert(schema.outboxTable).values({
+        eventId: "identity-event-with-organisation-scope",
+        kind: "identity.deprovisioned",
+        payload: {},
+        dedupeKey: null,
+        workspaceId: null,
+        organisationId: "org-out-of-scope",
+        state: "pending",
+        attempts: 0,
+        lastError: null,
+      }),
+    ).rejects.toThrow();
+    await expect(
+      db.insert(schema.outboxTable).values({
+        eventId: "workspace-event-without-workspace-scope",
+        kind: "work_item.created",
+        payload: {},
+        dedupeKey: null,
+        workspaceId: null,
+        organisationId: null,
         state: "pending",
         attempts: 0,
         lastError: null,

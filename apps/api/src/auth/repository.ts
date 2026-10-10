@@ -63,6 +63,7 @@ export function getPendingActionForStepUp(
   return db
     .select({
       action: schema.pendingActionTable.action,
+      targetType: schema.pendingActionTable.targetType,
       confirmation: schema.pendingActionTable.confirmationRequired,
       routeKey: schema.pendingActionTable.routeKey,
     })
