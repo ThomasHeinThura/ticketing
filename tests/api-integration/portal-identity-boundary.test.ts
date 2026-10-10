@@ -81,7 +81,7 @@ describe("customer portal session requires an admitted customer identity", () =>
   it("authenticateApiRequest refuses a portal session without an admitted identity", async () => {
     const stranger = await customer("portal-stranger", false);
     const admitted = await customer("portal-admitted", true);
-    const probe = new Hono();
+    const probe = new Hono<{ Variables: { userId: string } }>();
     probe.onError((error, c) =>
       error instanceof HTTPException
         ? c.json({ message: error.message }, error.status)
