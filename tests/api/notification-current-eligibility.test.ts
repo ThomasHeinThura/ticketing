@@ -77,6 +77,7 @@ describe("current notification reach and preference", () => {
     });
     mocks.findCurrentNotificationResource.mockResolvedValue(resource);
     mocks.reaches.mockReturnValue(true);
+    mocks.can.mockReturnValue(true);
     mocks.resolveNotificationPreference.mockResolvedValue({ enabled: true });
   });
 
@@ -85,6 +86,26 @@ describe("current notification reach and preference", () => {
     await expect(
       evaluateCurrentNotificationReachAndPreference(tx, delivery),
     ).resolves.toEqual({ kind: "suppress", reason: "reach_lost" });
+    expect(mocks.resolveNotificationPreference).not.toHaveBeenCalled();
+  });
+
+  it("suppresses when reach holds but work_item:read authority is lost", async () => {
+    mocks.can.mockImplementation(
+      (_identity, capability) => capability !== "work_item:read",
+    );
+    await expect(
+      evaluateCurrentNotificationReachAndPreference(tx, delivery),
+    ).resolves.toEqual({ kind: "suppress", reason: "read_authority_lost" });
+    expect(mocks.can).toHaveBeenCalledWith(
+      expect.anything(),
+      "work_item:read",
+      "work_item",
+      expect.objectContaining({
+        workspaceId: "workspace-1",
+        projectId: "project-1",
+        workItemProjectId: "project-1",
+      }),
+    );
     expect(mocks.resolveNotificationPreference).not.toHaveBeenCalled();
   });
 

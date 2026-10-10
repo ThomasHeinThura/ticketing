@@ -585,6 +585,21 @@ authorizes a send while quiet hours or the destination are unresolved. See
 [background jobs](../01-architecture/background-jobs.md#outbox-delivery) for the implemented
 worker boundary. Browser acceptance remains pending.
 
+**Pre-wiring gates (must close before any producer or worker calls this runtime).** (1) The
+inbox read paths (list, read, read-all, clear-all) apply current reach only to
+`resource_type = 'task'` rows; extend the predicate to every registered fan-out resource type
+(`work_item`, `comment`, `workspace`, `instance` and the rest), failing closed for unknown
+types, and keep `instance` rows behind the instance-admin gate. (2) `approval` is excluded from
+fan-out until the approvals slice lands its recipient and reach code. (3) The legacy
+workspace delivery path checks reach once, with no banned/deactivated check and no recheck at
+send time; move it to the identity-based `workspace:read` check. (4) `fanout.ts` has no
+tests; add recipient, preference, digest-hook and self-exclusion coverage. (5) The reach
+facts omit ancestor projects and the owner team, which only over-suppresses. (6) The
+`notify.*` adapter must strip CR/LF and control characters from titles before using them in
+a subject or header. The scheduler loop must also tolerate rows backed off for
+`destination_unresolved`, `quiet_hours_unresolved`, `evaluator_error` and
+`reservation_contention` (30 s, no attempt consumed).
+
 ## Related
 
 - [Background jobs](../01-architecture/background-jobs.md) · [Realtime](../01-architecture/realtime.md)

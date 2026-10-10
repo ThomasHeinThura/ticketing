@@ -1,13 +1,24 @@
 import { randomUUID } from "node:crypto";
 import { sql } from "drizzle-orm";
-import { afterAll, afterEach, beforeAll, describe, expect, it } from "vitest";
+import {
+  afterAll,
+  afterEach,
+  beforeAll,
+  describe,
+  expect,
+  it,
+  vi,
+} from "vitest";
 import db, { schema } from "../../apps/api/src/database";
 import {
   acquireNotificationReservation,
   authorizeNotificationProviderAttempt,
   completeNotificationDelivery,
+  deferNotificationDelivery,
   hasRecentNotificationSuccess,
   NotificationReservationContentionError,
+  releaseNotificationReservation,
+  renewNotificationReservation,
 } from "../../apps/api/src/database/repositories/notification-delivery.repository";
 import { notificationReservationKey } from "../../apps/api/src/notification/delivery-primitives";
 import type { NotificationOutboxRuntime } from "../../apps/api/src/notification/outbox-drain";
@@ -19,6 +30,26 @@ import { deleteExpiredNotificationReservations } from "../../apps/api/src/schedu
 import { seedDefaultWorkspaceRoles } from "../../apps/api/src/utils/seed-default-workspace-roles";
 import { resetTestDatabase } from "./helpers/database";
 import { createProjectFixture, grantProjectRole } from "./helpers/fixtures";
+
+const renewalFault = vi.hoisted(() => ({ fail: false }));
+vi.mock(
+  "../../apps/api/src/database/repositories/notification-delivery.repository",
+  async (importOriginal) => {
+    const actual =
+      await importOriginal<
+        typeof import("../../apps/api/src/database/repositories/notification-delivery.repository")
+      >();
+    return {
+      ...actual,
+      renewNotificationReservation: (
+        ...args: Parameters<typeof actual.renewNotificationReservation>
+      ) => {
+        if (renewalFault.fail) throw new Error("injected renewal failure");
+        return actual.renewNotificationReservation(...args);
+      },
+    };
+  },
+);
 
 const suffix = randomUUID().replaceAll("-", "");
 const ids = {
@@ -43,8 +74,10 @@ async function makeEventAndDelivery(
     resourceType?: string;
     resourceId?: string;
     payload?: Record<string, unknown>;
+    workspaceId?: string;
   } = {},
 ) {
+  const deliveryWorkspace = mapping.workspaceId ?? ids.workspace;
   const itemSuffix = randomUUID().replaceAll("-", "");
   const eventId = `notification-test-event-${itemSuffix}`;
   const deliveryId = `notification-test-delivery-${itemSuffix}`;
@@ -55,15 +88,18 @@ async function makeEventAndDelivery(
     VALUES (${eventId}, ${eventKind}, ${JSON.stringify({
       id: eventId,
       kind: eventKind,
-      scope: { workspaceId: ids.workspace, organisationId: ids.organisation },
+      scope: {
+        workspaceId: deliveryWorkspace,
+        organisationId: ids.organisation,
+      },
       payload: mapping.payload ?? {},
     })}::jsonb,
-      ${ids.workspace}, ${ids.organisation})
+      ${deliveryWorkspace}, ${ids.organisation})
   `);
   await db.execute(sql`
     INSERT INTO notification_delivery
       (id, event_id, recipient_person_id, channel, workspace_id, organisation_id, dedupe_key)
-    VALUES (${deliveryId}, ${eventId}, ${ids.person}, ${channel}, ${ids.workspace}, ${ids.organisation}, ${dedupeKey})
+    VALUES (${deliveryId}, ${eventId}, ${ids.person}, ${channel}, ${deliveryWorkspace}, ${ids.organisation}, ${dedupeKey})
   `);
   if (withInbox) {
     await db.execute(sql`
@@ -110,7 +146,7 @@ describe("outbox notification direct-delivery persistence", () => {
     await db.execute(
       sql`UPDATE project SET organisation_id = ${ids.organisation} WHERE id = ${ids.project}`,
     );
-    await grantProjectRole(ids.user, ids.project, []);
+    await grantProjectRole(ids.user, ids.project, ["work_item:read"]);
     await db.insert(schema.workItemTypeTable).values({
       id: ids.type,
       workspaceId: ids.workspace,
@@ -867,5 +903,649 @@ describe("outbox notification direct-delivery persistence", () => {
       }),
     );
     expect(claim).toEqual({ status: "digest_collision" });
+  });
+
+  const eligibleRuntime = (onSend: () => void): NotificationOutboxRuntime => ({
+    evaluateCurrentEligibility: async () => ({
+      kind: "eligible",
+      projection: { title: "t", body: "b", url: "/agent/work-items/x" },
+    }),
+    send: async () => {
+      onSend();
+    },
+  });
+
+  async function deliveryRow(id: string) {
+    const row = await db.execute<{
+      attempts: number;
+      state: string;
+      last_error: string | null;
+      future: boolean;
+    }>(sql`
+      SELECT attempts, state, last_error,
+             next_attempt_at > clock_timestamp() AT TIME ZONE 'UTC' AS future
+        FROM notification_delivery WHERE id = ${id}
+    `);
+    return row.rows[0];
+  }
+
+  async function withRevokedMemberships<T>(
+    scope: "project" | "workspace",
+    scopeId: string,
+    body: () => Promise<T>,
+  ): Promise<T> {
+    const saved = await db.execute(sql`
+      SELECT * FROM membership
+       WHERE person_id = ${ids.person} AND scope = ${scope} AND scope_id = ${scopeId}
+    `);
+    await db.execute(sql`
+      DELETE FROM membership
+       WHERE person_id = ${ids.person} AND scope = ${scope} AND scope_id = ${scopeId}
+    `);
+    try {
+      return await body();
+    } finally {
+      for (const row of saved.rows) {
+        const keys = Object.keys(row);
+        await db.execute(
+          sql`INSERT INTO membership (${sql.raw(keys.map((k) => `"${k}"`).join(", "))})
+              VALUES (${sql.join(
+                keys.map((k) => sql`${(row as Record<string, unknown>)[k]}`),
+                sql`, `,
+              )})`,
+        );
+      }
+    }
+  }
+
+  const workItemMapping = () => ({
+    eventKind: "work_item.assigned",
+    resourceType: "work_item",
+    resourceId: ids.item,
+    payload: { workItemId: ids.item },
+  });
+
+  it("F1 suppresses a recipient whose project role no longer grants work_item:read", async () => {
+    const control = await makeEventAndDelivery(true, workItemMapping());
+    let sent = 0;
+    const runtime = currentEligibilityRuntime(async () => {
+      sent += 1;
+    });
+    await expect(processNextNotificationDelivery(runtime)).resolves.toEqual({
+      kind: "delivered",
+    });
+    expect(sent).toBe(1);
+    expect((await deliveryRow(control.deliveryId))?.state).toBe("delivered");
+    await db.execute(sql`DELETE FROM outbox_dedupe_reservation`);
+
+    const roleIds = await db.execute<{ id: string; caps: unknown }>(sql`
+      SELECT r.id, r.capabilities AS caps FROM role r
+        JOIN membership m ON m.role_id = r.id
+       WHERE m.person_id = ${ids.person} AND m.scope = 'project' AND m.scope_id = ${ids.project}
+    `);
+    const role = roleIds.rows[0];
+    if (!role) throw new Error("project role fixture missing");
+    await db.execute(
+      sql`UPDATE role SET capabilities = '[]'::jsonb WHERE id = ${role.id}`,
+    );
+    try {
+      const fixture = await makeEventAndDelivery(true, workItemMapping());
+      await expect(processNextNotificationDelivery(runtime)).resolves.toEqual({
+        kind: "suppressed",
+        reason: "read_authority_lost",
+      });
+      expect(sent).toBe(1);
+      expect(await deliveryRow(fixture.deliveryId)).toMatchObject({
+        attempts: 0,
+        state: "suppressed",
+      });
+    } finally {
+      await db.execute(
+        sql`UPDATE role SET capabilities = ${JSON.stringify(role.caps)}::jsonb WHERE id = ${role.id}`,
+      );
+    }
+  });
+
+  it("F6 suppresses after project reach is revoked, then drains again once restored", async () => {
+    await withRevokedMemberships("project", ids.project, async () => {
+      const fixture = await makeEventAndDelivery(true, workItemMapping());
+      let sent = 0;
+      const result = await processNextNotificationDelivery(
+        currentEligibilityRuntime(async () => {
+          sent += 1;
+        }),
+      );
+      expect(result).toMatchObject({ kind: "suppressed" });
+      expect(sent).toBe(0);
+      expect((await deliveryRow(fixture.deliveryId))?.state).toBe("suppressed");
+    });
+  });
+
+  it("F6 suppresses a workspace notification after workspace authority is removed", async () => {
+    const mapping = {
+      eventKind: "workspace.created",
+      resourceType: "workspace",
+      resourceId: ids.workspace,
+      payload: { workspaceId: ids.workspace, ownerId: ids.user },
+    };
+    await db.execute(sql`INSERT INTO notification_preference
+      (person_id, scope, scope_id, channel, event_kind, enabled, digest)
+      VALUES (${ids.person}, 'global', NULL, ${channel}, 'workspace.created', true, 'off')`);
+    const withAuthority = await makeEventAndDelivery(true, mapping);
+    await expect(
+      processNextNotificationDelivery(
+        currentEligibilityRuntime(async () => {}),
+      ),
+    ).resolves.toEqual({
+      kind: "unresolved",
+      reason: "destination_unresolved",
+    });
+    expect((await deliveryRow(withAuthority.deliveryId))?.state).toBe(
+      "pending",
+    );
+    await db.execute(sql`DELETE FROM notification_delivery`);
+
+    // Workspace authority comes from the legacy workspace_member row.
+    await db.execute(
+      sql`DELETE FROM workspace_member WHERE workspace_id = ${ids.workspace} AND user_id = ${ids.user}`,
+    );
+    try {
+      const fixture = await makeEventAndDelivery(true, mapping);
+      await expect(
+        processNextNotificationDelivery(
+          currentEligibilityRuntime(async () => {}),
+        ),
+      ).resolves.toEqual({ kind: "suppressed", reason: "reach_lost" });
+      expect((await deliveryRow(fixture.deliveryId))?.state).toBe("suppressed");
+    } finally {
+      await db.execute(sql`INSERT INTO workspace_member (id, workspace_id, user_id, role, joined_at)
+        VALUES (${`notification-test-member-${suffix}`}, ${ids.workspace}, ${ids.user}, 'admin', clock_timestamp())`);
+    }
+  });
+
+  it("F6 suppresses when the resource's workspace differs from the delivery's workspace", async () => {
+    const otherWorkspace = `notification-test-other-ws-${suffix}`;
+    await db.execute(sql`INSERT INTO workspace (id, organisation_id, name, slug, created_at)
+      VALUES (${otherWorkspace}, ${ids.organisation}, 'Other', ${`other-${suffix}`}, clock_timestamp())`);
+    try {
+      const fixture = await makeEventAndDelivery(true, {
+        ...workItemMapping(),
+        workspaceId: otherWorkspace,
+      });
+      await expect(
+        processNextNotificationDelivery(
+          currentEligibilityRuntime(async () => {}),
+        ),
+      ).resolves.toEqual({
+        kind: "suppressed",
+        reason: "resource_scope_changed",
+      });
+      expect((await deliveryRow(fixture.deliveryId))?.state).toBe("suppressed");
+    } finally {
+      await db.execute(
+        sql`DELETE FROM outbox WHERE workspace_id = ${otherWorkspace}`,
+      );
+      await db.execute(sql`DELETE FROM workspace WHERE id = ${otherWorkspace}`);
+    }
+  });
+
+  it("F2 backs off an unresolved head so an eligible sibling is still delivered", async () => {
+    const head = await makeEventAndDelivery(true, {
+      eventKind: "workspace.created",
+      resourceType: "workspace",
+      resourceId: ids.workspace,
+      payload: { workspaceId: ids.workspace, ownerId: ids.user },
+    });
+    await db.execute(sql`INSERT INTO notification_preference
+      (person_id, scope, scope_id, channel, event_kind, enabled, digest)
+      VALUES (${ids.person}, 'global', NULL, ${channel}, 'workspace.created', true, 'off')`);
+    const sibling = await makeEventAndDelivery(true, workItemMapping());
+    let sent = 0;
+    const runtime = currentEligibilityRuntime(async () => {
+      sent += 1;
+    });
+    await expect(processNextNotificationDelivery(runtime)).resolves.toEqual({
+      kind: "unresolved",
+      reason: "destination_unresolved",
+    });
+    expect(await deliveryRow(head.deliveryId)).toMatchObject({
+      attempts: 0,
+      state: "pending",
+      last_error: "destination_unresolved",
+      future: true,
+    });
+    await expect(processNextNotificationDelivery(runtime)).resolves.toEqual({
+      kind: "delivered",
+    });
+    expect(sent).toBe(1);
+    expect((await deliveryRow(sibling.deliveryId))?.state).toBe("delivered");
+    await expect(processNextNotificationDelivery(runtime)).resolves.toEqual({
+      kind: "idle",
+    });
+  });
+
+  it("F2 backs off a row whose evaluator throws so a sibling is still delivered", async () => {
+    const poison = await makeEventAndDelivery(true);
+    const sibling = await makeEventAndDelivery(true);
+    let sent = 0;
+    const runtime: NotificationOutboxRuntime = {
+      evaluateCurrentEligibility: async (_tx, delivery) => {
+        if (delivery.id === poison.deliveryId) throw new Error("poison row");
+        return {
+          kind: "eligible",
+          projection: { title: "t", body: "b", url: "/agent/work-items/x" },
+        };
+      },
+      send: async () => {
+        sent += 1;
+      },
+    };
+    await expect(processNextNotificationDelivery(runtime)).resolves.toEqual({
+      kind: "deferred",
+      reason: "evaluator_error",
+    });
+    expect(await deliveryRow(poison.deliveryId)).toMatchObject({
+      attempts: 0,
+      state: "pending",
+      future: true,
+    });
+    await expect(processNextNotificationDelivery(runtime)).resolves.toEqual({
+      kind: "delivered",
+    });
+    expect(sent).toBe(1);
+    expect((await deliveryRow(sibling.deliveryId))?.state).toBe("delivered");
+  });
+
+  describe("F3 fencing token and lease expiry are refused by every writer", () => {
+    async function acquired() {
+      const fixture = await makeEventAndDelivery();
+      const claim = await db.transaction((tx) =>
+        acquireNotificationReservation(tx, {
+          recipientPersonId: ids.person,
+          channel,
+          dedupeKey,
+          ownerDeliveryId: fixture.deliveryId,
+        }),
+      );
+      if (claim.status !== "acquired") throw new Error("not acquired");
+      return { fixture, reservation: claim.reservation };
+    }
+
+    async function expireLease(reservation: { key: Buffer }) {
+      await db.execute(sql`UPDATE outbox_dedupe_reservation
+        SET lease_expires_at = clock_timestamp() AT TIME ZONE 'UTC' - interval '1 second'
+        WHERE reservation_key = ${reservation.key}`);
+    }
+
+    it("accepts the live owner token (positive control)", async () => {
+      const { fixture, reservation } = await acquired();
+      const renewed = await db.transaction((tx) =>
+        renewNotificationReservation(tx, reservation),
+      );
+      expect(renewed).not.toBeNull();
+      const attempt = await db.transaction((tx) =>
+        authorizeNotificationProviderAttempt(
+          tx,
+          fixture.deliveryId,
+          reservation,
+        ),
+      );
+      expect(attempt).toBe(1);
+      await expect(
+        db.transaction((tx) =>
+          completeNotificationDelivery(tx, fixture.deliveryId, reservation, {
+            kind: "delivered",
+          }),
+        ),
+      ).resolves.toBe(true);
+    });
+
+    it.each([
+      { name: "a foreign lease token", expire: false },
+      { name: "an expired lease", expire: true },
+    ])(
+      "authorize, renew, complete, defer and release all refuse $name",
+      async ({ expire }) => {
+        const { fixture, reservation } = await acquired();
+        const presented = expire
+          ? reservation
+          : { ...reservation, leaseToken: randomUUID() };
+        if (expire) await expireLease(reservation);
+
+        await expect(
+          db.transaction((tx) => renewNotificationReservation(tx, presented)),
+        ).resolves.toBeNull();
+        await expect(
+          db.transaction((tx) =>
+            authorizeNotificationProviderAttempt(
+              tx,
+              fixture.deliveryId,
+              presented,
+            ),
+          ),
+        ).resolves.toBeNull();
+        await expect(
+          db.transaction((tx) =>
+            completeNotificationDelivery(tx, fixture.deliveryId, presented, {
+              kind: "delivered",
+            }),
+          ),
+        ).resolves.toBe(false);
+        await expect(
+          db.transaction((tx) =>
+            deferNotificationDelivery(
+              tx,
+              fixture.deliveryId,
+              new Date(Date.now() + 3_600_000),
+              "stale_defer",
+              presented,
+            ),
+          ),
+        ).resolves.toBe(false);
+        await expect(
+          db.transaction((tx) =>
+            releaseNotificationReservation(tx, fixture.deliveryId, presented),
+          ),
+        ).resolves.toBe(false);
+        expect(await deliveryRow(fixture.deliveryId)).toMatchObject({
+          attempts: 0,
+          state: "pending",
+          last_error: null,
+          future: false,
+        });
+        const kept = await db.execute(sql`
+        SELECT 1 FROM outbox_dedupe_reservation WHERE reservation_key = ${reservation.key}
+      `);
+        expect(kept.rows).toHaveLength(1);
+      },
+    );
+  });
+
+  it("B-F1 a stale holder of the same delivery cannot authorize, renew, complete, defer or release", async () => {
+    const fixture = await makeEventAndDelivery();
+    const other = await makeEventAndDelivery();
+    const first = await db.transaction((tx) =>
+      acquireNotificationReservation(tx, {
+        recipientPersonId: ids.person,
+        channel,
+        dedupeKey,
+        ownerDeliveryId: fixture.deliveryId,
+      }),
+    );
+    if (first.status !== "acquired") throw new Error("not acquired");
+    const stale = first.reservation;
+    await db.execute(sql`UPDATE outbox_dedupe_reservation
+      SET lease_expires_at = clock_timestamp() AT TIME ZONE 'UTC' - interval '1 second'
+      WHERE reservation_key = ${stale.key}`);
+    const second = await db.transaction((tx) =>
+      acquireNotificationReservation(tx, {
+        recipientPersonId: ids.person,
+        channel,
+        dedupeKey,
+        ownerDeliveryId: fixture.deliveryId,
+      }),
+    );
+    if (second.status !== "acquired") throw new Error("not re-acquired");
+    const current = second.reservation;
+    expect(current.leaseToken).not.toBe(stale.leaseToken);
+
+    const snapshot = async () =>
+      (
+        await db.execute(sql`
+          SELECT owner_delivery_id, lease_token, lease_expires_at
+            FROM outbox_dedupe_reservation WHERE reservation_key = ${stale.key}
+        `)
+      ).rows;
+    const before = await snapshot();
+
+    await expect(
+      db.transaction((tx) =>
+        authorizeNotificationProviderAttempt(tx, fixture.deliveryId, stale),
+      ),
+    ).resolves.toBeNull();
+    await expect(
+      db.transaction((tx) => renewNotificationReservation(tx, stale)),
+    ).resolves.toBeNull();
+    await expect(
+      db.transaction((tx) =>
+        completeNotificationDelivery(tx, fixture.deliveryId, stale, {
+          kind: "delivered",
+        }),
+      ),
+    ).resolves.toBe(false);
+    await expect(
+      db.transaction((tx) =>
+        deferNotificationDelivery(
+          tx,
+          fixture.deliveryId,
+          new Date(Date.now() + 60_000),
+          "stale",
+          stale,
+        ),
+      ),
+    ).resolves.toBe(false);
+    await expect(
+      db.transaction((tx) =>
+        releaseNotificationReservation(tx, fixture.deliveryId, stale),
+      ),
+    ).resolves.toBe(false);
+    // The owner comparison: the current holder's valid token, presented for a different
+    // delivery, is also refused.
+    await expect(
+      db.transaction((tx) =>
+        authorizeNotificationProviderAttempt(tx, other.deliveryId, current),
+      ),
+    ).resolves.toBeNull();
+
+    expect(await snapshot()).toEqual(before);
+    expect(await deliveryRow(fixture.deliveryId)).toMatchObject({
+      attempts: 0,
+      state: "pending",
+    });
+    expect(await deliveryRow(other.deliveryId)).toMatchObject({
+      attempts: 0,
+      state: "pending",
+    });
+    // Positive control: the current holder still proceeds.
+    await expect(
+      db.transaction((tx) =>
+        authorizeNotificationProviderAttempt(tx, fixture.deliveryId, current),
+      ),
+    ).resolves.toBe(1);
+  });
+
+  it("B-F3 suppresses a deactivated recipient with the recipient_inactive reason", async () => {
+    const fixture = await makeEventAndDelivery(true, workItemMapping());
+    await db.execute(
+      sql`UPDATE person SET active = false WHERE id = ${ids.person}`,
+    );
+    try {
+      let sent = 0;
+      await expect(
+        processNextNotificationDelivery(
+          currentEligibilityRuntime(async () => {
+            sent += 1;
+          }),
+        ),
+      ).resolves.toEqual({ kind: "suppressed", reason: "recipient_inactive" });
+      expect(sent).toBe(0);
+      expect(await deliveryRow(fixture.deliveryId)).toMatchObject({
+        attempts: 0,
+        state: "suppressed",
+      });
+    } finally {
+      await db.execute(
+        sql`UPDATE person SET active = true WHERE id = ${ids.person}`,
+      );
+    }
+  });
+
+  describe("B-F6 drain-level provider outcomes", () => {
+    it("a provider failure schedules a retry with backoff and consumes one attempt", async () => {
+      const fixture = await makeEventAndDelivery(true);
+      const runtime: NotificationOutboxRuntime = {
+        ...eligibleRuntime(() => {}),
+        send: async () => {
+          throw new Error("provider down");
+        },
+      };
+      await expect(processNextNotificationDelivery(runtime)).resolves.toEqual({
+        kind: "retry",
+        ambiguous: false,
+      });
+      expect(await deliveryRow(fixture.deliveryId)).toMatchObject({
+        attempts: 1,
+        state: "pending",
+        last_error: "provider_failed",
+        future: true,
+      });
+    });
+
+    it("a provider deadline is ambiguous and keeps the reservation until lease expiry", async () => {
+      const fixture = await makeEventAndDelivery(true);
+      const runtime: NotificationOutboxRuntime = {
+        ...eligibleRuntime(() => {}),
+        send: () => new Promise<void>(() => {}),
+      };
+      await expect(
+        processNextNotificationDelivery(runtime, { providerDeadlineMs: 50 }),
+      ).resolves.toEqual({ kind: "retry", ambiguous: true });
+      expect(await deliveryRow(fixture.deliveryId)).toMatchObject({
+        attempts: 1,
+        state: "pending",
+      });
+      const held = await db.execute(sql`
+        SELECT 1 FROM outbox_dedupe_reservation WHERE owner_delivery_id = ${fixture.deliveryId}
+      `);
+      expect(held.rows).toHaveLength(1);
+    });
+
+    it("losing the lease mid-send reports an ambiguous retry and never records delivered", async () => {
+      const fixture = await makeEventAndDelivery(true);
+      let sent = 0;
+      const runtime: NotificationOutboxRuntime = {
+        ...eligibleRuntime(() => {}),
+        send: async () => {
+          sent += 1;
+          await db.execute(sql`UPDATE outbox_dedupe_reservation
+            SET lease_token = ${randomUUID()}
+            WHERE owner_delivery_id = ${fixture.deliveryId}`);
+        },
+      };
+      await expect(processNextNotificationDelivery(runtime)).resolves.toEqual({
+        kind: "retry",
+        ambiguous: true,
+      });
+      expect(sent).toBe(1);
+      expect(await deliveryRow(fixture.deliveryId)).toMatchObject({
+        attempts: 1,
+        state: "pending",
+      });
+    });
+
+    it("suppresses a second delivery with the same key as a recent duplicate", async () => {
+      const first = await makeEventAndDelivery(true);
+      let sent = 0;
+      const runtime = eligibleRuntime(() => {
+        sent += 1;
+      });
+      await expect(processNextNotificationDelivery(runtime)).resolves.toEqual({
+        kind: "delivered",
+      });
+      const second = await makeEventAndDelivery(true);
+      await expect(processNextNotificationDelivery(runtime)).resolves.toEqual({
+        kind: "suppressed",
+        reason: "recent_duplicate",
+      });
+      expect(sent).toBe(1);
+      expect((await deliveryRow(first.deliveryId))?.state).toBe("delivered");
+      expect(await deliveryRow(second.deliveryId)).toMatchObject({
+        attempts: 0,
+        state: "suppressed",
+      });
+    });
+
+    it("B-F2 a renewal failure stops the send fail-closed without an unhandled rejection", async () => {
+      const fixture = await makeEventAndDelivery(true);
+      let aborted = false;
+      const runtime: NotificationOutboxRuntime = {
+        ...eligibleRuntime(() => {}),
+        send: (_channel, _projection, options) =>
+          new Promise<void>((_resolve, reject) => {
+            options.signal.addEventListener("abort", () => {
+              aborted = true;
+              reject(options.signal.reason);
+            });
+          }),
+      };
+      renewalFault.fail = true;
+      try {
+        await expect(
+          processNextNotificationDelivery(runtime, {
+            renewalIntervalMs: 20,
+            providerDeadlineMs: 5_000,
+          }),
+        ).resolves.toEqual({ kind: "retry", ambiguous: true });
+      } finally {
+        renewalFault.fail = false;
+      }
+      expect(aborted).toBe(true);
+      expect(await deliveryRow(fixture.deliveryId)).toMatchObject({
+        attempts: 1,
+        state: "pending",
+      });
+    });
+  });
+
+  it("F4 fan-out writes no inbox row for an approval resource and does for a work item", async () => {
+    const { materializeNotificationFanout } = await import(
+      "../../apps/api/src/notification/fanout"
+    );
+    const eventId = `notification-test-fanout-${randomUUID()}`;
+    createdEvents.push(eventId);
+    await db.execute(sql`
+      INSERT INTO outbox (event_id, kind, payload, workspace_id, organisation_id)
+      VALUES (${eventId}, 'work_item.assigned', '{}'::jsonb, ${ids.workspace}, ${ids.organisation})
+    `);
+    const event = {
+      id: eventId,
+      kind: "work_item.assigned",
+      occurredAt: new Date().toISOString(),
+      actor: { type: "system" as const, id: null, name: "system" },
+      scope: {
+        workspaceId: ids.workspace,
+        organisationId: ids.organisation,
+      },
+      payload: {},
+      causationId: null,
+      depth: 0,
+      originAutomationId: null,
+    };
+    const candidate = (resourceType: string) => ({
+      personId: ids.person,
+      resourceType,
+      resourceId: `res-${resourceType}`,
+      title: "t",
+      body: "b",
+      channels: [] as string[],
+    });
+    await db.transaction((tx) =>
+      materializeNotificationFanout(tx, event, {
+        resolveRecipients: async () => [candidate("approval")],
+      }),
+    );
+    const none = await db.execute(
+      sql`SELECT 1 FROM notification WHERE event_id = ${eventId}`,
+    );
+    expect(none.rows).toHaveLength(0);
+    await db.transaction((tx) =>
+      materializeNotificationFanout(tx, event, {
+        resolveRecipients: async () => [candidate("work_item")],
+      }),
+    );
+    const some = await db.execute(
+      sql`SELECT resource_type FROM notification WHERE event_id = ${eventId}`,
+    );
+    expect(some.rows).toEqual([{ resource_type: "work_item" }]);
   });
 });

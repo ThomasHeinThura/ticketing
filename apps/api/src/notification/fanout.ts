@@ -56,7 +56,9 @@ export async function enqueueNotificationEvent(
 const RESOURCE_TYPES = new Set([
   "work_item",
   "comment",
-  "approval",
+  // "approval" is intentionally absent until the approvals slice lands its recipient and
+  // reach code: no approval inbox row may be written before the inbox read predicate
+  // covers it (see notifications.md pre-wiring gates).
   "submission",
   "prerequisite",
   "project",

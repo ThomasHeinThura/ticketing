@@ -198,6 +198,17 @@ export async function evaluateCurrentNotificationReachAndPreference(
     };
     if (!reaches(identity, reachFacts))
       return { kind: "suppress", reason: "reach_lost" };
+    // Reach and authority are separate axes (rbac.md section 2): the recipient must also
+    // currently hold work_item:read, the same rule as GET /api/work-items/{key}.
+    if (
+      !can(identity, "work_item:read", "work_item", {
+        workspaceId: resource.workspaceId,
+        organisationId: resource.organisationId ?? undefined,
+        workItemProjectId: resource.projectId,
+        projectId: resource.projectId,
+      })
+    )
+      return { kind: "suppress", reason: "read_authority_lost" };
   }
 
   const preference = await resolveNotificationPreference(tx, {

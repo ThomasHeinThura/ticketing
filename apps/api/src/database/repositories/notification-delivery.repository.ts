@@ -69,6 +69,12 @@ function utcDate(value: Date | string | null | undefined): Date | null {
   return Number.isNaN(date.getTime()) ? null : date;
 }
 
+/**
+ * A peek, not a claim: the `FOR UPDATE SKIP LOCKED` row lock is released when the calling
+ * transaction commits, so two workers can read the same row. Correctness never depends on
+ * this lock; the fence is `acquireNotificationReservation` (delivery row lock, `pending`
+ * check, then the owner/token reservation lease) and every later write re-checks it.
+ */
 export async function claimNextNotificationDelivery(
   executor: Executor = db,
 ): Promise<ClaimedNotificationDelivery | null> {

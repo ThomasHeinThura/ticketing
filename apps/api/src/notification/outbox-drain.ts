@@ -7,6 +7,7 @@ import {
   completeNotificationDelivery,
   deferNotificationDelivery,
   hasRecentNotificationSuccess,
+  NotificationReservationContentionError,
   type ReservationToken,
   releaseNotificationReservation,
   renewNotificationReservation,
@@ -16,6 +17,7 @@ import type { DbTransaction } from "../events/outbox";
 import { evaluateCurrentNotificationReachAndPreference } from "./current-eligibility";
 import {
   callNotificationProvider,
+  NOTIFICATION_UNRESOLVED_BACKOFF_MS,
   NotificationProviderDeadlineExceeded,
 } from "./delivery-primitives";
 
@@ -97,25 +99,61 @@ async function releaseAsSuppressed(
   });
 }
 
+/**
+ * Moves a row that cannot be resolved right now (pending contract, evaluator failure,
+ * reservation contention) behind its bounded backoff so it cannot head-of-line block the
+ * claim order. Consumes no attempt. Runs under the delivery lock; when this worker holds the
+ * reservation it is released in the same fenced transaction.
+ */
+async function backOff(
+  delivery: ClaimedNotificationDelivery,
+  reason: string,
+  reservation?: ReservationToken,
+): Promise<void> {
+  const until = new Date(Date.now() + NOTIFICATION_UNRESOLVED_BACKOFF_MS);
+  await db.transaction(async (tx) => {
+    if (reservation) {
+      await deferNotificationDelivery(
+        tx,
+        delivery.id,
+        until,
+        reason,
+        reservation,
+      );
+      return;
+    }
+    await updateUnreservedNotificationDelivery(tx, delivery.id, {
+      kind: "deferred",
+      until,
+      reason,
+    });
+  });
+}
+
 async function leaveUnresolved(
   delivery: ClaimedNotificationDelivery,
   reason: "quiet_hours_unresolved" | "destination_unresolved",
   reservation?: ReservationToken,
 ): Promise<NotificationDrainResult> {
-  if (reservation)
-    await db.transaction((tx) =>
-      releaseNotificationReservation(tx, delivery.id, reservation),
-    );
+  await backOff(delivery, reason, reservation);
   return { kind: "unresolved", reason };
 }
+
+export type NotificationDrainOptions = {
+  /** Reservation renewal cadence; defaults to 15 s against the 60 s lease. */
+  renewalIntervalMs?: number;
+  /** Provider call deadline; defaults to 30 s, shorter than the lease. */
+  providerDeadlineMs?: number;
+};
 
 async function renewUntilStopped(
   reservation: ReservationToken,
   controller: AbortController,
+  intervalMs: number,
 ): Promise<void> {
   while (!controller.signal.aborted) {
     await new Promise<void>((resolve) => {
-      const timer = setTimeout(done, 15_000);
+      const timer = setTimeout(done, intervalMs);
       function done() {
         clearTimeout(timer);
         controller.signal.removeEventListener("abort", done);
@@ -138,15 +176,24 @@ async function renewUntilStopped(
 /** Processes at most one immediate child; the scheduled outbox-drain calls repeatedly. */
 export async function processNextNotificationDelivery(
   runtime: NotificationOutboxRuntime,
+  options: NotificationDrainOptions = {},
 ): Promise<NotificationDrainResult> {
   const delivery = await db.transaction((tx) =>
     claimNextNotificationDelivery(tx),
   );
   if (!delivery) return { kind: "idle" };
 
-  const eligibility = await db.transaction((tx) =>
-    runtime.evaluateCurrentEligibility(tx, delivery),
-  );
+  let eligibility: Awaited<
+    ReturnType<NotificationOutboxRuntime["evaluateCurrentEligibility"]>
+  >;
+  try {
+    eligibility = await db.transaction((tx) =>
+      runtime.evaluateCurrentEligibility(tx, delivery),
+    );
+  } catch {
+    await backOff(delivery, "evaluator_error");
+    return { kind: "deferred", reason: "evaluator_error" };
+  }
   if (eligibility.kind === "unresolved")
     return leaveUnresolved(delivery, eligibility.reason);
   if (eligibility.kind === "defer") {
@@ -174,14 +221,21 @@ export async function processNextNotificationDelivery(
       : { kind: "deferred", reason: "delivery_fence" };
   }
 
-  const claim = await db.transaction((tx) =>
-    acquireNotificationReservation(tx, {
-      recipientPersonId: delivery.recipientPersonId,
-      channel: delivery.channel,
-      dedupeKey: delivery.dedupeKey,
-      ownerDeliveryId: delivery.id,
-    }),
-  );
+  let claim: Awaited<ReturnType<typeof acquireNotificationReservation>>;
+  try {
+    claim = await db.transaction((tx) =>
+      acquireNotificationReservation(tx, {
+        recipientPersonId: delivery.recipientPersonId,
+        channel: delivery.channel,
+        dedupeKey: delivery.dedupeKey,
+        ownerDeliveryId: delivery.id,
+      }),
+    );
+  } catch (error) {
+    if (!(error instanceof NotificationReservationContentionError)) throw error;
+    await backOff(delivery, "reservation_contention");
+    return { kind: "deferred", reason: "reservation_contention" };
+  }
   if (claim.status === "not_pending")
     return { kind: "deferred", reason: "delivery_fence" };
   if (claim.status === "digest_collision") {
@@ -219,21 +273,28 @@ export async function processNextNotificationDelivery(
     return { kind: "suppressed", reason: "recent_duplicate" };
   }
 
-  const preflight = await db.transaction(async (tx) => {
-    const current = await runtime.evaluateCurrentEligibility(tx, delivery);
-    if (current.kind === "defer")
-      return { kind: "defer" as const, eligibility: current };
-    if (current.kind === "suppress")
-      return { kind: "suppress" as const, eligibility: current };
-    if (current.kind === "unresolved")
-      return { kind: "unresolved" as const, eligibility: current };
-    const attempt = await authorizeNotificationProviderAttempt(
-      tx,
-      delivery.id,
-      reservation,
-    );
-    return { kind: "authorized" as const, eligibility: current, attempt };
-  });
+  const preflightOrNull = await db
+    .transaction(async (tx) => {
+      const current = await runtime.evaluateCurrentEligibility(tx, delivery);
+      if (current.kind === "defer")
+        return { kind: "defer" as const, eligibility: current };
+      if (current.kind === "suppress")
+        return { kind: "suppress" as const, eligibility: current };
+      if (current.kind === "unresolved")
+        return { kind: "unresolved" as const, eligibility: current };
+      const attempt = await authorizeNotificationProviderAttempt(
+        tx,
+        delivery.id,
+        reservation,
+      );
+      return { kind: "authorized" as const, eligibility: current, attempt };
+    })
+    .catch(() => null);
+  if (preflightOrNull === null) {
+    await backOff(delivery, "evaluator_error", reservation);
+    return { kind: "deferred", reason: "evaluator_error" };
+  }
+  const preflight = preflightOrNull;
   if (preflight.kind === "defer") {
     await db.transaction((tx) =>
       deferNotificationDelivery(
@@ -260,7 +321,19 @@ export async function processNextNotificationDelivery(
     return { kind: "deferred", reason: "authorization_fence" };
 
   const controller = new AbortController();
-  const renewal = renewUntilStopped(reservation, controller);
+  // A renewal failure (transient database error) must stop the provider call fail-closed
+  // and never become an unhandled rejection: the fence is treated as lost, which makes the
+  // outcome ambiguous and leaves the reservation to expire. It must not throw out of the
+  // drain after a successful send and leave the child un-completed.
+  const renewal = renewUntilStopped(
+    reservation,
+    controller,
+    options.renewalIntervalMs ?? 15_000,
+  ).catch((error) => {
+    controller.abort(
+      error instanceof Error ? error : new Error("Notification renewal failed"),
+    );
+  });
   let outcome: "delivered" | "failed" | "ambiguous";
   try {
     await callNotificationProvider(
@@ -269,7 +342,10 @@ export async function processNextNotificationDelivery(
           signal,
           idempotencyKey: delivery.id,
         }),
-      { signal: controller.signal, deadlineMs: 30_000 },
+      {
+        signal: controller.signal,
+        deadlineMs: options.providerDeadlineMs ?? 30_000,
+      },
     );
     outcome = "delivered";
   } catch (error) {

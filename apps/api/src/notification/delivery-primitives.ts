@@ -71,6 +71,13 @@ const RETRY_BACKOFF_MS = [
   24 * 60 * 60_000,
 ] as const;
 
+/**
+ * Delay applied when an eligibility result is unresolved (quiet-hours or destination
+ * contract pending) or the evaluator fails. The specs name no schedule for these, so this
+ * reuses the first, smallest step of the existing retry schedule. It consumes no attempt.
+ */
+export const NOTIFICATION_UNRESOLVED_BACKOFF_MS = RETRY_BACKOFF_MS[0];
+
 /** Returns the documented delay for a durable attempt, or null at the terminal cap. */
 export function notificationRetryDelayMs(attempt: number): number | null {
   if (
