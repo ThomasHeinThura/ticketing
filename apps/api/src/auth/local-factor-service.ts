@@ -14,6 +14,13 @@ export type LocalFactorState = {
   personSide: "staff" | "customer";
 };
 
+export class InactiveFactorIdentityError extends Error {
+  constructor() {
+    super("Identity is inactive for factor policy evaluation");
+    this.name = "InactiveFactorIdentityError";
+  }
+}
+
 export async function loadLocalFactorState(
   userId: string,
 ): Promise<LocalFactorState> {
@@ -45,6 +52,17 @@ export async function loadLocalFactorState(
     )
     .limit(1);
   if (!person || (person.side !== "staff" && person.side !== "customer")) {
+    const [inactivePerson] = await db
+      .select({ id: schema.personTable.id })
+      .from(schema.personTable)
+      .where(
+        and(
+          eq(schema.personTable.userId, userId),
+          eq(schema.personTable.active, false),
+        ),
+      )
+      .limit(1);
+    if (inactivePerson) throw new InactiveFactorIdentityError();
     throw new Error(
       "Active identity is unavailable for factor policy evaluation",
     );
