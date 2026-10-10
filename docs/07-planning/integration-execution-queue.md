@@ -1,3 +1,41 @@
+## Execution checkpoint — 2026-10-10 (Claude Opus conductor)
+
+- **Main:** `24a48912`. Merged this session, all squash-merged at the exact head, each with Sonnet ordinary and Claude Opus 5.5 Sol-tier reviews:
+  - #602 (P0 source plus G11 speed calibration) → `b64f8062`. The template-check lift was owner-approved, one time only, then restored and verified.
+  - #615 → `26c43def` and #616 → `1fc04d05` (policy).
+  - #617 (deploy.sh digest parse) → `511c917f`.
+  - #618 (M1, migrations 0088–0118) → `6568fc3e`.
+  - #619 (#599 rebuild, configured public origin) → `d743ae32`.
+  - #620 (0119 tenant-composite FKs) → `24a48912`.
+- **Closed as absorbed or superseded:** #612 (in #615), #614 (lockfile superseded by #602), #599 (rebuilt as #619). All branches are preserved.
+- **Releases:** `v2.0.0-alpha.1` (`b64f8062`) and `v2.0.0-alpha.2` (`511c917f`). Both are signed GHCR prereleases with provenance and release-source attestations verified.
+- **P0:** OPEN. The installer upgrade/rollback proof failed twice, both product defects in deploy.sh that assumed CLI output formats the tests had only stubbed:
+  1. the buildx padded `Digest:` line, fixed by #617;
+  2. `compose port` returning `:0` with rc 0.
+
+  An independent Opus whole-path diagnosis covered Docker CE 29.9/Compose 5.6/buildx 0.38 and Ubuntu docker.io/Compose 2.40/buildx 0.30. It found D-1…D-11. A combined fix with a real-docker CI regression step is in progress (branch `claude/fix-deploy-whole-path`). The order after that is alpha.3, the installer re-proof, then the fresh Opus P0 phase finalizer.
+- **Owner decisions this session:**
+  - Opus security review is authoritative; GPT-6 Sol is not required.
+  - Model tiers by availability.
+  - G11 speed calibration, with the FAST-class reference.
+  - Version numbering follows the release plan (2.0.0-alpha.N).
+  - Installer proof: a hybrid "from" (signed edge sha-8ddb9de8), cosign inside the VM, disposable OrbStack VMs.
+  - D2/D3/D5/D6, recorded in the decision log.
+- **In progress:**
+  - S1 identity slice, reconstructed from #589 by path ownership (branch `claude/s1-identity`).
+  - Remaining order: S2 auth, S3 approvals plus #603, S4 notifications plus #506, S6 Users plus the #608 delta, S7 SLA/calendars/search/saved views plus #611, S8 intake (#598, per D5), S9 web (#605→#606→#609), then #512, the #569 re-cut (now 0120), #601 docs, and #607 HOLD.
+- **Queued follow-ups** (conductor-owned):
+  - the CI scanner quoted-key and composite-`if` fail-open;
+  - an A9 scope-condition rule;
+  - an allowed-key bad-value env test;
+  - #615 wording errata;
+  - the G11 hash-pin literal-lock test;
+  - the data-model `outbox.workspace_id` row (stale since 0110);
+  - the 0119 guard's unusual reference forms;
+  - three unanchored tables needing a `workspace_id` design before their runtime slices;
+  - an instance-event notification path.
+- **Owner question pending:** removal of 10 anonymous Docker volumes left by disposable test databases (created 2026-10-10 03:13–04:16 UTC).
+
 ## Execution checkpoint — 2026-10-09 17:10 UTC (Claude Opus conductor)
 
 - **#602 task strict/rollback proof:** BLOCKED; no live window issued. The runner went through review three times:
