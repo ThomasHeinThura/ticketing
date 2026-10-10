@@ -267,7 +267,7 @@ engine, twice: once with the runner's Compose and buildx, and once with Ubuntu's
 `docker-compose-v2` and `docker-buildx` (the packages `install.sh` installs on Ubuntu)
 placed first on the CLI plugin path through `DOCKER_CONFIG`. It sources the real
 `scripts/lib/deploy-checks.sh` and asserts that a published port, a configured-only
-binding, `PublishAllPorts`, host networking, a missing container and an inspect error all
+binding, `PublishAllPorts`, host or container-shared networking, a missing container and an inspect error all
 fail while an exposed-but-unpublished container passes, and that a public signed image tag
 resolves to its exact index digest. Both installer proofs failed on assumptions about
 Compose and buildx output that stub-only tests had encoded; this step moves that drift to

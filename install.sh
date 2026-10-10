@@ -202,6 +202,9 @@ fi
 
 if ! command -v docker >/dev/null 2>&1 || ! docker compose version >/dev/null 2>&1 || ! docker buildx version >/dev/null 2>&1; then
   warn 'Docker Engine, the Compose plugin and docker buildx are required.'
+  if command -v docker >/dev/null 2>&1 && docker compose version >/dev/null 2>&1 && ! docker buildx version >/dev/null 2>&1; then
+    die 'Docker and the Compose plugin are installed but docker buildx is not, and scripts/deploy.sh needs it. Install docker-buildx-plugin from Docker'"'"'s official repository (docker-ce hosts), or docker-buildx from Ubuntu'"'"'s archive (docker.io hosts), then rerun install.sh'
+  fi
   if ((YES == 0)); then
     read -r -p 'Install Docker using this system package manager now? [y/N] ' answer
     [[ "$answer" == [yY] || "$answer" == [yY][eE][sS] ]] || die 'Docker installation declined; install Docker and rerun install.sh'

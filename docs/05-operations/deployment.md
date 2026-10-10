@@ -144,7 +144,7 @@ production` asserts it from the Docker engine's own record of every `taskdesk` c
 (`docker inspect`, stopped ones and every replica included), not from `docker compose
 port`, whose exit code does not separate "published" from "exposed but not published"
 (Compose v5.6.0 and 2.40.3 print `:0` with exit 0 for the latter). The deploy stops if any
-`taskdesk` container uses host networking, has `PublishAllPorts` set, declares any port
+`taskdesk` container uses host or container-shared networking (`network_mode: service:<name>` included), has `PublishAllPorts` set, declares any port
 binding or shows any live host port mapping, and also if there is no container to check.
 The check runs on the created-but-not-started containers and again once the stack is up.
 

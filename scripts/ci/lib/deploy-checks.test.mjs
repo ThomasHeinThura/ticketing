@@ -111,6 +111,21 @@ for (const [label, line, ok] of [
   ],
   ["ephemeral host port (PublishAllPorts)", "taskdesk_default|true||", false],
   ["network_mode host", "host|false||", false],
+  [
+    "a shared network stack (network_mode: service:<name> inspects as container:<id>)",
+    "container:0123456789abcdef|false||",
+    false,
+  ],
+  [
+    "a live port mapping with no configured binding",
+    "taskdesk_default|false||5173/tcp ",
+    false,
+  ],
+  [
+    "a user network that merely contains the word container",
+    "container-net|false||",
+    true,
+  ],
   ["unparsable answer", "garbage", false],
   ["empty answer", "", false],
 ]) {

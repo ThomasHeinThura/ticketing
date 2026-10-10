@@ -41,10 +41,16 @@ assert_containers_unpublished() {
       *) printf 'unexpected inspect output for container %s\n' "$id" >&2; return 1 ;;
     esac
     IFS='|' read -r mode all cfg live <<< "$line"
-    if [ "$mode" = host ]; then
-      printf 'container %s uses host networking\n' "$id" >&2
-      return 1
-    fi
+    # `host` shares the host's network stack. `container:<id>` (what Compose's
+    # `network_mode: service:<name>` resolves to) shares another container's stack, so
+    # that container's publishes expose this one's ports even though this container
+    # records none of its own.
+    case "$mode" in
+      host|container:*)
+        printf 'container %s uses shared networking (%s)\n' "$id" "$mode" >&2
+        return 1
+        ;;
+    esac
     if [ "$all" != false ]; then
       printf 'container %s publishes all exposed ports (PublishAllPorts=%s)\n' "$id" "$all" >&2
       return 1

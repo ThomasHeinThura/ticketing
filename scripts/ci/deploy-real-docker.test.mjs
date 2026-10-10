@@ -150,9 +150,85 @@ for (const [label, flags, start] of published) {
     const id = makeContainer(`p${created.length}`, flags, { start });
     const r = helperCall(`assert_containers_unpublished ${id}`);
     assert.notEqual(r.status, 0, `expected a refusal for ${label}`);
-    assert.match(r.stderr, /publishes|host networking/);
+    assert.match(r.stderr, /publishes|shared networking/);
   });
 }
+
+test("real engine: network_mode service:<name> inherits the other container's publishes -> fail", {
+  skip,
+}, () => {
+  // The reviewer's repro. The app container records no ports of its own; the container whose
+  // network stack it joins publishes the application port, so the app is reachable from the
+  // host anyway.
+  const carrier = makeContainer("carrier", ["-p", "127.0.0.1::5173"]);
+  const app = makeContainer("sharer", ["--network", `container:${carrier}`]);
+  const mode = docker(
+    "inspect",
+    "--format",
+    "{{.HostConfig.NetworkMode}}",
+    app,
+  ).stdout.trim();
+  assert.match(mode, /^container:/, `inspected network mode was ${mode}`);
+  const r = helperCall(`assert_containers_unpublished ${app}`);
+  assert.notEqual(r.status, 0);
+  assert.match(r.stderr, /shared networking/);
+});
+
+test("real Compose project: network_mode service:valkey with valkey publishing the app port -> fail", {
+  skip,
+}, async (t) => {
+  const dir = await mkdtemp(path.join(os.tmpdir(), "taskdesk-real-compose-"));
+  const project = `${run_id}cs`;
+  const file = path.join(dir, "compose.yml");
+  t.after(async () => {
+    cmd("docker", [
+      "compose",
+      "-p",
+      project,
+      "-f",
+      file,
+      "down",
+      "-v",
+      "-t",
+      "0",
+    ]);
+    await rm(dir, { recursive: true, force: true });
+  });
+  await writeFile(
+    file,
+    [
+      "services:",
+      "  valkey:",
+      `    image: ${IMAGE}`,
+      "    command: [sleep, '300']",
+      '    ports: ["127.0.0.1::5173"]',
+      "  taskdesk:",
+      `    image: ${IMAGE}`,
+      "    command: [sleep, '300']",
+      "    network_mode: service:valkey",
+      "",
+    ].join("\n"),
+  );
+  const compose = (...a) =>
+    cmd("docker", ["compose", "-p", project, "-f", file, ...a]);
+  assert.equal(compose("up", "--no-start").status, 0);
+  const ids = compose("ps", "-a", "-q", "taskdesk")
+    .stdout.trim()
+    .split("\n")
+    .filter(Boolean);
+  assert.equal(ids.length, 1);
+  const mode = docker(
+    "inspect",
+    "--format",
+    "{{.HostConfig.NetworkMode}}",
+    ids[0],
+  ).stdout.trim();
+  console.log(`network_mode service:valkey inspects as: ${mode}`);
+  assert.match(mode, /^container:/);
+  const r = helperCall(`assert_containers_unpublished ${ids[0]}`);
+  assert.notEqual(r.status, 0);
+  assert.match(r.stderr, /shared networking/);
+});
 
 test("real engine: no container, an unknown id and a mixed replica set -> fail", {
   skip,

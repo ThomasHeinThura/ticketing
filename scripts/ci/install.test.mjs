@@ -148,6 +148,11 @@ if [[ "\${FAKE_DOCKER_FULL:-0}" == 1 ]]; then
       if [[ "$*" == *'"80/tcp"'* ]]; then printf '%s \\n' "\${FAKE_TRAEFIK_HP80:-80}"; else printf '%s \\n' "\${FAKE_TRAEFIK_HP443:-443}"; fi
       exit 0
     fi
+    # Published until the application is really started: only a check made on the
+    # created, not yet started, containers can see it.
+    if [[ "\${FAKE_PUBLISHED_UNTIL_START:-0}" == 1 && ! -f "$FAKE_DOCKER_LOG.started" ]]; then
+      printf 'taskdesk_default|false|5173/tcp |\\n'; exit 0
+    fi
     printf '%s\\n' "\${FAKE_INSPECT_LINE-taskdesk_default|false||}"
     exit 0
   fi
@@ -172,6 +177,10 @@ if [[ "\${FAKE_DOCKER_FULL:-0}" == 1 ]]; then
         [[ "\${FAKE_PS_RC:-0}" == 0 ]] || exit "$FAKE_PS_RC"
         printf '%s' "\${FAKE_TASKDESK_IDS-tdid1
 }"
+        exit 0
+        ;;
+      up)
+        if [[ "\${args[*]}" == "up -d --wait" || "\${args[*]}" == "up -d --wait taskdesk" ]]; then : > "$FAKE_DOCKER_LOG.started"; fi
         exit 0
         ;;
       logs) printf 'setup url: https://ticket.example.test/setup\\n'; exit 0 ;;
@@ -495,6 +504,14 @@ for (const [label, env] of [
     { FAKE_INSPECT_LINE: "taskdesk_default|true||" },
   ],
   ["host networking", { FAKE_INSPECT_LINE: "host|false||" }],
+  [
+    "a shared network stack (network_mode: service:<name> inspects as container:<id>)",
+    { FAKE_INSPECT_LINE: "container:0123456789ab|false||" },
+  ],
+  [
+    "a live port mapping with no configured binding",
+    { FAKE_INSPECT_LINE: "taskdesk_default|false||5173/tcp " },
+  ],
   ["no taskdesk container", { FAKE_TASKDESK_IDS: "" }],
   ["an inspect error", { FAKE_INSPECT_RC: "1" }],
   ["unparsable inspect output", { FAKE_INSPECT_LINE: "garbage" }],
@@ -520,6 +537,48 @@ test("the port check also runs on the created, not yet started, containers", asy
   assert.match(dockerLog, / up --no-start$/m);
   assert.doesNotMatch(dockerLog, / up -d --wait$/m);
 });
+
+// The pre-start check must exist in every mode that starts taskdesk. The stub reports a
+// published port until the application is really started, so deleting the call that
+// follows `up --no-start` lets the run succeed and these tests fail.
+for (const mode of ["production", "upgrade", "rollback"]) {
+  test(`${mode}: a port published at creation is refused before taskdesk is started`, async (t) => {
+    const installed = await productionRun(t);
+    assert.equal(installed.result.status, 0, installed.output);
+    const f = installed.f;
+    const args =
+      mode === "rollback"
+        ? ["rollback", `sha256:${"d".repeat(64)}`, "v1.2.2"]
+        : [mode];
+    await rm(path.join(f.temp, "docker.log"), { force: true });
+    await rm(path.join(f.temp, "docker.log.started"), { force: true });
+    const result = spawnSync(
+      "bash",
+      [path.join(f.path, "scripts/deploy.sh"), ...args],
+      {
+        cwd: f.path,
+        encoding: "utf8",
+        env: {
+          ...process.env,
+          PATH: `${f.bin}:${process.env.PATH}`,
+          HOME: f.temp,
+          COSIGN_LOG: path.join(f.temp, "cosign.log"),
+          FAKE_DOCKER_FULL: "1",
+          FAKE_PRODUCTION_HOST: "1",
+          FAKE_RAW: RAW_MANIFEST,
+          FAKE_PUBLISHED_UNTIL_START: "1",
+          FAKE_DOCKER_LOG: path.join(f.temp, "docker.log"),
+        },
+      },
+    );
+    const out = `${result.stdout}${result.stderr}`;
+    assert.notEqual(result.status, 0, out);
+    assert.match(out, /not proven unpublished/);
+    const dockerLog = await readFile(path.join(f.temp, "docker.log"), "utf8");
+    assert.match(dockerLog, / up --no-start/);
+    assert.doesNotMatch(dockerLog, / up -d --wait( taskdesk)?$/m);
+  });
+}
 
 test("local mode treats traefik's own port binding as ours and ignores compose port's exit code", async (t) => {
   const f = await fixture(t, { realDeployment: true });
@@ -556,7 +615,7 @@ test("installer requires buildx and installs it only on Ubuntu", async () => {
   assert.doesNotMatch(others, /apt-get|dnf install/);
 });
 
-test("an existing Docker without buildx needs consent before any persistent writes", async (t) => {
+test("an existing Docker and Compose without buildx stop with the buildx package names before any persistent writes", async (t) => {
   const f = await fixture(t);
   const result = run(
     f,
@@ -565,7 +624,7 @@ test("an existing Docker without buildx needs consent before any persistent writ
     "y\nn\n",
   );
   assert.notEqual(result.status, 0);
-  assert.match(result.stderr, /Docker installation declined/);
+  assert.match(result.stderr, /docker-buildx-plugin.*docker-buildx/);
   assert.equal(await stat(f.path).catch(() => null), null);
 });
 

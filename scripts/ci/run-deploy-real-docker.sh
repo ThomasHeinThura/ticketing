@@ -4,8 +4,10 @@
 # (what install.sh installs on Ubuntu) placed first on the CLI plugin path through
 # DOCKER_CONFIG. Same engine, second plugin toolchain.
 #
-# Neither run may skip: a skipped run reports "success" while checking nothing, so the
-# skipped count is read from the node:test summary and anything but 0 fails.
+# Neither run may skip or be empty: a skipped or zero-test run reports "success" while
+# checking nothing, so the node:test summary must show skipped 0, fail 0 and tests > 0.
+# The second run must also really have used Ubuntu's plugins: the versions the test prints
+# are checked against the extracted packages.
 set -Eeuo pipefail
 
 REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
@@ -20,6 +22,7 @@ run_suite() {
   TASKDESK_REAL_DOCKER=1 node --test "$REPO_ROOT/scripts/ci/deploy-real-docker.test.mjs" 2>&1 | tee "$out"
   echo "::endgroup::"
   grep -Eq '^(ℹ|#) skipped 0$' "$out" || { echo "deploy real-docker (${label}): tests were skipped" >&2; return 1; }
+  grep -Eq '^(ℹ|#) tests [1-9][0-9]*$' "$out" || { echo "deploy real-docker (${label}): no tests ran" >&2; return 1; }
   grep -Eq '^(ℹ|#) fail 0$' "$out" || { echo "deploy real-docker (${label}): tests failed" >&2; return 1; }
 }
 
@@ -36,6 +39,16 @@ for plugin in docker-compose docker-buildx; do
   chmod +x "$work/config/cli-plugins/$plugin"
 done
 export TASKDESK_DOCKER_CONFIG="$work/config"
-DOCKER_CONFIG="$TASKDESK_DOCKER_CONFIG" docker compose version
-DOCKER_CONFIG="$TASKDESK_DOCKER_CONFIG" docker buildx version
+# Prove the second run uses Ubuntu's plugins, not the runner's: the version the CLI reports
+# through DOCKER_CONFIG must equal the version recorded in the extracted .deb packages.
+deb_version() { dpkg-deb -f "$(ls "$work"/debs/"$1"_*.deb)" Version; }
+want_compose="$(deb_version docker-compose-v2)"
+want_buildx="$(deb_version docker-buildx)"
+got_compose="$(DOCKER_CONFIG="$TASKDESK_DOCKER_CONFIG" docker compose version)"
+got_buildx="$(DOCKER_CONFIG="$TASKDESK_DOCKER_CONFIG" docker buildx version)"
+echo "$got_compose"
+echo "$got_buildx"
+[[ "$got_compose" == *"${want_compose%%-*}"* ]] || { echo "second run is not using Ubuntu's compose (${want_compose}): ${got_compose}" >&2; exit 1; }
+[[ "$got_buildx" == *"${want_buildx%%-*}"* ]] || { echo "second run is not using Ubuntu's buildx (${want_buildx}): ${got_buildx}" >&2; exit 1; }
+[[ "$got_compose" != "$(docker compose version)" ]] || { echo "Ubuntu's compose reports the same version as the runner's; the plugin override is not taking effect" >&2; exit 1; }
 run_suite "Ubuntu docker-compose-v2 and docker-buildx"
