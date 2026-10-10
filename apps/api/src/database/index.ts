@@ -83,6 +83,7 @@ import {
   externalIdentityTable,
   externalLinkTable,
   identityConnectionTable,
+  instanceFeatureFlagTable,
   instancePluginConfigTable,
   instanceSettingTable,
   invitationTable,
@@ -100,9 +101,11 @@ import {
   pendingActionTable,
   personTable,
   prerequisiteTable,
+  projectFeatureFlagTable,
   projectSlugClaimTable,
   projectTable,
   provisioningEventTable,
+  requestParticipantTable,
   roleTable,
   scheduledTransitionTable,
   scimConnectionTable,
@@ -139,6 +142,7 @@ import {
   workItemKeyClaimTable,
   workItemTable,
   workItemTypeTable,
+  workspaceFeatureFlagTable,
   workspaceRoleTable,
   workspaceTable,
   workspaceUserTable,
@@ -147,6 +151,10 @@ import {
 config();
 
 export const schema = {
+  instanceFeatureFlagTable,
+  projectFeatureFlagTable,
+  requestParticipantTable,
+  workspaceFeatureFlagTable,
   accountTable,
   assetTable,
   activityTable,
