@@ -1,3 +1,17 @@
+### 2026-10-10 · Owner decisions for slice S6 God Mode Users: last-administrator guard and admin-suspend step-up
+
+**Decision:** Thomas decided two questions raised by the S6 security review, each chosen in the Claude Opus conductor session.
+
+- **Add the guard.** A suspend or deactivate, on both the request and the approval execution, is refused when it would leave zero active, unbanned instance administrators. It runs under the existing `pg_advisory_xact_lock(2026)` promotion lock so it is race-safe. An actor suspending or deactivating their own account is refused outright. This matches the existing `god-mode.md` edge-case row "Last instance admin removes their own access: Refused". The S6-added text "No last-administrator guardrail is introduced" is removed.
+- **Require step-up.** Suspending a user who is currently an instance administrator requires operation-bound PA-15 step-up, as grant-admin does. Suspending non-admin users is unchanged. This needs a new step-up operation binding; because the `step_up_operation_route` CHECK enumerates every operation and route pair, it needs a migration, which is not yet allocated (0121 is reserved for #569). The implementation is therefore held until the conductor allocates it.
+
+**Supersedes:** the S6 candidate text that introduced no guardrail (`god-mode.md`, `auth-and-identity.md`).
+
+**Source:** Thomas, directly to the Claude Opus delivery conductor session, 2026-10-10.
+**Recorded by:** Claude Sonnet 5.5 (`claude-sonnet-5-5`), at the conductor's instruction.
+
+---
+
 ### 2026-10-10 · Owner decision: D10 read-all keeps the current reach-limited behaviour
 
 **Decision:** Thomas decided D10: keep the current behaviour. `PATCH /api/notification/read-all`
