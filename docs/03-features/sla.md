@@ -167,6 +167,18 @@ POST  /api/work-items/{key}/sla/pause          work_item:update
 POST  /api/work-items/{key}/sla/resume         work_item:update
 ```
 
+### Selected manual pause contract
+
+Thomas selected this contract on 2026-10-09: manual pause and resume actions apply to both
+`first_response` and `resolution` as one database transaction. A manual pause returns `409`
+and writes neither metric if either metric already has an open pause. The pause route has no
+request body and returns the same current evaluation shape as the GET route. It requires
+`work_item:update` and work-item reach; a key without that write scope remains read-only.
+
+The manual-resume interaction with an open `resolved` pause is still awaiting a decision:
+see the owning P2 decision record before implementing that behavior. Until then, no
+implementation may close or replace a `resolved` interval through the manual resume path.
+
 ### Selected policy-authoring contract
 
 This contract is selected for implementation by the orchestrating session; it is not human

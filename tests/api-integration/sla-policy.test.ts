@@ -2,6 +2,7 @@ import { randomUUID } from "node:crypto";
 import { and, eq, sql } from "drizzle-orm";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import db, { schema } from "../../apps/api/src/database";
+import { slaPauseTable } from "../../apps/api/src/database/migration-schema";
 import { createApp } from "../../apps/api/src/index";
 import { createPolicy } from "../../apps/api/src/sla-policy/repository";
 import { mockAuthenticatedSession } from "./helpers/auth";
@@ -595,6 +596,22 @@ describe("API integration: SLA policy authoring contract", () => {
       (metric) => metric.metric === "resolution",
     )?.dueAt;
     expect(beforeDue).toBe("2030-01-07T12:00:00.000Z");
+
+    await db.insert(slaPauseTable).values({
+      workItemId: item.id,
+      metric: "resolution",
+      startedAt: new Date(startedAt.getTime() - 1),
+      reason: "waiting_customer",
+    });
+    const pausedResponse = await getEvaluation();
+    expect(pausedResponse.status).toBe(200);
+    const paused = (await pausedResponse.json()) as {
+      metrics: Array<{ metric: string; dueAt: string | null }>;
+    };
+    expect(
+      paused.metrics.find((metric) => metric.metric === "resolution")?.dueAt,
+    ).toBeNull();
+    await db.delete(slaPauseTable).where(eq(slaPauseTable.workItemId, item.id));
 
     const changedWindows = {
       ...windows,
