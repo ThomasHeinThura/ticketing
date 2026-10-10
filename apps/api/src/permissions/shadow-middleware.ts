@@ -54,7 +54,10 @@ import { and, eq } from "drizzle-orm";
 import type { Context, Next } from "hono";
 import db, { schema } from "../database";
 import { policyRegistry } from "../policy-registry";
-import { resolveIdentity } from "./resolve-identity";
+import {
+  type AuthenticatedApiKey,
+  resolveRequestIdentity,
+} from "./resolve-request-identity";
 import { policyShadowEnabled } from "./shadow-config";
 import {
   ensurePolicyRequestId,
@@ -74,9 +77,7 @@ import {
 } from "./shadow-store";
 
 /** `c.get("apiKey")`'s shape, as `authenticate-api-request.ts` sets it. */
-type ApiKeyContextValue =
-  | { readonly id: string; readonly userId: string }
-  | undefined;
+type ApiKeyContextValue = AuthenticatedApiKey | undefined;
 
 function credentialKindFor(apiKey: ApiKeyContextValue): CredentialKind {
   // Known gap (resolve-identity.ts KNOWN GAP 2, S315): `mcp_key` cannot be distinguished
@@ -369,12 +370,12 @@ async function runShadowEvaluation(
     }
 
     const identity = userId
-      ? await resolveIdentity({
+      ? await resolveRequestIdentity({
           userId,
-          credential,
-          apiKey: apiKey
-            ? { enabled: true, ownerUserId: apiKey.userId }
-            : undefined,
+          apiKey,
+          impersonatedBy: (
+            c.get("session") as { impersonatedBy?: string | null } | null
+          )?.impersonatedBy,
         })
       : null;
 

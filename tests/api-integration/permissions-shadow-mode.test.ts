@@ -18,7 +18,7 @@
  * `tests/api-integration/helpers/auth.ts`) is applied per dynamically-imported instance, not
  * the statically-imported one this file also uses for the "off" baseline.
  */
-import { randomUUID } from "node:crypto";
+import { createHash, randomUUID } from "node:crypto";
 import { and, eq } from "drizzle-orm";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import db from "../../apps/api/src/database";
@@ -399,6 +399,51 @@ describe("request-sourced scope is evaluated with request provenance", () => {
           row.outcome === "legacy_allow_policy_deny" &&
           row.reasonCode === "scope_source_mismatch",
       ),
+    ).toBe(false);
+  });
+});
+
+describe("API-key identity is built from the stored scope in shadow mode", () => {
+  it("records agreement for a key whose stored scope includes the route capability", {
+    timeout: 60_000,
+  }, async () => {
+    const fresh = await createAppWithShadow("on");
+    const member = await createWorkspaceMember();
+    await backfillPersons();
+    const rawKey = `taskdesk_test_${randomUUID()}`;
+    const now = new Date();
+    await db.insert(fresh.schema.apikeyTable).values({
+      referenceId: member.user.id,
+      userId: member.user.id,
+      key: createHash("sha256")
+        .update(rawKey)
+        .digest()
+        .toString("base64")
+        .replace(/\+/g, "-")
+        .replace(/\//g, "_")
+        .replace(/=+$/u, ""),
+      name: "shadow scoped project read key",
+      start: rawKey.slice(0, 12),
+      prefix: "taskdesk",
+      permissions: JSON.stringify({ project: ["read"] }),
+      createdAt: now,
+      updatedAt: now,
+    });
+
+    const response = await fresh.app.request(
+      `/api/project?workspaceId=${member.workspace.id}`,
+      { headers: { authorization: `Bearer ${rawKey}` } },
+    );
+    expect(response.status, await response.clone().text()).toBe(200);
+
+    await new Promise((resolve) => setTimeout(resolve, 300));
+
+    // Before the shared request identity, shadow resolved every key with no capability
+    // subset, so a correctly scoped key recorded `legacy_allow_policy_deny`.
+    const tallies = await shadowTalliesFor(LIST_PROJECTS_ROUTE_KEY);
+    expect(tallies.find((row) => row.outcome === "agree")?.count).toBe(1);
+    expect(
+      tallies.some((row) => row.outcome === "legacy_allow_policy_deny"),
     ).toBe(false);
   });
 });

@@ -392,6 +392,122 @@ describe("strict policy runtime enforcement against the production API graph", (
     expect(afterAllowed?.assigneeId).toBe(assignee?.id);
   });
 
+  it("intersects legacy project writes with API-key scope and the current role", async () => {
+    // `admin` holds `project:create` in the canonical built-in role set; `member` does not, and
+    // the strict evaluator intersects the key scope with the canonical role, never the legacy
+    // default-role payload.
+    const member = await createWorkspaceMember({ role: "admin" });
+    const viewer = await createWorkspaceMember({ role: "viewer" });
+    const { app } = createApp();
+
+    async function issueKey(
+      userId: string,
+      name: string,
+      permissions: string | null,
+    ) {
+      const rawKey = `taskdesk_test_${randomUUID()}`;
+      await db.insert(schema.apikeyTable).values({
+        referenceId: userId,
+        userId,
+        key: hashApiKey(rawKey),
+        name,
+        start: rawKey.slice(0, 12),
+        prefix: "taskdesk",
+        permissions,
+        createdAt: new Date(),
+        updatedAt: new Date(),
+      });
+      return rawKey;
+    }
+
+    async function createProjectWithKey(
+      workspaceId: string,
+      rawKey: string,
+      slug: string,
+    ) {
+      return app.request("/api/project", {
+        method: "POST",
+        headers: {
+          authorization: `Bearer ${rawKey}`,
+          "content-type": "application/json",
+        },
+        body: JSON.stringify({
+          name: `API key scope ${slug}`,
+          workspaceId,
+          slug,
+          icon: "Folder",
+        }),
+      });
+    }
+
+    const [projectsBefore] = await db
+      .select({ id: schema.projectTable.id })
+      .from(schema.projectTable)
+      .where(eq(schema.projectTable.workspaceId, member.workspace.id));
+    expect(projectsBefore).toBeUndefined();
+
+    const nullScopeKey = await issueKey(
+      member.user.id,
+      "legacy null-scope key",
+      null,
+    );
+    const nullScope = await createProjectWithKey(
+      member.workspace.id,
+      nullScopeKey,
+      "null-scope",
+    );
+    expect(nullScope.status, await nullScope.clone().text()).toBe(403);
+
+    const malformedScopeKey = await issueKey(
+      member.user.id,
+      "legacy malformed-scope key",
+      "{",
+    );
+    const malformedScope = await createProjectWithKey(
+      member.workspace.id,
+      malformedScopeKey,
+      "malformed-scope",
+    );
+    expect(malformedScope.status, await malformedScope.clone().text()).toBe(
+      403,
+    );
+
+    const validScopeKey = await issueKey(
+      member.user.id,
+      "legacy explicitly scoped key",
+      JSON.stringify({ project: ["create"] }),
+    );
+    const validScope = await createProjectWithKey(
+      member.workspace.id,
+      validScopeKey,
+      "scoped-create",
+    );
+    expect(validScope.status, await validScope.clone().text()).toBe(200);
+
+    const roleDeniedKey = await issueKey(
+      viewer.user.id,
+      "scope cannot widen viewer role",
+      JSON.stringify({ project: ["create"] }),
+    );
+    const roleDenied = await createProjectWithKey(
+      viewer.workspace.id,
+      roleDeniedKey,
+      "role-denied-create",
+    );
+    expect(roleDenied.status, await roleDenied.clone().text()).toBe(403);
+
+    const memberProjects = await db
+      .select({ id: schema.projectTable.id })
+      .from(schema.projectTable)
+      .where(eq(schema.projectTable.workspaceId, member.workspace.id));
+    expect(memberProjects).toHaveLength(1);
+    const viewerProjects = await db
+      .select({ id: schema.projectTable.id })
+      .from(schema.projectTable)
+      .where(eq(schema.projectTable.workspaceId, viewer.workspace.id));
+    expect(viewerProjects).toHaveLength(0);
+  });
+
   it("uses the addressed row's workspace and refuses a caller query hint for another workspace", async () => {
     const owner = await createWorkspaceMember({ role: "admin" });
     const foreign = await createWorkspaceMember({ role: "admin" });
