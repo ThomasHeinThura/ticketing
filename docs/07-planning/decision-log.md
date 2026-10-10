@@ -474,6 +474,82 @@ general seed-profile test suite remains in place.
 already satisfied on `main`, which never contained the seeder, its manifest writer or its
 tests. This entry carries the recorded decision forward unchanged and adds no new decision.
 
+### 2026-10-07 · Separate instance-admin approval withdrawal from requester withdrawal
+
+**Decision:** Thomas explicitly approves a separate session-only
+`POST /api/admin/approvals/{id}/withdraw` route for AP-7 instance-admin withdrawals.
+It requires current `instance:admin` authority, rejects API-key credentials, and writes the
+same atomic approval state change, `approval.withdrawn` outbox event, and audit row as
+requester withdrawal. Keep `POST /api/approvals/{id}/withdraw` scoped to the actual
+requester with current work-item reach and `approval:request`; API keys remain supported
+there only when the owner's current authority, the key's frozen capability subset, route
+policy and reach all allow it. The work-item detail selects the admin route for an
+instance-admin session. No cross-scope policy branch or new capability is introduced.
+
+**Recorded:** orchestrator, Thomas's explicit approval in this task, 2026-10-07.
+
+**Policy resolution:** Thomas explicitly selected session-only, audited withdrawal with an
+explicit step-up exemption. The admin withdrawal policy declares `elevated: false` with a
+written reason: changing approval state grants no authority. The route still rejects API keys,
+checks current `instance:admin` before dispatch and again inside the locked transaction, and
+keeps state, event, and audit writes atomic. No step-up proof or new capability is introduced.
+
+**Recorded:** orchestrator, Thomas's explicit answer to the L1 contract mismatch, 2026-10-07.
+
+**Reconstruction note:** RELAYED entry, carried verbatim from the #589 (`2350397b`) decision log for slice S3. The attribution above is the original relay; it was not re-verified by the reconstruction worker. Thomas's decision of 2026-10-10 ("Owner decisions for slice S3 approvals") confirms it is carried unchanged and keeps its relayed label.
+
+---
+
+
+### 2026-10-06 · Preserve existing approvals when the feature flag is disabled
+
+**Decision:** Thomas explicitly approves continuity for existing approvals. The resolved
+`feature.approvals` flag blocks new approval requests when disabled, but existing approvals
+remain listable/readable, decidable, withdrawable and eligible for reminders under the
+existing permission and current-reach rules. A disabled flag never bypasses workflow approval
+requirements. The built-in default remains `false`; flag resolution remains project →
+workspace → instance → built-in default. The approver-picker route and its candidate source
+remain a separate pending contract question and are not approved by this decision.
+
+**Finding mapping:** this defines only feature-disable lifecycle continuity; it does not
+grant authority, waive tests/reviews or accept the P2 phase. Human design review remains
+deferred to integrated P4. Independent ordinary review and full Sol review remain required.
+
+**Recorded:** orchestrator, Thomas's explicit approval in this task, 2026-10-06.
+
+**Reconstruction note:** RELAYED entry, carried verbatim from the #589 (`2350397b`) decision log for slice S3. The attribution above is the original relay; it was not re-verified by the reconstruction worker. Thomas's decision of 2026-10-10 ("Owner decisions for slice S3 approvals") confirms it is carried unchanged and keeps its relayed label.
+
+---
+
+
+### 2026-10-06 · Resolve bounded approvals storage and reach behavior for implementation
+
+**Decision:** for the P2 approvals implementation, `approval.created_at` is the persisted
+request instant required by AP-13 reminder-window arithmetic and AP-17's “requested N days
+ago” explanation; add it to the authoritative `approval` row in `data-model.md`. Approver
+reach loss is derived at read/decision time from canonical current work-item reach, not a
+new stored state: keep the approval pending and return an `approverReachLost` indicator;
+deny a decision while its named approver lacks reach. The requester may withdraw under
+AP-6, and an instance admin may withdraw on the requester's behalf under AP-7, with the
+existing audit requirement. This does not grant admins decision authority or create a new
+approval state. Register `approval.decided` as an internal activity verb; decision notes
+are stored only in `decision_note` and are not copied into activity or notification
+metadata.
+
+**Finding mapping:** this resolves only the implementation ambiguity between AP-3 and the
+“approver loses reach” edge case without adding a schema state; AP-13/AP-17 use the
+existing domain `Approval.createdAt`; AP-11 uses the existing fail-closed activity
+visibility rule. Historical review text remains unchanged. This is an orchestrator
+implementation choice under Thomas's standing authorization of recommended technical
+decisions, not Thomas's per-feature approval, finding closure, or phase acceptance. Human
+design review remains deferred to integrated P4; independent ordinary review and full Sol
+review remain required before acceptance.
+
+**Recorded:** orchestrator, Thomas's explicit implementation authorization in this task,
+2026-10-06.
+
+**Reconstruction note:** RELAYED entry, carried verbatim from the #589 (`2350397b`) decision log for slice S3. The attribution above is the original relay; it was not re-verified by the reconstruction worker. Thomas's decision of 2026-10-10 ("Owner decisions for slice S3 approvals") confirms it is carried unchanged and keeps its relayed label.
+
 ---
 
 ### 2026-10-06 · Keep self-only personal writes session-only until explicit API-key scopes exist
