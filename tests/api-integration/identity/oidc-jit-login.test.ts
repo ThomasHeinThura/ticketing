@@ -309,3 +309,301 @@ describe("OIDC JIT first login (IP-9, IP-10)", () => {
     await expectJitIdentity("jit-customer-connection", "customer", target);
   });
 });
+
+async function addAgentConnection(
+  connectionId: string,
+  options: { jit: boolean },
+) {
+  const tenantId = TENANT_ID;
+  const [creatorPerson] = await db
+    .select({ id: schema.personTable.id })
+    .from(schema.personTable)
+    .where(eq(schema.personTable.userId, "jit-login-creator"));
+  await db.insert(schema.identityConnectionTable).values({
+    id: connectionId,
+    providerType: "entra",
+    portalScope: "agent",
+    organisationId: null,
+    defaultWorkspaceId: WORKSPACE_ID,
+    displayName: connectionId,
+    issuer: `https://login.microsoftonline.com/${tenantId}/v2.0`,
+    tenantId,
+    clientId: "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa",
+    clientSecret: encryptIdentityClientSecret(connectionId, "stored-secret"),
+    redirectUri: `http://localhost:1337/api/auth/identity/${connectionId}/callback`,
+    scopes: ["openid", "profile"],
+    claimMapping: { version: 1, displayName: "name" },
+    domainBindings: [],
+    jitPolicy: {
+      enabled: options.jit,
+      default_role_id: options.jit ? AGENT_ROLE_ID : null,
+      required_entra_app_role: "TaskDesk.User",
+    },
+    maxRoleRank: 5,
+    enabled: true,
+    createdBy: creatorPerson?.id,
+    updatedBy: creatorPerson?.id,
+  });
+}
+
+/** What SCIM `POST /Users` leaves behind: a placeholder person and a user-less identity. */
+async function scimIdentity(input: {
+  connectionId: string;
+  organisationId: string;
+  side: "staff" | "customer";
+  subject?: string;
+  issuer?: string;
+  email?: string;
+  active?: boolean;
+}) {
+  const [person] = await db
+    .insert(schema.personTable)
+    .values({
+      organisationId: input.organisationId,
+      side: input.side,
+      active: input.active ?? true,
+      isPlaceholder: true,
+      userId: null,
+    })
+    .returning();
+  if (!person) throw new Error("SCIM person fixture missing");
+  const [identity] = await db
+    .insert(schema.externalIdentityTable)
+    .values({
+      identityConnectionId: input.connectionId,
+      personId: person.id,
+      userId: null,
+      issuer: input.issuer ?? ISSUER,
+      subject: input.subject ?? SUBJECT,
+      userNameSnapshot: input.email ?? "scim-user@example.test",
+      emailSnapshot: input.email ?? "scim-user@example.test",
+      active: input.active ?? true,
+      provisionedVia: "scim",
+    })
+    .returning();
+  if (!identity) throw new Error("SCIM identity fixture missing");
+  return { person, identity };
+}
+
+const loginEmail = "jit-first-login@example.test";
+
+async function personById(id: string) {
+  const [row] = await db
+    .select()
+    .from(schema.personTable)
+    .where(eq(schema.personTable.id, id));
+  return row;
+}
+
+describe("first OIDC login of a SCIM-provisioned identity (IP-19, IP-30)", () => {
+  it("links the user-less identity by exact connection and subject, clears the placeholder, then logs in normally (agent)", async () => {
+    await seedAgent("scim-agent-connection");
+    const internal = await ensureInternalOrganisation();
+    const { person, identity } = await scimIdentity({
+      connectionId: "scim-agent-connection",
+      organisationId: internal.id,
+      side: "staff",
+    });
+
+    const first = await signIn("scim-agent-connection", "agent");
+    expect(first.headers.get("location")).toContain("/agent");
+
+    const [linkedIdentity] = await db
+      .select()
+      .from(schema.externalIdentityTable)
+      .where(eq(schema.externalIdentityTable.id, identity.id));
+    expect(linkedIdentity?.userId).toBeTruthy();
+    const linkedPerson = await personById(person.id);
+    expect(linkedPerson).toMatchObject({
+      userId: linkedIdentity?.userId,
+      isPlaceholder: false,
+      active: true,
+    });
+    const [user] = await db
+      .select()
+      .from(schema.userTable)
+      .where(eq(schema.userTable.id, linkedIdentity?.userId ?? ""));
+    expect(user?.email).toBe(loginEmail);
+    const accounts = await db
+      .select()
+      .from(schema.accountTable)
+      .where(eq(schema.accountTable.userId, user?.id ?? ""));
+    expect(accounts).toHaveLength(1);
+    expect(accounts[0]?.accountId).toBe(identityAccountId(ISSUER, SUBJECT));
+    expect(accounts[0]?.providerId).toBe(
+      "taskdesk-entra:scim-agent-connection",
+    );
+    // No second person or identity was created for this subject.
+    expect(
+      await db
+        .select()
+        .from(schema.externalIdentityTable)
+        .where(eq(schema.externalIdentityTable.subject, SUBJECT)),
+    ).toHaveLength(1);
+
+    const second = await signIn("scim-agent-connection", "agent");
+    expect(second.headers.get("location")).toContain("/agent");
+    expect(await db.select().from(schema.userTable)).toHaveLength(
+      2, // the fixture creator plus the linked user
+    );
+    expect(
+      await db
+        .select()
+        .from(schema.accountTable)
+        .where(eq(schema.accountTable.userId, user?.id ?? "")),
+    ).toHaveLength(1);
+  });
+
+  it("does not link or claim anything when the same subject exists only on a different connection", async () => {
+    await seedAgent("scim-owner-connection");
+    await addAgentConnection("scim-other-connection", { jit: false });
+    const internal = await ensureInternalOrganisation();
+    const { person, identity } = await scimIdentity({
+      connectionId: "scim-owner-connection",
+      organisationId: internal.id,
+      side: "staff",
+    });
+
+    const refused = await signIn("scim-other-connection", "agent");
+    expect(refused.headers.get("location")).toContain("identity_error");
+    const untouched = await personById(person.id);
+    expect(untouched).toMatchObject({ userId: null, isPlaceholder: true });
+    const [stillUnlinked] = await db
+      .select()
+      .from(schema.externalIdentityTable)
+      .where(eq(schema.externalIdentityTable.id, identity.id));
+    expect(stillUnlinked?.userId).toBeNull();
+    expect(await db.select().from(schema.userTable)).toHaveLength(1);
+  });
+
+  it("never claims a placeholder by email without a subject match", async () => {
+    await seedAgent("scim-email-connection");
+    const internal = await ensureInternalOrganisation();
+    const { person, identity } = await scimIdentity({
+      connectionId: "scim-email-connection",
+      organisationId: internal.id,
+      side: "staff",
+      subject: "a-different-subject",
+      email: loginEmail,
+    });
+
+    // JIT is enabled on this connection: the login becomes a separate JIT identity and the
+    // placeholder that merely shares the address stays unclaimed.
+    const response = await signIn("scim-email-connection", "agent");
+    expect(response.headers.get("location")).toContain("/agent");
+    const untouched = await personById(person.id);
+    expect(untouched).toMatchObject({ userId: null, isPlaceholder: true });
+    const [unlinked] = await db
+      .select()
+      .from(schema.externalIdentityTable)
+      .where(eq(schema.externalIdentityTable.id, identity.id));
+    expect(unlinked?.userId).toBeNull();
+    const jit = await db
+      .select()
+      .from(schema.externalIdentityTable)
+      .where(eq(schema.externalIdentityTable.subject, SUBJECT));
+    expect(jit).toHaveLength(1);
+    expect(jit[0]?.personId).not.toBe(person.id);
+    expect(jit[0]?.provisionedVia).toBe("jit");
+  });
+
+  it("refuses an email-only match when JIT is disabled", async () => {
+    await seedAgent("scim-email-nojit-connection");
+    await db
+      .update(schema.identityConnectionTable)
+      .set({
+        jitPolicy: {
+          enabled: false,
+          default_role_id: null,
+          required_entra_app_role: "TaskDesk.User",
+        },
+      })
+      .where(
+        eq(schema.identityConnectionTable.id, "scim-email-nojit-connection"),
+      );
+    const internal = await ensureInternalOrganisation();
+    const { person } = await scimIdentity({
+      connectionId: "scim-email-nojit-connection",
+      organisationId: internal.id,
+      side: "staff",
+      subject: "a-different-subject",
+      email: loginEmail,
+    });
+    const response = await signIn("scim-email-nojit-connection", "agent");
+    expect(response.headers.get("location")).toContain("identity_error");
+    expect(await personById(person.id)).toMatchObject({
+      userId: null,
+      isPlaceholder: true,
+    });
+    expect(await db.select().from(schema.userTable)).toHaveLength(1);
+  });
+
+  it("cannot activate a deprovisioned or inactive SCIM identity by logging in", async () => {
+    await seedAgent("scim-inactive-connection");
+    const internal = await ensureInternalOrganisation();
+    const deprovisioned = await scimIdentity({
+      connectionId: "scim-inactive-connection",
+      organisationId: internal.id,
+      side: "staff",
+      active: false,
+    });
+    const refused = await signIn("scim-inactive-connection", "agent");
+    expect(refused.headers.get("location")).toContain("identity_error");
+    expect(await personById(deprovisioned.person.id)).toMatchObject({
+      userId: null,
+      isPlaceholder: true,
+      active: false,
+    });
+    expect(await db.select().from(schema.userTable)).toHaveLength(1);
+
+    // An active identity whose person was deactivated is refused the same way.
+    await db
+      .update(schema.externalIdentityTable)
+      .set({ active: true })
+      .where(eq(schema.externalIdentityTable.id, deprovisioned.identity.id));
+    const stillRefused = await signIn("scim-inactive-connection", "agent");
+    expect(stillRefused.headers.get("location")).toContain("identity_error");
+    expect(await db.select().from(schema.userTable)).toHaveLength(1);
+  });
+
+  it("links a SCIM-provisioned customer identity through the customer portal", async () => {
+    await seedCustomer("scim-customer-connection");
+    const { person, identity } = await scimIdentity({
+      connectionId: "scim-customer-connection",
+      organisationId: CUSTOMER_ORG_ID,
+      side: "customer",
+    });
+    const response = await signIn("scim-customer-connection", "customer");
+    expect(response.headers.get("location")).toBe("/");
+    const [linked] = await db
+      .select()
+      .from(schema.externalIdentityTable)
+      .where(eq(schema.externalIdentityTable.id, identity.id));
+    expect(linked?.userId).toBeTruthy();
+    expect(await personById(person.id)).toMatchObject({
+      userId: linked?.userId,
+      isPlaceholder: false,
+      side: "customer",
+      organisationId: CUSTOMER_ORG_ID,
+    });
+  });
+
+  it("refuses a customer identity whose person belongs to another organisation", async () => {
+    await seedCustomer("scim-customer-mismatch-connection");
+    const internal = await ensureInternalOrganisation();
+    const { person } = await scimIdentity({
+      connectionId: "scim-customer-mismatch-connection",
+      organisationId: internal.id,
+      side: "staff",
+    });
+    const response = await signIn(
+      "scim-customer-mismatch-connection",
+      "customer",
+    );
+    expect(response.headers.get("location")).toContain("identity_error");
+    expect(await personById(person.id)).toMatchObject({
+      userId: null,
+      isPlaceholder: true,
+    });
+  });
+});

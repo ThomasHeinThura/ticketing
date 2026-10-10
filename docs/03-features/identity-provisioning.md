@@ -444,14 +444,25 @@ hand-written protocol code; only the credential check reuses the platform.
   no matching resource id or conflict class is exposed to the caller.
 - `IP-19` Within one connection, SCIM create followed by first OIDC login links by
   `subject` (Entra `oid`) and `externalId`; the email snapshot is updated, not matched.
+  **Link and activate** (owner decision, decision log 2026-10-10): SCIM `POST /Users` leaves a
+  user-less `external_identity` and a placeholder person. When a login presents the same
+  connection, issuer and subject as that active identity, the login (in the same transaction
+  as the IP-22 grant reconciliation) creates the `user` and `account` row, links them to the
+  identity and person, and clears `is_placeholder`; later logins are ordinary. Only that exact
+  connection + subject match qualifies: an address owned by another user refuses, the same
+  subject on a different connection does not link, and a deprovisioned or inactive identity or
+  person is refused and never reactivated by a login.
 - `IP-30` **Claiming a placeholder person.** An import may leave a `person` with
   `user_id = null` and `is_placeholder = true` so history has an author
   ([auth-and-identity.md](../01-architecture/auth-and-identity.md#identity-resolution--the-important-rule)).
   A later sign-up may **claim** that row — linked, not duplicated — but only on a path where
   **TaskDesk itself verified the address**: password sign-up with email verification, email
   OTP, or magic link; or an explicit, administrator-confirmed claim. **Never on the SSO
-  path**, where the address is the IdP's assertion rather than our verification, and where
-  for Entra there is no `email_verified` claim to lean on at all (`IP-27`). Every claim is
+  path by address or any other loose match**, where the address is the IdP's assertion rather
+  than our verification, and where for Entra there is no `email_verified` claim to lean on at
+  all (`IP-27`). The one SSO link is `IP-19`'s: the user-less identity SCIM created on this
+  same connection for exactly this subject, which the login activates; it never reaches an
+  import placeholder. Every claim is
   audited. This is not an exception to `IP-18`: `IP-18` forbids linking to another
   *connection's* account, and this links to a row that has no account.
 

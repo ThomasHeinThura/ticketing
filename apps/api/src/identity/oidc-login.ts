@@ -714,6 +714,39 @@ async function signInAdmittedIdentity(input: {
           throw new APIError("UNAUTHORIZED", {
             message: "Identity sign-in failed",
           });
+        if (!userId) {
+          // Owner decision 2026-10-10 (IP-19/IP-30): an identity SCIM created on THIS
+          // connection for exactly this subject is activated by its first login. The
+          // match above is connection + issuer + subject only; an address never selects a
+          // person here, and an address already owned by another user refuses.
+          const [emailOwner] = await findOidcEmailOwner(tx, identity.address);
+          if (emailOwner)
+            throw new APIError("UNAUTHORIZED", {
+              message: "Identity sign-in failed",
+            });
+          const linkedUser = {
+            id: createId(),
+            name: identity.displayName ?? identity.address,
+            email: identity.address,
+            emailVerified: false,
+            createdAt: now,
+            updatedAt: now,
+          };
+          await tx.insert(schema.userTable).values(linkedUser);
+          userId = linkedUser.id;
+          await tx.insert(schema.accountTable).values({
+            id: createId(),
+            accountId: identityAccountId(connection.issuer, subject),
+            providerId: `${IDENTITY_PROVIDER_PREFIX}${connection.id}`,
+            userId,
+            createdAt: now,
+            updatedAt: now,
+          });
+          await tx
+            .update(schema.personTable)
+            .set({ userId, isPlaceholder: false, updatedAt: now })
+            .where(eq(schema.personTable.id, existing.personId));
+        }
       } else {
         if (!jitPolicy.enabled)
           throw new APIError("UNAUTHORIZED", {
