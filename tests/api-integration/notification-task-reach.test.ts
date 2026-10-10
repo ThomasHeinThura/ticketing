@@ -446,6 +446,32 @@ describe("notification task reach (security-model §2; NO edge cases)", () => {
     expect(emailProvider.sendNotificationEmail).toHaveBeenCalledTimes(1);
   });
 
+  it("read-all marks reachable task notifications read and leaves unreachable ones unread (D10)", async () => {
+    const { user, project, task } = await fixture();
+    const reachable = await plantTaskNotification({
+      userId: user.id,
+      taskId: task.id,
+    });
+    await markAllNotificationsAsRead(user.id);
+    const [readRow] = await db
+      .select({ isRead: schema.notificationTable.isRead })
+      .from(schema.notificationTable)
+      .where(eq(schema.notificationTable.id, reachable.id));
+    expect(readRow?.isRead).toBe(true);
+
+    const hidden = await plantTaskNotification({
+      userId: user.id,
+      taskId: task.id,
+    });
+    await revokeProjectReach(user.id, project.id);
+    await markAllNotificationsAsRead(user.id);
+    const [hiddenRow] = await db
+      .select({ isRead: schema.notificationTable.isRead })
+      .from(schema.notificationTable)
+      .where(eq(schema.notificationTable.id, hidden.id));
+    expect(hiddenRow?.isRead).toBe(false);
+  });
+
   it("clamps task notification rows to the active API key and current role", async () => {
     const { user, project, task } = await fixture();
     const taskNotification = await plantTaskNotification({
