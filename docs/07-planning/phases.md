@@ -117,6 +117,13 @@ happens; building on top of them is easy.
 
 ### P0 two-entry host and static acceptance
 
+> **Note, 2026-10-10.** The matrix below is the P0 contract as shipped at
+> `v2.0.0-alpha.3` (`b704f707`). The S1 identity slice (#622, `954eb840`) intentionally
+> extends the portal host beyond it, as [customer-portal.md](../03-features/customer-portal.md)
+> specifies: the portal host now admits customer session and identity routes that this
+> matrix lists as a generic 404. The matrix is not rewritten. It still describes what P0
+> was accepted against. See the [P0 stage review](p0-stage-review.md), finalizer finding N9.
+
 The Node server selects an app only from one validated raw request authority matched
 against the configured agent and portal public origins. Normalize DNS with case and IDNA
 rules, and normalize ports using each configured public scheme (`:443` for HTTPS and
