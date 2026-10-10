@@ -15,20 +15,6 @@ Three signed prereleases exist (`2.0.0-alpha.1` to `2.0.0-alpha.3`, below). See
 [accelerated-delivery-plan.md](docs/07-planning/accelerated-delivery-plan.md) for the
 current target calendar.
 
-### Fixed
-
-- **Installer re-run (#623, `f4f6b011`, merged 2026-10-10, not yet in a release).** A
-  first production install writes `TASKDESK_FILES_HOST=files.<domain>` into `.env`. On the
-  next run of `install.sh`, `2.0.0-alpha.3` checked that name in DNS and stopped with "DNS
-  name files.<domain> does not resolve", even when the S3 profile was not in use. The
-  installer now checks the files host only with `--profile s3` or an explicit
-  `--files-host`. Nothing was changed when the old behaviour stopped; it failed safe. The
-  published installer hash changed to `ab4e319e…`. The same change corrects the documented
-  `/api/public/health/live` response (`{"status":"ok"}`) and adds a runbook note about
-  re-signing in after the cookie rename. Evidence:
-  `p0-installer-proof-4-20261010T115535Z` (re-run and S3 cases pass; see the
-  [P0 stage review](docs/07-planning/p0-stage-review.md)).
-
 **Planning milestones** (not releases — recorded so the first release notes have a
 starting point):
 
@@ -70,6 +56,20 @@ This file starts recording real entries from the first change merged in
 [status.md](docs/07-planning/status.md)'s session log as the record of what happened, and
 this file as the promise of where product-facing entries will live once there is a product
 to log.
+
+### Fixed
+
+- **Installer re-run (#623, `f4f6b011`, merged 2026-10-10, not yet in a release).** A
+  first production install writes `TASKDESK_FILES_HOST=files.<domain>` into `.env`. On the
+  next run of `install.sh`, `2.0.0-alpha.3` checked that name in DNS and stopped with "DNS
+  name files.<domain> does not resolve", even when the S3 profile was not in use. The
+  installer now checks the files host only with `--profile s3` or an explicit
+  `--files-host`. Nothing was changed when the old behaviour stopped; it failed safe. The
+  published installer hash changed to `ab4e319e…`. The same change corrects the documented
+  `/api/public/health/live` response (`{"status":"ok"}`) and adds a runbook note about
+  re-signing in after the cookie rename. Evidence:
+  `p0-installer-proof-4-20261010T115535Z` (re-run and S3 cases pass; see the
+  [P0 stage review](docs/07-planning/p0-stage-review.md)).
 
 <!--
 Entries from here on follow this shape, oldest section at the bottom:

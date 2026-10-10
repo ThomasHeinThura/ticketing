@@ -1,6 +1,6 @@
 ## Post-P0 consolidation checkpoint; P0 claim conditional on #624 — 2026-10-10 12:20 UTC
 
-**Main:** `f4f6b0114fb20594b56e1d305c59c7efef23ec15` (#623 merged). Merged on 2026-10-10, each squash-merged and pinned to its reviewed head:
+**Main:** `7cf4bc1fe756d1c9008da7c383e4d9afcd147d4e` (#623 and #625 merged). Merged on 2026-10-10, each squash-merged and pinned to its reviewed head:
 
 | PR | Change | Merge commit |
 | --- | --- | --- |
@@ -14,6 +14,7 @@
 | #621 | deploy/install whole-path fix | `b704f707` |
 | #622 | S1 identity (post-P0; outside the P0 claim) | `954eb840` |
 | #623 | installer re-run fix, docs corrections | `f4f6b011` |
+| #625 | 0120 approval tenant anchor | `7cf4bc1f` |
 
 Closed as absorbed or superseded: #612, #614, #599.
 
@@ -34,9 +35,9 @@ Closed as absorbed or superseded: #612, #614, #599.
 
 **In flight (post-P0 integration, feature freeze):**
 - S2 auth hardening: closure reviews at the final head.
-- 0120 approval anchor: #625 open, in review.
+- 0120 approval anchor: #625 merged as `7cf4bc1f`.
 - S3 approvals: waits on S2 and 0120.
-- S4 notifications plus the #506 delta: D10 decided 2026-10-10.
+- S4 notifications plus the #506 delta: D10 decided by Thomas 2026-10-10; its decision-log entry lands with S4.
 - Then S6–S9, the #512 journey, the #569 re-cut (now 0121), #601 docs and #607 (held).
 
 **Task queue:** the execution queue named in `active-mission.md` (`integration-execution-queue.md`) lives on #601's branch until #601 merges.

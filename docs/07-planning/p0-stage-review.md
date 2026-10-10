@@ -86,14 +86,14 @@ once over the whole surface before `2.0.0`. It is a deferral, not a pass.
 | 13 | Every feature meets its Definition of Done | Per-PR records only | Not independently re-established at stage level |
 | 14 | PG1 screen review | Deferred (allowed) | DoD stage list; decision log 2026-10-02: human design sign-off at the P4 review |
 | 15 | Every P0 screen ✅ in the screen inventory | **Not met.** Deferred under the widened waiver (Thomas, 2026-10-10) | No row marked ✅. [screen-inventory.md](../02-design/screen-inventory.md) note, 2026-10-10. Runs in the once-before-`2.0.0` pass |
-| 16 | Full E2E suite green, agent and portal, plus reduced motion | **Not run.** Deferred | Waiver. Only the `e2e - protected-route redirect` required check ran |
-| 17 | PG2 screen reader, PG3 keyboard, PG4 fresh-eyes, PG5 cross-browser | **Not run.** Deferred | Waiver (confirms the 2026-09-05 waiver, widened to PG3) |
-| 18 | PG6 realistic data (10,000 items, 50 projects, 200 people) | **Not run.** Deferred | Waiver |
-| 19 | Load-test baseline recorded | **Not run.** Deferred | Waiver (k6) |
+| 16 | Full E2E suite green, agent and portal, plus reduced motion | **No evidence recorded.** Deferred (#626) | Waiver. Only the `e2e - protected-route redirect` required check ran |
+| 17 | PG2 screen reader, PG3 keyboard, PG4 fresh-eyes, PG5 cross-browser | **No evidence recorded.** Deferred (#626) | Waiver (confirms the 2026-09-05 waiver, widened to PG3) |
+| 18 | PG6 realistic data (10,000 items, 50 projects, 200 people) | **No evidence recorded.** Deferred (#626) | Waiver |
+| 19 | Load-test baseline recorded | **No evidence recorded.** Deferred (#626) | Waiver (k6) |
 | 20 | Backup and restore verified | **Not met.** Deferred | Waiver. Proof 3 F2 took a `pg_dump`; no restore was run |
 | 21 | Phase finalizer | Re-check done: conditional | First pass NOT COMPLETE at `954eb840`; re-check P0 COMPLETE CONDITIONAL ON. See "Phase finalizer" below |
 | 22 | Written stage review, including what went wrong | This document | |
-| 23 | Screen inventory, feature index and CHANGELOG updated together | Partly done | CHANGELOG and screen inventory updated with this review. The feature-index status columns ([03-features/README.md](../03-features/README.md)) were not changed: no feature is claimed at its Definition of Done here |
+| 23 | Screen inventory, feature index and CHANGELOG updated together | Partly done | CHANGELOG and screen inventory updated with this review. The feature-index status columns ([03-features/README.md](../03-features/README.md)) need no change: P0 claims no feature at its Definition of Done, so no status moves |
 | 24 | Roadmap and status updated | `status.md` refreshed in #624; `roadmap.md` does not change | `roadmap.md` holds the stage sequence and what each stage makes possible, with no per-stage status column or dated status, so there is nothing to update for a P0 claim. The dated snapshot is in [status.md](status.md) |
 | 25 | Gates table complete; every waived row linked to the decision log | Met after #624 | #602's merge-time waiver is recorded in the decision log by #624. #602's PR body is not edited |
 

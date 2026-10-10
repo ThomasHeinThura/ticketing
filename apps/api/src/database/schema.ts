@@ -3251,9 +3251,20 @@ export const approvalTable = pgTable(
     id: text("id")
       .$defaultFn(() => createId())
       .primaryKey(),
-    workItemId: text("work_item_id")
+    // Tenant anchor (0120). Backfilled from the work item, then pinned to it by
+    // approval_workspace_work_item_fk below, so an approval's workspace always equals its
+    // work item's workspace. `transition_id` stays a single-column FK: workflow_transition
+    // carries no workspace_id, so it cannot be tenant-anchored without a design change
+    // (migration-ledger.md, "Open forward items after 0120").
+    workspaceId: text("workspace_id")
       .notNull()
-      .references(() => workItemTable.id, { onDelete: "cascade" }),
+      .references(() => workspaceTable.id, {
+        onDelete: "cascade",
+        onUpdate: "cascade",
+      }),
+    // Tenant-anchored by approval_workspace_work_item_fk (0120) on
+    // (workspace_id, work_item_id) -> work_item (workspace_id, id).
+    workItemId: text("work_item_id").notNull(),
     transitionId: text("transition_id")
       .notNull()
       .references(() => workflowTransitionTable.id, { onDelete: "restrict" }),
@@ -3273,6 +3284,14 @@ export const approvalTable = pgTable(
     decisionNote: text("decision_note"),
   },
   (table) => [
+    index("approval_workspaceId_idx").on(table.workspaceId),
+    foreignKey({
+      name: "approval_workspace_work_item_fk",
+      columns: [table.workspaceId, table.workItemId],
+      foreignColumns: [workItemTable.workspaceId, workItemTable.id],
+    })
+      .onDelete("cascade")
+      .onUpdate("no action"),
     index("approval_work_item_created_idx").on(
       table.workItemId,
       table.createdAt,

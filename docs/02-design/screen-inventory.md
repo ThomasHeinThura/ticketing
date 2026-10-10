@@ -18,8 +18,9 @@ prerequisite-based scope follows the [2026-09-28 gate-scope decision](../07-plan
 a human screen review (PG1, deferred to the integrated P4 review), a manual screen-reader
 pass (PG2), a keyboard-only session (PG3), a fresh-eyes test (PG4), a four-browser check
 (PG5), the full and reduced-motion E2E suites, and a realistic-data run (PG6)
-([definition-of-done.md](../04-engineering/definition-of-done.md#stage-completion)). None of
-these has been run. Thomas deferred them to before `2.0.0` in the
+([definition-of-done.md](../04-engineering/definition-of-done.md#stage-completion)). No stage
+evidence is recorded for them. PG1 stays deferred to the integrated P4 review (2026-10-02
+decision). Thomas deferred the rest to before `2.0.0` (issue #626) in the
 [2026-10-10 decision](../07-planning/decision-log.md) (recorded by PR #624). The 🟡 and ⬜
 rows above therefore stay as they are. This is a deferral, not an approval. See the
 [P0 stage review](../07-planning/p0-stage-review.md).
