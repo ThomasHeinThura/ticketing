@@ -279,7 +279,7 @@ jobs:
           root="taskdesk-${tag}"
           git cat-file -e "${SOURCE_SHA}^{commit}"
           git archive --format=tar --prefix="${root}/" "${SOURCE_SHA}" \
-            compose.yml deploy scripts/deploy.sh scripts/lib/local-certificate.sh | gzip -n > "$archive"
+            compose.yml deploy scripts/deploy.sh scripts/lib/local-certificate.sh scripts/lib/deploy-checks.sh | gzip -n > "$archive"
           [[ -s "$archive" ]]
           sha256sum "$archive" > "${archive}.sha256"
           [[ "$(awk 'NR == 1 { print $2 }' "${archive}.sha256")" == "$archive" ]]

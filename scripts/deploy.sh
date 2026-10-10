@@ -108,6 +108,11 @@ esac
 
 dc() { docker compose "${COMPOSE_FILES[@]}" "$@"; }
 
+# Engine-level port check and byte-derived digest resolver (see the file header
+# for why neither parses `compose port` or buildx human text).
+# shellcheck source=scripts/lib/deploy-checks.sh
+. "$REPO_ROOT/scripts/lib/deploy-checks.sh"
+
 # ---------------------------------------------------------------------------
 # Preconditions
 # ---------------------------------------------------------------------------
@@ -188,7 +193,13 @@ assert_local_port_free() {
   # script is documented as idempotent and safe to re-run against its own
   # prior run (e.g. adding --profile s3 later). Only a port bound by
   # something else is a real conflict.
-  dc port traefik "$container_port" >/dev/null 2>&1 && return 0
+  # Judged from the engine's container configuration, not `compose port`'s exit
+  # code: Compose prints `:0` with exit 0 for ports that are not published.
+  local traefik_ids traefik_id
+  traefik_ids="$(dc ps -q traefik 2>/dev/null || true)"
+  for traefik_id in $traefik_ids; do
+    container_binds_host_port "$traefik_id" "$container_port" "$host_port" && return 0
+  done
   # fd 3 is opened and closed inside the subshell above; nothing to close here.
   if (exec 3<>"/dev/tcp/127.0.0.1/${host_port}") 2>/dev/null; then
     die "port ${host_port} is already bound on this host — the bundled local Traefik can't publish it.
@@ -313,13 +324,11 @@ resolve_and_verify_image() {
     tag_ref="$(image_ref)"
     say "resolving $tag_ref to an immutable digest"
     command -v docker >/dev/null 2>&1 || die "docker is not installed"
-    local inspect_output
-    inspect_output="$(docker buildx imagetools inspect "$tag_ref")" \
+    docker buildx version >/dev/null 2>&1 \
+      || die "docker buildx is required to resolve $tag_ref to a digest.
+     Ubuntu: apt-get install docker-buildx. Docker's own repository: docker-buildx-plugin."
+    digest="$(resolve_image_digest "$tag_ref")" \
       || die "could not resolve $tag_ref to an immutable digest"
-    # buildx pads the value (`Digest:    sha256:...` as of v0.38), so split on any
-    # run of blanks rather than matching a fixed prefix. The strict check below
-    # is what decides whether the result is acceptable.
-    digest="$(printf '%s\n' "$inspect_output" | awk '/^Digest:/ { if ($1 == "Digest:" && NF == 2) print $2; exit }')"
   fi
   [[ "$digest" =~ ^sha256:[0-9a-f]{64}$ ]] \
     || die "TASKDESK_IMAGE_DIGEST must be a full lowercase sha256 digest"
@@ -352,14 +361,24 @@ create_bucket() {
 # The production invariant, asserted rather than assumed
 # ---------------------------------------------------------------------------
 assert_port_unpublished() {
-  local port="${TASKDESK_PORT:-5173}"
-  if dc port taskdesk "$port" >/dev/null 2>&1; then
-    die "port $port is PUBLISHED on the taskdesk service, and it must not be in production.
+  # Judged from the Docker engine's own record of every taskdesk container
+  # (including stopped ones and every replica), not from `compose port`: Compose
+  # v5.6.0 and 2.40.3 print `:0` with exit 0 for a port that is exposed but not
+  # published, so its exit code cannot tell "published" from "not published".
+  # Fails closed on: no container, an inspect error, host networking,
+  # PublishAllPorts, any configured port binding, any live port mapping.
+  local ids reason
+  ids="$(dc ps -a -q taskdesk)" \
+    || die "cannot list the taskdesk containers to check that no port is published"
+  # Unquoted on purpose: one id per line, one iteration per replica.
+  # shellcheck disable=SC2086
+  if ! reason="$(assert_containers_unpublished $ids 2>&1)"; then
+    die "the taskdesk service is not proven unpublished (${reason}), and it must be in production.
      TASKDESK_TRUST_PROXY is only sound because the application port is reachable
      from the proxy network alone: published, a client can bypass Traefik and
      forge X-Forwarded-For directly. Compose concatenates \`ports:\` across files,
-     so this means a local overlay was loaded. Bring the stack down and re-run
-     without deploy/compose.local.yml.
+     so this usually means a local overlay was loaded. Bring the stack down and
+     re-run without deploy/compose.local.yml.
      docs/05-operations/traefik-and-domains.md"
   fi
   ok "no application port is published"
@@ -462,6 +481,9 @@ case "$MODE" in
     dc pull
     wait_for_deps
     create_bucket
+    say "creating the application containers (not started) to check their port configuration"
+    dc up --no-start
+    assert_port_unpublished
     say "starting the application"
     dc up -d --wait
     assert_port_unpublished
@@ -510,6 +532,8 @@ case "$MODE" in
     # stack `up -d` stops the old container, then starts the new one. Expect a
     # short outage. --wait makes a failed start loud rather than silent.
     warn "expect a short outage: single-replica Compose replaces the container in place"
+    dc up --no-start taskdesk
+    assert_port_unpublished
     dc up -d --wait taskdesk
     assert_port_unpublished
     probe_api
@@ -548,6 +572,8 @@ case "$MODE" in
     # not `dc up -d --wait`, so a real migrate failure actually aborts this
     # script instead of silently succeeding.
     dc run --rm migrate
+    dc up --no-start taskdesk
+    assert_port_unpublished
     dc up -d --wait taskdesk
     assert_port_unpublished
     probe_api

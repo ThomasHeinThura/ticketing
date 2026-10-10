@@ -25,8 +25,13 @@ copy of `install.sh` and pass `--version` for a published release.
 
 1. **Check the host.** Linux x86-64 and arm64 are supported for production. macOS is supported
    for local evaluation. Other operating systems and architectures stop before downloads.
-2. **Check Docker.** Docker Engine and the Compose plugin must be available. If either is
-   missing, the installer asks before using a supported system package manager. Arch Linux
+2. **Check Docker.** Docker Engine, the Compose plugin and `docker buildx` must be available
+   (`scripts/deploy.sh` resolves the image tag to a digest with buildx). If any is missing,
+   the installer asks before installing them with the system package manager, which it only
+   does on Ubuntu (`docker.io docker-compose-v2 docker-buildx`). On Debian, Fedora, RHEL and
+   CentOS it stops with guidance to install Docker Engine, Compose and buildx from Docker's
+   official repository, because those distributions' own package names do not reliably
+   provide all three. Arch Linux
    stops with guidance to install Docker during a synchronized full-system update; the
    installer never runs a partial `pacman` upgrade. `--yes` accepts supported install prompts
    and the later install-file prompt. It never pipes a remote script into a shell. The Docker
@@ -108,7 +113,7 @@ install directory. There is no automatic fallback from a failed signature check.
 The source installer is small and reviewable. Its SHA-256 is:
 
 ```text
-23e80455f83c7fcf9dc1e9bf24c21ea4a1ccb2862bdb191e19d36c0f78856057
+cd4078e820f0c98bc326adf09ee2e52e7c6f03af5f4b053e14ac480941bf9bd9
 ```
 
 You can download and inspect the script before running it. The installer requests elevation

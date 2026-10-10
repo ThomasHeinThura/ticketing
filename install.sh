@@ -187,7 +187,7 @@ done < "${TMP_ROOT}/archive-details.txt"
 mkdir -m 0700 "${TMP_ROOT}/unpacked"
 tar -xzf "${TMP_ROOT}/${ARCHIVE}" -C "${TMP_ROOT}/unpacked"
 RELEASE_ROOT="${TMP_ROOT}/unpacked/taskdesk-${VERSION}"
-for required in compose.yml scripts/deploy.sh scripts/lib/local-certificate.sh deploy/.env.example deploy/compose.local.yml deploy/compose.prod.yml deploy/compose.traefik.yml deploy/traefik/dynamic/middlewares.yml; do
+for required in compose.yml scripts/deploy.sh scripts/lib/local-certificate.sh scripts/lib/deploy-checks.sh deploy/.env.example deploy/compose.local.yml deploy/compose.prod.yml deploy/compose.traefik.yml deploy/traefik/dynamic/middlewares.yml; do
   [[ -f "${RELEASE_ROOT}/${required}" && ! -L "${RELEASE_ROOT}/${required}" ]] || die "release archive is missing a required regular file: ${required}"
 done
 [[ ! -L "$INSTALL_DIR" && ! -L "$INSTALL_DIR/.env" ]] || die 'installation directory and .env must not be symbolic links'
@@ -200,8 +200,11 @@ if ((YES == 0)); then
   [[ "$answer" == [yY] || "$answer" == [yY][eE][sS] ]] || die 'installation declined; no files were written'
 fi
 
-if ! command -v docker >/dev/null 2>&1 || ! docker compose version >/dev/null 2>&1; then
-  warn 'Docker Engine and the Compose plugin are required.'
+if ! command -v docker >/dev/null 2>&1 || ! docker compose version >/dev/null 2>&1 || ! docker buildx version >/dev/null 2>&1; then
+  warn 'Docker Engine, the Compose plugin and docker buildx are required.'
+  if command -v docker >/dev/null 2>&1 && docker compose version >/dev/null 2>&1 && ! docker buildx version >/dev/null 2>&1; then
+    die 'Docker and the Compose plugin are installed but docker buildx is not, and scripts/deploy.sh needs it. Install docker-buildx-plugin from Docker'"'"'s official repository (docker-ce hosts), or docker-buildx from Ubuntu'"'"'s archive (docker.io hosts), then rerun install.sh'
+  fi
   if ((YES == 0)); then
     read -r -p 'Install Docker using this system package manager now? [y/N] ' answer
     [[ "$answer" == [yY] || "$answer" == [yY][eE][sS] ]] || die 'Docker installation declined; install Docker and rerun install.sh'
@@ -210,17 +213,17 @@ if ! command -v docker >/dev/null 2>&1 || ! docker compose version >/dev/null 2>
   [[ ! -r /etc/os-release ]] || . /etc/os-release
   case "$(uname -s):${ID:-}" in
     Darwin:*) command -v brew >/dev/null 2>&1 || die 'install Docker Desktop from docker.com or install Homebrew, then rerun'; brew install --cask docker ;;
-    Linux:debian|Linux:ubuntu) command -v sudo >/dev/null 2>&1 || die 'sudo is required to install Docker'; sudo apt-get update; sudo apt-get install -y docker.io docker-compose-v2; sudo systemctl enable --now docker ;;
-    Linux:fedora|Linux:rhel|Linux:centos) command -v sudo >/dev/null 2>&1 || die 'sudo is required to install Docker'; sudo dnf install -y docker docker-compose-plugin; sudo systemctl enable --now docker ;;
+    Linux:ubuntu) command -v sudo >/dev/null 2>&1 || die 'sudo is required to install Docker'; sudo apt-get update; sudo apt-get install -y docker.io docker-compose-v2 docker-buildx; sudo systemctl enable --now docker ;;
+    Linux:debian|Linux:fedora|Linux:rhel|Linux:centos) die "automatic Docker installation is only supported on Ubuntu; this distribution's own packages do not reliably provide the Compose plugin and buildx that deploy.sh needs. Install Docker Engine, the Compose plugin and buildx from Docker's official repository (https://docs.docker.com/engine/install/), then rerun install.sh" ;;
     Linux:arch) die 'automatic Docker installation is disabled on Arch Linux to avoid partial system upgrades; install Docker during a synchronized full-system update, then rerun install.sh' ;;
-    *) die 'automatic Docker installation is unsupported for this distribution; install Docker Engine and the Compose plugin, then rerun';;
+    *) die 'automatic Docker installation is unsupported for this distribution; install Docker Engine, the Compose plugin and buildx, then rerun';;
   esac
-  command -v docker >/dev/null 2>&1 && docker compose version >/dev/null 2>&1 || die 'Docker or the Compose plugin is still unavailable after installation'
+  command -v docker >/dev/null 2>&1 && docker compose version >/dev/null 2>&1 && docker buildx version >/dev/null 2>&1 || die 'Docker, the Compose plugin or docker buildx is still unavailable after installation'
 fi
 docker info >/dev/null 2>&1 || die 'Docker daemon is not reachable; start Docker and ensure the invoking user can access it before rerunning'
 mkdir -p "$INSTALL_DIR"
 [[ -d "$INSTALL_DIR" && ! -L "$INSTALL_DIR" ]] || die '--dir must be a real directory'
-for member in compose.yml scripts/deploy.sh scripts/lib/local-certificate.sh deploy/.env.example deploy/compose.local.yml deploy/compose.prod.yml deploy/compose.traefik.yml deploy/compose.uat.yml deploy/compose.keycloak.yml deploy/compose.observability.yml deploy/entrypoint.sh deploy/seaweedfs/README.md deploy/traefik/dynamic/middlewares.yml; do
+for member in compose.yml scripts/deploy.sh scripts/lib/local-certificate.sh scripts/lib/deploy-checks.sh deploy/.env.example deploy/compose.local.yml deploy/compose.prod.yml deploy/compose.traefik.yml deploy/compose.uat.yml deploy/compose.keycloak.yml deploy/compose.observability.yml deploy/entrypoint.sh deploy/seaweedfs/README.md deploy/traefik/dynamic/middlewares.yml; do
   [[ -f "${RELEASE_ROOT}/${member}" ]] || continue
   parent="$INSTALL_DIR"
   IFS=/ read -r -a parts <<< "$(dirname "$member")"

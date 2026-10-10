@@ -260,6 +260,21 @@ redirect` smoke, G4's `a11y - accessibility (G4, axe)` scan, and G8's `visual re
 `performance - budgets (G11)`; its run is verified by the local full-gate manifest and
 workflow reconciliation.
 
+The `e2e - protected-route redirect` job also runs `scripts/ci/run-deploy-real-docker.sh`
+(step "Verify the deploy helpers against a real Docker engine", not a separate required
+context). It runs `scripts/ci/deploy-real-docker.test.mjs` against the runner's real Docker
+engine, twice: once with the runner's Compose and buildx, and once with Ubuntu's
+`docker-compose-v2` and `docker-buildx` (the packages `install.sh` installs on Ubuntu)
+placed first on the CLI plugin path through `DOCKER_CONFIG`. It sources the real
+`scripts/lib/deploy-checks.sh` and asserts that a published port, a configured-only
+binding, `PublishAllPorts`, host or container-shared networking, a missing container and an inspect error all
+fail while an exposed-but-unpublished container passes, and that a public signed image tag
+resolves to its exact index digest. Both installer proofs failed on assumptions about
+Compose and buildx output that stub-only tests had encoded; this step moves that drift to
+pull-request time. The script fails if either run reports a skipped test, because a skipped
+run would otherwise read as green. Without `TASKDESK_REAL_DOCKER=1` the test file reports
+every test as skipped, so it is inert in the fast unit run.
+
 The fast stage exists because a required check that takes an hour gets worked around; the
 full stage exists because the things it checks cannot be made fast. Both block a merge.
 The **security review** is a required section of `.github/pull_request_template.md`
