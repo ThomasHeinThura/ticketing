@@ -66,6 +66,12 @@ on a workflow transition.
   or **all** approvers. Only approvals whose `transition_id` names *that* transition count
   toward it — an approval raised against a different transition, even the same `kind`, on
   the same work item never satisfies this gate.
+  Only `pending`, `approved` and `rejected` approvals count. A `withdrawn` or `expired`
+  approval is ignored entirely, so withdrawing can never block a gate
+  ([decision log](../07-planning/decision-log.md), 2026-10-10 "single-use approvals,
+  withdrawn approvals ignored"). Approvals are **single use**: an approval is consumed by a
+  run of its transition, so an approval raised before the transition last ran for this work
+  item no longer counts, and repeating the transition needs a new approval.
 - `AP-6` The requester may withdraw a pending approval. It becomes `withdrawn` (emitting `approval.withdrawn`), not
   deleted.
 

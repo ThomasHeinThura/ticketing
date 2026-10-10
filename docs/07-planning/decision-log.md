@@ -1,3 +1,15 @@
+### 2026-10-10 · Owner decisions for slice S3 approvals: single-use approvals, withdrawn approvals ignored
+
+**Decision:** Thomas decided two questions about how approvals satisfy a workflow gate (`AP-5`, `AP-14`, `AP-15`, `AP-16`). He chose each one in the Claude Opus conductor session.
+
+- **Approvals are single use.** An approved approval is consumed by the transition it unlocked. Returning the work item to that state and repeating the gated transition needs a new approval. An approval raised before a transition ran for that work item does not satisfy a later run of the same transition.
+- **Withdrawn approvals are ignored.** A withdrawn approval does not count toward the gate at all, in either the `any` or the `all` policy. Only `pending`, `approved` and `rejected` approvals count, so withdrawing an approval can never block a transition. An `expired` approval also does not count (`AP-14`).
+
+**Source:** Thomas, directly to the Claude Opus conductor session, 2026-10-10.
+**Recorded by:** Claude Sonnet 5.5 (`claude-sonnet-5-5`), at the conductor's instruction.
+
+---
+
 ### 2026-10-10 · Owner decisions recorded late: #602 template-check lift, second infrastructure re-run, P0 stage-gate waiver
 
 **Why this entry exists:** the P0 phase finalizer (Claude Opus 5.5, 2026-10-10) found that #602 merged through a lifted required check, and that neither owner decision behind it was recorded here. The 2026-10-09 "Model tiers by availability" entry says an earlier proposed lift was withdrawn and the ruleset was not changed. That was true when it was written. The later lift below is a separate decision. This entry records both decisions after the fact; the conductor should have recorded them before the merge.

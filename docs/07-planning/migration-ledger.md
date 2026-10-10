@@ -158,23 +158,37 @@ new FKs fail. Hand-edited from the generated file only to insert the backfill be
 **Residual: `approval.transition_id`.** `workflow_transition` carries no `workspace_id` (its
 workspace is only reachable through `workflow_version` and `workflow`), so `approval.transition_id`
 stays a single-column FK and a cross-tenant transition is not excluded by the database. Anchoring
-it needs a new column on `workflow_transition` or a trigger, which is a design change; the
-approvals runtime (S3) must verify that the transition belongs to the approval's workspace until
-then.
+it needs a new column on `workflow_transition` or a trigger, which is a design change. The
+approvals runtime (S3) does the check instead: `loadTransitionForWorkItem` joins the item's type
+workflow, that workflow's active version and the workflow's workspace, and requires the edge to be
+approval- or CAB-gated. Tests: `tests/api-integration/approval-tenant-checks.test.ts` (check 3) and
+`approval-gate-semantics.test.ts` (sibling workflow, `requires_cab`-only edge).
 
 **Residual: `approval.requested_by` and `approval.approver_id`.** Both are foreign keys to
 `person`, which is organisation-scoped and not workspace-anchored, so the database accepts a
-person from another organisation or workspace as requester or approver. The approvals runtime
-(S3) must derive `requested_by` from the authenticated session and validate `approver_id` against
-the workspace (an active, non-placeholder person who is a CAB-team member for `cab`, or entitled to
-the work item for `customer`) before insert. These checks are listed in
+person from another organisation or workspace as requester or approver. The approvals runtime (S3)
+derives `requested_by` from the authenticated session (request bodies are strict) and validates
+`approver_id` before insert: an active, non-placeholder person with an account, the right side for
+the kind, reach on the work item, and for `cab` membership of a CAB team of this workspace. Tests:
+`approval-tenant-checks.test.ts` (checks 4 and 5) and `approval-gate-semantics.test.ts`
+(request-time reach, side and account checks). The 0120 security review's checklist is
 [m0120-approval-anchor.md](security-reviews/m0120-approval-anchor.md) "S3 runtime checks".
 
 **Residual: re-homing and pre-existing rows.** `workspace_id` and `work_item_id` are mutable as a
 pair at the database level, and a row that existed before 0120 is not checked for transition
 tenancy; "no data preflight is needed" covers foreign-key validity only. The runtime treats
 `workspace_id`, `work_item_id`, `transition_id`, `kind`, `requested_by` and `approver_id` as
-immutable after insert.
+immutable after insert, enforced by the static guard
+`tests/api/approval/immutable-columns.test.ts` (the only machine gate for it).
+
+**Recorded deviation from the 0120 checklist (check 3, from-state).** The review lists "the
+transition's `from_state_template_id` (or NULL) must match the item's current state". S3 does
+**not** enforce it, because `approvals.md` (Edge cases) says an approval requested on an
+already-completed item is allowed ("Some processes approve after the fact"). The gate still
+matches on the exact transition id, and the transition can only run from its own from-state, so
+the omission adds no authority. It does allow approving ahead of time; single use (owner decision
+2026-10-10, decision log) bounds that, because an approval raised before the transition last ran
+for the work item no longer counts.
 
 ## Security review N2: disposition
 
