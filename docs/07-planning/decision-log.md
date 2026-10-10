@@ -1,9 +1,3 @@
-The
-role-seeder source, tests, and review evidence are preserved as an immutable private archive
-outside the repository; that archive contains no generated credentials or operational
-secrets. This is a user-directed scope change, not a test-gate waiver. The general
-seed-profile test suite remains in place.
-
 ### 2026-10-10 · Owner decision: SCIM-provisioned first OIDC login links and activates by exact subject
 
 **Decision:** Thomas decided how the first OIDC login of a SCIM-provisioned person behaves. SCIM

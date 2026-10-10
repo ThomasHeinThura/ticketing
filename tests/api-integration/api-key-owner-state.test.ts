@@ -157,5 +157,40 @@ describe.each(["off", "on"] as const)(
         expect(projects).toHaveLength(0);
       },
     );
+
+    it("refuses a key whose owner user has no person row", async () => {
+      const owner = await createWorkspaceMember({ role: "owner" });
+      const rawKey = await issueKey(owner.user.id);
+      const app = await freshApp(enforcement);
+      const headers = { authorization: `Bearer ${rawKey}` };
+      const path = `/api/project?workspaceId=${owner.workspace.id}`;
+      expect((await app.request(path, { headers })).status).toBe(200);
+
+      await db
+        .delete(schema.personTable)
+        .where(eq(schema.personTable.userId, owner.user.id));
+
+      const response = await app.request(path, { headers });
+      expect(response.status, await response.clone().text()).toBe(401);
+    });
+
+    it("refuses a key whose referenceId names a nonexistent user", async () => {
+      const owner = await createWorkspaceMember({ role: "owner" });
+      const rawKey = await issueKey(owner.user.id);
+      const app = await freshApp(enforcement);
+      const headers = { authorization: `Bearer ${rawKey}` };
+      const path = `/api/project?workspaceId=${owner.workspace.id}`;
+      expect((await app.request(path, { headers })).status).toBe(200);
+
+      // verifyApiKey resolves the owner as referenceId first, so this key now names a user
+      // that does not exist even though its legacy userId column still points at a real one.
+      await db
+        .update(schema.apikeyTable)
+        .set({ referenceId: `ghost-${randomUUID()}` })
+        .where(eq(schema.apikeyTable.userId, owner.user.id));
+
+      const response = await app.request(path, { headers });
+      expect(response.status, await response.clone().text()).toBe(401);
+    });
   },
 );

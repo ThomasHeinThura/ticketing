@@ -355,9 +355,10 @@ export function resolveIdentityFromFacts(
   }
 
   // S6 (Opus review of PR #315): a banned user is refused unconditionally, staff or
-  // customer. better-auth's own ban enforcement is session-only and the API-key path
-  // (`verifyApiKey`) does not check it at all — this is the one place that resolves
-  // identity for BOTH paths, so it is the one place that can refuse for both.
+  // customer. better-auth's own ban enforcement is session-only. Two points enforce it for
+  // API keys: `verifyApiKey` refuses a banned or inactive owner's key at verification (every
+  // route, whether or not strict enforcement is on), and this resolver refuses it again for
+  // strict and shadow evaluation, for sessions and keys alike.
   if (facts.banned) {
     return null;
   }
