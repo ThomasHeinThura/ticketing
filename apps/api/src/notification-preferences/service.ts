@@ -1,4 +1,4 @@
-import { and, eq, inArray, or } from "drizzle-orm";
+import { and, asc, eq, inArray, or } from "drizzle-orm";
 import { HTTPException } from "hono/http-exception";
 import db from "../database";
 import {
@@ -6,9 +6,11 @@ import {
   userNotificationPreferenceTable,
   userNotificationWorkspaceProjectTable,
   userNotificationWorkspaceRuleTable,
+  workspaceTable,
   workspaceUserTable,
 } from "../database/schema";
 import { assertPublicWebhookDestination } from "../utils/assert-public-destination";
+import { reachableWorkspacePredicate } from "../utils/workspace-access-middleware";
 import { decryptSecret, encryptSecret } from "./secrets";
 
 export type NotificationPreferenceProjectMode = "all" | "selected";
@@ -179,14 +181,39 @@ export async function getNotificationPreferences(
       }
     : null;
 
-  const rules = await db.query.userNotificationWorkspaceRuleTable.findMany({
-    where: eq(userNotificationWorkspaceRuleTable.userId, userId),
-    with: {
-      workspace: true,
-      selectedProjects: true,
-    },
-    orderBy: (table, { asc }) => [asc(table.createdAt)],
-  });
+  const rules = await db
+    .select({
+      rule: userNotificationWorkspaceRuleTable,
+      workspaceName: workspaceTable.name,
+    })
+    .from(userNotificationWorkspaceRuleTable)
+    .innerJoin(
+      workspaceTable,
+      eq(userNotificationWorkspaceRuleTable.workspaceId, workspaceTable.id),
+    )
+    .where(
+      and(
+        eq(userNotificationWorkspaceRuleTable.userId, userId),
+        reachableWorkspacePredicate(workspaceTable.id, userId),
+      ),
+    )
+    .orderBy(asc(userNotificationWorkspaceRuleTable.createdAt));
+
+  const selectedProjects = rules.length
+    ? await db
+        .select({
+          workspaceRuleId:
+            userNotificationWorkspaceProjectTable.workspaceRuleId,
+          projectId: userNotificationWorkspaceProjectTable.projectId,
+        })
+        .from(userNotificationWorkspaceProjectTable)
+        .where(
+          inArray(
+            userNotificationWorkspaceProjectTable.workspaceRuleId,
+            rules.map(({ rule }) => rule.id),
+          ),
+        )
+    : [];
 
   return {
     emailAddress,
@@ -217,10 +244,10 @@ export async function getNotificationPreferences(
     dueDateReminderEnabled: preference?.dueDateReminderEnabled ?? true,
     dueDateReminderLeadTimeMinutes:
       preference?.dueDateReminderLeadTimeMinutes ?? 1440,
-    workspaces: rules.map((rule) => ({
+    workspaces: rules.map(({ rule, workspaceName }) => ({
       id: rule.id,
       workspaceId: rule.workspaceId,
-      workspaceName: rule.workspace.name,
+      workspaceName,
       isActive: rule.isActive ?? true,
       emailEnabled: rule.emailEnabled ?? false,
       ntfyEnabled: rule.ntfyEnabled ?? false,
@@ -228,9 +255,9 @@ export async function getNotificationPreferences(
       webhookEnabled: rule.webhookEnabled ?? false,
       projectMode:
         rule.projectMode === "selected" ? "selected" : ("all" as const),
-      selectedProjectIds: rule.selectedProjects.map(
-        (project) => project.projectId,
-      ),
+      selectedProjectIds: selectedProjects
+        .filter((project) => project.workspaceRuleId === rule.id)
+        .map((project) => project.projectId),
       createdAt: rule.createdAt,
       updatedAt: rule.updatedAt,
     })),

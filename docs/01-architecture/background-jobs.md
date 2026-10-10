@@ -302,12 +302,44 @@ stale or expired token cannot authorize a provider call, commit success or relea
 owner's lease. A provider-accepted but uncommitted request may be sent again after retry;
 delivery remains at-least-once, not exactly-once.
 
-This is a target contract. Runtime fan-out, reservations, lock-delayed wall-clock sampling,
-digest grouping/sealing, deadlines, durable attempt authorization, send-time reach checks
-and child/group retention are not implemented. Acceptance cases are specified in
-notifications.md#delivery. The existing
-database clock helper uses transaction-start time and is insufficient for this protocol; it
-must be changed or bypassed.
+The first bounded runtime slice is in `apps/api/src/notification/outbox-drain.ts` and its
+canonical database repository. It implements immediate-child claiming, durable fenced
+attempt authorization, recipient/channel/key reservation acquire/renew/release, the separate
+post-lock and recent-success wall-clock samples, six-attempt backoff/dead-lettering, and
+provider calls outside transactions behind an injected adapter/evaluator seam. Real PostgreSQL
+integration coverage exercises contention, lock-delayed expiry takeover, the six-attempt cap,
+injected success, reach suppression, and digest-key collision rejection.
+
+This is not the complete notifications runtime. `apps/api/src/notification/fanout.ts` provides
+the transactional producer seam, and a `workspace.created` owner resolver. Neither the
+resolver nor any event-specific recipient/reach logic is wired to mutation producers. Digest
+membership/window calculation and group delivery, scheduler
+registration, the concrete `notify.*` adapter registry and the quiet-hours and destination
+contracts remain integration work. Send-time reach and channel-preference evaluation is
+implemented in `apps/api/src/notification/current-eligibility.ts` and returns
+`quiet_hours_unresolved` or `destination_unresolved` rather than authorizing a send. The
+adapter seam deliberately has no default-success implementation.
+Acceptance cases are specified in [notifications.md#delivery](../03-features/notifications.md#delivery).
+
+**Pre-wiring gates (must close before any producer or worker calls this runtime).** (1) The
+inbox read paths (list, read, read-all, clear-all) apply current reach only to
+`resource_type = 'task'` rows; extend the predicate to every registered fan-out resource type
+(`work_item`, `comment`, `workspace`, `instance` and the rest), failing closed for unknown
+types, and keep `instance` rows behind the instance-admin gate. (2) `approval` is excluded from
+fan-out until the approvals slice lands its recipient and reach code. (3) The legacy
+workspace delivery path checks reach once, with no banned/deactivated check and no recheck at
+send time; move it to the identity-based `workspace:read` check. (4) `fanout.ts` has no
+tests; add recipient, preference, digest-hook and self-exclusion coverage. (5) The reach
+facts omit ancestor projects and the owner team, which only over-suppresses. (6) The
+`notify.*` adapter must strip CR/LF and control characters from titles before using them in
+a subject or header. The scheduler loop must also tolerate rows backed off for
+`destination_unresolved`, `quiet_hours_unresolved`, `evaluator_error` and
+`reservation_contention` (30 s, no attempt consumed). (7) A permanently failing evaluator is retried every 30 s forever (logged only as a
+closed `jobs.failure` event); an age- or count-based dead-letter for `evaluator_error` is a
+design change to be decided before wiring. (8) `notification_delivery` timestamp columns
+default to `now()`, which a database session ahead of or behind UTC stores as local wall
+clock; every writer must set UTC explicitly (fan-out does) until a migration changes the
+defaults.
 
 ## Metrics snapshots
 
