@@ -462,6 +462,42 @@ workspace delivery, so treat the delete as final and keep the printed rows in th
 Re-run the preflight to confirm no rows, then
 upgrade.
 
+## Startup refuses: "incomplete grant projection" (database already at 0119)
+
+A database that already applied migrations 0088 to 0119 (for example from the schema spine)
+holds the `membership_grant` table, but legacy `membership` rows were never projected into
+grants. The API migrate step (`runMigrationStep`, also `db:migrate` and the
+`TASKDESK_ROLE=migrate` process) refuses to start until every such membership has an active
+grant: it does not guess a source, and `derived_from IS NULL` is never treated as direct
+([ADR 0015](../01-architecture/adr/0015-membership-grant-provenance.md)). The refusal is atomic
+and writes nothing. A database with no unprojected memberships is untouched, and the same
+command is safe to rerun.
+
+1. Take the pre-upgrade backup.
+2. Produce the read-only inventory (counts printed, create-only mode 0600 report; once the grant
+   table exists it lists only the unprojected memberships):
+
+   ```sh
+   TASKDESK_DATABASE_URL=<target> pnpm --filter @taskdesk/api db:identity-provenance-preflight \
+     --output /secure/path/membership-preflight.json
+   ```
+
+   Exit 2 means rows need an owner decision; exit 0 means nothing needs repair.
+3. The owner supplies a `taskdesk-membership-provenance-reconciliation/v1` file (private, mode
+   0600, at most 4 MiB) with one `direct`/`admin` decision per listed row, naming a current
+   instance administrator as `approverPersonId`. **The operator approval gate stays:** the repair
+   will not run without this file, and a row it does not cover, a stale digest, or a non-admin
+   approver is refused with nothing written.
+4. Rerun the migration with the file:
+
+   ```sh
+   pnpm --filter @taskdesk/api db:migrate -- \
+     --membership-provenance-reconciliation /secure/path/owner-reconciliation.json
+   ```
+
+   The grants are inserted and verified in one transaction under the parent-first table locks,
+   then the remaining migrations run. Rerunning, with or without the file, changes nothing.
+
 ## Verify a published image
 
 Resolve the release tag to a digest first, then check both the cosign signature and the

@@ -6,6 +6,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { afterAll, beforeAll, describe, expect, it, vi } from "vitest";
+import { portalAuth } from "../../apps/api/src/auth";
 import { getDatabasePool } from "../../apps/api/src/database";
 import { createApp } from "../../apps/api/src/index";
 
@@ -101,7 +102,7 @@ describe("P0 host and static isolation", () => {
     }
   });
 
-  it("denies portal API and websocket before effects and keeps health narrowly host-independent", async () => {
+  it("permits only portal policy/auth routes and keeps denied requests before effects", async () => {
     const { app } = createApp({
       staticRoot: agentRoot,
       portalStaticRoot: portalRoot,
@@ -111,6 +112,12 @@ describe("P0 host and static isolation", () => {
       .mockRejectedValue(
         new Error("Host-denied requests must not reach the database."),
       );
+    const getPortalSession = vi
+      .spyOn(portalAuth.api, "getSession")
+      .mockResolvedValue(null);
+    const portalAuthHandler = vi
+      .spyOn(portalAuth, "handler")
+      .mockResolvedValue(new Response("null", { status: 200 }));
     try {
       const portalApi = await app.request("/api/workspaces", {
         method: "POST",
@@ -124,11 +131,60 @@ describe("P0 host and static isolation", () => {
       expect(await portalApi.text()).toBe('{"message":"Not Found"}');
       expect(portalApi.headers.has("set-cookie")).toBe(false);
 
-      const portalAuth = await app.request("/api/auth/get-session", {
+      const blockedPortalAuth = await app.request(
+        "/api/auth/admin/list-users",
+        {
+          method: "POST",
+          headers: {
+            host: "portal.localhost:5174",
+            "content-type": "application/json",
+          },
+          body: "{}",
+        },
+      );
+      expect(blockedPortalAuth.status).toBe(404);
+      expect(await blockedPortalAuth.text()).toBe('{"message":"Not Found"}');
+
+      const portalRegistration = await app.request("/api/auth/sign-up/email", {
+        method: "POST",
+        headers: {
+          host: "portal.localhost:5174",
+          "content-type": "application/json",
+        },
+        body: JSON.stringify({
+          email: "customer@example.test",
+          password: "not-created",
+        }),
+      });
+      expect(portalRegistration.status).toBe(404);
+
+      const portalMagicLink = await app.request(
+        "/api/auth/sign-in/magic-link",
+        {
+          method: "POST",
+          headers: {
+            host: "portal.localhost:5174",
+            "content-type": "application/json",
+          },
+          body: JSON.stringify({ email: "customer@example.test" }),
+        },
+      );
+      expect(portalMagicLink.status).toBe(404);
+
+      const allowedPortalAuth = await app.request("/api/auth/get-session", {
         headers: { host: "portal.localhost:5174" },
       });
-      expect(portalAuth.status).toBe(404);
-      expect(portalAuth.headers.has("set-cookie")).toBe(false);
+      expect(allowedPortalAuth.status).toBe(200);
+      expect(await allowedPortalAuth.text()).toBe("null");
+
+      getPortalSession.mockResolvedValueOnce({
+        session: { portal: "agent" },
+        user: { id: "staff-person" },
+      } as never);
+      const copiedAgentSession = await app.request("/api/auth/get-session", {
+        headers: { host: "portal.localhost:5174", cookie: "session=agent" },
+      });
+      expect(copiedAgentSession.status).toBe(401);
 
       const portalWs = await app.request("/api/ws/project", {
         headers: {
@@ -188,7 +244,11 @@ describe("P0 host and static isolation", () => {
       }
 
       expect(query).not.toHaveBeenCalled();
+      expect(getPortalSession).toHaveBeenCalled();
+      expect(portalAuthHandler).toHaveBeenCalled();
     } finally {
+      getPortalSession.mockRestore();
+      portalAuthHandler.mockRestore();
       query.mockRestore();
     }
   });

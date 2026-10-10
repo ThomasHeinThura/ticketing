@@ -1,3 +1,27 @@
+### 2026-10-10 · Owner decision: SCIM-provisioned first OIDC login links and activates by exact subject
+
+**Decision:** Thomas decided how the first OIDC login of a SCIM-provisioned person behaves. SCIM
+`POST /Users` leaves a user-less `external_identity` and a placeholder person. When the first
+OIDC login presents the **same identity connection, issuer and subject** as such an identity,
+the login creates the `user` and its `account` row, links them to that external identity and
+person, and clears `is_placeholder` for that person. Only that exact connection + subject match
+qualifies. An email address, `userName`, `externalId` or any other loose match never selects or
+claims a person.
+
+**Scope:** applies only to an active identity on an active person, on the connection that
+SCIM provisioned, in the portal the connection belongs to (agent connection to a staff person,
+customer connection to a customer person of the connection's organisation). A deprovisioned or
+inactive identity or person is refused and is not reactivated by logging in. An address already
+owned by another user refuses the login. The same subject on a different connection does not
+link; it follows that connection's existing JIT or refusal rules. Grant reconciliation, the IP-22
+locks and the session-after-commit ordering are unchanged. This clarifies `IP-19` and `IP-30`;
+`IP-30` still forbids an SSO login from claiming an import placeholder by address.
+
+**Source:** Thomas, directly to the Claude Opus conductor session, 2026-10-10.
+**Recorded by:** Claude Sonnet 5.5 (`claude-sonnet-5-5`), at the conductor's instruction.
+
+---
+
 ### 2026-10-10 · Owner integration decisions for the post-P0 consolidation
 
 **Decision:** Thomas decided four questions that block specific post-P0 integration slices. He chose each one in the Claude Opus conductor session from concrete options.

@@ -8,7 +8,6 @@ import { OpenAPIHono } from "@hono/zod-openapi";
 import { normaliseRouteKey } from "@taskdesk/permissions";
 import type { Session, User } from "better-auth/types";
 import { and, eq, sql } from "drizzle-orm";
-import { migrate } from "drizzle-orm/node-postgres/migrator";
 import type { Context, Next } from "hono";
 import { Hono } from "hono";
 import { compress } from "hono/compress";
@@ -21,7 +20,11 @@ import audit from "./audit";
 import {
   assertCookieDomainIsNotConfiguredForHostIsolation,
   authForHost,
+  hasCustomerPortalIdentity,
+  isCustomerLocalAuthEndpoint,
   portalForHost,
+  startAuthConfigRuntime,
+  stopAuthConfigRuntime,
 } from "./auth";
 import csrfToken from "./auth/csrf-token-api";
 import factorStatus from "./auth/factor-status-api";
@@ -36,16 +39,22 @@ import db, {
   closeMigrationPool,
   getDatabase,
   getMigrationDatabase,
+  getMigrationDatabasePool,
   schema,
 } from "./database";
 import { assertApplicationRoleIsNotPrivileged } from "./database/assert-application-role-is-not-privileged";
 import { assertNoMigrationUrlInApiProcess } from "./database/assert-no-migration-url-in-api-process";
 import { ensureApplicationRole } from "./database/ensure-application-role";
+import { migrateWithMembershipProvenanceCutover } from "./database/migrate-membership-provenance";
 import { prepareDatabaseStartup } from "./database/prepare-database-startup";
 import { resolveMigrationDatabaseConfig } from "./database/resolve-database-url";
 import { waitForDatabase } from "./database/wait-for-database";
 import { eventContext } from "./events";
 import externalLink from "./external-link";
+import identityConnectionAdmin from "./identity/connection-admin";
+import { oidcGroupMappingAdminRouter } from "./identity/oidc-group-mapping-admin";
+import scimAdmin from "./identity/scim-admin";
+import scimProtocol from "./identity/scim-protocol";
 import getInstanceStatus from "./instance/controllers/get-instance-status";
 import localFactorPolicy from "./instance/local-factor-policy";
 import observability from "./instance/observability";
@@ -285,6 +294,45 @@ function isApiRequestPath(path: string): boolean {
   return path === "/api" || path.startsWith("/api/");
 }
 
+const CUSTOMER_AUTH_ENDPOINTS = new Set([
+  "GET /api/auth/get-session",
+  "POST /api/auth/sign-out",
+  "POST /api/auth/two-factor/verify-totp",
+  "POST /api/auth/two-factor/verify-backup-code",
+]);
+
+function matchesPortalPolicyRoute(method: string, path: string): boolean {
+  const pathParts = path.split("/");
+  return policyRegistry.entries.some((entry) => {
+    if (entry.kind !== "portal") return false;
+    const separator = entry.routeKey.indexOf(" ");
+    if (separator < 0 || entry.routeKey.slice(0, separator) !== method)
+      return false;
+    const routeParts = entry.routeKey.slice(separator + 1).split("/");
+    return (
+      routeParts.length === pathParts.length &&
+      routeParts.every(
+        (part, index) => /^\{[^/]+\}$/u.test(part) || part === pathParts[index],
+      )
+    );
+  });
+}
+
+function isCustomerAuthEndpoint(method: string, path: string): boolean {
+  if (CUSTOMER_AUTH_ENDPOINTS.has(`${method} ${path}`)) return true;
+  if (isCustomerLocalAuthEndpoint(method, path)) return true;
+  if (method !== "GET") return false;
+  const parts = path.split("/");
+  return (
+    parts.length === 6 &&
+    parts[1] === "api" &&
+    parts[2] === "auth" &&
+    parts[3] === "identity" &&
+    Boolean(parts[4]) &&
+    (parts[5] === "start" || parts[5] === "callback")
+  );
+}
+
 function authForRequest(c: Context) {
   const selected = authForHost(c.req.header("Host"));
   if (!selected) throw new HTTPException(403, { message: "Forbidden" });
@@ -309,8 +357,13 @@ async function handleAuthRequest(c: Context, headers?: Headers) {
   const session = await selected.api.getSession({
     headers: c.req.raw.headers,
   });
-  if (session?.session && session.session.portal !== portal) {
-    throw new HTTPException(403, { message: "Forbidden" });
+  if (
+    session?.session &&
+    (session.session.portal !== portal ||
+      (portal === "customer" &&
+        !(await hasCustomerPortalIdentity(session.user.id))))
+  ) {
+    throw new HTTPException(401, { message: "Unauthorized" });
   }
 
   return selected.handler(buildAuthRequest(c, headers));
@@ -480,6 +533,7 @@ export function createApp(
       c.req.path === "/api/health" ||
       c.req.path === "/api/public/health/live" ||
       c.req.path === "/api/public/health/ready";
+    const isScimPath = c.req.path.startsWith("/scim/v2/");
     const isHealthRequest =
       isHealthPath && (c.req.method === "GET" || c.req.method === "HEAD");
     const upgrade = c.req.header("upgrade")?.toLowerCase();
@@ -488,6 +542,7 @@ export function createApp(
       upgrade === "websocket" && connection.includes("upgrade");
 
     if (selected === "invalid") return denyByHost(c);
+    if (isScimPath && selected !== "agent") return denyByHost(c);
     if (isWebSocketUpgrade && (selected !== "agent" || isHealthPath))
       return denyByHost(c);
     if (isHealthRequest) {
@@ -508,9 +563,20 @@ export function createApp(
     c.set("appOrigin", selected);
     c.set("appPublicOrigin", publicOriginForKind(selected, origins));
     if (selected === "portal") {
-      if (isApiRequestPath(c.req.path)) return denyByHost(c);
+      if (isApiRequestPath(c.req.path)) {
+        if (
+          !isCustomerAuthEndpoint(c.req.method, c.req.path) &&
+          !matchesPortalPolicyRoute(c.req.method, c.req.path)
+        )
+          return denyByHost(c);
+      }
       if (c.req.method !== "GET" && c.req.method !== "HEAD")
-        return denyByHost(c);
+        if (
+          !isApiRequestPath(c.req.path) ||
+          (!isCustomerAuthEndpoint(c.req.method, c.req.path) &&
+            !matchesPortalPolicyRoute(c.req.method, c.req.path))
+        )
+          return denyByHost(c);
     }
     return next();
   };
@@ -568,6 +634,11 @@ export function createApp(
   const compressMiddleware = compress();
   declareCatchAllMiddleware(compressMiddleware);
   app.use(compressMiddleware);
+
+  // SCIM lives at the protocol's documented agent-origin path, outside `/api` and
+  // therefore outside the session/API-key guard. The host-routing guard above admits
+  // this path only on the agent origin; scimProtocol authenticates its dedicated bearer.
+  const scimProtocolApi = app.route("/scim/v2", scimProtocol);
 
   const api = installStrictPolicyRegistration(new OpenAPIHono<ApiVariables>());
 
@@ -935,6 +1006,12 @@ export function createApp(
     description: "API key or session token (Bearer)",
   });
 
+  api.openAPIRegistry.registerComponent("securitySchemes", "scimBearerAuth", {
+    type: "http",
+    scheme: "bearer",
+    description: "Per-connection SCIM bearer token",
+  });
+
   api.get("/openapi", (c) => {
     const document = api.getOpenAPI31Document({
       openapi: "3.1.0",
@@ -957,6 +1034,40 @@ export function createApp(
       ],
       security: [{ bearerAuth: [] }],
     });
+
+    const scimDocument = scimProtocol.getOpenAPI31Document({
+      openapi: "3.1.0",
+      info: { title: "TaskDesk SCIM API", version: "1.0.0" },
+    });
+    for (const [path, pathItem] of Object.entries(scimDocument.paths ?? {})) {
+      if (!pathItem) continue;
+      const scimPathItem: Record<string, unknown> = { ...pathItem };
+      for (const method of [
+        "get",
+        "post",
+        "put",
+        "patch",
+        "delete",
+        "options",
+        "head",
+        "trace",
+      ] as const) {
+        const operation = scimPathItem[method];
+        if (operation && typeof operation === "object")
+          scimPathItem[method] = {
+            ...(operation as Record<string, unknown>),
+            security: [{ scimBearerAuth: [] }],
+          };
+      }
+      document.paths ??= {};
+      document.paths[`/scim/v2${path}`] = {
+        // SCIM is mounted at the agent origin root, while the rest of the API
+        // inherits the `/api` server above. A path-level relative root keeps
+        // SCIM clients on the same origin without incorrectly prefixing `/api`.
+        servers: [{ url: "/", description: "TaskDesk SCIM API Server" }],
+        ...scimPathItem,
+      } as NonNullable<typeof document.paths>[string];
+    }
 
     // Every authenticated route sits behind the same app-wide
     // authenticateApiRequest middleware, so the shared 401 is injected here
@@ -1262,6 +1373,15 @@ export function createApp(
   const metricsTokenRotationApi = api.route("/instance", metricsTokenRotation);
   const localFactorPolicyApi = api.route("/instance", localFactorPolicy);
   const resetMfaApi = api.route("/instance", resetMfa);
+  const identityConnectionAdminApi = api.route(
+    "/instance",
+    identityConnectionAdmin,
+  );
+  const oidcGroupMappingAdminApi = api.route(
+    "/instance",
+    oidcGroupMappingAdminRouter,
+  );
+  const scimAdminApi = api.route("/instance", scimAdmin);
 
   // User-scoped WebSocket endpoint; MUST be registered before /ws/:projectId
   // so the literal path "user" isn't consumed by the param route.
@@ -1552,6 +1672,10 @@ export function createApp(
     metricsTokenRotationApi,
     localFactorPolicyApi,
     resetMfaApi,
+    identityConnectionAdminApi,
+    oidcGroupMappingAdminApi,
+    scimAdminApi,
+    scimProtocolApi,
     invitationApi,
     invitationPublicApi,
     oauthApi,
@@ -1630,7 +1754,9 @@ export async function runMigrationStep(): Promise<void> {
       await migrateSessionColumn(migrationDb);
 
       console.log("🔄 Migrating database...");
-      await migrate(migrationDb, {
+      await migrateWithMembershipProvenanceCutover({
+        database: migrationDb,
+        pool: getMigrationDatabasePool(),
         migrationsFolder: `${currentDir}/../drizzle`,
       });
       console.log("✅ Database migrated successfully!");
@@ -1676,6 +1802,7 @@ export async function runApiBootTasks(): Promise<void> {
   console.log(`🔐 ${policyRegistry.entries.length} policies loaded`);
 
   await migrateColumns();
+  await startAuthConfigRuntime();
   await seedDefaultWorkspaceRoles();
   await seedInternalOrganisationAndStaffPersons();
 
@@ -1744,6 +1871,7 @@ export function createNodeServer(
   let closePromise: Promise<ShutdownResult> | null = null;
   const close = () => {
     if (closePromise) return closePromise;
+    stopAuthConfigRuntime();
 
     let resolveClose!: (result: ShutdownResult) => void;
     closePromise = new Promise<ShutdownResult>((resolve) => {
@@ -1921,6 +2049,10 @@ const {
   metricsTokenRotationApi,
   localFactorPolicyApi,
   resetMfaApi,
+  identityConnectionAdminApi,
+  oidcGroupMappingAdminApi,
+  scimAdminApi,
+  scimProtocolApi,
   invitationApi,
   invitationPublicApi,
   oauthApi,
@@ -2002,6 +2134,10 @@ export type AppType =
   | typeof metricsTokenRotationApi
   | typeof localFactorPolicyApi
   | typeof resetMfaApi
+  | typeof identityConnectionAdminApi
+  | typeof oidcGroupMappingAdminApi
+  | typeof scimAdminApi
+  | typeof scimProtocolApi
   | typeof workflowApi
   | typeof workflowRuleApi
   | typeof workItemApi

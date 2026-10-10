@@ -1,9 +1,9 @@
 import { dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { sql } from "drizzle-orm";
-import { migrate } from "drizzle-orm/node-postgres/migrator";
 import { Client } from "pg";
-import db from "../../../apps/api/src/database";
+import db, { getDatabasePool } from "../../../apps/api/src/database";
+import { migrateWithMembershipProvenanceCutover } from "../../../apps/api/src/database/migrate-membership-provenance";
 
 const currentDir = dirname(fileURLToPath(import.meta.url));
 const migrationsFolder = resolve(currentDir, "../../../apps/api/drizzle");
@@ -67,7 +67,9 @@ export async function ensureTestDatabaseMigrated() {
   if (!migrationPromise) {
     migrationPromise = (async () => {
       await ensureTestDatabaseExists();
-      await migrate(db, {
+      await migrateWithMembershipProvenanceCutover({
+        database: db,
+        pool: getDatabasePool(),
         migrationsFolder,
       });
     })();
@@ -99,9 +101,13 @@ async function listPublicTableNames(): Promise<string[]> {
 }
 
 export async function resetTestDatabase() {
-  await ensureTestDatabaseMigrated();
+  await ensureTestDatabaseExists();
+  let tableNames = await listPublicTableNames();
 
-  const tableNames = await listPublicTableNames();
+  if (tableNames.length === 0) {
+    await ensureTestDatabaseMigrated();
+    tableNames = await listPublicTableNames();
+  }
 
   if (tableNames.length === 0) {
     throw new Error(
@@ -125,4 +131,6 @@ export async function resetTestDatabase() {
       sql.raw(`TRUNCATE TABLE ${formattedTableNames} RESTART IDENTITY CASCADE`),
     );
   });
+
+  await ensureTestDatabaseMigrated();
 }

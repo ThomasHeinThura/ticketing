@@ -149,15 +149,18 @@ The most important screen. See [auth and identity](../01-architecture/auth-and-i
 - **Provisioning panel** per connection: OIDC group mappings use immutable group object ids
   with display-name snapshots; the separate SCIM panel holds endpoint URL, bearer token
   create / rotate / revoke (shown once; rotation invalidates the old token at once), allowed
-  resources, attribute mapping and SCIM group mappings. Every create/edit/enable validates
+  resources, the closed profile-only attribute-mapping editor and SCIM group mappings. Its
+  grammar and operation-bound writer are specified in the
+  [SCIM administration contract](../01-architecture/api-design.md#scim-administration-patch--issue-561-owner-contract).
+  Every create/edit/enable validates
   the connection portal and persisted organisation, target scope ownership, role side/rank,
   and forbidden capabilities. Every OIDC mapping create/edit/enable/disable is elevated,
   session-only and audited; its separate connection-scoped API uses a five-minute,
   single-use PA-15 operation binding. OIDC mapping selection/open state is represented in
-  the screen URL. Every SCIM administration PATCH is proposed as route-wide elevated and
-  session-only, but is not usable until issue [#561](https://github.com/ThomasHeinThura/ticketing/issues/561)
-  defines its strict DTO, parent-version CAS and dedicated PA-15 binding; a mounted write
-  fails closed with `403 step_up_unavailable` meanwhile. Disabling/changing an
+  the screen URL. Every SCIM administration PATCH is route-wide elevated, session-only and
+  bound to the strict [SCIM administration contract](../01-architecture/api-design.md#scim-administration-patch--issue-561-owner-contract),
+  parent-version CAS and dedicated PA-15 proof. A mounted route without the verifier fails
+  closed with `403 step_up_unavailable`. Disabling/changing an
   OIDC mapping retires only its grants and invalidates authority after
   commit. Re-enabling an OIDC mapping requires a later validated OIDC login through that
   connection with complete matching groups and current admission; SCIM cannot restore OIDC
