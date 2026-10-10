@@ -319,7 +319,7 @@ resolve_and_verify_image() {
     # buildx pads the value (`Digest:    sha256:...` as of v0.38), so split on any
     # run of blanks rather than matching a fixed prefix. The strict check below
     # is what decides whether the result is acceptable.
-    digest="$(printf '%s\n' "$inspect_output" | awk '/^Digest:/ && $1 == "Digest:" { print $2; exit }')"
+    digest="$(printf '%s\n' "$inspect_output" | awk '/^Digest:/ && $1 == "Digest:" && NF == 2 { print $2; exit }')"
   fi
   [[ "$digest" =~ ^sha256:[0-9a-f]{64}$ ]] \
     || die "TASKDESK_IMAGE_DIGEST must be a full lowercase sha256 digest"

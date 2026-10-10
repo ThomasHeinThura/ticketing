@@ -384,7 +384,8 @@ jobs:
             fi
             if [[ "$tag" == v* || "$tag" == sha-* ]]; then
               if inspect_output="$(docker buildx imagetools inspect "${IMAGE}:${tag}" 2>&1)"; then
-                existing_digest="$(sed -n 's/^Digest: //p' <<< "$inspect_output" | head -n 1)"
+                # buildx pads the value (`Digest:    sha256:...`), so split on blanks.
+                existing_digest="$(awk '/^Digest:/ && $1 == "Digest:" && NF == 2 { print $2; exit }' <<< "$inspect_output")"
                 if [[ "$existing_digest" == "$DIGEST" ]]; then
                   echo "${tag} already points at ${DIGEST}; leaving the immutable tag unchanged"
                   continue
