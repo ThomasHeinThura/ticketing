@@ -15,12 +15,15 @@ entry is not carried and this entry is the record.
 
 ---
 
-### 2026-10-10 · Owner decisions for slice S3 approvals: single-use approvals, withdrawn approvals ignored
+### 2026-10-10 · Owner decisions for slice S3 approvals: single-use approvals, withdrawn approvals ignored, close on transition
 
-**Decision:** Thomas decided two questions about how approvals satisfy a workflow gate (`AP-5`, `AP-14`, `AP-15`, `AP-16`). He chose each one in the Claude Opus conductor session.
+**Decision:** Thomas decided three questions about how approvals satisfy a workflow gate (`AP-5`, `AP-14`, `AP-15`, `AP-16`). He chose each one in the Claude Opus conductor session.
 
-- **Approvals are single use.** An approved approval is consumed by the transition it unlocked. Returning the work item to that state and repeating the gated transition needs a new approval. An approval raised before a transition ran for that work item does not satisfy a later run of the same transition.
-- **Withdrawn approvals are ignored.** A withdrawn approval does not count toward the gate at all, in either the `any` or the `all` policy. Only `pending`, `approved` and `rejected` approvals count, so withdrawing an approval can never block a transition. An `expired` approval also does not count (`AP-14`).
+- **Approvals are single use.** An approved approval is consumed by the transition it unlocked. Returning the work item to that state and repeating the gated transition needs a new approval.
+  - *Conductor-derived, not Thomas's words:* "An approval raised before a transition ran for that work item does not satisfy a later run of the same transition." This is the conductor's reading of "consumed by the transition" and is implemented as such.
+- **Withdrawn approvals are ignored.** A withdrawn approval does not count toward the gate at all, in either the `any` or the `all` policy. Only `pending`, `approved` and `rejected` approvals count, so withdrawing an approval can never block a transition.
+  - *From the spec, not a new decision:* an `expired` approval also does not count (`AP-14`).
+- **Close them on transition.** When a transition runs and consumes approvals, the other approvals for that transition that are still pending are closed automatically. They are closed with the existing terminal state `expired` (no new state value, no migration). Each closure is audited (`approval.closed`), removed from inboxes, no longer reminded, and refused on a later decide (409). A new run needs new approvals.
 
 **Source:** Thomas, directly to the Claude Opus conductor session, 2026-10-10.
 **Recorded by:** Claude Sonnet 5.5 (`claude-sonnet-5-5`), at the conductor's instruction.

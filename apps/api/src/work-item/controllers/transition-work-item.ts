@@ -13,6 +13,7 @@ import {
 import { and, eq, inArray, isNull, sql } from "drizzle-orm";
 import { HTTPException } from "hono/http-exception";
 import { lockApprovalsForWorkItemTransition } from "../../approval/repository";
+import { closePendingApprovalsOnTransition } from "../../approval/service";
 import { appendAuditLog } from "../../audit/audit-writer";
 import db from "../../database";
 import {
@@ -23,6 +24,7 @@ import {
   workItemTable,
 } from "../../database/schema";
 import { publishEvent } from "../../events";
+import { dbClockUtc } from "../../utils/db-time";
 import { type ActivityActorType, recordWorkItemActivity } from "../activity";
 import {
   assertProjectStillLive,
@@ -602,8 +604,21 @@ export async function transitionWorkItem(
           // created before this run no longer counts (owner decision 2026-10-10).
           payload: { transitionId: match.id },
           workflowVersionId: ctx.activeVersion?.id ?? null,
+          // The database clock under the work-item lock (see approval `created_at`).
+          createdAt: dbClockUtc(),
         },
       ]);
+      if (match.requiresApproval || match.requiresCab) {
+        // Owner decision 2026-10-10: the run closes the other still-pending approvals.
+        await closePendingApprovalsOnTransition(tx, {
+          workspaceId: ctx.workItem.workspaceId,
+          projectId: ctx.workItem.projectId,
+          workItemId: ctx.workItem.id,
+          transitionId: match.id,
+          actorId,
+          actorType,
+        });
+      }
 
       // `assigneeEventKind` decides which of `work_item.assigned`/`work_item.unassigned`
       // (AS-16/AS-17) to publish after commit, mirroring `assign-work-item.ts`'s own

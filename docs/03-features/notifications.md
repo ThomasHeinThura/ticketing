@@ -602,6 +602,14 @@ default to `now()`, which a database session ahead of or behind UTC stores as lo
 clock; every writer must set UTC explicitly (fan-out does) until a migration changes the
 defaults.
 
+**Approvals is the first in-app producer.** It calls `enqueueNotificationEvent`, which writes inbox rows in
+the request transaction. Gates (3) to (7) do not apply to it, because its recipients carry no
+channels (so no `notification_delivery` rows and no adapter), its titles and bodies are constants,
+and no worker is involved. Gate (4) is only partly covered: the approval tests cover recipient and
+self-exclusion for approvals (`approval-notifications.test.ts`, the eligibility unit tests), not
+preference or digest hooks. Gate (8) holds for approval writes (UTC-bound, tested under two
+non-UTC zones). The first producer that carries channels or a worker must close gates (3) to (7).
+
 ## Related
 
 - [Background jobs](../01-architecture/background-jobs.md) · [Realtime](../01-architecture/realtime.md)

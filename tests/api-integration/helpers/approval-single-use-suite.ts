@@ -1,4 +1,6 @@
+import { eq } from "drizzle-orm";
 import { beforeEach, describe, expect, it } from "vitest";
+import db, { schema } from "../../../apps/api/src/database";
 import {
   buildTenant,
   createApproval,
@@ -22,6 +24,19 @@ export function defineApprovalGateTimeZoneSuite(label: string) {
       expect((await runTransition(t, t.done.id)).status).toBe(422);
       await setApproval(t, (await createApproval(t)).id);
       expect((await runTransition(t, t.done.id)).status).toBe(200);
+    });
+
+    it("a run closes the other pending approvals of its transition", async () => {
+      const t = await buildTenant(`tz-close-${label}`, { executable: true });
+      const winner = await createApproval(t);
+      const other = await createApproval(t);
+      await setApproval(t, winner.id);
+      expect((await runTransition(t, t.done.id)).status).toBe(200);
+      const [closed] = await db
+        .select()
+        .from(schema.approvalTable)
+        .where(eq(schema.approvalTable.id, other.id));
+      expect(closed?.state).toBe("expired");
     });
   });
 }

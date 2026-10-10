@@ -50,7 +50,8 @@ export function approvalIdEvidence(options: { portal?: boolean } = {}) {
     }
     const identity = await resolveApprovalIdentityIfActive(userId);
     if (!identity) {
-      throw new HTTPException(401, { message: "Authentication required" });
+      // An inactive identity is refused with 403, the status the app-wide guard gives it.
+      throw new HTTPException(403, { message: "Forbidden" });
     }
     const target = await loadApprovalTargetByApprovalId(id, identity);
     if (!target)

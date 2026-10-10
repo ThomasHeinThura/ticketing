@@ -72,6 +72,9 @@ on a workflow transition.
   withdrawn approvals ignored"). Approvals are **single use**: an approval is consumed by a
   run of its transition, so an approval raised before the transition last ran for this work
   item no longer counts, and repeating the transition needs a new approval.
+  When a transition runs it also **closes** the other approvals for that transition that are
+  still pending: they move to `expired` (the existing terminal state), are audited as
+  `approval.closed`, leave inboxes and reminders, and a later decide is refused with 409.
 - `AP-6` The requester may withdraw a pending approval. It becomes `withdrawn` (emitting `approval.withdrawn`), not
   deleted.
 
@@ -215,3 +218,23 @@ None.
 ## Related
 
 - [Workflows](workflows.md) · [Customer portal](customer-portal.md) · [Notifications](notifications.md)
+
+## Implementation residuals (S3)
+
+- **Single use is derived, not stored.** A transition run is recorded by its `transitioned`
+  activity row (`payload.transitionId`); an approval created before the latest such row for its
+  transition is spent. Both sides are stamped with the database clock under the work-item lock.
+  Activity rows written before this rule have no `transitionId` and never spend an approval;
+  anything that purged or rewrote activity would reopen spent approvals. A `consumed_at` column
+  would be the stored form.
+- **Pending approvals block an `all` gate** until they are decided, withdrawn, expire or are
+  closed by a run. This is intended.
+- **Inactive pending approver.** An approval whose approver stopped being valid stays `pending`
+  until withdrawn or expired; it is flagged `approverReachLost` where reach is lost.
+- **Impersonation** is not distinguished from a session by the approval handlers; the
+  impersonation plugin is not mounted today.
+- **Customer approval notifications.** Staff recipients get inbox rows. A customer approver or
+  requester is served by the portal approvals list; no inbox row is written for them.
+- **No destination for approval deliveries.** Approval recipients carry no channels today, so no
+  delivery rows exist. If channels are ever added, an approval delivery has no staff URL and would
+  be backed off as `destination_unresolved` indefinitely until a destination is registered.

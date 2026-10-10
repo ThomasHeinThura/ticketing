@@ -80,13 +80,10 @@ export async function resolveApprovalEventRecipients(
   for (const personId of new Set(personIds)) {
     const person = await findNotificationPerson(tx, personId);
     if (!person?.active || !person.userId) continue;
-    // Customers are notified only about approvals directly addressed to or raised by them.
-    if (
-      person.side === "customer" &&
-      personId !== row.approverId &&
-      personId !== row.requestedBy
-    )
-      continue;
+    // Only staff are written an inbox row: the approval inbox read predicate admits staff
+    // recipients only, so a customer's row could never be read. A customer approver is
+    // served by the portal approvals list instead.
+    if (person.side !== "staff") continue;
     // A named approver must still be valid for this workspace (0120 check 4).
     if (
       personId === row.approverId &&

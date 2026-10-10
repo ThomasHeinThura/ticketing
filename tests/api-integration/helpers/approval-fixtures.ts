@@ -65,7 +65,15 @@ export async function buildTenant(
   const backlog = await tpl("backlog", "Backlog");
   const done = await tpl("completed", "Done");
   const review = await tpl("started", "Review");
+  const wip = await tpl("started", "In progress");
   await db.insert(schema.stateTable).values([
+    {
+      projectId: project.id,
+      stateTemplateId: wip.id,
+      isDefault: false,
+      createdAt: now,
+      updatedAt: now,
+    },
     {
       projectId: project.id,
       stateTemplateId: review.id,
@@ -147,6 +155,15 @@ export async function buildTenant(
   const reviewBack = requireRow(
     await edge(false, version.id, { from: review.id, to: backlog.id }),
     "review return transition",
+  );
+  // Ungated side steps that must not spend an approval of an unrelated gated edge.
+  const sideStep = requireRow(
+    await edge(false, version.id, { to: wip.id }),
+    "side-step transition",
+  );
+  const sideBack = requireRow(
+    await edge(false, version.id, { from: wip.id, to: backlog.id }),
+    "side-step return transition",
   );
   if (options.executable) {
     // Two edges between the same states would make an executed transition ambiguous.
@@ -290,6 +307,9 @@ export async function buildTenant(
     cabOnly,
     backToBacklog,
     reviewBack,
+    sideStep,
+    sideBack,
+    wip,
     siblingGated,
     staleGated,
     backlog,

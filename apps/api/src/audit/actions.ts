@@ -36,6 +36,8 @@ export const AUDIT_ONLY_ACTIONS = new Set<string>([
   // GM-7, GM-11.
   "impersonation.started",
   "impersonation.ended",
+  // A pending approval closed by a run of its transition (owner decision 2026-10-10).
+  "approval.closed",
   // Authority and reach changes.
   "role.created",
   "role.updated",

@@ -7,13 +7,14 @@ import {
   validateApprovalRequest,
 } from "@taskdesk/domain";
 import type { ResolvedIdentity } from "@taskdesk/permissions";
-import { and, eq } from "drizzle-orm";
+import { and, eq, inArray, sql } from "drizzle-orm";
 import { HTTPException } from "hono/http-exception";
 import { appendAuditLog } from "../audit/audit-writer";
 import db, { schema } from "../database";
 import { eventScope } from "../events/outbox";
 import { enqueueNotificationEvent } from "../notification/fanout";
 import { resolveApprovalEventRecipients } from "../notification/recipient-resolvers";
+import { dbClockUtc } from "../utils/db-time";
 import { recordWorkItemActivity } from "../work-item/activity";
 import {
   hasWorkItemReach,
@@ -159,8 +160,12 @@ export async function createApproval(input: {
         requestedBy: input.identity.personId,
         approverId: input.approverId,
         state: "pending",
-        createdAt: now,
-        expiresAt,
+        // Stamped by the database clock after the work-item lock is held, so it is ordered
+        // against the activity row of a transition that ran under that same lock.
+        createdAt: dbClockUtc(),
+        expiresAt:
+          input.expiresAt ??
+          sql`(${dbClockUtc()} + make_interval(days => ${expiryDays}::int))`,
       })
       .returning();
     if (!row) throw new Error("Approval request did not persist");
@@ -182,7 +187,7 @@ export async function createApproval(input: {
           approvalId: id,
           approverId: input.approverId,
           kind: input.kind,
-          expiresAt: expiresAt.toISOString(),
+          expiresAt: row.expiresAt.toISOString(),
         },
         causationId: null,
         depth: 0,
@@ -206,8 +211,8 @@ export async function createApproval(input: {
         requestedBy: input.identity.personId,
         approverId: input.approverId,
         state: "pending",
-        createdAt: now.toISOString(),
-        expiresAt: expiresAt.toISOString(),
+        createdAt: row.createdAt.toISOString(),
+        expiresAt: row.expiresAt.toISOString(),
       },
     });
     return row;
@@ -447,4 +452,70 @@ export async function withdrawApproval(input: {
     });
     return updated;
   });
+}
+
+/**
+ * Owner decision 2026-10-10 ("close them on transition"): when a gated transition runs and
+ * consumes approvals, every other approval for that transition on that work item that is
+ * still pending is closed, in the transition's own transaction (the work item is locked).
+ * It uses the existing terminal `expired` state: no new state value and no migration. Each
+ * closure is audited as `approval.closed`, its inbox rows are removed, reminders skip it
+ * (the scan only reads `pending`), and a later decide is refused with 409. No domain event
+ * is emitted: `approval.expired` would tell the requester a time-out happened.
+ */
+export async function closePendingApprovalsOnTransition(
+  tx: Parameters<Parameters<typeof db.transaction>[0]>[0],
+  input: {
+    workspaceId: string;
+    projectId: string;
+    workItemId: string;
+    transitionId: string;
+    actorId: string | null;
+    actorType: "person" | "api_key" | "automation" | "system";
+  },
+) {
+  const closed = await tx
+    .update(schema.approvalTable)
+    .set({ state: "expired", decidedAt: dbClockUtc() })
+    .where(
+      and(
+        eq(schema.approvalTable.workspaceId, input.workspaceId),
+        eq(schema.approvalTable.workItemId, input.workItemId),
+        eq(schema.approvalTable.transitionId, input.transitionId),
+        eq(schema.approvalTable.state, "pending"),
+      ),
+    )
+    .returning({
+      id: schema.approvalTable.id,
+      kind: schema.approvalTable.kind,
+      approverId: schema.approvalTable.approverId,
+    });
+  if (closed.length === 0) return closed;
+  await tx.delete(schema.notificationTable).where(
+    and(
+      eq(schema.notificationTable.resourceType, "approval"),
+      inArray(
+        schema.notificationTable.resourceId,
+        closed.map(({ id }) => id),
+      ),
+    ),
+  );
+  for (const approval of closed) {
+    await appendAuditLog(tx, {
+      actorId: input.actorId,
+      actorType: input.actorType,
+      workspaceId: input.workspaceId,
+      projectId: input.projectId,
+      action: "approval.closed",
+      entityType: "approval",
+      entityId: approval.id,
+      before: { state: "pending" },
+      after: {
+        state: "expired",
+        reason: "transition_ran",
+        transitionId: input.transitionId,
+      },
+    });
+  }
+  return closed;
 }
