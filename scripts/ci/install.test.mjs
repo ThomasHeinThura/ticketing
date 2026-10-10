@@ -124,7 +124,7 @@ printf '%s\\n' "$*" >> "$COSIGN_LOG"
 if [[ "\${FAKE_DOCKER_FULL:-0}" == 1 ]]; then
   printf 'env-digest=%s args=%s\\n' "\${TASKDESK_IMAGE_DIGEST:-}" "$*" >> "$FAKE_DOCKER_LOG"
   if [[ "$1" == buildx && "$2" == imagetools && "$3" == inspect ]]; then
-    printf 'Digest: %s\\n' "$FAKE_RESOLVED_DIGEST"
+    printf '%b\\n' "\${FAKE_DIGEST_LINE:-Digest: $FAKE_RESOLVED_DIGEST}"
     exit 0
   fi
   if [[ "$1" == compose ]]; then
@@ -367,6 +367,63 @@ test("production repeat install resolves and verifies the selected tag, not a ro
   );
   assert.doesNotMatch(cosignLog, new RegExp(oldDigest));
 });
+
+const DIGEST_A = `sha256:${"a".repeat(64)}`;
+const DIGEST_FORMS = [
+  ["legacy single-space", `Digest: ${DIGEST_A}`],
+  ["buildx v0.38 padded", `Digest:    ${DIGEST_A}`],
+  ["tab separated", `Digest:\\t${DIGEST_A}`],
+  ["mixed tab and spaces", `Digest: \\t  ${DIGEST_A}`],
+];
+
+for (const [label, line] of DIGEST_FORMS) {
+  test(`production install resolves the digest from ${label} imagetools output`, async (t) => {
+    const f = await fixture(t, { realDeployment: true });
+    const result = run(
+      f,
+      ["--env", "production", "--domain", "example.test", "--version", "1.2.3", "--dir", f.path, "--yes"],
+      {
+        FAKE_DOCKER_FULL: "1",
+        FAKE_PRODUCTION_HOST: "1",
+        FAKE_RESOLVED_DIGEST: DIGEST_A,
+        FAKE_DIGEST_LINE: line,
+        FAKE_DOCKER_LOG: path.join(f.temp, "docker.log"),
+      },
+    );
+    assert.equal(result.status, 0, result.stderr);
+    const cosignLog = await readFile(path.join(f.temp, "cosign.log"), "utf8");
+    assert.match(cosignLog, new RegExp(`ghcr.io/thomasheinthura/taskdesk@${DIGEST_A}`));
+  });
+}
+
+for (const [label, line] of [
+  ["a missing Digest line", "Name:      ghcr.io/thomasheinthura/taskdesk:v1.2.3"],
+  ["a truncated digest", `Digest:    sha256:${"a".repeat(63)}`],
+  ["an uppercase digest", `Digest:    sha256:${"A".repeat(64)}`],
+  ["a non-sha256 digest", `Digest:    md5:${"a".repeat(64)}`],
+  ["an empty digest value", "Digest:    "],
+]) {
+  test(`production install refuses ${label} and never reaches image verification`, async (t) => {
+    const f = await fixture(t, { realDeployment: true });
+    const result = run(
+      f,
+      ["--env", "production", "--domain", "example.test", "--version", "1.2.3", "--dir", f.path, "--yes"],
+      {
+        FAKE_DOCKER_FULL: "1",
+        FAKE_PRODUCTION_HOST: "1",
+        FAKE_RESOLVED_DIGEST: DIGEST_A,
+        FAKE_DIGEST_LINE: line,
+        FAKE_DOCKER_LOG: path.join(f.temp, "docker.log"),
+      },
+    );
+    assert.notEqual(result.status, 0);
+    assert.match(`${result.stdout}${result.stderr}`, /must be a full lowercase sha256 digest/);
+    let cosignLog = "";
+    try { cosignLog = await readFile(path.join(f.temp, "cosign.log"), "utf8"); } catch {}
+    assert.doesNotMatch(cosignLog, /thomasheinthura\/taskdesk@/);
+    assert.doesNotMatch(cosignLog, /^verify /m);
+  });
+}
 
 test("release tag and rollback digest commit atomically and retry after rename interruption", async (t) => {
   const f = await fixture(t, { realDeployment: true });
