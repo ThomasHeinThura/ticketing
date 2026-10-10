@@ -13,6 +13,7 @@ import {
 } from "../database/schema";
 import { userCanReachTask } from "../notification/task-reach";
 import { assertPublicWebhookDestination } from "../utils/assert-public-destination";
+import { reachableWorkspacePredicate } from "../utils/workspace-access-middleware";
 import { decryptSecret } from "./secrets";
 
 const DEFAULT_OUTBOUND_FETCH_TIMEOUT_MS = 15_000;
@@ -275,7 +276,12 @@ async function resolveNotificationContext(notification: {
         workspaceName: workspaceTable.name,
       })
       .from(workspaceTable)
-      .where(eq(workspaceTable.id, notification.resourceId))
+      .where(
+        and(
+          eq(workspaceTable.id, notification.resourceId),
+          reachableWorkspacePredicate(workspaceTable.id, notification.userId),
+        ),
+      )
       .limit(1);
 
     if (!workspace) {
