@@ -314,9 +314,11 @@ This is not the complete notifications runtime. `apps/api/src/notification/fanou
 the transactional producer seam, and a `workspace.created` owner resolver. Neither the
 resolver nor any event-specific recipient/reach logic is wired to mutation producers. Digest
 membership/window calculation and group delivery, scheduler
-registration, concrete `notify.*` adapter registry, and concrete send-time reach/preference/
-quiet-hours evaluator remain integration work. The adapter seam deliberately has no
-default-success implementation.
+registration, the concrete `notify.*` adapter registry and the quiet-hours and destination
+contracts remain integration work. Send-time reach and channel-preference evaluation is
+implemented in `apps/api/src/notification/current-eligibility.ts` and returns
+`quiet_hours_unresolved` or `destination_unresolved` rather than authorizing a send. The
+adapter seam deliberately has no default-success implementation.
 Acceptance cases are specified in [notifications.md#delivery](../03-features/notifications.md#delivery).
 
 ## Metrics snapshots

@@ -579,7 +579,9 @@ eligibility and provider seams. A transactional fan-out producer seam and a
 `workspace.created` owner resolver exist, but are not wired to mutation producers. Other
 canonical event-specific recipient/reach resolution is not implemented. This does not
 complete Notifications: digest grouping/delivery, scheduler registration, the concrete
-`notify.*` adapter registry, and concrete reach/preference/quiet-hours evaluation remain pending. See
+`notify.*` adapter registry, and the quiet-hours and destination contracts remain pending.
+Send-time reach and preference evaluation exists in `current-eligibility.ts` and never
+authorizes a send while quiet hours or the destination are unresolved. See
 [background jobs](../01-architecture/background-jobs.md#outbox-delivery) for the implemented
 worker boundary. Browser acceptance remains pending.
 
