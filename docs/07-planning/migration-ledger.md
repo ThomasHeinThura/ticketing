@@ -86,9 +86,14 @@ declarations were corrected only where the applied migrations say so:
 | `workspace` | `deletedAt`, `purgeAfter`, `defaultSlaPolicyId` added; declaration moved below `twoFactorTable` | `0089_p2_sla_version_pinning.sql` (`default_sla_policy_id`), `0092_bright_prowler.sql` (`deleted_at`, `purge_after`), `0112_sla_policy_workspace_fks.sql` (composite FK) |
 | `organisation_quota.maxStorageBytes` default | `sql.raw("21474836480")` | serialization form only |
 
-`user.emailVerified` is unchanged. Three comment blocks (about 16 lines) that stated `sla_policy`
-and the attachment foreign keys do not exist yet were rewritten by #589 because the migrations
-above make them false; every other existing comment is kept.
+`user.emailVerified` gained `.default(false)` (the database default exists since 0003 and is in the
+snapshot); the insert type is unchanged, since the app-side `$defaultFn` remains. Three comment
+blocks (about 16 lines) were rewritten by #589 because the migrations above make them false: the
+"`sla_policy` does not exist yet" note on `work_item_type`, the "deliberately NOT added" trigram
+index and `search_vector` note on `work_item` (0103 creates the trigram index), and the "comment and
+submission foreign keys not wired" note on `attachment` (0096 adds them). The stale
+`scim_group_member` comment on `membership.derivedFrom` and the `attachment/policy.ts` header were
+corrected in this change; every other existing comment is kept.
 
 ## Exclusions
 
@@ -114,6 +119,23 @@ above make them false; every other existing comment is kept.
 D3 and D5 are recorded in [decision-log.md](decision-log.md), entry "2026-10-10 - Owner integration
 decisions for the post-P0 consolidation" (items D3 and D5).
 
+## Open forward items for 0119+ (not done in M1)
+
+Security review N2: these tables lack tenant-composite foreign keys (the `(workspace_id, id)`
+convention of `data-model.md`). They are inert until a runtime slice writes them, so M1 does not
+change them; each needs a forward-only migration (or an explicit waiver in the decision log) and a
+negative test **before any runtime slice writes the table**:
+
+- `0098_custom_fields_runtime.sql:64` `custom_field_type_visibility.work_item_type_id` and `:66`
+  `custom_field_value.project_id` are single-column references.
+- `0116_approvals_lifecycle.sql:23-24` `approval.work_item_id` and `approval.transition_id` are
+  single-column references.
+- `0118_fair_kabuki.sql:36` `saved_view.shared_with_team_id` is single-column.
+- `0090` `membership_grant`, `oidc_group_mapping` and `scim_group_mapping` `role_id`/`scope_id`, and
+  `0114` `notification_delivery.workspace_id` versus its outbox event, are not anchored to the
+  scope's workspace; the resolver's `wellAnchored` filter must hold wherever these produce
+  memberships.
+
 ## Notes for future allocation
 
 - Migration `0093_mature_exodus` drops the non-unique `membership_personId_scope_scopeId_idx`
@@ -123,7 +145,8 @@ decisions for the post-P0 consolidation" (items D3 and D5).
   `select person_id, scope, scope_id, count(*) from membership group by 1,2,3 having count(*) > 1;`
   must return no rows. The upgrade aborts as a whole, atomically, if duplicates exist, and the API
   runs migrations at startup. The preflight and the remediation procedure (which row to keep) are
-  in the operations runbook, [Upgrading across migration 0093](../05-operations/runbook.md#upgrading-across-migration-0093-duplicate-membership-rows).
+  in the operations runbook (which also carries the required `max(created_at) = 1791107747302`
+  applied-history check before any upgrade to 0088+), [Upgrading across migration 0093](../05-operations/runbook.md#upgrading-across-migration-0093-duplicate-membership-rows).
 - Legacy rows are not backfilled for the new columns. Existing `notification` rows get NULL
   `person_id`, `kind` and `body` from 0114, and existing `outbox` rows get migration-time
   `created_at`/`updated_at` from 0115. The notification runtime PR must handle both (skip or

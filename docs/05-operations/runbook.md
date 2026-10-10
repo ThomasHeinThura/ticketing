@@ -225,6 +225,24 @@ migrations are two-phase, and why the pre-upgrade backup is mandatory.
 
 ---
 
+## Before upgrading to migration 0088 and later: applied-history check
+
+The Drizzle migrator runs a pending migration only when its journal `when` is greater than the
+newest `created_at` already recorded. If an environment ever applied different migrations with
+higher timestamps (for example a deploy from a train branch before the spine landed), the spine
+migrations at or below that timestamp are **silently skipped**. On every target database, before
+upgrading:
+
+```sql
+select max(created_at) from drizzle.__drizzle_migrations;
+```
+
+For an environment that is at accepted `main` (through `0087_romantic_sway`) the result must be
+exactly `1791107747302`. If it is anything else, **stop**: do not upgrade, and ask the
+conductor to reconcile the applied history first.
+
+---
+
 ## Upgrading across migration 0093: duplicate membership rows
 
 Migration `0093_mature_exodus` replaces the non-unique `membership_personId_scope_scopeId_idx`
@@ -246,52 +264,134 @@ group by 1, 2, 3
 having count(*) > 1;
 ```
 
-**Remediation, only if the preflight returns rows.** Take the pre-upgrade backup first (see
-[backup-and-restore](backup-and-restore.md)). Keep one row per group, chosen the way the
-application already collapses duplicates when it shows a person's role:
-`apps/api/src/work-item/controllers/list-assignable-people.ts` ("one row per person, carrying
-their most privileged role"; higher `role.rank` wins). Ties are broken by preferring a direct
-membership (neither `inherited_from` nor `derived_from` set), then the oldest `created_at`, then
-`id`. If any removed row had `sees_all` set, the kept row inherits that flag so no access is
-lost. Review the printed plan before the `commit`; replace it with `rollback` to abort.
+### Remediation, only if the preflight returns rows
+
+Authority is **not** decided by `rank` alone. The permission resolver
+(`apps/api/src/permissions/resolve-identity.ts`, `wellAnchored`, lines 491-530) unions every
+membership row, but it ignores a row whose role does not belong to the scope's workspace, and a
+person's capabilities are the union of their rows' roles. Deleting the wrong row can therefore
+remove access (for example the only anchored row), keep a row the resolver ignores, or make
+`sees_all` count when it did not. The `rank` collapse in `list-assignable-people.ts` is a display
+rule only and is **not** a safe deletion rule.
+
+Take the pre-upgrade backup first (see [backup-and-restore](backup-and-restore.md)). Then work in
+**one interactive `psql` session** against the database, in this order. **Do not run either
+block with `psql -f` or any unattended tool**: the review pause is the point. Keep the session
+open between the blocks (the plan is a session temp table), and save the printed output in the
+release record.
+
+**(a) Plan.** Read-only apart from a temp table. It prints every row of every duplicate group
+with its role's workspace, rank and capabilities, whether the row is anchored the way the
+resolver requires, whether it is direct or inherited, and its `sees_all`.
+
+```sql
+create temp table membership_dedupe_plan as
+with base as (
+  select m.id, m.person_id, m.scope, m.scope_id, m.role_id, m.sees_all,
+         m.inherited_from, m.derived_from, m.created_at,
+         r.scope as role_scope, r.workspace_id as role_workspace_id,
+         r.rank as role_rank, r.capabilities as role_capabilities,
+         -- Same test as resolve-identity.ts `wellAnchored`: the role must belong to the scope's workspace.
+         (r.scope = m.scope and (
+            (m.scope = 'workspace'
+               and exists (select 1 from workspace w where w.id = m.scope_id)
+               and r.workspace_id = m.scope_id)
+         or (m.scope = 'project'
+               and exists (select 1 from project p where p.id = m.scope_id
+                           and p.workspace_id is not null and r.workspace_id = p.workspace_id))
+         or (m.scope = 'organisation'
+               and exists (select 1 from organisation o where o.id = m.scope_id)
+               and r.workspace_id is null)
+         )) as anchored,
+         (m.inherited_from is null and m.derived_from is null) as direct
+  from membership m
+  join role r on r.id = m.role_id
+), grp as (
+  select b.person_id, b.scope, b.scope_id, count(*) as group_size,
+         count(distinct b.role_id) as distinct_roles,
+         bool_and(b.anchored) as all_anchored,
+         exists (select 1 from base a
+                  where (a.person_id, a.scope, a.scope_id) = (b.person_id, b.scope, b.scope_id)
+                    and not exists (select 1 from base c
+                                     where (c.person_id, c.scope, c.scope_id) = (a.person_id, a.scope, a.scope_id)
+                                       and not (c.role_capabilities <@ a.role_capabilities))) as caps_nested,
+         bool_or(b.sees_all) filter (where b.anchored) as anchored_sees_all
+  from base b
+  group by 1, 2, 3
+  having count(*) > 1
+)
+select b.*, g.group_size, g.distinct_roles, g.all_anchored, g.caps_nested, g.anchored_sees_all,
+       -- Automatic only when every row is anchored AND all rows carry the same role.
+       case when g.all_anchored and g.distinct_roles = 1 then 'AUTO' else 'MANUAL' end as decision,
+       row_number() over (
+         partition by b.person_id, b.scope, b.scope_id
+         order by b.anchored desc, b.direct desc, b.role_rank desc, b.created_at asc, b.id asc
+       ) as keep_order
+from base b
+join grp g using (person_id, scope, scope_id);
+
+-- (1) Review EVERY row of every duplicate group. keep_order = 1 is the row that would be kept.
+select person_id, scope, scope_id, id, decision, keep_order, role_id, role_workspace_id,
+       role_rank, role_capabilities, anchored, direct, inherited_from, derived_from,
+       sees_all, anchored_sees_all, caps_nested, created_at
+from membership_dedupe_plan
+order by person_id, scope, scope_id, keep_order;
+
+-- (2) Groups that need a human. Must be resolved by hand before the apply block will run.
+select person_id, scope, scope_id, group_size, distinct_roles, all_anchored, caps_nested
+from membership_dedupe_plan
+where decision = 'MANUAL'
+group by 1, 2, 3, 4, 5, 6, 7;
+```
+
+Rules the plan applies. A group is `AUTO` only when **every** row is anchored **and** all rows
+carry the **same** `role_id`. Then the rows differ only in provenance and `sees_all`: the kept row
+(`keep_order = 1`) is the anchored, direct row before an inherited one, then higher rank, then the
+oldest, and it takes `sees_all` from the anchored rows only. Every other group is `MANUAL`:
+any mis-anchored row, any differing `role_id`, or capability sets that are not nested
+(`caps_nested = false`). Nothing is deleted automatically for a `MANUAL` group.
+
+For each `MANUAL` group, decide by hand which rows to remove, from the printed capabilities and
+anchoring, and delete those rows by `id` yourself (a person must keep every capability they hold
+through an anchored row, or the loss must be signed off by the owner of that workspace). Then
+re-run block (a) to rebuild the plan; the second result set must be empty.
+
+**(b) Apply.** Run only when the second result set of (a) is empty. It refuses to run if any
+`MANUAL` group remains (after that error, run `rollback;`), updates `sees_all` on the kept row,
+and deletes the other rows of the `AUTO` groups, in one transaction.
 
 ```sql
 begin;
 
-create temp table membership_dedupe_plan on commit drop as
-select m.id,
-       m.person_id, m.scope, m.scope_id, m.role_id,
-       count(*) over w as group_size,
-       row_number() over (
-         partition by m.person_id, m.scope, m.scope_id
-         order by r.rank desc,
-                  (m.inherited_from is null and m.derived_from is null) desc,
-                  m.created_at asc,
-                  m.id asc
-       ) as keep_order,
-       bool_or(m.sees_all) over w as any_sees_all
-from membership m
-join role r on r.id = m.role_id
-window w as (partition by m.person_id, m.scope, m.scope_id);
+do $$
+begin
+  if exists (select 1 from membership_dedupe_plan where decision = 'MANUAL') then
+    raise exception 'MANUAL duplicate groups remain: resolve them by hand and re-run the plan';
+  end if;
+end $$;
 
--- Review: every row in a duplicate group, with the one that will be kept (keep_order = 1).
-select * from membership_dedupe_plan where group_size > 1 order by person_id, scope, scope_id, keep_order;
-
+-- AUTO groups: every row is anchored and has the same role, so the rows differ only in
+-- provenance and sees_all. The kept row (keep_order = 1: direct before inherited, then oldest)
+-- takes sees_all from the anchored rows of its group.
 update membership k
    set sees_all = true
   from membership_dedupe_plan p
- where p.id = k.id and p.keep_order = 1 and p.group_size > 1
-   and p.any_sees_all and not k.sees_all;
+ where p.id = k.id and p.keep_order = 1 and p.anchored_sees_all and not k.sees_all;
 
 delete from membership
- where id in (select id from membership_dedupe_plan where group_size > 1 and keep_order > 1);
+ where id in (select id from membership_dedupe_plan where keep_order > 1);
 
 commit;
 ```
 
-Before 0093 no table references `membership`, so the delete cannot cascade. Re-run the
-preflight, then upgrade. Record the result of the preflight for every target environment in the
-release record.
+Re-run the preflight; it must return no rows. Then upgrade. Record the preflight result for every
+target environment in the release record.
+
+**Foreign keys into `membership`.** When upgrading from accepted `main` (through 0087) no table
+references `membership`, so deleting rows cannot cascade or null anything. A database that already
+applied 0090-0092 has `membership_grant.membership_id` and `scim_group_member.membership_id`
+(`0090_unique_the_stranger.sql`), both `ON DELETE SET NULL`: deleting a duplicate nulls those
+provenance links on rows pointing at it, so review them before deleting.
 
 ---
 

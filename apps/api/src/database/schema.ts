@@ -2161,7 +2161,8 @@ export const membershipTable = pgTable(
     // to constrain it, and getting that wrong would be worse than leaving it unconstrained.
     inheritedFrom: text("inherited_from"),
     // `scim_group_member.id` when SCIM group sync created this membership. Not a DB FK:
-    // `scim_group_member` is P3 SCIM-provisioning scope and does not exist yet.
+    // the reference runs from `scim_group_member.membership_id` to this table (0090), and
+    // this column is a soft back-pointer that is not constrained.
     derivedFrom: text("derived_from"),
     createdAt: timestamp("created_at", { mode: "date" }).defaultNow().notNull(),
     updatedAt: timestamp("updated_at", { mode: "date" })
