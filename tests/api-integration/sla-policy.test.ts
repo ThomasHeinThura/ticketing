@@ -270,6 +270,7 @@ describe("API integration: SLA policy authoring contract", () => {
       sessionCookie,
     );
     expect(stalePublish.status).toBe(409);
+    const publishRequestedAt = Date.now();
     const publish = await csrfRequest(
       app,
       `/api/sla-policies/${created.id}/publish`,
@@ -280,16 +281,25 @@ describe("API integration: SLA policy authoring contract", () => {
       sessionCookie,
     );
     expect(publish.status).toBe(200);
+    const publishRespondedAt = Date.now();
     const published = (await publish.json()) as {
       version: number;
       activeVersion: {
         id: string;
         number: number;
         calendarId: string;
+        effectiveFrom: string;
         goals: unknown[];
       };
       draftVersion: null;
     };
+    // effective_from is `timestamp without time zone` holding UTC wall time; it must be
+    // the database clock rendered as UTC (utils/db-time.ts), whatever the session TimeZone.
+    const effectiveFromMs = new Date(
+      published.activeVersion.effectiveFrom,
+    ).getTime();
+    expect(effectiveFromMs).toBeGreaterThanOrEqual(publishRequestedAt - 5_000);
+    expect(effectiveFromMs).toBeLessThanOrEqual(publishRespondedAt + 5_000);
     expect(published.version).toBe(2);
     expect(published.activeVersion.number).toBe(1);
     expect(published.activeVersion.calendarId).toBe(calendar.id);

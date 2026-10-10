@@ -13,6 +13,7 @@ import {
   lte,
   or,
   type SQL,
+  type SQLWrapper,
   sql,
 } from "drizzle-orm";
 import { HTTPException } from "hono/http-exception";
@@ -256,7 +257,11 @@ export async function searchWorkItems(input: {
   if (query.filter)
     conditions.push(filterSql(query.filter, personId, new Date()));
   if (decoded) {
-    const expr = sortExpr(field);
+    // `due_date` is `timestamp without time zone` holding UTC wall time. Compare through
+    // the column, never a bare `sql` fragment: only the column's encoder binds the Date as
+    // a UTC instant (utils/db-time.ts); a raw Date parameter is serialised by node-pg in the
+    // process's local zone and Postgres ignores that offset for this column type.
+    const expr: SQLWrapper = field === "dueDate" ? w.dueDate : sortExpr(field);
     const value = decoded.value;
     const cursorValue =
       field === "dueDate" && typeof value === "string"

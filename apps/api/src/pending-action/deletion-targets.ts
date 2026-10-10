@@ -20,6 +20,7 @@ import { enqueueOutboxEvent, eventScope } from "../events/outbox";
 import { notifyCurrentInstanceAdminsOfAuditFailure } from "../instance/observability/audit-failure-notifier";
 import { recordAuditWriteFailure } from "../instance/observability/runtime";
 import { policyRegistry } from "../policy-registry";
+import { dbNowUtc } from "../utils/db-time";
 import {
   type ApiKeyPermissionScope,
   apiKeyScopeFromStoredPermissions,
@@ -124,7 +125,7 @@ export async function approveServiceCalendarDeletion(input: {
           eq(schema.sessionTable.id, input.sessionId),
           eq(schema.sessionTable.userId, input.userId),
           eq(schema.sessionTable.portal, "agent"),
-          gt(schema.sessionTable.expiresAt, sql`now()`),
+          gt(schema.sessionTable.expiresAt, dbNowUtc()),
         ),
       )
       .for("update")
@@ -471,7 +472,7 @@ export async function approveSavedViewDeletion(input: {
           eq(schema.sessionTable.id, input.sessionId),
           eq(schema.sessionTable.userId, input.userId),
           eq(schema.sessionTable.portal, "agent"),
-          gt(schema.sessionTable.expiresAt, sql`now()`),
+          gt(schema.sessionTable.expiresAt, dbNowUtc()),
         ),
       )
       .for("update")
