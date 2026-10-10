@@ -602,6 +602,37 @@ If every administrator is locked out, recovery is the CLI (`grant-instance-admin
 an audit row with `actor_type = 'system'`, and emails every existing administrator that it
 was used. Break-glass is loud by design.
 
+### P4 God Mode Users — selected implementation contracts
+
+The browser `grant-admin` route uses the same target eligibility and serialization as
+recovery, but the authenticated actor is the current administrator's person and session.
+It requires a real, non-anonymous, unbanned target user with exactly one active staff person;
+it refuses unlinked, inactive, customer-side, or otherwise ineligible targets. It changes
+only the existing `user.role = 'admin'` source and never creates or links an identity. It
+takes the shared `pg_advisory_xact_lock(2026)`, locks the target user and eligible person,
+then re-reads setup state, target eligibility, current administrator state, and target role
+before mutation. An already-admin target is an audited idempotent result. No last-admin
+restriction is added; the rank/last-administrator guardrails remain deferred as recorded in
+`rbac.md`.
+
+The operation is `instance_admin_grant`, fixed version `1`, on
+`POST /api/instance/users/{id}/grant-admin`. Its strict JSON body is `{}`. The one-use PA-15
+proof binds the acting user, active person, session, target user id, fixed route, operation
+key/version and canonical empty body. The route consumes that proof in the transaction that
+locks/revalidates the target and writes the role change. The role change, `auth.instance_admin_granted`
+audit append, and durable in-app security alerts commit atomically; audit or alert failure
+means no role change. The alert goes to every current instance administrator and the target,
+with a closed payload that contains no identity-provider data, credentials, or secrets.
+
+God Mode suspension uses the existing Better Auth `user.banned`, `banReason`, and
+`banExpires` fields, not `person.active`. Suspending blocks login and API-key authentication,
+revokes all existing sessions and all personal keys in the current native Better Auth
+`apikey` store, and preserves the person's identity and memberships. There is no separate
+MCP credential store in this implementation. Unsuspending clears the ban fields only. It
+never restores sessions or keys. Force sign-out deletes all current sessions, including any
+impersonation session, and leaves account state and API keys unchanged. Deactivation is
+the separate IP-15 identity-provisioning lifecycle and is not a suspension alias.
+
 ## Threat notes
 
 | Threat | Mitigation |

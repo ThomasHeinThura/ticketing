@@ -4,7 +4,8 @@ export type PendingActionKind =
   | "delete"
   | "bulk_delete"
   | "purge"
-  | "mcp_destructive";
+  | "mcp_destructive"
+  | "user_deactivation";
 
 export type ConfirmationKind =
   | "click"
@@ -112,6 +113,7 @@ export function requiredConfirmation(input: {
   targetType: string;
   targetCount: number;
 }): ConfirmationKind {
+  if (input.action === "user_deactivation") return "typed_name_step_up";
   if (input.action === "purge") return "typed_name_step_up";
   if (input.action === "bulk_delete") {
     return input.targetCount > 50 ? "typed_count_step_up" : "typed_count";

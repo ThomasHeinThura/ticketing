@@ -76,6 +76,7 @@ import {
 } from "./instance/observability/runtime";
 import resetMfa from "./instance/reset-mfa";
 import { ensureSetupToken } from "./instance/setup-token";
+import users from "./instance/users";
 import invitation from "./invitation";
 import label from "./label";
 import { migrateColumns } from "./migrations/column-migration";
@@ -1382,6 +1383,7 @@ export function createApp(
   const metricsTokenRotationApi = api.route("/instance", metricsTokenRotation);
   const localFactorPolicyApi = api.route("/instance", localFactorPolicy);
   const resetMfaApi = api.route("/instance", resetMfa);
+  const usersApi = api.route("/instance", users);
   const identityConnectionAdminApi = api.route(
     "/instance",
     identityConnectionAdmin,
@@ -1681,6 +1683,7 @@ export function createApp(
     metricsTokenRotationApi,
     localFactorPolicyApi,
     resetMfaApi,
+    usersApi,
     identityConnectionAdminApi,
     oidcGroupMappingAdminApi,
     scimAdminApi,
@@ -2058,6 +2061,7 @@ const {
   metricsTokenRotationApi,
   localFactorPolicyApi,
   resetMfaApi,
+  usersApi,
   identityConnectionAdminApi,
   oidcGroupMappingAdminApi,
   scimAdminApi,
@@ -2143,6 +2147,7 @@ export type AppType =
   | typeof metricsTokenRotationApi
   | typeof localFactorPolicyApi
   | typeof resetMfaApi
+  | typeof usersApi
   | typeof identityConnectionAdminApi
   | typeof oidcGroupMappingAdminApi
   | typeof scimAdminApi
