@@ -199,5 +199,5 @@ Finalizer re-check notes, non-blocking: the `github-advanced-security` check was
 
 - **First pass:** Claude Opus 5.5, reviewed head `954eb840`, 2026-10-10. Verdict: P0 NOT COMPLETE (blockers B1 to B4).
 - **Re-check:** Claude Opus 5.5, 2026-10-10, reviewed heads `f4f6b011` (main), `f7aa71ac` (#624) and `48e07b8e` (this branch before the merge). Verdict: **P0 COMPLETE CONDITIONAL ON** merging #624 and this branch with the listed corrections (a second ordinary review of #624; a refreshed status snapshot; row 15 named in the waiver; the CHANGELOG and stage-review corrections; the roadmap line). This branch carries those corrections.
-- **Record:** the finalizer report and re-check are private evidence for now (`p0-phase-finalizer-opus.md`, scratchpad of the conductor session `3a9e9ce4-8409-47d4-b1be-1f1544697e70`). The conductor verifies the merged content against the conditions and records the committed review note.
+- **Record:** the finalizer report and re-check are committed unmodified, with their SHA-256, in [p0-phase-finalizer-record.md](p0-phase-finalizer-record.md). The conductor verifies the merged content against the conditions before claiming P0.
 - **Status:** P0 is **not** claimed unconditionally. The conductor changes this line after merge verification.
