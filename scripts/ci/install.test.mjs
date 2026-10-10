@@ -419,6 +419,14 @@ const multiManifest = (...extraTop) =>
 for (const [label, line, expected] of [
   ["a multi-manifest index", multiManifest(), INDEX_DIGEST],
   [
+    "an indented Digest line placed before the top-level one",
+    multiManifest().replace(
+      "MediaType: application/vnd.oci.image.index.v1+json",
+      `MediaType: application/vnd.oci.image.index.v1+json\\n  Digest:    ${DIGEST_A}`,
+    ),
+    INDEX_DIGEST,
+  ],
+  [
     "a later injected Digest line",
     multiManifest(`Digest:    ${DIGEST_A}`),
     INDEX_DIGEST,
@@ -448,7 +456,7 @@ for (const [label, line, expected] of [
 test("release workflow immutability check parses the padded Digest line, not the legacy sed", async () => {
   const workflow = await readFile(path.join(root, ".github/workflows/release.yml"), "utf8");
   assert.doesNotMatch(workflow, /sed -n 's\/\^Digest: \/\/p'/);
-  assert.match(workflow, /existing_digest="\$\(awk '\/\^Digest:\/ && \$1 == "Digest:" && NF == 2/);
+  assert.match(workflow, /existing_digest="\$\(awk '\/\^Digest:\/ \{ if \(\$1 == "Digest:" && NF == 2\) print \$2; exit \}'/);
 });
 
 for (const [label, line] of [
@@ -458,6 +466,14 @@ for (const [label, line] of [
   ["a non-sha256 digest", `Digest:    md5:${"a".repeat(64)}`],
   ["an empty digest value", "Digest:    "],
   ["a digest with trailing junk", `Digest:    ${DIGEST_A} extra`],
+  [
+    "a malformed first Digest line followed by a valid one",
+    `Digest:    ${DIGEST_A} extra\\nDigest:    sha256:${"b".repeat(64)}`,
+  ],
+  [
+    "an empty first Digest line followed by a valid one",
+    `Digest:\\nDigest:    sha256:${"b".repeat(64)}`,
+  ],
 ]) {
   test(`production install refuses ${label} and never reaches image verification`, async (t) => {
     const f = await fixture(t, { realDeployment: true });
