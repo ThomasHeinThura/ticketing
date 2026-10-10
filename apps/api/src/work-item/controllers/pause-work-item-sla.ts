@@ -3,6 +3,7 @@ import { and, eq, isNull } from "drizzle-orm";
 import { HTTPException } from "hono/http-exception";
 import db, { schema } from "../../database";
 import { slaPauseTable } from "../../database/migration-schema";
+import { assertProjectStillLive } from "../assert-work-item-live";
 
 /** Open the two manual SLA intervals atomically (SLA-11). */
 export async function pauseWorkItemSla(
@@ -11,7 +12,10 @@ export async function pauseWorkItemSla(
 ): Promise<void> {
   await db.transaction(async (tx) => {
     const [item] = await tx
-      .select({ id: schema.workItemTable.id })
+      .select({
+        id: schema.workItemTable.id,
+        projectId: schema.workItemTable.projectId,
+      })
       .from(schema.workItemTable)
       .where(
         and(
@@ -21,8 +25,15 @@ export async function pauseWorkItemSla(
           isNull(schema.workItemTable.archivedAt),
         ),
       )
+      .limit(1)
       .for("update");
     if (!item) throw new HTTPException(404, { message: "Work item not found" });
+
+    // Reach middleware ran before this transaction and cannot serialize a concurrent
+    // project freeze. Lock/check the parent project inside the write transaction so a
+    // project deletion that wins first prevents inserting pause rows; if this check wins,
+    // its FOR SHARE lock holds the project live until both metrics commit.
+    await assertProjectStillLive(tx, item.projectId);
 
     const [existing] = await tx
       .select({ metric: slaPauseTable.metric })
