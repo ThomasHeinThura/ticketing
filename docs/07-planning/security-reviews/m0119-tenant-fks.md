@@ -409,3 +409,15 @@ This is an Opus context, not GPT-6 Sol.
 No container was started, and the worktree is clean.
 <!-- END REPORT aecdf41355eabfd70 960120da -->
 
+## Rebind after formatting the 0119 snapshot
+
+**Reviewed head:** `5cf3093cb1766cfe6a559622bafc5c23f8ba44c5`
+
+CI's `static` check required `biome format` of `0119_snapshot.json`. The JSON is semantically identical, and drizzle-kit `check` and `generate` still pass. The section below is copied verbatim from the reviewer's file.
+
+<!-- BEGIN REPORT (agent aecdf41355eabfd70; model claude-opus-5-5; role Sol-tier rebind; candidate 5cf3093cb1766cfe6a559622bafc5c23f8ba44c5; sha256 c07ce908e596a796ef70d48edddb61cc08ed54b811bf235233065cd4614fab29) -->
+# Not re-run
+
+- Database tests, which are unaffected.
+- CI. The commit is not pushed.
+<!-- END REPORT aecdf41355eabfd70 5cf3093c -->
