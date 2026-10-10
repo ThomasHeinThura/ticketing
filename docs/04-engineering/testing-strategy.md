@@ -440,6 +440,11 @@ default columns and concrete states against the existing code defaults, includin
 order, default selection, and template references. It retains database-generated row IDs;
 any conflicting or incomplete default set fails the seed transaction without rewriting it.
 
+Three sizes: **minimal** (one org, one project, ten items — for fast tests),
+**realistic** (as above, for manual and performance), **hostile** (empty strings, 500-
+character titles, non-Latin scripts, emoji, right-to-left text, null-heavy records,
+deeply nested hierarchies).
+
 ### Manual role verification
 
 The ordinary `minimal`, `realistic`, and `hostile` profiles remain login-free. Role-specific
@@ -447,11 +452,6 @@ test accounts are provisioned only through private, operator-managed tooling; th
 does not contain a role-user seeder or generated credential manifest. Verify the resulting
 identity scope and role-based access through the API against an explicitly isolated test
 database. Never commit test login identities, credentials, or credential instructions.
-
-Three sizes: **minimal** (one org, one project, ten items — for fast tests),
-**realistic** (as above, for manual and performance), **hostile** (empty strings, 500-
-character titles, non-Latin scripts, emoji, right-to-left text, null-heavy records,
-deeply nested hierarchies).
 
 The hostile dataset finds more layout bugs than any other single technique.
 

@@ -1,3 +1,9 @@
+The
+role-seeder source, tests, and review evidence are preserved as an immutable private archive
+outside the repository; that archive contains no generated credentials or operational
+secrets. This is a user-directed scope change, not a test-gate waiver. The general
+seed-profile test suite remains in place.
+
 ### 2026-10-10 · Owner decision: SCIM-provisioned first OIDC login links and activates by exact subject
 
 **Decision:** Thomas decided how the first OIDC login of a SCIM-provisioned person behaves. SCIM
@@ -427,14 +433,17 @@ credential manifest in source control.
 
 Keep ordinary `minimal` / `realistic` / `hostile` data profiles, canonical default-role
 provisioning, production role defaults, and existing generic API/RBAC coverage. The
-role-seeder source, tests, and review evidence are preserved as an immutable mode-0700/0600
-private archive outside the repository at
-`/Users/heinthura/.codex/taskdesk-evidence/2026-10-07/private-role-seeding-tooling/`;
-that archive contains no generated credentials or operational secrets. This is a
-user-directed scope change, not a test-gate waiver. The general seed-profile test suite
-remains in place.
+role-seeder source, tests, and review evidence are preserved as an immutable private
+archive outside the repository; that archive contains no generated credentials or
+operational secrets. This is a user-directed scope change, not a test-gate waiver. The
+general seed-profile test suite remains in place.
 
-**Recorded:** orchestrator, Thomas's explicit instruction relayed for this task, 2026-10-07.
+**Source:** Thomas's instruction of 2026-10-07, as recorded in #589 commit `99528ca5`
+(`chore: keep manual role seeding private`).
+**Carried to main:** by the S2 auth-hardening integration slice, 2026-10-10, by Claude Sonnet
+5.5 (`claude-sonnet-5-5`) at the conductor's instruction. The "remove the seeder" clause is
+already satisfied on `main`, which never contained the seeder, its manifest writer or its
+tests. This entry carries the recorded decision forward unchanged and adds no new decision.
 
 ---
 
