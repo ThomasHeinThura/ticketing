@@ -106,8 +106,11 @@ Signed prerelease, source `b704f707`. The P0 claim binds to this release
   exposed but unpublished port (#621). This stopped the `2.0.0-alpha.2` deploy.
 
 ### Security
-- The deploy digest and signature check binds the release tag, so a signed `edge` or
-  `sha-` image cannot be accepted for a `v*` release (#621).
+- `deploy.sh` now takes the image digest from the registry's own bytes and judges port
+  publication from the container engine, so a wrong digest or a published port is rejected
+  from what the engine and registry report, not from parsed tool text (#621). The
+  release-tag binding of the signature check (`--annotations "tag=${tag}"`) is older than
+  #621; it was already in `deploy.sh` at `3096cb04`.
 
 ### Known issues
 - Running `install.sh` a second time on a default production install (no S3 profile, no
@@ -115,11 +118,15 @@ Signed prerelease, source `b704f707`. The P0 claim binds to this release
   (see Unreleased).
 - `/api/public/health/live` returns `{"status":"ok"}`. The container-image doc said it also
   returned version and SHA. Corrected in #623.
-- Rolling back is proven only to the immediately previous release.
+- No release-to-release rollback is proven. Proof 3 rolled back to the edge image
+  `sha-8ddb9de8` (schema 80, boot and reads only; old-image writes were not tested).
+  `2.0.0-alpha.1` and `2.0.0-alpha.2` cannot complete a production install, so they are not
+  a rollback target.
 
 ## [2.0.0-alpha.2] - 2026-10-10
 
-Signed prerelease, source `511c917f`.
+Signed prerelease, source `511c917f`. **Superseded; do not install.** A production deploy
+still fails at the port check (see Known issues).
 
 ### Fixed
 - `deploy.sh` no longer fails on the padded `Digest:` line that newer `docker buildx`
@@ -135,7 +142,8 @@ Signed prerelease, source `511c917f`.
 
 ## [2.0.0-alpha.1] - 2026-10-10
 
-First signed prerelease, source `b64f8062` (#602 merge). Container image published to GHCR
+First signed prerelease, source `b64f8062` (#602 merge). **Superseded; do not install.**
+`deploy.sh` fails on the digest line (see Known issues). Container image published to GHCR
 with signature and provenance.
 
 ### Added

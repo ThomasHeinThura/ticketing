@@ -64,7 +64,8 @@ verdict NOT COMPLETE at that time). "Status now" updates each row after #623, th
 re-proof and the 2026-10-10 decisions recorded by PR #624.
 
 The **waiver** below means Thomas's 2026-10-10 deferral in PR #624's decision-log entries
-"P0 stage-gate activities deferred to before `2.0.0`". It covers PG2 to PG6, the k6
+"P0 stage-gate activities deferred to before `2.0.0`". It covers PG2 to PG6, P0 screen
+sign-off (row 15, ✅ in the screen inventory; Thomas: "Yes, defer row 15 too."), the k6
 baseline, the 10k-row data test, full and reduced-motion E2E, and backup restore. Each runs
 once over the whole surface before `2.0.0`. It is a deferral, not a pass.
 
@@ -80,20 +81,20 @@ once over the whole surface before `2.0.0`. It is a deferral, not a pass.
 | 8 | PR template present | Met | `.github/pull_request_template.md` |
 | 9 | RLS prototype merged with findings | Met | [rls-prototype-results.md](rls-prototype-results.md) |
 | 10 | Two-entry host and static matrix; image boots both roots; hostless probes | Met at `b704f707`; superseded on `main` by #622 | Proof 3 U5 (ready 200, live 200). See "What this claim binds to" |
-| 11 | Three issue-free UTC dates of policy-shadow evidence | Partly evidenced, private | `p0-oct9-runtime-adjudication.md` (9 behaviours), `task-source-date-compatibility-sol.md` (12 task reads). Not shown for all 27 selected sources. Residual, see N-items below |
+| 11 | Three issue-free UTC dates of policy-shadow evidence | Not a P0 exit criterion (Thomas, 2026-10-10: "Not part of P0") | The three-date rule gates activation of a strict policy source (decision log 2026-10-04, `TASKDESK_POLICY_ENFORCE`), not stage exit. The P0 claim activates no persistent strict source; enforcement stays off by default. Evidence so far is adjudicated for 9 behaviours (`p0-oct9-runtime-adjudication.md`) and 12 task reads (`task-source-date-compatibility-sol.md`), not all 27 sources. Each source still needs three issue-free UTC dates before activation |
 | 12 | Signed-main release installer upgrade and rollback | Met | Proof 3 (alpha.3 upgrade, re-run, rollback PASS). FND-1 fixed by #623 and re-proven in proof 4 cases 1 to 3. Case 4 (alpha.2 to alpha.3 installer-to-installer) was **not possible by design**: alpha.2's `deploy.sh` port-check defect was fixed in #621, so an alpha.2 fresh install cannot complete. Not evidenced; see below |
 | 13 | Every feature meets its Definition of Done | Per-PR records only | Not independently re-established at stage level |
 | 14 | PG1 screen review | Deferred (allowed) | DoD stage list; decision log 2026-10-02: human design sign-off at the P4 review |
-| 15 | Every P0 screen ✅ in the screen inventory | **Not met.** Deferred | No row marked ✅. [screen-inventory.md](../02-design/screen-inventory.md) note, 2026-10-10. Waiver |
+| 15 | Every P0 screen ✅ in the screen inventory | **Not met.** Deferred under the widened waiver (Thomas, 2026-10-10) | No row marked ✅. [screen-inventory.md](../02-design/screen-inventory.md) note, 2026-10-10. Runs in the once-before-`2.0.0` pass |
 | 16 | Full E2E suite green, agent and portal, plus reduced motion | **Not run.** Deferred | Waiver. Only the `e2e - protected-route redirect` required check ran |
 | 17 | PG2 screen reader, PG3 keyboard, PG4 fresh-eyes, PG5 cross-browser | **Not run.** Deferred | Waiver (confirms the 2026-09-05 waiver, widened to PG3) |
 | 18 | PG6 realistic data (10,000 items, 50 projects, 200 people) | **Not run.** Deferred | Waiver |
 | 19 | Load-test baseline recorded | **Not run.** Deferred | Waiver (k6) |
 | 20 | Backup and restore verified | **Not met.** Deferred | Waiver. Proof 3 F2 took a `pg_dump`; no restore was run |
-| 21 | Phase finalizer | Pending re-check | Report: Opus 5.5, NOT COMPLETE at `954eb840`. See "Phase finalizer" below |
+| 21 | Phase finalizer | Re-check done: conditional | First pass NOT COMPLETE at `954eb840`; re-check P0 COMPLETE CONDITIONAL ON. See "Phase finalizer" below |
 | 22 | Written stage review, including what went wrong | This document | |
 | 23 | Screen inventory, feature index and CHANGELOG updated together | Partly done | CHANGELOG and screen inventory updated with this review. The feature-index status columns ([03-features/README.md](../03-features/README.md)) were not changed: no feature is claimed at its Definition of Done here |
-| 24 | Roadmap and status updated | `status.md` done by #624; roadmap not changed here | #624 snapshot dated 2026-10-10 12:00 UTC |
+| 24 | Roadmap and status updated | `status.md` refreshed in #624; `roadmap.md` does not change | `roadmap.md` holds the stage sequence and what each stage makes possible, with no per-stage status column or dated status, so there is nothing to update for a P0 claim. The dated snapshot is in [status.md](status.md) |
 | 25 | Gates table complete; every waived row linked to the decision log | Met after #624 | #602's merge-time waiver is recorded in the decision log by #624. #602's PR body is not edited |
 
 ## What went wrong
@@ -181,7 +182,9 @@ the P0 claim. Items N1 and N2 are closed by #623 and are not listed.
 | N12 | The tamper proof (U7) tests `sha256sum` and `cosign verify-blob`, not `install.sh` end to end. Unit tests cover the installer's rejection before any write | Next stage, installer tests |
 
 Also open and not a finalizer N-item: N4 (record a tier rationale in each review note) and
-row 11 (policy-shadow dates shown for 9 behaviours and 12 task reads, not all 27 sources).
+row 11 (policy-shadow dates shown for 9 behaviours and 12 task reads, not all 27 sources). Thomas ruled row 11 is not part of P0; it gates later activation of each strict policy source.
+
+Finalizer re-check notes, non-blocking: the `github-advanced-security` check was `failure` at the heads of #623 and #624 (a Copilot-agent run with a runtime-download retry failure). It is not a required context. "All checks green" is therefore not claimed literally.
 
 ## Not evidenced
 
@@ -194,6 +197,7 @@ row 11 (policy-shadow dates shown for 9 behaviours and 12 task reads, not all 27
 
 ## Phase finalizer
 
-Pending re-check. A fresh Opus finalizer re-check will be appended here after merge prep.
-The first finalizer report found P0 not complete at `954eb840`. P0 is **not claimed** until
-that re-check returns a verdict.
+- **First pass:** Claude Opus 5.5, reviewed head `954eb840`, 2026-10-10. Verdict: P0 NOT COMPLETE (blockers B1 to B4).
+- **Re-check:** Claude Opus 5.5, 2026-10-10, reviewed heads `f4f6b011` (main), `f7aa71ac` (#624) and `48e07b8e` (this branch before the merge). Verdict: **P0 COMPLETE CONDITIONAL ON** merging #624 and this branch with the listed corrections (a second ordinary review of #624; a refreshed status snapshot; row 15 named in the waiver; the CHANGELOG and stage-review corrections; the roadmap line). This branch carries those corrections.
+- **Record:** the finalizer report and re-check are private evidence for now (`p0-phase-finalizer-opus.md`, scratchpad of the conductor session `3a9e9ce4-8409-47d4-b1be-1f1544697e70`). The conductor verifies the merged content against the conditions and records the committed review note.
+- **Status:** P0 is **not** claimed unconditionally. The conductor changes this line after merge verification.
