@@ -1,7 +1,18 @@
 import { createHash, randomBytes, timingSafeEqual } from "node:crypto";
 import { createId } from "@paralleldrive/cuid2";
+import type { ScimAdminRequest } from "@taskdesk/domain";
+import { canonicalScimAdminRequest } from "@taskdesk/domain";
 import { and, count, eq, gt, sql } from "drizzle-orm";
 import db, { schema } from "../database";
+import {
+  canonicalOidcGroupMappingBody,
+  OIDC_GROUP_MAPPING_CREATE_OPERATION,
+  OIDC_GROUP_MAPPING_CREATE_ROUTE,
+  type OIDC_GROUP_MAPPING_UPDATE_OPERATION,
+  OIDC_GROUP_MAPPING_UPDATE_ROUTE,
+  type OidcGroupMappingCreateRequest,
+  type OidcGroupMappingUpdateRequest,
+} from "../identity/oidc-group-mapping-contract";
 
 export const STEP_UP_OPERATION = "metrics_token_rotate" as const;
 export const STEP_UP_ROUTE =
@@ -9,6 +20,23 @@ export const STEP_UP_ROUTE =
 export const MFA_RESET_OPERATION = "mfa_reset" as const;
 export const MFA_RESET_ROUTE =
   "POST /api/instance/users/{id}/reset-mfa" as const;
+export const SCIM_ADMIN_OPERATION = "scim_admin_update" as const;
+export const SCIM_ADMIN_ROUTE =
+  "PATCH /api/instance/identity-connections/{id}/scim" as const;
+export const SCIM_TOKEN_ROTATE_OPERATION = "scim_token_rotate" as const;
+export const SCIM_TOKEN_ROTATE_ROUTE =
+  "POST /api/instance/identity-connections/{id}/scim/rotate-token" as const;
+export const SCIM_TOKEN_REVOKE_OPERATION = "scim_token_revoke" as const;
+export const SCIM_TOKEN_REVOKE_ROUTE =
+  "POST /api/instance/identity-connections/{id}/scim/revoke-token" as const;
+export const IDENTITY_CONNECTION_CREATE_OPERATION =
+  "identity_connection_create" as const;
+export const IDENTITY_CONNECTION_CREATE_ROUTE =
+  "POST /api/instance/identity-connections" as const;
+export const IDENTITY_CONNECTION_CONFIGURE_OPERATION =
+  "identity_connection_configure" as const;
+export const IDENTITY_CONNECTION_CONFIGURE_ROUTE =
+  "PATCH /api/instance/identity-connections/{id}" as const;
 export class StepUpAttemptLimitError extends Error {
   constructor() {
     super("step_up_attempt_limit");
@@ -30,6 +58,131 @@ export function canonicalMfaResetBody(
   return canonicalOperationBody(MFA_RESET_OPERATION, MFA_RESET_ROUTE, 1, {
     userId,
     verificationNote,
+  });
+}
+
+export function canonicalScimAdminBody(
+  connectionId: string,
+  request: ScimAdminRequest,
+): Buffer {
+  return Buffer.from(canonicalScimAdminRequest(connectionId, request), "utf8");
+}
+
+export function canonicalScimTokenBody(version: number): Buffer {
+  // PA-15 stores the operation, route, version, person and session as separate
+  // binding columns. The body hash is only the canonical validated request body.
+  return Buffer.from(JSON.stringify({ version }), "utf8");
+}
+
+export function canonicalIdentityConnectionCreateBody(
+  request: Record<string, unknown>,
+): Buffer {
+  return canonicalOperationBody(
+    IDENTITY_CONNECTION_CREATE_OPERATION,
+    IDENTITY_CONNECTION_CREATE_ROUTE,
+    1,
+    request,
+  );
+}
+
+export function canonicalIdentityConnectionConfigureBody(
+  connectionId: string,
+  request: Record<string, unknown>,
+): Buffer {
+  return canonicalOperationBody(
+    IDENTITY_CONNECTION_CONFIGURE_OPERATION,
+    IDENTITY_CONNECTION_CONFIGURE_ROUTE,
+    Number(request.configVersion),
+    { connectionId, request },
+  );
+}
+
+export function createIdentityConnectionChallenge(input: {
+  personId: string;
+  sessionId: string;
+  connectionId?: string;
+  request: Record<string, unknown>;
+  operation:
+    | typeof IDENTITY_CONNECTION_CREATE_OPERATION
+    | typeof IDENTITY_CONNECTION_CONFIGURE_OPERATION;
+}) {
+  const creating = input.operation === IDENTITY_CONNECTION_CREATE_OPERATION;
+  return createOperationChallenge({
+    personId: input.personId,
+    sessionId: input.sessionId,
+    operation: input.operation,
+    route: creating
+      ? IDENTITY_CONNECTION_CREATE_ROUTE
+      : IDENTITY_CONNECTION_CONFIGURE_ROUTE,
+    version: creating ? 1 : Number(input.request.configVersion),
+    body: creating
+      ? canonicalIdentityConnectionCreateBody(input.request)
+      : canonicalIdentityConnectionConfigureBody(
+          input.connectionId ?? "",
+          input.request,
+        ),
+  });
+}
+
+export function createScimAdminChallenge(input: {
+  personId: string;
+  sessionId: string;
+  connectionId: string;
+  request: ScimAdminRequest;
+}) {
+  return createOperationChallenge({
+    personId: input.personId,
+    sessionId: input.sessionId,
+    operation: SCIM_ADMIN_OPERATION,
+    route: SCIM_ADMIN_ROUTE,
+    version: input.request.configVersion,
+    body: canonicalScimAdminBody(input.connectionId, input.request),
+  });
+}
+
+export function createOidcGroupMappingChallenge(input: {
+  personId: string;
+  sessionId: string;
+  connectionId: string;
+  mappingId?: string;
+  request: OidcGroupMappingCreateRequest | OidcGroupMappingUpdateRequest;
+  operation:
+    | typeof OIDC_GROUP_MAPPING_CREATE_OPERATION
+    | typeof OIDC_GROUP_MAPPING_UPDATE_OPERATION;
+}) {
+  const creating = input.operation === OIDC_GROUP_MAPPING_CREATE_OPERATION;
+  return createOperationChallenge({
+    personId: input.personId,
+    sessionId: input.sessionId,
+    operation: input.operation,
+    route: creating
+      ? OIDC_GROUP_MAPPING_CREATE_ROUTE
+      : OIDC_GROUP_MAPPING_UPDATE_ROUTE,
+    version: input.request.configVersion,
+    body: canonicalOidcGroupMappingBody(input),
+  });
+}
+
+export function createScimTokenChallenge(input: {
+  personId: string;
+  sessionId: string;
+  connectionId: string;
+  version: number;
+  operation:
+    | typeof SCIM_TOKEN_ROTATE_OPERATION
+    | typeof SCIM_TOKEN_REVOKE_OPERATION;
+}) {
+  const route =
+    input.operation === SCIM_TOKEN_ROTATE_OPERATION
+      ? SCIM_TOKEN_ROTATE_ROUTE
+      : SCIM_TOKEN_REVOKE_ROUTE;
+  return createOperationChallenge({
+    personId: input.personId,
+    sessionId: input.sessionId,
+    operation: input.operation,
+    route,
+    version: input.version,
+    body: canonicalScimTokenBody(input.version),
   });
 }
 
@@ -203,6 +356,103 @@ export async function consumeMfaResetProof(
   });
 }
 
+export async function consumeScimAdminProof(
+  tx: Parameters<Parameters<typeof db.transaction>[0]>[0],
+  input: {
+    token: string;
+    personId: string;
+    sessionId: string;
+    connectionId: string;
+    request: ScimAdminRequest;
+  },
+) {
+  return consumeOperationProof(tx, {
+    ...input,
+    version: input.request.configVersion,
+    operation: SCIM_ADMIN_OPERATION,
+    route: SCIM_ADMIN_ROUTE,
+    body: canonicalScimAdminBody(input.connectionId, input.request),
+  });
+}
+
+export async function consumeOidcGroupMappingProof(
+  tx: StepUpTransaction,
+  input: {
+    token: string;
+    personId: string;
+    sessionId: string;
+    connectionId: string;
+    mappingId?: string;
+    request: OidcGroupMappingCreateRequest | OidcGroupMappingUpdateRequest;
+    operation:
+      | typeof OIDC_GROUP_MAPPING_CREATE_OPERATION
+      | typeof OIDC_GROUP_MAPPING_UPDATE_OPERATION;
+  },
+) {
+  const creating = input.operation === OIDC_GROUP_MAPPING_CREATE_OPERATION;
+  return consumeOperationProof(tx, {
+    ...input,
+    version: input.request.configVersion,
+    route: creating
+      ? OIDC_GROUP_MAPPING_CREATE_ROUTE
+      : OIDC_GROUP_MAPPING_UPDATE_ROUTE,
+    body: canonicalOidcGroupMappingBody(input),
+  });
+}
+
+export async function consumeIdentityConnectionProof(
+  tx: StepUpTransaction,
+  input: {
+    token: string;
+    personId: string;
+    sessionId: string;
+    connectionId?: string;
+    request: Record<string, unknown>;
+    operation:
+      | typeof IDENTITY_CONNECTION_CREATE_OPERATION
+      | typeof IDENTITY_CONNECTION_CONFIGURE_OPERATION;
+  },
+) {
+  const creating = input.operation === IDENTITY_CONNECTION_CREATE_OPERATION;
+  return consumeOperationProof(tx, {
+    ...input,
+    version: creating ? 1 : Number(input.request.configVersion),
+    route: creating
+      ? IDENTITY_CONNECTION_CREATE_ROUTE
+      : IDENTITY_CONNECTION_CONFIGURE_ROUTE,
+    body: creating
+      ? canonicalIdentityConnectionCreateBody(input.request)
+      : canonicalIdentityConnectionConfigureBody(
+          input.connectionId ?? "",
+          input.request,
+        ),
+  });
+}
+
+export async function consumeScimTokenProof(
+  tx: StepUpTransaction,
+  input: {
+    token: string;
+    personId: string;
+    sessionId: string;
+    connectionId: string;
+    version: number;
+    operation:
+      | typeof SCIM_TOKEN_ROTATE_OPERATION
+      | typeof SCIM_TOKEN_REVOKE_OPERATION;
+  },
+) {
+  const route =
+    input.operation === SCIM_TOKEN_ROTATE_OPERATION
+      ? SCIM_TOKEN_ROTATE_ROUTE
+      : SCIM_TOKEN_REVOKE_ROUTE;
+  return consumeOperationProof(tx, {
+    ...input,
+    route,
+    body: canonicalScimTokenBody(input.version),
+  });
+}
+
 async function consumeOperationProof(
   tx: StepUpTransaction,
   input: {
@@ -311,6 +561,131 @@ export async function issueMfaResetToken(
       operation: MFA_RESET_OPERATION,
       route: MFA_RESET_ROUTE,
       body: canonicalMfaResetBody(input.targetUserId, input.verificationNote),
+    },
+    verifyAuthentication,
+  );
+}
+
+export async function issueScimAdminToken(
+  input: {
+    id: string;
+    nonce: string;
+    personId: string;
+    sessionId: string;
+    userId: string;
+    connectionId: string;
+    request: ScimAdminRequest;
+  },
+  verifyAuthentication: () => Promise<
+    "password" | "totp" | "backup_code" | null
+  >,
+) {
+  return issueOperationToken(
+    {
+      ...input,
+      version: input.request.configVersion,
+      operation: SCIM_ADMIN_OPERATION,
+      route: SCIM_ADMIN_ROUTE,
+      body: canonicalScimAdminBody(input.connectionId, input.request),
+    },
+    verifyAuthentication,
+  );
+}
+
+export async function issueOidcGroupMappingToken(
+  input: {
+    id: string;
+    nonce: string;
+    personId: string;
+    sessionId: string;
+    userId: string;
+    connectionId: string;
+    mappingId?: string;
+    request: OidcGroupMappingCreateRequest | OidcGroupMappingUpdateRequest;
+    operation:
+      | typeof OIDC_GROUP_MAPPING_CREATE_OPERATION
+      | typeof OIDC_GROUP_MAPPING_UPDATE_OPERATION;
+  },
+  verifyAuthentication: () => Promise<
+    "password" | "totp" | "backup_code" | null
+  >,
+) {
+  const creating = input.operation === OIDC_GROUP_MAPPING_CREATE_OPERATION;
+  return issueOperationToken(
+    {
+      ...input,
+      version: input.request.configVersion,
+      route: creating
+        ? OIDC_GROUP_MAPPING_CREATE_ROUTE
+        : OIDC_GROUP_MAPPING_UPDATE_ROUTE,
+      body: canonicalOidcGroupMappingBody(input),
+    },
+    verifyAuthentication,
+  );
+}
+
+export async function issueIdentityConnectionToken(
+  input: {
+    id: string;
+    nonce: string;
+    personId: string;
+    sessionId: string;
+    userId: string;
+    connectionId?: string;
+    request: Record<string, unknown>;
+    operation:
+      | typeof IDENTITY_CONNECTION_CREATE_OPERATION
+      | typeof IDENTITY_CONNECTION_CONFIGURE_OPERATION;
+  },
+  verifyAuthentication: () => Promise<
+    "password" | "totp" | "backup_code" | null
+  >,
+) {
+  const creating = input.operation === IDENTITY_CONNECTION_CREATE_OPERATION;
+  return issueOperationToken(
+    {
+      ...input,
+      version: creating ? 1 : Number(input.request.configVersion),
+      route: creating
+        ? IDENTITY_CONNECTION_CREATE_ROUTE
+        : IDENTITY_CONNECTION_CONFIGURE_ROUTE,
+      body: creating
+        ? canonicalIdentityConnectionCreateBody(input.request)
+        : canonicalIdentityConnectionConfigureBody(
+            input.connectionId ?? "",
+            input.request,
+          ),
+    },
+    verifyAuthentication,
+  );
+}
+
+export async function issueScimTokenToken(
+  input: {
+    id: string;
+    nonce: string;
+    personId: string;
+    sessionId: string;
+    userId: string;
+    connectionId: string;
+    version: number;
+    operation:
+      | typeof SCIM_TOKEN_ROTATE_OPERATION
+      | typeof SCIM_TOKEN_REVOKE_OPERATION;
+  },
+  verifyAuthentication: () => Promise<
+    "password" | "totp" | "backup_code" | null
+  >,
+) {
+  const route =
+    input.operation === SCIM_TOKEN_ROTATE_OPERATION
+      ? SCIM_TOKEN_ROTATE_ROUTE
+      : SCIM_TOKEN_REVOKE_ROUTE;
+  return issueOperationToken(
+    {
+      ...input,
+      route,
+      body: canonicalScimTokenBody(input.version),
     },
     verifyAuthentication,
   );

@@ -10,7 +10,7 @@ import {
 import type {
   BroadcastAdapter,
   BroadcastMessage,
-  NativeAuthorizationInvalidation,
+  ControlMessage,
   NativeBroadcastMessage,
   UserBroadcast,
 } from "./broadcast-adapter";
@@ -57,6 +57,10 @@ const nativeAuthorizationInvalidationSchema = v.strictObject({
   workspaceId: v.optional(v.pipe(v.string(), v.minLength(1))),
   projectId: v.optional(v.pipe(v.string(), v.minLength(1))),
 });
+const controlMessageSchema = v.union([
+  nativeAuthorizationInvalidationSchema,
+  v.strictObject({ type: v.literal("auth.reload") }),
+]);
 
 export class RedisBroadcastAdapter implements BroadcastAdapter {
   private subscribed = false;
@@ -105,9 +109,7 @@ export class RedisBroadcastAdapter implements BroadcastAdapter {
     );
   }
 
-  async publishControl(
-    message: NativeAuthorizationInvalidation,
-  ): Promise<void> {
+  async publishControl(message: ControlMessage): Promise<void> {
     if (this.forced) return;
     await getRedisPub(this.clientFactory).publish(
       CONTROL_CHANNEL,
@@ -116,7 +118,7 @@ export class RedisBroadcastAdapter implements BroadcastAdapter {
   }
 
   async subscribeToControl(
-    handler: (message: NativeAuthorizationInvalidation) => void,
+    handler: (message: ControlMessage) => void,
   ): Promise<void> {
     if (this.controlSubscribed || this.closing) return;
     this.controlSubscribed = true;
@@ -125,13 +127,11 @@ export class RedisBroadcastAdapter implements BroadcastAdapter {
     this._controlMessageHandler = (channel, data) => {
       if (this.closing || channel !== CONTROL_CHANNEL) return;
       try {
-        const parsed = v.safeParse(
-          nativeAuthorizationInvalidationSchema,
-          JSON.parse(data),
-        );
+        const parsed = v.safeParse(controlMessageSchema, JSON.parse(data));
         if (
           !parsed.success ||
-          (!parsed.output.userId &&
+          (parsed.output.type === "identity.invalidate" &&
+            !parsed.output.userId &&
             !parsed.output.workspaceId &&
             !parsed.output.projectId)
         ) {

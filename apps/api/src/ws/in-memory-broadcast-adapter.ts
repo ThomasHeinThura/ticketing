@@ -1,7 +1,7 @@
 import type {
   BroadcastAdapter,
   BroadcastMessage,
-  NativeAuthorizationInvalidation,
+  ControlMessage,
   NativeBroadcastMessage,
   UserBroadcast,
 } from "./broadcast-adapter";
@@ -10,7 +10,7 @@ export class InMemoryBroadcastAdapter implements BroadcastAdapter {
   private handler?: (msg: BroadcastMessage) => void;
   private userHandler?: (msg: UserBroadcast) => void;
   private nativeHandler?: (msg: NativeBroadcastMessage) => void;
-  private controlHandler?: (msg: NativeAuthorizationInvalidation) => void;
+  private controlHandler?: (msg: ControlMessage) => void;
 
   async publish(msg: BroadcastMessage): Promise<void> {
     // Deliver directly in the same process
@@ -39,14 +39,12 @@ export class InMemoryBroadcastAdapter implements BroadcastAdapter {
     this.nativeHandler = handler;
   }
 
-  async publishControl(
-    message: NativeAuthorizationInvalidation,
-  ): Promise<void> {
+  async publishControl(message: ControlMessage): Promise<void> {
     this.controlHandler?.(message);
   }
 
   async subscribeToControl(
-    handler: (message: NativeAuthorizationInvalidation) => void,
+    handler: (message: ControlMessage) => void,
   ): Promise<void> {
     this.controlHandler = handler;
   }
