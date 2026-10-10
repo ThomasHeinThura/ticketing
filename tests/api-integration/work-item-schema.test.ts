@@ -255,7 +255,8 @@ describe("#1 -- migration applies cleanly and produces the six tables data-model
   });
 
   it("gives work_item exactly the 30 columns schema.ts declares", async () => {
-    // #192 added workspace_id; migration 0054 added first_response_at.
+    // #192 added workspace_id (29 columns on main through 0087); migration 0089 added
+    // sla_policy_version_id.
     const result = await db.execute<{ count: string }>(sql`
       SELECT count(*)::text AS count
       FROM information_schema.columns

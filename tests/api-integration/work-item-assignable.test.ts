@@ -337,6 +337,13 @@ describe("API integration: assignable people (#30, assignment.md)", () => {
     expect(people.some((entry) => entry.name === "Departed Dana")).toBe(false);
   });
 
+  // AS-1 used to insert a second membership row for the same person and project to
+  // prove the picker collapses duplicates to the most privileged role. Migration 0093
+  // makes (person_id, scope, scope_id) UNIQUE, so that setup is now rejected by the
+  // database and was removed. The collapse code in list-assignable-people.ts (sort by
+  // rank, keep the first row per person) is not exercised by any test that creates
+  // duplicates; it is defence in depth that can no longer fire on a database with the
+  // unique index. No replacement coverage was added.
   it("AS-1: a workspace member on the project roster appears once with their project role", async () => {
     const { workspace, project } = await setup();
     const lead = await addWorkspaceMember(workspace.id, "lead");

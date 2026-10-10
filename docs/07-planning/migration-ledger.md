@@ -69,6 +69,27 @@ are #589's versions, `apps/api/src/database/migration-schema.ts` is new from #58
 no schema changes and `drizzle-kit check` passes at idx 118. No route, service or runtime
 relation code is included.
 
+Evidence (worktree `claude/m1-migration-spine`, `apps/api`): `DATABASE_URL=postgres://u:p@localhost:1/x
+pnpm exec drizzle-kit generate --name probe` printed `No schema changes, nothing to migrate`, and
+`pnpm exec drizzle-kit check` printed `Everything's fine`. The 0118 snapshot was introspected from
+a live database, so check and partial-index expressions in `schema.ts` and `shadow-schema.ts` are
+written as `sql.raw` strings in Postgres-normalised form to match it. Existing column
+declarations were corrected only where the applied migrations say so:
+
+| Declaration | Correction | Justified by |
+| --- | --- | --- |
+| `apikey.referenceId` | nullable, no foreign key | `0013_quiet_gladiator.sql` adds `reference_id text` with neither; no migration adds them |
+| `label.workspaceId` | NOT NULL | `0005_jittery_monster_badoon.sql` `SET NOT NULL` |
+| `outbox.workspaceId` | nullable | `0110_instance_scoped_outbox_events.sql` |
+| `membership` index | `uniqueIndex("membership_person_scope_scope_id_unique")` replaces the plain index | `0093_mature_exodus.sql` |
+| `attachment.commentId`, `submissionId` | foreign keys added; `submissionFieldKey` added | `0096_normal_whizzer.sql`, `0102_productive_hawkeye.sql` |
+| `workspace` | `deletedAt`, `purgeAfter`, `defaultSlaPolicyId` added; declaration moved below `twoFactorTable` | `0089_p2_sla_version_pinning.sql` (`default_sla_policy_id`), `0092_bright_prowler.sql` (`deleted_at`, `purge_after`), `0112_sla_policy_workspace_fks.sql` (composite FK) |
+| `organisation_quota.maxStorageBytes` default | `sql.raw("21474836480")` | serialization form only |
+
+`user.emailVerified` is unchanged. Three comment blocks (about 16 lines) that stated `sla_policy`
+and the attachment foreign keys do not exist yet were rewritten by #589 because the migrations
+above make them false; every other existing comment is kept.
+
 ## Exclusions
 
 | Excluded | Reason |
@@ -90,8 +111,8 @@ relation code is included.
   are kept; M1 adds no runtime code for them.
 - **Lineage (conductor):** #589's journal and snapshots for 0088-0118.
 
-D3 and D5 are cited from the conductor's M1 assignment; neither is recorded in
-[decision-log.md](decision-log.md) yet. The conductor records them there.
+D3 and D5 are recorded in [decision-log.md](decision-log.md), entry "2026-10-10 - Owner integration
+decisions for the post-P0 consolidation" (items D3 and D5).
 
 ## Notes for future allocation
 
@@ -100,7 +121,13 @@ D3 and D5 are cited from the conductor's M1 assignment; neither is recorded in
   `(person_id, scope, scope_id)`. It fails on a database that holds duplicate
   `(person_id, scope, scope_id)` rows. Preflight on every target database before applying:
   `select person_id, scope, scope_id, count(*) from membership group by 1,2,3 having count(*) > 1;`
-  must return no rows.
+  must return no rows. The upgrade aborts as a whole, atomically, if duplicates exist, and the API
+  runs migrations at startup. The preflight and the remediation procedure (which row to keep) are
+  in the operations runbook, [Upgrading across migration 0093](../05-operations/runbook.md#upgrading-across-migration-0093-duplicate-membership-rows).
+- Legacy rows are not backfilled for the new columns. Existing `notification` rows get NULL
+  `person_id`, `kind` and `body` from 0114, and existing `outbox` rows get migration-time
+  `created_at`/`updated_at` from 0115. The notification runtime PR must handle both (skip or
+  backfill); M1 adds no runtime code, so this is inert until then.
 - Hand-written migrations 0006, 0014, 0016, 0020, 0024, 0025, 0043, 0050, 0051, 0071 have no
   snapshot; that is inherited and expected.
 

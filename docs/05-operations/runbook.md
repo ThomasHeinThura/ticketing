@@ -225,6 +225,76 @@ migrations are two-phase, and why the pre-upgrade backup is mandatory.
 
 ---
 
+## Upgrading across migration 0093: duplicate membership rows
+
+Migration `0093_mature_exodus` replaces the non-unique `membership_personId_scope_scopeId_idx`
+with the UNIQUE index `membership_person_scope_scope_id_unique` on
+`(person_id, scope, scope_id)`. If the database already holds two membership rows for the same
+person and scope, `CREATE UNIQUE INDEX` fails and **the whole upgrade aborts**: the Drizzle
+migrator runs the pending migrations in one transaction, so nothing from 0088 onward is applied
+and `__drizzle_migrations` is unchanged. The API runs migrations at startup (the migrate step in
+`apps/api/src/index.ts`), so an affected deployment does not become ready until the duplicates
+are removed. The failure is atomic and safe to retry.
+
+**Preflight** (run on the target database before upgrading from any version below 0093; it must
+return no rows):
+
+```sql
+select person_id, scope, scope_id, count(*)
+from membership
+group by 1, 2, 3
+having count(*) > 1;
+```
+
+**Remediation, only if the preflight returns rows.** Take the pre-upgrade backup first (see
+[backup-and-restore](backup-and-restore.md)). Keep one row per group, chosen the way the
+application already collapses duplicates when it shows a person's role:
+`apps/api/src/work-item/controllers/list-assignable-people.ts` ("one row per person, carrying
+their most privileged role"; higher `role.rank` wins). Ties are broken by preferring a direct
+membership (neither `inherited_from` nor `derived_from` set), then the oldest `created_at`, then
+`id`. If any removed row had `sees_all` set, the kept row inherits that flag so no access is
+lost. Review the printed plan before the `commit`; replace it with `rollback` to abort.
+
+```sql
+begin;
+
+create temp table membership_dedupe_plan on commit drop as
+select m.id,
+       m.person_id, m.scope, m.scope_id, m.role_id,
+       count(*) over w as group_size,
+       row_number() over (
+         partition by m.person_id, m.scope, m.scope_id
+         order by r.rank desc,
+                  (m.inherited_from is null and m.derived_from is null) desc,
+                  m.created_at asc,
+                  m.id asc
+       ) as keep_order,
+       bool_or(m.sees_all) over w as any_sees_all
+from membership m
+join role r on r.id = m.role_id
+window w as (partition by m.person_id, m.scope, m.scope_id);
+
+-- Review: every row in a duplicate group, with the one that will be kept (keep_order = 1).
+select * from membership_dedupe_plan where group_size > 1 order by person_id, scope, scope_id, keep_order;
+
+update membership k
+   set sees_all = true
+  from membership_dedupe_plan p
+ where p.id = k.id and p.keep_order = 1 and p.group_size > 1
+   and p.any_sees_all and not k.sees_all;
+
+delete from membership
+ where id in (select id from membership_dedupe_plan where group_size > 1 and keep_order > 1);
+
+commit;
+```
+
+Before 0093 no table references `membership`, so the delete cannot cascade. Re-run the
+preflight, then upgrade. Record the result of the preflight for every target environment in the
+release record.
+
+---
+
 ## Verify a published image
 
 Resolve the release tag to a digest first, then check both the cosign signature and the
