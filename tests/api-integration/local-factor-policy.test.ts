@@ -172,6 +172,54 @@ describe("instance local-factor policy API", () => {
     );
   });
 
+  it("denies an inactive identity as forbidden even when the factor policy store is unusable, including on the exempt status route", async () => {
+    const [inactive] = await db
+      .insert(schema.userTable)
+      .values({
+        id: "factor-inactive-store",
+        name: "Inactive Store",
+        email: "factor-inactive-store@example.test",
+        role: "user",
+      })
+      .returning();
+    const [missing] = await db
+      .insert(schema.userTable)
+      .values({
+        id: "factor-missing-store",
+        name: "Missing Store",
+        email: "factor-missing-store@example.test",
+        role: "user",
+      })
+      .returning();
+    if (!inactive || !missing) throw new Error("fixtures were not created");
+    await ensureStaffPersonForUser(inactive.id);
+    await db
+      .update(schema.personTable)
+      .set({ active: false })
+      .where(eq(schema.personTable.userId, inactive.id));
+    const { app } = createApp();
+
+    const probe = async (user: typeof inactive, path: string) => {
+      mockAuthenticatedSession(user);
+      return app.request(path);
+    };
+
+    // 1. The instance settings row is missing.
+    await db.delete(schema.instanceSettingTable);
+    await expect(loadLocalFactorState(inactive.id)).rejects.toBeInstanceOf(
+      InactiveFactorIdentityError,
+    );
+    expect((await probe(inactive, "/api/workspace")).status).toBe(403);
+    expect((await probe(inactive, "/api/me/security/factors")).status).toBe(
+      403,
+    );
+    expect((await probe(missing, "/api/workspace")).status).toBe(503);
+    expect((await probe(missing, "/api/me/security/factors")).status).toBe(503);
+    // A stored policy that fails to parse is unreachable through SQL: the
+    // instance_setting_local_factor_policy_shape CHECK constraint rejects it. The parse now
+    // runs after the person check, so the missing-row case above covers the ordering.
+  });
+
   it("applies evaluator key ceilings and refuses impersonation for admin settings", async () => {
     const [admin] = await db
       .insert(schema.userTable)

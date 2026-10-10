@@ -24,14 +24,6 @@ export class InactiveFactorIdentityError extends Error {
 export async function loadLocalFactorState(
   userId: string,
 ): Promise<LocalFactorState> {
-  const [setting] = await db
-    .select({ policy: schema.instanceSettingTable.localFactorPolicy })
-    .from(schema.instanceSettingTable)
-    .where(eq(schema.instanceSettingTable.id, "singleton"))
-    .limit(1);
-  if (!setting) throw new Error("Instance factor policy is unavailable");
-  const policy = parseLocalFactorPolicy(setting.policy);
-
   const [person] = await db
     .select({
       id: schema.personTable.id,
@@ -67,6 +59,16 @@ export async function loadLocalFactorState(
       "Active identity is unavailable for factor policy evaluation",
     );
   }
+
+  // Resolve the person first so an inactive identity is denied as such even when the
+  // instance setting row is missing or the stored policy does not parse.
+  const [setting] = await db
+    .select({ policy: schema.instanceSettingTable.localFactorPolicy })
+    .from(schema.instanceSettingTable)
+    .where(eq(schema.instanceSettingTable.id, "singleton"))
+    .limit(1);
+  if (!setting) throw new Error("Instance factor policy is unavailable");
+  const policy = parseLocalFactorPolicy(setting.policy);
 
   const memberships = await db
     .select({ roleId: schema.membershipTable.roleId })
