@@ -1,3 +1,21 @@
+### 2026-10-10 · Owner integration decisions for the post-P0 consolidation
+
+**Decision:** Thomas decided four questions that block specific post-P0 integration slices. He chose each one in the Claude Opus conductor session from concrete options.
+
+- **D3 · `sla_pause` table shape.** The train migration `0104_moaning_marvex` shape is canonical: composite primary key `(work_item_id, metric, started_at)`, the `reason` CHECK, `ON UPDATE cascade`, and one open pause per work item and metric. #611's provisional `0102_sla_pause_PROVISIONAL` does not land. #611's SLA code is conformed to 0104.
+- **D5 · Request catalogue design.** #598's `intake/*` catalogue and triage lifecycle is canonical. #513's separate `request-type/*` and feature-flag runtime is held: it is not merged, and its unique source stays on its branch. Feature-flag tables already in the 0088–0118 spine stay unused until a later decision.
+- **D2 · SLA read representation.** The SLA read DTO and UI keep #611's current shape (`key`, `startedAt`, `evaluatedAt`, `metrics`). Pause intervals are not displayed in this frozen-scope integration.
+- **D6 · #607 MCP specification docs.** Held. MCP is P4 scope and has no recorded contract; nothing in this integration depends on it.
+
+**Conductor allocation recorded with it** (conductor-owned, not an owner decision): the 0088–0118 journal and snapshot lineage is taken from #589 (`2350397b`). #608's no-op `0112`, #611's `0102_PROVISIONAL`, and the #513/#611 and #569 renumberings are excluded. Allocation continues at 0119 with `when` after 0118. See [migration-ledger.md](migration-ledger.md).
+
+**Not decided here:** SLA completion/manual-resume pause continuity (D1), #512 vs #606 ownership of the work-item detail composer (D9), and #506's hidden read-all behaviour (D10). Each goes to Thomas when its slice is next.
+
+**Source:** Thomas, directly to the Claude Opus delivery conductor session, 2026-10-10.
+**Recorded by:** Claude Opus 5.5 (`claude-opus-5-5`), delivery conductor.
+
+---
+
 ### 2026-10-10 · Owner approves G11 speed-calibrated measurement
 
 **Decision:** Thomas approves fixing the G11 measurement **method** by speed calibration.
