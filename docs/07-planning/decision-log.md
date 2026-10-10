@@ -1,3 +1,20 @@
+### 2026-10-10 · Owner decision: D10 read-all keeps the current reach-limited behaviour
+
+**Decision:** Thomas decided D10: keep the current behaviour. `PATCH /api/notification/read-all`
+marks read only the notifications the caller can still reach. A task-backed notification whose
+task is hidden, deleted or unreachable stays unread and stays invisible, so nothing is revealed
+about tasks the caller lost access to. Marking one such notification read individually still
+returns 404. If reach is restored while the work item exists, the notification reappears unread.
+
+**Scope:** the read-all route's description and policy reason are corrected to match the code.
+No behaviour change. #506 carried an unverified 2026-09-30 entry with the same intent; that
+entry is not carried and this entry is the record.
+
+**Source:** Thomas, directly to the Claude Opus delivery conductor session, 2026-10-10.
+**Recorded by:** Claude Sonnet 5.5 (`claude-sonnet-5-5`), at the conductor's instruction.
+
+---
+
 ### 2026-10-10 · Owner decision: SCIM-provisioned first OIDC login links and activates by exact subject
 
 **Decision:** Thomas decided how the first OIDC login of a SCIM-provisioned person behaves. SCIM

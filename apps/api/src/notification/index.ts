@@ -85,7 +85,8 @@ const markAllAsReadRoute = createRoute({
   path: "/read-all",
   tags: ["Notifications"],
   summary: "Mark all read",
-  description: "Mark every notification for the current user as read.",
+  description:
+    "Mark every notification the current user can currently reach as read. Task notifications for unreachable or deleted tasks stay unread and stay hidden.",
   middleware: [requireSessionOnly()] as const,
   responses: {
     200: jsonResponse("All notifications marked as read", bulkResultSchema),

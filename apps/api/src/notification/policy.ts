@@ -29,8 +29,8 @@ import type { PolicyMap } from "@taskdesk/permissions";
  *   userId = caller`; the `{id}` path parameter names the notification, not a person, so
  *   `personParam` below states the `no_person_parameter` exemption, same as every write route
  *   in `workspace/policy.ts` that names a resource by id rather than a person.
- * - `PATCH /api/notification/read-all` (`markAllNotificationsAsRead`) — `WHERE userId = caller`,
- *   no id at all.
+ * - `PATCH /api/notification/read-all` (`markAllNotificationsAsRead`) — `WHERE userId = caller`
+ *   and current task reach (D10, 2026-10-10), no id at all.
  * - `DELETE /api/notification/clear-all` (`clearNotifications`) — `WHERE userId = caller`, no
  *   id at all.
  *
@@ -82,7 +82,7 @@ export const notificationPolicies = {
     personParam: {
       exempt: "no_person_parameter",
       reason:
-        "marks every one of the caller's own notifications read; the route names no person parameter because the caller is the person",
+        "marks the caller's reachable notifications read; unreachable or deleted task notifications are skipped and stay unread; the route names no person parameter because the caller is the person",
     },
   },
 
