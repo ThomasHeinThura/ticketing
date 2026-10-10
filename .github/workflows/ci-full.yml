@@ -97,6 +97,9 @@ jobs:
       - name: Run browser smoke
         if: ${{ steps.scope.outputs.full != 'false' }}
         run: pnpm test:e2e
+      - name: Verify the deploy helpers against a real Docker engine
+        if: ${{ steps.scope.outputs.full != 'false' }}
+        run: scripts/ci/run-deploy-real-docker.sh
       - name: Upload browser evidence
         if: ${{ always() && steps.scope.outputs.full != 'false' }}
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1

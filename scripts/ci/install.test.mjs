@@ -23,6 +23,12 @@ const root = path.resolve(
 );
 const installer = path.join(root, "install.sh");
 
+// The registry bytes the stub serves for `buildx imagetools inspect --raw`. The digest
+// deploy.sh must derive is the sha256 of exactly these bytes, with no trailing newline.
+const RAW_MANIFEST =
+  '{"schemaVersion":2,"mediaType":"application/vnd.oci.image.index.v1+json","manifests":[]}';
+const RAW_DIGEST = `sha256:${createHash("sha256").update(RAW_MANIFEST).digest("hex")}`;
+
 async function fixture(
   t,
   {
@@ -48,6 +54,7 @@ async function fixture(
     "compose.yml",
     "scripts/deploy.sh",
     "scripts/lib/local-certificate.sh",
+    "scripts/lib/deploy-checks.sh",
     "deploy/.env.example",
     "deploy/compose.local.yml",
     "deploy/compose.prod.yml",
@@ -121,10 +128,27 @@ printf '%s\\n' "$*" >> "$COSIGN_LOG"
 [[ "\${FAKE_DOCKER_MISSING:-0}" != 1 ]] || exit 1
 [[ "$1" == compose && "$2" == version ]] && { printf 'Docker Compose version test\n'; exit 0; }
 [[ "$1" == info ]] && exit 0
+if [[ "$1" == buildx && "$2" == version ]]; then
+  if [[ "\${FAKE_BUILDX_MISSING:-0}" == 1 ]]; then printf "docker: unknown command: docker buildx\\n" >&2; exit 1; fi
+  printf 'github.com/docker/buildx v0.38.0 0dbe87f36ed472fe36b6796c3f70b4210a731fc5\\n'; exit 0
+fi
 if [[ "\${FAKE_DOCKER_FULL:-0}" == 1 ]]; then
   printf 'env-digest=%s args=%s\\n' "\${TASKDESK_IMAGE_DIGEST:-}" "$*" >> "$FAKE_DOCKER_LOG"
   if [[ "$1" == buildx && "$2" == imagetools && "$3" == inspect ]]; then
-    printf '%b\\n' "\${FAKE_DIGEST_LINE:-Digest: $FAKE_RESOLVED_DIGEST}"
+    # Only --raw is honest: human text and --format differ between buildx versions.
+    [[ "$4" == --raw ]] || exit 2
+    [[ "\${FAKE_RAW_RC:-0}" == 0 ]] || { printf 'ERROR: not found\\n' >&2; exit "$FAKE_RAW_RC"; }
+    printf '%s' "\${FAKE_RAW:-}"
+    exit 0
+  fi
+  if [[ "$1" == inspect ]]; then
+    # docker inspect --type container --format <template> <id>
+    [[ "\${FAKE_INSPECT_RC:-0}" == 0 ]] || { printf 'Error: No such container: %s\\n' "\${@: -1}" >&2; exit "$FAKE_INSPECT_RC"; }
+    if [[ "\${@: -1}" == traefikid ]]; then
+      if [[ "$*" == *'"80/tcp"'* ]]; then printf '%s \\n' "\${FAKE_TRAEFIK_HP80:-80}"; else printf '%s \\n' "\${FAKE_TRAEFIK_HP443:-443}"; fi
+      exit 0
+    fi
+    printf '%s\\n' "\${FAKE_INSPECT_LINE-taskdesk_default|false||}"
     exit 0
   fi
   if [[ "$1" == compose ]]; then
@@ -137,9 +161,18 @@ if [[ "\${FAKE_DOCKER_FULL:-0}" == 1 ]]; then
       esac
     done
     case "\${args[0]:-}" in
-      port)
-        if [[ "\${args[1]:-}" == traefik && "\${FAKE_ASSUME_LOCAL_PROXY:-0}" == 1 ]]; then exit 0; fi
-        exit 1
+      # Real Compose v5.6.0 and 2.40.3: a port that is exposed but not published
+      # prints ":0" with exit 0, so an exit-code test cannot tell the two apart.
+      port) printf ':0\\n'; exit 0 ;;
+      ps)
+        if [[ "\${args[*]}" == *traefik* ]]; then
+          if [[ "\${FAKE_ASSUME_LOCAL_PROXY:-0}" == 1 ]]; then printf 'traefikid\\n'; fi
+          exit 0
+        fi
+        [[ "\${FAKE_PS_RC:-0}" == 0 ]] || exit "$FAKE_PS_RC"
+        printf '%s' "\${FAKE_TASKDESK_IDS-tdid1
+}"
+        exit 0
         ;;
       logs) printf 'setup url: https://ticket.example.test/setup\\n'; exit 0 ;;
       *) exit 0 ;;
@@ -308,7 +341,9 @@ test("installer local mode reaches the real deploy script with rollback digest c
   assert.match(env, /^TASKDESK_AUTH_SECRET=test-auth-secret$/m);
   const dockerLog = await readFile(path.join(f.temp, "docker.log"), "utf8");
   assert.doesNotMatch(dockerLog, new RegExp(oldDigest));
-  assert.match(dockerLog, /args=compose .* port traefik 80/);
+  assert.match(dockerLog, /args=compose .* ps -q traefik/);
+  assert.match(dockerLog, /args=inspect .*PortBindings "80\/tcp".* traefikid/);
+  assert.doesNotMatch(dockerLog, / port traefik /);
   assert.match(dockerLog, /args=compose .* up -d --wait/);
   assert.equal(
     (await stat(path.join(f.path, "deploy/local/certs/local.crt"))).isFile(),
@@ -319,7 +354,7 @@ test("installer local mode reaches the real deploy script with rollback digest c
 test("production repeat install resolves and verifies the selected tag, not a rollback digest", async (t) => {
   const f = await fixture(t, { realDeployment: true });
   const oldDigest = `sha256:${"b".repeat(64)}`;
-  const selectedDigest = `sha256:${"a".repeat(64)}`;
+  const selectedDigest = RAW_DIGEST;
   await writeExistingEnv(f.path, {
     tag: "v9.8.7",
     digest: oldDigest,
@@ -341,7 +376,7 @@ test("production repeat install resolves and verifies the selected tag, not a ro
     {
       FAKE_DOCKER_FULL: "1",
       FAKE_PRODUCTION_HOST: "1",
-      FAKE_RESOLVED_DIGEST: selectedDigest,
+      FAKE_RAW: RAW_MANIFEST,
       FAKE_DOCKER_LOG: path.join(f.temp, "docker.log"),
     },
   );
@@ -356,7 +391,7 @@ test("production repeat install resolves and verifies the selected tag, not a ro
   const dockerLog = await readFile(path.join(f.temp, "docker.log"), "utf8");
   assert.match(
     dockerLog,
-    /buildx imagetools inspect ghcr\.io\/thomasheinthura\/taskdesk:v1\.2\.3/,
+    /buildx imagetools inspect --raw ghcr\.io\/thomasheinthura\/taskdesk:v1\.2\.3/,
   );
   assert.match(dockerLog, new RegExp(`env-digest=${selectedDigest}`));
   assert.doesNotMatch(dockerLog, new RegExp(oldDigest));
@@ -368,120 +403,171 @@ test("production repeat install resolves and verifies the selected tag, not a ro
   assert.doesNotMatch(cosignLog, new RegExp(oldDigest));
 });
 
-const DIGEST_A = `sha256:${"a".repeat(64)}`;
-const DIGEST_FORMS = [
-  ["legacy single-space", `Digest: ${DIGEST_A}`],
-  ["buildx v0.38 padded", `Digest:    ${DIGEST_A}`],
-  ["tab separated", `Digest:\\t${DIGEST_A}`],
-  ["mixed tab and spaces", `Digest: \\t  ${DIGEST_A}`],
+const PROD_ARGS = (f) => [
+  "--env",
+  "production",
+  "--domain",
+  "example.test",
+  "--version",
+  "1.2.3",
+  "--dir",
+  f.path,
+  "--yes",
 ];
 
-for (const [label, line] of DIGEST_FORMS) {
-  test(`production install resolves the digest from ${label} imagetools output`, async (t) => {
-    const f = await fixture(t, { realDeployment: true });
-    const result = run(
-      f,
-      [
-        "--env",
-        "production",
-        "--domain",
-        "example.test",
-        "--version",
-        "1.2.3",
-        "--dir",
-        f.path,
-        "--yes",
-      ],
-      {
-        FAKE_DOCKER_FULL: "1",
-        FAKE_PRODUCTION_HOST: "1",
-        FAKE_RESOLVED_DIGEST: DIGEST_A,
-        FAKE_DIGEST_LINE: line,
-        FAKE_DOCKER_LOG: path.join(f.temp, "docker.log"),
-      },
-    );
-    assert.equal(result.status, 0, result.stderr);
-    const cosignLog = await readFile(path.join(f.temp, "cosign.log"), "utf8");
-    assert.match(
-      cosignLog,
-      new RegExp(`ghcr.io/thomasheinthura/taskdesk@${DIGEST_A}`),
-    );
+async function productionRun(t, extraEnv = {}) {
+  const f = await fixture(t, { realDeployment: true });
+  const result = run(f, PROD_ARGS(f), {
+    FAKE_DOCKER_FULL: "1",
+    FAKE_PRODUCTION_HOST: "1",
+    FAKE_RAW: RAW_MANIFEST,
+    FAKE_DOCKER_LOG: path.join(f.temp, "docker.log"),
+    ...extraEnv,
   });
+  const read = (name) =>
+    readFile(path.join(f.temp, name), "utf8").catch(() => "");
+  return { f, result, output: `${result.stdout}${result.stderr}`, read };
 }
 
-const INDEX_DIGEST = `sha256:${"1".repeat(64)}`;
-const PLATFORM_DIGEST = `sha256:${"2".repeat(64)}`;
-const ATTEST_DIGEST = `sha256:${"3".repeat(64)}`;
-const multiManifest = (...extraTop) =>
-  [
-    "Name:      ghcr.io/thomasheinthura/taskdesk:v1.2.3",
-    "MediaType: application/vnd.oci.image.index.v1+json",
-    `Digest:    ${INDEX_DIGEST}`,
-    ...extraTop,
-    "           ",
-    "Manifests: ",
-    "  Name:        ghcr.io/thomasheinthura/taskdesk:v1.2.3@" + PLATFORM_DIGEST,
-    "  MediaType:   application/vnd.oci.image.manifest.v1+json",
-    `  Digest:      ${PLATFORM_DIGEST}`,
-    "  Platform:    linux/amd64",
-    "  Name:        ghcr.io/thomasheinthura/taskdesk:v1.2.3@" + ATTEST_DIGEST,
-    `  Digest:      ${ATTEST_DIGEST}`,
-    "  Platform:    unknown/unknown",
-  ].join("\\n");
+test("production install derives the digest from the sha256 of the raw registry bytes", async (t) => {
+  const { result, read } = await productionRun(t);
+  assert.equal(result.status, 0, result.stderr);
+  assert.match(await read("cosign.log"), new RegExp(`taskdesk@${RAW_DIGEST}`));
+  const dockerLog = await read("docker.log");
+  assert.match(dockerLog, /buildx imagetools inspect --raw /);
+  assert.doesNotMatch(dockerLog, /imagetools inspect[^\n]*--format/);
+  assert.doesNotMatch(dockerLog, /imagetools inspect ghcr[^\n]*$/m);
+});
 
-for (const [label, line, expected] of [
-  ["a multi-manifest index", multiManifest(), INDEX_DIGEST],
+for (const [label, env, message] of [
   [
-    "an indented Digest line placed before the top-level one",
-    multiManifest().replace(
-      "MediaType: application/vnd.oci.image.index.v1+json",
-      `MediaType: application/vnd.oci.image.index.v1+json\\n  Digest:    ${DIGEST_A}`,
-    ),
-    INDEX_DIGEST,
+    "empty registry output",
+    { FAKE_RAW: "" },
+    /could not resolve .* immutable digest/,
   ],
   [
-    "a later injected Digest line",
-    multiManifest(`Digest:    ${DIGEST_A}`),
-    INDEX_DIGEST,
+    "a failed inspect (tag not found)",
+    { FAKE_RAW_RC: "1" },
+    /could not resolve .* immutable digest/,
   ],
 ]) {
-  test(`production install verifies the top-level digest from ${label}`, async (t) => {
-    const f = await fixture(t, { realDeployment: true });
-    const result = run(
-      f,
-      [
-        "--env",
-        "production",
-        "--domain",
-        "example.test",
-        "--version",
-        "1.2.3",
-        "--dir",
-        f.path,
-        "--yes",
-      ],
-      {
-        FAKE_DOCKER_FULL: "1",
-        FAKE_PRODUCTION_HOST: "1",
-        FAKE_RESOLVED_DIGEST: DIGEST_A,
-        FAKE_DIGEST_LINE: line,
-        FAKE_DOCKER_LOG: path.join(f.temp, "docker.log"),
-      },
-    );
-    assert.equal(result.status, 0, result.stderr);
-    const cosignLog = await readFile(path.join(f.temp, "cosign.log"), "utf8");
-    assert.match(
-      cosignLog,
-      new RegExp(`ghcr.io/thomasheinthura/taskdesk@${expected}`),
-    );
-    assert.doesNotMatch(
-      cosignLog,
-      new RegExp(`${PLATFORM_DIGEST}|${ATTEST_DIGEST}`),
-    );
-    if (expected !== DIGEST_A)
-      assert.doesNotMatch(cosignLog, new RegExp(DIGEST_A));
+  test(`production install refuses ${label} and never verifies an image`, async (t) => {
+    const { result, output, read } = await productionRun(t, env);
+    assert.notEqual(result.status, 0);
+    assert.match(output, message);
+    assert.doesNotMatch(await read("cosign.log"), /thomasheinthura\/taskdesk@/);
+    assert.doesNotMatch(await read("cosign.log"), /^verify /m);
   });
 }
+
+// Real `docker inspect` answers (template: mode|publishAll|configured ports|live ports)
+// for the cases the whole-path diagnosis ran against Compose v5.6.0 and 2.40.3.
+const UNPUBLISHED = "taskdesk_default|false||";
+for (const [label, env] of [
+  ["a created, unpublished container", { FAKE_INSPECT_LINE: UNPUBLISHED }],
+  [
+    "a running, exposed-but-unpublished container (compose port prints :0)",
+    { FAKE_INSPECT_LINE: UNPUBLISHED },
+  ],
+]) {
+  test(`production install accepts ${label}`, async (t) => {
+    const { result, output } = await productionRun(t, env);
+    assert.equal(result.status, 0, output);
+    assert.match(output, /no application port is published/);
+  });
+}
+
+for (const [label, env] of [
+  [
+    "a published port",
+    { FAKE_INSPECT_LINE: "taskdesk_default|false|5173/tcp |5173/tcp " },
+  ],
+  [
+    "a configured-only binding (created, not started)",
+    { FAKE_INSPECT_LINE: "taskdesk_default|false|5173/tcp |" },
+  ],
+  [
+    "a published other container port",
+    { FAKE_INSPECT_LINE: "taskdesk_default|false|8080/tcp |8080/tcp " },
+  ],
+  [
+    "an ephemeral host port (PublishAllPorts)",
+    { FAKE_INSPECT_LINE: "taskdesk_default|true||" },
+  ],
+  ["host networking", { FAKE_INSPECT_LINE: "host|false||" }],
+  ["no taskdesk container", { FAKE_TASKDESK_IDS: "" }],
+  ["an inspect error", { FAKE_INSPECT_RC: "1" }],
+  ["unparsable inspect output", { FAKE_INSPECT_LINE: "garbage" }],
+  ["a failing container listing", { FAKE_PS_RC: "1" }],
+]) {
+  test(`production install fails closed on ${label}`, async (t) => {
+    const { result, output } = await productionRun(t, env);
+    assert.notEqual(result.status, 0);
+    assert.match(
+      output,
+      /not proven unpublished|cannot list the taskdesk containers/,
+    );
+    assert.doesNotMatch(output, /the API answers/);
+  });
+}
+
+test("the port check also runs on the created, not yet started, containers", async (t) => {
+  const { result, read } = await productionRun(t, {
+    FAKE_INSPECT_LINE: "taskdesk_default|false|5173/tcp |",
+  });
+  assert.notEqual(result.status, 0);
+  const dockerLog = await read("docker.log");
+  assert.match(dockerLog, / up --no-start$/m);
+  assert.doesNotMatch(dockerLog, / up -d --wait$/m);
+});
+
+test("local mode treats traefik's own port binding as ours and ignores compose port's exit code", async (t) => {
+  const f = await fixture(t, { realDeployment: true });
+  const result = run(
+    f,
+    ["--env", "local", "--version", "1.2.3", "--dir", f.path, "--yes"],
+    {
+      FAKE_DOCKER_FULL: "1",
+      FAKE_ASSUME_LOCAL_PROXY: "1",
+      FAKE_DOCKER_LOG: path.join(f.temp, "docker.log"),
+    },
+  );
+  assert.equal(result.status, 0, `${result.stdout}${result.stderr}`);
+});
+
+test("deploy.sh requires buildx up front, with a message naming the cause", async () => {
+  const source = await readFile(path.join(root, "scripts/deploy.sh"), "utf8");
+  assert.match(
+    source,
+    /docker buildx version[^\n]*\n\s*\|\| die "docker buildx is required/,
+  );
+});
+
+test("installer requires buildx and installs it only on Ubuntu", async () => {
+  const source = await readFile(installer, "utf8");
+  assert.match(source, /docker buildx version/);
+  const ubuntu = source.match(/Linux:ubuntu\)[^\n]*/)?.[0] ?? "";
+  assert.match(
+    ubuntu,
+    /apt-get install -y docker\.io docker-compose-v2 docker-buildx/,
+  );
+  const others = source.match(/Linux:debian\|Linux:fedora[^\n]*/)?.[0] ?? "";
+  assert.match(others, /die .*Docker's official repository/);
+  assert.doesNotMatch(others, /apt-get|dnf install/);
+});
+
+test("an existing Docker without buildx needs consent before any persistent writes", async (t) => {
+  const f = await fixture(t);
+  const result = run(
+    f,
+    ["--version", "1.2.3", "--dir", f.path],
+    { FAKE_BUILDX_MISSING: "1" },
+    "y\nn\n",
+  );
+  assert.notEqual(result.status, 0);
+  assert.match(result.stderr, /Docker installation declined/);
+  assert.equal(await stat(f.path).catch(() => null), null);
+});
 
 test("release workflow immutability check parses the padded Digest line, not the legacy sed", async () => {
   const workflow = await readFile(
@@ -495,61 +581,18 @@ test("release workflow immutability check parses the padded Digest line, not the
   );
 });
 
-for (const [label, line] of [
-  [
-    "a missing Digest line",
-    "Name:      ghcr.io/thomasheinthura/taskdesk:v1.2.3",
-  ],
-  ["a truncated digest", `Digest:    sha256:${"a".repeat(63)}`],
-  ["an uppercase digest", `Digest:    sha256:${"A".repeat(64)}`],
-  ["a non-sha256 digest", `Digest:    md5:${"a".repeat(64)}`],
-  ["an empty digest value", "Digest:    "],
-  ["a digest with trailing junk", `Digest:    ${DIGEST_A} extra`],
-  [
-    "a malformed first Digest line followed by a valid one",
-    `Digest:    ${DIGEST_A} extra\\nDigest:    sha256:${"b".repeat(64)}`,
-  ],
-  [
-    "an empty first Digest line followed by a valid one",
-    `Digest:\\nDigest:    sha256:${"b".repeat(64)}`,
-  ],
-]) {
-  test(`production install refuses ${label} and never reaches image verification`, async (t) => {
-    const f = await fixture(t, { realDeployment: true });
-    const result = run(
-      f,
-      [
-        "--env",
-        "production",
-        "--domain",
-        "example.test",
-        "--version",
-        "1.2.3",
-        "--dir",
-        f.path,
-        "--yes",
-      ],
-      {
-        FAKE_DOCKER_FULL: "1",
-        FAKE_PRODUCTION_HOST: "1",
-        FAKE_RESOLVED_DIGEST: DIGEST_A,
-        FAKE_DIGEST_LINE: line,
-        FAKE_DOCKER_LOG: path.join(f.temp, "docker.log"),
-      },
-    );
-    assert.notEqual(result.status, 0);
-    assert.match(
-      `${result.stdout}${result.stderr}`,
-      /must be a full lowercase sha256 digest/,
-    );
-    let cosignLog = "";
-    try {
-      cosignLog = await readFile(path.join(f.temp, "cosign.log"), "utf8");
-    } catch {}
-    assert.doesNotMatch(cosignLog, /thomasheinthura\/taskdesk@/);
-    assert.doesNotMatch(cosignLog, /^verify /m);
-  });
-}
+test("release archive and installer both carry the deploy-checks helper", async () => {
+  const workflow = await readFile(
+    path.join(root, ".github/workflows/release.yml"),
+    "utf8",
+  );
+  const source = await readFile(installer, "utf8");
+  assert.match(workflow, /scripts\/lib\/deploy-checks\.sh \| gzip/);
+  const lists = source.match(/^for (required|member) in [^\n]*/gm) ?? [];
+  assert.equal(lists.length, 2);
+  for (const list of lists)
+    assert.match(list, /scripts\/lib\/deploy-checks\.sh/);
+});
 
 test("release tag and rollback digest commit atomically and retry after rename interruption", async (t) => {
   const f = await fixture(t, { realDeployment: true });
