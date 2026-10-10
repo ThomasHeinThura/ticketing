@@ -38,6 +38,11 @@ async function main() {
   let rows: ReturnType<typeof classifyLegacyMemberships>;
   try {
     client = await pool.connect();
+    // Once the 0090 grant tables exist, only memberships that no active grant projects
+    // still need classification; the migration runner applies the same predicate.
+    const grantTable = await client.query<{ present: boolean }>(
+      `select to_regclass('public.membership_grant') is not null as present`,
+    );
     const membershipResult = await client.query<{
       id: string;
       person_id: string;
@@ -47,8 +52,24 @@ async function main() {
       sees_all: boolean;
       derived_from: string | null;
     }>(
-      `select id, person_id, scope, scope_id, role_id, sees_all, derived_from
-       from public.membership order by id`,
+      grantTable.rows[0]?.present
+        ? `select membership.id, membership.person_id, membership.scope,
+                  membership.scope_id, membership.role_id, membership.sees_all,
+                  membership.derived_from
+             from public.membership membership
+            where not exists (
+              select 1 from public.membership_grant grant_row
+               where grant_row.membership_id = membership.id
+                 and grant_row.person_id = membership.person_id
+                 and grant_row.scope = membership.scope
+                 and grant_row.scope_id = membership.scope_id
+                 and grant_row.role_id = membership.role_id
+                 and grant_row.sees_all = membership.sees_all
+                 and grant_row.revoked_at is null
+            )
+            order by membership.id`
+        : `select id, person_id, scope, scope_id, role_id, sees_all, derived_from
+             from public.membership order by id`,
     );
     const memberships: LegacyMembershipRow[] = membershipResult.rows.map(
       (row) => ({

@@ -2,7 +2,7 @@ import { lstat, readFile } from "node:fs/promises";
 import { join } from "node:path";
 import { createId } from "@paralleldrive/cuid2";
 import { readMigrationFiles } from "drizzle-orm/migrator";
-import type { Pool } from "pg";
+import type { Pool, PoolClient } from "pg";
 import {
   classifyLegacyMemberships,
   validateOwnerApprovedReconciliation,
@@ -133,26 +133,8 @@ async function executeMigrationsWithMembershipCutover(options: {
       latest.rows[0] &&
       Number(latest.rows[0].created_at) >= cutoverEnd.when
     ) {
-      const existingProjection = await client.query<{ missing_count: string }>(
-        `select count(*)::text as missing_count
-           from public.membership membership
-          where not exists (
-            select 1 from public.membership_grant grant_row
-             where grant_row.membership_id = membership.id
-               and grant_row.person_id = membership.person_id
-               and grant_row.scope = membership.scope
-               and grant_row.scope_id = membership.scope_id
-               and grant_row.role_id = membership.role_id
-               and grant_row.sees_all = membership.sees_all
-               and grant_row.revoked_at is null
-          )`,
-      );
-      if (existingProjection.rows[0]?.missing_count !== "0") {
-        throw new Error(
-          "Applied membership cutover has an incomplete grant projection",
-        );
-      }
-      await client.query("ROLLBACK");
+      await repairMembershipProjection(client, options.args);
+      await client.query("COMMIT");
       client.release();
       clientReleased = true;
       await runner.dialect.migrate(
@@ -206,167 +188,11 @@ async function executeMigrationsWithMembershipCutover(options: {
       );
     }
 
-    let approvedGrants: Array<{
-      membershipId: string;
-      rowDigest: string;
-      sourceKind: string;
-      roleId: string;
-      scope: string;
-      scopeId: string;
-      seesAll: boolean;
-      directOrigin?: string;
-      grantedByPersonId?: string;
-      externalIdentityId?: string;
-      identityConnectionId?: string;
-      oidcGroupMappingId?: string;
-      scimGroupMappingId?: string;
-    }> = [];
-    if (inventory.length > 0) {
-      const recordPath = reconciliationPathFromArgs(
-        options.args ?? process.argv,
-      );
-      if (!recordPath) {
-        throw new Error(
-          "Membership provenance cutover requires a complete owner reconciliation file",
-        );
-      }
-      const recordInfo = await lstat(recordPath);
-      if (
-        !recordInfo.isFile() ||
-        recordInfo.isSymbolicLink() ||
-        (recordInfo.mode & 0o077) !== 0 ||
-        recordInfo.size > 4 * 1024 * 1024
-      ) {
-        throw new Error(
-          "Membership reconciliation file must be a private regular file no larger than 4 MiB",
-        );
-      }
-      let rawRecord: unknown;
-      try {
-        rawRecord = JSON.parse(await readFile(recordPath, "utf8")) as unknown;
-      } catch {
-        throw new Error("Membership reconciliation file is not valid JSON");
-      }
-      const validation = validateOwnerApprovedReconciliation(
-        inventory,
-        rawRecord,
-      );
-      if (!validation.ok) {
-        throw new Error(
-          `Membership reconciliation refused: ${validation.reason}`,
-        );
-      }
-      const approval = (rawRecord as { approval: { approverPersonId: string } })
-        .approval;
-      const approver = await client.query<{ person_id: string }>(
-        `select person.id as person_id
-           from public.person person
-           join public."user" auth_user on auth_user.id = person.user_id
-          where person.id = $1 and person.active = true
-            and person.is_placeholder = false and auth_user.role = 'admin'
-          for update of person, auth_user`,
-        [approval.approverPersonId],
-      );
-      if (approver.rowCount !== 1) {
-        throw new Error(
-          "Membership reconciliation approver is not a current instance admin",
-        );
-      }
-
-      const directRecords = validation.grants.filter(
-        (grant) => grant.sourceKind === "direct",
-      );
-      if (
-        directRecords.length !== validation.grants.length ||
-        directRecords.length !== inventory.length ||
-        directRecords.some(
-          (grant) =>
-            grant.directOrigin !== "admin" ||
-            !grant.grantedByPersonId ||
-            inventory.find((row) => row.membershipId === grant.membershipId)
-              ?.roleId !== grant.roleId ||
-            inventory.find((row) => row.membershipId === grant.membershipId)
-              ?.seesAll !== grant.seesAll ||
-            grant.externalIdentityId !== undefined ||
-            grant.identityConnectionId !== undefined ||
-            grant.oidcGroupMappingId !== undefined ||
-            grant.scimGroupMappingId !== undefined,
-        )
-      ) {
-        throw new Error(
-          "Legacy cutover accepts only owner-attested direct grants with the current approver as actor",
-        );
-      }
-      approvedGrants = directRecords;
-    }
-
-    for (const grant of approvedGrants) {
-      const membership = inventory.find(
-        (row) => row.membershipId === grant.membershipId,
-      );
-      if (
-        !membership ||
-        membership.roleId !== grant.roleId ||
-        membership.scope !== grant.scope ||
-        membership.scopeId !== grant.scopeId ||
-        membership.seesAll !== grant.seesAll
-      ) {
-        throw new Error(
-          "Reconciled grant differs from the locked membership row",
-        );
-      }
-      const role = await client.query<{ id: string }>(
-        `select id from public.role
-          where id = $1 and scope = $2
-            and (($2 = 'organisation' and workspace_id is null)
-              or ($2 = 'workspace' and workspace_id = $3))
-          for update`,
-        [grant.roleId, grant.scope, grant.scopeId],
-      );
-      const target = await client.query<{ id: string }>(
-        grant.scope === "organisation"
-          ? "select id from public.organisation where id = $1 and active = true and deleted_at is null for update"
-          : `select workspace.id from public.workspace workspace
-              join public.organisation organisation
-                on organisation.id = workspace.organisation_id
-             where workspace.id = $1 and organisation.active = true
-               and organisation.deleted_at is null
-             for update of workspace`,
-        [grant.scopeId],
-      );
-      if (role.rowCount !== 1 || target.rowCount !== 1) {
-        throw new Error(
-          "Reconciled membership role or scope is no longer valid",
-        );
-      }
-      const person = await client.query<{ id: string }>(
-        `select person.id from public.person person
-          left join public.workspace workspace on workspace.id = $2
-          where person.id = $1 and person.active = true
-            and person.is_placeholder = false
-            and (($3 = 'organisation' and person.organisation_id = $2)
-              or ($3 = 'workspace' and workspace.organisation_id = person.organisation_id))
-            and (workspace.id is null or workspace.organisation_id = person.organisation_id)
-          for update of person`,
-        [membership.personId, grant.scopeId, grant.scope],
-      );
-      if (person.rowCount !== 1) {
-        throw new Error(
-          "Reconciled membership person or target is no longer valid",
-        );
-      }
-      const grantor = await client.query<{ id: string }>(
-        `select id from public.person
-          where id = $1 and side = 'staff' and is_placeholder = false
-          for update`,
-        [grant.grantedByPersonId],
-      );
-      if (grantor.rowCount !== 1) {
-        throw new Error(
-          "Reconciled direct grant actor is not a recorded staff person",
-        );
-      }
-    }
+    const approvedGrants = await approveLegacyReconciliation(
+      client,
+      inventory,
+      options.args,
+    );
 
     for (let index = cutoverIndex; index <= cutoverEndIndex; index += 1) {
       const migration = migrations[index];
@@ -381,22 +207,7 @@ async function executeMigrationsWithMembershipCutover(options: {
             (row) => row.membershipId === grant.membershipId,
           );
           if (!membership) throw new Error("Reconciled membership disappeared");
-          await client.query(
-            `insert into public.membership_grant
-              (id, membership_id, person_id, scope, scope_id, role_id, source_kind,
-               sees_all, direct_origin, granted_by_person_id)
-             values ($1,$2,$3,$4,$5,$6,'direct',$7,'admin',$8)`,
-            [
-              createId(),
-              grant.membershipId,
-              membership.personId,
-              grant.scope,
-              grant.scopeId,
-              grant.roleId,
-              grant.seesAll,
-              grant.grantedByPersonId,
-            ],
-          );
+          await insertApprovedDirectGrant(client, membership, grant);
         }
       }
       await client.query(
@@ -440,4 +251,303 @@ async function executeMigrationsWithMembershipCutover(options: {
     runner.session,
     config,
   );
+}
+
+type LegacyInventory = ReturnType<typeof classifyLegacyMemberships>;
+
+/**
+ * Validate the owner reconciliation record for every unresolved legacy membership and
+ * re-verify each referenced role, target, person and actor under the caller's table
+ * locks. One gate shared by the 0090 cutover and the post-cutover repair.
+ */
+async function approveLegacyReconciliation(
+  client: PoolClient,
+  inventory: LegacyInventory,
+  args: readonly string[] | undefined,
+) {
+  let approvedGrants: Array<{
+    membershipId: string;
+    rowDigest: string;
+    sourceKind: string;
+    roleId: string;
+    scope: string;
+    scopeId: string;
+    seesAll: boolean;
+    directOrigin?: string;
+    grantedByPersonId?: string;
+    externalIdentityId?: string;
+    identityConnectionId?: string;
+    oidcGroupMappingId?: string;
+    scimGroupMappingId?: string;
+  }> = [];
+  if (inventory.length > 0) {
+    const recordPath = reconciliationPathFromArgs(args ?? process.argv);
+    if (!recordPath) {
+      throw new Error(
+        "Membership provenance cutover requires a complete owner reconciliation file",
+      );
+    }
+    const recordInfo = await lstat(recordPath);
+    if (
+      !recordInfo.isFile() ||
+      recordInfo.isSymbolicLink() ||
+      (recordInfo.mode & 0o077) !== 0 ||
+      recordInfo.size > 4 * 1024 * 1024
+    ) {
+      throw new Error(
+        "Membership reconciliation file must be a private regular file no larger than 4 MiB",
+      );
+    }
+    let rawRecord: unknown;
+    try {
+      rawRecord = JSON.parse(await readFile(recordPath, "utf8")) as unknown;
+    } catch {
+      throw new Error("Membership reconciliation file is not valid JSON");
+    }
+    const validation = validateOwnerApprovedReconciliation(
+      inventory,
+      rawRecord,
+    );
+    if (!validation.ok) {
+      throw new Error(
+        `Membership reconciliation refused: ${validation.reason}`,
+      );
+    }
+    const approval = (rawRecord as { approval: { approverPersonId: string } })
+      .approval;
+    const approver = await client.query<{ person_id: string }>(
+      `select person.id as person_id
+           from public.person person
+           join public."user" auth_user on auth_user.id = person.user_id
+          where person.id = $1 and person.active = true
+            and person.is_placeholder = false and auth_user.role = 'admin'
+          for update of person, auth_user`,
+      [approval.approverPersonId],
+    );
+    if (approver.rowCount !== 1) {
+      throw new Error(
+        "Membership reconciliation approver is not a current instance admin",
+      );
+    }
+
+    const directRecords = validation.grants.filter(
+      (grant) => grant.sourceKind === "direct",
+    );
+    if (
+      directRecords.length !== validation.grants.length ||
+      directRecords.length !== inventory.length ||
+      directRecords.some(
+        (grant) =>
+          grant.directOrigin !== "admin" ||
+          !grant.grantedByPersonId ||
+          inventory.find((row) => row.membershipId === grant.membershipId)
+            ?.roleId !== grant.roleId ||
+          inventory.find((row) => row.membershipId === grant.membershipId)
+            ?.seesAll !== grant.seesAll ||
+          grant.externalIdentityId !== undefined ||
+          grant.identityConnectionId !== undefined ||
+          grant.oidcGroupMappingId !== undefined ||
+          grant.scimGroupMappingId !== undefined,
+      )
+    ) {
+      throw new Error(
+        "Legacy cutover accepts only owner-attested direct grants with the current approver as actor",
+      );
+    }
+    approvedGrants = directRecords;
+  }
+
+  for (const grant of approvedGrants) {
+    const membership = inventory.find(
+      (row) => row.membershipId === grant.membershipId,
+    );
+    if (
+      !membership ||
+      membership.roleId !== grant.roleId ||
+      membership.scope !== grant.scope ||
+      membership.scopeId !== grant.scopeId ||
+      membership.seesAll !== grant.seesAll
+    ) {
+      throw new Error(
+        "Reconciled grant differs from the locked membership row",
+      );
+    }
+    const role = await client.query<{ id: string }>(
+      `select id from public.role
+          where id = $1 and scope = $2
+            and (($2 = 'organisation' and workspace_id is null)
+              or ($2 = 'workspace' and workspace_id = $3))
+          for update`,
+      [grant.roleId, grant.scope, grant.scopeId],
+    );
+    const target = await client.query<{ id: string }>(
+      grant.scope === "organisation"
+        ? "select id from public.organisation where id = $1 and active = true and deleted_at is null for update"
+        : `select workspace.id from public.workspace workspace
+              join public.organisation organisation
+                on organisation.id = workspace.organisation_id
+             where workspace.id = $1 and organisation.active = true
+               and organisation.deleted_at is null
+             for update of workspace`,
+      [grant.scopeId],
+    );
+    if (role.rowCount !== 1 || target.rowCount !== 1) {
+      throw new Error("Reconciled membership role or scope is no longer valid");
+    }
+    const person = await client.query<{ id: string }>(
+      `select person.id from public.person person
+          left join public.workspace workspace on workspace.id = $2
+          where person.id = $1 and person.active = true
+            and person.is_placeholder = false
+            and (($3 = 'organisation' and person.organisation_id = $2)
+              or ($3 = 'workspace' and workspace.organisation_id = person.organisation_id))
+            and (workspace.id is null or workspace.organisation_id = person.organisation_id)
+          for update of person`,
+      [membership.personId, grant.scopeId, grant.scope],
+    );
+    if (person.rowCount !== 1) {
+      throw new Error(
+        "Reconciled membership person or target is no longer valid",
+      );
+    }
+    const grantor = await client.query<{ id: string }>(
+      `select id from public.person
+          where id = $1 and side = 'staff' and is_placeholder = false
+          for update`,
+      [grant.grantedByPersonId],
+    );
+    if (grantor.rowCount !== 1) {
+      throw new Error(
+        "Reconciled direct grant actor is not a recorded staff person",
+      );
+    }
+  }
+
+  return approvedGrants;
+}
+
+type ApprovedGrants = Awaited<ReturnType<typeof approveLegacyReconciliation>>;
+
+async function insertApprovedDirectGrant(
+  client: PoolClient,
+  membership: LegacyInventory[number],
+  grant: ApprovedGrants[number],
+) {
+  await client.query(
+    `insert into public.membership_grant
+      (id, membership_id, person_id, scope, scope_id, role_id, source_kind,
+       sees_all, direct_origin, granted_by_person_id)
+     values ($1,$2,$3,$4,$5,$6,'direct',$7,'admin',$8)`,
+    [
+      createId(),
+      grant.membershipId,
+      membership.personId,
+      grant.scope,
+      grant.scopeId,
+      grant.roleId,
+      grant.seesAll,
+      grant.grantedByPersonId,
+    ],
+  );
+}
+
+const UNPROJECTED_MEMBERSHIP_SQL = `select membership.id, membership.person_id, membership.scope,
+       membership.scope_id, membership.role_id, membership.sees_all, membership.derived_from
+  from public.membership membership
+ where not exists (
+   select 1 from public.membership_grant grant_row
+    where grant_row.membership_id = membership.id
+      and grant_row.person_id = membership.person_id
+      and grant_row.scope = membership.scope
+      and grant_row.scope_id = membership.scope_id
+      and grant_row.role_id = membership.role_id
+      and grant_row.sees_all = membership.sees_all
+      and grant_row.revoked_at is null
+ )
+ order by membership.id`;
+
+/**
+ * Repair for a database that already applied the 0090-0093 grant tables (for example from
+ * the schema spine) but whose effective memberships were never projected into grants.
+ * It is the same gate as the cutover, restricted to the unprojected rows: every such row
+ * needs an owner-approved direct/admin decision (ADR 0015), the approver must be a current
+ * instance admin, and the grants are inserted in the caller's transaction under the
+ * parent-first table locks. A fully projected database is a no-op, so reruns are safe;
+ * a row without a decision stops startup before any write.
+ */
+async function repairMembershipProjection(
+  client: PoolClient,
+  args: readonly string[] | undefined,
+) {
+  const missing = await client.query<{
+    id: string;
+    person_id: string;
+    scope: string;
+    scope_id: string;
+    role_id: string;
+    sees_all: boolean;
+    derived_from: string | null;
+  }>(UNPROJECTED_MEMBERSHIP_SQL);
+  if (missing.rows.length === 0) return;
+
+  const inventory = classifyLegacyMemberships(
+    missing.rows.map((row) => ({
+      id: row.id,
+      personId: row.person_id,
+      scope: row.scope,
+      scopeId: row.scope_id,
+      roleId: row.role_id,
+      seesAll: row.sees_all,
+      derivedFrom: row.derived_from,
+    })),
+    [],
+  );
+  const effectiveArgs = args ?? process.argv;
+  if (reconciliationPathFromArgs(effectiveArgs) === undefined) {
+    throw new Error(
+      `Applied membership cutover has an incomplete grant projection: ${inventory.length} membership row(s) have no grant. ` +
+        "Run `pnpm --filter @taskdesk/api db:identity-provenance-preflight --output <private-file>` to produce the private " +
+        "inventory, obtain an owner-approved reconciliation file (ADR 0015), then rerun the migration with " +
+        "`--membership-provenance-reconciliation <private-file>`",
+    );
+  }
+  // A conflicting active direct grant for the same projection key cannot be repaired
+  // by inserting another one; stop with the offending count rather than guessing.
+  const conflicting = await client.query<{ conflicts: string }>(
+    `select count(*)::text as conflicts
+       from public.membership membership
+       join public.membership_grant grant_row
+         on grant_row.person_id = membership.person_id
+        and grant_row.scope = membership.scope
+        and grant_row.scope_id = membership.scope_id
+        and grant_row.source_kind = 'direct'
+        and grant_row.revoked_at is null
+      where membership.id = any($1::text[])`,
+    [inventory.map((row) => row.membershipId)],
+  );
+  if (conflicting.rows[0]?.conflicts !== "0") {
+    throw new Error(
+      "Membership projection repair refused: an unprojected membership conflicts with an existing direct grant for the same person and scope",
+    );
+  }
+
+  const approvedGrants = await approveLegacyReconciliation(
+    client,
+    inventory,
+    args,
+  );
+  for (const grant of approvedGrants) {
+    const membership = inventory.find(
+      (row) => row.membershipId === grant.membershipId,
+    );
+    if (!membership) throw new Error("Reconciled membership disappeared");
+    await insertApprovedDirectGrant(client, membership, grant);
+  }
+
+  const remaining = await client.query(UNPROJECTED_MEMBERSHIP_SQL);
+  if (remaining.rows.length !== 0) {
+    throw new Error(
+      "Membership grant repair does not match the effective projection",
+    );
+  }
 }

@@ -156,6 +156,15 @@ group or other permissions and is capped at 4 MiB. New empty installations need 
 file. A session-level advisory lock serializes all TaskDesk migration runners, while the
 parent/table locks protect the legacy rows and their role/person targets through commit.
 
+**Repair of a database already past the cutover.** A database that applied 0088 to 0119 without
+running the cut-over (the schema spine) has the grant tables but unprojected memberships. The
+same runner treats that as the same gate, restricted to the memberships that no active grant
+projects: it refuses with a pointer to the preflight and writes nothing unless the owner
+reconciliation file covers every such row, then validates and inserts the direct/admin grants in
+one transaction under the parent-first locks. A projected database is a no-op, so the repair is
+idempotent. The operator procedure is in the
+[runbook](../../05-operations/runbook.md#startup-refuses-incomplete-grant-projection-database-already-at-0119).
+
 #### Legacy-row classification and reconciliation gate
 
 The preflight emits a private, deterministic inventory keyed by legacy `membership.id`,
