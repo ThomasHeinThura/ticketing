@@ -70,6 +70,19 @@ function utcDate(value: Date | string | null | undefined): Date | null {
 }
 
 /**
+ * Bind a JS instant into a `timestamp without time zone` column in this schema's one
+ * convention, UTC wall clock (see `utils/db-time.ts`). A bare `Date` parameter is serialised
+ * by node-postgres in the PROCESS time zone with an offset, and PostgreSQL drops the offset
+ * when casting to `timestamp`, so a lease or back-off would be shifted by the process offset.
+ * An ISO string is always UTC and a `timestamp` cast of it ignores the trailing `Z`.
+ */
+function utc(value: Date | string | null | undefined) {
+  const date = utcDate(value);
+  if (!date) throw new Error("Notification timestamp was unavailable");
+  return sql`${date.toISOString()}::timestamp`;
+}
+
+/**
  * A peek, not a claim: the `FOR UPDATE SKIP LOCKED` row lock is released when the calling
  * transaction commits, so two workers can read the same row. Correctness never depends on
  * this lock; the fence is `acquireNotificationReservation` (delivery row lock, `pending`
@@ -198,12 +211,12 @@ export async function acquireNotificationReservation(
       UPDATE outbox_dedupe_reservation
          SET owner_delivery_id = ${input.ownerDeliveryId},
              lease_token = ${token},
-             lease_expires_at = ${sampledAt}::timestamp + interval '60 seconds'
+             lease_expires_at = ${utc(sampledAt)} + interval '60 seconds'
        WHERE reservation_key = ${key}
          AND recipient_person_id = ${input.recipientPersonId}
          AND channel = ${input.channel}
          AND dedupe_key = ${input.dedupeKey}
-         AND (lease_token = ${proposedToken} OR lease_expires_at <= ${sampledAt}::timestamp)
+         AND (lease_token = ${proposedToken} OR lease_expires_at <= ${utc(sampledAt)})
       RETURNING lease_expires_at AS "leaseExpiresAt"
     `);
     const leaseExpiresAt = utcDate(
@@ -281,7 +294,7 @@ export async function updateUnreservedNotificationDelivery(
     const changed = await tx.execute(sql`
       UPDATE notification_delivery
          SET state = 'suppressed', last_error = ${update.reason},
-             delivered_at = NULL, updated_at = ${sampledAt}::timestamp
+             delivered_at = NULL, updated_at = ${utc(sampledAt)}
        WHERE id = ${deliveryId} AND state = 'pending'
        RETURNING id
     `);
@@ -289,8 +302,8 @@ export async function updateUnreservedNotificationDelivery(
   }
   const changed = await tx.execute(sql`
     UPDATE notification_delivery
-       SET next_attempt_at = ${update.until}, last_error = ${update.reason},
-           updated_at = ${sampledAt}::timestamp
+       SET next_attempt_at = ${utc(update.until)}, last_error = ${update.reason},
+           updated_at = ${utc(sampledAt)}
      WHERE id = ${deliveryId} AND state = 'pending'
      RETURNING id
   `);
@@ -383,7 +396,7 @@ export async function authorizeNotificationProviderAttempt(
   if (current.attempts >= NOTIFICATION_ATTEMPT_LIMIT) {
     await tx.execute(sql`
       UPDATE notification_delivery
-         SET state = 'dead', last_error = 'attempt_limit', updated_at = ${sampledAt}::timestamp
+         SET state = 'dead', last_error = 'attempt_limit', updated_at = ${utc(sampledAt)}
        WHERE id = ${deliveryId} AND state = 'pending'
     `);
     await tx.execute(sql`
@@ -396,10 +409,10 @@ export async function authorizeNotificationProviderAttempt(
   }
   const due = await tx.execute(sql`
     UPDATE notification_delivery
-       SET attempts = attempts + 1, updated_at = ${sampledAt}::timestamp
+       SET attempts = attempts + 1, updated_at = ${utc(sampledAt)}
      WHERE id = ${deliveryId}
        AND state = 'pending'
-       AND next_attempt_at <= ${sampledAt}::timestamp
+       AND next_attempt_at <= ${utc(sampledAt)}
        AND attempts = ${current.attempts}
     RETURNING attempts
   `);
@@ -451,8 +464,8 @@ export async function completeNotificationDelivery(
   if (outcome.kind === "ambiguous") {
     await tx.execute(sql`
       UPDATE notification_delivery
-         SET next_attempt_at = GREATEST(next_attempt_at, ${current.leaseExpiresAt}::timestamp),
-             last_error = 'provider_ambiguous', updated_at = ${sampledAt}::timestamp
+         SET next_attempt_at = GREATEST(next_attempt_at, ${utc(current.leaseExpiresAt)}),
+             last_error = 'provider_ambiguous', updated_at = ${utc(sampledAt)}
        WHERE id = ${deliveryId} AND state = 'pending'
     `);
     return true;
@@ -463,9 +476,9 @@ export async function completeNotificationDelivery(
     const changed = await tx.execute(sql`
       UPDATE notification_delivery
          SET state = ${state},
-             delivered_at = CASE WHEN ${state} = 'delivered' THEN ${sampledAt}::timestamp ELSE NULL END,
+             delivered_at = CASE WHEN ${state} = 'delivered' THEN ${utc(sampledAt)} ELSE NULL END,
              last_error = NULL,
-             updated_at = ${sampledAt}::timestamp
+             updated_at = ${utc(sampledAt)}
        WHERE id = ${deliveryId} AND state = 'pending'
        RETURNING id
     `);
@@ -475,14 +488,14 @@ export async function completeNotificationDelivery(
     if (retryDelay === null) {
       await tx.execute(sql`
         UPDATE notification_delivery
-           SET state = 'dead', last_error = ${outcome.errorCode}, updated_at = ${sampledAt}::timestamp
+           SET state = 'dead', last_error = ${outcome.errorCode}, updated_at = ${utc(sampledAt)}
          WHERE id = ${deliveryId} AND state = 'pending'
       `);
     } else {
       await tx.execute(sql`
         UPDATE notification_delivery
-           SET next_attempt_at = ${sampledAt}::timestamp + (${retryDelay} * interval '1 millisecond'),
-               last_error = ${outcome.errorCode}, updated_at = ${sampledAt}::timestamp
+           SET next_attempt_at = ${utc(sampledAt)} + (${retryDelay} * interval '1 millisecond'),
+               last_error = ${outcome.errorCode}, updated_at = ${utc(sampledAt)}
          WHERE id = ${deliveryId} AND state = 'pending'
       `);
     }
@@ -492,7 +505,7 @@ export async function completeNotificationDelivery(
      WHERE reservation_key = ${reservation.key}
        AND owner_delivery_id = ${deliveryId}
        AND lease_token = ${reservation.leaseToken}
-       AND lease_expires_at > ${sampledAt}::timestamp
+       AND lease_expires_at > ${utc(sampledAt)}
     RETURNING reservation_key
   `);
   return rows<unknown>(released).length === 1;
@@ -534,11 +547,11 @@ export async function renewNotificationReservation(
   }
   const renewed = await tx.execute(sql`
     UPDATE outbox_dedupe_reservation
-       SET lease_expires_at = ${sampledAt}::timestamp + interval '60 seconds'
+       SET lease_expires_at = ${utc(sampledAt)} + interval '60 seconds'
      WHERE reservation_key = ${reservation.key}
        AND owner_delivery_id = ${reservation.ownerDeliveryId}
        AND lease_token = ${reservation.leaseToken}
-       AND lease_expires_at > ${sampledAt}::timestamp
+       AND lease_expires_at > ${utc(sampledAt)}
     RETURNING lease_expires_at AS "leaseExpiresAt"
   `);
   const leaseExpiresAt = utcDate(
@@ -585,13 +598,13 @@ export async function deferNotificationDelivery(
   )
     return false;
   await tx.execute(sql`
-    UPDATE notification_delivery SET next_attempt_at = ${until}, last_error = ${reason},
-      updated_at = ${sampledAt}::timestamp WHERE id = ${deliveryId} AND state = 'pending'
+    UPDATE notification_delivery SET next_attempt_at = ${utc(until)}, last_error = ${reason},
+      updated_at = ${utc(sampledAt)} WHERE id = ${deliveryId} AND state = 'pending'
   `);
   await tx.execute(sql`
     DELETE FROM outbox_dedupe_reservation WHERE reservation_key = ${reservation.key}
       AND owner_delivery_id = ${deliveryId} AND lease_token = ${reservation.leaseToken}
-      AND lease_expires_at > ${sampledAt}::timestamp
+      AND lease_expires_at > ${utc(sampledAt)}
   `);
   return true;
 }
@@ -634,7 +647,7 @@ export async function releaseNotificationReservation(
   await tx.execute(sql`
     DELETE FROM outbox_dedupe_reservation WHERE reservation_key = ${reservation.key}
       AND owner_delivery_id = ${deliveryId} AND lease_token = ${reservation.leaseToken}
-      AND lease_expires_at > ${sampledAt}::timestamp
+      AND lease_expires_at > ${utc(sampledAt)}
   `);
   return true;
 }

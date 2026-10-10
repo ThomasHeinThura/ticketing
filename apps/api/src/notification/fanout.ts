@@ -5,6 +5,7 @@ import {
   type DomainEventEnvelope,
   enqueueOutboxEvent,
 } from "../events/outbox";
+import { dbNowUtc } from "../utils/db-time";
 import { notificationDedupeKey } from "./delivery-primitives";
 import { resolveNotificationPreference } from "./preferences";
 
@@ -179,14 +180,18 @@ export async function materializeNotificationFanout(
         personId: candidate.personId,
         channel,
       });
+      // Explicit UTC wall-clock timestamps: the column defaults are now(), which a database
+      // session ahead of or behind UTC stores as its local wall clock, while the outbox
+      // convention (utils/db-time.ts) is the UTC wall clock.
       await tx.execute(sql`
         INSERT INTO notification_delivery
           (id, event_id, recipient_person_id, channel, workspace_id, organisation_id,
-           dedupe_key, digest_id, state, attempts)
+           dedupe_key, digest_id, state, attempts, next_attempt_at, created_at, updated_at)
         VALUES
           (${createId()}, ${event.id}, ${candidate.personId}, ${channel},
            ${event.scope.workspaceId}, ${"organisationId" in event.scope ? (event.scope.organisationId ?? null) : null},
-           ${dedupeKey}, ${digestId}, 'pending', 0)
+           ${dedupeKey}, ${digestId}, 'pending', 0,
+           ${dbNowUtc()}, ${dbNowUtc()}, ${dbNowUtc()})
         ON CONFLICT (event_id, recipient_person_id, channel) DO NOTHING
       `);
     }

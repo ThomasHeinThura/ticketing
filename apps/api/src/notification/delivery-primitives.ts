@@ -60,6 +60,13 @@ export function notificationReservationKey(input: {
     .digest();
 }
 
+/** Reservation lease length, in the repository's SQL (60 seconds). */
+export const NOTIFICATION_LEASE_MS = 60_000;
+/** Reservation renewal cadence: a quarter of the lease. */
+export const NOTIFICATION_RENEWAL_INTERVAL_MS = 15_000;
+/** Provider call deadline: half of the lease, so a send cannot outlive its fence. */
+export const NOTIFICATION_PROVIDER_DEADLINE_MS = 30_000;
+
 export const NOTIFICATION_ATTEMPT_LIMIT = 6;
 
 const RETRY_BACKOFF_MS = [

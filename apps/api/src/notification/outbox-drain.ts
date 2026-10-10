@@ -9,14 +9,17 @@ import {
   hasRecentNotificationSuccess,
   NotificationReservationContentionError,
   type ReservationToken,
-  releaseNotificationReservation,
   renewNotificationReservation,
   updateUnreservedNotificationDelivery,
 } from "../database/repositories/notification-delivery.repository";
 import type { DbTransaction } from "../events/outbox";
+import { logTaskDesk } from "../instance/observability/runtime";
 import { evaluateCurrentNotificationReachAndPreference } from "./current-eligibility";
 import {
   callNotificationProvider,
+  NOTIFICATION_LEASE_MS,
+  NOTIFICATION_PROVIDER_DEADLINE_MS,
+  NOTIFICATION_RENEWAL_INTERVAL_MS,
   NOTIFICATION_UNRESOLVED_BACKOFF_MS,
   NotificationProviderDeadlineExceeded,
 } from "./delivery-primitives";
@@ -173,11 +176,56 @@ async function renewUntilStopped(
   }
 }
 
+/**
+ * The renewal cadence and provider deadline must keep the fence alive for the whole send:
+ * finite and positive, a renewal at least twice per lease, and a deadline inside the lease.
+ */
+function assertDrainTimings(
+  renewalIntervalMs: number,
+  providerDeadlineMs: number,
+): void {
+  if (
+    !Number.isFinite(renewalIntervalMs) ||
+    renewalIntervalMs <= 0 ||
+    renewalIntervalMs >= NOTIFICATION_LEASE_MS / 2
+  )
+    throw new RangeError(
+      "Notification renewal interval must be finite, above 0 and below half the lease",
+    );
+  if (
+    !Number.isFinite(providerDeadlineMs) ||
+    providerDeadlineMs <= 0 ||
+    providerDeadlineMs >= NOTIFICATION_LEASE_MS
+  )
+    throw new RangeError(
+      "Notification provider deadline must be finite, above 0 and below the lease",
+    );
+}
+
+/**
+ * Log an evaluator/preflight failure through the application logger. The logger is a
+ * closed allowlist by design (no error objects, ids or free text), so only the module,
+ * message key and a failed result are recorded; the delivery row keeps `evaluator_error`.
+ */
+function logEvaluatorFailure(): void {
+  logTaskDesk({
+    module: "jobs",
+    message: "jobs.failure",
+    level: "error",
+    result: "failed",
+  });
+}
+
 /** Processes at most one immediate child; the scheduled outbox-drain calls repeatedly. */
 export async function processNextNotificationDelivery(
   runtime: NotificationOutboxRuntime,
   options: NotificationDrainOptions = {},
 ): Promise<NotificationDrainResult> {
+  const renewalIntervalMs =
+    options.renewalIntervalMs ?? NOTIFICATION_RENEWAL_INTERVAL_MS;
+  const providerDeadlineMs =
+    options.providerDeadlineMs ?? NOTIFICATION_PROVIDER_DEADLINE_MS;
+  assertDrainTimings(renewalIntervalMs, providerDeadlineMs);
   const delivery = await db.transaction((tx) =>
     claimNextNotificationDelivery(tx),
   );
@@ -191,6 +239,7 @@ export async function processNextNotificationDelivery(
       runtime.evaluateCurrentEligibility(tx, delivery),
     );
   } catch {
+    logEvaluatorFailure();
     await backOff(delivery, "evaluator_error");
     return { kind: "deferred", reason: "evaluator_error" };
   }
@@ -291,6 +340,7 @@ export async function processNextNotificationDelivery(
     })
     .catch(() => null);
   if (preflightOrNull === null) {
+    logEvaluatorFailure();
     await backOff(delivery, "evaluator_error", reservation);
     return { kind: "deferred", reason: "evaluator_error" };
   }
@@ -328,7 +378,7 @@ export async function processNextNotificationDelivery(
   const renewal = renewUntilStopped(
     reservation,
     controller,
-    options.renewalIntervalMs ?? 15_000,
+    renewalIntervalMs,
   ).catch((error) => {
     controller.abort(
       error instanceof Error ? error : new Error("Notification renewal failed"),
@@ -344,7 +394,7 @@ export async function processNextNotificationDelivery(
         }),
       {
         signal: controller.signal,
-        deadlineMs: options.providerDeadlineMs ?? 30_000,
+        deadlineMs: providerDeadlineMs,
       },
     );
     outcome = "delivered";

@@ -334,7 +334,12 @@ facts omit ancestor projects and the owner team, which only over-suppresses. (6)
 `notify.*` adapter must strip CR/LF and control characters from titles before using them in
 a subject or header. The scheduler loop must also tolerate rows backed off for
 `destination_unresolved`, `quiet_hours_unresolved`, `evaluator_error` and
-`reservation_contention` (30 s, no attempt consumed).
+`reservation_contention` (30 s, no attempt consumed). (7) A permanently failing evaluator is retried every 30 s forever (logged only as a
+closed `jobs.failure` event); an age- or count-based dead-letter for `evaluator_error` is a
+design change to be decided before wiring. (8) `notification_delivery` timestamp columns
+default to `now()`, which a database session ahead of or behind UTC stores as local wall
+clock; every writer must set UTC explicitly (fan-out does) until a migration changes the
+defaults.
 
 ## Metrics snapshots
 
