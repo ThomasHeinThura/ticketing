@@ -1,6 +1,6 @@
 /**
- * `session-cleanup` — the half of `docs/01-architecture/background-jobs.md`'s job that this
- * pull request implements (expired sessions), and the legal-hold rule it must honour.
+ * `session-cleanup` — expired-session hold behavior and the hold-exempt expired notification
+ * reservation cleanup assigned by `docs/01-architecture/background-jobs.md`.
  *
  * `data-model.md` §2: "An **open** row (`lifted_at is null`) suspends `audit-purge`, the
  * soft-delete purge in `session-cleanup`, `attachment-gc` and every hard delete for that
@@ -10,12 +10,13 @@
  * Every hold test is two-sided — an equivalent un-held session is deleted in the same run —
  * so a passing assertion cannot be "nothing was deleted because nothing matched".
  */
-import { randomUUID } from "node:crypto";
+import { randomBytes, randomUUID } from "node:crypto";
 import { eq, sql } from "drizzle-orm";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import db, { schema } from "../../apps/api/src/database";
 import { withJobLease } from "../../apps/api/src/scheduler/leader-lock";
 import {
+  deleteExpiredNotificationReservations,
   deleteExpiredSessions,
   runSessionCleanup,
 } from "../../apps/api/src/scheduler/session-cleanup";
@@ -100,6 +101,51 @@ async function sessionExists(sessionId: string) {
   return row !== undefined;
 }
 
+async function makeReservation(
+  member: Awaited<ReturnType<typeof createWorkspaceMember>>,
+  expired: boolean,
+) {
+  const [person] = await db
+    .select({ id: schema.personTable.id })
+    .from(schema.personTable)
+    .where(eq(schema.personTable.userId, member.user.id))
+    .limit(1);
+  if (!person) throw new Error("makeReservation: staff person was not created");
+  const eventId = `session-cleanup-event-${randomUUID()}`;
+  const deliveryId = `session-cleanup-delivery-${randomUUID()}`;
+  const reservationKey = randomBytes(32);
+  const now = new Date();
+  await db.execute(sql`
+    INSERT INTO outbox (event_id, kind, payload, workspace_id, organisation_id)
+    VALUES (${eventId}, 'work_item.assigned', '{}'::jsonb,
+      ${member.workspace.id}, ${member.workspace.organisationId})
+  `);
+  await db.execute(sql`
+    INSERT INTO notification_delivery
+      (id, event_id, recipient_person_id, channel, workspace_id, organisation_id, dedupe_key)
+    VALUES (${deliveryId}, ${eventId}, ${person.id}, 'notify.email',
+      ${member.workspace.id}, ${member.workspace.organisationId}, ${`session-cleanup:${eventId}`})
+  `);
+  const leaseExpiresAt = new Date(
+    now.getTime() + (expired ? -HOUR_MS : HOUR_MS),
+  ).toISOString();
+  await db.execute(sql`
+    INSERT INTO outbox_dedupe_reservation
+      (reservation_key, recipient_person_id, channel, dedupe_key,
+       owner_delivery_id, lease_token, lease_expires_at)
+    VALUES (${reservationKey}, ${person.id}, 'notify.email', ${`session-cleanup:${eventId}`},
+      ${deliveryId}, ${randomUUID()}, ${leaseExpiresAt}::timestamp)
+  `);
+  return { personId: person.id, reservationKey, deliveryId };
+}
+
+async function reservationExists(reservationKey: Buffer) {
+  const result = await db.execute(sql`
+    SELECT 1 FROM outbox_dedupe_reservation WHERE reservation_key = ${reservationKey}
+  `);
+  return result.rows.length > 0;
+}
+
 async function placeHold(
   scope: "organisation" | "person",
   scopeId: string,
@@ -153,6 +199,43 @@ describe("API integration: session-cleanup's expired-session purge and legal hol
 
       expect(await deleteExpiredSessions()).toBe(1);
       expect(await deleteExpiredSessions()).toBe(0);
+    });
+  });
+
+  describe("expired notification reservation cleanup", () => {
+    it("deletes expired reservation rows and retains live rows", async () => {
+      const expiredMember = await createWorkspaceMember();
+      const liveMember = await createWorkspaceMember();
+      const expired = await makeReservation(expiredMember, true);
+      const live = await makeReservation(liveMember, false);
+
+      expect(await deleteExpiredNotificationReservations()).toBe(1);
+      expect(await reservationExists(expired.reservationKey)).toBe(false);
+      expect(await reservationExists(live.reservationKey)).toBe(true);
+      expect(await deleteExpiredNotificationReservations()).toBe(0);
+    });
+
+    it("deletes expired reservations despite open person and organisation holds", async () => {
+      const heldPersonMember = await createWorkspaceMember();
+      const heldOrganisationMember = await createWorkspaceMember();
+      const heldPerson = await makeReservation(heldPersonMember, true);
+      const heldOrganisation = await makeReservation(
+        heldOrganisationMember,
+        true,
+      );
+      await placeHold("person", heldPerson.personId, heldPersonMember.user.id);
+      await placeHold(
+        "organisation",
+        heldOrganisationMember.workspace.organisationId,
+        heldOrganisationMember.user.id,
+      );
+
+      expect(await deleteExpiredNotificationReservations()).toBe(2);
+      expect(await reservationExists(heldPerson.reservationKey)).toBe(false);
+      expect(await reservationExists(heldOrganisation.reservationKey)).toBe(
+        false,
+      );
+      expect(await deleteExpiredNotificationReservations()).toBe(0);
     });
   });
 
@@ -281,15 +364,18 @@ describe("API integration: session-cleanup's expired-session purge and legal hol
     it("runs under the lease and reports what it deleted", async () => {
       const member = await createWorkspaceMember();
       await makeSession(member.user.id, true);
+      await makeReservation(member, true);
 
       const outcome = await runSessionCleanup();
 
       expect(outcome.sessionsDeleted).toBe(1);
+      expect(outcome.notificationReservationsDeleted).toBe(1);
     });
 
     it("emits the structured log line background-jobs.md asks of every run", async () => {
       const member = await createWorkspaceMember();
       await makeSession(member.user.id, true);
+      await makeReservation(member, true);
       const logged = vi.spyOn(console, "log").mockImplementation(() => {});
 
       await runSessionCleanup();
@@ -300,7 +386,7 @@ describe("API integration: session-cleanup's expired-session purge and legal hol
       expect(lines).toHaveLength(1);
       expect(JSON.parse(lines[0] as string)).toMatchObject({
         job: "session-cleanup",
-        itemsProcessed: 1,
+        itemsProcessed: 2,
         outcome: "ok",
       });
       expect(typeof JSON.parse(lines[0] as string).durationMs).toBe("number");
@@ -367,7 +453,10 @@ describe("API integration: session-cleanup's expired-session purge and legal hol
         async () => {
           const outcome = await runSessionCleanup();
           // The other holder's run is a no-op, not an error and not a delete.
-          expect(outcome.sessionsDeleted).toBe(0);
+          expect(outcome).toEqual({
+            sessionsDeleted: 0,
+            notificationReservationsDeleted: 0,
+          });
         },
         () => {
           throw new Error("expected the outer caller to hold the lease");
