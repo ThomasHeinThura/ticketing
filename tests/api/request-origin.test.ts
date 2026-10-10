@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import {
   parseConfiguredOrigins,
   publicOriginForKind,
+  requirePublicAppOrigin,
   selectOriginFromContext,
   selectOriginFromHost,
 } from "../../apps/api/src/utils/request-origin";
@@ -114,5 +115,25 @@ describe("Host-selected app origins", () => {
     } as never;
     expect(selectOriginFromContext(matching, origins)).toBe("agent");
     expect(selectOriginFromContext(conflicting, origins)).toBe("invalid");
+  });
+});
+
+describe("requirePublicAppOrigin", () => {
+  it("throws when no validated origin was set", () => {
+    expect(() => requirePublicAppOrigin(undefined)).toThrow(
+      /validated application origin is required/u,
+    );
+  });
+
+  it("throws for an empty origin instead of falling back", () => {
+    expect(() => requirePublicAppOrigin("")).toThrow(
+      /validated application origin is required/u,
+    );
+  });
+
+  it("returns a valid origin unchanged", () => {
+    expect(requirePublicAppOrigin("https://agent.example.test")).toBe(
+      "https://agent.example.test",
+    );
   });
 });
