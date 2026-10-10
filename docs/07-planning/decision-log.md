@@ -88,6 +88,291 @@ remains immutable and is not relabeled.
 
 **Recorded:** orchestrator, Thomas's explicit approval in this task, 2026-10-09.
 
+### 2026-10-09 · Owner directive: model tiers by availability; no fixed GPT-6 Sol requirement
+
+**Decision:** model choice follows real usage limits, by tier. Thomas's words: "Sol = opus,
+luna = sonnat / haku … anything is ok because usage limit are real".
+- **Sol tier** — security and critical review, phase finalizer, final audit: GPT-6 Sol,
+  GPT-6.1 Sol, or a fresh Claude Opus context, whichever is available.
+- **Luna tier** — implementation and ordinary review: GPT-6 Luna, Claude Sonnet or Claude
+  Haiku, whichever is available.
+
+A GPT-6 Sol review is no longer specifically required ("don't need for GPT 6 sol review now
+on"). From now on, a fresh Claude Opus security review satisfies the Sol tier; the merge
+check accepts it once the model-aware checker (#616) is on `main` (see Transition).
+Reviewer counts, independence and truthful labels do not change: every review is
+recorded under the model that produced it, and historical Sol and Luna reviews keep their
+identity. The accepted security-review model block gains `GPT-6.1 Sol`.
+
+**Fallback upward only.** Thomas confirmed two cases directly in the recording session on
+2026-10-09: "Opus may do Sonnet/Haiku work when they’re unavailable, but Sonnet or Haiku never
+does security review. yes. please." Those two cases are owner decisions. The general form
+applied in the workflow — any Sol-tier model (including GPT-6 / GPT-6.1 Sol) may fill a
+Luna-tier role when no Luna-tier model is available, and no Luna-tier model fills any Sol-tier
+role — is the policy maintainer's extension of them through the tier mapping above; Thomas may
+reverse it.
+
+**Applied to the other roles** (the policy maintainer's reading of "anything is ok";
+Thomas may reverse any of it):
+- **Conductor:** the session Thomas designates. This replaces the fixed "a Claude Opus
+  session is the conductor"; the current conductor is unchanged.
+- **Read-only extraction:** any assigned model in either tier, never a retired route; its
+  output is data until a reviewer re-verifies it.
+- **Sampled auditor:** unchanged — a fresh Claude Opus context, working from a packet
+  another context prepared.
+
+The security-review block, not the tier table, decides what the merge check accepts. A new
+model or version (for example another Opus version) needs a reviewed edit of the block.
+
+**Supersedes:** the model choice in the 2026-10-09 "Mixed-model routing for the delivery
+mission" and "Opus policy-repair conductor" entries, including Haiku being limited to
+read-only extraction; and, in the 2026-09-29 "OpenAI model routing replaces Claude/`pal-mcp`
+routing" entry, the fixed requirement that GPT-6 Sol fills the security and finalizer roles
+and GPT-6 Luna the implementation and ordinary-review roles; and, in the 2026-09-29 "Opus 5.5
+retained as sampled big reviewer" entry, the statement that Opus is not the per-PR security
+gate or the phase finalizer. Their other content stands.
+
+**Transition:** `main`'s PR-template check accepts only the literal `GPT-6 Sol` until the
+model-aware checker (#616) lands. Until then, a security-scope pull request whose only security
+review carries any other label (Claude Opus or `GPT-6.1 Sol`) waits for #615 and #616. Its review is never relabelled, and the
+required check is not lifted. #602 is unaffected: its security review is a genuine GPT-6 Sol
+chain.
+
+**Source:** Thomas, directly to the delivery conductor session
+(`local_49596b31-2faf-432e-885e-bfb2dcca607a`; relayed to the recording session at 16:56 UTC:
+"yes do it. don't need for GPT 6 sol
+review now on."), then directly in the policy-maintainer session that records it
+(`412b91f1-99f8-4ac2-8f5c-a03dce507862`), 2026-10-09: the tier mapping. Thomas also chose,
+in that session, to lift the PR-template check for #602. That choice rested on the policy
+maintainer's mistaken premise that #602's security review was Opus-labelled, and it was
+withdrawn once the delivery conductor showed #602 carries a genuine GPT-6 Sol review. The
+ruleset was not changed.
+**Recorded by:** Claude Opus 5.5 (`claude-opus-5-5`), policy maintainer, PR #615.
+
+---
+
+### 2026-10-09 · Owner directive: mixed-model routing for the delivery mission
+
+**Decision:** for the frozen-scope delivery mission, Thomas assigned models by role:
+- a Claude Opus session is the conductor;
+- Claude Sonnet does bounded implementation and independent ordinary review;
+- a fresh Claude Opus context does the required security and critical review and the final
+  audit;
+- Claude Haiku may do optional read-only extraction only.
+
+Reviewer counts and independence are unchanged. Labels stay truthful: a review is recorded
+under the model that produced it and never used to satisfy a checker under another label.
+
+**Relation to earlier entries:** this narrows the 2026-10-09 "Opus policy-repair conductor"
+assignment for the delivery mission — Opus no longer fills implementation and ordinary review
+there. Reviews completed under that assignment stay valid for what they covered. GPT-6 Luna
+and GPT-6 Sol keep their roles (2026-09-29). The security-review model block in
+`agent-workflow.md` is unchanged: GPT-6 Sol and Claude Opus 5.5 remain the accepted
+security-review models.
+
+**Scope:** Thomas also confirmed directly that the routing applies to the remaining reviews
+of the policy candidate (#615), including the reviews of this entry. Earlier Opus reviews of
+#615 stay valid for what they covered.
+
+**Source:** Thomas gave the instruction directly to the delivery conductor session
+(`local_49596b31-2faf-432e-885e-bfb2dcca607a`), which relayed it. Thomas then confirmed it,
+and its scope, directly in the policy-maintainer session that records it here
+(`412b91f1-99f8-4ac2-8f5c-a03dce507862`), 2026-10-09.
+**Recorded by:** Claude Opus 5.5 (`claude-opus-5-5`), policy maintainer, PR #615.
+
+---
+
+### 2026-10-09 · Owner directive: Opus policy-repair conductor
+
+**Decision and authorization:** Thomas authorized an Opus session to finish the operating-policy
+repair — including the supporting validators and references an Opus-led team needs — get it
+accepted, hand it over, and stop. It may perform the eligible protected merge of its own
+policy candidate after agreeing the merge window with the current conductor. It does not own
+product branches, shared runtimes, migration allocation or release execution, and it does not
+add features, upgrade application dependencies or diagnose P0 performance.
+
+**Model transition:** for this assignment and the following frozen-scope delivery mission, the
+available Claude Opus model may perform implementation, orchestration, ordinary review,
+security review and finalization, each in a **separate, independent context**, at the
+existing review depth, risk-based counts and independence. This changes who reviews; it does
+not claim the models are interchangeable. Reports record the model as the platform reports
+it, role, context, exact source, scope and verdict, and are never labelled GPT-6 Luna or
+GPT-6 Sol. Qualifying existing Opus reviews may satisfy a role where scope and source coverage
+are established; they do not approve later changes. Historical GPT reviews keep their
+identities. Validators must accept this truthfully — never by forged labels, fabricated
+statuses, bypass actors or weakened protection.
+
+**Infrastructure re-run (approved):** one re-run for the same incident on equivalent job
+inputs, only when retained evidence establishes a transient infrastructure failure before the
+affected test or checker executed. A real dependency-audit, typecheck or policy failure is not
+infrastructure. Preserve the original failure, diagnosis and both run IDs. Review-note
+commits, renamed branches and equivalent new SHAs do not reset it; a commit made only to rerun
+counts as the retry; CI after a genuine correction is normal verification. No
+retry-until-green, suppressed assertions, changed G11 sampling or lower thresholds.
+
+**Check applicability (authorized, to be implemented as a reviewed CI change):** policy-only
+changes keep policy/authority review, link and invariant validation, secret scanning and
+affected checker tests, without being treated as new application builds. Product,
+dependency, deployment or mixed changes keep full verification; release candidates keep full
+integrated acceptance. The classification must fail closed on unknown scope, include
+inherited commits, ignore labels and unchecked metadata, and keep required contexts reported.
+Budgets, security thresholds and benchmark sampling do not change. Any ruleset transition goes
+through authorized administration, never a bypass.
+
+**Merge method:** the explicitly selected method on record is squash (2026-09-06), and the
+`protect-main` ruleset permits it. Historical merge commits do not change that selection.
+
+**Supersedes:** in the 2026-10-09 "workflow and agent-policy restructure" entry, the inactive
+status of the re-run allowance and "protected merge by the conductor alone" (now: the
+conductor, or a delegated policy maintainer for its own candidate after the conductor
+confirms its review set). In the 2026-09-29 entries "OpenAI model routing replaces
+Claude/`pal-mcp` routing" and "Opus 5.5 retained as sampled big reviewer", the limit of Opus
+to sampling, for the scope above; GPT roles stand. Those entries' other content stands.
+
+**Source:** explicit owner directive "Instruction 1 — Opus policy-repair conductor", given
+directly in the Claude Code session that records it, 2026-10-09.
+**Recorded by:** Claude Opus 5.5 (`claude-opus-5-5`), policy maintainer, PR #615.
+
+---
+
+### 2026-10-09 · Owner directive: workflow and agent-policy restructure
+
+**Decision and authorization:** Thomas assigned an Opus 5.5 session as independent workflow
+architect and policy maintainer, authorized to audit, consolidate, replace and remove
+contradictory or redundant operating instructions, superseding older text about how the
+workflow itself may be changed. It does not authorize product features, production changes,
+taking over the conductor, bypassing GitHub protections or claiming acceptance. The delivery
+mission is unchanged: freeze features → integrate valid existing work → verify accepted `main`
+→ publish through GHCR/GitHub → deploy and test SIT → independent audit → stop and await
+Thomas's roadmap.
+
+**What the restructure changes, effective when its PR merges through the protected flow:**
+
+- One hierarchy: Thomas's decisions (with the new
+  [active mission](active-mission.md) record) → `AGENTS.md` → `agent-workflow.md` →
+  specialist standards → `CLAUDE.md` provider adapter → queue task state. Status snapshots,
+  PR bodies, review packets and queue checkpoints are evidence, never policy.
+- Mission text leaves every permanent file and lives only in `active-mission.md`. Review
+  tiers, model policy, task states, evidence reuse, continuation and escalation live only in
+  `agent-workflow.md`. `CLAUDE.md` becomes a provider adapter with no policy.
+- Explicit operating modes, a `DONE`/`SUPERSEDED` terminal state alongside the queue's
+  existing states, and five separate [levels of done](../04-engineering/definition-of-done.md#levels-of-done).
+- A delta made only of review records (lines added to the PR's own notes; reviewer fields of
+  the PR body) needs no new review of any kind; the conductor verifies it over landed commits
+  and traces every record to its reviewer. Historical notes stay append-only, except a
+  labelled redaction made as its own reviewed change. This supersedes
+  the 2026-10-09 integration-acceptance checklist line requiring ordinary exact-candidate
+  re-review of note-only commits.
+- **Review-tier changes, disclosed:** a records-only PR (`status.md`, queue, dated evidence)
+  needs one independent factual check instead of two ordinary reviews; agent-authority and
+  workflow-policy changes get two ordinary reviews plus a full security-tier pass when they
+  change merge authority, review requirements, evidence reuse, retry behaviour or gate
+  semantics — which applies to this restructure itself.
+- Failure classes each have their own remedy. A bounded verification policy would allow **one**
+  re-run per job per task, only for failures before the code under test started; it applies
+  only once Thomas approves it here. **Until then no CI job is re-run**, and the conductor
+  raises the approval as a `WAITING_DECISION` item. G11 sampling stays exactly as defined in
+  UX quality gates.
+- The three-attempt rule counts per mechanism across versions, and the post-limit sequence
+  ends in an end-to-end test of the actual production entry point.
+
+**Unchanged:** model assignments (2026-09-29), every other review count, the security-review
+path list, every required status check, the PR-template check, protected merge by the
+conductor alone, gate waivers and design approval reserved to Thomas, the freeze, GHCR-only
+publication and the SIT stop condition. Proposed CI path scoping and a model-neutral
+PR-template check are recorded as separate reviewed changes, not made here.
+
+**Supersedes:** the operative duplicate text of the 2026-10-09 Integration Freeze and
+Conductor Coordination entries as written into `AGENTS.md`, `CLAUDE.md`, `sdlc.md`,
+`definition-of-done.md` and `agent-workflow.md`, and the Integration Freeze entry's ordering
+of `CLAUDE.md` second in the hierarchy (it is now a provider adapter, fifth). Their other
+decisions stand and are now expressed once. Also supersedes the 2026-10-02 bulk-cadence entry's pointer to `AGENTS.md`
+as the canonical home (now `agent-workflow.md § Reviews`).
+
+**Source:** explicit owner directive "TaskDesk — owner-authorized workflow & agent policy
+restructure", 2026-10-09.
+**Recorded by:** Opus 5.5 policy maintainer, branch `claude/workflow-policy-restructure-20261009`.
+
+---
+
+### 2026-10-09 · Owner directive: single-conductor delivery and cause-based acceptance
+
+**Decision and authorization:** Thomas supplied the current Conductor Coordination & Delivery
+Directive. The designated conductor alone owns the durable queue, dependency graph, shared
+test windows/resources, integration branch and migration allocation, merge order, release
+coordination, and existing continuation/scheduler. The #612 control-plane auditor owns only
+its bounded policy PR and handoff; it does not become a second conductor or alter global
+continuation. The conductor continues owner-authorized work whose actual dependencies are
+satisfied while #612 is pending. Acceptance of a documentation PR is not a blanket queue
+dependency; record the specific required source, artifact, decision or acceptance result.
+
+**Failure response:** classify observed failures as product, test/fixture, environment or
+invocation, review/PR metadata, or unexplained timing before choosing a remedy. Record the
+observation, diagnosis, change and result. Change product source only when the diagnosis
+warrants it. Do not repeat unchanged acceptance runs; use the approved retry policy and raise
+one precise owner decision only if it blocks a justified action. Three failures on one
+mechanism count across versions, branches, sessions and reviewers: pause that mechanism,
+assign an independent whole-entrypoint diagnosis, and agree on a bounded cause-appropriate
+repair before another attempt. Exercise the actual CLI/arguments, artifacts and source/image
+bindings, collectors, serialization/reconciliation, and preserved failure ledger (including
+missing, nullable, unexpected and corrupt cases). Preflight is not live acceptance.
+
+**P0 evidence boundary:** pre-merge proofs are required reviews, current CI, installer
+regression, exact-image boot and applicable pre-merge runtime/authorization evidence. After
+eligible merge, verify the signed-main release installer, upgrade and rollback; run the fresh
+accepted-main phase finalizer before P0 closure. Do not require the main-only signed release
+before an otherwise eligible source merge. No existing security, CI, test, performance,
+authorization, tenant-isolation or protected-branch gate changes.
+
+**Preserved gates and scope:** existing-functionality integration and acceptance fixes only;
+no new feature scope or automatic P4 completion. Existing conductor and scheduler remain the
+single continuation. GHCR/GitHub Releases and SIT only; no Docker Hub or production. Existing
+review tiers, protected merge, and final integrated SIT audit/stop condition remain.
+
+This directive supersedes conflicting operational statements in the 2026-10-09 Integration
+Freeze owner entry below only where they impose a global wait for #612 acceptance, cede
+conductor/scheduler ownership to a lane, or require a product-source change regardless of the
+demonstrated failure cause. It does not replace the prior scope, release-target, review or
+gate decisions.
+
+**Source:** explicit owner Conductor Coordination & Delivery Directive attachment, received
+2026-10-09.
+**Recorded by:** GPT-6 Luna control-plane implementation lane for #612, 2026-10-09.
+
+---
+
+### 2026-10-09 · Owner directive: Integration Freeze and SIT Consolidation
+
+**Decision and authorization:** Thomas explicitly directed one focused, independently reviewed
+control-plane PR reconciling AGENTS.md, CLAUDE.md, agent-workflow.md, sdlc.md, error-fix-loop.md,
+definition-of-done.md and a durable integration execution queue. Current owner decisions and
+recorded approvals precede AGENTS.md, then CLAUDE.md routing/independence, then workflow/SDLC,
+then queue task state. This supersedes the P4-completion mission and obsolete repeated
+commit-approval/whole-program stop instructions, including earlier accelerated-plan scope
+where it conflicts with the freeze. Prior records below remain historical.
+
+Agents may commit/push completed authorized branch work without repeated approval. Only the
+top-level orchestrator may perform protected merges after all required exact-source checks
+and independent risk-appropriate reviews pass. Blockers and unresolved product decisions stop
+only dependent scope. Freeze new features; permit existing-functionality integration and
+acceptance fixes. Require root-cause convergence and a complete real-invocation-path regression
+before further runner iterations after repeated failure; offline simulation cannot establish
+runtime acceptance. GHCR/GitHub Releases and SIT only; no Docker Hub or production deployment.
+
+**Preserved gates:** Luna/Sol independence and review tiers, tenant isolation, authorization,
+G1–G13, current-source tests/CI/performance, security records and protected branches. No gate
+waiver, design approval, phase completion or runtime acceptance is granted by this decision.
+
+**Continuation and exit:** resume the existing integration queue automatically after the
+control-plane PR is accepted. Preserve queue state at session end and use available
+continuation; never imply an ended session continues itself. Stop after final integrated SIT
+acceptance and audit and await the next owner roadmap.
+
+**Source:** explicit project-owner Control-Plane Realignment Directive in this session.
+**Recorded by:** top-level orchestrator, 2026-10-09.
+
+---
+
 ### 2026-10-06 · Keep self-only personal writes session-only until explicit API-key scopes exist
 
 **Decision:** Thomas explicitly approves “Make self writes session-only (recommended)” for

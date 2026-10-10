@@ -6,9 +6,23 @@ why, if it does not — never delete it. An unticked, unmarked box is a blocker,
 
 ---
 
+## Levels of done
+
+Five different claims. Never let one stand in for another.
+
+| Level | Who claims it | It means | It does **not** mean |
+| --- | --- | --- | --- |
+| **Task done** | The lane, in its handoff | The assigned deliverable exists on a pushed branch with its evidence and `## Not done` | Reviewed, merged, accepted, or anything about the project |
+| **Merge-ready** | The conductor (or a delegated policy maintainer, for its own candidate) | On the **exact candidate SHA**: the applicable checklists below are complete; every dispatched review is recorded, and every required review is recorded at that SHA or carried across a verified review-record-only delta ([evidence reuse](agent-workflow.md#exact-head-and-evidence-reuse)), and each is traced to its reviewer; no blocking finding is unresolved; the applicable pre-merge runtime proofs (image build and boot, installer regression, authorization proofs) are recorded; every required status check is green; branch protection permits the merge without bypass; the `## Gates` table cites no waived gate (or Thomas is acting himself) | Runtime or SIT acceptance; stage completion |
+| **Integrated slice accepted** | The conductor, with the independent audit | Merged on `main`, published artifact digest recorded, and the slice's real workflows, migrations, health and recovery verified on SIT against that digest, with the [integration checklist](#integrated-slice-acceptance) complete | Stage completion; permission to start new scope |
+| **Stage complete** (P0–P7) | The conductor, after the phase finalizer | Every item in [Stage completion](#stage-completion), including the phase finalizer | That the next stage is authorized |
+| **Mission complete** | The conductor, reported to Thomas | The [active mission](../07-planning/active-mission.md)'s stop condition is met with no unresolved blocking finding, and reported | Anything beyond Hold |
+
+---
+
 ## Any change
 
-- [ ] Branch named `feat/…`, `fix/…`, `docs/…`, `chore/…`
+- [ ] Branch named `<agent>/…` (for example `codex/…`, `claude/…`) or `feat/…`, `fix/…`, `docs/…`, `chore/…`
 - [ ] Conventional commit messages
 - [ ] `pnpm lint` green
 - [ ] `pnpm typecheck` green
@@ -34,8 +48,9 @@ why, if it does not — never delete it. An unticked, unmarked box is a blocker,
 - [ ] Destructive migration is two-phase
 - [ ] Domain logic lives in `packages/domain` and is pure
 - [ ] No secret is logged or serialised
-- [ ] GPT-6 Sol security review completed and recorded in the pull request's `## Security
-      review` section
+- [ ] Security review by an accepted security-review model
+      ([model policy](agent-workflow.md#model-policy)) completed and recorded in the pull
+      request's `## Security review` section
 
 ---
 
@@ -84,9 +99,9 @@ Everything above, plus:
 - [ ] Behaviour rules numbered, and tests cite them
 - [ ] Open questions section is empty
 - [ ] **The feature's section in [reviews/2026-09-05/](../07-planning/reviews/2026-09-05/)
-      is empty** — every medium/low finding closed in the spec before the build started.
-      "Documentation exists" is not "spec is complete"; this box is what enforces the
-      difference
+      is empty**, or every finding in it is mapped to evidence and independently
+      dispositioned before merge ([batching](agent-workflow.md#batching-and-altitude)).
+      "Documentation exists" is not "spec is complete"
 - [ ] Feature flag added, and the feature is genuinely hidden when off — including its API
       routes returning 404
 - [ ] Capabilities added to `packages/permissions`
@@ -95,9 +110,10 @@ Everything above, plus:
 - [ ] User-facing documentation added to `apps/site`
 - [ ] Configuration reference updated if settings were added
 - [ ] i18n strings extracted; `en-US` complete
-- [ ] [status.md](../07-planning/status.md) updated
-- [ ] GPT-6 Sol security review completed and recorded in the pull request's `## Security
-      review` section
+- [ ] Status facts handed off; the conductor records them in [status.md](../07-planning/status.md) through its records PR
+- [ ] Security review by an accepted security-review model
+      ([model policy](agent-workflow.md#model-policy)) completed and recorded in the pull
+      request's `## Security review` section
 
 ---
 
@@ -125,6 +141,23 @@ Everything above, plus:
 
 ---
 
+## Integrated slice acceptance
+
+Applies when existing functionality is integrated under an integration-freeze mission. Every
+checklist above still applies; an integration slice is not a reason to mark a requirement
+`n/a`.
+
+- [ ] Scope, dependencies, exact source SHA and artifact digest recorded in the queue
+- [ ] Applicable tests run on that source, with expected suite/file/test counts and no skips
+- [ ] [Merge-ready](#levels-of-done) at the exact candidate, then merged by the conductor
+- [ ] Image build, container boot, migrations and health verified for anything that ships
+- [ ] Real SIT journeys and affected screens verified against the published digest, with
+      evidence; offline simulation alone does not count
+- [ ] Applicable tenant-isolation, authorization, G1–G13 and performance requirements met
+- [ ] Queue updated with accepted evidence, residual blockers and the next action
+
+This accepts a slice, not a stage.
+
 ## Stage completion
 
 **This is the canonical stage-gate list.** [SDLC](sdlc.md#the-stage-gate) and
@@ -138,7 +171,7 @@ they stop colliding with the delivery-stage numbering (`P0`–`P5+`) used everyw
       review note (PG1). For P0–P3, record the human design signoff as deferred to the
       integrated P4 review; this deferral does not block technical stage closure and is not
       approval. Automated and required behavioral/browser checks, every other applicable
-      stage criterion, and the stage-level GPT-6 Sol finalizer still apply.
+      stage criterion, and the phase finalizer still apply.
 - [ ] Every screen ✅ in the [screen inventory](../02-design/screen-inventory.md)
 - [ ] Full E2E suite green, agent and portal
 - [ ] Full E2E suite green with reduced motion
@@ -149,8 +182,9 @@ they stop colliding with the delivery-stage numbering (`P0`–`P5+`) used everyw
 - [ ] Run against realistic data — 10,000 work items, 50 projects, 200 people (PG6)
 - [ ] Load test baseline recorded
 - [ ] Backup and restore verified
-- [ ] **Stage-level GPT-6 Sol security review** — a holistic pass over the whole stage's
-      surface, not only the per-feature reviews already passed
+- [ ] **Phase finalizer** — a holistic security-tier pass over the whole stage's surface,
+      not only the per-feature reviews already passed
+      ([model policy](agent-workflow.md#model-policy))
 - [ ] Written stage review in `07-planning/`, **including what went wrong**
 - [ ] [Screen inventory](../02-design/screen-inventory.md),
       [feature index](../03-features/README.md) status columns and `CHANGELOG.md`
@@ -160,8 +194,8 @@ they stop colliding with the delivery-stage numbering (`P0`–`P5+`) used everyw
       linked to its [decision log](../07-planning/decision-log.md) entry — see the
       [pull request template](../../.github/pull_request_template.md)'s `## Gates` section
 
-Under the accelerated calendar, this gate carries the parallel-workstreams exception
-recorded as decision A — see [SDLC § The stage gate](sdlc.md#the-stage-gate).
+Integration-slice acceptance does not satisfy or waive this gate. See
+[SDLC § The stage gate](sdlc.md#the-stage-gate).
 
 ---
 
@@ -209,7 +243,9 @@ review H1–H6` (Thomas only — agents leave it blank), and `Not done`.
 
 CI checks the template mechanically: every section present; no section left both empty
 and unmarked; `Reviewed by` names a different session or model from `Implemented by`;
-`Security review`'s model is exactly `GPT-6 Sol`, with a link to the committed note at
+`Security review`'s model is exactly one accepted security-review model
+([model policy](agent-workflow.md#model-policy), read from the merge base), with a link to the
+committed note at
 `docs/07-planning/security-reviews/<pr>-<slug>.md`; `Screens opened` non-empty whenever
 `apps/web/**` changed; every checklist box ticked or marked `n/a`. See
 [ci-cd.md](ci-cd.md) for the exact check.
