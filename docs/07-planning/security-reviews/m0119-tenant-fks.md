@@ -421,3 +421,39 @@ CI's `static` check required `biome format` of `0119_snapshot.json`. The JSON is
 - Database tests, which are unaffected.
 - CI. The commit is not pushed.
 <!-- END REPORT aecdf41355eabfd70 5cf3093c -->
+
+## Correction: complete rebind section for `5cf3093c`
+
+**Reviewed head:** `5cf3093cb1766cfe6a559622bafc5c23f8ba44c5`
+
+The previous section was extracted wrongly by the conductor: it matched the wrong heading and copied only the trailing `## Not re-run` fragment. It is left in place, because the record is append-only. The reviewer's complete rebind section follows, copied verbatim from its file (lines 343 to the end).
+
+<!-- BEGIN REPORT (agent aecdf41355eabfd70; model claude-opus-5-5; role Sol-tier rebind; candidate 5cf3093cb1766cfe6a559622bafc5c23f8ba44c5; sha256 f6e605f83fca3f4d9972b4e2df5bb99bd5518875b4a7cabff3f8274e80509728) -->
+# Rebind: biome format of 0119 snapshot (5cf3093c)
+
+Reviewer model: Claude Opus 5.5 (claude-opus-5-5)
+Reviewer context ID: claude-agent:aecdf41355eabfd70
+**Reviewed head:** 5cf3093cb1766cfe6a559622bafc5c23f8ba44c5
+Verdict: CLEAR. The change is formatting only. The verdict and the non-blocking points O-1 and O-2 are unchanged.
+
+This is an Opus context, not GPT-6 Sol.
+
+## Checks
+
+- **Commit chain:** 960120da → 8a4f3378 → 5cf3093c.
+  - The note commit 8a4f3378 adds only `docs/07-planning/security-reviews/m0119-tenant-fks.md`.
+  - 5cf3093c changes only `apps/api/drizzle/meta/0119_snapshot.json`.
+  - The worktree is clean (HEAD = 5cf3093c, not pushed).
+- **The JSON is semantically equal:** `json.loads` of the 8a4f3378 and 5cf3093c versions compare `==` True. `prevId` still equals the 0118 snapshot `id`.
+- **biome passes:** `npx biome ci` on the file and on `apps/api/drizzle/meta/` (111 files) reports no fixes, exit 0.
+- **drizzle-kit still passes.** I used a temporary config whose `out` pointed at a scratchpad copy of `apps/api/drizzle`:
+  - `generate` reported "No schema changes, nothing to migrate";
+  - `check` reported "Everything's fine";
+  - no new files were written, and the copy and temporary config were removed.
+- **No migration SQL, journal, schema or test file changed.**
+
+## Not re-run
+
+- Database tests, which are unaffected.
+- CI. The commit is not pushed.
+<!-- END REPORT aecdf41355eabfd70 5cf3093c -->
