@@ -492,7 +492,12 @@ export async function transitionWorkItem(
       }
 
       const transitionAt = new Date();
-      const openPauses = await tx
+      const openPauses = new Map<
+        (typeof SLA_METRICS)[number],
+        { metric: (typeof SLA_METRICS)[number]; reason: string }
+      >();
+      const openedAt = new Map<(typeof SLA_METRICS)[number], Date>();
+      const persistedOpenPauses = await tx
         .select({
           metric: slaPauseTable.metric,
           reason: slaPauseTable.reason,
@@ -504,26 +509,41 @@ export async function transitionWorkItem(
             isNull(slaPauseTable.endedAt),
           ),
         );
+      for (const pause of persistedOpenPauses) {
+        openPauses.set(pause.metric as (typeof SLA_METRICS)[number], {
+          ...pause,
+          metric: pause.metric as (typeof SLA_METRICS)[number],
+        });
+      }
 
       // `sla_pause` has no surrogate id (D3, migration 0104): an interval is identified by
       // `(work_item_id, metric, started_at)` and at most one is open per item and metric.
-      const closePause = async (metric: string) => {
+      const closePause = async (pause: {
+        metric: (typeof SLA_METRICS)[number];
+      }) => {
+        const openedHere = openedAt.get(pause.metric);
         await tx
           .update(slaPauseTable)
-          .set({ endedAt: transitionAt })
+          .set({
+            endedAt:
+              openedHere !== undefined && openedHere > transitionAt
+                ? openedHere
+                : transitionAt,
+          })
           .where(
             and(
               eq(slaPauseTable.workItemId, ctx.workItem.id),
-              eq(slaPauseTable.metric, metric),
+              eq(slaPauseTable.metric, pause.metric),
               isNull(slaPauseTable.endedAt),
             ),
           );
+        openPauses.delete(pause.metric);
       };
       const openPause = async (
         metric: (typeof SLA_METRICS)[number],
         reason: "waiting_customer",
       ) => {
-        const sameMetric = openPauses.find((pause) => pause.metric === metric);
+        const sameMetric = openPauses.get(metric);
         if (sameMetric) {
           // SLA-11 and the partial unique index allow at most one open interval per
           // metric. The transaction rolls back all metrics if any one conflicts.
@@ -531,12 +551,22 @@ export async function transitionWorkItem(
             message: "An SLA pause is already open for this metric",
           });
         }
+        // The 0104 key is `(work_item_id, metric, started_at)`. A second interval opened for
+        // the same metric by a later effect of this same transition would otherwise reuse
+        // `transitionAt` and collide with the first; one millisecond keeps the order total.
+        const lastStartedAt = openedAt.get(metric);
+        const startedAt =
+          lastStartedAt === undefined
+            ? transitionAt
+            : new Date(lastStartedAt.getTime() + 1);
         await tx.insert(slaPauseTable).values({
           workItemId: ctx.workItem.id,
           metric,
-          startedAt: transitionAt,
+          startedAt,
           reason,
         });
+        openedAt.set(metric, startedAt);
+        openPauses.set(metric, { metric, reason });
       };
 
       for (const effect of authoredEffects) {
@@ -545,9 +575,9 @@ export async function transitionWorkItem(
             await openPause(metric, "waiting_customer");
           }
         } else if (effect.kind === "resume_sla") {
-          for (const pause of openPauses) {
+          for (const pause of [...openPauses.values()]) {
             if (pause.reason === "waiting_customer") {
-              await closePause(pause.metric);
+              await closePause(pause);
             }
           }
         }
