@@ -124,7 +124,7 @@ printf '%s\\n' "$*" >> "$COSIGN_LOG"
 if [[ "\${FAKE_DOCKER_FULL:-0}" == 1 ]]; then
   printf 'env-digest=%s args=%s\\n' "\${TASKDESK_IMAGE_DIGEST:-}" "$*" >> "$FAKE_DOCKER_LOG"
   if [[ "$1" == buildx && "$2" == imagetools && "$3" == inspect ]]; then
-    printf 'Digest: %s\\n' "$FAKE_RESOLVED_DIGEST"
+    printf '%b\\n' "\${FAKE_DIGEST_LINE:-Digest: $FAKE_RESOLVED_DIGEST}"
     exit 0
   fi
   if [[ "$1" == compose ]]; then
@@ -367,6 +367,189 @@ test("production repeat install resolves and verifies the selected tag, not a ro
   );
   assert.doesNotMatch(cosignLog, new RegExp(oldDigest));
 });
+
+const DIGEST_A = `sha256:${"a".repeat(64)}`;
+const DIGEST_FORMS = [
+  ["legacy single-space", `Digest: ${DIGEST_A}`],
+  ["buildx v0.38 padded", `Digest:    ${DIGEST_A}`],
+  ["tab separated", `Digest:\\t${DIGEST_A}`],
+  ["mixed tab and spaces", `Digest: \\t  ${DIGEST_A}`],
+];
+
+for (const [label, line] of DIGEST_FORMS) {
+  test(`production install resolves the digest from ${label} imagetools output`, async (t) => {
+    const f = await fixture(t, { realDeployment: true });
+    const result = run(
+      f,
+      [
+        "--env",
+        "production",
+        "--domain",
+        "example.test",
+        "--version",
+        "1.2.3",
+        "--dir",
+        f.path,
+        "--yes",
+      ],
+      {
+        FAKE_DOCKER_FULL: "1",
+        FAKE_PRODUCTION_HOST: "1",
+        FAKE_RESOLVED_DIGEST: DIGEST_A,
+        FAKE_DIGEST_LINE: line,
+        FAKE_DOCKER_LOG: path.join(f.temp, "docker.log"),
+      },
+    );
+    assert.equal(result.status, 0, result.stderr);
+    const cosignLog = await readFile(path.join(f.temp, "cosign.log"), "utf8");
+    assert.match(
+      cosignLog,
+      new RegExp(`ghcr.io/thomasheinthura/taskdesk@${DIGEST_A}`),
+    );
+  });
+}
+
+const INDEX_DIGEST = `sha256:${"1".repeat(64)}`;
+const PLATFORM_DIGEST = `sha256:${"2".repeat(64)}`;
+const ATTEST_DIGEST = `sha256:${"3".repeat(64)}`;
+const multiManifest = (...extraTop) =>
+  [
+    "Name:      ghcr.io/thomasheinthura/taskdesk:v1.2.3",
+    "MediaType: application/vnd.oci.image.index.v1+json",
+    `Digest:    ${INDEX_DIGEST}`,
+    ...extraTop,
+    "           ",
+    "Manifests: ",
+    "  Name:        ghcr.io/thomasheinthura/taskdesk:v1.2.3@" + PLATFORM_DIGEST,
+    "  MediaType:   application/vnd.oci.image.manifest.v1+json",
+    `  Digest:      ${PLATFORM_DIGEST}`,
+    "  Platform:    linux/amd64",
+    "  Name:        ghcr.io/thomasheinthura/taskdesk:v1.2.3@" + ATTEST_DIGEST,
+    `  Digest:      ${ATTEST_DIGEST}`,
+    "  Platform:    unknown/unknown",
+  ].join("\\n");
+
+for (const [label, line, expected] of [
+  ["a multi-manifest index", multiManifest(), INDEX_DIGEST],
+  [
+    "an indented Digest line placed before the top-level one",
+    multiManifest().replace(
+      "MediaType: application/vnd.oci.image.index.v1+json",
+      `MediaType: application/vnd.oci.image.index.v1+json\\n  Digest:    ${DIGEST_A}`,
+    ),
+    INDEX_DIGEST,
+  ],
+  [
+    "a later injected Digest line",
+    multiManifest(`Digest:    ${DIGEST_A}`),
+    INDEX_DIGEST,
+  ],
+]) {
+  test(`production install verifies the top-level digest from ${label}`, async (t) => {
+    const f = await fixture(t, { realDeployment: true });
+    const result = run(
+      f,
+      [
+        "--env",
+        "production",
+        "--domain",
+        "example.test",
+        "--version",
+        "1.2.3",
+        "--dir",
+        f.path,
+        "--yes",
+      ],
+      {
+        FAKE_DOCKER_FULL: "1",
+        FAKE_PRODUCTION_HOST: "1",
+        FAKE_RESOLVED_DIGEST: DIGEST_A,
+        FAKE_DIGEST_LINE: line,
+        FAKE_DOCKER_LOG: path.join(f.temp, "docker.log"),
+      },
+    );
+    assert.equal(result.status, 0, result.stderr);
+    const cosignLog = await readFile(path.join(f.temp, "cosign.log"), "utf8");
+    assert.match(
+      cosignLog,
+      new RegExp(`ghcr.io/thomasheinthura/taskdesk@${expected}`),
+    );
+    assert.doesNotMatch(
+      cosignLog,
+      new RegExp(`${PLATFORM_DIGEST}|${ATTEST_DIGEST}`),
+    );
+    if (expected !== DIGEST_A)
+      assert.doesNotMatch(cosignLog, new RegExp(DIGEST_A));
+  });
+}
+
+test("release workflow immutability check parses the padded Digest line, not the legacy sed", async () => {
+  const workflow = await readFile(
+    path.join(root, ".github/workflows/release.yml"),
+    "utf8",
+  );
+  assert.doesNotMatch(workflow, /sed -n 's\/\^Digest: \/\/p'/);
+  assert.match(
+    workflow,
+    /existing_digest="\$\(awk '\/\^Digest:\/ \{ if \(\$1 == "Digest:" && NF == 2\) print \$2; exit \}'/,
+  );
+});
+
+for (const [label, line] of [
+  [
+    "a missing Digest line",
+    "Name:      ghcr.io/thomasheinthura/taskdesk:v1.2.3",
+  ],
+  ["a truncated digest", `Digest:    sha256:${"a".repeat(63)}`],
+  ["an uppercase digest", `Digest:    sha256:${"A".repeat(64)}`],
+  ["a non-sha256 digest", `Digest:    md5:${"a".repeat(64)}`],
+  ["an empty digest value", "Digest:    "],
+  ["a digest with trailing junk", `Digest:    ${DIGEST_A} extra`],
+  [
+    "a malformed first Digest line followed by a valid one",
+    `Digest:    ${DIGEST_A} extra\\nDigest:    sha256:${"b".repeat(64)}`,
+  ],
+  [
+    "an empty first Digest line followed by a valid one",
+    `Digest:\\nDigest:    sha256:${"b".repeat(64)}`,
+  ],
+]) {
+  test(`production install refuses ${label} and never reaches image verification`, async (t) => {
+    const f = await fixture(t, { realDeployment: true });
+    const result = run(
+      f,
+      [
+        "--env",
+        "production",
+        "--domain",
+        "example.test",
+        "--version",
+        "1.2.3",
+        "--dir",
+        f.path,
+        "--yes",
+      ],
+      {
+        FAKE_DOCKER_FULL: "1",
+        FAKE_PRODUCTION_HOST: "1",
+        FAKE_RESOLVED_DIGEST: DIGEST_A,
+        FAKE_DIGEST_LINE: line,
+        FAKE_DOCKER_LOG: path.join(f.temp, "docker.log"),
+      },
+    );
+    assert.notEqual(result.status, 0);
+    assert.match(
+      `${result.stdout}${result.stderr}`,
+      /must be a full lowercase sha256 digest/,
+    );
+    let cosignLog = "";
+    try {
+      cosignLog = await readFile(path.join(f.temp, "cosign.log"), "utf8");
+    } catch {}
+    assert.doesNotMatch(cosignLog, /thomasheinthura\/taskdesk@/);
+    assert.doesNotMatch(cosignLog, /^verify /m);
+  });
+}
 
 test("release tag and rollback digest commit atomically and retry after rename interruption", async (t) => {
   const f = await fixture(t, { realDeployment: true });
