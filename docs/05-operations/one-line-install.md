@@ -66,7 +66,9 @@ and image selection without replacing existing secret values or data.
 `--env production` requires `--domain` or an existing `DOMAIN` in the install directory's
 `.env`. `--agent-host` and `--portal-host` override the derived `ticket.<domain>` and
 `portal.<domain>` names. Compose routes and application public URLs use the same host values.
-`--files-host` is checked only when supplied; a third hostname is needed only when this host
+`--files-host` is checked only when supplied on that run, or when `--profile s3` is given (the
+profile is never remembered, so repeat it when re-running an S3 install); the default
+`TASKDESK_FILES_HOST` the installer records in `.env` is not DNS-checked on a re-run. A third hostname is needed only when this host
 also serves an operator-owned S3 endpoint. Use `--profile s3` to start the bundled SeaweedFS
 profile.
 
@@ -113,7 +115,7 @@ install directory. There is no automatic fallback from a failed signature check.
 The source installer is small and reviewable. Its SHA-256 is:
 
 ```text
-cd4078e820f0c98bc326adf09ee2e52e7c6f03af5f4b053e14ac480941bf9bd9
+ab4e319e2ea267ebab4b7c63f61944a98c86d0544f77e49b9dce86a19891fb4c
 ```
 
 You can download and inspect the script before running it. The installer requests elevation
