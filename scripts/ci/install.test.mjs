@@ -381,7 +381,17 @@ for (const [label, line] of DIGEST_FORMS) {
     const f = await fixture(t, { realDeployment: true });
     const result = run(
       f,
-      ["--env", "production", "--domain", "example.test", "--version", "1.2.3", "--dir", f.path, "--yes"],
+      [
+        "--env",
+        "production",
+        "--domain",
+        "example.test",
+        "--version",
+        "1.2.3",
+        "--dir",
+        f.path,
+        "--yes",
+      ],
       {
         FAKE_DOCKER_FULL: "1",
         FAKE_PRODUCTION_HOST: "1",
@@ -392,7 +402,10 @@ for (const [label, line] of DIGEST_FORMS) {
     );
     assert.equal(result.status, 0, result.stderr);
     const cosignLog = await readFile(path.join(f.temp, "cosign.log"), "utf8");
-    assert.match(cosignLog, new RegExp(`ghcr.io/thomasheinthura/taskdesk@${DIGEST_A}`));
+    assert.match(
+      cosignLog,
+      new RegExp(`ghcr.io/thomasheinthura/taskdesk@${DIGEST_A}`),
+    );
   });
 }
 
@@ -436,7 +449,17 @@ for (const [label, line, expected] of [
     const f = await fixture(t, { realDeployment: true });
     const result = run(
       f,
-      ["--env", "production", "--domain", "example.test", "--version", "1.2.3", "--dir", f.path, "--yes"],
+      [
+        "--env",
+        "production",
+        "--domain",
+        "example.test",
+        "--version",
+        "1.2.3",
+        "--dir",
+        f.path,
+        "--yes",
+      ],
       {
         FAKE_DOCKER_FULL: "1",
         FAKE_PRODUCTION_HOST: "1",
@@ -447,20 +470,36 @@ for (const [label, line, expected] of [
     );
     assert.equal(result.status, 0, result.stderr);
     const cosignLog = await readFile(path.join(f.temp, "cosign.log"), "utf8");
-    assert.match(cosignLog, new RegExp(`ghcr.io/thomasheinthura/taskdesk@${expected}`));
-    assert.doesNotMatch(cosignLog, new RegExp(`${PLATFORM_DIGEST}|${ATTEST_DIGEST}`));
-    if (expected !== DIGEST_A) assert.doesNotMatch(cosignLog, new RegExp(DIGEST_A));
+    assert.match(
+      cosignLog,
+      new RegExp(`ghcr.io/thomasheinthura/taskdesk@${expected}`),
+    );
+    assert.doesNotMatch(
+      cosignLog,
+      new RegExp(`${PLATFORM_DIGEST}|${ATTEST_DIGEST}`),
+    );
+    if (expected !== DIGEST_A)
+      assert.doesNotMatch(cosignLog, new RegExp(DIGEST_A));
   });
 }
 
 test("release workflow immutability check parses the padded Digest line, not the legacy sed", async () => {
-  const workflow = await readFile(path.join(root, ".github/workflows/release.yml"), "utf8");
+  const workflow = await readFile(
+    path.join(root, ".github/workflows/release.yml"),
+    "utf8",
+  );
   assert.doesNotMatch(workflow, /sed -n 's\/\^Digest: \/\/p'/);
-  assert.match(workflow, /existing_digest="\$\(awk '\/\^Digest:\/ \{ if \(\$1 == "Digest:" && NF == 2\) print \$2; exit \}'/);
+  assert.match(
+    workflow,
+    /existing_digest="\$\(awk '\/\^Digest:\/ \{ if \(\$1 == "Digest:" && NF == 2\) print \$2; exit \}'/,
+  );
 });
 
 for (const [label, line] of [
-  ["a missing Digest line", "Name:      ghcr.io/thomasheinthura/taskdesk:v1.2.3"],
+  [
+    "a missing Digest line",
+    "Name:      ghcr.io/thomasheinthura/taskdesk:v1.2.3",
+  ],
   ["a truncated digest", `Digest:    sha256:${"a".repeat(63)}`],
   ["an uppercase digest", `Digest:    sha256:${"A".repeat(64)}`],
   ["a non-sha256 digest", `Digest:    md5:${"a".repeat(64)}`],
@@ -479,7 +518,17 @@ for (const [label, line] of [
     const f = await fixture(t, { realDeployment: true });
     const result = run(
       f,
-      ["--env", "production", "--domain", "example.test", "--version", "1.2.3", "--dir", f.path, "--yes"],
+      [
+        "--env",
+        "production",
+        "--domain",
+        "example.test",
+        "--version",
+        "1.2.3",
+        "--dir",
+        f.path,
+        "--yes",
+      ],
       {
         FAKE_DOCKER_FULL: "1",
         FAKE_PRODUCTION_HOST: "1",
@@ -489,9 +538,14 @@ for (const [label, line] of [
       },
     );
     assert.notEqual(result.status, 0);
-    assert.match(`${result.stdout}${result.stderr}`, /must be a full lowercase sha256 digest/);
+    assert.match(
+      `${result.stdout}${result.stderr}`,
+      /must be a full lowercase sha256 digest/,
+    );
     let cosignLog = "";
-    try { cosignLog = await readFile(path.join(f.temp, "cosign.log"), "utf8"); } catch {}
+    try {
+      cosignLog = await readFile(path.join(f.temp, "cosign.log"), "utf8");
+    } catch {}
     assert.doesNotMatch(cosignLog, /thomasheinthura\/taskdesk@/);
     assert.doesNotMatch(cosignLog, /^verify /m);
   });
