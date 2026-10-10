@@ -234,12 +234,16 @@ migrations at or below that timestamp are **silently skipped**. On every target 
 upgrading:
 
 ```sql
-select max(created_at) from drizzle.__drizzle_migrations;
+select to_regclass('drizzle.__drizzle_migrations') as migrations_table;
+select max(created_at) from drizzle.__drizzle_migrations;  -- skip if the first query returned null
 ```
 
-For an environment that is at accepted `main` (through `0087_romantic_sway`) the result must be
-exactly `1791107747302`. If it is anything else, **stop**: do not upgrade, and ask the
-conductor to reconcile the applied history first.
+- A **fresh or empty** database proceeds: `migrations_table` is null (no `drizzle` schema or
+  table yet), or the table exists with zero rows (`max` is null). All migrations then run from the
+  start.
+- Otherwise the result must be exactly `1791107747302`, the value for an environment at accepted
+  `main` (through `0087_romantic_sway`). If it is anything else, **stop**: do not upgrade, and ask
+  the conductor to reconcile the applied history first.
 
 ---
 
@@ -274,7 +278,12 @@ remove access (for example the only anchored row), keep a row the resolver ignor
 `sees_all` count when it did not. The `rank` collapse in `list-assignable-people.ts` is a display
 rule only and is **not** a safe deletion rule.
 
-Take the pre-upgrade backup first (see [backup-and-restore](backup-and-restore.md)). Then work in
+Take the pre-upgrade backup first (see [backup-and-restore](backup-and-restore.md)). **Stop the
+API (or keep it read-only) before block (a) and leave it stopped until block (b) has committed**, so
+no membership row changes between the plan and the apply. Block (b) also takes a
+`share row exclusive` lock on `membership` and refuses to act if any planned row's `id` and
+`role_id` no longer match, a group's kept row is gone, or a duplicate row appeared that is not in
+the plan. Then work in
 **one interactive `psql` session** against the database, in this order. **Do not run either
 block with `psql -f` or any unattended tool**: the review pause is the point. Keep the session
 open between the blocks (the plan is a session temp table), and save the printed output in the
@@ -285,6 +294,8 @@ with its role's workspace, rank and capabilities, whether the row is anchored th
 resolver requires, whether it is direct or inherited, and its `sees_all`.
 
 ```sql
+drop table if exists membership_dedupe_plan;
+
 create temp table membership_dedupe_plan as
 with base as (
   select m.id, m.person_id, m.scope, m.scope_id, m.role_id, m.sees_all,
@@ -354,19 +365,48 @@ any mis-anchored row, any differing `role_id`, or capability sets that are not n
 For each `MANUAL` group, decide by hand which rows to remove, from the printed capabilities and
 anchoring, and delete those rows by `id` yourself (a person must keep every capability they hold
 through an anchored row, or the loss must be signed off by the owner of that workspace). Then
-re-run block (a) to rebuild the plan; the second result set must be empty.
+re-run block (a) to rebuild the plan (it drops and recreates the temp table); the second result
+set must be empty.
 
 **(b) Apply.** Run only when the second result set of (a) is empty. It refuses to run if any
-`MANUAL` group remains (after that error, run `rollback;`), updates `sees_all` on the kept row,
+`MANUAL` group remains or the plan is stale (after either error, run `rollback;` and re-run (a)), updates `sees_all` on the kept row,
 and deletes the other rows of the `AUTO` groups, in one transaction.
 
 ```sql
 begin;
 
+-- Block writers on membership until commit, then refuse to act on a plan that no longer matches.
+lock table membership in share row exclusive mode;
+
 do $$
 begin
   if exists (select 1 from membership_dedupe_plan where decision = 'MANUAL') then
     raise exception 'MANUAL duplicate groups remain: resolve them by hand and re-run the plan';
+  end if;
+  if exists (
+    select 1 from membership_dedupe_plan p
+    left join membership m on m.id = p.id and m.role_id = p.role_id
+    where m.id is null
+  ) then
+    raise exception 'stale plan: a planned row was deleted or its role changed; roll back and re-run block (a)';
+  end if;
+  if exists (
+    select 1 from membership_dedupe_plan p
+    where not exists (
+      select 1 from membership_dedupe_plan k
+      join membership m on m.id = k.id
+      where k.keep_order = 1 and (k.person_id, k.scope, k.scope_id) = (p.person_id, p.scope, p.scope_id)
+    )
+  ) then
+    raise exception 'stale plan: a group has no kept row; roll back and re-run block (a)';
+  end if;
+  if exists (
+    select 1 from membership m
+    where (m.person_id, m.scope, m.scope_id) in (
+            select person_id, scope, scope_id from membership group by 1, 2, 3 having count(*) > 1)
+      and m.id not in (select id from membership_dedupe_plan)
+  ) then
+    raise exception 'stale plan: duplicate rows exist that are not in the plan; roll back and re-run block (a)';
   end if;
 end $$;
 
