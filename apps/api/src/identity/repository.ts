@@ -2260,54 +2260,88 @@ export type PersonLifecycleCaller =
   | { kind: "scim"; identityId: string; connectionId: string }
   | { kind: "administrative" };
 
+/** Rows read during a parent-first IP-22 closure acquisition. */
+export type PersonLifecycleClosure = {
+  people: Array<{
+    id: string;
+    userId: string | null;
+    organisationId: string | null;
+    active: boolean;
+  }>;
+  grants: Array<{
+    id: string;
+    personId: string;
+    scope: string;
+    scopeId: string;
+    roleId: string;
+    sourceKind: string;
+    identityConnectionId: string | null;
+    externalIdentityId: string | null;
+    oidcGroupMappingId: string | null;
+    scimGroupMappingId: string | null;
+  }>;
+};
+
 /**
- * Apply the person-wide IP-15/IP-16 transition under the caller's transaction.
- * Source-specific identity state and events remain the caller's responsibility.
+ * Discover and lock the complete lifecycle closure for one or more people. Reads before
+ * parent locks are discovery only: both person rows and active grants are re-read after
+ * all organisation/workspace anchors and person rows are locked. Any expansion restarts
+ * the owning transaction from a fresh snapshot.
  */
-export async function transitionPersonLifecycleInTransaction(
-  tx: Parameters<Parameters<typeof db.transaction>[0]>[0],
-  personId: string,
-  active: boolean,
-  lifecyclePolicy: "end_memberships" | "keep_memberships",
+export async function lockPersonLifecycleClosureInTransaction(
+  tx: IdentityTransaction,
+  personIds: readonly string[],
   caller: PersonLifecycleCaller,
-) {
-  const [person] = await tx
+): Promise<PersonLifecycleClosure> {
+  const ids = [...new Set(personIds)].sort();
+  if (ids.length === 0) return { people: [], grants: [] };
+
+  const people = await tx
     .select({
       id: schema.personTable.id,
       userId: schema.personTable.userId,
       organisationId: schema.personTable.organisationId,
+      active: schema.personTable.active,
     })
     .from(schema.personTable)
-    .where(eq(schema.personTable.id, personId))
-    .limit(1);
-  if (!person) return false;
+    .where(inArray(schema.personTable.id, ids))
+    .orderBy(schema.personTable.id);
+  const foundPersonIds = people.map((person) => person.id);
+  const discovered = foundPersonIds.length
+    ? await tx
+        .select({
+          id: schema.membershipGrantTable.id,
+          personId: schema.membershipGrantTable.personId,
+          scope: schema.membershipGrantTable.scope,
+          scopeId: schema.membershipGrantTable.scopeId,
+          roleId: schema.membershipGrantTable.roleId,
+          sourceKind: schema.membershipGrantTable.sourceKind,
+          identityConnectionId:
+            schema.membershipGrantTable.identityConnectionId,
+          externalIdentityId: schema.membershipGrantTable.externalIdentityId,
+          oidcGroupMappingId: schema.membershipGrantTable.oidcGroupMappingId,
+          scimGroupMappingId: schema.membershipGrantTable.scimGroupMappingId,
+        })
+        .from(schema.membershipGrantTable)
+        .where(
+          and(
+            inArray(schema.membershipGrantTable.personId, foundPersonIds),
+            isNull(schema.membershipGrantTable.revokedAt),
+          ),
+        )
+        .orderBy(schema.membershipGrantTable.id)
+    : [];
 
-  const discovered = await tx
-    .select({
-      id: schema.membershipGrantTable.id,
-      personId: schema.membershipGrantTable.personId,
-      scope: schema.membershipGrantTable.scope,
-      scopeId: schema.membershipGrantTable.scopeId,
-      roleId: schema.membershipGrantTable.roleId,
-      sourceKind: schema.membershipGrantTable.sourceKind,
-      identityConnectionId: schema.membershipGrantTable.identityConnectionId,
-      externalIdentityId: schema.membershipGrantTable.externalIdentityId,
-      oidcGroupMappingId: schema.membershipGrantTable.oidcGroupMappingId,
-      scimGroupMappingId: schema.membershipGrantTable.scimGroupMappingId,
-    })
-    .from(schema.membershipGrantTable)
-    .where(
-      and(
-        eq(schema.membershipGrantTable.personId, person.id),
-        isNull(schema.membershipGrantTable.revokedAt),
-      ),
-    );
   const keys = discovered.map(({ personId, scope, scopeId }) => ({
     personId,
     scope,
     scopeId,
   }));
-  const organisationIds = new Set([person.organisationId]);
+  const organisationIds = new Set(
+    people.flatMap((person) =>
+      person.organisationId ? [person.organisationId] : [],
+    ),
+  );
   const workspaceIds = new Set<string>();
   for (const grant of discovered) {
     if (grant.scope === "organisation") organisationIds.add(grant.scopeId);
@@ -2330,8 +2364,10 @@ export async function transitionPersonLifecycleInTransaction(
   await tx
     .select({ id: schema.personTable.id })
     .from(schema.personTable)
-    .where(eq(schema.personTable.id, person.id))
+    .where(inArray(schema.personTable.id, foundPersonIds))
+    .orderBy(schema.personTable.id)
     .for("update");
+
   const roleIds = [...new Set(discovered.map((grant) => grant.roleId))].sort();
   if (roleIds.length)
     await tx
@@ -2402,42 +2438,42 @@ export async function transitionPersonLifecycleInTransaction(
       ),
     ]),
   ].sort();
-  await tx
-    .select({ id: schema.externalIdentityTable.id })
-    .from(schema.externalIdentityTable)
-    .where(inArray(schema.externalIdentityTable.id, identityIds))
-    .orderBy(schema.externalIdentityTable.id)
-    .for("update");
-  for (const key of [
+  if (identityIds.length)
+    await tx
+      .select({ id: schema.externalIdentityTable.id })
+      .from(schema.externalIdentityTable)
+      .where(inArray(schema.externalIdentityTable.id, identityIds))
+      .orderBy(schema.externalIdentityTable.id)
+      .for("update");
+
+  const projectionKeys = [
     ...new Map(
-      keys.map((entry) => [
-        `${entry.personId}\0${entry.scope}\0${entry.scopeId}`,
-        entry,
-      ]),
+      keys.map((key) => [`${key.personId}\0${key.scope}\0${key.scopeId}`, key]),
     ).values(),
-  ].sort((a, b) =>
-    `${a.personId}\0${a.scope}\0${a.scopeId}`.localeCompare(
-      `${b.personId}\0${b.scope}\0${b.scopeId}`,
+  ].sort((left, right) =>
+    `${left.personId}\0${left.scope}\0${left.scopeId}`.localeCompare(
+      `${right.personId}\0${right.scope}\0${right.scopeId}`,
     ),
-  )) {
+  );
+  for (const key of projectionKeys)
     await tx.execute(
       sql`SELECT pg_advisory_xact_lock(hashtextextended(${`taskdesk:membership:${key.personId}:${key.scope}:${key.scopeId}`}, 0))`,
     );
-  }
-  const projectionPredicates = keys.map((key) =>
+  const membershipPredicates = projectionKeys.map((key) =>
     and(
       eq(schema.membershipTable.personId, key.personId),
       eq(schema.membershipTable.scope, key.scope),
       eq(schema.membershipTable.scopeId, key.scopeId),
     ),
   );
-  if (projectionPredicates.length)
+  if (membershipPredicates.length)
     await tx
       .select({ id: schema.membershipTable.id })
       .from(schema.membershipTable)
-      .where(or(...projectionPredicates))
+      .where(or(...membershipPredicates))
       .orderBy(schema.membershipTable.id)
       .for("update");
+
   if (caller.kind === "scim") {
     const [sourceIdentity] = await tx
       .select({ personId: schema.externalIdentityTable.personId })
@@ -2450,36 +2486,106 @@ export async function transitionPersonLifecycleInTransaction(
             caller.connectionId,
           ),
           eq(schema.externalIdentityTable.provisionedVia, "scim"),
-          eq(schema.externalIdentityTable.personId, person.id),
+          inArray(schema.externalIdentityTable.personId, foundPersonIds),
         ),
       )
       .limit(1);
-    if (!sourceIdentity) return false;
+    if (!sourceIdentity) return { people: [], grants: [] };
   }
-  const grants = discovered.map((grant) => grant.id).sort();
-  if (grants.length)
+
+  const discoveredIds = discovered.map((grant) => grant.id).sort();
+  if (discoveredIds.length)
     await tx
       .select({ id: schema.membershipGrantTable.id })
       .from(schema.membershipGrantTable)
-      .where(inArray(schema.membershipGrantTable.id, grants))
+      .where(inArray(schema.membershipGrantTable.id, discoveredIds))
       .orderBy(schema.membershipGrantTable.id)
       .for("update");
-  const current = await tx
-    .select({ id: schema.membershipGrantTable.id })
-    .from(schema.membershipGrantTable)
-    .where(
-      and(
-        eq(schema.membershipGrantTable.personId, person.id),
-        isNull(schema.membershipGrantTable.revokedAt),
-      ),
-    );
-  const currentIds = current.map((grant) => grant.id).sort();
+  const currentPeople = await tx
+    .select({
+      id: schema.personTable.id,
+      userId: schema.personTable.userId,
+      organisationId: schema.personTable.organisationId,
+      active: schema.personTable.active,
+    })
+    .from(schema.personTable)
+    .where(inArray(schema.personTable.id, foundPersonIds))
+    .orderBy(schema.personTable.id);
+  const currentGrants = foundPersonIds.length
+    ? await tx
+        .select({
+          id: schema.membershipGrantTable.id,
+          personId: schema.membershipGrantTable.personId,
+          scope: schema.membershipGrantTable.scope,
+          scopeId: schema.membershipGrantTable.scopeId,
+          roleId: schema.membershipGrantTable.roleId,
+          sourceKind: schema.membershipGrantTable.sourceKind,
+          identityConnectionId:
+            schema.membershipGrantTable.identityConnectionId,
+          externalIdentityId: schema.membershipGrantTable.externalIdentityId,
+          oidcGroupMappingId: schema.membershipGrantTable.oidcGroupMappingId,
+          scimGroupMappingId: schema.membershipGrantTable.scimGroupMappingId,
+        })
+        .from(schema.membershipGrantTable)
+        .where(
+          and(
+            inArray(schema.membershipGrantTable.personId, foundPersonIds),
+            isNull(schema.membershipGrantTable.revokedAt),
+          ),
+        )
+        .orderBy(schema.membershipGrantTable.id)
+    : [];
+  const personKey = (person: (typeof people)[number]) =>
+    [person.id, person.userId, person.organisationId, person.active].join("\0");
+  const grantKey = (grant: (typeof discovered)[number]) =>
+    [
+      grant.id,
+      grant.personId,
+      grant.scope,
+      grant.scopeId,
+      grant.roleId,
+      grant.sourceKind,
+      grant.identityConnectionId,
+      grant.externalIdentityId,
+      grant.oidcGroupMappingId,
+      grant.scimGroupMappingId,
+    ].join("\0");
   if (
-    currentIds.length !== grants.length ||
-    currentIds.some((id, index) => id !== grants[index])
+    currentPeople.map(personKey).join("\n") !==
+      people.map(personKey).join("\n") ||
+    currentGrants.map(grantKey).join("\n") !==
+      discovered.map(grantKey).join("\n")
   )
     throw new IdentityGrantClosureChangedError();
+  return { people, grants: discovered };
+}
 
+/**
+ * Apply the person-wide IP-15/IP-16 transition under the caller's transaction.
+ * Source-specific identity state and events remain the caller's responsibility.
+ */
+export async function transitionPersonLifecycleInTransaction(
+  tx: IdentityTransaction,
+  personId: string,
+  active: boolean,
+  lifecyclePolicy: "end_memberships" | "keep_memberships",
+  caller: PersonLifecycleCaller,
+  lockedClosure?: PersonLifecycleClosure,
+) {
+  const closure =
+    lockedClosure ??
+    (await lockPersonLifecycleClosureInTransaction(tx, [personId], caller));
+  const person = closure.people.find((candidate) => candidate.id === personId);
+  if (!person) return false;
+  const discovered = closure.grants.filter(
+    (grant) => grant.personId === personId,
+  );
+  const grants = discovered.map((grant) => grant.id).sort();
+  const keys = discovered.map(({ personId, scope, scopeId }) => ({
+    personId,
+    scope,
+    scopeId,
+  }));
   const now = new Date();
   let sessionsRevoked = 0;
   let keysRevoked = 0;

@@ -383,6 +383,7 @@ describe("SCIM administration API", () => {
       sessionsRevoked: 1,
       keysRevoked: 1,
       membershipsEnded: 2,
+      externalIdentityIds: ["person-lifecycle-other-identity"],
     });
     const retired = await db
       .select({
