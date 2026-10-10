@@ -15,7 +15,8 @@ strictly increasing. The recorded hash is the SHA-256 of the exact `.sql` bytes.
 | --- | --- | --- |
 | 0000-0087 | accepted `main` (journal max `when` 1791107747302 at idx 87, `0087_romantic_sway`) | applied, frozen |
 | 0088-0118 | M1 post-P0 migration spine (this change) | landed by M1 |
-| 0119+ | unallocated | next allocation below |
+| 0119 | N2 tenant-composite foreign keys (forward-only) | allocated, see below |
+| 0120+ | unallocated | next allocation below |
 
 ## 0088-0118 (M1)
 
@@ -119,22 +120,40 @@ corrected in this change; every other existing comment is kept.
 D3 and D5 are recorded in [decision-log.md](decision-log.md), entry "2026-10-10 - Owner integration
 decisions for the post-P0 consolidation" (items D3 and D5).
 
-## Open forward items for 0119+ (not done in M1)
+## 0119 (N2 tenant-composite foreign keys)
 
-Security review N2: these tables lack tenant-composite foreign keys (the `(workspace_id, id)`
-convention of `data-model.md`). They are inert until a runtime slice writes them, so M1 does not
-change them; each needs a forward-only migration (or an explicit waiver in the decision log) and a
-negative test **before any runtime slice writes the table**:
+| idx | tag | journal `when` | SQL SHA-256 |
+| --- | --- | --- | --- |
+| 119 | `0119_tenant_composite_fks` | 1791609109777 | `7ce96b3bea45e477f10bc346158cd191e8d27fb306198a9a551fc3056e1c110b` |
 
-- `0098_custom_fields_runtime.sql:64` `custom_field_type_visibility.work_item_type_id` and `:66`
-  `custom_field_value.project_id` are single-column references.
-- `0116_approvals_lifecycle.sql:23-24` `approval.work_item_id` and `approval.transition_id` are
-  single-column references.
-- `0118_fair_kabuki.sql:36` `saved_view.shared_with_team_id` is single-column.
-- `0090` `membership_grant`, `oidc_group_mapping` and `scim_group_mapping` `role_id`/`scope_id`, and
-  `0114` `notification_delivery.workspace_id` versus its outbox event, are not anchored to the
-  scope's workspace; the resolver's `wellAnchored` filter must hold wherever these produce
-  memberships.
+Generated with `drizzle-kit generate` from the `schema.ts` change; the statements are reordered by
+hand so the parent UNIQUE constraints precede the foreign keys that need them (the generated order
+failed). Snapshot `0119_snapshot.json` chains from 0118; `drizzle-kit generate` then reports no
+changes and `drizzle-kit check` passes. The data-validity preflight is in the operations runbook,
+[Upgrading across migration 0119](../05-operations/runbook.md#upgrading-across-migration-0119-cross-tenant-rows).
+Negative tests: `tests/api-integration/tenant-composite-fks-migration.test.ts`.
+
+## Security review N2: disposition
+
+Security review N2 (tables new in 0088-0118 lacking tenant-composite foreign keys, the
+`(workspace_id, id)` convention of `data-model.md`). 0119 does not invent columns, so a reference
+is only made composite where the child already carries `workspace_id`.
+
+| Reference | Status | Reason |
+| --- | --- | --- |
+| `0118` `saved_view.shared_with_team_id` | **Done in 0119** | `saved_view.workspace_id` exists. New FK `saved_view_workspace_shared_team_fk` `(workspace_id, shared_with_team_id)` to `team (workspace_id, id)`, plus parent `team_workspace_id_id_unique`. ON DELETE/UPDATE no action, so a direct team delete stays refused and a workspace delete still cascades. |
+| `0114` `notification_delivery` to its outbox event | **Done in 0119** | `notification_delivery.workspace_id` exists. New FK `notification_delivery_workspace_event_fk` `(event_id, workspace_id)` to `outbox (event_id, workspace_id)` replaces the single-column event FK (ON DELETE cascade kept, ON UPDATE no action), plus parent `outbox_event_id_workspace_id_unique`. A NULL-workspace instance event can never back a delivery. |
+| `0098:64` `custom_field_type_visibility.work_item_type_id` | **Not applicable here** | The table has no `workspace_id` (columns: `custom_field_id`, `work_item_type_id`, `visible`, `required`). Anchoring needs a new column, which 0119 does not invent. Follow-up when the custom-fields runtime lands: add `workspace_id` with composite FKs to both `custom_field` and `work_item_type`, or record a waiver. Still open and gated "before any runtime slice writes the table". |
+| `0098:66` `custom_field_value.project_id` | **Not applicable here** | No `workspace_id` on the table, `project_id` is nullable and `entity_id` is polymorphic. Same follow-up as above. Still open. |
+| `0116:23-24` `approval.work_item_id` / `transition_id` | **Not applicable here** | `approval` has no `workspace_id`. Same follow-up: add `workspace_id` with composite FKs to `work_item` and `workflow_transition` (each needs a `(workspace_id, id)` parent key) before the approvals runtime. Still open. |
+| `0090` `membership_grant`, `oidc_group_mapping`, `scim_group_mapping` `role_id` / `scope_id` | **Not applicable** | `scope_id` is polymorphic (`scope` is `organisation` or `workspace`, no per-table workspace column) and `role.workspace_id` is nullable by scope, so no FK can express "role belongs to the scope's workspace". It is the same shape as `membership`: the resolver's `wellAnchored` filter must hold wherever these produce memberships. Recorded residual, not a waiver of the filter. |
+
+## Open forward items after 0119
+
+Still open, each needing a forward-only migration (or a decision-log waiver) and a negative test
+**before any runtime slice writes the table**: the three "Not applicable here" rows above
+(`custom_field_type_visibility`, `custom_field_value`, `approval`). They need new `workspace_id`
+columns, so they are a design change rather than a constraint-only change.
 
 ## Notes for future allocation
 
@@ -156,7 +175,7 @@ negative test **before any runtime slice writes the table**:
 
 ## Next allocation
 
-Next index is **0119**. Its journal `when` must be strictly greater than **1791344327180**
-(idx 118) and than any `when` any environment may already have applied. Generate it with
-`drizzle-kit generate` so its snapshot chains from `0118_snapshot.json`. The conductor
+Next index is **0120**. Its journal `when` must be strictly greater than **1791609109777**
+(idx 119) and than any `when` any environment may already have applied. Generate it with
+`drizzle-kit generate` so its snapshot chains from `0119_snapshot.json`. The conductor
 allocates each index to exactly one owner.
