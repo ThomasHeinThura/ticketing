@@ -21,6 +21,7 @@ import {
   validateTaskAssetUploadInput,
 } from "../storage";
 import { normalizeApiServerUrl } from "../utils/openapi-spec";
+import { requirePublicAppOrigin } from "../utils/request-origin";
 import { requireWorkspaceMembership } from "../utils/require-workspace-membership";
 import { requireWorkspacePermission } from "../utils/require-workspace-permission";
 import { workspaceAccess } from "../utils/workspace-access-middleware";
@@ -874,7 +875,7 @@ const task = apiRouter<BaseVariables & { workspaceId: string }>()
           surface,
           filename,
           contentType,
-          apiBaseUrl: process.env.KANEO_API_URL || new URL(c.req.url).origin,
+          apiBaseUrl: requirePublicAppOrigin(c.get("appPublicOrigin")),
         });
       });
 
@@ -967,7 +968,7 @@ const task = apiRouter<BaseVariables & { workspaceId: string }>()
     }
 
     const apiBaseUrl = normalizeApiServerUrl(
-      process.env.KANEO_API_URL || new URL(c.req.url).origin,
+      requirePublicAppOrigin(c.get("appPublicOrigin")),
     );
     return c.json(
       {

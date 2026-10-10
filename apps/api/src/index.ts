@@ -123,6 +123,7 @@ import { normalizeApiServerUrl } from "./utils/openapi-spec";
 import { rejectNulByte } from "./utils/reject-nul-byte";
 import {
   parseConfiguredOrigins,
+  publicOriginForKind,
   selectOriginFromContext,
 } from "./utils/request-origin";
 import {
@@ -166,6 +167,7 @@ type AppVariables = {
     userId: string;
     apiKey?: ApiKey;
     appOrigin: "agent" | "portal" | "unknown";
+    appPublicOrigin?: string;
   };
 };
 
@@ -490,6 +492,9 @@ export function createApp(
       return denyByHost(c);
     if (isHealthRequest) {
       c.set("appOrigin", selected === "unknown" ? "unknown" : selected);
+      if (selected !== "unknown") {
+        c.set("appPublicOrigin", publicOriginForKind(selected, origins));
+      }
       await next();
       if (c.req.method === "HEAD")
         return new Response(null, {
@@ -501,6 +506,7 @@ export function createApp(
     }
     if (selected === "unknown") return denyByHost(c);
     c.set("appOrigin", selected);
+    c.set("appPublicOrigin", publicOriginForKind(selected, origins));
     if (selected === "portal") {
       if (isApiRequestPath(c.req.path)) return denyByHost(c);
       if (c.req.method !== "GET" && c.req.method !== "HEAD")

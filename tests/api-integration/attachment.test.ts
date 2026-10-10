@@ -23,6 +23,13 @@ import {
 } from "./helpers/fixtures";
 import { raceProjectArchive } from "./helpers/race-soft-delete";
 
+const originalAgentUrl = process.env.TASKDESK_AGENT_URL;
+
+function restoreAgentUrl() {
+  if (originalAgentUrl === undefined) delete process.env.TASKDESK_AGENT_URL;
+  else process.env.TASKDESK_AGENT_URL = originalAgentUrl;
+}
+
 /**
  * A `person` row for a user (`presign-attachment.ts`/`delete-attachment.ts`'s own
  * comments: there is no reliable session->person resolver anywhere in `apps/api` yet,
@@ -153,26 +160,38 @@ describe("API integration: work-item attachments (#28, attachments.md)", () => {
     } else {
       process.env.TASKDESK_STORAGE_FILESYSTEM_ROOT = originalRoot;
     }
+    restoreAgentUrl();
     await rm(root, { recursive: true, force: true });
   });
 
   it("AT-2: presigns, uploads and completes a genuine PNG, and it appears in the work item's list", async () => {
+    // The integration harness initializes Better Auth for localhost:1337.
+    // Keep that authority while changing only the configured public scheme so
+    // this request exercises HTTPS URL generation without inventing a host.
+    process.env.TASKDESK_AGENT_URL = "https://localhost:1337";
     const { creator, workspace, project, type } = await setupProject();
     mockAuthenticatedSession(creator);
     const { app } = createApp();
     const { key } = await createWorkItem(app, project.id, type.id);
 
     const presignResponse = await app.request(
-      `/api/work-items/${key}/attachments/presign`,
-      {
-        method: "POST",
-        headers: { "content-type": "application/json" },
-        body: JSON.stringify({
-          filename: "photo.png",
-          contentType: "image/png",
-          size: PNG_BYTES.length,
-        }),
-      },
+      new Request(
+        `http://localhost:1337/api/work-items/${key}/attachments/presign`,
+        {
+          method: "POST",
+          headers: {
+            "content-type": "application/json",
+            host: "localhost:1337",
+            "x-forwarded-host": "attacker.example",
+            "x-forwarded-proto": "http",
+          },
+          body: JSON.stringify({
+            filename: "photo.png",
+            contentType: "image/png",
+            size: PNG_BYTES.length,
+          }),
+        },
+      ),
     );
     expect(presignResponse.status).toBe(200);
     const presigned = (await presignResponse.json()) as {
@@ -181,6 +200,15 @@ describe("API integration: work-item attachments (#28, attachments.md)", () => {
       uploadHeaders: Record<string, string>;
     };
     expect(presigned.attachmentId).toBeTruthy();
+    expect(presigned.uploadUrl).toMatch(
+      /^https:\/\/localhost:1337\/api\/storage\/filesystem-attachment-upload\?/u,
+    );
+    expect(presigned.uploadUrl.match(/\/api\//gu)).toHaveLength(1);
+    expect(new URL(presigned.uploadUrl).searchParams.get("key")).toBeTruthy();
+    expect(
+      new URL(presigned.uploadUrl).searchParams.get("expires"),
+    ).toBeTruthy();
+    expect(new URL(presigned.uploadUrl).searchParams.get("token")).toBeTruthy();
 
     const [pendingRow] = await db
       .select()
@@ -210,6 +238,29 @@ describe("API integration: work-item attachments (#28, attachments.md)", () => {
     expect(listResponse.status).toBe(200);
     const list = (await listResponse.json()) as Array<{ id: string }>;
     expect(list.map((a) => a.id)).toContain(presigned.attachmentId);
+
+    const downloadResponse = await app.request(
+      new Request(
+        `http://localhost:1337/api/attachments/${presigned.attachmentId}`,
+        {
+          headers: {
+            host: "localhost:1337",
+            "x-forwarded-host": "attacker.example",
+            "x-forwarded-proto": "http",
+          },
+        },
+      ),
+    );
+    expect(downloadResponse.status).toBe(302);
+    const downloadUrl = downloadResponse.headers.get("location");
+    expect(downloadUrl).toMatch(
+      /^https:\/\/localhost:1337\/api\/storage\/filesystem-download\?/u,
+    );
+    if (!downloadUrl) throw new Error("Missing signed download URL");
+    expect(downloadUrl.match(/\/api\//gu)).toHaveLength(1);
+    expect(new URL(downloadUrl).searchParams.get("key")).toBeTruthy();
+    expect(new URL(downloadUrl).searchParams.get("expires")).toBeTruthy();
+    expect(new URL(downloadUrl).searchParams.get("token")).toBeTruthy();
 
     const activityRows = await db
       .select()
