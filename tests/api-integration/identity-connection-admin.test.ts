@@ -377,6 +377,42 @@ describe("identity connection administration", () => {
     expect(forbidden.status).toBe(403);
   });
 
+  it("refuses non-administrators on the connection list and organisation identity reads", async () => {
+    const { sessionCookie } = await setupAdmin();
+    const app = createApp().app;
+    await createConnection("identity-read-authority-connection", false);
+    const internal = await ensureInternalOrganisation();
+    const listUrl = "/api/instance/identity-connections";
+    const organisationUrl = `/api/instance/organisations/${internal.id}/identity`;
+
+    const adminList = await app.request(listUrl, {
+      headers: { cookie: sessionCookie },
+    });
+    expect(adminList.status).toBe(200);
+    const adminOrganisation = await app.request(organisationUrl, {
+      headers: { cookie: sessionCookie },
+    });
+    expect(adminOrganisation.status).not.toBe(403);
+
+    const [ordinaryUser] = await db
+      .insert(schema.userTable)
+      .values({
+        id: "identity-read-authority-non-admin",
+        name: "Non-admin reader",
+        email: "identity-read-non-admin@example.test",
+        role: "member",
+      })
+      .returning();
+    if (!ordinaryUser) throw new Error("Reader fixture was not created");
+    await ensureStaffPersonForUser(ordinaryUser.id);
+    mockAuthenticatedSession(ordinaryUser);
+    const headers = {
+      cookie: `__Host-tdk_agent_session=token-${ordinaryUser.id}`,
+    };
+    expect((await app.request(listUrl, { headers })).status).toBe(403);
+    expect((await app.request(organisationUrl, { headers })).status).toBe(403);
+  });
+
   it("tags a session issued by the native OIDC callback with the exact source connection", async () => {
     await setupAdmin();
     const app = createApp().app;

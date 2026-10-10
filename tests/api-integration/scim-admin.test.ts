@@ -8,6 +8,10 @@ import {
 import db, { schema } from "../../apps/api/src/database";
 import { encryptIdentityClientSecret } from "../../apps/api/src/identity/client-secret";
 import { transitionPersonLifecycleInTransaction } from "../../apps/api/src/identity/person-lifecycle";
+import {
+  lockAndVerifyScimMutation,
+  resolveScimBearer,
+} from "../../apps/api/src/identity/scim-authentication";
 import { setScimIdentityActive } from "../../apps/api/src/identity/scim-lifecycle";
 import { createApp } from "../../apps/api/src/index";
 import {
@@ -123,6 +127,29 @@ afterEach(() => {
 });
 
 describe("SCIM administration API", () => {
+  it("rechecks the resolved SCIM credential under the connection lock", async () => {
+    const { connectionId, token } = await createScimProtocolFixture(
+      "scim-token-recheck-connection",
+      "R".repeat(43),
+    );
+    const authority = await resolveScimBearer(`Bearer ${token}`);
+    await db.transaction(async (tx) => {
+      const locked = await lockAndVerifyScimMutation(tx, authority, "users");
+      expect(locked.connection.enabled).toBe(true);
+      expect(locked.scim.enabled).toBe(true);
+    });
+
+    // An administrator rotates the token after the request resolved its bearer but
+    // before the write takes the row locks.
+    await db
+      .update(schema.scimConnectionTable)
+      .set({ tokenHash: sha256("S".repeat(43)) })
+      .where(eq(schema.scimConnectionTable.identityConnectionId, connectionId));
+    await expect(
+      db.transaction((tx) => lockAndVerifyScimMutation(tx, authority, "users")),
+    ).rejects.toMatchObject({ status: 401 });
+  });
+
   it("IP-15/IP-16 keep-memberships leaves direct grants dormant and reprojects on reactivation", async () => {
     const { app, token, connectionId } = await createScimProtocolFixture(
       "person-lifecycle-keep-connection",
@@ -738,14 +765,41 @@ describe("SCIM administration API", () => {
       });
     }
 
+    // The host guard keys on the explicit `Host` header, so the probe must send the
+    // configured portal authority; a request without it is rejected as an invalid host
+    // whether or not the SCIM-specific guard exists.
+    const portalHeaders = {
+      authorization: `Bearer ${token}`,
+      host: "portal.localhost:5174",
+    };
     const portalProbe = await app.request(
-      new Request(
-        "http://portal.localhost:5174/scim/v2/ServiceProviderConfig",
-        { headers: { authorization: `Bearer ${token}` } },
-      ),
+      "http://portal.localhost:5174/scim/v2/ServiceProviderConfig",
+      { headers: portalHeaders },
     );
     expect(portalProbe.status).toBe(404);
     expect(portalProbe.headers.get("set-cookie")).toBeNull();
+    const portalPeopleBefore = await db.select().from(schema.personTable);
+    const portalWrite = await app.request(
+      "http://portal.localhost:5174/scim/v2/Users",
+      {
+        method: "POST",
+        headers: {
+          ...portalHeaders,
+          "content-type": "application/scim+json",
+        },
+        body: JSON.stringify({
+          schemas: ["urn:ietf:params:scim:schemas:core:2.0:User"],
+          userName: "portal-host-write@example.test",
+          externalId: "portal-host-write",
+          active: true,
+        }),
+      },
+    );
+    expect(portalWrite.status).toBe(404);
+    expect(portalWrite.headers.get("set-cookie")).toBeNull();
+    expect(await db.select().from(schema.personTable)).toHaveLength(
+      portalPeopleBefore.length,
+    );
 
     const internalOrganisation = await ensureInternalOrganisation();
     for (const [index, userName] of [

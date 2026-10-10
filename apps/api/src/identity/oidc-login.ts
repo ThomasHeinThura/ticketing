@@ -62,6 +62,16 @@ const STATE_COOKIE = "__Host-tdk_oidc_state";
 const DEV_STATE_COOKIE = "tdk_oidc_state";
 const IDENTITY_PROVIDER_PREFIX = "taskdesk-entra:";
 
+/**
+ * Better Auth `account.account_id` for a JIT identity. PostgreSQL text rejects NUL, so the
+ * issuer and subject are percent-encoded (which removes every `:`) and joined by `:`; the
+ * pair is therefore unambiguous and splits on the single remaining `:`. No other code parses
+ * this value and no earlier row used another format (JIT first login never committed).
+ */
+export function identityAccountId(issuer: string, subject: string): string {
+  return `${encodeURIComponent(issuer)}:${encodeURIComponent(subject)}`;
+}
+
 type OidcGrantRetirementReason =
   | "claim_missing"
   | "claim_removed"
@@ -757,7 +767,9 @@ async function signInAdmittedIdentity(input: {
           !(await validateOidcMappingRole(tx, {
             providerType: currentConnection.providerType,
             portalScope: portal,
-            organisationId,
+            // The agent branch of the shared validator requires a null organisation: the
+            // internal organisation is implied by the workspace and is checked there.
+            organisationId: portal === "agent" ? null : organisationId,
             maxRoleRank: currentConnection.maxRoleRank,
             scope: roleScope,
             scopeId,
@@ -799,7 +811,7 @@ async function signInAdmittedIdentity(input: {
         });
         await tx.insert(schema.accountTable).values({
           id: createId(),
-          accountId: `${connection.issuer}\0${subject}`,
+          accountId: identityAccountId(connection.issuer, subject),
           providerId: `${IDENTITY_PROVIDER_PREFIX}${connection.id}`,
           userId,
           createdAt: now,
