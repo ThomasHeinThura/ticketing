@@ -11,7 +11,7 @@ import {
   reaches,
   resolveFeatureFlag,
 } from "@taskdesk/permissions";
-import { and, eq, isNull, or, sql } from "drizzle-orm";
+import { and, eq, inArray, isNull, or, sql } from "drizzle-orm";
 import { alias } from "drizzle-orm/pg-core";
 import { HTTPException } from "hono/http-exception";
 import db, { schema } from "../database";
@@ -27,42 +27,46 @@ export type DueApprovalRow = Awaited<
 >[number];
 
 async function selectDueApprovalRows(tx: Transaction, limit: number) {
-  return tx
-    .select({
-      id: schema.approvalTable.id,
-      workItemId: schema.approvalTable.workItemId,
-      transitionId: schema.approvalTable.transitionId,
-      kind: schema.approvalTable.kind,
-      requestedBy: schema.approvalTable.requestedBy,
-      approverId: schema.approvalTable.approverId,
-      state: schema.approvalTable.state,
-      createdAt: schema.approvalTable.createdAt,
-      expiresAt: schema.approvalTable.expiresAt,
-      reminder50SentAt: schema.approvalTable.reminder50SentAt,
-      reminder90SentAt: schema.approvalTable.reminder90SentAt,
-      decidedAt: schema.approvalTable.decidedAt,
-      decisionNote: schema.approvalTable.decisionNote,
-      now: sql<Date>`clock_timestamp()`,
-      workspaceId: schema.approvalTable.workspaceId,
-      projectId: schema.workItemTable.projectId,
-      organisationId: schema.workspaceTable.organisationId,
-    })
-    .from(schema.approvalTable)
-    .innerJoin(
-      schema.workItemTable,
-      and(
-        eq(schema.workItemTable.id, schema.approvalTable.workItemId),
-        eq(schema.workItemTable.workspaceId, schema.approvalTable.workspaceId),
-      ),
-    )
-    .innerJoin(
-      schema.workspaceTable,
-      eq(schema.workspaceTable.id, schema.approvalTable.workspaceId),
-    )
-    .where(
-      and(
-        eq(schema.approvalTable.state, "pending"),
-        sql`(
+  return (
+    tx
+      .select({
+        id: schema.approvalTable.id,
+        workItemId: schema.approvalTable.workItemId,
+        transitionId: schema.approvalTable.transitionId,
+        kind: schema.approvalTable.kind,
+        requestedBy: schema.approvalTable.requestedBy,
+        approverId: schema.approvalTable.approverId,
+        state: schema.approvalTable.state,
+        createdAt: schema.approvalTable.createdAt,
+        expiresAt: schema.approvalTable.expiresAt,
+        reminder50SentAt: schema.approvalTable.reminder50SentAt,
+        reminder90SentAt: schema.approvalTable.reminder90SentAt,
+        decidedAt: schema.approvalTable.decidedAt,
+        decisionNote: schema.approvalTable.decisionNote,
+        now: sql<Date>`clock_timestamp()`,
+        workspaceId: schema.approvalTable.workspaceId,
+        projectId: schema.workItemTable.projectId,
+        organisationId: schema.workspaceTable.organisationId,
+      })
+      .from(schema.approvalTable)
+      .innerJoin(
+        schema.workItemTable,
+        and(
+          eq(schema.workItemTable.id, schema.approvalTable.workItemId),
+          eq(
+            schema.workItemTable.workspaceId,
+            schema.approvalTable.workspaceId,
+          ),
+        ),
+      )
+      .innerJoin(
+        schema.workspaceTable,
+        eq(schema.workspaceTable.id, schema.approvalTable.workspaceId),
+      )
+      .where(
+        and(
+          eq(schema.approvalTable.state, "pending"),
+          sql`(
         ${schema.approvalTable.expiresAt} <= clock_timestamp()
         OR (
           ${schema.approvalTable.reminder50SentAt} IS NULL
@@ -73,11 +77,13 @@ async function selectDueApprovalRows(tx: Transaction, limit: number) {
           AND ${schema.approvalTable.createdAt} + (${schema.approvalTable.expiresAt} - ${schema.approvalTable.createdAt}) * 0.9 <= clock_timestamp()
         )
       )`,
-      ),
-    )
-    .orderBy(schema.approvalTable.expiresAt, schema.approvalTable.id)
-    .limit(limit)
-    .for("update", { skipLocked: true });
+        ),
+      )
+      .orderBy(schema.approvalTable.expiresAt, schema.approvalTable.id)
+      .limit(limit)
+      // Lock only the approval rows: the joined work item and workspace rows are not ours.
+      .for("update", { skipLocked: true, of: schema.approvalTable })
+  );
 }
 
 /** Lock one bounded batch and run each state/event writer inside the same transaction. */
@@ -357,6 +363,24 @@ export async function loadApprovalTargetByApprovalId(
   return target;
 }
 
+/** The approval's kind and named approver, for the portal `addressed_approval` predicate. */
+export async function loadApprovalAddressing(id: string, workspaceId: string) {
+  const [row] = await db
+    .select({
+      kind: schema.approvalTable.kind,
+      approverId: schema.approvalTable.approverId,
+    })
+    .from(schema.approvalTable)
+    .where(
+      and(
+        eq(schema.approvalTable.id, id),
+        eq(schema.approvalTable.workspaceId, workspaceId),
+      ),
+    )
+    .limit(1);
+  return row ?? null;
+}
+
 export async function listApprovalRows(
   workItemId: string,
   workspaceId: string,
@@ -414,6 +438,26 @@ export async function listApprovalRows(
     .orderBy(schema.approvalTable.createdAt);
 }
 
+/**
+ * The approvals that can still count toward a gate (owner decision 2026-10-10): only
+ * `pending`, `approved` and `rejected` approvals count, and approvals are single use, so an
+ * approval created before its transition last ran on this work item is spent. The run is
+ * read from the durable `transitioned` activity row, which records the transition id.
+ */
+function countingApprovalClause() {
+  return and(
+    inArray(schema.approvalTable.state, ["pending", "approved", "rejected"]),
+    sql`NOT EXISTS (
+      SELECT 1 FROM activity a
+      WHERE a.workspace_id = ${schema.approvalTable.workspaceId}
+        AND a.work_item_id = ${schema.approvalTable.workItemId}
+        AND a.verb = 'transitioned'
+        AND a.payload ->> 'transitionId' = ${schema.approvalTable.transitionId}
+        AND a.created_at > ${schema.approvalTable.createdAt}
+    )`,
+  );
+}
+
 export async function listApprovalsForWorkItemTransition(
   workItemId: string,
   workspaceId: string,
@@ -441,6 +485,7 @@ export async function listApprovalsForWorkItemTransition(
       and(
         eq(schema.approvalTable.workItemId, workItemId),
         eq(schema.approvalTable.workspaceId, workspaceId),
+        countingApprovalClause(),
       ),
     );
 }
@@ -473,6 +518,7 @@ export async function lockApprovalsForWorkItemTransition(
       and(
         eq(schema.approvalTable.workItemId, workItemId),
         eq(schema.approvalTable.workspaceId, workspaceId),
+        countingApprovalClause(),
       ),
     )
     .for("share");
@@ -711,6 +757,16 @@ export function hasApprovalCapability(
     workItemId: target.workItemId,
     workItemProjectId: target.projectId,
     workspaceId: target.workspaceId,
+    organisationId: target.organisationId,
+  });
+}
+
+/** Customer deciders hold `approval:decide` through their organisation-scope `customer` role. */
+export function hasPortalApprovalDecideCapability(
+  identity: Awaited<ReturnType<typeof resolveApprovalIdentity>>,
+  target: ApprovalTarget,
+): boolean {
+  return can(identity, "approval:decide", "organisation", {
     organisationId: target.organisationId,
   });
 }

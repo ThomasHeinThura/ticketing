@@ -423,7 +423,13 @@ export async function withdrawApproval(input: {
       entityType: "approval",
       entityId: row.id,
       before: { state: row.state },
-      after: { state: "withdrawn", withdrawnAt: now.toISOString() },
+      after: {
+        state: "withdrawn",
+        withdrawnAt: now.toISOString(),
+        ...(isInstanceAdmin
+          ? { via: "admin_route", onBehalfOfPersonId: row.requestedBy }
+          : {}),
+      },
     });
     return updated;
   });

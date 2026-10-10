@@ -9,8 +9,14 @@ import {
 } from "../openapi";
 import { requireSessionOnly } from "../utils/require-session-only";
 import {
+  approvalIdEvidence,
+  approvalWorkItemEvidence,
+  portalListEvidence,
+} from "./evidence";
+import {
   canWithdrawApproval,
   hasApprovalCapability,
+  hasPortalApprovalDecideCapability,
   hasWorkItemReach,
   isCabTeamMember,
   listApprovalRows,
@@ -161,6 +167,7 @@ const listWorkItemApprovalsRoute = createRoute({
   method: "get",
   operationId: "listWorkItemApprovals",
   path: "/work-items/{key}/approvals",
+  middleware: [approvalWorkItemEvidence()] as const,
   tags: ["Approvals"],
   summary: "List a work item's approvals",
   request: { params: workItemKeyParam },
@@ -178,6 +185,7 @@ const createWorkItemApprovalRoute = createRoute({
   method: "post",
   operationId: "createWorkItemApproval",
   path: "/work-items/{key}/approvals",
+  middleware: [approvalWorkItemEvidence()] as const,
   tags: ["Approvals"],
   summary: "Request a work-item approval",
   request: {
@@ -204,6 +212,7 @@ const decideApprovalRoute = createRoute({
   method: "post",
   operationId: "decideApproval",
   path: "/approvals/{id}/decide",
+  middleware: [approvalIdEvidence()] as const,
   tags: ["Approvals"],
   summary: "Decide an approval",
   request: {
@@ -231,6 +240,7 @@ const withdrawApprovalRoute = createRoute({
   method: "post",
   operationId: "withdrawApproval",
   path: "/approvals/{id}/withdraw",
+  middleware: [approvalIdEvidence()] as const,
   tags: ["Approvals"],
   summary: "Withdraw an approval request",
   request: { params: approvalIdParam },
@@ -285,6 +295,7 @@ const listPortalApprovalsRoute = createRoute({
   method: "get",
   operationId: "listPortalApprovals",
   path: "/portal/approvals",
+  middleware: [portalListEvidence()] as const,
   tags: ["Portal approvals"],
   summary: "List customer approvals addressed to me",
   responses: {
@@ -301,6 +312,7 @@ const decidePortalApprovalRoute = createRoute({
   method: "post",
   operationId: "decidePortalApproval",
   path: "/portal/approvals/{id}/decide",
+  middleware: [approvalIdEvidence({ portal: true })] as const,
   tags: ["Portal approvals"],
   summary: "Decide a customer approval",
   request: {
@@ -535,13 +547,9 @@ function approvalRouter() {
           message: "Customer approval addressed to this person required",
         });
       }
-      if (
-        !hasApprovalCapability(
-          identity,
-          "approval:decide" as Capability,
-          target,
-        )
-      ) {
+      // The customer role is organisation-scoped (rbac.md), so `approval:decide` is evaluated
+      // at the customer's organisation, not at work-item scope where no org grant applies.
+      if (!hasPortalApprovalDecideCapability(identity, target)) {
         throw new HTTPException(403, { message: "Insufficient permissions" });
       }
       const body = c.req.valid("json");

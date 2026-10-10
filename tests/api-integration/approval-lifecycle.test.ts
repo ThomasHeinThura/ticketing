@@ -741,10 +741,7 @@ describe("API integration: approval lifecycle", () => {
       `/api/admin/approvals/${inactiveAdminApproval.id}/withdraw`,
       { method: "POST" },
     );
-    // S2-DEPENDENT: until the S2 inactive-identity fix (deny before factor-policy failure)
-    // is on main, an inactive identity is refused with 503 instead of 403. Tighten to
-    // `toBe(403)` after S2 lands. The invariant below (still pending, no effects) is unchanged.
-    expect([403, 503]).toContain(inactiveAdminWithdrawal.status);
+    expect(inactiveAdminWithdrawal.status).toBe(403);
     const [stillPendingForInactiveAdmin] = await db
       .select({ state: schema.approvalTable.state })
       .from(schema.approvalTable)

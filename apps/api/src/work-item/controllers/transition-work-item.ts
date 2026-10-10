@@ -598,6 +598,9 @@ export async function transitionWorkItem(
           verb: "transitioned",
           oldValue: fromStateId,
           newValue: toStateId,
+          // Durable record of which edge ran: approvals are single use, so an approval
+          // created before this run no longer counts (owner decision 2026-10-10).
+          payload: { transitionId: match.id },
           workflowVersionId: ctx.activeVersion?.id ?? null,
         },
       ]);

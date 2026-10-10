@@ -111,6 +111,47 @@ describe("isGateSatisfied", () => {
     expect(isGateSatisfied([], allGate)).toBe(false);
   });
 
+  it("withdrawn approvals are ignored: they never block an `all` gate and never satisfy one", () => {
+    const allGate = { transitionId: "t1", policy: "all" as const };
+    const anyGate = { transitionId: "t1", policy: "any" as const };
+    const withdrawnThenApproved = [
+      approval({ id: "a1", transitionId: "t1", state: "withdrawn" }),
+      approval({ id: "a2", transitionId: "t1", state: "approved" }),
+    ];
+    expect(isGateSatisfied(withdrawnThenApproved, allGate)).toBe(true);
+    expect(isGateSatisfied(withdrawnThenApproved, anyGate)).toBe(true);
+    const onlyWithdrawn = [
+      approval({ id: "a1", transitionId: "t1", state: "withdrawn" }),
+    ];
+    expect(isGateSatisfied(onlyWithdrawn, allGate)).toBe(false);
+    expect(isGateSatisfied(onlyWithdrawn, anyGate)).toBe(false);
+    expect(approvalsMatchingGate(withdrawnThenApproved, allGate)).toEqual([
+      withdrawnThenApproved[1],
+    ]);
+  });
+
+  it("expired approvals are ignored: an expired one never blocks an `all` gate", () => {
+    const allGate = { transitionId: "t1", policy: "all" as const };
+    const approvals = [
+      approval({ id: "a1", transitionId: "t1", state: "expired" }),
+      approval({ id: "a2", transitionId: "t1", state: "approved" }),
+    ];
+    expect(isGateSatisfied(approvals, allGate)).toBe(true);
+  });
+
+  it("rejected and pending approvals still block an `all` gate", () => {
+    const allGate = { transitionId: "t1", policy: "all" as const };
+    expect(
+      isGateSatisfied(
+        [
+          approval({ id: "a1", transitionId: "t1", state: "rejected" }),
+          approval({ id: "a2", transitionId: "t1", state: "approved" }),
+        ],
+        allGate,
+      ),
+    ).toBe(false);
+  });
+
   it("AP-14: an expired approval does not satisfy a gate", () => {
     const gate: ApprovalGate = { transitionId: "t1", policy: "any" };
     const approvals = [approval({ transitionId: "t1", state: "expired" })];
