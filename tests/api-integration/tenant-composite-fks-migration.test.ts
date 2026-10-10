@@ -289,11 +289,14 @@ describe("migration 0119_tenant_composite_fks -- N2 tenant-composite foreign key
     expect(left.rows[0].n).toBe(0);
   });
 
-  it("a clean bootstrap includes 0119 as the last journal entry", () => {
+  it("0119 is present in the journal with a `when` above 0118's", () => {
     const journal = JSON.parse(
       readFileSync(join(drizzleFolder, "meta", "_journal.json"), "utf8"),
     ) as { entries: Array<{ tag: string; when: number }> };
-    const last = journal.entries.at(-1);
-    expect(last?.tag).toBe(MIGRATION_TAG);
+    const prior = journal.entries.find((e) => e.tag === CUTOFF_TAG);
+    const entry = journal.entries.find((e) => e.tag === MIGRATION_TAG);
+    expect(prior).toBeDefined();
+    expect(entry).toBeDefined();
+    expect(entry?.when).toBeGreaterThan(prior?.when ?? Number.POSITIVE_INFINITY);
   });
 });

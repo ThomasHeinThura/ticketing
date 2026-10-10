@@ -141,18 +141,25 @@ is only made composite where the child already carries `workspace_id`.
 
 | Reference | Status | Reason |
 | --- | --- | --- |
-| `0118` `saved_view.shared_with_team_id` | **Done in 0119** | `saved_view.workspace_id` exists. New FK `saved_view_workspace_shared_team_fk` `(workspace_id, shared_with_team_id)` to `team (workspace_id, id)`, plus parent `team_workspace_id_id_unique`. ON DELETE/UPDATE no action, so a direct team delete stays refused and a workspace delete still cascades. |
-| `0114` `notification_delivery` to its outbox event | **Done in 0119** | `notification_delivery.workspace_id` exists. New FK `notification_delivery_workspace_event_fk` `(event_id, workspace_id)` to `outbox (event_id, workspace_id)` replaces the single-column event FK (ON DELETE cascade kept, ON UPDATE no action), plus parent `outbox_event_id_workspace_id_unique`. A NULL-workspace instance event can never back a delivery. |
+| `0118` `saved_view.shared_with_team_id` | **Done in 0119** | `saved_view.workspace_id` exists. New FK `saved_view_workspace_shared_team_fk` `(workspace_id, shared_with_team_id)` to `team (workspace_id, id)`, plus parent `team_workspace_id_id_unique`. ON DELETE/UPDATE no action (the replaced single-column FK was ON UPDATE cascade, now no action), so a direct team delete stays refused and a workspace delete still cascades. |
+| `0114` `notification_delivery` to its outbox event | **Done in 0119** | `notification_delivery.workspace_id` exists. New FK `notification_delivery_workspace_event_fk` `(event_id, workspace_id)` to `outbox (event_id, workspace_id)` replaces the single-column event FK (ON DELETE cascade kept; ON UPDATE changed from cascade to no action), plus parent `outbox_event_id_workspace_id_unique`. A NULL-workspace instance event can never back a delivery. |
 | `0098:64` `custom_field_type_visibility.work_item_type_id` | **Not applicable here** | The table has no `workspace_id` (columns: `custom_field_id`, `work_item_type_id`, `visible`, `required`). Anchoring needs a new column, which 0119 does not invent. Follow-up when the custom-fields runtime lands: add `workspace_id` with composite FKs to both `custom_field` and `work_item_type`, or record a waiver. Still open and gated "before any runtime slice writes the table". |
-| `0098:66` `custom_field_value.project_id` | **Not applicable here** | No `workspace_id` on the table, `project_id` is nullable and `entity_id` is polymorphic. Same follow-up as above. Still open. |
+| `0098:66` `custom_field_value.project_id` | **Not applicable here** | No `workspace_id` on the table and `project_id` is nullable. `entity_id` has no FK; today its CHECK restricts `entity_type` to `'work_item'`, so a work-item FK could be added once `workspace_id` exists. Same follow-up as above. Still open. |
 | `0116:23-24` `approval.work_item_id` / `transition_id` | **Not applicable here** | `approval` has no `workspace_id`. Same follow-up: add `workspace_id` with composite FKs to `work_item` and `workflow_transition` (each needs a `(workspace_id, id)` parent key) before the approvals runtime. Still open. |
 | `0090` `membership_grant`, `oidc_group_mapping`, `scim_group_mapping` `role_id` / `scope_id` | **Not applicable** | `scope_id` is polymorphic (`scope` is `organisation` or `workspace`, no per-table workspace column) and `role.workspace_id` is nullable by scope, so no FK can express "role belongs to the scope's workspace". It is the same shape as `membership`: the resolver's `wellAnchored` filter must hold wherever these produce memberships. Recorded residual, not a waiver of the filter. |
+
+**Forward design constraint (notifications runtime).** Instance-scoped events
+(`pending_action.*`, `identity.deprovisioned`) have a NULL `outbox.workspace_id` and, after 0119,
+can never back a `notification_delivery` row. The notifications runtime must not fan those events
+out through `notification_delivery`, and must not make `notification_delivery.workspace_id`
+nullable to get around it; they need a separate delivery path. Deleting a `notification_delivery`
+row also cascades to `outbox_dedupe_reservation` (0114).
 
 ## Open forward items after 0119
 
 Still open, each needing a forward-only migration (or a decision-log waiver) and a negative test
 **before any runtime slice writes the table**: the three "Not applicable here" rows above
-(`custom_field_type_visibility`, `custom_field_value`, `approval`). They need new `workspace_id`
+(`custom_field_type_visibility`, `custom_field_value`, `approval`). `tests/api/database/unanchored-tables-unreferenced.test.ts` fails if any file under `apps/api/src` other than the schema declarations references them, until they are anchored. They need new `workspace_id`
 columns, so they are a design change rather than a constraint-only change.
 
 ## Notes for future allocation

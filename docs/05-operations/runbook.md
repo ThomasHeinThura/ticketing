@@ -455,8 +455,11 @@ Remediation, only if rows are returned: these are anchoring defects, not data to
 pre-upgrade backup first, then for each offending `saved_view` either set `shared_with_team_id`
 and `visibility` to a team of the view's own workspace or set `visibility = 'private'` with
 `shared_with_team_id = null` (the CHECK `saved_view_team_visibility_consistency` requires the two
-to move together), and delete each offending `notification_delivery` row (it is regenerated from
-its outbox event by the notification runtime). Re-run the preflight to confirm no rows, then
+to move together), and delete each offending `notification_delivery` row. Deleting a delivery also cascades to its
+`outbox_dedupe_reservation` row (0114). Nothing regenerates the deleted delivery: there is no
+notification runtime yet, and an instance-scoped event (null workspace) can never have a
+workspace delivery, so treat the delete as final and keep the printed rows in the release record.
+Re-run the preflight to confirm no rows, then
 upgrade.
 
 ## Verify a published image
