@@ -669,3 +669,59 @@ NON-BLOCKING (new): none.
 - Test suites (no code changed in this delta).
 <!-- END REPORT a3bc54a26659d3e77 efcc2017 -->
 
+## Rebind after rebase onto main 511c917f
+
+**Reviewed head:** `472ce18e6c0b5d771057ecc83ba63067960749b9`
+
+M1 was rebased onto main `511c917f` (#616, #617). `git range-diff` shows all seven commits patch-identical; `efcc2017` became `472ce18e`. The Opus section is copied verbatim from its file. The Sonnet report was extracted mechanically from its transcript.
+
+<!-- BEGIN REPORT (agent a3bc54a26659d3e77; model claude-opus-5-5; role Sol-tier rebind; candidate 472ce18e6c0b5d771057ecc83ba63067960749b9; sha256 a8416aeaa06281ee35a4559effc7d555ed684a26a10ee88e1cd128a966e19cb4) -->
+# Rebind check after rebase onto main 511c917f
+
+Reviewer model: Claude Opus 5.5 (claude-opus-5-5)
+Reviewer context ID: claude-agent:a3bc54a26659d3e77 (same independent security context; did not author, direct or remediate)
+**Reviewed head:** 472ce18e6c0b5d771057ecc83ba63067960749b9
+Rebinds: efcc201719bbfcf1b189c9243750cfe6ac623181 (reviewed CLEAR above) → 472ce18e6c0b5d771057ecc83ba63067960749b9. The new base is main 511c917fcf039857d73946f17fc0ce048d05b11f (#616, #617). The branch HEAD is 612df8ade3b9562788ead85dc0eb131a7b9aec50, the note-only commit.
+Verdict: **CLEAR (rebind valid)**. There is no content change to M1 and no semantic interaction with #616 or #617.
+
+## Results
+
+1. **Range-diff equivalence.** `git range-diff 26c43def..eabbdbf0 511c917f..612df8ad` shows all 7 commits as `=`. In particular, `efcc2017 = 472ce18e` and `eabbdbf0 = 612df8ad`.
+2. **Identical M1 files.**
+   - The 74 paths M1 touches (`git diff --name-only 26c43def efcc2017`) have zero differences between efcc2017 and 472ce18e.
+   - Main's 34 new paths (26c43def..511c917f) share **no** path with M1's.
+   - Every path that differs between efcc2017 and 472ce18e is one of main's.
+   - `decision-log.md` was not touched by #616 or #617. M1's entry ("2026-10-10 · Owner integration decisions…") is still the first heading, followed by the existing entries newest-first (2026-10-10 G11, 2026-10-09 …), at both 472ce18e and 612df8ad.
+   - 612df8ad adds only `docs/07-planning/security-reviews/m1-migration-spine.md`.
+3. **No semantic interaction.**
+   - **Change scope.** I ran the merge-base copy of #616's classifier (`git show 511c917f:scripts/ci/classify-change.mjs`) over `511c917f..612df8ad` and `511c917f..472ce18e`. Both returned `full: "apps/api/drizzle.config.ts" (b92ede23d) is not a policy or planning document`. M1 is correctly **not** policy-only, so build, unit, integration (Postgres 18), audit and the other product jobs all run.
+   - **Security scope.** `parseSecurityReviewPaths` over ci-cd.md at HEAD gives 43 globs, and 35 of M1's paths match them (migrations, schema, permissions). The candidate is correctly security-scope.
+   - **Accepted reviewer models.** `readAcceptedSecurityReviewModels()` reads from the merge base 511c917f and returns `GPT-6 Sol`, `GPT-6.1 Sol`, `Claude Opus 5.5 (claude-opus-5-5)`. This reviewer's label is accepted.
+   - **Review binding (#616 `security-review-note.mjs`).** The committed note `m1-migration-spine.md` at 612df8ad attests only pre-rebase heads (5a35dd10 … efcc2017). Those are no longer ancestors of HEAD, so `reviewBinding` returns `unbound` for HEAD 612df8ad. That is correct fail-closed behaviour after a rebase, not a defect. With a `**Reviewed head:** \`472ce18e6c0b5d771057ecc83ba63067960749b9\`` line added, the same check returns `bound`: only 612df8ad, which is review-artefact-only, lands after 472ce18e. **Action for the conductor:** add that line to the committed note in a commit that touches only `docs/07-planning/security-reviews/`.
+   - **check:policy.** `node scripts/ci/check-policy.mjs` at 612df8ad passes: "8 policy file(s) coherent". M1 touches none of the policy entry files.
+   - **#617 (deploy.sh, release.yml).** This changes only how the buildx digest is parsed and its fail-closed handling. Neither file references migrations or drizzle, and M1 touches neither. The startup migrator path in `apps/api/src/index.ts` is unchanged by both #616 and #617.
+
+## Not checked
+
+- Live CI on the rebased head.
+- The full test suites (no M1 content changed).
+- I did not re-run the Postgres scenarios: the M1 bytes are identical to the efcc2017 content those scenarios ran against.
+<!-- END REPORT a3bc54a26659d3e77 472ce18e -->
+
+<!-- BEGIN REPORT (agent ae0b9c994e122dd06; model claude-sonnet-5-5; role ordinary rebind; candidate 472ce18e6c0b5d771057ecc83ba63067960749b9; sha256 095c1fe38a82cc7fce142af5078c89340fb7fe1190e7a13f2cc465cceed3653f) -->
+Reviewer model: Claude Sonnet (claude-sonnet-5-5), reviewer C, rebind check
+**Reviewed head: 472ce18e6c0b5d771057ecc83ba63067960749b9** (the guard commit). The rebased tip is 612df8ade3b9562788ead85dc0eb131a7b9aec50, on `origin/main` 511c917fcf039857d73946f17fc0ce048d05b11f. Checked from a clean `git archive` export of 612df8ad.
+
+**Verdict: CLEAR.** The rebase is faithful and I found no problems.
+
+- **Range-diff:** `git range-diff 26c43def..eabbdbf0 origin/main..612df8ad` shows all 7 commits as `=`, meaning patch-identical.
+  - They map as follows: `3595cbda` to `b92ede23`, `5a35dd10` to `39475da3`, `d27aa02a` to `ba8d2e9d`, `e373364a` to `bd5284a9`, `b9a0c468` to `665f5604`, `efcc2017` to `472ce18e`, and `eabbdbf0` to `612df8ad`.
+  - `origin/main` is 511c917f, so the range is exactly these 7 commits.
+- **Decision log:** the diff against `origin/main` is purely additive, with zero removed lines.
+  - The only addition is the "Owner integration decisions for the post-P0 consolidation" entry, placed at the top.
+  - The entry count rose from 223 to 224, so every existing entry is intact.
+  - The new 2026-10-10 entry sits above the 2026-10-10 G11 entry, which keeps newest-first order.
+  - A date-order scan flags four spots (2026-10-04/05, 2026-10-01/02, and the two `YYYY-MM-DD` template headings). All four are identical on `origin/main` and only shifted by one line, so they predate this change and are not caused by the rebase.
+
+Not checked: the rest of the new `origin/main` content beyond the decision log, and a full re-verification of M1 contents. The patch-identity result covers those.
+<!-- END REPORT ae0b9c994e122dd06 472ce18e -->
