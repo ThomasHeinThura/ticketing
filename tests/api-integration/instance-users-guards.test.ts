@@ -721,7 +721,7 @@ describe("grant-admin", () => {
 
   it("does not deadlock or 500 when racing a deactivation approval for the same target", async () => {
     const statuses: number[] = [];
-    for (let round = 0; round < 12; round += 1) {
+    for (let round = 0; round < 40; round += 1) {
       const admin = await makeAdmin(`race-admin-${round}`);
       mockAuthenticatedSession(admin.user);
       const { app } = createApp();
