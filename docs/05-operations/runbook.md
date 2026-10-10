@@ -281,9 +281,11 @@ rule only and is **not** a safe deletion rule.
 Take the pre-upgrade backup first (see [backup-and-restore](backup-and-restore.md)). **Stop the
 API (or keep it read-only) before block (a) and leave it stopped until block (b) has committed**, so
 no membership row changes between the plan and the apply. Block (b) also takes a
-`share row exclusive` lock on `membership` and refuses to act if any planned row's `id` and
-`role_id` no longer match, a group's kept row is gone, or a duplicate row appeared that is not in
-the plan. Then work in
+`share row exclusive` lock on `membership`, recomputes the plan with the same query as (a) (a
+temp view defined once in (a)), and refuses to act unless the recomputed plan is identical to the
+reviewed plan on every column, in both directions. Any change to a planned row (role, scope,
+`sees_all`, inheritance, or a deleted, moved or newly duplicated row) therefore stops it.
+Then work in
 **one interactive `psql` session** against the database, in this order. **Do not run either
 block with `psql -f` or any unattended tool**: the review pause is the point. Keep the session
 open between the blocks (the plan is a session temp table), and save the printed output in the
@@ -294,9 +296,12 @@ with its role's workspace, rank and capabilities, whether the row is anchored th
 resolver requires, whether it is direct or inherited, and its `sees_all`.
 
 ```sql
-drop table if exists membership_dedupe_plan;
+drop table if exists pg_temp.membership_dedupe_plan;
+drop table if exists pg_temp.membership_dedupe_plan_now;
+drop view if exists pg_temp.membership_dedupe_plan_q;
 
-create temp table membership_dedupe_plan as
+-- The plan query, defined once. Block (b) re-runs exactly this view after locking.
+create temp view membership_dedupe_plan_q as
 with base as (
   select m.id, m.person_id, m.scope, m.scope_id, m.role_id, m.sees_all,
          m.inherited_from, m.derived_from, m.created_at,
@@ -341,6 +346,8 @@ select b.*, g.group_size, g.distinct_roles, g.all_anchored, g.caps_nested, g.anc
 from base b
 join grp g using (person_id, scope, scope_id);
 
+create temp table membership_dedupe_plan as select * from pg_temp.membership_dedupe_plan_q;
+
 -- (1) Review EVERY row of every duplicate group. keep_order = 1 is the row that would be kept.
 select person_id, scope, scope_id, id, decision, keep_order, role_id, role_workspace_id,
        role_rank, role_capabilities, anchored, direct, inherited_from, derived_from,
@@ -378,35 +385,18 @@ begin;
 -- Block writers on membership until commit, then refuse to act on a plan that no longer matches.
 lock table membership in share row exclusive mode;
 
+drop table if exists pg_temp.membership_dedupe_plan_now;
+create temp table membership_dedupe_plan_now as select * from pg_temp.membership_dedupe_plan_q;
+
 do $$
 begin
   if exists (select 1 from membership_dedupe_plan where decision = 'MANUAL') then
     raise exception 'MANUAL duplicate groups remain: resolve them by hand and re-run the plan';
   end if;
-  if exists (
-    select 1 from membership_dedupe_plan p
-    left join membership m on m.id = p.id and m.role_id = p.role_id
-    where m.id is null
-  ) then
-    raise exception 'stale plan: a planned row was deleted or its role changed; roll back and re-run block (a)';
-  end if;
-  if exists (
-    select 1 from membership_dedupe_plan p
-    where not exists (
-      select 1 from membership_dedupe_plan k
-      join membership m on m.id = k.id
-      where k.keep_order = 1 and (k.person_id, k.scope, k.scope_id) = (p.person_id, p.scope, p.scope_id)
-    )
-  ) then
-    raise exception 'stale plan: a group has no kept row; roll back and re-run block (a)';
-  end if;
-  if exists (
-    select 1 from membership m
-    where (m.person_id, m.scope, m.scope_id) in (
-            select person_id, scope, scope_id from membership group by 1, 2, 3 having count(*) > 1)
-      and m.id not in (select id from membership_dedupe_plan)
-  ) then
-    raise exception 'stale plan: duplicate rows exist that are not in the plan; roll back and re-run block (a)';
+  -- The plan, recomputed now under the lock, must equal the reviewed plan on every column.
+  if exists (select * from membership_dedupe_plan except select * from membership_dedupe_plan_now)
+     or exists (select * from membership_dedupe_plan_now except select * from membership_dedupe_plan) then
+    raise exception 'stale plan: membership changed since block (a); roll back and re-run block (a)';
   end if;
 end $$;
 
