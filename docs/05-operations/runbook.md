@@ -425,6 +425,43 @@ provenance links on rows pointing at it, so review them before deleting.
 
 ---
 
+## Upgrading across migration 0119: cross-tenant rows
+
+Migration `0119_tenant_composite_fks` replaces two single-column foreign keys with tenant-composite
+ones and adds their parent unique keys: `saved_view (workspace_id, shared_with_team_id)` to
+`team (workspace_id, id)`, and `notification_delivery (event_id, workspace_id)` to
+`outbox (event_id, workspace_id)`. If a row already points across tenants, `ADD CONSTRAINT` fails
+and **the whole pending upgrade aborts atomically** (same mechanics as 0093 above). Both tables
+are new in 0088-0118 and are written by no runtime in practice, so the expected result is no rows,
+but run the preflight on every target database before upgrading from any version below 0119. It
+must return no rows:
+
+```sql
+-- saved views shared to a team of a different workspace
+select sv.id as saved_view_id, sv.workspace_id, t.id as team_id, t.workspace_id as team_workspace_id
+from saved_view sv
+join team t on t.id = sv.shared_with_team_id
+where t.workspace_id <> sv.workspace_id;
+
+-- deliveries whose workspace differs from the outbox event's workspace
+-- (including instance-scoped events whose workspace_id is null)
+select nd.id as delivery_id, nd.workspace_id, o.event_id, o.workspace_id as event_workspace_id
+from notification_delivery nd
+join outbox o on o.event_id = nd.event_id
+where o.workspace_id is distinct from nd.workspace_id;
+```
+
+Remediation, only if rows are returned: these are anchoring defects, not data to preserve. Take the
+pre-upgrade backup first, then for each offending `saved_view` either set `shared_with_team_id`
+and `visibility` to a team of the view's own workspace or set `visibility = 'private'` with
+`shared_with_team_id = null` (the CHECK `saved_view_team_visibility_consistency` requires the two
+to move together), and delete each offending `notification_delivery` row. Deleting a delivery also cascades to its
+`outbox_dedupe_reservation` row (0114). Nothing regenerates the deleted delivery: there is no
+notification runtime yet, and an instance-scoped event (null workspace) can never have a
+workspace delivery, so treat the delete as final and keep the printed rows in the release record.
+Re-run the preflight to confirm no rows, then
+upgrade.
+
 ## Verify a published image
 
 Resolve the release tag to a digest first, then check both the cosign signature and the

@@ -834,6 +834,13 @@
 			"when": 1791344327180,
 			"tag": "0118_fair_kabuki",
 			"breakpoints": true
+		},
+		{
+			"idx": 119,
+			"version": "7",
+			"when": 1791609109777,
+			"tag": "0119_tenant_composite_fks",
+			"breakpoints": true
 		}
 	]
 }

@@ -304,7 +304,11 @@ export const teamTable = pgTable(
       () => /* @__PURE__ */ new Date(),
     ),
   },
-  (table) => [index("team_workspaceId_idx").on(table.workspaceId)],
+  (table) => [
+    index("team_workspaceId_idx").on(table.workspaceId),
+    // Parent key for tenant-composite foreign keys (0119: saved_view.shared_with_team_id).
+    unique("team_workspace_id_id_unique").on(table.workspaceId, table.id),
+  ],
 );
 
 export const teamMemberTable = pgTable(
@@ -1350,6 +1354,12 @@ export const outboxTable = pgTable(
       ),
     ),
     check("outbox_attempts_nonnegative", sql.raw("attempts >= 0")),
+    // Parent key for the tenant-composite FK from notification_delivery (0119). A row
+    // with a NULL workspace_id (the four instance event kinds) can never be matched.
+    unique("outbox_event_id_workspace_id_unique").on(
+      table.eventId,
+      table.workspaceId,
+    ),
     index("outbox_state_next_attempt_idx")
       .on(table.state, table.nextAttemptAt)
       .where(sql.raw("(state = 'pending'::text)")),
@@ -1857,12 +1867,9 @@ export const notificationDeliveryTable = pgTable(
     id: text("id")
       .$defaultFn(() => createId())
       .primaryKey(),
-    eventId: text("event_id")
-      .notNull()
-      .references(() => outboxTable.eventId, {
-        onDelete: "cascade",
-        onUpdate: "cascade",
-      }),
+    // Tenant-anchored by notification_delivery_workspace_event_fk (0119) on
+    // (event_id, workspace_id) -> outbox(event_id, workspace_id).
+    eventId: text("event_id").notNull(),
     recipientPersonId: text("recipient_person_id")
       .notNull()
       .references(() => personTable.id, {
@@ -1910,6 +1917,13 @@ export const notificationDeliveryTable = pgTable(
       ),
     ),
     check("notification_delivery_attempts_check", sql.raw("attempts >= 0")),
+    foreignKey({
+      name: "notification_delivery_workspace_event_fk",
+      columns: [table.eventId, table.workspaceId],
+      foreignColumns: [outboxTable.eventId, outboxTable.workspaceId],
+    })
+      .onDelete("cascade")
+      .onUpdate("no action"),
     unique("notification_delivery_event_recipient_channel_unique").on(
       table.eventId,
       table.recipientPersonId,
@@ -5328,14 +5342,12 @@ export const savedViewTable = pgTable(
     scope: text("scope").notNull(),
     scopeId: text("scope_id").notNull(),
     visibility: text("visibility").notNull().default("private"),
-    sharedWithTeamId: text("shared_with_team_id").references(
-      () => teamTable.id,
-      // TM-7 refuses a direct team deletion while the team owns a shared view. SET NULL
-      // would violate saved_view_team_visibility_consistency because a team-visible view
-      // must retain its shared team. NO ACTION preserves that view while still allowing a
-      // workspace deletion to cascade both the team and its views in one statement.
-      { onDelete: "no action", onUpdate: "cascade" },
-    ),
+    // TM-7 refuses a direct team deletion while the team owns a shared view. SET NULL
+    // would violate saved_view_team_visibility_consistency because a team-visible view
+    // must retain its shared team. NO ACTION preserves that view while still allowing a
+    // workspace deletion to cascade both the team and its views in one statement.
+    // Tenant-anchored by saved_view_workspace_shared_team_fk (0119).
+    sharedWithTeamId: text("shared_with_team_id"),
     // `{ entity, filter, sort, groupBy, columns, aggregate }` envelope (SV-14).
     query: jsonb("query").notNull(),
     layout: text("layout").notNull(),
@@ -5349,6 +5361,13 @@ export const savedViewTable = pgTable(
     index("saved_view_workspace_id_idx").on(table.workspaceId),
     index("saved_view_created_by_idx").on(table.createdBy),
     index("saved_view_shared_with_team_id_idx").on(table.sharedWithTeamId),
+    foreignKey({
+      name: "saved_view_workspace_shared_team_fk",
+      columns: [table.workspaceId, table.sharedWithTeamId],
+      foreignColumns: [teamTable.workspaceId, teamTable.id],
+    })
+      .onDelete("no action")
+      .onUpdate("no action"),
     check(
       "saved_view_scope_allowed",
       sql`${table.scope} in ('workspace', 'project')`,
