@@ -21,6 +21,11 @@ import type {
 const TENANT_ID = "12345678-1234-1234-1234-123456789012";
 const ISSUER = `https://login.microsoftonline.com/${TENANT_ID}/v2.0`;
 const CONNECTION_ID = "connection-1";
+const ADMISSION_POLICY = {
+  enabled: false,
+  default_role_id: null,
+  required_entra_app_role: "taskdesk.staff",
+};
 
 function connection(
   overrides: Partial<IdentityConnectionDraft> = {},
@@ -43,7 +48,14 @@ function normalise(
   identityConnection = connection(),
   domainOwners: readonly IdentityDomainOwner[] = [],
 ) {
-  return normaliseEntraClaims(identityClaims, identityConnection, domainOwners);
+  return normaliseEntraClaims(
+    identityClaims,
+    identityConnection,
+    domainOwners,
+    {
+      jitPolicy: ADMISSION_POLICY,
+    },
+  );
 }
 
 function claims(
@@ -54,6 +66,8 @@ function claims(
     tid: TENANT_ID,
     oid: "person-object-id",
     preferred_username: " User@Example.com ",
+    roles: ["taskdesk.staff"],
+    acct: 0,
     ...overrides,
   };
 }
@@ -76,7 +90,7 @@ describe("P3 identity core", () => {
         subject: { oid: "person-object-id", tid: TENANT_ID },
         address: "first@example.com",
         addressUsed: "email",
-        groupObjectIds: [],
+        groupObjectIds: { kind: "missing" },
       },
     });
     expect(normalise(claims({ tid: "another-tenant" }), connection())).toEqual({
@@ -89,6 +103,35 @@ describe("P3 identity core", () => {
         connection(),
       ),
     ).toEqual({ ok: false, reason: "issuer_mismatch" });
+  });
+
+  it("IP-27: maps only the fixed optional profile name and refuses malformed stored maps", () => {
+    expect(normalise(claims({ name: "  Casey Staff  " }))).toMatchObject({
+      ok: true,
+      identity: { displayName: "Casey Staff" },
+    });
+    expect(
+      normaliseEntraClaims(claims({ name: "Casey" }), connection(), [], {
+        claimMapping: { version: 1, displayName: "email" },
+        jitPolicy: ADMISSION_POLICY,
+      }),
+    ).toEqual({ ok: false, reason: "invalid_claim_mapping" });
+  });
+
+  it("IP-27: checks exact Entra admission before normalized identity is usable", () => {
+    expect(normalise(claims({ roles: ["other"] }))).toEqual({
+      ok: false,
+      reason: "missing_app_role",
+    });
+    expect(normalise(claims({ acct: 1 }))).toEqual({
+      ok: false,
+      reason: "guest_account",
+    });
+    expect(
+      normaliseEntraClaims(claims(), connection(), [], {
+        jitPolicy: { enabled: false },
+      }),
+    ).toEqual({ ok: false, reason: "invalid_admission_policy" });
   });
 
   it("IP-9/IP-27: falls back through usable addresses and fails closed without one", () => {
@@ -255,15 +298,19 @@ describe("P3 identity core", () => {
     }
   });
 
-  it("IP-28: accepts group object ids and ignores overage claims without a Graph lookup", () => {
+  it("IP-28: canonicalizes complete UUID group lists and treats malformed or overage claims as no groups", () => {
+    const first = "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa";
+    const second = "bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb";
     expect(
       normalise(
-        claims({ groups: ["group-a", "group-a", "group-b"] }),
+        claims({ groups: [first.toUpperCase(), first, second] }),
         connection(),
       ),
     ).toMatchObject({
       ok: true,
-      identity: { groupObjectIds: ["group-a", "group-b"] },
+      identity: {
+        groupObjectIds: { kind: "complete", objectIds: [first, second] },
+      },
     });
     expect(
       normalise(
@@ -272,14 +319,34 @@ describe("P3 identity core", () => {
       ),
     ).toMatchObject({
       ok: true,
-      identity: { groupObjectIds: "overage" },
+      identity: { groupObjectIds: { kind: "overage" } },
     });
-    expect(normalise(claims({ groups: "display-name" }), connection())).toEqual(
-      { ok: false, reason: "invalid_groups" },
-    );
+    expect(
+      normalise(claims({ groups: "display-name" }), connection()),
+    ).toMatchObject({
+      ok: true,
+      identity: { groupObjectIds: { kind: "malformed" } },
+    });
     expect(
       normalise(claims({ _claim_names: { groups: null } }), connection()),
-    ).toEqual({ ok: false, reason: "invalid_groups" });
+    ).toMatchObject({
+      ok: true,
+      identity: { groupObjectIds: { kind: "overage" } },
+    });
+    expect(normalise(claims(), connection())).toMatchObject({
+      ok: true,
+      identity: { groupObjectIds: { kind: "missing" } },
+    });
+    expect(normalise(claims({ groups: [] }), connection())).toMatchObject({
+      ok: true,
+      identity: { groupObjectIds: { kind: "complete", objectIds: [] } },
+    });
+    expect(
+      normalise(claims({ groups: [first, "malformed"] }), connection()),
+    ).toMatchObject({
+      ok: true,
+      identity: { groupObjectIds: { kind: "malformed" } },
+    });
   });
 
   it("IP-1/IP-2/IP-3/IP-26: validates portal scope, tenant issuer and role ceiling before persistence", () => {
