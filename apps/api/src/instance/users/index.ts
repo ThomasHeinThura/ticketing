@@ -3,6 +3,7 @@ import type { Context } from "hono";
 import { HTTPException } from "hono/http-exception";
 import { appendAuditLog } from "../../audit/audit-writer";
 import { loadLocalFactorState } from "../../auth/local-factor-service";
+import { appendStepUpAudit } from "../../auth/step-up-audit";
 import { consumeInstanceAdminGrantProof } from "../../auth/step-up-service";
 import db, { schema } from "../../database";
 import { apiRouter, createRoute, jsonResponse, z } from "../../openapi";
@@ -10,6 +11,7 @@ import { createPendingAction } from "../../pending-action/service";
 import { setShadowLegacyAuthorization } from "../../permissions/shadow-context";
 import { normaliseTraceId } from "../../permissions/shadow-middleware";
 import { requireSessionOnly } from "../../utils/require-session-only";
+import { invalidateNativeAuthorization } from "../../ws";
 import { isCurrentInstanceAdmin } from "../observability/audit-failure-notifier";
 import {
   decodeUserDirectoryCursor,
@@ -20,6 +22,7 @@ import {
   type UserDirectoryFilters,
 } from "./directory";
 import {
+  assertAdminRemovalAllowed,
   getActiveStaffPerson,
   getDirectoryUser,
   getPersonStatus,
@@ -30,6 +33,7 @@ import {
   lockAdminUser,
   lockGrantTarget,
   lockGrantTargetPeople,
+  lockInstanceAdminSerialization,
   lockSetupCompletion,
   lockUserForMutation,
   lockUserId,
@@ -400,8 +404,14 @@ const routes = apiRouter()
     if (expiresAt && expiresAt <= new Date())
       throw new HTTPException(400, { message: "Invalid expiry" });
     await db.transaction(async (tx) => {
+      await lockInstanceAdminSerialization(tx);
       const [target] = await lockUserForMutation(tx, id);
       if (!target) throw new HTTPException(404, { message: "User not found" });
+      await assertAdminRemovalAllowed(tx, {
+        actorUserId: c.get("userId"),
+        targetUserId: id,
+        targetRole: target.role,
+      });
       if (expiresAt) {
         const expiryCheck = await tx.execute<{ future: boolean }>(
           sql`SELECT now() < ${expiresAt}::timestamptz AS future`,
@@ -441,6 +451,7 @@ const routes = apiRouter()
         },
       });
     });
+    await invalidateNativeAuthorization({ userId: id });
     setShadowLegacyAuthorization(c, "allowed");
     return c.json(
       { suspended: true as const, expiresAt: expiresAt?.toISOString() ?? null },
@@ -497,6 +508,7 @@ const routes = apiRouter()
       });
       return sessions.length;
     });
+    await invalidateNativeAuthorization({ userId: id });
     setShadowLegacyAuthorization(c, "allowed");
     return c.json({ revokedSessions }, 200);
   })
@@ -509,6 +521,16 @@ const routes = apiRouter()
       throw new HTTPException(404, { message: "User not found" });
     const [actor] = await getActiveStaffPerson(c.get("userId"));
     if (!actor) throw new HTTPException(403, { message: "Forbidden" });
+    await db.transaction(async (tx) => {
+      await lockInstanceAdminSerialization(tx);
+      const [locked] = await lockUserForMutation(tx, id);
+      if (!locked) throw new HTTPException(404, { message: "User not found" });
+      await assertAdminRemovalAllowed(tx, {
+        actorUserId: c.get("userId"),
+        targetUserId: id,
+        targetRole: locked.role,
+      });
+    });
     const requested = await createPendingAction({
       requesterPersonId: actor.id,
       credentialType: "session",
@@ -541,88 +563,128 @@ const routes = apiRouter()
     c.req.valid("json");
     const { id } = c.req.valid("param");
     const factor = await loadLocalFactorState(c.get("userId"));
-    const outcome = await db.transaction(async (tx) => {
-      await tx.execute(sql`SELECT pg_advisory_xact_lock(2026)`);
-      const [setup] = await lockSetupCompletion(tx);
-      if (!setup?.completedAt)
-        throw new HTTPException(409, {
-          message: "Instance setup is incomplete",
+    let outcome: "granted" | "already_admin" | "denied";
+    try {
+      outcome = await db.transaction(async (tx) => {
+        await tx.execute(sql`SELECT pg_advisory_xact_lock(2026)`);
+        const [setup] = await lockSetupCompletion(tx);
+        if (!setup?.completedAt)
+          throw new HTTPException(409, {
+            message: "Instance setup is incomplete",
+          });
+        // Same parent-first order as deactivation approval (person rows before user
+        // rows), under the shared 2026 serialization, so the two cannot deadlock.
+        const people = await lockGrantTargetPeople(tx, id);
+        const [target] = await lockGrantTarget(tx, id);
+        if (!target)
+          throw new HTTPException(404, { message: "User not found" });
+        if (
+          target.anonymous ||
+          target.banned ||
+          people.length !== 1 ||
+          people[0]?.side !== "staff" ||
+          people[0]?.active !== true
+        ) {
+          throw new HTTPException(409, { message: "Target is not eligible" });
+        }
+        const [actor] = await lockAdminUser(tx, c.get("userId"));
+        const actorPerson = actor
+          ? await lockActiveStaffPerson(tx, factor.personId, actor.id)
+          : [];
+        const activeSession = actor
+          ? await lockActiveAgentSession(tx, session.id, actor.id)
+          : [];
+        if (!actor || actorPerson.length !== 1 || activeSession.length !== 1)
+          throw new HTTPException(403, { message: "Forbidden" });
+        const proof = await consumeInstanceAdminGrantProof(tx, {
+          token: c.req.valid("header")["x-taskdesk-step-up-token"],
+          personId: factor.personId,
+          sessionId: session.id,
+          userId: id,
         });
-      const [target] = await lockGrantTarget(tx, id);
-      if (!target) throw new HTTPException(404, { message: "User not found" });
-      const people = await lockGrantTargetPeople(tx, id);
-      if (
-        target.anonymous ||
-        target.banned ||
-        people.length !== 1 ||
-        people[0]?.side !== "staff" ||
-        people[0]?.active !== true
-      ) {
-        throw new HTTPException(409, { message: "Target is not eligible" });
-      }
-      const [actor] = await lockAdminUser(tx, c.get("userId"));
-      const actorPerson = actor
-        ? await lockActiveStaffPerson(tx, factor.personId, actor.id)
-        : [];
-      const activeSession = actor
-        ? await lockActiveAgentSession(tx, session.id, actor.id)
-        : [];
-      if (!actor || actorPerson.length !== 1 || activeSession.length !== 1)
-        throw new HTTPException(403, { message: "Forbidden" });
-      const proof = await consumeInstanceAdminGrantProof(tx, {
-        token: c.req.valid("header")["x-taskdesk-step-up-token"],
-        personId: factor.personId,
-        sessionId: session.id,
-        userId: id,
+        if (!proof) {
+          await appendStepUpAudit(tx, {
+            action: "auth.step_up_denied",
+            actorId: c.get("userId"),
+            personId: factor.personId,
+            operation: "instance_admin_grant",
+            traceId: c.req.header("x-request-id"),
+          });
+          return "denied" as const;
+        }
+        if (
+          (proof.authMethod === "password" &&
+            (factor.required || factor.enabled)) ||
+          ((proof.authMethod === "totp" ||
+            proof.authMethod === "backup_code") &&
+            !factor.enabled)
+        ) {
+          throw new HTTPException(403, { message: "step_up_unavailable" });
+        }
+        await appendStepUpAudit(tx, {
+          action: "auth.step_up_consumed",
+          actorId: c.get("userId"),
+          personId: factor.personId,
+          operation: "instance_admin_grant",
+          traceId: c.req.header("x-request-id"),
+        });
+        const result =
+          target.role === "admin"
+            ? ("already_admin" as const)
+            : ("granted" as const);
+        if (result === "granted")
+          await tx
+            .update(schema.userTable)
+            .set({ role: "admin" })
+            .where(eq(schema.userTable.id, id));
+        const admins = await listAdminIds(tx);
+        const recipients = [...new Set([...admins.map((row) => row.id), id])];
+        await tx.insert(schema.notificationTable).values(
+          recipients.map((userId) => ({
+            userId,
+            type: "security_alert",
+            title: "Instance administrator authority changed",
+            content:
+              "An instance administrator grant operation was recorded. Review the instance audit log if you did not expect this change.",
+            eventData:
+              userId === id
+                ? { kind: "instance_admin_granted" }
+                : { kind: "instance_admin_granted", userId: id },
+            resourceId: "singleton",
+            resourceType: "instance",
+          })),
+        );
+        await appendAuditLog(tx, {
+          action: "auth.instance_admin_granted",
+          actorId: c.get("userId"),
+          actorType: "person",
+          traceId: normaliseTraceId(c.req.header("x-request-id")),
+          workspaceId: null,
+          entityType: "user",
+          entityId: id,
+          before: { role: target.role },
+          after: { outcome: result },
+        });
+        return result;
       });
+    } catch (error) {
       if (
-        !proof ||
-        (proof.authMethod === "password" &&
-          (factor.required || factor.enabled)) ||
-        ((proof.authMethod === "totp" || proof.authMethod === "backup_code") &&
-          !factor.enabled)
+        error instanceof HTTPException &&
+        error.status === 403 &&
+        error.message === "step_up_unavailable"
       ) {
-        throw new HTTPException(403, { message: "step_up_unavailable" });
+        await appendStepUpAudit(db, {
+          action: "auth.step_up_denied",
+          actorId: c.get("userId"),
+          personId: factor.personId,
+          operation: "instance_admin_grant",
+          traceId: c.req.header("x-request-id"),
+        });
       }
-      const result =
-        target.role === "admin"
-          ? ("already_admin" as const)
-          : ("granted" as const);
-      if (result === "granted")
-        await tx
-          .update(schema.userTable)
-          .set({ role: "admin" })
-          .where(eq(schema.userTable.id, id));
-      const admins = await listAdminIds(tx);
-      const recipients = [...new Set([...admins.map((row) => row.id), id])];
-      await tx.insert(schema.notificationTable).values(
-        recipients.map((userId) => ({
-          userId,
-          type: "security_alert",
-          title: "Instance administrator authority changed",
-          content:
-            "An instance administrator grant operation was recorded. Review the instance audit log if you did not expect this change.",
-          eventData:
-            userId === id
-              ? { kind: "instance_admin_granted" }
-              : { kind: "instance_admin_granted", userId: id },
-          resourceId: "singleton",
-          resourceType: "instance",
-        })),
-      );
-      await appendAuditLog(tx, {
-        action: "auth.instance_admin_granted",
-        actorId: c.get("userId"),
-        actorType: "person",
-        traceId: normaliseTraceId(c.req.header("x-request-id")),
-        workspaceId: null,
-        entityType: "user",
-        entityId: id,
-        before: { role: target.role },
-        after: { outcome: result },
-      });
-      return result;
-    });
+      throw error;
+    }
+    if (outcome === "denied")
+      throw new HTTPException(403, { message: "step_up_unavailable" });
     setShadowLegacyAuthorization(c, "allowed");
     return c.json({ outcome }, 200);
   });

@@ -4,6 +4,7 @@ import { isCapability, type PolicyMap } from "@taskdesk/permissions";
 import { and, desc, eq, gt, inArray, isNull, lt, or, sql } from "drizzle-orm";
 import { HTTPException } from "hono/http-exception";
 import { appendAuditLog } from "../audit/audit-writer";
+import { appendPendingActionStepUpAudit } from "../auth/step-up-audit";
 import { consumePendingActionProof } from "../auth/step-up-service";
 import db, { schema } from "../database";
 import {
@@ -26,6 +27,10 @@ import {
 } from "../identity/person-lifecycle";
 import { notifyCurrentInstanceAdminsOfAuditFailure } from "../instance/observability/audit-failure-notifier";
 import { recordAuditWriteFailure } from "../instance/observability/runtime";
+import {
+  assertAdminRemovalAllowed,
+  lockInstanceAdminSerialization,
+} from "../instance/users/repository";
 import { resolveIdentity } from "../permissions/resolve-identity";
 import { policyRegistry } from "../policy-registry";
 import { apiKeyScopeFromStoredPermissions } from "../utils/require-api-key-permission-scope";
@@ -34,6 +39,7 @@ import {
   capabilityCredential,
 } from "../utils/require-workspace-capability";
 import { validateWorkspaceAccess } from "../utils/validate-workspace-access";
+import { invalidateNativeAuthorization } from "../ws";
 import { resolvePendingActionApprovalContract } from "./approval-contract";
 import {
   type ConfirmationKind,
@@ -542,6 +548,9 @@ export async function approveUserDeactivation(input: {
 }) {
   const result = await retryIdentityGrantClosure(() =>
     db.transaction(async (tx) => {
+      // Shared instance-admin serialization first, as in grant-admin and suspend, so the
+      // last-administrator guard and every admin-reducing mutation are one ordered step.
+      await lockInstanceAdminSerialization(tx);
       const now = new Date();
       let auditFailure = false;
       const [row] = await tx
@@ -724,6 +733,7 @@ export async function approveUserDeactivation(input: {
           organisationId: personTable.organisationId,
           email: userTable.email,
           name: userTable.name,
+          role: userTable.role,
         })
         .from(personTable)
         .innerJoin(userTable, eq(userTable.id, personTable.userId))
@@ -765,6 +775,11 @@ export async function approveUserDeactivation(input: {
           auditFailure: false,
         };
       }
+      await assertAdminRemovalAllowed(tx, {
+        actorUserId: input.userId,
+        targetUserId: userId,
+        targetRole: target.role,
+      });
       if (input.typedName !== target.email)
         throw new HTTPException(400, { message: "confirmation_mismatch" });
       const proof = await consumePendingActionProof(tx, {
@@ -773,7 +788,23 @@ export async function approveUserDeactivation(input: {
         sessionId: input.sessionId,
         pendingActionId: row.id,
       });
-      if (!proof) throw new HTTPException(403, { message: "step_up_expired" });
+      if (!proof) {
+        await appendPendingActionStepUpAudit(tx, {
+          action: "auth.step_up_denied",
+          actorId: input.userId,
+          personId: input.requesterPersonId,
+          pendingActionId: row.id,
+          traceId: input.traceId,
+        });
+        return { row, state: "denied" as const, auditFailure: false };
+      }
+      await appendPendingActionStepUpAudit(tx, {
+        action: "auth.step_up_consumed",
+        actorId: input.userId,
+        personId: input.requesterPersonId,
+        pendingActionId: row.id,
+        traceId: input.traceId,
+      });
       const lifecycle = await transitionPersonLifecycleInTransaction(
         tx,
         target.id,
@@ -920,6 +951,14 @@ export async function approveUserDeactivation(input: {
   );
   if (result.state === "invalidated") {
     throw new HTTPException(409, { message: "pending_action_target_changed" });
+  }
+  if (result.state === "denied") {
+    throw new HTTPException(403, { message: "step_up_expired" });
+  }
+  if (result.state === "executed") {
+    const [targetUserId] = result.row.targetIds;
+    if (targetUserId)
+      await invalidateNativeAuthorization({ userId: targetUserId });
   }
   if (result.auditFailure) {
     recordAuditWriteFailure("pending_action_decision");

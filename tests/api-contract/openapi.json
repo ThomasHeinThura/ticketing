@@ -11958,10 +11958,9 @@
           {
             "schema": {
               "type": "string",
-              "minLength": 43,
-              "maxLength": 43
+              "maxLength": 256
             },
-            "required": true,
+            "required": false,
             "name": "x-taskdesk-step-up-token",
             "in": "header"
           }

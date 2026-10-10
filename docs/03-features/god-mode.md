@@ -302,8 +302,7 @@ invalid proof fails closed without a lifecycle mutation. A successful action inv
 with server-selected `end_memberships`; it revokes current sessions and all existing personal
 API keys, retires external and direct grants, recomputes effective membership, and preserves
 authored history. It never hard-deletes the person or user. SCIM retains its configured
-lifecycle policy; IP-16 reactivation does not restore retired grants. No last-administrator
-guardrail is introduced. Durable pending actions from migration 0109 retain their stored
+lifecycle policy; IP-16 reactivation does not restore retired grants. Durable pending actions from migration 0109 retain their stored
 `user_deactivation`/`person` identity and remain unapprovable; self-read DTOs expose them as
 `delete`/`user` only after the stored person id resolves to its linked user id. An unresolved
 legacy target fails closed with the existing `pending_action_target_changed` conflict.
@@ -345,8 +344,18 @@ used only in the existing Better Auth ban field; it is never returned by the Use
 written to audit/security-alert payloads. Expired bans are reported as not currently
 suspended and do not trigger credential restoration.
 
-Granting `instance:admin` uses the recovery contract's existing eligibility and concurrency
-invariants: the target is an existing non-anonymous, unbanned user with exactly one active
+Suspension and deactivation are guarded (Thomas, decision log 2026-10-10). An actor can never
+suspend or deactivate their own account: the request is refused with `409 self_target_refused`,
+on the request and again when a deactivation is approved. Neither action may leave the instance
+with no active, unbanned instance administrator (one whose person is an active staff person):
+such a request or approval is refused with `409 last_instance_admin`, and a refused approval
+leaves the pending action pending. The check and the mutation run under the shared
+`pg_advisory_xact_lock(2026)` promotion lock, so concurrent suspend, deactivate, approve and
+grant operations are serialized. This is the "Last instance admin removes their own access"
+edge case below.
+
+Granting `instance:admin` uses these eligibility and concurrency invariants (a future recovery
+CLI must reuse them): the target is an existing non-anonymous, unbanned user with exactly one active
 staff person. The operation changes only `user.role`, uses the shared promotion lock and
 re-reads eligibility while holding the user/person rows. Already-admin is an audited
 idempotent result. The browser operation requires a current agent session and one-use

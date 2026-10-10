@@ -1,5 +1,6 @@
 import type { SQL } from "drizzle-orm";
-import { and, desc, eq, gt, sql } from "drizzle-orm";
+import { and, desc, eq, gt, isNull, ne, or, sql } from "drizzle-orm";
+import { HTTPException } from "hono/http-exception";
 import db, { schema } from "../../database";
 
 type Executor = typeof db | Parameters<Parameters<typeof db.transaction>[0]>[0];
@@ -58,7 +59,11 @@ export function getDirectoryUser(id: string) {
 
 export function lockUserForMutation(executor: Executor, id: string) {
   return executor
-    .select({ id: schema.userTable.id, banned: schema.userTable.banned })
+    .select({
+      id: schema.userTable.id,
+      banned: schema.userTable.banned,
+      role: schema.userTable.role,
+    })
     .from(schema.userTable)
     .where(eq(schema.userTable.id, id))
     .for("update")
@@ -190,4 +195,56 @@ export function listAdminIds(executor: Executor) {
     .select({ id: schema.userTable.id })
     .from(schema.userTable)
     .where(eq(schema.userTable.role, "admin"));
+}
+
+/**
+ * Last-administrator and self-target guard for suspend and deactivate (decision log
+ * 2026-10-10). Refuses an actor targeting their own account, and refuses any action on
+ * an instance administrator that would leave no active, unbanned instance administrator
+ * with an active staff person. Callers hold `pg_advisory_xact_lock(2026)` (the shared
+ * promotion/admin lock) so the count and the mutation are one serialized step.
+ */
+export async function assertAdminRemovalAllowed(
+  executor: Executor,
+  input: {
+    actorUserId: string;
+    targetUserId: string;
+    targetRole: string | null;
+  },
+) {
+  if (input.actorUserId === input.targetUserId)
+    throw new HTTPException(409, { message: "self_target_refused" });
+  if (input.targetRole !== "admin") return;
+  const [remaining] = await executor
+    .select({ id: schema.userTable.id })
+    .from(schema.userTable)
+    .innerJoin(
+      schema.personTable,
+      and(
+        eq(schema.personTable.userId, schema.userTable.id),
+        eq(schema.personTable.side, "staff"),
+        eq(schema.personTable.active, true),
+      ),
+    )
+    .where(
+      and(
+        eq(schema.userTable.role, "admin"),
+        ne(schema.userTable.id, input.targetUserId),
+        or(
+          isNull(schema.userTable.banned),
+          eq(schema.userTable.banned, false),
+          and(
+            sql`${schema.userTable.banExpires} is not null`,
+            sql`${schema.userTable.banExpires} <= now()`,
+          ),
+        ),
+      ),
+    )
+    .limit(1);
+  if (!remaining)
+    throw new HTTPException(409, { message: "last_instance_admin" });
+}
+
+export function lockInstanceAdminSerialization(executor: Executor) {
+  return executor.execute(sql`SELECT pg_advisory_xact_lock(2026)`);
 }

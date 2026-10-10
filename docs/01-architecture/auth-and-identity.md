@@ -604,16 +604,17 @@ was used. Break-glass is loud by design.
 
 ### P4 God Mode Users — selected implementation contracts
 
-The browser `grant-admin` route uses the same target eligibility and serialization as
-recovery, but the authenticated actor is the current administrator's person and session.
-It requires a real, non-anonymous, unbanned target user with exactly one active staff person;
+The browser `grant-admin` route is authorized by the current administrator's person and
+session (any future recovery CLI must reuse its target eligibility and serialization). It requires a real, non-anonymous, unbanned target user with exactly one active staff person;
 it refuses unlinked, inactive, customer-side, or otherwise ineligible targets. It changes
 only the existing `user.role = 'admin'` source and never creates or links an identity. It
 takes the shared `pg_advisory_xact_lock(2026)`, locks the target user and eligible person,
 then re-reads setup state, target eligibility, current administrator state, and target role
-before mutation. An already-admin target is an audited idempotent result. No last-admin
-restriction is added; the rank/last-administrator guardrails remain deferred as recorded in
-`rbac.md`.
+before mutation. An already-admin target is an audited idempotent result. Suspending or
+deactivating an account (including approving a deactivation) is refused when the actor is
+the target or when it would leave no active, unbanned instance administrator, under the same
+`pg_advisory_xact_lock(2026)` (decision log 2026-10-10). The workspace-role rank guardrails
+remain deferred as recorded in `rbac.md`.
 
 The operation is `instance_admin_grant`, fixed version `1`, on
 `POST /api/instance/users/{id}/grant-admin`. Its strict JSON body is `{}`. The one-use PA-15

@@ -104,7 +104,11 @@ const approvePendingActionRoute = createRoute({
   middleware: [requireSessionOnly()] as const,
   request: {
     params: pendingActionParamSchema,
-    headers: z.object({ "x-taskdesk-step-up-token": z.string().length(43) }),
+    // A missing or malformed token is not a validation error: it is an unavailable PA-15
+    // proof (403 step_up_expired), audited like any other denied consumption.
+    headers: z.object({
+      "x-taskdesk-step-up-token": z.string().max(256).optional(),
+    }),
     body: {
       required: true,
       content: {
@@ -200,7 +204,7 @@ const pendingAction = apiRouter()
       userId: c.get("userId"),
       sessionId: session.id,
       typedName: c.req.valid("json").typedName,
-      stepUpToken: c.req.valid("header")["x-taskdesk-step-up-token"],
+      stepUpToken: c.req.valid("header")["x-taskdesk-step-up-token"] ?? "",
       traceId: normaliseTraceId(c.req.header("x-request-id")),
     });
     setShadowLegacyAuthorization(c, "allowed");
