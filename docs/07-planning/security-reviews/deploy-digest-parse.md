@@ -351,3 +351,85 @@ These are unchanged from the earlier sections:
 If buildx changes its output format again, the parser fails closed: the risk is availability, not integrity.
 <!-- END REPORT a0a19c5daaf5002ff ab38fd63 -->
 
+## Rebind after rebase onto main 1fc04d05
+
+**Reviewed head:** `a43601f4f5725a078362c5fc0a620a7ac400f2b2`
+
+The branch was rebased onto main `1fc04d05` (#616). `git range-diff` shows all five commits patch-identical. A formatting-only commit (`biome format` of `scripts/ci/install.test.mjs`) fixes the `static` lint failure. Both reviewer contexts re-checked at this exact head.
+
+The Opus section was written by its reviewer to the closure file and is copied verbatim. The Sonnet report was extracted mechanically from its transcript.
+
+<!-- BEGIN REPORT (agent a0a19c5daaf5002ff; model claude-opus-5-5; role Sol-tier rebind; candidate a43601f4f5725a078362c5fc0a620a7ac400f2b2; sha256 7d350811dfedda0dbaa4d7f66585ca83de50213d181621dc04758af0cb3e6dd6) -->
+# Closure 3: rebind after rebase onto main 1fc04d05
+
+Reviewer model: Claude Opus 5.5 (claude-opus-5-5)
+Reviewer context ID: claude-agent:a0a19c5daaf5002ff
+**Reviewed head:** a43601f4f5725a078362c5fc0a620a7ac400f2b2
+
+**Verdict: PASS. The rebind holds.** The product code at `a43601f4` is byte-identical to the reviewed fix head `ab38fd63ffdbbb255bf5fab830180152f21d0144`. The new commit is formatting only. New main does not conflict with the fix. No new findings.
+
+This is a Sol-tier pass by a fresh Claude Opus context, not GPT-6 Sol. I did not author, direct or remediate this change.
+
+- **Method:** clean `git archive a43601f4…` export in the scratchpad, not the shared worktree.
+- **Base:** local `origin/main` is `1fc04d05759a036ef5ea781f406840a29600d47b`, and it is the merge base. `git fetch` failed from this context (no access), so I did not confirm the remote head live.
+
+## (1) Commits are unchanged by the rebase
+
+`git range-diff b64f8062..360c7384 origin/main..a43601f4` reports `=` for all five pairs:
+
+| Before rebase | After rebase |
+| --- | --- |
+| 5807bda6 | a21acffa |
+| e2c00a93 | bdb36a3e |
+| ab38fd63 | 8b2b688f |
+| 0451179b | 35c12330 |
+| 360c7384 | a43601f4 |
+
+At `a43601f4`, both `scripts/deploy.sh` and `.github/workflows/release.yml` are byte-identical to `ab38fd63` (checked with `cmp`). The extractor at `deploy.sh:322` and `release.yml:388` is the reviewed form: `awk '/^Digest:/ { if ($1 == "Digest:" && NF == 2) print $2; exit }'`.
+
+## (2) a43601f4 is formatting only
+
+- It touches only `scripts/ci/install.test.mjs` (+66/-12).
+- `git diff -w` shows only line reflow: argument arrays and `assert.*` calls split across lines.
+- Mechanical check: I stripped all whitespace from the file before and after the commit, and dropped trailing commas before `)`, `]` and `}`. The two results are identical, so no assertion, regex, fixture or logic changed.
+- `biome format` on the file reports "No fixes applied".
+- `node --test scripts/ci/install.test.mjs` gives **36 tests, 36 pass, 0 fail**. That is the same count as at `ab38fd63`.
+
+## (3) New main does not conflict
+
+- `git diff b64f8062 1fc04d05` does not touch `scripts/deploy.sh`, `.github/workflows/release.yml` or `scripts/ci/install.test.mjs`. The release.yml immutability step and its surrounding steps (sign, attest, post-sign verify) are therefore unchanged from what I reviewed.
+- #616 changed different files: `ci-fast.yml`, `ci-full.yml`, the change-scope action, and the `scripts/ci` policy checks.
+- None of the `scripts/ci/lib` modules, `classify-change.mjs`, `check-policy.mjs`, `check-reviews.mjs` or `test-all.mjs` mentions `release.yml`, `deploy.sh` or `install.test`.
+- `scripts/deploy.sh` is still on the security path list in ci-cd.md.
+- #616's model-aware security review reads its list of accepted models from the merge base. That list includes `Claude Opus 5.5 (claude-opus-5-5)`.
+
+## Advisory, not a finding
+
+- `check-pr-template.mjs` requires the **Model:** field in the PR's `## Security review` to be exactly one of the accepted labels. Use `Claude Opus 5.5 (claude-opus-5-5)`. My earlier sections say `Claude Opus (claude-opus-5-5)`, which describes the same model but is not the exact policy label.
+- The committed note still records `**Reviewed head:** ab38fd63…`. This closure binds the review to `a43601f4`, so carry the new head into the note.
+
+## Not checked
+
+- The live remote state of `main` and of PR #617 (fetch was denied).
+- CI on `a43601f4`.
+- The full monorepo test suite.
+<!-- END REPORT a0a19c5daaf5002ff a43601f4 -->
+
+<!-- BEGIN REPORT (agent a9a25fc9411123f55; model claude-sonnet-5-5; role ordinary rebind; candidate a43601f4f5725a078362c5fc0a620a7ac400f2b2; sha256 9aee3c2d273fd77164ee62fbbf4c7074ebd05949e49c4f25263d0d9f80ebf169) -->
+Reviewer model: Claude Sonnet (claude-sonnet-5-5)
+Context id: fresh independent Sonnet review context, session 3a9e9ce4-8409-47d4-b1be-1f1544697e70. I did not author or edit the change.
+Reviewed head: a43601f4f5725a078362c5fc0a620a7ac400f2b2 (on main 1fc04d05759a036ef5ea781f406840a29600d47b)
+Verdict: **APPROVE.** The rebase is patch-identical and a43601f4 is formatting only. I ran everything on a clean `git archive` export, so the shared worktree was not touched.
+
+1. **Range-diff:** `git range-diff b64f8062..360c7384 origin/main..a43601f4` reports all 5 commits as `=` (patch-identical), mapped 1:1.
+   - 5807bda6 = a21acffa
+   - e2c00a93 = bdb36a3e
+   - ab38fd63 = 8b2b688f
+   - 0451179b = 35c12330
+   - 360c7384 = a43601f4
+2. **Formatting only:** a43601f4 touches only `scripts/ci/install.test.mjs`. After stripping whitespace, commas, semicolons and parentheses, its content hashes identical to the parent's (`a43601f4~1`), so there is no token, logic or assertion change.
+   - The only changed lines containing runs of spaces inside string literals are the `"Name:      ghcr.io/..."` fixture line. It was reflowed from a tuple row to a multi-line array element, and the string itself is byte-identical.
+3. **Tests:** `node --test scripts/ci/install.test.mjs` on the export gives 36 tests, 36 pass, 0 fail.
+
+I did not run biome, so the claim that the formatting is biome's rests on the diff being formatting-only. I also did not run the full repo suite or CI.
+<!-- END REPORT a9a25fc9411123f55 a43601f4 -->
