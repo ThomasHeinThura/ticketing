@@ -30,14 +30,17 @@ export const guardSchema = z.discriminatedUnion("type", [
   }),
 ]);
 
-// Effects understood in stored workflow JSON. Keep the held `set_field` shape here so
-// historical rows remain recognizable in responses and can be refused at execution; it
-// is deliberately excluded from `authorableEffectSchema` below.
-const setFieldEffectSchema = z.object({
-  kind: z.literal("set_field"),
-  field: z.string(),
-  value: z.unknown(),
-});
+// Effects understood in stored workflow JSON and recognizable in the request contract.
+// The controller refuses the held `set_field` shape before any database access.
+const setFieldEffectSchema = z
+  .object({
+    kind: z.literal("set_field"),
+    field: z.string(),
+    value: z.unknown(),
+  })
+  .describe(
+    "Legacy effect shape retained for compatibility; workflow versions containing set_field are refused with HTTP 400 while the effect is held.",
+  );
 
 // `resolve_sla`/`reopen_sla` (`AutomaticEffect`) are deliberately not representable here
 // at all: a caller cannot author what the engine computes automatically (`WF-22`).
@@ -68,17 +71,22 @@ const authoredEffectSchemas = [
   }),
 ] as const;
 
-// Historical response recognition includes the held effect so old rows are not stripped
-// or reinterpreted. Newly authored workflow versions use the narrower union below.
+// Keep the held shape recognizable in both stored responses and the version request
+// contract. The controller refuses it before reading or writing database state.
 export const effectSchema = z.discriminatedUnion("kind", [
   ...authoredEffectSchemas,
   setFieldEffectSchema,
 ]);
 
-export const authorableEffectSchema = z.discriminatedUnion(
-  "kind",
-  authoredEffectSchemas,
-);
+export const authorableEffectSchema = z.discriminatedUnion("kind", [
+  ...authoredEffectSchemas,
+]);
+
+// Wire recognition preserves the historical shape; controller admission remains stricter.
+const workflowVersionEffectInputSchema = z.discriminatedUnion("kind", [
+  ...authoredEffectSchemas,
+  setFieldEffectSchema,
+]);
 
 export const createWorkflowTransitionBody = z.object({
   fromStateTemplateId: z.string().nullable().default(null),
@@ -91,7 +99,7 @@ export const createWorkflowTransitionBody = z.object({
   requiresCab: z.boolean().default(false),
   isReopen: z.boolean().default(false),
   guards: z.array(guardSchema).default([]),
-  effects: z.array(authorableEffectSchema).default([]),
+  effects: z.array(workflowVersionEffectInputSchema).default([]),
 });
 
 export const createWorkflowVersionBody = z.object({

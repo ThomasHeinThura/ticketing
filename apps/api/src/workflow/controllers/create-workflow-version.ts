@@ -33,6 +33,17 @@ async function createWorkflowVersion(
   workflowId: string,
   transitions: readonly TransitionInput[],
 ) {
+  if (
+    transitions.some((transition) =>
+      transition.effects.some((effect) => effect.kind === "set_field"),
+    )
+  ) {
+    throw new HTTPException(400, {
+      message:
+        "Invalid workflow version: set_field is held for this release and cannot be authored",
+    });
+  }
+
   const [workflow] = await db
     .select({ workspaceId: workflowTable.workspaceId })
     .from(workflowTable)

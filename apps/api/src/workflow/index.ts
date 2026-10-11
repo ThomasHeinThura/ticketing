@@ -106,7 +106,8 @@ const createWorkflowVersionRoute = createRoute({
   description:
     "Create a new draft version under an existing workflow. Validated structurally " +
     "(packages/domain's validateWorkflowVersion) against this workspace's state " +
-    "templates before it is persisted.",
+    "templates before it is persisted. The legacy set_field effect shape remains " +
+    "documented for compatibility, but any request containing it is refused with HTTP 400 while held.",
   middleware: [
     workspaceAccess.fromWorkflow(),
     requireWorkspaceCapability("workflow:manage"),

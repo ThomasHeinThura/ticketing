@@ -189,7 +189,7 @@ describe("API integration: workflow persistence", () => {
     expect(rows).toHaveLength(0);
   });
 
-  it("refuses set_field in a newly authored workflow version with standard body validation", async () => {
+  it("recognizes but refuses held set_field in a mixed authoring request before persistence", async () => {
     const owner = await createWorkspaceMember({ role: "owner" });
     mockAuthenticatedSession(owner.user);
     const { backlog, done } = await seedStateTemplates(owner.workspace.id);
@@ -199,18 +199,25 @@ describe("API integration: workflow persistence", () => {
       name: "Field effect held",
     });
     const workflow = (await createResponse.json()) as { id: string };
+    const transitionsBefore = await db
+      .select()
+      .from(schema.workflowTransitionTable);
 
     const versionResponse = await createWorkflowVersion(workflow.id, {
       transitions: [
         {
           fromStateTemplateId: backlog.id,
           toStateTemplateId: done.id,
-          effects: [{ kind: "set_field", field: "resolution", value: "fixed" }],
+          effects: [
+            { kind: "pause_sla" },
+            { kind: "set_field", field: "resolution", value: "fixed" },
+          ],
         },
       ],
     });
-    expect(versionResponse.status, await versionResponse.clone().text()).toBe(
-      400,
+    expect(versionResponse.status).toBe(400);
+    expect(await versionResponse.text()).toContain(
+      "set_field is held for this release and cannot be authored",
     );
 
     const versions = await db
@@ -218,6 +225,11 @@ describe("API integration: workflow persistence", () => {
       .from(schema.workflowVersionTable)
       .where(eq(schema.workflowVersionTable.workflowId, workflow.id));
     expect(versions).toHaveLength(0);
+
+    const transitionsAfter = await db
+      .select()
+      .from(schema.workflowTransitionTable);
+    expect(transitionsAfter).toHaveLength(transitionsBefore.length);
   });
 
   it("a workflow from another workspace is not reachable (404, not 403)", async () => {

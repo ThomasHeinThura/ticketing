@@ -153,8 +153,10 @@ the **only** place lifecycle side-effects are defined; `sla.md` and `assignment.
   ([data-model.md](../01-architecture/data-model.md)) — the "pending until" pattern,
   fired by the scheduler and cancelled if the item leaves the state first.
 - `set_field { field, value }` is held for this release. No field namespace or value
-  validation has been defined. New workflow versions cannot author it, and version
-  validation rejects a version containing it. For a previously stored mixed version,
+  validation has been defined. The legacy request shape remains documented for wire
+  compatibility, but any new version containing it is refused with HTTP 400 before
+  database reads or writes; version validation also rejects it as defense in depth. For
+  a previously stored mixed version,
   only the selected transition containing `set_field` is refused before any work-item
   state or effect is changed; supported sibling transitions remain usable. Stored rows
   retain the recognized shape so the held effect cannot be silently dropped or

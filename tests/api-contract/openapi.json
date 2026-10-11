@@ -2918,7 +2918,8 @@
                   "required": [
                     "kind",
                     "field"
-                  ]
+                  ],
+                  "description": "Legacy effect shape retained for compatibility; workflow versions containing set_field are refused with HTTP 400 while the effect is held."
                 }
               ]
             }
@@ -17443,7 +17444,7 @@
           "Workflows"
         ],
         "summary": "Create workflow version",
-        "description": "Create a new draft version under an existing workflow. Validated structurally (packages/domain's validateWorkflowVersion) against this workspace's state templates before it is persisted.",
+        "description": "Create a new draft version under an existing workflow. Validated structurally (packages/domain's validateWorkflowVersion) against this workspace's state templates before it is persisted. The legacy set_field effect shape remains documented for compatibility, but any request containing it is refused with HTTP 400 while held.",
         "parameters": [
           {
             "schema": {
@@ -17711,6 +17712,26 @@
                                   "afterMinutes",
                                   "toStateTemplateId"
                                 ]
+                              },
+                              {
+                                "type": "object",
+                                "properties": {
+                                  "kind": {
+                                    "type": "string",
+                                    "enum": [
+                                      "set_field"
+                                    ]
+                                  },
+                                  "field": {
+                                    "type": "string"
+                                  },
+                                  "value": {}
+                                },
+                                "required": [
+                                  "kind",
+                                  "field"
+                                ],
+                                "description": "Legacy effect shape retained for compatibility; workflow versions containing set_field are refused with HTTP 400 while the effect is held."
                               }
                             ]
                           },
