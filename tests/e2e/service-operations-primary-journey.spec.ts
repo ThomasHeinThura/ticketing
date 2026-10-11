@@ -185,7 +185,7 @@ async function runJourney(fixture: MfaCsrfAppFixture) {
 
     const typesResponse = await admin.get(
       new URL(
-        `/api/work-items/workspace/${encodeURIComponent(workspaceId)}/work-item-types`,
+        `/api/workspace/${encodeURIComponent(workspaceId)}/work-item-types`,
         origin,
       ).toString(),
       { headers: { Origin: origin } },
