@@ -1,3 +1,16 @@
+### 2026-10-11 · Owner approves bounded boot-refusal test deadlines
+
+**Decision:** Thomas approves only the proposed production-import child deadline of10 seconds and outer test deadline of11 seconds for the built-entrypoint boot-refusal regression. The fresh-build deadline remains5 seconds, and every existing rejection assertion remains: natural nonzero exit, no timeout/signal/error, exact PolicyEnforcementConfigError, and no successful-import marker. No production runtime budget changes.
+
+**Exact answer:** “Approve the bounded deadline change”. The question explicitly disclosed two prior hosted5-second import timeouts, an unresolved cause despite local diagnostics, the concrete two-hunk patch, a separate reviewed PR and recorded decision, and that approval does not establish a root-cause fix or erase failures.
+
+**Limits:** This owner-approved test-budget decision requires its own independent ordinary and Sol security review, exact-source verification and protected acceptance. Earlier hosted timeout failures remain real, preserved and cause-unresolved. It does not waive a required check, authorize unchanged retry-until-green, change G11 sampling/budgets, alter the5-second build deadline or weaken any rejection oracle. The separate MFA ordering and board-render budget failures remain separate.
+
+**Source:** Thomas’s direct reply in this conductor chat,2026-10-11; exact question/answer and approved patch preserved in `/Users/heinthura/.codex/taskdesk-evidence/2026-10-11/boot-refusal-budget-owner-decision.json` and `boot-refusal-budget-proposal.patch`.
+**Recorded by:** root Codex conductor, platform-visible GPT-6 family; serving variant not independently exposed.
+
+---
+
 ### 2026-10-11 · Owner clarifies historical workflow held-effect boundary
 
 **Decision:** In a historical workflow version containing both a held `set_field` transition and supported transitions, refuse only execution of transitions containing `set_field`. Supported sibling transitions remain usable under their existing permissions, guards and effects. A held edge is refused before any work-item or effect mutation.
