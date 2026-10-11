@@ -128,7 +128,14 @@ thing that is hashed or executed.
   to another resource, and cannot be applied when the payload, targets or scope differ from
   what was approved — the hash comparison in `PA-6` is the mechanism, not a convention.
 - `PA-8` **Expiry:** 15 minutes from creation. `pending-action-expire`
-  ([background-jobs.md](background-jobs.md)) marks stale rows `expired`.
+  ([background-jobs.md](background-jobs.md)) marks stale rows `expired`. Its registered
+  candidate set is pending workspace-scoped actions, canonical instance user deactivation
+  (`delete`/`user` on `POST /api/instance/users/{id}/deactivate`), and durable 0109
+  `user_deactivation`/`person` rows on that same route with all scope columns null. Other
+  nullable-scope rows remain untouched and make the worker report degraded operation. The
+  worker takes one database-clock cutoff per candidate statement, then samples the database
+  clock again after each row lock before committing the terminal state and its existing
+  decision event/audit behavior.
 - `PA-9` **Invalidation:** an action becomes `invalidated` when the requesting credential
   is explicitly revoked, the requester is deactivated, the requester loses reach to any
   target, the required capability is removed, the requester cancels it, a target's version changes, or
