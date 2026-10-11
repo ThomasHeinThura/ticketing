@@ -1,3 +1,22 @@
+### 2026-10-11 · Technical clarification to the S6 owner-decision record
+
+This entry clarifies attribution in the 2026-10-10 S6 owner-decision entry below; it does not
+change or replace Thomas's decisions. Thomas decided to require operation-bound PA-15 step-up
+for suspending a current instance administrator, and to require the self-target and last-active-
+administrator guards. The use of the existing `pg_advisory_xact_lock(2026)` serialization lock,
+the assessment that the enumerated `step_up_operation_route` CHECK requires a schema migration,
+the conductor's migration allocation, and holding implementation until that allocation were
+technical implementation and coordination details. They were not additional owner decisions.
+
+The conductor allocated migration 0121 to S6 after moving #569's pending-action expiry index to
+0122. The implementation and migration metadata are recorded in the [migration
+ledger](migration-ledger.md). The prior entry remains preserved as the historical owner-decision
+record; its implementation-detail language is read with this clarification.
+
+**Recorded by:** Integration-freeze conductor, 2026-10-11.
+
+---
+
 ### 2026-10-10 · Owner decisions for slice S6 God Mode Users: last-administrator guard and admin-suspend step-up
 
 **Decision:** Thomas decided two questions raised by the S6 security review, each chosen in the Claude Opus conductor session.
