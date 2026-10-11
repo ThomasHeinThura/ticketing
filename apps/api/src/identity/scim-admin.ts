@@ -24,6 +24,14 @@ import {
 import { recordAuditWriteFailure } from "../instance/observability/runtime";
 import { requireCurrentInstanceAdmin } from "../instance/require-instance-admin";
 import { apiRouter, createRoute, jsonResponse, z } from "../openapi";
+import {
+  lockPendingActionLifecycle,
+  reportPendingActionAuditFailures,
+} from "../pending-action/lifecycle-invalidation";
+import {
+  captureWorkspaceDeletionAccessForWorkspaces,
+  invalidateWorkspaceDeletionAccessLosses,
+} from "../pending-action/workspace-access-invalidation";
 import { setShadowLegacyAuthorization } from "../permissions/shadow-context";
 import { normaliseTraceId } from "../permissions/shadow-middleware";
 import { requireSessionOnly } from "../utils/require-session-only";
@@ -437,10 +445,13 @@ const routes = apiRouter()
     const [actor] = await getIdentityPersonForUser(userId);
     if (!actor) throw new HTTPException(403, { message: "Forbidden" });
     let auditFailed = false;
+    let pendingActionAuditFailures = 0;
     const result = await retryIdentityGrantClosure(() =>
       db.transaction(async (tx) => {
         auditFailed = false;
-        await lockScimGrantClosure(tx, {
+        pendingActionAuditFailures = 0;
+        await lockPendingActionLifecycle(tx);
+        const projectionClosure = await lockScimGrantClosure(tx, {
           connectionId: id,
           actorPersonId: actor.id,
           ...(validated.value.kind === "mapping_create"
@@ -463,6 +474,13 @@ const routes = apiRouter()
                 }
               : {}),
         });
+        const pendingActionAccess =
+          await captureWorkspaceDeletionAccessForWorkspaces(
+            tx,
+            projectionClosure
+              .filter((key) => key.scope === "workspace")
+              .map((key) => key.scopeId),
+          );
         const [connection] = await lockFullIdentityConnection(tx, id);
         const [scim] = await lockFullScimConnection(tx, id);
         if (!connection || !scim) return { kind: "not_found" as const };
@@ -703,6 +721,12 @@ const routes = apiRouter()
           changedKeys.push(...mappingChangedFields);
         }
 
+        pendingActionAuditFailures =
+          await invalidateWorkspaceDeletionAccessLosses(
+            tx,
+            pendingActionAccess,
+          );
+
         await tx
           .update(schema.identityConnectionTable)
           .set({
@@ -789,6 +813,7 @@ const routes = apiRouter()
       return c.json(error(409, "Duplicate group mapping"), 409);
     if (result.kind === "invalid")
       return c.json(error(422, result.message), 422);
+    await reportPendingActionAuditFailures(pendingActionAuditFailures);
     if (auditFailed) {
       recordAuditWriteFailure("mutation");
       await notifyCurrentInstanceAdminsOfAuditFailure("mutation");

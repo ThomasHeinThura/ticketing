@@ -11,6 +11,7 @@ import { projectMembershipKeys } from "../../../apps/api/src/identity/membership
 import { oidcGroupMappingAdminRouter } from "../../../apps/api/src/identity/oidc-group-mapping-admin";
 import * as identityRepository from "../../../apps/api/src/identity/repository";
 import { createApp } from "../../../apps/api/src/index";
+import { createPendingAction } from "../../../apps/api/src/pending-action/service";
 import {
   ensureInternalOrganisation,
   ensureStaffPersonForUser,
@@ -1021,6 +1022,234 @@ describe("IP-34 OIDC group mapping administration", () => {
         ),
       );
     expect(events).toHaveLength(2);
+  });
+
+  it("terminally invalidates a calendar deletion when its OIDC mapping removes required access", async () => {
+    const { sessionCookie } = await setupAdmin();
+    await setupConnection();
+    await db
+      .update(schema.roleTable)
+      .set({ capabilities: ["sla_policy:manage"] })
+      .where(eq(schema.roleTable.id, WORKSPACE_ROLE_ID));
+    const requesterUserId = "oidc-calendar-pending-requester";
+    const [requesterUser] = await db
+      .insert(schema.userTable)
+      .values({
+        id: requesterUserId,
+        name: "OIDC pending-action requester",
+        email: `${requesterUserId}@example.test`,
+        role: "member",
+      })
+      .returning();
+    if (!requesterUser)
+      throw new Error("requester fixture user was not created");
+    await ensureStaffPersonForUser(requesterUser.id);
+    const [requesterPerson] = await db
+      .select({ id: schema.personTable.id })
+      .from(schema.personTable)
+      .where(eq(schema.personTable.userId, requesterUser.id));
+    if (!requesterPerson)
+      throw new Error("requester fixture person was not created");
+    const requesterSessionId = `session-${requesterUser.id}`;
+    const now = new Date();
+    await db.insert(schema.sessionTable).values({
+      id: requesterSessionId,
+      token: `token-${requesterUser.id}`,
+      userId: requesterUser.id,
+      portal: "agent",
+      expiresAt: new Date(now.getTime() + 60 * 60 * 1000),
+      createdAt: now,
+      updatedAt: now,
+    });
+    const app = createMappingApp();
+    const created = await createMapping(
+      app,
+      sessionCookie,
+      createRequest(GROUP_A),
+    );
+    expect(created.status).toBe(201);
+    const { data } = (await created.json()) as { data: { id: string } };
+    const [externalIdentity] = await db
+      .insert(schema.externalIdentityTable)
+      .values({
+        id: "oidc-calendar-pending-requester-identity",
+        identityConnectionId: CONNECTION_ID,
+        personId: requesterPerson.id,
+        userId: requesterUser.id,
+        issuer: "https://login.microsoftonline.com/tenant/v2.0",
+        subject: requesterUser.id,
+        userNameSnapshot: "oidc-pending-requester@example.test",
+        emailSnapshot: "oidc-pending-requester@example.test",
+        active: true,
+        provisionedVia: "jit",
+      })
+      .returning({ id: schema.externalIdentityTable.id });
+    if (!externalIdentity)
+      throw new Error("requester identity was not created");
+    await db.insert(schema.membershipGrantTable).values({
+      id: "oidc-calendar-pending-grant",
+      personId: requesterPerson.id,
+      scope: "workspace",
+      scopeId: WORKSPACE_ID,
+      roleId: WORKSPACE_ROLE_ID,
+      sourceKind: "oidc_group",
+      externalIdentityId: externalIdentity.id,
+      identityConnectionId: CONNECTION_ID,
+      oidcGroupMappingId: data.id,
+    });
+    await db.transaction((tx) =>
+      projectMembershipKeys(tx, [
+        {
+          personId: requesterPerson.id,
+          scope: "workspace",
+          scopeId: WORKSPACE_ID,
+        },
+      ]),
+    );
+    await db.insert(schema.serviceCalendarTable).values({
+      id: "oidc-calendar-pending-target",
+      workspaceId: WORKSPACE_ID,
+      name: "OIDC pending-access target",
+      timezone: "UTC",
+      windows: {
+        mon: [{ from: 540, to: 1020 }],
+        tue: [{ from: 540, to: 1020 }],
+        wed: [{ from: 540, to: 1020 }],
+        thu: [{ from: 540, to: 1020 }],
+        fri: [{ from: 540, to: 1020 }],
+      },
+      holidays: [],
+    });
+    const pending = await createPendingAction({
+      requesterPersonId: requesterPerson.id,
+      credentialType: "session",
+      credentialId: requesterSessionId,
+      origin: "web",
+      action: "delete",
+      routeKey: "DELETE /api/service-calendars/{id}",
+      targetType: "service_calendar",
+      targetIds: ["oidc-calendar-pending-target"],
+      workspaceId: WORKSPACE_ID,
+      projectId: null,
+      organisationId: null,
+      actorId: requesterUser.id,
+      actorType: "person",
+    });
+
+    const disableRequest = { configVersion: 2, enabled: false };
+    const disableBinding = {
+      kind: "operation",
+      operation: "oidc_group_mapping_update",
+      connectionId: CONNECTION_ID,
+      mappingId: data.id,
+      request: disableRequest,
+    };
+    const disableToken = await issueProof(app, sessionCookie, disableBinding);
+    const disabled = await csrfRequest(
+      app,
+      `/api/instance/identity-connections/${CONNECTION_ID}/oidc-group-mappings/${data.id}`,
+      {
+        method: "PATCH",
+        headers: {
+          "content-type": "application/json",
+          "x-taskdesk-step-up-token": disableToken,
+        },
+        body: JSON.stringify(disableRequest),
+      },
+      sessionCookie,
+    );
+    expect(disabled.status).toBe(200);
+    expect(
+      await db.query.pendingActionTable.findFirst({
+        where: eq(schema.pendingActionTable.id, pending.pendingActionId),
+      }),
+    ).toMatchObject({
+      state: "invalidated",
+      invalidationReason: "reach_lost",
+    });
+    const events = await db
+      .select({ payload: schema.outboxTable.payload })
+      .from(schema.outboxTable)
+      .where(eq(schema.outboxTable.kind, "pending_action.decided"));
+    expect(
+      events.filter(
+        ({ payload }) =>
+          (payload as { payload?: { pendingActionId?: string } }).payload
+            ?.pendingActionId === pending.pendingActionId,
+      ),
+    ).toHaveLength(1);
+    expect(
+      await db
+        .select({ action: schema.auditLogTable.action })
+        .from(schema.auditLogTable)
+        .where(
+          and(
+            eq(schema.auditLogTable.action, "pending_action.decided"),
+            eq(schema.auditLogTable.entityId, pending.pendingActionId),
+          ),
+        ),
+    ).toHaveLength(1);
+
+    const enableRequest = { configVersion: 3, enabled: true };
+    const enableBinding = {
+      kind: "operation",
+      operation: "oidc_group_mapping_update",
+      connectionId: CONNECTION_ID,
+      mappingId: data.id,
+      request: enableRequest,
+    };
+    const enableToken = await issueProof(app, sessionCookie, enableBinding);
+    const enabled = await csrfRequest(
+      app,
+      `/api/instance/identity-connections/${CONNECTION_ID}/oidc-group-mappings/${data.id}`,
+      {
+        method: "PATCH",
+        headers: {
+          "content-type": "application/json",
+          "x-taskdesk-step-up-token": enableToken,
+        },
+        body: JSON.stringify(enableRequest),
+      },
+      sessionCookie,
+    );
+    expect(enabled.status).toBe(200);
+    await db.insert(schema.membershipGrantTable).values({
+      id: "oidc-calendar-restored-grant",
+      personId: requesterPerson.id,
+      scope: "workspace",
+      scopeId: WORKSPACE_ID,
+      roleId: WORKSPACE_ROLE_ID,
+      sourceKind: "oidc_group",
+      externalIdentityId: externalIdentity.id,
+      identityConnectionId: CONNECTION_ID,
+      oidcGroupMappingId: data.id,
+    });
+    await db.transaction((tx) =>
+      projectMembershipKeys(tx, [
+        {
+          personId: requesterPerson.id,
+          scope: "workspace",
+          scopeId: WORKSPACE_ID,
+        },
+      ]),
+    );
+    expect(
+      await db.query.pendingActionTable.findFirst({
+        where: eq(schema.pendingActionTable.id, pending.pendingActionId),
+      }),
+    ).toMatchObject({ state: "invalidated", invalidationReason: "reach_lost" });
+    mockAuthenticatedSession(requesterUser);
+    const approvalAttempt = await csrfRequest(
+      app,
+      `/api/me/pending-actions/${pending.pendingActionId}/approve`,
+      {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ typedName: "OIDC pending-access target" }),
+      },
+      `__Host-tdk_agent_session=token-${requesterUser.id}`,
+    );
+    expect(approvalAttempt.status).toBe(409);
   });
 
   it("keeps authority and cache unchanged for a display-only mapping edit", async () => {

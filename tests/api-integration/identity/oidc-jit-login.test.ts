@@ -1,10 +1,13 @@
+import { BUILT_IN_ROLES, defaultRolePayloads } from "@taskdesk/permissions";
 import { and, eq } from "drizzle-orm";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import db, { schema } from "../../../apps/api/src/database";
 import { encryptIdentityClientSecret } from "../../../apps/api/src/identity/client-secret";
 import { identityAccountId } from "../../../apps/api/src/identity/oidc-login";
+import { validateEntraIdToken } from "../../../apps/api/src/identity/oidc-token";
 import { createApp } from "../../../apps/api/src/index";
 import { ensureInternalOrganisation } from "../../../apps/api/src/utils/seed-internal-organisation";
+import { csrfRequest } from "../helpers/csrf";
 import { resetTestDatabase } from "../helpers/database";
 
 vi.mock("../../../apps/api/src/identity/oidc-provider", async (original) => {
@@ -307,6 +310,186 @@ describe("OIDC JIT first login (IP-9, IP-10)", () => {
     expect(response.status).toBe(302);
     expect(response.headers.get("location")).toBe("/");
     await expectJitIdentity("jit-customer-connection", "customer", target);
+  });
+
+  it("denies mixed native/projected view admission and retires the OIDC grant on failed admission", async () => {
+    await seedAgent("jit-admission-retention-connection");
+    await db
+      .update(schema.roleTable)
+      .set({ capabilities: [...BUILT_IN_ROLES.manager.capabilities] })
+      .where(eq(schema.roleTable.id, AGENT_ROLE_ID));
+    const admitted = await signIn(
+      "jit-admission-retention-connection",
+      "agent",
+    );
+    expect(admitted.status).toBe(302);
+    const sessionCookie = admitted.headers
+      .getSetCookie()
+      .find((value) => value.startsWith("__Host-tdk_agent_session="))
+      ?.split(";", 1)[0];
+    expect(sessionCookie).toBeTruthy();
+
+    const [identity] = await db
+      .select()
+      .from(schema.externalIdentityTable)
+      .where(
+        eq(
+          schema.externalIdentityTable.identityConnectionId,
+          "jit-admission-retention-connection",
+        ),
+      );
+    expect(identity?.userId).toBeTruthy();
+    expect(identity?.personId).toBeTruthy();
+    await db.insert(schema.workspaceRoleTable).values({
+      workspaceId: WORKSPACE_ID,
+      role: "member",
+      permission: JSON.stringify(defaultRolePayloads.member),
+      isSystem: true,
+    });
+    await db.insert(schema.workspaceUserTable).values({
+      workspaceId: WORKSPACE_ID,
+      userId: identity?.userId ?? "missing-oidc-user",
+      role: "member",
+      joinedAt: new Date(),
+    });
+    const viewOwner = await db.query.personTable.findFirst({
+      where: eq(schema.personTable.userId, "jit-login-creator"),
+    });
+    expect(viewOwner?.id).toBeTruthy();
+    await db.insert(schema.savedViewTable).values({
+      id: "oidc-admission-retention-view",
+      workspaceId: WORKSPACE_ID,
+      createdBy: viewOwner?.id ?? "missing-view-owner",
+      name: "OIDC admission retention",
+      scope: "workspace",
+      scopeId: WORKSPACE_ID,
+      visibility: "private",
+      query: { entity: "work_item" },
+      layout: "list",
+    });
+
+    const { app } = createApp();
+    const deleteResponse = await csrfRequest(
+      app,
+      "/api/views/oidc-admission-retention-view",
+      { method: "DELETE" },
+      sessionCookie ?? "",
+    );
+    expect(deleteResponse.status, await deleteResponse.clone().text()).toBe(
+      403,
+    );
+    expect(await db.query.pendingActionTable.findFirst()).toBeUndefined();
+    expect(
+      await db.query.outboxTable.findFirst({
+        where: eq(schema.outboxTable.kind, "pending_action.requested"),
+      }),
+    ).toBeUndefined();
+    expect(
+      await db.query.auditLogTable.findFirst({
+        where: eq(schema.auditLogTable.action, "pending_action.requested"),
+      }),
+    ).toBeUndefined();
+    const originalSession = await db.query.sessionTable.findFirst({
+      where: eq(schema.sessionTable.userId, identity?.userId ?? ""),
+    });
+    expect(originalSession?.id).toBeTruthy();
+    const viewRow = await db.query.savedViewTable.findFirst({
+      where: eq(schema.savedViewTable.id, "oidc-admission-retention-view"),
+    });
+    expect(viewRow?.createdBy).toBe(viewOwner?.id);
+
+    vi.mocked(validateEntraIdToken).mockImplementation(
+      (_token, _jwks, expectation) => ({
+        ok: true,
+        claims: {
+          iss: expectation.issuer,
+          tid: expectation.tenantId,
+          oid: SUBJECT,
+          email: "jit-first-login@example.test",
+          email_verified: true,
+          name: "JIT First Login",
+          acct: 0,
+          roles: [],
+        },
+      }),
+    );
+    const refused = await signIn("jit-admission-retention-connection", "agent");
+    expect(refused.headers.get("location")).toContain("identity_error");
+
+    const [admissionFailure] = await db
+      .select()
+      .from(schema.provisioningEventTable)
+      .where(
+        and(
+          eq(
+            schema.provisioningEventTable.identityConnectionId,
+            "jit-admission-retention-connection",
+          ),
+          eq(schema.provisioningEventTable.kind, "auth.failed"),
+        ),
+      );
+    expect(admissionFailure?.detail).toMatchObject({
+      reason: "admission_failed",
+    });
+    const [grant] = await db
+      .select()
+      .from(schema.membershipGrantTable)
+      .where(
+        and(
+          eq(schema.membershipGrantTable.personId, identity?.personId ?? ""),
+          eq(schema.membershipGrantTable.sourceKind, "jit_default"),
+        ),
+      );
+    expect(grant).toMatchObject({
+      revocationReason: "admission_failed",
+      revokedAt: expect.any(Date),
+    });
+    expect(
+      await db.query.workspaceUserTable.findFirst({
+        where: and(
+          eq(schema.workspaceUserTable.workspaceId, WORKSPACE_ID),
+          eq(schema.workspaceUserTable.userId, identity?.userId ?? ""),
+        ),
+      }),
+    ).toMatchObject({ role: "member" });
+    expect(
+      await db.query.sessionTable.findFirst({
+        where: eq(schema.sessionTable.id, originalSession?.id ?? ""),
+      }),
+    ).toBeDefined();
+    expect(await db.query.pendingActionTable.findFirst()).toBeUndefined();
+    expect(
+      await db.query.outboxTable.findFirst({
+        where: eq(schema.outboxTable.kind, "pending_action.decided"),
+      }),
+    ).toBeUndefined();
+    expect(
+      await db.query.auditLogTable.findFirst({
+        where: eq(schema.auditLogTable.action, "pending_action.decided"),
+      }),
+    ).toBeUndefined();
+
+    vi.mocked(validateEntraIdToken).mockImplementation(
+      (_token, _jwks, expectation) => ({
+        ok: true,
+        claims: {
+          iss: expectation.issuer,
+          tid: expectation.tenantId,
+          oid: SUBJECT,
+          email: "jit-first-login@example.test",
+          email_verified: true,
+          name: "JIT First Login",
+          acct: 0,
+          roles: ["TaskDesk.User"],
+        },
+      }),
+    );
+    const restored = await signIn(
+      "jit-admission-retention-connection",
+      "agent",
+    );
+    expect(restored.status).toBe(302);
+    expect(await db.query.pendingActionTable.findFirst()).toBeUndefined();
   });
 });
 

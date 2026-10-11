@@ -12,6 +12,14 @@ import {
 import { recordAuditWriteFailure } from "../instance/observability/runtime";
 import { requireCurrentInstanceAdmin } from "../instance/require-instance-admin";
 import { apiRouter, createRoute, jsonResponse, z } from "../openapi";
+import {
+  lockPendingActionLifecycle,
+  reportPendingActionAuditFailures,
+} from "../pending-action/lifecycle-invalidation";
+import {
+  captureWorkspaceDeletionAccessForWorkspaces,
+  invalidateWorkspaceDeletionAccessLosses,
+} from "../pending-action/workspace-access-invalidation";
 import { setShadowLegacyAuthorization } from "../permissions/shadow-context";
 import { normaliseTraceId } from "../permissions/shadow-middleware";
 import { requireSessionOnly } from "../utils/require-session-only";
@@ -427,12 +435,13 @@ const routes = apiRouter()
     const result = await retryIdentityGrantClosure(() =>
       db.transaction(async (tx) => {
         auditFailed = false;
+        await lockPendingActionLifecycle(tx);
         const [initial] = await getOidcGroupMappingSnapshot(id, mappingId);
         if (!initial) return { kind: "not_found" as const };
         const [connectionSnapshot] = await getIdentityConnection(id);
         if (!connectionSnapshot) return { kind: "not_found" as const };
         const targetScopeId = request.scopeId ?? initial.scopeId;
-        await lockScimGrantClosure(tx, {
+        const projectionClosure = await lockScimGrantClosure(tx, {
           connectionId: id,
           sourceKinds: ["oidc_group"],
           actorPersonId: actor.id,
@@ -447,6 +456,13 @@ const routes = apiRouter()
               }
             : {}),
         });
+        const pendingActionAccess =
+          await captureWorkspaceDeletionAccessForWorkspaces(
+            tx,
+            projectionClosure
+              .filter((key) => key.scope === "workspace")
+              .map((key) => key.scopeId),
+          );
         const [connection] = await lockFullIdentityConnection(tx, id);
         const [mapping] = await lockOidcGroupMappingById(tx, id, mappingId);
         if (!connection || !mapping) return { kind: "not_found" as const };
@@ -524,6 +540,11 @@ const routes = apiRouter()
         const retiredGrants = authorityChanged
           ? await retireOidcGroupGrants(tx, mappingId)
           : [];
+        const pendingActionAuditFailures =
+          await invalidateWorkspaceDeletionAccessLosses(
+            tx,
+            pendingActionAccess,
+          );
         const personIds = [
           ...new Set(retiredGrants.map(({ personId }) => personId)),
         ];
@@ -579,10 +600,12 @@ const routes = apiRouter()
           connection,
           nextVersion,
           affectedUserIds,
+          pendingActionAuditFailures,
         };
       }),
     );
     if (result.kind === "updated") {
+      await reportPendingActionAuditFailures(result.pendingActionAuditFailures);
       for (const affectedUserId of result.affectedUserIds) {
         await invalidateNativeAuthorization({ userId: affectedUserId });
       }

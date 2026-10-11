@@ -12,6 +12,8 @@ import {
   pendingActionTable,
   personTable,
   projectTable,
+  savedViewTable,
+  serviceCalendarTable,
   userTable,
   workItemTable,
   workspaceTable,
@@ -128,7 +130,7 @@ export async function createPendingAction(input: CreatePendingActionInput) {
             action: input.action,
             targetType: input.targetType,
             targetIds: payload.target_ids,
-            targetVersions: null,
+            targetVersions: scope.targetVersions ?? null,
             payload,
             routeKey: input.routeKey,
             payloadHash,
@@ -1170,7 +1172,7 @@ async function toPendingActionRead(
   });
 }
 
-type PendingActionTransaction = Parameters<
+export type PendingActionTransaction = Parameters<
   Parameters<typeof db.transaction>[0]
 >[0];
 
@@ -1280,13 +1282,12 @@ type ResolvedRequestScope = {
   organisationId: string | null;
   actorName: string;
   summary: Record<string, unknown>;
+  targetVersions?: Record<string, unknown> | null;
 };
 
 /**
- * This persistence slice currently accepts only live work-item deletions. The
- * route's existing membership and capability checks are repeated here, then
- * scope is derived from the locked target and its parent rows. Other target
- * types stay refused until their row and reach resolvers are implemented.
+ * Resolve scope from locked rows and evaluate each accepted target's current route policy.
+ * Unsupported target/action/route combinations remain refused.
  */
 async function resolveRequestScope(
   tx: PendingActionTransaction,
@@ -1299,6 +1300,16 @@ async function resolveRequestScope(
     input.targetIds.length === 1
   ) {
     return resolveUserDeactivationScope(tx, input);
+  }
+  if (
+    input.action === "delete" &&
+    input.targetIds.length === 1 &&
+    ((input.targetType === "service_calendar" &&
+      input.routeKey === "DELETE /api/service-calendars/{id}") ||
+      (input.targetType === "saved_view" &&
+        input.routeKey === "DELETE /api/views/{id}"))
+  ) {
+    return resolveWorkspaceDeletionRequestScope(tx, input);
   }
   if (
     input.targetType !== "work_item" ||
@@ -1478,6 +1489,134 @@ async function resolveRequestScope(
   };
 }
 
+async function resolveWorkspaceDeletionRequestScope(
+  tx: PendingActionTransaction,
+  input: CreatePendingActionInput,
+): Promise<ResolvedRequestScope> {
+  const targetId = input.targetIds[0];
+  if (!targetId || input.targetIds.length !== 1) {
+    throw new HTTPException(400, {
+      message: "Pending actions require one unique workspace target",
+    });
+  }
+  const isCalendar = input.targetType === "service_calendar";
+  const expectedRoute = isCalendar
+    ? "DELETE /api/service-calendars/{id}"
+    : "DELETE /api/views/{id}";
+  if (input.routeKey !== expectedRoute) {
+    throw new HTTPException(403, { message: "pending_action_policy_changed" });
+  }
+  if (
+    !(
+      (input.origin === "web" && input.credentialType === "session") ||
+      ((input.origin === "api" || (!isCalendar && input.origin === "mcp")) &&
+        input.credentialType === "api_key")
+    )
+  ) {
+    throw new HTTPException(403, {
+      message: "pending_action_credential_unsupported",
+    });
+  }
+
+  let workspaceId: string;
+  let version: number;
+  let summary: Record<string, unknown>;
+  if (isCalendar) {
+    const [target] = await tx
+      .select({
+        id: serviceCalendarTable.id,
+        workspaceId: serviceCalendarTable.workspaceId,
+        name: serviceCalendarTable.name,
+        version: serviceCalendarTable.version,
+      })
+      .from(serviceCalendarTable)
+      .where(eq(serviceCalendarTable.id, targetId))
+      .for("update")
+      .limit(1);
+    if (!target)
+      throw new HTTPException(404, { message: "Service calendar not found" });
+    workspaceId = target.workspaceId;
+    version = target.version;
+    summary = { name: target.name };
+  } else {
+    const [target] = await tx
+      .select({
+        id: savedViewTable.id,
+        workspaceId: savedViewTable.workspaceId,
+        createdBy: savedViewTable.createdBy,
+        name: savedViewTable.name,
+        scope: savedViewTable.scope,
+        scopeId: savedViewTable.scopeId,
+        visibility: savedViewTable.visibility,
+        sharedWithTeamId: savedViewTable.sharedWithTeamId,
+        updatedAt: savedViewTable.updatedAt,
+      })
+      .from(savedViewTable)
+      .where(eq(savedViewTable.id, targetId))
+      .for("update")
+      .limit(1);
+    if (!target)
+      throw new HTTPException(404, { message: "Saved view not found" });
+    workspaceId = target.workspaceId;
+    version = target.updatedAt.getTime();
+    summary = {
+      name: target.name,
+      scope: target.scope,
+      scopeId: target.scopeId,
+      visibility: target.visibility,
+      sharedWithTeamId: target.sharedWithTeamId,
+    };
+  }
+  if (
+    (input.workspaceId !== undefined && input.workspaceId !== workspaceId) ||
+    (input.projectId !== undefined && input.projectId !== null) ||
+    (input.organisationId !== undefined && input.organisationId !== null)
+  ) {
+    throw new HTTPException(404, {
+      message: "Pending action target not found",
+    });
+  }
+
+  const access = await evaluateActionRequiredAccess(tx, {
+    requestedByPersonId: input.requesterPersonId,
+    credentialType: input.credentialType,
+    credentialId: input.credentialId,
+    action: input.action,
+    targetType: input.targetType,
+    targetIds: input.targetIds,
+    routeKey: input.routeKey,
+    workspaceId,
+    projectId: null,
+    organisationId: null,
+    confirmationRequired: "click",
+  });
+  if (!access.allowed) {
+    throw new HTTPException(access.status === 404 ? 404 : 403, {
+      message: access.failure === "reach" ? "Out of reach" : "Forbidden",
+    });
+  }
+
+  const [requester] = await tx
+    .select({ userId: personTable.userId, name: userTable.name })
+    .from(personTable)
+    .innerJoin(userTable, eq(userTable.id, personTable.userId))
+    .where(eq(personTable.id, input.requesterPersonId))
+    .limit(1);
+  if (!requester?.userId || requester.userId !== input.actorId) {
+    throw new HTTPException(403, {
+      message: "Pending-action requester is unavailable",
+    });
+  }
+  return {
+    workspaceId,
+    projectId: null,
+    organisationId: null,
+    actorName: requester.name,
+    summary: { ...summary, requesterName: requester.name },
+    targetVersions: { [targetId]: version },
+  };
+}
+
 async function resolveUserDeactivationScope(
   tx: PendingActionTransaction,
   input: CreatePendingActionInput,
@@ -1603,7 +1742,7 @@ async function resolveUserDeactivationScope(
   };
 }
 
-async function toPublicPendingAction(
+export async function toPublicPendingAction(
   row: typeof pendingActionTable.$inferSelect,
   publicFields?: PublicPendingActionFields,
 ) {

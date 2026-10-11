@@ -112,9 +112,12 @@ describe("check:events — the shipped tree", () => {
     // empty scan. #451 added a 30th: work_item.commented (comment POST on a work item).
     // #442/PR #457 added a 31st: work_item.transitioned (POST .../transition) --
     // events.md already documented this key, but nothing published it until this route.
+    // PR #658 adds three saved-view publishers: saved_view.created,
+    // saved_view.pinned, and saved_view.updated. All three are registered in events.md,
+    // bringing the shipped inventory to 34 keys.
     // PR #515 persists pending_action.decided through the durable outbox, not
     // publishEvent; this checker counts only process-local publishEvent call sites.
-    assert.match(result.output, /31 published event key/);
+    assert.match(result.output, /34 published event key/);
   });
 });
 

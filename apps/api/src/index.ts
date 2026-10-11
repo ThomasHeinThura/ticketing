@@ -115,6 +115,8 @@ import { policyRegistry } from "./policy-registry";
 import project from "./project";
 import { initializeScheduler, shutdownScheduler } from "./scheduler";
 import search from "./search";
+import serviceCalendar from "./service-calendar";
+import slaPolicy from "./sla-policy";
 import { getPrivateObject, getStorageDriver } from "./storage";
 import {
   readAttachmentDownloadObject,
@@ -154,6 +156,7 @@ import {
 import { seedDefaultWorkspaceRoles } from "./utils/seed-default-workspace-roles";
 import { seedInternalOrganisationAndStaffPersons } from "./utils/seed-internal-organisation";
 import { reachableWorkspacePredicate } from "./utils/workspace-access-middleware";
+import view from "./view";
 import workItem from "./work-item";
 import workflow from "./workflow";
 import workflowRule from "./workflow-rule";
@@ -1460,6 +1463,8 @@ export function createApp(
   );
   const pendingActionApi = api.route("/me", pendingAction);
   const searchApi = api.route("/search", search);
+  const serviceCalendarApi = api.route("/service-calendars", serviceCalendar);
+  const slaPolicyApi = api.route("/sla-policies", slaPolicy);
   const taskRelationApi = api.route("/task-relation", taskRelation);
   const externalLinkApi = api.route("/external-link", externalLink);
   const workflowRuleApi = api.route("/workflow-rule", workflowRule);
@@ -1474,6 +1479,7 @@ export function createApp(
   const approvalApi = api.route("/", approval);
   const attachmentApi = api.route("/", attachment);
   const userApi = api.route("/user", user);
+  const viewApi = api.route("/views", view);
   const factorStatusApi = api.route("/me", factorStatus);
   const csrfTokenApi = api.route("/me", csrfToken);
   const stepUpApi = api.route("/me", stepUp);
@@ -1855,11 +1861,14 @@ export function createApp(
     pendingActionApi,
     projectApi,
     searchApi,
+    serviceCalendarApi,
+    slaPolicyApi,
     taskApi,
     taskV2Api,
     taskRelationApi,
     timeEntryApi,
     userApi,
+    viewApi,
     workflowApi,
     workflowRuleApi,
     workItemApi,
@@ -2234,11 +2243,14 @@ const {
   pendingActionApi,
   projectApi,
   searchApi,
+  serviceCalendarApi,
+  slaPolicyApi,
   taskApi,
   taskV2Api,
   taskRelationApi,
   timeEntryApi,
   userApi,
+  viewApi,
   workflowApi,
   workflowRuleApi,
   workItemApi,
@@ -2298,6 +2310,8 @@ export type AppType =
   | typeof notificationPreferencesApi
   | typeof pendingActionApi
   | typeof searchApi
+  | typeof serviceCalendarApi
+  | typeof slaPolicyApi
   | typeof taskRelationApi
   | typeof externalLinkApi
   | typeof factorStatusApi
@@ -2318,6 +2332,7 @@ export type AppType =
   | typeof invitationApi
   | typeof workspaceApi
   | typeof userApi
+  | typeof viewApi
   | typeof invitationPublicApi
   | typeof oauthApi
   | typeof capabilitiesApi;

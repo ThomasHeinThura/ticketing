@@ -136,14 +136,13 @@ Jira has this and charges for it. Plane and kaneo do not have it at all.
 **Effects** — a closed vocabulary, stored as `workflow_transition.effects jsonb`. This is
 the **only** place lifecycle side-effects are defined; `sla.md` and `assignment.md` cite it.
 
-- `WF-17` Entering a `completed`-group state sets `resolved_at` and writes an `sla_pause`
-  row with reason `resolved` for every metric — which is how the clock "stops" in a model
-  where SLA state is never stored.
-- `WF-18` Leaving a `completed`-group state clears `resolved_at` and closes that
-  `sla_pause` row, so the clock resumes from where it stopped, not from zero.
+- `WF-17` Entering a `completed`-group state sets `resolved_at`. Writing an `sla_pause`
+  row with reason `resolved` for every metric is held for a later release.
+- `WF-18` Leaving a `completed`-group state clears `resolved_at`. Closing a `resolved`
+  `sla_pause` row and continuing its interval is held for a later release.
 - `WF-19` Effects available on any transition: `set_assignee { personId | 'default' }`,
-  `clear_assignee`, `pause_sla`, `resume_sla` (an open `waiting_customer` pause),
-  `set_field { field, value }`, and `schedule_transition { after_minutes,
+  `clear_assignee`, `pause_sla`, `resume_sla` (an open `waiting_customer` pause), and
+  `schedule_transition { after_minutes,
   to_state_template_id }` — `to_state_template_id` is resolved immediately, against the
   work item's own project (the same resolution `WF-2` specifies for the transition
   itself), to a concrete `state` row and stored as such. Each pending instance is a
@@ -153,6 +152,15 @@ the **only** place lifecycle side-effects are defined; `sla.md` and `assignment.
   row whose item has already left `from_state_id`
   ([data-model.md](../01-architecture/data-model.md)) — the "pending until" pattern,
   fired by the scheduler and cancelled if the item leaves the state first.
+- `set_field { field, value }` is held for this release. No field namespace or value
+  validation has been defined. The legacy request shape remains documented for wire
+  compatibility, but any new version containing it is refused with HTTP 400 before
+  database reads or writes; version validation also rejects it as defense in depth. For
+  a previously stored mixed version,
+  only the selected transition containing `set_field` is refused before any work-item
+  state or effect is changed; supported sibling transitions remain usable. Stored rows
+  retain the recognized shape so the held effect cannot be silently dropped or
+  reinterpreted.
 - `WF-20` A transition emits `work_item.transitioned` ([events.md](../01-architecture/events.md))
   for automations, webhooks and notifications, in the same transaction as the change.
 - `WF-21` A customer-initiated reopen ([customer-portal.md](customer-portal.md) `CP-8`, a
@@ -161,8 +169,10 @@ the **only** place lifecycle side-effects are defined; `sla.md` and `assignment.
   at most one per workflow version); if the active version has
   none, the action is accepted, the item stays resolved, and a flagged activity row asks
   staff to look. One mechanism for all three call sites.
-- `WF-22` An authored transition effect whose `kind` falls outside `WF-19`'s vocabulary makes
-  the workflow version **invalid**. `resolve_sla` and `reopen_sla` are the automatic
+- `WF-22` An authored transition effect whose `kind` falls outside `WF-19`'s available
+  vocabulary makes the workflow version **invalid**. The held `set_field` shape is also
+  rejected during authoring and fails closed if found in a previously stored transition.
+  `resolve_sla` and `reopen_sla` are the automatic
   `WF-17`/`WF-18` effects and are never authorable — a `workflow_transition.effects` array
   containing either is invalid by name. **Fails closed**, mirroring `WF-16`'s treatment of an
   unrecognised guard `type`: an unknown kind is refused, never ignored and never passed

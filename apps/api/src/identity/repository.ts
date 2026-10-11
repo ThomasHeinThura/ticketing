@@ -18,7 +18,15 @@ import {
   sql,
 } from "drizzle-orm";
 import db, { schema } from "../database";
-import { invalidatePendingActionsForRequester } from "../pending-action/lifecycle-invalidation";
+import {
+  invalidatePendingActionsForRequester,
+  lockPendingActionLifecycle,
+  reportPendingActionAuditFailures,
+} from "../pending-action/lifecycle-invalidation";
+import {
+  captureWorkspaceDeletionAccessForWorkspaces,
+  invalidateWorkspaceDeletionAccessLosses,
+} from "../pending-action/workspace-access-invalidation";
 import {
   lockAndVerifyScimMutation,
   type ScimRequestAuthority,
@@ -2714,8 +2722,11 @@ export class ScimGroupWriteError extends Error {
 
 /** Store directory state and apply only currently valid mapped-role grants. */
 export async function writeScimGroup(input: GroupWrite) {
-  return retryIdentityGrantClosure(async () =>
+  let pendingActionAuditFailures = 0;
+  const result = await retryIdentityGrantClosure(async () =>
     db.transaction(async (tx) => {
+      pendingActionAuditFailures = 0;
+      await lockPendingActionLifecycle(tx);
       const [connection] = await tx
         .select({
           issuer: schema.identityConnectionTable.issuer,
@@ -2884,7 +2895,7 @@ export async function writeScimGroup(input: GroupWrite) {
               roleId: mapping.roleId,
             }))
           : [];
-      await lockScimGrantClosure(tx, {
+      const projectionClosure = await lockScimGrantClosure(tx, {
         connectionId: input.connectionId,
         ...(mapping
           ? {
@@ -2897,6 +2908,13 @@ export async function writeScimGroup(input: GroupWrite) {
         ...(group ? { scimGroupIds: [group.id] } : {}),
         additionalProjectionKeys,
       });
+      const pendingActionAccess =
+        await captureWorkspaceDeletionAccessForWorkspaces(
+          tx,
+          projectionClosure
+            .filter((key) => key.scope === "workspace")
+            .map((key) => key.scopeId),
+        );
       await lockAndVerifyScimMutation(tx, input.authority, "groups");
 
       const [currentConnection] = await tx
@@ -3276,6 +3294,9 @@ export async function writeScimGroup(input: GroupWrite) {
         }
       }
 
+      pendingActionAuditFailures =
+        await invalidateWorkspaceDeletionAccessLosses(tx, pendingActionAccess);
+
       const [created] = await tx
         .select({ id: schema.scimGroupTable.id })
         .from(schema.scimGroupTable)
@@ -3289,6 +3310,8 @@ export async function writeScimGroup(input: GroupWrite) {
       return created?.id ?? group?.id ?? null;
     }),
   );
+  await reportPendingActionAuditFailures(pendingActionAuditFailures);
+  return result;
 }
 
 export async function validateScimMappingRole(
