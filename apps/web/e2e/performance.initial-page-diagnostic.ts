@@ -18,6 +18,11 @@ import {
 } from "./helpers/g11-performance-fixture";
 import { installLastItemPaintRecorder } from "./helpers/last-item-paint-recorder";
 import { attachPerformanceNetworkCapture } from "./helpers/performance-network-summary";
+import {
+  aggregateDiagnosticCapturesWithFailureReceipt,
+  type DiagnosticCaptureArtifact,
+  persistDiagnosticCapturesBestEffort,
+} from "./helpers/persist-diagnostic-capture-artifact.mjs";
 
 const ROOT = path.resolve(
   path.dirname(fileURLToPath(import.meta.url)),
@@ -28,6 +33,7 @@ const RESULT_DIR = path.join(
   ROOT,
   "apps/web/test-results/g11-initial-page-diagnostic",
 );
+const RAW_CAPTURE_DIR = path.join(RESULT_DIR, "raw-captures");
 
 type TraceCpuNode = {
   id: number;
@@ -691,6 +697,44 @@ type DiagnosticBoundary = {
   source: string;
 } | null;
 
+function createRawCaptureArtifact(
+  capture: DiagnosticCapture,
+  captureIndex: number,
+  sourceAndBuild: Awaited<ReturnType<typeof getBuildIdentity>>,
+): DiagnosticCaptureArtifact {
+  return {
+    schemaVersion: 1,
+    diagnosticOnly: true,
+    captureIndex,
+    sourceAndBuild,
+    capturedWindow: {
+      name: capture.name,
+      metrics: {
+        ...capture.metrics,
+        lcp: capture.metrics.lcp
+          ? {
+              startTime: capture.metrics.lcp.startTime,
+              element: capture.metrics.lcp.element,
+              textLength: capture.metrics.lcp.textLength,
+            }
+          : null,
+      },
+      network: capture.network,
+      browserPerformance: capture.browserPerformance,
+      clockMarks: capture.clockMarks,
+      boundary: capture.boundary,
+      traceCpuProfiles: capture.traceCpuProfiles.map((profile) => ({
+        nodes: sanitizeCpuProfileNodes([...profile.nodes.values()], ORIGIN),
+        samples: profile.samples.map((sample) => ({
+          nodeId: sample.nodeId,
+          startMicroseconds: sample.start,
+          durationMicroseconds: sample.duration,
+        })),
+      })),
+    },
+  };
+}
+
 async function withDiagnosticProfile(
   browser: import("@playwright/test").Browser,
   name: string,
@@ -1211,89 +1255,101 @@ test("diagnostic: source-bound G11 failure-path CPU profiles", async ({
     ]),
   );
   const build = await getBuildIdentity(profileAssetNames);
-  const profileWindows = captures.map((capture) => {
-    const { name, browserPerformance } = capture;
-    const alignment = alignBoundaryToTrace(capture);
-    if (!alignment)
-      return {
-        name,
-        scope: "supplementary full-window context; no canonical G11 metric",
-        recorderBoundary: null,
-        clockAlignment: null,
-        topInclusiveCpuFrames: inclusiveTraceFrames(
-          capture.traceCpuProfiles
+  await persistDiagnosticCapturesBestEffort(
+    RAW_CAPTURE_DIR,
+    captures.map((capture, index) =>
+      createRawCaptureArtifact(capture, index + 1, build),
+    ),
+  );
+  const profileWindows = await aggregateDiagnosticCapturesWithFailureReceipt(
+    RAW_CAPTURE_DIR,
+    captures,
+    build,
+    (capture) => {
+      const { name, browserPerformance } = capture;
+      const alignment = alignBoundaryToTrace(capture);
+      if (!alignment)
+        return {
+          name,
+          scope: "supplementary full-window context; no canonical G11 metric",
+          recorderBoundary: null,
+          clockAlignment: null,
+          topInclusiveCpuFrames: inclusiveTraceFrames(
+            capture.traceCpuProfiles
+              .map((traceProfile) => sanitizeTraceCpuProfile(traceProfile))
+              .filter((value) => value !== undefined),
+          ),
+          traceCpuProfiles: capture.traceCpuProfiles
             .map((traceProfile) => sanitizeTraceCpuProfile(traceProfile))
             .filter((value) => value !== undefined),
-        ),
-        traceCpuProfiles: capture.traceCpuProfiles
-          .map((traceProfile) => sanitizeTraceCpuProfile(traceProfile))
-          .filter((value) => value !== undefined),
-        timelineEvents: browserPerformance.timelineEvents,
+          timelineEvents: browserPerformance.timelineEvents,
+          wholeWindowPerformanceMetrics: {
+            scope:
+              "context-only cumulative deltas; not a click-to-paint interval",
+            values: browserPerformance.metrics,
+          },
+        };
+
+      const clippedTraceCpuProfiles = capture.traceCpuProfiles
+        .map((traceProfile) =>
+          sanitizeTraceCpuProfile(
+            traceProfile,
+            alignment.startTraceMicroseconds,
+            alignment.endTraceMicroseconds,
+          ),
+        )
+        .filter((value) => value !== undefined);
+      const clippedTimeline = clipTimelineEvents(
+        browserPerformance.timelineEvents,
+        alignment.startTraceMicroseconds,
+        alignment.endTraceMicroseconds,
+      );
+      const clippedSamples = clippedTraceCpuProfiles.flatMap((traceProfile) =>
+        traceProfile.samples.map((sample) => ({
+          start: sample.startMicroseconds,
+          end: sample.startMicroseconds + sample.durationMicroseconds,
+        })),
+      );
+      const cpuCoverage = summarizeProfileCoverage(
+        clippedSamples,
+        alignment.startTraceMicroseconds,
+        alignment.endTraceMicroseconds,
+      );
+      return {
+        name,
+        documentId: alignment.documentId,
+        scope: "canonical recorder boundary",
+        recorderBoundary: alignment.boundary,
+        clockAlignment: {
+          ...alignment.transform,
+          calibratedStartTraceMicroseconds: alignment.startTraceMicroseconds,
+          calibratedEndTraceMicroseconds: alignment.endTraceMicroseconds,
+          v8TraceProfileCount: capture.traceCpuProfiles.length,
+        },
+        cpuSampleCoverage: {
+          scope:
+            "observed trace ProfileChunk samples; not a completeness guarantee",
+          intervalStartMicroseconds: alignment.startTraceMicroseconds,
+          intervalEndMicroseconds: alignment.endTraceMicroseconds,
+          observedStartMicroseconds: cpuCoverage.observedStart,
+          observedEndMicroseconds: cpuCoverage.observedEnd,
+          uncoveredPrefixMicroseconds: cpuCoverage.uncoveredPrefix,
+          uncoveredSuffixMicroseconds: cpuCoverage.uncoveredSuffix,
+          unionCoverageMicroseconds: cpuCoverage.unionCoverage,
+          clockAlignmentUncertaintyMicroseconds:
+            alignment.transform.uncertaintyMicroseconds,
+        },
+        topInclusiveCpuFrames: inclusiveTraceFrames(clippedTraceCpuProfiles),
+        traceCpuProfiles: clippedTraceCpuProfiles,
+        timelineEvents: clippedTimeline,
         wholeWindowPerformanceMetrics: {
           scope:
             "context-only cumulative deltas; not a click-to-paint interval",
           values: browserPerformance.metrics,
         },
       };
-
-    const clippedTraceCpuProfiles = capture.traceCpuProfiles
-      .map((traceProfile) =>
-        sanitizeTraceCpuProfile(
-          traceProfile,
-          alignment.startTraceMicroseconds,
-          alignment.endTraceMicroseconds,
-        ),
-      )
-      .filter((value) => value !== undefined);
-    const clippedTimeline = clipTimelineEvents(
-      browserPerformance.timelineEvents,
-      alignment.startTraceMicroseconds,
-      alignment.endTraceMicroseconds,
-    );
-    const clippedSamples = clippedTraceCpuProfiles.flatMap((traceProfile) =>
-      traceProfile.samples.map((sample) => ({
-        start: sample.startMicroseconds,
-        end: sample.startMicroseconds + sample.durationMicroseconds,
-      })),
-    );
-    const cpuCoverage = summarizeProfileCoverage(
-      clippedSamples,
-      alignment.startTraceMicroseconds,
-      alignment.endTraceMicroseconds,
-    );
-    return {
-      name,
-      documentId: alignment.documentId,
-      scope: "canonical recorder boundary",
-      recorderBoundary: alignment.boundary,
-      clockAlignment: {
-        ...alignment.transform,
-        calibratedStartTraceMicroseconds: alignment.startTraceMicroseconds,
-        calibratedEndTraceMicroseconds: alignment.endTraceMicroseconds,
-        v8TraceProfileCount: capture.traceCpuProfiles.length,
-      },
-      cpuSampleCoverage: {
-        scope:
-          "observed trace ProfileChunk samples; not a completeness guarantee",
-        intervalStartMicroseconds: alignment.startTraceMicroseconds,
-        intervalEndMicroseconds: alignment.endTraceMicroseconds,
-        observedStartMicroseconds: cpuCoverage.observedStart,
-        observedEndMicroseconds: cpuCoverage.observedEnd,
-        uncoveredPrefixMicroseconds: cpuCoverage.uncoveredPrefix,
-        uncoveredSuffixMicroseconds: cpuCoverage.uncoveredSuffix,
-        unionCoverageMicroseconds: cpuCoverage.unionCoverage,
-        clockAlignmentUncertaintyMicroseconds:
-          alignment.transform.uncertaintyMicroseconds,
-      },
-      topInclusiveCpuFrames: inclusiveTraceFrames(clippedTraceCpuProfiles),
-      traceCpuProfiles: clippedTraceCpuProfiles,
-      timelineEvents: clippedTimeline,
-      wholeWindowPerformanceMetrics: {
-        scope: "context-only cumulative deltas; not a click-to-paint interval",
-        values: browserPerformance.metrics,
-      },
-    };
-  });
+    },
+  );
   const initial = captures[0];
   const result = {
     schemaVersion: 4,
