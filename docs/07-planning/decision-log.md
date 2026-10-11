@@ -8,7 +8,10 @@ normal required scan continues to run. The candidate adds only that immutable
 `commit:file:rule:line` fingerprint to `.gitleaksignore`, following the established exact-finding
 mechanism; there is no path/rule exemption, history rewrite, threshold change or new scanner
 bypass. Independent ordinary and full security review of this disposition are required before
-merge. This record does not claim Thomas authorized a waiver.
+merge. The full conserved candidate-history scan additionally reproduced the identical
+non-secret prose token in commits `65420b183cd4e8f5b0df69af586bbee8d5d54422` and
+`4f3ac412b67978468ee105efbe51c4ce41667203`, each status.md line 14. Those two exact
+fingerprints are included in the same bounded disposition; no other value is ignored. This record does not claim Thomas authorized a waiver.
 
 **Formatting correction:** three historical JSON evidence files in the 2026-10-06 review
 records were formatted to satisfy the existing Biome gate. Their parsed JSON values are
