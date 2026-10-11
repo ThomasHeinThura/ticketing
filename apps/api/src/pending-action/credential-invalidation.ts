@@ -7,7 +7,7 @@ import type {
   Where,
 } from "better-auth";
 import { drizzleAdapter } from "better-auth/adapters/drizzle";
-import { and, eq, inArray } from "drizzle-orm";
+import { and, eq, inArray, ne, type SQL } from "drizzle-orm";
 import { appendAuditLog } from "../audit/audit-writer";
 import db, { schema as importedSchema } from "../database";
 import {
@@ -18,6 +18,8 @@ import {
   userTable,
 } from "../database/schema";
 import { enqueueOutboxEvent, eventScope } from "../events/outbox";
+import { notifyCurrentInstanceAdminsOfAuditFailure } from "../instance/observability/audit-failure-notifier";
+import { recordAuditWriteFailure } from "../instance/observability/runtime";
 import {
   lockPendingActionLifecycle,
   reportPendingActionAuditFailures,
@@ -45,6 +47,13 @@ type ExplicitCredentialMutationState = ExplicitCredentialMutation & {
 const explicitMutationStorage =
   new AsyncLocalStorage<ExplicitCredentialMutationState>();
 const transactionStorage = new AsyncLocalStorage<PendingActionTransaction>();
+
+type TotpEnrollmentContext = {
+  pendingActionAuditFailures: number;
+  mutationAuditFailures: number;
+  afterCommit: Array<() => Promise<void>>;
+};
+const totpEnrollmentStorage = new AsyncLocalStorage<TotpEnrollmentContext>();
 
 type AccountDeletionContext = {
   auditFailures: number;
@@ -79,7 +88,6 @@ export async function withExplicitCredentialMutation<T>(
  * callback adapter and all Better Auth option transforms/hooks.
  */
 function databaseWithTransactionContext(): typeof db {
-  const openTransaction = db.transaction.bind(db);
   return new Proxy(db, {
     get(target, property, receiver) {
       const tx = transactionStorage.getStore();
@@ -95,6 +103,14 @@ function databaseWithTransactionContext(): typeof db {
               ...(args as []),
             );
           }
+          // `db` is itself a lazy proxy. Resolve its transaction method only
+          // when Better Auth starts a transaction, not while auth.ts imports
+          // or the Drizzle adapter inspects this proxy.
+          const openTransaction = Reflect.get(
+            target,
+            property,
+            receiver,
+          ) as typeof db.transaction;
           return openTransaction(
             (opened) => transactionStorage.run(opened, () => callback(opened)),
             ...(args as []),
@@ -108,6 +124,147 @@ function databaseWithTransactionContext(): typeof db {
 }
 
 const credentialDatabase = databaseWithTransactionContext();
+
+class CredentialRevocationFailure extends Error {
+  constructor(readonly originalError: unknown) {
+    super("Explicit credential revocation failed");
+    this.name = "CredentialRevocationFailure";
+  }
+}
+
+class TotpResponseRollback extends Error {
+  constructor(readonly response: Response) {
+    super("Better Auth returned a server failure during TOTP enrollment");
+    this.name = "TotpResponseRollback";
+  }
+}
+
+/** Run the installed TOTP API operation and all adapter/hook writes atomically. */
+export async function withTotpSessionEnrollment<T>(
+  callback: () => Promise<T>,
+): Promise<T> {
+  const current = totpEnrollmentStorage.getStore();
+  if (current) return callback();
+
+  let outcome: {
+    result: T;
+    pendingActionAuditFailures: number;
+    mutationAuditFailures: number;
+    afterCommit: Array<() => Promise<void>>;
+  };
+  try {
+    outcome = await db.transaction(async (tx) => {
+      await lockPendingActionLifecycle(tx);
+      const context: TotpEnrollmentContext = {
+        pendingActionAuditFailures: 0,
+        mutationAuditFailures: 0,
+        afterCommit: [],
+      };
+      return totpEnrollmentStorage.run(context, () =>
+        transactionStorage.run(tx, async () => {
+          const { result, state } = await withExplicitCredentialMutation(
+            { kind: "session", route: "/two-factor/verify-totp" },
+            callback,
+          );
+          if (state.deleteFailure) {
+            throw new CredentialRevocationFailure(state.deleteFailure);
+          }
+          if (result instanceof Response && result.status >= 500) {
+            throw new TotpResponseRollback(result);
+          }
+          return {
+            result,
+            pendingActionAuditFailures: context.pendingActionAuditFailures,
+            mutationAuditFailures: context.mutationAuditFailures,
+            afterCommit: context.afterCommit,
+          };
+        }),
+      );
+    });
+  } catch (error) {
+    if (error instanceof TotpResponseRollback) return error.response as T;
+    throw error;
+  }
+
+  await reportPendingActionAuditFailures(outcome.pendingActionAuditFailures);
+  for (let index = 0; index < outcome.mutationAuditFailures; index += 1) {
+    recordAuditWriteFailure("mutation");
+    await notifyCurrentInstanceAdminsOfAuditFailure("mutation");
+  }
+  for (const callback of outcome.afterCommit) await callback();
+  return outcome.result;
+}
+
+export function isCredentialRevocationFailure(error: unknown): error is Error {
+  return error instanceof CredentialRevocationFailure;
+}
+
+/** The TOTP after-hook may only register nontransactional effects after commit. */
+export function afterTotpEnrollmentCommit(callback: () => Promise<void>) {
+  const context = totpEnrollmentStorage.getStore();
+  if (!context) {
+    throw new Error("TOTP enrollment requires its outer transaction");
+  }
+  context.afterCommit.push(callback);
+}
+
+export function currentTotpEnrollmentTransaction() {
+  const tx = transactionStorage.getStore();
+  if (!tx || !totpEnrollmentStorage.getStore()) {
+    throw new Error("TOTP enrollment requires its outer transaction");
+  }
+  return tx;
+}
+
+export function noteTotpEnrollmentMutationAuditFailure() {
+  const context = totpEnrollmentStorage.getStore();
+  if (!context) {
+    throw new Error("TOTP enrollment requires its outer transaction");
+  }
+  context.mutationAuditFailures += 1;
+}
+
+/** Revoke exactly the peer sessions Better Auth's TOTP enrollment sweeps. */
+export async function revokeTotpPeerSessions(
+  userId: string,
+  verifiedSessionId: string,
+) {
+  const tx = transactionStorage.getStore();
+  const context = totpEnrollmentStorage.getStore();
+  if (!tx || !context) {
+    throw new Error(
+      "TOTP peer-session revocation requires its outer transaction",
+    );
+  }
+  const revokedSessions = await sessionRowsQuery(
+    tx,
+    and(
+      eq(sessionTable.userId, userId),
+      ne(sessionTable.id, verifiedSessionId),
+    ),
+  );
+  for (const session of revokedSessions) {
+    context.pendingActionAuditFailures +=
+      await invalidatePendingActionsForCredential(tx, {
+        type: "session",
+        id: session.id,
+      });
+  }
+  if (revokedSessions.length === 0) return;
+
+  const selectedIds = revokedSessions.map(({ id }) => id).sort();
+  const deletedSessions = await tx
+    .delete(sessionTable)
+    .where(inArray(sessionTable.id, selectedIds))
+    .returning({ id: sessionTable.id });
+  const deletedIds = deletedSessions.map(({ id }) => id).sort();
+  if (
+    selectedIds.length !== deletedIds.length ||
+    selectedIds.some((id, index) => id !== deletedIds[index])
+  ) {
+    throw new Error("TOTP peer-session deletion did not match its locked set");
+  }
+}
 
 /**
  * Run one exact Better Auth account-deletion entrypoint in a request-local
@@ -456,8 +613,9 @@ function markCredentialMutationFailure(error: unknown) {
 
 function sessionRowsQuery(
   tx: PendingActionTransaction,
-  condition: ReturnType<typeof eq>,
+  condition: SQL | undefined,
 ) {
+  if (!condition) throw new Error("A session revocation needs a selector");
   return tx
     .select({ id: sessionTable.id })
     .from(sessionTable)

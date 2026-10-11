@@ -15,7 +15,7 @@ import {
 } from "better-auth/plugins";
 import type { UserWithAnonymous } from "better-auth/plugins/anonymous";
 import { config } from "dotenv-mono";
-import { and, eq, ne, sql } from "drizzle-orm";
+import { eq, sql } from "drizzle-orm";
 import { appendAuditLog } from "./audit/audit-writer";
 import { authConfigurationVersion } from "./auth/configuration-version";
 import { loadLocalFactorState } from "./auth/local-factor-service";
@@ -35,10 +35,8 @@ import {
   identityOidcPlugin,
   OIDC_PENDING_SESSION_COOKIE,
 } from "./identity/oidc-login";
-import { notifyCurrentInstanceAdminsOfAuditFailure } from "./instance/observability/audit-failure-notifier";
 import {
   logTaskDesk,
-  recordAuditWriteFailure,
   recordAuthReload,
 } from "./instance/observability/runtime";
 import {
@@ -49,10 +47,15 @@ import {
   verifyAndConsumeSetupToken,
 } from "./instance/setup-token";
 import {
+  afterTotpEnrollmentCommit,
   createCredentialAwareDrizzleAdapter,
   currentAccountDeletionTransaction,
+  currentTotpEnrollmentTransaction,
+  noteTotpEnrollmentMutationAuditFailure,
+  revokeTotpPeerSessions,
   withAccountDeletionTransaction,
   withExplicitCredentialMutation,
+  withTotpSessionEnrollment,
 } from "./pending-action/credential-invalidation";
 import deleteAccountData from "./user/controllers/delete-account-data";
 import { checkRegistrationAllowed } from "./utils/check-registration-allowed";
@@ -156,6 +159,11 @@ function withExplicitServerCredentialMutations<T extends object>(
                 apiMethod === "deleteUserCallback"
               ) {
                 return withAccountDeletionTransaction(() =>
+                  Reflect.apply(targetMethod, thisArgument, args),
+                );
+              }
+              if (apiMethod === "verifyTOTP") {
+                return withTotpSessionEnrollment(() =>
                   Reflect.apply(targetMethod, thisArgument, args),
                 );
               }
@@ -913,28 +921,31 @@ function createAuth(
           newSession?.user.twoFactorEnabled === true;
         if (completedEnrollment && newSession) {
           // Better Auth replaces the session used to verify enrollment. Revoke any
-          // other sessions as well so the newly verified factor gates every device.
-          await db
-            .delete(schema.sessionTable)
-            .where(
-              and(
-                eq(schema.sessionTable.userId, newSession.user.id),
-                ne(schema.sessionTable.id, newSession.session.id),
-              ),
+          // verified factor gates every device. The shared transaction locks the
+          // PA lifecycle gate first and terminalizes actions before deleting peers.
+          const tx = currentTotpEnrollmentTransaction();
+          await revokeTotpPeerSessions(
+            newSession.user.id,
+            newSession.session.id,
+          );
+          afterTotpEnrollmentCommit(() =>
+            invalidateNativeAuthorization({ userId: newSession.user.id }),
+          );
+          try {
+            await tx.transaction(async (auditTx) =>
+              appendAuditLog(auditTx, {
+                action: "auth.mfa_enrolled",
+                actorId: newSession.user.id,
+                actorType: "person",
+                workspaceId: null,
+                entityType: "person",
+                entityId: newSession.user.id,
+                after: { method: "totp" },
+              }),
             );
-          await invalidateNativeAuthorization({ userId: newSession.user.id });
-          await appendAuditLog(db, {
-            action: "auth.mfa_enrolled",
-            actorId: newSession.user.id,
-            actorType: "person",
-            workspaceId: null,
-            entityType: "person",
-            entityId: newSession.user.id,
-            after: { method: "totp" },
-          }).catch(async () => {
-            recordAuditWriteFailure("mutation");
-            await notifyCurrentInstanceAdminsOfAuditFailure("mutation");
-          });
+          } catch {
+            noteTotpEnrollmentMutationAuditFailure();
+          }
         }
         if (!newSession) return;
 

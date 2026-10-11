@@ -476,10 +476,22 @@ describe("SCIM administration API", () => {
         .where(eq(schema.personTable.userId, targetUser.id)),
     ).toEqual([{ active: true }]);
 
+    const freshCredentialId = "pa9-scim-reactivated-session";
+    const reactivatedAt = new Date();
+    await db.insert(schema.sessionTable).values({
+      id: freshCredentialId,
+      token: `${freshCredentialId}-token`,
+      userId: requesterUser.id,
+      portal: "agent",
+      expiresAt: new Date(reactivatedAt.getTime() + 60_000),
+      createdAt: reactivatedAt,
+      updatedAt: reactivatedAt,
+    });
+
     const fresh = await createPendingAction({
       requesterPersonId: requesterPerson.id,
       credentialType: "session",
-      credentialId,
+      credentialId: freshCredentialId,
       origin: "web",
       action: "delete",
       routeKey: "POST /api/instance/users/{id}/deactivate",

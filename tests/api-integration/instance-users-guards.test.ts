@@ -691,7 +691,7 @@ describe("last-administrator and self-target guard", () => {
     const requested = await createPendingAction({
       requesterPersonId: admin.person.id,
       credentialType: "session",
-      credentialId: null,
+      credentialId: admin.sessionId,
       origin: "web",
       action: "delete",
       routeKey: "POST /api/instance/users/{id}/deactivate",

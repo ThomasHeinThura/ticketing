@@ -88,8 +88,10 @@ import { createRoute, errorResponse, jsonResponse, z } from "./openapi";
 import pendingAction from "./pending-action";
 import {
   type ExplicitCredentialMutation,
+  isCredentialRevocationFailure,
   withAccountDeletionTransaction,
   withExplicitCredentialMutation,
+  withTotpSessionEnrollment,
 } from "./pending-action/credential-invalidation";
 // Issue #8: `assertRouteIsClassified` refuses a request whose route has no policy entry at
 // all (presence only, always on); `runNextWithPolicyShadow` is the shadow-mode ALLOW/DENY
@@ -396,6 +398,21 @@ async function handleAuthRequest(
     );
   }
   const authRequest = buildAuthRequest(c, headers);
+  if (
+    c.req.method === "POST" &&
+    c.req.path === "/api/auth/two-factor/verify-totp"
+  ) {
+    try {
+      return await withTotpSessionEnrollment(() =>
+        selected.handler(authRequest),
+      );
+    } catch (error) {
+      if (isCredentialRevocationFailure(error)) {
+        return c.json({ error: "credential_revocation_failed" }, 503);
+      }
+      throw error;
+    }
+  }
   if (!mutation) return selected.handler(authRequest);
 
   const outcome = await withExplicitCredentialMutation(mutation, () =>
