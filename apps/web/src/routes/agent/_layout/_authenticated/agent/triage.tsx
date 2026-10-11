@@ -328,7 +328,9 @@ function IntakeRoute() {
                             current.version?.defaultProjectId ||
                             undefined
                           }
-                          onValueChange={setProjectId}
+                          onValueChange={(value: string | null) => {
+                            if (value !== null) setProjectId(value);
+                          }}
                         >
                           <SelectTrigger aria-label="Destination project">
                             <SelectValue placeholder="Choose a project" />
@@ -350,7 +352,9 @@ function IntakeRoute() {
                             current.version?.workItemTypeId ||
                             undefined
                           }
-                          onValueChange={setWorkItemTypeId}
+                          onValueChange={(value: string | null) => {
+                            if (value !== null) setWorkItemTypeId(value);
+                          }}
                         >
                           <SelectTrigger aria-label="Work item type">
                             <SelectValue placeholder="Choose a work item type" />

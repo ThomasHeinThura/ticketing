@@ -37,6 +37,7 @@ export function renderRouteMetadata(metadata) {
       return `  ${surface}: [${JSON.stringify(paths[0])}],`;
     return [
       `  ${surface}: [`,
+      "    // Canonical full paths for this surface.",
       ...paths.map((route) => `    ${JSON.stringify(route)},`),
       "  ],",
     ].join("\n");

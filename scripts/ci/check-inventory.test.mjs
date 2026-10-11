@@ -1,6 +1,9 @@
 import assert from "node:assert/strict";
+import { execFileSync } from "node:child_process";
+import path from "node:path";
 import test from "node:test";
 import { canonicalRoute, inventoryRouteSet } from "./check-inventory.mjs";
+import { repoRoot } from "./lib/repo.mjs";
 import {
   extractFullPaths,
   renderRouteMetadata,
@@ -50,6 +53,43 @@ test("G5 extracts both ordinary and portal root paths from TanStack's generated 
       "",
     ].join("\n"),
   );
+});
+
+test("G5 generated route arrays remain stable under the canonical Biome formatter", () => {
+  const biome = path.join(repoRoot, "node_modules/.bin/biome");
+  const format = (source) =>
+    execFileSync(
+      biome,
+      [
+        "format",
+        "--stdin-file-path",
+        "apps/web/src/lib/generated-route-metadata.ts",
+      ],
+      { cwd: repoRoot, encoding: "utf8", input: source },
+    );
+  const cases = [
+    ["two", ["/agent/requests", "/agent/requests/$id"]],
+    ["three", ["/portal", "/portal/catalogue", "/portal/submissions/$ref"]],
+    [
+      "long",
+      Array.from({ length: 18 }, (_, index) => `/agent/projects/${index}/work`),
+    ],
+  ];
+
+  for (const [label, paths] of cases) {
+    const rendered = renderRouteMetadata({ agent: paths });
+    assert.equal(
+      format(rendered),
+      rendered,
+      `${label} route metadata must already match the canonical formatter`,
+    );
+    assert.match(rendered, /\/\/ Canonical full paths for this surface\./u);
+    assert.deepEqual(
+      [...rendered.matchAll(/"([^"]+)"/gu)].map((match) => match[1]),
+      paths,
+      `${label} route metadata must preserve the canonical paths and order`,
+    );
+  }
 });
 
 test("G5 leaves not-started inventory URLs planned while enforcing active screens", () => {
