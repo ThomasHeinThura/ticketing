@@ -312,7 +312,7 @@ describe("OIDC JIT first login (IP-9, IP-10)", () => {
     await expectJitIdentity("jit-customer-connection", "customer", target);
   });
 
-  it("invalidates a non-owner view deletion when OIDC admission removes the required projected manager capability", async () => {
+  it("denies mixed native/projected view admission and retires the OIDC grant on failed admission", async () => {
     await seedAgent("jit-admission-retention-connection");
     await db
       .update(schema.roleTable)
@@ -376,23 +376,23 @@ describe("OIDC JIT first login (IP-9, IP-10)", () => {
       sessionCookie ?? "",
     );
     expect(deleteResponse.status, await deleteResponse.clone().text()).toBe(
-      202,
+      403,
     );
-    const deletion = (await deleteResponse.json()) as {
-      pendingActionId: string;
-    };
+    expect(await db.query.pendingActionTable.findFirst()).toBeUndefined();
+    expect(
+      await db.query.outboxTable.findFirst({
+        where: eq(schema.outboxTable.kind, "pending_action.requested"),
+      }),
+    ).toBeUndefined();
+    expect(
+      await db.query.auditLogTable.findFirst({
+        where: eq(schema.auditLogTable.action, "pending_action.requested"),
+      }),
+    ).toBeUndefined();
     const originalSession = await db.query.sessionTable.findFirst({
       where: eq(schema.sessionTable.userId, identity?.userId ?? ""),
     });
     expect(originalSession?.id).toBeTruthy();
-    const pendingBefore = await db.query.pendingActionTable.findFirst({
-      where: eq(schema.pendingActionTable.id, deletion.pendingActionId),
-    });
-    expect(pendingBefore).toMatchObject({
-      state: "pending",
-      credentialId: originalSession?.id,
-      requestedByPersonId: identity?.personId,
-    });
     const viewRow = await db.query.savedViewTable.findFirst({
       where: eq(schema.savedViewTable.id, "oidc-admission-retention-view"),
     });
@@ -457,43 +457,17 @@ describe("OIDC JIT first login (IP-9, IP-10)", () => {
         where: eq(schema.sessionTable.id, originalSession?.id ?? ""),
       }),
     ).toBeDefined();
+    expect(await db.query.pendingActionTable.findFirst()).toBeUndefined();
     expect(
-      await db.query.pendingActionTable.findFirst({
-        where: eq(schema.pendingActionTable.id, deletion.pendingActionId),
+      await db.query.outboxTable.findFirst({
+        where: eq(schema.outboxTable.kind, "pending_action.decided"),
       }),
-    ).toMatchObject({
-      state: "invalidated",
-      invalidationReason: "capability_removed",
-    });
-    expect(
-      await db
-        .select()
-        .from(schema.outboxTable)
-        .where(eq(schema.outboxTable.kind, "pending_action.decided")),
-    ).toMatchObject([
-      {
-        payload: {
-          payload: {
-            pendingActionId: deletion.pendingActionId,
-            outcome: "invalidated",
-            invalidationReason: "capability_removed",
-          },
-        },
-      },
-    ]);
+    ).toBeUndefined();
     expect(
       await db.query.auditLogTable.findFirst({
-        where: and(
-          eq(schema.auditLogTable.action, "pending_action.decided"),
-          eq(schema.auditLogTable.entityId, deletion.pendingActionId),
-        ),
+        where: eq(schema.auditLogTable.action, "pending_action.decided"),
       }),
-    ).toMatchObject({
-      after: {
-        state: "invalidated",
-        invalidationReason: "capability_removed",
-      },
-    });
+    ).toBeUndefined();
 
     vi.mocked(validateEntraIdToken).mockImplementation(
       (_token, _jwks, expectation) => ({
@@ -515,22 +489,7 @@ describe("OIDC JIT first login (IP-9, IP-10)", () => {
       "agent",
     );
     expect(restored.status).toBe(302);
-    expect(
-      await db.query.pendingActionTable.findFirst({
-        where: eq(schema.pendingActionTable.id, deletion.pendingActionId),
-      }),
-    ).toMatchObject({ state: "invalidated" });
-    const replay = await csrfRequest(
-      app,
-      `/api/me/pending-actions/${deletion.pendingActionId}/approve`,
-      {
-        method: "POST",
-        headers: { "content-type": "application/json" },
-        body: JSON.stringify({ typedName: "" }),
-      },
-      sessionCookie ?? "",
-    );
-    expect(replay.status).toBe(409);
+    expect(await db.query.pendingActionTable.findFirst()).toBeUndefined();
   });
 });
 

@@ -467,10 +467,15 @@ describe("IP-22 JIT policy transitions through the connection configure path", (
   );
 
   it.each(["max role rank", "JIT default role"] as const)(
-    "terminally invalidates a non-owner saved-view deletion when a connection %s change removes the required projected capability",
+    "denies mixed native/projected saved-view admission while a connection %s change retires its JIT grant",
     async (transition) => {
-      const { sessionCookie, personId, requesterUserId, viewOwnerPersonId } =
-        await seed(enabledJit);
+      const {
+        sessionCookie,
+        personId,
+        requesterUserId,
+        viewOwnerPersonId,
+        grantId,
+      } = await seed(enabledJit);
       await db
         .update(schema.roleTable)
         .set({ capabilities: [...BUILT_IN_ROLES.manager.capabilities] })
@@ -526,18 +531,18 @@ describe("IP-22 JIT policy transitions through the connection configure path", (
         { method: "DELETE" },
         requesterCookie,
       );
-      expect(deletion.status, await deletion.clone().text()).toBe(202);
-      const pending = (await deletion.json()) as { pendingActionId: string };
+      expect(deletion.status, await deletion.clone().text()).toBe(403);
+      expect(await db.query.pendingActionTable.findFirst()).toBeUndefined();
       expect(
-        await db.query.pendingActionTable.findFirst({
-          where: eq(schema.pendingActionTable.id, pending.pendingActionId),
+        await db.query.outboxTable.findFirst({
+          where: eq(schema.outboxTable.kind, "pending_action.requested"),
         }),
-      ).toMatchObject({
-        requestedByPersonId: personId,
-        credentialType: "session",
-        credentialId: requesterSessionId,
-        state: "pending",
-      });
+      ).toBeUndefined();
+      expect(
+        await db.query.auditLogTable.findFirst({
+          where: eq(schema.auditLogTable.action, "pending_action.requested"),
+        }),
+      ).toBeUndefined();
 
       const admin = await db.query.userTable.findFirst({
         where: eq(schema.userTable.id, ADMIN_ID),
@@ -551,39 +556,23 @@ describe("IP-22 JIT policy transitions through the connection configure path", (
           : { jitPolicy: policy(true, R2) },
       );
       expect(changed.status, await changed.clone().text()).toBe(200);
-      expect(
-        await db.query.pendingActionTable.findFirst({
-          where: eq(schema.pendingActionTable.id, pending.pendingActionId),
-        }),
-      ).toMatchObject({
-        state: "invalidated",
-        invalidationReason: "capability_removed",
-      });
+      expect(await db.query.pendingActionTable.findFirst()).toBeUndefined();
       expect(
         await db.query.outboxTable.findFirst({
           where: eq(schema.outboxTable.kind, "pending_action.decided"),
         }),
-      ).toMatchObject({
-        payload: {
-          payload: {
-            pendingActionId: pending.pendingActionId,
-            outcome: "invalidated",
-            invalidationReason: "capability_removed",
-          },
-        },
-      });
+      ).toBeUndefined();
       expect(
         await db.query.auditLogTable.findFirst({
-          where: and(
-            eq(schema.auditLogTable.action, "pending_action.decided"),
-            eq(schema.auditLogTable.entityId, pending.pendingActionId),
-          ),
+          where: eq(schema.auditLogTable.action, "pending_action.decided"),
         }),
-      ).toMatchObject({
-        after: {
-          state: "invalidated",
-          invalidationReason: "capability_removed",
+      ).toBeUndefined();
+      expect(await state(grantId, personId)).toMatchObject({
+        grant: {
+          revokedAt: expect.any(Date),
+          revocationReason: "mapping_changed",
         },
+        memberships: [],
       });
 
       const restored = await patch(
@@ -593,23 +582,14 @@ describe("IP-22 JIT policy transitions through the connection configure path", (
           : { jitPolicy: policy(true, R1) },
       );
       expect(restored.status).toBe(200);
-      expect(
-        await db.query.pendingActionTable.findFirst({
-          where: eq(schema.pendingActionTable.id, pending.pendingActionId),
-        }),
-      ).toMatchObject({ state: "invalidated" });
-      mockAuthenticatedSession(requester);
-      const replay = await csrfRequest(
-        app,
-        `/api/me/pending-actions/${pending.pendingActionId}/approve`,
-        {
-          method: "POST",
-          headers: { "content-type": "application/json" },
-          body: JSON.stringify({ typedName: "" }),
+      expect(await db.query.pendingActionTable.findFirst()).toBeUndefined();
+      expect(await state(grantId, personId)).toMatchObject({
+        grant: {
+          revokedAt: expect.any(Date),
+          revocationReason: "mapping_changed",
         },
-        requesterCookie,
-      );
-      expect(replay.status).toBe(409);
+        memberships: [],
+      });
     },
   );
 

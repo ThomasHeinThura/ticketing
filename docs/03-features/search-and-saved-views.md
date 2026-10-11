@@ -148,6 +148,16 @@ POST /api/views/{id}/run                       saved_view:read (re-evaluated wor
 GET  /api/views/{id}/count                     saved_view:read (cached 30 s)
 ```
 
+For this release, these PATCH/DELETE admission checks use the caller's native workspace
+membership role. A validated projected `membership` does not widen admission to edit
+another person's view: a native member with projected manager capabilities receives 403
+before a pending action, requested event or requested audit entry is created. Pending-action
+approval still evaluates current authority after a request has genuinely passed route
+admission. Native manager/owner access and terminal invalidation behavior for actions that
+were actually created remain covered by their separate contracts. Any future change to
+combine native and projected authority at this route needs an explicit authorization design
+and security review.
+
 P1's saved-view screen currently renders the list layout. Other stored layout values remain
 round-trippable but show an explicit unsupported-layout state in this screen. A pinned view
 appears in agent navigation with its current-viewer work-item count; pinning and count queries
