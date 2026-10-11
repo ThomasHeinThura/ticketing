@@ -85,6 +85,10 @@ import notificationPreferences from "./notification-preferences";
 import oauth from "./oauth";
 import { createRoute, errorResponse, jsonResponse, z } from "./openapi";
 import pendingAction from "./pending-action";
+import {
+  type ExplicitCredentialMutation,
+  withExplicitCredentialMutation,
+} from "./pending-action/credential-invalidation";
 // Issue #8: `assertRouteIsClassified` refuses a request whose route has no policy entry at
 // all (presence only, always on); `runNextWithPolicyShadow` is the shadow-mode ALLOW/DENY
 // comparison, off by default. See the call sites below and each file's own header comment.
@@ -349,7 +353,11 @@ function authForRequest(c: Context) {
   return selected;
 }
 
-async function handleAuthRequest(c: Context, headers?: Headers) {
+async function handleAuthRequest(
+  c: Context,
+  headers?: Headers,
+  mutation?: ExplicitCredentialMutation,
+) {
   if (
     hasInvalidExplicitCredential(
       c.req.header("Authorization"),
@@ -376,7 +384,36 @@ async function handleAuthRequest(c: Context, headers?: Headers) {
     throw new HTTPException(401, { message: "Unauthorized" });
   }
 
-  return selected.handler(buildAuthRequest(c, headers));
+  const authRequest = buildAuthRequest(c, headers);
+  if (!mutation) return selected.handler(authRequest);
+
+  const outcome = await withExplicitCredentialMutation(mutation, () =>
+    selected.handler(authRequest),
+  );
+  if (outcome.state.deleteFailure) {
+    return c.json({ error: "credential_revocation_failed" }, 503);
+  }
+  return outcome.result;
+}
+
+function explicitAuthCredentialMutation(
+  method: string,
+  path: string,
+): ExplicitCredentialMutation | undefined {
+  if (method !== "POST" || !path.startsWith("/api/auth/")) return undefined;
+  const route = path.slice("/api/auth".length);
+  if (route === "/api-key/delete" || route === "/api-key/update") {
+    return { kind: "api_key", route };
+  }
+  if (
+    route === "/sign-out" ||
+    route === "/revoke-session" ||
+    route === "/revoke-sessions" ||
+    route === "/revoke-other-sessions"
+  ) {
+    return { kind: "session", route };
+  }
+  return undefined;
 }
 
 /**
@@ -1169,6 +1206,7 @@ export function createApp(
   );
 
   api.on(["POST", "GET", "PUT", "PATCH", "DELETE"], "/auth/*", async (c) => {
+    const mutation = explicitAuthCredentialMutation(c.req.method, c.req.path);
     const authHeader = c.req.header("Authorization");
     const apiKeyHeader = c.req.header("x-api-key");
     const bearerToken = authHeader?.match(/^Bearer\s+(\S+)$/i)?.[1];
@@ -1179,10 +1217,10 @@ export function createApp(
       // Better Auth API key plugin validates from x-api-key by default.
       headers.set("x-api-key", bearerToken);
 
-      return handleAuthRequest(c, headers);
+      return handleAuthRequest(c, headers, mutation);
     }
 
-    return handleAuthRequest(c);
+    return handleAuthRequest(c, undefined, mutation);
   });
 
   // Named (not inline in `.use()`) so its exact function reference can be declared to

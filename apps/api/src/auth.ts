@@ -3,7 +3,6 @@ import { apiKey } from "@better-auth/api-key";
 import { sendMagicLinkEmail, sendOtpEmail } from "@taskdesk/email";
 import bcrypt from "bcryptjs";
 import { betterAuth } from "better-auth";
-import { drizzleAdapter } from "better-auth/adapters/drizzle";
 import { APIError, createAuthMiddleware } from "better-auth/api";
 import { deleteSessionCookie } from "better-auth/cookies";
 import {
@@ -49,6 +48,7 @@ import {
   SETUP_TOKEN_SINGLETON_ID,
   verifyAndConsumeSetupToken,
 } from "./instance/setup-token";
+import { createCredentialAwareDrizzleAdapter } from "./pending-action/credential-invalidation";
 import deleteAccountData from "./user/controllers/delete-account-data";
 import { checkRegistrationAllowed } from "./utils/check-registration-allowed";
 import { mapCustomOAuthProfileToUser } from "./utils/custom-oauth-profile";
@@ -237,18 +237,7 @@ function createAuth(
     trustedOrigins: [baseURL],
     secret: authSecret,
     basePath: "/api/auth",
-    database: drizzleAdapter(db, {
-      provider: "pg",
-      schema: {
-        ...schema,
-        user: schema.userTable,
-        account: schema.accountTable,
-        session: schema.sessionTable,
-        verification: schema.verificationTable,
-        twoFactor: schema.twoFactorTable,
-        apikey: schema.apikeyTable,
-      },
-    }),
+    database: createCredentialAwareDrizzleAdapter(),
     user: {
       additionalFields: {
         locale: {
