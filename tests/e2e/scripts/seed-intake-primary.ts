@@ -2,7 +2,7 @@ import { randomUUID } from "node:crypto";
 import { readFileSync, writeFileSync } from "node:fs";
 import { createRequire } from "node:module";
 import { resolve } from "node:path";
-import { eq } from "drizzle-orm";
+import { and, eq } from "drizzle-orm";
 import db, { getDatabasePool, schema } from "../../../apps/api/src/database";
 
 type SeedInput =
@@ -14,7 +14,12 @@ type SeedInput =
       workItemTypeId: string;
     };
 
-type SeededPerson = { email: string; password: string; organisationId: string };
+type SeededPerson = {
+  email: string;
+  password: string;
+  personId: string;
+  organisationId: string;
+};
 
 const apiRequire = createRequire(
   new URL("../../../apps/api/package.json", import.meta.url),
@@ -107,7 +112,12 @@ async function createPortalPerson(
     updatedAt: now,
   });
 
-  return { email, password, organisationId: organisation.id };
+  return {
+    email,
+    password,
+    personId: person.id,
+    organisationId: organisation.id,
+  };
 }
 
 async function main(input: SeedInput) {
@@ -117,7 +127,22 @@ async function main(input: SeedInput) {
       enabled: true,
       locked: false,
     });
-    return { feature: "feature.intake", enabled: true };
+    const actual = required(
+      await db
+        .select({
+          enabled: schema.instanceFeatureFlagTable.enabled,
+          locked: schema.instanceFeatureFlagTable.locked,
+        })
+        .from(schema.instanceFeatureFlagTable)
+        .where(eq(schema.instanceFeatureFlagTable.featureKey, "feature.intake"))
+        .limit(1),
+      "instance intake feature flag readback",
+    );
+    if (!actual.enabled || actual.locked)
+      throw new Error(
+        "Instance intake feature flag readback did not match the fixture state.",
+      );
+    return { feature: "feature.intake", actual };
   }
 
   const customer = await createPortalPerson(
@@ -140,6 +165,43 @@ async function main(input: SeedInput) {
     // The provided project ID was created through the real API. This fixture-only
     // update establishes the exact organisation reach required by IQ-7.
     .where(eq(schema.projectTable.id, input.projectId));
+
+  const instanceFlag = required(
+    await db
+      .select({
+        enabled: schema.instanceFeatureFlagTable.enabled,
+        locked: schema.instanceFeatureFlagTable.locked,
+      })
+      .from(schema.instanceFeatureFlagTable)
+      .where(eq(schema.instanceFeatureFlagTable.featureKey, "feature.intake"))
+      .limit(1),
+    "instance intake feature flag readback",
+  );
+  const workspaceFlag = required(
+    await db
+      .select({ enabled: schema.workspaceFeatureFlagTable.enabled })
+      .from(schema.workspaceFeatureFlagTable)
+      .where(
+        and(
+          eq(schema.workspaceFeatureFlagTable.workspaceId, input.workspaceId),
+          eq(schema.workspaceFeatureFlagTable.featureKey, "feature.intake"),
+        ),
+      )
+      .limit(1),
+    "workspace intake feature flag readback",
+  );
+  const actualProject = required(
+    await db
+      .select({
+        id: schema.projectTable.id,
+        workspaceId: schema.projectTable.workspaceId,
+        organisationId: schema.projectTable.organisationId,
+      })
+      .from(schema.projectTable)
+      .where(eq(schema.projectTable.id, input.projectId))
+      .limit(1),
+    "project tenant readback",
+  );
 
   const requestTypeId = `intake-primary-${randomUUID()}`;
   const formSchema = {
@@ -184,6 +246,39 @@ async function main(input: SeedInput) {
     requestTypeId: requestType.id,
   });
 
+  const actualRequestType = required(
+    await db
+      .select({
+        id: schema.requestTypeTable.id,
+        workspaceId: schema.requestTypeTable.workspaceId,
+        defaultProjectId: schema.requestTypeTable.defaultProjectId,
+        workItemTypeId: schema.requestTypeTable.workItemTypeId,
+      })
+      .from(schema.requestTypeTable)
+      .where(eq(schema.requestTypeTable.id, requestType.id))
+      .limit(1),
+    "request type tenant readback",
+  );
+  const actualAssignment = required(
+    await db
+      .select({
+        organisationId: schema.organisationRequestTypeTable.organisationId,
+        requestTypeId: schema.organisationRequestTypeTable.requestTypeId,
+      })
+      .from(schema.organisationRequestTypeTable)
+      .where(
+        and(
+          eq(
+            schema.organisationRequestTypeTable.organisationId,
+            customer.organisationId,
+          ),
+          eq(schema.organisationRequestTypeTable.requestTypeId, requestType.id),
+        ),
+      )
+      .limit(1),
+    "requester catalogue assignment readback",
+  );
+
   return {
     customer,
     outsider,
@@ -192,6 +287,13 @@ async function main(input: SeedInput) {
     workspaceId: input.workspaceId,
     projectId: input.projectId,
     workItemTypeId: input.workItemTypeId,
+    actual: {
+      instanceFlag,
+      workspaceFlag,
+      project: actualProject,
+      requestType: actualRequestType,
+      assignment: actualAssignment,
+    },
   };
 }
 

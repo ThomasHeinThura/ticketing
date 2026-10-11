@@ -25,6 +25,7 @@ const { expect, test } = playwright;
 type PortalPerson = {
   email: string;
   password: string;
+  personId: string;
   organisationId: string;
 };
 
@@ -36,6 +37,22 @@ type SeededIntakeTenant = {
   workspaceId: string;
   projectId: string;
   workItemTypeId: string;
+  actual: {
+    instanceFlag: { enabled: boolean; locked: boolean };
+    workspaceFlag: { enabled: boolean };
+    project: {
+      id: string;
+      workspaceId: string;
+      organisationId: string | null;
+    };
+    requestType: {
+      id: string;
+      workspaceId: string;
+      defaultProjectId: string | null;
+      workItemTypeId: string;
+    };
+    assignment: { organisationId: string; requestTypeId: string };
+  };
 };
 
 type FixtureProcess = Pick<
@@ -213,10 +230,18 @@ async function runJourney(fixture: MfaCsrfAppFixture) {
   portalOrigin.hostname = `portal.${portalOrigin.hostname}`;
   const portal = portalOrigin.toString();
   const browser: Browser = await playwright.chromium.launch({ headless: true });
-  const staffContext = await browser.newContext();
-  const customerContext = await browser.newContext();
-  const returnContext = await browser.newContext();
-  const outsiderContext = await browser.newContext();
+  const staffContext = await browser.newContext({
+    viewport: { width: 1280, height: 720 },
+  });
+  const customerContext = await browser.newContext({
+    viewport: { width: 1280, height: 720 },
+  });
+  const returnContext = await browser.newContext({
+    viewport: { width: 1280, height: 720 },
+  });
+  const outsiderContext = await browser.newContext({
+    viewport: { width: 1280, height: 720 },
+  });
 
   try {
     const staffPage = await staffContext.newPage();
@@ -231,6 +256,26 @@ async function runJourney(fixture: MfaCsrfAppFixture) {
     expect(seeded.requestTypeKey).toBe("access");
     expect(seeded.workspaceId).toBe(support.workspaceId);
     expect(seeded.projectId).toBe(support.projectId);
+    expect(seeded.actual.instanceFlag).toEqual({
+      enabled: true,
+      locked: false,
+    });
+    expect(seeded.actual.workspaceFlag.enabled).toBe(true);
+    expect(seeded.actual.project).toEqual({
+      id: seeded.projectId,
+      workspaceId: seeded.workspaceId,
+      organisationId: seeded.customer.organisationId,
+    });
+    expect(seeded.actual.requestType).toEqual({
+      id: seeded.requestTypeId,
+      workspaceId: seeded.workspaceId,
+      defaultProjectId: seeded.projectId,
+      workItemTypeId: seeded.workItemTypeId,
+    });
+    expect(seeded.actual.assignment).toEqual({
+      organisationId: seeded.customer.organisationId,
+      requestTypeId: seeded.requestTypeId,
+    });
 
     const typeUrl = new URL(
       `/agent/settings/request-types?requestTypeId=${encodeURIComponent(seeded.requestTypeId)}`,
@@ -288,6 +333,12 @@ async function runJourney(fixture: MfaCsrfAppFixture) {
     });
     expect(published.version?.number).toBe(1);
     await expect(staffPage).toHaveURL(typeUrl);
+    await staffPage.screenshot({
+      path: resolve(
+        fixture.fixtureDir,
+        "intake-primary-published-settings.png",
+      ),
+    });
 
     const customerPage = await customerContext.newPage();
     await signInThroughPortal(customerPage, portal, seeded.customer);
@@ -301,6 +352,12 @@ async function runJourney(fixture: MfaCsrfAppFixture) {
       customerPage.getByRole("heading", { name: "Access request", level: 2 }),
     ).toBeVisible();
     await expect(customerPage.getByLabel("Summary")).toBeVisible();
+    await customerPage.screenshot({
+      path: resolve(
+        fixture.fixtureDir,
+        "intake-primary-catalogue-selected.png",
+      ),
+    });
 
     const submissionResponsePromise = apiResponse(
       customerPage,
@@ -385,13 +442,24 @@ async function runJourney(fixture: MfaCsrfAppFixture) {
     expect(acceptResponse.status()).toBe(200);
     const accepted = (await acceptResponse.json()) as {
       state?: string;
-      workItem?: { title?: string; requesterId?: string };
+      workItem?: {
+        title?: string;
+        requesterId?: string;
+        workspaceId?: string;
+        projectId?: string;
+      };
     };
     expect(accepted.state).toBe("accepted");
     expect(accepted.workItem?.title).toBe("Need account access");
+    expect(accepted.workItem?.requesterId).toBe(seeded.customer.personId);
+    expect(accepted.workItem?.workspaceId).toBe(seeded.workspaceId);
+    expect(accepted.workItem?.projectId).toBe(seeded.projectId);
     await expect(
       staffPage.getByText("accepted", { exact: true }),
     ).toBeVisible();
+    await staffPage.screenshot({
+      path: resolve(fixture.fixtureDir, "intake-primary-accepted-triage.png"),
+    });
 
     await customerPage.reload();
     await expect(customerPage).toHaveURL(submissionUrl);
@@ -410,6 +478,12 @@ async function runJourney(fixture: MfaCsrfAppFixture) {
     expect((await returningPageResponse).status()).toBe(200);
     await expect(returnPage).toHaveURL(submissionUrl);
     await expect(returnPage.getByText("Need account access")).toBeVisible();
+    await returnPage.screenshot({
+      path: resolve(
+        fixture.fixtureDir,
+        "intake-primary-accepted-requester.png",
+      ),
+    });
 
     const outsiderPage = await outsiderContext.newPage();
     await signInThroughPortal(outsiderPage, portal, seeded.outsider);
