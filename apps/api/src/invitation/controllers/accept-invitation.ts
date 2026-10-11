@@ -1,6 +1,7 @@
-import { and, eq, sql } from "drizzle-orm";
+import { and, eq } from "drizzle-orm";
 import db, { schema } from "../../database";
-import { WORKSPACE_MEMBERSHIP_LOCK_NAMESPACE } from "../../workspace/controllers/workspace-membership-lock";
+import { WorkspaceRoleNotFoundError } from "../../workspace/controllers/workspace-membership-errors";
+import { lockWorkspaceRoleAssignment } from "../../workspace/controllers/workspace-role-assignment-lock";
 import {
   AlreadyWorkspaceMemberError,
   InvitationExpiredError,
@@ -40,10 +41,9 @@ export type AcceptedInvitation = {
  *
  * Reads the invitation TWICE, deliberately. The first read (outside any
  * lock) exists only to learn which workspace's advisory lock to take --
- * `WORKSPACE_MEMBERSHIP_LOCK_NAMESPACE`, the SAME namespace every S5
- * membership write and `inviteWorkspaceMember` use, so this accept, a
- * concurrent `addWorkspaceMember`, and a concurrent second accept for the
- * same workspace all serialize against each other. The second read, taken
+ * the shared membership→role lock pair used by role assignment/deletion,
+ * `inviteWorkspaceMember`, and every other native membership writer. The
+ * second read, taken
  * AFTER the lock is held, is the one every check below is against -- status,
  * expiry, recipient match, and the existing-membership check that is this
  * function's whole reason to exist. A lock taken on stale data protects
@@ -64,9 +64,7 @@ async function acceptInvitation(
   }
 
   return db.transaction(async (tx) => {
-    await tx.execute(
-      sql`SELECT pg_advisory_xact_lock(${WORKSPACE_MEMBERSHIP_LOCK_NAMESPACE}, hashtext(${pre.workspaceId}))`,
-    );
+    await lockWorkspaceRoleAssignment(tx, pre.workspaceId);
 
     const [invitation] = await tx
       .select({
@@ -112,6 +110,19 @@ async function acceptInvitation(
     }
 
     const role = invitation.role ?? "member";
+    const [roleRow] = await tx
+      .select({ id: schema.workspaceRoleTable.id })
+      .from(schema.workspaceRoleTable)
+      .where(
+        and(
+          eq(schema.workspaceRoleTable.workspaceId, invitation.workspaceId),
+          eq(schema.workspaceRoleTable.role, role),
+        ),
+      )
+      .limit(1);
+    if (!roleRow) {
+      throw new WorkspaceRoleNotFoundError(role);
+    }
     const now = new Date();
 
     await tx

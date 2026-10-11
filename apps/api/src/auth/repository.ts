@@ -55,9 +55,41 @@ export function getActiveSessionForStepUp(
     .limit(1);
 }
 
+export function getPendingActionForStepUp(
+  actionId: string,
+  personId: string,
+  now: Date,
+) {
+  return db
+    .select({
+      action: schema.pendingActionTable.action,
+      targetType: schema.pendingActionTable.targetType,
+      confirmation: schema.pendingActionTable.confirmationRequired,
+      routeKey: schema.pendingActionTable.routeKey,
+    })
+    .from(schema.pendingActionTable)
+    .where(
+      and(
+        eq(schema.pendingActionTable.id, actionId),
+        eq(schema.pendingActionTable.requestedByPersonId, personId),
+        eq(schema.pendingActionTable.state, "pending"),
+        gt(schema.pendingActionTable.expiresAt, now),
+      ),
+    )
+    .limit(1);
+}
+
 export function getUserFactorEnabled(userId: string) {
   return db
     .select({ enabled: schema.userTable.twoFactorEnabled })
+    .from(schema.userTable)
+    .where(eq(schema.userTable.id, userId))
+    .limit(1);
+}
+
+export function getUserId(userId: string) {
+  return db
+    .select({ id: schema.userTable.id })
     .from(schema.userTable)
     .where(eq(schema.userTable.id, userId))
     .limit(1);
@@ -114,6 +146,239 @@ export function getPasswordCredential(userId: string) {
         eq(schema.accountTable.providerId, "credential"),
       ),
     )
+    .limit(1);
+}
+
+type StepUpExecutor = Parameters<Parameters<typeof db.transaction>[0]>[0];
+
+export function lockPendingActionForChallenge(
+  executor: StepUpExecutor,
+  actionId: string,
+  personId: string,
+) {
+  return executor
+    .select({
+      id: schema.pendingActionTable.id,
+      confirmation: schema.pendingActionTable.confirmationRequired,
+    })
+    .from(schema.pendingActionTable)
+    .where(
+      and(
+        eq(schema.pendingActionTable.id, actionId),
+        eq(schema.pendingActionTable.requestedByPersonId, personId),
+        eq(schema.pendingActionTable.state, "pending"),
+        gt(schema.pendingActionTable.expiresAt, sql`now()`),
+      ),
+    )
+    .for("update")
+    .limit(1);
+}
+
+export function countRecentPendingActionChallenges(
+  executor: StepUpExecutor,
+  personId: string,
+  sessionId: string,
+  pendingActionId: string,
+) {
+  return executor
+    .select({ value: count() })
+    .from(schema.stepUpConfirmationTable)
+    .where(
+      and(
+        eq(schema.stepUpConfirmationTable.personId, personId),
+        eq(schema.stepUpConfirmationTable.sessionId, sessionId),
+        eq(schema.stepUpConfirmationTable.bindingKind, "pending_action"),
+        eq(schema.stepUpConfirmationTable.pendingActionId, pendingActionId),
+        gt(
+          schema.stepUpConfirmationTable.createdAt,
+          sql`now() - interval '15 minutes'`,
+        ),
+      ),
+    );
+}
+
+export function countRecentOperationChallenges(
+  executor: StepUpExecutor,
+  personId: string,
+  sessionId: string,
+  operation: string,
+) {
+  return executor
+    .select({ value: count() })
+    .from(schema.stepUpConfirmationTable)
+    .where(
+      and(
+        eq(schema.stepUpConfirmationTable.personId, personId),
+        eq(schema.stepUpConfirmationTable.sessionId, sessionId),
+        eq(schema.stepUpConfirmationTable.bindingKind, "operation"),
+        eq(schema.stepUpConfirmationTable.operationKey, operation),
+        gt(
+          schema.stepUpConfirmationTable.createdAt,
+          sql`now() - interval '15 minutes'`,
+        ),
+      ),
+    );
+}
+
+export function lockPendingActionProof(
+  executor: StepUpExecutor,
+  input: {
+    tokenHash: Buffer;
+    personId: string;
+    sessionId: string;
+    pendingActionId: string;
+  },
+) {
+  return executor
+    .select({ id: schema.stepUpConfirmationTable.id })
+    .from(schema.stepUpConfirmationTable)
+    .where(
+      and(
+        eq(schema.stepUpConfirmationTable.tokenHash, input.tokenHash),
+        eq(schema.stepUpConfirmationTable.personId, input.personId),
+        eq(schema.stepUpConfirmationTable.sessionId, input.sessionId),
+        eq(schema.stepUpConfirmationTable.bindingKind, "pending_action"),
+        eq(
+          schema.stepUpConfirmationTable.pendingActionId,
+          input.pendingActionId,
+        ),
+        eq(schema.stepUpConfirmationTable.state, "issued"),
+        gt(schema.stepUpConfirmationTable.tokenExpiresAt, sql`now()`),
+      ),
+    )
+    .for("update")
+    .limit(1);
+}
+
+export function lockOperationProof(
+  executor: StepUpExecutor,
+  input: {
+    tokenHash: Buffer;
+    personId: string;
+    sessionId: string;
+    operation: string;
+    route: string;
+    version: number;
+  },
+) {
+  return executor
+    .select()
+    .from(schema.stepUpConfirmationTable)
+    .where(
+      and(
+        eq(schema.stepUpConfirmationTable.tokenHash, input.tokenHash),
+        eq(schema.stepUpConfirmationTable.personId, input.personId),
+        eq(schema.stepUpConfirmationTable.sessionId, input.sessionId),
+        eq(schema.stepUpConfirmationTable.bindingKind, "operation"),
+        eq(schema.stepUpConfirmationTable.operationKey, input.operation),
+        eq(schema.stepUpConfirmationTable.routeKey, input.route),
+        eq(schema.stepUpConfirmationTable.expectedVersion, input.version),
+        eq(schema.stepUpConfirmationTable.state, "issued"),
+        gt(schema.stepUpConfirmationTable.tokenExpiresAt, sql`now()`),
+      ),
+    )
+    .for("update")
+    .limit(1);
+}
+
+export function lockActiveStepUpSession(
+  executor: StepUpExecutor,
+  sessionId: string,
+  userId: string,
+) {
+  return executor
+    .select({ id: schema.sessionTable.id })
+    .from(schema.sessionTable)
+    .where(
+      and(
+        eq(schema.sessionTable.id, sessionId),
+        eq(schema.sessionTable.userId, userId),
+        eq(schema.sessionTable.portal, "agent"),
+        gt(schema.sessionTable.expiresAt, sql`now()`),
+      ),
+    )
+    .for("update")
+    .limit(1);
+}
+
+export function lockPendingActionById(
+  executor: StepUpExecutor,
+  actionId: string,
+  personId: string,
+) {
+  return executor
+    .select({ id: schema.pendingActionTable.id })
+    .from(schema.pendingActionTable)
+    .where(
+      and(
+        eq(schema.pendingActionTable.id, actionId),
+        eq(schema.pendingActionTable.requestedByPersonId, personId),
+        eq(schema.pendingActionTable.state, "pending"),
+        gt(schema.pendingActionTable.expiresAt, sql`now()`),
+      ),
+    )
+    .for("update")
+    .limit(1);
+}
+
+export function lockPendingActionChallenge(
+  executor: StepUpExecutor,
+  input: {
+    id: string;
+    personId: string;
+    sessionId: string;
+    pendingActionId: string;
+  },
+) {
+  return executor
+    .select()
+    .from(schema.stepUpConfirmationTable)
+    .where(
+      and(
+        eq(schema.stepUpConfirmationTable.id, input.id),
+        eq(schema.stepUpConfirmationTable.personId, input.personId),
+        eq(schema.stepUpConfirmationTable.sessionId, input.sessionId),
+        eq(schema.stepUpConfirmationTable.bindingKind, "pending_action"),
+        eq(
+          schema.stepUpConfirmationTable.pendingActionId,
+          input.pendingActionId,
+        ),
+        eq(schema.stepUpConfirmationTable.state, "challenge"),
+        gt(schema.stepUpConfirmationTable.challengeExpiresAt, sql`now()`),
+      ),
+    )
+    .for("update")
+    .limit(1);
+}
+
+export function lockOperationChallenge(
+  executor: StepUpExecutor,
+  input: {
+    id: string;
+    personId: string;
+    sessionId: string;
+    operation: string;
+    route: string;
+    version: number;
+  },
+) {
+  return executor
+    .select()
+    .from(schema.stepUpConfirmationTable)
+    .where(
+      and(
+        eq(schema.stepUpConfirmationTable.id, input.id),
+        eq(schema.stepUpConfirmationTable.personId, input.personId),
+        eq(schema.stepUpConfirmationTable.sessionId, input.sessionId),
+        eq(schema.stepUpConfirmationTable.bindingKind, "operation"),
+        eq(schema.stepUpConfirmationTable.operationKey, input.operation),
+        eq(schema.stepUpConfirmationTable.routeKey, input.route),
+        eq(schema.stepUpConfirmationTable.expectedVersion, input.version),
+        eq(schema.stepUpConfirmationTable.state, "challenge"),
+        gt(schema.stepUpConfirmationTable.challengeExpiresAt, sql`now()`),
+      ),
+    )
+    .for("update")
     .limit(1);
 }
 

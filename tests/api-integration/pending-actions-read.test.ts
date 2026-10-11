@@ -162,6 +162,7 @@ describe("GET /api/me/pending-actions", () => {
     expect(Object.keys(first.data[0] ?? {}).sort()).toEqual(
       [
         "action",
+        "approvalSupported",
         "confirmation",
         "createdAt",
         "decidedAt",

@@ -8,6 +8,11 @@ import { appendStepUpAudit } from "../auth/step-up-audit";
 import { consumeMfaResetProof } from "../auth/step-up-service";
 import db, { schema } from "../database";
 import { apiRouter, createRoute, jsonResponse, z } from "../openapi";
+import { lockAndInvalidateUserCredentials } from "../pending-action/credential-invalidation";
+import {
+  lockPendingActionLifecycle,
+  reportPendingActionAuditFailures,
+} from "../pending-action/lifecycle-invalidation";
 import { setShadowLegacyAuthorization } from "../permissions/shadow-context";
 import { normaliseTraceId } from "../permissions/shadow-middleware";
 import { requireSessionOnly } from "../utils/require-session-only";
@@ -109,9 +114,14 @@ const resetMfa = apiRouter().openapi(resetRoute, async (c) => {
 
   let transactionResult:
     | { kind: "denied" }
-    | { kind: "success"; wasEnabled: boolean };
+    | {
+        kind: "success";
+        wasEnabled: boolean;
+        pendingActionAuditFailures: number;
+      };
   try {
     transactionResult = await db.transaction(async (tx) => {
+      await lockPendingActionLifecycle(tx);
       const proof = await consumeMfaResetProof(tx, {
         token: c.req.valid("header")["x-taskdesk-step-up-token"],
         personId: actorFactor.personId,
@@ -145,6 +155,7 @@ const resetMfa = apiRouter().openapi(resetRoute, async (c) => {
         .limit(1);
       if (!current?.enabled)
         throw new StepUpRejection(409, "factor_reset_unavailable");
+      const invalidation = await lockAndInvalidateUserCredentials(tx, id);
       await tx
         .delete(schema.twoFactorTable)
         .where(eq(schema.twoFactorTable.userId, id));
@@ -173,7 +184,11 @@ const resetMfa = apiRouter().openapi(resetRoute, async (c) => {
         operation: "mfa_reset",
         traceId: c.req.header("x-request-id"),
       });
-      return { kind: "success" as const, wasEnabled: current.enabled === true };
+      return {
+        kind: "success" as const,
+        wasEnabled: current.enabled === true,
+        pendingActionAuditFailures: invalidation.auditFailures,
+      };
     });
   } catch (error) {
     if (!(error instanceof StepUpRejection)) throw error;
@@ -189,6 +204,9 @@ const resetMfa = apiRouter().openapi(resetRoute, async (c) => {
 
   if (transactionResult.kind === "denied")
     throw new HTTPException(403, { message: "step_up_unavailable" });
+  await reportPendingActionAuditFailures(
+    transactionResult.pendingActionAuditFailures,
+  );
   const wasEnabled = transactionResult.wasEnabled;
 
   await invalidateNativeAuthorization({ userId: id });

@@ -77,6 +77,7 @@ import {
 } from "./instance/observability/runtime";
 import resetMfa from "./instance/reset-mfa";
 import { ensureSetupToken } from "./instance/setup-token";
+import users from "./instance/users";
 import invitation from "./invitation";
 import label from "./label";
 import { migrateColumns } from "./migrations/column-migration";
@@ -85,6 +86,13 @@ import notificationPreferences from "./notification-preferences";
 import oauth from "./oauth";
 import { createRoute, errorResponse, jsonResponse, z } from "./openapi";
 import pendingAction from "./pending-action";
+import {
+  type ExplicitCredentialMutation,
+  isCredentialRevocationFailure,
+  withAccountDeletionTransaction,
+  withExplicitCredentialMutation,
+  withTotpSessionEnrollment,
+} from "./pending-action/credential-invalidation";
 // Issue #8: `assertRouteIsClassified` refuses a request whose route has no policy entry at
 // all (presence only, always on); `runNextWithPolicyShadow` is the shadow-mode ALLOW/DENY
 // comparison, off by default. See the call sites below and each file's own header comment.
@@ -349,7 +357,11 @@ function authForRequest(c: Context) {
   return selected;
 }
 
-async function handleAuthRequest(c: Context, headers?: Headers) {
+async function handleAuthRequest(
+  c: Context,
+  headers?: Headers,
+  mutation?: ExplicitCredentialMutation,
+) {
   if (
     hasInvalidExplicitCredential(
       c.req.header("Authorization"),
@@ -376,7 +388,87 @@ async function handleAuthRequest(c: Context, headers?: Headers) {
     throw new HTTPException(401, { message: "Unauthorized" });
   }
 
-  return selected.handler(buildAuthRequest(c, headers));
+  const accountDeletionRoute =
+    (c.req.method === "POST" && c.req.path === "/api/auth/delete-user") ||
+    (c.req.method === "GET" && c.req.path === "/api/auth/delete-user/callback");
+  if (accountDeletionRoute) {
+    const requestTemplate = c.req.raw.clone();
+    return withAccountDeletionTransaction(() =>
+      selected.handler(buildAuthRequest(c, headers, requestTemplate.clone())),
+    );
+  }
+  const authRequest = buildAuthRequest(c, headers);
+  if (
+    c.req.method === "POST" &&
+    c.req.path === "/api/auth/two-factor/verify-totp"
+  ) {
+    try {
+      return await withTotpSessionEnrollment(() =>
+        selected.handler(authRequest),
+      );
+    } catch (error) {
+      if (isCredentialRevocationFailure(error)) {
+        return c.json({ error: "credential_revocation_failed" }, 503);
+      }
+      throw error;
+    }
+  }
+  if (!mutation) return selected.handler(authRequest);
+
+  const outcome = await withExplicitCredentialMutation(mutation, () =>
+    selected.handler(authRequest),
+  );
+  if (outcome.state.deleteFailure) {
+    return c.json({ error: "credential_revocation_failed" }, 503);
+  }
+  return outcome.result;
+}
+
+function explicitAuthCredentialMutation(
+  method: string,
+  path: string,
+  body?: unknown,
+): ExplicitCredentialMutation | undefined {
+  if (method !== "POST" || !path.startsWith("/api/auth/")) return undefined;
+  const route = path.slice("/api/auth".length);
+  if (route === "/api-key/delete" || route === "/api-key/update") {
+    return { kind: "api_key", route };
+  }
+  if (
+    route === "/sign-out" ||
+    route === "/revoke-session" ||
+    route === "/revoke-sessions" ||
+    route === "/revoke-other-sessions"
+  ) {
+    return { kind: "session", route };
+  }
+  if (
+    route === "/change-password" &&
+    typeof body === "object" &&
+    body !== null &&
+    "revokeOtherSessions" in body &&
+    body.revokeOtherSessions === true
+  ) {
+    return { kind: "session", route };
+  }
+  return undefined;
+}
+
+async function explicitAuthCredentialMutationForRequest(
+  method: string,
+  path: string,
+  request: Request,
+): Promise<ExplicitCredentialMutation | undefined> {
+  if (method !== "POST" || path !== "/api/auth/change-password") {
+    return explicitAuthCredentialMutation(method, path);
+  }
+  let body: unknown;
+  try {
+    body = await request.clone().json();
+  } catch {
+    return undefined;
+  }
+  return explicitAuthCredentialMutation(method, path, body);
 }
 
 /**
@@ -1169,6 +1261,11 @@ export function createApp(
   );
 
   api.on(["POST", "GET", "PUT", "PATCH", "DELETE"], "/auth/*", async (c) => {
+    const mutation = await explicitAuthCredentialMutationForRequest(
+      c.req.method,
+      c.req.path,
+      c.req.raw,
+    );
     const authHeader = c.req.header("Authorization");
     const apiKeyHeader = c.req.header("x-api-key");
     const bearerToken = authHeader?.match(/^Bearer\s+(\S+)$/i)?.[1];
@@ -1179,10 +1276,10 @@ export function createApp(
       // Better Auth API key plugin validates from x-api-key by default.
       headers.set("x-api-key", bearerToken);
 
-      return handleAuthRequest(c, headers);
+      return handleAuthRequest(c, headers, mutation);
     }
 
-    return handleAuthRequest(c);
+    return handleAuthRequest(c, undefined, mutation);
   });
 
   // Named (not inline in `.use()`) so its exact function reference can be declared to
@@ -1384,6 +1481,7 @@ export function createApp(
   const metricsTokenRotationApi = api.route("/instance", metricsTokenRotation);
   const localFactorPolicyApi = api.route("/instance", localFactorPolicy);
   const resetMfaApi = api.route("/instance", resetMfa);
+  const usersApi = api.route("/instance", users);
   const identityConnectionAdminApi = api.route(
     "/instance",
     identityConnectionAdmin,
@@ -1743,6 +1841,7 @@ export function createApp(
     metricsTokenRotationApi,
     localFactorPolicyApi,
     resetMfaApi,
+    usersApi,
     identityConnectionAdminApi,
     oidcGroupMappingAdminApi,
     scimAdminApi,
@@ -2121,6 +2220,7 @@ const {
   metricsTokenRotationApi,
   localFactorPolicyApi,
   resetMfaApi,
+  usersApi,
   identityConnectionAdminApi,
   oidcGroupMappingAdminApi,
   scimAdminApi,
@@ -2207,6 +2307,7 @@ export type AppType =
   | typeof metricsTokenRotationApi
   | typeof localFactorPolicyApi
   | typeof resetMfaApi
+  | typeof usersApi
   | typeof identityConnectionAdminApi
   | typeof oidcGroupMappingAdminApi
   | typeof scimAdminApi
