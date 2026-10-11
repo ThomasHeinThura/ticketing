@@ -161,3 +161,100 @@ Per-socket checks form one Promise chain, preserving event order. A failed check
 I inspected the supplied author logs. `legacy-ws-unit-run-2.log` records 5 files / 28 passing tests. `legacy-ws-runtime/node-full-run-2.log` records 1 file / 26 passing real Node WebSocket tests after the ban guard. The earlier `node-new-cases-run-1.log` had two ban-case failures; it is historical failure evidence, not a passing run. The supplied full lint, typecheck, test, and permissions logs report success (the permissions run records 14 files / 88 tests). Those are **author-executed**, not reviewer-executed. At review time the supplied full API integration log had no final summary; this review does not claim it passed. The seven-line final commit changes a general engineering lesson only; it does not change source, tests, build inputs, or the reviewed realtime authority contract. GitHub's exact-head CI and required publication gates remain the conductor's responsibility.
 
 This clearance addresses the requested repair and the actual authority paths in the reviewed diff. It is not a claim that all pre-existing legacy socket capability semantics or every possible concurrent revoke/send interleaving has been redesigned.
+
+
+## Accepted-main composition and current-head delta confirmation
+
+**Reviewed head:** `ba01174aa16a125d9c7450e4cb9080ccd50a96b5`
+
+Conductor provenance: /root/review_638_main_records_delta_luna was freshly spawned with model="gpt-6-luna", fork_turns="none" and independently closed the two transport-only separator deletions. /root/review_638_current_delta_sol was freshly spawned with model="gpt-6-sol", fork_turns="none" for the separate lightweight security confirmation. Neither authored, directed or repaired this candidate. The original full source panel remains above; runtime identity and execution limits remain as reported. The original protected merge was refused after accepted main advanced; the normal composition receives this fresh confirmation without a bypass. Authentic original Markdown hard-break bytes remain unchanged.
+
+## Authentic current-delta report: pr638-main-records-delta-luna.md
+
+SHA-256 of original report bytes: `8e619b23d4d5305d7ea6b72fd3283ed4af2f970ee5f88f44e00c8a7ec985583d`.
+
+# Independent ordinary review — #638 accepted-main records delta
+
+**Reviewed head:** `c62989ebf035d0672c9e6413968acec77326673b`  
+**Comparison base:** `cdf6b7602d531d3b0cc400b939c305ba0a301368`  
+**Merge parents:** first `cdf6b7602d531d3b0cc400b939c305ba0a301368`; second `f8afcbccf1bf741989aa3671939beef3bb1d1e97`.  
+**Reviewer context:** `/root/review_638_main_records_delta_luna`, fresh context independent of authorship, direction, and remediation.  
+**Model:** assigned to the GPT-6 Luna ordinary-review tier. The execution surface exposes generic GPT-6; I cannot substantiate an unexposed exact serving variant.  
+**Scope:** factual and composition review of the merge delta from the accepted #638 records head to its normal merge with accepted-main #639 records.  
+**Verdict: CLEAR.** No blocking factual or authority/gate finding. One non-blocking trailing blank line is noted below.
+
+## Checks performed
+
+- Read accepted `AGENTS.md`, `docs/07-planning/active-mission.md`, `docs/04-engineering/agent-workflow.md`, and the authoritative security-scope list in `docs/04-engineering/ci-cd.md`.
+- Verified the exact HEAD and both raw merge parents with Git. The base-to-head diff is 160 additions / 0 deletions across exactly four mode-100644 files: `docs/07-planning/integration-execution-queue.md`, `docs/07-planning/status.md`, and two `docs/07-planning/security-reviews/**` records.
+- Read the full queue/status delta and the new records. The 06:05 UTC snapshot preserves the prior #601 acceptance and #637 failure separately, keeps #635/#636/#632 work explicitly blocked or pending, and makes no new stage, release, SIT, or feature-acceptance claim. The #594 mapping keeps unique approval work held under S3/S4 and does not treat the historical Sol verdict as approval for #629 or a later candidate.
+- Checked the retained #639 preflight and merge receipts and the two published factual-review reports for source SHA `d518556341110cb643252f4dda44080a5012c6da`. The copied reports’ SHA-256 values match their retained originals: Luna A `b7e0eee564fedc614c63281656a4019239222797efb8f85ff31202357b825763`; Luna B `3f8254b142ca3ba0c8ecc431fc32117447a6446a186f91915c7bbb33fecf3fb8`.
+- Compared `docs/07-planning/security-reviews/594-outbox-fencing-canonical-binding.md` at original source commit `359d60bd31368cd04cc1aeab3ad5bcfade403f22` and reviewed head. The full file is byte-identical at both: SHA-256 `9e65cce1f866e486d727ace895a1feb5911d3a1e7b4d56d91cbad831c888f313`, 6,499 bytes. Its declared reviewed code head remains `8baeb6223fcb3c822f2b97f98bf41b56040cf511`.
+- Confirmed by path inspection and a Git pathspec comparison that the delta changes no application source, route, test, build/deployment input, dependency, CI file, or security-path entry. The changed paths are outside the authoritative CI/CD security-review path list; this review makes no claim about or substitute for any separately assigned Sol confirmation.
+- Ran `git diff --check cdf6b7602d531d3b0cc400b939c305ba0a301368 c62989ebf035d0672c9e6413968acec77326673b`. It reports one new blank line at EOF in `delivery-checkpoint-20261011.md:71` (exit 2). The same warning reproduces against the original #639 publication range. This does not alter the record’s meaning or any gate semantics, but contradicts the prior merge-body statement that its diff check passed.
+
+## Findings
+
+**Blocking:** none.
+
+**Non-blocking:** remove the extra blank line at EOF in `docs/07-planning/security-reviews/delivery-checkpoint-20261011.md` when a normal records edit is next made. No fix was made in this review.
+
+No tests, builds, databases, containers, browsers, or product runtime were used. The review checked composition and retained factual evidence; it did not independently re-run #639’s GitHub state queries or #638’s product verification.
+
+## Authentic current-delta report: pr638-main-records-delta-luna-closure.md
+
+SHA-256 of original report bytes: `156b7621f805bc1ada2b76f83a3c581850139d0f0b1a02fc5a3dccea42ccf79e`.
+
+# Independent closing review — #638 records whitespace correction
+
+**Reviewed head:** `ba01174aa16a125d9c7450e4cb9080ccd50a96b5`  
+**Comparison base:** `c62989ebf035d0672c9e6413968acec77326673b`  
+**Parent:** `c62989ebf035d0672c9e6413968acec77326673b`.  
+**Reviewer context:** `/root/review_638_main_records_delta_luna`, continuing the fresh independent ordinary-review context; I did not author, direct, or remediate this correction.  
+**Model:** assigned to the GPT-6 Luna ordinary-review tier. The execution surface exposes generic GPT-6; I cannot substantiate an unexposed exact serving variant.  
+**Verdict: CLEAR.** The exact-head correction removes only two final blank separator bytes. No report text or factual content changed.
+
+## Checks performed
+
+- Verified HEAD and the single raw parent with Git. The parent-to-head diff is exactly two deletions from mode-100644 planning review records:
+  - `docs/07-planning/security-reviews/638-legacy-socket-reauthorization.md`
+  - `docs/07-planning/security-reviews/delivery-checkpoint-20261011.md`
+- Compared both file blobs at parent and head. Each parent version ends in two LF bytes; each head version ends in one. In both cases, `parent_bytes[:-1] == head_bytes`: exactly the extra final LF was removed and every earlier byte is unchanged.
+- Verified that all six retained authentic reports still occur byte-for-byte in their respective head notes. Their source SHA-256 values are: legacy WebSocket Luna A `16e7af1fcd8d524c0a9e221dabb9bbf85e67b7ee114f27d632c8890f9e0868f7`, Luna B `03ca14b4cd47726894fdff7a2a0458d6233d3fc12926e9a73df2e982fdb8b802`, Luna C `70ffc92da04a245ba5995f8a6d66587c7b94f112f96bd7d71a272d598173a039`, legacy WebSocket Sol `d5f9fc66daf5f63bca14911d236d57e7b44be40bdfa2f33ac1a9d1e5d2829de0`, delivery-records Luna A `b7e0eee564fedc614c63281656a4019239222797efb8f85ff31202357b825763`, and delivery-records Luna B `3f8254b142ca3ba0c8ecc431fc32117447a6446a186f91915c7bbb33fecf3fb8`.
+- Ran `git diff --check c62989ebf035d0672c9e6413968acec77326673b ba01174aa16a125d9c7450e4cb9080ccd50a96b5` and `git diff --check cdf6b7602d531d3b0cc400b939c305ba0a301368 ba01174aa16a125d9c7450e4cb9080ccd50a96b5`; both passed. The index check also passed.
+- Confirmed the delta does not alter application, test, build, deployment, dependency, or CI paths. No tests, builds, databases, containers, browsers, or runtime checks were run.
+
+## Findings
+
+**Blocking:** none.  
+**Non-blocking:** none.
+
+This review records only the exact `ba01174…` documentation correction. It does not claim carried exact-head product CI, build, runtime, or SIT evidence.
+
+## Authentic current-delta report: pr638-current-delta-sol.md
+
+SHA-256 of original report bytes: `32dd2b52a3b40660292470719334f7bda10dc633deb2b6537244f4fd52dc65ac`.
+
+# Independent lightweight security confirmation — PR #638 current head
+
+**Reviewed head:** `ba01174aa16a125d9c7450e4cb9080ccd50a96b5`  
+**Original full security-reviewed source:** `453fbacb56710aed361cef89dce09c8fbc90ba76`  
+**Accepted-main parent brought into the candidate:** `f8afcbccf1bf741989aa3671939beef3bb1d1e97`  
+**Role and provenance:** Fresh independent lightweight security review of the post-`453f` delta. The assignment requested a Sol-tier review; this context exposes only generic GPT-6 identity, not a separately attested serving variant or the parent's invocation arguments. I did not author, direct, remediate, or merge this candidate, and did not serve as an ordinary reviewer.  
+**Verdict: CLEAR for this exact delta.** No blocking authority, gate-semantic, or security finding identified. The original independent full security report remains bound to `453fbacb56710aed361cef89dce09c8fbc90ba76`; this confirmation establishes its applicability to the unchanged executable source and contract at `ba01174aa16a125d9c7450e4cb9080ccd50a96b5`.
+
+## Scope and checks
+
+I read the accepted `AGENTS.md`, `docs/07-planning/active-mission.md`, `docs/04-engineering/agent-workflow.md`, `CLAUDE.md`, and the `ci-cd.md` security-scope and review-binding rules from accepted main `f8afcbccf1bf741989aa3671939beef3bb1d1e97`. I inspected the cumulative Git history and five-file delta from `453f` through `cdf6b7602d531d3b0cc400b939c305ba0a301368`, the normal merge `c62989ebf035d0672c9e6413968acec77326673b`, and `ba01174aa16a125d9c7450e4cb9080ccd50a96b5`. The cumulative delta consists of queue/status checkpoint additions and three historical/reviewer notes: 322 additions and no remaining deletions. I read the queue/status additions, the review-note prefaces, the original full Sol report, and the current-delta Luna report and closure. The notes explicitly bind historical verdicts to their original heads and do not declare stage, release, SIT, or runtime acceptance.
+
+I compared Git tree/blob object IDs at `453f` and `ba01174a` for `apps`, `packages`, `tests`, `scripts`, `.github`, `Dockerfile`, `compose.yml`, `package.json`, `pnpm-lock.yaml`, `pnpm-workspace.yaml`, `docs/01-architecture/realtime.md`, and `docs/04-engineering/error-fix-loop.md`: every pair is identical. Thus the new merge did not change the reviewed executable code, tests, CI machinery, dependency/build inputs, or realtime authority contract in the candidate tree. The changes to queue/status and review notes supply evidence and status only; I found no new rule, authority grant, waived gate, or altered pass/fail condition in their text.
+
+I independently checked all six embedded ordinary/security reports against their retained originals. Each original occurs exactly once, byte for byte, in its respective committed note, and its SHA-256 matches the declared digest: legacy socket A `16e7af1fcd8d524c0a9e221dabb9bbf85e67b7ee114f27d632c8890f9e0868f7`, B `03ca14b4cd47726894fdff7a2a0458d6233d3fc12926e9a73df2e982fdb8b802`, C `70ffc92da04a245ba5995f8a6d66587c7b94f112f96bd7d71a272d598173a039`, full security `d5f9fc66daf5f63bca14911d236d57e7b44be40bdfa2f33ac1a9d1e5d2829de0`, delivery records A `b7e0eee564fedc614c63281656a4019239222797efb8f85ff31202357b825763`, delivery records B `3f8254b142ca3ba0c8ecc431fc32117447a6446a186f91915c7bbb33fecf3fb8`. For both notes touched by `ba01174a`, the parent version ends with two LF bytes and the current version is exactly the parent bytes minus the last LF; report contents are intact.
+
+The cumulative `git diff --check` reports three trailing-space lines in the embedded full security report's Markdown hard breaks. They are authentic original bytes, not a new candidate alteration; the original security report's own source diff check concerned its then-reviewed code delta. I made no source edit. I ran no tests, build, database, container, browser, or runtime operation. Author logs and earlier reviewer reports retain their original attribution; I do not convert them into reviewer-executed or current-head runtime evidence.
+
+## Gate and evidence boundary
+
+The accepted CI/CD rule requires a committed exact-head review declaration when non-note paths land after the previous security-reviewed head. The normal merge brought in planning records, so the earlier committed `**Reviewed head:** 453f…` alone does not establish current-head note freshness under that history rule, even though the executable tree is identical. This external report supplies the fresh independent assessment for `ba01174a`; the conductor must publish it through the required committed-note/PR flow and verify the exact-head status checks. This is a gate-publication step, not a security finding in the reviewed delta.
+
+The original full report's non-blocking absence of a direct workspace-only invalidation closure regression remains as stated. This review does not assert a new reproduction, production/SIT acceptance, or that the historical #594 report approves later notification code.
