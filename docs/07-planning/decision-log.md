@@ -1,30 +1,191 @@
-### 2026-10-09 · One bounded unchanged-head P0 G11 verification
+### 2026-10-11 · Thomas designates this Codex chat as delivery conductor
 
-**Decision:** Thomas explicitly answered “Allow one unchanged-head G11 verification” to request `call_dea38dc3148b497a9835768df4be95b1`, item0. This grants one exception to the no-job-retry rule in `error-fix-loop.md` for only the existing hosted G11 job on frozen P0 head `66c736e71c87b2372ba1cbf8250236ac37191565`.
+**Decision:** Thomas directly supplied the “TASKDESK — CODEX DELIVERY TAKEOVER” and
+“TASKDESK — RESUME DELIVERY AFTER CLAUDE USAGE LIMIT” instructions in Codex chat
+`01a12921-4863-7c42-ac59-1822c69b88cd` and asked to check and continue. This chat replaces
+the usage-limited Claude conductor for the existing integration-freeze mission: recover
+pending results, preserve authentic prior reviews and scoped P0 completion, finish existing
+repairs, protected merges, GHCR/GitHub publication, existing SIT acceptance, independent
+accepted security-tier audit, handover, then STOP. No new roadmap, production deployment,
+Docker Hub publication or repeat P0 proof cycle is authorized.
 
-The original run37888524785/job113683981417/attempt1 remains a failed19/22 result (LCP2556/2500ms, palette202.7/200ms, board636.7/500ms). The earlier22/22 result remains historical, source-bound evidence. Re-run only that G11 job once; preserve every source, budget, fixture, workload, assertion and original failure. No other failed job, whole suite or source is rerun under this decision. If this verification fails again, stop unchanged retries and investigate the retained evidence. No performance-threshold, merge, deployment, installer, security, runtime or phase-finalizer gate is waived. A failing required gate still blocks merge.
+**Team and continuation:** at most two bounded active subagents besides the conductor; no
+recursive teams. Thomas permits retargeting one appropriate existing continuation to this
+chat after ownership is recorded, while stale P0/date tasks and competing conductors stay
+paused. Use supported app controls. Model identities remain truthful; accepted review counts,
+depths and independence are preserved.
 
-**Recorded:** root from Thomas's explicit reply on2026-10-09 before dispatch. Existing current66 runtime/config proof stays scoped; this is no full-CI or task-source acceptance.
+**Source:** Thomas, two original attached instructions received directly in this chat on
+2026-10-11; originals retained in the chat attachments. This supersedes only the previous
+conductor designation and continuation target, not the accepted product decisions or mission
+scope.
+**Recorded by:** Codex conductor (platform identity GPT-6; exact serving-model variant is not
+exposed to this session).
+
+---
+
+### 2026-10-10 · Owner decision: D10 read-all keeps the current reach-limited behaviour
+
+**Decision:** Thomas decided D10: keep the current behaviour. `PATCH /api/notification/read-all`
+marks read only the notifications the caller can still reach. A task-backed notification whose
+task is hidden, deleted or unreachable stays unread and stays invisible, so nothing is revealed
+about tasks the caller lost access to. Marking one such notification read individually still
+returns 404. If reach is restored while the work item exists, the notification reappears unread.
+
+**Scope:** the read-all route's description and policy reason are corrected to match the code.
+No behaviour change. #506 carried an unverified 2026-09-30 entry with the same intent; that
+entry is not carried and this entry is the record.
+
+**Source:** Thomas, directly to the Claude Opus delivery conductor session, 2026-10-10.
+**Recorded by:** Claude Sonnet 5.5 (`claude-sonnet-5-5`), at the conductor's instruction.
 
 ---
 
-### 2026-10-09 · Branch-local SLA migration verification (07:00 UTC)
+### 2026-10-10 · Owner decisions recorded late: #602 template-check lift, second infrastructure re-run, P0 stage-gate waiver
 
-The orchestrator permits #611 to append provisional journal idx 102/tag `0102_sla_pause_PROVISIONAL` and its snapshot to the preserved #513 parent, solely so normal owned disposable integration setup can test the defined existing SLA batch. Parent entries 0–101 remain unchanged. Accepted main migrations 0–87 remain immutable. This routine engineering allocation reserves no final central number and grants no integrated replay, release, deployment or acceptance authority; final numbering remains central after accepted P0. The owning branch and exact source are recorded in the migration ledger.
+**Why this entry exists:** the P0 phase finalizer (Claude Opus 5.5, 2026-10-10) found that #602 merged through a lifted required check, and that neither owner decision behind it was recorded here. The 2026-10-09 "Model tiers by availability" entry says an earlier proposed lift was withdrawn and the ruleset was not changed. That was true when it was written. The later lift below is a separate decision. This entry records both decisions after the fact; the conductor should have recorded them before the merge.
 
-**Recorded:** root engineering authorization under the existing integration directive, not a new Thomas product decision or gate waiver.
+- **#602 one-time lift of `pull request template + security review`.** Thomas chose this on 2026-10-09 at 17:56 UTC, in the Claude Opus delivery conductor session, from concrete options. The reason: #602's G11-method commit unbound its GPT-6 Sol review note. Main's template check then accepted only a review labelled literally `GPT-6 Sol`. The truthfully labelled Opus review could pass only through #616's model-aware check, and #616 could merge only after #602. Thomas edited ruleset `protect-main` (22365005) himself; no agent edited it:
+  - v52653414 at 02:13:05 UTC on 2026-10-10 removed that one context (18 → 17);
+  - #602 merged at 02:13:44 UTC as `b64f8062`, squash-merged and pinned to its reviewed head;
+  - v52653571 at 02:15:37 UTC restored it (17 → 18).
+
+  The ruleset JSON before, during and after is kept as private evidence (`protect-main-{before-602-lift,during-602-lift,after-602-restore}.json`). The other 17 required contexts stayed in the ruleset during the lift, so branch protection still enforced them at the merge. #602's security review is a fresh Claude Opus 5.5 review, labelled truthfully. **This is a gate waiver.** #602's `## Gates` table says no gate was waived, which is wrong; the waiver row below corrects the record. #602's body is not edited.
+- **Second failed-job re-run for #602 (Docker Hub HTTP 500).** On 2026-10-10 at 01:28 UTC, Thomas authorized one more failed-job re-run of integration and e2e. Both had failed twice, the original run and the one re-run allowed per incident, on the same pre-test infrastructure error: Docker Hub auth returned HTTP 500 while pulling `postgres:18-alpine`. This is an owner exception to the one-re-run rule for that incident only. It does not change the rule.
+- **P0 stage-gate activities deferred to before `2.0.0`.** Thomas confirmed the 2026-09-05 waiver below, which runs the manual accessibility pass, fresh-eyes test, four-browser check and k6 baseline once before `2.0.0`. He widened it to also cover PG3, PG6, the 10k-row data test, full and reduced-motion E2E, and backup restore. Each of these runs once over the whole surface before `2.0.0`, not before an alpha. P0 may be claimed for `v2.0.0-alpha.3` (`b704f707`) with this waiver named in the P0 stage review. The stage review and CHANGELOG records are still required.
+- **P0 screen sign-off (Definition of Done row 15) deferred too.** Asked whether the missing ✅ marks in the screen inventory are also covered, Thomas answered on 2026-10-10: "Yes, defer row 15 too." P0 screen sign-off moves to the same once-before-`2.0.0` pass as PG2 to PG6. No P0 screen row is marked ✅ until then.
+- **Row 11 (three issue-free UTC dates of policy-shadow evidence) is not part of P0.** Asked whether persistent strict policy cutover belongs to P0, Thomas answered on 2026-10-10: "Not part of P0." P0 closes with strict enforcement off by default (`TASKDESK_POLICY_ENFORCE` empty). No strict policy source is persistently activated by the P0 claim. Each source still needs three issue-free UTC dates before it can be activated later, per the 2026-10-04 entry.
+
+**Source:** Thomas, directly to the Claude Opus delivery conductor session. Lift: 2026-10-09 17:56 UTC; ruleset edits announced as "lifted. now go." (02:13 UTC) and "added again restored." (02:16 UTC). Re-run: 2026-10-10 01:28 UTC. Stage-gate deferral, row 15 deferral and row 11 ruling: 2026-10-10.
+**Recorded by:** Claude Opus 5.5 (`claude-opus-5-5`), delivery conductor.
 
 ---
 
-### 2026-10-09 · Manual SLA operations affect both metrics atomically
+### 2026-10-10 · Owner decisions for slice S3 approvals: feature flag, approval anchoring, relayed entries
 
-**Decision:** Thomas explicitly approved applying each specified manual SLA pause/resume operation atomically to both response and resolution metrics. Existing conflict rules must roll back the complete operation if either metric conflicts; partial mutation is forbidden.
+**Decision:** Thomas decided three questions that block slice S3 (approvals), each chosen in the Claude Opus conductor session from concrete options.
 
-This approval resolves metric selection only. It does not decide completion/manual-resume continuity, new response fields, audit/event names, migration allocation or acceptance gates. The independent existing SLA lane may implement the defined portion while those separate contract paths remain pending.
+- **D5 narrow exception · approvals feature flag.** The feature-flag registry and resolver ported from #589 may land **for approvals only**, so approvals can be enabled per workspace. The approvals flag defaults to off. This narrows D5; it does not lift it: #513's `request-type/*` and its feature-flag runtime stay held, and no other feature may read the feature-flag tables without a further decision.
+- **Approval anchoring · migration 0120.** The `approval` table gets a `workspace_id` column, backfilled from its work item, and composite tenant foreign keys, following the 0119 tenant-FK pattern. It is forward-only and is allocated migration **0120**, before any runtime slice writes the table (see [migration-ledger.md](migration-ledger.md) "Still open"). The #569 pending-action expiry index re-cut moves to **0121**.
+- **Relayed approvals entries.** The three approvals decision-log entries that #589 recorded as relayed owner decisions are carried to main verbatim by S3, citing #589 and keeping their relayed label.
 
-**Recorded:** orchestrator from Thomas's explicit answer to `call_e05cf16ed31043d2b561c0df84e44d3a`, item 1, on 2026-10-09.
+**Not decided here:** `custom_field_type_visibility` and `custom_field_value` anchoring stay open; they need their own decision before any runtime slice uses them.
+
+**Source:** Thomas, directly to the Claude Opus delivery conductor session, 2026-10-10.
+**Recorded by:** Claude Opus 5.5 (`claude-opus-5-5`), delivery conductor.
 
 ---
+
+### 2026-10-10 · Owner decision: SCIM-provisioned first OIDC login links and activates by exact subject
+
+**Decision:** Thomas decided how the first OIDC login of a SCIM-provisioned person behaves. SCIM
+`POST /Users` leaves a user-less `external_identity` and a placeholder person. When the first
+OIDC login presents the **same identity connection, issuer and subject** as such an identity,
+the login creates the `user` and its `account` row, links them to that external identity and
+person, and clears `is_placeholder` for that person. Only that exact connection + subject match
+qualifies. An email address, `userName`, `externalId` or any other loose match never selects or
+claims a person.
+
+**Scope:** applies only to an active identity on an active person, on the connection that
+SCIM provisioned, in the portal the connection belongs to (agent connection to a staff person,
+customer connection to a customer person of the connection's organisation). A deprovisioned or
+inactive identity or person is refused and is not reactivated by logging in. An address already
+owned by another user refuses the login. The same subject on a different connection does not
+link; it follows that connection's existing JIT or refusal rules. Grant reconciliation, the IP-22
+locks and the session-after-commit ordering are unchanged. This clarifies `IP-19` and `IP-30`;
+`IP-30` still forbids an SSO login from claiming an import placeholder by address.
+
+**Source:** Thomas, directly to the Claude Opus conductor session, 2026-10-10.
+**Recorded by:** Claude Sonnet 5.5 (`claude-sonnet-5-5`), at the conductor's instruction.
+
+---
+
+### 2026-10-10 · Owner integration decisions for the post-P0 consolidation
+
+**Decision:** Thomas decided four questions that block specific post-P0 integration slices. He chose each one in the Claude Opus conductor session from concrete options.
+
+- **D3 · `sla_pause` table shape.** The train migration `0104_moaning_marvex` shape is canonical: composite primary key `(work_item_id, metric, started_at)`, the `reason` CHECK, `ON UPDATE cascade`, and one open pause per work item and metric. #611's provisional `0102_sla_pause_PROVISIONAL` does not land. #611's SLA code is conformed to 0104.
+- **D5 · Request catalogue design.** #598's `intake/*` catalogue and triage lifecycle is canonical. #513's separate `request-type/*` and feature-flag runtime is held: it is not merged, and its unique source stays on its branch. Feature-flag tables already in the 0088–0118 spine stay unused until a later decision.
+- **D2 · SLA read representation.** The SLA read DTO and UI keep #611's current shape (`key`, `startedAt`, `evaluatedAt`, `metrics`). Pause intervals are not displayed in this frozen-scope integration.
+- **D6 · #607 MCP specification docs.** Held. MCP is P4 scope and has no recorded contract; nothing in this integration depends on it.
+
+**Conductor allocation recorded with it** (conductor-owned, not an owner decision): the 0088–0118 journal and snapshot lineage is taken from #589 (`2350397b`). #608's no-op `0112`, #611's `0102_PROVISIONAL`, and the #513/#611 and #569 renumberings are excluded. Allocation continues at 0119 with `when` after 0118. See [migration-ledger.md](migration-ledger.md).
+
+**Not decided here:** SLA completion/manual-resume pause continuity (D1), #512 vs #606 ownership of the work-item detail composer (D9), and #506's hidden read-all behaviour (D10). Each goes to Thomas when its slice is next.
+
+**Source:** Thomas, directly to the Claude Opus delivery conductor session, 2026-10-10.
+**Recorded by:** Claude Opus 5.5 (`claude-opus-5-5`), delivery conductor.
+
+---
+
+### 2026-10-10 · Owner approves G11 speed-calibrated measurement
+
+**Decision:** Thomas approves fixing the G11 measurement **method** by speed calibration.
+Each G11 job runs a fixed, pinned, CPU-bound reference workload in the same browser and the
+same CPU-throttle state as each metric it normalises, derives the runner's speed factor
+relative to a recorded reference value R0, and judges every CPU-bound metric against its
+**unchanged** budget after normalising to reference speed. The CPU model, the calibration
+samples and factor, and both raw and normalised sample sets (including a retry's first set)
+are logged. The statistic stays the median of three with one retry set; best-of-N is never
+used. A speed factor or calibration spread outside its bound fails the job closed.
+
+**Source:** Thomas, directly to the Claude Opus conductor session, 2026-10-10.
+
+**Scope:** the method only. Budgets, workloads, row/card counts, CPU and network throttling,
+sample counts and the retry rule are unchanged, and no budget is lowered or raised. It narrows
+the earlier owner directive, Thomas's relayed P0 runtime-convergence instruction (policy
+session 412b91f1, about 17:06 UTC 2026-10-09: "No security waiver, fabricated evidence,
+performance-threshold change, production action or premature merge is authorized"), only as to
+**method**; thresholds remain Thomas-only. It supersedes the G11 sampling text that treated
+absolute millisecond medians on an uncalibrated runner as the whole measurement
+(`docs/02-design/ux-quality-gates.md` G11 harness table, and the 2026-10-01 G11
+failure-evidence entry's "does not change ... marks, throttles, fixtures, retry policy" scope
+as it applies to the judged value). It does not supersede that entry's trace and
+network-summary rules.
+
+**Reference class (Thomas, 2026-10-10, directly to the conductor):** the unchanged G11 budgets
+refer to the **FAST** hosted runner class, so R0 is the fast-class reference. Consequence: a
+slow-class runner is judged as if it ran at fast-class speed, so its raw failures caused by
+runner speed are normalised away, while a fast-class runner is judged essentially raw and a
+faster-than-reference runner is judged more strictly. A product that only meets its budget on
+fast hardware still passes. Normalisation can mask a regression by at most `F^k` (`k ≤ 1`),
+and F is capped by the clamp at 1.75; the unscaled network floor is kept. A regression smaller
+than the residual calibration noise can still pass. Runner-class drift inside the 0.75–1.75
+clamp shifts what the budgets mean, because the job still passes the clamp; the factor is
+logged per job so drift can be monitored. R0 rests on only three FAST jobs (unthrottled n = 6
+sets, throttled n = 21 sets) and must be re-recorded if the hosted runner pool changes.
+
+**Pinned values:** R0 unthrottled 51.65 ms and throttled 230.7 ms, each the median of all
+calibration set medians (unthrottled n = 6, throttled n = 21) from the three FAST collection
+runs, recorded with the workload source SHA-256 and a SHA-256 of the workload options (rows,
+columns, runs, warm-ups) as literal strings, compared at run time with hashes computed live, so
+editing the workload or an option fails the gate until R0 is re-recorded; both throttle states
+must be pinned together. The factor is one per throttle state per job, from the median of three
+calibration batches taken at job start and reused for every set, retries included. The post-DCL
+floor must satisfy 0 < DCL < LCP. Per-metric
+sensitivities `k = ln(r_metric)/ln(r_cal)`, clamped to [0, 1] and floored to two decimals, are
+recorded with their evidence in `scripts/ci/lib/performance-calibration.mjs` and
+`docs/02-design/ux-quality-gates.md`. The factor clamp is 0.75–1.75 and the per-batch spread bound 0.55, set
+from the observed collection distribution (65 hosted calibration sets, 27 fast and 38 slow;
+spread up to 0.392 fast and 0.433 slow with two warm-ups; warm-ups were not raised because that
+would invalidate the recorded R0).
+
+**Calibration evidence (not gate evidence):** `workflow_dispatch` "CI - full" on
+`claude/g11-calibration-602` at `2c52f65c`, raw gating, calibration-only. FAST, G11 PASS: run
+37976720914 (job 113976781168), run 37977779990 (job 113980309611), run 37978934788 (job
+113984215185). SLOW, G11 FAIL, used only for the class ratio and sensitivities: run 37972321719
+(job 113961809231), run 37973730948 (job 113966606217), run 37974125393 (job 113971494970).
+The class evidence comes from the variance diagnosis of PR #602 at
+`66c736e71c87b2372ba1cbf8250236ac37191565`: main-equivalent code passed G11 on 8 of 11
+fast-class jobs and 0 of 25 slow-class jobs, and unthrottled list render correlated r=0.97 with
+LCP. None of these six runs is a calibrated gate result or a merge claim.
+
+**Historical results:** the G11 results (66c736e7 attempt-1 FAIL, rerun PASS, run
+37967068981 FAIL) remain as measured under the old, uncalibrated method. They are not
+re-judged, relabelled, or converted to passes by this decision.
+
+**Recorded by:** Claude Sonnet implementation worker for the Claude Opus conductor session,
+from Thomas's direct decisions to that session, 2026-10-10.
 
 ### 2026-10-09 · Permit a narrow P0 strict-terminal diagnostic witness
 
@@ -47,793 +208,334 @@ remains immutable and is not relabeled.
 
 **Recorded:** orchestrator, Thomas's explicit approval in this task, 2026-10-09.
 
----
+### 2026-10-09 · Owner directive: model tiers by availability; no fixed GPT-6 Sol requirement
 
-### 2026-10-09 · Apply the frozen-P0 defect exception to strict attribution proof (03:47 UTC)
+**Decision:** model choice follows real usage limits, by tier. Thomas's words: "Sol = opus,
+luna = sonnat / haku … anything is ok because usage limit are real".
+- **Sol tier** — security and critical review, phase finalizer, final audit: GPT-6 Sol,
+  GPT-6.1 Sol, or a fresh Claude Opus context, whichever is available.
+- **Luna tier** — implementation and ordinary review: GPT-6 Luna, Claude Sonnet or Claude
+  Haiku, whichever is available.
 
-The actual V24 disposable strict run failed on three unexplained shadow rows/four occurrences despite matching HTTP outcomes and reconciled event/cardinality counts. Independent Sol adjudication requires request-correlated terminal strict decision and persisted-row provenance before these outcomes can receive a finite explanation. The orchestrator assigned a bounded source/proof correction to `p0_strict_witness_batch` under Thomas's existing required-P0-gate correction authority. This does not approve a policy change, blanket exception, new audit event, later-stage feature, weakened gate or unchanged rerun. Preserve original failed records. Any changed candidate requires fresh source/image binding, applicable independent reviews, CI and scoped compatibility adjudication before new runtime proof. Existing three partial UTC bucket observations are not automatically reused or restarted.
+A GPT-6 Sol review is no longer specifically required ("don't need for GPT 6 sol review now
+on"). From now on, a fresh Claude Opus security review satisfies the Sol tier; the merge
+check accepts it once the model-aware checker (#616) is on `main` (see Transition).
+Reviewer counts, independence and truthful labels do not change: every review is
+recorded under the model that produced it, and historical Sol and Luna reviews keep their
+identity. The accepted security-review model block gains `GPT-6.1 Sol`.
 
-The P1 dialog batch at `1c4f1f69f29ab4ecc00ccb12c04edb77436072ed` remains independently staged and does not enter P0. No new Thomas decision or gate waiver is claimed.
+**Fallback upward only.** Thomas confirmed two cases directly in the recording session on
+2026-10-09: "Opus may do Sonnet/Haiku work when they’re unavailable, but Sonnet or Haiku never
+does security review. yes. please." Those two cases are owner decisions. The general form
+applied in the workflow — any Sol-tier model (including GPT-6 / GPT-6.1 Sol) may fill a
+Luna-tier role when no Luna-tier model is available, and no Luna-tier model fills any Sol-tier
+role — is the policy maintainer's extension of them through the tier mapping above; Thomas may
+reverse it.
 
----
+**Applied to the other roles** (the policy maintainer's reading of "anything is ok";
+Thomas may reverse any of it):
+- **Conductor:** the session Thomas designates. This replaces the fixed "a Claude Opus
+  session is the conductor"; the current conductor is unchanged.
+- **Read-only extraction:** any assigned model in either tier, never a retired route; its
+  output is data until a reviewer re-verifies it.
+- **Sampled auditor:** unchanged — a fresh Claude Opus context, working from a packet
+  another context prepared.
 
-### 2026-10-09 · Reconcile queue and P0 evidence boundary (02:51 UTC)
+The security-review block, not the tier table, decides what the merge check accepts. A new
+model or version (for example another Opus version) needs a reviewed edit of the block.
 
-The execution queue and status snapshot were refreshed from live GitHub and the exact hosted evidence. GitHub returned 20 open PRs and 442 remote branches; accepted `main` remains `3096cb044bdf6ae98488bfc385f532fa6386343a`. All 177 accepted-main ancestor refs, 54 refs retained in active-PR ancestry, and 211 unassigned/HOLD refs remain preserved. Partial source overlap and ancestry do not close branches or PRs.
+**Supersedes:** the model choice in the 2026-10-09 "Mixed-model routing for the delivery
+mission" and "Opus policy-repair conductor" entries, including Haiku being limited to
+read-only extraction; and, in the 2026-09-29 "OpenAI model routing replaces Claude/`pal-mcp`
+routing" entry, the fixed requirement that GPT-6 Sol fills the security and finalizer roles
+and GPT-6 Luna the implementation and ordinary-review roles; and, in the 2026-09-29 "Opus 5.5
+retained as sampled big reviewer" entry, the statement that Opus is not the per-PR security
+gate or the phase finalizer. Their other content stands.
 
-For #606, exact head `81c04729eaf721f8619180b00df1f80721034eb3` has two independent Luna delta CLEAR reports and a full Sol security delta CLEAR report for the omitted-body no-op behavior. Focused owner PostgreSQL passed 41/41. Hosted run `37874560831`, integration job `113640040996`, passed 154 files and 1,814 tests in 924.92 seconds. E2E, G4, G8, unit and build checks pass. PR-template and OpenAPI drift fail. G11 is 19/22: LCP 2,800/2,500 ms, board 632/500 ms, and the create dialog is missing at `performance.bench.ts:260` after `create-work-item-trigger.click()`. This does not imply all performance budgets fail. Raw evidence is `/Users/heinthura/.codex/taskdesk-evidence/2026-10-09/p1-606-hosted-failure/81c-g11.private.log`. The bounded next source-owner step is to inspect the create interaction in mixed #589 descendants, including the historical #600 Escape experiment, before editing source. GitHub has no formal review entries on this head. The isolated exact-image boot/health/cleanup is not deployment or acceptance.
+**Transition:** `main`'s PR-template check accepts only the literal `GPT-6 Sol` until the
+model-aware checker (#616) lands. Until then, a security-scope pull request whose only security
+review carries any other label (Claude Opus or `GPT-6.1 Sol`) waits for #615 and #616. Its review is never relabelled, and the
+required check is not lifted. #602 is unaffected: its security review is a genuine GPT-6 Sol
+chain.
 
-For #608, exact head `8f1713934cb91fb7048930ae9b776b29cb67089b` retains two Luna and full Sol delta CLEAR reports and current 18/18 PostgreSQL DTO regressions, API typecheck, 225-operation OpenAPI and contract checks pass. GitHub reports the #589 base as unaccepted and conflicting. No gate or composition status is inferred from the delta reviews.
-
-For #609, exact head `21587556d3235ec927945dbc32c474079f973aff` remains draft on #606 parent `42a63482`; navigation tests pass 52/52, hosted integration is failed, PR-template/OpenAPI/G11 fail, and the base remains unaccepted. Continue normal parent reconciliation without rewriting history.
-
-P0 remains open. Exact V22 run `20261009T021341Z-12d9f899` is scoped off-shadow evidence; the third nonmember-404 observation is in a partial UTC bucket. The 27-source admission is guard-only; notification's new privacy-sensitive category and historical reuse remain blocked. V23 Sol admission is blocked by expired receipt/future window and was never executed. V24 remains implementation/repair only with no strict receipt or runtime. Keep the observation automation PAUSED, diagnose G11, establish exact-source strict/config prerequisites, and keep task proof last. No new runtime, strict activation, merge, deployment, release or stage-completion authorization is made here.
-
-The queue records a bounded next source-conservation preparation: create a path/blob-level owner manifest for already-compared #606/#598 overlaps and explicitly preserve the unapproved calendar manifest/lockfile changes. The preparation must not be used to close a branch/PR or discard any ref.
-
-**Recorded:** operational reconciliation from exact GitHub PR heads/checks, hosted run/job output, and the current P0 admission/runtime records. These statements update scheduling/evidence status and authorize no quality-gate waiver.
-
----
-
-### 2026-10-09 · Resume eligible integration work with queue checkpoints; record #606/#608 answers (01:53 UTC)
-
-**Thomas’s explicit operating direction:** maintain one repository-backed execution queue for every open PR and active branch, select the next dependency-safe existing-work item automatically, and continue through execution-boundary checkpoints. Preserve the feature freeze. Checkpoints capture exact head, checks, review state, dependencies, owner, remaining action and disposition; refresh live GitHub before acting. A blocked lane does not stop other eligible existing work. This schedules work only: required independent reviews, exact-head CI, stage gates, Sol review where applicable, protected merge and finalizers remain unchanged. It does not authorize gate waiver, feature scope, deployment, release, or branch deletion.
-
-**Thomas explicitly approved two compatibility decisions:**
-
-1. **#606 free-comment PATCH:** when the body is omitted, treat the request as a no-op after existing permission, window, and parent checks. Do not mutate the comment.
-2. **#608 historical pending-action DTO:** serialize canonical `delete`/`user`; resolve legacy `person` to `user`; preserve the stored row, hash, proofs, and legacy approval refusal; fail closed when the target is unresolved.
-
-These decisions unblock only their named implementation paths. The assigned source owner must update the authoritative spec, code, and regression tests, then re-evaluate the exact candidate's ordinary/security reviews and hosted checks. No stable-v2 tag allowlist exception or new-version path was approved.
-
-The queue at [integration-execution-queue.md](integration-execution-queue.md) captures the 01:53 UTC live snapshot: 20 open PRs and 442 remote branches. #606/#608 are RUNNING under `existing_integration_repairs`; #589 source reconstruction is assigned to the integration agent; #602 remains root-owned; this queue refresh is assigned to the queue/metadata agent. All 177 accepted-main-ancestor refs, 54 refs retained by active-PR ancestry, and 211 unassigned refs remain preserved; unassigned refs stay on HOLD for source ownership/semantic comparison. The live exact heads have not thereby passed CI or review, and no PR is marked merged.
-
-**Recorded:** orchestrating session on 2026-10-09 from Thomas’s explicit answers and operating instruction, current GitHub API read, and the linked queue. Decision scope does not alter acceptance criteria.
-
----
-
-### 2026-10-08 · Correct P0 candidate, hosted gate and runtime-date record (17:34 UTC)
-
-Thomas’s Oct 7 planning direction is reflected in [SDLC § Plan](../04-engineering/sdlc.md) and its stage-gate sequencing note: authorized dependency-safe implementation may proceed concurrently, while stage acceptance, each stage’s own exit criteria and the Sol phase finalizer remain ordered and mandatory. This resolves the contradictory “no stage starts before previous closure” wording without a workflow or gate waiver.
-
-Live GitHub capture at 17:32 UTC recorded 20 open PRs, 442 refs, and exact #602 head
-`12d9f899a3437a601e0da22a3c8b25ba9a70f430` on accepted base
-`3096cb044bdf6ae98488bfc385f532fa6386343a`. It was BLOCKED/MERGEABLE with no formal review
-entries; 29 checks succeeded, three failed and three were still in progress. Full run
-`37815263198` passed Postgres 138 files/1,667 tests, E2E 27, G4 and G8; G11 failed 19/22
-(LCP 2,604/2,500 ms, task-state 261/200 ms, board 651.8/500 ms). The source-bound attribution
-found identical source, fixture and initial assets and no supported code correction. Fast run
-`37815263256` passed environment-register checks and failed only the pending PR-template
-acceptance checklists; source binding is recognized. Keep G11 red and do not change product,
-fixture, thresholds or workload speculatively.
-
-The review chain remains source-specific: full Sol and two fresh Luna CLEAR verdicts apply to
-product source `650edd4`; fresh Luna and Sol CLEAR apply only to one-file/two-test fixture delta
-`8b792d0`; `12d9f899` adds the machine-readable binding and is not a fresh product review. A
-canonical private 12d Linux/arm64 image built and passed disposable off-only boot at
-17:33:44–17:34:22 UTC (UID 10001, empty enforcement, 88/88 ordered migrations, live/ready
-200, cleanup verified, persistent resources preserved). This grants no protected acceptance,
-persistent deployment, publication or strict activation.
-
-**Correction:** earlier Oct 8 status/decision text saying no runtime was run that day was
-inaccurate. V19 actually ran `2026-10-08T15:16:57Z`–`15:17:31Z` on source `23a01a62` in bounded
-off→shadow→off mode. Its adjudicated scope is one partial Oct 8 UTC bucket; it is not strict
-activation or a full-day claim. Nine changed nonmember-404 behaviors retain Oct 6 and Oct 8
-observations and still require an actual Oct 9 UTC bucket. Public config ordering observations
-remain Oct 4/6/8. Local date in Yangon does not substitute for an Oct 9 UTC observation.
-
-The private branch-owner ancestry inventory captured all 442 exact remote heads at
-`2026-10-08T17:31:48.692762Z`: 177 accepted-main ancestors, 54 retained by active-PR ancestry,
-and 211 unassigned for semantic comparison. PR references are appended to the retained-owner
-rows; ancestry is not semantic completeness or acceptance. Keep all source/branch history.
-Central migration state remains unchanged and provisional after accepted 0000–0087. Thomas has two API compatibility-rule decisions pending reply: preserve absent-body no-op
-behavior, and preserve legacy serialization behavior. Both remain unanswered; neither is
-approved. Preserve owners, feature freeze, and post-P0 reconstruction from accepted main; do not
-merge #589 wholesale.
-
-### 2026-10-08 · Freeze current P0 documentation candidate and preserve review boundaries
-
-At 17:09 UTC, live GitHub showed 20 open PRs and 442 remote branches; accepted main remained
-`3096cb044bdf6ae98488bfc385f532fa6386343a`. PR #602's frozen note-only candidate is
-`c55010e004e9f3becd226936ab2d2b4af5776108`. The corrected notification product source
-`650edd447899f5d9e52c50c718abef0f7aad91b2` has two independent credential-delta Luna CLEAR
-reports and a fresh full Sol CLEAR. Its later note-only successor has no current GitHub review
-entries; neither the historical `23a01a6` 22/22 nor `2b7192e` 20/22 G11 result transfers.
-At 17:09 UTC, c550 had 18 successful checks, two failures (registers and PR metadata/security review),
-and two checks in progress (Postgres 18 integration and G11); no current G11 verdict was available. Hosted runs `37813776017`/`37813776014`
-were active. The current canonical private Linux/arm64 OCI image build passed at 17:07:29 UTC with digest `sha256:6f74c8b2596699648ae87d381c2bea9d48c993f290ff119c6bb6d38ba5f4cfda`; the earlier diagnostic image was superseded by canonical `0.0.0-dev`. A disposable off-only image boot is active; there was no persistent deployment or publication.
-
-The private preserved-DEV readback documents 14 signed-in screens/flows and four visually
-confirmed seeded roles; portal TLS succeeds but the customer portal remains unavailable and
-customer workflows were not tested. PR #609 retains the existing month URL-state owner. Keep
-the feature freeze. Preserve all branch owners, reconstruct the post-P0 train from accepted
-main, and do not merge #589 wholesale. The current PR and 442-branch records are in the
-[disposition ledger](pr-disposition-ledger.md) and [branch inventory](branch-conservation-inventory.md).
-The central migration ledger remains provisional beyond accepted 0000–0087; no final IDs,
-applied-prefix rewrite, strict activation, protected merge, release or phase closure is
-authorized by this record. No strict or date-qualifying runtime was run today; the disposable off-only image boot is active and does not establish acceptance or a new date.
-
-### 2026-10-08 · Preserve live PR dispositions and centralize post-P0 migration replay
-
-The 16:56 UTC operational reconciliation records 20 live open PRs and their heads/dispositions
-in the [PR disposition ledger](pr-disposition-ledger.md), including #555's absorbed-by-accepted-
-main source conservation, #550's accepted-main semantic-audit closure, #607's MCP
-contract/review-register hold, and #602's current 20/22 G11 failure. The earlier #602 22/22
-result remains bound to frozen source `23a01a62ece3ca7d17105626f64ad78641435ec1` and does not
-clear the later review-note head. The local notification candidate `5ec7727` remains a blocked
-predecessor; its complete local successor `b890c86a0feaba018d298273527d86058cb56921` has
-author-reported checks and two fresh ordinary reviews: one CLEAR, one BLOCKED solely on the
-SMTP adapter render-to-send gap. The owner assigned the final structural boundary change to
-`packages/email`; implementation and a new review are pending. It remains unpublished. No
-review, check, or source-conservation result is transferred to a different SHA.
-
-The [branch conservation inventory](branch-conservation-inventory.md) lists all 442 live
-remote refs with exact heads. Accepted-main ancestry is credited only where the exact branch
-head matches captured ancestry data. Active heads follow the PR disposition ledger; unmatched
-or non-ancestor historical branches remain HOLD for source-ownership verification. This
-inventory is not a semantic audit of every branch and authorizes no deletion.
-
-The [central migration replay ledger](migration-replay-ledger.md) records accepted migration
-history 0000–0087 as immutable and candidate post-0087 SQL as provisional owner material.
-Compose selected existing feature owners from accepted `main` only after P0 acceptance, replay
-each semantic SQL unit once, assign one contiguous tail after selection/order freeze, and
-regenerate snapshots and journal from the composed schema. #589/#598 remain comparison trees,
-not whole-train merge candidates; the #608 provisional 0112 body is distinct from the train's
-0112 and requires separate final numbering if selected. This record authorizes no migration
-allocation, applied-prefix rewrite, deployment, merge, gate waiver, strict activation, or phase
-closure. The GHCR/GitHub release direction and feature freeze remain as previously recorded.
-The existing October 9 automation preserves historical V19 evidence bound to source
-`23a01a62ece3ca7d17105626f64ad78641435ec1` and requires corrected-candidate
-rebind/adjudication; V19 is immutable and no runtime was run today.
-
-### 2026-10-08 · Bounded public-config cutover criterion substitute
-
-**Decision — Thomas explicitly approved in this chat:** “Approve the bounded public-config criterion substitute (recommended)”. The approved question named public `GET /api/config` before the shadow guard and proposed proving its unchanged public response/source ordering and verifying config-source selection in the disposable strict/rollback test, while preserving every other source's shadow requirement.
-
-**Exact exception:** only `GET /api/config`, owned by `apps/api/src/config/policy.ts`, may use source-bound public-response/source-ordering proof in place of an impossible shadow tally/comparison: `apps/api/src/index.ts` mounts this bootstrap endpoint before the authenticated shadow guard. Verify its registered public contract, unchanged response/ordering, exact API/policy/image identity, and source selection plus health and reversible rollback in the independently reviewed disposable 28-source config stage. Preserve actual dated public observations when available; do not fabricate a shadow row, full-day coverage or elapsed-time approval. The exception does not turn a raw HTTP200 into proof of all strict behavior.
-
-The existing exact-source review, eligibility and required CI/runtime gates remain. Every other policy source retains its documented shadow/coverage/date predicate. In particular the nine changed eligible nonmember404 behaviors still need their remaining actual October9 observation, and `apps/api/src/task/policy.ts` remains last after every preceding source and fresh zero-legacy-only role/API-key re-key proof. Retain the legacy key for rolling upgrade/rollback. No source, strict setting, persistent DEV or production state is changed by this record. New runner/receipt bindings, if needed, require their own appropriate independent review; a machine receipt cannot grant Thomas approval.
-
-This bounded decision supersedes the earlier public-config hold only to the extent stated. It is not a G11 waiver, a general pre-guard/public-route exception, a permission expansion, a task activation, a protected merge approval outside normal gates, or phase completion. Signed release operational proof remains after otherwise eligible protected merge and before P0 finalizer/closure.
-
-**Recorded:** root at 2026-10-08T16:21:59.295073+00:00 from Thomas's explicit question reply, with the independent prerequisite packet retained privately.
+**Source:** Thomas, directly to the delivery conductor session
+(`local_49596b31-2faf-432e-885e-bfb2dcca607a`; relayed to the recording session at 16:56 UTC:
+"yes do it. don't need for GPT 6 sol
+review now on."), then directly in the policy-maintainer session that records it
+(`412b91f1-99f8-4ac2-8f5c-a03dce507862`), 2026-10-09: the tier mapping. Thomas also chose,
+in that session, to lift the PR-template check for #602. That choice rested on the policy
+maintainer's mistaken premise that #602's security review was Opus-labelled, and it was
+withdrawn once the delivery conductor showed #602 carries a genuine GPT-6 Sol review. The
+ruleset was not changed.
+**Recorded by:** Claude Opus 5.5 (`claude-opus-5-5`), policy maintainer, PR #615.
 
 ---
 
-### 2026-10-08 · Retain GitHub release/package publication; cancel Docker Hub target
+### 2026-10-09 · Owner directive: mixed-model routing for the delivery mission
 
-**Decision (Thomas, direct instruction):** GitHub already has the release image. Keep TaskDesk publication in GitHub Container Registry (GHCR), GitHub release tags/assets and packages. Do not push to `bimdevops/taskdesk` or any Docker Hub repository. Continue eligible pull-request merging through the existing protected review/CI flow.
+**Decision:** for the frozen-scope delivery mission, Thomas assigned models by role:
+- a Claude Opus session is the conductor;
+- Claude Sonnet does bounded implementation and independent ordinary review;
+- a fresh Claude Opus context does the required security and critical review and the final
+  audit;
+- Claude Haiku may do optional read-only extraction only.
 
-This supersedes the earlier Docker Hub destination selection; it does not authorize merging red or unreviewed candidates, unsigned publication, arbitrary release tags, enforcement activation, or phase closure. Existing GHCR signing/scanning/provenance and immutable accepted-source requirements remain. Local SIT remains the existing Traefik443 `ticketing.localhost` / `portal.localhost` stack. Registry-override PR#610 is no longer needed for this destination and is closed with its exact source, branch, reviews/tests and original G8 failure preserved; no merge, deletion or gate waiver. No Docker Hub push occurred. Historical destination decisions remain below.
+Reviewer counts and independence are unchanged. Labels stay truthful: a review is recorded
+under the model that produced it and never used to satisfy a checker under another label.
 
-### 2026-10-08 · Signed installer release proof after protected merge, before P0 closure
+**Relation to earlier entries:** this narrows the 2026-10-09 "Opus policy-repair conductor"
+assignment for the delivery mission — Opus no longer fills implementation and ordinary review
+there. Reviews completed under that assignment stay valid for what they covered. GPT-6 Luna
+and GPT-6 Sol keep their roles (2026-09-29). The security-review model block in
+`agent-workflow.md` is unchanged: GPT-6 Sol and Claude Opus 5.5 remain the accepted
+security-review models.
 
-**Decision — Thomas explicitly approved in this task:** “Approve signed-release proof after merge, before P0 closure (recommended)”.
+**Scope:** Thomas also confirmed directly that the routing applies to the remaining reviews
+of the policy candidate (#615), including the reviews of this entry. Earlier Opus reviews of
+#615 stay valid for what they covered.
 
-The new signed-archive release workflow validates that its selected source is already reachable from accepted `main`. Running the real signed release before accepting that source would conflict with this trust boundary. Preserve all pre-merge independent reviews, required exact-head CI, installer regression tests and exact-image boot checks. After eligible protected merge, immediately run the real signed installer, upgrade and rollback proof from the protected-main release workflow; complete those proofs before the additional fresh P0 phase finalizer and any P0 closure claim.
-
-This decision changes the timing of the real signed-release operational proof only. It does not bypass branch protection, source eligibility, certificate/workflow identity checks, signature/provenance verification, performance or security gates; it authorizes no unsigned fallback or invented signature identity. Installer/runtime failures remain blockers to P0 closure. Deployment and final SIT acceptance must use verified accepted source.
-
----
-
-### 2026-10-08 · Freeze new features and complete final integration/SIT acceptance, then stop
-
-**Decision — Thomas, explicit final integration directive:** stop all new feature implementation and feature branches. Continue only existing-work integration and acceptance corrections: conflict resolution, security/correctness defects, failing functional tests, migration compatibility, build/packaging/SIT compatibility, and acceptance-blocking accessibility/UI defects. Do not expand a feature because its specification contains later requirements. Account for every PR and branch, preserve useful history, and reconstruct the cumulative #589/#598 integration trees as reviewable owner-source units rather than merging their enormous displayed diffs blindly. Preserve accepted migration history.
-
-The required final path is protected integration, current-head review and CI, verified immutable image publication to the existing Docker Hub repository `bimdevops/taskdesk`, deployment and functional/security acceptance in the existing SIT environment, a fresh post-integration audit, reconciled records, and the final report. Thomas also named local Traefik TLS on port 443 for current local SIT testing. Root has recovered OrbStack's existing local runtime: original five TaskDesk containers and named volumes remain present/running; unrelated WSO2 workers were preserved. This recovery is not an accepted image publication or a new SIT deployment. The separate Docker Desktop `desktop-linux` context had appeared empty before OrbStack was started; no data-loss claim, Docker reinstall, or global-context change follows.
-
-**Current evidence boundaries:** inventory captured `2026-10-08T13:14:47.800345Z` records 23 open PRs, 441 GitHub branches, 198 local branch heads, accepted `main` `3096cb044bdf6ae98488bfc385f532fa6386343a`, and no exact-head independent approval in its captured GitHub review records. Counts are capture-time only. #602 `23a01a62` has hosted full/G11 22/22 evidence, while P0 operational acceptance is not complete. V13's 114 offline checks do not establish runtime: its guard refused before acquisition at 13:12 UTC with required authorization/review bindings pending; preserve the V12 failure. Actual October 9 evidence remains pending where the three-date contract requires it. Do not run more performance experiments or change budgets.
-
-#608 current source is `76b833be`; its focused 2-file/17-test result is current. Earlier 32-test and image/migration evidence belongs to the earlier source and does not transfer. #609 `da4e0f62` focused 3-file/45-test route correction is recorded, with final reviews/hosted acceptance pending. No PR is accepted or merged by this record. Credentials and seeders stay private.
-
-After final accepted-source SIT audit and report, **STOP all implementation and wait for Thomas's next roadmap**. Do not generate a roadmap or automatically resume. This is a freeze and sequencing decision, not a gate waiver, product completion, deployment acceptance, or approval of any held behavior.
-
-**Recorded:** top-level orchestrator at `2026-10-08T13:27Z` from Thomas's attached final integration directive, read-only consolidation inventory/slice reconciliation, exact-source evidence, and root's runtime recovery report.
-
----
-
-### 2026-10-08 · Native mention composition access and mute continuity
-
-**Decision — Thomas approved in this chat:** use a permissioned workspace-scoped preflight for composition warnings; recheck recipient access when saving. Accessible mentioned people become watchers without being unmuted. Preserve every explicit notification mute; people without current access receive no notification. Public customer mentions retain existing CA12 public-comment/reach requirements; internal comments exclude customers. This authorization adds no cross-tenant directory or identity-derived authority.
-
-**Implementation ownership:** the isolated CA12 lane owns its feature/API specifications and complete code/test batch. Root owns this decision and live status. Creation/preflight implementation continues; the separate question about mention notifications on edits remains unresolved and dependent behavior must wait. This is product authorization, not review, hosted CI, deployment or phase acceptance.
+**Source:** Thomas gave the instruction directly to the delivery conductor session
+(`local_49596b31-2faf-432e-885e-bfb2dcca607a`), which relayed it. Thomas then confirmed it,
+and its scope, directly in the policy-maintainer session that records it here
+(`412b91f1-99f8-4ac2-8f5c-a03dce507862`), 2026-10-09.
+**Recorded by:** Claude Opus 5.5 (`claude-opus-5-5`), policy maintainer, PR #615.
 
 ---
 
-### 2026-10-08 · Constrained instance-event outbox scope for complete Users deactivation
-
-**Decided by:** Thomas, explicit approval in this task: “Approve the constrained instance-event schema correction (recommended)”.
-
-**Conflict resolved:** pending-actions.md requires instance-scoped user deactivation and its registered request/decision/execution events; events.md registers the existing event keys. The prior data-model/outbox constraint requires every event row to have a workspace. No fabricated tenant scope may stand in for an instance event.
-
-**Decision:** permit a null outbox workspace only for documented instance-scoped event types. Tenant events remain workspace-bound, with the invariant enforced in the schema and exercised by meaningful positive/negative regressions. Implement the required migration together with the complete P4 Users/deactivation/pending-action UI and API slice. Canonical pending-action vocabulary remains `action='delete'`, `target_type='user'`; this approval does not register `user_deactivation`/`person` or any new event key.
-
-**Integration:** allocate a provisional feature-branch migration through the central ledger; reconcile final numbering in the post-P0 integration freeze, preserve accepted applied migration history, and obtain the required independent ordinary/security reviews and exact-head checks. This is P4 feature authority, not P0 scope expansion, a gate waiver, or deployment/enforcement approval. Credentials and test seeders stay outside Git.
-
-### 2026-10-08 · Reconcile current performance, runtime report failure and concurrent SDLC entry
-
-Thomas's realignment directive authorizes concurrent dependency-safe P1–P4 implementation
-while preserving independent staged acceptance. The SDLC Plan entry still required the
-previous stage to be closed; it now matches the already updated roadmap and canonical
-AGENTS/phases rule. This changes execution sequencing only, not acceptance, reviews,
-security, CI or finalizer gates.
-
-Current P0 source6fe restores the product/CI source of01de/1878 after rejecting670/d4.
-Automatic full run37708668475 passed20/22, failing LCP2548/2500ms and board656.8/500ms.
-Historical green evidence is not relabeled. A bounded real-popup-preserving correction
-is authorized by those failing existing gates; benchmark contracts remain unchanged.
-
-Freshly admitted private V5 executed on clean1878 in an owned disposable environment
-at00:51:51.875–00:52:22.220UTC. Live/ready200 and UID10001 passed, but report binding
-validation failed after acquisition. Original partial records stay retained; no complete
-runtime, strict activation or phase acceptance is claimed. Every original Docker resource
-was preserved and no acquired resource ID remains. Root diagnosis identifies tuple runtime
-journeys versus list-only validation; structural regression and independent adjudication
-remain required. The independent date addenda admit nine changed eligible read cases from
-the original actual October6 raw observation, preserve its later harness failure, correct
-the two admin reads to unchanged403, and prohibit blanket/full-day evidence claims.
-
-P1 current3cb native43 tests and browser1 passed after one complete remediation batch.
-Previous6aed blocker reports remain historical and current delta/security review remains
-required. No product contract question, gate or secret-scanner finding is waived.
-
-**Recorded:** top-level orchestrator at 2026-10-08 00:54 UTC; status snapshot links the exact sources,
-private evidence and current acceptance limits. No merge, release, DEV mutation or cutover.
-
-### 2026-10-07 · Keep P0 reconstruction separate from #599 and rebuild later integration after acceptance
-
-Thomas's current instruction is to keep the attachment/public-origin work in #599 outside
-P0 and to use frozen PR #583 head
-`5326937460b195d8e69584c0cb99305348330a95` as the P0 reconstruction base. The read-only
-scope audit at
-`/Users/heinthura/.codex/taskdesk-evidence/2026-10-07/p0-pr583-readonly-scope/scope-audit.md`
-identifies the #599 commits and paths, confirms no overlap with later P0 product paths,
-and provides the minimal ordered P0 replay set. Do not replay #599's `51d151e8`,
-`9abb6013` or `7c5ae58c` into the P0 successor. Do not carry forward the contaminated
-`359353cf` review record; regenerate P0 review material against the reconstructed exact
-candidate. Hold `a50ae92a` until its exact-head hosted G11 result and root classification.
-
-The audited ordered product replay set is `a0ec2679c95c6de91e7a17196e62566cbcd45a28`,
-`9bced3e3178a70b3a1984837836824e4a193c89f`,
-`bae2b3fdeeb458f059d71e7519a0aa8ab87b0cd2`,
-`5a493671a6eca00268eec9323565ff8953d244cb`,
-`0dd9a861318040ed3ba4038152724e8521e4e10c`,
-`d76fc71c4b03d3b2275bce62439022c4e784f8e5`,
-`343b45bc9dbb40baef7df5a84881553f810abf59`, and
-`4bc5259882d2d7eb510ece6f3e3b57a5173f9dc9`. This is a scope record, not an instruction
-to bypass exact-head review or acceptance.
-
-The accepted #579 source `f10f9a8fd383044926136cb0c233888e087d2ef9` remains the exact-head
-hosted 22/22 G11 comparison baseline; it is not acceptance evidence for a changed P0
-candidate. The audit also corrects source attribution: #583 exact head had a 19/22 result;
-the 16/22 result belongs to later product snapshot `bae2b3fd` and must remain attributed
-there.
-
-The current #589 `dfa0324` source/build and 339.1/350 KB work-list graph results do not make
-its integrated train final. Its earlier hosted Postgres run at `27fb81fe` (154 files / 1804
-tests passed) is historical. After P0 is accepted into `main`, rebuild the dependent
-integration candidate from that accepted source and rerun exact-head review and applicable
-acceptance gates. This records sequencing and evidence attribution; it does not claim any
-PR, stage or runtime acceptance, change thresholds, waive a gate or authorize a merge.
-
-**Recorded:** documentation author at `2026-10-07T16:50:58Z` from Thomas's current
-instruction, live GitHub heads/checks and the cited read-only scope audit.
-
-### 2026-10-07 · Refresh live blockers and preserve exact evidence boundaries
-
-Live GitHub readback at `2026-10-07T15:56:20Z` records accepted `main` at
-`3096cb044bdf6ae98488bfc385f532fa6386343a`, reviewed DEV at
-`08842235047a3ab2714427edce80331b94558150`, and frozen P0 closure #583 at
-`5326937460b195d8e69584c0cb99305348330a95`. Current heads are #600
-`343b45bc9dbb40baef7df5a84881553f810abf59`, #599
-`7c5ae58c67c3572b2f4f52864788f78e726daa0d`, #598
-`3fecb75ccd4a1fcbfce5414de6d222c46bb5e94e`, and #589
-`27fb81fe7d4a2f02d50c0f0f4db8b7bd9720697a`. None is claimed merged or accepted.
-
-Current #600 hosted G11 is 18/22 with four failures: LCP 2668/2500 ms, palette 215/200 ms,
-state 249.3/200 ms, and board 670.3/500 ms. Thresholds are unchanged. The PR-template/security-
-review check is also red; the current hosted Postgres integration, protected-route E2E, G8,
-registers, static, unit, OpenAPI and build checks pass. Root separately reports a six-browser
-pass, cleanup pass, and image `03d22ca62f1c3d8e3a2df404ce38f38d54b319d794bed30368af3e9922f86584`
-pass. Two independent Luna contexts cleared the complete 23-file batch. Causal analysis remains
-underway. The earlier 5a493 G11 22/22 result is historical and does not clear the current 343
-failure.
-
-Current #598 checks fail for static, protected-route E2E, registers, PR-template/security-review,
-G8, G11, OpenAPI drift and build. Postgres integration and the listed policy, a11y, red-probe,
-unit, domain-coverage, supply-chain, Helm and CI-match checks pass. The `cde1` native result was
-1/6, `8cde` was 3/6, and `a9686` was 6/6 with cleanup. The current `3fec` change is a canonical
-plain-text test delta only; no runtime result is inferred from it. #589 has current Postgres
-integration pass but fails protected-route E2E, registers, PR-template/security-review, G8, G11,
-OpenAPI drift and build. Its prior 154-file/1804-test result (1799 pass, 5 fail) remains historical.
-The four OpenAPI deactivation enums and WH12 remain owner-pending.
-
-Private v8 remains outside Git and unexecuted against API/database/Docker by its author. Its
-operator batch manifest SHA-256 is
-`99dfe3f623f4f9a53edf9a5f0b697a18a689006c531f3a8dd455c89ec3d2d648`; offline checks cover two
-files and seven tests. Independent ordinary/Sol review and root-owned PG18/all-role/API runtime
-remain pending. The prior root-owned v6 native attempt completed migration but stopped before
-tests or user creation because Vite/Vitest lacks `import.meta.resolve`; cleanup passed. No
-all-role users have been persisted and the private credential root is empty.
-
-The frozen #583 hosted G11 record remains 16/22 with six failures. The current #600 G11 fails;
-therefore P0 remains blocked. No quality gate was waived, no private runtime or persistent DEV
-change is authorized by this record, and no phase completion, cutover, release or protected merge
-is claimed.
-
-**Recorded:** documentation author at `2026-10-07T15:56:20Z` after live GitHub readback and
-root-provided private evidence.
-
-### 2026-10-07 · Record central source fixes, current failures, and private v6 boundary
-
-**Operational update; no waiver or acceptance claim.** Live readback at 15:02Z keeps `main` at
-`3096cb044bdf6ae98488bfc385f532fa6386343a` and reviewed DEV at
-`08842235047a3ab2714427edce80331b94558150`. #589 is now `047cf99f39ad0beeb25aa2597c544b6e0bda3225`,
-#598 `8cde2b37d7814a3d462e894c08dc06b888bbda92`, and #600
-`5a493671a6eca00268eec9323565ff8953d244cb`. Current hosted rollups remain failed or in progress;
-consult the dated status snapshot for their names and current heads. No merge, DEV refresh, release,
-enforcement activation, cutover, or phase completion occurred.
-
-The pushed #589 source batch contains the authorized session-only audited withdrawal correction,
-with current `instance:admin` authority and the explicit elevation exemption; it also corrects the
-admin fixture restoration after a helper resets the authenticated session to the requester. The
-batch preserves the exact 19-capability response and dormant-JIT behavior when the maximum role
-ceiling is lowered. The earlier hosted result (154 files, 1804 tests, 1799 pass and 5 fail) remains
-historical and has not been replaced by a post-fix hosted result. Four OpenAPI deactivation enums
-and WH12 remain owner-pending. No waiver or broadened status acceptance is recorded.
-
-P2 #598's root-owned native result is 3/6, with the claim-pair auto-system, indirect-blocking graph,
-and event-envelope reference assertions failing. Prior `cde1` 6/6 and cleanup evidence are retained
-without relabeling the current result. The author remediation is pending. P0's hosted G11 record
-remains 16/22 with six failures and unchanged thresholds; the canonical Linux baseline's 145-story
-run exited 1 only because the new baseline file was missing, with no other diffs and unchanged
-cleanup sets. Neither result clears G11.
-
-Private tooling v6 remains immutable and outside Git. Its offline 34 tests and independent Luna/Sol
-reviews are CLEAR, but actual all-eight-role API-backed runtime has not been executed. The v5 owned
-PG18 attempt stopped at the verifier before migration/user/API work because PostgreSQL reported
-`127.0.0.1/32`; cleanup passed, zero users were created and the credential root is empty. V6 uses
-canonical `host(inet_server_addr())` formatting and awaits root-owned runtime verification. No
-credentials, private manifest, or source tooling is included in this record or repository.
-
-**Recorded:** documentation author at 2026-10-07T15:02:23Z after live GitHub head/check readback.
-
-### 2026-10-07 · Approve audited session-only admin withdrawal and record current evidence boundaries
-
-Thomas explicitly resolves the admin-initiated withdrawal behavior question raised against
-central #589: the operation requires a browser session and current `instance:admin` authority,
-is audited, and has an explicit elevation exemption because withdrawal grants no authority.
-This is a narrow implementation contract for the admin-withdrawal route. It adds no capability,
-role grant, membership change, or exemption for another operation. It does not waive ordinary
-review, security review, hosted checks or the exact-current-head requirement. The author must
-reflect this answer in the canonical feature/policy contract before treating the source fix as
-contract-complete.
-
-P0 PR #600 source `9bced3e3178a70b3a1984837836824e4a193c89f` has two independent Luna CLEAR
-reviews and an exact-source GPT-6 Sol CLEAR review; its current PR head is the later review-note
-commit `359353cf28784870890505e777112ede581c357d`. Browser evidence covers the legacy desktop
-and mobile case plus the modern one-file/five-test canonical case. The private exact-image
-receipt records stock-Traefik TLS boot and four JSON health checks for image
-`sha256:171d2ca2038dd26a3e41a712fa5e889bfd56b0157609911a7b10986d1af473a2` at source `9bced3e`.
-Cleanup removed five containers, three volumes, two networks and two aliases, with global
-resource sets unchanged, ports 4296/4297 absent and an unknown volume preserved. That receipt
-explicitly has `persistenceAccepted:false` and `installerAcceptance:false`; it is not persistence,
-official-installer, G11 or P0 acceptance. Hosted #600 G11 and PR-template/security-review checks
-are red and Postgres integration is running at the snapshot; no gate is waived.
-
-The admin-withdrawal author inadvertently started native integration despite an offline-only
-assignment. Root stopped the activity. The initial inactive-user request returned 503 and its
-retry stalled at DB setup; preserve both results as failures, not acceptance. The root audit at
-`2026-10-07T13:44:18.977587Z` shows no extra Docker containers, volumes or networks versus the
-closed boot baseline. It does not identify the database target or process; those remain under
-verification. Do not infer database integrity, complete cleanup or successful persistent
-all-role seeding. Persistent DEV remains at `08842235047a3ab2714427edce80331b94558150`.
-
-**Operational correction:** the three commands used `CI=true env -uTASKDESK_DATABASE_URL`; source
-inspection confirms global setup selects fresh Testcontainers Postgres 18 and assigns its URL
-before test workers. The historical container/DB target identities were not captured, so this
-mechanism does not retroactively prove which resource was reached. The root process audit now
-shows zero active integration invocations and no root process kills; current Docker global sets
-remain at zero extra objects. Preserve unknown historical provenance. The current #589 head
-`314ca3636ad9a514e1e80d64f5e3ad6b64b7a58e` has an author-reported broadened 403-or-503
-inactive-user regression/failure class; keep it open for ordinary review. The author reports
-offline checks passed, but no current-head review or integration acceptance is claimed.
-
-Separate source-alignment evidence at current #598 head `2dc62db3d6ab41f4fde044e8316cde2844a13058`
-finds inherited test-only role-seeder files still tracked at
-`apps/api/scripts/seed-test-users.ts`, its test, and `scripts/seed-test-users.ts`, along with the
-public #597 review note. The owner must remove this inherited seeder batch without rewriting
-history; retain canonical generic seed-default-workspace-roles behavior. No usable credentials
-were detected. The private all-eight-role tooling has not been executed, and no persistent test
-users are asserted.
-
-At the live refresh `2026-10-07T13:46:26Z`, accepted `main` is
-`3096cb044bdf6ae98488bfc385f532fa6386343a`; #589 is `314ca3636ad9a514e1e80d64f5e3ad6b64b7a58e`,
-#598 is `2dc62db3d6ab41f4fde044e8316cde2844a13058`, #600 is
-`359353cf28784870890505e777112ede581c357d`, and #599 is
-`7c5ae58c67c3572b2f4f52864788f78e726daa0d`. #589 advanced after its ordinary auth report at
-`411f672`; that report is not a current-head verdict. The admin decision resolves the behavior
-question only. #598's previous review panel also predates its current remediation head. No
-protected merge, release, enforcement activation, persistent DEV refresh or phase completion is
-claimed by this record.
-
-**Recorded:** root at actual `2026-10-07T13:46:26Z`; user answer is Thomas's explicit approval,
-not an inferred decision or quality-gate waiver.
-
-The final documentation refresh at `2026-10-07T13:53:14Z` re-read `main` and the #589/#598/#600/#599
-heads; all matched the values above. A follow-up root process audit reports zero active
-integration invocations, no root process kills and zero extra Docker objects at audit time. It
-does not supply the missing historical Testcontainers identity or DB target, so the provenance
-and acceptance limits above remain unchanged. CI state is the earlier 13:46:26Z rollup; no
-check was rerun for this documentation update.
-
-### 2026-10-07 · Record complete P0 local evidence and current candidate blockers
-
-**Evidence update; no waiver, merge or phase claim.** The frozen source532 local lifecycle run `20261007T111221Z-63bfb1` passes all five phases with ledger assertions 88/88/80/88/88 and 88 bounded HTTPS requests using the same fixtures, encrypted secret and attachment HMAC. Cleanup's actual sequence was: 11 resources issued at 11:12:21.490949Z, last measurement at 11:31:02.333447Z, cleanup at 11:32:16.822024Z; ten containers, six named volumes, four networks and two aliases removed, global resource sets unchanged, ports4296/4297 absent and unknown resources preserved. Scheme-only signed-URL TLS reconstruction is not official installer/product TLS, Gate C, cutover, G11 or P0 acceptance.
-
-#599 source `51d151e8c2ff973c899c8b257f2fa21d9ee8fb0c` builds as OCI `sha256:e706fdf02622e0b44be43cf405b1cc02b05a65374d116e32c7bce8f50a7ffed4`; its bounded stock-Traefik runtime passes the native HTTPS attachment journey without URL rewriting. Test-only successor `9abb60134cf14f8b252e2c5f94635a6026eebfd4` passes root's native two-file/23-test run and cleanup. Fresh independent Luna and Sol delta reviews are CLEAR. Current PR head `7c5ae58c67c3572b2f4f52864788f78e726daa0d` adds only the review note; required hosted checks are pending. Runtime remains source-51 evidence, not a new-head runtime result. #583 G11 remains failed; no manual retry or waiver.
-
-The pushed #589 head at refresh is `99528ca562c22ffee9e926bfe0879785f1385322`. Preserve its original native 139-pass/1-fail/23-not-executed run and the later diagnostic's 162/163 pass with one SCIM fixture constraint failure; no offending source row or product cause is proven. Outbox's 23 passed in suite JSON order. Cleanup is complete with zero clients, one container and one named volume removed, global sets unchanged and port55442 absent. #598 is at `07831d2f7967adb7156158e30eee376633869d4e`; its three-Luna panel has two BLOCKED verdicts and a third review running, while its custom-field ownership, required-file behavior and AU-action names remain pending Thomas.
-
-Private #995 standalone run is 30/36 and fails its Git-root assumption; its v2 correction is in progress. Native parent run 124 and final run 162/163 fail on stale `configVersion`, traced to test configuration rather than product behavior. Full Sol blocks two withdrawal-authority defects; Thomas's separate admin-endpoint decision is pending. Role source archive/removal work #995/#597 is closed. Root reports all cleanup complete. Accepted main309 and DEV088 remain unchanged; no release, enforcement activation, merge, persistent DEV refresh or P0 completion occurred.
-
-**Correction and disposition at actual 2026-10-07T12:30:33Z:** Thomas approved the seven `request_type`/submission actions and system auto-accept; the approval is recorded at #598 source `07831d2`. #598's completed panel is integration BLOCKED with one finding, domain CLEAR, and UI BLOCKED with five findings; the third review is complete, not running. For private #995, keep distinct results separate: standalone 30/36 with six Git-root-assumption failures; candidate native 162/163 with one stale-`configVersion` test-configuration failure; separate parent run timed out at 124 tests. The central one-file native version-fixture change is currently dirty/uncommitted and changes test configuration only. The P0 lifecycle run began at 11:12:21.490949Z; 88 bounded HTTPS requests succeeded, with cleanup quantities/timestamps as recorded above. No permission/token payload or product-semantic change is asserted by this correction.
-
-**Recorded:** orchestrator at actual 2026-10-07T12:24:33Z; current PR heads refreshed from GitHub. Historical status snapshots and original failure evidence remain intact.
-
-### 2026-10-07 · Record complete role-fixture source and full P1 batch; retain actual test limits
-
-**Operational evidence, no waiver or new behavior approval.** All-eight-role seed source345 clears final independent Sol after runtime-random private login aliases/passwords and structural boolean diagnostic boundaries. Notes-onlya73 binds actualsource345; dedicated native35 is attributed to323 with unchanged producer/harness, not relabeled current. Root owns and verifies all temporary PG18 parent-volume cleanups. New seed CI environment findings stay open for a complete tooling correction; no application environment register or quality gate is weakened.
-
-Full defined P1 `fcf2a97a` freezes before the fresh three-context bulk review. Exact-head views native18 passes; nonexistent export selector means export did not run. Prior636 export proof stays separate. First reviewer finds the shared user-preference pin concurrency defect; collect the whole panel before one structural remedy. Team-lead-dependent behavior remains held.
-
-P0 v5 actual TLS/health/signup/persisted admin/session/CSRF succeeds locally, then erroneous trailing slash404 stops before fixtures. Unsupported signup DTO role assertion and initial cleanup mount ordering comparison are root test defects, not product authorization or ownership waivers. Ingress-first captures and full mount-set/full-ID/label/reference checks yield exact cleanup; unbound anonymous volume remains preserved. Independent v6 Sol blocks baseline CSRF incompatibility and signed HTTP URL expectation. Complete v7 audits both source versions and permits only explicitly verified local HTTPS reconstruction of signed path/query while keeping shipped URL correctness separate. No current runtime window, source extension, signed release, G11 retry, cutover, protected merge, date carry or phase acceptance is authorized by this record.
-
-**Recorded:** root at actual 2026-10-07T06:14:20.333654+00:00 under standing batch implementation and verification authority.
-
-### 2026-10-07 · Restart parallel execution and correct route-measurement provenance
-
-**Decision the orchestrator made:** restart bounded parallel P0 execution-plan repair, complete later-train implementation and actual-source gap inventory. Keep one author per source tree; implement the collected class before bulk review. This changes scheduling, not review tiers, gate semantics, phase scope or protected-merge authority.
-
-**Explanation:** actual fresh P0 attempts expose wrong fully mounted paths, including a root health probe that returned SPA HTML200. Preserve those failures and replace individual path guesses with one exact-source route/mount matrix for all phases. Clear static v10 measurement is not live persistence or phase acceptance. Both owned runs are fully cleaned; no existing DEV resource is restarted or modified.
-
-**Authorization and limits:** Thomas requested restart/continue all tasks and P0 priority. Existing decisions remain in force, including query acceptance deferred toP4 and private all-role fixtures. Pending human choices remain unanswered. No gate is waived, credential published, unreviewed source deployed, enforcement activated or phase completed. Scheduling can be reversed by stopping a lane; original evidence remains immutable.
-
-**Recorded by:** root orchestrator, 2026-10-07T10:11:27.558320+00:00.
-
-### 2026-10-07 · Testing usernames are private runtime credentials; preserve failed ingress evidence
-
-Thomas explicitly requires role test seeding and forbids usable usernames, passwords and credential Markdown in GitHub. Apply this literally: generate actual login usernames at runtime, alongside strong random passwords, retain them only in the external private manifest and reuse that manifest for additive/idempotent seeding. Public code may contain role keys and non-login fixture identifiers; it must not construct a fixed usable login username. No production provider defaults or role grants change. This supersedes the narrower interpretation that only passwords were private.
-
-Complete seeder3bd has narrow ordinary bootstrap CLEAR/12 offline tests, while its full Sol blocks the fixed login-username class. The prior positive enabled-customer integration14 at2cb remains valid for that unchanged producer, but does not establish the dedicated runner: its global setup still starts Testcontainers. Collect the complete privacy/manifest/harness fix before one changed-head review and actual root-owned disposable DB run.
-
-P0 stock-Traefik v3 is actually executed in new window/run20261007T051455Z-70b41b. Candidate image/boot, migrate exit0/ledger88, UID10001 and mount ownership pass. First CA curl fails connection refusal before fixture writes; requested port exists in HostConfig but live443 mapping is null. Stop bound ingress first, preserve all logs/inspections, then independently remove exact owned resources. Cleanup PASS/global sets unchanged/unknown volume preserved are recorded privately. No persistence/official TLS/GateC/performance/phase claim follows. Prepare one complete ingress-network/publication successor; do not retry failed identity or infer an OrbStack defect from incomplete evidence.
-
-**Recorded:** 2026-10-07T05:25:08.613310+00:00; main/source/DEV unchanged.
-
-### 2026-10-07 · Prove positive customer sessions; stop custom proxy expansion
-
-**Operational application, not a gate waiver.** Full seeder Sol correctly rejects the earlier customer person/organisation-only fixture. Complete successor `2cb1275d` creates genuine canonical customer role plus materialized organisation membership, validates exact retry provenance and tests actual configured portal login/session. One isolated DB-only native suite passes14; test provider state and private credentials are cleaned. Root verifies ownership/zero clients and removes only the bound named PG18 resource with absence evidence. Draft#597 contains reusable code/contract and sanitized test claims, no usable credentials. Final current-head review remains open.
-
-The Native Host-only explanation is disproven by the rerun. The confirmed cause is the harness hardcoding localhost instead of the integration-configured portal.localhost; require actual registered origins and matching Host. Preserve all failed candidate/run receipts; do not call the former disabled-provider negative test positive customer acceptance.
-
-After v10 repeats the proxy authority/cleanup class, root changes altitude: stop bespoke Python proxy remediation and use existing pinned stock Traefik with explicit bounded manual root commands. Preserve blocked versions/reviews. Complete private static-plan v2 fixes all collected headless-route/CSRF, proxy/port and cleanup-order findings. It still needs exact independent Sol clearance and a fresh genuine runtime window; no official installer/TLS/signature/strict/date-carry/phase gate is waived.
-
-All P1 ordinary findings are collected before one complete successor batch. Root explicitly hands sole worktree ownership from the paused partial author to the Luna completing the full UI/API/cache/URL implementation. Missing team-lead-dependent behavior stays blocked by the existing decision path; no new schema/migration or fallback is invented. No0119 is allocated.
-
-**Recorded:** root at actual 2026-10-07T05:02:37.599656+00:00; P0/main/persistent DEV unchanged.
-
-### 2026-10-07 · Actual all-role sign-in and P1 migration verification; preserve authority limits
-
-**Operational evidence, no waiver.** Root issues a genuinely owned PG18 database-only window to the two named implementation lanes, with independent full container/image/named-parent-mount binding. Seeder uses only `taskdesk_role_seed_test`; P1 only `taskdesk_p1_composite_test`; no Testcontainers, persistent DEV or performance overlap. Source amendments remain within the same bounded testing scope. Both release connections; root proves zero clients, exact ownership/no other references and actual resource/port absence after cleanup. Original binding/window and cleanup receipt are retained privately; no password/URL is included in GitHub or this record.
-
-Final all-eight testing seeder `cb081b8a005995d58ce9cbc437bbf5efe359912c` passes actual native14 tests, including application sign-in. Correct default-hash mismatch by using existing configured bcrypt, preserve actual sign-in throttling by honest pacing, and correct only native temporary-path/expected-message harness defects. Prior failures remain. OrdinaryA/B exact-head clearances precede fresh full Sol; no live account creation or phase acceptance is implied.
-
-P1 complete canonical `636a9788` applies the full chain through provisional0118 and passes actual28 view/export tests. Its final catalog is retained; raw renderer inequality and unrun per-prefix comparisons stay explicit, never silently normalized into a PASS. No0119 allocation or metadata-prefix mutation is authorized. Full composition receives the required panel.
-
-Private P0 v9 full Sol blocks one collected proxy authority/cleanup class despite52 positive-smoke tests. V10 must structurally bound incoming and upstream I/O, recheck before forwarding and revoke owned listeners/sockets/threads on every failure. Unit grant is closed; no actual runtime authority or GateC acceptance follows. No comfort Luna rounds are added for the same structural class.
-
-**Recorded:** root at actual 2026-10-07T04:36:34.098560+00:00; P0/main/persistent DEV unchanged.
-
-### 2026-10-07 · Freeze semantic predecessor; fulfil all eight testing roles
-
-**Correction and operational application, not a waiver.** Root verifies canonical `6148976e68fa5945218beb9d58d3bf866ff8ab70` and its independent full Sol/freshness delta clearance. The generator must supply genuinely fresh SQL/snapshot/journal evidence; no copied successor or no-change fallback is accepted. Root freezes a separately hashed 227-file allocation manifest for P1 composition. SQL0000–0117 remain fixed, sole provisional0118 owns saved-view/user-preference intent, and no0119 is allocated. No database window or new actual prefix replay is implied.
-
-The earlier manager/lead limitation was too broad. Existing integration fixtures and identity resolution already support genuine same-workspace system-role backing for those canonical roles. Thomas's explicit request authorizes that bounded test-only producer without approving proposed ADR0015 or changing production defaults. Full successor `28c6c64d2979148de7af961ffc35b817f3393056` implements all eight roles and collects hard-link/interrupted-publication remedies before bulk review. Usable credential material stays in external private0700/0600 local storage; never source, GitHub, credential Markdown or stdout. Customer password seeding only observes an already-enabled customer-scoped provider and does not enable it. Real database login and DEV creation remain unperformed.
-
-Root issues only a limited actual unit-transport window for private v9's full real-file smoke: loopback4318–4321, owned temporary TLS/HTTP listeners and synthetic certificate generation, expires2026-10-07T04:14:06.266514Z. This is not actual Docker/product runtime, official installer/GateC or persistent DEV authority. No review verdict or observation acceptance is inferred from implementation or elapsed time.
-
-**Recorded:** root at actual 2026-10-07T04:03:26.768252+00:00; main/P0/DEV source unchanged.
-
-### 2026-10-07 · Private testing accounts; complete executable and semantic safeguards
-
-**Thomas instruction:** add testing users for each role, and keep username/password/credential notes out of GitHub. Implement reusable opt-in code with runtime-generated strong distinct passwords; any usable credential manifest belongs outside every repository/worktree, in a private local directory/file (0700/0600), never in a committed Markdown note or source literal. Preserve existing unrelated accounts and passwords; reject unsupported roles and unsafe output paths before mutation; idempotent records bind to the actual target. No production bootstrap change, live unreviewed seeding or credential printing is authorized. Existing placeholder seed profiles remain intact. Role support must reflect real current mechanisms; proposed ADR 0015 is not approved by implication. Supported seeding proceeds while missing manager/lead provisioning remains explicit.
-
-**Complete batch evidence:** P1 corrected builder `c4745ea5` is pushed with 77 targeted tests and six mocked browser journeys; no live API/image/phase claim. Central complete schema/generation `89242d35` passes positive inventory/generation checks, but its fresh ordinary delta blocks synthetic negative tests not exercising the acceptance comparator; one shared-comparator adversarial remedy follows. SQL, journal, accepted metadata and allocation remain frozen; no PostgreSQL window is reopened.
-
-Private lifecycle v8 passes 47 offline tests but full Sol blocks six collected persistence/redaction/evidence classes. Preserve v8 and the report. V9 separates purpose-validated private operational inputs from diagnostic output, scopes ownership exemptions to typed paths, binds digests to saved bytes and uses meaningful full real-file mocked orchestration. Root verifies frozen auth's Secure-cookie and first-user bootstrap requirements before any new run; genuine verified loopback TLS, explicit bounded root-resource authority and real listener cleanup must be included if used. These implementation changes do not claim official installer TLS preservation, Gate C or a fresh runtime grant.
-
-**Recorded:** root at actual 2026-10-07T03:29:44.647294+00:00; P0 source/main/deployment unchanged.
-
-### 2026-10-07 · Complete implementation batches before delta review; preserve blocked evidence
-
-**Operational application of the realignment directive, no waiver.** Full P1 visual-filter implementation `9d2f27a5efce3cfc9dd7dfe498ad8f27302f42f9` is pushed with author tests/browser evidence, then receives its full independent ordinary panel. Collect partial-sort disagreement, invalid IN bounds/parsing and unary-group operator loss before one structural parser/URL remedy. Preserve the candidate and reports; neither semantic-only AST normalization nor rejecting valid unary groups satisfies exact lossless tree round-trip. This remains a P1 leaf, not a P0 prerequisite.
-
-Private lifecycle v7 completes 40 offline regressions and immutable manifest `3ee50b12971da8176d404c7619027589f7f2d5192c0a742f82649fa072935c1e`; fresh ordinary delta review blocks quoted JSON credentials escaping generic redaction. Preserve that complete blocked bundle. The successor repairs all output-persistence/redaction surfaces with meaningful adversarial regressions; repeated-class handling requires a structural invariant, not escalating comfort rounds or another narrow regex patch. A clean required fresh full Sol pass may close the review tier under the existing repeated-class rule once the structural remedy is complete. No actual runtime grant, retry, Gate C claim or authority exception is supplied by this entry.
-
-The complete central migration/schema semantic remedy continues offline, preserving accepted metadata, allocated SQL and journal. Prefer exact trusted static SQL/default/check/predicate representations and bounded justified normalization; do not import generated snapshot data as a tautological source oracle or accept unsupported expressions by stripping syntax. Root's earlier named PostgreSQL window remains closed. Existing anonymous-volume incidents and failed runs remain unchanged.
-
-**Recorded:** root at actual 2026-10-07T02:26:10.911238+00:00; live main `3096cb04`, frozen P0 `53269374` unchanged.
-
-### 2026-10-07 · Preserve actual lifecycle failures; require full semantic generation invariant
-
-**Root operational application, no waiver.** Complete lifecyclev6 manifestb989ab94c68a1ac0b9790cb84d555b9659e0e13dad0f79dc260ff42e69191ee8 has independent Sol clearance of its absolute-expiry delta and33offline tests. Root verifies both local image revisions, named central resource ownership/released connections and exact cleanup; original failed case-sensitive absence readback remains beside successful completion. Root then issues distinct actual external-pin applications/windows for disposable local Compose, with Thomas-personal-approval false, no persistentDEV/production/performance/officialrelease/GateC authority.
-
-Actual run20261007T015354Z-23c939d8 fails before creation on candidate-image prefix mismatch. Run20261007T015642Z-a5f5b739 uses canonical CLI image IDs and fails on migrate exit1 after isolated creation. Both original failures, commands, authority and consumption markers are retained. Cleanup helperFAIL remains; root independently confirms8capturedownedIDs absent. One added anonymous parent volume3cdc71ba8cc620aa1bf92ea39b479c322bdacc3d409a77d068d492577d6ebcc0 remains unproven and preserved; no timestamp/inventory-delta inferred deletion. Root scoped volume-event readback is empty and cannot prove ownership. No original inventory identities are missing. Precleanup migration logs were not retained, so no actual root cause is asserted. V7 is a single offline full runtime-evidence boundary remedy; no new runtime window exists.
-
-Complete metadata b51c3d0d passes actual30prefix gate with185indexes; source panel Aclear,B/Cblocked reveals generalized configured-DSL semantic gaps beyond ordered keys/table presence. Next batch must enforce complete table/column/type/null/default/constraint/index inventory equivalence with fail-closed meaningful regressions; no hardcoded unexpected API-key FK allowance or two-column special-case-only fix. SQL/journal/acceptedmetadata/allocation remain frozen, current candidate blocked and no Sol acceptance claimed. Author's DB/Docker window is closed; retained raw catalog is available offline.
-
-Standing parallel implementation additionally starts isolated P1 SV-11 complete visual/text builder from frozenfd8, owning frontend only and requiring actual URL roundtrip/sort/columns fidelity. Root approves4316 after absence readback for mocked browser only, no PG/Docker/performance. This is post-P0 work, never a P0 prerequisite. No new dependencies/schema names/behavior guesses or duplicate integration train.
-
-**Recorded:** orchestrator at actual2026-10-07T02:04:02.983140+00:00; accepted main3096cb04 and reviewed DEV08842235 remain unchanged.
-
-### 2026-10-07 · Resume only explicitly bound database testing; finish runnable lifecycle authority
-
-**Operational application, no waiver or recovered ownership claim.** Root independently read back full container e70aeaa2d70c7d6b9cf58ffb23734fbf36dd332a7fa5ca30a3a0f4ad31bdf0ec, postgres18 image, named volume taskdesk-central-structural-20261007-data, PG18 parent mount, source/worktree/task labels and loopback55440 before issuing the private database-only window at actual2026-10-07T00:50:22.049042Z. The author may use this database for the complete metadata remedy, not create/stop/remove Docker resources. Root reserves cleanup after connection release and fresh full binding/absence readback. This distinct binding never proves ownership of the earlier deleted anonymous volume; that incident remains unresolved.
-
-The complete lifecyclev3 full Sol verdict blocks authority binding and unserved-certificate claims. Retain all original artifacts. V4's permanently disabled execution is truthful but not a completed runnable mechanism. Complete v5 requires independently supplied, externally pinned root-issued bounded authority, exact source/images/run/project/window/action checks, freshness/expiry and replay negatives plus positive mocked execution. No genuine runtime grant has been issued. TLS may remain explicitly unperformed only as a separate limitation, never installer/GateC acceptance. No central grant reuse, signed release publication, strict activation, unchanged-source hosted retry or phase completion is authorized here.
-
-**Recorded:** orchestrator at actual2026-10-07 01:02:47 UTC under standing implementation/verification authority.
-
-### 2026-10-07 · Record irreversible unbound-volume removal incident
-
-**Incident, not verified-owned cleanup.** The central migration author removed anonymous PostgreSQL volume `11bfa8f6a9a32c224f25cdc35098b169954b4a5e7abdc01f4903438d09e5bd3d` before receiving root's HOLD. Timestamp, anonymous label, PG18 contents and absence of current references did not bind it to full prior container `c6da37c93e6bf784e9d9d5b1ea331881b9ad4b1c0da5845984968a54ac0b13`. Removal is irreversible; no recovery or verified ownership is claimed. Original assertion that cleanup was complete was inaccurate and is superseded by this incident. Private exact receipt is retained in central-migration-metadata/packet/prior-docker-volume-cleanup-receipt.json.
-
-Root revokes the author's Docker/PG mutation window immediately. Offline source/generator implementation continues. Read-only root volume-event acquisition through actual2026-10-07T00:44:25.613342Z yields no retained events, so historical binding remains unproven. The reviewed DEV application is independently still running healthy; this does not establish ownership of deleted data or safety of every unrelated resource. No further deletion, prune, daemon mutation or inferred orphan ownership is authorized. A new test window requires reviewed exact creation/mount IDs, named labels or correct PG18 parent tmpfs, failure cleanup and explicit absence evidence before removing any resource.
-
-**Explanation:** protected merge, P0 source, persistent DEV and strict enforcement did not change. This record neither waives the incident nor calls the migration candidate accepted.
-
-### 2026-10-07 · Correct operational record timestamp
-
-The preceding bulk-verdict entry's drafted00:31UTC label was incorrect. Its actual Git commit timestamp is 2026-10-07 00:30:27 UTC. This is a recording correction, not a runtime capture or another observation date. Original entry/history remains retained.
-
-### 2026-10-07 · Apply complete bulk findings as structural implementation batches
-
-**Orchestrator application, no gate waiver.** Complete dialog8f078830 clears two fresh ordinary Luna contexts and independent Sol; notes-only7d86b0a8 preserves source and records original verdicts including the security-path correction. It remains a post-P0 leaf, not a frozenP0 change. P0 PR scope is narrowed to its actual owning contracts under the existing independent Sol adjudication; supporting P4 references remain explicitly separate and owning P4 findings stay open. Latest hosted register succeeds at unchanged532; performance19/22 and template/readiness remain red.
-
-Three fresh ordinary reviewers examine complete central metadatab977e53b. SQL-prefix/hash/identity evidence passes, but A finds configured generation omits existing SQL tables and C independently proves ordered unique-constraint drift. Both classes are collected before one structural metadata/DSL-generation remedy; no Sol pass on blockedordinary source. Frozen SQL, journal, accepted snapshots and migration allocation must remain unchanged. Sole bounded owned PG/Docker window is granted to this author for actual catalog ordinal evidence and one final full prefix regression. Capture mounts/fullIDs and prove cleanup, no globalprune or unrelated resource removal.
-
-Strong private lifecycle Luna review blocks the complete initial driver on output redaction, definitive cleanup/inventory proof and measured persistence comparisons. Preserve original bundle/hash/report; author implements one complete privatev2 with meaningful full-orchestration negative tests. It remains offline: no execution/release-order receipt, official signature substitution, persistentDEV mutation, strictactivation, datecarry, protectedmerge or phase claim. The local Compose driver uses a private exact-image override and does not pretend shippeddeploy.sh accepts local images.
-
-**Recorded:** orchestrator at actual00:31UTC under standing implementation/verification/realignment authority.
-
-### 2026-10-07 · Record completed bulk corrections and normative P0 adjudication
-
-**Evidence record; no waiver or new Thomas approval.** P2's complete browser-test placement12cac9c1 clears fresh ordinary Luna and independent Sol; notes-onlyb67a865a is published on actual#586 after source equivalence. P3's complete relocationb78a0ff4 likewise retains clear reviews on notes-only08c162d7. The complete later-phase dialog8f078830 passes authored11unit/6browser tests and is frozen for the required ordinary panel then Sol. Its ordinary A no-findings verdict is retained, but A's security-path classification is wrong: apps/web/e2e/** requires the independent Sol tier. This record does not turn an ordinary verdict into a security waiver.
-
-Fresh Sol's public-config normative adjudication concludes that actual200/pre-guard proof explains missing tally but does not replace the written shadow-before-strict criterion. The existing Thomas question stays pending; an explicit bounded criterion decision or genuine comparable shadow implementation is needed before including that source in strict cutover. No early human design review, partial-date carry, strict activation, merge, signed release, or phase claim is supplied.
-
-Central actual SQL prefixes0088–0117 all execute. Snapshot repair additionally needs actual catalog ordinal pairing because locked-tool introspection emits unstable composite foreign-key order. This is generated metadata correctness within the frozen allocation, not authorization to change SQL, accepted migrations, journal numbering, schema intent, or P0 source. Preserve failed harness runs and original files; review the complete batch once frozen. A separate Luna prepares the complete local-image lifecycle driver offline; runtime and official signed publication remain subject to their existing boundaries.
-
-**Recorded:** orchestrator at actual00:11UTC under standing implementation/realignment authorization.
-
-### 2026-10-06 · Freeze provisional train allocation for SQL-bound snapshot reconciliation
-
-**Decision:** The orchestrator applies Thomas's realignment instruction to centralize migration allocation and regenerate metadata only after the preceding train freezes. The preceding migration train is frozen at canonical #589 source `f4789aefd3c3d08595642414dda63770d8973f64` for this bounded reconciliation: existing 0088–0117 SQL, numbers, journal order and schema intent are the frozen inputs; no lane may allocate or renumber that range concurrently. Saved-view0118 remains provisional until the reconciled predecessor is composed. No0119 is allocated.
-
-Actual inspection found that P1 lacks0088_snapshot.json; the central0088 blob fits the identifier chain but already contains columns added by0089 SQL, while0089 snapshot omits the preceding SLA schema. An ID-only restore would hide schema drift. The authorized structural batch must compare metadata against each actual SQL prefix in an owned disposable database, retain original hashes/failures, and regenerate only inconsistent/missing metadata through the existing locked tooling. Migration SQL, runtime schema contracts and journal numbers may not be silently changed; any real SQL defect is reported separately. Required current-head independent reviews/CI still apply to the completed batch.
-
-This allocation freeze authorizes post-P0 integration repair, not acceptance of #589, a protected merge, strict activation, a new migration, or a P0 scope expansion. Frozen P0 #583 remains independent and cannot be delayed by this reconciliation.
-
-**Recorded:** orchestrator, standing realignment authorization, actual UTC6October.
-
-### 2026-10-06 · Record exact installer release ordering conflict
-
-**Evidence and pending recommendation; no Thomas approval or waiver.** Root read-only GitHub
-inventory at actual23:00UTC finds only v2.0.1 (targeted250723) with two SBOM assets, not a
-signed installer archive for frozen53269374. The release workflow rejects a selected source
-not already reachable from main. Thus official exact-candidate signed installer runtime
-before protected merge has a publication-order dependency. Preserve the complete offline
-installer20/20 result and private owned runtime plan; mocks are not official signatures.
-
-Root asks once to run reviewed local-image upgrade/idempotency/rollback proof before merge,
-then publish and verify the official signed prerelease after all protected merge gates pass
-and before the P0 finalizer. Final P0 criteria and fixed cosign issuer/workflow remain intact.
-No workflow dispatch, release publication, skip-verify, gate waiver, merge, date carry or
-production action is authorized by this record. The actual answer remains pending.
-
-### 2026-10-06 · Execute reviewed532 complete off/shadow derivative
-
-**Orchestrator application of existing disposable verification:** preserve the actual failed
-20261006T221158Z-53269374 acquisition and execute a new off/shadow-only proof using the complete
-reviewed derivative final-532-g11-completion-batch-20261007, manifestb73400186f5d1e0112956c8f1b323305d57af4ad257e20c1f02f35778f6c2f4a.
-Frozen product source remains5326937460b195d8e69584c0cb99305348330a95. The prior run matched all130
-status expectations and passed boot/health/migration/metrics controls, then failed on undefined
-runner source names. Cleanup9/9 and root's independent absence checks passed. Offline replay
-found the authenticated WebSocket101 classification gap; both classes were repaired together,
-with canonical source identities, source-bound protocol validation and negative regressions.
-Original records remain unchanged and do not become accepted observations.
-
-Fresh strong Luna and full independent Sol clear the exact derivative after78 offline tests,
-15 file pins and retained-input replay. No source, expectation, performance budget/workload/
-retry policy, or authority gate is relaxed. Root issues new externally pinned application,
-genuine-review projection and exclusive-resource release records. The resource window is not
-required-CI acceptance; hostedG11 remains19/22 and its confirmation decision is still pending.
-
-Only owned disposable off/shadow resources, platform then27 observed non-task sources, with
-empty enforcement and verified cleanup. Config/task, strict activation, persistent DEV,
-production, merge, date carry-forward and phase completion remain unauthorized by this
-application. Later heavy acquisitions wait for this bounded runtime window to end.
-
-**Recorded:** top-level orchestrator under existing Thomas authorization, not a new personal
-Thomas approval or waiver.
-
-### 2026-10-06 · Apply standing verification to frozen532 off/shadow only
-
-**Orchestrator application of existing authorization:** acquire one disposable exact-source
-off/shadow runtime proof for5326937460b195d8e69584c0cb99305348330a95, using the immutable
-final-532-g11-report-contract-20261007 bundle (manifest833c32f24c6b021b38b612a89d54739e59d8fe87884864c04b255e8cf635a065).
-Fresh strong ordinary and full independent Sol operational reviews clear these bytes.
-Original failed acquisitions, blocked runner reports and earlier applications remain intact.
-
-This narrows the existing delegated disposable verification to **off/shadow only**, platform
-then27 observed non-task sources, with explicit empty enforcement. No strict activation,
-config/task selection, persistent DEV mutation, production, protected merge or phase claim.
-The baseline schema80 image6a6315c2890b5677f9afb858c3f81aa86c181e7d3270fa7164d889111e214628
-remains separate from the exact candidate imagef44 and any runner-built disposable artifact.
-Resource release means exclusive local acquisition, not required-CI acceptance: hostedG11
-is19/22 red and the requested one-hosted-confirmation decision remains unanswered. No
-performance retry, budget, workload, assertion or test retry policy changes are authorized.
-
-Root pins current source, clean checkout, controlled files, genuine reviewer report bytes,
-decision log, new delegated application and release records before execution. Later lanes
-hold PG/image/runtime acquisitions for this bounded window. Capture owned resource identities,
-private records, health/status/events/coverage and cleanup readback; preserve unrelated
-resources. A failure remains open. No date compatibility verdict or carry-forward is supplied
-by this application. Three original partial UTC observations remain subject to actual
-same-actor/source compatibility and independent adjudication.
-
-**Recorded:** top-level orchestrator under Thomas's standing instructions; not a new personal
-Thomas approval or a waived gate.
-
-### 2026-10-06 · Thomas directs P0 realignment and implementation batches
-
-Thomas supplies the Project Realignment & Implementation Directive. Complete a read-only ownership map before source edits, then use #583 or one minimal successor as the sole P0 closure vehicle. #589 is the canonical post-P0 integration train and cannot block P0 acceptance. #581 is superseded after preserving unique source/evidence. Preserve later implementation; no gate, review tier, budget or assertion is waived. Keep one centralized migration ledger, with saved-view0118 provisional until the preceding train freezes. Retain original observation records and require independent source compatibility adjudication. Reports use Status First and the specified sections.
-
-The read-only audit is complete; source work resumes on isolated P0 and P1 lanes. Closing the duplicate integration vehicle is not phase acceptance. Thomas's explicit self-write authorization makes notification, preference and avatar mutations session-only until key scopes are defined; no capability is invented. The prior query acceptance deferral toP4 remains in force.
-
-### 2026-10-06 · Apply standing disposable verification to the reviewed 088 asset correction
-
-**Orchestrator decision under Thomas's standing authorization:** prepare the next reversible
-isolated verification for exact product `08842235047a3ab2714427edce80331b94558150`.
-The earlier 3096 and C468 applications, immutable failed observations and pinned files remain
-historical records. This is a new application of the October 2 three actual UTC dates rule
-and October 4 opt-in per-policy-source strict verification decision, not Thomas's personal
-approval of a new source digest, a gate waiver or an automatic carry-forward of earlier dates.
-
-Two independent ordinary reviewers and the fresh full independent GPT-6 Sol security pass
-clear the product correction. Reviewer B's exact-source asset integration passed 8 tests and
-its acquired PostgreSQL container and volume are verified absent. Product reach uses the
-persisted project's workspace; capability scope uses the persisted asset's workspace.
-The exact product image build succeeds, but a successful build is not boot/runtime acceptance.
-Hosted G11 remains red, with five failed budgets; review evidence and all required current
-checks remain necessary for protected merge. No hosted performance result is waived.
-
-The next private runner must receive independent review on frozen bytes after correcting its
-real anonymous database-volume leak. Acquire explicit run-owned labeled volumes, validate
-ownership before use, capture exact container and mount identities before teardown, and
-remove only unused owned resources. It must acquire separate explicitly mode-bound off/shadow
-and strict windows, fail acceptance on unsupported statuses or unexplained comparisons,
-preserve diagnostic logs before restart/rollback, reconcile events and tally coverage, and
-verify complete cleanup. Original C468 strict requests must never be relabelled shadow.
-
-The standing bounds remain platform-only followed by the registry-ordered 27 directly observed
-non-task sources. Preserve the schema-80 baseline source
-`b80ff7c3ef723a280bb35cfadec0a71b1ad14ae3` and image
-`sha256:6a6315c2890b5677f9afb858c3f81aa86c181e7d3270fa7164d889111e214628`.
-Only root may issue the final independently pinned application, delegated authorization,
-resource-window and runtime-release records after genuine ordinary/Sol operational clearance
-and exclusive resource release. This entry prepares the scope and records no execution.
-
-No config/task selection, pending public-config exception, persistent DEV mutation, production,
-protected merge, enforcement activation or phase completion is authorized by this test.
-Actual source-compatible like-mode evidence is required before any date carry-forward.
-The previous pinned decision-log checkout is preserved; this new application has its own path.
-
-**Recorded:** top-level orchestrator, 2026-10-06, applying existing session authorization.
-
-### 2026-10-06 · Bound approval reach-loss and storage alignment
-
-Under Thomas's standing instruction to implement P0–P4 in parallel, take recommended
-routine decisions and defer P0–P3 human design review to integrated P4, the orchestrator
-selects the following necessary approval contract alignment before implementation:
-
-- AP3 reach loss is a derived approverReachLost response flag from current canonical
-  work-item reach. The approval remains pending; a named approver without current reach
-  cannot decide. Requester or instance-admin withdrawal uses only existing explicit AP7
-  authority and grants no admin decision override.
-- AP13/AP17 and the existing pure Approval.createdAt require a persisted request creation
-  instant. Register created_at in the authoritative approval data model in the schema batch.
-- Register approval.decided as internal activity in the authoritative activity taxonomy,
-  using the already registered event identity. Retain fail-closed/internal visibility;
-  do not expose decision notes through broad event/activity metadata. Any contradiction
-  with the explicit AP note visibility rule still blocks that narrow path.
-
-This records an orchestrator choice, not Thomas's personal per-feature approval, a new
-capability or a gate waiver. Human review stays deferred. The complete implementation
-receives independent ordinary/full Sol review and actual integration/browser/image proof
-before acceptance. The isolated branch reserves migration0116 after the existing0114/0115
-notification suffix; live/shared schema is unchanged.
-
-### 2026-10-06 · Apply standing disposable verification to the reviewed C468 correction
-
-**Orchestrator decision under Thomas's standing authorization:** apply the existing
-October 2 three-date development/P0 rule and October 4 opt-in per-policy-source strict
-verification to corrected candidate `c46825e938019c354c615be03200cefeab7d710d`, in a new
-disposable test. This supersedes only the October 6 delegated application's3096 target
-for this next attempt; original decisions, failed attempts and pinned files remain intact.
-The prior record is historical, not Thomas's personal approval of this new digest.
-
-The independently reviewed candidate resolves the actual persisted workspace row before
-strict policy evaluation and preserves native reach. Three ordinary scopes and the fresh
-full Sol source review clear the current composition; its private copied runner's complete
-pin audit and28 offline tests also pass independent Sol inspection. This does not assert
-runtime compatibility, previous-date carry-forward, full CI acceptance or successful strict
-traffic. Original7f G11 remains19/22, with LCP/state/board failures; a separate full
-performance implementation lane continues. API/browser/static parent results retain their
-exact source, and current C468 CI remains separately required for protected acceptance.
-
-Use only platform-only and the27 directly observed non-task policy sources in registry
-order, with exact owned resource IDs, original schema80 baseline source
-`b80ff7c3ef723a280bb35cfadec0a71b1ad14ae3` and image
-`sha256:6a6315c2890b5677f9afb858c3f81aa86c181e7d3270fa7164d889111e214628`.
-Candidate image/source are separate artifacts. Reserve the local test window; capture
-owned mounts while their containers exist and clean only acquired resources, never unrelated
-containers or volumes. Preserve strict failure logs before rollback and complete cleanup.
-
-No config/task selection, pending public-config exception, persistent DEV setting/image,
-production, protected merge, enforcement activation or phase acceptance is authorized.
-Source/evidence compatibility and the eligible full cutover still require actual proof;
-time and this operational choice waive no gate. Root must issue exact standalone application,
-authorization and window records, and obtain the independent Sol operational release before
-execution. This entry itself records no execution or passed runtime test.
-
-**Recorded:** top-level orchestrator, 2026-10-06T07:55:58.655802+00:00, under the existing user instruction to
-continue P0 and test the corrected implementation.
-
-### 2026-10-06 · Orchestrator applies standing P0 authorization to disposable strict testing
-
-**Decision by the orchestrator, under Thomas's standing instruction to continue P0,
-test it, and take recommended routine decisions:** prepare and execute a reversible,
-disposable isolated strict-on/strict-off test of only the platform source and the
-27 directly observed non-task policy sources, in registry order. Candidate source is
-`3096cb044bdf6ae98488bfc385f532fa6386343a`; the source-bound schema-80 migration baseline
-is `sha256:6a6315c2890b5677f9afb858c3f81aa86c181e7d3270fa7164d889111e214628`.
-The newly built candidate image is a separate artifact and must retain its actual identity.
-
-**Authority and conditions:** this applies the October 2 decision “Development/P0
-policy-shadow verification uses three issue-free UTC dates” and the October 4 decision
-“Implement opt-in per-policy-source strict enforcement for #8”. The independent October 6
-`cutover-acceptance-sol.md` clears the three actual representative date records and permits
-the observed 27-source staged proposal. This entry is an accurately attributed delegated
-operational choice, not Thomas's personal approval of an exact digest or a gate exception.
-The repaired adapter must receive independent review at its actual controlled hashes,
-and the source, immutable evidence, operational record and resource window must be pinned
-before execution. No unavailable or self-described authority record may substitute.
-
-**Bounds:** acquire only disposable resources with exact acquisition/ownership receipts;
-retain hand-written guards and shadow observation, exercise allowed/denied/reach/mutation
-paths, verify live/ready and strict-off rollback, and reconcile events and complete cleanup.
-No persistent DEV database/image/setting, config-source selection, task-source selection,
-production system, protected branch or performance budget is changed by this authorization.
-Config still requires Thomas's pending explicit public pre-guard exception decision; task
-still requires accepted config runtime and fresh re-key evidence. The legacy key remains.
-A failure stays open and the exact acquired resources alone may be cleaned up.
-
-**State:** preparation and reviewed runtime release are required; this entry records no
-execution, strict activation, passed runtime test, protected acceptance or P0 completion.
-
-**Recorded:** top-level orchestrator, 2026-10-06, applying existing session authorization.
+### 2026-10-09 · Owner directive: Opus policy-repair conductor
+
+**Decision and authorization:** Thomas authorized an Opus session to finish the operating-policy
+repair — including the supporting validators and references an Opus-led team needs — get it
+accepted, hand it over, and stop. It may perform the eligible protected merge of its own
+policy candidate after agreeing the merge window with the current conductor. It does not own
+product branches, shared runtimes, migration allocation or release execution, and it does not
+add features, upgrade application dependencies or diagnose P0 performance.
+
+**Model transition:** for this assignment and the following frozen-scope delivery mission, the
+available Claude Opus model may perform implementation, orchestration, ordinary review,
+security review and finalization, each in a **separate, independent context**, at the
+existing review depth, risk-based counts and independence. This changes who reviews; it does
+not claim the models are interchangeable. Reports record the model as the platform reports
+it, role, context, exact source, scope and verdict, and are never labelled GPT-6 Luna or
+GPT-6 Sol. Qualifying existing Opus reviews may satisfy a role where scope and source coverage
+are established; they do not approve later changes. Historical GPT reviews keep their
+identities. Validators must accept this truthfully — never by forged labels, fabricated
+statuses, bypass actors or weakened protection.
+
+**Infrastructure re-run (approved):** one re-run for the same incident on equivalent job
+inputs, only when retained evidence establishes a transient infrastructure failure before the
+affected test or checker executed. A real dependency-audit, typecheck or policy failure is not
+infrastructure. Preserve the original failure, diagnosis and both run IDs. Review-note
+commits, renamed branches and equivalent new SHAs do not reset it; a commit made only to rerun
+counts as the retry; CI after a genuine correction is normal verification. No
+retry-until-green, suppressed assertions, changed G11 sampling or lower thresholds.
+
+**Check applicability (authorized, to be implemented as a reviewed CI change):** policy-only
+changes keep policy/authority review, link and invariant validation, secret scanning and
+affected checker tests, without being treated as new application builds. Product,
+dependency, deployment or mixed changes keep full verification; release candidates keep full
+integrated acceptance. The classification must fail closed on unknown scope, include
+inherited commits, ignore labels and unchecked metadata, and keep required contexts reported.
+Budgets, security thresholds and benchmark sampling do not change. Any ruleset transition goes
+through authorized administration, never a bypass.
+
+**Merge method:** the explicitly selected method on record is squash (2026-09-06), and the
+`protect-main` ruleset permits it. Historical merge commits do not change that selection.
+
+**Supersedes:** in the 2026-10-09 "workflow and agent-policy restructure" entry, the inactive
+status of the re-run allowance and "protected merge by the conductor alone" (now: the
+conductor, or a delegated policy maintainer for its own candidate after the conductor
+confirms its review set). In the 2026-09-29 entries "OpenAI model routing replaces
+Claude/`pal-mcp` routing" and "Opus 5.5 retained as sampled big reviewer", the limit of Opus
+to sampling, for the scope above; GPT roles stand. Those entries' other content stands.
+
+**Source:** explicit owner directive "Instruction 1 — Opus policy-repair conductor", given
+directly in the Claude Code session that records it, 2026-10-09.
+**Recorded by:** Claude Opus 5.5 (`claude-opus-5-5`), policy maintainer, PR #615.
+
+---
+
+### 2026-10-09 · Owner directive: workflow and agent-policy restructure
+
+**Decision and authorization:** Thomas assigned an Opus 5.5 session as independent workflow
+architect and policy maintainer, authorized to audit, consolidate, replace and remove
+contradictory or redundant operating instructions, superseding older text about how the
+workflow itself may be changed. It does not authorize product features, production changes,
+taking over the conductor, bypassing GitHub protections or claiming acceptance. The delivery
+mission is unchanged: freeze features → integrate valid existing work → verify accepted `main`
+→ publish through GHCR/GitHub → deploy and test SIT → independent audit → stop and await
+Thomas's roadmap.
+
+**What the restructure changes, effective when its PR merges through the protected flow:**
+
+- One hierarchy: Thomas's decisions (with the new
+  [active mission](active-mission.md) record) → `AGENTS.md` → `agent-workflow.md` →
+  specialist standards → `CLAUDE.md` provider adapter → queue task state. Status snapshots,
+  PR bodies, review packets and queue checkpoints are evidence, never policy.
+- Mission text leaves every permanent file and lives only in `active-mission.md`. Review
+  tiers, model policy, task states, evidence reuse, continuation and escalation live only in
+  `agent-workflow.md`. `CLAUDE.md` becomes a provider adapter with no policy.
+- Explicit operating modes, a `DONE`/`SUPERSEDED` terminal state alongside the queue's
+  existing states, and five separate [levels of done](../04-engineering/definition-of-done.md#levels-of-done).
+- A delta made only of review records (lines added to the PR's own notes; reviewer fields of
+  the PR body) needs no new review of any kind; the conductor verifies it over landed commits
+  and traces every record to its reviewer. Historical notes stay append-only, except a
+  labelled redaction made as its own reviewed change. This supersedes
+  the 2026-10-09 integration-acceptance checklist line requiring ordinary exact-candidate
+  re-review of note-only commits.
+- **Review-tier changes, disclosed:** a records-only PR (`status.md`, queue, dated evidence)
+  needs one independent factual check instead of two ordinary reviews; agent-authority and
+  workflow-policy changes get two ordinary reviews plus a full security-tier pass when they
+  change merge authority, review requirements, evidence reuse, retry behaviour or gate
+  semantics — which applies to this restructure itself.
+- Failure classes each have their own remedy. A bounded verification policy would allow **one**
+  re-run per job per task, only for failures before the code under test started; it applies
+  only once Thomas approves it here. **Until then no CI job is re-run**, and the conductor
+  raises the approval as a `WAITING_DECISION` item. G11 sampling stays exactly as defined in
+  UX quality gates.
+- The three-attempt rule counts per mechanism across versions, and the post-limit sequence
+  ends in an end-to-end test of the actual production entry point.
+
+**Unchanged:** model assignments (2026-09-29), every other review count, the security-review
+path list, every required status check, the PR-template check, protected merge by the
+conductor alone, gate waivers and design approval reserved to Thomas, the freeze, GHCR-only
+publication and the SIT stop condition. Proposed CI path scoping and a model-neutral
+PR-template check are recorded as separate reviewed changes, not made here.
+
+**Supersedes:** the operative duplicate text of the 2026-10-09 Integration Freeze and
+Conductor Coordination entries as written into `AGENTS.md`, `CLAUDE.md`, `sdlc.md`,
+`definition-of-done.md` and `agent-workflow.md`, and the Integration Freeze entry's ordering
+of `CLAUDE.md` second in the hierarchy (it is now a provider adapter, fifth). Their other
+decisions stand and are now expressed once. Also supersedes the 2026-10-02 bulk-cadence entry's pointer to `AGENTS.md`
+as the canonical home (now `agent-workflow.md § Reviews`).
+
+**Source:** explicit owner directive "TaskDesk — owner-authorized workflow & agent policy
+restructure", 2026-10-09.
+**Recorded by:** Opus 5.5 policy maintainer, branch `claude/workflow-policy-restructure-20261009`.
+
+---
+
+### 2026-10-09 · Owner directive: single-conductor delivery and cause-based acceptance
+
+**Decision and authorization:** Thomas supplied the current Conductor Coordination & Delivery
+Directive. The designated conductor alone owns the durable queue, dependency graph, shared
+test windows/resources, integration branch and migration allocation, merge order, release
+coordination, and existing continuation/scheduler. The #612 control-plane auditor owns only
+its bounded policy PR and handoff; it does not become a second conductor or alter global
+continuation. The conductor continues owner-authorized work whose actual dependencies are
+satisfied while #612 is pending. Acceptance of a documentation PR is not a blanket queue
+dependency; record the specific required source, artifact, decision or acceptance result.
+
+**Failure response:** classify observed failures as product, test/fixture, environment or
+invocation, review/PR metadata, or unexplained timing before choosing a remedy. Record the
+observation, diagnosis, change and result. Change product source only when the diagnosis
+warrants it. Do not repeat unchanged acceptance runs; use the approved retry policy and raise
+one precise owner decision only if it blocks a justified action. Three failures on one
+mechanism count across versions, branches, sessions and reviewers: pause that mechanism,
+assign an independent whole-entrypoint diagnosis, and agree on a bounded cause-appropriate
+repair before another attempt. Exercise the actual CLI/arguments, artifacts and source/image
+bindings, collectors, serialization/reconciliation, and preserved failure ledger (including
+missing, nullable, unexpected and corrupt cases). Preflight is not live acceptance.
+
+**P0 evidence boundary:** pre-merge proofs are required reviews, current CI, installer
+regression, exact-image boot and applicable pre-merge runtime/authorization evidence. After
+eligible merge, verify the signed-main release installer, upgrade and rollback; run the fresh
+accepted-main phase finalizer before P0 closure. Do not require the main-only signed release
+before an otherwise eligible source merge. No existing security, CI, test, performance,
+authorization, tenant-isolation or protected-branch gate changes.
+
+**Preserved gates and scope:** existing-functionality integration and acceptance fixes only;
+no new feature scope or automatic P4 completion. Existing conductor and scheduler remain the
+single continuation. GHCR/GitHub Releases and SIT only; no Docker Hub or production. Existing
+review tiers, protected merge, and final integrated SIT audit/stop condition remain.
+
+This directive supersedes conflicting operational statements in the 2026-10-09 Integration
+Freeze owner entry below only where they impose a global wait for #612 acceptance, cede
+conductor/scheduler ownership to a lane, or require a product-source change regardless of the
+demonstrated failure cause. It does not replace the prior scope, release-target, review or
+gate decisions.
+
+**Source:** explicit owner Conductor Coordination & Delivery Directive attachment, received
+2026-10-09.
+**Recorded by:** GPT-6 Luna control-plane implementation lane for #612, 2026-10-09.
+
+---
+
+### 2026-10-09 · Owner directive: Integration Freeze and SIT Consolidation
+
+**Decision and authorization:** Thomas explicitly directed one focused, independently reviewed
+control-plane PR reconciling AGENTS.md, CLAUDE.md, agent-workflow.md, sdlc.md, error-fix-loop.md,
+definition-of-done.md and a durable integration execution queue. Current owner decisions and
+recorded approvals precede AGENTS.md, then CLAUDE.md routing/independence, then workflow/SDLC,
+then queue task state. This supersedes the P4-completion mission and obsolete repeated
+commit-approval/whole-program stop instructions, including earlier accelerated-plan scope
+where it conflicts with the freeze. Prior records below remain historical.
+
+Agents may commit/push completed authorized branch work without repeated approval. Only the
+top-level orchestrator may perform protected merges after all required exact-source checks
+and independent risk-appropriate reviews pass. Blockers and unresolved product decisions stop
+only dependent scope. Freeze new features; permit existing-functionality integration and
+acceptance fixes. Require root-cause convergence and a complete real-invocation-path regression
+before further runner iterations after repeated failure; offline simulation cannot establish
+runtime acceptance. GHCR/GitHub Releases and SIT only; no Docker Hub or production deployment.
+
+**Preserved gates:** Luna/Sol independence and review tiers, tenant isolation, authorization,
+G1–G13, current-source tests/CI/performance, security records and protected branches. No gate
+waiver, design approval, phase completion or runtime acceptance is granted by this decision.
+
+**Continuation and exit:** resume the existing integration queue automatically after the
+control-plane PR is accepted. Preserve queue state at session end and use available
+continuation; never imply an ended session continues itself. Stop after final integrated SIT
+acceptance and audit and await the next owner roadmap.
+
+**Source:** explicit project-owner Control-Plane Realignment Directive in this session.
+**Recorded by:** top-level orchestrator, 2026-10-09.
+
+---
+
+### 2026-10-07 · Keep test role seeding private-only
+
+**Decision:** Thomas explicitly instructs: “make sure seeder and credentials md are not
+store in code or in repo. just seeded and check ... setup api rbac”. Remove the test-only
+role-user seeder, its credential-manifest writer, wrappers, dedicated tests/configuration,
+and public documentation from the repository delivery candidate. Role-specific test users
+may be prepared only through private operator-managed tooling, then checked through the API
+for identity scope and RBAC behavior. Do not store generated user credentials or a usable
+credential manifest in source control.
+
+Keep ordinary `minimal` / `realistic` / `hostile` data profiles, canonical default-role
+provisioning, production role defaults, and existing generic API/RBAC coverage. The
+role-seeder source, tests, and review evidence are preserved as an immutable private
+archive outside the repository; that archive contains no generated credentials or
+operational secrets. This is a user-directed scope change, not a test-gate waiver. The
+general seed-profile test suite remains in place.
+
+**Source:** Thomas's instruction of 2026-10-07, as recorded in #589 commit `99528ca5`
+(`chore: keep manual role seeding private`).
+**Carried to main:** by the S2 auth-hardening integration slice, 2026-10-10, by Claude Sonnet
+5.5 (`claude-sonnet-5-5`) at the conductor's instruction. The "remove the seeder" clause is
+already satisfied on `main`, which never contained the seeder, its manifest writer or its
+tests. This entry carries the recorded decision forward unchanged and adds no new decision.
+
+---
+
+### 2026-10-06 · Keep self-only personal writes session-only until explicit API-key scopes exist
+
+**Decision:** Thomas explicitly approves “Make self writes session-only (recommended)” for
+the identified API self-write class. API-key and MCP-key credentials cannot create, update,
+read-mark, or delete the caller's notifications; mutate the caller's notification preferences
+or workspace notification rules; or upload/delete the caller's avatar. These mutations require
+a real browser session and use the existing `requireSessionOnly()` guard. Existing session
+behavior is preserved. Read-only self routes remain unchanged. This applies whether the key is
+personal, MCP-flagged, or otherwise; self-row ownership does not bypass AK-9's read-only default.
+
+No notification, notification-preference, or avatar capability is invented. Reopening API-key
+write access requires a separately registered capability and explicit policy/schema contract.
+This resolves the known self-write eligibility class for these endpoints; it does not change
+workspace or instance key scopes, nor claim the #592 legacy-scope remediation is independently
+reviewed or stage-complete.
+
+**Recorded:** orchestrator, Thomas's explicit approval in this task, 2026-10-06.
 
 ### 2026-10-05 · Suppress the historical public TOTP test vector by exact fingerprint
 
@@ -6925,6 +6627,20 @@ Gate waivers, recorded per [UX quality gates](../02-design/ux-quality-gates.md).
 **Follow-up:** confirm or revert — if confirmed, the stage-gate list in [definition-of-done.md](../04-engineering/definition-of-done.md) says so; if reverted, release-plan.md is corrected
 **Approved by:** *pending — Thomas*
 
+### 2026-10-10 · Waived the `pull request template + security review` required check for the #602 merge
+**Waives gate:** `pull request template + security review` · **PR:** #602 · **Follow-up:** #616
+**Gate:** required status check `pull request template + security review` (ruleset `protect-main`)
+**Reason:** a deadlock between a truthfully labelled Opus security review and main's literal `GPT-6 Sol` label check. The model-aware check (#616) could merge only after #602. Owner-approved one-time lift, 02:13:05–02:15:37 UTC; see the 2026-10-10 entry "Owner decisions recorded late".
+**Follow-up:** #616 merged as `1fc04d05` (model-aware check); the check was restored and is enforced for every later PR.
+**Approved by:** Thomas, 2026-10-09
+
+### 2026-10-10 · P0 stage-gate activities deferred to before `2.0.0`
+**Waives gate:** P0 stage-gate activities · **PR:** #624 · **Follow-up:** #626
+**Gate:** stage-gate activities PG2–PG6 (2026-09-05 waiver: PG2/PG4/PG5 and k6; widened: PG3, PG6), P0 screen sign-off (DoD row 15, ✅ in the screen inventory), k6 baseline, 10k-row data test, full and reduced-motion E2E, backup restore ([sdlc.md](../04-engineering/sdlc.md), [definition-of-done.md](../04-engineering/definition-of-done.md))
+**Reason:** confirms and widens the 2026-09-05 consolidation waiver; each runs once over the whole surface before `2.0.0`
+**Follow-up:** #626 (the `2.0.0` release gate)
+**Approved by:** Thomas, 2026-10-10
+
 ```markdown
 ### YYYY-MM-DD · Waived <gate> in PR #n
 **Gate:** G-n
@@ -6937,6 +6653,820 @@ Gate waivers, recorded per [UX quality gates](../02-design/ux-quality-gates.md).
 
 - [ADR index](../01-architecture/adr/README.md) · [Risks](risks.md) · [Status](status.md)
 
+
+### 2026-10-09 · One bounded unchanged-head P0 G11 verification
+
+**Decision:** Thomas explicitly answered “Allow one unchanged-head G11 verification” to request `call_dea38dc3148b497a9835768df4be95b1`, item0. This grants one exception to the no-job-retry rule in `error-fix-loop.md` for only the existing hosted G11 job on frozen P0 head `66c736e71c87b2372ba1cbf8250236ac37191565`.
+
+The original run37888524785/job113683981417/attempt1 remains a failed19/22 result (LCP2556/2500ms, palette202.7/200ms, board636.7/500ms). The earlier22/22 result remains historical, source-bound evidence. Re-run only that G11 job once; preserve every source, budget, fixture, workload, assertion and original failure. No other failed job, whole suite or source is rerun under this decision. If this verification fails again, stop unchanged retries and investigate the retained evidence. No performance-threshold, merge, deployment, installer, security, runtime or phase-finalizer gate is waived. A failing required gate still blocks merge.
+
+**Recorded:** root from Thomas's explicit reply on2026-10-09 before dispatch. Existing current66 runtime/config proof stays scoped; this is no full-CI or task-source acceptance.
+
+---
+
+### 2026-10-09 · Branch-local SLA migration verification (07:00 UTC)
+
+The orchestrator permits #611 to append provisional journal idx 102/tag `0102_sla_pause_PROVISIONAL` and its snapshot to the preserved #513 parent, solely so normal owned disposable integration setup can test the defined existing SLA batch. Parent entries 0–101 remain unchanged. Accepted main migrations 0–87 remain immutable. This routine engineering allocation reserves no final central number and grants no integrated replay, release, deployment or acceptance authority; final numbering remains central after accepted P0. The owning branch and exact source are recorded in the migration ledger.
+
+**Recorded:** root engineering authorization under the existing integration directive, not a new Thomas product decision or gate waiver.
+
+---
+
+### 2026-10-09 · Manual SLA operations affect both metrics atomically
+
+**Decision:** Thomas explicitly approved applying each specified manual SLA pause/resume operation atomically to both response and resolution metrics. Existing conflict rules must roll back the complete operation if either metric conflicts; partial mutation is forbidden.
+
+This approval resolves metric selection only. It does not decide completion/manual-resume continuity, new response fields, audit/event names, migration allocation or acceptance gates. The independent existing SLA lane may implement the defined portion while those separate contract paths remain pending.
+
+**Recorded:** orchestrator from Thomas's explicit answer to `call_e05cf16ed31043d2b561c0df84e44d3a`, item 1, on 2026-10-09.
+
+---
+
+### 2026-10-09 · Apply the frozen-P0 defect exception to strict attribution proof (03:47 UTC)
+
+The actual V24 disposable strict run failed on three unexplained shadow rows/four occurrences despite matching HTTP outcomes and reconciled event/cardinality counts. Independent Sol adjudication requires request-correlated terminal strict decision and persisted-row provenance before these outcomes can receive a finite explanation. The orchestrator assigned a bounded source/proof correction to `p0_strict_witness_batch` under Thomas's existing required-P0-gate correction authority. This does not approve a policy change, blanket exception, new audit event, later-stage feature, weakened gate or unchanged rerun. Preserve original failed records. Any changed candidate requires fresh source/image binding, applicable independent reviews, CI and scoped compatibility adjudication before new runtime proof. Existing three partial UTC bucket observations are not automatically reused or restarted.
+
+The P1 dialog batch at `1c4f1f69f29ab4ecc00ccb12c04edb77436072ed` remains independently staged and does not enter P0. No new Thomas decision or gate waiver is claimed.
+
+---
+
+### 2026-10-09 · Reconcile queue and P0 evidence boundary (02:51 UTC)
+
+The execution queue and status snapshot were refreshed from live GitHub and the exact hosted evidence. GitHub returned 20 open PRs and 442 remote branches; accepted `main` remains `3096cb044bdf6ae98488bfc385f532fa6386343a`. All 177 accepted-main ancestor refs, 54 refs retained in active-PR ancestry, and 211 unassigned/HOLD refs remain preserved. Partial source overlap and ancestry do not close branches or PRs.
+
+For #606, exact head `81c04729eaf721f8619180b00df1f80721034eb3` has two independent Luna delta CLEAR reports and a full Sol security delta CLEAR report for the omitted-body no-op behavior. Focused owner PostgreSQL passed 41/41. Hosted run `37874560831`, integration job `113640040996`, passed 154 files and 1,814 tests in 924.92 seconds. E2E, G4, G8, unit and build checks pass. PR-template and OpenAPI drift fail. G11 is 19/22: LCP 2,800/2,500 ms, board 632/500 ms, and the create dialog is missing at `performance.bench.ts:260` after `create-work-item-trigger.click()`. This does not imply all performance budgets fail. Raw evidence is `/Users/heinthura/.codex/taskdesk-evidence/2026-10-09/p1-606-hosted-failure/81c-g11.private.log`. The bounded next source-owner step is to inspect the create interaction in mixed #589 descendants, including the historical #600 Escape experiment, before editing source. GitHub has no formal review entries on this head. The isolated exact-image boot/health/cleanup is not deployment or acceptance.
+
+For #608, exact head `8f1713934cb91fb7048930ae9b776b29cb67089b` retains two Luna and full Sol delta CLEAR reports and current 18/18 PostgreSQL DTO regressions, API typecheck, 225-operation OpenAPI and contract checks pass. GitHub reports the #589 base as unaccepted and conflicting. No gate or composition status is inferred from the delta reviews.
+
+For #609, exact head `21587556d3235ec927945dbc32c474079f973aff` remains draft on #606 parent `42a63482`; navigation tests pass 52/52, hosted integration is failed, PR-template/OpenAPI/G11 fail, and the base remains unaccepted. Continue normal parent reconciliation without rewriting history.
+
+P0 remains open. Exact V22 run `20261009T021341Z-12d9f899` is scoped off-shadow evidence; the third nonmember-404 observation is in a partial UTC bucket. The 27-source admission is guard-only; notification's new privacy-sensitive category and historical reuse remain blocked. V23 Sol admission is blocked by expired receipt/future window and was never executed. V24 remains implementation/repair only with no strict receipt or runtime. Keep the observation automation PAUSED, diagnose G11, establish exact-source strict/config prerequisites, and keep task proof last. No new runtime, strict activation, merge, deployment, release or stage-completion authorization is made here.
+
+The queue records a bounded next source-conservation preparation: create a path/blob-level owner manifest for already-compared #606/#598 overlaps and explicitly preserve the unapproved calendar manifest/lockfile changes. The preparation must not be used to close a branch/PR or discard any ref.
+
+**Recorded:** operational reconciliation from exact GitHub PR heads/checks, hosted run/job output, and the current P0 admission/runtime records. These statements update scheduling/evidence status and authorize no quality-gate waiver.
+
+---
+
+### 2026-10-09 · Resume eligible integration work with queue checkpoints; record #606/#608 answers (01:53 UTC)
+
+**Thomas’s explicit operating direction:** maintain one repository-backed execution queue for every open PR and active branch, select the next dependency-safe existing-work item automatically, and continue through execution-boundary checkpoints. Preserve the feature freeze. Checkpoints capture exact head, checks, review state, dependencies, owner, remaining action and disposition; refresh live GitHub before acting. A blocked lane does not stop other eligible existing work. This schedules work only: required independent reviews, exact-head CI, stage gates, Sol review where applicable, protected merge and finalizers remain unchanged. It does not authorize gate waiver, feature scope, deployment, release, or branch deletion.
+
+**Thomas explicitly approved two compatibility decisions:**
+
+1. **#606 free-comment PATCH:** when the body is omitted, treat the request as a no-op after existing permission, window, and parent checks. Do not mutate the comment.
+2. **#608 historical pending-action DTO:** serialize canonical `delete`/`user`; resolve legacy `person` to `user`; preserve the stored row, hash, proofs, and legacy approval refusal; fail closed when the target is unresolved.
+
+These decisions unblock only their named implementation paths. The assigned source owner must update the authoritative spec, code, and regression tests, then re-evaluate the exact candidate's ordinary/security reviews and hosted checks. No stable-v2 tag allowlist exception or new-version path was approved.
+
+The queue at [integration-execution-queue.md](integration-execution-queue.md) captures the 01:53 UTC live snapshot: 20 open PRs and 442 remote branches. #606/#608 are RUNNING under `existing_integration_repairs`; #589 source reconstruction is assigned to the integration agent; #602 remains root-owned; this queue refresh is assigned to the queue/metadata agent. All 177 accepted-main-ancestor refs, 54 refs retained by active-PR ancestry, and 211 unassigned refs remain preserved; unassigned refs stay on HOLD for source ownership/semantic comparison. The live exact heads have not thereby passed CI or review, and no PR is marked merged.
+
+**Recorded:** orchestrating session on 2026-10-09 from Thomas’s explicit answers and operating instruction, current GitHub API read, and the linked queue. Decision scope does not alter acceptance criteria.
+
+---
+
+### 2026-10-08 · Correct P0 candidate, hosted gate and runtime-date record (17:34 UTC)
+
+Thomas’s Oct 7 planning direction is reflected in [SDLC § Plan](../04-engineering/sdlc.md) and its stage-gate sequencing note: authorized dependency-safe implementation may proceed concurrently, while stage acceptance, each stage’s own exit criteria and the Sol phase finalizer remain ordered and mandatory. This resolves the contradictory “no stage starts before previous closure” wording without a workflow or gate waiver.
+
+Live GitHub capture at 17:32 UTC recorded 20 open PRs, 442 refs, and exact #602 head
+`12d9f899a3437a601e0da22a3c8b25ba9a70f430` on accepted base
+`3096cb044bdf6ae98488bfc385f532fa6386343a`. It was BLOCKED/MERGEABLE with no formal review
+entries; 29 checks succeeded, three failed and three were still in progress. Full run
+`37815263198` passed Postgres 138 files/1,667 tests, E2E 27, G4 and G8; G11 failed 19/22
+(LCP 2,604/2,500 ms, task-state 261/200 ms, board 651.8/500 ms). The source-bound attribution
+found identical source, fixture and initial assets and no supported code correction. Fast run
+`37815263256` passed environment-register checks and failed only the pending PR-template
+acceptance checklists; source binding is recognized. Keep G11 red and do not change product,
+fixture, thresholds or workload speculatively.
+
+The review chain remains source-specific: full Sol and two fresh Luna CLEAR verdicts apply to
+product source `650edd4`; fresh Luna and Sol CLEAR apply only to one-file/two-test fixture delta
+`8b792d0`; `12d9f899` adds the machine-readable binding and is not a fresh product review. A
+canonical private 12d Linux/arm64 image built and passed disposable off-only boot at
+17:33:44–17:34:22 UTC (UID 10001, empty enforcement, 88/88 ordered migrations, live/ready
+200, cleanup verified, persistent resources preserved). This grants no protected acceptance,
+persistent deployment, publication or strict activation.
+
+**Correction:** earlier Oct 8 status/decision text saying no runtime was run that day was
+inaccurate. V19 actually ran `2026-10-08T15:16:57Z`–`15:17:31Z` on source `23a01a62` in bounded
+off→shadow→off mode. Its adjudicated scope is one partial Oct 8 UTC bucket; it is not strict
+activation or a full-day claim. Nine changed nonmember-404 behaviors retain Oct 6 and Oct 8
+observations and still require an actual Oct 9 UTC bucket. Public config ordering observations
+remain Oct 4/6/8. Local date in Yangon does not substitute for an Oct 9 UTC observation.
+
+The private branch-owner ancestry inventory captured all 442 exact remote heads at
+`2026-10-08T17:31:48.692762Z`: 177 accepted-main ancestors, 54 retained by active-PR ancestry,
+and 211 unassigned for semantic comparison. PR references are appended to the retained-owner
+rows; ancestry is not semantic completeness or acceptance. Keep all source/branch history.
+Central migration state remains unchanged and provisional after accepted 0000–0087. Thomas has two API compatibility-rule decisions pending reply: preserve absent-body no-op
+behavior, and preserve legacy serialization behavior. Both remain unanswered; neither is
+approved. Preserve owners, feature freeze, and post-P0 reconstruction from accepted main; do not
+merge #589 wholesale.
+
+### 2026-10-08 · Freeze current P0 documentation candidate and preserve review boundaries
+
+At 17:09 UTC, live GitHub showed 20 open PRs and 442 remote branches; accepted main remained
+`3096cb044bdf6ae98488bfc385f532fa6386343a`. PR #602's frozen note-only candidate is
+`c55010e004e9f3becd226936ab2d2b4af5776108`. The corrected notification product source
+`650edd447899f5d9e52c50c718abef0f7aad91b2` has two independent credential-delta Luna CLEAR
+reports and a fresh full Sol CLEAR. Its later note-only successor has no current GitHub review
+entries; neither the historical `23a01a6` 22/22 nor `2b7192e` 20/22 G11 result transfers.
+At 17:09 UTC, c550 had 18 successful checks, two failures (registers and PR metadata/security review),
+and two checks in progress (Postgres 18 integration and G11); no current G11 verdict was available. Hosted runs `37813776017`/`37813776014`
+were active. The current canonical private Linux/arm64 OCI image build passed at 17:07:29 UTC with digest `sha256:6f74c8b2596699648ae87d381c2bea9d48c993f290ff119c6bb6d38ba5f4cfda`; the earlier diagnostic image was superseded by canonical `0.0.0-dev`. A disposable off-only image boot is active; there was no persistent deployment or publication.
+
+The private preserved-DEV readback documents 14 signed-in screens/flows and four visually
+confirmed seeded roles; portal TLS succeeds but the customer portal remains unavailable and
+customer workflows were not tested. PR #609 retains the existing month URL-state owner. Keep
+the feature freeze. Preserve all branch owners, reconstruct the post-P0 train from accepted
+main, and do not merge #589 wholesale. The current PR and 442-branch records are in the
+[disposition ledger](pr-disposition-ledger.md) and [branch inventory](branch-conservation-inventory.md).
+The central migration ledger remains provisional beyond accepted 0000–0087; no final IDs,
+applied-prefix rewrite, strict activation, protected merge, release or phase closure is
+authorized by this record. No strict or date-qualifying runtime was run today; the disposable off-only image boot is active and does not establish acceptance or a new date.
+
+### 2026-10-08 · Preserve live PR dispositions and centralize post-P0 migration replay
+
+The 16:56 UTC operational reconciliation records 20 live open PRs and their heads/dispositions
+in the [PR disposition ledger](pr-disposition-ledger.md), including #555's absorbed-by-accepted-
+main source conservation, #550's accepted-main semantic-audit closure, #607's MCP
+contract/review-register hold, and #602's current 20/22 G11 failure. The earlier #602 22/22
+result remains bound to frozen source `23a01a62ece3ca7d17105626f64ad78641435ec1` and does not
+clear the later review-note head. The local notification candidate `5ec7727` remains a blocked
+predecessor; its complete local successor `b890c86a0feaba018d298273527d86058cb56921` has
+author-reported checks and two fresh ordinary reviews: one CLEAR, one BLOCKED solely on the
+SMTP adapter render-to-send gap. The owner assigned the final structural boundary change to
+`packages/email`; implementation and a new review are pending. It remains unpublished. No
+review, check, or source-conservation result is transferred to a different SHA.
+
+The [branch conservation inventory](branch-conservation-inventory.md) lists all 442 live
+remote refs with exact heads. Accepted-main ancestry is credited only where the exact branch
+head matches captured ancestry data. Active heads follow the PR disposition ledger; unmatched
+or non-ancestor historical branches remain HOLD for source-ownership verification. This
+inventory is not a semantic audit of every branch and authorizes no deletion.
+
+The [central migration replay ledger](migration-replay-ledger.md) records accepted migration
+history 0000–0087 as immutable and candidate post-0087 SQL as provisional owner material.
+Compose selected existing feature owners from accepted `main` only after P0 acceptance, replay
+each semantic SQL unit once, assign one contiguous tail after selection/order freeze, and
+regenerate snapshots and journal from the composed schema. #589/#598 remain comparison trees,
+not whole-train merge candidates; the #608 provisional 0112 body is distinct from the train's
+0112 and requires separate final numbering if selected. This record authorizes no migration
+allocation, applied-prefix rewrite, deployment, merge, gate waiver, strict activation, or phase
+closure. The GHCR/GitHub release direction and feature freeze remain as previously recorded.
+The existing October 9 automation preserves historical V19 evidence bound to source
+`23a01a62ece3ca7d17105626f64ad78641435ec1` and requires corrected-candidate
+rebind/adjudication; V19 is immutable and no runtime was run today.
+
+### 2026-10-08 · Bounded public-config cutover criterion substitute
+
+**Decision — Thomas explicitly approved in this chat:** “Approve the bounded public-config criterion substitute (recommended)”. The approved question named public `GET /api/config` before the shadow guard and proposed proving its unchanged public response/source ordering and verifying config-source selection in the disposable strict/rollback test, while preserving every other source's shadow requirement.
+
+**Exact exception:** only `GET /api/config`, owned by `apps/api/src/config/policy.ts`, may use source-bound public-response/source-ordering proof in place of an impossible shadow tally/comparison: `apps/api/src/index.ts` mounts this bootstrap endpoint before the authenticated shadow guard. Verify its registered public contract, unchanged response/ordering, exact API/policy/image identity, and source selection plus health and reversible rollback in the independently reviewed disposable 28-source config stage. Preserve actual dated public observations when available; do not fabricate a shadow row, full-day coverage or elapsed-time approval. The exception does not turn a raw HTTP200 into proof of all strict behavior.
+
+The existing exact-source review, eligibility and required CI/runtime gates remain. Every other policy source retains its documented shadow/coverage/date predicate. In particular the nine changed eligible nonmember404 behaviors still need their remaining actual October9 observation, and `apps/api/src/task/policy.ts` remains last after every preceding source and fresh zero-legacy-only role/API-key re-key proof. Retain the legacy key for rolling upgrade/rollback. No source, strict setting, persistent DEV or production state is changed by this record. New runner/receipt bindings, if needed, require their own appropriate independent review; a machine receipt cannot grant Thomas approval.
+
+This bounded decision supersedes the earlier public-config hold only to the extent stated. It is not a G11 waiver, a general pre-guard/public-route exception, a permission expansion, a task activation, a protected merge approval outside normal gates, or phase completion. Signed release operational proof remains after otherwise eligible protected merge and before P0 finalizer/closure.
+
+**Recorded:** root at 2026-10-08T16:21:59.295073+00:00 from Thomas's explicit question reply, with the independent prerequisite packet retained privately.
+
+---
+
+### 2026-10-08 · Retain GitHub release/package publication; cancel Docker Hub target
+
+**Decision (Thomas, direct instruction):** GitHub already has the release image. Keep TaskDesk publication in GitHub Container Registry (GHCR), GitHub release tags/assets and packages. Do not push to `bimdevops/taskdesk` or any Docker Hub repository. Continue eligible pull-request merging through the existing protected review/CI flow.
+
+This supersedes the earlier Docker Hub destination selection; it does not authorize merging red or unreviewed candidates, unsigned publication, arbitrary release tags, enforcement activation, or phase closure. Existing GHCR signing/scanning/provenance and immutable accepted-source requirements remain. Local SIT remains the existing Traefik443 `ticketing.localhost` / `portal.localhost` stack. Registry-override PR#610 is no longer needed for this destination and is closed with its exact source, branch, reviews/tests and original G8 failure preserved; no merge, deletion or gate waiver. No Docker Hub push occurred. Historical destination decisions remain below.
+
+### 2026-10-08 · Signed installer release proof after protected merge, before P0 closure
+
+**Decision — Thomas explicitly approved in this task:** “Approve signed-release proof after merge, before P0 closure (recommended)”.
+
+The new signed-archive release workflow validates that its selected source is already reachable from accepted `main`. Running the real signed release before accepting that source would conflict with this trust boundary. Preserve all pre-merge independent reviews, required exact-head CI, installer regression tests and exact-image boot checks. After eligible protected merge, immediately run the real signed installer, upgrade and rollback proof from the protected-main release workflow; complete those proofs before the additional fresh P0 phase finalizer and any P0 closure claim.
+
+This decision changes the timing of the real signed-release operational proof only. It does not bypass branch protection, source eligibility, certificate/workflow identity checks, signature/provenance verification, performance or security gates; it authorizes no unsigned fallback or invented signature identity. Installer/runtime failures remain blockers to P0 closure. Deployment and final SIT acceptance must use verified accepted source.
+
+---
+
+### 2026-10-08 · Freeze new features and complete final integration/SIT acceptance, then stop
+
+**Decision — Thomas, explicit final integration directive:** stop all new feature implementation and feature branches. Continue only existing-work integration and acceptance corrections: conflict resolution, security/correctness defects, failing functional tests, migration compatibility, build/packaging/SIT compatibility, and acceptance-blocking accessibility/UI defects. Do not expand a feature because its specification contains later requirements. Account for every PR and branch, preserve useful history, and reconstruct the cumulative #589/#598 integration trees as reviewable owner-source units rather than merging their enormous displayed diffs blindly. Preserve accepted migration history.
+
+The required final path is protected integration, current-head review and CI, verified immutable image publication to the existing Docker Hub repository `bimdevops/taskdesk`, deployment and functional/security acceptance in the existing SIT environment, a fresh post-integration audit, reconciled records, and the final report. Thomas also named local Traefik TLS on port 443 for current local SIT testing. Root has recovered OrbStack's existing local runtime: original five TaskDesk containers and named volumes remain present/running; unrelated WSO2 workers were preserved. This recovery is not an accepted image publication or a new SIT deployment. The separate Docker Desktop `desktop-linux` context had appeared empty before OrbStack was started; no data-loss claim, Docker reinstall, or global-context change follows.
+
+**Current evidence boundaries:** inventory captured `2026-10-08T13:14:47.800345Z` records 23 open PRs, 441 GitHub branches, 198 local branch heads, accepted `main` `3096cb044bdf6ae98488bfc385f532fa6386343a`, and no exact-head independent approval in its captured GitHub review records. Counts are capture-time only. #602 `23a01a62` has hosted full/G11 22/22 evidence, while P0 operational acceptance is not complete. V13's 114 offline checks do not establish runtime: its guard refused before acquisition at 13:12 UTC with required authorization/review bindings pending; preserve the V12 failure. Actual October 9 evidence remains pending where the three-date contract requires it. Do not run more performance experiments or change budgets.
+
+#608 current source is `76b833be`; its focused 2-file/17-test result is current. Earlier 32-test and image/migration evidence belongs to the earlier source and does not transfer. #609 `da4e0f62` focused 3-file/45-test route correction is recorded, with final reviews/hosted acceptance pending. No PR is accepted or merged by this record. Credentials and seeders stay private.
+
+After final accepted-source SIT audit and report, **STOP all implementation and wait for Thomas's next roadmap**. Do not generate a roadmap or automatically resume. This is a freeze and sequencing decision, not a gate waiver, product completion, deployment acceptance, or approval of any held behavior.
+
+**Recorded:** top-level orchestrator at `2026-10-08T13:27Z` from Thomas's attached final integration directive, read-only consolidation inventory/slice reconciliation, exact-source evidence, and root's runtime recovery report.
+
+---
+
+### 2026-10-08 · Native mention composition access and mute continuity
+
+**Decision — Thomas approved in this chat:** use a permissioned workspace-scoped preflight for composition warnings; recheck recipient access when saving. Accessible mentioned people become watchers without being unmuted. Preserve every explicit notification mute; people without current access receive no notification. Public customer mentions retain existing CA12 public-comment/reach requirements; internal comments exclude customers. This authorization adds no cross-tenant directory or identity-derived authority.
+
+**Implementation ownership:** the isolated CA12 lane owns its feature/API specifications and complete code/test batch. Root owns this decision and live status. Creation/preflight implementation continues; the separate question about mention notifications on edits remains unresolved and dependent behavior must wait. This is product authorization, not review, hosted CI, deployment or phase acceptance.
+
+---
+
+### 2026-10-08 · Constrained instance-event outbox scope for complete Users deactivation
+
+**Decided by:** Thomas, explicit approval in this task: “Approve the constrained instance-event schema correction (recommended)”.
+
+**Conflict resolved:** pending-actions.md requires instance-scoped user deactivation and its registered request/decision/execution events; events.md registers the existing event keys. The prior data-model/outbox constraint requires every event row to have a workspace. No fabricated tenant scope may stand in for an instance event.
+
+**Decision:** permit a null outbox workspace only for documented instance-scoped event types. Tenant events remain workspace-bound, with the invariant enforced in the schema and exercised by meaningful positive/negative regressions. Implement the required migration together with the complete P4 Users/deactivation/pending-action UI and API slice. Canonical pending-action vocabulary remains `action='delete'`, `target_type='user'`; this approval does not register `user_deactivation`/`person` or any new event key.
+
+**Integration:** allocate a provisional feature-branch migration through the central ledger; reconcile final numbering in the post-P0 integration freeze, preserve accepted applied migration history, and obtain the required independent ordinary/security reviews and exact-head checks. This is P4 feature authority, not P0 scope expansion, a gate waiver, or deployment/enforcement approval. Credentials and test seeders stay outside Git.
+
+### 2026-10-08 · Reconcile current performance, runtime report failure and concurrent SDLC entry
+
+Thomas's realignment directive authorizes concurrent dependency-safe P1–P4 implementation
+while preserving independent staged acceptance. The SDLC Plan entry still required the
+previous stage to be closed; it now matches the already updated roadmap and canonical
+AGENTS/phases rule. This changes execution sequencing only, not acceptance, reviews,
+security, CI or finalizer gates.
+
+Current P0 source6fe restores the product/CI source of01de/1878 after rejecting670/d4.
+Automatic full run37708668475 passed20/22, failing LCP2548/2500ms and board656.8/500ms.
+Historical green evidence is not relabeled. A bounded real-popup-preserving correction
+is authorized by those failing existing gates; benchmark contracts remain unchanged.
+
+Freshly admitted private V5 executed on clean1878 in an owned disposable environment
+at00:51:51.875–00:52:22.220UTC. Live/ready200 and UID10001 passed, but report binding
+validation failed after acquisition. Original partial records stay retained; no complete
+runtime, strict activation or phase acceptance is claimed. Every original Docker resource
+was preserved and no acquired resource ID remains. Root diagnosis identifies tuple runtime
+journeys versus list-only validation; structural regression and independent adjudication
+remain required. The independent date addenda admit nine changed eligible read cases from
+the original actual October6 raw observation, preserve its later harness failure, correct
+the two admin reads to unchanged403, and prohibit blanket/full-day evidence claims.
+
+P1 current3cb native43 tests and browser1 passed after one complete remediation batch.
+Previous6aed blocker reports remain historical and current delta/security review remains
+required. No product contract question, gate or secret-scanner finding is waived.
+
+**Recorded:** top-level orchestrator at 2026-10-08 00:54 UTC; status snapshot links the exact sources,
+private evidence and current acceptance limits. No merge, release, DEV mutation or cutover.
+
+### 2026-10-07 · Keep P0 reconstruction separate from #599 and rebuild later integration after acceptance
+
+Thomas's current instruction is to keep the attachment/public-origin work in #599 outside
+P0 and to use frozen PR #583 head
+`5326937460b195d8e69584c0cb99305348330a95` as the P0 reconstruction base. The read-only
+scope audit at
+`/Users/heinthura/.codex/taskdesk-evidence/2026-10-07/p0-pr583-readonly-scope/scope-audit.md`
+identifies the #599 commits and paths, confirms no overlap with later P0 product paths,
+and provides the minimal ordered P0 replay set. Do not replay #599's `51d151e8`,
+`9abb6013` or `7c5ae58c` into the P0 successor. Do not carry forward the contaminated
+`359353cf` review record; regenerate P0 review material against the reconstructed exact
+candidate. Hold `a50ae92a` until its exact-head hosted G11 result and root classification.
+
+The audited ordered product replay set is `a0ec2679c95c6de91e7a17196e62566cbcd45a28`,
+`9bced3e3178a70b3a1984837836824e4a193c89f`,
+`bae2b3fdeeb458f059d71e7519a0aa8ab87b0cd2`,
+`5a493671a6eca00268eec9323565ff8953d244cb`,
+`0dd9a861318040ed3ba4038152724e8521e4e10c`,
+`d76fc71c4b03d3b2275bce62439022c4e784f8e5`,
+`343b45bc9dbb40baef7df5a84881553f810abf59`, and
+`4bc5259882d2d7eb510ece6f3e3b57a5173f9dc9`. This is a scope record, not an instruction
+to bypass exact-head review or acceptance.
+
+The accepted #579 source `f10f9a8fd383044926136cb0c233888e087d2ef9` remains the exact-head
+hosted 22/22 G11 comparison baseline; it is not acceptance evidence for a changed P0
+candidate. The audit also corrects source attribution: #583 exact head had a 19/22 result;
+the 16/22 result belongs to later product snapshot `bae2b3fd` and must remain attributed
+there.
+
+The current #589 `dfa0324` source/build and 339.1/350 KB work-list graph results do not make
+its integrated train final. Its earlier hosted Postgres run at `27fb81fe` (154 files / 1804
+tests passed) is historical. After P0 is accepted into `main`, rebuild the dependent
+integration candidate from that accepted source and rerun exact-head review and applicable
+acceptance gates. This records sequencing and evidence attribution; it does not claim any
+PR, stage or runtime acceptance, change thresholds, waive a gate or authorize a merge.
+
+**Recorded:** documentation author at `2026-10-07T16:50:58Z` from Thomas's current
+instruction, live GitHub heads/checks and the cited read-only scope audit.
+
+### 2026-10-07 · Refresh live blockers and preserve exact evidence boundaries
+
+Live GitHub readback at `2026-10-07T15:56:20Z` records accepted `main` at
+`3096cb044bdf6ae98488bfc385f532fa6386343a`, reviewed DEV at
+`08842235047a3ab2714427edce80331b94558150`, and frozen P0 closure #583 at
+`5326937460b195d8e69584c0cb99305348330a95`. Current heads are #600
+`343b45bc9dbb40baef7df5a84881553f810abf59`, #599
+`7c5ae58c67c3572b2f4f52864788f78e726daa0d`, #598
+`3fecb75ccd4a1fcbfce5414de6d222c46bb5e94e`, and #589
+`27fb81fe7d4a2f02d50c0f0f4db8b7bd9720697a`. None is claimed merged or accepted.
+
+Current #600 hosted G11 is 18/22 with four failures: LCP 2668/2500 ms, palette 215/200 ms,
+state 249.3/200 ms, and board 670.3/500 ms. Thresholds are unchanged. The PR-template/security-
+review check is also red; the current hosted Postgres integration, protected-route E2E, G8,
+registers, static, unit, OpenAPI and build checks pass. Root separately reports a six-browser
+pass, cleanup pass, and image `03d22ca62f1c3d8e3a2df404ce38f38d54b319d794bed30368af3e9922f86584`
+pass. Two independent Luna contexts cleared the complete 23-file batch. Causal analysis remains
+underway. The earlier 5a493 G11 22/22 result is historical and does not clear the current 343
+failure.
+
+Current #598 checks fail for static, protected-route E2E, registers, PR-template/security-review,
+G8, G11, OpenAPI drift and build. Postgres integration and the listed policy, a11y, red-probe,
+unit, domain-coverage, supply-chain, Helm and CI-match checks pass. The `cde1` native result was
+1/6, `8cde` was 3/6, and `a9686` was 6/6 with cleanup. The current `3fec` change is a canonical
+plain-text test delta only; no runtime result is inferred from it. #589 has current Postgres
+integration pass but fails protected-route E2E, registers, PR-template/security-review, G8, G11,
+OpenAPI drift and build. Its prior 154-file/1804-test result (1799 pass, 5 fail) remains historical.
+The four OpenAPI deactivation enums and WH12 remain owner-pending.
+
+Private v8 remains outside Git and unexecuted against API/database/Docker by its author. Its
+operator batch manifest SHA-256 is
+`99dfe3f623f4f9a53edf9a5f0b697a18a689006c531f3a8dd455c89ec3d2d648`; offline checks cover two
+files and seven tests. Independent ordinary/Sol review and root-owned PG18/all-role/API runtime
+remain pending. The prior root-owned v6 native attempt completed migration but stopped before
+tests or user creation because Vite/Vitest lacks `import.meta.resolve`; cleanup passed. No
+all-role users have been persisted and the private credential root is empty.
+
+The frozen #583 hosted G11 record remains 16/22 with six failures. The current #600 G11 fails;
+therefore P0 remains blocked. No quality gate was waived, no private runtime or persistent DEV
+change is authorized by this record, and no phase completion, cutover, release or protected merge
+is claimed.
+
+**Recorded:** documentation author at `2026-10-07T15:56:20Z` after live GitHub readback and
+root-provided private evidence.
+
+### 2026-10-07 · Record central source fixes, current failures, and private v6 boundary
+
+**Operational update; no waiver or acceptance claim.** Live readback at 15:02Z keeps `main` at
+`3096cb044bdf6ae98488bfc385f532fa6386343a` and reviewed DEV at
+`08842235047a3ab2714427edce80331b94558150`. #589 is now `047cf99f39ad0beeb25aa2597c544b6e0bda3225`,
+#598 `8cde2b37d7814a3d462e894c08dc06b888bbda92`, and #600
+`5a493671a6eca00268eec9323565ff8953d244cb`. Current hosted rollups remain failed or in progress;
+consult the dated status snapshot for their names and current heads. No merge, DEV refresh, release,
+enforcement activation, cutover, or phase completion occurred.
+
+The pushed #589 source batch contains the authorized session-only audited withdrawal correction,
+with current `instance:admin` authority and the explicit elevation exemption; it also corrects the
+admin fixture restoration after a helper resets the authenticated session to the requester. The
+batch preserves the exact 19-capability response and dormant-JIT behavior when the maximum role
+ceiling is lowered. The earlier hosted result (154 files, 1804 tests, 1799 pass and 5 fail) remains
+historical and has not been replaced by a post-fix hosted result. Four OpenAPI deactivation enums
+and WH12 remain owner-pending. No waiver or broadened status acceptance is recorded.
+
+P2 #598's root-owned native result is 3/6, with the claim-pair auto-system, indirect-blocking graph,
+and event-envelope reference assertions failing. Prior `cde1` 6/6 and cleanup evidence are retained
+without relabeling the current result. The author remediation is pending. P0's hosted G11 record
+remains 16/22 with six failures and unchanged thresholds; the canonical Linux baseline's 145-story
+run exited 1 only because the new baseline file was missing, with no other diffs and unchanged
+cleanup sets. Neither result clears G11.
+
+Private tooling v6 remains immutable and outside Git. Its offline 34 tests and independent Luna/Sol
+reviews are CLEAR, but actual all-eight-role API-backed runtime has not been executed. The v5 owned
+PG18 attempt stopped at the verifier before migration/user/API work because PostgreSQL reported
+`127.0.0.1/32`; cleanup passed, zero users were created and the credential root is empty. V6 uses
+canonical `host(inet_server_addr())` formatting and awaits root-owned runtime verification. No
+credentials, private manifest, or source tooling is included in this record or repository.
+
+**Recorded:** documentation author at 2026-10-07T15:02:23Z after live GitHub head/check readback.
+
+### 2026-10-07 · Approve audited session-only admin withdrawal and record current evidence boundaries
+
+Thomas explicitly resolves the admin-initiated withdrawal behavior question raised against
+central #589: the operation requires a browser session and current `instance:admin` authority,
+is audited, and has an explicit elevation exemption because withdrawal grants no authority.
+This is a narrow implementation contract for the admin-withdrawal route. It adds no capability,
+role grant, membership change, or exemption for another operation. It does not waive ordinary
+review, security review, hosted checks or the exact-current-head requirement. The author must
+reflect this answer in the canonical feature/policy contract before treating the source fix as
+contract-complete.
+
+P0 PR #600 source `9bced3e3178a70b3a1984837836824e4a193c89f` has two independent Luna CLEAR
+reviews and an exact-source GPT-6 Sol CLEAR review; its current PR head is the later review-note
+commit `359353cf28784870890505e777112ede581c357d`. Browser evidence covers the legacy desktop
+and mobile case plus the modern one-file/five-test canonical case. The private exact-image
+receipt records stock-Traefik TLS boot and four JSON health checks for image
+`sha256:171d2ca2038dd26a3e41a712fa5e889bfd56b0157609911a7b10986d1af473a2` at source `9bced3e`.
+Cleanup removed five containers, three volumes, two networks and two aliases, with global
+resource sets unchanged, ports 4296/4297 absent and an unknown volume preserved. That receipt
+explicitly has `persistenceAccepted:false` and `installerAcceptance:false`; it is not persistence,
+official-installer, G11 or P0 acceptance. Hosted #600 G11 and PR-template/security-review checks
+are red and Postgres integration is running at the snapshot; no gate is waived.
+
+The admin-withdrawal author inadvertently started native integration despite an offline-only
+assignment. Root stopped the activity. The initial inactive-user request returned 503 and its
+retry stalled at DB setup; preserve both results as failures, not acceptance. The root audit at
+`2026-10-07T13:44:18.977587Z` shows no extra Docker containers, volumes or networks versus the
+closed boot baseline. It does not identify the database target or process; those remain under
+verification. Do not infer database integrity, complete cleanup or successful persistent
+all-role seeding. Persistent DEV remains at `08842235047a3ab2714427edce80331b94558150`.
+
+**Operational correction:** the three commands used `CI=true env -uTASKDESK_DATABASE_URL`; source
+inspection confirms global setup selects fresh Testcontainers Postgres 18 and assigns its URL
+before test workers. The historical container/DB target identities were not captured, so this
+mechanism does not retroactively prove which resource was reached. The root process audit now
+shows zero active integration invocations and no root process kills; current Docker global sets
+remain at zero extra objects. Preserve unknown historical provenance. The current #589 head
+`314ca3636ad9a514e1e80d64f5e3ad6b64b7a58e` has an author-reported broadened 403-or-503
+inactive-user regression/failure class; keep it open for ordinary review. The author reports
+offline checks passed, but no current-head review or integration acceptance is claimed.
+
+Separate source-alignment evidence at current #598 head `2dc62db3d6ab41f4fde044e8316cde2844a13058`
+finds inherited test-only role-seeder files still tracked at
+`apps/api/scripts/seed-test-users.ts`, its test, and `scripts/seed-test-users.ts`, along with the
+public #597 review note. The owner must remove this inherited seeder batch without rewriting
+history; retain canonical generic seed-default-workspace-roles behavior. No usable credentials
+were detected. The private all-eight-role tooling has not been executed, and no persistent test
+users are asserted.
+
+At the live refresh `2026-10-07T13:46:26Z`, accepted `main` is
+`3096cb044bdf6ae98488bfc385f532fa6386343a`; #589 is `314ca3636ad9a514e1e80d64f5e3ad6b64b7a58e`,
+#598 is `2dc62db3d6ab41f4fde044e8316cde2844a13058`, #600 is
+`359353cf28784870890505e777112ede581c357d`, and #599 is
+`7c5ae58c67c3572b2f4f52864788f78e726daa0d`. #589 advanced after its ordinary auth report at
+`411f672`; that report is not a current-head verdict. The admin decision resolves the behavior
+question only. #598's previous review panel also predates its current remediation head. No
+protected merge, release, enforcement activation, persistent DEV refresh or phase completion is
+claimed by this record.
+
+**Recorded:** root at actual `2026-10-07T13:46:26Z`; user answer is Thomas's explicit approval,
+not an inferred decision or quality-gate waiver.
+
+The final documentation refresh at `2026-10-07T13:53:14Z` re-read `main` and the #589/#598/#600/#599
+heads; all matched the values above. A follow-up root process audit reports zero active
+integration invocations, no root process kills and zero extra Docker objects at audit time. It
+does not supply the missing historical Testcontainers identity or DB target, so the provenance
+and acceptance limits above remain unchanged. CI state is the earlier 13:46:26Z rollup; no
+check was rerun for this documentation update.
+
+### 2026-10-07 · Record complete P0 local evidence and current candidate blockers
+
+**Evidence update; no waiver, merge or phase claim.** The frozen source532 local lifecycle run `20261007T111221Z-63bfb1` passes all five phases with ledger assertions 88/88/80/88/88 and 88 bounded HTTPS requests using the same fixtures, encrypted secret and attachment HMAC. Cleanup's actual sequence was: 11 resources issued at 11:12:21.490949Z, last measurement at 11:31:02.333447Z, cleanup at 11:32:16.822024Z; ten containers, six named volumes, four networks and two aliases removed, global resource sets unchanged, ports4296/4297 absent and unknown resources preserved. Scheme-only signed-URL TLS reconstruction is not official installer/product TLS, Gate C, cutover, G11 or P0 acceptance.
+
+#599 source `51d151e8c2ff973c899c8b257f2fa21d9ee8fb0c` builds as OCI `sha256:e706fdf02622e0b44be43cf405b1cc02b05a65374d116e32c7bce8f50a7ffed4`; its bounded stock-Traefik runtime passes the native HTTPS attachment journey without URL rewriting. Test-only successor `9abb60134cf14f8b252e2c5f94635a6026eebfd4` passes root's native two-file/23-test run and cleanup. Fresh independent Luna and Sol delta reviews are CLEAR. Current PR head `7c5ae58c67c3572b2f4f52864788f78e726daa0d` adds only the review note; required hosted checks are pending. Runtime remains source-51 evidence, not a new-head runtime result. #583 G11 remains failed; no manual retry or waiver.
+
+The pushed #589 head at refresh is `99528ca562c22ffee9e926bfe0879785f1385322`. Preserve its original native 139-pass/1-fail/23-not-executed run and the later diagnostic's 162/163 pass with one SCIM fixture constraint failure; no offending source row or product cause is proven. Outbox's 23 passed in suite JSON order. Cleanup is complete with zero clients, one container and one named volume removed, global sets unchanged and port55442 absent. #598 is at `07831d2f7967adb7156158e30eee376633869d4e`; its three-Luna panel has two BLOCKED verdicts and a third review running, while its custom-field ownership, required-file behavior and AU-action names remain pending Thomas.
+
+Private #995 standalone run is 30/36 and fails its Git-root assumption; its v2 correction is in progress. Native parent run 124 and final run 162/163 fail on stale `configVersion`, traced to test configuration rather than product behavior. Full Sol blocks two withdrawal-authority defects; Thomas's separate admin-endpoint decision is pending. Role source archive/removal work #995/#597 is closed. Root reports all cleanup complete. Accepted main309 and DEV088 remain unchanged; no release, enforcement activation, merge, persistent DEV refresh or P0 completion occurred.
+
+**Correction and disposition at actual 2026-10-07T12:30:33Z:** Thomas approved the seven `request_type`/submission actions and system auto-accept; the approval is recorded at #598 source `07831d2`. #598's completed panel is integration BLOCKED with one finding, domain CLEAR, and UI BLOCKED with five findings; the third review is complete, not running. For private #995, keep distinct results separate: standalone 30/36 with six Git-root-assumption failures; candidate native 162/163 with one stale-`configVersion` test-configuration failure; separate parent run timed out at 124 tests. The central one-file native version-fixture change is currently dirty/uncommitted and changes test configuration only. The P0 lifecycle run began at 11:12:21.490949Z; 88 bounded HTTPS requests succeeded, with cleanup quantities/timestamps as recorded above. No permission/token payload or product-semantic change is asserted by this correction.
+
+**Recorded:** orchestrator at actual 2026-10-07T12:24:33Z; current PR heads refreshed from GitHub. Historical status snapshots and original failure evidence remain intact.
+
+### 2026-10-07 · Record complete role-fixture source and full P1 batch; retain actual test limits
+
+**Operational evidence, no waiver or new behavior approval.** All-eight-role seed source345 clears final independent Sol after runtime-random private login aliases/passwords and structural boolean diagnostic boundaries. Notes-onlya73 binds actualsource345; dedicated native35 is attributed to323 with unchanged producer/harness, not relabeled current. Root owns and verifies all temporary PG18 parent-volume cleanups. New seed CI environment findings stay open for a complete tooling correction; no application environment register or quality gate is weakened.
+
+Full defined P1 `fcf2a97a` freezes before the fresh three-context bulk review. Exact-head views native18 passes; nonexistent export selector means export did not run. Prior636 export proof stays separate. First reviewer finds the shared user-preference pin concurrency defect; collect the whole panel before one structural remedy. Team-lead-dependent behavior remains held.
+
+P0 v5 actual TLS/health/signup/persisted admin/session/CSRF succeeds locally, then erroneous trailing slash404 stops before fixtures. Unsupported signup DTO role assertion and initial cleanup mount ordering comparison are root test defects, not product authorization or ownership waivers. Ingress-first captures and full mount-set/full-ID/label/reference checks yield exact cleanup; unbound anonymous volume remains preserved. Independent v6 Sol blocks baseline CSRF incompatibility and signed HTTP URL expectation. Complete v7 audits both source versions and permits only explicitly verified local HTTPS reconstruction of signed path/query while keeping shipped URL correctness separate. No current runtime window, source extension, signed release, G11 retry, cutover, protected merge, date carry or phase acceptance is authorized by this record.
+
+**Recorded:** root at actual 2026-10-07T06:14:20.333654+00:00 under standing batch implementation and verification authority.
+
+### 2026-10-07 · Restart parallel execution and correct route-measurement provenance
+
+**Decision the orchestrator made:** restart bounded parallel P0 execution-plan repair, complete later-train implementation and actual-source gap inventory. Keep one author per source tree; implement the collected class before bulk review. This changes scheduling, not review tiers, gate semantics, phase scope or protected-merge authority.
+
+**Explanation:** actual fresh P0 attempts expose wrong fully mounted paths, including a root health probe that returned SPA HTML200. Preserve those failures and replace individual path guesses with one exact-source route/mount matrix for all phases. Clear static v10 measurement is not live persistence or phase acceptance. Both owned runs are fully cleaned; no existing DEV resource is restarted or modified.
+
+**Authorization and limits:** Thomas requested restart/continue all tasks and P0 priority. Existing decisions remain in force, including query acceptance deferred toP4 and private all-role fixtures. Pending human choices remain unanswered. No gate is waived, credential published, unreviewed source deployed, enforcement activated or phase completed. Scheduling can be reversed by stopping a lane; original evidence remains immutable.
+
+**Recorded by:** root orchestrator, 2026-10-07T10:11:27.558320+00:00.
+
+### 2026-10-07 · Testing usernames are private runtime credentials; preserve failed ingress evidence
+
+Thomas explicitly requires role test seeding and forbids usable usernames, passwords and credential Markdown in GitHub. Apply this literally: generate actual login usernames at runtime, alongside strong random passwords, retain them only in the external private manifest and reuse that manifest for additive/idempotent seeding. Public code may contain role keys and non-login fixture identifiers; it must not construct a fixed usable login username. No production provider defaults or role grants change. This supersedes the narrower interpretation that only passwords were private.
+
+Complete seeder3bd has narrow ordinary bootstrap CLEAR/12 offline tests, while its full Sol blocks the fixed login-username class. The prior positive enabled-customer integration14 at2cb remains valid for that unchanged producer, but does not establish the dedicated runner: its global setup still starts Testcontainers. Collect the complete privacy/manifest/harness fix before one changed-head review and actual root-owned disposable DB run.
+
+P0 stock-Traefik v3 is actually executed in new window/run20261007T051455Z-70b41b. Candidate image/boot, migrate exit0/ledger88, UID10001 and mount ownership pass. First CA curl fails connection refusal before fixture writes; requested port exists in HostConfig but live443 mapping is null. Stop bound ingress first, preserve all logs/inspections, then independently remove exact owned resources. Cleanup PASS/global sets unchanged/unknown volume preserved are recorded privately. No persistence/official TLS/GateC/performance/phase claim follows. Prepare one complete ingress-network/publication successor; do not retry failed identity or infer an OrbStack defect from incomplete evidence.
+
+**Recorded:** 2026-10-07T05:25:08.613310+00:00; main/source/DEV unchanged.
+
+### 2026-10-07 · Prove positive customer sessions; stop custom proxy expansion
+
+**Operational application, not a gate waiver.** Full seeder Sol correctly rejects the earlier customer person/organisation-only fixture. Complete successor `2cb1275d` creates genuine canonical customer role plus materialized organisation membership, validates exact retry provenance and tests actual configured portal login/session. One isolated DB-only native suite passes14; test provider state and private credentials are cleaned. Root verifies ownership/zero clients and removes only the bound named PG18 resource with absence evidence. Draft#597 contains reusable code/contract and sanitized test claims, no usable credentials. Final current-head review remains open.
+
+The Native Host-only explanation is disproven by the rerun. The confirmed cause is the harness hardcoding localhost instead of the integration-configured portal.localhost; require actual registered origins and matching Host. Preserve all failed candidate/run receipts; do not call the former disabled-provider negative test positive customer acceptance.
+
+After v10 repeats the proxy authority/cleanup class, root changes altitude: stop bespoke Python proxy remediation and use existing pinned stock Traefik with explicit bounded manual root commands. Preserve blocked versions/reviews. Complete private static-plan v2 fixes all collected headless-route/CSRF, proxy/port and cleanup-order findings. It still needs exact independent Sol clearance and a fresh genuine runtime window; no official installer/TLS/signature/strict/date-carry/phase gate is waived.
+
+All P1 ordinary findings are collected before one complete successor batch. Root explicitly hands sole worktree ownership from the paused partial author to the Luna completing the full UI/API/cache/URL implementation. Missing team-lead-dependent behavior stays blocked by the existing decision path; no new schema/migration or fallback is invented. No0119 is allocated.
+
+**Recorded:** root at actual 2026-10-07T05:02:37.599656+00:00; P0/main/persistent DEV unchanged.
+
+### 2026-10-07 · Actual all-role sign-in and P1 migration verification; preserve authority limits
+
+**Operational evidence, no waiver.** Root issues a genuinely owned PG18 database-only window to the two named implementation lanes, with independent full container/image/named-parent-mount binding. Seeder uses only `taskdesk_role_seed_test`; P1 only `taskdesk_p1_composite_test`; no Testcontainers, persistent DEV or performance overlap. Source amendments remain within the same bounded testing scope. Both release connections; root proves zero clients, exact ownership/no other references and actual resource/port absence after cleanup. Original binding/window and cleanup receipt are retained privately; no password/URL is included in GitHub or this record.
+
+Final all-eight testing seeder `cb081b8a005995d58ce9cbc437bbf5efe359912c` passes actual native14 tests, including application sign-in. Correct default-hash mismatch by using existing configured bcrypt, preserve actual sign-in throttling by honest pacing, and correct only native temporary-path/expected-message harness defects. Prior failures remain. OrdinaryA/B exact-head clearances precede fresh full Sol; no live account creation or phase acceptance is implied.
+
+P1 complete canonical `636a9788` applies the full chain through provisional0118 and passes actual28 view/export tests. Its final catalog is retained; raw renderer inequality and unrun per-prefix comparisons stay explicit, never silently normalized into a PASS. No0119 allocation or metadata-prefix mutation is authorized. Full composition receives the required panel.
+
+Private P0 v9 full Sol blocks one collected proxy authority/cleanup class despite52 positive-smoke tests. V10 must structurally bound incoming and upstream I/O, recheck before forwarding and revoke owned listeners/sockets/threads on every failure. Unit grant is closed; no actual runtime authority or GateC acceptance follows. No comfort Luna rounds are added for the same structural class.
+
+**Recorded:** root at actual 2026-10-07T04:36:34.098560+00:00; P0/main/persistent DEV unchanged.
+
+### 2026-10-07 · Freeze semantic predecessor; fulfil all eight testing roles
+
+**Correction and operational application, not a waiver.** Root verifies canonical `6148976e68fa5945218beb9d58d3bf866ff8ab70` and its independent full Sol/freshness delta clearance. The generator must supply genuinely fresh SQL/snapshot/journal evidence; no copied successor or no-change fallback is accepted. Root freezes a separately hashed 227-file allocation manifest for P1 composition. SQL0000–0117 remain fixed, sole provisional0118 owns saved-view/user-preference intent, and no0119 is allocated. No database window or new actual prefix replay is implied.
+
+The earlier manager/lead limitation was too broad. Existing integration fixtures and identity resolution already support genuine same-workspace system-role backing for those canonical roles. Thomas's explicit request authorizes that bounded test-only producer without approving proposed ADR0015 or changing production defaults. Full successor `28c6c64d2979148de7af961ffc35b817f3393056` implements all eight roles and collects hard-link/interrupted-publication remedies before bulk review. Usable credential material stays in external private0700/0600 local storage; never source, GitHub, credential Markdown or stdout. Customer password seeding only observes an already-enabled customer-scoped provider and does not enable it. Real database login and DEV creation remain unperformed.
+
+Root issues only a limited actual unit-transport window for private v9's full real-file smoke: loopback4318–4321, owned temporary TLS/HTTP listeners and synthetic certificate generation, expires2026-10-07T04:14:06.266514Z. This is not actual Docker/product runtime, official installer/GateC or persistent DEV authority. No review verdict or observation acceptance is inferred from implementation or elapsed time.
+
+**Recorded:** root at actual 2026-10-07T04:03:26.768252+00:00; main/P0/DEV source unchanged.
+
+### 2026-10-07 · Private testing accounts; complete executable and semantic safeguards
+
+**Thomas instruction:** add testing users for each role, and keep username/password/credential notes out of GitHub. Implement reusable opt-in code with runtime-generated strong distinct passwords; any usable credential manifest belongs outside every repository/worktree, in a private local directory/file (0700/0600), never in a committed Markdown note or source literal. Preserve existing unrelated accounts and passwords; reject unsupported roles and unsafe output paths before mutation; idempotent records bind to the actual target. No production bootstrap change, live unreviewed seeding or credential printing is authorized. Existing placeholder seed profiles remain intact. Role support must reflect real current mechanisms; proposed ADR 0015 is not approved by implication. Supported seeding proceeds while missing manager/lead provisioning remains explicit.
+
+**Complete batch evidence:** P1 corrected builder `c4745ea5` is pushed with 77 targeted tests and six mocked browser journeys; no live API/image/phase claim. Central complete schema/generation `89242d35` passes positive inventory/generation checks, but its fresh ordinary delta blocks synthetic negative tests not exercising the acceptance comparator; one shared-comparator adversarial remedy follows. SQL, journal, accepted metadata and allocation remain frozen; no PostgreSQL window is reopened.
+
+Private lifecycle v8 passes 47 offline tests but full Sol blocks six collected persistence/redaction/evidence classes. Preserve v8 and the report. V9 separates purpose-validated private operational inputs from diagnostic output, scopes ownership exemptions to typed paths, binds digests to saved bytes and uses meaningful full real-file mocked orchestration. Root verifies frozen auth's Secure-cookie and first-user bootstrap requirements before any new run; genuine verified loopback TLS, explicit bounded root-resource authority and real listener cleanup must be included if used. These implementation changes do not claim official installer TLS preservation, Gate C or a fresh runtime grant.
+
+**Recorded:** root at actual 2026-10-07T03:29:44.647294+00:00; P0 source/main/deployment unchanged.
+
+### 2026-10-07 · Complete implementation batches before delta review; preserve blocked evidence
+
+**Operational application of the realignment directive, no waiver.** Full P1 visual-filter implementation `9d2f27a5efce3cfc9dd7dfe498ad8f27302f42f9` is pushed with author tests/browser evidence, then receives its full independent ordinary panel. Collect partial-sort disagreement, invalid IN bounds/parsing and unary-group operator loss before one structural parser/URL remedy. Preserve the candidate and reports; neither semantic-only AST normalization nor rejecting valid unary groups satisfies exact lossless tree round-trip. This remains a P1 leaf, not a P0 prerequisite.
+
+Private lifecycle v7 completes 40 offline regressions and immutable manifest `3ee50b12971da8176d404c7619027589f7f2d5192c0a742f82649fa072935c1e`; fresh ordinary delta review blocks quoted JSON credentials escaping generic redaction. Preserve that complete blocked bundle. The successor repairs all output-persistence/redaction surfaces with meaningful adversarial regressions; repeated-class handling requires a structural invariant, not escalating comfort rounds or another narrow regex patch. A clean required fresh full Sol pass may close the review tier under the existing repeated-class rule once the structural remedy is complete. No actual runtime grant, retry, Gate C claim or authority exception is supplied by this entry.
+
+The complete central migration/schema semantic remedy continues offline, preserving accepted metadata, allocated SQL and journal. Prefer exact trusted static SQL/default/check/predicate representations and bounded justified normalization; do not import generated snapshot data as a tautological source oracle or accept unsupported expressions by stripping syntax. Root's earlier named PostgreSQL window remains closed. Existing anonymous-volume incidents and failed runs remain unchanged.
+
+**Recorded:** root at actual 2026-10-07T02:26:10.911238+00:00; live main `3096cb04`, frozen P0 `53269374` unchanged.
+
+### 2026-10-07 · Preserve actual lifecycle failures; require full semantic generation invariant
+
+**Root operational application, no waiver.** Complete lifecyclev6 manifestb989ab94c68a1ac0b9790cb84d555b9659e0e13dad0f79dc260ff42e69191ee8 has independent Sol clearance of its absolute-expiry delta and33offline tests. Root verifies both local image revisions, named central resource ownership/released connections and exact cleanup; original failed case-sensitive absence readback remains beside successful completion. Root then issues distinct actual external-pin applications/windows for disposable local Compose, with Thomas-personal-approval false, no persistentDEV/production/performance/officialrelease/GateC authority.
+
+Actual run20261007T015354Z-23c939d8 fails before creation on candidate-image prefix mismatch. Run20261007T015642Z-a5f5b739 uses canonical CLI image IDs and fails on migrate exit1 after isolated creation. Both original failures, commands, authority and consumption markers are retained. Cleanup helperFAIL remains; root independently confirms8capturedownedIDs absent. One added anonymous parent volume3cdc71ba8cc620aa1bf92ea39b479c322bdacc3d409a77d068d492577d6ebcc0 remains unproven and preserved; no timestamp/inventory-delta inferred deletion. Root scoped volume-event readback is empty and cannot prove ownership. No original inventory identities are missing. Precleanup migration logs were not retained, so no actual root cause is asserted. V7 is a single offline full runtime-evidence boundary remedy; no new runtime window exists.
+
+Complete metadata b51c3d0d passes actual30prefix gate with185indexes; source panel Aclear,B/Cblocked reveals generalized configured-DSL semantic gaps beyond ordered keys/table presence. Next batch must enforce complete table/column/type/null/default/constraint/index inventory equivalence with fail-closed meaningful regressions; no hardcoded unexpected API-key FK allowance or two-column special-case-only fix. SQL/journal/acceptedmetadata/allocation remain frozen, current candidate blocked and no Sol acceptance claimed. Author's DB/Docker window is closed; retained raw catalog is available offline.
+
+Standing parallel implementation additionally starts isolated P1 SV-11 complete visual/text builder from frozenfd8, owning frontend only and requiring actual URL roundtrip/sort/columns fidelity. Root approves4316 after absence readback for mocked browser only, no PG/Docker/performance. This is post-P0 work, never a P0 prerequisite. No new dependencies/schema names/behavior guesses or duplicate integration train.
+
+**Recorded:** orchestrator at actual2026-10-07T02:04:02.983140+00:00; accepted main3096cb04 and reviewed DEV08842235 remain unchanged.
+
+### 2026-10-07 · Resume only explicitly bound database testing; finish runnable lifecycle authority
+
+**Operational application, no waiver or recovered ownership claim.** Root independently read back full container e70aeaa2d70c7d6b9cf58ffb23734fbf36dd332a7fa5ca30a3a0f4ad31bdf0ec, postgres18 image, named volume taskdesk-central-structural-20261007-data, PG18 parent mount, source/worktree/task labels and loopback55440 before issuing the private database-only window at actual2026-10-07T00:50:22.049042Z. The author may use this database for the complete metadata remedy, not create/stop/remove Docker resources. Root reserves cleanup after connection release and fresh full binding/absence readback. This distinct binding never proves ownership of the earlier deleted anonymous volume; that incident remains unresolved.
+
+The complete lifecyclev3 full Sol verdict blocks authority binding and unserved-certificate claims. Retain all original artifacts. V4's permanently disabled execution is truthful but not a completed runnable mechanism. Complete v5 requires independently supplied, externally pinned root-issued bounded authority, exact source/images/run/project/window/action checks, freshness/expiry and replay negatives plus positive mocked execution. No genuine runtime grant has been issued. TLS may remain explicitly unperformed only as a separate limitation, never installer/GateC acceptance. No central grant reuse, signed release publication, strict activation, unchanged-source hosted retry or phase completion is authorized here.
+
+**Recorded:** orchestrator at actual2026-10-07 01:02:47 UTC under standing implementation/verification authority.
+
+### 2026-10-07 · Record irreversible unbound-volume removal incident
+
+**Incident, not verified-owned cleanup.** The central migration author removed anonymous PostgreSQL volume `11bfa8f6a9a32c224f25cdc35098b169954b4a5e7abdc01f4903438d09e5bd3d` before receiving root's HOLD. Timestamp, anonymous label, PG18 contents and absence of current references did not bind it to full prior container `c6da37c93e6bf784e9d9d5b1ea331881b9ad4b1c0da5845984968a54ac0b13`. Removal is irreversible; no recovery or verified ownership is claimed. Original assertion that cleanup was complete was inaccurate and is superseded by this incident. Private exact receipt is retained in central-migration-metadata/packet/prior-docker-volume-cleanup-receipt.json.
+
+Root revokes the author's Docker/PG mutation window immediately. Offline source/generator implementation continues. Read-only root volume-event acquisition through actual2026-10-07T00:44:25.613342Z yields no retained events, so historical binding remains unproven. The reviewed DEV application is independently still running healthy; this does not establish ownership of deleted data or safety of every unrelated resource. No further deletion, prune, daemon mutation or inferred orphan ownership is authorized. A new test window requires reviewed exact creation/mount IDs, named labels or correct PG18 parent tmpfs, failure cleanup and explicit absence evidence before removing any resource.
+
+**Explanation:** protected merge, P0 source, persistent DEV and strict enforcement did not change. This record neither waives the incident nor calls the migration candidate accepted.
+
+### 2026-10-07 · Correct operational record timestamp
+
+The preceding bulk-verdict entry's drafted00:31UTC label was incorrect. Its actual Git commit timestamp is 2026-10-07 00:30:27 UTC. This is a recording correction, not a runtime capture or another observation date. Original entry/history remains retained.
+
+### 2026-10-07 · Apply complete bulk findings as structural implementation batches
+
+**Orchestrator application, no gate waiver.** Complete dialog8f078830 clears two fresh ordinary Luna contexts and independent Sol; notes-only7d86b0a8 preserves source and records original verdicts including the security-path correction. It remains a post-P0 leaf, not a frozenP0 change. P0 PR scope is narrowed to its actual owning contracts under the existing independent Sol adjudication; supporting P4 references remain explicitly separate and owning P4 findings stay open. Latest hosted register succeeds at unchanged532; performance19/22 and template/readiness remain red.
+
+Three fresh ordinary reviewers examine complete central metadatab977e53b. SQL-prefix/hash/identity evidence passes, but A finds configured generation omits existing SQL tables and C independently proves ordered unique-constraint drift. Both classes are collected before one structural metadata/DSL-generation remedy; no Sol pass on blockedordinary source. Frozen SQL, journal, accepted snapshots and migration allocation must remain unchanged. Sole bounded owned PG/Docker window is granted to this author for actual catalog ordinal evidence and one final full prefix regression. Capture mounts/fullIDs and prove cleanup, no globalprune or unrelated resource removal.
+
+Strong private lifecycle Luna review blocks the complete initial driver on output redaction, definitive cleanup/inventory proof and measured persistence comparisons. Preserve original bundle/hash/report; author implements one complete privatev2 with meaningful full-orchestration negative tests. It remains offline: no execution/release-order receipt, official signature substitution, persistentDEV mutation, strictactivation, datecarry, protectedmerge or phase claim. The local Compose driver uses a private exact-image override and does not pretend shippeddeploy.sh accepts local images.
+
+**Recorded:** orchestrator at actual00:31UTC under standing implementation/verification/realignment authority.
+
+### 2026-10-07 · Record completed bulk corrections and normative P0 adjudication
+
+**Evidence record; no waiver or new Thomas approval.** P2's complete browser-test placement12cac9c1 clears fresh ordinary Luna and independent Sol; notes-onlyb67a865a is published on actual#586 after source equivalence. P3's complete relocationb78a0ff4 likewise retains clear reviews on notes-only08c162d7. The complete later-phase dialog8f078830 passes authored11unit/6browser tests and is frozen for the required ordinary panel then Sol. Its ordinary A no-findings verdict is retained, but A's security-path classification is wrong: apps/web/e2e/** requires the independent Sol tier. This record does not turn an ordinary verdict into a security waiver.
+
+Fresh Sol's public-config normative adjudication concludes that actual200/pre-guard proof explains missing tally but does not replace the written shadow-before-strict criterion. The existing Thomas question stays pending; an explicit bounded criterion decision or genuine comparable shadow implementation is needed before including that source in strict cutover. No early human design review, partial-date carry, strict activation, merge, signed release, or phase claim is supplied.
+
+Central actual SQL prefixes0088–0117 all execute. Snapshot repair additionally needs actual catalog ordinal pairing because locked-tool introspection emits unstable composite foreign-key order. This is generated metadata correctness within the frozen allocation, not authorization to change SQL, accepted migrations, journal numbering, schema intent, or P0 source. Preserve failed harness runs and original files; review the complete batch once frozen. A separate Luna prepares the complete local-image lifecycle driver offline; runtime and official signed publication remain subject to their existing boundaries.
+
+**Recorded:** orchestrator at actual00:11UTC under standing implementation/realignment authorization.
+
+### 2026-10-06 · Freeze provisional train allocation for SQL-bound snapshot reconciliation
+
+**Decision:** The orchestrator applies Thomas's realignment instruction to centralize migration allocation and regenerate metadata only after the preceding train freezes. The preceding migration train is frozen at canonical #589 source `f4789aefd3c3d08595642414dda63770d8973f64` for this bounded reconciliation: existing 0088–0117 SQL, numbers, journal order and schema intent are the frozen inputs; no lane may allocate or renumber that range concurrently. Saved-view0118 remains provisional until the reconciled predecessor is composed. No0119 is allocated.
+
+Actual inspection found that P1 lacks0088_snapshot.json; the central0088 blob fits the identifier chain but already contains columns added by0089 SQL, while0089 snapshot omits the preceding SLA schema. An ID-only restore would hide schema drift. The authorized structural batch must compare metadata against each actual SQL prefix in an owned disposable database, retain original hashes/failures, and regenerate only inconsistent/missing metadata through the existing locked tooling. Migration SQL, runtime schema contracts and journal numbers may not be silently changed; any real SQL defect is reported separately. Required current-head independent reviews/CI still apply to the completed batch.
+
+This allocation freeze authorizes post-P0 integration repair, not acceptance of #589, a protected merge, strict activation, a new migration, or a P0 scope expansion. Frozen P0 #583 remains independent and cannot be delayed by this reconciliation.
+
+**Recorded:** orchestrator, standing realignment authorization, actual UTC6October.
+
+### 2026-10-06 · Record exact installer release ordering conflict
+
+**Evidence and pending recommendation; no Thomas approval or waiver.** Root read-only GitHub
+inventory at actual23:00UTC finds only v2.0.1 (targeted250723) with two SBOM assets, not a
+signed installer archive for frozen53269374. The release workflow rejects a selected source
+not already reachable from main. Thus official exact-candidate signed installer runtime
+before protected merge has a publication-order dependency. Preserve the complete offline
+installer20/20 result and private owned runtime plan; mocks are not official signatures.
+
+Root asks once to run reviewed local-image upgrade/idempotency/rollback proof before merge,
+then publish and verify the official signed prerelease after all protected merge gates pass
+and before the P0 finalizer. Final P0 criteria and fixed cosign issuer/workflow remain intact.
+No workflow dispatch, release publication, skip-verify, gate waiver, merge, date carry or
+production action is authorized by this record. The actual answer remains pending.
+
+### 2026-10-06 · Execute reviewed532 complete off/shadow derivative
+
+**Orchestrator application of existing disposable verification:** preserve the actual failed
+20261006T221158Z-53269374 acquisition and execute a new off/shadow-only proof using the complete
+reviewed derivative final-532-g11-completion-batch-20261007, manifestb73400186f5d1e0112956c8f1b323305d57af4ad257e20c1f02f35778f6c2f4a.
+Frozen product source remains5326937460b195d8e69584c0cb99305348330a95. The prior run matched all130
+status expectations and passed boot/health/migration/metrics controls, then failed on undefined
+runner source names. Cleanup9/9 and root's independent absence checks passed. Offline replay
+found the authenticated WebSocket101 classification gap; both classes were repaired together,
+with canonical source identities, source-bound protocol validation and negative regressions.
+Original records remain unchanged and do not become accepted observations.
+
+Fresh strong Luna and full independent Sol clear the exact derivative after78 offline tests,
+15 file pins and retained-input replay. No source, expectation, performance budget/workload/
+retry policy, or authority gate is relaxed. Root issues new externally pinned application,
+genuine-review projection and exclusive-resource release records. The resource window is not
+required-CI acceptance; hostedG11 remains19/22 and its confirmation decision is still pending.
+
+Only owned disposable off/shadow resources, platform then27 observed non-task sources, with
+empty enforcement and verified cleanup. Config/task, strict activation, persistent DEV,
+production, merge, date carry-forward and phase completion remain unauthorized by this
+application. Later heavy acquisitions wait for this bounded runtime window to end.
+
+**Recorded:** top-level orchestrator under existing Thomas authorization, not a new personal
+Thomas approval or waiver.
+
+### 2026-10-06 · Apply standing verification to frozen532 off/shadow only
+
+**Orchestrator application of existing authorization:** acquire one disposable exact-source
+off/shadow runtime proof for5326937460b195d8e69584c0cb99305348330a95, using the immutable
+final-532-g11-report-contract-20261007 bundle (manifest833c32f24c6b021b38b612a89d54739e59d8fe87884864c04b255e8cf635a065).
+Fresh strong ordinary and full independent Sol operational reviews clear these bytes.
+Original failed acquisitions, blocked runner reports and earlier applications remain intact.
+
+This narrows the existing delegated disposable verification to **off/shadow only**, platform
+then27 observed non-task sources, with explicit empty enforcement. No strict activation,
+config/task selection, persistent DEV mutation, production, protected merge or phase claim.
+The baseline schema80 image6a6315c2890b5677f9afb858c3f81aa86c181e7d3270fa7164d889111e214628
+remains separate from the exact candidate imagef44 and any runner-built disposable artifact.
+Resource release means exclusive local acquisition, not required-CI acceptance: hostedG11
+is19/22 red and the requested one-hosted-confirmation decision remains unanswered. No
+performance retry, budget, workload, assertion or test retry policy changes are authorized.
+
+Root pins current source, clean checkout, controlled files, genuine reviewer report bytes,
+decision log, new delegated application and release records before execution. Later lanes
+hold PG/image/runtime acquisitions for this bounded window. Capture owned resource identities,
+private records, health/status/events/coverage and cleanup readback; preserve unrelated
+resources. A failure remains open. No date compatibility verdict or carry-forward is supplied
+by this application. Three original partial UTC observations remain subject to actual
+same-actor/source compatibility and independent adjudication.
+
+**Recorded:** top-level orchestrator under Thomas's standing instructions; not a new personal
+Thomas approval or a waived gate.
+
+### 2026-10-06 · Thomas directs P0 realignment and implementation batches
+
+Thomas supplies the Project Realignment & Implementation Directive. Complete a read-only ownership map before source edits, then use #583 or one minimal successor as the sole P0 closure vehicle. #589 is the canonical post-P0 integration train and cannot block P0 acceptance. #581 is superseded after preserving unique source/evidence. Preserve later implementation; no gate, review tier, budget or assertion is waived. Keep one centralized migration ledger, with saved-view0118 provisional until the preceding train freezes. Retain original observation records and require independent source compatibility adjudication. Reports use Status First and the specified sections.
+
+The read-only audit is complete; source work resumes on isolated P0 and P1 lanes. Closing the duplicate integration vehicle is not phase acceptance. Thomas's explicit self-write authorization makes notification, preference and avatar mutations session-only until key scopes are defined; no capability is invented. The prior query acceptance deferral toP4 remains in force.
+
+### 2026-10-06 · Apply standing disposable verification to the reviewed 088 asset correction
+
+**Orchestrator decision under Thomas's standing authorization:** prepare the next reversible
+isolated verification for exact product `08842235047a3ab2714427edce80331b94558150`.
+The earlier 3096 and C468 applications, immutable failed observations and pinned files remain
+historical records. This is a new application of the October 2 three actual UTC dates rule
+and October 4 opt-in per-policy-source strict verification decision, not Thomas's personal
+approval of a new source digest, a gate waiver or an automatic carry-forward of earlier dates.
+
+Two independent ordinary reviewers and the fresh full independent GPT-6 Sol security pass
+clear the product correction. Reviewer B's exact-source asset integration passed 8 tests and
+its acquired PostgreSQL container and volume are verified absent. Product reach uses the
+persisted project's workspace; capability scope uses the persisted asset's workspace.
+The exact product image build succeeds, but a successful build is not boot/runtime acceptance.
+Hosted G11 remains red, with five failed budgets; review evidence and all required current
+checks remain necessary for protected merge. No hosted performance result is waived.
+
+The next private runner must receive independent review on frozen bytes after correcting its
+real anonymous database-volume leak. Acquire explicit run-owned labeled volumes, validate
+ownership before use, capture exact container and mount identities before teardown, and
+remove only unused owned resources. It must acquire separate explicitly mode-bound off/shadow
+and strict windows, fail acceptance on unsupported statuses or unexplained comparisons,
+preserve diagnostic logs before restart/rollback, reconcile events and tally coverage, and
+verify complete cleanup. Original C468 strict requests must never be relabelled shadow.
+
+The standing bounds remain platform-only followed by the registry-ordered 27 directly observed
+non-task sources. Preserve the schema-80 baseline source
+`b80ff7c3ef723a280bb35cfadec0a71b1ad14ae3` and image
+`sha256:6a6315c2890b5677f9afb858c3f81aa86c181e7d3270fa7164d889111e214628`.
+Only root may issue the final independently pinned application, delegated authorization,
+resource-window and runtime-release records after genuine ordinary/Sol operational clearance
+and exclusive resource release. This entry prepares the scope and records no execution.
+
+No config/task selection, pending public-config exception, persistent DEV mutation, production,
+protected merge, enforcement activation or phase completion is authorized by this test.
+Actual source-compatible like-mode evidence is required before any date carry-forward.
+The previous pinned decision-log checkout is preserved; this new application has its own path.
+
+**Recorded:** top-level orchestrator, 2026-10-06, applying existing session authorization.
+
+### 2026-10-06 · Bound approval reach-loss and storage alignment
+
+Under Thomas's standing instruction to implement P0–P4 in parallel, take recommended
+routine decisions and defer P0–P3 human design review to integrated P4, the orchestrator
+selects the following necessary approval contract alignment before implementation:
+
+- AP3 reach loss is a derived approverReachLost response flag from current canonical
+  work-item reach. The approval remains pending; a named approver without current reach
+  cannot decide. Requester or instance-admin withdrawal uses only existing explicit AP7
+  authority and grants no admin decision override.
+- AP13/AP17 and the existing pure Approval.createdAt require a persisted request creation
+  instant. Register created_at in the authoritative approval data model in the schema batch.
+- Register approval.decided as internal activity in the authoritative activity taxonomy,
+  using the already registered event identity. Retain fail-closed/internal visibility;
+  do not expose decision notes through broad event/activity metadata. Any contradiction
+  with the explicit AP note visibility rule still blocks that narrow path.
+
+This records an orchestrator choice, not Thomas's personal per-feature approval, a new
+capability or a gate waiver. Human review stays deferred. The complete implementation
+receives independent ordinary/full Sol review and actual integration/browser/image proof
+before acceptance. The isolated branch reserves migration0116 after the existing0114/0115
+notification suffix; live/shared schema is unchanged.
+
+### 2026-10-06 · Apply standing disposable verification to the reviewed C468 correction
+
+**Orchestrator decision under Thomas's standing authorization:** apply the existing
+October 2 three-date development/P0 rule and October 4 opt-in per-policy-source strict
+verification to corrected candidate `c46825e938019c354c615be03200cefeab7d710d`, in a new
+disposable test. This supersedes only the October 6 delegated application's3096 target
+for this next attempt; original decisions, failed attempts and pinned files remain intact.
+The prior record is historical, not Thomas's personal approval of this new digest.
+
+The independently reviewed candidate resolves the actual persisted workspace row before
+strict policy evaluation and preserves native reach. Three ordinary scopes and the fresh
+full Sol source review clear the current composition; its private copied runner's complete
+pin audit and28 offline tests also pass independent Sol inspection. This does not assert
+runtime compatibility, previous-date carry-forward, full CI acceptance or successful strict
+traffic. Original7f G11 remains19/22, with LCP/state/board failures; a separate full
+performance implementation lane continues. API/browser/static parent results retain their
+exact source, and current C468 CI remains separately required for protected acceptance.
+
+Use only platform-only and the27 directly observed non-task policy sources in registry
+order, with exact owned resource IDs, original schema80 baseline source
+`b80ff7c3ef723a280bb35cfadec0a71b1ad14ae3` and image
+`sha256:6a6315c2890b5677f9afb858c3f81aa86c181e7d3270fa7164d889111e214628`.
+Candidate image/source are separate artifacts. Reserve the local test window; capture
+owned mounts while their containers exist and clean only acquired resources, never unrelated
+containers or volumes. Preserve strict failure logs before rollback and complete cleanup.
+
+No config/task selection, pending public-config exception, persistent DEV setting/image,
+production, protected merge, enforcement activation or phase acceptance is authorized.
+Source/evidence compatibility and the eligible full cutover still require actual proof;
+time and this operational choice waive no gate. Root must issue exact standalone application,
+authorization and window records, and obtain the independent Sol operational release before
+execution. This entry itself records no execution or passed runtime test.
+
+**Recorded:** top-level orchestrator, 2026-10-06T07:55:58.655802+00:00, under the existing user instruction to
+continue P0 and test the corrected implementation.
+
+### 2026-10-06 · Orchestrator applies standing P0 authorization to disposable strict testing
+
+**Decision by the orchestrator, under Thomas's standing instruction to continue P0,
+test it, and take recommended routine decisions:** prepare and execute a reversible,
+disposable isolated strict-on/strict-off test of only the platform source and the
+27 directly observed non-task policy sources, in registry order. Candidate source is
+`3096cb044bdf6ae98488bfc385f532fa6386343a`; the source-bound schema-80 migration baseline
+is `sha256:6a6315c2890b5677f9afb858c3f81aa86c181e7d3270fa7164d889111e214628`.
+The newly built candidate image is a separate artifact and must retain its actual identity.
+
+**Authority and conditions:** this applies the October 2 decision “Development/P0
+policy-shadow verification uses three issue-free UTC dates” and the October 4 decision
+“Implement opt-in per-policy-source strict enforcement for #8”. The independent October 6
+`cutover-acceptance-sol.md` clears the three actual representative date records and permits
+the observed 27-source staged proposal. This entry is an accurately attributed delegated
+operational choice, not Thomas's personal approval of an exact digest or a gate exception.
+The repaired adapter must receive independent review at its actual controlled hashes,
+and the source, immutable evidence, operational record and resource window must be pinned
+before execution. No unavailable or self-described authority record may substitute.
+
+**Bounds:** acquire only disposable resources with exact acquisition/ownership receipts;
+retain hand-written guards and shadow observation, exercise allowed/denied/reach/mutation
+paths, verify live/ready and strict-off rollback, and reconcile events and complete cleanup.
+No persistent DEV database/image/setting, config-source selection, task-source selection,
+production system, protected branch or performance budget is changed by this authorization.
+Config still requires Thomas's pending explicit public pre-guard exception decision; task
+still requires accepted config runtime and fresh re-key evidence. The legacy key remains.
+A failure stays open and the exact acquired resources alone may be cleaned up.
+
+**State:** preparation and reviewed runtime release are required; this entry records no
+execution, strict activation, passed runtime test, protected acceptance or P0 completion.
+
+**Recorded:** top-level orchestrator, 2026-10-06, applying existing session authorization.
 
 ### 2026-10-06 · Completed date observation schedule and continued execution
 

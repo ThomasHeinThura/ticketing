@@ -1,0 +1,65 @@
+name: Change scope
+description: >-
+  Decide whether this job must run its full verification (full=true) or whether the pull
+  request is policy-only (full=false). Runs the classifier taken from the MERGE BASE with the
+  default branch, never the pull request's own copy, and answers full=true on any doubt.
+  ci-cd.md § Applicability. Its SHA-256 is pinned in scripts/ci/lib/workflow-gates.mjs (A9).
+
+outputs:
+  full:
+    description: "'false' only when the merge base's classifier proved the change policy-only; otherwise 'true'."
+    value: ${{ steps.decide.outputs.full }}
+
+runs:
+  using: composite
+  steps:
+    - name: Classify with the merge base's classifier
+      id: decide
+      shell: bash
+      env:
+        EVENT_NAME: ${{ github.event_name }}
+        BASE_REF: ${{ github.base_ref }}
+        DEFAULT_BRANCH: ${{ github.event.repository.default_branch }}
+        HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+      # Fail closed by construction: `full` starts true and only the exact answer `policy`
+      # from the merge base's classifier turns it false. Every other path — another event, a
+      # pull request into any branch but the default one, an unresolvable merge base, no
+      # classifier at the base, a crash, any other output — keeps it true. `set -e` is off so
+      # a failing probe falls through to "full" instead of ending the step early. Output that
+      # may carry file names is fenced with ::stop-commands:: so a crafted path cannot inject
+      # a workflow command.
+      run: |
+        set +e
+        full=true
+        reason="event ${EVENT_NAME}: always full"
+        if [ "${EVENT_NAME}" = "pull_request" ]; then
+          if [ -z "${DEFAULT_BRANCH}" ] || [ "${BASE_REF}" != "${DEFAULT_BRANCH}" ]; then
+            reason="base ${BASE_REF} is not the default branch ${DEFAULT_BRANCH}: full"
+          else
+            base=$(git merge-base "origin/${BASE_REF}" "${HEAD_SHA}" 2>/dev/null)
+            if [ -z "${base}" ]; then
+              reason="merge base of origin/${BASE_REF} and ${HEAD_SHA} unresolved: full"
+            elif ! git cat-file -e "${base}:scripts/ci/classify-change.mjs" 2>/dev/null; then
+              reason="no classifier at merge base ${base}: full"
+            else
+              classifier="${RUNNER_TEMP:-/tmp}/classify-change-${base}.mjs"
+              git show "${base}:scripts/ci/classify-change.mjs" > "${classifier}"
+              verdict=$(node "${classifier}" --repo . --base "${base}" --head "${HEAD_SHA}" 2>&1)
+              status=$?
+              if [ "${status}" -eq 0 ] && [ "${verdict}" = "policy" ]; then
+                full=false
+                reason="policy-only, decided by the classifier at merge base ${base}"
+              else
+                reason="classifier at ${base} (exit ${status}): ${verdict}"
+              fi
+            fi
+          fi
+        fi
+        echo "full=${full}" >> "${GITHUB_OUTPUT}"
+        fence="scope-$(od -An -N16 -tx1 /dev/urandom | tr -d ' \n')"
+        echo "::stop-commands::${fence}"
+        echo "change scope: full=${full} — ${reason}"
+        echo "::${fence}::"
+        if [ -n "${GITHUB_STEP_SUMMARY:-}" ]; then
+          echo "change scope: full=${full}" >> "${GITHUB_STEP_SUMMARY}"
+        fi

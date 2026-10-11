@@ -413,15 +413,15 @@ screens.
 
 ```
 GET    /api/notification                                      (self)
-POST   /api/notification                                      (self; integration notification)
-PATCH  /api/notification/{id}/read                           (self)
-PATCH  /api/notification/read-all                             (self)
+POST   /api/notification                                      (self; integration notification; browser session only)
+PATCH  /api/notification/{id}/read                           (self; browser session only)
+PATCH  /api/notification/read-all                             (self; browser session only)
 PATCH  /api/notification/{id}/unread                          (self; target route for NO-15)
-DELETE /api/notification/clear-all                            (self)
+DELETE /api/notification/clear-all                            (self; browser session only)
 GET    /api/notification-preferences                         (self)
-PUT    /api/notification-preferences                         (self)
-PUT    /api/notification-preferences/workspaces/{workspaceId} (self; workspace reach checked)
-DELETE /api/notification-preferences/workspaces/{workspaceId} (self; workspace reach checked)
+PUT    /api/notification-preferences                         (self; browser session only)
+PUT    /api/notification-preferences/workspaces/{workspaceId} (self; workspace reach checked; browser session only)
+DELETE /api/notification-preferences/workspaces/{workspaceId} (self; workspace reach checked; browser session only)
 PUT    /api/notification-preferences/projects/{projectId}    (self; project reach checked)
 DELETE /api/notification-preferences/projects/{projectId}    (self; project reach checked)
 POST   /api/public/agent/notification-preference-handoffs     (public; signed token body; short-lived server-side handoff only)
@@ -435,6 +435,12 @@ GET    /api/instance/deliveries                               instance:admin
 POST   /api/instance/deliveries/{id}/requeue                  instance:admin
 DELETE /api/instance/deliveries/{id}                          instance:admin
 ```
+
+The browser-session restriction on agent-side self writes is an AK-9 key-eligibility rule:
+`self` limits the affected person but is not an API-key write capability. Reads remain
+self-scoped and follow the key's stored read-capability subset. See `webhooks-and-api-keys.md`
+AK-9 and the 2026-10-06 decision-log entry. Portal routes retain their separate customer
+session contract.
 
 The mark-unread route is a target route required by `NO-15`; it must use the same recipient
 and task-reach checks as mark-read. Project preference overrides use the same per-person
@@ -561,7 +567,37 @@ that GET makes no change, then authenticating and explicitly saving the selected
 ## Open questions
 
 None. The prior draft's `work_item.unblocked` recipient gap is resolved by `RH-18`: it targets
-the assignee of the formerly blocked work item. Runtime delivery remains unimplemented.
+the assignee of the formerly blocked work item. The initial direct-child outbox worker now
+implements reservation fencing, retries, deadlines, and attempt limits behind injected
+eligibility and provider seams. A transactional fan-out producer seam and a
+`workspace.created` owner resolver exist, but are not wired to mutation producers. Other
+canonical event-specific recipient/reach resolution is not implemented. This does not
+complete Notifications: digest grouping/delivery, scheduler registration, the concrete
+`notify.*` adapter registry, and the quiet-hours and destination contracts remain pending.
+Send-time reach and preference evaluation exists in `current-eligibility.ts` and never
+authorizes a send while quiet hours or the destination are unresolved. See
+[background jobs](../01-architecture/background-jobs.md#outbox-delivery) for the implemented
+worker boundary. Browser acceptance remains pending.
+
+**Pre-wiring gates (must close before any producer or worker calls this runtime).** (1) The
+inbox read paths (list, read, read-all, clear-all) apply current reach only to
+`resource_type = 'task'` rows; extend the predicate to every registered fan-out resource type
+(`work_item`, `comment`, `workspace`, `instance` and the rest), failing closed for unknown
+types, and keep `instance` rows behind the instance-admin gate. (2) `approval` is excluded from
+fan-out until the approvals slice lands its recipient and reach code. (3) The legacy
+workspace delivery path checks reach once, with no banned/deactivated check and no recheck at
+send time; move it to the identity-based `workspace:read` check. (4) `fanout.ts` has no
+tests; add recipient, preference, digest-hook and self-exclusion coverage. (5) The reach
+facts omit ancestor projects and the owner team, which only over-suppresses. (6) The
+`notify.*` adapter must strip CR/LF and control characters from titles before using them in
+a subject or header. The scheduler loop must also tolerate rows backed off for
+`destination_unresolved`, `quiet_hours_unresolved`, `evaluator_error` and
+`reservation_contention` (30 s, no attempt consumed). (7) A permanently failing evaluator is retried every 30 s forever (logged only as a
+closed `jobs.failure` event); an age- or count-based dead-letter for `evaluator_error` is a
+design change to be decided before wiring. (8) `notification_delivery` timestamp columns
+default to `now()`, which a database session ahead of or behind UTC stores as local wall
+clock; every writer must set UTC explicitly (fan-out does) until a migration changes the
+defaults.
 
 ## Related
 

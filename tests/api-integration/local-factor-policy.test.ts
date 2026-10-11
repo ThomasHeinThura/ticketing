@@ -2,7 +2,10 @@ import { createHash } from "node:crypto";
 import { createRequire } from "node:module";
 import { eq, sql } from "drizzle-orm";
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { loadLocalFactorState } from "../../apps/api/src/auth/local-factor-service";
+import {
+  InactiveFactorIdentityError,
+  loadLocalFactorState,
+} from "../../apps/api/src/auth/local-factor-service";
 import {
   canonicalMfaResetBody,
   sha256,
@@ -121,6 +124,100 @@ describe("instance local-factor policy API", () => {
       default: "warn",
       modules: { realtime: "debug" },
     });
+  });
+
+  it("denies an inactive identity as forbidden but keeps a missing identity fail-closed as unavailable", async () => {
+    const [inactive] = await db
+      .insert(schema.userTable)
+      .values({
+        id: "factor-inactive-identity",
+        name: "Inactive Identity",
+        email: "factor-inactive-identity@example.test",
+        role: "user",
+      })
+      .returning();
+    const [missing] = await db
+      .insert(schema.userTable)
+      .values({
+        id: "factor-missing-identity",
+        name: "Missing Identity",
+        email: "factor-missing-identity@example.test",
+        role: "user",
+      })
+      .returning();
+    if (!inactive || !missing) throw new Error("fixtures were not created");
+    await ensureStaffPersonForUser(inactive.id);
+    await db
+      .update(schema.personTable)
+      .set({ active: false })
+      .where(eq(schema.personTable.userId, inactive.id));
+
+    await expect(loadLocalFactorState(inactive.id)).rejects.toBeInstanceOf(
+      InactiveFactorIdentityError,
+    );
+    await expect(loadLocalFactorState(missing.id)).rejects.not.toBeInstanceOf(
+      InactiveFactorIdentityError,
+    );
+
+    const { app } = createApp();
+    mockAuthenticatedSession(inactive);
+    const inactiveResponse = await app.request("/api/workspace");
+    expect(inactiveResponse.status, await inactiveResponse.clone().text()).toBe(
+      403,
+    );
+    mockAuthenticatedSession(missing);
+    const missingResponse = await app.request("/api/workspace");
+    expect(missingResponse.status, await missingResponse.clone().text()).toBe(
+      503,
+    );
+  });
+
+  it("denies an inactive identity as forbidden even when the factor policy store is unusable, including on the exempt status route", async () => {
+    const [inactive] = await db
+      .insert(schema.userTable)
+      .values({
+        id: "factor-inactive-store",
+        name: "Inactive Store",
+        email: "factor-inactive-store@example.test",
+        role: "user",
+      })
+      .returning();
+    const [missing] = await db
+      .insert(schema.userTable)
+      .values({
+        id: "factor-missing-store",
+        name: "Missing Store",
+        email: "factor-missing-store@example.test",
+        role: "user",
+      })
+      .returning();
+    if (!inactive || !missing) throw new Error("fixtures were not created");
+    await ensureStaffPersonForUser(inactive.id);
+    await db
+      .update(schema.personTable)
+      .set({ active: false })
+      .where(eq(schema.personTable.userId, inactive.id));
+    const { app } = createApp();
+
+    const probe = async (user: typeof inactive, path: string) => {
+      mockAuthenticatedSession(user);
+      return app.request(path);
+    };
+
+    // 1. The instance settings row is missing.
+    await db.delete(schema.instanceSettingTable);
+    await expect(loadLocalFactorState(inactive.id)).rejects.toBeInstanceOf(
+      InactiveFactorIdentityError,
+    );
+    expect((await probe(inactive, "/api/workspace")).status).toBe(403);
+    expect((await probe(inactive, "/api/me/security/factors")).status).toBe(
+      403,
+    );
+    expect((await probe(missing, "/api/workspace")).status).toBe(503);
+    expect((await probe(missing, "/api/me/security/factors")).status).toBe(503);
+    // A stored policy that fails to parse is unreachable through SQL: the
+    // instance_setting_local_factor_policy_shape CHECK constraint rejects it. The parse now
+    // runs after the person check, so the missing-row case above covers the ordering.
   });
 
   it("applies evaluator key ceilings and refuses impersonation for admin settings", async () => {

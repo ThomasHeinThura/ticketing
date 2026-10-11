@@ -1,4 +1,36 @@
+import { randomUUID } from "node:crypto";
 import type { Context } from "hono";
+import type { StrictPolicyWitness } from "../observability/logger.js";
+
+export type StrictPolicyProvenanceValidation =
+  StrictPolicyWitness["provenanceValidationResult"];
+
+/** Create one opaque server-owned request id; never adopt an inbound header as proof. */
+export function ensurePolicyRequestId(c: Context): string {
+  const current = c.get("taskdeskPolicyRequestId") as string | undefined;
+  if (current && /^[0-9a-f]{32}$/.test(current)) return current;
+  const generated = randomUUID().replaceAll("-", "").toLowerCase();
+  c.set("taskdeskPolicyRequestId", generated);
+  return generated;
+}
+
+export function policyRequestId(c: Context): string | null {
+  const value = c.get("taskdeskPolicyRequestId") as string | undefined;
+  return value && /^[0-9a-f]{32}$/.test(value) ? value : null;
+}
+
+export function setStrictPolicyWitness(
+  c: Context,
+  witness: StrictPolicyWitness,
+): void {
+  c.set("strictPolicyWitness", witness);
+}
+
+export function strictPolicyWitness(c: Context): StrictPolicyWitness | null {
+  return (
+    (c.get("strictPolicyWitness") as StrictPolicyWitness | undefined) ?? null
+  );
+}
 
 /** Explicit result from a legacy authorization check; response status is not a substitute. */
 export type ShadowLegacyAuthorization = "allowed" | "denied" | "unknown";

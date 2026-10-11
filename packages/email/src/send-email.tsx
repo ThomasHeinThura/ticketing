@@ -79,7 +79,12 @@ export const sendPasswordResetEmail = async (
 
 export type EmailResult = {
   success: boolean;
-  reason?: "SMTP_NOT_CONFIGURED";
+  reason?: "SMTP_NOT_CONFIGURED" | "NOT_AUTHORIZED";
+};
+
+export type NotificationEmailSendOptions = {
+  /** Rechecked after rendering and immediately before handing the message to SMTP. */
+  authorize?: () => Promise<boolean>;
 };
 
 export const sendWorkspaceInvitationEmail = async (
@@ -112,6 +117,7 @@ export const sendNotificationEmail = async (
   to: string,
   subject: string,
   data: NotificationEmailProps,
+  options: NotificationEmailSendOptions = {},
 ): Promise<EmailResult> => {
   if (!isSmtpConfigured()) {
     return { success: false, reason: "SMTP_NOT_CONFIGURED" };
@@ -119,6 +125,9 @@ export const sendNotificationEmail = async (
 
   try {
     const emailTemplate = await render(NotificationEmail(data));
+    if (options.authorize && !(await options.authorize())) {
+      return { success: false, reason: "NOT_AUTHORIZED" };
+    }
     await transporter.sendMail({
       from: process.env.SMTP_FROM,
       to,

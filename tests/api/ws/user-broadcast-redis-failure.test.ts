@@ -6,8 +6,14 @@ vi.mock("../../../apps/api/src/events", () => ({
 }));
 
 const { logTaskDesk } = vi.hoisted(() => ({ logTaskDesk: vi.fn() }));
-const { handleNativeAuthorizationInvalidation } = vi.hoisted(() => ({
-  handleNativeAuthorizationInvalidation: vi.fn(),
+const { handleNativeAuthorizationInvalidation, reloadAuthConfiguration } =
+  vi.hoisted(() => ({
+    handleNativeAuthorizationInvalidation: vi.fn(),
+    reloadAuthConfiguration: vi.fn().mockResolvedValue(true),
+  }));
+vi.mock("../../../apps/api/src/auth", () => ({
+  reloadAuthConfiguration: (...args: unknown[]) =>
+    reloadAuthConfiguration(...args),
 }));
 vi.mock("../../../apps/api/src/instance/observability/runtime", () => ({
   logTaskDesk: (...args: unknown[]) => logTaskDesk(...args),
@@ -60,6 +66,7 @@ import {
   broadcastNativeWorkItemHint,
   broadcastToUser,
   initializeWebSocketAdapter,
+  publishAuthReload,
   removeUserConnection,
   shutdownWebSocketAdapter,
 } from "../../../apps/api/src/ws/index";
@@ -95,6 +102,7 @@ describe("broadcastToUser with the redis adapter", () => {
     logTaskDesk.mockClear();
     consoleError.mockClear();
     handleNativeAuthorizationInvalidation.mockReset();
+    reloadAuthConfiguration.mockReset().mockResolvedValue(true);
     listeners.length = 0;
     messageListeners.length = 0;
     await initializeWebSocketAdapter();
@@ -178,6 +186,21 @@ describe("broadcastToUser with the redis adapter", () => {
       result: "failed",
     });
     expect(consoleError).not.toHaveBeenCalled();
+  });
+
+  it("publishes and consumes auth.reload control messages", async () => {
+    await publishAuthReload();
+    expect(publish).toHaveBeenCalledWith(
+      "taskdesk:control",
+      JSON.stringify({ type: "auth.reload" }),
+    );
+
+    for (const listener of [...messageListeners]) {
+      listener("taskdesk:control", JSON.stringify({ type: "auth.reload" }));
+    }
+    await vi.waitFor(() =>
+      expect(reloadAuthConfiguration).toHaveBeenCalledTimes(1),
+    );
   });
 
   it("contains rejected async authorization invalidation handlers", async () => {

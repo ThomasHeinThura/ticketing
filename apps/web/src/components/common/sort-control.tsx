@@ -1,4 +1,5 @@
 import {
+  Button,
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuGroup,
@@ -65,7 +66,8 @@ export default function SortControl({ sort, onSortChange }: SortControlProps) {
       <DropdownMenu>
         <DropdownMenuTrigger
           render={
-            <button
+            <Button
+              variant="ghost"
               type="button"
               className={`inline-flex h-7 items-center gap-1.5 rounded-md border px-2.5 text-xs font-medium outline-none ring-0 ${
                 isActive
@@ -128,7 +130,8 @@ export default function SortControl({ sort, onSortChange }: SortControlProps) {
       </DropdownMenu>
 
       {isActive && (
-        <button
+        <Button
+          variant="ghost"
           type="button"
           onClick={toggleDirection}
           className="inline-flex h-7 w-7 items-center justify-center rounded-md border border-border bg-background text-foreground hover:bg-accent/60"
@@ -143,7 +146,7 @@ export default function SortControl({ sort, onSortChange }: SortControlProps) {
           ) : (
             <ArrowDownAZ className="h-3 w-3" />
           )}
-        </button>
+        </Button>
       )}
     </div>
   );

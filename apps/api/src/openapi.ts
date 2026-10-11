@@ -19,6 +19,7 @@ export type BaseVariables = {
   user: User | null;
   session: Session | null;
   apiKey?: ApiKey;
+  appPublicOrigin?: string;
 };
 
 // createRoute({ middleware }) registers middleware BEFORE the request

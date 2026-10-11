@@ -4,10 +4,10 @@ import type { PolicyMap } from "@taskdesk/permissions";
  * Attachment route policies (issue #28, `attachments.md`).
  *
  * Scope for this slice: WORK-ITEM attachments only. `attachments.md` AT-1 also names
- * attaching to a comment or to a submission, but neither the new-model `comment` table
- * (`data-model.md` §4) nor `submission` exist in `apps/api/src/database/schema.ts` yet
- * -- see `attachmentTable`'s own comment there. Those two parents are therefore out of
- * this slice entirely, not merely unimplemented at the route level.
+ * attaching to a comment or to a submission. The `attachment` table now has foreign keys
+ * for both parents (migration 0096, `attachmentTable` in `apps/api/src/database/schema.ts`),
+ * but no route here writes them. Those two parents remain out of this slice, not merely
+ * unimplemented at the route level.
  *
  * Every route below runs the SAME transitional shape `comment/policy.ts`/
  * `work-item/policy.ts` already document: the declared capability is the TARGET

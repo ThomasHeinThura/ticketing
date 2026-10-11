@@ -152,158 +152,156 @@ function CreateWorkItemDialogForm({
   };
 
   return (
-    <>
-      <form onSubmit={handleSubmit} className="flex flex-col gap-4" noValidate>
-        <Field>
-          <FieldLabel htmlFor="create-work-item-type">
-            {t("workItems:create.fieldType")}
-          </FieldLabel>
-          <Select
-            items={typeItems}
-            value={typeId}
-            onValueChange={(value: string | null) => setTypeId(value)}
-            disabled={isLoadingTypes || isTypesError}
+    <form
+      onSubmit={handleSubmit}
+      className="flex flex-col gap-4 bg-popover"
+      noValidate
+    >
+      <Field>
+        <FieldLabel htmlFor="create-work-item-type">
+          {t("workItems:create.fieldType")}
+        </FieldLabel>
+        <Select
+          items={typeItems}
+          value={typeId}
+          onValueChange={(value: string | null) => setTypeId(value)}
+          disabled={isLoadingTypes || isTypesError}
+        >
+          <SelectTrigger
+            id="create-work-item-type"
+            className="w-full"
+            data-testid="create-work-item-type-trigger"
           >
-            <SelectTrigger
-              id="create-work-item-type"
-              className="w-full"
-              data-testid="create-work-item-type-trigger"
-            >
-              <SelectValue
-                placeholder={
-                  isLoadingTypes
-                    ? t("workItems:create.typesLoading")
-                    : t("workItems:create.typePlaceholder")
-                }
-              />
-            </SelectTrigger>
-            <SelectContent>
-              {(types ?? []).map((type) => (
-                <SelectItem key={type.id} value={type.id}>
-                  {type.name}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-          {isTypesError && (
-            <FieldDescription className="flex items-center gap-2">
-              <span className="text-destructive-foreground">
-                {t("workItems:create.typesError")}
-              </span>
-              <Button
-                type="button"
-                variant="outline"
-                size="sm"
-                onClick={() => refetchTypes()}
-              >
-                {t("workItems:create.typesRetry")}
-              </Button>
-            </FieldDescription>
-          )}
-          {!isLoadingTypes &&
-            !isTypesError &&
-            types !== undefined &&
-            types.length === 0 && (
-              <FieldDescription>
-                {t("workItems:create.noTypes")}
-              </FieldDescription>
-            )}
-        </Field>
-
-        <Field>
-          <FieldLabel htmlFor="create-work-item-title">
-            {t("workItems:create.fieldTitle")}
-          </FieldLabel>
-          <Input
-            id="create-work-item-title"
-            value={title}
-            onChange={(event) => setTitle(event.target.value)}
-            maxLength={TITLE_MAX_LENGTH}
-            placeholder={t("workItems:create.titlePlaceholder")}
-            autoFocus
-            data-testid="create-work-item-title"
-          />
-        </Field>
-
-        <Field>
-          <FieldLabel htmlFor="create-work-item-description">
-            {t("workItems:create.fieldDescription")}
-          </FieldLabel>
-          <Textarea
-            id="create-work-item-description"
-            value={description}
-            onChange={(event) => setDescription(event.target.value)}
-            placeholder={t("workItems:create.descriptionPlaceholder")}
-            rows={4}
-            data-testid="create-work-item-description"
-          />
-        </Field>
-
-        <Field>
-          <FieldLabel htmlFor="create-work-item-priority">
-            {t("workItems:create.fieldPriority")}
-          </FieldLabel>
-          <Select
-            items={priorityItems}
-            value={priority}
-            onValueChange={(value: string | null) =>
-              setPriority(
-                (value ?? NO_PRIORITY) as Priority | typeof NO_PRIORITY,
-              )
-            }
-          >
-            <SelectTrigger
-              id="create-work-item-priority"
-              className="w-full"
-              data-testid="create-work-item-priority-trigger"
-            >
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value={NO_PRIORITY}>
-                {t("workItems:create.priorityNone")}
+            <SelectValue
+              placeholder={
+                isLoadingTypes
+                  ? t("workItems:create.typesLoading")
+                  : t("workItems:create.typePlaceholder")
+              }
+            />
+          </SelectTrigger>
+          <SelectContent>
+            {(types ?? []).map((type) => (
+              <SelectItem key={type.id} value={type.id}>
+                {type.name}
               </SelectItem>
-              {PRIORITY_OPTIONS.map((value) => (
-                <SelectItem key={value} value={value}>
-                  {t(`workItems:list.priority.${value}`, value)}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-        </Field>
-
-        {submitError && (
-          <Alert variant="error" data-testid="create-work-item-error">
-            <TriangleAlert />
-            <AlertTitle>{t("workItems:create.errorTitle")}</AlertTitle>
-            <AlertDescription>
-              <p>{submitErrorKey[submitError]}</p>
-            </AlertDescription>
-          </Alert>
+            ))}
+          </SelectContent>
+        </Select>
+        {isTypesError && (
+          <FieldDescription className="flex items-center gap-2">
+            <span className="text-destructive-foreground">
+              {t("workItems:create.typesError")}
+            </span>
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              onClick={() => refetchTypes()}
+            >
+              {t("workItems:create.typesRetry")}
+            </Button>
+          </FieldDescription>
         )}
+        {!isLoadingTypes &&
+          !isTypesError &&
+          types !== undefined &&
+          types.length === 0 && (
+            <FieldDescription>{t("workItems:create.noTypes")}</FieldDescription>
+          )}
+      </Field>
 
-        <DialogFooter className="gap-2 sm:gap-2">
-          <Button
-            type="button"
-            variant="outline"
-            onClick={handleClose}
-            disabled={isPending}
+      <Field>
+        <FieldLabel htmlFor="create-work-item-title">
+          {t("workItems:create.fieldTitle")}
+        </FieldLabel>
+        <Input
+          id="create-work-item-title"
+          value={title}
+          onChange={(event) => setTitle(event.target.value)}
+          maxLength={TITLE_MAX_LENGTH}
+          placeholder={t("workItems:create.titlePlaceholder")}
+          autoFocus
+          data-testid="create-work-item-title"
+        />
+      </Field>
+
+      <Field>
+        <FieldLabel htmlFor="create-work-item-description">
+          {t("workItems:create.fieldDescription")}
+        </FieldLabel>
+        <Textarea
+          id="create-work-item-description"
+          value={description}
+          onChange={(event) => setDescription(event.target.value)}
+          placeholder={t("workItems:create.descriptionPlaceholder")}
+          rows={4}
+          data-testid="create-work-item-description"
+        />
+      </Field>
+
+      <Field>
+        <FieldLabel htmlFor="create-work-item-priority">
+          {t("workItems:create.fieldPriority")}
+        </FieldLabel>
+        <Select
+          items={priorityItems}
+          value={priority}
+          onValueChange={(value: string | null) =>
+            setPriority((value ?? NO_PRIORITY) as Priority | typeof NO_PRIORITY)
+          }
+        >
+          <SelectTrigger
+            id="create-work-item-priority"
+            className="w-full"
+            data-testid="create-work-item-priority-trigger"
           >
-            {t("workItems:create.cancel")}
-          </Button>
-          <Button
-            type="submit"
-            disabled={!canSubmit}
-            aria-busy={isPending || undefined}
-            data-testid="create-work-item-submit"
-          >
-            {isPending
-              ? t("workItems:create.submitting")
-              : t("workItems:create.submit")}
-          </Button>
-        </DialogFooter>
-      </form>
-    </>
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value={NO_PRIORITY}>
+              {t("workItems:create.priorityNone")}
+            </SelectItem>
+            {PRIORITY_OPTIONS.map((value) => (
+              <SelectItem key={value} value={value}>
+                {t(`workItems:list.priority.${value}`, value)}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+      </Field>
+
+      {submitError && (
+        <Alert variant="error" data-testid="create-work-item-error">
+          <TriangleAlert />
+          <AlertTitle>{t("workItems:create.errorTitle")}</AlertTitle>
+          <AlertDescription>
+            <p>{submitErrorKey[submitError]}</p>
+          </AlertDescription>
+        </Alert>
+      )}
+
+      <DialogFooter className="gap-2 sm:gap-2">
+        <Button
+          type="button"
+          variant="outline"
+          onClick={handleClose}
+          disabled={isPending}
+        >
+          {t("workItems:create.cancel")}
+        </Button>
+        <Button
+          type="submit"
+          disabled={!canSubmit}
+          aria-busy={isPending || undefined}
+          data-testid="create-work-item-submit"
+        >
+          {isPending
+            ? t("workItems:create.submitting")
+            : t("workItems:create.submit")}
+        </Button>
+      </DialogFooter>
+    </form>
   );
 }
 

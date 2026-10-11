@@ -62,34 +62,40 @@ const rule = {
   webhookEnabled: true,
 };
 
-vi.mock("../../../apps/api/src/database", () => ({
-  default: {
-    query: {
-      notificationTable: { findFirst: async () => notification },
-      userNotificationPreferenceTable: { findFirst: async () => preference },
-      userNotificationWorkspaceRuleTable: { findFirst: async () => rule },
-      taskTable: { findFirst: async () => null },
+vi.mock("../../../apps/api/src/database", async () => {
+  // The delivery path now uses the shared workspace-reach SQL predicate; provide
+  // real Drizzle table metadata so the test reaches each sender instead of failing
+  // while constructing the query it is meant to exercise.
+  const schema = await import("../../../apps/api/src/database/schema");
+  return {
+    default: {
+      query: {
+        notificationTable: { findFirst: async () => notification },
+        userNotificationPreferenceTable: { findFirst: async () => preference },
+        userNotificationWorkspaceRuleTable: { findFirst: async () => rule },
+        taskTable: { findFirst: async () => null },
+      },
+      // Two select() chains run per delivery, in order: the workspace context, then
+      // the user row. Answering by call order keeps the fixture honest about which
+      // query is which instead of returning one shape to both.
+      select: () => {
+        selectCall += 1;
+        const rows =
+          selectCall === 1
+            ? [{ workspaceId: "ws-1", workspaceName: "Acme" }]
+            : [{ email: "u@example.com", name: "U", locale: "en" }];
+        const chain = {
+          from: () => chain,
+          innerJoin: () => chain,
+          where: () => chain,
+          limit: async () => rows,
+        };
+        return chain;
+      },
     },
-    // Two select() chains run per delivery, in order: the workspace context, then
-    // the user row. Answering by call order keeps the fixture honest about which
-    // query is which instead of returning one shape to both.
-    select: () => {
-      selectCall += 1;
-      const rows =
-        selectCall === 1
-          ? [{ workspaceId: "ws-1", workspaceName: "Acme" }]
-          : [{ email: "u@example.com", name: "U", locale: "en" }];
-      const chain = {
-        from: () => chain,
-        innerJoin: () => chain,
-        where: () => chain,
-        limit: async () => rows,
-      };
-      return chain;
-    },
-  },
-  schema: {},
-}));
+    schema,
+  };
+});
 
 // The secrets module reaches for TASKDESK_ENCRYPTION_KEY; these tests care about
 // destinations, not envelopes, so decryption is the identity function here.

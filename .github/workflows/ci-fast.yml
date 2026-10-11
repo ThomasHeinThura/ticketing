@@ -8,9 +8,8 @@
 # Gates that cannot exist yet — check:queries, test:mcp — have no job here
 # on purpose. `pnpm test:all --list` prints each one with the reason and the issue that unblocks it. A job that passed
 # because it found nothing to check would look like coverage and be worth less than
-# nothing. (`check:ui` is enabled, in the `registers` job below — #9's Radix-tracking
-# slice, only; its "no bespoke primitives" / "no Radix/Base UI import outside packages/ui"
-# clauses still have nothing to be true of. `check:tokens` is enabled too, in the `static`
+# nothing. (`check:ui` is enabled, in the `registers` job below — G1's raw-element and
+# primitive-import boundaries, plus the empty legacy UI directory. `check:tokens` is enabled too, in the `static`
 # job below — #9's theme-parity and hard-coded-color slice of G2 only; see
 # scripts/ci/check-tokens.mjs's own header for exactly what it does not yet cover.)
 #
@@ -46,11 +45,6 @@ env:
   DO_NOT_TRACK: "1"
 
 jobs:
-  # ── The Throttle 1 boundary ────────────────────────────────────────────────────────────
-  # Its own job so it can be its own required status check on the protect-main ruleset,
-  # independent of everything else in this workflow. docs/07-planning/status.md § Throttle 1
-  # conditions 4 and 5: route coverage runs in CI, and a route without a policy fails the
-  # build. The wrapper fails closed until the suite from #7 exists.
   route-policy:
     name: route policy coverage + permission matrix
     runs-on: ubuntu-latest
@@ -65,8 +59,12 @@ jobs:
           # like a policy failure rather than a checkout problem. The step below exists
           # to keep those two apart.
           fetch-depth: 0
+      - id: scope
+        uses: ./.github/actions/change-scope
       - uses: ./.github/actions/setup
+        if: ${{ steps.scope.outputs.full != 'false' }}
       - name: merge base is resolvable
+        if: ${{ steps.scope.outputs.full != 'false' }}
         # Fails with its OWN message, before the suite runs. A gate that cannot read its
         # own baseline must say so in those words: "the ratchet did not run" and "the
         # ratchet ran and rejected your change" are different facts, and conflating them
@@ -82,6 +80,7 @@ jobs:
           fi
           echo "merge base with origin/main: $base"
       - name: git identity for the ratchet's scratch repositories
+        if: ${{ steps.scope.outputs.full != 'false' }}
         # `tests/permissions/git-baseline.test.ts` proves the shrink-only ratchet
         # against REAL git, by initialising throwaway repositories and committing
         # into them. A GitHub runner has no committer identity, so `git commit`
@@ -94,12 +93,14 @@ jobs:
           git config --global user.email "ci@taskdesk.invalid"
           git config --global user.name "TaskDesk CI"
       - name: pnpm check:route-policy
+        if: ${{ steps.scope.outputs.full != 'false' }}
         # #19's fail-closed wrapper. It does not scan routes -- it locates #7's
         # published suite, refuses to pass without both route-coverage.test.ts and
         # matrix.test.ts, and then runs it. `pnpm test:permissions` remains #21's
         # canonical entry point and this delegates to it.
         run: pnpm check:route-policy
       - name: pnpm test:no-inherited-routes
+        if: ${{ steps.scope.outputs.full != 'false' }}
         # Keep the fork-removal assertion independently visible in the existing required
         # route-policy context. The full permissions suite above also exercises this file.
         run: pnpm test:no-inherited-routes
@@ -110,22 +111,37 @@ jobs:
     timeout-minutes: 20
     steps:
       - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5.1.0
+        with:
+          # The change-scope step reads landed commits from the merge base.
+          fetch-depth: 0
+      - id: scope
+        uses: ./.github/actions/change-scope
       - uses: ./.github/actions/setup
+        if: ${{ steps.scope.outputs.full != 'false' }}
       - name: pnpm lint (biome)
+        if: ${{ steps.scope.outputs.full != 'false' }}
         # `pnpm lint` is `turbo lint`, and each package's lint script is
         # `biome check --write .`, which rewrites files. CI must report, not fix.
         run: pnpm lint:ci
       - name: pnpm typecheck
+        if: ${{ steps.scope.outputs.full != 'false' }}
         run: pnpm typecheck
+      - name: Normalize Ubuntu APT mirror for Chromium dependencies
+        if: ${{ steps.scope.outputs.full != 'false' }}
+        run: sudo -- "$(command -v node)" scripts/ci/normalize-ubuntu-apt-mirror.mjs
       - name: Install Chromium for G3
+        if: ${{ steps.scope.outputs.full != 'false' }}
         run: ./apps/web/node_modules/.bin/playwright install --with-deps chromium
       - name: pnpm check:tokens
+        if: ${{ steps.scope.outputs.full != 'false' }}
         # Token parity/literals plus density-slot enforcement and built-CSS Chromium contrast.
         # The checker builds the web CSS and reuses the app's pinned Playwright tooling.
         run: pnpm check:tokens
       - name: pnpm check:i18n
+        if: ${{ steps.scope.outputs.full != 'false' }}
         run: pnpm check:i18n
       - name: pnpm check:deps
+        if: ${{ steps.scope.outputs.full != 'false' }}
         run: pnpm check:deps
 
   registers:
@@ -164,6 +180,12 @@ jobs:
         run: pnpm check:reviews
       - name: pnpm check:skips
         run: pnpm check:skips
+      - name: pnpm check:policy
+        # The agent operating policy's executable invariants: links and anchors resolve,
+        # entry files hold no live state, AGENTS.md reads the active mission before the
+        # workflow, and agent-workflow.md has exactly one security-review model block — the
+        # list check-pr-template.mjs reads from the merge base. scripts/ci/check-policy.mjs.
+        run: pnpm check:policy
       - name: pnpm check:overrides
         run: pnpm check:overrides
       - name: pnpm check:dockerfile-deps
@@ -173,13 +195,10 @@ jobs:
         # This asserts it matches pnpm-workspace.yaml's actual discovered members.
         run: pnpm check:dockerfile-deps
       - name: pnpm check:ui
-        # #9 — the Radix-tracking half of G1 only (packages/ui has 18 of 63 primitives
-        # moved so far; "no bespoke primitives" and "no Radix/Base UI import outside
-        # packages/ui" have nothing to be true of yet). Fails if any file imports
-        # `@radix-ui/*` or the bare `radix-ui` package without a matching row in
-        # KNOWN-RADIX.md — currently zero rows, since both real Radix imports
-        # (form.tsx, timeline.tsx) were replaced by a local `Slot` in the same change.
         run: pnpm check:ui
+      - name: pnpm check:ui:raw-elements
+        # G1a: parse all JSX in apps/web and reject raw native button/form/dialog elements.
+        run: pnpm check:ui:raw-elements
       - name: pnpm check:inventory
         run: pnpm check:inventory
 
@@ -238,8 +257,15 @@ jobs:
     timeout-minutes: 25
     steps:
       - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5.1.0
+        with:
+          # The change-scope step reads landed commits from the merge base.
+          fetch-depth: 0
+      - id: scope
+        uses: ./.github/actions/change-scope
       - uses: ./.github/actions/setup
+        if: ${{ steps.scope.outputs.full != 'false' }}
       - name: pnpm test
+        if: ${{ steps.scope.outputs.full != 'false' }}
         run: pnpm test
 
   coverage:
@@ -248,8 +274,15 @@ jobs:
     timeout-minutes: 15
     steps:
       - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5.1.0
+        with:
+          # The change-scope step reads landed commits from the merge base.
+          fetch-depth: 0
+      - id: scope
+        uses: ./.github/actions/change-scope
       - uses: ./.github/actions/setup
+        if: ${{ steps.scope.outputs.full != 'false' }}
       - name: pnpm test:coverage
+        if: ${{ steps.scope.outputs.full != 'false' }}
         run: pnpm test:coverage
 
   contract:
@@ -258,10 +291,18 @@ jobs:
     timeout-minutes: 20
     steps:
       - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5.1.0
+        with:
+          # The change-scope step reads landed commits from the merge base.
+          fetch-depth: 0
+      - id: scope
+        uses: ./.github/actions/change-scope
       - uses: ./.github/actions/setup
+        if: ${{ steps.scope.outputs.full != 'false' }}
       - name: Fetch base for breaking-change comparison
+        if: ${{ steps.scope.outputs.full != 'false' }}
         run: git fetch --no-tags origin main
       - name: pnpm test:contract
+        if: ${{ steps.scope.outputs.full != 'false' }}
         run: pnpm test:contract
 
   build:
@@ -270,14 +311,23 @@ jobs:
     timeout-minutes: 25
     steps:
       - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5.1.0
+        with:
+          # The change-scope step reads landed commits from the merge base.
+          fetch-depth: 0
+      - id: scope
+        uses: ./.github/actions/change-scope
       - uses: ./.github/actions/setup
+        if: ${{ steps.scope.outputs.full != 'false' }}
       - name: pnpm build
+        if: ${{ steps.scope.outputs.full != 'false' }}
         run: pnpm build
         env:
           VITE_API_URL: ""
       - name: pnpm check:bundle-purity
+        if: ${{ steps.scope.outputs.full != 'false' }}
         run: pnpm check:bundle-purity
       - name: pnpm check:bundle-size
+        if: ${{ steps.scope.outputs.full != 'false' }}
         run: pnpm check:bundle-size
 
   # Deliberately two jobs, not one. As a single "supply chain" job the first failing step
@@ -291,8 +341,15 @@ jobs:
     timeout-minutes: 15
     steps:
       - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5.1.0
+        with:
+          # The change-scope step reads landed commits from the merge base.
+          fetch-depth: 0
+      - id: scope
+        uses: ./.github/actions/change-scope
       - uses: ./.github/actions/setup
+        if: ${{ steps.scope.outputs.full != 'false' }}
       - name: pnpm audit
+        if: ${{ steps.scope.outputs.full != 'false' }}
         # ci-cd.md: high or critical fails. GREEN — and green by fixing the graph, not by
         # narrowing the question. The inherited advisories this comment used to call
         # permanent (js-yaml via @commitlint/cli, nanoid via apps__web>postcss) are closed
@@ -339,10 +396,17 @@ jobs:
     timeout-minutes: 10
     steps:
       - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5.1.0
+        with:
+          # The change-scope step reads landed commits from the merge base.
+          fetch-depth: 0
+      - id: scope
+        uses: ./.github/actions/change-scope
       - name: helm lint
+        if: ${{ steps.scope.outputs.full != 'false' }}
         # helm ships on the GitHub-hosted Ubuntu runner image, so no action is needed.
         run: helm lint charts/taskdesk
       - name: helm template
+        if: ${{ steps.scope.outputs.full != 'false' }}
         # The chart fails closed on every required bootstrap value (#20, now on main), so a
         # bare `helm template` cannot render and this step was red for the right reason.
         # Supply a synthetic fixture instead of weakening the chart.
@@ -369,6 +433,7 @@ jobs:
             --set taskdesk.env.portalUrl=https://portal.ci.invalid \
             > /dev/null
       - name: helm template must FAIL without its secrets
+        if: ${{ steps.scope.outputs.full != 'false' }}
         # helm lint exits 0 even when a `fail` directive fires, so without this the
         # fail-closed behaviour the chart exists for is never actually exercised in CI.
         run: |

@@ -16,14 +16,31 @@ import {
 } from "better-auth/plugins";
 import type { UserWithAnonymous } from "better-auth/plugins/anonymous";
 import { config } from "dotenv-mono";
-import { and, count, eq, ne, sql } from "drizzle-orm";
+import { and, eq, ne, sql } from "drizzle-orm";
 import { appendAuditLog } from "./audit/audit-writer";
+import { authConfigurationVersion } from "./auth/configuration-version";
 import { loadLocalFactorState } from "./auth/local-factor-service";
+import {
+  countAuthUsers,
+  countAuthUsersForExecutor,
+  getAuthUserLocale,
+  getCustomerPortalIdentityRow,
+  getFirstUserWorkspaceMembership,
+  getIdentityConnectionConfigVersions,
+  getSetupCompletionMarker,
+  getStoredAuthPluginConfigRows,
+} from "./auth/repository";
 import db, { schema } from "./database";
+import {
+  bindTwoFactorOidcSession,
+  identityOidcPlugin,
+  OIDC_PENDING_SESSION_COOKIE,
+} from "./identity/oidc-login";
 import { notifyCurrentInstanceAdminsOfAuditFailure } from "./instance/observability/audit-failure-notifier";
 import {
   logTaskDesk,
   recordAuditWriteFailure,
+  recordAuthReload,
 } from "./instance/observability/runtime";
 import {
   isBootstrapAdminEmail,
@@ -76,6 +93,64 @@ function isOAuthCallbackPath(path: unknown): boolean {
 }
 
 export type AuthPortal = "agent" | "customer";
+export type LocalAuthProviders = {
+  password: boolean;
+  magicLink: boolean;
+  emailOtp: boolean;
+};
+
+export type AuthPluginConfigRow = {
+  pluginId: string;
+  enabled: boolean;
+  scope: string;
+  portalScope: string | null;
+};
+
+const defaultAgentLocalAuthProviders: LocalAuthProviders = {
+  password: true,
+  magicLink: true,
+  emailOtp: !isEmailOtpSignInDisabled,
+};
+const disabledCustomerLocalAuthProviders: LocalAuthProviders = {
+  password: false,
+  magicLink: false,
+  emailOtp: false,
+};
+
+export function resolveLocalAuthProviders(
+  portal: AuthPortal,
+  rows: AuthPluginConfigRow[],
+): LocalAuthProviders {
+  const pluginIds = [
+    ["auth.password", "password"],
+    ["auth.magic-link", "magicLink"],
+    ["auth.email-otp", "emailOtp"],
+  ] as const;
+  const defaults =
+    portal === "agent"
+      ? defaultAgentLocalAuthProviders
+      : disabledCustomerLocalAuthProviders;
+  const providers = { ...defaults };
+
+  for (const [pluginId, key] of pluginIds) {
+    const configuredRows = rows.filter(
+      (row) =>
+        row.pluginId === pluginId &&
+        row.scope === "instance" &&
+        (row.portalScope === "both" || row.portalScope === portal),
+    );
+    if (configuredRows.length === 0) continue;
+    providers[key] = configuredRows.some((row) => row.enabled);
+  }
+
+  // Password remains the agent break-glass path. A malformed persisted
+  // configuration cannot swap out the last working staff sign-in method.
+  if (portal === "agent" && !providers.password) {
+    throw new Error("auth.password must remain enabled for the agent portal.");
+  }
+  return providers;
+}
+
 const agentOrigin = process.env.TASKDESK_AGENT_URL || "http://localhost:5173";
 const customerOrigin =
   process.env.TASKDESK_PORTAL_URL || "http://localhost:5174";
@@ -88,6 +163,11 @@ if (!authSecretResult.ok) {
 }
 
 const authSecret = authSecretResult.secret;
+
+export async function hasCustomerPortalIdentity(userId: string) {
+  const rows = await getCustomerPortalIdentityRow(userId);
+  return rows.length === 1;
+}
 
 /** Sign narrowly scoped CSRF tokens without exposing Better Auth's root secret. */
 export function signCsrfPayload(payload: string): string {
@@ -102,11 +182,7 @@ export function getConfiguredAgentOrigin(): string {
 }
 
 async function getUserLocale(email: string) {
-  const [user] = await db
-    .select({ locale: schema.userTable.locale })
-    .from(schema.userTable)
-    .where(eq(schema.userTable.email, email))
-    .limit(1);
+  const [user] = await getAuthUserLocale(email);
 
   return user?.locale ?? null;
 }
@@ -149,7 +225,12 @@ function getAuthEmailCopy(locale?: string | null) {
   };
 }
 
-function createAuth(portal: AuthPortal) {
+function createAuth(
+  portal: AuthPortal,
+  localAuthProviders: LocalAuthProviders = portal === "agent"
+    ? defaultAgentLocalAuthProviders
+    : disabledCustomerLocalAuthProviders,
+) {
   const baseURL = portal === "agent" ? agentOrigin : customerOrigin;
   return betterAuth({
     baseURL,
@@ -201,7 +282,8 @@ function createAuth(portal: AuthPortal) {
       },
     },
     emailAndPassword: {
-      enabled: true,
+      enabled: localAuthProviders.password,
+      disableSignUp: portal === "customer",
       autoSignIn: true,
       password: {
         hash: async (password) => {
@@ -212,46 +294,55 @@ function createAuth(portal: AuthPortal) {
         },
       },
     },
-    socialProviders: {
-      github: {
-        clientId: githubSso.clientId,
-        clientSecret: githubSso.clientSecret,
-        scope: ["user:email"],
-      },
-      google: {
-        clientId: process.env.GOOGLE_CLIENT_ID || "",
-        clientSecret: process.env.GOOGLE_CLIENT_SECRET || "",
-      },
-      discord: {
-        clientId: process.env.DISCORD_CLIENT_ID || "",
-        clientSecret: process.env.DISCORD_CLIENT_SECRET || "",
-      },
-    },
+    socialProviders:
+      portal === "agent"
+        ? {
+            github: {
+              clientId: githubSso.clientId,
+              clientSecret: githubSso.clientSecret,
+              scope: ["user:email"],
+            },
+            google: {
+              clientId: process.env.GOOGLE_CLIENT_ID || "",
+              clientSecret: process.env.GOOGLE_CLIENT_SECRET || "",
+            },
+            discord: {
+              clientId: process.env.DISCORD_CLIENT_ID || "",
+              clientSecret: process.env.DISCORD_CLIENT_SECRET || "",
+            },
+          }
+        : {},
     plugins: [
+      identityOidcPlugin(portal),
       // anonymous() guest sign-in removed in #6. kaneo enabled it BY DEFAULT —
       // it was opt-OUT via DISABLE_GUEST_ACCESS. It minted a real user row, which
       // also let a guest arriving first consume the zero-user first-run window and
       // permanently lock an instance out of ever gaining an admin (see #18).
-      lastLoginMethod(),
-      magicLink({
-        sendMagicLink: async ({ email, url }) => {
-          try {
-            const locale = await getUserLocale(email);
-            const copy = getAuthEmailCopy(locale);
-            await sendMagicLinkEmail(email, copy.magicLinkSubject, {
-              magicLink: url,
-              locale,
-            });
-          } catch {
-            logTaskDesk({
-              module: "auth",
-              message: "auth.failure",
-              level: "error",
-              result: "failed",
-            });
-          }
-        },
-      }),
+      ...(portal === "agent" ? [lastLoginMethod()] : []),
+      ...(localAuthProviders.magicLink
+        ? [
+            magicLink({
+              disableSignUp: portal === "customer",
+              sendMagicLink: async ({ email, url }) => {
+                try {
+                  const locale = await getUserLocale(email);
+                  const copy = getAuthEmailCopy(locale);
+                  await sendMagicLinkEmail(email, copy.magicLinkSubject, {
+                    magicLink: url,
+                    locale,
+                  });
+                } catch {
+                  logTaskDesk({
+                    module: "auth",
+                    message: "auth.failure",
+                    level: "error",
+                    result: "failed",
+                  });
+                }
+              },
+            }),
+          ]
+        : []),
       twoFactorPlugin({
         issuer: "TaskDesk",
         skipVerificationOnEnable: false,
@@ -259,10 +350,10 @@ function createAuth(portal: AuthPortal) {
         // revocation and runtime policy changes. Every protected login must verify.
         trustDeviceMaxAge: 0,
       }),
-      ...(isEmailOtpSignInDisabled
-        ? []
-        : [
+      ...(localAuthProviders.emailOtp && !isEmailOtpSignInDisabled
+        ? [
             emailOTP({
+              disableSignUp: portal === "customer",
               async sendVerificationOTP({ email, otp, type }) {
                 if (type === "sign-in") {
                   const locale = await getUserLocale(email);
@@ -274,53 +365,68 @@ function createAuth(portal: AuthPortal) {
                 }
               },
             }),
-          ]),
-      genericOAuth({
-        config: [
-          {
-            providerId: "custom",
-            clientId: process.env.CUSTOM_OAUTH_CLIENT_ID || "",
-            clientSecret: process.env.CUSTOM_OAUTH_CLIENT_SECRET,
-            authorizationUrl: process.env.CUSTOM_OAUTH_AUTHORIZATION_URL || "",
-            tokenUrl: process.env.CUSTOM_OAUTH_TOKEN_URL || "",
-            userInfoUrl: process.env.CUSTOM_OAUTH_USER_INFO_URL || "",
-            scopes: process.env.CUSTOM_OAUTH_SCOPES?.split(",")
-              .map((s) => s.trim())
-              .filter(Boolean) || ["profile", "email"],
-            responseType: process.env.CUSTOM_OAUTH_RESPONSE_TYPE || "code",
-            discoveryUrl: process.env.CUSTOM_OAUTH_DISCOVERY_URL || "",
-            pkce: process.env.CUSTOM_AUTH_PKCE !== "false",
-            mapProfileToUser: mapCustomOAuthProfileToUser,
-          },
-        ],
-      }),
+          ]
+        : []),
+      ...(portal === "agent"
+        ? [
+            genericOAuth({
+              config: [
+                {
+                  providerId: "custom",
+                  clientId: process.env.CUSTOM_OAUTH_CLIENT_ID || "",
+                  clientSecret: process.env.CUSTOM_OAUTH_CLIENT_SECRET,
+                  authorizationUrl:
+                    process.env.CUSTOM_OAUTH_AUTHORIZATION_URL || "",
+                  tokenUrl: process.env.CUSTOM_OAUTH_TOKEN_URL || "",
+                  userInfoUrl: process.env.CUSTOM_OAUTH_USER_INFO_URL || "",
+                  scopes: process.env.CUSTOM_OAUTH_SCOPES?.split(",")
+                    .map((s) => s.trim())
+                    .filter(Boolean) || ["profile", "email"],
+                  responseType:
+                    process.env.CUSTOM_OAUTH_RESPONSE_TYPE || "code",
+                  discoveryUrl: process.env.CUSTOM_OAUTH_DISCOVERY_URL || "",
+                  pkce: process.env.CUSTOM_AUTH_PKCE !== "false",
+                  mapProfileToUser: mapCustomOAuthProfileToUser,
+                },
+              ],
+            }),
+          ]
+        : []),
       // bearer() removed in #6. It emitted the raw session token in a
       // `set-auth-token` response header with Access-Control-Expose-Headers on
       // every auth response. Combined with kaneo's credentialed CORS reflection
       // that was cross-origin session theft with no XSS required — finding C3 of
       // the PR #13 review. The CORS fix broke the chain; this closes it.
-      apiKey({
-        // NEVER true. webhooks-and-api-keys.md specifies `sessionOnly` routes that
-        // must answer "403 session_required from an API or MCP key" — which is
-        // only possible if a key is not a session. kaneo minted a full session
-        // from an API key, making it a third authentication surface larger than
-        // the two removed above.
-        enableSessionForAPIKeys: false,
-        apiKeyHeaders: "x-api-key",
-        rateLimit: {
-          enabled: true,
-          maxRequests: 100,
-          timeWindow: 60 * 1000,
-        },
-      }),
+      ...(portal === "agent"
+        ? [
+            apiKey({
+              // NEVER true. webhooks-and-api-keys.md specifies `sessionOnly` routes that
+              // must answer "403 session_required from an API or MCP key" — which is
+              // only possible if a key is not a session. kaneo minted a full session
+              // from an API key, making it a third authentication surface larger than
+              // the two removed above.
+              enableSessionForAPIKeys: false,
+              apiKeyHeaders: "x-api-key",
+              rateLimit: {
+                enabled: true,
+                maxRequests: 100,
+                timeWindow: 60 * 1000,
+              },
+            }),
+          ]
+        : []),
       // deviceAuthorization() removed in #6. mcp-server.md MC-3 puts an OAuth
       // device flow explicitly out of scope — "a whole authentication mechanism".
       // It also laundered an API key into a session token that outlived the key's
       // own revocation (#17).
-      adminPlugin({
-        defaultRole: "user",
-        adminRoles: ["admin"],
-      }),
+      ...(portal === "agent"
+        ? [
+            adminPlugin({
+              defaultRole: "user",
+              adminRoles: ["admin"],
+            }),
+          ]
+        : []),
       // openAPI() removed in #6. It mounted an unauthenticated
       // /api/auth/reference that pulls an UNPINNED @scalar/api-reference bundle
       // from a third-party CDN into the API's own cookie origin.
@@ -384,6 +490,12 @@ function createAuth(portal: AuthPortal) {
           required: false,
           input: false,
         },
+        identityConnectionId: {
+          type: "string",
+          required: false,
+          input: false,
+          returned: false,
+        },
       },
     },
     rateLimit: {
@@ -427,6 +539,12 @@ function createAuth(portal: AuthPortal) {
               return;
             }
 
+            if (portal === "customer") {
+              throw new APIError("FORBIDDEN", {
+                message: "Customer accounts must be invited or provisioned.",
+              });
+            }
+
             // Zero users can mean two different things, and only one of them
             // is the legitimate first-run bootstrap (#18):
             //   - a genuinely fresh instance, never set up -- OR
@@ -434,9 +552,7 @@ function createAuth(portal: AuthPortal) {
             //     set up, which must never re-open this window.
             // `instance_setting.setup_completed_at` is the durable marker that
             // tells them apart; it is never cleared by deleting user rows.
-            const [userCountRow] = await db
-              .select({ value: count() })
-              .from(schema.userTable);
+            const [userCountRow] = await countAuthUsers();
             const existingUserCount = userCountRow?.value ?? 0;
 
             // Computed once, up front, so the SAME call with the SAME
@@ -529,6 +645,8 @@ function createAuth(portal: AuthPortal) {
               return;
             }
 
+            if (portal === "customer") return;
+
             // Promote the first user to instance admin atomically.
             //
             // A previous version of this code checked the user count in
@@ -554,18 +672,10 @@ function createAuth(portal: AuthPortal) {
             await db.transaction(async (tx) => {
               await tx.execute(sql`SELECT pg_advisory_xact_lock(2026)`);
 
-              const totalRows = await tx
-                .select({ value: count() })
-                .from(schema.userTable);
+              const totalRows = await countAuthUsersForExecutor(tx);
               const totalUserCount = totalRows[0]?.value ?? 0;
 
-              const [setting] = await tx
-                .select({
-                  setupCompletedAt:
-                    schema.instanceSettingTable.setupCompletedAt,
-                })
-                .from(schema.instanceSettingTable)
-                .limit(1);
+              const [setting] = await getSetupCompletionMarker(tx);
               const setupAlreadyCompleted = setting?.setupCompletedAt != null;
 
               // This hook runs after the user row is inserted, so the
@@ -613,6 +723,18 @@ function createAuth(portal: AuthPortal) {
     },
     hooks: {
       before: createAuthMiddleware(async (ctx) => {
+        // The admin plugin is kept as a session primitive only (role, banned,
+        // impersonatedBy fields and ban enforcement). Its HTTP endpoints
+        // (set-role, create-user, set-user-password, impersonate-user,
+        // remove-user, ban-user, ...) bypass step-up, eligibility checks and
+        // audit, so every `/admin/*` endpoint is refused here. `ctx.path` is
+        // the matched endpoint path, so encoding/case/slash variants either
+        // resolve to this same path (and are refused) or match nothing (404).
+        // Authority for these operations lives in `/api/instance/*`.
+        if (ctx.path === "/admin" || ctx.path.startsWith("/admin/")) {
+          throw new APIError("NOT_FOUND", { message: "Not found" });
+        }
+
         if (ctx.path === "/two-factor/enable" && ctx.context.session?.user.id) {
           const state = await loadLocalFactorState(ctx.context.session.user.id);
           if (state.policy.mode === "off") {
@@ -659,9 +781,7 @@ function createAuth(portal: AuthPortal) {
           return;
         }
 
-        const userCountRows = await db
-          .select({ value: count() })
-          .from(schema.userTable);
+        const userCountRows = await countAuthUsers();
         const existingUserCount = userCountRows[0]?.value ?? 0;
         const isInstanceAdminSetup = existingUserCount === 0;
 
@@ -743,6 +863,18 @@ function createAuth(portal: AuthPortal) {
         }
         if (!newSession) return;
 
+        if (
+          portal === "customer" &&
+          !(await hasCustomerPortalIdentity(newSession.user.id))
+        ) {
+          await ctx.context.internalAdapter.deleteSession(
+            newSession.session.token,
+          );
+          deleteSessionCookie(ctx, true);
+          ctx.context.setNewSession(null);
+          return;
+        }
+
         const factorVerifiedEndpoint =
           ctx.path === "/two-factor/verify-totp" ||
           ctx.path === "/two-factor/verify-backup-code";
@@ -771,16 +903,66 @@ function createAuth(portal: AuthPortal) {
           .set({ portal })
           .where(eq(schema.sessionTable.id, newSession.session.id));
 
+        if (factorVerifiedEndpoint) {
+          const factorCookie = ctx.context.createAuthCookie("two_factor");
+          let challengeId: string | null = null;
+          try {
+            const value = await ctx.getSignedCookie(
+              factorCookie.name,
+              ctx.context.secret,
+            );
+            challengeId = typeof value === "string" ? value : null;
+          } catch {
+            challengeId = null;
+          }
+          const sourceCookie = ctx.context.createAuthCookie(
+            OIDC_PENDING_SESSION_COOKIE,
+          );
+          let sourceMarker: string | null = null;
+          try {
+            const value = await ctx.getSignedCookie(
+              sourceCookie.name,
+              ctx.context.secret,
+            );
+            sourceMarker = typeof value === "string" ? value : null;
+          } catch {
+            sourceMarker = null;
+          }
+          const provenance = await bindTwoFactorOidcSession({
+            challengeId,
+            sourceMarker,
+            sessionId: newSession.session.id,
+            userId: newSession.user.id,
+            portal,
+          });
+          if (provenance === "invalid") {
+            await ctx.context.internalAdapter.deleteSession(
+              newSession.session.token,
+            );
+            deleteSessionCookie(ctx, true);
+            ctx.setCookie(sourceCookie.name, "", {
+              ...sourceCookie.attributes,
+              maxAge: 0,
+            });
+            ctx.context.setNewSession(null);
+            return;
+          }
+          if (sourceMarker) {
+            ctx.setCookie(sourceCookie.name, "", {
+              ...sourceCookie.attributes,
+              maxAge: 0,
+            });
+          }
+        }
+
         if (
           ctx.path.startsWith("/sign-up") ||
           ctx.path.startsWith("/sign-in") ||
           factorVerifiedEndpoint
         ) {
-          const workspaceMember = await db
-            .select({ workspaceId: schema.workspaceUserTable.workspaceId })
-            .from(schema.workspaceUserTable)
-            .where(eq(schema.workspaceUserTable.userId, newSession.user.id))
-            .limit(1);
+          const workspaceMember = await getFirstUserWorkspaceMembership(
+            newSession.user.id,
+          );
 
           const activeWorkspaceId = workspaceMember[0]?.workspaceId || null;
 
@@ -832,8 +1014,110 @@ function createAuth(portal: AuthPortal) {
   });
 }
 
-export const auth = createAuth("agent");
-export const portalAuth = createAuth("customer");
+export let auth = createAuth("agent");
+export let portalAuth = createAuth("customer");
+let customerLocalAuthProviders = disabledCustomerLocalAuthProviders;
+
+let authConfigVersion = -1;
+let authConfigFingerprint: string | null = null;
+let authReloadPromise: Promise<boolean> | null = null;
+let authConfigPoller: ReturnType<typeof setInterval> | null = null;
+
+/** Build a fresh pair from the stored, portal-scoped auth plugin rows. */
+export async function reloadAuthConfiguration(): Promise<boolean> {
+  if (authReloadPromise) return authReloadPromise;
+  authReloadPromise = (async () => {
+    const [pluginRows, connectionRows] = await Promise.all([
+      getStoredAuthPluginConfigRows(),
+      getIdentityConnectionConfigVersions(),
+    ]);
+    const nextVersion = Math.max(
+      0,
+      ...pluginRows.map((row) => row.configVersion),
+      ...connectionRows.map((row) => row.configVersion),
+    );
+    const nextFingerprint = authConfigurationVersion(
+      pluginRows,
+      connectionRows,
+    );
+    if (authConfigFingerprint === nextFingerprint) return false;
+
+    const nextAgentProviders = resolveLocalAuthProviders("agent", pluginRows);
+    const nextCustomerProviders = resolveLocalAuthProviders(
+      "customer",
+      pluginRows,
+    );
+    const nextAgentAuth = createAuth("agent", nextAgentProviders);
+    const nextPortalAuth = createAuth("customer", nextCustomerProviders);
+
+    // Swap only after both constructions complete so requests cannot observe a
+    // mixed generation of host-specific Better Auth configuration.
+    auth = nextAgentAuth;
+    portalAuth = nextPortalAuth;
+    customerLocalAuthProviders = nextCustomerProviders;
+    authConfigVersion = nextVersion;
+    authConfigFingerprint = nextFingerprint;
+    recordAuthReload("ok", nextVersion);
+    return true;
+  })();
+  try {
+    return await authReloadPromise;
+  } catch (error) {
+    recordAuthReload("failed", Math.max(authConfigVersion, 0));
+    throw error;
+  } finally {
+    authReloadPromise = null;
+  }
+}
+
+/** Initial load and documented 10-second database fallback for replicas. */
+export async function startAuthConfigRuntime(): Promise<void> {
+  await reloadAuthConfiguration();
+  if (authConfigPoller) return;
+  authConfigPoller = setInterval(() => {
+    void reloadAuthConfiguration().catch(() => {
+      logTaskDesk({
+        module: "auth",
+        message: "auth.failure",
+        level: "error",
+        result: "failed",
+      });
+    });
+  }, 10_000);
+  authConfigPoller.unref?.();
+}
+
+export function stopAuthConfigRuntime(): void {
+  if (!authConfigPoller) return;
+  clearInterval(authConfigPoller);
+  authConfigPoller = null;
+}
+
+/** Exact local sign-in paths enabled on the customer Better Auth instance. */
+export function isCustomerLocalAuthEndpoint(
+  method: string,
+  path: string,
+  providers: LocalAuthProviders = customerLocalAuthProviders,
+): boolean {
+  if (
+    providers.password &&
+    method === "POST" &&
+    path === "/api/auth/sign-in/email"
+  )
+    return true;
+  if (
+    providers.magicLink &&
+    ((method === "POST" && path === "/api/auth/sign-in/magic-link") ||
+      (method === "GET" && path === "/api/auth/magic-link/verify"))
+  )
+    return true;
+  return (
+    providers.emailOtp &&
+    method === "POST" &&
+    (path === "/api/auth/sign-in/email-otp" ||
+      path === "/api/auth/email-otp/send-verification-otp")
+  );
+}
 
 export function portalForHost(
   host: string | null | undefined,

@@ -15,6 +15,7 @@ vi.mock("@taskdesk/ui", () => ({
     <span>{children}</span>
   ),
   Button: ({ children }: { children: React.ReactNode }) => (
+    // ui-exempt: test double for the shared design-system Button.
     <button type="button">{children}</button>
   ),
 }));

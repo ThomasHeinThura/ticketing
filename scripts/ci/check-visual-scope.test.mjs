@@ -1014,7 +1014,7 @@ test("G8 rejects a CI workflow that no longer invokes the visual test entry poin
   assert.notEqual(result.status, 0);
   assert.match(
     result.output,
-    /ci-full\.yml must run pnpm test:visual exactly once in one unconditional/,
+    /ci-full\.yml must run pnpm test:visual exactly once in one failure-propagating/,
   );
 });
 
@@ -1032,7 +1032,30 @@ test("G8 rejects a conditionally skipped visual job", async () => {
   assert.notEqual(result.status, 0);
   assert.match(
     result.output,
-    /unconditional, failure-propagating visual regression/,
+    /failure-propagating visual regression \(G8\) job and step, conditioned only by the canonical change-scope gate/,
+  );
+});
+
+test("G8 rejects a fail-open change-scope condition on the visual job", async () => {
+  const original = await readFile(
+    path.join(repoRoot, ".github/workflows/ci-full.yml"),
+    "utf8",
+  );
+  const ciWorkflow = original.replace(
+    "        if: ${{ steps.scope.outputs.full != 'false' }}\n        run: pnpm test:visual",
+    "        if: ${{ steps.scope.outputs.full == 'true' }}\n        run: pnpm test:visual",
+  );
+  assert.notEqual(
+    ciWorkflow,
+    original,
+    "the harness could not find the visual job's condition",
+  );
+  const result = await runVisualScope({ ciWorkflow });
+
+  assert.notEqual(result.status, 0);
+  assert.match(
+    result.output,
+    /failure-propagating visual regression \(G8\) job and step, conditioned only by the canonical change-scope gate/,
   );
 });
 
@@ -1050,7 +1073,7 @@ test("G8 rejects a conditionally skipped visual test step", async () => {
   assert.notEqual(result.status, 0);
   assert.match(
     result.output,
-    /unconditional, failure-propagating visual regression/,
+    /failure-propagating visual regression \(G8\) job and step, conditioned only by the canonical change-scope gate/,
   );
 });
 
@@ -1068,7 +1091,7 @@ test("G8 rejects a visual test step whose failure can be ignored", async () => {
   assert.notEqual(result.status, 0);
   assert.match(
     result.output,
-    /unconditional, failure-propagating visual regression/,
+    /failure-propagating visual regression \(G8\) job and step, conditioned only by the canonical change-scope gate/,
   );
 });
 
@@ -1086,7 +1109,7 @@ test("G8 rejects a visual step run from the web package directory", async () => 
   assert.notEqual(result.status, 0);
   assert.match(
     result.output,
-    /unconditional, failure-propagating visual regression/,
+    /failure-propagating visual regression \(G8\) job and step, conditioned only by the canonical change-scope gate/,
   );
 });
 
@@ -1104,7 +1127,7 @@ test("G8 rejects a later run key that replaces the visual command", async () => 
   assert.notEqual(result.status, 0);
   assert.match(
     result.output,
-    /unconditional, failure-propagating visual regression/,
+    /failure-propagating visual regression \(G8\) job and step, conditioned only by the canonical change-scope gate/,
   );
 });
 
@@ -1122,7 +1145,7 @@ test("G8 rejects an earlier step that can replace pnpm on the visual job PATH", 
   assert.notEqual(result.status, 0);
   assert.match(
     result.output,
-    /unconditional, failure-propagating visual regression/,
+    /failure-propagating visual regression \(G8\) job and step, conditioned only by the canonical change-scope gate/,
   );
 });
 
@@ -1140,7 +1163,7 @@ test("G8 rejects a later steps key that replaces the visual job steps", async ()
   assert.notEqual(result.status, 0);
   assert.match(
     result.output,
-    /unconditional, failure-propagating visual regression/,
+    /failure-propagating visual regression \(G8\) job and step, conditioned only by the canonical change-scope gate/,
   );
 });
 
@@ -1158,7 +1181,7 @@ test("G8 rejects job defaults that redirect the visual step", async () => {
   assert.notEqual(result.status, 0);
   assert.match(
     result.output,
-    /unconditional, failure-propagating visual regression/,
+    /failure-propagating visual regression \(G8\) job and step, conditioned only by the canonical change-scope gate/,
   );
 });
 
@@ -1173,7 +1196,7 @@ test("G8 rejects workflow defaults that redirect the visual step", async () => {
   assert.notEqual(result.status, 0);
   assert.match(
     result.output,
-    /unconditional, failure-propagating visual regression/,
+    /failure-propagating visual regression \(G8\) job and step, conditioned only by the canonical change-scope gate/,
   );
 });
 
@@ -1191,7 +1214,7 @@ test("G8 rejects workflow-wide Bash startup code that can replace pnpm", async (
   assert.notEqual(result.status, 0);
   assert.match(
     result.output,
-    /unconditional, failure-propagating visual regression/,
+    /failure-propagating visual regression \(G8\) job and step, conditioned only by the canonical change-scope gate/,
   );
 });
 
@@ -1206,7 +1229,7 @@ test("G8 rejects a second root jobs mapping that can replace the visual job", as
   assert.notEqual(result.status, 0);
   assert.match(
     result.output,
-    /unconditional, failure-propagating visual regression/,
+    /failure-propagating visual regression \(G8\) job and step, conditioned only by the canonical change-scope gate/,
   );
 });
 
@@ -1224,7 +1247,7 @@ test("G8 rejects a quoted job condition that the workflow reader cannot classify
   assert.notEqual(result.status, 0);
   assert.match(
     result.output,
-    /unconditional, failure-propagating visual regression/,
+    /failure-propagating visual regression \(G8\) job and step, conditioned only by the canonical change-scope gate/,
   );
 });
 

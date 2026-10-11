@@ -1,3 +1,12 @@
+## Advancement — 2026-10-11 04:11 UTC
+
+- **#630 DONE (MERGED):** protected squash merge `a96e6a4c23d1da35be6a66dc5a043328d884f751`, reviewed candidate `d041de5547717321b4a8cc3173e71b3b00df9198`; all18 required contexts SUCCESS. Exact-source image build exit0, UID10001, migration exit0, live/ready200 and complete owned cleanup. Review-record-only delta verified; authentic reports traced to saved contexts. Merge record is PR630 comment6105300560. No patched release/SIT claim.
+- **#601 RUNNING:** composing existing operational records with accepted main, retaining accepted policy and original unique historical records. No product source changes. Historical branches retained; no policy restructure reopened. Required reviews/CI remain.
+- **Approvals owner:** GPT-6 Luna `finish_approvals_clock`, existing claude/s3-approvals, finish dirty clock correction and real multi-zone regressions, then commit/push.
+- **Users owner:** GPT-6 Luna `finish_users_stepup`, existing claude/s6-users, implement mandated admin-suspension step-up and migration0121; #569 re-cut now0122. Ledger reconciled with recovered outgoing allocation, no applied history rewritten. Preserve40-round race regression.
+- **Continuation verified:** integration heartbeat retargeted and ACTIVE at `01a12921-4863-7c42-ac59-1822c69b88cd`; P0 observation remains PAUSED. Both metadata read back from supported update's persisted record.
+- **Next:** receive focused correction receipts, compose eligible source on current accepted main, refresh delta reviews only as required. SLA blockers remain queued; no release until included accepted source and required artifact checks are ready.
+
 ## Codex conductor takeover — 2026-10-11 04:07 UTC
 
 - **Authorization:** Thomas's two attached delivery takeover/resume instructions, received directly in Codex chat `01a12921-4863-7c42-ac59-1822c69b88cd` on 2026-10-11. Existing-work integration freeze; GHCR → existing SIT → independent accepted audit → handover → STOP. No new roadmap scope.

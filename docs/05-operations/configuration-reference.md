@@ -119,6 +119,7 @@ read by the server process.**
 | Variable | Read by | Purpose |
 | --- | --- | --- |
 | `DOMAIN` | Compose, at file-parse time | Substituted into every Traefik router rule — the `Host(...)` matcher for `ticket.`, `portal.` and, when deployed, `files.` ([traefik-and-domains.md](traefik-and-domains.md)). A wrong value produces a 404 from Traefik, never an application error |
+| `TASKDESK_AGENT_HOST` · `TASKDESK_PORTAL_HOST` · `TASKDESK_FILES_HOST` | Compose, at file-parse time | Optional exact Traefik router hostnames. Empty values derive `ticket.`, `portal.` and `files.` from `DOMAIN`; `TASKDESK_FILES_HOST` matters only when the S3 profile is enabled |
 | `TASKDESK_IMAGE_TAG` · `TASKDESK_IMAGE_DIGEST` | Compose | Which image the `taskdesk` service pulls. Rollback is editing the digest here and bringing the service back up ([runbook](runbook.md)) |
 | `TASKDESK_HSTS_PRELOAD` | Compose, into the Traefik headers middleware | Opt-in `includeSubDomains; preload` on `Strict-Transport-Security`. Off unless the operator sets it, because both are commitments about someone else's apex domain ([traefik-and-domains.md](traefik-and-domains.md)) |
 | `TASKDESK_LOCAL_HTTP_PORT` · `TASKDESK_LOCAL_HTTPS_PORT` | Compose, `deploy/compose.traefik.yml` (`local` mode only) | Host ports for the bundled local Traefik. Default 80/443; override when the host already runs another reverse proxy on those ports. `scripts/deploy.sh local` checks both are free before starting anything ([traefik-and-domains.md](traefik-and-domains.md)) |

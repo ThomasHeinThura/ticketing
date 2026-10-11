@@ -72,6 +72,11 @@ export const BETTER_AUTH_PLUGINS: readonly ApprovedPlugin[] = [
     note: "kaneo's workspace model — replaced by our organisation/workspace/membership/role tables in P0 step 1b",
   },
   { id: "two-factor", verdict: "added", note: "TOTP and backup codes — P0" },
+  {
+    id: "taskdesk-identity-oidc",
+    verdict: "added",
+    note: "TaskDesk's native OIDC handler enforces the identity connection protocol and claim contracts",
+  },
   { id: "passkey", verdict: "added", note: "later stage" },
 ];
 

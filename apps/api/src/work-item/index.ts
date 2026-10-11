@@ -18,6 +18,7 @@ import {
   assertCallerHasCapability,
   assertCallerHasCapabilityOrSelf,
   builtInRoleHasCapability,
+  capabilityCredential,
   requireWorkspaceCapability,
 } from "../utils/require-workspace-capability";
 import { validateWorkspaceAccess } from "../utils/validate-workspace-access";
@@ -233,21 +234,14 @@ const listWorkItemsRoute = createRoute({
       "A page of the project's work items",
       workItemListResponseSchema,
     ),
-    // #290: an unknown project 400s via `workspaceAccess.fromProject()`; an existing
-    // project beyond canonical project reach is masked as 404 by the same middleware
-    // before this route's own permission check runs -- folded
-    // into the same 400 alongside #310's own query-validation cases (unknown sort
-    // field, out-of-range limit, malformed cursor, NUL byte, etc.).
     400: errorResponse(
-      "Unknown project or its workspace could not be determined, or an invalid " +
-        "query parameter (unknown sort field, out-of-range limit, malformed cursor, " +
-        "NUL byte, etc.)",
+      "Malformed project ID or invalid query parameter (unknown sort field, out-of-range limit, malformed cursor, NUL byte, etc.)",
     ),
     403: errorResponse("Missing work_item:read permission"),
     // #202 / PR #204's freeze invariant (independent Opus security review of PR #271,
     // S2): a soft-deleted project's work-item list now 404s, matching every other
     // project-scoped route's convention for a soft-deleted subject.
-    404: errorResponse("Project not found"),
+    404: errorResponse("Project not found or out of reach"),
   },
 });
 
@@ -361,11 +355,9 @@ const listAssignablePeopleRoute = createRoute({
       "The people the caller may assign to",
       assignablePeopleSchema,
     ),
-    400: errorResponse(
-      "Unknown project, or its workspace could not be determined",
-    ),
+    400: errorResponse("Malformed project ID (including a NUL byte)"),
     403: errorResponse("Missing work_item:read permission"),
-    404: errorResponse("Project not found"),
+    404: errorResponse("Project not found or out of reach"),
   },
 });
 
@@ -930,6 +922,7 @@ const workItem = apiRouter<
         workspaceId,
         c.get("userId"),
         "work_item:set_priority",
+        capabilityCredential(c.get("apiKey")),
       );
     }
 
@@ -1054,6 +1047,7 @@ const workItem = apiRouter<
       "work_item:assign",
       "work_item:update",
       callerPerson !== undefined && callerPerson.id === assigneeId,
+      c.get("apiKey"),
     );
 
     const { actorId, actorType } = resolveActor(
@@ -1187,6 +1181,7 @@ const workItem = apiRouter<
       workspaceId,
       userId,
       operation === "delete" ? "work_item:delete" : "work_item:assign",
+      capabilityCredential(c.get("apiKey")),
     );
 
     const { actorId, actorType } = resolveActor(
@@ -1259,6 +1254,7 @@ const workItem = apiRouter<
       callerPerson !== undefined &&
         current.assigneeId !== null &&
         callerPerson.id === current.assigneeId,
+      c.get("apiKey"),
     );
 
     const { actorId, actorType } = resolveActor(

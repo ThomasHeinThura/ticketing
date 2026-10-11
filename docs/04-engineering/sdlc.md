@@ -15,25 +15,29 @@ and later never came.
 
 ---
 
+## Scope of these steps
+
+The steps say **how** work is done. **Whether** a piece of work is authorized at all is set by
+the [active mission](../07-planning/active-mission.md) and its operating mode, and the
+[agent workflow](agent-workflow.md) runs it. Acceptance levels are in the
+[Definition of Done](definition-of-done.md#levels-of-done).
+
 ## 1 · Plan
 
 **Purpose** — decide what to build and why, before anyone opens an editor.
 
-**Entry** — the workstream is authorized and its dependencies are available. Authorized
-dependency-safe implementation workstreams may run concurrently across stages. Stage acceptance
-remains independent and ordered by each stage's exit criteria; a
-stage is claimed complete only after its own gate and phase finalizer pass.
+**Entry** — a task is `READY` in the conductor's queue (currently
+`docs/07-planning/integration-execution-queue.md`), with its dependencies named.
 
 **Do**
 
-- Pick the next item from the [stage backlog](../07-planning/phases.md).
-- Confirm it is in scope for the current stage. If it is not, it goes to the backlog, not
-  into this stage.
+- Confirm the task is inside the active mission's scope. Anything else stays in the
+  [stage backlog](../07-planning/phases.md) for Thomas to direct.
 - Identify what it depends on and whether those exist yet.
 - Check [licensing](../00-overview/licensing-and-attribution.md) if any code is being
   taken from elsewhere.
 
-**Exit** — the item is on the stage board with a clear scope statement.
+**Exit** — the queue records scope, owner, dependencies and the level of done required.
 
 ---
 
@@ -87,7 +91,8 @@ implementation. Human spec/design review for P0–P3 is deferred to the integrat
 
 **Do**
 
-- Branch: `feat/<area>-<short-description>`.
+- Branch: `<agent>/<area>-<short-description>` (for example `codex/…`, `claude/…`) or
+  `feat/…`, `fix/…`, `docs/…`, `chore/…`. One agent per branch.
 - Implement to the spec. Where the spec is wrong, **fix the spec in the same branch**.
 - Follow [coding standards](coding-standards.md).
 - Domain logic goes in `packages/domain` as pure functions.
@@ -125,8 +130,8 @@ implementation. Human spec/design review for P0–P3 is deferred to the integrat
 - Permission matrix updated and passing.
 - Negative tests: every "must not" in the spec has a test proving it.
 - Manual API exercise where behaviour is subtle.
-- **A security review, on GPT-6 Sol, not optional.** See
-  [agent-workflow.md](agent-workflow.md#model-policy) — a separate,
+- **A security review, not optional**, by the security reviewer the
+  [model policy](agent-workflow.md#model-policy) names — a separate,
   explicit pass, distinct from the general code review, on anything touching auth,
   reach/authority, secrets, uploads, webhooks or a new route. The **trigger is the path list in [ci-cd.md](ci-cd.md#pull-request-pipeline)** — that list is
   authoritative and this sentence only cites it; the review itself is recorded in the pull
@@ -153,7 +158,7 @@ recorded on the pull request.
 **Exit** — every applicable automated gate is green. For P0–P3, mark human H1–H6 review as
 deferred to the integrated P4 review; do not claim sign-off. At P4, perform the integrated
 human review and record its actual outcome. The documented deferral does not block technical
-P0–P3 stage closure when all other applicable criteria, including the stage-level GPT-6 Sol
+P0–P3 stage closure when all other applicable criteria, including the stage-level phase
 finalizer, are met.
 
 ---
@@ -171,9 +176,8 @@ finalizer, are met.
 
 **Loop discipline**
 
-- After **three** failed attempts at the same problem, stop. Write down what was tried and
-  what happened — the five-item note from [error-fix-loop.md](error-fix-loop.md) — and ask Thomas. Do not keep trying variations — that is how a
-  two-hour task becomes a two-day one.
+- Classify every failure before choosing a remedy, and stop a mechanism after three
+  failures — see [error-fix-loop.md](error-fix-loop.md#the-three-attempt-rule).
 - Do not disable a test to make a build pass. Ever.
 - Do not waive a gate without following the waiver procedure.
 
@@ -189,7 +193,7 @@ finalizer, are met.
 
 - Reconcile the spec with what was actually built.
 - Update the screen inventory status.
-- Update [status.md](../07-planning/status.md).
+- Hand off status facts; the conductor records them in [status.md](../07-planning/status.md).
 - Add user-facing documentation to `apps/site` if the feature is user-visible.
 - Update the configuration reference if new settings were added.
 - Add a decision log entry if a notable choice was made.
@@ -204,12 +208,16 @@ finalizer, are met.
 
 **Do**
 
-- Merge to `main` after review. CI builds and pushes the image.
-- Deploy to UAT. Smoke test.
-- Verify: migrations applied, no errors, dashboards healthy.
-- Promote to production by digest, not by tag.
+- The conductor merges through the protected flow once the candidate is
+  [merge-ready](definition-of-done.md#levels-of-done).
+- Publish and verify as [agent-workflow.md § Integration and
+  release](agent-workflow.md#integration-and-release) describes: pre-merge proofs before the
+  merge, main-only release proofs after it, the exact published digest on the approved test
+  environment, evidence bound to source SHA and digest.
 
-**Exit** — running in production, monitored, with a tested rollback.
+**Exit** — the slice meets its applicable Definition of Done and actual runtime acceptance,
+with rollback verified. Offline simulation is diagnostic only. This exit does not close a
+stage.
 
 ---
 
@@ -232,23 +240,16 @@ The steps are never skipped for convenience. They are scoped to the work.
 section no longer restates it — four copies of the list had drifted apart by 2026-09-06. In
 one sentence: every feature passes the Definition of Done; the manual passes (screen reader,
 keyboard-only session, fresh-eyes test, cross-browser, realistic data volumes, load baseline,
-backup and restore) are run; **a stage-level security review, on GPT-6 Sol** — a holistic pass
+backup and restore) are run; **a stage-level security review (the phase finalizer)** — a holistic pass
 over the whole stage's surface, not the sum of the per-feature reviews — is recorded; the
 stage review is written in `07-planning/`, including what went wrong; and every gate that was
 not run is a **recorded waiver** in the decision log, or the stage is not closed.
 
-**Authorized dependency-safe implementation workstreams may start before an earlier
-stage closes; stage acceptance remains ordered.** This preserves independent execution while
-keeping each stage accountable for its own completion evidence.
-
-**During an accelerated window, planned deferrals must be explicit:** the plan's
-**deferral register** states what scope each stage deliberately ships thinner, alongside the
-**per-feature Definition of Done**. A calendar does not make incomplete work complete. Every
-stage still passes its full own exit criteria and stage-level finalizer before it is claimed
-done; this changes implementation sequencing only, not the gate or completion standard.
-An agent reading only this document should not infer that P3 implementation must wait for
-P2 closure when an authorized dependency-safe workstream is ready, nor treat any stage gate as
-already satisfied.
+Preparation and formal closure are distinct. An accepted integration slice may cross
+existing stage surfaces without claiming any stage complete; neither a green slice nor SIT
+acceptance replaces the stage gate and its phase finalizer. Which stages may be worked on at
+all is set by the [active mission](../07-planning/active-mission.md), not by this document or
+an earlier accelerated plan.
 
 ## Related
 

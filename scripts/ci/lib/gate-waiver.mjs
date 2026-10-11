@@ -53,7 +53,7 @@
  * merge button" — that was the real control, informal as it was, because Thomas was the
  * one merging. Merge execution is now delegated to the top-level orchestrating session once
  * required gates are green (AGENTS.md, decision log 2026-09-15), and the orchestrator does
- * NOT count as that check. AGENTS.md and CLAUDE.md now both say explicitly: a candidate
+ * NOT count as that check. AGENTS.md § How work reaches `main` says explicitly: a candidate
  * citing any waiver is outside the delegation and always needs Thomas's own action to
  * merge. This script does not enforce that — it can't, from here — so it stays a
  * documentation-level control, tracked for a real mechanical check as a follow-up issue.

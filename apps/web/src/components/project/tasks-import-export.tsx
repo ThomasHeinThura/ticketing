@@ -5,6 +5,7 @@ import {
   DialogClose,
   DialogPopup,
   DialogTitle,
+  Input,
 } from "@taskdesk/ui";
 import { saveAs } from "file-saver";
 import { Download, Loader2, Upload } from "lucide-react";
@@ -155,7 +156,7 @@ export function TasksImportExport({ project }: TasksImportExportProps) {
           {t("settings:tasksImportExport.importTasks")}
         </Button>
 
-        <input
+        <Input
           ref={fileInputRef}
           type="file"
           accept=".json,application/json"

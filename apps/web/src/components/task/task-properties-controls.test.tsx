@@ -25,14 +25,18 @@ const translations = vi.hoisted(() => ({
       : key,
 }));
 
-vi.mock("@taskdesk/ui", () => ({
-  Button: ({
-    children,
-    ...props
-  }: React.ButtonHTMLAttributes<HTMLButtonElement>) => (
-    <button {...props}>{children}</button>
-  ),
-}));
+vi.mock("@taskdesk/ui", async () => {
+  const { Button } =
+    await vi.importActual<typeof import("@taskdesk/ui")>("@taskdesk/ui");
+  return {
+    Button: ({
+      children,
+      ...props
+    }: React.ButtonHTMLAttributes<HTMLButtonElement>) => (
+      <Button {...props}>{children}</Button>
+    ),
+  };
+});
 vi.mock("react-i18next", () => ({
   useTranslation: () => ({
     ...translations,

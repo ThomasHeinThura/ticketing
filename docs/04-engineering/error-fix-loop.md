@@ -45,7 +45,9 @@ Ask "why?" until you reach something structural:
 The last answer is the one worth fixing. Patching the first produces a fix that works and
 teaches nothing.
 
-**Do not change code until you can say, in one sentence, why it is broken.**
+**Do not change product code until evidence supports a product cause.** Classify the failure
+first — see [Classify before you fix](#classify-before-you-fix). A red check alone never
+justifies editing correct product code to trigger another run.
 
 ## 3 · Fix
 
@@ -97,27 +99,111 @@ the hole.
 
 ---
 
+## Classify before you fix
+
+Record four things for every failure: **observation, diagnosis, change, result.** Before
+comparing two runs, confirm they used the same source SHA, command and arguments, tool and
+dependency versions, environment and data — a reproduction under different conditions
+identifies nothing. A local failure does not prove a product defect; a local pass does not
+prove an environment defect.
+
+| Class | Typical evidence | Remedy, at its own layer |
+| --- | --- | --- |
+| **Product defect** | Reproduces on the tested source under matching conditions; the failing assertion traces to product behaviour | Fix product source, with a test that fails before and passes after |
+| **Test, fixture or oracle defect** | The assertion encodes a wrong expectation, a stale fixture, or compares a nondeterministic field | Fix the test or fixture. Assertions are controls: reviewed like product code, never weakened to pass |
+| **Environment or invocation mismatch** | The runs differ in SHA, command, arguments, versions, data or environment | Correct the invocation or environment; record both runs |
+| **Review or PR metadata** | A template, note or review-binding check fails | Correct the metadata factually; no source change |
+| **Transient infrastructure** | Retained evidence shows a transient infrastructure fault **before the affected test or checker executed** — runner provisioning, checkout, package or image download, quota. A real dependency-audit, typecheck, lint or policy result is never infrastructure, even if it comes early | The bounded re-run below |
+| **Unexplained measurement variation** | A timing metric differs across runs of identical source and assets | Preserve every run; apply the metric's own sampling policy; investigate |
+
+When the class is not established, say what is known and unknown and gather targeted
+diagnostics before changing anything.
+
+### Bounded verification policy
+
+- **Transient infrastructure** (approved by Thomas, decision log 2026-10-09 "Opus
+  policy-repair conductor"): **one** re-run for the same incident — the same job failing on
+  equivalent inputs —
+  only when retained evidence establishes a transient infrastructure failure before the
+  affected test or checker executed. Being early in the job is not enough. Preserve the
+  original failure, the diagnosis and both run IDs. Review-note commits, renamed branches and
+  equivalent new SHAs do not reset the allowance; a commit made only to obtain another run
+  counts as the re-run. CI that follows a genuine correction is normal verification, not a
+  re-run. A repeated infrastructure failure becomes a named blocker with an owner
+  (`WAITING_CI`) while unrelated work continues.
+- **Assertion and gate failures:** never re-run an unchanged candidate hoping for a pass. For
+  every failure class, a commit made only to obtain another run counts as a re-run.
+- **Performance measurements:** the only sampling and re-run rule is the one each metric
+  defines in [UX quality gates § G11](../02-design/ux-quality-gates.md). A failing result stands
+  until a changed candidate with a diagnosis, or an approved change to the sampling, produces a
+  new measurement.
+- This never authorizes retry-until-green, suppressed assertions, changed G11 sampling or
+  lower thresholds. Changing sampling, retry counts, budgets or acceptance semantics is a
+  CI/security-control change: its own PR, independent review, and Thomas's approval recorded
+  in the decision log.
+- A prior green result never clears a current red required check.
+
+---
+
 ## The three-attempt rule
 
-**After three failed attempts at the same problem, stop.**
+**After three failed attempts on the same mechanism, pause that mechanism and diagnose its
+whole entry point before a fourth.** Other tasks continue.
 
-Write down:
+A **mechanism** is the thing that keeps failing: an evidence runner or collector and its
+launcher, a CI job's invocation, or one approach to a defect class. Renaming it, issuing its
+next version (V35 → V36), moving it to a new branch, session or reviewer **does not reset the
+count**.
+
+Write down, in the PR and the task handoff (the conductor carries it into the queue):
 
 1. What is happening, precisely.
 2. What you expected.
-3. The three things you tried and what each produced.
+3. The three attempts and what each produced.
 4. What you have ruled out.
 5. Your current best hypothesis.
 
-Then ask Thomas — the five-item note above *is* the escalation, and it goes into the pull
-request description and a **Blocked** entry in [status.md](../07-planning/status.md). The
-same shape applies when a usage limit blocks a required reviewer
-([agent-workflow.md](agent-workflow.md#model-policy), the reviewer-capacity rule).
+Then, before any further live attempt:
 
-This applies especially to AI agents, where the failure mode is generating variation after
-variation without new information. A fourth variation on a wrong model of the problem is
-not progress, and the fifth will not be either. The rule converts a spiral into a
-conversation.
+1. **Pause** live attempts on that mechanism.
+2. **Assign an independent context** to diagnose the complete invocation and data path, not
+   the last helper that failed.
+3. **Reproduce** the retained failure from preserved evidence.
+4. **Agree a bounded, cause-appropriate repair** of the underlying interface or invariant —
+   not one more special case — before making it.
+5. **Test the actual production entry point** (below).
+6. Get the **independent review** the change requires.
+7. Run the **next authorized runtime verification**.
+
+Escalate to Thomas only an owner-only decision, a waiver or unavailable external access;
+technical diagnosis stays with the agents.
+
+### End-to-end validation for evidence runners
+
+Every fix to an evidence runner — not only after the limit — needs a regression that drives
+the real path, in order:
+
+```
+actual launcher → actual arguments and environment → actual artifact loading
+  → source / image / authority validation → real collector call sites
+  → evidence persistence → reconciliation → acceptance verdict
+  → process lifecycle, exit status and cleanup
+```
+
+Replay the retained failures through it, including missing inputs, nullable decisions,
+unexpected events and corrupt bindings. **A helper test that injects an input the real
+invocation never supplies proves nothing about the runner.** Preserve the permitted evidence
+before any interpretation, validation or cleanup step can destroy it, and keep sensitive
+material private. Never reset accepted historical observations automatically, and never
+relabel them as new-source or new-date evidence.
+
+**Preflight is not acceptance.** Offline tests, source review and a successful image boot can
+diagnose and validate a path; only the required live run establishes runtime acceptance.
+Keep budgets, negative assertions, suite counts and exact-source requirements unchanged —
+disabling tests or widening thresholds to make a runner green is not convergence.
+
+This matters most for AI agents, whose failure mode is generating variation after variation
+without new information. A fourth variation on a wrong model of the problem is not progress.
 
 ---
 
@@ -138,13 +224,10 @@ conversation.
 
 ## When a build fails in CI
 
-1. **Read the actual error.** Not the summary — the error.
-2. Reproduce locally with the same command CI ran.
-3. If it fails locally, it is a real failure. Fix it.
-4. If it passes locally, it is an environment difference: timing, data, ordering,
-   parallelism, timezone. Those are the usual suspects, in that order.
-5. If it is flaky, **fix the flake**. Do not retry the job. A suite with known flakes
-   stops being trusted, and then a real failure gets retried too.
+Read the actual error, not the summary. Then [classify it](#classify-before-you-fix). A
+failure caused by something outside the change (for example an advisory against `main`'s
+lockfile) goes to its canonical owner; the PR waits on that named dependency and unrelated work
+continues ([agent workflow § Verification](agent-workflow.md#verification)).
 
 ---
 

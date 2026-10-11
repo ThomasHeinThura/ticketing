@@ -108,8 +108,10 @@ alpine, until measured otherwise.
 
 ## Traceability
 
-The three OCI labels plus `GET /api/public/health/live` returning `{ version, sha }` mean
-any running container can be traced to a commit and its signed digest.
+The three OCI labels identify the commit and the signed digest of any image. The running
+process is traced through them (`docker inspect`), not through the application:
+`GET /api/public/health/live` is a dependency-free liveness probe that returns only
+`{"status":"ok"}`.
 
 ## Related
 

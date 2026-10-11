@@ -32,3 +32,12 @@ export const Disabled: Story = {
 export const Invalid: Story = {
   args: { "aria-invalid": true },
 };
+
+export const UnstyledNativeInput: Story = {
+  args: {
+    "aria-label": "Task title",
+    nativeInput: true,
+    nativeInputClassName: "font-heading text-[2rem]",
+    unstyled: true,
+  },
+};

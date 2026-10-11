@@ -56,7 +56,7 @@ layer never knows or cares how someone logged in.
 | Magic link | ✅ inherited |
 | Email OTP | ✅ inherited |
 | Passkeys | **Planned after P0; not enabled in current API source**; integration and verification remain future work |
-| Arbitrary OIDC | ✅ genericOAuth — **configurable at runtime** |
+| Arbitrary OIDC | **Not enabled in the first release.** Microsoft Entra has a connection-bound implementation; other OIDC providers need their own specified protocol and admission profile. |
 | API keys | ✅ apiKey plugin |
 | Impersonation | ✅ admin plugin — kept **only as a session primitive**; the authority check is ours (see the plugin table) |
 | TypeScript-native, Drizzle adapter | ✅ |
@@ -65,6 +65,19 @@ layer never knows or cares how someone logged in.
 Keycloak is **not** a dependency. It is one OIDC provider among many, added through
 God Mode if a deployment wants it. That is the difference between "we support Keycloak"
 and "we require Keycloak".
+
+**Runtime limitation of better-auth `genericOAuth`.** The generic plugin is present in the
+installed library, but its current runtime implementation is not the Entra connection
+protocol. Its profile path decodes ID-token claims before mapping and does not provide the
+connection-specific signature, immutable `oid`/`tid`, exact app-role/`acct` admission,
+portal/organisation binding, profile-only mapping, or source-isolated grant reconciliation
+required by IP-7/IP-27. Its generic profile/error handling can also surface upstream
+response details through the auth error path. TaskDesk therefore uses a custom Better Auth
+plugin endpoint for the Entra authorization-code flow, with tenant-pinned discovery, PKCE,
+single-use state/nonce, bounded upstream responses, native RS256/JWKS validation and generic
+browser failure redirects. Upstream response bodies, claims, codes, tokens, state, and client
+secrets are never included in TaskDesk logs or public errors. Generic OAuth remains disabled
+for connection sign-in until a separate provider contract and verifier are implemented.
 
 ### The better-auth plugin set — inherited, removed, added
 
@@ -82,7 +95,7 @@ registered in [inherited-features.md](inherited-features.md).
 | `emailOTP` | inherited — kept | `auth.email-otp` |
 | `genericOAuth` | inherited — kept | the protocol implementation every `auth.oidc` connection is built on |
 | `apiKey` | inherited — kept | the credential only; our `api_key` table owns everything else |
-| `admin` | inherited — kept **as a session primitive only** | its HTTP routes are **not mounted**. The application's identity resolver reads the stored `user.role = 'admin'` field as the current source for the instance-scope `instance_admin` grant; authority does not come from a plugin endpoint. `POST /api/instance/users/{id}/impersonate` ([rbac.md](rbac.md)) does the authority check and sets `impersonatedBy` |
+| `admin` | inherited — kept **as a session primitive only** | its HTTP routes are **refused**: a `hooks.before` in `createAuth` (`apps/api/src/auth.ts`) rejects every `/api/auth/admin/*` endpoint (`set-role`, `create-user`, `set-user-password`, `impersonate-user`, `remove-user`, `ban-user`, `unban-user`, `revoke-user-sessions`, `list-users`, ...) with 404 before it runs, even for an instance-admin session, guarded by `tests/api-integration/auth-admin-routes-refused.test.ts`. The application's identity resolver reads the stored `user.role = 'admin'` field as the current source for the instance-scope `instance_admin` grant; authority does not come from a plugin endpoint. `POST /api/instance/users/{id}/impersonate` ([rbac.md](rbac.md)) does the authority check and sets `impersonatedBy` |
 | `openAPI` | **removed at fork** | listed here as *"kept — development only"* until 2026-09-07. It mounts an unauthenticated `/api/auth/reference` that pulls an **unpinned** `cdn.jsdelivr.net/npm/@scalar/api-reference` bundle into the API's own cookie origin — **H19** of the [#13 security review](../07-planning/security-reviews/13-kaneo-import.md), which put it on issue #6's removal list. Removed in #6's inherited-defaults slice. The API's **own** OpenAPI document is `@hono/zod-openapi` at `GET /api/openapi` and is untouched by this |
 | `lastLoginMethod` | inherited — kept | |
 | `anonymous` | **removed at fork** | guest sign-in, on by default in kaneo. An ephemeral-identity surface does not ship dormant |
@@ -90,6 +103,7 @@ registered in [inherited-features.md](inherited-features.md).
 | `bearer` | **removed at fork** | a second token-bearing authentication surface |
 | `organization` | **removed at fork — P0 step 1b** | see below |
 | `twoFactor` | **candidate P0 integration** | TOTP and backup codes use Better Auth's verifier; candidate login/session/policy wiring is not accepted until the full runtime and browser evidence passes |
+| `taskdesk-identity-oidc` | **added — P3 identity integration** | TaskDesk's native OIDC plugin enforces the documented issuer, signature, nonce, audience, and identity-connection contracts; it uses Better Auth's adapter/session infrastructure and does not grant roles or instance authority |
 | `passkey` | **planned later; not enabled in current API source** | Integration and verification remain future work |
 
 **The organization plugin is kaneo's workspace model, not a dormant feature.** In kaneo it
@@ -373,6 +387,19 @@ code; only the credential check reuses the platform. Budget it as such.
   closed during authenticated request resolution and at the realtime boundary, requiring
   a fresh sign-in. The selected host's portal must match `session.portal` even if a cookie
   value is copied into the other portal's cookie name.
+- Native OIDC-issued sessions also carry nullable `identity_connection_id` referencing
+  `identity_connection.id` with `ON DELETE CASCADE`. Only a validated native OIDC callback
+  may set it; local sign-in, impersonation and other-connection sessions remain null or keep
+  their original connection provenance. The callback revalidates the enabled connection
+  under the `IP-22` connection lock before issuing a session. Disabling a connection deletes
+  only sessions whose provenance equals that connection id, in the same serialized
+  configuration transaction that retires its grants. The forward migration does not infer
+  provenance for pre-migration sessions. Because those older OIDC sessions cannot be
+  distinguished from local sessions, rollout must occur before enabling this source-scoped
+  revocation guarantee; any persistent runtime with such sessions requires an explicit
+  operator reconciliation before the migration is applied. The FK cascade is only a
+  source-specific final deletion guard; production deletion still uses its pending-action,
+  audit and authority-invalidation lifecycle.
 - **Server-side sessions in Postgres, and this is the honest revocation SLA.**
   better-auth's `session.cookieCache` is **disabled** at the fork — kaneo enables it for
   five minutes, which serves a session from a signed cookie with no database read. Every
