@@ -109,6 +109,7 @@ export function aggregateCpuProfileFrames(
         }
       }
 
+      const includedBuckets = new Set<string>();
       for (const nodeId of included) {
         const node = nodes.get(nodeId);
         if (!node || node.asset === "runtime" || node.asset === "non-asset")
@@ -124,12 +125,17 @@ export function aggregateCpuProfileFrames(
           selfSampleCount: 0,
           inclusiveSampleCount: 0,
         };
-        bucket.inclusiveSampledMicroseconds += sample.durationMicroseconds;
-        bucket.inclusiveSampleCount += 1;
         if (nodeId === sampledNode.id) {
           bucket.selfSampledMicroseconds += sample.durationMicroseconds;
           bucket.selfSampleCount += 1;
         }
+        if (includedBuckets.has(key)) {
+          totals.set(key, bucket);
+          continue;
+        }
+        includedBuckets.add(key);
+        bucket.inclusiveSampledMicroseconds += sample.durationMicroseconds;
+        bucket.inclusiveSampleCount += 1;
         totals.set(key, bucket);
       }
     }

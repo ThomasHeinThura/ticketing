@@ -135,6 +135,64 @@ describe("aggregateCpuProfileFrames", () => {
     ]);
   });
 
+  it("counts a recursive compiled-coordinate bucket once per sample", () => {
+    const buckets = aggregateCpuProfileFrames([
+      {
+        nodes: [
+          {
+            id: 1,
+            functionName: "Board",
+            asset: "board.js",
+            line: 3,
+            column: 4,
+          },
+          {
+            id: 2,
+            parent: 1,
+            functionName: "render",
+            asset: "board.js",
+            line: 8,
+            column: 2,
+          },
+          {
+            id: 3,
+            parent: 2,
+            functionName: "render",
+            asset: "board.js",
+            line: 8,
+            column: 2,
+          },
+        ],
+        samples: [
+          { nodeId: 3, startMicroseconds: 10, durationMicroseconds: 5 },
+        ],
+      },
+    ]);
+
+    expect(buckets).toEqual([
+      {
+        asset: "board.js",
+        functionName: "render",
+        line: 8,
+        column: 2,
+        selfSampledMicroseconds: 5,
+        inclusiveSampledMicroseconds: 5,
+        selfSampleCount: 1,
+        inclusiveSampleCount: 1,
+      },
+      {
+        asset: "board.js",
+        functionName: "Board",
+        line: 3,
+        column: 4,
+        selfSampledMicroseconds: 0,
+        inclusiveSampledMicroseconds: 5,
+        selfSampleCount: 0,
+        inclusiveSampleCount: 1,
+      },
+    ]);
+  });
+
   it("terminates on cycles, ignores missing nodes and does not double count an ancestor per sample", () => {
     const buckets = aggregateCpuProfileFrames([
       {
