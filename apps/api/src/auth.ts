@@ -723,6 +723,18 @@ function createAuth(
     },
     hooks: {
       before: createAuthMiddleware(async (ctx) => {
+        // The admin plugin is kept as a session primitive only (role, banned,
+        // impersonatedBy fields and ban enforcement). Its HTTP endpoints
+        // (set-role, create-user, set-user-password, impersonate-user,
+        // remove-user, ban-user, ...) bypass step-up, eligibility checks and
+        // audit, so every `/admin/*` endpoint is refused here. `ctx.path` is
+        // the matched endpoint path, so encoding/case/slash variants either
+        // resolve to this same path (and are refused) or match nothing (404).
+        // Authority for these operations lives in `/api/instance/*`.
+        if (ctx.path === "/admin" || ctx.path.startsWith("/admin/")) {
+          throw new APIError("NOT_FOUND", { message: "Not found" });
+        }
+
         if (ctx.path === "/two-factor/enable" && ctx.context.session?.user.id) {
           const state = await loadLocalFactorState(ctx.context.session.user.id);
           if (state.policy.mode === "off") {
