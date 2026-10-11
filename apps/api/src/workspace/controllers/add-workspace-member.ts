@@ -1,4 +1,4 @@
-import { and, eq, sql } from "drizzle-orm";
+import { and, eq } from "drizzle-orm";
 import db, { schema } from "../../database";
 import { roleGrantsOwner } from "../../utils/workspace-member-roles";
 import {
@@ -7,7 +7,7 @@ import {
   UserAlreadyMemberError,
   WorkspaceRoleNotFoundError,
 } from "./workspace-membership-errors";
-import { WORKSPACE_MEMBERSHIP_LOCK_NAMESPACE } from "./workspace-membership-lock";
+import { lockWorkspaceRoleAssignment } from "./workspace-role-assignment-lock";
 
 export type AddWorkspaceMemberInput = {
   workspaceId: string;
@@ -56,9 +56,7 @@ async function addWorkspaceMember(
   }
 
   return db.transaction(async (tx) => {
-    await tx.execute(
-      sql`SELECT pg_advisory_xact_lock(${WORKSPACE_MEMBERSHIP_LOCK_NAMESPACE}, hashtext(${input.workspaceId}))`,
-    );
+    await lockWorkspaceRoleAssignment(tx, input.workspaceId);
 
     const [roleRow] = await tx
       .select({ role: schema.workspaceRoleTable.role })

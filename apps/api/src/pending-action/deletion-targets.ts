@@ -56,6 +56,8 @@ export async function getPendingActionExecutionTarget(input: {
     .select({
       action: pendingActionTable.action,
       targetType: pendingActionTable.targetType,
+      confirmationRequired: pendingActionTable.confirmationRequired,
+      routeKey: pendingActionTable.routeKey,
     })
     .from(pendingActionTable)
     .where(
@@ -192,7 +194,7 @@ export async function approveServiceCalendarDeletion(input: {
             actorType: "person",
             traceId: input.traceId,
             workspaceId: row.workspaceId,
-            action: "pending_action.expired",
+            action: "pending_action.decided",
             entityType: "pending_action",
             entityId: row.id,
             before: { state: "pending" },
@@ -637,7 +639,7 @@ export async function approveSavedViewDeletion(input: {
             workspaceId: row.workspaceId,
             projectId: row.projectId,
             organisationId: row.organisationId,
-            action: "pending_action.expired",
+            action: "pending_action.decided",
             entityType: "pending_action",
             entityId: row.id,
             before: { state: "pending" },
@@ -1130,7 +1132,7 @@ async function invalidateServiceCalendarDeletion(
         actorType: "person",
         traceId: input.traceId,
         workspaceId: input.row.workspaceId,
-        action: "pending_action.invalidated",
+        action: "pending_action.decided",
         entityType: "pending_action",
         entityId: input.row.id,
         before: { state: "pending" },

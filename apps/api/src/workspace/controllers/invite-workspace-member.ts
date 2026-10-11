@@ -1,4 +1,4 @@
-import { and, count, eq, gt, sql } from "drizzle-orm";
+import { and, count, eq, gt } from "drizzle-orm";
 import db, { schema } from "../../database";
 import { sendNativeWorkspaceInvitationEmail } from "../../utils/send-workspace-invitation-email";
 import { MAX_PENDING_INVITATIONS_PER_WORKSPACE } from "../../utils/workspace-invitation-limits";
@@ -12,7 +12,7 @@ import {
   UserAlreadyMemberError,
   WorkspaceRoleNotFoundError,
 } from "./workspace-membership-errors";
-import { WORKSPACE_MEMBERSHIP_LOCK_NAMESPACE } from "./workspace-membership-lock";
+import { lockWorkspaceRoleAssignment } from "./workspace-role-assignment-lock";
 
 /** Matches better-auth's own default (`crud-invites.mjs`:
  * `getDate(ctx.context.orgOptions.invitationExpiresIn || 3600 * 48, "sec")`),
@@ -68,13 +68,11 @@ export type InvitedWorkspaceMember = {
  *    100 and why this is not a "shared constant" situation the way the
  *    workspace-role ceiling is.
  *
- * Takes the SAME advisory lock as every S5 membership write
- * (`WORKSPACE_MEMBERSHIP_LOCK_NAMESPACE`), even though this controller never
- * writes `workspace_member` itself: the existing-member check below reads
- * that table, and taking the lock is what stops it racing a concurrent
- * `acceptInvitation` for the same email -- accept and this create would
- * otherwise be able to interleave their reads of `workspace_member` around
- * each other's writes.
+ * Takes the shared membership→role lock pair even though this controller does not
+ * materialize `workspace_member`: the transaction validates a role that a later acceptance
+ * will assign, and its existing-member check must serialize with membership writers. Pending
+ * invitations do not prevent role deletion; acceptance revalidates the role under this same
+ * pair and leaves an invitation pending if its role has since been removed.
  *
  * The email send happens AFTER the transaction commits, matching
  * `create-workspace.ts`'s own reasoning: nothing should be mailed for a
@@ -90,9 +88,7 @@ async function inviteWorkspaceMember(
   }
 
   const invitation = await db.transaction(async (tx) => {
-    await tx.execute(
-      sql`SELECT pg_advisory_xact_lock(${WORKSPACE_MEMBERSHIP_LOCK_NAMESPACE}, hashtext(${input.workspaceId}))`,
-    );
+    await lockWorkspaceRoleAssignment(tx, input.workspaceId);
 
     const [roleRow] = await tx
       .select({ role: schema.workspaceRoleTable.role })

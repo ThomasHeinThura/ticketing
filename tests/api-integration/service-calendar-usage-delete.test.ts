@@ -91,7 +91,7 @@ async function makeCalendarKey(userId: string, permissions: unknown) {
 
 async function prepareApprovalSession(userId: string) {
   const now = new Date();
-  const id = `calendar-delete-session-${userId}`;
+  const id = `session-${userId}`;
   await db.insert(schema.sessionTable).values({
     id,
     token: `calendar-delete-token-${userId}`,
@@ -323,6 +323,42 @@ describe("API integration: service-calendar usage and CAL-9 deletion", () => {
       ).toHaveLength(1);
     },
   );
+
+  it("persists the supported pending-action audit key when approval expires", async () => {
+    const owner = await createWorkspaceMember({ role: "admin" });
+    const { app, pending } = await startKeyDeletion(owner);
+    await db
+      .update(schema.pendingActionTable)
+      .set({ expiresAt: new Date(Date.now() - 60_000) })
+      .where(eq(schema.pendingActionTable.id, pending.pendingActionId));
+
+    const approval = await app.request(
+      `/api/me/pending-actions/${pending.pendingActionId}/approve`,
+      {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: "{}",
+      },
+    );
+    expect(approval.status).toBe(200);
+    await expect(approval.json()).resolves.toMatchObject({ state: "expired" });
+    const [audit] = await db
+      .select({
+        action: schema.auditLogTable.action,
+        after: schema.auditLogTable.after,
+      })
+      .from(schema.auditLogTable)
+      .where(
+        and(
+          eq(schema.auditLogTable.entityType, "pending_action"),
+          eq(schema.auditLogTable.entityId, pending.pendingActionId),
+        ),
+      );
+    expect(audit).toMatchObject({
+      action: "pending_action.decided",
+      after: { state: "expired" },
+    });
+  });
 
   it("uses the originating API key's current capability subset and cannot regain approval after scope restoration", async () => {
     const owner = await createWorkspaceMember({ role: "admin" });
@@ -715,10 +751,32 @@ describe("API integration: service-calendar usage and CAL-9 deletion", () => {
       "pending_action_target_changed",
     );
     const [invalidated] = await db
-      .select({ state: schema.pendingActionTable.state })
+      .select({
+        state: schema.pendingActionTable.state,
+        invalidationReason: schema.pendingActionTable.invalidationReason,
+      })
       .from(schema.pendingActionTable)
       .where(eq(schema.pendingActionTable.id, pending.pendingActionId));
-    expect(invalidated?.state).toBe("invalidated");
+    expect(invalidated).toMatchObject({
+      state: "invalidated",
+      invalidationReason: "version_changed",
+    });
+    const [audit] = await db
+      .select({
+        action: schema.auditLogTable.action,
+        after: schema.auditLogTable.after,
+      })
+      .from(schema.auditLogTable)
+      .where(
+        and(
+          eq(schema.auditLogTable.entityType, "pending_action"),
+          eq(schema.auditLogTable.entityId, pending.pendingActionId),
+        ),
+      );
+    expect(audit).toMatchObject({
+      action: "pending_action.decided",
+      after: { state: "invalidated", invalidationReason: "version_changed" },
+    });
     expect(
       await db
         .select()

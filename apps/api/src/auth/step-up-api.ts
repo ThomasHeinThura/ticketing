@@ -40,23 +40,34 @@ import {
   getActiveSessionForStepUp,
   getIdentityConfigVersion,
   getPasswordCredential,
+  getPendingActionForStepUp,
   getScimConfigVersion,
   getScimConnectionDetails,
   getUserFactorEnabled,
+  getUserId,
 } from "./repository";
-import { appendStepUpAudit } from "./step-up-audit";
+import {
+  appendPendingActionStepUpAudit,
+  appendStepUpAudit,
+} from "./step-up-audit";
 import {
   createIdentityConnectionChallenge,
+  createInstanceAdminGrantChallenge,
+  createInstanceAdminSuspendChallenge,
   createMfaResetChallenge,
   createOidcGroupMappingChallenge,
+  createPendingActionChallenge,
   createRotationChallenge,
   createScimAdminChallenge,
   createScimTokenChallenge,
   IDENTITY_CONNECTION_CONFIGURE_OPERATION,
   IDENTITY_CONNECTION_CREATE_OPERATION,
   issueIdentityConnectionToken,
+  issueInstanceAdminGrantToken,
+  issueInstanceAdminSuspendToken,
   issueMfaResetToken,
   issueOidcGroupMappingToken,
+  issuePendingActionToken,
   issueRotationToken,
   issueScimAdminToken,
   issueScimTokenToken,
@@ -75,6 +86,20 @@ const tokenResponse = z.object({
   token: z.string().length(43),
   expiresAt: z.string().datetime(),
 });
+const suspendRequestSchema = z
+  .object({
+    reason: z.string().trim().min(1).max(1000).optional(),
+    expiresAt: z.string().datetime({ offset: true }).nullable().optional(),
+  })
+  .strict()
+  .superRefine((request, ctx) => {
+    if (
+      request.reason !== undefined &&
+      Array.from(request.reason).length > 500
+    ) {
+      ctx.addIssue({ code: "custom", path: ["reason"], message: "too_long" });
+    }
+  });
 
 function requireScimAdminRequest(
   request: ScimAdminRequest | undefined,
@@ -127,79 +152,106 @@ const challengeRoute = createRoute({
       required: true,
       content: {
         "application/json": {
-          schema: z.discriminatedUnion("operation", [
-            z
-              .object({
-                kind: z.literal("operation"),
-                operation: z.literal("metrics_token_rotate"),
-                version: versionSchema,
-              })
-              .strict(),
-            z
-              .object({
-                kind: z.literal("operation"),
-                operation: z.literal("mfa_reset"),
-                userId: z.string().min(1),
-                verificationNote: z.string().trim().min(12).max(1000),
-              })
-              .strict(),
-            z
-              .object({
-                kind: z.literal("operation"),
-                operation: z.literal("scim_admin_update"),
-                connectionId: z.string().min(1),
-                request: z.record(z.string(), z.unknown()),
-              })
-              .strict(),
-            z
-              .object({
-                kind: z.literal("operation"),
-                operation: z.literal(OIDC_GROUP_MAPPING_CREATE_OPERATION),
-                connectionId: z.string().min(1).max(128),
-                request: oidcGroupMappingCreateRequestSchema,
-              })
-              .strict(),
-            z
-              .object({
-                kind: z.literal("operation"),
-                operation: z.literal(OIDC_GROUP_MAPPING_UPDATE_OPERATION),
-                connectionId: z.string().min(1).max(128),
-                mappingId: z.string().min(1).max(128),
-                request: oidcGroupMappingUpdateRequestSchema,
-              })
-              .strict(),
-            z
-              .object({
-                kind: z.literal("operation"),
-                operation: z.literal("scim_token_rotate"),
-                connectionId: z.string().min(1),
-                version: versionSchema,
-              })
-              .strict(),
-            z
-              .object({
-                kind: z.literal("operation"),
-                operation: z.literal("scim_token_revoke"),
-                connectionId: z.string().min(1),
-                version: versionSchema,
-              })
-              .strict(),
-            z
-              .object({
-                kind: z.literal("operation"),
-                operation: z.literal(IDENTITY_CONNECTION_CREATE_OPERATION),
-                request: identityConnectionCreateRequestSchema,
-              })
-              .strict(),
-            z
-              .object({
-                kind: z.literal("operation"),
-                operation: z.literal(IDENTITY_CONNECTION_CONFIGURE_OPERATION),
-                connectionId: z.string().min(1).max(128),
-                request: identityConnectionConfigureRequestSchema,
-              })
-              .strict(),
-          ]),
+          schema: z
+            .union([
+              z.discriminatedUnion("operation", [
+                z
+                  .object({
+                    kind: z.literal("operation"),
+                    operation: z.literal("metrics_token_rotate"),
+                    version: versionSchema,
+                  })
+                  .strict(),
+                z
+                  .object({
+                    kind: z.literal("operation"),
+                    operation: z.literal("mfa_reset"),
+                    userId: z.string().min(1),
+                    verificationNote: z.string().trim().min(12).max(1000),
+                  })
+                  .strict(),
+                z
+                  .object({
+                    kind: z.literal("operation"),
+                    operation: z.literal("instance_admin_grant"),
+                    targetUserId: z.string().min(1),
+                  })
+                  .strict(),
+                z
+                  .object({
+                    kind: z.literal("operation"),
+                    operation: z.literal("instance_admin_suspend"),
+                    targetUserId: z.string().min(1),
+                    request: suspendRequestSchema,
+                  })
+                  .strict(),
+                z
+                  .object({
+                    kind: z.literal("operation"),
+                    operation: z.literal("scim_admin_update"),
+                    connectionId: z.string().min(1),
+                    request: z.record(z.string(), z.unknown()),
+                  })
+                  .strict(),
+                z
+                  .object({
+                    kind: z.literal("operation"),
+                    operation: z.literal(OIDC_GROUP_MAPPING_CREATE_OPERATION),
+                    connectionId: z.string().min(1).max(128),
+                    request: oidcGroupMappingCreateRequestSchema,
+                  })
+                  .strict(),
+                z
+                  .object({
+                    kind: z.literal("operation"),
+                    operation: z.literal(OIDC_GROUP_MAPPING_UPDATE_OPERATION),
+                    connectionId: z.string().min(1).max(128),
+                    mappingId: z.string().min(1).max(128),
+                    request: oidcGroupMappingUpdateRequestSchema,
+                  })
+                  .strict(),
+                z
+                  .object({
+                    kind: z.literal("operation"),
+                    operation: z.literal("scim_token_rotate"),
+                    connectionId: z.string().min(1),
+                    version: versionSchema,
+                  })
+                  .strict(),
+                z
+                  .object({
+                    kind: z.literal("operation"),
+                    operation: z.literal("scim_token_revoke"),
+                    connectionId: z.string().min(1),
+                    version: versionSchema,
+                  })
+                  .strict(),
+                z
+                  .object({
+                    kind: z.literal("operation"),
+                    operation: z.literal(IDENTITY_CONNECTION_CREATE_OPERATION),
+                    request: identityConnectionCreateRequestSchema,
+                  })
+                  .strict(),
+                z
+                  .object({
+                    kind: z.literal("operation"),
+                    operation: z.literal(
+                      IDENTITY_CONNECTION_CONFIGURE_OPERATION,
+                    ),
+                    connectionId: z.string().min(1).max(128),
+                    request: identityConnectionConfigureRequestSchema,
+                  })
+                  .strict(),
+              ]),
+              z
+                .object({
+                  kind: z.literal("pending_action"),
+                  pendingActionId: z.string().min(1).max(64),
+                })
+                .strict(),
+            ])
+            .openapi({}, { unionPreferredType: "oneOf" }),
         },
       },
     },
@@ -479,6 +531,57 @@ const proveRoute = createRoute({
                   .strict(),
               ];
             }),
+            ...(["password", "totp", "backup_code"] as const).map((method) =>
+              z
+                .object({
+                  kind: z.literal("operation"),
+                  operation: z.literal("instance_admin_grant"),
+                  targetUserId: z.string().min(1),
+                  challengeId: z.string(),
+                  nonce: z.string().length(43),
+                  method: z.literal(method),
+                  ...(method === "password"
+                    ? { password: z.string().min(1).max(1024) }
+                    : method === "totp"
+                      ? { code: z.string().regex(/^\d{6}$/u) }
+                      : { code: z.string().min(1).max(64) }),
+                })
+                .strict(),
+            ),
+            ...(["password", "totp", "backup_code"] as const).map((method) =>
+              z
+                .object({
+                  kind: z.literal("operation"),
+                  operation: z.literal("instance_admin_suspend"),
+                  targetUserId: z.string().min(1),
+                  request: suspendRequestSchema,
+                  challengeId: z.string(),
+                  nonce: z.string().length(43),
+                  method: z.literal(method),
+                  ...(method === "password"
+                    ? { password: z.string().min(1).max(1024) }
+                    : method === "totp"
+                      ? { code: z.string().regex(/^\d{6}$/u) }
+                      : { code: z.string().min(1).max(64) }),
+                })
+                .strict(),
+            ),
+            ...(["password", "totp", "backup_code"] as const).map((method) =>
+              z
+                .object({
+                  kind: z.literal("pending_action"),
+                  pendingActionId: z.string().min(1).max(64),
+                  challengeId: z.string(),
+                  nonce: z.string().length(43),
+                  method: z.literal(method),
+                  ...(method === "password"
+                    ? { password: z.string().min(1).max(1024) }
+                    : method === "totp"
+                      ? { code: z.string().regex(/^\d{6}$/u) }
+                      : { code: z.string().min(1).max(64) }),
+                })
+                .strict(),
+            ),
           ]),
         },
       },
@@ -510,6 +613,71 @@ const routes = apiRouter()
     c.header("Cache-Control", "no-store");
     const actor = await requireCurrentAgentSession(c);
     const input = c.req.valid("json");
+    if (input.kind === "pending_action") {
+      const [action] = await getPendingActionForStepUp(
+        input.pendingActionId,
+        actor.factor.personId,
+        new Date(),
+      );
+      if (
+        action?.action !== "delete" ||
+        action.targetType !== "user" ||
+        action.confirmation !== "typed_name_step_up" ||
+        action.routeKey !== "POST /api/instance/users/{id}/deactivate"
+      ) {
+        setShadowLegacyAuthorization(c, "denied");
+        throw new HTTPException(404, { message: "Pending action unavailable" });
+      }
+      if (!(await isCurrentInstanceAdmin(c.get("userId")))) {
+        setShadowLegacyAuthorization(c, "denied");
+        throw new HTTPException(403, { message: "Forbidden" });
+      }
+      let challenge: Awaited<ReturnType<typeof createPendingActionChallenge>>;
+      try {
+        challenge = await createPendingActionChallenge({
+          personId: actor.factor.personId,
+          sessionId: actor.session.id,
+          pendingActionId: input.pendingActionId,
+        });
+      } catch (error) {
+        if (error instanceof StepUpAttemptLimitError) {
+          await appendPendingActionStepUpAudit(db, {
+            action: "auth.step_up_denied",
+            actorId: c.get("userId"),
+            personId: actor.factor.personId,
+            pendingActionId: input.pendingActionId,
+            traceId: c.req.header("x-request-id"),
+          });
+          return c.json(
+            {
+              message: "step_up_attempt_limit" as const,
+              limit: STEP_UP_CHALLENGE_LIMIT,
+              windowMinutes: STEP_UP_CHALLENGE_WINDOW_MINUTES,
+            },
+            429,
+          );
+        }
+        throw error;
+      }
+      if (!challenge)
+        throw new HTTPException(409, { message: "Pending action unavailable" });
+      await appendPendingActionStepUpAudit(db, {
+        action: "auth.step_up_issued",
+        actorId: c.get("userId"),
+        personId: actor.factor.personId,
+        pendingActionId: input.pendingActionId,
+        traceId: c.req.header("x-request-id"),
+      });
+      setShadowLegacyAuthorization(c, "allowed");
+      return c.json(
+        {
+          challengeId: challenge.id,
+          nonce: challenge.nonce,
+          expiresAt: challenge.expiresAt,
+        },
+        200,
+      );
+    }
     if (!(await isCurrentInstanceAdmin(c.get("userId")))) {
       setShadowLegacyAuthorization(c, "denied");
       throw new HTTPException(403, { message: "Forbidden" });
@@ -541,6 +709,98 @@ const routes = apiRouter()
             actorId: c.get("userId"),
             personId: actor.factor.personId,
             operation: "mfa_reset",
+            traceId: c.req.header("x-request-id"),
+          });
+          return c.json(
+            {
+              message: "step_up_attempt_limit" as const,
+              limit: STEP_UP_CHALLENGE_LIMIT,
+              windowMinutes: STEP_UP_CHALLENGE_WINDOW_MINUTES,
+            },
+            429,
+          );
+        }
+        throw error;
+      }
+      setShadowLegacyAuthorization(c, "allowed");
+      return c.json(
+        {
+          challengeId: challenge.id,
+          nonce: challenge.nonce,
+          expiresAt: challenge.expiresAt,
+        },
+        200,
+      );
+    }
+    if (input.operation === "instance_admin_suspend") {
+      const [target] = await getUserId(input.targetUserId);
+      if (!target) throw new HTTPException(404, { message: "User not found" });
+      let challenge: Awaited<
+        ReturnType<typeof createInstanceAdminSuspendChallenge>
+      >;
+      try {
+        challenge = await createInstanceAdminSuspendChallenge({
+          personId: actor.factor.personId,
+          sessionId: actor.session.id,
+          userId: input.targetUserId,
+          request: input.request,
+        });
+      } catch (error) {
+        if (error instanceof StepUpAttemptLimitError) {
+          await appendStepUpAudit(db, {
+            action: "auth.step_up_denied",
+            actorId: c.get("userId"),
+            personId: actor.factor.personId,
+            operation: "instance_admin_suspend",
+            traceId: c.req.header("x-request-id"),
+          });
+          return c.json(
+            {
+              message: "step_up_attempt_limit" as const,
+              limit: STEP_UP_CHALLENGE_LIMIT,
+              windowMinutes: STEP_UP_CHALLENGE_WINDOW_MINUTES,
+            },
+            429,
+          );
+        }
+        throw error;
+      }
+      await appendStepUpAudit(db, {
+        action: "auth.step_up_issued",
+        actorId: c.get("userId"),
+        personId: actor.factor.personId,
+        operation: "instance_admin_suspend",
+        traceId: c.req.header("x-request-id"),
+      });
+      setShadowLegacyAuthorization(c, "allowed");
+      return c.json(
+        {
+          challengeId: challenge.id,
+          nonce: challenge.nonce,
+          expiresAt: challenge.expiresAt,
+        },
+        200,
+      );
+    }
+    if (input.operation === "instance_admin_grant") {
+      const [target] = await getUserId(input.targetUserId);
+      if (!target) throw new HTTPException(404, { message: "User not found" });
+      let challenge: Awaited<
+        ReturnType<typeof createInstanceAdminGrantChallenge>
+      >;
+      try {
+        challenge = await createInstanceAdminGrantChallenge({
+          personId: actor.factor.personId,
+          sessionId: actor.session.id,
+          userId: input.targetUserId,
+        });
+      } catch (error) {
+        if (error instanceof StepUpAttemptLimitError) {
+          await appendStepUpAudit(db, {
+            action: "auth.step_up_denied",
+            actorId: c.get("userId"),
+            personId: actor.factor.personId,
+            operation: "instance_admin_grant",
             traceId: c.req.header("x-request-id"),
           });
           return c.json(
@@ -1180,6 +1440,53 @@ const routes = apiRouter()
         return null;
       }
     };
+    if (input.kind === "pending_action") {
+      const [action] = await getPendingActionForStepUp(
+        input.pendingActionId,
+        actor.factor.personId,
+        new Date(),
+      );
+      if (
+        action?.action !== "delete" ||
+        action.targetType !== "user" ||
+        action.confirmation !== "typed_name_step_up" ||
+        action.routeKey !== "POST /api/instance/users/{id}/deactivate"
+      ) {
+        setShadowLegacyAuthorization(c, "denied");
+        throw new HTTPException(404, { message: "Pending action unavailable" });
+      }
+      const token = await issuePendingActionToken(
+        {
+          id: input.challengeId,
+          nonce: input.nonce,
+          personId: actor.factor.personId,
+          sessionId: actor.session.id,
+          userId: c.get("userId"),
+          pendingActionId: input.pendingActionId,
+        },
+        verifyAuthentication,
+      );
+      if (!token) {
+        await appendPendingActionStepUpAudit(db, {
+          action: "auth.step_up_denied",
+          actorId: c.get("userId"),
+          personId: actor.factor.personId,
+          pendingActionId: input.pendingActionId,
+          traceId: c.req.header("x-request-id"),
+        });
+        setShadowLegacyAuthorization(c, "denied");
+        throw new HTTPException(403, { message: "step_up_unavailable" });
+      }
+      await appendPendingActionStepUpAudit(db, {
+        action: "auth.step_up_issued",
+        actorId: c.get("userId"),
+        personId: authenticatedPersonId,
+        pendingActionId: input.pendingActionId,
+        traceId: c.req.header("x-request-id"),
+      });
+      setShadowLegacyAuthorization(c, "allowed");
+      return c.json({ token: token.token, expiresAt: token.expiresAt }, 200);
+    }
     const token = oidcMappingBinding
       ? await issueOidcGroupMappingToken(
           {
@@ -1243,31 +1550,58 @@ const routes = apiRouter()
                 },
                 verifyAuthentication,
               )
-            : operationInput.operation === "mfa_reset"
-              ? await issueMfaResetToken(
+            : operationInput.operation === "instance_admin_suspend"
+              ? await issueInstanceAdminSuspendToken(
                   {
                     id: input.challengeId,
                     nonce: input.nonce,
                     personId: actor.factor.personId,
                     sessionId: actor.session.id,
                     userId: c.get("userId"),
-                    targetUserId: operationInput.userId,
-                    verificationNote: operationInput.verificationNote,
+                    targetUserId: operationInput.targetUserId,
+                    request: operationInput.request,
                   },
                   verifyAuthentication,
                 )
-              : await issueRotationToken(
-                  {
-                    id: input.challengeId,
-                    nonce: input.nonce,
-                    personId: actor.factor.personId,
-                    sessionId: actor.session.id,
-                    userId: c.get("userId"),
-                    version:
-                      "version" in operationInput ? operationInput.version : 1,
-                  },
-                  verifyAuthentication,
-                );
+              : operationInput.operation === "instance_admin_grant"
+                ? await issueInstanceAdminGrantToken(
+                    {
+                      id: input.challengeId,
+                      nonce: input.nonce,
+                      personId: actor.factor.personId,
+                      sessionId: actor.session.id,
+                      userId: c.get("userId"),
+                      targetUserId: operationInput.targetUserId,
+                    },
+                    verifyAuthentication,
+                  )
+                : operationInput.operation === "mfa_reset"
+                  ? await issueMfaResetToken(
+                      {
+                        id: input.challengeId,
+                        nonce: input.nonce,
+                        personId: actor.factor.personId,
+                        sessionId: actor.session.id,
+                        userId: c.get("userId"),
+                        targetUserId: operationInput.userId,
+                        verificationNote: operationInput.verificationNote,
+                      },
+                      verifyAuthentication,
+                    )
+                  : await issueRotationToken(
+                      {
+                        id: input.challengeId,
+                        nonce: input.nonce,
+                        personId: actor.factor.personId,
+                        sessionId: actor.session.id,
+                        userId: c.get("userId"),
+                        version:
+                          "version" in operationInput
+                            ? operationInput.version
+                            : 1,
+                      },
+                      verifyAuthentication,
+                    );
     if (!token) {
       await appendStepUpAudit(db, {
         action: "auth.step_up_denied",

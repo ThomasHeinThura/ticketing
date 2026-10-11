@@ -32,6 +32,7 @@ export const pendingActionPolicies = {
   "POST /api/me/pending-actions/{id}/approve": {
     authenticated: true,
     self: true,
+    elevated: true,
     sessionOnly: true,
     personParam: {
       exempt: "no_person_parameter",

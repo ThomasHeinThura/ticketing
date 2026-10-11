@@ -21,9 +21,11 @@ import {
   pendingActionListQuerySchema,
   pendingActionParamSchema,
 } from "./schema";
+import { resolvePendingActionApprovalContract } from "./approval-contract";
 import {
   approveSavedViewDeletion,
   approveServiceCalendarDeletion,
+  approveUserDeactivation,
   decideOwnPendingAction,
   getOwnPendingAction,
   getOwnPendingActions,
@@ -102,10 +104,15 @@ const approvePendingActionRoute = createRoute({
   tags: ["Pending actions"],
   summary: "Approve a pending action",
   description:
-    "Executes a pending action owned by the authenticated requester after its server-selected confirmation.",
+    "Executes a pending action owned by the authenticated requester after its server-selected confirmation. Missing PA-15 proof returns 403 step_up_required; expired, consumed, malformed, or mismatched proof returns 403 step_up_expired.",
   middleware: [requireSessionOnly()] as const,
   request: {
     params: pendingActionParamSchema,
+    // A missing or malformed token is not a validation error: it is an unavailable PA-15
+    // proof (403 step_up_expired), audited like any other denied consumption.
+    headers: z.object({
+      "x-taskdesk-step-up-token": z.string().max(256).optional(),
+    }),
     body: {
       required: true,
       content: {
@@ -122,8 +129,9 @@ const approvePendingActionRoute = createRoute({
       "Approved pending action executed",
       pendingActionApprovalSchema,
     ),
+    400: errorResponse("The typed target name does not match"),
     401: errorResponse("The current session is unavailable"),
-    403: errorResponse("Current authority is unavailable"),
+    403: errorResponse("Current authority or PA-15 proof is unavailable"),
     404: errorResponse("Pending action not found"),
     409: errorResponse("Pending action is stale, terminal, or unsupported"),
   },
@@ -212,16 +220,23 @@ const pendingAction = apiRouter()
       sessionId: session.id,
       traceId,
     };
+    const contract = resolvePendingActionApprovalContract(target);
+    if (!contract) {
+      throw new HTTPException(409, {
+        message: "pending_action_kind_unsupported",
+      });
+    }
     const result =
-      target.targetType === "service_calendar"
+      contract.executor === "service_calendar_deletion"
         ? await approveServiceCalendarDeletion(approval)
-        : target.targetType === "saved_view"
+        : contract.executor === "saved_view_deletion"
           ? await approveSavedViewDeletion(approval)
-          : (() => {
-              throw new HTTPException(409, {
-                message: "pending_action_kind_unsupported",
-              });
-            })();
+          : await approveUserDeactivation({
+              ...approval,
+              typedName: c.req.valid("json").typedName ?? "",
+              stepUpToken:
+                c.req.valid("header")["x-taskdesk-step-up-token"] ?? "",
+            });
     setShadowLegacyAuthorization(c, "allowed");
     return c.json(
       { id: result.id, state: result.state as "executed" | "expired" },

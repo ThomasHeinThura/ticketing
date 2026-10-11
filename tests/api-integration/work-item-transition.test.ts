@@ -1250,6 +1250,8 @@ describe("API integration: work item transition (#442, workflows.md)", () => {
   );
 
   it("keeps manual SLA pause unavailable while D1 is unresolved", async () => {
+    const { creator } = await setupProject();
+    mockAuthenticatedSession(creator);
     const response = await createApp().app.request(
       "/api/work-items/NO-SUCH-ITEM/sla/pause",
       { method: "POST" },
