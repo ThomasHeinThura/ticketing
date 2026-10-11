@@ -48,7 +48,10 @@ import {
   SETUP_TOKEN_SINGLETON_ID,
   verifyAndConsumeSetupToken,
 } from "./instance/setup-token";
-import { createCredentialAwareDrizzleAdapter } from "./pending-action/credential-invalidation";
+import {
+  createCredentialAwareDrizzleAdapter,
+  withExplicitCredentialMutation,
+} from "./pending-action/credential-invalidation";
 import deleteAccountData from "./user/controllers/delete-account-data";
 import { checkRegistrationAllowed } from "./utils/check-registration-allowed";
 import { mapCustomOAuthProfileToUser } from "./utils/custom-oauth-profile";
@@ -98,6 +101,78 @@ export type LocalAuthProviders = {
   magicLink: boolean;
   emailOtp: boolean;
 };
+
+function explicitServerCredentialMutation(
+  method: PropertyKey,
+  args: unknown[],
+) {
+  if (method === "deleteApiKey") {
+    return { kind: "api_key" as const, route: "/api-key/delete" };
+  }
+  if (method === "signOut") {
+    return { kind: "session" as const, route: "/sign-out" };
+  }
+  if (method === "revokeSession") {
+    return { kind: "session" as const, route: "/revoke-session" };
+  }
+  if (method === "revokeSessions") {
+    return { kind: "session" as const, route: "/revoke-sessions" };
+  }
+  if (method === "revokeOtherSessions") {
+    return { kind: "session" as const, route: "/revoke-other-sessions" };
+  }
+  if (method === "changePassword") {
+    const body = (args[0] as { body?: { revokeOtherSessions?: unknown } })
+      ?.body;
+    if (body?.revokeOtherSessions === true) {
+      return { kind: "session" as const, route: "/change-password" };
+    }
+  }
+  return undefined;
+}
+
+/** Keep direct server API calls under the same explicit-revocation boundary as HTTP. */
+function withExplicitServerCredentialMutations<T extends object>(
+  instance: T,
+): T {
+  return new Proxy(instance, {
+    get(target, property, receiver) {
+      const value = Reflect.get(target, property, receiver);
+      if (property !== "api" || !value || typeof value !== "object") {
+        return value;
+      }
+
+      return new Proxy(value, {
+        get(api, apiMethod, apiReceiver) {
+          const method = Reflect.get(api, apiMethod, apiReceiver);
+          if (typeof method !== "function") return method;
+
+          return new Proxy(method, {
+            apply(targetMethod, thisArgument, args: unknown[]) {
+              const mutation = explicitServerCredentialMutation(
+                apiMethod,
+                args,
+              );
+              if (!mutation) {
+                return Reflect.apply(targetMethod, thisArgument, args);
+              }
+
+              return withExplicitCredentialMutation(mutation, () =>
+                Reflect.apply(targetMethod, thisArgument, args),
+              ).then(({ result, state }) => {
+                // Better Auth's signOut endpoint deliberately swallows adapter
+                // deletion failures. A direct server call must not report success
+                // after its atomic credential/action transaction rolled back.
+                if (state.deleteFailure) throw state.deleteFailure;
+                return result;
+              });
+            },
+          });
+        },
+      });
+    },
+  });
+}
 
 export type AuthPluginConfigRow = {
   pluginId: string;
@@ -232,7 +307,7 @@ function createAuth(
     : disabledCustomerLocalAuthProviders,
 ) {
   const baseURL = portal === "agent" ? agentOrigin : customerOrigin;
-  return betterAuth({
+  const instance = betterAuth({
     baseURL,
     trustedOrigins: [baseURL],
     secret: authSecret,
@@ -1001,6 +1076,7 @@ function createAuth(
       defaultCookieAttributes: getDefaultCookieAttributes(),
     },
   });
+  return withExplicitServerCredentialMutations(instance);
 }
 
 export let auth = createAuth("agent");

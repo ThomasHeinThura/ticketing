@@ -2,6 +2,11 @@ import { randomUUID } from "node:crypto";
 import { createRequire } from "node:module";
 import { and, desc, eq, sql } from "drizzle-orm";
 import { beforeEach, describe, expect, it } from "vitest";
+import {
+  auth,
+  portalAuth,
+  reloadAuthConfiguration,
+} from "../../apps/api/src/auth";
 import db, { schema } from "../../apps/api/src/database";
 import { createApp } from "../../apps/api/src/index";
 import { ensureStaffPersonForUser } from "../../apps/api/src/utils/seed-internal-organisation";
@@ -210,6 +215,372 @@ function expectPersistedInvalidation(
 }
 
 describe("PA-9 explicit credential revocation", () => {
+  it("invalidates a key-bound request on direct server API-key deletion", async () => {
+    const setup = await setupCredentialOwner(createApp().app);
+    const key = await insertApiKey(setup.user.id);
+    const pending = await insertPendingAction({
+      requesterPersonId: setup.person.id,
+      workspaceId: setup.workspace.id,
+      organisationId: setup.workspace.organisationId,
+      credentialType: "api_key",
+      credentialId: key.id,
+    });
+
+    const response = await auth.api.deleteApiKey({
+      headers: new Headers({ cookie: setup.cookie }),
+      body: { keyId: key.id },
+    });
+
+    expect(response.success).toBe(true);
+    expect(await stateOf(pending.id)).toEqual({
+      state: "invalidated",
+      invalidationReason: "credential_revoked",
+    });
+    expectPersistedInvalidation(
+      await decisionRows(pending.id),
+      pending,
+      setup.workspace.id,
+    );
+  });
+
+  it("invalidates a session-bound request on direct server sign-out", async () => {
+    const setup = await setupCredentialOwner(createApp().app);
+    const pending = await insertPendingAction({
+      requesterPersonId: setup.person.id,
+      workspaceId: setup.workspace.id,
+      organisationId: setup.workspace.organisationId,
+      credentialType: "session",
+      credentialId: setup.session.id,
+    });
+
+    const response = await auth.api.signOut({
+      headers: new Headers({ cookie: setup.cookie }),
+    });
+
+    expect(response.success).toBe(true);
+    expect(await stateOf(pending.id)).toEqual({
+      state: "invalidated",
+      invalidationReason: "credential_revoked",
+    });
+    expectPersistedInvalidation(
+      await decisionRows(pending.id),
+      pending,
+      setup.workspace.id,
+    );
+  });
+
+  it("invalidates the exact session on a direct server revokeSession call", async () => {
+    const setup = await setupCredentialOwner(createApp().app);
+    const pending = await insertPendingAction({
+      requesterPersonId: setup.person.id,
+      workspaceId: setup.workspace.id,
+      organisationId: setup.workspace.organisationId,
+      credentialType: "session",
+      credentialId: setup.session.id,
+    });
+
+    const response = await auth.api.revokeSession({
+      headers: new Headers({ cookie: setup.cookie }),
+      body: { token: setup.session.token },
+    });
+
+    expect(response.status).toBe(true);
+    expect(await stateOf(pending.id)).toEqual({
+      state: "invalidated",
+      invalidationReason: "credential_revoked",
+    });
+    expectPersistedInvalidation(
+      await decisionRows(pending.id),
+      pending,
+      setup.workspace.id,
+    );
+  });
+
+  it("invalidates sessions on a direct server revokeSessions call", async () => {
+    const setup = await setupCredentialOwner(createApp().app);
+    const pending = await insertPendingAction({
+      requesterPersonId: setup.person.id,
+      workspaceId: setup.workspace.id,
+      organisationId: setup.workspace.organisationId,
+      credentialType: "session",
+      credentialId: setup.session.id,
+    });
+
+    const response = await auth.api.revokeSessions({
+      headers: new Headers({ cookie: setup.cookie }),
+    });
+
+    expect(response.status).toBe(true);
+    expect(await stateOf(pending.id)).toEqual({
+      state: "invalidated",
+      invalidationReason: "credential_revoked",
+    });
+    expectPersistedInvalidation(
+      await decisionRows(pending.id),
+      pending,
+      setup.workspace.id,
+    );
+  });
+
+  it("invalidates other sessions on a direct server revokeOtherSessions call", async () => {
+    const setup = await setupCredentialOwner(createApp().app);
+    const other = requireRow(
+      await db
+        .insert(schema.sessionTable)
+        .values({
+          id: `session-${randomUUID()}`,
+          token: `token-${randomUUID()}`,
+          userId: setup.user.id,
+          portal: "agent",
+          expiresAt: new Date(Date.now() + 60 * 60_000),
+          createdAt: new Date(),
+          updatedAt: new Date(),
+        })
+        .returning(),
+      "other direct-revocation session",
+    );
+    const pending = await insertPendingAction({
+      requesterPersonId: setup.person.id,
+      workspaceId: setup.workspace.id,
+      organisationId: setup.workspace.organisationId,
+      credentialType: "session",
+      credentialId: other.id,
+    });
+
+    const response = await auth.api.revokeOtherSessions({
+      headers: new Headers({ cookie: setup.cookie }),
+    });
+
+    expect(response.status).toBe(true);
+    expect(await stateOf(pending.id)).toEqual({
+      state: "invalidated",
+      invalidationReason: "credential_revoked",
+    });
+    expectPersistedInvalidation(
+      await decisionRows(pending.id),
+      pending,
+      setup.workspace.id,
+    );
+    expect(
+      await db
+        .select({ id: schema.sessionTable.id })
+        .from(schema.sessionTable)
+        .where(eq(schema.sessionTable.id, setup.session.id)),
+    ).toHaveLength(1);
+  });
+
+  it("invalidates deleted originals during direct changePassword revocation", async () => {
+    const setup = await setupCredentialOwner(createApp().app);
+    const other = requireRow(
+      await db
+        .insert(schema.sessionTable)
+        .values({
+          id: `session-${randomUUID()}`,
+          token: `token-${randomUUID()}`,
+          userId: setup.user.id,
+          portal: "agent",
+          expiresAt: new Date(Date.now() + 60 * 60_000),
+          createdAt: new Date(),
+          updatedAt: new Date(),
+        })
+        .returning(),
+      "other change-password session",
+    );
+    const currentPending = await insertPendingAction({
+      requesterPersonId: setup.person.id,
+      workspaceId: setup.workspace.id,
+      organisationId: setup.workspace.organisationId,
+      credentialType: "session",
+      credentialId: setup.session.id,
+    });
+    const otherPending = await insertPendingAction({
+      requesterPersonId: setup.person.id,
+      workspaceId: setup.workspace.id,
+      organisationId: setup.workspace.organisationId,
+      credentialType: "session",
+      credentialId: other.id,
+    });
+
+    const response = await auth.api.changePassword({
+      headers: new Headers({ cookie: setup.cookie }),
+      body: {
+        currentPassword: TEST_PASSWORD,
+        newPassword: "ChangedValidPassword-42!",
+        revokeOtherSessions: true,
+      },
+    });
+
+    expect(response.user.id).toBe(setup.user.id);
+    expect(await stateOf(currentPending.id)).toEqual({
+      state: "invalidated",
+      invalidationReason: "credential_revoked",
+    });
+    expect(await stateOf(otherPending.id)).toEqual({
+      state: "invalidated",
+      invalidationReason: "credential_revoked",
+    });
+    expectPersistedInvalidation(
+      await decisionRows(currentPending.id),
+      currentPending,
+      setup.workspace.id,
+    );
+    expectPersistedInvalidation(
+      await decisionRows(otherPending.id),
+      otherPending,
+      setup.workspace.id,
+    );
+  });
+
+  it("invalidates originals through the configured HTTP change-password path", async () => {
+    const { app } = createApp();
+    const setup = await setupCredentialOwner(app);
+    const pending = await insertPendingAction({
+      requesterPersonId: setup.person.id,
+      workspaceId: setup.workspace.id,
+      organisationId: setup.workspace.organisationId,
+      credentialType: "session",
+      credentialId: setup.session.id,
+    });
+    const response = await csrfRequest(
+      app,
+      "/api/auth/change-password",
+      {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({
+          currentPassword: TEST_PASSWORD,
+          newPassword: "ChangedValidPassword-42!",
+          revokeOtherSessions: true,
+        }),
+      },
+      setup.cookie,
+    );
+
+    expect(response.status, await response.clone().text()).toBe(200);
+    expect(await stateOf(pending.id)).toEqual({
+      state: "invalidated",
+      invalidationReason: "credential_revoked",
+    });
+    expectPersistedInvalidation(
+      await decisionRows(pending.id),
+      pending,
+      setup.workspace.id,
+    );
+  });
+
+  it("applies the credential wrapper to both portals after auth runtime refresh", async () => {
+    const { app } = createApp();
+    const setup = await setupCredentialOwner(app);
+    const agentPending = await insertPendingAction({
+      requesterPersonId: setup.person.id,
+      workspaceId: setup.workspace.id,
+      organisationId: setup.workspace.organisationId,
+      credentialType: "session",
+      credentialId: setup.session.id,
+    });
+    expect(await reloadAuthConfiguration()).toBe(true);
+    const agentSignOut = await auth.api.signOut({
+      headers: new Headers({ cookie: setup.cookie }),
+    });
+    expect(agentSignOut.success).toBe(true);
+    expect(await stateOf(agentPending.id)).toEqual({
+      state: "invalidated",
+      invalidationReason: "credential_revoked",
+    });
+
+    const portalSetup = await setupCredentialOwner(app);
+    await db
+      .update(schema.sessionTable)
+      .set({ portal: "customer" })
+      .where(eq(schema.sessionTable.id, portalSetup.session.id));
+    const portalCookie = portalSetup.cookie.replace(
+      "__Host-tdk_agent_session=",
+      "__Host-tdk_portal_session=",
+    );
+    const portalPending = await insertPendingAction({
+      requesterPersonId: portalSetup.person.id,
+      workspaceId: portalSetup.workspace.id,
+      organisationId: portalSetup.workspace.organisationId,
+      credentialType: "session",
+      credentialId: portalSetup.session.id,
+    });
+    const portalSignOut = await portalAuth.api.signOut({
+      headers: new Headers({ cookie: portalCookie }),
+    });
+    expect(portalSignOut.success).toBe(true);
+    expect(await stateOf(portalPending.id)).toEqual({
+      state: "invalidated",
+      invalidationReason: "credential_revoked",
+    });
+  });
+
+  it("preserves the current session and action when changePassword does not revoke others", async () => {
+    const setup = await setupCredentialOwner(createApp().app);
+    const pending = await insertPendingAction({
+      requesterPersonId: setup.person.id,
+      workspaceId: setup.workspace.id,
+      organisationId: setup.workspace.organisationId,
+      credentialType: "session",
+      credentialId: setup.session.id,
+    });
+
+    const response = await auth.api.changePassword({
+      headers: new Headers({ cookie: setup.cookie }),
+      body: {
+        currentPassword: TEST_PASSWORD,
+        newPassword: "ChangedValidPassword-42!",
+      },
+    });
+
+    expect(response.user.id).toBe(setup.user.id);
+    expect(await stateOf(pending.id)).toEqual({
+      state: "pending",
+      invalidationReason: null,
+    });
+    expect(
+      await db
+        .select({ id: schema.sessionTable.id })
+        .from(schema.sessionTable)
+        .where(eq(schema.sessionTable.id, setup.session.id)),
+    ).toHaveLength(1);
+  });
+
+  it("keeps sessions and pending actions on password reset with session revocation disabled", async () => {
+    const setup = await setupCredentialOwner(createApp().app);
+    const pending = await insertPendingAction({
+      requesterPersonId: setup.person.id,
+      workspaceId: setup.workspace.id,
+      organisationId: setup.workspace.organisationId,
+      credentialType: "session",
+      credentialId: setup.session.id,
+    });
+    const token = `reset-${randomUUID()}`;
+    await db.insert(schema.verificationTable).values({
+      id: `verification-${randomUUID()}`,
+      identifier: `reset-password:${token}`,
+      value: setup.user.id,
+      expiresAt: new Date(Date.now() + 60 * 60_000),
+      createdAt: new Date(),
+      updatedAt: new Date(),
+    });
+
+    const response = await auth.api.resetPassword({
+      body: { token, newPassword: "ChangedValidPassword-42!" },
+    });
+
+    expect(response.status).toBe(true);
+    expect(await stateOf(pending.id)).toEqual({
+      state: "pending",
+      invalidationReason: null,
+    });
+    expect(
+      await db
+        .select({ id: schema.sessionTable.id })
+        .from(schema.sessionTable)
+        .where(eq(schema.sessionTable.id, setup.session.id)),
+    ).toHaveLength(1);
+  });
+
   it("terminally invalidates an API-key-bound request when its owner deletes the key", async () => {
     const { app } = createApp();
     const setup = await setupCredentialOwner(app);
@@ -519,6 +890,66 @@ describe("PA-9 explicit credential revocation", () => {
       await db.execute(
         sql.raw(
           "DROP FUNCTION IF EXISTS fail_credential_revocation_outbox_insert()",
+        ),
+      );
+    }
+  });
+
+  it("rejects direct server sign-out when the adapter swallows a failed deletion", async () => {
+    const setup = await setupCredentialOwner(createApp().app);
+    const pending = await insertPendingAction({
+      requesterPersonId: setup.person.id,
+      workspaceId: setup.workspace.id,
+      organisationId: setup.workspace.organisationId,
+      credentialType: "session",
+      credentialId: setup.session.id,
+    });
+    await db.execute(
+      sql.raw(`
+        CREATE OR REPLACE FUNCTION fail_direct_credential_outbox_insert()
+        RETURNS trigger LANGUAGE plpgsql AS $$
+        BEGIN
+          IF NEW.kind = 'pending_action.decided' THEN
+            RAISE EXCEPTION 'test direct credential outbox failure';
+          END IF;
+          RETURN NEW;
+        END;
+        $$
+      `),
+    );
+    await db.execute(
+      sql.raw(`
+        CREATE TRIGGER fail_direct_credential_outbox_insert
+        BEFORE INSERT ON outbox
+        FOR EACH ROW EXECUTE FUNCTION fail_direct_credential_outbox_insert()
+      `),
+    );
+
+    try {
+      await expect(
+        auth.api.signOut({
+          headers: new Headers({ cookie: setup.cookie }),
+        }),
+      ).rejects.toThrow();
+      expect(await stateOf(pending.id)).toEqual({
+        state: "pending",
+        invalidationReason: null,
+      });
+      expect(
+        await db
+          .select({ id: schema.sessionTable.id })
+          .from(schema.sessionTable)
+          .where(eq(schema.sessionTable.id, setup.session.id)),
+      ).toHaveLength(1);
+    } finally {
+      await db.execute(
+        sql.raw(
+          "DROP TRIGGER IF EXISTS fail_direct_credential_outbox_insert ON outbox",
+        ),
+      );
+      await db.execute(
+        sql.raw(
+          "DROP FUNCTION IF EXISTS fail_direct_credential_outbox_insert()",
         ),
       );
     }

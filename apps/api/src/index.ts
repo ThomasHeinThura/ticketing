@@ -399,6 +399,7 @@ async function handleAuthRequest(
 function explicitAuthCredentialMutation(
   method: string,
   path: string,
+  body?: unknown,
 ): ExplicitCredentialMutation | undefined {
   if (method !== "POST" || !path.startsWith("/api/auth/")) return undefined;
   const route = path.slice("/api/auth".length);
@@ -413,7 +414,33 @@ function explicitAuthCredentialMutation(
   ) {
     return { kind: "session", route };
   }
+  if (
+    route === "/change-password" &&
+    typeof body === "object" &&
+    body !== null &&
+    "revokeOtherSessions" in body &&
+    body.revokeOtherSessions === true
+  ) {
+    return { kind: "session", route };
+  }
   return undefined;
+}
+
+async function explicitAuthCredentialMutationForRequest(
+  method: string,
+  path: string,
+  request: Request,
+): Promise<ExplicitCredentialMutation | undefined> {
+  if (method !== "POST" || path !== "/api/auth/change-password") {
+    return explicitAuthCredentialMutation(method, path);
+  }
+  let body: unknown;
+  try {
+    body = await request.clone().json();
+  } catch {
+    return undefined;
+  }
+  return explicitAuthCredentialMutation(method, path, body);
 }
 
 /**
@@ -1206,7 +1233,11 @@ export function createApp(
   );
 
   api.on(["POST", "GET", "PUT", "PATCH", "DELETE"], "/auth/*", async (c) => {
-    const mutation = explicitAuthCredentialMutation(c.req.method, c.req.path);
+    const mutation = await explicitAuthCredentialMutationForRequest(
+      c.req.method,
+      c.req.path,
+      c.req.raw,
+    );
     const authHeader = c.req.header("Authorization");
     const apiKeyHeader = c.req.header("x-api-key");
     const bearerToken = authHeader?.match(/^Bearer\s+(\S+)$/i)?.[1];
