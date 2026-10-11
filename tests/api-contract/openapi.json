@@ -24068,7 +24068,7 @@
           "Views"
         ],
         "summary": "Update saved view",
-        "description": "The owner, or a caller with workspace:manage_settings, may edit a view. Changing a view's team audience additionally requires saved_view:share and membership in the target team.",
+        "description": "A caller with workspace:manage_settings, or the owner with saved_view:create, may edit a view. Changing a view's team audience additionally requires saved_view:share and membership in the target team.",
         "parameters": [
           {
             "schema": {
@@ -24195,7 +24195,7 @@
             "description": "Missing or invalid credentials"
           },
           "403": {
-            "description": "Not the view's owner, missing workspace:manage_settings, or missing saved_view:share permission / membership in the target team",
+            "description": "Missing workspace:manage_settings and not the owner with saved_view:create, saved_view:share permission / membership in the target team",
             "content": {
               "text/plain": {
                 "schema": {
@@ -24284,7 +24284,7 @@
             "description": "Missing or invalid credentials"
           },
           "403": {
-            "description": "Missing saved_view:create or workspace:manage_settings",
+            "description": "Missing workspace:manage_settings and not the owner with saved_view:create",
             "content": {
               "text/plain": {
                 "schema": {
