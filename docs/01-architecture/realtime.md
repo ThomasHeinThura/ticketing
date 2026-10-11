@@ -34,7 +34,14 @@ The native work-item subscription transport is `GET /api/ws` on the agent origin
 one socket and explicit `subscribe` / `unsubscribe` frames for work-item topics. The legacy
 `/api/ws/user` notification socket and `/api/ws/{projectId}` Task-model socket remain for
 their existing clients; they are not sources for native work-item event delivery. Their
-retirement requires migrating those consumers separately. The native handshake authenticates
+retirement requires migrating those consumers separately. Both legacy sockets reauthenticate
+before every event and on the 60-second floor, including private identity invalidation
+signals. The project socket also rereads its project's current workspace reach before
+delivery. Loss of the original credential, an inactive or banned identity, or lost project
+reach closes that legacy connection without sending the queued event. A failed authority
+lookup fails closed. Event checks are ordered per connection; disconnecting discards in-flight
+delivery, and an exhausted bounded authorization queue closes the connection so the client
+can reconnect and refetch. The native handshake authenticates
 and checks the configured agent Host, exact Origin, and stored session portal before upgrade
 using the rules above. API keys remain subject to their stored capability subset. This
 endpoint is delegated to the WebSocket handshake in the route-policy registry; authorization
