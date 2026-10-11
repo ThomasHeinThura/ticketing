@@ -123,12 +123,10 @@ export type Guard =
 export type GuardType = Guard["type"];
 
 /**
- * The **authored** lifecycle side-effect vocabulary (`WF-19` only — corrected
- * 2026-09-09: an earlier draft of this comment cited `WF-17`/`WF-18` here too, which was
- * wrong and is exactly what let a pull-request body go on to claim `resolveEffects`
- * implements them when it structurally cannot). These six kinds, and only these, are what
- * a workflow designer may write into `workflow_transition.effects jsonb` — this module
- * only names which of them a transition carries (`resolveEffects`) — it never executes
+ * The stored lifecycle side-effect shapes recognized by this domain module. Current
+ * workflow authoring and validation use the available `WF-19` vocabulary, while this
+ * union also retains held `set_field` so historical JSON remains recognizable. `resolveEffects`
+ * only names which recognized effect variants a transition carries — it never executes
  * one; writing the `sla_pause` row, calling the assignment resolver, or inserting the
  * `scheduled_transition` row are all the impure edge's job.
  *
@@ -142,7 +140,7 @@ export type GuardType = Guard["type"];
  * `WF-17`/`WF-18`'s automatic completed-group mechanism is a **separate, never-authored**
  * vocabulary — see `AutomaticEffect`, directly below, and `resolveAutomaticEffects` in
  * `workflow.ts`. It is deliberately not a member of this union: nothing here should let a
- * hand-authored transition claim an effect that this module derives on its own from state
+ * transition claim an effect that this module derives on its own from state
  * groups, whether or not the transition names any effect at all.
  */
 export type Effect =
@@ -161,9 +159,9 @@ export type EffectKind = Effect["kind"];
 
 /**
  * The automatic lifecycle-effect vocabulary `WF-17`/`WF-18` name — a *different* type
- * from `Effect` above, deliberately never a member of it. `Effect` is exactly the six
- * kinds a workflow designer can author into `workflow_transition.effects jsonb` (`WF-19`);
- * an `AutomaticEffect` is never stored there and can never be authored. It is derived
+ * from `Effect` above, deliberately never a member of it. `Effect` recognizes stored
+ * effect shapes; the currently available authoring subset is `WF-19` without held
+ * `set_field`. An `AutomaticEffect` is never stored there and can never be authored. It is derived
  * purely from which `state_template.group` (`WorkflowState.group`) a transition enters or
  * leaves — computed every time, for every transition, independent of whatever that
  * transition's own `effects` array does or does not contain:

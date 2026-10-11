@@ -969,7 +969,7 @@ describe("resolveEffects — the authored WF-19 vocabulary only, named but not r
     expect(effects).not.toBe(T_PROGRESS_TO_RESOLVED.effects);
   });
 
-  it("preserves every effect kind exactly, for a transition that carries all six", () => {
+  it("preserves every recognized historical effect shape, including held set_field", () => {
     const allSix = transition({
       id: "kitchen-sink",
       fromStateTemplateId: tid("s"),
@@ -1336,9 +1336,15 @@ describe("rolesWithNoLegalTransition", () => {
 // validateWorkflowVersion — structural, fail-closed checks on malformed input.
 // ---------------------------------------------------------------------------
 
-describe("validateWorkflowVersion — the well-formed seeded workflow", () => {
-  it("is valid, with no errors", () => {
-    expect(validateWorkflowVersion(STATES, SEEDED_TRANSITIONS)).toEqual({
+describe("validateWorkflowVersion — a well-formed workflow", () => {
+  it("accepts the available effect vocabulary", () => {
+    const availableTransitions = SEEDED_TRANSITIONS.map((transition) => ({
+      ...transition,
+      effects: transition.effects.filter(
+        (effect) => effect.kind !== "set_field",
+      ),
+    }));
+    expect(validateWorkflowVersion(STATES, availableTransitions)).toEqual({
       valid: true,
       errors: [],
     });
@@ -1544,7 +1550,7 @@ describe("validateWorkflowVersion — malformed input, fails closed", () => {
   // database allows.
   // -------------------------------------------------------------------------
 
-  it("accepts a transition carrying all six authored effect kinds", () => {
+  it("rejects a stored transition carrying the held set_field effect", () => {
     const s = tid("s");
     const e = tid("e");
     const states: WorkflowState[] = [
@@ -1570,10 +1576,14 @@ describe("validateWorkflowVersion — malformed input, fails closed", () => {
         ],
       }),
     ];
-    expect(validateWorkflowVersion(states, transitions).valid).toBe(true);
+    const result = validateWorkflowVersion(states, transitions);
+    expect(result.valid).toBe(false);
+    expect(
+      result.errors.some((error) => error.includes("held set_field effect")),
+    ).toBe(true);
   });
 
-  it("WF-22 — rejects a transition whose effects contain a kind outside WF-19's six — a workflow_transition.effects jsonb row this build does not understand", () => {
+  it("WF-22 — rejects a transition whose effects contain a kind outside the available WF-19 vocabulary", () => {
     const s = tid("s");
     const e = tid("e");
     const states: WorkflowState[] = [

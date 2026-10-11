@@ -30,10 +30,18 @@ export const guardSchema = z.discriminatedUnion("type", [
   }),
 ]);
 
-// Mirrors `Effect` (`WF-19`) -- the six AUTHORED effect kinds only. `resolve_sla`/
-// `reopen_sla` (`AutomaticEffect`) are deliberately not representable here at all: a
-// caller cannot author what the engine computes automatically (`WF-22`).
-export const effectSchema = z.discriminatedUnion("kind", [
+// Effects understood in stored workflow JSON. Keep the held `set_field` shape here so
+// historical rows remain recognizable in responses and can be refused at execution; it
+// is deliberately excluded from `authorableEffectSchema` below.
+const setFieldEffectSchema = z.object({
+  kind: z.literal("set_field"),
+  field: z.string(),
+  value: z.unknown(),
+});
+
+// `resolve_sla`/`reopen_sla` (`AutomaticEffect`) are deliberately not representable here
+// at all: a caller cannot author what the engine computes automatically (`WF-22`).
+const authoredEffectSchemas = [
   z.object({
     kind: z.literal("set_assignee"),
     personId: z.union([z.string(), z.literal("default")]),
@@ -41,11 +49,6 @@ export const effectSchema = z.discriminatedUnion("kind", [
   z.object({ kind: z.literal("clear_assignee") }),
   z.object({ kind: z.literal("pause_sla") }),
   z.object({ kind: z.literal("resume_sla") }),
-  z.object({
-    kind: z.literal("set_field"),
-    field: z.string(),
-    value: z.unknown(),
-  }),
   z.object({
     kind: z.literal("schedule_transition"),
     // Opus security review of PR #457, N7: with no upper bound, an authored value large
@@ -63,7 +66,19 @@ export const effectSchema = z.discriminatedUnion("kind", [
     afterMinutes: z.number().int().positive(),
     toStateTemplateId: z.string(),
   }),
+] as const;
+
+// Historical response recognition includes the held effect so old rows are not stripped
+// or reinterpreted. Newly authored workflow versions use the narrower union below.
+export const effectSchema = z.discriminatedUnion("kind", [
+  ...authoredEffectSchemas,
+  setFieldEffectSchema,
 ]);
+
+export const authorableEffectSchema = z.discriminatedUnion(
+  "kind",
+  authoredEffectSchemas,
+);
 
 export const createWorkflowTransitionBody = z.object({
   fromStateTemplateId: z.string().nullable().default(null),
@@ -76,7 +91,7 @@ export const createWorkflowTransitionBody = z.object({
   requiresCab: z.boolean().default(false),
   isReopen: z.boolean().default(false),
   guards: z.array(guardSchema).default([]),
-  effects: z.array(effectSchema).default([]),
+  effects: z.array(authorableEffectSchema).default([]),
 });
 
 export const createWorkflowVersionBody = z.object({

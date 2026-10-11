@@ -39,6 +39,10 @@ completion/reopen pause continuity remain held for a later release. For a reopen
 reported resolution metric is not guaranteed to preserve the elapsed amount from before
 completion while that continuity remains held.
 
+Workflow transitions do not accept the `set_field` effect in this release; its field names
+and value rules have not been defined. If an older stored transition contains `set_field`,
+the transition is refused before changing the work item.
+
 ## SLA policy authoring and evaluation
 
 Policies are workspace-scoped. Create a draft with

@@ -2884,25 +2884,6 @@
                     "kind": {
                       "type": "string",
                       "enum": [
-                        "set_field"
-                      ]
-                    },
-                    "field": {
-                      "type": "string"
-                    },
-                    "value": {}
-                  },
-                  "required": [
-                    "kind",
-                    "field"
-                  ]
-                },
-                {
-                  "type": "object",
-                  "properties": {
-                    "kind": {
-                      "type": "string",
-                      "enum": [
                         "schedule_transition"
                       ]
                     },
@@ -2918,6 +2899,25 @@
                     "kind",
                     "afterMinutes",
                     "toStateTemplateId"
+                  ]
+                },
+                {
+                  "type": "object",
+                  "properties": {
+                    "kind": {
+                      "type": "string",
+                      "enum": [
+                        "set_field"
+                      ]
+                    },
+                    "field": {
+                      "type": "string"
+                    },
+                    "value": {}
+                  },
+                  "required": [
+                    "kind",
+                    "field"
                   ]
                 }
               ]
@@ -17695,25 +17695,6 @@
                                   "kind": {
                                     "type": "string",
                                     "enum": [
-                                      "set_field"
-                                    ]
-                                  },
-                                  "field": {
-                                    "type": "string"
-                                  },
-                                  "value": {}
-                                },
-                                "required": [
-                                  "kind",
-                                  "field"
-                                ]
-                              },
-                              {
-                                "type": "object",
-                                "properties": {
-                                  "kind": {
-                                    "type": "string",
-                                    "enum": [
                                       "schedule_transition"
                                     ]
                                   },
@@ -21366,7 +21347,7 @@
           "Work items"
         ],
         "summary": "Transition work item",
-        "description": "Move a work item to a new state through its type's active workflow version (`workflows.md`). `toStateTemplateId` is the target `state_template.id` (see `GET .../transitions`). Approval and CAB gates use persisted matching approval rows. Guard resolution is also partial today: `no_open_blockers` (no `work_item_relation` table yet), `field_required` (no custom-field/satellite value store yet) and `change_risk_at_most` (no change-risk column yet) always fail closed (blocked), never fabricated as satisfied. `pause_sla`/`resume_sla` apply the automatic `waiting_customer` lifecycle; manual and resolved-pause continuity remain held. `set_field` remains unavailable (no backing table); `set_assignee`'s `'default'` always resolves to no assignee (no project/type default-assignee column yet).",
+        "description": "Move a work item to a new state through its type's active workflow version (`workflows.md`). `toStateTemplateId` is the target `state_template.id` (see `GET .../transitions`). Approval and CAB gates use persisted matching approval rows. Guard resolution is also partial today: `no_open_blockers` (no `work_item_relation` table yet), `field_required` (no custom-field/satellite value store yet) and `change_risk_at_most` (no change-risk column yet) always fail closed (blocked), never fabricated as satisfied. `pause_sla`/`resume_sla` apply the automatic `waiting_customer` lifecycle; manual and resolved-pause continuity remain held. `set_field` is held for this release; a previously stored transition containing it is refused with 422 before any work-item mutation. `set_assignee`'s `'default'` always resolves to no assignee (no project/type default-assignee column yet).",
         "parameters": [
           {
             "schema": {
@@ -21455,7 +21436,7 @@
             }
           },
           "422": {
-            "description": "The matched transition is legal but not currently available (a guard, the approval/CAB gate, or a missing required note)",
+            "description": "The matched transition is legal but not currently available (a guard, the approval/CAB gate, a missing required note, or a held stored effect)",
             "content": {
               "application/json": {
                 "schema": {

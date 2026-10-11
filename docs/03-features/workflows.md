@@ -141,8 +141,8 @@ the **only** place lifecycle side-effects are defined; `sla.md` and `assignment.
 - `WF-18` Leaving a `completed`-group state clears `resolved_at`. Closing a `resolved`
   `sla_pause` row and continuing its interval is held for a later release.
 - `WF-19` Effects available on any transition: `set_assignee { personId | 'default' }`,
-  `clear_assignee`, `pause_sla`, `resume_sla` (an open `waiting_customer` pause),
-  `set_field { field, value }`, and `schedule_transition { after_minutes,
+  `clear_assignee`, `pause_sla`, `resume_sla` (an open `waiting_customer` pause), and
+  `schedule_transition { after_minutes,
   to_state_template_id }` — `to_state_template_id` is resolved immediately, against the
   work item's own project (the same resolution `WF-2` specifies for the transition
   itself), to a concrete `state` row and stored as such. Each pending instance is a
@@ -152,6 +152,11 @@ the **only** place lifecycle side-effects are defined; `sla.md` and `assignment.
   row whose item has already left `from_state_id`
   ([data-model.md](../01-architecture/data-model.md)) — the "pending until" pattern,
   fired by the scheduler and cancelled if the item leaves the state first.
+- `set_field { field, value }` is held for this release. No field namespace or value
+  validation has been defined. New workflow versions cannot author it, and a previously
+  stored transition containing it is refused before any work-item state or effect is
+  changed. Stored rows retain the recognized shape so the held effect cannot be silently
+  dropped or reinterpreted.
 - `WF-20` A transition emits `work_item.transitioned` ([events.md](../01-architecture/events.md))
   for automations, webhooks and notifications, in the same transaction as the change.
 - `WF-21` A customer-initiated reopen ([customer-portal.md](customer-portal.md) `CP-8`, a
@@ -160,8 +165,10 @@ the **only** place lifecycle side-effects are defined; `sla.md` and `assignment.
   at most one per workflow version); if the active version has
   none, the action is accepted, the item stays resolved, and a flagged activity row asks
   staff to look. One mechanism for all three call sites.
-- `WF-22` An authored transition effect whose `kind` falls outside `WF-19`'s vocabulary makes
-  the workflow version **invalid**. `resolve_sla` and `reopen_sla` are the automatic
+- `WF-22` An authored transition effect whose `kind` falls outside `WF-19`'s available
+  vocabulary makes the workflow version **invalid**. The held `set_field` shape is also
+  rejected during authoring and fails closed if found in a previously stored transition.
+  `resolve_sla` and `reopen_sla` are the automatic
   `WF-17`/`WF-18` effects and are never authorable — a `workflow_transition.effects` array
   containing either is invalid by name. **Fails closed**, mirroring `WF-16`'s treatment of an
   unrecognised guard `type`: an unknown kind is refused, never ignored and never passed

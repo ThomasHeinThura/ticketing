@@ -700,6 +700,142 @@ describe("API integration: work item transition (#442, workflows.md)", () => {
     );
   });
 
+  it("refuses a stored set_field transition before changing any work-item, SLA, schedule, approval, activity, or event state", async () => {
+    const { creator, workspace, project } = await setupProject();
+    const backlog = await makeState(workspace.id, project.id, {
+      group: "backlog",
+      isDefault: true,
+    });
+    const inProgress = await makeState(workspace.id, project.id, {
+      group: "started",
+    });
+    const later = await makeState(workspace.id, project.id, {
+      group: "started",
+    });
+    const { workflow, transitions } = await makeWorkflow(workspace.id, [
+      {
+        fromStateTemplateId: backlog.stateTemplate.id,
+        toStateTemplateId: inProgress.stateTemplate.id,
+        roleId: null,
+        requiresApproval: true,
+        approvalPolicy: "any",
+        effects: [
+          { kind: "set_field", field: "resolution", value: "fixed" },
+          { kind: "clear_assignee" },
+          { kind: "pause_sla" },
+          {
+            kind: "schedule_transition",
+            afterMinutes: 30,
+            toStateTemplateId: later.stateTemplate.id,
+          },
+        ],
+      },
+    ]);
+    const transition = requireRow(transitions, "set_field transition");
+    const type = await makeWorkItemType(workspace.id, workflow.id);
+
+    mockAuthenticatedSession(creator);
+    const { app } = createApp();
+    const { key } = await createWorkItem(app, project.id, type.id);
+    const [item] = await db
+      .select()
+      .from(schema.workItemTable)
+      .where(eq(schema.workItemTable.key, key));
+    const workItem = requireRow([item], "set_field work item");
+    const assignee = await makeAssigneePerson({ projectId: project.id });
+    await db
+      .update(schema.workItemTable)
+      .set({ assigneeId: assignee.id })
+      .where(eq(schema.workItemTable.id, workItem.id));
+
+    const requester = await makePerson(creator.id);
+    const now = new Date();
+    await db.insert(schema.approvalTable).values([
+      {
+        workspaceId: workspace.id,
+        workItemId: workItem.id,
+        transitionId: transition.id,
+        kind: "customer",
+        requestedBy: requester.id,
+        approverId: requester.id,
+        state: "approved",
+        expiresAt: new Date(now.getTime() + 60 * 60 * 1000),
+      },
+      {
+        workspaceId: workspace.id,
+        workItemId: workItem.id,
+        transitionId: transition.id,
+        kind: "customer",
+        requestedBy: requester.id,
+        approverId: requester.id,
+        state: "pending",
+        expiresAt: new Date(now.getTime() + 60 * 60 * 1000),
+      },
+    ]);
+    publishEventMock.mockReset();
+
+    const response = await transitionRequest(app, key, {
+      toStateTemplateId: inProgress.stateTemplate.id,
+    });
+    expect(response.status, await response.clone().text()).toBe(422);
+
+    const [after] = await db
+      .select()
+      .from(schema.workItemTable)
+      .where(eq(schema.workItemTable.id, workItem.id));
+    expect(after).toMatchObject({
+      stateId: backlog.state.id,
+      assigneeId: assignee.id,
+      version: workItem.version,
+    });
+    expect(
+      await db
+        .select()
+        .from(slaPauseTable)
+        .where(eq(slaPauseTable.workItemId, workItem.id)),
+    ).toHaveLength(0);
+    expect(
+      await db
+        .select()
+        .from(schema.scheduledTransitionTable)
+        .where(eq(schema.scheduledTransitionTable.workItemId, workItem.id)),
+    ).toHaveLength(0);
+    const approvalStates = await db
+      .select({ state: schema.approvalTable.state })
+      .from(schema.approvalTable)
+      .where(eq(schema.approvalTable.workItemId, workItem.id));
+    expect(approvalStates.map((row) => row.state).sort()).toEqual([
+      "approved",
+      "pending",
+    ]);
+    expect(
+      await db
+        .select()
+        .from(schema.activityTable)
+        .where(
+          and(
+            eq(schema.activityTable.workItemId, workItem.id),
+            eq(schema.activityTable.verb, "transitioned"),
+          ),
+        ),
+    ).toHaveLength(0);
+    expect(
+      await db
+        .select()
+        .from(schema.auditLogTable)
+        .where(
+          and(
+            eq(schema.auditLogTable.entityId, workItem.id),
+            eq(schema.auditLogTable.action, "work_item.transitioned"),
+          ),
+        ),
+    ).toHaveLength(0);
+    expect(publishEventMock).not.toHaveBeenCalledWith(
+      "work_item.transitioned",
+      expect.anything(),
+    );
+  });
+
   it("WF-10: blocks with 422 when a required note is missing, then succeeds with one", async () => {
     const { creator, workspace, project } = await setupProject();
     const backlog = await makeState(workspace.id, project.id, {

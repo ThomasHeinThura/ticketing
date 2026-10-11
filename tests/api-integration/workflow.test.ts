@@ -189,6 +189,37 @@ describe("API integration: workflow persistence", () => {
     expect(rows).toHaveLength(0);
   });
 
+  it("refuses set_field in a newly authored workflow version with standard body validation", async () => {
+    const owner = await createWorkspaceMember({ role: "owner" });
+    mockAuthenticatedSession(owner.user);
+    const { backlog, done } = await seedStateTemplates(owner.workspace.id);
+    const createResponse = await createWorkflow({
+      workspaceId: owner.workspace.id,
+      key: "field-effect-held",
+      name: "Field effect held",
+    });
+    const workflow = (await createResponse.json()) as { id: string };
+
+    const versionResponse = await createWorkflowVersion(workflow.id, {
+      transitions: [
+        {
+          fromStateTemplateId: backlog.id,
+          toStateTemplateId: done.id,
+          effects: [{ kind: "set_field", field: "resolution", value: "fixed" }],
+        },
+      ],
+    });
+    expect(versionResponse.status, await versionResponse.clone().text()).toBe(
+      400,
+    );
+
+    const versions = await db
+      .select()
+      .from(schema.workflowVersionTable)
+      .where(eq(schema.workflowVersionTable.workflowId, workflow.id));
+    expect(versions).toHaveLength(0);
+  });
+
   it("a workflow from another workspace is not reachable (404, not 403)", async () => {
     const ownerA = await createWorkspaceMember({ role: "owner" });
     const ownerB = await createWorkspaceMember({ role: "owner" });

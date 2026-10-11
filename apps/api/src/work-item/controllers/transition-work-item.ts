@@ -87,8 +87,11 @@ export class NoMatchingTransitionError extends Error {
  * an unsatisfied approval/CAB gate, a missing required note, or an ineligible
  * `set_assignee` target (B2). */
 export class TransitionBlockedError extends Error {
-  constructor(public readonly blockedBy: TransitionBlockReason[]) {
-    super("This transition is not currently available");
+  constructor(
+    public readonly blockedBy: TransitionBlockReason[],
+    message = "This transition is not currently available",
+  ) {
+    super(message);
     this.name = "TransitionBlockedError";
   }
 }
@@ -297,6 +300,12 @@ export async function transitionWorkItem(
       "No transition matches the requested target for this actor from the work item's current state",
     );
   }
+  if (match.effects.some((effect) => effect.kind === "set_field")) {
+    throw new TransitionBlockedError(
+      [],
+      "This stored transition contains the unavailable set_field effect",
+    );
+  }
 
   const resolution = resolveStateTemplateForProject(
     match.toStateTemplateId,
@@ -339,7 +348,6 @@ export async function transitionWorkItem(
     } else if (effect.kind === "resume_sla") {
       waitingCustomerEffects.push("resume");
     }
-    // `set_field` has no backing store and remains an explicit no-op.
   }
 
   let resolvedAtPatch: Date | null | undefined;

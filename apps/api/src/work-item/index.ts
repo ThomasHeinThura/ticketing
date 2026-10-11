@@ -825,8 +825,9 @@ const transitionWorkItemRoute = createRoute({
     "`change_risk_at_most` (no change-risk column yet) always fail closed (blocked), " +
     "never fabricated as satisfied. `pause_sla`/`resume_sla` apply the automatic " +
     "`waiting_customer` lifecycle; manual and resolved-pause continuity remain held. " +
-    "`set_field` remains unavailable (no backing table); `set_assignee`'s `'default'` always resolves " +
-    "to no assignee (no project/type default-assignee column yet).",
+    "`set_field` is held for this release; a previously stored transition containing it " +
+    "is refused with 422 before any work-item mutation. `set_assignee`'s `'default'` " +
+    "always resolves to no assignee (no project/type default-assignee column yet).",
   middleware: [
     requireWorkItemReach(),
     requireWorkspaceCapability("work_item:transition"),
@@ -851,7 +852,7 @@ const transitionWorkItemRoute = createRoute({
     ),
     422: jsonResponse(
       "The matched transition is legal but not currently available (a guard, the " +
-        "approval/CAB gate, or a missing required note)",
+        "approval/CAB gate, a missing required note, or a held stored effect)",
       workItemTransitionBlockedSchema,
     ),
   },
