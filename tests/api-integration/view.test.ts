@@ -598,7 +598,7 @@ describe("API integration: saved views", () => {
     expect(getResponse.status).toBe(404);
   });
 
-  it("hides team views from a workspace-only administrator outside the view's team", async () => {
+  it("hides team views from workspace managers but permits their approved deletion", async () => {
     const owner = await createWorkspaceMember({ role: "admin" });
     await addPerson(owner.user.id);
     const outsiderId = `user-view-team-outsider-${randomUUID()}`;
@@ -609,7 +609,7 @@ describe("API integration: saved views", () => {
           id: outsiderId,
           email: `${outsiderId}@example.com`,
           emailVerified: true,
-          name: "Workspace-only member",
+          name: "Workspace-only manager",
         })
         .returning(),
       "workspace-only view reader",
@@ -617,8 +617,16 @@ describe("API integration: saved views", () => {
     await db.insert(schema.workspaceUserTable).values({
       workspaceId: owner.workspace.id,
       userId: outsider.id,
-      role: "admin",
+      role: "manager",
       joinedAt: new Date(),
+    });
+    await db.insert(schema.workspaceRoleTable).values({
+      workspaceId: owner.workspace.id,
+      role: "manager",
+      permission: JSON.stringify({}),
+      isSystem: true,
+      createdAt: new Date(),
+      updatedAt: new Date(),
     });
     await addPerson(outsider.id);
     const outsiderSessionNow = new Date();
@@ -689,16 +697,187 @@ describe("API integration: saved views", () => {
         })
       ).status,
     ).toBe(404);
-    expect(
-      (
-        await outsiderApp.request(`/api/views/${view.id}`, {
-          method: "DELETE",
+
+    const nonManagerId = `user-view-team-nonmanager-${randomUUID()}`;
+    const nonManager = requireRow(
+      await db
+        .insert(schema.userTable)
+        .values({
+          id: nonManagerId,
+          email: `${nonManagerId}@example.com`,
+          emailVerified: true,
+          name: "Workspace-only member",
         })
-      ).status,
-    ).toBe(404);
+        .returning(),
+      "workspace-only view member",
+    );
+    await db.insert(schema.workspaceUserTable).values({
+      workspaceId: owner.workspace.id,
+      userId: nonManager.id,
+      role: "member",
+      joinedAt: new Date(),
+    });
+    await db.insert(schema.workspaceRoleTable).values({
+      workspaceId: owner.workspace.id,
+      role: "member",
+      permission: JSON.stringify(defaultRolePayloads.member),
+      isSystem: true,
+      createdAt: new Date(),
+      updatedAt: new Date(),
+    });
+    await addPerson(nonManager.id);
+    const nonManagerSessionNow = new Date();
+    await db.insert(schema.sessionTable).values({
+      id: `session-${nonManager.id}`,
+      token: `token-${nonManager.id}`,
+      userId: nonManager.id,
+      portal: "agent",
+      expiresAt: new Date(nonManagerSessionNow.getTime() + 60 * 60 * 1000),
+      createdAt: nonManagerSessionNow,
+      updatedAt: nonManagerSessionNow,
+    });
+    mockAuthenticatedSession(nonManager);
+    const { app: nonManagerApp } = createApp();
+    const refusedDelete = await nonManagerApp.request(`/api/views/${view.id}`, {
+      method: "DELETE",
+    });
+    expect(refusedDelete.status, await refusedDelete.clone().text()).toBe(404);
     expect(
       await db.query.pendingActionTable.findFirst({
         where: eq(schema.pendingActionTable.targetIds, [view.id]),
+      }),
+    ).toBeUndefined();
+
+    mockAuthenticatedSession(outsider);
+    const { app: managerApp } = createApp();
+    const deleteResponse = await managerApp.request(`/api/views/${view.id}`, {
+      method: "DELETE",
+    });
+    expect(deleteResponse.status, await deleteResponse.clone().text()).toBe(
+      202,
+    );
+    const pending = (await deleteResponse.json()) as {
+      pendingActionId: string;
+    };
+    const approval = await managerApp.request(
+      `/api/me/pending-actions/${pending.pendingActionId}/approve`,
+      {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: "{}",
+      },
+    );
+    expect(approval.status, await approval.clone().text()).toBe(200);
+    expect(
+      await db.query.pendingActionTable.findFirst({
+        where: eq(schema.pendingActionTable.id, pending.pendingActionId),
+      }),
+    ).toMatchObject({ state: "executed" });
+    expect(
+      await db.query.savedViewTable.findFirst({
+        where: eq(schema.savedViewTable.id, view.id),
+      }),
+    ).toBeUndefined();
+  });
+
+  it("allows a team-view owner to request and approve deletion after leaving its team", async () => {
+    const owner = await createWorkspaceMember({ role: "owner" });
+    const person = await addPerson(owner.user.id);
+    const teamId = `team-view-owner-leaves-${randomUUID()}`;
+    await db.insert(schema.teamTable).values({
+      id: teamId,
+      name: "Owner departure team",
+      workspaceId: owner.workspace.id,
+      createdAt: new Date(),
+    });
+    await db.insert(schema.teamMemberTable).values({
+      id: `team-member-owner-leaves-${randomUUID()}`,
+      teamId,
+      userId: owner.user.id,
+      createdAt: new Date(),
+    });
+    mockAuthenticatedSession(owner.user);
+    const { app } = createApp();
+    const sessionNow = new Date();
+    await db.insert(schema.sessionTable).values({
+      id: `session-${owner.user.id}`,
+      token: `token-${owner.user.id}`,
+      userId: owner.user.id,
+      portal: "agent",
+      expiresAt: new Date(sessionNow.getTime() + 60 * 60 * 1000),
+      createdAt: sessionNow,
+      updatedAt: sessionNow,
+    });
+    const createResponse = await app.request("/api/views", {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({
+        workspaceId: owner.workspace.id,
+        name: "Owner retains access",
+        scope: "workspace",
+        scopeId: owner.workspace.id,
+        visibility: "team",
+        sharedWithTeamId: teamId,
+        layout: "list",
+        query: { entity: "work_item" },
+      }),
+    });
+    expect(createResponse.status, await createResponse.clone().text()).toBe(
+      200,
+    );
+    const view = (await createResponse.json()) as { id: string };
+    await db
+      .delete(schema.teamMemberTable)
+      .where(
+        and(
+          eq(schema.teamMemberTable.teamId, teamId),
+          eq(schema.teamMemberTable.userId, owner.user.id),
+        ),
+      );
+
+    const retainedOwnerRead = await app.request(`/api/views/${view.id}`);
+    expect(
+      retainedOwnerRead.status,
+      await retainedOwnerRead.clone().text(),
+    ).toBe(200);
+
+    const deleteResponse = await app.request(`/api/views/${view.id}`, {
+      method: "DELETE",
+    });
+    expect(deleteResponse.status, await deleteResponse.clone().text()).toBe(
+      202,
+    );
+    const pending = (await deleteResponse.json()) as {
+      pendingActionId: string;
+    };
+    expect(
+      await db.query.pendingActionTable.findFirst({
+        where: eq(schema.pendingActionTable.id, pending.pendingActionId),
+      }),
+    ).toMatchObject({
+      requestedByPersonId: person.id,
+      targetType: "saved_view",
+      targetIds: [view.id],
+      state: "pending",
+    });
+
+    const approval = await app.request(
+      `/api/me/pending-actions/${pending.pendingActionId}/approve`,
+      {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: "{}",
+      },
+    );
+    expect(approval.status, await approval.clone().text()).toBe(200);
+    expect(
+      await db.query.pendingActionTable.findFirst({
+        where: eq(schema.pendingActionTable.id, pending.pendingActionId),
+      }),
+    ).toMatchObject({ state: "executed" });
+    expect(
+      await db.query.savedViewTable.findFirst({
+        where: eq(schema.savedViewTable.id, view.id),
       }),
     ).toBeUndefined();
   });

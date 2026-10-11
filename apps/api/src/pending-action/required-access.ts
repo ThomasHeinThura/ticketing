@@ -462,11 +462,15 @@ async function evaluateWorkspaceDeletionAccess(
       .from(teamTable)
       .where(eq(teamTable.id, target.sharedWithTeamId))
       .limit(1);
-    if (
-      !team ||
-      team.workspaceId !== target.workspaceId ||
-      !identity.teamIds.includes(team.id)
-    ) {
+    if (!team || team.workspaceId !== target.workspaceId) {
+      return { allowed: false, failure: "reach", status: 404 };
+    }
+    const retainsWorkspaceViewAccess =
+      target.createdBy === identity.personId ||
+      can(identity, "workspace:manage_settings", "workspace", {
+        workspaceId: target.workspaceId,
+      });
+    if (!identity.teamIds.includes(team.id) && !retainsWorkspaceViewAccess) {
       return { allowed: false, failure: "reach", status: 404 };
     }
   }
