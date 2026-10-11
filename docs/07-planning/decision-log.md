@@ -1,3 +1,26 @@
+### 2026-10-11 · Owner decision: D9 comment composer ownership
+
+**Decision:** Thomas selects the existing #606 activity/comment composer as the single
+implementation during selective integration of #606 and #512. Preserve #512's distinct
+permission-filtered public/internal choices, JSON submission, send/error behavior and
+accessible label. Retain #606's existing draft recovery, scoped mentions and edit/history
+behavior. This resolves the D9 ownership reservation in the 2026-10-10 integration decision;
+it does not accept either historical candidate or add a feature.
+
+**Integration constraint:** preserve each source's unique behavior in one composer, with
+existing permissions and comment contracts. Historical branches, owning commits and review
+reports remain conserved. This decision does not authorize new mention-delivery behavior,
+attachment linkage, new capabilities, flags, dependencies or schema, or any other held scope.
+Current-source review, browser evidence and protected acceptance remain required.
+
+**Source:** Thomas, direct reply in Codex chat `01a12921-4863-7c42-ac59-1822c69b88cd`
+on 2026-10-11: “Yes—#606 owns it; preserve #512’s distinct behavior (Recommended)”.
+The question explicitly named the behaviors above and requested one implementation without
+adding features.
+**Recorded by:** Codex delivery conductor (platform identity GPT-6; exact variant not exposed).
+
+---
+
 ### 2026-10-11 · Owner decision: narrow D5 intake flag-read exception
 
 **Decision:** Thomas permits the canonical intake integration to use the existing registry
