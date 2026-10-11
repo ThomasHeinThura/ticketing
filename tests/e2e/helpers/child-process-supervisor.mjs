@@ -3,12 +3,14 @@ import {
   closeSync,
   fstatSync,
   fsyncSync,
+  linkSync,
   openSync,
   readFileSync,
   statSync,
   unlinkSync,
   writeFileSync,
 } from "node:fs";
+import { createServer } from "node:net";
 import { tmpdir } from "node:os";
 import { resolve } from "node:path";
 
@@ -16,6 +18,7 @@ const lockPath =
   process.argv[2] ?? resolve(tmpdir(), "taskdesk-mfa-csrf-metrics-9464.lock");
 const waitMs = Number(process.argv[3] ?? 180_000);
 const pollMs = Number(process.argv[4] ?? 100);
+const metricsPort = 9464;
 const owner = { pid: process.pid, token: `${Date.now()}-${Math.random()}` };
 const children = new Map();
 let closing = false;
@@ -62,29 +65,88 @@ function unlinkOwnedFile(path, descriptor) {
   }
 }
 
-function reclaimDeadOwner(ownerToReclaim) {
-  if (alive(ownerToReclaim.pid)) return false;
-
-  const reaperPath = `${lockPath}.reap`;
-  const reaper = {
-    pid: process.pid,
-    token: `${owner.token}-reap`,
-    childPids: [],
-  };
-  let descriptor;
+async function acquireMetricsPortLease() {
+  const server = createServer((socket) => socket.destroy());
   try {
-    descriptor = openSync(reaperPath, "wx", 0o600);
+    await new Promise((resolveLease, rejectLease) => {
+      const onError = (error) => rejectLease(error);
+      server.once("error", onError);
+      server.listen(metricsPort, "0.0.0.0", () => {
+        server.off("error", onError);
+        resolveLease();
+      });
+    });
+    return server;
   } catch (error) {
-    if (error?.code === "EEXIST") return false;
+    if (error?.code === "EADDRINUSE" || error?.code === "EACCES") {
+      return undefined;
+    }
     throw error;
+  }
+}
+
+function removeStaleReaper(reaperPath) {
+  let before;
+  let after;
+  let current;
+  try {
+    before = statSync(reaperPath);
+    current = readOwner(reaperPath);
+    after = statSync(reaperPath);
+  } catch (error) {
+    if (error?.code === "ENOENT") return true;
+    return false;
+  }
+
+  // A live guard may belong to a process running the previous fixture version,
+  // which does not hold the port lease. Never remove it based on the lease alone.
+  if (
+    !current ||
+    !sameFile(before, after) ||
+    alive(current.pid) ||
+    current.childPids.some(alive)
+  ) {
+    return false;
   }
 
   try {
+    unlinkSync(reaperPath);
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+async function reclaimDeadOwner(ownerToReclaim) {
+  if (alive(ownerToReclaim.pid) || ownerToReclaim.childPids.some(alive)) {
+    return false;
+  }
+
+  // The API's real metrics listener binds this same address and port. The OS
+  // therefore serializes stale reapers and releases the lease if one is killed.
+  const lease = await acquireMetricsPortLease();
+  if (!lease) return false;
+  const reaperPath = `${lockPath}.reap`;
+  const reaper = {
+    pid: process.pid,
+    token: `${owner.token}-reap-${Date.now()}-${Math.random()}`,
+    childPids: [],
+  };
+  let descriptor;
+  let linked = false;
+  const temporaryPath = `${reaperPath}.${process.pid}.${Math.random()}.tmp`;
+  try {
+    if (!removeStaleReaper(reaperPath)) return false;
+    descriptor = openSync(temporaryPath, "wx", 0o600);
     writeFileSync(descriptor, JSON.stringify(reaper));
     fsyncSync(descriptor);
+    linkSync(temporaryPath, reaperPath);
+    linked = true;
+    unlinkSync(temporaryPath);
 
     // Revalidate the dead owner and file identity while holding the exclusive
-    // reaper file. No compliant contender can now unlink a replacement owner.
+    // reaper file and the OS lease. No compliant contender can now unlink a
+    // replacement owner.
     if (alive(ownerToReclaim.pid)) return false;
     if (ownerToReclaim.childPids.some(alive)) return false;
     const before = statSync(lockPath);
@@ -103,11 +165,18 @@ function reclaimDeadOwner(ownerToReclaim) {
     unlinkSync(lockPath);
     return true;
   } catch {
-    // Missing, malformed, or changed lock state fails closed.
     return false;
   } finally {
-    unlinkOwnedFile(reaperPath, descriptor);
-    closeSync(descriptor);
+    if (linked && descriptor !== undefined) {
+      unlinkOwnedFile(reaperPath, descriptor);
+    }
+    if (descriptor !== undefined) closeSync(descriptor);
+    try {
+      unlinkSync(temporaryPath);
+    } catch {
+      // The temporary record is private and may already have been removed.
+    }
+    await new Promise((resolveClose) => lease.close(resolveClose));
   }
 }
 
@@ -149,7 +218,7 @@ async function acquireLock() {
       if (error?.code !== "EEXIST") throw error;
       send({ type: "waiting" });
       const current = readOwner();
-      if (current && !alive(current.pid)) reclaimDeadOwner(current);
+      if (current && !alive(current.pid)) await reclaimDeadOwner(current);
       if (Date.now() >= deadline) {
         throw new Error(
           "Timed out waiting for the prior metrics listener supervisor, reaper, or its owned children to exit.",

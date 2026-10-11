@@ -1,5 +1,6 @@
 import { spawn, spawnSync } from "node:child_process";
 import { mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
+import { createServer } from "node:net";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterEach, describe, expect, it } from "vitest";
@@ -187,17 +188,20 @@ describe("isolated MFA app fixture helpers", () => {
 
     const reaperScript = [
       'import { closeSync, fsyncSync, openSync, readFileSync, unlinkSync, writeFileSync } from "node:fs";',
+      'import { createServer } from "node:net";',
       'const reaperPath = process.argv[1] + ".reap";',
-      'const fd = openSync(reaperPath, "wx", 0o600);',
-      'const owner = { pid: process.pid, token: "controlled-reaper", childPids: [] };',
-      "writeFileSync(fd, JSON.stringify(owner)); fsyncSync(fd);",
-      'process.stdout.write("REAPER_LOCK_HELD\\n");',
-      'process.stdin.once("data", () => {',
-      '  const current = JSON.parse(readFileSync(reaperPath, "utf8"));',
-      "  if (current.pid === owner.pid && current.token === owner.token) unlinkSync(reaperPath);",
-      '  closeSync(fd); process.stdout.write("REAPER_RELEASED\\n"); process.exit(0);',
+      "const server = createServer((socket) => socket.destroy());",
+      'server.listen(9464, "0.0.0.0", () => {',
+      '  const fd = openSync(reaperPath, "wx", 0o600);',
+      '  const owner = { pid: process.pid, token: "controlled-reaper", childPids: [] };',
+      "  writeFileSync(fd, JSON.stringify(owner)); fsyncSync(fd);",
+      '  process.stdout.write("REAPER_LOCK_HELD\\n");',
+      '  process.stdin.once("data", () => {',
+      '    const current = JSON.parse(readFileSync(reaperPath, "utf8"));',
+      "    if (current.pid === owner.pid && current.token === owner.token) unlinkSync(reaperPath);",
+      '    closeSync(fd); server.close(() => { process.stdout.write("REAPER_RELEASED\\n"); process.exit(0); });',
+      "  });",
       "});",
-      "setInterval(() => {}, 1000);",
     ].join("\n");
     const reaper = spawn(process.execPath, ["-e", reaperScript, path], {
       stdio: ["pipe", "pipe", "pipe"],
@@ -343,6 +347,212 @@ describe("isolated MFA app fixture helpers", () => {
         contender.kill("SIGKILL");
         await contenderClosed;
       }
+    }
+  });
+
+  it("recovers a killed reaper after the OS releases the metrics-port lease", async () => {
+    const path = await lockPath();
+    const deadOwner = spawnSync(process.execPath, ["-e", "process.exit(0)"]);
+    expect(deadOwner.status).toBe(0);
+    expect(deadOwner.pid).toBeGreaterThan(0);
+    await writeFile(
+      path,
+      JSON.stringify({
+        pid: deadOwner.pid,
+        token: "stale-owner",
+        childPids: [],
+      }),
+      { mode: 0o600 },
+    );
+
+    const reaperScript = [
+      'import { openSync, fsyncSync, writeFileSync } from "node:fs";',
+      'import { createServer } from "node:net";',
+      "const lockPath = process.argv[1];",
+      "const server = createServer((socket) => socket.destroy());",
+      'server.listen(9464, "0.0.0.0", () => {',
+      '  const fd = openSync(lockPath + ".reap", "wx", 0o600);',
+      '  writeFileSync(fd, JSON.stringify({ pid: process.pid, token: "killed-reaper", childPids: [] }));',
+      "  fsyncSync(fd);",
+      '  process.stdout.write("ORPHAN_REAPER_GUARD_READY\\n");',
+      "  setInterval(() => {}, 1000);",
+      "});",
+    ].join("\n");
+    const reaper = spawn(process.execPath, ["-e", reaperScript, path], {
+      stdio: ["ignore", "pipe", "pipe"],
+    });
+    const reaperClosed = new Promise<void>((resolveClose) =>
+      reaper.once("close", () => resolveClose()),
+    );
+    let reaperOutput = "";
+    let reaperError = "";
+    reaper.stdout.on("data", (chunk: Buffer) => {
+      reaperOutput += chunk.toString();
+    });
+    reaper.stderr.on("data", (chunk: Buffer) => {
+      reaperError += chunk.toString();
+    });
+    try {
+      await new Promise<void>((resolveMarker, rejectMarker) => {
+        const timer = setTimeout(
+          () =>
+            rejectMarker(new Error(`Reaper did not bind 9464. ${reaperError}`)),
+          3_000,
+        );
+        const check = () => {
+          if (reaperOutput.includes("ORPHAN_REAPER_GUARD_READY")) {
+            clearTimeout(timer);
+            resolveMarker();
+          }
+        };
+        reaper.stdout.on("data", check);
+        reaper.once("close", (code) => {
+          if (!reaperOutput.includes("ORPHAN_REAPER_GUARD_READY")) {
+            clearTimeout(timer);
+            rejectMarker(
+              new Error(
+                `Reaper exited before its guard was ready (${code}). ${reaperError}`,
+              ),
+            );
+          }
+        });
+      });
+    } catch (error) {
+      if (reaper.exitCode === null && reaper.signalCode === null) {
+        reaper.kill("SIGKILL");
+        await reaperClosed;
+      }
+      throw error;
+    }
+
+    const contenderScript = [
+      "const { withExclusiveMetricsListener } = await import(process.argv[1]);",
+      'const { createServer } = await import("node:net");',
+      "await withExclusiveMetricsListener(async () => {",
+      "  const server = createServer((socket) => socket.destroy());",
+      '  await new Promise((resolve, reject) => { server.once("error", reject); server.listen(9464, "0.0.0.0", resolve); });',
+      "  await new Promise((resolve, reject) => server.close((error) => error ? reject(error) : resolve()));",
+      '  process.stdout.write("LEASE_RELEASED_BEFORE_FIXTURE_CALLBACK\\n");',
+      "}, { lockPath: process.argv[2], waitMs: 3000, pollMs: 5 });",
+      'process.stdout.write("RECOVERY_CONTENDER_DONE\\n");',
+    ].join("\n");
+    const contender = spawn(
+      process.execPath,
+      [
+        "--experimental-strip-types",
+        "--input-type=module",
+        "-e",
+        contenderScript,
+        new URL("../e2e/helpers/mfa-csrf-app-fixture.ts", import.meta.url).href,
+        path,
+      ],
+      { stdio: ["ignore", "pipe", "pipe"] },
+    );
+    const contenderClosed = new Promise<void>((resolveClose) =>
+      contender.once("close", () => resolveClose()),
+    );
+    let contenderOutput = "";
+    let contenderError = "";
+    contender.stdout.on("data", (chunk: Buffer) => {
+      contenderOutput += chunk.toString();
+    });
+    contender.stderr.on("data", (chunk: Buffer) => {
+      contenderError += chunk.toString();
+    });
+    try {
+      expect(reaper.kill("SIGKILL")).toBe(true);
+      await reaperClosed;
+      await expect(readFile(`${path}.reap`, "utf8")).resolves.toContain(
+        "killed-reaper",
+      );
+      await new Promise<void>((resolveMarker, rejectMarker) => {
+        const timer = setTimeout(
+          () =>
+            rejectMarker(
+              new Error(`Contender did not recover. ${contenderError}`),
+            ),
+          5_000,
+        );
+        const check = () => {
+          if (contenderOutput.includes("RECOVERY_CONTENDER_DONE")) {
+            clearTimeout(timer);
+            resolveMarker();
+          }
+        };
+        contender.stdout.on("data", check);
+        contender.once("close", (code) => {
+          if (!contenderOutput.includes("RECOVERY_CONTENDER_DONE")) {
+            clearTimeout(timer);
+            rejectMarker(
+              new Error(
+                `Contender exited before recovery (${code}). ${contenderError}`,
+              ),
+            );
+          }
+        });
+      });
+      await contenderClosed;
+      expect(contender.exitCode).toBe(0);
+      expect(contenderOutput).toContain(
+        "LEASE_RELEASED_BEFORE_FIXTURE_CALLBACK",
+      );
+      await expect(readFile(path, "utf8")).rejects.toMatchObject({
+        code: "ENOENT",
+      });
+      await expect(readFile(`${path}.reap`, "utf8")).rejects.toMatchObject({
+        code: "ENOENT",
+      });
+    } finally {
+      if (reaper.exitCode === null && reaper.signalCode === null) {
+        reaper.kill("SIGKILL");
+        await reaperClosed;
+      }
+      if (contender.exitCode === null && contender.signalCode === null) {
+        contender.kill("SIGKILL");
+        await contenderClosed;
+      }
+    }
+  });
+
+  it("preserves stale locks when the live metrics listener owns the lease", async () => {
+    const path = await lockPath();
+    const deadOwner = spawnSync(process.execPath, ["-e", "process.exit(0)"]);
+    const deadReaper = spawnSync(process.execPath, ["-e", "process.exit(0)"]);
+    expect(deadOwner.status).toBe(0);
+    expect(deadReaper.status).toBe(0);
+    const staleMain = JSON.stringify({
+      pid: deadOwner.pid,
+      token: "stale-main-owner",
+      childPids: [],
+    });
+    const staleGuard = JSON.stringify({
+      pid: deadReaper.pid,
+      token: "stale-reaper-owner",
+      childPids: [],
+    });
+    await writeFile(path, staleMain, { mode: 0o600 });
+    await writeFile(`${path}.reap`, staleGuard, { mode: 0o600 });
+    const listener = createServer((socket) => socket.destroy());
+    await new Promise<void>((resolveListen, rejectListen) => {
+      listener.once("error", rejectListen);
+      listener.listen(9464, "0.0.0.0", resolveListen);
+    });
+    try {
+      await expect(
+        withExclusiveMetricsListener(async () => "must-not-run", {
+          lockPath: path,
+          waitMs: 50,
+          pollMs: 5,
+        }),
+      ).rejects.toThrow("Timed out waiting");
+      await expect(readFile(path, "utf8")).resolves.toBe(staleMain);
+      await expect(readFile(`${path}.reap`, "utf8")).resolves.toBe(staleGuard);
+    } finally {
+      await new Promise<void>((resolveClose, rejectClose) =>
+        listener.close((error) =>
+          error ? rejectClose(error) : resolveClose(),
+        ),
+      );
     }
   });
 
