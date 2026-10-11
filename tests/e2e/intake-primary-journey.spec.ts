@@ -1,14 +1,9 @@
 import { randomUUID } from "node:crypto";
-import { readFileSync, writeFileSync } from "node:fs";
+import { appendFileSync, readFileSync, writeFileSync } from "node:fs";
 import { createRequire } from "node:module";
 import { dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
-import type {
-  APIRequestContext,
-  Browser,
-  Page,
-  Response,
-} from "@playwright/test";
+import type { APIRequestContext, Page, Response } from "@playwright/test";
 import {
   type MfaCsrfAppFixture,
   type MfaCsrfAppFixtureSetup,
@@ -64,10 +59,88 @@ function apiResponse(
   page: Page,
   method: string,
   pathname: string,
+  expectedPageOrigin?: string,
 ): Promise<Response> {
+  const expectedOrigin = expectedPageOrigin ?? new URL(page.url()).origin;
   return page.waitForResponse((response) => {
     const url = new URL(response.url());
-    return url.pathname === pathname && response.request().method() === method;
+    return (
+      url.origin === expectedOrigin &&
+      url.pathname === pathname &&
+      response.request().method() === method
+    );
+  });
+}
+
+type PhaseJournal = { path: string };
+
+function journal(journal: PhaseJournal, event: Record<string, unknown>) {
+  appendFileSync(
+    journal.path,
+    `${JSON.stringify({ at: new Date().toISOString(), ...event })}\n`,
+    { encoding: "utf8", mode: 0o600 },
+  );
+}
+
+async function runPhase<T>(
+  phaseJournal: PhaseJournal,
+  phase: string,
+  action: () => Promise<T>,
+): Promise<T> {
+  journal(phaseJournal, { kind: "phase", phase, state: "start" });
+  try {
+    const result = await action();
+    journal(phaseJournal, { kind: "phase", phase, state: "complete" });
+    return result;
+  } catch (error) {
+    journal(phaseJournal, {
+      kind: "phase",
+      phase,
+      state: "error",
+      errorType: error instanceof Error ? error.name : "non-error",
+    });
+    throw error;
+  }
+}
+
+function observeApiNetwork(
+  page: Page,
+  phaseJournal: PhaseJournal,
+  actor: string,
+) {
+  const metadata = (request: import("@playwright/test").Request) => {
+    const url = new URL(request.url());
+    if (!url.pathname.startsWith("/api/")) return undefined;
+    return {
+      actor,
+      origin: url.origin,
+      pathname: url.pathname,
+      method: request.method(),
+    };
+  };
+
+  page.on("request", (request) => {
+    const requestMetadata = metadata(request);
+    if (requestMetadata)
+      journal(phaseJournal, { kind: "api-request", ...requestMetadata });
+  });
+  page.on("response", (response) => {
+    const responseMetadata = metadata(response.request());
+    if (responseMetadata)
+      journal(phaseJournal, {
+        kind: "api-response",
+        ...responseMetadata,
+        status: response.status(),
+      });
+  });
+  page.on("requestfailed", (request) => {
+    const requestMetadata = metadata(request);
+    if (requestMetadata)
+      journal(phaseJournal, {
+        kind: "api-requestfailed",
+        ...requestMetadata,
+        failureType: "requestfailed",
+      });
   });
 }
 
@@ -224,10 +297,21 @@ async function signUpStaff(
 }
 
 async function runJourney(fixture: MfaCsrfAppFixture) {
+  const phaseJournal: PhaseJournal = {
+    path: resolve(
+      fixture.fixtureDir,
+      `intake-primary-phases-${randomUUID()}.jsonl`,
+    ),
+  };
+  writeFileSync(phaseJournal.path, "", { flag: "wx", mode: 0o600 });
+  process.stdout.write(`${phaseJournal.path}\n`);
+
   const portalOrigin = new URL(fixture.origin);
   portalOrigin.hostname = `portal.${portalOrigin.hostname}`;
   const portal = portalOrigin.toString();
-  const browser: Browser = await playwright.chromium.launch({ headless: true });
+  const browser = await runPhase(phaseJournal, "browser-launch", () =>
+    playwright.chromium.launch({ headless: true }),
+  );
   const staffContext = await browser.newContext({
     viewport: { width: 1280, height: 720 },
   });
@@ -243,14 +327,26 @@ async function runJourney(fixture: MfaCsrfAppFixture) {
 
   try {
     const staffPage = await staffContext.newPage();
-    await signUpStaff(staffPage, fixture.origin, fixture);
+    observeApiNetwork(staffPage, phaseJournal, "staff");
+    await runPhase(phaseJournal, "staff-sign-up", () =>
+      signUpStaff(staffPage, fixture.origin, fixture),
+    );
 
-    const support = await createStaffWorkspace(staffPage, fixture.origin);
-    const seeded = (await seedIntakeFixture(
-      fixture,
-      { phase: "workspace", ...support },
-      "intake-primary-tenant",
-    )) as SeededIntakeTenant;
+    const support = await runPhase(
+      phaseJournal,
+      "staff-workspace-and-project",
+      () => createStaffWorkspace(staffPage, fixture.origin),
+    );
+    const seeded = await runPhase(
+      phaseJournal,
+      "tenant-fixture-seed-and-readback",
+      async () =>
+        (await seedIntakeFixture(
+          fixture,
+          { phase: "workspace", ...support },
+          "intake-primary-tenant",
+        )) as SeededIntakeTenant,
+    );
     expect(seeded.requestTypeKey).toBe("access");
     expect(seeded.workspaceId).toBe(support.workspaceId);
     expect(seeded.projectId).toBe(support.projectId);
@@ -279,223 +375,295 @@ async function runJourney(fixture: MfaCsrfAppFixture) {
       `/agent/settings/request-types?requestTypeId=${encodeURIComponent(seeded.requestTypeId)}`,
       fixture.origin,
     ).toString();
-    await staffPage.goto(typeUrl);
-    await expect(staffPage.locator("#request-type-name")).toBeVisible();
-    await staffPage.locator("#request-type-name").fill("Access request");
-    await staffPage.locator("#request-type-group").fill("Access and accounts");
-    await staffPage
-      .locator("#request-type-description")
-      .fill("Request access to a TaskDesk resource.");
-    await staffPage.locator("#request-type-project").fill(seeded.projectId);
-    await staffPage.locator("#request-type-customer-visible").click();
-    await expect(
-      staffPage.locator("#request-type-auto-accept"),
-    ).not.toBeChecked();
-    await expect(
-      staffPage.locator("#request-type-force-private"),
-    ).not.toBeChecked();
+    await runPhase(phaseJournal, "request-type-settings-form", async () => {
+      await staffPage.goto(typeUrl);
+      await expect(staffPage.locator("#request-type-name")).toBeVisible();
+      await staffPage.locator("#request-type-name").fill("Access request");
+      await staffPage
+        .locator("#request-type-group")
+        .fill("Access and accounts");
+      await staffPage
+        .locator("#request-type-description")
+        .fill("Request access to a TaskDesk resource.");
+      await staffPage.locator("#request-type-project").fill(seeded.projectId);
+      await staffPage.locator("#request-type-customer-visible").click();
+      await expect(
+        staffPage.locator("#request-type-auto-accept"),
+      ).not.toBeChecked();
+      await expect(
+        staffPage.locator("#request-type-force-private"),
+      ).not.toBeChecked();
 
-    await staffPage.getByRole("button", { name: "Add field" }).click();
-    await staffPage.locator("#field-key-1").fill("evidence");
-    await staffPage.locator("#field-label-1").fill("Evidence");
-    await staffPage.locator("#field-type-1").click();
-    await staffPage.getByRole("option", { name: "File", exact: true }).click();
-    await expect(staffPage.locator("#field-required-1")).not.toBeChecked();
-
-    const saveResponsePromise = apiResponse(
-      staffPage,
-      "PATCH",
-      `/api/request-types/${encodeURIComponent(seeded.requestTypeId)}`,
-    );
-    await staffPage.getByRole("button", { name: "Save", exact: true }).click();
-    const saveResponse = await saveResponsePromise;
-    expect(saveResponse.status()).toBe(200);
-
-    const publishResponsePromise = apiResponse(
-      staffPage,
-      "POST",
-      `/api/request-types/${encodeURIComponent(seeded.requestTypeId)}/publish`,
-    );
-    await staffPage
-      .getByRole("button", { name: "Publish", exact: true })
-      .click();
-    const publishResponse = await publishResponsePromise;
-    expect(publishResponse.status()).toBe(200);
-    const published = (await publishResponse.json()) as {
-      requestType?: { published?: boolean; key?: string };
-      version?: { number?: number };
-    };
-    expect(published.requestType).toMatchObject({
-      key: "access",
-      published: true,
+      await staffPage.getByRole("button", { name: "Add field" }).click();
+      await staffPage.locator("#field-key-1").fill("evidence");
+      await staffPage.locator("#field-label-1").fill("Evidence");
+      await staffPage.locator("#field-type-1").click();
+      await staffPage
+        .getByRole("option", { name: "File", exact: true })
+        .click();
+      await expect(staffPage.locator("#field-required-1")).not.toBeChecked();
     });
-    expect(published.version?.number).toBe(1);
-    await expect(staffPage).toHaveURL(typeUrl);
-    await staffPage.screenshot({
-      path: resolve(
-        fixture.fixtureDir,
-        "intake-primary-published-settings.png",
-      ),
+
+    await runPhase(phaseJournal, "save-and-publish-request-type", async () => {
+      const saveResponsePromise = apiResponse(
+        staffPage,
+        "PATCH",
+        `/api/request-types/${encodeURIComponent(seeded.requestTypeId)}`,
+      );
+      await staffPage
+        .getByRole("button", { name: "Save", exact: true })
+        .click();
+      const saveResponse = await saveResponsePromise;
+      expect(saveResponse.status()).toBe(200);
+
+      const publishResponsePromise = apiResponse(
+        staffPage,
+        "POST",
+        `/api/request-types/${encodeURIComponent(seeded.requestTypeId)}/publish`,
+      );
+      await staffPage
+        .getByRole("button", { name: "Publish", exact: true })
+        .click();
+      const publishResponse = await publishResponsePromise;
+      expect(publishResponse.status()).toBe(200);
+      const published = (await publishResponse.json()) as {
+        requestType?: { published?: boolean; key?: string };
+        version?: { number?: number };
+      };
+      expect(published.requestType).toMatchObject({
+        key: "access",
+        published: true,
+      });
+      expect(published.version?.number).toBe(1);
+      await expect(staffPage).toHaveURL(typeUrl);
     });
+    await runPhase(phaseJournal, "published-settings-screenshot", () =>
+      staffPage.screenshot({
+        path: resolve(
+          fixture.fixtureDir,
+          "intake-primary-published-settings.png",
+        ),
+      }),
+    );
 
     const customerPage = await customerContext.newPage();
-    await signInThroughPortal(customerPage, portal, seeded.customer);
-    await customerPage.goto(
-      new URL("/catalogue?q=no-match&key=access", portal).toString(),
+    observeApiNetwork(customerPage, phaseJournal, "customer");
+    await runPhase(phaseJournal, "customer-sign-in", () =>
+      signInThroughPortal(customerPage, portal, seeded.customer),
     );
-    await expect(customerPage.locator("#catalogue-search")).toHaveValue(
-      "no-match",
-    );
-    await expect(
-      customerPage.getByRole("heading", { name: "Access request", level: 2 }),
-    ).toBeVisible();
-    await expect(customerPage.getByLabel("Summary")).toBeVisible();
-    await customerPage.screenshot({
-      path: resolve(
-        fixture.fixtureDir,
-        "intake-primary-catalogue-selected.png",
-      ),
+    await runPhase(phaseJournal, "customer-catalogue-navigation", async () => {
+      await customerPage.goto(
+        new URL("/catalogue?q=no-match&key=access", portal).toString(),
+      );
+      await expect(customerPage.locator("#catalogue-search")).toHaveValue(
+        "no-match",
+      );
+      await expect(
+        customerPage.getByRole("heading", {
+          name: "Access request",
+          level: 2,
+        }),
+      ).toBeVisible();
+      await expect(customerPage.getByLabel("Summary")).toBeVisible();
     });
-
-    const submissionResponsePromise = apiResponse(
-      customerPage,
-      "POST",
-      "/api/portal/submissions",
+    await runPhase(phaseJournal, "catalogue-screenshot", () =>
+      customerPage.screenshot({
+        path: resolve(
+          fixture.fixtureDir,
+          "intake-primary-catalogue-selected.png",
+        ),
+      }),
     );
-    await customerPage.getByLabel("Summary").fill("Need account access");
-    await customerPage
-      .getByRole("button", { name: "Submit request", exact: true })
-      .click();
-    const submissionResponse = await submissionResponsePromise;
-    expect(submissionResponse.status()).toBe(200);
-    const created = (await submissionResponse.json()) as { ref?: string };
-    expect(created.ref).toMatch(/^SUB-[1-9]\d*$/);
+
+    const created = await runPhase(
+      phaseJournal,
+      "customer-submit-request",
+      async () => {
+        const submissionResponsePromise = apiResponse(
+          customerPage,
+          "POST",
+          "/api/portal/submissions",
+        );
+        await customerPage.getByLabel("Summary").fill("Need account access");
+        await customerPage
+          .getByRole("button", { name: "Submit request", exact: true })
+          .click();
+        const submissionResponse = await submissionResponsePromise;
+        expect(submissionResponse.status()).toBe(200);
+        const result = (await submissionResponse.json()) as { ref?: string };
+        expect(result.ref).toMatch(/^SUB-[1-9]\d*$/);
+        const submissionUrl = new URL(
+          `/submissions/${encodeURIComponent(result.ref ?? "")}`,
+          portal,
+        ).toString();
+        await expect(customerPage).toHaveURL(submissionUrl);
+        await expect(
+          customerPage.getByText("Need account access"),
+        ).toBeVisible();
+        return result;
+      },
+    );
     const ref = created.ref ?? "";
     const submissionUrl = new URL(
       `/submissions/${encodeURIComponent(ref)}`,
       portal,
     ).toString();
-    await expect(customerPage).toHaveURL(submissionUrl);
-    await expect(customerPage.getByText("Need account access")).toBeVisible();
 
-    const presignPromise = apiResponse(
-      customerPage,
-      "POST",
-      `/api/portal/submissions/${encodeURIComponent(ref)}/attachments/presign`,
+    await runPhase(
+      phaseJournal,
+      "customer-upload-optional-attachment",
+      async () => {
+        const presignPromise = apiResponse(
+          customerPage,
+          "POST",
+          `/api/portal/submissions/${encodeURIComponent(ref)}/attachments/presign`,
+        );
+        const storagePutPromise = customerPage.waitForResponse(
+          (response) => response.request().method() === "PUT",
+        );
+        const completePromise = customerPage.waitForResponse((response) => {
+          const responseUrl = new URL(response.url());
+          return (
+            responseUrl.origin === portalOrigin.origin &&
+            response.request().method() === "POST" &&
+            responseUrl.pathname.startsWith(
+              `/api/portal/submissions/${encodeURIComponent(ref)}/attachments/`,
+            ) &&
+            responseUrl.pathname.endsWith("/complete")
+          );
+        });
+        await customerPage.locator("#submission-file-evidence").setInputFiles({
+          name: "evidence.png",
+          mimeType: "image/png",
+          buffer: Buffer.from(
+            "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+/aZ8AAAAASUVORK5CYII=",
+            "base64",
+          ),
+        });
+        const presignResponse = await presignPromise;
+        expect(presignResponse.status()).toBe(200);
+        const storagePutResponse = await storagePutPromise;
+        expect(storagePutResponse.ok()).toBeTruthy();
+        await expect(
+          customerPage.getByText(/evidence\.png.*ready/i),
+        ).toBeVisible();
+        // Completion is started by the UI after the real signed PUT. Do not log its URL or body.
+        expect((await completePromise).status()).toBe(200);
+      },
     );
-    const storagePutPromise = customerPage.waitForResponse(
-      (response) => response.request().method() === "PUT",
-    );
-    const completePromise = customerPage.waitForResponse((response) => {
-      const pathname = new URL(response.url()).pathname;
-      return (
-        response.request().method() === "POST" &&
-        pathname.startsWith(
-          `/api/portal/submissions/${encodeURIComponent(ref)}/attachments/`,
-        ) &&
-        pathname.endsWith("/complete")
-      );
-    });
-    await customerPage.locator("#submission-file-evidence").setInputFiles({
-      name: "evidence.png",
-      mimeType: "image/png",
-      buffer: Buffer.from(
-        "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+/aZ8AAAAASUVORK5CYII=",
-        "base64",
-      ),
-    });
-    const presignResponse = await presignPromise;
-    expect(presignResponse.status()).toBe(200);
-    const storagePutResponse = await storagePutPromise;
-    expect(storagePutResponse.ok()).toBeTruthy();
-    await expect(customerPage.getByText(/evidence\.png.*ready/i)).toBeVisible();
-    // Completion is started by the UI after the real signed PUT. Do not log its URL or body.
-    expect((await completePromise).status()).toBe(200);
 
     const triageUrl = new URL(
       `/agent/triage?state=new&ref=${encodeURIComponent(ref)}`,
       fixture.origin,
     ).toString();
-    await staffPage.goto(triageUrl);
-    await expect(staffPage.getByText("Need account access")).toBeVisible();
-    await expect(staffPage.getByText(/evidence\.png/i)).toBeVisible();
-
-    const claimResponsePromise = apiResponse(
-      staffPage,
-      "POST",
-      `/api/submissions/${encodeURIComponent(ref)}/claim`,
-    );
-    await staffPage.getByRole("button", { name: "Claim", exact: true }).click();
-    expect((await claimResponsePromise).status()).toBe(200);
-
-    const acceptResponsePromise = apiResponse(
-      staffPage,
-      "POST",
-      `/api/submissions/${encodeURIComponent(ref)}/accept`,
-    );
-    await staffPage
-      .getByRole("button", { name: "Accept", exact: true })
-      .click();
-    const acceptResponse = await acceptResponsePromise;
-    expect(acceptResponse.status()).toBe(200);
-    const accepted = (await acceptResponse.json()) as {
-      state?: string;
-      workItem?: {
-        title?: string;
-        requesterId?: string;
-        workspaceId?: string;
-        projectId?: string;
-      };
-    };
-    expect(accepted.state).toBe("accepted");
-    expect(accepted.workItem?.title).toBe("Need account access");
-    expect(accepted.workItem?.requesterId).toBe(seeded.customer.personId);
-    expect(accepted.workItem?.workspaceId).toBe(seeded.workspaceId);
-    expect(accepted.workItem?.projectId).toBe(seeded.projectId);
-    await expect(
-      staffPage.getByText("accepted", { exact: true }),
-    ).toBeVisible();
-    await staffPage.screenshot({
-      path: resolve(fixture.fixtureDir, "intake-primary-accepted-triage.png"),
+    await runPhase(phaseJournal, "staff-triage-load", async () => {
+      await staffPage.goto(triageUrl);
+      await expect(staffPage.getByText("Need account access")).toBeVisible();
+      await expect(staffPage.getByText(/evidence\.png/i)).toBeVisible();
     });
 
-    await customerPage.reload();
-    await expect(customerPage).toHaveURL(submissionUrl);
-    await expect(customerPage.getByText("Need account access")).toBeVisible();
-    await expect(customerPage.getByText(/evidence\.png.*ready/i)).toBeVisible();
+    await runPhase(phaseJournal, "staff-claim", async () => {
+      const claimResponsePromise = apiResponse(
+        staffPage,
+        "POST",
+        `/api/submissions/${encodeURIComponent(ref)}/claim`,
+      );
+      await staffPage
+        .getByRole("button", { name: "Claim", exact: true })
+        .click();
+      expect((await claimResponsePromise).status()).toBe(200);
+    });
+
+    await runPhase(phaseJournal, "staff-accept", async () => {
+      const acceptResponsePromise = apiResponse(
+        staffPage,
+        "POST",
+        `/api/submissions/${encodeURIComponent(ref)}/accept`,
+      );
+      await staffPage
+        .getByRole("button", { name: "Accept", exact: true })
+        .click();
+      const acceptResponse = await acceptResponsePromise;
+      expect(acceptResponse.status()).toBe(200);
+      const accepted = (await acceptResponse.json()) as {
+        state?: string;
+        workItem?: {
+          title?: string;
+          requesterId?: string;
+          workspaceId?: string;
+          projectId?: string;
+        };
+      };
+      expect(accepted.state).toBe("accepted");
+      expect(accepted.workItem?.title).toBe("Need account access");
+      expect(accepted.workItem?.requesterId).toBe(seeded.customer.personId);
+      expect(accepted.workItem?.workspaceId).toBe(seeded.workspaceId);
+      expect(accepted.workItem?.projectId).toBe(seeded.projectId);
+      await expect(
+        staffPage.getByText("accepted", { exact: true }),
+      ).toBeVisible();
+    });
+    await runPhase(phaseJournal, "accepted-triage-screenshot", () =>
+      staffPage.screenshot({
+        path: resolve(fixture.fixtureDir, "intake-primary-accepted-triage.png"),
+      }),
+    );
+
+    await runPhase(phaseJournal, "requester-continuity-reload", async () => {
+      await customerPage.reload();
+      await expect(customerPage).toHaveURL(submissionUrl);
+      await expect(customerPage.getByText("Need account access")).toBeVisible();
+      await expect(
+        customerPage.getByText(/evidence\.png.*ready/i),
+      ).toBeVisible();
+    });
 
     await customerContext.close();
     const returnPage = await returnContext.newPage();
-    await signInThroughPortal(returnPage, portal, seeded.customer);
+    observeApiNetwork(returnPage, phaseJournal, "returning-requester");
+    await runPhase(phaseJournal, "returning-requester-sign-in", () =>
+      signInThroughPortal(returnPage, portal, seeded.customer),
+    );
     const returningPageResponse = apiResponse(
       returnPage,
       "GET",
       `/api/portal/submissions/${encodeURIComponent(ref)}`,
+      portalOrigin.origin,
     );
-    await returnPage.goto(submissionUrl);
-    expect((await returningPageResponse).status()).toBe(200);
-    await expect(returnPage).toHaveURL(submissionUrl);
-    await expect(returnPage.getByText("Need account access")).toBeVisible();
-    await returnPage.screenshot({
-      path: resolve(
-        fixture.fixtureDir,
-        "intake-primary-accepted-requester.png",
-      ),
+    await runPhase(phaseJournal, "returning-requester-detail", async () => {
+      await returnPage.goto(submissionUrl);
+      expect((await returningPageResponse).status()).toBe(200);
+      await expect(returnPage).toHaveURL(submissionUrl);
+      await expect(returnPage.getByText("Need account access")).toBeVisible();
     });
+    await runPhase(phaseJournal, "accepted-requester-screenshot", () =>
+      returnPage.screenshot({
+        path: resolve(
+          fixture.fixtureDir,
+          "intake-primary-accepted-requester.png",
+        ),
+      }),
+    );
 
     const outsiderPage = await outsiderContext.newPage();
-    await signInThroughPortal(outsiderPage, portal, seeded.outsider);
-    const deniedPageResponse = apiResponse(
-      outsiderPage,
-      "GET",
-      `/api/portal/submissions/${encodeURIComponent(ref)}`,
+    observeApiNetwork(outsiderPage, phaseJournal, "outsider");
+    await runPhase(phaseJournal, "outsider-sign-in", () =>
+      signInThroughPortal(outsiderPage, portal, seeded.outsider),
     );
-    await outsiderPage.goto(submissionUrl);
-    expect((await deniedPageResponse).status()).toBe(404);
-    await expect(
-      outsiderPage.getByText("Need account access", { exact: true }),
-    ).toHaveCount(0);
-    await expect(outsiderPage.getByText(/evidence\.png/i)).toHaveCount(0);
+    await runPhase(phaseJournal, "outsider-denial", async () => {
+      const deniedPageResponse = apiResponse(
+        outsiderPage,
+        "GET",
+        `/api/portal/submissions/${encodeURIComponent(ref)}`,
+        portalOrigin.origin,
+      );
+      await outsiderPage.goto(submissionUrl);
+      expect((await deniedPageResponse).status()).toBe(404);
+      await expect(
+        outsiderPage.getByText("Need account access", { exact: true }),
+      ).toHaveCount(0);
+      await expect(outsiderPage.getByText(/evidence\.png/i)).toHaveCount(0);
+    });
   } finally {
     await Promise.allSettled([
       staffContext.close(),
