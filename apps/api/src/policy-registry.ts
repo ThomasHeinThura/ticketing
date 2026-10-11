@@ -32,6 +32,7 @@ import {
   type PolicyRegistry,
 } from "@taskdesk/permissions";
 import { activityPolicies } from "./activity/policy";
+import { approvalPolicies } from "./approval/policy";
 import { assetPolicies } from "./asset/policy";
 import { attachmentPolicies } from "./attachment/policy";
 import { auditPolicies } from "./audit/policy";
@@ -336,6 +337,7 @@ export const POLICY_SOURCES = [
   },
   { name: "apps/api/src/comment/policy.ts", policies: commentPolicies },
   { name: "apps/api/src/activity/policy.ts", policies: activityPolicies },
+  { name: "apps/api/src/approval/policy.ts", policies: approvalPolicies },
   {
     name: "apps/api/src/canned-response/policy.ts",
     policies: cannedResponsePolicies,

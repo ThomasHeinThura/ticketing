@@ -40,6 +40,14 @@ document does not repeat it. `workflow_transition.approval_policy` (`any`\|`all`
 
 ## Behaviour
 
+The `feature.approvals` flag resolves project → workspace → instance → built-in default
+([settings hierarchy](settings-hierarchy.md) ST-1; [plugin architecture](../01-architecture/plugin-architecture.md#feature-toggles)).
+Its built-in default remains `false`. When disabled, new approval requests are refused and
+the request action is hidden or disabled. Existing approvals remain available under their
+existing permissions and current-reach rules: they can be listed, read, decided, withdrawn,
+and processed by `reminder-scan`. Disabling the flag never bypasses an approval requirement
+on a workflow transition.
+
 **Requesting**
 
 - `AP-1` A customer approval may be requested by staff with `approval:request`, on a work
@@ -58,13 +66,28 @@ document does not repeat it. `workflow_transition.approval_policy` (`any`\|`all`
   or **all** approvers. Only approvals whose `transition_id` names *that* transition count
   toward it — an approval raised against a different transition, even the same `kind`, on
   the same work item never satisfies this gate.
+  Only `pending`, `approved` and `rejected` approvals count. A `withdrawn` or `expired`
+  approval is ignored entirely, so withdrawing can never block a gate
+  ([decision log](../07-planning/decision-log.md), 2026-10-10 "single-use approvals,
+  withdrawn approvals ignored"). Approvals are **single use**: an approval is consumed by a
+  run of its transition, so an approval raised before the transition last ran for this work
+  item no longer counts, and repeating the transition needs a new approval.
+  When a transition runs it also **closes** the other approvals for that transition that are
+  still pending: they move to `expired` (the existing terminal state), are audited as
+  `approval.closed`, leave inboxes and reminders, and a later decide is refused with 409.
 - `AP-6` The requester may withdraw a pending approval. It becomes `withdrawn` (emitting `approval.withdrawn`), not
   deleted.
 
 **Deciding**
 
 - `AP-7` Only the named approver may decide. Not their manager, not an admin.
-  An instance admin may *withdraw* on their behalf, which is audited.
+  An instance admin may *withdraw* on their behalf through the session-only
+  `POST /api/admin/approvals/{id}/withdraw` route, which is audited. This route requires
+  current `instance:admin` authority and rejects API keys. It is session-only without
+  step-up: withdrawal changes approval state but grants no authority, so its route policy
+  carries an explicit elevation exemption. The requester route remains
+  available to the actual requester, including scoped API keys that hold
+  `approval:request` and have current work-item reach.
 - `AP-8` **Nobody may approve a request they raised.** Enforced in the domain layer,
   independent of capabilities.
 - `AP-9` A decision requires a note when rejecting. Approving may be noteless.
@@ -74,8 +97,14 @@ document does not repeat it. `workflow_transition.approval_policy` (`any`\|`all`
 
 **Expiry**
 
-- `AP-12` `reminder-scan` expires approvals past `expires_at`, setting status `expired`.
-- `AP-13` A reminder is sent to the approver at 50% and 90% of the window.
+- `AP-12` `reminder-scan` compares the UTC wall-clock values in `created_at` and `expires_at`
+  with the database's UTC wall clock, independent of the database session time zone. It expires
+  approvals past `expires_at`, setting status `expired`. `expired`
+  also covers a pending approval **closed by a run of its transition** (`AP-5`, owner decision
+  2026-10-10): its `expires_at` may then still be in the future; `decided_at` records the closure
+  and the audit row `approval.closed` says why.
+- `AP-13` A reminder is sent to the approver at 50% and 90% of the window, measured from
+  `created_at` to `expires_at` using those stored UTC wall-clock values.
   `reminder_50_sent_at` / `reminder_90_sent_at` record which have already fired, so
   `reminder-scan`'s 15-minute cadence never re-sends one ([background-jobs.md](../01-architecture/background-jobs.md)).
 - `AP-14` An expired approval does not satisfy a gate. A new one must be requested.
@@ -118,7 +147,8 @@ Recorded explicitly, because they are easy to reintroduce.
 | Request a CAB approval | `approval:request_cab` | Staff only, `work_item_type.is_change` only |
 | Decide | `approval:decide` | Must be the named approver, and not the requester |
 | Decide a CAB approval | `approval:decide_cab` | Must also be a `team_member` of the `team` flagged `is_cab` (`team.is_cab`, [data-model.md](../01-architecture/data-model.md)) — capability and membership are both required, not either alone |
-| Withdraw | `approval:request` | Requester, or instance admin (audited) |
+| Withdraw as requester | `approval:request` | Actual requester, with current work-item reach; API keys also need the capability in their frozen key scope |
+| Withdraw as instance admin | `instance:admin` | Session-only `POST /api/admin/approvals/{id}/withdraw`; audited |
 | See approvals on an item | `work_item:read` | Customers see only approvals addressed to them or that they raised |
 | List my approvals | `{ authenticated: true, self: true }` | `GET /api/me/approvals` — [rbac.md](../01-architecture/rbac.md) policy kind 2, own rows only |
 | List portal approvals | `{ portal: 'customer', predicate: 'addressed_approval' }` | `GET /api/portal/approvals` — [rbac.md](../01-architecture/rbac.md) policy kind 3, scoped to approvals addressed to the caller |
@@ -134,11 +164,21 @@ not have to learn the product first.
 
 ## API
 
+Approval responses include `canWithdraw`, computed for the current caller from AP-6/AP-7,
+current work-item reach and authority, and the effective requester `approval:request` scope
+(including an API key's frozen capability ceiling). A current instance admin session also
+gets the affordance for the session-only admin route. It is an affordance only; each route
+rechecks its own authority when called. The work-item detail chooses the admin route for an
+instance-admin session and the requester route for other sessions and scoped API keys.
+The `/api/me/approvals` and `/api/portal/approvals` lists are addressed-approver lists
+(Permissions) and do not list requester-owned approvals.
+
 ```
 GET    /api/work-items/{key}/approvals        work_item:read
 POST   /api/work-items/{key}/approvals        approval:request  (approval:request_cab for kind = cab)
 POST   /api/approvals/{id}/decide             approval:decide
 POST   /api/approvals/{id}/withdraw           approval:request
+POST   /api/admin/approvals/{id}/withdraw     instance:admin (session-only)
 GET    /api/me/approvals                      { authenticated: true, self: true }              — rbac.md kind 2
 GET    /api/portal/approvals                  { portal: 'customer', predicate: 'addressed_approval' } — rbac.md kind 3
 POST   /api/portal/approvals/{id}/decide      approval:decide
@@ -149,7 +189,8 @@ POST   /api/portal/approvals/{id}/decide      approval:decide
 | Case | Behaviour |
 | --- | --- |
 | Approver leaves the organisation | The approval stays pending and is flagged. It must be withdrawn and re-requested |
-| Approver loses reach on the work item | Same as above — flagged, not silently voided |
+| Approver loses reach on the work item | Same as above — flagged, not silently voided. The flag is derived from current canonical work-item reach, not stored as an approval state. While reach is lost, the named approver cannot decide; the requester may withdraw under `AP-6`, and an instance admin may withdraw on the requester's behalf under `AP-7`. |
+| Approvals feature is disabled at the resolved project/workspace/instance level | New approval requests are refused; existing approvals remain readable and actionable under the existing permission/current-reach rules, reminders continue, and workflow approval gates are never bypassed. |
 | Work item soft-deleted with a pending approval | Hidden along with the work item, not deleted; both reappear together if the work item is restored within its 30-day soft-delete window. Removed only at purge, at the end of that window ([work-items.md](work-items.md) `WI-21`) |
 | Two approvals, "all" policy, one rejected | The gate stays blocked. The rejection is visible |
 | Approval requested on an already-completed item | Allowed. Some processes approve after the fact |
@@ -183,3 +224,23 @@ None.
 ## Related
 
 - [Workflows](workflows.md) · [Customer portal](customer-portal.md) · [Notifications](notifications.md)
+
+## Implementation residuals (S3)
+
+- **Single use is derived, not stored.** A transition run is recorded by its `transitioned`
+  activity row (`payload.transitionId`); an approval created before the latest such row for its
+  transition is spent. Both sides are stamped with the database clock under the work-item lock.
+  Activity rows written before this rule have no `transitionId` and never spend an approval;
+  anything that purged or rewrote activity would reopen spent approvals. A `consumed_at` column
+  would be the stored form.
+- **Pending approvals block an `all` gate** until they are decided, withdrawn, expire or are
+  closed by a run. This is intended.
+- **Inactive pending approver.** An approval whose approver stopped being valid stays `pending`
+  until withdrawn or expired; it is flagged `approverReachLost` where reach is lost.
+- **Impersonation** is not distinguished from a session by the approval handlers; the
+  impersonation plugin is not mounted today.
+- **Customer approval notifications.** Staff recipients get inbox rows. A customer approver or
+  requester is served by the portal approvals list; no inbox row is written for them.
+- **No destination for approval deliveries.** Approval recipients carry no channels today, so no
+  delivery rows exist. If channels are ever added, an approval delivery has no staff URL and would
+  be backed off as `destination_unresolved` indefinitely until a destination is registered.

@@ -468,6 +468,33 @@ workspace delivery, so treat the delete as final and keep the printed rows in th
 Re-run the preflight to confirm no rows, then
 upgrade.
 
+## Upgrading across migration 0120: approval anchor
+
+Migration `0120_approval_workspace_anchor` adds `approval.workspace_id`, backfills it from each
+approval's work item, and replaces the single-column work-item foreign key with the composite
+`approval_workspace_work_item_fk`.
+
+**Lock.** The `DROP CONSTRAINT` and the `ADD` of the composite foreign key take an
+`ACCESS EXCLUSIVE` lock on `work_item`, and the lock is held until the whole migrator batch
+commits. Run the upgrade in a maintenance window, or set `lock_timeout` on the migrator session so
+the upgrade fails fast instead of queueing behind traffic.
+
+**Orphan preflight.** If a restored database holds an approval whose work item is missing, the
+upgrade fails at `SET NOT NULL` and aborts atomically (same mechanics as 0093 above). The
+`approval` table is empty in every known environment, so the expected result is no rows, but run
+this read-only query on every target database below 0120. It must return no rows:
+
+```sql
+select a.id as approval_id, a.work_item_id
+from approval a
+left join work_item w on w.id = a.work_item_id
+where w.id is null;
+```
+
+Remediation, only if rows are returned: an approval without its work item is an anchoring defect,
+not data to preserve. Take the pre-upgrade backup first, keep the printed rows in the release
+record, delete the offending `approval` rows, re-run the preflight to confirm no rows, then upgrade.
+
 ## Startup refuses: "incomplete grant projection" (database already at 0119)
 
 A database that already applied migrations 0088 to 0119 (for example from the schema spine)

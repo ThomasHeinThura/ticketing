@@ -57,9 +57,9 @@ export async function enqueueNotificationEvent(
 const RESOURCE_TYPES = new Set([
   "work_item",
   "comment",
-  // "approval" is intentionally absent until the approvals slice lands its recipient and
-  // reach code: no approval inbox row may be written before the inbox read predicate
-  // covers it (see notifications.md pre-wiring gates).
+  // `approval` rows are written only with the S3 recipient resolver, the 0120-anchored
+  // send-time eligibility and the approval inbox read predicate (`approval-reach.ts`).
+  "approval",
   "submission",
   "prerequisite",
   "project",
