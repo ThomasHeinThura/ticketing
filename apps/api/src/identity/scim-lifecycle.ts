@@ -5,6 +5,10 @@ import db, { schema } from "../database";
 import { enqueueOutboxEvent, eventScope } from "../events/outbox";
 import { notifyCurrentInstanceAdminsOfAuditFailure } from "../instance/observability/audit-failure-notifier";
 import { recordAuditWriteFailure } from "../instance/observability/runtime";
+import {
+  lockPendingActionLifecycle,
+  reportPendingActionAuditFailures,
+} from "../pending-action/lifecycle-invalidation";
 import { retryIdentityGrantClosure } from "./membership-projection";
 import { transitionPersonLifecycleInTransaction } from "./person-lifecycle";
 import { getScimExternalIdentity } from "./repository";
@@ -16,19 +20,24 @@ export async function setScimIdentityActive(
   active: boolean,
   lifecyclePolicy: "end_memberships" | "keep_memberships",
 ) {
-  return retryIdentityGrantClosure(async () =>
-    db.transaction((tx) =>
-      setScimIdentityActiveInTransaction(
+  const changed = await retryIdentityGrantClosure(async () =>
+    db.transaction(async (tx) => {
+      await lockPendingActionLifecycle(tx);
+      return setScimIdentityActiveInTransaction(
         tx,
         identityId,
         connectionId,
         active,
         lifecyclePolicy,
-      ),
-    ),
+      );
+    }),
   );
+  if (!changed) return false;
+  await reportPendingActionAuditFailures(changed.pendingActionAuditFailures);
+  return true;
 }
 
+/** Caller must take the pending-action lifecycle gate before its first row lock. */
 export async function setScimIdentityActiveInTransaction(
   tx: Parameters<Parameters<typeof db.transaction>[0]>[0],
   identityId: string,
@@ -114,5 +123,7 @@ export async function setScimIdentityActiveInTransaction(
       await notifyCurrentInstanceAdminsOfAuditFailure("mutation");
     }
   }
-  return true;
+  return {
+    pendingActionAuditFailures: changed.pendingActionAuditFailures,
+  };
 }
