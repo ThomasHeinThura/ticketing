@@ -848,6 +848,14 @@
 			"when": 1791628167040,
 			"tag": "0120_approval_workspace_anchor",
 			"breakpoints": true
+		},
+
+		{
+			"idx": 121,
+			"version": "7",
+			"when": 1791691958123,
+			"tag": "0121_instance_admin_suspend_step_up",
+			"breakpoints": true
 		}
 	]
 }

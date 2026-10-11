@@ -29,6 +29,17 @@ export const pendingActionPolicies = {
         "denies only an action owned by the authenticated caller; id names the action, not a person",
     },
   },
+  "POST /api/me/pending-actions/{id}/approve": {
+    authenticated: true,
+    self: true,
+    elevated: true,
+    sessionOnly: true,
+    personParam: {
+      exempt: "no_person_parameter",
+      reason:
+        "approves only the caller's pending action; the id names an action, not a person",
+    },
+  },
   "POST /api/me/pending-actions/{id}/cancel": {
     authenticated: true,
     self: true,

@@ -21,6 +21,11 @@ import {
 import { recordAuditWriteFailure } from "../instance/observability/runtime";
 import { requireCurrentInstanceAdmin } from "../instance/require-instance-admin";
 import { apiRouter, createRoute, jsonResponse, z } from "../openapi";
+import { lockAndInvalidateConnectionSessions } from "../pending-action/credential-invalidation";
+import {
+  lockPendingActionLifecycle,
+  reportPendingActionAuditFailures,
+} from "../pending-action/lifecycle-invalidation";
 import { setShadowLegacyAuthorization } from "../permissions/shadow-context";
 import { requireSessionOnly } from "../utils/require-session-only";
 import { invalidateNativeAuthorization } from "../ws";
@@ -821,6 +826,7 @@ router.openapi(configureConnectionRoute, async (c) => {
   }
   const result = await retryIdentityGrantClosure(() =>
     db.transaction(async (tx) => {
+      if (request.enabled === false) await lockPendingActionLifecycle(tx);
       await lockIdentityDomainBindings(tx);
       const candidateWorkspaceId =
         request.defaultWorkspaceId === undefined
@@ -943,8 +949,11 @@ router.openapi(configureConnectionRoute, async (c) => {
         return { kind: "conflict" as const, version: current.configVersion };
       const disabling = current.enabled && request.enabled === false;
       let affectedUserIds: string[] = [];
+      let pendingActionAuditFailures = 0;
       if (disabling) {
         await retireConnectionGrantSources(tx, id);
+        const invalidation = await lockAndInvalidateConnectionSessions(tx, id);
+        pendingActionAuditFailures = invalidation.auditFailures;
         await tx
           .delete(schema.sessionTable)
           .where(eq(schema.sessionTable.identityConnectionId, id));
@@ -1023,7 +1032,12 @@ router.openapi(configureConnectionRoute, async (c) => {
         operation: IDENTITY_CONNECTION_CONFIGURE_OPERATION,
         traceId: c.req.header("x-request-id"),
       });
-      return { kind: "updated" as const, auditOk, affectedUserIds };
+      return {
+        kind: "updated" as const,
+        auditOk,
+        affectedUserIds,
+        pendingActionAuditFailures,
+      };
     }),
   );
   if (result.kind === "not_found")
@@ -1040,6 +1054,7 @@ router.openapi(configureConnectionRoute, async (c) => {
     throw new HTTPException(403, { message: "step_up_unavailable" });
   }
   if (!result.auditOk) await reportAuditFailure();
+  await reportPendingActionAuditFailures(result.pendingActionAuditFailures);
   for (const affectedUserId of result.affectedUserIds)
     await invalidateNativeAuthorization({ userId: affectedUserId });
   setShadowLegacyAuthorization(c, "allowed");

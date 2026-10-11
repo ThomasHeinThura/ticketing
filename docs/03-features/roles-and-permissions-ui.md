@@ -95,6 +95,18 @@ See [RBAC](../01-architecture/rbac.md) for the capability list and the built-in 
   will change permissions for 14 people immediately."
 - `RL-10` Every change writes an audit row recording which capabilities were added and
   removed.
+- `RL-15` A native member role reference must always name a role row in the same workspace.
+  Role deletion and every native operation that materializes a member role (direct add or
+  role change, and invitation acceptance) serialize on the workspace membership lock
+  (`4_002`) followed by the workspace-role lock (`4_003`). Assignment rechecks the role
+  while holding both locks before writing; deletion checks all member references and deletes
+  while holding both. The winner either commits the reference first, making deletion refuse,
+  or deletes first, making assignment refuse. Invitation creation also validates its role
+  under this pair; a pending invitation does not block deletion, so acceptance must revalidate
+  and leave the invitation pending if that role no longer exists. Role create/update paths
+  take only `4_003` and never acquire `4_002`, preserving the lock order. This invariant
+  describes the current native routes; the Better Auth organization plugin is not registered
+  in `apps/api/src/auth.ts`.
 
 **Preview**
 

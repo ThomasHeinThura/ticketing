@@ -10,6 +10,7 @@ import { requireSessionOnly } from "../utils/require-session-only";
 import { requireWorkspaceMembership } from "../utils/require-workspace-membership";
 import { requireWorkspacePermission } from "../utils/require-workspace-permission";
 import { requireWorkspaceRoleAuthority } from "../utils/require-workspace-role-authority";
+import { WorkspaceRoleNotFoundError } from "../workspace/controllers/workspace-membership-errors";
 import acceptInvitationCtrl from "./controllers/accept-invitation";
 import cancelInvitationCtrl from "./controllers/cancel-invitation";
 import getUserPendingInvitations from "./controllers/get-user-pending-invitations";
@@ -228,6 +229,11 @@ const invitation = apiRouter()
       }
       if (error instanceof AlreadyWorkspaceMemberError) {
         throw new HTTPException(409, { message: error.message });
+      }
+      if (error instanceof WorkspaceRoleNotFoundError) {
+        throw new HTTPException(400, {
+          message: "This invitation's workspace role is no longer available",
+        });
       }
       throw error;
     }

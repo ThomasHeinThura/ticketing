@@ -6,6 +6,9 @@ type Operation = {
   summary?: string;
   responses: Record<string, unknown>;
   security?: unknown[];
+  requestBody?: {
+    content?: Record<string, { schema?: Record<string, unknown> }>;
+  };
 };
 type Spec = {
   openapi: string;
@@ -90,6 +93,50 @@ describe("TaskDesk API OpenAPI spec", () => {
     expect(runtimeSpec.servers[0]?.url).toBe(
       "https://api.customer.example/api",
     );
+  });
+
+  it("documents the PA-15 challenge binding as one exclusive union", () => {
+    const challengeSchema =
+      spec.paths["/me/step-up/challenges"]?.post?.requestBody?.content?.[
+        "application/json"
+      ]?.schema;
+
+    expect(challengeSchema?.oneOf).toHaveLength(12);
+    const branches = challengeSchema?.oneOf as Array<{
+      properties?: {
+        kind?: { enum?: string[] };
+        operation?: { enum?: string[] };
+      };
+    }>;
+    const operationBranches = branches.filter(
+      (branch) => branch.properties?.kind?.enum?.[0] === "operation",
+    );
+    expect(operationBranches).toHaveLength(11);
+    expect(
+      operationBranches
+        .map((branch) => branch.properties?.operation?.enum?.[0])
+        .sort(),
+    ).toEqual(
+      [
+        "metrics_token_rotate",
+        "mfa_reset",
+        "instance_admin_grant",
+        "instance_admin_suspend",
+        "scim_admin_update",
+        "oidc_group_mapping_create",
+        "oidc_group_mapping_update",
+        "scim_token_rotate",
+        "scim_token_revoke",
+        "identity_connection_create",
+        "identity_connection_configure",
+      ].sort(),
+    );
+    expect(
+      branches.filter(
+        (branch) => branch.properties?.kind?.enum?.[0] === "pending_action",
+      ),
+    ).toHaveLength(1);
+    expect(challengeSchema).not.toHaveProperty("anyOf");
   });
 
   it("is a valid OpenAPI 3.1 document", () => {

@@ -1,8 +1,11 @@
 import { createRequire } from "node:module";
 import { and, eq, isNotNull, isNull, sql } from "drizzle-orm";
+import { Client } from "pg";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import {
   canonicalScimAdminBody,
+  createPendingActionChallenge,
+  issuePendingActionToken,
   sha256,
 } from "../../apps/api/src/auth/step-up-service";
 import db, { schema } from "../../apps/api/src/database";
@@ -14,6 +17,12 @@ import {
 } from "../../apps/api/src/identity/scim-authentication";
 import { setScimIdentityActive } from "../../apps/api/src/identity/scim-lifecycle";
 import { createApp } from "../../apps/api/src/index";
+import * as observability from "../../apps/api/src/instance/observability/runtime";
+import { lockPendingActionLifecycle } from "../../apps/api/src/pending-action/lifecycle-invalidation";
+import {
+  approveUserDeactivation,
+  createPendingAction,
+} from "../../apps/api/src/pending-action/service";
 import {
   ensureInternalOrganisation,
   ensureStaffPersonForUser,
@@ -106,6 +115,139 @@ async function createScimProtocolUser(
   return (await response.json()) as { id: string };
 }
 
+async function createScimRequesterPendingActionFixture(label: string) {
+  const { connectionId } = await createScimProtocolFixture(
+    `${label}-connection`,
+    "P".repeat(43),
+  );
+  const requesterUserId = `${label}-requester`;
+  const targetUserId = `${label}-target`;
+  const externalIdentityId = `${label}-identity`;
+  const [requesterUser] = await db
+    .insert(schema.userTable)
+    .values({
+      id: requesterUserId,
+      name: `Requester ${label}`,
+      email: `${requesterUserId}@example.test`,
+      role: "admin",
+    })
+    .returning({ id: schema.userTable.id });
+  if (!requesterUser) throw new Error("PA-9 requester user was not created");
+  await ensureStaffPersonForUser(requesterUser.id);
+  const [requesterPerson] = await db
+    .select({ id: schema.personTable.id })
+    .from(schema.personTable)
+    .where(eq(schema.personTable.userId, requesterUser.id));
+  if (!requesterPerson)
+    throw new Error("PA-9 requester person was not created");
+  const credentialId = `${label}-session`;
+  const credentialNow = new Date();
+  await db.insert(schema.sessionTable).values({
+    id: credentialId,
+    token: `${credentialId}-token`,
+    userId: requesterUser.id,
+    portal: "agent",
+    expiresAt: new Date(credentialNow.getTime() + 60_000),
+    createdAt: credentialNow,
+    updatedAt: credentialNow,
+  });
+  const [targetUser] = await db
+    .insert(schema.userTable)
+    .values({
+      id: targetUserId,
+      name: `Target ${label}`,
+      email: `${targetUserId}@example.test`,
+    })
+    .returning({ id: schema.userTable.id });
+  if (!targetUser) throw new Error("PA-9 target user was not created");
+  await ensureStaffPersonForUser(targetUser.id);
+  await db.insert(schema.externalIdentityTable).values({
+    id: externalIdentityId,
+    identityConnectionId: connectionId,
+    personId: requesterPerson.id,
+    userId: requesterUser.id,
+    issuer: "https://login.microsoftonline.com/tenant/v2.0",
+    subject: requesterUser.id,
+    scimExternalId: requesterUser.id,
+    userNameSnapshot: requesterUser.id,
+    emailSnapshot: `${requesterUser.id}@example.test`,
+    active: true,
+    provisionedVia: "scim",
+  });
+  const pending = await createPendingAction({
+    requesterPersonId: requesterPerson.id,
+    credentialType: "session",
+    credentialId,
+    origin: "web",
+    action: "delete",
+    routeKey: "POST /api/instance/users/{id}/deactivate",
+    targetType: "user",
+    targetIds: [targetUser.id],
+    workspaceId: null,
+    projectId: null,
+    organisationId: null,
+    actorId: requesterUser.id,
+    actorType: "person",
+  });
+  const [pendingRow] = await db
+    .select({ traceId: schema.pendingActionTable.traceId })
+    .from(schema.pendingActionTable)
+    .where(eq(schema.pendingActionTable.id, pending.pendingActionId));
+  if (!pendingRow) throw new Error("PA-9 pending action was not persisted");
+  return {
+    connectionId,
+    externalIdentityId,
+    requesterUser,
+    requesterPerson,
+    targetUser,
+    pending: { ...pending, id: pending.pendingActionId },
+    pendingRow,
+    credentialId,
+  };
+}
+
+async function waitForLockWaitersBlockedBy(
+  observer: Client,
+  blockerPid: number,
+  minimumWaiters: number,
+) {
+  const deadline = Date.now() + 10_000;
+  while (Date.now() < deadline) {
+    const result = await observer.query<{ waiting: string }>(
+      `SELECT count(*)::text AS waiting
+       FROM pg_stat_activity
+       WHERE datname = current_database()
+         AND wait_event_type = 'Lock'
+         AND $1 = ANY(pg_blocking_pids(pid))`,
+      [blockerPid],
+    );
+    if (Number(result.rows[0]?.waiting ?? 0) >= minimumWaiters) return;
+    await new Promise((resolve) => setTimeout(resolve, 20));
+  }
+  throw new Error("pending-action lifecycle gate waiter did not arrive");
+}
+
+async function waitForLifecycleGateWaiterCount(
+  observer: Client,
+  minimumWaiters: number,
+) {
+  const deadline = Date.now() + 10_000;
+  while (Date.now() < deadline) {
+    const result = await observer.query<{ waiting: string }>(
+      `SELECT count(*)::text AS waiting
+       FROM pg_locks
+       WHERE locktype = 'advisory'
+         AND classid = hashtext('taskdesk:pending-action-lifecycle')::oid
+         AND objid = hashtext('global')::oid
+         AND objsubid = 2
+         AND NOT granted`,
+    );
+    if (Number(result.rows[0]?.waiting ?? 0) >= minimumWaiters) return;
+    await new Promise((resolve) => setTimeout(resolve, 20));
+  }
+  throw new Error("pending-action lifecycle gate waiter did not arrive");
+}
+
 beforeEach(async () => {
   vi.restoreAllMocks();
   await resetTestDatabase();
@@ -148,6 +290,808 @@ describe("SCIM administration API", () => {
     await expect(
       db.transaction((tx) => lockAndVerifyScimMutation(tx, authority, "users")),
     ).rejects.toMatchObject({ status: 401 });
+  });
+
+  it("keeps a requester deactivation invalidation terminal through SCIM reactivation", async () => {
+    const { connectionId } = await createScimProtocolFixture(
+      "pa9-scim-requester-connection",
+      "P".repeat(43),
+    );
+    const [requesterUser] = await db
+      .insert(schema.userTable)
+      .values({
+        id: "pa9-scim-requester",
+        name: "PA9 SCIM requester",
+        email: "pa9-scim-requester@example.test",
+        role: "admin",
+      })
+      .returning({ id: schema.userTable.id });
+    if (!requesterUser) throw new Error("PA-9 requester user was not created");
+    await ensureStaffPersonForUser(requesterUser.id);
+    const [requesterPerson] = await db
+      .select({ id: schema.personTable.id })
+      .from(schema.personTable)
+      .where(eq(schema.personTable.userId, requesterUser.id));
+    if (!requesterPerson)
+      throw new Error("PA-9 requester person was not created");
+    const credentialId = "pa9-scim-requester-session";
+    const credentialNow = new Date();
+    await db.insert(schema.sessionTable).values({
+      id: credentialId,
+      token: `${credentialId}-token`,
+      userId: requesterUser.id,
+      portal: "agent",
+      expiresAt: new Date(credentialNow.getTime() + 60_000),
+      createdAt: credentialNow,
+      updatedAt: credentialNow,
+    });
+
+    const [targetUser] = await db
+      .insert(schema.userTable)
+      .values({
+        id: "pa9-scim-target",
+        name: "PA9 target",
+        email: "pa9-scim-target@example.test",
+      })
+      .returning({ id: schema.userTable.id });
+    if (!targetUser) throw new Error("PA-9 target user was not created");
+    await ensureStaffPersonForUser(targetUser.id);
+
+    const externalIdentityId = "pa9-scim-requester-identity";
+    await db.insert(schema.externalIdentityTable).values({
+      id: externalIdentityId,
+      identityConnectionId: connectionId,
+      personId: requesterPerson.id,
+      userId: requesterUser.id,
+      issuer: "https://login.microsoftonline.com/tenant/v2.0",
+      subject: requesterUser.id,
+      scimExternalId: requesterUser.id,
+      userNameSnapshot: requesterUser.id,
+      emailSnapshot: "pa9-scim-requester@example.test",
+      active: true,
+      provisionedVia: "scim",
+    });
+
+    const pendingResult = await createPendingAction({
+      requesterPersonId: requesterPerson.id,
+      credentialType: "session",
+      credentialId,
+      origin: "web",
+      action: "delete",
+      routeKey: "POST /api/instance/users/{id}/deactivate",
+      targetType: "user",
+      targetIds: [targetUser.id],
+      workspaceId: null,
+      projectId: null,
+      organisationId: null,
+      actorId: requesterUser.id,
+      actorType: "person",
+    });
+    const pending = { ...pendingResult, id: pendingResult.pendingActionId };
+    const [pendingRow] = await db
+      .select({
+        traceId: schema.pendingActionTable.traceId,
+        payloadHash: schema.pendingActionTable.payloadHash,
+        payload: schema.pendingActionTable.payload,
+      })
+      .from(schema.pendingActionTable)
+      .where(eq(schema.pendingActionTable.id, pending.id));
+    if (!pendingRow) throw new Error("PA-9 pending action was not persisted");
+
+    expect(
+      await setScimIdentityActive(
+        externalIdentityId,
+        connectionId,
+        false,
+        "end_memberships",
+      ),
+    ).toBe(true);
+    expect(
+      await db.query.pendingActionTable.findFirst({
+        where: eq(schema.pendingActionTable.id, pending.id),
+      }),
+    ).toMatchObject({
+      state: "invalidated",
+      invalidationReason: "requester_deactivated",
+      payloadHash: pendingRow.payloadHash,
+      payload: pendingRow.payload,
+    });
+    const events = await db
+      .select({ payload: schema.outboxTable.payload })
+      .from(schema.outboxTable)
+      .where(eq(schema.outboxTable.kind, "pending_action.decided"));
+    const matchingEvents = events.filter(
+      (row) =>
+        (row.payload as { payload?: { pendingActionId?: string } }).payload
+          ?.pendingActionId === pending.id,
+    );
+    expect(matchingEvents).toHaveLength(1);
+    const [event] = matchingEvents;
+    expect(event?.payload).toMatchObject({
+      kind: "pending_action.decided",
+      actor: { type: "system", id: null },
+      scope: {},
+      payload: {
+        key: pending.id,
+        url: `/agent/settings/profile/pending-actions/${pending.id}`,
+        pendingActionId: pending.id,
+        outcome: "invalidated",
+        invalidationReason: "requester_deactivated",
+      },
+    });
+    const audits = await db
+      .select({
+        action: schema.auditLogTable.action,
+        traceId: schema.auditLogTable.traceId,
+        before: schema.auditLogTable.before,
+        after: schema.auditLogTable.after,
+      })
+      .from(schema.auditLogTable)
+      .where(
+        and(
+          eq(schema.auditLogTable.entityId, pending.id),
+          eq(schema.auditLogTable.action, "pending_action.decided"),
+        ),
+      );
+    expect(audits).toHaveLength(1);
+    const [audit] = audits;
+    expect(audit).toMatchObject({
+      action: "pending_action.decided",
+      traceId: pendingRow.traceId,
+      before: { state: "pending" },
+      after: {
+        state: "invalidated",
+        invalidationReason: "requester_deactivated",
+      },
+    });
+
+    expect(
+      await setScimIdentityActive(
+        externalIdentityId,
+        connectionId,
+        true,
+        "end_memberships",
+      ),
+    ).toBe(true);
+    await expect(
+      approveUserDeactivation({
+        id: pending.id,
+        requesterPersonId: requesterPerson.id,
+        userId: requesterUser.id,
+        sessionId: "reactivated-session",
+        typedName: "PA9 target",
+        stepUpToken: "proof-is-not-consulted-for-terminal-row",
+        traceId: pendingRow.traceId,
+      }),
+    ).rejects.toMatchObject({ status: 409 });
+    expect(
+      await db.query.pendingActionTable.findFirst({
+        where: eq(schema.pendingActionTable.id, pending.id),
+      }),
+    ).toMatchObject({ state: "invalidated" });
+    expect(
+      await db
+        .select({ active: schema.personTable.active })
+        .from(schema.personTable)
+        .where(eq(schema.personTable.userId, targetUser.id)),
+    ).toEqual([{ active: true }]);
+
+    const freshCredentialId = "pa9-scim-reactivated-session";
+    const reactivatedAt = new Date();
+    await db.insert(schema.sessionTable).values({
+      id: freshCredentialId,
+      token: `${freshCredentialId}-token`,
+      userId: requesterUser.id,
+      portal: "agent",
+      expiresAt: new Date(reactivatedAt.getTime() + 60_000),
+      createdAt: reactivatedAt,
+      updatedAt: reactivatedAt,
+    });
+
+    const fresh = await createPendingAction({
+      requesterPersonId: requesterPerson.id,
+      credentialType: "session",
+      credentialId: freshCredentialId,
+      origin: "web",
+      action: "delete",
+      routeKey: "POST /api/instance/users/{id}/deactivate",
+      targetType: "user",
+      targetIds: [targetUser.id],
+      workspaceId: null,
+      projectId: null,
+      organisationId: null,
+      actorId: requesterUser.id,
+      actorType: "person",
+    });
+    expect(fresh.pendingActionId).not.toBe(pending.id);
+  });
+
+  it("commits lifecycle invalidation and its event when the decision audit fails", async () => {
+    const fixture =
+      await createScimRequesterPendingActionFixture("pa9-audit-failure");
+    const auditFailure = vi.spyOn(observability, "recordAuditWriteFailure");
+    await db.execute(
+      sql.raw(`
+        CREATE OR REPLACE FUNCTION fail_pa9_lifecycle_audit_insert()
+        RETURNS trigger LANGUAGE plpgsql AS $$
+        BEGIN
+          IF NEW.action = 'pending_action.decided' THEN
+            RAISE EXCEPTION 'test PA-9 audit failure';
+          END IF;
+          RETURN NEW;
+        END $$;
+      `),
+    );
+    await db.execute(
+      sql.raw(`
+        CREATE TRIGGER fail_pa9_lifecycle_audit_insert
+        BEFORE INSERT ON audit_log
+        FOR EACH ROW EXECUTE FUNCTION fail_pa9_lifecycle_audit_insert()
+      `),
+    );
+    try {
+      expect(
+        await setScimIdentityActive(
+          fixture.externalIdentityId,
+          fixture.connectionId,
+          false,
+          "end_memberships",
+        ),
+      ).toBe(true);
+      const action = await db.query.pendingActionTable.findFirst({
+        where: eq(schema.pendingActionTable.id, fixture.pending.id),
+      });
+      expect(action).toMatchObject({
+        state: "invalidated",
+        invalidationReason: "requester_deactivated",
+      });
+      const [event] = await db
+        .select({ payload: schema.outboxTable.payload })
+        .from(schema.outboxTable)
+        .where(eq(schema.outboxTable.kind, "pending_action.decided"));
+      expect(event?.payload).toMatchObject({
+        payload: {
+          pendingActionId: fixture.pending.id,
+          outcome: "invalidated",
+          invalidationReason: "requester_deactivated",
+        },
+      });
+      expect(auditFailure).toHaveBeenCalledWith("pending_action_decision");
+    } finally {
+      await db.execute(
+        sql.raw(
+          "DROP TRIGGER IF EXISTS fail_pa9_lifecycle_audit_insert ON audit_log",
+        ),
+      );
+      await db.execute(
+        sql.raw("DROP FUNCTION IF EXISTS fail_pa9_lifecycle_audit_insert()"),
+      );
+    }
+  });
+
+  it("rolls back lifecycle and action invalidation when the decided event cannot be enqueued", async () => {
+    const fixture =
+      await createScimRequesterPendingActionFixture("pa9-outbox-failure");
+    await db.execute(
+      sql.raw(`
+        CREATE OR REPLACE FUNCTION fail_pa9_lifecycle_outbox_insert()
+        RETURNS trigger LANGUAGE plpgsql AS $$
+        BEGIN
+          IF NEW.kind = 'pending_action.decided' THEN
+            RAISE EXCEPTION 'test PA-9 outbox failure';
+          END IF;
+          RETURN NEW;
+        END $$;
+      `),
+    );
+    await db.execute(
+      sql.raw(`
+        CREATE TRIGGER fail_pa9_lifecycle_outbox_insert
+        BEFORE INSERT ON outbox
+        FOR EACH ROW EXECUTE FUNCTION fail_pa9_lifecycle_outbox_insert()
+      `),
+    );
+    try {
+      await expect(
+        setScimIdentityActive(
+          fixture.externalIdentityId,
+          fixture.connectionId,
+          false,
+          "end_memberships",
+        ),
+      ).rejects.toBeDefined();
+      expect(
+        await db
+          .select({ active: schema.personTable.active })
+          .from(schema.personTable)
+          .where(eq(schema.personTable.id, fixture.requesterPerson.id)),
+      ).toEqual([{ active: true }]);
+      expect(
+        await db.query.pendingActionTable.findFirst({
+          where: eq(schema.pendingActionTable.id, fixture.pending.id),
+        }),
+      ).toMatchObject({ state: "pending", invalidationReason: null });
+      const [identity] = await db
+        .select({ active: schema.externalIdentityTable.active })
+        .from(schema.externalIdentityTable)
+        .where(eq(schema.externalIdentityTable.id, fixture.externalIdentityId));
+      expect(identity?.active).toBe(true);
+    } finally {
+      await db.execute(
+        sql.raw(
+          "DROP TRIGGER IF EXISTS fail_pa9_lifecycle_outbox_insert ON outbox",
+        ),
+      );
+      await db.execute(
+        sql.raw("DROP FUNCTION IF EXISTS fail_pa9_lifecycle_outbox_insert()"),
+      );
+    }
+  });
+
+  it("counts every AU-14 failure when approval invalidates another requester action", async () => {
+    const fixture = await createScimRequesterPendingActionFixture(
+      "pa9-multiple-audit-failures",
+    );
+    await db
+      .update(schema.userTable)
+      .set({ role: "admin" })
+      .where(eq(schema.userTable.id, fixture.targetUser.id));
+    const [targetPerson] = await db
+      .select({ id: schema.personTable.id })
+      .from(schema.personTable)
+      .where(eq(schema.personTable.userId, fixture.targetUser.id));
+    if (!targetPerson) throw new Error("PA-9 target person was not created");
+    const [nextTarget] = await db
+      .insert(schema.userTable)
+      .values({
+        id: "pa9-multiple-audit-next-target",
+        name: "Next PA9 target",
+        email: "pa9-multiple-audit-next-target@example.test",
+      })
+      .returning({ id: schema.userTable.id });
+    if (!nextTarget) throw new Error("Second PA-9 target was not created");
+    await ensureStaffPersonForUser(nextTarget.id);
+    const targetSessionId = "pa9-multiple-audit-target-session";
+    const now = new Date();
+    await db.insert(schema.sessionTable).values({
+      id: targetSessionId,
+      token: `${targetSessionId}-token`,
+      userId: fixture.targetUser.id,
+      portal: "agent",
+      expiresAt: new Date(now.getTime() + 60_000),
+      createdAt: now,
+      updatedAt: now,
+    });
+    const targetPending = await createPendingAction({
+      requesterPersonId: targetPerson.id,
+      credentialType: "session",
+      credentialId: targetSessionId,
+      origin: "web",
+      action: "delete",
+      routeKey: "POST /api/instance/users/{id}/deactivate",
+      targetType: "user",
+      targetIds: [nextTarget.id],
+      workspaceId: null,
+      projectId: null,
+      organisationId: null,
+      actorId: fixture.targetUser.id,
+      actorType: "person",
+    });
+    const challenge = await createPendingActionChallenge({
+      personId: fixture.requesterPerson.id,
+      sessionId: fixture.credentialId,
+      pendingActionId: fixture.pending.id,
+    });
+    if (!challenge) throw new Error("Pending-action challenge was not issued");
+    const proof = await issuePendingActionToken(
+      {
+        id: challenge.id,
+        nonce: challenge.nonce,
+        personId: fixture.requesterPerson.id,
+        sessionId: fixture.credentialId,
+        userId: fixture.requesterUser.id,
+        pendingActionId: fixture.pending.id,
+      },
+      async () => "password",
+    );
+    if (!proof) throw new Error("Pending-action proof was not issued");
+    const [target] = await db
+      .select({ email: schema.userTable.email })
+      .from(schema.userTable)
+      .where(eq(schema.userTable.id, fixture.targetUser.id));
+    if (!target) throw new Error("PA-9 target user was not found");
+    const auditFailure = vi.spyOn(observability, "recordAuditWriteFailure");
+    await db.execute(
+      sql.raw(`
+        CREATE OR REPLACE FUNCTION fail_pa9_multi_decision_audit_insert()
+        RETURNS trigger LANGUAGE plpgsql AS $$
+        BEGIN
+          IF NEW.action = 'pending_action.decided' THEN
+            RAISE EXCEPTION 'test PA-9 multiple audit failures';
+          END IF;
+          RETURN NEW;
+        END $$;
+      `),
+    );
+    await db.execute(
+      sql.raw(`
+        CREATE TRIGGER fail_pa9_multi_decision_audit_insert
+        BEFORE INSERT ON audit_log
+        FOR EACH ROW EXECUTE FUNCTION fail_pa9_multi_decision_audit_insert()
+      `),
+    );
+    try {
+      await expect(
+        approveUserDeactivation({
+          id: fixture.pending.id,
+          requesterPersonId: fixture.requesterPerson.id,
+          userId: fixture.requesterUser.id,
+          sessionId: fixture.credentialId,
+          typedName: target.email,
+          stepUpToken: proof.token,
+          traceId: fixture.pendingRow.traceId,
+        }),
+      ).resolves.toMatchObject({ state: "executed" });
+      expect(
+        await db.query.pendingActionTable.findFirst({
+          where: eq(
+            schema.pendingActionTable.id,
+            targetPending.pendingActionId,
+          ),
+        }),
+      ).toMatchObject({
+        state: "invalidated",
+        invalidationReason: "requester_deactivated",
+      });
+      expect(auditFailure.mock.calls).toEqual([
+        ["pending_action_decision"],
+        ["pending_action_decision"],
+      ]);
+    } finally {
+      await db.execute(
+        sql.raw(
+          "DROP TRIGGER IF EXISTS fail_pa9_multi_decision_audit_insert ON audit_log",
+        ),
+      );
+      await db.execute(
+        sql.raw(
+          "DROP FUNCTION IF EXISTS fail_pa9_multi_decision_audit_insert()",
+        ),
+      );
+    }
+  });
+
+  it("serializes pending-action creation with requester deactivation", async () => {
+    const fixture =
+      await createScimRequesterPendingActionFixture("pa9-create-race");
+    const secondTargetId = "pa9-create-race-second-target";
+    await db.insert(schema.userTable).values({
+      id: secondTargetId,
+      name: "Second PA9 target",
+      email: "pa9-create-race-second-target@example.test",
+    });
+    await ensureStaffPersonForUser(secondTargetId);
+
+    const blocker = new Client({
+      connectionString: process.env.TASKDESK_DATABASE_URL,
+    });
+    await blocker.connect();
+    try {
+      await blocker.query("BEGIN");
+      await blocker.query(
+        "SELECT id FROM person WHERE user_id = $1 FOR UPDATE",
+        [secondTargetId],
+      );
+      const blockerPid = Number(
+        (await blocker.query("SELECT pg_backend_pid() AS pid")).rows[0]?.pid,
+      );
+      const creating = createPendingAction({
+        requesterPersonId: fixture.requesterPerson.id,
+        credentialType: "session",
+        credentialId: fixture.credentialId,
+        origin: "web",
+        action: "delete",
+        routeKey: "POST /api/instance/users/{id}/deactivate",
+        targetType: "user",
+        targetIds: [secondTargetId],
+        workspaceId: null,
+        projectId: null,
+        organisationId: null,
+        actorId: fixture.requesterUser.id,
+        actorType: "person",
+      });
+      await waitForLockWaitersBlockedBy(blocker, blockerPid, 1);
+      const deactivating = setScimIdentityActive(
+        fixture.externalIdentityId,
+        fixture.connectionId,
+        false,
+        "end_memberships",
+      );
+      await waitForLifecycleGateWaiterCount(blocker, 1);
+      await blocker.query("COMMIT");
+
+      const [creation, deactivation] = await Promise.allSettled([
+        creating,
+        deactivating,
+      ]);
+      expect(deactivation).toMatchObject({ status: "fulfilled", value: true });
+      const requesterActions = await db
+        .select({ state: schema.pendingActionTable.state })
+        .from(schema.pendingActionTable)
+        .where(
+          eq(
+            schema.pendingActionTable.requestedByPersonId,
+            fixture.requesterPerson.id,
+          ),
+        );
+      expect(requesterActions.every((row) => row.state !== "pending")).toBe(
+        true,
+      );
+      expect(creation.status).toBe("fulfilled");
+      if (creation.status === "fulfilled") {
+        const [createdRow] = await db
+          .select({
+            state: schema.pendingActionTable.state,
+            invalidationReason: schema.pendingActionTable.invalidationReason,
+          })
+          .from(schema.pendingActionTable)
+          .where(
+            eq(schema.pendingActionTable.id, creation.value.pendingActionId),
+          );
+        expect(createdRow).toEqual({
+          state: "invalidated",
+          invalidationReason: "requester_deactivated",
+        });
+      }
+    } finally {
+      await blocker.query("ROLLBACK").catch(() => undefined);
+      await blocker.end();
+    }
+  });
+
+  it("rejects pending-action creation when requester deactivation wins the lifecycle gate", async () => {
+    const fixture = await createScimRequesterPendingActionFixture(
+      "pa9-create-deactivate-first",
+    );
+    const blocker = new Client({
+      connectionString: process.env.TASKDESK_DATABASE_URL,
+    });
+    await blocker.connect();
+    try {
+      await blocker.query("BEGIN");
+      await blocker.query("SELECT id FROM person WHERE id = $1 FOR UPDATE", [
+        fixture.requesterPerson.id,
+      ]);
+      const blockerPid = Number(
+        (await blocker.query("SELECT pg_backend_pid() AS pid")).rows[0]?.pid,
+      );
+      const deactivation = setScimIdentityActive(
+        fixture.externalIdentityId,
+        fixture.connectionId,
+        false,
+        "end_memberships",
+      );
+      await waitForLockWaitersBlockedBy(blocker, blockerPid, 1);
+      const creation = createPendingAction({
+        requesterPersonId: fixture.requesterPerson.id,
+        credentialType: "session",
+        credentialId: fixture.credentialId,
+        origin: "web",
+        action: "delete",
+        routeKey: "POST /api/instance/users/{id}/deactivate",
+        targetType: "user",
+        targetIds: [fixture.targetUser.id],
+        workspaceId: null,
+        projectId: null,
+        organisationId: null,
+        actorId: fixture.requesterUser.id,
+        actorType: "person",
+      });
+      await waitForLifecycleGateWaiterCount(blocker, 1);
+      await blocker.query("COMMIT");
+      const [deactivationResult, creationResult] = await Promise.allSettled([
+        deactivation,
+        creation,
+      ]);
+      expect(deactivationResult).toMatchObject({
+        status: "fulfilled",
+        value: true,
+      });
+      expect(creationResult).toMatchObject({
+        status: "rejected",
+        reason: { status: 403 },
+      });
+      expect(
+        await db
+          .select({ state: schema.pendingActionTable.state })
+          .from(schema.pendingActionTable)
+          .where(
+            eq(
+              schema.pendingActionTable.requestedByPersonId,
+              fixture.requesterPerson.id,
+            ),
+          ),
+      ).toEqual([{ state: "invalidated" }]);
+    } finally {
+      await blocker.query("ROLLBACK").catch(() => undefined);
+      await blocker.end();
+    }
+  });
+
+  it("serializes pending-action approval with requester deactivation", async () => {
+    const fixture =
+      await createScimRequesterPendingActionFixture("pa9-approve-race");
+    const sessionId = fixture.credentialId;
+    const challenge = await createPendingActionChallenge({
+      personId: fixture.requesterPerson.id,
+      sessionId,
+      pendingActionId: fixture.pending.id,
+    });
+    if (!challenge) throw new Error("Pending-action challenge was not issued");
+    const proof = await issuePendingActionToken(
+      {
+        id: challenge.id,
+        nonce: challenge.nonce,
+        personId: fixture.requesterPerson.id,
+        sessionId,
+        userId: fixture.requesterUser.id,
+        pendingActionId: fixture.pending.id,
+      },
+      async () => "password",
+    );
+    if (!proof) throw new Error("Pending-action proof was not issued");
+    const [target] = await db
+      .select({ email: schema.userTable.email })
+      .from(schema.userTable)
+      .where(eq(schema.userTable.id, fixture.targetUser.id));
+    if (!target) throw new Error("PA-9 target user was not found");
+
+    const blocker = new Client({
+      connectionString: process.env.TASKDESK_DATABASE_URL,
+    });
+    await blocker.connect();
+    try {
+      await blocker.query("BEGIN");
+      await blocker.query("SELECT id FROM person WHERE id = $1 FOR UPDATE", [
+        fixture.requesterPerson.id,
+      ]);
+      const blockerPid = Number(
+        (await blocker.query("SELECT pg_backend_pid() AS pid")).rows[0]?.pid,
+      );
+      const approval = approveUserDeactivation({
+        id: fixture.pending.id,
+        requesterPersonId: fixture.requesterPerson.id,
+        userId: fixture.requesterUser.id,
+        sessionId,
+        typedName: target.email,
+        stepUpToken: proof.token,
+        traceId: fixture.pendingRow.traceId,
+      });
+      await waitForLockWaitersBlockedBy(blocker, blockerPid, 1);
+      const deactivation = setScimIdentityActive(
+        fixture.externalIdentityId,
+        fixture.connectionId,
+        false,
+        "end_memberships",
+      );
+      await waitForLifecycleGateWaiterCount(blocker, 1);
+      await blocker.query("COMMIT");
+
+      const [approvalResult, deactivationResult] = await Promise.allSettled([
+        approval,
+        deactivation,
+      ]);
+      expect(deactivationResult).toMatchObject({
+        status: "fulfilled",
+        value: true,
+      });
+      const terminalAction = await db.query.pendingActionTable.findFirst({
+        where: eq(schema.pendingActionTable.id, fixture.pending.id),
+      });
+      expect(approvalResult).toMatchObject({
+        status: "fulfilled",
+        value: { state: "executed" },
+      });
+      expect(terminalAction?.state).toBe("executed");
+      const events = await db
+        .select({ payload: schema.outboxTable.payload })
+        .from(schema.outboxTable)
+        .where(
+          and(
+            eq(schema.outboxTable.kind, "pending_action.decided"),
+            sql`${schema.outboxTable.payload}->'payload'->>'pendingActionId' = ${fixture.pending.id}`,
+          ),
+        );
+      expect(events).toHaveLength(1);
+    } finally {
+      await blocker.query("ROLLBACK").catch(() => undefined);
+      await blocker.end();
+    }
+  });
+
+  it("rejects pending-action approval when requester deactivation wins the lifecycle gate", async () => {
+    const fixture = await createScimRequesterPendingActionFixture(
+      "pa9-approve-deactivate-first",
+    );
+    const sessionId = fixture.credentialId;
+    const challenge = await createPendingActionChallenge({
+      personId: fixture.requesterPerson.id,
+      sessionId,
+      pendingActionId: fixture.pending.id,
+    });
+    if (!challenge) throw new Error("Pending-action challenge was not issued");
+    const proof = await issuePendingActionToken(
+      {
+        id: challenge.id,
+        nonce: challenge.nonce,
+        personId: fixture.requesterPerson.id,
+        sessionId,
+        userId: fixture.requesterUser.id,
+        pendingActionId: fixture.pending.id,
+      },
+      async () => "password",
+    );
+    if (!proof) throw new Error("Pending-action proof was not issued");
+    const [target] = await db
+      .select({ email: schema.userTable.email })
+      .from(schema.userTable)
+      .where(eq(schema.userTable.id, fixture.targetUser.id));
+    if (!target) throw new Error("PA-9 target user was not found");
+
+    const blocker = new Client({
+      connectionString: process.env.TASKDESK_DATABASE_URL,
+    });
+    await blocker.connect();
+    try {
+      await blocker.query("BEGIN");
+      await blocker.query("SELECT id FROM person WHERE id = $1 FOR UPDATE", [
+        fixture.requesterPerson.id,
+      ]);
+      const blockerPid = Number(
+        (await blocker.query("SELECT pg_backend_pid() AS pid")).rows[0]?.pid,
+      );
+      const deactivation = setScimIdentityActive(
+        fixture.externalIdentityId,
+        fixture.connectionId,
+        false,
+        "end_memberships",
+      );
+      await waitForLockWaitersBlockedBy(blocker, blockerPid, 1);
+      const approval = approveUserDeactivation({
+        id: fixture.pending.id,
+        requesterPersonId: fixture.requesterPerson.id,
+        userId: fixture.requesterUser.id,
+        sessionId,
+        typedName: target.email,
+        stepUpToken: proof.token,
+        traceId: fixture.pendingRow.traceId,
+      });
+      await waitForLifecycleGateWaiterCount(blocker, 1);
+      await blocker.query("COMMIT");
+      const [deactivationResult, approvalResult] = await Promise.allSettled([
+        deactivation,
+        approval,
+      ]);
+      expect(deactivationResult).toMatchObject({
+        status: "fulfilled",
+        value: true,
+      });
+      expect(approvalResult).toMatchObject({
+        status: "rejected",
+        reason: { status: 409 },
+      });
+      expect(
+        await db.query.pendingActionTable.findFirst({
+          where: eq(schema.pendingActionTable.id, fixture.pending.id),
+        }),
+      ).toMatchObject({
+        state: "invalidated",
+        invalidationReason: "requester_deactivated",
+      });
+    } finally {
+      await blocker.query("ROLLBACK").catch(() => undefined);
+      await blocker.end();
+    }
   });
 
   it("IP-15/IP-16 keep-memberships leaves direct grants dormant and reprojects on reactivation", async () => {
@@ -370,19 +1314,21 @@ describe("SCIM administration API", () => {
       updatedAt: now,
     });
 
-    const changed = await db.transaction((tx) =>
-      transitionPersonLifecycleInTransaction(
+    const changed = await db.transaction(async (tx) => {
+      await lockPendingActionLifecycle(tx);
+      return transitionPersonLifecycleInTransaction(
         tx,
         linked.personId,
         false,
         "end_memberships",
         { kind: "administrative" },
-      ),
-    );
+      );
+    });
     expect(changed).toMatchObject({
       sessionsRevoked: 1,
       keysRevoked: 1,
       membershipsEnded: 2,
+      externalIdentityIds: ["person-lifecycle-other-identity"],
     });
     const retired = await db
       .select({
