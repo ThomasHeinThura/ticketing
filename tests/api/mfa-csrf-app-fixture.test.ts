@@ -1,5 +1,5 @@
 import { spawn, spawnSync } from "node:child_process";
-import { mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
+import { mkdtemp, readFile, rename, rm, writeFile } from "node:fs/promises";
 import { createServer } from "node:net";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
@@ -288,6 +288,8 @@ describe("isolated MFA app fixture helpers", () => {
           }
         });
       });
+    const replacementPath = `${path}.replacement-${process.pid}`;
+    let replacementOwnerPrepared = false;
     let replacementOwnerWritten = false;
     try {
       await waitForMarker(reaper, () => reaperOutput, "REAPER_LOCK_HELD");
@@ -303,11 +305,11 @@ describe("isolated MFA app fixture helpers", () => {
         "controlled-reaper",
       );
 
-      // Swap in a live owner while the first reaper holds the protocol lock.
-      // The waiting contender must revalidate this inode and token before unlink.
-      await rm(path, { force: true });
+      // Publish a complete live owner without an absent-path window. A contender
+      // opens the lock path before it can acquire the reaper lease, so unlinking
+      // first lets it claim the gap and makes this fixture's wx create fail.
       await writeFile(
-        path,
+        replacementPath,
         JSON.stringify({
           pid: process.pid,
           token: "replacement-owner",
@@ -315,7 +317,14 @@ describe("isolated MFA app fixture helpers", () => {
         }),
         { flag: "wx", mode: 0o600 },
       );
+      replacementOwnerPrepared = true;
+      await expect(readFile(path, "utf8")).resolves.toContain("stale-owner");
+      await rename(replacementPath, path);
+      replacementOwnerPrepared = false;
       replacementOwnerWritten = true;
+      await expect(readFile(path, "utf8")).resolves.toContain(
+        "replacement-owner",
+      );
       reaper.stdin.write("release\\n");
       await waitForMarker(reaper, () => reaperOutput, "REAPER_RELEASED");
       await reaperClosed;
@@ -337,6 +346,7 @@ describe("isolated MFA app fixture helpers", () => {
       expect(contenderOutput).toContain("CONTENDER_ENTERED");
       await contenderClosed;
     } finally {
+      if (replacementOwnerPrepared) await rm(replacementPath, { force: true });
       if (replacementOwnerWritten) await rm(path, { force: true });
       if (reaper.exitCode === null && reaper.signalCode === null) {
         reaper.stdin.write("release\\n");
