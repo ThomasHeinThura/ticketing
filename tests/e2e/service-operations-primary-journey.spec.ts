@@ -26,7 +26,8 @@ async function bodyAt(
 ): Promise<JsonRecord> {
   const text = await response.text();
   expect(response.status(), text).toBe(status);
-  return text.length === 0 ? {} : (JSON.parse(text) as JsonRecord);
+  if (status < 200 || status >= 300 || text.length === 0) return {};
+  return JSON.parse(text) as JsonRecord;
 }
 
 async function getCsrfToken(context: APIRequestContext, origin: string) {
