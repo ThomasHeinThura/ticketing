@@ -58,6 +58,16 @@ describe("approvals: closing pending approvals when a transition runs", () => {
       .from(schema.auditLogTable)
       .where(eq(schema.auditLogTable.action, "approval.closed"));
     expect(audit.map((a) => a.entityId)).toEqual([loser.id]);
+    // Same actor convention as the other approval.* rows, and the organisation is set.
+    expect(audit[0]?.actorId).toBe(t.requesterPerson.id);
+    expect(audit[0]?.actorType).toBe("person");
+    const [workspaceRow] = await db
+      .select({ organisationId: schema.workspaceTable.organisationId })
+      .from(schema.workspaceTable)
+      .where(eq(schema.workspaceTable.id, t.workspaceId));
+    expect(workspaceRow?.organisationId).toBeTruthy();
+    expect(audit[0]?.organisationId).toBe(workspaceRow?.organisationId);
+    expect(audit[0]?.workspaceId).toBe(t.workspaceId);
     expect(audit[0]?.after).toMatchObject({
       state: "expired",
       reason: "transition_ran",
@@ -90,6 +100,56 @@ describe("approvals: closing pending approvals when a transition runs", () => {
     expect(
       (await approvalRows(t.workItem.id)).find((r) => r.id === loser.id)?.state,
     ).toBe("expired");
+  });
+
+  it("a run on one work item leaves another work item's pending approval of the same transition alone", async () => {
+    const t = await buildTenant("two-items", { executable: true });
+    mockAuthenticatedSession(t.requester.user);
+    const second = await t.app.request(
+      `/api/projects/${t.project.id}/work-items`,
+      {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ typeId: t.type.id, title: "Second item" }),
+      },
+    );
+    expect(second.status, await second.clone().text()).toBe(200);
+    const { key: key2 } = (await second.json()) as { key: string };
+    await db
+      .update(schema.workItemTable)
+      .set({ customerVisibility: "organisation" })
+      .where(eq(schema.workItemTable.key, key2));
+    const [item2] = await db
+      .select()
+      .from(schema.workItemTable)
+      .where(eq(schema.workItemTable.key, key2));
+
+    const approval1 = await createApproval(t);
+    mockAuthenticatedSession(t.requester.user);
+    const other = await t.app.request(`/api/work-items/${key2}/approvals`, {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({
+        transitionId: t.gated.id,
+        kind: "cab",
+        approverId: t.approverPerson.id,
+      }),
+    });
+    expect(other.status, await other.clone().text()).toBe(200);
+    const { id: approval2 } = (await other.json()) as { id: string };
+
+    await setApproval(t, approval1.id);
+    expect((await runTransition(t, t.done.id)).status).toBe(200);
+    const [row2] = await db
+      .select()
+      .from(schema.approvalTable)
+      .where(eq(schema.approvalTable.id, approval2));
+    expect(row2?.workItemId).toBe(item2?.id);
+    expect(row2?.state).toBe("pending");
+    expect(row2?.decidedAt).toBeNull();
+    // ...and it is still decidable.
+    const decided = await decide(t, t.approver, approval2);
+    expect(decided.status, await decided.clone().text()).toBe(200);
   });
 
   it("a new run needs new approvals", async () => {

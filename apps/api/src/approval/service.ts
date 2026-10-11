@@ -470,6 +470,7 @@ export async function closePendingApprovalsOnTransition(
     projectId: string;
     workItemId: string;
     transitionId: string;
+    /** The acting user's id; the audit row records the person id, like other `approval.*` rows. */
     actorId: string | null;
     actorType: "person" | "api_key" | "automation" | "system";
   },
@@ -491,6 +492,19 @@ export async function closePendingApprovalsOnTransition(
       approverId: schema.approvalTable.approverId,
     });
   if (closed.length === 0) return closed;
+  // The transition route's actor is a user id; approval audit rows carry the person id.
+  const [actorPerson] = input.actorId
+    ? await tx
+        .select({ id: schema.personTable.id })
+        .from(schema.personTable)
+        .where(eq(schema.personTable.userId, input.actorId))
+        .limit(1)
+    : [];
+  const [workspace] = await tx
+    .select({ organisationId: schema.workspaceTable.organisationId })
+    .from(schema.workspaceTable)
+    .where(eq(schema.workspaceTable.id, input.workspaceId))
+    .limit(1);
   await tx.delete(schema.notificationTable).where(
     and(
       eq(schema.notificationTable.resourceType, "approval"),
@@ -502,10 +516,11 @@ export async function closePendingApprovalsOnTransition(
   );
   for (const approval of closed) {
     await appendAuditLog(tx, {
-      actorId: input.actorId,
+      actorId: actorPerson?.id ?? null,
       actorType: input.actorType,
       workspaceId: input.workspaceId,
       projectId: input.projectId,
+      organisationId: workspace?.organisationId ?? null,
       action: "approval.closed",
       entityType: "approval",
       entityId: approval.id,

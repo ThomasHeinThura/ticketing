@@ -17,6 +17,7 @@ import { HTTPException } from "hono/http-exception";
 import db, { schema } from "../database";
 import type { ApiKey } from "../openapi";
 import { resolveIdentity } from "../permissions/resolve-identity";
+import { dbClockUtc } from "../utils/db-time";
 import { apiKeyHasCapabilityScope } from "../utils/require-api-key-permission-scope";
 
 const approverPerson = alias(schema.personTable, "approver_person");
@@ -67,14 +68,14 @@ async function selectDueApprovalRows(tx: Transaction, limit: number) {
         and(
           eq(schema.approvalTable.state, "pending"),
           sql`(
-        ${schema.approvalTable.expiresAt} <= clock_timestamp()
+        ${schema.approvalTable.expiresAt} <= ${dbClockUtc()}
         OR (
           ${schema.approvalTable.reminder50SentAt} IS NULL
-          AND ${schema.approvalTable.createdAt} + (${schema.approvalTable.expiresAt} - ${schema.approvalTable.createdAt}) * 0.5 <= clock_timestamp()
+          AND ${schema.approvalTable.createdAt} + (${schema.approvalTable.expiresAt} - ${schema.approvalTable.createdAt}) * 0.5 <= ${dbClockUtc()}
         )
         OR (
           ${schema.approvalTable.reminder90SentAt} IS NULL
-          AND ${schema.approvalTable.createdAt} + (${schema.approvalTable.expiresAt} - ${schema.approvalTable.createdAt}) * 0.9 <= clock_timestamp()
+          AND ${schema.approvalTable.createdAt} + (${schema.approvalTable.expiresAt} - ${schema.approvalTable.createdAt}) * 0.9 <= ${dbClockUtc()}
         )
       )`,
         ),

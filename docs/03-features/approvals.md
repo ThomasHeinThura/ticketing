@@ -97,8 +97,14 @@ on a workflow transition.
 
 **Expiry**
 
-- `AP-12` `reminder-scan` expires approvals past `expires_at`, setting status `expired`.
-- `AP-13` A reminder is sent to the approver at 50% and 90% of the window.
+- `AP-12` `reminder-scan` compares the UTC wall-clock values in `created_at` and `expires_at`
+  with the database's UTC wall clock, independent of the database session time zone. It expires
+  approvals past `expires_at`, setting status `expired`. `expired`
+  also covers a pending approval **closed by a run of its transition** (`AP-5`, owner decision
+  2026-10-10): its `expires_at` may then still be in the future; `decided_at` records the closure
+  and the audit row `approval.closed` says why.
+- `AP-13` A reminder is sent to the approver at 50% and 90% of the window, measured from
+  `created_at` to `expires_at` using those stored UTC wall-clock values.
   `reminder_50_sent_at` / `reminder_90_sent_at` record which have already fired, so
   `reminder-scan`'s 15-minute cadence never re-sends one ([background-jobs.md](../01-architecture/background-jobs.md)).
 - `AP-14` An expired approval does not satisfy a gate. A new one must be requested.

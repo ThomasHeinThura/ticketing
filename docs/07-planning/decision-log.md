@@ -23,7 +23,10 @@ entry is not carried and this entry is the record.
   - *Conductor-derived, not Thomas's words:* "An approval raised before a transition ran for that work item does not satisfy a later run of the same transition." This is the conductor's reading of "consumed by the transition" and is implemented as such.
 - **Withdrawn approvals are ignored.** A withdrawn approval does not count toward the gate at all, in either the `any` or the `all` policy. Only `pending`, `approved` and `rejected` approvals count, so withdrawing an approval can never block a transition.
   - *From the spec, not a new decision:* an `expired` approval also does not count (`AP-14`).
-- **Close them on transition.** When a transition runs and consumes approvals, the other approvals for that transition that are still pending are closed automatically. They are closed with the existing terminal state `expired` (no new state value, no migration). Each closure is audited (`approval.closed`), removed from inboxes, no longer reminded, and refused on a later decide (409). A new run needs new approvals.
+- **Close them on transition.** When a transition runs and consumes approvals, the other approvals for that transition that are still pending are closed automatically. A new run needs new approvals.
+  - *Conductor-derived implementation consequences, not Thomas's words:* closed approvals use the existing terminal state `expired` (his "expired or void" mapped to `expired`, so no new state value and no migration); each closure is audited (`approval.closed`); closed approvals are removed from inboxes and no longer reminded; a later decide is refused with 409.
+- **Reminder and expiry comparisons use the UTC database clock.** The `approval` timestamp columns are UTC wall-clock values; the reminder scan compares expiry and 50%/90% thresholds to `clock_timestamp() AT TIME ZONE 'UTC'` so database session time zone does not shift when reminders fire or approvals expire.
+  - *Conductor-derived implementation detail, not an additional owner decision:* this follows the repository's timestamp convention in [coding-standards.md](../04-engineering/coding-standards.md#database) and the AP-12/AP-13 window rules.
 
 **Source:** Thomas, directly to the Claude Opus conductor session, 2026-10-10.
 **Recorded by:** Claude Sonnet 5.5 (`claude-sonnet-5-5`), at the conductor's instruction.
