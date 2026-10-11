@@ -84,21 +84,35 @@ describe("TASKDESK_POLICY_ENFORCE config", () => {
   });
 
   it("refuses an invalid source before the production API module can boot", async () => {
+    const startedAt = process.hrtime.bigint();
     const result = spawnSync(
       process.execPath,
       [
         "--input-type=module",
         "-e",
         `
-          import { pathToFileURL } from "node:url";
+          import { writeSync } from "node:fs";
+          const startedAt = process.hrtime.bigint();
+          const phase = (name, exitCode) => writeSync(2, JSON.stringify({
+            phase: name,
+            elapsedMs: Number(process.hrtime.bigint() - startedAt) / 1e6,
+            ...(exitCode === undefined ? {} : { exitCode }),
+          }) + "\\n");
+          process.on("exit", (code) => phase("exit", code));
+          phase("child-start");
+          const { pathToFileURL } = await import("node:url");
           try {
+            phase("before-import");
             await import(pathToFileURL(process.argv[1]).href);
+            phase("after-import");
             process.stdout.write(
               ${JSON.stringify(`${successfulImportMarker}\n`)},
               () => process.exit(0),
             );
           } catch (error) {
+            phase("guard-catch");
             console.error(error);
+            phase("after-error-log");
             process.exitCode = 1;
           }
         `,
@@ -118,10 +132,31 @@ describe("TASKDESK_POLICY_ENFORCE config", () => {
       },
     );
 
-    expect(result.error).toBeUndefined();
-    expect(result.signal).toBeNull();
-    expect(result.status).not.toBe(0);
-    expect(result.stderr).toContain(expectedBootError);
-    expect(result.stdout).not.toContain(successfulImportMarker);
+    const diagnostic = JSON.stringify(
+      {
+        elapsedMs: Number(process.hrtime.bigint() - startedAt) / 1e6,
+        status: result.status,
+        signal: result.signal,
+        error: result.error
+          ? {
+              name: result.error.name,
+              message: result.error.message,
+              code: result.error.code,
+              errno: result.error.errno,
+              syscall: result.error.syscall,
+            }
+          : null,
+        stdout: result.stdout,
+        stderr: result.stderr,
+      },
+      null,
+      2,
+    );
+
+    expect(result.error, diagnostic).toBeUndefined();
+    expect(result.signal, diagnostic).toBeNull();
+    expect(result.status, diagnostic).not.toBe(0);
+    expect(result.stderr, diagnostic).toContain(expectedBootError);
+    expect(result.stdout, diagnostic).not.toContain(successfulImportMarker);
   });
 });
