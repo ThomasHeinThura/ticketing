@@ -20,6 +20,7 @@ import {
   lockPendingActionLifecycle,
   reportPendingActionAuditFailures,
 } from "./lifecycle-invalidation";
+import { evaluateActionRequiredAccess } from "./required-access";
 
 type PendingActionTransaction = Parameters<
   Parameters<typeof db.transaction>[0]
@@ -29,6 +30,11 @@ export type ExplicitCredentialMutation = {
   kind: "api_key" | "session";
   route: string;
 };
+
+type PendingActionInvalidationReason =
+  | "credential_revoked"
+  | "reach_lost"
+  | "capability_removed";
 
 type ExplicitCredentialMutationState = ExplicitCredentialMutation & {
   deleteFailure: unknown | null;
@@ -143,74 +149,106 @@ export async function invalidatePendingActionsForCredential(
 
   let auditFailures = 0;
   for (const row of pendingRows) {
-    const [invalidated] = await tx
-      .update(pendingActionTable)
-      .set({
-        state: "invalidated",
-        invalidationReason: "credential_revoked",
-        decidedByPersonId: null,
-        decisionSessionId: null,
-        decidedAt: occurredAt,
-      })
-      .where(
-        and(
-          eq(pendingActionTable.id, row.id),
-          eq(pendingActionTable.state, "pending"),
-        ),
-      )
-      .returning({ id: pendingActionTable.id });
-    if (!invalidated) continue;
-
-    await enqueueOutboxEvent(tx, {
-      id: `evt_${randomUUID()}`,
-      kind: "pending_action.decided",
-      occurredAt: occurredAt.toISOString(),
-      actor: {
-        type: "system",
-        id: null,
-        name: "TaskDesk credential lifecycle",
-      },
-      scope: eventScope({
-        workspaceId: row.workspaceId,
-        organisationId: row.organisationId,
-        projectId: row.projectId,
-      }),
-      payload: {
-        key: row.id,
-        url: `/agent/settings/profile/pending-actions/${row.id}`,
-        pendingActionId: row.id,
-        outcome: "invalidated",
-        invalidationReason: "credential_revoked",
-      },
-      causationId: null,
-      depth: 0,
-      originAutomationId: null,
-    });
-
-    try {
-      await tx.transaction(async (auditTx) =>
-        appendAuditLog(auditTx, {
-          actorId: null,
-          actorType: "system",
-          traceId: row.traceId,
-          workspaceId: row.workspaceId,
-          projectId: row.projectId,
-          organisationId: row.organisationId,
-          action: "pending_action.decided",
-          entityType: "pending_action",
-          entityId: row.id,
-          before: { state: "pending" },
-          after: {
-            state: "invalidated",
-            invalidationReason: "credential_revoked",
-          },
-        }),
-      );
-    } catch {
-      auditFailures += 1;
-    }
+    auditFailures += await invalidatePendingActionRow(
+      tx,
+      row,
+      "credential_revoked",
+      occurredAt,
+    );
   }
   return auditFailures;
+}
+
+async function invalidatePendingActionRow(
+  tx: PendingActionTransaction,
+  row: typeof pendingActionTable.$inferSelect,
+  reason: PendingActionInvalidationReason,
+  occurredAt: Date,
+): Promise<number> {
+  const [invalidated] = await tx
+    .update(pendingActionTable)
+    .set({
+      state: "invalidated",
+      invalidationReason: reason,
+      decidedByPersonId: null,
+      decisionSessionId: null,
+      decidedAt: occurredAt,
+    })
+    .where(
+      and(
+        eq(pendingActionTable.id, row.id),
+        eq(pendingActionTable.state, "pending"),
+      ),
+    )
+    .returning({ id: pendingActionTable.id });
+  if (!invalidated) return 0;
+
+  await enqueueOutboxEvent(tx, {
+    id: `evt_${randomUUID()}`,
+    kind: "pending_action.decided",
+    occurredAt: occurredAt.toISOString(),
+    actor: {
+      type: "system",
+      id: null,
+      name: "TaskDesk credential lifecycle",
+    },
+    scope: eventScope({
+      workspaceId: row.workspaceId,
+      organisationId: row.organisationId,
+      projectId: row.projectId,
+    }),
+    payload: {
+      key: row.id,
+      url: `/agent/settings/profile/pending-actions/${row.id}`,
+      pendingActionId: row.id,
+      outcome: "invalidated",
+      invalidationReason: reason,
+    },
+    causationId: null,
+    depth: 0,
+    originAutomationId: null,
+  });
+
+  try {
+    await tx.transaction(async (auditTx) =>
+      appendAuditLog(auditTx, {
+        actorId: null,
+        actorType: "system",
+        traceId: row.traceId,
+        workspaceId: row.workspaceId,
+        projectId: row.projectId,
+        organisationId: row.organisationId,
+        action: "pending_action.decided",
+        entityType: "pending_action",
+        entityId: row.id,
+        before: { state: "pending" },
+        after: { state: "invalidated", invalidationReason: reason },
+      }),
+    );
+  } catch {
+    return 1;
+  }
+  return 0;
+}
+
+async function invalidatePendingActionForReason(
+  tx: PendingActionTransaction,
+  id: string,
+  reason: Exclude<PendingActionInvalidationReason, "credential_revoked">,
+  occurredAt: Date,
+) {
+  const [row] = await tx
+    .select()
+    .from(pendingActionTable)
+    .where(
+      and(
+        eq(pendingActionTable.id, id),
+        eq(pendingActionTable.state, "pending"),
+      ),
+    )
+    .for("update")
+    .limit(1);
+  return row ? invalidatePendingActionRow(tx, row, reason, occurredAt) : 0;
 }
 
 async function runCredentialAdapterTransaction<R>(
@@ -372,11 +410,7 @@ export function createCredentialAwareDrizzleAdapter() {
       ...base,
       update: async <T>(input: AdapterUpdateInput) => {
         const state = explicitMutationStorage.getStore();
-        if (
-          state?.kind !== "api_key" ||
-          input.model !== "apikey" ||
-          input.update.enabled !== false
-        ) {
+        if (state?.kind !== "api_key" || input.model !== "apikey") {
           return base.update<T>(input);
         }
         const selector = exactSelector(input.where, "id");
@@ -386,6 +420,12 @@ export function createCredentialAwareDrizzleAdapter() {
           );
           throw new Error("Unexpected Better Auth API-key update selector");
         }
+        if (
+          input.update.enabled !== false &&
+          input.update.permissions === undefined
+        ) {
+          return base.update<T>(input);
+        }
         return runCredentialAdapterTransaction(base, async (txAdapter, tx) => {
           const [before] = await tx
             .select()
@@ -393,12 +433,78 @@ export function createCredentialAwareDrizzleAdapter() {
             .where(eq(apikeyTable.id, selector.value as string))
             .for("update");
           const result = await txAdapter.update<T>(input);
-          const auditFailures = before
-            ? await invalidatePendingActionsForCredential(tx, {
-                type: "api_key",
-                id: before.id,
-              })
-            : 0;
+          if (input.update.enabled === false) {
+            const auditFailures = before
+              ? await invalidatePendingActionsForCredential(tx, {
+                  type: "api_key",
+                  id: before.id,
+                })
+              : 0;
+            return { result, auditFailures };
+          }
+
+          let auditFailures = 0;
+          if (before && input.update.permissions !== undefined) {
+            const pendingRows = await tx
+              .select()
+              .from(pendingActionTable)
+              .where(
+                and(
+                  eq(pendingActionTable.credentialType, "api_key"),
+                  eq(pendingActionTable.credentialId, before.id),
+                  eq(pendingActionTable.state, "pending"),
+                ),
+              )
+              .orderBy(pendingActionTable.id)
+              .for("update");
+            const permissionsAfter =
+              typeof input.update.permissions === "string"
+                ? input.update.permissions
+                : null;
+            for (const row of pendingRows) {
+              if (row.credentialType !== "api_key") continue;
+              const requiredAccessInput = {
+                requestedByPersonId: row.requestedByPersonId,
+                credentialType: "api_key" as const,
+                credentialId: row.credentialId,
+                action: row.action,
+                targetType: row.targetType,
+                targetIds: row.targetIds,
+                routeKey: row.routeKey,
+                workspaceId: row.workspaceId,
+                projectId: row.projectId,
+                organisationId: row.organisationId,
+                confirmationRequired: row.confirmationRequired,
+                payload: row.payload,
+                payloadHash: row.payloadHash,
+              };
+              const beforeDecision = await evaluateActionRequiredAccess(
+                tx,
+                requiredAccessInput,
+                { apiKeyPermissions: before.permissions },
+              );
+              if (!beforeDecision.allowed) continue;
+              const afterDecision = await evaluateActionRequiredAccess(
+                tx,
+                requiredAccessInput,
+                { apiKeyPermissions: permissionsAfter },
+              );
+              const reason =
+                afterDecision.failure === "reach"
+                  ? "reach_lost"
+                  : afterDecision.failure === "capability"
+                    ? "capability_removed"
+                    : undefined;
+              if (reason) {
+                auditFailures += await invalidatePendingActionForReason(
+                  tx,
+                  row.id,
+                  reason,
+                  new Date(),
+                );
+              }
+            }
+          }
           return { result, auditFailures };
         });
       },

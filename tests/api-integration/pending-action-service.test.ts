@@ -1,14 +1,43 @@
-import { randomUUID } from "node:crypto";
+import { defaultRolePayloads } from "@taskdesk/permissions";
 import { and, eq, sql } from "drizzle-orm";
 import { HTTPException } from "hono/http-exception";
+import { Client } from "pg";
 import { beforeEach, describe, expect, it } from "vitest";
+import { auth } from "../../apps/api/src/auth";
 import db, { schema } from "../../apps/api/src/database";
+import { withExplicitCredentialMutation } from "../../apps/api/src/pending-action/credential-invalidation";
 import {
   createPendingAction,
   decideOwnPendingAction,
 } from "../../apps/api/src/pending-action/service";
 import { resetTestDatabase } from "./helpers/database";
 import { createProjectFixture, requireRow } from "./helpers/fixtures";
+
+async function waitForLifecycleLockCount(
+  client: Client,
+  condition: "granted" | "waiting",
+) {
+  const deadline = Date.now() + 5_000;
+  while (Date.now() < deadline) {
+    const result = await client.query<{ count: string }>(
+      `
+        SELECT count(*)::text AS count
+        FROM pg_locks
+        WHERE locktype = 'advisory'
+          AND classid = hashtext('taskdesk:pending-action-lifecycle')::oid
+          AND objid = hashtext('global')::oid
+          AND objsubid = 2
+          AND granted = $1
+      `,
+      [condition === "granted"],
+    );
+    if (Number(result.rows[0]?.count ?? "0") > 0) return;
+    await new Promise((resolve) => setTimeout(resolve, 20));
+  }
+  throw new Error(
+    `Timed out waiting for pending-action lifecycle ${condition} lock`,
+  );
+}
 
 const organisationId = "organisation-pending-action-test";
 const workspaceId = "workspace-pending-action-test";
@@ -19,7 +48,7 @@ function requestInput(requesterPersonId = "person-pending-action-test") {
   return {
     requesterPersonId,
     credentialType: "session" as const,
-    credentialId: `session-${randomUUID()}`,
+    credentialId: "session-pending-action-test",
     origin: "web" as const,
     action: "delete" as const,
     routeKey: "DELETE /api/work-items/{key}",
@@ -31,6 +60,39 @@ function requestInput(requesterPersonId = "person-pending-action-test") {
     actorId: requesterPersonId,
     actorType: "person" as const,
   };
+}
+
+async function stateOf(id: string) {
+  const [row] = await db
+    .select({
+      state: schema.pendingActionTable.state,
+      invalidationReason: schema.pendingActionTable.invalidationReason,
+    })
+    .from(schema.pendingActionTable)
+    .where(eq(schema.pendingActionTable.id, id));
+  return row;
+}
+
+async function decisionRows(id: string) {
+  const events = await db
+    .select({ payload: schema.outboxTable.payload })
+    .from(schema.outboxTable)
+    .where(
+      and(
+        eq(schema.outboxTable.kind, "pending_action.decided"),
+        sql`${schema.outboxTable.payload}->'payload'->>'pendingActionId' = ${id}`,
+      ),
+    );
+  const audits = await db
+    .select({ after: schema.auditLogTable.after })
+    .from(schema.auditLogTable)
+    .where(
+      and(
+        eq(schema.auditLogTable.action, "pending_action.decided"),
+        eq(schema.auditLogTable.entityId, id),
+      ),
+    );
+  return { events, audits };
 }
 
 describe("pending-action service persistence", () => {
@@ -64,14 +126,47 @@ describe("pending-action service persistence", () => {
       id: "workspace-member-pending-action-test",
       workspaceId,
       userId: "user-pending-action-test",
-      role: "owner",
+      role: "admin",
       joinedAt: new Date(),
+    });
+    await db.insert(schema.workspaceRoleTable).values({
+      workspaceId,
+      role: "admin",
+      permission: JSON.stringify(defaultRolePayloads.admin),
+      isSystem: true,
+      createdAt: new Date(),
+      updatedAt: new Date(),
     });
     const project = await createProjectFixture({
       workspaceId,
       slug: "pending-action-test-project",
     });
     projectId = project.project.id;
+    await db.insert(schema.roleTable).values({
+      id: "role-pending-action-test-project-delete",
+      scope: "project",
+      workspaceId,
+      key: "pending-action-test-project-delete",
+      name: "Pending-action test delete role",
+      rank: 100,
+      capabilities: ["work_item:delete"],
+      isSystem: false,
+      isEditable: true,
+    });
+    await db.insert(schema.membershipTable).values({
+      id: "membership-pending-action-test-project-delete",
+      personId: requesterPersonId,
+      scope: "project",
+      scopeId: projectId,
+      roleId: "role-pending-action-test-project-delete",
+    });
+    await db.insert(schema.sessionTable).values({
+      id: "session-pending-action-test",
+      token: "pending-action-test-session-token",
+      userId: "user-pending-action-test",
+      portal: "agent",
+      expiresAt: new Date(Date.now() + 60 * 60 * 1000),
+    });
     const now = new Date();
     const type = requireRow(
       await db
@@ -513,6 +608,456 @@ describe("pending-action service persistence", () => {
         .from(schema.auditLogTable)
         .where(eq(schema.auditLogTable.action, "pending_action.requested")),
     ).toHaveLength(1);
+  });
+
+  it("PA-9: canonical work-item policy refuses workspace-only reach", async () => {
+    await db
+      .delete(schema.membershipTable)
+      .where(
+        eq(
+          schema.membershipTable.id,
+          "membership-pending-action-test-project-delete",
+        ),
+      );
+
+    await expect(createPendingAction(requestInput())).rejects.toMatchObject({
+      status: 404,
+    });
+    expect(await db.select().from(schema.pendingActionTable)).toHaveLength(0);
+    expect(
+      await db
+        .select()
+        .from(schema.outboxTable)
+        .where(eq(schema.outboxTable.kind, "pending_action.requested")),
+    ).toHaveLength(0);
+  });
+
+  it("PA-9: current project override is evaluated ahead of workspace capability", async () => {
+    await db
+      .update(schema.roleTable)
+      .set({ capabilities: [] })
+      .where(
+        eq(schema.roleTable.id, "role-pending-action-test-project-delete"),
+      );
+
+    await expect(createPendingAction(requestInput())).rejects.toMatchObject({
+      status: 403,
+    });
+    expect(await db.select().from(schema.pendingActionTable)).toHaveLength(0);
+    expect(
+      await db
+        .select()
+        .from(schema.outboxTable)
+        .where(eq(schema.outboxTable.kind, "pending_action.requested")),
+    ).toHaveLength(0);
+  });
+
+  it("PA-9: actual Better Auth permissions narrowing terminally invalidates only newly denied work", async () => {
+    const keyId = "pending-action-permissions-update-key";
+    const now = new Date();
+    await db.insert(schema.apikeyTable).values({
+      id: keyId,
+      referenceId: "user-pending-action-test",
+      userId: "user-pending-action-test",
+      key: "pending-action-permissions-update-secret",
+      permissions: JSON.stringify({ work_item: ["delete"] }),
+      createdAt: now,
+      updatedAt: now,
+      enabled: true,
+    });
+    const created = await createPendingAction({
+      ...requestInput(),
+      credentialType: "api_key",
+      credentialId: keyId,
+      origin: "api",
+      actorId: "user-pending-action-test",
+      actorType: "api_key",
+    });
+
+    const updatePermissions = (permissions: Record<string, string[]>) =>
+      withExplicitCredentialMutation(
+        { kind: "api_key", route: "/api-key/update" },
+        () =>
+          auth.api.updateApiKey({
+            body: {
+              keyId,
+              userId: "user-pending-action-test",
+              permissions,
+            },
+          }),
+      );
+
+    const narrowed = await updatePermissions({ work_item: ["read"] });
+    expect(narrowed.state.deleteFailure).toBeNull();
+    expect(await stateOf(created.pendingActionId)).toEqual({
+      state: "invalidated",
+      invalidationReason: "capability_removed",
+    });
+    expect(await decisionRows(created.pendingActionId)).toMatchObject({
+      events: [
+        {
+          payload: expect.objectContaining({
+            payload: expect.objectContaining({
+              invalidationReason: "capability_removed",
+              outcome: "invalidated",
+            }),
+          }),
+        },
+      ],
+      audits: [
+        {
+          after: {
+            state: "invalidated",
+            invalidationReason: "capability_removed",
+          },
+        },
+      ],
+    });
+
+    const restored = await updatePermissions({ work_item: ["delete"] });
+    expect(restored.state.deleteFailure).toBeNull();
+    expect(await stateOf(created.pendingActionId)).toEqual({
+      state: "invalidated",
+      invalidationReason: "capability_removed",
+    });
+    const decisions = await decisionRows(created.pendingActionId);
+    expect(decisions.events).toHaveLength(1);
+    expect(decisions.audits).toHaveLength(1);
+  });
+
+  it("PA-9: a decided-event failure rolls back both the key update and invalidation", async () => {
+    const keyId = "pending-action-permissions-rollback-key";
+    const now = new Date();
+    await db.insert(schema.apikeyTable).values({
+      id: keyId,
+      referenceId: "user-pending-action-test",
+      userId: "user-pending-action-test",
+      key: "pending-action-permissions-rollback-secret",
+      permissions: JSON.stringify({ work_item: ["delete"] }),
+      createdAt: now,
+      updatedAt: now,
+      enabled: true,
+    });
+    const created = await createPendingAction({
+      ...requestInput(),
+      credentialType: "api_key",
+      credentialId: keyId,
+      origin: "api",
+      actorId: "user-pending-action-test",
+      actorType: "api_key",
+    });
+    await db.execute(
+      sql.raw(`
+        CREATE OR REPLACE FUNCTION fail_pending_action_permissions_outbox()
+        RETURNS trigger LANGUAGE plpgsql AS $$
+        BEGIN
+          IF NEW.kind = 'pending_action.decided' THEN
+            RAISE EXCEPTION 'test decided event failure';
+          END IF;
+          RETURN NEW;
+        END;
+        $$
+      `),
+    );
+    await db.execute(
+      sql.raw(`
+        CREATE TRIGGER fail_pending_action_permissions_outbox
+        BEFORE INSERT ON outbox
+        FOR EACH ROW EXECUTE FUNCTION fail_pending_action_permissions_outbox()
+      `),
+    );
+
+    try {
+      const result = await withExplicitCredentialMutation(
+        { kind: "api_key", route: "/api-key/update" },
+        async () => {
+          try {
+            return await auth.api.updateApiKey({
+              body: {
+                keyId,
+                userId: "user-pending-action-test",
+                permissions: { work_item: ["read"] },
+              },
+            });
+          } catch (error) {
+            return error;
+          }
+        },
+      );
+
+      expect(result.state.deleteFailure).toBeTruthy();
+      expect(await stateOf(created.pendingActionId)).toEqual({
+        state: "pending",
+        invalidationReason: null,
+      });
+      const [key] = await db
+        .select({ permissions: schema.apikeyTable.permissions })
+        .from(schema.apikeyTable)
+        .where(eq(schema.apikeyTable.id, keyId));
+      expect(key?.permissions).toBe(JSON.stringify({ work_item: ["delete"] }));
+      expect(await decisionRows(created.pendingActionId)).toEqual({
+        events: [],
+        audits: [],
+      });
+    } finally {
+      await db.execute(
+        sql.raw(
+          "DROP TRIGGER IF EXISTS fail_pending_action_permissions_outbox ON outbox",
+        ),
+      );
+      await db.execute(
+        sql.raw(
+          "DROP FUNCTION IF EXISTS fail_pending_action_permissions_outbox()",
+        ),
+      );
+    }
+  });
+
+  it("AU-14: permission-loss invalidation commits its event and reports a failed audit", async () => {
+    const keyId = "pending-action-permissions-audit-failure-key";
+    const now = new Date();
+    await db
+      .update(schema.userTable)
+      .set({ role: "admin" })
+      .where(eq(schema.userTable.id, "user-pending-action-test"));
+    await db.insert(schema.apikeyTable).values({
+      id: keyId,
+      referenceId: "user-pending-action-test",
+      userId: "user-pending-action-test",
+      key: "pending-action-permissions-audit-failure-secret",
+      permissions: JSON.stringify({ work_item: ["delete"] }),
+      createdAt: now,
+      updatedAt: now,
+      enabled: true,
+    });
+    const created = await createPendingAction({
+      ...requestInput(),
+      credentialType: "api_key",
+      credentialId: keyId,
+      origin: "api",
+      actorId: "user-pending-action-test",
+      actorType: "api_key",
+    });
+    await db.execute(
+      sql.raw(`
+        CREATE OR REPLACE FUNCTION fail_pending_action_decision_audit()
+        RETURNS trigger LANGUAGE plpgsql AS $$
+        BEGIN
+          IF NEW.action = 'pending_action.decided' THEN
+            RAISE EXCEPTION 'test pending-action audit failure';
+          END IF;
+          RETURN NEW;
+        END;
+        $$
+      `),
+    );
+    await db.execute(
+      sql.raw(`
+        CREATE TRIGGER fail_pending_action_decision_audit
+        BEFORE INSERT ON audit_log
+        FOR EACH ROW EXECUTE FUNCTION fail_pending_action_decision_audit()
+      `),
+    );
+
+    try {
+      const result = await withExplicitCredentialMutation(
+        { kind: "api_key", route: "/api-key/update" },
+        () =>
+          auth.api.updateApiKey({
+            body: {
+              keyId,
+              userId: "user-pending-action-test",
+              permissions: { work_item: ["read"] },
+            },
+          }),
+      );
+
+      expect(result.state.deleteFailure).toBeNull();
+      expect(await stateOf(created.pendingActionId)).toEqual({
+        state: "invalidated",
+        invalidationReason: "capability_removed",
+      });
+      const decisions = await decisionRows(created.pendingActionId);
+      expect(decisions.events).toHaveLength(1);
+      expect(decisions.audits).toHaveLength(0);
+      const notifications = await db
+        .select({ eventData: schema.notificationTable.eventData })
+        .from(schema.notificationTable)
+        .where(eq(schema.notificationTable.type, "audit_write_failed"));
+      expect(notifications).toHaveLength(1);
+      expect(notifications[0]?.eventData).toMatchObject({
+        operation: "pending_action_decision",
+      });
+    } finally {
+      await db.execute(
+        sql.raw(
+          "DROP TRIGGER IF EXISTS fail_pending_action_decision_audit ON audit_log",
+        ),
+      );
+      await db.execute(
+        sql.raw("DROP FUNCTION IF EXISTS fail_pending_action_decision_audit()"),
+      );
+    }
+  });
+
+  it("PA-9: key narrowing and action creation serialize in both lock orders", async () => {
+    const observer = new Client({
+      connectionString: process.env.TASKDESK_DATABASE_URL,
+    });
+    await observer.connect();
+    const createKey = async (id: string) => {
+      const now = new Date();
+      await db.insert(schema.apikeyTable).values({
+        id,
+        referenceId: "user-pending-action-test",
+        userId: "user-pending-action-test",
+        key: `${id}-secret`,
+        permissions: JSON.stringify({ work_item: ["delete"] }),
+        createdAt: now,
+        updatedAt: now,
+        enabled: true,
+      });
+    };
+    const updatePermissions = (keyId: string) =>
+      withExplicitCredentialMutation(
+        { kind: "api_key", route: "/api-key/update" },
+        () =>
+          auth.api.updateApiKey({
+            body: {
+              keyId,
+              userId: "user-pending-action-test",
+              permissions: { work_item: ["read"] },
+            },
+          }),
+      );
+    const gate = () => {
+      let resolve!: () => void;
+      const promise = new Promise<void>((ready) => {
+        resolve = ready;
+      });
+      return { promise, resolve };
+    };
+
+    try {
+      const firstKey = "pending-action-race-create-first-key";
+      await createKey(firstKey);
+      const releaseTarget = gate();
+      const targetLocked = gate();
+      const targetBlocker = db.transaction(async (tx) => {
+        await tx
+          .select({ id: schema.workItemTable.id })
+          .from(schema.workItemTable)
+          .where(eq(schema.workItemTable.key, "SUP-1"))
+          .for("update");
+        targetLocked.resolve();
+        await releaseTarget.promise;
+      });
+      await targetLocked.promise;
+      const firstCreate = createPendingAction({
+        ...requestInput(),
+        credentialType: "api_key",
+        credentialId: firstKey,
+        origin: "api",
+        actorId: "user-pending-action-test",
+        actorType: "api_key",
+      });
+      await waitForLifecycleLockCount(observer, "granted");
+      const firstNarrow = updatePermissions(firstKey);
+      await waitForLifecycleLockCount(observer, "waiting");
+      releaseTarget.resolve();
+      await targetBlocker;
+      const firstAction = await firstCreate;
+      await firstNarrow;
+      expect(await stateOf(firstAction.pendingActionId)).toEqual({
+        state: "invalidated",
+        invalidationReason: "capability_removed",
+      });
+
+      const secondKey = "pending-action-race-narrow-first-key";
+      await createKey(secondKey);
+      const releaseCredential = gate();
+      const credentialLocked = gate();
+      const credentialBlocker = db.transaction(async (tx) => {
+        await tx
+          .select({ id: schema.apikeyTable.id })
+          .from(schema.apikeyTable)
+          .where(eq(schema.apikeyTable.id, secondKey))
+          .for("update");
+        credentialLocked.resolve();
+        await releaseCredential.promise;
+      });
+      await credentialLocked.promise;
+      const secondNarrow = updatePermissions(secondKey);
+      await waitForLifecycleLockCount(observer, "granted");
+      const secondCreate = createPendingAction({
+        ...requestInput(),
+        credentialType: "api_key",
+        credentialId: secondKey,
+        origin: "api",
+        actorId: "user-pending-action-test",
+        actorType: "api_key",
+      });
+      await waitForLifecycleLockCount(observer, "waiting");
+      releaseCredential.resolve();
+      await credentialBlocker;
+      await secondNarrow;
+      await expect(secondCreate).rejects.toMatchObject({ status: 403 });
+      expect(
+        await db
+          .select({ state: schema.pendingActionTable.state })
+          .from(schema.pendingActionTable),
+      ).toEqual([{ state: "invalidated" }]);
+    } finally {
+      await observer.end();
+    }
+  });
+
+  it("PA-9: unrelated key permission edits and retained required scope leave work pending", async () => {
+    const keyId = "pending-action-unrelated-permissions-key";
+    const now = new Date();
+    await db.insert(schema.apikeyTable).values({
+      id: keyId,
+      referenceId: "user-pending-action-test",
+      userId: "user-pending-action-test",
+      key: "pending-action-unrelated-permissions-secret",
+      permissions: JSON.stringify({ work_item: ["delete"] }),
+      createdAt: now,
+      updatedAt: now,
+      enabled: true,
+    });
+    const created = await createPendingAction({
+      ...requestInput(),
+      credentialType: "api_key",
+      credentialId: keyId,
+      origin: "api",
+      actorId: "user-pending-action-test",
+      actorType: "api_key",
+    });
+
+    const result = await withExplicitCredentialMutation(
+      { kind: "api_key", route: "/api-key/update" },
+      () =>
+        auth.api.updateApiKey({
+          body: {
+            keyId,
+            userId: "user-pending-action-test",
+            permissions: {
+              work_item: ["delete", "read"],
+              user: ["read"],
+            },
+          },
+        }),
+    );
+
+    expect(result.state.deleteFailure).toBeNull();
+    expect(await stateOf(created.pendingActionId)).toEqual({
+      state: "pending",
+      invalidationReason: null,
+    });
+    expect(await decisionRows(created.pendingActionId)).toEqual({
+      events: [],
+      audits: [],
+    });
   });
 
   it.each([

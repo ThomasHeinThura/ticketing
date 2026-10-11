@@ -33,12 +33,6 @@ import {
 } from "../instance/users/repository";
 import { resolveIdentity } from "../permissions/resolve-identity";
 import { policyRegistry } from "../policy-registry";
-import { apiKeyScopeFromStoredPermissions } from "../utils/require-api-key-permission-scope";
-import {
-  assertCallerHasCapability,
-  capabilityCredential,
-} from "../utils/require-workspace-capability";
-import { validateWorkspaceAccess } from "../utils/validate-workspace-access";
 import { invalidateNativeAuthorization } from "../ws";
 import { resolvePendingActionApprovalContract } from "./approval-contract";
 import { lockPendingActionLifecycle } from "./lifecycle-invalidation";
@@ -49,6 +43,7 @@ import {
   type PendingActionKind,
   requiredConfirmation,
 } from "./payload";
+import { evaluateActionRequiredAccess } from "./required-access";
 import { pendingActionReadSchema } from "./response";
 
 const ACTION_TTL_MS = 15 * 60 * 1000;
@@ -426,6 +421,7 @@ export async function decideOwnPendingAction(input: {
 }) {
   const now = new Date();
   const result = await db.transaction(async (tx) => {
+    await lockPendingActionLifecycle(tx);
     const [row] = await tx
       .select()
       .from(pendingActionTable)
@@ -1396,9 +1392,6 @@ async function resolveRequestScope(
     });
   }
 
-  let apiKeyScope:
-    | ReturnType<typeof apiKeyScopeFromStoredPermissions>
-    | undefined;
   if (input.credentialType === "api_key") {
     if (input.actorType !== "api_key" || input.actorId !== requester.userId) {
       throw new HTTPException(403, {
@@ -1432,7 +1425,6 @@ async function resolveRequestScope(
           "API-key credential does not belong to the pending-action requester",
       });
     }
-    apiKeyScope = apiKeyScopeFromStoredPermissions(apiKey.permissions);
   }
 
   const route = policyRegistry.get(input.routeKey);
@@ -1449,27 +1441,28 @@ async function resolveRequestScope(
     );
   }
 
-  await validateWorkspaceAccess(
-    requester.userId,
-    target.workspaceId,
-    input.credentialType === "api_key"
-      ? (input.credentialId ?? undefined)
-      : undefined,
-  );
-  if (input.credentialType === "api_key" && !apiKeyScope) {
-    throw new HTTPException(403, {
-      message: "API-key pending actions require a validated key scope",
+  const access = await evaluateActionRequiredAccess(tx, {
+    requestedByPersonId: input.requesterPersonId,
+    credentialType: input.credentialType,
+    credentialId: input.credentialId,
+    action: input.action,
+    targetType: input.targetType,
+    targetIds: input.targetIds,
+    routeKey: input.routeKey,
+    workspaceId: target.workspaceId,
+    projectId: target.projectId,
+    organisationId: target.organisationId,
+    confirmationRequired: requiredConfirmation({
+      action: input.action,
+      targetType: input.targetType,
+      targetCount: input.targetIds.length,
+    }),
+  });
+  if (!access.allowed) {
+    throw new HTTPException(access.status === 404 ? 404 : 403, {
+      message: access.failure === "reach" ? "Out of reach" : "Forbidden",
     });
   }
-  await assertCallerHasCapability(
-    target.workspaceId,
-    requester.userId,
-    route.policy.capability,
-    input.credentialType === "api_key" && apiKeyScope
-      ? capabilityCredential(apiKeyScope)
-      : { kind: "session" },
-    tx,
-  );
 
   return {
     workspaceId: target.workspaceId,
@@ -1552,7 +1545,6 @@ async function resolveUserDeactivationScope(
     !requester?.userId ||
     !requester.active ||
     requester.banned ||
-    requester.role !== "admin" ||
     requester.side !== "staff"
   ) {
     throw new HTTPException(403, {
@@ -1574,6 +1566,28 @@ async function resolveUserDeactivationScope(
     throw new TypeError(
       "User deactivation requires its registered instance-admin route",
     );
+  }
+  const access = await evaluateActionRequiredAccess(tx, {
+    requestedByPersonId: input.requesterPersonId,
+    credentialType: input.credentialType,
+    credentialId: input.credentialId,
+    action: input.action,
+    targetType: input.targetType,
+    targetIds: input.targetIds,
+    routeKey: input.routeKey,
+    workspaceId: null,
+    projectId: null,
+    organisationId: null,
+    confirmationRequired: requiredConfirmation({
+      action: input.action,
+      targetType: input.targetType,
+      targetCount: input.targetIds.length,
+    }),
+  });
+  if (!access.allowed) {
+    throw new HTTPException(access.status === 404 ? 404 : 403, {
+      message: access.failure === "reach" ? "Out of reach" : "Forbidden",
+    });
   }
   return {
     workspaceId: null,
