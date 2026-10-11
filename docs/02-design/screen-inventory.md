@@ -39,7 +39,7 @@ rows above therefore stay as they are. This is a deferral, not an approval. See 
 | Workspace home (default dashboard) | `/agent` | route | P1 | ⬜ |
 | Inbox | `/agent/inbox` | route | P1 | ⬜ |
 | My work | `/agent/my-work` | route | P1 | ⬜ |
-| Triage | `/agent/triage` | route | P2 | ⬜ |
+| Triage | `/agent/triage` | route | P2 | 🟡 |
 | Command palette | — | overlay | P1 | ⬜ |
 | Pending action approval (every deletion — [pending-actions.md](../01-architecture/pending-actions.md)) | — | dialog | P1 | ⬜ |
 | Global search results | `/agent/search` | route | P1 | ⬜ |
@@ -132,7 +132,7 @@ rows above therefore stay as they are. This is a deferral, not an approval. See 
 | Workspace — SLA policies | `/agent/settings/sla-policies` | route | P2 | ⬜ |
 | SLA policy editor | `/agent/settings/sla-policies/{id}` | route | P2 | ⬜ |
 | Workspace — service calendars | `/agent/settings/calendars` | route | P2 | ⬜ |
-| Workspace — request types | `/agent/settings/request-types` | route | P2 | ⬜ |
+| Workspace — request types | `/agent/settings/request-types` | route | P2 | 🟡 |
 | Request type editor / form builder | `/agent/settings/request-types/{id}` | route | P2 | ⬜ |
 | Workspace — custom fields (incl. sections) | `/agent/settings/custom-fields` | route | P4 | ⬜ |
 | Custom field editor | `/agent/settings/custom-fields/{id}` | route | P4 | ⬜ |

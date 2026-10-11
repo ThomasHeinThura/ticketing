@@ -86,7 +86,23 @@ async function installAuthenticatedFixture(page: Page) {
     let body: unknown = [];
 
     if (path.endsWith("/api/auth/get-session")) body = session;
-    else if (path.endsWith("/api/config")) {
+    else if (path.endsWith("/api/submissions")) {
+      body = {
+        submissions: [
+          {
+            ref: "SUB-7",
+            summary: "Request access to the support workspace",
+            submission: { state: "new", createdAt: "2026-09-15T00:00:00.000Z" },
+            requestType: { name: "Access request" },
+            requester: { displayName: "Ada Example" },
+            organisation: { name: "Northstar Support" },
+          },
+        ],
+        page: { hasMore: false, nextCursor: null },
+      };
+    } else if (path.endsWith("/api/request-types")) {
+      body = { requestTypes: [] };
+    } else if (path.endsWith("/api/config")) {
       body = {
         disableRegistration: true,
         disablePasswordRegistration: false,
@@ -279,6 +295,41 @@ test("two-factor authenticator challenge screen @visual", async ({ page }) => {
   await page.goto("/auth/two-factor");
   await expect(page.getByLabel("Authenticator code")).toBeVisible();
   await expect(page).toHaveScreenshot("two-factor-authenticator.png", {
+    animations: "disabled",
+    caret: "hide",
+    fullPage: true,
+    scale: "css",
+    maxDiffPixels: 0,
+    threshold: 0,
+    includeAA: true,
+  });
+});
+
+test("intake triage queue @visual", async ({ page }) => {
+  await installAuthenticatedFixture(page);
+  await page.goto("/agent/triage");
+  await expect(page.getByRole("heading", { level: 1 })).toBeVisible();
+  await expect(page.getByText("SUB-7", { exact: true })).toBeVisible();
+  await expect(page).toHaveScreenshot("intake-queue.png", {
+    animations: "disabled",
+    caret: "hide",
+    fullPage: true,
+    scale: "css",
+    maxDiffPixels: 0,
+    threshold: 0,
+    includeAA: true,
+  });
+});
+
+test("request type catalogue editor @visual", async ({ page }) => {
+  await installAuthenticatedFixture(page);
+  await page.goto("/agent/settings/request-types");
+  await expect(page.getByRole("heading", { level: 1 })).toBeVisible();
+  await expect(page.getByRole("heading", { level: 2 })).toBeVisible();
+  await expect(
+    page.getByRole("button", { name: "New request type" }),
+  ).toBeVisible();
+  await expect(page).toHaveScreenshot("request-types.png", {
     animations: "disabled",
     caret: "hide",
     fullPage: true,

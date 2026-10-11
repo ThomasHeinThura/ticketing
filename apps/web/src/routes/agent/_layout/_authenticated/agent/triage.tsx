@@ -8,6 +8,11 @@ import {
   EmptyDescription,
   EmptyHeader,
   EmptyTitle,
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
   Textarea,
 } from "@taskdesk/ui";
 import { useEffect, useState } from "react";
@@ -315,43 +320,50 @@ function IntakeRoute() {
                 current.submission?.state === "clarifying" ? (
                   <>
                     <div className="flex flex-wrap items-end gap-2">
-                      <label className="flex flex-col gap-1 text-sm">
+                      <div className="flex flex-col gap-1 text-sm">
                         Destination project
-                        <select
-                          className="h-10 rounded border bg-background px-3"
+                        <Select
                           value={
-                            projectId || current.version?.defaultProjectId || ""
+                            projectId ||
+                            current.version?.defaultProjectId ||
+                            undefined
                           }
-                          onChange={(event) => setProjectId(event.target.value)}
+                          onValueChange={setProjectId}
                         >
-                          <option value="">Choose a project</option>
-                          {projects.data?.map((project) => (
-                            <option key={project.id} value={project.id}>
-                              {project.name} ({project.slug})
-                            </option>
-                          ))}
-                        </select>
-                      </label>
-                      <label className="flex flex-col gap-1 text-sm">
+                          <SelectTrigger aria-label="Destination project">
+                            <SelectValue placeholder="Choose a project" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {projects.data?.map((project) => (
+                              <SelectItem key={project.id} value={project.id}>
+                                {project.name} ({project.slug})
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      </div>
+                      <div className="flex flex-col gap-1 text-sm">
                         Work item type
-                        <select
-                          className="h-10 rounded border bg-background px-3"
+                        <Select
                           value={
                             workItemTypeId ||
                             current.version?.workItemTypeId ||
-                            ""
+                            undefined
                           }
-                          onChange={(event) =>
-                            setWorkItemTypeId(event.target.value)
-                          }
+                          onValueChange={setWorkItemTypeId}
                         >
-                          {workItemTypes.data?.map((type) => (
-                            <option key={type.id} value={type.id}>
-                              {type.name}
-                            </option>
-                          ))}
-                        </select>
-                      </label>
+                          <SelectTrigger aria-label="Work item type">
+                            <SelectValue placeholder="Choose a work item type" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {workItemTypes.data?.map((type) => (
+                              <SelectItem key={type.id} value={type.id}>
+                                {type.name}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      </div>
                       <p className="text-sm">
                         Prefilled from request type:{" "}
                         <code>{current.version?.workItemTypeId}</code>

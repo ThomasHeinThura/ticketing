@@ -10,6 +10,14 @@
 
 ---
 
+### 2026-10-12 · Record intake attachment redirect-only findings under the existing Redocly exception mechanism
+
+**Factual integration record; not a new owner decision, product contract, or waiver.** The two selected intake attachment download operations, `GET /portal/submissions/{ref}/attachments/{id}` and `GET /submissions/{ref}/attachments/{id}`, currently declare and return only `302` to a presigned download URL after their respective authorization checks. This is consistent with the existing AT-5/AT-6 attachment download contract and the established 2026-09-28 `GET /attachments/{id}` redirect-only treatment above. The candidate records only their exact `operation-2xx-response` rule/pointer findings in `scripts/ci/redocly-approved-findings.json`, tied to this PR under the existing `(rule, pointer)` exception mechanism. It does not add a `200` response, change route behavior, suppress Redocly's own ignore mechanism, change thresholds, or approve other findings. The exact entries still require full independent GPT-6 Sol review before merge.
+
+**Recorded by:** intake lane, 2026-10-12; factual source is the existing route declarations in `apps/api/src/attachment/index.ts`, AT-5/AT-6 in `docs/03-features/attachments.md`, and the accepted 2026-09-28 allowlist decision above.
+
+---
+
 ### 2026-10-11 · Owner approves bounded boot-refusal test deadlines
 
 **Decision:** Thomas approves only the proposed production-import child deadline of10 seconds and outer test deadline of11 seconds for the built-entrypoint boot-refusal regression. The fresh-build deadline remains5 seconds, and every existing rejection assertion remains: natural nonzero exit, no timeout/signal/error, exact PolicyEnforcementConfigError, and no successful-import marker. No production runtime budget changes.
@@ -871,6 +879,8 @@ Apply the user's full-implementation-first cadence to the remaining measured sta
 Under Thomas's standing instruction to continue work and use three actual issue-free development/UAT observation dates, the orchestrator schedules two quiet thread heartbeat runs (`p0-remaining-evidence-dates`) for the remaining October 5/6 observations at local 21:30. Each must acquire actual source-bound traffic, compare tested policy behavior with the retained October 4 manifest, preserve immutable records, reconcile complete outcomes/events and eligible source coverage, and record explicit normative explanations. Current-day partial coverage is not a full-day or 72-hour claim. Time passing neither clears known failures nor authorizes protected merge, enforcement or stage completion. Required independent review, exact CI and the additional Sol finalizer remain. The follow-ups stay quiet unless there is a meaningful failure, a user-only blocker or completed acceptance; they do not create separate user-owned chats or message others.
 
 # Decision log
+
+
 
 Decisions too small for an [ADR](../01-architecture/adr/README.md) but worth recording:
 dependency choices, convention changes, scope calls, gate waivers.

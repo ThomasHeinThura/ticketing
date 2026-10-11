@@ -49,5 +49,19 @@
 		"applicationRoute": "/god-mode/observability",
 		"test": "observability settings screen @visual",
 		"screenshot": "observability-settings.png"
+	},
+	{
+		"name": "intake-queue",
+		"inventoryRoute": "/agent/triage",
+		"applicationRoute": "/agent/triage",
+		"test": "intake triage queue @visual",
+		"screenshot": "intake-queue.png"
+	},
+	{
+		"name": "request-types",
+		"inventoryRoute": "/agent/settings/request-types",
+		"applicationRoute": "/agent/settings/request-types",
+		"test": "request type catalogue editor @visual",
+		"screenshot": "request-types.png"
 	}
 ]
