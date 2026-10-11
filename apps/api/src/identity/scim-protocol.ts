@@ -15,6 +15,10 @@ import db, { schema } from "../database";
 import type { BaseVariables } from "../openapi";
 import { apiRouter, createRoute, jsonResponse, z } from "../openapi";
 import {
+  lockPendingActionLifecycle,
+  reportPendingActionAuditFailures,
+} from "../pending-action/lifecycle-invalidation";
+import {
   IdentityGrantClosureChangedError,
   retryIdentityGrantClosure,
 } from "./membership-projection";
@@ -27,6 +31,7 @@ import {
   findScimReplaceEmailConflict,
   getScimCurrentUserForPatch,
   getScimCurrentUserForReplace,
+  getScimExternalIdentity,
   getScimGroupForProtocol,
   getScimLifecyclePolicyInTransaction,
   getScimMatchAttributes,
@@ -424,8 +429,9 @@ async function applyScimActiveState(
   identityId: string,
   active: boolean,
 ) {
-  return retryIdentityGrantClosure(async () =>
+  const changed = await retryIdentityGrantClosure(async () =>
     db.transaction(async (tx) => {
+      await lockPendingActionLifecycle(tx);
       const [scimConnection] = await getScimLifecyclePolicyInTransaction(
         tx,
         connectionId,
@@ -436,22 +442,26 @@ async function applyScimActiveState(
           scimConnection.lifecyclePolicy !== "keep_memberships")
       )
         return false;
-      const changed = await setScimIdentityActiveInTransaction(
+      const lifecycle = await setScimIdentityActiveInTransaction(
         tx,
         identityId,
         connectionId,
         active,
         scimConnection.lifecyclePolicy,
       );
-      if (!changed) return false;
+      if (!lifecycle) return false;
       const { scim } = await lockAndVerifyScimMutation(tx, authority, "users");
       if (scim.lifecyclePolicy !== scimConnection.lifecyclePolicy)
         throw new IdentityGrantClosureChangedError();
-      return true;
+      return lifecycle;
     }),
   );
+  if (!changed) return false;
+  await reportPendingActionAuditFailures(changed.pendingActionAuditFailures);
+  return true;
 }
 
+/** The outer SCIM transaction must hold the lifecycle gate before profile row locks. */
 async function applyScimActiveStateInTransaction(
   tx: Parameters<Parameters<typeof db.transaction>[0]>[0],
   authority: ScimRequestAuthority,
@@ -469,18 +479,18 @@ async function applyScimActiveStateInTransaction(
       scimConnection.lifecyclePolicy !== "keep_memberships")
   )
     return false;
-  const changed = await setScimIdentityActiveInTransaction(
+  const lifecycle = await setScimIdentityActiveInTransaction(
     tx,
     identityId,
     connectionId,
     active,
     scimConnection.lifecyclePolicy,
   );
-  if (!changed) return false;
+  if (!lifecycle) return false;
   const { scim } = await lockAndVerifyScimMutation(tx, authority, "users");
   if (scim.lifecyclePolicy !== scimConnection.lifecyclePolicy)
     throw new IdentityGrantClosureChangedError();
-  return true;
+  return lifecycle;
 }
 
 async function lockScimProfilePerson(
@@ -987,8 +997,9 @@ export default scim
           409,
         ),
       );
-    const updateSucceeded = await retryIdentityGrantClosure(async () =>
+    const updateResult = await retryIdentityGrantClosure(async () =>
       db.transaction(async (tx) => {
+        await lockPendingActionLifecycle(tx);
         if (
           !(await lockScimProfilePerson(
             tx,
@@ -997,17 +1008,25 @@ export default scim
           ))
         )
           return false;
-        if (
-          nextActive !== current.active &&
-          !(await applyScimActiveStateInTransaction(
+        const [lockedIdentity] = await getScimExternalIdentity(
+          tx,
+          id,
+          authority.connectionId,
+        );
+        if (!lockedIdentity || lockedIdentity.personId !== current.personId)
+          return false;
+        let pendingActionAuditFailures = 0;
+        if (nextActive !== lockedIdentity.active) {
+          const lifecycle = await applyScimActiveStateInTransaction(
             tx,
             authority,
             authority.connectionId,
             id,
             nextActive,
-          ))
-        )
-          return false;
+          );
+          if (!lifecycle) return false;
+          pendingActionAuditFailures = lifecycle.pendingActionAuditFailures;
+        }
         await lockAndVerifyScimMutation(tx, authority, "users");
         await tx
           .update(schema.personTable)
@@ -1042,13 +1061,16 @@ export default scim
           detail: { personId: current.personId, profileUpdated: true },
           actorType: "scim",
         });
-        return true;
+        return { pendingActionAuditFailures };
       }),
     );
-    if (!updateSucceeded)
+    if (!updateResult)
       return scimResponse(
         c.json(scimErrorBody(503, "Lifecycle operation unavailable"), 503),
       );
+    await reportPendingActionAuditFailures(
+      updateResult.pendingActionAuditFailures,
+    );
     const [row] = await getScimUser(
       and(
         ...scimUserPredicates(authority),
@@ -1111,7 +1133,13 @@ export default scim
       return scimResponse(
         c.json(scimErrorBody(400, "Invalid SCIM patch", patched.reason), 400),
       );
-    const nextActive = patched.value.active ?? current.active;
+    const patchChangesActive = operations.some(
+      (operation) =>
+        operation.path?.toLowerCase() === "active" ||
+        (operation.path === undefined &&
+          isRecord(operation.value) &&
+          Object.hasOwn(operation.value, "active")),
+    );
     const mapping = await readScimProfileMapping(authority.connectionId);
     if (!mapping)
       return scimResponse(
@@ -1130,8 +1158,9 @@ export default scim
       return scimResponse(
         c.json(scimErrorBody(400, "Invalid SCIM patch", profile.reason), 400),
       );
-    const updateSucceeded = await retryIdentityGrantClosure(async () =>
+    const updateResult = await retryIdentityGrantClosure(async () =>
       db.transaction(async (tx) => {
+        await lockPendingActionLifecycle(tx);
         if (
           !(await lockScimProfilePerson(
             tx,
@@ -1140,17 +1169,28 @@ export default scim
           ))
         )
           return false;
-        if (
-          nextActive !== current.active &&
-          !(await applyScimActiveStateInTransaction(
+        const [lockedIdentity] = await getScimExternalIdentity(
+          tx,
+          id,
+          authority.connectionId,
+        );
+        if (!lockedIdentity || lockedIdentity.personId !== current.personId)
+          return false;
+        let pendingActionAuditFailures = 0;
+        const requestedActive = patchChangesActive
+          ? (patched.value.active ?? lockedIdentity.active)
+          : lockedIdentity.active;
+        if (requestedActive !== lockedIdentity.active) {
+          const lifecycle = await applyScimActiveStateInTransaction(
             tx,
             authority,
             authority.connectionId,
             id,
-            nextActive,
-          ))
-        )
-          return false;
+            requestedActive,
+          );
+          if (!lifecycle) return false;
+          pendingActionAuditFailures = lifecycle.pendingActionAuditFailures;
+        }
         await lockAndVerifyScimMutation(tx, authority, "users");
         await tx
           .update(schema.personTable)
@@ -1185,13 +1225,16 @@ export default scim
           detail: { personId: current.personId, profileUpdated: true },
           actorType: "scim",
         });
-        return true;
+        return { pendingActionAuditFailures };
       }),
     );
-    if (!updateSucceeded)
+    if (!updateResult)
       return scimResponse(
         c.json(scimErrorBody(503, "Lifecycle operation unavailable"), 503),
       );
+    await reportPendingActionAuditFailures(
+      updateResult.pendingActionAuditFailures,
+    );
     const [row] = await getScimUser(
       and(
         ...scimUserPredicates(authority),

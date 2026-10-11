@@ -42,6 +42,11 @@
  * re-reads current state rather than the state it started with. Different
  * workspaces never contend with each other.
  *
+ * Native role-assignment and role-deletion paths use the fixed order
+ * membership namespace 4_002 first, then role namespace 4_003, through
+ * `workspace-role-assignment-lock.ts`. A transaction already holding 4_003
+ * must never wait for 4_002.
+ *
  * Used as `sql\`SELECT pg_advisory_xact_lock(${WORKSPACE_MEMBERSHIP_LOCK_NAMESPACE}, hashtext(${workspaceId}))\``
  * -- not wrapped in a shared function, matching how `create-project.ts` and
  * `reorder-projects.ts` each call `pg_advisory_xact_lock` inline: `tx`'s type

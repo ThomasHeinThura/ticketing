@@ -17,8 +17,9 @@ strictly increasing. The recorded hash is the SHA-256 of the exact `.sql` bytes.
 | 0088-0118 | M1 post-P0 migration spine (this change) | landed by M1 |
 | 0119 | N2 tenant-composite foreign keys (forward-only) | allocated, see below |
 | 0120 | `approval` tenant anchor (forward-only) | allocated, see below |
-| 0121 | #569 pending-action expiry index (re-cut from its former slot) | reserved, not yet cut |
-| 0122+ | unallocated | next allocation below |
+| 0121 | S6 admin-suspension PA-15 step-up binding (forward-only) | allocated and cut, see below |
+| 0122 | #569 pending-action expiry index (re-cut from its former slot) | reserved, not yet cut |
+| 0123+ | unallocated | next allocation below |
 
 ## 0088-0118 (M1)
 
@@ -239,13 +240,24 @@ columns, so they are a design change rather than a constraint-only change.
 
 ## Next allocation
 
-**Conductor reservation, 2026-10-11:** 0121 is reserved for S6’s required operation-bound
-admin-suspension step-up binding, following 0120. The #569 pending-action expiry-index re-cut
-moves to **0122**. This carries forward the outgoing conductor allocation recovered in the
-2026-10-10 handoff and Thomas’s directly received takeover instructions. Neither slot is
-accepted applied migration history until its owning candidate passes the normal gates.
+### 0121 · S6 admin-suspension step-up
 
-Next index after those reservations is **0123**. Its journal `when` must be strictly greater than **1791628167040**
-(idx 120) and than any `when` any environment may already have applied. Generate it with
-`drizzle-kit generate` so its snapshot chains from `0120_snapshot.json`. The conductor
-allocates each index to exactly one owner.
+Allocated to S6 by the conductor after the #569 expiry-index allocation moved to 0122.
+Journal idx 121 is `0121_instance_admin_suspend_step_up`, `when=1791691958123`. Its snapshot
+id is `e84c11cb-c53a-478b-9ce9-7971ca12b691`, chained from 0120 snapshot
+`d329dd2c-891c-4b5c-87a2-a00adb2b9af1`. SQL SHA-256:
+`e486f94688e1bb7ac4001e0d21cd003523f08bb39ae21a7d201a6723d70e1026`.
+Snapshot SHA-256: `c8ca9e1da69edfd5cbc6801a6f7cdebef4eadbbb97acb51a2331430af4651afc`.
+Journal SHA-256 at the S6 candidate: `d48eba085e5e1acd62cd9adc8d085aedae50f078fb01c17184e44df022ecfab3`.
+
+The conductor reservation carries forward the 2026-10-10 handoff allocation: 0121 is for
+S6's required operation-bound admin-suspension step-up binding, following 0120; #569's
+pending-action expiry-index re-cut moves to **0122**. Neither slot is accepted applied
+migration history until its owning candidate passes the normal gates.
+
+### Next allocation
+
+Next index is **0122**, reserved for the #569 pending-action expiry-index re-cut. Its journal
+`when` must be strictly greater than **1791691958123** (idx 121) and than any `when` any
+environment may already have applied. Generate it with `drizzle-kit generate` so its snapshot
+chains from `0121_snapshot.json`. The conductor allocates each index to exactly one owner.

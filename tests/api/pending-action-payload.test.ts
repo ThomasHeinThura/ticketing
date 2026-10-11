@@ -28,6 +28,13 @@ describe("pending-action canonical payload", () => {
     expect(
       requiredConfirmation({
         action: "delete",
+        targetType: "user",
+        targetCount: 1,
+      }),
+    ).toBe("typed_name_step_up");
+    expect(
+      requiredConfirmation({
+        action: "delete",
         targetType: "project",
         targetCount: 1,
       }),

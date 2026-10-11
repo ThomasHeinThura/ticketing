@@ -9,6 +9,93 @@ import type { PolicyMap } from "@taskdesk/permissions";
  * (`docs/01-architecture/rbac.md`, elevation coverage test).
  */
 export const instancePolicies = {
+  "GET /api/instance/users": {
+    capability: "instance:admin",
+    scope: "instance",
+    scopeSource: "instance",
+    reach: {
+      exempt: "no_single_resource",
+      reason: "instance-wide user directory",
+    },
+    elevated: false,
+    elevationExemptionReason: "read-only allowlisted account directory",
+    sessionOnly: true,
+  },
+  "GET /api/instance/users/{id}": {
+    capability: "instance:admin",
+    scope: "instance",
+    scopeSource: "instance",
+    reach: {
+      exempt: "no_single_resource",
+      reason: "instance-wide user detail",
+    },
+    elevated: false,
+    elevationExemptionReason: "read-only allowlisted account details",
+    sessionOnly: true,
+  },
+  "POST /api/instance/users/{id}/suspend": {
+    capability: "instance:admin",
+    scope: "instance",
+    scopeSource: "instance",
+    reach: {
+      exempt: "no_single_resource",
+      reason: "instance-wide account lifecycle control",
+    },
+    elevated: false,
+    elevationExemptionReason:
+      "reversible suspension audited with immediate session/key revocation",
+    sessionOnly: true,
+  },
+  "POST /api/instance/users/{id}/unsuspend": {
+    capability: "instance:admin",
+    scope: "instance",
+    scopeSource: "instance",
+    reach: {
+      exempt: "no_single_resource",
+      reason: "instance-wide account lifecycle control",
+    },
+    elevated: false,
+    elevationExemptionReason:
+      "unsuspension restores no credentials and is audited",
+    sessionOnly: true,
+  },
+  "POST /api/instance/users/{id}/sign-out": {
+    capability: "instance:admin",
+    scope: "instance",
+    scopeSource: "instance",
+    reach: {
+      exempt: "no_single_resource",
+      reason: "instance-wide session revocation",
+    },
+    elevated: false,
+    elevationExemptionReason:
+      "session revocation only; does not grant or change account authority",
+    sessionOnly: true,
+  },
+  "POST /api/instance/users/{id}/grant-admin": {
+    capability: "instance:admin",
+    scope: "instance",
+    scopeSource: "instance",
+    reach: {
+      exempt: "no_single_resource",
+      reason: "instance-wide administrator grant",
+    },
+    elevated: true,
+    sessionOnly: true,
+  },
+  "POST /api/instance/users/{id}/deactivate": {
+    capability: "instance:admin",
+    scope: "instance",
+    scopeSource: "instance",
+    reach: {
+      exempt: "no_single_resource",
+      reason: "instance-wide person lifecycle deactivation",
+    },
+    elevated: false,
+    elevationExemptionReason:
+      "creates a pending action; execution requires action-bound PA-15 proof",
+    sessionOnly: true,
+  },
   "GET /api/instance/identity-connections": {
     capability: "instance:admin",
     scope: "instance",

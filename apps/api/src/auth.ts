@@ -3,7 +3,6 @@ import { apiKey } from "@better-auth/api-key";
 import { sendMagicLinkEmail, sendOtpEmail } from "@taskdesk/email";
 import bcrypt from "bcryptjs";
 import { betterAuth } from "better-auth";
-import { drizzleAdapter } from "better-auth/adapters/drizzle";
 import { APIError, createAuthMiddleware } from "better-auth/api";
 import { deleteSessionCookie } from "better-auth/cookies";
 import {
@@ -16,7 +15,7 @@ import {
 } from "better-auth/plugins";
 import type { UserWithAnonymous } from "better-auth/plugins/anonymous";
 import { config } from "dotenv-mono";
-import { and, eq, ne, sql } from "drizzle-orm";
+import { eq, sql } from "drizzle-orm";
 import { appendAuditLog } from "./audit/audit-writer";
 import { authConfigurationVersion } from "./auth/configuration-version";
 import { loadLocalFactorState } from "./auth/local-factor-service";
@@ -36,10 +35,8 @@ import {
   identityOidcPlugin,
   OIDC_PENDING_SESSION_COOKIE,
 } from "./identity/oidc-login";
-import { notifyCurrentInstanceAdminsOfAuditFailure } from "./instance/observability/audit-failure-notifier";
 import {
   logTaskDesk,
-  recordAuditWriteFailure,
   recordAuthReload,
 } from "./instance/observability/runtime";
 import {
@@ -49,6 +46,17 @@ import {
   SETUP_TOKEN_SINGLETON_ID,
   verifyAndConsumeSetupToken,
 } from "./instance/setup-token";
+import {
+  afterTotpEnrollmentCommit,
+  createCredentialAwareDrizzleAdapter,
+  currentAccountDeletionTransaction,
+  currentTotpEnrollmentTransaction,
+  noteTotpEnrollmentMutationAuditFailure,
+  revokeTotpPeerSessions,
+  withAccountDeletionTransaction,
+  withExplicitCredentialMutation,
+  withTotpSessionEnrollment,
+} from "./pending-action/credential-invalidation";
 import deleteAccountData from "./user/controllers/delete-account-data";
 import { checkRegistrationAllowed } from "./utils/check-registration-allowed";
 import { mapCustomOAuthProfileToUser } from "./utils/custom-oauth-profile";
@@ -98,6 +106,91 @@ export type LocalAuthProviders = {
   magicLink: boolean;
   emailOtp: boolean;
 };
+
+function explicitServerCredentialMutation(
+  method: PropertyKey,
+  args: unknown[],
+) {
+  if (method === "deleteApiKey") {
+    return { kind: "api_key" as const, route: "/api-key/delete" };
+  }
+  if (method === "signOut") {
+    return { kind: "session" as const, route: "/sign-out" };
+  }
+  if (method === "revokeSession") {
+    return { kind: "session" as const, route: "/revoke-session" };
+  }
+  if (method === "revokeSessions") {
+    return { kind: "session" as const, route: "/revoke-sessions" };
+  }
+  if (method === "revokeOtherSessions") {
+    return { kind: "session" as const, route: "/revoke-other-sessions" };
+  }
+  if (method === "changePassword") {
+    const body = (args[0] as { body?: { revokeOtherSessions?: unknown } })
+      ?.body;
+    if (body?.revokeOtherSessions === true) {
+      return { kind: "session" as const, route: "/change-password" };
+    }
+  }
+  return undefined;
+}
+
+/** Keep direct server API calls under the same explicit-revocation boundary as HTTP. */
+function withExplicitServerCredentialMutations<T extends object>(
+  instance: T,
+): T {
+  return new Proxy(instance, {
+    get(target, property, receiver) {
+      const value = Reflect.get(target, property, receiver);
+      if (property !== "api" || !value || typeof value !== "object") {
+        return value;
+      }
+
+      return new Proxy(value, {
+        get(api, apiMethod, apiReceiver) {
+          const method = Reflect.get(api, apiMethod, apiReceiver);
+          if (typeof method !== "function") return method;
+
+          return new Proxy(method, {
+            apply(targetMethod, thisArgument, args: unknown[]) {
+              if (
+                apiMethod === "deleteUser" ||
+                apiMethod === "deleteUserCallback"
+              ) {
+                return withAccountDeletionTransaction(() =>
+                  Reflect.apply(targetMethod, thisArgument, args),
+                );
+              }
+              if (apiMethod === "verifyTOTP") {
+                return withTotpSessionEnrollment(() =>
+                  Reflect.apply(targetMethod, thisArgument, args),
+                );
+              }
+              const mutation = explicitServerCredentialMutation(
+                apiMethod,
+                args,
+              );
+              if (!mutation) {
+                return Reflect.apply(targetMethod, thisArgument, args);
+              }
+
+              return withExplicitCredentialMutation(mutation, () =>
+                Reflect.apply(targetMethod, thisArgument, args),
+              ).then(({ result, state }) => {
+                // Better Auth's signOut endpoint deliberately swallows adapter
+                // deletion failures. A direct server call must not report success
+                // after its atomic credential/action transaction rolled back.
+                if (state.deleteFailure) throw state.deleteFailure;
+                return result;
+              });
+            },
+          });
+        },
+      });
+    },
+  });
+}
 
 export type AuthPluginConfigRow = {
   pluginId: string;
@@ -232,23 +325,12 @@ function createAuth(
     : disabledCustomerLocalAuthProviders,
 ) {
   const baseURL = portal === "agent" ? agentOrigin : customerOrigin;
-  return betterAuth({
+  const instance = betterAuth({
     baseURL,
     trustedOrigins: [baseURL],
     secret: authSecret,
     basePath: "/api/auth",
-    database: drizzleAdapter(db, {
-      provider: "pg",
-      schema: {
-        ...schema,
-        user: schema.userTable,
-        account: schema.accountTable,
-        session: schema.sessionTable,
-        verification: schema.verificationTable,
-        twoFactor: schema.twoFactorTable,
-        apikey: schema.apikeyTable,
-      },
-    }),
+    database: createCredentialAwareDrizzleAdapter(),
     user: {
       additionalFields: {
         locale: {
@@ -260,6 +342,7 @@ function createAuth(
       deleteUser: {
         enabled: true,
         beforeDelete: async (user) => {
+          currentAccountDeletionTransaction();
           await deleteAccountData(user.id);
         },
       },
@@ -838,28 +921,31 @@ function createAuth(
           newSession?.user.twoFactorEnabled === true;
         if (completedEnrollment && newSession) {
           // Better Auth replaces the session used to verify enrollment. Revoke any
-          // other sessions as well so the newly verified factor gates every device.
-          await db
-            .delete(schema.sessionTable)
-            .where(
-              and(
-                eq(schema.sessionTable.userId, newSession.user.id),
-                ne(schema.sessionTable.id, newSession.session.id),
-              ),
+          // verified factor gates every device. The shared transaction locks the
+          // PA lifecycle gate first and terminalizes actions before deleting peers.
+          const tx = currentTotpEnrollmentTransaction();
+          await revokeTotpPeerSessions(
+            newSession.user.id,
+            newSession.session.id,
+          );
+          afterTotpEnrollmentCommit(() =>
+            invalidateNativeAuthorization({ userId: newSession.user.id }),
+          );
+          try {
+            await tx.transaction(async (auditTx) =>
+              appendAuditLog(auditTx, {
+                action: "auth.mfa_enrolled",
+                actorId: newSession.user.id,
+                actorType: "person",
+                workspaceId: null,
+                entityType: "person",
+                entityId: newSession.user.id,
+                after: { method: "totp" },
+              }),
             );
-          await invalidateNativeAuthorization({ userId: newSession.user.id });
-          await appendAuditLog(db, {
-            action: "auth.mfa_enrolled",
-            actorId: newSession.user.id,
-            actorType: "person",
-            workspaceId: null,
-            entityType: "person",
-            entityId: newSession.user.id,
-            after: { method: "totp" },
-          }).catch(async () => {
-            recordAuditWriteFailure("mutation");
-            await notifyCurrentInstanceAdminsOfAuditFailure("mutation");
-          });
+          } catch {
+            noteTotpEnrollmentMutationAuditFailure();
+          }
         }
         if (!newSession) return;
 
@@ -898,7 +984,12 @@ function createAuth(
           return;
         }
 
-        await db
+        const totpTransaction =
+          ctx.path === "/two-factor/verify-totp"
+            ? currentTotpEnrollmentTransaction()
+            : null;
+        const sessionWriter = totpTransaction ?? db;
+        await sessionWriter
           .update(schema.sessionTable)
           .set({ portal })
           .where(eq(schema.sessionTable.id, newSession.session.id));
@@ -928,13 +1019,16 @@ function createAuth(
           } catch {
             sourceMarker = null;
           }
-          const provenance = await bindTwoFactorOidcSession({
-            challengeId,
-            sourceMarker,
-            sessionId: newSession.session.id,
-            userId: newSession.user.id,
-            portal,
-          });
+          const provenance = await bindTwoFactorOidcSession(
+            {
+              challengeId,
+              sourceMarker,
+              sessionId: newSession.session.id,
+              userId: newSession.user.id,
+              portal,
+            },
+            totpTransaction ?? undefined,
+          );
           if (provenance === "invalid") {
             await ctx.context.internalAdapter.deleteSession(
               newSession.session.token,
@@ -967,7 +1061,7 @@ function createAuth(
           const activeWorkspaceId = workspaceMember[0]?.workspaceId || null;
 
           if (activeWorkspaceId) {
-            await db
+            await sessionWriter
               .update(schema.sessionTable)
               .set({ activeOrganizationId: activeWorkspaceId })
               .where(eq(schema.sessionTable.id, newSession.session.id));
@@ -1012,6 +1106,7 @@ function createAuth(
       defaultCookieAttributes: getDefaultCookieAttributes(),
     },
   });
+  return withExplicitServerCredentialMutations(instance);
 }
 
 export let auth = createAuth("agent");

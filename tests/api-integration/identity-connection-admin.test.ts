@@ -1,7 +1,8 @@
 import { createHash, randomUUID } from "node:crypto";
 import { createRequire } from "node:module";
-import { eq, sql } from "drizzle-orm";
+import { eq, inArray, sql } from "drizzle-orm";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { auth } from "../../apps/api/src/auth";
 import db, { schema } from "../../apps/api/src/database";
 import {
   decryptIdentityClientSecret,
@@ -22,12 +23,26 @@ import * as nativeAuthorization from "../../apps/api/src/ws";
 import { mockAuthenticatedSession } from "./helpers/auth";
 import { csrfRequest } from "./helpers/csrf";
 import { resetTestDatabase } from "./helpers/database";
+import { createWorkspaceMember } from "./helpers/fixtures";
+import {
+  createCredentialBoundPendingAction,
+  expectCredentialInvalidationPersisted,
+} from "./helpers/pending-action";
 
 const apiRequire = createRequire(
   new URL("../../apps/api/package.json", import.meta.url),
 );
 const bcrypt = apiRequire("bcryptjs") as {
   hash(value: string, rounds: number): Promise<string>;
+};
+const { base32 } = apiRequire("@better-auth/utils/base32") as {
+  base32: { decode(value: string): Uint8Array };
+};
+const { createOTP } = apiRequire("@better-auth/utils/otp") as {
+  createOTP(secret: string): { totp(): Promise<string> };
+};
+const { symmetricEncrypt } = apiRequire("better-auth/crypto") as {
+  symmetricEncrypt(input: { key: string; data: string }): Promise<string>;
 };
 
 vi.mock("../../apps/api/src/identity/oidc-provider", async (importOriginal) => {
@@ -165,6 +180,125 @@ async function createConnection(id: string, enabled: boolean) {
     createdBy: adminPerson.id,
     updatedBy: adminPerson.id,
   });
+}
+
+async function prepareOidcTotpChallenge(input: {
+  connectionId: string;
+  userId: string;
+  email: string;
+  subject: string;
+  withWorkspaceMembership?: boolean;
+}) {
+  await setupAdmin();
+  const app = createApp().app;
+  await createConnection(input.connectionId, true);
+  const portalOrigin = new URL(
+    process.env.TASKDESK_AGENT_URL || "http://localhost:5173",
+  ).origin;
+  const redirectUri = `${portalOrigin}/api/auth/identity/${input.connectionId}/callback`;
+  await db
+    .update(schema.identityConnectionTable)
+    .set({ redirectUri })
+    .where(eq(schema.identityConnectionTable.id, input.connectionId));
+  const [user] = await db
+    .insert(schema.userTable)
+    .values({
+      id: input.userId,
+      name: "Two Factor OIDC User",
+      email: input.email,
+      twoFactorEnabled: true,
+    })
+    .returning();
+  if (!user) throw new Error("Two factor OIDC user fixture was not created");
+  const internalOrganisation = await ensureInternalOrganisation();
+  const [person] = await db
+    .insert(schema.personTable)
+    .values({
+      userId: user.id,
+      organisationId: internalOrganisation.id,
+      side: "staff",
+    })
+    .returning();
+  if (!person)
+    throw new Error("Two factor OIDC person fixture was not created");
+  let activeWorkspaceId: string | null = null;
+  if (input.withWorkspaceMembership) {
+    const workspaceFixture = await createWorkspaceMember();
+    activeWorkspaceId = workspaceFixture.workspace.id;
+    await db.insert(schema.workspaceUserTable).values({
+      workspaceId: activeWorkspaceId,
+      userId: user.id,
+      role: "member",
+      joinedAt: new Date(),
+    });
+  }
+  await db.insert(schema.externalIdentityTable).values({
+    identityConnectionId: input.connectionId,
+    personId: person.id,
+    userId: user.id,
+    issuer: `https://login.microsoftonline.com/${TENANT_ID}/v2.0`,
+    subject: input.subject,
+    userNameSnapshot: input.email,
+    emailSnapshot: input.email,
+    active: true,
+    provisionedVia: "jit",
+  });
+  const authSecret = process.env.TASKDESK_AUTH_SECRET;
+  if (!authSecret) throw new Error("Integration auth secret is missing");
+  const rawSecret = Buffer.from(base32.decode("JBSWY3DPEHPK3PXP")).toString(
+    "utf8",
+  );
+  await db.insert(schema.twoFactorTable).values({
+    id: `two-factor-${input.userId}`,
+    userId: user.id,
+    secret: await symmetricEncrypt({ key: authSecret, data: rawSecret }),
+    backupCodes: "[]",
+    verified: true,
+  });
+
+  const beginChallenge = async () => {
+    const start = await app.request(
+      `/api/auth/identity/${input.connectionId}/start`,
+      { method: "GET", redirect: "manual" },
+    );
+    const authorizeUrl = new URL(start.headers.get("location") ?? "");
+    const state = authorizeUrl.searchParams.get("state");
+    const stateCookie = start.headers
+      .get("set-cookie")
+      ?.match(/(?:^|;\s*)tdk_oidc_state=([^;]+)/u)?.[1];
+    if (!state || !stateCookie) {
+      throw new Error("OIDC authorization state was not issued");
+    }
+    const callback = await app.request(
+      `/api/auth/identity/${input.connectionId}/callback?code=single-use-test-code&state=${encodeURIComponent(state)}`,
+      {
+        method: "GET",
+        headers: { cookie: `tdk_oidc_state=${stateCookie}` },
+        redirect: "manual",
+      },
+    );
+    const factorCookie = callback.headers
+      .getSetCookie()
+      .find((value) => value.startsWith("better-auth.two_factor="))
+      ?.split(";", 1)[0];
+    const combinedCookies = callback.headers.get("set-cookie") ?? "";
+    const sourceCookie = combinedCookies.match(
+      /(?:^|,\s*)([^=;,\s]*taskdesk_oidc_pending_session=[^;,]+)/u,
+    )?.[1];
+    const factorCookies = [factorCookie, sourceCookie]
+      .filter((value): value is string => Boolean(value))
+      .join("; ");
+    return { start, callback, state, stateCookie, factorCookies };
+  };
+
+  return {
+    app,
+    user,
+    activeWorkspaceId,
+    rawSecret,
+    beginChallenge,
+    code: await createOTP(rawSecret).totp(),
+  };
 }
 
 async function stepUp(
@@ -1168,92 +1302,237 @@ describe("identity connection administration", () => {
     invalidateAuthorization.mockRestore();
   });
 
-  it("carries exact connection provenance through the native pending-2FA challenge", async () => {
-    await setupAdmin();
-    const app = createApp().app;
-    const connectionId = "native-oidc-two-factor-connection";
-    await createConnection(connectionId, true);
-    const portalOrigin = new URL(
-      process.env.TASKDESK_AGENT_URL || "http://localhost:5173",
-    ).origin;
-    const redirectUri = `${portalOrigin}/api/auth/identity/${connectionId}/callback`;
-    await db
-      .update(schema.identityConnectionTable)
-      .set({ redirectUri })
-      .where(eq(schema.identityConnectionTable.id, connectionId));
-    const [ssoUser] = await db
-      .insert(schema.userTable)
-      .values({
-        id: "two-factor-oidc-existing-user",
-        name: "Two Factor OIDC User",
-        email: "direct-oidc@example.test",
-        twoFactorEnabled: true,
-      })
-      .returning();
-    if (!ssoUser)
-      throw new Error("Two factor OIDC user fixture was not created");
-    const internalOrganisation = await ensureInternalOrganisation();
-    const [ssoPerson] = await db
-      .insert(schema.personTable)
-      .values({
-        userId: ssoUser.id,
-        organisationId: internalOrganisation.id,
-        side: "staff",
-      })
-      .returning();
-    if (!ssoPerson)
-      throw new Error("Two factor OIDC person fixture was not created");
-    await db.insert(schema.externalIdentityTable).values({
-      identityConnectionId: connectionId,
-      personId: ssoPerson.id,
-      userId: ssoUser.id,
-      issuer: `https://login.microsoftonline.com/${TENANT_ID}/v2.0`,
+  it("carries exact OIDC connection provenance through HTTP and direct TOTP verification", async () => {
+    const fixture = await prepareOidcTotpChallenge({
+      connectionId: "native-oidc-two-factor-connection",
+      userId: "two-factor-oidc-existing-user",
+      email: "direct-oidc@example.test",
       subject: "direct-oidc-subject",
-      userNameSnapshot: "direct-oidc@example.test",
-      emailSnapshot: "direct-oidc@example.test",
-      active: true,
-      provisionedVia: "jit",
     });
-
-    const start = await app.request(
-      `/api/auth/identity/${connectionId}/start`,
-      { method: "GET", redirect: "manual" },
-    );
-    const authorizeUrl = new URL(start.headers.get("location") ?? "");
-    const state = authorizeUrl.searchParams.get("state");
-    const stateCookie = start.headers
-      .get("set-cookie")
-      ?.match(/(?:^|;\s*)tdk_oidc_state=([^;]+)/u)?.[1];
-    expect(start.status).toBe(302);
-    expect(stateCookie).toBe(state);
-    const callback = await app.request(
-      `/api/auth/identity/${connectionId}/callback?code=single-use-test-code&state=${encodeURIComponent(state ?? "")}`,
-      {
-        method: "GET",
-        headers: { cookie: `tdk_oidc_state=${stateCookie}` },
-        redirect: "manual",
-      },
-    );
-    expect(callback.status).toBe(302);
-    expect(callback.headers.get("location")).toBe("/auth/two-factor");
-    expect(callback.headers.get("set-cookie")).toContain(
-      "taskdesk_oidc_pending_session=",
-    );
+    const challenge = await fixture.beginChallenge();
+    expect(challenge.start.status).toBe(302);
+    expect(challenge.stateCookie).toBe(challenge.state);
+    expect(challenge.callback.status).toBe(302);
+    expect(challenge.callback.headers.get("location")).toBe("/auth/two-factor");
+    expect(challenge.factorCookies).toContain("better-auth.two_factor=");
+    expect(challenge.factorCookies).toContain("taskdesk_oidc_pending_session=");
     const sourceRows = (
       await db.select().from(schema.verificationTable)
     ).filter((row) => row.identifier.startsWith("oidc-session-source:"));
     expect(sourceRows).toHaveLength(1);
     expect(JSON.parse(sourceRows[0]?.value ?? "{}") as unknown).toMatchObject({
-      connectionId,
+      connectionId: "native-oidc-two-factor-connection",
       portal: "agent",
-      userId: ssoUser.id,
+      userId: fixture.user.id,
     });
     expect(
       await db
         .select({ id: schema.sessionTable.id })
         .from(schema.sessionTable)
-        .where(eq(schema.sessionTable.userId, ssoUser.id)),
+        .where(eq(schema.sessionTable.userId, fixture.user.id)),
     ).toEqual([]);
+
+    const httpVerification = await fixture.app.request(
+      "/api/auth/two-factor/verify-totp",
+      {
+        method: "POST",
+        headers: {
+          cookie: challenge.factorCookies,
+          "content-type": "application/json",
+        },
+        body: JSON.stringify({ code: fixture.code }),
+      },
+    );
+    expect(httpVerification.status, await httpVerification.clone().text()).toBe(
+      200,
+    );
+    const [httpSession] = await db
+      .select({
+        identityConnectionId: schema.sessionTable.identityConnectionId,
+        portal: schema.sessionTable.portal,
+      })
+      .from(schema.sessionTable)
+      .where(eq(schema.sessionTable.userId, fixture.user.id));
+    expect(httpSession).toEqual({
+      identityConnectionId: "native-oidc-two-factor-connection",
+      portal: "agent",
+    });
+    expect(
+      (await db.select().from(schema.verificationTable)).filter((row) =>
+        row.identifier.startsWith("oidc-session-source:"),
+      ),
+    ).toHaveLength(0);
+
+    const directChallenge = await fixture.beginChallenge();
+    const directVerification = await auth.api.verifyTOTP({
+      body: { code: fixture.code },
+      headers: new Headers({ cookie: directChallenge.factorCookies }),
+    });
+    expect(directVerification.user.id).toBe(fixture.user.id);
+    const [directSession] = await db
+      .select({
+        identityConnectionId: schema.sessionTable.identityConnectionId,
+        portal: schema.sessionTable.portal,
+      })
+      .from(schema.sessionTable)
+      .where(eq(schema.sessionTable.userId, fixture.user.id));
+    expect(directSession).toEqual({
+      identityConnectionId: "native-oidc-two-factor-connection",
+      portal: "agent",
+    });
+    expect(
+      (await db.select().from(schema.verificationTable)).filter((row) =>
+        row.identifier.startsWith("oidc-session-source:"),
+      ),
+    ).toHaveLength(0);
+  });
+
+  it("assigns the existing workspace to OIDC TOTP sessions over HTTP and direct verification", async () => {
+    const fixture = await prepareOidcTotpChallenge({
+      connectionId: "oidc-totp-workspace-connection",
+      userId: "oidc-totp-workspace-user",
+      email: "direct-oidc@example.test",
+      subject: "direct-oidc-subject",
+      withWorkspaceMembership: true,
+    });
+    if (!fixture.activeWorkspaceId)
+      throw new Error("Workspace membership fixture was not created");
+
+    const httpChallenge = await fixture.beginChallenge();
+    expect(httpChallenge.callback.headers.get("location")).toBe(
+      "/auth/two-factor",
+    );
+    const httpVerification = await fixture.app.request(
+      "/api/auth/two-factor/verify-totp",
+      {
+        method: "POST",
+        headers: {
+          cookie: httpChallenge.factorCookies,
+          "content-type": "application/json",
+        },
+        body: JSON.stringify({ code: fixture.code }),
+      },
+    );
+    expect(httpVerification.status, await httpVerification.clone().text()).toBe(
+      200,
+    );
+    const [httpSession] = await db
+      .select({
+        identityConnectionId: schema.sessionTable.identityConnectionId,
+        portal: schema.sessionTable.portal,
+        activeOrganizationId: schema.sessionTable.activeOrganizationId,
+      })
+      .from(schema.sessionTable)
+      .where(eq(schema.sessionTable.userId, fixture.user.id));
+    expect(httpSession).toEqual({
+      identityConnectionId: "oidc-totp-workspace-connection",
+      portal: "agent",
+      activeOrganizationId: fixture.activeWorkspaceId,
+    });
+
+    const directChallenge = await fixture.beginChallenge();
+    const directVerification = await auth.api.verifyTOTP({
+      body: { code: fixture.code },
+      headers: new Headers({ cookie: directChallenge.factorCookies }),
+    });
+    expect(directVerification.user.id).toBe(fixture.user.id);
+    const [directSession] = await db
+      .select({
+        identityConnectionId: schema.sessionTable.identityConnectionId,
+        portal: schema.sessionTable.portal,
+        activeOrganizationId: schema.sessionTable.activeOrganizationId,
+      })
+      .from(schema.sessionTable)
+      .where(eq(schema.sessionTable.userId, fixture.user.id));
+    expect(directSession).toEqual({
+      identityConnectionId: "oidc-totp-workspace-connection",
+      portal: "agent",
+      activeOrganizationId: fixture.activeWorkspaceId,
+    });
+  });
+
+  it("rolls back OIDC provenance consumption when TOTP session binding fails", async () => {
+    const fixture = await prepareOidcTotpChallenge({
+      connectionId: "oidc-totp-rollback-connection",
+      userId: "oidc-totp-rollback-user",
+      email: "direct-oidc@example.test",
+      subject: "direct-oidc-subject",
+    });
+    const challenge = await fixture.beginChallenge();
+    expect(challenge.start.status).toBe(302);
+    expect(challenge.callback.status).toBe(302);
+    expect(challenge.callback.headers.get("location")).toBe("/auth/two-factor");
+    const factorCookie = challenge.factorCookies
+      .split("; ")
+      .find((value) => value.startsWith("better-auth.two_factor="));
+    const challengeId =
+      decodeURIComponent(factorCookie?.split("=", 2)[1] ?? "").split(
+        ".",
+        1,
+      )[0] ?? "";
+    expect(challengeId).toMatch(/^2fa-/u);
+    expect(
+      await db
+        .select({ identifier: schema.verificationTable.identifier })
+        .from(schema.verificationTable)
+        .where(eq(schema.verificationTable.identifier, challengeId)),
+    ).toHaveLength(1);
+    const suffix = randomUUID().replaceAll("-", "");
+    const functionName = `fail_oidc_session_bind_${suffix}`;
+    const triggerName = `fail_oidc_session_bind_trigger_${suffix}`;
+    try {
+      await db.execute(
+        sql.raw(`
+          CREATE FUNCTION ${functionName}() RETURNS trigger
+          LANGUAGE plpgsql AS $$
+          BEGIN
+            IF NEW.user_id = '${fixture.user.id}' AND NEW.identity_connection_id IS NOT NULL THEN
+              RAISE EXCEPTION 'forced OIDC session provenance failure';
+            END IF;
+            RETURN NEW;
+          END;
+          $$
+        `),
+      );
+      await db.execute(
+        sql.raw(`
+          CREATE TRIGGER ${triggerName}
+          BEFORE UPDATE OF identity_connection_id ON session
+          FOR EACH ROW EXECUTE FUNCTION ${functionName}()
+        `),
+      );
+      const response = await fixture.app.request(
+        "/api/auth/two-factor/verify-totp",
+        {
+          method: "POST",
+          headers: {
+            cookie: challenge.factorCookies,
+            "content-type": "application/json",
+          },
+          body: JSON.stringify({ code: fixture.code }),
+        },
+      );
+      expect(
+        response.status,
+        await response.clone().text(),
+      ).toBeGreaterThanOrEqual(500);
+      expect(
+        await db
+          .select({ id: schema.sessionTable.id })
+          .from(schema.sessionTable)
+          .where(eq(schema.sessionTable.userId, fixture.user.id)),
+      ).toEqual([]);
+      expect(
+        (await db.select().from(schema.verificationTable)).filter((row) =>
+          row.identifier.startsWith("oidc-session-source:"),
+        ),
+      ).toHaveLength(1);
+    } finally {
+      await db.execute(
+        sql.raw(`DROP TRIGGER IF EXISTS ${triggerName} ON session`),
+      );
+      await db.execute(sql.raw(`DROP FUNCTION IF EXISTS ${functionName}()`));
+    }
   });
 
   it("creates a disabled version-one connection only after a matching PA-15 proof and never returns the secret", async () => {
@@ -1482,6 +1761,21 @@ describe("identity connection administration", () => {
         expiresAt: new Date(now.getTime() + 60_000),
       },
     ]);
+    const { workspace } = await createWorkspaceMember();
+    const connectionSessionActionId = await createCredentialBoundPendingAction({
+      requesterPersonId: person.id,
+      workspaceId: workspace.id,
+      organisationId: workspace.organisationId,
+      credentialType: "session",
+      credentialId: "source-bound-session",
+    });
+    const localSessionActionId = await createCredentialBoundPendingAction({
+      requesterPersonId: person.id,
+      workspaceId: workspace.id,
+      organisationId: workspace.organisationId,
+      credentialType: "session",
+      credentialId: "local-session-preserved",
+    });
     const challengeId = "two-factor-source-challenge";
     await db.insert(schema.verificationTable).values({
       identifier: `oidc-session-source:${createHash("sha256").update(challengeId, "utf8").digest("hex")}`,
@@ -1626,6 +1920,52 @@ describe("identity connection administration", () => {
         ...(raceBinding ? [] : [{ id: "disable-race-session", source: null }]),
       ].sort((left, right) => left.id.localeCompare(right.id)),
     );
+    const actionRows = await db
+      .select({
+        id: schema.pendingActionTable.id,
+        state: schema.pendingActionTable.state,
+        reason: schema.pendingActionTable.invalidationReason,
+      })
+      .from(schema.pendingActionTable)
+      .where(
+        inArray(schema.pendingActionTable.id, [
+          connectionSessionActionId,
+          localSessionActionId,
+        ]),
+      );
+    expect(
+      Object.fromEntries(actionRows.map(({ id, ...state }) => [id, state])),
+    ).toEqual({
+      [connectionSessionActionId]: {
+        state: "invalidated",
+        reason: "credential_revoked",
+      },
+      [localSessionActionId]: { state: "pending", reason: null },
+    });
+    const invalidationAudits = await db
+      .select({
+        action: schema.auditLogTable.action,
+        entityId: schema.auditLogTable.entityId,
+        after: schema.auditLogTable.after,
+      })
+      .from(schema.auditLogTable)
+      .where(
+        inArray(schema.auditLogTable.entityId, [
+          connectionSessionActionId,
+          localSessionActionId,
+        ]),
+      );
+    expect(invalidationAudits).toEqual([
+      {
+        action: "pending_action.decided",
+        entityId: connectionSessionActionId,
+        after: {
+          state: "invalidated",
+          invalidationReason: "credential_revoked",
+        },
+      },
+    ]);
+    await expectCredentialInvalidationPersisted(connectionSessionActionId);
     const [updated] = await db
       .select({
         enabled: schema.identityConnectionTable.enabled,

@@ -2,10 +2,24 @@ import { APIError } from "better-auth/api";
 import { and, eq, inArray } from "drizzle-orm";
 import db from "../../database";
 import {
+  userTable,
   workflowTable,
   workspaceTable,
   workspaceUserTable,
 } from "../../database/schema";
+import {
+  AccountDeletionRetryError,
+  currentAccountDeletionTransaction,
+  hasAccountDeletionTransaction,
+  invalidateAccountDeletionCredentials,
+  requestAccountDeletionRetry,
+} from "../../pending-action/credential-invalidation";
+import { lockWorkspaceRoleAssignment } from "../../workspace/controllers/workspace-role-assignment-lock";
+
+type AccountDeletionTransaction = Parameters<
+  Parameters<typeof db.transaction>[0]
+>[0];
+
 import {
   formatBlockedWorkspacesMessage,
   hasOwnerRole,
@@ -15,9 +29,10 @@ import {
 } from "../account-deletion";
 
 async function collectMemberships(
+  database: AccountDeletionTransaction | typeof db,
   userId: string,
 ): Promise<WorkspaceMembershipSummary[]> {
-  const memberships = await db
+  const memberships = await database
     .select({
       workspaceId: workspaceUserTable.workspaceId,
       role: workspaceUserTable.role,
@@ -31,7 +46,7 @@ async function collectMemberships(
 
   const workspaceIds = memberships.map((membership) => membership.workspaceId);
 
-  const members = await db
+  const members = await database
     .select({
       workspaceId: workspaceUserTable.workspaceId,
       workspaceName: workspaceTable.name,
@@ -66,7 +81,45 @@ async function collectMemberships(
 }
 
 export async function deleteAccountData(userId: string) {
-  const plan = planAccountDeletion(await collectMemberships(userId));
+  if (!hasAccountDeletionTransaction()) {
+    return db.transaction((tx) =>
+      deleteAccountDataInTransaction(userId, tx, false),
+    );
+  }
+  return deleteAccountDataInTransaction(
+    userId,
+    currentAccountDeletionTransaction(),
+    true,
+  );
+}
+
+async function deleteAccountDataInTransaction(
+  userId: string,
+  tx: Parameters<Parameters<typeof db.transaction>[0]>[0],
+  accountDeletion: boolean,
+) {
+  const before = await collectMemberships(tx, userId);
+  for (const workspaceId of [
+    ...new Set(before.map((row) => row.workspaceId)),
+  ].sort()) {
+    await lockWorkspaceRoleAssignment(tx, workspaceId);
+  }
+  await tx
+    .select({ id: userTable.id })
+    .from(userTable)
+    .where(eq(userTable.id, userId))
+    .for("update");
+  const memberships = await collectMemberships(tx, userId);
+  const beforeIds = before.map((row) => row.workspaceId).sort();
+  const afterIds = memberships.map((row) => row.workspaceId).sort();
+  if (
+    beforeIds.length !== afterIds.length ||
+    beforeIds.some((id, index) => id !== afterIds[index])
+  ) {
+    if (accountDeletion) requestAccountDeletionRetry();
+    throw new AccountDeletionRetryError();
+  }
+  const plan = planAccountDeletion(memberships);
 
   if (plan.blockedWorkspaceNames.length > 0) {
     throw new APIError("CONFLICT", {
@@ -74,25 +127,25 @@ export async function deleteAccountData(userId: string) {
     });
   }
 
-  if (plan.workspaceIdsToDelete.length > 0) {
-    await db.transaction(async (tx) => {
-      // Same `ON DELETE RESTRICT` ordering problem `delete-workspace.ts` documents:
-      // `workflow` must go first, explicitly, so its cascade clears
-      // `workflow_version`/`workflow_transition`/`scheduled_transition` before the
-      // workspace delete cascades into the `state_template`/`role` rows those
-      // transitions restrict against.
-      await tx
-        .delete(workflowTable)
-        .where(inArray(workflowTable.workspaceId, plan.workspaceIdsToDelete));
+  if (accountDeletion) await invalidateAccountDeletionCredentials(userId, tx);
 
-      await tx
-        .delete(workspaceTable)
-        .where(inArray(workspaceTable.id, plan.workspaceIdsToDelete));
-    });
+  if (plan.workspaceIdsToDelete.length > 0) {
+    // Same `ON DELETE RESTRICT` ordering problem `delete-workspace.ts` documents:
+    // `workflow` must go first, explicitly, so its cascade clears
+    // `workflow_version`/`workflow_transition`/`scheduled_transition` before the
+    // workspace delete cascades into the `state_template`/`role` rows those
+    // transitions restrict against.
+    await tx
+      .delete(workflowTable)
+      .where(inArray(workflowTable.workspaceId, plan.workspaceIdsToDelete));
+
+    await tx
+      .delete(workspaceTable)
+      .where(inArray(workspaceTable.id, plan.workspaceIdsToDelete));
   }
 
   if (plan.workspaceIdsToLeave.length > 0) {
-    await db
+    await tx
       .delete(workspaceUserTable)
       .where(
         and(

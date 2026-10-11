@@ -1,15 +1,18 @@
 import type { Context } from "hono";
+import { HTTPException } from "hono/http-exception";
 import {
   type ApiKey,
   apiRouter,
   createRoute,
   errorResponse,
   jsonResponse,
+  z,
 } from "../openapi";
 import { setShadowLegacyAuthorization } from "../permissions/shadow-context";
 import { normaliseTraceId } from "../permissions/shadow-middleware";
 import { requireSessionOnly } from "../utils/require-session-only";
 import {
+  pendingActionApprovalSchema,
   pendingActionDecisionSchema,
   pendingActionListResponseSchema,
   pendingActionReadSchema,
@@ -19,6 +22,7 @@ import {
   pendingActionParamSchema,
 } from "./schema";
 import {
+  approveUserDeactivation,
   decideOwnPendingAction,
   getOwnPendingAction,
   getOwnPendingActions,
@@ -89,6 +93,41 @@ const denyPendingActionRoute = createRoute({
   },
 });
 
+const approvePendingActionRoute = createRoute({
+  method: "post",
+  operationId: "approveOwnPendingAction",
+  path: "/pending-actions/{id}/approve",
+  tags: ["Pending actions"],
+  summary: "Approve a pending action",
+  description:
+    "Executes a pending action owned by the authenticated requester after its server-selected confirmation. Missing PA-15 proof returns 403 step_up_required; expired, consumed, malformed, or mismatched proof returns 403 step_up_expired.",
+  middleware: [requireSessionOnly()] as const,
+  request: {
+    params: pendingActionParamSchema,
+    // A missing or malformed token is not a validation error: it is an unavailable PA-15
+    // proof (403 step_up_expired), audited like any other denied consumption.
+    headers: z.object({
+      "x-taskdesk-step-up-token": z.string().max(256).optional(),
+    }),
+    body: {
+      required: true,
+      content: {
+        "application/json": {
+          schema: z.object({ typedName: z.string().max(320) }).strict(),
+        },
+      },
+    },
+  },
+  responses: {
+    200: jsonResponse("Deactivation executed", pendingActionApprovalSchema),
+    400: errorResponse("The typed target name does not match"),
+    401: errorResponse("The current session is unavailable"),
+    403: errorResponse("Current authority or PA-15 proof is unavailable"),
+    404: errorResponse("Pending action not found"),
+    409: errorResponse("Pending action is stale, terminal, or unsupported"),
+  },
+});
+
 const cancelPendingActionRoute = createRoute({
   method: "post",
   operationId: "cancelOwnPendingAction",
@@ -151,6 +190,29 @@ const pendingAction = apiRouter()
       200,
     ),
   )
+  .openapi(approvePendingActionRoute, async (c) => {
+    const apiKey = c.get("apiKey") as ApiKey | undefined;
+    const requesterPersonId = await requirePendingActionRequesterIdentity(
+      c.get("userId"),
+      apiKey,
+    );
+    const session = c.get("session") as { id?: string } | null;
+    if (!session?.id) throw new HTTPException(401, { message: "Unauthorized" });
+    const result = await approveUserDeactivation({
+      id: c.req.valid("param").id,
+      requesterPersonId,
+      userId: c.get("userId"),
+      sessionId: session.id,
+      typedName: c.req.valid("json").typedName,
+      stepUpToken: c.req.valid("header")["x-taskdesk-step-up-token"] ?? "",
+      traceId: normaliseTraceId(c.req.header("x-request-id")),
+    });
+    setShadowLegacyAuthorization(c, "allowed");
+    return c.json(
+      { id: result.id, state: result.state as "executed" | "expired" },
+      200,
+    );
+  })
   .openapi(denyPendingActionRoute, (c) =>
     decidePendingAction(c, c.req.valid("param").id, "denied"),
   )

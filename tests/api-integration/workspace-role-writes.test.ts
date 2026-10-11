@@ -17,16 +17,23 @@
  * against `/api/workspace/{id}/roles`.
  */
 import { BUILT_IN_ROLE_KEYS } from "@taskdesk/permissions";
-import { and, eq } from "drizzle-orm";
+import { and, eq, sql } from "drizzle-orm";
 import { beforeEach, describe, expect, it } from "vitest";
 import { CAPABILITY_CHECKS } from "../../apps/api/src/capabilities/capability-checks";
-import db, { schema } from "../../apps/api/src/database";
+import db, { getDatabasePool, schema } from "../../apps/api/src/database";
 import { createApp } from "../../apps/api/src/index";
 import { csrfRequest } from "./helpers/csrf";
 import { resetTestDatabase } from "./helpers/database";
 import { signUpInstanceAdmin, signUpUser } from "./helpers/organization-http";
-import { inviteAndAcceptAsNewMemberNative } from "./helpers/workspace-invitation-write-http";
-import { updateWorkspaceMemberRoleNative } from "./helpers/workspace-membership-write-http";
+import {
+  acceptInvitationNative,
+  inviteAndAcceptAsNewMemberNative,
+  inviteWorkspaceMemberNative,
+} from "./helpers/workspace-invitation-write-http";
+import {
+  addWorkspaceMemberNative,
+  updateWorkspaceMemberRoleNative,
+} from "./helpers/workspace-membership-write-http";
 import {
   createWorkspaceRoleNative,
   deleteWorkspaceRoleNative,
@@ -64,6 +71,19 @@ async function roleRows(workspaceId: string, role: string) {
     );
 }
 
+async function memberRole(workspaceId: string, userId: string) {
+  const [row] = await db
+    .select({ role: schema.workspaceUserTable.role })
+    .from(schema.workspaceUserTable)
+    .where(
+      and(
+        eq(schema.workspaceUserTable.workspaceId, workspaceId),
+        eq(schema.workspaceUserTable.userId, userId),
+      ),
+    );
+  return row?.role;
+}
+
 async function setMemberRoleRaw(
   workspaceId: string,
   userId: string,
@@ -78,6 +98,44 @@ async function setMemberRoleRaw(
         eq(schema.workspaceUserTable.userId, userId),
       ),
     );
+}
+
+function deferred() {
+  let resolve!: () => void;
+  const promise = new Promise<void>((done) => {
+    resolve = done;
+  });
+  return { promise, resolve };
+}
+
+async function holdWorkspaceRoleLock(workspaceId: string) {
+  const acquired = deferred();
+  const release = deferred();
+  const transaction = db.transaction(async (tx) => {
+    await tx.execute(
+      sql`SELECT pg_advisory_xact_lock(4_003, hashtext(${workspaceId}))`,
+    );
+    acquired.resolve();
+    await release.promise;
+  });
+  await acquired.promise;
+  return { release: release.resolve, transaction };
+}
+
+async function waitForAdvisoryWait(namespace: number) {
+  const deadline = Date.now() + 10_000;
+  while (Date.now() < deadline) {
+    const result = await getDatabasePool().query<{ waiting: boolean }>(
+      `SELECT EXISTS (
+         SELECT 1 FROM pg_locks
+         WHERE locktype = 'advisory' AND classid = $1::oid AND NOT granted
+       ) AS waiting`,
+      [namespace],
+    );
+    if (result.rows[0]?.waiting) return;
+    await new Promise((resolve) => setTimeout(resolve, 10));
+  }
+  throw new Error(`Timed out waiting for advisory lock namespace ${namespace}`);
 }
 
 beforeEach(async () => {
@@ -430,6 +488,343 @@ describe("S7 create role (POST /api/workspace/{id}/roles)", () => {
     expect(statuses).toEqual([200, 409]);
     expect(await roleRows(workspaceId, "racer")).toHaveLength(1);
   });
+});
+
+describe("issue #156: role assignment and deletion share a fixed lock order", () => {
+  it("assignment wins the shared locks first, so deletion observes the holder and refuses", async () => {
+    const { app } = createApp();
+    const owner = await signUpUser(app);
+    const workspaceId = await createWorkspace(
+      app,
+      owner.cookie,
+      "Assign first",
+    );
+    const target = await signUpUser(app);
+    const created = await createWorkspaceRoleNative(
+      app,
+      owner.cookie,
+      workspaceId,
+      {
+        role: "serialized-role",
+        permission: { work_item: ["read"] },
+      },
+    );
+    expect(created.status).toBe(200);
+    const roleId = ((await created.json()) as { id: string }).id;
+
+    // Hold only 4_003. The assignment must first take 4_002, then block on 4_003;
+    // deletion starts after that and blocks on the already-held 4_002. Releasing the
+    // gate proves the 4_002 → 4_003 order end to end rather than relying on request timing.
+    const gate = await holdWorkspaceRoleLock(workspaceId);
+    try {
+      const adding = addWorkspaceMemberNative(app, owner.cookie, workspaceId, {
+        userId: target.user.id,
+        role: "serialized-role",
+      });
+      await waitForAdvisoryWait(4_003);
+      const deleting = deleteWorkspaceRoleNative(
+        app,
+        owner.cookie,
+        workspaceId,
+        roleId,
+      );
+      await waitForAdvisoryWait(4_002);
+
+      gate.release();
+      const [added, deleted] = await Promise.all([adding, deleting]);
+      expect(added.status).toBe(200);
+      // A committed member reference is the existing role-delete contract's
+      // validation failure (400), rather than a lock-contention response.
+      expect(deleted.status).toBe(400);
+    } finally {
+      gate.release();
+      await gate.transaction;
+    }
+
+    const [member] = await db
+      .select({ role: schema.workspaceUserTable.role })
+      .from(schema.workspaceUserTable)
+      .where(
+        and(
+          eq(schema.workspaceUserTable.workspaceId, workspaceId),
+          eq(schema.workspaceUserTable.userId, target.user.id),
+        ),
+      );
+    expect(member?.role).toBe("serialized-role");
+    expect(await roleRows(workspaceId, "serialized-role")).toHaveLength(1);
+  }, 30_000);
+
+  it("deletion wins the shared locks first, so assignment rechecks and refuses the missing role", async () => {
+    const { app } = createApp();
+    const owner = await signUpUser(app);
+    const workspaceId = await createWorkspace(
+      app,
+      owner.cookie,
+      "Delete first",
+    );
+    const target = await signUpUser(app);
+    const created = await createWorkspaceRoleNative(
+      app,
+      owner.cookie,
+      workspaceId,
+      {
+        role: "serialized-role",
+        permission: { work_item: ["read"] },
+      },
+    );
+    expect(created.status).toBe(200);
+    const roleId = ((await created.json()) as { id: string }).id;
+
+    // Deletion takes 4_002 before it blocks on our 4_003 gate. The later assignment
+    // therefore waits on 4_002. Once the gate opens, deletion commits first and the
+    // assignment's role lookup must fail inside its transaction.
+    const gate = await holdWorkspaceRoleLock(workspaceId);
+    try {
+      const deleting = deleteWorkspaceRoleNative(
+        app,
+        owner.cookie,
+        workspaceId,
+        roleId,
+      );
+      await waitForAdvisoryWait(4_003);
+      const adding = addWorkspaceMemberNative(app, owner.cookie, workspaceId, {
+        userId: target.user.id,
+        role: "serialized-role",
+      });
+      await waitForAdvisoryWait(4_002);
+
+      gate.release();
+      const [deleted, added] = await Promise.all([deleting, adding]);
+      expect(deleted.status).toBe(200);
+      expect(added.status).toBe(400);
+    } finally {
+      gate.release();
+      await gate.transaction;
+    }
+
+    const members = await db
+      .select({ userId: schema.workspaceUserTable.userId })
+      .from(schema.workspaceUserTable)
+      .where(
+        and(
+          eq(schema.workspaceUserTable.workspaceId, workspaceId),
+          eq(schema.workspaceUserTable.userId, target.user.id),
+        ),
+      );
+    expect(members).toHaveLength(0);
+    expect(await roleRows(workspaceId, "serialized-role")).toHaveLength(0);
+  }, 30_000);
+
+  it("serializes an existing member's role change against deletion in both lock orders", async () => {
+    const { app } = createApp();
+    const owner = await signUpUser(app);
+    const workspaceId = await createWorkspace(
+      app,
+      owner.cookie,
+      "Update assignment",
+    );
+    const member = await inviteAndAcceptAsNewMemberNative(
+      app,
+      owner.cookie,
+      workspaceId,
+      "member",
+    );
+    const created = await createWorkspaceRoleNative(
+      app,
+      owner.cookie,
+      workspaceId,
+      {
+        role: "serialized-role",
+        permission: { work_item: ["read"] },
+      },
+    );
+    expect(created.status).toBe(200);
+    const roleId = ((await created.json()) as { id: string }).id;
+
+    // First order: a member role update owns 4_002 while waiting on 4_003, then
+    // deletion observes the committed assignment and refuses.
+    const firstGate = await holdWorkspaceRoleLock(workspaceId);
+    try {
+      const updating = updateWorkspaceMemberRoleNative(
+        app,
+        owner.cookie,
+        workspaceId,
+        member.user.id,
+        { role: "serialized-role" },
+      );
+      await waitForAdvisoryWait(4_003);
+      const deleting = deleteWorkspaceRoleNative(
+        app,
+        owner.cookie,
+        workspaceId,
+        roleId,
+      );
+      await waitForAdvisoryWait(4_002);
+      firstGate.release();
+      const [updated, deleted] = await Promise.all([updating, deleting]);
+      expect(updated.status).toBe(200);
+      expect(deleted.status).toBe(400);
+    } finally {
+      firstGate.release();
+      await firstGate.transaction;
+    }
+    expect(await memberRole(workspaceId, member.user.id)).toBe(
+      "serialized-role",
+    );
+
+    // Restore the existing member's default role under the same production writer,
+    // then force deletion to own 4_002 before the role update queues behind it.
+    const restored = await updateWorkspaceMemberRoleNative(
+      app,
+      owner.cookie,
+      workspaceId,
+      member.user.id,
+      { role: "member" },
+    );
+    expect(restored.status).toBe(200);
+    const secondGate = await holdWorkspaceRoleLock(workspaceId);
+    try {
+      const deleting = deleteWorkspaceRoleNative(
+        app,
+        owner.cookie,
+        workspaceId,
+        roleId,
+      );
+      await waitForAdvisoryWait(4_003);
+      const updating = updateWorkspaceMemberRoleNative(
+        app,
+        owner.cookie,
+        workspaceId,
+        member.user.id,
+        { role: "serialized-role" },
+      );
+      await waitForAdvisoryWait(4_002);
+      secondGate.release();
+      const [deleted, updated] = await Promise.all([deleting, updating]);
+      expect(deleted.status).toBe(200);
+      expect(updated.status).toBe(400);
+    } finally {
+      secondGate.release();
+      await secondGate.transaction;
+    }
+    expect(await memberRole(workspaceId, member.user.id)).toBe("member");
+    expect(await roleRows(workspaceId, "serialized-role")).toHaveLength(0);
+  }, 60_000);
+
+  it("serializes invitation acceptance against deletion and leaves a stale invitation pending", async () => {
+    const { app } = createApp();
+    const owner = await signUpUser(app);
+    const workspaceId = await createWorkspace(
+      app,
+      owner.cookie,
+      "Invitation assignment",
+    );
+
+    const firstRole = await createWorkspaceRoleNative(
+      app,
+      owner.cookie,
+      workspaceId,
+      { role: "accept-first", permission: { work_item: ["read"] } },
+    );
+    expect(firstRole.status).toBe(200);
+    const firstRoleId = ((await firstRole.json()) as { id: string }).id;
+    const firstInviteResponse = await inviteWorkspaceMemberNative(
+      app,
+      owner.cookie,
+      workspaceId,
+      { email: "accept-first@example.com", role: "accept-first" },
+    );
+    expect(firstInviteResponse.status).toBe(200);
+    const firstInviteId = ((await firstInviteResponse.json()) as { id: string })
+      .id;
+    const firstInvitee = await signUpUser(app, {
+      email: "accept-first@example.com",
+    });
+
+    // Acceptance gets 4_002 then waits at 4_003; deletion queues behind 4_002.
+    const firstGate = await holdWorkspaceRoleLock(workspaceId);
+    try {
+      const accepting = acceptInvitationNative(
+        app,
+        firstInvitee.cookie,
+        firstInviteId,
+      );
+      await waitForAdvisoryWait(4_003);
+      const deleting = deleteWorkspaceRoleNative(
+        app,
+        owner.cookie,
+        workspaceId,
+        firstRoleId,
+      );
+      await waitForAdvisoryWait(4_002);
+      firstGate.release();
+      const [accepted, deleted] = await Promise.all([accepting, deleting]);
+      expect(accepted.status).toBe(200);
+      expect(deleted.status).toBe(400);
+    } finally {
+      firstGate.release();
+      await firstGate.transaction;
+    }
+    expect(await memberRole(workspaceId, firstInvitee.user.id)).toBe(
+      "accept-first",
+    );
+
+    const secondRole = await createWorkspaceRoleNative(
+      app,
+      owner.cookie,
+      workspaceId,
+      { role: "delete-first", permission: { work_item: ["read"] } },
+    );
+    expect(secondRole.status).toBe(200);
+    const secondRoleId = ((await secondRole.json()) as { id: string }).id;
+    const secondInviteResponse = await inviteWorkspaceMemberNative(
+      app,
+      owner.cookie,
+      workspaceId,
+      { email: "delete-first@example.com", role: "delete-first" },
+    );
+    expect(secondInviteResponse.status).toBe(200);
+    const secondInviteId = (
+      (await secondInviteResponse.json()) as { id: string }
+    ).id;
+    const secondInvitee = await signUpUser(app, {
+      email: "delete-first@example.com",
+    });
+
+    // Deletion gets 4_002 then waits at 4_003; acceptance queues behind 4_002.
+    const secondGate = await holdWorkspaceRoleLock(workspaceId);
+    try {
+      const deleting = deleteWorkspaceRoleNative(
+        app,
+        owner.cookie,
+        workspaceId,
+        secondRoleId,
+      );
+      await waitForAdvisoryWait(4_003);
+      const accepting = acceptInvitationNative(
+        app,
+        secondInvitee.cookie,
+        secondInviteId,
+      );
+      await waitForAdvisoryWait(4_002);
+      secondGate.release();
+      const [deleted, accepted] = await Promise.all([deleting, accepting]);
+      expect(deleted.status).toBe(200);
+      expect(accepted.status).toBe(400);
+    } finally {
+      secondGate.release();
+      await secondGate.transaction;
+    }
+
+    const [pending] = await db
+      .select({ status: schema.invitationTable.status })
+      .from(schema.invitationTable)
+      .where(eq(schema.invitationTable.id, secondInviteId));
+    expect(pending?.status).toBe("pending");
+    expect(
+      await memberRole(workspaceId, secondInvitee.user.id),
+    ).toBeUndefined();
+  }, 60_000);
 });
 
 describe("F2 -- cannot grant a capability you do not hold yourself (RL-3, S7 blueprint Finding F2)", () => {
