@@ -87,6 +87,7 @@ import { createRoute, errorResponse, jsonResponse, z } from "./openapi";
 import pendingAction from "./pending-action";
 import {
   type ExplicitCredentialMutation,
+  withAccountDeletionTransaction,
   withExplicitCredentialMutation,
 } from "./pending-action/credential-invalidation";
 // Issue #8: `assertRouteIsClassified` refuses a request whose route has no policy entry at
@@ -384,6 +385,15 @@ async function handleAuthRequest(
     throw new HTTPException(401, { message: "Unauthorized" });
   }
 
+  const accountDeletionRoute =
+    (c.req.method === "POST" && c.req.path === "/api/auth/delete-user") ||
+    (c.req.method === "GET" && c.req.path === "/api/auth/delete-user/callback");
+  if (accountDeletionRoute) {
+    const requestTemplate = c.req.raw.clone();
+    return withAccountDeletionTransaction(() =>
+      selected.handler(buildAuthRequest(c, headers, requestTemplate.clone())),
+    );
+  }
   const authRequest = buildAuthRequest(c, headers);
   if (!mutation) return selected.handler(authRequest);
 

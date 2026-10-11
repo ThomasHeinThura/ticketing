@@ -14,6 +14,7 @@ import {
   apikeyTable,
   pendingActionTable,
   sessionTable,
+  userTable,
 } from "../database/schema";
 import { enqueueOutboxEvent, eventScope } from "../events/outbox";
 import {
@@ -44,6 +45,20 @@ const explicitMutationStorage =
   new AsyncLocalStorage<ExplicitCredentialMutationState>();
 const transactionStorage = new AsyncLocalStorage<PendingActionTransaction>();
 
+type AccountDeletionContext = {
+  auditFailures: number;
+  retryRequested: boolean;
+  userId: string | null;
+};
+const accountDeletionStorage = new AsyncLocalStorage<AccountDeletionContext>();
+
+export class AccountDeletionRetryError extends Error {
+  constructor() {
+    super("Account workspace closure changed; retry the deletion transaction");
+    this.name = "AccountDeletionRetryError";
+  }
+}
+
 /** The route marker is server-owned and exists only around the Better Auth handler. */
 export async function withExplicitCredentialMutation<T>(
   mutation: ExplicitCredentialMutation,
@@ -66,22 +81,140 @@ function databaseWithTransactionContext(): typeof db {
   const openTransaction = db.transaction.bind(db);
   return new Proxy(db, {
     get(target, property, receiver) {
+      const tx = transactionStorage.getStore();
       if (property === "transaction") {
         return (
           callback: (tx: PendingActionTransaction) => Promise<unknown>,
           ...args: unknown[]
-        ) =>
-          openTransaction(
-            (tx) => transactionStorage.run(tx, () => callback(tx)),
+        ) => {
+          if (tx) {
+            return tx.transaction(
+              (nested) =>
+                transactionStorage.run(nested, () => callback(nested)),
+              ...(args as []),
+            );
+          }
+          return openTransaction(
+            (opened) => transactionStorage.run(opened, () => callback(opened)),
             ...(args as []),
           );
+        };
       }
+      if (tx) return Reflect.get(tx, property, tx);
       return Reflect.get(target, property, receiver);
     },
   });
 }
 
 const credentialDatabase = databaseWithTransactionContext();
+
+/**
+ * Run one exact Better Auth account-deletion entrypoint in a request-local
+ * transaction. Its adapter calls, account cleanup hook and pending-action
+ * invalidations all resolve to the same Drizzle transaction.
+ */
+export async function withAccountDeletionTransaction<T>(
+  callback: () => Promise<T>,
+): Promise<T> {
+  const existing = accountDeletionStorage.getStore();
+  if (existing) return callback();
+
+  for (let attempt = 0; ; attempt += 1) {
+    try {
+      const outcome = await db.transaction(async (tx) => {
+        await lockPendingActionLifecycle(tx);
+        const context: AccountDeletionContext = {
+          auditFailures: 0,
+          retryRequested: false,
+          userId: null,
+        };
+        return accountDeletionStorage.run(context, () =>
+          transactionStorage.run(tx, async () => {
+            const result = await callback();
+            if (context.retryRequested) throw new AccountDeletionRetryError();
+            if (context.userId) {
+              const [remainingUser] = await tx
+                .select({ id: userTable.id })
+                .from(userTable)
+                .where(eq(userTable.id, context.userId))
+                .limit(1);
+              if (remainingUser) {
+                throw new Error(
+                  "Better Auth account deletion did not complete",
+                );
+              }
+            }
+            return { result, auditFailures: context.auditFailures };
+          }),
+        );
+      });
+      await reportPendingActionAuditFailures(outcome.auditFailures);
+      return outcome.result;
+    } catch (error) {
+      if (!(error instanceof AccountDeletionRetryError) || attempt >= 4) {
+        throw error;
+      }
+    }
+  }
+}
+
+/** Called by the existing Better Auth beforeDelete hook inside the outer tx. */
+export async function invalidateAccountDeletionCredentials(
+  userId: string,
+  tx: PendingActionTransaction,
+) {
+  const context = accountDeletionStorage.getStore();
+  if (!context || transactionStorage.getStore() !== tx) {
+    throw new Error("Account deletion requires its request transaction");
+  }
+  context.userId = userId;
+  const occurredAt = new Date();
+  const sessions = await tx
+    .select({ id: sessionTable.id })
+    .from(sessionTable)
+    .where(eq(sessionTable.userId, userId))
+    .orderBy(sessionTable.id)
+    .for("update");
+  const apiKeys = await tx
+    .select({ id: apikeyTable.id })
+    .from(apikeyTable)
+    .where(eq(apikeyTable.userId, userId))
+    .orderBy(apikeyTable.id)
+    .for("update");
+  const credentials = [
+    ...sessions.map(({ id }) => ({ type: "session" as const, id })),
+    ...apiKeys.map(({ id }) => ({ type: "api_key" as const, id })),
+  ].sort(
+    (left, right) =>
+      left.type.localeCompare(right.type) || left.id.localeCompare(right.id),
+  );
+  for (const credential of credentials) {
+    context.auditFailures += await invalidatePendingActionsForCredential(
+      tx,
+      credential,
+      occurredAt,
+    );
+  }
+}
+
+export function currentAccountDeletionTransaction() {
+  const context = accountDeletionStorage.getStore();
+  const tx = transactionStorage.getStore();
+  if (!context || !tx) {
+    throw new Error("Account deletion requires its request transaction");
+  }
+  return tx;
+}
+
+export function hasAccountDeletionTransaction() {
+  return accountDeletionStorage.getStore() !== undefined;
+}
+
+export function requestAccountDeletionRetry() {
+  const context = accountDeletionStorage.getStore();
+  if (!context) throw new Error("Account deletion retry has no request scope");
+  context.retryRequested = true;
+}
 
 function currentTransaction(): PendingActionTransaction {
   const tx = transactionStorage.getStore();
@@ -270,7 +403,12 @@ async function runCredentialAdapterTransaction<R>(
     if (state) state.deleteFailure ??= error;
     throw error;
   }
-  await reportPendingActionAuditFailures(outcome.auditFailures ?? 0);
+  const accountDeletion = accountDeletionStorage.getStore();
+  if (accountDeletion) {
+    accountDeletion.auditFailures += outcome.auditFailures ?? 0;
+  } else {
+    await reportPendingActionAuditFailures(outcome.auditFailures ?? 0);
+  }
   return outcome.result;
 }
 

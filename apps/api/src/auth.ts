@@ -50,6 +50,8 @@ import {
 } from "./instance/setup-token";
 import {
   createCredentialAwareDrizzleAdapter,
+  currentAccountDeletionTransaction,
+  withAccountDeletionTransaction,
   withExplicitCredentialMutation,
 } from "./pending-action/credential-invalidation";
 import deleteAccountData from "./user/controllers/delete-account-data";
@@ -149,6 +151,14 @@ function withExplicitServerCredentialMutations<T extends object>(
 
           return new Proxy(method, {
             apply(targetMethod, thisArgument, args: unknown[]) {
+              if (
+                apiMethod === "deleteUser" ||
+                apiMethod === "deleteUserCallback"
+              ) {
+                return withAccountDeletionTransaction(() =>
+                  Reflect.apply(targetMethod, thisArgument, args),
+                );
+              }
               const mutation = explicitServerCredentialMutation(
                 apiMethod,
                 args,
@@ -324,6 +334,7 @@ function createAuth(
       deleteUser: {
         enabled: true,
         beforeDelete: async (user) => {
+          currentAccountDeletionTransaction();
           await deleteAccountData(user.id);
         },
       },
