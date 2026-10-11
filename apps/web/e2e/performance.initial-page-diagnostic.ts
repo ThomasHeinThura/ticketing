@@ -1002,6 +1002,16 @@ async function visitTaskState(page: Page) {
       hasText: "In progress",
     }),
   ).toBeVisible();
+  await page.waitForFunction(
+    () => {
+      const metrics = (
+        window as Window & { __g11Metrics?: { statePaint: number } }
+      ).__g11Metrics;
+      return metrics !== undefined && metrics.statePaint > 0;
+    },
+    undefined,
+    { timeout: 15_000 },
+  );
   return page.evaluate(() => {
     const metrics = (
       window as Window & {
@@ -1041,6 +1051,16 @@ async function visitTaskAssignment(page: Page) {
       hasText: "G11 Agent",
     }),
   ).toBeVisible();
+  await page.waitForFunction(
+    () => {
+      const metrics = (
+        window as Window & { __g11Metrics?: { assignmentPaint: number } }
+      ).__g11Metrics;
+      return metrics !== undefined && metrics.assignmentPaint > 0;
+    },
+    undefined,
+    { timeout: 15_000 },
+  );
   return page.evaluate(() => {
     const metrics = (
       window as Window & {
