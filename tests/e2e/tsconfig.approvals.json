@@ -26,6 +26,7 @@
     "scripts/seed-approvals.ts",
     "scripts/seed-approval-auth-provider.ts",
     "approvals-primary-journey.spec.ts",
+    "playwright.approvals.config.ts",
     "customer-cannot-request-cab.spec.ts",
     "requester-cannot-self-approve.spec.ts",
     "approver-email-not-leaked.spec.ts",
