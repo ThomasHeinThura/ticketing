@@ -337,7 +337,7 @@ describe("PA-8 pending-action expiry", () => {
         repeat('a', 64), '{}'::jsonb,
         CASE WHEN n BETWEEN 100001 AND 201000 THEN 'plan-workspace' ELSE NULL END,
         'click', CASE WHEN n <= 100000 THEN 'expired' ELSE 'pending' END,
-        CASE WHEN n BETWEEN 200001 AND 202000 OR n BETWEEN 301001 AND 302000
+        CASE WHEN n BETWEEN 200001 AND 202000 OR n BETWEEN 299001 AND 302000
           THEN clock_timestamp() - interval '1 day'
           ELSE clock_timestamp() + interval '1 day' END,
         'trace-plan-' || n::text
@@ -404,14 +404,28 @@ describe("PA-8 pending-action expiry", () => {
       }
     }
 
-    await db.execute(
+    await db.execute(sql.raw("ANALYZE pending_action"));
+    const positiveUnsupportedProbe = await db.execute<{
+      unsupported_due: boolean;
+    }>(
       sql.raw(`
-      UPDATE pending_action SET state = 'expired'
-      WHERE id BETWEEN 'plan-pa-301001' AND 'plan-pa-302000'
+      SELECT COALESCE((
+        SELECT true FROM pending_action
+        WHERE state = 'pending' AND workspace_id IS NULL AND NOT (
+          project_id IS NULL AND organisation_id IS NULL AND (
+            (action = 'delete' AND target_type = 'user'
+              AND route_key = 'POST /api/instance/users/{id}/deactivate') OR
+            (action = 'user_deactivation' AND target_type = 'person'
+              AND route_key = 'POST /api/instance/users/{id}/deactivate')
+          )
+        ) AND expires_at <= (SELECT clock_timestamp())
+        ORDER BY expires_at LIMIT 1
+      ), false) AS unsupported_due
     `),
     );
-    await db.execute(sql.raw("ANALYZE pending_action"));
-    const unsupported = await db.execute<{ "QUERY PLAN": string }>(
+    expect(positiveUnsupportedProbe.rows).toEqual([{ unsupported_due: true }]);
+
+    const positiveUnsupportedPlan = await db.execute<{ "QUERY PLAN": string }>(
       sql.raw(`
       EXPLAIN (ANALYZE, BUFFERS, VERBOSE, SUMMARY)
       SELECT COALESCE((
@@ -428,13 +442,45 @@ describe("PA-8 pending-action expiry", () => {
       ), false)
     `),
     );
-    const unsupportedPlan = unsupported.rows
+    const positiveUnsupportedPlanText = positiveUnsupportedPlan.rows
       .map((row) => row["QUERY PLAN"])
       .join("\n");
-    expect(unsupportedPlan).toContain(
+    expect(positiveUnsupportedPlanText).toContain(
       "pending_action_expiry_unscoped_probe_idx",
     );
-    expect(unsupportedPlan).toContain("InitPlan");
+    expect(positiveUnsupportedPlanText).toContain("InitPlan");
+
+    await db.execute(
+      sql.raw(`
+      UPDATE pending_action SET state = 'expired'
+      WHERE id BETWEEN 'plan-pa-299001' AND 'plan-pa-302000'
+    `),
+    );
+    await db.execute(sql.raw("ANALYZE pending_action"));
+    const emptyUnsupported = await db.execute<{ "QUERY PLAN": string }>(
+      sql.raw(`
+      EXPLAIN (ANALYZE, BUFFERS, VERBOSE, SUMMARY)
+      SELECT COALESCE((
+        SELECT true FROM pending_action
+        WHERE state = 'pending' AND workspace_id IS NULL AND NOT (
+          project_id IS NULL AND organisation_id IS NULL AND (
+            (action = 'delete' AND target_type = 'user'
+              AND route_key = 'POST /api/instance/users/{id}/deactivate') OR
+            (action = 'user_deactivation' AND target_type = 'person'
+              AND route_key = 'POST /api/instance/users/{id}/deactivate')
+          )
+        ) AND expires_at <= (SELECT clock_timestamp())
+        ORDER BY expires_at LIMIT 1
+      ), false)
+    `),
+    );
+    const emptyUnsupportedPlan = emptyUnsupported.rows
+      .map((row) => row["QUERY PLAN"])
+      .join("\n");
+    expect(emptyUnsupportedPlan).toContain(
+      "pending_action_expiry_unscoped_probe_idx",
+    );
+    expect(emptyUnsupportedPlan).toContain("InitPlan");
 
     await db.execute(
       sql.raw(`
