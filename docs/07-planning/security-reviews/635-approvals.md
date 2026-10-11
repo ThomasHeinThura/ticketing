@@ -1277,3 +1277,9 @@ At my GitHub read, PR #635 still pointed to c9a32be7 and accepted base a96e6a4c.
 - `gh pr view 635 --json headRefOid,baseRefOid,mergeable,reviewDecision,statusCheckRollup` (matched reviewed head/base; mergeable, with required checks not yet all green).
 
 
+
+## Gate-readable source binding
+
+**Reviewed head:** `c9a32be7ed02f7fd3d6ec0c2d2bc49a7d0ccc4b9`
+
+This is the exact source binding of the independent GPT-6 Luna and GPT-6 Sol reports transported above. The original reports remain verbatim. This line supplies the required parser syntax; it adds no review verdict or acceptance claim.
