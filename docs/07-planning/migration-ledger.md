@@ -219,7 +219,7 @@ Journal idx 121 is `0121_instance_admin_suspend_step_up`, `when=1791691958123`. 
 id is `e84c11cb-c53a-478b-9ce9-7971ca12b691`, chained from 0120 snapshot
 `d329dd2c-891c-4b5c-87a2-a00adb2b9af1`. SQL SHA-256:
 `e486f94688e1bb7ac4001e0d21cd003523f08bb39ae21a7d201a6723d70e1026`.
-Snapshot SHA-256: `3186a7e3c1e73e5431b873fcde81af4b127bc4c5ee58613159a92e02208417b5`.
+Snapshot SHA-256: `c8ca9e1da69edfd5cbc6801a6f7cdebef4eadbbb97acb51a2331430af4651afc`.
 Journal SHA-256 at the S6 candidate: `d48eba085e5e1acd62cd9adc8d085aedae50f078fb01c17184e44df022ecfab3`.
 
 ### Next allocation
