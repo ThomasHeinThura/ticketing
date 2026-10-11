@@ -5244,6 +5244,20 @@ export const pendingActionTable = pgTable(
       table.workspaceId,
       table.createdAt.desc().nullsFirst(),
     ),
+    index("pending_action_expiry_scoped_idx")
+      .on(table.expiresAt, table.id)
+      .where(
+        sql.raw(
+          "(state = 'pending'::text) AND ((workspace_id IS NOT NULL) OR ((workspace_id IS NULL) AND (project_id IS NULL) AND (organisation_id IS NULL) AND (((action = 'delete'::text) AND (target_type = 'user'::text) AND (route_key = 'POST /api/instance/users/{id}/deactivate'::text)) OR ((action = 'user_deactivation'::text) AND (target_type = 'person'::text) AND (route_key = 'POST /api/instance/users/{id}/deactivate'::text)))))",
+        ),
+      ),
+    index("pending_action_expiry_unscoped_probe_idx")
+      .on(table.expiresAt)
+      .where(
+        sql.raw(
+          "(state = 'pending'::text) AND (workspace_id IS NULL) AND (NOT (((project_id IS NULL) AND (organisation_id IS NULL) AND (((action = 'delete'::text) AND (target_type = 'user'::text) AND (route_key = 'POST /api/instance/users/{id}/deactivate'::text)) OR ((action = 'user_deactivation'::text) AND (target_type = 'person'::text) AND (route_key = 'POST /api/instance/users/{id}/deactivate'::text))))))",
+        ),
+      ),
     uniqueIndex("pending_action_one_pending_target_unique")
       .on(table.requestedByPersonId, table.action, table.targetIds, table.state)
       .where(sql.raw("(state = 'pending'::text)")),

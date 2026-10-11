@@ -18,7 +18,7 @@ strictly increasing. The recorded hash is the SHA-256 of the exact `.sql` bytes.
 | 0119 | N2 tenant-composite foreign keys (forward-only) | allocated, see below |
 | 0120 | `approval` tenant anchor (forward-only) | allocated, see below |
 | 0121 | S6 admin-suspension PA-15 step-up binding (forward-only) | allocated and cut, see below |
-| 0122 | #569 pending-action expiry index (re-cut from its former slot) | reserved, not yet cut |
+| 0122 | #569 pending-action expiry indexes (current-source re-cut) | allocated and cut; acceptance pending |
 | 0123+ | unallocated | next allocation below |
 
 ## 0088-0118 (M1)
@@ -255,9 +255,19 @@ S6's required operation-bound admin-suspension step-up binding, following 0120; 
 pending-action expiry-index re-cut moves to **0122**. Neither slot is accepted applied
 migration history until its owning candidate passes the normal gates.
 
+### 0122 · #569 pending-action expiry indexes
+
+Allocated and generated from the current accepted schema after 0121. Journal idx 122 is
+`0122_pending_action_expiry_indexes`, `when=1791744014813`; snapshot id
+`ad77f50c-137a-4055-8be7-62d22e641839`, chained from 0121 snapshot
+`e84c11cb-c53a-478b-9ce9-7971ca12b691`.
+SQL SHA-256: `bd628a99a8479f1e2051336487e2b48a9e1160d47a611687cbd77a62b11e357b`.
+Snapshot SHA-256: `f994f16dee182854589ab6be35c26622bb62487b5b7c211998679f19008f1cd0`.
+Current journal SHA-256: `fe40ab48321db5d5d8e51e2e10b660e77101c4548bdd3d4a40395a48b837ce57`.
+The indexes cover pending workspace actions plus the two registered nullable-scope instance
+user-deactivation row forms, and a separate unsupported-null probe. This records generated
+source allocation only; it does not assert migration execution or acceptance.
+
 ### Next allocation
 
-Next index is **0122**, reserved for the #569 pending-action expiry-index re-cut. Its journal
-`when` must be strictly greater than **1791691958123** (idx 121) and than any `when` any
-environment may already have applied. Generate it with `drizzle-kit generate` so its snapshot
-chains from `0121_snapshot.json`. The conductor allocates each index to exactly one owner.
+Next index is **0123**, unallocated. The conductor allocates each index to exactly one owner.

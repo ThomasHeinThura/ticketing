@@ -153,7 +153,7 @@ describe("PA-8 pending-action expiry", () => {
         targetIds: [person.id],
         targetVersions: [1],
         payload: { action: "user_deactivation" },
-        routeKey: "POST /api/instance/users/{id}/deactivation-requests",
+        routeKey: "POST /api/instance/users/{id}/deactivate",
         workspaceId: null,
         projectId: null,
         organisationId: null,
@@ -285,14 +285,220 @@ describe("PA-8 pending-action expiry", () => {
         .returning(),
       "unsupported nullable action",
     );
+    const wrongRoute = requireRow(
+      await db
+        .insert(schema.pendingActionTable)
+        .values({
+          ...pendingActionValues(
+            new Date(Date.now() - 60_000),
+            person.id,
+            workspace,
+            null,
+          ),
+          targetType: "user",
+          targetIds: [`user-${randomUUID()}`],
+          routeKey: "POST /api/instance/users/{id}/other-action",
+          organisationId: null,
+        })
+        .returning(),
+      "unsupported user action with the wrong route",
+    );
     const result = await expirePendingActions();
     expect(result).toMatchObject({ expired: 0, degraded: true });
-    const [stored] = await db
+    const stored = await db
       .select({ state: schema.pendingActionTable.state })
       .from(schema.pendingActionTable)
-      .where(eq(schema.pendingActionTable.id, action.id));
-    expect(stored?.state).toBe("pending");
+      .where(
+        sql`${schema.pendingActionTable.id} IN (${action.id}, ${wrongRoute.id})`,
+      );
+    expect(stored).toEqual([{ state: "pending" }, { state: "pending" }]);
   });
+
+  it("uses the eligible expiry indexes and one-shot cutoff on the full schema", async () => {
+    await db.execute(
+      sql.raw(`
+      INSERT INTO pending_action (
+        id, requested_by_person_id, credential_type, origin, action, target_type,
+        target_ids, payload, route_key, payload_hash, payload_summary,
+        workspace_id, confirmation_required, state, expires_at, trace_id
+      )
+      SELECT
+        'plan-pa-' || n::text,
+        'plan-person', 'session', 'web',
+        CASE WHEN n BETWEEN 201001 AND 202000 THEN
+          CASE WHEN n <= 201500 THEN 'delete' ELSE 'user_deactivation' END
+        ELSE 'delete' END,
+        CASE WHEN n BETWEEN 201001 AND 201500 THEN 'user'
+          WHEN n BETWEEN 201501 AND 202000 THEN 'person' ELSE 'work_item' END,
+        ARRAY['WI-plan-' || n::text], '{}'::jsonb,
+        CASE WHEN n BETWEEN 201001 AND 202000
+          THEN 'POST /api/instance/users/{id}/deactivate'
+          ELSE 'DELETE /api/work-items/{key}' END,
+        repeat('a', 64), '{}'::jsonb,
+        CASE WHEN n BETWEEN 100001 AND 201000 THEN 'plan-workspace' ELSE NULL END,
+        'click', CASE WHEN n <= 100000 THEN 'expired' ELSE 'pending' END,
+        CASE WHEN n BETWEEN 200001 AND 202000 OR n BETWEEN 299001 AND 302000
+          THEN clock_timestamp() - interval '1 day'
+          ELSE clock_timestamp() + interval '1 day' END,
+        'trace-plan-' || n::text
+      FROM generate_series(1, 302000) AS rows(n)
+    `),
+    );
+    await db.execute(sql.raw("ANALYZE pending_action"));
+
+    async function candidatePlan(
+      name: string,
+      mode: "force_custom_plan" | "force_generic_plan",
+      cursor: boolean,
+      args: string,
+    ) {
+      return db.transaction(async (tx) => {
+        await tx.execute(sql.raw(`SET LOCAL plan_cache_mode = '${mode}'`));
+        const cursorPredicate = cursor
+          ? "AND (expires_at, id) > ($1::timestamptz, $2::text)"
+          : "";
+        const limitParameter = cursor ? "$3" : "$1";
+        await tx.execute(
+          sql.raw(`
+          PREPARE ${name} AS
+          SELECT id, expires_at FROM pending_action
+          WHERE state = 'pending' AND (
+            workspace_id IS NOT NULL OR
+            (workspace_id IS NULL AND project_id IS NULL AND organisation_id IS NULL AND (
+              (action = 'delete' AND target_type = 'user'
+                AND route_key = 'POST /api/instance/users/{id}/deactivate') OR
+              (action = 'user_deactivation' AND target_type = 'person'
+                AND route_key = 'POST /api/instance/users/{id}/deactivate')
+            ))
+          )
+            AND expires_at <= (SELECT clock_timestamp())
+            ${cursorPredicate}
+          ORDER BY expires_at, id FOR UPDATE SKIP LOCKED LIMIT ${limitParameter}
+        `),
+        );
+        const result = await tx.execute<{ "QUERY PLAN": string }>(
+          sql.raw(`
+          EXPLAIN (ANALYZE, BUFFERS, VERBOSE, SUMMARY)
+          EXECUTE ${name}(${args})
+        `),
+        );
+        await tx.execute(sql.raw(`DEALLOCATE ${name}`));
+        return result.rows.map((row) => row["QUERY PLAN"]).join("\n");
+      });
+    }
+
+    for (const mode of ["force_custom_plan", "force_generic_plan"] as const) {
+      for (const [cursor, args] of [
+        [false, "100"],
+        [true, "'2000-01-01T00:00:00Z', '', 100"],
+      ] as const) {
+        const plan = await candidatePlan(
+          `pending_action_due_${mode}_${cursor ? "cursor" : "first"}`,
+          mode,
+          cursor,
+          args,
+        );
+        expect(plan).toContain("pending_action_expiry_scoped_idx");
+        expect(plan).toContain("InitPlan");
+        expect(plan).not.toContain("Sort");
+      }
+    }
+
+    await db.execute(sql.raw("ANALYZE pending_action"));
+    const positiveUnsupportedProbe = await db.execute<{
+      unsupported_due: boolean;
+    }>(
+      sql.raw(`
+      SELECT COALESCE((
+        SELECT true FROM pending_action
+        WHERE state = 'pending' AND workspace_id IS NULL AND NOT (
+          project_id IS NULL AND organisation_id IS NULL AND (
+            (action = 'delete' AND target_type = 'user'
+              AND route_key = 'POST /api/instance/users/{id}/deactivate') OR
+            (action = 'user_deactivation' AND target_type = 'person'
+              AND route_key = 'POST /api/instance/users/{id}/deactivate')
+          )
+        ) AND expires_at <= (SELECT clock_timestamp())
+        ORDER BY expires_at LIMIT 1
+      ), false) AS unsupported_due
+    `),
+    );
+    expect(positiveUnsupportedProbe.rows).toEqual([{ unsupported_due: true }]);
+
+    const positiveUnsupportedPlan = await db.execute<{ "QUERY PLAN": string }>(
+      sql.raw(`
+      EXPLAIN (ANALYZE, BUFFERS, VERBOSE, SUMMARY)
+      SELECT COALESCE((
+        SELECT true FROM pending_action
+        WHERE state = 'pending' AND workspace_id IS NULL AND NOT (
+          project_id IS NULL AND organisation_id IS NULL AND (
+            (action = 'delete' AND target_type = 'user'
+              AND route_key = 'POST /api/instance/users/{id}/deactivate') OR
+            (action = 'user_deactivation' AND target_type = 'person'
+              AND route_key = 'POST /api/instance/users/{id}/deactivate')
+          )
+        ) AND expires_at <= (SELECT clock_timestamp())
+        ORDER BY expires_at LIMIT 1
+      ), false)
+    `),
+    );
+    const positiveUnsupportedPlanText = positiveUnsupportedPlan.rows
+      .map((row) => row["QUERY PLAN"])
+      .join("\n");
+    expect(positiveUnsupportedPlanText).toContain(
+      "pending_action_expiry_unscoped_probe_idx",
+    );
+    expect(positiveUnsupportedPlanText).toContain("InitPlan");
+
+    await db.execute(
+      sql.raw(`
+      UPDATE pending_action SET state = 'expired'
+      WHERE id BETWEEN 'plan-pa-299001' AND 'plan-pa-302000'
+    `),
+    );
+    await db.execute(sql.raw("ANALYZE pending_action"));
+    const emptyUnsupported = await db.execute<{ "QUERY PLAN": string }>(
+      sql.raw(`
+      EXPLAIN (ANALYZE, BUFFERS, VERBOSE, SUMMARY)
+      SELECT COALESCE((
+        SELECT true FROM pending_action
+        WHERE state = 'pending' AND workspace_id IS NULL AND NOT (
+          project_id IS NULL AND organisation_id IS NULL AND (
+            (action = 'delete' AND target_type = 'user'
+              AND route_key = 'POST /api/instance/users/{id}/deactivate') OR
+            (action = 'user_deactivation' AND target_type = 'person'
+              AND route_key = 'POST /api/instance/users/{id}/deactivate')
+          )
+        ) AND expires_at <= (SELECT clock_timestamp())
+        ORDER BY expires_at LIMIT 1
+      ), false)
+    `),
+    );
+    const emptyUnsupportedPlan = emptyUnsupported.rows
+      .map((row) => row["QUERY PLAN"])
+      .join("\n");
+    expect(emptyUnsupportedPlan).toContain(
+      "pending_action_expiry_unscoped_probe_idx",
+    );
+    expect(emptyUnsupportedPlan).toContain("InitPlan");
+
+    await db.execute(
+      sql.raw(`
+      UPDATE pending_action SET state = 'expired'
+      WHERE id BETWEEN 'plan-pa-200001' AND 'plan-pa-202000'
+    `),
+    );
+    await db.execute(sql.raw("ANALYZE pending_action"));
+    const zeroDuePlan = await candidatePlan(
+      "pending_action_zero_due",
+      "force_generic_plan",
+      false,
+      "100",
+    );
+    expect(zeroDuePlan).toContain("pending_action_expiry_scoped_idx");
+    expect(zeroDuePlan).toContain("InitPlan");
+    expect(zeroDuePlan).not.toContain("Sort");
+  }, 60_000);
 
   it("expires due and just-due rows, leaves future and terminal rows unchanged, and is repeat-safe", async () => {
     const due = await makePendingAction(new Date(Date.now() - 60_000));

@@ -856,6 +856,13 @@
 			"when": 1791691958123,
 			"tag": "0121_instance_admin_suspend_step_up",
 			"breakpoints": true
+		},
+		{
+			"idx": 122,
+			"version": "7",
+			"when": 1791744014813,
+			"tag": "0122_pending_action_expiry_indexes",
+			"breakpoints": true
 		}
 	]
 }
