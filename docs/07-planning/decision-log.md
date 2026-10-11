@@ -1,3 +1,26 @@
+### 2026-10-11 · Technical disposition: historical status prose secret-scan false positive
+
+**Technical rationale, not a new Thomas decision or gate waiver:** #601's required gitleaks
+job flags the non-secret prose token `route-policy88` in historical status commit
+`40224279bb672fbe7cc4c77ba575b10d77fc43df`, line 6. A direct single-commit scan reproduced
+exactly that finding; it is ordinary status prose describing route-policy test counts. The
+normal required scan continues to run. The candidate adds only that immutable
+`commit:file:rule:line` fingerprint to `.gitleaksignore`, following the established exact-finding
+mechanism; there is no path/rule exemption, history rewrite, threshold change or new scanner
+bypass. Independent ordinary and full security review of this disposition are required before
+merge. This record does not claim Thomas authorized a waiver.
+
+**Formatting correction:** three historical JSON evidence files in the 2026-10-06 review
+records were formatted to satisfy the existing Biome gate. Their parsed JSON values are
+identical; original bytes and both SHA-256 digests are retained privately in the conductor's
+`2026-10-11/pr601-original-json` evidence directory. No review verdict, source attribution,
+manifest value or historical test result was rewritten.
+
+**Recorded by:** Codex delivery conductor, 2026-10-11; exact source and final independent
+verdicts belong to the PR review records.
+
+---
+
 ### 2026-10-11 · Thomas designates this Codex chat as delivery conductor
 
 **Decision:** Thomas directly supplied the “TASKDESK — CODEX DELIVERY TAKEOVER” and

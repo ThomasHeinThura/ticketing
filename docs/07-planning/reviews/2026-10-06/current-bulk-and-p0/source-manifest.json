@@ -1,169 +1,169 @@
 {
-  "record_type": "original-independent-review-evidence-copy-v1",
-  "actual_copied_utc": "2026-10-06T13:15:14.175548+00:00",
-  "records": [
-    {
-      "file": "luna-a-7dd3cbb4.md",
-      "original_private_path": "/Users/heinthura/.codex/taskdesk-evidence/2026-10-06/bulk-integration/luna-a-7dd3cbb4.md",
-      "sha256": "e577b519fdda491e148f582248bff2a8131a69d427a3000c92d889529c7e0f56",
-      "original_bytes_preserved": true
-    },
-    {
-      "file": "luna-b-7dd3cbb4.md",
-      "original_private_path": "/Users/heinthura/.codex/taskdesk-evidence/2026-10-06/bulk-integration/luna-b-7dd3cbb4.md",
-      "sha256": "3bb51b84e9cd312f76dd0a4fad9fe6ba88d249bc58482e01acfecaca3dc5dd0a",
-      "original_bytes_preserved": true
-    },
-    {
-      "file": "luna-c-7dd3cbb4.md",
-      "original_private_path": "/Users/heinthura/.codex/taskdesk-evidence/2026-10-06/bulk-integration/luna-c-7dd3cbb4.md",
-      "sha256": "6186ffcb1427e4308cdbcf5a3ea2ddaf5ce7ae4a9e13767457e9f4b16f0fbbc0",
-      "original_bytes_preserved": true
-    },
-    {
-      "file": "full-operational-review-final56.md",
-      "original_private_path": "/Users/heinthura/.codex/taskdesk-evidence/2026-10-06/p0-strict-cutover-prep/full-operational-review-final56.md",
-      "sha256": "13b8555103cf6ec5540e8dce419bfd07dadd8f614556768a8d82b9db94768a4b",
-      "original_bytes_preserved": true
-    },
-    {
-      "file": "profile-attribution-e3ac0459-sol-review.md",
-      "original_private_path": "/Users/heinthura/.codex/taskdesk-evidence/2026-10-06/p0-strict-cutover-prep/profile-attribution-e3ac0459-sol-review.md",
-      "sha256": "8da66f5aeb1af5e22ff11d72acf24692a94048d7adb8949c3a3cc1e5722f18c7",
-      "original_bytes_preserved": true
-    },
-    {
-      "file": "luna-a-d74731de.md",
-      "original_private_path": "/Users/heinthura/.codex/taskdesk-evidence/2026-10-06/bulk-integration/luna-a-d74731de.md",
-      "sha256": "e8e7ea1f9ba00c36aef023d33c044bfa37057cb4b71369df3afba5b7deae1b8c",
-      "original_bytes_preserved": true
-    },
-    {
-      "file": "luna-b-d74731de.md",
-      "original_private_path": "/Users/heinthura/.codex/taskdesk-evidence/2026-10-06/bulk-integration/luna-b-d74731de.md",
-      "sha256": "4e9b53d6bcd8073824d833d8fbfb26c0d42a21202a29678a6dd52894e440d9c8",
-      "original_bytes_preserved": true
-    },
-    {
-      "file": "luna-c-d74731de.md",
-      "original_private_path": "/Users/heinthura/.codex/taskdesk-evidence/2026-10-06/bulk-integration/luna-c-d74731de.md",
-      "sha256": "b8cbec00900622f45671c31d045b40ce2d16443ef8d31c714ed8a1d42cec965d",
-      "original_bytes_preserved": true
-    },
-    {
-      "file": "sol-f87b55f4.md",
-      "original_private_path": "/Users/heinthura/.codex/taskdesk-evidence/2026-10-06/bulk-integration/sol-f87b55f4.md",
-      "sha256": "724116a3576ffe33d60fc74c9da8c354e70901dd264f76c1b1b738c044709568",
-      "original_bytes_preserved": true
-    },
-    {
-      "file": "sol-bda2970d.md",
-      "original_private_path": "/Users/heinthura/.codex/taskdesk-evidence/2026-10-06/bulk-integration/sol-bda2970d.md",
-      "sha256": "c1d25230fd02ecec06df32b9c017de9061d170b235f10147b459a4d3c1d2f4c4",
-      "original_bytes_preserved": true
-    },
-    {
-      "file": "full-operational-review-final57.md",
-      "original_private_path": "/Users/heinthura/.codex/taskdesk-evidence/2026-10-06/p0-strict-cutover-prep/full-operational-review-final57.md",
-      "sha256": "6552a762a12ba238b48381f9440c00a92e6bb86ce2107aae830eb5492f7e9368",
-      "original_bytes_preserved": true
-    },
-    {
-      "file": "full-operational-review-final59.md",
-      "original_private_path": "/Users/heinthura/.codex/taskdesk-evidence/2026-10-06/p0-strict-cutover-prep/full-operational-review-final59.md",
-      "sha256": "c6f5d8425c91b9d13193f39a2a8185124493e86e17f6444b110cb1c5487939e7",
-      "original_bytes_preserved": true
-    },
-    {
-      "file": "75d2c97b-sol-review.md",
-      "original_private_path": "/Users/heinthura/.codex/taskdesk-evidence/2026-10-06/p0-native-profile-ordering/75d2c97b-sol-review.md",
-      "sha256": "573ef78e059d0746c698733a772dde6a8787e92eca79af0ca50e107f70cfb4af",
-      "original_bytes_preserved": true
-    },
-    {
-      "file": "full-operational-review-final61.md",
-      "original_private_path": "/Users/heinthura/.codex/taskdesk-evidence/2026-10-06/p0-strict-cutover-prep/full-operational-review-final61.md",
-      "sha256": "18947629cc6e6d54e27f735a48051da5957f47b7ffd3ec9a1ee9e7119d31d9b2",
-      "original_bytes_preserved": true
-    },
-    {
-      "file": "full-operational-review-final65.md",
-      "original_private_path": "/Users/heinthura/.codex/taskdesk-evidence/2026-10-06/p0-strict-cutover-prep/full-operational-review-final65.md",
-      "sha256": "d3a02b3c32411a8d32cc150293473ed5796af896361175f975631c2c89de3cb5",
-      "original_bytes_preserved": true
-    },
-    {
-      "file": "sol-73e3da95.md",
-      "original_private_path": "/Users/heinthura/.codex/taskdesk-evidence/2026-10-06/bulk-integration/sol-73e3da95.md",
-      "sha256": "0abddf51e79870e2408ef69274888345df6a669a1e1c5b71441aeaa059a922c0",
-      "original_bytes_preserved": true
-    },
-    {
-      "file": "pr590-luna-ui.md",
-      "original_private_path": "/Users/heinthura/.codex/taskdesk-evidence/2026-10-06/p0-budget-complete/pr590-luna-ui.md",
-      "sha256": "187fc45473a322d2f00ecdb78df3a68d0cc3fee7b41f89c355dcc8f7b93fc5ab",
-      "original_bytes_preserved": true
-    },
-    {
-      "file": "pr590-luna-loading.md",
-      "original_private_path": "/Users/heinthura/.codex/taskdesk-evidence/2026-10-06/p0-budget-complete/pr590-luna-loading.md",
-      "sha256": "88d2e3195625006e4787da8178fba61ddc4bad474128eafd27a38620f21eb90d",
-      "original_bytes_preserved": true
-    },
-    {
-      "file": "pr590-luna-loading-80ad.md",
-      "original_private_path": "/Users/heinthura/.codex/taskdesk-evidence/2026-10-06/p0-budget-complete/pr590-luna-loading-80ad.md",
-      "sha256": "ede250cbd0bd54ccd8973ae992882bee988aebca359ea5718bfe2641149a53c2",
-      "original_bytes_preserved": true
-    },
-    {
-      "file": "full-operational-review-final67.md",
-      "original_private_path": "/Users/heinthura/.codex/taskdesk-evidence/2026-10-06/p0-strict-cutover-prep/full-operational-review-final67.md",
-      "sha256": "fb369e8a85a11f483277932fd3bbc4688a12ed4ce2a2edf7e5e125678a1a0188",
-      "original_bytes_preserved": true
-    },
-    {
-      "file": "full-operational-review-final69.md",
-      "original_private_path": "/Users/heinthura/.codex/taskdesk-evidence/2026-10-06/p0-strict-cutover-prep/full-operational-review-final69.md",
-      "sha256": "9191b7f89a9f890c75acad2142d6259eb631234f6146d3841fc7a1fd8117ff67",
-      "original_bytes_preserved": true
-    },
-    {
-      "file": "sol-6d5dc395.md",
-      "original_private_path": "/Users/heinthura/.codex/taskdesk-evidence/2026-10-06/bulk-integration/sol-6d5dc395.md",
-      "sha256": "7aabd8cb86c8b531fc231de6fb0b3aaed8ea58beb2503b48f265394eab855183",
-      "original_bytes_preserved": true
-    },
-    {
-      "file": "mfa-observability-timeout-investigation.md",
-      "original_private_path": "/Users/heinthura/.codex/taskdesk-evidence/2026-10-06/p0-budget-complete/mfa-observability-timeout-investigation.md",
-      "sha256": "a09c9027a59fb3814928b0889b3f1a0498145f74849182c31f9f96389d5912f6",
-      "original_bytes_preserved": true
-    },
-    {
-      "file": "sol-c993b525.md",
-      "original_private_path": "/Users/heinthura/.codex/taskdesk-evidence/2026-10-06/bulk-integration/sol-c993b525.md",
-      "sha256": "b828045efe6a362b237a042770fb95c5e735e0c2f4e15e5afd81df1385198e5f",
-      "original_bytes_preserved": true
-    },
-    {
-      "file": "pr590-sol-80ad.md",
-      "original_private_path": "/Users/heinthura/.codex/taskdesk-evidence/2026-10-06/p0-budget-complete/pr590-sol-80ad.md",
-      "sha256": "123fd41187c44749e56b2a8bb46728f825802e6f57d548b29d64526a6f031475",
-      "original_bytes_preserved": true
-    },
-    {
-      "file": "denial-contract-audit-08842235.md",
-      "original_private_path": "/Users/heinthura/.codex/taskdesk-evidence/2026-10-06/p0-strict-cutover-prep/denial-contract-audit-08842235.md",
-      "sha256": "244b8ef234f69aadb904b5ed7f69f92fd354998ce3e28e01d8dcf9f29670747e",
-      "original_bytes_preserved": true
-    },
-    {
-      "file": "luna-ui-85d17a59.md",
-      "original_private_path": "/Users/heinthura/.codex/taskdesk-evidence/2026-10-06/bulk-integration/luna-ui-85d17a59.md",
-      "sha256": "08086ddc67c949cc00822f9e905fd519913d3f97e5fa875485217a7bee913b6c",
-      "original_bytes_preserved": true
-    }
-  ],
-  "latest_copy_utc": "2026-10-06T15:39:05.483447+00:00"
+	"record_type": "original-independent-review-evidence-copy-v1",
+	"actual_copied_utc": "2026-10-06T13:15:14.175548+00:00",
+	"records": [
+		{
+			"file": "luna-a-7dd3cbb4.md",
+			"original_private_path": "/Users/heinthura/.codex/taskdesk-evidence/2026-10-06/bulk-integration/luna-a-7dd3cbb4.md",
+			"sha256": "e577b519fdda491e148f582248bff2a8131a69d427a3000c92d889529c7e0f56",
+			"original_bytes_preserved": true
+		},
+		{
+			"file": "luna-b-7dd3cbb4.md",
+			"original_private_path": "/Users/heinthura/.codex/taskdesk-evidence/2026-10-06/bulk-integration/luna-b-7dd3cbb4.md",
+			"sha256": "3bb51b84e9cd312f76dd0a4fad9fe6ba88d249bc58482e01acfecaca3dc5dd0a",
+			"original_bytes_preserved": true
+		},
+		{
+			"file": "luna-c-7dd3cbb4.md",
+			"original_private_path": "/Users/heinthura/.codex/taskdesk-evidence/2026-10-06/bulk-integration/luna-c-7dd3cbb4.md",
+			"sha256": "6186ffcb1427e4308cdbcf5a3ea2ddaf5ce7ae4a9e13767457e9f4b16f0fbbc0",
+			"original_bytes_preserved": true
+		},
+		{
+			"file": "full-operational-review-final56.md",
+			"original_private_path": "/Users/heinthura/.codex/taskdesk-evidence/2026-10-06/p0-strict-cutover-prep/full-operational-review-final56.md",
+			"sha256": "13b8555103cf6ec5540e8dce419bfd07dadd8f614556768a8d82b9db94768a4b",
+			"original_bytes_preserved": true
+		},
+		{
+			"file": "profile-attribution-e3ac0459-sol-review.md",
+			"original_private_path": "/Users/heinthura/.codex/taskdesk-evidence/2026-10-06/p0-strict-cutover-prep/profile-attribution-e3ac0459-sol-review.md",
+			"sha256": "8da66f5aeb1af5e22ff11d72acf24692a94048d7adb8949c3a3cc1e5722f18c7",
+			"original_bytes_preserved": true
+		},
+		{
+			"file": "luna-a-d74731de.md",
+			"original_private_path": "/Users/heinthura/.codex/taskdesk-evidence/2026-10-06/bulk-integration/luna-a-d74731de.md",
+			"sha256": "e8e7ea1f9ba00c36aef023d33c044bfa37057cb4b71369df3afba5b7deae1b8c",
+			"original_bytes_preserved": true
+		},
+		{
+			"file": "luna-b-d74731de.md",
+			"original_private_path": "/Users/heinthura/.codex/taskdesk-evidence/2026-10-06/bulk-integration/luna-b-d74731de.md",
+			"sha256": "4e9b53d6bcd8073824d833d8fbfb26c0d42a21202a29678a6dd52894e440d9c8",
+			"original_bytes_preserved": true
+		},
+		{
+			"file": "luna-c-d74731de.md",
+			"original_private_path": "/Users/heinthura/.codex/taskdesk-evidence/2026-10-06/bulk-integration/luna-c-d74731de.md",
+			"sha256": "b8cbec00900622f45671c31d045b40ce2d16443ef8d31c714ed8a1d42cec965d",
+			"original_bytes_preserved": true
+		},
+		{
+			"file": "sol-f87b55f4.md",
+			"original_private_path": "/Users/heinthura/.codex/taskdesk-evidence/2026-10-06/bulk-integration/sol-f87b55f4.md",
+			"sha256": "724116a3576ffe33d60fc74c9da8c354e70901dd264f76c1b1b738c044709568",
+			"original_bytes_preserved": true
+		},
+		{
+			"file": "sol-bda2970d.md",
+			"original_private_path": "/Users/heinthura/.codex/taskdesk-evidence/2026-10-06/bulk-integration/sol-bda2970d.md",
+			"sha256": "c1d25230fd02ecec06df32b9c017de9061d170b235f10147b459a4d3c1d2f4c4",
+			"original_bytes_preserved": true
+		},
+		{
+			"file": "full-operational-review-final57.md",
+			"original_private_path": "/Users/heinthura/.codex/taskdesk-evidence/2026-10-06/p0-strict-cutover-prep/full-operational-review-final57.md",
+			"sha256": "6552a762a12ba238b48381f9440c00a92e6bb86ce2107aae830eb5492f7e9368",
+			"original_bytes_preserved": true
+		},
+		{
+			"file": "full-operational-review-final59.md",
+			"original_private_path": "/Users/heinthura/.codex/taskdesk-evidence/2026-10-06/p0-strict-cutover-prep/full-operational-review-final59.md",
+			"sha256": "c6f5d8425c91b9d13193f39a2a8185124493e86e17f6444b110cb1c5487939e7",
+			"original_bytes_preserved": true
+		},
+		{
+			"file": "75d2c97b-sol-review.md",
+			"original_private_path": "/Users/heinthura/.codex/taskdesk-evidence/2026-10-06/p0-native-profile-ordering/75d2c97b-sol-review.md",
+			"sha256": "573ef78e059d0746c698733a772dde6a8787e92eca79af0ca50e107f70cfb4af",
+			"original_bytes_preserved": true
+		},
+		{
+			"file": "full-operational-review-final61.md",
+			"original_private_path": "/Users/heinthura/.codex/taskdesk-evidence/2026-10-06/p0-strict-cutover-prep/full-operational-review-final61.md",
+			"sha256": "18947629cc6e6d54e27f735a48051da5957f47b7ffd3ec9a1ee9e7119d31d9b2",
+			"original_bytes_preserved": true
+		},
+		{
+			"file": "full-operational-review-final65.md",
+			"original_private_path": "/Users/heinthura/.codex/taskdesk-evidence/2026-10-06/p0-strict-cutover-prep/full-operational-review-final65.md",
+			"sha256": "d3a02b3c32411a8d32cc150293473ed5796af896361175f975631c2c89de3cb5",
+			"original_bytes_preserved": true
+		},
+		{
+			"file": "sol-73e3da95.md",
+			"original_private_path": "/Users/heinthura/.codex/taskdesk-evidence/2026-10-06/bulk-integration/sol-73e3da95.md",
+			"sha256": "0abddf51e79870e2408ef69274888345df6a669a1e1c5b71441aeaa059a922c0",
+			"original_bytes_preserved": true
+		},
+		{
+			"file": "pr590-luna-ui.md",
+			"original_private_path": "/Users/heinthura/.codex/taskdesk-evidence/2026-10-06/p0-budget-complete/pr590-luna-ui.md",
+			"sha256": "187fc45473a322d2f00ecdb78df3a68d0cc3fee7b41f89c355dcc8f7b93fc5ab",
+			"original_bytes_preserved": true
+		},
+		{
+			"file": "pr590-luna-loading.md",
+			"original_private_path": "/Users/heinthura/.codex/taskdesk-evidence/2026-10-06/p0-budget-complete/pr590-luna-loading.md",
+			"sha256": "88d2e3195625006e4787da8178fba61ddc4bad474128eafd27a38620f21eb90d",
+			"original_bytes_preserved": true
+		},
+		{
+			"file": "pr590-luna-loading-80ad.md",
+			"original_private_path": "/Users/heinthura/.codex/taskdesk-evidence/2026-10-06/p0-budget-complete/pr590-luna-loading-80ad.md",
+			"sha256": "ede250cbd0bd54ccd8973ae992882bee988aebca359ea5718bfe2641149a53c2",
+			"original_bytes_preserved": true
+		},
+		{
+			"file": "full-operational-review-final67.md",
+			"original_private_path": "/Users/heinthura/.codex/taskdesk-evidence/2026-10-06/p0-strict-cutover-prep/full-operational-review-final67.md",
+			"sha256": "fb369e8a85a11f483277932fd3bbc4688a12ed4ce2a2edf7e5e125678a1a0188",
+			"original_bytes_preserved": true
+		},
+		{
+			"file": "full-operational-review-final69.md",
+			"original_private_path": "/Users/heinthura/.codex/taskdesk-evidence/2026-10-06/p0-strict-cutover-prep/full-operational-review-final69.md",
+			"sha256": "9191b7f89a9f890c75acad2142d6259eb631234f6146d3841fc7a1fd8117ff67",
+			"original_bytes_preserved": true
+		},
+		{
+			"file": "sol-6d5dc395.md",
+			"original_private_path": "/Users/heinthura/.codex/taskdesk-evidence/2026-10-06/bulk-integration/sol-6d5dc395.md",
+			"sha256": "7aabd8cb86c8b531fc231de6fb0b3aaed8ea58beb2503b48f265394eab855183",
+			"original_bytes_preserved": true
+		},
+		{
+			"file": "mfa-observability-timeout-investigation.md",
+			"original_private_path": "/Users/heinthura/.codex/taskdesk-evidence/2026-10-06/p0-budget-complete/mfa-observability-timeout-investigation.md",
+			"sha256": "a09c9027a59fb3814928b0889b3f1a0498145f74849182c31f9f96389d5912f6",
+			"original_bytes_preserved": true
+		},
+		{
+			"file": "sol-c993b525.md",
+			"original_private_path": "/Users/heinthura/.codex/taskdesk-evidence/2026-10-06/bulk-integration/sol-c993b525.md",
+			"sha256": "b828045efe6a362b237a042770fb95c5e735e0c2f4e15e5afd81df1385198e5f",
+			"original_bytes_preserved": true
+		},
+		{
+			"file": "pr590-sol-80ad.md",
+			"original_private_path": "/Users/heinthura/.codex/taskdesk-evidence/2026-10-06/p0-budget-complete/pr590-sol-80ad.md",
+			"sha256": "123fd41187c44749e56b2a8bb46728f825802e6f57d548b29d64526a6f031475",
+			"original_bytes_preserved": true
+		},
+		{
+			"file": "denial-contract-audit-08842235.md",
+			"original_private_path": "/Users/heinthura/.codex/taskdesk-evidence/2026-10-06/p0-strict-cutover-prep/denial-contract-audit-08842235.md",
+			"sha256": "244b8ef234f69aadb904b5ed7f69f92fd354998ce3e28e01d8dcf9f29670747e",
+			"original_bytes_preserved": true
+		},
+		{
+			"file": "luna-ui-85d17a59.md",
+			"original_private_path": "/Users/heinthura/.codex/taskdesk-evidence/2026-10-06/bulk-integration/luna-ui-85d17a59.md",
+			"sha256": "08086ddc67c949cc00822f9e905fd519913d3f97e5fa875485217a7bee913b6c",
+			"original_bytes_preserved": true
+		}
+	],
+	"latest_copy_utc": "2026-10-06T15:39:05.483447+00:00"
 }
