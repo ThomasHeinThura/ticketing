@@ -68,4 +68,3 @@ Original bytes SHA-256: `3f8254b142ca3ba0c8ecc431fc32117447a6446a186f91915c7bbb3
 **Non-blocking:** GitHub's current check-run API for the merge commit aggregates check runs attached to earlier SHAs and therefore includes failures/skips; the PR #601 final status rollup is the appropriate source for the claim that all required contexts were green at merge. The record's “All18 latest required checks SUCCESS” is corroborated by that final rollup. The queue/status claim about the live #635 behavioral acceptance blockers is corroborated only as a dated checkpoint plus open PR state here; no runtime reproduction was in scope.
 
 No tests, builds, database, Docker, browser, or runtime work were run, as the reviewed change contains only historical/planning records. No source writes or remediation were performed.
-
