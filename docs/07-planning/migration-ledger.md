@@ -262,7 +262,7 @@ Allocated and generated from the current accepted schema after 0121. Journal idx
 `ad77f50c-137a-4055-8be7-62d22e641839`, chained from 0121 snapshot
 `e84c11cb-c53a-478b-9ce9-7971ca12b691`.
 SQL SHA-256: `bd628a99a8479f1e2051336487e2b48a9e1160d47a611687cbd77a62b11e357b`.
-Snapshot SHA-256: `a241b991a23fb84c4e91d5acac5b1253c48e871d526bcdbd9ccf5cfb7a60f492`.
+Snapshot SHA-256: `f994f16dee182854589ab6be35c26622bb62487b5b7c211998679f19008f1cd0`.
 Current journal SHA-256: `fe40ab48321db5d5d8e51e2e10b660e77101c4548bdd3d4a40395a48b837ce57`.
 The indexes cover pending workspace actions plus the two registered nullable-scope instance
 user-deactivation row forms, and a separate unsupported-null probe. This records generated
