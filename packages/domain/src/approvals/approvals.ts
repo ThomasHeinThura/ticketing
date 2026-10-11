@@ -43,6 +43,17 @@ import type {
 // ---------------------------------------------------------------------------
 
 /**
+ * Only `pending`, `approved` and `rejected` approvals count toward a gate (owner decision
+ * 2026-10-10). A `withdrawn` approval is ignored entirely, so withdrawing can never block
+ * a transition; an `expired` one never counts either (`AP-14`).
+ */
+const COUNTING_STATES: ReadonlySet<Approval["state"]> = new Set([
+  "pending",
+  "approved",
+  "rejected",
+]);
+
+/**
  * Every approval in `approvals` that counts toward `gate` — `AP-5`'s "Only approvals
  * whose `transition_id` names *that* transition count toward it; an approval raised
  * against a different transition, even the same `kind`, on the same work item never
@@ -63,6 +74,7 @@ export function approvalsMatchingGate(
   return approvals.filter(
     (a) =>
       a.transitionId === gate.transitionId &&
+      COUNTING_STATES.has(a.state) &&
       (gate.kind === undefined || a.kind === gate.kind),
   );
 }
@@ -277,17 +289,29 @@ export function evaluateApprovalDecision(input: ApprovalDecisionInput):
 export function evaluateApprovalWithdrawal(
   input: ApprovalWithdrawalInput,
 ): { ok: true } | { ok: false; reasons: ApprovalWithdrawalRefusalReason[] } {
+  const decision = evaluateApprovalWithdrawalDecision(input);
+  if (!decision.authorized || !decision.actionable) {
+    const reasons: ApprovalWithdrawalRefusalReason[] = [];
+    if (!decision.actionable && input.approval.state !== "pending") {
+      reasons.push("not_pending");
+    }
+    if (!decision.authorized) reasons.push("not_permitted");
+    return { ok: false, reasons };
+  }
+  return { ok: true };
+}
+
+/** Keeps actor authorization distinct from state actionability so callers can authorize
+ * before returning a terminal-state conflict without disclosing it to an unauthorized actor. */
+export function evaluateApprovalWithdrawalDecision(
+  input: ApprovalWithdrawalInput,
+): { authorized: boolean; actionable: boolean } {
   const { approval, actingPersonId, isInstanceAdmin } = input;
-  const reasons: ApprovalWithdrawalRefusalReason[] = [];
-
-  if (approval.state !== "pending") {
-    reasons.push("not_pending");
-  }
-  if (approval.requestedBy !== actingPersonId && !isInstanceAdmin) {
-    reasons.push("not_permitted");
-  }
-
-  return reasons.length === 0 ? { ok: true } : { ok: false, reasons };
+  const authorized = approval.requestedBy === actingPersonId || isInstanceAdmin;
+  return {
+    authorized,
+    actionable: authorized && approval.state === "pending",
+  };
 }
 
 // ---------------------------------------------------------------------------

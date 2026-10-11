@@ -15,6 +15,7 @@ import { cors } from "hono/cors";
 import { HTTPException } from "hono/http-exception";
 import { WebSocketServer } from "ws";
 import activity from "./activity";
+import approval from "./approval";
 import attachment from "./attachment";
 import audit from "./audit";
 import {
@@ -1373,6 +1374,7 @@ export function createApp(
   // `/work-items/{key}`), which `workItem`'s own routes already declare in full. See
   // `work-item/index.ts`'s file comment.
   const workItemApi = api.route("/", workItem);
+  const approvalApi = api.route("/", approval);
   const attachmentApi = api.route("/", attachment);
   const userApi = api.route("/user", user);
   const factorStatusApi = api.route("/me", factorStatus);
@@ -1666,6 +1668,7 @@ export function createApp(
     app,
     api,
     activityApi,
+    approvalApi,
     attachmentApi,
     auditApi,
     cannedResponseApi,
@@ -2043,6 +2046,7 @@ const createdApp = createApp();
 const {
   app,
   activityApi,
+  approvalApi,
   attachmentApi,
   auditApi,
   cannedResponseApi,
@@ -2124,6 +2128,7 @@ export type AppType =
   | typeof taskV2Api
   | typeof columnApi
   | typeof activityApi
+  | typeof approvalApi
   | typeof attachmentApi
   | typeof auditApi
   | typeof cannedResponseApi

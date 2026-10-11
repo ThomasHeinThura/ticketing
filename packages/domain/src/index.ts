@@ -3,12 +3,12 @@
  * clock read; see `docs/01-architecture/monorepo-layout.md` § Package boundaries.
  *
  * The service-calendars (#33), workflow-transitions (#31), audit-trail (#37), SLA
- * computation and hierarchy (#26) slices exist so far. Request types, intake, approvals
- * and the assignment rule engine each land in their own follow-on pull request, per the
- * P2 plan (`docs/07-planning/reviews/2026-09-05/` prep) — this barrel only re-exports
- * what is actually implemented, never a typed stub for a module that does not exist yet.
+ * computation, hierarchy (#26), request types, intake and approvals (#36) slices exist so
+ * far. This barrel only re-exports implemented modules, never a typed stub.
  */
 
+export * from "./approvals/approvals.js";
+export * from "./approvals/types.js";
 // #30's assign action consumes these two rules; named (not a star export) so a future
 // assignment/types star-export cannot make a colliding name ambiguous package-wide.
 export {

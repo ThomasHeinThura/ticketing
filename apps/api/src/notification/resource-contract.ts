@@ -12,6 +12,13 @@ const RESOURCE_EVENT_KINDS = {
     "sla.breached",
   ],
   comment: ["work_item.commented", "work_item.mentioned"],
+  approval: [
+    "approval.requested",
+    "approval.decided",
+    "approval.expiring",
+    "approval.expired",
+    "approval.withdrawn",
+  ],
   workspace: ["workspace.created"],
 } as const satisfies Record<string, readonly string[]>;
 

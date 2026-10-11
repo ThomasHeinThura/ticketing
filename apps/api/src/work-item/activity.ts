@@ -1,3 +1,4 @@
+import type { SQL } from "drizzle-orm";
 import type db from "../database";
 import { activityTable } from "../database/schema";
 
@@ -42,6 +43,8 @@ export type NewActivityInput = {
   payload?: unknown;
   workflowVersionId?: string | null;
   visibility?: ActivityVisibility;
+  /** Overrides the writer's application clock, e.g. with the database clock under a lock. */
+  createdAt?: Date | SQL;
 };
 
 // D1 (BLOCKING regression at 635fd29), PR #275's mandatory Opus 5.5 delta-confirmation
@@ -216,7 +219,7 @@ export async function recordWorkItemActivity(
         payload: input.payload ?? null,
         workflowVersionId: input.workflowVersionId ?? null,
         visibility: resolveVisibility(input),
-        createdAt: now,
+        createdAt: input.createdAt ?? now,
       })),
     )
     .returning({

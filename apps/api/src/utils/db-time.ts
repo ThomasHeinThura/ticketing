@@ -66,3 +66,15 @@ import { type SQL, sql } from "drizzle-orm";
 export function dbNowUtc(): SQL {
   return sql`(now() AT TIME ZONE 'UTC')`;
 }
+
+/**
+ * The database's wall clock at the moment of evaluation (`clock_timestamp()`), in the same
+ * UTC wall-clock convention as {@link dbNowUtc}. Unlike `now()` it is not fixed at transaction
+ * start, so it is the right stamp for two writes that must be ordered by *when they held a
+ * lock* (for example a row created after taking a work-item lock versus an activity row
+ * written under that same lock). Every writer reads the one database clock, so skew between
+ * API hosts cannot reorder them.
+ */
+export function dbClockUtc(): SQL {
+  return sql`(clock_timestamp() AT TIME ZONE 'UTC')`;
+}

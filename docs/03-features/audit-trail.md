@@ -243,6 +243,7 @@ them; a new audit-only action is added here first ([AGENTS.md](../../AGENTS.md) 
 | `audit.read` · `audit.exported` · `audit.purged` | `AU-13`; the purge audits itself |
 | `instance.restored` | A restore completed ([backup-and-restore.md](../05-operations/backup-and-restore.md)) |
 | `pending_action.viewed` | The one pending-action transition that is not an event (`PA-11`) |
+| `approval.closed` | A pending approval was closed because a run of its transition consumed approvals ([approvals.md](approvals.md) `AP-5`, owner decision 2026-10-10); not a domain event, because no `approval.*` event fits (`approval.expired` means a time-out) |
 
 ## Permissions
 

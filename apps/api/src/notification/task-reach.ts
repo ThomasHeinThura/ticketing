@@ -55,7 +55,7 @@ function storedTaskRead(
 }
 
 /** Current TaskDesk project reach for a legacy task recipient. */
-function projectReachPredicate(userId: string) {
+export function projectReachPredicate(userId: string) {
   const projectMembership = exists(
     db
       .select({ id: schema.membershipTable.id })

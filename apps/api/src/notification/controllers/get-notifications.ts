@@ -7,6 +7,7 @@ import {
   workspaceTable,
 } from "../../database/schema";
 import { isCurrentInstanceAdmin } from "../../instance/observability/audit-failure-notifier";
+import { approvalNotificationReadable } from "../approval-reach";
 import { reachableTaskNotificationPredicate } from "../task-reach";
 
 async function getNotifications(
@@ -39,6 +40,7 @@ async function getNotifications(
     .where(
       and(
         visibleToUser,
+        approvalNotificationReadable(userId),
         or(
           isNull(notificationTable.resourceType),
           ne(notificationTable.resourceType, "task"),

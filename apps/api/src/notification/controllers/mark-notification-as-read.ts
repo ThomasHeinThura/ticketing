@@ -3,6 +3,7 @@ import { HTTPException } from "hono/http-exception";
 import db from "../../database";
 import { notificationTable } from "../../database/schema";
 import { isCurrentInstanceAdmin } from "../../instance/observability/audit-failure-notifier";
+import { approvalNotificationReadable } from "../approval-reach";
 import { reachableTaskNotificationPredicate } from "../task-reach";
 
 async function markNotificationAsRead(id: string, userId: string) {
@@ -26,6 +27,7 @@ async function markNotificationAsRead(id: string, userId: string) {
       and(
         eq(notificationTable.id, id),
         eq(notificationTable.userId, userId),
+        approvalNotificationReadable(userId),
         or(
           isNull(notificationTable.resourceType),
           ne(notificationTable.resourceType, "task"),
