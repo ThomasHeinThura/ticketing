@@ -1283,3 +1283,320 @@ At my GitHub read, PR #635 still pointed to c9a32be7 and accepted base a96e6a4c.
 **Reviewed head:** `c9a32be7ed02f7fd3d6ec0c2d2bc49a7d0ccc4b9`
 
 This is the exact source binding of the independent GPT-6 Luna and GPT-6 Sol reports transported above. The original reports remain verbatim. This line supplies the required parser syntax; it adds no review verdict or acceptance claim.
+
+
+## Acceptance repairs and current accepted-main composition
+
+**Reviewed head:** `4886f6de5525623433facc491f807d2d585efd10`
+
+Conductor transport provenance: acceptance reviewers A/B/C, typecheck delta reviewer C and composition reviewer were fresh independent contexts explicitly selected with model="gpt-6-luna", fork_turns="none". The separate acceptance and current security delta reviewer was freshly selected with model="gpt-6-sol", fork_turns="none" and remained independent through its later current-delta pass. Generic exposed runtime identity remains as each report states; selectors are observable dispatch provenance, not invented provider identities. Original findings remain with the independently authored closure reports. No author edited a verdict. The original C report includes its own factual baseline addendum. Original product722/c9 verdicts remain above and keep their source scope. Current source4886 normally composes accepted638/c80; the fresh full current security delta follows ordinary clearance. Review-note publication only may reuse these source verdicts when exact per-commit additive own-note rules are verified. Runtime and hosted gates remain separate.
+
+## Authentic acceptance/current report: pr635-acceptance-luna-a.md
+
+SHA-256 of original report bytes: `37419365ee59938ce996aa7acd6c22008f46ad01d1d510df9fae242ed946ef67`.
+
+# PR 635 acceptance delta — independent ordinary review A
+
+- **Reviewed head:** `76040bc03d8543768bc7de8e6aac5c441aabbe65`
+- **Comparison base:** `cfbce7c16d035ce9d6a62447f076189d0f426f73`
+- **Role:** Fresh independent ordinary reviewer A; did not author, direct, or remediate this candidate.
+- **Model provenance:** The serving context identifies as **GPT-6**. The exact model selector/version is not exposed in this review runtime, so I cannot truthfully label this as GPT-6 Luna, GPT-6 Sol, or another selector. This report retains the generic serving identity.
+- **Scope:** New PR 635 acceptance fixtures/specs, fixture process supervision and locking, test command/config/typecheck, and `apps/site/content/approvals.md`. I did not re-review the previously covered approvals product implementation/provider path.
+- **Source binding:** Verified all 15 paths in the preserved source manifest against the exact candidate tree: all 15 SHA-256 values match, and the manifest path set equals the 15-file base-to-head diff.
+- **Read-only review:** No files in the repository or PR were changed. No builds, dependency installation, database/runtime work, or tests were run.
+- **Preserved evidence inspected:** `pr635-approvals-e2e-run-3.log` records all 4 Playwright specs passing in 36.1s after API/web builds; `pr635-fixture-lifecycle-vitest-3.log` records 1 file / 8 tests passing. I also reviewed the handoff and retained failure dispositions. These are author-run results, not runs performed by this reviewer.
+
+## Findings
+
+### [P2] Self-approval test does not grant the requester decision authority
+
+`tests/e2e/helpers/approval-database-fixture.ts` grants the requester project capabilities for reading, creating, transitioning, and requesting CAB approval, but omits `approval:decide`. `tests/e2e/requester-cannot-self-approve.spec.ts` then expects the requester’s decision to return 403. That result can be explained by the missing decision capability alone, so this test does not exercise the spec’s stronger rule that a requester is refused even when their role includes `approval:decide`. Add that capability to this requester’s fixture role, then retain the 403 assertion. The named self-approval acceptance test currently passes without establishing its claimed control.
+
+### [P2] Gate assertions accept unrelated 422 responses
+
+In `tests/e2e/approvals-primary-journey.spec.ts`, both the pre-decision blocked transition and the spent-approval replay assert only status 422 (`expectStatus`). The approvals spec requires the blocked transition to report why it is waiting for the named approver (AP-17), and the journey claims the approval is single-use (AP-5). A generic validation or workflow error would satisfy either status-only assertion. Parse and assert the API’s gate-specific response/reason for the pending-approval case, and assert the replay is rejected because the earlier matching approval has been consumed. Keep the successful transition and reverse-transition assertions.
+
+## Non-blocking observations
+
+- The customer CAB test establishes a real customer session on the portal host, asserts the intended host-boundary 404, and checks that no approval was created through a staff requester session.
+- The approver email test checks both absence of the email and presence of the display name in the list response.
+- The supervisor design keeps the lock under the separate supervisor process, records owned child PIDs, waits for child closure before lock removal, and fails closed on malformed/legacy lock data. The retained lifecycle suite includes live-child stale-lock and worker-death cleanup cases; those passed in the preserved run.
+- The API/site documentation explicitly says the approvals screens remain held for S9, consistent with this API-only acceptance delta.
+
+## Verdict
+
+**BLOCKED** on the two acceptance-test findings above. The preserved runs are green, but the self-approval test can pass without the self-approval invariant, and the primary journey can pass on unrelated 422 errors. No product-source defect was found or assessed in this bounded review. Re-review the changed acceptance assertions at the exact revised head.
+
+## Authentic acceptance/current report: pr635-acceptance-luna-a-closure.md
+
+SHA-256 of original report bytes: `ef16f7143f937857e8881d6901138f3bc6c9ea1f9fa8d49695e17f4ce2cf2597`.
+
+# PR 635 acceptance findings — independent closing delta review A
+
+- **Reviewed head:** `66ac856c199ccd0d6213e2756087855f5fa3b48d`
+- **Comparison base:** `dcdf9fa530bc30509a503a8eaed52654f19b99cb`
+- **Dispatch selector:** `gpt-6-luna` (as supplied by the conductor for this review dispatch).
+- **Serving identity:** This runtime surfaces only generic **GPT-6**; it does not expose the exact selector/version. The selector above is dispatch provenance, not an independently visible runtime label.
+- **Independence:** Fresh closing context; I did not author, direct, or remediate the five-file delta. My prior review is preserved at `pr635-acceptance-luna-a.md`; this report covers only the exact new delta and disposition of its two findings.
+- **Scope:** 5 files changed from the accepted parent: the primary E2E journey, approval DB fixture, approval runtime type, self-approval E2E spec, and seeder state. I inspected the exact Git diff and candidate file contents.
+- **Source binding:** Independently hashed all 84 paths in `pr635-acceptance-source-manifest-66ac856c.sha256` against the candidate tree. Every hash matched head `66ac856c199ccd0d6213e2756087855f5fa3b48d`.
+- **Read-only:** No source, PR, queue, or merge changes. No tests, builds, database operations, browser runs, or containers were run.
+
+## Original finding disposition
+
+1. **Requester self-approval test lacked decision authority — CLOSED.** The fixture now grants the requester both `approval:decide` and `approval:decide_cab`, and enrolls that requester as a member of the seeded CAB team. The self-request case targets the requester's real `personId`, expects HTTP 422, and asserts the `self_approval` reason. Separately, after requesting to the different named approver, the requester attempts a decision; the test expects HTTP 403 and asserts both `not_named_approver` and `self_approval`. This now exercises the request-time self-approval guard and the decision-time named-approver/self-approval controls with the relevant capabilities and CAB membership present.
+
+2. **Primary gate checks accepted generic 422s — CLOSED.** Before the approver decides, the test now parses the 422 body and requires an `approval` blocker with `reasonCode: approval.pending` plus pending details naming the seeded approver and carrying request/expiry timestamps. After that sole approval has been approved and used to transition the item, the item is reversed and a second transition is attempted without creating another approval. The replay must again report the approval blocker and has zero `pendingApprovals`. No direct/legacy approval row is seeded by this journey; the only candidate approval is created through the real request endpoint and its ID is followed through the primary flow. These assertions distinguish the expected approval-gate outcomes from an unrelated generic 422.
+
+## Evidence inspected and verdict
+
+The preserved current-head run at `pr635-acceptance-runtime-dcdf9fa-run1.log` shows the scoped TypeScript check, API build, web build, and all four Playwright specs passing (33.7 seconds). The command is chained, so the completed Playwright run implies each preceding command completed successfully. The earlier lifecycle evidence remains the author-run 1-file / 8-test pass from `pr635-fixture-lifecycle-vitest-3.log`; the process-supervision code is unchanged in this five-file delta. I inspected these logs but did not execute their commands. I also ran `git diff --check` on the exact delta (clean) and the read-only source-manifest hash comparison (84/84 matched). I did not independently execute the scoped Biome command.
+
+**VERDICT: CLEARED — both findings from my original report are resolved in this exact delta. No new blocking or non-blocking finding in the bounded five-file change.** This is a closure review of those acceptance findings only; it is not approval of the full PR, product implementation, remaining fixture/concurrency risk, or stage/SIT acceptance.
+
+## Authentic acceptance/current report: pr635-acceptance-luna-b.md
+
+SHA-256 of original report bytes: `5b1be8932279ab2dd9c474cbc589fa7064d8042396452ebd4e4d690eb4b9de2b`.
+
+# PR #635 acceptance/E2E fixture integration — ordinary review B
+
+**Candidate SHA:** `66ac856c199ccd0d6213e2756087855f5fa3b48d`  
+**Comparison base:** `cfbce7c16d035ce9d6a62447f076189d0f426f73`  
+**Role:** Fresh independent ordinary reviewer B; I did not author, direct, or remediate this candidate and made no source edits.  
+**Model:** GPT-6 Luna (`gpt-6-luna` selector); the active runtime identifies as GPT-6 and exposes no more-specific build/version string to this context.  
+**Scope:** Acceptance/E2E integration delta, especially the real BetterAuth actors, approval fixture, child-process supervisor/lock ownership, and the AP-2/AP-5/AP-8/AP-17 and email-negative tests. This is not a review of the cumulative product slice or a stage/SIT acceptance claim.
+
+## Verdict
+
+**BLOCKED — one P2 concurrency finding** in the new shared metrics-listener supervisor. The four approval E2E scenarios are well targeted and the fixture exercises real seeded sessions against a disposable database and compiled API/web entries. However, stale-lock reclamation lost the exclusive reaper serialization present in the prior fixture implementation. Two concurrent invocations can both validate a dead lock; one can then unlink the other's newly acquired lock and enter the critical section at the same time.
+
+## Finding
+
+**[P2] Serialize stale-lock reclamation before unlinking** — `tests/e2e/helpers/child-process-supervisor.mjs:86-100`
+
+The stale-owner checks (owner dead, no recorded live children, matching token and inode) are individually sensible, but the check-and-unlink sequence is not atomic across competing supervisors. If two waiters read and validate the same dead lock, waiter A can unlink it and create its fresh lock after waiter B's final `statSync`; B can then execute `unlinkSync(lockPath)` against A's new lock. Both may subsequently create/hold a lock and start fixture children concurrently. This defeats the lock's serialization guarantee and can make one or both disposable apps fail while binding the shared metrics port. The previous implementation used an exclusive `.reap` lock around stale-owner validation and unlinking; the new supervisor no longer has an equivalent guard. Restore a single-reclaimer protocol (or another atomic lock primitive) and cover two simultaneous reclaimers of one seeded stale lock.
+
+## Checks and evidence
+
+- Read repository `AGENTS.md`, `docs/04-engineering/agent-workflow.md`, `docs/04-engineering/definition-of-done.md`, `docs/07-planning/active-mission.md`, the approvals feature spec (including AP-2, AP-5, AP-8, AP-17 and named negative tests), the changed E2E/runtime fixture files, and the relevant approval route/transition response code.
+- Reviewed the exact diff from `cfbce7c16d035ce9d6a62447f076189d0f426f73` to `66ac856c199ccd0d6213e2756087855f5fa3b48d`. Confirmed the new runner uses real BetterAuth sign-in/session and CSRF, seeds a change-type item and CAB membership, asserts a pending-approval gate, successful decision, single-use replay, explicit customer portal identity/404, self-approval reason codes, and absence of email from listed approval JSON. No new package dependency or environment-variable registration was introduced in the reviewed E2E delta.
+- I ran no tests, builds, database/container/browser commands, or repository writes. I inspected the author-provided run log at `/Users/heinthura/.codex/taskdesk-evidence/2026-10-11/pr635-acceptance-runtime-dcdf9fa-run1.log`: it records strict E2E typecheck, API build, both web builds, and all four Playwright scenarios passing (4/4, 33.7 seconds). That is author evidence, not a reproduction by this reviewer. The source-manifest file names exact SHA `66ac856c199ccd0d6213e2756087855f5fa3b48d`.
+- `git diff --check` reports whitespace warnings in carried review/history records elsewhere in the cumulative diff; I did not treat those unrelated record-format warnings as acceptance-fixture findings.
+
+## Residuals
+
+This verdict addresses only this exact acceptance/fixture delta. It does not replace the fresh ordinary C review, required security review, the retained product-review coverage, hosted checks on the exact candidate, browser screen evidence, or integrated SIT acceptance. No review clearance is granted until the lock race is corrected and the changed exact head is reviewed at the required tiers.
+
+## Authentic acceptance/current report: pr635-acceptance-luna-b-closure.md
+
+SHA-256 of original report bytes: `32b3d6c33b505f74a375689af27d370dfba2097e69dc25d123c344f73f2c43be`.
+
+# PR #635 stale-reaper finding — ordinary review B delta closure
+
+**Candidate SHA:** `3bc901db5678a521d89deca799107187682299fc`  
+**Reviewed delta:** `66ac856c199ccd0d6213e2756087855f5fa3b48d..3bc901db5678a521d89deca799107187682299fc`  
+**Role:** Independent ordinary reviewer B, rechecking the author's remediation of my P2 finding. I did not author, direct, or remediate the change and made no repository edits.  
+**Model:** GPT-6 Luna (`gpt-6-luna` selector); this context's runtime identifies as GPT-6 and does not expose a more specific build/version string.  
+**Scope:** The stale-lock reaper correction, its interprocess regression, and whether that correction invalidates the already-inspected acceptance fixture evidence. This closes only the finding in my original report; it does not review or clear the cumulative approvals product slice.
+
+## Verdict
+
+**CLEAR — the P2 stale-lock reclamation race is structurally closed on this exact head.** Reclaimers now serialize through an exclusive `${lockPath}.reap` file, then recheck the recorded owner PID, child PIDs, main-lock token and inode before unlinking. Reaper cleanup checks that the pathname still names the inode held by its descriptor. Competing contenders fail closed while the reaper lock exists; a replacement live owner is retained.
+
+The regression starts a real contender process against a seeded dead-owner lock while a separate process holds the reaper lock. It asserts the contender cannot enter and the stale lock remains; it then replaces the main lock with a live owner while the reaper is held, releases the reaper, and asserts the contender still waits and leaves that replacement owner intact. The retained semantic-mutant run removes the reaper guard and fails at the stale-lock-preservation assertion with `ENOENT`, demonstrating that the regression detects the reported defect class.
+
+## Checks and evidence
+
+- Confirmed the checkout is exactly `3bc901db5678a521d89deca799107187682299fc`, with no reported worktree changes. The delta is limited to `tests/e2e/helpers/child-process-supervisor.mjs`, `tests/api/mfa-csrf-app-fixture.test.ts`, and the fixture's lock-contention callback in `tests/e2e/helpers/mfa-csrf-app-fixture.ts`.
+- Re-read the reaper implementation and regression source. The stale owner fixture uses an actual exited process PID; the contender and controlled reaper are independent child processes. Malformed and legacy locks still fail closed because a valid lock requires a child-PID list. Reaper lock cleanup is guarded by descriptor/path inode identity.
+- Independently checked all 84 file hashes in `/Users/heinthura/.codex/taskdesk-evidence/2026-10-11/pr635-acceptance-source-manifest-3bc901db.sha256`; all match the current checkout, and its first line matches this exact HEAD.
+- I ran no tests, builds, database/container/browser commands, or repository writes. I inspected the author-provided logs: `pr635-supervisor-mfa-fixture-run2.log` reports all 9 fixture tests passing; `pr635-stale-reaper-semantic-mutant-red.log` records the unguarded-mutant failure; `pr635-supervisor-acceptance-runtime-66ac856-run2.log` reports the strict approvals typecheck/API build/web builds and 4/4 Playwright scenarios passing in 35.3 seconds. The filename references the committed parent SHA, but the accompanying before/after acceptance source manifests are identical for the duration of that run, and their three changed-file hashes match the current 3bc source manifest. This binds the run to the reviewed remediation working-tree contents, though the git HEAD recorded by that run was still the parent. I also inspected the retained initial run1 log: strict typecheck failed on three `ChildProcess` stdin typing errors; the later run2 command completed typecheck, builds and the four scenarios. These are author results, not my reproductions.
+
+## Residuals and boundary
+
+This closes my one stale-reaper finding at `3bc901db5678a521d89deca799107187682299fc`. It is not a fresh full-fixture or full-product review and does not establish exact-head CI, the separate ordinary C verdict, required security review, merge readiness, feature acceptance, or SIT acceptance. No additional blocker was found in this delta.
+
+## Authentic acceptance/current report: pr635-acceptance-luna-c.md
+
+SHA-256 of original report bytes: `95969003b1bad076e8669b19655997ee0af46a4318f645445c608611bf3f2a8e`.
+
+# PR 635 acceptance fixtures — independent ordinary review C
+
+- **Reviewed head:** `3bc901db5678a521d89deca799107187682299fc`
+- **Comparison base:** `cfbce7c16d035ce9d6a62447f076189d0f426f73` (accepted `origin/main` baseline for this candidate)
+- **Role:** Fresh independent ordinary reviewer C; I did not author, direct, or remediate the candidate.
+- **Dispatch/model provenance:** Assigned as GPT-6 Luna (`gpt-6-luna`) by the conductor. The serving runtime identifies as GPT-6 and does not expose a more specific selector/version; I retain the dispatch selector as provenance rather than claiming an independently surfaced model label.
+- **Scope:** Cumulative PR #635 acceptance/E2E fixture, child-process supervisor and lock protocol, approval documentation and package scripts. I did not re-review the retained product implementation/review scope.
+- **Source binding:** Checkout HEAD is the exact reviewed SHA. Verified all 84 file entries in `pr635-acceptance-source-manifest-3bc901db.sha256`; every listed SHA-256 matches the checkout. Its first line binds the manifest to the reviewed SHA. The accepted-main comparison base resolves to the stated commit.
+- **Read-only limits:** No repository changes, builds, tests, containers, browser or database runs. I inspected the supplied runtime and semantic-mutant logs as author-provided evidence, not as reproductions. `git diff --check` on the acceptance paths is clean.
+
+## Finding
+
+### [P2] A killed stale-lock reaper leaves a permanent unreclaimable lock
+
+`tests/e2e/helpers/child-process-supervisor.mjs:68-79, 103-110`
+
+The new `${lockPath}.reap` file serializes stale-main-lock reclamation, but reclamation only handles `EEXIST` by returning `false`. It never reads the reaper PID/token or reclaims a reaper whose process has exited. If a process is killed after creating the `.reap` file and before its `finally` removes it (for example SIGKILL, process crash, or host interruption), the original main lock remains stale and every future supervisor fails to acquire the fixture lock. Each waiter sees the stale main owner, fails `openSync(reaperPath, "wx")` with `EEXIST`, waits until its timeout (180 seconds by default), then fails. Since the default lock path is stable in the system temp directory, this can strand later approval/MFA suites after an interrupted run.
+
+The `finally` protects normal returns and caught errors, but cannot run on process death. The current regression holds a live reaper and tests that a contender waits and preserves a replacement owner; it does not cover a dead reaper file or recovery after reaper-process death. Make the reaper guard recoverable after its owner exits while retaining exclusive revalidation, or use a lock primitive whose ownership is released by the OS; add a regression that kills a reaper while it holds the guard and proves a later contender recovers safely.
+
+## Other scope reviewed
+
+- The earlier A findings are closed in the current E2E source: the requester fixture has `approval:decide` and CAB membership, and the self-approval assertions require the expected reason codes. The primary journey checks the specific `approval.pending` blocker, named approver and pending details; it verifies successful decision/transition and no remaining pending approvals on single-use replay.
+- The other journeys authenticate real staff/customer identities through BetterAuth, use CSRF for staff writes, assert the customer portal host's 404 boundary, and check email omission/display-name presence. The docs accurately state that the UI is held for S9, and the new package script runs strict fixture typecheck, API/web builds and the scoped Playwright config without introducing a dependency.
+- The B remediation serializes normal stale-owner reclaimers with an exclusive reaper path and rechecks PID, child liveness, token and main-lock inode before unlinking. The supplied semantic-mutant evidence supports the normal contention regression, but does not address the process-death case above.
+
+## Verdict
+
+**BLOCKED** on the P2 stale-reaper recovery finding. No other blocking or non-blocking acceptance-fixture finding was identified in the bounded review. The author-provided logs are consistent with passing runs, but this review did not execute them. This verdict covers only the stated acceptance/fixture scope; it is not clearance of the retained approvals product review, the required security review, exact-head hosted checks, browser evidence or integrated SIT acceptance.
+
+## Factual correction — comparison base versus accepted main
+
+The comparison base `cfbce7c16d035ce9d6a62447f076189d0f426f73` named in this report is the PR 635 cumulative comparison/review-note publication baseline; it is **not** accepted `origin/main`. At the time of the closing review, accepted `origin/main` is `f8afcbccf1bf741989aa3671939beef3bb1d1e97`. The cumulative comparison `cfbce7…` to candidate remains the scope requested for this acceptance review. This addendum corrects the earlier wording without changing the original review verdict or findings.
+
+## Authentic acceptance/current report: pr635-acceptance-luna-c-closure.md
+
+SHA-256 of original report bytes: `f8ce6ab602dc3e9d2758838fbcae8110784d8bd82d1a6b74d0925ba75e88e5f8`.
+
+# PR 635 acceptance fixture — independent closing review C
+
+- **Reviewed head:** `7d2acd33d1ffe3c902b45c246d83c5de2a4bb641`
+- **Reviewed delta:** `3bc901db5678a521d89deca799107187682299fc..7d2acd33d1ffe3c902b45c246d83c5de2a4bb641`
+- **Role:** Fresh independent closing review of my original C P2 finding. I did not author, direct or remediate this delta and made no repository edits.
+- **Model provenance:** Dispatched as GPT-6 Luna (`gpt-6-luna`). The serving runtime identifies as GPT-6 but does not expose a more specific selector/version; dispatch selector is retained as provenance.
+- **Scope:** Structural stale-reaper recovery, exclusive metrics-port lease, guard publication and corresponding tests. I also verified the previous report's baseline wording and appended a factual correction there.
+- **Source binding:** Checkout HEAD is the requested exact SHA and `git status` is clean. Delta changes only `tests/api/mfa-csrf-app-fixture.test.ts` and `tests/e2e/helpers/child-process-supervisor.mjs`. Current SHA-256 values are `e4725115861bd2aee073f5f25104438af42ed4b4bdeb0840f707425b2155b146` and `19806eb80584767cbf1d21cd2e31aacd30099b3c0ba02cca22634de0436d7c78`, respectively; both equal the before/after retained run manifests for the working tree used by the author run. The run manifests label Git HEAD as parent `3bc901…`, so the tests/builds are working-tree evidence, source-bound to the exact two committed file hashes rather than a commit SHA recorded by the test command.
+- **Read-only limits:** No tests, builds, database/container/browser commands or repository writes were run. I inspected source, retained logs, source hashes and runtime inventory evidence.
+
+## Original finding disposition
+
+**C P2 — orphaned `.reap` guard after reaper death: CLOSED.** The recovery path now first acquires an OS-exclusive listener on the API's actual metrics port `0.0.0.0:9464`. This serializes the new helper's stale-reaper recovery and is released by the OS if the helper process dies. While holding the lease, it checks the old guard's PID/children and file identity, fails closed for malformed or live guards, writes a private temporary record, publishes the guard atomically with a hard link, then revalidates the stale main owner PID, child PIDs, token and inode before unlinking. The lease closes in `finally` before fixture startup/API children proceed. If the port is already occupied, it leaves the stale main and guard files unchanged.
+
+The added recovery regression creates a stale main lock and a separate controlled process that owns port 9464 and a valid `.reap` guard, kills that process, and then uses the actual supervisor helper as the recovery contender. The contender proves it can obtain the lease, remove the dead guard, reclaim the stale main lock, release the lease before its callback, and clean both files. A separate occupied-port test verifies fail-closed preservation of both lock files. The earlier live-reaper replacement-owner regression remains present. The semantic mutant record fails the killed-reaper test under the old helper. The killed process in that test is a controlled fixture process holding the valid guard; this evidence does not claim to kill the actual helper during its own critical section.
+
+## Evidence inspected
+
+- `pr635-supervisor-portlease-unit-run2.log` reports 1 file / 11 tests passing.
+- `pr635-acceptance-c-portlease-approvals-run1.log` reports strict fixture typecheck, API build, agent/portal builds and all four approval Playwright journeys passing (4/4, 32.6 seconds).
+- `pr635-acceptance-c-portlease-old-helper-mutant-red.log` records the expected recovery-test failure when run against the old helper implementation.
+- The before/after run manifests have identical SHA-256 values for both changed source files, and these match the current candidate. Runtime-before/after evidence shows no leftover listener on 9464 or default lock/guard files after the retained run; no assertion is made about the unrelated containers listed in that inventory.
+- Source inspection confirms the real metrics listener uses port 9464 and binds `0.0.0.0`, matching the lease endpoint.
+
+## Verdict
+
+**CLEAR — my original C P2 finding is structurally closed at exact head `7d2acd33d1ffe3c902b45c246d83c5de2a4bb641`.** No new blocker was found in the bounded closing delta. This closes only the original C fixture/reaper finding; it is not a fresh full review of the entire PR/product slice, required security review, exact-head hosted checks or integrated SIT acceptance.
+
+## Authentic acceptance/current report: pr635-acceptance-security-sol.md
+
+SHA-256 of original report bytes: `112544b4e508f80f3873bb531e5e64fe0477652d304c9809b5b498c752c1b9e4`.
+
+# PR #635 acceptance delta — independent security review
+
+**Reviewed head:** `7d2acd33d1ffe3c902b45c246d83c5de2a4bb641`
+
+- **Delta:** `cfbce7c16d035ce9d6a62447f076189d0f426f73..7d2acd33d1ffe3c902b45c246d83c5de2a4bb641`, limited in this review to the acceptance fixture, runtime tests, package script, and approvals user page. The prior product security review at `c9a32be7ed02f7fd3d6ec0c2d2bc49a7d0ccc4b9` remains a separate record; this note does not relabel or re-execute it.
+- **Independence:** Fresh reviewer context. I did not author, direct, or remediate this candidate and made no source or PR edits.
+- **Model provenance:** The conductor requested a full GPT-6 Sol security review. This serving context exposes generic GPT-6 identity rather than an exact selector/version; I cannot independently attest to a more specific runtime identity.
+- **Method:** Read-only source and exact-diff inspection. I read the repository's AGENTS/workflow/CLAUDE/DoD/CI instructions, the current status and decision-log headers, approvals spec, prior independent closures, current candidate source, retained test logs and hash manifests. I did not run a database, container, browser, mutation, or heavy test command; the private heavy-runtime window belongs to another lane.
+
+## Security assessment
+
+**CLEAR WITH NON-BLOCKING LIMITS** for the new acceptance/security-scope delta at this exact head. I found no new authorization bypass, cross-tenant fixture contamination, secret exposure to public test output, or unreviewed expansion of the approval route authority.
+
+The four Playwright specs use real BetterAuth sign-in and session storage against the built API on a disposable PostgreSQL database. Staff state-changing calls fetch the session CSRF token. The primary journey follows one API-created CAB approval from pending gate through the independent named approver's decision and successful transition, then verifies a repeat transition is blocked with no pending approval details. The self-approval negative test gives the requester decision capability and CAB membership, so its 422 request-time and 403 decision-time assertions reach the self/named-approver rules. The customer case checks a real customer-portal session, a 404 on the staff-only CAB route, and an empty staff-visible approval list afterward. The email case checks the actual serialized list response for absence of the approver's email. These are APIRequestContext journeys; they do not establish that an approvals browser screen was opened or used.
+
+The fixture keeps generated database credentials, session storage state, and child stdout/stderr in a private mode-0700 directory with mode-0600 files. The shared metrics lock is mode 0600. The supervisor holds ownership across worker death and records children; it refuses to reclaim a dead supervisor's lock while recorded children remain alive. For stale-guard recovery it first binds the API's actual `0.0.0.0:9464` listener endpoint as an OS lease, checks guard PID/child liveness, publishes a private reaper record atomically, and rechecks owner PID, token, children, and file identity before unlinking. A live or unknown old guard, malformed lock, live child, or occupied port fails closed. The lease is released before API startup. This matches the metrics listener's source-defined address/port.
+
+The new regression executes a controlled guard-owning process that binds 9464, kills that process, and proves the actual supervisor can reclaim the dead guard and start a fixture callback after releasing the lease. Another test proves an occupied port preserves both stale files. The earlier replacement-owner and worker-death tests remain. The controlled guard process is **not** a kill of the actual supervisor during its critical section; I do not treat the regression as that stronger proof. An abrupt supervisor death during an in-place main-lock rewrite can leave a malformed record that future runs intentionally refuse to reclaim. That is a fail-closed availability limit requiring manual cleanup, not an approval authority bypass. The child-spawn-to-lock-record interval is also not exhaustively stress-tested here; the evidence establishes the tested worker-death and recorded-child behavior, not a universal supervisor-crash guarantee.
+
+## Evidence and limits
+
+- Candidate checkout was clean at the reviewed 40-character SHA. I independently hashed `child-process-supervisor.mjs` (`e4725115861bd2aee073f5f25104438af42ed4b4bdeb0840f707425b2155b146`) and `mfa-csrf-app-fixture.test.ts` (`19806eb80584767cbf1d21cd2e31aacd30099b3c0ba02cca22634de0436d7c78`). Both match the before/after manifests for the retained author run. Those manifests record parent HEAD `3bc901db5678a521d89deca799107187682299fc` with the two files dirty; the matching bytes bind the run to the committed candidate files without pretending the command itself ran at HEAD `7d2acd33`.
+- `pr635-supervisor-portlease-unit-run2.log`: one file, 11/11 tests passed. `pr635-acceptance-c-portlease-approvals-run1.log`: strict fixture TypeScript check, API and both web builds, then 4/4 Playwright journeys passed. `pr635-acceptance-c-portlease-old-helper-mutant-red.log`: the killed-guard regression failed against the old helper as intended. These are inspected author-run receipts, not tests I executed.
+- Prior independent ordinary acceptance A/B/C closure records and the earlier product ordinary/Sol reviews were read as separate evidence. This review does not replace the required exact-head CI, composed-main image/boot check, PR body/DoD reconciliation, or stage finalizer.
+- At my GitHub read, PR #635 pointed to the reviewed exact SHA, but `pull request template + security review` and `gate checkers + red probes` were failing, and integration, unit, visual, and performance were still in progress. **This verdict is not merge clearance.**
+
+No source edits or runtime workloads were performed for this review.
+
+## Authentic acceptance/current report: pr635-typecheck-delta-luna.md
+
+SHA-256 of original report bytes: `552bedf71fe953f45377e7af86232e639bc4036324784871f3a872949b457692`.
+
+# PR 635 API typecheck wiring — strong ordinary review
+
+- **Reviewed head:** `ee4c0042a3fd654cbf07194ef55efd8bcddaaea7`
+- **Comparison base:** `7d2acd33d1ffe3c902b45c246d83c5de2a4bb641`
+- **Role:** Independent strong ordinary reviewer of this bounded typecheck-wiring delta. I did not author, direct or remediate these two-file changes. My prior C review concerned a separate fixture/reaper finding; this review is limited to the new typecheck wiring.
+- **Model provenance:** Dispatched as GPT-6 Luna (`gpt-6-luna`). This runtime identifies as GPT-6 and does not surface a more specific model selector/version; the dispatch selector is recorded as provenance.
+- **Scope:** API package typecheck script, approvals TypeScript project inclusion, real program coverage and cache/input implications. No fixture implementation changed in this delta.
+- **Source binding:** HEAD is the requested exact SHA and worktree is clean. The delta has exactly two files: `apps/api/package.json` SHA-256 `6e74a82249942b0e794db69bdd474d599efe5be47e9349c369989159c5632e61`; `tests/e2e/tsconfig.approvals.json` SHA-256 `25e5acf22445192a7567ba60e3f8465eff4e25c2eedfe2cff95cfb2d0b06547f`.
+- **Read-only limits:** No repository edits or test/build/runtime execution. I inspected the exact diff, the compiler-coverage checker and turbo inputs, and the preserved run logs. The prior fixture/E2E runtime evidence remains unchanged and is not re-reviewed here.
+
+## Review
+
+The change closes the actual checker failure without a coverage exemption. `apps/api`'s `typecheck` script now invokes `tsc --noEmit -p ../../tests/e2e/tsconfig.approvals.json` after its existing four projects. That project already explicitly includes the approvals E2E specs, fixture helpers and seeders; the delta adds `playwright.approvals.config.ts`, the final missing TypeScript file identified by the first after-fix failure. It adds no dependency and changes no production code.
+
+The typecheck coverage guard derives TypeScript-bearing test trees from disk, records the projects actually passed by the API typecheck script, and asks TypeScript for each project's actual program files. Its exemption map is empty. The retained progression is consistent with the patch: the original 7d hosted gate failed because only 1/10 files under `tests/e2e` were in an invoked program; the first inclusion fix raised this to 9/10 and identified the config omission; the final coverage run reports all seven coverage assertions passing, including complete program coverage and no lingering exemption. The retained API script log contains the five-project command but no explicit process exit status in its four captured lines, so I treat the dispatch's claimed pass as author-reported rather than independent proof.
+
+Turbo's generic `typecheck` task includes `$TURBO_DEFAULT$`, `../../tests/**/*.ts` and `../../tests/**/*.json`. That covers both the external E2E sources and `tsconfig.approvals.json`, so source or project-config changes invalidate the cached API typecheck. The existing typecheck-coverage regression also verifies that out-of-package TypeScript includes have matching Turbo input globs and that the task declares the test trees as inputs.
+
+`git diff --check` is clean. No new finding in this bounded delta.
+
+## Verdict
+
+**CLEAR — this exact typecheck-wiring delta correctly adds the approvals E2E project to the actually invoked API compiler programs, and preserves cache invalidation and no-exemption coverage.** This is not a fresh review of the cumulative acceptance fixture/product slice, the required GPT-6 Sol security pass, exact-head hosted checks, the outstanding #638 PostgreSQL gate, or merge readiness. No runtime rerun was needed for this two-file typecheck-only delta.
+
+## Authentic acceptance/current report: pr635-composition-luna.md
+
+SHA-256 of original report bytes: `8a93250c11c2d8495ab1d89cf6f74c0efe55f91a5c62290afcae63690c73c0b8`.
+
+# PR #635 — independent ordinary composition review
+
+- **Reviewed candidate:** `4886f6de5525623433facc491f807d2d585efd10`
+- **Parents:** `ee4c0042a3fd654cbf07194ef55efd8bcddaaea7` and `c80f46d049c5ec1902183578bc56705259c63dff`
+- **Composition comparison:** approvals branch through `7d2acd33d1ffe3c902b45c246d83c5de2a4bb641` / `ee4c0042`, composed with accepted-main `c80f46d0`.
+- **Reviewer:** fresh independent ordinary-review context; no authorship, direction, or remediation of this candidate.
+- **Verdict: CLEAR for exact-source composition.** No blocking or non-blocking source-composition finding.
+
+## Scope and review
+
+Read the repository `AGENTS.md`, `docs/04-engineering/agent-workflow.md`, `CLAUDE.md`, the current status/checkpoint at the candidate, and the realtime authority contract. Inspected the exact target tree and its parent graph with Git. Reviewed the API entrypoint and WebSocket adapter changes from accepted main, their interaction with the composed approvals code/typecheck inclusion, the new legacy-authorization helper, and the changed unit/integration regressions. This was source-only; no repository files were edited.
+
+The composed approvals-side delta is limited to adding `playwright.approvals.config.ts` to the approvals TypeScript project and invoking that project from the API typecheck script. The accepted-main source change wires fresh per-socket authorization callbacks into both legacy routes and serializes/fails closed delivery through a bounded helper. On user sockets, each check reauthenticates the captured request credential, reapplies local-factor enrollment, and requires the same user and agent portal. On project sockets, it additionally requires the same user/portal and rereads a non-deleted project with current workspace reach, including the original API-key identity where applicable. The helper orders checks, drops queued events after denial/disconnect, terminates on lookup failure or queue overflow, and closes idle connections at the 60-second refresh floor.
+
+The `workspaceId` invalidation path intentionally rechecks all legacy sockets when no user or project selector is supplied; the original ordinary reports’ initial workspace-only concern is explicitly withdrawn in same-SHA addenda. The reviewed contract requires private invalidation-triggered reauthorization, and the implementation’s conservative fan-out satisfies that condition. The retained tests include ordering, disconnect, denial, lookup failure, queue overflow, idle refresh, and real Node-server credential/reach cases. Existing approval feature changes do not alter this shared WebSocket path; the sole overlap is the API package typecheck wiring described above.
+
+## Evidence limits
+
+I did not run tests, builds, typecheck, databases, containers, image checks, or browser verification, per the bounded source-review assignment. The source tree available in the shared checkout was at a different local HEAD with unrelated dirty files; all candidate inspection used `git show`/`git diff` against the exact reviewed commit and its recorded parents. Existing fixture acceptance and full-Sol evidence were not re-run or independently re-attested here. This verdict covers source composition only and does not claim current runtime/image acceptance, merge readiness, or stage completion.
+
+## Authentic acceptance/current report: pr635-current-security-sol.md
+
+SHA-256 of original report bytes: `7c32bfaae7dad5e30228537f8a91c61a7a45ecd8b155e782aa525fd0ca382666`.
+
+# PR #635 current-head security delta review
+
+**Reviewed head:** `4886f6de5525623433facc491f807d2d585efd10`
+
+- **Parents:** approvals-side `ee4c0042a3fd654cbf07194ef55efd8bcddaaea7`; accepted-main `c80f46d049c5ec1902183578bc56705259c63dff` (#638 legacy WebSocket reauthorization, with #639 checkpoint).
+- **Earlier reviewed head:** `7d2acd33d1ffe3c902b45c246d83c5de2a4bb641` for the full acceptance fixture/security pass. The earlier product review at `c9a32be7ed02f7fd3d6ec0c2d2bc49a7d0ccc4b9` and accepted-main #638 reviews remain separate records. This review covers the intervening typecheck/gate delta and their joint production composition at the merge head.
+- **Independence/provenance:** Fresh independent security reviewer; I did not author, direct, remediate, or merge the candidate. The conductor requested a full GPT-6 Sol delta pass. This serving context exposes generic GPT-6 identity, not an independently attested exact selector/version.
+- **Method:** Read-only exact-tree, parent-diff, source, gate-regression, log, and prior-review inspection. No source or PR edits, child agents, tests, typecheck, browser, database, container, or image workload by this reviewer.
+
+## Verdict
+
+**CLEAR for the exact-head security delta and source composition.** No new blocking or non-blocking authority or gate-semantic finding. This verdict does not assert image/boot acceptance, current-head required CI, PR body completeness, or merge readiness.
+
+## What changed and what was checked
+
+The approvals branch's `7d2acd33..ee4c0042` executable delta is exactly two files. `apps/api/package.json` now runs the existing approvals TypeScript project as the fifth `tsc --noEmit -p` command in the API `typecheck` script. `tests/e2e/tsconfig.approvals.json` adds the approvals Playwright config, previously the last missing TypeScript file under that tree. There is no skipped file, exemption, dependency change, or change to runtime auth behavior. The generic Turbo typecheck inputs include `$TURBO_DEFAULT$`, `../../tests/**/*.ts`, and `../../tests/**/*.json`, so the external source and project config affect the API typecheck cache key. The existing checker discovers compiler programs from the invoked script rather than accepting a dormant tsconfig. The retained sequence shows the original 1/10 E2E coverage failure, a first 9/10 pass that exposed the config omission, and a final 7/7 full coverage-checker pass. `pr635-typecheck-api-script-run1.log` prints the five-project command but does not itself record a process exit status; I do not promote that short log to proof of a completed full typecheck. The strong independent ordinary delta reviewer also recorded a clear verdict at `ee4c0042`.
+
+The `ee4c0042..4886f6de` merge imports accepted-main #638 source. Against the accepted-main parent, `apps/api/src/index.ts` adds only the approvals import, root API mount, returned router, and `AppType` member. Against the approvals parent, its runtime changes are the already-reviewed WebSocket callbacks. The exact merged entrypoint retains both sets of edits without a changed handler order at their overlap: the approvals router is mounted before the WebSocket routes, and the WebSocket callbacks still call `authenticateApiRequest`, enforce local factor enrollment, compare the current user and agent portal, and reread project reach before delivery. The new helper serializes authorization checks per socket, prevents delivery after denial/disposal, caps queued checks, and fails closed on lookup errors. The accepted-main code and its full security review remain attributable to #638; this review checked the joint tree, not a fresh re-review of the already accepted feature.
+
+The merged `apps/api/src/ws/**` files are byte-identical to accepted main; the approvals-side `apps/api/src/approval/**` is unchanged by this merge. I found no approval-route interaction with the WebSocket maps or invalidation selectors. The already-reviewed #638 `workspaceId`-only invalidation behavior and its stated test residual carry over unchanged. The merged API mount does not create an alternate approval route without policy; the existing approval router and policy entries are the same code reviewed at the earlier product head. The merged `AppType` includes `approvalApi`, preserving the typed client surface.
+
+## Source binding and evidence limits
+
+Checkout HEAD was the exact reviewed 40-character SHA and clean when inspected. SHA-256 values of current source bytes: `apps/api/package.json` `6e74a82249942b0e794db69bdd474d599efe5be47e9349c369989159c5632e61`; `tests/e2e/tsconfig.approvals.json` `25e5acf22445192a7567ba60e3f8465eff4e25c2eedfe2cff95cfb2d0b06547f`; `apps/api/src/index.ts` `905835a8b54c3e3497f8c0ed2cfdcd31eb6d313d5addeecb567b7f7a1bc83027`; `apps/api/src/ws/index.ts` `46bc22675369d5dec51ba2830e7a205f3ce02a27b3734462eca793309c695c29`; and `apps/api/src/ws/legacy-connection-authorization.ts` `c3e994b44c2d7379733ab24b350ebc7dd784d720fca0e6a03e7437cdf5ca4cfc`. The exact candidate parent graph and both directional diffs were inspected. The independent ordinary composition reviewer also reported CLEAR at this exact head; its retained report is `pr635-composition-luna.md`.
+
+The accepted #638 security-review note records its separate full security pass at `453fbacb56710aed361cef89dce09c8fbc90ba76` and current accepted-main delta review. `git diff --check ee4c0042..4886f6de` reports Markdown trailing spaces only in that imported historical review note; I found no source-code whitespace issue in the merge. At my GitHub read, PR #635 still advertised `ee4c0042` rather than local `4886f6de`, with its template/security check failing and several other checks in progress. Thus no hosted status on the local merge head was observable in this review. The conductor owns publication, required current-head checks, and image/boot proof.
