@@ -1,3 +1,23 @@
+### 2026-10-11 · Owner decision: narrow D5 intake flag-read exception
+
+**Decision:** Thomas permits the canonical intake integration to use the existing registry
+and resolver to read `feature.intake` for its intake routes, repository operations (including
+transactional submission revalidation), and submission-attachment access checks. The existing
+default remains OFF. This extends the 2026-10-10 approvals-only flag-read exception solely to
+these existing intake readers; it does not authorize other features to read flag tables.
+
+**Held scope:** required-file mappings, custom-field mappings and God Mode catalogue assignment
+remain held. The alternate historical `request-type/*` runtime remains held. No new flag,
+schema, capability, environment variable or feature is authorized by this decision. Preserve
+accepted migrations and their later tenant and approval anchors during selective composition.
+
+**Source:** Thomas, direct reply in Codex chat `01a12921-4863-7c42-ac59-1822c69b88cd`
+on 2026-10-11: “Yes—record the intake exception”. The question explicitly named the existing
+readers, default OFF and retained holds. Private source inspection is preparation, not acceptance.
+**Recorded by:** Codex delivery conductor (platform identity GPT-6; exact variant not exposed).
+
+---
+
 ### 2026-10-11 · Technical disposition: historical status prose secret-scan false positive
 
 **Technical rationale, not a new Thomas decision or gate waiver:** #601's required gitleaks
