@@ -211,8 +211,13 @@ columns, so they are a design change rather than a constraint-only change.
 
 ## Next allocation
 
-Next index is **0122** (0121 is reserved for the #569 pending-action expiry index, which is
-re-cut after 0120). Its journal `when` must be strictly greater than **1791628167040**
+**Conductor reservation, 2026-10-11:** 0121 is reserved for S6’s required operation-bound
+admin-suspension step-up binding, following 0120. The #569 pending-action expiry-index re-cut
+moves to **0122**. This carries forward the outgoing conductor allocation recovered in the
+2026-10-10 handoff and Thomas’s directly received takeover instructions. Neither slot is
+accepted applied migration history until its owning candidate passes the normal gates.
+
+Next index after those reservations is **0123**. Its journal `when` must be strictly greater than **1791628167040**
 (idx 120) and than any `when` any environment may already have applied. Generate it with
 `drizzle-kit generate` so its snapshot chains from `0120_snapshot.json`. The conductor
 allocates each index to exactly one owner.

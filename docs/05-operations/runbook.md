@@ -604,8 +604,10 @@ exact registered policy-source paths. The default is empty, so no source is enfo
 source is evaluated after that route's existing middleware and request validation, immediately
 before its terminal handler. Existing authorization checks continue to run; a registry denial
 prevents the handler from starting. The setting is read and validated during API module startup.
-An unknown, duplicate, blank, reordered, or malformed source refuses startup rather than
-silently selecting a weaker policy set.
+An unknown, duplicate, blank, whitespace-padded, or malformed source refuses startup.
+The parser requires every other registered source before task and requires task last; it does
+not reject arbitrary permutations of non-task sources. Operators use the registry-owned path
+order for the staged rollout described below.
 
 For a development or UAT rollout, first establish the documented three real, issue-free UTC
 date buckets for the exact source and representative behaviors being considered (see **Policy
@@ -617,6 +619,8 @@ and restart the API. Add eligible non-task sources in registry-owned path order;
 registered set must precede `apps/api/src/task/policy.ts`, which is required to be last. Do not
 enable the task router until the role re-key prerequisite is verified and every preceding
 source is already enforced. This staged setting does not authorize production promotion.
+
+**Bounded public-config criterion (Thomas, 2026-10-08):** public `GET /api/config` is mounted before the authenticated shadow guard and cannot produce that guard's tally. For this route/source only, use exact-source public-response/source-ordering proof and the independently reviewed disposable config-source strict selection/health/rollback proof as the substitute; preserve actual dated public observations rather than inventing shadow rows. Every other source keeps the shadow/coverage/date requirements above. Config precedes task; the task re-key and last-source prerequisites remain. See the [bounded decision](../07-planning/decision-log.md#2026-10-08--bounded-public-config-cutover-criterion-substitute). This does not authorize persistent or production cutover by itself.
 
 **Rollback:** remove the affected exact source path from the setting and restart the API. If
 the task path is selected, remove it first before removing any preceding source. Setting the
