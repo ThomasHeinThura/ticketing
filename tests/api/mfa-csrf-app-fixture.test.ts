@@ -75,8 +75,12 @@ describe("isolated MFA app fixture helpers", () => {
     const path = await lockPath();
     let childOutput = "";
     let signalChildWaiting!: () => void;
+    let signalChildContended!: () => void;
     const childWaiting = new Promise<void>((resolveWaiting) => {
       signalChildWaiting = resolveWaiting;
+    });
+    const childContended = new Promise<void>((resolveContended) => {
+      signalChildContended = resolveContended;
     });
     const helperUrl = new URL(
       "../e2e/helpers/mfa-csrf-app-fixture.ts",
@@ -85,44 +89,79 @@ describe("isolated MFA app fixture helpers", () => {
     const childScript = [
       `import { withExclusiveMetricsListener } from ${JSON.stringify(helperUrl)};`,
       `const lockPath = ${JSON.stringify(path)};`,
+      "let reportedContention = false;",
       'process.stdout.write("MFA_LOCK_CHILD_WAITING\\n");',
       "await withExclusiveMetricsListener(async () => {",
       '  process.stdout.write("MFA_LOCK_CHILD_ENTERED\\n");',
-      "}, { lockPath, waitMs: 10_000, pollMs: 5 });",
+      "}, {",
+      "  lockPath,",
+      "  waitMs: 10_000,",
+      "  pollMs: 5,",
+      "  onLockContention: () => {",
+      "    if (reportedContention) return;",
+      "    reportedContention = true;",
+      '    process.stdout.write("MFA_LOCK_CHILD_CONTENDED\\n");',
+      "  },",
+      "});",
     ].join("\n");
-    const child = spawn(
-      process.execPath,
-      ["--experimental-strip-types", "--input-type=module", "-e", childScript],
-      { stdio: ["ignore", "pipe", "pipe"] },
-    );
-    child.stdout.on("data", (chunk: Buffer) => {
-      childOutput += chunk.toString();
-      if (childOutput.includes("MFA_LOCK_CHILD_WAITING")) signalChildWaiting();
-    });
-    const childDone = new Promise<void>((resolveChild, rejectChild) => {
-      child.once("error", rejectChild);
-      child.once("close", (code) => {
-        if (code === 0) resolveChild();
-        else rejectChild(new Error(`Lock child exited with code ${code}.`));
-      });
-    });
+    let child: ReturnType<typeof spawn> | undefined;
+    let childDone: Promise<void> | undefined;
+    let childError: Error | undefined;
 
     try {
       await withExclusiveMetricsListener(
         async () => {
+          const spawnedChild = spawn(
+            process.execPath,
+            [
+              "--experimental-strip-types",
+              "--input-type=module",
+              "-e",
+              childScript,
+            ],
+            { stdio: ["ignore", "pipe", "pipe"] },
+          );
+          child = spawnedChild;
+          if (!spawnedChild.stdout)
+            throw new Error("Lock child stdout was not piped.");
+          spawnedChild.stdout.on("data", (chunk: Buffer) => {
+            childOutput += chunk.toString();
+            if (childOutput.includes("MFA_LOCK_CHILD_WAITING"))
+              signalChildWaiting();
+            if (childOutput.includes("MFA_LOCK_CHILD_CONTENDED"))
+              signalChildContended();
+          });
+          childDone = new Promise<void>((resolveChild) => {
+            spawnedChild.once("error", (error) => {
+              childError = error;
+              resolveChild();
+            });
+            spawnedChild.once("close", (code) => {
+              if (code !== 0)
+                childError = new Error(`Lock child exited with code ${code}.`);
+              resolveChild();
+            });
+          });
           await childWaiting;
+          await childContended;
           await new Promise((resolveWait) => setTimeout(resolveWait, 40));
           expect(childOutput).not.toContain("MFA_LOCK_CHILD_ENTERED");
         },
         { lockPath: path, waitMs: 10_000, pollMs: 5 },
       );
       await childDone;
+      if (childError) throw childError;
       expect(childOutput).toContain("MFA_LOCK_CHILD_ENTERED");
     } finally {
-      if (child.exitCode === null && child.signalCode === null) {
-        child.kill("SIGKILL");
+      const runningChild = child;
+      if (
+        runningChild &&
+        runningChild.exitCode === null &&
+        runningChild.signalCode === null
+      ) {
+        runningChild.kill("SIGKILL");
         await new Promise<void>((resolveExit) =>
-          child.once("close", () => resolveExit()),
+          runningChild.once("close", () => resolveExit()),
         );
       }
     }
