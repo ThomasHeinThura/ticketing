@@ -4,6 +4,9 @@ import {
   buildGeneratedRouteUrl,
   DEFAULT_WORK_ITEM_LIST_SEARCH,
   parseGeneratedRouteUrl,
+  parseIntakeSearch,
+  parsePortalCatalogueSearch,
+  parseRequestTypeEditorSearch,
   parseWorkItemListSearch,
   parseWorkItemListSearchFromQueryString,
   routes,
@@ -105,7 +108,12 @@ describe("G5 route metadata", () => {
     expect(generatedRouteMetadata.agent).toContain(
       "/agent/projects/$projectKey/work",
     );
-    expect(generatedRouteMetadata.portal).toEqual(["/"]);
+    expect(generatedRouteMetadata.agent).toContain(
+      "/agent/settings/request-types",
+    );
+    expect(generatedRouteMetadata.agent).toContain("/agent/triage");
+    expect(generatedRouteMetadata.portal).toContain("/catalogue");
+    expect(generatedRouteMetadata.portal).toContain("/submissions/$ref");
   });
 
   it("round-trips the portal root URL through its route helper", () => {
@@ -149,5 +157,37 @@ describe("routes.workItemDetail", () => {
     expect(routes.workItemDetail.build({ key: "a/b" })).toBe(
       "/agent/work-items/a%2Fb",
     );
+  });
+});
+
+describe("canonical intake URLs", () => {
+  it("round-trips queue filters and selected submission through the URL", () => {
+    const url = routes.intakeQueue.build({
+      state: "clarifying",
+      ref: "SUB-12",
+    });
+    const search = Object.fromEntries(new URLSearchParams(url.split("?")[1]));
+    const parsed = parseIntakeSearch(search);
+    expect(parsed).toEqual({ state: "clarifying", ref: "SUB-12" });
+    expect(routes.intakeQueue.build(parsed)).toBe(url);
+  });
+
+  it("round-trips request type selection through the editor URL", () => {
+    const url = routes.requestTypes.build({ requestTypeId: "type/with space" });
+    const search = Object.fromEntries(new URLSearchParams(url.split("?")[1]));
+    const parsed = parseRequestTypeEditorSearch(search);
+    expect(parsed).toEqual({ requestTypeId: "type/with space" });
+    expect(routes.requestTypes.build(parsed)).toBe(url);
+  });
+
+  it("round-trips catalogue search and selected type through its URL", () => {
+    const url = routes.portalCatalogue.build({
+      q: "hardware help",
+      key: "printer",
+    });
+    const search = Object.fromEntries(new URLSearchParams(url.split("?")[1]));
+    const parsed = parsePortalCatalogueSearch(search);
+    expect(parsed).toEqual({ q: "hardware help", key: "printer" });
+    expect(routes.portalCatalogue.build(parsed)).toBe(url);
   });
 });

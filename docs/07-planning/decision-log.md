@@ -1,3 +1,15 @@
+### 2026-10-12 · Owner approves the internal web-domain workspace dependency
+
+**Decision:** Thomas approves adding the existing internal `@taskdesk/domain` workspace package as a dependency of `apps/web`, using `workspace:*` and the frozen-lockfile importer link `link:../../packages/domain`. Intake portal and editor validation/visibility must call the canonical domain implementation rather than duplicate its semantics.
+
+**Limits:** This approval covers this one internal workspace dependency only. It adds no third-party package, authority, feature, route, schema, migration or environment setting; it does not resolve required-file mappings, custom-field mappings or God Mode catalogue assignment. Intake remains default-off under the previously scoped D5 exception. This dependency decision is not feature, independent-review, browser, CI, release or stage acceptance.
+
+**Exact answer:** “Approve the internal workspace dependency”. The concrete package/lock importer patch and exact answer are preserved in `/Users/heinthura/.codex/taskdesk-evidence/2026-10-11/intake-web-domain-dependency-proposal.patch` and `/Users/heinthura/.codex/taskdesk-evidence/2026-10-11/intake-web-domain-dependency-owner-decision.json` (proposal SHA-256 `0225f18e8c0d1cfaf85d4ef7a8aa665be9b007cea4d774ade3fa555b8fea8141`).
+
+**Recorded by:** Codex delivery conductor, 2026-10-12.
+
+---
+
 ### 2026-10-11 · Owner approves bounded boot-refusal test deadlines
 
 **Decision:** Thomas approves only the proposed production-import child deadline of10 seconds and outer test deadline of11 seconds for the built-entrypoint boot-refusal regression. The fresh-build deadline remains5 seconds, and every existing rejection assertion remains: natural nonzero exit, no timeout/signal/error, exact PolicyEnforcementConfigError, and no successful-import marker. No production runtime budget changes.

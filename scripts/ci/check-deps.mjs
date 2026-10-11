@@ -91,7 +91,12 @@ const FLAGGED_MESSAGES = {
 const WORKSPACE_EDGES = new Map([
   [
     "@taskdesk/web",
-    new Set(["@taskdesk/ui", "@taskdesk/libs", "@taskdesk/permissions"]),
+    new Set([
+      "@taskdesk/ui",
+      "@taskdesk/libs",
+      "@taskdesk/permissions",
+      "@taskdesk/domain",
+    ]),
   ],
   [
     "@taskdesk/api",

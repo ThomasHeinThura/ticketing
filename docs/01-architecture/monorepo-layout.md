@@ -88,7 +88,7 @@ There is **no `apps/mcp`**: the MCP server lives in `packages/mcp` and is mounte
 The dependency graph is acyclic and enforced.
 
 ```
-apps/web  ──► packages/ui, libs, permissions   (locales come from the root i18n/)
+apps/web  ──► packages/ui, libs, permissions, domain   (locales come from the root i18n/)
 apps/api  ──► packages/domain, permissions, plugins-contracts, email, libs, importers
 packages/domain        ──► (nothing — pure)
 packages/permissions   ──► (nothing — pure; kaneo's depends on better-auth, which is why it is
@@ -104,7 +104,7 @@ packages/typescript-config ──► (nothing — shared compiler configuration)
 
 | Workspace | Permitted workspace edges |
 | --- | --- |
-| `@taskdesk/web` | `@taskdesk/ui`, `@taskdesk/libs`, `@taskdesk/permissions` |
+| `@taskdesk/web` | `@taskdesk/ui`, `@taskdesk/libs`, `@taskdesk/permissions`, `@taskdesk/domain` |
 | `@taskdesk/api` | `@taskdesk/domain`, `@taskdesk/permissions`, `@taskdesk/plugins-contracts`, `@taskdesk/email`, `@taskdesk/libs`, `@taskdesk/importers` |
 | `@taskdesk/domain` | (none) |
 | `@taskdesk/permissions` | (none) |
