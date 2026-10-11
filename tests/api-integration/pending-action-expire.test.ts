@@ -137,6 +137,163 @@ async function waitForBlockedBy(blockerPid: number) {
 }
 
 describe("PA-8 pending-action expiry", () => {
+  it("expires the registered instance user-deactivation action with audit and outbox scope", async () => {
+    const { person, workspace } = await makeRequester();
+    const row = await db
+      .insert(schema.pendingActionTable)
+      .values({
+        ...pendingActionValues(
+          new Date(Date.now() - 60_000),
+          person.id,
+          workspace,
+          null,
+        ),
+        action: "user_deactivation",
+        targetType: "person",
+        targetIds: [person.id],
+        targetVersions: [1],
+        payload: { action: "user_deactivation" },
+        routeKey: "POST /api/instance/users/{id}/deactivation-requests",
+        workspaceId: null,
+        projectId: null,
+        organisationId: null,
+        confirmationRequired: "typed_name_step_up",
+      })
+      .returning();
+    const action = requireRow(row, "instance deactivation pending action");
+
+    const result = await expirePendingActions();
+    expect(result.expired).toBe(1);
+    const [stored] = await db
+      .select({ state: schema.pendingActionTable.state })
+      .from(schema.pendingActionTable)
+      .where(eq(schema.pendingActionTable.id, action.id));
+    expect(stored?.state).toBe("expired");
+    const [event] = await db
+      .select()
+      .from(schema.outboxTable)
+      .where(
+        and(
+          eq(schema.outboxTable.kind, "pending_action.decided"),
+          sql`${schema.outboxTable.payload}->'payload'->>'pendingActionId' = ${action.id}`,
+        ),
+      );
+    expect(event?.workspaceId).toBeNull();
+    expect(event?.payload).toMatchObject({
+      scope: {},
+      payload: { outcome: "expired" },
+    });
+    const audit = await db
+      .select()
+      .from(schema.auditLogTable)
+      .where(
+        and(
+          eq(schema.auditLogTable.action, "pending_action.decided"),
+          eq(schema.auditLogTable.entityId, action.id),
+        ),
+      );
+    expect(audit).toHaveLength(1);
+    expect(audit[0]?.workspaceId).toBeNull();
+  });
+
+  it("PA-8 expires the canonical instance user-deletion action with null scope", async () => {
+    const { person, workspace } = await makeRequester();
+    const targetUserId = `user-${randomUUID()}`;
+    const [targetUser] = await db
+      .insert(schema.userTable)
+      .values({
+        id: targetUserId,
+        name: "Canonical expiry target",
+        email: `${targetUserId}@example.test`,
+      })
+      .returning();
+    if (!targetUser) throw new Error("user fixture was not created");
+    await ensureStaffPersonForUser(targetUser.id);
+    const [targetPerson] = await db
+      .select()
+      .from(schema.personTable)
+      .where(eq(schema.personTable.userId, targetUser.id))
+      .limit(1);
+    if (!targetPerson) throw new Error("person fixture was not created");
+    const routeKey = "POST /api/instance/users/{id}/deactivate";
+    const row = requireRow(
+      await db
+        .insert(schema.pendingActionTable)
+        .values({
+          ...pendingActionValues(
+            new Date(Date.now() - 60_000),
+            person.id,
+            workspace,
+            null,
+          ),
+          action: "delete",
+          targetType: "user",
+          targetIds: [targetUser.id],
+          targetVersions: null,
+          payload: {
+            action: "delete",
+            route_key: routeKey,
+            target_type: "user",
+            target_ids: [targetUser.id],
+            workspace_id: null,
+            project_id: null,
+            organisation_id: null,
+            confirmation_required: "typed_name_step_up",
+          },
+          routeKey,
+          payloadSummary: { userId: targetUser.id },
+          workspaceId: null,
+          projectId: null,
+          organisationId: null,
+          confirmationRequired: "typed_name_step_up",
+        })
+        .returning(),
+      "canonical instance user-deletion action",
+    );
+
+    const result = await expirePendingActions();
+    expect(result).toMatchObject({ expired: 1, degraded: false });
+    expect(
+      await db
+        .select({ state: schema.pendingActionTable.state })
+        .from(schema.pendingActionTable)
+        .where(eq(schema.pendingActionTable.id, row.id)),
+    ).toEqual([{ state: "expired" }]);
+    expect(await decisions(row.id)).toHaveLength(1);
+    expect(await decisionAudits(row.id)).toHaveLength(1);
+    const [event] = await decisions(row.id);
+    expect(event?.workspaceId).toBeNull();
+    expect(event?.organisationId).toBeNull();
+  });
+
+  it("leaves unsupported nullable-scope action kinds pending and reports degradation", async () => {
+    const { person, workspace } = await makeRequester();
+    const action = requireRow(
+      await db
+        .insert(schema.pendingActionTable)
+        .values({
+          ...pendingActionValues(
+            new Date(Date.now() - 60_000),
+            person.id,
+            workspace,
+            null,
+          ),
+          organisationId: null,
+          projectId: null,
+          workspaceId: null,
+        })
+        .returning(),
+      "unsupported nullable action",
+    );
+    const result = await expirePendingActions();
+    expect(result).toMatchObject({ expired: 0, degraded: true });
+    const [stored] = await db
+      .select({ state: schema.pendingActionTable.state })
+      .from(schema.pendingActionTable)
+      .where(eq(schema.pendingActionTable.id, action.id));
+    expect(stored?.state).toBe("pending");
+  });
+
   it("expires due and just-due rows, leaves future and terminal rows unchanged, and is repeat-safe", async () => {
     const due = await makePendingAction(new Date(Date.now() - 60_000));
     const boundary = await makePendingAction(new Date());

@@ -1,11 +1,19 @@
 import { z } from "../openapi";
 
 const pendingActionSummarySchema = z.record(z.string(), z.unknown());
+// Durable 0109 `user_deactivation` values remain database-only compatibility. Public
+// DTOs project a resolvable legacy row onto the canonical delete/user vocabulary.
+const pendingActionReadKindSchema = z.enum([
+  "delete",
+  "bulk_delete",
+  "purge",
+  "mcp_destructive",
+]);
 
 export const pendingActionReadSchema = z
   .object({
     id: z.string(),
-    action: z.enum(["delete", "bulk_delete", "purge", "mcp_destructive"]),
+    action: pendingActionReadKindSchema,
     origin: z.enum(["web", "api", "mcp"]),
     targetType: z.string(),
     targetIds: z.array(z.string()),
@@ -17,6 +25,7 @@ export const pendingActionReadSchema = z
       "typed_name_step_up",
       "typed_count_step_up",
     ]),
+    approvalSupported: z.boolean(),
     state: z.enum([
       "pending",
       "approved",
@@ -63,7 +72,7 @@ export const pendingActionListResponseSchema = z
 export const pendingActionDecisionSchema = z
   .object({
     id: z.string(),
-    action: z.enum(["delete", "bulk_delete", "purge", "mcp_destructive"]),
+    action: pendingActionReadKindSchema,
     origin: z.enum(["web", "api", "mcp"]),
     targetType: z.string(),
     targetIds: z.array(z.string()),
@@ -75,8 +84,13 @@ export const pendingActionDecisionSchema = z
       "typed_name_step_up",
       "typed_count_step_up",
     ]),
+    approvalSupported: z.boolean(),
     state: z.enum(["denied", "cancelled", "expired"]),
     createdAt: z.string().datetime(),
     expiresAt: z.string().datetime(),
   })
   .openapi("PendingActionDecision");
+
+export const pendingActionApprovalSchema = z
+  .object({ id: z.string(), state: z.enum(["executed", "expired"]) })
+  .openapi("PendingActionApproval");
