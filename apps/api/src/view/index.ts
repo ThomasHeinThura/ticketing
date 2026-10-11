@@ -22,6 +22,7 @@ import pinView from "./controllers/pin-view";
 import { countSavedView, runSavedView } from "./controllers/run-view";
 import updateView from "./controllers/update-view";
 import { listShareableViewTeamsForWorkspace } from "./repository";
+import { requireSavedViewEditAccess } from "./require-saved-view-edit-access";
 import { resolveCallerPersonId } from "./resolve-person-id";
 import {
   pinnedViewIdsSchema,
@@ -159,12 +160,13 @@ const updateViewRoute = createRoute({
   tags: ["Views"],
   summary: "Update saved view",
   description:
-    "The owner, or a caller with workspace:manage_settings, may edit a view. " +
+    "A caller with workspace:manage_settings, or the owner with saved_view:create, may " +
+    "edit a view. " +
     "Changing a view's team audience additionally requires saved_view:share and " +
     "membership in the target team.",
   middleware: [
     workspaceAccess.fromSavedView(),
-    requireWorkspaceCapability("saved_view:create"),
+    requireSavedViewEditAccess(),
   ] as const,
   request: {
     params: savedViewIdParam,
@@ -177,7 +179,7 @@ const updateViewRoute = createRoute({
     200: jsonResponse("The updated saved view", savedViewSchema),
     400: errorResponse("Invalid body"),
     403: errorResponse(
-      "Not the view's owner, missing workspace:manage_settings, or missing " +
+      "Missing workspace:manage_settings and not the owner with saved_view:create, " +
         "saved_view:share permission / membership in the target team",
     ),
     404: errorResponse("Saved view not found"),
@@ -258,7 +260,7 @@ const deleteViewRoute = createRoute({
     "Creates a pending action and returns 202. The saved view remains available until the requester approves it in a browser session (pending-actions.md PA-1..PA-6).",
   middleware: [
     workspaceAccess.fromSavedView(),
-    requireWorkspaceCapability("saved_view:create"),
+    requireSavedViewEditAccess(),
   ] as const,
   request: { params: savedViewIdParam },
   responses: {
@@ -274,7 +276,7 @@ const deleteViewRoute = createRoute({
       }),
     ),
     403: errorResponse(
-      "Missing saved_view:create or workspace:manage_settings",
+      "Missing workspace:manage_settings and not the owner with saved_view:create",
     ),
     404: errorResponse("Saved view not found"),
     409: errorResponse("A pending saved-view deletion already exists"),

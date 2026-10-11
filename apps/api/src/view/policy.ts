@@ -5,11 +5,11 @@ import type { PolicyMap } from "@taskdesk/permissions";
  * `search-and-saved-views.md`'s "Data" section: a saved view IS a stored search plus a
  * presentation choice, one table serves both specs).
  *
- * Runtime gate is `requireWorkspaceCapability` (the canonical `@taskdesk/permissions`
- * vocabulary, not the legacy `requireWorkspacePermission` statements -- `saved_view:*` has
- * no better-auth-inherited equivalent to re-key, the same reason `work_item/policy.ts`
- * uses this middleware rather than the legacy one), so the capability declared here is
- * genuinely enforced, not metadata-only.
+ * Runtime gates use the canonical capability vocabulary and API-key scope intersection,
+ * not legacy `requireWorkspacePermission` statements -- `saved_view:*` has no
+ * better-auth-inherited equivalent to re-key, the same reason `work_item/policy.ts` uses
+ * canonical capability checks. The saved-view edit admission helper applies the same OR
+ * branches declared here, and the strict route evaluator verifies the registry policy.
  *
  * `scopeSource: "request"` on the collection routes (`GET`/`POST /api/views`) -- the
  * workspace comes from `?workspaceId=`/body `workspaceId`, there is no row yet for POST and
@@ -17,15 +17,15 @@ import type { PolicyMap } from "@taskdesk/permissions";
  * `workspaceAccess.fromSavedView()` resolves the workspace from the loaded row, the same
  * shape `label`/`column`/`workflowRule` already use.
  *
- * `orOwner` on `PATCH`: `search-and-saved-views.md`'s own API table --
+ * `orOwner` on `PATCH` and `DELETE`: `search-and-saved-views.md`'s own API table --
  * `workspace:manage_settings · orOwner(created_by, saved_view:create)`. The predicate is
  * `row.created_by === identity.personId`, the only owner predicate `packages/permissions`
  * declares over a `created_by` column (`policy.ts`'s closed `OWNER_PREDICATES`) -- this is
  * why `saved_view.created_by` references `person.id`, not `user.id` (see that column's own
  * schema.ts comment).
  *
- * `POST /api/views` and `PATCH /api/views/{id}` declare `saved_view:create` because both
- * also serve private-view create/edit requests. After body validation, their controllers
+ * `POST /api/views` declares `saved_view:create`; PATCH/DELETE use the documented
+ * manager-or-owner policy. After body validation, the PATCH controller
  * add `saved_view:share` when the requested operation publishes a team view or changes its
  * team audience; target-team membership is checked separately against the same workspace.
  *
@@ -91,7 +91,7 @@ export const viewPolicies = {
   },
 
   "PATCH /api/views/{id}": {
-    capability: "saved_view:create",
+    capability: "workspace:manage_settings",
     scope: "workspace",
     scopeSource: "row",
     reach: "required",
@@ -102,7 +102,7 @@ export const viewPolicies = {
   },
 
   "DELETE /api/views/{id}": {
-    capability: "saved_view:create",
+    capability: "workspace:manage_settings",
     scope: "workspace",
     scopeSource: "row",
     reach: "required",

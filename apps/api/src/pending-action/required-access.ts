@@ -361,7 +361,7 @@ export async function evaluateActionRequiredAccess(
         route.policy.scopeSource === "row" &&
         route.policy.reach === "required" &&
         "capability" in route.policy &&
-        route.policy.capability === "saved_view:create" &&
+        route.policy.capability === "workspace:manage_settings" &&
         "orOwner" in route.policy &&
         route.policy.orOwner?.predicate ===
           "row.created_by === identity.personId" &&

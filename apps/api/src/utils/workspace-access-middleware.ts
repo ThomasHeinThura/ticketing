@@ -153,6 +153,11 @@ type WorkspaceRowScope = {
   projectId?: string;
   workItemId?: string;
   projectReachFacts?: ProjectReachFacts;
+  policyRowFacts?: {
+    createdBy: string;
+    visibility: string;
+    sharedWithTeamId: string | null;
+  };
 };
 
 /**
@@ -309,6 +314,9 @@ export function workspaceAccessMiddleware(
               if (observerRow.projectReachFacts) {
                 c.set("projectReachFacts", observerRow.projectReachFacts);
               }
+              if (observerRow.policyRowFacts) {
+                c.set("policyRowFacts", observerRow.policyRowFacts);
+              }
               c.set("policyScopeResource", source.resource);
             }
           }
@@ -330,6 +338,9 @@ export function workspaceAccessMiddleware(
             shadowWorkItemId = resolved.workItemId ?? null;
             if (resolved.projectReachFacts) {
               c.set("projectReachFacts", resolved.projectReachFacts);
+            }
+            if (resolved.policyRowFacts) {
+              c.set("policyRowFacts", resolved.policyRowFacts);
             }
           }
           if (!workspaceId) {
@@ -917,7 +928,12 @@ async function lookupWorkspaceId(
       // the view row itself belongs to (search-and-saved-views.md SV-15).
       case "savedView": {
         const [savedView] = await db
-          .select({ workspaceId: schema.savedViewTable.workspaceId })
+          .select({
+            workspaceId: schema.savedViewTable.workspaceId,
+            createdBy: schema.savedViewTable.createdBy,
+            visibility: schema.savedViewTable.visibility,
+            sharedWithTeamId: schema.savedViewTable.sharedWithTeamId,
+          })
           .from(schema.savedViewTable)
           .where(
             and(
@@ -927,7 +943,14 @@ async function lookupWorkspaceId(
           )
           .limit(1);
         return savedView?.workspaceId
-          ? { workspaceId: savedView.workspaceId }
+          ? {
+              workspaceId: savedView.workspaceId,
+              policyRowFacts: {
+                createdBy: savedView.createdBy,
+                visibility: savedView.visibility,
+                sharedWithTeamId: savedView.sharedWithTeamId,
+              },
+            }
           : null;
       }
 

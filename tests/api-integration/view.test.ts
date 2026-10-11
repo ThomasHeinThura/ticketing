@@ -3,10 +3,12 @@ import { defaultRolePayloads } from "@taskdesk/permissions";
 import { and, eq } from "drizzle-orm";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import * as auditWriter from "../../apps/api/src/audit/audit-writer";
+import { auth } from "../../apps/api/src/auth";
 import db, { schema } from "../../apps/api/src/database";
 import { createApp } from "../../apps/api/src/index";
 import * as auditFailureNotifier from "../../apps/api/src/instance/observability/audit-failure-notifier";
 import * as observabilityRuntime from "../../apps/api/src/instance/observability/runtime";
+import { withExplicitCredentialMutation } from "../../apps/api/src/pending-action/credential-invalidation";
 import { ensureInternalOrganisation } from "../../apps/api/src/utils/seed-internal-organisation";
 import removeWorkspaceMember from "../../apps/api/src/workspace/controllers/remove-workspace-member";
 import { mockAnonymousSession, mockAuthenticatedSession } from "./helpers/auth";
@@ -518,6 +520,187 @@ describe("API integration: saved views", () => {
         where: eq(schema.savedViewTable.id, privateView.id),
       }),
     ).toMatchObject({ visibility: "private", sharedWithTeamId: null });
+  });
+
+  it("allows a manager-scoped key to edit and request deletion of a saved view", async () => {
+    const owner = await createWorkspaceMember({ role: "owner" });
+    const manager = await createWorkspaceMember({ role: "manager" });
+    await addPerson(owner.user.id);
+    await addPerson(manager.user.id);
+    await db.insert(schema.workspaceUserTable).values({
+      workspaceId: owner.workspace.id,
+      userId: manager.user.id,
+      role: "manager",
+      joinedAt: new Date(),
+    });
+    await db.insert(schema.workspaceRoleTable).values({
+      workspaceId: owner.workspace.id,
+      role: "manager",
+      permission: JSON.stringify({}),
+      isSystem: true,
+      createdAt: new Date(),
+      updatedAt: new Date(),
+    });
+
+    mockAuthenticatedSession(owner.user);
+    const { app } = createApp();
+    const createView = async (name: string) => {
+      const response = await app.request("/api/views", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({
+          workspaceId: owner.workspace.id,
+          name,
+          scope: "workspace",
+          scopeId: owner.workspace.id,
+          layout: "list",
+          query: { entity: "work_item" },
+        }),
+      });
+      expect(response.status, await response.clone().text()).toBe(200);
+      return (await response.json()) as { id: string };
+    };
+    const patchTarget = await createView("Manager editable view");
+    const deleteTarget = await createView("Manager deletable view");
+    const ownerKey = await createViewApiKey(owner.user.id, {
+      saved_view: ["create"],
+    });
+    const ownerUpdate = await app.request(`/api/views/${patchTarget.id}`, {
+      method: "PATCH",
+      headers: {
+        authorization: `Bearer ${ownerKey.rawKey}`,
+        "content-type": "application/json",
+      },
+      body: JSON.stringify({ name: "Edited by owner branch" }),
+    });
+    const managerKey = await createViewApiKey(manager.user.id, {
+      workspace: ["manage_settings"],
+    });
+    const headers = {
+      authorization: `Bearer ${managerKey.rawKey}`,
+      "content-type": "application/json",
+    };
+
+    const update = await app.request(`/api/views/${patchTarget.id}`, {
+      method: "PATCH",
+      headers,
+      body: JSON.stringify({ name: "Edited by manager" }),
+    });
+    const deletion = await app.request(`/api/views/${deleteTarget.id}`, {
+      method: "DELETE",
+      headers,
+    });
+
+    expect({
+      ownerPatch: ownerUpdate.status,
+      managerPatch: update.status,
+      delete: deletion.status,
+    }).toEqual({
+      ownerPatch: 200,
+      managerPatch: 200,
+      delete: 202,
+    });
+    expect(
+      await db.query.savedViewTable.findFirst({
+        where: eq(schema.savedViewTable.id, patchTarget.id),
+      }),
+    ).toMatchObject({ name: "Edited by manager" });
+    const pending = (await deletion.json()) as { pendingActionId: string };
+    expect(
+      await db.query.pendingActionTable.findFirst({
+        where: eq(schema.pendingActionTable.id, pending.pendingActionId),
+      }),
+    ).toMatchObject({
+      routeKey: "DELETE /api/views/{id}",
+      state: "pending",
+      targetIds: [deleteTarget.id],
+    });
+  });
+
+  it("keeps an owner deletion request valid when its key retains manager access", async () => {
+    const owner = await createWorkspaceMember({ role: "owner" });
+    const requester = await addPerson(owner.user.id);
+
+    mockAuthenticatedSession(owner.user);
+    const { app } = createApp();
+    const createResponse = await app.request("/api/views", {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({
+        workspaceId: owner.workspace.id,
+        name: "Owner approval authority",
+        scope: "workspace",
+        scopeId: owner.workspace.id,
+        layout: "list",
+        query: { entity: "work_item" },
+      }),
+    });
+    expect(createResponse.status, await createResponse.clone().text()).toBe(
+      200,
+    );
+    const view = (await createResponse.json()) as { id: string };
+    const key = await createViewApiKey(owner.user.id, {
+      workspace: ["manage_settings"],
+      saved_view: ["create"],
+    });
+
+    const deletion = await app.request(`/api/views/${view.id}`, {
+      method: "DELETE",
+      headers: { authorization: `Bearer ${key.rawKey}` },
+    });
+    expect(deletion.status, await deletion.clone().text()).toBe(202);
+    const pending = (await deletion.json()) as { pendingActionId: string };
+    const permissionUpdate = await withExplicitCredentialMutation(
+      { kind: "api_key", route: "/api-key/update" },
+      () =>
+        auth.api.updateApiKey({
+          body: {
+            keyId: key.id,
+            userId: owner.user.id,
+            permissions: { workspace: ["manage_settings"] },
+          },
+        }),
+    );
+    expect(permissionUpdate.state.deleteFailure).toBeNull();
+    expect(
+      await db.query.pendingActionTable.findFirst({
+        where: eq(schema.pendingActionTable.id, pending.pendingActionId),
+      }),
+    ).toMatchObject({ state: "pending", invalidationReason: null });
+
+    const sessionNow = new Date();
+    await db.insert(schema.sessionTable).values({
+      id: `session-${owner.user.id}`,
+      token: `token-${owner.user.id}`,
+      userId: owner.user.id,
+      portal: "agent",
+      expiresAt: new Date(sessionNow.getTime() + 60 * 60 * 1000),
+      createdAt: sessionNow,
+      updatedAt: sessionNow,
+    });
+    mockAuthenticatedSession(owner.user);
+    const approval = await app.request(
+      `/api/me/pending-actions/${pending.pendingActionId}/approve`,
+      {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: "{}",
+      },
+    );
+    expect(approval.status, await approval.clone().text()).toBe(200);
+    expect(
+      await db.query.pendingActionTable.findFirst({
+        where: eq(schema.pendingActionTable.id, pending.pendingActionId),
+      }),
+    ).toMatchObject({
+      requestedByPersonId: requester.id,
+      state: "executed",
+    });
+    expect(
+      await db.query.savedViewTable.findFirst({
+        where: eq(schema.savedViewTable.id, view.id),
+      }),
+    ).toBeUndefined();
   });
 
   it("rejects a scopeId naming a project outside the workspace", async () => {

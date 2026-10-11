@@ -1024,11 +1024,11 @@
 				"outOfReach": "404 not_found"
 			},
 			"lead": {
-				"inReach": "allow",
+				"inReach": "403 forbidden",
 				"outOfReach": "404 not_found"
 			},
 			"member": {
-				"inReach": "allow",
+				"inReach": "403 forbidden",
 				"outOfReach": "404 not_found"
 			},
 			"viewer": {
@@ -5308,11 +5308,11 @@
 				"outOfReach": "404 not_found"
 			},
 			"lead": {
-				"inReach": "allow",
+				"inReach": "403 forbidden",
 				"outOfReach": "404 not_found"
 			},
 			"member": {
-				"inReach": "allow",
+				"inReach": "403 forbidden",
 				"outOfReach": "404 not_found"
 			},
 			"viewer": {

@@ -45,7 +45,7 @@ async function updateView(
         throw new HTTPException(404, { message: "Saved view not found" });
       }
 
-      await assertCanEditView(view, personId, userId, apiKey);
+      await assertCanEditView(view, personId, userId, apiKey, tx);
 
       const nextVisibility = input.visibility ?? view.visibility;
       const nextSharedWithTeamId =

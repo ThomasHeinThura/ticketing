@@ -619,7 +619,7 @@ export async function approveSavedViewDeletion(input: {
       route?.kind !== "capability" ||
       !("capability" in route.policy) ||
       route.policy.scope !== "workspace" ||
-      route.policy.capability !== "saved_view:create" ||
+      route.policy.capability !== "workspace:manage_settings" ||
       !("orOwner" in route.policy) ||
       route.policy.orOwner?.predicate !==
         "row.created_by === identity.personId" ||

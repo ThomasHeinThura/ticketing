@@ -1,18 +1,18 @@
-import { HTTPException } from "hono/http-exception";
+import db from "../database";
 import type { ApiKeyPermissionScope } from "../utils/require-api-key-permission-scope";
 import {
-  assertCallerHasCapability,
+  assertCallerHasCapabilityOrOwner,
   capabilityCredential,
 } from "../utils/require-workspace-capability";
 
+type DbOrTx = typeof db | Parameters<Parameters<typeof db.transaction>[0]>[0];
+
 /**
- * `PATCH /api/views/{id}`'s declared policy
+ * `PATCH`/`DELETE /api/views/{id}`'s declared policy
  * (search-and-saved-views.md § API): `workspace:manage_settings · orOwner(created_by,
- * saved_view:create)`. A conjunction the same shape `packages/permissions`'s `orOwner`
- * documents -- the owner branch still requires `saved_view:create` -- but every built-in
- * role holding `saved_view:create` is checked at route-declaration time (`viewer` does not
- * hold it), so a caller who owns the row already holds the capability by construction; no
- * extra capability call is needed for that branch here.
+ * saved_view:create)`. Apply the same two conjunctive branches as the route policy,
+ * including API-key scope, both at middleware admission and again against the locked row
+ * inside the update transaction.
  *
  * SV-17's "editable by... team leads" is NOT enforced -- see `saved_view` table's own
  * schema.ts comment: `team_member.is_lead` does not exist in this schema yet. Only the
@@ -24,24 +24,15 @@ export async function assertCanEditView(
   personId: string,
   userId: string,
   apiKey?: ApiKeyPermissionScope,
+  executor: DbOrTx = db,
 ): Promise<void> {
-  if (view.createdBy === personId) {
-    return;
-  }
-  try {
-    await assertCallerHasCapability(
-      view.workspaceId,
-      userId,
-      "workspace:manage_settings",
-      capabilityCredential(apiKey),
-    );
-  } catch (error) {
-    if (error instanceof HTTPException && error.status === 403) {
-      throw new HTTPException(403, {
-        message:
-          "Only the view's owner, or workspace:manage_settings, may edit it",
-      });
-    }
-    throw error;
-  }
+  await assertCallerHasCapabilityOrOwner(
+    view.workspaceId,
+    userId,
+    "workspace:manage_settings",
+    "saved_view:create",
+    view.createdBy === personId,
+    capabilityCredential(apiKey),
+    executor,
+  );
 }
