@@ -386,7 +386,12 @@ async function runJourney(fixture: MfaCsrfAppFixture) {
         .locator("#request-type-description")
         .fill("Request access to a TaskDesk resource.");
       await staffPage.locator("#request-type-project").fill(seeded.projectId);
-      await staffPage.locator("#request-type-customer-visible").click();
+      await staffPage
+        .getByRole("checkbox", {
+          name: "Visible to customers",
+          exact: true,
+        })
+        .click();
       await expect(
         staffPage.locator("#request-type-auto-accept"),
       ).not.toBeChecked();
@@ -411,7 +416,7 @@ async function runJourney(fixture: MfaCsrfAppFixture) {
         `/api/request-types/${encodeURIComponent(seeded.requestTypeId)}`,
       );
       await staffPage
-        .getByRole("button", { name: "Save", exact: true })
+        .getByRole("button", { name: "Save draft", exact: true })
         .click();
       const saveResponse = await saveResponsePromise;
       expect(saveResponse.status()).toBe(200);
@@ -422,7 +427,7 @@ async function runJourney(fixture: MfaCsrfAppFixture) {
         `/api/request-types/${encodeURIComponent(seeded.requestTypeId)}/publish`,
       );
       await staffPage
-        .getByRole("button", { name: "Publish", exact: true })
+        .getByRole("button", { name: "Publish version", exact: true })
         .click();
       const publishResponse = await publishResponsePromise;
       expect(publishResponse.status()).toBe(200);
