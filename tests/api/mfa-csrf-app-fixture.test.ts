@@ -170,6 +170,182 @@ describe("isolated MFA app fixture helpers", () => {
     });
   });
 
+  it("serializes concurrent stale reapers and preserves a replacement owner lock", async () => {
+    const path = await lockPath();
+    const deadOwner = spawnSync(process.execPath, ["-e", "process.exit(0)"]);
+    expect(deadOwner.status).toBe(0);
+    expect(deadOwner.pid).toBeGreaterThan(0);
+    await writeFile(
+      path,
+      JSON.stringify({
+        pid: deadOwner.pid,
+        token: "stale-owner",
+        childPids: [],
+      }),
+      { mode: 0o600 },
+    );
+
+    const reaperScript = [
+      'import { closeSync, fsyncSync, openSync, readFileSync, unlinkSync, writeFileSync } from "node:fs";',
+      'const reaperPath = process.argv[1] + ".reap";',
+      'const fd = openSync(reaperPath, "wx", 0o600);',
+      'const owner = { pid: process.pid, token: "controlled-reaper", childPids: [] };',
+      "writeFileSync(fd, JSON.stringify(owner)); fsyncSync(fd);",
+      'process.stdout.write("REAPER_LOCK_HELD\\n");',
+      'process.stdin.once("data", () => {',
+      '  const current = JSON.parse(readFileSync(reaperPath, "utf8"));',
+      "  if (current.pid === owner.pid && current.token === owner.token) unlinkSync(reaperPath);",
+      '  closeSync(fd); process.stdout.write("REAPER_RELEASED\\n"); process.exit(0);',
+      "});",
+      "setInterval(() => {}, 1000);",
+    ].join("\n");
+    const reaper = spawn(process.execPath, ["-e", reaperScript, path], {
+      stdio: ["pipe", "pipe", "pipe"],
+    });
+    const reaperClosed = new Promise<void>((resolveClose) =>
+      reaper.once("close", () => resolveClose()),
+    );
+    let reaperOutput = "";
+    reaper.stdout.on("data", (chunk: Buffer) => {
+      reaperOutput += chunk.toString();
+    });
+
+    const helperUrl = new URL(
+      "../e2e/helpers/mfa-csrf-app-fixture.ts",
+      import.meta.url,
+    ).href;
+    const contenderScript = [
+      "const { withExclusiveMetricsListener } = await import(process.argv[1]);",
+      "const lockPath = process.argv[2];",
+      "let waitCount = 0;",
+      "await withExclusiveMetricsListener(async () => {",
+      '  process.stdout.write("CONTENDER_ENTERED\\n");',
+      '}, { lockPath, waitMs: 3_000, pollMs: 5, onLockContention: () => process.stdout.write("CONTENDER_WAITING " + (++waitCount) + "\\n") });',
+      'process.stdout.write("CONTENDER_DONE\\n");',
+    ].join("\n");
+    const contender = spawn(
+      process.execPath,
+      [
+        "--experimental-strip-types",
+        "--input-type=module",
+        "-e",
+        contenderScript,
+        helperUrl,
+        path,
+      ],
+      { stdio: ["pipe", "pipe", "pipe"] },
+    );
+    contender.stdin.end();
+    const contenderClosed = new Promise<void>((resolveClose) =>
+      contender.once("close", () => resolveClose()),
+    );
+    let contenderOutput = "";
+    let contenderError = "";
+    contender.stdout.on("data", (chunk: Buffer) => {
+      contenderOutput += chunk.toString();
+    });
+    contender.stderr.on("data", (chunk: Buffer) => {
+      contenderError += chunk.toString();
+    });
+
+    const waitForMarker = (
+      child: typeof reaper,
+      readOutput: () => string,
+      marker: string,
+      readError: () => string = () => "",
+    ) =>
+      new Promise<void>((resolveMarker, rejectMarker) => {
+        if (readOutput().includes(marker)) {
+          resolveMarker();
+          return;
+        }
+        const timer = setTimeout(() => {
+          rejectMarker(new Error(`Timed out waiting for ${marker}.`));
+        }, 3_000);
+        const check = () => {
+          if (readOutput().includes(marker)) {
+            clearTimeout(timer);
+            resolveMarker();
+          }
+        };
+        child.stdout.on("data", check);
+        child.once("error", (error) => {
+          clearTimeout(timer);
+          rejectMarker(error);
+        });
+        child.once("close", (code) => {
+          if (!readOutput().includes(marker)) {
+            clearTimeout(timer);
+            rejectMarker(
+              new Error(
+                `Process closed (${code}) before ${marker}. ${readError()}`,
+              ),
+            );
+          }
+        });
+      });
+    let replacementOwnerWritten = false;
+    try {
+      await waitForMarker(reaper, () => reaperOutput, "REAPER_LOCK_HELD");
+      await waitForMarker(
+        contender,
+        () => contenderOutput,
+        "CONTENDER_WAITING 1",
+        () => contenderError,
+      );
+      expect(contenderOutput).not.toContain("CONTENDER_ENTERED");
+      await expect(readFile(path, "utf8")).resolves.toContain("stale-owner");
+      await expect(readFile(`${path}.reap`, "utf8")).resolves.toContain(
+        "controlled-reaper",
+      );
+
+      // Swap in a live owner while the first reaper holds the protocol lock.
+      // The waiting contender must revalidate this inode and token before unlink.
+      await rm(path, { force: true });
+      await writeFile(
+        path,
+        JSON.stringify({
+          pid: process.pid,
+          token: "replacement-owner",
+          childPids: [],
+        }),
+        { flag: "wx", mode: 0o600 },
+      );
+      replacementOwnerWritten = true;
+      reaper.stdin.write("release\\n");
+      await waitForMarker(reaper, () => reaperOutput, "REAPER_RELEASED");
+      await reaperClosed;
+
+      await waitForMarker(
+        contender,
+        () => contenderOutput,
+        "CONTENDER_WAITING 2",
+        () => contenderError,
+      );
+      expect(contenderOutput).not.toContain("CONTENDER_ENTERED");
+      await expect(readFile(path, "utf8")).resolves.toContain(
+        "replacement-owner",
+      );
+
+      await rm(path, { force: true });
+      replacementOwnerWritten = false;
+      await waitForMarker(contender, () => contenderOutput, "CONTENDER_DONE");
+      expect(contenderOutput).toContain("CONTENDER_ENTERED");
+      await contenderClosed;
+    } finally {
+      if (replacementOwnerWritten) await rm(path, { force: true });
+      if (reaper.exitCode === null && reaper.signalCode === null) {
+        reaper.stdin.write("release\\n");
+        reaper.kill("SIGTERM");
+        await reaperClosed;
+      }
+      if (contender.exitCode === null && contender.signalCode === null) {
+        contender.kill("SIGKILL");
+        await contenderClosed;
+      }
+    }
+  });
+
   it("does not reclaim a dead supervisor lock while a recorded child is alive", async () => {
     const path = await lockPath();
     const deadOwner = spawnSync(process.execPath, ["-e", "process.exit(0)"]);

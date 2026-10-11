@@ -83,14 +83,17 @@ class FixtureProcessSupervisor implements SupervisedProcessManager {
   private nextId = 0;
   private closePromise: Promise<void> | undefined;
   private readonly ready: Promise<void>;
+  private readonly onLockContention?: () => void;
 
   private constructor(
     ready: Promise<void>,
     lockPath: string,
     waitMs: number,
     pollMs: number,
+    onLockContention?: () => void,
   ) {
     this.ready = ready;
+    this.onLockContention = onLockContention;
     this.child = spawn(
       process.execPath,
       [
@@ -119,6 +122,8 @@ class FixtureProcessSupervisor implements SupervisedProcessManager {
         for (const listener of state.closeListeners.splice(0)) {
           listener(state.exitCode, state.signalCode);
         }
+      } else if (message.type === "waiting") {
+        this.onLockContention?.();
       }
     });
   }
@@ -127,10 +132,12 @@ class FixtureProcessSupervisor implements SupervisedProcessManager {
     lockPath = DEFAULT_METRICS_LOCK_PATH,
     waitMs = 180_000,
     pollMs = 100,
+    onLockContention,
   }: {
     lockPath?: string;
     waitMs?: number;
     pollMs?: number;
+    onLockContention?: () => void;
   } = {}) {
     let resolveReady!: () => void;
     let rejectReady!: (error: Error) => void;
@@ -143,6 +150,7 @@ class FixtureProcessSupervisor implements SupervisedProcessManager {
       lockPath,
       waitMs,
       pollMs,
+      onLockContention,
     );
     supervisor.child.on("message", (raw: unknown) => {
       if (!raw || typeof raw !== "object") return;
@@ -283,6 +291,7 @@ export async function withExclusiveMetricsListener<T>(
     lockPath?: string;
     waitMs?: number;
     pollMs?: number;
+    onLockContention?: () => void;
   } = {},
 ): Promise<T> {
   const supervisor = await FixtureProcessSupervisor.start(options);

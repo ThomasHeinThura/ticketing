@@ -1,6 +1,7 @@
 import { spawn } from "node:child_process";
 import {
   closeSync,
+  fstatSync,
   fsyncSync,
   openSync,
   readFileSync,
@@ -29,9 +30,9 @@ function alive(pid) {
   }
 }
 
-function readOwner() {
+function readOwner(path = lockPath) {
   try {
-    const value = JSON.parse(readFileSync(lockPath, "utf8"));
+    const value = JSON.parse(readFileSync(path, "utf8"));
     if (
       Number.isSafeInteger(value?.pid) &&
       value.pid > 0 &&
@@ -45,6 +46,69 @@ function readOwner() {
     // An incomplete lock is not reclaimed based on a guess.
   }
   return undefined;
+}
+
+function sameFile(left, right) {
+  return left.dev === right.dev && left.ino === right.ino;
+}
+
+function unlinkOwnedFile(path, descriptor) {
+  try {
+    const opened = fstatSync(descriptor);
+    const current = statSync(path);
+    if (sameFile(opened, current)) unlinkSync(path);
+  } catch {
+    // The file may already have been removed or replaced by its next owner.
+  }
+}
+
+function reclaimDeadOwner(ownerToReclaim) {
+  if (alive(ownerToReclaim.pid)) return false;
+
+  const reaperPath = `${lockPath}.reap`;
+  const reaper = {
+    pid: process.pid,
+    token: `${owner.token}-reap`,
+    childPids: [],
+  };
+  let descriptor;
+  try {
+    descriptor = openSync(reaperPath, "wx", 0o600);
+  } catch (error) {
+    if (error?.code === "EEXIST") return false;
+    throw error;
+  }
+
+  try {
+    writeFileSync(descriptor, JSON.stringify(reaper));
+    fsyncSync(descriptor);
+
+    // Revalidate the dead owner and file identity while holding the exclusive
+    // reaper file. No compliant contender can now unlink a replacement owner.
+    if (alive(ownerToReclaim.pid)) return false;
+    if (ownerToReclaim.childPids.some(alive)) return false;
+    const before = statSync(lockPath);
+    const current = readOwner();
+    const after = statSync(lockPath);
+    if (
+      !current ||
+      current.pid !== ownerToReclaim.pid ||
+      current.token !== ownerToReclaim.token ||
+      current.childPids.some(alive) ||
+      !sameFile(before, after) ||
+      alive(current.pid)
+    ) {
+      return false;
+    }
+    unlinkSync(lockPath);
+    return true;
+  } catch {
+    // Missing, malformed, or changed lock state fails closed.
+    return false;
+  } finally {
+    unlinkOwnedFile(reaperPath, descriptor);
+    closeSync(descriptor);
+  }
 }
 
 function writeLock() {
@@ -83,30 +147,12 @@ async function acquireLock() {
       return;
     } catch (error) {
       if (error?.code !== "EEXIST") throw error;
+      send({ type: "waiting" });
       const current = readOwner();
-      if (current && !alive(current.pid)) {
-        const childrenAlive = current.childPids.some(alive);
-        if (!childrenAlive) {
-          try {
-            const before = statSync(lockPath);
-            const stillCurrent = readOwner();
-            const after = statSync(lockPath);
-            if (
-              stillCurrent?.pid === current.pid &&
-              stillCurrent.token === current.token &&
-              before.dev === after.dev &&
-              before.ino === after.ino
-            ) {
-              unlinkSync(lockPath);
-            }
-          } catch {
-            // A concurrent owner change or malformed lock fails closed.
-          }
-        }
-      }
+      if (current && !alive(current.pid)) reclaimDeadOwner(current);
       if (Date.now() >= deadline) {
         throw new Error(
-          "Timed out waiting for the prior metrics listener supervisor or its owned children to exit.",
+          "Timed out waiting for the prior metrics listener supervisor, reaper, or its owned children to exit.",
         );
       }
       await new Promise((resolveWait) => setTimeout(resolveWait, pollMs));
