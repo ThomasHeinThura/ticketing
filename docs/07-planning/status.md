@@ -1,3 +1,23 @@
+## Delivery takeover checkpoint — 2026-10-11 04:11 UTC
+
+- Accepted remote main: `a96e6a4c23d1da35be6a66dc5a043328d884f751` after protected
+  squash-merge #630, pinned to reviewed candidate `d041de5547717321b4a8cc3173e71b3b00df9198`.
+  All 18 required checks passed. Authentic Sonnet ordinary and Opus 5.5 security reports
+  carry over the verified review-record-only delta. Exact-candidate image build and disposable
+  migration/UID10001/live-ready200 proof passed; only owned resources removed.
+- P0 remains COMPLETE only within #624/#628's recorded alpha.3 + installer scope, with #626
+  before-2.0.0 deferrals. P1–P4 integrated acceptance is pending; no new stage claim.
+- `v2.0.0-alpha.3` and earlier remain unpatched for #630. No new release or SIT acceptance.
+- Codex conductor owns this chat's queue. Original dirty checkout and Claude worktrees/evidence
+  remain preserved. Approvals worker is finishing the recovered clock/audit/test batch; Users
+  worker is implementing required admin-suspension step-up at reserved 0121. #569 moves0122.
+  SLA/calendar revocation blockers remain; D1/manual pause and #607 remain held.
+- Existing integration heartbeat is ACTIVE and verified targeting this conductor chat;
+  obsolete P0 observation heartbeat remains PAUSED. No duplicate schedule was created.
+- Queue remains on #601's canonical branch until accepted. Its stale-base conflict is being
+  reconciled with accepted-main policy retained; historical unique records are preserved.
+  This docs candidate still needs its applicable independent reviews and exact-head CI.
+
 ## P0 claimed complete — 2026-10-10
 
 **Main:** `ba88413d` (#624 merged).
@@ -5663,3 +5683,3192 @@ At the end of every session:
 
 Do not describe intent. Describe state. "Working on the board view" is not a status;
 "board view renders and drags; keyboard drag not yet implemented" is.
+
+
+## Execution checkpoint — 2026-10-09 13:48 UTC
+
+- **P0 unchanged / convergence:** accepted main3096 and frozen #60266 remain unchanged. Authorized current-head G11 verification **22/22 PASS**; reviewed DEV66/image029 and fresh persistent task re-key0/0 remain verified. Fresh independent Sol admits unchanged task reads on actual October6/8/9:12 primary requests and12 agreeing occurrences per date, three GET routes/four actors, exact matrix and source compatibility. This is scoped read evidence, not every task route/write or a task strict proof. No automatic date restart.
+- **Remaining task proof:** V46 full launcher offline227 PASS, but its first bulk review found two real gaps: no complete positive execute-free CLI acceptance test, and task probes lacked returned-row/full denied-write related-state evidence. V46 is BLOCKED and unexecuted. One author is fixing both classes together in V47 before further review; no runtime window or task activation is issued. P0 source stays frozen. #602 body now records actual G11, DEV and12-screen smoke; task readiness remains unchecked.
+- **P1 implemented batch:** #609 now `e304221471ae15289ce903ab8a7937f84a729476`, complete17-file approved canonical pending-action DTO owner port. Focused API26/permissions88/OpenAPI247/types/web-agent/GodMode1 PASS, no dependency changes. Three ordinary reviews found one deduplicated UI compatibility defect: projected legacy rows show an approval form although legacy approval remains refused. Complete server-derived eligibility/UI/regression correction is underway. Existing storage/hash/proof data remains preserved. Bundle350164/350000 remainsFAIL; historical73b G8/G11 failures stay retained; current exact CI remains required.
+- **Execution / acceptance:** queue owners are current. Root released one bounded disposable P1 functional DB/browser window while V47 is offline; no performance overlap or persistent DEV mutation is permitted, and resource reconciliation precedes later P0 acquisition. Independent review, exact protected CI, eligible merge, signed GHCR/GitHub installer upgrade/rollback, fresh accepted-main finalizer and later reconstructed integration/SIT remain. P0–P7 open; no release/main merge/Docker Hub action. Real hourly conductor ACTIVE, date schedulePAUSED.
+
+## Execution checkpoint — 2026-10-09 13:29 UTC
+
+- **Accepted main / stage status:** live GitHub confirms `3096cb044bdf6ae98488bfc385f532fa6386343a`; P0–P7 remain open. Frozen #602 stays `66c736e71c87b2372ba1cbf8250236ac37191565`. Historical #589 is preserved; final post-P0 train must be reconstructed from accepted main. No merge or release has occurred.
+- **P0 performance:** Thomas's one authorized unchanged-head G11 verification, job113830097433/run37888524785 attempt2, passed **22/22**. LCP2328/2500 ms, palette97.8/200 ms, board408.6/500 ms. Original attempt1 **19/22 FAIL** remains preserved. Budgets, workload, assertions and shipped source were unchanged; no further unchanged retry is authorized. Required source checks are green; truthful PR readiness metadata and task-last operational proof remain open.
+- **Reviewed DEV refresh:** existing OrbStack app only was refreshed at13:21:09 UTC to image `sha256:029d69a96666b8cbe74ef613f251db0849a32f338d18770bdf81a8d7ee6a37e2`, OCI revision66, UID10001, empty enforcement/shadow-on. Backup/rollback inputs retained privately; existing environment/secrets, data counts, ports, mounts and other services preserved. All88 applied migration hashes **and timestamps** match candidate journal temporal order exactly. The initial index-order comparison was a comparator error, preserved as diagnostic evidence; no history was rewritten. CA-verified ticketing live/ready and existing admin sign-in200. Five read-only Chrome screen checks opened projects, board, item panel, members and portal; portal correctly shows customer access unavailable in this P0 source. This is DEV smoke, not full all-role/API/SIT acceptance.
+- **Task prerequisite / remaining runtime:** after independently cleared exact66 config28 runtime, fresh persistent DEV read-only counts at13:22:05 returned workspace_role0/apikey0 legacy-only rows. Independent Sol confirms the factual prerequisite. Task enforcement remains off. A bounded private runner candidate is being prepared for a root-delegated, source-ordered disposable task-last proof. Real dispatch wiring, authentic typed receipts, independent review and execution remain pending; no personal approval is fabricated. Existing27-source date admission and config28 evidence retain their original exact bindings. Task-specific eligibility, allowed/denied proof and rollback remain required; zero counts alone do not pass them.
+- **Parallel existing integration:** #60973b corrected local MFA/CSRF journey1/1 PASS; exact hosted PG138 files1674 PASS, but OpenAPI, bundle350164/350000, G8, G11 and metadata remain red. Complete approved #608 canonical DTO owner behavior is being ported into the P1 candidate with regressions; no enum-only shortcut. Existing source/PR histories remain conserved. #612 unaccepted policy is not applied; #614 redundant fixes await acceptance-bound absorption. Three separate pending decisions block only their dependent paths.
+- **Critical path:** (1) complete independently reviewed task-last proof; (2) reconcile truthful #602 metadata/exact protected checks; (3) eligible protected P0 merge; (4) signed GHCR/GitHub release and real installer upgrade/rollback; (5) fresh accepted-main Sol phase finalizer. GHCR/GitHub only. Existing hourly conductor ACTIVE; completed observation schedule PAUSED. Private credentials/seeders/evidence remain outside GitHub.
+
+## Execution checkpoint — 2026-10-09 13:02 UTC
+
+- **Accepted source / P0:** live REST verifies main3096 and frozen#60266 unchanged. Current66 off/shadow source admission27 and actual config28 strict/rollback have independent Sol CLEAR; exact evidence and limits are in the12:54 checkpoint. Task-last qualifying persistent DEV/UAT re-key proof, exact-head readiness, installer/release/finalizer remain. No task enforcement, persistent deployment or phase closure.
+- **G11 single verification:** Thomas explicitly approved one unchanged-head verification; decision recorded below in `decision-log.md`. Only original G11 job113683981417 was dispatched once, creating job113830097433/run37888524785 on exact66, nowRUNNING. Original attempt1 remains19/22FAIL; all budgets/workloads/assertions are unchanged. This is no CI acceptance until its actual result is known; no second unchanged retry is authorized.
+- **P1 functional result:** exact#60973b completed the corrected owned MFA/CSRF journey:1 discovered/1 worker/retries0/1PASS/0FAIL/0SKIP,13.7s test/15.2s runner. Enrollment, authenticator and backup-code challenges, observability change/read/restore, and CSRF rejection completed with unchanged240s timeout. Fresh ordinary/full Sol had cleared the test helper. Full cleanup preserved exact19-container/40-volume/7-network IDs and freed ports; private trace retained. This is one local diagnostic result with documented transport adapters and exact244 shipped asset hashes, not hosted/full-suite/SIT/image acceptance. Earlier244 timeout and555 null-controls failed capture remain preserved. Work-list350164-byte baseline remainsFAIL.
+- **PR/source reconciliation:** live#612 now `78586b4425f92576027fddb8d238fe7c44da4edf`, independently owned policy source with current checks required; it captures earlier conductorqueuefb49 as historical provenance, not a competing queue. No unmerged policy is applied. #6141fbb remains preserved for acceptance-bound absorption of redundant security changes; unique audit-description source retained. Current#60184f has two ordinary delta-confirmation CLEAR reports after fixing its stale#609 row. All23 PR sources remain preserved; recent12 unassigned sources are triagedHOLD rather than claimed integrated.
+- **Next execution:** reconcile actual G11 result once; continue focused existing-source conservation and exact-head CI/metadata preparation. No protected merge until every required gate is genuinely green. GHCR/GitHub release sequence and Traefik443 SIT follow eligible accepted source; no Docker Hub, production deployment or source deletion. Existing hourly conductor continuationACTIVE and completed observation schedulePAUSED. Three earlier product/secret-scan decisions remain limited to their dependent tasks.
+
+## Execution checkpoint — 2026-10-09 12:54 UTC
+
+- **P0 runtime blocker removed:** current66/image029 actual V44 config28 strict/rollback completed exit0 at12:40:00.298084–12:40:48.349787 UTC. Fresh independent full Sol adjudication CLEAR: each off/shadow and strict acquisition140 unique requests/134 tally occurrences, zero unexplained/uncovered/cardinality mismatches; strict50 rows/7 exceptional events9 occurrences, off/shadow47 rows/4 events5 occurrences. Ordered28 non-task sources became effective; public config body/content type stayed identical, denied malformed/null/empty key writes made no mutation, tenant masking/current roles/WebSocket delegation passed. Terminal empty enforcement/shadow-on/live-ready200/foreign404 and9/9 owned cleanup passed. Original19 container IDs/five running preserved. Historical schema80 image6a is comparator only; persistent DEV untouched and task excluded. Report SHA256 `0b3261f931b19bf9d002d9a7705b61c72304e6be42a83c53ece431dc945ff248`.
+- **Remaining P0 critical path:** acceptedmain3096/#60266 unchanged; hosted G11 **19/22 FAIL**, readiness incomplete, task-last fresh qualifying DEV/UAT re-key proof, eligible protected merge, signed release/installer upgrade+rollback and accepted-main finalizer remain. The current-image representative admission carries correctly labeled originalOct6/8 observations with genuineOct9current66; no date restart or72-hour claim. One bounded unchanged-head G11 retry exception awaits Thomas under the no-retry rule; no approval is assumed and no rerun dispatched.
+- **P1 exact current source:** #609 `73b6138d99483a3b22ab52aae2d3b866d4c88dc5` corrects all four settings option lookups. The original244 timeout remains unresolved. Actual555 journey failed at a new helper assumption—expanded live trigger had no aria-controls—before changing any option. Its trace is preserved and all19 containers/40 volumes/7 networks restored. Current structural helper requires an expanded trigger, exactly one visible accessible listbox and exact visible option; validates controls only when present. Duplicate Select/missing-controls regression3/3, UI type/Biome PASS; fresh ordinary/full Sol CLEAR before a newly released single owned corrected functional run. Canonical work-list baseline350164 bytes remainsFAIL; no budget change or speculative lazy-shell patch.
+- **Queue/source conservation:** all23 current PR owners retained; #601 prior snapshotfb49 has two independent ordinary CLEAR reviews. The canonical resolution remains frozenP0 equal/newer patches; #614 history stays preserved for acceptance-bound absorption, with unique audit-description source retained separately. #612 unmerged policy is not a global prerequisite. Bounded triage of12 recent non-archive unassigned feature/fix heads maps likely Users/SLA/dialog overlaps to existing owners; broad diagnostic/seed/MFA remnants stayHOLD pending focused semantic conservation, not blanket ancestry acceptance or duplicate feature work.
+- **Continuation:** sole root conductor owns this queue/ledger/resource windows/protected merges/release; existing hourly heartbeat targets the conductor/root checkpoint, no duplicate schedule, date-observation schedulePAUSED. Continue reviewed existing corrections and conservation while individual decisions/CI wait. Formal P0–P7 remain open. No main advancement, publication, persistent deployment, branch deletion or Docker Hub action. Private seeders/credentials/evidence stay outside GitHub.
+
+## Execution checkpoint — 2026-10-09 12:40 UTC
+
+- **Accepted source / P0:** live REST at12:36 confirms main `3096cb044bdf6ae98488bfc385f532fa6386343a`, #602 `66c736e71c87b2372ba1cbf8250236ac37191565` and23 preserved open PRs. Current PostgreSQL138 files/1,674 PASS; G11 **19/22 FAIL**. Historical22/22 remains source-bound. No protected merge, release or persistent deployment.
+- **Runtime result:** independently reviewed V44 sealed145 files/221 offline tests passed the real guarded preflight and actual current66 off/shadow run `20261009T123356Z-66c736e7`, outer interval12:33:55.106330–12:34:31.294953 UTC, exit0. Candidate image029d69 has revision66/UID10001; schema80 image6a6315 is a historical comparator, not currentmain3096. Traffic interval12:34:19.164898–12:34:26.125251 UTC;47 tally rows/134 occurrences,4 exceptional event rows/5 occurrences, zero unexplained and27 eligible source groups. Fresh independent Sol CLEAR admits27 selected sources from actualcurrent66 observation and compatible originalOct6/8 witnesses:140 unique acquisition requests comprising130 primary plus10 auxiliary;47 tally rows/134 occurrences and4 exceptional event rows/5 occurrences. Task setup tallies are excluded from selected eligibility. No strict activation, config/task cutover, full-day or72-hour claim. Final empty enforcement/shadow-on live-ready200 and foreign404 retained; ownership cleanupPASS, all original19 container IDs/five running preserved.
+- **Config/task:** V43 original synthetic-review acceptance blocker is preserved. V44 structurally requires original external Sol report bytes, exact control map/source/image/manifest and independent reviewer context on the actual launcher path; strong Luna/full Sol CLEAR. Config8-map and base6-map have separate genuine Sol bindings. Current66 admission/source-admissibility passed frozen validators with exact-candidate-observation. Fresh config28 root bindings and guarded validationPASS; disposable strict/rollback acquisition is now running. Task remains separately gated by fresh authorized DEV/UAT proof.
+- **P1:** exact#609244 retains codec review and72 focused tests; canonical bundle350164 bytes remainsFAIL. Rejected parser experiment remains reverted. Read-only comparison confirms all four additional P0 rendering commits and the DialogPanel split are already ancestors; no duplicated patch or speculative lazy-shell correction. Actual MFA trace passed signup/enrollment/TOTP/backup codes then timed out selecting the changed log level, with debug option reported invisible despite the open-listbox screenshot. Root cause remains unproved; offline trace/source diagnosis continues. Owned resources, test overlays and original volumes cleaned; current hosted55/56 E2E and21/22 G11 failures remain.
+- **Canonical dependencies / PR owners:** #6141fbb has no unique advisory fix versus frozen#60266; all four high/critical fixes overlap, with P0 resolving equal/newer versions. Prefer existing frozen P0 resolution and preserve#614 source/reviews while it remains red; after accepted P0 verify the lock and absorb/close its redundant dependency payload, separately preserving any necessary audit-description delta. No competing lock upgrade or blanket#614 prerequisite. #612f596 remains independently owned, unaccepted and required CI red; it does not block unrelated authorized work.
+- **Conductor / next:** root owns the existing queue, one migration ledger, resource windows, protected merges and release coordination. Existing hourly conductor heartbeat refreshed to follow this queue/root checkpoint without blanket wait-for#612; no duplicate schedule, completed date-observation schedule remainsPAUSED. P1–P4 existing preparation continues; undefined SLA paths and exact non-secret fingerprint exception alone wait for their decisions. Next: complete and independently adjudicate actual config28 proof, bounded existing CI/trace repairs, then exact-head qualification. GHCR/GitHub-only release; private seeders and credentials outside GitHub.
+
+## Execution checkpoint — 2026-10-09 10:30 UTC
+
+- **P0 / accepted source:** live GitHub REST confirms main `3096cb044bdf6ae98488bfc385f532fa6386343a` and #602 `66c736e71c87b2372ba1cbf8250236ac37191565`; PG138 files/1,674 PASS, current G11 **19/22 FAIL**. V40 historical27-source strict/final rollback facts retain scoped Sol acceptance/current66 inference and original failed exit. V41 complete finalizer209 offline tests/full Sol CLEAR; no full runtime acceptance or current66 capture is claimed.
+- **Config/task:** V42 sealed137 files/214 tests passed strong Luna and full Sol source review; execution was BLOCKED because the delegated path rejects config. Sol's authority addendum confirms Thomas's existing October8 approval authorizes the named disposable config test without a new operational-cutover decision. V43 implements that narrow delegated path with complete production/CLI/preflight regressions; fresh review remains before any root-issued resource window. Task stays disabled and requires its separate fresh authorized DEV/UAT re-key proof after config; no fabricated approval or disposable-to-UAT label.
+- **P1 #609:** published `244f59fee0647247fe3e54b9f78a0deb5d47549a` preserves numeric/boolean/JSON-like query text through the real router codec. Fresh independent structural Sol CLEAR,72 focused tests/web typecheck PASS. Canonical Node24 work-list bundle350,164 bytes **FAIL** against strict350,000. One complete shared-decoder experiment passed13 differential tests but increased bytes350,166/350,183 and was reverted; current WT/source unchanged. Read-only eager-import ownership analysis continues. Current244 hosted E2E55/56 FAIL at MFA observability log-level step and G11 **21/22 FAIL** at LCP2640/2500; these do not replace frozen P0 results. Independent read-only MFA diagnosis is active.
+- **CI/inventory:** GitHub connector restored live inspection after local CLI/API TLS timeouts.23 open PR heads remain conserved. Current244 OpenAPI failures belong to the already-owned pending-action DTO correction in #608. GitHub's additional advanced-security scan failed before review with Copilot monthly quota402; live protect-main22365005 does not require that context. Independent project review and every actual required status remain mandatory; no check is suppressed. #612/#614 stay independently owned, source-bound and unaccepted.
+- **Next / program:** finish and independently review V43, then execute only eligible owned disposable config proof; complete evidence-based P1 source correction/MFA diagnosis and reevaluate exact checks. P2 current9e32 reviewed event/SLA slices and exact image proof remain preserved; both-metric operation is approved, two distinct SLA contracts still WAITING_DECISION. No protected merge, publication, persistent deployment, branch deletion or Docker Hub action. Private seeds/credentials stay outside GitHub. Hourly integration continuation ACTIVE; completed date-observation schedule PAUSED.
+
+## Execution checkpoint — 2026-10-09 09:35 UTC
+
+- **P0:** main3096 and candidate66 remain unchanged; PostgreSQL1,674 PASS, current G11 **19/22 FAIL**. V40's actual27-source strict/final rollback facts have fresh independent scoped acceptance and current66 compatibility inference, retaining historical source/image/failed-exit identity. V41 complete finalizer passed209 offline tests and independent full Sol; no full runtime PASS is claimed.
+- **Config/task:** the author is completing one current66 config-stage packet with exact image bindings, registry order, historical dated public-source bridge and actual before/after response comparison. Its suite is still red on stale candidate/receipt fixtures and the packet is unsealed; no runtime receipt or Docker release has been issued. Task stays disabled: canonical fresh read-only re-key proof must follow config runtime on an authorized DEV/UAT source/image. Disposable fixture counts do not replace that proof; current G11 still blocks candidate deployment.
+- **P1:** coherent parser/calendar correction is published: implementation `78e0e62deead50f4135c0f8a079049d9b6264e4c`, note-only current#609 `6014436e5e929b3eda3c7669430b7c3af32395be`. Canonical Node24 bundle improved350,681→350,138 bytes but remains FAIL.77 focused tests/type/Biome PASS. Fresh structural Sol found no new delta defect but BLOCKED the candidate's inherited real router seam: default decoding turns numeric/boolean-like search strings into nonstrings, then route validation drops them. The complete registered-router/link-codec fix and actual round-trip tests are now assigned; original red results remain.
+- **Conservation/queue:** current remote capture contains446 refs; all442 original branch names remain. Added SLA, event, control-plane and security-prerequisite refs are owner-mapped. #612 advanced to `f5969dfd85e39d034212affc1e2e62661cd98aa3` and has new CI pending; its prior review/check claims do not transfer automatically. #614 remains current1fbb with E2E/G11 red. No main merge, publication, persistent deployment or branch deletion. Private credential/seeder policy and GHCR-only release direction remain.
+- **Next:** finish complete current66 config packet/full offline suite/seal, fresh independent review and owned execution only when eligible; finish the P1 codec batch; then reevaluate exact head checks. Other P1–P4 sources stay preserved for accepted-base reconstruction. Existing hourly continuation remains active; observation schedule remains paused.
+
+## Execution checkpoint — 2026-10-09 09:21 UTC
+
+- **Accepted source / P0:** main remains `3096cb044bdf6ae98488bfc385f532fa6386343a`; #602 remains `66c736e71c87b2372ba1cbf8250236ac37191565`. Hosted PostgreSQL passed 138 files and 1,674 tests. Current G11 remains **19/22 FAIL**; historical 22/22 stays source-bound. Product source remains frozen; no protected merge, publication or persistent deployment.
+- **Runtime progress:** actual historical-b757 V40 run `20261009T090209Z-b7573671`, 09:02:08.579413–09:02:53.957579 UTC, captured strict and off-shadow acquisitions with 140 unique requests,134 tally occurrences,27 required sources and zero unexplained/uncovered. Final rollback recorded empty enforcement, shadow on, live/ready200 and foreign denial404, followed by ownership-checked cleanup. Fresh independent GPT-6 Sol accepts these narrow runtime and final rollback facts. Overall command remains **FAILED**: the report callback raised `NameError` after saving the terminal receipt. No historical source is relabeled current66.
+- **Complete finalizer correction:** private immutable V41 manifest `77b257b26bfd037bf250c0a09a6b70d10bde49fb542f0e888a7e52f09bdf42df` factors the actual production terminal/report callback into one shared callable and exercises genuine retained V40 inputs. Fresh full independent GPT-6 Sol CLEAR;209 offline tests PASS. Derived reports preserve V40 failure and create no runtime result. Fresh independent Sol scoped carry is CLEAR only for explicitly attributed unchanged b757-to66 behavior; no current66 capture is claimed. Config/task-last prerequisites and full successful runner acceptance remain. Original19 containers,5 running and OrbStack context preserved; no active runtime/performance window.
+- **P1 #609:** exact `0aaf134a83588bc848863948e3fe9b80a409193b` has two fresh Luna CLEAR reviews and Sol structural boundary CLEAR. Exact image `sha256:a898763021c59ed1c546e4940ea344f2fa0f2aaa9cc2d9b32f62056cecc97d58` booted UID10001,119 provisional branch migrations and healthy endpoints; cleanup PASS. Earlier Node26 bundle result did not match CI: same assets compress to349,877 bytes on Node26 and350,681 on canonical Node24. Current hosted build is therefore FAIL. Whole shared search/parser correction is uncommitted; latest measured350,140 bytes still FAIL against unchanged strict350,000 limit. Preserve every URL/filter/query/selection behavior. Browser and accepted-base integration remain.
+- **P2 #611:** exact `9e32b9156c3e703b36ee1c1211981c3de0e2bc52` hosted event/probe gate now PASS after independently reviewed existing literal-event correction. Exact image `sha256:8a355d347e40f5ca72c27cc50672d9c7f0fc546b7073f02f488646a198078877` booted UID10001,103 provisional branch migrations and live/ready200; cleanup PASS. Existing base CI/security dependency/migration integration and browser gates remain. Atomic both-metric manual operations are approved and implemented; completion/manual-resume continuity and pause DTO paths alone remain WAITING_DECISION.
+- **Live inventory:** GitHub capture contains23 open PRs, including independently owned #612 control-plane realignment and #614 dependency prerequisite. Their histories/review records stay with their owners. #612 is BLOCKED on audit; #614 audit passes but current E2E/G11 fail. The four high/critical accepted-base dependency findings are already repaired in frozen P0; avoid duplicate upgrades in its source. No candidate is treated as eligible with red checks.
+- **Next executable work:** record the completed scoped carry; prepare the complete config/task-last prerequisite path; finish canonical P1 bundle correction; preserve and compose existing P1–P4 sources after accepted P0. Three isolated decisions remain pending: SLA continuity, pause read DTO and the exact non-secret historical gitleaks fingerprint. Hourly integration heartbeat ACTIVE; completed observation schedule PAUSED. GHCR/GitHub release assets/tags/packages only; seeders and credentials remain private outside GitHub.
+
+## Execution checkpoint — 2026-10-09 08:26 UTC
+
+- **P0 acceptance remains OPEN:** accepted main `3096cb044bdf6ae98488bfc385f532fa6386343a`; #602 remains exact `66c736e71c87b2372ba1cbf8250236ac37191565`, PostgreSQL138 files/1,674 PASS, G11 **19/22 FAIL** and readiness incomplete. No protected merge, release or persistent deployment.
+- **Actual runtime progress:** V37 was independently BLOCKED and never run. V38 manifest `d49c415c592a0e1fcd4c16e41837c32b18d4da35d7a3e5876b9dcf75338d1044` passed199 offline tests and fresh full Sol. Root-owned actual historical-b757 run `20261009T082159Z-b7573671`, **08:21:58.315763–08:22:43.267297 UTC**, exited1 at `offline_traffic_report_render`. The saved actual strict projection/typed contract/replay reports valid assessment and acceptance:140 unique requests,50 tally rows/134 occurrences,7 event rows/9 occurrences,6 explicit pre-guard exclusions,27 selected sources,zero unexplained/missing coverage. These are original actual records, not the earlier synthetic fixture. Overall run remains FAILED; fresh independent scoped adjudication is running, including exact rollback limits. No current66 capture or final runtime acceptance is claimed. All owned resources cleaned; original19 containers/5 running/context preserved. V39 author diagnoses the complete rendering/finalization path offline with retained actual data; no further Docker attempt authorized.
+- **P1 #609:** current `0aaf134a83588bc848863948e3fe9b80a409193b` implements the whole shared route/search import-graph correction and genuine contrast occurrence coverage. Author web typecheck,4 files/63 tests plus2 files/26 Gantt/keyboard tests,316 contrast pairs/Biome PASS; local bundle349.9KB under unchanged strict350KB limit. Fresh independent ordinary review is running. Earlier6054 review/image proof is historical; current-source image/browser/full CI and accepted-base integration remain.
+- **P2 #611:** current `9e32b9156c3e703b36ee1c1211981c3de0e2bc52` normally composes existing event-literal correction `180487c1b76a391d3279abddd929d3f3d839eea0` on reviewed43cd SLA, plus source-bound review notes. Strong independent Luna/full Sol CLEAR the bounded event correction; focused7/7, complete34-probe gate,36 registered keys/459 files and all4 API type configurations PASS. Author serialCI scripts1,066/1,066 PASS; the separate parallel contrast scratch-file failure is preserved. Exact9e32 image `sha256:8a355d347e40f5ca72c27cc50672d9c7f0fc546b7073f02f488646a198078877` built arm64/revision-matching; no boot/push. Fresh hosted CI, inherited base blockers, provisional migration integration and browser acceptance remain. Undefined SLA completion/resume and pause-detail paths still wait only on their decisions.
+- **Program:** source histories conserved, GHCR/GitHub-only release policy, no Docker Hub or history rewriting. Records secret-scan exact non-secret fingerprint exception remains WAITING_DECISION; no ignore added. Hourly integration heartbeat ACTIVE; completed observation schedule PAUSED. Next executable actions: scoped actual adjudication/report repair, navigation independent reviews/current CI and existing611 deployability proof under a fresh owned window.
+
+## Execution checkpoint — 2026-10-09 07:59 UTC
+
+- **P0:** accepted main `3096cb044bdf6ae98488bfc385f532fa6386343a`; #602 remains `66c736e71c87b2372ba1cbf8250236ac37191565`, hosted PostgreSQL138 files/1,674 PASS, G11 **19/22 FAIL**, readiness and runtime acceptance open. Product source stays frozen; no historical green transfer, protected merge or release.
+- **Collector:** V36 manifest `9c9158dcadba0cdf5f24094328df41eced773ebd0a877e0d475876b50ab4c8b1` passed197 offline tests but fresh full Sol BLOCKED its asset provenance producer/consumer mismatch and missing final assessment/acceptance assertions. V36 was never run. V37 is unsealed offline remediation: genuine V35 persisted row-chain facts now bind, but the complete acceptance regression still exposes unexplained project/WebSocket reconciliation. No runtime is authorized. V35 remains FAILED with missing strict snapshots; synthetic fixture values cannot become actual acceptance. Original19 containers/5 running and context preserved.
+- **P1 #609:** current note-only `6d8d58cdd4c298bcffbdb99259b8cadc8201fd60` records implemented `6054eb0a6b1a299232cf4630665e3d4502f0544e`. Full independent Sol CLEAR with81 affected tests; exact image `sha256:9024e4f2dac97d06eb2ea6ca7693f4f18dd56c7a82a51844dc6b06fffadf5001` built and booted UID10001/live-ready200 with119 provisional migration entries and complete owned cleanup. Hosted E2E/G4/G8/unit PASS at current6d8; static/build/OpenAPI/readiness FAIL and PostgreSQL pending. Author diagnoses concrete current-source failures as a complete batch. Browser verification remains BLOCKED; accepted-base/schema integration is outstanding.
+- **P2 #611:** current `19b089376f686cbb025b34b22b0e4fc118a93464` retains reviewed43cd implementation,26 affected PostgreSQL and89 permission tests PASS. Hosted CI remains red. Read-only triage found no defect caused by the note-only delta; identified computed-event scanner mismatch, OpenAPI recursion, migration bootstrap, route-tree assertions, token/env/dependency and browser/performance failures remain independent blockers. A bounded event caller/source comparison is running before any correction. Atomic both-metric behavior is approved; completion/resume and pause-detail contracts remain pending.
+- **Records:** #601 current `f51d24ede79daae1c647c0584b514e6343c12df9` has two independent ordinary CLEAR reports for that snapshot. Its secret scan flags an objectively non-secret historical public-count phrase; an exact-fingerprint exception awaits Thomas and has not been added. Other work continues. Live21 PR histories remain conserved; no Docker Hub, persistent deployment or source deletion. Hourly integration heartbeat ACTIVE, completed observation schedule PAUSED.
+
+## Execution checkpoint — 2026-10-09 07:15 UTC
+
+- **P0 unchanged:** #602 exact `66c736e71c87b2372ba1cbf8250236ac37191565`, PostgreSQL 138 files/1,674 PASS, G11 **19/22 FAIL** and readiness incomplete. Product source remains frozen; accepted main remains3096. No protected merge or release.
+- **P0 diagnostic:** V35 manifest `f11a0110eae0d85d4e73e1dc1feb4c3197c49a6fd4f4affe6764c71cc6be79eb` passed 192 offline tests and fresh full Sol for diagnostic acquisition only. Actual historical-b757 run `20261009T070823Z-b7573671`, 07:08:22.399590–07:09:08.709525 UTC, FAILED collector policy-metadata validation at proof_helpers.py:2621. The raw-first seed now preserves nine strict event receipts and 136 acquisitions (SHA-256 `040b841a8e6dc2c85d7d2edfa1855e497091acb88d7a5329e7ea8ad97b8f01eb`), explicitly ineligible for acceptance. Strict baseline/current tally snapshots are absent; off-shadow snapshots cannot substitute. Cleanup PASS/zero errors; original 19 containers/context preserved. A fresh Sol design context `p0_collector_full_path_design` is auditing the full dataflow and required acquisition boundary before any successor; it cannot independently review the resulting implementation. No further runtime attempt is issued.
+- **P2 #611:** implemented exact `43cd20366e432704ba5a4eb2c6877e511b7331f9` has two current ordinary delta CLEAR reports, retained scoped migration review, and fresh full Sol security CLEAR. Author PostgreSQL26/26 PASS; independent route/permissions14 files/89 tests PASS. OpenAPI export fails identically on current source and parent#513 under the same locked Node/dependencies; underlying schema trigger remains unisolated. Hosted static/token manifest, environment registry, dependency audit and OpenAPI are red; required gates remain. Genuine reviews are recorded in note-only head `19b089376f686cbb025b34b22b0e4fc118a93464`, bound to unchanged implemented source43cd. Fresh hosted checks are pending; no manual retry or full acceptance is claimed. Separate pending contracts remain isolated.
+- **P1 #609:** current `0c4dc82fe87ce7f06bf704242e4108c2ec26cca3` normally merges current#606 while retaining previous#609 ancestry. The whole keyboard-navigation class now uses a shared builder; 58 focused tests/web typecheck/Biome PASS and first-review delta CLEAR. A second fresh full ordinary review BLOCKED existing VW-1/VW-2 gaps: filters/search/sort remain outside URL and layout fallback is global rather than per-project. The author is implementing the complete defined URL-state batch before another review; no new feature scope is added. Browser/full integrated CI/accepted base remain open.
+- **Program:** 21 open PR histories and 443 refs remain conserved. P0–P7 formally open; GHCR/GitHub-only release policy; no Docker Hub, persistent deployment or source deletion. The actual hourly integration heartbeat remains ACTIVE and reads the newest queue/private checkpoint; completed date-observation schedule stays PAUSED.
+
+## Execution checkpoint — 2026-10-09 07:00 UTC
+
+- **P0 #602 BLOCKED:** exact `66c736e71c87b2372ba1cbf8250236ac37191565`; hosted PostgreSQL 138 files/1,674 tests PASS, G11 **19/22 FAIL**, readiness incomplete. Accepted main remains `3096cb044bdf6ae98488bfc385f532fa6386343a`. Product source remains frozen. Historical 22/22 is source-bound and does not clear the current red gate.
+- **Runtime:** V32 actual 06:22:09–06:22:51 UTC received independent Sol acceptance for its scoped off-shadow window only (report SHA-256 `5ddcbb0f8a4220e0dab49bf37eb6911e04aae328439554e7019d090db43f5786`); overall strict proof FAILED on nullable event reconciliation. V33 was independently BLOCKED and never run. V34 staged collector passed 188 offline tests and full Sol, but actual diagnostic run `20261009T065610Z-b7573671`, **06:56:09.601782–06:56:53.727610 UTC**, FAILED at its strict stage-binding validation before the diagnostic file was persisted. No strict acceptance or new observation date is claimed. Original records remain immutable. Cleanup PASS/zero errors; original 19 containers and global context preserved. Owner `v30_projection_repair` is auditing the complete production invocation/persistence path offline before another runtime attempt.
+- **P2 #611 RUNNING:** exact `43cd20366e432704ba5a4eb2c6877e511b7331f9`, unaccepted parent #513. The complete defined pause/evaluation batch now journals branch-local provisional 0102 against its preserved parent 0101; schema drift 1/1 and affected PostgreSQL 24/24 PASS. This is not final central migration allocation or accepted history. Bulk review found a manual-pause parent-project liveness race; the author has implemented the transactional liveness recheck and manual-pause preservation regressions. The complete liveness/manual-preservation fix is now pushed; affected PostgreSQL **26/26**, API typecheck, Biome and diff-check PASS, owned teardown complete. Exact-head delta review is running. Thomas approved atomic both-metric operations only; completion/manual-resume continuity and pause-detail DTO/UI remain WAITING_DECISION.
+- **Program:** live GitHub still has 21 open PRs; latest conserved ref capture has 443 branches. #611 is attached after removing only obsolete #550/#555 task attachments; their closed GitHub PRs and unique source histories remain preserved. P0–P7 remain formally open. Existing hourly integration heartbeat ACTIVE; completed date-observation schedule PAUSED. No protected merge, release, persistent deployment, source deletion or Docker Hub action. Continue dependency-safe existing work; merge only after all exact-head gates and required reviews pass.
+
+## Execution checkpoint — 2026-10-09 06:17 UTC
+
+- **P0 RUNNING:** #602 remains exact `66c736e71c87b2372ba1cbf8250236ac37191565`; hosted PostgreSQL 138 files/1,674 tests PASS, G11 19/22 FAIL and readiness metadata incomplete. Product source remains frozen; no historical green transfer. The current PR body now states these exact facts.
+- **Collector RUNNING:** sealed V31 manifest `e718374b8382edd7dfb68382bde00a6987a0f4b7e875f485ea16cab0d9d14752` passed fresh full Sol, exact 68-file inventory and all 177 offline tests. It repairs the b757 source-order proof and mode-specific DTO serialization. Root inspection found its launcher is deliberately validation-only, so it cannot acquire runtime proof. No V31 operator receipts or runtime were issued. Owner `v30_projection_repair` is producing a complete V32 guarded runtime entrypoint with the same validated correction and fresh full-chain tests. V30 remains FAILED; no passing strict proof exists.
+- **Compatibility CLEAR, conditional only:** independent Sol image/source carry report plus correction (SHA-256 `8b89e55fed972d7370c16d0adfbfa076824879a11141c399131991d0c58c0729` and `7283311307896a87642ed604bcbbed7050a2ce387bbeb3b393ec8a908768a1af`) permits only a scoped inference from a future genuine b757 PASS to unchanged tested66 behavior, retaining original source/image labels. It clears no runtime or G11 gate now.
+- **P2 implemented batch:** draft #611 `codex/p2-sla-pause-resume-20261009` at exact `95927e4635f2cc2e7b66fe2ee94b82297ef7bf7e`, based on preserved #513. Includes provisional pause schema, waiting-customer writes, atomic both-metric manual pause and interval-based evaluation. Bulk review found a stale effect snapshot; the structural transaction-local map correction is pushed, with **24/24** affected PostgreSQL cases PASS, API typecheck/Biome/diff-check PASS. Prior-head route policy passed 89/89. New exact-head review remains, and completion/manual-resume continuity plus pause-detail DTO/UI remain WAITING_DECISION. Migration allocation/image/browser acceptance are blocked, not claimed complete.
+- **Program:** live 21 open PRs and 443 remote refs; the added existing-SLA branch is conserved with its owner. Accepted main remains3096; all stages remain open. #611 attachment failed at the app's 100-identity limit, but the draft PR is live and verified. No merge, release, persistent deployment, deletion or Docker Hub action. Next: finish executable V32/review/owned proof; integrate approved SLA contracts when answered; keep all protected acceptance gates intact.
+
+## Execution checkpoint — 2026-10-09 05:59 UTC
+
+- **P0 #602 RUNNING:** live exact head `66c736e71c87b2372ba1cbf8250236ac37191565`. Hosted run 37888524785 passed PostgreSQL **138 files / 1,674 tests**, static, build, OpenAPI, permission/route registry, unit/component, gate probes, supply-chain, E2E, G4 and G8. G11 remains **19/22 failed**: LCP 2,556/2,500 ms, palette 202.7/200 ms and board 636.7/500 ms. PR readiness metadata is deliberately incomplete. Historical exact9c G11 22/22 does not clear this current red result. Read-only hosted comparison found identical 976-source-file tree and all eight initial asset hashes, with different timings; no source correction or specific environment cause is established. Product source stays frozen.
+- **Runtime RUNNING / collector source admission:** independently cleared V30 manifest `38b35a12a345dd4987817d76711829cb4bdbf902ff87579dccdfcf8e6bc6b6df` ran on historical exact b757/imagea9 at **05:50:12.826439–05:50:45.555577 UTC**. It FAILED off-shadow projection before strict assessment: the shared helper has no source-order proof for b757. The original run is immutable and is not a passing strict proof. Owned cleanup PASS; all 19 original container IDs and global context preserved. Owner `v30_projection_repair` is diagnosing and correcting the complete source-bound admission path in a new private sibling; appropriate independent review and fresh actual acquisition remain. No persistent deployment or enforcement activation.
+- **Image compatibility WAITING_REVIEW:** exact66 image `sha256:029d69a96666b8cbe74ef613f251db0849a32f338d18770bdf81a8d7ee6a37e2` previously booted UID10001/live-ready200 with owned cleanup. Source-object equality and rootfs comparison found 194 mode differences and two dependency metadata timestamp differences against historicalb757; fresh independent Sol is adjudicating scoped compatibility. Root comparisons alone are not review or runtime acceptance.
+- **P1 #606 BLOCKED on integration / current CI:** exact `077fea417f65d9be9678757f8fc2f198bca7fab4`. Contrast-manifest correction has strong Luna and Sol CLEAR, 316 token declarations and 1,125 CI-script tests PASS. Current G8 passed 16 route cases and failed Saved view detail at two edge pixels; the corresponding prior803 case passed, with unchanged route/fixture/styles/workflow/golden. This supports transient fluctuation but does not clear current CI. No baseline update or unchanged retry. Unaccepted #589 ancestry and canonical pending-action OpenAPI composition remain.
+- **P2 RUNNING / decisions isolated:** existing SLA pause integration is being implemented on isolated #513-derived branch `codex/p2-sla-pause-resume-20261009`. Thomas approved atomic manual operations across both response/resolution metrics, with whole-operation rollback on either conflict. Completion/manual-resume pause continuity and exposing existing pause intervals in the read response remain WAITING_DECISION; only those paths wait. Provisional DDL is not accepted migration history.
+- **Program:** accepted main remains `3096cb044bdf6ae98488bfc385f532fa6386343a`; P0–P7 remain formally open. Current 20 open PR owners/source histories remain conserved, with no protected merge, publication, persistent deployment or Docker Hub action. Next: complete source-bound collector repair/review, obtain actual runtime proof and independent compatibility adjudication, complete defined SLA batch, and reconcile exact candidate gates before protected integration. Existing hourly heartbeat ACTIVE; completed date-observation schedule PAUSED.
+
+## Execution checkpoint — 2026-10-09 05:31 UTC
+
+- **P0 #602 WAITING_CI:** exact `66c736e71c87b2372ba1cbf8250236ac37191565`, a review-note-only descendant of independently confirmed test-only `9179d4d5d582eae9f2525ed434a2db2f65af336c`. All four API typecheck configurations and 17 focused PostgreSQL cases pass. Current static, build, OpenAPI, route/permission matrix, unit/component, gate probes, supply-chain, G4/G8 and E2E checks pass. Full PostgreSQL and G11 are running; PR readiness metadata remains deliberately incomplete. Historical exact `9c3ad64fae6870ac6ce0812050ff2ff147e621b7` hosted G11 run 37887893609 **passed 22/22** with unchanged budgets/workloads/retries; its PostgreSQL job was canceled by the corrected successor. Do not transfer that result to current66. Freeze product source; no performance experiment is indicated.
+- **Exact current image:** `sha256:029d69a96666b8cbe74ef613f251db0849a32f338d18770bdf81a8d7ee6a37e2`, OCI66, built and booted 05:29:24–05:29:39 UTC as UID10001 with live/ready200. Owned containers/volumes/network removed; all original resources/context preserved. No registry publication or persistent deployment.
+- **Runtime WAITING_REVIEW:** V27 remained blocked and was never run: its date/source/evidence tuples were not fully bound and its launcher pin was stale. Separate complete V28 manifest `3a186ea89786c4302f05c9a17b1beb885b10212de25462b5c42e8341fcbefc56` has 57 files, 165 passing offline tests, actual trusted execute-free CLI positive/negative coverage and fresh independent Luna CLEAR. Full independent Sol review is running. Its future actual runtime remains bound to historical b757/imagea9; original Oct6/8/9 source identities are preserved. Actual current66 differs from b757 only in the oracle test and security-review note; root Git object comparisons prove apps/packages/dependencies/deployment/CI objects unchanged, but independent runtime compatibility adjudication still remains. No false final-candidate runtime label, config/task authority, phase completion or merge.
+- **P1 #606 WAITING_CI:** exact `077fea417f65d9be9678757f8fc2f198bca7fab4` pushed normally after one strong Luna and Sol CLEAR. Complete contrast mapping correction removes only two obsolete caller-chain occurrences; all 316 declarations/thresholds/themes remain. `check:tokens` and CI-script suite 1,125/1,125 pass. Earlier803 hosted build/PG pass and G11 21/22 sole LCP remain historical; current CI is pending. OpenAPI inherited pending-action representation awaits accepted source integration, and parent589 remains unaccepted. No speculative performance change.
+- **Program:** accepted main remains3096; P0–P7 formally open, later existing sources/migrations conserved. No merge, release, persistent deployment, branch deletion or Docker Hub action. All five-window supplemental CPU captures failed closed on negative timing deltas and support no caller/source cost; no additional capture is scheduled. Next: finish exact66 CI; complete V28 Sol then owned disposable proof and independent adjudication; reconcile final metadata; merge only genuinely eligible protected source, then signed-release/installer/rollback and fresh accepted-main finalizer.
+
+## Execution checkpoint — 2026-10-09 05:13 UTC
+
+- **P0 #602 RUNNING:** exact candidate `b7573671d2cafed3871d04ee52e40b79260a966b`. The approved request-level diagnostic witness now uses a structural safe projection and exact route/source pairing; independent full Sol source/security and sealed V26 review is CLEAR, with 12 API tests and 155 proof tests passed. Hosted G11 is **21/22**, with only board render 568.1/500 ms failed. Hosted PostgreSQL is **1,661/1,667**: six existence-oracle comparisons differ only in the new server-generated random request-ID header. Owner `p0_oracle_correlation_fix` is repairing the complete comparator class in an isolated test-only descendant, preserving every other status/body/header and reach assertion. Static, build, OpenAPI, permissions, E2E, G4/G8 and supply-chain checks pass at b757; PR metadata, PostgreSQL and G11 remain red. No merge eligibility.
+- **Runtime RUNNING:** exact b757 image `sha256:a9f6f38d5783fed6a88fbd881659a1e72b68e9444dc94e35d8f74be5b904d709` built and booted as UID 10001, live/ready 200, complete owned cleanup. V26 manifest `ab934dcdcc3e980e8736644c3357ff0ec9560107d9d92c0e30b180019ed61e56` is independently CLEAR. Actual V26 preflight stopped before Docker: the gate requires an exact-candidate dated observation despite independently admitted unchanged 27-source guard behavior. The original Oct 9 observation remains bound to 12d9; no relabeling or strict capture occurred. Owner `g11_capture_live_failure_diagnosis` is preparing a bounded private compatibility-binding correction with original dates/hashes preserved and adversarial tests. Prior failed V24 and every original observation remain historical. Config/task and release/finalizer remain open.
+- **P1 #606 RUNNING:** exact `80331b42550ef93211abbec99da0229c16b1ef0e` now passes hosted build and PostgreSQL. Two fresh Luna reviews cleared its complete lazy inner-content boundary; the immediate authorized dialog shell and retry behavior remain. Hosted G11 remains **21/22**, sole work-list LCP failure; do not transfer this result to P0. Exact image `sha256:8ce9f8a53b439ad0251eecccb1d89b38202ef68edb4454482c2032052b614edb` booted UID 10001/live-ready 200 with owned cleanup. Static, gate probes, OpenAPI, PR metadata, unaccepted parent and integrated browser acceptance remain; no merge.
+- **G11 diagnostics WAITING_REVIEW:** the complete wired private capture packet is manifest `81e4410dba30e7d66753b5b2f2de6fdc98575110b4c54dd55955043dedff8edb`, 2,896 files and 56 offline tests. Fresh Sol review is running before any acquisition. It uses complete Profiler.stop for CPU measurement and retains trace fragments only as explicitly unmeasured diagnostics. Prior malformed captures remain preserved; no authored-source cost or product correction is inferred.
+- **Program:** accepted main remains `3096cb044bdf6ae98488bfc385f532fa6386343a`; formal P0–P7 remain open. P1–P4 existing source/migration owners remain conserved for post-P0 reconstruction. No protected merge, publication, persistent deployment, branch deletion or Docker Hub action occurred. The hourly integration heartbeat remains active; completed date-observation schedule remains paused. No new Thomas decision is needed.
+
+### Supplemental capture outcome — 2026-10-09 04:19 UTC
+
+Root's original-source local capture ran 04:14:51–04:19:08 UTC. Both arms failed all five windows: the CPU profile failed closed at numeric graph validation and interaction windows timed out. Owned preview processes were stopped after each arm. The current `12d9` arm also overlapped a P1 lane's tests/build after a misunderstood resource hold; it is environmentally tainted. No timing, source correction, hosted G11 pass or acceptance is inferred. Original records are preserved. Owner `g11_capture_live_failure_diagnosis` is preparing a new private diagnostic revision with closed failure codes and fixture/prepare checkpoints; no repeated acquisition is scheduled until appropriate review. The resource hold is released. P1's experimental focused permission hook worsened the bundle and was reverted, preserving `6f4dc0b4`; it is not a retained product fix.
+
+## Execution checkpoint — 2026-10-09 04:15 UTC
+
+- **P0 #602 RUNNING:** live PR head remains `12d9f899a3437a601e0da22a3c8b25ba9a70f430`; hosted G11 remains failed **19/22**. Thomas approved the minimal request-level diagnostic witness. The complete correction is committed separately at `a38659f7709ba3aca8961f34e051379572c58264` on `codex/p0-palette-reduction-1878`, a descendant of the PR head; it is not yet the #602 candidate. Owner reports API regressions 11/11 and typecheck pass, and V25 private module/direct collection 150/150; independent review, exact new image binding, hosted gates and runtime proof remain. Preserve V24's failed strict result; no unchanged retry or authorization change.
+- **P1 #606 RUNNING:** exact live head `6f4dc0b4136a52f4c9ee4f49b050673395422a77` preserves the immediate dialog shell, terminal permission error/retry and lazy form. Two fresh Luna reviews cleared the substantive UI correction; a fresh Luna cleared the unchanged DialogPanel module extraction. Exact hosted G11 now passes **21/22**, with only work-list LCP 2,680/2,500 ms failed; create, state and board tests pass on this P1 source only. Hosted build still fails the strict bundle gate at 350.4 KB/350 despite local 349.6 KB. Owner `p1_hosted_bundle_completion` is investigating that import graph. Exact image boot completed 04:12:40–04:12:55 UTC: UID 10001, live/ready 200, complete owned cleanup and prior resources/context preserved. OpenAPI and PR metadata also remain; no accepted composition or deployment.
+- **P0 G11 RUNNING:** the structurally validated private capture packet is independently Sol CLEAR at manifest `b253fb30b6fa489c68cbc245ee9e79ecf4191905e3c6c966ff86f093a6d2770e`, with 35 sealed files and 32 offline tests. Root started a fresh matched local supplemental capture of original `23a01a62` and `12d9f899` archived assets, with owned loopback preview and unchanged fixtures. No result yet; this cannot replace hosted 22/22 acceptance. Source lanes hold local builds/tests/runtime during measurement.
+- **Program:** accepted main remains `3096cb044bdf6ae98488bfc385f532fa6386343a`; all P0–P7 stages remain open. The 20 open PR source owners and branch histories are preserved. P2 source manifest identifies missing specified SLA pause/resume wiring for later integration. No merge, publication, persistent deployment or Docker Hub action occurred. Next: finish measurement and release resources, finish complete P1 bundle correction, independently review/build/bind P0 witness and reconcile its candidate through normal history.
+
+## Execution checkpoint — 2026-10-09 03:47 UTC
+
+- **#602 RUNNING / P0 required proof correction:** live head remains `12d9f899a3437a601e0da22a3c8b25ba9a70f430`; G11 remains failed 19/22. V24 manifest `c412b533a5cd60f0ea97598bfbb0ba6c204ad1947475e94ba5cd8b9d379954c3` passed fresh Luna and Sol review and 146 offline tests. Actual owned disposable run `20261009T034140Z-12d9f899` executed 03:41:40.564185–03:42:26.434001 UTC and FAILED its strict shadow assessment. All representative HTTP statuses matched, but three unexplained rows/four occurrences remain at asset, capabilities and workspace reads. Request/event cardinality and all 27 selected-source coverage passed. The independent Sol ruling identifies an unproven strict attribution boundary, not an established unauthorized allow. All owned resources were removed; all 19 pre-existing container IDs and the global context were preserved. No strict proof PASS, phase closure or merge is claimed.
+- **Next P0 action / owner `p0_strict_witness_batch`:** implement the bounded request-correlated strict decision/persisted-row provenance proof with adversarial reconciliation tests, preserving real unexplained failures. Any source change needs its own image, exact-head reviews/checks and compatibility adjudication. Preserve failed V24 evidence; no unchanged retry or additional date claim.
+- **#606 WAITING_REVIEW / P1 UI correction:** live head `1c4f1f69f29ab4ecc00ccb12c04edb77436072ed` corrects the cold create-dialog failure using an immediate shared shell and a lazy form, and handles capability-query pending, refresh, terminal error and retry without mounting an unauthorized form. Focused component checks passed 2 files/15 tests, web typecheck, Biome and diff check. One fresh independent Luna contract/caller review is CLEAR; second independent UI review remains pending. The earlier hosted 154-file/1,814-test PostgreSQL success belongs to `81c04729`, not this changed candidate. Fresh hosted G11/browser/image acceptance remain. Owner `p1_dialog_complete_repair`; final disposition REPAIR THEN MERGE.
+- **G11 RUNNING / diagnostic preparation:** the private inclusive capture packet's first fresh Luna review found free-form metadata privacy gaps. Owner `g11_inclusive_diagnostic_preparation` is correcting the complete projection/persistence class offline. No new measurement, performance result or speculative P0 optimization is claimed.
+- **Program continuation:** source/date observations remain scoped; the completed observation schedule is paused. The existing hourly integration heartbeat is active with these failure/resumption bindings. No protected merge, publication, persistent deployment, branch deletion or Docker Hub action occurred. Other queue entries retain their dependencies and dispositions from the preceding capture.
+
+## Status first — verified 2026-10-09 02:51 UTC (09:21 Asia/Yangon)
+
+**Live queue:** [integration execution queue](integration-execution-queue.md) refreshed against GitHub at 02:42 UTC: 20 open PRs and 442 remote branches. Accepted `main` remains `3096cb044bdf6ae98488bfc385f532fa6386343a`. Preserve all branch refs and existing source owners; the 177 accepted-main ancestors are history only, 54 retained in active-PR ancestry remain unaccepted, and 211 unassigned refs remain HOLD. No PR/branch disposition follows from ancestry or a partial blob match.
+
+**#601 documentation candidate:** PR #601 was at `f56da8966a7e4337b369e57b2d6c36aec9edf028` on accepted `main`. Its observed rollup had failures in static, PR-template/security-review, G11, dependency audit and secret scan; formal GitHub reviews were empty. Earlier Luna/Sol reports at `00764f7a` are historical and do not cover this candidate. The queue/status/decision-log batch advances #601 again; refresh its exact-head checks and reviews after push.
+
+**P0 #602:** exact source remains `12d9f899a3437a601e0da22a3c8b25ba9a70f430`; G11 is still 19/22 failed. V22 `20261009T021341Z-12d9f899` passed its scoped off-shadow run, and Sol's date ruling covers only nine changed nonmember-404 behaviors across three partial UTC buckets. A third 404 bucket is partial, not a full-day observation. The 27-source admission is guard-only; notification's new privacy-sensitive category and historical reuse remain blocked. V23 Sol admission is blocked by expired receipt/future window and was never run; preserve `/2026-10-09/p0-v23-sol-admission.md`. V24 remains implementation/repair only with no strict receipt or runtime execution. The observation automation is PAUSED. G11 diagnosis and exact-source strict/config prerequisites remain; task stays last. No strict activation, P0 completion, protected merge or release.
+
+**P1 #606:** current head `81c04729eaf721f8619180b00df1f80721034eb3`. Two independent Luna delta reviews and full Sol delta review are CLEAR for the omitted-body no-op behavior. Focused owner PostgreSQL is 41/41 PASS. Exact hosted integration run `37874560831` passed 154 files / 1,814 tests (924.92s); E2E, G4, G8, unit and build checks pass. PR-template and OpenAPI drift fail. G11 is 19/22: LCP 2,800/2,500 ms, board 632/500 ms, and the create dialog is missing at `performance.bench.ts:260` after `create-work-item-trigger.click()`. Do not attribute this to all performance budgets; raw evidence is `/Users/heinthura/.codex/taskdesk-evidence/2026-10-09/p1-606-hosted-failure/81c-g11.private.log`. Next source-owner action is to inspect the create interaction in the mixed #589 descendants, including the historical #600 Escape experiment, before any source change. Preserve source identity. Exact-image isolated boot/health and owned cleanup passed; no deployment or publication. Formal GitHub review list remains empty and integrated acceptance remains.
+
+**P4 #608:** head `8f1713934cb91fb7048930ae9b776b29cb67089b`; base #589 is still unaccepted and GitHub reports `CONFLICTING`. Two Luna and full Sol delta reviews are CLEAR; corrected current DTO PostgreSQL regressions 18/18, API typecheck, OpenAPI 225-operation generation/check, and contract checks pass. Hosted gates, accepted composition, image and integrated browser acceptance remain.
+
+**P1 #609:** remains draft at `21587556d3235ec927945dbc32c474079f973aff`, parented on #606's earlier `42a63482` head. Navigation tests pass 52/52; hosted integration is failed, and PR-template/OpenAPI/G11 fail. Its base remains unaccepted. Continue normal parent reconciliation; no history rewrite or acceptance implied.
+
+| Stage | Formal status |
+|---|---|
+| P0 | Open — V22 scoped runtime only; partial date evidence, guard-only source admission, V23 never run, V24 not authorized to execute, G11 19/22 and strict/config/task prerequisites remain. Automation paused; no completion or merge. |
+| P1 | Open — #606 reviews clear for behavior delta and hosted integration passes, but PR-template/OpenAPI/G11 and integrated acceptance remain; #609 is draft on an unaccepted parent with 52/52 scoped tests and hosted failures. |
+| P2 | Open — existing owners retained; central migration replay and integrated acceptance remain. |
+| P3 | Open — existing identity owners retained; exact composed security review and provider acceptance remain. |
+| P4 | Open — #608 delta reviews/tests pass, but #589 base is unaccepted/conflicting and hosted/composed/image/browser acceptance remain; #607 remains held. |
+| P5–P7 | Open and held under the feature freeze. |
+
+---
+
+## Status first — verified 2026-10-09 02:18 UTC (08:48 Asia/Yangon)
+
+**Execution queue:** [integration execution queue](integration-execution-queue.md) is refreshed against live GitHub at this capture: 20 open PRs, 442 remote branches. The linked branch inventory still has all 442 names; current head deltas include #601, #606, #608 and #609 against the earlier inventory capture. Preserve all refs: 177 accepted-main ancestors are conserved as history only, 54 branches are retained in active-PR ancestry but are not accepted, and 211 remain unassigned/HOLD for source ownership and semantic comparison. No blanket source completeness claim or branch cleanup is made.
+
+**#601 docs candidate:** last observed live head `2a5917637c0b9184ca9bbf6e543319d2f80068b3`, based on `main@3096cb044bdf6ae98488bfc385f532fa6386343a`; BLOCKED with CI still running and no formal reviews. This queue/status update will advance the branch; refresh exact checks and reviews afterward. The two Luna and Sol CLEAR reviews belong to exact head `00764f7a7fd3300424dcc21f5871b9180b41b61d` only and remain historical. Do not transfer old reviews or CI results.
+
+**P0 V22 runtime and scoped Oct 9 adjudication:** exact source `12d9f899a3437a601e0da22a3c8b25ba9a70f430`, image `sha256:e289e5407503d037342b44e8f6604357e017d05a021b91cbb232cae353c4662d`, manifest SHA-256 `78e0bd7e83da83d919c3f5624e432916de701a8413b9969d1134000fa3d8f702`; fresh Luna and Sol packet admissions were CLEAR. Actual off-shadow run `20261009T021341Z-12d9f899` passed; acquisition `2026-10-09T02:14:02.574706Z`–`02:14:09.464667Z`, 140 requests, 134 evaluations, 47 tally rows, four reconciled rows/five occurrences, 27/27 selected eligible sources observed, six proven pre-guard exclusions, zero unexplained counts. Owned cleanup PASS; all 19 existing resource IDs and global context preserved. Independent Sol date adjudication report SHA-256 `4bc7009e3161bae2f9f578577be797fe34a5ea2c5d0fd648f860d06ecf058a9c` CLEAR is limited to nine changed nonmember 404 behaviors across Oct 6/8/9 partial buckets. V21 failed run remains diagnostic only. No full-day/72-hour claim, all-source credit, strict activation, P0 completion or merge. The `p0-remaining-evidence-dates` schedule is PAUSED after adjudication. G11 remains 19/22 failed; next work is strict/config/task prerequisite proof (task last) and G11 diagnosis, then fresh authorization before further observation.
+
+**P1 #606:** exact head `42a63482e63753f6e54263df6a05a38751c88d52`. Two independent Luna delta reviews and a full Sol security delta review are CLEAR for the exact omitted-body behavior delta; earlier reviews remain historical. Focused owner PostgreSQL 25/25 passed, but hosted PostgreSQL failed; G11 (19/22), PR-template/security and OpenAPI checks also fail. The exact ARM64 OCI image (`sha256:32f2e6c480b0759c21ced8fee6d69a0514cf75c0547be432133d7635aeb15e14`) booted in isolated smoke from `02:11:57.030989Z` to `02:12:12.902211Z` as UID 10001; live/ready returned 200 and owned-resource cleanup passed with prior IDs/context preserved. This was not deployed or published. Integrated and protected acceptance remain.
+
+**P4 #608:** current GitHub head `8f1713934cb91fb7048930ae9b776b29cb67089b` conflicts with cumulative #589 base (`DIRTY`). Thomas’s canonical pending-action DTO decision is recorded in the decision log and migration ledger. Owner reports current-head auth/export PostgreSQL regressions 18/18, API typecheck, OpenAPI generation/check (225 operations) and contract checks PASS; two fresh Luna reviews and a full Sol security delta review are CLEAR for the `76b833be`→`8f171393` delta. Separate prior-head DTO PostgreSQL 18/18 and payload units 4/4 were on `4157514c`. Base #589 remains unaccepted/DIRTY, and final composition, hosted gates, image and integrated browser acceptance remain. Migration candidate numbers stay provisional and no replay/numbering is authorized.
+
+**Next execution:** (1) diagnose #602 hosted G11 19/22 without changing budgets/workloads/assertions; (2) produce exact-source strict/config/task prerequisite proof, leaving task last; (3) keep `p0-remaining-evidence-dates` paused until authorization/gates are renewed; (4) continue #609 bounded normal parent reconciliation with #606 without rewriting history; (5) prepare unaccepted P1/P4 compositions on approved bases and refresh their current checks.
+
+| Stage | Formal status |
+|---|---|
+| P0 | Open — V22 off-shadow runtime PASS; Sol CLEAR date ruling only for nine changed 404 behaviors across three partial UTC buckets. Observation schedule paused. G11 19/22, strict/config/task proof, remaining eligible-source evidence, release proof and phase finalizer remain; no stage completion or merge. |
+| P1 | Open — #606 delta Luna+Sol reviews CLEAR; focused PostgreSQL 25/25 differs from hosted failure; isolated exact-image boot/health passed, no publication. G11/PR-template/OpenAPI and integrated acceptance remain. |
+| P2 | Open — preserve current owners; central migration replay and integrated acceptance remain. |
+| P3 | Open — preserve current identity owners; exact composed security review and provider acceptance remain. |
+| P4 | Open — #608 current delta Luna+Sol CLEAR and owner 18/18 PG/typecheck/test/contract PASS; branch base #589 remains unaccepted/DIRTY and full composition, hosted gates, image/browser acceptance remain; #607 stays held. |
+| P5–P7 | Open and held under the feature freeze. |
+
+---
+
+## Status first — verified 2026-10-09 01:53 UTC (08:23 Asia/Yangon)
+
+**Execution queue:** [integration execution queue](integration-execution-queue.md) is the current runnable-work index. The feature freeze remains active; it schedules existing integration, repair, CI, migration, build/package and SIT acceptance only. Live GitHub returned 20 open PRs and 442 branches. PR #601 is at exact head `00764f7a7fd3300424dcc21f5871b9180b41b61d`; the branch inventory otherwise matches live refs and has one expected stale #601 head. No protected merge occurred. GHCR/GitHub releases remain approved; Docker Hub remains prohibited.
+
+**Current #601 checks:** exact live head `00764f7a7fd3300424dcc21f5871b9180b41b61d`, base `main@3096cb044bdf6ae98488bfc385f532fa6386343a`, BLOCKED/MERGEABLE. GitHub reports failures in static, protected-route E2E, PR template/security review, G11, dependency audit and secret scan. Two independent Luna CLEAR reviews and a Sol CLEAR are recorded against this exact head; GitHub’s formal review list is empty. Repair only evidenced CI/metadata defects and refresh the exact-head rollup. This snapshot does not claim CI green.
+
+**P0 exact evidence boundary:** #602 remains `12d9f899a3437a601e0da22a3c8b25ba9a70f430`; G11 remains 19/22 failed (LCP 2604/2500 ms, task-state 261/200 ms, board 651.8/500 ms). The V21 finalized manifest `eed31324f872dff8ae321499a792d262764daea4bf06b7e7f346d91dd7fc68c4` has fresh strong Luna and full Sol CLEAR for the recorded offline 130-check scope only. Root's operator receipt/resource window is still required. Do not transfer offline evidence to runtime/SIT or claim P0 complete. #602's exact-head GitHub review list is empty; PR-template and G11 blockers remain.
+
+**Human decisions now recorded:** Thomas approved for #606 that an omitted free-comment PATCH body is a no-op after existing permission/window/parent checks; and for #608 that historical pending-action DTOs serialize canonical `delete`/`user`, resolve legacy `person` to `user`, preserve stored row/hash/proofs and legacy approval refusal, and fail closed on unresolved targets. These unblock specified implementation paths, with spec/source/regression updates assigned to `existing_integration_repairs`; they waive no gate. The latest exact #606/#608 heads still have failed hosted checks and no GitHub review entries.
+
+**Queue assignment:** #606 and #608 are RUNNING with `existing_integration_repairs`; source integration preparation is RUNNING with the integration agent; P0 runtime remains with root; queue/status/metadata work is assigned to the queue agent. Other lanes retain their existing source owners and are either waiting on CI, decisions, or prerequisites as listed in the queue. Historical branch preservation is unchanged: 177 accepted-main ancestors, 54 retained in active-PR ancestry, and 211 unassigned branches remain represented in the exhaustive inventory; preserve all. No feature beyond the two explicitly recorded compatibility decisions is authorized; no dependency, migration ID, version/tag exception, release, deployment, or merge is authorized by these operational records.
+
+| Stage | Formal status |
+|---|---|
+| P0 | Open — #602 G11 and PR metadata remain blocked; V21 offline 130-check evidence only; operator receipt/resource window, required runtime/config/task evidence, protected acceptance, signed release proof and fresh phase finalizer remain. |
+| P1 | Open — preserve current owners; source composition, current exact-head checks and integrated browser acceptance remain. |
+| P2 | Open — preserve current owners; central migration replay and integrated acceptance remain. |
+| P3 | Open — preserve current identity owners; exact composed security review and provider acceptance remain. |
+| P4 | Open — #606/#608 decisions are recorded for implementation; exact source/tests/reviews, migration replay and integrated acceptance remain; #607 stays held. |
+| P5–P7 | Open and held under the feature freeze. |
+
+---
+
+## Status first — verified 2026-10-08 17:34 UTC
+
+**Planning sequence:** per Thomas's Oct 7 direction, the SDLC now explicitly permits authorized dependency-safe concurrent implementation while preserving ordered independent stage acceptance, each stage's full exit gates and Sol finalizer. This resolves the plan-entry/stage-start contradiction; it is not a gate waiver.
+
+**Accepted `main`:** `3096cb044bdf6ae98488bfc385f532fa6386343a`. Live GitHub at 17:32 UTC showed 20 open PRs and 442 remote branches. PR #601 documentation branch was `cd6eea51e8bce2eac31fbb5fdd25d92db1f93fa1` on the accepted-main base at that capture; this documentation refresh remains local pending orchestrator review. **Persistent DEV** source `08842235047a3ab2714427edce80331b94558150` remains preserved. No protected merge, release or persistent deployment occurred. GHCR/GitHub packages remain the approved publication direction; Docker Hub remains canceled.
+
+**PR #602 current candidate:** `12d9f899a3437a601e0da22a3c8b25ba9a70f430` on base `main@3096cb044bdf6ae98488bfc385f532fa6386343a`; GitHub reported BLOCKED/MERGEABLE and no formal review entries on this SHA. Its live rollup at capture was 29 successful, three failing and three in progress. Full run `37815263198` passed Postgres integration (138 files/1,667 tests), E2E (27), G4 and G8; G11 failed 19/22: LCP 2,604/2,500 ms, task-state 261/200 ms and board 651.8/500 ms. Fast run `37815263256` passed environment-register checks and failed only the PR-template acceptance checklists. Source-binding is recognized; the exact-head PR body/checklist is still incomplete. A newer fast run was still active at the 17:32 UTC capture.
+
+**Notification review chain:** product source `650edd447899f5d9e52c50c718abef0f7aad91b2` has two fresh independent Luna CLEAR reports and full Sol CLEAR. Test-only `8b792d0fd382dfe76d84c4ccc4ca52e9880ed281` has fresh Luna and Sol CLEAR for the one-file/two-test environment-fixture delta. Current `12d9f899` is documentation-only and binds those actual review heads; it is not a new product review. Preserve the blocked `5ec7727`/`b890c86` predecessor history. The G11 attribution found no supported source correction under identical source/fixture/initial-asset identity; do not make speculative source, fixture, threshold or workload changes.
+
+**Exact-head image check:** a private Linux/arm64 image for `12d9f899` built and passed a disposable off-only boot at 17:33:44–17:34:22 UTC. Image `sha256:e289e5407503d037342b44e8f6604357e017d05a021b91cbb232cae353c4662d`; UID 10001; enforcement setting present and empty; no host port bindings; ordered migration hashes 88/88; liveness and readiness 200. The c550 and 12d exported rootfs manifests matched exactly (27,471 entries; 22,897 regular files, zero changed hashes). The build-result record SHA-256 is `4dc9ee531b0400c1e2e4af4dc6a44f27990917ef850d5a766f80c048cf7c659a`. Disposable-resource cleanup passed and the original five persistent TaskDesk containers were preserved. Source-binding/runtime-evidence preparation remains distinct from this smoke boot. No registry publication, persistent deployment or strict activation occurred. Prior c550 image/boot evidence remains tied to c550.
+
+**Runtime date correction:** the actual V19 off→shadow→off witness ran earlier on Oct 8 UTC, 15:16:57–15:17:31, against source `23a01a62ece3ca7d17105626f64ad78641435ec1`. It supports only a bounded partial Oct 8 bucket. The scoped compatibility adjudication retains nine changed nonmember-404 observations on Oct 6 and Oct 8 and config public-order observations on Oct 4/6/8. Another actual Oct 9 UTC bucket is still required for the changed 404 behaviors; the local Yangon date does not count as Oct 9 UTC. No strict runtime, full-day/72-hour claim or P0 finalizer is established. This corrects earlier entries that inaccurately said no runtime had occurred that day.
+
+**Preserved DEV readback:** 14 signed-in read-only screens/flows and four seeded roles were visually confirmed on the preserved DEV. `portal.localhost` TLS works, but the customer portal is unavailable there; customer workflows remain untested. PR #609 retains ownership of month URL-state behavior. Thomas has two API compatibility-rule decisions pending reply: preserve absent-body no-op behavior, and preserve legacy serialization behavior. Both remain unanswered; neither is approved. Preserve existing owners, freeze new features, and reconstruct the post-P0 train from accepted `main`; do not blindly merge #589. The central migration ledger remains provisional beyond immutable accepted 0000–0087; no final IDs or applied-prefix rewrite.
+
+| Stage | Formal status |
+|---|---|
+| P0 | Open — exact #602 head still has G11 and PR-template/checklist blockers; disposable off-only image boot is bounded evidence only. Actual Oct 9 UTC subset observation, remaining runtime/config/task prerequisites, protected acceptance, signed release proof and fresh phase finalizer remain. |
+| P1 | Open — retain existing reviewed slices; bounded post-P0 composition, current checks and integrated browser acceptance remain. |
+| P2 | Open — retain existing catalogue/intake, SLA and approval owners; incomplete capabilities are held and migrations await central replay. |
+| P3 | Open — retain existing identity owners; exact composed security review and provider acceptance remain. |
+| P4 | Open — retain existing Users, notification and query owners; #607 is held on MCP contract/review-register questions; integrated acceptance remains. |
+| P5–P7 | Open and held under the feature freeze. |
+
+---
+
+## Status first — verified 2026-10-08 17:09 UTC
+
+**Accepted `main`:** `3096cb044bdf6ae98488bfc385f532fa6386343a`. **Current documentation branch:** PR #601 exact live head `717d4413c8196901b6deddb4f7c2aa7ed7273f00`; this final cycle update is local and awaits orchestrator review before push. Live GitHub shows 20 open PRs and 442 remote branches. **Persistent DEV:** source `08842235047a3ab2714427edce80331b94558150` remains preserved. No new deployment, protected merge, release, strict activation or phase closure occurred. GHCR/GitHub release packages remain the approved publication direction; Docker Hub is canceled.
+
+**P0 notification candidate:** corrected product source `650edd447899f5d9e52c50c718abef0f7aad91b2` now has two fresh independent GPT-6 Luna credential-delta CLEAR reports and a fresh full GPT-6 Sol CLEAR (`notification-5712-sol-security.md`, private evidence). The Sol review is against exact source 650; it does not review the later documentation-only candidate. The actual task-reach integration evidence is one file/eight tests; keep separate from the earlier broad email suite of seven files/18 tests. The formerly blocked `5ec7727` and complete local `b890c86` lineage (including the old blocked review) remain recorded. The structural SMTP render-to-send correction was pushed in the PR #602 branch lineage at `650edd4`; its reviews remain bound to that source. Note-only successor `c55010e004e9f3becd226936ab2d2b4af5776108` changes only the review note and is the frozen #602 candidate, pushed to the same PR branch. Do not transfer the historical `23a01a6` 22/22 or `2b7192e` 20/22 G11 result to `c55010e`.
+
+**#602 current live state:** exact head `c55010e`, base `main@3096cb0`, GitHub BLOCKED/MERGEABLE, no review entries on the current head. At 17:09 UTC, current checks include 18 successes, two failures (`registers - env, vocabulary, reviews, skips, overrides` and `pull request template + security review`), and two in progress (Postgres 18 integration and G11). Hosted CI runs `37813776017` (full) and `37813776014` (fast) remain active; current G11 has no result yet. The current canonical private Linux/arm64 OCI build for frozen `c55010e` passed at 17:07:29 UTC (image digest `sha256:6f74c8b2596699648ae87d381c2bea9d48c993f290ff119c6bb6d38ba5f4cfda`). Earlier root diagnostic image `d6738f68...` with label `2.22.0` is superseded by canonical version `0.0.0-dev`; its record is retained. A disposable off-only image boot is active; no persistent deployment occurred. No independent review or check result has been transferred to c550 merely because the source correction at 650 cleared.
+
+**Preserved DEV browser readback:** root's private manifest records a signed-in, read-only smoke over 14 screens/flows with four seeded roles visually confirmed on the existing DEV. This is not candidate acceptance or broad RBAC verification. `portal.localhost` TLS works, but the preserved DEV renders customer portal unavailable; customer workflows were not tested. PR #609 remains owner of the existing month-URL-state correction. Do not start new features.
+
+**Disposition and migration records:** [live PR disposition ledger](pr-disposition-ledger.md) records the current 20-PR snapshot with all four required disposition labels. [Remote branch conservation inventory](branch-conservation-inventory.md) lists all 442 live remote refs at this capture with exact SHA and conservative ownership labels; accepted-main ancestry is only credited from matching captured accounting, active PR heads follow their PR dispositions, and unmatched historical branches remain HOLD for source-ownership verification. [Central migration replay ledger](migration-replay-ledger.md) keeps accepted 0000–0087 immutable and candidate units provisional. No final migration allocation or applied-prefix rewrite is authorized.
+
+**No strict or date-qualifying runtime was run today; a disposable off-only image boot is active and is not acceptance.** V20 final manifest `e51bf0cb343cddd922c426bf78784b22e400bc34c47780a753132c1a8eb554f2` and scoped Sol CLEAR remain historical witnesses only. Preserve all current owners, freeze new features, and reconstruct the post-P0 train from accepted main; do not blindly merge #589. No strict/protected merge/release/phase-finalizer claim follows from these documentation updates.
+
+| Stage | Formal status |
+| --- | --- |
+| P0 | Open — notification correction is source-reviewed at 650; frozen note-only candidate c550 still awaits its own current exact-head review, hosted checks (including G11), and protected acceptance. Image build is private only; DEV smoke has portal/customer-workflow limits. Runtime, signed release proof and fresh finalizer remain. |
+| P1 | Open — retain existing reviewed slices; bounded post-P0 composition, current checks and integrated browser acceptance remain. |
+| P2 | Open — retain existing catalogue/intake, SLA and approval owners; incomplete capabilities are held and migrations await central replay. |
+| P3 | Open — retain existing identity owners; exact composed security review and provider acceptance remain. |
+| P4 | Open — retain existing Users, notification and query owners; #607 is held on MCP contract/review-register questions; integrated acceptance remains. |
+| P5–P7 | Open and held under the feature freeze. |
+
+---
+
+## Status first — verified 2026-10-08 16:56 UTC
+
+**Accepted `main`:** `3096cb044bdf6ae98488bfc385f532fa6386343a`. **Current worktree:** PR #601
+documentation branch baseline `ad22ef8b1e9ac5ec8c7d2a2a93ea78fa7d1b2508`; this ledger batch
+and follow-up are local and not yet pushed. Live GitHub lists 20 open PRs. **Persistent DEV:** source
+`08842235047a3ab2714427edce80331b94558150` remains preserved. No new deployment, protected
+merge, release, strict activation or phase closure occurred. Docker Hub publication is
+canceled; the approved publication direction is GHCR and GitHub release packages.
+
+**P0:** Frozen product source is `23a01a62ece3ca7d17105626f64ad78641435ec1`. Its hosted full
+run `37760096010` passed 22/22. Review-note head `2b7192eb5181d50085f8734d2c5da226e301453e`
+has a later G11 result of 20/22: LCP 2,520/2,500 ms and 200-task board 614.1/500 ms. This
+current failure is not cleared by the earlier frozen-source pass. The local notification
+task-reach candidate `5ec772771497e5883ff4c55f272cd34df737b585` has preserved blocked review
+findings. Its complete local remediation `b890c86a0feaba018d298273527d86058cb56921` (parent
+`5ec7727`) has author-reported one-file/seven-test, API typecheck and Biome passes. Two fresh
+independent exact-head ordinary reports are recorded: one CLEAR and one BLOCKED solely because
+email template rendering can occur between the reach check and SMTP send. The owner assigned
+the final structural boundary change to `packages/email`; implementation and a new review are
+pending. `b890c86` is unpushed and undeployed. The scoped Sol CLEAR and final manifest
+`e51bf0cb343cddd922c426bf78784b22e400bc34c47780a753132c1a8eb554f2` cover historical witnesses
+only; they do not establish strict-runtime admission or activation.
+
+**Disposition and conservation records:** [live PR disposition ledger](pr-disposition-ledger.md)
+captures exact heads and current holds, including #555's accepted-main absorption, #550's
+accepted-main source-conservation closure, #607's MCP contract/review-register hold, and #589's
+rebuild-only role. [Remote branch conservation inventory](branch-conservation-inventory.md)
+lists all 442 exact refs with conservative ancestry/ownership status; 244 unmatched historical
+or non-ancestor branches remain on HOLD. [Central migration replay
+ledger](migration-replay-ledger.md) preserves accepted 0000–0087 and maps candidate semantic
+units without assigning final IDs or rewriting applied history.
+
+| Stage | Formal status |
+| --- | --- |
+| P0 | Open — frozen-source 22/22 evidence remains historical; current review-note head has G11 failures, notification correction is under remediation/review, and runtime/config/task, protected acceptance, signed release proof and finalizer gates remain. |
+| P1 | Open — retain existing reviewed slices; bounded post-P0 composition, current checks and integrated browser acceptance remain. |
+| P2 | Open — retain existing catalogue/intake, SLA and approval owners; incomplete capabilities are held and migrations await central replay. |
+| P3 | Open — retain existing identity owners; exact composed security review and provider acceptance remain. |
+| P4 | Open — retain existing Users, notification and query owners; #607 is held on MCP contract/review-register questions; integrated acceptance remains. |
+| P5–P7 | Open and held under the feature freeze. |
+
+**Closed source lanes:** PR #555 was absorbed by accepted main after the
+16:41 UTC source-conservation check. The Avatar primitive, app adapter, resolver, tests and
+accepted replacement visual baselines are covered. The PR branch/history are preserved; no
+source was deleted. This closure does not convert the historical red CI into a pass or claim a
+fresh test run. PR #550 was closed as superseded at 16:51:01 UTC after accepted-main semantic
+audit: ten core portal/parser/test/gate blobs were byte-identical, the remaining entry and
+wiring behavior was verified against accepted source, and the two-entry capability is
+conserved. Its branch/history remain preserved; no merge or gate waiver occurred.
+
+**Runtime automation:** the existing October 9 automation was updated to preserve historical
+V19 evidence bound to source `23a01a62ece3ca7d17105626f64ad78641435ec1` and require
+corrected-candidate rebind/adjudication. V19 remains immutable. No new runtime was run today
+and no additional date was established.
+
+**Operational boundaries:** maintain the existing feature freeze and owners. Recreate the
+post-P0 integration train from accepted `main`; do not merge #589 wholesale. Keep credentials
+and seeders private. The signed release/installer flow, GHCR/GitHub package target and local
+SIT acceptance remain future gates. Nothing in this documentation batch authorizes deployment,
+merge, final migration numbering, applied-prefix rewrite or phase completion.
+
+---
+
+## Status first — verified 2026-10-08 15:49 UTC
+
+**Accepted main:** `3096cb044bdf6ae98488bfc385f532fa6386343a`. **Frozen P0:** #602 `23a01a62ece3ca7d17105626f64ad78641435ec1`, unchanged. **Persistent DEV:** source08842235/image75b153d7 remains preserved in OrbStack through local Traefik443. No protected merge, new persistent deployment, registry publication, strict activation or phase closure occurred.
+
+**Current review reconciliation:** #602 review-note-only head `2b7192eb5181d50085f8734d2c5da226e301453e` records two actual exact23 Luna clears and fresh independent full Sol source CLEAR (3 files/17 tests; zero blockers). The earlier retained lightweight Sol source report was also recovered and is distinguished from runner-only evidence and from the new full review. All non-note files remain identical to frozen23; hosted23 measurements keep their original identity. New-head CI is queued; no green/merge claim. The strict/date/config/task, signed release and finalizer gates remain.
+
+**#601 scanner classification:** the historical generic-api-key finding at40224279/status.md:6 is reproduced and extracts only documented public prose `route-policy88`, adjacent to `OpenAPI230 operations`. It is a lexical false positive, not a credential. No suppression, gate waiver, rotation or history rewrite was applied. The exact finding stays retained, together with inherited baseline lint/dependency failures; the docs candidate is still blocked.
+
+| Stage | Formal status |
+| --- | --- |
+| P0 | Open — hosted G11/full product checks pass; independently adjudicated current-source off→shadow→off runtime passes; actual October9 subset, explicit config/task prerequisites, strict sequence, current metadata/protected merge, signed release proof and finalizer remain |
+| P1 | Open — existing navigationf06 has two independent clears and image/119 migration proof; existing saved-view/history slices retained for bounded final composition |
+| P2 | Open — existing approvals/intake retained; integrated acceptance remains |
+| P3 | Open — identity slices retained; integrated and real-provider acceptance remains |
+| P4 | Open — Users76 ordinary panel/full Sol clear and image/113 migration proof; central migration/integration acceptance remains |
+| P5–P7 | Open and held under feature freeze |
+
+**Registry direction changed by Thomas:** keep images in **GHCR**, GitHub release tags/assets and packages; **do not publish to Docker Hub**. This supersedes earlier `bimdevops/taskdesk` selection. #610 was closed as no longer required, preserving source/reviews/branch and its original red G8 evidence. No source merged or image pushed; no gate waiver. Existing signed/scanned accepted-source GitHub release flow and local Traefik443 SIT target remain. #447 was separately closed as superseded with full ancestry retained in #591/#589; issue#24 remains open.
+
+**P0 runtime outcome:** admitted privateV19 manifest8805cd3787fb03dab360c41c71b3fdff18d4a6315eadb6fe67c147e92513d6e8 executed15:16:57.679952–15:17:31.770701UTC, exit0, on exact23/image9e935. Actual representative acquisition15:17:19.920355–15:17:26.722840UTC only. Fresh independent Sol adjudication recounts140 unique expected-status requests;134 policy evaluations across47 tally rows; four event rows/five occurrences;27/27 selected sources; six exact source-bound pre-shadow exclusions; zero unexplained/uncovered. The complete raw record is preserved separately from the strict typed final DTO, which validates, replays and publishes through the shared production gate. API-key scope/expiry/session-only and denied-write persistence witnesses, observability CAS/token/metrics, persisted reach, missing-row masking, WebSocket delegation and empty-enforcement rollback/health checks pass within the recorded scope. Root independently verified10 owned resource IDs, including all historical API instances, absent and original five DEV containers present; source23 remains clean.
+
+**Limits and compatibility:** this is bounded **off→shadow→off**, never off→shadow→strict→rollback. Strict was not activated; config/task remain separately deferred. Independently compared API/domain/permissions, lockfile and Dockerfile Git objects match retained October6/V6 source behaviors, so scoped prior observations remain compatible. There are still only October6 and October8 qualifying distinct buckets for the nine changed eligible404 behaviors; October9 remains required. No full-day/72-hour or third-date claim. Historical V16/V18 failures remain failed; V19's earlier machine-receipt preflight failed before acquisition and remains retained. A separately issued exact-schema independent receipt plus fresh root records passed before the successful run.129 offline tests and five final-contract regressions pass. Installer regression20/20 and hosted G11 **22/22** remain; real signed installer/upgrade/rollback runs after an otherwise eligible protected merge and before phase finalizer/closure per Thomas's approved sequence.
+
+**Integration findings assigned:** #609’s five OpenAPI failures are unchanged from its predecessor and belong to existing comments/P4 deactivation API owners. Its one browser timeout belongs to unchanged MFA/observability source; the preceding head passed, so no navigation defect is established by that failure alone. Preserve failure evidence and reconcile only owned source during final composition. Central migration ledger must allocate one tail, replay duplicate semantic units once and preserve accepted0000–0087. Incomplete/schema-only capabilities remain held.
+
+**Critical path:** remaining actual October9 scoped observation/explicit config-task prerequisites and strict runtime proof; current review metadata/required green checks then protected P0 merge; real signed-release proof and fresh accepted-main Sol finalizer; bounded existing-source composition/central migration replay and exact-head gates; verified GHCR/GitHub release package deployment to local SIT, real acceptance/fresh audit/report, then stop awaiting Thomas's next roadmap.
+
+---
+
+## Status first — verified 2026-10-08 14:35 UTC
+
+Accepted main remains `3096cb044bdf6ae98488bfc385f532fa6386343a`; frozen P0 source remains `23a01a62ece3ca7d17105626f64ad78641435ec1`. Original OrbStack DEV source088/image75b153 remains preserved. No protected merge, final SIT deployment, image publication, strict activation or phase closure occurred. P0–P4 remain open; P5–P7 remain held under the final feature freeze.
+
+**Current P0 blocker:** fresh independent Luna and full Sol clear private V16, including124 offline tests and exact-source integration probes. Root issued fresh source/manifest/review/log-bound authority and executed only disposable off/shadow14:28:59–14:29:31UTC. Complete acquisition retained140 unique requests,47 tally rows/134 occurrences, four event rows/five occurrences, and27/27 selected source coverage. Reconciliation failed on two occurrences: missing-project GET and archive. Fresh independent actual-run Sol adjudication identifies two runner defects: the binder selects the first successful GET tally row instead of the full-key unevaluated row, and classifier reason dispatch makes its row-scope branches unreachable. Archive proof itself is already true. The complete acquisition ledger and replay retain failure; no product authorization defect or successful runtime acceptance is inferred. A structural full-key selector/reason-dispatch batch must reconcile the entire actual ledger offline, including negative cases, before another review/runtime. Root independently confirms all seven owned resources absent, original five DEV containers present, exact23 clean. No extra UTC bucket or full-day coverage claimed.
+
+**Installer and hosted gates:** fresh root exact23 installer regression20/20 passes; real signed-release installer/upgrade/rollback remains scheduled after otherwise eligible protected merge and before finalizer/closure per Thomas's recorded approval. Exact23 hosted full/G11 remains22/22; current PR metadata still blocks. No more performance experiments. #610 unchanged f0fd now passes hosted fast metadata after factual PR-body formatting correction; G8 remains red. Inspection finds identical web/UI source, baseline, pinned browser container, apt/font versions and fixture configuration versus passing P0; the small glyph raster difference has no proven cause. Keep the visual failure and unchanged assertion/baseline. No green CI or merge readiness claim.
+
+**Consolidation:** duplicate saved-view PR#447 was closed under Thomas's cleanup authorization. Exact447 head62cf is an ancestor of retained #591 fd8d, itself an ancestor of historical #589235; original branch/history remain. Issue#24 stays open for actual integration acceptance. #591 merged into the historical integration branch, not accepted main. Owner saved-view migration and train migration have distinct raw hashes but the same twelve ordered SQL statements after breakpoint-boundary whitespace trim; replay this semantic unit once with central numbering/snapshot lineage. Existing #608 Users76 and #609 navigationf06 remain fully implemented/reviewed and image-booted as recorded below; their integrated acceptance and deployment remain pending.
+
+**Critical path:** admitted complete runtime proof/current review metadata; actual October9 scoped observation and explicit config/task prerequisites; eligible protected P0 merge then signed-release proof/fresh finalizer; bounded existing-source composition/central migration replay and exact-head integration gates; verified Docker Hub publication/local Traefik443 SIT acceptance and fresh audit, then stop for Thomas's next roadmap. Credentials and role seeders remain private outside Git/GitHub.
+
+---
+
+## Status first — verified 2026-10-08 14:20 UTC
+
+**Mode:** final feature freeze; existing implementation consolidation and SIT acceptance only. Accepted main remains `3096cb044bdf6ae98488bfc385f532fa6386343a`. Persistent OrbStack DEV remains source `08842235047a3ab2714427edce80331b94558150`, image `sha256:75b153d7d9583993127e1be8c06453159e4fe7319abfcd8431f093c9ca002bcf`, healthy through local Traefik443. No protected merge, final integrated deployment, Docker Hub publication, enforcement activation or phase closure occurred. Live GitHub at this verification has24 open PRs; this is a dated count.
+
+| Stage | Formal status |
+| --- | --- |
+| P0 | Open — frozen #602 source23a01a; current hosted G11/full product checks green, PR metadata red; runtime, actual October9 subset observation, protected acceptance and finalizer remain |
+| P1 | Open — #609 finalf06 navigation correction has two independent ordinary clear verdicts, image boot and119 migration hashes; integrated CI/browser acceptance remains |
+| P2 | Open — existing approvals/intake retained for bounded composition; incomplete features held |
+| P3 | Open — existing identity slices retained; integrated/real provider acceptance remains unverified |
+| P4 | Open — #608 final76 ordinary panel plus full independent Sol clear; image boot and113 migration hashes pass; historical integration conflict and integrated acceptance remain |
+| P5–P7 | Open and held — no new development or completion claim |
+
+**P0 acceptance and new authorized sequence:** exact frozen `23a01a62ece3ca7d17105626f64ad78641435ec1` remains unchanged, with hosted full37760096010 G11 **22/22**, PostgreSQL137 files/1659 tests, E2E, accessibility and visual checks passing. The PR-template/security metadata remains red, and the committed review note requires current-source reconciliation. Thomas explicitly approved real signed-release installer, upgrade and rollback proof **after eligible protected merge but before the P0 phase finalizer or closure**. Pre-merge independent reviews, required CI, installer regression tests and exact-image boot checks remain required. No unsigned fallback or installer-proof waiver follows.
+
+**Runtime evidence correction:** V14 ran13:49:32–13:50:03UTC against exact23 in an owned disposable off/shadow environment. All130 representative response statuses matched,27/27 selected sources were covered, and four non-agree events validated. Reconciliation nevertheless failed:47 tally rows/140 occurrences included three unexplained rows/four occurrences for missing-project read/archive and project WebSocket journeys. Auxiliary traffic was absent from the representative ledger; this is an incomplete evidence binding, not an established product authorization defect. Original failure and cleanup evidence are retained; all owned resources are absent. A complete V15 offline batch added one acquisition ledger and source-bound helper proofs, but independent Luna review blocks execution: its project WebSocket handler extractor assumes the wrong route ordering, and live missing/foreign actor labels differ from the binder. The121 passing offline tests missed both integration defects. A bounded successor corrects both production paths and adds direct frozen-source integration probes; P0 product/performance source is unchanged. No successful runtime proof or additional date is claimed.
+
+**Existing visible corrections:** #609 final `f06f886969f23ce70ead85ef3276cdcf0b094af6` preserves selected tasks through desktop/mobile project-view switches and canonical Gantt URLs. Two fresh Luna verdicts clear it; one independently ran the full web143 files/625 tests. Exact image `sha256:173c88425397530dda94a3293a8c318858538145a992e12dcabad0a2cd2ae75a` booted14:00:03–14:00:19UTC with OCI revision, UID10001, live/ready200 and119/119 migration hashes. The candidate has not replaced persistent DEV or completed integrated/browser acceptance; its hosted E2E/contract/performance failures remain separate. #608 final76 evidence and113 migration hashes remain as recorded below.
+
+**Docker Hub compatibility:** bounded deployment correction #610 source `c661dbecc9ba5dadc9a2f306cd39176eb1a807cc`, review-note-only descendant `f0fdaba6011fd233716ca89628e28fd44906c0b2`, registers `TASKDESK_IMAGE_REPOSITORY` and keeps digest/signature/provenance checks and issuer/workflow identity intact. Fresh Luna plus full independent Sol clear it. Full local lint8 tasks, typecheck9 tasks, unit/component300 files/2320 tests and CI-script1124 tests/114 suites pass; focused installer-repository checks4/4 pass. Current hosted PostgreSQL, E2E, G4 and G11 pass, but G8 and PR metadata are red and under read-only diagnosis. No merge/deployment acceptance follows. The repository override belongs to post-P0 deployment consolidation, outside the frozen P0 source. Target is `docker.io/bimdevops/taskdesk`; connected push authority is verified, publication/signature preservation still pending.
+
+**Role-test fixture correction:** the16 seeded project-read404s are explained by missing persisted project reach: four supported workspace roles have no project memberships or workspace sees-all grant. Workspace project collection200 and denied detail404 are consistent with deployed source. The deployment lacks the canonical project-role writer needed to establish the intended positive project fixture; do not insert unsupported role rows or call this an established RBAC bug. Preserve the original matrix, keep credentials/seeders outside Git, and mark positive project-role acceptance blocked until its existing owner is integrated. No all-pages/all-API acceptance claim.
+
+**Integration and migration alignment:** historical #589/#598 remain cumulative source references, not final merge candidates. Compose independently owned existing slices from accepted P0 main; replay byte-identical0088–0118 units once, allocate the #6080112 collision centrally, preserve accepted0000–0087, and hold schema-only custom fields/incomplete capabilities. Global Docker context stays `desktop-linux`; all TaskDesk resource operations explicitly use OrbStack.
+
+**Critical path:** (1) finish admitted complete runtime proof and current review metadata; (2) actual October9 scoped observation/compatibility and remaining explicit config/task decisions; (3) eligible protected P0 merge, signed installer/upgrade/rollback, fresh accepted-main Sol finalizer; (4) compose existing owner slices with one migration tail and exact-head integration gates; (5) publish verified accepted image to Docker Hub, deploy local SIT, complete real acceptance/fresh audit, report and stop for Thomas's roadmap.
+
+---
+
+## Status first — verified 2026-10-08 13:39 UTC
+
+**Mode:** feature freeze, existing-source consolidation and local SIT acceptance. Accepted main remains `3096cb044bdf6ae98488bfc385f532fa6386343a`. No protected merge, new application deployment, strict activation or phase closure occurred.
+
+| Stage | Formal status |
+| --- | --- |
+| P0 | Open — frozen #602 `23a01a62ece3ca7d17105626f64ad78641435ec1`; hosted full/G11 22/22 pass; runtime, installer, remaining actual October9 observation and finalizer remain |
+| P1 | Open — existing navigation correction #609 remains under remediation after independent review found task selection lost by the shared desktop/mobile view switcher |
+| P2 | Open — existing approvals/intake retained for bounded composition; incomplete new composition features held |
+| P3 | Open — existing identity slices retained; integrated and real provider acceptance unverified |
+| P4 | Open — #608 final `76b833be5b46589229a630738c5b436365eba409` ordinary panel and independent Sol security clear; candidate image/boot/migrations pass; integrated CI/browser acceptance remains |
+| P5–P7 | Open — held under feature freeze; no completion or new development claim |
+
+**Local runtime restored:** Docker Desktop is installed/running with no containers in its own endpoint. OrbStack was stopped; starting it recovered the original five TaskDesk containers and retained named volumes. Global Docker context remains `desktop-linux`; TaskDesk operations explicitly select `orbstack`. CA-verified HTTPS returns ticketing readiness200 and portal200 through Traefik443. Source08842235/image75b153d7 remain unchanged. Signed-in browser reload shows the retained DEV-3 task and submitted comment. This is restoration of existing DEV, not final integrated SIT deployment.
+
+**Registry destination resolved:** Thomas selected `bimdevops/taskdesk` and local Traefik443 testing. Secret-safe credential verification confirms Docker Hub pull/push authority for that repository. No image was published. Final publication must retain accepted-source identity, scanning, signing and provenance; local connected credentials do not replace those gates.
+
+**Users exact-source evidence:** final76 image `sha256:268ded4e768068da27622442b709ea65db0fef3051c52ca8798c69cb60fd807d` built13:34:51–13:35:11UTC and booted13:36:42–13:36:57UTC. OCI revision exact, UID10001, live/ready200, all113 ordered source/database migration hashes match. Owned resources are absent and original DEV network membership is preserved. Three fresh Luna contexts clear final76; independent full Sol clears it with three files/ten unit tests. Author's two-file/seventeen PostgreSQL regressions remain source-bound. These proofs do not resolve the historical train conflict or transfer to a later integrated source.
+
+**P0 actual partial proof retained:** corrected six-key independent receipt and fresh root records passed the offline binding guard. V13 executed once13:31:25–13:31:50UTC on exact23. Boot/migrations/metrics and earlier representative traffic passed, then the missing-versus-foreign404 witness failed at runner line166. Root identifies a JSON-only message adapter despite source HTTPException responses using the default text response; exact behavior and the remaining query/DTO boundaries are being corrected together offline. This is not complete runtime acceptance or another qualifying UTC date. Original failure, receipts and partial traffic are preserved. Independent cleanup verifies all owned Docker containers/volumes/network absent. A preceding image-proof operator tag typo acquired no resources; its failed record is also retained.
+
+**Migration reconciliation:** #589/#598 provisional0088–0118 SQL is byte-identical and must replay once. #585 delivery SQL matches but its snapshots omit seven tables. #608 provisional0112 has a different SQL body from the train's0112 and needs centralized numbering. Accepted0000–0087 remains immutable. Existing custom-fields source has schema-only evidence and no complete runtime/UI owner; it remains held. The private replay manifest records SQL/snapshot hashes, collisions, owners and required replay checks.
+
+**Critical path:** (1) finish source-bound authorization runtime/installer proof; (2) actual remaining October9 scoped observation and compatibility adjudication; (3) exact-head protected P0 acceptance/finalizer; (4) compose existing owner slices with one migration tail and integrated CI/reviews; (5) publish accepted image to Docker Hub, deploy local SIT, complete real acceptance/fresh Sol audit, then stop awaiting Thomas's roadmap.
+
+---
+
+## Status first — verified 2026-10-08 13:27 UTC
+
+**Feature freeze:** Thomas's final integration directive is active. Stop all new feature work and feature branches. Permitted source work is limited to existing integration and acceptance defects: conflicts, security/correctness defects, failing functional tests, migration compatibility, build/package/SIT compatibility, and acceptance-blocking accessibility or UI issues. After the final accepted-source SIT audit and report, stop and wait for Thomas's next roadmap; do not generate one or resume implementation automatically.
+
+**Accepted baseline and inventory:** accepted `main` remains `3096cb044bdf6ae98488bfc385f532fa6386343a`; no candidate has been merged by this update. The private read-only inventory captured at `2026-10-08T13:14:47.800345Z` counted 23 open PRs, 441 GitHub branches, 198 local branch heads (640 local refs), and no current exact-head independent approval records among the review records it captured. Those counts are that capture's dated snapshot, not live counts. Its reconciliation identifies #589 (305 commits after shared base, 776-file displayed diff) and #598 (307 commits, 783-file displayed diff) as cumulative trees; only 10 and 12 commits respectively follow their common base. Preserve useful history and rebuild by owned source units; never merge those aggregate diffs blindly. The private `final-consolidation-slices` pass is read-only composition guidance, not implementation or acceptance.
+
+| Stage | Formal status |
+| --- | --- |
+| P0 | Open — frozen #602 source `23a01a62`; hosted full run and G11 22/22 pass. Operational/runtime, actual October 9 evidence where required, installer/deployment/rollback, protected integration, and fresh accepted-main Sol finalizer remain. No more performance experiments. |
+| P1 | Open — #606 `e20c1124` has bounded Alert/G3 Sol clearance, but hosted E2E 55/56 and G11 18/22 remain red. #609 `da4e0f62` has focused 3-file/45-test routing correction; final independent reviews and hosted acceptance remain pending. |
+| P2 | Open — existing approval and catalogue/intake work only; compose from owner deltas after P0 and resolve held contracts/findings under the freeze. |
+| P3 | Open — existing identity/portal work only; exact-head review, integration gates, and real-provider acceptance remain distinct. |
+| P4 | Open — #608 final head `76b833be` has focused 2-file/17-test verification. Prior 32-test and image/migration evidence was for earlier source and does not transfer to this head. Exact-head reviews, central migration reconciliation, runtime blocker and integrated acceptance remain. |
+| P5–P7 | Open — no completion claim; no new implementation authorized. |
+
+**P0 runner and performance evidence:** the exact `23a01a62` product source remains unchanged. Private V13 completed 114 offline tests and launcher/byte-pin checks, but its guard refused execution at 13:12 UTC before resource acquisition because required independent review/release/authorization bindings were still pending. No V13 runtime, database, Docker, service, CI, browser, deployment, strict activation, or date capture occurred; no runtime pass follows from offline tests. Preserve V12's failed report-binding record. The existing eligible observations remain as previously recorded; if the three-date rule still requires October 9, capture only on that actual UTC date. Do not claim full-day/72-hour coverage or infer success from elapsed time. The V13 guard result is not a product failure. Installer, deployment/upgrade/rollback and fresh finalizer evidence remain outstanding. Hosted G11/full-suite 22/22 for #602 is recorded without changing its contract or retry policy.
+
+**Local SIT preparation:** Thomas named existing Docker Hub repository `bimdevops/taskdesk` and local Traefik TLS on port 443 as the SIT target. Initial Docker Desktop context `desktop-linux` showed no containers; this was not evidence of deleted OrbStack data. OrbStack was started; `docker --context orbstack` confirmed the original five TaskDesk container IDs and named volumes retained and running, and unrelated WSO2 workers resumed and were preserved. Docker Desktop remained installed/running with its separate empty context; no reinstall or global context change was needed. Root is checking the existing local Traefik CA-verified 443 health path. This is local test preparation against the retained `08842235047a3ab2714427edce80331b94558150` / image `sha256:75b153d7d9583993127e1be8c06453159e4fe7319abfcd8431f093c9ca002bcf`, not a new build, Docker Hub publication, redeployment, or accepted SIT deployment. Registry access, final image digest, deployment and SIT acceptance remain unverified. Credentials and testing seeders remain outside Git.
+
+**Next:** finish only the existing acceptance path under the freeze: complete the authorized P0 evidence and gates; reconstruct eligible existing feature slices from exact owners; reconcile migrations without changing applied `0000–0087`; obtain current exact-head reviews and required checks; build/publish one verified immutable image to the named repository; deploy and test the exact digest in SIT; perform a fresh post-integration audit; update the final records and deliver the report. Hold incomplete, duplicate or unresolved work with explicit reasons. Then stop for Thomas's next roadmap.
+
+---
+
+## Status first — verified 2026-10-08 12:31 UTC
+
+**Accepted main:** `3096cb044bdf6ae98488bfc385f532fa6386343a`. **Persistent OrbStack DEV:** `08842235047a3ab2714427edce80331b94558150`, image `sha256:75b153d7d9583993127e1be8c06453159e4fe7319abfcd8431f093c9ca002bcf`. No protected merge, persistent redeployment, enforcement activation or phase closure. Private credential Markdown and test seeders remain outside Git/GitHub.
+
+| Stage | Formal status |
+| --- | --- |
+| P0 | Open — frozen #602 source23a01a; hosted full and G11 22/22 pass; operational acceptance remains |
+| P1 | Open — actual DEV task/comment writes and Board/List rendering pass; linked project settings and URL-state follow-up remain |
+| P2 | Open — #586 b67 existing decisions/withdrawal implemented; request-composition approver contract awaits the already asked decision |
+| P3 | Open — #596 reviewed fixture correction retained; real provider/integrated acceptance remains |
+| P4 | Open — complete canonical Users/deactivation correction implemented; focused database journey 1 file/7 tests passes |
+| P5–P7 | Open — no completion claim |
+
+**New accepted implementation evidence:** the isolated Users branch based at eefce146 with UI foundation bc372a8 aligns deactivation pending actions with canonical `delete`/`user` account IDs. Its full request, email/step-up, approval and real identity deactivation database journey passes seven tests. Tests verify persisted payload and identity lifecycle envelope, all four allowlisted instance events with null workspace, and rejection of wrong organisation scope or an unrelated tenant event lacking workspace. API/web types, OpenAPI225 operations, route-policy88 tests, i18n, vocabulary and focused payload4 tests pass. Full CI, independent reviews, candidate browser verification and deployability remain required; source is committed and published as draft #608 at `92bd177baca9c9dd415521cbb36414484055acf0`, targeting the historical train only for feature-delta review. This is feature evidence, not formal P4 acceptance. Provisional0112 remains branch-local under the central migration ledger.
+
+**Browser correction:** visual inspection confirms the List control renders grouped horizontal rows, and Board renders cards. The accessibility representations were similar; there is no confirmed broken List control. Switching layout leaves the URL unchanged, which remains a URL-state follow-up alongside calendar month selection. The two settings links previously observed as Not Found remain open. The user-facing DEV-3 test task and submitted comment are retained for review. No all-pages/all-API acceptance is claimed.
+
+**P0 operational failure retained:** independently admitted V11 ran once on source23a01a at12:18:22–12:18:41UTC in an owned disposable off/shadow environment. Boot, health, UID and migration checks passed; representative fixture creation stopped because a new finite SQL-witness diagnostic identifier was not registered. This is a runner failure, not evidence of a product authorization failure or complete runtime proof. Original run and failure records remain private and immutable. Root independently confirms owned containers, volumes, network and proxy absent; the original five DEV containers remain. A complete catalogue/callsite invariant correction is being prepared offline as one batch. Product source is unchanged; no performance experimentation or date capture follows.
+
+**Critical path:** (1) complete source-bound runtime proof; (2) actual remaining eligible October9 bucket and reversible authorization evidence; (3) installer/deployment/upgrade/rollback proof; (4) exact-head acceptance metadata and protected merge; (5) fresh accepted-main Sol phase finalizer. Later-stage full implementation continues independently. No new gate waiver or stage completion.
+
+---
+
+## Status first — verified 2026-10-08 12:05 UTC
+
+**Accepted main:** `3096cb044bdf6ae98488bfc385f532fa6386343a`. **Persistent OrbStack DEV:** `08842235047a3ab2714427edce80331b94558150`, image `sha256:75b153d7d9583993127e1be8c06453159e4fe7319abfcd8431f093c9ca002bcf`. Source/image unchanged. No protected merge, strict activation, release or phase closure. Credentials and seeders stay private outside Git/GitHub.
+
+| Stage | Formal status |
+| --- | --- |
+| P0 | Open — frozen23a01a product; hosted full and G11 22/22 pass; required operational acceptance remains |
+| P1 | Open — native feature batches retained; actual DEV task/comment writes pass; candidate integration gates remain |
+| P2 | Open — approvals/intake slices retained; integrated acceptance remains |
+| P3 | Open — reviewed fixture delta and hosted1741 PG tests pass; real provider acceptance remains |
+| P4 | Open — complete Users/pending-action feature correction in progress; canonical dependencies must be reconciled |
+| P5–P7 | Open — no completion claim |
+
+**Visible DEV testing:** the user completed sign-in; root verified original admin identity and opened project board, backlog, work-item detail, calendar, Gantt, members, invitations, project overview, account information/notifications/preferences/API keys, workspace general/roles/labels and project general/workflow settings. Rendering/navigation evidence is distinct from write/provider acceptance. Root created its own clearly labelled test task **DEV-3 — UAT UI smoke — 2026-10-08**, then submitted a comment: both success toasts and persisted rendered card/comment were visible. The task is retained for user review; existing tasks and credentials were preserved. Private screenshots and result ledger: `2026-10-08/deployed-dev-ui-walkthrough`.
+
+**Actual visible failures:** project settings Visibility and Project Integrations links navigate to Not Found on deployed088. Calendar month changes leave the URL unchanged; this needs classification against the owning URL-state contract. These are feature follow-up findings, not new performance experiments or evidence of a defect in the frozen candidate. No all-pages/all-features pass is claimed.
+
+**DEV API batch:**173 documented operations;58 distinct exercised,115 unexercised. Of144 role checks,128 match actual policy/source expectations and16 remain unexpected404s: four project-scoped reads across four seeded workspace roles on a valid listed retained project. These need persisted reach/membership investigation before source remediation. Sixteen probe sessions signed out200. CSRF negative write403 and unchanged readback pass; tokenized same-value workspace updates owner/admin200, member/viewer403. No key/provider/access changes. The two corrected audit expectations retain their original raw mismatches. API report/inventory remain private in `2026-10-08/deployed-dev-api-bulk-tests`.
+
+**Implementation cadence:** no more P0 performance experiments. Frozen23a01a hosted22/22 and exact image evidence remain as recorded below. A complete private runtime witness batch was reviewed and concrete proof-query/status defects are being corrected together in an immutable successor; no runtime release is issued while its review blocks. Actual October9 eligibility is still pending; October8 cannot create another date bucket. In parallel, the isolated P4 Users branch1210e3b7 is completing keyboard/primitive/localization/cache/recovery behavior plus its documented pending-action dependencies. Historical a34 cannot be blindly imported: its user_deactivation/person vocabulary and migration diverge from canonical delete/user. Implementation follows existing authoritative contracts; no invented migration/event is accepted.
+
+**Critical path:** (1) completed admitted runtime proof batch; (2) remaining actual eligible bucket and reversible authorization evidence; (3) installer/deployment/upgrade/rollback acceptance; (4) exact-head metadata and protected merge; (5) fresh accepted-main Sol phase finalizer. Later-stage visible feature work proceeds independently. No gate waiver or completion claim.
+
+---
+
+## Status first — verified 2026-10-08 10:14 UTC
+
+**Accepted main:** `3096cb044bdf6ae98488bfc385f532fa6386343a`. **Persistent OrbStack DEV:** `08842235047a3ab2714427edce80331b94558150`, image `sha256:75b153d7d9583993127e1be8c06453159e4fe7319abfcd8431f093c9ca002bcf`. No protected merge, persistent redeployment, strict activation, release or phase closure. Credentials/seeders remain private outside Git/GitHub.
+
+| Stage | Formal status |
+| --- | --- |
+| P0 | Open — #602 product source23a01a frozen; hosted G11 **22/22**, full suite green; operational/final acceptance remains |
+| P1 | Open — #606 e20 G8/G4/PG pass; hosted E2E timeout and G11 failures remain; CI-matched targeted MFA1/1 passes |
+| P2 | Open — retained approvals/intake implementation; contracts and integrated acceptance remain |
+| P3 | Open — #596 fixture delta reviewed, hosted1741 PG tests pass; provider/inherited gates remain |
+| P4 | Open — MCP register not-ready; query/governance/outbox and migration reconciliation remain |
+| P5–P7 | Open — no completion claim |
+
+**P0 performance gate cleared:** current `23a01a62ece3ca7d17105626f64ad78641435ec1` is the normal revert of the rejected8af2 memo experiment. Its product tree equals0a867/30aef. Automatic hosted full **37760096010** passes every job: PostgreSQL137files/1659tests, E2E, G4, G8 and unchanged **G11 22/22**. Actual LCP2392/2500ms,500-row list365/500ms,200-card board497.1/500ms,assignment114/200ms and dragp9516.8/20ms. Budgets, fixture/workload, assertions and retry rules are unchanged. Earlier identical-source red outcomes remain retained; no causal source-improvement claim is made. Product source is frozen: no further performance experiment, cleanup or later-stage composition.
+
+The rejected8af2 measured19/22 (LCP2572,assignment203.1,board670.2) and introduced a contrast provenance mismatch. It was normally reverted; no checker repair or manifest exemption was applied. Both current independent Luna reviews clear the complete landed history/reversions; focused card9tests, scanner52tests and the second review's2files/14tests plus contrast check pass. A fresh independent Sol lightweight security confirmation clears exact23 and proves no new authority or gate-semantic changes. These are PR reviews, not the phase finalizer. Public committed review-note/template metadata remains stale and failed until the final acceptance records are composed; no false pass is claimed.
+
+**Exact frozen image:** `sha256:9e935c405925b735f0e69d2c2522db18dae7ebab25a3d3ce874ac32e028018e6`, OCI revision23a01a,UID10001,live/ready200. Actual isolated proof10:12:40–10:12:56UTC matches all88 migration hashes in journal/application insertion order. Original first proof's timestamp-order mismatch remains retained: three historical descending journal timestamp boundaries made that comparison inappropriate; no SQL/history was changed. Both attempts clean all owned containers/volumes/networks and preserve the original five-member DEV network. This is boot/migration proof, not persistent deployment/TLS/installer/upgrade/rollback acceptance.
+
+**Authorization/release critical path:** a complete private source-bound23 runtime/rollback packet is being prepared from the existing reviewed runner. The changed eligible nine-read subset still needs the actual October9 UTC bucket after admitted October6/8 observations. No partial capture is called full-day/72-hour coverage; no elapsed-time strict activation. Exact installer/signed-release sequencing, eligible off→shadow→strict→rollback proof, accepted-main phase finalizer and issue reconciliation remain required. Stable hosting/promotion remains P7; no new customer release is published under the P0 bootstrap issue.
+
+**P1 real diagnosis:** exact e20 targeted MFA/observability passes1/1 in12.7s using CI's Node24.21.0 and explicit existing same-origin VITE_API_URL build value. Auth and observability writes reach the owned fixture origin; final restoration PATCH200 and trigger returns to info. Two earlier local signup timeouts were misconfigured diagnostic builds, not product reproductions. Their failed receipts remain private; the first credential-bearing screenshot was removed rather than published. No product/test/timeout change is justified by non-reproduction. The hosted55/56 failure remains open; local success does not relabel that run. All owned diagnostic resources are absent and unowned4178 preview is preserved.
+
+**Integration:**21 open PRs; #599 remains P1; historical #589 stays frozen until recreation from accepted post-P0 main. #585's seven missing migration snapshot tables require central reconciliation; no applied history rewrite. #607 remains not-ready; its private contract packet retains existing audit requirements instead of inventing rate caps or reducing audit scope. Existing unclassified secret finding remains open. Four supported-role users retain36/36 smoke evidence privately; unsupported roles/provider acceptance are not claimed.
+
+**Critical path:** (1) final source-bound acceptance record/metadata; (2) remaining actual eligible bucket and reversible authorization proof; (3) installer/upgrade/rollback and exact deployment proof; (4) protected P0 merge; (5) fresh accepted-main Sol phase finalizer and closure. Later-stage dependency-safe work continues. No new Thomas-only question, gate waiver or phase claim.
+
+---
+
+## Status first — verified 2026-10-08 09:50 UTC
+
+**Accepted main:** `3096cb044bdf6ae98488bfc385f532fa6386343a`, reverified through GitHub. **Persistent OrbStack DEV:** `08842235047a3ab2714427edce80331b94558150`, image `sha256:75b153d7d9583993127e1be8c06453159e4fe7319abfcd8431f093c9ca002bcf`. No protected merge, persistent deployment, strict activation, official release or phase closure. Private supported-role users and their credentials/seeders remain outside Git/GitHub. Chrome trust handoff remains pending.
+
+| Stage | Formal status |
+| --- | --- |
+| P0 | Open — isolated #602 experiment8af2; prior equivalent source0a867 hosted20/22; no FINAL_P0_SHA |
+| P1 | Open — #606 completed Alert/G3 correction independently clear, hosted G8/G4/PG pass; E2E/G11 remain failed |
+| P2 | Open — retained approvals/intake slices; contracts and integrated acceptance remain |
+| P3 | Open — #596 fixture delta independently clear, hosted1741 PG tests pass; provider/inherited gates remain |
+| P4 | Open — MCP register not-ready; governance/query/outbox and central migration reconciliation remain |
+| P5–P7 | Open — no completion claim |
+
+**P0 source convergence:** the66ba95 containment-removal experiment gave20/22 but did not improve the intended board metric (647.2/500ms versus649.2 on reverted equivalent source); it was rejected and normally reverted at `0a867bf2080ab0b3f365caf53f5200eb14e1f3ae`. Its tree equals30aef; original failed results remain retained. Hosted0a867 full37755540685 passes G8/G4/E2E/PostgreSQL and fails G11 **20/22**: LCP2516/2500ms and board649.2/500ms. No historical green is relabeled current.
+
+Complete new candidate `8af2a77a673966fed025b0ac1f8740b5f174d039` changes only TaskCard and its tests. It memoizes unchanged child markup/derived work while keeping sortable root/ref/style/listeners/ARIA/keyboard/focus live and recomputing due-date status outside the memo. Focused12tests, web types and Biome pass. Automatic full37758914038 has G8/G4/E2E pass; PostgreSQL/G11 remain in progress at verification. Fast37758914225 fails the contrast inventory after JSX relocation and honestly pending review/template metadata. A bounded independent review is inspecting semantic dependencies and source-bound paint provenance. No performance benefit, retention, review clearance or final source is claimed.
+
+**#606 completed acceptance improvement:** `e20c1124f7c1ddfb8f227ce87690e871aa9782ca` completes the lexical binding and Alert story correction. A fresh independent full Sol pass clears this bounded structural delta:52 contrast tests,152 story accessibility tests,3 Alert tests and316/316 source-bound pairs pass. Prior Luna/Sol BLOCK reports remain historical. Conservative binding resolution rejects imports, sibling/local shadows, forward bindings and ambiguous spreads; Object.freeze inference is removed. Six stories use explicit semantic canvases with unchanged thresholds/pair identities; their six intentional Linux baselines are retained.
+
+Hosted full37755391943 passes **G8** (17 application cases and143 enumerated Storybook stories), **G4**, and **PostgreSQL154files/1813tests**. E2E55/56 fails solely at the MFA journey's original realtime-log-level restoration step after its primary flow; one targeted isolated reproduction is assigned. G11 remains18/22: LCP2852/2500ms, create visibility, assignment220.8/200ms and board641.2/500ms. Fast build/unit/policy/static/supply-chain gates pass; OpenAPI and incomplete acceptance metadata remain failed. No merge eligibility or full P1 acceptance is inferred.
+
+Exact e20 image `sha256:7546b06a613dd5928fc3c115e319e7f786ef1c5a79286612c518927451e9787c` built/booted09:26:28–09:27:14UTC: OCI revision exact,UID10001,live/ready200. Owned containers/volumes/network are absent after cleanup; persistent DEV's five network members remain. This is isolated candidate boot proof, not persistent deployment/TLS/rollback. API/permission/domain/deployment source is unchanged from reviewed a4; that specific review scope is retained without claiming a new whole-candidate security review.
+
+**Other lanes/integration:** #596103dc9 fixture-only Luna/Sol clearance and hosted150files/1741tests PG pass are recorded in PR comment6056349586; real Entra and inherited gates remain. #605024 has ordinary reviews and exact boot proof but inherited gates remain failed. Live GitHub lists21 open PRs; #599 stays P1, #589 remains frozen until recreation from accepted post-P0 main. #585 migration snapshots still omit seven tables versus matching #589/#598 SQL lineage; no accepted history is rewritten. #607953 is a not-ready two-file MCP reconciliation, not authorization to implement undefined contracts. Existing unclassified secret finding remains open and unsuppressed. Private role smoke remains36/36 for the four supported roles, not all-role/provider acceptance.
+
+**Critical path:** (1) retain only a proven-positive P0 correction and obtain unchanged hosted22/22; (2) remaining actual October9 eligible observation bucket; (3) frozen exact-source gates/image/installer/off-shadow-strict-rollback; (4) protected P0 merge; (5) fresh accepted-main Sol finalizer and reconciliation. No elapsed-time cutover, full-day/72-hour claim or waiver. Dependency-safe implementation continues in parallel; no new Thomas-only question was introduced in this cycle.
+
+---
+
+## Status first — verified 2026-10-08 08:57 UTC
+
+**Accepted main:** `3096cb044bdf6ae98488bfc385f532fa6386343a`, reverified through GitHub. **Persistent OrbStack DEV:** `08842235047a3ab2714427edce80331b94558150`, image `sha256:75b153d7d9583993127e1be8c06453159e4fe7319abfcd8431f093c9ca002bcf`. No persistent source/image change, protected merge, strict activation, official release or phase closure. Private supported-role users remain retained; credentials, credential Markdown and seeders remain outside Git/GitHub. Chrome trust handoff remains pending.
+
+| Stage | Formal status |
+| --- | --- |
+| P0 | Open — isolated #602 at30aef; hosted19/22; no FINAL_P0_SHA |
+| P1 | Open — #606 eight-visual/Alert batch implemented; structural G3 binding correction follows Sol blocker; #605 separate |
+| P2 | Open — approvals/intake slices retained; contract and integrated acceptance remain |
+| P3 | Open — #596 explicit fixture scopes103dc9 independently cleared; hosted PostgreSQL1741PASS; real provider acceptance remains |
+| P4 | Open — #607 MCP owning register not-ready; governance/query/outbox and migration lineage remain |
+| P5–P7 | Open — no completion claim |
+
+**P0 actual bounded diagnostic:** independent Sol cleared exact V9 seal `f378979e6c62a8b89799f4b8de8496fd30d39785e4258c6a5941f72cfba0e949` (719files) for one three-case diagnostic, not acceptance. Exact30aef ran at08:45:41–08:47:24UTC on owned loopback52546: local LCP2264ms, state184.6ms, board409.3ms,3/3PASS. All18recorded owned processes/listener/profiles are absent; unowned4178 preview is preserved; source and packet seal remain exact. The supervisor's final redundant killpg returned EPERM after TERM; explicit PID identity verification established cleanup, and the original exception is retained. No blanket cleanup success is inferred from a zero exit.
+
+All nine attribution receipts remain **incomplete**. Although boundary/clock joins pass, the trace sanitizer conflates unretained events with malformed events and discards invalid CPU profiles under one combined reason. Raw rejected profile data cannot be recovered. No authored TaskDesk owner costs were established, and the postprocessor correctly refuses attribution. No product patch or V9 recapture follows from those invalid receipts. Existing hosted artifacts are the next bounded evidence route. Hosted30aef remains19/22: LCP2532/2500ms, state200.9/200ms, board623.1/500ms. Earlier V3 wrong-origin attribution, V6 absent stacks and V7/V8 review BLOCK records remain preserved and are not relabeled.
+
+**#606 implementation and reviews:** ba14dda2 completes eight existing Linux visual baseline corrections; unchanged assertions compare8/8PASS. The shared Alert foreground/variant pair coverage grows from306 to316 proven source/manifest pairs as caller-specific backdrops are introduced at9be3. Exact ba14 image `sha256:fdc21955f57b8482f3e4ee7fe6681da2468450120b32897414f12b558a17db8b` built and booted07:51:23–07:55:29UTC with OCI exact,UID10001,live/ready200,isolated cleanup and original DEV network preserved. That image is not relabeled as a later source.
+
+Latest pushed PR head `1b75a467b7880fe37fc6d22ff37007e029429716` restores the typed null-variant foreground contract and models ordered known/absent/unknown variant/class/style spread effects. Focused contrast52/52, Alert3/3, UI typecheck/Biome and static316-pair bindings pass. Fresh independent Sol nevertheless reproduced a lexical binding fail-open: a sibling const or shadowed Object.freeze can be mistaken for the actual use binding. This remains BLOCKED and prompts one structural binding correction across identifier consumers; no additional ordinary comfort round is queued. Prior Luna backdrop/spread BLOCKs retain their historical SHA identities. Current fast37752744434/full37752744517 are in progress on1b75; no current full hosted acceptance is claimed. Root corrected the publication branch: actual #606 branch is codex/p1-native-activity-comments-20261008. No product source was lost or rewritten.
+
+**P3 actual convergence:** #596 exact `103dc906052852c246f9f7f6660a6b7f8d7d931c` fixes only test fixtures and AK-3 documentation. Fresh independent Luna and lightweight Sol clear this three-file delta; NULL/malformed denial and current-role authority are unchanged. Focused2files/20testsPASS; hosted37741291133 PostgreSQL150files/1741testsPASS on GitHub's synthetic merge4f09f2c of this candidate into197b19f. Original identities are preserved; this is not relabeled as a direct source-only run. Review evidence is recorded in PR596 comment6056349586. Inherited register/OpenAPI/dependency/metadata/G11 failures and real Entra acceptance remain open.
+
+**Integration and residuals:** live audit lists21 open PRs. #599 stays outside P0; #589 remains frozen until recreation from accepted post-P0 main. No stale PR is closed without unique-source preservation. #585 migration snapshots still omit seven tables versus matching #589/#598 SQL lineage; central integration reconciliation remains required. #607953d remains a two-file not-ready specification reconciliation, with inherited dependency/register/metadata failures; it does not authorize MCP implementation. Existing unclassified secret finding stays open and unsuppressed. Private role smoke remains36/36 for owner/admin/member/viewer only.
+
+**Critical path:** (1) proven P0 performance correction and unchanged hosted22/22; (2) remaining actual October9 bucket for the changed eligible nine-read subset; (3) frozen exact-source gates/image/installer/off-shadow-strict-rollback; (4) protected P0 merge; (5) fresh accepted-main Sol phase finalizer and issue reconciliation. No full-day/72-hour claim or elapsed-time cutover. Later-stage dependency-safe implementation continues independently; genuine pending product decisions are not guessed.
+
+---
+
+## Status first — verified 2026-10-08 07:12 UTC
+
+**Accepted main:** `3096cb044bdf6ae98488bfc385f532fa6386343a`. **Persistent OrbStack DEV:** `08842235047a3ab2714427edce80331b94558150`, image `sha256:75b153d7d9583993127e1be8c06453159e4fe7319abfcd8431f093c9ca002bcf`. App/image unchanged. Four supported-role test accounts remain retained privately; credentials/seeders stay outside Git/GitHub. Chrome trust handoff remains pending. No protected merge, strict activation, official release or phase closure.
+
+| Stage | Formal status |
+| --- | --- |
+| P0 | Open — isolated #602 source30aef, hosted19/22; no FINAL_P0_SHA |
+| P1 | Open — #606 native visual/zoom batch reviewed clear; current integrated gates still fail; #605 realtime separate |
+| P2 | Open — retained approvals/intake slices; undefined contracts and integration remain |
+| P3 | Open — #596 NULL-scope fixture correction pushed103dc9; provider acceptance remains |
+| P4 | Open — #607 MCP spec reconciliation preserves not-ready status; query/governance/outbox and migration lineage remain |
+| P5–P7 | Open — no completion claim |
+
+**P0 source/evidence correction:** hosted source30aef still fails LCP2532/2500ms, state200.9/200ms and board623.1/500ms. Prior V3 caller attribution is ineligible: its fixture used the unowned historical port4178 preview instead of the pinned candidate. Its mapped owner/cost conclusions must not support product changes; originals remain preserved. Hosted30aef and the separate authorization V6 evidence are unaffected.
+
+**P0 diagnostic outcome:** V4 origin mismatch and V5 unsealed runnable-file inventory were blocked before runtime. The repaired706-file V6 packet cleared independent Sol, then ran once against exact30aef on unique loopback port53155 at05:14:13–05:23:57UTC. Local instrumented outcome20/22, failing detail navigation and palette keyboard navigation; this is not hosted G11 acceptance. Cleanup verified recorded9descendants, owned browser profile, process groups and port absent; unowned preview preserved; packet seal/source exact. The34 streamed files contain926582 retained events but zero source-stack frames. The list reporter discarded in-memory boundary/loss/network receipts; worker restart reused appended filenames. These outputs are insufficient for causal source attribution. No product patch or further capture follows from them. The next bounded task analyzes source deltas against accepted #579 rather than repeating the collector.
+
+**#606 completed implementation batch:** ordinary Luna and full narrow Sol clear badb055 visual/zoom delta. Focused components13/13; visual-scope17cases/16active routes; Linux saved-view detail baseline generation/comparison each1PASS; unchanged500-row200% zoom journeyPASS with owning row fully visible. Exact0a7212 product image a463ea67 built/booted05:03:02–05:03:41UTC,OCI exact,UID10001,live/ready200,owned cleanup/original DEV preserved. badb changes only its component test; image identity remains0a. Hosted badb full37730574097: PostgreSQL154files/1813testsPASS,E2E/G4PASS,G8 9/17,G11 18/22. Eight existing visuals fail; new detail case passes. G11 fails LCP2796,create visibility,assignment235.1,board652.7. Fast37730574034 build/unit/static/policy/supply-chainPASS; OpenAPI/acceptance metadataFAIL. These exact-source checks do not transfer automatically to later documentation descendants. Versioned strict-comment edit, edit mentions and pending-action enum decisions remain pending.
+
+**#605 deployability:** exact024788 image ce784885 built and booted04:44:45–04:45:00UTC with UID10001,live/ready200 and owned-resource cleanup. Two independent ordinary reviews clear its bounded realtime delta; it changes no security-scope authority and requires no per-PR Sol. Inherited full gates remain failed; no merge or persistent deployment.
+
+**P3 bounded correction:** #596's four historical synthetic-merge403s came from keys inserted with NULL permissions. Test fixtures now serialize only registered read/create/update scopes, adding set_priority solely for a priority PATCH. No runtime authority changed. Pushed103dc906; focused PostgreSQL2files/20testsPASS on the matching precommit inputs, current hosted verification and source-bound review packet continue. Earlier failed/canceled checks remain historical; no OIDC defect inferred from stale activity fixtures.
+
+**P4 readiness:** draft #607 at953d8138 maps all29 MCP tools to existing authorities and exposes accepted `/api/project` versus specified `/api/projects` mismatch. Owning §8 remains not-ready. Read-tool route/policy/results, submission attribution, read audit/origin and rate-window contracts remain genuine questions; no implementation invents them. MCP tool parity, route integration and injection tests remain missing implementation dependencies. Ordinary docs review pending.
+
+**Private testing:** four owner/admin/member/viewer accounts seeded through canonical APIs;36/36 login/session/read/admin/write/CSRF smoke passes. Passwords/credential Markdown/seeders remain0600 outside repo. Unsupported manager/lead/customer provisioning remains explicit; no fabricated role grants/all-role acceptance.
+
+**Integration alignment:** #599 remains outside P0; historical #589 frozen until accepted post-P0 recreation. #585 migration snapshots omit seven tables versus matching #589/#598 SQL lineage; central reconciliation remains required. Existing unclassified secret finding remains open and unsuppressed. No gate waiver or competing broad train.
+
+**Critical path:** (1) restore P0 unchanged hosted22/22 with a proven source correction; (2) remaining actual October9 bucket for changed nine-read subset; (3) freeze exact-source gates/image/installer/runtime/rollback; (4) protected P0 merge; (5) fresh accepted-main Sol finalizer and issue reconciliation. No full-day/72-hour claim or elapsed-time cutover. Independent later-stage implementation continues.
+
+---
+
+## Status first — verified 2026-10-08 04:32 UTC
+
+**Accepted main:** `3096cb044bdf6ae98488bfc385f532fa6386343a`. **Persistent OrbStack DEV:** `08842235047a3ab2714427edce80331b94558150`, image `sha256:75b153d7d9583993127e1be8c06453159e4fe7319abfcd8431f093c9ca002bcf`. Application source/image unchanged. Four supported-role test accounts and their project are intentionally retained; credentials and seeders remain private outside Git/GitHub. Chrome certificate handoff remains pending. No protected merge, strict activation, official release or phase closure.
+
+| Stage | Formal status |
+| --- | --- |
+| P0 | Open — isolated #602 at30aef; hosted G1119/22; frozen acceptance source not selected |
+| P1 | Open — #606 completed mention/history/security batch, full hosted remediation continues; #605 separate |
+| P2 | Open — implementation slices retained; intake contracts and integrated acceptance remain |
+| P3 | Open — portal/identity slices retained; inherited auth failures and real Entra acceptance remain |
+| P4 | Open — query/governance/outbox slices; migration lineage and contracts remain |
+| P5–P7 | Open — no completion claim |
+
+**P0 critical path:** unchanged30aef G11 fails LCP2532/2500ms, state200.9/200ms and board623.1/500ms. Retained traces and source comparison do not establish a causal product correction; no speculative patch or unchanged benchmark retry was made. A bounded private attribution task targets missing layout/paint caller evidence. The duplicate PR-body heading was corrected without source or gate changes. Three-day evidence is representative UTC buckets, never full-day/72-hour coverage: the changed eligible nine-read subset has admitted October6 and October8 evidence; one further actual bucket remains. Frozen exact-source gates/image/installer/off-shadow-strict-rollback, protected merge and fresh accepted-main Sol finalizer remain required.
+
+**#606 complete batch:** current `f995abbeb2a01a9f3b5f35f61571f08d7fe64df3` is a review-note-only descendant of product source `a4c5971b2d6c470867de0a619e8db4fb6b2dcb6e`. The single-flight composer/draft, repository query ownership, token fixtures and private customer requester/participant picker corrections are implemented. Independent694 UI/authority reviews and a4 authority/Sol security delta clear; full694 blocker remains historical and is resolved by a4. Actual a4 PostgreSQL18: **1file/24tests PASS**,04:14:19–04:14:33UTC. Historical694 UI/mock-API1PASS retains only its unchanged web scope, not persistent DEV/provider acceptance. Current fast37726798767 fails five OpenAPI breaks and incomplete PR acceptance metadata; full37726798858 has G8/E2E/G11 failures, G4PASS, PostgreSQL still running at verification. One consolidated implementation remediation continues; unresolved enum and edit-notification contracts are not guessed.
+
+**Actual isolated image proof:** a4 image `sha256:935bdb60fa26e950695eb115ff2078fbf950003b2150189014aaf647ebd3ff25` built and booted at04:27:35–04:27:50UTC with exact OCI revision, UID10001 and live/ready200. Owned containers, volumes and uniquely named network were cleaned; the original DEV network's five members remain unchanged. Earlier failed private fixtures are preserved: identical agent/portal hostnames were correctly rejected, and Compose's globally named network caused colliding service aliases in a later fixture. Explicit unique network isolation fixed the fixture. This is candidate boot proof, not persistent deployment, TLS, rollback or phase acceptance.
+
+**Private role seeding complete:** final immutable V7 packet cleared independent Luna/Sol and executed04:16:38–04:17:12UTC. Owner/admin/member/viewer users, workspace and project were verified through canonical APIs; current API/RBAC smoke **36PASS/0FAIL** at04:19:02–04:19:47UTC. Probe sessions and operator session signed out200. Account passwords/credential Markdown and hash-chained ownership ledger remain mode0600 outside the repository. Manager/lead/customer and other unsupported deployed role paths are explicitly excluded, not fabricated. Historical transport, rate-limit and route fixture failures remain retained. No claim of all roles, all API keys, full setup or browser acceptance.
+
+**Integration alignment:** live GitHub lists20 open PRs; none is merge eligible. #599 stays outside P0; #589 historical train remains frozen until recreation from accepted post-P0 main. Migration SQL0088–0118 matches across #589/#598, but #585's0114/0115 snapshots omit seven tables versus that lineage; central snapshot reconciliation remains a blocker, with no accepted migration rewrite. #596's retained hosted synthetic-merge PostgreSQL failures are four API-key activity cases, while OIDC7/7 and group mapping9/9 pass; no OIDC-specific source fix is justified by those failures. Existing secret-scan finding remains open and unsuppressed.
+
+**Next work:** P0 causal attribution and unchanged hosted22/22; complete #606 hosted remediation batch; remaining actual UTC observation; frozen installer/runtime/rollback acceptance; protected P0 merge and fresh phase finalizer. No new decision request or waived gate. Original historical snapshots follow.
+
+---
+
+## Status first — verified 2026-10-08 03:59 UTC
+
+**Accepted main:** `3096cb044bdf6ae98488bfc385f532fa6386343a`, reverified through GitHub. **Persistent OrbStack DEV:** `08842235047a3ab2714427edce80331b94558150`, image `sha256:75b153d7d9583993127e1be8c06453159e4fe7319abfcd8431f093c9ca002bcf`, Docker OCI/image reverified. Standard ticketing/portal hosts retain CA-verified HTTPS evidence. Chrome trust handoff remains pending. No application redeployment, protected merge, strict activation or phase closure occurred.
+
+| Stage | Formal status |
+| --- | --- |
+| P0 | Open — isolated #602 exact30aef, hosted19/22; final source, runtime/installer/rollback and finalizer obligations remain |
+| P1 | Open — #606 completed mention/history batch under bulk correction; #605 realtime acceptance separate |
+| P2 | Open — approvals/intake/calendar slices; contract and integrated acceptance obligations remain |
+| P3 | Open — OIDC/portal slices; hosted parent failures and real Entra acceptance remain |
+| P4 | Open — query ownership/governance/outbox lanes; migration snapshot reconciliation required |
+| P5–P7 | Open — no completion claim |
+
+**Directive applied:** Thomas's October8 autonomous integration directive keeps #602 as P0, #599 outside it and #589 frozen until recreation from accepted post-P0 main. Live GitHub classification covers20 open PRs; none is presently eligible for protected merge. Mixed historical branches are retained until unique source preservation is proven. No PR was closed solely because it was old or conflicted. The private source-bound classification lists each exact head and blocker; it does not replace gate evidence.
+
+**#606 new verification and correction:** current pushed head remains `843e99692c4c0e8bfffc5f3687a3d01c10c1b2bb`. The actual built-UI/mock-API mention journey passed1/1 in4.3s at02:58:33–02:58:37UTC; it exercises reachable/restricted staff, warnings, same-org public customers, internal exclusion, keyboard selection and person-ID payload. This is distinct from actual API PostgreSQL proof and persistent DEV browser acceptance. Fresh bulk authority and integration Luna reviews pass; the UI reviewer blocks duplicate submission/draft loss during the mention preflight interval. One complete correction batch owns single-flight submission, safe draft behavior, actual query fixtures, four mention repository reads and token/contrast contracts; no per-line re-review is being queued.
+
+**Current843 hosted facts:** fast37719919472 and full37719919480 fail. PostgreSQL, route-policy/matrix, G4, build and supply-chain checks pass. Web units have4 failures in activity UI fixtures (138files/604tests pass; 139files/608tests total); API109files/779tests and UI60files/306tests pass. Browser E2E55/56 passes; the remaining zoomed-last-row geometry failure is separate. G11 is18/22: LCP2776/2500ms, create-item visibility, palette201/200ms and board620/500ms fail. Four unowned mention reads and new warning/card pair plus12 existing token occurrence contexts are actionable correction scope. G8 saved-view inventory, five OpenAPI contract changes and genuine review/template gaps remain blockers. No acceptance evidence is transferred from older heads merely by label.
+
+**Private supported-role users:** V3 completed transport delta review (fresh Luna and Sol,**15/15 offline tests**). Actual03:52:20–03:53:24UTC stopped after owner/admin/member; viewer login401 confirmed it was not yet created. Same reviewed tool resumed after115seconds of signup inactivity at03:55:19–03:55:20UTC, creating and accepting viewer before stopping at the project phase. Read-only exact workspace membership confirms the four users plus original instance administrator. The original plural project endpoint returned404; canonical source mounts singular `/api/project`. ImmutableV4 corrects GET/POST paths together, signup inactivity pacing and safe phase/status diagnostics;17 offline tests pass, independent delta review pending. Original failures/owned ledger/credentials remain private and preserved. Four accounts are created, but project/seeder completion and representative API/RBAC smoke are not yet claimed. Smoke harness failures (plural route, workspace envelope and absent session response) remain failed records; no blanket all-roles/all-API claim. Manager/lead/customer and a new instance-admin account still lack canonical deployed provisioning paths; existing instance admin is preserved. No seeder or credential file enters Git/GitHub.
+
+**P3 and migration integration:** #596's retained hosted run used synthetic merge `3d2e49fa71d6679133f931fe5081703d45ee8c1a` (08c162d/197b19f), not relabeled bare-head execution:148/150files and1737/1741tests pass; four API-key attribution tests fail403 vs200, with OIDC reconciliation7/7 and mapping9/9 passing. No OIDC-only fix is justified. Accepted main migration journal ends0087. Historical #589/#598 carry identical provisional0088–0118; #585's identical0114/0115 SQL has snapshots omitting seven tables present in the train, a concrete snapshot reconciliation blocker. Central integration must regenerate/validate lineage from authoritative schema without rewriting applied accepted history. No allocation or merge was performed.
+
+**P0 critical path:** unchanged hosted22/22 and remaining exact-head gates; exact installer/image/migrations/rollback; eligible reversible strict proof plus the one necessary October9 eligible observation bucket; protected merge; fresh accepted-main Sol finalizer and issue reconciliation. Retained captures justify no speculative performance patch or unchanged benchmark retry. No FINAL_P0_SHA, elapsed-time cutover, full-day/72hour coverage or waived gate is claimed. Previously raised genuine decisions remain pending; independent implementation continues.
+
+---
+
+## Status first — verified 2026-10-08 02:59 UTC
+
+**Accepted main:** `3096cb044bdf6ae98488bfc385f532fa6386343a`. **Persistent OrbStack DEV:** exact `08842235047a3ab2714427edce80331b94558150`, image `sha256:75b153d7d9583993127e1be8c06453159e4fe7319abfcd8431f093c9ca002bcf`; Docker OCI/image and clean pinned checkout reverified. CA-verified standard ticketing HTTPS config200 and existing admin sign-in/session200 were checked without logging credentials. The old October1 credential failed401; the newer private October3 credential succeeded. Originals remain preserved; no password reset or deployment occurred. Chrome trust handoff remains pending.
+
+| Stage | Formal status |
+| --- | --- |
+| P0 | Open — #602 exact30aef; hosted19/22, authorization/installer/rollback/finalizer acceptance outstanding |
+| P1 | Open — #606 completed creation/preflight/history/fixture batch pushed; browser and bulk reviews in progress; #605 realtime separate |
+| P2 | Open — matured service-desk lanes, contract and integration obligations remain |
+| P3 | Open — portal/identity lanes; real Entra acceptance outstanding |
+| P4 | Open — query ownership/governance lanes; no phase acceptance |
+| P5–P7 | Open — no completion claim |
+
+**What changed:** #606 now pushed at `843e99692c4c0e8bfffc5f3687a3d01c10c1b2bb`. The completed batch composes scoped native mention creation/preflight, staff/customer reach distinctions, canonical project serving-organisation facts, recipient/delivery rechecks, existing mute preservation, the semantically unchanged admin lookup repository extraction and two stale paginated-activity E2E fixtures. Root built API and both web entries on exact843 successfully. Root exact frozenaf796 PostgreSQL18 comments suite passes23/23, including public same-org customer, internal exclusion, foreign-org no-watcher/no-notification and staff watcher/mute cases. Author focused notification eligibility units pass48/48. Original failed and source-moved runs remain failed/diagnostic; none is relabeled current843 acceptance. The root source-moved four-file attempt had66PASS/1FAIL (response body read twice in newly added test); the subsequent exactaf796 run fixes that fixture failure. Owned resources were removed and originals preserved.
+
+**Browser evidence:** actual843 built-UI mock-API journey ran02:55:34–02:55:43UTC and failed a private text assertion because avatar initials precede candidate names. The popup rendered three expected candidates; later selection/save is not yet proven. The failed trace/receipt remains private; a separate corrected harness is being prepared without product, retry or timeout changes. This is UI fixture proof, distinct from actual PostgreSQL API proof and persistent DEV browser verification. The current843 bulk ordinary/security reviews are not yet cleared. The earlierb6 and c573 reviews retain their exact scope/head only.
+
+**Hosted gates:** historical exactb6d3 full37716564199 is19/22: LCP2816/2500ms, create-work-item visibility check and board598.6/500ms fail. Its E2E withdrawal crash was traced to an array fallback for the newly paginated activity endpoint; the visual detail fixture had the same class and both were corrected. Zoom-last-row failure remains separate. Token12-context drift, five OpenAPI changes, inventory and review metadata remain honest blockers; no waiver. Fresh843 checks belong to843 only. Historical #589 remains2350397b until post-P0 recreation; #599 stays outside P0.
+
+**P0 attribution:** current30aef product/CI source remains unchanged. Retained V3 initial/board captures have small spread-out mapped application self costs; layout lacks source initiators. Offline network followup shows dialog-family transfers overlap LCP but does not prove their initiating import or paint dependency. No product correction or savings claim is justified by these captures, and the overallV3 run remainsFAIL. No new unchanged performance retry, speculative source patch, FINAL_P0_SHA or historical22/22 carry-forward claim.
+
+**Private seeding:** four supported workspace roles (owner/admin/member/viewer) now have a private API-based preparation packet. Originalv1 was blocked by independent Sol: missing atomic-write import and invitation-acceptance recovery, plus ownership/source-path issues. All were addressed together in immutablev2 with14 offline tests; v2 independent delta review is running. No test accounts have been provisioned yet. Existing instance-admin is preserved; manager/lead/customer provisioning lacks canonical paths on deployed088 and remains an explicit later-source gap. Seeders, session files and future credentials remain outside Git/GitHub with0700/0600 modes. No all-eight-role completion claim.
+
+**Critical path (P0):** unchanged22/22 and remaining exact-head gates; exact installer/image/migrations/rollback; eligible reversible strict runtime proof and scoped October9 observation; protected merge; fresh accepted-main Sol finalizer and issue reconciliation. Exactly one further qualifying actual UTC bucket remains for the nine changed nonmember reads; no full-day/72-hour claim, blanket recollection or elapsed-time cutover. No protected merge, strict activation, official candidate release or phase completion occurred. Genuine previously raised decisions remain pending; engineering corrections continue autonomously.
+
+---
+
+## Status first — verified 2026-10-08 02:23 UTC
+
+**Accepted main:** `3096cb044bdf6ae98488bfc385f532fa6386343a`. **Persistent OrbStack DEV:** revision `08842235047a3ab2714427edce80331b94558150`, image `sha256:75b153d7d9583993127e1be8c06453159e4fe7319abfcd8431f093c9ca002bcf`. Standard ticketing/portal HTTPS has the retained 8/8 CA-verified readiness proof; application/data/secrets unchanged. Chrome trust handoff remains pending: the user's intent to handle the warnings is not a completed browser verification.
+
+| Stage | Formal status |
+| --- | --- |
+| P0 | Open — isolated #602, hosted G11 19/22; runtime, installer and finalizer acceptance outstanding |
+| P1 | Open — #605 realtime and #606 comments/history; native mentions batch implementing |
+| P2 | Open — approvals/intake/calendar lanes; contract and integration obligations remain |
+| P3 | Open — portal/identity lanes; real Entra acceptance outstanding |
+| P4 | Open — repository ownership and governance lanes; independent acceptance outstanding |
+| P5–P7 | Open — no completion claim |
+
+**P0 convergence:** #602 remains exact `30aef000956bdeafb74b497c863cf4c8af1679d2`, unchanged product/CI source. Hosted run37711430920 fails LCP2532/2500ms, state200.9/200ms and board623.1/500ms; palette187ms passes. No new product experiment, retry, threshold/fixture/workload change or FINAL_P0_SHA. Private V3 attribution acquisition ran02:19:56.748–02:20:21.060UTC after fresh independent Sol clearance. Overall **FAIL**: state paint boundary incomplete and aggregate map binding missing `priority-Df3oZaBw.js`. Four per-window captures completed (initial-load, assignment, board-render, board-detail); the failed state window and exact exceptions are retained. Preflight bound106/106 source-equivalent hosted JavaScript assets and103 maps. Completed profiles may support attribution only for proven bound assets; they are not canonical G11 acceptance. Owned preview exited and port closed; unowned4178 process preserved. V1 syntax failure and V2 assignment failure remain historical failures; no additional unchanged retry is scheduled.
+
+**P1 completed correction batch:** #606 is pushed at `b6d3f1d197677c3302b0e61cfdf37c6773274cfb`. Customer private-item restrictions now apply to customer identities while staff still require canonical project reach; history cursor overflow rejects400 before PostgreSQL. Root actual changed integration suites pass **2files/17tests**. Actual built-app browser passes **1journey/14.6s**, including approvalGET200/no alert, comments/edit/draft recovery and seven-version pagination. Its original6c0 build identity is retained with empty shipping-source delta to b6d3. Two fresh independent Luna delta reviews and a separate full independent Sol security delta are **CLEAR**. The earlier3f85 full Sol pass remains evidence for the preceding batch, not a relabeled b6d3 review. Prior fixture failures remain failed records.
+
+**P1 acceptance blockers:** recorded3f85 hosted full37714235534 is21/22 (LCP2648ms); visual saved-view inventory and two E2E cases fail. Fast CI also identifies one unowned approval read,12 token-pair contexts, five OpenAPI changes and PR metadata requirements. These results retain their actual historical SHA; current b6d3 hosted acceptance must be checked independently. A separate bounded implementation lane owns the repository-helper correction. Historical3f85 image boot proved OCI revision/UID10001/migrations/live+ready200; its private Valkey variable mistake limits that proof to single-web image health, not canonical Compose wiring. No current b6d3 image, merge or stage completion is claimed.
+
+**Parallel implementation:** native mentions has a separate b6d3-based worktree. Thomas approved workspace-scoped composition access warnings, save-time recipient rechecks, watcher addition without unmuting and preservation of every explicit mute. Public customer mentions follow existing CA12 reach requirements; internal comments exclude customers. Edit-event semantics remain the pending product decision; independent creation/preflight work continues. Historical #589 remains2350397b until recreation from accepted post-P0 main; #599 remains outside P0. No overlapping file ownership or migration allocation is introduced.
+
+**Runtime/date critical path:** retained V6 actual off/shadow evidence and independent adjudication admit the nine changed eligible nonmember-read behaviors on October6 and8. Exactly one further actual UTC bucket is needed for that subset, scheduled through the existing October9 heartbeat. No full-day/72-hour claim, blanket recollection or automatic strict activation. Critical path: net-positive unchanged22/22 source; exact installer/image/migration/rollback; eligible reversible strict runtime proof; protected merge; fresh accepted-main Sol finalizer. #8/#592/#593/#582 remain open. Seeders/credentials remain private; persistent eight-role DEV seeding remains outstanding. No gate waiver or acceptance is claimed.
+
+---
+
+## Status first — verified 2026-10-08 01:45 UTC
+
+**Accepted main:** `3096cb044bdf6ae98488bfc385f532fa6386343a`. **Persistent OrbStack DEV:** revision `08842235047a3ab2714427edce80331b94558150`, image `sha256:75b153d7d9583993127e1be8c06453159e4fe7319abfcd8431f093c9ca002bcf`. Both standard hosts now answer CA-verified readiness 200 on 443 and 8443 over IPv4 and IPv6 (8/8 checks). Only the owned Traefik gateway was recreated; application container/image and data remain unchanged. Added 80/443 listeners bind IPv4/IPv6 loopback only. Chrome's local certificate warning still needs the already requested human trust handoff. Failed gateway attempts and rollback records are preserved privately.
+
+| Stage | Formal status |
+| --- | --- |
+| P0 | Open — sole closure #602; current hosted G11 **19/22** |
+| P1 | Open — #605 realtime; #606 complete bounded-history batch in verification |
+| P2 | Open — matured service-desk lanes; intake contracts and integrated acceptance pending |
+| P3 | Open — identity/portal lanes; real Entra and integrated acceptance pending |
+| P4 | Open — query ownership candidate; governance contracts and runtime gaps remain |
+| P5–P7 | Open — no completion claim |
+
+**P0 source and gates:** #602 is `30aef000956bdeafb74b497c863cf4c8af1679d2`. Product/CI source equals retained 1878 after normal reverts. Experiment 6623 was rejected: total G11 fell from 20/22 to 19/22 and real palette click regressed to 720.9 ms. Its source is absent. The restored candidate's automatic full run `37711430920` is **19/22**: LCP 2532/2500 ms, state interaction 200.9/200 ms, board 623.1/500 ms fail; palette 187 ms passes. PostgreSQL, G4, G8 and E2E pass. No budget/workload/fixture/retry/assertion changes, manual retry, FINAL_P0_SHA or acceptance. Caller-resolved cost attribution remains necessary before another justified product experiment. Later-stage #599 and historical #589 remain outside P0.
+
+**Actual authorization observation:** V6 manifest `104eda5965bd5690ae74989a1c44c60aa3628cb2d7a98569ab31cd1c82414384` cleared fresh independent Sol (23 file bindings, 8 focused tests). Root's actual isolated off/shadow run on exact historical 1878/image7d561 completed 01:01:24.179835–01:01:50.347250 UTC, exit 0; acquisition 01:01:41.844–01:01:48.197 UTC. Independent adjudication confirms 130/130 request outcomes, 27/27 eligible sources, 44 tally rows/128 occurrences, 1/1 delegated event, 20/20 fixture facts, 31/31 targets and 9/9 cleanup. UID10001, live/ready200 and accepted80/candidate88 migration hash counts pass. All original resources survived; no owned runtime remains. Original V5 and earlier failures remain failures. This is not strict activation, frozen-image proof or protected acceptance.
+
+**Date compatibility:** independent Sol admits the nine changed eligible nonmember project-read behaviors in actual October6 raw evidence and successful October8 V6 evidence. Exactly one further actual qualifying UTC bucket is needed for this subset. Two changed task cases stay globally deferred; two admin reads remain403 and compatible. Other matching historical witnesses retain only their demonstrated scope. The existing `p0-remaining-evidence-dates` heartbeat was updated, not duplicated, for the remaining October9 bucket with fresh bindings, exclusive resource ownership, cleanup and source compatibility. No full-day/72-hour claim, blanket recollection, automatic strict activation or gate waiver.
+
+**P1 implementation and review:** #606 is now pushed at `3f8592c02c14c7b9c713ba09ee5dd75378198177`. Full Sol's prior3cb unbounded-history finding is addressed by complete41e/e2e9 bounded parent-read/keyset/lazy-UI batch (default5/max10, PATCH body required). Root actual e2e9 PostgreSQL18 passes **4files/46tests**; API/domain/permissions/native tests/lockfile diff to3f85 is empty, with original run identity retained. Root actual current3f85 built-app browser passes **1journey/13.4s**: bootstrap/create/comments/URLfilters/edit/draftreload, zerohistoryrequests beforeopen, sevenversions over5+2pages. First privatebrowser timeout was an unstable body-text locator; original failure retained, harness corrected without retry/timeout increase. Every owned resource absent and original resources preserved. The bulk ordinary API clears; UI/integration findings corrected together with descriptive popup/trigger and truthful “Load more versions.” Fresh independent3f85 Luna delta CLEAR (1file3tests/i18n18locales), full independent current Sol running. Current hosted full37714235534 and fast checks are active; exact image build running, boot/health not claimed. Separate approvalpanel404, CA19, mentions/watchers/linkage/governed deletion and inherited pending-action contracts remain tracked.
+
+**Performance evidence correction:** the current profile's9615 synthetic merge has parents accepted3096 and candidate30aef; its Git tree085d0347 exactly matches30aef. This establishes source equivalence, not benchmark equivalence. The diagnostic's flattened V8 nodes and removed layout initiators still cannot identify a TaskDesk owner. A private acquisition derivative is being prepared to preserve those exact missing stacks and hash-matched asset/maps without altering product source, workloads or acceptance. Existing4178 preview remains unowned and untouched.
+
+**Critical path:** resolve the three unchanged hosted G11 failures; obtain the remaining behavior-specific UTC bucket; freeze and run exact P0 gates/image/installer/strict rollback proof; protected merge; fresh accepted-main Sol phase finalizer. Signed official installer sequencing remains an unanswered product/release decision. No merge, strict activation, new official release, phase finalizer or phase closure occurred. Private seeders/credentials remain outside GitHub. Historical #589 will be recreated from accepted post-P0 main with centralized migration allocation.
+
+## Status first — verified 2026-10-08 00:54 UTC
+
+**Accepted main:** `3096cb044bdf6ae98488bfc385f532fa6386343a`. **Persistent OrbStack DEV:** revision `08842235047a3ab2714427edce80331b94558150`, image `sha256:75b153d7d9583993127e1be8c06453159e4fe7319abfcd8431f093c9ca002bcf`. Actual CA-verified readiness200 on both hosts at8443 at00:38:20UTC. Standard443 remains unavailable. No protected merge, persistent redeployment, strict activation or phase finalizer occurred.
+
+| Stage | Formal status |
+| --- | --- |
+| P0 | Open — sole closure PR #602; current6fe hosted G11 **20/22** |
+| P1 | Open — realtime #605; #606 completed editor/history remediation passes current runtime checks, delta review pending |
+| P2 | Open — matured service-desk lanes, unresolved intake contracts and integrated acceptance |
+| P3 | Open — portal/identity lanes, real-provider and integrated acceptance pending |
+| P4 | Open — query ownership branch complete; governance contracts and runtime gaps remain |
+| P5–P7 | Open — no completion claim |
+
+**P0 source/performance:** sole #602 now `6feadaf9e2eda80c45d24b4154d15a21483948a0`, the normal revert of rejected670/d4 experiment. Full diff against01de/1878 is review documentation only; product/CI source is restored. Automatic full hosted run `37708668475` finished **20/22**: LCP2548/2500ms and board656.8/500ms fail; list472.9/500ms, state186.1/200ms and both real-popup palette cases pass. PostgreSQL integration, G4, G8 and E2E passed. No green acceptance is inferred from historical01de22/22. One bounded correction preserves genuine shared hidden dialog/popup while delaying expensive palette descendants until first open. No benchmark, fixture, workload, threshold, retry or assertion changes. No FINAL_P0_SHA yet.
+
+**Actual isolated runtime:** private V5 manifest `b0600c93ee93806159c58cf42d7746c0867816c743829e0ada2f249728b99a25` cleared fresh independent Sol:22/22 frozen file hashes and9/9 focused tests. Root freshly bound operator authority records and executed off/shadow-only on clean historical1878/image7d561 from00:51:51.875 to00:52:22.220UTC. Container live/ready200, UID10001, accepted80/candidate88 migration hash counts and observability/CAS/token denial checks passed. Traffic acquisition then **FAILED** at the report contract's fixture-route binding validation (helper373). Runtime journeys are tuples while the validator accepts only lists; this is a harness diagnosis, not yet independently adjudicated. Original raw partial traffic,44tally rows and valid1/1 delegated-WS event reconciliation remain retained. Complete acquisition/strict/cutover acceptance is not claimed. Owned cleanup completed; every original container/network/volume/image preserved, no new IDs remain. DEV unchanged. A structural report-pipeline correction and complete offline regression will follow the current bounded P0 UI batch; original failures stay unchanged.
+
+**Observation compatibility correction:** independent Sol addenda correct the earlier13-case prediction to **11** changed project-read nonmember cases; two bootstrap admin reads remain403 and are compatible. Nine changed cases are in eligible non-task sources, two are globally deferred task support only. The actual retained October6 22:26:46–22:26:52 source532 raw observation contains their current404 results and complete source/tally/fixture/cleanup evidence; Sol admits that eligible subset as an actual October6 representative bucket. Its harness later failed report rendering and remains FAILED. Other matching old behaviors can retain scoped historic witnesses; no blanket restart/reuse or full-day/72-hour claim. Current October8 partial acquisition requires its own adjudication and cannot be called a complete successful run. Final frozen-source API/domain/permission equivalence and strict eligibility remain separate requirements.
+
+**P1 completed remediation:** #606 now `3cb54e8548adf6f41337357e4ff02789951c9308`. One batch repairs editable lifecycle, atomic text/JSON draft persistence, legacy Markdown history, tombstone deleting actor, null-actor grouping, person attribution/legacy roster compatibility and OpenAPI body requiredness. Root actual native PostgreSQL **4files/43tests PASS**; actual current browser **1PASS**,12.7s, comment creation/internal-public visibility URL filters/edit-save/draft reload, screenshot retained privately. All owned test resources settled; no full integrated stage acceptance. Three earlier6aed BLOCK reviews remain historical; current independent delta review is underway, followed by required security review. CA19 placeholder contract is pending; mentions/watchers, attachment linkage, governed deletion and approvals404 remain explicit residuals. #605 evidence stays source-bound; no redundant rerun.
+
+**Integration/security:** #599 remains outside P0; superseded performance/diagnostic branches are closed with history retained. Historical #589 stays235, to be recreated from accepted post-P0 main and centrally numbered migrations. #603 is branch-only P4 progress. Current seeded-role evidence remains the private historical eight-role proof (39native+3supplemental,23PASS/0FAIL/1BLOCKED HTTP); no persistent DEV seeded-user or all24HTTP-pass claim. Seeders/passwords/credential Markdown stay outside Git/GitHub and temporary credentials were removed. Historical secret scan finding stays open, unsuppressed. Signed installer sequencing and existing genuine P2/P4 contracts await Thomas; no new blanket wait or gate waiver.
+
+**Critical path:** unchanged hosted22/22 on one minimal reviewed source; exact installer/image/migrations/upgrade/rollback; source-bound authorization proof and observation adjudication; protected merge; fresh independent GPT-6.1 Sol accepted-main finalizer and closure reconciliation. #8/#592/#593/#582 stay open. No candidate is merge-ready. Historical snapshots follow.
+
+---
+
+## Status first — verified 2026-10-08 00:29 UTC
+
+**Accepted main:** `3096cb044bdf6ae98488bfc385f532fa6386343a`. **Persistent OrbStack DEV:** revision `08842235047a3ab2714427edce80331b94558150`, image `sha256:75b153d7d9583993127e1be8c06453159e4fe7319abfcd8431f093c9ca002bcf`. No protected merge, persistent redeployment, strict activation or phase finalizer. Last actual CA readiness200 is on both hosts8443; standard443 remains unavailable.
+
+| Stage | Formal status |
+| --- | --- |
+| P0 | Open — sole #602; latest candidate d4 is rejected at17/22, revert/correction underway |
+| P1 | Open — #605 reviewed realtime; #606 full activity/comments/history batch in combined remediation |
+| P2 | Open — service-desk lanes and integration/contract residuals |
+| P3 | Open — portal/identity lanes; real-provider and integrated acceptance pending |
+| P4 | Open — query ownership branch complete; governance contracts/runtime gaps remain |
+| P5–P7 | Open — no completion claim |
+
+**P0 new facts:** exactd4 `d4eb84035d3c4368b2ad5adf7af47bfecefa0fda` full hosted `37706535532` finished **17/22**, against predecessor1878 **19/22**. LCP2532/2500ms and board624.9/500ms still fail. Three new failures (ProjectsCLS and both palette interactions) require the genuine hidden shared popup before first intent; importing code alone removed it. The complete unchanged suite, not faster individual metrics, decides disposition: **REJECT**. No threshold, fixture, workload, retry or assertion changes. Author is reverting the failed670 product delta and investigating a bounded genuine-popup-preserving correction. PostgreSQL137files/1659tests, G4/G8/E2E passed. Exactd4 image built: `sha256:25d73225566dbaee8a0ccb61c084ceeb12d2b29514d9201f7e639f816477f16a`, OCI d4, arm64, actualUID10001. This rejected image is not deployed or accepted.
+
+**Runtime/date proof:** v3 private preflight classification passed independent Luna4/4, but Sol **BLOCKED** its inconsistent inherited output directory. No v3 runtime occurred. One structural output/source-binding correction is underway; v1/v2/v3 failures stay retained. Prior actual1878 off/shadow attempt stopped before acquisition; original resources preserved. Independent d4 observation adjudication is **mixed**: 11 project-read nonmember cases and two bootstrap admin cases have changed masking outcomes, needing fresh exact-source evidence. Other observed behavior remains historically compatible within its session/target scope. A normative addendum is resolving representative partial UTC-bucket eligibility precisely; no automatic all-date carry/restart, full-day/72h claim or strict eligibility. Current source/API equivalence must be proven when the final correction freezes. Exact signed installer sequencing remains a genuine pending contract decision because release signing currently requires main-reachable source.
+
+**P1 full-batch verification:** root exact6aed API/web builds passed; native activity/history/default-detail tests **2files/18tests** passed. Actual browser passed both comment creations and visibility/URL filters, then **failed** on unusable inline edit before save and draft/reload. All owned resources settled absent at00:17:11UTC, unrelated resources preserved. Three completed independent Luna contexts each passed **8files/97tests** but returned BLOCK: string-bodied edit/history, atomic draft persistence, deleting-actor attribution, unknown-actor grouping and editedBy identifier consistency. OpenAPI version body requiredness is also being fixed. Author is handling the complete family in one batch, including rendered editable recovery; no per-line review cycle. Canned-response placeholder syntax/missing-value contract is newly pending, isolated from other fixes. Mentions/watchers, attachment linkage, pending-action deletion and approvals404 remain explicit residuals. Separate exact-head Sol follows ordinary clearance; no current P1 acceptance claim.
+
+**Integration/security:** #599 is outside P0; superseded performance/diagnostic PRs are closed with history preserved. Historical #589 stays235 until recreated from accepted post-P0 main with central migrations. #603 zero unowned reads is branch-only P4 progress. Existing P2/P4 product decisions remain pending; later implementation continues where defined. Eight-role private proof remains39native+3supplemental,23PASS/0FAIL/1BLOCKED HTTP; no persistent DEV seeded-user or all24HTTP-pass claim. Seeders/passwords/credential Markdown remain outside Git/GitHub and temporary credentials were removed. Historical secret finding remains open; no suppression.
+
+**Critical path:** one minimal reviewed P0 source with unchanged22/22; exact installer/image/migration/upgrade/rollback; reversible authorization and observation compatibility; protected merge; fresh independent GPT-6.1 Sol phase finalizer then issue reconciliation. #8/#592/#593/#582 remain open pending acceptance. P0 is not blocked by a new blanket calendar wait. No candidate is presently merge-ready. Historical snapshots follow.
+
+---
+
+## Status first — verified 2026-10-08 00:14 UTC
+
+**Accepted main:** `3096cb044bdf6ae98488bfc385f532fa6386343a`. **Accepted deployment:** persistent OrbStack DEV remains revision `08842235047a3ab2714427edce80331b94558150`, image `sha256:75b153d7d9583993127e1be8c06453159e4fe7319abfcd8431f093c9ca002bcf`. Last actual CA-verified readiness200 was on both hosts at8443; standard443 remains unavailable. No protected merge, persistent redeployment, strict activation or phase finalizer occurred.
+
+| Stage | Formal status |
+| --- | --- |
+| P0 | Open — sole closure PR #602; latest completed hosted G11 **19/22**, reviewed correction now running |
+| P1 | Open — reviewed realtime #605; complete activity/comments/history batch #606 under bulk review and runtime verification |
+| P2 | Open — approvals/intake/SLA implementation; two intake contracts and integration acceptance pending |
+| P3 | Open — portal/identity implementation; real-provider and integrated acceptance pending |
+| P4 | Open — query ownership branch complete; settings/custom-field/lead contracts and runtime gaps remain |
+| P5–P7 | Open — no completion claim |
+
+**P0 convergence:** previous product01de full run `37700952445` passed22/22. Review-note-only frozen descendant `1878d6f17d46908885b36c45dddd069a19e5004b` then failed full run `37703108224`: **19/22**, LCP2552/2500ms, task-state207.1/200ms and board687.3/500ms; list497.5/500ms passed. PostgreSQL137files/1659tests, G4/G8/E2E passed. Both raw results are retained; no cause or transferable green acceptance is asserted. Mandatory two-file UI correction `670442d820d3569fefb024120d2929ff6296668c` warms palette code without mounting closed controls. Two fresh Luna reviews each independently passed1file/5tests; separate Sol UI confirmation is CLEAR with no tests run. Note-only descendant **`d4eb84035d3c4368b2ad5adf7af47bfecefa0fda`** now owns sole #602. Full hosted `37706535532` and fast `37706535974` are queued/running. Benchmarks, fixtures, budgets, retries and assertions are unchanged. Its performance disposition is pending; it is not yet a final accepted freeze.
+
+**Runtime/security:** exact1878 image built successfully: `sha256:7d561d72598d86d1cc7ba5a5ef911f341aba488286a0db50a67d494bb076967f`, arm64, OCI1878, actualUID10001; installer20/20 tests passed. Reviewed private runner-v2 manifest `92423a3e34aaab1d521e6f17a2c27a0dceba996232407268c5772ad3a192c1ae` cleared focused Luna and full independent Sol. Actual disposable off/shadow execution **stopped before acquisition**, because its generic absence check rejected the intentionally prebuilt external image. Original resources were preserved, no new container/volume/network remains; no runtime API pass is claimed. A structural ownership-aware correction is being prepared. Official signed installer sequencing has a pending product decision because current release workflow signs main-reachable source only. Off/shadow/strict/rollback, exact upgrade/migrations/rollback, independent Oct4/5/6 compatibility, all hosted acceptance and accepted-main phase finalizer remain outstanding. #8/#592/#593 stay open; no additional calendar wait is required or used.
+
+**P1 accepted capability progress:** #605 remains024, two Luna8/8, actual native17/17 with explicit source equivalence and current-source browser1/1; image/integrated acceptance pending. #606 now **`6aed1e69b95f7c04e99b37c66d3c3ce6b800880d`** includes native activity/comment pagination, URL filters, JSON composer/edit/drafts/canned insertion, project default visibility and live-comment version history. Root actual60cc browser found editor-null lifecycle crash; completed1e00 structural guards and rendered regressions address it, but current6aed browser is not yet proven. Three fresh independent Luna contexts are reviewing the completed batch, followed by required independent Sol. New DB-backed default-visibility/history regressions await root execution. Four inherited pending-action closed-enum contract errors remain open. Mentions/watchers, attachment linkage, governed deletion and the authorized actor's approvals404 remain explicit later-stage residuals.
+
+**Scope/integration:** #599 stays outside P0. #558/#575/#583/#590/#587/#600/#604 are closed/superseded with history/evidence preserved. Historical #589 stays235 until recreation from accepted post-P0 main with central migration allocation. #603 has zero unowned reads on its branch, not accepted P4. OrbStack nativearm64 audit found no emulation in app/data images; Docker Desktop is absent, so no A/B claim. Hosted timing is authoritative.
+
+**Private seeding:** prior eight-role private proof remains39 native +3 supplemental tests and23PASS/0FAIL/1BLOCKED HTTP probes. No all24HTTP-pass or persistent seeded-user claim. Seeders, random credentials and credential Markdown stay outside Git/GitHub; owned temporary credentials/resources were removed. Historical secret finding remains unresolved, not suppressed.
+
+**Critical path:** (1) unchanged hosted22/22 on one reviewed P0 source; (2) exact image/installer/migration/upgrade/rollback; (3) reversible authorization runtime and observation compatibility; (4) protected merge; (5) fresh independent GPT-6.1 Sol phase finalizer and P0 issue reconciliation. Next merge candidate is #602 only after those gates; later-stage implementation continues. Historical snapshots follow.
+
+---
+
+## Status first — verified 2026-10-07 23:34 UTC
+
+**Accepted main:** `3096cb044bdf6ae98488bfc385f532fa6386343a`. **Persistent OrbStack DEV:** revision `08842235047a3ab2714427edce80331b94558150`, image `sha256:75b153d7d9583993127e1be8c06453159e4fe7319abfcd8431f093c9ca002bcf`; actual UID10001, CA-verified readiness200 on both hosts at8443. Standard443 remains unavailable. No new persistent deployment, protected merge, strict activation or phase finalizer occurred.
+
+| Stage | Formal status |
+| --- | --- |
+| P0 | Open — #602 current source01de; hosted G11 **22/22**, runtime/recorded acceptance pending |
+| P1 | Open — #605 native realtime slice independently reviewed; activity/comments UI implementation active; views/attachments integration pending |
+| P2 | Open — approvals/intake/SLA lanes; two intake contracts pending |
+| P3 | Open — portal/identity lanes; real-provider and integrated acceptance pending |
+| P4 | Open — query ownership completed on branch; settings/custom-field runtime gaps and contract decisions remain |
+| P5–P7 | Open — no completion claim |
+
+**New P0 evidence:** sole candidate #602 is clean/pushed at `01de3c09c3ef6038f0cfda5244ac710f1c59b453`. Five-file UI scheduling correction defers closed-palette warm-up until browser idle after existing primary readiness/two frames, preserves unsupported-browser behavior and explicit intent, and marks actual resolved work-list output. No benchmark/workload/fixture/budget/retry changes. Full hosted run `37700952445` passed **G11 22/22**: list300.4ms, LCP2328ms, board424.4ms; PostgreSQL **137 files / 1659 tests**, G4, G8 and E2E **27 tests** passed. Two fresh independent Luna contexts each passed **2 files / 18 tests** and cleared current source. Fresh exact-head Sol PR review is underway. Fast source checks pass; PR-template/security-record gate is correctly red for stale review notes and incomplete runtime acceptance. No gate is waived and no FINAL_P0_SHA is yet recorded.
+
+**P0 scope/convergence:** #599 remains excluded. #558/#575/#583/#590/#587/#600 are closed as superseded with historical evidence preserved. Diagnostic #604 is now frozen/closed after exactd5 run `37698715747` produced both usable attribution tests. Its unchanged two-case diagnostic failed on both reference/current sources; profile timing is instrumented, not canonical acceptance. All source-map fingerprints and cleanup were verified. It will not enter P0 source or continue collecting without a concrete unanswered question. The source-supported scheduling correction above is kept because the complete unchanged suite now passes; no causal certainty is claimed from a single profile.
+
+**Runtime audit:** OrbStack2.2.3 uses native arm64 containers,14CPU and31GiB engine memory; PostgreSQL/Valkey/app data use named Linux volumes. Docker Desktop is not installed, so no A/B comparison is claimed. Local timing cannot explain hosted failures. Exact frozen image/installer/migration/upgrade/rollback, off → shadow → strict → rollback, independent October4/5/6 compatibility and accepted-main phase finalizer remain outstanding. Existing dates are neither automatically reused nor restarted.
+
+**New P1 capability:** #605 exact `024788d8d9fe5e2aa9f63d17e1fb7c96f978fbe1` completes per-socket/per-key event deduplication, project-topic item/activity invalidation and cleanup lifecycle. Two fresh independent Luna contexts each passed8/8 and returned CLEAR. Root actual current-source unchanged two-session browser journey passed1/1, zero skipped/flaky/unexpected. Native17/17 PostgreSQL/WebSocket tests ran on64762484, with API/domain/permissions/integration/lockfile byte equivalence explicitly verified at024. Owned resources were removed; original failures remain preserved. Image/hosted integrated acceptance is pending. A separate full supported native activity/comment UI family is being implemented; comment-history read, mentions/watchers and comment-attachment server linkage remain explicit residuals.
+
+**Later integration:** #589 historical2350397b stays frozen until recreation from accepted post-P0 main with central migration allocation. #603 exact9ed99f2 has **zero unowned Drizzle reads** and passing query ownership check; this is branch implementation, not P4 acceptance. P4 settings currently lacks full control-plane API/UI; custom fields have tables but no runtime/UI. Team-lead, two intake, pending-action API-version, custom-field bundle and feature-lock ownership decisions are pending, isolated from P0.
+
+**Private testing/security:** the completed eight-role V7 proof remains39 native tests +3 supplemental cases and23PASS/0FAIL/1BLOCKED API probes; customer audit HTTP was masked404. No all24HTTP-pass or persistent seeded-user claim. Seeders, passwords and credential Markdown remain outside Git/GitHub; all owned temporary credentials/users/resources were removed. #8/#592/#593 remain open pending accepted-source runtime/finalizer proof. Historical generic-secret finding is unresolved; no scanner suppression or secret publication.
+
+**Critical path:** (1) exact-head Sol clearance and source-equivalent review record; (2) freeze final SHA and reconcile all hosted gates; (3) exact image/installer/migration/upgrade/rollback and authorization runtime proof; (4) independent observation compatibility adjudication; (5) protected merge then fresh independent GPT-6.1 Sol phase finalizer. **Next merge candidate:** #602 after these gates; later slices after reconstructed integrated acceptance. Main and DEV are unchanged. Historical snapshots follow.
+
+---
+
+## Status first — verified 2026-10-07 22:48 UTC
+
+**Accepted main:** `3096cb044bdf6ae98488bfc385f532fa6386343a`. **Persistent OrbStack DEV:** revision `08842235047a3ab2714427edce80331b94558150`, image `sha256:75b153d7d9583993127e1be8c06453159e4fe7319abfcd8431f093c9ca002bcf`. Actual UID is **10001**; both local hosts answer readiness **200** with the retained public CA on **8443**. Standard **443** is unavailable. No deployment, protected merge, strict activation or phase finalizer occurred.
+
+| Stage | Formal status |
+| --- | --- |
+| P0 | Open — sole closure candidate #602; hosted G11 19/22; final runtime and acceptance pending |
+| P1 | Open — core/views/attachments lanes; team-lead saved-view contract decision pending |
+| P2 | Open — approvals/intake/SLA lanes; two intake contracts pending |
+| P3 | Open — portal/identity lanes; real-provider and integrated acceptance pending |
+| P4 | Open — governance/outbox/query lanes; custom-field runtime/UI absent and contract reconciliation underway |
+| P5–P7 | Open — no completion claim |
+
+**P0 source:** #602 remains `10034a893b83ef0eba1d801b77d6e81f1e5a0e2e`; full source-bound run `37676234529` is **19/22** (list, LCP, board fail). PostgreSQL **137 files / 1659 tests**, G4, G8 and E2E passed. No FINAL_P0_SHA exists. #599 is excluded. Installer #583 is now closed as superseded; exact installer source `5326937460b195d8e69584c0cb99305348330a95` is retained in #602 ancestry. #558/#575/#590/#587/#600 remain closed with history preserved. Additional calendar waiting is not the blocker.
+
+**Diagnostic #604:** independently cleared b7 source `b7d65f266af9594802ed59e8a165a7da80a8c4c5` ran as `37696611044`. Reference f10 LCP **2632 ms**, board **682.3 ms**; current source LCP **2548 ms**, board **682.7 ms**. Both unchanged selected cases failed for both sources. Attribution executed **zero tests** because two physical Playwright modules were loaded. Owned cleanup completed; raw failures remain retained. Successor `d5c114b2933444b06d7dfac637707a388723e1ee` uses a single CLI/config/spec package graph, target-owned source maps, and matching version guards. Root combined checks **19/19** passed. Its first Luna review found no source defect but remained BLOCKED for incomplete review coverage; a bounded independent addendum is pending, followed by required Sol admission before a hosted run. This diagnostic cannot replace 22-case acceptance or be merged into P0 product source.
+
+**Private eight-role proof completed:** immutable V7 manifest `9a242f7c07b318a4999bfa13b1d92a191dfdd142b531ff2a6edc3174ce825456` cleared independent full Sol. Actual disposable execution passed **4 files / 39 native tests**, plus **3 named supplemental native cases**. Eight roles were seeded with random strong passwords, then the actual API harness recorded **23 PASS / 0 FAIL / 1 BLOCKED of 24**. The blocked customer audit HTTP probe receives the upstream portal **404** mask; the native matrix and audit boundary cases passed. Composite boundary/matrix acceptance is satisfied, but **not all 24 HTTP probes passed**. Cleanup at **2026-10-07 22:28:11 UTC** removed owned users/data/container/processes and temporary credentials, preserved unrelated resources and left pinned source clean. All seeders, credentials and credential Markdown remain outside Git/GitHub. No persistent DEV testing users were created. Proof source is historical #589 `2350397b`, not the P0 candidate.
+
+**Authorization evidence:** canonical column policy masks missing/out-of-reach projects as **404**; malformed identifiers remain distinct. The retained partial October 6 off/shadow record actually contains a matching 404. The stale uncertainty note does not change that contract. That historical run failed shadow event reconciliation and is not current/final acceptance. Fresh final-source off → shadow → strict → rollback and independent October 4/5/6 compatibility remain required.
+
+**Later integration:** historical #589 stays frozen at `2350397b18f83ed417bf63d73970daacdbaae49c`; recreate the train from accepted post-P0 main with central migration allocation. #603 remains a later query-ownership slice. P4 custom fields have tables but no runtime/UI; a separate docs reconciliation lane is identifying genuinely undefined contracts before implementation. Team-lead assignment/view semantics, P2 intake contracts and the pending-action API version remain pending human decisions. No later source enters P0.
+
+**Active security/acceptance limits:** #8/#592/#593 remain open until accepted-source proof and finalizer. The historical generic-secret scan finding remains unresolved; no secret value, scanner suppression or history rewrite was published. #601 records these facts but is not itself accepted main. Candidate reviews/checks remain source-bound.
+
+**Critical path:** obtain usable hosted attribution; implement only a proven P0 correction; freeze one source and achieve unchanged 22/22 plus all hosted gates; prove exact image/installer/runtime/rollback and observation compatibility; protected merge followed by fresh independent GPT-6.1 Sol phase finalizer. No phase is closed.
+
+---
+
+## Status first — verified 2026-10-07 22:14 UTC (8 October MMT)
+
+**Accepted main:** `3096cb044bdf6ae98488bfc385f532fa6386343a`. **Persistent OrbStack DEV:** revision `08842235047a3ab2714427edce80331b94558150`, image `sha256:75b153d7d9583993127e1be8c06453159e4fe7319abfcd8431f093c9ca002bcf`, running as taskdesk. No protected merge, persistent deployment, strict activation or phase finalizer occurred.
+
+| Stage | Formal status |
+| --- | --- |
+| P0 | Open — isolated #602; unchanged hosted G11 is 19/22, final runtime/acceptance pending |
+| P1 | Open — mature core/views/attachments; team-lead shared-view edit gap identified |
+| P2 | Open — approvals/intake/SLA lanes; two intake contracts pending |
+| P3 | Open — portal/identity lanes; real-provider/integrated acceptance pending |
+| P4 | Open — governance/outbox/query lanes; pending-action API version decision pending |
+| P5–P7 | Open — no completion claim |
+
+**P0 closure:** #602 remains `10034a893b83ef0eba1d801b77d6e81f1e5a0e2e`, note-only descendant of reviewed CI source `6510d552d489c4126e4d819f9f9c9aea1e923dcb`. Source-bound full run `37676234529` remains **19/22**, with list/LCP/board failures; PostgreSQL **137/1659**, G4, G8 and E2E passed. No FINAL_P0_SHA exists. #599 stays outside P0. #558/#575/#590/#587/#600 are closed with history retained. P0 is not waiting for additional calendar observation dates.
+
+**Hosted diagnostic #604:** first run `37689530996` failed before measurement on the incorrect Vite asset path. Corrected source `10a73e29` cleared independent Luna **7/7** and full Sol **7/7**, but run `37691562668` failed before measurement because the Ubuntu runner lacked `rg`; both builds passed, cleanup completed, no metrics exist. The complete portable parser/preflight batch is `2f826bd045fd36b6440313943bdd76d59d8fd98f`. Original f416 Luna BLOCKED finding (missing `basename`) remains retained. The successor tests the absence of every required tool; fresh full independent Sol CLEAR ran **10/10** and both Bash syntax checks, explicitly closing the known structural ordinary tier under AGENTS without fabricating a current Luna approval. Exact reviewed source was fast-forwarded to the dedicated run ref. Run **37693745305** completed, with accepted-reference LCP **2592.0 ms** / board **639.9 ms** and current P0 LCP **2532.0 ms** / board **659.7 ms**; both selected cases failed for both sources. Both original exit codes and samples are retained; owned cleanup completed. Same-runner/browser/CPU/fonts/config fingerprints match. This establishes neither an environment cause nor a proven product fix; historical 22/22 is not relabeled. A bounded same-executor source-attribution trace will answer board style/layout versus JavaScript owning cost before another product experiment. This compares two unchanged LCP/board probes only and cannot replace required 22-case acceptance or enter P0 product source.
+
+Both fingerprinted sources in the preceding failed run used Ubuntu image **20260927.320.1**, four AMD EPYC 7763 CPUs, Node **24.21.0**, pnpm **10.32.1**, Playwright **1.63.0** and the same reported Chromium executable hash. That fingerprint records the reported full Chromium binary; no actual headless-shell hash or performance cause is claimed.
+
+**Private testing users/proof:** V5 manifest `5d77c4e38a9058f6662fe41efdb2e395203733f1eaf191b57deefe53fca309e9` fixes exact API outcome identities and validates actual native artifacts. Root **13/13** offline tests and all 19 frozen hashes/modes passed. Luna found no structural source defect, ran **11 passed / 2 sandbox permission failures**; fresh full Sol ran **13/13**, CLEAR for actual runtime admission and closed the known structural tier. Actual disposable V5 execution then passed **4 files / 39 native tests**, but the supplemental three-file proof stopped with **zero tests executed** because its Vitest alias selected the CommonJS entry. No V5 user seeding or API pass is claimed. Original log/JSON and all V1–V4 failures remain preserved. Cleanup at **22:04:23 UTC** passed: owned container/data/processes/temporary credentials removed, global resources and ports unchanged, pinned source clean. V6 manifest `edc163226de4dc411f6176e52f686a6410bcc10163e0b0573f40fd01aabf49f6` corrects the public ESM import-condition resolution. Author and root **13/13** offline checks include a real DB-free Vitest smoke (**1/1**); all 22 frozen files match. Independent exact-manifest security review and actual runtime remain pending. All seeders, passwords, tokens, credentials and credential Markdown remain outside Git/GitHub; no persistent DEV users were created.
+
+**Later integration:** historical #589 stays pinned at `2350397b18f83ed417bf63d73970daacdbaae49c`; recreate the accepted integration train after P0. Its OpenAPI failure is four genuine closed-enum additions of `user_deactivation` to pending-action responses. The stable API/versioning contract and permanently closed historical breaking-change allowlist prohibit treating this as an approved break. A versioned API preserving existing responses is awaiting the explicit product contract. P1 SV-17 requires team leads to edit team-shared views, while the current edit guard omits leads and actual team-member schema lacks `is_lead`; this needs the P4 team-role foundation, with no saved-view-specific authority shortcut. A separate attached leaf `codex/p4-team-lead-savedviews-20261008` was created from 235; its saved-view permission-table conflict and lead-assignment body contract are awaiting the explicit team-lead decision before dependent implementation. No bulk source or accepted migration history is changed.
+
+**Blocking gates / active findings:** unchanged hosted G11; exact-head required CI/reviews; frozen exact image/installer/migrations/upgrade/rollback; reversible authorization runtime proof; independent Oct 4/5/6 compatibility; protected merge and fresh GPT-6.1 Sol phase finalizer. #8/#592/#593 stay open. Historical generic API-key scanner finding remains unclassified without public identifier/credential provenance; no value, dismissal, blanket ignore or gate waiver is published.
+
+**Critical path:** (1) establish the hosted source comparison and keep only a proven correction; (2) freeze one P0 SHA with all exact-head gates and unchanged 22/22; (3) exact image/installer/rollback plus reversible authorization proof; (4) adjudicate observation compatibility; (5) protected merge and fresh phase finalizer.
+
+**Misalignment/action:** no later source enters P0; rejected performance experiments remain reverted; private proof setup failures are not product failures or successful API evidence. **Thomas decisions:** the two existing P2 contracts, versioned pending-action contract and team-lead/SV-17 contract; P0 does not wait on them. **Next merge candidates:** none eligible; #602 first after real gates clear, then recomposed mature later slices. Historical snapshots follow.
+
+---
+
+## Status first — verified 2026-10-07 21:31 UTC (8 October MMT)
+
+**P0 remains open.** #558 and #575 are closed with their historical branches and evidence
+preserved; their old results do not transfer to current source. #602 remains unmerged and
+blocked by hosted acceptance/runtime gates. No P0 completion, waiver, deployment or phase
+finalizer is claimed.
+
+**Hosted diagnostic #604:** source `2336223639d1895d21d98312132ac824f8fb52b2` was built on the
+same Ubuntu 24.04 runner family as the accepted reference. Its two-case LCP/board diagnostic
+run `37689530996` failed before measurements: both installs passed and the accepted-source
+build passed all six tasks, but asset fingerprinting expected `apps/web/dist/assets` while
+Vite emits `dist/agent/assets` and `dist/portal/assets`. Owned cleanup completed. There are no
+LCP/board measurements from this attempt, and it is not the unchanged 22-case acceptance.
+Fresh independent Luna session `01a1183e-9310-7b81-b3b4-faefac2b0cd4` and Sol session
+`01a11840-3b8c-7213-8f1e-1cb8715d4cae` cleared the diagnostic source after each ran **4/4
+Node tests** and `bash -n`; neither ran broader reviewer tests. A bounded fingerprint-layout
+correction is pending. It must preserve the failed run and fail closed on missing or unsafe
+asset paths.
+
+**Unresolved scanner finding:** historical status content triggered a generic API-key rule.
+The matched value has not been established as a public source or fixture identifier, so no
+allowlist or dismissal is recorded. The value is not reproduced here. Dependency advisories
+from the older baseline were addressed in the isolated P0 source; this documentation change
+does not alter dependencies.
+
+This snapshot adds the current #558/#575 disposition and #604 evidence without rewriting the
+dated records below.
+
+---
+
+## Status first — verified 2026-10-07 21:15 UTC (8 October MMT)
+
+**Accepted main:** `3096cb044bdf6ae98488bfc385f532fa6386343a`. **Persistent OrbStack DEV:** revision `08842235047a3ab2714427edce80331b94558150`, image `sha256:75b153d7d9583993127e1be8c06453159e4fe7319abfcd8431f093c9ca002bcf`, running as taskdesk. Rechecked live; no protected merge, persistent deployment, release, strict cutover or phase finalizer occurred.
+
+| Stage | Formal status |
+| --- | --- |
+| P0 | Open — isolated #602; performance, final runtime and acceptance gates remain |
+| P1 | Open — core/views/attachments matured independently; integrated acceptance pending |
+| P2 | Open — approvals/intake/SLA implemented in later lanes; two intake contracts pending |
+| P3 | Open — identity/portal lanes; real-provider and integrated acceptance pending |
+| P4 | Open — governance/outbox/query ownership lanes; integrated acceptance pending |
+| P5–P7 | Open — no completion claim |
+
+**P0 closure:** #602 exact head `10034a893b83ef0eba1d801b77d6e81f1e5a0e2e` is a review-note-only descendant of CI source `6510d552d489c4126e4d819f9f9c9aea1e923dcb`; production UI remains `4459af21`. #599 attachment source stays excluded. The mirror installation correction preserves benchmark/product/budgets/fixtures/browser/retries. Its sole Luna blocker (sudo in the root visual container) was fixed as one executor-aware batch; fresh full independent GPT-6 Sol review on 651 is CLEAR, with parser/job/visual-scope checks. The known-mechanism review tier closed under AGENTS.md's structural rule; no new Luna verdict is fabricated. No FINAL_P0_SHA is frozen.
+
+Completed full run **37676234529** on 651 passed PostgreSQL **137 files / 1659 tests**, G4, G8 and protected-route E2E. G11 remains **19/22**: list **533.6/500 ms**, LCP **2588/2500 ms**, board **713.3/500 ms** failed. Hosted checkout `84edae007776a0d0499564fb40fa02ec32a5a1e1` has the same complete tree `8ae50bd66ee3f1e0a68d78e1c0259a14696dbfb6` as 651. Historical results remain source-bound; current-note-head checks do not inherit a green full-suite claim.
+
+**Performance experiments:** isolated board preload `d0fd4729a1bdbc211becd489d9c9df2576680a18` completed hosted run **37677764081** at **20/22**, failing LCP **2552/2500 ms** and board **652.6/500 ms**. It remains outside #602 and is unaccepted. Metadata experiment `2740fd4725512c22cb24f3650f63959d765cf3d5` completed run **37681292471** at **15/22**; list, LCP, palette, state, assignment, board and drag failed. It was rejected and normally reverted by `51044b3bd4307fa74b2ee747c19cbf4696f52764`. Its separate varied-layout browser checks passed **2/2** after correcting the diagnostic preview's API-origin configuration; the original CORS preparation failure remains retained. Work-list preload fanout `ad6d343184bbc33f7137986b17d9dc29da53e4d4` completed run **37683932069** at **20/22**, still failing LCP **2544/2500 ms** and board **653.1/500 ms**. It fixed no current failing gate and was rejected/reverted by `2ee08e87c03df75ff043d60154f649f9fac52bea`. Both reverted experiment trees match d0; neither enters P0. All three full runs passed PostgreSQL **137 files / 1659 tests**, G4, G8 and protected-route E2E. No discarded experiment receives another review round.
+
+**Attribution:** accepted f10 and current 10034 were built and measured sequentially with the same local browser/config/fixtures. A single diagnostic profiled board pair measured **374.9 ms** versus **289.7 ms**, with complete CPU parent graphs and source-map fingerprints. This does not reproduce the hosted slowdown, establish causality, exclude cold-start/order bias, or satisfy G11. Actual hosted logs for the accepted reference, 651 and ad6 identify the same Ubuntu image **20260927.320.1**, Node **24.21.0**, Chromium **153.0.8010.12/v1243** and Playwright **1.63.0**. CPU model and full font inventory were not recorded; no hosted environment cause is established. A bounded same-runner hosted A/B diagnostic is being implemented separately, with unchanged canonical LCP/board probes, source/environment fingerprints and preserved failures. It is not a product optimization, does not change existing CI gates, and its two-case result cannot replace required **22/22** acceptance. Local OrbStack timing remains diagnostic only.
+
+**Private testing users:** frozen V16 plus its producer/execution overlays remain source-bound and private. The HTTP overlay now uses each role's validated physical origin, preserves foreign-Origin CSRF checks and handles Hono's bounded plaintext denial body. Independent Luna/full Sol cleared V1; a fresh Sol structural delta cleared V2's pnpm module-resolution correction. Actual V2 execution on pinned #589 `2350397b18f83ed417bf63d73970daacdbaae49c` passed **4 native files / 39 tests**, generated all **eight** expected roles/scopes, and completed all **23 API outcomes: 22 passed, 1 failed, 0 blocked**. Owner-mediated persisted viewer membership and both fixture controls passed.
+
+The remaining case is `customer.instance-audit.denied`: the plan expects route-level **403**, while the actual portal-origin request returns **404**. CP-19 and the pinned host guard correctly mask non-portal routes before their route-level authorization executes. This is a proof-layer mismatch, not authorization widening. The original matrix expectation and failed report are preserved. A private successor will separately prove exact generic portal 404 and customer route-level 403 using native authorization evidence; it must report the upstream-masked HTTP matrix probe as not exercised. The existing native non-admin audit test uses a member, so it alone is insufficient customer evidence. No all-role API acceptance is claimed. Cleanup at **20:58:34 UTC** passed: owned processes/container/data/temporary credentials removed, global resources/ports/clean pinned source preserved. Seeders, passwords, tokens, credential Markdown and database URLs remain outside Git/GitHub. No persistent DEV testing users were created.
+
+**P1–P4 integration:** historical #589 remains pinned and separate; its scoped mocked-API browser batch passed **15/15**. Recreate the final train from accepted post-P0 main with one migration ledger. P4 leaf #603 `9ed99f24` records independent Luna and lightweight Sol CLEAR for source `eaa516a1`; query/diff checks passed, reviewer runtime count zero, author four focused tests and nine-package types passed. Inherited integrated OpenAPI/G8/G11 failures and runtime/image gates prevent merge; it never enters P0. #598 `3fecb75` retains historical PostgreSQL **155/1807**; required-file draft/final-submit and explicit custom-field mapping contracts remain pending.
+
+**Blocking gates / active findings:** real hosted G11 failures; exact-head required CI/reviews; frozen exact image, installer, migration, upgrade and rollback proof; reversible strict authorization runtime proof; independent Oct 4/5/6 observation compatibility; protected merge and fresh GPT-6.1 Sol phase finalizer. #8/#592/#593 remain open. No calendar-based closure or automatic observation reuse is authorized.
+
+**Critical path:** (1) retain only a proven net-positive performance batch; (2) freeze one P0 SHA and pass unchanged hosted 22/22 plus all exact-head gates; (3) exact installer/image/rollback and authorization proof; (4) observation compatibility; (5) protected merge and fresh phase finalizer.
+
+**Misalignment / action:** keep #599 and historical mixed #589 out of P0; preserve failed experiments and reject net-negative source; resolve private fixture/operator defects structurally. **Thomas decisions:** only the two already-pending P2 contracts; P0 does not wait on them. **Next merge candidates:** none currently eligible; #602 first after its actual blockers clear, then accepted-main recomposition of mature later slices.
+
+Historical snapshots below preserve their original identities and outcomes.
+
+---
+
+## Status first — verified 2026-10-07 19:33 UTC
+
+**Accepted main:** `3096cb044bdf6ae98488bfc385f532fa6386343a`. **Persistent DEV:** revision `08842235047a3ab2714427edce80331b94558150`, image `sha256:75b153d7d9583993127e1be8c06453159e4fe7319abfcd8431f093c9ca002bcf`, container running as taskdesk. These identities were rechecked live. No protected merge, persistent deployment, release, strict cutover or finalizer occurred.
+
+| Stage | Current formal status |
+| --- | --- |
+| P0 | Open — isolated closure #602; performance and final runtime/acceptance gates remain |
+| P1 | Open — mature core/views/attachment slices in independent later train; integrated acceptance pending |
+| P2 | Open — approvals and intake/SLA implementation; two intake product contracts pending |
+| P3 | Open — identity/portal slices; real-provider and integrated acceptance pending |
+| P4 | Open — governance/outbox/query ownership slices; integrated acceptance pending |
+| P5–P7 | Open — no completion claim |
+
+**P0 closure:** #602 is now `00b347f1948cddfc1f8b9957233984cac6cf4bbe`, a bounded CI installation correction on the isolated P0 source. It normalizes the exact blocked Ubuntu HTTP mirror before the five existing Playwright dependency installs, preserving repositories/options and rejecting unsafe paths. Author reports **174 focused Node tests**, Biome, syntax and diff checks passed. Fresh ordinary and security review are pending. It changes no benchmark, product behavior, budget, fixture, browser version or retry setting. #599 remains excluded; no FINAL_P0_SHA is frozen.
+
+The original db15 hosted G11 attempt stopped during Chromium dependency installation, without measurements. Its single restarted cancelled job (`37667984584` / `112968981754`) installed successfully and completed **19/22**: LCP **2540/2500 ms**, task-state interaction **256.6/200 ms**, board **690/500 ms** failed. List passed at **494.6/500 ms**. Hosted checkout `67eb7bca4e425f25f8ace46fec506704dafb07bd` and db15 have the same complete tree `80fe26a2212e2ad375a8cb92d7c0dcb551f10c93`. The raw failed run remains retained. This supersedes the last completed c36 **20/22** result as the latest timing result, without relabelling either source. Accepted #579's historical **22/22** remains the comparison reference. No further unchanged performance retry is planned.
+
+**P1–P4 integration:** historical #589 remains `2350397b18f83ed417bf63d73970daacdbaae49c`, independent of P0; its scoped root browser batch passed **15/15**. Recreate the final train from accepted post-P0 main and centrally reconcile migrations. Bounded P4 leaf #603 moved the three remaining approval/default-role reads into repositories at `eaa516a10875cb7c2e83df0acc7d72806d8e610b`. Independent Luna ordinary and lightweight Sol security confirmation are **CLEAR**, with no authority change; both ran query/diff checks and zero tests. Author four focused tests and nine-package types passed. Note-only descendant `9ed99f24` records these verdicts. Integrated OpenAPI/visual/performance failures and runtime/image acceptance remain blocking; #603 is not merge-ready and never enters P0. #598 remains `3fecb75`; required-file draft/final-submit and explicit custom-field mapping contracts remain pending.
+
+**Private all-role testing:** canonical RBAC requires an exact persisted workspace membership for capability self-introspection. Therefore the old instance-admin-without-membership **403 was correct**; V12's expectation of 200 was a fixture error, not a product authority defect. The corrected fixture first proves 403 with no membership, then uses the seeded owner's canonical API to grant that same instance-admin a viewer membership, verifies the actual persisted row, and compares the admin's exact capability map with viewer. The original **18 matrix probes plus three auth/CSRF controls** remain unchanged; two separate fixture controls bring the total to **23 outcomes**.
+
+The rejected V15 harness could record a premature PASS before its database postcheck. Its inventory also recorded target modes for symlinks instead of actual link modes. Both failures and the original manifest remain preserved. Frozen V16 corrects terminal outcome accounting and uses actual lstat modes; root independently verified **97,758 entries**, all hashes/modes/targets, no extra/missing/escaping paths. Manifest `4366cbb229130c12c20309e535e14adcf8284b6802d92a967289006dcc697fbb` pins exact #589 source/tree. Author **six files / 44 offline tests** and focused types passed; fresh independent review and actual eight-role/API runtime remain pending. Sign-in pacing preserves production rate limits and native timeouts; no retry or status masking. Previous disposable resources and credentials were cleaned. Private seeders, passwords, tokens, credential Markdown and database URLs remain outside Git/GitHub. No persistent DEV users or all-role API pass are claimed.
+
+**Blocking gates/security:** real G11 failures; current-head full CI/reviews; frozen exact image/installer/migration/runtime/rollback; strict authorization proof and independent Oct 4/5/6 compatibility; fresh GPT-6.1 Sol phase finalizer after protected merge. #8/#592/#593 remain open. The old geometry workaround is unsafe and will not be restored without correct layout evidence. The new performance investigation produced no justified patch; source-bound task-state attribution is the next concrete diagnostic.
+
+**Critical path:** one justified performance batch; unchanged hosted 22/22 and remaining exact-head gates; exact installer/image/rollback plus reversible authorization proof; observation compatibility adjudication; protected merge and fresh phase finalizer. No new Thomas decision is needed for the role-fixture correction or CI mirror transport. Existing P2 questions stay on their original decision paths.
+
+Historical snapshots follow.
+
+---
+
+## Status first — verified 2026-10-07 18:45 UTC
+
+**Accepted main:** `3096cb044bdf6ae98488bfc385f532fa6386343a`. **Persistent DEV:** revision `08842235047a3ab2714427edce80331b94558150`, image `sha256:75b153d7d9583993127e1be8c06453159e4fe7319abfcd8431f093c9ca002bcf`. P0–P7 remain formally open. No protected merge, persistent deployment, release, strict cutover or phase finalizer occurred.
+
+**P0 closure:** #602's production/checker source is `4459af21208577264d219a36f4505e05a150e93b`; its review-note-only descendant is `db15b664`. #599 is excluded. The initial-entry lazy-form check now covers both agent and route static graphs. Its ten author tests pass; fresh Luna and Sol delta reviews are clear. Prior c36 Sol's sole blocker is resolved. The public review chain is in [602-p0-scope-clean.md](security-reviews/602-p0-scope-clean.md).
+
+Exact prior c36 hosted run `37665076268` passed PostgreSQL **137 files / 1659 tests**, accessibility and visual checks; G11 passed **20/22**, failing LCP **2524/2500 ms** and board **658.8/500 ms**. The hosted synthetic merge `8513062a8f6b2ac84cc75067436293fadf09e3e8` has a full tree identical to c36. Those runs remain c36 evidence; current-head hosted acceptance is open. Root's c36 mocked-API browser batch passed **six tests**, with zero skipped, unexpected or flaky cases, and cleaned its owned listener.
+
+**Runtime/performance evidence:** the accepted #579 comparison exposes why restoring the old whole-card estimate is unsafe: its offscreen outer height was 122 px versus the actual 101 px, moving the terminal card about 300 px when revealed. Current production showed no card-height/terminal-offset changes in the same canonical fixture at desktop/mobile sizes; keyboard cancellation and versioned drop writes were exercised separately. This is geometry evidence, not G11 acceptance. The root source-bound Chrome trace retains full CPU parent edges, network/timing events and 47 JS/source-map pairs. Its profiler changes timing; the flattened hosted CPU importer is unsuitable for hierarchical cost attribution. No speculative source change or performance budget adjustment is authorized by these results.
+
+**P1–P4:** historical #589 remains `2350397b18f83ed417bf63d73970daacdbaae49c`, with scoped root browser **15/15** passed. It remains independent of P0 and will be recreated from accepted post-P0 main. #598 remains `3fecb75`; required-file draft and explicit custom-field mapping decisions are pending on their existing decision paths. No later-stage acceptance is claimed.
+
+**Private all-role setup:** V13's complete frozen inventory independently verified **97,748 entries**, with zero missing/extra paths, wrong modes/hashes or escaping symlinks; it pins current #589 source 235 and its tree. Its author reports **six files / 37 offline tests** and focused types passed. The packet's mistaken library entry was detected before execution; a separate corrected operator packet must name the actual guarded root CLI. Fresh ordinary/Sol review and actual current-source eight-role runtime remain pending. The rejected global timeout override never ran. Prior V12's actual **39 native tests**, eight private seeded roles and redacted API **7 pass / 1 fail / 13 blocked** remain historical, including the old-source instance-admin 403 and sign-in 429s. No result is masked or transferred to current source. All prior disposable resources/credentials were cleaned. No private seeder, credential file, password, token or database URL is stored in Git/GitHub.
+
+**Active blockers/security findings:** hosted LCP/board budgets; current-head full CI; exact installer/image/migration/runtime/rollback; strict-authorization proof and independent Oct 4/5/6 compatibility; fresh P0 finalizer after protected merge. #8/#592/#593 remain open until accepted-source criteria pass. There is no final frozen P0 SHA or merge-ready candidate.
+
+**Critical path:** one demonstrated performance correction; unchanged hosted 22/22 plus remaining exact-head gates; exact image/installer/rollback and reversible authorization proof; compatibility adjudication; protected merge and GPT-6.1 Sol finalizer. Later-stage implementation and private all-role verification continue independently.
+
+Historical snapshots follow.
+
+---
+## Status first — verified 2026-10-07 18:00 UTC
+
+Accepted main remains `3096cb044bdf6ae98488bfc385f532fa6386343a`; persistent DEV remains revision `08842235047a3ab2714427edce80331b94558150` / image `sha256:75b153d7d9583993127e1be8c06453159e4fe7319abfcd8431f093c9ca002bcf`. P0–P7 remain open. No merge, persistent deployment, strict cutover, release or finalizer occurred.
+
+**P0:** isolated successor #602 now owns the correction scope on `01e509c531a8b31fe9fa2ae0f701c806ff486740`, based directly on #583 and excluding #599. #600 is closed as superseded; its source-bound history remains. Prior successor source `eedf45e681c68936c8062a29704501d6d75b69c0` passed hosted PostgreSQL **137 files / 1659 tests** and G11 **20/22**, failing LCP **2536/2500 ms** and board **637.6/500 ms**. The current gate batch fixes raw test JSX, stale contrast occurrences and a transient fixture-copy race, and makes the thin static shell / dynamic form test claim precise. Author results: **13 Vitest tests**, **63 checker tests**, types/build/static contrast/UI/bundle checks passed; fresh hosted and independent review are pending. These results do not establish current G11 or acceptance. Root is preparing an exact-source geometry comparison against accepted #579 `f10f9a8f`, preserving all benchmark budgets and workloads.
+
+**P1–P4:** historical #589 remains `2350397b18f83ed417bf63d73970daacdbaae49c`, with scoped root browser **15/15** passed; it remains independent and must be recreated from accepted post-P0 main. #598 remains `3fecb75`, with historical PostgreSQL **155 files / 1807 tests** passed and other gates open. Required-file draft and explicit custom-field mapping product contracts remain pending; those decision paths wait while independent work continues.
+
+**Private all-role runtime:** V12's actual native suite passed **4 files / 39 tests** on disposable PG18.6. The corrected existing guarded CLI (`scripts/seed-test-users.ts`) generated all eight canonical role credentials privately. The actual API report contains **18 planned probes plus three auth/CSRF controls**: **7 passed / 1 failed / 13 blocked**. Thirteen probes were blocked by genuine sign-in rate limits (HTTP 429); the instance-admin workspace-capabilities probe expected 200 but returned 403 on pinned older source `99528ca`. That failure remains open and must be retested on corrected source; no expected outcome is relaxed. Fixture setup and checked API session provenance passed for reached identities. A private request-pacing operator is being prepared/reviewed to avoid setup bursts, without changing application rate limits or retrying denied requests.
+
+The earlier producer exit-0 receipt loaded a library without invoking the CLI and did **not** create usable credentials; it is superseded by the actual corrected CLI run, not relabelled as seeding acceptance. One diagnostic wrapper failed its ESM preflight and remains a failed operator attempt. All disposable containers, database data, temporary credentials and owned API/PG listeners were removed; global resource sets and source cleanliness were preserved. The redacted report and original failures remain private. No seeder code, passwords, MFA values, cookies, credential Markdown or database URLs enter Git/GitHub. No all-role API pass or persistent DEV seeding is claimed.
+
+**Critical path:** resolve the remaining actual LCP/board failures; freeze one P0 SHA; exact hosted 22/22 and required independent reviews; exact installer/image/runtime/rollback plus observation compatibility; protected merge and fresh GPT-6.1 Sol phase finalizer. No later-stage source enters P0. No candidate is currently merge-ready.
+
+Historical snapshots below preserve their original source identities and dates.
+
+---
+
+## Status first — verified 2026-10-07 17:35 UTC
+
+- **Accepted main:** `3096cb044bdf6ae98488bfc385f532fa6386343a`, refreshed from live GitHub. **Persistent DEV:** OCI revision `08842235047a3ab2714427edce80331b94558150`, image `sha256:75b153d7d9583993127e1be8c06453159e4fe7319abfcd8431f093c9ca002bcf`. No deployment, protected merge, enforcement activation or stage completion occurred in this cycle.
+- **Formal stages:** P0–P7 remain open. P1–P4 implementation continues independently; each stage requires its own acceptance and finalizer.
+- **P0 closure:** #600 `a50ae92a7075a3446d7c89f4ab245be16c30ec9d` hosted G11 passed **20/22**, failing LCP **2540/2500 ms** and board **666.3/500 ms**. PostgreSQL integration passed **137 files / 1659 tests**. These are source-bound results, not completion. #600 still inherits P1 #599, so the legitimate successor is being composed directly from #583 `5326937460b195d8e69584c0cb99305348330a95`, excluding all three #599 commits and stale review records. The selected final UI delta is staged; no final P0 SHA is frozen yet. Accepted #579 `f10f9a8fd383044926136cb0c233888e087d2ef9` remains the historical hosted **22/22** reference.
+- **Integration train:** historical #589 is now `2350397b18f83ed417bf63d73970daacdbaae49c`. The five-file dialog lifecycle batch passes **16 focused tests**, web typecheck, changed-file Biome, both builds and bundle/purity checks. Root's exact-head mocked-API browser run passed **15/15**, with zero skips, failures or flakes (17:35:22–17:36:09 UTC); owned process/listener cleanup passed. This is scoped browser evidence, not full hosted or native integration acceptance. Recreate the final train from accepted post-P0 main, with central migration allocation.
+- **Blocking gates and security:** P0 still requires exact-head full hosted acceptance, independent ordinary/security review, frozen image and installer/upgrade/rollback proof, authorization runtime proof, independent October 4/5/6 observation compatibility adjudication and a fresh **GPT-6.1 Sol** phase finalizer on accepted main. #8, #592 and #593 remain open until accepted-source criteria and the finalizer pass. Neither historical green checks nor elapsed time authorize closure.
+- **Latest runtime evidence:** three controlled OrbStack G11 runs on exact #583 source each passed **18/22** and failed list-500, LCP, palette and board. Actual UTC intervals were 16:58:38–17:07:52, 17:07:52–17:17:29 and 17:17:30–17:26:07 on October 7. Median list-500 was 1586.8 ms, LCP 3448 ms and board 1693.6 ms. The arm64 Mac/OrbStack used an amd64 Playwright image through emulation; Docker Desktop is absent. These are local diagnostics, not hosted acceptance or proof that OrbStack caused hosted failures. Owned-container cleanup passed at 17:26:11 UTC; global resource sets were preserved.
+- **Private all-role testing:** v11 source received independent Luna and Sol static clearance. A corrected-cwd offline run passed **32/34**, with two fixture paths incorrectly inside the protected private code archive; types passed. The immutable v12 fixture/operator batch passes **5 files / 34 offline tests**, zero skips, and typecheck; its manifest is `463eb45c2cb0749476bc0183469b8bb0c8290647731348434c462b7a22c37271`. Independent delta review is underway without relaxing credential guards. Native all-eight-role/API testing remains pending; no persistent users or credential files are claimed. Seeder source and credentials remain outside Git/GitHub.
+- **P2:** #598 `3fecb75ccd4a1fcbfce5414de6d222c46bb5e94e` retains hosted PostgreSQL **155 files / 1807 tests** passed, with other required checks still failing. Required-file draft/final-submit behavior and explicit custom-field mapping remain genuine pending product contracts; dependent implementation waits while independent work continues.
+
+### What changed
+
+#590 was closed as superseded, retaining its history and evidence. #587 was closed after its diagnostic attribution became sufficient; it is not performance acceptance. #599 is preserved as P1 source and excluded from the new P0 ancestry. The OrbStack comparison is complete. The central dialog batch is pushed and undergoing browser verification.
+
+### Critical path
+
+1. Complete the isolated P0 correction batch for the two actual hosted G11 failures, preserving all budgets and workloads.
+2. Freeze one exact P0 SHA and obtain the required reviews and full hosted gates, including G11 22/22.
+3. Prove the exact image, installer, migration history, runtime authorization and reversible deployment.
+4. Independently adjudicate the prior observation compatibility; recollect only invalidated evidence.
+5. Protected merge, fresh GPT-6.1 Sol P0 finalizer, then reconcile issues and declare closure only if it passes.
+
+### Misalignment, concerns and next candidates
+
+#600's P1 ancestry is being removed; historical #589 will be recomposed after P0 acceptance. #601 remains a draft documentation candidate with red hosted checks, including an inherited dependency graph and a secret-scanner finding on public route-count prose. No finding is ignored or gate waived. There is currently no merge-ready P0 or later-stage candidate. Scope separation and the two remaining performance failures take priority over further diagnostics or cleanup.
+
+Private source-bound receipts remain under the local `taskdesk-evidence/2026-10-07` directory. No private seeder, credential, database URL or password is included in this repository record. Historical snapshots below retain their original dates and claims.
+
+---
+
+## Blocked — 2026-10-07T16:50:58Z
+
+- **P0 remains blocked.** Live GitHub confirms accepted `main` `3096cb044bdf6ae98488bfc385f532fa6386343a`, reviewed DEV `08842235047a3ab2714427edce80331b94558150`, and frozen P0 PR #583 at exact head `5326937460b195d8e69584c0cb99305348330a95`. The read-only scope audit distinguishes #583's exact-head hosted G11 result (19/22) from the later `bae2b3fd` product snapshot (16/22); preserve both under their actual source identities. Accepted #579 head `f10f9a8fd383044926136cb0c233888e087d2ef9` is the hosted 22/22 G11 comparison baseline (job 37300050276), not proof for a changed source. #599 remains a separate open P1 attachment/public-origin leaf. Its three commits and 11 touched paths are excluded from P0. Reconstruct P0 minimally from exact #583, replay only the audited P0 product commits, regenerate contaminated review records against the rebuilt exact candidate, and hold #600's current `a50ae92a7075a3446d7c89f4ab245be16c30ec9d` until its exact-head G11 result and root classification. #600's G11 and Postgres integration are currently in progress; its PR-template/security-review check is red. The prior #600 `4bc52598` run is 19/22 and is not current-head acceptance. No threshold, retry rule or gate has changed.
+- **P1 integration candidate is not final acceptance.** PR #589 is now `dfa0324ecf6bfb92fa085c4f38f4260528771f26`. Its source build passes and source-attributed work-list initial route graph is 339.1/350 KB gzip. Current GitHub checks still fail protected-route E2E, registers, PR-template/security-review, visual G8, G11 and OpenAPI drift; Postgres integration and accessibility are in progress. The earlier `27fb81fe` hosted Postgres run passed 154 files / 1804 tests, but that result is historical and does not transfer to `dfa0324`. Rebuild the later integration train from the P0-accepted `main` after P0 acceptance, then run exact-head gates; do not treat current #589 as the final train.
+- **P2 remains unaccepted.** PR #598 is at `3fecb75ccd4a1fcbfce5414de6d222c46bb5e94`; hosted Postgres integration passed 155 files / 1807 tests. Static, protected-route E2E, registers, PR-template/security-review, G8, G11, OpenAPI drift and build remain red. Native history is unchanged: `cde1` 1/6, `8cde` 3/6, `a9686` 6/6 with cleanup. The current candidate's integration pass does not clear the other checks or imply broader feature acceptance.
+- **Private role tooling is still operationally pending.** Private v10 has a fresh ordinary Luna CLEAR on its immutable manifest. Native execution, API-backed all-eight-role/session checks and root-owned cleanup are pending; no runtime or persistent users are claimed. Private code, manifest and credentials remain outside Git.
+- No P0–P7 stage is formally closed. No protected merge, persistent DEV refresh, release, cutover, enforcement activation, 72-hour coverage or gate waiver is claimed. Implementation may continue in independent lanes; acceptance remains stage-specific and exact-head.
+
+**Recorded:** documentation author at `2026-10-07T16:50:58Z` after live GitHub readback and supplied evidence, including `/Users/heinthura/.codex/taskdesk-evidence/2026-10-07/p0-pr583-readonly-scope/scope-audit.md`.
+
+## Blocked — 2026-10-07T15:56:20Z
+
+- P0 remains blocked. Accepted `main` is `3096cb044bdf6ae98488bfc385f532fa6386343a`; reviewed DEV remains `08842235047a3ab2714427edce80331b94558150`; frozen #583 remains `5326937460b195d8e69584c0cb99305348330a95`. Current #600 head `343b45bc9dbb40baef7df5a84881553f810abf59` has hosted G11 failed at 18/22 (4 failures): LCP 2668/2500 ms, palette 215/200 ms, state 249.3/200 ms, board 670.3/500 ms. Thresholds are unchanged. Its hosted PR-template/security-review check also fails; Postgres integration, protected-route E2E, G8, registers, static, unit, OpenAPI and build pass. Root reports current six-browser run and cleanup pass and image `03d22ca62f1c3d8e3a2df404ce38f38d54b319d794bed30368af3e9922f86584` pass. Two independent Luna reviews are clear; causal analysis is underway. Earlier 5a493 G11 22/22 is historical and does not clear this current red result. #599 remains a leaf without established acceptance.
+- P2 #598 current head is `3fecb75ccd4a1fcbfce5414de6d222c46bb5e94e`. Its hosted static, protected-route E2E, registers, PR-template/security-review, visual G8, G11, OpenAPI drift and build checks fail; policy, Postgres integration, a11y, red probes, unit, domain coverage, supply-chain, Helm and CI-match checks pass. The latest source change is only the canonical plain-text test delta; it is not a new runtime acceptance. Preserve the actual native history: `cde1` was 1/6, `8cde` was 3/6, and `a9686` was 6/6 with cleanup pass. No all-role runtime or persistent seeded-user acceptance is established.
+- Integration train #589 current head is `27fb81fe7d4a2f02d50c0f0f4db8b7bd9720697a`. The authorized session-only audited current-admin withdrawal contract, corrected fixture session restoration, exact 19-capability response shape, and preserved dormant-JIT ceiling/default behavior are source changes, not hosted acceptance. Current hosted checks fail for protected-route E2E, registers, PR-template/security-review, G8, G11, OpenAPI drift and build; Postgres integration, policy, static, a11y, red probes, unit, domain coverage, supply chain, Helm and CI match pass. The old hosted result (154 files, 1804 tests: 1799 pass, 5 fail) remains historical; no green full hosted suite is claimed. Four OpenAPI deactivation enums and WH12 remain owner-pending. The earlier native commands’ unidentified Testcontainers target remains a provenance/cleanup limit; do not claim DB integrity or per-target cleanup.
+- P0’s frozen #583 hosted G11 record remains 16/22 with 6 failures (`p0-bae-hosted/completed-outcome.json`). The canonical Linux baseline covered 145 stories and exited 1 solely because the newly created baseline is missing; no other diffs were found, cleanup sets were unchanged, and the image view was inspected. This remains failed evidence, not a G11 pass.
+- Private tooling v8 is immutable outside Git. Its operator batch has manifest SHA-256 `99dfe3f623f4f9a53edf9a5f0b697a18a689006c531f3a8dd455c89ec3d2d648`; offline checks cover 2 files/7 tests and preserve the native-global-setup loader. No API/database/Docker runtime was run by the author. Root-owned v6 native execution migrated successfully but stopped before tests or user creation because the Vite/Vitest runner lacks `import.meta.resolve`; cleanup passed. V8 awaits independent ordinary and Sol review and root-owned PG18/all-eight-role/API verification. Zero all-role users have been persisted and the private credentials root is empty. Private manifests, credentials and seeder source remain outside Git.
+
+## Status First
+
+Snapshot: 2026-10-07T15:56:20Z. Live GitHub readback: accepted `main` remains `3096cb044bdf6ae98488bfc385f532fa6386343a`; reviewed DEV remains `08842235047a3ab2714427edce80331b94558150`; #583 remains frozen at `5326937460b195d8e69584c0cb99305348330a95`. Current open heads: #600 `343b45bc9dbb40baef7df5a84881553f810abf59`, #599 `7c5ae58c67c3572b2f4f52864788f78e726daa0d`, #598 `3fecb75ccd4a1fcbfce5414de6d222c46bb5e94e`, and #589 `27fb81fe7d4a2f02d50c0f0f4db8b7bd9720697a`. #600 has current G11 and PR-template/security-review failures; #598 and #589 have the failed checks listed above. No protected merge, persistent DEV refresh, release, enforcement activation, cutover or phase completion occurred.
+
+| Phase | Implementation | Integration | Acceptance |
+| --- | --- | --- | --- |
+| P0 | Frozen #583 and performance candidate #600 at `343b45bc`. | #583 remains the sole closure vehicle; #600/#599 are leaves. | Current #600 G11 is 18/22 with 4 failures and template/security review is red. Browser, image, integration, E2E, G8 and listed source checks pass, but this does not establish P0 acceptance. |
+| P1 | Saved-view work remains in #589 at `27fb81f`. | #589 carries the P1–P4 integration train. | Hosted checks fail as listed above; exact-head review acceptance remains open. Budget worklist 373.6/350, stale token-manifest entries and two Redocly 302 redirects remain unresolved. |
+| P2 | #598 at `3fecb75`; the shared whole-schema resolver and cycle regressions remain part of the source. | #598 is a leaf; #589 includes P2 integration. | Hosted checks fail as listed; the latest source delta is not runtime acceptance. Custom-field ownership/required-file behavior remains pending Thomas. No credentials or all-role runtime acceptance are claimed. |
+| P3 | OIDC mapping/login work remains integrated in #589. | #589 at `27fb81f`. | Admin-withdrawal behavior is answered and its source correction is included; current hosted failures and exact-head review remain open. |
+| P4 | Outbox and private all-role fixture tooling remain separate; public seeder removal is preserved. | #589 at `27fb81f`. | All-role runtime remains pending; private v8 has offline checks only, with ordinary/Sol review and root runtime pending. No persistent DEV change or acceptance is claimed. |
+
+### What changed
+
+The central #589 source batch has advanced to `27fb81f` with the current-admin withdrawal fixture correction, exact 19-capability response shape, and preserved dormant-JIT ceiling/default behavior. Current Postgres integration passes, but protected-route E2E, registers, PR-template/security-review, G8, G11, OpenAPI drift and build fail. The old 154-file/1804-test hosted result (1799 pass, 5 fail) remains historical; four OpenAPI enums plus WH12 are owner-pending.
+
+P2 native results are retained with their actual counts: `cde1` 1/6, `8cde` 3/6, and `a9686` 6/6 with cleanup; current `3fec` is only the canonical plain-text test delta. P0 current #600 hosted G11 is 18/22 with four failures, while frozen #583 remains 16/22 with six failures. The private v8 offline checks do not establish actual seeded roles or API sessions.
+
+### What is being worked on now
+
+P0 causal analysis of the current #600 G11 regressions; P2 author remediation and hosted-check follow-up; #589 hosted-check and exact-head review follow-up; v8 independent reviews and root-owned private runtime. Pending-owner OpenAPI/WH12 and P2 custom-field decisions remain on their existing decision paths.
+
+### Critical path
+
+1. Resolve current #600 G11 without changing thresholds.
+2. Complete the #598 author batch and obtain fresh exact-head review and hosted acceptance.
+3. Resolve #589 hosted failures, owner-pending contract items, and exact-head review; retain the historical 5-failure run as historical.
+4. Review and run private v8 only under root ownership and record actual all-role evidence and cleanup; keep credentials/manifests outside Git.
+5. Do not claim merge readiness, release, enforcement, cutover, 72-hour coverage or phase completion until their actual gates pass.
+
+### Misalignment / drift
+
+Source fixes, offline results, native partial results and hosted acceptance are distinct evidence classes. The #589 source update is not equivalent to full hosted acceptance; P0's missing baseline is not a G11 pass; private v8 offline checks are not actual runtime. Earlier snapshots and failed evidence remain preserved.
+
+### Decisions needed from Thomas
+
+#598 custom-field owning clearance and required-file behavior, along with existing P0 public-config, strict-cutover and official-installer ordering decisions, remain pending. The #589 withdrawal contract is answered as documented in the decision log.
+
+### Next merge candidates
+
+#583 is not merge-ready. #600, #598 and #589 are not merge-ready with current failed checks or reviews. #599 remains a leaf without established acceptance. No protected merge or phase completion is claimed.
+
+Private runner source, manifests and credentials remain outside this repository.
+
+---
+
+## Status First
+
+Snapshot: 2026-10-07T10:11:27.558320+00:00. Accepted main remains `3096cb044bdf6ae98488bfc385f532fa6386343a`; #583 remains frozen at `5326937460b195d8e69584c0cb99305348330a95`. Parallel lanes were restarted after no prior subagent remained live. No protected merge, persistent DEV refresh, official release, enforcement activation or phase completion occurred.
+
+| Phase | Implementation | Integration | Acceptance |
+| --- | --- | --- | --- |
+| P0 | Frozen product; v10 measurement delta independently clear | Sole closure #583 | Actual fresh boot, JSON health both hosts, signup/session/admin/CSRF and workspace/project/work-item/presign pass; local full persistence, official installer, G11, compatibility/cutover/finalizer remain open |
+| P1 | Full defined saved-view source9b7 includes collected concurrency/edit/audience fixes | Composed #589a5; current deterministic gate remedy underway | Combined scoped native 160/161 at a5; unsupported-query test wrongly parses documented plain-text422 as JSON; required full candidate browser/image/review/CI remain open |
+| P2 | Selected approval continuity/withdrawal source reviewed | Composed #589a5 | Current whole-train acceptance and calendar/SLA broader obligations remain open |
+| P3 | Selected OIDC mapping/validated-login source reviewed | Composed #589a5 | Real provider/Health and broader identity acceptance remain open |
+| P4 | Selected outbox fixes and all-eight-role private seeder source reviewed | Composed #589a5; fb9 note carried at a15b5b11 | Tokens/source contexts, owning webhook review/undefined HTTP exception, exact contract-break approval, current train acceptance and broader governance remain open |
+
+### What changed
+
+The full selected later batch was pushed at `a5f8f6c42b1dad992f21a3c819f8d4e9bcf65550`: P1 source9b7, P2#586, P3#595/#596, P4#594 and the seeder through55. Canonical SQL0000–0117 and sole0118 are preserved, with no0119. Actual offline results are API108files/784, web130/568, permissions14/88, workspace types9/9 and OpenAPI242 operations. These are offline results, not required hosted acceptance. The generator scratch configuration now includes its actual three canonical schema inputs rather than generating false dropped tables; meaningful no-op assertions remain intact.
+
+Root's combined PostgreSQL window at a5 runs 12 selected files: 11 pass, one fails, with160passed/1failed. The sole failure is an unsupported persisted-query test invoking JSON parsing on its documented plain-text422; fail-closed status passes. Schema-generation secondary-database testing was explicitly excluded from this single-database grant. Zero clients, full identity/mount checks and cleanup prove the container/named volume removed, prior global sets restored and55442 absent. No full integration-suite or later-head native pass is claimed.
+
+Seeder source55 receives fresh independent Luna and Sol exact tooling-relocation confirmation, with unchanged producer/target/origin/diagnostic semantics. Current notes-onlyfb9 has actual machine binding to55, with no drift/self-attestation. PR#597 body now identifies these actual heads and current evidence. Native4files/35 stays attributed to323; no usable credentials or credential Markdown enter GitHub, and no persistent DEV users exist. Central note-onlya15b5b11 carries that actual note.
+
+P0 v9 measurement review finds explicit role/database binding, quiet machine output and exact-successor checklist flaws. One completev10 fix receives independent Sol CLEAR:16/16 bundle checksums,75candidate/54baseline present source pins plus21absences,9synthetic output cases, least-privilege SELECT grants verified at both revisions. This is static measurement clearance only.
+
+Actual v10 run `20261007T100242Z-d48d45` uses wrong root health paths: agent200 responses were SPA fallback and are not health proof; portal404 stops the run. A fresh corrected run `20261007T100616Z-7ddf10` verifies the actual `/api/public/health/live` and `/api/public/health/ready` JSON200 endpoints on both hosts, secure signup/session, actual persisted admin, CSRF, workspace/type/project/work-item creation and attachment presign200. Returned signed upload URL includes `/api/storage/filesystem-attachment-upload`, while the plan omitted `/api`; strict validation stops before upload. No attachment completion, encrypted-secret measurement, repeat, upgrade or rollback proof occurs. Both runs stop ingress first, preserve originals and remove only owned5containers/3named volumes/2networks/2aliases. Global sets return unchanged, ports4296/4297 are absent and the unrelated anonymous volume is preserved. The next batch replaces individual path patches with one source-proven fully mounted route authority across every phase.
+
+### What is being worked on now
+
+P0 Luna completes the entire mounted-route execution matrix; the later-train sole Luna author resolves actual token/context/contrast and plain-text test issues as one batch. A separate read-only source audit identifies significant missing P2 features against composed source rather than duplicating already implemented work. Existing OrbStack TaskDesk app/Traefik/PostgreSQL/Valkey were healthy at10:01UTC; no new deployment is claimed.
+
+### Critical path
+
+1. Complete actual local persistence lifecycle with fully mounted source-proven requests.
+2. Resolve hosted G11 under the existing no-extra-retry rule.
+3. Establish strict behavior and original partial-date compatibility/cutover eligibility.
+4. Complete eligible official installer/release acceptance and exact protected merge.
+5. Fresh additional Sol phase finalizer before any P0 completion claim.
+
+### Misalignment / drift
+
+Primary checkout status is stale; its four dirty files remain untouched. Prior6:14OPS concurrency/tooling blockers have since been remedied in source and are not current implementation gaps. #589's historical PR-body description needs one coherent refresh after the full batch freezes; actual source composition is authoritative. Three partial UTC buckets do not establish full-day/72-hour coverage. Local signed-URL HTTPS reconstruction does not prove shipped URL-generation correctness.
+
+### Concerns
+
+Hosted #589 checks remain red. Log acquisition exposed CLI escape-sequence rejection; allowing private capture reaches a redirected blob TLS handshake timeout, so complete hosted failure logs remain unavailable. No hosted cause is invented from empty logs, and no workflow rerun is requested. Actual token analysis finds stale/missing manifest identities and unresolved source surface contexts; the author must establish real paired-token contracts before canonical regeneration, without weakening the gate. Original root path mistakes remain failed evidence.
+
+### Decisions needed from Thomas
+
+Existing public-config criterion, one unchanged-source hosted confirmation, official release ordering and P1 team-lead/transfer questions remain pending. The already-submitted P4 HTTPS-everywhere proposal and four exact OpenAPI enum additions remain unanswered. No elapsed-time approval or gate waiver is inferred; independent implementation continues.
+
+### Next merge candidates
+
+#583 only after its actual gates clear. #589 receives the full current-source panel/security/image/browser/CI after its implementation batch freezes. #597 remains a reviewed source leaf with open CI/integration/image acceptance. No candidate is declared merge-ready or phase-complete.
+
+---
+
+## Status First
+
+Snapshot: 2026-10-07T06:14:20.333654+00:00. Accepted main remains `3096cb044bdf6ae98488bfc385f532fa6386343a`; sole P0 closure #583 stays frozen at `5326937460b195d8e69584c0cb99305348330a95`. No protected merge, persistent DEV refresh, release, cutover or phase completion occurred.
+
+| Phase | Implementation | Integration | Acceptance |
+| --- | --- | --- | --- |
+| P0 | Frozen product; stock Traefik actual TLS/health/bootstrap/session/CSRF pass | Sole #583 | Local persistence lifecycle still open; v6 whole fixture audit blocks baseline CSRF and signed-URL scheme expectations; official installer, hosted G11, compatibility/cutover/finalizer open |
+| P1 | Full defined saved-view API/UI batch frozen at `fcf2a97a0ca883a2999a2abca14cd2bb882cfeae` | Canonical614 + sole0118; full ordinary panel underway | Exact-head native views 1file/18 pass; first bulk reviewer finds concurrent shared pin preference lost-update defect; team-lead/transfer remains held |
+| P2 | Selected approval continuity/withdrawal/browser batch reviewed | #586 through sole later train #589 | Composed/live API/image/finalizer open |
+| P3 | Selected mapping/login/query relocation reviewed | #595/#596 through #589 | Provider/Health/image/finalizer open |
+| P4 | All-eight-role test seeder source345 cleared independent Sol; notes-onlya73 binds source | Draft #597 test-infrastructure leaf; #594 through #589 | Dedicated native35 retained at323; exact final privacy/source delta cleared; CI exposes new tooling environment reads alongside inherited/composed failures; no persistent test accounts |
+
+### What changed
+
+The seeder now generates both usable login identifiers and strong passwords at runtime in an external create-only private target-bound manifest; no usable credentials or credential Markdown enter GitHub. Source `345371be911e1752985eb10c95116a5f7a69ff3b` clears final independent Sol after the complete structural diagnostic-boundary fix and restored exact customer authority assertion. Notes-only `a73f7184a0ca8eaaef00d1b90abbc72ca3bd6c5a` records actual review provenance; machine binding is `bound`, with no drift/self-attestation. Dedicated native runner actually passes four files/35 tests at producer/harness323, not345; producer/auth/harness equivalence is explicit. Its isolated PG18 parent-mounted container and named volume are removed after zero-client/full-identity checks; global sets and port55442 return to prior state. Seed CI is not green: new harness environment-read classification needs a complete remedy; inherited token/dependency/OpenAPI and incomplete template/performance acceptance remain separate, not waived.
+
+P1 full `fcf2a97a` implements defined create/edit/clone/run/count/pin/navigation and detail URL controls, current-viewer/project-scoped API reach and configured-Valkey count caching. Offline type, policy88, API/web53, mocked browser1, OpenAPI/i18n/UI gates pass; token gate retains concrete existing findings. Root independently runs the current views integration against an isolated owned PG18: one file/18 pass, including the new project-scoped run/count case. The supplied `export.test.ts` selector was nonexistent; the actual `work-item-export.test.ts` was not selected, so this is not a two-file/export pass. Prior636 export evidence stays attributed to636. Root removes the captured container/named parent volume after zero clients and full identity/mount checks; global sets unchanged and port absent. Full ordinary review collects findings before one remediation batch; A reports concurrent pin updates can lose shared user-preference state.
+
+P0 actual v5 transport run `20261007T053726Z-57a9e9` establishes live sole loopback TLS, both health origins and signup; root's extra signup DTO role assertion fails because first-admin promotion is an after-create database hook. Read-only persisted admin/session verification disproves a product authorization defect; the unsupported DTO assertion is retained as a root test error. Fresh run `20261007T054758Z-d8dcb3` passes these plus actual persisted admin/session and CSRF, then wrong trailing-slash workspace path returns plain404 and stops subsequent writes. Both runs stop ingress first and preserve logs before exact cleanup. Mount list ordering initially rejects cleanup before removals; sorted complete mount-tuple identity fixes the comparison without relaxing ownership. Final cleanup independently proves five containers/three named volumes/two networks/two aliases removed, global sets unchanged, ports absent and the unbound anonymous volume preserved. No project/item/attachment/secret persistence proof is claimed.
+
+Whole private v6 fixture audit binds43 candidate sources and11 bundle files but independent Sol blocks two complete-execution contradictions: baselineb80 has no candidate CSRF endpoint; filesystem signed URLs derive HTTP origin behind TLS termination. V7 is a complete version-specific baseline/candidate flow audit plus explicit validated local HTTPS path/query reconstruction, with shipped URL-generation correctness retained as a separate residual. No new runtime window exists.
+
+### What is being worked on now
+
+P0 one Luna completes the whole v7 source-bound lifecycle contract; P1 fresh independent reviewers collect the complete feature findings before its sole author fixes them together. Seed tooling CI findings will be remediated in one batch when a slot frees. No repeated unchanged-head comfort review, new performance run or official publication is authorized.
+
+### Critical path
+
+1. Resolve frozen hosted G11 under the existing no-extra-retry rule.
+2. Complete actual owned local persistence lifecycle and official installer/TLS proof.
+3. Establish strict behavior and original partial-date compatibility.
+4. Resolve public-config criterion and perform eligible reversible cutover.
+5. Exact-head protected merge, official acceptance and fresh Sol finalizer.
+
+### Misalignment / drift
+
+#583 remains sole P0; #589 sole later train. Seeder#597 and P1 features do not become P0 dependencies. Three partial UTC buckets are not full-day/72-hour coverage. Bootstrap DTO state, persisted role, configured port requests and actual served/published behavior are distinct evidence. Lifecycle transport reconstruction will not establish shipped HTTPS attachment URL correctness.
+
+### Concerns
+
+Full P1 is source-complete for defined behavior but now has a concrete concurrent-pin blocker; fix the shared preference invariant after panel completion. Seed CI tooling findings need correction without gate exclusions. Runtime lifecycle is not yet measured across fresh/repeat/upgrade/rollback. Prior lost migration logs and irreversible anonymous-volume incident remain preserved; later cleanup passes do not erase them.
+
+### Decisions needed from Thomas
+
+Existing public-config criterion, unchanged-source hosted confirmation, official release ordering and P1 team-lead behavior questions remain pending. No duplicate request or gate waiver is inferred.
+
+### Next merge candidates
+
+#583 only after actual gates clear. Full P1 and reviewed P2/P3/P4/seeder leaves compose through #589 after their actual blockers, required exact-head reviews, image/runtime and CI clear. No candidate is declared merge-ready or phase-complete.
+
+---
+
+## Status First
+
+Snapshot: 2026-10-07T05:25:08.613310+00:00. Accepted main remains `3096cb044bdf6ae98488bfc385f532fa6386343a`; sole P0 closure #583 remains `5326937460b195d8e69584c0cb99305348330a95`. No protected merge, persistent DEV refresh, official release, enforcement activation or phase completion occurred.
+
+| Phase | Implementation | Integration | Acceptance |
+| --- | --- | --- | --- |
+| P0 | Frozen product; reviewed stock-Traefik v3 actually booted; complete ingress-plan successor underway | Sole closure #583 | Exact image/migration88/UID10001/mounts pass; TLS host publication fails; persistence lifecycle, official installer, G11 and cutover/finalizer open |
+| P1 | Canonical636 plus saved-view full successor partially implemented | Canonical614 + sole0118 | Native28 at636 retained; full completion and team-lead behavior remain open |
+| P2 | Selected continuity/withdrawal/browser placement reviewed | #586 through #589 | Composed/live API/image/phase acceptance open |
+| P3 | Selected mapping/login/query relocation reviewed | #595/#596 through #589 | Provider/Health/image/phase acceptance open |
+| P4 | All-eight-role seeder at3bd; complete private-username successor underway | Draft #597 test-infrastructure leaf; #594 through #589 | Customer native14 at2cb retained; current harness12 offline pass; usable usernames in source block final Sol; dedicated native/CI open |
+
+### What changed
+
+Root admits a fresh bounded local-only window against the full Sol-cleared stock Traefik v3 plan, manifest `c6e161c53de291e26722d64ec8a6a5fcf409a9c38cfa9044c81c5cd7144bab68`. Actual run `20261007T051455Z-70b41b` creates one fresh candidate project. Compose up succeeds; one-shot migrations exit0 with ledger88, application UID10001 and exact candidate image, and all expected PG18 tmpfs/named-child mounts pass. The first CA-validated TLS request fails immediately with curl7/connection refusal. No signup or application fixture writes occur. Root stops the bound ingress first, captures all five service logs and full inspections before removal, independently verifies ownership/references, and removes only five captured containers, three named volumes, one private network and two temporary aliases. Global container/volume/network sets are unchanged, both admitted ports are absent, and the pre-existing unknown anonymous volume is preserved. Private operational secrets/keys are removed after fingerprints; original records remain private.
+
+Retained inspection proves requested HostConfig publication existed but live `NetworkSettings.Ports` reported `443/tcp: null`. Internal-only networking is the leading configuration hypothesis, not a proven vendor cause. A complete successor introduces a uniquely owned Traefik-only ingress network and gates on actual host publication while keeping app/DB/cache isolated. Fresh/repeat/baseline/upgrade/rollback persistence and official installer/TLS remain unproved; boot is not lifecycle acceptance.
+
+Seeder `3bd6a4d77ddf01a21f8249615e6f1329a926dad6` corrects the standalone origin bootstrap. Independent narrow Luna review is CLEAR with two files/12 offline tests. Full Sol confirms the earlier customer-role/materialized-membership defect is resolved, but blocks the remaining deterministic login usernames in source under Thomas's latest literal credential boundary. Passwords remain generated/private. The whole successor moves usernames into the private runtime manifest, preserves idempotent reuse and adds explicit disposable-database support for the dedicated runner. The dedicated runner currently always creates Testcontainers; prior integration14 cannot be called a dedicated-runner pass. No persistent DEV test users are created.
+
+### What is being worked on now
+
+Parallel complete batches: one Luna prepares the P0 ingress execution-plan successor; another finishes the seeder's whole username/manifest/harness fix before resuming its sole P1 successor ownership. No early partial review or unchanged-SHA comfort round is queued.
+
+### Critical path
+
+1. Resolve frozen hosted G11 under the existing no-extra-retry rule.
+2. Complete actual persistence lifecycle and official installer/TLS proof.
+3. Establish strict behavior and original partial-date compatibility.
+4. Resolve public-config criterion and perform eligible reversible cutover.
+5. Protected exact-head merge, official acceptance and fresh Sol finalizer.
+
+### Misalignment / drift
+
+#583 remains sole P0, #589 sole later train, and #597 a test-infrastructure leaf. Three actual partial UTC observations are not full-day/72-hour evidence. All eight role records existing does not prove every enabled login path; customer positive native evidence is retained separately from current dedicated harness acceptance. Requested Docker ports do not prove host publication.
+
+### Concerns
+
+Current seed CI has red checks and its source remains blocked until the complete private-username successor clears. P1 completion is paused briefly for the latest testing-user requirement, with one owner and no concurrent edits. Prior lost migration logs and anonymous-volume incidents remain preserved and unresolved; this new verified cleanup does not erase them.
+
+### Decisions needed from Thomas
+
+Existing public-config criterion, unchanged-source hosted confirmation, official installer release ordering and P1 team-lead behavior questions remain pending. No duplicate permission request or gate waiver is inferred.
+
+### Next merge candidates
+
+#583 only after actual gates clear. Complete later slices and draft#597 compose through #589 after dependencies, exact-head reviews and required CI clear. No current phase or merge-ready claim.
+
+---
+
+## Status First
+
+Snapshot: 2026-10-07T05:02:37.599656+00:00. Sole P0 closure #583 remains frozen at `5326937460b195d8e69584c0cb99305348330a95`; accepted main remains `3096cb04`. No protected merge, persistent DEV refresh, strict cutover, official release or phase completion is claimed.
+
+| Phase | Implementation | Integration | Acceptance |
+| --- | --- | --- | --- |
+| P0 | Frozen product; existing stock Traefik manual test plan v2 implemented | Sole closure #583; bespoke v9/v10 runners retained blocked | Hosted G11 19/22; reviewed actual lifecycle, official installer/TLS, strict compatibility/cutover/finalizer open |
+| P1 | Canonical `636a9788` implemented; full saved-view completion successor underway | Canonical614 + provisional0118; partial run/count policies preserved for sole successor author | Native28 pass at636; ordinary panel blocks UI/run/count/pin/ownership completion; team-lead decision remains open |
+| P2 | Selected continuity/withdrawal/browser placement reviewed | #586 into #589 | Composed/live API/image/phase acceptance open |
+| P3 | Selected mapping/login/query relocation reviewed | #595 then #596 into #589 | Provider/Health/phase acceptance open |
+| P4 | Complete all-eight seeder `2cb1275d` with positive customer portal path | Draft #597 based on reviewed dialog leaf; #594 outbox into #589 | Actual native14 pass; final customer delta Luna/Sol pending; no persistent test accounts created |
+
+### What changed
+
+Draft #597 freezes `2cb1275dc82a36536dda45a5745d18c25d3645d0`. Earlier native14 atcb081b8a did not prove an enabled customer login: the full Sol review correctly found missing organisation membership/customer role. The complete successor supplies canonical role backing and materialized organisation membership, verifies exact reuse scope/flags and the actual portal identity, and exercises positive login plus portal get-session. It also fixes absent-role lookup and requires test origins/Host from the registered integration configuration. The initial Host-only hypothesis was disproven and retained. Final native PostgreSQL suite passes one file/14 tests, including the positive customer portal2xx/session/resolver path; unit9/type/style pass. The isolated provider setting is removed/reloaded, test database reset and private credentials removed. Production provider defaults remain unchanged; usable credentials are never included in GitHub or Markdown.
+
+Root independently captures the second named PG18 parent-mounted resource, scoped DB-only window and source amendments. After the lane releases, zero client connections and exact full container/image/mount/label identity are verified; only the owned container and named volume are removed, and port55442 absence is proven. Cleanup PASS is retained. No database/resource window remains open. This verified cleanup does not resolve prior anonymous-volume incidents.
+
+P0 changes approach after recurring custom proxy authority/shutdown findings: preserve v9/v10 blocked bundles and use existing pinned Traefik3.6.7 with one root-controlled bounded command at a time. The complete private v2 static plan has manifest `33a8b31fdabf9aa7c9b7dbb24769c5c79c540b39674d9887b981a2f80a3b8b68`; it binds25 frozen source hashes, exact headless signup/workspace/project/CSRF/fixture routes, two loopback ports, no-proxy CA curl and capture-before-owned-ingress-stop cleanup. Synthetic Compose/YAML/JSON/bash checks pass. Independent Sol exact delta is underway. No actual runtime, official signature or GateC acceptance is inferred.
+
+P1's whole three-context ordinary panel completes at636. It confirms saved-view UI/open/run/count/pin completion gaps and known team-lead/ownership seams; no additional migration/filter/CSV defect class is confirmed by panelC. Full successor implementation starts after all findings are collected. Partial API/policy edits are handed off explicitly to one Luna; no two lanes edit this source concurrently. The team-lead-dependent ownership decision path remains held rather than guessed.
+
+### What is being worked on now
+
+P0 static v2 plan receives independent Sol delta review before an actual root test window. A Luna independently reviews the seeder's complete customer delta. Another Luna implements the full separable P1 saved-view UI/API/cache/URL batch. No tiny source-review loop or unchanged-SHA comfort round is queued.
+
+### Critical path
+
+1. Resolve frozen hosted G11 under the existing no-extra-retry rule.
+2. Execute reviewed exact-image local lifecycle and official installer/TLS proof.
+3. Establish current strict behavior and original partial-date compatibility.
+4. Resolve public-config criterion and perform eligible reversible cutover.
+5. Protected exact-head merge, official acceptance and fresh Sol finalizer.
+
+### Misalignment / drift
+
+#583 stays sole P0 and #589 sole later train. #597 is a test-infrastructure leaf, not a second train or P0 prerequisite. Positive customer sessions, not disabled-provider rejection, establish customer fixture usability. The bespoke TLS proxy is removed from the proposed execution path; all original blocked records remain preserved.
+
+### Concerns
+
+P1 partial changes remain in progress and are not reviewed or complete. Team-lead-dependent transfer/editing and exact phase acceptance remain open. Private static validation cannot establish actual migration/boot/rollback or official TLS preservation. Prior lost migrate logs, unbound preserved volume and earlier irreversible deletion remain unchanged.
+
+### Decisions needed from Thomas
+
+Existing public-config criterion, unchanged-source hosted confirmation, official installer release ordering and P1 team-lead behavior questions remain pending; no duplicate asks.
+
+### Next merge candidates
+
+#583 after actual gates clear. Later completed slices and draft#597 compose through #589 once dependencies, exact-head review and required CI clear. No current candidate or phase is declared accepted.
+
+---
+
+## Status First
+
+Snapshot: 2026-10-07T04:36:34.098560+00:00. P0 #583 stays frozen at `5326937460b195d8e69584c0cb99305348330a95`; accepted main remains `3096cb04`. No protected merge, persistent DEV refresh, strict activation, signed publication or phase completion is claimed.
+
+| Phase | Implementation | Integration | Acceptance |
+| --- | --- | --- | --- |
+| P0 | Frozen product; full private v9 implemented and reviewed, v10 proxy invariant remedy underway | Sole closure #583 | G11 19/22; actual lifecycle/official installer/TLS, strict compatibility/cutover/finalizer open |
+| P1 | Complete canonical batch `636a9788` pushed | Composed on frozen `6148976e`, sole provisional0118 | Actual view/export28 pass and chain0000–0118 applied; full panel, prefix catalog and image/live acceptance open |
+| P2 | Selected continuity/withdrawal/browser placement implemented and reviewed | #586 into #589 | Composed/live API/image/phase acceptance open |
+| P3 | Selected mapping/login/query relocation implemented and reviewed | #595 then #596 into #589 | Real provider/Health/phase acceptance open |
+| P4 | Selected outbox reviewed; all-eight testing seeder `cb081b8a` implemented | #594 and test infrastructure leaf into #589 | Actual seeder/login14 pass; ordinaryA/B clear, full Sol pending; no live users seeded |
+
+### What changed
+
+The full seeder candidate `cb081b8a005995d58ce9cbc437bbf5efe359912c` is clean and pushed. Actual native integration passes one file/14 tests in27.21s: genuine role fixtures, resolver authority, additive/idempotent preservation and real Better Auth password sign-in. Native verification found defects that earlier offline tests missed: macOS temporary-path aliasing, a stale collision expectation, default Better Auth hashes incompatible with the application's configured bcrypt, and unpaced requests exceeding the actual three-per-ten-second sign-in limit. The complete fix uses real-path private test directories, exact source-bound collision assertions, application bcrypt10/compare and honest request pacing; auth controls are unchanged. Original failed receipts remain. Two independent Luna exact-head delta reviews are CLEAR, each independently runs nine focused tests. Fresh full Sol is underway. Credential files are generated privately outside Git and removed by native test cleanup; no usable credential Markdown or password is committed or printed.
+
+P1 `636a9788b691cc0aa8db03726fb7baface0436c3` is now independently remote-verified. Actual isolated PostgreSQL runs view/export integration: two files/28 pass. SQL0000–0118 applies, with119 migration entries and100 public tables. The feature live catalog is retained; raw object equality differs on documented renderer forms, so no unperformed semantic-prefix comparison is claimed. The repository per-prefix harness creates a second database beyond this grant and remains open. Complete bulk ordinary review starts from canonical614, not a four-line delta.
+
+Root creates one uniquely named, labeled PG18 resource with a single named mount at `/var/lib/postgresql`, separate test databases and an actual20-minute DB-only window. Both lanes release their pools. Root independently verifies full container/image/mount/labels, zero client connections and no other volume references, removes only the bound resource, and proves container/volume/55442 absence. Cleanup PASS is retained privately. No anonymous inferred deletion or persistent DEV access occurs.
+
+Private P0 v9 frozen manifest `db558d2c4233f065f5989823b16d01a92f373ee18f83518431f657100ee66c55` passes52 author tests and13 file hashes. Fresh full Sol independently passes51 no-bind tests but blocks the proxy's expiry and failure-shutdown invariant. V10 collects bounded body/upstream I/O, forwarding rechecks and guaranteed owned listener/socket/thread revocation into one structural fix. No actual runtime grant is issued. The prior unit transport window is closed with independent socket absence; its original grant and receipt remain unchanged.
+
+### What is being worked on now
+
+P0 v10 structural proxy repair has priority. Fresh Sol reviews the complete role seeder after two ordinary clearances. A full P1 ordinary panel begins on the composed source and actual native evidence. No database, TLS unit or Docker runtime window remains open.
+
+### Critical path
+
+1. Resolve frozen P0 hosted G11 under the existing no-extra-retry rule.
+2. Complete reviewed actual lifecycle and official installer/TLS proof.
+3. Establish exact-source strict behavior and original partial-date compatibility.
+4. Resolve the public-config criterion and perform eligible reversible cutover.
+5. Protected exact-head merge, official acceptance and fresh Sol finalizer.
+
+### Misalignment / drift
+
+#583 is sole P0, #589 sole later train. Full actual tests precede final seeder review; hash-only assertions do not prove sign-in. The all-eight test-only producer is already supported and does not require a new role ADR. Later implementation and native verification proceed while P0's blocked private runner is repaired.
+
+### Concerns
+
+V9 cannot receive actual runtime authority until the whole proxy invariant clears. P1's actual per-prefix catalog proof and image acceptance remain open. Earlier failed v6 logs/unknown cause and anonymous-volume incidents are preserved; the new verified named cleanup does not resolve them.
+
+### Decisions needed from Thomas
+
+Only existing public-config criterion, unchanged-source hosted confirmation, signed-installer release ordering and P1 current-team lead questions remain pending; no duplicate asks.
+
+### Next merge candidates
+
+#583 after actual required gates clear. Later complete slices and test infrastructure compose through #589 after eligible P0 integration and their exact-head reviews/CI. No current phase or merge-ready claim.
+
+---
+
+## Status First
+
+Snapshot: 2026-10-07T04:03:26.768252+00:00. Fresh live GitHub readback keeps accepted main at `3096cb044bdf6ae98488bfc385f532fa6386343a` and sole P0 closure #583 at `5326937460b195d8e69584c0cb99305348330a95`. No merge, actual lifecycle retry, DEV refresh, strict activation, signed publication or phase closure occurred.
+
+| Phase | Implementation | Integration | Acceptance |
+| --- | --- | --- | --- |
+| P0 | Frozen product; private v9 full executable smoke being completed | Sole closure #583 | Hosted G11 19/22; actual lifecycle, official installer/TLS, strict compatibility/cutover and Sol finalizer open |
+| P1 | Saved views/CSV/filter builder implemented; composite 0118 regenerated | Full canonical integration composing frozen `6148976e` | Full composed review, actual new-prefix/catalog and live API/image acceptance open |
+| P2 | Selected continuity/withdrawal/browser placement implemented and reviewed | #586 into #589 | Composed/live API/image and phase acceptance open |
+| P3 | Selected OIDC mapping/login/query relocation implemented and reviewed | #595 then #596 into #589 | Real provider, Health and phase acceptance open |
+| P4 | Selected outbox slice reviewed; all-eight-role testing seeder implemented | #594 and test infrastructure leaf into #589 | Seeder bulk review, actual DB/login, provider/image and phase acceptance open |
+
+### What changed
+
+Central metadata and configured-schema safeguard is frozen clean at `6148976e68fa5945218beb9d58d3bf866ff8ab70`. The complete semantic comparator is exercised by realistic negative inventories; fresh generator evidence must include a new successor SQL/snapshot, new ID, correct predecessor and exactly one preserved-prefix journal append. Five focused tests and four-project type checks pass. Independent full Sol plus exact changed-head freshness delta is CLEAR. SQL0000–0117 and accepted metadata remain unchanged. The retained actual 30-prefix replay was not rerun after offline fixes.
+
+P1 composes that canonical predecessor before final review. Root separately freezes its 227-file allocation manifest at `536fc3cc1e772c7dff60d608ecce04171040e8544c0e6dd2d8902905b5894345`. Sole provisional 0118 contains the 12 saved-view/user-preference feature statements; the complete generated 57-statement output is retained, and only the exact reviewed 20 FK-name pairs and five same-default statements are removed. No0119 is allocated. Seven mocked browser journeys pass and owned4316 is stopped; commit formatting and the complete packet remain in progress.
+
+The all-eight-role testing seeder is committed and pushed at `28c6c64d2979148de7af961ffc35b817f3393056`. It includes manager/lead through the existing same-workspace genuine legacy test fixture mechanism. This corrects the earlier unsupported-role claim: absence of a production writer was not a ban on the authorized test-only producer. No production role defaults or authentication flags change. Credentials are generated at runtime and stored only in private external files; unrelated hard links are rejected, and publication is atomic/create-only with crash-window recovery. API unit tests pass102files/718tests, with type/style checks. Real database login and live seeding have not run. Fresh bulk review is underway.
+
+### What is being worked on now
+
+Private P0 v9 exercises actual lifecycle orchestration, file persistence and cleanup with mocked Docker/API transport and genuinely authorized temporary unit TLS. Root's restricted unit window expires at04:14:06UTC; it grants no actual product/Docker runtime. Full smoke exposed and corrected an actual macOS temporary-path canonicalization mismatch. P1 finishes its complete composite candidate; the seeder receives full-batch independent review.
+
+### Critical path
+
+1. Resolve frozen hosted G11 under the existing no-extra-retry rule.
+2. Complete reviewed actual local lifecycle and official installer/TLS proof.
+3. Establish exact-source strict behavior and original partial-date compatibility.
+4. Resolve the public-config criterion and perform eligible reversible cutover.
+5. Protected exact-head merge, official acceptance and fresh Sol finalizer.
+
+### Misalignment / drift
+
+#583 remains sole P0; #589 is sole later train and is not a P0 prerequisite. No tiny source/review cycle replaces full implementation. Manager/lead role-foundation approval is not required for the existing test fixture producer. Mocked browser/offline tests are not actual DB, deployment or phase acceptance.
+
+### Concerns
+
+Failed v6 runs, missing migrate logs and preserved unbound volume `3cdc71ba8cc620aa1bf92ea39b479c322bdacc3d409a77d068d492577d6ebcc0` remain unchanged. The earlier anonymous-volume deletion remains irreversible and unproven. No database/resource window is open. No usable credentials or credential Markdown belongs in GitHub.
+
+### Decisions needed from Thomas
+
+Only the existing public-config criterion, unchanged-source hosted confirmation, signed-installer release ordering and P1 current-team lead behavior questions remain pending. No duplicate asks or elapsed-time approvals.
+
+### Next merge candidates
+
+#583 after its actual required gates clear. Fully composed and reviewed later slices proceed through #589 after eligible P0 integration; no current candidate is declared merge-ready.
+
+---
+
+## Status First
+
+Snapshot: 2026-10-07T03:29:44.647294+00:00. P0 #583 stays frozen at `5326937460b195d8e69584c0cb99305348330a95`; accepted main remains `3096cb04`. No runtime retry, deployment refresh, strict activation, signed release or phase closure is claimed.
+
+| Phase | Implementation | Integration | Acceptance |
+| --- | --- | --- | --- |
+| P0 | Frozen product; full private lifecycle v8 implemented, v9 correcting collected executable/security findings | Sole closure #583 | G11 19/22; actual lifecycle/TLS/signed installer, strict compatibility/cutover and finalizer open |
+| P1 | Full filter-builder successor `c4745ea5` pushed; saved views/CSV implemented | #591 and separate builder leaf; 0118 provisional | Successor delta review and shared composition acceptance open |
+| P2 | Selected approval/withdrawal and browser placement complete | #586 | Phase/live API/image/composed acceptance open |
+| P3 | Selected mapping/login and query relocation complete | #595 then #596 | Real provider, Health and phase acceptance open |
+| P4 | Selected outbox eligibility/fencing/binding complete; explicit private test-role seeder implementation underway | #594 and separate test infrastructure leaf | Shared composition/provider/image/phase acceptance open |
+
+### What changed
+
+P1 successor `c4745ea5028e58af18469381d45a9d58c8447f6e` collects and fixes all three ordinary findings in one batch: effective partial-sort consistency, strict list/field/operator/value/date validation, and exact unary/nested group AST preservation through documented AND/OR text. Author evidence passes 77 focused tests and six mocked browser journeys, plus type/build/style checks; 400 deterministic generated trees exercise exact round-trip. Browser 4316 is stopped. The failed initial browser expectation is recorded, but its replaced transient trace was not preserved; no fake failure artifact is claimed.
+
+Central complete schema/generation candidate `89242d350e91356798f862692b432cf92f92a285` is pushed clean. All inventory categories match frozen catalog; generator emits no index/check rewrites. Twenty physical FK-name pairs and five verified same-expression defaults remain explicitly reported. Fresh strong ordinary delta review finds no additional runtime projection defect, but blocks negative tests that only compare synthetic serialization rather than invoke the actual acceptance gate. One complete shared-comparator mutation remedy is underway; no new PG replay or allocation is authorized.
+
+Private lifecycle v8 manifest `e70fc14774fd6045ec60b2525fa7048519ac8160c2acba749f93fa289688d0ed` passes 47 offline tests but full independent Sol is BLOCKED. Collected findings cover corrupted generated owner labels, rejected binary fingerprint input, malformed escaped credential leakage, unsafe credential suffix/recursive-owner exemptions and saved-byte hash mismatches. Root also verifies that Secure session cookies require HTTPS and the documented first-user bootstrap path; these are now included in one executable v9 structural batch before freeze. No v8 resource grant or actual execution occurred.
+
+Thomas explicitly requests role-complete testing accounts and prohibits credential notes in GitHub. A separate Luna owns the opt-in seeder and private-output boundary. Existing seed profiles only have placeholder persons. Sanitized tracked-path/content audit identifies no concrete test-user credential-note exposure; broad false positives are not treated as leaks. Canonical legacy support is explicit: manager/lead still lack genuine provisioning producers, and proposed ADR 0015 is not silently approved. Supported account/role seeding continues; eight-role completion remains tied to its real role foundation.
+
+### What is being worked on now
+
+Luna implements the private P0 runner's complete trusted-input/untrusted-output, HTTPS/bootstrap and real-file orchestration remedy. Another Luna completes the actual central inventory-gate mutation tests. A third Luna implements supported test-role accounts with fresh strong random credentials in external 0700/0600 local storage, collision/idempotency and safe target/path handling. No lane may touch persistent DEV or create/remove Docker resources under an expired or absent grant.
+
+### Critical path
+
+1. Resolve frozen P0 hosted G11 under the existing no-extra-retry rule.
+2. Finish reviewed actual local lifecycle and official signed-installer/TLS proof.
+3. Establish current strict behavior and compatibility of original partial UTC captures.
+4. Resolve public-config criterion and perform eligible reversible cutover.
+5. Protected merge, official installer acceptance and fresh Sol phase finalizer.
+
+### Misalignment / drift
+
+#583 is the sole P0 closure vehicle; #589 is the sole post-P0 train; #581 is superseded; #587 remains diagnostic. New test-user tooling and migration repair do not become P0 prerequisites. Offline test totals do not prove a runnable driver, real provider acceptance or served TLS. Full implementation precedes review; all findings from a completed review are collected before one structural fix, without unchanged-head comfort reruns.
+
+### Concerns
+
+Trust-boundary separation must preserve validated operational inputs while failing closed on unsafe diagnostic persistence. The full mock smoke must use actual file writes rather than bypass the mechanism under test. The schema mutation tests must actually reject realistic defective inventories through the same acceptance function. Failed v6 receipts, unknown migrate cause, irreversible prior deletion and preserved unbound volume `3cdc71ba8cc620aa1bf92ea39b479c322bdacc3d409a77d068d492577d6ebcc0` remain unchanged.
+
+### Decisions needed from Thomas
+
+Previously requested public-config criterion, unchanged-source hosted confirmation, signed-installer release ordering and P1 current-team lead behavior remain pending. No duplicate asks. Pending role-foundation/ADR ownership is recorded, without treating the seeding request as architecture approval; safe supported seeder implementation continues.
+
+### Next merge candidates
+
+#583 after actual required gates clear. Mature later slices, corrected filter builder, full schema semantic safeguard, reviewed dialog and eligible test seeding compose through #589 on accepted P0. No blocked head is merge-ready.
+
+---
+
+## Status First
+
+Snapshot: 2026-10-07T02:26:10.911238+00:00. Remote main remains `3096cb044bdf6ae98488bfc385f532fa6386343a` by fresh live readback. P0 #583 remains frozen at `5326937460b195d8e69584c0cb99305348330a95`. No merge, runtime retry, DEV refresh, release publication or phase acceptance occurred in this update.
+
+| Phase | Implementation | Integration | Acceptance |
+| --- | --- | --- | --- |
+| P0 | Frozen product; complete private lifecycle v7 implemented, structural redaction successor underway | Sole closure #583 | Hosted G11 19/22; actual lifecycle, TLS, signed installer, strict compatibility/cutover and finalizer open |
+| P1 | Saved views/CSV implemented; full visual filter builder implemented with bulk correction underway | #591 and isolated builder; provisional 0118 | Builder first candidate ordinary panel blocked; shared metadata and composed acceptance open |
+| P2 | Selected approval continuity/withdrawal and browser-placement slices implemented and reviewed | #586 | Phase integration, live API/image and current composed gates open |
+| P3 | Selected mapping/login and repository-relocation slices implemented and reviewed | #595 then #596 | Real provider, Health and phase integration acceptance open |
+| P4 | Selected outbox eligibility/fencing/binding slice implemented and reviewed | #594 | Shared composition, image/provider and phase acceptance open |
+
+### What changed
+
+Full P1 filter-builder candidate `9d2f27a5efce3cfc9dd7dfe498ad8f27302f42f9` is committed and pushed. Author evidence includes 41 focused tests, 128 files/518 web tests and three mocked browser journeys; that does not establish live API, image or phase acceptance. Both independent ordinary reviewers collected the full findings before remediation: partial sort URLs can disagree with API result order; invalid empty/oversized/trailing-comma IN lists are accepted; unary OR loses its operator in text round-trip. One full structural parser/URL remedy is underway with exact AST round-trip regression coverage. No P0 feature was added.
+
+Full private lifecycle v7 manifest `3ee50b12971da8176d404c7619027589f7f2d5192c0a742f82649fa072935c1e` freezes 11 payloads and passes 40 offline tests. It addresses image-ID normalization, actual Docker absence responses, complete mount identity capture, PG18 anonymous-parent prevention and precleanup failure logs. Fresh ordinary review blocks quoted JSON credentials bypassing redaction; v8 must repair the whole persistence/redaction boundary, not add another isolated regex exception. No v7 runtime grant or retry occurred; failed v6 runs and the unbound volume remain preserved.
+
+### What is being worked on now
+
+Three bounded Luna implementation lanes continue: #589 configured schema/generation semantics against retained actual catalog; P1 complete parser, sort and lossless group correction; private P0 lifecycle output-redaction structural successor. Source freezes precede reviews. The migration author has no PostgreSQL/Docker window; the builder's browser authority is limited to owned mocked port 4316; no private lifecycle runtime authority exists.
+
+### Critical path
+
+1. Resolve frozen P0 hosted G11 under its existing no-extra-retry rule.
+2. Complete reviewed actual local lifecycle and exact signed-installer/TLS proof.
+3. Establish current strict behavior and independent compatibility of the original partial observation dates.
+4. Resolve public-config criterion and execute eligible reversible cutover.
+5. Protected exact-head merge, official installer acceptance and fresh Sol phase finalizer.
+
+### Misalignment / drift
+
+The pasted drift report's 17/22 figure is historical. Current hosted G11 remains 19/22, not green. #583 is sole P0; #589 is sole later integration train, independent of P0 closure; #581 is superseded and #587 diagnostic only. Primary checkout status is stale, so live GitHub and these dated operational records govern current work. No extra performance run, threshold change, later migration or post-P0 feature is used to close P0.
+
+### Concerns
+
+The migration comparator must reject column/type/null/default/constraint/index drift; names/counts alone are insufficient. The complete remedy uses trusted frozen SQL/catalog representations rather than a broad unsafe SQL normalizer. Private runner credential output must fail closed before persistence. Prior anonymous-volume deletion remains irreversible and unproven; new volume `3cdc71ba8cc620aa1bf92ea39b479c322bdacc3d409a77d068d492577d6ebcc0` stays preserved with no inferred ownership or removal. Lost migrate logs leave its actual cause unknown.
+
+### Decisions needed from Thomas
+
+Existing questions remain pending: public-config criterion, one unchanged-source hosted confirmation, official signed-installer release ordering, and P1 current-team lead behavior. No duplicate question or elapsed-time approval.
+
+### Next merge candidates
+
+#583 only after actual required gates clear. Mature later slices, complete schema/generation remedy, reviewed dialog and corrected filter builder compose through #589 on accepted P0. No blocked candidate is merge-ready.
+
+---
+
+## Status First
+
+Snapshot: 2026-10-07T02:04:02.983140+00:00. Remote main independently remains3096cb04; reviewed DEV container4ecd200a8e07 remains running/healthy on image75b153d7. P0#583 remains frozen53269374. No protected merge, DEV refresh, strict cutover, release publication or phase completion.
+
+| Phase | Implementation | Integration | Acceptance |
+| --- | --- | --- | --- |
+| P0 | Frozen product532; private lifecyclev6 offline mechanism Sol clear,33tests | Sole closure#583; two actual local lifecycle runs failed and preserved | HostedG1119/22; installer/runtime/TLS/strict/cutover/finalizer open |
+| P1 | Saved views/CSVfd8 complete; visual filter-builder batch in progress,38focused author tests pass | #591; separate isolated builder leaf;0118 still provisional | Current whole-candidate metadata/composed/browser/live acceptance open |
+| P2 | Selected approval continuity/withdrawal and browser-placement slices complete | #586b67a865a, current source Luna/Sol clear | Phase/liveAPI/image/OpenAPI/G11 acceptance open |
+| P3 | Selected mapping/login/relocation slices complete | #595 then#59608c162d7, source reviews clear | Health/provider and composed phase acceptance open |
+| P4 | Selected outbox eligibility/fencing/binding slice complete | #594359d60bd, source reviews clear | Shared composition/image/provider/full phase acceptance open |
+
+### What changed
+
+Complete metadata structural batchb51c3d0d is pushed clean. Final actual gate passes all30prefixes with98tables1043columns204FKs56uniques5PKs185indexes128checks; accepted78snapshots,allocated30SQL,journal/IDs remain unchanged. Full ordinary panel A clears; B/C block configured generation deleting two existing columns and a broader unguarded column/type/null/default/FK/index semantic-drift class. One full inventory invariant and DSL reconciliation replaces further special cases. Full Sol is not queued on blocked source.
+
+Lifecyclev6 closes absolute-expiry findings under independent Sol and33offline tests. Root independently closed the prior exact named PG resource window with definitive absence and unchanged unrelated inventory; its first case-sensitive absence assertion failed after container removal and is retained with successful fresh completion readback.
+
+Root issued genuine externally pinned disposable-only grants and executed two actual v6 runs. Run20261007T015354Z-23c939d8 fails before creation on bare/prefixed candidate-image mismatch; root confirms no project resources. Run20261007T015642Z-a5f5b739 uses canonical images, creates the isolated stack, then migrate exits1 before app readiness. Precleanup migrate logs are missing, so the cause is unknown. Driver cleanup marksFAIL; independent root confirms all8capturedownedIDs absent but one added anonymous PG18 parent volume remains unbound. Both failures remain failed; no offline replay, lifecycle success or GateC claim.
+
+### What is being worked on now
+
+Luna completes a full configured-schema semantic inventory remedy at#589, offline on retained catalog evidence. A separate Luna completes private lifecyclev7: canonical image input, real Docker absence responses, full ownership/mount capture, anonymous-parent-volume prevention and redacted failure logs before cleanup. No v7 runtime grant exists. Another isolated Luna completes SV-11 visual/text filter switching with sort/columns/URL fidelity and mocked browser coverage on root-approved4316; no API/PG/Docker/performance access.
+
+### Critical path
+
+1. Resolve frozenP0 hostedG11 under the no-extra-retry rule.
+2. Complete actual local lifecycle/TLS/preservation/upgrade/rollback and signed release ordering.
+3. Prove current strict behavior and independently establish original partial-date compatibility.
+4. Resolve public-config criterion and perform eligible reversible cutover.
+5. Protected exact-head merge, official installer verification and fresh Sol finalizer.
+
+### Misalignment / drift
+
+The older pasted17/22 and48-request figures remain historical; actual currentG11 is19/22 and off/shadow130expectations match before a retained renderer failure. #583 is soleP0;#589 solelater train;#581 superseded;#587 diagnostic. No later feature is added to P0. Some remaining delay is caused by incomplete runtime and generation tooling, not newly invented product scope. Full-batch findings are collected before structural remedies; unchanged source does not receive comfort reviews.
+
+### Concerns
+
+Earlier anonymous-volume removal remains irreversible/unproven. New anonymous volume3cdc71ba8cc620aa1bf92ea39b479c322bdacc3d409a77d068d492577d6ebcc0 is preserved, not deleted; empty events cannot bind it. Root proves no original inventory identity disappeared in run2, while the extra volume remains. DEV health does not resolve historical ownership. Future private runner must prevent/capture all mount-created resources before any removal.
+
+Snapshot fidelity does not prove safe future generation. Column/type/null/default and relation/index changes must fail closed unless exact semantic equivalence is established. Current b51generation SQL is unapplied and not a no-op. Migrate exit1 cannot be diagnosed from lost logs or treated as a confirmed product defect yet.
+
+### Decisions needed from Thomas
+
+Previously requested public-config criterion, one unchanged-source hosted confirmation, signed installer release ordering and P1 current-team lead behavior remain pending. No duplicate asks, implied expiry approval, release-order waiver or retired review tooling.
+
+### Next merge candidates
+
+#583 only after its actual gates. Mature later slices/dialog, complete semantic metadata remedy and full filter-builder batch then compose through#589 on acceptedP0. No blocked head or failed runtime is merge-ready.
+
+---
+
+## Status First
+
+Snapshot: 2026-10-07 01:02:47 UTC. Live GitHub confirms frozen P0#583 at53269374 and the sole post-P0 train#589 at publishedb977e53b. Accepted main3096cb04 and reviewed DEV08842235 remain unchanged; no protected merge, refresh, strict activation or phase completion.
+
+| Phase | Implementation | Integration | Acceptance |
+| --- | --- | --- | --- |
+| P0 | Frozen53269374; product reviews clear; runnable private lifecycle successor being completed | Sole closure#583, separate from all later slices | HostedG1119/22; exact installer lifecycle/TLS, strict compatibility/cutover and finalizer open |
+| P1 | Saved views/CSV and CI correctionfd8d8274 complete | #591;0118 provisional until canonical migration repair freezes | Whole-candidate metadata and composed acceptance open |
+| P2 | Approval continuity/withdrawal and browser placement complete | #586 notes-onlyb67a865a; current source Luna/Sol clear | LiveAPI/image/OpenAPI/G11 and full phase acceptance open |
+| P3 | Mapping/login and repository relocation complete | #595 then#596 notes-only08c162d7; current source reviews clear | Health/provider and composed acceptance open |
+| P4 | Outbox eligibility, canonical binding and fencing complete | #594 notes-only359d60bd; current source reviews clear | Shared composition, provider/image and phase acceptance open |
+
+### What changed
+
+Complete create-dialog source8f078830 has two ordinary clear verdicts and full independent Sol clearance, committed on source-equivalent notes-only7d86b0a8. Its complete11unit/6browser author evidence remains distinct from image/hosted acceptance. It is queued for the post-P0 train.
+
+Central metadata's full ordinary panel identifies two structural classes: omitted existing SQL tables in configured generation and ordered unique-key drift. The author is fixing the whole mechanism, including actual catalog tuple order, NULLS NOT DISTINCT, physical identifier truncation and default index-opclass representation. No SQL/journal/accepted snapshot rewrite or new allocation is authorized. Publishedb977 remains blocked while the complete successor is uncommitted.
+
+The lifecycle driver's v3 ordinary delta clears, but full Sol blocks stale/mismatched operator authority and a certificate fingerprint unrelated to served TLS. Original bundles/reports are preserved. The v4 truthful planning-only successor is not a completed runnable driver. A complete v5 adds a valid executable authorization path and meaningful positive/negative orchestration tests; TLS remains separately unproven.
+
+### What is being worked on now
+
+One Luna author completes canonical migration/generation fidelity and one final prefix regression. Root independently bound the new named PostgreSQL container/volume and granted database-only use at actual00:50:22UTC. Root alone will remove those exact resources after fresh ownership readback. A separate Luna completes the private lifecycle driver offline; it has no runtime authorization window and may not reuse the central database grant.
+
+### Critical path
+
+1. Resolve frozenP0 hostedG11 under the no-extra-retry rule.
+2. Complete reviewed measured lifecycle/TLS/preservation/upgrade/rollback and signed release ordering.
+3. Prove current strict behavior and independently establish compatibility of original partial observations.
+4. Resolve public-config's evidence criterion and perform eligible reversible cutover.
+5. Protected exact-head merge, official installer verification and fresh Sol finalizer.
+
+### Misalignment / drift
+
+The pasted drift report's17/22 and48-request figures are historical. Current hostedG11 is19/22; actual off/shadow acquisition matched130 expectations before its preserved renderer failure. Offline replay does not change that acquisition's acceptance. #581 is superseded;#587 diagnostic only;#583 soleP0;#589 solelater train. Later metadata and dialog corrections do not expand P0.
+
+### Concerns
+
+The earlier anonymous PostgreSQL volume removal remains irreversible with unproven ownership. Empty event history and healthy DEV do not prove that removed volume belonged to the test. Incident receipts remain preserved; new named-resource ownership is independent and does not resolve the old incident. Author Docker mutations remain prohibited, and root owns subsequent cleanup.
+
+A generator must preserve actual ordered and NULL semantics, not just pass an introspector equality test. A lifecycle driver must execute under genuine bounded authority and measure persistence/cleanup; offline tests and local Compose do not prove signed installer or served TLS acceptance.
+
+### Decisions needed from Thomas
+
+Previously requested public-config criterion, one unchanged-source hosted confirmation, signed installer release ordering and P1 current-team lead behavior remain pending. No duplicate asks or elapsed-time approval.
+
+### Next merge candidates
+
+#583 after its actual gates. Mature later slices, reviewed dialog and the completed metadata remedy then compose through#589 on acceptedP0. No currently blocked candidate is merge-ready.
+
+---
+
+## Status First
+
+Snapshot: 2026-10-07 00:30:27 UTC. Accepted main3096cb04 and reviewed DEV08842235 are unchanged; shadow on, enforcement empty. No protected merge, deployment refresh, strict cutover or completed phase.
+
+| Phase | Implementation | Integration | Acceptance |
+| --- | --- | --- | --- |
+| P0 | Frozen53269374; full local Compose lifecycle driver implemented offline | Sole closure#583; latest register check passes, template/readiness remains intentionally red | HostedG1119/22; driver review BLOCK on redaction, measured lifecycle comparisons and cleanup proof; full remediation underway; signed installer/current strict/cutover/finalizer open |
+| P1 | Saved views/CSV plus complete CI correctionfd8d8274 | #591;0118 provisional after preceding train freezes | Delta has no findings; inherited migration/generation blockers and composed acceptance open |
+| P2 | Approval continuity/withdrawal plus complete SDK/fixture/browser placement | #586 notes-onlyb67a865a; placement source12cac9c1 Luna/Sol clear | Whole phase/liveAPI/image/OpenAPI/G11 acceptance open |
+| P3 | Mapping/login plus complete repository relocation | #595 then#596 notes-only08c162d7; source reviews clear | Health/provider and composed acceptance open |
+| P4 | Complete outbox eligibility/fencing/binding8baeb622 | #594 notes-only359d60bd; source reviews clear | Shared fixture composition and broad image/provider/phase acceptance open |
+
+### What changed
+
+Complete create-dialog8f078830 clears two fresh Luna contexts and fresh independent Sol. Notes-only7d86b0a8 commits the original reports with explicit correction of A's mistaken security-path classification; source equivalence verified and branch pushed. Author11unit/6browser cases pass; mocked API and absent hosted/image acceptance remain limits. The leaf is queued for the single post-P0 train, not added to frozenP0.
+
+Central complete metadata batchb977e53b is pushed: thirty0088–0117 snapshots plus one all-prefix regression. Actual30prefix/118finalmigration comparison and API types pass; frozen SQL30,accepted snapshots78 and journal remain identical. Three independent ordinary contexts review the whole batch. B clears its scope; A blocks configured generation omitting existing SQL-created tables; C separately blocks32 reordered unique-constraint tuples masked by FK-only catalog normalization. C retains complete fresh generation output; the earlier lost diagnostic bytes remain unrecoverable. Whole candidate stays blocked, with one structural remedy collecting both classes before fresh review.
+
+The complete private local-image driver has eight passing offline tests, compile/plan/hash checks. Strong independent Luna blocks three systemic classes: output persisted without enforced redaction; cleanup claims without definitive absence/unrelated inventory comparison; lifecycle report values not all measured and compared. No actual runtime or real-secret acquisition occurred. Original bundle/report preserved; one complete v2 remedy adds structural boundaries and full lifecycle negative regressions before review. This tests local Compose, not signed installer/deploy.sh acceptance.
+
+### What is being worked on now
+
+Luna completes all migration metadata/generation defects together, including catalog ordinal fidelity and existing SQL/DSL reconciliation. Root grants the sole bounded owned PG window for actual catalog ordering and one final prefix gate; P0 driver remains offline. Separate Luna completes all private driver findings in one immutable successor batch. No blocked candidate is sent to Sol before ordinary clearance.
+
+### Critical path
+
+1. Resolve frozenP0 hostedG11 under the no-extra-retry rule.
+2. Complete reviewed measured lifecycle/preservation/upgrade/rollback and approved signed release order.
+3. Prove current strict behavior and independent compatibility of original partial UTC observations.
+4. Resolve public-config evidence criterion and perform eligible reversible cutover.
+5. Protected exact-head merge, official installer verification and fresh Sol finalizer.
+
+### Misalignment / drift
+
+The report's old17/22 and48-request figures are superseded by current19/22 and actual130 expectation matches followed by preserved renderer failure. No offline replay turns a failed acquisition into acceptance. #583 is soleP0, #589 solepostP0train, #581 superseded, #587 diagnostic only. P1–P4 source implementation continues independently; their migration repair is not P0 scope.
+
+### Concerns
+
+An anonymous PG18 volume was removed without full-container ownership binding; removal is irreversible and ownership remains unproven. Root has revoked further Docker/PG mutations for that author, retained incident receipts and an empty post-factum event readback, and independently confirmed the DEV app remains healthy. This is not verified cleanup or a claim that every unrelated resource is safe. Offline structural implementation continues.
+
+A metadata snapshot can match an introspector while still changing ordered key semantics; real catalog ordinality must control the structural fix. Destructive generator proposals are diagnostic, never applied. Driver planner tests do not prove full measured lifecycle or cleanup. Local22/22 is not hosted acceptance, and original seconds-long dates are not full days/72hours.
+
+### Decisions needed from Thomas
+
+Existing public-config criterion, one unchanged-source hosted confirmation, signed installer release ordering and P1 current-team lead rule remain pending. No duplicate asks, elapsed-time approval or gate waiver. Independent Sol confirms the public-config criterion question is genuine under current authority.
+
+### Next merge candidates
+
+#583 after actual P0 gates. Complete reviewed slices, dialog and corrected metadata compose through#589 on acceptedP0. Neitherb977 nor the first private lifecycle bundle is accepted or merge-ready.
+
+---
+
+## Status First
+
+Snapshot: 2026-10-07 00:11 UTC. Accepted main remains3096cb04; reviewed DEV remains08842235 with shadow enabled and enforcement empty. No protected merge, DEV refresh, strict activation or phase completion.
+
+| Phase | Implementation | Integration | Acceptance |
+| --- | --- | --- | --- |
+| P0 | Frozen53269374; product and offline runner reviews clear | Sole closure#583; complete local lifecycle driver preparation underway | HostedG11 remains19/22; signed installer/runtime preservation and rollback, eligible strict evidence/cutover and Sol finalizer open |
+| P1 | Saved views/CSV/shared key identity plus complete CI correctionfd8d8274 | #591 targets sole post-P0 train#589;0118 provisional | Ordinary delta has no findings; whole candidate blocked by inherited migration metadata; composed acceptance open |
+| P2 | Approval continuity/withdrawal plus reviewed fixture/SDK correction and browser-test placement12cac9c1 | Actual#586 now notes-onlyb67a865a; current placement Luna/Sol CLEAR | Ordinary browser journey1/1 and visual gate pass; OpenAPI/G11/liveAPI/image and phase acceptance open |
+| P3 | Mapping and login reconciliation plus reviewed nine-read repository relocation | #595 then stacked#596 at notes-only08c162d7 | Current source reviews clear; Health warning/provider and composed acceptance open |
+| P4 | Complete outbox eligibility/fencing and canonical event binding8baeb622 | #594 at notes-only359d60bd; reviews clear | Shared fixture fixes await train composition; broad CI/image/provider and phase acceptance open |
+
+### What changed
+
+P2's full withdrawal journey moved from the restricted visual fixture into its ordinary E2E file with every interaction, response, refresh and screenshot assertion preserved. Fresh Luna and Sol clear12cac9c1; published notes-onlyb67 preserves source equivalence. The canonical#589 visual gate already passed: the failure belonged to P2's misplaced journey, not a broken train gate.
+
+The complete later-phase create-dialog mechanism is frozen at8f078830: immediate accessible shared shell, separately lazy form, loading/error/retry, live capability and project/URL checks, cancellation, focus and navigation behavior. Author units11 and browser6 pass. Ordinary A finds no defects; B is reviewing the full batch. A's statement that no security tier applies is incorrect because apps/web/e2e/** is security scope; the original report is retained and required fresh Sol review follows ordinary clearance. This source is not added to P0.
+
+Central SQL replay succeeds for every0088–0117 prefix. Ten snapshots0100–0109 are absent and remaining provisional metadata diverges from actual prefixes. Existing-tool composite foreign-key introspection also emits unstable column order; canonical catalog ordinality must bind generated pairs before the completed batch is reviewed. Accepted0000–0087, SQL and journal allocations remain unchanged; no0119.
+
+Independent Sol adjudication confirms public-config's actual200/pre-guard records explain missing tally but do not satisfy the written shadow-before-strict criterion. This is a genuine pending criterion decision or implementation obligation, not an early human design review. No old partial observation is silently accepted or backfilled.
+
+### What is being worked on now
+
+One Luna author completes all central migration metadata against actual SQL prefixes in the exclusive private PG window. A separate fresh Luna reviews the complete dialog batch; Sol follows at the required tier. Another Luna implements the full private local-image lifecycle driver offline using existing reviewed ownership/fixture contracts, with official signed installer acceptance expressly separate and runtime execution held. P0 source remains frozen.
+
+### Critical path
+
+1. Resolve actual hostedG11 failure without an unauthorized extra retry or budget/workload change.
+2. Complete exact-image preservation, upgrade, idempotency and rollback proof in the approved release order.
+3. Establish current strict evidence and independent compatibility of the original partial UTC records.
+4. Resolve public-config's evidence criterion and perform eligible reviewed reversible cutover.
+5. Protected exact-head merge, official signed installer verification and fresh Sol phase finalizer.
+
+### Misalignment / drift
+
+The pasted report's17/22 and48-request runtime figures are historical; current hostedG11 is19/22 and actual off/shadow acquisition matched130 expectations before report rendering failed. Its full offline derivative replay is clear, but the failed acquisitions remain failed. #583 is the only P0 closure vehicle;#589 the only post-P0 train;#581 superseded and#587 diagnostic only. Later implementation does not depend on P0 acceptance.
+
+### Concerns
+
+Signed release publication currently requires source already onmain. The existing five-test validator is partial; new lifecycle implementation is not yet reviewed or executed. No local22/22 replaces red hosted19/22. Metadata IDs alone cannot prove schema history. OpenAPI versioned compatibility and P3 Health/provider evidence remain explicit integration residuals.
+
+### Decisions needed from Thomas
+
+The previously requested public-config criterion, one unchanged-source hosted confirmation, official installer release order and separate P1 current-team lead rule remain unanswered. The public-config Sol adjudication verifies the question is necessary under the written criterion. No duplicate requests or elapsed-time approval.
+
+### Next merge candidates
+
+#583 after actual P0 gates. Complete P1–P4 slices and reviewed dialog/metadata batches then compose through#589 on accepted P0. No current red or missing gate is called merge-ready.
+
+---
+
+## Status First
+
+Snapshot: 2026-10-06 23:44 UTC (7 October in Yangon). Accepted main remains3096cb04; reviewed DEV remains08842235, shadow on and enforcement off. No protected merge, DEV refresh, strict activation or completed phase.
+
+| Phase | Implementation | Integration | Acceptance / operational closure |
+| --- | --- | --- | --- |
+| P0 | Frozen53269374; product and offline runner reviews clear | Sole closure#583; installer scaffold remains explicitly partial | HostedG1119/22 red; signed installer/upgrade/rollback, strict/cutover and finalizer open |
+| P1 | Complete saved views/CSV source8c; nine-file CI correctionfd8d8274 | Linux Saved Views visual1/1, contrast gate, exact key fixtures and SDK patch complete;0118 provisional | Ordinary delta has no defect; whole candidate blocked by inherited SQL/snapshot history. OpenAPI/G11 and full composed acceptance open |
+| P2 | Complete approvals source d5; fixture/SDK product38f96f3b, published notes-onlyb499ad3b | Draft#586 on sole train#589; full current delta Luna/Sol CLEAR | Native2files20 and MCP7files31 pass; inherited OpenAPI/G8/G11 and liveAPI/image/phase acceptance open |
+| P3 | Complete login provenancebc03 plus nine-read relocationb78a0ff4; notes-only08c162d7 | Draft#596 stacked on mapping#595; complete current delta Luna/Sol CLEAR | Query/types/domain31/contracts17/perms88/native2files16 pass; Health/provider and broad composed acceptance open |
+| P4 | Complete canonical outbox binding/fencing8ba; notes-only359d60bd | Draft#594 on#589; source reviews clear | Actual full native run has only the same four shared fixture failures; broad CI/image/provider/fullP4 acceptance open |
+
+### What changed
+
+P1/P2 complete CI batches fix narrow positive key fixtures without changing permissions or assertions and raise both existing SDK users to the approved^1.31.0 floor, lock1.32.1. Author scoped native2files20 pass; audits exit0 at high severity with oneLOW advisory. P1 adds real populated Saved Views visual coverage and the Linux baseline; the pinned linux/amd64 CI image captures1/1. Tokens/contrast and visual scope pass. Temporary capture override/build stdout were not retained, so no complete acquisition receipt is invented. Source/test/log/baseline hashes and actual image identity remain available.
+
+P3 relocates all nine new reads into the identity repository while preserving executor, locking, filters, projection and caller timing. Author native2files16/domain31/contracts17/perms88 pass. Fresh Luna and lightweight Sol each run query gate, API typecheck and diff, and CLEAR the complete relocation delta. Product b78→08c changes only review notes; root proves source equivalence. P2 complete five-file delta also clears fresh ordinary/full Sol; root fast-forwards the actual published586 branch after adding records, preserving c89 history.
+
+Inspection rejects an ID-only migration repair: central0088 metadata contains columns introduced by0089 SQL, while0089 metadata omits the preceding SLA schema. Original files/failures remain. Allocation and frozen SQL/journal inputs0088–0117 at canonical f478 are now recorded for one SQL-bound metadata reconciliation; no new numbers, SQL rewrites or P0 changes are authorized. Saved-view0118 remains provisional. P1 ordinary report is BLOCKED for whole-candidate acceptance, without a defect in its nine-file correction delta; Sol is not falsely claimed clear.
+
+### What is being worked on now
+
+One Luna author owns the central provisional SQL-prefix/snapshot reconciliation in#589, with an exclusive owned PostgreSQL window. A separate isolated Luna lane addresses the actual post-P0 visual-scope failure as one complete mechanism batch, without weakening fixtures or screenshot requirements. The inherited deferred create-dialog defect is preserved for its own correction; it is absent from current P0's failing cases and not composed into586 or583. Finished P2/P3 batches have current committed review records, not a whole-phase acceptance claim.
+
+### Critical path
+
+1. Resolve current P0 hostedG11 failure under the no-extra-retry rule.
+2. Complete exact-source installer/upgrade/preservation/idempotency/rollback proof in the approved release order.
+3. Prove current off/shadow/strict behavior and independently adjudicate actual Oct4/5/6 partial evidence.
+4. Resolve the public-config substitution and perform eligible reviewed reversible DEV/UAT cutover.
+5. Protected merge with every required exact-head gate, official installer proof and fresh Sol finalizer.
+
+### Misalignment / drift
+
+#583 is the only P0 closure candidate. #589 is the sole post-P0 integration train;#581 remains superseded and#587 diagnostic only. P1/P2/P3/P4 are not waiting for P0 to implement. Acceptance remains serial. #594/#595 full native failures are the same four already-corrected shared fixtures, not new outbox/OIDC defects:149files/1747passed tests and150files/1736passed tests respectively surround those four failures. The original runs stay FAILED; no duplicate broad acquisition is queued to repeat them.
+
+### Concerns
+
+Official release publishes only source already onmain; exact signed installer proof cannot precede merge under the present workflow. The private validator has five passing offline tests but is not a runnable installer/lifecycle harness or GateC acceptance. Local22/22 does not replace current hosted19/22. Published v2.0.1 closes the pre-release OpenAPI break allowlist; inherited user_deactivation enum diffs need correct versioned integration treatment. Snapshot IDs alone cannot prove schema history.
+
+### Decisions needed from Thomas
+
+Previously requested public-config substitution, one unchanged-source hosted confirmation, installer release sequencing and separate P1 current-team lead rule remain pending. No duplicate questions or elapsed-time approval. P1 and central train work do not block P0.
+
+### Next merge candidates
+
+#583 only after real P0 gates. Then complete reviewed P1–P4 candidates compose through#589 on accepted P0, including central metadata reconciliation and current integration checks. No candidate with a missing review, red check or unresolved blocker is merge-ready.
+
+---
+
+## Status First
+
+Snapshot: 2026-10-06 23:24 UTC (7 October in Yangon). Accepted main remains3096cb04; DEV remains08842235 with shadow enabled and enforcement empty. No protected main merge, DEV refresh, strict cutover or phase completion.
+
+| Phase | Implementation | Integration | Acceptance / operational closure |
+| --- | --- | --- | --- |
+| P0 | Frozen53269374; full offline acquisition/render contract149bb605 independently clear | Sole closure#583; installer operational plan complete offline | HostedG1119/22 red; current strict/installer/rollback proof and finalizer open |
+| P1 | Complete saved views/CSV/shared key identity8c3ca82c | Draft#591 toward single train#589;0118 provisional | Current delta ordinary/full Sol clear; native58/units16; current fast/full CI red; composed/liveAPI acceptance open |
+| P2 | Complete approval withdrawal d5b2842e; notes-only c89c11c0 | Draft#586 toward#589; portal588 merged into feature branch, not main | Source reviews clear; current fast/full CI red; integration/liveAPI acceptance open |
+| P3 | Mapping product5b3a3377 reviewed; notes-only197b19fc. Login productbc03f460 complete; notes-only17c351cb | Draft#595 mapping and stacked draft#596 login; no new migration | Mapping ordinary/full Sol clear; login native7/domain31/contracts2/perms88 pass, bulk ordinary findings corrected; full Sol plus final structural delta clear; Health overage warning/provider acceptance open |
+| P4 | Product8baeb622 complete shared row/event binding and reservation fencing; notes-only359d60bd | Draft#594 toward#589; no migration/dependency/provider activation | Full Sol clears complete mechanism and closes narrower same-class remediation tier; native23/unit46 pass; broad CI/image/composed acceptance open |
+
+### What changed
+
+The complete P0 typed producer/consumer derivative149bb605 preserves failed originals and successfully replays the unchanged real run2 input2695a56d through the canonical full renderer. Fresh strong Luna and independent full Sol each pass83 offline tests,16pins and130-row replay: zero unexplained or uncovered among the27selected sources,6resources/31targets, cleanup9/9. Root also verifies16derivative and3original pins. No runtime rerun or accepted observation is invented; actual ValueError/NameError failures stay preserved. The manifest's date-only created_utc label is local-date metadata, not another UTC observation.
+
+P3 role and P4 complete structural remediation clear fresh full Sol; verbatim verdicts are committed as security-review-only descendants with source equivalence proven. P4 native23/unit46 pass under the corrected isolated invocation; original default-database auth failure remains failed. Luna B became the remediation author and cannot review it; its earlier P4 SHA typo/range failure is preserved and not treated as an exact-head gate.
+
+Complete login batchbc03 implements validated group UUIDs, current admission/role/mapping checks under IP22 locking, source-specific grant retirement/projection, independent-source preservation and postcommit cache/session ordering. Final exact-source native7 passes with teardown. Bulk reviews found history reason defects; shared evidence classification and current locked mapping/provenance now replace timestamp authority. A real display-only mapping PATCH followed by empty claims verifies claim_removed in history/event/audit. Fresh Sol clears finalbc03; notes-only17c preserves source equivalence. Full IP28 still needs the operator-visible Health overage warning; removal event reason alone is not that warning.
+
+Installer20/20 offline tests pass; the complete owned fresh/repeat/upgrade/rollback plan is frozen. Read-only GitHub inventory finds only old v2.0.1 with two SBOM assets, no candidate signed installer bundle. Release workflow requires selected source already reachable from main. Requested sequencing keeps local reviewed-image runtime proof before merge and official signed-prerelease verification after eligible merge, before finalizer; no action or waiver is assumed.
+
+### What is being worked on now
+
+Two separate Luna authors own full P1/P2 CI remediation batches after root retained and inspected exact-head fast/full logs. Confirmed failures include MCP SDK below patched1.31.0, four pending-action user_deactivation OpenAPI compatibility changes, four native API-key read403 expectations, and P1 live contrast occurrence omissions. P1 provisional snapshot0089 ancestry mismatch stays central train work, without blind renumbering or rewriting the gate. Both G11 runs also fail to open the create dialog; no performance rerun is authorized. P1 holds the first exclusive private PG window; P2 proceeds offline until release. A third Luna prepares a complete private local-image installer harness offline from the frozen GateC plan, with signed-release acceptance explicitly separate. P0 product/runner remain frozen; hosted-confirmation and installer-order decisions remain pending.
+
+### Critical path
+
+1. Resolve the actual hostedG11 failure under the explicit no-extra-retry rule.
+2. Complete exact-image upgrade, preservation, idempotency/rollback and installer release ordering without weakening signatures.
+3. Prove eligible current strict behavior and independently adjudicate original Oct4/5/6 partial records.
+4. Resolve public-config substitution and execute eligible reviewed reversible DEV/UAT cutover.
+5. Protected merge with every required exact-head gate, official installer proof in approved order, fresh Sol finalizer and P0 issue reconciliation.
+
+### Misalignment / drift
+
+#583 remains sole P0 closure;#589 sole post-P0 train;#581 superseded;#587 diagnostic only. No speculative#590 merge. Report's old17/22 is superseded by current19/22. #588's merge7c2c9ac5 is an ancestor of currentP2c89, and its product646f3509 is already retained in#589; it is not accepted-main/provider/phase delivery. All migration0088–0118 allocations remain provisional and centralized; no0119.
+
+### Concerns
+
+Official signed candidate installer artifacts cannot currently exist under main-only publication. Keep missing release evidence explicit and signatures intact; the sequencing proposal is pending. Health overage warning is a documented integration residual, not silently satisfied by grant-removal events. Local22/22 never replaces red hosted19/22, and no original partial window becomes full-day/72-hour coverage.
+
+### Decisions needed from Thomas
+
+Existing public-config substitution, one unchanged-source hosted confirmation and P1 current-team lead rule remain unanswered. One new concrete installer sequencing/prerelease question is pending; read-only release inventory and frozen runtime plan support it. No duplicate asks or tool-delivery-as-approval.
+
+### Next merge candidates
+
+#583 after real required P0 gates and approved installer ordering. Then mature P1–P4 slices integrate on accepted P0 through#589, with mapping#595 before login#596, centralized migration allocation and full composed acceptance. No dates promised.
+
+
+---
+
+## Status First
+
+Snapshot: 2026-10-06 23:00 UTC (7 October in Yangon). Accepted main remains3096cb04; DEV remains08842235 with shadow enabled and enforcement empty. No protected main merge, DEV refresh, strict cutover or phase completion.
+
+| Phase | Implementation | Integration | Acceptance / operational closure |
+| --- | --- | --- | --- |
+| P0 | Frozen53269374; full offline acquisition/render contract149bb605 independently clear | Sole closure#583; installer operational plan complete offline | HostedG1119/22 red; current strict/installer/rollback proof and finalizer open |
+| P1 | Complete saved views/CSV/shared key identity8c3ca82c | Draft#591 toward single train#589;0118 provisional | Current delta ordinary/full Sol clear; native58/units16; full composed/liveAPI acceptance open |
+| P2 | Complete approval withdrawal d5b2842e; notes-only c89c11c0 | Draft#586 toward#589; portal588 merged into feature branch, not main | Source reviews clear; inherited integration residuals and liveAPI acceptance open |
+| P3 | Mapping product5b3a3377 reviewed; notes-only197b19fc. Login grant batchc3a31aa9 complete | Draft#595 mapping and stacked draft#596 login; no new migration | Mapping ordinary/full Sol clear; login native7/domain31/contracts2/perms88 pass, three fresh ordinary reviewers underway; Health overage warning/provider acceptance open |
+| P4 | Product8baeb622 complete shared row/event binding and reservation fencing; notes-only359d60bd | Draft#594 toward#589; no migration/dependency/provider activation | Full Sol clears complete mechanism and closes narrower same-class remediation tier; native23/unit46 pass; broad CI/image/composed acceptance open |
+
+### What changed
+
+The complete P0 typed producer/consumer derivative149bb605 preserves failed originals and successfully replays the unchanged real run2 input2695a56d through the canonical full renderer. Fresh strong Luna and independent full Sol each pass83 offline tests,16pins and130-row replay: zero unexplained or uncovered among the27selected sources,6resources/31targets, cleanup9/9. Root also verifies16derivative and3original pins. No runtime rerun or accepted observation is invented; actual ValueError/NameError failures stay preserved. The manifest's date-only created_utc label is local-date metadata, not another UTC observation.
+
+P3 role and P4 complete structural remediation clear fresh full Sol; verbatim verdicts are committed as security-review-only descendants with source equivalence proven. P4 native23/unit46 pass under the corrected isolated invocation; original default-database auth failure remains failed. Luna B became the remediation author and cannot review it; its earlier P4 SHA typo/range failure is preserved and not treated as an exact-head gate.
+
+Complete login batchc3 implements validated group UUIDs, current admission/role/mapping checks under IP22 locking, source-specific grant retirement/projection, independent-source preservation and postcommit cache/session ordering. Final exact-source native7 passes with teardown. Full IP28 still needs the operator-visible Health overage warning; removal event reason alone is not that warning.
+
+Installer20/20 offline tests pass; the complete owned fresh/repeat/upgrade/rollback plan is frozen. Read-only GitHub inventory finds only old v2.0.1 with two SBOM assets, no candidate signed installer bundle. Release workflow requires selected source already reachable from main. Requested sequencing keeps local reviewed-image runtime proof before merge and official signed-prerelease verification after eligible merge, before finalizer; no action or waiver is assumed.
+
+### What is being worked on now
+
+Three fresh Luna contexts review the entire frozen#596 login batch, gathering all credible classes before remediation. P0 source and reviewed private runner remain frozen. The installer release-order decision and hosted-confirmation decision are pending; neither expands P0 product scope. P1/P2/P4 mature checkpoints remain isolated for post-P0 integration, with truthful draft bodies and committed exact-source security notes.
+
+### Critical path
+
+1. Resolve the actual hostedG11 failure under the explicit no-extra-retry rule.
+2. Complete exact-image upgrade, preservation, idempotency/rollback and installer release ordering without weakening signatures.
+3. Prove eligible current strict behavior and independently adjudicate original Oct4/5/6 partial records.
+4. Resolve public-config substitution and execute eligible reviewed reversible DEV/UAT cutover.
+5. Protected merge with every required exact-head gate, official installer proof in approved order, fresh Sol finalizer and P0 issue reconciliation.
+
+### Misalignment / drift
+
+#583 remains sole P0 closure;#589 sole post-P0 train;#581 superseded;#587 diagnostic only. No speculative#590 merge. Report's old17/22 is superseded by current19/22. #588's merge7c2c9ac5 is an ancestor of currentP2c89, and its product646f3509 is already retained in#589; it is not accepted-main/provider/phase delivery. All migration0088–0118 allocations remain provisional and centralized; no0119.
+
+### Concerns
+
+Official signed candidate installer artifacts cannot currently exist under main-only publication. Keep missing release evidence explicit and signatures intact; the sequencing proposal is pending. Health overage warning is a documented integration residual, not silently satisfied by grant-removal events. Local22/22 never replaces red hosted19/22, and no original partial window becomes full-day/72-hour coverage.
+
+### Decisions needed from Thomas
+
+Existing public-config substitution, one unchanged-source hosted confirmation and P1 current-team lead rule remain unanswered. One new concrete installer sequencing/prerelease question is pending; read-only release inventory and frozen runtime plan support it. No duplicate asks or tool-delivery-as-approval.
+
+### Next merge candidates
+
+#583 after real required P0 gates and approved installer ordering. Then mature P1–P4 slices integrate on accepted P0 through#589, with mapping#595 before login#596, centralized migration allocation and full composed acceptance. No dates promised.
+
+---
+
+## Status First
+
+Snapshot: 2026-10-06 22:41 UTC (7 October in Yangon). Accepted main remains3096cb044bdf6ae98488bfc385f532fa6386343a; reviewed DEV remains08842235, shadow on and enforcement off. No merge, DEV refresh, strict activation or phase completion.
+
+| Phase | Implementation | Integration | Acceptance / operational closure |
+| --- | --- | --- | --- |
+| P0 | Frozen53269374, product reviews clear, exact imagef44 built | Sole closure#583; complete captured off/shadow evidence awaits structural offline rendering repair | Hosted PG137 files/1659 tests, E2E27, G4/G8 pass; hostedG1119/22 red; strict, installer/rollback and finalizer open |
+| P1 | Complete saved views/CSV/shared key identity8c3ca82c | Published isolated draft#591 toward#589;0118 provisional | Fresh ordinary delta and full Sol clear; native3files58 and units16 pass; composed/liveAPI acceptance open |
+| P2 | Complete approval continuity/withdrawal d5b2842e; notes-only c89c11c0 | Published isolated draft#586 toward#589 | Source/delta reviews clear; real lifecycle/domain tests pass; inherited integration residuals and liveAPI browser acceptance open |
+| P3 | Mapping role failclosed correction5b3a3377 complete; documented login reconciliation starting separately | Mapping source frozen for current remediation review; no new migration | Native9, identity31, roles23, permissions88 pass; current delta review and real provider acceptance open |
+| P4 | Complete delivery fencing and canonical resource-binding44b1621e | Draft#594 toward#589; old producer/drain history preserved | Native21 and eligibility units21 pass; current full structural delta review and composed runtime acceptance open |
+
+### What changed
+
+Both authorized P0 disposable acquisitions preserve original failures. First20261006T221158Z matched130/130 status expectations, then failed on undefined canonical runner names. The complete derivative passed fresh ordinary/Sol review and78 offline tests. Second20261006T222626Z completed all runtime assertions and persisted full raw traffic, fixture bindings, source/protocol proofs and reconciliation, then failed at deterministic offline report rendering. Both cleanup receipts pass9/9; root independently verifies all owned resources absent. No failed acquisition is relabeled accepted. Producer/renderer drift includes an omitted nonactivation field and a missing legacy out-of-reach boolean despite actual documented project404 responses. Repair now targets one shared typed contract and the complete immutable real payload, rather than another field special case or network acquisition.
+
+P1's structural authenticated identity repair8c clears fresh ordinary and full independent Sol review; reviewer A independently passes native58. Reviewer B's local database setup failed before assertions, so its source-only verdict is not additional test success. P1 and P2 complete checkpoints are published to their existing draft PRs by fast-forward, preserving history. P3's full Sol found unsafe customer-role capability JSON validation; shared failclosed correction5b covers create/edit/enable/read and proof/grant/version/event non-mutation. P4's full-feature panels found event/resource mismatch and unfenced suppress/defer writes; complete44 correction serializes delivery before reservation and fences all relevant mutations. Meaningful native/unit tests pass before the combined remediation review.
+
+### What is being worked on now
+
+P0 Luna lane: offline structural acquisition/render contract repair with full actual payload replay and adversarial negatives; no further runtime acquisition for a report-only repair. P3 Luna lane: complete IP22/IP28 validated-login group/JIT grant reconciliation in a separate worktree from frozen5b, within existing documented behavior. Independent Luna panel starts combined P3/P4 structural delta review. Current P1/P2 integration remains isolated from P0. No performance or PostgreSQL acquisition currently overlaps another resource-heavy window.
+
+### Critical path
+
+1. Resolve current hostedG11 red; the asked unchanged-source confirmation remains unapproved under the explicit no-extra-retry directive.
+2. Complete independently reviewed offline evidence rendering and remaining exact-source runtime/installer/rollback proof.
+3. Exercise eligible strict behavior and independently adjudicate actual October4/5/6 source compatibility; never infer full-day or72-hour coverage.
+4. Resolve public-config substitution and perform only eligible reviewed DEV/UAT cutover and reversible rollback.
+5. Protected merge with all exact-head gates, fresh independent Sol phase finalizer on accepted main, then reconcile P0 issues.
+
+### Misalignment / drift
+
+#583 sole P0 closure;#589 sole post-P0 integration train;#581 preserved and superseded without merge;#587 diagnostic only. No speculative#590 cherry-pick. Current hosted19/22 supersedes pasted17/22; local22/22 and older hosted22/22 do not replace the current gate. Main/DEV do not contain these later implementation checkpoints. Migration0088–0117 and saved-view0118 remain provisional; no0119 allocated. P4 query ownership actually passes, so the old352-read count is historical.
+
+### Concerns
+
+Report contract tests previously did not replay the entire persisted real payload; the structural batch must do so before freeze. Current local performance differs from hosted hardware and cannot establish an exclusively worker-caused regression. OIDC mappings without login consumption do not satisfy IP28; the new complete batch addresses that specific integration seam. No real provider acceptance or liveAPI browser acceptance is claimed from mocked evidence.
+
+### Decisions needed from Thomas
+
+Previously asked public-config source-bound substitution, one unchanged-source hosted confirmation, and separate P1 current-team lead plus saved_view:create rule remain unanswered. No duplicate request or elapsed-time approval. P1 behavior does not block P0.
+
+### Next merge candidates
+
+#583 only after all real exact-head P0 gates. Mature P1–P4 slices then integrate on accepted P0 in dependency order through#589 with centralized migration allocation and bulk acceptance. No dates promised.
+
+---
+
+## Status First
+
+Snapshot: 2026-10-06 22:08 UTC (7 October in Yangon). Accepted main remains3096cb04; DEV remains08842235 with shadow on and enforcement off. No merge, DEV refresh, strict activation or phase completion.
+
+Update22:15 UTC: the authorized exact532 disposable off/shadow acquisition20261006T221158Z-53269374 failed at private runner assessment with undefined canonical CONFIG/TASK names. All130 acquired status expectations matched; actual image boot/revision/UID10001, live/ready200, migration80→88, settings CAS/step-up/metrics token checks passed. Original artifacts are retained, with no result or acceptance. Cleanup receipt passes9/9 and root independently verifies all9absent. Offline completion inspection also identifies an actual authenticated WS101 row classifiedother instead ofallow; both completion classes enter one structural private runner batch with protocol-bound negative tests. No old traffic is rewritten, no runtime outcome synthesized, no performance retry/DEV mutation/strict activation. P1's private PG resource window is released. P4's full fresh Sol clears the reviewed four-file cleanup delta; draft#594 publishes the larger isolated send-time/cleanup slice toward#589, explicitly retaining full composed review/CI/runtime as pending. Original#585 producer/drain history remains preserved.
+
+| Phase | Implementation | Integration | Acceptance / operational closure |
+| --- | --- | --- | --- |
+| P0 | Frozen53269374; source reviews clear; exact imagef44 built and isolated runtime UID/GID10001 verified | Sole closure#583; private operational report-contract bundle independently clear | Hosted native137/1659, E2E27, G4/G8 pass; hostedG1119/22 red; runtime/strict/rollback/finalizer open |
+| P1 | Complete CSV export and authenticated key scope bridge2d438767 | Isolated saved-view/export lane;0118 provisional | CSV7, adapter9, native9 and mock-browser1 pass; bulk review found strict identity adapter false denial |
+| P2 | Reviewed complete withdrawal source d5b2842e; notes-only c89c11c0 | Isolated mature checkpoint | Lifecycle/domain79 and source reviews clear; integration/real-browser acceptance open |
+| P3 | Mapping0796bb30 with after-commit invalidation | Cache contract audit complete | Provider and integrated acceptance open |
+| P4 | Complete expired-reservation cleanup and acquisition-race batch586e8f0e | No new migration, dependency, job key or provider activation | APIunit103 files/720 tests, native2/34, types/query ownership pass; all three ordinary panels clear; fresh Sol underway |
+
+### What changed
+
+Current frozenP0 unchanged built app passes one controlled local canonical G11 acquisition22/22. Nine retained initial hosted asset hashes match. This macOS/ARM measurement is diagnostic, not hosted acceptance; failed hosted19/22 remains current. No defensible source correction was identified, no speculative#590 cherry-pick or performance retry occurred. The optional profiler's event bound failed; no consolidated profile or profiler expansion is claimed. Owned4181 listener and temporary files were removed; unrelated4178 remains untouched.
+
+The immutable final-532-g11-report-contract-20261007 operational bundle clears fresh strong Luna and full independent Sol review on manifest833c32f24c6b021b38b612a89d54739e59d8fe87884864c04b255e8cf635a065. Offline74/74 passes. The missing-selected-file behavior was independently probed by Sol, not covered by the74-test suite despite inaccurate manifest coverage wording. Original blocked predecessors remain intact. Exact imagef44 runs UID/GID10001 in an isolated network-none/read-only id probe; this is not service boot, health, installer or migration proof.
+
+P1's complete export now has real reached-row/current-project filtering and meaningful key scope positive/negative coverage, native9/9 plus adapter9/9. A real work-list browser test passes against mocked API responses, including request state, CSV filename/content and403 toast; no live API browser claim. Bulk panel A found that centralized strict-policy identity construction still drops key scope before the handler. Panel B's default/off-mode native evidence cannot prove strict acceptance. One structural remediation batch waits for panel C's remaining findings. P4's complete cleanup/concurrency batch has passed author API720/native34 and panel B's independent native34 acquisition.
+
+### What is being worked on now
+
+#583: private execution-precondition and receipt preparation for disposable off/shadow proof; no enforcement activation or assertion that required CI is green. The one fresh hosted confirmation decision is pending under Thomas's explicit no-extra-retry directive. All bulk panels have completed. P1's shared authenticated identity adapter repair and mode-parity coverage are authorized as one batch. Panel C's second assertion that the existing native fixture fails is not reproduced: the existing API-key request is unfiltered and really passed. Add missing project-filter coverage without widening export into project-read authority. P4's three ordinary reviews clear; fresh full Sol review is underway. The CI-window receipt reserves resources; it is not a required-CI-green assertion.
+
+### Critical path
+
+1. Resolve the pending one-hosted-confirmation decision and current G11 red without changing budgets, workload or retry policy.
+2. Complete exact-source image/service/auth/installer and required CI proof.
+3. Acquire off/shadow/key/session/strict compatibility evidence and independently adjudicate the actual October4/5/6 records.
+4. Resolve public-config substitution and execute eligible reviewed DEV/UAT strict cutover/rollback, task last.
+5. Protected merge, fresh independent Sol phase finalizer on accepted main, and P0 issue reconciliation.
+
+### Misalignment / drift
+
+#583 sole P0 closure;#589 sole post-P0 train;#581 superseded without merge;#587 diagnostic only. Current hosted19/22 replaces the pasted report's historical17/22; local22/22 and earlier hosted22/22 never replace the red current gate. Later feature heads are pushed branch checkpoints, not the older PR heads or accepted main. Migration0088–0117 and saved-view0118 remain provisional; no0119 allocated. Query ownership passes in currentP4, so the old352-read count is not its current backlog.
+
+### Concerns
+
+Runner source review does not supply runtime proof. Worker/browser variance is supported but not established as the exclusive performance cause. P1 strict key denial needs the shared identity invariant corrected and real mode-parity coverage. The bulk source freeze is now released for one complete remediation batch. Mock-browser evidence and absent provider acceptance remain explicit limitations.
+
+### Decisions needed from Thomas
+
+Previously asked public-config evidence substitution remains unanswered. One unchanged-source hosted confirmation is asked once because the latest directive forbids extra retries; no rerun occurs without an actual reply. P1 current-team lead plus saved_view:create behavior remains a separate pending decision, not a P0 prerequisite. UI tool delivery acknowledgement is not approval.
+
+### Next merge candidates
+
+#583 after every required actual gate. Then mature P1–P4 slices enter the canonical post-P0 base in dependency order with centralized migration allocation and bulk integrated acceptance. No dates promised.
+
+---
+
+## Status First
+
+Snapshot: 2026-10-06 21:35 UTC (7 October in Yangon). Accepted main3096cb04; reviewed DEV08842235 remains shadow-on/enforcement-off. No merge, DEV refresh, strict activation or phase completion occurred.
+
+| Phase | Implementation | Integration | Acceptance / operational closure |
+| --- | --- | --- | --- |
+| P0 | Exact53269374 product/test source independently clear; imagef44 built | Sole closure#583; final private report-contract correction complete | Native137/1659, E2E27, G4/G8 pass; G1119/22 fails; operational proof/finalizer open |
+| P1 | Saved views plus complete CSV export checkpoint2ef7d088 | No new migrations/dependencies; export scoped to current filters/reach/columns with audit | UnitCSV7, policy88, API/web types, OpenAPI237 pass; real PG/browser proof pending; SV17 schema/permission seam held |
+| P2 | Reviewed withdrawal source d5b2842e; notes-only c89c11c0 | Isolated mature checkpoint | Native lifecycle/domain79 and independent source/delta reviews pass; integration and real-browser acceptance open |
+| P3 | Mapping0796bb30; after-commit invalidation tests pass | Independent cache-contract audit complete | Real provider/cache semantics and integrated acceptance open |
+| P4 | Send-time worker8eb0475e; unit10/PG11 pass | Actual query-ownership checker passes | Timing/destination/provider and bulk integrated acceptance open |
+
+### What changed
+
+P1 VW23 now has complete API/UI CSV export: current validated search and reached records, complete cursor traversal, selected/default columns, quoting/formula protection, registered capability and audit, and the work-list action. Checkpoint2ef7d088 is clean/pushed. Original local PostgreSQL password-authentication failure occurred before assertions and is not test success; an owned CI Testcontainers acquisition is now scheduled before performance measurement. No lead/schema behavior was invented and migration0118 is unchanged.
+
+The final532 private runner's independent Sol review found P0-R2: successful off/shadow completion read a strict-only acquisition filename. New derivative final-532-g11-report-contract-20261007 selects and validates the correct mode/source/artifact and preserves cleanup gating. Offline74/74 and hash/pin checks pass; manifest833c32f24c6b021b38b612a89d54739e59d8fe87884864c04b255e8cf635a065. Fresh strong ordinary operational review precedes full Sol review; no runtime execution. Both blocked predecessors remain immutable.
+
+Sol's scope adjudication separates inherited-key P0/RBAC authorization repairs from P4 key/webhook management. The PR Spec field now names its actual P0 contracts and keeps AK3/AK9 as supporting context. Governance section7 stays open. The exact532 registers gate now passes; the intentionally pending template and real G11 failure remain red.
+
+### What is being worked on now
+
+#583 current G11 failure has no proven product-source cause: web/build/fixture/lock sources match the prior8f6 green, while hosted workers/regions differ. One controlled local diagnostic uses unchanged built app and a declared private port-only benchmark override; it is not hosted acceptance or a green rerun. The unrelated4178 listener remains untouched. Actual measurement waits for P1's focused PG test cleanup. Product changes require concrete cost evidence and a complete bounded batch.
+
+Independent date preparation holds final compatibility: two old nonmember project GET400 records differ from intended current404. Original partial dates remain historical, never rewritten or counted as full days. The same actor/resource current replay and final independent Gate D disposition remain required; no automatic date carry or automatic hash-only restart is asserted.
+
+### Critical path
+
+1. Resolve the current G11 failure through one controlled acquisition and an evidenced bounded correction if needed.
+2. Clear the complete private operational report contract and every exact-source required gate.
+3. Complete reviewed image/auth/installer and off/shadow/key/session/strict compatibility proof.
+4. Obtain pending public-config substitution and execute eligible reviewed DEV/UAT strict/rollback, task last.
+5. Protected integration, fresh independent Sol finalizer on accepted main and P0 issue reconciliation.
+
+### Misalignment / drift
+
+#583 sole P0 closure;#589 sole post-P0 train;#581 superseded with history preserved;#587 diagnostic only. Later export/withdrawal/mapping/worker changes stay outside P0.0088–0117 and saved-view0118 remain provisional; no0119 allocated. The inherited352-query count is not current in the passing P4 checkpoint. The prior22/22 and former failed native/browser runs remain historical, not relabeled.
+
+### Concerns
+
+Current G11 margins and failures require evidence; environment-only attribution is unproven. Private runner offline success does not imply runtime completion. P1 real PostgreSQL/browser verification remains pending; mock P2 browser evidence remains explicitly limited. Resource-heavy tests and local measurements are sequenced, with every unowned process preserved.
+
+### Decisions needed from Thomas
+
+Existing public-config substitution is unanswered. P1 separately asks approval for current-team lead editing conjunctive with saved_view:create; canonical team_member.person_id/is_lead schema does not exist here, so no migration allocation or guessed role mapping is made. Neither later-phase decision expands P0.
+
+### Next merge candidates
+
+#583 after all real required gates. Then mature slices enter the single post-P0 integration base in dependency order, with centralized migration allocation and completed bulk acceptance. No dates promised.
+
+---
+
+## Status First
+
+Snapshot: 2026-10-06 21:22 UTC (7 October in Yangon). Accepted main remains `3096cb044bdf6ae98488bfc385f532fa6386343a`. OrbStack DEV remains reviewed `08842235047a3ab2714427edce80331b94558150`, shadow on and enforcement off.
+
+| Phase | Implementation | Integration | Acceptance / operational closure |
+| --- | --- | --- | --- |
+| P0 | Reviewed product/test source307eeea2; pushed review-only descendant5326937460b195d8e69584c0cb99305348330a95 | Sole closure#583; no later features included | Exact hosted PG137 files/1659 tests, E2E27, G4/G8 pass; G11 19/22 fails; runtime, strict/rollback and finalizer open |
+| P1 | Saved views7163ad86, PG17/17 | Isolated;0118 provisional | Lead schema seam and integrated acceptance open |
+| P2 | Complete withdrawal source d5b2842e; review-only checkpoint c89c11c0 | Three ordinary source reviews plus strong Luna/full Sol terminal-conflict delta clear | Real PG lifecycle/domain79 pass; mock-browser limitation and integration residuals retained; not phase accepted |
+| P3 | Mapping0796bb30, PG8/8, native WS1/1 | Cache contract audit complete without source changes | Real provider acceptance and cache invalidation/fencing contract open |
+| P4 | Worker8eb0475e, unit10/10, PG11/11 | Current eligibility wired; actual check:queries passes | Quiet-hour/destination contracts, provider activation and integrated acceptance open |
+
+### What changed
+
+The complete three-test-file P0 repair preserves canonical project404 denials, MFA-authenticated CSRF negatives and normal-pointer observability writes. Fresh strong Luna and full Sol reviews clear307eeea2. Ten unchanged review records/index additions produce53269374 with proven executable/test equivalence. Current full hosted run37532156298 passes native137/1659, E2E27/27, G4 and G8. G11 fails19/22: LCP2608ms, state248.7ms, board669.8ms. Earlier8f6 hosted22/22 remains historical evidence, not current acceptance. No web product change explains this difference yet.
+
+Exact532 image sha256:f44a83237dd3d8f8150234ccf1bb857e2957ec7adc727b8de4f5bfe3e4af39fe built with actual UTC metadata and matching OCI revision; boot/UID/migration/auth/installer proof is not yet claimed. Private final runner is source-bound to532 with manifest15287e3061823460cc429cb6d82623e16c5c5f0a70c6b85c8b8d75e012c65c72, offline72/72 and immutable predecessors retained. Independent operational review is underway before any execution.
+
+P2's full withdrawal batch corrected an actual security-review blocker: authorized terminal retries now409, unauthorized actors403, with the same shared decision governing the UI affordance. Strong ordinary delta and full independent Sol delta clear d5b2842e; c89c11c0 adds only genuine review records. P3 cache audit identifies missing fact-boundary/invalidation/fencing contracts rather than claiming a cache implementation. P4 query ownership checker actually passes; the old352-read backlog must not be relabeled current in this checkpoint.
+
+### What is being worked on now
+
+#583: bounded read-only comparison of current failed G11 with source-equivalent passing8f6, using retained traces/diagnostics; no retry or speculative source change. Ordinary review of the completed private runner precedes full Sol operational review. A separate Sol scope check examines the registers failure caused by naming the later webhook/API-key feature spec while its owning review section is nonempty. The intentionally pending PR gates remain red until real acceptance evidence exists.
+
+Later lanes remain isolated: P1's lead/schema integration seam; completed P2 withdrawal checkpoint; P3 real-provider and cache-contract boundary; P4 send-time worker with unresolved timing/destination held pending.
+
+### Critical path
+
+1. Explain and structurally resolve the current G11 failure and genuine review-register scope without weakening gates.
+2. Clear exact-source required CI and independent private operational runner reviews.
+3. Complete reviewed image boot/auth/installer and off/shadow/key/session evidence, then independently adjudicate October4/5/6 compatibility.
+4. Resolve the pending public-config evidence substitution; execute eligible reviewed DEV/UAT strict/rollback with task last.
+5. Protected acceptance, fresh independent Sol phase finalizer on accepted main, and P0 issue reconciliation.
+
+### Misalignment / drift
+
+#583 remains sole P0 closure;#589 canonical post-P0 train;#581 preserved and superseded without merge;#587 diagnostic only. Migration0088–0117 and saved-view0118 are provisional; no0119 allocated. Product source was frozen after actual hosted22/22; only documented required test repairs and genuine review-note publication followed. Current G11 failed despite source equivalence, so historical green is not carried as current green. Older reports, PR heads and pending query counts remain historical.
+
+### Concerns
+
+G11 has narrow margins and current failures; retained measurements need causal investigation before another fix. The private runner remains unexecuted pending its own independent clearance. Original failed observations, blocked runner review and overwritten-author-packet integrity incident remain disclosed. Three partial UTC observations never imply full-day/72-hour coverage. DEV is unchanged, and no enforcement, production promotion or phase completion is claimed.
+
+### Decisions needed from Thomas
+
+The existing public-config substitution question remains unanswered: source-bound public200 responses and unchanged pre-guard behavior instead of impossible shadow tallies. Other current P0 work proceeds. Later cache, timing/destination and provider contract questions remain separate from P0.
+
+### Next merge candidates
+
+#583 only after every real required gate is green. Then one canonical post-P0 integration base, with mature P1/P2/P3/P4 slices in dependency order and centralized migrations. No dates promised.
+
+---
+
+## Status First
+
+Implementation snapshot: 2026-10-06 20:43 UTC (7 October in Yangon). Accepted main remains `3096cb044bdf6ae98488bfc385f532fa6386343a`. Reviewed OrbStack DEV remains `08842235047a3ab2714427edce80331b94558150`, shadow on and enforcement off.
+
+| Phase | Implementation | Integration | Acceptance / operational closure |
+| --- | --- | --- | --- |
+| P0 | Canonical source `8f6ca5375171eb0740fae7d4eecfe56deaef2c0b`; current source reviews clear | Sole closure #583; final gate repair prepared privately | Hosted G4/G8/G11 22/22 pass; native/E2E and review-note publication remain red; runtime, strict/rollback and finalizer open |
+| P1 | Saved views `7163ad86cb558684c72855232041270b20254d03`, PG17/17 | Isolated;0118 provisional | Lead seam and integrated acceptance open |
+| P2 | Continuity/key ceiling `54858055d2a623038478756e76a570b8c92e91c5`, lifecycle1/1; withdrawal UI batch active | Isolated; server-computed affordance uses existing withdrawal authority | Complete API/UI batch, independent review and integration open |
+| P3 | Mapping invalidation `0796bb30d80191253e79a6d4479db0c0f9bb448a`, PG8/8 and native WS1/1 | Isolated; authority-cache completion lane active | Real provider and full cache/integration acceptance open |
+| P4 | Worker integration `8eb0475e793b1aa9133812e3bd4912d1a1d1491a`, unit10/10 and PG11/11 | Current eligibility wired; unresolved preflight releases fenced reservation | Quiet-hour/destination contracts, provider activation and integrated acceptance open |
+
+### What changed
+
+P3 now publishes existing native identity invalidation only after committed mapping/grant changes. Persisted tests cover affected-user delegation, preserved sessions and other-source grants, display-only no-op and transaction rollback. No separate Valkey authority cache exists yet; the native60-second subscription reauthorization fallback is not proof of the documented30-second authority-cache obligation.
+
+P4 now calls current eligibility from the worker. Exact staff destinations and absent quiet-hour configuration can proceed under existing policy; unresolved timing or destination leaves delivery pending without send, discard or attempt consumption. If the second preflight becomes unresolved, the owned fenced reservation is released. Real PostgreSQL11/11 passes; no scheduler or external provider is activated.
+
+The independent ordinary runner review found a source-pin blocker: the delegated path still rejected repaired source because it authorized only historical088. The blocked report and predecessor are preserved. A separate structural derivative keeps088 solely as the schema80 baseline identity and introduces a distinct fail-closed current candidate pin. Offline72/72, compilation4 files, manifest7/7, launcher5/5 and helper2/2 pass. Its pin remains `FINAL_FREEZE_SHA_REQUIRED`; it is neither executable acceptance evidence nor independently cleared yet.
+
+### What is being worked on now
+
+#583 remains clean at8f6. The private gate batch combines the two stale400 project-read test expectations with the complete MFA/observability/CSRF journey repair. Correct CI same-origin build configuration disproved the original cumulative-MFA-only timeout theory: the fresh observability journey still times out while restoring a log-level selection. A bounded real-server default-selection actionability probe succeeded, so no generic Select UI defect is established. One exact multi-save sequence probe will establish the mechanism before any product fix; no force click, weakened assertion, added retry or larger timeout is authorized. The complete batch will receive one risk-sized delta review and genuine review-note publication together.
+
+P2 implements existing-request withdrawal with a server-computed affordance derived from the same current AP6 authorization used by the actual mutation. Client hints do not replace server checks. Approver-picker/new-request behavior remains outside this slice. P3 audits and completes the already documented cache/invalidation seam only where its owning contract settles behavior. Both lanes remain outside P0.
+
+### Critical path
+
+1. Resolve the actual E2E mechanism and complete the combined stale-oracle/test batch; freeze its exact source.
+2. Pin and independently review the structural runner derivative plus the final source delta; publish genuine review notes and clear all exact-head CI.
+3. Build/boot the exact reviewed image and prove real auth, installer, off/shadow behavior and API-key/session negatives.
+4. Resolve public-config substitution and independently adjudicate the actual October4/5/6 partial-date evidence; complete eligible strict and rollback proof.
+5. Protected integration, conditional reviewed DEV/UAT cutover/rollback, separate fresh Sol phase finalizer and P0 administrative closure.
+
+### Misalignment / drift
+
+#583 alone closes P0. #589 remains the designated post-P0 train; #581 is preserved/superseded without merge. #587 stays diagnostic only. Product performance work stopped immediately after actual hosted22/22; no speculative fix follows passing budgets. Later checkpoints are not composed or deployed into P0.0088–0117 and0118 allocations remain provisional, with no0119. Old PR bodies and reports remain historical where their SHA differs; the current #583 body still needs its final combined publication update.
+
+### Concerns
+
+The two native failures are stale denial expectations; the E2E timeout still needs a demonstrated cause. Source review does not clear these tests or runtime acceptance. The runner's trusted-current-source mechanism must be fully pinned, reviewed and actually exercised before it supplies proof. Historical130-pair failure remains failed. The accidentally overwritten original project author packet is unrecoverable; its retained raw native log and explicitly transcript-derived attestation remain separate from independent review. Prior partial dates are not full-day or72-hour evidence, and compatibility is not presumed.
+
+### Decisions needed from Thomas
+
+Public-config evidence substitution remains pending: source-bound October4/5/6 public200 responses plus unchanged pre-guard behavior in place of impossible shadow tally eligibility. AGENTS reserves gate substitutions for Thomas; no submitted reply has authorized this yet. Later lead, versioned pending-action route, approver-picker and quiet-hour/digest decisions remain in their owning lanes. Existing conditional DEV/UAT cutover authorization is retained; no repeat approval is requested.
+
+### Next merge candidates
+
+#583 after all required gates genuinely pass. The designated post-P0 train and mature P1–P4 checkpoints follow dependency-safe integration on accepted P0. No candidate is merge-ready, no new image is deployed and no phase is claimed complete.
+
+## Status First
+
+Implementation snapshot: 2026-10-06 20:17 UTC (7 October in Yangon). Accepted main remains `3096cb044bdf6ae98488bfc385f532fa6386343a`; reviewed OrbStack DEV remains source `08842235047a3ab2714427edce80331b94558150` in shadow mode.
+
+| Phase | Implementation | Integration | Acceptance / operational closure |
+| --- | --- | --- | --- |
+| P0 | Complete auth/UI/CI batch; canonical project-denial repair pushed at `8f6ca5375171eb0740fae7d4eecfe56deaef2c0b` | Sole closure #583; later features excluded | Exact-head source review clear; hosted G4/G8/G11 22/22 pass; two stale native oracles and one E2E timeout red; runtime/strict/finalizer open |
+| P1 | Saved-view checkpoint `7163ad86cb558684c72855232041270b20254d03`; PG17/17 | Isolated; migration0118 provisional | Lead contract and integrated acceptance open |
+| P2 | Approval continuity/key-ceiling checkpoint `54858055d2a623038478756e76a570b8c92e91c5`; lifecycle1/1 | Isolated post-P0 checkpoint | Review/integration open |
+| P3 | Mounted OIDC mapping checkpoint `2b2e72f18c89db2c0a7cef4650f1fabea2fed2d9`; PG6/6, policy88, OpenAPI233 | Isolated post-P0 checkpoint | Authority-cache publication and provider acceptance open |
+| P4 | Notification eligibility checkpoint `7ef71d6b73035e1b013b8e573adb3b0f9c5035e5`; unit10/10, PG8/8 | Predicate isolated; worker activation unwired | Timing/destination contracts and integrated acceptance open |
+
+### What changed
+
+The complete auth/UI/CI source has three independent Luna bulk clearances at `1cf9dcc9a163ce48c0a0c19695774e725da90606`, an independent Luna delta clearance for the subsequent native-input PNG, and a further independent full Sol security clearance at `d479a72a3dd3f4f48473e62d5d933ad83c94fa2c`. These are source reviews, not operational or phase acceptance. Hosted d479 G8 passes all seven screens and144 stories. Its G11 fails18/22: LCP2608/2500ms, state340.3/200ms, assignment253.4/200ms and board707.7/500ms. List495.3/500ms passes. The earlier6b7 result21/22 remains historical; the PNG-only descendants change no runtime source, so timing variation is not evidence of remediation.
+
+Existing October4 authority resolves valid missing/foreign project GET masking as404. No new Thomas decision is required. The bounded eight-file repair is pushed at8f6ca537: eleven route declarations/snapshot and shared denial handling, with no grant, reach predicate, policy, UI, migration or dependency changes. Malformed/NUL400, reached capability denial403 and mutation behavior remain. Author proof passes focused PG18 one file/one comprehensive test, route-policy14 files/88 tests, OpenAPI173 operations and typecheck9 packages. Fresh independent Luna and independent Sol delta reviews clear8f6. These are separate exact-head reports; d479 clearance is not relabeled.
+
+### What is being worked on now
+
+#583 source review is clear. Hosted8f6 completes with G4/G8 and canonical G1122/22 passing: list290.9ms, LCP2336ms, state95.0ms, assignment93.0ms, board391.7ms. All budgets/workloads/retries remain unchanged. No performance source change explains the variance; this is actual hosted evidence, not causal attribution. Product performance work has stopped and runtime source is frozen. Native137 files has135 passing/2 failing files,1657 passing/2 failing tests; the two failures are stale400 expectations in assignable and work-list denial tests. E2E25 passes/1 fails at the combined MFA/observability/CSRF240-second timeout. One complete test-only batch is prepared privately, preserving MFA-authenticated CSRF negatives and every observability assertion. No larger timeout, retry or assertion weakening is authorized. Affected-screen browser evidence now covers list/board/detail, create, title/date, calendar/Gantt, search/account and authorized mocked label-input/cancel controls; mock/API/provider limits and mobile Gantt clipping are explicit. Owned preview is stopped; unrelated4178 is untouched. The operational runner author has validated the complete private batch offline: Python4 files,71 regressions, manifest7/7 and launcher5/5 pass. Fresh independent ordinary operational review is underway. The bundle includes route-specific workspace/time-entry expectations, all eleven project404 expectations, and separate key/session proofs in an enforcement-off/shadow-only path. Original failed runs are preserved. Candidate pinning and runtime execution wait for reviews. Performance profiler expansion has stopped; incomplete captures remain diagnostic, with no source fix or acceptance claimed.
+
+### Critical path
+
+1. Complete the single E2E/stale-oracle test batch, then record one risk-sized current-head delta review and publish with genuine review notes.
+2. Clear the current denial delta, operational runner reviews and all exact-head required CI checks; record genuine review evidence.
+3. Build/boot the reviewed image and complete real auth, installer, affected-screen and off/shadow/strict/rollback proof.
+4. Settle public-config evidence substitution and independently adjudicate the actual October4/5/6 partial observations against final source.
+5. Protected integration, conditionally authorized reviewed DEV/UAT cutover/rollback, fresh independent Sol phase finalizer and administrative closure.
+
+### Misalignment / drift
+
+#583 is the sole P0 closure vehicle. #589 is the canonical post-P0 train; #581 is preserved and superseded without merge. No later feature or migration is added to P0. #587 remains diagnostic only. Migration0088–0117 and saved-view0118 remain provisional; no0119 is allocated. Earlier status paragraphs and PR bodies are historical where their head/results differ. No repeated full review panel is queued for the bounded denial delta.
+
+### Concerns
+
+Current8f6 G11 is22/22; no speculative product optimization or profiler expansion follows. Required native/E2E failures stay red until the complete test-only batch genuinely passes. Source review artifacts were mistakenly overwritten once: the original project author packet bytes are unrecoverable; the reviewer records that loss, with its distinct review and retained original native log. A transcript-derived author attestation is explicitly not byte recovery. The repaired operational runner still needs independent review and real execution; the original130-pair failure stays failed. Cookie-session provenance supports the original observation actors, while API-key behavior requires separate current proof. Missing private-runner byte hashes alone do not create a new gate or observation restart. P3 cache publication and P4 unresolved delivery outcomes remain later-phase residuals.
+
+### Decisions needed from Thomas
+
+The public-config evidence substitution remains held: explicit source-bound three-date public200/pre-guard evidence in place of impossible shadow tally eligibility. The project-denial question is resolved by existing October4 authority. Later lead, versioned pending-action route, approver-picker, quiet-hours and digest timing questions remain in their owning lanes. No repeat DEV/UAT cutover approval is requested; the adopted directive already authorizes it conditionally after clean reviewed proof.
+
+### Next merge candidates
+
+Only #583 after all required gates genuinely clear. Post-P0 #589 and isolated P1–P4 checkpoints follow dependency-safe integration. No candidate is currently merge-ready, no new source is deployed, and no phase is claimed complete.
+
+## Status First
+
+Implementation snapshot: 2026-10-06 19:33 UTC (7 October in Yangon). Accepted main remains `3096cb044bdf6ae98488bfc385f532fa6386343a`.
+
+| Phase | Implementation | Integration | Acceptance / operational closure |
+| --- | --- | --- | --- |
+| P0 | Auth/CI remediation pushed `6b7c094bcb1ffd5397fde9eefdcc6776253f9087`; hosted native137/1659 and G11 21/22 | Sole closure #583; no later-phase dependency | Board527.5/500, architecture-correct sign-in replay, reviews, strict/rollback, compatibility and finalizer open |
+| P1 | Saved-view checkpoint `7163ad86cb558684c72855232041270b20254d03`; PG17/17 | Isolated checkpoint;0118 provisional | Lead contract and integrated acceptance open |
+| P2 | Approval continuity/key-ceiling checkpoint `54858055d2a623038478756e76a570b8c92e91c5`; focused lifecycle file1/1 | Isolated post-P0 checkpoint | Independent review/integration open |
+| P3 | Mounted OIDC mapping checkpoint `2b2e72f18c89db2c0a7cef4650f1fabea2fed2d9`; types, PG6/6, route-policy88 and OpenAPI233 pass | Isolated complete API mount/type/contract checkpoint | Cache publication seam and actual provider acceptance open |
+| P4 | Send-time notification eligibility checkpoint `7ef71d6b73035e1b013b8e573adb3b0f9c5035e5`; unit10/10, PG8/8 | Isolated predicate; worker activation unwired | Quiet-hours/destination contracts and integrated acceptance open |
+
+### What changed
+
+The complete P0 auth/CI/sign-in follow-up is committed and pushed as one batch. Manual capability checks now require an explicit session/key credential; pending-action creation revalidates the locked current key and workspace role within its transaction. Focused native2 files/34 tests, key-scope unit10, permissions14 files/88 tests, API/web types, raw-element gate and CI probes56/56 pass. Both existing MCP SDK consumers move to the approved patched floor; audit reports no high-severity finding and one low. Future P4 API-key/webhook review findings are preserved, and its feature spec is net unchanged from accepted main. The strict fixture is typed without suppression.
+
+Only the touched sign-in Linux visual baseline was regenerated after inspection of original screenshots. The shared icon button now aligns with the input; the remaining68 differing pixels were confined to the touched control/edge. Thresholds are unchanged. Pinned-Linux strict replay and actual password Show/Hide1/1 pass; original failures remain retained. Current hosted route-policy/matrix, registers, G4, contracts, build, dependency audit and CI/documentation agreement pass; remaining jobs and template/security clearance are not inferred green.
+
+Historical294 hosted native137 files/1654 tests passes, but G11 remains17/22: list533.8/500ms, LCP2704/2500ms, state346.4/200ms, assignment277.9/200ms, board709.8/500ms. Its local22/22 is diagnostic only. Independent294 auth review blocked the now-remediated pending-action omission; independent294 UI review passed its scope. Neither clears6b7 or the unfinished performance batch. The priority helper remains byte-identical to accepted main; the earlier component-migration description was stale. Actual generic-helper/portal coverage is420 unique pairs/788 occurrences with52 probes, not an invented component conversion.
+
+Current6b7 hosted fast jobs all pass except honest pending template/security review; full native137 files/1659 tests, G4 and protected-route E2E pass. G11 now21/22, with only200-card board527.5/500ms failing. List399.3ms, LCP2484ms, state155.9ms and assignment156.7ms pass. No performance-source change proves the reason for these improved timings. Hosted G8 has20 differing pixels confined to rounded input corners; source/CSS/font hashes match, and ARM64 local versus AMD64 hosted rasterization is the supported inference. A single source-faithful AMD64 sign-in baseline correction is prepared, unpublished, for strict final-head replay; no UI code or threshold changes.
+
+P3 and P4 checkpoints now have completed focused author proofs and are pushed. P3 covers strict mapping DTOs, step-up/CAS/replay, session-only admission, locked administrator revalidation and exact grant reprojection; its canonical router mount, aggregate type, matrix fixture and OpenAPI233 operations are now complete. Typechecks, route-policy14 files/88 tests and exact PG mapping1 file/6 tests pass. The original missing-three-route fixture failure is preserved and the documented matrix regeneration passes. P4 covers current recipient reach/preferences and private/internal-comment boundaries; unresolved timing/destination outcomes cannot authorize worker delivery. Neither claims feature or phase acceptance.
+
+### What is being worked on now
+
+Only the current failing board measurement remains in the performance lane. The unneeded list-only trial is preserved outside the worktree, not composed into P0. Two detailed captures exposed the existing timeline cap before useful CPU attribution; original failures and the explicitly incomplete prefix are preserved without raising that cap. The next bounded approach collects CPU samples only for the existing200-card interval, not another whole-suite diagnostic or repository profiler expansion. P3 resources are cleaned. The runtime audit retains eleven genuine project-contract conflicts and distinguishes two route-specific incorrect expectations; no oracle has been silently normalized.
+
+### Critical path
+
+1. Complete evidence-supported performance remediation and freeze sole #583 candidate.
+2. Clear risk-sized bulk ordinary review, full independent Sol security review and every exact-head required CI check, including hosted G11 22/22.
+3. Build/boot the exact reviewed image and complete installer, touched-screen, off/shadow/strict and rollback proof.
+4. Resolve genuine denial/config evidence ambiguities and independently adjudicate actual Oct4/5/6 partial-date compatibility.
+5. Protected integration, reviewed reversible DEV/UAT strict cutover, separate fresh Sol phase finalizer and administrative closure.
+
+### Misalignment / drift
+
+#583 remains the only P0 closure lane. #589 remains canonical post-P0, and #581 is preserved/superseded without merge. Diagnostic #587 is not an expanded product dependency. Later migration allocations remain provisional;0118 is not final and no0119 is allocated. The PR body now names6b7 and explicitly retains pending checks/reviews instead of stale088 clearance. No small edit has triggered another independent review round.
+
+### Concerns
+
+The current board failure requires a bounded fix and actual hosted proof; no passing path should accumulate speculative changes. Eleven project denials expose a documented404 contract versus deliberately retained native400 behavior; do not silently change the oracle. Workspace/time-entry expectations have route-specific source evidence, but a corrected runner still requires real validation. Existing public pre-auth config policy does not itself authorize substituting public evidence for shadow coverage. Original actor provisioning strongly supports cookie sessions; missing private-runner hashes alone do not invalidate dates. Fresh source-bound replay and independent compatibility verdict remain necessary, not an automatic new observation wait. P3 cache publication and P4 unresolved timing/destinations remain bounded later-phase residuals.
+
+### Decisions needed from Thomas
+
+Previously pending denial-contract and public-config evidence decisions remain held while the audit checks whether existing authority already resolves them. Later lead, versioned pending-action route, approver-picker and quiet-hour/digest decisions remain pending in their own lanes. No repeat cutover approval is requested: the adopted directive conditionally authorizes reviewed DEV/UAT strict cutover and rollback after clean evidence.
+
+### Next merge candidates
+
+Only #583 after all required gates genuinely clear. Post-P0 #589 and isolated P1–P4 checkpoints follow dependency-safe integration after accepted P0. No candidate is currently merge-ready. Reviewed088 remains the OrbStack/Traefik DEV image; no unreviewed source deployment, enforcement activation or phase completion is claimed.
+
+## Status First
+
+Implementation snapshot: 2026-10-06 18:12 UTC. Accepted main remains `3096cb044bdf6ae98488bfc385f532fa6386343a`.
+
+| Phase | Implementation | Integration | Acceptance / operational closure |
+| --- | --- | --- | --- |
+| P0 | Combined inherited auth/UI batch passes full native137 files/1654 tests; actual contrast coverage still being reconciled | Sole #583; combined source not frozen | Open: current G11, exact-head source/image/browser/CI/reviews, strict/rollback and observation compatibility, finalizer |
+| P1 | Saved-view batch pushed7163, focused native17/17 | Separate checkpoint;0118 provisional | Open; lead contract held |
+| P2 | Approvals create/decide/withdraw key ceiling and disabled-flag continuity batch pushed54858055 | Separate post-P0 checkpoint | API types and full focused lifecycle file1/1 pass; independent review/integration outstanding |
+| P3 | OIDC mapping route/policy/PA-15 source implemented; regression matrix underway | Isolated post-P0 lane; canonical mount held for exclusive ownership | Unverified source; authority-cache publication seam retained as residual |
+| P4 | Send-time reach/preference predicate implemented; regression matrix underway | Isolated post-P0 lane; worker activation unwired | Unverified source; configured quiet-hours returns explicit unresolved predicate outcome, not a sendable worker decision |
+
+### What changed
+
+P2 batch `54858055d2a623038478756e76a570b8c92e91c5` is clean, committed and pushed. It maps current stored key scope into canonical approval capability evaluation and prevents reach-all from bypassing the withdrawal key ceiling, while preserving the session-admin exception. Matching/wrong scopes cover create, decide and withdraw; the same complete lifecycle test retains flag-off continuity and workflow gates. Frozen install, required local workspace builds, API types, Biome, diff and full focused PostgreSQL18 lifecycle file1/1 pass. Original interrupted broad invocation and corrected test fixture scopes/count snapshots are retained in its author packet; cleanup is verified. No phase acceptance is implied.
+
+The P0 contrast measurement of434 rows cannot yet count as full coverage: a local icon helper consumed inside a popup is not traversed correctly. Its old card-selected backdrop appears inconsistent with the actual portal surface. The source-grounded fix must bind the actual helper consumer and portal boundary rather than preserve a false backdrop or omit an occurrence. Original inventories remain evidence.
+
+### What is being worked on now
+
+P0 completes that structural contrast coverage fix before another coordinated measurement/build/G11 window. P3 completes IP-34 mapping regression tests and privately prepares canonical mounting; no concurrent P0 shared-file edits. P4 completes persisted reach/channel-preference tests, including private request and internal-comment boundaries. Both later lanes remain source-only while runtime is reserved as needed for P0.
+
+### Critical path
+
+1. Complete actual P0 contrast coverage and current unchanged-budget performance proof.
+2. Freeze/push sole #583 source and clear appropriate bulk independent review plus Sol security review.
+3. Clear exact-head CI, shipping image/boot and touched-screen evidence.
+4. Settle actual held contracts and prove matching strict/rollback plus independent actual-date compatibility.
+5. Protected integration, fresh separate Sol finalizer, administrative closure.
+
+### Misalignment / drift
+
+Later features remain excluded from P0. #581 is superseded without merge after source/evidence preservation; #589 is canonical post-P0. No additional ordinary review has started on unfinished source. Historical performance and failed130-pair operational evidence are not current clearance. Migration0118 stays provisional and no new suffix is allocated.
+
+### Concerns
+
+Contrast helper/portal state coverage must be demonstrated, not inferred from the row count. P3's cache publication seam is not supplied by P0 frontend invalidation. P4 configured quiet hours cannot authorize send or silently discard delivery while its timing contract is unresolved. Keep these later integration residuals out of P0.
+
+### Decisions needed from Thomas
+
+Previously pending public-config evidence substitution and genuine denial-contract ambiguities remain held, along with the recorded later feature questions. The latest adopted directive already conditionally authorizes reviewed DEV/UAT strict cutover and rollback after clean evidence; no repeat cutover-scope approval is required. No production authorization is inferred.
+
+### Next merge candidates
+
+Only #583 after all exact-head gates clear. #589 and later implementation checkpoints integrate after accepted P0. No current candidate is merge-ready. Reviewed088 remains the OrbStack/Traefik DEV image; no unreviewed source deployment or phase completion is claimed.
+
+## Status First
+
+Latest implementation snapshot: 2026-10-06 17:54 UTC (7 October in Yangon). Accepted main remains `3096cb044bdf6ae98488bfc385f532fa6386343a`.
+
+| Phase | Implementation | Integration | Acceptance / operational closure |
+| --- | --- | --- | --- |
+| P0 | Complete inherited key-scope and shared-primitive batch assembled; source-faithful contrast checker remediation underway | Sole closure vehicle #583; combined working source not frozen | Open: current performance, exact-head review/CI/image/browser, strict/rollback contracts, date compatibility and separate Sol finalizer |
+| P1 | Saved-view CRUD/pins/deletion approval continuity and key-scope follow-up pushed at `7163ad86cb558684c72855232041270b20254d03` | Separate checkpoint; migration0118 remains provisional | Final focused PG18 file17/17; lead decision and integrated acceptance remain open |
+| P2 | Retained SLA/calendar/approvals; bounded approved flag-continuity and key-scope completion lane resumed | Canonical post-P0 train #589 | Open |
+| P3 | Retained identity/plugin configuration source | Post-P0 train | Open |
+| P4 | Retained query/outbox/flags/expiry source | Post-P0 train; single migration ledger | Open; query acceptance deferred here by Thomas |
+
+### What changed
+
+The combined P0 working source passes the full owned PostgreSQL18 run:137 files/1,654 tests. The original lone positive failure was a fixture authority mismatch: project reader correctly overrode workspace admin. Explicit project update restores the intended allowed fixture while retaining the key ceiling. That correction supersedes the earlier resolver diagnosis; the separately implemented stored-key subset mapping is not claimed as the cause of that fixture failure. Author proofs do not establish final-SHA acceptance.
+
+The G1 supplier `a709daee4746b117aba0bc618d70dbd56a65c01e` is composed into sole #583. Combined AST checks report zero forbidden raw production tags and zero forbidden Base UI imports. Shared-input tests/stories and real rendered screen evidence are retained. Priority icons now use an actual component binding so the existing contrast gate can resolve callers without adding fabricated backgrounds. One search-row explicit background/state resolution discrepancy remains in the checker; it is not a measured contrast failure.
+
+P1 checkpoint7163 normally composes preserved #589 auth sourcef478. Current key scopes now reach secondary saved-view authorization checks and approval revalidation. Invalidated requests use the registered pending-action audit action with an invalidated outcome. Final author proof: API types,8 scope unit tests and17/17 saved-view PostgreSQL tests pass; owned runtime is cleaned. Earlier mocked approval/cancellation browser evidence remains separately bound to its original checkpoint.
+
+### What is being worked on now
+
+One P0 author completes the generic contrast surface resolver, real positive/negative probes, source occurrence inventory and combined build. The resolver must honor explicit shared-Button backgrounds and actual translucent-state backdrops, fail closed when ambiguous, and preserve the search-row design. After that batch is ready, reserve one quiet coordinated performance capture and implement any remaining measured hot paths together. A separate Luna continues the already approved P2 approvals flag-continuity and key-scope seam; pending picker decisions and new migrations are excluded. Read-only Sol preparation reconciles acceptance inputs without granting review clearance.
+
+### Critical path
+
+1. Finish combined P0 checker/source batch and acquire current unchanged-budget performance proof.
+2. Freeze and push exact #583 source; clear risk-sized bulk independent reviews and full Sol security review.
+3. Clear required CI, shipping image boot, and actual touched-screen verification.
+4. Resolve held normative contracts, prove matching strict/rollback behavior, and independently adjudicate actual Oct4/5/6 observations against frozen source.
+5. Protected integration, separate fresh Sol finalizer, then administrative issue/phase closure.
+
+### Misalignment / drift
+
+#589 is post-P0 integration, never a P0 acceptance dependency. Its current f478 hosted performance is15/22, not historical9ab21/22. Its hosted native failures are retained separately; minimal P0's corrected working-source full native pass does not retroactively clear f478. Old missing-installer/Origin/legacy-UI findings were source-stale and are corrected by the retained source-bound Sol addendum. The original failed130-pair operational capture still has13 denial-contract mismatches and is not strict acceptance. Three actual partial UTC captures are not full-day or72-hour coverage.
+
+### Concerns
+
+Current P0 source is unfinished and cannot yet be reviewed, merged or deployed. Contrast occurrence reconciliation must preserve source coverage, including shared primitives and state backdrops. Performance needs actual current evidence. Original denial/config/task acceptance questions remain held. Later migration numbers and old feature checkpoints remain provisional; preserve their unique intent and serialize final allocation.
+
+### Decisions needed from Thomas
+
+Existing unanswered denial compatibility, public-config observation exception and task/acceptance choices remain pending. Later saved-view lead, pending-action API evolution, approver-picker and quiet-hour/digest questions remain held in their own lanes. No repeat question or new human review checkpoint is introduced.
+
+### Next merge candidates
+
+Only #583 after the complete exact candidate clears all gates. Neither #583's unchanged published088 head nor its dirty working batch is currently merge-ready. #589 remains pushed at `f4789aefd3c3d08595642414dda63770d8973f64`; saved-view7163 is a preserved separate implementation checkpoint. Reviewed088 remains the OrbStack/Traefik DEV deployment. No new deployment, enforcement activation or phase completion is claimed.
+
+## Status First
+
+Latest realignment implementation snapshot: 2026-10-06 17:06 UTC. Accepted main remains `3096cb044bdf6ae98488bfc385f532fa6386343a`.
+
+**Correction 17:14 UTC:** the lone strict positive failure was a fixture authority mismatch, not an established resolver defect. Its project-scoped role lacked update and correctly overrode the workspace-admin role. Explicit project update fixes the positive test while the key ceiling is preserved. Focused native result1/1; seven non-target tests were excluded by the selector, not acceptance. Diagnostics are removed; final full auth native proof remains pending. The earlier resolver diagnosis below is superseded.
+
+
+| Phase | Implementation | Integration | Acceptance / operational closure |
+| --- | --- | --- | --- |
+| P0 | Minimal auth/UI fixes and existing G1 primitive/checker obligation underway | Sole closure vehicle583; bulk589 excluded | Open: current performance, strict native/resolver and denial evidence, exact-head reviews/CI, compatibility and finalizer |
+| P1 | Saved-view approval/cancellation fixed and pushed59e2 | Independent checkpoint; provisional0118 | Native15/15 and mocked browser journey pass; inherited authorization dependency/lead decision remain, no phase claim |
+| P2 | Retained SLA/calendar/approvals source | Post-P0 train | Open |
+| P3 | Retained identity/plugin configuration source | Post-P0 train | Open |
+| P4 | Retained query/outbox/flags/expiry source | Post-P0 train; centralized migration ledger | Open |
+
+### What changed
+
+The ownership map is complete and recorded below. Duplicate integration vehicle581 is closed without merge; its exact source is retained in589. P0 auth work is preserved on589f478, then minimally ported to583; later source does not become a P0 dependency.
+
+P1 saved-view source `59e2bfdcf61bff295937a19fa86383b091157ac9` fixes real pending-approval409 and idempotent person fixture setup. Full PG18 saved-view file passes15/15; browser covers request, approval, cancellation with mocked API responses. Root inspects list/pending/cancelled original screenshots. Real persistence is proven separately by PG18, not by the mocked browser. No deployment/phase acceptance. Migration0118 remains provisional.
+
+The current uncommitted P0 port passes typecheck, build, route-policy14/88, OpenAPI173, contrast434, Biome and8 scope unit tests. Full PG18 completes136 passed files/1 failed,1653 passed tests/1 failed; owned test container is cleaned. The scoped self-assignment positive path fails403 at strict evaluation: stored key permissions are not supplied to the canonical identity subset. Luna is fixing that shared evaluator/handler invariant fail-closed, without relaxing the role or scope ceiling.
+
+### What is being worked on now
+
+P0 author owns the complete auth/resolver/native fixture batch, bounded performance work, dialog lifecycle and designated hot-path UI files. Separate Luna owns the documented G1 checker and remaining disjoint primitive conversions. Exact088 AST census finds101 forbidden raw production tags in35 files (93button/7input/1select), plus18 test tags in11 files, no recorded exemptions. No forbidden Base UI import currently exists, but its written gate is missing. Preserve census; implement the entire inherited class using shared UI and structural AST enforcement in one batch. No blanket exemption, dependency or new feature behavior.
+
+### Critical path
+
+1. Finish combined minimal P0 authority, measured performance and existing G1 implementation.
+2. Freeze exact source; clear original G11 budgets and all required source/image/browser/native checks.
+3. Complete risk-sized bulk ordinary review and independent exact-head Sol security review.
+4. Resolve normative denial/config/task acceptance scope; acquire reconciled strict/rollback proof and independent date compatibility.
+5. Protected integration, separate fresh Sol finalizer, then administrative phase/issue closure.
+
+### Misalignment / drift
+
+[Source-bound Sol correction](reviews/2026-10-06/realignment/p0-acceptance-obligation-map-addendum-088.md) shows old missing-installer/#560/#403 implementation findings were stale:583 already includes installer and20 probes; main3096 already includes Origin/stored-portal guards, zero old UI-folder files and density/contrast checkers. Do not reimplement them. The narrower G1 raw-element/BaseUI checker discrepancy is real. Original acceptance map is preserved unchanged and must be read with its correction. Actual old source G11 and operational records remain source-bound, not current-head clearance.
+
+### Concerns
+
+- Valid scoped keys fail strict identity construction: finish one authoritative mapping and native positive/negative matrix.
+- Raw primitives bypass the documented shared design rule: complete disjoint bulk conversion and true checker probes; do not hide existing violations.
+- Existing13 denial mismatches remain unresolved: retain originals and settle canonical authority before oracle changes.
+- UI performance still lacks a current full pass: one coordinated capture, necessary hot-path fixes together, unchanged budgets.
+- Old integration and migration checkpoints remain provisional: preserve unique intent, serialize final allocation, never import their full source toP0.
+
+### Decisions needed from Thomas
+
+Existing unanswered denial-contract compatibility and public-config/task strict acceptance choices remain held. Later saved-view lead, pending-action API evolution, approver-picker and quiet-hour/digest choices are not promoted toP0 dependencies. No repeated question is sent; authorized implementation continues.
+
+### Next merge candidates
+
+Only583 after its complete minimal batch clears all exact-head gates. The G1 lane is a patch supplier, not another P0 closure vehicle. No current candidate is merge-ready.589 is the canonical post-P0 train, and reviewed088 remains the DEV deployment.
+
+## Status First
+
+Snapshot: 6 October 2026; accepted main `3096cb044bdf6ae98488bfc385f532fa6386343a`.
+
+| Phase | Implementation | Integration | Acceptance / operational closure |
+| --- | --- | --- | --- |
+| P0 | Foundation exists; minimal inherited auth and required UI/performance fixes in progress on sole vehicle #583 | Later-phase source removed from P0 critical path | Open: current required performance, authorization contracts/strict evidence, exact-head gates and Sol finalizer |
+| P1 | Saved-view CRUD/pins/deletion checkpoint86d5 preserved; inbox/detail work retained | Separate post-P0 train; provisional migration only | Native/browser verification pending; lead authority decision held |
+| P2 | Calendar/SLA/approvals work retained | Post-P0 #589; unique old513 deltas require reconciliation | Open; no phase claim |
+| P3 | Identity/SCIM/plugin configuration work retained | Post-P0 #589/#588 | Open; no phase claim |
+| P4 | Query invariant, outbox, flags and expiry intent retained | Post-P0 #589/#585/#569; centralized migration allocation | Open; query acceptance deferred here by Thomas |
+
+### What changed
+
+Completed the read-only ownership audit covering every open PR's exact head, source ancestry, required protection, stage:P0 issues, source/evidence bindings and migration conflicts. [Authoritative map](reviews/2026-10-06/realignment/ownership-map.md) assigns one category and disposition per vehicle. #583 is the sole P0 closure vehicle; #589 is the canonical post-P0 train. Duplicate #581 was closed without merging after preserving its evidence and confirming its full source ancestry in #589. No phase was closed. #337's P0 label was planning drift; its unresolved webhook vocabulary obligation belongs to P4. #592 is the real inherited P0 API-key defect.
+
+Approved complete auth work is preserved at #589 `f4789aefd3c3d08595642414dda63770d8973f64`; its predecessor9ab outcomes do not clear this new SHA. Original9ab G11 passed21/22, sole create-dialog visibility failure. Original9ab hosted PostgreSQL failed four key-authentication/activity expectations across two files (146 passed of148). No failure cause or fixture correction is assumed without contract comparison.
+
+### What is being worked on now
+
+Luna is porting only necessary inherited auth corrections and bounded UI fixes onto clean #583088, excluding later features, diagnostic expansion and P4 query architecture. A separate Luna lane resumes native/browser saved-view verification on its preserved P1 source. No lane may allocate final migrations concurrently.
+
+### Critical path
+
+1. Complete and freeze one minimal P0 candidate.
+2. Clear required exact-head CI, including unchanged G11 budgets, plus ordinary and independent Sol review.
+3. Resolve documented denial-contract/config/task scope decisions and acquire matching operational strict/rollback evidence.
+4. Independently adjudicate Oct4/5/6 compatibility against frozen source; no automatic carry.
+5. Protected integration, fresh Sol phase finalizer on accepted source, then administrative issue closure.
+
+### Misalignment / drift
+
+P0 had absorbed a broad later-phase train and repeated review work. #589 is now explicitly outside P0 acceptance. Old17/22 and48-pair statements describe older sources/captures; they are not current whole-program truth. Correct088 operational capture contains130 off/shadow pairs, valid tally reconciliation and13 response-contract mismatches. Three partial UTC observations are not full-day or72-hour coverage. Saved-view0118 is provisional; final migration must be regenerated only after its preceding train freezes.
+
+### Concerns
+
+- Key-scope authority: finish shared fail-closed invariant and native role/key intersection proof before exact-head review.
+- Dialog timeout: port bounded product fixes and diagnose retained trace; do not relax budgets/assertions or claim causality from a single local pass.
+- Denial contract: retain original failed evidence; do not rewrite an oracle before the authority conflict is decided.
+- Old512/513/555 source: preserve unique implementation/evidence and reconcile against canonical train before superseding; no blind merge or whole-PR delivered claim.
+
+### Decisions needed from Thomas
+
+Existing unanswered choices remain: legacy denial compatibility versus uniform404; public-config observation exception; task/pending-action versioned API contract; saved-view team-lead authority. P2 approver-picker and notification quiet-hours/digest DST decisions remain later-phase held paths. These do not stop the currently runnable implementation lanes. No repeated question is issued here.
+
+### Next merge candidates
+
+#583 after its minimal batch clears every exact-head gate. No candidate is merge-ready now. #589 is a later-phase integration candidate only, and will incorporate accepted P0 source through normal protected flow. Reviewed088 remains the persistent OrbStack/Traefik DEV image; no unreviewed deployment, enforcement activation or production change is claimed.
+
+## October 6 full authorization remediation and current hosted outcomes — 16:04 UTC
+
+- **Complete bulk source:** PR589 remains pushed at `c2fd8153676baecc958c089988f60ab156b26aff`. Its project-bound creation lifecycle passes all5 focused mock-browser journeys, including A→B pending cancellation, intentional B reopen, Escape/focus, Back and unmount. Root inspects both original B screenshots. This is functional browser evidence, not hosted budget acceptance.
+- **Actual current hosted checks:** sourcec2fd G11 passes20/22. State137.5ms, assignment120.3ms and board499.9ms pass unchanged budgets. Work-list LCP2520ms misses strict2500; the create dialog remains absent at the original5000ms assertion. The retained trace confirms the click but has empty network records and no recorded page error, so its cause is unproven. Native SQL passes146/148 files and retains the same three failures: two WebSocket fixture/invalid-portal expectation defects and a real unscoped API-key assignment bypass. Required OpenAPI evolution/review evidence gates remain open.
+- **One complete authorization implementation batch:** the Luna author fixes shared role-and-key capability intersection, independently scoped self-target fallback and validated-key caller propagation. Its author proof passes25/25 actual focused PostgreSQL18 tests and100 API unit files/701 tests; types/Biome pass. No-permission assignment403 preserves both row and activity, scoped self-target and browser-session role paths remain allowed. The WebSocket mock is moved after the genuinely unauthenticated probe; null/mismatched session portals use the canonical401 contract. Disposable PG cleanup is reported complete. The complete batch is now committed/pushed at `9abde83428283df0f630fb3dc1e0774bd50e84e3`, including shared middleware, direct work-item/asset checks and capability responses. Independent bulk authorization review now **BLOCKS** on inherited SQL-null key scopes bypassing legacy `requireWorkspacePermission`; its focused20 unit tests pass but no DB-backed legacy reproduction is claimed. Concrete program finding[#592](https://github.com/ThomasHeinThura/ticketing/issues/592) stays open. One complete shared legacy/canonical/direct scope-invariant implementation batch is assigned; no second ordinary or Sol pass is spent on this known blocked candidate. Author proof is not review clearance. Current hosted CI and the existing OpenAPI evolution decision remain required.
+- **P1 parallel:** the separate saved-view integration branch implements deletion using the existing pending-action engine and reserved0118 combined migration. It validates scope/version/requester/key changes, keeps approval session-only and awaits the corrected shared authorization helper before composition and native/browser/image verification. Team-lead authority's spec conflict remains held. The checkpoint591 does not establish whole-feature or phase completion.
+- **P0 operational:** original69's130-pair capture, valid reconciliation and13 denial-contract mismatches remain unchanged. The explicit compatibility-versus404 scope decision remains pending. No extra calendar waiting, oracle relaxation, strict acceptance or source/date carry-forward is claimed. Reviewed088 stays on OrbStack/Traefik; all six latest certificate-verified health/static probes pass. No unreviewed deployment, protected merge, enforcement activation or phase closure.
+
+## October 6 complete integration batches and current gates — 15:39 UTC
+
+- **P0/bulk implementation:** PR589 is pushed at `85d17a5993269e00acb65ddaf3513f9e47115783`, composing the lexical type-binding identity fix with the reviewed intent-loaded creation UI. Local1,123 CI-script tests,21 query regressions and actual API query ownership gate, web types/build, preload1/1, focused browser3/3 and434 contrast pairs pass. Root inspects the original dialog and error/retry screenshots. Current hosted browser andG8 pass; G11 fails and PostgreSQL is still running. No current G11 counts are inferred from earlierc99321/22.
+- **Full ordinary delta:** independent Luna runs query21, route24, SLA35 and auth6 tests plus query/diff checks. It blocks a new project-context lifecycle defect: pending dialog import can survive A→B navigation and open for B. Query's prior generic crash/shadowing findings are resolved in source. One complete project-bound creation lifecycle batch and transition regression matrix follows the whole report; the full Sol pass is held rather than spending it on this blocked candidate. No source85 Sol verdict is issued.
+- **P1 implementation:** isolated refresh PR591 at `ed1583a3936580a761a34033ab5b92ef29aa41a5` includes latest-main saved-view create/read/update/pinning and fixes AU14 failure notification. API85 files/636 unit tests,14 permission files/88 tests, types/build/contracts pass; current native database/browser/image proof and independent reviews remain unrun. Its main-only0088 migration collides with unmergedbulk0088–0117 and is not jointly mergeable. A separate explicit integration branch now composes frozenbulk85 with this checkpoint, regenerating the complete combined schema at root-reserved0118 and implementing saved-view deletion through the existing approved pending-action endpoint/adapters. Team-lead editing's contradictory permission contract is held; no new grant or undocumented column is introduced.
+- **P0 operational outcome:** originalfinal69 remains a failed130-pair capture with valid zero-mismatch tally/event reconciliation,13 response-contract discrepancies and9/9 cleanup. The written legacy-denial scope question remains pending; no contract/oracle changes or extra calendar wait. Source088 remains the reviewed persistent DEV deployment. At15:19UTC certificate-verified live/ready/static probes all return200 for ticketing.localhost andportal.localhost. Authenticated use remains pending the existing browser handoff.
+- **Acceptance remains open:** current green required CI/reviews, the pending denial/API-evolution/config/task decisions, complete compatible runtime/strict evidence and additional Sol phase finalizer. Main remains3096cb0; no protected merge, enforcement activation, production or stage closure.
+
+## October 6 current blockers and parallel implementation — 15:19 UTC
+
+- **P0 first priority:** all130 actual off/shadow requests and tally/event reconciliation are captured;13 response-status mismatches retain the original failed69 evidence. The contract audit traces11 generic project400 denials to accepted #290/#307 behavior, task-based time-entry404 to its current row-derived contract, and workspace403 to the accepted #8 native membership path. These specific contracts conflict with the general RBAC404 table. One explicit scope question is pending: retain/document existing compatibility responses or standardize404. No behavior/oracle is changed while that decision is pending; this is not an extra calendar wait.
+- **Latest bulk performance:** exact PR589c993 hosted G11 passes21/22. LCP2540ms misses the strict2500 budget; state119.4ms, assignment123.5ms, board406ms and create136.7ms pass unchanged budgets. Current browser andG8 pass. These are c993 results, not590 results or proof of a particular optimization. PostgreSQL is still running. OpenAPI evolution and genuine review metadata remain blocked.
+- **One complete integration implementation batch:** the Luna author is fixing lexical generic type-binding identity/substitution and shadowing with a full regression matrix, then composing the reviewed PR590 intent-loading delta into bulk589 and regenerating actual contrast inventory before commit/review. The currentc993 full Sol blocker remains open until the new exact head clears. The complete reviewed80ad source delta has an independent Sol CLEAR; its own hosted19/22/23-of24 results remain unchanged.
+- **Actual create diagnostic:** the corrected single local80ad capture verifies only index before Chromium, matches all46 public graph asset bodies through real browser requests and post-journey verification, and always persists readiness/resource evidence. Dialog mount occurs about1.94s after click; the unchanged canonical journey passes. It does not explain the earlier intermittent timeout or provide hosted budget acceptance. Preview4179 closes, temporary files are removed,4178 is untouched.
+- **P1 parallel:** a separate Luna lane is refreshing saved-view CRUD/pinning PR447 from its exact62cf remote source onto accepted3096 main in an isolated worktree, preserving original history and the approved slice. Full implementation/conflict resolution precedes its bulk review; no shared P0/bulk files are edited concurrently.
+- **Still required:** current fully green CI, the selected written denial contract, complete compatible shadow/strict evidence within authorized source scope, config/task prerequisites, authenticated DEV verification and the additional Sol phase finalizer. Reviewed088 is the current OrbStack/Traefik DEV delivery; no protected merge, activation, production or stage closure is claimed.
+
+## October 6 complete P0 traffic capture and parallel implementation — 15:11 UTC
+
+- **P0 actual proof:** final69 manifest `f7e3d3f130e612f67e28e6a511731e342dfe8f6a5ef914e6430be12b7be41865` clears the independent full Sol review with69/69 pure tests. Root issues fresh pinned records after the previous diagnostic window closes. Actual run `20261006T150819Z-08842235` captures all130 off/shadow actor/route pairs. Its tally/event reconciliation is valid with zero mismatches, including the explained native WebSocket comparison. The response contract fails on13 retained mismatches:11 project-scoped nonmember reads return400 instead of404, workspace read403 instead of404, and time-entry read404 instead of403. These are original actual statuses, not retrospective guesses. Source/spec classification precedes one complete shared reach-denial implementation batch; no oracle is relaxed. Cleanup passes9/9 owned resources. No strict-stage, compatibility, date carry-forward or phase acceptance follows from this failed run.
+- **P0 hosted SQL:** exact PR590 source80ad passes136 files/1,652 tests/5 tasks. G11 remains19/22 and protected-route browser23/24. Its MFA observability timeout has no proven source cause: retained controls contain every valid log-level option. Original evidence and the necessary bounded probe are recorded; no harmless-flake claim or timeout increase.
+- **Create-dialog diagnostic:** one source-bound local80ad capture succeeds and all46 public shell/form assets match pinned bytes/hashes. Its preflight warmed server files and the success path omitted readiness timestamps, so it does not resolve the earlier failure or establish budget acceptance. The next complete observer fixes both diagnostic defects before its separately granted unchanged canonical capture. No speculative product change.
+- **P4 complete source batch:** PR589 is pushed at `c993b525ae725989243ae266dfdbc28e1bdf2e99`;20 checker regressions and the real API query gate pass. It adds lexical type-alias closure and preserves direct parenthesized transaction callbacks. The full independent Sol pass blocks nested generic identity-alias recursion and function-generic shadowing; its20 tests and current-source query scan pass but omit those valid cases. A complete type-binding-identity redesign and regression matrix are assigned. Current CI, OpenAPI evolution decision, reviews and all remaining integration gates remain necessary. No protected merge or stage closure.
+- **Delivery:** reviewed088 remains the persistent OrbStack/Traefik DEV deployment with preserved data and shadow-only settings. Main remains3096cb0. P0 stays first priority while dependency-safe P1–P4 work continues. Human integrated review remains deferred to P4; actual passing performance, compatible runtime evidence, authenticated DEV use and the additional Sol phase finalizer are still open.
+
+## October 6 actual hosted improvement and complete remediation — 14:44 UTC
+
+- **P0 performance source:** PR #590 is pushed at `80ad3ba85530190c18bca94ad7aa249971899c11`. The complete dialog-shell intent-loading batch includes pending Escape cancellation, retained form loading, visible translated retry and canonical contrast occurrence updates. Author lint/typecheck/test12 tasks, web113 files/476 tests, scoped browser3/3 and contrast434 pairs pass. Stable screenshots are retained and inspected. Two independent ordinary reviews of32ed found the pending Escape defect; a current80ad independent delta review clears its complete remediation. The current80ad independent Sol source review clears the bounded security-scope change; hosted failures still prevent protected acceptance. No self-review is counted.
+- **Actual hosted80ad G11:**19/22 pass. Work-list LCP median2464ms, assignment178.1ms and500-row list490.1ms satisfy their unchanged budgets. Create-work-item still fails to show its dialog within5 seconds, state232.6ms exceeds200 and board655.8ms exceeds500. The source-bound diagnostic fails its all-window sampled-frame assertion; explicit omissions are retained and no caps change. The earlier32ed run was16/22, including the same create-dialog failure. A bounded unchanged canonical reproduction is authorized to identify the actual pending-loader cause; no assertion, timeout or threshold is relaxed.
+- **Actual hosted80ad browser:**G4 andG8 pass. The protected-route/browser suite passes23/24; its MFA journey reaches a240-second timeout at selecting the original realtime log level. The original log/artifact are retained. No cause, regression fix or harmless-flake claim is inferred from that timeout. SQL is still checked separately. Authenticated persistent DEV use remains blocked by the pending browser handoff/current credential.
+- **P0 actual runner:** private65 batch records unexpected400/409/422/500 safely and continues bounded acquisition before aggregate rejection. Independent full Sol ran65/65 pure tests but blocks: the appender copies the nonmember PATCH receipt before the successful digest witness updates the original, so retained `side_effect_free:false` can contradict a proved no-mutation result. Packet wording also overclaims the final failure summary field. One complete stored-evidence/mutation-safety remediation is assigned;65 was not executed, root runtime authority was not issued, and failed61 original102-row capture/9-of9 cleanup is unchanged.
+- **P4 integration:** exact73e source passes hosted15 screen visuals and143-story baseline coverage. Actual G11 is18/22, failing LCP2776/state264.6/assignment223.3/board638ms. Full Sol blocks the static transaction-forwarding callback boundary; the source-only lane is implementing ownership for escaping transaction references while preserving direct inline-callback orchestration and type-only references. Unfinished checkpoint is not committed or claimed done. OpenAPI evolution remains a pending explicit decision. Current required SQL/reviews/metadata remain separate acceptance gates.
+- **Evidence and scope:** original reviewer bytes/hashes are retained in this review directory. Root verified75 hosted synthetic checkout652815dc has exactly the candidate75 tree; matching local asset and map hashes locate state/assignment samples in Floating UI computed-style reads, without claiming proven savings. Reviewed088 remains the persistent OrbStack DEV image with preserved data and shadow-only settings. Main remains3096cb0. Complete compatible runtime, current green CI, required independent reviews, authenticated use and the additional Sol phase finalizer remain open. No extra calendar wait, protected merge, enforcement, production or stage closure.
+
+## October 6 recorded outcomes and continued bulk implementation — 14:15 UTC
+
+- **P0 hosted integration:** PR #587 exact `75d2c97b6670e31cba41a82671e8cc7881cfc987` passes the hosted PostgreSQL job:136 files/1,652 tests/5 tasks. G4/G8 and the other source gates pass; G11 remains18/22, with LCP2608ms, state231.9ms, assignment245.8ms and board622.8ms red. The metadata review gate remains outstanding. This is integration evidence, not P0 acceptance.
+- **Actual private proof:** reviewed final61 manifest `26e71e4884fbf37eaa16804f6b0469255a0bb79284fe7b5fa189f3adbbc765bc` was executed once using fresh independently pinned root records. Run `20261006T140030Z-08842235` passes persistent native asset readback, schema migration, settings CAS, step-up binding/replay and metrics rotation. It records102 off/shadow requests and then fails a permission assertion before that supplemental control records its actual status. The exact failing status is unknown; no oracle is changed by guesswork. Original cleanup validates9/9. Complete record-before-validation and safe caller breadcrumbs are being implemented across every supplemental control, preserving the original failed record. No full130-pair, strict-stage, source-compatibility or date carry-forward acceptance is claimed.
+- **Complete integration source:** PR #589 is pushed at `73e3da95b4f6edec318b009c8f754b4ef8c36332`. The query gate now assigns ownership to static read-method lookups on known database/query/transaction bindings, removing the nested forwarding interpreter. Query tests17/17, the real query gate, Biome, web typecheck and candidate-delta whitespace check pass. Required independent full Sol review is active on this complete batch; there is no extra ordinary comfort round for the previously known defect class.
+- **Actual visual evidence:** exact archived bda source builds on the pinned Linux AMD64 Playwright image. Work-item detail capture and strict replay each pass1/1. Root inspected the original1280×720 screenshot at `/agent/work-items/HELP-7`, including the new Approvals empty state; its SHA256 is `d54bb90f23c661f045e3043b1904e337e695f3fcc3f2e0b61dcb15ef6e555900`. The screenshot is included in the complete73e source batch. Owned container absence was verified at14:09:14UTC. This mocked visual result does not replace authenticated DEV use.
+- **P0 implementation:** the complete create-dialog intent-loading batch removes dialog assets from initial route preload while preserving separate form loading, keyboard/focus and failure recovery. A real screenshot caught an undefined retry translation key; that bounded defect and its test selector are corrected within the same unreviewed implementation batch. Final lifecycle verification precedes its commit/push and required bulk reviews. No causal budget improvement is claimed before actual hosted measurement.
+- **Remaining acceptance:** pending API-evolution/config/task decisions, current passing G11, complete compatible runtime proof, exact required reviews/CI, authenticated DEV use and the additional Sol phase finalizer remain open. Reviewed088 OrbStack DEV remains available with preserved data and shadow-only settings. No protected merge, production, enforcement activation or stage closure is claimed.
+
+## October 6 usable CPU attribution and continued complete remediation — 13:53 UTC
+
+- **P0 profiler source:** PR #587 is pushed at
+  `75d2c97b6670e31cba41a82671e8cc7881cfc987`. Native V8 serializes signed sample-time
+  differences; safe signed accumulation followed by timestamp sorting now retains the
+  correct sample identities and bounded nonnegative intervals. No caps or G11 budget changed.
+  A real local capture completes1 profile with2,058 nodes,5,698 samples and45 app frames.
+  Fresh independent full Sol clears the complete six-file diagnostic delta after3 files/26
+  tests, web typecheck and Biome. That local capture is not a hosted budget pass.
+- **Actual hosted P0:** current75 source has18/22 canonical budgets passing; LCP2608ms,
+  state231.9ms, assignment245.8ms and board622.8ms remain red. Hosted state and assignment
+  profiles complete and identify positioning/React work; the board profile is explicitly
+  omitted at the unchanged node limit. The synthetic merge-checkout source is retained
+  separately from the PR head. The isolated performance implementation lane is finishing
+  one source-grounded create-dialog intent-loading batch, with production build and pure
+  checks passing and actual lifecycle browser verification now authorized. It does not
+  speculate on drag/virtualization or claim other budget improvements.
+- **Actual private runner:** final57 run `20261006T132623Z-08842235` fails with
+  `UnboundLocalError`, masking the original fixture error; original cleanup passes9/9,
+  including the new persistent API data volume. Root separately verifies all8 Docker
+  resources absent. Final59 run `20261006T133957Z-08842235` preserves the original
+  `ValueError` and source location at `proof_helpers.py:1044`; its custom byte-readback
+  diagnostic incorrectly supplied a status-expectation field permitted only for HTTP
+  status rows. Cleanup again passes9/9. Neither failed run establishes full traffic,
+  compatibility, dates or strict-stage acceptance. These original records remain unchanged.
+- **Private final61:** source, helper and actual recorder now share a strict complete-row
+  invariant. Positive native PNG/header readback and404/byte/MIME/length failure cases are
+  exercised through the real recorder/persistence path; the original finite-ledger guard
+  remains intact. Author61 tests, compilation and pinned launcher checks pass. The current
+  full independent Sol review precedes fresh root records and any next execution. Root
+  does not retrospectively assign the final59 cause to the earlier masked failure.
+- **Complete integration:** PR #589 is pushed at
+  `bda2970d24774fc77a9acc6a3ee1aa99b754d3eb`. The provider reload and SLA pause blockers
+  are resolved under independent current-delta reviews. The real Linux approvals baseline
+  captures and strictly replays on the CI-pinned AMD64 image; hostedf87 passes it and14/15
+  visual cases. The remaining work-item detail failure was a mock returning `[]` instead
+  of the actual approval list DTO `{ approvals: [] }`; the exact fixture is corrected
+  without weakening assertions or replacing the screenshot with an error page.
+- **Query-control review:** full Sol atf87 andbda finds narrower statically known nested
+  forwarding escapes. The lane is replacing invocation special cases with repository
+  ownership of known runtime read-method references, so forwarding cannot relocate the
+  read construction outside its repository. New regression and full Sol clearance remain
+  required; no checker acceptance is claimed. Original reports are copied byte-for-byte
+  with hashes under the current-bulk-and-p0 review directory. Historical report whitespace
+  is retained rather than normalized into false reviewer evidence.
+- **Remaining acceptance:** pending-action API evolution and config/task prerequisites
+  retain the previously requested explicit decisions. Actual passing G11, full compatible
+  runtime evidence, exact required CI/reviews, authenticated DEV screen evidence and the
+  additional fresh Sol phase finalizer remain open. Reviewed088 DEV is still available
+  through OrbStack/Traefik with preserved data and shadow-only settings. Main remains3096cb0.
+  No additional calendar wait, protected merge, production, enforcement or phase completion.
+
+## October 6 actual final56 runtime outcome — 13:15 UTC
+
+- **Original timestamp correction:** the preceding13:15 snapshot was written at13:12UTC;
+  its heading was ahead of the clock. This entry uses the actual clock. Original records remain retained.
+- **Actual source088 proof:** run `20261006T131155Z-08842235` exits1 during the off/shadow
+  representative window. The positive asset workspace-owner read returns404 instead of200,
+  so the full130-pair journey and strict stage do not pass. Schema80→88, live/ready200,
+  UID10001, settings CAS, bound step-up/replay and token-rotation/metrics checks pass before
+  that failure. No source compatibility, date carry-forward or strict acceptance is claimed.
+- **Cleanup:** the original receipt correctly prevents success but rejects image/network
+  absence response formats. Root separately verifies all seven exact Docker resources absent
+  using read-only type-specific inspections and records that beside the unchanged failed
+  receipt. No persistent DEV or unrelated resource was mutated. The fixture and exact native
+  cleanup classification are assigned together as a complete private remediation batch.
+- **Bulk implementation:** all three fresh ordinary panels at7dd3cbb4 are now recorded.
+  Panel C adds a reproducible `Reflect.apply(db.select, ...)` query-control bypass and the
+  stale portal sign-in route assertion. All source findings are assigned to one remediation
+  batch. G8 needs its real Linux approvals visual baseline. Actual hosted G11 is19/22,
+  failing LCP2708ms, palette201.6ms and board664.2ms. The four new pending-action enum
+  findings remain blocked on the already requested API evolution decision; no schema
+  relaxation or hidden safety records are authorized. Required Sol review follows ordinary
+  clearance at the resulting exact head; PR body evidence will cite actual reports.
+- **Durable review evidence:** original-byte copies of all three bulk Luna reports, the
+  final56 Sol runner report and the e3ac Sol diagnostic report are committed under
+  `docs/07-planning/reviews/2026-10-06/current-bulk-and-p0/` with a source SHA manifest.
+  Sol source clearance did not make either failed runtime capture pass. P0 remains first
+  priority, later dependency-safe implementation continues, and no stage or protected merge
+  is claimed.
+
+## October 6 full integration review and isolated P0 proof — 13:15 UTC
+
+- **Implementation composition:** draft PR #589 is pushed at
+  `7dd3cbb461e9a6567acb07eda64cd3bbaaac54de`, composing the complete bounded
+  P0, approval, portal identity, outbox and P4 repository batches. Local typecheck9/9,
+  query ownership, inventory53 routes/14 active, OpenAPI230 operations, route-policy88
+  tests and production agent/portal contrast434 pairs pass. These focused checks do
+  not establish full integration acceptance. Hosted gates retain real route-registry,
+  OpenAPI, G8 and performance failures. Required independent review evidence remains pending.
+- **Bulk review:** fresh Luna panels A/B find two P1 blockers: independent provider
+  configuration versions are collapsed into one maximum, so lower-version updates can
+  remain unapplied; SLA pauses beginning before the next calendar opening are omitted,
+  producing premature due times and a due time during an open pause. Panel C is continuing
+  UI, contract and query-control review. One complete remediation batch will follow the
+  panel rather than separate small edit/review loops. No phase is claimed complete.
+- **P0 private proof:** the final54 actor/state defects are repaired in final56. The full
+  independent Sol report clears exact private manifest
+  `94850a8bc8a13ce7425ce6512c25959a60f61a581607819285b593d51b9f88f2`, verifying
+  controlled hashes and the author56/56 offline test log without executing runtime.
+  Root issued fresh externally pinned application, authorization, Sol and exclusive
+  local CI-window records; both pure authority/release validators pass. One isolated
+  source088 proof is now running. It permits only27 reversible policy sources; config,
+  task, persistent DEV, production and enforcement activation remain excluded. Prior
+  failed captures and original records are unchanged. No runtime acceptance is yet claimed.
+- **P0 performance:** PR #587 at `e3ac04596499bd59772403bb4e0534b40dc1ac88`
+  clears the independent full Sol diagnostic review. Actual hosted run37466514841
+  nevertheless remains18/22: LCP2652ms, state269.5ms, assignment233.2ms and board688.9ms
+  fail their unchanged budgets. All five normalized native profile windows still retain
+  zero complete profiles and no JavaScript frames. A complete native producer-to-consumer
+  investigation with positive local evidence is assigned before another broad CI loop.
+  Source review clearance is not usable profiler or performance acceptance.
+- **DEV and browser:** reviewed088 remains deployed through OrbStack/Traefik at
+  `ticketing.localhost` and `portal.localhost`, with verified TLS health/static200 and
+  preserved encrypted backups/data/shadow mode. The cached private admin password is
+  stale: a read-only comparison fails against the existing credential hash. No password
+  was reset. The existing request to dismiss the extension popup and sign in with the
+  current password remains pending; authenticated manual UI verification is blocked.
+- **Main and scope:** accepted main remains3096cb0. Duplicate PR #584 was closed only
+  after verifying its source is contained in PR #583; no acceptance gate was closed.
+  Three actual partial UTC dates are retained without backfill or a new calendar wait.
+  Actual G11, compatible full runtime evidence, config/task prerequisites, exact required
+  CI/reviews and the additional fresh Sol phase finalizer still prevent P0 completion.
+
+## October 6 reviewed OrbStack DEV refresh and full implementation composition — 12:35 UTC
+
+- **DEV refreshed:** root deployed reviewed P0 product `08842235047a3ab2714427edce80331b94558150`
+  to the existing OrbStack app service only. Exact image is
+  `sha256:75b153d7d9583993127e1be8c06453159e4fe7319abfcd8431f093c9ca002bcf`.
+  Before changing the image, root stopped the app and captured encrypted PostgreSQL,
+  attachment and runtime-configuration backups. Decrypted PostgreSQL passes `pg_restore --list`;
+  attachment/configuration tar streams validate. Backup key custody is separate from the
+  encrypted archives. Existing PostgreSQL, Valkey, Traefik and loopback proxy container IDs
+  are unchanged; the app data volume, runtime secrets, certificates and shadow-on/empty
+  enforcement are preserved. Migration journal remains88 and runtime UID is10001.
+- **Actual public checks:** certificate-verified HTTPS live/ready and static shells return200
+  for `ticketing.localhost` and `portal.localhost`. Legacy `ticket.localhost` health endpoints
+  return200 and its unconfigured static origin remains404. The source-bound private deployment
+  receipt records all9 probes and the exact app/image identity. Chrome opens the agent sign-in
+  screen, but an extension popup blocks further browser control; the already requested popup
+  dismissal is pending. Signed-in UI acceptance remains blocked, not passed.
+- **P0 diagnostics #587:** the complete native chunk/source-map repair atd6c7 clears bounds,
+  privacy and unmapped-map handling but independent Luna finds a separate real clock blocker:
+  sample deltas need the initial Profile timestamp and cumulative cross-chunk timing. The
+  structural correction is pushed at `f8414b98de6aa455333005ed1e2b751821972576`, with3 focused
+  files/22 tests, web typecheck, Biome and whitespace checks passing. Independent current-head
+  review and full Sol confirmation remain required; no usable profile or optimization claim.
+- **P2/P3/P4 bulk implementation:** P2's integration repair is pushed at
+  `ef1532bbfe3306abcc41057c20998dbab9baee62`; P3's complete defined identity/configuration and
+  migration-snapshot batch is pushed at `646f3509e43965988252682d0db5b0ca9334347d`.
+  P3's actual full PostgreSQL CI passes146/148 files and1721/1724 tests; three failures remain
+  across real WebSocket/portal boundaries and strict assignment. Its registers gate finds
+  stale generated route metadata. These are retained and assigned to the full composition
+  batch alongside current P0, P4 query ownership and outbox/P2 source. New P0/P3 reads must
+  also relocate into repositories for mandatory P4 `check:queries` acceptance. Composition
+  proceeds before one risk-sized bulk review; unreviewed P3 source is not deployed.
+- **P0 remaining:** the private runner lane is completing one canonical full traffic executor
+  for both off/shadow and strict captures before its frozen operational review and next run.
+  The previous48-request partial failure and complete resource-absence verification remain
+  unchanged. Compatible source-bound runtime evidence, actual passing G11, exact required
+  review/CI, config/task prerequisites and the fresh additional Sol phase finalizer are still
+  open. This reviewed DEV refresh uses the existing October4 development-delivery authorization;
+  it does not waive a gate, activate enforcement, carry observation dates, merge or close P0.
+  Accepted main remains3096cb0.
+
+## October 6 actual disposable run and continued bulk repair — 12:04 UTC
+
+- **P0 image/runtime:** root issued a separately pinned reversible runtime release only
+  after final50 private-runner GPT-6 Sol clearance. Actual run
+  `20261006T115701Z-08842235` builds and boots exact088, upgrades the retained schema80
+  baseline through88 migrations, returns live/ready200, runs as UID10001 and passes
+  settings CAS, operation-bound step-up, token rotation/replay and the internal metrics
+  status matrix. Persistent OrbStack DEV is unchanged.
+- **Actual failure, not acceptance:** the process exits1 before the27-source strict
+  representative stage. Its explicitly empty-enforcement/shadow-on traffic runs from
+  11:57:51.707819 to11:57:52.042779UTC:48 planned requests, zero mismatches among the31 specified expectations,
+  zero unexplained tally rows and complete48 actor/route coverage. However17 planned
+  expectations are unspecified, and global coverage counts the intentionally ineligible
+  public-config source as uncovered. The fixture rejects these conditions. This subset
+  does not establish compatibility with the earlier129-request observations; no original
+  date is carried forward or relabelled, and the public-config decision remains open.
+- **Cleanup:** the runner rejects its cleanup receipt because its Docker absence parser
+  fails to recognize OrbStack's exact-volume `get <name>: no such volume` response.
+  Root independently inspects all seven captured Docker resource IDs/names and confirms
+  all absent, without mutation. The original failed receipt stays unchanged beside a
+  separate root verification. Proxy shutdown, thread exit and listener closure pass.
+  Full canonical traffic/status and source eligibility, plus resource-type-specific
+  absence recognition, are being repaired together in the private implementation lane.
+  The exact50 input and12 hashes were preserved before this new batch.
+- **P0 diagnostics #587:** the capture-bound remediation is pushed at
+  `d8397a23ac9bdd1ac0b83fc55ee51915d24559a1`; independent ordinary delta review clears
+  it after3 files/14 tests. Full six-file Sol review finds a different real correctness
+  blocker: an explicitly unmapped source-map span inherits the previous source, producing
+  false attribution. Capture bounds/privacy otherwise clear. A complete source-map fix is
+  queued after the current P2 repair batch; no optimization or diagnostic acceptance is claimed.
+- **P2/P3:** the complete P2 integration repair batch is active, reusing the existing
+  contrast/OpenAPI correction rather than duplicating it. P3 repairs the missing0116
+  snapshot from the actual approval schema/SQL, then chains generated0117 auth configuration
+  to it; real Drizzle generation reports no schema change. P3 keeps customer providers
+  disabled absent explicit customer-scoped configuration and does not invent invitation
+  or discovery contracts. Shared source edit partitions remain separate.
+- **Acceptance:** hosted performance, exact required CI/review evidence, remaining
+  config/task prerequisites and the fresh additional Sol phase finalizer remain open.
+  Main remains3096cb0. No protected merge, calendar wait, new persistent deployment,
+  production, activation or phase completion is claimed.
+
+## October 6 bulk implementation and actual remaining failures — 11:48 UTC
+
+- **P0 #583:** exact product `08842235047a3ab2714427edce80331b94558150`
+  clears two independent ordinary contexts and the full independent GPT-6 Sol security
+  pass. Its exact image builds. Hosted PostgreSQL passes136 files/1652 tests; browser
+  smoke, G4 and G8 pass. Hosted G11 remains17/22, with unchanged list, LCP, state,
+  assignment and board budgets failing. No budget change, retry-until-green or performance
+  improvement is claimed. The source-bound GitHub merge-ref has the same Git tree as088.
+- **P0 runtime acquisition:** the complete private runner now separates real off/shadow
+  and strict windows, captures full owned resource identities before fallible operations,
+  uses an explicit labeled PostgreSQL volume, and requires a durable successful cleanup
+  receipt before success. Successive independent operational passes caught real defects,
+  rather than clearing the runner based on its offline tests. Final47 passes47 offline
+  tests but remains blocked: nested cleanup uses the wrong local scope for proxy identity,
+  so normal proxy cleanup cannot pass. A structural helper and real in-process server/thread
+  cleanup regression batch is active. Final47 is preserved before correction. No new runtime
+  release or acquisition has executed, and original failed records remain unchanged.
+- **Evidence integrity:** the46-test source revision was not separately retained.
+  The available earlier immutable sibling is the39-test revision, not46; the46 blocker
+  report and operator records remain records, not reconstructed source backups. The
+  current packet and audit explicitly record this gap. No historical source is backfilled.
+- **P0 #587:** exact `d8cd2704dbefad28d599667afefd1c34944699df`
+  implements parent-edge CPU profile attribution without changing canonical measurements
+  or budgets. Independent ordinary review found that profile nodes, samples and profile
+  keys can accumulate without bounds before post-capture truncation. A complete ingestion
+  bound and omission regression batch is active before its security pass or new capture.
+  Its focused9 tests and web typecheck passing do not clear that known defect.
+- **P2 #586:** exact `2120278369e549d39e07bc7f926f51946f4a27b1`
+  completes the defined approval lifecycle and feature-disable continuity implementation.
+  Two real PostgreSQL journeys pass, including current-reach decisions, withdrawal,
+  feature-off continuity, workflow gates, expiry and reminders. The owned test container,
+  volume and network are independently verified absent. Full hosted CI remains red:
+  PostgreSQL passes146/148 files and1718 tests, with an omitted new policy source in the
+  strict test fixture and an unordered SLA audit assertion failing. Schema/migration
+  no-op drift, stale generated route metadata, my-work visual inventory scope, contrast
+  contracts, a concurrent checker-copy fixture race and OpenAPI drift also remain.
+  These are queued as one complete integration repair batch, not considered satisfied by
+  the two focused approval journeys. The already asked approver-picker contract remains
+  pending; no browser, image boot, provider delivery or P2 completion is claimed.
+- **P3:** a separate Luna implementation lane is completing customer host/stored-session
+  boundaries, provider separation, portal sign-in UI and the authoritative runtime auth
+  configuration storage/read/reload seam. It reserves migration0117 only because the
+  specified instance_plugin_config table is genuinely absent. Undefined invitation and
+  email-discovery contracts remain narrow fail-closed paths; no invented authority or
+  customer authentication fallback is introduced. P2 and P3 edit partitions are separate.
+- **Program:** accepted main remains3096cb0; persistent OrbStack DEV remains the prior
+  reviewed deployment. P4 query ownership and notification work remain in their prepared
+  branches. P0 still needs actual compatible runtime evidence, current performance and
+  required exact-head gates, remaining config/task prerequisites and the additional fresh
+  Sol phase finalizer. No calendar wait, protected merge, date carry-forward, persistent
+  deployment, production or phase completion is claimed.
+
+## October 6 complete approval batch and exact asset correction — 09:08 UTC
+
+- **P0 #583:** current product head `08842235047a3ab2714427edce80331b94558150`
+  resolves strict asset row context while preserving project-workspace reach and
+  asset-workspace capability scope. Two independent ordinary reviews clear this source;
+  reviewer B ran the exact-head focused SQL suite (1 file / 8 tests, all passed) and verified
+  its owned container and volume absent. Prior 517 mismatch-oracle failure remains retained.
+  One non-blocking scope-discriminating test gap and one stale comment are recorded; no
+  additional comfort review or untested semantic change is introduced. Full independent
+  Sol product review is active.
+- **Image:** exact 088 image builds successfully as
+  `sha256:75b153d7d9583993127e1be8c06453159e4fe7319abfcd8431f093c9ca002bcf`,
+  OCI revision 088, configured user taskdesk. It has not yet booted or replaced persistent DEV.
+- **Private evidence runner:** separated off/shadow and strict stages, mode-bound receipts,
+  fail-closed acceptance and diagnostic retention pass 34 offline tests independently.
+  Ordinary B found a real cleanup blocker: the PG image creates an unlabeled anonymous
+  volume, which the ownership check correctly refuses to delete. A full correction batch
+  is active to acquire explicit labeled owned volumes and retain exact cleanup evidence.
+  The private release remains unexecuted and unauthorized; original runtime failures and
+  all three actual partial UTC observation dates remain unchanged.
+- **Current hosted CI:** 088 full run37439473423 passes protected-route browser smoke,
+  G4 and G8. PostgreSQL remains in progress. G11 fails17/22: list505.9ms, LCP2632ms,
+  state276.3ms, assignment208.3ms and board703.3ms exceed unchanged budgets. Its source-bound
+  diagnostic artifact is retained with the actual GitHub merge-ref source `b59cb4e3399a411bec91c4c21cbc7a647adb3ed1`;
+  timing variance is not proof that the asset API fix changed UI performance. Fast implementation
+  checks pass; review/template evidence remains red. No retry or budget waiver is claimed.
+- **P2 #586:** complete defined approvals batch is pushed at
+  `43620d29103381e1f741e4a485e2fde9e4da6ba3`, based on notification candidate5a.
+  Thomas's explicit feature-disable continuity approval is recorded in its decision log/spec:
+  block new requests, preserve existing list/read/decide/withdraw/reminders under current
+  permissions/reach, and enforce workflow requirements. Staff/customer decision UI, lifecycle,
+  reminder/outbox and workflow seams are included. Domain19 files/657 tests, web4/38,
+  permissions14/88, API types, portal build, inventory and route-policy checks pass.
+  Exclusive isolated SQL verification is now granted following P0 review cleanup.
+  The approver-picker decision and actual portal sign-in/session flow remain open; no email
+  delivery, SQL result, browser use, Docker boot or P2 completion is claimed.
+- **Program:** P1–P4 remain concurrent dependency-safe work. P0 is blocked by actual runtime
+  acceptance, performance, config/task prerequisites, required exact-head gates and its
+  additional independent Sol phase finalizer. No calendar wait, protected merge, phase
+  completion, persistent deployment or enforcement activation is claimed.
+
+## October 6 corrected enforcement interpretation and full repair batches — 08:28 UTC
+
+- **Correction to the08:08 snapshot:** independent Sol confirms the129 representative
+  requests in C468 run `20261006T080705Z-c46825e9` executed AFTER the runner switched to
+  27-source strict enforcement. The renderer falsely hardcoded strict mode inactive.
+  Comparing the two strict asset500s with the older shadow-only403/404 observations did
+  not establish off/shadow behavior drift. C468 off/shadow compatibility remains unmeasured;
+  no original observation date is carried forward. The original assessment and records
+  remain unchanged, with an independent addendum recording this correction.
+- **Actual P0 defect:** strict evaluation reaches the asset policy before the native handler
+  establishes persisted workspace row context. A grounded source-bound reproduction and
+  complete correction batch are active. Early strict403s must not be relabelled as observed
+  legacy decisions. The source batch will preserve native401/403/404 and current reach.
+- **Actual proof defect:** the runner exits0 despite two selected asset500s and an unclean
+  tally. Platform/27-source boot and rollback checks remain true observations, but this is
+  not successful strict representative acceptance. A separate Luna lane is implementing
+  the full private runner repair: separate off/shadow and strict windows; verified mode,
+  stage and source metadata; fail-closed acceptance; pre-restart diagnostics; and exact
+  container/volume ownership cleanup. No original draft is edited or new run authorized.
+- **Performance:** one bounded clean C468 local4188 diagnostic passes the selected three
+  cases (LCP2436ms, state87.2ms, board290.7ms); one first LCP sample exceeds its budget.
+  Port/process cleanup is verified and4178 untouched. These local timings do not clear
+  current hosted19/22 or identify a product optimization. Budgets remain unchanged.
+- **P2 approvals:** schema, repository and workflow-version validation compile; reminder
+  scan is registered at15-minute cadence with bounded locks, DB clock, durable50/90 markers,
+  expiry audit/outbox and decided_at. Domain19 files/657 tests pass. Full API/UI implementation
+  continues before bulk review. A safe approver-picker GET contract is proposed and asked
+  once because the existing staff assignment roster omits customers and has different reach;
+  no undocumented route or assumed approval is shipped.
+- **Acceptance:** P0 remains open on actual strict behavior, truthful proof acquisition,
+  current hosted performance, remaining config/task prerequisites, required exact-head
+  reviews/CI and the additional Sol finalizer. The three earlier partial dates are retained.
+  No calendar wait, protected merge, phase closure or persistent DEV replacement is claimed.
+
+## October 6 strict runtime proof and continuing implementation — 08:08 UTC
+
+- **P0 #583:** exact `c46825e938019c354c615be03200cefeab7d710d` includes the
+  zero-selection keyboard fix and safe offline-upgrade documentation. Three independent
+  ordinary review contexts and the full independent Sol product/security pass clear their
+  applicable exact source/deltas. Current hosted CI passes136 PostgreSQL files/1651 tests,
+  browser smoke24/24, accessibility, visuals and12 fast implementation jobs. G11 fails19/22:
+  LCP2656ms, state240.2ms and board650.8ms exceed unchanged budgets. The PR evidence/template
+  gate remains red. A separate complete performance implementation lane has one bounded
+  diagnostic window after the disposable runtime cleanup; no speculative fix or budget change.
+- **P0 disposable runtime:** independently pinned C468 run `20261006T080705Z-c46825e9`
+  exits0. Schema80→88 upgrade, live/ready200, UID10001, all47 scheduled actor-route pairs,
+  platform-only then27 observed non-task strict sources, metrics/CAS/step-up and empty-value
+  rollback pass. All six runner resources are absent without cleanup errors; root captured
+  six owned containers and removed the exact unused PostgreSQL anonymous volume, verifying
+  absence. The actual shadow traffic interval is08:07:53.637456–08:08:01.227095UTC.
+  **Shadow compatibility is not accepted:**129 requests and46 tally rows reconcile events,
+  but three unexplained rows/four occurrences remain, including two asset reads returning500
+  and unknown native decisions for capabilities/workspace403s. The representative report
+  is unclean despite successful strict-stage checks. Independent assessment is active;
+  original failures and all three earlier partial observation dates remain unchanged.
+- **P4 #580:** user-approved Babel7.29.8 AST replacement and the complete structural
+  callable/static-key follow-up are pushed at `d8060aec656047e085e3025f9e44ae0f6297a611`.
+  Scanner15/15, CI-script1093/1093 across112 suites, all9 typechecks and query/dependency
+  checks pass. Full independent Sol clears that exact gate candidate after the prior
+  strong ordinary findings were fixed together. API transaction source remains unchanged
+  fromc29; composition still needs relocation of the new P0 workspace-row lookup.
+- **P2 approvals:** full lifecycle schema/API/URL UI implementation is active in a separate
+  worktree based on notification candidate5a371451. Migration0116 is reserved. Current
+  reach-loss handling denies decisions while pending reach is lost; created_at and internal
+  approval.decided are aligned in the authoritative contracts. Initial domain657 tests/19
+  files and API types pass; full lifecycle integration/browser acceptance is not claimed.
+- **P4 notifications #585:** exact5a371451 adds the first canonical workspace.created
+  recipient resolver to the fenced delivery engine. Prior direct engine SQL passes5/5;
+  current unit tests7/7 and API types pass. Concrete providers, producers, digest grouping,
+  additional recipient sources and quiet-hour decisions remain incomplete. Pending digest
+  DST, quiet-hours, pending-action versioning and public-config questions are not assumed
+  answered. Human integrated review remains deferred toP4.
+- **Acceptance/deployment:** P0 remains open on performance, unclean shadow compatibility,
+  config/task prerequisites, required exact-source gates and the additional Sol finalizer.
+  P1–P4 execution continues concurrently. No protected merge, phase closure, original-date
+  carry-forward, persistent DEV replacement or enforcement activation is claimed.
+
+## October 6 complete batches and current-source failures — 07:27 UTC
+
+- **P0 #583 composition:** exact `22702a13c59240be51fe4c732c8b6e902271fa8d` combines
+  installer/UI/lifecycle source edaa6845 with the reviewed C9 workspace strict fix and
+  approved dependency floors. Its actual hosted PostgreSQL suite passes136 files/1651
+  tests; accessibility, visuals and all12 fast implementation jobs pass. Current G11
+  fails18/22: LCP2628ms, state271.3ms, assignment211.9ms and board689.8ms exceed unchanged
+  budgets. Current browser smoke passes23 tests and times out in the MFA journey at
+  restoration of the realtime log level. Earlier edaa's22/22 performance result remains
+  parent-source evidence, not current acceptance. Original current logs and downloaded
+  diagnostic evidence are retained privately. Bulk ordinary review clears the committed
+  lifecycle fix but finds Ctrl/Cmd+A absent from a board with zero selection because its
+  keyboard listener is inside the lazy toolbar. The complete correction/investigation
+  batch continues before further final reviews. The current exact image builds; no boot,
+  runtime compatibility, enforcement activation or deployment is claimed.
+- **P4 #580:** Thomas explicitly approved the existing Babel parser7.29.8 as a direct
+  development dependency. Structural AST candidate `f298edcad4653ab4363d9ce188d7db40e6b2bcd2`
+  is committed/pushed and passes13 scanner tests,1091 CI-script tests across112 suites,
+  frozen install, dependency checks and all9 typecheck tasks. It replaces the handwritten
+  parser after repeated syntax-class bypasses; API transaction source remains unchanged
+  fromc29. A strong independent ordinary pass followed by current full Sol remains needed;
+  no P4 query acceptance is claimed. Composition must also relocate any new P0 row lookup.
+- **P4 notifications:** the full schema/producer/fenced-worker implementation is active
+  in its isolated lane. Root acquired an exclusive PostgreSQL18 test container with a
+  private connection and exact ownership receipt for focused real-SQL verification.
+  SQL results and cleanup are not yet claimed. Digest grouping, event materialization and
+  concrete provider integration remain tracked. Quiet-hours format/DST semantics await
+  the already asked written decision; independent engine implementation continues.
+- **Acceptance:** all three original representative partial UTC observation dates remain
+  retained. Changed-source/dependency runtime compatibility, eligible strict testing,
+  public-config exception, required final reviews/CI and additional phase finalizer remain
+  open. P1/P2/P3 prepared integration and P4 implementation continue; no calendar wait,
+  protected merge, phase closure or persistent DEV update is claimed.
+
+## October 6 completed verification and next implementation batch — 06:48 UTC
+
+- **P0 #584:** independent full Sol clears product/dependency sourceC9; the review artifact
+  is committed and pushed atbb4b29e4. It does not authorize runtime cutover, observation
+  carry-forward or phase acceptance. The original three partial UTC observations remain
+  preserved, with changed dependency runtime compatibility still unproven. G11 remains17/22.
+- **P0 #583:** exact9e hosted SQL passes136 files/1649 tests/5 tasks; E2E, accessibility and
+  visual checks pass. G11 fails19/22 (LCP2632ms, state208.2ms, board658.6ms), with unchanged
+  budgets. Its existing diagnostic artifact was downloaded: CI merge sourcedb234e9a has
+  parents main3096 and9e, and its Git tree equals9e exactly. Diagnostic samples are not
+  canonical acceptance or complete CPU attribution. The9e image builds with usertaskdesk
+  and OCI revision9e; no boot/deployment is claimed. Independent review clears the prior
+  A→B→A defect but finds shared lifecycle-ref mutation during abandoned React renders.
+  A complete committed-lifecycle and grounded performance implementation batch is active;
+  further reviews wait for that batch's frozen source.
+- **P4 #580:** structural repair `15712410049e7b3ca4607c460f1dbe9add3a8845` is clean,
+  committed and pushed. It replaces token-offset inference with shared member/alias parsing
+  and cross-product regressions, and isolates the demonstrated concurrent checker-copy
+  fixture race. Scanner10/10, concurrent71/71 and full CI-script1088/1088 checks pass.
+  The original1087/1 failure is retained in task history. API files are unchanged fromc29;
+  no new SQL counts are claimed. Independent current Sol review is underway.
+- **Program:** P0 implementation and P4 security review continue in parallel. No calendar
+  wait remains. Public-config exception and pending-action versioning decisions already asked
+  remain pending. Primary unrelated edits, accepted main and persistent DEV are unchanged.
+  No phase, protected merge, cutover or deployment acceptance is claimed.
+
+## October 6 exact-source continuation — 06:39 UTC
+
+- **P0 authorization #584:** current candidate `c9a7f26ca16eac524847be80d23a9729789bbef5`
+  includes the previously reviewed workspace provenance fix and three approved dependency
+  floors. Two ordinary product reviews clear source81; the independent C9 dependency/private
+  runner delta review passes with28/28 offline tests and seven matching file pins. Full fresh
+  Sol security review is underway. Hosted fast CI passes all12 implementation jobs, including
+  dependency audit; the template/security evidence gate is pending. Full CI passes PostgreSQL
+  integration, browser smoke, accessibility and visual regression, but G11 fails17/22:
+  list500.6ms, LCP2616ms, palette200.7ms, assignment210.6ms and board664.9ms exceed unchanged
+  budgets. The candidate does not include the installer performance batch. Its source-labelled
+  image builds as `sha256:cff8de23170279a802a2416c849ea7ac90daa48c7c7ab7caa7160888d57aaba2`
+  with user taskdesk; no boot or deployment is claimed. Private C9 operational draft remains
+  unauthorized/unexecuted, and evidence compatibility/cutover/finalizer remain open.
+- **P0 installer #583:** candidate `9e63830c622f509abbfc337de0c133b51d2f8bf9` is pushed.
+  The complete follow-up replaces project readiness with generation-bound state and rejects
+  stale callbacks, covering rapid A→B→A navigation. Nonsecret MFA test-step labels identify
+  waits without altering assertions, timeouts or retries. Actual focused local checks pass22
+  tests across three files and web types. Prior source034 hosted G11 passes22/22, while its
+  MFA browser test times out (23 passed/1 failed); both original results remain retained.
+  Current9e hosted browser smoke, accessibility, visuals and all12 fast implementation jobs
+  pass; its PostgreSQL/performance jobs and current independent reviews remain pending.
+  Prior-source performance is not represented as current-source acceptance.
+- **P4 #580:** ordinary delta clearsc29, but full Sol finds computed method references bound
+  to local aliases can bypass the query gate. This is the third finding in the same mechanism,
+  so the assigned batch replaces fixed token offsets with normalized member-reference and
+  alias parsing, with interaction-matrix regressions. API transaction fixes remain unchanged
+  fromc29; prior scoped SQL6/6 and original full-source1717 counts retain their exact scope.
+- **Program:** model-tool thread capacity is limiting simultaneous reviews; pending gates
+  stay open while active implementation and security review continue. Main/persistent DEV
+  remain unchanged. The already asked public-config exception and pending-action versioning
+  decisions remain pending. No P0–P7 acceptance, protected merge or enforcement activation
+  is claimed.
+
+## October 6 implementation batches — 06:21 UTC
+
+- **P0 authorization #584:** source `81bcda5b3940a3bc0ae6d0e1053f3b93f6276588`
+  resolves the persisted workspace row before strict evaluation across all five row-scoped
+  workspace routes. Native reach and capability grants are unchanged. Actual focused SQL
+  passes7/7, focused units pass37/37 and route-policy/permission tests pass88/88; root
+  independently verified the exact acquired PostgreSQL ID absent. Two independent Luna
+  reviews clear this exact product source. Its frozen candidate-bound diagnostics draft
+  passes28 offline tests and independent ordinary review; it is explicitly unauthorized
+  and unexecuted. Fresh Sol and source/evidence compatibility remain pending.
+  Hosted source81 static/build/permissions/unit/contract pass, but dependency audit is red
+  on three existing-package advisories. Their previously implemented installer floors are
+  being ported in a separate complete dependency batch before final composition/review.
+  No current whole-candidate CI pass, cutover, deployment or P0 completion is claimed.
+- **P0 installer #583:** complete remediation `03432f669b77bddbad387c862aee10e858abf401`
+  is pushed. It adds panel lifecycle regressions, preserves existing offline .env values,
+  disables initial board-row opacity animation and consolidates existing store selectors.
+  Actual local checks pass23 focused tests, web types and434 computed contrast pairs.
+  Bulk independent current-source review and hosted acceptance are underway. Prior source66
+  actually passed136 PostgreSQL files/1649 tests, accessibility, visuals and E2E, built the
+  exact non-root image, and failed G11 at19/22: LCP2608ms, assignment222.7ms and board647.5ms.
+  Those failures remain original evidence. No validated dedicated LCP/assignment source
+  correction or final-source performance/runtime/browser pass is asserted.
+- **P4 #580:** the full API relocation's145-file/1717-test SQL result remains tied to
+  source0d694754. Independent full Sol atffabd23a found escaped computed-call bypasses and
+  two global-pool reads inside identity transactions. Complete remediation
+  `c29dd0db2685b2c8c35d8a4cfa703bad64eca29f` is pushed: structural JS escape decoding and
+  explicit transaction executors, with actual scanner9/9 and focused identity-admin SQL6/6.
+  Query gate/types/CI manifest/static checks pass. Temporary acquisition instrumentation
+  was restored to its original hash. Root verified the acquired PG ID absent and no remaining
+  session-labelled containers; an exact acquired Ryuk ID was not in this focused receipt,
+  so no stronger acquisition claim is made. Fresh delta ordinary/Sol review remains required;
+  the old full SQL result is not represented as a full final-source rerun.
+- **Program:** P1/P2/P3 integration remains prepared in#581; versioned pending-action
+  compatibility and the public-config P0 exception are pending written decisions already
+  asked once. Observation dates are complete, not a calendar wait. Main and persistent DEV
+  remain unchanged. All source corrections are implemented in batches before bulk review;
+  P0–P7 acceptance is not claimed.
+
+## October 6 bulk continuation — actual failures remain open
+
+- **P0 strict runtime:** all three representative partial UTC date buckets are reconciled;
+  calendar waiting is finished. Actual disposable attempt `20261006T054501Z-3096cb04`
+  passed schema-80→88 migration, health, UID, settings CAS, step-up and metrics protocol
+  checks, then failed representative traffic: the bootstrap instance admin without workspace
+  membership received HTTP500 instead of the required403 on `GET /api/workspace/{workspaceId}`.
+  All six acquired resources are verified absent, with zero cleanup errors. Source inspection
+  identifies a row-scoped policy whose pre-handler middleware supplies request-scoped evidence;
+  strict evaluation runs before the handler's row lookup. This is a real source defect, not a
+  reason to weaken the denial expectation. A bounded product correction and failing-stage
+  log capture correction are assigned together. Original failed records remain intact.
+  The earlier fixture-order attempt's403 was correct and has a separately reviewed runner
+  correction. Public-config exception, applicable re-key/cutover and finalizer remain open;
+  persistent DEV enforcement is unchanged. No P0 closure is claimed.
+- **P0 installer #583:** complete source delta `66b93417886e77406d952a5c6ee5a8e804ce4f83`
+  is pushed clean. Exact-tree contrast inventory, opaque list surfaces, deferred realtime
+  first paint and corrected offline deployment documentation pass local tokens/types and
+  15 focused tests. Hosted fast CI passes all implementation jobs; only the PR template/
+  current security-evidence job is red. Full hosted CI and fresh independent delta review
+  are underway. Earlier source a441's G11 result is18/22, not acceptance for this delta.
+  Actual installer/image/browser acceptance remains required.
+- **P4 #580:** full read-relocation candidate `0d694754d7410ae633de6ca240cee35947917547`
+  has zero misplaced Drizzle reads locally and passed the entire PostgreSQL suite:
+  145 files,1717 tests, zero failures. Exact acquired PostgreSQL and Ryuk IDs were verified
+  absent after cleanup. Ordinary auth/identity and resource reviews clear; gate review
+  blocks optional/computed read calls missed by the scanner. A single structural parser/
+  regression/CI-wiring remediation batch is assigned. Local zero inventory and SQL success
+  do not close the required gate or P4. The transaction-executor residual remains recorded
+  for full independent Sol assessment.
+- **Parallel integration #581:** source0f retains its three ordinary reviews, full Sol
+  clearance, full hosted145-file/1717-test and22/22 performance result. Its actual image
+  boot returned live/ready/agent/portal200, UID10001 and restricted database role. The original
+  boot receipt failed a stale113-migration harness assertion; exact source has114 journal
+  entries. Original receipt and separate factual assessment are retained, without an
+  unchanged rerun or fabricated PASS. All four owned runtime resources were removed.
+  Source4736's complete contrast/OpenAPI union correction is pushed separately; four pending-
+  action enum compatibility findings require a written versioning decision before integration.
+  No new feature deployment, protected merge or P0–P7 completion is claimed.
+
+## October 6 continuation checkpoint — implementation first, bulk acceptance pending
+
+- **P0 priority:** the three actual partial UTC observation dates are reconciled; there is
+  no additional calendar wait. The public-config pre-guard exception remains pending Thomas,
+  and task selection remains dependent on accepted config runtime and fresh re-key evidence.
+  The isolated platform/27-source test has an accurately attributed delegated application
+  record; no Thomas personal digest approval is claimed. The private adapter's canonical
+  registry-order correction passes 24 offline tests and fresh ordinary/Sol review. Two real
+  disposable attempts remain failed evidence: the first stopped at registry compilation;
+  the second built the exact candidate but rejected baseline metadata before containers.
+  The schema-80 image has source `b80ff7c3`, distinct from target `3096cb04`; the adapter
+  incorrectly conflated those revisions. A structural source-binding correction is active.
+  Both attempts report zero cleanup errors. Runtime/rollback acceptance remains pending.
+  Persistent DEV enforcement is unchanged; the earlier whole-P0 finalizer is provisional.
+- **P0 installer #583:** the complete installer has actual full-path regressions for both
+  discovered deployment defects: Bash top-level `local` and stale digest across version
+  change, including atomic tag/digest selection and interrupted-write recovery. Exact source
+  `a4418d50e3bfc139faad08f6469db040983ad067` passes 26/26 full-path tests and fresh
+  ordinary/Sol review. Its hosted E2E/G8/G4 pass; PG/G11 are still running. Static contrast
+  ownership fails and is included in the integration correction batch. The preceding
+  `a81c307a` hosted PG passed 136 files/1649 tests, G8/G4 passed,
+  MFA E2E timed out (23 passed/1 failed), and G11 remained 20/22. None is silently retried,
+  waived or represented as the new source's acceptance. Installer runtime and current Sol
+  clearance remain required before protected acceptance or P0 completion.
+- **P1/P2/P3/P4 integration #581:** exact source
+  `0f56575a9dfbed904482dce0651ea8dfb7f07743` clears all three ordinary scopes and full
+  independent Sol source review. Actual hosted G11 run37414196827 passes 22/22 with
+  unchanged budgets (LCP median2440ms, board median464.9ms). G8/G4/E2E pass. Its synthetic
+  merge `03d0c709a024dfbbb38867858a5d65705ff08a3a` has the identical candidate tree.
+  Required static contrast ownership and five OpenAPI compatibility findings remain red;
+  template/evidence acceptance is pending. PG passes 145 files/1717 tests; all five full
+  hosted jobs pass. The contrast/API compatibility corrections form one implementation batch.
+  The reviewed source builds image `sha256:2236fff37477bd148a8de805653091eafb602421b86c4ee64d9fbd2cc18aaac8`
+  with OCI0f and usertaskdesk; boot/health has not run. No feature deployment or merge.
+- **P4 repository ownership #580:** composition `fa0afbf5` passed 79 files/1125 SQL tests,
+  nine-package typecheck and scoped static checks. The failed first SQL run remains an
+  infrastructure incident; the successful rerun acquired and removed its exact owned PG ID.
+  Remaining module conversions and the genuinely missing query-gate implementation are now
+  one complete implementation batch. Executable misplaced-read inventory has fallen from
+  321 to 169 during that batch. The new gate stays red while reads are relocated;
+  there is no grandfathered baseline or exemption. Full P4 acceptance remains mandatory.
+- **Program:** real Entra certification and executable outbox delivery remain unclaimed.
+  P0–P7 remain open; independent reviews and actual tests are evidence, not phase claims.
+  Root reserves the next local resource window for the P0 disposable proof; other lanes
+  continue source implementation without overlapping local measurements or generic cleanup.
+
+## October 6 representative capture reconciled; parallel slices pushed — 2026-10-06
+
+Accepted main remains `3096cb044bdf6ae98488bfc385f532fa6386343a`; reviewed OrbStack DEV
+remains `e26db50e23b2d685c7277c63bc9ee71a8076fcee`. No new feature source is deployed.
+Actual October 6 traffic was captured at 01:53:15.538258–01:53:22.000250 UTC: 129 requests,
+44 tally rows / 127 occurrences, all 28 eligible sources observed (29 registered; the public
+pre-guard configuration route is separately source-proven), zero unexplained outcomes,
+zero uncovered eligible sources, complete event reconciliation, and all eight owned resources
+absent with zero cleanup errors. The one delegated WebSocket outcome remains explicitly
+attributed to its native protocol handler. This is representative source coverage, not a claim
+that every one of the 185 eligible registry routes was individually exercised.
+
+Retained October 4/5/6 records now form three actual partial UTC date buckets. Original
+acquisitions and failed records remain intact. Root deterministically replayed the October 6
+acquisition and matched its report. The retained EA behavior manifest has 684 paths: 683
+identical and one API-index documentation-comment-only change; scoped behavior is unchanged.
+The first October 6 attempt failed before traffic because its historical schema-80 baseline
+image was absent. A separately repaired private runner selected a newly rebuilt exact
+`b80ff7c3` source image by actual digest, validated its source/user, and preserved the 80-entry
+journal/prefix/hash checks. It does not claim the historical image digest was reproduced.
+The corrected attempt passed schema-80 to schema-88 migration/runtime/metrics proof and
+cleanup. Its private complete packet is under `2026-10-06/p0-observation-preflight/`.
+
+The fresh independent GPT-6 Sol operational review cleared the three-date observation for
+28 eligible sources and a staged proposal for 27 directly observed non-task sources. It blocks
+config/task activation pending an explicit DEV/UAT evidence exception: public `GET /api/config`
+returned 200 on each actual date but is structurally above the shadow logger. Its immutable
+public-policy/placement proof cannot silently substitute for the mandatory tally. A concrete
+narrow proposal is pending Thomas; the other sources keep their existing evidence requirements.
+Enforcement remains off. Read-only DEV queries found zero
+roles/API keys containing only the old task permission key; legacy keys were not removed.
+The additional fresh Sol whole-P0 finalizer verified accepted-main fast CI 13/13 and full
+CI 5/5 at the exact merged PR head, but remains provisionally blocked. It also found the
+explicit P0 `install.sh` bootstrapper absent; issue #582 now tracks its complete implementation
+and acceptance. P7 stable-URL publication/hardening is separate and is not added to P0.
+The installer batch is assigned next to the Luna strict-runner implementation lane.
+The runbook/config order-validation correction is prepared on the unaccepted checkpoint
+branch: it states exact membership and task-last completeness, while registry order is an
+operational rule. No parser behavior or gate outcome was changed by that prose correction. Actual reviewed cutover/runtime/rollback, the installer and finalizer clearance
+remain before P0 closure; #8 specifically retains operational authorization acceptance. Three partial captures do not establish full days, 72 hours,
+production readiness, protected acceptance or automatic cutover. The completed date-observation
+heartbeat is paused after reconciliation; no duplicate schedule is created.
+
+P1 structured search is pushed clean at `14742c648015dbc0961c15cdfa5d18cdddcad008`:
+SQL 3/3, query units 3/3, browser 3/3 including a real built-app/database journey, types/builds,
+permissions 14 files/88 tests and OpenAPI 226 operations pass. P2 project/calendar/CAL-9
+is pushed clean at `1dfeb82567fdeff59f9ea61fd9ff3cb281b4c4c5`: SQL 3 files/28 tests,
+11 browser journeys, types 9/9, permissions 14 files/88 tests, OpenAPI 229 operations and
+18 locales pass. Author results are not independent review, hosted acceptance or phase claims.
+Both P2 private databases were removed after exact ownership checks.
+
+Integration #581 remains draft; local composed source is now `66d468a1` after the complete
+P1 search and P2 calendar branches were merged normally into its isolated branch. The hosted
+PR remains on its older head until the full CI correction is composed. Whole CI correction continues for literal
+registered encryption-key reads, generated contract drift, God Mode visual/inventory coverage,
+actual browser defects and unchanged strict performance budgets. Earlier hosted failures remain
+open. P4 #580 bucket B resumes across seven modules on its separate branch; bucket A remains
+pushed/unaccepted. Full query-gate acceptance is still required at P4. P3 portal depends on its
+real catalogue/intake foundations; real Entra and outbox delivery are not claimed.
