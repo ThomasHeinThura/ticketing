@@ -398,6 +398,64 @@ describe("PA-9 explicit credential revocation", () => {
     expect(await decisionRows(pending.id)).toEqual({ events: [], audits: [] });
   });
 
+  it("terminally invalidates a naturally expired original session on later explicit bulk revocation", async () => {
+    const { app } = createApp();
+    const setup = await setupCredentialOwner(app);
+    const pending = await insertPendingAction({
+      requesterPersonId: setup.person.id,
+      workspaceId: setup.workspace.id,
+      organisationId: setup.workspace.organisationId,
+      credentialType: "session",
+      credentialId: setup.session.id,
+    });
+    await db
+      .update(schema.sessionTable)
+      .set({ expiresAt: new Date(Date.now() - 60_000) })
+      .where(eq(schema.sessionTable.id, setup.session.id));
+
+    const signIn = await app.request("/api/auth/sign-in/email", {
+      method: "POST",
+      headers: {
+        "content-type": "application/json",
+        "x-forwarded-for": `198.51.100.${(++signInCounter % 250) + 1}`,
+      },
+      body: JSON.stringify({
+        email: setup.user.email,
+        password: TEST_PASSWORD,
+      }),
+    });
+    expect(signIn.status, await signIn.clone().text()).toBe(200);
+    const currentCookie = signIn.headers
+      .getSetCookie()
+      .find((value) => value.startsWith("__Host-tdk_agent_session="))
+      ?.split(";", 1)[0];
+    expect(currentCookie).toBeDefined();
+
+    const response = await csrfRequest(
+      app,
+      "/api/auth/revoke-sessions",
+      { method: "POST" },
+      currentCookie as string,
+    );
+
+    expect(response.status, await response.clone().text()).toBe(200);
+    expect(await stateOf(pending.id)).toEqual({
+      state: "invalidated",
+      invalidationReason: "credential_revoked",
+    });
+    expectPersistedInvalidation(
+      await decisionRows(pending.id),
+      pending,
+      setup.workspace.id,
+    );
+    expect(
+      await db
+        .select({ id: schema.sessionTable.id })
+        .from(schema.sessionTable)
+        .where(eq(schema.sessionTable.id, setup.session.id)),
+    ).toHaveLength(0);
+  });
+
   it("returns unavailable and rolls back a swallowed sign-out transaction failure", async () => {
     const { app } = createApp();
     const setup = await setupCredentialOwner(app);

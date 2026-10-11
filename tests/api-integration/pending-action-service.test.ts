@@ -7,6 +7,10 @@ import { auth } from "../../apps/api/src/auth";
 import db, { schema } from "../../apps/api/src/database";
 import { withExplicitCredentialMutation } from "../../apps/api/src/pending-action/credential-invalidation";
 import {
+  type ActionRequiredAccessInput,
+  evaluateActionRequiredAccess,
+} from "../../apps/api/src/pending-action/required-access";
+import {
   createPendingAction,
   decideOwnPendingAction,
 } from "../../apps/api/src/pending-action/service";
@@ -652,6 +656,55 @@ describe("pending-action service persistence", () => {
     ).toHaveLength(0);
   });
 
+  it("PA-9: natural session expiry does not revoke an existing pending action", async () => {
+    const created = await createPendingAction(requestInput());
+    const [pending] = await db
+      .select()
+      .from(schema.pendingActionTable)
+      .where(eq(schema.pendingActionTable.id, created.pendingActionId));
+    if (!pending) throw new Error("Pending action fixture was not persisted");
+
+    await db
+      .update(schema.sessionTable)
+      .set({ expiresAt: new Date(Date.now() - 1_000) })
+      .where(eq(schema.sessionTable.id, "session-pending-action-test"));
+    await db
+      .delete(schema.sessionTable)
+      .where(eq(schema.sessionTable.id, "session-pending-action-test"));
+
+    const input = {
+      requestedByPersonId: pending.requestedByPersonId,
+      credentialType: "session",
+      credentialId: pending.credentialId,
+      action: pending.action,
+      targetType: pending.targetType,
+      targetIds: pending.targetIds,
+      routeKey: pending.routeKey,
+      workspaceId: pending.workspaceId,
+      projectId: pending.projectId,
+      organisationId: pending.organisationId,
+      confirmationRequired: pending.confirmationRequired,
+      payload: pending.payload,
+      payloadHash: pending.payloadHash,
+    } satisfies ActionRequiredAccessInput;
+    const creationCredentialCheck = await db.transaction((tx) =>
+      evaluateActionRequiredAccess(tx, input),
+    );
+    const existingActionAccessCheck = await db.transaction((tx) =>
+      evaluateActionRequiredAccess(tx, input, { existingPendingAction: true }),
+    );
+
+    expect(creationCredentialCheck).toMatchObject({
+      allowed: false,
+      failure: "credential",
+    });
+    expect(existingActionAccessCheck).toEqual({ allowed: true });
+    expect(await stateOf(created.pendingActionId)).toEqual({
+      state: "pending",
+      invalidationReason: null,
+    });
+  });
+
   it("PA-9: actual Better Auth permissions narrowing terminally invalidates only newly denied work", async () => {
     const keyId = "pending-action-permissions-update-key";
     const now = new Date();
@@ -723,6 +776,223 @@ describe("pending-action service persistence", () => {
     const decisions = await decisionRows(created.pendingActionId);
     expect(decisions.events).toHaveLength(1);
     expect(decisions.audits).toHaveLength(1);
+  });
+
+  it("PA-9: unmarked installed Better Auth permission updates invalidate lost action access", async () => {
+    const keyId = "pending-action-unmarked-permissions-update-key";
+    const now = new Date();
+    await db.insert(schema.apikeyTable).values({
+      id: keyId,
+      referenceId: "user-pending-action-test",
+      userId: "user-pending-action-test",
+      key: "pending-action-unmarked-permissions-update-secret",
+      permissions: JSON.stringify({ work_item: ["delete"] }),
+      createdAt: now,
+      updatedAt: now,
+      enabled: true,
+    });
+    const created = await createPendingAction({
+      ...requestInput(),
+      credentialType: "api_key",
+      credentialId: keyId,
+      origin: "api",
+      actorId: "user-pending-action-test",
+      actorType: "api_key",
+    });
+
+    await auth.api.updateApiKey({
+      body: {
+        keyId,
+        userId: "user-pending-action-test",
+        permissions: {
+          work_item: ["delete"],
+          workspace: ["read"],
+        },
+      },
+    });
+    expect(await stateOf(created.pendingActionId)).toEqual({
+      state: "pending",
+      invalidationReason: null,
+    });
+
+    await auth.api.updateApiKey({
+      body: {
+        keyId,
+        userId: "user-pending-action-test",
+        permissions: { work_item: ["read"] },
+      },
+    });
+
+    expect(await stateOf(created.pendingActionId)).toEqual({
+      state: "invalidated",
+      invalidationReason: "capability_removed",
+    });
+    expect(await decisionRows(created.pendingActionId)).toMatchObject({
+      events: [
+        {
+          payload: expect.objectContaining({
+            payload: expect.objectContaining({
+              invalidationReason: "capability_removed",
+              outcome: "invalidated",
+            }),
+          }),
+        },
+      ],
+      audits: [
+        {
+          after: {
+            state: "invalidated",
+            invalidationReason: "capability_removed",
+          },
+        },
+      ],
+    });
+
+    await auth.api.updateApiKey({
+      body: {
+        keyId,
+        userId: "user-pending-action-test",
+        permissions: { work_item: ["delete"] },
+      },
+    });
+    expect(await stateOf(created.pendingActionId)).toEqual({
+      state: "invalidated",
+      invalidationReason: "capability_removed",
+    });
+    expect(await decisionRows(created.pendingActionId)).toMatchObject({
+      events: [{}],
+      audits: [{}],
+    });
+
+    const disableKeyId = "pending-action-unmarked-disable-success-key";
+    const disableNow = new Date();
+    await db.insert(schema.apikeyTable).values({
+      id: disableKeyId,
+      referenceId: "user-pending-action-test",
+      userId: "user-pending-action-test",
+      key: "pending-action-unmarked-disable-success-secret",
+      permissions: JSON.stringify({ work_item: ["delete"] }),
+      createdAt: disableNow,
+      updatedAt: disableNow,
+      enabled: true,
+    });
+    const disableAction = await createPendingAction({
+      ...requestInput(),
+      credentialType: "api_key",
+      credentialId: disableKeyId,
+      origin: "api",
+      actorId: "user-pending-action-test",
+      actorType: "api_key",
+    });
+    await auth.api.updateApiKey({
+      body: {
+        keyId: disableKeyId,
+        userId: "user-pending-action-test",
+        enabled: false,
+      },
+    });
+    expect(await stateOf(disableAction.pendingActionId)).toEqual({
+      state: "invalidated",
+      invalidationReason: "credential_revoked",
+    });
+  });
+
+  it("PA-9: unmarked installed Better Auth permission and disable writes roll back with their invalidation event", async () => {
+    const keyId = "pending-action-unmarked-disable-rollback-key";
+    const now = new Date();
+    await db.insert(schema.apikeyTable).values({
+      id: keyId,
+      referenceId: "user-pending-action-test",
+      userId: "user-pending-action-test",
+      key: "pending-action-unmarked-disable-rollback-secret",
+      permissions: JSON.stringify({ work_item: ["delete"] }),
+      createdAt: now,
+      updatedAt: now,
+      enabled: true,
+    });
+    const created = await createPendingAction({
+      ...requestInput(),
+      credentialType: "api_key",
+      credentialId: keyId,
+      origin: "api",
+      actorId: "user-pending-action-test",
+      actorType: "api_key",
+    });
+    await db.execute(
+      sql.raw(`
+        CREATE OR REPLACE FUNCTION fail_unmarked_key_disable_outbox()
+        RETURNS trigger LANGUAGE plpgsql AS $$
+        BEGIN
+          IF NEW.kind = 'pending_action.decided' THEN
+            RAISE EXCEPTION 'test unmarked key-disable event failure';
+          END IF;
+          RETURN NEW;
+        END;
+        $$
+      `),
+    );
+    await db.execute(
+      sql.raw(`
+        CREATE TRIGGER fail_unmarked_key_disable_outbox
+        BEFORE INSERT ON outbox
+        FOR EACH ROW EXECUTE FUNCTION fail_unmarked_key_disable_outbox()
+      `),
+    );
+
+    try {
+      await expect(
+        auth.api.updateApiKey({
+          body: {
+            keyId,
+            userId: "user-pending-action-test",
+            permissions: { work_item: ["read"] },
+          },
+        }),
+      ).rejects.toBeTruthy();
+      expect(await stateOf(created.pendingActionId)).toEqual({
+        state: "pending",
+        invalidationReason: null,
+      });
+      const [permissionsBeforeRetry] = await db
+        .select({ permissions: schema.apikeyTable.permissions })
+        .from(schema.apikeyTable)
+        .where(eq(schema.apikeyTable.id, keyId));
+      expect(permissionsBeforeRetry?.permissions).toBe(
+        JSON.stringify({ work_item: ["delete"] }),
+      );
+
+      await expect(
+        auth.api.updateApiKey({
+          body: {
+            keyId,
+            userId: "user-pending-action-test",
+            enabled: false,
+          },
+        }),
+      ).rejects.toBeTruthy();
+      expect(await stateOf(created.pendingActionId)).toEqual({
+        state: "pending",
+        invalidationReason: null,
+      });
+      const [key] = await db
+        .select({ enabled: schema.apikeyTable.enabled })
+        .from(schema.apikeyTable)
+        .where(eq(schema.apikeyTable.id, keyId));
+      expect(key?.enabled).toBe(true);
+      expect(await decisionRows(created.pendingActionId)).toEqual({
+        events: [],
+        audits: [],
+      });
+    } finally {
+      await db.execute(
+        sql.raw(
+          "DROP TRIGGER IF EXISTS fail_unmarked_key_disable_outbox ON outbox",
+        ),
+      );
+      await db.execute(
+        sql.raw("DROP FUNCTION IF EXISTS fail_unmarked_key_disable_outbox()"),
+      );
+    }
   });
 
   it("PA-9: a decided-event failure rolls back both the key update and invalidation", async () => {
@@ -860,19 +1130,13 @@ describe("pending-action service persistence", () => {
     );
 
     try {
-      const result = await withExplicitCredentialMutation(
-        { kind: "api_key", route: "/api-key/update" },
-        () =>
-          auth.api.updateApiKey({
-            body: {
-              keyId,
-              userId: "user-pending-action-test",
-              permissions: { work_item: ["read"] },
-            },
-          }),
-      );
-
-      expect(result.state.deleteFailure).toBeNull();
+      await auth.api.updateApiKey({
+        body: {
+          keyId,
+          userId: "user-pending-action-test",
+          permissions: { work_item: ["read"] },
+        },
+      });
       expect(await stateOf(created.pendingActionId)).toEqual({
         state: "invalidated",
         invalidationReason: "capability_removed",

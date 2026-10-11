@@ -69,6 +69,8 @@ export async function evaluateActionRequiredAccess(
   options: {
     /** A before/after snapshot used only while the same key row is locked in its update tx. */
     apiKeyPermissions?: string | null;
+    /** Existing pending actions survive natural session expiry; explicit revocation atomically invalidates them. */
+    existingPendingAction?: boolean;
   } = {},
 ): Promise<RequiredAccessDecision> {
   const route = policyRegistry.get(input.routeKey);
@@ -132,19 +134,23 @@ export async function evaluateActionRequiredAccess(
     if (!input.credentialId) {
       return { allowed: false, failure: "credential", status: 403 };
     }
-    const [session] = await tx
-      .select({ id: sessionTable.id })
-      .from(sessionTable)
-      .where(
-        and(
-          eq(sessionTable.id, input.credentialId),
-          eq(sessionTable.userId, requester.userId),
-          eq(sessionTable.portal, "agent"),
-          gt(sessionTable.expiresAt, now),
-        ),
-      )
-      .limit(1);
-    if (!session) return { allowed: false, failure: "credential", status: 403 };
+    if (!options.existingPendingAction) {
+      const [session] = await tx
+        .select({ id: sessionTable.id })
+        .from(sessionTable)
+        .where(
+          and(
+            eq(sessionTable.id, input.credentialId),
+            eq(sessionTable.userId, requester.userId),
+            eq(sessionTable.portal, "agent"),
+            gt(sessionTable.expiresAt, now),
+          ),
+        )
+        .limit(1);
+      if (!session) {
+        return { allowed: false, failure: "credential", status: 403 };
+      }
+    }
     identityCredential = { credential: "session" };
   } else {
     if (!input.credentialId) {

@@ -286,7 +286,7 @@ function sessionRowsQuery(
   condition: ReturnType<typeof eq>,
 ) {
   return tx
-    .select({ id: sessionTable.id, expiresAt: sessionTable.expiresAt })
+    .select({ id: sessionTable.id })
     .from(sessionTable)
     .where(condition)
     .orderBy(sessionTable.id)
@@ -319,15 +319,13 @@ async function invalidatePendingActionsForCredentials(
   return auditFailures;
 }
 
-/** Lock and invalidate the live sessions that a user-wide app mutation revokes. */
+/** Lock and invalidate every session row a user-wide app mutation revokes. */
 export async function lockAndInvalidateUserSessions(
   tx: PendingActionTransaction,
   userId: string,
   occurredAt = new Date(),
 ) {
-  const sessions = (
-    await sessionRowsQuery(tx, eq(sessionTable.userId, userId))
-  ).filter((row) => row.expiresAt > occurredAt);
+  const sessions = await sessionRowsQuery(tx, eq(sessionTable.userId, userId));
   const auditFailures = await invalidatePendingActionsForCredentials(
     tx,
     sessions.map(({ id }) => ({ type: "session" as const, id })),
@@ -363,18 +361,16 @@ export async function lockAndInvalidateUserCredentials(
   };
 }
 
-/** Lock and invalidate only live sessions the identity-connection disable removes. */
+/** Lock and invalidate every session row the identity-connection disable removes. */
 export async function lockAndInvalidateConnectionSessions(
   tx: PendingActionTransaction,
   connectionId: string,
   occurredAt = new Date(),
 ) {
-  const sessions = (
-    await sessionRowsQuery(
-      tx,
-      eq(sessionTable.identityConnectionId, connectionId),
-    )
-  ).filter((row) => row.expiresAt > occurredAt);
+  const sessions = await sessionRowsQuery(
+    tx,
+    eq(sessionTable.identityConnectionId, connectionId),
+  );
   const auditFailures = await invalidatePendingActionsForCredentials(
     tx,
     sessions.map(({ id }) => ({ type: "session" as const, id })),
@@ -409,8 +405,13 @@ export function createCredentialAwareDrizzleAdapter() {
     return {
       ...base,
       update: async <T>(input: AdapterUpdateInput) => {
-        const state = explicitMutationStorage.getStore();
-        if (state?.kind !== "api_key" || input.model !== "apikey") {
+        if (input.model !== "apikey") {
+          return base.update<T>(input);
+        }
+        if (
+          input.update.enabled !== false &&
+          input.update.permissions === undefined
+        ) {
           return base.update<T>(input);
         }
         const selector = exactSelector(input.where, "id");
@@ -419,12 +420,6 @@ export function createCredentialAwareDrizzleAdapter() {
             new Error("Unexpected Better Auth API-key update selector"),
           );
           throw new Error("Unexpected Better Auth API-key update selector");
-        }
-        if (
-          input.update.enabled !== false &&
-          input.update.permissions === undefined
-        ) {
-          return base.update<T>(input);
         }
         return runCredentialAdapterTransaction(base, async (txAdapter, tx) => {
           const [before] = await tx
@@ -556,12 +551,10 @@ export function createCredentialAwareDrizzleAdapter() {
                 selector.field === "token"
                   ? eq(sessionTable.token, selector.value as string)
                   : eq(sessionTable.id, selector.value as string);
-              const liveRows = (await sessionRowsQuery(tx, condition)).filter(
-                (row) => row.expiresAt > now,
-              );
+              const revokedRows = await sessionRowsQuery(tx, condition);
               const result = await txAdapter.delete(input);
               let auditFailures = 0;
-              for (const row of liveRows) {
+              for (const row of revokedRows) {
                 auditFailures += await invalidatePendingActionsForCredential(
                   tx,
                   { type: "session", id: row.id },
@@ -594,12 +587,10 @@ export function createCredentialAwareDrizzleAdapter() {
               const condition = userSelector
                 ? eq(sessionTable.userId, userSelector.value as string)
                 : inArray(sessionTable.token, tokenSelector?.value as string[]);
-              const liveRows = (await sessionRowsQuery(tx, condition)).filter(
-                (row) => row.expiresAt > now,
-              );
+              const revokedRows = await sessionRowsQuery(tx, condition);
               const result = await txAdapter.deleteMany(input);
               let auditFailures = 0;
-              for (const row of liveRows) {
+              for (const row of revokedRows) {
                 auditFailures += await invalidatePendingActionsForCredential(
                   tx,
                   { type: "session", id: row.id },
