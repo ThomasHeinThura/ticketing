@@ -846,7 +846,8 @@
       "apps/web/src/components/team/members-table.tsx::MembersTable::Table[0]/TableHeader[0]/TableRow[0]/TableHead[1]::text-foreground#0",
       "apps/web/src/components/team/members-table.tsx::MembersTable::Table[0]/TableHeader[0]/TableRow[0]/TableHead[2]::text-foreground#0",
       "apps/web/src/components/team/members-table.tsx::MembersTable::Table[0]/TableBody[0]/TableRow[0]/TableCell[0]/div[0]/p[0]::text-foreground#0",
-      "packages/ui/src/components/select.tsx::SelectPopup::SelectPrimitive.Portal[0]/SelectPrimitive.Positioner[0]/SelectPrimitive.Popup[0]::text-foreground#0"
+      "packages/ui/src/components/select.tsx::SelectPopup::SelectPrimitive.Portal[0]/SelectPrimitive.Positioner[0]/SelectPrimitive.Popup[0]::text-foreground#0",
+      "packages/ui/src/components/field.tsx::FieldLabel::FieldPrimitive.Label[0]::text-foreground#0"
     ],
     "occurrences": [
       {
@@ -1775,6 +1776,39 @@
         "chain": [
           "packages/ui/src/components/select.stories.tsx:<module>",
           "Select->packages/ui/src/components/select.tsx:Select"
+        ],
+        "backdropLayers": []
+      },
+      {
+        "id": "packages/ui/src/components/field.tsx::FieldLabel::FieldPrimitive.Label[0]::text-foreground#0",
+        "usage": "packages/ui/src/components/field.tsx",
+        "surfaceContext": "caller-chain",
+        "category": "body",
+        "chain": [
+          "packages/ui/src/components/field.stories.tsx:<module>",
+          "jsx:Field[0]/FieldLabel[0]"
+        ],
+        "backdropLayers": []
+      },
+      {
+        "id": "packages/ui/src/components/field.tsx::FieldLabel::FieldPrimitive.Label[0]::text-foreground#0",
+        "usage": "packages/ui/src/components/field.tsx",
+        "surfaceContext": "caller-chain",
+        "category": "body",
+        "chain": [
+          "packages/ui/src/components/fieldset.stories.tsx:<module>",
+          "jsx:Fieldset[0]/Field[0]/FieldLabel[0]"
+        ],
+        "backdropLayers": []
+      },
+      {
+        "id": "packages/ui/src/components/field.tsx::FieldLabel::FieldPrimitive.Label[0]::text-foreground#0",
+        "usage": "packages/ui/src/components/field.tsx",
+        "surfaceContext": "caller-chain",
+        "category": "body",
+        "chain": [
+          "packages/ui/src/components/fieldset.stories.tsx:<module>",
+          "jsx:Fieldset[0]/Field[1]/FieldLabel[0]"
         ],
         "backdropLayers": []
       }
@@ -1867,7 +1901,8 @@
       "apps/web/src/components/team/members-table.tsx::MembersTable::Table[0]/TableHeader[0]/TableRow[0]/TableHead[1]::text-foreground#0",
       "apps/web/src/components/team/members-table.tsx::MembersTable::Table[0]/TableHeader[0]/TableRow[0]/TableHead[2]::text-foreground#0",
       "apps/web/src/components/team/members-table.tsx::MembersTable::Table[0]/TableBody[0]/TableRow[0]/TableCell[0]/div[0]/p[0]::text-foreground#0",
-      "packages/ui/src/components/select.tsx::SelectPopup::SelectPrimitive.Portal[0]/SelectPrimitive.Positioner[0]/SelectPrimitive.Popup[0]::text-foreground#0"
+      "packages/ui/src/components/select.tsx::SelectPopup::SelectPrimitive.Portal[0]/SelectPrimitive.Positioner[0]/SelectPrimitive.Popup[0]::text-foreground#0",
+      "packages/ui/src/components/field.tsx::FieldLabel::FieldPrimitive.Label[0]::text-foreground#0"
     ],
     "occurrences": [
       {
@@ -2796,6 +2831,39 @@
         "chain": [
           "packages/ui/src/components/select.stories.tsx:<module>",
           "Select->packages/ui/src/components/select.tsx:Select"
+        ],
+        "backdropLayers": []
+      },
+      {
+        "id": "packages/ui/src/components/field.tsx::FieldLabel::FieldPrimitive.Label[0]::text-foreground#0",
+        "usage": "packages/ui/src/components/field.tsx",
+        "surfaceContext": "caller-chain",
+        "category": "body",
+        "chain": [
+          "packages/ui/src/components/field.stories.tsx:<module>",
+          "jsx:Field[0]/FieldLabel[0]"
+        ],
+        "backdropLayers": []
+      },
+      {
+        "id": "packages/ui/src/components/field.tsx::FieldLabel::FieldPrimitive.Label[0]::text-foreground#0",
+        "usage": "packages/ui/src/components/field.tsx",
+        "surfaceContext": "caller-chain",
+        "category": "body",
+        "chain": [
+          "packages/ui/src/components/fieldset.stories.tsx:<module>",
+          "jsx:Fieldset[0]/Field[0]/FieldLabel[0]"
+        ],
+        "backdropLayers": []
+      },
+      {
+        "id": "packages/ui/src/components/field.tsx::FieldLabel::FieldPrimitive.Label[0]::text-foreground#0",
+        "usage": "packages/ui/src/components/field.tsx",
+        "surfaceContext": "caller-chain",
+        "category": "body",
+        "chain": [
+          "packages/ui/src/components/fieldset.stories.tsx:<module>",
+          "jsx:Fieldset[0]/Field[1]/FieldLabel[0]"
         ],
         "backdropLayers": []
       }
@@ -6347,7 +6415,8 @@
       "packages/ui/src/components/input-group.tsx::InputGroupText::span[0]::text-muted-foreground#0",
       "packages/ui/src/components/select.tsx::SelectButton::span[0]::in-data-placeholder:text-muted-foreground#0",
       "packages/ui/src/components/select.tsx::SelectValue::SelectPrimitive.Value[0]::data-placeholder:text-muted-foreground#0",
-      "packages/ui/src/components/table.tsx::TableHead::th[0]::text-muted-foreground#0"
+      "packages/ui/src/components/table.tsx::TableHead::th[0]::text-muted-foreground#0",
+      "packages/ui/src/components/field.tsx::FieldDescription::FieldPrimitive.Description[0]::text-muted-foreground#0"
     ],
     "occurrences": [
       {
@@ -8002,6 +8071,17 @@
         "chain": [
           "apps/web/src/routes/agent/_layout/_authenticated/dashboard/invitations.tsx:InvitationsPage",
           "Layout->apps/web/src/components/common/layout.tsx:default"
+        ],
+        "backdropLayers": []
+      },
+      {
+        "id": "packages/ui/src/components/field.tsx::FieldDescription::FieldPrimitive.Description[0]::text-muted-foreground#0",
+        "usage": "packages/ui/src/components/field.tsx",
+        "surfaceContext": "caller-chain",
+        "category": "body",
+        "chain": [
+          "packages/ui/src/components/field.stories.tsx:<module>",
+          "jsx:Field[0]/FieldDescription[0]"
         ],
         "backdropLayers": []
       }
@@ -8129,7 +8209,8 @@
       "packages/ui/src/components/input-group.tsx::InputGroupText::span[0]::text-muted-foreground#0",
       "packages/ui/src/components/select.tsx::SelectButton::span[0]::in-data-placeholder:text-muted-foreground#0",
       "packages/ui/src/components/select.tsx::SelectValue::SelectPrimitive.Value[0]::data-placeholder:text-muted-foreground#0",
-      "packages/ui/src/components/table.tsx::TableHead::th[0]::text-muted-foreground#0"
+      "packages/ui/src/components/table.tsx::TableHead::th[0]::text-muted-foreground#0",
+      "packages/ui/src/components/field.tsx::FieldDescription::FieldPrimitive.Description[0]::text-muted-foreground#0"
     ],
     "occurrences": [
       {
@@ -9784,6 +9865,17 @@
         "chain": [
           "apps/web/src/routes/agent/_layout/_authenticated/dashboard/invitations.tsx:InvitationsPage",
           "Layout->apps/web/src/components/common/layout.tsx:default"
+        ],
+        "backdropLayers": []
+      },
+      {
+        "id": "packages/ui/src/components/field.tsx::FieldDescription::FieldPrimitive.Description[0]::text-muted-foreground#0",
+        "usage": "packages/ui/src/components/field.tsx",
+        "surfaceContext": "caller-chain",
+        "category": "body",
+        "chain": [
+          "packages/ui/src/components/field.stories.tsx:<module>",
+          "jsx:Field[0]/FieldDescription[0]"
         ],
         "backdropLayers": []
       }
@@ -26582,7 +26674,8 @@
       "apps/web/src/routes/agent/_layout/_authenticated/dashboard/invitations.tsx::InvitationsPage::Layout[0]/Layout.Content[0]/div[0]/div[0]/Table[0]/TableBody[0]/TableRow[0]/TableCell[3]/div[0]/Button[1]::hover:text-destructive#0",
       "apps/web/src/routes/agent/_layout/_authenticated/dashboard/workspace/$workspaceId/project/$projectId/calendar.tsx::RouteComponent::ProjectLayout[0]/div[0]/div[0]/p[0]::text-destructive#0",
       "packages/ui/src/components/form.tsx::FormLabel::Label[0]::text-destructive#0",
-      "packages/ui/src/components/form.tsx::FormMessage::p[0]::text-destructive#0"
+      "packages/ui/src/components/form.tsx::FormMessage::p[0]::text-destructive#0",
+      "packages/ui/src/components/field.tsx::FieldError::FieldPrimitive.Error[0]::text-destructive#0"
     ],
     "occurrences": [
       {
@@ -26671,6 +26764,17 @@
         "chain": [
           "apps/web/src/routes/agent/auth/verify-otp.tsx:VerifyOtp",
           "AuthLayout->apps/web/src/components/auth/layout.tsx:AuthLayout"
+        ],
+        "backdropLayers": []
+      },
+      {
+        "id": "packages/ui/src/components/field.tsx::FieldError::FieldPrimitive.Error[0]::text-destructive#0",
+        "usage": "packages/ui/src/components/field.tsx",
+        "surfaceContext": "caller-chain",
+        "category": "body",
+        "chain": [
+          "packages/ui/src/components/field.stories.tsx:<module>",
+          "jsx:Field[0]/FieldError[0]"
         ],
         "backdropLayers": []
       }
@@ -26695,7 +26799,8 @@
       "apps/web/src/routes/agent/_layout/_authenticated/dashboard/invitations.tsx::InvitationsPage::Layout[0]/Layout.Content[0]/div[0]/div[0]/Table[0]/TableBody[0]/TableRow[0]/TableCell[3]/div[0]/Button[1]::hover:text-destructive#0",
       "apps/web/src/routes/agent/_layout/_authenticated/dashboard/workspace/$workspaceId/project/$projectId/calendar.tsx::RouteComponent::ProjectLayout[0]/div[0]/div[0]/p[0]::text-destructive#0",
       "packages/ui/src/components/form.tsx::FormLabel::Label[0]::text-destructive#0",
-      "packages/ui/src/components/form.tsx::FormMessage::p[0]::text-destructive#0"
+      "packages/ui/src/components/form.tsx::FormMessage::p[0]::text-destructive#0",
+      "packages/ui/src/components/field.tsx::FieldError::FieldPrimitive.Error[0]::text-destructive#0"
     ],
     "occurrences": [
       {
@@ -26784,6 +26889,17 @@
         "chain": [
           "apps/web/src/routes/agent/auth/verify-otp.tsx:VerifyOtp",
           "AuthLayout->apps/web/src/components/auth/layout.tsx:AuthLayout"
+        ],
+        "backdropLayers": []
+      },
+      {
+        "id": "packages/ui/src/components/field.tsx::FieldError::FieldPrimitive.Error[0]::text-destructive#0",
+        "usage": "packages/ui/src/components/field.tsx",
+        "surfaceContext": "caller-chain",
+        "category": "body",
+        "chain": [
+          "packages/ui/src/components/field.stories.tsx:<module>",
+          "jsx:Field[0]/FieldError[0]"
         ],
         "backdropLayers": []
       }
@@ -46531,7 +46647,6 @@
       "packages/ui/src/components/autocomplete.tsx::AutocompleteEmpty::AutocompletePrimitive.Empty[0]::text-muted-foreground#0",
       "packages/ui/src/components/autocomplete.tsx::AutocompleteStatus::AutocompletePrimitive.Status[0]::text-muted-foreground#0",
       "packages/ui/src/components/breadcrumb.tsx::BreadcrumbList::ol[0]::text-muted-foreground#0",
-      "packages/ui/src/components/field.tsx::FieldDescription::FieldPrimitive.Description[0]::text-muted-foreground#0",
       "packages/ui/src/components/form.tsx::FormDescription::p[0]::text-muted-foreground#0",
       "packages/ui/src/components/kbd.tsx::KbdSequence::KbdGroup[0]/span[0]/span[0]::text-muted-foreground#0",
       "packages/ui/src/components/table.tsx::TableHead::th[0]::text-muted-foreground#0",
@@ -46604,20 +46719,6 @@
         "category": "body",
         "chain": [
           "packages/ui/src/components/breadcrumb.stories.tsx:<story>",
-          "packages/ui/.storybook/preview.ts:imports tailwind.css",
-          "packages/ui/.storybook/tailwind.css:#storybook-root.background-color:var(--background)"
-        ],
-        "backdropLayers": [
-          "bg-background"
-        ]
-      },
-      {
-        "id": "packages/ui/src/components/field.tsx::FieldDescription::FieldPrimitive.Description[0]::text-muted-foreground#0",
-        "usage": "packages/ui/src/components/field.tsx",
-        "surfaceContext": "caller-chain",
-        "category": "body",
-        "chain": [
-          "packages/ui/src/components/field.stories.tsx:<story>",
           "packages/ui/.storybook/preview.ts:imports tailwind.css",
           "packages/ui/.storybook/tailwind.css:#storybook-root.background-color:var(--background)"
         ],
@@ -46749,7 +46850,6 @@
       "packages/ui/src/components/autocomplete.tsx::AutocompleteEmpty::AutocompletePrimitive.Empty[0]::text-muted-foreground#0",
       "packages/ui/src/components/autocomplete.tsx::AutocompleteStatus::AutocompletePrimitive.Status[0]::text-muted-foreground#0",
       "packages/ui/src/components/breadcrumb.tsx::BreadcrumbList::ol[0]::text-muted-foreground#0",
-      "packages/ui/src/components/field.tsx::FieldDescription::FieldPrimitive.Description[0]::text-muted-foreground#0",
       "packages/ui/src/components/form.tsx::FormDescription::p[0]::text-muted-foreground#0",
       "packages/ui/src/components/kbd.tsx::KbdSequence::KbdGroup[0]/span[0]/span[0]::text-muted-foreground#0",
       "packages/ui/src/components/table.tsx::TableHead::th[0]::text-muted-foreground#0",
@@ -46822,20 +46922,6 @@
         "category": "body",
         "chain": [
           "packages/ui/src/components/breadcrumb.stories.tsx:<story>",
-          "packages/ui/.storybook/preview.ts:imports tailwind.css",
-          "packages/ui/.storybook/tailwind.css:#storybook-root.background-color:var(--background)"
-        ],
-        "backdropLayers": [
-          "bg-background"
-        ]
-      },
-      {
-        "id": "packages/ui/src/components/field.tsx::FieldDescription::FieldPrimitive.Description[0]::text-muted-foreground#0",
-        "usage": "packages/ui/src/components/field.tsx",
-        "surfaceContext": "caller-chain",
-        "category": "body",
-        "chain": [
-          "packages/ui/src/components/field.stories.tsx:<story>",
           "packages/ui/.storybook/preview.ts:imports tailwind.css",
           "packages/ui/.storybook/tailwind.css:#storybook-root.background-color:var(--background)"
         ],
@@ -46965,7 +47051,6 @@
       "packages/ui/src/components/autocomplete.tsx::AutocompleteInput::div[0]::text-foreground#0",
       "packages/ui/src/components/breadcrumb.tsx::BreadcrumbPage::span[0]::text-foreground#0",
       "packages/ui/src/components/combobox.tsx::ComboboxInput::div[0]::text-foreground#0",
-      "packages/ui/src/components/field.tsx::FieldLabel::FieldPrimitive.Label[0]::text-foreground#0",
       "packages/ui/src/components/fieldset.tsx::FieldsetLegend::FieldsetPrimitive.Legend[0]::text-foreground#0",
       "packages/ui/src/components/meter.tsx::MeterLabel::MeterPrimitive.Label[0]::text-foreground#0",
       "packages/ui/src/components/meter.tsx::MeterValue::MeterPrimitive.Value[0]::text-foreground#0",
@@ -47021,34 +47106,6 @@
         "category": "body",
         "chain": [
           "packages/ui/src/components/combobox.stories.tsx:<story>",
-          "packages/ui/.storybook/preview.ts:imports tailwind.css",
-          "packages/ui/.storybook/tailwind.css:#storybook-root.background-color:var(--background)"
-        ],
-        "backdropLayers": [
-          "bg-background"
-        ]
-      },
-      {
-        "id": "packages/ui/src/components/field.tsx::FieldLabel::FieldPrimitive.Label[0]::text-foreground#0",
-        "usage": "packages/ui/src/components/field.tsx",
-        "surfaceContext": "caller-chain",
-        "category": "body",
-        "chain": [
-          "packages/ui/src/components/field.stories.tsx:<story>",
-          "packages/ui/.storybook/preview.ts:imports tailwind.css",
-          "packages/ui/.storybook/tailwind.css:#storybook-root.background-color:var(--background)"
-        ],
-        "backdropLayers": [
-          "bg-background"
-        ]
-      },
-      {
-        "id": "packages/ui/src/components/field.tsx::FieldLabel::FieldPrimitive.Label[0]::text-foreground#0",
-        "usage": "packages/ui/src/components/field.tsx",
-        "surfaceContext": "caller-chain",
-        "category": "body",
-        "chain": [
-          "packages/ui/src/components/fieldset.stories.tsx:<story>",
           "packages/ui/.storybook/preview.ts:imports tailwind.css",
           "packages/ui/.storybook/tailwind.css:#storybook-root.background-color:var(--background)"
         ],
@@ -47136,7 +47193,6 @@
       "packages/ui/src/components/autocomplete.tsx::AutocompleteInput::div[0]::text-foreground#0",
       "packages/ui/src/components/breadcrumb.tsx::BreadcrumbPage::span[0]::text-foreground#0",
       "packages/ui/src/components/combobox.tsx::ComboboxInput::div[0]::text-foreground#0",
-      "packages/ui/src/components/field.tsx::FieldLabel::FieldPrimitive.Label[0]::text-foreground#0",
       "packages/ui/src/components/fieldset.tsx::FieldsetLegend::FieldsetPrimitive.Legend[0]::text-foreground#0",
       "packages/ui/src/components/meter.tsx::MeterLabel::MeterPrimitive.Label[0]::text-foreground#0",
       "packages/ui/src/components/meter.tsx::MeterValue::MeterPrimitive.Value[0]::text-foreground#0",
@@ -47200,34 +47256,6 @@
         ]
       },
       {
-        "id": "packages/ui/src/components/field.tsx::FieldLabel::FieldPrimitive.Label[0]::text-foreground#0",
-        "usage": "packages/ui/src/components/field.tsx",
-        "surfaceContext": "caller-chain",
-        "category": "body",
-        "chain": [
-          "packages/ui/src/components/field.stories.tsx:<story>",
-          "packages/ui/.storybook/preview.ts:imports tailwind.css",
-          "packages/ui/.storybook/tailwind.css:#storybook-root.background-color:var(--background)"
-        ],
-        "backdropLayers": [
-          "bg-background"
-        ]
-      },
-      {
-        "id": "packages/ui/src/components/field.tsx::FieldLabel::FieldPrimitive.Label[0]::text-foreground#0",
-        "usage": "packages/ui/src/components/field.tsx",
-        "surfaceContext": "caller-chain",
-        "category": "body",
-        "chain": [
-          "packages/ui/src/components/fieldset.stories.tsx:<story>",
-          "packages/ui/.storybook/preview.ts:imports tailwind.css",
-          "packages/ui/.storybook/tailwind.css:#storybook-root.background-color:var(--background)"
-        ],
-        "backdropLayers": [
-          "bg-background"
-        ]
-      },
-      {
         "id": "packages/ui/src/components/fieldset.tsx::FieldsetLegend::FieldsetPrimitive.Legend[0]::text-foreground#0",
         "usage": "packages/ui/src/components/fieldset.tsx",
         "surfaceContext": "caller-chain",
@@ -47276,82 +47304,6 @@
         "category": "body",
         "chain": [
           "packages/ui/src/components/tabs.stories.tsx:<story>",
-          "packages/ui/.storybook/preview.ts:imports tailwind.css",
-          "packages/ui/.storybook/tailwind.css:#storybook-root.background-color:var(--background)"
-        ],
-        "backdropLayers": [
-          "bg-background"
-        ]
-      }
-    ]
-  },
-  {
-    "fg": "--color-destructive-foreground",
-    "bg": "--color-background",
-    "category": "body",
-    "minRatio": 4.5,
-    "themes": [
-      "light"
-    ],
-    "usage": "packages/ui/src/components/field.tsx",
-    "backdrop": "--color-background",
-    "foregroundClass": "text-destructive-foreground",
-    "backgroundClass": {
-      "light": "bg-background"
-    },
-    "backdropLayers": [
-      "bg-background"
-    ],
-    "surfaceContext": "caller-chain",
-    "occurrenceIds": [
-      "packages/ui/src/components/field.tsx::FieldError::FieldPrimitive.Error[0]::text-destructive-foreground#0"
-    ],
-    "occurrences": [
-      {
-        "id": "packages/ui/src/components/field.tsx::FieldError::FieldPrimitive.Error[0]::text-destructive-foreground#0",
-        "usage": "packages/ui/src/components/field.tsx",
-        "surfaceContext": "caller-chain",
-        "category": "body",
-        "chain": [
-          "packages/ui/src/components/field.stories.tsx:<story>",
-          "packages/ui/.storybook/preview.ts:imports tailwind.css",
-          "packages/ui/.storybook/tailwind.css:#storybook-root.background-color:var(--background)"
-        ],
-        "backdropLayers": [
-          "bg-background"
-        ]
-      }
-    ]
-  },
-  {
-    "fg": "--color-destructive-foreground",
-    "bg": "--color-background",
-    "category": "body",
-    "minRatio": 4.5,
-    "themes": [
-      "dark"
-    ],
-    "usage": "packages/ui/src/components/field.tsx",
-    "backdrop": "--color-background",
-    "foregroundClass": "text-destructive-foreground",
-    "backgroundClass": {
-      "dark": "bg-background"
-    },
-    "backdropLayers": [
-      "bg-background"
-    ],
-    "surfaceContext": "caller-chain",
-    "occurrenceIds": [
-      "packages/ui/src/components/field.tsx::FieldError::FieldPrimitive.Error[0]::text-destructive-foreground#0"
-    ],
-    "occurrences": [
-      {
-        "id": "packages/ui/src/components/field.tsx::FieldError::FieldPrimitive.Error[0]::text-destructive-foreground#0",
-        "usage": "packages/ui/src/components/field.tsx",
-        "surfaceContext": "caller-chain",
-        "category": "body",
-        "chain": [
-          "packages/ui/src/components/field.stories.tsx:<story>",
           "packages/ui/.storybook/preview.ts:imports tailwind.css",
           "packages/ui/.storybook/tailwind.css:#storybook-root.background-color:var(--background)"
         ],
