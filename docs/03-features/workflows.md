@@ -136,11 +136,10 @@ Jira has this and charges for it. Plane and kaneo do not have it at all.
 **Effects** — a closed vocabulary, stored as `workflow_transition.effects jsonb`. This is
 the **only** place lifecycle side-effects are defined; `sla.md` and `assignment.md` cite it.
 
-- `WF-17` Entering a `completed`-group state sets `resolved_at` and writes an `sla_pause`
-  row with reason `resolved` for every metric — which is how the clock "stops" in a model
-  where SLA state is never stored.
-- `WF-18` Leaving a `completed`-group state clears `resolved_at` and closes that
-  `sla_pause` row, so the clock resumes from where it stopped, not from zero.
+- `WF-17` Entering a `completed`-group state sets `resolved_at`. Writing an `sla_pause`
+  row with reason `resolved` for every metric is held for a later release.
+- `WF-18` Leaving a `completed`-group state clears `resolved_at`. Closing a `resolved`
+  `sla_pause` row and continuing its interval is held for a later release.
 - `WF-19` Effects available on any transition: `set_assignee { personId | 'default' }`,
   `clear_assignee`, `pause_sla`, `resume_sla` (an open `waiting_customer` pause),
   `set_field { field, value }`, and `schedule_transition { after_minutes,

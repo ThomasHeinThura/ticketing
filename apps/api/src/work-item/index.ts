@@ -56,6 +56,7 @@ import rankWorkItem from "./controllers/rank-work-item";
 import setWorkItemParent from "./controllers/set-work-item-parent";
 import transitionWorkItem, {
   NoMatchingTransitionError,
+  SlaPauseConflictError,
   TransitionBlockedError,
   TransitionConflictError,
 } from "./controllers/transition-work-item";
@@ -822,8 +823,9 @@ const transitionWorkItemRoute = createRoute({
     "also partial today: `no_open_blockers` (no `work_item_relation` table yet), " +
     "`field_required` (no custom-field/satellite value store yet) and " +
     "`change_risk_at_most` (no change-risk column yet) always fail closed (blocked), " +
-    "never fabricated as satisfied. `pause_sla`/`resume_sla`/`set_field` effects are " +
-    "silent no-ops (no backing table yet); `set_assignee`'s `'default'` always resolves " +
+    "never fabricated as satisfied. `pause_sla`/`resume_sla` apply the automatic " +
+    "`waiting_customer` lifecycle; manual and resolved-pause continuity remain held. " +
+    "`set_field` remains unavailable (no backing table); `set_assignee`'s `'default'` always resolves " +
     "to no assignee (no project/type default-assignee column yet).",
   middleware: [
     requireWorkItemReach(),
@@ -1445,6 +1447,9 @@ const workItem = apiRouter<
         throw new HTTPException(409, { message: error.message });
       }
       if (error instanceof TransitionConflictError) {
+        throw new HTTPException(409, { message: error.message });
+      }
+      if (error instanceof SlaPauseConflictError) {
         throw new HTTPException(409, { message: error.message });
       }
       if (error instanceof TransitionBlockedError) {

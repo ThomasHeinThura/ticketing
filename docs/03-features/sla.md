@@ -97,12 +97,13 @@ an event once, and for list filtering. It is never the answer to "what is the st
   `resume_sla` — the vocabulary in [workflows.md](workflows.md) `WF-19`. A policy declares
   goals and thresholds only. *(Corrected 2026-09-05: the first draft put the pausing-state
   list on the policy, which cannot reference states and duplicated the workflow's effects.)*
-- `SLA-11` `pause_sla` opens an `sla_pause` row (reason `waiting_customer`) per metric;
-  `resume_sla` closes it. Entering a `completed`-group state opens one with reason
-  `resolved` (`WF-17`) and reopening closes it (`WF-18`). At most one open row per
-  `(work_item, metric)`. A transition that tries to open a pause while one is already open
-  returns 409 and rolls back the full transition; an automatic close never closes a manual
-  pause.
+- `SLA-11` The currently implemented automatic workflow effects open one `sla_pause` row
+  with reason `waiting_customer` per metric and close only matching open
+  `waiting_customer` rows. At most one open row per `(work_item, metric)`. A transition
+  that tries to open a pause while one is already open returns 409 and rolls back the full
+  transition. Manual pause/resume and `resolved`-pause continuity on completion/reopen are
+  held for a later release; no manual route is available and these effects are not inferred
+  from state-group changes.
 - `SLA-12` Paused intervals are subtracted from covered time.
 - `SLA-13` The UI shows "Paused — waiting on customer since Tuesday" rather than a
   frozen countdown with no explanation.

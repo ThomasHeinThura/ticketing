@@ -96,21 +96,51 @@ async function disarmOutboxInsertFailure() {
   );
 }
 
-async function waitForBlockedCalendarRequests(expected: number) {
-  for (let attempt = 0; attempt < 500; attempt += 1) {
-    const result = await db.execute<{ count: string }>(sql`
-      SELECT count(*)::text AS count
+async function waitForBlockedCalendarRequest(blockerPid: number) {
+  const deadline = Date.now() + 5_000;
+  while (Date.now() < deadline) {
+    const result = await db.execute<{ pid: string }>(sql`
+      SELECT pid::text AS pid
       FROM pg_stat_activity
       WHERE pid <> pg_backend_pid()
         AND datname = current_database()
         AND wait_event_type = 'Lock'
-        AND query ILIKE '%service_calendar%'
+        AND ${blockerPid} = ANY(pg_blocking_pids(pid))
+      ORDER BY query_start, pid
     `);
-    if (Number(result.rows[0]?.count ?? 0) >= expected) return;
+    const pid = Number(result.rows[0]?.pid);
+    if (Number.isInteger(pid) && pid > 0) return pid;
     await new Promise((resolve) => setTimeout(resolve, 10));
   }
   throw new Error(
-    `Timed out waiting for ${expected} blocked calendar request(s)`,
+    `Timed out waiting for a calendar request blocked by ${blockerPid}`,
+  );
+}
+
+async function waitForCalendarLockOwnerPid(
+  tx: Parameters<Parameters<typeof db.transaction>[0]>[0],
+): Promise<number> {
+  const result = await tx.execute<{ pid: number }>(
+    sql`SELECT pg_backend_pid() AS pid`,
+  );
+  const pid = result.rows[0]?.pid;
+  if (pid === undefined) throw new Error("Missing calendar lock-owner PID");
+  return pid;
+}
+
+async function waitForPidBlockedBy(pid: number, blockerPid: number) {
+  const deadline = Date.now() + 5_000;
+  while (Date.now() < deadline) {
+    const result = await db.execute<{ blocked: boolean }>(sql`
+      SELECT ${blockerPid} = ANY(pg_blocking_pids(${pid})) AS blocked
+      FROM pg_stat_activity
+      WHERE datname = current_database() AND pid = ${pid}
+    `);
+    if (result.rows[0]?.blocked) return;
+    await new Promise((resolve) => setTimeout(resolve, 10));
+  }
+  throw new Error(
+    `Calendar request ${pid} did not remain blocked by ${blockerPid}`,
   );
 }
 
@@ -881,6 +911,16 @@ describe("API integration: service calendars (CAL-1–CAL-16)", () => {
       .set({ role: "admin" })
       .where(eq(schema.userTable.id, creator.user.id));
     mockAuthenticatedSession({ ...creator.user, role: "admin" });
+    const sessionNow = new Date();
+    await db.insert(schema.sessionTable).values({
+      id: `session-${creator.user.id}`,
+      token: `token-${creator.user.id}`,
+      userId: creator.user.id,
+      portal: "agent",
+      expiresAt: new Date(sessionNow.getTime() + 60 * 60 * 1000),
+      createdAt: sessionNow,
+      updatedAt: sessionNow,
+    });
     const { app } = createApp();
     const body = {
       workspaceId: creator.workspace.id,
@@ -973,7 +1013,7 @@ describe("API integration: service calendars (CAL-1–CAL-16)", () => {
         method: "DELETE",
       },
     );
-    expect(deletion.status).toBe(202);
+    expect(deletion.status, await deletion.clone().text()).toBe(202);
     expect(await db.select().from(schema.pendingActionTable)).toHaveLength(1);
     expect(
       await db
@@ -1077,9 +1117,9 @@ describe("API integration: service calendars (CAL-1–CAL-16)", () => {
     expect(created.status).toBe(200);
     const calendar = (await created.json()) as { id: string };
 
-    let signalLockAcquired: (() => void) | undefined;
+    let signalLockAcquired: ((pid: number) => void) | undefined;
     let releaseLock: (() => void) | undefined;
-    const lockAcquired = new Promise<void>((resolve) => {
+    const lockAcquired = new Promise<number>((resolve) => {
       signalLockAcquired = resolve;
     });
     const lockReleased = new Promise<void>((resolve) => {
@@ -1089,10 +1129,10 @@ describe("API integration: service calendars (CAL-1–CAL-16)", () => {
       await tx.execute(sql`
         SELECT id FROM service_calendar WHERE id = ${calendar.id} FOR UPDATE
       `);
-      signalLockAcquired?.();
+      signalLockAcquired?.(await waitForCalendarLockOwnerPid(tx));
       await lockReleased;
     });
-    await lockAcquired;
+    const lockHolderPid = await lockAcquired;
 
     try {
       const firstPatch = app.request(`/api/service-calendars/${calendar.id}`, {
@@ -1100,13 +1140,17 @@ describe("API integration: service calendars (CAL-1–CAL-16)", () => {
         headers: { "content-type": "application/json" },
         body: JSON.stringify({ name: "First update" }),
       });
-      await waitForBlockedCalendarRequests(1);
+      const firstBlockedPid =
+        await waitForBlockedCalendarRequest(lockHolderPid);
       const secondPatch = app.request(`/api/service-calendars/${calendar.id}`, {
         method: "PATCH",
         headers: { "content-type": "application/json" },
         body: JSON.stringify({ name: "Second update" }),
       });
-      await waitForBlockedCalendarRequests(2);
+      const secondBlockedPid =
+        await waitForBlockedCalendarRequest(firstBlockedPid);
+      expect(secondBlockedPid).not.toBe(firstBlockedPid);
+      await waitForPidBlockedBy(firstBlockedPid, lockHolderPid);
 
       releaseLock?.();
       const [firstResponse, secondResponse] = await Promise.all([
@@ -1218,9 +1262,9 @@ describe("API integration: service calendars (CAL-1–CAL-16)", () => {
       "2020-01-01T00:00:00.000Z",
     );
 
-    let signalLockAcquired: (() => void) | undefined;
+    let signalLockAcquired: ((pid: number) => void) | undefined;
     let releaseLock: (() => void) | undefined;
-    const lockAcquired = new Promise<void>((resolve) => {
+    const lockAcquired = new Promise<number>((resolve) => {
       signalLockAcquired = resolve;
     });
     const lockReleased = new Promise<void>((resolve) => {
@@ -1230,10 +1274,10 @@ describe("API integration: service calendars (CAL-1–CAL-16)", () => {
       await tx.execute(
         sql`SELECT id FROM service_calendar WHERE id = ${calendar.id} FOR UPDATE`,
       );
-      signalLockAcquired?.();
+      signalLockAcquired?.(await waitForCalendarLockOwnerPid(tx));
       await lockReleased;
     });
-    await lockAcquired;
+    const lockHolderPid = await lockAcquired;
     try {
       const patch = (name: string) =>
         app.request(`/api/service-calendars/${calendar.id}`, {
@@ -1242,9 +1286,13 @@ describe("API integration: service calendars (CAL-1–CAL-16)", () => {
           body: JSON.stringify({ name }),
         });
       const firstPatch = patch("First versioned update");
-      await waitForBlockedCalendarRequests(1);
+      const firstBlockedPid =
+        await waitForBlockedCalendarRequest(lockHolderPid);
       const secondPatch = patch("Second versioned update");
-      await waitForBlockedCalendarRequests(2);
+      const secondBlockedPid =
+        await waitForBlockedCalendarRequest(firstBlockedPid);
+      expect(secondBlockedPid).not.toBe(firstBlockedPid);
+      await waitForPidBlockedBy(firstBlockedPid, lockHolderPid);
       releaseLock?.();
       const responses = await Promise.all([firstPatch, secondPatch]);
       expect(responses.map((response) => response.status).sort()).toEqual([

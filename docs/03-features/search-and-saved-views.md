@@ -92,9 +92,8 @@ search validator, current viewer reach, and field permissions as direct work-ite
   (`saved_view.visibility`). This is a separate axis from `scope`/`scope_id`, which is the
   query's own context (a workspace or a project) and is unrelated to who can see the view.
 - `SV-16` Private is the default. Sharing is a deliberate act.
-- `SV-17` A team view is visible to team members and editable by the owner and team leads
-  (`team_member.is_lead` — [data model](../01-architecture/data-model.md); the same team
-  membership `shared_with_team_id` points at).
+- `SV-17` A team view is visible to team members. Team-lead editing is held for a later
+  release; this release preserves the current owner and workspace-manager editing rules.
 - `SV-18` A workspace view requires `workspace:manage_settings` to create and appears in
   everyone's navigation.
 - `SV-19` Every view has a URL that fully encodes it, so it can be shared with someone who
@@ -153,15 +152,15 @@ P1's saved-view screen currently renders the list layout. Other stored layout va
 round-trippable but show an explicit unsupported-layout state in this screen. A pinned view
 appears in agent navigation with its current-viewer work-item count; pinning and count queries
 are keyed by viewer identity, and the server rechecks view and work-item permissions before
-returning each count. Team-view owner transfer and team-lead behavior remain governed by the
-existing team foundation and are not implemented by this saved-view screen.
+returning each count. Team-lead editing and shared-view owner transfer are held for a later
+release. Existing owner and workspace-manager access remains in force.
 
 ## Edge cases
 
 | Case | Behaviour |
 | --- | --- |
 | View references a deleted label or state | The chip renders "(deleted)" and can be removed. The view still runs |
-| Shared view whose owner leaves | Ownership transfers to a team lead (`team_member.is_lead`), or to the workspace if the team has none — this is the same deactivation behaviour [teams.md](teams.md)'s `TM-8` already states for a team's shared views ("ownership of their shared views transfers to a lead, else to the workspace"), not a separate mechanism for this spec to define |
+| Shared view whose owner leaves | Team-lead/workspace ownership transfer is held for a later release; existing owner and workspace-manager access rules remain in force |
 | View returns out-of-reach items for a different viewer | Filtered per viewer. Two people running one view legitimately see different results |
 | 50,000 matches | Cursor pagination; `meta.total` is an exact count after workspace and project reach |
 | Search query with only stop words | Returns recent items with an explanation rather than nothing |

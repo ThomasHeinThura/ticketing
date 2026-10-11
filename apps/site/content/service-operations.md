@@ -34,7 +34,8 @@ with live references cannot be deleted. Deletion is a request followed by approv
 calendar remains available until approval rechecks its version and references.
 
 Manual SLA pause and resume routes are unavailable. Workflow pause and resume effects follow
-the existing workflow contract.
+the existing workflow contract for automatic `waiting_customer` pauses; manual and
+completion/reopen pause continuity remain held for a later release.
 
 ## SLA policy authoring and evaluation
 
@@ -54,8 +55,9 @@ version read by the client.
 policy-version reference. The API subset documented here does not expose a policy-binding
 operation, so creating or publishing a policy does not by itself assign it to a project,
 workspace, or existing work item. An item without a stored applicable version reports the
-`none` state. Manual pause/resume routes remain unavailable while their continuity decision
-is held.
+`none` state. The evaluation uses stored `waiting_customer` workflow pauses, and the first
+public staff comment by someone other than the requester sets the first-response fact. Manual
+pause/resume routes remain unavailable while their continuity decision is held.
 
 ## Structured work-item search
 
@@ -90,7 +92,9 @@ default with `POST /api/views`; list reachable views with
 
 Private views are visible to their owner. Team and workspace visibility have additional
 membership or workspace-capability requirements. Running a view rechecks the current viewer's
-work-item reach and field permissions. Pinning is per user.
+work-item reach and field permissions. Pinning is per user. Team-lead editing and shared-view
+ownership transfer are held for a later release; current owner and workspace-manager access
+rules remain in force.
 
 `DELETE /api/views/{id}` creates a pending action and returns `202`; it does not delete the
 view immediately. The requesting agent session can inspect the action at

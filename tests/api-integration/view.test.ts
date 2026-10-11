@@ -598,8 +598,8 @@ describe("API integration: saved views", () => {
     expect(getResponse.status).toBe(404);
   });
 
-  it("hides team views from a workspace-only member across read, run, count, pin, and delete request", async () => {
-    const owner = await createWorkspaceMember();
+  it("hides team views from a workspace-only administrator outside the view's team", async () => {
+    const owner = await createWorkspaceMember({ role: "admin" });
     await addPerson(owner.user.id);
     const outsiderId = `user-view-team-outsider-${randomUUID()}`;
     const outsider = requireRow(
@@ -617,10 +617,20 @@ describe("API integration: saved views", () => {
     await db.insert(schema.workspaceUserTable).values({
       workspaceId: owner.workspace.id,
       userId: outsider.id,
-      role: "member",
+      role: "admin",
       joinedAt: new Date(),
     });
     await addPerson(outsider.id);
+    const outsiderSessionNow = new Date();
+    await db.insert(schema.sessionTable).values({
+      id: `session-${outsider.id}`,
+      token: `token-${outsider.id}`,
+      userId: outsider.id,
+      portal: "agent",
+      expiresAt: new Date(outsiderSessionNow.getTime() + 60 * 60 * 1000),
+      createdAt: outsiderSessionNow,
+      updatedAt: outsiderSessionNow,
+    });
 
     const teamId = `team-view-private-${randomUUID()}`;
     await db.insert(schema.teamTable).values({
@@ -951,12 +961,17 @@ describe("API integration: saved views", () => {
       );
     const decision = decisions.find(
       (event) =>
-        (event.payload as { pendingActionId?: string }).pendingActionId ===
-        pending.pendingActionId,
+        (
+          event.payload as {
+            payload?: { pendingActionId?: string };
+          }
+        ).payload?.pendingActionId === pending.pendingActionId,
     );
     expect(decision?.payload).toMatchObject({
-      outcome: "invalidated",
-      invalidationReason: "reach_lost",
+      payload: {
+        outcome: "invalidated",
+        invalidationReason: "reach_lost",
+      },
     });
     const [audit] = await db
       .select({ after: schema.auditLogTable.after })
@@ -2007,6 +2022,16 @@ describe("API integration: saved views", () => {
     const created = (await createResponse.json()) as { id: string };
 
     mockAuthenticatedSession(admin);
+    const adminSessionNow = new Date();
+    await db.insert(schema.sessionTable).values({
+      id: `session-${admin.id}`,
+      token: `token-${admin.id}`,
+      userId: admin.id,
+      portal: "agent",
+      expiresAt: new Date(adminSessionNow.getTime() + 60 * 60 * 1000),
+      createdAt: adminSessionNow,
+      updatedAt: adminSessionNow,
+    });
     const { app: adminApp } = createApp();
 
     const updateResponse = await adminApp.request(`/api/views/${created.id}`, {

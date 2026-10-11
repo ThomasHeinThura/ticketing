@@ -2,6 +2,7 @@ import { randomUUID } from "node:crypto";
 import { and, eq, sql } from "drizzle-orm";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import db, { schema } from "../../apps/api/src/database";
+import { slaPauseTable } from "../../apps/api/src/database/migration-schema";
 import { createApp } from "../../apps/api/src/index";
 import { createPolicy } from "../../apps/api/src/sla-policy/repository";
 import { mockAuthenticatedSession } from "./helpers/auth";
@@ -10,6 +11,7 @@ import { resetTestDatabase } from "./helpers/database";
 import {
   createProjectFixture,
   createWorkspaceMember,
+  grantProjectRole,
 } from "./helpers/fixtures";
 
 const windows = {
@@ -374,6 +376,10 @@ describe("API integration: SLA policy authoring contract", () => {
     const { project } = await createProjectFixture({
       workspaceId: owner.workspace.id,
     });
+    await grantProjectRole(owner.user.id, project.id, [
+      "project:read",
+      "work_item:read",
+    ]);
     const createdAt = new Date();
     const [stateTemplate] = await db
       .insert(schema.stateTemplateTable)
@@ -595,6 +601,22 @@ describe("API integration: SLA policy authoring contract", () => {
       (metric) => metric.metric === "resolution",
     )?.dueAt;
     expect(beforeDue).toBe("2030-01-07T12:00:00.000Z");
+
+    await db.insert(slaPauseTable).values({
+      workItemId: item.id,
+      metric: "resolution",
+      startedAt: new Date("2030-01-07T10:00:00.000Z"),
+      endedAt: new Date("2030-01-07T11:00:00.000Z"),
+      reason: "waiting_customer",
+    });
+    const pausedResponse = await getEvaluation();
+    expect(pausedResponse.status).toBe(200);
+    const paused = (await pausedResponse.json()) as {
+      metrics: Array<{ metric: string; dueAt: string | null }>;
+    };
+    expect(
+      paused.metrics.find((metric) => metric.metric === "resolution")?.dueAt,
+    ).toBe("2030-01-07T13:00:00.000Z");
 
     const changedWindows = {
       ...windows,

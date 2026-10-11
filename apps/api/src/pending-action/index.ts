@@ -119,7 +119,9 @@ const approvePendingActionRoute = createRoute({
       required: true,
       content: {
         "application/json": {
-          schema: z.object({ typedName: z.string().max(320) }).strict(),
+          schema: z
+            .object({ typedName: z.string().max(320).optional() })
+            .strict(),
         },
       },
     },
@@ -228,7 +230,7 @@ const pendingAction = apiRouter()
       contract.executor === "user_deactivation"
         ? await approveUserDeactivation({
             ...executionInput,
-            typedName: c.req.valid("json").typedName,
+            typedName: c.req.valid("json").typedName ?? "",
             stepUpToken:
               c.req.valid("header")["x-taskdesk-step-up-token"] ?? "",
           })
