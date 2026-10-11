@@ -187,6 +187,7 @@ async function prepareOidcTotpChallenge(input: {
   userId: string;
   email: string;
   subject: string;
+  withWorkspaceMembership?: boolean;
 }) {
   await setupAdmin();
   const app = createApp().app;
@@ -220,6 +221,17 @@ async function prepareOidcTotpChallenge(input: {
     .returning();
   if (!person)
     throw new Error("Two factor OIDC person fixture was not created");
+  let activeWorkspaceId: string | null = null;
+  if (input.withWorkspaceMembership) {
+    const workspaceFixture = await createWorkspaceMember();
+    activeWorkspaceId = workspaceFixture.workspace.id;
+    await db.insert(schema.workspaceUserTable).values({
+      workspaceId: activeWorkspaceId,
+      userId: user.id,
+      role: "member",
+      joinedAt: new Date(),
+    });
+  }
   await db.insert(schema.externalIdentityTable).values({
     identityConnectionId: input.connectionId,
     personId: person.id,
@@ -282,6 +294,7 @@ async function prepareOidcTotpChallenge(input: {
   return {
     app,
     user,
+    activeWorkspaceId,
     rawSecret,
     beginChallenge,
     code: await createOTP(rawSecret).totp(),
@@ -1372,6 +1385,70 @@ describe("identity connection administration", () => {
         row.identifier.startsWith("oidc-session-source:"),
       ),
     ).toHaveLength(0);
+  });
+
+  it("assigns the existing workspace to OIDC TOTP sessions over HTTP and direct verification", async () => {
+    const fixture = await prepareOidcTotpChallenge({
+      connectionId: "oidc-totp-workspace-connection",
+      userId: "oidc-totp-workspace-user",
+      email: "direct-oidc@example.test",
+      subject: "direct-oidc-subject",
+      withWorkspaceMembership: true,
+    });
+    if (!fixture.activeWorkspaceId)
+      throw new Error("Workspace membership fixture was not created");
+
+    const httpChallenge = await fixture.beginChallenge();
+    expect(httpChallenge.callback.headers.get("location")).toBe(
+      "/auth/two-factor",
+    );
+    const httpVerification = await fixture.app.request(
+      "/api/auth/two-factor/verify-totp",
+      {
+        method: "POST",
+        headers: {
+          cookie: httpChallenge.factorCookies,
+          "content-type": "application/json",
+        },
+        body: JSON.stringify({ code: fixture.code }),
+      },
+    );
+    expect(httpVerification.status, await httpVerification.clone().text()).toBe(
+      200,
+    );
+    const [httpSession] = await db
+      .select({
+        identityConnectionId: schema.sessionTable.identityConnectionId,
+        portal: schema.sessionTable.portal,
+        activeOrganizationId: schema.sessionTable.activeOrganizationId,
+      })
+      .from(schema.sessionTable)
+      .where(eq(schema.sessionTable.userId, fixture.user.id));
+    expect(httpSession).toEqual({
+      identityConnectionId: "oidc-totp-workspace-connection",
+      portal: "agent",
+      activeOrganizationId: fixture.activeWorkspaceId,
+    });
+
+    const directChallenge = await fixture.beginChallenge();
+    const directVerification = await auth.api.verifyTOTP({
+      body: { code: fixture.code },
+      headers: new Headers({ cookie: directChallenge.factorCookies }),
+    });
+    expect(directVerification.user.id).toBe(fixture.user.id);
+    const [directSession] = await db
+      .select({
+        identityConnectionId: schema.sessionTable.identityConnectionId,
+        portal: schema.sessionTable.portal,
+        activeOrganizationId: schema.sessionTable.activeOrganizationId,
+      })
+      .from(schema.sessionTable)
+      .where(eq(schema.sessionTable.userId, fixture.user.id));
+    expect(directSession).toEqual({
+      identityConnectionId: "oidc-totp-workspace-connection",
+      portal: "agent",
+      activeOrganizationId: fixture.activeWorkspaceId,
+    });
   });
 
   it("rolls back OIDC provenance consumption when TOTP session binding fails", async () => {

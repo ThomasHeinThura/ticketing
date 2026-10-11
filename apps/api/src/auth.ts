@@ -1061,7 +1061,7 @@ function createAuth(
           const activeWorkspaceId = workspaceMember[0]?.workspaceId || null;
 
           if (activeWorkspaceId) {
-            await db
+            await sessionWriter
               .update(schema.sessionTable)
               .set({ activeOrganizationId: activeWorkspaceId })
               .where(eq(schema.sessionTable.id, newSession.session.id));
