@@ -156,10 +156,25 @@ function instantAtCoveredOffset(
     if (opening === null) {
       return null;
     }
-    // The next pause that starts strictly after this opening.
+    // The next pause whose interval overlaps this covered stretch. A pause can
+    // start in uncovered hours before `opening` and still cover the opening.
     const nextPause = pauses
-      .filter((p) => p.startedAt.getTime() > opening.getTime())
+      .filter(
+        (p) => p.endedAt === null || p.endedAt.getTime() > opening.getTime(),
+      )
       .sort((a, b) => a.startedAt.getTime() - b.startedAt.getTime())[0];
+
+    if (nextPause && nextPause.startedAt.getTime() <= opening.getTime()) {
+      if (nextPause.endedAt === null) {
+        // An open pause already covers the next opening, so the clock remains
+        // frozen until there is a recorded end instant.
+        return null;
+      }
+      // The pause began during uncovered time or exactly at the opening. Skip
+      // the covered interval under the pause and resume at its end.
+      cursor = nextPause.endedAt;
+      continue;
+    }
 
     // Probe far enough ahead to cover the remaining offset, doubling the horizon
     // until the stretch delivers the remaining covered minutes (a sparse calendar

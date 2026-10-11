@@ -739,6 +739,49 @@ describe("PA-9 explicit credential revocation", () => {
     expect(disabled.enabled).toBe(false);
   });
 
+  it("terminally invalidates a request when an expired API key is extended", async () => {
+    const { app } = createApp();
+    const setup = await setupCredentialOwner(app);
+    const key = await insertApiKey(setup.user.id);
+    await db
+      .update(schema.apikeyTable)
+      .set({ expiresAt: new Date(Date.now() - 60_000) })
+      .where(eq(schema.apikeyTable.id, key.id));
+    const pending = await insertPendingAction({
+      requesterPersonId: setup.person.id,
+      workspaceId: setup.workspace.id,
+      organisationId: setup.workspace.organisationId,
+      credentialType: "api_key",
+      credentialId: key.id,
+    });
+
+    await auth.api.updateApiKey({
+      body: {
+        keyId: key.id,
+        userId: setup.user.id,
+        expiresIn: 2 * 24 * 60 * 60,
+      },
+    });
+
+    expect(await stateOf(pending.id)).toEqual({
+      state: "invalidated",
+      invalidationReason: "credential_revoked",
+    });
+    expectPersistedInvalidation(
+      await decisionRows(pending.id),
+      pending,
+      setup.workspace.id,
+    );
+    const restored = requireRow(
+      await db
+        .select({ expiresAt: schema.apikeyTable.expiresAt })
+        .from(schema.apikeyTable)
+        .where(eq(schema.apikeyTable.id, key.id)),
+      "extended API key",
+    );
+    expect(restored.expiresAt?.getTime()).toBeGreaterThan(Date.now());
+  });
+
   it("terminally invalidates a request bound to the exact live session on sign-out", async () => {
     const { app } = createApp();
     const setup = await setupCredentialOwner(app);
@@ -2065,9 +2108,19 @@ describe("PA-9 explicit credential revocation", () => {
               )
             : leaveWorkspaceNative(app, deleting.cookie, deleting.workspace.id);
         const firstPending = firstRequest();
-        await waitForBlockedCount(client, barrierPid, 1);
+        const firstBlockedPid = await waitForBlockedByPid(client, barrierPid);
         const secondPending = secondRequest();
-        await waitForBlockedCount(client, barrierPid, 2);
+        // Both routes acquire the pending-action lifecycle gate before the
+        // workspace-membership lock. The first request therefore waits on
+        // this test's membership barrier while holding the lifecycle gate;
+        // the second request must wait behind that first transaction rather
+        // than also appearing as a direct waiter on the external barrier.
+        const secondBlockedPid = await waitForBlockedByPid(
+          client,
+          firstBlockedPid,
+        );
+        expect(secondBlockedPid).not.toBe(firstBlockedPid);
+        await waitForPidBlockedBy(client, firstBlockedPid, barrierPid);
         if (first === "leave") leaveRequest = firstPending;
         else deleteRequest = firstPending;
         if (first === "leave") deleteRequest = secondPending;

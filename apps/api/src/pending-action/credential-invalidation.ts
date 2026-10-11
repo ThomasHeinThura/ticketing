@@ -38,7 +38,9 @@ export type ExplicitCredentialMutation = {
 type PendingActionInvalidationReason =
   | "credential_revoked"
   | "reach_lost"
-  | "capability_removed";
+  | "capability_removed"
+  | "version_changed"
+  | "scope_changed";
 
 type ExplicitCredentialMutationState = ExplicitCredentialMutation & {
   deleteFailure: unknown | null;
@@ -556,7 +558,7 @@ async function invalidatePendingActionRow(
   return 0;
 }
 
-async function invalidatePendingActionForReason(
+export async function invalidatePendingActionForReason(
   tx: PendingActionTransaction,
   id: string,
   reason: Exclude<PendingActionInvalidationReason, "credential_revoked">,
@@ -739,9 +741,11 @@ export function createCredentialAwareDrizzleAdapter() {
         if (input.model !== "apikey") {
           return base.update<T>(input);
         }
+        const updatesExpiry = input.update.expiresAt !== undefined;
         if (
           input.update.enabled !== false &&
-          input.update.permissions === undefined
+          input.update.permissions === undefined &&
+          !updatesExpiry
         ) {
           return base.update<T>(input);
         }
@@ -758,18 +762,35 @@ export function createCredentialAwareDrizzleAdapter() {
             .from(apikeyTable)
             .where(eq(apikeyTable.id, selector.value as string))
             .for("update");
+          const now = new Date();
+          const expiryExtensionAfterExpiry =
+            before?.expiresAt !== null &&
+            before?.expiresAt !== undefined &&
+            before.expiresAt <= now &&
+            input.update.expiresAt instanceof Date &&
+            input.update.expiresAt > now;
+          const expiryAuditFailures =
+            before && expiryExtensionAfterExpiry
+              ? await invalidatePendingActionsForCredential(
+                  tx,
+                  { type: "api_key", id: before.id },
+                  now,
+                )
+              : 0;
           const result = await txAdapter.update<T>(input);
           if (input.update.enabled === false) {
-            const auditFailures = before
-              ? await invalidatePendingActionsForCredential(tx, {
-                  type: "api_key",
-                  id: before.id,
-                })
-              : 0;
+            const auditFailures =
+              expiryAuditFailures +
+              (before
+                ? await invalidatePendingActionsForCredential(tx, {
+                    type: "api_key",
+                    id: before.id,
+                  })
+                : 0);
             return { result, auditFailures };
           }
 
-          let auditFailures = 0;
+          let auditFailures = expiryAuditFailures;
           if (before && input.update.permissions !== undefined) {
             const pendingRows = await tx
               .select()
@@ -803,6 +824,7 @@ export function createCredentialAwareDrizzleAdapter() {
                 confirmationRequired: row.confirmationRequired,
                 payload: row.payload,
                 payloadHash: row.payloadHash,
+                targetVersions: row.targetVersions,
               };
               const beforeDecision = await evaluateActionRequiredAccess(
                 tx,

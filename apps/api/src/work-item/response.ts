@@ -463,7 +463,9 @@ export const transitionedWorkItemSchema = z
   .openapi("TransitionedWorkItem");
 
 // The 422 "not currently available" response: the matched transition is legal, but
-// blocked by a guard, an unsatisfied approval/CAB gate, or a missing required note.
+// blocked by a guard, the approval/CAB gate, a missing required note, or a held effect
+// retained in an older stored workflow version. The held-effect case has an empty
+// `blockedBy` list and explains the refusal in `message`; it adds no new reason code.
 export const workItemTransitionBlockedSchema = z
   .object({
     message: z.string(),

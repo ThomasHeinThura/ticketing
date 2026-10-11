@@ -1,5 +1,7 @@
 import { and, eq } from "drizzle-orm";
-import db, { schema } from "../../database";
+import { schema } from "../../database";
+import { withWorkspaceDeletionAccessLifecycle } from "../../pending-action/workspace-access-invalidation";
+import { lockWorkspaceRoleAssignment } from "./workspace-role-assignment-lock";
 
 /**
  * Delete a workspace.
@@ -22,7 +24,8 @@ import db, { schema } from "../../database";
  * that no longer exists.
  */
 async function deleteWorkspace(workspaceId: string, sessionId: string) {
-  return db.transaction(async (tx) => {
+  return withWorkspaceDeletionAccessLifecycle(workspaceId, async (tx) => {
+    await lockWorkspaceRoleAssignment(tx, workspaceId);
     await tx
       .update(schema.sessionTable)
       .set({ activeOrganizationId: null, activeTeamId: null })

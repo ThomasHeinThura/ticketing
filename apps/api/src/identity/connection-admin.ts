@@ -26,6 +26,10 @@ import {
   lockPendingActionLifecycle,
   reportPendingActionAuditFailures,
 } from "../pending-action/lifecycle-invalidation";
+import {
+  captureWorkspaceDeletionAccessForWorkspaces,
+  invalidateWorkspaceDeletionAccessLosses,
+} from "../pending-action/workspace-access-invalidation";
 import { setShadowLegacyAuthorization } from "../permissions/shadow-context";
 import { requireSessionOnly } from "../utils/require-session-only";
 import { invalidateNativeAuthorization } from "../ws";
@@ -826,7 +830,7 @@ router.openapi(configureConnectionRoute, async (c) => {
   }
   const result = await retryIdentityGrantClosure(() =>
     db.transaction(async (tx) => {
-      if (request.enabled === false) await lockPendingActionLifecycle(tx);
+      await lockPendingActionLifecycle(tx);
       await lockIdentityDomainBindings(tx);
       const candidateWorkspaceId =
         request.defaultWorkspaceId === undefined
@@ -859,6 +863,13 @@ router.openapi(configureConnectionRoute, async (c) => {
             ? targetWorkspace?.organisationId
             : (before?.organisationId ?? undefined),
       });
+      const pendingActionAccess =
+        await captureWorkspaceDeletionAccessForWorkspaces(
+          tx,
+          grantClosure
+            .filter((key) => key.scope === "workspace")
+            .map((key) => key.scopeId),
+        );
       const [current] = await lockIdentityConnection(tx, id);
       if (!current) return { kind: "not_found" as const };
       if (current.configVersion !== request.configVersion)
@@ -1006,6 +1017,8 @@ router.openapi(configureConnectionRoute, async (c) => {
           ...new Set([...affectedUserIds, ...retiredJit.userIds]),
         ];
       }
+      pendingActionAuditFailures +=
+        await invalidateWorkspaceDeletionAccessLosses(tx, pendingActionAccess);
       const changedKeys = Object.keys(request).filter(
         (key) => key !== "configVersion",
       );

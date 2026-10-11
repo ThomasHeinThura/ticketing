@@ -8,6 +8,7 @@ import { and, eq } from "drizzle-orm";
 import { Client } from "pg";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import db, { schema } from "../../apps/api/src/database";
+import { slaPauseTable } from "../../apps/api/src/database/migration-schema";
 import { createApp } from "../../apps/api/src/index";
 import { ensureInternalOrganisation } from "../../apps/api/src/utils/seed-internal-organisation";
 import { transitionWorkItem } from "../../apps/api/src/work-item/controllers/transition-work-item";
@@ -308,6 +309,272 @@ describe("API integration: work item transition (#442, workflows.md)", () => {
     await resetTestDatabase();
   });
 
+  it("SLA-10/11: opens waiting-customer pauses and resumes only matching automatic rows", async () => {
+    const { creator, workspace, project } = await setupProject();
+    const backlog = await makeState(workspace.id, project.id, {
+      group: "backlog",
+      isDefault: true,
+    });
+    const waiting = await makeState(workspace.id, project.id, {
+      group: "started",
+    });
+    const active = await makeState(workspace.id, project.id, {
+      group: "started",
+    });
+    const { workflow } = await makeWorkflow(workspace.id, [
+      {
+        fromStateTemplateId: backlog.stateTemplate.id,
+        toStateTemplateId: waiting.stateTemplate.id,
+        roleId: null,
+        effects: [{ kind: "pause_sla" }],
+      },
+      {
+        fromStateTemplateId: waiting.stateTemplate.id,
+        toStateTemplateId: active.stateTemplate.id,
+        roleId: null,
+        effects: [{ kind: "resume_sla" }],
+      },
+    ]);
+    const type = await makeWorkItemType(workspace.id, workflow.id);
+    mockAuthenticatedSession(creator);
+    const { app } = createApp();
+    const { key } = await createWorkItem(app, project.id, type.id);
+
+    const paused = await transitionRequest(app, key, {
+      toStateTemplateId: waiting.stateTemplate.id,
+    });
+    expect(paused.status, await paused.clone().text()).toBe(200);
+    const [item] = await db
+      .select({ id: schema.workItemTable.id })
+      .from(schema.workItemTable)
+      .where(eq(schema.workItemTable.key, key));
+    const itemId = requireRow([item], "paused work item").id;
+    const openPauses = await db
+      .select()
+      .from(slaPauseTable)
+      .where(eq(slaPauseTable.workItemId, itemId));
+    expect(openPauses).toHaveLength(2);
+    expect(openPauses.map((row) => row.metric).sort()).toEqual([
+      "first_response",
+      "resolution",
+    ]);
+    expect(openPauses.every((row) => row.reason === "waiting_customer")).toBe(
+      true,
+    );
+    expect(openPauses.every((row) => row.endedAt === null)).toBe(true);
+
+    // Preserve the manual reason to prove an automatic resume never closes it.
+    await db
+      .update(slaPauseTable)
+      .set({ reason: "manual" })
+      .where(eq(slaPauseTable.metric, "resolution"));
+    const resumed = await transitionRequest(app, key, {
+      toStateTemplateId: active.stateTemplate.id,
+    });
+    expect(resumed.status, await resumed.clone().text()).toBe(200);
+    const afterResume = await db
+      .select()
+      .from(slaPauseTable)
+      .where(eq(slaPauseTable.workItemId, itemId));
+    expect(
+      afterResume.find((row) => row.metric === "first_response")?.endedAt,
+    ).not.toBeNull();
+    expect(
+      afterResume.find((row) => row.metric === "resolution")?.endedAt,
+    ).toBeNull();
+    expect(afterResume.find((row) => row.metric === "resolution")?.reason).toBe(
+      "manual",
+    );
+  });
+
+  it("SLA-10/11: executes pause then resume effects in their authored order", async () => {
+    const { creator, workspace, project } = await setupProject();
+    const backlog = await makeState(workspace.id, project.id, {
+      group: "backlog",
+      isDefault: true,
+    });
+    const active = await makeState(workspace.id, project.id, {
+      group: "started",
+    });
+    const { workflow } = await makeWorkflow(workspace.id, [
+      {
+        fromStateTemplateId: backlog.stateTemplate.id,
+        toStateTemplateId: active.stateTemplate.id,
+        roleId: null,
+        effects: [{ kind: "pause_sla" }, { kind: "resume_sla" }],
+      },
+    ]);
+    const type = await makeWorkItemType(workspace.id, workflow.id);
+    mockAuthenticatedSession(creator);
+    const { app } = createApp();
+    const { key } = await createWorkItem(app, project.id, type.id);
+
+    const response = await transitionRequest(app, key, {
+      toStateTemplateId: active.stateTemplate.id,
+    });
+    expect(response.status, await response.clone().text()).toBe(200);
+
+    const [item] = await db
+      .select({
+        id: schema.workItemTable.id,
+        stateId: schema.workItemTable.stateId,
+      })
+      .from(schema.workItemTable)
+      .where(eq(schema.workItemTable.key, key));
+    const workItem = requireRow([item], "ordered pause/resume work item");
+    expect(workItem.stateId).toBe(active.state.id);
+
+    const pauses = await db
+      .select()
+      .from(slaPauseTable)
+      .where(eq(slaPauseTable.workItemId, workItem.id));
+    expect(pauses).toHaveLength(2);
+    expect(pauses.map((row) => row.metric).sort()).toEqual([
+      "first_response",
+      "resolution",
+    ]);
+    expect(pauses.every((row) => row.reason === "waiting_customer")).toBe(true);
+    expect(pauses.every((row) => row.endedAt !== null)).toBe(true);
+    expect(
+      pauses.every(
+        (row) =>
+          row.endedAt !== null &&
+          row.endedAt.getTime() >= row.startedAt.getTime(),
+      ),
+    ).toBe(true);
+  });
+
+  it("SLA-10/11: executes resume then pause effects against existing open rows", async () => {
+    const { creator, workspace, project } = await setupProject();
+    const backlog = await makeState(workspace.id, project.id, {
+      group: "backlog",
+      isDefault: true,
+    });
+    const waiting = await makeState(workspace.id, project.id, {
+      group: "started",
+    });
+    const active = await makeState(workspace.id, project.id, {
+      group: "started",
+    });
+    const { workflow } = await makeWorkflow(workspace.id, [
+      {
+        fromStateTemplateId: backlog.stateTemplate.id,
+        toStateTemplateId: waiting.stateTemplate.id,
+        roleId: null,
+        effects: [{ kind: "pause_sla" }],
+      },
+      {
+        fromStateTemplateId: waiting.stateTemplate.id,
+        toStateTemplateId: active.stateTemplate.id,
+        roleId: null,
+        effects: [{ kind: "resume_sla" }, { kind: "pause_sla" }],
+      },
+    ]);
+    const type = await makeWorkItemType(workspace.id, workflow.id);
+    mockAuthenticatedSession(creator);
+    const { app } = createApp();
+    const { key } = await createWorkItem(app, project.id, type.id);
+
+    const initialPause = await transitionRequest(app, key, {
+      toStateTemplateId: waiting.stateTemplate.id,
+    });
+    expect(initialPause.status, await initialPause.clone().text()).toBe(200);
+
+    const [item] = await db
+      .select({ id: schema.workItemTable.id })
+      .from(schema.workItemTable)
+      .where(eq(schema.workItemTable.key, key));
+    const workItemId = requireRow(
+      [item],
+      "existing ordered-pause work item",
+    ).id;
+    const existingPauses = await db
+      .select()
+      .from(slaPauseTable)
+      .where(eq(slaPauseTable.workItemId, workItemId));
+    expect(existingPauses).toHaveLength(2);
+    expect(existingPauses.every((row) => row.endedAt === null)).toBe(true);
+
+    const response = await transitionRequest(app, key, {
+      toStateTemplateId: active.stateTemplate.id,
+    });
+    expect(response.status, await response.clone().text()).toBe(200);
+
+    const [afterItem] = await db
+      .select({ stateId: schema.workItemTable.stateId })
+      .from(schema.workItemTable)
+      .where(eq(schema.workItemTable.id, workItemId));
+    expect(afterItem?.stateId).toBe(active.state.id);
+
+    const afterPauses = await db
+      .select()
+      .from(slaPauseTable)
+      .where(eq(slaPauseTable.workItemId, workItemId));
+    expect(afterPauses).toHaveLength(4);
+    for (const metric of ["first_response", "resolution"] as const) {
+      const metricPauses = afterPauses.filter((row) => row.metric === metric);
+      expect(metricPauses).toHaveLength(2);
+      expect(metricPauses.filter((row) => row.endedAt !== null)).toHaveLength(
+        1,
+      );
+      expect(metricPauses.filter((row) => row.endedAt === null)).toHaveLength(
+        1,
+      );
+      expect(
+        metricPauses.find((row) => row.endedAt !== null)?.startedAt,
+      ).toEqual(existingPauses.find((row) => row.metric === metric)?.startedAt);
+    }
+  });
+
+  it("SLA-11: duplicate automatic pause returns 409 and rolls back the whole transition", async () => {
+    const { creator, workspace, project } = await setupProject();
+    const backlog = await makeState(workspace.id, project.id, {
+      group: "backlog",
+      isDefault: true,
+    });
+    const waiting = await makeState(workspace.id, project.id, {
+      group: "started",
+    });
+    const { workflow } = await makeWorkflow(workspace.id, [
+      {
+        fromStateTemplateId: backlog.stateTemplate.id,
+        toStateTemplateId: waiting.stateTemplate.id,
+        roleId: null,
+        effects: [{ kind: "pause_sla" }],
+      },
+    ]);
+    const type = await makeWorkItemType(workspace.id, workflow.id);
+    mockAuthenticatedSession(creator);
+    const { app } = createApp();
+    const { key } = await createWorkItem(app, project.id, type.id);
+    const [item] = await db
+      .select()
+      .from(schema.workItemTable)
+      .where(eq(schema.workItemTable.key, key));
+    const workItem = requireRow([item], "duplicate pause work item");
+    await db.insert(slaPauseTable).values({
+      workItemId: workItem.id,
+      metric: "first_response",
+      reason: "waiting_customer",
+    });
+
+    const response = await transitionRequest(app, key, {
+      toStateTemplateId: waiting.stateTemplate.id,
+    });
+    expect(response.status, await response.clone().text()).toBe(409);
+    const [after] = await db
+      .select({ stateId: schema.workItemTable.stateId })
+      .from(schema.workItemTable)
+      .where(eq(schema.workItemTable.id, workItem.id));
+    expect(after?.stateId).toBe(backlog.state.id);
+    expect(
+      await db
+        .select()
+        .from(slaPauseTable)
+        .where(eq(slaPauseTable.workItemId, workItem.id)),
+    ).toHaveLength(1);
+  });
+
   it("rejects a caller without work_item:transition with 403", async () => {
     const { creator, workspace, project } = await setupProject();
     const backlog = await makeState(workspace.id, project.id, {
@@ -429,6 +696,178 @@ describe("API integration: work item transition (#442, workflows.md)", () => {
         fromStateId: backlog.state.id,
         toStateId: inProgress.state.id,
         workflowVersion: version.number,
+      }),
+    );
+  });
+
+  it("refuses only the held edge in a mixed stored workflow while allowing its supported sibling", async () => {
+    const { creator, workspace, project } = await setupProject();
+    const backlog = await makeState(workspace.id, project.id, {
+      group: "backlog",
+      isDefault: true,
+    });
+    const inProgress = await makeState(workspace.id, project.id, {
+      group: "started",
+    });
+    const later = await makeState(workspace.id, project.id, {
+      group: "started",
+    });
+    const { workflow, transitions } = await makeWorkflow(workspace.id, [
+      {
+        fromStateTemplateId: backlog.stateTemplate.id,
+        toStateTemplateId: inProgress.stateTemplate.id,
+        roleId: null,
+        requiresApproval: true,
+        approvalPolicy: "any",
+        effects: [
+          { kind: "set_field", field: "resolution", value: "fixed" },
+          { kind: "clear_assignee" },
+          { kind: "pause_sla" },
+          {
+            kind: "schedule_transition",
+            afterMinutes: 30,
+            toStateTemplateId: later.stateTemplate.id,
+          },
+        ],
+      },
+      {
+        fromStateTemplateId: backlog.stateTemplate.id,
+        toStateTemplateId: later.stateTemplate.id,
+        roleId: null,
+      },
+    ]);
+    const transition = requireRow(transitions, "set_field transition");
+    const type = await makeWorkItemType(workspace.id, workflow.id);
+
+    mockAuthenticatedSession(creator);
+    const { app } = createApp();
+    const { key } = await createWorkItem(app, project.id, type.id);
+    const [item] = await db
+      .select()
+      .from(schema.workItemTable)
+      .where(eq(schema.workItemTable.key, key));
+    const workItem = requireRow([item], "set_field work item");
+    const assignee = await makeAssigneePerson({ projectId: project.id });
+    await db
+      .update(schema.workItemTable)
+      .set({ assigneeId: assignee.id })
+      .where(eq(schema.workItemTable.id, workItem.id));
+
+    const requester = await makePerson(creator.id);
+    const now = new Date();
+    await db.insert(schema.approvalTable).values([
+      {
+        workspaceId: workspace.id,
+        workItemId: workItem.id,
+        transitionId: transition.id,
+        kind: "customer",
+        requestedBy: requester.id,
+        approverId: requester.id,
+        state: "approved",
+        expiresAt: new Date(now.getTime() + 60 * 60 * 1000),
+      },
+      {
+        workspaceId: workspace.id,
+        workItemId: workItem.id,
+        transitionId: transition.id,
+        kind: "customer",
+        requestedBy: requester.id,
+        approverId: requester.id,
+        state: "pending",
+        expiresAt: new Date(now.getTime() + 60 * 60 * 1000),
+      },
+    ]);
+    publishEventMock.mockReset();
+
+    const response = await transitionRequest(app, key, {
+      toStateTemplateId: inProgress.stateTemplate.id,
+    });
+    expect(response.status, await response.clone().text()).toBe(422);
+
+    const [after] = await db
+      .select()
+      .from(schema.workItemTable)
+      .where(eq(schema.workItemTable.id, workItem.id));
+    expect(after).toMatchObject({
+      stateId: backlog.state.id,
+      assigneeId: assignee.id,
+      version: workItem.version,
+    });
+    expect(
+      await db
+        .select()
+        .from(slaPauseTable)
+        .where(eq(slaPauseTable.workItemId, workItem.id)),
+    ).toHaveLength(0);
+    expect(
+      await db
+        .select()
+        .from(schema.scheduledTransitionTable)
+        .where(eq(schema.scheduledTransitionTable.workItemId, workItem.id)),
+    ).toHaveLength(0);
+    const approvalStates = await db
+      .select({ state: schema.approvalTable.state })
+      .from(schema.approvalTable)
+      .where(eq(schema.approvalTable.workItemId, workItem.id));
+    expect(approvalStates.map((row) => row.state).sort()).toEqual([
+      "approved",
+      "pending",
+    ]);
+    expect(
+      await db
+        .select()
+        .from(schema.activityTable)
+        .where(
+          and(
+            eq(schema.activityTable.workItemId, workItem.id),
+            eq(schema.activityTable.verb, "transitioned"),
+          ),
+        ),
+    ).toHaveLength(0);
+    expect(
+      await db
+        .select()
+        .from(schema.auditLogTable)
+        .where(
+          and(
+            eq(schema.auditLogTable.entityId, workItem.id),
+            eq(schema.auditLogTable.action, "work_item.transitioned"),
+          ),
+        ),
+    ).toHaveLength(0);
+    expect(publishEventMock).not.toHaveBeenCalledWith(
+      "work_item.transitioned",
+      expect.anything(),
+    );
+
+    const supportedResponse = await transitionRequest(app, key, {
+      toStateTemplateId: later.stateTemplate.id,
+    });
+    expect(
+      supportedResponse.status,
+      await supportedResponse.clone().text(),
+    ).toBe(200);
+    const [supportedAfter] = await db
+      .select()
+      .from(schema.workItemTable)
+      .where(eq(schema.workItemTable.id, workItem.id));
+    expect(supportedAfter).toMatchObject({
+      stateId: later.state.id,
+      assigneeId: assignee.id,
+      version: workItem.version + 1,
+    });
+    expect(
+      await db
+        .select()
+        .from(schema.scheduledTransitionTable)
+        .where(eq(schema.scheduledTransitionTable.workItemId, workItem.id)),
+    ).toHaveLength(0);
+    expect(publishEventMock).toHaveBeenCalledWith(
+      "work_item.transitioned",
+      expect.objectContaining({
+        key,
+        fromStateId: backlog.state.id,
+        toStateId: later.state.id,
       }),
     );
   });

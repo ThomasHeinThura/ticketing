@@ -114,6 +114,18 @@ export const projectPolicies = {
     scopeSource: "row",
     reach: "required",
   },
+  "GET /api/project/{id}/health": {
+    capability: "project:read",
+    scope: "project",
+    scopeSource: "row",
+    reach: "required",
+  },
+  "PATCH /api/project/{id}/health": {
+    capability: "project:update",
+    scope: "project",
+    scopeSource: "row",
+    reach: "required",
+  },
 
   // Soft-delete a project. Same middleware shape as update, with `project: ["delete"]` --
   // an exact match for `project:delete`.

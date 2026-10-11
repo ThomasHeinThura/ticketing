@@ -10,12 +10,14 @@ import { beforeEach, describe, expect, it } from "vitest";
 import db, { schema } from "../../apps/api/src/database";
 import { subscribeToEvent } from "../../apps/api/src/events";
 import { createApp } from "../../apps/api/src/index";
+import { ensureInternalOrganisation } from "../../apps/api/src/utils/seed-internal-organisation";
 import { mockAuthenticatedSession } from "./helpers/auth";
 import { resetTestDatabase } from "./helpers/database";
 import {
   createProjectFixture,
   createWorkspaceMember,
   prepareAuthenticatedApiFixture,
+  requireRow,
 } from "./helpers/fixtures";
 import {
   raceProjectArchive,
@@ -175,6 +177,82 @@ describe("API integration: work-item comments (#27)", () => {
     await resetTestDatabase();
     recordedEvents = [];
     initEventSubscribers();
+  });
+
+  it("SLA-7: sets first response once for a public staff comment by a non-requester", async () => {
+    const { creator, app, workItem } = await setupWorkItem("admin");
+    const author = requireRow(
+      await db
+        .select()
+        .from(schema.personTable)
+        .where(eq(schema.personTable.userId, creator.user.id))
+        .limit(1),
+      "first response author",
+    );
+    const [item] = await db
+      .select()
+      .from(schema.workItemTable)
+      .where(eq(schema.workItemTable.key, workItem.key));
+    const workItemRow = requireRow([item], "first response work item");
+    await db
+      .update(schema.workItemTable)
+      .set({ requesterId: author.id })
+      .where(eq(schema.workItemTable.id, workItemRow.id));
+
+    const requesterComment = await postComment(app, workItem.key, {
+      body: { type: "doc", content: [] },
+      visibility: "public",
+    });
+    expect(requesterComment.status).toBe(200);
+    const [afterRequester] = await db
+      .select({ firstResponseAt: schema.workItemTable.firstResponseAt })
+      .from(schema.workItemTable)
+      .where(eq(schema.workItemTable.id, workItemRow.id));
+    expect(afterRequester?.firstResponseAt).toBeNull();
+
+    const organisation = await ensureInternalOrganisation();
+    const otherRequester = requireRow(
+      await db
+        .insert(schema.personTable)
+        .values({
+          organisationId: organisation.id,
+          side: "staff",
+          active: true,
+          createdAt: new Date(),
+          updatedAt: new Date(),
+        })
+        .returning(),
+      "other requester person",
+    );
+    await db
+      .update(schema.workItemTable)
+      .set({ requesterId: otherRequester.id })
+      .where(eq(schema.workItemTable.id, workItemRow.id));
+
+    const internal = await postComment(app, workItem.key, {
+      body: { type: "doc", content: [] },
+      visibility: "internal",
+    });
+    expect(internal.status).toBe(200);
+    const [afterInternal] = await db
+      .select({ firstResponseAt: schema.workItemTable.firstResponseAt })
+      .from(schema.workItemTable)
+      .where(eq(schema.workItemTable.id, workItemRow.id));
+    expect(afterInternal?.firstResponseAt).toBeNull();
+
+    const publicResponse = await postComment(app, workItem.key, {
+      body: { type: "doc", content: [] },
+      visibility: "public",
+    });
+    expect(publicResponse.status).toBe(200);
+    const firstComment = (await publicResponse.json()) as { createdAt: string };
+    const [afterResponse] = await db
+      .select({ firstResponseAt: schema.workItemTable.firstResponseAt })
+      .from(schema.workItemTable)
+      .where(eq(schema.workItemTable.id, workItemRow.id));
+    expect(afterResponse?.firstResponseAt?.toISOString()).toBe(
+      firstComment.createdAt,
+    );
   });
 
   it("CA-1: posts an internal comment and publishes work_item.commented", async () => {
