@@ -5,6 +5,7 @@ import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { expect, type Page, test } from "@playwright/test";
 import { summarizeProfileCoverage } from "../src/lib/performance-profile-intervals";
+import { aggregateCpuProfileFrames } from "./helpers/aggregate-cpu-profile";
 import {
   installPerformanceApiFixture,
   PERFORMANCE_BASE_URL,
@@ -263,46 +264,12 @@ function safeAssetName(value: string) {
   }
 }
 
-function sampledTraceFrames(
+function inclusiveTraceFrames(
   profiles: ReturnType<typeof sanitizeTraceCpuProfile>[],
-  modulesByAsset: Record<string, string[]>,
 ) {
-  const totals = new Map<
-    string,
-    {
-      asset: string;
-      functionName: string;
-      line: number;
-      column: number;
-      sampledMicroseconds: number;
-    }
-  >();
-  for (const profile of profiles) {
-    if (!profile) continue;
-    const nodes = new Map(profile.nodes.map((node) => [node.id, node]));
-    for (const sample of profile.samples) {
-      const frame = nodes.get(sample.nodeId);
-      if (!frame || frame.asset === "runtime" || frame.asset === "non-asset")
-        continue;
-      const key = `${frame.asset}:${frame.functionName}:${frame.line}:${frame.column}`;
-      const total = totals.get(key) ?? {
-        asset: frame.asset,
-        functionName: frame.functionName,
-        line: frame.line,
-        column: frame.column,
-        sampledMicroseconds: 0,
-      };
-      total.sampledMicroseconds += sample.durationMicroseconds;
-      totals.set(key, total);
-    }
-  }
-  return [...totals.values()]
-    .map((frame) => ({
-      ...frame,
-      sourceModuleCount: modulesByAsset[frame.asset]?.length ?? 0,
-    }))
-    .sort((left, right) => right.sampledMicroseconds - left.sampledMicroseconds)
-    .slice(0, 60);
+  return aggregateCpuProfileFrames(
+    profiles.filter((profile) => profile !== undefined),
+  );
 }
 
 function alignBoundaryToTrace(capture: DiagnosticCapture) {
@@ -1251,11 +1218,10 @@ test("diagnostic: source-bound G11 failure-path CPU profiles", async ({
         scope: "supplementary full-window context; no canonical G11 metric",
         recorderBoundary: null,
         clockAlignment: null,
-        topCpuFrames: sampledTraceFrames(
+        topInclusiveCpuFrames: inclusiveTraceFrames(
           capture.traceCpuProfiles
             .map((traceProfile) => sanitizeTraceCpuProfile(traceProfile))
             .filter((value) => value !== undefined),
-          build.modulesByAsset,
         ),
         traceCpuProfiles: capture.traceCpuProfiles
           .map((traceProfile) => sanitizeTraceCpuProfile(traceProfile))
@@ -1317,10 +1283,7 @@ test("diagnostic: source-bound G11 failure-path CPU profiles", async ({
         clockAlignmentUncertaintyMicroseconds:
           alignment.transform.uncertaintyMicroseconds,
       },
-      topCpuFrames: sampledTraceFrames(
-        clippedTraceCpuProfiles,
-        build.modulesByAsset,
-      ),
+      topInclusiveCpuFrames: inclusiveTraceFrames(clippedTraceCpuProfiles),
       traceCpuProfiles: clippedTraceCpuProfiles,
       timelineEvents: clippedTimeline,
       wholeWindowPerformanceMetrics: {
@@ -1331,7 +1294,7 @@ test("diagnostic: source-bound G11 failure-path CPU profiles", async ({
   });
   const initial = captures[0];
   const result = {
-    schemaVersion: 3,
+    schemaVersion: 4,
     diagnosticOnly: true,
     fixture:
       "canonical G11 installPerformanceApiFixture (500 work items, 200 board cards)",
@@ -1348,6 +1311,8 @@ test("diagnostic: source-bound G11 failure-path CPU profiles", async ({
         "Two diagnostic CDP TimeStamp markers on the same document, measured around window.performance.now(); affine scale and offset map canonical recorder values to trace time. Uncertainty includes marker-call brackets plus measured slope uncertainty propagated across extrapolated distance.",
       cpuProfileClock:
         "Sanitized V8 ProfileChunk sample intervals are derived from each chunk's CDP trace timestamp and timeDeltas, then clipped to the aligned recorder span. Coverage reports observed sample bounds and uncovered prefixes/suffixes.",
+      cpuFrameAttribution:
+        "Self time is sampled time at the node; inclusive time sums each clipped sample once into that node and every reachable caller from retained child links. This is sampled CPU attribution, not wall time or a completeness guarantee. Coordinates remain compiled asset/function/line/column; source maps are inspected only for asset source lists and do not resolve individual functions.",
       contextMetrics:
         "Performance.getMetrics is cumulative over each entire profiler window and is reported as context only; it is not clipped or described as interval data.",
       sensitiveData:
@@ -1379,7 +1344,7 @@ test("diagnostic: source-bound G11 failure-path CPU profiles", async ({
   ).toBe(true);
   expect(profileWindows).toHaveLength(5);
   expect(
-    profileWindows.every((window) => window.topCpuFrames.length > 0),
+    profileWindows.every((window) => window.topInclusiveCpuFrames.length > 0),
     "Each hosted failure class must include sampled app JavaScript frames.",
   ).toBe(true);
   expect(
