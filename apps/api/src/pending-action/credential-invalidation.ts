@@ -255,6 +255,96 @@ function sessionRowsQuery(
     .for("update");
 }
 
+async function invalidatePendingActionsForCredentials(
+  tx: PendingActionTransaction,
+  credentials: Array<{ type: "session" | "api_key"; id: string }>,
+  occurredAt: Date,
+) {
+  const unique = new Map(
+    credentials.map((credential) => [
+      `${credential.type}:${credential.id}`,
+      credential,
+    ]),
+  );
+  const ordered = [...unique.values()].sort(
+    (left, right) =>
+      left.type.localeCompare(right.type) || left.id.localeCompare(right.id),
+  );
+  let auditFailures = 0;
+  for (const credential of ordered) {
+    auditFailures += await invalidatePendingActionsForCredential(
+      tx,
+      credential,
+      occurredAt,
+    );
+  }
+  return auditFailures;
+}
+
+/** Lock and invalidate the live sessions that a user-wide app mutation revokes. */
+export async function lockAndInvalidateUserSessions(
+  tx: PendingActionTransaction,
+  userId: string,
+  occurredAt = new Date(),
+) {
+  const sessions = (
+    await sessionRowsQuery(tx, eq(sessionTable.userId, userId))
+  ).filter((row) => row.expiresAt > occurredAt);
+  const auditFailures = await invalidatePendingActionsForCredentials(
+    tx,
+    sessions.map(({ id }) => ({ type: "session" as const, id })),
+    occurredAt,
+  );
+  return { sessions, auditFailures };
+}
+
+/** Lock and invalidate the live sessions and API keys a user-wide mutation revokes. */
+export async function lockAndInvalidateUserCredentials(
+  tx: PendingActionTransaction,
+  userId: string,
+  occurredAt = new Date(),
+) {
+  const sessions = await lockAndInvalidateUserSessions(tx, userId, occurredAt);
+  const apiKeys = await tx
+    .select({ id: apikeyTable.id })
+    .from(apikeyTable)
+    .where(
+      and(eq(apikeyTable.referenceId, userId), eq(apikeyTable.enabled, true)),
+    )
+    .orderBy(apikeyTable.id)
+    .for("update");
+  const auditFailures = await invalidatePendingActionsForCredentials(
+    tx,
+    apiKeys.map(({ id }) => ({ type: "api_key" as const, id })),
+    occurredAt,
+  );
+  return {
+    sessions: sessions.sessions,
+    apiKeys,
+    auditFailures: sessions.auditFailures + auditFailures,
+  };
+}
+
+/** Lock and invalidate only live sessions the identity-connection disable removes. */
+export async function lockAndInvalidateConnectionSessions(
+  tx: PendingActionTransaction,
+  connectionId: string,
+  occurredAt = new Date(),
+) {
+  const sessions = (
+    await sessionRowsQuery(
+      tx,
+      eq(sessionTable.identityConnectionId, connectionId),
+    )
+  ).filter((row) => row.expiresAt > occurredAt);
+  const auditFailures = await invalidatePendingActionsForCredentials(
+    tx,
+    sessions.map(({ id }) => ({ type: "session" as const, id })),
+    occurredAt,
+  );
+  return { sessions, auditFailures };
+}
+
 function isExplicitSessionMutation(
   state: ExplicitCredentialMutationState | undefined,
 ) {

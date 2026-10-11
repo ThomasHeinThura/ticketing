@@ -1,6 +1,6 @@
 import { createHash } from "node:crypto";
 import { createRequire } from "node:module";
-import { eq, sql } from "drizzle-orm";
+import { eq, inArray, sql } from "drizzle-orm";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import {
   InactiveFactorIdentityError,
@@ -16,6 +16,11 @@ import { ensureStaffPersonForUser } from "../../apps/api/src/utils/seed-internal
 import { mockAuthenticatedSession } from "./helpers/auth";
 import { csrfRequest } from "./helpers/csrf";
 import { resetTestDatabase } from "./helpers/database";
+import { createWorkspaceMember } from "./helpers/fixtures";
+import {
+  createCredentialBoundPendingAction,
+  expectCredentialInvalidationPersisted,
+} from "./helpers/pending-action";
 
 const apiRequire = createRequire(
   new URL("../../apps/api/package.json", import.meta.url),
@@ -881,6 +886,28 @@ describe("instance local-factor policy API", () => {
       .set({ twoFactorEnabled: true })
       .where(eq(schema.userTable.id, target.id));
 
+    const { workspace } = await createWorkspaceMember();
+    const requester = await db
+      .select({ id: schema.personTable.id })
+      .from(schema.personTable)
+      .where(eq(schema.personTable.userId, admin.id));
+    const requesterPersonId = requester[0]?.id;
+    if (!requesterPersonId) throw new Error("admin person was not created");
+    const sessionActionId = await createCredentialBoundPendingAction({
+      requesterPersonId,
+      workspaceId: workspace.id,
+      organisationId: workspace.organisationId,
+      credentialType: "session",
+      credentialId: "target-session-1",
+    });
+    const keyActionId = await createCredentialBoundPendingAction({
+      requesterPersonId,
+      workspaceId: workspace.id,
+      organisationId: workspace.organisationId,
+      credentialType: "api_key",
+      credentialId: "target-key-1",
+    });
+
     const reset = await app.request(
       `/api/instance/users/${target.id}/reset-mfa`,
       {
@@ -923,6 +950,26 @@ describe("instance local-factor policy API", () => {
         .from(schema.apikeyTable)
         .where(eq(schema.apikeyTable.referenceId, target.id)),
     ).toHaveLength(0);
+    const invalidatedActions = await db
+      .select({
+        id: schema.pendingActionTable.id,
+        state: schema.pendingActionTable.state,
+        reason: schema.pendingActionTable.invalidationReason,
+      })
+      .from(schema.pendingActionTable)
+      .where(
+        inArray(schema.pendingActionTable.id, [sessionActionId, keyActionId]),
+      );
+    expect(
+      Object.fromEntries(
+        invalidatedActions.map(({ id, ...state }) => [id, state]),
+      ),
+    ).toEqual({
+      [sessionActionId]: { state: "invalidated", reason: "credential_revoked" },
+      [keyActionId]: { state: "invalidated", reason: "credential_revoked" },
+    });
+    await expectCredentialInvalidationPersisted(sessionActionId);
+    await expectCredentialInvalidationPersisted(keyActionId);
     expect(
       await db
         .select({ type: schema.notificationTable.type })

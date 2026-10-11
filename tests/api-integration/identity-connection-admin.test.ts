@@ -1,6 +1,6 @@
 import { createHash, randomUUID } from "node:crypto";
 import { createRequire } from "node:module";
-import { eq, sql } from "drizzle-orm";
+import { eq, inArray, sql } from "drizzle-orm";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import db, { schema } from "../../apps/api/src/database";
 import {
@@ -22,6 +22,11 @@ import * as nativeAuthorization from "../../apps/api/src/ws";
 import { mockAuthenticatedSession } from "./helpers/auth";
 import { csrfRequest } from "./helpers/csrf";
 import { resetTestDatabase } from "./helpers/database";
+import { createWorkspaceMember } from "./helpers/fixtures";
+import {
+  createCredentialBoundPendingAction,
+  expectCredentialInvalidationPersisted,
+} from "./helpers/pending-action";
 
 const apiRequire = createRequire(
   new URL("../../apps/api/package.json", import.meta.url),
@@ -1482,6 +1487,21 @@ describe("identity connection administration", () => {
         expiresAt: new Date(now.getTime() + 60_000),
       },
     ]);
+    const { workspace } = await createWorkspaceMember();
+    const connectionSessionActionId = await createCredentialBoundPendingAction({
+      requesterPersonId: person.id,
+      workspaceId: workspace.id,
+      organisationId: workspace.organisationId,
+      credentialType: "session",
+      credentialId: "source-bound-session",
+    });
+    const localSessionActionId = await createCredentialBoundPendingAction({
+      requesterPersonId: person.id,
+      workspaceId: workspace.id,
+      organisationId: workspace.organisationId,
+      credentialType: "session",
+      credentialId: "local-session-preserved",
+    });
     const challengeId = "two-factor-source-challenge";
     await db.insert(schema.verificationTable).values({
       identifier: `oidc-session-source:${createHash("sha256").update(challengeId, "utf8").digest("hex")}`,
@@ -1626,6 +1646,52 @@ describe("identity connection administration", () => {
         ...(raceBinding ? [] : [{ id: "disable-race-session", source: null }]),
       ].sort((left, right) => left.id.localeCompare(right.id)),
     );
+    const actionRows = await db
+      .select({
+        id: schema.pendingActionTable.id,
+        state: schema.pendingActionTable.state,
+        reason: schema.pendingActionTable.invalidationReason,
+      })
+      .from(schema.pendingActionTable)
+      .where(
+        inArray(schema.pendingActionTable.id, [
+          connectionSessionActionId,
+          localSessionActionId,
+        ]),
+      );
+    expect(
+      Object.fromEntries(actionRows.map(({ id, ...state }) => [id, state])),
+    ).toEqual({
+      [connectionSessionActionId]: {
+        state: "invalidated",
+        reason: "credential_revoked",
+      },
+      [localSessionActionId]: { state: "pending", reason: null },
+    });
+    const invalidationAudits = await db
+      .select({
+        action: schema.auditLogTable.action,
+        entityId: schema.auditLogTable.entityId,
+        after: schema.auditLogTable.after,
+      })
+      .from(schema.auditLogTable)
+      .where(
+        inArray(schema.auditLogTable.entityId, [
+          connectionSessionActionId,
+          localSessionActionId,
+        ]),
+      );
+    expect(invalidationAudits).toEqual([
+      {
+        action: "pending_action.decided",
+        entityId: connectionSessionActionId,
+        after: {
+          state: "invalidated",
+          invalidationReason: "credential_revoked",
+        },
+      },
+    ]);
+    await expectCredentialInvalidationPersisted(connectionSessionActionId);
     const [updated] = await db
       .select({
         enabled: schema.identityConnectionTable.enabled,

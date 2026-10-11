@@ -16,6 +16,11 @@ import {
 import { withConfiguredAgentAuthority } from "./helpers/agent-authority";
 import { mockAuthenticatedSession } from "./helpers/auth";
 import { resetTestDatabase } from "./helpers/database";
+import { createWorkspaceMember } from "./helpers/fixtures";
+import {
+  createCredentialBoundPendingAction,
+  expectCredentialInvalidationPersisted,
+} from "./helpers/pending-action";
 
 const apiRequire = createRequire(
   new URL("../../apps/api/package.json", import.meta.url),
@@ -847,7 +852,7 @@ describe("God Mode Users API", () => {
     await ensureStaffPersonForUser(admin.id);
     mockAuthenticatedSession(admin);
     const target = await seedUser("users-suspend-target");
-    await seedSession(target.id);
+    const targetSessionId = await seedSession(target.id);
     await db.insert(schema.apikeyTable).values({
       id: "users-suspend-key",
       referenceId: target.id,
@@ -855,6 +860,27 @@ describe("God Mode Users API", () => {
       key: createHash("sha256").update("fixture-key").digest("base64url"),
       createdAt: new Date(),
       updatedAt: new Date(),
+    });
+    const { workspace } = await createWorkspaceMember();
+    const requester = await db
+      .select({ id: schema.personTable.id })
+      .from(schema.personTable)
+      .where(eq(schema.personTable.userId, admin.id));
+    const requesterPersonId = requester[0]?.id;
+    if (!requesterPersonId) throw new Error("admin person was not created");
+    const sessionActionId = await createCredentialBoundPendingAction({
+      requesterPersonId,
+      workspaceId: workspace.id,
+      organisationId: workspace.organisationId,
+      credentialType: "session",
+      credentialId: targetSessionId,
+    });
+    const keyActionId = await createCredentialBoundPendingAction({
+      requesterPersonId,
+      workspaceId: workspace.id,
+      organisationId: workspace.organisationId,
+      credentialType: "api_key",
+      credentialId: "users-suspend-key",
     });
     const { app } = createApp();
     const oversizedReason = await agentRequest(
@@ -919,6 +945,26 @@ describe("God Mode Users API", () => {
         .from(schema.apikeyTable)
         .where(eq(schema.apikeyTable.referenceId, target.id)),
     ).toHaveLength(0);
+    expect(
+      await db
+        .select({
+          id: schema.pendingActionTable.id,
+          state: schema.pendingActionTable.state,
+          reason: schema.pendingActionTable.invalidationReason,
+        })
+        .from(schema.pendingActionTable)
+        .where(
+          inArray(schema.pendingActionTable.id, [sessionActionId, keyActionId]),
+        )
+        .then((rows) =>
+          Object.fromEntries(rows.map(({ id, ...state }) => [id, state])),
+        ),
+    ).toEqual({
+      [sessionActionId]: { state: "invalidated", reason: "credential_revoked" },
+      [keyActionId]: { state: "invalidated", reason: "credential_revoked" },
+    });
+    await expectCredentialInvalidationPersisted(sessionActionId);
+    await expectCredentialInvalidationPersisted(keyActionId);
     const [stored] = await db
       .select({
         banned: schema.userTable.banned,
@@ -949,6 +995,100 @@ describe("God Mode Users API", () => {
     });
   });
 
+  it("rolls back suspension and credential-bound invalidation when its outbox write fails", async () => {
+    const admin = await seedUser("users-suspend-outbox-admin", "admin");
+    await ensureStaffPersonForUser(admin.id);
+    mockAuthenticatedSession(admin);
+    const target = await seedUser("users-suspend-outbox-target");
+    const targetSessionId = await seedSession(target.id);
+    const { workspace } = await createWorkspaceMember();
+    const requester = await db
+      .select({ id: schema.personTable.id })
+      .from(schema.personTable)
+      .where(eq(schema.personTable.userId, admin.id));
+    const requesterPersonId = requester[0]?.id;
+    if (!requesterPersonId) throw new Error("admin person was not created");
+    const actionId = await createCredentialBoundPendingAction({
+      requesterPersonId,
+      workspaceId: workspace.id,
+      organisationId: workspace.organisationId,
+      credentialType: "session",
+      credentialId: targetSessionId,
+    });
+    await db.execute(
+      sql.raw(`
+        CREATE OR REPLACE FUNCTION fail_direct_credential_outbox_insert()
+        RETURNS trigger LANGUAGE plpgsql AS $$
+        BEGIN
+          IF NEW.kind = 'pending_action.decided' THEN
+            RAISE EXCEPTION 'test direct credential outbox failure';
+          END IF;
+          RETURN NEW;
+        END;
+        $$
+      `),
+    );
+    await db.execute(
+      sql.raw(`
+        CREATE TRIGGER fail_direct_credential_outbox_insert
+        BEFORE INSERT ON outbox
+        FOR EACH ROW EXECUTE FUNCTION fail_direct_credential_outbox_insert()
+      `),
+    );
+
+    try {
+      const { app } = createApp();
+      const response = await agentRequest(
+        app,
+        `/api/instance/users/${target.id}/suspend`,
+        {
+          method: "POST",
+          headers: { "content-type": "application/json" },
+          body: JSON.stringify({ reason: "verified account compromise" }),
+        },
+      );
+      expect(response.status).toBe(500);
+      expect(
+        await db
+          .select({ banned: schema.userTable.banned })
+          .from(schema.userTable)
+          .where(eq(schema.userTable.id, target.id)),
+      ).toEqual([{ banned: false }]);
+      expect(
+        await db
+          .select({ id: schema.sessionTable.id })
+          .from(schema.sessionTable)
+          .where(eq(schema.sessionTable.id, targetSessionId)),
+      ).toHaveLength(1);
+      expect(
+        await db
+          .select({
+            state: schema.pendingActionTable.state,
+            reason: schema.pendingActionTable.invalidationReason,
+          })
+          .from(schema.pendingActionTable)
+          .where(eq(schema.pendingActionTable.id, actionId)),
+      ).toEqual([{ state: "pending", reason: null }]);
+      expect(
+        await db
+          .select({ id: schema.auditLogTable.id })
+          .from(schema.auditLogTable)
+          .where(eq(schema.auditLogTable.entityId, actionId)),
+      ).toHaveLength(0);
+    } finally {
+      await db.execute(
+        sql.raw(
+          "DROP TRIGGER IF EXISTS fail_direct_credential_outbox_insert ON outbox",
+        ),
+      );
+      await db.execute(
+        sql.raw(
+          "DROP FUNCTION IF EXISTS fail_direct_credential_outbox_insert()",
+        ),
+      );
+    }
+  });
+
   it("unsuspends without restoring credentials and sign-out leaves API keys unchanged", async () => {
     const admin = await seedUser("users-session-admin", "admin");
     await ensureStaffPersonForUser(admin.id);
@@ -963,6 +1103,27 @@ describe("God Mode Users API", () => {
       key: createHash("sha256").update("fixture-key2").digest("base64url"),
       createdAt: now,
       updatedAt: now,
+    });
+    const { workspace } = await createWorkspaceMember();
+    const requester = await db
+      .select({ id: schema.personTable.id })
+      .from(schema.personTable)
+      .where(eq(schema.personTable.userId, admin.id));
+    const requesterPersonId = requester[0]?.id;
+    if (!requesterPersonId) throw new Error("admin person was not created");
+    const sessionActionId = await createCredentialBoundPendingAction({
+      requesterPersonId,
+      workspaceId: workspace.id,
+      organisationId: workspace.organisationId,
+      credentialType: "session",
+      credentialId: originalSession,
+    });
+    const keyActionId = await createCredentialBoundPendingAction({
+      requesterPersonId,
+      workspaceId: workspace.id,
+      organisationId: workspace.organisationId,
+      credentialType: "api_key",
+      credentialId: "users-session-key",
     });
     await db
       .update(schema.userTable)
@@ -1012,6 +1173,25 @@ describe("God Mode Users API", () => {
         .from(schema.apikeyTable)
         .where(eq(schema.apikeyTable.referenceId, target.id)),
     ).toHaveLength(1);
+    expect(
+      await db
+        .select({
+          id: schema.pendingActionTable.id,
+          state: schema.pendingActionTable.state,
+          reason: schema.pendingActionTable.invalidationReason,
+        })
+        .from(schema.pendingActionTable)
+        .where(
+          inArray(schema.pendingActionTable.id, [sessionActionId, keyActionId]),
+        )
+        .then((rows) =>
+          Object.fromEntries(rows.map(({ id, ...state }) => [id, state])),
+        ),
+    ).toEqual({
+      [sessionActionId]: { state: "invalidated", reason: "credential_revoked" },
+      [keyActionId]: { state: "pending", reason: null },
+    });
+    await expectCredentialInvalidationPersisted(sessionActionId);
   });
 
   it("grants administrator with target/body/session-bound one-use proof and commits alerts atomically", async () => {

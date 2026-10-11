@@ -10,6 +10,14 @@ import {
 } from "../../auth/step-up-service";
 import db, { schema } from "../../database";
 import { apiRouter, createRoute, jsonResponse, z } from "../../openapi";
+import {
+  lockAndInvalidateUserCredentials,
+  lockAndInvalidateUserSessions,
+} from "../../pending-action/credential-invalidation";
+import {
+  lockPendingActionLifecycle,
+  reportPendingActionAuditFailures,
+} from "../../pending-action/lifecycle-invalidation";
 import { createPendingAction } from "../../pending-action/service";
 import { setShadowLegacyAuthorization } from "../../permissions/shadow-context";
 import { normaliseTraceId } from "../../permissions/shadow-middleware";
@@ -416,8 +424,9 @@ const routes = apiRouter()
     const expiresAt = body.expiresAt == null ? null : new Date(body.expiresAt);
     if (expiresAt && expiresAt <= new Date())
       throw new HTTPException(400, { message: "Invalid expiry" });
-    const stepUpFailure = await db.transaction(async (tx) => {
+    const suspensionResult = await db.transaction(async (tx) => {
       await lockInstanceAdminSerialization(tx);
+      await lockPendingActionLifecycle(tx);
       const [target] = await lockUserForMutation(tx, id);
       if (!target) throw new HTTPException(404, { message: "User not found" });
       await assertAdminRemovalAllowed(tx, {
@@ -449,8 +458,11 @@ const routes = apiRouter()
           : null;
         if (!proof) {
           return {
-            message: token ? "step_up_expired" : "step_up_required",
-            personId: factor.personId,
+            stepUpFailure: {
+              message: token ? "step_up_expired" : "step_up_required",
+              personId: factor.personId,
+            },
+            pendingActionAuditFailures: 0,
           };
         }
         if (
@@ -486,6 +498,7 @@ const routes = apiRouter()
           banExpires: expiresAt,
         })
         .where(eq(schema.userTable.id, id));
+      const invalidation = await lockAndInvalidateUserCredentials(tx, id);
       const revokedSessions = await tx
         .delete(schema.sessionTable)
         .where(eq(schema.sessionTable.userId, id))
@@ -508,18 +521,26 @@ const routes = apiRouter()
           revokedSessions: revokedSessions.length,
         },
       });
-      return null;
+      return {
+        stepUpFailure: null,
+        pendingActionAuditFailures: invalidation.auditFailures,
+      };
     });
-    if (stepUpFailure) {
+    if (suspensionResult.stepUpFailure) {
       await appendStepUpAudit(db, {
         action: "auth.step_up_denied",
         actorId: c.get("userId"),
-        personId: stepUpFailure.personId,
+        personId: suspensionResult.stepUpFailure.personId,
         operation: "instance_admin_suspend",
         traceId: c.req.header("x-request-id"),
       });
-      throw new HTTPException(403, { message: stepUpFailure.message });
+      throw new HTTPException(403, {
+        message: suspensionResult.stepUpFailure.message,
+      });
     }
+    await reportPendingActionAuditFailures(
+      suspensionResult.pendingActionAuditFailures,
+    );
     await invalidateNativeAuthorization({ userId: id });
     setShadowLegacyAuthorization(c, "allowed");
     return c.json(
@@ -558,8 +579,11 @@ const routes = apiRouter()
     const { id } = c.req.valid("param");
     c.req.valid("json");
     const revokedSessions = await db.transaction(async (tx) => {
+      await lockInstanceAdminSerialization(tx);
+      await lockPendingActionLifecycle(tx);
       const [target] = await lockUserId(tx, id);
       if (!target) throw new HTTPException(404, { message: "User not found" });
+      const invalidation = await lockAndInvalidateUserSessions(tx, id);
       const sessions = await tx
         .delete(schema.sessionTable)
         .where(eq(schema.sessionTable.userId, id))
@@ -575,11 +599,17 @@ const routes = apiRouter()
         before: null,
         after: { revokedSessions: sessions.length },
       });
-      return sessions.length;
+      return {
+        count: sessions.length,
+        pendingActionAuditFailures: invalidation.auditFailures,
+      };
     });
+    await reportPendingActionAuditFailures(
+      revokedSessions.pendingActionAuditFailures,
+    );
     await invalidateNativeAuthorization({ userId: id });
     setShadowLegacyAuthorization(c, "allowed");
-    return c.json({ revokedSessions }, 200);
+    return c.json({ revokedSessions: revokedSessions.count }, 200);
   })
   .openapi(deactivateRoute, async (c) => {
     const session = await requireGodMode(c);
