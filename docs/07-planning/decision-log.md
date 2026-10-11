@@ -7802,3 +7802,14 @@ The diagnostic artifact's9615 mergecommit has exactly30aef Git tree085d0347; it 
 **Source:** Thomas's direct answer to Codex request `call_ef46898fbb0b49c892542dd40cd928aa`, item0, received in conductor chat `01a12921-4863-7c42-ac59-1822c69b88cd`, 2026-10-11.
 
 **Recorded by:** Codex delivery conductor. The read-only preflight found the existing agent router uses `ticket.localhost` while its registered `TASKDESK_AGENT_URL` remains `https://ticketing.localhost`: intended agent URL404, portal200, old agent URL200 with explicit trust of the existing local public certificate. Correct the registered bootstrap origin during the already-authorized verified-artifact promotion; no running deployment has been changed by this record.
+
+
+### 2026-10-11 · Owner decision: hold and reject workflow set_field effects for this release
+
+**Decision:** Thomas directly answered “Hold and reject set_field for this release (Recommended)” to the question whether to hold `set_field { field, value }`, reject it when authoring workflows, reject execution of already stored transitions containing it without changing the work item, and record the limitation in the owning workflow spec and guide. WF-19 does not define the field namespace or validation rules; custom-field integration remains held. Implement this bounded refusal against the existing workflow authoring and transition paths rather than silently dropping the effect or guessing field semantics.
+
+The rejection of a stored transition must not partially change the work item or commit the transition effects. Existing supported workflow effects remain in scope. This decision authorizes the owning spec/guide correction and regressions for authoring rejection and unchanged work-item state on stored-transition refusal; it does not authorize custom-field integration, a new field namespace, new capabilities/schema/dependencies, D1 manual pause or completion/reopen continuity, a gate waiver or new roadmap work.
+
+**Source:** Thomas direct answer to Codex request `call_7a4c2a05751943faa8b639243d53698c`, item0, conductor chat `01a12921-4863-7c42-ac59-1822c69b88cd`, 2026-10-11. Exact question and answer are preserved in the private source-bound evidence record.
+
+**Recorded by:** Codex delivery conductor at 2026-10-11T14:36:04.048907+00:00. This records the owner decision; implementation, independent review, exact-head checks and acceptance remain separate.
