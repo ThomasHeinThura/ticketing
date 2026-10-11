@@ -131,7 +131,11 @@ export function useNativeWorkItemRealtime(topics: readonly string[]) {
         type === "work_item.commented" ||
         type === "work_item.deleted"
       ) {
-        queryKeys.push(["work-items", "activity", key]);
+        // Native hints carry the public work-item key, while the legacy
+        // activity query is keyed by the internal task ID. Without that ID in
+        // the authorized hint, invalidate the existing activity prefix rather
+        // than constructing a cache key that no production query uses.
+        queryKeys.push(["activities"]);
       }
       return queryKeys;
     }

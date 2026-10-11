@@ -27,8 +27,12 @@ vi.mock("@/fetchers/work-item/get-work-items", () => ({
 vi.mock("@/fetchers/work-item/get-work-item", () => ({
   default: mocks.getWorkItem,
 }));
+vi.mock("@/fetchers/activity/get-activites-by-task-id", () => ({
+  default: mocks.getActivity,
+}));
 
 import WorkItemListRealtime from "@/components/work-item/work-item-list-realtime";
+import useGetActivitiesByTaskId from "@/hooks/queries/activity/use-get-activities-by-task-id";
 import useGetWorkItem from "@/hooks/queries/work-item/use-get-work-item";
 import useGetWorkItems from "@/hooks/queries/work-item/use-get-work-items";
 import { useNativeWorkItemRealtime } from "@/hooks/use-native-work-item-realtime";
@@ -174,14 +178,14 @@ function ComposedWorkItemDetail({ workItemKey }: { workItemKey: string }) {
   );
 }
 
-function ComposedWorkItemActivity({ workItemKey }: { workItemKey: string }) {
-  const query = useQuery({
-    queryKey: ["work-items", "activity", workItemKey],
-    queryFn: () => mocks.getActivity(workItemKey),
-  });
+function ComposedWorkItemActivity({ taskId }: { taskId: string }) {
+  const query = useGetActivitiesByTaskId(
+    taskId,
+    () => mocks.state.activityVersion,
+  );
   return (
     <output data-testid="activity-query-state">
-      {query.isLoading ? "loading" : query.data?.version}
+      {query.isLoading ? "loading" : String(query.data)}
     </output>
   );
 }
@@ -189,9 +193,11 @@ function ComposedWorkItemActivity({ workItemKey }: { workItemKey: string }) {
 function ComposedWorkItemTopics({
   projectId,
   workItemKey,
+  taskId = workItemKey,
 }: {
   projectId: string;
   workItemKey: string;
+  taskId?: string;
 }) {
   const realtime = useNativeWorkItemRealtime([
     `project:${projectId}`,
@@ -205,10 +211,10 @@ function ComposedWorkItemTopics({
     queryKey: ["work-items", "detail", workItemKey],
     queryFn: () => mocks.getWorkItem(workItemKey),
   });
-  const activity = useQuery({
-    queryKey: ["work-items", "activity", workItemKey],
-    queryFn: () => mocks.getActivity(workItemKey),
-  });
+  const activity = useGetActivitiesByTaskId(
+    taskId,
+    () => mocks.state.activityVersion,
+  );
   return (
     <>
       <output data-testid="combined-realtime-state">{realtime.status}</output>
@@ -219,7 +225,7 @@ function ComposedWorkItemTopics({
         {detail.data ? `${detail.data.key}:${detail.data.version}` : "loading"}
       </output>
       <output data-testid="combined-activity-state">
-        {activity.data?.version ?? "loading"}
+        {activity.isLoading ? "loading" : String(activity.data)}
       </output>
     </>
   );
@@ -363,7 +369,7 @@ describe("work-item list realtime composition", () => {
       <>
         <ComposedWorkItemList projectId="project-refresh" realtimeMounted />
         <ComposedWorkItemDetail workItemKey="WI-REFRESH" />
-        <ComposedWorkItemActivity workItemKey="WI-REFRESH" />
+        <ComposedWorkItemActivity taskId="task-REFRESH" />
       </>,
       { wrapper: wrapperFor(client) },
     );
@@ -459,6 +465,7 @@ describe("work-item list realtime composition", () => {
       <ComposedWorkItemTopics
         projectId="project-comment"
         workItemKey="WI-COMMENT"
+        taskId="task-id-COMMENT"
       />,
       { wrapper: wrapperFor(client) },
     );
@@ -494,6 +501,8 @@ describe("work-item list realtime composition", () => {
     mocks.getWorkItems.mockClear();
     mocks.getWorkItem.mockClear();
     mocks.getActivity.mockClear();
+    const invalidateQueries = vi.spyOn(client, "invalidateQueries");
+    invalidateQueries.mockClear();
     mocks.state.activityVersion = 2;
     act(() =>
       socket.frame({
@@ -511,6 +520,13 @@ describe("work-item list realtime composition", () => {
       { timeout: 1_000 },
     );
     expect(mocks.getActivity).toHaveBeenCalledTimes(1);
+    expect(mocks.getActivity).toHaveBeenCalledWith({
+      taskId: "task-id-COMMENT",
+    });
+    expect(invalidateQueries).toHaveBeenCalledWith({
+      queryKey: ["activities"],
+      refetchType: "active",
+    });
     expect(mocks.getWorkItem).not.toHaveBeenCalled();
     expect(mocks.getWorkItems).not.toHaveBeenCalled();
     expect(screen.getByTestId("combined-detail-state")).toHaveTextContent(
