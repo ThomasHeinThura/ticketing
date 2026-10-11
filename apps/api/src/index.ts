@@ -1521,7 +1521,25 @@ export function createApp(
       return {
         onOpen(_evt, ws) {
           if (userId) {
-            conn = addUserConnection(userId, ws);
+            conn = addUserConnection(userId, ws, async () => {
+              try {
+                await authenticateApiRequest(c);
+                await enforceLocalFactorEnrollment(c);
+                const currentUser = c.get("user") as
+                  | (User & { banned?: boolean | null })
+                  | null;
+                if (currentUser?.banned === true) return false;
+                const session = c.get("session") as
+                  | (Session & { portal?: unknown })
+                  | null;
+                return (
+                  c.get("userId") === userId &&
+                  (!session || session.portal === "agent")
+                );
+              } catch {
+                return false;
+              }
+            });
           }
         },
         onMessage(evt) {
@@ -1625,7 +1643,48 @@ export function createApp(
       return {
         onOpen(_evt, ws) {
           if (projectId) {
-            conn = addConnection(projectId, ws, userId, initiatorId);
+            conn = addConnection(
+              projectId,
+              ws,
+              userId,
+              initiatorId,
+              async () => {
+                try {
+                  await authenticateApiRequest(c);
+                  await enforceLocalFactorEnrollment(c);
+                  const currentUser = c.get("user") as
+                    | (User & { banned?: boolean | null })
+                    | null;
+                  if (currentUser?.banned === true) return false;
+                  const session = c.get("session") as
+                    | (Session & { portal?: unknown })
+                    | null;
+                  if (
+                    c.get("userId") !== userId ||
+                    (session && session.portal !== "agent")
+                  )
+                    return false;
+                  const [project] = await db
+                    .select({ id: schema.projectTable.id })
+                    .from(schema.projectTable)
+                    .where(
+                      and(
+                        eq(schema.projectTable.id, projectId),
+                        sql`${schema.projectTable.deletedAt} IS NULL`,
+                        reachableWorkspacePredicate(
+                          schema.projectTable.workspaceId,
+                          userId,
+                          c.get("apiKey")?.id,
+                        ),
+                      ),
+                    )
+                    .limit(1);
+                  return Boolean(project);
+                } catch {
+                  return false;
+                }
+              },
+            );
           }
         },
         onMessage(evt) {

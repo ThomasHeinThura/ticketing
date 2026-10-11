@@ -48,8 +48,8 @@ describe("broadcastToUser", () => {
   it("delivers a message to every socket the user has open", async () => {
     const first = makeFakeWs();
     const second = makeFakeWs();
-    const connA = addUserConnection("user-1", first);
-    const connB = addUserConnection("user-1", second);
+    const connA = addUserConnection("user-1", first, async () => true);
+    const connB = addUserConnection("user-1", second, async () => true);
 
     broadcastToUser("user-1", { type: "NOTIFICATION_CREATED" });
 
@@ -74,8 +74,8 @@ describe("broadcastToUser", () => {
   it("does not deliver a message to a different user", async () => {
     const mine = makeFakeWs();
     const theirs = makeFakeWs();
-    const connA = addUserConnection("user-1", mine);
-    const connB = addUserConnection("user-2", theirs);
+    const connA = addUserConnection("user-1", mine, async () => true);
+    const connB = addUserConnection("user-2", theirs, async () => true);
 
     broadcastToUser("user-1", { type: "NOTIFICATION_CREATED" });
 
@@ -96,7 +96,7 @@ describe("broadcastToUser", () => {
     await shutdownWebSocketAdapter();
 
     const ws = makeFakeWs();
-    const conn = addUserConnection("user-1", ws);
+    const conn = addUserConnection("user-1", ws, async () => true);
 
     broadcastToUser("user-1", { type: "NOTIFICATION_CREATED" });
     await new Promise((resolve) => setTimeout(resolve, 50));
