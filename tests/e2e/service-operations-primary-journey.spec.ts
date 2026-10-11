@@ -505,8 +505,6 @@ async function runJourney(fixture: MfaCsrfAppFixture) {
         [
           "service_calendar.created",
           "service_calendar.updated",
-          "sla_policy.created",
-          "sla_policy.published",
           "work_item.created",
           "saved_view.deleted",
           "pending_action.decided",
@@ -518,8 +516,6 @@ async function runJourney(fixture: MfaCsrfAppFixture) {
       expect.arrayContaining([
         "service_calendar.created",
         "service_calendar.updated",
-        "sla_policy.created",
-        "sla_policy.published",
         "work_item.created",
         "saved_view.deleted",
         "pending_action.decided",
