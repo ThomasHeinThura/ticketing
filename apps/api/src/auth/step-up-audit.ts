@@ -8,6 +8,7 @@ export type StepUpOperation =
   | "metrics_token_rotate"
   | "mfa_reset"
   | "instance_admin_grant"
+  | "instance_admin_suspend"
   | "oidc_group_mapping_create"
   | "oidc_group_mapping_update"
   | "scim_admin_update"
@@ -28,6 +29,7 @@ const operationRoutes: Record<StepUpOperation, string> = {
   metrics_token_rotate: "POST /api/instance/observability/metrics-token/rotate",
   mfa_reset: "POST /api/instance/users/{id}/reset-mfa",
   instance_admin_grant: "POST /api/instance/users/{id}/grant-admin",
+  instance_admin_suspend: "POST /api/instance/users/{id}/suspend",
   oidc_group_mapping_create:
     "POST /api/instance/identity-connections/{id}/oidc-group-mappings",
   oidc_group_mapping_update:

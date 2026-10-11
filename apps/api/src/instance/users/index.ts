@@ -4,7 +4,10 @@ import { HTTPException } from "hono/http-exception";
 import { appendAuditLog } from "../../audit/audit-writer";
 import { loadLocalFactorState } from "../../auth/local-factor-service";
 import { appendStepUpAudit } from "../../auth/step-up-audit";
-import { consumeInstanceAdminGrantProof } from "../../auth/step-up-service";
+import {
+  consumeInstanceAdminGrantProof,
+  consumeInstanceAdminSuspendProof,
+} from "../../auth/step-up-service";
 import db, { schema } from "../../database";
 import { apiRouter, createRoute, jsonResponse, z } from "../../openapi";
 import { createPendingAction } from "../../pending-action/service";
@@ -137,6 +140,9 @@ const suspendRoute = createRoute({
   middleware: [requireSessionOnly()] as const,
   request: {
     params: idParams,
+    headers: z.object({
+      "x-taskdesk-step-up-token": z.string().length(43).optional(),
+    }),
     body: {
       required: true,
       content: { "application/json": { schema: suspensionBody } },
@@ -153,6 +159,10 @@ const suspendRoute = createRoute({
     400: jsonResponse("Invalid suspension", errorSchema),
     403: jsonResponse("Forbidden", errorSchema),
     404: jsonResponse("User not found", errorSchema),
+    409: jsonResponse(
+      "Cannot suspend yourself or the last usable instance administrator",
+      errorSchema,
+    ),
   },
 });
 const unsuspendRoute = createRoute({
@@ -229,7 +239,10 @@ const deactivateRoute = createRoute({
     ),
     403: jsonResponse("Forbidden", errorSchema),
     404: jsonResponse("User not found", errorSchema),
-    409: jsonResponse("A matching pending action already exists", errorSchema),
+    409: jsonResponse(
+      "Self-target, last-admin removal, or duplicate pending action refused",
+      errorSchema,
+    ),
   },
 });
 const grantAdminRoute = createRoute({
@@ -397,13 +410,13 @@ const routes = apiRouter()
     return c.json(safeUser(row, new Date()), 200);
   })
   .openapi(suspendRoute, async (c) => {
-    await requireGodMode(c);
+    const session = await requireGodMode(c);
     const { id } = c.req.valid("param");
     const body = c.req.valid("json");
     const expiresAt = body.expiresAt == null ? null : new Date(body.expiresAt);
     if (expiresAt && expiresAt <= new Date())
       throw new HTTPException(400, { message: "Invalid expiry" });
-    await db.transaction(async (tx) => {
+    const stepUpFailure = await db.transaction(async (tx) => {
       await lockInstanceAdminSerialization(tx);
       const [target] = await lockUserForMutation(tx, id);
       if (!target) throw new HTTPException(404, { message: "User not found" });
@@ -412,6 +425,51 @@ const routes = apiRouter()
         targetUserId: id,
         targetRole: target.role,
       });
+      if (target.role === "admin") {
+        const factor = await loadLocalFactorState(c.get("userId"));
+        const [actor] = await lockAdminUser(tx, c.get("userId"));
+        const actorPerson = actor
+          ? await lockActiveStaffPerson(tx, factor.personId, actor.id)
+          : [];
+        const activeSession = actor
+          ? await lockActiveAgentSession(tx, session.id, actor.id)
+          : [];
+        if (!actor || actorPerson.length !== 1 || activeSession.length !== 1) {
+          throw new HTTPException(403, { message: "Forbidden" });
+        }
+        const token = c.req.valid("header")["x-taskdesk-step-up-token"];
+        const proof = token
+          ? await consumeInstanceAdminSuspendProof(tx, {
+              token,
+              personId: factor.personId,
+              sessionId: session.id,
+              userId: id,
+              request: body,
+            })
+          : null;
+        if (!proof) {
+          return {
+            message: token ? "step_up_expired" : "step_up_required",
+            personId: factor.personId,
+          };
+        }
+        if (
+          (proof.authMethod === "password" &&
+            (factor.required || factor.enabled)) ||
+          ((proof.authMethod === "totp" ||
+            proof.authMethod === "backup_code") &&
+            !factor.enabled)
+        ) {
+          throw new HTTPException(403, { message: "step_up_unavailable" });
+        }
+        await appendStepUpAudit(tx, {
+          action: "auth.step_up_consumed",
+          actorId: c.get("userId"),
+          personId: factor.personId,
+          operation: "instance_admin_suspend",
+          traceId: c.req.header("x-request-id"),
+        });
+      }
       if (expiresAt) {
         const expiryCheck = await tx.execute<{ future: boolean }>(
           sql`SELECT now() < ${expiresAt}::timestamptz AS future`,
@@ -450,7 +508,18 @@ const routes = apiRouter()
           revokedSessions: revokedSessions.length,
         },
       });
+      return null;
     });
+    if (stepUpFailure) {
+      await appendStepUpAudit(db, {
+        action: "auth.step_up_denied",
+        actorId: c.get("userId"),
+        personId: stepUpFailure.personId,
+        operation: "instance_admin_suspend",
+        traceId: c.req.header("x-request-id"),
+      });
+      throw new HTTPException(403, { message: stepUpFailure.message });
+    }
     await invalidateNativeAuthorization({ userId: id });
     setShadowLegacyAuthorization(c, "allowed");
     return c.json(

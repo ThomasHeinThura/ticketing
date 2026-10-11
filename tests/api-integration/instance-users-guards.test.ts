@@ -178,6 +178,48 @@ async function grantToken(app: App, targetUserId: string) {
   return ((await proofResponse.json()) as { token: string }).token;
 }
 
+async function suspendToken(
+  app: App,
+  targetUserId: string,
+  request: { reason?: string; expiresAt?: string | null },
+) {
+  const challengeResponse = await agentRequest(
+    app,
+    "/api/me/step-up/challenges",
+    {
+      method: "POST",
+      headers: json,
+      body: JSON.stringify({
+        kind: "operation",
+        operation: "instance_admin_suspend",
+        targetUserId,
+        request,
+      }),
+    },
+  );
+  expect(challengeResponse.status).toBe(200);
+  const challenge = (await challengeResponse.json()) as {
+    challengeId: string;
+    nonce: string;
+  };
+  const proofResponse = await agentRequest(app, "/api/me/step-up", {
+    method: "POST",
+    headers: json,
+    body: JSON.stringify({
+      kind: "operation",
+      operation: "instance_admin_suspend",
+      targetUserId,
+      request,
+      challengeId: challenge.challengeId,
+      nonce: challenge.nonce,
+      method: "password",
+      password: "p4-test-password",
+    }),
+  });
+  expect(proofResponse.status).toBe(200);
+  return ((await proofResponse.json()) as { token: string }).token;
+}
+
 function approve(
   app: App,
   pendingActionId: string,
@@ -573,10 +615,34 @@ describe("last-administrator and self-target guard", () => {
     const victim = await makeTarget("guard-ok-victim", "admin");
     mockAuthenticatedSession(actor.user);
     const { app } = createApp();
-    const suspend = await agentRequest(
+    const missingProof = await agentRequest(
       app,
       `/api/instance/users/${victim.user.id}/suspend`,
       { method: "POST", headers: json, body: "{}" },
+    );
+    expect(missingProof.status).toBe(403);
+    expect(await missingProof.text()).toContain("step_up_required");
+    const request = { reason: "security review" };
+    const token = await suspendToken(app, victim.user.id, request);
+    const mismatched = await agentRequest(
+      app,
+      `/api/instance/users/${victim.user.id}/suspend`,
+      {
+        method: "POST",
+        headers: { ...json, "x-taskdesk-step-up-token": token },
+        body: JSON.stringify({ reason: "different request" }),
+      },
+    );
+    expect(mismatched.status).toBe(403);
+    expect(await mismatched.text()).toContain("step_up_expired");
+    const suspend = await agentRequest(
+      app,
+      `/api/instance/users/${victim.user.id}/suspend`,
+      {
+        method: "POST",
+        headers: { ...json, "x-taskdesk-step-up-token": token },
+        body: JSON.stringify(request),
+      },
     );
     expect(suspend.status).toBe(200);
   });

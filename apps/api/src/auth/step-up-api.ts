@@ -53,6 +53,7 @@ import {
 import {
   createIdentityConnectionChallenge,
   createInstanceAdminGrantChallenge,
+  createInstanceAdminSuspendChallenge,
   createMfaResetChallenge,
   createOidcGroupMappingChallenge,
   createPendingActionChallenge,
@@ -63,6 +64,7 @@ import {
   IDENTITY_CONNECTION_CREATE_OPERATION,
   issueIdentityConnectionToken,
   issueInstanceAdminGrantToken,
+  issueInstanceAdminSuspendToken,
   issueMfaResetToken,
   issueOidcGroupMappingToken,
   issuePendingActionToken,
@@ -84,6 +86,20 @@ const tokenResponse = z.object({
   token: z.string().length(43),
   expiresAt: z.string().datetime(),
 });
+const suspendRequestSchema = z
+  .object({
+    reason: z.string().trim().min(1).max(1000).optional(),
+    expiresAt: z.string().datetime({ offset: true }).nullable().optional(),
+  })
+  .strict()
+  .superRefine((request, ctx) => {
+    if (
+      request.reason !== undefined &&
+      Array.from(request.reason).length > 500
+    ) {
+      ctx.addIssue({ code: "custom", path: ["reason"], message: "too_long" });
+    }
+  });
 
 function requireScimAdminRequest(
   request: ScimAdminRequest | undefined,
@@ -159,6 +175,14 @@ const challengeRoute = createRoute({
                     kind: z.literal("operation"),
                     operation: z.literal("instance_admin_grant"),
                     targetUserId: z.string().min(1),
+                  })
+                  .strict(),
+                z
+                  .object({
+                    kind: z.literal("operation"),
+                    operation: z.literal("instance_admin_suspend"),
+                    targetUserId: z.string().min(1),
+                    request: suspendRequestSchema,
                   })
                   .strict(),
                 z
@@ -527,6 +551,24 @@ const proveRoute = createRoute({
             ...(["password", "totp", "backup_code"] as const).map((method) =>
               z
                 .object({
+                  kind: z.literal("operation"),
+                  operation: z.literal("instance_admin_suspend"),
+                  targetUserId: z.string().min(1),
+                  request: suspendRequestSchema,
+                  challengeId: z.string(),
+                  nonce: z.string().length(43),
+                  method: z.literal(method),
+                  ...(method === "password"
+                    ? { password: z.string().min(1).max(1024) }
+                    : method === "totp"
+                      ? { code: z.string().regex(/^\d{6}$/u) }
+                      : { code: z.string().min(1).max(64) }),
+                })
+                .strict(),
+            ),
+            ...(["password", "totp", "backup_code"] as const).map((method) =>
+              z
+                .object({
                   kind: z.literal("pending_action"),
                   pendingActionId: z.string().min(1).max(64),
                   challengeId: z.string(),
@@ -680,6 +722,56 @@ const routes = apiRouter()
         }
         throw error;
       }
+      setShadowLegacyAuthorization(c, "allowed");
+      return c.json(
+        {
+          challengeId: challenge.id,
+          nonce: challenge.nonce,
+          expiresAt: challenge.expiresAt,
+        },
+        200,
+      );
+    }
+    if (input.operation === "instance_admin_suspend") {
+      const [target] = await getUserId(input.targetUserId);
+      if (!target) throw new HTTPException(404, { message: "User not found" });
+      let challenge: Awaited<
+        ReturnType<typeof createInstanceAdminSuspendChallenge>
+      >;
+      try {
+        challenge = await createInstanceAdminSuspendChallenge({
+          personId: actor.factor.personId,
+          sessionId: actor.session.id,
+          userId: input.targetUserId,
+          request: input.request,
+        });
+      } catch (error) {
+        if (error instanceof StepUpAttemptLimitError) {
+          await appendStepUpAudit(db, {
+            action: "auth.step_up_denied",
+            actorId: c.get("userId"),
+            personId: actor.factor.personId,
+            operation: "instance_admin_suspend",
+            traceId: c.req.header("x-request-id"),
+          });
+          return c.json(
+            {
+              message: "step_up_attempt_limit" as const,
+              limit: STEP_UP_CHALLENGE_LIMIT,
+              windowMinutes: STEP_UP_CHALLENGE_WINDOW_MINUTES,
+            },
+            429,
+          );
+        }
+        throw error;
+      }
+      await appendStepUpAudit(db, {
+        action: "auth.step_up_issued",
+        actorId: c.get("userId"),
+        personId: actor.factor.personId,
+        operation: "instance_admin_suspend",
+        traceId: c.req.header("x-request-id"),
+      });
       setShadowLegacyAuthorization(c, "allowed");
       return c.json(
         {
@@ -1458,8 +1550,8 @@ const routes = apiRouter()
                 },
                 verifyAuthentication,
               )
-            : operationInput.operation === "instance_admin_grant"
-              ? await issueInstanceAdminGrantToken(
+            : operationInput.operation === "instance_admin_suspend"
+              ? await issueInstanceAdminSuspendToken(
                   {
                     id: input.challengeId,
                     nonce: input.nonce,
@@ -1467,36 +1559,49 @@ const routes = apiRouter()
                     sessionId: actor.session.id,
                     userId: c.get("userId"),
                     targetUserId: operationInput.targetUserId,
+                    request: operationInput.request,
                   },
                   verifyAuthentication,
                 )
-              : operationInput.operation === "mfa_reset"
-                ? await issueMfaResetToken(
+              : operationInput.operation === "instance_admin_grant"
+                ? await issueInstanceAdminGrantToken(
                     {
                       id: input.challengeId,
                       nonce: input.nonce,
                       personId: actor.factor.personId,
                       sessionId: actor.session.id,
                       userId: c.get("userId"),
-                      targetUserId: operationInput.userId,
-                      verificationNote: operationInput.verificationNote,
+                      targetUserId: operationInput.targetUserId,
                     },
                     verifyAuthentication,
                   )
-                : await issueRotationToken(
-                    {
-                      id: input.challengeId,
-                      nonce: input.nonce,
-                      personId: actor.factor.personId,
-                      sessionId: actor.session.id,
-                      userId: c.get("userId"),
-                      version:
-                        "version" in operationInput
-                          ? operationInput.version
-                          : 1,
-                    },
-                    verifyAuthentication,
-                  );
+                : operationInput.operation === "mfa_reset"
+                  ? await issueMfaResetToken(
+                      {
+                        id: input.challengeId,
+                        nonce: input.nonce,
+                        personId: actor.factor.personId,
+                        sessionId: actor.session.id,
+                        userId: c.get("userId"),
+                        targetUserId: operationInput.userId,
+                        verificationNote: operationInput.verificationNote,
+                      },
+                      verifyAuthentication,
+                    )
+                  : await issueRotationToken(
+                      {
+                        id: input.challengeId,
+                        nonce: input.nonce,
+                        personId: actor.factor.personId,
+                        sessionId: actor.session.id,
+                        userId: c.get("userId"),
+                        version:
+                          "version" in operationInput
+                            ? operationInput.version
+                            : 1,
+                      },
+                      verifyAuthentication,
+                    );
     if (!token) {
       await appendStepUpAudit(db, {
         action: "auth.step_up_denied",

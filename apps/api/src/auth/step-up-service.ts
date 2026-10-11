@@ -34,6 +34,10 @@ export const MFA_RESET_ROUTE =
 export const INSTANCE_ADMIN_GRANT_OPERATION = "instance_admin_grant" as const;
 export const INSTANCE_ADMIN_GRANT_ROUTE =
   "POST /api/instance/users/{id}/grant-admin" as const;
+export const INSTANCE_ADMIN_SUSPEND_OPERATION =
+  "instance_admin_suspend" as const;
+export const INSTANCE_ADMIN_SUSPEND_ROUTE =
+  "POST /api/instance/users/{id}/suspend" as const;
 export const SCIM_ADMIN_OPERATION = "scim_admin_update" as const;
 export const SCIM_ADMIN_ROUTE =
   "PATCH /api/instance/identity-connections/{id}/scim" as const;
@@ -81,6 +85,18 @@ export function canonicalInstanceAdminGrantBody(userId: string): Buffer {
     INSTANCE_ADMIN_GRANT_ROUTE,
     1,
     { userId },
+  );
+}
+
+export function canonicalInstanceAdminSuspendBody(
+  userId: string,
+  request: { reason?: string; expiresAt?: string | null },
+): Buffer {
+  return canonicalOperationBody(
+    INSTANCE_ADMIN_SUSPEND_OPERATION,
+    INSTANCE_ADMIN_SUSPEND_ROUTE,
+    1,
+    { userId, request },
   );
 }
 
@@ -266,6 +282,21 @@ export async function createInstanceAdminGrantChallenge(input: {
     route: INSTANCE_ADMIN_GRANT_ROUTE,
     version: 1,
     body: canonicalInstanceAdminGrantBody(input.userId),
+  });
+}
+
+export async function createInstanceAdminSuspendChallenge(input: {
+  personId: string;
+  sessionId: string;
+  userId: string;
+  request: { reason?: string; expiresAt?: string | null };
+}) {
+  return createOperationChallenge({
+    ...input,
+    operation: INSTANCE_ADMIN_SUSPEND_OPERATION,
+    route: INSTANCE_ADMIN_SUSPEND_ROUTE,
+    version: 1,
+    body: canonicalInstanceAdminSuspendBody(input.userId, input.request),
   });
 }
 
@@ -483,6 +514,25 @@ export async function consumeInstanceAdminGrantProof(
     operation: INSTANCE_ADMIN_GRANT_OPERATION,
     route: INSTANCE_ADMIN_GRANT_ROUTE,
     body: canonicalInstanceAdminGrantBody(input.userId),
+  });
+}
+
+export async function consumeInstanceAdminSuspendProof(
+  tx: StepUpTransaction,
+  input: {
+    token: string;
+    personId: string;
+    sessionId: string;
+    userId: string;
+    request: { reason?: string; expiresAt?: string | null };
+  },
+): Promise<{ authMethod: "password" | "totp" | "backup_code" } | null> {
+  return consumeOperationProof(tx, {
+    ...input,
+    version: 1,
+    operation: INSTANCE_ADMIN_SUSPEND_OPERATION,
+    route: INSTANCE_ADMIN_SUSPEND_ROUTE,
+    body: canonicalInstanceAdminSuspendBody(input.userId, input.request),
   });
 }
 
@@ -741,6 +791,35 @@ export async function issueInstanceAdminGrantToken(
       operation: INSTANCE_ADMIN_GRANT_OPERATION,
       route: INSTANCE_ADMIN_GRANT_ROUTE,
       body: canonicalInstanceAdminGrantBody(input.targetUserId),
+    },
+    verifyAuthentication,
+  );
+}
+
+export async function issueInstanceAdminSuspendToken(
+  input: {
+    id: string;
+    nonce: string;
+    personId: string;
+    sessionId: string;
+    userId: string;
+    targetUserId: string;
+    request: { reason?: string; expiresAt?: string | null };
+  },
+  verifyAuthentication: () => Promise<
+    "password" | "totp" | "backup_code" | null
+  >,
+) {
+  return issueOperationToken(
+    {
+      ...input,
+      version: 1,
+      operation: INSTANCE_ADMIN_SUSPEND_OPERATION,
+      route: INSTANCE_ADMIN_SUSPEND_ROUTE,
+      body: canonicalInstanceAdminSuspendBody(
+        input.targetUserId,
+        input.request,
+      ),
     },
     verifyAuthentication,
   );

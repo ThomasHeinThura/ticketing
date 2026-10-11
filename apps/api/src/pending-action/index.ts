@@ -100,7 +100,7 @@ const approvePendingActionRoute = createRoute({
   tags: ["Pending actions"],
   summary: "Approve a pending action",
   description:
-    "Executes a pending action owned by the authenticated requester after its server-selected confirmation.",
+    "Executes a pending action owned by the authenticated requester after its server-selected confirmation. Missing PA-15 proof returns 403 step_up_required; expired, consumed, malformed, or mismatched proof returns 403 step_up_expired.",
   middleware: [requireSessionOnly()] as const,
   request: {
     params: pendingActionParamSchema,

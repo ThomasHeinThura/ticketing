@@ -289,6 +289,11 @@ Every account on the instance, across organisations. Search, view, suspend, unsu
 force sign-out, reset MFA, grant instance administrator, deactivate, export a person's data,
 anonymise a person, and **impersonate**.
 
+Suspending a target whose locked `user.role` is `admin` requires fresh, single-use PA-15
+step-up bound to the target account and canonical suspension request. The route rechecks the
+actor's admin role, active staff person and current agent session under the shared admin lock.
+Suspending an ordinary user keeps the existing session-only flow.
+
 Person deactivation is a separate IP-15 lifecycle transition. It is requested as a server-owned
 pending action (`action = 'delete'`, `target_type = 'user'`) on
 `POST /api/instance/users/{id}/deactivate`; the request changes no account state. The server
@@ -508,12 +513,12 @@ POST   /api/instance/identity-connections/{id}/scim/test          instance:admin
 GET    /api/instance/identity-connections/{id}/events             instance:admin
 POST   /api/instance/purge                                        instance:admin  E  (PA-13 — legal hold checked)
 GET    /api/instance/users                            instance:admin
-POST   /api/instance/users/{id}/suspend               instance:admin
+POST   /api/instance/users/{id}/suspend               instance:admin  E for a current instance-admin target (PA-15 bound to target + request)
 POST   /api/instance/users/{id}/unsuspend             instance:admin
 POST   /api/instance/users/{id}/sign-out              instance:admin
 POST   /api/instance/users/{id}/reset-mfa             instance:admin  E
 POST   /api/instance/users/{id}/grant-admin           instance:admin  E
-POST   /api/instance/users/{id}/deactivate            instance:admin  session-only (creates `delete` for `user`; execution requires exact current email + PA-15)
+POST   /api/instance/users/{id}/deactivate            instance:admin  session-only (creates `delete` for `user`; execution requires exact current email + PA-15); 409 self_target_refused or last_instance_admin
 GET    /api/instance/users/{id}/export                instance:admin  E
 POST   /api/instance/users/{id}/anonymise             instance:admin  E
 POST   /api/instance/users/{id}/impersonate           instance:admin  E

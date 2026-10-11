@@ -634,6 +634,14 @@ never restores sessions or keys. Force sign-out deletes all current sessions, in
 impersonation session, and leaves account state and API keys unchanged. Deactivation is
 the separate IP-15 identity-provisioning lifecycle and is not a suspension alias.
 
+Suspending a target whose locked `user.role` is `admin` requires the operation
+`instance_admin_suspend`, version `1`, on `POST /api/instance/users/{id}/suspend`. Its one-use
+PA-15 proof binds the acting user, active staff person, current agent session, target user id,
+route, and canonical suspension request (`reason` and `expiresAt`). The route rechecks the
+actor's admin role, active staff person, and session while holding the shared instance-admin
+serialization lock; it consumes the proof and applies suspension in the same transaction.
+Ordinary-user suspension remains session-only.
+
 ## Threat notes
 
 | Threat | Mitigation |

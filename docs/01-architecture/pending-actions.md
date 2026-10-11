@@ -292,6 +292,7 @@ thing that is hashed or executed.
   | --- | --- | --- |
   | `metrics_token_rotate` | `POST /api/instance/observability/metrics-token/rotate` | `observability_config_version` |
   | `mfa_reset` | `POST /api/instance/users/{id}/reset-mfa` | fixed operation version `1` |
+  | `instance_admin_suspend` | `POST /api/instance/users/{id}/suspend` | fixed operation version `1` |
   | `identity_connection_create` | `POST /api/instance/identity-connections` | fixed initial version `1` |
   | `identity_connection_configure` | `PATCH /api/instance/identity-connections/{id}` | `identity_connection.config_version` |
   | `oidc_group_mapping_create` | `POST /api/instance/identity-connections/{id}/oidc-group-mappings` | `identity_connection.config_version` |
@@ -307,6 +308,9 @@ thing that is hashed or executed.
   the server-side binding. The service re-resolves
   both resources and checks that each mapping belongs to the named connection. The step-up
   request repeats the binding.
+  For `instance_admin_suspend`, the binding hash includes the target user id and the
+  canonical validated suspension request (`reason` and `expiresAt`). The suspension route
+  requires this single-use proof only when the target is currently an instance administrator.
   For either SCIM token operation, the service requires current `instance:admin`, a current
   agent session, the exact operation route and connection id, and a strict body containing
   only the positive safe-integer `version`. It checks that the connection and SCIM child
@@ -354,7 +358,7 @@ thing that is hashed or executed.
   version returns `409
   version_conflict` and rolls back token consumption; the retry needs a new challenge bound
   to the new version. A wrong, expired, replayed, or mismatched token returns the same
-  generic `403 step_up_expired`; missing token is `403 step_up_required`. These denials do
+  generic `403 step_up_expired` for expired, consumed, malformed or mismatched proof. These denials do
   not rotate the credential. Pending-action approval retains its existing pending-id
   binding, five-minute token lifetime, re-mintability while pending, and `pending` state on
   denial.

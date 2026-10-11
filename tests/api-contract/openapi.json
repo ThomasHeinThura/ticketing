@@ -11943,7 +11943,7 @@
           "Pending actions"
         ],
         "summary": "Approve a pending action",
-        "description": "Executes a pending action owned by the authenticated requester after its server-selected confirmation.",
+        "description": "Executes a pending action owned by the authenticated requester after its server-selected confirmation. Missing PA-15 proof returns 403 step_up_required; expired, consumed, malformed, or mismatched proof returns 403 step_up_expired.",
         "parameters": [
           {
             "schema": {
@@ -17755,6 +17755,52 @@
                       "operation": {
                         "type": "string",
                         "enum": [
+                          "instance_admin_suspend"
+                        ]
+                      },
+                      "targetUserId": {
+                        "type": "string",
+                        "minLength": 1
+                      },
+                      "request": {
+                        "type": "object",
+                        "properties": {
+                          "reason": {
+                            "type": "string",
+                            "minLength": 1,
+                            "maxLength": 1000
+                          },
+                          "expiresAt": {
+                            "type": [
+                              "string",
+                              "null"
+                            ],
+                            "format": "date-time"
+                          }
+                        },
+                        "additionalProperties": false
+                      }
+                    },
+                    "required": [
+                      "kind",
+                      "operation",
+                      "targetUserId",
+                      "request"
+                    ],
+                    "additionalProperties": false
+                  },
+                  {
+                    "type": "object",
+                    "properties": {
+                      "kind": {
+                        "type": "string",
+                        "enum": [
+                          "operation"
+                        ]
+                      },
+                      "operation": {
+                        "type": "string",
+                        "enum": [
                           "scim_admin_update"
                         ]
                       },
@@ -21056,6 +21102,212 @@
                       "kind": {
                         "type": "string",
                         "enum": [
+                          "operation"
+                        ]
+                      },
+                      "operation": {
+                        "type": "string",
+                        "enum": [
+                          "instance_admin_suspend"
+                        ]
+                      },
+                      "targetUserId": {
+                        "type": "string",
+                        "minLength": 1
+                      },
+                      "request": {
+                        "type": "object",
+                        "properties": {
+                          "reason": {
+                            "type": "string",
+                            "minLength": 1,
+                            "maxLength": 1000
+                          },
+                          "expiresAt": {
+                            "type": [
+                              "string",
+                              "null"
+                            ],
+                            "format": "date-time"
+                          }
+                        },
+                        "additionalProperties": false
+                      },
+                      "challengeId": {
+                        "type": "string"
+                      },
+                      "nonce": {
+                        "type": "string",
+                        "minLength": 43,
+                        "maxLength": 43
+                      },
+                      "method": {
+                        "type": "string",
+                        "enum": [
+                          "password"
+                        ]
+                      },
+                      "password": {
+                        "type": "string",
+                        "minLength": 1,
+                        "maxLength": 1024
+                      }
+                    },
+                    "required": [
+                      "kind",
+                      "operation",
+                      "targetUserId",
+                      "request",
+                      "challengeId",
+                      "nonce",
+                      "method",
+                      "password"
+                    ],
+                    "additionalProperties": false
+                  },
+                  {
+                    "type": "object",
+                    "properties": {
+                      "kind": {
+                        "type": "string",
+                        "enum": [
+                          "operation"
+                        ]
+                      },
+                      "operation": {
+                        "type": "string",
+                        "enum": [
+                          "instance_admin_suspend"
+                        ]
+                      },
+                      "targetUserId": {
+                        "type": "string",
+                        "minLength": 1
+                      },
+                      "request": {
+                        "type": "object",
+                        "properties": {
+                          "reason": {
+                            "type": "string",
+                            "minLength": 1,
+                            "maxLength": 1000
+                          },
+                          "expiresAt": {
+                            "type": [
+                              "string",
+                              "null"
+                            ],
+                            "format": "date-time"
+                          }
+                        },
+                        "additionalProperties": false
+                      },
+                      "challengeId": {
+                        "type": "string"
+                      },
+                      "nonce": {
+                        "type": "string",
+                        "minLength": 43,
+                        "maxLength": 43
+                      },
+                      "method": {
+                        "type": "string",
+                        "enum": [
+                          "totp"
+                        ]
+                      },
+                      "code": {
+                        "type": "string",
+                        "pattern": "^\\d{6}$/u"
+                      }
+                    },
+                    "required": [
+                      "kind",
+                      "operation",
+                      "targetUserId",
+                      "request",
+                      "challengeId",
+                      "nonce",
+                      "method",
+                      "code"
+                    ],
+                    "additionalProperties": false
+                  },
+                  {
+                    "type": "object",
+                    "properties": {
+                      "kind": {
+                        "type": "string",
+                        "enum": [
+                          "operation"
+                        ]
+                      },
+                      "operation": {
+                        "type": "string",
+                        "enum": [
+                          "instance_admin_suspend"
+                        ]
+                      },
+                      "targetUserId": {
+                        "type": "string",
+                        "minLength": 1
+                      },
+                      "request": {
+                        "type": "object",
+                        "properties": {
+                          "reason": {
+                            "type": "string",
+                            "minLength": 1,
+                            "maxLength": 1000
+                          },
+                          "expiresAt": {
+                            "type": [
+                              "string",
+                              "null"
+                            ],
+                            "format": "date-time"
+                          }
+                        },
+                        "additionalProperties": false
+                      },
+                      "challengeId": {
+                        "type": "string"
+                      },
+                      "nonce": {
+                        "type": "string",
+                        "minLength": 43,
+                        "maxLength": 43
+                      },
+                      "method": {
+                        "type": "string",
+                        "enum": [
+                          "backup_code"
+                        ]
+                      },
+                      "code": {
+                        "type": "string",
+                        "minLength": 1,
+                        "maxLength": 64
+                      }
+                    },
+                    "required": [
+                      "kind",
+                      "operation",
+                      "targetUserId",
+                      "request",
+                      "challengeId",
+                      "nonce",
+                      "method",
+                      "code"
+                    ],
+                    "additionalProperties": false
+                  },
+                  {
+                    "type": "object",
+                    "properties": {
+                      "kind": {
+                        "type": "string",
+                        "enum": [
                           "pending_action"
                         ]
                       },
@@ -22667,6 +22919,16 @@
             "required": true,
             "name": "id",
             "in": "path"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "minLength": 43,
+              "maxLength": 43
+            },
+            "required": false,
+            "name": "x-taskdesk-step-up-token",
+            "in": "header"
           }
         ],
         "requestBody": {
@@ -22764,6 +23026,24 @@
           },
           "404": {
             "description": "User not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "message": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "message"
+                  ]
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Cannot suspend yourself or the last usable instance administrator",
             "content": {
               "application/json": {
                 "schema": {
@@ -23089,7 +23369,7 @@
             }
           },
           "409": {
-            "description": "A matching pending action already exists",
+            "description": "Self-target, last-admin removal, or duplicate pending action refused",
             "content": {
               "application/json": {
                 "schema": {
