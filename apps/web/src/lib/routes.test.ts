@@ -190,4 +190,13 @@ describe("canonical intake URLs", () => {
     expect(parsed).toEqual({ q: "hardware help", key: "printer" });
     expect(routes.portalCatalogue.build(parsed)).toBe(url);
   });
+
+  it("preserves in-progress whitespace in catalogue search URLs", () => {
+    const url = routes.portalCatalogue.build({ q: "printer " });
+    const search = Object.fromEntries(new URLSearchParams(url.split("?")[1]));
+    expect(parsePortalCatalogueSearch(search)).toEqual({ q: "printer " });
+    expect(
+      routes.portalCatalogue.build(parsePortalCatalogueSearch(search)),
+    ).toBe(url);
+  });
 });

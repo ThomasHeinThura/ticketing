@@ -405,7 +405,11 @@ function PortalCatalogue() {
         </section>
       ) : (
         <div className="flex flex-col gap-6">
-          {entries.length === 0 && !catalogue.isLoading ? (
+          {catalogue.isLoading ? (
+            <p role="status">
+              {t("common:empty.loading", { defaultValue: "Loading…" })}
+            </p>
+          ) : entries.length === 0 ? (
             <p>
               {t("portal:intake.emptyCatalogue", {
                 defaultValue:

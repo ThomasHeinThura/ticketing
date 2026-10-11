@@ -140,6 +140,8 @@ export function requireSubmissionAttachmentReach(
         (!attachedToSubmission && !attachedToAcceptedWorkItem) ||
         (mode === "portal_complete" &&
           (attachment.state !== "pending" ||
+            attachment.uploadedBy !== row.submission.requesterId ||
+            !attachment.customerVisible ||
             (!attachedToSubmission && !attachedToAcceptedWorkItem))) ||
         (mode.endsWith("download") && attachment.state !== "ready")
       )

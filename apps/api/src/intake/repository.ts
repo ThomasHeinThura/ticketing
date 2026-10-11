@@ -1647,8 +1647,59 @@ export async function listOwnSubmissions(
   const identity = await portalIdentity(userId);
   const scope = `portal:${identity.personId}:limit:${limit}`;
   const decoded = decodeSubmissionCursor(cursor, scope);
+  const workspaceRows = await db
+    .selectDistinct({ workspaceId: schema.requestTypeTable.workspaceId })
+    .from(schema.submissionTable)
+    .innerJoin(
+      schema.requestTypeTable,
+      eq(schema.requestTypeTable.id, schema.submissionTable.requestTypeId),
+    )
+    .where(eq(schema.submissionTable.requesterId, identity.personId));
+  const workspaceIds = workspaceRows.map((row) => row.workspaceId);
+  if (workspaceIds.length === 0)
+    return {
+      submissions: [],
+      page: { nextCursor: null, hasMore: false },
+      meta: { total: 0 },
+    };
+  const [[instance], workspaceFlags] = await Promise.all([
+    db
+      .select({
+        enabled: schema.instanceFeatureFlagTable.enabled,
+        locked: schema.instanceFeatureFlagTable.locked,
+      })
+      .from(schema.instanceFeatureFlagTable)
+      .where(eq(schema.instanceFeatureFlagTable.featureKey, "feature.intake"))
+      .limit(1),
+    db
+      .select({
+        workspaceId: schema.workspaceFeatureFlagTable.workspaceId,
+        enabled: schema.workspaceFeatureFlagTable.enabled,
+      })
+      .from(schema.workspaceFeatureFlagTable)
+      .where(
+        inArray(schema.workspaceFeatureFlagTable.workspaceId, workspaceIds),
+      ),
+  ]);
+  const enabledWorkspaceIds = workspaceIds.filter(
+    (workspaceId) =>
+      resolveFeatureFlag({
+        feature: "feature.intake",
+        instance: instance ?? null,
+        workspace:
+          workspaceFlags.find((flag) => flag.workspaceId === workspaceId)
+            ?.enabled ?? null,
+      }).enabled,
+  );
+  if (enabledWorkspaceIds.length === 0)
+    return {
+      submissions: [],
+      page: { nextCursor: null, hasMore: false },
+      meta: { total: 0 },
+    };
   const conditions = [
     eq(schema.submissionTable.requesterId, identity.personId),
+    inArray(schema.requestTypeTable.workspaceId, enabledWorkspaceIds),
     ...(decoded
       ? [
           or(
@@ -1691,7 +1742,16 @@ export async function listOwnSubmissions(
   const [totalRow] = await db
     .select({ value: count() })
     .from(schema.submissionTable)
-    .where(eq(schema.submissionTable.requesterId, identity.personId));
+    .innerJoin(
+      schema.requestTypeTable,
+      eq(schema.requestTypeTable.id, schema.submissionTable.requestTypeId),
+    )
+    .where(
+      and(
+        eq(schema.submissionTable.requesterId, identity.personId),
+        inArray(schema.requestTypeTable.workspaceId, enabledWorkspaceIds),
+      ),
+    );
   return {
     submissions: pageRows.map((row) => ({
       ...row,

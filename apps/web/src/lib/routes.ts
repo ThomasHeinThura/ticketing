@@ -184,7 +184,7 @@ export function parsePortalCatalogueSearch(
   raw: unknown,
 ): PortalCatalogueSearch {
   const value = (raw ?? {}) as Record<string, unknown>;
-  const q = typeof value.q === "string" ? value.q.trim().slice(0, 200) : "";
+  const q = typeof value.q === "string" ? value.q.slice(0, 200) : "";
   const key =
     typeof value.key === "string" && value.key.length <= 200
       ? value.key

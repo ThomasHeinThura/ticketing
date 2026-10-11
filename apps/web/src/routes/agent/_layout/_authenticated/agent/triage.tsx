@@ -28,6 +28,7 @@ import {
 import useGetProjects from "@/hooks/queries/project/use-get-projects";
 import useGetWorkItemTypes from "@/hooks/queries/work-item/use-get-work-item-types";
 import useActiveWorkspace from "@/hooks/queries/workspace/use-active-workspace";
+import { submissionAnswerRows } from "@/lib/intake-validation";
 import { parseIntakeSearch } from "@/lib/routes";
 
 export const Route = createFileRoute("/_layout/_authenticated/agent/triage")({
@@ -127,7 +128,11 @@ function IntakeRoute() {
           workItemId?: string;
         };
         requestType?: { name?: string };
-        version?: { defaultProjectId?: string | null; workItemTypeId?: string };
+        version?: {
+          defaultProjectId?: string | null;
+          workItemTypeId?: string;
+          formSchema?: { fields?: Array<{ key: string; label: string }> };
+        };
         messages?: Array<{
           id: string;
           actorType: string;
@@ -262,14 +267,17 @@ function IntakeRoute() {
                 </p>
                 <h3 className="font-medium">{t("submittedAnswers")}</h3>
                 <dl className="grid gap-2 sm:grid-cols-2">
-                  {Object.entries(current.submission?.formData ?? {}).map(
-                    ([key, value]) => (
-                      <div key={key}>
-                        <dt className="text-muted-foreground text-sm">{key}</dt>
-                        <dd>{String(value)}</dd>
-                      </div>
-                    ),
-                  )}
+                  {submissionAnswerRows(
+                    current.version?.formSchema?.fields,
+                    current.submission?.formData,
+                  ).map((answer) => (
+                    <div key={answer.key}>
+                      <dt className="text-muted-foreground text-sm">
+                        {answer.label}
+                      </dt>
+                      <dd>{answer.value}</dd>
+                    </div>
+                  ))}
                 </dl>
                 <h3 className="font-medium">{t("conversation")}</h3>
                 <ol className="flex flex-col gap-2">

@@ -13,3 +13,17 @@ export function missingRequiredIntakeFields(
     .filter((error) => error.problem === "required_missing")
     .map((error) => error.key);
 }
+
+export function submissionAnswerRows(
+  fields: readonly { key: string; label: string }[] | undefined,
+  answers: Readonly<Record<string, unknown>> | undefined,
+) {
+  const labels = new Map(
+    (fields ?? []).map((field) => [field.key, field.label]),
+  );
+  return Object.entries(answers ?? {}).map(([key, value]) => ({
+    key,
+    label: labels.get(key) || key,
+    value: String(value),
+  }));
+}

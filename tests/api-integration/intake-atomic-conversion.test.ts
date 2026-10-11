@@ -5,6 +5,7 @@ import type { FormSchema, FormValue } from "@taskdesk/domain";
 import { and, eq } from "drizzle-orm";
 import { Client } from "pg";
 import { beforeEach, describe, expect, it } from "vitest";
+import { completeSubmissionAttachment } from "../../apps/api/src/attachment/controllers/complete-submission-attachment";
 import db, { schema } from "../../apps/api/src/database";
 import {
   acceptSubmission,
@@ -777,6 +778,12 @@ describe("intake atomic conversion", () => {
           required: true,
           mapsTo: { field: "title" },
         },
+        {
+          key: "evidence",
+          type: "file",
+          label: "Evidence",
+          multiple: false,
+        },
       ],
     };
     const requestType = requireRow(
@@ -1020,7 +1027,9 @@ describe("intake atomic conversion", () => {
   });
 
   it("attributes auto-accept conversion to the system while retaining the customer requester", async () => {
-    const { workspace } = await createWorkspaceMember({ role: "admin" });
+    const { user: staffUser, workspace } = await createWorkspaceMember({
+      role: "admin",
+    });
     const organisation = requireRow(
       await db
         .insert(schema.organisationTable)
@@ -1052,6 +1061,11 @@ describe("intake atomic conversion", () => {
         .returning(),
       "requester",
     );
+    const [staff] = await db
+      .select()
+      .from(schema.personTable)
+      .where(eq(schema.personTable.userId, staffUser.id));
+    if (!staff) throw new Error("Staff person was not created");
     const { project } = await createProjectFixture({
       workspaceId: workspace.id,
     });
@@ -1170,7 +1184,62 @@ describe("intake atomic conversion", () => {
       .select()
       .from(schema.workItemTable)
       .where(eq(schema.workItemTable.id, result.workItemId ?? ""));
-    expect(item?.requesterId).toBe(requester.id);
+    if (!item) throw new Error("Auto-accepted work item was not persisted");
+    expect(item.requesterId).toBe(requester.id);
+    const pendingRequesterUpload = requireRow(
+      await db
+        .insert(schema.attachmentTable)
+        .values({
+          workspaceId: workspace.id,
+          organisationId: organisation.id,
+          submissionId: result.id,
+          objectKey: `pending/${randomUUID()}`,
+          filename: "customer-upload.txt",
+          mimeType: "text/plain",
+          size: 6,
+          state: "pending",
+          customerVisible: true,
+          uploadedBy: requester.id,
+        })
+        .returning(),
+      "pending requester upload",
+    );
+    const staffUpload = requireRow(
+      await db
+        .insert(schema.attachmentTable)
+        .values({
+          workspaceId: workspace.id,
+          organisationId: organisation.id,
+          workItemId: item.id,
+          objectKey: `pending/${randomUUID()}`,
+          filename: "staff-upload.txt",
+          mimeType: "text/plain",
+          size: 6,
+          state: "pending",
+          customerVisible: true,
+          uploadedBy: staff.id,
+        })
+        .returning(),
+      "pending staff work-item upload",
+    );
+    await expect(
+      completeSubmissionAttachment({
+        attachmentId: pendingRequesterUpload.id,
+        submissionId: result.id,
+        submissionWorkItemId: result.workItemId,
+        requesterId: requester.id,
+        workspaceId: workspace.id,
+      }),
+    ).rejects.toMatchObject({ status: 400 });
+    await expect(
+      completeSubmissionAttachment({
+        attachmentId: staffUpload.id,
+        submissionId: result.id,
+        submissionWorkItemId: result.workItemId,
+        requesterId: requester.id,
+        workspaceId: workspace.id,
+      }),
+    ).rejects.toMatchObject({ status: 404 });
 
     const ref = `SUB-${result.number}`;
     const events = await db

@@ -1,5 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
+import type { FormSchema } from "@taskdesk/domain";
 import {
   Alert,
   AlertDescription,
@@ -30,7 +31,7 @@ import {
 } from "@/fetchers/intake";
 import useGetWorkItemTypes from "@/hooks/queries/work-item/use-get-work-item-types";
 import useActiveWorkspace from "@/hooks/queries/workspace/use-active-workspace";
-import { isIntakeConditionSatisfied } from "@/lib/intake-visibility";
+import { resolveIntakeVisibility } from "@/lib/intake-visibility";
 import { parseRequestTypeEditorSearch } from "@/lib/routes";
 
 export const Route = createFileRoute(
@@ -178,6 +179,10 @@ function RequestTypesPage() {
     if (!id) setDraft(blank());
   };
   const fields = draft.formSchema.fields;
+  const previewVisibility = resolveIntakeVisibility(
+    draft.formSchema as unknown as FormSchema,
+    previewValues,
+  );
   const updateField = (index: number, patch: Partial<Field>) =>
     setDraft((current) => ({
       ...current,
@@ -713,11 +718,7 @@ function RequestTypesPage() {
               </p>
               <div className="mt-3 grid gap-3">
                 {fields
-                  .filter((field) => {
-                    if (!field.showIf) return true;
-                    const actual = previewValues[field.showIf.field_key];
-                    return isIntakeConditionSatisfied(field.showIf, actual);
-                  })
+                  .filter((field) => previewVisibility.get(field.key) ?? true)
                   .map((field) => (
                     <div key={field.key} className="flex flex-col gap-1">
                       {field.label}

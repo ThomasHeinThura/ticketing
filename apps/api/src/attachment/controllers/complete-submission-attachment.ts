@@ -1,4 +1,4 @@
-import { and, eq, or } from "drizzle-orm";
+import { and, eq, isNull, or } from "drizzle-orm";
 import { HTTPException } from "hono/http-exception";
 import db, { schema } from "../../database";
 import {
@@ -68,6 +68,9 @@ export async function completeSubmissionAttachment(input: {
                   eq(schema.attachmentTable.workItemId, acceptedParentId),
                 )
               : eq(schema.attachmentTable.submissionId, input.submissionId),
+            eq(schema.attachmentTable.uploadedBy, input.requesterId),
+            eq(schema.attachmentTable.customerVisible, true),
+            isNull(schema.attachmentTable.deletedAt),
           ),
         )
         .for("update")

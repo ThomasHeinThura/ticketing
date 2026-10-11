@@ -1,5 +1,8 @@
 import { describe, expect, it } from "vitest";
-import { missingRequiredIntakeFields } from "./intake-validation";
+import {
+  missingRequiredIntakeFields,
+  submissionAnswerRows,
+} from "./intake-validation";
 
 describe("portal required-field validation", () => {
   it("reports every visible blank required field and ignores hidden required fields", () => {
@@ -54,5 +57,19 @@ describe("portal required-field validation", () => {
     expect(missingRequiredIntakeFields(schema, { category: "Access" })).toEqual(
       [],
     );
+  });
+});
+
+describe("immutable submission answer labels", () => {
+  it("uses version labels and falls back to keys for legacy answers", () => {
+    expect(
+      submissionAnswerRows([{ key: "field_1", label: "New question" }], {
+        field_1: "Printer jam",
+        legacy_key: "Other",
+      }),
+    ).toEqual([
+      { key: "field_1", label: "New question", value: "Printer jam" },
+      { key: "legacy_key", label: "legacy_key", value: "Other" },
+    ]);
   });
 });

@@ -225,6 +225,7 @@ async function requestTypeReach(c: IntakeContext, next: Next) {
       return notFound("Request type not found");
     throw error;
   }
+  await requireIntakeEnabled(row.workspaceId);
   c.set("workspaceId", row.workspaceId);
   c.set("workspaceIdSource", "row");
   await next();

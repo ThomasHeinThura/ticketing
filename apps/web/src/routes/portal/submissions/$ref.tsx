@@ -12,6 +12,7 @@ import {
   replyPortalSubmission,
   withdrawPortalSubmission,
 } from "@/fetchers/intake";
+import { submissionAnswerRows } from "@/lib/intake-validation";
 
 export const Route = createFileRoute("/submissions/$ref")({
   component: PortalSubmissionPage,
@@ -178,14 +179,17 @@ function PortalSubmissionPage() {
                 {t("portal:intake.answers", { defaultValue: "Your answers" })}
               </h2>
               <dl className="mt-3 grid gap-2 sm:grid-cols-2">
-                {Object.entries(record.submission?.formData ?? {}).map(
-                  ([key, value]) => (
-                    <div key={key}>
-                      <dt className="text-muted-foreground text-sm">{key}</dt>
-                      <dd>{String(value)}</dd>
-                    </div>
-                  ),
-                )}
+                {submissionAnswerRows(
+                  record.version?.formSchema?.fields,
+                  record.submission?.formData,
+                ).map((answer) => (
+                  <div key={answer.key}>
+                    <dt className="text-muted-foreground text-sm">
+                      {answer.label}
+                    </dt>
+                    <dd>{answer.value}</dd>
+                  </div>
+                ))}
               </dl>
             </section>
           )}
@@ -222,6 +226,44 @@ function PortalSubmissionPage() {
             <h2 className="font-medium">
               {t("portal:intake.attachments", { defaultValue: "Attachments" })}
             </h2>
+            {attachments.isLoading && (
+              <p role="status">
+                {t("common:empty.loading", { defaultValue: "Loading…" })}
+              </p>
+            )}
+            {attachments.isError && (
+              <Alert variant="error">
+                <AlertDescription>
+                  {t("portal:intake.attachmentListError", {
+                    defaultValue: "Could not load attachments.",
+                  })}
+                </AlertDescription>
+                <Button
+                  variant="outline"
+                  onClick={() => void attachments.refetch()}
+                >
+                  {t("common:actions.retry", { defaultValue: "Retry" })}
+                </Button>
+              </Alert>
+            )}
+            {finishUpload.isError && (
+              <Alert variant="error">
+                <AlertDescription>
+                  {t("portal:intake.completeUploadError", {
+                    defaultValue: "Could not finish this upload.",
+                  })}
+                </AlertDescription>
+                {finishUpload.variables && (
+                  <Button
+                    variant="outline"
+                    onClick={() => finishUpload.mutate(finishUpload.variables)}
+                    disabled={finishUpload.isPending}
+                  >
+                    {t("common:actions.retry", { defaultValue: "Retry" })}
+                  </Button>
+                )}
+              </Alert>
+            )}
             {attachments.data?.map((file) => (
               <div
                 className="flex items-center justify-between gap-3 rounded border p-3"
