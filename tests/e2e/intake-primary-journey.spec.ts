@@ -159,7 +159,7 @@ async function signInThroughPortal(
 ) {
   await page.goto(new URL("/auth/sign-in", portalOrigin).toString());
   await page.getByLabel("Email").fill(person.email);
-  await page.getByLabel("Password").fill(person.password);
+  await page.getByLabel("Password", { exact: true }).fill(person.password);
   const responsePromise = apiResponse(page, "POST", "/api/auth/sign-in/email");
   await page.getByRole("button", { name: "Sign in", exact: true }).click();
   expect((await responsePromise).status()).toBe(200);
@@ -217,7 +217,7 @@ async function signUpStaff(
   await page.goto(new URL("/auth/sign-up", origin).toString());
   await page.getByLabel("Full name").fill("Intake primary administrator");
   await page.getByLabel("Email").fill(fixture.email);
-  await page.getByLabel("Password").fill(fixture.password);
+  await page.getByLabel("Password", { exact: true }).fill(fixture.password);
   const responsePromise = apiResponse(page, "POST", "/api/auth/sign-up/email");
   await page
     .getByRole("button", { name: "Create account", exact: true })
