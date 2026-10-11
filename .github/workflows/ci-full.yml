@@ -167,9 +167,9 @@ jobs:
         uses: ./.github/actions/change-scope
       - uses: ./.github/actions/setup
         if: ${{ steps.scope.outputs.full != 'false' }}
-      - name: Build the permissions package used by the web bundle
+      - name: Build the web bundle and its transitive workspace dependencies
         if: ${{ steps.scope.outputs.full != 'false' }}
-        run: pnpm --filter @taskdesk/permissions build
+        run: pnpm build --filter=@taskdesk/web... --force
       - name: Normalize Ubuntu APT mirror for Chromium dependencies
         if: ${{ steps.scope.outputs.full != 'false' }}
         run: node scripts/ci/normalize-ubuntu-apt-mirror.mjs

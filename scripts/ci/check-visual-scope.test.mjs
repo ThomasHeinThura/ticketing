@@ -1018,6 +1018,29 @@ test("G8 rejects a CI workflow that no longer invokes the visual test entry poin
   );
 });
 
+test("G8 rejects permissions-only preparation that omits web workspace dependency outputs", async () => {
+  const original = await readFile(
+    path.join(repoRoot, ".github/workflows/ci-full.yml"),
+    "utf8",
+  );
+  const ciWorkflow = original.replace(
+    "run: pnpm build --filter=@taskdesk/web... --force",
+    "run: pnpm --filter @taskdesk/permissions build",
+  );
+  assert.notEqual(
+    ciWorkflow,
+    original,
+    "the negative fixture could not find the canonical web dependency graph command",
+  );
+  const result = await runVisualScope({ ciWorkflow });
+
+  assert.notEqual(result.status, 0);
+  assert.match(
+    result.output,
+    /ci-full\.yml must run pnpm test:visual exactly once in one failure-propagating/,
+  );
+});
+
 test("G8 rejects a conditionally skipped visual job", async () => {
   const original = await readFile(
     path.join(repoRoot, ".github/workflows/ci-full.yml"),
