@@ -175,7 +175,8 @@ thing that is hashed or executed.
   allowlist is `metrics_token_rotate`, `identity_connection_create`,
   `identity_connection_configure`, `oidc_group_mapping_create`,
   `oidc_group_mapping_update`, `scim_admin_update`, `scim_token_rotate`,
-  `scim_token_revoke`, `mfa_reset`, and `instance_admin_grant`. Pending-action binding
+  `scim_token_revoke`, `mfa_reset`, `instance_admin_grant`, and
+  `instance_admin_suspend`. Pending-action binding
   uses its existing `pending_action.id`
   and `payload_hash`; operation binding uses the exact fixed route key, operation key,
   expected resource version and server-computed canonical request-binding hash. The client

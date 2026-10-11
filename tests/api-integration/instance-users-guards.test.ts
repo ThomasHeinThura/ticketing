@@ -8,6 +8,7 @@ import {
   retryIdentityGrantClosure,
 } from "../../apps/api/src/identity/repository";
 import { createApp } from "../../apps/api/src/index";
+import * as observability from "../../apps/api/src/instance/observability/runtime";
 import { createPendingAction } from "../../apps/api/src/pending-action/service";
 import {
   ensureInternalOrganisation,
@@ -431,6 +432,7 @@ describe("approve route PA-15 negatives", () => {
         `neg-g-${_name}`,
       );
       const token = await pendingActionToken(app, pendingId);
+      const auditFailure = vi.spyOn(observability, "recordAuditWriteFailure");
       await change(admin.user.id);
       const response = await approve(app, pendingId, target.user.email, token);
       if (_name === "demoted") {
@@ -442,6 +444,23 @@ describe("approve route PA-15 negatives", () => {
           state: "invalidated",
           reason: "capability_removed",
         });
+        const auditRows = await db
+          .select({
+            action: schema.auditLogTable.action,
+            after: schema.auditLogTable.after,
+          })
+          .from(schema.auditLogTable)
+          .where(
+            and(
+              eq(schema.auditLogTable.action, "pending_action.decided"),
+              eq(schema.auditLogTable.entityId, pendingId),
+            ),
+          );
+        expect(auditRows).toHaveLength(1);
+        expect(auditRows[0]?.after).toMatchObject({ state: "invalidated" });
+        expect(auditFailure).not.toHaveBeenCalledWith(
+          "pending_action_decision",
+        );
       } else {
         // A banned or deactivated requester is already refused by the request identity
         // layer (401/403) before the service runs; nothing executes either way.
@@ -449,6 +468,7 @@ describe("approve route PA-15 negatives", () => {
         expect((await actionState(pendingId))?.state).not.toBe("executed");
       }
       expect(await personActive(target.user.id)).toBe(true);
+      auditFailure.mockRestore();
     },
   );
 
@@ -482,11 +502,27 @@ describe("approve route PA-15 negatives", () => {
       .update(schema.pendingActionTable)
       .set({ expiresAt: new Date(Date.now() - 1_000) })
       .where(eq(schema.pendingActionTable.id, pendingId));
+    const auditFailure = vi.spyOn(observability, "recordAuditWriteFailure");
     const response = await approve(app, pendingId, target.user.email, "x");
     expect(response.status).toBe(200);
     expect(await response.json()).toEqual({ id: pendingId, state: "expired" });
     expect(await actionState(pendingId)).toMatchObject({ state: "expired" });
     expect(await personActive(target.user.id)).toBe(true);
+    const auditRows = await db
+      .select({
+        action: schema.auditLogTable.action,
+        after: schema.auditLogTable.after,
+      })
+      .from(schema.auditLogTable)
+      .where(
+        and(
+          eq(schema.auditLogTable.action, "pending_action.decided"),
+          eq(schema.auditLogTable.entityId, pendingId),
+        ),
+      );
+    expect(auditRows).toHaveLength(1);
+    expect(auditRows[0]?.after).toMatchObject({ state: "expired" });
+    expect(auditFailure).not.toHaveBeenCalledWith("pending_action_decision");
   });
 });
 

@@ -1061,7 +1061,7 @@ async function writeUserDeactivationTransition(
         actorType: "person",
         traceId: input.traceId,
         workspaceId: null,
-        action: `pending_action.${input.state}`,
+        action: "pending_action.decided",
         entityType: "pending_action",
         entityId: input.row.id,
         before: { state: "pending" },
