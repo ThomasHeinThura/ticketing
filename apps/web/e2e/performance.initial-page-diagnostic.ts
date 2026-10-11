@@ -6,6 +6,12 @@ import { fileURLToPath } from "node:url";
 import { expect, type Page, test } from "@playwright/test";
 import { summarizeProfileCoverage } from "../src/lib/performance-profile-intervals";
 import {
+  anchorTraceProfile,
+  type TraceProfileClock,
+  timeTraceProfileChunk,
+  traceProfileKey,
+} from "../src/lib/performance-trace-profile-clock";
+import {
   aggregateCpuProfileFrames,
   sanitizeCpuProfileNodes,
 } from "./helpers/aggregate-cpu-profile";
@@ -757,23 +763,47 @@ async function withDiagnosticProfile(
   let browserPerformance: DiagnosticCapture["browserPerformance"] | undefined;
   const timelineEvents: BrowserTimelineEvent[] = [];
   const traceCpuProfilesByThread = new Map<string, TraceCpuProfile>();
+  const traceProfileClocks = new Map<string, TraceProfileClock>();
+  const invalidTraceProfileKeys = new Set<string>();
   let clockMarks: DiagnosticCapture["clockMarks"] = [];
   let timelineOverflow = false;
   cdp.on("Tracing.dataCollected", ({ value }) => {
     for (const event of value ?? []) {
-      if (event.name === "ProfileChunk") {
+      if (event.name === "Profile" || event.name === "ProfileChunk") {
         const data = (
           event.args as { data?: Record<string, unknown> } | undefined
         )?.data;
-        const cpuProfile = data?.cpuProfile as
-          | { nodes?: TraceCpuNode[]; samples?: number[] }
-          | undefined;
-        const timeDeltas = data?.timeDeltas as number[] | undefined;
         const source = String(data?.source ?? "unknown");
         const pid = Number(event.pid) || 0;
         const tid = Number(event.tid) || 0;
         const id = String(event.id ?? "profile");
-        const key = `${pid}:${tid}:${source}:${id}`;
+        const key = traceProfileKey(pid, tid, source, id);
+        if (invalidTraceProfileKeys.has(key)) continue;
+        if (event.name === "Profile") {
+          if (!anchorTraceProfile(traceProfileClocks, key, Number(event.ts))) {
+            invalidTraceProfileKeys.add(key);
+            traceCpuProfilesByThread.delete(key);
+          }
+          continue;
+        }
+        const cpuProfile = data?.cpuProfile as
+          | { nodes?: TraceCpuNode[]; samples?: number[] }
+          | undefined;
+        const timeDeltas = data?.timeDeltas as number[] | undefined;
+        const samples = Array.isArray(cpuProfile?.samples)
+          ? cpuProfile.samples
+          : [];
+        const deltas = Array.isArray(timeDeltas) ? timeDeltas : [];
+        const timedSamples = timeTraceProfileChunk(
+          traceProfileClocks.get(key),
+          samples,
+          deltas,
+        );
+        if (samples.length > 0 && !timedSamples) {
+          invalidTraceProfileKeys.add(key);
+          traceCpuProfilesByThread.delete(key);
+          continue;
+        }
         let traceProfile = traceCpuProfilesByThread.get(key);
         if (!traceProfile) {
           traceProfile = {
@@ -788,20 +818,7 @@ async function withDiagnosticProfile(
         }
         for (const node of cpuProfile?.nodes ?? [])
           traceProfile.nodes.set(node.id, node);
-        const samples = cpuProfile?.samples ?? [];
-        if (
-          Array.isArray(timeDeltas) &&
-          samples.length === timeDeltas.length &&
-          Number.isFinite(event.ts)
-        ) {
-          let sampleTime =
-            (event.ts as number) - timeDeltas.reduce((a, b) => a + b, 0);
-          for (const [index, nodeId] of samples.entries()) {
-            const duration = timeDeltas[index] ?? 0;
-            traceProfile.samples.push({ nodeId, start: sampleTime, duration });
-            sampleTime += duration;
-          }
-        }
+        traceProfile.samples.push(...(timedSamples ?? []));
       }
       const sanitized = sanitizeTimelineEvent(event);
       if (!sanitized) continue;
@@ -1368,7 +1385,7 @@ test("diagnostic: source-bound G11 failure-path CPU profiles", async ({
       transform:
         "Two diagnostic CDP TimeStamp markers on the same document, measured around window.performance.now(); affine scale and offset map canonical recorder values to trace time. Uncertainty includes marker-call brackets plus measured slope uncertainty propagated across extrapolated distance.",
       cpuProfileClock:
-        "Sanitized V8 ProfileChunk sample intervals are derived from each chunk's CDP trace timestamp and timeDeltas, then clipped to the aligned recorder span. Coverage reports observed sample bounds and uncovered prefixes/suffixes.",
+        "Sanitized V8 ProfileChunk sample intervals start at the initial Profile event timestamp and accumulate ordered timeDeltas across chunks for the same process, thread, source, and profile id. Chunk emission timestamps are not used as sample anchors. Profiles without a valid initial Profile anchor are omitted; intervals are clipped to the aligned recorder span.",
       cpuFrameAttribution:
         "Self time is sampled time at the node; inclusive time sums each clipped sample once into that node and every reachable caller from retained child links. This is sampled CPU attribution, not wall time or a completeness guarantee. Coordinates remain compiled asset/function/line/column; source maps are inspected only for asset source lists and do not resolve individual functions.",
       contextMetrics:
