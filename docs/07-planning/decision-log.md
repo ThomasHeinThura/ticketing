@@ -8,8 +8,10 @@ these existing intake readers; it does not authorize other features to read flag
 
 **Held scope:** required-file mappings, custom-field mappings and God Mode catalogue assignment
 remain held. The alternate historical `request-type/*` runtime remains held. No new flag,
-schema, capability, environment variable or feature is authorized by this decision. Preserve
-accepted migrations and their later tenant and approval anchors during selective composition.
+schema, capability, environment variable or feature is authorized by this decision.
+
+**Existing integration constraint, not an additional owner decision:** preserve accepted
+migrations and their later tenant and approval anchors during selective composition.
 
 **Source:** Thomas, direct reply in Codex chat `01a12921-4863-7c42-ac59-1822c69b88cd`
 on 2026-10-11: “Yes—record the intake exception”. The question explicitly named the existing
