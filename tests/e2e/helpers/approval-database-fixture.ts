@@ -42,6 +42,8 @@ export async function seedApprovalTenant(
     "work_item:transition",
     "approval:request",
     "approval:request_cab",
+    "approval:decide",
+    "approval:decide_cab",
   ]);
 
   const workspaceId = requester.workspace.id;
@@ -190,12 +192,20 @@ export async function seedApprovalTenant(
       .returning(),
     "approvals E2E CAB team",
   );
-  await db.insert(schema.teamMemberTable).values({
-    id: `approval-e2e-cab-member-${randomUUID()}`,
-    teamId: cabTeam.id,
-    userId: approver.user.id,
-    createdAt: now,
-  });
+  await db.insert(schema.teamMemberTable).values([
+    {
+      id: `approval-e2e-cab-approver-${randomUUID()}`,
+      teamId: cabTeam.id,
+      userId: approver.user.id,
+      createdAt: now,
+    },
+    {
+      id: `approval-e2e-cab-requester-${randomUUID()}`,
+      teamId: cabTeam.id,
+      userId: requester.user.id,
+      createdAt: now,
+    },
+  ]);
 
   const title = "Approvals E2E work item";
   const created = await createWorkItem({

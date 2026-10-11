@@ -20,7 +20,7 @@ export type ApprovalFixtureState = {
     transitionId: string;
     doneStateId: string;
     backlogStateId: string;
-    requester: { id: string; email: string };
+    requester: { id: string; email: string; personId: string };
     approver: {
       id: string;
       email: string;

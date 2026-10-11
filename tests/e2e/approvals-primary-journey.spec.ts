@@ -32,7 +32,30 @@ test("approval request blocks transition until an independent approver decides",
         `/api/work-items/${encodeURIComponent(tenant.key)}/transition`,
         { toStateTemplateId: tenant.doneStateId },
       );
-      await expectStatus(blocked, 422);
+      const blockedBody = JSON.parse(await expectStatus(blocked, 422)) as {
+        blockedBy: Array<{
+          kind: string;
+          reasonCode: string;
+          pendingApprovals?: Array<{
+            approverName: string | null;
+            requestedAt: string;
+            expiresAt: string;
+          }>;
+        }>;
+      };
+      expect(blockedBody.blockedBy).toContainEqual(
+        expect.objectContaining({
+          kind: "approval",
+          reasonCode: "approval.pending",
+          pendingApprovals: [
+            expect.objectContaining({
+              approverName: tenant.approver.name,
+              requestedAt: expect.any(String),
+              expiresAt: expect.any(String),
+            }),
+          ],
+        }),
+      );
 
       const decision = await postWithCsrf(
         approver,
@@ -67,7 +90,26 @@ test("approval request blocks transition until an independent approver decides",
         `/api/work-items/${encodeURIComponent(tenant.key)}/transition`,
         { toStateTemplateId: tenant.doneStateId },
       );
-      await expectStatus(spentReplay, 422);
+      const spentReplayBody = JSON.parse(
+        await expectStatus(spentReplay, 422),
+      ) as {
+        blockedBy: Array<{
+          kind: string;
+          reasonCode: string;
+          pendingApprovals?: unknown[];
+        }>;
+      };
+      expect(spentReplayBody.blockedBy).toContainEqual(
+        expect.objectContaining({
+          kind: "approval",
+          reasonCode: "approval.pending",
+        }),
+      );
+      expect(
+        spentReplayBody.blockedBy.flatMap(
+          (reason) => reason.pendingApprovals ?? [],
+        ),
+      ).toHaveLength(0);
     } finally {
       await Promise.all([requester.dispose(), approver.dispose()]);
     }

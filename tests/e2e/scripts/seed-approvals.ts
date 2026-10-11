@@ -162,6 +162,7 @@ try {
         requester: {
           id: tenant.requester.user.id,
           email: tenant.requester.user.email,
+          personId: tenant.requesterPerson.id,
         },
         approver: {
           id: tenant.approver.user.id,

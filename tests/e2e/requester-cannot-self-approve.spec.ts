@@ -1,5 +1,6 @@
 import {
   contextFor,
+  expect,
   expectStatus,
   postWithCsrf,
   test,
@@ -11,6 +12,19 @@ test("requester cannot self-approve", async () => {
     const { origin, tenant, storageStates } = fixture;
     const requester = await contextFor(storageStates.requester);
     try {
+      const selfRequest = await postWithCsrf(
+        requester,
+        origin,
+        `/api/work-items/${encodeURIComponent(tenant.key)}/approvals`,
+        {
+          kind: "cab",
+          approverId: tenant.requester.personId,
+          transitionId: tenant.transitionId,
+        },
+      );
+      const selfRequestBody = await expectStatus(selfRequest, 422);
+      expect(selfRequestBody).toContain("self_approval");
+
       const requested = await postWithCsrf(
         requester,
         origin,
@@ -23,13 +37,15 @@ test("requester cannot self-approve", async () => {
       );
       const requestedBody = await expectStatus(requested, 200);
       const approval = JSON.parse(requestedBody) as { id: string };
-      const selfDecision = await postWithCsrf(
+      const requesterDecision = await postWithCsrf(
         requester,
         origin,
         `/api/approvals/${encodeURIComponent(approval.id)}/decide`,
         { action: "approve" },
       );
-      await expectStatus(selfDecision, 403);
+      const requesterDecisionBody = await expectStatus(requesterDecision, 403);
+      expect(requesterDecisionBody).toContain("not_named_approver");
+      expect(requesterDecisionBody).toContain("self_approval");
     } finally {
       await requester.dispose();
     }
