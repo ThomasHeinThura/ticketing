@@ -57,7 +57,7 @@ function PortalCatalogue() {
       !filteredEntries.some((entry) => entry.key === key),
   );
   const selectionMetadata = useQuery({
-    queryKey: ["portal", "catalogue", "selection-metadata"],
+    queryKey: ["portal", "catalogue-selection-metadata", key],
     queryFn: () => getPortalCatalogue(),
     enabled: needsSelectionMetadata,
   });
@@ -77,10 +77,12 @@ function PortalCatalogue() {
       ? ({ ...selectedSummary, ...selectedType.data } as Entry)
       : undefined;
   const primaryError =
-    catalogue.isError || selectionMetadata.isError || selectedType.isError;
+    catalogue.isError ||
+    (needsSelectionMetadata && selectionMetadata.isError) ||
+    selectedType.isError;
   const primaryLoading =
     catalogue.isLoading ||
-    selectionMetadata.isLoading ||
+    (needsSelectionMetadata && selectionMetadata.isLoading) ||
     (Boolean(key) && selectedType.isLoading);
   const storageKey = selected
     ? `taskdesk:intake-draft:${selected.key}:${selected.version}`
@@ -178,7 +180,7 @@ function PortalCatalogue() {
               {t("common:actions.retry", { defaultValue: "Retry" })}
             </Button>
           )}
-          {selectionMetadata.isError && (
+          {needsSelectionMetadata && selectionMetadata.isError && (
             <Button
               variant="outline"
               onClick={() => void selectionMetadata.refetch()}

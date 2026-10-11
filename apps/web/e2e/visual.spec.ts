@@ -161,30 +161,33 @@ async function installAuthenticatedFixture(page: Page) {
         version: 3,
       };
     } else if (path.endsWith("/api/portal/catalogue")) {
+      const hasNoCatalogueMatches = url.search === "?q=no-match";
       body = {
         defaultCustomerVisibility: "organisation",
-        requestTypes: [
-          {
-            key: "access",
-            name: "Access request",
-            description: "Request access to a support workspace.",
-            icon: null,
-            group: "Access",
-            position: 0,
-            forcePrivate: false,
-            formSchema: {
-              fields: [
-                {
-                  key: "title",
-                  label: "Summary",
-                  type: "text",
-                  required: true,
+        requestTypes: hasNoCatalogueMatches
+          ? []
+          : [
+              {
+                key: "access",
+                name: "Access request",
+                description: "Request access to a support workspace.",
+                icon: null,
+                group: "Access",
+                position: 0,
+                forcePrivate: false,
+                formSchema: {
+                  fields: [
+                    {
+                      key: "title",
+                      label: "Summary",
+                      type: "text",
+                      required: true,
+                    },
+                  ],
                 },
-              ],
-            },
-            version: 3,
-          },
-        ],
+                version: 3,
+              },
+            ],
       };
     } else if (path.endsWith("/api/portal/submissions/SUB-7")) {
       body = {

@@ -175,4 +175,42 @@ describe("portal catalogue route", () => {
       await screen.findByRole("heading", { name: "Access request" }),
     ).toBeVisible();
   });
+
+  it("keeps metadata lookup distinct from a catalogue search with the same text", async () => {
+    mocks.search = { q: "selection-metadata", key: "access" };
+    mocks.getCatalogue.mockImplementation(async (query?: string) =>
+      query === "selection-metadata" ? emptyCatalogue : catalogue,
+    );
+    renderCatalogue();
+
+    expect(
+      await screen.findByRole("heading", { name: "Access request" }),
+    ).toBeVisible();
+    expect(mocks.getCatalogue).toHaveBeenCalledWith("selection-metadata");
+    expect(mocks.getCatalogue.mock.calls).toContainEqual([]);
+    expect(mocks.getRequestType).toHaveBeenCalledWith("access");
+  });
+
+  it("clears a metadata-only error when the selected type returns to q results", async () => {
+    mocks.search = { q: "does-not-match", key: "access" };
+    mocks.getCatalogue.mockImplementation(async (query?: string) => {
+      if (query === "does-not-match") return emptyCatalogue;
+      if (query === "access") return catalogue;
+      throw new Error("metadata temporarily unavailable");
+    });
+    const view = renderCatalogue();
+
+    expect(await screen.findByRole("button", { name: "Retry" })).toBeVisible();
+    mocks.search = { q: "access", key: "access" };
+    view.rerender(
+      <QueryClientProvider client={view.queryClient}>
+        <PortalCatalogue />
+      </QueryClientProvider>,
+    );
+
+    expect(
+      await screen.findByRole("heading", { name: "Access request" }),
+    ).toBeVisible();
+    expect(screen.queryByRole("alert")).not.toBeInTheDocument();
+  });
 });
