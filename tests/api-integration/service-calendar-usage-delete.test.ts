@@ -10,6 +10,7 @@ import {
   createProjectFixture,
   createWorkspaceMember,
 } from "./helpers/fixtures";
+import { setPendingActionRequesterActive } from "./helpers/pending-action-lifecycle";
 
 const windows = { mon: [{ from: 540, to: 1020 }] };
 const AUDIT_FAILURE_TRIGGER = "td_calendar_delete_audit_failure";
@@ -258,6 +259,69 @@ describe("API integration: service-calendar usage and CAL-9 deletion", () => {
         .from(schema.outboxTable)
         .where(eq(schema.outboxTable.kind, "service_calendar.deleted")),
     ).toHaveLength(1);
+  });
+
+  it("keeps a calendar deletion invalid after requester deactivation and reactivation", async () => {
+    const owner = await createWorkspaceMember({ role: "admin" });
+    const calendar = await makeCalendar(owner.workspace.id, owner.user.id);
+    const [person] = await db
+      .select({ id: schema.personTable.id })
+      .from(schema.personTable)
+      .where(eq(schema.personTable.userId, owner.user.id));
+    if (!person) throw new Error("Calendar requester person was not created");
+    const sessionId = `session-${owner.user.id}`;
+    const insertSession = async () => {
+      const now = new Date();
+      await db
+        .insert(schema.sessionTable)
+        .values({
+          id: sessionId,
+          token: `calendar-pa9-${owner.user.id}`,
+          userId: owner.user.id,
+          portal: "agent",
+          expiresAt: new Date(now.getTime() + 60 * 60 * 1000),
+          createdAt: now,
+          updatedAt: now,
+        })
+        .onConflictDoNothing({ target: schema.sessionTable.id });
+    };
+    mockAuthenticatedSession(owner.user);
+    await insertSession();
+    const { app } = createApp();
+    const request = await app.request(`/api/service-calendars/${calendar.id}`, {
+      method: "DELETE",
+    });
+    expect(request.status).toBe(202);
+    const pending = (await request.json()) as { pendingActionId: string };
+
+    await setPendingActionRequesterActive(person.id, false);
+    expect(
+      await db.query.pendingActionTable.findFirst({
+        where: eq(schema.pendingActionTable.id, pending.pendingActionId),
+      }),
+    ).toMatchObject({
+      state: "invalidated",
+      invalidationReason: "requester_deactivated",
+    });
+    await setPendingActionRequesterActive(person.id, true);
+    await insertSession();
+    const approval = await app.request(
+      `/api/me/pending-actions/${pending.pendingActionId}/approve`,
+      {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: "{}",
+      },
+    );
+    expect(approval.status).toBe(409);
+    await expect(approval.text()).resolves.toContain(
+      "pending_action_not_pending",
+    );
+    expect(
+      await db.query.serviceCalendarTable.findFirst({
+        where: eq(schema.serviceCalendarTable.id, calendar.id),
+      }),
+    ).toBeDefined();
   });
 
   it.each(["disabled", "missing"] as const)(
@@ -523,10 +587,22 @@ describe("API integration: service-calendar usage and CAL-9 deletion", () => {
   it("invalidates an approval when the requester is deactivated", async () => {
     const owner = await createWorkspaceMember({ role: "admin" });
     const { app, calendar, pending } = await startKeyDeletion(owner);
-    await db
-      .update(schema.personTable)
-      .set({ active: false })
+    const [person] = await db
+      .select({ id: schema.personTable.id })
+      .from(schema.personTable)
       .where(eq(schema.personTable.userId, owner.user.id));
+    if (!person) throw new Error("Calendar requester person was not created");
+    await setPendingActionRequesterActive(person.id, false);
+    expect(
+      await db.query.pendingActionTable.findFirst({
+        where: eq(schema.pendingActionTable.id, pending.pendingActionId),
+      }),
+    ).toMatchObject({
+      state: "invalidated",
+      invalidationReason: "requester_deactivated",
+    });
+    await setPendingActionRequesterActive(person.id, true);
+    await prepareApprovalSession(owner.user.id);
 
     const approval = await app.request(
       `/api/me/pending-actions/${pending.pendingActionId}/approve`,
@@ -537,28 +613,9 @@ describe("API integration: service-calendar usage and CAL-9 deletion", () => {
       },
     );
     expect(approval.status).toBe(409);
-    await expect(
-      db.query.pendingActionTable.findFirst({
-        where: eq(schema.pendingActionTable.id, pending.pendingActionId),
-      }),
-    ).resolves.toMatchObject({
-      state: "invalidated",
-      invalidationReason: "requester_deactivated",
-    });
-    await db
-      .update(schema.personTable)
-      .set({ active: true })
-      .where(eq(schema.personTable.userId, owner.user.id));
-    const retry = await app.request(
-      `/api/me/pending-actions/${pending.pendingActionId}/approve`,
-      {
-        method: "POST",
-        headers: { "content-type": "application/json" },
-        body: "{}",
-      },
+    await expect(approval.text()).resolves.toContain(
+      "pending_action_not_pending",
     );
-    expect(retry.status).toBe(409);
-    await expect(retry.text()).resolves.toContain("pending_action_not_pending");
     expect(
       await db
         .select()

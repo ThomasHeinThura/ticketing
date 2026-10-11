@@ -1,6 +1,6 @@
 import { createId } from "@paralleldrive/cuid2";
 import type { JsonValue } from "@taskdesk/domain";
-import { and, eq, gt, or, sql } from "drizzle-orm";
+import { and, eq, gt, or } from "drizzle-orm";
 import { HTTPException } from "hono/http-exception";
 import { appendAuditLog } from "../audit/audit-writer";
 import db, { schema } from "../database";
@@ -30,6 +30,7 @@ import {
   capabilityCredential,
 } from "../utils/require-workspace-capability";
 import { validateWorkspaceAccess } from "../utils/validate-workspace-access";
+import { lockPendingActionLifecycle } from "./lifecycle-invalidation";
 import {
   canonicalPendingActionPayload,
   hashPendingActionPayload,
@@ -82,6 +83,7 @@ export async function approveServiceCalendarDeletion(input: {
   const now = new Date();
   let auditFailure = false;
   const result = await db.transaction(async (tx) => {
+    await lockPendingActionLifecycle(tx);
     const [row] = await tx
       .select()
       .from(pendingActionTable)
@@ -511,6 +513,7 @@ export async function approveSavedViewDeletion(input: {
   const now = new Date();
   let auditFailure = false;
   const result = await db.transaction(async (tx) => {
+    await lockPendingActionLifecycle(tx);
     const [row] = await tx
       .select()
       .from(pendingActionTable)

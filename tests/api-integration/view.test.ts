@@ -16,6 +16,7 @@ import {
   grantProjectRole,
   requireRow,
 } from "./helpers/fixtures";
+import { setPendingActionRequesterActive } from "./helpers/pending-action-lifecycle";
 
 async function expectPlainText422(response: Response, message: string) {
   expect(response.status).toBe(422);
@@ -859,6 +860,82 @@ describe("API integration: saved views", () => {
           eq(schema.auditLogTable.action, "saved_view.deleted"),
           eq(schema.auditLogTable.entityId, created.id),
         ),
+      }),
+    ).toBeDefined();
+  });
+
+  it("keeps a saved-view deletion invalid after requester deactivation and reactivation", async () => {
+    const member = await createWorkspaceMember();
+    const [person] = await db
+      .select({ id: schema.personTable.id })
+      .from(schema.personTable)
+      .where(eq(schema.personTable.userId, member.user.id));
+    if (!person) throw new Error("Saved-view requester person was not created");
+    const sessionId = `session-${member.user.id}`;
+    const insertSession = async () => {
+      const now = new Date();
+      await db
+        .insert(schema.sessionTable)
+        .values({
+          id: sessionId,
+          token: `view-pa9-${member.user.id}`,
+          userId: member.user.id,
+          portal: "agent",
+          expiresAt: new Date(now.getTime() + 60 * 60 * 1000),
+          createdAt: now,
+          updatedAt: now,
+        })
+        .onConflictDoNothing({ target: schema.sessionTable.id });
+    };
+    mockAuthenticatedSession(member.user);
+    await insertSession();
+    const { app } = createApp();
+    const createResponse = await app.request("/api/views", {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({
+        workspaceId: member.workspace.id,
+        name: "PA-9 saved view",
+        scope: "workspace",
+        scopeId: member.workspace.id,
+        layout: "list",
+        query: { entity: "work_item" },
+      }),
+    });
+    expect(createResponse.status).toBe(200);
+    const view = (await createResponse.json()) as { id: string };
+    const deletion = await app.request(`/api/views/${view.id}`, {
+      method: "DELETE",
+    });
+    expect(deletion.status).toBe(202);
+    const pending = (await deletion.json()) as { pendingActionId: string };
+
+    await setPendingActionRequesterActive(person.id, false);
+    expect(
+      await db.query.pendingActionTable.findFirst({
+        where: eq(schema.pendingActionTable.id, pending.pendingActionId),
+      }),
+    ).toMatchObject({
+      state: "invalidated",
+      invalidationReason: "requester_deactivated",
+    });
+    await setPendingActionRequesterActive(person.id, true);
+    await insertSession();
+    const approval = await app.request(
+      `/api/me/pending-actions/${pending.pendingActionId}/approve`,
+      {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: "{}",
+      },
+    );
+    expect(approval.status).toBe(409);
+    await expect(approval.text()).resolves.toContain(
+      "pending_action_not_pending",
+    );
+    expect(
+      await db.query.savedViewTable.findFirst({
+        where: eq(schema.savedViewTable.id, view.id),
       }),
     ).toBeDefined();
   });
