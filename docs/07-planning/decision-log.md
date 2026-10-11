@@ -1,3 +1,43 @@
+### 2026-10-11 · Owner holds saved-view team dependencies and settles natural key expiry
+
+**Decision — saved views:** Thomas explicitly holds team-lead editing and automatic shared-view ownership transfer for this frozen release. Existing owner/workspace-manager editing and view access are preserved. The owning saved-view specification and user guide must state this limitation; it does not claim SV-17/TM-8 completion, approve a team schema or writer, define a multiple-lead recipient, or invent workspace ownership representation.
+
+**Question and exact answer:** the conductor asked whether to hold those two behaviors because the team contract is not implemented, the edit-permissions statements conflict, and neither lead selection nor workspace ownership is defined. Thomas answered: **“Hold those two behaviors for this release (Recommended)”**.
+
+**Decision — PA-9:** natural expiry of the original requesting API key permanently invalidates its pending actions using the existing `credential_revoked` reason. Extending the key’s expiry after it has expired must not restore those actions’ approvability. Approval remains denied after this terminal invalidation; implementation must preserve that result across the expiry-extension writer as well as approval checks.
+
+**Question and exact answer:** the conductor asked whether natural key expiry should permanently cancel its actions, even after extension, or leave them pending with approval denied while expired. Thomas answered: **“Permanently cancel on key expiry (Recommended)”**.
+
+**Limits:** the already settled explicit-revocation/access-loss rules and ordinary-session-expiry exception remain in force. This decision adds no table, field, invalidation reason, capability, feature flag, dependency or migration. D1 completion/manual-resume pause continuity, F3 export boundedness, intake required-file/custom-field/God Mode assignment and other held scope remain held. It is owner authority for bounded specification/remediation work, not evidence of implementation, independent review, CI, release, deployment or stage completion.
+
+**Source:** Thomas’s direct responses in this Codex conductor chat, 2026-10-11. Exact questions and answers are preserved at `/Users/heinthura/.codex/taskdesk-evidence/2026-10-11/s7-team-hold-key-expiry-owner-decisions.json`.
+**Recorded by:** root Codex conductor (platform-visible GPT-6 family; serving variant not independently exposed).
+
+---
+
+### 2026-10-11 · Owner decision: D9 comment composer ownership
+
+**Decision:** Thomas selects the existing #606 activity/comment composer as the single
+implementation during selective integration of #606 and #512. Preserve #512's distinct
+permission-filtered public/internal choices, JSON submission, send/error behavior and
+accessible label. Retain #606's existing draft recovery, scoped mentions and edit/history
+behavior. This resolves the D9 ownership reservation in the 2026-10-10 integration decision;
+it does not accept either historical candidate or add a feature.
+
+**Integration constraint:** preserve each source's unique behavior in one composer, with
+existing permissions and comment contracts. Historical branches, owning commits and review
+reports remain conserved. This decision does not authorize new mention-delivery behavior,
+attachment linkage, new capabilities, flags, dependencies or schema, or any other held scope.
+Current-source review, browser evidence and protected acceptance remain required.
+
+**Source:** Thomas, direct reply in Codex chat `01a12921-4863-7c42-ac59-1822c69b88cd`
+on 2026-10-11: “Yes—#606 owns it; preserve #512’s distinct behavior (Recommended)”.
+The question explicitly named the behaviors above and requested one implementation without
+adding features.
+**Recorded by:** Codex delivery conductor (platform identity GPT-6; exact variant not exposed).
+
+---
+
 ### 2026-10-11 · Owner decision: narrow D5 intake flag-read exception
 
 **Decision:** Thomas permits the canonical intake integration to use the existing registry
