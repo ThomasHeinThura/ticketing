@@ -1,3 +1,45 @@
+### 2026-10-11 · Owner approves bounded boot-refusal test deadlines
+
+**Decision:** Thomas approves only the proposed production-import child deadline of10 seconds and outer test deadline of11 seconds for the built-entrypoint boot-refusal regression. The fresh-build deadline remains5 seconds, and every existing rejection assertion remains: natural nonzero exit, no timeout/signal/error, exact PolicyEnforcementConfigError, and no successful-import marker. No production runtime budget changes.
+
+**Exact answer:** “Approve the bounded deadline change”. The question explicitly disclosed two prior hosted5-second import timeouts, an unresolved cause despite local diagnostics, the concrete two-hunk patch, a separate reviewed PR and recorded decision, and that approval does not establish a root-cause fix or erase failures.
+
+**Limits:** This owner-approved test-budget decision requires its own independent ordinary and Sol security review, exact-source verification and protected acceptance. Earlier hosted timeout failures remain real, preserved and cause-unresolved. It does not waive a required check, authorize unchanged retry-until-green, change G11 sampling/budgets, alter the5-second build deadline or weaken any rejection oracle. The separate MFA ordering and board-render budget failures remain separate.
+
+**Source:** Thomas’s direct reply in this conductor chat,2026-10-11; exact question/answer and approved patch preserved in `/Users/heinthura/.codex/taskdesk-evidence/2026-10-11/boot-refusal-budget-owner-decision.json` and `boot-refusal-budget-proposal.patch`.
+**Recorded by:** root Codex conductor, platform-visible GPT-6 family; serving variant not independently exposed.
+
+---
+
+### 2026-10-11 · Owner clarifies historical workflow held-effect boundary
+
+**Decision:** In a historical workflow version containing both a held `set_field` transition and supported transitions, refuse only execution of transitions containing `set_field`. Supported sibling transitions remain usable under their existing permissions, guards and effects. A held edge is refused before any work-item or effect mutation.
+
+**Authoring boundary:** the already settled hold continues to reject newly authored workflow versions containing `set_field`. WF-22 must explicitly distinguish this authoring/version-validation boundary from selected-edge refusal of historical stored transitions; this decision supplies no field namespace or value-validation semantics.
+
+**Question and exact answer:** the conductor asked whether a mixed historical version should refuse only its held transition or every transition. Thomas answered: **“Refuse only transitions containing set_field (Recommended)”**.
+
+**Limits and source:** Thomas’s direct reply in Codex conductor chat `01a12921-4863-7c42-ac59-1822c69b88cd`, 2026-10-11; the exact question/answer is retained at `/Users/heinthura/.codex/taskdesk-evidence/2026-10-11/workflow-mixed-version-owner-decision.json`. This is owner authority for the bounded specification/regression repair, not implementation, independent closure, CI, stage, release, deployment or audit acceptance. Other held scope remains held.
+
+---
+
+### 2026-10-11 · Owner holds saved-view team dependencies and settles natural key expiry
+
+**Decision — saved views:** Thomas explicitly holds team-lead editing and automatic shared-view ownership transfer for this frozen release. Existing owner/workspace-manager editing and view access are preserved. The owning saved-view specification and user guide must state this limitation; it does not claim SV-17/TM-8 completion, approve a team schema or writer, define a multiple-lead recipient, or invent workspace ownership representation.
+
+**Question and exact answer:** the conductor asked whether to hold those two behaviors because the team contract is not implemented, the edit-permissions statements conflict, and neither lead selection nor workspace ownership is defined. Thomas answered: **“Hold those two behaviors for this release (Recommended)”**.
+
+**Decision — PA-9:** natural expiry of the original requesting API key permanently invalidates its pending actions using the existing `credential_revoked` reason. Extending the key’s expiry after it has expired must not restore those actions’ approvability. Approval remains denied after this terminal invalidation; implementation must preserve that result across the expiry-extension writer as well as approval checks.
+
+**Question and exact answer:** the conductor asked whether natural key expiry should permanently cancel its actions, even after extension, or leave them pending with approval denied while expired. Thomas answered: **“Permanently cancel on key expiry (Recommended)”**.
+
+**Limits:** the already settled explicit-revocation/access-loss rules and ordinary-session-expiry exception remain in force. This decision adds no table, field, invalidation reason, capability, feature flag, dependency or migration. D1 completion/manual-resume pause continuity, F3 export boundedness, intake required-file/custom-field/God Mode assignment and other held scope remain held. It is owner authority for bounded specification/remediation work, not evidence of implementation, independent review, CI, release, deployment or stage completion.
+
+**Source:** Thomas’s direct responses in this Codex conductor chat, 2026-10-11. Exact questions and answers are preserved at `/Users/heinthura/.codex/taskdesk-evidence/2026-10-11/s7-team-hold-key-expiry-owner-decisions.json`.
+**Recorded by:** root Codex conductor (platform-visible GPT-6 family; serving variant not independently exposed).
+
+---
+
 ### 2026-10-11 · Owner decision: D9 comment composer ownership
 
 **Decision:** Thomas selects the existing #606 activity/comment composer as the single
@@ -7785,3 +7827,14 @@ The diagnostic artifact's9615 mergecommit has exactly30aef Git tree085d0347; it 
 **Source:** Thomas's direct answer to Codex request `call_ef46898fbb0b49c892542dd40cd928aa`, item0, received in conductor chat `01a12921-4863-7c42-ac59-1822c69b88cd`, 2026-10-11.
 
 **Recorded by:** Codex delivery conductor. The read-only preflight found the existing agent router uses `ticket.localhost` while its registered `TASKDESK_AGENT_URL` remains `https://ticketing.localhost`: intended agent URL404, portal200, old agent URL200 with explicit trust of the existing local public certificate. Correct the registered bootstrap origin during the already-authorized verified-artifact promotion; no running deployment has been changed by this record.
+
+
+### 2026-10-11 · Owner decision: hold and reject workflow set_field effects for this release
+
+**Decision:** Thomas directly answered “Hold and reject set_field for this release (Recommended)” to the question whether to hold `set_field { field, value }`, reject it when authoring workflows, reject execution of already stored transitions containing it without changing the work item, and record the limitation in the owning workflow spec and guide. WF-19 does not define the field namespace or validation rules; custom-field integration remains held. Implement this bounded refusal against the existing workflow authoring and transition paths rather than silently dropping the effect or guessing field semantics.
+
+The rejection of a stored transition must not partially change the work item or commit the transition effects. Existing supported workflow effects remain in scope. This decision authorizes the owning spec/guide correction and regressions for authoring rejection and unchanged work-item state on stored-transition refusal; it does not authorize custom-field integration, a new field namespace, new capabilities/schema/dependencies, D1 manual pause or completion/reopen continuity, a gate waiver or new roadmap work.
+
+**Source:** Thomas direct answer to Codex request `call_7a4c2a05751943faa8b639243d53698c`, item0, conductor chat `01a12921-4863-7c42-ac59-1822c69b88cd`, 2026-10-11. Exact question and answer are preserved in the private source-bound evidence record.
+
+**Recorded by:** Codex delivery conductor at 2026-10-11T14:36:04.048907+00:00. This records the owner decision; implementation, independent review, exact-head checks and acceptance remain separate.
