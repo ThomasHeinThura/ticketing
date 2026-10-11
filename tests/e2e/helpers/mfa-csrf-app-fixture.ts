@@ -1,15 +1,6 @@
-import { type ChildProcess, spawn } from "node:child_process";
+import { spawn } from "node:child_process";
 import { createHmac, randomBytes, randomUUID } from "node:crypto";
-import {
-  closeSync,
-  existsSync,
-  fsyncSync,
-  openSync,
-  readFileSync,
-  statSync,
-  unlinkSync,
-  writeFileSync,
-} from "node:fs";
+import { existsSync } from "node:fs";
 import { chmod, mkdtemp } from "node:fs/promises";
 import { createRequire } from "node:module";
 import { createServer } from "node:net";
@@ -37,187 +28,269 @@ export type MfaCsrfAppFixture = {
   origin: string;
   email: string;
   password: string;
+  /** Private disposable DB URL, for isolated data setup by real-runtime journeys only. */
+  databaseUrl: string;
+  /** Private mode-0700 directory for runtime setup state and private child logs. */
+  fixtureDir: string;
+  /** Starts a child that the fixture supervisor will terminate on worker death. */
+  spawnChild: SupervisedProcessManager["spawn"];
 };
 
-type MetricsLockOwner = { pid: number; token: string };
-type MetricsLockOptions = {
-  lockPath?: string;
-  waitMs?: number;
-  pollMs?: number;
-};
+export type MfaCsrfAppFixtureSetup = Pick<
+  MfaCsrfAppFixture,
+  "databaseUrl" | "fixtureDir" | "origin" | "spawnChild"
+>;
 
 const DEFAULT_METRICS_LOCK_PATH = resolve(
   tmpdir(),
   "taskdesk-mfa-csrf-metrics-9464.lock",
 );
 
-function processIsAlive(pid: number) {
-  try {
-    process.kill(pid, 0);
-    return true;
-  } catch (error) {
-    return (error as NodeJS.ErrnoException).code !== "ESRCH";
-  }
-}
+export type SupervisedChild = {
+  readonly pid: number | undefined;
+  readonly exitCode: number | null;
+  readonly signalCode: NodeJS.Signals | null;
+  once(
+    event: "close",
+    callback: (code: number | null, signal: NodeJS.Signals | null) => void,
+  ): SupervisedChild;
+  kill(signal?: NodeJS.Signals): boolean;
+};
 
-function readLockOwner(lockPath: string): MetricsLockOwner | undefined {
-  try {
-    const value: unknown = JSON.parse(readFileSync(lockPath, "utf8"));
-    const record = value as Record<string, unknown>;
-    if (
-      typeof value === "object" &&
-      value !== null &&
-      Number.isSafeInteger(record.pid) &&
-      (record.pid as number) > 0 &&
-      typeof record.token === "string" &&
-      record.token.length > 0
-    ) {
-      return { pid: record.pid as number, token: record.token };
-    }
-  } catch {
-    // A lock that is being created or is malformed is never reclaimed by guessing.
-  }
-  return undefined;
-}
+export type SupervisedProcessManager = {
+  spawn(
+    command: string,
+    args: string[],
+    env: NodeJS.ProcessEnv,
+    logPrefix: string,
+    evidenceDir: string,
+  ): Promise<SupervisedChild>;
+};
 
-function reclaimDeadOwner(lockPath: string, owner: MetricsLockOwner) {
-  if (processIsAlive(owner.pid)) return false;
+type SupervisedChildState = {
+  pid: number | undefined;
+  exitCode: number | null;
+  signalCode: NodeJS.Signals | null;
+  closed: boolean;
+  closeListeners: Array<
+    (code: number | null, signal: NodeJS.Signals | null) => void
+  >;
+};
 
-  const reaperPath = `${lockPath}.reap`;
-  const reaper = { pid: process.pid, token: randomUUID() };
-  let descriptor: number;
-  try {
-    descriptor = openSync(reaperPath, "wx", 0o600);
-  } catch (error) {
-    if ((error as NodeJS.ErrnoException).code === "EEXIST") return false;
-    throw error;
-  }
+class FixtureProcessSupervisor implements SupervisedProcessManager {
+  private readonly child: ReturnType<typeof spawn>;
+  private readonly children = new Map<string, SupervisedChildState>();
+  private nextId = 0;
+  private closePromise: Promise<void> | undefined;
+  private readonly ready: Promise<void>;
 
-  try {
-    writeFileSync(descriptor, JSON.stringify(reaper));
-    fsyncSync(descriptor);
-  } catch (error) {
-    closeSync(descriptor);
-    try {
-      unlinkSync(reaperPath);
-    } catch {
-      // Keep the original creation failure.
-    }
-    throw error;
-  }
-
-  try {
-    const before = statSync(lockPath);
-    const current = readLockOwner(lockPath);
-    const after = statSync(lockPath);
-    if (
-      !current ||
-      current.pid !== owner.pid ||
-      current.token !== owner.token ||
-      before.dev !== after.dev ||
-      before.ino !== after.ino ||
-      processIsAlive(current.pid)
-    ) {
-      return false;
-    }
-    unlinkSync(lockPath);
-    return true;
-  } catch {
-    return false;
-  } finally {
-    closeSync(descriptor);
-    const currentReaper = readLockOwner(reaperPath);
-    if (
-      currentReaper?.pid === reaper.pid &&
-      currentReaper.token === reaper.token
-    ) {
-      try {
-        unlinkSync(reaperPath);
-      } catch {
-        // A stale reaper lock fails closed on the next acquisition attempt.
+  private constructor(
+    ready: Promise<void>,
+    lockPath: string,
+    waitMs: number,
+    pollMs: number,
+  ) {
+    this.ready = ready;
+    this.child = spawn(
+      process.execPath,
+      [
+        resolve(currentDir, "child-process-supervisor.mjs"),
+        lockPath,
+        String(waitMs),
+        String(pollMs),
+      ],
+      { stdio: ["ignore", "ignore", "ignore", "ipc"] },
+    );
+    this.child.on("message", (raw: unknown) => {
+      if (!raw || typeof raw !== "object") return;
+      const message = raw as Record<string, unknown>;
+      if (message.type === "spawned" && typeof message.id === "string") {
+        const state = this.children.get(message.id);
+        if (state && typeof message.pid === "number") state.pid = message.pid;
+      } else if (message.type === "exit" && typeof message.id === "string") {
+        const state = this.children.get(message.id);
+        if (!state) return;
+        state.exitCode = typeof message.code === "number" ? message.code : null;
+        state.signalCode =
+          typeof message.signal === "string"
+            ? (message.signal as NodeJS.Signals)
+            : null;
+        state.closed = true;
+        for (const listener of state.closeListeners.splice(0)) {
+          listener(state.exitCode, state.signalCode);
+        }
       }
-    }
+    });
   }
-}
 
-/**
- * Serializes test app lifetimes that bind the production metrics listener to 9464.
- * A stale lock is reclaimed only when its recorded process is definitely gone and
- * the same lock file is still present; malformed locks fail closed after a bounded wait.
- */
-export async function withExclusiveMetricsListener<T>(
-  run: () => Promise<T>,
-  {
+  static async start({
     lockPath = DEFAULT_METRICS_LOCK_PATH,
     waitMs = 180_000,
     pollMs = 100,
-  }: MetricsLockOptions = {},
-): Promise<T> {
-  const deadline = Date.now() + waitMs;
-  const owner = { pid: process.pid, token: randomUUID() };
-  let acquired = false;
-
-  while (!acquired) {
-    try {
-      const descriptor = openSync(lockPath, "wx", 0o600);
-      try {
-        writeFileSync(descriptor, JSON.stringify(owner));
-        fsyncSync(descriptor);
-        acquired = true;
-      } catch (writeError) {
-        try {
-          unlinkSync(lockPath);
-        } catch {
-          // Preserve the write error; another process cannot own this created file.
-        }
-        throw writeError;
-      } finally {
-        closeSync(descriptor);
-      }
-    } catch (error) {
-      if ((error as NodeJS.ErrnoException).code !== "EEXIST") throw error;
-      const existing = readLockOwner(lockPath);
-      if (existing) reclaimDeadOwner(lockPath, existing);
-      if (Date.now() >= deadline) {
-        throw new Error(
-          "Timed out waiting for the isolated MFA app metrics listener; the owner may still be active or its lock is malformed.",
+  }: {
+    lockPath?: string;
+    waitMs?: number;
+    pollMs?: number;
+  } = {}) {
+    let resolveReady!: () => void;
+    let rejectReady!: (error: Error) => void;
+    const ready = new Promise<void>((resolvePromise, rejectPromise) => {
+      resolveReady = resolvePromise;
+      rejectReady = rejectPromise;
+    });
+    const supervisor = new FixtureProcessSupervisor(
+      ready,
+      lockPath,
+      waitMs,
+      pollMs,
+    );
+    supervisor.child.on("message", (raw: unknown) => {
+      if (!raw || typeof raw !== "object") return;
+      const message = raw as Record<string, unknown>;
+      if (message.type === "ready") resolveReady();
+      if (message.type === "error") {
+        rejectReady(
+          new Error(
+            typeof message.message === "string"
+              ? message.message
+              : "Could not acquire the fixture metrics-listener lock.",
+          ),
         );
       }
-      await new Promise((resolveWait) => setTimeout(resolveWait, pollMs));
-    }
-  }
-
-  let result!: T;
-  let runFailure: unknown;
-  let runFailed = false;
-  try {
-    result = await run();
-  } catch (error) {
-    runFailure = error;
-    runFailed = true;
-  }
-
-  let releaseFailure: unknown;
-  const current = readLockOwner(lockPath);
-  if (current?.pid === owner.pid && current.token === owner.token) {
-    try {
-      unlinkSync(lockPath);
-    } catch (error) {
-      if ((error as NodeJS.ErrnoException).code !== "ENOENT") {
-        releaseFailure = error;
-      }
-    }
-  }
-
-  if (runFailed && releaseFailure) {
-    throw new AggregateError(
-      [runFailure, releaseFailure],
-      "The isolated fixture failed and its metrics lock could not be released.",
+    });
+    supervisor.child.once("error", () =>
+      rejectReady(new Error("Could not start the fixture child supervisor.")),
     );
+    supervisor.child.once("exit", (code) => {
+      if (code !== 0) {
+        rejectReady(
+          new Error(
+            "The fixture child supervisor exited before acquiring its lock.",
+          ),
+        );
+      }
+    });
+    await ready;
+    return supervisor;
   }
-  if (runFailed) throw runFailure;
-  if (releaseFailure) throw releaseFailure;
-  return result;
+
+  async spawn(
+    command: string,
+    args: string[],
+    env: NodeJS.ProcessEnv,
+    logPrefix: string,
+    evidenceDir: string,
+  ): Promise<SupervisedChild> {
+    await this.ready;
+    const id = `fixture-child-${this.nextId++}`;
+    const state: SupervisedChildState = {
+      pid: undefined,
+      exitCode: null,
+      signalCode: null,
+      closed: false,
+      closeListeners: [],
+    };
+    this.children.set(id, state);
+    this.child.send({
+      type: "spawn",
+      id,
+      command,
+      args,
+      cwd: repoRoot,
+      env,
+      evidenceDir,
+      logPrefix,
+    });
+    await new Promise<void>((resolveSpawn, rejectSpawn) => {
+      const onMessage = (raw: unknown) => {
+        if (!raw || typeof raw !== "object") return;
+        const message = raw as Record<string, unknown>;
+        if (message.id !== id) return;
+        if (message.type === "spawned") {
+          this.child.off("message", onMessage);
+          resolveSpawn();
+        } else if (message.type === "spawn-error") {
+          this.child.off("message", onMessage);
+          rejectSpawn(
+            new Error(
+              typeof message.message === "string"
+                ? message.message
+                : "The fixture child could not be started.",
+            ),
+          );
+        }
+      };
+      this.child.on("message", onMessage);
+    });
+    const thisSupervisor = this;
+    const remoteChild: SupervisedChild = {
+      get pid() {
+        return state.pid;
+      },
+      get exitCode() {
+        return state.exitCode;
+      },
+      get signalCode() {
+        return state.signalCode;
+      },
+      once(_event, callback) {
+        if (state.closed) {
+          queueMicrotask(() => callback(state.exitCode, state.signalCode));
+        } else {
+          state.closeListeners.push(callback);
+        }
+        return remoteChild;
+      },
+      kill(signal = "SIGTERM") {
+        if (state.closed || !state.pid) return false;
+        thisSupervisor.child.send({ type: "kill", id, signal });
+        return true;
+      },
+    };
+    return remoteChild;
+  }
+
+  close() {
+    if (!this.closePromise) {
+      this.closePromise = new Promise<void>((resolveClose, rejectClose) => {
+        const onMessage = (raw: unknown) => {
+          if (
+            raw &&
+            typeof raw === "object" &&
+            (raw as Record<string, unknown>).type === "closed"
+          ) {
+            this.child.off("message", onMessage);
+            resolveClose();
+          }
+        };
+        this.child.on("message", onMessage);
+        this.child.once("error", () =>
+          rejectClose(
+            new Error("Fixture child supervisor failed during shutdown."),
+          ),
+        );
+        this.child.send({ type: "shutdown" });
+      });
+    }
+    return this.closePromise;
+  }
+}
+
+/** A dedicated supervisor owns the lock and children across test-worker death. */
+export async function withExclusiveMetricsListener<T>(
+  run: (supervisor: SupervisedProcessManager) => Promise<T>,
+  options: {
+    lockPath?: string;
+    waitMs?: number;
+    pollMs?: number;
+  } = {},
+): Promise<T> {
+  const supervisor = await FixtureProcessSupervisor.start(options);
+  try {
+    return await run(supervisor);
+  } finally {
+    await supervisor.close();
+  }
 }
 
 function decodeBase32(value: string) {
@@ -297,39 +370,20 @@ async function reserveLoopbackPort() {
 }
 
 function spawnWithPrivateLogs(
+  supervisor: SupervisedProcessManager,
   command: string,
   args: string[],
   env: NodeJS.ProcessEnv,
   logPrefix: string,
   evidenceDir: string,
-) {
-  const stdoutFd = openSync(
-    resolve(evidenceDir, `${logPrefix}.stdout.log`),
-    "wx",
-    0o600,
-  );
-  const stderrFd = openSync(
-    resolve(evidenceDir, `${logPrefix}.stderr.log`),
-    "wx",
-    0o600,
-  );
-  try {
-    return spawn(command, args, {
-      cwd: repoRoot,
-      env,
-      stdio: ["ignore", stdoutFd, stderrFd],
-    });
-  } finally {
-    closeSync(stdoutFd);
-    closeSync(stderrFd);
-  }
+): Promise<SupervisedChild> {
+  return supervisor.spawn(command, args, env, logPrefix, evidenceDir);
 }
 
-async function waitForExit(child: ChildProcess) {
+async function waitForExit(child: SupervisedChild) {
   if (child.exitCode !== null) return child.exitCode;
   return new Promise<number | null>((resolveExit) => {
     child.once("close", (code) => resolveExit(code));
-    child.once("error", () => resolveExit(null));
   });
 }
 
@@ -338,8 +392,10 @@ async function runMigration(
   applicationUrl: string,
   bootstrapEnv: NodeJS.ProcessEnv,
   evidenceDir: string,
+  supervisor: SupervisedProcessManager,
 ) {
   const child = spawnWithPrivateLogs(
+    supervisor,
     process.execPath,
     [apiEntrypoint],
     {
@@ -351,14 +407,14 @@ async function runMigration(
     "migration",
     evidenceDir,
   );
-  const code = await waitForExit(child);
+  const code = await waitForExit(await child);
   if (code !== 0) throw new Error("The disposable database migration failed.");
 }
 
-async function waitForHealth(child: ChildProcess, origin: string) {
+async function waitForHealth(child: SupervisedChild, origin: string) {
   const deadline = Date.now() + 90_000;
   while (Date.now() < deadline) {
-    if (child.exitCode !== null) {
+    if (child.exitCode !== null || child.signalCode !== null) {
       throw new Error("The disposable application exited before health.");
     }
     try {
@@ -374,7 +430,7 @@ async function waitForHealth(child: ChildProcess, origin: string) {
   throw new Error("The disposable application did not become healthy in time.");
 }
 
-async function terminate(child: ChildProcess | undefined) {
+async function terminate(child: SupervisedChild | undefined) {
   if (!child || child.exitCode !== null || child.signalCode !== null) return;
   child.kill("SIGTERM");
   let gracefulTimeout: NodeJS.Timeout | undefined;
@@ -387,14 +443,7 @@ async function terminate(child: ChildProcess | undefined) {
   if (gracefulTimeout) clearTimeout(gracefulTimeout);
   if (!exited && child.exitCode === null) {
     child.kill("SIGKILL");
-    let forcedTimeout: NodeJS.Timeout | undefined;
-    await Promise.race([
-      waitForExit(child),
-      new Promise<void>((resolveTimeout) => {
-        forcedTimeout = setTimeout(resolveTimeout, 2_000);
-      }),
-    ]);
-    if (forcedTimeout) clearTimeout(forcedTimeout);
+    await waitForExit(child);
   }
 }
 
@@ -405,6 +454,9 @@ async function terminate(child: ChildProcess | undefined) {
  */
 export async function withMfaCsrfApp<T>(
   run: (fixture: MfaCsrfAppFixture) => Promise<T>,
+  options: {
+    beforeStart?: (fixture: MfaCsrfAppFixtureSetup) => Promise<void>;
+  } = {},
 ): Promise<T> {
   if (
     !existsSync(apiEntrypoint) ||
@@ -416,11 +468,17 @@ export async function withMfaCsrfApp<T>(
     );
   }
 
-  return withExclusiveMetricsListener(() => runMfaCsrfApp(run));
+  return withExclusiveMetricsListener((supervisor) =>
+    runMfaCsrfApp(run, options, supervisor),
+  );
 }
 
 async function runMfaCsrfApp<T>(
   run: (fixture: MfaCsrfAppFixture) => Promise<T>,
+  options: {
+    beforeStart?: (fixture: MfaCsrfAppFixtureSetup) => Promise<void>;
+  },
+  supervisor: SupervisedProcessManager,
 ): Promise<T> {
   const { PostgreSqlContainer } = apiPackageRequire(
     "@testcontainers/postgresql",
@@ -428,7 +486,7 @@ async function runMfaCsrfApp<T>(
     PostgreSqlContainer: PostgreSqlContainerConstructor;
   };
   let container: PostgreSqlContainerInstance | undefined;
-  let apiProcess: ChildProcess | undefined;
+  let apiProcess: SupervisedChild | undefined;
   try {
     const evidenceDir = await mkdtemp(resolve(tmpdir(), "td-mfa-csrf-"));
     await chmod(evidenceDir, 0o700);
@@ -489,8 +547,21 @@ async function runMfaCsrfApp<T>(
       CUSTOM_OAUTH_AUTO_LOGIN: "",
     };
 
-    await runMigration(migrationUrl, applicationUrl, bootstrapEnv, evidenceDir);
-    apiProcess = spawnWithPrivateLogs(
+    await runMigration(
+      migrationUrl,
+      applicationUrl,
+      bootstrapEnv,
+      evidenceDir,
+      supervisor,
+    );
+    await options.beforeStart?.({
+      databaseUrl: applicationUrl,
+      fixtureDir: evidenceDir,
+      origin,
+      spawnChild: supervisor.spawn.bind(supervisor),
+    });
+    apiProcess = await spawnWithPrivateLogs(
+      supervisor,
       process.execPath,
       [apiEntrypoint],
       {
@@ -504,7 +575,14 @@ async function runMfaCsrfApp<T>(
       evidenceDir,
     );
     await waitForHealth(apiProcess, origin);
-    return await run({ origin, email, password });
+    return await run({
+      origin,
+      email,
+      password,
+      databaseUrl: applicationUrl,
+      fixtureDir: evidenceDir,
+      spawnChild: supervisor.spawn.bind(supervisor),
+    });
   } finally {
     await terminate(apiProcess);
     if (container) await container.stop();

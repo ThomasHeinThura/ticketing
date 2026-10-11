@@ -152,7 +152,7 @@ describe("isolated MFA app fixture helpers", () => {
     expect(child.pid).toBeGreaterThan(0);
     await writeFile(
       path,
-      JSON.stringify({ pid: child.pid, token: "dead-owner" }),
+      JSON.stringify({ pid: child.pid, token: "dead-owner", childPids: [] }),
       {
         mode: 0o600,
       },
@@ -170,7 +170,182 @@ describe("isolated MFA app fixture helpers", () => {
     });
   });
 
-  it("fails closed on malformed locks, live owners, and active reapers", async () => {
+  it("does not reclaim a dead supervisor lock while a recorded child is alive", async () => {
+    const path = await lockPath();
+    const deadOwner = spawnSync(process.execPath, ["-e", "process.exit(0)"]);
+    expect(deadOwner.status).toBe(0);
+    expect(deadOwner.pid).toBeGreaterThan(0);
+    const ownedChild = spawn(process.execPath, [
+      "-e",
+      "setInterval(() => {}, 1000)",
+    ]);
+    expect(ownedChild.pid).toBeGreaterThan(0);
+    await new Promise<void>((resolveSpawn, rejectSpawn) => {
+      ownedChild.once("spawn", resolveSpawn);
+      ownedChild.once("error", rejectSpawn);
+    });
+    await writeFile(
+      path,
+      JSON.stringify({
+        pid: deadOwner.pid,
+        token: "dead-supervisor-with-live-child",
+        childPids: [ownedChild.pid],
+      }),
+      { mode: 0o600 },
+    );
+
+    try {
+      await expect(
+        withExclusiveMetricsListener(async () => "must-not-run", {
+          lockPath: path,
+          waitMs: 30,
+          pollMs: 2,
+        }),
+      ).rejects.toThrow("owned children to exit");
+      expect(() => process.kill(ownedChild.pid as number, 0)).not.toThrow();
+      await expect(readFile(path, "utf8")).resolves.toContain(
+        "dead-supervisor-with-live-child",
+      );
+    } finally {
+      ownedChild.kill("SIGKILL");
+      await new Promise<void>((resolveExit) =>
+        ownedChild.once("close", () => resolveExit()),
+      );
+    }
+  });
+
+  it("keeps owned children and the lock alive until they are gone after parent death", async () => {
+    const path = await lockPath();
+    const directory = path.slice(0, path.lastIndexOf("/"));
+    const signalPath = join(directory, "owned-child-sigterm");
+    const childReadyPath = join(directory, "owned-child-ready");
+    const helperUrl = new URL(
+      "../e2e/helpers/mfa-csrf-app-fixture.ts",
+      import.meta.url,
+    ).href;
+    const childScript = [
+      `import { withExclusiveMetricsListener } from ${JSON.stringify(helperUrl)};`,
+      `const lockPath = ${JSON.stringify(path)};`,
+      `const evidenceDir = ${JSON.stringify(directory)};`,
+      `const signalPath = ${JSON.stringify(signalPath)};`,
+      `const childReadyPath = ${JSON.stringify(childReadyPath)};`,
+      "await withExclusiveMetricsListener(async (supervisor) => {",
+      `  const childCode = ${JSON.stringify(`import { writeFileSync } from "node:fs"; process.on("SIGTERM", () => { writeFileSync(${JSON.stringify(signalPath)}, "received"); setTimeout(() => process.exit(0), 500); }); writeFileSync(${JSON.stringify(childReadyPath)}, "ready"); setInterval(() => {}, 1000);`)};`,
+      '  const child = await supervisor.spawn(process.execPath, ["-e", childCode], process.env, "owned-child", evidenceDir);',
+      '  process.stdout.write("OWNED_CHILD_READY " + child.pid + "\\n");',
+      "  await new Promise(() => {});",
+      "}, { lockPath, waitMs: 2_000, pollMs: 2 });",
+    ].join("\n");
+    const worker = spawn(
+      process.execPath,
+      ["--experimental-strip-types", "--input-type=module", "-e", childScript],
+      { stdio: ["ignore", "pipe", "pipe"] },
+    );
+    let output = "";
+    const ready = new Promise<number>((resolveReady, rejectReady) => {
+      worker.stdout.on("data", (chunk: Buffer) => {
+        output += chunk.toString();
+        const match = output.match(/OWNED_CHILD_READY (\d+)/u);
+        if (match?.[1]) resolveReady(Number(match[1]));
+      });
+      worker.once("error", rejectReady);
+      worker.once("close", (code) => {
+        if (!output.includes("OWNED_CHILD_READY") && code !== null) {
+          rejectReady(new Error(`Fixture worker exited before ready: ${code}`));
+        }
+      });
+    });
+    let ownedChildPid: number | undefined;
+    try {
+      ownedChildPid = await Promise.race([
+        ready,
+        new Promise<never>((_resolve, reject) =>
+          setTimeout(
+            () => reject(new Error("Fixture worker did not become ready.")),
+            5_000,
+          ),
+        ),
+      ]);
+      const childPid = ownedChildPid;
+      const lockState = JSON.parse(await readFile(path, "utf8")) as {
+        pid: number;
+        childPids: number[];
+      };
+      expect(lockState.pid).toBeGreaterThan(0);
+      expect(lockState.childPids).toContain(childPid);
+      const childReadyDeadline = Date.now() + 5_000;
+      let childReady = false;
+      while (Date.now() < childReadyDeadline && !childReady) {
+        try {
+          await readFile(childReadyPath, "utf8");
+          childReady = true;
+        } catch {
+          await new Promise((resolveWait) => setTimeout(resolveWait, 10));
+        }
+      }
+      expect(childReady).toBe(true);
+      worker.kill("SIGKILL");
+      await new Promise<void>((resolveExit) =>
+        worker.once("close", () => resolveExit()),
+      );
+
+      const signalDeadline = Date.now() + 2_000;
+      let receivedTerm = false;
+      while (Date.now() < signalDeadline && !receivedTerm) {
+        try {
+          await readFile(signalPath, "utf8");
+          receivedTerm = true;
+        } catch {
+          await new Promise((resolveWait) => setTimeout(resolveWait, 10));
+        }
+      }
+      expect(receivedTerm).toBe(true);
+      const heldLock = JSON.parse(await readFile(path, "utf8")) as {
+        childPids: number[];
+      };
+      expect(heldLock.childPids).toContain(childPid);
+      expect(() => process.kill(childPid, 0)).not.toThrow();
+
+      const deadline = Date.now() + 5_000;
+      while (Date.now() < deadline) {
+        let childAlive = true;
+        try {
+          process.kill(childPid, 0);
+        } catch (error) {
+          childAlive = (error as NodeJS.ErrnoException).code !== "ESRCH";
+        }
+        try {
+          await readFile(path, "utf8");
+        } catch (error) {
+          if (
+            !childAlive &&
+            (error as NodeJS.ErrnoException).code === "ENOENT"
+          ) {
+            return;
+          }
+        }
+        await new Promise((resolveWait) => setTimeout(resolveWait, 20));
+      }
+      throw new Error("Owned child or metrics lock survived parent death.");
+    } finally {
+      if (worker.exitCode === null && worker.signalCode === null) {
+        worker.kill("SIGKILL");
+        await new Promise<void>((resolveExit) =>
+          worker.once("close", () => resolveExit()),
+        );
+      }
+      if (ownedChildPid !== undefined) {
+        try {
+          process.kill(ownedChildPid, 0);
+          process.kill(ownedChildPid, "SIGKILL");
+        } catch {
+          // The supervisor normally reaps it; this only cleans this test's own child.
+        }
+      }
+    }
+  });
+
+  it("fails closed on malformed locks, live owners, and legacy locks without child ownership", async () => {
     const malformedPath = await lockPath();
     await writeFile(malformedPath, "not-json", { mode: 0o600 });
     await expect(
@@ -197,32 +372,27 @@ describe("isolated MFA app fixture helpers", () => {
     ).rejects.toThrow("Timed out waiting");
     await expect(readFile(livePath, "utf8")).resolves.toContain("live-owner");
 
-    const staleOwnerPath = await lockPath();
+    const legacyPath = await lockPath();
     const deadProcess = spawnSync(process.execPath, ["-e", "process.exit(0)"]);
     expect(deadProcess.status).toBe(0);
     expect(deadProcess.pid).toBeGreaterThan(0);
     await writeFile(
-      staleOwnerPath,
-      JSON.stringify({ pid: deadProcess.pid, token: "stale-owner" }),
-      { mode: 0o600 },
-    );
-    await writeFile(
-      `${staleOwnerPath}.reap`,
-      JSON.stringify({ pid: process.pid, token: "another-reaper" }),
+      legacyPath,
+      JSON.stringify({
+        pid: deadProcess.pid,
+        token: "legacy-without-child-list",
+      }),
       { mode: 0o600 },
     );
     await expect(
       withExclusiveMetricsListener(async () => "must-not-run", {
-        lockPath: staleOwnerPath,
+        lockPath: legacyPath,
         waitMs: 15,
         pollMs: 2,
       }),
     ).rejects.toThrow("Timed out waiting");
-    await expect(readFile(staleOwnerPath, "utf8")).resolves.toContain(
-      "stale-owner",
-    );
-    await expect(readFile(`${staleOwnerPath}.reap`, "utf8")).resolves.toContain(
-      "another-reaper",
+    await expect(readFile(legacyPath, "utf8")).resolves.toContain(
+      "legacy-without-child-list",
     );
   });
 });
