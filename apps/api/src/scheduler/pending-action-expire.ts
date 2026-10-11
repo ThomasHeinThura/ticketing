@@ -34,17 +34,23 @@ export async function expirePendingActions(): Promise<PendingActionExpireOutcome
       let expired = 0;
       let scanned = 0;
       const unsupported = await db.execute<{ exists: boolean }>(sql`
-        SELECT EXISTS (
-          SELECT 1
+        SELECT COALESCE((
+          SELECT true
           FROM pending_action
           WHERE state = 'pending'
             AND workspace_id IS NULL
             AND NOT (
-              (action = 'delete' AND target_type = 'user') OR
-              (action = 'user_deactivation' AND target_type = 'person')
+              project_id IS NULL AND organisation_id IS NULL AND (
+                (action = 'delete' AND target_type = 'user'
+                  AND route_key = 'POST /api/instance/users/{id}/deactivate') OR
+                (action = 'user_deactivation' AND target_type = 'person'
+                  AND route_key = 'POST /api/instance/users/{id}/deactivate')
+              )
             )
-            AND expires_at <= clock_timestamp()
-        ) AS exists
+            AND expires_at <= (SELECT clock_timestamp())
+          ORDER BY expires_at
+          LIMIT 1
+        ), false) AS exists
       `);
       let degraded = unsupported.rows[0]?.exists === true;
       let unsupportedLogged = false;
@@ -74,10 +80,14 @@ export async function expirePendingActions(): Promise<PendingActionExpireOutcome
             WHERE state = 'pending'
               AND (
                 workspace_id IS NOT NULL OR
-                (action = 'delete' AND target_type = 'user') OR
-                (action = 'user_deactivation' AND target_type = 'person')
+                (workspace_id IS NULL AND project_id IS NULL AND organisation_id IS NULL AND (
+                  (action = 'delete' AND target_type = 'user'
+                    AND route_key = 'POST /api/instance/users/{id}/deactivate') OR
+                  (action = 'user_deactivation' AND target_type = 'person'
+                    AND route_key = 'POST /api/instance/users/{id}/deactivate')
+                ))
               )
-              AND expires_at <= clock_timestamp()
+              AND expires_at <= (SELECT clock_timestamp())
               ${afterCursor}
             ORDER BY expires_at, id
             FOR UPDATE SKIP LOCKED
@@ -93,12 +103,13 @@ export async function expirePendingActions(): Promise<PendingActionExpireOutcome
               workspace_id: string | null;
               project_id: string | null;
               organisation_id: string | null;
+              route_key: string;
               trace_id: string;
               action: string;
               target_type: string;
               decided_at: string;
             }>(sql`
-              SELECT pa.id, pa.workspace_id, pa.project_id, pa.organisation_id,
+              SELECT pa.id, pa.workspace_id, pa.project_id, pa.organisation_id, pa.route_key,
                      pa.trace_id, pa.action, pa.target_type, clock_timestamp() AS decided_at
               FROM pending_action pa
               WHERE pa.id = ${candidate.id} AND pa.state = 'pending'
@@ -109,9 +120,13 @@ export async function expirePendingActions(): Promise<PendingActionExpireOutcome
             if (!row) continue;
             const supportedInstanceAction =
               row.workspace_id === null &&
-              ((row.action === "delete" && row.target_type === "user") ||
+              ((row.action === "delete" &&
+                row.target_type === "user" &&
+                row.route_key === "POST /api/instance/users/{id}/deactivate") ||
                 (row.action === "user_deactivation" &&
-                  row.target_type === "person")) &&
+                  row.target_type === "person" &&
+                  row.route_key ===
+                    "POST /api/instance/users/{id}/deactivate")) &&
               row.project_id === null &&
               row.organisation_id === null;
             if (!row.workspace_id && !supportedInstanceAction) {
