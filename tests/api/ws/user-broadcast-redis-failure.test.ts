@@ -114,11 +114,11 @@ describe("broadcastToUser with the redis adapter", () => {
 
   it("delivers to local sockets without waiting on redis", async () => {
     const ws = makeFakeWs();
-    const conn = addUserConnection("user-1", ws);
+    const conn = addUserConnection("user-1", ws, async () => true);
 
     broadcastToUser("user-1", { type: "NOTIFICATION_CREATED" });
 
-    expect(sendMock(ws)).toHaveBeenCalledTimes(1);
+    await vi.waitFor(() => expect(sendMock(ws)).toHaveBeenCalledTimes(1));
     const [firstSend] = sendMock(ws).mock.calls;
     if (firstSend === undefined) {
       throw new Error("expected send() to have been called at least once");
@@ -133,7 +133,7 @@ describe("broadcastToUser with the redis adapter", () => {
     publish.mockRejectedValue(sensitiveFailure);
 
     const ws = makeFakeWs();
-    const conn = addUserConnection("user-1", ws);
+    const conn = addUserConnection("user-1", ws, async () => true);
 
     broadcastToUser("user-1", { type: "NOTIFICATION_CREATED" });
     await new Promise((resolve) => setTimeout(resolve, 20));
@@ -226,7 +226,7 @@ describe("broadcastToUser with the redis adapter", () => {
 
   it("ignores its own echo so the socket is written once", async () => {
     const ws = makeFakeWs();
-    const conn = addUserConnection("user-1", ws);
+    const conn = addUserConnection("user-1", ws, async () => true);
 
     broadcastToUser("user-1", { type: "NOTIFICATION_CREATED" });
     expect(publish).toHaveBeenCalledTimes(1);
@@ -240,6 +240,9 @@ describe("broadcastToUser with the redis adapter", () => {
 
     emitUserBroadcast(published);
 
+    // Wait for the local event's authority check and any erroneously queued echo.
+    await conn.authorization.check();
+
     expect(sendMock(ws)).toHaveBeenCalledTimes(1);
 
     removeUserConnection("user-1", conn);
@@ -247,7 +250,7 @@ describe("broadcastToUser with the redis adapter", () => {
 
   it("delivers a broadcast published by another instance", async () => {
     const ws = makeFakeWs();
-    const conn = addUserConnection("user-1", ws);
+    const conn = addUserConnection("user-1", ws, async () => true);
 
     emitUserBroadcast({
       userId: "user-1",
@@ -255,14 +258,14 @@ describe("broadcastToUser with the redis adapter", () => {
       origin: "some-other-instance",
     });
 
-    expect(sendMock(ws)).toHaveBeenCalledTimes(1);
+    await vi.waitFor(() => expect(sendMock(ws)).toHaveBeenCalledTimes(1));
 
     removeUserConnection("user-1", conn);
   });
 
   it("drops a message whose payload disagrees with its channel", async () => {
     const ws = makeFakeWs();
-    const conn = addUserConnection("user-1", ws);
+    const conn = addUserConnection("user-1", ws, async () => true);
 
     emitUserBroadcast(
       {

@@ -27,6 +27,7 @@ const priorEnforcementSetting = vi.hoisted(() => {
     "apps/api/src/external-link/policy.ts",
     "apps/api/src/comment/policy.ts",
     "apps/api/src/activity/policy.ts",
+    "apps/api/src/approval/policy.ts",
     "apps/api/src/canned-response/policy.ts",
     "apps/api/src/notification/policy.ts",
     "apps/api/src/notification-preferences/policy.ts",

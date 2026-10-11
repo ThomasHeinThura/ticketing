@@ -1659,7 +1659,7 @@ export function defineNotificationOutboxSuite(zoneLabel: string): void {
       expect(child.rows).toEqual([{ claimable: true }]);
     });
 
-    it("F4 fan-out writes no inbox row for an approval resource and does for a work item", async () => {
+    it("F4 fan-out writes no inbox row for an unregistered resource type and does for work_item and (S3) approval", async () => {
       const { materializeNotificationFanout } = await import(
         "../../../apps/api/src/notification/fanout"
       );
@@ -1693,7 +1693,7 @@ export function defineNotificationOutboxSuite(zoneLabel: string): void {
       });
       await db.transaction((tx) =>
         materializeNotificationFanout(tx, event, {
-          resolveRecipients: async () => [candidate("approval")],
+          resolveRecipients: async () => [candidate("unregistered_type")],
         }),
       );
       const none = await db.execute(
@@ -1709,6 +1709,26 @@ export function defineNotificationOutboxSuite(zoneLabel: string): void {
         sql`SELECT resource_type FROM notification WHERE event_id = ${eventId}`,
       );
       expect(some.rows).toEqual([{ resource_type: "work_item" }]);
+
+      // `approval` is a registered fan-out type now that the approvals slice supplies its
+      // recipient resolver, send-time eligibility and inbox read predicate.
+      const approvalEventId = `notification-test-fanout-${randomUUID()}`;
+      createdEvents.push(approvalEventId);
+      await db.execute(sql`
+      INSERT INTO outbox (event_id, kind, payload, workspace_id, organisation_id)
+      VALUES (${approvalEventId}, 'approval.requested', '{}'::jsonb, ${ids.workspace}, ${ids.organisation})
+    `);
+      await db.transaction((tx) =>
+        materializeNotificationFanout(
+          tx,
+          { ...event, id: approvalEventId, kind: "approval.requested" },
+          { resolveRecipients: async () => [candidate("approval")] },
+        ),
+      );
+      const approvalRow = await db.execute(
+        sql`SELECT resource_type FROM notification WHERE event_id = ${approvalEventId}`,
+      );
+      expect(approvalRow.rows).toEqual([{ resource_type: "approval" }]);
     });
   });
 }

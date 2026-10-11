@@ -6,3 +6,10 @@ dc63e859546223ac9c11abc3c1d36a5c79ef445e:tests/api-integration/audit-log.test.ts
 # Historical public RFC 6238 TOTP vector in a pre-setup assertion. See 2026-10-05 decision log.
 69e61dd56c18bdbb90149f470d9a6615a9d28272:apps/web/e2e/mfa-csrf-journey.spec.ts:generic-api-key:13
 36959b579075a4463c04bd01ede7c55913abce33:docs/07-planning/security-reviews/579-p0-146f0584-luna-a.md:generic-api-key:28
+
+# Historical status prose `route-policy88`, not a credential; narrowly reviewed in #601.
+# Exact immutable finding only; no rule/path exemption. See the 2026-10-11 technical entry.
+40224279bb672fbe7cc4c77ba575b10d77fc43df:docs/07-planning/status.md:generic-api-key:6
+# Same non-secret status-prose token in two earlier conserved commits (full-range scan).
+65420b183cd4e8f5b0df69af586bbee8d5d54422:docs/07-planning/status.md:generic-api-key:14
+4f3ac412b67978468ee105efbe51c4ce41667203:docs/07-planning/status.md:generic-api-key:14

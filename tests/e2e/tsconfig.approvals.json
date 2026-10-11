@@ -1,0 +1,35 @@
+{
+  "extends": "../../apps/api/tsconfig.tests.json",
+  "compilerOptions": {
+    "paths": {
+      "@taskdesk/permissions": ["../../packages/permissions/src/index.ts"],
+      "@taskdesk/domain": ["../../packages/domain/src/index.ts"],
+      "@playwright/test": ["../../apps/web/node_modules/@playwright/test"],
+      "vitest": ["../../apps/api/node_modules/vitest"],
+      "hono": ["../../apps/api/node_modules/hono"],
+      "hono/*": ["../../apps/api/node_modules/hono/dist/types/*"],
+      "drizzle-orm": ["../../apps/api/node_modules/drizzle-orm"],
+      "drizzle-orm/*": ["../../apps/api/node_modules/drizzle-orm/*"],
+      "pg": ["../../apps/api/node_modules/@types/pg"],
+      "@testcontainers/postgresql": [
+        "../../apps/api/node_modules/@testcontainers/postgresql"
+      ],
+      "better-auth/types": [
+        "../../apps/api/node_modules/better-auth/dist/types/index.d.mts"
+      ]
+    }
+  },
+  "include": [
+    "helpers/mfa-csrf-app-fixture.ts",
+    "helpers/approval-database-fixture.ts",
+    "helpers/approval-runtime.ts",
+    "scripts/seed-approvals.ts",
+    "scripts/seed-approval-auth-provider.ts",
+    "approvals-primary-journey.spec.ts",
+    "playwright.approvals.config.ts",
+    "customer-cannot-request-cab.spec.ts",
+    "requester-cannot-self-approve.spec.ts",
+    "approver-email-not-leaked.spec.ts",
+    "../api/mfa-csrf-app-fixture.test.ts"
+  ]
+}

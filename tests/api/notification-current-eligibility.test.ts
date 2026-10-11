@@ -7,6 +7,9 @@ const mocks = vi.hoisted(() => ({
   resolveNotificationPreference: vi.fn(),
   findCurrentNotificationResource: vi.fn(),
   findNotificationPerson: vi.fn(),
+  findApprovalNotificationContext: vi.fn(),
+  isApprovalApproverStillValid: vi.fn(),
+  listApprovalWatcherPersonIds: vi.fn(),
 }));
 
 vi.mock("@taskdesk/permissions", () => ({
@@ -22,6 +25,9 @@ vi.mock("../../apps/api/src/notification/preferences", () => ({
 vi.mock("../../apps/api/src/notification/repository", () => ({
   findCurrentNotificationResource: mocks.findCurrentNotificationResource,
   findNotificationPerson: mocks.findNotificationPerson,
+  findApprovalNotificationContext: mocks.findApprovalNotificationContext,
+  isApprovalApproverStillValid: mocks.isApprovalApproverStillValid,
+  listApprovalWatcherPersonIds: mocks.listApprovalWatcherPersonIds,
 }));
 
 import type { ClaimedNotificationDelivery } from "../../apps/api/src/database/repositories/notification-delivery.repository";
@@ -321,10 +327,6 @@ describe("current notification reach and preference", () => {
   it.each([
     ["work_item", "approval.requested", { approvalId: "item-1" }],
     ["approval", "work_item.assigned", { workItemId: "item-1" }],
-    // Approval notification resources are not a supported binding until the approvals
-    // slice (S3) lands its recipient/reach code; an approval delivery fails closed.
-    ["approval", "approval.requested", { approvalId: "approval-1" }],
-    ["approval", "approval.decided", { approvalId: "approval-1" }],
     ["workspace", "work_item.assigned", { workItemId: "item-1" }],
   ])(
     "rejects unsupported resource/event pairing %s / %s",
@@ -541,5 +543,215 @@ describe("current notification reach and preference", () => {
     await expect(
       evaluateCurrentNotificationReachAndPreference(tx, delivery),
     ).resolves.toEqual({ kind: "destination_unresolved" });
+  });
+});
+
+describe("approval notification eligibility (S3, 0120-anchored)", () => {
+  const approvalDelivery = (
+    eventKind: string,
+    recipientPersonId = "person-1",
+  ) => ({
+    ...delivery,
+    recipientPersonId,
+    eventKind,
+    resourceType: "approval",
+    resourceId: "approval-1",
+    payload: {
+      id: delivery.eventId,
+      kind: eventKind,
+      scope: {
+        workspaceId: delivery.workspaceId,
+        organisationId: delivery.organisationId,
+      },
+      payload: { approvalId: "approval-1" },
+    },
+  });
+  const approval = {
+    id: "approval-1",
+    kind: "cab",
+    state: "pending",
+    requestedBy: "person-requester",
+    approverId: "person-1",
+    workItemId: "item-1",
+    workspaceId: "workspace-1",
+    projectId: "project-1",
+    organisationId: "org-1",
+    requesterId: null,
+    customerVisibility: "organisation",
+  };
+
+  beforeEach(() => {
+    vi.resetAllMocks();
+    mocks.findNotificationPerson.mockResolvedValue({
+      userId: "user-1",
+      side: "staff",
+      active: true,
+      quietHoursStart: null,
+      quietHoursEnd: null,
+      quietHoursTimezone: null,
+    });
+    mocks.resolveIdentity.mockResolvedValue({
+      personId: "person-1",
+      side: "staff",
+    });
+    mocks.findCurrentNotificationResource.mockResolvedValue({
+      ...resource,
+      staffUrl: null,
+    });
+    mocks.findApprovalNotificationContext.mockResolvedValue(approval);
+    mocks.isApprovalApproverStillValid.mockResolvedValue(true);
+    mocks.listApprovalWatcherPersonIds.mockResolvedValue([]);
+    mocks.reaches.mockReturnValue(true);
+    mocks.can.mockReturnValue(true);
+    mocks.resolveNotificationPreference.mockResolvedValue({ enabled: true });
+  });
+
+  it("passes every gate for the current, valid approver (no destination is registered yet)", async () => {
+    await expect(
+      evaluateCurrentNotificationReachAndPreference(
+        tx,
+        approvalDelivery("approval.requested"),
+      ),
+    ).resolves.toEqual({ kind: "destination_unresolved" });
+    expect(mocks.findApprovalNotificationContext).toHaveBeenCalledWith(
+      tx,
+      "approval-1",
+      "workspace-1",
+    );
+    expect(mocks.findCurrentNotificationResource).toHaveBeenCalledWith(
+      tx,
+      expect.objectContaining({ workspaceId: "workspace-1" }),
+    );
+  });
+
+  it("suppresses a recipient who is not the addressed person", async () => {
+    mocks.findApprovalNotificationContext.mockResolvedValue({
+      ...approval,
+      approverId: "someone-else",
+    });
+    await expect(
+      evaluateCurrentNotificationReachAndPreference(
+        tx,
+        approvalDelivery("approval.requested"),
+      ),
+    ).resolves.toEqual({
+      kind: "suppress",
+      reason: "approval_not_addressed_to_recipient",
+    });
+  });
+
+  it("suppresses a request or reminder once the approval is no longer pending", async () => {
+    mocks.findApprovalNotificationContext.mockResolvedValue({
+      ...approval,
+      state: "approved",
+    });
+    for (const kind of ["approval.requested", "approval.expiring"]) {
+      await expect(
+        evaluateCurrentNotificationReachAndPreference(
+          tx,
+          approvalDelivery(kind),
+        ),
+      ).resolves.toEqual({ kind: "suppress", reason: "approval_not_pending" });
+    }
+  });
+
+  it("suppresses when the named approver is no longer valid for the workspace", async () => {
+    mocks.isApprovalApproverStillValid.mockResolvedValue(false);
+    await expect(
+      evaluateCurrentNotificationReachAndPreference(
+        tx,
+        approvalDelivery("approval.requested"),
+      ),
+    ).resolves.toEqual({
+      kind: "suppress",
+      reason: "approver_no_longer_valid",
+    });
+  });
+
+  it("suppresses when the approval is gone or belongs to another workspace", async () => {
+    mocks.findApprovalNotificationContext.mockResolvedValue(null);
+    await expect(
+      evaluateCurrentNotificationReachAndPreference(
+        tx,
+        approvalDelivery("approval.requested"),
+      ),
+    ).resolves.toEqual({ kind: "suppress", reason: "resource_unavailable" });
+    mocks.findApprovalNotificationContext.mockResolvedValue({
+      ...approval,
+      workspaceId: "workspace-2",
+    });
+    await expect(
+      evaluateCurrentNotificationReachAndPreference(
+        tx,
+        approvalDelivery("approval.requested"),
+      ),
+    ).resolves.toEqual({ kind: "suppress", reason: "resource_unavailable" });
+  });
+
+  it("notifies the requester of a decision and a staff watcher, and nobody else", async () => {
+    const decided = (person: string) =>
+      approvalDelivery("approval.decided", person);
+    mocks.resolveIdentity.mockResolvedValue({
+      personId: "person-requester",
+      side: "staff",
+    });
+    await expect(
+      evaluateCurrentNotificationReachAndPreference(
+        tx,
+        decided("person-requester"),
+      ),
+    ).resolves.toEqual({ kind: "destination_unresolved" });
+
+    mocks.resolveIdentity.mockResolvedValue({
+      personId: "watcher",
+      side: "staff",
+    });
+    mocks.listApprovalWatcherPersonIds.mockResolvedValue([
+      { personId: "watcher" },
+    ]);
+    await expect(
+      evaluateCurrentNotificationReachAndPreference(tx, decided("watcher")),
+    ).resolves.toEqual({ kind: "destination_unresolved" });
+
+    mocks.resolveIdentity.mockResolvedValue({
+      personId: "stranger",
+      side: "staff",
+    });
+    await expect(
+      evaluateCurrentNotificationReachAndPreference(tx, decided("stranger")),
+    ).resolves.toEqual({
+      kind: "suppress",
+      reason: "approval_not_addressed_to_recipient",
+    });
+  });
+
+  it("evaluates a customer approver's read authority at organisation scope", async () => {
+    mocks.resolveIdentity.mockResolvedValue({
+      personId: "person-1",
+      side: "customer",
+    });
+    mocks.can.mockImplementation(
+      (_identity: unknown, _capability: string, scope: string) =>
+        scope === "organisation",
+    );
+    await expect(
+      evaluateCurrentNotificationReachAndPreference(
+        tx,
+        approvalDelivery("approval.requested"),
+      ),
+    ).resolves.toEqual({ kind: "destination_unresolved" });
+    expect(mocks.can).toHaveBeenCalledWith(
+      expect.anything(),
+      "work_item:read",
+      "organisation",
+      expect.objectContaining({ organisationId: "org-1" }),
+    );
+    mocks.can.mockReturnValue(false);
+    await expect(
+      evaluateCurrentNotificationReachAndPreference(
+        tx,
+        approvalDelivery("approval.requested"),
+      ),
+    ).resolves.toEqual({ kind: "suppress", reason: "read_authority_lost" });
   });
 });

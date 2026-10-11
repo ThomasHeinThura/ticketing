@@ -468,6 +468,33 @@ workspace delivery, so treat the delete as final and keep the printed rows in th
 Re-run the preflight to confirm no rows, then
 upgrade.
 
+## Upgrading across migration 0120: approval anchor
+
+Migration `0120_approval_workspace_anchor` adds `approval.workspace_id`, backfills it from each
+approval's work item, and replaces the single-column work-item foreign key with the composite
+`approval_workspace_work_item_fk`.
+
+**Lock.** The `DROP CONSTRAINT` and the `ADD` of the composite foreign key take an
+`ACCESS EXCLUSIVE` lock on `work_item`, and the lock is held until the whole migrator batch
+commits. Run the upgrade in a maintenance window, or set `lock_timeout` on the migrator session so
+the upgrade fails fast instead of queueing behind traffic.
+
+**Orphan preflight.** If a restored database holds an approval whose work item is missing, the
+upgrade fails at `SET NOT NULL` and aborts atomically (same mechanics as 0093 above). The
+`approval` table is empty in every known environment, so the expected result is no rows, but run
+this read-only query on every target database below 0120. It must return no rows:
+
+```sql
+select a.id as approval_id, a.work_item_id
+from approval a
+left join work_item w on w.id = a.work_item_id
+where w.id is null;
+```
+
+Remediation, only if rows are returned: an approval without its work item is an anchoring defect,
+not data to preserve. Take the pre-upgrade backup first, keep the printed rows in the release
+record, delete the offending `approval` rows, re-run the preflight to confirm no rows, then upgrade.
+
 ## Startup refuses: "incomplete grant projection" (database already at 0119)
 
 A database that already applied migrations 0088 to 0119 (for example from the schema spine)
@@ -604,8 +631,10 @@ exact registered policy-source paths. The default is empty, so no source is enfo
 source is evaluated after that route's existing middleware and request validation, immediately
 before its terminal handler. Existing authorization checks continue to run; a registry denial
 prevents the handler from starting. The setting is read and validated during API module startup.
-An unknown, duplicate, blank, reordered, or malformed source refuses startup rather than
-silently selecting a weaker policy set.
+An unknown, duplicate, blank, whitespace-padded, or malformed source refuses startup.
+The parser requires every other registered source before task and requires task last; it does
+not reject arbitrary permutations of non-task sources. Operators use the registry-owned path
+order for the staged rollout described below.
 
 For a development or UAT rollout, first establish the documented three real, issue-free UTC
 date buckets for the exact source and representative behaviors being considered (see **Policy
@@ -617,6 +646,8 @@ and restart the API. Add eligible non-task sources in registry-owned path order;
 registered set must precede `apps/api/src/task/policy.ts`, which is required to be last. Do not
 enable the task router until the role re-key prerequisite is verified and every preceding
 source is already enforced. This staged setting does not authorize production promotion.
+
+**Bounded public-config criterion (Thomas, 2026-10-08):** public `GET /api/config` is mounted before the authenticated shadow guard and cannot produce that guard's tally. For this route/source only, use exact-source public-response/source-ordering proof and the independently reviewed disposable config-source strict selection/health/rollback proof as the substitute; preserve actual dated public observations rather than inventing shadow rows. Every other source keeps the shadow/coverage/date requirements above. Config precedes task; the task re-key and last-source prerequisites remain. See the [bounded decision](../07-planning/decision-log.md#2026-10-08--bounded-public-config-cutover-criterion-substitute). This does not authorize persistent or production cutover by itself.
 
 **Rollback:** remove the affected exact source path from the setting and restart the API. If
 the task path is selected, remove it first before removing any preceding source. Setting the

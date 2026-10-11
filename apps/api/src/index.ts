@@ -15,6 +15,7 @@ import { cors } from "hono/cors";
 import { HTTPException } from "hono/http-exception";
 import { WebSocketServer } from "ws";
 import activity from "./activity";
+import approval from "./approval";
 import attachment from "./attachment";
 import audit from "./audit";
 import {
@@ -1453,6 +1454,7 @@ export function createApp(
   // `/work-items/{key}`), which `workItem`'s own routes already declare in full. See
   // `work-item/index.ts`'s file comment.
   const workItemApi = api.route("/", workItem);
+  const approvalApi = api.route("/", approval);
   const attachmentApi = api.route("/", attachment);
   const userApi = api.route("/user", user);
   const factorStatusApi = api.route("/me", factorStatus);
@@ -1602,7 +1604,25 @@ export function createApp(
       return {
         onOpen(_evt, ws) {
           if (userId) {
-            conn = addUserConnection(userId, ws);
+            conn = addUserConnection(userId, ws, async () => {
+              try {
+                await authenticateApiRequest(c);
+                await enforceLocalFactorEnrollment(c);
+                const currentUser = c.get("user") as
+                  | (User & { banned?: boolean | null })
+                  | null;
+                if (currentUser?.banned === true) return false;
+                const session = c.get("session") as
+                  | (Session & { portal?: unknown })
+                  | null;
+                return (
+                  c.get("userId") === userId &&
+                  (!session || session.portal === "agent")
+                );
+              } catch {
+                return false;
+              }
+            });
           }
         },
         onMessage(evt) {
@@ -1706,7 +1726,48 @@ export function createApp(
       return {
         onOpen(_evt, ws) {
           if (projectId) {
-            conn = addConnection(projectId, ws, userId, initiatorId);
+            conn = addConnection(
+              projectId,
+              ws,
+              userId,
+              initiatorId,
+              async () => {
+                try {
+                  await authenticateApiRequest(c);
+                  await enforceLocalFactorEnrollment(c);
+                  const currentUser = c.get("user") as
+                    | (User & { banned?: boolean | null })
+                    | null;
+                  if (currentUser?.banned === true) return false;
+                  const session = c.get("session") as
+                    | (Session & { portal?: unknown })
+                    | null;
+                  if (
+                    c.get("userId") !== userId ||
+                    (session && session.portal !== "agent")
+                  )
+                    return false;
+                  const [project] = await db
+                    .select({ id: schema.projectTable.id })
+                    .from(schema.projectTable)
+                    .where(
+                      and(
+                        eq(schema.projectTable.id, projectId),
+                        sql`${schema.projectTable.deletedAt} IS NULL`,
+                        reachableWorkspacePredicate(
+                          schema.projectTable.workspaceId,
+                          userId,
+                          c.get("apiKey")?.id,
+                        ),
+                      ),
+                    )
+                    .limit(1);
+                  return Boolean(project);
+                } catch {
+                  return false;
+                }
+              },
+            );
           }
         },
         onMessage(evt) {
@@ -1747,6 +1808,7 @@ export function createApp(
     app,
     api,
     activityApi,
+    approvalApi,
     attachmentApi,
     auditApi,
     cannedResponseApi,
@@ -2125,6 +2187,7 @@ const createdApp = createApp();
 const {
   app,
   activityApi,
+  approvalApi,
   attachmentApi,
   auditApi,
   cannedResponseApi,
@@ -2207,6 +2270,7 @@ export type AppType =
   | typeof taskV2Api
   | typeof columnApi
   | typeof activityApi
+  | typeof approvalApi
   | typeof attachmentApi
   | typeof auditApi
   | typeof cannedResponseApi

@@ -325,8 +325,11 @@ Acceptance cases are specified in [notifications.md#delivery](../03-features/not
 inbox read paths (list, read, read-all, clear-all) apply current reach only to
 `resource_type = 'task'` rows; extend the predicate to every registered fan-out resource type
 (`work_item`, `comment`, `workspace`, `instance` and the rest), failing closed for unknown
-types, and keep `instance` rows behind the instance-admin gate. (2) `approval` is excluded from
-fan-out until the approvals slice lands its recipient and reach code. (3) The legacy
+types, and keep `instance` rows behind the instance-admin gate. (2) `approval` fan-out: closed by the approvals
+slice (S3), which lands the recipient resolver, the 0120-anchored send-time eligibility (workspace,
+still-valid approver, still-pending approval) and the approval inbox read predicate
+(`notification/approval-reach.ts`) on all four read paths; the predicate of gate (1) for the other
+types is still open. (3) The legacy
 workspace delivery path checks reach once, with no banned/deactivated check and no recheck at
 send time; move it to the identity-based `workspace:read` check. (4) `fanout.ts` has no
 tests; add recipient, preference, digest-hook and self-exclusion coverage. (5) The reach
@@ -340,6 +343,14 @@ design change to be decided before wiring. (8) `notification_delivery` timestamp
 default to `now()`, which a database session ahead of or behind UTC stores as local wall
 clock; every writer must set UTC explicitly (fan-out does) until a migration changes the
 defaults.
+
+**Approvals is the first in-app producer.** It calls `enqueueNotificationEvent`, which writes inbox rows in
+the request transaction. Gates (3) to (7) do not apply to it, because its recipients carry no
+channels (so no `notification_delivery` rows and no adapter), its titles and bodies are constants,
+and no worker is involved. Gate (4) is only partly covered: the approval tests cover recipient and
+self-exclusion for approvals (`approval-notifications.test.ts`, the eligibility unit tests), not
+preference or digest hooks. Gate (8) holds for approval writes (UTC-bound, tested under two
+non-UTC zones). The first producer that carries channels or a worker must close gates (3) to (7).
 
 ## Metrics snapshots
 

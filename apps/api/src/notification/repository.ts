@@ -90,9 +90,40 @@ export async function findCurrentNotificationResource(
     resourceId: string | null;
     eventKind: string;
     canonicalWorkItem?: { id?: string; key?: string };
+    /** The delivery's own workspace: an approval is only read inside it (0120 anchor). */
+    workspaceId?: string;
   },
 ): Promise<CurrentNotificationResource | null> {
   if (!input.resourceType || !input.resourceId) return null;
+
+  if (
+    input.resourceType === "approval" &&
+    input.workspaceId &&
+    isSupportedNotificationResourceEvent(input.resourceType, input.eventKind)
+  ) {
+    const context = await findApprovalNotificationContext(
+      tx,
+      input.resourceId,
+      input.workspaceId,
+    );
+    if (!context) return null;
+    const participantRows = await listApprovalParticipantPersonIds(
+      tx,
+      context.workItemId,
+    );
+    return {
+      workspaceId: context.workspaceId,
+      projectId: context.projectId,
+      organisationId: context.organisationId,
+      visibleToPersonIds: visiblePeople(
+        context.requesterId,
+        context.customerVisibility,
+        participantRows.map(({ personId }) => personId),
+      ),
+      customerVisible: true,
+      staffUrl: null,
+    };
+  }
 
   if (
     input.resourceType === "work_item" &&
@@ -182,4 +213,114 @@ export async function findNotificationWorkspace(
     )
     .limit(1);
   return workspace ?? null;
+}
+
+/**
+ * The approval, read only inside the given workspace and through the composite
+ * `(workspace_id, work_item_id)` anchor of migration 0120, with the live work item and project.
+ */
+export async function findApprovalNotificationContext(
+  tx: DbTransaction,
+  approvalId: string,
+  workspaceId: string,
+) {
+  const [row] = await tx
+    .select({
+      id: schema.approvalTable.id,
+      kind: schema.approvalTable.kind,
+      state: schema.approvalTable.state,
+      requestedBy: schema.approvalTable.requestedBy,
+      approverId: schema.approvalTable.approverId,
+      workItemId: schema.workItemTable.id,
+      workspaceId: schema.approvalTable.workspaceId,
+      projectId: schema.workItemTable.projectId,
+      organisationId: schema.workspaceTable.organisationId,
+      requesterId: schema.workItemTable.requesterId,
+      customerVisibility: schema.workItemTable.customerVisibility,
+    })
+    .from(schema.approvalTable)
+    .innerJoin(
+      schema.workItemTable,
+      and(
+        eq(schema.workItemTable.id, schema.approvalTable.workItemId),
+        eq(schema.workItemTable.workspaceId, schema.approvalTable.workspaceId),
+      ),
+    )
+    .innerJoin(
+      schema.projectTable,
+      eq(schema.projectTable.id, schema.workItemTable.projectId),
+    )
+    .innerJoin(
+      schema.workspaceTable,
+      eq(schema.workspaceTable.id, schema.approvalTable.workspaceId),
+    )
+    .where(
+      and(
+        eq(schema.approvalTable.id, approvalId),
+        eq(schema.approvalTable.workspaceId, workspaceId),
+        isNull(schema.workItemTable.deletedAt),
+        isNull(schema.workItemTable.archivedAt),
+        isNull(schema.projectTable.deletedAt),
+      ),
+    )
+    .limit(1);
+  return row ?? null;
+}
+
+export function listApprovalWatcherPersonIds(
+  tx: DbTransaction,
+  workItemId: string,
+) {
+  return tx
+    .select({ personId: schema.watcherTable.personId })
+    .from(schema.watcherTable)
+    .where(eq(schema.watcherTable.workItemId, workItemId));
+}
+
+export function listApprovalParticipantPersonIds(
+  tx: DbTransaction,
+  workItemId: string,
+) {
+  return tx
+    .select({ personId: schema.requestParticipantTable.personId })
+    .from(schema.requestParticipantTable)
+    .where(eq(schema.requestParticipantTable.workItemId, workItemId));
+}
+
+/**
+ * Whether the named approver is still a valid approver of this approval's workspace: an
+ * active, non-placeholder person with an account, and for a CAB approval still a member of a
+ * CAB team of this workspace (0120 review check 4, re-applied at send time).
+ */
+export async function isApprovalApproverStillValid(
+  tx: DbTransaction,
+  approval: { approverId: string; kind: string; workspaceId: string },
+) {
+  const [person] = await tx
+    .select({
+      userId: schema.personTable.userId,
+      active: schema.personTable.active,
+      isPlaceholder: schema.personTable.isPlaceholder,
+    })
+    .from(schema.personTable)
+    .where(eq(schema.personTable.id, approval.approverId))
+    .limit(1);
+  if (!person?.active || person.isPlaceholder || !person.userId) return false;
+  if (approval.kind !== "cab") return true;
+  const [member] = await tx
+    .select({ id: schema.teamMemberTable.id })
+    .from(schema.teamMemberTable)
+    .innerJoin(
+      schema.teamTable,
+      eq(schema.teamTable.id, schema.teamMemberTable.teamId),
+    )
+    .where(
+      and(
+        eq(schema.teamMemberTable.userId, person.userId),
+        eq(schema.teamTable.workspaceId, approval.workspaceId),
+        eq(schema.teamTable.isCab, true),
+      ),
+    )
+    .limit(1);
+  return member !== undefined;
 }

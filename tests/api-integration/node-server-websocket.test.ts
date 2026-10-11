@@ -1579,6 +1579,193 @@ describe("P0 #557: real Node HTTP and WebSocket adapter", () => {
     ).toBe(401);
   });
 
+  it.each([
+    ["user", "ban"],
+    ["user", "deactivate"],
+    ["user", "revoke-session"],
+    ["project", "ban"],
+    ["project", "deactivate"],
+    ["project", "revoke-session"],
+  ] as const)(
+    "stops legacy %s events after %s with a real Better Auth session",
+    async (kind, change) => {
+      const { app } = createApp();
+      const node = createNodeServer(app);
+      closeServer = node.close;
+      await listening(node.server);
+      const member = await signUpUser(app);
+      const response = await createWorkspaceNative(app, member.cookie, {
+        name: "Legacy realtime authority",
+      });
+      expect(response.status).toBe(200);
+      const workspace = (await response.json()) as { id: string };
+      const { project } = await createProjectFixture({
+        workspaceId: workspace.id,
+      });
+      const socket = await openSocket(
+        websocketUrl(
+          node.server,
+          kind === "user" ? "/api/ws/user" : `/api/ws/${project.id}`,
+        ),
+        {
+          host: "localhost:1337",
+          origin: "http://localhost:1337",
+          cookie: member.cookie,
+        },
+      );
+      const publish = () => {
+        if (kind === "user")
+          broadcastToUser(member.user.id, { type: "NOTIFICATION_CREATED" });
+        else
+          broadcastToProject(project.id, {
+            type: "work_item.updated",
+            projectId: project.id,
+            taskId: "TD-authority",
+          });
+      };
+      const permitted = nextMessage(socket);
+      publish();
+      await expect(permitted).resolves.toHaveProperty("type");
+      const received: unknown[] = [];
+      socket.on("message", (data) => received.push(data.toString()));
+      const closed = new Promise<number>((resolve) =>
+        socket.once("close", resolve),
+      );
+      if (change === "ban")
+        await db
+          .update(schema.userTable)
+          .set({ banned: true })
+          .where(eq(schema.userTable.id, member.user.id));
+      else if (change === "deactivate")
+        await db
+          .update(schema.personTable)
+          .set({ active: false })
+          .where(eq(schema.personTable.userId, member.user.id));
+      else
+        await db
+          .delete(schema.sessionTable)
+          .where(eq(schema.sessionTable.userId, member.user.id));
+      publish();
+      await expect(closed).resolves.toBe(1008);
+      expect(received).toEqual([]);
+    },
+  );
+
+  it.each(["user", "project"] as const)(
+    "stops legacy %s events after disabling the requesting API key",
+    async (kind) => {
+      const member = await createWorkspaceMember();
+      const { project } = await createProjectFixture({
+        workspaceId: member.workspace.id,
+      });
+      const rawKey = `taskdesk_test_${randomBytes(16).toString("hex")}`;
+      const now = new Date();
+      const [key] = await db
+        .insert(schema.apikeyTable)
+        .values({
+          referenceId: member.user.id,
+          userId: member.user.id,
+          key: createHash("sha256").update(rawKey).digest("base64url"),
+          name: "legacy authority",
+          start: rawKey.slice(0, 12),
+          prefix: "taskdesk",
+          createdAt: now,
+          updatedAt: now,
+        })
+        .returning({ id: schema.apikeyTable.id });
+      if (!key) throw new Error("API key was not persisted");
+      const { app } = createApp();
+      const node = createNodeServer(app);
+      closeServer = node.close;
+      await listening(node.server);
+      const socket = await openSocket(
+        websocketUrl(
+          node.server,
+          kind === "user" ? "/api/ws/user" : `/api/ws/${project.id}`,
+        ),
+        { host: "localhost:1337", authorization: `Bearer ${rawKey}` },
+      );
+      const publish = () => {
+        if (kind === "user")
+          broadcastToUser(member.user.id, { type: "NOTIFICATION_CREATED" });
+        else
+          broadcastToProject(project.id, {
+            type: "work_item.updated",
+            projectId: project.id,
+            taskId: "TD-key-authority",
+          });
+      };
+      const permitted = nextMessage(socket);
+      publish();
+      await expect(permitted).resolves.toHaveProperty("type");
+      const received: unknown[] = [];
+      socket.on("message", (data) => received.push(data.toString()));
+      const closed = new Promise<number>((resolve) =>
+        socket.once("close", resolve),
+      );
+      await db
+        .update(schema.apikeyTable)
+        .set({ enabled: false })
+        .where(eq(schema.apikeyTable.id, key.id));
+      publish();
+      await expect(closed).resolves.toBe(1008);
+      expect(received).toEqual([]);
+    },
+  );
+
+  it("stops legacy project events after actual workspace membership removal", async () => {
+    const { app } = createApp();
+    const node = createNodeServer(app);
+    closeServer = node.close;
+    await listening(node.server);
+    const owner = await signUpUser(app);
+    const response = await createWorkspaceNative(app, owner.cookie, {
+      name: "Legacy membership removal",
+    });
+    expect(response.status).toBe(200);
+    const workspace = (await response.json()) as { id: string };
+    const member = await inviteAndAcceptAsNewMemberNative(
+      app,
+      owner.cookie,
+      workspace.id,
+      "member",
+    );
+    const { project } = await createProjectFixture({
+      workspaceId: workspace.id,
+    });
+    const socket = await openSocket(
+      websocketUrl(node.server, `/api/ws/${project.id}`),
+      {
+        host: "localhost:1337",
+        origin: "http://localhost:1337",
+        cookie: member.cookie,
+      },
+    );
+    const message = {
+      type: "work_item.updated",
+      projectId: project.id,
+      taskId: "TD-membership",
+    };
+    const permitted = nextMessage(socket);
+    broadcastToProject(project.id, message);
+    await expect(permitted).resolves.toMatchObject(message);
+    const received: unknown[] = [];
+    socket.on("message", (data) => received.push(data.toString()));
+    const closed = new Promise<number>((resolve) =>
+      socket.once("close", resolve),
+    );
+    const removed = await removeWorkspaceMemberNative(
+      app,
+      owner.cookie,
+      workspace.id,
+      member.user.id,
+    );
+    expect(removed.status).toBe(200);
+    broadcastToProject(project.id, message);
+    await expect(closed).resolves.toBe(1008);
+    expect(received).toEqual([]);
+  });
+
   it("preserves legacy task project reach masking, window fanout, and shutdown", async () => {
     const member = await createWorkspaceMember();
     const stranger = await createWorkspaceMember();
