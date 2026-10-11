@@ -2,7 +2,7 @@ import {
   type FormSchema,
   type FormValue,
   validateSubmissionData,
-} from "@taskdesk/domain";
+} from "@taskdesk/domain/intake";
 
 /** Required fields the customer can currently see; hidden fields remain optional. */
 export function missingRequiredIntakeFields(

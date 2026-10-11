@@ -74,7 +74,11 @@ function PortalCatalogue() {
     metadataEntries.find((entry) => entry.key === key);
   const selected =
     selectedSummary && selectedType.data
-      ? ({ ...selectedSummary, ...selectedType.data } as Entry)
+      ? ({
+          ...selectedSummary,
+          ...selectedType.data,
+          formSchema: selectedType.data.formSchema as unknown as FormSchema,
+        } satisfies Entry)
       : undefined;
   const primaryError =
     catalogue.isError ||

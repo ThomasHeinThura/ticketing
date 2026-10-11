@@ -4,7 +4,7 @@ import {
   isVisibilityConditionSatisfied,
   resolveFormVisibility,
   type VisibilityCondition,
-} from "@taskdesk/domain";
+} from "@taskdesk/domain/intake";
 
 type PortalVisibilityCondition = {
   field_key: string;
