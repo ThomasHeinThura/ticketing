@@ -423,6 +423,9 @@ test("intake triage queue @visual", async ({ page }) => {
   await page.goto("/agent/triage?state=new&ref=SUB-7");
   await expect(page.getByRole("heading", { level: 1 })).toBeVisible();
   await expect(page.getByText("SUB-7", { exact: true })).toBeVisible();
+  await expect(
+    page.getByRole("region", { name: "Submission SUB-7" }),
+  ).toBeVisible();
   await expect(page).toHaveScreenshot("intake-queue.png", {
     animations: "disabled",
     caret: "hide",
@@ -440,7 +443,9 @@ test("request type catalogue editor @visual", async ({ page }) => {
     "/agent/settings/request-types?requestTypeId=visual-request-type",
   );
   await expect(page.getByRole("heading", { level: 1 })).toBeVisible();
-  await expect(page.getByRole("heading", { level: 2 })).toBeVisible();
+  await expect(
+    page.getByRole("heading", { name: "Edit Access request", level: 2 }),
+  ).toBeVisible();
   await expect(
     page.getByRole("button", { name: "New request type" }),
   ).toBeVisible();
