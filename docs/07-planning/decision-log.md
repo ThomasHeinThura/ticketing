@@ -1,3 +1,24 @@
+### 2026-10-11 · Owner decision: terminal pending-action invalidation on credential and access revocation
+
+**Decision:** Thomas approved these PA-9 semantics: disabling or revoking an API key, explicitly
+revoking or signing out the requesting session, or removing the action's required access
+permanently invalidates that pending action even if the same credential or access is restored.
+Ordinary session expiry alone leaves the action pending so the requester can sign in again and
+approve it. Store the original session id in the existing `credential_id` field for session
+credentials; API-key actions remain bound to their API-key id. Use only the existing PA-9
+invalidation reasons, audit action and event vocabulary. No schema field, migration, capability,
+or new event is authorized by this decision.
+
+**Access scope:** only removal of reach or capability required by the action under its current
+registered route policy and target scope invalidates that action. Unrelated membership, role,
+or profile changes do not.
+
+**Source:** Thomas, directly to this task on 2026-10-11; the verbatim answer and approved
+question are preserved at `/Users/heinthura/.codex/taskdesk-evidence/2026-10-11/pa9-owner-decision.json`.
+**Recorded by:** integration-freeze implementation lane, 2026-10-11.
+
+---
+
 ### 2026-10-11 · Technical clarification to the S6 owner-decision record
 
 This entry clarifies attribution in the 2026-10-10 S6 owner-decision entry below; it does not
