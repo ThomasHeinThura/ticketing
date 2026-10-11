@@ -991,7 +991,7 @@ describe("resolveEffects — the authored WF-19 vocabulary only, named but not r
     expect(resolveEffects(allSix)).toEqual(allSix.effects);
   });
 
-  it("the reopen transition's effect vocabulary names resume_sla — WF-21's resume-not-restart, at the naming level", () => {
+  it("the reopen transition can carry the authored resume_sla effect", () => {
     expect(resolveEffects(T_REOPEN)).toEqual([{ kind: "resume_sla" }]);
   });
 });

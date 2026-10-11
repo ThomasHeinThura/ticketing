@@ -35,7 +35,9 @@ calendar remains available until approval rechecks its version and references.
 
 Manual SLA pause and resume routes are unavailable. Workflow pause and resume effects follow
 the existing workflow contract for automatic `waiting_customer` pauses; manual and
-completion/reopen pause continuity remain held for a later release.
+completion/reopen pause continuity remain held for a later release. For a reopened item, the
+reported resolution metric is not guaranteed to preserve the elapsed amount from before
+completion while that continuity remains held.
 
 ## SLA policy authoring and evaluation
 

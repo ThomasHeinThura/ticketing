@@ -87,8 +87,10 @@ an event once, and for list filtering. It is never the answer to "what is the st
   side; **(b)** internal comments — including a workflow transition's note (`WF-12`) —
   never count, in any case: only **public** comments stop the clock.)*
 - `SLA-8` `resolution` stops when the work item enters a state in the `completed` group.
-- `SLA-9` Reopening a completed item resumes the resolution clock from where it stopped —
-  it does not restart.
+- `SLA-9` The intended reopen rule is to continue the resolution clock from the amount
+  consumed before completion, not restart it. The resolved-pause continuity needed to
+  realize that rule is held under `SLA-11` and `WF-18`; this release does not guarantee or
+  claim correct resolution metrics for reopened items.
 
 **Pausing**
 

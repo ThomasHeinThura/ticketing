@@ -321,7 +321,7 @@ export async function transitionWorkItem(
   const automaticEffects = resolveAutomaticEffects(ctx.currentGroup, toGroup);
 
   let assigneeIdPatch: string | null | undefined;
-  let waitingCustomerEffect: "pause" | "resume" | undefined;
+  const waitingCustomerEffects: ("pause" | "resume")[] = [];
   const scheduleEffects: { afterMinutes: number; toStateTemplateId: string }[] =
     [];
   for (const effect of authoredEffects) {
@@ -335,9 +335,9 @@ export async function transitionWorkItem(
         toStateTemplateId: effect.toStateTemplateId,
       });
     } else if (effect.kind === "pause_sla") {
-      waitingCustomerEffect = "pause";
+      waitingCustomerEffects.push("pause");
     } else if (effect.kind === "resume_sla") {
-      waitingCustomerEffect = "resume";
+      waitingCustomerEffects.push("resume");
     }
     // `set_field` has no backing store and remains an explicit no-op.
   }
@@ -585,34 +585,36 @@ export async function transitionWorkItem(
         throw new TransitionConflictError(current?.stateId ?? fromStateId);
       }
 
-      if (waitingCustomerEffect === "pause") {
-        const startedAt = sql`clock_timestamp()`;
-        await tx.insert(slaPauseTable).values([
-          {
-            workItemId: ctx.workItem.id,
-            metric: "first_response",
-            startedAt,
-            reason: "waiting_customer",
-          },
-          {
-            workItemId: ctx.workItem.id,
-            metric: "resolution",
-            startedAt,
-            reason: "waiting_customer",
-          },
-        ]);
-      } else if (waitingCustomerEffect === "resume") {
-        const endedAt = sql`clock_timestamp()`;
-        await tx
-          .update(slaPauseTable)
-          .set({ endedAt })
-          .where(
-            and(
-              eq(slaPauseTable.workItemId, ctx.workItem.id),
-              eq(slaPauseTable.reason, "waiting_customer"),
-              isNull(slaPauseTable.endedAt),
-            ),
-          );
+      for (const effect of waitingCustomerEffects) {
+        if (effect === "pause") {
+          const startedAt = sql`clock_timestamp()`;
+          await tx.insert(slaPauseTable).values([
+            {
+              workItemId: ctx.workItem.id,
+              metric: "first_response",
+              startedAt,
+              reason: "waiting_customer",
+            },
+            {
+              workItemId: ctx.workItem.id,
+              metric: "resolution",
+              startedAt,
+              reason: "waiting_customer",
+            },
+          ]);
+        } else {
+          const endedAt = sql`clock_timestamp()`;
+          await tx
+            .update(slaPauseTable)
+            .set({ endedAt })
+            .where(
+              and(
+                eq(slaPauseTable.workItemId, ctx.workItem.id),
+                eq(slaPauseTable.reason, "waiting_customer"),
+                isNull(slaPauseTable.endedAt),
+              ),
+            );
+        }
       }
 
       for (const schedule of scheduleEffects) {
