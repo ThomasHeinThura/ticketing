@@ -700,7 +700,7 @@ describe("API integration: work item transition (#442, workflows.md)", () => {
     );
   });
 
-  it("refuses a stored set_field transition before changing any work-item, SLA, schedule, approval, activity, or event state", async () => {
+  it("refuses only the held edge in a mixed stored workflow while allowing its supported sibling", async () => {
     const { creator, workspace, project } = await setupProject();
     const backlog = await makeState(workspace.id, project.id, {
       group: "backlog",
@@ -729,6 +729,11 @@ describe("API integration: work item transition (#442, workflows.md)", () => {
             toStateTemplateId: later.stateTemplate.id,
           },
         ],
+      },
+      {
+        fromStateTemplateId: backlog.stateTemplate.id,
+        toStateTemplateId: later.stateTemplate.id,
+        roleId: null,
       },
     ]);
     const transition = requireRow(transitions, "set_field transition");
@@ -833,6 +838,37 @@ describe("API integration: work item transition (#442, workflows.md)", () => {
     expect(publishEventMock).not.toHaveBeenCalledWith(
       "work_item.transitioned",
       expect.anything(),
+    );
+
+    const supportedResponse = await transitionRequest(app, key, {
+      toStateTemplateId: later.stateTemplate.id,
+    });
+    expect(
+      supportedResponse.status,
+      await supportedResponse.clone().text(),
+    ).toBe(200);
+    const [supportedAfter] = await db
+      .select()
+      .from(schema.workItemTable)
+      .where(eq(schema.workItemTable.id, workItem.id));
+    expect(supportedAfter).toMatchObject({
+      stateId: later.state.id,
+      assigneeId: assignee.id,
+      version: workItem.version + 1,
+    });
+    expect(
+      await db
+        .select()
+        .from(schema.scheduledTransitionTable)
+        .where(eq(schema.scheduledTransitionTable.workItemId, workItem.id)),
+    ).toHaveLength(0);
+    expect(publishEventMock).toHaveBeenCalledWith(
+      "work_item.transitioned",
+      expect.objectContaining({
+        key,
+        fromStateId: backlog.state.id,
+        toStateId: later.state.id,
+      }),
     );
   });
 

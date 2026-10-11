@@ -153,10 +153,12 @@ the **only** place lifecycle side-effects are defined; `sla.md` and `assignment.
   ([data-model.md](../01-architecture/data-model.md)) — the "pending until" pattern,
   fired by the scheduler and cancelled if the item leaves the state first.
 - `set_field { field, value }` is held for this release. No field namespace or value
-  validation has been defined. New workflow versions cannot author it, and a previously
-  stored transition containing it is refused before any work-item state or effect is
-  changed. Stored rows retain the recognized shape so the held effect cannot be silently
-  dropped or reinterpreted.
+  validation has been defined. New workflow versions cannot author it, and version
+  validation rejects a version containing it. For a previously stored mixed version,
+  only the selected transition containing `set_field` is refused before any work-item
+  state or effect is changed; supported sibling transitions remain usable. Stored rows
+  retain the recognized shape so the held effect cannot be silently dropped or
+  reinterpreted.
 - `WF-20` A transition emits `work_item.transitioned` ([events.md](../01-architecture/events.md))
   for automations, webhooks and notifications, in the same transaction as the change.
 - `WF-21` A customer-initiated reopen ([customer-portal.md](customer-portal.md) `CP-8`, a

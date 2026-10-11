@@ -250,7 +250,9 @@ function resolveSetAssigneePersonId(
  * `pause_sla`/`resume_sla` implement only SLA-10/11's automatic
  * `waiting_customer` lifecycle. Manual pauses and `resolved` pause continuity remain
  * unavailable under the current owner hold; they are not inferred from state groups.
- * `set_field` remains unavailable because no custom-field value store exists.
+ * `set_field` is held because its field namespace and value rules have not been defined.
+ * A stored edge containing it is refused individually; supported sibling edges in a
+ * historical mixed version remain usable.
  * `set_assignee`/`clear_assignee` and `schedule_transition` ARE fully wired.
  *
  * `WF-21` (customer-initiated reopen, executed as a system actor): the three call sites

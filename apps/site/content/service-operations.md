@@ -41,7 +41,8 @@ completion while that continuity remains held.
 
 Workflow transitions do not accept the `set_field` effect in this release; its field names
 and value rules have not been defined. If an older stored transition contains `set_field`,
-the transition is refused before changing the work item.
+that transition is refused before changing the work item. Other supported transitions in
+the same older workflow version remain usable.
 
 ## SLA policy authoring and evaluation
 
