@@ -19,6 +19,7 @@ import { and, eq, gt, isNull, sql } from "drizzle-orm";
 import { z } from "zod";
 import { appendAuditLog } from "../audit/audit-writer";
 import db, { schema } from "../database";
+import type { DbTransaction } from "../events/outbox";
 import { logTaskDesk } from "../instance/observability/runtime";
 import { ensureInternalOrganisation } from "../utils/seed-internal-organisation";
 import { invalidateNativeAuthorization } from "../ws";
@@ -213,18 +214,21 @@ export async function bindOidcSessionProvenance(input: {
  * challenge identifier, then bind only the matching session after the native
  * factor endpoint succeeds. A missing marker is an ordinary local 2FA session.
  */
-export async function bindTwoFactorOidcSession(input: {
-  challengeId: string | null;
-  sourceMarker: string | null;
-  sessionId: string;
-  userId: string;
-  portal: "agent" | "customer";
-}): Promise<"not_oidc" | "bound" | "invalid"> {
+export async function bindTwoFactorOidcSession(
+  input: {
+    challengeId: string | null;
+    sourceMarker: string | null;
+    sessionId: string;
+    userId: string;
+    portal: "agent" | "customer";
+  },
+  transaction?: DbTransaction,
+): Promise<"not_oidc" | "bound" | "invalid"> {
   if (!input.challengeId) return input.sourceMarker ? "invalid" : "not_oidc";
   if (input.sourceMarker && input.sourceMarker !== input.challengeId)
     return "invalid";
   const identifier = `${OIDC_SESSION_SOURCE_PREFIX}${digest(input.challengeId)}`;
-  return db.transaction(async (tx) => {
+  const bind = async (tx: DbTransaction) => {
     const [row] = await lockOidcVerification(tx, identifier);
     if (!row) return input.sourceMarker ? "invalid" : "not_oidc";
     await tx
@@ -272,7 +276,8 @@ export async function bindTwoFactorOidcSession(input: {
       )
       .returning({ id: schema.sessionTable.id });
     return session ? "bound" : "invalid";
-  });
+  };
+  return transaction ? bind(transaction) : db.transaction(bind);
 }
 
 export function identityOidcPlugin(

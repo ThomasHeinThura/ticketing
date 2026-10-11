@@ -984,7 +984,12 @@ function createAuth(
           return;
         }
 
-        await db
+        const totpTransaction =
+          ctx.path === "/two-factor/verify-totp"
+            ? currentTotpEnrollmentTransaction()
+            : null;
+        const sessionWriter = totpTransaction ?? db;
+        await sessionWriter
           .update(schema.sessionTable)
           .set({ portal })
           .where(eq(schema.sessionTable.id, newSession.session.id));
@@ -1014,13 +1019,16 @@ function createAuth(
           } catch {
             sourceMarker = null;
           }
-          const provenance = await bindTwoFactorOidcSession({
-            challengeId,
-            sourceMarker,
-            sessionId: newSession.session.id,
-            userId: newSession.user.id,
-            portal,
-          });
+          const provenance = await bindTwoFactorOidcSession(
+            {
+              challengeId,
+              sourceMarker,
+              sessionId: newSession.session.id,
+              userId: newSession.user.id,
+              portal,
+            },
+            totpTransaction ?? undefined,
+          );
           if (provenance === "invalid") {
             await ctx.context.internalAdapter.deleteSession(
               newSession.session.token,
