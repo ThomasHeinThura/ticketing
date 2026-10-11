@@ -32,6 +32,7 @@
     "requester-cannot-self-approve.spec.ts",
     "approver-email-not-leaked.spec.ts",
     "users-primary-journey.spec.ts",
+    "service-operations-primary-journey.spec.ts",
     "../api/mfa-csrf-app-fixture.test.ts"
   ]
 }

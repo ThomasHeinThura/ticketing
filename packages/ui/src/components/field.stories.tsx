@@ -17,7 +17,7 @@ type Story = StoryObj<typeof meta>;
 
 export const Default: Story = {
   render: () => (
-    <Field>
+    <Field className="bg-background">
       <FieldLabel>Email</FieldLabel>
       <FieldControl placeholder="you@example.com" type="email" />
       <FieldDescription>We only use this to send receipts.</FieldDescription>
@@ -27,7 +27,7 @@ export const Default: Story = {
 
 export const WithError: Story = {
   render: () => (
-    <Field>
+    <Field className="bg-background">
       <FieldLabel>Email</FieldLabel>
       <FieldControl aria-invalid placeholder="you@example.com" type="email" />
       <FieldError match={true}>Enter a valid email address.</FieldError>
@@ -37,7 +37,7 @@ export const WithError: Story = {
 
 export const Disabled: Story = {
   render: () => (
-    <Field disabled>
+    <Field className="bg-background" disabled>
       <FieldLabel>Email</FieldLabel>
       <FieldControl placeholder="you@example.com" type="email" />
       <FieldDescription>We only use this to send receipts.</FieldDescription>
