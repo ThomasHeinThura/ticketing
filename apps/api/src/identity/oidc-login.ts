@@ -21,6 +21,14 @@ import { appendAuditLog } from "../audit/audit-writer";
 import db, { schema } from "../database";
 import type { DbTransaction } from "../events/outbox";
 import { logTaskDesk } from "../instance/observability/runtime";
+import {
+  lockPendingActionLifecycle,
+  reportPendingActionAuditFailures,
+} from "../pending-action/lifecycle-invalidation";
+import {
+  captureWorkspaceDeletionAccessForWorkspaces,
+  invalidateWorkspaceDeletionAccessLosses,
+} from "../pending-action/workspace-access-invalidation";
 import { ensureInternalOrganisation } from "../utils/seed-internal-organisation";
 import { invalidateNativeAuthorization } from "../ws";
 import { decryptIdentityClientSecret } from "./client-secret";
@@ -514,6 +522,7 @@ async function signInAdmittedIdentity(input: {
   const subject = identity.subject.oid;
   const result = await retryIdentityGrantClosure(() =>
     db.transaction(async (tx) => {
+      await lockPendingActionLifecycle(tx);
       const [observedConnection] = await getOidcConnectionSnapshot(
         tx,
         connection.id,
@@ -540,7 +549,7 @@ async function signInAdmittedIdentity(input: {
         throw new APIError("UNAUTHORIZED", {
           message: "Identity sign-in failed",
         });
-      await lockScimGrantClosure(tx, {
+      const projectionClosure = await lockScimGrantClosure(tx, {
         connectionId: connection.id,
         sourceKinds: ["jit_default", "oidc_group"],
         ...(observedIdentity
@@ -557,6 +566,13 @@ async function signInAdmittedIdentity(input: {
             : (observedConnection.organisationId ?? undefined),
         proposedOrganisationId: observedConnection.organisationId ?? undefined,
       });
+      const pendingActionAccess =
+        await captureWorkspaceDeletionAccessForWorkspaces(
+          tx,
+          projectionClosure
+            .filter((key) => key.scope === "workspace")
+            .map((key) => key.scopeId),
+        );
       const [currentConnection] = await lockIdentityConnection(
         tx,
         connection.id,
@@ -645,6 +661,11 @@ async function signInAdmittedIdentity(input: {
           }
         }
         await projectMembershipKeys(tx, denialKeys);
+        const pendingActionAuditFailures =
+          await invalidateWorkspaceDeletionAccessLosses(
+            tx,
+            pendingActionAccess,
+          );
         await tx.insert(schema.provisioningEventTable).values({
           identityConnectionId: connection.id,
           ...(existing ? { externalIdentityId: existing.id } : {}),
@@ -697,6 +718,7 @@ async function signInAdmittedIdentity(input: {
                 .map((key) => key.scopeId),
             ),
           ],
+          pendingActionAuditFailures,
         };
       }
       if (!observedIdentity && existing)
@@ -1142,6 +1164,8 @@ async function signInAdmittedIdentity(input: {
         });
       }
       await projectMembershipKeys(tx, projectionKeys);
+      const pendingActionAuditFailures =
+        await invalidateWorkspaceDeletionAccessLosses(tx, pendingActionAccess);
       if (projectionKeys.length) {
         try {
           await tx.transaction(async (auditTx) =>
@@ -1185,9 +1209,11 @@ async function signInAdmittedIdentity(input: {
               .map((key) => key.scopeId),
           ),
         ],
+        pendingActionAuditFailures,
       };
     }),
   );
+  await reportPendingActionAuditFailures(result.pendingActionAuditFailures);
   if (result.denied) {
     if (result.changed) {
       if (result.userId)

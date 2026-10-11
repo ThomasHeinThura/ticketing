@@ -11,6 +11,12 @@ import {
 import { setShadowLegacyAuthorization } from "../permissions/shadow-context";
 import { normaliseTraceId } from "../permissions/shadow-middleware";
 import { requireSessionOnly } from "../utils/require-session-only";
+import { resolvePendingActionApprovalContract } from "./approval-contract";
+import {
+  approveSavedViewDeletion,
+  approveServiceCalendarDeletion,
+  getPendingActionExecutionTarget,
+} from "./deletion-targets";
 import {
   pendingActionApprovalSchema,
   pendingActionDecisionSchema,
@@ -113,7 +119,9 @@ const approvePendingActionRoute = createRoute({
       required: true,
       content: {
         "application/json": {
-          schema: z.object({ typedName: z.string().max(320) }).strict(),
+          schema: z
+            .object({ typedName: z.string().max(320).optional() })
+            .strict(),
         },
       },
     },
@@ -198,15 +206,37 @@ const pendingAction = apiRouter()
     );
     const session = c.get("session") as { id?: string } | null;
     if (!session?.id) throw new HTTPException(401, { message: "Unauthorized" });
-    const result = await approveUserDeactivation({
-      id: c.req.valid("param").id,
+    const id = c.req.valid("param").id;
+    const executionTarget = await getPendingActionExecutionTarget({
+      id,
+      requesterPersonId,
+    });
+    const contract = resolvePendingActionApprovalContract({
+      ...executionTarget,
+    });
+    if (!contract) {
+      throw new HTTPException(409, {
+        message: "pending_action_kind_unsupported",
+      });
+    }
+    const executionInput = {
+      id,
       requesterPersonId,
       userId: c.get("userId"),
       sessionId: session.id,
-      typedName: c.req.valid("json").typedName,
-      stepUpToken: c.req.valid("header")["x-taskdesk-step-up-token"] ?? "",
       traceId: normaliseTraceId(c.req.header("x-request-id")),
-    });
+    };
+    const result =
+      contract.executor === "user_deactivation"
+        ? await approveUserDeactivation({
+            ...executionInput,
+            typedName: c.req.valid("json").typedName ?? "",
+            stepUpToken:
+              c.req.valid("header")["x-taskdesk-step-up-token"] ?? "",
+          })
+        : contract.executor === "service_calendar_deletion"
+          ? await approveServiceCalendarDeletion(executionInput)
+          : await approveSavedViewDeletion(executionInput);
     setShadowLegacyAuthorization(c, "allowed");
     return c.json(
       { id: result.id, state: result.state as "executed" | "expired" },

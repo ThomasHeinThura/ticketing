@@ -1,11 +1,14 @@
-import { and, eq, isNull } from "drizzle-orm";
+import { and, desc, eq, isNotNull, isNull, lte } from "drizzle-orm";
 import { HTTPException } from "hono/http-exception";
 import db from "../../database";
 import {
   projectTable,
+  slaPolicyTable,
+  slaPolicyVersionTable,
   stateTable,
   workItemTable,
   workItemTypeTable,
+  workspaceTable,
 } from "../../database/schema";
 import { publishEvent } from "../../events";
 import { isUniqueViolation } from "../../utils/is-unique-violation";
@@ -155,6 +158,50 @@ export async function createWorkItem(input: CreateWorkItemInput) {
     | undefined;
   try {
     created = await db.transaction(async (tx) => {
+      const slaStartedAt = new Date();
+      const [workspace] = await tx
+        .select({ slaPolicyId: workspaceTable.defaultSlaPolicyId })
+        .from(workspaceTable)
+        .where(eq(workspaceTable.id, project.workspaceId))
+        .limit(1);
+      if (!workspace) {
+        throw new Error("Work item's workspace disappeared during creation");
+      }
+      const policyId =
+        type.slaPolicyId ?? project.slaPolicyId ?? workspace.slaPolicyId;
+      if (policyId) {
+        const [ownedPolicy] = await tx
+          .select({ id: slaPolicyTable.id })
+          .from(slaPolicyTable)
+          .where(
+            and(
+              eq(slaPolicyTable.id, policyId),
+              eq(slaPolicyTable.workspaceId, project.workspaceId),
+            ),
+          )
+          .limit(1);
+        if (!ownedPolicy) {
+          throw new Error("Work item SLA binding is outside its workspace");
+        }
+      }
+      const [policyVersion] = policyId
+        ? await tx
+            .select({ id: slaPolicyVersionTable.id })
+            .from(slaPolicyVersionTable)
+            .where(
+              and(
+                eq(slaPolicyVersionTable.workspaceId, project.workspaceId),
+                eq(slaPolicyVersionTable.policyId, policyId),
+                isNotNull(slaPolicyVersionTable.effectiveFrom),
+                lte(slaPolicyVersionTable.effectiveFrom, slaStartedAt),
+              ),
+            )
+            .orderBy(
+              desc(slaPolicyVersionTable.effectiveFrom),
+              desc(slaPolicyVersionTable.number),
+            )
+            .limit(1)
+        : [];
       const number = await claimWorkItemNumber(project.id, tx);
       const key = `${project.slug}-${number}`;
 
@@ -170,6 +217,9 @@ export async function createWorkItem(input: CreateWorkItemInput) {
           description: description ?? null,
           stateId: defaultState.id,
           priority: priority ?? null,
+          createdAt: slaStartedAt,
+          slaStartedAt,
+          slaPolicyVersionId: policyVersion?.id ?? null,
         })
         .returning();
 

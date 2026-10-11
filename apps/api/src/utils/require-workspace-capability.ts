@@ -263,6 +263,52 @@ export async function assertCallerHasCapabilityOrSelf(
 }
 
 /**
+ * Enforce the capability-policy `orOwner` shape for a row already resolved through
+ * workspace reach. Both alternatives remain intersected with the caller's API-key scope;
+ * an owner predicate alone never grants access. The route policy and its row facts remain
+ * the source of which two capabilities are allowed to reach this helper.
+ */
+export async function assertCallerHasCapabilityOrOwner(
+  workspaceId: string,
+  userId: string,
+  capability: Capability,
+  ownerCapability: Capability,
+  isOwner: boolean,
+  credential: CapabilityCredential,
+  executor: DbOrTx = db,
+): Promise<void> {
+  const roles = await workspaceMemberRoles(executor, workspaceId, userId);
+  if (!isUnambiguousMembership(roles)) {
+    throw new HTTPException(403, { message: "Insufficient permissions" });
+  }
+
+  const role = roles[0];
+  const credentialAllows = (required: Capability) =>
+    credential.kind === "session" ||
+    apiKeyHasCapability(credential.scope, required);
+
+  if (
+    credentialAllows(capability) &&
+    (await builtInRoleHasCapability(workspaceId, role, capability, executor))
+  ) {
+    return;
+  }
+  if (
+    isOwner &&
+    credentialAllows(ownerCapability) &&
+    (await builtInRoleHasCapability(
+      workspaceId,
+      role,
+      ownerCapability,
+      executor,
+    ))
+  ) {
+    return;
+  }
+  throw new HTTPException(403, { message: "Insufficient permissions" });
+}
+
+/**
  * Does the built-in role named `role` hold `capability`, per the compiled
  * `BUILT_IN_ROLES` capability data (`@taskdesk/permissions`) — implications expanded, exactly
  * as `capabilityGrid()` (the permission-matrix fixture generator) computes it.

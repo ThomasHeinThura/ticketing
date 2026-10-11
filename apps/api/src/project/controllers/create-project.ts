@@ -41,9 +41,14 @@ async function createProject(
   name: string,
   icon: string,
   slug: string,
+  configuration: {
+    kind: "project" | "managed_service";
+    supportLevel: "L1" | "L2" | "L3" | null;
+    serviceCalendarId: string | null;
+  },
 ) {
   try {
-    return await createProjectRow(workspaceId, name, icon, slug);
+    return await createProjectRow(workspaceId, name, icon, slug, configuration);
   } catch (error) {
     // Exact constraint names, not a substring match on `"slug"` (issue #269): this
     // transaction's own inserts can raise EITHER `project`'s `project_slug_unique`
@@ -68,6 +73,11 @@ async function createProjectRow(
   name: string,
   icon: string,
   slug: string,
+  configuration: {
+    kind: "project" | "managed_service";
+    supportLevel: "L1" | "L2" | "L3" | null;
+    serviceCalendarId: string | null;
+  },
 ) {
   return db.transaction(async (tx) => {
     // Serialize ordering writes per workspace: without this, two concurrent
@@ -107,6 +117,9 @@ async function createProjectRow(
         name,
         icon,
         slug,
+        kind: configuration.kind,
+        supportLevel: configuration.supportLevel,
+        serviceCalendarId: configuration.serviceCalendarId,
         position: maxPosition === null ? 0 : maxPosition + 1,
       })
       .returning();

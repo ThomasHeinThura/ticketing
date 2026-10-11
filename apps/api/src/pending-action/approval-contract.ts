@@ -6,6 +6,20 @@ export const pendingActionApprovalContracts = [
     routeKey: "POST /api/instance/users/{id}/deactivate",
     executor: "user_deactivation",
   },
+  {
+    action: "delete",
+    targetType: "service_calendar",
+    confirmationRequired: "click",
+    routeKey: "DELETE /api/service-calendars/{id}",
+    executor: "service_calendar_deletion",
+  },
+  {
+    action: "delete",
+    targetType: "saved_view",
+    confirmationRequired: "click",
+    routeKey: "DELETE /api/views/{id}",
+    executor: "saved_view_deletion",
+  },
 ] as const;
 
 export type PendingActionApprovalContract =

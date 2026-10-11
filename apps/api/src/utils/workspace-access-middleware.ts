@@ -81,7 +81,8 @@ const RESOURCE_NOT_FOUND_MESSAGE: Record<
   | "column"
   | "workflowRule"
   | "workflow"
-  | "workflowVersion",
+  | "workflowVersion"
+  | "savedView",
   string
 > = {
   task: "Task not found",
@@ -94,6 +95,7 @@ const RESOURCE_NOT_FOUND_MESSAGE: Record<
   // #31 -- workflow persistence (see `workflow/policy.ts` for the routes these back).
   workflow: "Workflow not found",
   workflowVersion: "Workflow version not found",
+  savedView: "Saved view not found",
 };
 
 type WorkspaceIdSource =
@@ -112,7 +114,8 @@ type WorkspaceIdSource =
         | "column"
         | "workflowRule"
         | "workflow"
-        | "workflowVersion";
+        | "workflowVersion"
+        | "savedView";
       idKey: string;
     }
   | {
@@ -142,13 +145,19 @@ type PolicyScopeResource =
   | "column"
   | "workflowRule"
   | "workflow"
-  | "workflowVersion";
+  | "workflowVersion"
+  | "savedView";
 
 type WorkspaceRowScope = {
   workspaceId: string;
   projectId?: string;
   workItemId?: string;
   projectReachFacts?: ProjectReachFacts;
+  policyRowFacts?: {
+    createdBy: string;
+    visibility: string;
+    sharedWithTeamId: string | null;
+  };
 };
 
 /**
@@ -305,6 +314,9 @@ export function workspaceAccessMiddleware(
               if (observerRow.projectReachFacts) {
                 c.set("projectReachFacts", observerRow.projectReachFacts);
               }
+              if (observerRow.policyRowFacts) {
+                c.set("policyRowFacts", observerRow.policyRowFacts);
+              }
               c.set("policyScopeResource", source.resource);
             }
           }
@@ -326,6 +338,9 @@ export function workspaceAccessMiddleware(
             shadowWorkItemId = resolved.workItemId ?? null;
             if (resolved.projectReachFacts) {
               c.set("projectReachFacts", resolved.projectReachFacts);
+            }
+            if (resolved.policyRowFacts) {
+              c.set("policyRowFacts", resolved.policyRowFacts);
             }
           }
           if (!workspaceId) {
@@ -544,7 +559,8 @@ async function lookupWorkspaceId(
     | "column"
     | "workflowRule"
     | "workflow"
-    | "workflowVersion",
+    | "workflowVersion"
+    | "savedView",
   id: string,
   userId: string,
   apiKeyId?: string,
@@ -906,6 +922,38 @@ async function lookupWorkspaceId(
           : null;
       }
 
+      // `saved_view.workspace_id` is a plain, denormalised column (the same shape as
+      // `label`'s case), not reached through a project join -- a saved view's own
+      // `scope`/`scope_id` is the QUERY's target context, unrelated to which workspace
+      // the view row itself belongs to (search-and-saved-views.md SV-15).
+      case "savedView": {
+        const [savedView] = await db
+          .select({
+            workspaceId: schema.savedViewTable.workspaceId,
+            createdBy: schema.savedViewTable.createdBy,
+            visibility: schema.savedViewTable.visibility,
+            sharedWithTeamId: schema.savedViewTable.sharedWithTeamId,
+          })
+          .from(schema.savedViewTable)
+          .where(
+            and(
+              eq(schema.savedViewTable.id, id),
+              reach(schema.savedViewTable.workspaceId),
+            ),
+          )
+          .limit(1);
+        return savedView?.workspaceId
+          ? {
+              workspaceId: savedView.workspaceId,
+              policyRowFacts: {
+                createdBy: savedView.createdBy,
+                visibility: savedView.visibility,
+                sharedWithTeamId: savedView.sharedWithTeamId,
+              },
+            }
+          : null;
+      }
+
       default:
         return null;
     }
@@ -1014,5 +1062,9 @@ export const workspaceAccess = {
   fromWorkflowVersion: (idKey = "id") =>
     workspaceAccessMiddleware({
       sources: [{ type: "lookup", resource: "workflowVersion", idKey }],
+    }),
+  fromSavedView: (idKey = "id") =>
+    workspaceAccessMiddleware({
+      sources: [{ type: "lookup", resource: "savedView", idKey }],
     }),
 };
