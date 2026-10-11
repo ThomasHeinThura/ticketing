@@ -1,4 +1,4 @@
-## Delivery integration checkpoint — 2026-10-11 13:12 UTC
+## Delivery integration checkpoint — 2026-10-11 13:10 UTC
 
 **Accepted D9 record:** protected #648 merged exact378beaadf2ee038497484c5703606357463b4c96 as9e79f7e8d51627ea51b18f7525b6f32baaa7f559 at13:03:55 UTC. All18 required checks passed; accepted tree equals candidate. Current Any, fresh factual closing and separate two-commit accounting clarification are preserved. This accepts the23-line owner record, not #606/#512 implementation: #606 owns the composer with #512’s distinct behavior retained.
 
