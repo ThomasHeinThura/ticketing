@@ -52,7 +52,7 @@ const project = {
 const visualRequestType = {
   id: "visual-request-type",
   key: "visual-access",
-  name: "Visual access request",
+  name: "Access request",
   description: "Request access to a support workspace.",
   group: "Access",
   workItemTypeId: "visual-work-item-type",
