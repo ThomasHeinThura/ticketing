@@ -87,3 +87,42 @@ Read the exact-source #608/#611 absorption audit. It supports the 66-path receip
 No blocking or non-blocking factual discrepancy found in the requested checkpoint. The record consistently distinguishes accepted #650, source-bound historical test evidence, the independently corrected #661 diagnostic defect, failed intake attempts, and still-missing #608 UI source. It does not claim stage completion, final SIT, performance-cause resolution, final audit or handover.
 
 The one invocation issue is the requested candidate SHA typo (`...e96ad4`); the actual exact candidate is `...e96ad8`, verified from worktree HEAD and branch ref. I reviewed the latter. This report is a factual check of the records only; I did not run tests, Docker, browser, database, or mutate GitHub.
+
+## Additive ancestry and model-evidence correction
+
+Root checked the trusted local session metadata independently: A session `01a12d4f-2867-7273-84e7-4c673a7d48a7` and B session `01a12d51-528e-7343-9180-168dd23da214` both record `gpt-6-luna` in every retained turn context. Original reports remain unchanged. The following independent diagnosis addresses the two later discussion objections and grants no overall merge approval.
+
+# PR #666 ancestry and reviewer-model discussion diagnosis
+
+**Prepared:** 2026-10-12
+**Reviewer:** fresh bounded diagnostic context; no source, GitHub, runtime, or review-report edits
+**Current candidate checked:** `a54e36dd6b499d72577a388eb9ea322b975bca2e`
+**Prior reviewed source:** `8078c80d6b6769af0316239ff788300248e96ad8`
+**Comparison base:** accepted `main` `2b9c3411e9673f4fc5c623fed6e9636c0dcef7ac`
+
+## Verdict
+
+Both current P1 discussion claims are unsupported by the available current-state evidence. The ancestry claim is false for the live PR head. The assertion that the review model can only be verified as GPT-6 family is contradicted by trusted local Codex session metadata, which records `gpt-6-luna` for the two independent A and B reviewer sessions. This is a narrow factual diagnosis, not an overall merge approval or an edit to the authentic reports.
+
+## Exact-head ancestry
+
+Read-only GitHub reports PR #666 open with head `a54e36dd6b499d72577a388eb9ea322b975bca2e`, base `main` at `2b9c3411e9673f4fc5c623fed6e9636c0dcef7ac`. Local `git merge-base --is-ancestor 8078c80... a54e36dd...` succeeds. `a54e36dd` has the single parent `8078c80d6b6769af0316239ff788300248e96ad8`. The only commit between reviewed source and current head adds `docs/07-planning/security-reviews/native-delivery-checkpoint-20261012.md`, 89 lines, zero deletions. Thus the current source changes are exactly the review-record publication delta covered by the workflow's review-record-only reuse rule.
+
+The GitHub discussion thread `PRRT_kwDOT5LdOc6rSupd` says it checked ancestry to `b8b43ab` and concluded the candidate was a sibling/squashed commit on `2b9c341`. That SHA does not resolve in this checkout or through GitHub's commits API (`No commit found for SHA: b8b43ab`). The current GitHub `refs/pull/666/head` equals `a54e36dd`; its synthetic merge ref resolves to `173592423bc0073d501a764db46403aa21c15c61`, whose GitHub commit metadata names parents `2b9c341...` and `a54e36dd...`. The bot's `b8b43ab` is therefore not the current PR head or current test-merge commit. Its historical identity cannot be established from the available refs/API, so the P1 conclusion does not apply to the live candidate.
+
+## Reviewer model evidence
+
+The authentic A report, A closure report, and B report are preserved byte-for-byte in the current note and their hashes match `native-delivery-records-review-publication.json`. A's initial report identifies `b99d7f26553be2fe5829c44437de15f0f25c10c3`; A's closure and B identify exact reviewed head `8078c80...`. These were independent review contexts according to their reports and session identities.
+
+Trusted local Codex session transcripts are available at:
+
+- `/Users/heinthura/.codex/sessions/2026/10/12/rollout-2026-10-12T06-02-04-01a12d4f-2867-7273-84e7-4c673a7d48a7.jsonl` — session `01a12d4f-2867-7273-84e7-4c673a7d48a7`; session `turn_context` records `model: gpt-6-luna`. This is the A reviewer context, including its closure turn.
+- `/Users/heinthura/.codex/sessions/2026/10/12/rollout-2026-10-12T06-04-26-01a12d51-528e-7343-9180-168dd23da214.jsonl` — session `01a12d51-528e-7343-9180-168dd23da214`; session `turn_context` records `model: gpt-6-luna`. This is the B reviewer context.
+
+The platform's stored model field is stronger evidence of the assigned/reported model identity than the report authors' narrative statement that only “GPT-6 family” was visible. This also agrees with the explicit Luna selectors recorded in the PR body and the root dispatch account. No inference to a different model is needed. The two review contexts remain independent of the authoring/conductor context by the report/session evidence; this diagnosis did not author or remediate the checkpoint.
+
+## Evidence checked and limits
+
+Read `AGENTS.md`, `docs/04-engineering/agent-workflow.md`, `CLAUDE.md`, the current PR body and exact head; current Git refs and parent metadata; the three preserved reports and publication manifest; both local session metadata records; and the two open GitHub discussion threads. No tests, builds, database/container/browser work, GitHub writes, or source changes were performed.
+
+This establishes that these two P1 claims do not block review-record-only ancestry/model eligibility on current head `a54e36dd`. It does not establish overall PR merge readiness, resolve unrelated review threads, validate every gate receipt, or grant merge authority. No authentic report was rewritten or relabeled.
