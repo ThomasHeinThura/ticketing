@@ -52,16 +52,32 @@
 	},
 	{
 		"name": "intake-queue",
-		"inventoryRoute": "/agent/triage",
+		"inventoryRoute": "/agent/triage?state=new&ref={ref}",
 		"applicationRoute": "/agent/triage",
 		"test": "intake triage queue @visual",
 		"screenshot": "intake-queue.png"
 	},
 	{
 		"name": "request-types",
-		"inventoryRoute": "/agent/settings/request-types",
+		"inventoryRoute": "/agent/settings/request-types?requestTypeId={id}",
 		"applicationRoute": "/agent/settings/request-types",
 		"test": "request type catalogue editor @visual",
 		"screenshot": "request-types.png"
+	},
+	{
+		"name": "portal-catalogue-selected-form",
+		"inventoryRoute": "/catalogue?q=no-match&key=access",
+		"applicationRoute": "/catalogue",
+		"origin": "portal",
+		"test": "portal catalogue selected form @visual",
+		"screenshot": "portal-catalogue-selected-form.png"
+	},
+	{
+		"name": "portal-submission-detail",
+		"inventoryRoute": "/submissions/{ref}",
+		"applicationRoute": "/submissions/$ref",
+		"origin": "portal",
+		"test": "portal submission detail @visual",
+		"screenshot": "portal-submission-detail.png"
 	}
 ]

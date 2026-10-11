@@ -162,6 +162,17 @@ export async function getPortalCatalogue(q?: string) {
   return response.json();
 }
 
+export async function getPortalRequestType(key: string) {
+  const response = await client.portal.catalogue[":key"].$get({
+    param: { key },
+  });
+  if (!response.ok)
+    throw new Error(
+      (await response.text()) || "Unable to load the request form",
+    );
+  return response.json();
+}
+
 export async function submitPortalRequest(input: {
   key: string;
   formData: Record<string, unknown>;

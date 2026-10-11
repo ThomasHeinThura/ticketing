@@ -49,6 +49,33 @@ const project = {
   columns: [],
 };
 
+const visualRequestType = {
+  id: "visual-request-type",
+  key: "visual-access",
+  name: "Visual access request",
+  description: "Request access to a support workspace.",
+  group: "Access",
+  workItemTypeId: "visual-work-item-type",
+  defaultProjectId: "visual-project",
+  formSchema: {
+    fields: [
+      {
+        key: "title",
+        label: "Summary",
+        type: "text",
+        required: true,
+        mapsTo: { field: "title" },
+      },
+    ],
+  },
+  published: true,
+  version: 3,
+  autoAccept: false,
+  customerVisible: true,
+  forcePrivate: false,
+  position: 0,
+};
+
 const workItem = {
   id: "visual-item",
   projectId: project.id,
@@ -86,7 +113,24 @@ async function installAuthenticatedFixture(page: Page) {
     let body: unknown = [];
 
     if (path.endsWith("/api/auth/get-session")) body = session;
-    else if (path.endsWith("/api/submissions")) {
+    else if (path.endsWith("/api/submissions/SUB-7")) {
+      body = {
+        submission: {
+          state: "new",
+          formData: { title: "Request access to the support workspace" },
+          requesterId: "visual-requester",
+          organisationId: "visual-workspace",
+          workItemId: null,
+        },
+        requestType: { name: "Access request" },
+        version: {
+          defaultProjectId: project.id,
+          workItemTypeId: "visual-work-item-type",
+          formSchema: { fields: visualRequestType.formSchema.fields },
+        },
+        messages: [],
+      };
+    } else if (path.endsWith("/api/submissions")) {
       body = {
         submissions: [
           {
@@ -100,8 +144,74 @@ async function installAuthenticatedFixture(page: Page) {
         ],
         page: { hasMore: false, nextCursor: null },
       };
+    } else if (path.endsWith("/api/request-types/visual-request-type")) {
+      body = visualRequestType;
     } else if (path.endsWith("/api/request-types")) {
-      body = { requestTypes: [] };
+      body = { requestTypes: [visualRequestType] };
+    } else if (path.endsWith("/api/portal/catalogue/access")) {
+      body = {
+        key: "access",
+        name: "Access request",
+        description: "Request access to a support workspace.",
+        formSchema: {
+          fields: [
+            { key: "title", label: "Summary", type: "text", required: true },
+          ],
+        },
+        version: 3,
+      };
+    } else if (path.endsWith("/api/portal/catalogue")) {
+      body = {
+        defaultCustomerVisibility: "organisation",
+        requestTypes: [
+          {
+            key: "access",
+            name: "Access request",
+            description: "Request access to a support workspace.",
+            icon: null,
+            group: "Access",
+            position: 0,
+            forcePrivate: false,
+            formSchema: {
+              fields: [
+                {
+                  key: "title",
+                  label: "Summary",
+                  type: "text",
+                  required: true,
+                },
+              ],
+            },
+            version: 3,
+          },
+        ],
+      };
+    } else if (path.endsWith("/api/portal/submissions/SUB-7")) {
+      body = {
+        submission: {
+          state: "new",
+          formData: { title: "Request access to the support workspace" },
+          workItemId: null,
+        },
+        canWithdraw: true,
+        workItem: null,
+        requestType: { name: "Access request" },
+        version: {
+          formSchema: {
+            fields: [
+              { key: "title", label: "Summary", type: "text" },
+              { key: "evidence", label: "Evidence", type: "file" },
+            ],
+          },
+        },
+        messages: [],
+      };
+    } else if (path.endsWith("/api/portal/submissions/SUB-7/attachments")) {
+      body = [];
+    } else if (path.endsWith("/api/submissions/SUB-7/attachments")) {
+      body = [];
+    } else if (path.endsWith("/api/submissions/SUB-7/duplicates")) {
+      body = { suggestions: [] };
     } else if (path.endsWith("/api/config")) {
       body = {
         disableRegistration: true,
@@ -307,7 +417,7 @@ test("two-factor authenticator challenge screen @visual", async ({ page }) => {
 
 test("intake triage queue @visual", async ({ page }) => {
   await installAuthenticatedFixture(page);
-  await page.goto("/agent/triage");
+  await page.goto("/agent/triage?state=new&ref=SUB-7");
   await expect(page.getByRole("heading", { level: 1 })).toBeVisible();
   await expect(page.getByText("SUB-7", { exact: true })).toBeVisible();
   await expect(page).toHaveScreenshot("intake-queue.png", {
@@ -323,13 +433,53 @@ test("intake triage queue @visual", async ({ page }) => {
 
 test("request type catalogue editor @visual", async ({ page }) => {
   await installAuthenticatedFixture(page);
-  await page.goto("/agent/settings/request-types");
+  await page.goto(
+    "/agent/settings/request-types?requestTypeId=visual-request-type",
+  );
   await expect(page.getByRole("heading", { level: 1 })).toBeVisible();
   await expect(page.getByRole("heading", { level: 2 })).toBeVisible();
   await expect(
     page.getByRole("button", { name: "New request type" }),
   ).toBeVisible();
   await expect(page).toHaveScreenshot("request-types.png", {
+    animations: "disabled",
+    caret: "hide",
+    fullPage: true,
+    scale: "css",
+    maxDiffPixels: 0,
+    threshold: 0,
+    includeAA: true,
+  });
+});
+
+test("portal catalogue selected form @visual", async ({ page }) => {
+  await installAuthenticatedFixture(page);
+  await page.goto("http://127.0.0.1:4179/catalogue?q=no-match&key=access");
+  await expect(
+    page.getByRole("heading", { name: "Access request", exact: true }),
+  ).toBeVisible();
+  await expect(page.getByRole("textbox", { name: "Summary" })).toBeVisible();
+  await expect(page).toHaveScreenshot("portal-catalogue-selected-form.png", {
+    animations: "disabled",
+    caret: "hide",
+    fullPage: true,
+    scale: "css",
+    maxDiffPixels: 0,
+    threshold: 0,
+    includeAA: true,
+  });
+});
+
+test("portal submission detail @visual", async ({ page }) => {
+  await installAuthenticatedFixture(page);
+  await page.goto("http://127.0.0.1:4179/submissions/SUB-7");
+  await expect(
+    page.getByRole("heading", { name: "Request SUB-7", exact: true }),
+  ).toBeVisible();
+  await expect(
+    page.getByRole("heading", { name: "Your answers" }),
+  ).toBeVisible();
+  await expect(page).toHaveScreenshot("portal-submission-detail.png", {
     animations: "disabled",
     caret: "hide",
     fullPage: true,

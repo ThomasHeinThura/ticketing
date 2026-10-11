@@ -15,7 +15,11 @@ import {
 } from "@taskdesk/ui";
 import { useEffect, useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
-import { getPortalCatalogue, submitPortalRequest } from "@/fetchers/intake";
+import {
+  getPortalCatalogue,
+  getPortalRequestType,
+  submitPortalRequest,
+} from "@/fetchers/intake";
 import { missingRequiredIntakeFields } from "@/lib/intake-validation";
 import { resolveIntakeVisibility } from "@/lib/intake-visibility";
 import { parsePortalCatalogueSearch, routes } from "@/lib/routes";
@@ -45,8 +49,39 @@ function PortalCatalogue() {
     queryKey: ["portal", "catalogue", q],
     queryFn: () => getPortalCatalogue(q),
   });
-  const entries = (catalogue.data?.requestTypes ?? []) as unknown as Entry[];
-  const selected = entries.find((entry) => entry.key === key);
+  const filteredEntries = (catalogue.data?.requestTypes ??
+    []) as unknown as Entry[];
+  const needsSelectionMetadata = Boolean(
+    key &&
+      catalogue.data &&
+      !filteredEntries.some((entry) => entry.key === key),
+  );
+  const selectionMetadata = useQuery({
+    queryKey: ["portal", "catalogue", "selection-metadata"],
+    queryFn: () => getPortalCatalogue(),
+    enabled: needsSelectionMetadata,
+  });
+  const selectedType = useQuery({
+    queryKey: ["portal", "catalogue", "type", key],
+    queryFn: () => getPortalRequestType(key ?? ""),
+    enabled: Boolean(key),
+  });
+  const entries = filteredEntries;
+  const metadataEntries = (selectionMetadata.data?.requestTypes ??
+    []) as unknown as Entry[];
+  const selectedSummary =
+    filteredEntries.find((entry) => entry.key === key) ??
+    metadataEntries.find((entry) => entry.key === key);
+  const selected =
+    selectedSummary && selectedType.data
+      ? ({ ...selectedSummary, ...selectedType.data } as Entry)
+      : undefined;
+  const primaryError =
+    catalogue.isError || selectionMetadata.isError || selectedType.isError;
+  const primaryLoading =
+    catalogue.isLoading ||
+    selectionMetadata.isLoading ||
+    (Boolean(key) && selectedType.isLoading);
   const storageKey = selected
     ? `taskdesk:intake-draft:${selected.key}:${selected.version}`
     : null;
@@ -123,13 +158,34 @@ function PortalCatalogue() {
           })}
         </p>
       </header>
-      {catalogue.isError && (
+      {primaryError && (
         <Alert variant="error">
           <AlertDescription>
             {t("portal:intake.loadError", {
-              defaultValue: "Could not load the catalogue.",
+              defaultValue: "Could not load the request catalogue or form.",
             })}
           </AlertDescription>
+          {catalogue.isError && (
+            <Button variant="outline" onClick={() => void catalogue.refetch()}>
+              {t("common:actions.retry", { defaultValue: "Retry" })}
+            </Button>
+          )}
+          {selectedType.isError && (
+            <Button
+              variant="outline"
+              onClick={() => void selectedType.refetch()}
+            >
+              {t("common:actions.retry", { defaultValue: "Retry" })}
+            </Button>
+          )}
+          {selectionMetadata.isError && (
+            <Button
+              variant="outline"
+              onClick={() => void selectionMetadata.refetch()}
+            >
+              {t("common:actions.retry", { defaultValue: "Retry" })}
+            </Button>
+          )}
         </Alert>
       )}
       <label className="flex flex-col gap-1" htmlFor="catalogue-search">
@@ -147,7 +203,11 @@ function PortalCatalogue() {
           })}
         />
       </label>
-      {selected ? (
+      {primaryLoading && !primaryError ? (
+        <p role="status">
+          {t("common:empty.loading", { defaultValue: "Loading…" })}
+        </p>
+      ) : primaryError ? null : selected ? (
         <section className="flex flex-col gap-4 rounded-md border p-4">
           <Button
             variant="ghost"
@@ -357,7 +417,8 @@ function PortalCatalogue() {
                 <Select
                   value={
                     visibilityValue ??
-                    catalogue.data?.defaultCustomerVisibility ??
+                    (selectionMetadata.data ?? catalogue.data)
+                      ?.defaultCustomerVisibility ??
                     "organisation"
                   }
                   onValueChange={(value) =>
@@ -405,11 +466,7 @@ function PortalCatalogue() {
         </section>
       ) : (
         <div className="flex flex-col gap-6">
-          {catalogue.isLoading ? (
-            <p role="status">
-              {t("common:empty.loading", { defaultValue: "Loading…" })}
-            </p>
-          ) : entries.length === 0 ? (
+          {entries.length === 0 ? (
             <p>
               {t("portal:intake.emptyCatalogue", {
                 defaultValue:

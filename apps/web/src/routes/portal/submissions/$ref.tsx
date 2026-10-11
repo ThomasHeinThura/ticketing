@@ -135,7 +135,19 @@ function PortalSubmissionPage() {
           {t("common:empty.loading", { defaultValue: "Loading…" })}
         </p>
       )}
-      {(page.isError || reply.isError || withdraw.isError) && (
+      {page.isError ? (
+        <Alert variant="error">
+          <AlertDescription>
+            {t("portal:intake.pageError", {
+              defaultValue: "This request could not be loaded or updated.",
+            })}
+          </AlertDescription>
+          <Button variant="outline" onClick={() => void page.refetch()}>
+            {t("common:actions.retry", { defaultValue: "Retry" })}
+          </Button>
+        </Alert>
+      ) : null}
+      {!page.isError && (reply.isError || withdraw.isError) && (
         <Alert variant="error">
           <AlertDescription>
             {t("portal:intake.pageError", {

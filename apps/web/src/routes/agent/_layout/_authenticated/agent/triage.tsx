@@ -166,8 +166,7 @@ function IntakeRoute() {
         <p className="text-muted-foreground text-sm">{t("description")}</p>
       </header>
       {!workspace.data?.id && <p role="status">{t("selectWorkspace")}</p>}
-      {(queue.isError ||
-        detail.isError ||
+      {(detail.isError ||
         attachments.isError ||
         claim.isError ||
         accept.isError ||
@@ -205,7 +204,14 @@ function IntakeRoute() {
           </Button>
         ))}
       </fieldset>
-      {queue.isLoading ? (
+      {queue.isError ? (
+        <Alert variant="error" role="alert">
+          <AlertDescription>{t("actionError")}</AlertDescription>
+          <Button variant="outline" onClick={() => void queue.refetch()}>
+            {t("retry", { defaultValue: "Retry" })}
+          </Button>
+        </Alert>
+      ) : queue.isLoading ? (
         <p role="status">{t("loading")}</p>
       ) : rows.length === 0 ? (
         <Empty>

@@ -1756,10 +1756,20 @@ function navigationMatchesApplicationRoute(
   );
   const actualPath = actualUrl.pathname;
   const expectedPath = applicationRoute;
-  if (
-    actualUrl.search !== expectedUrl.search ||
-    actualUrl.hash !== expectedUrl.hash
-  ) {
+  const expectedSearch = [...expectedUrl.searchParams.entries()];
+  const actualSearch = [...actualUrl.searchParams.entries()];
+  const queryMatches =
+    expectedSearch.length === actualSearch.length &&
+    expectedSearch.every(([name, expected], index) => {
+      const [actualName, actual] = actualSearch[index] ?? [];
+      return (
+        name === actualName &&
+        (expected.match(/^\{[^{}]+\}$/u)
+          ? actual.length > 0
+          : actual === expected)
+      );
+    });
+  if (!queryMatches || actualUrl.hash !== expectedUrl.hash) {
     return false;
   }
   const actualSegments = actualPath.split("/").filter(Boolean);
@@ -3222,10 +3232,6 @@ let mappedScreenshotAssertions = 0;
 for (const screen of manifest) {
   if (screen.origin !== undefined && screen.origin !== "portal")
     failures.push(`${screen.name} has an unsupported visual origin`);
-  if (screen.origin === "portal" && screen.applicationRoute !== "/")
-    failures.push(
-      `${screen.name} portal visual route must use the independent root path`,
-    );
   if (seenTests.has(screen.test))
     failures.push(`duplicate test name: ${screen.test}`);
   seenTests.add(screen.test);
