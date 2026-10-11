@@ -1281,6 +1281,8 @@ describe("God Mode Users API", () => {
     });
     const pendingRecord = await db
       .select({
+        credentialType: schema.pendingActionTable.credentialType,
+        credentialId: schema.pendingActionTable.credentialId,
         action: schema.pendingActionTable.action,
         targetType: schema.pendingActionTable.targetType,
         targetIds: schema.pendingActionTable.targetIds,
@@ -1295,6 +1297,8 @@ describe("God Mode Users API", () => {
       .where(eq(schema.pendingActionTable.id, pending.pendingActionId));
     expect(pendingRecord).toEqual([
       {
+        credentialType: "session",
+        credentialId: adminSession,
         action: "delete",
         targetType: "user",
         targetIds: [target.id],

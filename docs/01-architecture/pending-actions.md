@@ -130,12 +130,26 @@ thing that is hashed or executed.
 - `PA-8` **Expiry:** 15 minutes from creation. `pending-action-expire`
   ([background-jobs.md](background-jobs.md)) marks stale rows `expired`.
 - `PA-9` **Invalidation:** an action becomes `invalidated` when the requesting credential
-  is revoked, the requester is deactivated, the requester loses reach to any target, the
-  required capability is removed, the requester cancels it, a target's version changes, or
+  is explicitly revoked, the requester is deactivated, the requester loses reach to any
+  target, the required capability is removed, the requester cancels it, a target's version changes, or
   **a target has moved to another scope** since the request (`PA-6` step 3a — a cross-project
   or cross-workspace move). Whichever cause fired is written to `invalidation_reason` and
   carried on the `pending_action.decided` event, so the row explains itself afterwards.
-  Denial by the approver is `denied`. None of these can later be approved.
+  An explicit sign-out or session revocation invalidates actions bound to that session;
+  disabling or revoking an API key invalidates actions bound to that key. Restoring the same
+  session, key, reach or capability never revives an invalidated action. Ordinary session
+  expiry alone is not credential revocation: the action stays pending until `expires_at`, and
+  the requester may sign in again to approve it. A reach or capability change invalidates an
+  action only when it removes access required by that action under its current registered
+  route policy and target scope; unrelated membership, role, or profile changes do not.
+  Denial by the approver is `denied`. None of these terminal outcomes can later be approved.
+- **Lifecycle lock order:** pending-action creation, approvals that lock the requester
+  person, and person active-state transitions take one transaction-scoped lifecycle gate
+  before their first row lock. Administrative deactivation takes the shared instance-admin
+  lock first, then this gate. After the person closure is locked, deactivation locks that
+  person's pending rows in id order, marks each still-pending row `invalidated` with
+  `requester_deactivated`, and writes its decided event and audit row in the same transaction.
+  This order prevents an approval holding an action row while deactivation holds the person.
 - `PA-10` **Nobody approves their own automation.** A model-supplied field (the old
   `confirm: true`), a header, an MCP argument or an automation cannot satisfy `PA-6`.
   There is no server setting that disables this mechanism.
@@ -545,6 +559,9 @@ body carries the `summary` the UI renders.
 | Case | Behaviour |
 | --- | --- |
 | Approver's session expires mid-dialog | The action stays `pending` until `expires_at`; re-sign-in and approve from Profile → Pending actions |
+| Requester's session is explicitly signed out or revoked | Actions bound to that original session become `invalidated` with `credential_revoked`; signing in again cannot revive them |
+| Requesting API key is disabled or revoked | Actions bound to that key become `invalidated` with `credential_revoked`; re-enabling the key cannot revive them |
+| Requester loses action-required reach or capability | The affected action becomes `invalidated` with `reach_lost` or `capability_removed`; restoring access cannot revive it. Changes that do not remove the action's required access do not invalidate it |
 | Two identical delete requests | **One** pending action. The idempotency layer replays the stored `202` for a keyed retry; an unkeyed repeat hits the partial unique index and returns `409 pending_approval` with the existing id (`PA-4`) |
 | Elevated `DELETE` presented on an API key or MCP key | `403 session_required` before the policy runs — no pending action, nothing to poll (`PA-5`) |
 | Target moved to another project or workspace between request and approval | `PA-6` step 3a → `409 target_changed`, action `invalidated` with `invalidation_reason = 'target_scope_changed'`, even if the approver holds the capability in the new scope |

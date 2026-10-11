@@ -18,6 +18,7 @@ import {
   sql,
 } from "drizzle-orm";
 import db, { schema } from "../database";
+import { invalidatePendingActionsForRequester } from "../pending-action/lifecycle-invalidation";
 import {
   lockAndVerifyScimMutation,
   type ScimRequestAuthority,
@@ -1571,7 +1572,10 @@ export function getScimExternalIdentity(
   connectionId: string,
 ) {
   return executor
-    .select({ personId: schema.externalIdentityTable.personId })
+    .select({
+      personId: schema.externalIdentityTable.personId,
+      active: schema.externalIdentityTable.active,
+    })
     .from(schema.externalIdentityTable)
     .where(
       and(
@@ -2602,6 +2606,7 @@ export async function transitionPersonLifecycleInTransaction(
   let sessionsRevoked = 0;
   let keysRevoked = 0;
   let membershipsEnded = 0;
+  let pendingActionAuditFailures = 0;
   const externalIdentityIds = [
     ...new Set(
       discovered.flatMap((grant) =>
@@ -2614,6 +2619,11 @@ export async function transitionPersonLifecycleInTransaction(
     .set({ active, updatedAt: now })
     .where(eq(schema.personTable.id, person.id));
   if (!active) {
+    pendingActionAuditFailures = await invalidatePendingActionsForRequester(
+      tx,
+      person.id,
+      now,
+    );
     if (person.userId) {
       const sessions = await tx
         .delete(schema.sessionTable)
@@ -2678,6 +2688,7 @@ export async function transitionPersonLifecycleInTransaction(
     keysRevoked,
     membershipsEnded,
     externalIdentityIds,
+    pendingActionAuditFailures,
   };
 }
 

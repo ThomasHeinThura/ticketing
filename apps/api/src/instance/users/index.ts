@@ -582,7 +582,7 @@ const routes = apiRouter()
     return c.json({ revokedSessions }, 200);
   })
   .openapi(deactivateRoute, async (c) => {
-    await requireGodMode(c);
+    const session = await requireGodMode(c);
     const { id } = c.req.valid("param");
     c.req.valid("json");
     const [target] = await getPersonStatus(id);
@@ -603,7 +603,7 @@ const routes = apiRouter()
     const requested = await createPendingAction({
       requesterPersonId: actor.id,
       credentialType: "session",
-      credentialId: null,
+      credentialId: session.id,
       origin: "web",
       action: "delete",
       routeKey: "POST /api/instance/users/{id}/deactivate",

@@ -41,6 +41,7 @@ import {
 import { validateWorkspaceAccess } from "../utils/validate-workspace-access";
 import { invalidateNativeAuthorization } from "../ws";
 import { resolvePendingActionApprovalContract } from "./approval-contract";
+import { lockPendingActionLifecycle } from "./lifecycle-invalidation";
 import {
   approveSavedViewDeletion,
   approveServiceCalendarDeletion,
@@ -116,6 +117,7 @@ export async function createPendingAction(input: CreatePendingActionInput) {
   for (let attempt = 0; attempt < 2; attempt += 1) {
     try {
       created = await db.transaction(async (tx) => {
+        await lockPendingActionLifecycle(tx);
         const scope = await resolveRequestScope(tx, input);
         const confirmation = requiredConfirmation({
           action: input.action,
@@ -564,8 +566,9 @@ export async function approveUserDeactivation(input: {
       // Shared instance-admin serialization first, as in grant-admin and suspend, so the
       // last-administrator guard and every admin-reducing mutation are one ordered step.
       await lockInstanceAdminSerialization(tx);
+      await lockPendingActionLifecycle(tx);
       const now = new Date();
-      let auditFailure = false;
+      let auditFailures = 0;
       const [row] = await tx
         .select()
         .from(pendingActionTable)
@@ -623,7 +626,7 @@ export async function approveUserDeactivation(input: {
           state: "expired",
           occurredAt: now,
         });
-        return { row: expired, state: "expired" as const, auditFailure: false };
+        return { row: expired, state: "expired" as const, auditFailures: 0 };
       }
       const route = policyRegistry.get(row.routeKey);
       if (
@@ -734,7 +737,7 @@ export async function approveUserDeactivation(input: {
         return {
           row: invalidated,
           state: "invalidated" as const,
-          auditFailure: false,
+          auditFailures: 0,
         };
       }
       const [target] = await tx
@@ -768,7 +771,7 @@ export async function approveUserDeactivation(input: {
         return {
           row: invalidated,
           state: "invalidated" as const,
-          auditFailure: false,
+          auditFailures: 0,
         };
       }
       const summary = row.payloadSummary as { email?: unknown };
@@ -785,7 +788,7 @@ export async function approveUserDeactivation(input: {
         return {
           row: invalidated,
           state: "invalidated" as const,
-          auditFailure: false,
+          auditFailures: 0,
         };
       }
       await assertAdminRemovalAllowed(tx, {
@@ -809,7 +812,7 @@ export async function approveUserDeactivation(input: {
           pendingActionId: row.id,
           traceId: input.traceId,
         });
-        return { row, state: "denied" as const, auditFailure: false };
+        return { row, state: "denied" as const, auditFailures: 0 };
       }
       await appendPendingActionStepUpAudit(tx, {
         action: "auth.step_up_consumed",
@@ -830,6 +833,7 @@ export async function approveUserDeactivation(input: {
         throw new HTTPException(409, {
           message: "pending_action_target_changed",
         });
+      auditFailures += lifecycle.pendingActionAuditFailures;
       const [executed] = await tx
         .update(pendingActionTable)
         .set({
@@ -956,10 +960,10 @@ export async function approveUserDeactivation(input: {
             }),
           );
         } catch {
-          auditFailure = true;
+          auditFailures += 1;
         }
       }
-      return { row: executed, state: "executed" as const, auditFailure };
+      return { row: executed, state: "executed" as const, auditFailures };
     }),
   );
   if (result.state === "invalidated") {
@@ -973,8 +977,9 @@ export async function approveUserDeactivation(input: {
     if (targetUserId)
       await invalidateNativeAuthorization({ userId: targetUserId });
   }
-  if (result.auditFailure) {
-    recordAuditWriteFailure("pending_action_decision");
+  if (result.auditFailures > 0) {
+    for (let index = 0; index < result.auditFailures; index += 1)
+      recordAuditWriteFailure("pending_action_decision");
     await notifyCurrentInstanceAdminsOfAuditFailure("pending_action_decision");
   }
   return toPublicPendingAction(result.row);
