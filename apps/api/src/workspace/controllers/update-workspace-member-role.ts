@@ -1,5 +1,6 @@
 import { and, eq } from "drizzle-orm";
-import db, { schema } from "../../database";
+import { schema } from "../../database";
+import { withWorkspaceDeletionAccessLifecycle } from "../../pending-action/workspace-access-invalidation";
 import {
   anyRoleIsOwner,
   roleGrantsOwner,
@@ -60,7 +61,7 @@ async function updateWorkspaceMemberRole(
     throw new OwnerRoleNotAssignableHereError();
   }
 
-  return db.transaction(async (tx) => {
+  return withWorkspaceDeletionAccessLifecycle(workspaceId, async (tx) => {
     await lockWorkspaceRoleAssignment(tx, workspaceId);
 
     const targetRoles = await workspaceMemberRoles(tx, workspaceId, userId);

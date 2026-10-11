@@ -223,9 +223,6 @@ them; a new audit-only action is added here first ([AGENTS.md](../../AGENTS.md) 
 | --- | --- |
 | `auth.sign_in_succeeded` · `auth.sign_in_failed` · `auth.sign_out` · `auth.session_revoked` | Authentication lifecycle, with the provider used |
 | `auth.mfa_enrolled` · `auth.mfa_reset` | Second-factor enrollment and administrator reset (with the required verification note); never record the secret, TOTP, backup codes, or proof |
-| `auth.user_suspended` · `auth.user_unsuspended` | God Mode account suspension changes; record target user id, outcome, and whether a finite expiry was set, but never the ban reason text or exact expiry |
-| `auth.sessions_revoked` | God Mode force sign-out; one summary row with target user id and count, never session ids, tokens, IP addresses or user agents |
-| `auth.instance_admin_granted` | God Mode grant-admin; record actor and target user ids plus `granted` or `already_admin`; never record step-up proof, token, or request body |
 | `auth.step_up_issued` · `auth.step_up_consumed` · `auth.step_up_denied` | A single-use step-up confirmation is issued, consumed, or denied; record binding kind and fixed operation key/route where applicable, never proof, nonce, token, hash or request body |
 | `impersonation.started` · `impersonation.ended` | `GM-7`, `GM-11` |
 | `role.created` · `role.updated` · `role.deleted` · `membership.changed` · `membership.sees_all_granted` | Authority and reach changes |
@@ -246,7 +243,7 @@ them; a new audit-only action is added here first ([AGENTS.md](../../AGENTS.md) 
 | `audit.read` · `audit.exported` · `audit.purged` | `AU-13`; the purge audits itself |
 | `instance.restored` | A restore completed ([backup-and-restore.md](../05-operations/backup-and-restore.md)) |
 | `pending_action.viewed` | The one pending-action transition that is not an event (`PA-11`) |
-| `approval.closed` | A pending approval was closed because a run of its transition consumed approvals ([approvals.md](approvals.md) `AP-5`, owner decision 2026-10-10); not a domain event, because no `approval.*` event fits (`approval.expired` means a time-out) |
+| `sla_policy.created` · `sla_policy.updated` · `sla_policy.published` | SLA policy creation, draft edits and publication |
 
 ## Permissions
 

@@ -1,5 +1,6 @@
 import { createRequire } from "node:module";
-import { eq } from "drizzle-orm";
+import { BUILT_IN_ROLES, defaultRolePayloads } from "@taskdesk/permissions";
+import { and, eq } from "drizzle-orm";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import db, { schema } from "../../../apps/api/src/database";
 import { encryptIdentityClientSecret } from "../../../apps/api/src/identity/client-secret";
@@ -248,6 +249,18 @@ async function seed(jit: { enabled: boolean; roleId: string | null }) {
       seesAll: false,
     })
     .returning();
+  await db.insert(schema.workspaceUserTable).values({
+    workspaceId: W1,
+    userId: user?.id ?? "",
+    role: "admin",
+    joinedAt: new Date(),
+  });
+  await db.insert(schema.workspaceRoleTable).values({
+    workspaceId: W1,
+    role: "admin",
+    permission: JSON.stringify(defaultRolePayloads.admin),
+    isSystem: true,
+  });
   const [grant] = await db
     .insert(schema.membershipGrantTable)
     .values({
@@ -262,8 +275,14 @@ async function seed(jit: { enabled: boolean; roleId: string | null }) {
       seesAll: false,
     })
     .returning();
-  if (!person || !grant) throw new Error("fixture missing");
-  return { sessionCookie, personId: person.id, grantId: grant.id };
+  if (!user || !person || !grant) throw new Error("fixture missing");
+  return {
+    sessionCookie,
+    personId: person.id,
+    requesterUserId: user.id,
+    grantId: grant.id,
+    viewOwnerPersonId: adminPerson.id,
+  };
 }
 
 async function patch(sessionCookie: string, request: Record<string, unknown>) {
@@ -343,6 +362,256 @@ describe("IP-22 JIT policy transitions through the connection configure path", (
     expect(after.grant?.revocationReason).toBe("mapping_changed");
     expect(after.memberships).toHaveLength(0);
   });
+
+  it.each(["max role rank", "JIT default role"] as const)(
+    "retains a calendar deletion when a connection %s change removes JIT access but a direct workspace grant remains",
+    async (transition) => {
+      const { sessionCookie, personId, requesterUserId } =
+        await seed(enabledJit);
+      await db
+        .update(schema.roleTable)
+        .set({ capabilities: ["sla_policy:manage"] })
+        .where(eq(schema.roleTable.id, R1));
+      await db.insert(schema.serviceCalendarTable).values({
+        id: "jit-transition-calendar-pending",
+        workspaceId: W1,
+        name: "JIT rank-loss calendar",
+        timezone: "UTC",
+        windows: {
+          mon: [{ from: 540, to: 1020 }],
+          tue: [{ from: 540, to: 1020 }],
+          wed: [{ from: 540, to: 1020 }],
+          thu: [{ from: 540, to: 1020 }],
+          fri: [{ from: 540, to: 1020 }],
+        },
+        holidays: [],
+      });
+      const now = new Date();
+      const requesterSessionId = `session-${requesterUserId}`;
+      await db.insert(schema.sessionTable).values({
+        id: requesterSessionId,
+        token: `token-${requesterUserId}`,
+        userId: requesterUserId,
+        portal: "agent",
+        expiresAt: new Date(now.getTime() + 60 * 60 * 1000),
+        createdAt: now,
+        updatedAt: now,
+      });
+      const requester = await db.query.userTable.findFirst({
+        where: eq(schema.userTable.id, requesterUserId),
+      });
+      if (!requester) throw new Error("JIT requester fixture is missing");
+      mockAuthenticatedSession(requester);
+      const app = createApp().app;
+      const deletion = await app.request(
+        "/api/service-calendars/jit-transition-calendar-pending",
+        { method: "DELETE" },
+      );
+      expect(deletion.status, await deletion.clone().text()).toBe(202);
+      const pending = (await deletion.json()) as { pendingActionId: string };
+      expect(
+        await db.query.pendingActionTable.findFirst({
+          where: eq(schema.pendingActionTable.id, pending.pendingActionId),
+        }),
+      ).toMatchObject({
+        requestedByPersonId: personId,
+        credentialType: "session",
+        credentialId: requesterSessionId,
+        state: "pending",
+      });
+
+      const admin = await db.query.userTable.findFirst({
+        where: eq(schema.userTable.id, ADMIN_ID),
+      });
+      if (!admin) throw new Error("Identity administrator fixture is missing");
+      mockAuthenticatedSession(admin);
+      const narrowed = await patch(
+        sessionCookie,
+        transition === "max role rank"
+          ? { maxRoleRank: 1 }
+          : { jitPolicy: policy(true, R2) },
+      );
+      expect(narrowed.status).toBe(200);
+      expect(
+        await db.query.pendingActionTable.findFirst({
+          where: eq(schema.pendingActionTable.id, pending.pendingActionId),
+        }),
+      ).toMatchObject({ state: "pending", invalidationReason: null });
+      expect(
+        await db.query.outboxTable.findFirst({
+          where: eq(schema.outboxTable.kind, "pending_action.decided"),
+        }),
+      ).toBeUndefined();
+      expect(
+        await db.query.auditLogTable.findFirst({
+          where: and(
+            eq(schema.auditLogTable.action, "pending_action.decided"),
+            eq(schema.auditLogTable.entityId, pending.pendingActionId),
+          ),
+        }),
+      ).toBeUndefined();
+
+      const restored = await patch(
+        sessionCookie,
+        transition === "max role rank"
+          ? { maxRoleRank: 5 }
+          : { jitPolicy: policy(true, R1) },
+      );
+      expect(restored.status).toBe(200);
+      expect(
+        await db.query.pendingActionTable.findFirst({
+          where: eq(schema.pendingActionTable.id, pending.pendingActionId),
+        }),
+      ).toMatchObject({ state: "pending", invalidationReason: null });
+    },
+  );
+
+  it.each(["max role rank", "JIT default role"] as const)(
+    "terminally invalidates a non-owner saved-view deletion when a connection %s change removes the required projected capability",
+    async (transition) => {
+      const { sessionCookie, personId, requesterUserId, viewOwnerPersonId } =
+        await seed(enabledJit);
+      await db
+        .update(schema.roleTable)
+        .set({ capabilities: [...BUILT_IN_ROLES.manager.capabilities] })
+        .where(eq(schema.roleTable.id, R1));
+      await db
+        .update(schema.workspaceUserTable)
+        .set({ role: "member" })
+        .where(
+          and(
+            eq(schema.workspaceUserTable.workspaceId, W1),
+            eq(schema.workspaceUserTable.userId, requesterUserId),
+          ),
+        );
+      await db.insert(schema.workspaceRoleTable).values({
+        workspaceId: W1,
+        role: "member",
+        permission: JSON.stringify(defaultRolePayloads.member),
+        isSystem: true,
+      });
+      await db.insert(schema.savedViewTable).values({
+        id: `jit-projected-view-${transition === "max role rank" ? "rank" : "disabled"}`,
+        workspaceId: W1,
+        createdBy: viewOwnerPersonId,
+        name: "Projected manager target",
+        scope: "workspace",
+        scopeId: W1,
+        visibility: "private",
+        query: { entity: "work_item" },
+        layout: "list",
+      });
+
+      const now = new Date();
+      const requesterSessionId = `session-${requesterUserId}`;
+      await db.insert(schema.sessionTable).values({
+        id: requesterSessionId,
+        token: `token-${requesterUserId}`,
+        userId: requesterUserId,
+        portal: "agent",
+        expiresAt: new Date(now.getTime() + 60 * 60 * 1000),
+        createdAt: now,
+        updatedAt: now,
+      });
+      const requester = await db.query.userTable.findFirst({
+        where: eq(schema.userTable.id, requesterUserId),
+      });
+      if (!requester) throw new Error("JIT requester fixture is missing");
+      mockAuthenticatedSession(requester);
+      const app = createApp().app;
+      const requesterCookie = `__Host-tdk_agent_session=token-${requesterUserId}`;
+      const deletion = await csrfRequest(
+        app,
+        `/api/views/jit-projected-view-${transition === "max role rank" ? "rank" : "disabled"}`,
+        { method: "DELETE" },
+        requesterCookie,
+      );
+      expect(deletion.status, await deletion.clone().text()).toBe(202);
+      const pending = (await deletion.json()) as { pendingActionId: string };
+      expect(
+        await db.query.pendingActionTable.findFirst({
+          where: eq(schema.pendingActionTable.id, pending.pendingActionId),
+        }),
+      ).toMatchObject({
+        requestedByPersonId: personId,
+        credentialType: "session",
+        credentialId: requesterSessionId,
+        state: "pending",
+      });
+
+      const admin = await db.query.userTable.findFirst({
+        where: eq(schema.userTable.id, ADMIN_ID),
+      });
+      if (!admin) throw new Error("Identity administrator fixture is missing");
+      mockAuthenticatedSession(admin);
+      const changed = await patch(
+        sessionCookie,
+        transition === "max role rank"
+          ? { maxRoleRank: 1 }
+          : { jitPolicy: policy(true, R2) },
+      );
+      expect(changed.status, await changed.clone().text()).toBe(200);
+      expect(
+        await db.query.pendingActionTable.findFirst({
+          where: eq(schema.pendingActionTable.id, pending.pendingActionId),
+        }),
+      ).toMatchObject({
+        state: "invalidated",
+        invalidationReason: "capability_removed",
+      });
+      expect(
+        await db.query.outboxTable.findFirst({
+          where: eq(schema.outboxTable.kind, "pending_action.decided"),
+        }),
+      ).toMatchObject({
+        payload: {
+          payload: {
+            pendingActionId: pending.pendingActionId,
+            outcome: "invalidated",
+            invalidationReason: "capability_removed",
+          },
+        },
+      });
+      expect(
+        await db.query.auditLogTable.findFirst({
+          where: and(
+            eq(schema.auditLogTable.action, "pending_action.decided"),
+            eq(schema.auditLogTable.entityId, pending.pendingActionId),
+          ),
+        }),
+      ).toMatchObject({
+        after: {
+          state: "invalidated",
+          invalidationReason: "capability_removed",
+        },
+      });
+
+      const restored = await patch(
+        sessionCookie,
+        transition === "max role rank"
+          ? { maxRoleRank: 5 }
+          : { jitPolicy: policy(true, R1) },
+      );
+      expect(restored.status).toBe(200);
+      expect(
+        await db.query.pendingActionTable.findFirst({
+          where: eq(schema.pendingActionTable.id, pending.pendingActionId),
+        }),
+      ).toMatchObject({ state: "invalidated" });
+      mockAuthenticatedSession(requester);
+      const replay = await csrfRequest(
+        app,
+        `/api/me/pending-actions/${pending.pendingActionId}/approve`,
+        {
+          method: "POST",
+          headers: { "content-type": "application/json" },
+          body: JSON.stringify({ typedName: "" }),
+        },
+        requesterCookie,
+      );
+      expect(replay.status).toBe(409);
+    },
+  );
 
   it("retires the old jit_default grants when the default role changes", async () => {
     const { sessionCookie, personId, grantId } = await seed(enabledJit);

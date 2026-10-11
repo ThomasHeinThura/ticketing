@@ -38,7 +38,9 @@ export type ExplicitCredentialMutation = {
 type PendingActionInvalidationReason =
   | "credential_revoked"
   | "reach_lost"
-  | "capability_removed";
+  | "capability_removed"
+  | "version_changed"
+  | "scope_changed";
 
 type ExplicitCredentialMutationState = ExplicitCredentialMutation & {
   deleteFailure: unknown | null;
@@ -556,7 +558,7 @@ async function invalidatePendingActionRow(
   return 0;
 }
 
-async function invalidatePendingActionForReason(
+export async function invalidatePendingActionForReason(
   tx: PendingActionTransaction,
   id: string,
   reason: Exclude<PendingActionInvalidationReason, "credential_revoked">,
@@ -803,6 +805,7 @@ export function createCredentialAwareDrizzleAdapter() {
                 confirmationRequired: row.confirmationRequired,
                 payload: row.payload,
                 payloadHash: row.payloadHash,
+                targetVersions: row.targetVersions,
               };
               const beforeDecision = await evaluateActionRequiredAccess(
                 tx,
