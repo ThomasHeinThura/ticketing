@@ -6,7 +6,7 @@ const e2eDirectory = dirname(fileURLToPath(import.meta.url));
 export default {
   testDir: e2eDirectory,
   testMatch:
-    /(approvals-primary-journey|customer-cannot-request-cab|requester-cannot-self-approve|approver-email-not-leaked)\.spec\.ts$/,
+    /(approvals-primary-journey|customer-cannot-request-cab|requester-cannot-self-approve|approver-email-not-leaked|users-primary-journey)\.spec\.ts$/,
   fullyParallel: false,
   workers: 1,
   forbidOnly: true,

@@ -142,6 +142,11 @@ thing that is hashed or executed.
   the requester may sign in again to approve it. A reach or capability change invalidates an
   action only when it removes access required by that action under its current registered
   route policy and target scope; unrelated membership, role, or profile changes do not.
+  Successful deletion of the linked auth account also removes that person's ability to act on
+  every remaining request: account teardown invalidates residual actions owned by the linked
+  person with `capability_removed`, including actions whose original expired-session row was
+  already removed by ordinary cleanup. Expiry cleanup alone remains nonterminal; a missing
+  credential row by itself is not a selector for account teardown.
   Denial by the approver is `denied`. None of these terminal outcomes can later be approved.
 - **Lifecycle lock order:** pending-action creation, approvals that lock the requester
   person, and person active-state transitions take one transaction-scoped lifecycle gate

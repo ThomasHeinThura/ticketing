@@ -2,7 +2,7 @@ import { randomUUID } from "node:crypto";
 import { createRequire } from "node:module";
 import { and, desc, eq, inArray, sql } from "drizzle-orm";
 import { Client } from "pg";
-import { beforeEach, describe, expect, it } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 import {
   auth,
   getConfiguredAgentOrigin,
@@ -11,6 +11,8 @@ import {
 } from "../../apps/api/src/auth";
 import db, { schema } from "../../apps/api/src/database";
 import { createApp } from "../../apps/api/src/index";
+import * as observability from "../../apps/api/src/instance/observability/runtime";
+import { deleteExpiredSessions } from "../../apps/api/src/scheduler/session-cleanup";
 import { ensureStaffPersonForUser } from "../../apps/api/src/utils/seed-internal-organisation";
 import { csrfRequest } from "./helpers/csrf";
 import { resetTestDatabase } from "./helpers/database";
@@ -167,7 +169,7 @@ async function insertPendingAction(input: {
   workspaceId: string;
   organisationId: string;
   credentialType: "session" | "api_key";
-  credentialId: string;
+  credentialId: string | null;
 }) {
   const now = new Date();
   return requireRow(
@@ -272,6 +274,7 @@ function expectPersistedInvalidation(
   decisions: Awaited<ReturnType<typeof decisionRows>>,
   pending: Awaited<ReturnType<typeof insertPendingAction>>,
   workspaceId: string,
+  invalidationReason = "credential_revoked",
 ) {
   expect(decisions.events).toHaveLength(1);
   expect(decisions.events[0]).toMatchObject({
@@ -281,7 +284,7 @@ function expectPersistedInvalidation(
       payload: {
         pendingActionId: pending.id,
         outcome: "invalidated",
-        invalidationReason: "credential_revoked",
+        invalidationReason,
       },
     },
   });
@@ -293,7 +296,7 @@ function expectPersistedInvalidation(
     entityId: pending.id,
     after: {
       state: "invalidated",
-      invalidationReason: "credential_revoked",
+      invalidationReason,
     },
   });
 }
@@ -851,6 +854,256 @@ describe("PA-9 explicit credential revocation", () => {
       invalidationReason: null,
     });
     expect(await decisionRows(pending.id)).toEqual({ events: [], audits: [] });
+  });
+
+  it("invalidates a pending action when account deletion follows natural session cleanup", async () => {
+    const { app } = createApp();
+    const setup = await setupCredentialOwner(app);
+    const otherOwnerId = `cleaned-account-delete-other-${randomUUID()}`;
+    await db.insert(schema.userTable).values({
+      id: otherOwnerId,
+      email: `${otherOwnerId}@example.test`,
+      emailVerified: true,
+      name: "Remaining Owner",
+    });
+    await db.insert(schema.workspaceUserTable).values({
+      workspaceId: setup.workspace.id,
+      userId: otherOwnerId,
+      role: "owner",
+      joinedAt: new Date(),
+    });
+    const pending = await insertPendingAction({
+      requesterPersonId: setup.person.id,
+      workspaceId: setup.workspace.id,
+      organisationId: setup.workspace.organisationId,
+      credentialType: "session",
+      credentialId: setup.session.id,
+    });
+    const legacyPending = await insertPendingAction({
+      requesterPersonId: setup.person.id,
+      workspaceId: setup.workspace.id,
+      organisationId: setup.workspace.organisationId,
+      credentialType: "session",
+      credentialId: null,
+    });
+    await ensureStaffPersonForUser(otherOwnerId);
+    const otherPerson = requireRow(
+      await db
+        .select({ id: schema.personTable.id })
+        .from(schema.personTable)
+        .where(eq(schema.personTable.userId, otherOwnerId))
+        .limit(1),
+      "unrelated account-deletion requester person",
+    );
+    const unrelatedPending = await insertPendingAction({
+      requesterPersonId: otherPerson.id,
+      workspaceId: setup.workspace.id,
+      organisationId: setup.workspace.organisationId,
+      credentialType: "session",
+      credentialId: `unrelated-${randomUUID()}`,
+    });
+    await db
+      .update(schema.sessionTable)
+      .set({ expiresAt: new Date(Date.now() - 60_000) })
+      .where(eq(schema.sessionTable.id, setup.session.id));
+
+    expect(await deleteExpiredSessions()).toBe(1);
+    expect(await stateOf(pending.id)).toEqual({
+      state: "pending",
+      invalidationReason: null,
+    });
+
+    const signIn = await app.request("/api/auth/sign-in/email", {
+      method: "POST",
+      headers: {
+        "content-type": "application/json",
+        "x-forwarded-for": `198.51.100.${(++signInCounter % 250) + 1}`,
+      },
+      body: JSON.stringify({
+        email: setup.user.email,
+        password: TEST_PASSWORD,
+      }),
+    });
+    expect(signIn.status, await signIn.clone().text()).toBe(200);
+    const replacementCookie = signIn.headers
+      .getSetCookie()
+      .find((value) => value.startsWith("__Host-tdk_agent_session="))
+      ?.split(";", 1)[0];
+    expect(replacementCookie).toBeDefined();
+
+    const response = await csrfRequest(
+      app,
+      "/api/auth/delete-user",
+      {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ password: TEST_PASSWORD }),
+      },
+      replacementCookie as string,
+    );
+    expect(response.status, await response.clone().text()).toBe(200);
+    expect(await stateOf(pending.id)).toEqual({
+      state: "invalidated",
+      invalidationReason: "capability_removed",
+    });
+    expectPersistedInvalidation(
+      await decisionRows(pending.id),
+      pending,
+      setup.workspace.id,
+      "capability_removed",
+    );
+    expect(await stateOf(legacyPending.id)).toEqual({
+      state: "invalidated",
+      invalidationReason: "capability_removed",
+    });
+    expectPersistedInvalidation(
+      await decisionRows(legacyPending.id),
+      legacyPending,
+      setup.workspace.id,
+      "capability_removed",
+    );
+    expect(await stateOf(unrelatedPending.id)).toEqual({
+      state: "pending",
+      invalidationReason: null,
+    });
+    expect(await decisionRows(unrelatedPending.id)).toEqual({
+      events: [],
+      audits: [],
+    });
+
+    // Re-linking the surviving person to an auth principal cannot revive the
+    // old decision; the state transition is terminal and pending-only.
+    await db.insert(schema.userTable).values({
+      id: setup.user.id,
+      email: setup.user.email,
+      emailVerified: true,
+      name: setup.user.name,
+    });
+    await db
+      .update(schema.personTable)
+      .set({ userId: setup.user.id })
+      .where(eq(schema.personTable.id, setup.person.id));
+    expect(await stateOf(pending.id)).toEqual({
+      state: "invalidated",
+      invalidationReason: "capability_removed",
+    });
+  });
+
+  it("rolls back residual account-deletion invalidation when its decision outbox insert fails", async () => {
+    const { app } = createApp();
+    const setup = await setupCredentialOwner(app);
+    const pending = await insertPendingAction({
+      requesterPersonId: setup.person.id,
+      workspaceId: setup.workspace.id,
+      organisationId: setup.workspace.organisationId,
+      credentialType: "session",
+      credentialId: setup.session.id,
+    });
+    await db
+      .update(schema.sessionTable)
+      .set({ expiresAt: new Date(Date.now() - 60_000) })
+      .where(eq(schema.sessionTable.id, setup.session.id));
+    expect(await deleteExpiredSessions()).toBe(1);
+    expect(await stateOf(pending.id)).toEqual({
+      state: "pending",
+      invalidationReason: null,
+    });
+
+    const signIn = await app.request("/api/auth/sign-in/email", {
+      method: "POST",
+      headers: {
+        "content-type": "application/json",
+        "x-forwarded-for": `198.51.100.${(++signInCounter % 250) + 1}`,
+      },
+      body: JSON.stringify({
+        email: setup.user.email,
+        password: TEST_PASSWORD,
+      }),
+    });
+    expect(signIn.status, await signIn.clone().text()).toBe(200);
+    const replacementCookie = signIn.headers
+      .getSetCookie()
+      .find((value) => value.startsWith("__Host-tdk_agent_session="))
+      ?.split(";", 1)[0];
+    expect(replacementCookie).toBeDefined();
+
+    await db.execute(
+      sql.raw(`
+        CREATE OR REPLACE FUNCTION fail_residual_account_decision_outbox()
+        RETURNS trigger LANGUAGE plpgsql AS $$
+        BEGIN
+          IF NEW.kind = 'pending_action.decided' THEN
+            RAISE EXCEPTION 'forced residual decision outbox failure';
+          END IF;
+          RETURN NEW;
+        END;
+        $$
+      `),
+    );
+    await db.execute(
+      sql.raw(`
+        CREATE TRIGGER fail_residual_account_decision_outbox
+        BEFORE INSERT ON outbox
+        FOR EACH ROW EXECUTE FUNCTION fail_residual_account_decision_outbox()
+      `),
+    );
+
+    try {
+      const response = await csrfRequest(
+        app,
+        "/api/auth/delete-user",
+        {
+          method: "POST",
+          headers: { "content-type": "application/json" },
+          body: JSON.stringify({ password: TEST_PASSWORD }),
+        },
+        replacementCookie as string,
+      );
+      expect(response.status, await response.clone().text()).not.toBe(200);
+      expect(await stateOf(pending.id)).toEqual({
+        state: "pending",
+        invalidationReason: null,
+      });
+      expect(await decisionRows(pending.id)).toEqual({
+        events: [],
+        audits: [],
+      });
+      expect(
+        await db
+          .select({ id: schema.userTable.id })
+          .from(schema.userTable)
+          .where(eq(schema.userTable.id, setup.user.id)),
+      ).toHaveLength(1);
+      expect(
+        await db
+          .select({ userId: schema.personTable.userId })
+          .from(schema.personTable)
+          .where(eq(schema.personTable.id, setup.person.id)),
+      ).toEqual([{ userId: setup.user.id }]);
+      expect(
+        await db
+          .select({ id: schema.sessionTable.id })
+          .from(schema.sessionTable)
+          .where(eq(schema.sessionTable.userId, setup.user.id)),
+      ).toHaveLength(1);
+      expect(
+        await db
+          .select({ id: schema.sessionTable.id })
+          .from(schema.sessionTable)
+          .where(eq(schema.sessionTable.id, setup.session.id)),
+      ).toHaveLength(0);
+    } finally {
+      await db.execute(
+        sql.raw(
+          "DROP TRIGGER IF EXISTS fail_residual_account_decision_outbox ON outbox",
+        ),
+      );
+      await db.execute(
+        sql.raw(
+          "DROP FUNCTION IF EXISTS fail_residual_account_decision_outbox()",
+        ),
+      );
+    }
   });
 
   it("terminally invalidates a naturally expired original session on later explicit bulk revocation", async () => {
@@ -2072,6 +2325,116 @@ describe("PA-9 explicit credential revocation", () => {
       await db.execute(
         sql.raw("DROP FUNCTION IF EXISTS fail_account_delete_outbox_insert()"),
       );
+    }
+  });
+
+  it("reports each residual-action audit failure after account deletion commits", async () => {
+    const app = createApp().app;
+    const setup = await setupCredentialOwner(app);
+    await db
+      .update(schema.userTable)
+      .set({ role: "admin" })
+      .where(eq(schema.userTable.id, setup.user.id));
+    const { user: retainedAdmin } = await createWorkspaceMember({
+      role: "owner",
+    });
+    await ensureStaffPersonForUser(retainedAdmin.id);
+    await db
+      .update(schema.userTable)
+      .set({ role: "admin" })
+      .where(eq(schema.userTable.id, retainedAdmin.id));
+
+    const credentialBound = await insertPendingAction({
+      requesterPersonId: setup.person.id,
+      workspaceId: setup.workspace.id,
+      organisationId: setup.workspace.organisationId,
+      credentialType: "session",
+      credentialId: setup.session.id,
+    });
+    const residual = await insertPendingAction({
+      requesterPersonId: setup.person.id,
+      workspaceId: setup.workspace.id,
+      organisationId: setup.workspace.organisationId,
+      credentialType: "session",
+      credentialId: null,
+    });
+    const token = `residual-audit-failure-${randomUUID()}`;
+    await db.insert(schema.verificationTable).values({
+      id: `verification-${randomUUID()}`,
+      identifier: `delete-account-${token}`,
+      value: setup.user.id,
+      expiresAt: new Date(Date.now() + 60 * 60_000),
+      createdAt: new Date(),
+      updatedAt: new Date(),
+    });
+    const auditFailure = vi.spyOn(observability, "recordAuditWriteFailure");
+    await db.execute(
+      sql.raw(`
+        CREATE OR REPLACE FUNCTION fail_account_residual_audit_insert()
+        RETURNS trigger LANGUAGE plpgsql AS $$
+        BEGIN
+          IF NEW.action = 'pending_action.decided' THEN
+            RAISE EXCEPTION 'forced account residual audit failure';
+          END IF;
+          RETURN NEW;
+        END $$;
+      `),
+    );
+    await db.execute(
+      sql.raw(`
+        CREATE TRIGGER fail_account_residual_audit_insert
+        BEFORE INSERT ON audit_log
+        FOR EACH ROW EXECUTE FUNCTION fail_account_residual_audit_insert()
+      `),
+    );
+
+    try {
+      const response = await csrfRequest(
+        app,
+        "/api/auth/delete-user",
+        {
+          method: "POST",
+          headers: { "content-type": "application/json" },
+          body: JSON.stringify({ token }),
+        },
+        setup.cookie,
+      );
+      expect(response.status, await response.clone().text()).toBe(200);
+      await waitForDeletedUser(setup.user.id);
+      expect(await stateOf(credentialBound.id)).toEqual({
+        state: "invalidated",
+        invalidationReason: "credential_revoked",
+      });
+      expect(await stateOf(residual.id)).toEqual({
+        state: "invalidated",
+        invalidationReason: "capability_removed",
+      });
+      expect((await decisionRows(credentialBound.id)).events).toHaveLength(1);
+      expect((await decisionRows(residual.id)).events).toHaveLength(1);
+      expect((await decisionRows(credentialBound.id)).audits).toHaveLength(0);
+      expect((await decisionRows(residual.id)).audits).toHaveLength(0);
+      expect(auditFailure.mock.calls).toEqual([
+        ["pending_action_decision"],
+        ["pending_action_decision"],
+      ]);
+      const notifications = await db
+        .select({ eventData: schema.notificationTable.eventData })
+        .from(schema.notificationTable)
+        .where(eq(schema.notificationTable.type, "audit_write_failed"));
+      expect(notifications).toHaveLength(1);
+      expect(notifications[0]?.eventData).toMatchObject({
+        operation: "pending_action_decision",
+      });
+    } finally {
+      await db.execute(
+        sql.raw(
+          "DROP TRIGGER IF EXISTS fail_account_residual_audit_insert ON audit_log",
+        ),
+      );
+      await db.execute(
+        sql.raw("DROP FUNCTION IF EXISTS fail_account_residual_audit_insert()"),
+      );
+      auditFailure.mockRestore();
     }
   });
 

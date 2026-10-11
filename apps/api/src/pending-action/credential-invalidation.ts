@@ -13,6 +13,7 @@ import db, { schema as importedSchema } from "../database";
 import {
   apikeyTable,
   pendingActionTable,
+  personTable,
   sessionTable,
   userTable,
 } from "../database/schema";
@@ -169,6 +170,18 @@ export async function invalidateAccountDeletionCredentials(
   }
   context.userId = userId;
   const occurredAt = new Date();
+  // Lock the linked identity before credential/action rows. Expiry cleanup may
+  // already have removed the original session, but account teardown still
+  // removes this person's ability to act on any remaining request.
+  const linkedPeople = await tx
+    .select({ id: personTable.id })
+    .from(personTable)
+    .where(eq(personTable.userId, userId))
+    .orderBy(personTable.id)
+    .for("update");
+  if (linkedPeople.length > 1) {
+    throw new Error("Account deletion found multiple linked people");
+  }
   const sessions = await tx
     .select({ id: sessionTable.id })
     .from(sessionTable)
@@ -192,6 +205,28 @@ export async function invalidateAccountDeletionCredentials(
     context.auditFailures += await invalidatePendingActionsForCredential(
       tx,
       credential,
+      occurredAt,
+    );
+  }
+
+  const personId = linkedPeople[0]?.id;
+  if (!personId) return;
+  const residualActions = await tx
+    .select()
+    .from(pendingActionTable)
+    .where(
+      and(
+        eq(pendingActionTable.requestedByPersonId, personId),
+        eq(pendingActionTable.state, "pending"),
+      ),
+    )
+    .orderBy(pendingActionTable.id)
+    .for("update");
+  for (const action of residualActions) {
+    context.auditFailures += await invalidatePendingActionRow(
+      tx,
+      action,
+      "capability_removed",
       occurredAt,
     );
   }
