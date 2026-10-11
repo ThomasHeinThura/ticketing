@@ -1,7 +1,11 @@
-import { eq } from "drizzle-orm";
+import { and, eq, isNull } from "drizzle-orm";
 import { HTTPException } from "hono/http-exception";
 import db from "../../database";
-import { commentTable, workItemTable } from "../../database/schema";
+import {
+  commentTable,
+  personTable,
+  workItemTable,
+} from "../../database/schema";
 import { publishEvent } from "../../events";
 import { builtInRoleHasCapability } from "../../utils/require-workspace-capability";
 import {
@@ -30,8 +34,9 @@ export type CreateCommentInput = {
  * not as route `middleware` (the body does not exist yet when `middleware` runs --
  * `openapi.ts`'s own comment).
  *
- * `work_item.first_response_at` (`SLA-7`, `work-items.md`) is NOT set here -- that
- * mechanism belongs to `work-items.md`'s own SLA slice, out of scope for this feature.
+ * `SLA-7`: the first public comment from a staff-side person other than the requester
+ * sets `work_item.first_response_at` in this same transaction. Internal comments and
+ * requester comments never stop the metric.
  */
 export async function createComment(
   workItemId: string,
@@ -56,25 +61,23 @@ export async function createComment(
   }
 
   // Issue #493: this route had NO in-transaction liveness re-check at all --
-  // `requireWorkItemReach()` checks `deletedAt`/`archivedAt` before this request reaches
-  // here, but a soft-delete/archive landing in the window between that check and this
-  // insert would otherwise still leave a comment (and its `work_item.commented` event) on
-  // a dead item. `.for("share")` locks the row so a concurrent soft-delete blocks until
-  // this transaction finishes, closing the same reach-check-to-write race #276 closed for
-  // `update-work-item.ts` -- read-only here (nothing about THIS row is written), so a
-  // shared lock is enough.
+  // The work-item row is locked FOR UPDATE because a qualifying comment also sets its
+  // first-response fact. This serializes concurrent first responses and keeps the
+  // reach-check-to-write protection for soft-delete/archive.
   const { created, realtimeEvent, projectId, key } = await db.transaction(
     async (tx) => {
       const [locked] = await tx
         .select({
           projectId: workItemTable.projectId,
           key: workItemTable.key,
+          requesterId: workItemTable.requesterId,
+          firstResponseAt: workItemTable.firstResponseAt,
           deletedAt: workItemTable.deletedAt,
           archivedAt: workItemTable.archivedAt,
         })
         .from(workItemTable)
         .where(eq(workItemTable.id, workItemId))
-        .for("share");
+        .for("update");
       assertWorkItemStillLive(locked);
       await assertProjectStillLive(tx, locked.projectId);
 
@@ -97,6 +100,25 @@ export async function createComment(
           projectId: locked.projectId,
           key: locked.key,
         };
+
+      if (input.visibility === "public" && locked.firstResponseAt === null) {
+        const [author] = await tx
+          .select({ id: personTable.id, side: personTable.side })
+          .from(personTable)
+          .where(eq(personTable.userId, actorId))
+          .limit(1);
+        if (author?.side === "staff" && author.id !== locked.requesterId) {
+          await tx
+            .update(workItemTable)
+            .set({ firstResponseAt: row.createdAt })
+            .where(
+              and(
+                eq(workItemTable.id, workItemId),
+                isNull(workItemTable.firstResponseAt),
+              ),
+            );
+        }
+      }
       const realtimeEvent = await recordWorkItemEvent(tx, {
         kind: "work_item.commented",
         workItemId,

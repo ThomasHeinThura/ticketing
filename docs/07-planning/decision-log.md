@@ -7838,3 +7838,23 @@ The rejection of a stored transition must not partially change the work item or 
 **Source:** Thomas direct answer to Codex request `call_7a4c2a05751943faa8b639243d53698c`, item0, conductor chat `01a12921-4863-7c42-ac59-1822c69b88cd`, 2026-10-11. Exact question and answer are preserved in the private source-bound evidence record.
 
 **Recorded by:** Codex delivery conductor at 2026-10-11T14:36:04.048907+00:00. This records the owner decision; implementation, independent review, exact-head checks and acceptance remain separate.
+
+### 2026-10-11 · Owner decision: retain native saved-view admission
+
+**Decision:** For this release, PATCH/DELETE of another person's saved view retains native
+workspace-role admission. A validated projected manager membership does not widen the route
+admission of a native member. Replace the three unreachable projected-authority pending-action
+loss expectations with 403/no-pending-action controls while preserving the real JIT policy and
+OIDC admission transition assertions and separate native authority-loss, retention, terminal,
+no-revival, event and audit regressions. Denied operations create no requested event or audit
+entry. This changes the acceptance claim: projected-manager loss is not an end-to-end pending-
+action invalidation scenario under this release's native route boundary.
+
+**Question and exact answer:** Thomas was asked whether to retain this boundary and replace the
+three unreachable expectations, or expand route admission to combined native/projected
+authority. Thomas answered: **“Keep native admission for this release (Recommended)”**.
+
+**Source:** Thomas's direct response in the conductor chat on 2026-10-11. Exact response is
+preserved at `/Users/heinthura/.codex/taskdesk-evidence/2026-10-11/s7-mixed-authority-admission-owner-decision.json`.
+This authorizes the bounded spec and test-oracle correction, not runtime authorization changes,
+independent review, CI, merge or stage acceptance.

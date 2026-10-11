@@ -1,5 +1,6 @@
 import { and, eq, sql } from "drizzle-orm";
-import db, { schema } from "../../database";
+import { schema } from "../../database";
+import { withWorkspaceDeletionAccessLifecycle } from "../../pending-action/workspace-access-invalidation";
 import {
   anyRoleIsOwner,
   distinctOwnerUserCount,
@@ -41,7 +42,7 @@ async function leaveWorkspace(
   userId: string,
   sessionId: string,
 ): Promise<{ workspaceId: string }> {
-  return db.transaction(async (tx) => {
+  return withWorkspaceDeletionAccessLifecycle(workspaceId, async (tx) => {
     await tx.execute(
       sql`SELECT pg_advisory_xact_lock(${WORKSPACE_MEMBERSHIP_LOCK_NAMESPACE}, hashtext(${workspaceId}))`,
     );

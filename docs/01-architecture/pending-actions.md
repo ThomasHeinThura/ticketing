@@ -139,7 +139,10 @@ thing that is hashed or executed.
   disabling or revoking an API key invalidates actions bound to that key. Restoring the same
   session, key, reach or capability never revives an invalidated action. Ordinary session
   expiry alone is not credential revocation: the action stays pending until `expires_at`, and
-  the requester may sign in again to approve it. A reach or capability change invalidates an
+  the requester may sign in again to approve it. Natural API-key expiry is terminal for
+  actions bound to that original key, even if its expiry is later extended; the expiry
+  extension invalidates those actions with `credential_revoked` before the extension commits.
+  A reach or capability change invalidates an
   action only when it removes access required by that action under its current registered
   route policy and target scope; unrelated membership, role, or profile changes do not.
   Successful deletion of the linked auth account also removes that person's ability to act on
@@ -562,6 +565,7 @@ body carries the `summary` the UI renders.
 | Approver's session expires mid-dialog | The action stays `pending` until `expires_at`; re-sign-in and approve from Profile → Pending actions |
 | Requester's session is explicitly signed out or revoked | Actions bound to that original session become `invalidated` with `credential_revoked`; signing in again cannot revive them |
 | Requesting API key is disabled or revoked | Actions bound to that key become `invalidated` with `credential_revoked`; re-enabling the key cannot revive them |
+| Requesting API key expires naturally | Actions bound to that key become terminal with `credential_revoked`; extending the same key after expiry cannot revive them |
 | Requester loses action-required reach or capability | The affected action becomes `invalidated` with `reach_lost` or `capability_removed`; restoring access cannot revive it. Changes that do not remove the action's required access do not invalidate it |
 | Two identical delete requests | **One** pending action. The idempotency layer replays the stored `202` for a keyed retry; an unkeyed repeat hits the partial unique index and returns `409 pending_approval` with the existing id (`PA-4`) |
 | Elevated `DELETE` presented on an API key or MCP key | `403 session_required` before the policy runs — no pending action, nothing to poll (`PA-5`) |

@@ -16,6 +16,7 @@ import { lockApprovalsForWorkItemTransition } from "../../approval/repository";
 import { closePendingApprovalsOnTransition } from "../../approval/service";
 import { appendAuditLog } from "../../audit/audit-writer";
 import db from "../../database";
+import { slaPauseTable } from "../../database/migration-schema";
 import {
   commentTable,
   scheduledTransitionTable,
@@ -25,6 +26,7 @@ import {
 } from "../../database/schema";
 import { publishEvent } from "../../events";
 import { dbClockUtc } from "../../utils/db-time";
+import { isUniqueViolation } from "../../utils/is-unique-violation";
 import { type ActivityActorType, recordWorkItemActivity } from "../activity";
 import {
   assertProjectStillLive,
@@ -85,8 +87,11 @@ export class NoMatchingTransitionError extends Error {
  * an unsatisfied approval/CAB gate, a missing required note, or an ineligible
  * `set_assignee` target (B2). */
 export class TransitionBlockedError extends Error {
-  constructor(public readonly blockedBy: TransitionBlockReason[]) {
-    super("This transition is not currently available");
+  constructor(
+    public readonly blockedBy: TransitionBlockReason[],
+    message = "This transition is not currently available",
+  ) {
+    super(message);
     this.name = "TransitionBlockedError";
   }
 }
@@ -98,6 +103,14 @@ export class TransitionConflictError extends Error {
   constructor(public readonly currentStateId: string) {
     super("The work item's state changed while this request was in flight");
     this.name = "TransitionConflictError";
+  }
+}
+
+/** A waiting-customer pause already exists for at least one SLA metric. */
+export class SlaPauseConflictError extends Error {
+  constructor() {
+    super("An SLA pause is already open for this work item");
+    this.name = "SlaPauseConflictError";
   }
 }
 
@@ -155,6 +168,22 @@ async function runTransactionCatchingDeadlock<T>(
   } catch (error) {
     if (isPostgresDeadlockError(error)) {
       throw new TransitionConflictError(currentStateId);
+    }
+    throw error;
+  }
+}
+
+async function runTransactionCatchingSlaPauseConflict<T>(
+  currentStateId: string,
+  run: () => Promise<T>,
+): Promise<T> {
+  try {
+    return await runTransactionCatchingDeadlock(currentStateId, run);
+  } catch (error) {
+    if (
+      isUniqueViolation(error, "sla_pause_one_open_per_work_item_metric_unique")
+    ) {
+      throw new SlaPauseConflictError();
     }
     throw error;
   }
@@ -218,13 +247,12 @@ function resolveSetAssigneePersonId(
  * lock first, so a decision or withdrawal cannot race the gate between its read and the
  * state write. `requires_cab` evaluates the same policy against CAB approvals only.
  *
- * EFFECTS THIS FUNCTION CANNOT EXECUTE, DISCLOSED (no schema to write to yet):
- * `pause_sla`/`resume_sla` (no `sla_pause` table) and `set_field` (no custom-field/
- * satellite value store) are silently no-ops here -- reading `transition.effects` for
- * either kind and doing nothing, rather than failing the whole transition over a gap in
- * unrelated, not-yet-built infrastructure. `WF-17`/`WF-18`'s automatic mechanism only
- * sets/clears `work_item.resolved_at` for the identical reason -- the `sla_pause` row a
- * real "resolved"/"resumed" write implies does not exist to write.
+ * `pause_sla`/`resume_sla` implement only SLA-10/11's automatic
+ * `waiting_customer` lifecycle. Manual pauses and `resolved` pause continuity remain
+ * unavailable under the current owner hold; they are not inferred from state groups.
+ * `set_field` is held because its field namespace and value rules have not been defined.
+ * A stored edge containing it is refused individually; supported sibling edges in a
+ * historical mixed version remain usable.
  * `set_assignee`/`clear_assignee` and `schedule_transition` ARE fully wired.
  *
  * `WF-21` (customer-initiated reopen, executed as a system actor): the three call sites
@@ -274,6 +302,12 @@ export async function transitionWorkItem(
       "No transition matches the requested target for this actor from the work item's current state",
     );
   }
+  if (match.effects.some((effect) => effect.kind === "set_field")) {
+    throw new TransitionBlockedError(
+      [],
+      "This stored transition contains the unavailable set_field effect",
+    );
+  }
 
   const resolution = resolveStateTemplateForProject(
     match.toStateTemplateId,
@@ -298,6 +332,7 @@ export async function transitionWorkItem(
   const automaticEffects = resolveAutomaticEffects(ctx.currentGroup, toGroup);
 
   let assigneeIdPatch: string | null | undefined;
+  const waitingCustomerEffects: ("pause" | "resume")[] = [];
   const scheduleEffects: { afterMinutes: number; toStateTemplateId: string }[] =
     [];
   for (const effect of authoredEffects) {
@@ -310,9 +345,11 @@ export async function transitionWorkItem(
         afterMinutes: effect.afterMinutes,
         toStateTemplateId: effect.toStateTemplateId,
       });
+    } else if (effect.kind === "pause_sla") {
+      waitingCustomerEffects.push("pause");
+    } else if (effect.kind === "resume_sla") {
+      waitingCustomerEffects.push("resume");
     }
-    // `pause_sla`/`resume_sla`/`set_field`: no backing table yet -- disclosed no-op,
-    // see this function's own doc comment.
   }
 
   let resolvedAtPatch: Date | null | undefined;
@@ -329,7 +366,7 @@ export async function transitionWorkItem(
     event: Awaited<ReturnType<typeof recordWorkItemEvent>>;
     customerVisible: boolean;
   }[] = [];
-  const result = await runTransactionCatchingDeadlock(fromStateId, () =>
+  const result = await runTransactionCatchingSlaPauseConflict(fromStateId, () =>
     db.transaction(async (tx) => {
       // B1: lock the row FIRST, before deciding anything guard-shaped. Every fact below is
       // read from THIS locked row, never from `ctx`'s earlier, unlocked read.
@@ -556,6 +593,38 @@ export async function transitionWorkItem(
           .where(eq(workItemTable.id, ctx.workItem.id))
           .limit(1);
         throw new TransitionConflictError(current?.stateId ?? fromStateId);
+      }
+
+      for (const effect of waitingCustomerEffects) {
+        if (effect === "pause") {
+          const startedAt = sql`clock_timestamp()`;
+          await tx.insert(slaPauseTable).values([
+            {
+              workItemId: ctx.workItem.id,
+              metric: "first_response",
+              startedAt,
+              reason: "waiting_customer",
+            },
+            {
+              workItemId: ctx.workItem.id,
+              metric: "resolution",
+              startedAt,
+              reason: "waiting_customer",
+            },
+          ]);
+        } else {
+          const endedAt = sql`clock_timestamp()`;
+          await tx
+            .update(slaPauseTable)
+            .set({ endedAt })
+            .where(
+              and(
+                eq(slaPauseTable.workItemId, ctx.workItem.id),
+                eq(slaPauseTable.reason, "waiting_customer"),
+                isNull(slaPauseTable.endedAt),
+              ),
+            );
+        }
       }
 
       for (const schedule of scheduleEffects) {

@@ -1,14 +1,15 @@
 import { statement } from "@taskdesk/permissions";
-import { and, eq, sql } from "drizzle-orm";
-import db, { schema } from "../../database";
+import { and, eq } from "drizzle-orm";
+import { schema } from "../../database";
+import { withWorkspaceDeletionAccessLifecycle } from "../../pending-action/workspace-access-invalidation";
 import type { WorkspaceRoleRow } from "./list-workspace-roles";
 import { WorkspaceRoleNotFoundError } from "./workspace-membership-errors";
+import { lockWorkspaceRoleAssignment } from "./workspace-role-assignment-lock";
 import {
   InsufficientPermissionToGrantError,
   InvalidPermissionResourceError,
   RoleNameReservedError,
 } from "./workspace-role-errors";
-import { WORKSPACE_ROLE_LOCK_NAMESPACE } from "./workspace-role-lock";
 
 const VALID_PERMISSION_RESOURCES = new Set(Object.keys(statement));
 
@@ -65,10 +66,8 @@ async function updateWorkspaceRole(
     throw new InsufficientPermissionToGrantError(missing);
   }
 
-  return db.transaction(async (tx) => {
-    await tx.execute(
-      sql`SELECT pg_advisory_xact_lock(${WORKSPACE_ROLE_LOCK_NAMESPACE}, hashtext(${input.workspaceId}))`,
-    );
+  return withWorkspaceDeletionAccessLifecycle(input.workspaceId, async (tx) => {
+    await lockWorkspaceRoleAssignment(tx, input.workspaceId);
 
     const [existing] = await tx
       .select()
