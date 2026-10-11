@@ -29,6 +29,7 @@
  */
 
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { deliverNotification } from "../../../apps/api/src/notification-preferences/delivery";
 
 const notification = {
   id: "notif-1",
@@ -128,12 +129,7 @@ describe("SSRF regression guard — notification delivery (H10/H12, 0e046a6)", (
 
   afterEach(() => {
     fetchSpy.mockRestore();
-    vi.resetModules();
   });
-
-  const load = async () =>
-    (await import("../../../apps/api/src/notification-preferences/delivery"))
-      .deliverNotification;
 
   describe.each([
     {
@@ -165,7 +161,6 @@ describe("SSRF regression guard — notification delivery (H10/H12, 0e046a6)", (
   ])("$sender", ({ pref }) => {
     it("refuses a private destination before any outbound request is made", async () => {
       preference = { emailEnabled: false, ...pref };
-      const deliverNotification = await load();
 
       await deliverNotification("notif-1").catch(() => undefined);
 
@@ -193,7 +188,6 @@ describe("SSRF regression guard — notification delivery (H10/H12, 0e046a6)", (
       webhookUrl: outboundDestination,
       webhookSecret: null,
     };
-    const deliverNotification = await load();
 
     await deliverNotification("notif-1").catch(() => undefined);
 
