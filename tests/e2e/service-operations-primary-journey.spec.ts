@@ -361,12 +361,11 @@ async function runJourney(fixture: MfaCsrfAppFixture) {
     const unrelatedView = await bodyAt(unrelatedViewResponse, 200);
     const unrelatedViewId = String(unrelatedView.id);
 
-    const runView = await admin.post(
-      new URL(
-        `/api/views/${encodeURIComponent(viewId)}/run?limit=20`,
-        origin,
-      ).toString(),
-      { headers: { Origin: origin } },
+    const runView = await mutate(
+      admin,
+      origin,
+      "POST",
+      `/api/views/${encodeURIComponent(viewId)}/run?limit=20`,
     );
     const run = await bodyAt(runView, 200);
     expect((run.data as Array<{ id: string }>).map(({ id }) => id)).toContain(
