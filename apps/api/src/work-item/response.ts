@@ -413,6 +413,15 @@ export const workItemBlockReasonSchema = z
   .object({
     kind: z.string(),
     reasonCode: z.string(),
+    pendingApprovals: z
+      .array(
+        z.object({
+          approverName: z.string().nullable(),
+          requestedAt: z.string().datetime(),
+          expiresAt: z.string().datetime(),
+        }),
+      )
+      .optional(),
   })
   .openapi("WorkItemTransitionBlockReason");
 
@@ -454,8 +463,7 @@ export const transitionedWorkItemSchema = z
   .openapi("TransitionedWorkItem");
 
 // The 422 "not currently available" response: the matched transition is legal, but
-// blocked by a guard, the (interim, always-unsatisfied) approval/CAB gate, or a missing
-// required note.
+// blocked by a guard, an unsatisfied approval/CAB gate, or a missing required note.
 export const workItemTransitionBlockedSchema = z
   .object({
     message: z.string(),

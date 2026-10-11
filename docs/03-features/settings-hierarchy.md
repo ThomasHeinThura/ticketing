@@ -107,6 +107,9 @@ Everything that varies between *people*. Stored in `user_preference`.
 
 - `ST-1` Feature flags resolve **project → workspace → instance → built-in default**, over
   `project_feature_flag`, `workspace_feature_flag`, `instance_feature_flag`.
+- `ST-11` Feature-specific disable behaviour is owned by each feature specification. A flag
+  change does not itself delete persisted domain records or grant permission; each feature
+  states which existing records remain readable or actionable when new use is disabled.
 - `ST-2` An instance flag marked `locked` cannot be overridden below; a write to a lower
   level for a locked flag returns 409. This is how editions are sold from one image.
 - `ST-3` **Exactly these project settings inherit from the workspace, and nothing else

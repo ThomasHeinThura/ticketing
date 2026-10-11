@@ -4299,6 +4299,33 @@
           },
           "reasonCode": {
             "type": "string"
+          },
+          "pendingApprovals": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "approverName": {
+                  "type": [
+                    "string",
+                    "null"
+                  ]
+                },
+                "requestedAt": {
+                  "type": "string",
+                  "format": "date-time"
+                },
+                "expiresAt": {
+                  "type": "string",
+                  "format": "date-time"
+                }
+              },
+              "required": [
+                "approverName",
+                "requestedAt",
+                "expiresAt"
+              ]
+            }
           }
         },
         "required": [
@@ -16527,7 +16554,7 @@
           "Work items"
         ],
         "summary": "Transition work item",
-        "description": "Move a work item to a new state through its type's active workflow version (`workflows.md`). `toStateTemplateId` is the target `state_template.id` (see `GET .../transitions`). INTERIM, until issue #36 (approvals) lands: a transition whose `requires_approval` or `requires_cab` is set can never complete through this route -- both gates are treated as permanently unsatisfied. Guard resolution is also partial today: `no_open_blockers` (no `work_item_relation` table yet), `field_required` (no custom-field/satellite value store yet) and `change_risk_at_most` (no change-risk column yet) always fail closed (blocked), never fabricated as satisfied. `pause_sla`/`resume_sla`/`set_field` effects are silent no-ops (no backing table yet); `set_assignee`'s `'default'` always resolves to no assignee (no project/type default-assignee column yet).",
+        "description": "Move a work item to a new state through its type's active workflow version (`workflows.md`). `toStateTemplateId` is the target `state_template.id` (see `GET .../transitions`). Approval and CAB gates use persisted matching approval rows. Guard resolution is also partial today: `no_open_blockers` (no `work_item_relation` table yet), `field_required` (no custom-field/satellite value store yet) and `change_risk_at_most` (no change-risk column yet) always fail closed (blocked), never fabricated as satisfied. `pause_sla`/`resume_sla`/`set_field` effects are silent no-ops (no backing table yet); `set_assignee`'s `'default'` always resolves to no assignee (no project/type default-assignee column yet).",
         "parameters": [
           {
             "schema": {
@@ -16896,6 +16923,1550 @@
           },
           "404": {
             "description": "Comment not found",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/work-items/{key}/approvals": {
+      "get": {
+        "operationId": "listWorkItemApprovals",
+        "tags": [
+          "Approvals"
+        ],
+        "summary": "List a work item's approvals",
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "minLength": 1
+            },
+            "required": true,
+            "name": "key",
+            "in": "path"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Approvals visible to this caller",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "approvals": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "id": {
+                            "type": "string"
+                          },
+                          "workItemId": {
+                            "type": "string"
+                          },
+                          "workItemKey": {
+                            "type": "string"
+                          },
+                          "workItemTitle": {
+                            "type": "string"
+                          },
+                          "transitionId": {
+                            "type": "string"
+                          },
+                          "kind": {
+                            "type": "string",
+                            "enum": [
+                              "customer",
+                              "cab"
+                            ]
+                          },
+                          "state": {
+                            "type": "string",
+                            "enum": [
+                              "pending",
+                              "approved",
+                              "rejected",
+                              "expired",
+                              "withdrawn"
+                            ]
+                          },
+                          "requester": {
+                            "type": "object",
+                            "properties": {
+                              "id": {
+                                "type": "string"
+                              },
+                              "displayName": {
+                                "type": [
+                                  "string",
+                                  "null"
+                                ]
+                              }
+                            },
+                            "required": [
+                              "id",
+                              "displayName"
+                            ]
+                          },
+                          "approver": {
+                            "type": "object",
+                            "properties": {
+                              "id": {
+                                "type": "string"
+                              },
+                              "displayName": {
+                                "type": [
+                                  "string",
+                                  "null"
+                                ]
+                              }
+                            },
+                            "required": [
+                              "id",
+                              "displayName"
+                            ]
+                          },
+                          "createdAt": {
+                            "type": "string",
+                            "format": "date-time"
+                          },
+                          "expiresAt": {
+                            "type": "string",
+                            "format": "date-time"
+                          },
+                          "decidedAt": {
+                            "type": [
+                              "string",
+                              "null"
+                            ],
+                            "format": "date-time"
+                          },
+                          "decisionNote": {
+                            "type": [
+                              "string",
+                              "null"
+                            ]
+                          },
+                          "approverReachLost": {
+                            "type": "boolean"
+                          },
+                          "canWithdraw": {
+                            "type": "boolean"
+                          }
+                        },
+                        "required": [
+                          "id",
+                          "workItemId",
+                          "workItemKey",
+                          "workItemTitle",
+                          "transitionId",
+                          "kind",
+                          "state",
+                          "requester",
+                          "approver",
+                          "createdAt",
+                          "expiresAt",
+                          "decidedAt",
+                          "decisionNote",
+                          "approverReachLost",
+                          "canWithdraw"
+                        ]
+                      }
+                    }
+                  },
+                  "required": [
+                    "approvals"
+                  ]
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Authentication required",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Work item not found or outside caller reach",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "operationId": "createWorkItemApproval",
+        "tags": [
+          "Approvals"
+        ],
+        "summary": "Request a work-item approval",
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "minLength": 1
+            },
+            "required": true,
+            "name": "key",
+            "in": "path"
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "transitionId": {
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  "kind": {
+                    "type": "string",
+                    "enum": [
+                      "customer",
+                      "cab"
+                    ]
+                  },
+                  "approverId": {
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  "expiresAt": {
+                    "type": "string",
+                    "format": "date-time"
+                  }
+                },
+                "required": [
+                  "transitionId",
+                  "kind",
+                  "approverId"
+                ],
+                "additionalProperties": false
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Created approval",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "id": {
+                      "type": "string"
+                    },
+                    "workItemId": {
+                      "type": "string"
+                    },
+                    "workItemKey": {
+                      "type": "string"
+                    },
+                    "workItemTitle": {
+                      "type": "string"
+                    },
+                    "transitionId": {
+                      "type": "string"
+                    },
+                    "kind": {
+                      "type": "string",
+                      "enum": [
+                        "customer",
+                        "cab"
+                      ]
+                    },
+                    "state": {
+                      "type": "string",
+                      "enum": [
+                        "pending",
+                        "approved",
+                        "rejected",
+                        "expired",
+                        "withdrawn"
+                      ]
+                    },
+                    "requester": {
+                      "type": "object",
+                      "properties": {
+                        "id": {
+                          "type": "string"
+                        },
+                        "displayName": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        }
+                      },
+                      "required": [
+                        "id",
+                        "displayName"
+                      ]
+                    },
+                    "approver": {
+                      "type": "object",
+                      "properties": {
+                        "id": {
+                          "type": "string"
+                        },
+                        "displayName": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        }
+                      },
+                      "required": [
+                        "id",
+                        "displayName"
+                      ]
+                    },
+                    "createdAt": {
+                      "type": "string",
+                      "format": "date-time"
+                    },
+                    "expiresAt": {
+                      "type": "string",
+                      "format": "date-time"
+                    },
+                    "decidedAt": {
+                      "type": [
+                        "string",
+                        "null"
+                      ],
+                      "format": "date-time"
+                    },
+                    "decisionNote": {
+                      "type": [
+                        "string",
+                        "null"
+                      ]
+                    },
+                    "approverReachLost": {
+                      "type": "boolean"
+                    },
+                    "canWithdraw": {
+                      "type": "boolean"
+                    }
+                  },
+                  "required": [
+                    "id",
+                    "workItemId",
+                    "workItemKey",
+                    "workItemTitle",
+                    "transitionId",
+                    "kind",
+                    "state",
+                    "requester",
+                    "approver",
+                    "createdAt",
+                    "expiresAt",
+                    "decidedAt",
+                    "decisionNote",
+                    "approverReachLost",
+                    "canWithdraw"
+                  ]
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid request",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Authentication required",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Missing approval request capability",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Work item not found or outside caller reach",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Approval request violates the approval contract",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/approvals/{id}/decide": {
+      "post": {
+        "operationId": "decideApproval",
+        "tags": [
+          "Approvals"
+        ],
+        "summary": "Decide an approval",
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "minLength": 1
+            },
+            "required": true,
+            "name": "id",
+            "in": "path"
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "action": {
+                    "type": "string",
+                    "enum": [
+                      "approve",
+                      "reject"
+                    ]
+                  },
+                  "note": {
+                    "type": [
+                      "string",
+                      "null"
+                    ],
+                    "maxLength": 4000
+                  }
+                },
+                "required": [
+                  "action"
+                ],
+                "additionalProperties": false
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Decision recorded",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "id": {
+                      "type": "string"
+                    },
+                    "workItemId": {
+                      "type": "string"
+                    },
+                    "workItemKey": {
+                      "type": "string"
+                    },
+                    "workItemTitle": {
+                      "type": "string"
+                    },
+                    "transitionId": {
+                      "type": "string"
+                    },
+                    "kind": {
+                      "type": "string",
+                      "enum": [
+                        "customer",
+                        "cab"
+                      ]
+                    },
+                    "state": {
+                      "type": "string",
+                      "enum": [
+                        "pending",
+                        "approved",
+                        "rejected",
+                        "expired",
+                        "withdrawn"
+                      ]
+                    },
+                    "requester": {
+                      "type": "object",
+                      "properties": {
+                        "id": {
+                          "type": "string"
+                        },
+                        "displayName": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        }
+                      },
+                      "required": [
+                        "id",
+                        "displayName"
+                      ]
+                    },
+                    "approver": {
+                      "type": "object",
+                      "properties": {
+                        "id": {
+                          "type": "string"
+                        },
+                        "displayName": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        }
+                      },
+                      "required": [
+                        "id",
+                        "displayName"
+                      ]
+                    },
+                    "createdAt": {
+                      "type": "string",
+                      "format": "date-time"
+                    },
+                    "expiresAt": {
+                      "type": "string",
+                      "format": "date-time"
+                    },
+                    "decidedAt": {
+                      "type": [
+                        "string",
+                        "null"
+                      ],
+                      "format": "date-time"
+                    },
+                    "decisionNote": {
+                      "type": [
+                        "string",
+                        "null"
+                      ]
+                    },
+                    "approverReachLost": {
+                      "type": "boolean"
+                    },
+                    "canWithdraw": {
+                      "type": "boolean"
+                    }
+                  },
+                  "required": [
+                    "id",
+                    "workItemId",
+                    "workItemKey",
+                    "workItemTitle",
+                    "transitionId",
+                    "kind",
+                    "state",
+                    "requester",
+                    "approver",
+                    "createdAt",
+                    "expiresAt",
+                    "decidedAt",
+                    "decisionNote",
+                    "approverReachLost",
+                    "canWithdraw"
+                  ]
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid request",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Authentication required",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Caller is not the named eligible approver",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Approval not found",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Approval is no longer pending",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Rejected decisions require a non-empty note",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/approvals/{id}/withdraw": {
+      "post": {
+        "operationId": "withdrawApproval",
+        "tags": [
+          "Approvals"
+        ],
+        "summary": "Withdraw an approval request",
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "minLength": 1
+            },
+            "required": true,
+            "name": "id",
+            "in": "path"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Approval withdrawn",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "id": {
+                      "type": "string"
+                    },
+                    "workItemId": {
+                      "type": "string"
+                    },
+                    "workItemKey": {
+                      "type": "string"
+                    },
+                    "workItemTitle": {
+                      "type": "string"
+                    },
+                    "transitionId": {
+                      "type": "string"
+                    },
+                    "kind": {
+                      "type": "string",
+                      "enum": [
+                        "customer",
+                        "cab"
+                      ]
+                    },
+                    "state": {
+                      "type": "string",
+                      "enum": [
+                        "pending",
+                        "approved",
+                        "rejected",
+                        "expired",
+                        "withdrawn"
+                      ]
+                    },
+                    "requester": {
+                      "type": "object",
+                      "properties": {
+                        "id": {
+                          "type": "string"
+                        },
+                        "displayName": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        }
+                      },
+                      "required": [
+                        "id",
+                        "displayName"
+                      ]
+                    },
+                    "approver": {
+                      "type": "object",
+                      "properties": {
+                        "id": {
+                          "type": "string"
+                        },
+                        "displayName": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        }
+                      },
+                      "required": [
+                        "id",
+                        "displayName"
+                      ]
+                    },
+                    "createdAt": {
+                      "type": "string",
+                      "format": "date-time"
+                    },
+                    "expiresAt": {
+                      "type": "string",
+                      "format": "date-time"
+                    },
+                    "decidedAt": {
+                      "type": [
+                        "string",
+                        "null"
+                      ],
+                      "format": "date-time"
+                    },
+                    "decisionNote": {
+                      "type": [
+                        "string",
+                        "null"
+                      ]
+                    },
+                    "approverReachLost": {
+                      "type": "boolean"
+                    },
+                    "canWithdraw": {
+                      "type": "boolean"
+                    }
+                  },
+                  "required": [
+                    "id",
+                    "workItemId",
+                    "workItemKey",
+                    "workItemTitle",
+                    "transitionId",
+                    "kind",
+                    "state",
+                    "requester",
+                    "approver",
+                    "createdAt",
+                    "expiresAt",
+                    "decidedAt",
+                    "decisionNote",
+                    "approverReachLost",
+                    "canWithdraw"
+                  ]
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Authentication required",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Caller may not withdraw this approval",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Approval not found",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Approval is no longer pending",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/admin/approvals/{id}/withdraw": {
+      "post": {
+        "operationId": "withdrawApprovalAsInstanceAdmin",
+        "tags": [
+          "Approvals"
+        ],
+        "summary": "Withdraw an approval as an instance administrator",
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "minLength": 1
+            },
+            "required": true,
+            "name": "id",
+            "in": "path"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Approval withdrawn",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "id": {
+                      "type": "string"
+                    },
+                    "workItemId": {
+                      "type": "string"
+                    },
+                    "workItemKey": {
+                      "type": "string"
+                    },
+                    "workItemTitle": {
+                      "type": "string"
+                    },
+                    "transitionId": {
+                      "type": "string"
+                    },
+                    "kind": {
+                      "type": "string",
+                      "enum": [
+                        "customer",
+                        "cab"
+                      ]
+                    },
+                    "state": {
+                      "type": "string",
+                      "enum": [
+                        "pending",
+                        "approved",
+                        "rejected",
+                        "expired",
+                        "withdrawn"
+                      ]
+                    },
+                    "requester": {
+                      "type": "object",
+                      "properties": {
+                        "id": {
+                          "type": "string"
+                        },
+                        "displayName": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        }
+                      },
+                      "required": [
+                        "id",
+                        "displayName"
+                      ]
+                    },
+                    "approver": {
+                      "type": "object",
+                      "properties": {
+                        "id": {
+                          "type": "string"
+                        },
+                        "displayName": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        }
+                      },
+                      "required": [
+                        "id",
+                        "displayName"
+                      ]
+                    },
+                    "createdAt": {
+                      "type": "string",
+                      "format": "date-time"
+                    },
+                    "expiresAt": {
+                      "type": "string",
+                      "format": "date-time"
+                    },
+                    "decidedAt": {
+                      "type": [
+                        "string",
+                        "null"
+                      ],
+                      "format": "date-time"
+                    },
+                    "decisionNote": {
+                      "type": [
+                        "string",
+                        "null"
+                      ]
+                    },
+                    "approverReachLost": {
+                      "type": "boolean"
+                    },
+                    "canWithdraw": {
+                      "type": "boolean"
+                    }
+                  },
+                  "required": [
+                    "id",
+                    "workItemId",
+                    "workItemKey",
+                    "workItemTitle",
+                    "transitionId",
+                    "kind",
+                    "state",
+                    "requester",
+                    "approver",
+                    "createdAt",
+                    "expiresAt",
+                    "decidedAt",
+                    "decisionNote",
+                    "approverReachLost",
+                    "canWithdraw"
+                  ]
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Authentication required",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Instance administrator session required",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Approval not found",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Approval is no longer pending",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/me/approvals": {
+      "get": {
+        "operationId": "listMyApprovals",
+        "tags": [
+          "Approvals"
+        ],
+        "summary": "List approvals addressed to me",
+        "responses": {
+          "200": {
+            "description": "Approvals addressed to this person",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "approvals": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "id": {
+                            "type": "string"
+                          },
+                          "workItemId": {
+                            "type": "string"
+                          },
+                          "workItemKey": {
+                            "type": "string"
+                          },
+                          "workItemTitle": {
+                            "type": "string"
+                          },
+                          "transitionId": {
+                            "type": "string"
+                          },
+                          "kind": {
+                            "type": "string",
+                            "enum": [
+                              "customer",
+                              "cab"
+                            ]
+                          },
+                          "state": {
+                            "type": "string",
+                            "enum": [
+                              "pending",
+                              "approved",
+                              "rejected",
+                              "expired",
+                              "withdrawn"
+                            ]
+                          },
+                          "requester": {
+                            "type": "object",
+                            "properties": {
+                              "id": {
+                                "type": "string"
+                              },
+                              "displayName": {
+                                "type": [
+                                  "string",
+                                  "null"
+                                ]
+                              }
+                            },
+                            "required": [
+                              "id",
+                              "displayName"
+                            ]
+                          },
+                          "approver": {
+                            "type": "object",
+                            "properties": {
+                              "id": {
+                                "type": "string"
+                              },
+                              "displayName": {
+                                "type": [
+                                  "string",
+                                  "null"
+                                ]
+                              }
+                            },
+                            "required": [
+                              "id",
+                              "displayName"
+                            ]
+                          },
+                          "createdAt": {
+                            "type": "string",
+                            "format": "date-time"
+                          },
+                          "expiresAt": {
+                            "type": "string",
+                            "format": "date-time"
+                          },
+                          "decidedAt": {
+                            "type": [
+                              "string",
+                              "null"
+                            ],
+                            "format": "date-time"
+                          },
+                          "decisionNote": {
+                            "type": [
+                              "string",
+                              "null"
+                            ]
+                          },
+                          "approverReachLost": {
+                            "type": "boolean"
+                          },
+                          "canWithdraw": {
+                            "type": "boolean"
+                          }
+                        },
+                        "required": [
+                          "id",
+                          "workItemId",
+                          "workItemKey",
+                          "workItemTitle",
+                          "transitionId",
+                          "kind",
+                          "state",
+                          "requester",
+                          "approver",
+                          "createdAt",
+                          "expiresAt",
+                          "decidedAt",
+                          "decisionNote",
+                          "approverReachLost",
+                          "canWithdraw"
+                        ]
+                      }
+                    }
+                  },
+                  "required": [
+                    "approvals"
+                  ]
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Authentication required",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/portal/approvals": {
+      "get": {
+        "operationId": "listPortalApprovals",
+        "tags": [
+          "Portal approvals"
+        ],
+        "summary": "List customer approvals addressed to me",
+        "responses": {
+          "200": {
+            "description": "Customer approvals addressed to this person",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "approvals": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "id": {
+                            "type": "string"
+                          },
+                          "workItemId": {
+                            "type": "string"
+                          },
+                          "workItemKey": {
+                            "type": "string"
+                          },
+                          "workItemTitle": {
+                            "type": "string"
+                          },
+                          "transitionId": {
+                            "type": "string"
+                          },
+                          "kind": {
+                            "type": "string",
+                            "enum": [
+                              "customer",
+                              "cab"
+                            ]
+                          },
+                          "state": {
+                            "type": "string",
+                            "enum": [
+                              "pending",
+                              "approved",
+                              "rejected",
+                              "expired",
+                              "withdrawn"
+                            ]
+                          },
+                          "requester": {
+                            "type": "object",
+                            "properties": {
+                              "id": {
+                                "type": "string"
+                              },
+                              "displayName": {
+                                "type": [
+                                  "string",
+                                  "null"
+                                ]
+                              }
+                            },
+                            "required": [
+                              "id",
+                              "displayName"
+                            ]
+                          },
+                          "approver": {
+                            "type": "object",
+                            "properties": {
+                              "id": {
+                                "type": "string"
+                              },
+                              "displayName": {
+                                "type": [
+                                  "string",
+                                  "null"
+                                ]
+                              }
+                            },
+                            "required": [
+                              "id",
+                              "displayName"
+                            ]
+                          },
+                          "createdAt": {
+                            "type": "string",
+                            "format": "date-time"
+                          },
+                          "expiresAt": {
+                            "type": "string",
+                            "format": "date-time"
+                          },
+                          "decidedAt": {
+                            "type": [
+                              "string",
+                              "null"
+                            ],
+                            "format": "date-time"
+                          },
+                          "decisionNote": {
+                            "type": [
+                              "string",
+                              "null"
+                            ]
+                          },
+                          "approverReachLost": {
+                            "type": "boolean"
+                          },
+                          "canWithdraw": {
+                            "type": "boolean"
+                          }
+                        },
+                        "required": [
+                          "id",
+                          "workItemId",
+                          "workItemKey",
+                          "workItemTitle",
+                          "transitionId",
+                          "kind",
+                          "state",
+                          "requester",
+                          "approver",
+                          "createdAt",
+                          "expiresAt",
+                          "decidedAt",
+                          "decisionNote",
+                          "approverReachLost",
+                          "canWithdraw"
+                        ]
+                      }
+                    }
+                  },
+                  "required": [
+                    "approvals"
+                  ]
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Authentication required",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Customer portal identity required",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/portal/approvals/{id}/decide": {
+      "post": {
+        "operationId": "decidePortalApproval",
+        "tags": [
+          "Portal approvals"
+        ],
+        "summary": "Decide a customer approval",
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "minLength": 1
+            },
+            "required": true,
+            "name": "id",
+            "in": "path"
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "action": {
+                    "type": "string",
+                    "enum": [
+                      "approve",
+                      "reject"
+                    ]
+                  },
+                  "note": {
+                    "type": [
+                      "string",
+                      "null"
+                    ],
+                    "maxLength": 4000
+                  }
+                },
+                "required": [
+                  "action"
+                ],
+                "additionalProperties": false
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Decision recorded",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "id": {
+                      "type": "string"
+                    },
+                    "workItemId": {
+                      "type": "string"
+                    },
+                    "workItemKey": {
+                      "type": "string"
+                    },
+                    "workItemTitle": {
+                      "type": "string"
+                    },
+                    "transitionId": {
+                      "type": "string"
+                    },
+                    "kind": {
+                      "type": "string",
+                      "enum": [
+                        "customer",
+                        "cab"
+                      ]
+                    },
+                    "state": {
+                      "type": "string",
+                      "enum": [
+                        "pending",
+                        "approved",
+                        "rejected",
+                        "expired",
+                        "withdrawn"
+                      ]
+                    },
+                    "requester": {
+                      "type": "object",
+                      "properties": {
+                        "id": {
+                          "type": "string"
+                        },
+                        "displayName": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        }
+                      },
+                      "required": [
+                        "id",
+                        "displayName"
+                      ]
+                    },
+                    "approver": {
+                      "type": "object",
+                      "properties": {
+                        "id": {
+                          "type": "string"
+                        },
+                        "displayName": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        }
+                      },
+                      "required": [
+                        "id",
+                        "displayName"
+                      ]
+                    },
+                    "createdAt": {
+                      "type": "string",
+                      "format": "date-time"
+                    },
+                    "expiresAt": {
+                      "type": "string",
+                      "format": "date-time"
+                    },
+                    "decidedAt": {
+                      "type": [
+                        "string",
+                        "null"
+                      ],
+                      "format": "date-time"
+                    },
+                    "decisionNote": {
+                      "type": [
+                        "string",
+                        "null"
+                      ]
+                    },
+                    "approverReachLost": {
+                      "type": "boolean"
+                    },
+                    "canWithdraw": {
+                      "type": "boolean"
+                    }
+                  },
+                  "required": [
+                    "id",
+                    "workItemId",
+                    "workItemKey",
+                    "workItemTitle",
+                    "transitionId",
+                    "kind",
+                    "state",
+                    "requester",
+                    "approver",
+                    "createdAt",
+                    "expiresAt",
+                    "decidedAt",
+                    "decisionNote",
+                    "approverReachLost",
+                    "canWithdraw"
+                  ]
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Authentication required",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Customer approval addressed to this person required",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Approval not found",
             "content": {
               "text/plain": {
                 "schema": {

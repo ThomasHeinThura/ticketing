@@ -82,6 +82,14 @@ export {
   workspaceScopeFromRow,
 } from "./evaluator.js";
 export {
+  FEATURE_FLAG_DEFAULTS,
+  FEATURE_FLAGS,
+  type FeatureFlag,
+  isFeatureFlag,
+  LOCKED_FEATURE_DEFAULTS,
+  resolveFeatureFlag,
+} from "./features.js";
+export {
   type CapabilitySource,
   CREDENTIAL_KINDS,
   type CredentialKind,

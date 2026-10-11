@@ -1,10 +1,12 @@
 import {
   filterOfferableForType,
+  isGateSatisfied,
   legalTransitions,
   offerTransition,
   resolveStateTemplateForProject,
   type TransitionOfferContext,
 } from "@taskdesk/domain";
+import { listApprovalsForWorkItemTransition } from "../../approval/repository";
 import {
   buildGuardContext,
   loadWorkflowTransitionContext,
@@ -21,7 +23,15 @@ export type WorkItemTransitionOffer = {
   requiresCab: boolean;
   isReopen: boolean;
   available: boolean;
-  blockedBy: { kind: string; reasonCode: string }[];
+  blockedBy: {
+    kind: string;
+    reasonCode: string;
+    pendingApprovals?: Array<{
+      approverName: string | null;
+      requestedAt: string;
+      expiresAt: string;
+    }>;
+  }[];
 };
 
 /**
@@ -44,6 +54,7 @@ export type WorkItemTransitionOffer = {
 export async function listWorkItemTransitions(
   workItemId: string,
   personId: string | null,
+  personSide: string | null = null,
 ): Promise<WorkItemTransitionOffer[]> {
   const ctx = await loadWorkflowTransitionContext(workItemId);
   if (!ctx?.activeVersion) {
@@ -63,10 +74,37 @@ export async function listWorkItemTransitions(
   const offerable = filterOfferableForType(legal, ctx.isChangeType);
 
   const guardContext = await buildGuardContext(ctx);
+  const approvals = offerable.some(
+    (transition) => transition.requiresApproval || transition.requiresCab,
+  )
+    ? (
+        await listApprovalsForWorkItemTransition(
+          ctx.workItem.id,
+          ctx.workItem.workspaceId,
+        )
+      ).map((row) => ({
+        ...row,
+        kind: row.kind as "customer" | "cab",
+        state: row.state as
+          | "pending"
+          | "approved"
+          | "rejected"
+          | "expired"
+          | "withdrawn",
+      }))
+    : [];
+  const approvalDetails =
+    personSide === "staff"
+      ? approvals
+      : personSide === "customer" && personId
+        ? approvals.filter(
+            (row) =>
+              row.requestedBy === personId || row.approverId === personId,
+          )
+        : [];
   const offerContext: TransitionOfferContext = {
     ...guardContext,
-    // Issue #442's own documented interim rule (until #36's `approval` table lands):
-    // both gates are unconditionally unsatisfied whenever the transition sets them.
+    // Each transition-specific gate is applied below from this actor-independent state.
     approvalSatisfied: false,
     cabSatisfied: false,
     hasNote: false,
@@ -83,7 +121,33 @@ export async function listWorkItemTransitions(
       // offered at all, the same treatment an illegal transition gets.
       continue;
     }
-    const offer = offerTransition(transition, offerContext);
+    const policy = transition.approvalPolicy ?? "any";
+    const transitionOfferContext = {
+      ...offerContext,
+      approvalSatisfied: transition.requiresApproval
+        ? isGateSatisfied(approvals, { transitionId: transition.id, policy })
+        : true,
+      cabSatisfied: transition.requiresCab
+        ? isGateSatisfied(approvals, {
+            transitionId: transition.id,
+            kind: "cab",
+            policy,
+          })
+        : true,
+    };
+    const offer = offerTransition(transition, transitionOfferContext);
+    const pendingApprovals = approvalDetails
+      .filter(
+        (approval) =>
+          approval.transitionId === transition.id &&
+          approval.state === "pending",
+      )
+      .map((approval) => ({
+        kind: approval.kind,
+        approverName: approval.approverName,
+        requestedAt: approval.createdAt.toISOString(),
+        expiresAt: approval.expiresAt.toISOString(),
+      }));
     results.push({
       transitionId: transition.id,
       toStateTemplateId: transition.toStateTemplateId,
@@ -94,7 +158,21 @@ export async function listWorkItemTransitions(
       requiresCab: transition.requiresCab,
       isReopen: transition.isReopen,
       available: offer.available,
-      blockedBy: offer.blockedBy,
+      blockedBy: offer.blockedBy.map((reason) => {
+        const waiting =
+          reason.kind === "cab"
+            ? pendingApprovals.filter((approval) => approval.kind === "cab")
+            : pendingApprovals;
+        return (reason.kind === "approval" || reason.kind === "cab") &&
+          waiting.length > 0
+          ? {
+              ...reason,
+              pendingApprovals: waiting.map(
+                ({ kind: _kind, ...details }) => details,
+              ),
+            }
+          : reason;
+      }),
     });
   }
   return results;
