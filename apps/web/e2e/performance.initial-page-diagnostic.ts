@@ -5,7 +5,10 @@ import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { expect, type Page, test } from "@playwright/test";
 import { summarizeProfileCoverage } from "../src/lib/performance-profile-intervals";
-import { aggregateCpuProfileFrames } from "./helpers/aggregate-cpu-profile";
+import {
+  aggregateCpuProfileFrames,
+  sanitizeCpuProfileNodes,
+} from "./helpers/aggregate-cpu-profile";
 import {
   installPerformanceApiFixture,
   PERFORMANCE_BASE_URL,
@@ -28,6 +31,7 @@ const RESULT_DIR = path.join(
 
 type TraceCpuNode = {
   id: number;
+  parent?: number;
   children?: number[];
   callFrame: {
     functionName: string;
@@ -461,29 +465,7 @@ function sanitizeTraceCpuProfile(
   });
   if (samples.length === 0) return undefined;
   return {
-    nodes: [...profile.nodes.values()].map((node) => {
-      let asset = "runtime";
-      try {
-        const frameUrl = new URL(node.callFrame?.url ?? "", ORIGIN);
-        asset =
-          frameUrl.origin === ORIGIN && frameUrl.pathname.startsWith("/assets/")
-            ? path.posix.basename(frameUrl.pathname)
-            : "non-asset";
-      } catch {
-        asset = "non-asset";
-      }
-      return {
-        id: node.id,
-        children: node.children ?? [],
-        functionName: (node.callFrame?.functionName ?? "(unknown)").slice(
-          0,
-          160,
-        ),
-        asset,
-        line: (node.callFrame?.lineNumber ?? -1) + 1,
-        column: (node.callFrame?.columnNumber ?? -1) + 1,
-      };
-    }),
+    nodes: sanitizeCpuProfileNodes([...profile.nodes.values()], ORIGIN),
     samples,
   };
 }

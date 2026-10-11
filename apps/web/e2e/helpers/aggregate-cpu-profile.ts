@@ -1,10 +1,23 @@
 export type CpuProfileNode = {
   id: number;
+  parent?: number;
   children?: readonly number[];
   functionName: string;
   asset: string;
   line: number;
   column: number;
+};
+
+export type RawCpuProfileNode = {
+  id: number;
+  parent?: number;
+  children?: readonly number[];
+  callFrame?: {
+    functionName?: string;
+    url?: string;
+    lineNumber?: number;
+    columnNumber?: number;
+  };
 };
 
 export type CpuProfileSample = {
@@ -29,6 +42,35 @@ export type CpuProfileBucket = {
   inclusiveSampleCount: number;
 };
 
+/** Keep only safe compiled coordinates from raw V8 ProfileChunk node records. */
+export function sanitizeCpuProfileNodes(
+  nodes: readonly RawCpuProfileNode[],
+  expectedOrigin: string,
+): CpuProfileNode[] {
+  return nodes.map((node) => {
+    let asset = "runtime";
+    try {
+      const frameUrl = new URL(node.callFrame?.url ?? "", expectedOrigin);
+      asset =
+        frameUrl.origin === expectedOrigin &&
+        frameUrl.pathname.startsWith("/assets/")
+          ? frameUrl.pathname.split("/").at(-1) || "runtime"
+          : "non-asset";
+    } catch {
+      asset = "non-asset";
+    }
+    return {
+      id: node.id,
+      ...(Number.isFinite(node.parent) ? { parent: node.parent } : {}),
+      children: node.children ?? [],
+      functionName: (node.callFrame?.functionName ?? "(unknown)").slice(0, 160),
+      asset,
+      line: (node.callFrame?.lineNumber ?? -1) + 1,
+      column: (node.callFrame?.columnNumber ?? -1) + 1,
+    };
+  });
+}
+
 /** Aggregate clipped V8 samples through the sanitized profile's child links. */
 export function aggregateCpuProfileFrames(
   profiles: readonly SanitizedCpuProfile[],
@@ -38,14 +80,17 @@ export function aggregateCpuProfileFrames(
 
   for (const profile of profiles) {
     const nodes = new Map(profile.nodes.map((node) => [node.id, node]));
-    const parents = new Map<number, number[]>();
+    const parents = new Map<number, Set<number>>();
+    const addParent = (childId: number, parentId: number) => {
+      if (!nodes.has(childId) || !nodes.has(parentId)) return;
+      const childParents = parents.get(childId) ?? new Set<number>();
+      childParents.add(parentId);
+      parents.set(childId, childParents);
+    };
     for (const node of profile.nodes) {
-      for (const childId of node.children ?? []) {
-        if (!nodes.has(childId)) continue;
-        const childParents = parents.get(childId) ?? [];
-        childParents.push(node.id);
-        parents.set(childId, childParents);
-      }
+      if (Number.isFinite(node.parent))
+        addParent(node.id, node.parent as number);
+      for (const childId of node.children ?? []) addParent(childId, node.id);
     }
 
     for (const sample of profile.samples) {

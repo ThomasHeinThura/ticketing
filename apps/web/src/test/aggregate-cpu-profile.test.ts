@@ -1,5 +1,8 @@
 import { describe, expect, it } from "vitest";
-import { aggregateCpuProfileFrames } from "../../e2e/helpers/aggregate-cpu-profile";
+import {
+  aggregateCpuProfileFrames,
+  sanitizeCpuProfileNodes,
+} from "../../e2e/helpers/aggregate-cpu-profile";
 
 describe("aggregateCpuProfileFrames", () => {
   it("reports self and inclusive time from child links", () => {
@@ -66,6 +69,67 @@ describe("aggregateCpuProfileFrames", () => {
         selfSampledMicroseconds: 7,
         inclusiveSampledMicroseconds: 7,
         selfSampleCount: 1,
+        inclusiveSampleCount: 1,
+      },
+    ]);
+  });
+
+  it("preserves parent-only ProfileChunk ancestry through sanitization and aggregation", () => {
+    const origin = "https://taskdesk.test";
+    const nodes = sanitizeCpuProfileNodes(
+      [
+        {
+          id: 1,
+          callFrame: {
+            functionName: "Board",
+            url: `${origin}/assets/board.js`,
+            lineNumber: 2,
+            columnNumber: 3,
+          },
+        },
+        {
+          id: 2,
+          parent: 1,
+          callFrame: {
+            functionName: "TaskCard",
+            url: `${origin}/assets/board.js`,
+            lineNumber: 10,
+            columnNumber: 4,
+          },
+        },
+      ],
+      origin,
+    );
+    const buckets = aggregateCpuProfileFrames([
+      {
+        nodes,
+        samples: [
+          { nodeId: 2, startMicroseconds: 20, durationMicroseconds: 9 },
+        ],
+      },
+    ]);
+
+    expect(nodes[1]).toMatchObject({ id: 2, parent: 1, children: [] });
+    expect(nodes[1]).not.toHaveProperty("url");
+    expect(buckets).toEqual([
+      {
+        asset: "board.js",
+        functionName: "TaskCard",
+        line: 11,
+        column: 5,
+        selfSampledMicroseconds: 9,
+        inclusiveSampledMicroseconds: 9,
+        selfSampleCount: 1,
+        inclusiveSampleCount: 1,
+      },
+      {
+        asset: "board.js",
+        functionName: "Board",
+        line: 3,
+        column: 4,
+        selfSampledMicroseconds: 0,
+        inclusiveSampledMicroseconds: 9,
+        selfSampleCount: 0,
         inclusiveSampleCount: 1,
       },
     ]);
