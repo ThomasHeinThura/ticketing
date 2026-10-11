@@ -351,6 +351,13 @@ Add to this as things are learned. It is the institutional memory that agents do
   spread-merged manifest should use `Object.hasOwn`/`Map`, never bare `in` or bracket
   truthiness, for exactly this reason.
 
+- **A fresh session lookup is not a complete authorization decision.** A long-lived
+  socket must check the freshly returned user ban state, person activity, requesting
+  credential and current resource reach before delivery. A valid session can still
+  belong to a banned user. Keep delivery checks ordered, fail closed on lookup failure,
+  and discard queued events after terminal denial. Exercise the real authentication
+  adapter with post-handshake revocation; a mocked session cannot prove this boundary.
+
 ## Related
 
 - [SDLC](sdlc.md) · [Testing strategy](testing-strategy.md)
