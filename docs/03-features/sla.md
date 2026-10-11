@@ -100,8 +100,9 @@ an event once, and for list filtering. It is never the answer to "what is the st
 - `SLA-11` `pause_sla` opens an `sla_pause` row (reason `waiting_customer`) per metric;
   `resume_sla` closes it. Entering a `completed`-group state opens one with reason
   `resolved` (`WF-17`) and reopening closes it (`WF-18`). At most one open row per
-  `(work_item, metric, reason kind)`; a manual pause while an automatic one is open returns
-  409, and an automatic close never closes a manual pause.
+  `(work_item, metric)`. A transition that tries to open a pause while one is already open
+  returns 409 and rolls back the full transition; an automatic close never closes a manual
+  pause.
 - `SLA-12` Paused intervals are subtracted from covered time.
 - `SLA-13` The UI shows "Paused — waiting on customer since Tuesday" rather than a
   frozen countdown with no explanation.
@@ -143,7 +144,6 @@ an event once, and for list filtering. It is never the answer to "what is the st
 | Read policies | `sla_policy:read` |
 | Create, edit, publish a policy | `sla_policy:manage` |
 | Manage service calendars | `sla_policy:manage` |
-| Pause or resume manually | `work_item:update` |
 
 ## Screens
 
@@ -163,21 +163,11 @@ GET   /api/sla-policies/{id}                   sla_policy:read
 PATCH /api/sla-policies/{id}                   sla_policy:manage
 POST  /api/sla-policies/{id}/publish           sla_policy:manage
 GET   /api/work-items/{key}/sla                work_item:read
-POST  /api/work-items/{key}/sla/pause          work_item:update
-POST  /api/work-items/{key}/sla/resume         work_item:update
 ```
 
-### Selected manual pause contract
-
-Thomas selected this contract on 2026-10-09: manual pause and resume actions apply to both
-`first_response` and `resolution` as one database transaction. A manual pause returns `409`
-and writes neither metric if either metric already has an open pause. The pause route has no
-request body and returns the same current evaluation shape as the GET route. It requires
-`work_item:update` and work-item reach; a key without that write scope remains read-only.
-
-The manual-resume interaction with an open `resolved` pause is still awaiting a decision:
-see the owning P2 decision record before implementing that behavior. Until then, no
-implementation may close or replace a `resolved` interval through the manual resume path.
+Manual pause and resume routes are unavailable while the D1 pause-continuity decision is on
+owner hold. Automatic workflow pause/resume effects remain available under SLA-10 and
+SLA-11.
 
 ### Selected policy-authoring contract
 
@@ -257,9 +247,9 @@ calendar usage for projects.
   version and goals when present. Draft goal contents are visible only to callers with
   `sla_policy:read` in that workspace.
 - Create, patch, and publish each write one audit row in the same transaction as the
-  policy change. The audit action identifiers are proposed as `sla_policy.created`,
-  `sla_policy.updated`, and `sla_policy.published`; they must be added to the audit action
-  catalogue before implementation. Audit snapshots contain policy/version ids, changed
+  policy change. The audit action identifiers are `sla_policy.created`,
+  `sla_policy.updated`, and `sla_policy.published`, recorded in the audit action
+  catalogue. Audit snapshots contain policy/version ids, changed
   field names, and safe scalar configuration, never raw request bodies. If the audit write
   fails, the mutation still commits and AU-14 records the bounded failure signal and
   notifies current instance administrators after commit. No SLA-policy domain event is

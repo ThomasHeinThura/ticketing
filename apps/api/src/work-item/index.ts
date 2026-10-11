@@ -56,7 +56,6 @@ import listWorkItemActivity from "./controllers/list-work-item-activity";
 import listWorkItemTransitions from "./controllers/list-work-item-transitions";
 import listWorkItemTypes from "./controllers/list-work-item-types";
 import listWorkItems from "./controllers/list-work-items";
-import { pauseWorkItemSla } from "./controllers/pause-work-item-sla";
 import rankWorkItem from "./controllers/rank-work-item";
 import setWorkItemParent from "./controllers/set-work-item-parent";
 import transitionWorkItem, {
@@ -432,8 +431,7 @@ const getWorkItemSlaRoute = createRoute({
   tags: ["Work items"],
   summary: "Evaluate a work item's pinned SLA policy version",
   middleware: [
-    requireWorkItemReach(),
-    requireWorkspaceCapability("work_item:read"),
+    requireWorkItemReach("key", { requireProjectReach: true }),
   ] as const,
   request: { params: workItemKeyParam },
   responses: {
@@ -445,34 +443,6 @@ const getWorkItemSlaRoute = createRoute({
       "No workspace access or missing work_item:read permission",
     ),
     404: errorResponse("Work item not found"),
-  },
-});
-
-const pauseWorkItemSlaRoute = createRoute({
-  method: "post",
-  operationId: "pauseWorkItemSla",
-  path: "/work-items/{key}/sla/pause",
-  tags: ["Work items"],
-  summary: "Pause both SLA metrics manually",
-  description:
-    "Opens a manual pause for both SLA metrics atomically. If either metric already " +
-    "has an open pause, the request returns 409 without changing either metric.",
-  middleware: [
-    requireWorkItemReach(),
-    requireApiKeyPermissionScope({ work_item: ["update"] }),
-    requireWorkspaceCapability("work_item:update"),
-  ] as const,
-  request: { params: workItemKeyParam },
-  responses: {
-    200: jsonResponse(
-      "The work item's current SLA evaluation",
-      workItemSlaSchema,
-    ),
-    403: errorResponse(
-      "No workspace access, or missing work_item:update permission",
-    ),
-    404: errorResponse("Work item not found"),
-    409: errorResponse("An SLA pause is already open for at least one metric"),
   },
 });
 
@@ -1190,13 +1160,6 @@ const workItem = apiRouter<
   .openapi(getWorkItemSlaRoute, async (c) => {
     const { key } = c.req.valid("param");
     const item = await getWorkItemSla(key, c.get("workspaceId"));
-    return c.json(workItemSlaSchema.parse(item), 200);
-  })
-  .openapi(pauseWorkItemSlaRoute, async (c) => {
-    const { key } = c.req.valid("param");
-    const workspaceId = c.get("workspaceId");
-    await pauseWorkItemSla(key, workspaceId);
-    const item = await getWorkItemSla(key, workspaceId);
     return c.json(workItemSlaSchema.parse(item), 200);
   })
   .openapi(listWorkItemTypesRoute, async (c) => {

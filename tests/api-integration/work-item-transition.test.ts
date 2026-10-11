@@ -1249,114 +1249,12 @@ describe("API integration: work item transition (#442, workflows.md)", () => {
     },
   );
 
-  it("SLA-11: manual pause atomically targets both metrics and refuses a partial conflict", async () => {
-    const { creator, workspace, project } = await setupProject();
-    await makeState(workspace.id, project.id, {
-      group: "backlog",
-      isDefault: true,
-    });
-    const type = await makeWorkItemType(workspace.id, null);
-    mockAuthenticatedSession(creator);
-    const { app } = createApp();
-    const { key } = await createWorkItem(app, project.id, type.id);
-    const [item] = await db
-      .select({ id: schema.workItemTable.id })
-      .from(schema.workItemTable)
-      .where(eq(schema.workItemTable.key, key));
-    if (!item) throw new Error("SLA pause test work item not found");
-    for (const permissions of [null, "not-json", JSON.stringify({})]) {
-      const readOnlyKey = await createApiKey(creator.id, permissions);
-      const denied = await app.request(`/api/work-items/${key}/sla/pause`, {
-        method: "POST",
-        headers: { Authorization: `Bearer ${readOnlyKey}` },
-      });
-      expect(denied.status).toBe(403);
-      expect(
-        await db
-          .select()
-          .from(slaPauseTable)
-          .where(eq(slaPauseTable.workItemId, item.id)),
-      ).toHaveLength(0);
-    }
-    await db.insert(slaPauseTable).values({
-      workItemId: item.id,
-      metric: "first_response",
-      startedAt: new Date(),
-      reason: "waiting_customer",
-    });
-
-    const response = await app.request(`/api/work-items/${key}/sla/pause`, {
-      method: "POST",
-    });
-    expect(response.status).toBe(409);
-    let pauses = await db
-      .select()
-      .from(slaPauseTable)
-      .where(eq(slaPauseTable.workItemId, item.id));
-    expect(pauses).toHaveLength(1);
-    expect(pauses[0]?.metric).toBe("first_response");
-
-    await db.delete(slaPauseTable).where(eq(slaPauseTable.workItemId, item.id));
-    const writeKey = await createApiKey(
-      creator.id,
-      JSON.stringify({ work_item: ["update"] }),
+  it("keeps manual SLA pause unavailable while D1 is unresolved", async () => {
+    const response = await createApp().app.request(
+      "/api/work-items/NO-SUCH-ITEM/sla/pause",
+      { method: "POST" },
     );
-    const success = await app.request(`/api/work-items/${key}/sla/pause`, {
-      method: "POST",
-      headers: { Authorization: `Bearer ${writeKey}` },
-    });
-    expect(success.status).toBe(200);
-    pauses = await db
-      .select()
-      .from(slaPauseTable)
-      .where(eq(slaPauseTable.workItemId, item.id));
-    expect(pauses.map((pause) => pause.metric).sort()).toEqual([
-      "first_response",
-      "resolution",
-    ]);
-    expect(pauses.every((pause) => pause.reason === "manual")).toBe(true);
-  });
-
-  it("#493: manual SLA pause refuses a project deleted after reach resolution", async () => {
-    const { creator, workspace, project } = await setupProject();
-    await makeState(workspace.id, project.id, {
-      group: "backlog",
-      isDefault: true,
-    });
-    const type = await makeWorkItemType(workspace.id, null);
-    mockAuthenticatedSession(creator);
-    const { app } = createApp();
-    const { key } = await createWorkItem(app, project.id, type.id);
-    const [item] = await db
-      .select({ id: schema.workItemTable.id })
-      .from(schema.workItemTable)
-      .where(eq(schema.workItemTable.key, key));
-    if (!item) throw new Error("SLA freeze-race work item not found");
-    const writeKey = await createApiKey(
-      creator.id,
-      JSON.stringify({ work_item: ["update"] }),
-    );
-
-    const race = await raceProjectSoftDelete(
-      project.id,
-      async () =>
-        await app.request(`/api/work-items/${key}/sla/pause`, {
-          method: "POST",
-          headers: { Authorization: `Bearer ${writeKey}` },
-        }),
-    );
-    expect(race.blockedOnRowLock).toBe(true);
-    expect(race.operation.status).toBe("fulfilled");
-    if (race.operation.status !== "fulfilled") {
-      throw new Error("manual SLA pause did not return after project deletion");
-    }
-    expect(race.operation.value.status).toBe(404);
-    expect(
-      await db
-        .select()
-        .from(slaPauseTable)
-        .where(eq(slaPauseTable.workItemId, item.id)),
-    ).toHaveLength(0);
+    expect(response.status).toBe(404);
   });
 
   it("D1 (Opus delta review of PR #457): a concurrent child reopen cannot slip past a children_closed guard", async () => {

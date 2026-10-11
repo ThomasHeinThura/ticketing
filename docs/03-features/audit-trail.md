@@ -243,6 +243,7 @@ them; a new audit-only action is added here first ([AGENTS.md](../../AGENTS.md) 
 | `audit.read` · `audit.exported` · `audit.purged` | `AU-13`; the purge audits itself |
 | `instance.restored` | A restore completed ([backup-and-restore.md](../05-operations/backup-and-restore.md)) |
 | `pending_action.viewed` | The one pending-action transition that is not an event (`PA-11`) |
+| `sla_policy.created` · `sla_policy.updated` · `sla_policy.published` | SLA policy creation, draft edits and publication |
 
 ## Permissions
 

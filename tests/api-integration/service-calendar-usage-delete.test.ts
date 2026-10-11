@@ -1,3 +1,4 @@
+import { createHash, randomUUID } from "node:crypto";
 import { and, eq, sql } from "drizzle-orm";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import db, { schema } from "../../apps/api/src/database";
@@ -55,6 +56,72 @@ async function makeCalendar(workspaceId: string, actorId: string) {
     holidays: [],
     actor: { actorId, actorType: "person", apiKeyId: null },
   });
+}
+
+function hashApiKey(rawKey: string): string {
+  return createHash("sha256")
+    .update(rawKey)
+    .digest()
+    .toString("base64")
+    .replace(/\+/g, "-")
+    .replace(/\//g, "_")
+    .replace(/=+$/u, "");
+}
+
+async function makeCalendarKey(userId: string, permissions: unknown) {
+  const rawKey = `taskdesk_test_${randomUUID()}`;
+  const now = new Date();
+  const [key] = await db
+    .insert(schema.apikeyTable)
+    .values({
+      referenceId: userId,
+      userId,
+      key: hashApiKey(rawKey),
+      name: "calendar deletion key",
+      start: rawKey.slice(0, 12),
+      prefix: "taskdesk",
+      permissions: JSON.stringify(permissions),
+      createdAt: now,
+      updatedAt: now,
+    })
+    .returning({ id: schema.apikeyTable.id });
+  if (!key) throw new Error("calendar API key fixture insert returned no row");
+  return { id: key.id, rawKey };
+}
+
+async function prepareApprovalSession(userId: string) {
+  const now = new Date();
+  const id = `calendar-delete-session-${userId}`;
+  await db.insert(schema.sessionTable).values({
+    id,
+    token: `calendar-delete-token-${userId}`,
+    userId,
+    portal: "agent",
+    expiresAt: new Date(now.getTime() + 60 * 60 * 1000),
+    createdAt: now,
+    updatedAt: now,
+  });
+  return id;
+}
+
+async function startKeyDeletion(
+  owner: Awaited<ReturnType<typeof createWorkspaceMember>>,
+) {
+  const calendar = await makeCalendar(owner.workspace.id, owner.user.id);
+  mockAuthenticatedSession(owner.user);
+  await prepareApprovalSession(owner.user.id);
+  const key = await makeCalendarKey(owner.user.id, { sla_policy: ["manage"] });
+  const { app } = createApp();
+  const request = await app.request(`/api/service-calendars/${calendar.id}`, {
+    method: "DELETE",
+    headers: { authorization: `Bearer ${key.rawKey}` },
+  });
+  if (request.status !== 202)
+    throw new Error(
+      `expected calendar deletion request 202, received ${request.status}`,
+    );
+  const pending = (await request.json()) as { pendingActionId: string };
+  return { app, calendar, key, pending };
 }
 
 describe("API integration: service-calendar usage and CAL-9 deletion", () => {
@@ -190,6 +257,311 @@ describe("API integration: service-calendar usage and CAL-9 deletion", () => {
         .select()
         .from(schema.outboxTable)
         .where(eq(schema.outboxTable.kind, "service_calendar.deleted")),
+    ).toHaveLength(1);
+  });
+
+  it.each(["disabled", "missing"] as const)(
+    "permanently invalidates a calendar deletion when its API key is %s",
+    async (state) => {
+      const owner = await createWorkspaceMember({ role: "admin" });
+      const { app, calendar, key, pending } = await startKeyDeletion(owner);
+      if (state === "disabled") {
+        await db
+          .update(schema.apikeyTable)
+          .set({ enabled: false })
+          .where(eq(schema.apikeyTable.id, key.id));
+      } else {
+        await db
+          .delete(schema.apikeyTable)
+          .where(eq(schema.apikeyTable.id, key.id));
+      }
+
+      const approval = await app.request(
+        `/api/me/pending-actions/${pending.pendingActionId}/approve`,
+        {
+          method: "POST",
+          headers: { "content-type": "application/json" },
+          body: "{}",
+        },
+      );
+      expect(approval.status).toBe(409);
+      await expect(approval.text()).resolves.toContain(
+        "pending_action_target_changed",
+      );
+      await expect(
+        db.query.pendingActionTable.findFirst({
+          where: eq(schema.pendingActionTable.id, pending.pendingActionId),
+        }),
+      ).resolves.toMatchObject({
+        state: "invalidated",
+        invalidationReason: "credential_revoked",
+      });
+
+      if (state === "disabled") {
+        await db
+          .update(schema.apikeyTable)
+          .set({ enabled: true })
+          .where(eq(schema.apikeyTable.id, key.id));
+      }
+      const retry = await app.request(
+        `/api/me/pending-actions/${pending.pendingActionId}/approve`,
+        {
+          method: "POST",
+          headers: { "content-type": "application/json" },
+          body: "{}",
+        },
+      );
+      expect(retry.status).toBe(409);
+      await expect(retry.text()).resolves.toContain(
+        "pending_action_not_pending",
+      );
+      expect(
+        await db
+          .select()
+          .from(schema.serviceCalendarTable)
+          .where(eq(schema.serviceCalendarTable.id, calendar.id)),
+      ).toHaveLength(1);
+    },
+  );
+
+  it("uses the originating API key's current capability subset and cannot regain approval after scope restoration", async () => {
+    const owner = await createWorkspaceMember({ role: "admin" });
+    const { app, calendar, key, pending } = await startKeyDeletion(owner);
+    await db
+      .update(schema.apikeyTable)
+      .set({ permissions: JSON.stringify({ sla_policy: ["read"] }) })
+      .where(eq(schema.apikeyTable.id, key.id));
+
+    const approval = await app.request(
+      `/api/me/pending-actions/${pending.pendingActionId}/approve`,
+      {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: "{}",
+      },
+    );
+    expect(approval.status).toBe(409);
+    await expect(
+      db.query.pendingActionTable.findFirst({
+        where: eq(schema.pendingActionTable.id, pending.pendingActionId),
+      }),
+    ).resolves.toMatchObject({
+      state: "invalidated",
+      invalidationReason: "capability_removed",
+    });
+
+    await db
+      .update(schema.apikeyTable)
+      .set({ permissions: JSON.stringify({ sla_policy: ["manage"] }) })
+      .where(eq(schema.apikeyTable.id, key.id));
+    const retry = await app.request(
+      `/api/me/pending-actions/${pending.pendingActionId}/approve`,
+      {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: "{}",
+      },
+    );
+    expect(retry.status).toBe(409);
+    await expect(retry.text()).resolves.toContain("pending_action_not_pending");
+    expect(
+      await db
+        .select()
+        .from(schema.serviceCalendarTable)
+        .where(eq(schema.serviceCalendarTable.id, calendar.id)),
+    ).toHaveLength(1);
+  });
+
+  it("invalidates after the requester's capability is removed and cannot approve after restoration", async () => {
+    const owner = await createWorkspaceMember({ role: "admin" });
+    const { app, calendar, pending } = await startKeyDeletion(owner);
+    await db
+      .update(schema.workspaceUserTable)
+      .set({ role: "viewer" })
+      .where(
+        and(
+          eq(schema.workspaceUserTable.workspaceId, owner.workspace.id),
+          eq(schema.workspaceUserTable.userId, owner.user.id),
+        ),
+      );
+
+    const approval = await app.request(
+      `/api/me/pending-actions/${pending.pendingActionId}/approve`,
+      {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: "{}",
+      },
+    );
+    expect(approval.status).toBe(409);
+    await expect(
+      db.query.pendingActionTable.findFirst({
+        where: eq(schema.pendingActionTable.id, pending.pendingActionId),
+      }),
+    ).resolves.toMatchObject({
+      state: "invalidated",
+      invalidationReason: "capability_removed",
+    });
+
+    await db
+      .update(schema.workspaceUserTable)
+      .set({ role: "admin" })
+      .where(
+        and(
+          eq(schema.workspaceUserTable.workspaceId, owner.workspace.id),
+          eq(schema.workspaceUserTable.userId, owner.user.id),
+        ),
+      );
+    const retry = await app.request(
+      `/api/me/pending-actions/${pending.pendingActionId}/approve`,
+      {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: "{}",
+      },
+    );
+    expect(retry.status).toBe(409);
+    await expect(retry.text()).resolves.toContain("pending_action_not_pending");
+    expect(
+      await db
+        .select()
+        .from(schema.serviceCalendarTable)
+        .where(eq(schema.serviceCalendarTable.id, calendar.id)),
+    ).toHaveLength(1);
+  });
+
+  it("invalidates after workspace reach is lost and cannot approve after reach is restored", async () => {
+    const owner = await createWorkspaceMember({ role: "admin" });
+    const { app, calendar, pending } = await startKeyDeletion(owner);
+    await db
+      .delete(schema.workspaceUserTable)
+      .where(
+        and(
+          eq(schema.workspaceUserTable.workspaceId, owner.workspace.id),
+          eq(schema.workspaceUserTable.userId, owner.user.id),
+        ),
+      );
+
+    const approval = await app.request(
+      `/api/me/pending-actions/${pending.pendingActionId}/approve`,
+      {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: "{}",
+      },
+    );
+    expect(approval.status).toBe(409);
+    await expect(
+      db.query.pendingActionTable.findFirst({
+        where: eq(schema.pendingActionTable.id, pending.pendingActionId),
+      }),
+    ).resolves.toMatchObject({
+      state: "invalidated",
+      invalidationReason: "reach_lost",
+    });
+
+    await db.insert(schema.workspaceUserTable).values({
+      workspaceId: owner.workspace.id,
+      userId: owner.user.id,
+      role: "admin",
+      joinedAt: new Date(),
+    });
+    const retry = await app.request(
+      `/api/me/pending-actions/${pending.pendingActionId}/approve`,
+      {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: "{}",
+      },
+    );
+    expect(retry.status).toBe(409);
+    await expect(retry.text()).resolves.toContain("pending_action_not_pending");
+    expect(
+      await db
+        .select()
+        .from(schema.serviceCalendarTable)
+        .where(eq(schema.serviceCalendarTable.id, calendar.id)),
+    ).toHaveLength(1);
+  });
+
+  it("invalidates an approval when the requester is deactivated", async () => {
+    const owner = await createWorkspaceMember({ role: "admin" });
+    const { app, calendar, pending } = await startKeyDeletion(owner);
+    await db
+      .update(schema.personTable)
+      .set({ active: false })
+      .where(eq(schema.personTable.userId, owner.user.id));
+
+    const approval = await app.request(
+      `/api/me/pending-actions/${pending.pendingActionId}/approve`,
+      {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: "{}",
+      },
+    );
+    expect(approval.status).toBe(409);
+    await expect(
+      db.query.pendingActionTable.findFirst({
+        where: eq(schema.pendingActionTable.id, pending.pendingActionId),
+      }),
+    ).resolves.toMatchObject({
+      state: "invalidated",
+      invalidationReason: "requester_deactivated",
+    });
+    await db
+      .update(schema.personTable)
+      .set({ active: true })
+      .where(eq(schema.personTable.userId, owner.user.id));
+    const retry = await app.request(
+      `/api/me/pending-actions/${pending.pendingActionId}/approve`,
+      {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: "{}",
+      },
+    );
+    expect(retry.status).toBe(409);
+    await expect(retry.text()).resolves.toContain("pending_action_not_pending");
+    expect(
+      await db
+        .select()
+        .from(schema.serviceCalendarTable)
+        .where(eq(schema.serviceCalendarTable.id, calendar.id)),
+    ).toHaveLength(1);
+  });
+
+  it("invalidates an approval when the calendar moves to another workspace", async () => {
+    const owner = await createWorkspaceMember({ role: "admin" });
+    const other = await createWorkspaceMember({ role: "admin" });
+    const { app, calendar, pending } = await startKeyDeletion(owner);
+    await db
+      .update(schema.serviceCalendarTable)
+      .set({ workspaceId: other.workspace.id })
+      .where(eq(schema.serviceCalendarTable.id, calendar.id));
+
+    const approval = await app.request(
+      `/api/me/pending-actions/${pending.pendingActionId}/approve`,
+      {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: "{}",
+      },
+    );
+    expect(approval.status).toBe(409);
+    await expect(
+      db.query.pendingActionTable.findFirst({
+        where: eq(schema.pendingActionTable.id, pending.pendingActionId),
+      }),
+    ).resolves.toMatchObject({
+      state: "invalidated",
+      invalidationReason: "scope_changed",
+    });
+    expect(
+      await db
+        .select()
+        .from(schema.serviceCalendarTable)
+        .where(eq(schema.serviceCalendarTable.id, calendar.id)),
     ).toHaveLength(1);
   });
 

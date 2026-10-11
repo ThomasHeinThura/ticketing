@@ -592,6 +592,82 @@ describe("API integration: saved views", () => {
     expect(getResponse.status).toBe(404);
   });
 
+  it("hides a team view from a nonmember on get, run, count and pin", async () => {
+    const owner = await createWorkspaceMember({ role: "owner" });
+    await addPerson(owner.user.id);
+    const nonmember = await createWorkspaceMember();
+    await db.insert(schema.workspaceUserTable).values({
+      workspaceId: owner.workspace.id,
+      userId: nonmember.user.id,
+      role: "member",
+      joinedAt: new Date(),
+    });
+    await db.insert(schema.workspaceRoleTable).values({
+      workspaceId: owner.workspace.id,
+      role: "member",
+      permission: JSON.stringify(defaultRolePayloads.member),
+      isSystem: true,
+      createdAt: new Date(),
+      updatedAt: new Date(),
+    });
+    const nonmemberPerson = await addPerson(nonmember.user.id);
+    const teamId = `team-view-private-${randomUUID()}`;
+    await db.insert(schema.teamTable).values({
+      id: teamId,
+      name: "Private team audience",
+      workspaceId: owner.workspace.id,
+      createdAt: new Date(),
+    });
+    await db.insert(schema.teamMemberTable).values({
+      id: `team-member-view-private-${randomUUID()}`,
+      teamId,
+      userId: owner.user.id,
+      createdAt: new Date(),
+    });
+
+    mockAuthenticatedSession(owner.user);
+    const { app: ownerApp } = createApp();
+    const createdResponse = await ownerApp.request("/api/views", {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({
+        workspaceId: owner.workspace.id,
+        name: "Team-only view",
+        scope: "workspace",
+        scopeId: owner.workspace.id,
+        visibility: "team",
+        sharedWithTeamId: teamId,
+        layout: "list",
+        query: { entity: "work_item" },
+      }),
+    });
+    expect(createdResponse.status).toBe(200);
+    const created = (await createdResponse.json()) as { id: string };
+
+    mockAuthenticatedSession(nonmember.user);
+    const { app: nonmemberApp } = createApp();
+    const responses = await Promise.all([
+      nonmemberApp.request(`/api/views/${created.id}`),
+      nonmemberApp.request(`/api/views/${created.id}/run`, { method: "POST" }),
+      nonmemberApp.request(`/api/views/${created.id}/count`),
+      nonmemberApp.request(`/api/views/${created.id}/pin`, { method: "POST" }),
+    ]);
+    expect(responses.map((response) => response.status)).toEqual([
+      404, 404, 404, 404,
+    ]);
+    expect(
+      await db.query.userPreferenceTable.findFirst({
+        where: (row, { and, eq }) =>
+          and(
+            eq(row.scope, "workspace"),
+            eq(row.scopeId, owner.workspace.id),
+            eq(row.personId, nonmemberPerson.id),
+            eq(row.key, "pinned_view_ids"),
+          ),
+      }),
+    ).toBeUndefined();
+  });
+
   it("refuses an edit from a non-owner without workspace:manage_settings", async () => {
     const owner = await createWorkspaceMember();
     await addPerson(owner.user.id);

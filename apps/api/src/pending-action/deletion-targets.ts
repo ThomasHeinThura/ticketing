@@ -130,15 +130,21 @@ export async function approveServiceCalendarDeletion(input: {
       )
       .for("update")
       .limit(1);
-    if (
-      !session ||
-      !actor?.userId ||
-      actor.userId !== input.userId ||
-      !actor.active ||
-      actor.side !== "staff" ||
-      actor.banned
-    ) {
+    if (!session || !actor?.userId || actor.userId !== input.userId) {
       throw new HTTPException(403, { message: "Forbidden" });
+    }
+    if (!actor.active || actor.side !== "staff" || actor.banned) {
+      const invalidated = await invalidateServiceCalendarDeletion(tx, {
+        row,
+        actorPersonId: input.requesterPersonId,
+        actorName: actor.name,
+        sessionId: input.sessionId,
+        traceId: input.traceId,
+        reason: !actor.active ? "requester_deactivated" : "capability_removed",
+        now,
+      });
+      auditFailure ||= invalidated.auditFailure;
+      return { row: invalidated.row, state: "invalidated" as const };
     }
     if (row.expiresAt <= now) {
       const [expired] = await tx
@@ -214,6 +220,38 @@ export async function approveServiceCalendarDeletion(input: {
         message: "pending_action_policy_changed",
       });
     }
+    let apiKeyScope: ApiKeyPermissionScope | undefined;
+    if (row.credentialType === "api_key") {
+      const [key] = await tx
+        .select({ permissions: apikeyTable.permissions })
+        .from(apikeyTable)
+        .where(
+          and(
+            eq(apikeyTable.id, row.credentialId ?? ""),
+            or(
+              eq(apikeyTable.referenceId, input.userId),
+              eq(apikeyTable.userId, input.userId),
+            ),
+            eq(apikeyTable.enabled, true),
+          ),
+        )
+        .for("update")
+        .limit(1);
+      if (!key) {
+        const invalidated = await invalidateServiceCalendarDeletion(tx, {
+          row,
+          actorPersonId: input.requesterPersonId,
+          actorName: actor.name,
+          sessionId: input.sessionId,
+          traceId: input.traceId,
+          reason: "credential_revoked",
+          now,
+        });
+        auditFailure ||= invalidated.auditFailure;
+        return { row: invalidated.row, state: "invalidated" as const };
+      }
+      apiKeyScope = apiKeyScopeFromStoredPermissions(key.permissions);
+    }
     let payload: ReturnType<typeof canonicalPendingActionPayload>;
     try {
       payload = canonicalPendingActionPayload(
@@ -256,8 +294,19 @@ export async function approveServiceCalendarDeletion(input: {
       .where(eq(serviceCalendarTable.id, targetId))
       .for("update")
       .limit(1);
-    if (!calendar || calendar.workspaceId !== row.workspaceId)
-      throw new HTTPException(404, { message: "Service calendar not found" });
+    if (!calendar || calendar.workspaceId !== row.workspaceId) {
+      const invalidated = await invalidateServiceCalendarDeletion(tx, {
+        row,
+        actorPersonId: input.requesterPersonId,
+        actorName: actor.name,
+        sessionId: input.sessionId,
+        traceId: input.traceId,
+        reason: "scope_changed",
+        now,
+      });
+      auditFailure ||= invalidated.auditFailure;
+      return { row: invalidated.row, state: "invalidated" as const };
+    }
     const targetVersions = row.targetVersions as Record<string, unknown> | null;
     if (!targetVersions || targetVersions[targetId] !== calendar.version) {
       const invalidated = await invalidateServiceCalendarDeletion(tx, {
@@ -275,14 +324,48 @@ export async function approveServiceCalendarDeletion(input: {
         auditFailure: invalidated.auditFailure,
       };
     }
-    await validateWorkspaceAccess(input.userId, calendar.workspaceId);
-    await assertCallerHasCapability(
-      calendar.workspaceId,
-      input.userId,
-      "sla_policy:manage",
-      { kind: "session" },
-      tx,
-    );
+    try {
+      await validateWorkspaceAccess(input.userId, calendar.workspaceId);
+    } catch (error) {
+      if (error instanceof HTTPException && error.status === 403) {
+        const invalidated = await invalidateServiceCalendarDeletion(tx, {
+          row,
+          actorPersonId: input.requesterPersonId,
+          actorName: actor.name,
+          sessionId: input.sessionId,
+          traceId: input.traceId,
+          reason: "reach_lost",
+          now,
+        });
+        auditFailure ||= invalidated.auditFailure;
+        return { row: invalidated.row, state: "invalidated" as const };
+      }
+      throw error;
+    }
+    try {
+      await assertCallerHasCapability(
+        calendar.workspaceId,
+        input.userId,
+        "sla_policy:manage",
+        scopeCredential(apiKeyScope),
+        tx,
+      );
+    } catch (error) {
+      if (error instanceof HTTPException && error.status === 403) {
+        const invalidated = await invalidateServiceCalendarDeletion(tx, {
+          row,
+          actorPersonId: input.requesterPersonId,
+          actorName: actor.name,
+          sessionId: input.sessionId,
+          traceId: input.traceId,
+          reason: "capability_removed",
+          now,
+        });
+        auditFailure ||= invalidated.auditFailure;
+        return { row: invalidated.row, state: "invalidated" as const };
+      }
+      throw error;
+    }
     await assertCalendarUnused(tx, calendar.workspaceId, calendar.id);
     const [deleted] = await tx
       .delete(serviceCalendarTable)
@@ -994,7 +1077,13 @@ async function invalidateServiceCalendarDeletion(
     actorName: string;
     sessionId: string;
     traceId: string;
-    reason: "version_changed" | "scope_changed";
+    reason:
+      | "version_changed"
+      | "scope_changed"
+      | "reach_lost"
+      | "capability_removed"
+      | "credential_revoked"
+      | "requester_deactivated";
     now: Date;
   },
 ) {
