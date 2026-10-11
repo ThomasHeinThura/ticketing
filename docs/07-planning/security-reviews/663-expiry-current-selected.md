@@ -324,3 +324,70 @@ The new commit has one parent, the full-review head above. Its entire diff is on
 
 **Limits:** This is a security delta closure, not a fresh database, broad test, Docker, browser, image, hosted-CI, or merge-readiness claim. Any future source edit requires review at its own exact head. No repository files were edited by this reviewer.
 
+
+## Accepted #660 composition — fresh current-head delta reviews
+
+**Reviewed head:** `0f09378431be2c09fdcddde8226b17eaa3d8489a`
+
+All original findings, corrections and source-labelled tests above remain preserved. The exact normal accepted-main composition has fresh ordinary and lightweight Sol clearance; current hosted checks remain mandatory. No earlier runtime result is relabelled.
+
+### 663-accepted660-composition-independent-luna.md
+
+SHA-256: `3d6b7737cb242eaaa9b60395a8ac07e63025d57a1ecebb43c2a911b873c488d9` · Authentic public report: https://github.com/ThomasHeinThura/ticketing/pull/663#issuecomment-6113059969
+
+# PR #663 accepted #660 composition — independent ordinary delta review
+
+**Verdict: CLEAR for the bounded composition at this exact head.** No blocking or non-blocking finding in the #660 accepted-record import or its composition with the already reviewed #663 source.
+
+**Reviewed head:** `0f09378431be2c09fdcddde8226b17eaa3d8489a`  
+**First parent / prior #663 reviewed head:** `f7be951506ffdb7edc00d9bf2286723049f59985` (whose parent is the #663 ledger-closure head `e306ca48f612191cd79f0bd9122815abded9d5dd`)  
+**Second parent / accepted main:** `9e1e3bf92f29b79d7ff13674d14842a4de7c7256`  
+**Reviewer:** fresh independent ordinary-review context, dispatched with selector `gpt-6-luna`; the serving variant is not independently exposed. I did not author, direct, or remediate this candidate. No repository files were changed and no subagents were used.
+
+## Scope and checks
+
+I read the accepted `AGENTS.md`, `CLAUDE.md`, and `docs/04-engineering/agent-workflow.md`, including the current mission and the rule that review records and landed commits must be checked with every-parent Git semantics. I read the complete #663 selected-review note, including A/B/C's original reports, their factual corrections, C's positive-probe closure, the full security BLOCK, its model-provenance correction, and the ordinary/Sol ledger-hash closure. I independently verified SHA-256 markers for all seven original ordinary reports/corrections available in the evidence directory; each matched. The full security BLOCK, model correction, security closure, and accepted #663 composition reports are preserved in the accepted Git note with their stated hashes. The #663 note expressly keeps the original BLOCK and later exact-head closure separate.
+
+I read the current merge's two parents and all nine commits the preserved hosted template failure (`pr663-0f-precomposition-review-template-failure.log`, job `114559023688`) says landed after the prior reviewed head. Their parent-relative changes are: `c9b7ceac` and `731b03a4` queue/status records; `0b75991a` an accepted #655 review/test-fixture merge plus queue/status records; `9bbe779a` the #658 accepted-S7 source composition; `2ec14eeb` queue/status records; `d623471e` the accepted #662 checker composition plus queue/status records; `a5580758` status; `9e1e3bf9` the accepted #660 record composition; and `0f093784` this two-parent composition. The separate `f7be9515` commit adds only the #663 review note. I checked the #658 source paths in `9bbe779a` against accepted main `40f05826`, the #655 fixture against accepted `13aacb2e`, and both #662 checker files against accepted `3dadd086`; each comparison is byte-identical. Those already accepted source changes are therefore not unreviewed modifications introduced into the #663 tree.
+
+At the final head, the first-parent merge diff contains exactly the three assigned incoming paths: `docs/07-planning/integration-execution-queue.md`, `docs/07-planning/status.md`, and `docs/07-planning/security-reviews/660-accepted-openapi-composition.md`. Each candidate Git blob ID exactly equals its blob at accepted main `9e1e3bf9`. I inspected their added wording. It preserves the prior #660 G11 failure and unknown cause, clearly labels #662's accepted checker evidence, keeps #650/#661 compositions and new exact-head checks pending, and dates the #663 “composition outstanding” statement before this merge. It neither erases prior failures nor treats old runtime/test/image evidence as current-head acceptance.
+
+The 65-line #660 note preserves its two original factual and lightweight-security reports plus the separately labelled model-provenance correction. I compared its source reports and SHA markers; the fresh ordinary report supports only bounded factual composition, and the security report supports only bounded composition. The attached correction says the Sol dispatch selector was `gpt-6-sol` and that its serving variant is not independently visible; the preserved report is not misrepresented here as a confirmed GPT-6.1 Sol execution.
+
+`git diff --check f7be9515..0f093784` identifies hard-break trailing spaces in the imported report and a blank line at EOF; these bytes are present in the accepted-main blob and preserve the embedded report text. I found no semantic or binding defect from that formatting. The local checkout was clean before and after review.
+
+## Source equivalence and limits
+
+I compared the exact candidate tree against `e306ca48` for the expiry worker, 0122 SQL, snapshot and journal, database schema, focused expiry integration test, SLA runtime source, Dockerfile, lockfile, package manifest, and Turbo configuration. All were byte-identical. The full tree delta from `e306ca48` to this head is limited to four planning records: the queue, status, the #660 note, and the preserved #663 note. The 0122 migration, scheduler, planner fixture, schema, runtime behavior, and build inputs did not change in this composition.
+
+No database, integration suite, broad build, browser, Docker/image, or hosted check was run. Author-side PostgreSQL and accepted-main check evidence remains tied to its recorded source/job and is not a result from `0f093784`. The current template job is red because the #663 note still names `e306ca48` as its newest reviewed head and the nine later landed commits include paths outside that note. This report supplies the fresh ordinary delta assessment, but the template requires the current reviewed-head record and the separate current GPT-6 Sol security confirmation; neither this verdict nor prior exact-source proof should be described as making those gates green. Current hosted acceptance and merge readiness remain unresolved.
+
+### 663-accepted660-composition-security-sol.md
+
+SHA-256: `e501dec5beafa6049d3dec3a285286ca085619b7fe6a8c1991623ae622adce22` · Authentic public report: https://github.com/ThomasHeinThura/ticketing/pull/663#issuecomment-6113070248
+
+# PR #663 — independent lightweight security confirmation of accepted #660 composition
+
+**Verdict: CLEAR for the bounded composition delta at this exact head.** I found no new security or gate finding. This confirmation does not replace the earlier full #663 review or establish current hosted, database, image, or merge readiness.
+
+**Reviewed head:** `0f09378431be2c09fdcddde8226b17eaa3d8489a`  
+**Comparison base:** `e306ca48f612191cd79f0bd9122815abded9d5dd` (prior full-review blocker closure)  
+**Merge parents:** `f7be951506ffdb7edc00d9bf2286723049f59985` and accepted main `9e1e3bf92f29b79d7ff13674d14842a4de7c7256`  
+**Reviewer:** fresh independent GPT-6 Sol security context, dispatched with selector `gpt-6-sol`; actual serving variant is not independently exposed. I did not author, direct, or remediate this candidate or its imported sources. I used no subagents and changed no repository file. The independent ordinary composition review at this head was CLEAR before this security pass.
+
+## What I verified
+
+I read accepted `AGENTS.md`, the current active mission, `CLAUDE.md`, `docs/04-engineering/agent-workflow.md`, and the existing #663 review note. The note preserves the original full Sol **BLOCK** at `6c28c076` for a false 0122 snapshot ledger hash, its separate model-provenance correction, and the independent ordinary and Sol one-line hash closure at `e306ca48`. I did not rewrite or collapse those records. I read the fresh ordinary #663 composition report and the complete imported #660 note, including its original bounded ordinary and security reports and the authentic model correction.
+
+I inspected every landed commit since `e306ca48` using `git log -m --name-status`, charging each merge to both parents, rather than relying on the net tree. The nine commits named in the preserved template failure are `c9b7ceac`, `0b75991a`, `731b03a4`, `9bbe779a`, `2ec14eeb`, `d623471e`, `a5580758`, `9e1e3bf9`, and `0f093784`. The separate first-parent `f7be9515` adds only the existing #663 review note. The non-merge commits among the nine change only dated queue/status records. Parent-relative checks showed:
+
+- `0b75991a` imports three paths from accepted #655 main `13aacb2e`; all three resulting blobs equal that source, including the MFA test fixture.
+- `9bbe779a` imports 125 paths from accepted #658 main `40f05826`; all 125 resulting blobs equal that source, including the S7 runtime, contracts, tests and existing review records.
+- `d623471e` imports three paths from accepted #662 main `3dadd086`; all three resulting blobs equal that source, including both OpenAPI checker files and its review note.
+- `9e1e3bf9` carries the #660 records branch into main. At `0f093784`, the first-parent merge diff has only the queue, status and #660 review note; all three blobs equal accepted main `9e1e3bf9`. The second-parent diff consists of the ten #663-owned paths, all of whose final blobs equal first parent `f7be9515`.
+
+The complete `e306ca48..0f093784` net tree difference is four planning files: queue, status, the imported #660 note, and the #663 note. Specifically, expiry migration SQL/snapshot/journal, schema, scheduler, focused integration test, app/package runtime, checker inputs, manifest/lockfile and build inputs did not change relative to the prior full-review closure. The imported #660 wording keeps its earlier G11 failure and unknown cause visible, labels accepted #662 results by source, and leaves new composition/current checks pending. It does not grant authority, waive a gate, or change gate pass/fail rules. This is the lightweight security row for a security-scope record import with no new authority or gate semantics.
+
+**Checks actually run:** read-only Git commit, parent, path, and blob comparisons; inspected the three-path first-parent content diff and the four-file net tree difference. `git diff --check f7be9515..0f093784` reported Markdown hard-break trailing spaces and a blank EOF line in the accepted #660 note. Those bytes exactly match accepted main and do not alter a security decision. I ran no product test, checker test, database, browser, Docker, broad build, or hosted check. Earlier test counts and image results remain bound to their original recorded source and job.
+
+This report supplies a fresh security verdict for `0f093784` only. The #663 note currently names `e306ca48` as its newest reviewed head, so the reported PR-template failure remains until an authentic current-head record is added and the exact-head checks pass. This verdict is not permission to merge with a red or pending gate.
