@@ -100,7 +100,7 @@ async function seedProjectReach(
   await client.query(
     `INSERT INTO role
       (id, scope, workspace_id, key, name, rank, capabilities, is_system, is_editable)
-     VALUES ($1, 'project', $2, $3, 'Primary journey reach', 1, '[]'::jsonb, false, false)`,
+     VALUES ($1, 'project', $2, $3, 'Primary journey reach', 1, '["work_item:read"]'::jsonb, false, false)`,
     [roleId, workspaceId, roleId],
   );
   await client.query(
