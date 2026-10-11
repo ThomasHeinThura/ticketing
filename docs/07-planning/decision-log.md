@@ -1,3 +1,15 @@
+### 2026-10-11 · Owner clarifies historical workflow held-effect boundary
+
+**Decision:** In a historical workflow version containing both a held `set_field` transition and supported transitions, refuse only execution of transitions containing `set_field`. Supported sibling transitions remain usable under their existing permissions, guards and effects. A held edge is refused before any work-item or effect mutation.
+
+**Authoring boundary:** the already settled hold continues to reject newly authored workflow versions containing `set_field`. WF-22 must explicitly distinguish this authoring/version-validation boundary from selected-edge refusal of historical stored transitions; this decision supplies no field namespace or value-validation semantics.
+
+**Question and exact answer:** the conductor asked whether a mixed historical version should refuse only its held transition or every transition. Thomas answered: **“Refuse only transitions containing set_field (Recommended)”**.
+
+**Limits and source:** Thomas’s direct reply in Codex conductor chat `01a12921-4863-7c42-ac59-1822c69b88cd`, 2026-10-11; the exact question/answer is retained at `/Users/heinthura/.codex/taskdesk-evidence/2026-10-11/workflow-mixed-version-owner-decision.json`. This is owner authority for the bounded specification/regression repair, not implementation, independent closure, CI, stage, release, deployment or audit acceptance. Other held scope remains held.
+
+---
+
 ### 2026-10-11 · Owner holds saved-view team dependencies and settles natural key expiry
 
 **Decision — saved views:** Thomas explicitly holds team-lead editing and automatic shared-view ownership transfer for this frozen release. Existing owner/workspace-manager editing and view access are preserved. The owning saved-view specification and user guide must state this limitation; it does not claim SV-17/TM-8 completion, approve a team schema or writer, define a multiple-lead recipient, or invent workspace ownership representation.
