@@ -122,11 +122,20 @@ async function createPortalPerson(
 
 async function main(input: SeedInput) {
   if (input.phase === "instance") {
-    await db.insert(schema.instanceFeatureFlagTable).values({
-      featureKey: "feature.intake",
-      enabled: true,
-      locked: false,
-    });
+    // Migration 0096 creates every canonical instance flag disabled. Enable the
+    // existing row only in this disposable E2E fixture instead of inserting a
+    // duplicate or changing the shipped default.
+    await db
+      .insert(schema.instanceFeatureFlagTable)
+      .values({
+        featureKey: "feature.intake",
+        enabled: true,
+        locked: false,
+      })
+      .onConflictDoUpdate({
+        target: schema.instanceFeatureFlagTable.featureKey,
+        set: { enabled: true, locked: false },
+      });
     const actual = required(
       await db
         .select({
