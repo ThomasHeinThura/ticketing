@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-import { spawnSync } from "node:child_process";
+import { spawn, spawnSync } from "node:child_process";
 import { createHash } from "node:crypto";
 import fs from "node:fs/promises";
 import os from "node:os";
@@ -677,6 +677,43 @@ function run(command, args, options = {}) {
   return result;
 }
 
+/** Read a Git object through pipes so large contracts are not subject to spawnSync's
+ * fixed maxBuffer. Retain all bytes until close, and return the same result fields the
+ * synchronous runner exposes to callers. */
+export function readGitFile(ref, file, cwd = repoRoot) {
+  return new Promise((resolve, reject) => {
+    let child;
+    try {
+      child = spawn("git", ["show", `${ref}:${file}`], {
+        cwd,
+        stdio: ["ignore", "pipe", "pipe"],
+      });
+    } catch (error) {
+      reject(error);
+      return;
+    }
+    const stdout = [];
+    const stderr = [];
+    let spawnError;
+    child.stdout.on("data", (chunk) => stdout.push(chunk));
+    child.stderr.on("data", (chunk) => stderr.push(chunk));
+    child.on("error", (error) => {
+      spawnError = error;
+    });
+    child.on("close", (status) => {
+      if (spawnError) {
+        reject(spawnError);
+        return;
+      }
+      resolve({
+        status,
+        stdout: Buffer.concat(stdout).toString("utf8"),
+        stderr: Buffer.concat(stderr).toString("utf8"),
+      });
+    });
+  });
+}
+
 function reportFailure(label, result) {
   process.stderr.write(
     `${label} failed (${result.status ?? "no exit code"}).\n`,
@@ -850,7 +887,16 @@ async function main() {
     return;
   }
 
-  const baseSpec = run("git", ["show", `origin/main:${contract}`]);
+  let baseSpec;
+  try {
+    baseSpec = await readGitFile("origin/main", contract);
+  } catch (error) {
+    process.stderr.write(
+      `Could not read the OpenAPI contract from origin/main: ${error.message}\n`,
+    );
+    process.exitCode = 1;
+    return;
+  }
   if (baseSpec.status !== 0) {
     reportFailure(
       "Could not read the OpenAPI contract from origin/main",
