@@ -1,3 +1,9 @@
+## Conductor queue checkpoint — 2026-10-11 10:22 UTC
+
+**Accepted decision record:** protected #644 merged exact `3a10c9d8cee9f8ef148f198d696c96d5469d3ba4` as `eec12ebdcc34abe3d6d778df5ceb23c5f6f12723` at10:20:53 UTC, after all18 required checks, current Any and independent factual closing. Original blocker/closing/model-provenance reports remain authentic. Accepted comment6108025686. This records the narrow default-OFF intake exception; it does not enable the flag or accept intake runtime.
+
+**Current sources:** field normal composition of the accepted decision record is clean pushed `81f3bb0cbb475395bb1b24ad89b0280b840bd2b7`; only22 decision-log lines were inherited after118, all four field source/manifest blobs unchanged. Previous118 contrast/browser/image proofs retain their exact source; current composition review/checks/labelled image and PR gates remain required. Users20c security blocker and assigned sole-author bounded repair remain open. The previous10:17 checkpoint and all original failures are retained below. No release, SIT or stage acceptance is claimed.
+
 ## Conductor queue checkpoint — 2026-10-11 10:17 UTC
 
 **Blocked:** current Users source has a fresh full independent security blocker in existing OIDC plus TOTP login. The author owns a bounded transaction-visibility repair; no S6/PA-9 completion is claimed. Field hosted visual/performance verification and exact-head PR gates, selected S7/S8/S9 integration, signed versioned release, laptop SIT workflows/recovery and final independent audit remain outstanding.
