@@ -131,19 +131,21 @@ describe("TASKDESK_POLICY_ENFORCE config", () => {
         timeout: bootTimeoutMs,
       },
     );
+    const spawnError: NodeJS.ErrnoException | undefined =
+      result.error ?? undefined;
 
     const diagnostic = JSON.stringify(
       {
         elapsedMs: Number(process.hrtime.bigint() - startedAt) / 1e6,
         status: result.status,
         signal: result.signal,
-        error: result.error
+        error: spawnError
           ? {
-              name: result.error.name,
-              message: result.error.message,
-              code: result.error.code,
-              errno: result.error.errno,
-              syscall: result.error.syscall,
+              name: spawnError.name,
+              message: spawnError.message,
+              code: spawnError.code,
+              errno: spawnError.errno,
+              syscall: spawnError.syscall,
             }
           : null,
         stdout: result.stdout,
