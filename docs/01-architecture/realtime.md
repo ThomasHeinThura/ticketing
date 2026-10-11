@@ -162,17 +162,21 @@ The one exception is presence, which has no REST equivalent and is sent whole.
 useRealtime({
   topic: `project:${projectId}`,
   onMessage: (msg) => {
-    if (seenEventIds.has(msg.eventId)) return;
-    seenEventIds.add(msg.eventId);
-    queryClient.invalidateQueries({ queryKey: ['work-items', projectId] });
-    if (msg.payload.key) {
-      queryClient.invalidateQueries({ queryKey: ['work-item', msg.payload.key] });
-    }
+    // The native hook deduplicates affected query keys per event and socket.
+    // It batches the resulting invalidations for 150 ms.
   },
 });
 ```
 
-Invalidation is debounced at 150 ms so a bulk update produces one refetch, not fifty.
+The native client invalidates the affected list, detail, or activity query keys from the
+key-only event envelope and debounces them for 150 ms. If one event arrives under more than
+one subscribed topic, a later frame can contribute an affected key absent from the first;
+duplicate keys are invalidated once on that socket. Independent sockets maintain separate
+deduplication state. Cleanup flushes queued keys as stale without refetching unmounted queries,
+and ignores late frames from a disposed or replaced socket. Comment events refresh activity;
+item mutations refresh detail and the project list when its projection may change. Reconnect
+and outage polling remain active until subscription acknowledgement and while the socket is
+unavailable.
 
 ## Scaling across replicas
 

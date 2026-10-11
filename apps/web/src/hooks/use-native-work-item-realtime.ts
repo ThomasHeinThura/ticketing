@@ -11,23 +11,13 @@ type NativeFrame = {
 };
 
 const MAX_SEEN_EVENTS = 512;
-const seenEventIds = new Set<string>();
+const INVALIDATION_DEBOUNCE_MS = 150;
 
 export type WorkItemRealtimeStatus =
   | "connecting"
   | "available"
   | "unavailable"
   | "idle";
-
-function hasSeenEvent(eventId: string) {
-  if (seenEventIds.has(eventId)) return true;
-  seenEventIds.add(eventId);
-  if (seenEventIds.size > MAX_SEEN_EVENTS) {
-    const oldest = seenEventIds.values().next().value;
-    if (oldest) seenEventIds.delete(oldest);
-  }
-  return false;
-}
 
 function realtimeUrl() {
   return toWebSocketBase(getApiUrl("ws"));
@@ -60,6 +50,30 @@ export function useNativeWorkItemRealtime(topics: readonly string[]) {
     let hasOutage = false;
     let isDisposed = false;
     let socket: WebSocket | null = null;
+    let invalidationTimer: ReturnType<typeof setTimeout> | null = null;
+    const pendingInvalidations = new Map<string, readonly unknown[]>();
+
+    function flushInvalidations(refetchType: "active" | "none" = "active") {
+      invalidationTimer = null;
+      const queryKeys = [...pendingInvalidations.values()];
+      pendingInvalidations.clear();
+      for (const queryKey of queryKeys) {
+        void queryClient.invalidateQueries({ queryKey, refetchType });
+      }
+    }
+
+    function queueInvalidation(
+      sourceSocket: WebSocket,
+      queryKey: readonly unknown[],
+    ) {
+      if (isDisposed || socketRef.current !== sourceSocket) return;
+      pendingInvalidations.set(JSON.stringify(queryKey), queryKey);
+      if (invalidationTimer) clearTimeout(invalidationTimer);
+      invalidationTimer = setTimeout(
+        flushInvalidations,
+        INVALIDATION_DEBOUNCE_MS,
+      );
+    }
 
     function setStatus(nextStatus: WorkItemRealtimeStatus) {
       setConnection({ connectionKey, status: nextStatus });
@@ -72,29 +86,59 @@ export function useNativeWorkItemRealtime(topics: readonly string[]) {
       }
     }
 
-    function invalidateAffected(frame: NativeFrame) {
+    function affectedQueryKeys(frame: NativeFrame) {
+      const queryKeys: (readonly unknown[])[] = [];
       const projectId = frame.topic?.startsWith("project:")
         ? frame.topic.slice("project:".length)
         : undefined;
-      if (projectId) {
-        void queryClient.invalidateQueries({
-          queryKey: ["work-items", projectId],
-        });
-      } else {
-        void queryClient.invalidateQueries({ queryKey: ["work-items"] });
+      const type = frame.type;
+      const listProjectionMayChange =
+        type === "work_item.created" ||
+        type === "work_item.updated" ||
+        type === "work_item.transitioned" ||
+        type === "work_item.assigned" ||
+        type === "work_item.unassigned" ||
+        type === "work_item.escalated" ||
+        type === "work_item.unblocked" ||
+        type === "work_item.mentioned" ||
+        type === "work_item.deleted";
+      if (projectId && listProjectionMayChange) {
+        queryKeys.push(["work-items", projectId]);
       }
-      if (frame.payload?.key) {
-        void queryClient.invalidateQueries({
-          queryKey: ["work-items", "detail", frame.payload.key],
-        });
-        void queryClient.invalidateQueries({
-          queryKey: ["work-items", "activity", frame.payload.key],
-        });
+
+      // The server delivers one matching topic per connection. A project topic
+      // can therefore be the only frame for an event even when the socket also
+      // subscribed to the work-item topic; the authorized key-only envelope is
+      // enough to refresh the corresponding item queries.
+      const key = frame.payload?.key;
+      if (!key) return queryKeys;
+      if (
+        type === "work_item.updated" ||
+        type === "work_item.transitioned" ||
+        type === "work_item.assigned" ||
+        type === "work_item.unassigned" ||
+        type === "work_item.escalated" ||
+        type === "work_item.unblocked" ||
+        type === "work_item.mentioned" ||
+        type === "work_item.deleted"
+      ) {
+        queryKeys.push(["work-items", "detail", key]);
       }
+      if (
+        type === "work_item.escalated" ||
+        type === "work_item.unblocked" ||
+        type === "work_item.mentioned" ||
+        type === "work_item.commented" ||
+        type === "work_item.deleted"
+      ) {
+        queryKeys.push(["work-items", "activity", key]);
+      }
+      return queryKeys;
     }
 
     function connect() {
       if (isDisposed) return;
+      const processedEventInvalidations = new Map<string, Set<string>>();
       const unacknowledgedTopics = new Set(selectedTopics);
       const nextSocket = new WebSocket(realtimeUrl());
       socket = nextSocket;
@@ -102,7 +146,7 @@ export function useNativeWorkItemRealtime(topics: readonly string[]) {
       if (!hasOutage) setStatus("connecting");
 
       nextSocket.onopen = () => {
-        if (isDisposed) return;
+        if (isDisposed || socketRef.current !== nextSocket) return;
         retriesRef.current = 0;
         for (const topic of selectedTopics) {
           nextSocket.send(JSON.stringify({ type: "subscribe", topic }));
@@ -117,6 +161,7 @@ export function useNativeWorkItemRealtime(topics: readonly string[]) {
       };
 
       nextSocket.onmessage = (event) => {
+        if (isDisposed || socketRef.current !== nextSocket) return;
         let frame: NativeFrame;
         try {
           frame = JSON.parse(String(event.data)) as NativeFrame;
@@ -137,17 +182,37 @@ export function useNativeWorkItemRealtime(topics: readonly string[]) {
           void queryClient.invalidateQueries({ queryKey: ["work-items"] });
           return;
         }
-        if (!frame.eventId || hasSeenEvent(frame.eventId)) return;
-        invalidateAffected(frame);
+        if (!frame.eventId) return;
+        const processedKeys =
+          processedEventInvalidations.get(frame.eventId) ?? new Set<string>();
+        const newKeys = affectedQueryKeys(frame).filter((queryKey) => {
+          const serializedKey = JSON.stringify(queryKey);
+          if (processedKeys.has(serializedKey)) return false;
+          processedKeys.add(serializedKey);
+          return true;
+        });
+        if (newKeys.length > 0) {
+          processedEventInvalidations.delete(frame.eventId);
+          processedEventInvalidations.set(frame.eventId, processedKeys);
+          if (processedEventInvalidations.size > MAX_SEEN_EVENTS) {
+            const oldest = processedEventInvalidations.keys().next().value;
+            if (oldest) processedEventInvalidations.delete(oldest);
+          }
+          for (const queryKey of newKeys) {
+            queueInvalidation(nextSocket, queryKey);
+          }
+        }
       };
 
       nextSocket.onerror = () => {
+        if (isDisposed || socketRef.current !== nextSocket) return;
         hasOutage = true;
         setStatus("unavailable");
       };
       nextSocket.onclose = () => {
+        if (socketRef.current !== nextSocket) return;
         stopPing();
-        if (socketRef.current === nextSocket) socketRef.current = null;
+        socketRef.current = null;
         if (isDisposed) return;
         hasOutage = true;
         setStatus("unavailable");
@@ -162,6 +227,9 @@ export function useNativeWorkItemRealtime(topics: readonly string[]) {
     return () => {
       isDisposed = true;
       stopPing();
+      if (invalidationTimer) clearTimeout(invalidationTimer);
+      invalidationTimer = null;
+      flushInvalidations("none");
       if (retryTimerRef.current) clearTimeout(retryTimerRef.current);
       retryTimerRef.current = null;
       if (socketRef.current === socket) socketRef.current = null;
