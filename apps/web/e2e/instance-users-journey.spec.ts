@@ -474,12 +474,21 @@ test("real Users UI binds delayed proof and approval to its current route intent
       expect(pending.approveUrl).toBe(
         `/agent/settings/profile/pending-actions/${encodeURIComponent(pending.pendingActionId)}`,
       );
-      await expect(
-        page.getByText(
-          "A deactivation approval was created. The account is unchanged until approval.",
-          { exact: true },
-        ),
-      ).toBeVisible();
+      const deactivationNoticeText =
+        "A deactivation approval was created. The account is unchanged until approval.";
+      const deactivationNotice = page
+        .getByRole("status")
+        .filter({ hasText: deactivationNoticeText });
+      await expect(deactivationNotice).toContainText(deactivationNoticeText);
+      const reviewApprovalLink = page.getByRole("link", {
+        name: "Review pending approval",
+        exact: true,
+      });
+      await expect(reviewApprovalLink).toBeVisible();
+      await expect(reviewApprovalLink).toHaveAttribute(
+        "href",
+        pending.approveUrl,
+      );
 
       const pendingBeforeApproval = await client.query<{
         state: string;
