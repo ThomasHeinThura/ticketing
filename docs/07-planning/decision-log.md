@@ -1,3 +1,27 @@
+### 2026-10-12 · Owner approves serving the portal shell for registered portal client routes
+
+**Decision:** Thomas decided: "Serve app for known routes." The portal host serves its own
+`index.html` (for `GET` and `HEAD`) for its registered client routes, for example `/sign-in`,
+`/catalogue` and the request detail route. Every other extensionless portal path, every
+extension-bearing missing asset and every non-`GET`/`HEAD` request keeps its current 404
+behaviour, the 503 for a missing portal root stays, and the portal never falls back to agent
+files or the agent SPA. Host selection and the portal `/api` denial still run first, as
+CP-19 orders them.
+
+**Why:** the real Intake journey showed a customer could not open, reload or bookmark
+`portal.<host>/sign-in` because every non-asset portal path returned 404.
+
+**Supersedes (in operative effect):** the CP-19 sentence "unmatched portal paths are 404",
+now "registered portal client routes serve the portal shell; everything else is 404". The
+historical P0 two-entry host and static acceptance record is not rewritten. The allowlist is
+`apps/api/src/portal-client-routes.ts`, checked by test against the generated portal route
+tree. Reversal: restore `c.notFound()` for the portal surface.
+
+**Source:** Thomas, directly to the Claude Opus delivery conductor session, 2026-10-12.
+**Recorded by:** Claude Sonnet 5.5 (claude-sonnet-5-5), at the conductor's instruction.
+
+---
+
 ### 2026-10-12 · Owner approves narrow customer local-password sign-in UI
 
 **Decision:** Thomas approves `/sign-in` asking for email, then password, using only the
