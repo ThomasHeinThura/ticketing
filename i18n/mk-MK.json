@@ -2361,7 +2361,6 @@
 		"choose": "Choose…",
 		"chooseType": "Choose a type",
 		"create": "Create request type",
-		"delete": "Delete draft",
 		"description": "Author published customer forms. Each publish creates an immutable version.",
 		"descriptionMapping": "Work item description",
 		"draft": "Draft",

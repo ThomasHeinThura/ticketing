@@ -86,15 +86,6 @@ export async function unpublishRequestType(id: string) {
   return response.json();
 }
 
-export async function deleteRequestType(id: string) {
-  const response = await client["request-types"][":id"].$delete({
-    param: { id },
-  });
-  if (!response.ok)
-    throw new Error((await response.text()) || "Unable to delete request type");
-  return response.json();
-}
-
 export async function getSubmission(ref: string) {
   const response = await client.submissions[":ref"].$get({ param: { ref } });
   if (!response.ok)

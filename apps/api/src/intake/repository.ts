@@ -476,45 +476,6 @@ export async function setRequestTypePublished(
   });
 }
 
-export async function deleteRequestType(id: string, actorId: string) {
-  return db.transaction(async (tx) => {
-    const [row] = await tx
-      .select()
-      .from(schema.requestTypeTable)
-      .where(eq(schema.requestTypeTable.id, id))
-      .for("update")
-      .limit(1);
-    if (!row)
-      throw new HTTPException(404, { message: "Request type not found" });
-    if (row.published)
-      throw new HTTPException(409, {
-        message: "Unpublish this request type before deleting it",
-      });
-    const [submission] = await tx
-      .select({ id: schema.submissionTable.id })
-      .from(schema.submissionTable)
-      .where(eq(schema.submissionTable.requestTypeId, id))
-      .limit(1);
-    if (submission)
-      throw new HTTPException(409, {
-        message: "Request type has submission history and cannot be deleted",
-      });
-    await tx
-      .delete(schema.requestTypeTable)
-      .where(eq(schema.requestTypeTable.id, id));
-    await appendAuditLog(tx, {
-      actorId,
-      actorType: "person",
-      workspaceId: row.workspaceId,
-      action: "request_type.deleted",
-      entityType: "request_type",
-      entityId: row.id,
-      before: { requestTypeId: row.id, workspaceId: row.workspaceId },
-    });
-    return { deleted: true as const };
-  });
-}
-
 export async function portalIdentity(userId: string) {
   const [row] = await db
     .select({

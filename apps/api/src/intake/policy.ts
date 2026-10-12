@@ -37,12 +37,6 @@ export const intakePolicies = {
     scopeSource: "row",
     reach: "required",
   },
-  "DELETE /api/request-types/{id}": {
-    capability: "request_type:manage",
-    scope: "workspace",
-    scopeSource: "row",
-    reach: "required",
-  },
   "GET /api/portal/catalogue": {
     portal: "customer",
     predicate: "own_organisation",

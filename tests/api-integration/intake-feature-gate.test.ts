@@ -63,7 +63,6 @@ describe("intake feature-flag reach", () => {
       ],
       [`/api/request-types/${type.id}/publish`, { method: "POST" }],
       [`/api/request-types/${type.id}/unpublish`, { method: "POST" }],
-      [`/api/request-types/${type.id}`, { method: "DELETE" }],
     ];
     for (const [path, init] of requests) {
       const response = await app.request(path, init);

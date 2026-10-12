@@ -26,7 +26,6 @@ vi.mock("@tanstack/react-router", () => ({
   useNavigate: () => mocks.navigate,
 }));
 vi.mock("@/fetchers/intake", () => ({
-  deleteRequestType: vi.fn(),
   getRequestType: mocks.getRequestType,
   getRequestTypes: mocks.getRequestTypes,
   publishRequestType: vi.fn(),

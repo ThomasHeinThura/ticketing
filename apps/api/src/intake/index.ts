@@ -21,7 +21,6 @@ import {
   createRequestType,
   createSubmission,
   declineSubmission,
-  deleteRequestType,
   findPortalSubmission,
   findSubmission,
   getRequestType,
@@ -459,24 +458,6 @@ const unpublishRoute = createRoute({
     404: errorResponse("Request type not found"),
   },
 });
-const deleteRoute = createRoute({
-  method: "delete",
-  operationId: "deleteRequestType",
-  path: "/request-types/{id}",
-  tags: ["Request types"],
-  summary: "Delete an unpublished request type without submissions",
-  middleware: [
-    requestTypeReach,
-    requireApiKeyPermissionScope({ request_type: ["manage"] }),
-    requireWorkspaceCapability("request_type:manage"),
-  ] as const,
-  request: { params: requestTypeIdParam },
-  responses: {
-    200: jsonResponse("Deleted", z.object({ deleted: z.literal(true) })),
-    404: errorResponse("Request type not found"),
-    409: errorResponse("Request type cannot be deleted"),
-  },
-});
 const catalogueRoute = createRoute({
   method: "get",
   operationId: "getPortalCatalogue",
@@ -904,12 +885,6 @@ const requestTypeRouter = apiRouter<IntakeVariables>()
           c.get("userId"),
         ),
       ),
-      200,
-    ),
-  )
-  .openapi(deleteRoute, async (c) =>
-    c.json(
-      await deleteRequestType(c.req.valid("param").id, c.get("userId")),
       200,
     ),
   )

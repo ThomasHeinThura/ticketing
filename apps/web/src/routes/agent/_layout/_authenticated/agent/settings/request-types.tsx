@@ -22,7 +22,6 @@ import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 import PageTitle from "@/components/page-title";
 import {
-  deleteRequestType,
   getRequestType,
   getRequestTypes,
   publishRequestType,
@@ -195,11 +194,10 @@ function RequestTypesPage() {
     },
   });
   const action = useMutation({
-    mutationFn: async (kind: "publish" | "unpublish" | "delete") => {
+    mutationFn: async (kind: "publish" | "unpublish") => {
       if (!selected) return;
       if (kind === "publish") return publishRequestType(selected);
-      if (kind === "unpublish") return unpublishRequestType(selected);
-      return deleteRequestType(selected);
+      return unpublishRequestType(selected);
     },
     onSuccess: async () => {
       await queryClient.invalidateQueries({ queryKey: ["request-types"] });
@@ -953,14 +951,6 @@ function RequestTypesPage() {
                   onClick={() => action.mutate("unpublish")}
                 >
                   {t("unpublish")}
-                </Button>
-              )}
-              {selected && !selectedType?.published && (
-                <Button
-                  variant="destructive"
-                  onClick={() => action.mutate("delete")}
-                >
-                  {t("delete")}
                 </Button>
               )}
             </div>
