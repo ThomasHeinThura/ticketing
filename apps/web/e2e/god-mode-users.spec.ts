@@ -57,7 +57,7 @@ test("God Mode users directory supports filters and audited account actions", as
           id: "actor-admin",
           name: "Instance Admin",
           email: "admin@example.test",
-          role: "user",
+          role: "admin",
           emailVerified: true,
           createdAt: "2026-09-01T00:00:00.000Z",
         },
@@ -240,7 +240,9 @@ test("God Mode users directory supports filters and audited account actions", as
     return json({ message: "Unexpected API request in this fixture" }, 500);
   });
 
-  await page.goto("/agent/god-mode/users");
+  await page.goto("/dashboard");
+  await page.getByRole("button", { name: "Operations" }).click();
+  await page.getByRole("menuitem", { name: "Instance users" }).click();
   await expect(page).toHaveURL(/\/agent\/god-mode\/users$/);
   await expect(
     page.getByRole("heading", { name: "Instance users" }),
