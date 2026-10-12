@@ -293,6 +293,23 @@ async function selectUser(page: Page, user: UserTarget) {
   );
 }
 
+async function leavePendingActionToInstanceUsers(page: Page) {
+  // The pending-action list/detail routes render without the app sidebar, so
+  // the workspace switcher used by openInstanceUsers() does not exist there.
+  // Leave through real in-app history (same document, so the held proof
+  // request stays in flight) back to the Users directory the journey came from.
+  const usersUrl = /\/agent\/god-mode\/users(?:\?|$)/u;
+  for (let steps = 0; steps < 8 && !usersUrl.test(page.url()); steps += 1) {
+    const before = page.url();
+    await page.goBack();
+    await expect.poll(() => page.url()).not.toBe(before);
+  }
+  await expect(page).toHaveURL(usersUrl);
+  await expect(
+    page.getByRole("heading", { name: "Instance users", exact: true }),
+  ).toBeVisible();
+}
+
 function holdNextRealStepUpResponse(page: Page) {
   let resolveReady!: (status: number) => void;
   let rejectReady!: (error: unknown) => void;
@@ -598,7 +615,7 @@ test("real Users UI binds delayed proof and approval to its current route intent
       try {
         await approveButton.click();
         expect(await delayedApprovalProof.ready).toBe(200);
-        await openInstanceUsers(page);
+        await leavePendingActionToInstanceUsers(page);
         await page.getByRole("link", { name: "My pending actions" }).click();
         await expect(page).toHaveURL(
           /\/agent\/settings\/profile\/pending-actions$/u,
