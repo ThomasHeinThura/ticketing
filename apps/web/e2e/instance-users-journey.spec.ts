@@ -102,7 +102,7 @@ function redactSensitiveErrorContext(error: PlaywrightTestError) {
   if (error.cause) redactSensitiveErrorContext(error.cause);
 }
 
-test.afterEach((_fixtures, testInfo) => {
+test.afterEach(({ page: _page }, testInfo) => {
   for (const error of testInfo.errors) redactSensitiveErrorContext(error);
 });
 
