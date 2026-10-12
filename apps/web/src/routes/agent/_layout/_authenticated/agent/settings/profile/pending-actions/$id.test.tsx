@@ -9,7 +9,7 @@ import {
 } from "@testing-library/react";
 import { useState } from "react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { PendingActionDetailRoute } from "./$id";
+import { Route } from "./$id";
 
 const mocks = vi.hoisted(() => ({
   id: "action-a",
@@ -21,7 +21,10 @@ const mocks = vi.hoisted(() => ({
 }));
 
 vi.mock("@tanstack/react-router", () => ({
-  createFileRoute: () => () => ({ useParams: () => ({ id: mocks.id }) }),
+  createFileRoute: () => (options: { component: React.ComponentType }) => ({
+    options,
+    useParams: () => ({ id: mocks.id }),
+  }),
   Link: ({
     children,
     ...props
@@ -97,7 +100,10 @@ function actionFor(id: string) {
 function Harness() {
   const [, rerender] = useState(0);
   mocks.changed = () => rerender((value) => value + 1);
-  return <PendingActionDetailRoute />;
+  const RouteComponent = Route.options.component;
+  if (!RouteComponent)
+    throw new Error("Pending-action detail route component is missing");
+  return <RouteComponent />;
 }
 
 function RoutedHarness() {

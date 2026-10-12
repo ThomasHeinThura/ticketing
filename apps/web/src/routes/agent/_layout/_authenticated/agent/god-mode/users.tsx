@@ -60,7 +60,7 @@ export const Route = createFileRoute(
   component: InstanceUsersPage,
 });
 
-export function InstanceUsersPage() {
+function InstanceUsersPage() {
   const { t } = useTranslation();
   const search = Route.useSearch();
   const navigate = useNavigate({ from: Route.fullPath });

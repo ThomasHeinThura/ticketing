@@ -39,7 +39,7 @@ export const Route = createFileRoute(
   "/_layout/_authenticated/agent/settings/profile/pending-actions/$id",
 )({ component: PendingActionDetailRoute });
 
-export function PendingActionDetailRoute() {
+function PendingActionDetailRoute() {
   const { i18n, t } = useTranslation();
   const { id } = Route.useParams();
   const queryClient = useQueryClient();

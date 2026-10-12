@@ -8,7 +8,7 @@ import {
 } from "@testing-library/react";
 import { useState } from "react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { InstanceUsersPage } from "./users";
+import { Route } from "./users";
 
 const mocks = vi.hoisted(() => ({
   search: { user: "user-a" } as Record<string, string | undefined>,
@@ -18,7 +18,8 @@ const mocks = vi.hoisted(() => ({
 }));
 
 vi.mock("@tanstack/react-router", () => ({
-  createFileRoute: () => () => ({
+  createFileRoute: () => (options: { component: React.ComponentType }) => ({
+    options,
     fullPath: "/agent/god-mode/users",
     useSearch: () => mocks.search,
   }),
@@ -105,7 +106,9 @@ const userB = {
 function Harness() {
   const [, rerender] = useState(0);
   mocks.changed = () => rerender((value) => value + 1);
-  return <InstanceUsersPage />;
+  const RouteComponent = Route.options.component;
+  if (!RouteComponent) throw new Error("Users route component is missing");
+  return <RouteComponent />;
 }
 
 async function flushActionContextEffect() {
