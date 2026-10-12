@@ -142,6 +142,20 @@ misconfigured away through the role editor.
   [identity-provisioning.md](identity-provisioning.md) `IP-29`; state scope and callback
   collision behavior follow `IP-9`. The agent login page may list its instance-level
   providers ([auth-and-identity.md](../01-architecture/auth-and-identity.md#per-portal-binding)).
+
+  **Frozen-release local sign-in scope (Thomas, 2026-10-12):** `/sign-in` asks for email
+  first, then password. The email step stays local; it does not discover or list providers,
+  identities or typed-domain SSO bindings. Submit through the existing portal-scoped auth
+  endpoints for an already admitted active customer, under the stored customer-scope
+  password-provider admission checks. Complete any existing TOTP or backup-code challenge
+  through those existing portal endpoints before treating sign-in as successful. Credentials,
+  customer admission and password-provider availability failures share one generic UI
+  failure. Successful sign-in goes to `/catalogue`; this release does not add a continuation
+  redirect contract. The page does not create or admit accounts. Public registration,
+  invitation acceptance and typed-domain SSO discovery/routing remain unavailable under
+  their existing contract holds. This bounded local method does not claim the complete
+  CP-18/IP-29 SSO flow, change portal cookie/session/Host/Origin authority, add an endpoint
+  or enable a provider by default.
 - `CP-15` A customer may **withdraw their own submission** at any point before it is
   triaged — raised in error, no longer needed, or superseded by another request. Withdrawal
   is a submission status (`withdrawn`), not a deletion: it remains visible in "My requests"

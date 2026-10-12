@@ -1,3 +1,30 @@
+### 2026-10-12 · Owner approves narrow customer local-password sign-in UI
+
+**Decision:** Thomas approves `/sign-in` asking for email, then password, using only the
+existing portal auth endpoints for already admitted customers. Complete existing TOTP and
+backup-code challenges, present one generic failure for credentials, customer admission or
+password-provider availability, and send successful users to `/catalogue`.
+
+**Limits:** Registration, invitations and typed-domain SSO remain held. The email-first
+step is local and supplies no discovery endpoint or provider/account inventory. No new
+backend endpoint, provider default, identity admission, session/cookie/Host/Origin authority,
+capability, schema, dependency or continuation redirect is approved. This settles the
+previously undefined local UI/redirect decision only; it does not settle the CP-11/CP-12
+admission adapter or CP-18/IP-29 typed-domain SSO contract, waive gates or establish browser,
+security, release, deployment or stage acceptance. Required-file/custom-field/God Mode
+intake assignment and the separate request-type deletion decision remain held/pending.
+
+**Exact answer:** “Approve this narrow customer sign-in scope (Recommended)”. The exact
+question and response are preserved in
+`/Users/heinthura/.codex/taskdesk-evidence/2026-10-12/664-portal-local-password-owner-decision.json`,
+with the approved proposal's SHA-256. The owning CP-18 specification records the bounded flow.
+
+**Source:** Thomas's direct reply in Codex conductor chat
+`01a12921-4863-7c42-ac59-1822c69b88cd`, 2026-10-12.
+**Recorded by:** root Codex conductor; platform-visible GPT-6 family.
+
+---
+
 ### 2026-10-12 · Owner approves the internal web-domain workspace dependency
 
 **Decision:** Thomas approves adding the existing internal `@taskdesk/domain` workspace package as a dependency of `apps/web`, using `workspace:*` and the frozen-lockfile importer link `link:../../packages/domain`. Intake portal and editor validation/visibility must call the canonical domain implementation rather than duplicate its semantics.
