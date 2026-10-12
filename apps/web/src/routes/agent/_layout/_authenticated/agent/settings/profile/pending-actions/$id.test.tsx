@@ -1,3 +1,4 @@
+import { Button } from "@taskdesk/ui";
 import {
   act,
   cleanup,
@@ -104,9 +105,9 @@ function RoutedHarness() {
   return mounted ? (
     <>
       <Harness />
-      <button type="button" onClick={() => setMounted(false)}>
+      <Button type="button" onClick={() => setMounted(false)}>
         leave
-      </button>
+      </Button>
     </>
   ) : null;
 }

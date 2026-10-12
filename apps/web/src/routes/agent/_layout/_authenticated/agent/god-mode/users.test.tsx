@@ -19,7 +19,7 @@ const mocks = vi.hoisted(() => ({
 
 vi.mock("@tanstack/react-router", () => ({
   createFileRoute: () => () => ({
-    fullPath: "/god-mode/users",
+    fullPath: "/agent/god-mode/users",
     useSearch: () => mocks.search,
   }),
   useNavigate:

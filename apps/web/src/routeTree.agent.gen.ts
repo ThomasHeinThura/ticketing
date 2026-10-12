@@ -28,7 +28,7 @@ import { Route as LayoutAuthenticatedDashboardIndexRouteImport } from './routes/
 import { Route as LayoutAuthenticatedDashboardInvitationsRouteImport } from './routes/agent/_layout/_authenticated/dashboard/invitations'
 import { Route as LayoutAuthenticatedDashboardSettingsRouteImport } from './routes/agent/_layout/_authenticated/dashboard/settings'
 import { Route as LayoutAuthenticatedGodModeObservabilityRouteImport } from './routes/agent/_layout/_authenticated/god-mode/observability'
-import { Route as LayoutAuthenticatedGodModeUsersRouteImport } from './routes/agent/_layout/_authenticated/god-mode/users'
+import { Route as LayoutAuthenticatedAgentGodModeUsersRouteImport } from './routes/agent/_layout/_authenticated/agent/god-mode/users'
 import { Route as LayoutAuthenticatedAgentWorkItemsKeyRouteImport } from './routes/agent/_layout/_authenticated/agent/work-items/$key'
 import { Route as LayoutAuthenticatedDashboardSettingsAccountRouteImport } from './routes/agent/_layout/_authenticated/dashboard/settings/account'
 import { Route as LayoutAuthenticatedDashboardSettingsProjectsRouteImport } from './routes/agent/_layout/_authenticated/dashboard/settings/projects'
@@ -160,10 +160,10 @@ const LayoutAuthenticatedGodModeObservabilityRoute =
     path: '/god-mode/observability',
     getParentRoute: () => LayoutAuthenticatedRoute,
   } as any)
-const LayoutAuthenticatedGodModeUsersRoute =
-  LayoutAuthenticatedGodModeUsersRouteImport.update({
-    id: '/god-mode/users',
-    path: '/god-mode/users',
+const LayoutAuthenticatedAgentGodModeUsersRoute =
+  LayoutAuthenticatedAgentGodModeUsersRouteImport.update({
+    id: '/agent/god-mode/users',
+    path: '/agent/god-mode/users',
     getParentRoute: () => LayoutAuthenticatedRoute,
   } as any)
 const LayoutAuthenticatedAgentWorkItemsKeyRoute =
@@ -375,8 +375,8 @@ export interface FileRoutesByFullPath {
   '/dashboard/invitations': typeof LayoutAuthenticatedDashboardInvitationsRoute
   '/dashboard/settings': typeof LayoutAuthenticatedDashboardSettingsRouteWithChildren
   '/god-mode/observability': typeof LayoutAuthenticatedGodModeObservabilityRoute
-  '/god-mode/users': typeof LayoutAuthenticatedGodModeUsersRoute
   '/dashboard/': typeof LayoutAuthenticatedDashboardIndexRoute
+  '/agent/god-mode/users': typeof LayoutAuthenticatedAgentGodModeUsersRoute
   '/agent/work-items/$key': typeof LayoutAuthenticatedAgentWorkItemsKeyRoute
   '/dashboard/settings/account': typeof LayoutAuthenticatedDashboardSettingsAccountRouteWithChildren
   '/dashboard/settings/projects': typeof LayoutAuthenticatedDashboardSettingsProjectsRouteWithChildren
@@ -422,8 +422,8 @@ export interface FileRoutesByTo {
   '/dashboard/invitations': typeof LayoutAuthenticatedDashboardInvitationsRoute
   '/dashboard/settings': typeof LayoutAuthenticatedDashboardSettingsRouteWithChildren
   '/god-mode/observability': typeof LayoutAuthenticatedGodModeObservabilityRoute
-  '/god-mode/users': typeof LayoutAuthenticatedGodModeUsersRoute
   '/dashboard': typeof LayoutAuthenticatedDashboardIndexRoute
+  '/agent/god-mode/users': typeof LayoutAuthenticatedAgentGodModeUsersRoute
   '/agent/work-items/$key': typeof LayoutAuthenticatedAgentWorkItemsKeyRoute
   '/dashboard/settings/account': typeof LayoutAuthenticatedDashboardSettingsAccountRouteWithChildren
   '/dashboard/settings/projects': typeof LayoutAuthenticatedDashboardSettingsProjectsRouteWithChildren
@@ -472,8 +472,8 @@ export interface FileRoutesById {
   '/_layout/_authenticated/dashboard/invitations': typeof LayoutAuthenticatedDashboardInvitationsRoute
   '/_layout/_authenticated/dashboard/settings': typeof LayoutAuthenticatedDashboardSettingsRouteWithChildren
   '/_layout/_authenticated/god-mode/observability': typeof LayoutAuthenticatedGodModeObservabilityRoute
-  '/_layout/_authenticated/god-mode/users': typeof LayoutAuthenticatedGodModeUsersRoute
   '/_layout/_authenticated/dashboard/': typeof LayoutAuthenticatedDashboardIndexRoute
+  '/_layout/_authenticated/agent/god-mode/users': typeof LayoutAuthenticatedAgentGodModeUsersRoute
   '/_layout/_authenticated/agent/work-items/$key': typeof LayoutAuthenticatedAgentWorkItemsKeyRoute
   '/_layout/_authenticated/dashboard/settings/account': typeof LayoutAuthenticatedDashboardSettingsAccountRouteWithChildren
   '/_layout/_authenticated/dashboard/settings/projects': typeof LayoutAuthenticatedDashboardSettingsProjectsRouteWithChildren
@@ -522,8 +522,8 @@ export interface FileRouteTypes {
     | '/dashboard/invitations'
     | '/dashboard/settings'
     | '/god-mode/observability'
-    | '/god-mode/users'
     | '/dashboard/'
+    | '/agent/god-mode/users'
     | '/agent/work-items/$key'
     | '/dashboard/settings/account'
     | '/dashboard/settings/projects'
@@ -569,8 +569,8 @@ export interface FileRouteTypes {
     | '/dashboard/invitations'
     | '/dashboard/settings'
     | '/god-mode/observability'
-    | '/god-mode/users'
     | '/dashboard'
+    | '/agent/god-mode/users'
     | '/agent/work-items/$key'
     | '/dashboard/settings/account'
     | '/dashboard/settings/projects'
@@ -618,8 +618,8 @@ export interface FileRouteTypes {
     | '/_layout/_authenticated/dashboard/invitations'
     | '/_layout/_authenticated/dashboard/settings'
     | '/_layout/_authenticated/god-mode/observability'
-    | '/_layout/_authenticated/god-mode/users'
     | '/_layout/_authenticated/dashboard/'
+    | '/_layout/_authenticated/agent/god-mode/users'
     | '/_layout/_authenticated/agent/work-items/$key'
     | '/_layout/_authenticated/dashboard/settings/account'
     | '/_layout/_authenticated/dashboard/settings/projects'
@@ -793,11 +793,11 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof LayoutAuthenticatedGodModeObservabilityRouteImport
       parentRoute: typeof LayoutAuthenticatedRoute
     }
-    '/_layout/_authenticated/god-mode/users': {
-      id: '/_layout/_authenticated/god-mode/users'
-      path: '/god-mode/users'
-      fullPath: '/god-mode/users'
-      preLoaderRoute: typeof LayoutAuthenticatedGodModeUsersRouteImport
+    '/_layout/_authenticated/agent/god-mode/users': {
+      id: '/_layout/_authenticated/agent/god-mode/users'
+      path: '/agent/god-mode/users'
+      fullPath: '/agent/god-mode/users'
+      preLoaderRoute: typeof LayoutAuthenticatedAgentGodModeUsersRouteImport
       parentRoute: typeof LayoutAuthenticatedRoute
     }
     '/_layout/_authenticated/agent/work-items/$key': {
@@ -1173,7 +1173,7 @@ interface LayoutAuthenticatedRouteChildren {
   LayoutAuthenticatedOnboardingRoute: typeof LayoutAuthenticatedOnboardingRoute
   LayoutAuthenticatedProfileSetupRoute: typeof LayoutAuthenticatedProfileSetupRoute
   LayoutAuthenticatedGodModeObservabilityRoute: typeof LayoutAuthenticatedGodModeObservabilityRoute
-  LayoutAuthenticatedGodModeUsersRoute: typeof LayoutAuthenticatedGodModeUsersRoute
+  LayoutAuthenticatedAgentGodModeUsersRoute: typeof LayoutAuthenticatedAgentGodModeUsersRoute
   LayoutAuthenticatedAgentWorkItemsKeyRoute: typeof LayoutAuthenticatedAgentWorkItemsKeyRoute
   LayoutAuthenticatedAgentProjectsProjectKeyWorkRoute: typeof LayoutAuthenticatedAgentProjectsProjectKeyWorkRoute
   LayoutAuthenticatedAgentSettingsProfilePendingActionsRoute: typeof LayoutAuthenticatedAgentSettingsProfilePendingActionsRouteWithChildren
@@ -1187,7 +1187,8 @@ const LayoutAuthenticatedRouteChildren: LayoutAuthenticatedRouteChildren = {
   LayoutAuthenticatedProfileSetupRoute: LayoutAuthenticatedProfileSetupRoute,
   LayoutAuthenticatedGodModeObservabilityRoute:
     LayoutAuthenticatedGodModeObservabilityRoute,
-  LayoutAuthenticatedGodModeUsersRoute: LayoutAuthenticatedGodModeUsersRoute,
+  LayoutAuthenticatedAgentGodModeUsersRoute:
+    LayoutAuthenticatedAgentGodModeUsersRoute,
   LayoutAuthenticatedAgentWorkItemsKeyRoute:
     LayoutAuthenticatedAgentWorkItemsKeyRoute,
   LayoutAuthenticatedAgentProjectsProjectKeyWorkRoute:

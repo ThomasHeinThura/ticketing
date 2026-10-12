@@ -53,7 +53,9 @@ import {
   routes,
 } from "@/lib/routes";
 
-export const Route = createFileRoute("/_layout/_authenticated/god-mode/users")({
+export const Route = createFileRoute(
+  "/_layout/_authenticated/agent/god-mode/users",
+)({
   validateSearch: parseGodModeUsersSearch,
   component: InstanceUsersPage,
 });

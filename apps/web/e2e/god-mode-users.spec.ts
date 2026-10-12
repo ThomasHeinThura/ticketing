@@ -4,7 +4,7 @@ test.use({ trace: "off", video: "off", screenshot: "off" });
 
 test("God Mode users directory supports filters and audited account actions", async ({
   page,
-}) => {
+}, testInfo) => {
   const user = {
     id: "staff-user-1",
     name: "Taylor Staff",
@@ -57,7 +57,7 @@ test("God Mode users directory supports filters and audited account actions", as
           id: "actor-admin",
           name: "Instance Admin",
           email: "admin@example.test",
-          role: "admin",
+          role: "user",
           emailVerified: true,
           createdAt: "2026-09-01T00:00:00.000Z",
         },
@@ -240,10 +240,8 @@ test("God Mode users directory supports filters and audited account actions", as
     return json({ message: "Unexpected API request in this fixture" }, 500);
   });
 
-  await page.goto("/dashboard");
-  await page.getByRole("button", { name: "Operations" }).click();
-  await page.getByRole("menuitem", { name: "Instance users" }).click();
-  await expect(page).toHaveURL(/\/god-mode\/users$/);
+  await page.goto("/agent/god-mode/users");
+  await expect(page).toHaveURL(/\/agent\/god-mode\/users$/);
   await expect(
     page.getByRole("heading", { name: "Instance users" }),
   ).toBeVisible();
@@ -253,7 +251,7 @@ test("God Mode users directory supports filters and audited account actions", as
     .filter({ hasText: "taylor@example.test" });
   await expect(userRow).toBeVisible();
   await page.screenshot({
-    path: "/Users/heinthura/.codex/taskdesk-evidence/2026-10-05/p4-person-deactivation-b58/screens/instance-users-directory.png",
+    path: testInfo.outputPath("instance-users-directory.png"),
     fullPage: true,
   });
   const userLink = page.getByRole("link", {
@@ -264,7 +262,7 @@ test("God Mode users directory supports filters and audited account actions", as
   await expect(page).toHaveURL(/user=staff-user-1/);
   await expect(page.getByTestId("instance-user-details")).toBeVisible();
   await page.screenshot({
-    path: "/Users/heinthura/.codex/taskdesk-evidence/2026-10-05/p4-person-deactivation-b58/screens/instance-user-details.png",
+    path: testInfo.outputPath("instance-user-details.png"),
     fullPage: true,
   });
 
@@ -300,7 +298,10 @@ test("God Mode users directory supports filters and audited account actions", as
   await expect(page.getByRole("status")).toContainText("Account suspended");
 
   await page.getByRole("button", { name: "Unsuspend account" }).click();
-  await page.getByRole("button", { name: "Unsuspend account" }).last().click();
+  await page
+    .getByRole("dialog")
+    .getByRole("button", { name: "Unsuspend account" })
+    .click();
   await expect(page.getByText("Suspended", { exact: true })).toHaveCount(0);
   await expect(page.getByRole("status")).toContainText(
     "Account suspension cleared",
@@ -324,7 +325,7 @@ test("God Mode users directory supports filters and audited account actions", as
     page.getByRole("heading", { name: "Approve person deactivation" }),
   ).toBeVisible();
   await page.screenshot({
-    path: "/Users/heinthura/.codex/taskdesk-evidence/2026-10-05/p4-person-deactivation-b58/screens/pending-action-deactivation-approval.png",
+    path: testInfo.outputPath("pending-action-deactivation-approval.png"),
     fullPage: true,
   });
   await expect(

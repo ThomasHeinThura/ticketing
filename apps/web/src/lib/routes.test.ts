@@ -180,7 +180,9 @@ describe("God Mode Users and requester pending-action URLs", () => {
       action: "reset-mfa",
       q: "Ada",
     });
-    expect(url).toBe("/god-mode/users?q=Ada&user=user%2Fone&action=reset-mfa");
+    expect(url).toBe(
+      "/agent/god-mode/users?q=Ada&user=user%2Fone&action=reset-mfa",
+    );
     expect(
       parseGodModeUsersSearch(
         Object.fromEntries(new URL(url, "https://taskdesk.test").searchParams),
@@ -203,7 +205,7 @@ describe("God Mode Users and requester pending-action URLs", () => {
     ).toEqual({ user: "user/one" });
     expect(parseGodModeUsersSearch({ action: "suspend" })).toEqual({});
     expect(routes.godModeUsers.build({ action: "suspend" })).toBe(
-      "/god-mode/users",
+      "/agent/god-mode/users",
     );
   });
 

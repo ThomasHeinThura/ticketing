@@ -247,7 +247,7 @@ export const routes = {
   },
   /** God Mode Users directory and its query-string-backed selection/filters. */
   godModeUsers: {
-    path: "/god-mode/users" as const,
+    path: "/agent/god-mode/users" as const,
     build: (search: Partial<GodModeUsersSearch> = {}) => {
       const resolved = parseGodModeUsersSearch(search);
       const query = new URLSearchParams();
@@ -261,7 +261,9 @@ export const routes = {
       if (resolved.user && resolved.action)
         query.set("action", resolved.action);
       const suffix = query.toString();
-      return suffix ? `/god-mode/users?${suffix}` : "/god-mode/users";
+      return suffix
+        ? `/agent/god-mode/users?${suffix}`
+        : "/agent/god-mode/users";
     },
   },
   /** PA-6 requester-owned browser approval list and item. */
