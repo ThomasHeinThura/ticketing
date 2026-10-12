@@ -525,7 +525,9 @@ test("real Comments UI posts, edits, pages history, and preserves scoped mention
             `/api/work-items/${item.key}/comments/${publicComment.id}/versions` &&
           response.request().method() === "GET",
       );
-      await commentRow.getByRole("button", { name: "Edited" }).click();
+      // The trigger's visible text is "Edited" but its accessible name is the
+      // aria-label "Comment history".
+      await commentRow.getByRole("button", { name: "Comment history" }).click();
       const firstResponse = await historyFirstPage;
       expect(new URL(firstResponse.url()).searchParams.get("limit")).toBe("5");
       const firstPage = (await firstResponse.json()) as {

@@ -17,6 +17,9 @@ function useGetCommentVersionHistory({
     initialPageParam: undefined as string | undefined,
     getNextPageParam: (lastPage) => lastPage.page.nextCursor ?? undefined,
     enabled,
+    // The app default (refetchOnMount: false) would render an invalidated cache
+    // when the history control remounts after an edit; history must be current.
+    refetchOnMount: "always",
   });
 }
 
