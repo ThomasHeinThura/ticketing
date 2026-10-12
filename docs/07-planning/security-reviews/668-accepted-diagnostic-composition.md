@@ -222,3 +222,9 @@ git show 62d037bd:docs/07-planning/security-reviews/668-accepted-diagnostic-comp
 - The auth source was not re-reviewed on its merits. That rests on the prior d3439ff3-bound reviews, whose delta is proven unchanged here.
 - No new tests were run.
 <!-- END REPORT (sha256 a4d8c448882014cda0e58bbdf096577c8e144aeb7012bc542f78344fe409c0df) -->
+
+### Binding of the 62d037bd rebind (conductor record)
+
+The report above is the verbatim Claude Opus 5.5 (claude-opus-5-5) lightweight rebind. Its attested head, in the form the binding checker reads:
+
+**Reviewed head:** `62d037bd55f0b350f8dd64c37146a8879d34e82d`
