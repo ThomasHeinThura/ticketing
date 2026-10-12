@@ -3,6 +3,7 @@ import { and, eq } from "drizzle-orm";
 import type { Context, Next } from "hono";
 import { HTTPException } from "hono/http-exception";
 import db, { schema } from "../database";
+import { getActiveStaffPerson } from "../instance/users/repository";
 import {
   apiRouter,
   type BaseVariables,
@@ -206,6 +207,18 @@ function requestTypeResponse(
     createdAt: row.createdAt.toISOString(),
     updatedAt: row.updatedAt.toISOString(),
   };
+}
+
+/**
+ * Triage writes record the acting STAFF PERSON, not the auth user: `submission.claimed_by`
+ * and the comment author reference `person.id`, so passing `c.get("userId")` violated the
+ * foreign key and surfaced as a 500. An API key acts as its owning user's staff person.
+ */
+async function triagerPersonId(c: IntakeContext): Promise<string> {
+  const [person] = await getActiveStaffPerson(c.get("userId"));
+  if (!person)
+    throw new HTTPException(403, { message: "Active staff person required" });
+  return person.id;
 }
 
 async function requestTypeReach(c: IntakeContext, next: Next) {
@@ -984,7 +997,7 @@ const intakeSubmissionRouter = apiRouter<IntakeVariables>()
       await claimSubmission(
         c.req.valid("param").ref,
         c.get("workspaceId"),
-        c.get("userId"),
+        await triagerPersonId(c),
       ),
       200,
     ),
@@ -994,7 +1007,7 @@ const intakeSubmissionRouter = apiRouter<IntakeVariables>()
       await acceptSubmission(
         c.req.valid("param").ref,
         c.get("workspaceId"),
-        c.get("userId"),
+        await triagerPersonId(c),
         c.req.valid("json").projectId,
         c.req.valid("json").workItemTypeId,
       ),
@@ -1008,7 +1021,7 @@ const triageActionRouter = apiRouter<IntakeVariables>()
       await markSubmissionDuplicate(
         c.req.valid("param").ref,
         c.get("workspaceId"),
-        c.get("userId"),
+        await triagerPersonId(c),
         c.req.valid("json").workItemId,
       ),
       200,
@@ -1030,7 +1043,7 @@ const triageActionRouter = apiRouter<IntakeVariables>()
       await declineSubmission(
         c.req.valid("param").ref,
         c.get("workspaceId"),
-        c.get("userId"),
+        await triagerPersonId(c),
         c.req.valid("json").reason,
       ),
       200,
@@ -1041,7 +1054,7 @@ const triageActionRouter = apiRouter<IntakeVariables>()
       await postSubmissionMessage({
         ref: c.req.valid("param").ref,
         workspaceId: c.get("workspaceId"),
-        actorId: c.get("userId"),
+        actorId: await triagerPersonId(c),
         actorType: "triager",
         body: c.req.valid("json").body,
       }),
