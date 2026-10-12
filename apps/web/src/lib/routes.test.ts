@@ -6,6 +6,7 @@ import {
   parseGeneratedRouteUrl,
   parseIntakeSearch,
   parsePortalCatalogueSearch,
+  parsePortalSignInSearch,
   parseRequestTypeEditorSearch,
   parseWorkItemListSearch,
   parseWorkItemListSearchFromQueryString,
@@ -113,6 +114,7 @@ describe("G5 route metadata", () => {
     );
     expect(generatedRouteMetadata.agent).toContain("/agent/triage");
     expect(generatedRouteMetadata.portal).toContain("/catalogue");
+    expect(generatedRouteMetadata.portal).toContain("/sign-in");
     expect(generatedRouteMetadata.portal).toContain("/submissions/$ref");
   });
 
@@ -189,6 +191,22 @@ describe("canonical intake URLs", () => {
     const parsed = parsePortalCatalogueSearch(search);
     expect(parsed).toEqual({ q: "hardware help", key: "printer" });
     expect(routes.portalCatalogue.build(parsed)).toBe(url);
+  });
+
+  it("round-trips sign-in stage and factor choice without placing credentials in the URL", () => {
+    const url = routes.portalSignIn.build({
+      stage: "factor",
+      factor: "backup",
+    });
+    const search = Object.fromEntries(new URLSearchParams(url.split("?")[1]));
+    expect(parsePortalSignInSearch(search)).toEqual({
+      stage: "factor",
+      factor: "backup",
+    });
+    expect(routes.portalSignIn.build(parsePortalSignInSearch(search))).toBe(
+      url,
+    );
+    expect(url).not.toMatch(/@|password|code/iu);
   });
 
   it("preserves in-progress whitespace in catalogue search URLs", () => {

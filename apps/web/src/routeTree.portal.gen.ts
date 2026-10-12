@@ -11,6 +11,7 @@
 import { Route as rootRouteImport } from './routes/portal/__root'
 import { Route as IndexRouteImport } from './routes/portal/index'
 import { Route as CatalogueRouteImport } from './routes/portal/catalogue'
+import { Route as SignInRouteImport } from './routes/portal/sign-in'
 import { Route as SubmissionsRefRouteImport } from './routes/portal/submissions/$ref'
 
 const IndexRoute = IndexRouteImport.update({
@@ -23,6 +24,11 @@ const CatalogueRoute = CatalogueRouteImport.update({
   path: '/catalogue',
   getParentRoute: () => rootRouteImport,
 } as any)
+const SignInRoute = SignInRouteImport.update({
+  id: '/sign-in',
+  path: '/sign-in',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const SubmissionsRefRoute = SubmissionsRefRouteImport.update({
   id: '/submissions/$ref',
   path: '/submissions/$ref',
@@ -32,30 +38,34 @@ const SubmissionsRefRoute = SubmissionsRefRouteImport.update({
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/catalogue': typeof CatalogueRoute
+  '/sign-in': typeof SignInRoute
   '/submissions/$ref': typeof SubmissionsRefRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/catalogue': typeof CatalogueRoute
+  '/sign-in': typeof SignInRoute
   '/submissions/$ref': typeof SubmissionsRefRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
   '/catalogue': typeof CatalogueRoute
+  '/sign-in': typeof SignInRoute
   '/submissions/$ref': typeof SubmissionsRefRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/' | '/catalogue' | '/submissions/$ref'
+  fullPaths: '/' | '/catalogue' | '/sign-in' | '/submissions/$ref'
   fileRoutesByTo: FileRoutesByTo
-  to: '/' | '/catalogue' | '/submissions/$ref'
-  id: '__root__' | '/' | '/catalogue' | '/submissions/$ref'
+  to: '/' | '/catalogue' | '/sign-in' | '/submissions/$ref'
+  id: '__root__' | '/' | '/catalogue' | '/sign-in' | '/submissions/$ref'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   CatalogueRoute: typeof CatalogueRoute
+  SignInRoute: typeof SignInRoute
   SubmissionsRefRoute: typeof SubmissionsRefRoute
 }
 
@@ -75,6 +85,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof CatalogueRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/sign-in': {
+      id: '/sign-in'
+      path: '/sign-in'
+      fullPath: '/sign-in'
+      preLoaderRoute: typeof SignInRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/submissions/$ref': {
       id: '/submissions/$ref'
       path: '/submissions/$ref'
@@ -88,6 +105,7 @@ declare module '@tanstack/react-router' {
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   CatalogueRoute: CatalogueRoute,
+  SignInRoute: SignInRoute,
   SubmissionsRefRoute: SubmissionsRefRoute,
 }
 export const routeTree = rootRouteImport

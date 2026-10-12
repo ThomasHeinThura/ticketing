@@ -147,6 +147,11 @@ export type IntakeQueueSearch = {
 };
 export type RequestTypeEditorSearch = { requestTypeId?: string };
 export type PortalCatalogueSearch = { q?: string; key?: string };
+export type PortalSignInStage = "email" | "password" | "factor";
+export type PortalSignInSearch = {
+  stage: PortalSignInStage;
+  factor: "totp" | "backup";
+};
 
 export function parseRequestTypeEditorSearch(
   raw: unknown,
@@ -192,6 +197,17 @@ export function parsePortalCatalogueSearch(
   return { ...(q ? { q } : {}), ...(key ? { key } : {}) };
 }
 
+export function parsePortalSignInSearch(raw: unknown): PortalSignInSearch {
+  const value = (raw ?? {}) as Record<string, unknown>;
+  const stage = ["email", "password", "factor"].find(
+    (candidate) => candidate === value.stage,
+  ) as PortalSignInStage | undefined;
+  return {
+    stage: stage ?? "email",
+    factor: value.factor === "backup" ? "backup" : "totp",
+  };
+}
+
 /** The inverse direction, for a column-header sort toggle. */
 export function toggleWorkItemSortDirection(
   dir: WorkItemSortDirection,
@@ -224,6 +240,16 @@ export const routes = {
     path: "/" as const,
     build: () => "/",
     parse: (pathname: string) => (pathname === "/" ? "/" : undefined),
+  },
+  portalSignIn: {
+    path: "/sign-in" as const,
+    build: (search: Partial<PortalSignInSearch> = {}) => {
+      const resolved = parsePortalSignInSearch(search);
+      const query = new URLSearchParams({ stage: resolved.stage });
+      if (resolved.stage === "factor" && resolved.factor === "backup")
+        query.set("factor", "backup");
+      return `/sign-in?${query.toString()}`;
+    },
   },
   portalCatalogue: {
     path: "/catalogue" as const,

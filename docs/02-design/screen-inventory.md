@@ -185,7 +185,7 @@ rows above therefore stay as they are. This is a deferral, not an approval. See 
 | Screen | Route | Kind | Stage | Status |
 | --- | --- | --- | --- | :-: |
 | Portal unavailable notice (P0 interim state) | `/` | route | P0 | 🟡 |
-| Sign in | `/portal/sign-in` | route | P3 | ⬜ |
+| Sign in | `/sign-in` | route | P3 | 🟡 |
 | Accept invitation | `/portal/invite` | route | P3 | ⬜ |
 | Home | `/portal` | route | P3 | ⬜ |
 | My requests | `/portal/requests` | route | P3 | ⬜ |
