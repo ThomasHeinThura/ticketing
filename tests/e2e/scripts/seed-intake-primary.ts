@@ -2,7 +2,7 @@ import { randomUUID } from "node:crypto";
 import { readFileSync, writeFileSync } from "node:fs";
 import { createRequire } from "node:module";
 import { resolve } from "node:path";
-import { and, eq } from "drizzle-orm";
+import { and, eq, isNull } from "drizzle-orm";
 import db, { getDatabasePool, schema } from "../../../apps/api/src/database";
 
 type SeedInput =
@@ -39,6 +39,41 @@ function required<T>(rows: readonly (T | undefined)[], label: string): T {
   return row;
 }
 
+/**
+ * The portal identity check (`getCustomerPortalIdentityRow`) admits only a customer-side
+ * person whose organisation membership holds the organisation-scoped role keyed
+ * `customer`. That role is unique per (scope, key), so both fixture people share one,
+ * with no capabilities: admission to the portal grants nothing beyond the portal predicates.
+ */
+async function getOrCreateCustomerRole() {
+  const [existing] = await db
+    .select()
+    .from(schema.roleTable)
+    .where(
+      and(
+        eq(schema.roleTable.scope, "organisation"),
+        eq(schema.roleTable.key, "customer"),
+        isNull(schema.roleTable.workspaceId),
+      ),
+    )
+    .limit(1);
+  if (existing) return existing;
+  return required(
+    await db
+      .insert(schema.roleTable)
+      .values({
+        scope: "organisation",
+        workspaceId: null,
+        key: "customer",
+        name: "Customer",
+        rank: 0,
+        capabilities: [],
+      })
+      .returning(),
+    "customer role",
+  );
+}
+
 async function createPortalPerson(
   name: string,
   emailPrefix: string,
@@ -59,20 +94,7 @@ async function createPortalPerson(
       .returning(),
     `${name} organisation`,
   );
-  const role = required(
-    await db
-      .insert(schema.roleTable)
-      .values({
-        scope: "organisation",
-        workspaceId: null,
-        key: `intake-${suffix}`,
-        name: `${name} role`,
-        rank: 0,
-        capabilities: [],
-      })
-      .returning(),
-    `${name} role`,
-  );
+  const role = await getOrCreateCustomerRole();
   const user = required(
     await db
       .insert(schema.userTable)
