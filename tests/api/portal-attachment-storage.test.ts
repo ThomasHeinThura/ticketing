@@ -165,4 +165,47 @@ describe("portal host admits only portal-submission attachment storage URLs (CP-
       204,
     );
   });
+
+  it("uploads the way the portal page does (plain fetch, File body, image/png) once a storage root exists", async () => {
+    const { app } = createApp();
+    const png = new Uint8Array([
+      0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a, 0, 0, 0, 0,
+    ]);
+    const file = new File([png], "evidence.png", { type: "image/png" });
+    const key = "workspace/ws1/submission/sub1/attachment/att9/evidence.png";
+    const signed = createAttachmentUploadUrl(
+      key,
+      file.type,
+      1_000_000,
+      `${PORTAL}/api`,
+    );
+    const clientPut = () =>
+      app.request(pathOf(signed.uploadUrl), {
+        method: "PUT",
+        headers: {
+          host: PORTAL_HOST,
+          origin: PORTAL,
+          cookie: "__Host-tdk_portal_session=signed",
+          ...signed.headers,
+        },
+        body: file,
+      });
+
+    const ok = await clientPut();
+    expect(ok.status).toBe(204);
+    expect(new Uint8Array(readFileSync(join(root, key)))).toEqual(png);
+
+    // A host-run API without TASKDESK_STORAGE_FILESYSTEM_ROOT falls back to the Docker
+    // path /app/data/attachments; the missing root surfaces as the generic 400 the real
+    // browser run saw. The e2e fixture must therefore always provide a writable root.
+    const configured = process.env.TASKDESK_STORAGE_FILESYSTEM_ROOT;
+    process.env.TASKDESK_STORAGE_FILESYSTEM_ROOT = join(root, "does-not-exist");
+    try {
+      const missingRoot = await clientPut();
+      expect(missingRoot.status).toBe(400);
+      expect(await missingRoot.text()).toBe("Upload failed.");
+    } finally {
+      process.env.TASKDESK_STORAGE_FILESYSTEM_ROOT = configured;
+    }
+  });
 });

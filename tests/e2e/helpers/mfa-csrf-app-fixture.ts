@@ -1,7 +1,7 @@
 import { spawn } from "node:child_process";
 import { createHmac, randomBytes, randomUUID } from "node:crypto";
 import { existsSync } from "node:fs";
-import { chmod, mkdtemp } from "node:fs/promises";
+import { chmod, mkdir, mkdtemp } from "node:fs/promises";
 import { createRequire } from "node:module";
 import { createServer } from "node:net";
 import { tmpdir } from "node:os";
@@ -499,6 +499,11 @@ async function runMfaCsrfApp<T>(
   try {
     const evidenceDir = await mkdtemp(resolve(tmpdir(), "td-mfa-csrf-"));
     await chmod(evidenceDir, 0o700);
+    // The filesystem storage driver defaults to the Docker volume path /app/data/attachments,
+    // which does not exist for a host-run API; every attachment PUT would fail with 400
+    // "Upload failed." Give this private fixture its own writable root.
+    const storageRoot = resolve(evidenceDir, "attachments");
+    await mkdir(storageRoot, { recursive: true });
     const databaseName = `mfa_csrf_${randomUUID().replaceAll("-", "")}`;
     container = await new PostgreSqlContainer("postgres:18-alpine")
       .withDatabase(databaseName)
@@ -529,6 +534,7 @@ async function runMfaCsrfApp<T>(
       TASKDESK_BOOTSTRAP_ADMIN_EMAIL: email,
       TASKDESK_DATABASE_URL: applicationUrl,
       TASKDESK_ROLE: "migrate",
+      TASKDESK_STORAGE_FILESYSTEM_ROOT: storageRoot,
       DISABLE_REGISTRATION: "false",
       DISABLE_PASSWORD_REGISTRATION: "false",
       DISABLE_EMAIL_OTP_SIGN_IN: "true",
