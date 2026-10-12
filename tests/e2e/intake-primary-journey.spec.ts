@@ -233,7 +233,8 @@ async function signInThroughPortal(
   await page.goto(new URL("/sign-in", portalOrigin).toString());
   await page.getByLabel("Email").fill(person.email);
   await page.getByRole("button", { name: /^sign in$/i }).click();
-  await page.locator('input[name="password"]').fill(person.password);
+  // The portal password field has id="portal-password" and no name attribute.
+  await page.getByLabel("Password", { exact: true }).fill(person.password);
   const responsePromise = apiResponse(page, "POST", "/api/auth/sign-in/email");
   await page.getByRole("button", { name: /^sign in$/i }).click();
   expect((await responsePromise).status()).toBe(200);
@@ -682,6 +683,10 @@ async function runJourney(fixture: MfaCsrfAppFixture) {
 }
 
 test("portal intake is authored, submitted, claimed and accepted through the real UI", async () => {
+  // Fixture boot plus staff phases measured ~12 s before the first customer
+  // step; four browser contexts and the remaining phases follow, so the 30 s
+  // default cannot hold the whole journey.
+  test.setTimeout(120_000);
   await withMfaCsrfApp(async (fixture) => runJourney(fixture), {
     beforeStart: async (setup) => {
       await seedCustomerPasswordProvider(setup);
