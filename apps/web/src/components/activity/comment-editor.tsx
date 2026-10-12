@@ -975,8 +975,13 @@ export default function CommentEditor({
 
   // Candidates can arrive (or change with visibility) after the user has
   // already typed `@`; Tiptap only evaluates `items()` on query changes, so ask
-  // the active suggestion to re-evaluate against the latest candidates.
-  // biome-ignore lint/correctness/useExhaustiveDependencies: refresh when the candidate set changes
+  // the active suggestion to re-evaluate against the latest candidates. Keyed by
+  // content (ids + labels, in order) so a parent re-render with an equal array
+  // does not reset the highlighted row.
+  const mentionMembersKey = JSON.stringify(
+    resolvedMentionMembers.map((member) => [member.id, member.label]),
+  );
+  // biome-ignore lint/correctness/useExhaustiveDependencies: refresh only when candidate content changes
   useEffect(() => {
     if (!isLiveEditor(editor) || !enableMentions) return;
     (
@@ -984,7 +989,7 @@ export default function CommentEditor({
         | { taskdeskMentionSuggestion?: { refresh?: () => void } }
         | undefined
     )?.taskdeskMentionSuggestion?.refresh?.();
-  }, [editor, enableMentions, resolvedMentionMembers]);
+  }, [editor, enableMentions, mentionMembersKey]);
 
   useEffect(() => {
     if (!isLiveEditor(editor) || !shikiHighlighter) return;

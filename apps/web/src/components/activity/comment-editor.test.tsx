@@ -206,5 +206,88 @@ describe("CommentEditor lifecycle", () => {
       await waitFor(() => expect(mentionButton()).toBeNull());
       unmount();
     });
+
+    const people = [
+      { id: "u1", label: "Comments One" },
+      { id: "u2", label: "Comments Two" },
+      { id: "u3", label: "Comments Three" },
+    ];
+
+    it("keeps the highlighted row across an equal-content rerender and mentions that person", async () => {
+      const onContentChange = vi.fn();
+      const ui = (members: typeof people) => (
+        <CommentEditor
+          value=""
+          showQuickAttachButton={false}
+          mentionMembers={members}
+          onContentChange={onContentChange}
+        />
+      );
+      const { container, rerender, unmount } = render(ui([...people]));
+      const editor = await waitFor(() => getEditor(container));
+      await act(async () => {
+        editor.commands.insertContent("@Comments");
+      });
+      await waitFor(() => expect(mentionButton()).not.toBeNull());
+      const active = () =>
+        document.body.querySelector(".taskdesk-mention-item.is-active")
+          ?.textContent;
+      expect(active()).toContain("Comments One");
+
+      const pm = container.querySelector<HTMLElement>(".ProseMirror");
+      await act(async () => {
+        fireEvent.keyDown(pm as HTMLElement, { key: "ArrowDown" });
+      });
+      await waitFor(() => expect(active()).toContain("Comments Two"));
+
+      // New array identity, equal content.
+      await act(async () => {
+        rerender(ui(people.map((p) => ({ ...p }))));
+      });
+      expect(active()).toContain("Comments Two");
+
+      await act(async () => {
+        fireEvent.keyDown(pm as HTMLElement, { key: "Enter" });
+      });
+      await waitFor(() => {
+        const last = onContentChange.mock.calls.at(-1)?.[0] as {
+          document: { content?: unknown };
+        };
+        expect(JSON.stringify(last.document)).toContain('"id":"u2"');
+      });
+      const finalDoc = JSON.stringify(
+        (
+          onContentChange.mock.calls.at(-1)?.[0] as
+            | { document: unknown }
+            | undefined
+        )?.document,
+      );
+      expect(finalDoc).not.toContain('"id":"u1"');
+      unmount();
+    });
+
+    it("drops candidates from the old set when the set is swapped", async () => {
+      const { container, rerender, unmount } = render(renderEditor([person]));
+      const editor = await waitFor(() => getEditor(container));
+      await act(async () => {
+        editor.commands.insertContent("@Comments");
+      });
+      await waitFor(() => expect(mentionButton()).not.toBeNull());
+
+      const other = { id: "u-other", label: "Comments Other Person" };
+      await act(async () => {
+        rerender(renderEditor([other]));
+      });
+      await waitFor(() =>
+        expect(
+          screen.getByRole("button", { name: other.label }),
+        ).toBeInTheDocument(),
+      );
+      expect(screen.queryByRole("button", { name: person.label })).toBeNull();
+      expect(
+        document.body.querySelectorAll(".taskdesk-mention-list button"),
+      ).toHaveLength(1);
+      unmount();
+    });
   });
 });
