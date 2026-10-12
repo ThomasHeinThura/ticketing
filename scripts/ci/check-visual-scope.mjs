@@ -420,6 +420,32 @@ function hasExpectedUse(config, storybook) {
   );
 }
 
+/**
+ * The route visual config may differ from the app config in exactly one way: Chromium
+ * must run with partial raster disabled (see playwright.visual.config.ts). Anything else
+ * under `use` or `launchOptions` could change what the screenshots compare, so the
+ * object shape is pinned key-for-key like the rest of the config.
+ */
+function hasExpectedVisualLaunchOptions(config) {
+  const use = objectProperty(config, "use");
+  if (
+    !hasExactObjectKeys(use, ["launchOptions"], {
+      index: 0,
+      matches: (expression) =>
+        ts.isPropertyAccessExpression(expression) &&
+        ts.isIdentifier(expression.expression) &&
+        expression.expression.text === "base" &&
+        expression.name.text === "use",
+    })
+  ) {
+    return false;
+  }
+  const launchOptions = objectProperty(use, "launchOptions");
+  if (!hasExactObjectKeys(launchOptions, ["args"])) return false;
+  const args = stringArrayProperty(launchOptions, "args");
+  return args?.length === 1 && args[0] === "--disable-partial-raster";
+}
+
 function hasExpectedWebServer(config, storybook) {
   const webServer = objectProperty(config, "webServer");
   if (storybook) {
@@ -3063,6 +3089,7 @@ try {
           "testIgnore",
           "testMatch",
           "updateSnapshots",
+          "use",
           "webServer",
         ],
         {
@@ -3098,6 +3125,7 @@ try {
       !visualTestIgnores ||
       visualTestIgnores.length !== 0 ||
       !hasExpectedPortalVisualServer(visualConfig) ||
+      !hasExpectedVisualLaunchOptions(visualConfig) ||
       propertyValues(visualConfig, "testDir").length !== 0
     ) {
       failures.push(

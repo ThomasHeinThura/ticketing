@@ -1,3 +1,16 @@
+### 2026-10-12 · Technical disposition: #677 review-prose secret-scan false positive
+
+**Technical rationale, not a new Thomas decision or gate waiver:** #677's required secret
+scan flags one line of the verbatim Claude Opus 5.5 security report embedded in
+`docs/07-planning/security-reviews/677-g8-partial-raster.md`, immutable commit
+`2bf94401517ca8a232dfdf18b3364741e7a584c8`, line 56. The flagged text is reviewer prose
+listing the object-literal forms the guard rejects; it is not a credential. A local gitleaks
+8.x scan of the committed PR range reproduced exactly this one
+`generic-api-key` fingerprint. Following the existing exact-finding mechanism, only this
+immutable finding is added to `.gitleaksignore`. The required scanner still runs: no
+path/rule exemption, history rewrite, threshold change, report edit or scanner bypass. A
+changed-fingerprint positive control is recorded, and the change receives a fresh
+independent security rebind before merge.
 ### 2026-10-12 · Owner approves serving the portal shell for registered portal client routes
 
 **Decision:** Thomas decided: "Serve app for known routes." The portal host serves its own

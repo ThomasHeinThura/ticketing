@@ -833,8 +833,8 @@
       "packages/ui/src/components/number-field.tsx::NumberFieldGroup::NumberFieldPrimitive.Group[0]::text-foreground#0",
       "packages/ui/src/components/textarea.tsx::Textarea::span[0]::text-foreground#0",
       "packages/ui/src/components/separator.stories.tsx::<module>::div[0]::text-foreground#0",
-      "apps/web/src/components/auth/sign-in-form.tsx::SignInForm::Form[0]/form[0]/div[0]/FormField[1]/FormItem[0]/FormControl[0]/div[0]/Button[0]::hover:text-foreground#0",
-      "apps/web/src/components/auth/sign-up-form.tsx::SignUpForm::Form[0]/form[0]/div[0]/FormField[2]/FormItem[0]/FormControl[0]/div[0]/Button[0]::hover:text-foreground#0",
+      "apps/web/src/components/auth/sign-in-form.tsx::SignInForm::Form[0]/form[0]/div[0]/FormField[1]/FormItem[0]/div[0]/Button[0]::hover:text-foreground#0",
+      "apps/web/src/components/auth/sign-up-form.tsx::SignUpForm::Form[0]/form[0]/div[0]/FormField[2]/FormItem[0]/div[0]/Button[0]::hover:text-foreground#0",
       "apps/web/src/components/calendar/calendar-task-bar.tsx::CalendarTaskBar::Button[0]::text-foreground#0",
       "apps/web/src/components/calendar/calendar-toolbar.tsx::CalendarToolbar::div[0]/div[0]/div[0]/h1[0]::text-foreground#0",
       "apps/web/src/components/calendar/day-overflow-popover.tsx::DayOverflowPopover::Popover[0]/PopoverTrigger[0]::hover:text-foreground#0",
@@ -1516,7 +1516,7 @@
         "backdropLayers": []
       },
       {
-        "id": "apps/web/src/components/auth/sign-in-form.tsx::SignInForm::Form[0]/form[0]/div[0]/FormField[1]/FormItem[0]/FormControl[0]/div[0]/Button[0]::hover:text-foreground#0",
+        "id": "apps/web/src/components/auth/sign-in-form.tsx::SignInForm::Form[0]/form[0]/div[0]/FormField[1]/FormItem[0]/div[0]/Button[0]::hover:text-foreground#0",
         "usage": "apps/web/src/components/auth/sign-in-form.tsx",
         "surfaceContext": "caller-chain",
         "category": "body",
@@ -1527,7 +1527,7 @@
         "backdropLayers": []
       },
       {
-        "id": "apps/web/src/components/auth/sign-up-form.tsx::SignUpForm::Form[0]/form[0]/div[0]/FormField[2]/FormItem[0]/FormControl[0]/div[0]/Button[0]::hover:text-foreground#0",
+        "id": "apps/web/src/components/auth/sign-up-form.tsx::SignUpForm::Form[0]/form[0]/div[0]/FormField[2]/FormItem[0]/div[0]/Button[0]::hover:text-foreground#0",
         "usage": "apps/web/src/components/auth/sign-up-form.tsx",
         "surfaceContext": "caller-chain",
         "category": "body",
@@ -1921,8 +1921,8 @@
       "packages/ui/src/components/number-field.tsx::NumberFieldGroup::NumberFieldPrimitive.Group[0]::text-foreground#0",
       "packages/ui/src/components/textarea.tsx::Textarea::span[0]::text-foreground#0",
       "packages/ui/src/components/separator.stories.tsx::<module>::div[0]::text-foreground#0",
-      "apps/web/src/components/auth/sign-in-form.tsx::SignInForm::Form[0]/form[0]/div[0]/FormField[1]/FormItem[0]/FormControl[0]/div[0]/Button[0]::hover:text-foreground#0",
-      "apps/web/src/components/auth/sign-up-form.tsx::SignUpForm::Form[0]/form[0]/div[0]/FormField[2]/FormItem[0]/FormControl[0]/div[0]/Button[0]::hover:text-foreground#0",
+      "apps/web/src/components/auth/sign-in-form.tsx::SignInForm::Form[0]/form[0]/div[0]/FormField[1]/FormItem[0]/div[0]/Button[0]::hover:text-foreground#0",
+      "apps/web/src/components/auth/sign-up-form.tsx::SignUpForm::Form[0]/form[0]/div[0]/FormField[2]/FormItem[0]/div[0]/Button[0]::hover:text-foreground#0",
       "apps/web/src/components/calendar/calendar-task-bar.tsx::CalendarTaskBar::Button[0]::text-foreground#0",
       "apps/web/src/components/calendar/calendar-toolbar.tsx::CalendarToolbar::div[0]/div[0]/div[0]/h1[0]::text-foreground#0",
       "apps/web/src/components/calendar/day-overflow-popover.tsx::DayOverflowPopover::Popover[0]/PopoverTrigger[0]::hover:text-foreground#0",
@@ -2604,7 +2604,7 @@
         "backdropLayers": []
       },
       {
-        "id": "apps/web/src/components/auth/sign-in-form.tsx::SignInForm::Form[0]/form[0]/div[0]/FormField[1]/FormItem[0]/FormControl[0]/div[0]/Button[0]::hover:text-foreground#0",
+        "id": "apps/web/src/components/auth/sign-in-form.tsx::SignInForm::Form[0]/form[0]/div[0]/FormField[1]/FormItem[0]/div[0]/Button[0]::hover:text-foreground#0",
         "usage": "apps/web/src/components/auth/sign-in-form.tsx",
         "surfaceContext": "caller-chain",
         "category": "body",
@@ -2615,7 +2615,7 @@
         "backdropLayers": []
       },
       {
-        "id": "apps/web/src/components/auth/sign-up-form.tsx::SignUpForm::Form[0]/form[0]/div[0]/FormField[2]/FormItem[0]/FormControl[0]/div[0]/Button[0]::hover:text-foreground#0",
+        "id": "apps/web/src/components/auth/sign-up-form.tsx::SignUpForm::Form[0]/form[0]/div[0]/FormField[2]/FormItem[0]/div[0]/Button[0]::hover:text-foreground#0",
         "usage": "apps/web/src/components/auth/sign-up-form.tsx",
         "surfaceContext": "caller-chain",
         "category": "body",
@@ -6456,8 +6456,8 @@
       "packages/ui/src/components/context-menu.stories.tsx::<module>::ContextMenu[0]/ContextMenuTrigger[0]::text-muted-foreground#0",
       "packages/ui/src/components/context-menu.stories.tsx::<module>::ContextMenu[0]/ContextMenuTrigger[0]::text-muted-foreground#1",
       "apps/web/src/components/auth/sign-in-form-skeleton.tsx::SignInFormSkeleton::div[0]/div[1]/span[0]::text-muted-foreground#0",
-      "apps/web/src/components/auth/sign-in-form.tsx::SignInForm::Form[0]/form[0]/div[0]/FormField[1]/FormItem[0]/FormControl[0]/div[0]/Button[0]::text-muted-foreground#0",
-      "apps/web/src/components/auth/sign-up-form.tsx::SignUpForm::Form[0]/form[0]/div[0]/FormField[2]/FormItem[0]/FormControl[0]/div[0]/Button[0]::text-muted-foreground#0",
+      "apps/web/src/components/auth/sign-in-form.tsx::SignInForm::Form[0]/form[0]/div[0]/FormField[1]/FormItem[0]/div[0]/Button[0]::text-muted-foreground#0",
+      "apps/web/src/components/auth/sign-up-form.tsx::SignUpForm::Form[0]/form[0]/div[0]/FormField[2]/FormItem[0]/div[0]/Button[0]::text-muted-foreground#0",
       "apps/web/src/components/auth/toggle.tsx::AuthToggle::div[0]::text-muted-foreground#0",
       "apps/web/src/components/bulk-selection/bulk-toolbar.tsx::BulkToolbar::Trash2[0]::text-muted-foreground#0",
       "apps/web/src/components/bulk-selection/bulk-toolbar.tsx::BulkToolbar::Archive[0]::text-muted-foreground#0",
@@ -7432,7 +7432,7 @@
         "backdropLayers": []
       },
       {
-        "id": "apps/web/src/components/auth/sign-in-form.tsx::SignInForm::Form[0]/form[0]/div[0]/FormField[1]/FormItem[0]/FormControl[0]/div[0]/Button[0]::text-muted-foreground#0",
+        "id": "apps/web/src/components/auth/sign-in-form.tsx::SignInForm::Form[0]/form[0]/div[0]/FormField[1]/FormItem[0]/div[0]/Button[0]::text-muted-foreground#0",
         "usage": "apps/web/src/components/auth/sign-in-form.tsx",
         "surfaceContext": "caller-chain",
         "category": "body",
@@ -7443,7 +7443,7 @@
         "backdropLayers": []
       },
       {
-        "id": "apps/web/src/components/auth/sign-up-form.tsx::SignUpForm::Form[0]/form[0]/div[0]/FormField[2]/FormItem[0]/FormControl[0]/div[0]/Button[0]::text-muted-foreground#0",
+        "id": "apps/web/src/components/auth/sign-up-form.tsx::SignUpForm::Form[0]/form[0]/div[0]/FormField[2]/FormItem[0]/div[0]/Button[0]::text-muted-foreground#0",
         "usage": "apps/web/src/components/auth/sign-up-form.tsx",
         "surfaceContext": "caller-chain",
         "category": "body",
@@ -8505,8 +8505,8 @@
       "packages/ui/src/components/context-menu.stories.tsx::<module>::ContextMenu[0]/ContextMenuTrigger[0]::text-muted-foreground#0",
       "packages/ui/src/components/context-menu.stories.tsx::<module>::ContextMenu[0]/ContextMenuTrigger[0]::text-muted-foreground#1",
       "apps/web/src/components/auth/sign-in-form-skeleton.tsx::SignInFormSkeleton::div[0]/div[1]/span[0]::text-muted-foreground#0",
-      "apps/web/src/components/auth/sign-in-form.tsx::SignInForm::Form[0]/form[0]/div[0]/FormField[1]/FormItem[0]/FormControl[0]/div[0]/Button[0]::text-muted-foreground#0",
-      "apps/web/src/components/auth/sign-up-form.tsx::SignUpForm::Form[0]/form[0]/div[0]/FormField[2]/FormItem[0]/FormControl[0]/div[0]/Button[0]::text-muted-foreground#0",
+      "apps/web/src/components/auth/sign-in-form.tsx::SignInForm::Form[0]/form[0]/div[0]/FormField[1]/FormItem[0]/div[0]/Button[0]::text-muted-foreground#0",
+      "apps/web/src/components/auth/sign-up-form.tsx::SignUpForm::Form[0]/form[0]/div[0]/FormField[2]/FormItem[0]/div[0]/Button[0]::text-muted-foreground#0",
       "apps/web/src/components/auth/toggle.tsx::AuthToggle::div[0]::text-muted-foreground#0",
       "apps/web/src/components/bulk-selection/bulk-toolbar.tsx::BulkToolbar::Trash2[0]::text-muted-foreground#0",
       "apps/web/src/components/bulk-selection/bulk-toolbar.tsx::BulkToolbar::Archive[0]::text-muted-foreground#0",
@@ -9481,7 +9481,7 @@
         "backdropLayers": []
       },
       {
-        "id": "apps/web/src/components/auth/sign-in-form.tsx::SignInForm::Form[0]/form[0]/div[0]/FormField[1]/FormItem[0]/FormControl[0]/div[0]/Button[0]::text-muted-foreground#0",
+        "id": "apps/web/src/components/auth/sign-in-form.tsx::SignInForm::Form[0]/form[0]/div[0]/FormField[1]/FormItem[0]/div[0]/Button[0]::text-muted-foreground#0",
         "usage": "apps/web/src/components/auth/sign-in-form.tsx",
         "surfaceContext": "caller-chain",
         "category": "body",
@@ -9492,7 +9492,7 @@
         "backdropLayers": []
       },
       {
-        "id": "apps/web/src/components/auth/sign-up-form.tsx::SignUpForm::Form[0]/form[0]/div[0]/FormField[2]/FormItem[0]/FormControl[0]/div[0]/Button[0]::text-muted-foreground#0",
+        "id": "apps/web/src/components/auth/sign-up-form.tsx::SignUpForm::Form[0]/form[0]/div[0]/FormField[2]/FormItem[0]/div[0]/Button[0]::text-muted-foreground#0",
         "usage": "apps/web/src/components/auth/sign-up-form.tsx",
         "surfaceContext": "caller-chain",
         "category": "body",
