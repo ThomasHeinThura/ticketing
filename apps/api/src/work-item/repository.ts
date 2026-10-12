@@ -40,6 +40,9 @@ export async function findLiveCommentVersionParentQuery(
   commentId: string,
   workItemId: string,
 ) {
+  // The history reader keeps this share lock until its page query finishes. Comment
+  // tombstoning takes FOR UPDATE on the same row, so either the read linearizes first
+  // with the retained versions or a committed tombstone is observed as absent.
   return executor
     .select({ id: commentTable.id })
     .from(commentTable)
@@ -50,7 +53,8 @@ export async function findLiveCommentVersionParentQuery(
         isNull(commentTable.deletedAt),
       ),
     )
-    .limit(1);
+    .limit(1)
+    .for("share");
 }
 
 export async function listCommentVersionPageQuery(

@@ -63,29 +63,33 @@ export async function listCommentVersions(
   commentId: string,
   options: { cursor?: string; limit?: number },
 ) {
-  const [parent] = await findLiveCommentVersionParentQuery(
-    db,
-    commentId,
-    workItemId,
-  );
-  if (!parent) throw new HTTPException(404, { message: "Comment not found" });
+  const { rows, limit } = await db.transaction(async (tx) => {
+    const [parent] = await findLiveCommentVersionParentQuery(
+      tx,
+      commentId,
+      workItemId,
+    );
+    if (!parent) throw new HTTPException(404, { message: "Comment not found" });
 
-  const limit = options.limit ?? DEFAULT_COMMENT_VERSION_LIMIT;
-  if (
-    !Number.isInteger(limit) ||
-    limit < 1 ||
-    limit > MAX_COMMENT_VERSION_LIMIT
-  )
-    throw new HTTPException(400, { message: "Invalid limit" });
-  const after = options.cursor
-    ? decodeCommentVersionCursor(options.cursor, workItemKey, commentId)
-    : undefined;
-  const rows = await listCommentVersionPageQuery(
-    db,
-    commentId,
-    after ? { number: after.number, id: after.id } : undefined,
-    limit + 1,
-  );
+    const limit = options.limit ?? DEFAULT_COMMENT_VERSION_LIMIT;
+    if (
+      !Number.isInteger(limit) ||
+      limit < 1 ||
+      limit > MAX_COMMENT_VERSION_LIMIT
+    ) {
+      throw new HTTPException(400, { message: "Invalid limit" });
+    }
+    const after = options.cursor
+      ? decodeCommentVersionCursor(options.cursor, workItemKey, commentId)
+      : undefined;
+    const rows = await listCommentVersionPageQuery(
+      tx,
+      commentId,
+      after ? { number: after.number, id: after.id } : undefined,
+      limit + 1,
+    );
+    return { rows, limit };
+  });
   const hasMore = rows.length > limit;
   const pageRows = hasMore ? rows.slice(0, limit) : rows;
   const last = pageRows.at(-1);

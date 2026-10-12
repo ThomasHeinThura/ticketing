@@ -1560,6 +1560,7 @@ const workItem = apiRouter<
       actorId,
       actorType,
       { body, visibility },
+      c.get("apiKey"),
     );
     return c.json(created, 200);
   })

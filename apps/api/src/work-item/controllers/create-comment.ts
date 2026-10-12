@@ -1,7 +1,6 @@
 import { randomUUID } from "node:crypto";
 import { and, eq, isNull } from "drizzle-orm";
 import { HTTPException } from "hono/http-exception";
-import hasCommentCapability from "../../comment/has-comment-capability";
 import db from "../../database";
 import {
   commentTable,
@@ -12,7 +11,12 @@ import {
 import { publishEvent } from "../../events";
 import { enqueueNotificationEvent } from "../../notification/fanout";
 import { resolveMentionEventRecipient } from "../../notification/recipient-resolvers";
+import type { ApiKey } from "../../openapi";
 import { parseNativeMentionPersonIds } from "../../utils/parse-native-mentions";
+import {
+  assertCallerHasCapability,
+  capabilityCredential,
+} from "../../utils/require-workspace-capability";
 import type { ActivityActorType } from "../activity";
 import {
   assertProjectStillLive,
@@ -49,17 +53,12 @@ export async function createComment(
   actorId: string,
   actorType: ActivityActorType,
   input: CreateCommentInput,
+  apiKey?: ApiKey,
 ) {
   const requiredCapability =
     input.visibility === "public"
       ? "comment:create"
       : "comment:create_internal";
-
-  if (!(await hasCommentCapability(workspaceId, actorId, requiredCapability))) {
-    throw new HTTPException(403, {
-      message: `Missing ${requiredCapability} permission`,
-    });
-  }
 
   const mentionIds = parseNativeMentionPersonIds(input.body);
   // Issue #493: this route had NO in-transaction liveness re-check at all --
@@ -86,6 +85,18 @@ export async function createComment(
       if (!mentionContext || mentionContext.workspaceId !== workspaceId) {
         throw new HTTPException(404, { message: "Work item not found" });
       }
+
+      // Check the owner's live workspace capability and the authenticated key's frozen
+      // capability subset before inserting the comment or any mention side effects.
+      // Keeping this in the write transaction ensures a denied key cannot leave a
+      // comment, watcher, notification event, or outbox row behind.
+      await assertCallerHasCapability(
+        workspaceId,
+        actorId,
+        requiredCapability,
+        capabilityCredential(apiKey),
+        tx,
+      );
 
       const [row] = await tx
         .insert(commentTable)
