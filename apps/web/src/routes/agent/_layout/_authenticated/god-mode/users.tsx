@@ -30,7 +30,7 @@ import {
   TableHeader,
   TableRow,
 } from "@taskdesk/ui";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import PageTitle from "@/components/page-title";
 import {
@@ -45,7 +45,9 @@ import {
 } from "@/hooks/queries/god-mode/use-instance-users";
 import { HttpError } from "@/lib/http-error";
 import {
+  type GodModeUserAction,
   type GodModeUsersSearch,
+  godModeUserActionBinding,
   parseGodModeUsersSearch,
   routes,
 } from "@/lib/routes";
@@ -55,16 +57,7 @@ export const Route = createFileRoute("/_layout/_authenticated/god-mode/users")({
   component: InstanceUsersPage,
 });
 
-type Action =
-  | "suspend"
-  | "unsuspend"
-  | "grant-admin"
-  | "reset-mfa"
-  | "sign-out"
-  | "deactivate"
-  | null;
-
-function InstanceUsersPage() {
+export function InstanceUsersPage() {
   const { t } = useTranslation();
   const search = Route.useSearch();
   const navigate = useNavigate({ from: Route.fullPath });
@@ -91,7 +84,7 @@ function InstanceUsersPage() {
   const directory = useInstanceUsers(filters);
   const selected = useInstanceUser(search.user);
   const actions = useInstanceUserActions();
-  const [action, setAction] = useState<Action>(null);
+  const action = search.action;
   const [reason, setReason] = useState("");
   const [expiresAt, setExpiresAt] = useState("");
   const [verificationNote, setVerificationNote] = useState("");
@@ -102,6 +95,10 @@ function InstanceUsersPage() {
   const [formError, setFormError] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
   const [pendingActionUrl, setPendingActionUrl] = useState<string | null>(null);
+  const intent = godModeUserActionBinding(search.user, action);
+  const intentRef = useRef(intent);
+  const previousIntentRef = useRef(intent);
+  intentRef.current = intent;
   const factor = useQuery({
     queryKey: ["god-mode", "step-up-factor"],
     queryFn: getCurrentFactorStatus,
@@ -121,7 +118,7 @@ function InstanceUsersPage() {
     });
   };
   const resetAction = () => {
-    setAction(null);
+    navigateSearch({ action: undefined });
     setReason("");
     setExpiresAt("");
     setVerificationNote("");
@@ -129,10 +126,25 @@ function InstanceUsersPage() {
     setFormError(null);
   };
 
-  async function runAction(user: InstanceUser) {
+  useEffect(() => {
+    if (previousIntentRef.current === intent) return;
+    previousIntentRef.current = intent;
+    setReason("");
+    setExpiresAt("");
+    setVerificationNote("");
+    setSecret("");
+    setFormError(null);
+  }, [intent]);
+
+  async function runAction(
+    user: InstanceUser,
+    requestedAction: GodModeUserAction,
+  ) {
+    const binding = godModeUserActionBinding(user.id, requestedAction);
+    if (intentRef.current !== binding) return;
     setFormError(null);
     try {
-      if (action === "suspend") {
+      if (requestedAction === "suspend") {
         const request = {
           ...(reason.trim() ? { reason: reason.trim() } : {}),
           ...(expiresAt
@@ -148,16 +160,17 @@ function InstanceUsersPage() {
               secret,
             })
           : undefined;
+        if (intentRef.current !== binding) return;
         await actions.suspend.mutateAsync({
           id: user.id,
           request,
           ...(token ? { token } : {}),
         });
-      } else if (action === "unsuspend") {
+      } else if (requestedAction === "unsuspend") {
         await actions.unsuspend.mutateAsync(user.id);
-      } else if (action === "sign-out") {
+      } else if (requestedAction === "sign-out") {
         await actions.signOut.mutateAsync(user.id);
-      } else if (action === "deactivate") {
+      } else if (requestedAction === "deactivate") {
         const result = await actions.deactivate.mutateAsync(user.id);
         if (!("approveUrl" in result)) {
           throw new Error(t("instanceUsers:dynamic.approvalMissing"));
@@ -166,15 +179,16 @@ function InstanceUsersPage() {
         setNotice(t("instanceUsers:dynamic.deactivationRequested"));
         resetAction();
         return;
-      } else if (action === "grant-admin") {
+      } else if (requestedAction === "grant-admin") {
         const token = await createUserOperationProof({
           operation: "instance_admin_grant",
           userId: user.id,
           method,
           secret,
         });
+        if (intentRef.current !== binding) return;
         await actions.grantAdmin.mutateAsync({ id: user.id, token });
-      } else if (action === "reset-mfa") {
+      } else if (requestedAction === "reset-mfa") {
         const note = verificationNote.trim();
         const token = await createUserOperationProof({
           operation: "mfa_reset",
@@ -183,6 +197,7 @@ function InstanceUsersPage() {
           method,
           secret,
         });
+        if (intentRef.current !== binding) return;
         await actions.resetMfa.mutateAsync({
           id: user.id,
           verificationNote: note,
@@ -192,13 +207,13 @@ function InstanceUsersPage() {
         return;
       }
       const noticeKey =
-        action === "suspend"
+        requestedAction === "suspend"
           ? "suspended"
-          : action === "unsuspend"
+          : requestedAction === "unsuspend"
             ? "unsuspended"
-            : action === "sign-out"
+            : requestedAction === "sign-out"
               ? "signedOut"
-              : action === "grant-admin"
+              : requestedAction === "grant-admin"
                 ? "adminGranted"
                 : "mfaReset";
       setNotice(t(`instanceUsers:dynamic.notices.${noticeKey}`));
@@ -207,6 +222,7 @@ function InstanceUsersPage() {
       });
       resetAction();
     } catch (error) {
+      if (intentRef.current !== binding) return;
       const status = error instanceof HttpError ? error.status : undefined;
       setFormError(
         t(
@@ -418,10 +434,10 @@ function InstanceUsersPage() {
                         <Link
                           className="rounded-sm text-left outline-none focus-visible:ring-2 focus-visible:ring-ring"
                           to={Route.fullPath}
-                          search={(current: GodModeUsersSearch) => ({
-                            ...current,
-                            user: user.id,
-                          })}
+                          search={(current: GodModeUsersSearch) => {
+                            const { action: _action, ...rest } = current;
+                            return { ...rest, user: user.id };
+                          }}
                           aria-label={t("instanceUsers:selectUser", {
                             name: user.name,
                             email: user.email,
@@ -494,7 +510,9 @@ function InstanceUsersPage() {
               isLoading={selected.isPending}
               isError={selected.isError}
               onClose={() => navigateSearch({ user: undefined })}
-              onAction={setAction}
+              onAction={(nextAction) =>
+                navigateSearch({ action: nextAction ?? undefined })
+              }
             />
           )}
         </div>
@@ -519,7 +537,7 @@ function InstanceUsersPage() {
           onMethod={setMethod}
           onSecret={setSecret}
           onCancel={resetAction}
-          onSubmit={() => void runAction(selected.data as InstanceUser)}
+          onSubmit={() => void runAction(selected.data as InstanceUser, action)}
         />
       )}
     </main>
@@ -537,7 +555,7 @@ function UserDetails({
   isLoading: boolean;
   isError: boolean;
   onClose: () => void;
-  onAction: (action: Action) => void;
+  onAction: (action: GodModeUserAction | null) => void;
 }) {
   const { t } = useTranslation();
   if (isLoading)
@@ -715,7 +733,7 @@ function UserActionDialog({
   onCancel,
   onSubmit,
 }: {
-  action: Exclude<Action, null>;
+  action: GodModeUserAction;
   user: InstanceUser;
   open: boolean;
   pending: boolean;
@@ -746,7 +764,7 @@ function UserActionDialog({
     (!isStepUp || (!factorBlocked && secret.length > 0)) &&
     (action !== "reset-mfa" || verificationNote.trim().length >= 12) &&
     (action !== "suspend" || Array.from(reason).length <= 500);
-  const titles: Record<Exclude<Action, null>, string> = {
+  const titles: Record<GodModeUserAction, string> = {
     suspend: t("instanceUsers:dynamic.actions.suspend"),
     unsuspend: t("instanceUsers:dynamic.actions.unsuspend"),
     "grant-admin": t("instanceUsers:dynamic.actions.grantAdmin"),

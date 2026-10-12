@@ -174,6 +174,39 @@ describe("God Mode Users and requester pending-action URLs", () => {
     expect(url).toContain("organisationId=org%2Fone");
   });
 
+  it("round-trips only an allowlisted action when a user is selected", () => {
+    const url = routes.godModeUsers.build({
+      user: "user/one",
+      action: "reset-mfa",
+      q: "Ada",
+    });
+    expect(url).toBe("/god-mode/users?q=Ada&user=user%2Fone&action=reset-mfa");
+    expect(
+      parseGodModeUsersSearch(
+        Object.fromEntries(new URL(url, "https://taskdesk.test").searchParams),
+      ),
+    ).toEqual({
+      q: "Ada",
+      user: "user/one",
+      action: "reset-mfa",
+    });
+  });
+
+  it("drops unknown actions, actions without a target, and sensitive form values", () => {
+    expect(
+      parseGodModeUsersSearch({
+        user: "user/one",
+        action: "delete-everything",
+        secret: "never-in-url",
+        reason: "private reason",
+      }),
+    ).toEqual({ user: "user/one" });
+    expect(parseGodModeUsersSearch({ action: "suspend" })).toEqual({});
+    expect(routes.godModeUsers.build({ action: "suspend" })).toBe(
+      "/god-mode/users",
+    );
+  });
+
   it("round-trips requester pagination and encodes the detail id", () => {
     const url = routes.pendingActions.build({ cursor: "cursor/a+b" });
     expect(parsePendingActionsSearchFromQueryString(url.split("?")[1])).toEqual(

@@ -77,7 +77,25 @@ export type GodModeUsersSearch = {
   organisationId?: string;
   cursor?: string;
   user?: string;
+  action?: GodModeUserAction;
 };
+
+export const GOD_MODE_USER_ACTIONS = [
+  "suspend",
+  "unsuspend",
+  "grant-admin",
+  "reset-mfa",
+  "sign-out",
+  "deactivate",
+] as const;
+export type GodModeUserAction = (typeof GOD_MODE_USER_ACTIONS)[number];
+
+export function godModeUserActionBinding(
+  userId: string | undefined,
+  action: GodModeUserAction | undefined,
+) {
+  return userId && action ? `${userId}:${action}` : "";
+}
 
 export type PendingActionsSearch = { cursor?: string };
 
@@ -111,7 +129,12 @@ export function parseGodModeUsersSearch(raw: unknown): GodModeUsersSearch {
       ? { cursor: value.cursor }
       : {}),
     ...(typeof value.user === "string" && value.user
-      ? { user: value.user }
+      ? {
+          user: value.user,
+          ...(GOD_MODE_USER_ACTIONS.includes(value.action as GodModeUserAction)
+            ? { action: value.action as GodModeUserAction }
+            : {}),
+        }
       : {}),
   };
 }
@@ -235,6 +258,8 @@ export const routes = {
         query.set("organisationId", resolved.organisationId);
       if (resolved.cursor) query.set("cursor", resolved.cursor);
       if (resolved.user) query.set("user", resolved.user);
+      if (resolved.user && resolved.action)
+        query.set("action", resolved.action);
       const suffix = query.toString();
       return suffix ? `/god-mode/users?${suffix}` : "/god-mode/users";
     },
