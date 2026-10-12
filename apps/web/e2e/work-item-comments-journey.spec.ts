@@ -5,6 +5,8 @@ import { fileURLToPath } from "node:url";
 import { expect, type Locator, type Page, test } from "@playwright/test";
 import { withMfaCsrfApp } from "../../../tests/e2e/helpers/mfa-csrf-app-fixture";
 
+test.use({ trace: "off", video: "off", screenshot: "off" });
+
 const repoRoot = resolve(dirname(fileURLToPath(import.meta.url)), "../../..");
 const apiRequire = createRequire(resolve(repoRoot, "apps/api/package.json"));
 type FixturePgClient = {
