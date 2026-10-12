@@ -551,6 +551,68 @@ test("G8 rejects visual configs that stop selecting the guarded route spec", asy
   );
 });
 
+for (const [label, replacement] of [
+  ["drops the launch option", "use: { ...base.use }"],
+  [
+    "adds a second Chromium argument",
+    'use: { ...base.use, launchOptions: { args: ["--disable-partial-raster", "--force-color-profile=srgb"] } }',
+  ],
+  [
+    "swaps the Chromium argument",
+    'use: { ...base.use, launchOptions: { args: ["--disable-gpu"] } }',
+  ],
+  [
+    "adds a launch option next to the argument",
+    'use: { ...base.use, launchOptions: { args: ["--disable-partial-raster"], executablePath: "/usr/bin/true" } }',
+  ],
+  [
+    "adds a second use key",
+    'use: { ...base.use, deviceScaleFactor: 2, launchOptions: { args: ["--disable-partial-raster"] } }',
+  ],
+  [
+    "drops the spread of the app use",
+    'use: { launchOptions: { args: ["--disable-partial-raster"] } }',
+  ],
+]) {
+  test(`G8 rejects a route visual config that ${label}`, async () => {
+    const original = await readFile(
+      path.join(repoRoot, "apps/web/playwright.visual.config.ts"),
+      "utf8",
+    );
+    const visualConfig = original.replace(
+      /use: \{[\s\S]*?launchOptions: \{ args: \["--disable-partial-raster"\] \},\n  \},/u,
+      `${replacement},`,
+    );
+    assert.notEqual(visualConfig, original);
+    const result = await runVisualScope({ visualConfig });
+
+    assert.notEqual(result.status, 0);
+    assert.match(
+      result.output,
+      /playwright\.visual\.config\.ts must extend the app Playwright config/,
+    );
+  });
+}
+
+test("G8 rejects a route visual config that removes the partial-raster launch option entirely", async () => {
+  const original = await readFile(
+    path.join(repoRoot, "apps/web/playwright.visual.config.ts"),
+    "utf8",
+  );
+  const visualConfig = original.replace(
+    /  use: \{[\s\S]*?launchOptions: \{ args: \["--disable-partial-raster"\] \},\n  \},\n/u,
+    "",
+  );
+  assert.notEqual(visualConfig, original);
+  const result = await runVisualScope({ visualConfig });
+
+  assert.notEqual(result.status, 0);
+  assert.match(
+    result.output,
+    /playwright\.visual\.config\.ts must extend the app Playwright config/,
+  );
+});
+
 test("G8 rejects a route visual config filter that skips declared route cases", async () => {
   const original = await readFile(
     path.join(repoRoot, "apps/web/playwright.visual.config.ts"),
