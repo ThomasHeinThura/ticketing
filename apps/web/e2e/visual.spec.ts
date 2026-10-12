@@ -521,3 +521,26 @@ test("observability settings screen @visual", async ({ page }) => {
     includeAA: true,
   });
 });
+
+test("portal sign-in email stage @visual", async ({ page }) => {
+  await page.route("**/api/**", (route) => {
+    const path = new URL(route.request().url()).pathname;
+    return route.fulfill({
+      status: 200,
+      contentType: "application/json",
+      body: path.endsWith("/api/auth/get-session") ? "null" : "{}",
+    });
+  });
+  await page.goto("http://127.0.0.1:4179/sign-in");
+  await expect(page.getByRole("textbox", { name: "Email" })).toBeVisible();
+  await expect(page.getByRole("button", { name: "Sign in" })).toBeVisible();
+  await expect(page).toHaveScreenshot("portal-sign-in-email.png", {
+    animations: "disabled",
+    caret: "hide",
+    fullPage: true,
+    scale: "css",
+    maxDiffPixels: 0,
+    threshold: 0,
+    includeAA: true,
+  });
+});

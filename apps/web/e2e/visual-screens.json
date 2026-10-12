@@ -79,5 +79,13 @@
 		"origin": "portal",
 		"test": "portal submission detail @visual",
 		"screenshot": "portal-submission-detail.png"
+	},
+	{
+		"name": "portal-sign-in-email",
+		"inventoryRoute": "/sign-in",
+		"applicationRoute": "/sign-in",
+		"origin": "portal",
+		"test": "portal sign-in email stage @visual",
+		"screenshot": "portal-sign-in-email.png"
 	}
 ]
