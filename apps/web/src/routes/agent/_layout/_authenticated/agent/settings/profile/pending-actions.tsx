@@ -9,10 +9,8 @@ import {
 import { Badge, Button, Card, CardContent, Skeleton } from "@taskdesk/ui";
 import { useTranslation } from "react-i18next";
 import PageTitle from "@/components/page-title";
-import {
-  cancelOwnPendingAction,
-  getOwnPendingActions,
-} from "@/fetchers/pending-actions";
+import { cancelOwnPendingAction } from "@/fetchers/pending-actions";
+import { ownPendingActionsQuery } from "@/hooks/queries/own-pending-actions-query";
 import { parsePendingActionsSearch, routes } from "@/lib/routes";
 
 export const Route = createFileRoute(
@@ -35,11 +33,7 @@ function PendingActionsList() {
   const search = Route.useSearch();
   const navigate = useNavigate({ from: Route.fullPath });
   const queryClient = useQueryClient();
-  const pendingActions = useQuery({
-    queryKey: ["me", "pending-actions", search.cursor ?? null],
-    queryFn: () => getOwnPendingActions(search.cursor),
-    staleTime: 0,
-  });
+  const pendingActions = useQuery(ownPendingActionsQuery(search.cursor));
   const cancel = useMutation({
     mutationFn: cancelOwnPendingAction,
     onSuccess: async () =>
