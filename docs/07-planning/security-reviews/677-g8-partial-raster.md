@@ -9,9 +9,11 @@ Root cause, from private evidence `g8-input-flake-diagnosis-sonnet/`: Chromium's
 - Ordinary review by Claude Sonnet 5.5: APPROVE at `347e085b`.
 - Security review by Claude Opus 5.5: CLEAR at `347e085b`. It ran 36 guard-bypass variants; 31 were rejected, and the 5 accepted ones behave exactly like the approved config.
 - Security rebind by Claude Opus 5.5 at `cadf3ebe` (exact gitleaks fingerprint for the review-prose false positive): BLOCK, because the accompanying decision-log text re-quoted the flagged phrase. The conductor amended its own unmerged commit to `e735e775`; the same reviewer context then cleared it with the committed-range scan clean and a positive control.
+- The two rebind reports quote the same reviewer prose, so their embedding commit `9e89f354` received two more exact fingerprints in `2c9f529d`. A further Claude Opus 5.5 rebind cleared `2c9f529d` (range scan clean, per-entry positive controls).
 
 **Reviewed head:** `347e085b8ac53178b2b895dadc580bfde670f770`
 **Reviewed head:** `e735e775e5ac8af8254a2cc8d68e33eb9b0f4cf5`
+**Reviewed head:** `2c9f529d113b4d2fb54940ccceb6856b8502122a`
 
 ## Context index
 
@@ -23,6 +25,7 @@ Paths are private evidence paths under `/Users/heinthura/.codex/taskdesk-evidenc
 | 2 | `677-security-opus.md` | Security review (d86d3089..347e085b) | Claude Opus 5.5 | `347e085b` | CLEAR | `b11eb0537a21630b5e0dd0c47692b801a28ed5398b42d015ebbe0552d3f92fe5` |
 | 3 | `677-cadf-security-rebind-opus.md` | Security rebind (347e085b..cadf3ebe, superseded commit) | Claude Opus 5.5 | `cadf3ebe` | BLOCK | `0425e0f53597ffacbb30b040c18cb4ca20766ea362fc25f940cd97f41c0f671c` |
 | 4 | `677-e735-security-rebind-opus.md` | Security rebind (347e085b..e735e775) | Claude Opus 5.5 | `e735e775` | CLEAR | `625a9f33ebd0f5f3b28e41a7bbbfc2b73e720dd334bf3c7c110b05d3ef19f006` |
+| 5 | `677-2c9f-security-rebind-opus.md` | Security rebind (e735e775..2c9f529d) | Claude Opus 5.5 | `2c9f529d` | CLEAR | `e1847260434bd3acbf24619188fe4080ea0dae25d990b1c35bc9718a35940f48` |
 
 ## Embedded reports
 
@@ -327,3 +330,62 @@ Verdict: BLOCK
 
 Verdict: CLEAR
 <!-- END REPORT (sha256 625a9f33ebd0f5f3b28e41a7bbbfc2b73e720dd334bf3c7c110b05d3ef19f006) -->
+
+<!-- BEGIN REPORT (/Users/heinthura/.codex/taskdesk-evidence/2026-10-12/677-2c9f-security-rebind-opus.md; Claude Opus 5.5; sha256 e1847260434bd3acbf24619188fe4080ea0dae25d990b1c35bc9718a35940f48) -->
+# #677 security rebind at 2c9f529d (embedded rebind reports + two exact ignore fingerprints)
+
+**Reviewer model:** Claude Opus 5.5 (fresh independent security-review context). I did not author, direct or remediate this change. Read-only review: no edits, commits, pushes or Docker. Earlier reports `677-cadf-security-rebind-opus.md` (BLOCK) and `677-e735-security-rebind-opus.md` (CLEAR) are unchanged.
+
+- **Candidate head:** `2c9f529d113b4d2fb54940ccceb6856b8502122a` (local worktree HEAD confirmed; not yet pushed per coordinator)
+- **Rebind base:** `e735e775e5ac8af8254a2cc8d68e33eb9b0f4cf5` (prior Opus CLEAR)
+- **Intermediate commit:** `9e89f35410266df75827627a30ff84610e2d775f` (parent e735e775); 2c9f529d's parent is 9e89f354
+- **PR merge base / main:** `d86d3089636c1ade443a20b04e1212e4a72f42d1` (local `origin/main` ref; fetch is blocked in this sandbox)
+- **Scanner:** local gitleaks 8.30.1 (`/opt/homebrew/bin/gitleaks`), default rules (no repo `.gitleaks.toml`)
+
+## Surfaces examined
+- `git diff e735e775 9e89f354` (all)
+- `git diff 9e89f354 2c9f529d` (all)
+- `git diff --numstat e735e775 2c9f529d`
+- Note lines 243 and 248 of `docs/07-planning/security-reviews/677-g8-partial-raster.md`
+- The appended note text compared with the two evidence reports on disk
+- Committed PR range `d86d3089..2c9f529d`, first-parent and no merges: 6 commits, 5 scanned by gitleaks (347e085b contains only a binary change)
+
+## Commands and results
+1. `git rev-parse HEAD` returned `2c9f529d113b4d2fb54940ccceb6856b8502122a`. MATCH. First-parent chain: 2c9f529d -> 9e89f354 -> e735e775.
+2. `git diff --numstat e735e775 9e89f354` returned `113 0 docs/07-planning/security-reviews/677-g8-partial-raster.md`. It changes only the note: 113 lines appended, 0 removed.
+3. **Verbatim check:** a Python substring test confirmed that both evidence reports, after stripping leading and trailing whitespace, appear unchanged inside the note at 9e89f354. SHA-256 of the files on disk:
+   - `677-cadf-security-rebind-opus.md`: `0425e0f53597ffacbb30b040c18cb4ca20766ea362fc25f940cd97f41c0f671c`
+   - `677-e735-security-rebind-opus.md`: `625a9f33ebd0f5f3b28e41a7bbbfc2b73e720dd334bf3c7c110b05d3ef19f006`
+4. `git diff 9e89f354 2c9f529d` changes only `.gitleaksignore`: 5 lines added, 0 removed. The additions are 1 blank line, 2 comment lines and exactly 2 fingerprints:
+   - `9e89f35410266df75827627a30ff84610e2d775f:docs/07-planning/security-reviews/677-g8-partial-raster.md:generic-api-key:243`
+   - `9e89f35410266df75827627a30ff84610e2d775f:docs/07-planning/security-reviews/677-g8-partial-raster.md:generic-api-key:248`
+
+   Neither has a wildcard or a path-only or rule-only form, and each pins an immutable commit SHA, the file, the rule and the line. Existing entries, including the e735-reviewed `2bf94401...:56`, are untouched.
+5. `git diff --numstat e735e775 2c9f529d` shows only `.gitleaksignore` (5/0) and the note (113/0). The decision log, the G8 config, the guard and the tests are unchanged since e735e775.
+6. **Flagged lines:** I read the flagged reviewer prose at note line 243 and at note line 248. Both lines sit inside the embedded cadf3ebe rebind report and quote the same reviewer prose originally reviewed at note line 56. Both are prose, **not credentials**.
+7. **Committed PR-range scan:** `gitleaks git . --log-opts="--no-merges --first-parent d86d3089..HEAD" --redact -v` scanned 5 commits and found **no leaks** (0).
+8. **Positive controls**, run in temp clone `$TMPDIR/gl677f.K72B/c` at 2c9f529d (not the worktree):
+   - Control A changed the `:243` entry to `:244`. Result: **leaks found: 1**, `9e89f354...:677-g8-partial-raster.md:generic-api-key:243`.
+   - Control B changed the `:248` entry to `:249`. Result: **leaks found: 1**, `9e89f354...:...:248`.
+   - Control C removed all three #677 entries. Result: **leaks found: 3**: `9e89f354...:243`, `9e89f354...:248` and `2bf94401...:56`.
+   - Restoring the file (`git diff --quiet` succeeded) returned **no leaks found**.
+   - Each entry therefore suppresses exactly one finding and none is vacuous. The range contains exactly these 3 findings and no others.
+9. **Full-history scan** (`gitleaks git .`, all refs, 3232 commits) found **6 leaks**. All 6 are pre-existing and outside the PR range (commits 6222eff5, a945805b, 0d075205 and a9b1e5bc, as in the prior rebinds). None comes from any #677 commit.
+10. **Self-scan of this report:** I copied the report alone into an empty temp directory and ran `gitleaks detect --no-git --source <dir> --redact --no-banner`. Result: **no leaks found**, 0 findings.
+
+## Findings
+- No blocking findings.
+- **N1 (non-blocking):** The pattern of embedding review reports keeps re-quoting the same false-positive prose, which forces a new ignore fingerprint each round. This report deliberately quotes none of it, so embedding it should not create a new finding.
+- **N2 (non-blocking, pre-existing):** 6 historical findings in the all-refs scan lie outside this PR's range.
+- **N3 (non-blocking):** All ignore fingerprints are tied to the current commit SHAs. A rebase or amend of 2bf94401 or 9e89f354 would invalidate them and would require new exact fingerprints and a rebind.
+- **N4 (non-blocking):** 2c9f529d is local only. The hosted CI run at this head has not happened and was not observed.
+
+## Residual risk
+- The hosted gitleaks-action result at 2c9f529d is assumed to match the local committed-range scan, but it was not observed.
+- The merge base comes from the local `origin/main` ref because fetch is blocked in the sandbox.
+- The G8 code change was not re-reviewed. It is unchanged since the 347e085b CLEAR.
+
+**Reviewed head:** `2c9f529d113b4d2fb54940ccceb6856b8502122a`
+
+Verdict: CLEAR
+<!-- END REPORT (sha256 e1847260434bd3acbf24619188fe4080ea0dae25d990b1c35bc9718a35940f48) -->
