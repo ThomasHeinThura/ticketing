@@ -230,8 +230,9 @@ async function signInThroughPortal(
   portalOrigin: string,
   person: PortalPerson,
 ) {
-  await page.goto(new URL("/auth/sign-in", portalOrigin).toString());
+  await page.goto(new URL("/sign-in", portalOrigin).toString());
   await page.getByLabel("Email").fill(person.email);
+  await page.getByRole("button", { name: /^sign in$/i }).click();
   await page.locator('input[name="password"]').fill(person.password);
   const responsePromise = apiResponse(page, "POST", "/api/auth/sign-in/email");
   await page.getByRole("button", { name: /^sign in$/i }).click();
