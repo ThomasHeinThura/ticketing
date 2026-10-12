@@ -113,6 +113,7 @@ import { initializePlugins } from "./plugins";
 // refuses boot (#8 Slice 0). Keep the import even if its one use below moves: without a use,
 // the bundler drops it and the check silently stops running.
 import { policyRegistry } from "./policy-registry";
+import { isPortalClientRoute } from "./portal-client-routes";
 import project from "./project";
 import { initializeScheduler, shutdownScheduler } from "./scheduler";
 import search from "./search";
@@ -565,7 +566,12 @@ function registerStaticServing(
 
     const lastSegment = c.req.path.split("/").pop() ?? "";
     if (lastSegment.includes(".")) return next();
-    if (surface === "portal") return c.notFound();
+    if (surface === "portal") {
+      // CP-19: only registered portal client routes get the portal shell; never agent files.
+      return isPortalClientRoute(c.req.path)
+        ? serveIndex(c, next)
+        : c.notFound();
+    }
     return serveIndex(c, next);
   };
   declareCatchAllMiddleware(serveStaticOrSpaShell);
