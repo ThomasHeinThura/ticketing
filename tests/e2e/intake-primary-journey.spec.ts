@@ -240,6 +240,72 @@ async function signInThroughPortal(
   expect((await responsePromise).status()).toBe(200);
 }
 
+type RecentRequest = {
+  host: string;
+  pathname: string;
+  status: number | string;
+};
+
+/**
+ * Failure-only diagnostics for one page/context. Records the last 20 requests
+ * of ANY kind (host + pathname + status/failure only: no query, headers,
+ * bodies, cookies or credentials) and, on failure, a small page-state JSON.
+ */
+function watchAllRequests(context: import("@playwright/test").BrowserContext) {
+  const recent: RecentRequest[] = [];
+  const push = (url: string, status: number | string) => {
+    const parsed = new URL(url);
+    recent.push({ host: parsed.host, pathname: parsed.pathname, status });
+    if (recent.length > 20) recent.shift();
+  };
+  context.on("response", (response) => push(response.url(), response.status()));
+  context.on("requestfailed", (request) =>
+    push(request.url(), "requestfailed"),
+  );
+  return recent;
+}
+
+async function writePageDiagnostics(
+  page: Page,
+  recent: RecentRequest[],
+  path: string,
+) {
+  const state = await Promise.race([
+    page
+      .evaluate(() => ({
+        title: document.title,
+        headings: Array.from(document.querySelectorAll("h1, h2")).map(
+          (heading) => (heading.textContent ?? "").trim().slice(0, 120),
+        ),
+        emailInputs: document.querySelectorAll('input[type="email"]').length,
+        passwordInputs: document.querySelectorAll('input[type="password"]')
+          .length,
+        bodyTextStart: (document.body?.innerText ?? "").trim().slice(0, 120),
+      }))
+      .catch((error: unknown) => ({
+        evaluateError: error instanceof Error ? error.name : "non-error",
+      })),
+    new Promise<{ evaluateError: string }>((resolveTimeout) =>
+      setTimeout(() => resolveTimeout({ evaluateError: "timeout" }), 5_000),
+    ),
+  ]);
+  const location = new URL(page.url());
+  writeFileSync(
+    path,
+    JSON.stringify(
+      {
+        pageHost: location.host,
+        pagePathname: location.pathname,
+        state,
+        recent,
+      },
+      null,
+      2,
+    ),
+    { mode: 0o600 },
+  );
+}
+
 async function createStaffWorkspace(
   page: Page,
   origin: string,
@@ -455,9 +521,35 @@ async function runJourney(fixture: MfaCsrfAppFixture) {
 
     const customerPage = await customerContext.newPage();
     observeApiNetwork(customerPage, phaseJournal, "customer");
-    await runPhase(phaseJournal, "customer-sign-in", () =>
-      signInThroughPortal(customerPage, portal, seeded.customer),
-    );
+    const customerRecent = watchAllRequests(customerContext);
+    await runPhase(phaseJournal, "customer-sign-in", async () => {
+      // Bound the phase so a missing element fails with diagnostics instead of
+      // waiting for the whole-test timeout.
+      let deadline: NodeJS.Timeout | undefined;
+      try {
+        await Promise.race([
+          signInThroughPortal(customerPage, portal, seeded.customer),
+          new Promise<never>((_, rejectDeadline) => {
+            deadline = setTimeout(
+              () => rejectDeadline(new Error("customer-sign-in exceeded 30 s")),
+              30_000,
+            );
+          }),
+        ]);
+      } catch (error) {
+        await writePageDiagnostics(
+          customerPage,
+          customerRecent,
+          resolve(
+            fixture.fixtureDir,
+            "intake-primary-customer-sign-in-diagnostics.json",
+          ),
+        );
+        throw error;
+      } finally {
+        if (deadline) clearTimeout(deadline);
+      }
+    });
     await runPhase(phaseJournal, "customer-catalogue-navigation", async () => {
       await customerPage.goto(
         new URL("/catalogue?q=no-match&key=access", portal).toString(),
