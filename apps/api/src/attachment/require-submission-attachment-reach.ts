@@ -95,7 +95,13 @@ export function requireSubmissionAttachmentReach(
     c.set("workspaceId", row.workspaceId);
     c.set("workspaceIdSource", "row");
     c.set("submissionId", row.submission.id);
-    c.set("submissionWorkItemId", row.submission.workItemId);
+    // A duplicate (or any non-accepted) submission may carry a work item link to ANOTHER
+    // requester's item: only an accepted submission owns its work item's attachments
+    // (CP-16, same rule as download below).
+    c.set(
+      "submissionWorkItemId",
+      row.submission.state === "accepted" ? row.submission.workItemId : null,
+    );
     c.set("requesterId", row.submission.requesterId);
     c.set("policyOrganisationId", organisationId);
     c.set("policyOrganisationIdSource", "row");
