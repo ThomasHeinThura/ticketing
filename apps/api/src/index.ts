@@ -341,6 +341,36 @@ function matchesPortalPolicyRoute(method: string, path: string): boolean {
   });
 }
 
+/**
+ * CP-19 carve-out: the filesystem driver's signed upload/download routes are admitted on
+ * the portal host ONLY for portal submission attachment objects. Presign (a `kind: portal`
+ * route) mints a URL on the requesting origin, so without this a customer's presigned PUT
+ * or download redirect would hit the portal host's blanket `/api` denial. The handler still
+ * verifies the HMAC token that binds the exact key, size ceiling and expiry; no session
+ * is involved. Agent/work-item keys (`.../work-item/...`) and any other key shape stay
+ * denied by host, and every other agent route stays unreachable.
+ */
+const PORTAL_SUBMISSION_ATTACHMENT_KEY =
+  /^workspace\/[A-Za-z0-9_-]+\/submission\/[A-Za-z0-9_-]+\/attachment\/[A-Za-z0-9_-]+\/[A-Za-z0-9_.-]+$/u;
+
+function isPortalSubmissionStorageRequest(
+  method: string,
+  path: string,
+  key: string | undefined,
+): boolean {
+  const upload =
+    method === "PUT" && path === "/api/storage/filesystem-attachment-upload";
+  const download =
+    (method === "GET" || method === "HEAD") &&
+    path === "/api/storage/filesystem-download";
+  return (
+    (upload || download) &&
+    key !== undefined &&
+    !key.includes("..") &&
+    PORTAL_SUBMISSION_ATTACHMENT_KEY.test(key)
+  );
+}
+
 function isCustomerAuthEndpoint(method: string, path: string): boolean {
   if (CUSTOMER_AUTH_ENDPOINTS.has(`${method} ${path}`)) return true;
   if (isCustomerLocalAuthEndpoint(method, path)) return true;
@@ -675,19 +705,17 @@ export function createApp(
     c.set("appOrigin", selected);
     c.set("appPublicOrigin", publicOriginForKind(selected, origins));
     if (selected === "portal") {
-      if (isApiRequestPath(c.req.path)) {
-        if (
-          !isCustomerAuthEndpoint(c.req.method, c.req.path) &&
-          !matchesPortalPolicyRoute(c.req.method, c.req.path)
-        )
-          return denyByHost(c);
-      }
+      const portalAllowed =
+        isCustomerAuthEndpoint(c.req.method, c.req.path) ||
+        matchesPortalPolicyRoute(c.req.method, c.req.path) ||
+        isPortalSubmissionStorageRequest(
+          c.req.method,
+          c.req.path,
+          c.req.query("key"),
+        );
+      if (isApiRequestPath(c.req.path) && !portalAllowed) return denyByHost(c);
       if (c.req.method !== "GET" && c.req.method !== "HEAD")
-        if (
-          !isApiRequestPath(c.req.path) ||
-          (!isCustomerAuthEndpoint(c.req.method, c.req.path) &&
-            !matchesPortalPolicyRoute(c.req.method, c.req.path))
-        )
+        if (!isApiRequestPath(c.req.path) || !portalAllowed)
           return denyByHost(c);
     }
     return next();

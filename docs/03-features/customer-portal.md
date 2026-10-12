@@ -182,7 +182,12 @@ misconfigured away through the role editor.
   `/api/public/health/ready`. Those existing health handlers remain independent of which
   origin received the request. Once the two-instance identity boundary is configured, the
   portal host admits only its exact Better Auth sign-in/session/OIDC endpoints and the
-  registered `kind: portal` API policies. The agent API stays unreachable there, and every
+  registered `kind: portal` API policies. The agent API stays unreachable there, with one narrow exception: the signed filesystem-driver
+  routes `PUT /api/storage/filesystem-attachment-upload` and `GET /api/storage/filesystem-download`
+  are admitted on the portal host only when the signed `key` is a portal submission attachment
+  object (`workspace/<id>/submission/<id>/attachment/<id>/<file>`), because presign mints the URL on the
+  requesting origin; the HMAC token still binds the exact key, size ceiling and expiry, and
+  work-item/agent keys stay denied. Every
   websocket upgrade on the portal host remains denied until its own reviewed policy exists.
   A syntactically valid unknown Host is accepted only for these exact `GET`/`HEAD` health
   requests, preserving loopback Docker and deploy readiness probes; malformed, missing,
