@@ -412,9 +412,7 @@ test("real Users UI binds delayed proof and approval to its current route intent
       });
 
       await selectUser(page, users.staleGrant);
-      await page
-        .getByRole("button", { name: "Grant instance administrator" })
-        .click();
+      await page.getByRole("button", { name: "Grant instance admin" }).click();
       const grantDialog = page.getByRole("dialog");
       await expect(grantDialog).toContainText(users.staleGrant.email);
       await selectBackupCode(page, "#step-up-method");
@@ -444,9 +442,7 @@ test("real Users UI binds delayed proof and approval to its current route intent
       expect(grantState.rows).toEqual([{ role: null }]);
       expect(grantRequests).toEqual([]);
 
-      await page
-        .getByRole("button", { name: "Request person deactivation" })
-        .click();
+      await page.getByRole("button", { name: "Deactivate person" }).click();
       const deactivationDialog = page.getByRole("dialog");
       await expect(deactivationDialog).toContainText(users.deactivation.email);
       await expect(page).toHaveURL(
