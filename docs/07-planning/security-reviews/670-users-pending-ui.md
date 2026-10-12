@@ -12,6 +12,7 @@ The reviewed source was repaired in rounds. The chain below runs from the first 
 - Delta security reviews (GPT-6 Sol) cleared each later source delta through `1c02fb1a`, the last GPT-6 Sol clearance.
 - Two later test-and-UI deltas, `809b593c` and `8e47e787`, were cleared by a fresh Claude Opus 5.5 context as delta security reviews, with ordinary reviews by Claude Sonnet 5.5. These are labelled Claude Opus 5.5 and Claude Sonnet 5.5 in the index. They are not recorded as GPT-6 Sol. Claude Opus 5.5 is on the accepted-model list on main.
 - The real-browser journey at `8e47e787` passed 1/1 (private evidence `670-real-users-playwright-8e47e787-claude`).
+- Two UI acceptance deltas after the real-browser probe, `55227706` (layout, loading skeleton, option labels and a clean merge of main `d86d3089`) and `c5ccfe58` (layout-shift fix, contrast manifest, three Linux baselines), were reviewed by fresh Claude Sonnet 5.5 ordinary contexts and cleared by fresh Claude Opus 5.5 security rebind contexts. They are labelled with those models and are not recorded as GPT-6 Sol.
 
 **Reviewed head:** `9bff711d84929a1d7bbb6135e64bf5af8f5c20d6`
 **Reviewed head:** `d2de7ce0d6eecae487944bebff21391da65b04e2`
@@ -27,8 +28,10 @@ The reviewed source was repaired in rounds. The chain below runs from the first 
 **Reviewed head:** `1c02fb1a605496dcfcb661301e21dc2784b3a077`
 **Reviewed head:** `809b593c24a54b7d63eb6e7dc4978c59d1c75d77`
 **Reviewed head:** `8e47e787e40c85754d51c33fb8bcc686a432d91c`
+**Reviewed head:** `552277064d6e09b41157b14afc431928f24bff7b`
+**Reviewed head:** `c5ccfe58458077c4882937799dfc39010c285145`
 
-The last line above is the candidate head, `8e47e787e40c85754d51c33fb8bcc686a432d91c`, cleared by Claude Opus 5.5 as an exact-head delta review over `1c02fb1a..8e47e787`. Earlier heads are listed in chronological order for the audit trail. Every one is an ancestor of the candidate.
+The last line above is the candidate head, `c5ccfe58458077c4882937799dfc39010c285145`, cleared by Claude Opus 5.5 as an exact-head delta review over `55227706..c5ccfe58`. Earlier heads are listed in chronological order for the audit trail. Every one is an ancestor of the candidate.
 
 ## Context index
 
@@ -64,6 +67,10 @@ Paths are private evidence paths under `/Users/heinthura/.codex/taskdesk-evidenc
 | 26 | `670-809b-e2e-fix-security-opus.md` | Security delta review (1c02fb1a..809b593c) | Claude Opus 5.5 | `809b593c` | CLEAR | `8ae2ae5bec10d2bed0a7e5e8067fbaae02db2d2a957ad9c15fdd25d876c9b2ed` |
 | 27 | `670-8e47-list-refetch-ordinary-sonnet.md` | Ordinary delta review (809b593c..8e47e787) | Claude Sonnet 5.5 | `8e47e787` | APPROVE | `3ea2b8119efe1c23453d00aae71290e9e9e4d429cc0ea18a10ab907b75ab9da5` |
 | 28 | `670-8e47-security-rebind-opus.md` | Security delta review and note rebind (809b593c..8e47e787) | Claude Opus 5.5 | `8e47e787` | CLEAR | `b20a4698ea8b0efaaa9ba6b9613c45e28f9845d1726d54e4e5c6bf454a15443d` |
+| 29 | `670-80ba-5522-ordinary-sonnet.md` | Ordinary delta review (80ba782f..55227706) | Claude Sonnet 5.5 | `55227706` | APPROVE | `c0d688101472d2962f2a351c5b6e4453069ec5b0e86173e7c418f7e5d567e5ff` |
+| 30 | `670-5522-security-rebind-opus.md` | Security delta review and rebind (80ba782f..55227706) | Claude Opus 5.5 | `55227706` | CLEAR | `f8b91619c6d627c5528e188e080db3348e667ba261df77e73ffe0c118536435c` |
+| 31 | `670-5522-c5cc-ordinary-sonnet.md` | Ordinary delta review (55227706..c5ccfe58) | Claude Sonnet 5.5 | `c5ccfe58` | APPROVE | `13991dea0ae8e610db5eccdaeb43d2d5f0848f417410fd19b8f80e8cb15dfdc1` |
+| 32 | `670-c5cc-security-rebind-opus.md` | Security delta review and rebind (55227706..c5ccfe58) | Claude Opus 5.5 | `c5ccfe58` | CLEAR | `430b362062683b238646317cc09dd0f5ba4c7e163392dc4c4f9cec1e52baaf99` |
 
 Model bindings checked against session metadata (private JSON, metadata only): `608-current9bff-ordinary-ab-model-bindings.json`, `608-current9bff-ordinary-c-model-binding.json`, `608-full-sol-and606-runner-v2-model-bindings.json`, `670-current-route-g8-review-model-bindings.json` and `current606-panel-and643-users-review-model-bindings.json` record `gpt-6-luna` for the Luna reviewers and `gpt-6-sol` for the Sol reviewer sessions they cover. The Sol reports after `f5ef92fb` came from the same Sol reviewer session and declare the Sol tier; the binding file covers the turns that existed when it was written. The Claude Sonnet 5.5 and Claude Opus 5.5 reports declare their own model in their first line.
 
@@ -1143,3 +1150,205 @@ ls .../670-real-users-playwright-8e47e787-claude/output
 ```
 <!-- END REPORT (sha256 b20a4698ea8b0efaaa9ba6b9613c45e28f9845d1726d54e4e5c6bf454a15443d) -->
 
+
+<!-- BEGIN REPORT (/Users/heinthura/.codex/taskdesk-evidence/2026-10-12/670-80ba-5522-ordinary-sonnet.md; Claude Sonnet 5.5; sha256 c0d688101472d2962f2a351c5b6e4453069ec5b0e86173e7c418f7e5d567e5ff) -->
+# PR #670 ordinary review, 80ba782f..55227706
+
+Reviewer model: Claude Sonnet (fresh independent ordinary-review context)
+**Reviewed head:** 552277064d6e09b41157b14afc431928f24bff7b
+Base (last reviewed head): 80ba782faff9227669b287f91a0041b7bc48133d
+Read-only review; no edits, commits or pushes.
+
+## Range
+First-parent: 55227706 (merge main), 96eb95ff, 95c2f816, 0faedd7a, 9ec008b7.
+Merge 55227706 parents: 96eb95ff + d86d3089 (origin/main). `git merge-base --is-ancestor d86d3089 HEAD` true.
+`git diff 96eb95ff 55227706 --stat`: only main's #668 files (sign-in/sign-up forms+tests, ui input.tsx, pairs.json, snapshots, two evidence notes). No touch to users.tsx, pending-actions*.tsx, own-pending-actions-query.ts. Clean, no semantic conflict.
+
+## Files examined
+users.tsx, users.test.tsx, pending-actions.tsx, pending-actions/$id.tsx and its test, own-pending-actions-query.test.ts, packages/ui table.tsx and select.tsx, docs/02-design/accessibility.md (Zoom and reflow).
+
+## Commands and results
+- `pnpm check:i18n`: all locales in sync with en-US (OK). The 8 keys used (copy.a4730a22cf49, 0e85749a6f40, ec137488beec, 274e10cde2d6, c51407d28beb, 6405179d241b, 2a8367498e23, 2908b4e9c428) are all already used by the adjacent SelectItems; no new keys introduced.
+- vitest (apps/web config; needed sandbox off because vite writes .vite-temp): users.test.tsx, pending-actions/$id.test.tsx, own-pending-actions-query.test.ts: 3 files passed, 14 tests passed, 0 failed.
+- `pnpm typecheck` (tsc app + node): clean, exit 0.
+- Worktree has an untracked `apps/web/e2e/zz-users-ui-acceptance-probe.spec.ts` (not in the PR; make sure it is not committed).
+
+## Analysis
+Responsive/classes: `max-sm:hidden` (Tailwind v4, display:none below 640px) on both TableHead and TableCell for Type and Organisation, consistently, so column count stays aligned. The repeated "Type · Organisation" span is `sm:hidden`, so it is shown exactly when the columns are hidden: no information lost, no duplicate at either width. TableCell default `whitespace-nowrap` is overridden by `whitespace-normal` on the first and status cells; link `block min-w-0 max-w-full` plus `break-all` on the email and `break-words` on the name is the right set to let content shrink.
+Accessibility: display:none removes th and td together from the a11y tree, so table semantics are intact; the repeated text is outside the link (link name unaffected) and never co-visible with the columns, so no screen-reader duplication. `aria-busy="true"` on the loading `<main>` is a valid global attribute and is correctly applied only while loading. Matches accessibility.md "Zoom and reflow" (no horizontal scroll at 320 px, no content lost). The `overflow-x-auto` wrapper is retained as a fallback.
+SelectValue: ui Select is Base UI (`Select.Value.Props`), which accepts children, so the explicit label is valid. Each ternary mirrors its SelectItem label keys exactly.
+
+## Test-to-fix mapping (what fails on revert)
+- Select labels (users filters + step-up in users.tsx): "shows the filter and step-up labels..." fails (textContent would be raw `all` / `totp`).
+- Link block/min-w-0/max-w-full, td whitespace-normal, email break-all (9ec008b7): "keeps directory row links shrinkable..." fails on each.
+- Hidden Type/Org cells (0faedd7a): same test, `max-sm:hidden` td count of 4 fails if reverted.
+- Loading skeleton w-full + aria-busy (95c2f816): "renders the loading skeleton in a full-width main" fails.
+- Not covered: step-up select in pending-actions/$id.tsx (no test references step-up/totp/backup_code); `max-sm:hidden` on the TableHead cells; the `sm:hidden` repeated span; `w-full` on the list `main` in pending-actions.tsx and on the error/loaded `main` in $id.tsx. The class-contract tests are jsdom-only; real layout was verified by the author's browser probe, which I did not re-run (no browsers per instructions).
+
+## Findings
+Blocking: none.
+
+Non-blocking:
+1. pending-actions/$id.tsx ~316-320: step-up SelectValue fix has no test (confirmed by grep). Same defect class as the users.tsx step-up fix that is tested. Suggest a small test or accept as residual.
+2. users.test.tsx new class test asserts td hidden count but not the th headers or the `sm:hidden` fallback span; a revert of the header classes or removal of the span would pass. Suggest also asserting 2 hidden th and the sm:hidden span text.
+3. users.tsx first cell: TableCell default `leading-none` is inherited by the user-name span (no text-size class), so a wrapped long name has line-height 1 at 375 px. Cosmetic; consider `leading-snug` on the name span.
+4. Loading `<main aria-busy>` has no accessible status/label, so AT users get no loading announcement; pre-existing pattern, optional improvement.
+5. SelectValue ternaries duplicate the item label mapping (drift risk if an option is added); optional refactor to an options map.
+
+## Residual risk
+No real-browser or visual run by me; responsive correctness inferred from classes and the existing tests. Dynamic `side` values beyond the existing keys are handled by the same i18n dynamic keys as the desktop cell.
+
+Verdict: APPROVE
+<!-- END REPORT (sha256 c0d688101472d2962f2a351c5b6e4453069ec5b0e86173e7c418f7e5d567e5ff) -->
+
+<!-- BEGIN REPORT (/Users/heinthura/.codex/taskdesk-evidence/2026-10-12/670-5522-security-rebind-opus.md; Claude Opus 5.5; sha256 f8b91619c6d627c5528e188e080db3348e667ba261df77e73ffe0c118536435c) -->
+# PR #670 security rebind review — 80ba782f..55227706
+
+- **Reviewer model:** Claude Opus 5.5 (fresh independent security-review context)
+- **Role:** security rebind-depth confirmation of the delta since the prior Opus clearance. The reviewer did not author, direct or remediate any of this code. Read-only review: no source, PR or queue edits.
+- **Candidate SHA:** `552277064d6e09b41157b14afc431928f24bff7b` (confirmed with `git rev-parse HEAD` in `/Users/heinthura/.codex/worktrees/field-source-conservation/Ticketing.v2`)
+- **Comparison base:** `80ba782faff9227669b287f91a0041b7bc48133d` (prior Opus CLEAR head)
+- **Merge parents:** `96eb95ff` (PR side) + `d86d3089` (origin/main, #668); merge base `f93e3317`
+
+**Reviewed head:** `552277064d6e09b41157b14afc431928f24bff7b`
+
+## Delta examined
+
+First-parent commits: `9ec008b7`, `0faedd7a` (Users directory at 375 px), `95c2f816` (detail skeleton `w-full`, `aria-busy`), `96eb95ff` (SelectValue labels), `55227706` (merge of main `d86d3089`).
+
+PR-side changed files (80ba782f..HEAD^1): `users.tsx`, `users.test.tsx`, `pending-actions.tsx`, `pending-actions/$id.tsx`, `pending-actions/$id.test.tsx`. No change under `apps/api`, `packages/domain`, `packages/db`, `apps/web/src/fetchers` or `apps/web/src/hooks` in the whole range 80ba782f..55227706.
+
+Main-side changed files (f93e3317..d86d3089): `sign-in-form.tsx`, `sign-up-form.tsx` (+tests), `packages/ui/src/components/input.tsx`, `packages/ui/src/styles/pairs.json`, two visual snapshots, two #668 review notes. `git diff-tree --cc HEAD` shows the only file with a combined resolution is `packages/ui/src/styles/pairs.json` (a generated contrast-pair index; the merge kept both sides' entries).
+
+## Surfaces checked
+
+1. **Step-up method selection semantics** (`users.tsx:878-898`, `pending-actions/$id.tsx:304-329`). The change only adds children to `<SelectValue>`. `Select value={method}` and `onValueChange` (which still coerces to `"backup_code"` or `"totp"`) are unchanged. The submitted value is still the `method` state (`users.tsx:158,186,197`) or `effectiveMethod` (`$id.tsx:136,143`), and that state is set only by `onValueChange` or the factor effect. The label is derived from that same state, so a label change cannot alter the submitted value. The label keys `2908b4e9c428` (TOTP) and `2a8367498e23` (backup code) match the corresponding `SelectItem` children exactly.
+2. **Pending-action approve and cancel flows** (`$id.tsx:130-200`). These are byte-identical to the base apart from `w-full` on the `<main>` elements and `aria-busy="true"` on the loading `<main>`. The typed-email guard, the contract checks (`isDeactivationContract` / `isClickContract`), `createPendingActionProof`, the intent-lifecycle capture/isCurrent checks and the cancel path are all unchanged. The loading branch renders no form and no action controls.
+3. **Narrow-width disclosure** (`users.tsx:467-479`). The new `sm:hidden` span renders `user.person?.side` (through the same i18n keys) and `user.person?.organisationName ?? "—"` from the same `user` row object. Those are the same fields already rendered in the now `max-sm:hidden` Type and Organisation cells (`users.tsx:481-489`) for the same viewer and the same directory query. No new field, query or permission path is introduced. CSS visibility is not an access control in either direction: the data was already in the DOM.
+4. **Obsolete-proof and fresh-proof rules.** `useIntentLifecycle` usage, the `godModeUserActionBinding` intent check (`users.tsx:139-141`), the `isCurrentOperation()` checks after each proof, secret clearing on intent change, and `$id.tsx`'s `isCurrentIntent` checks are untouched by the delta. The existing tests for stale proofs, A→B→A, Back-restored context, unmount and cancel/reopen all pass (see below).
+5. **Main merge (#668) interaction.** In `sign-in-form.tsx` and `sign-up-form.tsx`, `<FormControl>` now wraps only the `<Input>` instead of the wrapper `div` (the show-password button moves outside it). This changes label/aria association only. Field binding (`{...field}`), `type`, `autoComplete` and submit handlers are unchanged. In `input.tsx`, one Tailwind selector changes from `[aria-invalid]` to `[aria-invalid=true]`; this is styling only. None of these files is imported by the Users or pending-action routes' proof or approval logic. There is no semantic conflict with #670's step-up or pending-action proof handling, and no API path changed on either side.
+
+## Tests run (at 55227706)
+
+Web (`apps/web`, `vitest run --config vitest.config.ts`): **6 files, 19 tests, all passed**
+- `god-mode/users.test.tsx` — 6 (including the stale-proof, Back-restore, unmount and cancel/reopen proof invalidation tests, and the new label and 375 px tests)
+- `settings/profile/pending-actions/$id.test.tsx` — 7 (including A→B→A no-approve, stale proof error suppression, no completion into a returned context, delayed cancel, post-unmount no-submit, click-contract empty body, and the new skeleton test)
+- `hooks/queries/own-pending-actions-query.test.ts` — 1
+- `fetchers/pending-actions.test.ts` — 3 (proof copies only challenge ID and nonce for password, totp and backup_code)
+- `components/auth/sign-in-form.test.tsx` — 1; `components/auth/sign-up-form.test.tsx` — 1 (from the main merge)
+
+API without Postgres (`apps/api`, `vitest run --config vitest.config.ts`): **3 files, 21 tests, all passed**
+- `tests/api/pending-action-approval-contract.test.ts`, `tests/api/pending-action-payload.test.ts`, `tests/api/scheduler/pending-action-expire-schedule.test.ts`
+
+The Postgres-backed `tests/api-integration/pending-action*` suites were not run. The API is unchanged in this delta.
+
+Note: vitest had to run outside the command sandbox, because the sandbox denies writes to the worktree's `node_modules/.vite-temp`. No source files were written.
+
+## Findings
+
+**Blocking:** none.
+
+**Non-blocking:**
+1. `users.tsx:885-889` (and the same pattern at `pending-actions/$id.tsx:316-320`): the trigger label maps every value other than `backup_code` to the TOTP label. When the factor is enabled, `method` can briefly still be `"password"` (its initial state) until the factor effect runs (`users.tsx:115-119`, `$id.tsx:84-86`). During that window the trigger would show "authenticator code" while the state is `password`. This is not exploitable: the window is a single commit before the effect, it needs no user action, and a mismatched method/secret pair fails closed at the proof endpoint. `$id.tsx` also submits `effectiveMethod`. An exhaustive label lookup (label from an options map, with no default branch) would remove the ambiguity.
+2. `pending-actions/$id.tsx:316-320`: the step-up `SelectValue` label has no test. The equivalent `users.tsx` change is tested at `users.test.tsx:~305-307`. The ordinary review already noted this; I agree it is test-coverage residual, not a security defect.
+
+## Residual risk
+
+- No browser, visual or Postgres-integration run, by instruction. Responsive behaviour is inferred from classes and jsdom tests.
+- `pairs.json` merge resolution was inspected only at the hunk level. It is a generated contrast index with no runtime security effect.
+- Review depth is rebind-only. Surfaces outside the delta rely on the prior clearances recorded in `docs/07-planning/security-reviews/670-users-pending-ui.md`.
+
+I read the ordinary Sonnet review (`670-80ba-5522-ordinary-sonnet.md`) only after forming the conclusions above. Its findings are consistent with them.
+
+Verdict: CLEAR
+<!-- END REPORT (sha256 f8b91619c6d627c5528e188e080db3348e667ba261df77e73ffe0c118536435c) -->
+
+<!-- BEGIN REPORT (/Users/heinthura/.codex/taskdesk-evidence/2026-10-12/670-5522-c5cc-ordinary-sonnet.md; Claude Sonnet 5.5; sha256 13991dea0ae8e610db5eccdaeb43d2d5f0848f417410fd19b8f80e8cb15dfdc1) -->
+# PR #670 ordinary review (5522..c5cc)
+
+Reviewer model: Claude Sonnet (fresh independent ordinary-review context)
+**Reviewed head:** c5ccfe58458077c4882937799dfc39010c285145
+Base: 552277064d6e09b41157b14afc431928f24bff7b
+Mode: read-only (no edits/commits; no browser/Docker)
+
+## Files examined
+- apps/web/src/routes/agent/_layout/_authenticated/agent/god-mode/users.tsx (main at :251; meta-line span at :471)
+- .../god-mode/users.test.tsx (new assertion ~:315-318)
+- packages/ui/src/styles/pairs.json (diff)
+- 3 PNGs in apps/web/e2e/visual.spec.ts-snapshots/ (viewed)
+- apps/web/src/routes/agent/_layout.tsx (shell); pending-actions.tsx / $id.tsx at 95c2f816 for consistency
+
+## Commands and results
+- git rev-parse HEAD -> c5ccfe58458077c4882937799dfc39010c285145
+- git log 55227706..HEAD -> 3 commits (4275cf23, ef876b86, c5ccfe58) as claimed
+- git diff --stat -- apps/web/e2e -> exactly 3 PNGs (instance-users-directory, pending-action-detail, pending-actions-list). No other snapshot changed.
+- vitest run users.test.tsx (web config; needed sandbox off for .vite-temp write) -> 1 file, 6/6 tests passed.
+- pnpm check:tokens (rebuilds web dist) -> "check:contrast: 418 declared, source-grounded pairs meet thresholds in light/dark built CSS." Pass. Worktree clean afterwards except pre-existing untracked probe (see N2).
+
+## Findings
+1. Correctness of w-full (users.tsx:251): only class change is adding w-full. Route <main> sits in a flex shell (_layout renders Outlet + sibling launcher); flex items default flex-shrink:1, so w-full is a width basis that still shrinks beside a sidebar or at narrow widths; no overflow risk introduced. Identical pattern to pending-actions.tsx:45 and $id.tsx:207 from 95c2f816. Consistent. Not blocking.
+2. pairs.json: pure addition (+26 lines): one occurrence id in each of two occurrence lists, plus two identical new entries (span[0] ... text-muted-foreground#0, surfaceContext imported-opaque-wrapper, category body, chain through Card>bg-card). No thresholds/categories of existing entries changed. The id matches the span at users.tsx:471. check:contrast passes with 418 pairs. Not blocking.
+3. PNGs: instance-users-directory shows title row with Refresh at far right (page full width), filters, one row "Taylor Staff / taylor@example.test", Type "Staff", Org "—"; labels, not raw enum values. Status cell empty because the fixture user has no admin/suspended badge (badges render only for those) - expected. pending-actions-list shows "Deactivate person · casey.staff@example.test", "Requested from API; expires 1 Oct 2026, 12:15", Review/Cancel at right edge (full width); labels not raw keys. pending-action-detail shows Action "Deactivate person", Status "Pending", full-width card, labelled inputs. All as intended. Not blocking.
+4. Test non-vacuous: `document.querySelector("main")?.className` toMatch /\bw-full\b/ fails if class removed. Class-assertion only, not a layout/CLS measure (CLS 0.28 -> 0 rests on the author's browser measurement and G13/G8 e2e, which I did not run). Same style as existing $id.test.tsx assertion. Acceptable.
+
+Non-blocking notes:
+- N1: In the directory screenshot the results Card is ~750px wide while the page is 1280px (card not stretched; filter row ~1060px). Presumably pre-existing/intentional; "full-width" holds for <main>/header, not the card. Confirm it is the design.
+- N2: Untracked apps/web/e2e/zz-users-ui-acceptance-probe.spec.ts exists in the worktree (not in the commits). Ensure it is not staged/pushed.
+
+## Residual risk
+- Did not run Playwright/CLS measurement or regenerate/compare PNGs (browsers disallowed); Linux baselines judged visually only. Narrow-width (375px) behavior of w-full inferred from flex semantics, not measured. Other route mains without w-full (e.g. god-mode/observability.tsx, settings/account/security.tsx) may shrink-wrap similarly; out of scope.
+
+Verdict: APPROVE
+<!-- END REPORT (sha256 13991dea0ae8e610db5eccdaeb43d2d5f0848f417410fd19b8f80e8cb15dfdc1) -->
+
+<!-- BEGIN REPORT (/Users/heinthura/.codex/taskdesk-evidence/2026-10-12/670-c5cc-security-rebind-opus.md; Claude Opus 5.5; sha256 430b362062683b238646317cc09dd0f5ba4c7e163392dc4c4f9cec1e52baaf99) -->
+# PR #670 security rebind (55227706..c5ccfe58)
+
+Reviewer model: Claude Opus 5.5 (fresh independent security-review context)
+Depth: rebind confirmation. Read-only: no edits, commits, browsers or Docker.
+
+- Candidate head: `c5ccfe58458077c4882937799dfc39010c285145`. Confirmed with `git rev-parse HEAD`.
+- Comparison base: `552277064d6e09b41157b14afc431928f24bff7b`, the head of the prior CLEAR Opus rebind (`670-5522-security-rebind-opus.md`).
+- Merge base with local `origin/main`: `d86d3089636c1ade443a20b04e1212e4a72f42d1`. This is informational; the local ref may be stale.
+- Commits in the range: 4275cf23 (`w-full` on the Users `<main>`), ef876b86 (pairs.json manifest occurrence), c5ccfe58 (Linux baseline PNGs).
+
+## Surfaces examined
+`git diff --stat 55227706..HEAD` shows exactly 6 files:
+- `apps/web/src/routes/agent/_layout/_authenticated/agent/god-mode/users.tsx`: 1 line changed. The `<main>` className gains `w-full`. There is no logic, data, fetcher, mutation, guard or capability change.
+- `.../god-mode/users.test.tsx`: +4 lines. One assertion that `<main>` className matches `/\bw-full\b/`. If the class is removed, the assertion fails.
+- `packages/ui/src/styles/pairs.json`: +26 lines and 0 deletions. The JSON parses. The change is one occurrence id added to each of the two occurrence lists, plus two matching pair entries for `InstanceUsersPage::.../TableCell[0]/span[0]::text-muted-foreground#0`. That id maps to the mobile meta-line span at `users.tsx:471`. The change is manifest-only, and no existing entry or threshold is altered.
+- 3 PNGs in `apps/web/e2e/visual.spec.ts-snapshots/`: `instance-users-directory-linux.png`, `pending-action-detail-linux.png` and `pending-actions-list-linux.png`.
+
+The delta touches no auth, policy, API, fetcher, query-hook, proof, migration, CI or dependency file.
+
+### PNG content check (opened and viewed)
+- **instance-users-directory:** one fixture row, "Taylor Staff / taylor@example.test", type Staff, organisation "—". It also shows the filter controls and empty input placeholders.
+- **pending-actions-list:** "Deactivate person · casey.staff@example.test", an "api" badge, a fixed expiry of 1 Oct 2026 12:15, and Review/Cancel buttons.
+- **pending-action-detail:** action, target `casey.staff@example.test`, Pending status, and the consequence copy. The "Type the exact current email" field and the "Account password" field are **empty**. The visible email hint is the fixture target. The submit button is disabled.
+
+No secrets, tokens, passwords, API keys, session ids, internal hostnames or real personal data appear. All identities use the reserved `example.test` domain.
+
+## Tests run (apps/web vitest; sandbox lifted only so vitest could write its `.vite-temp` config)
+| File | Tests |
+| --- | --- |
+| `src/routes/agent/_layout/_authenticated/agent/god-mode/users.test.tsx` | 6 passed |
+| `src/routes/agent/_layout/_authenticated/agent/settings/profile/pending-actions/$id.test.tsx` | 7 passed |
+| `src/hooks/queries/own-pending-actions-query.test.ts` | 1 passed |
+| **Total** | **3 files, 14 tests, 0 failed** |
+
+## Findings
+- **Blocking:** none.
+- **Non-blocking N1:** an untracked file, `apps/web/e2e/zz-users-ui-acceptance-probe.spec.ts`, is in the worktree. It is not in any commit in the range. Make sure it is not staged or pushed. It was not reviewed.
+- **Non-blocking N2:** the `w-full` test checks the class name only. The CLS improvement rests on the author's browser measurement and the G8/G13 e2e. This is a quality concern, not a security one.
+
+## Residual risk
+- I did not run Playwright, the visual comparison or the contrast check (`pnpm check:tokens`). The ordinary review reports that the contrast check passes with 418 pairs.
+- I judged the PNGs visually only.
+- I relied on the prior Opus CLEAR at 55227706 for all surfaces outside this delta. I did not re-review the auth or proof flow.
+
+I formed this view before reading the ordinary Sonnet review. That review agrees with it.
+
+**Reviewed head:** `c5ccfe58458077c4882937799dfc39010c285145`
+
+Verdict: CLEAR
+<!-- END REPORT (sha256 430b362062683b238646317cc09dd0f5ba4c7e163392dc4c4f9cec1e52baaf99) -->
