@@ -657,8 +657,14 @@ async function runJourney(fixture: MfaCsrfAppFixture) {
     ).toString();
     await runPhase(phaseJournal, "staff-triage-load", async () => {
       await staffPage.goto(triageUrl);
-      await expect(staffPage.getByText("Need account access")).toBeVisible();
-      await expect(staffPage.getByText(/evidence\.png/i)).toBeVisible();
+      // The queue row and the open submission both show the title; assert the detail region.
+      const submissionDetail = staffPage.getByRole("region", {
+        name: new RegExp(`Submission ${ref}`),
+      });
+      await expect(
+        submissionDetail.getByText("Need account access"),
+      ).toBeVisible();
+      await expect(submissionDetail.getByText(/evidence\.png/i)).toBeVisible();
     });
 
     await runPhase(phaseJournal, "staff-claim", async () => {
